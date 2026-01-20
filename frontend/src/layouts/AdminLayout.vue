@@ -2,7 +2,7 @@
   <div class="min-h-screen light-theme">
     <div class="flex min-h-screen">
       <aside
-        class="hidden w-64 flex-shrink-0 flex-col justify-between px-4 py-6 shadow-md md:flex bg-white/90 border-r border-slate-200 text-slate-800 backdrop-blur md:sticky md:top-0 md:h-screen"
+        class="hidden w-64 flex-shrink-0 flex-col justify-between border-r border-slate-200 bg-white/90 px-4 py-6 text-slate-800 shadow-md md:flex md:sticky md:top-0 md:h-screen"
       >
         <div class="flex flex-1 flex-col overflow-y-auto">
           <div class="mb-8 flex items-center justify-center gap-3">
@@ -53,7 +53,6 @@
       <main class="flex-1">
         <header class="flex items-center justify-between bg-white px-4 py-3 text-slate-900 shadow-sm">
           <div class="flex items-center gap-2">
-            <button class="md:hidden rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold">Menu</button>
             <h1 class="text-lg font-bold">Dashboard</h1>
           </div>
           <div class="flex items-center gap-2"></div>
@@ -248,3 +247,5 @@ onMounted(async () => {
   opacity: 0;
 }
 </style>
+
+
