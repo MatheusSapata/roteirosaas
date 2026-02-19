@@ -144,7 +144,7 @@ watch(pixels, persist, { deep: true });
 const fetchPixels = async () => {
   errorMessage.value = "";
   try {
-    const res = await api.get("/pixels");
+  const res = await api.get("/pixels/");
     pixels.value = res.data;
   } catch (err) {
     console.error(err);

@@ -289,7 +289,7 @@
             >
               <div :class="previewDevice === 'mobile' ? 'max-h-[80vh] overflow-y-auto' : ''">
                 <div class="space-y-6">
-                  <template v-for="(section, idx) in styledSections" :key="'preview-' + idx">
+                  <template v-for="(section, idx) in previewSections" :key="'preview-' + idx">
                 <component
                   v-if="section && (section as any).enabled"
                   :is="publicComponents[(section as any).type]"
@@ -456,6 +456,7 @@ const publicComponents: Partial<Record<SectionType, any>> = {
 };
 
 const sections = ref<PageSection[]>([]);
+const previewSections = ref<PageSection[]>([]);
 provide(sectionsInjectionKey, sections);
 
 const createAnchorId = () => `section-${Math.random().toString(36).slice(2, 9)}`;
@@ -532,7 +533,7 @@ const applyPrimaryToThemeAndSections = (oldDefault?: string) => {
 
 const loadPixels = async () => {
   try {
-    const res = await api.get("/pixels");
+    const res = await api.get("/pixels/");
     pixels.value = res.data;
   } catch (err) {
     console.error("Erro ao carregar pixels", err);
@@ -636,7 +637,35 @@ const buildConfig = (): PageConfig => ({
     : undefined
 });
 
-const styledSections = computed(() => applySectionBackgrounds(sections.value));
+const hydratePreviewSections = () => {
+  previewSections.value = applySectionBackgrounds(clone(sections.value));
+};
+
+let previewDebounce: ReturnType<typeof setTimeout> | null = null;
+const schedulePreviewHydration = (immediate = false) => {
+  if (!previewEnabled.value) {
+    if (previewDebounce) {
+      clearTimeout(previewDebounce);
+      previewDebounce = null;
+    }
+    return;
+  }
+
+  const run = () => {
+    previewDebounce = null;
+    hydratePreviewSections();
+  };
+
+  if (immediate) {
+    run();
+    return;
+  }
+
+  if (previewDebounce) {
+    clearTimeout(previewDebounce);
+  }
+  previewDebounce = window.setTimeout(run, 200);
+};
 
 const gridLayoutClass = computed(() => {
   if (!previewEnabled.value) return "grid-cols-1";
@@ -971,8 +1000,19 @@ watch(colorB, value => {
   theme.value.color2 = value;
 });
 
+watch(
+  () => sections.value,
+  () => schedulePreviewHydration(),
+  { deep: true }
+);
+
+watch([colorA, colorB], () => {
+  schedulePreviewHydration();
+});
+
 watch(previewEnabled, value => {
   editorPrefs.value.previewEnabled = value;
+  schedulePreviewHydration(true);
 });
 
 watch(previewDevice, value => {
@@ -1126,5 +1166,6 @@ onMounted(async () => {
   if (!applied) setDefaultSectionsByPlan();
 
   await fetchPage();
+  schedulePreviewHydration(true);
 });
 </script>
