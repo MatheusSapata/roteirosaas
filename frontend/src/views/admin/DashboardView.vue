@@ -275,7 +275,7 @@ const fetchData = async () => {
   pagesCount.value = res.data.length;
   // Pixels cadastrados como integraÇõÇæes
   try {
-    const pix = await api.get("/pixels");
+    const pix = await api.get("/pixels/");
     integrationsCount.value = Array.isArray(pix.data) ? pix.data.length : 0;
   } catch {
     integrationsCount.value = 0;
