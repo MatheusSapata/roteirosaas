@@ -22,7 +22,7 @@
     <div class="flex w-full items-center justify-center px-4 py-10 lg:w-2/5 lg:px-12">
       <div class="w-full max-w-md rounded-3xl border border-slate-100 bg-white p-8 shadow-xl shadow-slate-200/40">
         <div class="mb-8 space-y-2">
-          <p class="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Bem-vindo de volta</p>
+          <p class="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Bem-vindo ao roteiro online </p>
           <h1 class="text-3xl font-bold text-slate-900">Login</h1>
           <p class="text-sm text-slate-500">Entre para continuar acompanhando suas campanhas e páginas.</p>
         </div>
