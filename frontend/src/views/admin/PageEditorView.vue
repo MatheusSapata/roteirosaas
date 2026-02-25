@@ -253,7 +253,8 @@
             <component
               v-if="!isCollapsed(index)"
               :is="formComponents[(section as any).type]"
-              v-model:modelValue="sections[index]"
+              :modelValue="sections[index]"
+              @update:modelValue="value => updateSectionAt(index, value)"
             />
           </div>
         </template>
@@ -263,8 +264,8 @@
         <div class="rounded-2xl bg-white p-4 shadow-md">
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div class="flex flex-col gap-1">
-              <h2 class="text-lg font-semibold text-slate-900">Preview visual (usando os mesmos componentes públicos)</h2>
-              <p class="text-xs text-slate-500">Clique em Atualizar preview para aplicar as alterações do formulário.</p>
+              <h2 class="text-lg font-semibold text-slate-900">Preview visual (usando os mesmos componentes pÃºblicos)</h2>
+              <p class="text-xs text-slate-500">Clique em Atualizar preview para aplicar as alteraÃ§Ãµes do formulÃ¡rio.</p>
             </div>
             <div class="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 p-1 text-xs font-semibold text-slate-600">
               <button
@@ -284,14 +285,19 @@
                 Mobile
               </button>
             </div>
-            <button
-              type="button"
-              @click="refreshPreview"
-              class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
-            >
-              Atualizar preview
-            </button>
-          </div>          <div class="mt-4">
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                :disabled="previewLoading"
+                @click="refreshPreview()"
+                class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-60"
+              >
+                <span v-if="previewLoading">Atualizando...</span>
+                <span v-else>Atualizar preview</span>
+              </button>
+            </div>
+          </div>
+          <div class="mt-4">
             <div
               :class="previewDevice === 'mobile'
                 ? 'mx-auto w-full max-w-[420px] overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-xl'
@@ -328,7 +334,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, provide, ref, watch } from "vue";
+import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, provide, ref, shallowRef, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import api from "../../services/api";
 import { useAuthStore } from "../../store/useAuthStore";
@@ -466,9 +472,10 @@ const publicComponents: Partial<Record<SectionType, any>> = {
   free_footer_brand: PublicFreeFooterBrandSection
 };
 
-const sections = ref<PageSection[]>([]);
+const sections = shallowRef<PageSection[]>([]);
 const previewSections = ref<PageSection[]>([]);
 const previewReady = ref(false);
+const previewLoading = ref(false);
 const hasWindow = typeof window !== "undefined";
 const getBrowserStorage = () => {
   if (!hasWindow) return null;
@@ -479,6 +486,19 @@ const getBrowserStorage = () => {
   }
 };
 provide(sectionsInjectionKey, sections);
+
+const setSections = (value: PageSection[] | ((current: PageSection[]) => PageSection[])) => {
+  const next = typeof value === "function" ? (value as (current: PageSection[]) => PageSection[])([...sections.value]) : value;
+  sections.value = (next || []).filter(Boolean);
+};
+
+const updateSectionAt = (index: number, value: PageSection) => {
+  setSections(current => {
+    const next = [...current];
+    next[index] = value;
+    return next;
+  });
+};
 
 const createAnchorId = () => `section-${Math.random().toString(36).slice(2, 9)}`;
 const ensureSectionAnchor = <T extends PageSection>(section: T): T => {
@@ -512,12 +532,14 @@ const resolvePrimaryColor = () => currentAgency.value?.primary_color || fallback
 const fillHeroLogoFromAgency = () => {
   const logo = currentAgency.value?.logo_url;
   if (!logo) return;
-  sections.value = sections.value.map(section => {
-    if ((section as any).type === "hero" && !(section as any).logoUrl) {
-      return { ...(section as any), logoUrl: logo } as PageSection;
-    }
-    return section;
-  });
+  setSections(current =>
+    current.map(section => {
+      if ((section as any).type === "hero" && !(section as any).logoUrl) {
+        return { ...(section as any), logoUrl: logo } as PageSection;
+      }
+      return section;
+    })
+  );
 };
 
 const applyAgencyBranding = () => {
@@ -539,16 +561,18 @@ const applyPrimaryToThemeAndSections = (oldDefault?: string) => {
   const previous = oldDefault || theme.value.ctaDefaultColor;
   theme.value.ctaDefaultColor = primary;
 
-  sections.value = applySectionBackgrounds(
-    sections.value.map(section => {
-      if (!section) return section;
-      const current = (section as any).ctaColor as string | undefined;
-      const shouldReplace =
-        !current ||
-        current.toLowerCase?.() === fallbackPrimaryColor.toLowerCase() ||
-        (!!previous && current.toLowerCase?.() === previous.toLowerCase());
-      return shouldReplace ? ({ ...(section as any), ctaColor: primary } as any) : section;
-    })
+  setSections(current =>
+    applySectionBackgrounds(
+      current.map(section => {
+        if (!section) return section;
+        const currentColor = (section as any).ctaColor as string | undefined;
+        const shouldReplace =
+          !currentColor ||
+          currentColor.toLowerCase?.() === fallbackPrimaryColor.toLowerCase() ||
+          (!!previous && currentColor.toLowerCase?.() === previous.toLowerCase());
+        return shouldReplace ? ({ ...(section as any), ctaColor: primary } as any) : section;
+      })
+    )
   );
 };
 
@@ -657,8 +681,9 @@ const buildConfig = (): PageConfig => ({
     : undefined
 });
 
-const hydratePreviewSections = () => {
-  previewSections.value = applySectionBackgrounds(sections.value);
+const hydratePreviewSections = (source?: PageSection[]) => {
+  const snapshot = source ? source : clone(sections.value);
+  previewSections.value = applySectionBackgrounds(snapshot);
 };
 
 let previewFrame: number | null = null;
@@ -682,6 +707,7 @@ const clearPreviewScheduler = () => {
     clearTimeout(previewTimeout);
     previewTimeout = null;
   }
+  previewLoading.value = false;
 };
 
 const clearTitleDebounce = () => {
@@ -697,29 +723,43 @@ const schedulePreviewHydration = (immediate = false) => {
     return;
   }
 
-  const run = () => {
-    clearPreviewScheduler();
-    hydratePreviewSections();
+  const snapshot = clone(sections.value);
+  const execute = () => {
+    hydratePreviewSections(snapshot);
+    previewLoading.value = false;
   };
 
   if (immediate) {
-    run();
+    previewLoading.value = true;
+    execute();
     return;
   }
+
+  clearPreviewScheduler();
+  previewLoading.value = true;
 
   if (hasWindow) {
     const idle = (window as any).requestIdleCallback;
     if (typeof idle === "function") {
-      previewIdle = idle(run, { timeout: 200 });
+      previewIdle = idle(() => {
+        previewIdle = null;
+        execute();
+      }, { timeout: 400 });
       return;
     }
     if (typeof window.requestAnimationFrame === "function") {
-      previewFrame = window.requestAnimationFrame(run);
+      previewFrame = window.requestAnimationFrame(() => {
+        previewFrame = null;
+        execute();
+      });
       return;
     }
   }
 
-  previewTimeout = setTimeout(run, 120);
+  previewTimeout = setTimeout(() => {
+    previewTimeout = null;
+    execute();
+  }, 100);
 };
 
 onBeforeUnmount(() => {
@@ -892,7 +932,7 @@ const hydrateFromConfig = (config?: PageConfig | string | null) => {
     }
 
     if (parsed.sections && Array.isArray(parsed.sections) && parsed.sections.length) {
-      sections.value = applySectionBackgrounds(parsed.sections as PageSection[]).filter(Boolean);
+      setSections(applySectionBackgrounds(parsed.sections as PageSection[]));
       fillHeroLogoFromAgency();
     }
 
@@ -1008,19 +1048,23 @@ const goPlans = () => {
 
 const addSection = (type: SectionType) => {
   const next = clone(defaultSection(type));
-  sections.value.push(next);
+  setSections(current => [...current, next]);
 };
 
 watch(pageTitle, () => {
   clearTitleDebounce();
   whatsappTitleDebounce = setTimeout(() => {
-    sections.value = applyWhatsAppDefaults(sections.value);
+    setSections(current => applyWhatsAppDefaults(current));
   }, 200);
 });
 
 const duplicateSection = (index: number) => {
   const copy = cloneWithNewAnchor(clone(sections.value[index]));
-  sections.value.splice(index + 1, 0, copy);
+  setSections(current => {
+    const next = [...current];
+    next.splice(index + 1, 0, copy);
+    return next;
+  });
 };
 
 const removeSection = (index: number) => {
@@ -1029,19 +1073,24 @@ const removeSection = (index: number) => {
     const heroCount = sections.value.filter(s => (s as any).type === "hero").length;
     if (heroCount <= 1) return;
   }
-  sections.value.splice(index, 1);
+  setSections(current => {
+    const next = [...current];
+    next.splice(index, 1);
+    return next;
+  });
 };
 
 const moveSection = (index: number, direction: number) => {
   const target = index + direction;
   if (target < 0 || target >= sections.value.length) return;
 
-  const list = [...sections.value];
-  const temp = list[index];
-  list[index] = list[target];
-  list[target] = temp;
-
-  sections.value = list;
+  setSections(current => {
+    const next = [...current];
+    const temp = next[index];
+    next[index] = next[target];
+    next[target] = temp;
+    return next;
+  });
 };
 
 const isCollapsed = (index: number) => !!collapsed.value[index];
@@ -1067,6 +1116,8 @@ watch(previewEnabled, value => {
   editorPrefs.value.previewEnabled = value;
   if (!value) {
     clearPreviewScheduler();
+  } else if (previewReady.value) {
+    schedulePreviewHydration();
   }
 });
 
@@ -1074,15 +1125,15 @@ watch(previewDevice, value => {
   editorPrefs.value.previewDevice = value;
 });
 
-const refreshPreview = () => {
-  schedulePreviewHydration(true);
+const refreshPreview = (immediate = false) => {
+  schedulePreviewHydration(immediate);
 };
 
 const setDefaultSectionsByPlan = () => {
   const plan = auth.user?.plan || "free";
 
   if (plan === "free") {
-    sections.value = [defaultSection("hero"), defaultSection("story"), defaultSection("itinerary"), defaultSection("cta")];
+    setSections([defaultSection("hero"), defaultSection("story"), defaultSection("itinerary"), defaultSection("cta")]);
   } else {
     const storyRight = defaultSection("story") as any;
     storyRight.imagePosition = "right";
@@ -1090,7 +1141,7 @@ const setDefaultSectionsByPlan = () => {
     const storyLeft = defaultSection("story") as any;
     storyLeft.imagePosition = "left";
 
-    sections.value = [
+    setSections([
       defaultSection("hero"),
       defaultSection("reasons"),
       storyRight,
@@ -1098,7 +1149,7 @@ const setDefaultSectionsByPlan = () => {
       defaultSection("itinerary"),
       defaultSection("countdown"),
       defaultSection("cta")
-    ];
+    ]);
   }
 };
 
@@ -1133,7 +1184,7 @@ const applySavedTemplate = (): boolean => {
     }
 
     if (parsed.sections && Array.isArray(parsed.sections) && parsed.sections.length) {
-      sections.value = applySectionBackgrounds(parsed.sections as PageSection[]);
+      setSections(applySectionBackgrounds(parsed.sections as PageSection[]));
       applyPrimaryToThemeAndSections(oldDefaultCta);
       return true;
     }
@@ -1233,10 +1284,8 @@ onMounted(async () => {
   const applied = applySavedTemplate();
   if (!applied) setDefaultSectionsByPlan();
 
-  previewReady.value = true;
-  schedulePreviewHydration(true);
-
   await fetchPage();
+  previewReady.value = true;
   schedulePreviewHydration(true);
 });
 </script>
