@@ -318,7 +318,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, provide, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, provide, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import api from "../../services/api";
 import SectionHeroForm from "../../components/admin/SectionHeroForm.vue";
@@ -457,6 +457,16 @@ const publicComponents: Partial<Record<SectionType, any>> = {
 
 const sections = ref<PageSection[]>([]);
 const previewSections = ref<PageSection[]>([]);
+const previewReady = ref(false);
+const hasWindow = typeof window !== "undefined";
+const getBrowserStorage = () => {
+  if (!hasWindow) return null;
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+};
 provide(sectionsInjectionKey, sections);
 
 const createAnchorId = () => `section-${Math.random().toString(36).slice(2, 9)}`;
@@ -638,21 +648,39 @@ const buildConfig = (): PageConfig => ({
 });
 
 const hydratePreviewSections = () => {
-  previewSections.value = applySectionBackgrounds(clone(sections.value));
+  previewSections.value = applySectionBackgrounds(sections.value);
 };
 
-let previewDebounce: ReturnType<typeof setTimeout> | null = null;
-const schedulePreviewHydration = (immediate = false) => {
-  if (!previewEnabled.value) {
-    if (previewDebounce) {
-      clearTimeout(previewDebounce);
-      previewDebounce = null;
+let previewFrame: number | null = null;
+let previewTimeout: ReturnType<typeof setTimeout> | null = null;
+let previewIdle: number | null = null;
+const clearPreviewScheduler = () => {
+  if (previewFrame !== null) {
+    if (hasWindow && typeof window.cancelAnimationFrame === "function") {
+      window.cancelAnimationFrame(previewFrame);
     }
+    previewFrame = null;
+  }
+  if (previewIdle !== null) {
+    if (hasWindow && typeof (window as any).cancelIdleCallback === "function") {
+      (window as any).cancelIdleCallback(previewIdle);
+    }
+    previewIdle = null;
+  }
+  if (previewTimeout) {
+    clearTimeout(previewTimeout);
+    previewTimeout = null;
+  }
+};
+
+const schedulePreviewHydration = (immediate = false) => {
+  if (!previewEnabled.value || !previewReady.value) {
+    clearPreviewScheduler();
     return;
   }
 
   const run = () => {
-    previewDebounce = null;
+    clearPreviewScheduler();
     hydratePreviewSections();
   };
 
@@ -661,11 +689,24 @@ const schedulePreviewHydration = (immediate = false) => {
     return;
   }
 
-  if (previewDebounce) {
-    clearTimeout(previewDebounce);
+  if (hasWindow) {
+    const idle = (window as any).requestIdleCallback;
+    if (typeof idle === "function") {
+      previewIdle = idle(run, { timeout: 200 });
+      return;
+    }
+    if (typeof window.requestAnimationFrame === "function") {
+      previewFrame = window.requestAnimationFrame(run);
+      return;
+    }
   }
-  previewDebounce = window.setTimeout(run, 200);
+
+  previewTimeout = setTimeout(run, 120);
 };
+
+onBeforeUnmount(() => {
+  clearPreviewScheduler();
+});
 
 const gridLayoutClass = computed(() => {
   if (!previewEnabled.value) return "grid-cols-1";
@@ -1057,8 +1098,11 @@ const applySavedTemplate = (): boolean => {
   const key = templateKey.value;
   if (!key) return false;
 
+  const storage = getBrowserStorage();
+  if (!storage) return false;
+
   try {
-    const saved = localStorage.getItem(key);
+    const saved = storage.getItem(key);
     if (!saved) return false;
 
     const parsed = JSON.parse(saved);
@@ -1120,7 +1164,13 @@ const saveTemplate = () => {
       theme: { ...theme.value, color1: colorA.value, color2: colorB.value }
     };
 
-    localStorage.setItem(key, JSON.stringify(payload));
+    const storage = getBrowserStorage();
+    if (!storage) {
+      errorMessage.value = "Recurso indisponivel no momento.";
+      return;
+    }
+
+    storage.setItem(key, JSON.stringify(payload));
     message.value = "Template salvo! Novas páginas iniciarão com essa estrutura.";
     showSnackbar("Template salvo com sucesso");
   } catch (err) {
@@ -1152,7 +1202,7 @@ const goPages = () => {
 };
 
 const viewPublicPage = () => {
-  if (!publicUrl.value) return;
+  if (!publicUrl.value || !hasWindow) return;
   window.open(publicUrl.value, "_blank");
 };
 
@@ -1164,6 +1214,9 @@ onMounted(async () => {
 
   const applied = applySavedTemplate();
   if (!applied) setDefaultSectionsByPlan();
+
+  previewReady.value = true;
+  schedulePreviewHydration(true);
 
   await fetchPage();
   schedulePreviewHydration(true);
