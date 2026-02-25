@@ -8,10 +8,12 @@
       </div>
 
       <div class="flex flex-wrap items-center gap-2">
-        <label class="flex items-center gap-2 text-sm text-slate-700">
-          <input type="checkbox" v-model="previewEnabled" class="h-4 w-4" />
-          Mostrar preview
-        </label>
+        <div class="flex items-center gap-4">
+          <label class="flex items-center gap-2 text-sm text-slate-700">
+            <input type="checkbox" v-model="previewEnabled" class="h-4 w-4" />
+            Mostrar preview
+          </label>
+        </div>
 
         <button
           @click="saveTemplate"
@@ -260,7 +262,10 @@
       <div v-if="previewEnabled" class="space-y-4">
         <div class="rounded-2xl bg-white p-4 shadow-md">
           <div class="flex flex-wrap items-center justify-between gap-3">
-            <h2 class="text-lg font-semibold text-slate-900">Preview visual (usando os mesmos componentes pÃºblicos)</h2>
+            <div class="flex flex-col gap-1">
+              <h2 class="text-lg font-semibold text-slate-900">Preview visual (usando os mesmos componentes públicos)</h2>
+              <p class="text-xs text-slate-500">Clique em Atualizar preview para aplicar as alterações do formulário.</p>
+            </div>
             <div class="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 p-1 text-xs font-semibold text-slate-600">
               <button
                 type="button"
@@ -279,9 +284,14 @@
                 Mobile
               </button>
             </div>
-          </div>
-
-          <div class="mt-4">
+            <button
+              type="button"
+              @click="refreshPreview"
+              class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+            >
+              Atualizar preview
+            </button>
+          </div>          <div class="mt-4">
             <div
               :class="previewDevice === 'mobile'
                 ? 'mx-auto w-full max-w-[420px] overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-xl'
@@ -472,8 +482,8 @@ provide(sectionsInjectionKey, sections);
 
 const createAnchorId = () => `section-${Math.random().toString(36).slice(2, 9)}`;
 const ensureSectionAnchor = <T extends PageSection>(section: T): T => {
-  if (section.anchorId) return section;
-  return { ...section, anchorId: createAnchorId() } as T;
+  if (!section.anchorId) section.anchorId = createAnchorId();
+  return section;
 };
 const cloneWithNewAnchor = <T extends PageSection>(section: T): T => ({ ...section, anchorId: createAnchorId() } as T);
 
@@ -580,7 +590,7 @@ const applyWhatsAppDefaults = (sectionsList: PageSection[]): PageSection[] => {
     const key = type === "cta" ? "link" : "ctaLink";
     const current = (section as any)[key] as string | undefined;
     if (!current || isAutoLink(current)) {
-      return { ...(section as any), [key]: newAuto } as any;
+      (section as any)[key] = newAuto;
     }
     return section;
   });
@@ -596,7 +606,7 @@ const applySectionBackgrounds = (list: PageSection[]): PageSection[] => {
     const isMissing = !current;
     const isLegacy = current?.toLowerCase?.() === legacyHeroGradient.toLowerCase();
     if (isMissing || isLegacy) {
-      return { ...(section as any), gradientColor: heroDefaultGradient } as any;
+      (section as any).gradientColor = heroDefaultGradient;
     }
     return section;
   };
@@ -609,7 +619,7 @@ const applySectionBackgrounds = (list: PageSection[]): PageSection[] => {
       const needsDefault =
         !currentColor || currentColor.toLowerCase() === fallbackPrimaryColor.toLowerCase();
       if (needsDefault) {
-        return { ...(section as any), ctaColor: theme.value.ctaDefaultColor } as any;
+        (section as any).ctaColor = theme.value.ctaDefaultColor;
       }
     }
     return section;
@@ -619,19 +629,18 @@ const applySectionBackgrounds = (list: PageSection[]): PageSection[] => {
   const withWhatsApp = applyWhatsAppDefaults(list || []);
   return withWhatsApp.map(section => {
     if (!section) return section;
-    const anchored = ensureSectionAnchor(section);
-    const withHeroGradient = normalizeHeroGradient(anchored);
-    const withButtonColor = ensureButtonColor(withHeroGradient);
+    const normalized = ensureButtonColor(normalizeHeroGradient(ensureSectionAnchor(section)));
     if (
-      (withButtonColor as any).type === "hero" ||
-      (withButtonColor as any).type === "countdown" ||
-      (withButtonColor as any).type === "free_footer_brand"
+      (normalized as any).type === "hero" ||
+      (normalized as any).type === "countdown" ||
+      (normalized as any).type === "free_footer_brand"
     ) {
-      return withButtonColor;
+      return normalized;
     }
     const backgroundColor = altIndex % 2 === 0 ? colorA.value : colorB.value;
     altIndex += 1;
-    return { ...(withButtonColor as any), backgroundColor } as any;
+    (normalized as any).backgroundColor = backgroundColor;
+    return normalized;
   });
 };
 
@@ -1054,24 +1063,20 @@ watch(colorB, value => {
   theme.value.color2 = value;
 });
 
-watch(
-  () => sections.value,
-  () => schedulePreviewHydration(),
-  { deep: true }
-);
-
-watch([colorA, colorB], () => {
-  schedulePreviewHydration();
-});
-
 watch(previewEnabled, value => {
   editorPrefs.value.previewEnabled = value;
-  schedulePreviewHydration(true);
+  if (!value) {
+    clearPreviewScheduler();
+  }
 });
 
 watch(previewDevice, value => {
   editorPrefs.value.previewDevice = value;
 });
+
+const refreshPreview = () => {
+  schedulePreviewHydration(true);
+};
 
 const setDefaultSectionsByPlan = () => {
   const plan = auth.user?.plan || "free";
@@ -1235,3 +1240,7 @@ onMounted(async () => {
   schedulePreviewHydration(true);
 });
 </script>
+
+
+
+
