@@ -2,7 +2,7 @@
   <div class="w-full space-y-6 px-4 py-10 md:px-8">
     <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
       <div>
-        <p class="text-sm uppercase tracking-wide text-slate-500">Editor</p>
+        <p class="text-sm uppercase tracking-wide text-slate-500">Editor de página</p>
         <h1 class="text-3xl font-bold text-slate-900">{{ page?.title || "Roteiro" }}</h1>
         <p class="text-sm text-slate-500">Monte a página por seções, salve e visualize ao lado.</p>
       </div>
@@ -318,28 +318,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, provide, ref, watch } from "vue";
+import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, provide, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import api from "../../services/api";
-import SectionHeroForm from "../../components/admin/SectionHeroForm.vue";
-import SectionPricesForm from "../../components/admin/SectionPricesForm.vue";
-import SectionItineraryForm from "../../components/admin/SectionItineraryForm.vue";
-import SectionFaqForm from "../../components/admin/SectionFaqForm.vue";
-import SectionTestimonialsForm from "../../components/admin/SectionTestimonialsForm.vue";
-import SectionCtaForm from "../../components/admin/SectionCtaForm.vue";
-import SectionStoryForm from "../../components/admin/SectionStoryForm.vue";
-import SectionReasonsForm from "../../components/admin/SectionReasonsForm.vue";
-import SectionCountdownForm from "../../components/admin/SectionCountdownForm.vue";
-import PublicHeroSection from "../../components/public/PublicHeroSection.vue";
-import PublicPricesSection from "../../components/public/PublicPricesSection.vue";
-import PublicItinerarySection from "../../components/public/PublicItinerarySection.vue";
-import PublicFaqSection from "../../components/public/PublicFaqSection.vue";
-import PublicTestimonialsSection from "../../components/public/PublicTestimonialsSection.vue";
-import PublicCtaSection from "../../components/public/PublicCtaSection.vue";
-import PublicStorySection from "../../components/public/PublicStorySection.vue";
-import PublicReasonsSection from "../../components/public/PublicReasonsSection.vue";
-import PublicCountdownSection from "../../components/public/PublicCountdownSection.vue";
-import PublicFreeFooterBrandSection from "../../components/public/PublicFreeFooterBrandSection.vue";
 import { useAuthStore } from "../../store/useAuthStore";
 import { useAgencyStore } from "../../store/useAgencyStore";
 import type {
@@ -426,6 +407,26 @@ const buildCountdownTargetDate = () => {
   const date = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
   return date.toISOString().slice(0, 16);
 };
+
+const SectionHeroForm = defineAsyncComponent(() => import("../../components/admin/SectionHeroForm.vue"));
+const SectionPricesForm = defineAsyncComponent(() => import("../../components/admin/SectionPricesForm.vue"));
+const SectionItineraryForm = defineAsyncComponent(() => import("../../components/admin/SectionItineraryForm.vue"));
+const SectionFaqForm = defineAsyncComponent(() => import("../../components/admin/SectionFaqForm.vue"));
+const SectionTestimonialsForm = defineAsyncComponent(() => import("../../components/admin/SectionTestimonialsForm.vue"));
+const SectionCtaForm = defineAsyncComponent(() => import("../../components/admin/SectionCtaForm.vue"));
+const SectionStoryForm = defineAsyncComponent(() => import("../../components/admin/SectionStoryForm.vue"));
+const SectionReasonsForm = defineAsyncComponent(() => import("../../components/admin/SectionReasonsForm.vue"));
+const SectionCountdownForm = defineAsyncComponent(() => import("../../components/admin/SectionCountdownForm.vue"));
+const PublicHeroSection = defineAsyncComponent(() => import("../../components/public/PublicHeroSection.vue"));
+const PublicPricesSection = defineAsyncComponent(() => import("../../components/public/PublicPricesSection.vue"));
+const PublicItinerarySection = defineAsyncComponent(() => import("../../components/public/PublicItinerarySection.vue"));
+const PublicFaqSection = defineAsyncComponent(() => import("../../components/public/PublicFaqSection.vue"));
+const PublicTestimonialsSection = defineAsyncComponent(() => import("../../components/public/PublicTestimonialsSection.vue"));
+const PublicCtaSection = defineAsyncComponent(() => import("../../components/public/PublicCtaSection.vue"));
+const PublicStorySection = defineAsyncComponent(() => import("../../components/public/PublicStorySection.vue"));
+const PublicReasonsSection = defineAsyncComponent(() => import("../../components/public/PublicReasonsSection.vue"));
+const PublicCountdownSection = defineAsyncComponent(() => import("../../components/public/PublicCountdownSection.vue"));
+const PublicFreeFooterBrandSection = defineAsyncComponent(() => import("../../components/public/PublicFreeFooterBrandSection.vue"));
 
 const sectionTypes: SectionType[] = ["hero", "prices", "itinerary", "faq", "testimonials", "cta", "story", "reasons", "countdown"];
 const sectionLabels = defaultSectionLabels;
@@ -561,34 +562,34 @@ const clone = <T>(val: T): T => {
   }
 };
 
-const applySectionBackgrounds = (list: PageSection[]): PageSection[] => {
-  const applyWhatsAppDefaults = (sections: PageSection[]) => {
-    const newAuto = buildWhatsappLink(pageTitle.value);
-    const isAutoLink = (link?: string) => {
-      if (!link) return true;
-      const normalized = link.toLowerCase();
-      const candidates = [lastAutoWhatsAppLink.value, "https://wa.me/559999999", "https://wa.me/5599999999"].filter(Boolean) as string[];
-      if (candidates.some(c => normalized === c.toLowerCase())) return true;
-      return normalized.includes("wa.me") && normalized.includes("interesse");
-    };
-
-    const updated = sections.map(section => {
-      const type = (section as any).type as SectionType;
-      if (!["hero", "story", "cta"].includes(type) || !newAuto) return section;
-      if ((section as any).ctaMode === "section") return section;
-      if (type === "story" && (section as any).ctaEnabled === false) return section;
-      const key = type === "cta" ? "link" : "ctaLink";
-      const current = (section as any)[key] as string | undefined;
-      if (!current || isAutoLink(current)) {
-        return { ...(section as any), [key]: newAuto } as any;
-      }
-      return section;
-    });
-
-    if (newAuto) lastAutoWhatsAppLink.value = newAuto;
-    return updated;
+const applyWhatsAppDefaults = (sectionsList: PageSection[]): PageSection[] => {
+  const newAuto = buildWhatsappLink(pageTitle.value);
+  const isAutoLink = (link?: string) => {
+    if (!link) return true;
+    const normalized = link.toLowerCase();
+    const candidates = [lastAutoWhatsAppLink.value, "https://wa.me/559999999", "https://wa.me/5599999999"].filter(Boolean) as string[];
+    if (candidates.some(c => normalized === c.toLowerCase())) return true;
+    return normalized.includes("wa.me") && normalized.includes("interesse");
   };
 
+  const updated = sectionsList.map(section => {
+    const type = (section as any).type as SectionType;
+    if (!["hero", "story", "cta"].includes(type) || !newAuto) return section;
+    if ((section as any).ctaMode === "section") return section;
+    if (type === "story" && (section as any).ctaEnabled === false) return section;
+    const key = type === "cta" ? "link" : "ctaLink";
+    const current = (section as any)[key] as string | undefined;
+    if (!current || isAutoLink(current)) {
+      return { ...(section as any), [key]: newAuto } as any;
+    }
+    return section;
+  });
+
+  if (newAuto) lastAutoWhatsAppLink.value = newAuto;
+  return updated;
+};
+
+const applySectionBackgrounds = (list: PageSection[]): PageSection[] => {
   const normalizeHeroGradient = (section: PageSection) => {
     if ((section as any).type !== "hero") return section;
     const current = (section as any).gradientColor as string | undefined;
@@ -654,6 +655,7 @@ const hydratePreviewSections = () => {
 let previewFrame: number | null = null;
 let previewTimeout: ReturnType<typeof setTimeout> | null = null;
 let previewIdle: number | null = null;
+let whatsappTitleDebounce: ReturnType<typeof setTimeout> | null = null;
 const clearPreviewScheduler = () => {
   if (previewFrame !== null) {
     if (hasWindow && typeof window.cancelAnimationFrame === "function") {
@@ -670,6 +672,13 @@ const clearPreviewScheduler = () => {
   if (previewTimeout) {
     clearTimeout(previewTimeout);
     previewTimeout = null;
+  }
+};
+
+const clearTitleDebounce = () => {
+  if (whatsappTitleDebounce) {
+    clearTimeout(whatsappTitleDebounce);
+    whatsappTitleDebounce = null;
   }
 };
 
@@ -706,6 +715,7 @@ const schedulePreviewHydration = (immediate = false) => {
 
 onBeforeUnmount(() => {
   clearPreviewScheduler();
+  clearTitleDebounce();
 });
 
 const gridLayoutClass = computed(() => {
@@ -993,7 +1003,10 @@ const addSection = (type: SectionType) => {
 };
 
 watch(pageTitle, () => {
-  sections.value = applySectionBackgrounds(sections.value);
+  clearTitleDebounce();
+  whatsappTitleDebounce = setTimeout(() => {
+    sections.value = applyWhatsAppDefaults(sections.value);
+  }, 200);
 });
 
 const duplicateSection = (index: number) => {
