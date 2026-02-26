@@ -4,7 +4,7 @@
       <div>
         <p class="text-sm uppercase tracking-wide text-slate-500">Editor de pÃ¡gina</p>
         <h1 class="text-3xl font-bold text-slate-900">{{ page?.title || "Roteiro" }}</h1>
-        <p class="text-sm text-slate-500">Monte a pÃ¡gina por seÃ§Ãµes, salve e visualize ao lado.</p>
+        <p class="text-sm text-slate-500">Monte a página por seções, salve e visualize ao lado.</p>
       </div>
 
       <div class="flex flex-wrap items-center gap-2">
@@ -19,7 +19,7 @@
           @click="saveTemplate"
           class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
         >
-          Salvar como template padrÃ£o
+          Salvar como template padrão
         </button>
 
         <button
@@ -59,7 +59,7 @@
         <div class="space-y-1">
           <p class="text-sm font-semibold text-slate-700">Pixel de rastreamento</p>
           <p class="text-xs text-slate-500">
-            Escolha um pixel cadastrado em IntegraÃ§Ãµes e quais eventos deseja enviar. DisponÃ­vel a partir do plano Essencial.
+            Escolha um pixel cadastrado em IntegraÃ§Ãµes e quais eventos deseja enviar. Disponpi­vel a partir do plano Essencial.
           </p>
         </div>
 
@@ -68,7 +68,7 @@
             v-if="!canSelectPixel"
             class="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500"
           >
-            Adicione pixels na pÃ¡gina IntegraÃ§Ãµes (plano Essencial ou superior).
+            Adicione pixels na página Integrações (plano Essencial ou superior).
           </div>
 
           <template v-else>
@@ -84,7 +84,7 @@
 
               <label class="mt-2 flex items-center gap-2">
                 <input type="checkbox" v-model="trackingEvents.pageView" class="h-4 w-4" />
-                Page view (carregamento da pÃ¡gina)
+                Page view (carregamento da página)
               </label>
 
               <label class="mt-1 flex items-center gap-2">
@@ -101,7 +101,7 @@
     <div v-if="limitModal.open" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4">
       <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
         <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">Limite do plano</p>
-        <h3 class="mt-2 text-xl font-bold text-slate-900">AÃ§Ã£o indisponÃ­vel</h3>
+        <h3 class="mt-2 text-xl font-bold text-slate-900">Ação indisponÃ­vel</h3>
         <p class="mt-2 text-sm text-slate-600">
           {{ limitModal.message || "Seu plano atual atingiu o limite. Atualize para continuar." }}
         </p>
@@ -127,8 +127,8 @@
     <!-- Dialog de sucesso ao publicar -->
     <div v-if="successModal.open" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4">
       <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-        <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">PublicaÃ§Ã£o</p>
-        <h3 class="mt-2 text-xl font-bold text-slate-900">PÃ¡gina publicada com sucesso</h3>
+        <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">Publicação</p>
+        <h3 class="mt-2 text-xl font-bold text-slate-900">Página publicada com sucesso</h3>
         <p class="mt-2 text-sm text-slate-600">Escolha o que deseja fazer em seguida.</p>
 
         <div class="mt-4 flex flex-wrap gap-2">
@@ -143,7 +143,7 @@
             @click="goPages"
             class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
           >
-            Voltar para pÃ¡ginas
+            Voltar para páginas
           </button>
 
           <button
@@ -151,7 +151,7 @@
             @click="viewPublicPage"
             class="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white shadow hover:bg-brand-dark disabled:opacity-50"
           >
-            Ver pÃ¡gina
+            Ver página
           </button>
         </div>
       </div>
@@ -182,13 +182,13 @@
               <input type="color" v-model="colorB" class="h-9 w-9 cursor-pointer rounded border border-slate-200 bg-white" />
             </label>
 
-            <span class="text-xs text-slate-500">Aplica alternÃ¢ncia em todas as seÃ§Ãµes (exceto hero).</span>
+            <span class="text-xs text-slate-500">Aplica alternância em todas as seções (exceto hero).</span>
           </div>
         </div>
 
         <div class="rounded-2xl bg-white p-4 shadow-md">
           <div class="flex flex-wrap items-center gap-2">
-            <span class="text-sm font-semibold text-slate-700">Adicionar seÃ§Ã£o:</span>
+            <span class="text-sm font-semibold text-slate-700">Adicionar seção:</span>
             <button
               v-for="type in sectionTypes"
               :key="type"
@@ -264,8 +264,8 @@
         <div class="rounded-2xl bg-white p-4 shadow-md">
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div class="flex flex-col gap-1">
-              <h2 class="text-lg font-semibold text-slate-900">Preview visual (usando os mesmos componentes pÃºblicos)</h2>
-              <p class="text-xs text-slate-500">Clique em Atualizar preview para aplicar as alteraÃ§Ãµes do formulÃ¡rio.</p>
+              <h2 class="text-lg font-semibold text-slate-900">Preview visual</h2>
+              <p class="text-xs text-slate-500">Clique em Atualizar preview para aplicar as alterações do formulário.</p>
             </div>
             <div class="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 p-1 text-xs font-semibold text-slate-600">
               <button
@@ -488,15 +488,46 @@ const getBrowserStorage = () => {
 provide(sectionsInjectionKey, sections);
 
 const setSections = (value: PageSection[] | ((current: PageSection[]) => PageSection[])) => {
-  const current = sections.value.slice();
-  const next = typeof value === "function" ? (value as (current: PageSection[]) => PageSection[])(current) : value;
+  const next = typeof value === "function" ? (value as (current: PageSection[]) => PageSection[])([...sections.value]) : value;
   sections.value = (next || []).filter(Boolean);
 };
 
-const updateSectionAt = (index: number, value: PageSection) => {
+interface PendingSectionUpdate {
+  timer: ReturnType<typeof setTimeout>;
+  value: PageSection;
+}
+const pendingSectionUpdates: Record<number, PendingSectionUpdate> = {};
+const commitSectionValue = (index: number, value: PageSection) => {
   const next = sections.value.slice();
   next[index] = value;
   sections.value = next;
+};
+const flushPendingSectionUpdates = () => {
+  Object.keys(pendingSectionUpdates).forEach(key => {
+    const index = Number(key);
+    const pending = pendingSectionUpdates[index];
+    if (!pending) return;
+    clearTimeout(pending.timer);
+    commitSectionValue(index, pending.value);
+    delete pendingSectionUpdates[index];
+  });
+};
+const updateSectionAt = (index: number, value: PageSection, immediate = false) => {
+  if (pendingSectionUpdates[index]) {
+    clearTimeout(pendingSectionUpdates[index].timer);
+    delete pendingSectionUpdates[index];
+  }
+
+  if (immediate) {
+    commitSectionValue(index, value);
+    return;
+  }
+
+  const timer = setTimeout(() => {
+    commitSectionValue(index, value);
+    delete pendingSectionUpdates[index];
+  }, 150);
+  pendingSectionUpdates[index] = { timer, value };
 };
 
 const createAnchorId = () => `section-${Math.random().toString(36).slice(2, 9)}`;
@@ -764,6 +795,7 @@ const schedulePreviewHydration = (immediate = false) => {
 onBeforeUnmount(() => {
   clearPreviewScheduler();
   clearTitleDebounce();
+  Object.values(pendingSectionUpdates).forEach(timeout => clearTimeout(timeout));
 });
 
 const gridLayoutClass = computed(() => {
@@ -991,6 +1023,7 @@ const saveConfig = async () => {
   message.value = "";
 
   try {
+    flushPendingSectionUpdates();
     await api.put(`/pages/${pageId}`, { title: pageTitle.value, slug: pageSlug.value });
 
     const configPayload = buildConfig();
@@ -1123,6 +1156,7 @@ watch(previewDevice, value => {
 });
 
 const refreshPreview = (immediate = false) => {
+  flushPendingSectionUpdates();
   schedulePreviewHydration(immediate);
 };
 
@@ -1225,6 +1259,7 @@ const saveTemplate = () => {
   }
 
   try {
+    flushPendingSectionUpdates();
     const payload = {
       sections: sections.value,
       theme: { ...theme.value, color1: colorA.value, color2: colorB.value }
