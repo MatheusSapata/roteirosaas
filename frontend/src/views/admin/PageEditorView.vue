@@ -1,6 +1,6 @@
 ﻿<template>
-  <div class="w-full space-y-6 px-4 py-10 md:px-8">
-    <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+<div class="w-full space-y-6 px-4 py-10 md:px-8">
+    <div class="sticky top-0 z-30 flex flex-col gap-3 border-b border-white/40 bg-slate-50/90 py-4 backdrop-blur md:flex-row md:items-center md:justify-between">
       <div>
         <p class="text-sm uppercase tracking-wide text-slate-500">Editor de página</p>
         <h1 class="text-3xl font-bold text-slate-900">{{ page?.title || "Roteiro" }}</h1>
@@ -8,11 +8,19 @@
       </div>
 
       <div class="flex flex-wrap items-center gap-2">
-        <div class="flex items-center gap-4">
+        <div class="flex flex-wrap items-center gap-3">
           <label class="flex items-center gap-2 text-sm text-slate-700">
             <input type="checkbox" v-model="previewEnabled" class="h-4 w-4" />
             Mostrar preview
           </label>
+          <button
+            v-if="previewEnabled"
+            type="button"
+            @click="refreshPreview(true)"
+            class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-white"
+          >
+            Atualizar preview
+          </button>
         </div>
 
         <button
@@ -265,7 +273,7 @@
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div class="flex flex-col gap-1">
               <h2 class="text-lg font-semibold text-slate-900">Preview visual</h2>
-              <p class="text-xs text-slate-500">Clique em Atualizar preview para aplicar as alterações do formulário.</p>
+              <p class="text-xs text-slate-500">Clique no botão do topo para aplicar as alterações do formulário.</p>
             </div>
             <div class="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 p-1 text-xs font-semibold text-slate-600">
               <button
@@ -283,17 +291,6 @@
                 @click="previewDevice = 'mobile'"
               >
                 Mobile
-              </button>
-            </div>
-            <div class="flex items-center gap-2">
-              <button
-                type="button"
-                :disabled="previewLoading"
-                @click="refreshPreview()"
-                class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-60"
-              >
-                <span v-if="previewLoading">Atualizando...</span>
-                <span v-else>Atualizar preview</span>
               </button>
             </div>
           </div>
