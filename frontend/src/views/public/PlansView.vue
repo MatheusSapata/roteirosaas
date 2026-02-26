@@ -240,7 +240,7 @@ const plans = computed<PlanCard[]>(() => [
     tier: "Crescimento",
     name: "Essencial",
     subtitle: "Para quem precisa de mais presenca",
-    price: "R$ 39,90",
+    price: "R$49,90",
     period: "/mes",
     highlight: "Mais econômico",
     features: [
@@ -261,7 +261,7 @@ const plans = computed<PlanCard[]>(() => [
     tier: "Performance",
     name: "Growth",
     subtitle: "O favorito das agencias",
-    price: "R$ 49,90",
+    price: "R$ 79,90",
     oldPrice: "R$ 69,90",
     period: "/mes",
     highlight: "Mais vendido",
@@ -283,7 +283,7 @@ const plans = computed<PlanCard[]>(() => [
     tier: "Escala",
     name: "Infinity",
     subtitle: "Para dominar a regiao",
-    price: "R$ 89,90",
+    price: "R$ 129,90",
     period: "/mes",
     highlight: "Recomendado para escala",
     features: [
