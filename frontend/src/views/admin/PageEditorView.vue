@@ -2,7 +2,7 @@
   <div class="w-full space-y-6 px-4 py-10 md:px-8">
     <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
       <div>
-        <p class="text-sm uppercase tracking-wide text-slate-500">Editor de pÃ¡gina</p>
+        <p class="text-sm uppercase tracking-wide text-slate-500">Editor de página</p>
         <h1 class="text-3xl font-bold text-slate-900">{{ page?.title || "Roteiro" }}</h1>
         <p class="text-sm text-slate-500">Monte a página por seções, salve e visualize ao lado.</p>
       </div>
@@ -59,7 +59,7 @@
         <div class="space-y-1">
           <p class="text-sm font-semibold text-slate-700">Pixel de rastreamento</p>
           <p class="text-xs text-slate-500">
-            Escolha um pixel cadastrado em IntegraÃ§Ãµes e quais eventos deseja enviar. Disponpi­vel a partir do plano Essencial.
+            Escolha um pixel cadastrado em Integrações e quais eventos deseja enviar. Disponí­vel a partir do plano Essencial.
           </p>
         </div>
 
@@ -89,7 +89,7 @@
 
               <label class="mt-1 flex items-center gap-2">
                 <input type="checkbox" v-model="trackingEvents.ctaClicks" class="h-4 w-4" />
-                Cliques em CTAs (botÃµes principais)
+                Cliques em CTAs 
               </label>
             </div>
           </template>
@@ -97,11 +97,11 @@
       </div>
     </div>
 
-    <!-- Dialog de limite de plano (reutilizado tambÃ©m para "template no free") -->
+    <!-- Dialog de limite de plano (reutilizado também para "template no free") -->
     <div v-if="limitModal.open" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4">
       <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
         <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">Limite do plano</p>
-        <h3 class="mt-2 text-xl font-bold text-slate-900">Ação indisponÃ­vel</h3>
+        <h3 class="mt-2 text-xl font-bold text-slate-900">Ação indisponível</h3>
         <p class="mt-2 text-sm text-slate-600">
           {{ limitModal.message || "Seu plano atual atingiu o limite. Atualize para continuar." }}
         </p>
@@ -160,13 +160,13 @@
     <div class="grid gap-4" :class="gridLayoutClass">
       <div class="space-y-4">
         <div class="rounded-2xl bg-white p-4 shadow-md">
-          <label class="text-sm font-semibold text-slate-600">TÃ­tulo</label>
+          <label class="text-sm font-semibold text-slate-600">Tí­tulo</label>
           <input v-model.lazy="pageTitle" @blur="scheduleWhatsAppUpdate" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
 
           <div class="mt-3 flex flex-wrap items-center gap-2">
             <label class="block text-sm font-semibold text-slate-600">Slug</label>
             <span class="text-xs text-slate-500">
-              Slug Ã© a parte do link depois da barra, sem espaÃ§os ou acentos. Ex.: meu-roteiro-incrivel.
+              Slug é a parte do link depois da barra, sem espaços ou acentos. Ex.: meu-roteiro-incrivel.
             </span>
           </div>
           <input v-model.lazy="pageSlug" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
@@ -212,7 +212,7 @@
                 </button>
 
                 <span>
-                  SeÃ§Ã£o: {{ sectionLabels[(section as any).type] || (section as any).type }}
+                  Seção: {{ sectionLabels[(section as any).type] || (section as any).type }}
                   <span v-if="!(section as any).enabled" class="text-red-500">(desativada)</span>
                 </span>
               </div>
@@ -237,7 +237,7 @@
                   :disabled="index === 0"
                   @click="moveSection(index, -1)"
                 >
-                  â†‘
+                  ↑
                 </button>
 
                 <button
@@ -245,7 +245,7 @@
                   :disabled="index === sections.length - 1"
                   @click="moveSection(index, 1)"
                 >
-                  â†“
+                  ↓
                 </button>
               </div>
             </div>
@@ -809,12 +809,12 @@ function defaultSection(type: SectionType): PageSection {
       type: "hero",
       enabled: true,
       layout: "immersive",
-      title: "Viajar com conforto e seguranÃ§a nunca foi tÃ£o fÃ¡cil.",
-      subtitle: "Conectamos vocÃª aos melhores destinos do Brasil com frota premium e atendimento prÃ³ximo.",
+      title: "Viajar com conforto e segurança nunca foi tão fácil.",
+      subtitle: "Conectamos você aos melhores destinos do Brasil com frota premium e atendimento próximo.",
       backgroundImage: "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=1600&q=80",
       gradientColor: heroDefaultGradient,
       logoUrl: currentAgency.value?.logo_url || "",
-      chips: ["Leito-cama 180Âº", "Wi-Fi a bordo", "Tomadas individuais", "Massagem a bordo"],
+      chips: ["Leito-cama 180º", "Wi-Fi a bordo", "Tomadas individuais", "Massagem a bordo"],
       ctaLabel: "Quero falar no WhatsApp",
       ctaLink: buildWhatsappLink(pageTitle.value) || "https://wa.me/",
       ctaColor: theme.value.ctaDefaultColor,
@@ -839,7 +839,7 @@ function defaultSection(type: SectionType): PageSection {
       enabled: true,
       layout: "timeline",
       days: [
-        { day: "Dia 1", title: "Chegada", description: "RecepÃ§Ã£o no aeroporto e traslado." },
+        { day: "Dia 1", title: "Chegada", description: "Recepção no aeroporto e traslado." },
         { day: "Dia 2", title: "Trilhas", description: "Passeio pelas dunas e cachoeiras." }
       ]
     } as ItinerarySection);
@@ -851,8 +851,8 @@ function defaultSection(type: SectionType): PageSection {
       enabled: true,
       layout: "accordion",
       items: [
-        { question: "O que estÃ¡ incluÃ­do?", answer: "Hospedagem, transporte interno e passeios." },
-        { question: "Como reservar?", answer: "Clique no botÃ£o de WhatsApp e fale com a equipe." }
+        { question: "O que está incluído?", answer: "Hospedagem, transporte interno e passeios." },
+        { question: "Como reservar?", answer: "Clique no botão de WhatsApp e fale com a equipe." }
       ]
     } as FaqSection);
   }
@@ -862,9 +862,9 @@ function defaultSection(type: SectionType): PageSection {
       type: "testimonials",
       enabled: true,
       layout: "grid",
-      title: "Quem jÃ¡ viajou com a gente",
+      title: "Quem já viajou com a gente",
       subtitle: "Feedbacks reais de clientes",
-      items: [{ name: "Mariana", text: "Viagem incrÃ­vel, super bem organizada!", avatar: "" }],
+      items: [{ name: "Mariana", text: "Viagem incrí­vel, super bem organizada!", avatar: "" }],
       cardColor: "#ffffff",
       ctaColor: theme.value.ctaDefaultColor,
       ctaMode: "link",
@@ -878,9 +878,9 @@ function defaultSection(type: SectionType): PageSection {
       enabled: true,
       layout: "single",
       imagePosition: "right",
-      badge: "Sobre nÃ³s",
-      title: "ConheÃ§a nossa histÃ³ria",
-      subtitle: "Somos uma equipe apaixonada por criar experiÃªncias memorÃ¡veis de viagem, com atendimento prÃ³ximo e cuidadoso.",
+      badge: "Sobre nós",
+      title: "Conheça nossa história",
+      subtitle: "Somos uma equipe apaixonada por criar experiências memoráveis de viagem, com atendimento próximo e cuidadoso.",
       ctaLabel: "Quero saber mais",
       ctaLink: buildWhatsappLink(pageTitle.value) || "https://wa.me/",
       ctaColor: theme.value.ctaDefaultColor,
@@ -913,13 +913,13 @@ function defaultSection(type: SectionType): PageSection {
     return ensureSectionAnchor({
       type: "reasons",
       enabled: true,
-      title: "Por que escolher a nossa agÃªncia?",
-      subtitle: "BenefÃ­cios claros para ajudar na conversÃ£o",
+      title: "Por que escolher a nossa agência?",
+      subtitle: "Benefí­cios claros para ajudar na conversão",
       items: [
-        { icon: "coin", title: "Economize dinheiro", description: "Aproveite negociaÃ§Ãµes especiais e otimize seu orÃ§amento." },
+        { icon: "coin", title: "Economize dinheiro", description: "Aproveite negociações especiais e otimize seu orçamento." },
         { icon: "compass", title: "Mais liberdade", description: "Planeje quando quiser com apoio de especialistas locais." },
-        { icon: "support", title: "Apoio dedicado", description: "Suporte prÃ³ximo antes, durante e depois da viagem." },
-        { icon: "spark", title: "ExperiÃªncia Ãºnica", description: "Curadoria de passeios e hospedagens memorÃ¡veis." }
+        { icon: "support", title: "Apoio dedicado", description: "Suporte próximo antes, durante e depois da viagem." },
+        { icon: "spark", title: "Experiência única", description: "Curadoria de passeios e hospedagens memoráveis." }
       ]
     } as ReasonsSection);
   }
@@ -985,7 +985,7 @@ const hydrateFromConfig = (config?: PageConfig | string | null) => {
 
 const fetchPage = async () => {
   if (!auth.token) {
-    errorMessage.value = "FaÃ§a login novamente para editar.";
+    errorMessage.value = "Faça login novamente para editar.";
     return;
   }
 
@@ -993,7 +993,7 @@ const fetchPage = async () => {
     try {
       await auth.fetchProfile();
     } catch (err) {
-      errorMessage.value = "SessÃ£o expirada. FaÃ§a login novamente.";
+      errorMessage.value = "Sessão expirada. Faça login novamente.";
       return;
     }
   }
@@ -1009,13 +1009,13 @@ const fetchPage = async () => {
     message.value = "";
   } catch (err) {
     console.error(err);
-    errorMessage.value = "NÃ£o foi possÃ­vel carregar a pÃ¡gina.";
+    errorMessage.value = "Não foi possível carregar a página.";
   }
 };
 
 const saveConfig = async () => {
   if (!auth.token) {
-    errorMessage.value = "SessÃ£o expirada. FaÃ§a login novamente.";
+    errorMessage.value = "Sessão expirada. Faça login novamente.";
     return;
   }
 
@@ -1029,22 +1029,22 @@ const saveConfig = async () => {
     const configPayload = buildConfig();
     await api.put(`/pages/${pageId}/config`, { config: configPayload });
 
-    message.value = "ConfiguraÃ§Ã£o salva!";
-    showSnackbar("ConfiguraÃ§Ã£o salva");
+    message.value = "Configuração salva!";
+    showSnackbar("Configuração salva");
   } catch (err) {
     console.error(err);
     const detail = (err as any)?.response?.data?.detail;
     if (detail) {
       limitModal.value = { open: true, message: String(detail) };
     } else {
-      errorMessage.value = "Erro ao salvar configuraÃ§Ã£o.";
+      errorMessage.value = "Erro ao salvar configuração.";
     }
   }
 };
 
 const publishPage = async () => {
   if (!auth.token) {
-    errorMessage.value = "SessÃ£o expirada. FaÃ§a login novamente.";
+    errorMessage.value = "Sessão expirada. Faça login novamente.";
     return;
   }
 
@@ -1056,7 +1056,7 @@ const publishPage = async () => {
     const res = await api.post(`/pages/${pageId}/publish`, { publish: true });
     page.value = res.data;
 
-    message.value = "PÃ¡gina publicada!";
+    message.value = "Página publicada!";
     successModal.value.open = true;
   } catch (err) {
     console.error(err);
@@ -1065,7 +1065,7 @@ const publishPage = async () => {
     if (detail) {
       limitModal.value = { open: true, message: String(detail) };
     } else {
-      errorMessage.value = "Erro ao publicar. Verifique se estÃ¡ logado e tem acesso Ã  agÃªncia.";
+      errorMessage.value = "Erro ao publicar. Verifique se esta¡ logado e tem acesso a agência.";
     }
   }
 };
@@ -1238,7 +1238,7 @@ const showSnackbar = (text: string) => {
 const saveTemplate = () => {
   // se nÃ£o logou
   if (!auth.user) {
-    errorMessage.value = "FaÃ§a login para salvar um template.";
+    errorMessage.value = "Faça login para salvar um template.";
     return;
   }
 
@@ -1247,14 +1247,14 @@ const saveTemplate = () => {
   if (plan === "free") {
     limitModal.value = {
       open: true,
-      message: "Salvar template estÃ¡ disponÃ­vel apenas a partir do plano Essencial. Atualize seu plano para liberar."
+      message: "Salvar template esta¡ disponí­vel apenas a partir do plano Essencial. Atualize seu plano para liberar."
     };
     return;
   }
 
   const key = templateKey.value;
   if (!key) {
-    errorMessage.value = "FaÃ§a login para salvar um template.";
+    errorMessage.value = "Faça login para salvar um template.";
     return;
   }
 
@@ -1272,11 +1272,11 @@ const saveTemplate = () => {
     }
 
     storage.setItem(key, JSON.stringify(payload));
-    message.value = "Template salvo! Novas pÃ¡ginas iniciarÃ£o com essa estrutura.";
+    message.value = "Template salvo! Novas páginas iniciarão com essa estrutura.";
     showSnackbar("Template salvo com sucesso");
   } catch (err) {
     console.error(err);
-    errorMessage.value = "NÃ£o foi possÃ­vel salvar o template.";
+    errorMessage.value = "Não foi possí­vel salvar o template.";
   }
 };
 
