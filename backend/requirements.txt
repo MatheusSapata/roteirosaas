@@ -16,3 +16,4 @@ httpx
 mercadopago
 stripe
 pytest
+azure-storage-blob
