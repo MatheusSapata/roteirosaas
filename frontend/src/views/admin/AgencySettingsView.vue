@@ -81,7 +81,7 @@
                 inputmode="numeric"
               />
             </div>
-            <p class="text-xs text-slate-500">Usamos esse número como padrǜo para os links de WhatsApp nos CTAs.</p>
+            <p class="text-xs text-slate-500">Usamos esse número como padrão para os links de WhatsApp nos CTAs.</p>
             <div class="flex flex-col gap-1 text-sm">
               <span v-if="phoneMessage" class="text-emerald-600">{{ phoneMessage }}</span>
               <span v-if="phoneError" class="text-red-500">{{ phoneError }}</span>
@@ -178,7 +178,7 @@ const save = async () => {
     if (agencyStore.currentAgencyId) {
       const res = await api.put(`/agencies/${agencyStore.currentAgencyId}`, payload);
       Object.assign(form, res.data);
-      message.value = "Ag?ncia atualizada.";
+      message.value = "Agência atualizada.";
     } else {
       const res = await api.post("/agencies", payload);
       await agencyStore.loadAgencies();
