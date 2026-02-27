@@ -1,6 +1,3 @@
-import os
-import uuid
-
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
@@ -9,9 +6,9 @@ from app.models.agency_user import AgencyUser
 from app.models.media import MediaAsset
 from app.models.user import User
 from app.schemas.media import MediaAssetOut
+from app.services.media_storage import media_storage
 
 router = APIRouter()
-UPLOAD_DIR = "uploads"
 
 
 def ensure_agency_member(db: Session, agency_id: int, user_id: int) -> None:
@@ -28,13 +25,8 @@ async def upload_media(
     current_user: User = Depends(get_current_active_user),
 ) -> MediaAssetOut:
     ensure_agency_member(db, agency_id, current_user.id)
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
-    extension = os.path.splitext(file.filename or "")[1]
-    file_id = f"{uuid.uuid4()}{extension}"
-    file_path = os.path.join(UPLOAD_DIR, file_id)
-    with open(file_path, "wb") as buffer:
-        buffer.write(await file.read())
-    url = f"/{UPLOAD_DIR}/{file_id}"
+    file_bytes = await file.read()
+    url = media_storage.save(file_bytes, file.filename or "upload", getattr(file, "content_type", None))
     asset = MediaAsset(agency_id=agency_id, url=url, type="image", original_file_name=file.filename)
     db.add(asset)
     db.commit()

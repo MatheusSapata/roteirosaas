@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     stripe_success_url: str | None = Field(None, alias="STRIPE_SUCCESS_URL")
     stripe_cancel_url: str | None = Field(None, alias="STRIPE_CANCEL_URL")
     password_reset_token_minutes: int = Field(60, alias="PASSWORD_RESET_TOKEN_MINUTES")
+    azure_storage_connection_string: str | None = Field(None, alias="AZURE_STORAGE_CONNECTION_STRING")
+    azure_storage_container: str | None = Field(None, alias="AZURE_STORAGE_CONTAINER")
+    azure_storage_base_url: str | None = Field(None, alias="AZURE_STORAGE_BASE_URL")
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False, populate_by_name=True, extra="ignore")
 
