@@ -14,7 +14,12 @@
           </div>
           <div>
             <label class="text-sm font-semibold text-slate-600">Slug</label>
-            <input v-model="form.slug" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
+            <div class="mt-1 space-y-1">
+              <input v-model="form.slug" class="w-full rounded-lg border border-slate-200 px-3 py-2" />
+              <p class="text-xs text-slate-500">
+                Slug é a parte do link depois da barra, sem espaços ou acentos. Ex.: minha-agencia-incrivel.
+              </p>
+            </div>
           </div>
         </div>
 
@@ -57,7 +62,34 @@
           editor-title="Refine a logo da agência"
         />
 
-        <div class="flex items-center gap-3">
+        <div class="mt-8 space-y-2 border-t border-slate-100 pt-4">
+          <div class="space-y-1">
+            <p class="text-sm uppercase tracking-wide text-slate-500">Contato</p>
+          </div>
+
+          <div class="mt-4 max-w-md space-y-2">
+            <label class="text-sm font-semibold text-slate-600">WhatsApp da agência</label>
+            <div class="flex gap-2">
+              <div class="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2">
+                <span class="text-sm font-semibold text-slate-700">BR</span>
+                <span class="text-sm font-semibold text-slate-700">+55</span>
+              </div>
+              <input
+                v-model="phoneInput"
+                placeholder="11999999999"
+                class="w-full rounded-lg border border-slate-200 px-3 py-2"
+                inputmode="numeric"
+              />
+            </div>
+            <p class="text-xs text-slate-500">Usamos esse número como padrǜo para os links de WhatsApp nos CTAs.</p>
+            <div class="flex flex-col gap-1 text-sm">
+              <span v-if="phoneMessage" class="text-emerald-600">{{ phoneMessage }}</span>
+              <span v-if="phoneError" class="text-red-500">{{ phoneError }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3 pt-2">
           <button
             type="submit"
             class="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark disabled:cursor-not-allowed disabled:bg-slate-300"
@@ -71,41 +103,7 @@
       </form>
     </div>
 
-    <div class="rounded-2xl bg-white p-6 shadow-md">
-      <div class="space-y-2">
-        <p class="text-sm uppercase tracking-wide text-slate-500">Contato</p>
-        <h2 class="text-xl font-bold text-slate-900">Telefone do usuário</h2>
-        <p class="text-sm text-slate-600">Usamos esse número como padrão para os links de WhatsApp nos CTAs.</p>
-      </div>
-
-      <div class="mt-4 max-w-md space-y-2">
-        <label class="text-sm font-semibold text-slate-600">WhatsApp</label>
-        <div class="flex gap-2">
-          <div class="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2">
-            <span class="text-sm font-semibold text-slate-700">BR</span>
-            <span class="text-sm font-semibold text-slate-700">+55</span>
-          </div>
-          <input
-            v-model="phoneInput"
-            placeholder="11999999999"
-            class="w-full rounded-lg border border-slate-200 px-3 py-2"
-            inputmode="numeric"
-          />
-        </div>
-        <p class="text-xs text-slate-500">Armazenamos apenas dígitos. Você pode alterar a qualquer momento.</p>
-        <div class="flex items-center gap-3">
-          <button
-            type="button"
-            class="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark disabled:cursor-not-allowed disabled:bg-slate-300"
-            @click="savePhone"
-          >
-            Salvar telefone
-          </button>
-          <span v-if="phoneMessage" class="text-sm text-emerald-600">{{ phoneMessage }}</span>
-          <span v-if="phoneError" class="text-sm text-red-500">{{ phoneError }}</span>
-        </div>
-      </div>
-    </div>
+    
   </div>
 </template>
 
@@ -157,12 +155,15 @@ const load = async () => {
 const save = async () => {
   errorMessage.value = "";
   message.value = "";
+  phoneMessage.value = "";
+  phoneError.value = "";
   if (!form.name || !form.slug) {
     errorMessage.value = "Informe nome e slug.";
     return;
   }
   const normalizedName = form.name.trim();
   const normalizedSlug = form.slug.trim().toLowerCase();
+  const digits = (phoneInput.value || "").replace(/\D/g, "");
   form.name = normalizedName;
   form.slug = normalizedSlug;
   const payload = {
@@ -177,19 +178,25 @@ const save = async () => {
     if (agencyStore.currentAgencyId) {
       const res = await api.put(`/agencies/${agencyStore.currentAgencyId}`, payload);
       Object.assign(form, res.data);
-      message.value = "Ag�ncia atualizada.";
+      message.value = "Ag?ncia atualizada.";
     } else {
       const res = await api.post("/agencies", payload);
       await agencyStore.loadAgencies();
       agencyStore.currentAgencyId = res.data.id;
       hasAgency.value = true;
       syncFormWithCurrent();
-      message.value = "Ag�ncia criada.";
+      message.value = "Ag?ncia criada.";
+    }
+    if (digits) {
+      const updated = await updateUserPhone(digits);
+      if (updated) {
+        phoneMessage.value = "Telefone atualizado.";
+      }
     }
   } catch (err) {
     console.error(err);
     const detail = (err as any)?.response?.data?.detail;
-    errorMessage.value = detail || "N�o foi poss�vel salvar/criar. Verifique login e permiss�es.";
+    errorMessage.value = detail || "N?o foi poss?vel salvar/criar. Verifique login e permiss?es.";
   } finally {
     saving.value = false;
   }
@@ -198,21 +205,16 @@ const save = async () => {
 
 onMounted(load);
 
-const savePhone = async () => {
-  phoneError.value = "";
-  phoneMessage.value = "";
-  const digits = (phoneInput.value || "").replace(/\D/g, "");
-  if (!digits) {
-    phoneError.value = "Informe um telefone para WhatsApp.";
-    return;
-  }
+const updateUserPhone = async (digits: string) => {
   try {
     const res = await api.put("/auth/me", { whatsapp: digits });
     authStore.user = res.data;
-    phoneMessage.value = "Telefone atualizado.";
+    phoneError.value = "";
+    return true;
   } catch (err) {
     console.error(err);
-    phoneError.value = "Nao foi possivel salvar o telefone.";
+    phoneError.value = "N?o foi possivel salvar o telefone.";
+    return false;
   }
 };
 </script>
