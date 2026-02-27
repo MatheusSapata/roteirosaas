@@ -197,7 +197,7 @@
     </div>
 
     <div class="space-y-4">
-      <div class="rounded-2xl bg-white p-4 shadow-md">
+      <div class="rounded-2xl bg-white p-4 shadow-md" ref="sectionToolbarRef">
         <label class="text-sm font-semibold text-slate-600">Título</label>
         <input v-model.lazy="pageTitle" @blur="scheduleWhatsAppUpdate" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
         <div class="mt-3 flex flex-wrap items-center gap-2">
@@ -208,6 +208,7 @@
         </div>
         <input v-model.lazy="pageSlug" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
         <div class="mt-4 flex flex-wrap items-center gap-3 text-sm text-slate-600">
+          <label class="block text-sm font-semibold text-slate-600">Cores de fundo</label>
           <label class="flex items-center gap-2">
             <span>Cor 1</span>
             <input type="color" v-model="colorA" class="h-9 w-9 cursor-pointer rounded border border-slate-200 bg-white" />
@@ -234,7 +235,7 @@
       </div>
     </div>
 
-    <div class="rounded-3xl bg-white p-4 shadow-md">
+      <div class="rounded-3xl bg-white p-4 shadow-md" ref="previewPanelRef">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div class="flex flex-col gap-1">
           <h2 class="text-lg font-semibold text-slate-900">Preview visual</h2>
@@ -365,6 +366,31 @@
         </div>
       </div>
     </div>
+
+    <transition name="fade">
+      <div
+        v-if="showFloatingAddBar"
+        class="pointer-events-none fixed bottom-4 z-30"
+        :style="floatingToolbarStyle"
+      >
+        <div class="flex justify-center px-4">
+          <div
+            class="pointer-events-auto flex flex-wrap items-center gap-2 rounded-full border border-slate-200 bg-white/95 px-4 py-2 shadow-lg backdrop-blur"
+          >
+            <span class="text-sm font-semibold text-slate-700">Adicionar seção:</span>
+            <button
+              v-for="type in sectionTypes"
+              :key="'floating-' + type"
+              class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+              @click="addSection(type)"
+            >
+              {{ sectionLabels[type] || type }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </transition>
+
     <div
       v-if="isSectionEditorOpen && editingSectionComponent && editingSectionDraft"
       class="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/70 px-4 py-10"
@@ -418,7 +444,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, provide, ref, shallowRef, watch } from "vue";
+import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, provide, ref, shallowRef, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import api from "../../services/api";
 import { useAuthStore } from "../../store/useAuthStore";
@@ -558,6 +584,11 @@ const sections = shallowRef<PageSection[]>([]);
 const previewSections = ref<PageSection[]>([]);
 const previewReady = ref(false);
 const previewLoading = ref(false);
+const sectionToolbarRef = ref<HTMLElement | null>(null);
+const previewPanelRef = ref<HTMLElement | null>(null);
+const showFloatingAddBar = ref(false);
+const floatingToolbarStyle = ref<Record<string, string>>({ left: "0px", width: "auto" });
+let toolbarObserver: IntersectionObserver | null = null;
 const editingSectionIndex = ref<number | null>(null);
 const editingSectionDraft = ref<PageSection | null>(null);
 const editingSectionType = computed<SectionType | null>(() => {
@@ -587,6 +618,48 @@ const getBrowserStorage = () => {
   }
 };
 provide(sectionsInjectionKey, sections);
+
+const updateFloatingToolbarStyle = () => {
+  if (!hasWindow) return;
+  const anchor = previewPanelRef.value || sectionToolbarRef.value;
+  if (!anchor) return;
+  const rect = anchor.getBoundingClientRect();
+  floatingToolbarStyle.value = {
+    left: `${Math.max(rect.left, 0)}px`,
+    width: `${rect.width}px`
+  };
+};
+
+const setupSectionToolbarObserver = () => {
+  if (!hasWindow) return;
+  if (toolbarObserver) {
+    toolbarObserver.disconnect();
+    toolbarObserver = null;
+  }
+  const el = sectionToolbarRef.value;
+  if (!el) return;
+  toolbarObserver = new IntersectionObserver(entries => {
+    const entry = entries[0];
+    const hidden = !!entry && !entry.isIntersecting;
+    showFloatingAddBar.value = hidden;
+    if (hidden) updateFloatingToolbarStyle();
+  }, { threshold: 0.1 });
+  toolbarObserver.observe(el);
+};
+
+watch(sectionToolbarRef, () => {
+  if (!hasWindow) return;
+  nextTick(() => setupSectionToolbarObserver());
+});
+
+watch(previewPanelRef, () => {
+  if (!hasWindow) return;
+  nextTick(() => updateFloatingToolbarStyle());
+});
+
+if (hasWindow) {
+  window.addEventListener("resize", updateFloatingToolbarStyle);
+}
 
 const setSections = (value: PageSection[] | ((current: PageSection[]) => PageSection[])) => {
   const next = typeof value === "function" ? (value as (current: PageSection[]) => PageSection[])([...sections.value]) : value;
@@ -897,6 +970,13 @@ onBeforeUnmount(() => {
   clearPreviewScheduler();
   clearTitleDebounce();
   Object.values(pendingSectionUpdates).forEach(timeout => clearTimeout(timeout));
+  if (toolbarObserver) {
+    toolbarObserver.disconnect();
+    toolbarObserver = null;
+  }
+  if (hasWindow) {
+    window.removeEventListener("resize", updateFloatingToolbarStyle);
+  }
 });
 
 function defaultSection(type: SectionType): PageSection {
@@ -1425,6 +1505,7 @@ onMounted(async () => {
   await fetchPage();
   previewReady.value = true;
   schedulePreviewHydration(true);
+  nextTick(() => setupSectionToolbarObserver());
 });
 </script>
 

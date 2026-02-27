@@ -11,6 +11,10 @@ export default defineConfig({
       "/api": {
         target: devProxyTarget,
         changeOrigin: true
+      },
+      "/uploads": {
+        target: devProxyTarget,
+        changeOrigin: true
       }
     }
   }
