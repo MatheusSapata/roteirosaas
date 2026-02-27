@@ -17,6 +17,8 @@ export interface SectionBase {
   backgroundColor?: string;
   fullWidth?: boolean;
   anchorId?: string;
+  headingLabel?: string;
+  headingLabelStyle?: "filled" | "outline";
 }
 
 export interface HeroSection extends SectionBase {
@@ -43,10 +45,17 @@ export interface GallerySection extends SectionBase {
   layout?: "mosaic" | "grid" | "strip";
 }
 
+export type CurrencyCode = "BRL" | "USD" | "EUR" | "ARS";
+
 export interface PriceItem {
   title: string;
   price: number;
   description?: string;
+  currency?: CurrencyCode;
+  titleLabel?: string;
+  priceLabel?: string;
+  badge?: string;
+  highlight?: boolean;
 }
 
 export interface PricesSection extends SectionBase {
@@ -54,6 +63,7 @@ export interface PricesSection extends SectionBase {
   items: PriceItem[];
   layout?: "cards" | "columns" | "highlight";
   ctaColor?: string;
+  description?: string;
 }
 
 export interface ItineraryDay {

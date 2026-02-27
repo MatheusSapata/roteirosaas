@@ -14,7 +14,7 @@
       </div>
       <div>
         <label class="text-sm font-semibold text-slate-600">Subtítulo</label>
-        <input v-model="local.subtitle" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
+        <RichTextEditor v-model="local.subtitle" placeholder="Conte um pouco sobre o roteiro..." />
       </div>
       <ImageUploadField
         v-model="local.backgroundImage"
@@ -178,6 +178,7 @@
 import { computed, nextTick, reactive, watch } from "vue";
 import ImageUploadField from "./inputs/ImageUploadField.vue";
 import CtaActionPicker from "./inputs/CtaActionPicker.vue";
+import RichTextEditor from "./inputs/RichTextEditor.vue";
 import type { HeroSection } from "../../types/page";
 
 const props = defineProps<{ modelValue: HeroSection }>();
@@ -272,3 +273,4 @@ watch(
   { deep: true }
 );
 </script>
+

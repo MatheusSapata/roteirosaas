@@ -1,7 +1,7 @@
 <template>
   <div v-if="loading" class="flex min-h-screen items-center justify-center text-slate-600">Carregando pagina...</div>
   <div v-else-if="!pageData" class="flex min-h-screen items-center justify-center text-red-500">Pagina nao encontrada.</div>
-  <div v-else class="min-h-screen space-y-4">
+  <div v-else class="min-h-screen">
     <template v-for="(section, idx) in sections" :key="idx">
       <PublicHeroSection
         v-if="section?.enabled && section.type === 'hero'"
@@ -266,3 +266,11 @@ function setupCtaTracking(pixel: { type: string; value: string }) {
   document.addEventListener("click", handler);
 }
 </script>
+
+<style scoped>
+.public-page :deep(section) {
+  margin-top: 0;
+  margin-bottom: 0;
+  display: block;
+}
+</style>

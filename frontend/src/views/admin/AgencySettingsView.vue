@@ -54,37 +54,39 @@
           </div>
         </div>
 
-        <ImageUploadField
-          v-model="form.logo_url"
-          label="Logo da agência"
-          hint="Envie o arquivo da sua marca. Ela aparece no editor e nas páginas."
-          :enable-crop="true"
-          editor-title="Refine a logo da agência"
-        />
-
-        <div class="mt-8 space-y-2 border-t border-slate-100 pt-4">
-          <div class="space-y-1">
-            <p class="text-sm uppercase tracking-wide text-slate-500">Contato</p>
+        <div class="grid gap-6 lg:grid-cols-2">
+          <div>
+            <ImageUploadField
+              v-model="form.logo_url"
+              label="Logo da agência"
+              hint="Envie o arquivo da sua marca. Ela aparece no editor e nas páginas."
+              :enable-crop="true"
+              editor-title="Refine a logo da agência"
+            />
           </div>
-
-          <div class="mt-4 max-w-md space-y-2">
-            <label class="text-sm font-semibold text-slate-600">WhatsApp da agência</label>
-            <div class="flex gap-2">
-              <div class="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2">
-                <span class="text-sm font-semibold text-slate-700">BR</span>
-                <span class="text-sm font-semibold text-slate-700">+55</span>
-              </div>
-              <input
-                v-model="phoneInput"
-                placeholder="11999999999"
-                class="w-full rounded-lg border border-slate-200 px-3 py-2"
-                inputmode="numeric"
-              />
+          <div class="space-y-4 rounded-2xl border border-slate-100 p-4">
+            <div class="space-y-1">
+              <p class="text-sm uppercase tracking-wide text-slate-500">Contato</p>
             </div>
-            <p class="text-xs text-slate-500">Usamos esse número como padrão para os links de WhatsApp nos CTAs.</p>
-            <div class="flex flex-col gap-1 text-sm">
-              <span v-if="phoneMessage" class="text-emerald-600">{{ phoneMessage }}</span>
-              <span v-if="phoneError" class="text-red-500">{{ phoneError }}</span>
+            <div class="space-y-2">
+              <label class="text-sm font-semibold text-slate-600">WhatsApp da agência</label>
+              <div class="flex gap-2">
+                <div class="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2">
+                  <span class="text-sm font-semibold text-slate-700">BR</span>
+                  <span class="text-sm font-semibold text-slate-700">+55</span>
+                </div>
+                <input
+                  v-model="phoneInput"
+                  placeholder="11999999999"
+                  class="w-full rounded-lg border border-slate-200 px-3 py-2"
+                  inputmode="numeric"
+                />
+              </div>
+              <p class="text-xs text-slate-500">Usamos esse número como padrão para os links de WhatsApp nos CTAs.</p>
+              <div class="flex flex-col gap-1 text-sm">
+                <span v-if="phoneMessage" class="text-emerald-600">{{ phoneMessage }}</span>
+                <span v-if="phoneError" class="text-red-500">{{ phoneError }}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -196,7 +198,7 @@ const save = async () => {
   } catch (err) {
     console.error(err);
     const detail = (err as any)?.response?.data?.detail;
-    errorMessage.value = detail || "N?o foi poss?vel salvar/criar. Verifique login e permiss?es.";
+    errorMessage.value = detail || "Não foi poss?vel salvar/criar. Verifique login e permiss?es.";
   } finally {
     saving.value = false;
   }
@@ -213,7 +215,7 @@ const updateUserPhone = async (digits: string) => {
     return true;
   } catch (err) {
     console.error(err);
-    phoneError.value = "N?o foi possivel salvar o telefone.";
+    phoneError.value = "Não foi possivel salvar o telefone.";
     return false;
   }
 };

@@ -2,11 +2,10 @@
   <section class="w-full" :style="{ background: section.backgroundColor || 'linear-gradient(180deg,#f8fafc,#fff)' }" :id="section.anchorId || undefined">
     <div class="mx-auto max-w-6xl px-6 py-12">
       <div class="space-y-6 rounded-3xl bg-white/85 p-6 shadow-[0_16px_50px_-30px_rgba(15,23,42,0.55)] ring-1 ring-slate-100">
-        <div>
-          <span class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-slate-600" :style="{ background: accentSoft, color: accent }">
-            <span class="h-2 w-2 rounded-full" :style="{ background: accent }"></span>
-            FAQ
-          </span>
+        <div class="text-center">
+          <div class="flex justify-center">
+            <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="accent" />
+          </div>
           <h2 class="mt-3 text-2xl font-bold text-slate-900">Perguntas frequentes</h2>
           <p class="text-sm text-slate-500">As dúvidas mais comuns sobre o roteiro.</p>
         </div>
@@ -70,8 +69,11 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import type { FaqSection } from "../../types/page";
+import SectionHeadingChip from "./SectionHeadingChip.vue";
+import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 
 const props = defineProps<{ section: FaqSection }>();
+const headingDefaults = getSectionHeadingDefaults("faq");
 
 const middle = computed(() => Math.ceil((props.section.items?.length || 0) / 2));
 const leftItems = computed(() => props.section.items?.slice(0, middle.value) || []);
@@ -88,4 +90,7 @@ const toRgba = (hex: string, alpha: number) => {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
 const accentSoft = computed(() => toRgba(accent.value, 0.12));
+const headingLabel = computed(() => props.section.headingLabel ?? headingDefaults.label);
+const headingStyle = computed(() => props.section.headingLabelStyle || headingDefaults.style);
 </script>
+

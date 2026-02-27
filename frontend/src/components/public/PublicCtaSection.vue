@@ -4,6 +4,9 @@
     <div v-if="section.layout === 'simple'" class="relative w-full">
       <div class="absolute inset-0" :style="bgImageStyle"></div>
       <div class="relative mx-auto flex min-h-[300px] w-full max-w-6xl flex-col items-center justify-center px-6 py-12 text-center" :style="{ color: textColor }">
+        <div class="flex justify-center">
+          <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="buttonColor" />
+        </div>
         <p class="text-2xl font-bold md:text-3xl">{{ section.label }}</p>
         <p class="mt-2 text-sm md:text-base" v-if="section.description">{{ section.description }}</p>
         <div class="mt-5 flex justify-center" v-if="ctaHasTarget">
@@ -32,8 +35,10 @@
           class="flex flex-col gap-4 rounded-2xl border border-slate-100 bg-white/90 px-5 py-4 shadow-lg md:flex-row md:items-center md:justify-between"
           :style="{ borderColor: accentBorder }"
         >
-          <div class="space-y-1" :style="{ color: textColor }">
-            <p class="text-xs uppercase tracking-[0.2em]" :style="{ color: textColor }">Pronto para viajar?</p>
+          <div class="space-y-1 text-center" :style="{ color: textColor }">
+            <div class="flex justify-center">
+              <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="buttonColor" />
+            </div>
             <p class="text-lg font-semibold" :style="{ color: textColor }">{{ section.label }}</p>
             <p class="text-sm" :style="{ color: textColor }">{{ section.description }}</p>
           </div>
@@ -58,8 +63,10 @@
           class="grid gap-4 rounded-2xl border border-slate-100 bg-white/95 p-6 shadow-xl md:grid-cols-2"
           :style="{ borderColor: accentBorder }"
         >
-          <div class="space-y-2" :style="{ color: textColor }">
-            <p class="text-xs uppercase tracking-[0.25em]" :style="{ color: textColor }">Convite</p>
+          <div class="space-y-2 text-center" :style="{ color: textColor }">
+            <div class="flex justify-center">
+              <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="buttonColor" />
+            </div>
             <p class="text-2xl font-bold" :style="{ color: textColor }">{{ section.label }}</p>
             <p class="text-sm" :style="{ color: textColor }">{{ section.description }}</p>
           </div>
@@ -87,8 +94,10 @@
           :style="{ borderColor: accentBorder }"
         >
           <div class="absolute inset-0 bg-gradient-to-br from-white via-white to-transparent"></div>
-          <div class="relative space-y-3" :style="{ color: textColor }">
-            <p class="text-xs uppercase tracking-[0.25em]" :style="{ color: textColor }">Vamos comecar</p>
+          <div class="relative space-y-3 text-center" :style="{ color: textColor }">
+            <div class="flex justify-center">
+              <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="buttonColor" />
+            </div>
             <p class="text-2xl font-bold" :style="{ color: textColor }">{{ section.label }}</p>
             <p class="text-sm" :style="{ color: textColor }">{{ section.description }}</p>
             <a
@@ -116,8 +125,11 @@ import { computed } from "vue";
 import { resolveMediaUrl } from "../../utils/media";
 import { isWhatsappLink } from "../../utils/links";
 import type { CtaSection } from "../../types/page";
+import SectionHeadingChip from "./SectionHeadingChip.vue";
+import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 
 const props = defineProps<{ section: CtaSection }>();
+const headingDefaults = getSectionHeadingDefaults("cta");
 
 const accent = computed(() => props.section.backgroundColor || "#0ea5e9");
 const buttonColor = computed(() => props.section.ctaColor || accent.value);
@@ -131,6 +143,8 @@ const ctaHasTarget = computed(() =>
   ctaMode.value === "section" ? !!props.section.ctaSectionId : !!props.section.link
 );
 const ctaIsScroll = computed(() => ctaMode.value === "section" && !!props.section.ctaSectionId);
+const headingLabel = computed(() => props.section.headingLabel ?? headingDefaults.label);
+const headingStyle = computed(() => props.section.headingLabelStyle || headingDefaults.style);
 
 const toRgba = (hex: string, alpha: number) => {
   const cleaned = hex.replace("#", "");

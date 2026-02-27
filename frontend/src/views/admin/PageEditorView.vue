@@ -465,6 +465,7 @@ import type {
   SectionType,
   ThemeConfig
 } from "../../types/page";
+import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import { sectionsInjectionKey } from "../../components/admin/sectionsContext";
 import { sectionLabels as defaultSectionLabels } from "../../utils/sectionLabels";
 
@@ -1000,20 +1001,38 @@ function defaultSection(type: SectionType): PageSection {
   }
 
   if (type === "prices") {
+    const headingDefaults = getSectionHeadingDefaults("prices");
     return ensureSectionAnchor({
       type: "prices",
       enabled: true,
-      layout: "cards",
-      items: [{ title: "Apartamento duplo", price: 3490, description: "Por pessoa" }],
+      layout: "columns",
+      headingLabel: headingDefaults.label,
+      headingLabelStyle: headingDefaults.style,
+      description: "Escolha o formato que combina com você.",
+      items: [
+        {
+          title: "Apartamento duplo",
+          price: 3490,
+          description: "Por pessoa",
+          titleLabel: "Pacote",
+          priceLabel: "Por pessoa",
+          currency: "BRL",
+          badge: "",
+          highlight: false
+        }
+      ],
       ctaColor: theme.value.ctaDefaultColor
     } as PricesSection);
   }
 
   if (type === "itinerary") {
+    const headingDefaults = getSectionHeadingDefaults("itinerary");
     return ensureSectionAnchor({
       type: "itinerary",
       enabled: true,
       layout: "timeline",
+      headingLabel: headingDefaults.label,
+      headingLabelStyle: headingDefaults.style,
       days: [
         { day: "Dia 1", title: "Chegada", description: "Recepção no aeroporto e traslado." },
         { day: "Dia 2", title: "Trilhas", description: "Passeio pelas dunas e cachoeiras." }
@@ -1022,10 +1041,13 @@ function defaultSection(type: SectionType): PageSection {
   }
 
   if (type === "faq") {
+    const headingDefaults = getSectionHeadingDefaults("faq");
     return ensureSectionAnchor({
       type: "faq",
       enabled: true,
       layout: "accordion",
+      headingLabel: headingDefaults.label,
+      headingLabelStyle: headingDefaults.style,
       items: [
         { question: "O que está incluído?", answer: "Hospedagem, transporte interno e passeios." },
         { question: "Como reservar?", answer: "Clique no botão de WhatsApp e fale com a equipe." }
@@ -1034,10 +1056,13 @@ function defaultSection(type: SectionType): PageSection {
   }
 
   if (type === "testimonials") {
+    const headingDefaults = getSectionHeadingDefaults("testimonials");
     return ensureSectionAnchor({
       type: "testimonials",
       enabled: true,
       layout: "grid",
+      headingLabel: headingDefaults.label,
+      headingLabelStyle: headingDefaults.style,
       title: "Quem já viajou com a gente",
       subtitle: "Feedbacks reais de clientes",
       items: [{ name: "Mariana", text: "Viagem incrí­vel, super bem organizada!", avatar: "" }],
@@ -1049,10 +1074,13 @@ function defaultSection(type: SectionType): PageSection {
   }
 
   if (type === "story") {
+    const headingDefaults = getSectionHeadingDefaults("story");
     return ensureSectionAnchor({
       type: "story",
       enabled: true,
       layout: "single",
+      headingLabel: headingDefaults.label,
+      headingLabelStyle: headingDefaults.style,
       imagePosition: "right",
       badge: "Sobre nós",
       title: "Conheça nossa história",
@@ -1074,9 +1102,12 @@ function defaultSection(type: SectionType): PageSection {
   }
 
   if (type === "countdown") {
+    const headingDefaults = getSectionHeadingDefaults("countdown");
     return ensureSectionAnchor({
       type: "countdown",
       enabled: true,
+      headingLabel: headingDefaults.label,
+      headingLabelStyle: headingDefaults.style,
       label: "Garanta sua vaga agora mesmo!",
       targetDate: buildCountdownTargetDate(),
       backgroundColor: "#ef4444",
@@ -1086,9 +1117,12 @@ function defaultSection(type: SectionType): PageSection {
   }
 
   if (type === "reasons") {
+    const headingDefaults = getSectionHeadingDefaults("reasons");
     return ensureSectionAnchor({
       type: "reasons",
       enabled: true,
+      headingLabel: headingDefaults.label,
+      headingLabelStyle: headingDefaults.style,
       title: "Por que escolher a nossa agência?",
       subtitle: "Benefí­cios claros para ajudar na conversão",
       items: [
@@ -1100,10 +1134,13 @@ function defaultSection(type: SectionType): PageSection {
     } as ReasonsSection);
   }
 
+  const headingDefaults = getSectionHeadingDefaults("cta");
   return ensureSectionAnchor({
     type: "cta",
     enabled: true,
     layout: "simple",
+    headingLabel: headingDefaults.label,
+    headingLabelStyle: headingDefaults.style,
     label: "Quero reservar pelo WhatsApp",
     link: buildWhatsappLink(pageTitle.value) || "https://wa.me/",
     description: "Fale com um especialista agora mesmo.",
