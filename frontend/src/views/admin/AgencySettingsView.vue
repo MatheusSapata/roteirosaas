@@ -74,8 +74,8 @@
     <div class="rounded-2xl bg-white p-6 shadow-md">
       <div class="space-y-2">
         <p class="text-sm uppercase tracking-wide text-slate-500">Contato</p>
-        <h2 class="text-xl font-bold text-slate-900">Telefone do usuÇêrio</h2>
-        <p class="text-sm text-slate-600">Usamos esse nǧmero como padrÇõo para os links de WhatsApp nos CTAs.</p>
+        <h2 class="text-xl font-bold text-slate-900">Telefone do usuário</h2>
+        <p class="text-sm text-slate-600">Usamos esse número como padrão para os links de WhatsApp nos CTAs.</p>
       </div>
 
       <div class="mt-4 max-w-md space-y-2">
@@ -92,7 +92,7 @@
             inputmode="numeric"
           />
         </div>
-        <p class="text-xs text-slate-500">Armazenamos apenas dLJgitos. VocÇê pode alterar a qualquer momento.</p>
+        <p class="text-xs text-slate-500">Armazenamos apenas dígitos. Você pode alterar a qualquer momento.</p>
         <div class="flex items-center gap-3">
           <button
             type="button"
@@ -161,40 +161,40 @@ const save = async () => {
     errorMessage.value = "Informe nome e slug.";
     return;
   }
+  const normalizedName = form.name.trim();
+  const normalizedSlug = form.slug.trim().toLowerCase();
+  form.name = normalizedName;
+  form.slug = normalizedSlug;
+  const payload = {
+    name: normalizedName,
+    slug: normalizedSlug,
+    logo_url: form.logo_url,
+    primary_color: form.primary_color,
+    secondary_color: form.secondary_color
+  };
   try {
     saving.value = true;
     if (agencyStore.currentAgencyId) {
-      const res = await api.put(`/agencies/${agencyStore.currentAgencyId}`, {
-        name: form.name,
-        slug: form.slug,
-        logo_url: form.logo_url,
-        primary_color: form.primary_color,
-        secondary_color: form.secondary_color
-      });
+      const res = await api.put(`/agencies/${agencyStore.currentAgencyId}`, payload);
       Object.assign(form, res.data);
-      message.value = "Agência atualizada.";
+      message.value = "Ag�ncia atualizada.";
     } else {
-      const res = await api.post("/agencies", {
-        name: form.name,
-        slug: form.slug,
-        logo_url: form.logo_url,
-        primary_color: form.primary_color,
-        secondary_color: form.secondary_color
-      });
-      // Atualiza store
+      const res = await api.post("/agencies", payload);
       await agencyStore.loadAgencies();
       agencyStore.currentAgencyId = res.data.id;
       hasAgency.value = true;
       syncFormWithCurrent();
-      message.value = "Agência criada.";
+      message.value = "Ag�ncia criada.";
     }
   } catch (err) {
     console.error(err);
-    errorMessage.value = "Não foi possível salvar/criar. Verifique login e permissões.";
+    const detail = (err as any)?.response?.data?.detail;
+    errorMessage.value = detail || "N�o foi poss�vel salvar/criar. Verifique login e permiss�es.";
   } finally {
     saving.value = false;
   }
 };
+
 
 onMounted(load);
 
