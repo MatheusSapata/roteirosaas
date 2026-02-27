@@ -76,7 +76,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, watch } from "vue";
+import { nextTick, reactive, watch } from "vue";
 import ImageUploadField from "./inputs/ImageUploadField.vue";
 import CtaActionPicker from "./inputs/CtaActionPicker.vue";
 import type { TestimonialsSection } from "../../types/page";
@@ -101,7 +101,9 @@ const syncFromProps = (value: TestimonialsSection) => {
   local.items = Array.isArray(value.items) ? value.items.map(item => ({ ...item })) : [];
   local.ctaMode = value.ctaMode || "link";
   local.ctaSectionId = value.ctaSectionId || null;
-  syncing = false;
+  nextTick(() => {
+    syncing = false;
+  });
 };
 
 watch(

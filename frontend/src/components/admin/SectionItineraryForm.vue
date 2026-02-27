@@ -43,7 +43,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, watch } from "vue";
+import { nextTick, reactive, watch } from "vue";
 import type { ItinerarySection } from "../../types/page";
 
 const props = defineProps<{ modelValue: ItinerarySection }>();
@@ -60,7 +60,9 @@ const syncFromProps = (value: ItinerarySection) => {
   Object.assign(local, value);
   local.layout = value.layout || "timeline";
   local.days = Array.isArray(value.days) ? value.days.map(day => ({ ...day })) : [];
-  syncing = false;
+  nextTick(() => {
+    syncing = false;
+  });
 };
 
 watch(

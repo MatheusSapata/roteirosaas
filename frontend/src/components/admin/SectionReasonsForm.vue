@@ -79,7 +79,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, watch, computed } from "vue";
+import { computed, nextTick, reactive, ref, watch } from "vue";
 import type { ReasonsSection } from "../../types/page";
 
 const props = defineProps<{ modelValue: ReasonsSection }>();
@@ -98,7 +98,9 @@ const syncFromProps = (value: ReasonsSection) => {
   Object.assign(local, value);
   local.items = Array.isArray(value.items) ? value.items.map(item => ({ ...item })) : [];
   iconOpen.value = local.items.map(() => false);
-  syncing = false;
+  nextTick(() => {
+    syncing = false;
+  });
 };
 
 const iconOptions = ["✈️", "💰", "🧭", "🏨", "🧳", "🎯", "🤝", "⭐", "🚐", "🌎"];

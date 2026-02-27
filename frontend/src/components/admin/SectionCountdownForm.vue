@@ -47,7 +47,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, watch } from "vue";
+import { nextTick, reactive, watch } from "vue";
 import type { CountdownSection } from "../../types/page";
 
 const props = defineProps<{ modelValue: CountdownSection }>();
@@ -73,7 +73,9 @@ const syncFromProps = (value: CountdownSection) => {
   Object.assign(local, value);
   local.targetDate = value.targetDate || buildDefaultTargetDate();
   local.layout = value.layout || "bar";
-  syncing = false;
+  nextTick(() => {
+    syncing = false;
+  });
 };
 
 watch(

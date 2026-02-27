@@ -40,7 +40,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, watch } from "vue";
+import { nextTick, reactive, watch } from "vue";
 import MultiImageUploadField from "./inputs/MultiImageUploadField.vue";
 import type { GallerySection } from "../../types/page";
 
@@ -58,7 +58,9 @@ const syncFromProps = (value: GallerySection) => {
   Object.assign(local, value);
   local.layout = value.layout || "mosaic";
   local.images = Array.isArray(value.images) ? [...value.images] : [];
-  syncing = false;
+  nextTick(() => {
+    syncing = false;
+  });
 };
 
 watch(
