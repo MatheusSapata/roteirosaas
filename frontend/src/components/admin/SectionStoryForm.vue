@@ -100,7 +100,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, watch } from "vue";
+import { nextTick, reactive, watch } from "vue";
 import MultiImageUploadField from "./inputs/MultiImageUploadField.vue";
 import CtaActionPicker from "./inputs/CtaActionPicker.vue";
 import type { StorySection } from "../../types/page";
@@ -125,7 +125,9 @@ const syncFromProps = (value: StorySection) => {
   local.images = Array.isArray(value.images) ? [...value.images] : [];
   local.ctaMode = value.ctaMode || "link";
   local.ctaSectionId = value.ctaSectionId || null;
-  syncing = false;
+  nextTick(() => {
+    syncing = false;
+  });
 };
 
 watch(

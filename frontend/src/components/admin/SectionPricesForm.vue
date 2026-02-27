@@ -49,7 +49,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, watch } from "vue";
+import { nextTick, reactive, watch } from "vue";
 import type { PricesSection } from "../../types/page";
 
 const props = defineProps<{ modelValue: PricesSection }>();
@@ -66,7 +66,9 @@ const syncFromProps = (value: PricesSection) => {
   Object.assign(local, value);
   local.layout = value.layout || "cards";
   local.items = Array.isArray(value.items) ? value.items.map(item => ({ ...item })) : [];
-  syncing = false;
+  nextTick(() => {
+    syncing = false;
+  });
 };
 
 watch(

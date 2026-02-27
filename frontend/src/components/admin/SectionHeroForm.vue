@@ -175,7 +175,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, watch } from "vue";
+import { computed, nextTick, reactive, watch } from "vue";
 import ImageUploadField from "./inputs/ImageUploadField.vue";
 import CtaActionPicker from "./inputs/CtaActionPicker.vue";
 import type { HeroSection } from "../../types/page";
@@ -204,7 +204,9 @@ const syncFromProps = (value: HeroSection) => {
   if (!local.chips.length) local.chips = [""];
   local.ctaMode = value.ctaMode || "link";
   local.ctaSectionId = value.ctaSectionId || null;
-  syncing = false;
+  nextTick(() => {
+    syncing = false;
+  });
 };
 
 watch(

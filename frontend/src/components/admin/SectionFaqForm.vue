@@ -41,7 +41,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, watch } from "vue";
+import { nextTick, reactive, watch } from "vue";
 import type { FaqSection } from "../../types/page";
 
 const props = defineProps<{ modelValue: FaqSection }>();
@@ -56,7 +56,9 @@ const syncFromProps = (value: FaqSection) => {
   syncing = true;
   Object.assign(local, value);
   local.items = Array.isArray(value.items) ? value.items.map(item => ({ ...item })) : [];
-  syncing = false;
+  nextTick(() => {
+    syncing = false;
+  });
 };
 
 watch(
