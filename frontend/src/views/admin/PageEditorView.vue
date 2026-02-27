@@ -9,16 +9,25 @@
 
       <div class="flex flex-wrap items-center gap-2">
         <div class="flex flex-wrap items-center gap-3">
-          <label class="flex items-center gap-2 text-sm text-slate-700">
-            <input type="checkbox" v-model="previewEnabled" class="h-4 w-4" />
-            Mostrar preview
-          </label>
           <button
-            v-if="previewEnabled"
             type="button"
             @click="refreshPreview(true)"
             class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-white"
           >
+            <svg
+              class="h-4 w-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <polyline points="23 4 23 10 17 10" />
+              <polyline points="1 20 1 14 7 14" />
+              <path d="M3.51 9A9 9 0 0 1 21 10M20.49 15A9 9 0 0 1 3 14" />
+            </svg>
             Atualizar preview
           </button>
         </div>
@@ -35,6 +44,28 @@
           class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
         >
           Voltar
+        </button>
+
+        <button
+          v-if="isPublished"
+          :disabled="!publicUrl"
+          @click="viewPublicPage"
+          class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-white disabled:opacity-60"
+        >
+          <svg
+            class="h-4 w-4"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+          Visualizar página
         </button>
 
         <button
@@ -165,160 +196,216 @@
       </div>
     </div>
 
-    <div class="grid gap-4" :class="gridLayoutClass">
-      <div class="space-y-4">
-        <div class="rounded-2xl bg-white p-4 shadow-md">
-          <label class="text-sm font-semibold text-slate-600">Tí­tulo</label>
-          <input v-model.lazy="pageTitle" @blur="scheduleWhatsAppUpdate" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
-
-          <div class="mt-3 flex flex-wrap items-center gap-2">
-            <label class="block text-sm font-semibold text-slate-600">Slug</label>
-            <span class="text-xs text-slate-500">
-              Slug é a parte do link depois da barra, sem espaços ou acentos. Ex.: meu-roteiro-incrivel.
-            </span>
-          </div>
-          <input v-model.lazy="pageSlug" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
-
-          <div class="mt-4 flex flex-wrap items-center gap-3 text-sm text-slate-600">
-            <label class="flex items-center gap-2">
-              <span>Cor 1</span>
-              <input type="color" v-model="colorA" class="h-9 w-9 cursor-pointer rounded border border-slate-200 bg-white" />
-            </label>
-
-            <label class="flex items-center gap-2">
-              <span>Cor 2</span>
-              <input type="color" v-model="colorB" class="h-9 w-9 cursor-pointer rounded border border-slate-200 bg-white" />
-            </label>
-
-            <span class="text-xs text-slate-500">Aplica alternância em todas as seções (exceto hero).</span>
-          </div>
+    <div class="space-y-4">
+      <div class="rounded-2xl bg-white p-4 shadow-md">
+        <label class="text-sm font-semibold text-slate-600">Título</label>
+        <input v-model.lazy="pageTitle" @blur="scheduleWhatsAppUpdate" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
+        <div class="mt-3 flex flex-wrap items-center gap-2">
+          <label class="block text-sm font-semibold text-slate-600">Slug</label>
+          <span class="text-xs text-slate-500">
+            Slug é a parte do link depois da barra, sem espaços ou acentos. Ex.: meu-roteiro-incrivel.
+          </span>
         </div>
-
-        <div class="rounded-2xl bg-white p-4 shadow-md">
-          <div class="flex flex-wrap items-center gap-2">
-            <span class="text-sm font-semibold text-slate-700">Adicionar seção:</span>
-            <button
-              v-for="type in sectionTypes"
-              :key="type"
-              class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100"
-              @click="addSection(type)"
-            >
-              {{ sectionLabels[type] || type }}
-            </button>
-          </div>
+        <input v-model.lazy="pageSlug" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
+        <div class="mt-4 flex flex-wrap items-center gap-3 text-sm text-slate-600">
+          <label class="flex items-center gap-2">
+            <span>Cor 1</span>
+            <input type="color" v-model="colorA" class="h-9 w-9 cursor-pointer rounded border border-slate-200 bg-white" />
+          </label>
+          <label class="flex items-center gap-2">
+            <span>Cor 2</span>
+            <input type="color" v-model="colorB" class="h-9 w-9 cursor-pointer rounded border border-slate-200 bg-white" />
+          </label>
+          <span class="text-xs text-slate-500">Aplica alternância em todas as seções (exceto hero).</span>
         </div>
-
-        <template v-for="(section, index) in sections" :key="index">
-          <div v-if="section" class="rounded-2xl bg-white p-4 shadow-md ring-1 ring-slate-100">
-            <div class="mb-3 flex items-center justify-between">
-              <div class="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                <button
-                  class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100"
-                  @click="toggleCollapse(index)"
-                >
-                  {{ isCollapsed(index) ? "Expandir" : "Recolher" }}
-                </button>
-
-                <span>
-                  Seção: {{ sectionLabels[(section as any).type] || (section as any).type }}
-                  <span v-if="!(section as any).enabled" class="text-red-500">(desativada)</span>
-                </span>
-              </div>
-
-              <div class="flex items-center gap-2 text-xs">
-                <button
-                  class="rounded-full border border-red-200 px-3 py-1 font-semibold text-red-600 hover:bg-red-50"
-                  @click="removeSection(index)"
-                >
-                  Excluir
-                </button>
-
-                <button
-                  class="rounded-full border border-slate-200 px-3 py-1 font-semibold text-slate-700 hover:bg-slate-100"
-                  @click="duplicateSection(index)"
-                >
-                  Duplicar
-                </button>
-
-                <button
-                  class="rounded-full border border-slate-200 px-3 py-1 font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-40"
-                  :disabled="index === 0"
-                  @click="moveSection(index, -1)"
-                >
-                  ↑
-                </button>
-
-                <button
-                  class="rounded-full border border-slate-200 px-3 py-1 font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-40"
-                  :disabled="index === sections.length - 1"
-                  @click="moveSection(index, 1)"
-                >
-                  ↓
-                </button>
-              </div>
-            </div>
-
-            <component
-              v-if="!isCollapsed(index)"
-              :is="formComponents[(section as any).type]"
-              :modelValue="sections[index]"
-              @update:modelValue="value => updateSectionAt(index, value)"
-            />
-          </div>
-        </template>
       </div>
+      <div class="rounded-2xl bg-white p-4 shadow-md">
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="text-sm font-semibold text-slate-700">Adicionar seção:</span>
+          <button
+            v-for="type in sectionTypes"
+            :key="type"
+            class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+            @click="addSection(type)"
+          >
+            {{ sectionLabels[type] || type }}
+          </button>
+        </div>
+      </div>
+    </div>
 
-      <div v-if="previewEnabled" class="space-y-4">
-        <div class="rounded-2xl bg-white p-4 shadow-md">
-          <div class="flex flex-wrap items-center justify-between gap-3">
-            <div class="flex flex-col gap-1">
-              <h2 class="text-lg font-semibold text-slate-900">Preview visual</h2>
-              <p class="text-xs text-slate-500">Clique no botão do topo para aplicar as alterações do formulário.</p>
-            </div>
-            <div class="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 p-1 text-xs font-semibold text-slate-600">
-              <button
-                type="button"
-                class="rounded-full px-3 py-1 transition"
-                :class="previewDevice === 'desktop' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'"
-                @click="previewDevice = 'desktop'"
-              >
-                Desktop
-              </button>
-              <button
-                type="button"
-                class="rounded-full px-3 py-1 transition"
-                :class="previewDevice === 'mobile' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'"
-                @click="previewDevice = 'mobile'"
-              >
-                Mobile
-              </button>
-            </div>
-          </div>
-          <div class="mt-4">
-            <div
-              :class="previewDevice === 'mobile'
-                ? 'mx-auto w-full max-w-[420px] overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-xl'
-                : ''"
-            >
-              <div :class="previewDevice === 'mobile' ? 'max-h-[80vh] overflow-y-auto' : ''">
-                <div class="space-y-6">
-                  <template v-for="(section, idx) in previewSections" :key="'preview-' + idx">
-                <component
-                  v-if="section && (section as any).enabled"
-                  :is="publicComponents[(section as any).type]"
-                  :section="section"
-                  :previewDevice="previewDevice"
-                  v-bind="(section as any).type === 'hero' ? { branding } : {}"
-                />
-                  </template>
+    <div class="rounded-3xl bg-white p-4 shadow-md">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="flex flex-col gap-1">
+          <h2 class="text-lg font-semibold text-slate-900">Preview visual</h2>
+          <p class="text-xs text-slate-500">Clique no botão do topo para aplicar as alterações do formulário.</p>
+        </div>
+        <div class="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 p-1 text-xs font-semibold text-slate-600">
+          <button
+            type="button"
+            class="rounded-full px-3 py-1 transition"
+            :class="previewDevice === 'desktop' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'"
+            @click="previewDevice = 'desktop'"
+          >
+            Desktop
+          </button>
+          <button
+            type="button"
+            class="rounded-full px-3 py-1 transition"
+            :class="previewDevice === 'mobile' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'"
+            @click="previewDevice = 'mobile'"
+          >
+            Mobile
+          </button>
+        </div>
+      </div>
+      <div class="mt-4">
+        <div
+          :class="previewDevice === 'mobile'
+            ? 'mx-auto w-full max-w-[420px] overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-xl'
+            : ''"
+        >
+          <div :class="previewDevice === 'mobile' ? 'max-h-[80vh] overflow-y-auto' : ''">
+            <div class="space-y-6">
+              <template v-if="sections.length === 0">
+                <div class="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 px-4 py-12 text-center text-sm text-slate-500">
+                  Nenhuma seção adicionada ainda. Use os botões acima para criar o conteúdo.
                 </div>
-              </div>
+              </template>
+              <template v-else>
+                <template v-for="(section, idx) in sections" :key="(section as any)?.anchorId || idx">
+                  <div v-if="section" class="space-y-3">
+                    <div class="flex flex-col gap-2 rounded-2xl border border-slate-200/80 bg-white/90 px-4 py-3 text-xs text-slate-600 shadow-sm backdrop-blur">
+                      <div class="font-semibold">
+                        Seção: {{ sectionLabels[(section as any).type] || (section as any).type }}
+                        <span v-if="(section as any).enabled === false" class="ml-1 text-red-500">(desativada)</span>
+                      </div>
+                      <div class="flex flex-wrap gap-2 font-semibold text-slate-600">
+                        <button
+                          class="rounded-full border border-slate-200 bg-white/90 px-3 py-1 hover:bg-white"
+                          @click.stop="openSectionEditor(idx)"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          class="rounded-full border border-slate-200 bg-white/90 px-3 py-1 hover:bg-white"
+                          @click.stop="duplicateSection(idx)"
+                        >
+                          Duplicar
+                        </button>
+                        <button
+                          class="rounded-full border border-slate-200 bg-white/90 px-3 py-1 hover:bg-white disabled:opacity-40"
+                          :disabled="idx === 0"
+                          @click.stop="moveSection(idx, -1)"
+                        >
+                          Subir
+                        </button>
+                        <button
+                          class="rounded-full border border-slate-200 bg-white/90 px-3 py-1 hover:bg-white disabled:opacity-40"
+                          :disabled="idx === sections.length - 1"
+                          @click.stop="moveSection(idx, 1)"
+                        >
+                          Descer
+                        </button>
+                        <button
+                          class="rounded-full border border-red-200 bg-red-50/80 px-3 py-1 text-red-600 hover:bg-red-50"
+                          @click.stop="removeSection(idx)"
+                        >
+                          Excluir
+                        </button>
+                      </div>
+                    </div>
+                    <div class="group relative overflow-hidden rounded-[32px] border border-transparent shadow transition hover:border-brand/30">
+                      <component
+                        v-if="(section as any).enabled"
+                        :is="publicComponents[(section as any).type]"
+                        :section="previewSections[idx] || section"
+                        :previewDevice="previewDevice"
+                        v-bind="(section as any).type === 'hero' ? { branding } : {}"
+                      />
+                      <div
+                        v-if="(section as any).enabled"
+                        class="absolute inset-0 z-10"
+                      >
+                        <button
+                          type="button"
+                          class="flex h-full w-full flex-col items-center justify-center gap-2 bg-slate-900/40 text-white opacity-0 backdrop-blur-sm transition focus-visible:opacity-100 group-hover:opacity-100"
+                          @click.stop="openSectionEditor(idx)"
+                        >
+                          <span class="inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/40 bg-white/20 text-white shadow-lg">
+                            <svg
+                              class="h-5 w-5"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="1.8"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              aria-hidden="true"
+                            >
+                              <path d="M12 20h9" />
+                              <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z" />
+                            </svg>
+                          </span>
+                          <span class="text-sm font-semibold">Editar seção</span>
+                        </button>
+                      </div>
+                      <div
+                        v-else
+                        class="bg-white/80 px-6 py-12 text-center text-sm font-semibold text-slate-500"
+                      >
+                        Seção desativada. Clique em editar para ajustar e ativar novamente.
+                      </div>
+                    </div>
+                  </div>
+                </template>
+              </template>
             </div>
           </div>
         </div>
       </div>
     </div>
-
+    <div
+      v-if="isSectionEditorOpen && editingSectionComponent && editingSectionDraft"
+      class="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/70 px-4 py-10"
+      @click.self="closeSectionEditor"
+    >
+      <div class="w-full max-w-4xl overflow-hidden rounded-3xl bg-white shadow-2xl">
+        <div class="flex flex-col gap-1 border-b border-slate-100 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Editar seção</p>
+            <h3 class="text-lg font-semibold text-slate-900">{{ editingSectionLabel }}</h3>
+          </div>
+          <button
+            class="rounded-full border border-slate-200 px-4 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+            @click="closeSectionEditor"
+          >
+            Fechar
+          </button>
+        </div>
+        <div class="max-h-[70vh] overflow-y-auto px-6 py-4">
+          <component
+            :is="editingSectionComponent"
+            :modelValue="editingSectionDraft"
+            @update:modelValue="value => (editingSectionDraft = value)"
+          />
+        </div>
+        <div class="flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 px-6 py-4">
+          <button
+            class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+            @click="closeSectionEditor"
+          >
+            Cancelar
+          </button>
+          <button
+            class="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white shadow hover:bg-brand-dark"
+            @click="saveEditingSection"
+          >
+            Salvar seção
+          </button>
+        </div>
+      </div>
+    </div>
     <transition name="fade">
       <div
         v-if="snackbar.open"
@@ -383,7 +470,6 @@ const successModal = ref({ open: false });
 const snackbar = ref({ open: false, text: "" });
 
 const isPublished = computed(() => page.value?.status === "published");
-const collapsed = ref<Record<number, boolean>>({});
 
 const fallbackPrimaryColor = "#0ea5e9";
 const heroDefaultGradient = "#0b0f19";
@@ -413,7 +499,6 @@ const editorPrefs = ref<EditorPreferences>({
 
 const colorA = ref(theme.value.color1);
 const colorB = ref(theme.value.color2);
-const previewEnabled = ref(editorPrefs.value.previewEnabled);
 const previewDevice = ref<"desktop" | "mobile">(editorPrefs.value.previewDevice || "desktop");
 
 const buildCountdownTargetDate = () => {
@@ -473,6 +558,25 @@ const sections = shallowRef<PageSection[]>([]);
 const previewSections = ref<PageSection[]>([]);
 const previewReady = ref(false);
 const previewLoading = ref(false);
+const editingSectionIndex = ref<number | null>(null);
+const editingSectionDraft = ref<PageSection | null>(null);
+const editingSectionType = computed<SectionType | null>(() => {
+  if (editingSectionIndex.value === null) return null;
+  const section = sections.value[editingSectionIndex.value];
+  if (!section) return null;
+  return ((section as any).type || null) as SectionType | null;
+});
+const editingSectionLabel = computed(() => {
+  const type = editingSectionType.value;
+  if (!type) return "";
+  return sectionLabels[type] || type;
+});
+const editingSectionComponent = computed(() => {
+  const type = editingSectionType.value;
+  if (!type) return null;
+  return formComponents[type];
+});
+const isSectionEditorOpen = computed(() => editingSectionIndex.value !== null && !!editingSectionDraft.value);
 const hasWindow = typeof window !== "undefined";
 const getBrowserStorage = () => {
   if (!hasWindow) return null;
@@ -698,7 +802,7 @@ const applySectionBackgrounds = (list: PageSection[]): PageSection[] => {
 const buildConfig = (): PageConfig => ({
   version: 1,
   theme: { ...theme.value, color1: colorA.value, color2: colorB.value },
-  editor: { ...editorPrefs.value, previewEnabled: previewEnabled.value, previewDevice: previewDevice.value },
+  editor: { ...editorPrefs.value, previewEnabled: true, previewDevice: previewDevice.value },
   sections: applySectionBackgrounds(sections.value),
   tracking: selectedPixel.value
     ? {
@@ -745,7 +849,7 @@ const clearTitleDebounce = () => {
 };
 
 const schedulePreviewHydration = (immediate = false) => {
-  if (!previewEnabled.value || !previewReady.value) {
+  if (!previewReady.value) {
     clearPreviewScheduler();
     return;
   }
@@ -793,11 +897,6 @@ onBeforeUnmount(() => {
   clearPreviewScheduler();
   clearTitleDebounce();
   Object.values(pendingSectionUpdates).forEach(timeout => clearTimeout(timeout));
-});
-
-const gridLayoutClass = computed(() => {
-  if (!previewEnabled.value) return "grid-cols-1";
-  return "lg:grid-cols-[40%_60%]";
 });
 
 function defaultSection(type: SectionType): PageSection {
@@ -950,12 +1049,9 @@ const hydrateFromConfig = (config?: PageConfig | string | null) => {
     }
 
     if (parsed.editor) {
-      editorPrefs.value = { ...editorPrefs.value, ...parsed.editor };
-      if (typeof (parsed as any).editor?.previewEnabled === "boolean") {
-        previewEnabled.value = (parsed as any).editor.previewEnabled;
-      }
-      if ((parsed as any).editor?.previewDevice === "mobile" || (parsed as any).editor?.previewDevice === "desktop") {
-        previewDevice.value = (parsed as any).editor.previewDevice;
+      editorPrefs.value = { ...editorPrefs.value, ...parsed.editor, previewEnabled: true };
+      if (parsed.editor.previewDevice === "mobile" || parsed.editor.previewDevice === "desktop") {
+        previewDevice.value = parsed.editor.previewDevice;
       }
     }
 
@@ -1120,9 +1216,16 @@ const moveSection = (index: number, direction: number) => {
   });
 };
 
-const isCollapsed = (index: number) => !!collapsed.value[index];
-const toggleCollapse = (index: number) => {
-  collapsed.value = { ...collapsed.value, [index]: !collapsed.value[index] };
+const openSectionEditor = (index: number) => {
+  const target = sections.value[index];
+  if (!target) return;
+  editingSectionIndex.value = index;
+  editingSectionDraft.value = clone(target);
+};
+
+const closeSectionEditor = () => {
+  editingSectionIndex.value = null;
+  editingSectionDraft.value = null;
 };
 
 watch([colorA, colorB], ([a, b], [_prevA, prevB]) => {
@@ -1139,15 +1242,6 @@ watch(colorB, value => {
   theme.value.color2 = value;
 });
 
-watch(previewEnabled, value => {
-  editorPrefs.value.previewEnabled = value;
-  if (!value) {
-    clearPreviewScheduler();
-  } else if (previewReady.value) {
-    schedulePreviewHydration();
-  }
-});
-
 watch(previewDevice, value => {
   editorPrefs.value.previewDevice = value;
 });
@@ -1155,6 +1249,13 @@ watch(previewDevice, value => {
 const refreshPreview = (immediate = false) => {
   flushPendingSectionUpdates();
   schedulePreviewHydration(immediate);
+};
+
+const saveEditingSection = () => {
+  if (editingSectionIndex.value === null || !editingSectionDraft.value) return;
+  updateSectionAt(editingSectionIndex.value, editingSectionDraft.value, true);
+  closeSectionEditor();
+  refreshPreview(true);
 };
 
 const setDefaultSectionsByPlan = () => {
@@ -1318,6 +1419,7 @@ onMounted(async () => {
   schedulePreviewHydration(true);
 });
 </script>
+
 
 
 
