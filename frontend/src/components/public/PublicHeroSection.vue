@@ -100,7 +100,7 @@
             </span>
           </div>
 
-          <div class="flex flex-col items-center gap-3 sm:flex-row sm:items-start sm:justify-start" :class="isMobilePreview ? '!flex-col !items-center !justify-center' : ''">
+          <div class="flex flex-col items-center gap-3 sm:flex-row sm:items-center sm:justify-start" :class="isMobilePreview ? '!flex-col !items-center !justify-center' : ''">
             <a
               :href="ctaHref"
               :data-scroll-target="ctaIsScroll ? 'true' : null"
