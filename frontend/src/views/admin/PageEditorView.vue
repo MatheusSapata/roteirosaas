@@ -387,7 +387,7 @@
           <component
             :is="editingSectionComponent"
             :modelValue="editingSectionDraft"
-            @update:modelValue="value => (editingSectionDraft = value)"
+            @update:modelValue="updateEditingDraft"
           />
         </div>
         <div class="flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 px-6 py-4">
@@ -1226,6 +1226,10 @@ const openSectionEditor = (index: number) => {
 const closeSectionEditor = () => {
   editingSectionIndex.value = null;
   editingSectionDraft.value = null;
+};
+
+const updateEditingDraft = (value: PageSection) => {
+  editingSectionDraft.value = value;
 };
 
 watch([colorA, colorB], ([a, b], [_prevA, prevB]) => {
