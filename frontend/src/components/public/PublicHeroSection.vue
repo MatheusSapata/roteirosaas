@@ -303,8 +303,8 @@ const heroBackgroundImage = computed(() => resolveMediaUrl(props.section.backgro
 const logoSrc = computed(() => resolveMediaUrl(props.section.logoUrl));
 const logoSize = computed(() => props.section.logoSize ?? 64);
 const logoBoxStyle = computed(() => ({ height: `${logoSize.value}px` }));
-const mobileLogoPadding = 24;
-const mobileLogoLift = 12;
+const mobileLogoPadding = -172;
+const mobileLogoLift = -150;
 const accent = computed(() => props.section.gradientColor || props.section.backgroundColor || "#0ea5e9");
 const ctaColor = computed(() => props.section.ctaColor || accent.value);
 const ctaMode = computed(() => props.section.ctaMode || "link");

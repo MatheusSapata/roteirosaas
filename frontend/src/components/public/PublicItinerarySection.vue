@@ -17,26 +17,26 @@
           <div
             v-for="(day, index) in section.days"
             :key="index"
-            class="group w-full max-w-2xl rounded-2xl border border-slate-100 bg-white/90 p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
+            class="group w-full max-w-3xl rounded-2xl border border-slate-100 bg-white/90 p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
             :style="{ boxShadow: `0 20px 40px -30px ${accentShadow}` }"
           >
-            <button class="flex w-full items-start gap-4 text-left" @click="toggleDay(index)">
+            <button class="flex w-full items-center gap-3 text-left" @click="toggleDay(index)">
               <div
                 class="flex h-10 w-10 items-center justify-center rounded-full border bg-white text-sm font-semibold transition group-hover:-translate-y-0.5"
                 :style="{ borderColor: accent, color: accent }"
               >
                 {{ index + 1 }}
               </div>
-              <div class="flex-1 space-y-1">
+              <div class="flex-1">
                 <p class="text-xs font-semibold uppercase tracking-wide" :style="{ color: accent }">{{ day.day }}</p>
                 <p class="text-lg font-semibold text-slate-900">{{ day.title }}</p>
-                <p v-if="!expanded[index]" class="text-xs text-slate-400">Clique para ver detalhes</p>
+                <p v-if="!expanded[index]" class="text-xs text-slate-400 mt-0.5">Clique para ver detalhes</p>
               </div>
               <span class="text-sm text-slate-500">{{ expanded[index] ? "−" : "+" }}</span>
             </button>
             <div
-              v-if="dayDescriptionHtml(day.description)"
-              class="mt-3 text-sm leading-relaxed text-slate-600"
+              v-if="expanded[index] && dayDescriptionHtml(day.description)"
+              class="mt-2 text-sm leading-relaxed text-slate-600"
               v-html="dayDescriptionHtml(day.description)"
             ></div>
           </div>
@@ -114,7 +114,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import type { ItinerarySection } from "../../types/page";
 import SectionHeadingChip from "./SectionHeadingChip.vue";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
@@ -144,7 +144,7 @@ const accent = computed(() => {
 const headingLabel = computed(() => props.section.headingLabel ?? headingDefaults.label);
 const headingStyle = computed(() => props.section.headingLabelStyle || headingDefaults.style);
 const dayDescriptionHtml = (text?: string) => sanitizeHtml(text);
-const expanded = ref<boolean[]>([]);
+const expanded = ref<boolean[]>(props.section.days.map(() => false));
 const activeStep = ref<number | null>(null);
 
 const toRgba = (hex: string, alpha: number) => {
@@ -164,7 +164,14 @@ const toggleDay = (index: number) => {
   expanded.value[index] = !expanded.value[index];
 };
 
-expanded.value = props.section.days.map(() => false);
+watch(
+  () => props.section.days,
+  days => {
+    expanded.value = (days || []).map(() => false);
+    activeStep.value = null;
+  },
+  { deep: true }
+);
 
 const toggleStep = (index: number) => {
   activeStep.value = activeStep.value === index ? null : index;
