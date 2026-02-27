@@ -1229,7 +1229,11 @@ const closeSectionEditor = () => {
 };
 
 const updateEditingDraft = (value: PageSection) => {
-  editingSectionDraft.value = value;
+  if (!editingSectionDraft.value) {
+    editingSectionDraft.value = value;
+    return;
+  }
+  Object.assign(editingSectionDraft.value, value);
 };
 
 watch([colorA, colorB], ([a, b], [_prevA, prevB]) => {
