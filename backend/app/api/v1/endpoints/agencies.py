@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_active_user, get_db
@@ -30,10 +31,21 @@ def get_my_agencies(current_user: User = Depends(get_current_active_user), db: S
 
 @router.post("", response_model=AgencyOut)
 def create_agency(agency_in: AgencyCreate, current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)) -> AgencyOut:
-    existing = db.query(Agency).filter(Agency.slug == agency_in.slug).first()
-    if existing:
-        raise HTTPException(status_code=400, detail="Slug already in use")
-    agency = Agency(**agency_in.dict())
+    normalized_name = agency_in.name.strip()
+    normalized_slug = agency_in.slug.strip().lower()
+
+    existing_slug = db.query(Agency).filter(func.lower(Agency.slug) == normalized_slug).first()
+    if existing_slug:
+        raise HTTPException(status_code=400, detail="Slug já está em uso")
+
+    existing_name = db.query(Agency).filter(func.lower(Agency.name) == normalized_name.lower()).first()
+    if existing_name:
+        raise HTTPException(status_code=400, detail="Nome de agência já está em uso")
+
+    payload = agency_in.dict()
+    payload["name"] = normalized_name
+    payload["slug"] = normalized_slug
+    agency = Agency(**payload)
     db.add(agency)
     db.commit()
     db.refresh(agency)
@@ -51,7 +63,31 @@ def update_agency(
     db: Session = Depends(get_db),
 ) -> AgencyOut:
     agency = ensure_membership(db, agency_id, current_user.id)
-    for key, value in agency_in.dict(exclude_unset=True).items():
+    update_data = agency_in.dict(exclude_unset=True)
+
+    if "slug" in update_data and update_data["slug"]:
+        normalized_slug = update_data["slug"].strip().lower()
+        existing_slug = (
+            db.query(Agency)
+            .filter(func.lower(Agency.slug) == normalized_slug, Agency.id != agency.id)
+            .first()
+        )
+        if existing_slug:
+            raise HTTPException(status_code=400, detail="Slug já está em uso")
+        update_data["slug"] = normalized_slug
+
+    if "name" in update_data and update_data["name"]:
+        normalized_name = update_data["name"].strip()
+        existing_name = (
+            db.query(Agency)
+            .filter(func.lower(Agency.name) == normalized_name.lower(), Agency.id != agency.id)
+            .first()
+        )
+        if existing_name:
+            raise HTTPException(status_code=400, detail="Nome de agência já está em uso")
+        update_data["name"] = normalized_name
+
+    for key, value in update_data.items():
         setattr(agency, key, value)
     db.add(agency)
     db.commit()
