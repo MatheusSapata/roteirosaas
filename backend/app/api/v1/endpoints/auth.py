@@ -12,6 +12,7 @@ from app.core.rate_limit import InMemoryRateLimiter
 from app.models.user import User
 from app.models.subscription import Subscription
 from app.schemas.user import (
+    PasswordResetByProfile,
     PasswordResetConfirm,
     PasswordResetRequest,
     Token,
@@ -145,6 +146,28 @@ def reset_password(payload: PasswordResetConfirm, db: Session = Depends(get_db))
     user = db.query(User).filter(User.email == email).first()
     if not user:
         raise HTTPException(status_code=404, detail="Usuário não encontrado.")
+
+    try:
+        auth_service.validate_password_strength(payload.password)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    user.hashed_password = auth_service.get_password_hash(payload.password)
+    db.add(user)
+    db.commit()
+    return {"detail": "Senha atualizada com sucesso."}
+
+
+@router.post("/password/reset/by-profile")
+def reset_password_by_profile(payload: PasswordResetByProfile, db: Session = Depends(get_db)) -> dict:
+    normalized_email = payload.email.strip().lower()
+    user = db.query(User).filter(User.email == normalized_email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Dados nao conferem.")
+
+    stored_cpf = "".join(filter(str.isdigit, user.cpf or ""))
+    if not stored_cpf or stored_cpf != payload.cpf:
+        raise HTTPException(status_code=400, detail="Dados nao conferem.")
 
     try:
         auth_service.validate_password_strength(payload.password)

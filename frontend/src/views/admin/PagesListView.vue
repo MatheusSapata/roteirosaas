@@ -188,6 +188,22 @@ const loadPages = async () => {
   }
 };
 
+const buildFriendlySlug = () => {
+  const existing = new Set(
+    pages.value
+      .map(page => page.slug)
+      .filter((slug): slug is string => !!slug)
+      .map(slug => slug.toLowerCase())
+  );
+  let counter = 1;
+  let candidate = `roteiro-${counter}`;
+  while (existing.has(candidate)) {
+    counter += 1;
+    candidate = `roteiro-${counter}`;
+  }
+  return candidate;
+};
+
 const createDraft = async () => {
   errorMessage.value = "";
   message.value = "";
@@ -196,12 +212,14 @@ const createDraft = async () => {
     return;
   }
   try {
+    const friendlySlug = buildFriendlySlug();
     const res = await api.post<Page>("/pages", {
       agency_id: agencyStore.currentAgencyId,
       title: "Novo roteiro",
-      slug: `novo-roteiro-${Date.now()}`,
+      slug: friendlySlug || `novo-roteiro-${Date.now()}`,
       status: "draft"
     });
+    pages.value.push({ ...res.data });
     router.push(`/admin/pages/${res.data.id}/edit`);
   } catch (err) {
     console.error(err);

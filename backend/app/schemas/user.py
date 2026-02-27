@@ -94,3 +94,17 @@ class PasswordResetRequest(BaseModel):
 class PasswordResetConfirm(BaseModel):
     token: str
     password: str
+
+
+class PasswordResetByProfile(BaseModel):
+    email: EmailStr
+    cpf: str
+    password: str
+
+    @field_validator("cpf")
+    @classmethod
+    def normalize_cpf(cls, value: str) -> str:
+        digits = "".join(filter(str.isdigit, value or ""))
+        if len(digits) != 11:
+            raise ValueError("CPF invalido")
+        return digits
