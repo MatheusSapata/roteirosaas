@@ -8,6 +8,7 @@
       </label>
     </div>
 
+    <SectionHeadingControls v-model:label="local.headingLabel" v-model:style="local.headingLabelStyle" />
     <div class="grid gap-3 md:grid-cols-2">
       <div>
         <label class="text-sm font-semibold text-slate-600">Título</label>
@@ -27,7 +28,6 @@
     <div class="space-y-3">
       <div class="flex items-center justify-between">
         <p class="text-sm font-semibold text-slate-700">Itens (benefícios)</p>
-        <button class="text-sm font-semibold text-brand" @click="addItem">+ Adicionar item</button>
       </div>
       <div v-for="(item, index) in local.items" :key="index" class="rounded-lg border border-slate-200 p-3">
         <div class="flex items-center justify-between">
@@ -74,28 +74,44 @@
           <textarea v-model="item.description" rows="3" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"></textarea>
         </div>
       </div>
+      <div class="flex justify-end">
+        <button
+          class="text-sm font-semibold text-brand"
+          @click="addItem"
+          :disabled="local.items.length >= MAX_ITEMS"
+        >
+          + Adicionar item
+        </button>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, nextTick, reactive, ref, watch } from "vue";
+import SectionHeadingControls from "./inputs/SectionHeadingControls.vue";
+import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import type { ReasonsSection } from "../../types/page";
 
 const props = defineProps<{ modelValue: ReasonsSection }>();
 const emit = defineEmits<{ (e: "update:modelValue", value: ReasonsSection): void }>();
+const headingDefaults = getSectionHeadingDefaults("reasons");
 
 const local = reactive<ReasonsSection>({
   type: "reasons",
   enabled: true,
   layout: "grid",
   items: [],
+  headingLabel: props.modelValue.headingLabel ?? headingDefaults.label,
+  headingLabelStyle: props.modelValue.headingLabelStyle ?? headingDefaults.style,
   ...props.modelValue
 });
 let syncing = false;
 const syncFromProps = (value: ReasonsSection) => {
   syncing = true;
   Object.assign(local, value);
+  local.headingLabel = value.headingLabel ?? headingDefaults.label;
+  local.headingLabelStyle = value.headingLabelStyle || headingDefaults.style;
   local.items = Array.isArray(value.items) ? value.items.map(item => ({ ...item })) : [];
   iconOpen.value = local.items.map(() => false);
   nextTick(() => {
@@ -163,7 +179,10 @@ const allIcons = computed(() => Array.from(new Set([...iconOptions, ...libraryIc
 const pendingIconIndex = ref<number | null>(null);
 const iconOpen = ref<boolean[]>([]);
 
+const MAX_ITEMS = 8;
+
 const addItem = () => {
+  if (local.items.length >= MAX_ITEMS) return;
   local.items.push({ title: "Benefício", description: "Descreva o ponto forte", icon: "⭐" });
   iconOpen.value.push(false);
 };

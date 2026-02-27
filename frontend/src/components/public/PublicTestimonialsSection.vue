@@ -1,6 +1,7 @@
 <template>
   <section class="w-full" :style="{ background: section.backgroundColor || '#ffffff' }" :id="section.anchorId || undefined">
     <div class="mx-auto flex max-w-6xl flex-col items-center px-6 py-12">
+      <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="accent" />
       <h2 class="text-center text-3xl font-bold leading-tight text-slate-900 md:text-4xl">
         {{ section.title || "Depoimentos de clientes" }}
       </h2>
@@ -61,8 +62,11 @@ import { computed } from "vue";
 import { resolveMediaUrl } from "../../utils/media";
 import { isWhatsappLink } from "../../utils/links";
 import type { TestimonialsSection } from "../../types/page";
+import SectionHeadingChip from "./SectionHeadingChip.vue";
+import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 
 const props = defineProps<{ section: TestimonialsSection }>();
+const headingDefaults = getSectionHeadingDefaults("testimonials");
 
 const accent = computed(() => props.section.ctaColor || "#5b49ff");
 const accentBackground = computed(() => props.section.backgroundColor || "linear-gradient(135deg,#5b49ff,#3b82f6)");
@@ -79,6 +83,8 @@ const toRgba = (hex: string, alpha: number) => {
 };
 
 const accentSoft = computed(() => toRgba(accent.value, 0.35));
+const headingLabel = computed(() => props.section.headingLabel ?? headingDefaults.label);
+const headingStyle = computed(() => props.section.headingLabelStyle || headingDefaults.style);
 
 const initials = (name?: string) => {
   if (!name) return "—";

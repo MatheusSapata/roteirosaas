@@ -2,15 +2,12 @@
   <section class="w-full" :style="{ background: section.backgroundColor || 'linear-gradient(180deg,#f8fafc,#fff)' }">
     <div class="mx-auto max-w-6xl px-6 py-12">
       <div class="rounded-3xl bg-white/80 p-6 shadow-[0_16px_50px_-30px_rgba(15,23,42,0.55)] ring-1 ring-slate-100">
-        <div class="flex flex-wrap items-center justify-between gap-3 pb-4" :style="{ borderBottom: `1px solid ${accentBorder}` }">
-          <div>
-            <span class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-slate-600" :style="{ background: accentSoft, color: accent }">
-              <span class="h-2 w-2 rounded-full" :style="{ background: accent }"></span>
-              Galeria
-            </span>
-            <h2 class="mt-3 text-2xl font-bold text-slate-900">Explore o destino</h2>
-            <p class="text-sm text-slate-500">Imagens reais para sentir o clima da viagem.</p>
+        <div class="pb-4 text-center" :style="{ borderBottom: `1px solid ${accentBorder}` }">
+          <div class="flex justify-center">
+            <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="accent" />
           </div>
+          <h2 class="mt-3 text-2xl font-bold text-slate-900">Explore o destino</h2>
+          <p class="text-sm text-slate-500">Imagens reais para sentir o clima da viagem.</p>
         </div>
 
         <!-- Layout mosaico -->
@@ -76,8 +73,11 @@
 import { computed } from "vue";
 import { resolveMediaUrl } from "../../utils/media";
 import type { GallerySection } from "../../types/page";
+import SectionHeadingChip from "./SectionHeadingChip.vue";
+import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 
 const props = defineProps<{ section: GallerySection }>();
+const headingDefaults = getSectionHeadingDefaults("gallery");
 
 const accent = computed(() => props.section.backgroundColor || "#0ea5e9");
 const toRgba = (hex: string, alpha: number) => {
@@ -91,9 +91,12 @@ const toRgba = (hex: string, alpha: number) => {
 };
 const accentSoft = computed(() => toRgba(accent.value, 0.1));
 const accentBorder = computed(() => toRgba(accent.value, 0.25));
+const headingLabel = computed(() => props.section.headingLabel ?? headingDefaults.label);
+const headingStyle = computed(() => props.section.headingLabelStyle || headingDefaults.style);
 const resolvedImages = computed(() =>
   (props.section.images || [])
     .map(img => resolveMediaUrl(img) || img)
     .filter(Boolean)
 );
 </script>
+

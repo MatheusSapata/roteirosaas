@@ -20,7 +20,7 @@
             </div>
             <div class="space-y-1 mt-2">
               <h1 class="text-[26px] font-bold leading-tight">{{ section.title }}</h1>
-              <p class="text-sm text-white/85">{{ section.subtitle }}</p>
+              <div v-if="subtitleHtml" class="text-sm text-white/85" v-html="subtitleHtml"></div>
             </div>
           </div>
           <div v-if="chipsToShow.length" class="mt-4 flex flex-wrap items-center justify-center gap-2 text-[11px]">
@@ -86,7 +86,12 @@
             </div>
           </div>
           <h1 class="text-3xl font-bold leading-tight md:text-5xl" :class="isMobilePreview ? '!text-3xl' : ''">{{ section.title }}</h1>
-          <p class="text-base text-slate-100 md:text-xl" :class="isMobilePreview ? '!text-base' : ''">{{ section.subtitle }}</p>
+          <div
+            v-if="subtitleHtml"
+            class="text-base text-slate-100 md:text-xl"
+            :class="isMobilePreview ? '!text-base' : ''"
+            v-html="subtitleHtml"
+          ></div>
 
           <div v-if="chipsToShow.length" class="flex flex-wrap justify-center gap-3 md:justify-start" :class="isMobilePreview ? '!justify-center' : ''">
             <span
@@ -149,7 +154,12 @@
               {{ branding.agency_name || "Roteiro exclusivo" }}
             </p>
             <h1 class="text-3xl font-bold leading-tight text-slate-900 md:text-5xl" :class="isMobilePreview ? '!text-3xl' : ''">{{ section.title }}</h1>
-            <p class="text-base text-slate-600 md:text-xl" :class="isMobilePreview ? '!text-base' : ''">{{ section.subtitle }}</p>
+            <div
+              v-if="subtitleHtml"
+              class="text-base text-slate-600 md:text-xl"
+              :class="isMobilePreview ? '!text-base' : ''"
+              v-html="subtitleHtml"
+            ></div>
           <div class="flex flex-wrap items-center justify-center gap-3 md:justify-start" :class="isMobilePreview ? '!justify-center' : ''">
             <a
               :href="ctaHref"
@@ -205,7 +215,12 @@
         <div class="space-y-4">
           <p class="text-xs uppercase tracking-[0.25em] text-slate-500">Experiencia premium</p>
           <h1 class="text-3xl font-bold leading-tight text-slate-900 md:text-5xl" :class="isMobilePreview ? '!text-3xl' : ''">{{ section.title }}</h1>
-          <p class="text-base text-slate-600 md:text-lg" :class="isMobilePreview ? '!text-base' : ''">{{ section.subtitle }}</p>
+          <div
+            v-if="subtitleHtml"
+            class="text-base text-slate-600 md:text-lg"
+            :class="isMobilePreview ? '!text-base' : ''"
+            v-html="subtitleHtml"
+          ></div>
           <div class="flex flex-wrap items-center justify-center gap-3 md:justify-start" :class="isMobilePreview ? '!justify-center' : ''">
             <a
               :href="ctaHref"
@@ -248,7 +263,12 @@
         <div class="max-w-2xl space-y-4 rounded-3xl bg-white/75 p-6 shadow-2xl backdrop-blur ring-1 ring-white/60 md:p-8" :class="isMobilePreview ? '!p-6' : ''">
           <p class="text-xs uppercase tracking-[0.3em] text-slate-500">{{ branding.agency_name }}</p>
           <h1 class="text-3xl font-bold leading-tight text-slate-900 md:text-5xl" :class="isMobilePreview ? '!text-3xl' : ''">{{ section.title }}</h1>
-          <p class="text-base text-slate-600 md:text-lg" :class="isMobilePreview ? '!text-base' : ''">{{ section.subtitle }}</p>
+          <div
+            v-if="subtitleHtml"
+            class="text-base text-slate-600 md:text-lg"
+            :class="isMobilePreview ? '!text-base' : ''"
+            v-html="subtitleHtml"
+          ></div>
           <a
             :href="ctaHref"
             :data-scroll-target="ctaIsScroll ? 'true' : null"
@@ -272,17 +292,19 @@
 import { computed } from "vue";
 import { resolveMediaUrl } from "../../utils/media";
 import { isWhatsappLink } from "../../utils/links";
+import { sanitizeHtml } from "../../utils/sanitizeHtml";
 import type { HeroSection } from "../../types/page";
 
 const props = defineProps<{ section: HeroSection; branding: Record<string, any>; previewDevice?: "desktop" | "mobile" }>();
+const subtitleHtml = computed(() => sanitizeHtml(props.section.subtitle));
 
 const layout = computed(() => props.section.layout || "classic");
 const heroBackgroundImage = computed(() => resolveMediaUrl(props.section.backgroundImage));
 const logoSrc = computed(() => resolveMediaUrl(props.section.logoUrl));
 const logoSize = computed(() => props.section.logoSize ?? 64);
 const logoBoxStyle = computed(() => ({ height: `${logoSize.value}px` }));
-const mobileLogoPadding = 56;
-const mobileLogoLift = 28;
+const mobileLogoPadding = 24;
+const mobileLogoLift = 12;
 const accent = computed(() => props.section.gradientColor || props.section.backgroundColor || "#0ea5e9");
 const ctaColor = computed(() => props.section.ctaColor || accent.value);
 const ctaMode = computed(() => props.section.ctaMode || "link");

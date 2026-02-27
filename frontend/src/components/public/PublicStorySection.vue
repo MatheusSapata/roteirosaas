@@ -4,11 +4,9 @@
       <!-- Layout com imagem única -->
       <div v-if="isSingle" class="flex w-full flex-col" :class="singleLayoutClass">
         <div :class="textBlockClass">
-          <div v-if="section.badge" :class="badgeClass">
-            {{ section.badge }}
-          </div>
+          <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="ctaColor" />
           <h2 class="text-3xl font-bold leading-tight text-slate-900 md:text-4xl">{{ section.title }}</h2>
-          <p class="text-base leading-relaxed text-slate-600 md:text-lg">{{ section.subtitle }}</p>
+          <div v-if="storySubtitleHtml" class="text-base leading-relaxed text-slate-600 md:text-lg" v-html="storySubtitleHtml"></div>
           <div class="flex flex-wrap items-center gap-4">
             <a
               v-if="ctaEnabled && ctaHasTarget"
@@ -47,11 +45,9 @@
       <!-- Layout com galeria -->
       <div v-else class="grid w-full" :class="galleryLayoutClass">
         <div :class="['text-slate-800', textBlockClass, imagePosition === 'left' ? 'md:order-2' : 'md:order-1']">
-          <div v-if="section.badge" :class="badgeClass">
-            {{ section.badge }}
-          </div>
+          <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="ctaColor" />
           <h2 class="text-3xl font-bold leading-tight text-slate-900 md:text-4xl">{{ section.title }}</h2>
-          <p class="text-base leading-relaxed text-slate-600 md:text-lg">{{ section.subtitle }}</p>
+          <div v-if="storySubtitleHtml" class="text-base leading-relaxed text-slate-600 md:text-lg" v-html="storySubtitleHtml"></div>
           <div class="flex flex-wrap items-center gap-4">
             <a
               v-if="ctaEnabled && ctaHasTarget"
@@ -106,8 +102,12 @@ import { computed, ref, watch } from "vue";
 import { resolveMediaUrl } from "../../utils/media";
 import { isWhatsappLink } from "../../utils/links";
 import type { StorySection } from "../../types/page";
+import SectionHeadingChip from "./SectionHeadingChip.vue";
+import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
+import { sanitizeHtml } from "../../utils/sanitizeHtml";
 
 const props = defineProps<{ section: StorySection; previewDevice?: "desktop" | "mobile" }>();
+const headingDefaults = getSectionHeadingDefaults("story");
 
 const isSingle = computed(() => props.section.layout !== "gallery");
 const imagePosition = computed(() => props.section.imagePosition || "right");
@@ -132,10 +132,9 @@ const outerClass = computed(() =>
     ? "p-0 gap-0 md:flex-row md:items-stretch overflow-hidden rounded-[30px] bg-white/90 shadow-xl"
     : "gap-8 px-6 py-12 md:flex-row md:items-center md:gap-12"
 );
-const badgeClass = computed(
-  () =>
-    "inline-flex self-start items-center rounded-full border border-slate-200 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 w-auto max-w-max whitespace-nowrap"
-);
+const headingLabel = computed(() => props.section.headingLabel ?? props.section.badge ?? headingDefaults.label);
+const headingStyle = computed(() => props.section.headingLabelStyle || headingDefaults.style);
+const storySubtitleHtml = computed(() => sanitizeHtml(props.section.subtitle));
 const singleLayoutClass = computed(() => {
   const classes: string[] = [];
   if (props.section.borderEnabled) {
@@ -203,3 +202,4 @@ watch(
   }
 );
 </script>
+

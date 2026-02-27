@@ -8,6 +8,7 @@
       </label>
     </div>
 
+    <SectionHeadingControls v-model:label="local.headingLabel" v-model:style="local.headingLabelStyle" />
     <div class="grid gap-3 md:grid-cols-2">
       <div>
         <label class="text-sm font-semibold text-slate-600">Texto</label>
@@ -48,10 +49,13 @@
 
 <script setup lang="ts">
 import { nextTick, reactive, watch } from "vue";
+import SectionHeadingControls from "./inputs/SectionHeadingControls.vue";
+import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import type { CountdownSection } from "../../types/page";
 
 const props = defineProps<{ modelValue: CountdownSection }>();
 const emit = defineEmits<{ (e: "update:modelValue", value: CountdownSection): void }>();
+const headingDefaults = getSectionHeadingDefaults("countdown");
 
 const buildDefaultTargetDate = () => {
   const date = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
@@ -65,6 +69,8 @@ const local = reactive<CountdownSection>({
   backgroundColor: "#ef4444",
   textColor: "#ffffff",
   layout: "bar",
+  headingLabel: props.modelValue.headingLabel ?? headingDefaults.label,
+  headingLabelStyle: props.modelValue.headingLabelStyle ?? headingDefaults.style,
   ...props.modelValue
 });
 let syncing = false;
@@ -73,6 +79,8 @@ const syncFromProps = (value: CountdownSection) => {
   Object.assign(local, value);
   local.targetDate = value.targetDate || buildDefaultTargetDate();
   local.layout = value.layout || "bar";
+  local.headingLabel = value.headingLabel ?? headingDefaults.label;
+  local.headingLabelStyle = value.headingLabelStyle || headingDefaults.style;
   nextTick(() => {
     syncing = false;
   });

@@ -7,6 +7,7 @@
         Ativar
       </label>
     </div>
+    <SectionHeadingControls v-model:label="local.headingLabel" v-model:style="local.headingLabelStyle" />
     <div class="space-y-3">
       <div v-for="(item, index) in local.items" :key="index" class="rounded-lg border border-slate-100 p-3">
         <input v-model="item.question" placeholder="Pergunta" class="mb-2 w-full rounded-lg border border-slate-200 px-3 py-2" />
@@ -42,12 +43,17 @@
 
 <script setup lang="ts">
 import { nextTick, reactive, watch } from "vue";
+import SectionHeadingControls from "./inputs/SectionHeadingControls.vue";
+import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import type { FaqSection } from "../../types/page";
 
 const props = defineProps<{ modelValue: FaqSection }>();
 const emit = defineEmits<{ (e: "update:modelValue", value: FaqSection): void }>();
+const headingDefaults = getSectionHeadingDefaults("faq");
 
 const local = reactive<FaqSection>({
+  headingLabel: props.modelValue.headingLabel ?? headingDefaults.label,
+  headingLabelStyle: props.modelValue.headingLabelStyle ?? headingDefaults.style,
   ...props.modelValue,
   items: Array.isArray(props.modelValue.items) ? [...props.modelValue.items] : []
 });
@@ -55,6 +61,8 @@ let syncing = false;
 const syncFromProps = (value: FaqSection) => {
   syncing = true;
   Object.assign(local, value);
+  local.headingLabel = value.headingLabel ?? headingDefaults.label;
+  local.headingLabelStyle = value.headingLabelStyle || headingDefaults.style;
   local.items = Array.isArray(value.items) ? value.items.map(item => ({ ...item })) : [];
   nextTick(() => {
     syncing = false;

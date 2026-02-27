@@ -1,6 +1,9 @@
 <template>
   <section class="w-full" :style="{ background: barBackground }" :id="section.anchorId || undefined">
-    <div v-if="layout === 'bar'" class="mx-auto w-full px-0 py-4 md:py-6">
+    <div v-if="layout === 'bar'" class="mx-auto w-full px-0 py-4 md:py-6 space-y-3">
+      <div class="flex justify-center">
+        <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="headingAccent" />
+      </div>
       <div
         class="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 rounded-xl px-4 py-3 shadow-lg md:px-8"
         :style="{ background: section.backgroundColor || '#6b21a8', color: section.textColor || '#ffffff' }"
@@ -16,6 +19,7 @@
     </div>
 
     <div v-else class="mx-auto flex w-full max-w-6xl flex-col items-center gap-6 px-6 py-8">
+      <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="headingAccent" />
       <h3 class="text-center text-xl font-semibold" :style="{ color: section.textColor || '#ffffff' }">
         {{ section.label || "Coming soon..." }}
       </h3>
@@ -36,11 +40,17 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import type { CountdownSection } from "../../types/page";
+import SectionHeadingChip from "./SectionHeadingChip.vue";
+import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 
 const props = defineProps<{ section: CountdownSection }>();
+const headingDefaults = getSectionHeadingDefaults("countdown");
 
 const layout = computed(() => props.section.layout || "bar");
 const barBackground = computed(() => (layout.value === "bar" ? "#f8fafc" : props.section.backgroundColor || "#0b1324"));
+const headingLabel = computed(() => props.section.headingLabel ?? headingDefaults.label);
+const headingStyle = computed(() => props.section.headingLabelStyle || headingDefaults.style);
+const headingAccent = computed(() => props.section.backgroundColor || "#0ea5e9");
 
 const barTime = ref("00:00:00");
 const timeParts = ref([

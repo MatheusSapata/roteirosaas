@@ -1,5 +1,6 @@
 <template>
   <div class="space-y-3">
+    <SectionHeadingControls v-model:label="local.headingLabel" v-model:style="local.headingLabelStyle" />
     <div class="grid gap-3 md:grid-cols-2">
       <div>
         <label class="text-sm font-semibold text-slate-600">Destaque</label>
@@ -28,7 +29,7 @@
       </div>
       <div>
         <label class="text-sm font-semibold text-slate-600">Subtítulo</label>
-        <input v-model="local.subtitle" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
+        <RichTextEditor v-model="local.subtitle" placeholder="Conte a história da agência..." />
       </div>
     </div>
 
@@ -103,10 +104,14 @@
 import { nextTick, reactive, watch } from "vue";
 import MultiImageUploadField from "./inputs/MultiImageUploadField.vue";
 import CtaActionPicker from "./inputs/CtaActionPicker.vue";
+import RichTextEditor from "./inputs/RichTextEditor.vue";
+import SectionHeadingControls from "./inputs/SectionHeadingControls.vue";
+import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import type { StorySection } from "../../types/page";
 
 const props = defineProps<{ modelValue: StorySection }>();
 const emit = defineEmits<{ (e: "update:modelValue", value: StorySection): void }>();
+const headingDefaults = getSectionHeadingDefaults("story");
 
 const local = reactive<StorySection>({
   type: "story",
@@ -114,6 +119,8 @@ const local = reactive<StorySection>({
   enabled: true,
   images: [],
   ctaEnabled: true,
+  headingLabel: props.modelValue.headingLabel ?? headingDefaults.label,
+  headingLabelStyle: props.modelValue.headingLabelStyle ?? headingDefaults.style,
   ...props.modelValue,
   ctaMode: props.modelValue.ctaMode || "link",
   ctaSectionId: props.modelValue.ctaSectionId || null
@@ -122,6 +129,8 @@ let syncing = false;
 const syncFromProps = (value: StorySection) => {
   syncing = true;
   Object.assign(local, value);
+  local.headingLabel = value.headingLabel ?? headingDefaults.label;
+  local.headingLabelStyle = value.headingLabelStyle || headingDefaults.style;
   local.images = Array.isArray(value.images) ? [...value.images] : [];
   local.ctaMode = value.ctaMode || "link";
   local.ctaSectionId = value.ctaSectionId || null;

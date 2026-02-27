@@ -7,6 +7,7 @@
         Ativar
       </label>
     </div>
+    <SectionHeadingControls v-model:label="local.headingLabel" v-model:style="local.headingLabelStyle" />
     <MultiImageUploadField
       v-model="local.images"
       label="Imagens da galeria"
@@ -37,18 +38,24 @@
       </div>
     </div>
   </div>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { nextTick, reactive, watch } from "vue";
 import MultiImageUploadField from "./inputs/MultiImageUploadField.vue";
+import SectionHeadingControls from "./inputs/SectionHeadingControls.vue";
+import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import type { GallerySection } from "../../types/page";
 
 const props = defineProps<{ modelValue: GallerySection }>();
 const emit = defineEmits<{ (e: "update:modelValue", value: GallerySection): void }>();
+const headingDefaults = getSectionHeadingDefaults("gallery");
 
 const local = reactive<GallerySection>({
   layout: "mosaic",
+  headingLabel: props.modelValue.headingLabel ?? headingDefaults.label,
+  headingLabelStyle: props.modelValue.headingLabelStyle ?? headingDefaults.style,
   ...props.modelValue,
   images: Array.isArray(props.modelValue.images) ? [...props.modelValue.images] : []
 });
@@ -57,6 +64,8 @@ const syncFromProps = (value: GallerySection) => {
   syncing = true;
   Object.assign(local, value);
   local.layout = value.layout || "mosaic";
+  local.headingLabel = value.headingLabel ?? headingDefaults.label;
+  local.headingLabelStyle = value.headingLabelStyle || headingDefaults.style;
   local.images = Array.isArray(value.images) ? [...value.images] : [];
   nextTick(() => {
     syncing = false;

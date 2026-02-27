@@ -8,6 +8,7 @@
       </label>
     </div>
 
+    <SectionHeadingControls v-model:label="local.headingLabel" v-model:style="local.headingLabelStyle" />
     <div class="space-y-3">
       <div v-for="(item, index) in local.items" :key="index" class="rounded-lg border border-slate-100 p-3">
         <input v-model="item.name" placeholder="Nome" class="mb-2 w-full rounded-lg border border-slate-200 px-3 py-2" />
@@ -79,14 +80,19 @@
 import { nextTick, reactive, watch } from "vue";
 import ImageUploadField from "./inputs/ImageUploadField.vue";
 import CtaActionPicker from "./inputs/CtaActionPicker.vue";
+import SectionHeadingControls from "./inputs/SectionHeadingControls.vue";
+import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import type { TestimonialsSection } from "../../types/page";
 
 const props = defineProps<{ modelValue: TestimonialsSection }>();
 const emit = defineEmits<{ (e: "update:modelValue", value: TestimonialsSection): void }>();
+const headingDefaults = getSectionHeadingDefaults("testimonials");
 
 const local = reactive<TestimonialsSection>({
   layout: "grid",
   cardColor: props.modelValue.cardColor || "#ffffff",
+  headingLabel: props.modelValue.headingLabel ?? headingDefaults.label,
+  headingLabelStyle: props.modelValue.headingLabelStyle ?? headingDefaults.style,
   ...props.modelValue,
   items: Array.isArray(props.modelValue.items) ? [...props.modelValue.items] : [],
   ctaMode: props.modelValue.ctaMode || "link",
@@ -98,6 +104,8 @@ const syncFromProps = (value: TestimonialsSection) => {
   Object.assign(local, value);
   local.layout = value.layout || "grid";
   local.cardColor = value.cardColor || "#ffffff";
+  local.headingLabel = value.headingLabel ?? headingDefaults.label;
+  local.headingLabelStyle = value.headingLabelStyle || headingDefaults.style;
   local.items = Array.isArray(value.items) ? value.items.map(item => ({ ...item })) : [];
   local.ctaMode = value.ctaMode || "link";
   local.ctaSectionId = value.ctaSectionId || null;

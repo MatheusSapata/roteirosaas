@@ -7,11 +7,14 @@
         Ativar
       </label>
     </div>
+    <SectionHeadingControls v-model:label="local.headingLabel" v-model:style="local.headingLabelStyle" />
     <div class="space-y-3">
       <div v-for="(day, index) in local.days" :key="index" class="grid gap-3 rounded-lg border border-slate-100 p-3 md:grid-cols-3">
         <input v-model="day.day" placeholder="Dia" class="rounded-lg border border-slate-200 px-3 py-2" />
         <input v-model="day.title" placeholder="Título" class="rounded-lg border border-slate-200 px-3 py-2" />
-        <textarea v-model="day.description" placeholder="Descrição" class="rounded-lg border border-slate-200 px-3 py-2 md:col-span-3"></textarea>
+        <div class="md:col-span-3">
+          <RichTextEditor v-model="day.description" placeholder="Descrição detalhada do dia" />
+        </div>
         <button class="text-left text-sm text-red-500" @click="removeDay(index)">Remover</button>
       </div>
       <button class="text-sm font-semibold text-brand" @click="addDay">+ Adicionar dia</button>
@@ -44,13 +47,19 @@
 
 <script setup lang="ts">
 import { nextTick, reactive, watch } from "vue";
+import SectionHeadingControls from "./inputs/SectionHeadingControls.vue";
+import RichTextEditor from "./inputs/RichTextEditor.vue";
+import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import type { ItinerarySection } from "../../types/page";
 
 const props = defineProps<{ modelValue: ItinerarySection }>();
 const emit = defineEmits<{ (e: "update:modelValue", value: ItinerarySection): void }>();
+const headingDefaults = getSectionHeadingDefaults("itinerary");
 
 const local = reactive<ItinerarySection>({
   layout: "timeline",
+  headingLabel: props.modelValue.headingLabel ?? headingDefaults.label,
+  headingLabelStyle: props.modelValue.headingLabelStyle ?? headingDefaults.style,
   ...props.modelValue,
   days: Array.isArray(props.modelValue.days) ? [...props.modelValue.days] : []
 });
@@ -59,6 +68,8 @@ const syncFromProps = (value: ItinerarySection) => {
   syncing = true;
   Object.assign(local, value);
   local.layout = value.layout || "timeline";
+  local.headingLabel = value.headingLabel ?? headingDefaults.label;
+  local.headingLabelStyle = value.headingLabelStyle || headingDefaults.style;
   local.days = Array.isArray(value.days) ? value.days.map(day => ({ ...day })) : [];
   nextTick(() => {
     syncing = false;

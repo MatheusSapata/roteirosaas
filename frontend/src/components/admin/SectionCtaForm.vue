@@ -7,6 +7,7 @@
         Ativar
       </label>
     </div>
+    <SectionHeadingControls v-model:label="local.headingLabel" v-model:style="local.headingLabelStyle" />
     <div class="grid gap-3 md:grid-cols-2">
       <div>
         <label class="text-sm font-semibold text-slate-600">Texto</label>
@@ -77,13 +78,18 @@
 import { nextTick, reactive, watch } from "vue";
 import ImageUploadField from "./inputs/ImageUploadField.vue";
 import CtaActionPicker from "./inputs/CtaActionPicker.vue";
+import SectionHeadingControls from "./inputs/SectionHeadingControls.vue";
+import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import type { CtaSection } from "../../types/page";
 
 const props = defineProps<{ modelValue: CtaSection }>();
 const emit = defineEmits<{ (e: "update:modelValue", value: CtaSection): void }>();
+const headingDefaults = getSectionHeadingDefaults("cta");
 
 const local = reactive<CtaSection>({
   layout: "bar",
+  headingLabel: props.modelValue.headingLabel ?? headingDefaults.label,
+  headingLabelStyle: props.modelValue.headingLabelStyle ?? headingDefaults.style,
   ctaMode: props.modelValue.ctaMode || "link",
   ctaSectionId: props.modelValue.ctaSectionId || null,
   ...props.modelValue
@@ -92,6 +98,8 @@ let syncing = false;
 const syncFromProps = (value: CtaSection) => {
   syncing = true;
   Object.assign(local, value);
+  local.headingLabel = value.headingLabel ?? headingDefaults.label;
+  local.headingLabelStyle = value.headingLabelStyle || headingDefaults.style;
   local.ctaMode = value.ctaMode || "link";
   local.ctaSectionId = value.ctaSectionId || null;
   nextTick(() => {

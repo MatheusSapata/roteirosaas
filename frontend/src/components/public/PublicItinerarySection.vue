@@ -2,45 +2,43 @@
   <section class="w-full" :style="{ background: section.backgroundColor || 'linear-gradient(180deg,#f8fafc,#fff)' }" :id="section.anchorId || undefined">
     <div class="mx-auto max-w-6xl px-6 py-12">
       <div class="space-y-6">
-        <div class="flex items-start justify-between gap-4">
-          <div class="pl-12 md:pl-14">
-            <p class="text-sm uppercase tracking-wide text-slate-500">Itinerário</p>
+        <div class="flex items-start justify-center">
+          <div class="text-center">
+            <div class="mb-2 flex justify-center">
+              <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="accent" />
+            </div>
             <h2 class="text-2xl font-bold text-slate-900">Dia a dia</h2>
             <p class="text-sm text-slate-500">Visão clara do roteiro completo.</p>
           </div>
         </div>
 
         <!-- Timeline layout -->
-        <div v-if="section.layout === 'timeline' || !section.layout" class="relative pl-8 md:pl-10">
-          <div class="absolute left-8 md:left-10 top-4 bottom-4 w-px bg-slate-200"></div>
-          <div class="space-y-3">
-            <div
-              v-for="(day, index) in section.days"
-              :key="index"
-              class="group relative ml-3 flex w-full flex-col gap-3 rounded-2xl border border-slate-100 bg-white/90 p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
-              :style="{ boxShadow: `0 20px 40px -30px ${accentShadow}` }"
-            >
-              <button
-                class="flex w-full items-start gap-4 text-left"
-                @click="toggleDay(index)"
+        <div v-if="section.layout === 'timeline' || !section.layout" class="mt-8 flex flex-col items-center gap-4">
+          <div
+            v-for="(day, index) in section.days"
+            :key="index"
+            class="group w-full max-w-2xl rounded-2xl border border-slate-100 bg-white/90 p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
+            :style="{ boxShadow: `0 20px 40px -30px ${accentShadow}` }"
+          >
+            <button class="flex w-full items-start gap-4 text-left" @click="toggleDay(index)">
+              <div
+                class="flex h-10 w-10 items-center justify-center rounded-full border bg-white text-sm font-semibold transition group-hover:-translate-y-0.5"
+                :style="{ borderColor: accent, color: accent }"
               >
-                <div
-                  class="flex h-8 w-8 items-center justify-center rounded-full border bg-white text-xs font-semibold transition group-hover:-translate-y-0.5"
-                  :style="{ borderColor: accent, color: accent }"
-                >
-                  {{ index + 1 }}
-                </div>
-                <div class="flex-1 space-y-1">
-                  <p class="text-xs font-semibold uppercase tracking-wide" :style="{ color: accent }">{{ day.day }}</p>
-                  <p class="text-lg font-semibold text-slate-900">{{ day.title }}</p>
-                  <p v-if="!expanded[index]" class="text-xs text-slate-400">Clique para ver detalhes</p>
-                </div>
-                <span class="text-sm text-slate-500">{{ expanded[index] ? "−" : "+" }}</span>
-              </button>
-              <div v-if="expanded[index]" class="pl-12 text-sm leading-relaxed text-slate-600">
-                {{ day.description }}
+                {{ index + 1 }}
               </div>
-            </div>
+              <div class="flex-1 space-y-1">
+                <p class="text-xs font-semibold uppercase tracking-wide" :style="{ color: accent }">{{ day.day }}</p>
+                <p class="text-lg font-semibold text-slate-900">{{ day.title }}</p>
+                <p v-if="!expanded[index]" class="text-xs text-slate-400">Clique para ver detalhes</p>
+              </div>
+              <span class="text-sm text-slate-500">{{ expanded[index] ? "−" : "+" }}</span>
+            </button>
+            <div
+              v-if="dayDescriptionHtml(day.description)"
+              class="mt-3 text-sm leading-relaxed text-slate-600"
+              v-html="dayDescriptionHtml(day.description)"
+            ></div>
           </div>
         </div>
 
@@ -84,7 +82,11 @@
           >
             <p class="text-sm font-semibold" :style="{ color: accent }">Dia {{ index + 1 }} • {{ day.day }}</p>
             <p class="text-lg font-semibold text-slate-900">{{ day.title }}</p>
-            <p class="text-sm leading-relaxed text-slate-600">{{ day.description }}</p>
+            <div
+              v-if="dayDescriptionHtml(day.description)"
+              class="text-sm leading-relaxed text-slate-600"
+              v-html="dayDescriptionHtml(day.description)"
+            ></div>
           </div>
         </div>
 
@@ -98,7 +100,11 @@
           >
             <p class="text-sm font-semibold" :style="{ color: accent }">Dia {{ index + 1 }} • {{ day.day }}</p>
             <p class="text-lg font-semibold text-slate-900">{{ day.title }}</p>
-            <p class="text-sm leading-relaxed text-slate-600">{{ day.description }}</p>
+            <div
+              v-if="dayDescriptionHtml(day.description)"
+              class="text-sm leading-relaxed text-slate-600"
+              v-html="dayDescriptionHtml(day.description)"
+            ></div>
           </div>
         </div>
       </div>
@@ -110,8 +116,12 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import type { ItinerarySection } from "../../types/page";
+import SectionHeadingChip from "./SectionHeadingChip.vue";
+import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
+import { sanitizeHtml } from "../../utils/sanitizeHtml";
 
 const props = defineProps<{ section: ItinerarySection }>();
+const headingDefaults = getSectionHeadingDefaults("itinerary");
 const defaultAccent = "#0ea5e9";
 
 const isLight = (hex?: string) => {
@@ -131,6 +141,9 @@ const accent = computed(() => {
   if (!bg || isLight(bg)) return defaultAccent;
   return bg;
 });
+const headingLabel = computed(() => props.section.headingLabel ?? headingDefaults.label);
+const headingStyle = computed(() => props.section.headingLabelStyle || headingDefaults.style);
+const dayDescriptionHtml = (text?: string) => sanitizeHtml(text);
 const expanded = ref<boolean[]>([]);
 const activeStep = ref<number | null>(null);
 
@@ -157,3 +170,4 @@ const toggleStep = (index: number) => {
   activeStep.value = activeStep.value === index ? null : index;
 };
 </script>
+
