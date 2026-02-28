@@ -68,7 +68,11 @@
           <div v-if="activeStep !== null" class="rounded-2xl border border-slate-100 bg-white/95 p-5 shadow-[0_20px_45px_-34px_rgba(15,23,42,0.6)]">
             <p class="text-xs uppercase tracking-wide text-slate-500">Passo {{ (activeStep || 0) + 1 }}</p>
             <h3 class="mt-2 text-lg font-semibold text-slate-900">{{ section.days[activeStep]?.title }}</h3>
-            <p class="mt-2 text-sm leading-relaxed text-slate-600">{{ section.days[activeStep]?.description }}</p>
+            <div
+              v-if="dayDescriptionHtml(section.days[activeStep]?.description)"
+              class="mt-2 text-sm leading-relaxed text-slate-600"
+              v-html="dayDescriptionHtml(section.days[activeStep]?.description)"
+            ></div>
           </div>
         </div>
 
