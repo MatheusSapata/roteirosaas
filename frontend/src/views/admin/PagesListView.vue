@@ -20,73 +20,154 @@
       para poder criar paginas.
     </div>
 
-    <div class="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-md">
-      <table class="min-w-full divide-y divide-slate-100">
-        <thead class="bg-slate-50">
-          <tr>
-            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Titulo</th>
-            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Status</th>
-            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Criada em</th>
-            <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Acoes</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-slate-100 bg-white">
-          <tr v-for="page in pages" :key="page.id" class="hover:bg-slate-50">
-            <td class="px-4 py-3 text-sm font-semibold text-slate-900">
-              <div class="flex items-center gap-2">
-                <span>{{ page.title }}</span>
-                <span
-                  v-if="page.is_default"
-                  class="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100"
-                >
-                  Padrao
-                </span>
-              </div>
-            </td>
-            <td class="px-4 py-3 text-sm text-slate-600">
-              <span :class="page.status === 'published' ? 'text-emerald-500' : 'text-amber-500'">
-                {{ page.status === "published" ? "Publicada" : "Rascunho" }}
+    <div class="overflow-x-auto">
+      <div class="min-w-[880px] overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-md">
+        <div
+          class="hidden grid-cols-[1.2fr,0.9fr,0.9fr,1.6fr,0.6fr,1.9fr] gap-6 border-b border-slate-100 px-6 py-4 text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 md:grid"
+        >
+          <span>Nome</span>
+          <span>Visualizacoes</span>
+          <span>Cliques CTA</span>
+          <span>Link</span>
+          <span>Status</span>
+          <span class="text-right">Acoes</span>
+        </div>
+
+        <div v-if="pages.length" class="divide-y divide-slate-100">
+          <div
+            v-for="page in pages"
+            :key="page.id"
+            class="grid grid-cols-1 items-center gap-6 px-6 py-5 transition hover:bg-slate-50/70 md:grid-cols-[1.2fr,0.9fr,0.9fr,1.6fr,0.6fr,1.9fr]"
+          >
+            <div class="flex flex-wrap items-center gap-3">
+              <p class="text-base font-semibold text-slate-900">{{ page.title }}</p>
+              <span
+                v-if="page.is_default"
+                class="rounded-full bg-emerald-50 px-3 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-600 ring-1 ring-emerald-100"
+              >
+                Padrao
               </span>
-            </td>
-            <td class="px-4 py-3 text-sm text-slate-600">{{ formatDate(page.created_at) }}</td>
-            <td class="px-4 py-3 text-right text-sm">
-              <div class="flex flex-wrap items-center justify-end gap-3">
-                <button class="text-slate-500 hover:text-slate-700" @click="openDuplicateDialog(page)">
-                  Duplicar
-                </button>
-                <router-link :to="`/admin/pages/${page.id}/edit`" class="text-brand hover:text-brand-dark">Editar</router-link>
+            </div>
+
+            <div>
+              <span class="inline-flex min-w-[3rem] justify-center rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-600">
+                {{ getPageVisits(page.id) }}
+              </span>
+            </div>
+
+            <div>
+              <span class="inline-flex min-w-[3rem] justify-center rounded-full bg-indigo-50 px-3 py-1 text-sm font-semibold text-indigo-600">
+                {{ getPageClicks(page.id) }}
+              </span>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-3">
+              <template v-if="page.status === 'published' && pagePublicUrl(page)">
                 <a
-                  v-if="currentAgencySlug && page.slug"
-                  :href="`/${currentAgencySlug}/${page.slug}`"
+                  :href="pagePublicUrl(page)"
                   target="_blank"
-                  class="text-slate-500 hover:text-slate-700"
+                  class="max-w-[220px] truncate text-sm font-medium text-brand hover:text-brand-dark"
                 >
-                  Ver
+                  {{ pagePublicUrl(page) }}
                 </a>
                 <button
-                  v-if="page.status === 'published'"
-                  class="text-slate-500 hover:text-slate-700 disabled:cursor-not-allowed disabled:text-slate-400"
-                  :disabled="page.is_default"
-                  @click="setDefaultPage(page)"
-                >
-                  {{ page.is_default ? "Padrao atual" : "Definir padrao" }}
-                </button>
-                <button
-                  v-if="page.status === 'published' && currentAgencySlug && page.slug"
-                  class="text-slate-500 hover:text-slate-700"
+                  class="text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-600"
                   @click="copyLink(page)"
                 >
-                  Copiar link
+                  Copiar
                 </button>
-                <button class="text-red-500 hover:text-red-700" @click="deletePage(page)">Excluir</button>
-              </div>
-            </td>
-          </tr>
-          <tr v-if="pages.length === 0">
-            <td colspan="4" class="px-4 py-6 text-center text-sm text-slate-500">Nenhuma pagina ainda.</td>
-          </tr>
-        </tbody>
-      </table>
+              </template>
+              <span v-else class="text-xs uppercase tracking-wide text-slate-400">Link disponivel apos publicar</span>
+            </div>
+
+            <div>
+              <span
+                class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide"
+                :class="getStatusClasses(page.status)"
+              >
+                {{ getStatusLabel(page.status) }}
+              </span>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2 md:justify-end">
+              <button
+                class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-slate-300 hover:text-slate-900"
+                title="Duplicar"
+                @click="openDuplicateDialog(page)"
+              >
+                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+                  <rect x="9" y="9" width="11" height="11" rx="2" />
+                  <rect x="4" y="4" width="11" height="11" rx="2" />
+                </svg>
+              </button>
+
+              <router-link
+                :to="`/admin/pages/${page.id}/edit`"
+                class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-slate-300 hover:text-slate-900"
+                title="Editar"
+              >
+                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+                  <path d="M12 20h9" />
+                  <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z" />
+                </svg>
+              </router-link>
+
+              <a
+                v-if="pagePublicUrl(page)"
+                :href="pagePublicUrl(page)"
+                target="_blank"
+                class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-slate-300 hover:text-slate-900"
+                title="Ver pagina"
+              >
+                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+                  <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              </a>
+
+              <button
+                v-if="page.status === 'published'"
+                class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-amber-200 text-amber-500 transition hover:border-amber-300 hover:text-amber-600"
+                title="Despublicar"
+                @click="unpublishPage(page)"
+              >
+                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+                  <path d="m7 10 5 5 5-5" />
+                  <path d="M12 4v10" />
+                </svg>
+              </button>
+
+              <button
+                v-if="page.status === 'published'"
+                class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+                :disabled="page.is_default"
+                title="Definir padrao"
+                @click="setDefaultPage(page)"
+              >
+                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+                  <path d="m12 3 2.09 6.26h6.58L15.29 13l2.12 6.24L12 15.77l-5.41 3.47L8.71 13 3.33 9.26h6.58Z" />
+                </svg>
+              </button>
+
+              <button
+                class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-red-200 text-red-500 transition hover:border-red-300 hover:text-red-600"
+                title="Excluir"
+                @click="deletePage(page)"
+              >
+                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+                  <path d="M3 6h18" />
+                  <path d="M8 6V4h8v2" />
+                  <path d="m9 10 1 8" />
+                  <path d="m15 10-1 8" />
+                  <path d="M5 6l1 14h12l1-14" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div v-else class="px-6 py-10 text-center text-sm text-slate-500">Nenhuma pagina ainda.</div>
+      </div>
     </div>
 
     <p v-if="errorMessage" class="text-sm text-red-500">{{ errorMessage }}</p>
@@ -158,9 +239,17 @@ interface Page {
   is_default?: boolean;
 }
 
+interface PageStatsSummary {
+  page_id: number;
+  visits: number;
+  clicks_cta: number;
+  clicks_whatsapp: number;
+}
+
 const router = useRouter();
 const agencyStore = useAgencyStore();
 const pages = ref<Page[]>([]);
+const pageStats = ref<Record<number, { visits: number; cta: number; whatsapp: number }>>({});
 const hasAgency = ref(false);
 const errorMessage = ref("");
 const message = ref("");
@@ -182,9 +271,28 @@ const loadPages = async () => {
   try {
     const res = await api.get<Page[]>("/pages", { params: { agency_id: agencyStore.currentAgencyId } });
     pages.value = res.data;
+    await loadPageStats();
   } catch (err) {
     console.error(err);
     errorMessage.value = "Nao foi possivel carregar as paginas.";
+  }
+};
+
+const loadPageStats = async () => {
+  if (!agencyStore.currentAgencyId) return;
+  try {
+    const res = await api.get<PageStatsSummary[]>("/stats/pages", { params: { agency_id: agencyStore.currentAgencyId } });
+    const map: Record<number, { visits: number; cta: number; whatsapp: number }> = {};
+    res.data.forEach(item => {
+      map[item.page_id] = {
+        visits: item.visits ?? 0,
+        cta: item.clicks_cta ?? 0,
+        whatsapp: item.clicks_whatsapp ?? 0
+      };
+    });
+    pageStats.value = map;
+  } catch (err) {
+    console.error(err);
   }
 };
 
@@ -286,9 +394,14 @@ const confirmDuplicate = async () => {
   }
 };
 
+const pagePublicUrl = (page: Page) => {
+  if (!currentAgencySlug.value || !page.slug) return "";
+  return `${window.location.origin}/${currentAgencySlug.value}/${page.slug}`;
+};
+
 const copyLink = async (page: Page) => {
-  if (!currentAgencySlug.value || !page.slug) return;
-  const url = `${window.location.origin}/${currentAgencySlug.value}/${page.slug}`;
+  const url = pagePublicUrl(page);
+  if (!url) return;
   try {
     await navigator.clipboard.writeText(url);
     message.value = "Link copiado para a area de transferencia.";
@@ -317,6 +430,27 @@ const setDefaultPage = async (page: Page) => {
   }
 };
 
+const unpublishPage = async (page: Page) => {
+  if (page.status !== "published") return;
+  try {
+    await api.post(`/pages/${page.id}/publish`, { publish: false });
+    pages.value = pages.value.map(p => {
+      if (p.id !== page.id) return p;
+      return { ...p, status: "draft", is_default: false };
+    });
+    message.value = `"${page.title}" movida para rascunho.`;
+    if (page.is_default) {
+      const agency = agencyStore.agencies.find(a => a.id === agencyStore.currentAgencyId);
+      if (agency) {
+        agency.default_page_id = null;
+      }
+    }
+  } catch (err) {
+    console.error(err);
+    errorMessage.value = "Nao foi possivel despublicar a pagina.";
+  }
+};
+
 const deletePage = async (page: Page) => {
   if (!confirm(`Tem certeza que deseja excluir "${page.title}"? Esta acao nao pode ser desfeita.`)) {
     return;
@@ -337,7 +471,22 @@ const deletePage = async (page: Page) => {
   }
 };
 
-const formatDate = (date?: string) => (date ? new Date(date).toLocaleDateString("pt-BR") : "-");
+const getStatusLabel = (status: string) => (status === "published" ? "Ativo" : status === "draft" ? "Rascunho" : status);
+const getStatusClasses = (status: string) => {
+  if (status === "published") {
+    return "bg-emerald-50 text-emerald-600";
+  }
+  if (status === "draft") {
+    return "bg-amber-50 text-amber-600";
+  }
+  return "bg-slate-100 text-slate-600";
+};
+const getPageVisits = (pageId: number) => pageStats.value[pageId]?.visits ?? 0;
+const getPageClicks = (pageId: number) => {
+  const stats = pageStats.value[pageId];
+  if (!stats) return 0;
+  return (stats.cta ?? 0) + (stats.whatsapp ?? 0);
+};
 
 onMounted(loadPages);
 </script>
