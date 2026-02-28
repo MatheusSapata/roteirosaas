@@ -2,6 +2,7 @@ from collections import defaultdict
 from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_active_user, get_db
@@ -9,7 +10,7 @@ from app.models.agency_user import AgencyUser
 from app.models.page import Page
 from app.models.stats import PageVisitStats
 from app.models.user import User
-from app.schemas.stats import PageVisitStatsOut, StatsOverviewOut, StatsSeriesItem, StatsTrend
+from app.schemas.stats import PageStatsSummaryOut, PageVisitStatsOut, StatsOverviewOut, StatsSeriesItem, StatsTrend
 
 router = APIRouter()
 
@@ -153,3 +154,33 @@ def stats_overview(
         trend=trend,
         timeseries=timeseries,
     )
+
+
+@router.get("/pages", response_model=list[PageStatsSummaryOut])
+def stats_per_page(
+    agency_id: int = Query(...),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> list[PageStatsSummaryOut]:
+    ensure_agency_member(db, agency_id, current_user.id)
+    rows = (
+        db.query(
+            PageVisitStats.page_id,
+            func.coalesce(func.sum(PageVisitStats.visits), 0).label("visits"),
+            func.coalesce(func.sum(PageVisitStats.clicks_cta), 0).label("clicks_cta"),
+            func.coalesce(func.sum(PageVisitStats.clicks_whatsapp), 0).label("clicks_whatsapp"),
+        )
+        .join(Page, Page.id == PageVisitStats.page_id)
+        .filter(Page.agency_id == agency_id)
+        .group_by(PageVisitStats.page_id)
+        .all()
+    )
+    return [
+        PageStatsSummaryOut(
+            page_id=row.page_id,
+            visits=row.visits or 0,
+            clicks_cta=row.clicks_cta or 0,
+            clicks_whatsapp=row.clicks_whatsapp or 0,
+        )
+        for row in rows
+    ]

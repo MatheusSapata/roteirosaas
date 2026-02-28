@@ -40,3 +40,10 @@ class StatsOverviewOut(BaseModel):
     cta: int
     trend: StatsTrend | None = None
     timeseries: list[StatsSeriesItem]
+
+
+class PageStatsSummaryOut(BaseModel):
+    page_id: int
+    visits: int
+    clicks_cta: int
+    clicks_whatsapp: int

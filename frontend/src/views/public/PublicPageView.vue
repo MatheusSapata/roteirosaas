@@ -69,6 +69,17 @@ const publicComponents: Record<SectionType, any> = {
 let statsClickHandler: ((event: Event) => void) | null = null;
 let scrollAnchorHandler: ((event: Event) => void) | null = null;
 
+const findClosestElement = (target: EventTarget | null, selector: string): HTMLElement | null => {
+  if (!target) return null;
+  if (target instanceof Element) {
+    return target.closest(selector) as HTMLElement | null;
+  }
+  if (target instanceof Node && target.parentElement) {
+    return target.parentElement.closest(selector) as HTMLElement | null;
+  }
+  return null;
+};
+
 const cleanupStatsTracking = () => {
   if (statsClickHandler) {
     document.removeEventListener("click", statsClickHandler);
@@ -92,8 +103,7 @@ const handleTrackedClick = (type: "cta" | "whatsapp") => {
 const setupStatsClickTracking = (id: number) => {
   cleanupStatsTracking();
   statsClickHandler = (event: Event) => {
-    const target = event.target as HTMLElement | null;
-    const el = target && (target.closest?.("[data-track-event='cta']") as HTMLElement | null);
+    const el = findClosestElement(event.target, "[data-track-event='cta']");
     if (!el) return;
     const type = (el.getAttribute("data-track-type") as "cta" | "whatsapp") || "cta";
     handleTrackedClick(type === "whatsapp" ? "whatsapp" : "cta");
@@ -104,8 +114,7 @@ const setupStatsClickTracking = (id: number) => {
 const setupScrollAnchors = () => {
   cleanupScrollAnchors();
   scrollAnchorHandler = event => {
-    const target = event.target as HTMLElement | null;
-    const el = target?.closest?.("[data-scroll-target='true']") as HTMLElement | null;
+    const el = findClosestElement(event.target, "[data-scroll-target='true']");
     if (!el) return;
     const href = el.getAttribute("href");
     if (!href || !href.startsWith("#")) return;
@@ -253,8 +262,7 @@ function injectGa(measurementId: string, sendPageView = true) {
 
 function setupCtaTracking(pixel: { type: string; value: string }) {
   const handler = (event: Event) => {
-    const target = event.target as HTMLElement | null;
-    const el = target && (target.closest?.("[data-track-event='cta']") as HTMLElement | null);
+    const el = findClosestElement(event.target, "[data-track-event='cta']");
     if (!el) return;
     if (pixel.type === "meta" && (window as any).fbq) {
       (window as any).fbq("trackCustom", "CTA_Click");

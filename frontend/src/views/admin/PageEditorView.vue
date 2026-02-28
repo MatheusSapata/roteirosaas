@@ -12,7 +12,7 @@
           <button
             type="button"
             @click="refreshPreview(true)"
-            class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-white"
+            :class="toolbarSecondaryButtonClass"
           >
             <svg
               class="h-4 w-4"
@@ -34,14 +34,14 @@
 
         <button
           @click="saveTemplate"
-          class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+          :class="toolbarSecondaryButtonClass"
         >
           Salvar como template padrão
         </button>
 
         <button
           @click="goBack"
-          class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+          :class="toolbarSecondaryButtonClass"
         >
           Voltar
         </button>
@@ -50,7 +50,7 @@
           v-if="isPublished"
           :disabled="!publicUrl"
           @click="viewPublicPage"
-          class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-white disabled:opacity-60"
+          :class="[toolbarSecondaryButtonClass, 'disabled:opacity-60']"
         >
           <svg
             class="h-4 w-4"
@@ -70,7 +70,7 @@
 
         <button
           @click="saveConfig"
-          class="rounded-lg border border-brand px-4 py-2 text-sm font-semibold text-brand hover:bg-sky-50"
+          :class="toolbarPrimaryButtonClass"
         >
           Salvar
         </button>
@@ -78,64 +78,27 @@
         <button
           v-if="!isPublished"
           @click="publishPage"
-          class="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark"
+          :class="toolbarPrimaryButtonClass"
         >
           Publicar
         </button>
 
-        <span
-          v-else
-          class="rounded-full bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 ring-1 ring-emerald-100"
-        >
-          Publicada
-        </span>
-      </div>
-    </div>
-
-    <!-- Selecionar pixel e eventos -->
-    <div class="rounded-2xl bg-white p-4 shadow-md">
-      <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-        <div class="space-y-1">
-          <p class="text-sm font-semibold text-slate-700">Pixel de rastreamento</p>
-          <p class="text-xs text-slate-500">
-            Escolha um pixel cadastrado em Integrações e quais eventos deseja enviar. Disponí­vel a partir do plano Essencial.
-          </p>
-        </div>
-
-        <div class="w-full max-w-xl space-y-3">
-          <div
-            v-if="!canSelectPixel"
-            class="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500"
+        <div v-else class="flex flex-wrap items-center gap-2">
+          <span :class="toolbarStatusPillClass">
+            Publicada
+          </span>
+          <button
+            type="button"
+            @click="unpublishPage"
+            :class="toolbarWarningButtonClass"
           >
-            Adicione pixels na página Integrações (plano Essencial ou superior).
-          </div>
-
-          <template v-else>
-            <select v-model="selectedPixel" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800">
-              <option value="">Selecione</option>
-              <option v-for="p in pixels" :key="p.name" :value="p.name">
-                {{ p.name }} Â· {{ p.type === "meta" ? "Meta" : "GA4" }}
-              </option>
-            </select>
-
-            <div class="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700">
-              <p class="font-semibold text-slate-800">Eventos a enviar</p>
-
-              <label class="mt-2 flex items-center gap-2">
-                <input type="checkbox" v-model="trackingEvents.pageView" class="h-4 w-4" />
-                Page view (carregamento da página)
-              </label>
-
-              <label class="mt-1 flex items-center gap-2">
-                <input type="checkbox" v-model="trackingEvents.ctaClicks" class="h-4 w-4" />
-                Cliques em CTAs 
-              </label>
-            </div>
-          </template>
+            Despublicar
+          </button>
         </div>
       </div>
     </div>
 
+    
     <!-- Dialog de limite de plano (reutilizado também para "template no free") -->
     <div v-if="limitModal.open" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4">
       <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
@@ -195,6 +158,60 @@
         </div>
       </div>
     </div>
+    <div
+      v-if="sectionPicker.open"
+      class="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/60 px-4 py-8"
+      @click.self="closeSectionPicker"
+    >
+      <div class="w-full max-w-5xl rounded-3xl bg-white shadow-2xl">
+        <div class="flex flex-col gap-2 border-b border-slate-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Adicionar nova seção</p>
+            <h3 class="text-lg font-semibold text-slate-900">Escolha um layout</h3>
+            <p class="text-sm text-slate-500">A nova seção será inserida logo abaixo do bloco selecionado.</p>
+          </div>
+          <button
+            type="button"
+            class="rounded-full border border-slate-200 px-4 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+            @click="closeSectionPicker"
+          >
+            Fechar
+          </button>
+        </div>
+        <div class="max-h-[70vh] overflow-y-auto px-6 py-6">
+          <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <button
+              v-for="catalog in sectionCatalog"
+              :key="catalog.type"
+              type="button"
+              class="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white text-left shadow-sm transition hover:border-brand/40 focus:outline-none focus:ring-2 focus:ring-brand/40"
+              @click="handleSectionPickerSelect(catalog.type)"
+            >
+              <div class="relative h-44 w-full overflow-hidden rounded-t-2xl border-b border-slate-100 bg-slate-50">
+                <div class="absolute inset-0 bg-gradient-to-br" :class="catalog.accent"></div>
+                <div class="relative flex h-full w-full items-center justify-center overflow-hidden p-3">
+                  <div class="pointer-events-none origin-center scale-[0.55] transform rounded-[30px] border border-white/50 bg-white shadow">
+                    <component
+                      :is="publicComponents[catalog.type]"
+                      :section="catalog.previewSection"
+                      :previewDevice="'desktop'"
+                      v-bind="catalog.type === 'hero' ? { branding } : {}"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div class="p-4">
+                <p class="text-sm font-semibold text-slate-800">{{ catalog.label }}</p>
+                <p class="mt-1 text-xs text-slate-500">{{ catalog.description }}</p>
+              </div>
+              <div class="pointer-events-none absolute inset-0 flex items-center justify-center bg-slate-900/70 opacity-0 transition group-hover:opacity-100">
+                <span class="rounded-full bg-white/20 px-4 py-1 text-xs font-semibold text-white backdrop-blur">Clique para inserir</span>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <div class="space-y-4">
       <div class="rounded-2xl bg-white p-4 shadow-md" ref="sectionToolbarRef">
@@ -219,18 +236,47 @@
           </label>
           <span class="text-xs text-slate-500">Aplica alternância em todas as seções (exceto hero).</span>
         </div>
-      </div>
-      <div class="rounded-2xl bg-white p-4 shadow-md">
-        <div class="flex flex-wrap items-center gap-2">
-          <span class="text-sm font-semibold text-slate-700">Adicionar seção:</span>
-          <button
-            v-for="type in sectionTypes"
-            :key="type"
-            class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100"
-            @click="addSection(type)"
-          >
-            {{ sectionLabels[type] || type }}
-          </button>
+        <div class="mt-6 rounded-2xl border border-slate-100 px-4 py-4">
+          <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div class="space-y-1">
+              <p class="text-sm font-semibold text-slate-700">Pixel de rastreamento</p>
+              <p class="text-xs text-slate-500">
+                Escolha um pixel cadastrado em Integrações e quais eventos deseja enviar. Disponível a partir do plano Essencial.
+              </p>
+            </div>
+
+            <div class="w-full max-w-xl space-y-3">
+              <div
+                v-if="!canSelectPixel"
+                class="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500"
+              >
+                Adicione pixels na página Integrações (plano Essencial ou superior).
+              </div>
+
+              <template v-else>
+                <select v-model="selectedPixel" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800">
+                  <option value="">Selecione</option>
+                  <option v-for="p in pixels" :key="p.name" :value="p.name">
+                    {{ p.name }} · {{ p.type === "meta" ? "Meta" : "GA4" }}
+                  </option>
+                </select>
+
+                <div class="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700">
+                  <p class="font-semibold text-slate-800">Eventos a enviar</p>
+
+                  <label class="mt-2 flex items-center gap-2">
+                    <input type="checkbox" v-model="trackingEvents.pageView" class="h-4 w-4" />
+                    Page view (carregamento da página)
+                  </label>
+
+                  <label class="mt-1 flex items-center gap-2">
+                    <input type="checkbox" v-model="trackingEvents.ctaClicks" class="h-4 w-4" />
+                    Cliques em CTAs
+                  </label>
+                </div>
+              </template>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -276,46 +322,6 @@
               <template v-else>
                 <template v-for="(section, idx) in sections" :key="(section as any)?.anchorId || idx">
                   <div v-if="section" class="space-y-3">
-                    <div class="flex flex-col gap-2 rounded-2xl border border-slate-200/80 bg-white/90 px-4 py-3 text-xs text-slate-600 shadow-sm backdrop-blur">
-                      <div class="font-semibold">
-                        Seção: {{ sectionLabels[(section as any).type] || (section as any).type }}
-                        <span v-if="(section as any).enabled === false" class="ml-1 text-red-500">(desativada)</span>
-                      </div>
-                      <div class="flex flex-wrap gap-2 font-semibold text-slate-600">
-                        <button
-                          class="rounded-full border border-slate-200 bg-white/90 px-3 py-1 hover:bg-white"
-                          @click.stop="openSectionEditor(idx)"
-                        >
-                          Editar
-                        </button>
-                        <button
-                          class="rounded-full border border-slate-200 bg-white/90 px-3 py-1 hover:bg-white"
-                          @click.stop="duplicateSection(idx)"
-                        >
-                          Duplicar
-                        </button>
-                        <button
-                          class="rounded-full border border-slate-200 bg-white/90 px-3 py-1 hover:bg-white disabled:opacity-40"
-                          :disabled="idx === 0"
-                          @click.stop="moveSection(idx, -1)"
-                        >
-                          Subir
-                        </button>
-                        <button
-                          class="rounded-full border border-slate-200 bg-white/90 px-3 py-1 hover:bg-white disabled:opacity-40"
-                          :disabled="idx === sections.length - 1"
-                          @click.stop="moveSection(idx, 1)"
-                        >
-                          Descer
-                        </button>
-                        <button
-                          class="rounded-full border border-red-200 bg-red-50/80 px-3 py-1 text-red-600 hover:bg-red-50"
-                          @click.stop="removeSection(idx)"
-                        >
-                          Excluir
-                        </button>
-                      </div>
-                    </div>
                     <div class="group relative overflow-hidden rounded-[32px] border border-transparent shadow transition hover:border-brand/30">
                       <component
                         v-if="(section as any).enabled"
@@ -326,30 +332,80 @@
                       />
                       <div
                         v-if="(section as any).enabled"
-                        class="absolute inset-0 z-10"
+                        class="pointer-events-none absolute inset-0 z-10 flex flex-col justify-between bg-slate-900/35 opacity-0 backdrop-blur-sm transition duration-200 group-hover:opacity-100 group-focus-within:opacity-100"
                       >
-                        <button
-                          type="button"
-                          class="flex h-full w-full flex-col items-center justify-center gap-2 bg-slate-900/40 text-white opacity-0 backdrop-blur-sm transition focus-visible:opacity-100 group-hover:opacity-100"
-                          @click.stop="openSectionEditor(idx)"
-                        >
-                          <span class="inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/40 bg-white/20 text-white shadow-lg">
-                            <svg
-                              class="h-5 w-5"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              stroke-width="1.8"
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              aria-hidden="true"
-                            >
-                              <path d="M12 20h9" />
-                              <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z" />
-                            </svg>
+                        <div class="flex items-start justify-between gap-3 p-4">
+                          <span class="pointer-events-auto inline-flex items-center rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-slate-700">
+                            {{ sectionLabels[(section as any).type] || (section as any).type }}
+                            <span v-if="(section as any).enabled === false" class="ml-1 text-red-500">(desativada)</span>
                           </span>
-                          <span class="text-sm font-semibold">Editar seção</span>
-                        </button>
+                          <div class="pointer-events-auto flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/50 bg-white/20 text-white transition hover:bg-white/30"
+                              title="Duplicar seção"
+                              @click.stop="duplicateSection(idx)"
+                            >
+                              <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+                                <rect x="9" y="9" width="11" height="11" rx="2" />
+                                <rect x="4" y="4" width="11" height="11" rx="2" />
+                              </svg>
+                            </button>
+                            <button
+                              type="button"
+                              class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/50 bg-white/20 text-white transition hover:bg-white/30 disabled:opacity-40 disabled:cursor-not-allowed"
+                              title="Mover para cima"
+                              :disabled="idx === 0"
+                              @click.stop="moveSection(idx, -1)"
+                            >
+                              <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                                <path d="m5 12 7-7 7 7" />
+                                <path d="M12 5v14" />
+                              </svg>
+                            </button>
+                            <button
+                              type="button"
+                              class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/50 bg-white/20 text-white transition hover:bg-white/30 disabled:opacity-40 disabled:cursor-not-allowed"
+                              title="Mover para baixo"
+                              :disabled="idx === sections.length - 1"
+                              @click.stop="moveSection(idx, 1)"
+                            >
+                              <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                                <path d="m19 12-7 7-7-7" />
+                                <path d="M12 19V5" />
+                              </svg>
+                            </button>
+                            <button
+                              type="button"
+                              class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-red-200 bg-white/10 text-red-200 transition hover:bg-white/20"
+                              title="Excluir seção"
+                              @click.stop="removeSection(idx)"
+                            >
+                              <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                                <path d="M3 6h18" />
+                                <path d="M8 6V4h8v2" />
+                                <path d="m9 10 1 8" />
+                                <path d="m15 10-1 8" />
+                                <path d="M5 6l1 14h12l1-14" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                        <div class="pointer-events-auto pb-6 text-center">
+                          <button
+                            type="button"
+                            class="mx-auto flex items-center gap-2 rounded-full border border-white/50 bg-white/20 px-5 py-2 text-sm font-semibold text-white shadow-lg hover:bg-white/30"
+                            @click.stop="openSectionEditor(idx)"
+                          >
+                            <span class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/40 bg-white/10">
+                              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 20h9" />
+                                <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z" />
+                              </svg>
+                            </span>
+                            Editar seção
+                          </button>
+                        </div>
                       </div>
                       <div
                         v-else
@@ -357,6 +413,19 @@
                       >
                         Seção desativada. Clique em editar para ajustar e ativar novamente.
                       </div>
+                    </div>
+                    <div class="mt-2 flex justify-center">
+                      <button
+                        type="button"
+                        class="inline-flex items-center gap-2 rounded-full border border-dashed border-slate-300 px-4 py-2 text-xs font-semibold text-slate-600 transition hover:border-brand/60 hover:text-brand"
+                        @click="openSectionPicker(idx)"
+                      >
+                        <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M12 5v14" />
+                          <path d="M5 12h14" />
+                        </svg>
+                        Adicionar seção abaixo
+                      </button>
                     </div>
                   </div>
                 </template>
@@ -378,14 +447,26 @@
             class="pointer-events-auto flex flex-wrap items-center gap-2 rounded-full border border-slate-200 bg-white/95 px-4 py-2 shadow-lg backdrop-blur"
           >
             <span class="text-sm font-semibold text-slate-700">Adicionar seção:</span>
-            <button
+            <div
               v-for="type in sectionTypes"
               :key="'floating-' + type"
-              class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100"
-              @click="addSection(type)"
+              class="group relative"
             >
-              {{ sectionLabels[type] || type }}
-            </button>
+              <button
+                class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
+                @click="addSection(type)"
+              >
+                {{ sectionLabels[type] || type }}
+              </button>
+              <div
+                class="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 w-48 -translate-x-1/2 rounded-2xl bg-slate-900/95 px-3 py-2 text-center text-[11px] font-medium text-white opacity-0 shadow-lg transition duration-200 group-hover:-translate-y-1 group-hover:opacity-100"
+              >
+                <p class="text-[11px] font-semibold text-white/90">{{ sectionLabels[type] || type }}</p>
+                <p class="mt-1 text-[10px] text-white/70">
+                  {{ sectionDescriptions[type] || "Bloco personalizável para compor sua página." }}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -478,6 +559,14 @@ interface Page {
   cover_image_url?: string;
 }
 
+interface SectionCatalogItem {
+  type: SectionType;
+  label: string;
+  description: string;
+  accent: string;
+  previewSection: PageSection;
+}
+
 const route = useRoute();
 const router = useRouter();
 const pageId = Number(route.params.id);
@@ -527,6 +616,14 @@ const editorPrefs = ref<EditorPreferences>({
 const colorA = ref(theme.value.color1);
 const colorB = ref(theme.value.color2);
 const previewDevice = ref<"desktop" | "mobile">(editorPrefs.value.previewDevice || "desktop");
+const toolbarSecondaryButtonClass =
+  "inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-white";
+const toolbarPrimaryButtonClass =
+  "inline-flex items-center gap-2 rounded-full border border-brand bg-brand px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-dark";
+const toolbarWarningButtonClass =
+  "inline-flex items-center gap-2 rounded-full border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 transition hover:bg-amber-100";
+const toolbarStatusPillClass =
+  "inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700";
 
 const buildCountdownTargetDate = () => {
   const date = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
@@ -555,7 +652,28 @@ const PublicFreeFooterBrandSection = defineAsyncComponent(() => import("../../co
 
 const sectionTypes: SectionType[] = ["hero", "prices", "itinerary", "faq", "testimonials", "cta", "story", "reasons", "countdown"];
 const sectionLabels = defaultSectionLabels;
-
+const sectionDescriptions: Partial<Record<SectionType, string>> = {
+  hero: "Bloco inicial com destaque visual, título, subtítulo e CTA principal.",
+  prices: "Tabela com planos, valores e diferenciais para cada oferta.",
+  itinerary: "Sequência de etapas/benefícios para explicar seu serviço ou roteiro.",
+  faq: "Perguntas e respostas para antecipar dúvidas frequentes.",
+  testimonials: "Carrossel ou lista com depoimentos de clientes.",
+  cta: "Chamada final impulsionando o lead para a ação desejada.",
+  story: "Bloco de storytelling para apresentar autoridade e conexão.",
+  reasons: "Lista de motivos/benefícios para reforçar a decisão.",
+  countdown: "Cria urgência com contador regressivo para promoções ou eventos."
+};
+const sectionAccents: Partial<Record<SectionType, string>> = {
+  hero: "from-sky-100 to-slate-50",
+  prices: "from-amber-100 to-white",
+  itinerary: "from-emerald-100/70 to-white",
+  faq: "from-slate-100 to-white",
+  testimonials: "from-purple-100/70 to-white",
+  cta: "from-cyan-100/70 to-white",
+  story: "from-rose-100/70 to-white",
+  reasons: "from-indigo-100/70 to-white",
+  countdown: "from-orange-100/70 to-white"
+};
 const formComponents: Partial<Record<SectionType, any>> = {
   hero: SectionHeroForm,
   prices: SectionPricesForm,
@@ -592,6 +710,8 @@ const floatingToolbarStyle = ref<Record<string, string>>({ left: "0px", width: "
 let toolbarObserver: IntersectionObserver | null = null;
 const editingSectionIndex = ref<number | null>(null);
 const editingSectionDraft = ref<PageSection | null>(null);
+const sectionCatalog = ref<SectionCatalogItem[]>([]);
+const sectionPicker = ref<{ open: boolean; index: number | null }>({ open: false, index: null });
 const editingSectionType = computed<SectionType | null>(() => {
   if (editingSectionIndex.value === null) return null;
   const section = sections.value[editingSectionIndex.value];
@@ -712,6 +832,21 @@ const ensureSectionAnchor = <T extends PageSection>(section: T): T => {
 };
 const cloneWithNewAnchor = <T extends PageSection>(section: T): T => ({ ...section, anchorId: createAnchorId() } as T);
 
+const buildCatalogPreview = (type: SectionType): PageSection => {
+  const base = clone(defaultSection(type));
+  if (type === "hero") {
+    (base as any).title = "Título impactante";
+    (base as any).subtitle = "Explique rapidamente o benefício oferecido.";
+  }
+  if (Array.isArray((base as any).items)) {
+    (base as any).items = (base as any).items.slice(0, 2);
+  }
+  if (Array.isArray((base as any).days)) {
+    (base as any).days = (base as any).days.slice(0, 2);
+  }
+  return ensureSectionAnchor(base);
+};
+
 const templateKey = computed(() => (auth.user ? `page_template_${auth.user.id}` : null));
 const whatsappDigits = computed(() => (auth.user?.whatsapp || "").replace(/\D/g, ""));
 const buildWhatsappLink = (title: string) => {
@@ -770,6 +905,14 @@ const applyPrimaryToThemeAndSections = (oldDefault?: string) => {
     applySectionBackgrounds(
       current.map(section => {
         if (!section) return section;
+        if ((section as any).type === "countdown") {
+          const countdownBg = (section as any).backgroundColor as string | undefined;
+          const shouldReplaceCountdown =
+            !countdownBg ||
+            countdownBg.toLowerCase?.() === fallbackPrimaryColor.toLowerCase() ||
+            (!!previous && countdownBg.toLowerCase?.() === previous.toLowerCase());
+          if (shouldReplaceCountdown) (section as any).backgroundColor = primary;
+        }
         const currentColor = (section as any).ctaColor as string | undefined;
         const shouldReplace =
           !currentColor ||
@@ -1110,7 +1253,7 @@ function defaultSection(type: SectionType): PageSection {
       headingLabelStyle: headingDefaults.style,
       label: "Garanta sua vaga agora mesmo!",
       targetDate: buildCountdownTargetDate(),
-      backgroundColor: "#ef4444",
+      backgroundColor: resolvePrimaryColor(),
       textColor: "#ffffff",
       layout: "cards"
     } as CountdownSection);
@@ -1288,11 +1431,32 @@ const goPlans = () => {
   router.push({ name: "plans" });
 };
 
-const addSection = (type: SectionType) => {
+const openSectionPicker = (index: number | null = null) => {
+  sectionPicker.value = { open: true, index };
+};
+
+const closeSectionPicker = () => {
+  sectionPicker.value = { open: false, index: null };
+};
+
+const handleSectionPickerSelect = (type: SectionType) => {
+  const afterIndex = sectionPicker.value.index;
+  const insertAt = typeof afterIndex === "number" ? afterIndex + 1 : sections.value.length;
+  addSection(type, insertAt);
+  closeSectionPicker();
+};
+
+const addSection = (type: SectionType, insertIndex?: number) => {
   const next = clone(defaultSection(type));
   const current = sections.value.slice();
-  current.push(next);
+  if (typeof insertIndex === "number") {
+    const safeIndex = Math.min(Math.max(insertIndex, 0), current.length);
+    current.splice(safeIndex, 0, next);
+  } else {
+    current.push(next);
+  }
   sections.value = current;
+  refreshPreview(true);
 };
 
 const scheduleWhatsAppUpdate = () => {
@@ -1307,6 +1471,7 @@ const duplicateSection = (index: number) => {
   const next = sections.value.slice();
   next.splice(index + 1, 0, copy);
   sections.value = next;
+  refreshPreview(true);
 };
 
 const removeSection = (index: number) => {
@@ -1318,6 +1483,7 @@ const removeSection = (index: number) => {
   const next = sections.value.slice();
   next.splice(index, 1);
   sections.value = next;
+  refreshPreview(true);
 };
 
 const moveSection = (index: number, direction: number) => {
@@ -1331,6 +1497,7 @@ const moveSection = (index: number, direction: number) => {
     next[target] = temp;
     return next;
   });
+  refreshPreview(true);
 };
 
 const openSectionEditor = (index: number) => {
@@ -1540,6 +1707,13 @@ onMounted(async () => {
   if (!applied) setDefaultSectionsByPlan();
 
   await fetchPage();
+  sectionCatalog.value = sectionTypes.map(type => ({
+    type,
+    label: sectionLabels[type] || type,
+    description: sectionDescriptions[type] || "Bloco personalizável para compor sua página.",
+    accent: sectionAccents[type] || "from-slate-100 to-white",
+    previewSection: buildCatalogPreview(type)
+  }));
   previewReady.value = true;
   schedulePreviewHydration(true);
   nextTick(() => setupSectionToolbarObserver());
