@@ -158,6 +158,60 @@
         </div>
       </div>
     </div>
+    <div
+      v-if="sectionPicker.open"
+      class="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/60 px-4 py-8"
+      @click.self="closeSectionPicker"
+    >
+      <div class="w-full max-w-5xl rounded-3xl bg-white shadow-2xl">
+        <div class="flex flex-col gap-2 border-b border-slate-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Adicionar nova seção</p>
+            <h3 class="text-lg font-semibold text-slate-900">Escolha um layout</h3>
+            <p class="text-sm text-slate-500">A nova seção será inserida logo abaixo do bloco selecionado.</p>
+          </div>
+          <button
+            type="button"
+            class="rounded-full border border-slate-200 px-4 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+            @click="closeSectionPicker"
+          >
+            Fechar
+          </button>
+        </div>
+        <div class="max-h-[70vh] overflow-y-auto px-6 py-6">
+          <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <button
+              v-for="catalog in sectionCatalog"
+              :key="catalog.type"
+              type="button"
+              class="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white text-left shadow-sm transition hover:border-brand/40 focus:outline-none focus:ring-2 focus:ring-brand/40"
+              @click="handleSectionPickerSelect(catalog.type)"
+            >
+              <div class="relative h-44 w-full overflow-hidden rounded-t-2xl border-b border-slate-100 bg-slate-50">
+                <div class="absolute inset-0 bg-gradient-to-br" :class="catalog.accent"></div>
+                <div class="relative flex h-full w-full items-center justify-center overflow-hidden p-3">
+                  <div class="pointer-events-none origin-center scale-[0.55] transform rounded-[30px] border border-white/50 bg-white shadow">
+                    <component
+                      :is="publicComponents[catalog.type]"
+                      :section="catalog.previewSection"
+                      :previewDevice="'desktop'"
+                      v-bind="catalog.type === 'hero' ? { branding } : {}"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div class="p-4">
+                <p class="text-sm font-semibold text-slate-800">{{ catalog.label }}</p>
+                <p class="mt-1 text-xs text-slate-500">{{ catalog.description }}</p>
+              </div>
+              <div class="pointer-events-none absolute inset-0 flex items-center justify-center bg-slate-900/70 opacity-0 transition group-hover:opacity-100">
+                <span class="rounded-full bg-white/20 px-4 py-1 text-xs font-semibold text-white backdrop-blur">Clique para inserir</span>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <div class="space-y-4">
       <div class="rounded-2xl bg-white p-4 shadow-md" ref="sectionToolbarRef">
@@ -225,33 +279,6 @@
           </div>
         </div>
       </div>
-      <div class="rounded-2xl bg-white p-4 shadow-md">
-        <div class="flex flex-wrap items-center gap-3">
-          <span class="text-sm font-semibold text-slate-700">Adicionar seção:</span>
-          <div class="flex flex-wrap items-center gap-2">
-            <div
-              v-for="type in sectionTypes"
-              :key="type"
-              class="group relative"
-            >
-              <button
-                class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
-                @click="addSection(type)"
-              >
-                {{ sectionLabels[type] || type }}
-              </button>
-              <div
-                class="pointer-events-none absolute left-1/2 top-full z-10 mt-2 w-52 -translate-x-1/2 rounded-2xl bg-slate-900/95 px-3 py-2 text-center text-[11px] font-medium text-white opacity-0 shadow-lg transition duration-200 group-hover:translate-y-0 group-hover:opacity-100"
-              >
-                <p class="text-[11px] font-semibold text-white/90">{{ sectionLabels[type] || type }}</p>
-                <p class="mt-1 text-[10px] text-white/70">
-                  {{ sectionDescriptions[type] || "Bloco personalizável para compor sua página." }}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
 
       <div class="rounded-3xl bg-white p-4 shadow-md" ref="previewPanelRef">
@@ -294,7 +321,7 @@
               </template>
               <template v-else>
                 <template v-for="(section, idx) in sections" :key="(section as any)?.anchorId || idx">
-                  <div v-if="section">
+                  <div v-if="section" class="space-y-3">
                     <div class="group relative overflow-hidden rounded-[32px] border border-transparent shadow transition hover:border-brand/30">
                       <component
                         v-if="(section as any).enabled"
@@ -387,6 +414,19 @@
                         Seção desativada. Clique em editar para ajustar e ativar novamente.
                       </div>
                     </div>
+                    <div class="mt-2 flex justify-center">
+                      <button
+                        type="button"
+                        class="inline-flex items-center gap-2 rounded-full border border-dashed border-slate-300 px-4 py-2 text-xs font-semibold text-slate-600 transition hover:border-brand/60 hover:text-brand"
+                        @click="openSectionPicker(idx)"
+                      >
+                        <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M12 5v14" />
+                          <path d="M5 12h14" />
+                        </svg>
+                        Adicionar seção abaixo
+                      </button>
+                    </div>
                   </div>
                 </template>
               </template>
@@ -407,14 +447,26 @@
             class="pointer-events-auto flex flex-wrap items-center gap-2 rounded-full border border-slate-200 bg-white/95 px-4 py-2 shadow-lg backdrop-blur"
           >
             <span class="text-sm font-semibold text-slate-700">Adicionar seção:</span>
-            <button
+            <div
               v-for="type in sectionTypes"
               :key="'floating-' + type"
-              class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100"
-              @click="addSection(type)"
+              class="group relative"
             >
-              {{ sectionLabels[type] || type }}
-            </button>
+              <button
+                class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
+                @click="addSection(type)"
+              >
+                {{ sectionLabels[type] || type }}
+              </button>
+              <div
+                class="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 w-48 -translate-x-1/2 rounded-2xl bg-slate-900/95 px-3 py-2 text-center text-[11px] font-medium text-white opacity-0 shadow-lg transition duration-200 group-hover:-translate-y-1 group-hover:opacity-100"
+              >
+                <p class="text-[11px] font-semibold text-white/90">{{ sectionLabels[type] || type }}</p>
+                <p class="mt-1 text-[10px] text-white/70">
+                  {{ sectionDescriptions[type] || "Bloco personalizável para compor sua página." }}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -505,6 +557,14 @@ interface Page {
   status: string;
   config_json?: PageConfig | string | null;
   cover_image_url?: string;
+}
+
+interface SectionCatalogItem {
+  type: SectionType;
+  label: string;
+  description: string;
+  accent: string;
+  previewSection: PageSection;
 }
 
 const route = useRoute();
@@ -603,7 +663,17 @@ const sectionDescriptions: Partial<Record<SectionType, string>> = {
   reasons: "Lista de motivos/benefícios para reforçar a decisão.",
   countdown: "Cria urgência com contador regressivo para promoções ou eventos."
 };
-
+const sectionAccents: Partial<Record<SectionType, string>> = {
+  hero: "from-sky-100 to-slate-50",
+  prices: "from-amber-100 to-white",
+  itinerary: "from-emerald-100/70 to-white",
+  faq: "from-slate-100 to-white",
+  testimonials: "from-purple-100/70 to-white",
+  cta: "from-cyan-100/70 to-white",
+  story: "from-rose-100/70 to-white",
+  reasons: "from-indigo-100/70 to-white",
+  countdown: "from-orange-100/70 to-white"
+};
 const formComponents: Partial<Record<SectionType, any>> = {
   hero: SectionHeroForm,
   prices: SectionPricesForm,
@@ -640,6 +710,8 @@ const floatingToolbarStyle = ref<Record<string, string>>({ left: "0px", width: "
 let toolbarObserver: IntersectionObserver | null = null;
 const editingSectionIndex = ref<number | null>(null);
 const editingSectionDraft = ref<PageSection | null>(null);
+const sectionCatalog = ref<SectionCatalogItem[]>([]);
+const sectionPicker = ref<{ open: boolean; index: number | null }>({ open: false, index: null });
 const editingSectionType = computed<SectionType | null>(() => {
   if (editingSectionIndex.value === null) return null;
   const section = sections.value[editingSectionIndex.value];
@@ -760,6 +832,21 @@ const ensureSectionAnchor = <T extends PageSection>(section: T): T => {
 };
 const cloneWithNewAnchor = <T extends PageSection>(section: T): T => ({ ...section, anchorId: createAnchorId() } as T);
 
+const buildCatalogPreview = (type: SectionType): PageSection => {
+  const base = clone(defaultSection(type));
+  if (type === "hero") {
+    (base as any).title = "Título impactante";
+    (base as any).subtitle = "Explique rapidamente o benefício oferecido.";
+  }
+  if (Array.isArray((base as any).items)) {
+    (base as any).items = (base as any).items.slice(0, 2);
+  }
+  if (Array.isArray((base as any).days)) {
+    (base as any).days = (base as any).days.slice(0, 2);
+  }
+  return ensureSectionAnchor(base);
+};
+
 const templateKey = computed(() => (auth.user ? `page_template_${auth.user.id}` : null));
 const whatsappDigits = computed(() => (auth.user?.whatsapp || "").replace(/\D/g, ""));
 const buildWhatsappLink = (title: string) => {
@@ -818,6 +905,14 @@ const applyPrimaryToThemeAndSections = (oldDefault?: string) => {
     applySectionBackgrounds(
       current.map(section => {
         if (!section) return section;
+        if ((section as any).type === "countdown") {
+          const countdownBg = (section as any).backgroundColor as string | undefined;
+          const shouldReplaceCountdown =
+            !countdownBg ||
+            countdownBg.toLowerCase?.() === fallbackPrimaryColor.toLowerCase() ||
+            (!!previous && countdownBg.toLowerCase?.() === previous.toLowerCase());
+          if (shouldReplaceCountdown) (section as any).backgroundColor = primary;
+        }
         const currentColor = (section as any).ctaColor as string | undefined;
         const shouldReplace =
           !currentColor ||
@@ -1158,7 +1253,7 @@ function defaultSection(type: SectionType): PageSection {
       headingLabelStyle: headingDefaults.style,
       label: "Garanta sua vaga agora mesmo!",
       targetDate: buildCountdownTargetDate(),
-      backgroundColor: "#ef4444",
+      backgroundColor: resolvePrimaryColor(),
       textColor: "#ffffff",
       layout: "cards"
     } as CountdownSection);
@@ -1336,11 +1431,32 @@ const goPlans = () => {
   router.push({ name: "plans" });
 };
 
-const addSection = (type: SectionType) => {
+const openSectionPicker = (index: number | null = null) => {
+  sectionPicker.value = { open: true, index };
+};
+
+const closeSectionPicker = () => {
+  sectionPicker.value = { open: false, index: null };
+};
+
+const handleSectionPickerSelect = (type: SectionType) => {
+  const afterIndex = sectionPicker.value.index;
+  const insertAt = typeof afterIndex === "number" ? afterIndex + 1 : sections.value.length;
+  addSection(type, insertAt);
+  closeSectionPicker();
+};
+
+const addSection = (type: SectionType, insertIndex?: number) => {
   const next = clone(defaultSection(type));
   const current = sections.value.slice();
-  current.push(next);
+  if (typeof insertIndex === "number") {
+    const safeIndex = Math.min(Math.max(insertIndex, 0), current.length);
+    current.splice(safeIndex, 0, next);
+  } else {
+    current.push(next);
+  }
   sections.value = current;
+  refreshPreview(true);
 };
 
 const scheduleWhatsAppUpdate = () => {
@@ -1355,6 +1471,7 @@ const duplicateSection = (index: number) => {
   const next = sections.value.slice();
   next.splice(index + 1, 0, copy);
   sections.value = next;
+  refreshPreview(true);
 };
 
 const removeSection = (index: number) => {
@@ -1366,6 +1483,7 @@ const removeSection = (index: number) => {
   const next = sections.value.slice();
   next.splice(index, 1);
   sections.value = next;
+  refreshPreview(true);
 };
 
 const moveSection = (index: number, direction: number) => {
@@ -1379,6 +1497,7 @@ const moveSection = (index: number, direction: number) => {
     next[target] = temp;
     return next;
   });
+  refreshPreview(true);
 };
 
 const openSectionEditor = (index: number) => {
@@ -1588,6 +1707,13 @@ onMounted(async () => {
   if (!applied) setDefaultSectionsByPlan();
 
   await fetchPage();
+  sectionCatalog.value = sectionTypes.map(type => ({
+    type,
+    label: sectionLabels[type] || type,
+    description: sectionDescriptions[type] || "Bloco personalizável para compor sua página.",
+    accent: sectionAccents[type] || "from-slate-100 to-white",
+    previewSection: buildCatalogPreview(type)
+  }));
   previewReady.value = true;
   schedulePreviewHydration(true);
   nextTick(() => setupSectionToolbarObserver());

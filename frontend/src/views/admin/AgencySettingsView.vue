@@ -65,9 +65,6 @@
             />
           </div>
           <div class="space-y-4 rounded-2xl border border-slate-100 p-4">
-            <div class="space-y-1">
-              <p class="text-sm uppercase tracking-wide text-slate-500">Contato</p>
-            </div>
             <div class="space-y-2">
               <label class="text-sm font-semibold text-slate-600">WhatsApp da agência</label>
               <div class="flex gap-2">

@@ -50,7 +50,7 @@ const layout = computed(() => props.section.layout || "bar");
 const barBackground = computed(() => (layout.value === "bar" ? "#f8fafc" : props.section.backgroundColor || "#0b1324"));
 const headingLabel = computed(() => props.section.headingLabel ?? headingDefaults.label);
 const headingStyle = computed(() => props.section.headingLabelStyle || headingDefaults.style);
-const headingAccent = computed(() => props.section.backgroundColor || "#0ea5e9");
+const headingAccent = computed(() => props.section.textColor || props.section.backgroundColor || "#0ea5e9");
 
 const barTime = ref("00:00:00");
 const timeParts = ref([
