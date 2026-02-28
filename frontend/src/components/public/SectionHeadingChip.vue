@@ -1,7 +1,7 @@
 <template>
   <span
     v-if="textToShow"
-    class="inline-flex items-center justify-center rounded-full border px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.3em]"
+    class="inline-flex w-max shrink-0 items-center justify-center rounded-full border px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] whitespace-nowrap"
     :style="chipStyle"
   >
     {{ textToShow.toUpperCase() }}
