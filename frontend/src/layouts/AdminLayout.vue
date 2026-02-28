@@ -52,7 +52,17 @@
 
       <main class="flex-1">
         <header class="flex items-center justify-between bg-white px-4 py-3 text-slate-900 shadow-sm">
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-3">
+            <button
+              type="button"
+              class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-700 transition hover:bg-slate-50 md:hidden"
+              @click="mobileMenuOpen = true"
+            >
+              <span class="sr-only">Abrir menu</span>
+              <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <path d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
             <h1 class="text-lg font-bold">Dashboard</h1>
           </div>
           <div class="flex items-center gap-2"></div>
@@ -62,6 +72,64 @@
         </div>
       </main>
     </div>
+
+    <transition name="fade">
+      <div
+        v-if="mobileMenuOpen"
+        class="fixed inset-0 z-40 flex md:hidden"
+      >
+        <div class="flex-1 bg-slate-900/60" @click="mobileMenuOpen = false"></div>
+        <div class="w-72 max-w-full bg-white p-5 shadow-2xl">
+          <div class="mb-6 flex items-center justify-between">
+            <div>
+              <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Menu</p>
+              <p class="text-sm font-semibold text-slate-900 truncate">{{ agencyName || 'Agencia' }}</p>
+            </div>
+            <button
+              type="button"
+              class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-600"
+              @click="mobileMenuOpen = false"
+            >
+              <span class="sr-only">Fechar</span>
+              <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <path d="M6 6l12 12M6 18 18 6" />
+              </svg>
+            </button>
+          </div>
+          <nav class="space-y-1">
+            <RouterLink
+              v-for="item in navItems"
+              :key="'mobile-' + item.to"
+              :to="item.to"
+              class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition"
+              :class="isActive(item.to) ? activeClass : inactiveClass"
+              @click="mobileMenuOpen = false"
+            >
+              <span class="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-slate-600">
+                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path :d="navIcons[item.to] || navIcons['/admin/dashboard']"></path>
+                </svg>
+              </span>
+              <span>{{ item.label }}</span>
+            </RouterLink>
+          </nav>
+          <div class="mt-6 border-t border-slate-200 pt-4">
+            <button
+              type="button"
+              @click="handleLogout"
+              class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-red-50 hover:text-red-600"
+            >
+              <span class="flex h-7 w-7 items-center justify-center rounded-full bg-red-50 text-red-600">
+                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 3v9m5.657-6.657a8 8 0 1 1-11.314 0" />
+                </svg>
+              </span>
+              <span>Sair</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </transition>
 
     <transition name="fade">
       <div
@@ -172,6 +240,7 @@ const handleLogout = () => {
 
 const showWelcomeDialog = ref(false);
 const showEndDialog = ref(false);
+const mobileMenuOpen = ref(false);
 
 const trialStartDate = computed(() => (auth.user?.trial_started_at ? new Date(auth.user.trial_started_at) : null));
 const trialEndDate = computed(() => (auth.user?.trial_ends_at ? new Date(auth.user.trial_ends_at) : null));
@@ -188,6 +257,13 @@ watch(
     showWelcomeDialog.value = Boolean(trialActive.value && auth.user?.trial_ack_start === false);
   },
   { immediate: true }
+);
+
+watch(
+  () => route.path,
+  () => {
+    mobileMenuOpen.value = false;
+  }
 );
 
 watch(
