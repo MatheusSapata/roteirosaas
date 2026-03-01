@@ -147,59 +147,24 @@
                       preserveAspectRatio="none"
                       class="h-full w-full"
                     >
-                      <defs>
-                        <linearGradient id="visitsGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                          <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.25" />
-                          <stop offset="100%" stop-color="#38bdf8" stop-opacity="0" />
-                        </linearGradient>
-                        <linearGradient id="ctaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                          <stop offset="0%" stop-color="#a855f7" stop-opacity="0.25" />
-                          <stop offset="100%" stop-color="#a855f7" stop-opacity="0" />
-                        </linearGradient>
-                      </defs>
-
-                      <path
-                        v-if="visitsArea.length"
-                        :d="visitsArea"
-                        fill="url(#visitsGradient)"
-                        stroke="none"
-                        opacity="0.7"
-                      />
-                      <path v-if="clicksArea.length" :d="clicksArea" fill="url(#ctaGradient)" stroke="none" opacity="0.7" />
-
-                      <polyline
-                        v-if="visitsLine.length"
-                        :points="visitsLine"
-                        fill="none"
-                        stroke="#0ea5e9"
-                        stroke-width="3"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                      <polyline
-                        v-if="clicksLine.length"
-                        :points="clicksLine"
-                        fill="none"
-                        stroke="#8b5cf6"
-                        stroke-width="3"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-
                       <template v-for="point in chartPoints" :key="point.label">
-                        <circle
-                          :cx="point.x"
-                          :cy="point.yVisits"
-                          r="4"
+                        <rect
+                          :x="point.x - barSpacing - barWidth"
+                          :y="point.yVisits"
+                          :width="barWidth"
+                          :height="Math.max(chartHeight - point.yVisits, 1)"
+                          rx="6"
                           fill="#0ea5e9"
-                          opacity="0.6"
+                          opacity="0.8"
                         />
-                        <circle
-                          :cx="point.x"
-                          :cy="point.yClicks"
-                          r="4"
+                        <rect
+                          :x="point.x + barSpacing"
+                          :y="point.yClicks"
+                          :width="barWidth"
+                          :height="Math.max(chartHeight - point.yClicks, 1)"
+                          rx="6"
                           fill="#8b5cf6"
-                          opacity="0.6"
+                          opacity="0.8"
                         />
                       </template>
                     </svg>
@@ -347,6 +312,8 @@ const chartData = computed(() => {
 const chartHeight = 280;
 const pointGap = 70;
 const horizontalPadding = 30;
+const barWidth = 18;
+const barSpacing = 10;
 
 const chartWidth = computed(() => {
   const count = chartData.value.length;
@@ -384,28 +351,6 @@ const chartPoints = computed<ChartPoint[]>(() => {
     };
   });
 });
-
-const buildLinePoints = (key: "yVisits" | "yClicks") => {
-  return chartPoints.value.map(point => `${point.x},${point[key]}`).join(" ");
-};
-
-const buildAreaPath = (key: "yVisits" | "yClicks") => {
-  const points = chartPoints.value;
-  if (!points.length) return "";
-  const first = points[0];
-  const last = points[points.length - 1];
-  const keyValue = (point: ChartPoint) => point[key];
-  const linePoints = points
-    .slice(1)
-    .map(point => `L ${point.x} ${keyValue(point)}`)
-    .join(" ");
-  return `M ${first.x} ${chartHeight} L ${first.x} ${keyValue(first)} ${linePoints} L ${last.x} ${chartHeight} Z`;
-};
-
-const visitsLine = computed(() => buildLinePoints("yVisits"));
-const clicksLine = computed(() => buildLinePoints("yClicks"));
-const visitsArea = computed(() => buildAreaPath("yVisits"));
-const clicksArea = computed(() => buildAreaPath("yClicks"));
 
 const chartSurfaceRef = ref<HTMLDivElement | null>(null);
 const hoverPoint = ref<ChartPoint | null>(null);
