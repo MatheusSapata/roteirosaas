@@ -117,7 +117,7 @@
           <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 class="text-lg font-semibold text-slate-900">Performance geral</h2>
-              <p class="text-sm text-slate-500">Visitas, cliques e conversões no período.</p>
+              <p class="text-sm text-slate-500">Visitas e cliques no período.</p>
             </div>
             <div class="flex flex-wrap items-center gap-2 text-xs text-slate-600">
               <label class="font-semibold">Página:</label>
@@ -140,7 +140,7 @@
               :class="{ 'locked-blur': isFree }"
             >
               <div class="overflow-x-auto">
-                <div class="space-y-3" :style="{ width: chartWidth + 'px' }">
+                <div class="space-y-3 min-w-full" :style="{ minWidth: chartWidth + 'px' }">
                   <div class="relative" :style="{ height: chartHeight + 'px' }">
                     <svg
                       :viewBox="`0 0 ${chartWidth} ${chartHeight}`"
@@ -165,13 +165,7 @@
                         stroke="none"
                         opacity="0.7"
                       />
-                      <path
-                        v-if="conversionsArea.length"
-                        :d="conversionsArea"
-                        fill="url(#ctaGradient)"
-                        stroke="none"
-                        opacity="0.7"
-                      />
+                      <path v-if="clicksArea.length" :d="clicksArea" fill="url(#ctaGradient)" stroke="none" opacity="0.7" />
 
                       <polyline
                         v-if="visitsLine.length"
@@ -183,8 +177,8 @@
                         stroke-linejoin="round"
                       />
                       <polyline
-                        v-if="conversionsLine.length"
-                        :points="conversionsLine"
+                        v-if="clicksLine.length"
+                        :points="clicksLine"
                         fill="none"
                         stroke="#8b5cf6"
                         stroke-width="3"
@@ -202,7 +196,7 @@
                         />
                         <circle
                           :cx="point.x"
-                          :cy="point.yConversions"
+                          :cy="point.yClicks"
                           r="4"
                           fill="#8b5cf6"
                           opacity="0.6"
@@ -223,7 +217,7 @@
                     >
                       <p class="text-[11px] font-semibold text-slate-500">{{ hoverPoint.label }}</p>
                       <p class="text-slate-800">Visitas: {{ hoverPoint.visits }}</p>
-                      <p class="text-slate-800">Conversões: {{ hoverPoint.conversions }}</p>
+                      <p class="text-slate-800">Cliques: {{ hoverPoint.clicks }}</p>
                     </div>
 
                     <div
@@ -234,7 +228,7 @@
                     ></div>
                   </div>
 
-                  <div class="flex gap-2 pt-2">
+                  <div class="flex w-max gap-2 pt-2">
                     <button
                       class="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-emerald-300 hover:text-emerald-600"
                       :class="{ 'border-emerald-400 bg-emerald-50 text-emerald-700': dayFilter === null }"
@@ -302,9 +296,9 @@ interface ChartPoint {
   label: string;
   x: number;
   yVisits: number;
-  yConversions: number;
+  yClicks: number;
   visits: number;
-  conversions: number;
+  clicks: number;
 }
 
 interface StatsTrendResponse {
@@ -376,7 +370,7 @@ const activeSeries = computed(() => {
   return chartData.value.filter((_, index) => index === dayFilter.value);
 });
 
-const chartHeight = 180;
+const chartHeight = 220;
 const pointGap = 70;
 const horizontalPadding = 30;
 
@@ -391,7 +385,7 @@ const chartWidth = computed(() => {
 const maxMetric = computed(() => {
   if (!activeSeries.value.length) return 1;
   const maxValue = Math.max(
-    ...activeSeries.value.map(point => Math.max(point.visits ?? 0, point.conversions ?? 0, 0))
+    ...activeSeries.value.map(point => Math.max(point.visits ?? 0, point.clicks ?? 0, 0))
   );
   return maxValue > 0 ? maxValue : 1;
 });
@@ -401,23 +395,23 @@ const chartPoints = computed<ChartPoint[]>(() => {
   return activeSeries.value.map((point, index) => {
     const x = index * pointGap + horizontalPadding;
     const visitRatio = (point.visits ?? 0) / maxValue;
-    const conversionRatio = (point.conversions ?? 0) / maxValue;
+    const clickRatio = (point.clicks ?? 0) / maxValue;
     return {
       label: point.label,
       x,
       yVisits: chartHeight - visitRatio * chartHeight,
-      yConversions: chartHeight - conversionRatio * chartHeight,
+      yClicks: chartHeight - clickRatio * chartHeight,
       visits: point.visits ?? 0,
-      conversions: point.conversions ?? 0,
+      clicks: point.clicks ?? 0,
     };
   });
 });
 
-const buildLinePoints = (key: "yVisits" | "yConversions") => {
+const buildLinePoints = (key: "yVisits" | "yClicks") => {
   return chartPoints.value.map(point => `${point.x},${point[key]}`).join(" ");
 };
 
-const buildAreaPath = (key: "yVisits" | "yConversions") => {
+const buildAreaPath = (key: "yVisits" | "yClicks") => {
   const points = chartPoints.value;
   if (!points.length) return "";
   const first = points[0];
@@ -431,9 +425,9 @@ const buildAreaPath = (key: "yVisits" | "yConversions") => {
 };
 
 const visitsLine = computed(() => buildLinePoints("yVisits"));
-const conversionsLine = computed(() => buildLinePoints("yConversions"));
+const clicksLine = computed(() => buildLinePoints("yClicks"));
 const visitsArea = computed(() => buildAreaPath("yVisits"));
-const conversionsArea = computed(() => buildAreaPath("yConversions"));
+const clicksArea = computed(() => buildAreaPath("yClicks"));
 
 const chartSurfaceRef = ref<HTMLDivElement | null>(null);
 const hoverPoint = ref<ChartPoint | null>(null);
@@ -441,8 +435,8 @@ const tooltipStyle = computed(() => {
   if (!hoverPoint.value) return {};
   const padding = 60;
   const left = Math.min(Math.max(hoverPoint.value.x, padding), chartWidth.value - padding);
-  const minY = Math.min(hoverPoint.value.yVisits, hoverPoint.value.yConversions);
-  const top = Math.max(minY - 20, 10);
+  const minY = Math.min(hoverPoint.value.yVisits, hoverPoint.value.yClicks);
+  const top = Math.max(minY - 30, 16);
   return { left: `${left}px`, top: `${top}px` };
 });
 
