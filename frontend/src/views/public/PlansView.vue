@@ -1,7 +1,7 @@
 ﻿<template>
   <div class="min-h-screen bg-white text-slate-900">
-    <div class="relative">
-      <header class="relative mx-auto max-w-6xl px-6 pt-10 pb-10 text-center">
+    <div class="relative px-4 pb-16 lg:px-12">
+      <header class="relative mx-auto max-w-6xl pt-10 pb-10 text-center">
         <div
           class="mx-auto inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-amber-500 shadow-sm ring-1 ring-amber-100"
         >
@@ -36,7 +36,7 @@
         </div>
       </header>
 
-      <section class="mx-auto max-w-4xl px-6 pb-10">
+      <section class="mx-auto max-w-5xl pb-10">
         <div class="rounded-3xl border border-slate-100 bg-white/95 p-6 shadow-lg">
           <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
@@ -91,12 +91,34 @@
         </div>
       </section>
 
-      <section id="planos" class="relative mx-auto max-w-6xl px-6 pb-16">
-        <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+      <section id="planos" class="relative mx-auto max-w-7xl pb-16">
+        <div class="mb-8 flex flex-col items-center gap-2">
+          <div class="inline-flex rounded-full bg-slate-100 p-1 text-sm font-semibold text-slate-500 shadow-inner">
+            <button
+              type="button"
+              class="rounded-full px-4 py-2 transition"
+              :class="billingCycle === 'monthly' ? 'bg-white text-slate-900 shadow' : ''"
+              @click="billingCycle = 'monthly'"
+            >
+              Mensal
+            </button>
+            <button
+              type="button"
+              class="rounded-full px-4 py-2 transition"
+              :class="billingCycle === 'annual' ? 'bg-white text-slate-900 shadow' : ''"
+              @click="billingCycle = 'annual'"
+            >
+              Anual
+            </button>
+          </div>
+          <p class="text-xs text-slate-500">{{ billingCycleDescriptions[billingCycle] }}</p>
+        </div>
+
+        <div class="grid gap-8 md:grid-cols-2 xl:grid-cols-4">
           <article
             v-for="plan in plans"
             :key="plan.key"
-            class="group relative flex h-full flex-col gap-6 overflow-visible rounded-3xl border bg-white p-7 pt-9 shadow-[0_16px_50px_-30px_rgba(15,23,42,0.35)] transition duration-200 hover:-translate-y-1 hover:shadow-[0_26px_80px_-40px_rgba(15,23,42,0.45)]"
+            class="group relative flex h-full w-full flex-col gap-6 overflow-visible rounded-3xl border bg-white p-7 pt-9 shadow-[0_16px_50px_-30px_rgba(15,23,42,0.35)] transition duration-200 hover:-translate-y-1 hover:shadow-[0_26px_80px_-40px_rgba(15,23,42,0.45)]"
             :class="plan.isCurrent ? 'border-emerald-300 ring-2 ring-emerald-100' : 'border-slate-100'"
           >
             <div
@@ -131,9 +153,10 @@
               </div>
 
               <div class="flex items-baseline gap-2">
-                <p class="text-4xl font-black text-slate-900">{{ plan.price }}</p>
+                <p class="text-3xl font-black text-slate-900 md:text-4xl">{{ plan.price }}</p>
                 <span class="text-sm font-semibold text-amber-600">{{ plan.period }}</span>
               </div>
+              <p v-if="plan.detail" class="text-xs font-semibold text-indigo-600">{{ plan.detail }}</p>
 
               <p class="text-sm font-medium text-emerald-600">{{ plan.highlight }}</p>
             </div>
@@ -217,6 +240,7 @@ interface PlanCard {
   price: string;
   oldPrice?: string;
   period: string;
+  detail?: string;
   highlight: string;
   features: string[];
   badge?: string;
@@ -227,6 +251,12 @@ interface PlanCard {
   isCurrent?: boolean;
 }
 
+interface PlanDefinition extends Omit<PlanCard, "price" | "period" | "detail" | "isCurrent"> {
+  prices: Record<BillingCycle, { value: number; period: string; detail?: string }>;
+}
+
+type BillingCycle = "monthly" | "annual";
+
 interface BillingInfo {
   plan: string;
   status: string;
@@ -234,9 +264,16 @@ interface BillingInfo {
   failed_attempts: number;
   preapproval_id?: string;
   provider?: string;
+  billing_cycle?: string;
 }
 
 const authStore = useAuthStore();
+
+const billingCycle = ref<BillingCycle>("annual");
+const billingCycleDescriptions: Record<BillingCycle, string> = {
+  monthly: "Pague mês a mês",
+  annual: "Economize escolhendo o plano anual"
+};
 
 const loadingPlan = ref<string | null>(null);
 const errorMessage = ref<string | null>(null);
@@ -256,78 +293,105 @@ const planNames: Record<string, string> = {
   infinity: `Plano ${planLabels.infinity}`
 };
 
-const plans = computed<PlanCard[]>(() =>
-  [
-    {
-      key: "free",
-      tier: "Começo",
-      name: "Plano Começo",
-      subtitle: "Para quem está começando a organizar seus roteiros online",
-      price: "R$ 0",
-      period: "/mês",
-      highlight: "Ideal para dar os primeiros passos",
-      features: ["1 roteiro online publicado", "Editor simples e fácil de usar", "Layout pronto para agência", "Relatório básico de cliques"],
-      cta: "Criar meu primeiro roteiro",
-      note: "Publique seu primeiro roteiro sem custos.",
-      ctaClass: "bg-slate-900 hover:bg-slate-800"
-    },
-    {
-      key: "essencial",
-      tier: "Profissional",
-      name: "Plano Profissional",
-      subtitle: "Para quem já vende excursões e quer mais presença online",
-      price: "R$ 49,90",
-      period: "/mês",
-      highlight: "Para quem quer vender mais roteiros",
-      features: [
-        "Até 5 roteiros online ativos",
-        "Seções ilimitadas dentro de cada roteiro",
-        "Salvar modelo padrão para copiar em novas viagens",
-        "Conectar 1 pixel (Facebook ou Google)",
-        "Componentes extras (depoimentos, contagem regressiva, FAQ)"
-      ],
-      badge: "Recomendado para crescer",
-      badgeTone: "bg-emerald-50 text-emerald-700 ring-emerald-100",
-      cta: "Quero organizar minhas viagens",
-      note: "Perfeito para quem já tem grupos rodando.",
-      ctaClass: "bg-emerald-600 hover:bg-emerald-500"
-    },
-    {
-      key: "growth",
-      tier: "Agência",
-      name: "Plano Agência",
-      subtitle: "Para agências que querem vender todos os meses com previsibilidade",
-      price: "R$ 79,90",
-      period: "/mês",
-      highlight: "Mais usado pelas agências",
-      features: ["Até 10 roteiros online ativos", "Conectar até 3 pixels", "Duplicação rápida de páginas", "Todos os recursos do Profissional"],
-      badge: "Mais popular",
-      badgeTone: "bg-amber-100 text-amber-800 ring-amber-200",
-      cta: "Quero escalar minhas vendas",
-      note: "Mantenha vários destinos ativos o ano todo.",
-      ctaClass: "bg-amber-500 hover:bg-amber-400"
-    },
-    {
-      key: "infinity",
-      tier: "Escala",
-      name: "Plano Escala",
-      subtitle: "Para agências que operam múltiplos grupos e querem dominar sua região",
-      price: "R$ 129,90",
-      period: "/mês",
-      highlight: "Para dominar sua região",
-      features: [
-        "Até 15 roteiros online ativos",
-        "Todos os recursos dos planos anteriores",
-        "Ideal para múltiplos destinos simultâneos",
-        "Página adicional: R$ 20,00 por roteiro extra"
-      ],
-      badge: "Para operação avançada",
-      badgeTone: "bg-indigo-50 text-indigo-700 ring-indigo-100",
-      cta: "Quero estruturar minha escala",
-      note: "Pensado para agências com vários grupos ativos.",
-      ctaClass: "bg-indigo-600 hover:bg-indigo-500"
+const planDefinitions: PlanDefinition[] = [
+  {
+    key: "free",
+    tier: "Começo",
+    name: "Plano Começo",
+    subtitle: "Para quem está começando a organizar seus roteiros online",
+    highlight: "Ideal para dar os primeiros passos",
+    features: ["1 roteiro online publicado", "Editor simples e fácil de usar", "Layout pronto para agência", "Relatório básico de cliques"],
+    cta: "Criar meu primeiro roteiro",
+    note: "Publique seu primeiro roteiro sem custos.",
+    ctaClass: "bg-slate-900 hover:bg-slate-800",
+    prices: {
+      monthly: { value: 0, period: "/mês" },
+      annual: { value: 0, period: "/ano" }
     }
-  ].map((plan) => ({ ...plan, isCurrent: plan.key === activePlan.value }))
+  },
+  {
+    key: "essencial",
+    tier: "Profissional",
+    name: "Plano Profissional",
+    subtitle: "Para quem já vende excursões e quer mais presença online",
+    highlight: "Para quem quer vender mais roteiros",
+    features: [
+      "Até 5 roteiros online ativos",
+      "Seções ilimitadas dentro de cada roteiro",
+      "Salvar modelo padrão para copiar em novas viagens",
+      "Conectar 1 pixel (Facebook ou Google)",
+      "Componentes extras (depoimentos, contagem regressiva, FAQ)"
+    ],
+    badge: "Recomendado para crescer",
+    badgeTone: "bg-emerald-50 text-emerald-700 ring-emerald-100",
+    cta: "Quero organizar minhas viagens",
+    note: "Perfeito para quem já tem grupos rodando.",
+    ctaClass: "bg-emerald-600 hover:bg-emerald-500",
+    prices: {
+      monthly: { value: 49.9, period: "/mês" },
+      annual: { value: 499.0, period: "/ano", detail: "Equivalente a R$ 41,58/mês" }
+    }
+  },
+  {
+    key: "growth",
+    tier: "Agência",
+    name: "Plano Agência",
+    subtitle: "Para agências que querem vender todos os meses com previsibilidade",
+    highlight: "Mais usado pelas agências",
+    features: ["Até 10 roteiros online ativos", "Conectar até 3 pixels", "Duplicação rápida de páginas", "Todos os recursos do Profissional"],
+    badge: "Mais popular",
+    badgeTone: "bg-amber-100 text-amber-800 ring-amber-200",
+    cta: "Quero escalar minhas vendas",
+    note: "Mantenha vários destinos ativos o ano todo.",
+    ctaClass: "bg-amber-500 hover:bg-amber-400",
+    prices: {
+      monthly: { value: 79.9, period: "/mês" },
+      annual: { value: 799.0, period: "/ano", detail: "Economize quase 2 meses" }
+    }
+  },
+  {
+    key: "infinity",
+    tier: "Escala",
+    name: "Plano Escala",
+    subtitle: "Para agências que operam múltiplos grupos e querem dominar sua região",
+    highlight: "Para dominar sua região",
+    features: [
+      "Até 15 roteiros online ativos",
+      "Todos os recursos dos planos anteriores",
+      "Ideal para múltiplos destinos simultâneos",
+      "Página adicional: R$ 20,00 por roteiro extra"
+    ],
+    badge: "Para operação avançada",
+    badgeTone: "bg-indigo-50 text-indigo-700 ring-indigo-100",
+    cta: "Quero estruturar minha escala",
+    note: "Pensado para agências com vários grupos ativos.",
+    ctaClass: "bg-indigo-600 hover:bg-indigo-500",
+    prices: {
+      monthly: { value: 129.9, period: "/mês" },
+      annual: { value: 1299.0, period: "/ano", detail: "Ideal para operação contínua" }
+    }
+  }
+] as const;
+
+const formatPrice = (value: number) =>
+  value.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 });
+
+const plans = computed<PlanCard[]>(() =>
+  planDefinitions.map(def => {
+    const priceInfo = def.prices[billingCycle.value] || def.prices.monthly;
+    const oldAnnualValue =
+      billingCycle.value === "annual" && def.prices.monthly.value > 0
+        ? def.prices.monthly.value * 12
+        : undefined;
+    return {
+      ...def,
+      price: formatPrice(priceInfo.value),
+      period: priceInfo.period,
+      detail: priceInfo.detail,
+      oldPrice: oldAnnualValue ? formatPrice(oldAnnualValue) : undefined,
+      isCurrent: def.key === activePlan.value
+    };
+  })
 );
 
 const goToCheckout = async (planKey: string) => {
@@ -337,7 +401,10 @@ const goToCheckout = async (planKey: string) => {
   errorMessage.value = null;
 
   try {
-    const res = await api.post<{ init_point: string }>("/billing/checkout", { plan: planKey });
+    const res = await api.post<{ init_point: string }>("/billing/checkout", {
+      plan: planKey,
+      cycle: billingCycle.value
+    });
     window.location.href = res.data.init_point;
   } catch (err) {
     console.error(err);
@@ -380,6 +447,9 @@ const loadBilling = async () => {
   try {
     const res = await api.get<BillingInfo>("/billing/me");
     billingInfo.value = res.data;
+    if (res.data.billing_cycle === "annual" || res.data.billing_cycle === "monthly") {
+      billingCycle.value = res.data.billing_cycle;
+    }
   } catch (err) {
     console.error(err);
     actionError.value = "Não foi possível carregar os dados de cobrança.";

@@ -493,3 +493,12 @@ const getPageClicks = (pageId: number) => {
 
 onMounted(loadPages);
 </script>
+
+<style scoped>
+.blurred-value {
+  filter: blur(8px);
+  opacity: 0.15;
+  pointer-events: none;
+  user-select: none;
+}
+</style>

@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     stripe_price_infinity: str | None = Field(None, alias="STRIPE_PRICE_INFINITY")
     stripe_success_url: str | None = Field(None, alias="STRIPE_SUCCESS_URL")
     stripe_cancel_url: str | None = Field(None, alias="STRIPE_CANCEL_URL")
+    asaas_api_key: str | None = Field(None, alias="ASAAS_API_KEY")
+    asaas_base_url: str = Field("https://sandbox.asaas.com/api/v3", alias="ASAAS_BASE_URL")
     password_reset_token_minutes: int = Field(60, alias="PASSWORD_RESET_TOKEN_MINUTES")
     azure_storage_connection_string: str | None = Field(None, alias="AZURE_STORAGE_CONNECTION_STRING")
     azure_storage_container: str | None = Field(None, alias="AZURE_STORAGE_CONTAINER")
