@@ -25,6 +25,7 @@ class StatsTrend(BaseModel):
     integrations: float | None = None
     visits: float | None = None
     whatsapp: float | None = None
+    clicks: float | None = None
 
 
 class StatsSeriesItem(BaseModel):

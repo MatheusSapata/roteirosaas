@@ -98,6 +98,7 @@ def percentage_change(current: int, previous: int) -> float | None:
 def stats_overview(
     agency_id: int = Query(...),
     days: int = Query(7, ge=1, le=90),
+    page_id: int | None = Query(None),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ) -> StatsOverviewOut:
@@ -113,11 +114,19 @@ def stats_overview(
         .filter(Page.agency_id == agency_id, Page.status == "published")
     )
 
+    if page_id is not None:
+        page = ensure_published_page(db, page_id)
+        if page.agency_id != agency_id:
+            raise HTTPException(status_code=403, detail="Página não pertence à agência solicitada")
+        base_query = base_query.filter(PageVisitStats.page_id == page_id)
+
     current_rows = base_query.filter(PageVisitStats.date >= since).all()
     previous_rows = base_query.filter(PageVisitStats.date >= prev_since, PageVisitStats.date < since).all()
 
     totals = summarize(current_rows)
     prev_totals = summarize(previous_rows)
+    total_clicks = totals["whatsapp"] + totals["cta"]
+    prev_clicks = prev_totals["whatsapp"] + prev_totals["cta"]
 
     series_map: dict[date, dict[str, int]] = defaultdict(lambda: {"visits": 0, "whatsapp": 0, "cta": 0})
     for offset in range(days):
@@ -145,6 +154,7 @@ def stats_overview(
         integrations=None,
         visits=percentage_change(totals["visits"], prev_totals["visits"]),
         whatsapp=percentage_change(totals["whatsapp"], prev_totals["whatsapp"]),
+        clicks=percentage_change(total_clicks, prev_clicks),
     )
 
     return StatsOverviewOut(

@@ -261,7 +261,7 @@
     >
       <div class="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl">
         <p class="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-500">Upgrade exclusivo</p>
-        <h2 class="mt-3 text-2xl font-bold text-slate-900">Liberar 7 dias do Infinity</h2>
+        <h2 class="mt-3 text-2xl font-bold text-slate-900">Liberar 7 dias do plano {{ planLabels.infinity }}</h2>
         <div class="mt-4 rounded-2xl bg-slate-50 p-4 text-sm text-slate-700">
           <p class="font-semibold text-slate-900">{{ trialDialog.user.name }}</p>
           <p class="text-xs text-slate-500">{{ trialDialog.user.email }}</p>
@@ -277,7 +277,7 @@
           </div>
         </div>
         <p class="mt-5 text-sm text-slate-600">
-          O usuário receberá acesso total ao plano Infinity por 7 dias. Enviaremos alertas no painel dele para aproveitar o período promocional.
+          O usuário receberá acesso total ao plano {{ planLabels.infinity }} por 7 dias. Enviaremos alertas no painel dele para aproveitar o período promocional.
         </p>
         <div class="mt-6 flex justify-end gap-3">
           <button
@@ -305,6 +305,7 @@ import api from "../../services/api";
 import { useAuthStore } from "../../store/useAuthStore";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { getPlanLabel, planLabels } from "../../utils/planLabels";
 
 interface Metrics {
   total_users: number;
@@ -480,11 +481,10 @@ const grantTrial = async () => {
 };
 
 const planLabel = (plan: string) => {
+  if (!plan) return "Indefinido";
   const lower = plan.toLowerCase();
   if (lower.includes("trial")) return plan;
-  if (lower === "free") return "Free";
-  if (lower === "infinity") return "Infinity";
-  return plan.charAt(0).toUpperCase() + plan.slice(1);
+  return getPlanLabel(plan);
 };
 
 onMounted(async () => {
