@@ -138,9 +138,9 @@
       >
         <div class="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl">
           <p class="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-500">Upgrade exclusivo</p>
-          <h2 class="mt-3 text-2xl font-bold text-slate-900">Você ganhou {{ auth.user?.trial_plan?.toUpperCase() }} por 7 dias!</h2>
+          <h2 class="mt-3 text-2xl font-bold text-slate-900">Você ganhou o plano {{ trialPlanName }} por 7 dias!</h2>
           <p class="mt-2 text-sm text-slate-600">
-            Aproveite todos os recursos do plano premium até {{ formattedDate }}. Explore integrações, limites liberados e páginas ilimitadas.
+            Aproveite todos os recursos do plano premium até {{ formattedDate }}. Explore integrações, limites liberados e seções ilimitadas dentro de cada roteiro.
           </p>
           <div class="mt-6 flex flex-wrap justify-end gap-3">
             <button
@@ -161,7 +161,7 @@
       >
         <div class="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl">
           <p class="text-xs font-semibold uppercase tracking-[0.3em] text-amber-500">Período finalizado</p>
-          <h2 class="mt-3 text-2xl font-bold text-slate-900">Gostou do plano Infinity?</h2>
+          <h2 class="mt-3 text-2xl font-bold text-slate-900">Gostou do plano {{ planLabels.infinity }}?</h2>
           <p class="mt-2 text-sm text-slate-600">
             Seu acesso promocional terminou. Escolha manter o plano completo ou voltar ao plano original.
           </p>
@@ -176,7 +176,7 @@
               class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
               @click="acknowledgeTrial('end', true)"
             >
-              Assinar Infinity
+              Assinar {{ planLabels.infinity }}
             </button>
           </div>
         </div>
@@ -192,6 +192,7 @@ import { resolveMediaUrl } from "../utils/media";
 import api from "../services/api";
 import { useAgencyStore } from "../store/useAgencyStore";
 import { useAuthStore } from "../store/useAuthStore";
+import { getPlanLabel, planLabels } from "../utils/planLabels";
 
 const route = useRoute();
 const router = useRouter();
@@ -211,10 +212,9 @@ const navIcons: Record<string, string> = {
 const navItems = computed(() => {
   const items = [
     { label: "Dashboard", to: "/admin/dashboard" },
-    { label: "Paginas", to: "/admin/pages" },
-    { label: "Planos", to: "/admin/planos" },
-    { label: "Integracoes", to: "/admin/integracoes" },
-    { label: "Configuracoes", to: "/admin/agency" },
+    { label: "Páginas", to: "/admin/pages" },
+    { label: "Integrações", to: "/admin/integracoes" },
+    { label: "Configurações", to: "/admin/agency" },
     { label: "Perfil", to: "/admin/perfil" }
   ];
   if (auth.user?.is_superuser) {
@@ -241,6 +241,7 @@ const handleLogout = () => {
 const showWelcomeDialog = ref(false);
 const showEndDialog = ref(false);
 const mobileMenuOpen = ref(false);
+const trialPlanName = computed(() => getPlanLabel(auth.user?.trial_plan));
 
 const trialStartDate = computed(() => (auth.user?.trial_started_at ? new Date(auth.user.trial_started_at) : null));
 const trialEndDate = computed(() => (auth.user?.trial_ends_at ? new Date(auth.user.trial_ends_at) : null));

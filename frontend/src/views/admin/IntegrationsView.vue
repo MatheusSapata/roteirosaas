@@ -1,31 +1,33 @@
 <template>
   <div class="w-full space-y-6 px-4 py-8 md:px-8">
     <header class="space-y-1">
-      <p class="text-sm uppercase tracking-[0.2em] text-slate-500">Integrações</p>
-      <h1 class="text-3xl font-bold text-slate-900">Pixels e analytics</h1>
-      <p class="text-sm text-slate-600">Cadastre seus IDs de Meta Pixel e GA4 para rastrear eventos nas páginas.</p>
+      <p class="text-sm uppercase tracking-[0.2em] text-slate-500">Integrações de anúncios</p>
+      <h1 class="text-3xl font-bold text-slate-900">Conexões com Facebook e Google</h1>
+      <p class="text-sm text-slate-600">
+        Conecte sua página ao Facebook ou Google para acompanhar quem visitou e melhorar seus anúncios.
+      </p>
     </header>
 
     <div class="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md" :class="isFree ? 'opacity-60' : ''">
       <div class="grid gap-6 p-6 md:grid-cols-3">
         <div class="space-y-3">
-          <p class="text-sm font-semibold text-slate-700">Nome</p>
+          <p class="text-sm font-semibold text-slate-700">Nome da conexão</p>
           <input
             v-model="nameInput"
             class="w-full rounded-lg border border-slate-200 px-3 py-2 text-slate-800"
-            placeholder="Ex.: Pixel principal"
+            placeholder="Ex.: Roteiro São Paulo"
             :disabled="!canEdit"
           />
         </div>
         <div class="space-y-3">
-          <p class="text-sm font-semibold text-slate-700">Tipo</p>
+          <p class="text-sm font-semibold text-slate-700">Plataforma</p>
           <select v-model="typeInput" class="w-full rounded-lg border border-slate-200 px-3 py-2" :disabled="!canEdit">
-            <option value="meta">Meta Pixel</option>
-            <option value="ga">GA4</option>
+            <option value="meta">Facebook</option>
+            <option value="ga">Google</option>
           </select>
         </div>
         <div class="space-y-3">
-          <p class="text-sm font-semibold text-slate-700">ID</p>
+          <p class="text-sm font-semibold text-slate-700">Código de acompanhamento</p>
           <input
             v-model="idInput"
             class="w-full rounded-lg border border-slate-200 px-3 py-2 text-slate-800"
@@ -38,19 +40,22 @@
       <div class="flex items-center justify-between border-t border-slate-100 bg-slate-50/70 px-6 py-4 text-sm text-slate-700">
         <div class="flex flex-wrap items-center gap-3">
           <span class="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white">Limite: {{ limitLabel }}</span>
-          <span class="text-slate-500">Pixels cadastrados: {{ pixels.length }} / {{ limitLabel }}</span>
+          <span class="text-slate-500">Conexões cadastradas: {{ pixels.length }}{{ limitLabelSuffix }}</span>
         </div>
         <button
           class="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white shadow hover:bg-brand-dark disabled:opacity-50"
           @click="savePixel"
           :disabled="!canEdit"
         >
-          Salvar pixel
+          Salvar conexão
         </button>
+      </div>
+      <div class="px-6 pb-2 text-xs text-slate-500">
+        Você pode conectar conforme o seu plano.
       </div>
 
       <div class="px-6 pb-6">
-        <p class="text-sm font-semibold text-slate-700 mb-2">Pixels cadastrados</p>
+        <p class="text-sm font-semibold text-slate-700 mb-2">Conexões cadastradas</p>
         <div class="grid gap-3 md:grid-cols-2">
           <div
             v-for="(p, idx) in pixels"
@@ -58,7 +63,7 @@
             class="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3"
           >
             <div class="text-sm text-slate-800">
-              <p class="font-semibold">{{ p.name }} · {{ p.type === 'meta' ? 'Meta Pixel' : 'GA4' }}</p>
+              <p class="font-semibold">{{ p.name }} · {{ p.type === 'meta' ? 'Facebook' : 'Google' }}</p>
               <p class="text-slate-600">{{ p.value }}</p>
             </div>
             <button
@@ -69,7 +74,7 @@
               Remover
             </button>
           </div>
-          <p v-if="!pixels.length" class="text-sm text-slate-500">Nenhum pixel cadastrado.</p>
+          <p v-if="!pixels.length" class="text-sm text-slate-500">Nenhuma conexão cadastrada.</p>
         </div>
       </div>
 
@@ -118,7 +123,8 @@ const limit = computed(() => {
   if (plan.value === "growth") return 3;
   return Infinity;
 });
-const limitLabel = computed(() => (limit.value === Infinity ? "Ilimitado" : limit.value));
+const limitLabel = computed(() => (limit.value === Infinity ? "Conforme o plano" : `${limit.value}`));
+const limitLabelSuffix = computed(() => (limit.value === Infinity ? "" : ` / ${limitLabel.value}`));
 const canEdit = computed(() => limit.value > 0 && pixels.value.length < limit.value);
 
 const storageKey = computed(() => (auth.user ? `pixels_${auth.user.id}` : null));
@@ -148,7 +154,7 @@ const fetchPixels = async () => {
     pixels.value = res.data;
   } catch (err) {
     console.error(err);
-    errorMessage.value = "Não foi possível carregar os pixels.";
+    errorMessage.value = "Não foi possível carregar as conexões.";
   }
 };
 
@@ -156,11 +162,11 @@ const savePixel = async () => {
   errorMessage.value = "";
   message.value = "";
   if (!canEdit.value) {
-    errorMessage.value = "Limite de pixels atingido para seu plano.";
+    errorMessage.value = "Limite de conexões atingido para seu plano.";
     return;
   }
   if (!nameInput.value.trim() || !idInput.value.trim()) {
-    errorMessage.value = "Preencha nome e ID do pixel.";
+    errorMessage.value = "Preencha nome e código da conexão.";
     return;
   }
   try {
@@ -168,10 +174,10 @@ const savePixel = async () => {
     await fetchPixels();
     nameInput.value = "";
     idInput.value = "";
-    message.value = "Pixel salvo.";
+    message.value = "Conexão salva.";
   } catch (err: any) {
     console.error(err);
-    errorMessage.value = err?.response?.data?.detail || "Erro ao salvar pixel.";
+    errorMessage.value = err?.response?.data?.detail || "Erro ao salvar conexão.";
   }
 };
 
@@ -181,10 +187,10 @@ const removePixel = async (idx: number) => {
   try {
     await api.delete(`/pixels/${pixel.id}`);
     await fetchPixels();
-    message.value = "Pixel removido.";
+    message.value = "Conexão removida.";
   } catch (err) {
     console.error(err);
-    errorMessage.value = "Erro ao remover pixel.";
+    errorMessage.value = "Erro ao remover conexão.";
   }
 };
 

@@ -37,8 +37,8 @@
         </div>
         <div class="mt-4 space-y-2 text-sm text-slate-700">
           <p><span class="font-semibold">Ativo:</span> {{ user?.is_active ? "Sim" : "Não" }}</p>
-          <p><span class="font-semibold">Plano atual:</span> {{ billing?.plan || user?.plan }}</p>
-          <p><span class="font-semibold">Status assinatura:</span> {{ billing?.status || "indefinido" }}</p>
+          <p><span class="font-semibold">Plano atual:</span> {{ getPlanLabel(billing?.plan || user?.plan) }}</p>
+          <p><span class="font-semibold">Status da assinatura:</span> {{ billingStatusLabel }}</p>
           <p>
             <span class="font-semibold">Validade:</span>
             <span v-if="billing?.valid_until">{{ formatDate(billing.valid_until) }}</span>
@@ -52,22 +52,30 @@
           <div>
             <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Assinatura</p>
             <h2 class="text-xl font-bold text-slate-900">Gestão de plano</h2>
-            <p class="text-sm text-slate-600">Você pode cancelar; o acesso permanece até a validade.</p>
+            <p class="text-sm text-slate-600">Você pode cancelar; o acesso permanece até a data de validade.</p>
           </div>
         </div>
         <div class="flex flex-col gap-3">
-          <button
-            class="inline-flex items-center justify-center gap-2 rounded-full bg-rose-600 px-5 py-3 text-sm font-semibold text-white shadow transition hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-60"
-            :disabled="loading || billing?.status === 'cancelled'"
-            @click="cancelSubscription"
-          >
-            <span v-if="loading">Processando...</span>
-            <span v-else-if="billing?.status === 'cancelled'">Assinatura já cancelada</span>
-            <span v-else>Cancelar assinatura</span>
-          </button>
           <p class="text-xs text-slate-500">
-            Em caso de cancelamento, você mantém acesso até a data de validade atual.
+            Para alterar ou cancelar sua assinatura, fale com a nossa equipe. Você continua com acesso até o fim do período atual.
           </p>
+          <div class="flex flex-wrap gap-2">
+            <button
+              class="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              :disabled="loading || billing?.status === 'cancelled'"
+              @click="cancelSubscription"
+            >
+              <span v-if="loading">Processando...</span>
+              <span v-else-if="billing?.status === 'cancelled'">Assinatura já cancelada</span>
+              <span v-else>Solicitar cancelamento</span>
+            </button>
+            <button
+              class="inline-flex items-center justify-center rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              @click="goPlans"
+            >
+              Ver planos disponíveis
+            </button>
+          </div>
           <p v-if="message" class="text-xs font-semibold text-emerald-600">{{ message }}</p>
           <p v-if="error" class="text-xs font-semibold text-rose-600">{{ error }}</p>
         </div>
@@ -81,6 +89,7 @@ import { onMounted, ref, computed } from "vue";
 import { useRouter } from "vue-router";
 import api from "../../services/api";
 import { useAuthStore } from "../../store/useAuthStore";
+import { getPlanLabel } from "../../utils/planLabels";
 
 interface BillingInfo {
   plan: string;
@@ -97,6 +106,17 @@ const billing = ref<BillingInfo | null>(null);
 const loading = ref(false);
 const message = ref<string | null>(null);
 const error = ref<string | null>(null);
+const billingStatusLabel = computed(() => {
+  const status = billing.value?.status || "indefinido";
+  const statusMap: Record<string, string> = {
+    active: "Ativa",
+    past_due: "Com pendência",
+    cancelled: "Cancelada",
+    inactive: "Inativa",
+    indefinido: "Indefinido"
+  };
+  return statusMap[status] || status;
+});
 
 const formatDate = (iso: string) => {
   const d = new Date(iso);
@@ -131,9 +151,8 @@ const cancelSubscription = async () => {
 
 const trialInfo = computed(() => {
   if (!user.value?.trial_plan || !user.value?.trial_ends_at) return null;
-  const plan = user.value.trial_plan.charAt(0).toUpperCase() + user.value.trial_plan.slice(1);
   return {
-    plan,
+    plan: getPlanLabel(user.value.trial_plan),
     endsAt: formatDate(user.value.trial_ends_at)
   };
 });

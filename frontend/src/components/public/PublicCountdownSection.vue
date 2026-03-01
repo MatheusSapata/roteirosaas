@@ -30,7 +30,12 @@
           class="flex flex-col items-center rounded-2xl bg-slate-900/80 px-6 py-4 text-white shadow-xl"
         >
           <div class="text-4xl font-extrabold tabular-nums">{{ part.value }}</div>
-          <div class="mt-1 text-xs uppercase tracking-wide text-amber-400">{{ part.label }}</div>
+          <div
+            class="mt-1 text-xs uppercase tracking-wide"
+            :style="{ color: section.backgroundColor || '#f97316' }"
+          >
+            {{ part.label }}
+          </div>
         </div>
       </div>
     </div>

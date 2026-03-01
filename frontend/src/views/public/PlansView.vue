@@ -1,27 +1,34 @@
-<template>
+﻿<template>
   <div class="min-h-screen bg-white text-slate-900">
     <div class="relative">
       <header class="relative mx-auto max-w-6xl px-6 pt-10 pb-10 text-center">
-        <div class="mx-auto inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-amber-500 shadow-sm ring-1 ring-amber-100">
+        <div
+          class="mx-auto inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-amber-500 shadow-sm ring-1 ring-amber-100"
+        >
           <span>Planos</span>
           <span class="h-1 w-1 rounded-full bg-amber-400"></span>
-          <span>Escolha o melhor para voce</span>
+          <span>Escolha o melhor para você</span>
         </div>
+
         <h1 class="mt-6 text-4xl font-black tracking-tight text-slate-900 md:text-5xl">
-          Planos pensados para crescer com sua agencia
+          Planos pensados para crescer com sua agência
         </h1>
+
         <p class="mx-auto mt-4 max-w-2xl text-base text-slate-600 md:text-lg">
-          Comece gratis com 1 pagina. Faca upgrade so quando precisar de mais paginas e recursos.
+          Comece grátis com 1 roteiro. Faça upgrade só quando precisar de mais roteiros e recursos.
         </p>
+
         <div class="mt-6 flex flex-wrap items-center justify-center gap-3 text-sm text-slate-600">
           <div class="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 shadow-sm ring-1 ring-slate-200">
             <span class="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">✓</span>
-            <span>Upgrade instantaneo</span>
+            <span>Upgrade instantâneo</span>
           </div>
+
           <div class="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 shadow-sm ring-1 ring-slate-200">
             <span class="flex h-6 w-6 items-center justify-center rounded-full bg-amber-100 text-amber-600">⚡</span>
             <span>Sem taxas de setup</span>
           </div>
+
           <div class="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 shadow-sm ring-1 ring-slate-200">
             <span class="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">↻</span>
             <span>Downgrade quando quiser</span>
@@ -34,7 +41,9 @@
           <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">Plano atual</p>
-              <h3 class="text-2xl font-bold text-slate-900">{{ planNames[billingInfo?.plan || activePlan] }}</h3>
+              <h3 class="text-2xl font-bold text-slate-900">
+                {{ planNames[billingInfo?.plan || activePlan] }}
+              </h3>
               <p class="text-sm text-slate-500">
                 Status:
                 <span :class="statusBadgeClass">{{ statusLabel }}</span>
@@ -43,6 +52,7 @@
                 </span>
               </p>
             </div>
+
             <div class="flex flex-wrap items-center gap-2">
               <button
                 v-if="billingInfo?.plan !== 'free'"
@@ -53,6 +63,7 @@
               >
                 Cancelar renovação
               </button>
+
               <button
                 v-if="billingInfo?.plan !== 'free'"
                 type="button"
@@ -62,12 +73,18 @@
               >
                 Voltar ao plano gratuito
               </button>
+
               <span v-if="!billingInfo" class="text-sm text-slate-400">Carregando cobrança...</span>
             </div>
           </div>
-          <p v-if="actionMessage" class="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
+
+          <p
+            v-if="actionMessage"
+            class="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700"
+          >
             {{ actionMessage }}
           </p>
+
           <p v-if="actionError" class="mt-3 rounded-xl bg-red-50 px-3 py-2 text-sm font-semibold text-red-600">
             {{ actionError }}
           </p>
@@ -83,19 +100,20 @@
             :class="plan.isCurrent ? 'border-emerald-300 ring-2 ring-emerald-100' : 'border-slate-100'"
           >
             <div
-              class="pointer-events-none absolute -top-5 left-0 right-0 flex justify-center gap-2"
               v-if="plan.badge || plan.isCurrent"
+              class="pointer-events-none absolute -top-5 left-0 right-0 flex justify-center gap-2"
             >
               <span
                 v-if="plan.isCurrent"
-                class="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-emerald-800 ring-1 ring-emerald-200 whitespace-nowrap shadow-sm"
+                class="inline-flex items-center gap-2 whitespace-nowrap rounded-full bg-emerald-100 px-3 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-emerald-800 shadow-sm ring-1 ring-emerald-200"
               >
                 <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
                 Seu plano atual
               </span>
+
               <span
                 v-if="!plan.isCurrent && plan.badge"
-                class="inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-amber-700 shadow-sm ring-1 ring-amber-200 whitespace-nowrap bg-white"
+                class="inline-flex items-center gap-2 whitespace-nowrap rounded-full bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-amber-700 shadow-sm ring-1 ring-amber-200"
                 :class="plan.badgeTone"
               >
                 <span>★</span>
@@ -107,17 +125,24 @@
               <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{{ plan.tier }}</p>
               <h3 class="text-2xl font-bold text-slate-900">{{ plan.name }}</h3>
               <p class="text-sm text-slate-600">{{ plan.subtitle }}</p>
-              <div class="text-sm text-slate-500 line-through" v-if="plan.oldPrice">{{ plan.oldPrice }}</div>
+
+              <div v-if="plan.oldPrice" class="text-sm text-slate-500 line-through">
+                {{ plan.oldPrice }}
+              </div>
+
               <div class="flex items-baseline gap-2">
                 <p class="text-4xl font-black text-slate-900">{{ plan.price }}</p>
                 <span class="text-sm font-semibold text-amber-600">{{ plan.period }}</span>
               </div>
+
               <p class="text-sm font-medium text-emerald-600">{{ plan.highlight }}</p>
             </div>
 
             <ul class="relative space-y-3 text-sm text-slate-700">
               <li v-for="feature in plan.features" :key="feature" class="flex items-start gap-3">
-                <span class="mt-0.5 flex h-6 w-6 flex-none items-center justify-center rounded-full bg-emerald-100 text-emerald-600 shadow-inner">
+                <span
+                  class="mt-0.5 flex h-6 w-6 flex-none items-center justify-center rounded-full bg-emerald-100 text-emerald-600 shadow-inner"
+                >
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4">
                     <path
                       fill-rule="evenodd"
@@ -143,22 +168,33 @@
                 <span v-else>{{ plan.cta }}</span>
                 <span v-if="!plan.isCurrent && loadingPlan !== plan.key" aria-hidden="true">→</span>
               </button>
+
               <p class="text-xs text-slate-500">{{ plan.note }}</p>
-              <p v-if="errorMessage && loadingPlan === null" class="text-xs font-semibold text-rose-600">{{ errorMessage }}</p>
+
+              <p v-if="errorMessage && loadingPlan === null" class="text-xs font-semibold text-rose-600">
+                {{ errorMessage }}
+              </p>
             </div>
           </article>
         </div>
 
-        <div class="mt-10 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-white px-6 py-5 shadow-[0_16px_50px_-35px_rgba(15,23,42,0.45)] ring-1 ring-slate-100">
+        <div
+          class="mt-10 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-white px-6 py-5 shadow-[0_16px_50px_-35px_rgba(15,23,42,0.45)] ring-1 ring-slate-100"
+        >
           <div>
-            <p class="text-sm font-semibold text-amber-600">Transparencia total</p>
-            <p class="text-sm text-slate-600">Sem taxas de cancelamento ou contratos longos. Troque ou cancele com 1 clique.</p>
+            <p class="text-sm font-semibold text-amber-600">Transparência total</p>
+            <p class="text-sm text-slate-600">
+              Sem taxas de cancelamento ou contratos longos. Troque ou cancele com 1 clique.
+            </p>
           </div>
+
           <div class="flex items-center gap-2 text-sm text-slate-600">
-            <span class="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">24/7</span>
+            <span class="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+              24/7
+            </span>
             <div>
-              <p class="font-semibold text-slate-900">Suporte prioritario</p>
-              <p class="text-xs text-slate-500">Atendimento em portugues via chat e WhatsApp.</p>
+              <p class="font-semibold text-slate-900">Suporte prioritário</p>
+              <p class="text-xs text-slate-500">Atendimento em português via chat e WhatsApp.</p>
             </div>
           </div>
         </div>
@@ -171,6 +207,7 @@
 import { computed, ref, onMounted } from "vue";
 import api from "../../services/api";
 import { useAuthStore } from "../../store/useAuthStore";
+import { planLabels } from "../../utils/planLabels";
 
 interface PlanCard {
   key: string;
@@ -200,116 +237,111 @@ interface BillingInfo {
 }
 
 const authStore = useAuthStore();
+
 const loadingPlan = ref<string | null>(null);
 const errorMessage = ref<string | null>(null);
+
 const billingInfo = ref<BillingInfo | null>(null);
+
 const actionLoading = ref(false);
 const actionMessage = ref("");
 const actionError = ref("");
+
 const activePlan = computed(() => billingInfo.value?.plan || authStore.user?.plan || "free");
 
 const planNames: Record<string, string> = {
-  free: "Gratuito",
-  essencial: "Essencial",
-  growth: "Growth",
-  infinity: "Infinity"
+  free: `Plano ${planLabels.free}`,
+  essencial: `Plano ${planLabels.essencial}`,
+  growth: `Plano ${planLabels.growth}`,
+  infinity: `Plano ${planLabels.infinity}`
 };
 
-const plans = computed<PlanCard[]>(() => [
-  {
-    key: "free",
-    tier: "Entrada",
-    name: "Gratuito",
-    subtitle: "Comece agora sem custo",
-    price: "R$ 0",
-    period: "/mes",
-    highlight: "Todos comecam aqui",
-    features: [
-      "1 página publicada com até 4 seções essenciais",
-      "Editor visual completo e responsivo",
-      "Hospedagem, CDN e SSL incluídos",
-      "Biblioteca inicial de blocos e textos",
-      "Contador básico de visitas e cliques em CTA/WhatsApp"
-    ],
-    cta: "Comecar gratis",
-    note: "Publique sua primeira pagina sem custo.",
-    ctaClass: "bg-slate-900 hover:bg-slate-800"
-  },
-  {
-    key: "essencial",
-    tier: "Crescimento",
-    name: "Essencial",
-    subtitle: "Para quem precisa de mais presenca",
-    price: "R$49,90",
-    period: "/mes",
-    highlight: "Mais econômico",
-    features: [
-      "Até 5 páginas ativas ao mesmo tempo",
-      "Seções ilimitadas em cada roteiro",
-      "Componentes extras já liberados (depoimentos, FAQ, countdown)",
-      "Salvar template padrão para novos roteiros",
-      "Integração de 1 pixel (Meta ou GA4) com eventos de page view/CTA"
-    ],
-    badge: "Mais economica",
-    badgeTone: "bg-emerald-50 text-emerald-700 ring-emerald-100",
-    cta: "Liberar 5 paginas",
-    note: "Para campanhas recorrentes e variacoes simples.",
-    ctaClass: "bg-emerald-600 hover:bg-emerald-500"
-  },
-  {
-    key: "growth",
-    tier: "Performance",
-    name: "Growth",
-    subtitle: "O favorito das agencias",
-    price: "R$ 79,90",
-    oldPrice: "R$ 69,90",
-    period: "/mes",
-    highlight: "Mais vendido",
-    features: [
-      "Até 10 páginas ativas em paralelo",
-      "Seções ilimitadas e todos os blocos disponíveis",
-      "Até 3 pixels conectados simultaneamente",
-      "Duplicação rápida de páginas e seções para variações",
-      "Inclui todos os recursos do Essencial"
-    ],
-    badge: "Mais popular",
-    badgeTone: "bg-amber-100 text-amber-800 ring-amber-200",
-    cta: "Quero este plano",
-    note: "Para operar varias campanhas em paralelo.",
-    ctaClass: "bg-amber-500 hover:bg-amber-400"
-  },
-  {
-    key: "infinity",
-    tier: "Escala",
-    name: "Infinity",
-    subtitle: "Para dominar a regiao",
-    price: "R$ 129,90",
-    period: "/mes",
-    highlight: "Recomendado para escala",
-    features: [
-      "Páginas e seções ilimitadas em todos os projetos",
-      "Pixels ilimitados para qualquer campanha",
-      "Mantém todos os recursos dos planos anteriores",
-      "Ideal para operar múltiplas agências e marcas"
-    ],
-    badge: "Recomendado",
-    badgeTone: "bg-indigo-50 text-indigo-700 ring-indigo-100",
-    cta: "Destravar ilimitado",
-    note: "Para lancar sem limite e com SLA reforcado.",
-    ctaClass: "bg-indigo-600 hover:bg-indigo-500"
-  }
-].map(plan => ({ ...plan, isCurrent: plan.key === activePlan.value })));
+const plans = computed<PlanCard[]>(() =>
+  [
+    {
+      key: "free",
+      tier: "Começo",
+      name: "Plano Começo",
+      subtitle: "Para quem está começando a organizar seus roteiros online",
+      price: "R$ 0",
+      period: "/mês",
+      highlight: "Ideal para dar os primeiros passos",
+      features: ["1 roteiro online publicado", "Editor simples e fácil de usar", "Layout pronto para agência", "Relatório básico de cliques"],
+      cta: "Criar meu primeiro roteiro",
+      note: "Publique seu primeiro roteiro sem custos.",
+      ctaClass: "bg-slate-900 hover:bg-slate-800"
+    },
+    {
+      key: "essencial",
+      tier: "Profissional",
+      name: "Plano Profissional",
+      subtitle: "Para quem já vende excursões e quer mais presença online",
+      price: "R$ 49,90",
+      period: "/mês",
+      highlight: "Para quem quer vender mais roteiros",
+      features: [
+        "Até 5 roteiros online ativos",
+        "Seções ilimitadas dentro de cada roteiro",
+        "Salvar modelo padrão para copiar em novas viagens",
+        "Conectar 1 pixel (Facebook ou Google)",
+        "Componentes extras (depoimentos, contagem regressiva, FAQ)"
+      ],
+      badge: "Recomendado para crescer",
+      badgeTone: "bg-emerald-50 text-emerald-700 ring-emerald-100",
+      cta: "Quero organizar minhas viagens",
+      note: "Perfeito para quem já tem grupos rodando.",
+      ctaClass: "bg-emerald-600 hover:bg-emerald-500"
+    },
+    {
+      key: "growth",
+      tier: "Agência",
+      name: "Plano Agência",
+      subtitle: "Para agências que querem vender todos os meses com previsibilidade",
+      price: "R$ 79,90",
+      period: "/mês",
+      highlight: "Mais usado pelas agências",
+      features: ["Até 10 roteiros online ativos", "Conectar até 3 pixels", "Duplicação rápida de páginas", "Todos os recursos do Profissional"],
+      badge: "Mais popular",
+      badgeTone: "bg-amber-100 text-amber-800 ring-amber-200",
+      cta: "Quero escalar minhas vendas",
+      note: "Mantenha vários destinos ativos o ano todo.",
+      ctaClass: "bg-amber-500 hover:bg-amber-400"
+    },
+    {
+      key: "infinity",
+      tier: "Escala",
+      name: "Plano Escala",
+      subtitle: "Para agências que operam múltiplos grupos e querem dominar sua região",
+      price: "R$ 129,90",
+      period: "/mês",
+      highlight: "Para dominar sua região",
+      features: [
+        "Até 15 roteiros online ativos",
+        "Todos os recursos dos planos anteriores",
+        "Ideal para múltiplos destinos simultâneos",
+        "Página adicional: R$ 20,00 por roteiro extra"
+      ],
+      badge: "Para operação avançada",
+      badgeTone: "bg-indigo-50 text-indigo-700 ring-indigo-100",
+      cta: "Quero estruturar minha escala",
+      note: "Pensado para agências com vários grupos ativos.",
+      ctaClass: "bg-indigo-600 hover:bg-indigo-500"
+    }
+  ].map((plan) => ({ ...plan, isCurrent: plan.key === activePlan.value }))
+);
 
 const goToCheckout = async (planKey: string) => {
   if (planKey === activePlan.value) return;
+
   loadingPlan.value = planKey;
   errorMessage.value = null;
+
   try {
     const res = await api.post<{ init_point: string }>("/billing/checkout", { plan: planKey });
     window.location.href = res.data.init_point;
   } catch (err) {
     console.error(err);
-    errorMessage.value = "Nao foi possivel iniciar o checkout. Tente novamente.";
+    errorMessage.value = "Não foi possível iniciar o checkout. Tente novamente.";
   } finally {
     loadingPlan.value = null;
   }
@@ -356,10 +388,14 @@ const loadBilling = async () => {
 
 const cancelSubscription = async () => {
   if (!billingInfo.value || billingInfo.value.plan === "free") return;
-  if (!window.confirm("Cancelar a renovação ao fim do ciclo? Você continuará com acesso até a data já paga.")) return;
+
+  const ok = window.confirm("Cancelar a renovação ao fim do ciclo? Você continuará com acesso até a data já paga.");
+  if (!ok) return;
+
   actionLoading.value = true;
   actionError.value = "";
   actionMessage.value = "";
+
   try {
     await api.post("/billing/cancel");
     await loadBilling();
@@ -374,10 +410,14 @@ const cancelSubscription = async () => {
 
 const downgradeToFree = async () => {
   if (!billingInfo.value || billingInfo.value.plan === "free") return;
-  if (!window.confirm("Deseja voltar imediatamente ao plano gratuito? Os recursos dos planos pagos serão removidos.")) return;
+
+  const ok = window.confirm("Deseja voltar imediatamente ao plano gratuito? Os recursos dos planos pagos serão removidos.");
+  if (!ok) return;
+
   actionLoading.value = true;
   actionError.value = "";
   actionMessage.value = "";
+
   try {
     await api.post("/billing/change-plan", { plan: "free" });
     await authStore.fetchProfile();

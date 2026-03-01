@@ -1,7 +1,7 @@
 <template>
   <section class="w-full" :style="{ background: section.backgroundColor || 'linear-gradient(180deg,#f8fafc,#fff)' }" :id="section.anchorId || undefined">
     <div class="mx-auto max-w-6xl px-6 py-12">
-      <div class="space-y-6 rounded-3xl bg-white/85 p-6 shadow-[0_16px_50px_-30px_rgba(15,23,42,0.55)] ring-1 ring-slate-100">
+      <div class="space-y-6">
         <div class="text-center">
           <div class="flex justify-center">
             <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="accent" />
@@ -79,7 +79,24 @@ const middle = computed(() => Math.ceil((props.section.items?.length || 0) / 2))
 const leftItems = computed(() => props.section.items?.slice(0, middle.value) || []);
 const rightItems = computed(() => props.section.items?.slice(middle.value) || []);
 
-const accent = computed(() => props.section.backgroundColor || "#0ea5e9");
+const defaultAccent = "#0ea5e9";
+const isLight = (hex?: string) => {
+  if (!hex) return true;
+  const cleaned = hex.replace("#", "");
+  const full = cleaned.length === 3 ? cleaned.split("").map(c => c + c).join("") : cleaned;
+  if (full.length !== 6) return true;
+  const r = parseInt(full.substring(0, 2), 16) / 255;
+  const g = parseInt(full.substring(2, 4), 16) / 255;
+  const b = parseInt(full.substring(4, 6), 16) / 255;
+  const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+  return luminance > 0.85;
+};
+
+const accent = computed(() => {
+  const bg = props.section.backgroundColor;
+  if (!bg || isLight(bg)) return defaultAccent;
+  return bg;
+});
 const toRgba = (hex: string, alpha: number) => {
   const cleaned = hex.replace("#", "");
   const full = cleaned.length === 3 ? cleaned.split("").map(c => c + c).join("") : cleaned;
