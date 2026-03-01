@@ -135,12 +135,12 @@
 
           <div class="mt-4 space-y-3">
             <div
-              v-if="activeSeries.length"
+              v-if="chartPoints.length"
               class="rounded-xl bg-slate-50 p-4"
               :class="{ 'locked-blur': isFree }"
             >
-              <div class="overflow-x-auto">
-                <div class="space-y-3 min-w-full" :style="{ minWidth: chartWidth + 'px' }">
+              <div class="w-full overflow-x-auto">
+                <div class="space-y-3" :style="{ width: chartWidth + 'px' }">
                   <div class="relative" :style="{ height: chartHeight + 'px' }">
                     <svg
                       :viewBox="`0 0 ${chartWidth} ${chartHeight}`"
@@ -228,32 +228,12 @@
                     ></div>
                   </div>
 
-                  <div class="flex w-max gap-2 pt-2">
-                    <button
-                      class="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-emerald-300 hover:text-emerald-600"
-                      :class="{ 'border-emerald-400 bg-emerald-50 text-emerald-700': dayFilter === null }"
-                      @click="dayFilter = null"
-                      type="button"
-                    >
-                      Todos
-                    </button>
-                    <button
-                      v-for="(point, index) in chartData"
-                      :key="point.label + index"
-                      class="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-emerald-300 hover:text-emerald-600"
-                      :class="{ 'border-emerald-400 bg-emerald-50 text-emerald-700': dayFilter === index }"
-                      type="button"
-                      @click="toggleDayFilter(index)"
-                    >
-                      {{ point.label }}
-                    </button>
-                  </div>
                 </div>
               </div>
             </div>
 
             <div v-else class="flex h-48 items-center justify-center rounded-xl bg-slate-50 text-sm text-slate-500">
-              Sem dados de série temporal.
+      Sem dados de série temporal.
             </div>
           </div>
         </div>
@@ -364,18 +344,12 @@ const chartData = computed(() => {
   return [];
 });
 
-const dayFilter = ref<number | null>(null);
-const activeSeries = computed(() => {
-  if (dayFilter.value === null) return chartData.value;
-  return chartData.value.filter((_, index) => index === dayFilter.value);
-});
-
 const chartHeight = 220;
 const pointGap = 70;
 const horizontalPadding = 30;
 
 const chartWidth = computed(() => {
-  const count = activeSeries.value.length;
+  const count = chartData.value.length;
   if (!count) return 360;
   const baseWidth = Math.max((count - 1) * pointGap, 0) + horizontalPadding * 2;
   const minWidth = count === 1 ? 200 : 360;
@@ -383,16 +357,16 @@ const chartWidth = computed(() => {
 });
 
 const maxMetric = computed(() => {
-  if (!activeSeries.value.length) return 1;
+  if (!chartData.value.length) return 1;
   const maxValue = Math.max(
-    ...activeSeries.value.map(point => Math.max(point.visits ?? 0, point.clicks ?? 0, 0))
+    ...chartData.value.map(point => Math.max(point.visits ?? 0, point.clicks ?? 0, 0))
   );
   return maxValue > 0 ? maxValue : 1;
 });
 
 const chartPoints = computed<ChartPoint[]>(() => {
   const maxValue = maxMetric.value || 1;
-  return activeSeries.value.map((point, index) => {
+  return chartData.value.map((point, index) => {
     const x = index * pointGap + horizontalPadding;
     const visitRatio = (point.visits ?? 0) / maxValue;
     const clickRatio = (point.clicks ?? 0) / maxValue;
@@ -460,10 +434,6 @@ const clearHover = () => {
   hoverPoint.value = null;
 };
 
-const toggleDayFilter = (index: number) => {
-  dayFilter.value = dayFilter.value === index ? null : index;
-};
-
 const publishedPages = computed(() =>
   pages.value.filter(page => page.status?.toLowerCase() === "published")
 );
@@ -495,7 +465,6 @@ const fetchData = async () => {
     } else {
       chartDataRaw.value = [];
     }
-    dayFilter.value = null;
     hoverPoint.value = null;
   } catch {
     trend.pages = null;
@@ -505,7 +474,6 @@ const fetchData = async () => {
     totalVisits.value = 0;
     totalClicks.value = 0;
     chartDataRaw.value = [];
-    dayFilter.value = null;
     hoverPoint.value = null;
   }
 };
@@ -518,10 +486,6 @@ watch(
     }
   }
 );
-
-watch(dayFilter, () => {
-  hoverPoint.value = null;
-});
 
 onMounted(fetchData);
 watch([period, selectedPage], fetchData);
