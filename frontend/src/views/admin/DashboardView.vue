@@ -77,7 +77,9 @@
       <div class="rounded-2xl bg-white p-5 shadow-md ring-1 ring-slate-100">
         <p class="text-sm text-slate-500">Visitas (geral)</p>
         <div class="mt-2 flex items-end justify-between">
-          <p class="text-3xl font-bold text-slate-900">{{ totalVisits.toLocaleString("pt-BR") }}</p>
+          <p class="text-3xl font-bold text-slate-900" :class="{ 'blurred-value': isFree }">
+            {{ totalVisits.toLocaleString("pt-BR") }}
+          </p>
           <span
             v-if="trend.visits !== null"
             class="text-xs font-semibold"
@@ -87,12 +89,17 @@
           </span>
           <span v-else class="text-xs text-slate-400">--</span>
         </div>
+        <div v-if="isFree" class="mt-3 text-right">
+          <button class="upgrade-chip" @click="goPlans">Desbloquear</button>
+        </div>
       </div>
 
       <div class="rounded-2xl bg-white p-5 shadow-md ring-1 ring-slate-100">
         <p class="text-sm text-slate-500">Cliques (geral)</p>
         <div class="mt-2 flex items-end justify-between">
-          <p class="text-3xl font-bold text-slate-900">{{ totalClicks.toLocaleString("pt-BR") }}</p>
+          <p class="text-3xl font-bold text-slate-900" :class="{ 'blurred-value': isFree }">
+            {{ totalClicks.toLocaleString("pt-BR") }}
+          </p>
           <span
             v-if="trend.clicks !== null"
             class="text-xs font-semibold"
@@ -101,6 +108,9 @@
             {{ trend.clicks > 0 ? "+" : "" }}{{ trend.clicks }}%
           </span>
           <span v-else class="text-xs text-slate-400">--</span>
+        </div>
+        <div v-if="isFree" class="mt-3 text-right">
+          <button class="upgrade-chip" @click="goPlans">Desbloquear</button>
         </div>
       </div>
     </section>
@@ -122,6 +132,12 @@
             <h2 class="text-lg font-semibold text-slate-900">Visitas (últimos 7 dias)</h2>
             <p class="text-sm text-slate-500">Volume diário de acessos.</p>
           </div>
+          <div class="text-3xl font-bold text-slate-900" :class="{ 'blurred-value': isFree }">
+            {{ totalVisits.toLocaleString("pt-BR") }}
+          </div>
+        </div>
+        <div v-if="isFree" class="mt-2 flex justify-end">
+          <button class="upgrade-chip" @click="goPlans">Ver planos</button>
         </div>
 
         <div class="mt-4 space-y-3">
@@ -194,6 +210,12 @@
             <h2 class="text-lg font-semibold text-slate-900">Cliques (últimos 7 dias)</h2>
             <p class="text-sm text-slate-500">Total somado de cliques.</p>
           </div>
+          <div class="text-3xl font-bold text-slate-900" :class="{ 'blurred-value': isFree }">
+            {{ totalClicks.toLocaleString("pt-BR") }}
+          </div>
+        </div>
+        <div v-if="isFree" class="mt-2 flex justify-end">
+          <button class="upgrade-chip" @click="goPlans">Ver planos</button>
         </div>
 
         <div class="mt-4 space-y-3">
@@ -257,15 +279,6 @@
           <div v-else class="flex h-48 items-center justify-center rounded-xl bg-slate-50 text-sm text-slate-500">
             Sem dados de série temporal.
           </div>
-        </div>
-
-        <div v-if="isFree" class="absolute inset-x-0 bottom-4 flex justify-center">
-          <button
-            @click="goPlans"
-            class="rounded-full bg-white/95 px-4 py-1.5 text-xs font-semibold text-slate-700 shadow ring-1 ring-slate-200 hover:bg-white"
-          >
-            Faça upgrade para ter acesso
-          </button>
         </div>
       </div>
     </section>
@@ -547,5 +560,25 @@ const goPlans = () => {
   opacity: 0.15;
   pointer-events: none;
   transition: opacity 0.2s ease, filter 0.2s ease;
+}
+.blurred-value {
+  filter: blur(8px);
+  opacity: 0.1;
+  pointer-events: none;
+  user-select: none;
+  position: relative;
+}
+.upgrade-chip {
+  border-radius: 9999px;
+  border: 1px solid rgb(226 232 240);
+  background-color: white;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgb(51 65 85);
+  transition: background-color 0.2s;
+}
+.upgrade-chip:hover {
+  background-color: rgb(248 250 252);
 }
 </style>
