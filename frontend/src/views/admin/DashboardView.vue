@@ -136,11 +136,11 @@
           <div class="mt-4 space-y-3">
             <div
               v-if="chartPoints.length"
-              class="rounded-xl bg-slate-50 p-4"
+              class="rounded-xl bg-slate-50 p-6"
               :class="{ 'locked-blur': isFree }"
             >
-              <div class="w-full overflow-x-auto">
-                <div class="space-y-3" :style="{ width: chartWidth + 'px' }">
+              <div class="-mx-4 overflow-x-auto px-4">
+                <div class="space-y-3" :style="chartContainerStyle">
                   <div class="relative" :style="{ height: chartHeight + 'px' }">
                     <svg
                       :viewBox="`0 0 ${chartWidth} ${chartHeight}`"
@@ -344,7 +344,7 @@ const chartData = computed(() => {
   return [];
 });
 
-const chartHeight = 220;
+const chartHeight = 280;
 const pointGap = 70;
 const horizontalPadding = 30;
 
@@ -355,6 +355,10 @@ const chartWidth = computed(() => {
   const minWidth = count === 1 ? 200 : 360;
   return Math.max(baseWidth, minWidth);
 });
+
+const chartContainerStyle = computed(() => ({
+  minWidth: `${chartWidth.value}px`,
+}));
 
 const maxMetric = computed(() => {
   if (!chartData.value.length) return 1;
@@ -410,7 +414,7 @@ const tooltipStyle = computed(() => {
   const padding = 60;
   const left = Math.min(Math.max(hoverPoint.value.x, padding), chartWidth.value - padding);
   const minY = Math.min(hoverPoint.value.yVisits, hoverPoint.value.yClicks);
-  const top = Math.max(minY - 30, 16);
+  const top = Math.max(minY - 40, 24);
   return { left: `${left}px`, top: `${top}px` };
 });
 
