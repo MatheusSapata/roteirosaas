@@ -90,7 +90,12 @@
           <span v-else class="text-xs text-slate-400">--</span>
         </div>
         <div v-if="isFree" class="mt-3 text-right">
-          <button class="upgrade-chip" @click="goPlans">Desbloquear</button>
+          <button
+            class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+            @click="goPlans"
+          >
+            Desbloquear
+          </button>
         </div>
       </div>
 
@@ -110,7 +115,12 @@
           <span v-else class="text-xs text-slate-400">--</span>
         </div>
         <div v-if="isFree" class="mt-3 text-right">
-          <button class="upgrade-chip" @click="goPlans">Desbloquear</button>
+          <button
+            class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+            @click="goPlans"
+          >
+            Desbloquear
+          </button>
         </div>
       </div>
     </section>
@@ -137,7 +147,12 @@
           </div>
         </div>
         <div v-if="isFree" class="mt-2 flex justify-end">
-          <button class="upgrade-chip" @click="goPlans">Ver planos</button>
+          <button
+            class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+            @click="goPlans"
+          >
+            Ver planos
+          </button>
         </div>
 
         <div class="mt-4 space-y-3">
@@ -215,7 +230,12 @@
           </div>
         </div>
         <div v-if="isFree" class="mt-2 flex justify-end">
-          <button class="upgrade-chip" @click="goPlans">Ver planos</button>
+          <button
+            class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+            @click="goPlans"
+          >
+            Ver planos
+          </button>
         </div>
 
         <div class="mt-4 space-y-3">
@@ -567,18 +587,5 @@ const goPlans = () => {
   pointer-events: none;
   user-select: none;
   position: relative;
-}
-.upgrade-chip {
-  border-radius: 9999px;
-  border: 1px solid rgb(226 232 240);
-  background-color: white;
-  padding: 0.25rem 0.75rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: rgb(51 65 85);
-  transition: background-color 0.2s;
-}
-.upgrade-chip:hover {
-  background-color: rgb(248 250 252);
 }
 </style>
