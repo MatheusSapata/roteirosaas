@@ -135,80 +135,131 @@
 
           <div class="mt-4 space-y-3">
             <div
-              v-if="chartPoints.length"
-              class="overflow-x-auto rounded-xl bg-slate-50 p-4"
+              v-if="activeSeries.length"
+              class="rounded-xl bg-slate-50 p-4"
               :class="{ 'locked-blur': isFree }"
             >
-              <div class="relative" :style="{ minWidth: chartWidth + 'px', height: chartHeight + 'px' }">
-                <svg
-                  :viewBox="`0 0 ${chartWidth} ${chartHeight}`"
-                  preserveAspectRatio="none"
-                  class="h-full w-full"
-                >
-                  <defs>
-                    <linearGradient id="visitsGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.25" />
-                      <stop offset="100%" stop-color="#38bdf8" stop-opacity="0" />
-                    </linearGradient>
-                    <linearGradient id="ctaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" stop-color="#a855f7" stop-opacity="0.25" />
-                      <stop offset="100%" stop-color="#a855f7" stop-opacity="0" />
-                    </linearGradient>
-                  </defs>
+              <div class="overflow-x-auto">
+                <div class="space-y-3" :style="{ width: chartWidth + 'px' }">
+                  <div class="relative" :style="{ height: chartHeight + 'px' }">
+                    <svg
+                      :viewBox="`0 0 ${chartWidth} ${chartHeight}`"
+                      preserveAspectRatio="none"
+                      class="h-full w-full"
+                    >
+                      <defs>
+                        <linearGradient id="visitsGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                          <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.25" />
+                          <stop offset="100%" stop-color="#38bdf8" stop-opacity="0" />
+                        </linearGradient>
+                        <linearGradient id="ctaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                          <stop offset="0%" stop-color="#a855f7" stop-opacity="0.25" />
+                          <stop offset="100%" stop-color="#a855f7" stop-opacity="0" />
+                        </linearGradient>
+                      </defs>
 
-                  <path
-                    v-if="visitsArea.length"
-                    :d="visitsArea"
-                    fill="url(#visitsGradient)"
-                    stroke="none"
-                    opacity="0.7"
-                  />
-                  <path
-                    v-if="conversionsArea.length"
-                    :d="conversionsArea"
-                    fill="url(#ctaGradient)"
-                    stroke="none"
-                    opacity="0.7"
-                  />
+                      <path
+                        v-if="visitsArea.length"
+                        :d="visitsArea"
+                        fill="url(#visitsGradient)"
+                        stroke="none"
+                        opacity="0.7"
+                      />
+                      <path
+                        v-if="conversionsArea.length"
+                        :d="conversionsArea"
+                        fill="url(#ctaGradient)"
+                        stroke="none"
+                        opacity="0.7"
+                      />
 
-                  <polyline
-                    v-if="visitsLine.length"
-                    :points="visitsLine"
-                    fill="none"
-                    stroke="#0ea5e9"
-                    stroke-width="3"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                  <polyline
-                    v-if="conversionsLine.length"
-                    :points="conversionsLine"
-                    fill="none"
-                    stroke="#8b5cf6"
-                    stroke-width="3"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                </svg>
+                      <polyline
+                        v-if="visitsLine.length"
+                        :points="visitsLine"
+                        fill="none"
+                        stroke="#0ea5e9"
+                        stroke-width="3"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                      <polyline
+                        v-if="conversionsLine.length"
+                        :points="conversionsLine"
+                        fill="none"
+                        stroke="#8b5cf6"
+                        stroke-width="3"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+
+                      <template v-for="point in chartPoints" :key="point.label">
+                        <circle
+                          :cx="point.x"
+                          :cy="point.yVisits"
+                          r="4"
+                          fill="#0ea5e9"
+                          opacity="0.6"
+                        />
+                        <circle
+                          :cx="point.x"
+                          :cy="point.yConversions"
+                          r="4"
+                          fill="#8b5cf6"
+                          opacity="0.6"
+                        />
+                      </template>
+                    </svg>
+
+                    <div
+                      v-if="hoverPoint"
+                      class="pointer-events-none absolute inset-y-0 w-px bg-slate-300"
+                      :style="{ left: hoverPoint.x + 'px' }"
+                    ></div>
+
+                    <div
+                      v-if="hoverPoint"
+                      class="pointer-events-none absolute -translate-x-1/2 -translate-y-full rounded-xl bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-lg ring-1 ring-slate-200"
+                      :style="tooltipStyle"
+                    >
+                      <p class="text-[11px] font-semibold text-slate-500">{{ hoverPoint.label }}</p>
+                      <p class="text-slate-800">Visitas: {{ hoverPoint.visits }}</p>
+                      <p class="text-slate-800">Conversões: {{ hoverPoint.conversions }}</p>
+                    </div>
+
+                    <div
+                      ref="chartSurfaceRef"
+                      class="absolute inset-0 cursor-crosshair"
+                      @mousemove="handleChartMove"
+                      @mouseleave="clearHover"
+                    ></div>
+                  </div>
+
+                  <div class="flex gap-2 pt-2">
+                    <button
+                      class="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-emerald-300 hover:text-emerald-600"
+                      :class="{ 'border-emerald-400 bg-emerald-50 text-emerald-700': dayFilter === null }"
+                      @click="dayFilter = null"
+                      type="button"
+                    >
+                      Todos
+                    </button>
+                    <button
+                      v-for="(point, index) in chartData"
+                      :key="point.label + index"
+                      class="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-emerald-300 hover:text-emerald-600"
+                      :class="{ 'border-emerald-400 bg-emerald-50 text-emerald-700': dayFilter === index }"
+                      type="button"
+                      @click="toggleDayFilter(index)"
+                    >
+                      {{ point.label }}
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
 
             <div v-else class="flex h-48 items-center justify-center rounded-xl bg-slate-50 text-sm text-slate-500">
               Sem dados de série temporal.
-            </div>
-
-            <div
-              v-if="chartPoints.length"
-              class="flex gap-2 overflow-x-auto pt-2"
-              :style="{ minWidth: chartWidth + 'px' }"
-            >
-              <span
-                v-for="point in chartPoints"
-                :key="point.label"
-                class="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm"
-              >
-                {{ point.label }}
-              </span>
             </div>
           </div>
         </div>
@@ -246,6 +297,15 @@ type SeriesPoint = {
   clicks: number;
   conversions: number;
 };
+
+interface ChartPoint {
+  label: string;
+  x: number;
+  yVisits: number;
+  yConversions: number;
+  visits: number;
+  conversions: number;
+}
 
 interface StatsTrendResponse {
   pages: number | null;
@@ -310,27 +370,36 @@ const chartData = computed(() => {
   return [];
 });
 
+const dayFilter = ref<number | null>(null);
+const activeSeries = computed(() => {
+  if (dayFilter.value === null) return chartData.value;
+  return chartData.value.filter((_, index) => index === dayFilter.value);
+});
+
 const chartHeight = 180;
 const pointGap = 70;
+const horizontalPadding = 30;
 
 const chartWidth = computed(() => {
-  if (!chartData.value.length) return 360;
-  if (chartData.value.length === 1) return 200;
-  return Math.max((chartData.value.length - 1) * pointGap + 60, 360);
+  const count = activeSeries.value.length;
+  if (!count) return 360;
+  const baseWidth = Math.max((count - 1) * pointGap, 0) + horizontalPadding * 2;
+  const minWidth = count === 1 ? 200 : 360;
+  return Math.max(baseWidth, minWidth);
 });
 
 const maxMetric = computed(() => {
-  if (!chartData.value.length) return 1;
+  if (!activeSeries.value.length) return 1;
   const maxValue = Math.max(
-    ...chartData.value.map(point => Math.max(point.visits ?? 0, point.conversions ?? 0, 0))
+    ...activeSeries.value.map(point => Math.max(point.visits ?? 0, point.conversions ?? 0, 0))
   );
   return maxValue > 0 ? maxValue : 1;
 });
 
-const chartPoints = computed(() => {
+const chartPoints = computed<ChartPoint[]>(() => {
   const maxValue = maxMetric.value || 1;
-  return chartData.value.map((point, index) => {
-    const x = index * pointGap;
+  return activeSeries.value.map((point, index) => {
+    const x = index * pointGap + horizontalPadding;
     const visitRatio = (point.visits ?? 0) / maxValue;
     const conversionRatio = (point.conversions ?? 0) / maxValue;
     return {
@@ -338,34 +407,68 @@ const chartPoints = computed(() => {
       x,
       yVisits: chartHeight - visitRatio * chartHeight,
       yConversions: chartHeight - conversionRatio * chartHeight,
+      visits: point.visits ?? 0,
+      conversions: point.conversions ?? 0,
     };
   });
 });
 
-const buildLinePoints = (key: "visits" | "conversions") => {
-  return chartPoints.value
-    .map(point => `${point.x},${key === "visits" ? point.yVisits : point.yConversions}`)
-    .join(" ");
+const buildLinePoints = (key: "yVisits" | "yConversions") => {
+  return chartPoints.value.map(point => `${point.x},${point[key]}`).join(" ");
 };
 
-const buildAreaPath = (key: "visits" | "conversions") => {
+const buildAreaPath = (key: "yVisits" | "yConversions") => {
   const points = chartPoints.value;
   if (!points.length) return "";
+  const first = points[0];
+  const last = points[points.length - 1];
+  const keyValue = (point: ChartPoint) => point[key];
   const linePoints = points
-    .map((point, index) => {
-      const prefix = index === 0 ? "L" : "L";
-      const y = key === "visits" ? point.yVisits : point.yConversions;
-      return `${prefix} ${point.x} ${y}`;
-    })
+    .slice(1)
+    .map(point => `L ${point.x} ${keyValue(point)}`)
     .join(" ");
-  const lastX = points[points.length - 1].x;
-  return `M ${points[0].x} ${chartHeight} ${linePoints} L ${lastX} ${chartHeight} Z`;
+  return `M ${first.x} ${chartHeight} L ${first.x} ${keyValue(first)} ${linePoints} L ${last.x} ${chartHeight} Z`;
 };
 
-const visitsLine = computed(() => buildLinePoints("visits"));
-const conversionsLine = computed(() => buildLinePoints("conversions"));
-const visitsArea = computed(() => buildAreaPath("visits"));
-const conversionsArea = computed(() => buildAreaPath("conversions"));
+const visitsLine = computed(() => buildLinePoints("yVisits"));
+const conversionsLine = computed(() => buildLinePoints("yConversions"));
+const visitsArea = computed(() => buildAreaPath("yVisits"));
+const conversionsArea = computed(() => buildAreaPath("yConversions"));
+
+const chartSurfaceRef = ref<HTMLDivElement | null>(null);
+const hoverPoint = ref<ChartPoint | null>(null);
+const tooltipStyle = computed(() => {
+  if (!hoverPoint.value) return {};
+  const padding = 60;
+  const left = Math.min(Math.max(hoverPoint.value.x, padding), chartWidth.value - padding);
+  const minY = Math.min(hoverPoint.value.yVisits, hoverPoint.value.yConversions);
+  const top = Math.max(minY - 20, 10);
+  return { left: `${left}px`, top: `${top}px` };
+});
+
+const handleChartMove = (event: MouseEvent) => {
+  if (!chartSurfaceRef.value || !chartPoints.value.length) return;
+  const rect = chartSurfaceRef.value.getBoundingClientRect();
+  const offsetX = event.clientX - rect.left;
+  let nearest = chartPoints.value[0];
+  let minDistance = Math.abs(nearest.x - offsetX);
+  for (const point of chartPoints.value) {
+    const distance = Math.abs(point.x - offsetX);
+    if (distance < minDistance) {
+      nearest = point;
+      minDistance = distance;
+    }
+  }
+  hoverPoint.value = nearest;
+};
+
+const clearHover = () => {
+  hoverPoint.value = null;
+};
+
+const toggleDayFilter = (index: number) => {
+  dayFilter.value = dayFilter.value === index ? null : index;
+};
 
 const publishedPages = computed(() =>
   pages.value.filter(page => page.status?.toLowerCase() === "published")
@@ -398,6 +501,8 @@ const fetchData = async () => {
     } else {
       chartDataRaw.value = [];
     }
+    dayFilter.value = null;
+    hoverPoint.value = null;
   } catch {
     trend.pages = null;
     trend.visits = null;
@@ -406,6 +511,8 @@ const fetchData = async () => {
     totalVisits.value = 0;
     totalClicks.value = 0;
     chartDataRaw.value = [];
+    dayFilter.value = null;
+    hoverPoint.value = null;
   }
 };
 
@@ -417,6 +524,10 @@ watch(
     }
   }
 );
+
+watch(dayFilter, () => {
+  hoverPoint.value = null;
+});
 
 onMounted(fetchData);
 watch([period, selectedPage], fetchData);
