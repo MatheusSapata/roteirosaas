@@ -51,13 +51,13 @@
 
             <div>
               <span class="inline-flex min-w-[3rem] justify-center rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-600">
-                {{ getPageVisits(page.id) }}
+                {{ isFree ? "--" : getPageVisits(page.id) }}
               </span>
             </div>
 
             <div>
               <span class="inline-flex min-w-[3rem] justify-center rounded-full bg-indigo-50 px-3 py-1 text-sm font-semibold text-indigo-600">
-                {{ getPageClicks(page.id) }}
+                {{ isFree ? "--" : getPageClicks(page.id) }}
               </span>
             </div>
 
@@ -227,6 +227,7 @@ import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import api from "../../services/api";
 import { useAgencyStore } from "../../store/useAgencyStore";
+import { useAuthStore } from "../../store/useAuthStore";
 
 interface Page {
   id: number;
@@ -248,6 +249,7 @@ interface PageStatsSummary {
 
 const router = useRouter();
 const agencyStore = useAgencyStore();
+const authStore = useAuthStore();
 const pages = ref<Page[]>([]);
 const pageStats = ref<Record<number, { visits: number; cta: number; whatsapp: number }>>({});
 const hasAgency = ref(false);
@@ -262,6 +264,7 @@ const currentAgencySlug = computed(() => {
   const agency = agencyStore.agencies.find(a => a.id === agencyStore.currentAgencyId);
   return agency?.slug || "";
 });
+const isFree = computed(() => (authStore.user?.plan || "free") === "free");
 
 const loadPages = async () => {
   errorMessage.value = "";

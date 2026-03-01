@@ -14,7 +14,7 @@ def plan_limits(plan: str) -> Tuple[int | None, int | None]:
     if plan == "growth":
         return 10, None
     if plan == "infinity":
-        return None, None
+        return 15, None
     # free
     return 1, 4
 
