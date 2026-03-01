@@ -149,7 +149,7 @@
                     >
                       <template v-for="point in chartPoints" :key="point.label">
                         <rect
-                          :x="point.x - barSpacing - barWidth"
+                          :x="point.visitsX"
                           :y="point.yVisits"
                           :width="barWidth"
                           :height="Math.max(chartHeight - point.yVisits, 1)"
@@ -158,7 +158,7 @@
                           opacity="0.8"
                         />
                         <rect
-                          :x="point.x + barSpacing"
+                          :x="point.clicksX"
                           :y="point.yClicks"
                           :width="barWidth"
                           :height="Math.max(chartHeight - point.yClicks, 1)"
@@ -172,7 +172,7 @@
                     <div
                       v-if="hoverPoint"
                       class="pointer-events-none absolute inset-y-0 w-px bg-slate-300"
-                      :style="{ left: hoverPoint.x + 'px' }"
+                      :style="{ left: hoverPoint.centerX + 'px' }"
                     ></div>
 
                     <div
@@ -193,6 +193,17 @@
                     ></div>
                   </div>
 
+                </div>
+
+                <div class="relative h-6 text-xs text-slate-500" :style="{ width: chartWidth + 'px' }">
+                  <span
+                    v-for="point in chartPoints"
+                    :key="point.label + '-label'"
+                    class="absolute -translate-x-1/2 whitespace-nowrap"
+                    :style="{ left: point.centerX + 'px' }"
+                  >
+                    {{ point.label }}
+                  </span>
                 </div>
               </div>
             </div>
@@ -239,7 +250,9 @@ type SeriesPoint = {
 
 interface ChartPoint {
   label: string;
-  x: number;
+  visitsX: number;
+  clicksX: number;
+  centerX: number;
   yVisits: number;
   yClicks: number;
   visits: number;
@@ -310,20 +323,21 @@ const chartData = computed(() => {
 });
 
 const chartHeight = 280;
-const pointGap = 70;
-const horizontalPadding = 30;
-const barWidth = 18;
-const barSpacing = 10;
+const barWidth = 20;
+const barSpacing = 4;
+const groupSpacing = 20;
+const horizontalPadding = 24;
+const groupWidth = barWidth * 2 + barSpacing + groupSpacing;
 
 const chartWidth = computed(() => {
   const count = chartData.value.length;
   if (!count) return 360;
-  const baseWidth = Math.max((count - 1) * pointGap, 0) + horizontalPadding * 2;
-  const minWidth = count === 1 ? 200 : 360;
-  return Math.max(baseWidth, minWidth);
+  const baseWidth = horizontalPadding * 2 + count * groupWidth;
+  return Math.max(baseWidth, 360);
 });
 
 const chartContainerStyle = computed(() => ({
+  width: `${chartWidth.value}px`,
   minWidth: `${chartWidth.value}px`,
 }));
 
@@ -338,12 +352,17 @@ const maxMetric = computed(() => {
 const chartPoints = computed<ChartPoint[]>(() => {
   const maxValue = maxMetric.value || 1;
   return chartData.value.map((point, index) => {
-    const x = index * pointGap + horizontalPadding;
+    const groupStart = horizontalPadding + index * groupWidth;
+    const visitsX = groupStart;
+    const clicksX = groupStart + barWidth + barSpacing;
+    const centerX = visitsX + barWidth + barSpacing / 2;
     const visitRatio = (point.visits ?? 0) / maxValue;
     const clickRatio = (point.clicks ?? 0) / maxValue;
     return {
       label: point.label,
-      x,
+      visitsX,
+      clicksX,
+      centerX,
       yVisits: chartHeight - visitRatio * chartHeight,
       yClicks: chartHeight - clickRatio * chartHeight,
       visits: point.visits ?? 0,
@@ -357,7 +376,7 @@ const hoverPoint = ref<ChartPoint | null>(null);
 const tooltipStyle = computed(() => {
   if (!hoverPoint.value) return {};
   const padding = 60;
-  const left = Math.min(Math.max(hoverPoint.value.x, padding), chartWidth.value - padding);
+  const left = Math.min(Math.max(hoverPoint.value.centerX, padding), chartWidth.value - padding);
   const minY = Math.min(hoverPoint.value.yVisits, hoverPoint.value.yClicks);
   const top = Math.max(minY - 40, 24);
   return { left: `${left}px`, top: `${top}px` };
@@ -368,9 +387,9 @@ const handleChartMove = (event: MouseEvent) => {
   const rect = chartSurfaceRef.value.getBoundingClientRect();
   const offsetX = event.clientX - rect.left;
   let nearest = chartPoints.value[0];
-  let minDistance = Math.abs(nearest.x - offsetX);
+  let minDistance = Math.abs(nearest.centerX - offsetX);
   for (const point of chartPoints.value) {
-    const distance = Math.abs(point.x - offsetX);
+    const distance = Math.abs(point.centerX - offsetX);
     if (distance < minDistance) {
       nearest = point;
       minDistance = distance;
