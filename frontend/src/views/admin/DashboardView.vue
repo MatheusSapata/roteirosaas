@@ -105,6 +105,16 @@
       </div>
     </section>
 
+    <div class="mb-2 flex flex-wrap items-center gap-2 text-xs text-slate-600">
+      <label class="font-semibold">Página:</label>
+      <select v-model="selectedPage" class="rounded-lg border border-slate-200 px-3 py-1 text-sm text-slate-700">
+        <option value="all">Todas as publicadas</option>
+        <option v-for="page in publishedPages" :key="page.id" :value="String(page.id)">
+          {{ page.title }}
+        </option>
+      </select>
+    </div>
+
     <section class="grid gap-4 lg:grid-cols-2">
       <div class="rounded-2xl bg-white p-6 shadow-md ring-1 ring-slate-100">
         <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -112,17 +122,6 @@
             <h2 class="text-lg font-semibold text-slate-900">Visitas (últimos 7 dias)</h2>
             <p class="text-sm text-slate-500">Volume diário de acessos.</p>
           </div>
-          <div class="text-3xl font-bold text-slate-900">{{ totalVisits.toLocaleString("pt-BR") }}</div>
-        </div>
-
-        <div class="mt-4 flex flex-wrap items-center gap-2 text-xs text-slate-600">
-          <label class="font-semibold">Página:</label>
-          <select v-model="selectedPage" class="rounded-lg border border-slate-200 px-3 py-1 text-sm text-slate-700">
-            <option value="all">Todas as publicadas</option>
-            <option v-for="page in publishedPages" :key="page.id" :value="String(page.id)">
-              {{ page.title }}
-            </option>
-          </select>
         </div>
 
         <div class="mt-4 space-y-3">
@@ -195,7 +194,6 @@
             <h2 class="text-lg font-semibold text-slate-900">Cliques (últimos 7 dias)</h2>
             <p class="text-sm text-slate-500">Total somado de cliques.</p>
           </div>
-          <div class="text-3xl font-bold text-slate-900">{{ totalClicks.toLocaleString("pt-BR") }}</div>
         </div>
 
         <div class="mt-4 space-y-3">
