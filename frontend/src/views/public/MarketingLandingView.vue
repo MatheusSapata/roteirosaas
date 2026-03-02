@@ -18,7 +18,7 @@
       </p>
 
       <h1 class="mt-4 text-4xl font-black leading-tight sm:text-5xl lg:text-6xl">
-        Domine as campanhas mais agressivas do seu nicho.
+        Faça roteiros que vendem em minutos.
       </h1>
 
       <p class="mt-5 max-w-xl text-lg text-white/85">
@@ -408,7 +408,7 @@ const heroBullets = [
   "Editor visual com templates agressivos",
   "Alertas automáticos de queda e alta de performance",
   "Integrações Meta, GA e WhatsApp nativas",
-  "Checkout e billing integrados ao painel"
+  "Crie as páginas em menos de 15 minutos"
 ];
 
 const advantageStats = [
@@ -439,14 +439,14 @@ const advantages = [
     title: "Integrações nativas",
     caption: "Pixels, WhatsApp e automações",
     description: "Ative pixels Meta/Google e monitore CTAs. O sistema envia os eventos sem plugins externos.",
-    highlight: "Crie campanhas de remarketing com 1 clique.",
+    highlight: "Crie páginas com integração em poucos cliques.",
     icon: "integrations",
     accent: "bg-cyan-50"
   },
   {
     title: "Planos flexíveis",
     caption: "Escale apenas quando precisar",
-    description: "Comece grátis, teste o trial premium e faça upgrade quando sua carteira exigir.",
+    description: "Comece grátis, e conforme sua necessidade faça o upgrade.",
     highlight: "Downgrade e cancelamento direto no painel.",
     icon: "switch",
     accent: "bg-emerald-50"
