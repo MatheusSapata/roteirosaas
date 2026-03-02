@@ -20,14 +20,6 @@
       </div>
     </div>
 
-    <div>
-      <label class="text-sm font-semibold text-slate-600">Layout</label>
-      <select v-model="local.layout" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2">
-        <option value="bar">Barra larga (cheia)</option>
-        <option value="flip">Cartões (dias/horas/min/seg)</option>
-      </select>
-    </div>
-
     <div class="grid gap-3 md:grid-cols-2">
       <div>
         <label class="text-sm font-semibold text-slate-600">Cor de fundo</label>
@@ -68,7 +60,7 @@ const local = reactive<CountdownSection>({
   targetDate: props.modelValue.targetDate || buildDefaultTargetDate(),
   backgroundColor: "#ef4444",
   textColor: "#ffffff",
-  layout: "bar",
+  layout: "flip",
   headingLabel: props.modelValue.headingLabel ?? headingDefaults.label,
   headingLabelStyle: props.modelValue.headingLabelStyle ?? headingDefaults.style,
   ...props.modelValue
@@ -78,7 +70,7 @@ const syncFromProps = (value: CountdownSection) => {
   syncing = true;
   Object.assign(local, value);
   local.targetDate = value.targetDate || buildDefaultTargetDate();
-  local.layout = value.layout || "bar";
+  local.layout = "flip";
   local.headingLabel = value.headingLabel ?? headingDefaults.label;
   local.headingLabelStyle = value.headingLabelStyle || headingDefaults.style;
   nextTick(() => {

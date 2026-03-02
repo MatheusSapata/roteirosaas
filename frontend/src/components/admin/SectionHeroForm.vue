@@ -84,10 +84,8 @@
       <div>
         <label class="text-sm font-semibold text-slate-600">Layout do Hero</label>
         <select v-model="local.layout" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2">
-          <option value="classic">Clássico (texto + CTA)</option>
-          <option value="split">Split (texto + card de destaque)</option>
-          <option value="card">Card central com overlay</option>
           <option value="immersive">Imersivo (background + gradiente + destaques)</option>
+          <option value="card">Card central com overlay</option>
         </select>
       </div>
       <div>
@@ -158,18 +156,6 @@
         </div>
         <p class="mt-1 text-xs text-slate-500">Cada destaque aparece em formato de selo no hero.</p>
       </div>
-      <div>
-        <label class="text-sm font-semibold text-slate-600">Cor de fundo (demais layouts)</label>
-        <select v-model="local.backgroundColor" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2">
-          <option v-for="option in colorOptions" :key="option.value" :value="option.value">
-            {{ option.label }}
-          </option>
-        </select>
-      </div>
-    </div>
-    <div class="flex items-center gap-2">
-      <input type="checkbox" v-model="local.fullWidth" class="h-4 w-4" />
-      <label class="text-sm font-semibold text-slate-600">Ocupar largura total</label>
     </div>
   </div>
 </template>
@@ -184,8 +170,18 @@ import type { HeroSection } from "../../types/page";
 const props = defineProps<{ modelValue: HeroSection }>();
 const emit = defineEmits<{ (e: "update:modelValue", value: HeroSection): void }>();
 
+const allowedLayouts = ["immersive", "card"] as const;
+const defaultLayout: (typeof allowedLayouts)[number] = "immersive";
+
+const sanitizeLayout = (value?: string): HeroSection["layout"] => {
+  if (value && allowedLayouts.includes(value as (typeof allowedLayouts)[number])) {
+    return value as HeroSection["layout"];
+  }
+  return defaultLayout;
+};
+
 const local = reactive<HeroSection>({
-  layout: "classic",
+  layout: sanitizeLayout(props.modelValue.layout),
   logoSize: props.modelValue.logoSize ?? 64,
   ...props.modelValue,
   chips: props.modelValue.chips ? [...props.modelValue.chips] : [],
@@ -202,6 +198,7 @@ const syncFromProps = (value: HeroSection) => {
   Object.assign(local, value);
   local.logoSize = value.logoSize ?? 64;
   local.chips = value.chips ? [...value.chips] : [];
+  local.layout = sanitizeLayout(value.layout);
   if (!local.chips.length) local.chips = [""];
   local.ctaMode = value.ctaMode || "link";
   local.ctaSectionId = value.ctaSectionId || null;
@@ -218,19 +215,6 @@ watch(
   },
   { deep: true }
 );
-
-const colorOptions = [
-  { label: "Azul oceano", value: "linear-gradient(135deg,#0ea5e9,#1d4ed8)" },
-  { label: "Roxo neon", value: "linear-gradient(135deg,#7c3aed,#4338ca)" },
-  { label: "Laranja pôr do sol", value: "linear-gradient(135deg,#f97316,#ea580c)" },
-  { label: "Verde floresta", value: "linear-gradient(135deg,#16a34a,#15803d)" },
-  { label: "Rosa vibrante", value: "linear-gradient(135deg,#ec4899,#db2777)" },
-  { label: "Turquesa", value: "linear-gradient(135deg,#14b8a6,#0ea5e9)" },
-  { label: "Dourado", value: "linear-gradient(135deg,#f59e0b,#d97706)" },
-  { label: "Cinza elegante", value: "linear-gradient(135deg,#475569,#1f2937)" },
-  { label: "Marinho", value: "linear-gradient(135deg,#0f172a,#1e3a8a)" },
-  { label: "Preto premium", value: "linear-gradient(135deg,#0b0f19,#111827)" }
-];
 
 const addChip = () => {
   if (!Array.isArray(local.chips)) local.chips = [];

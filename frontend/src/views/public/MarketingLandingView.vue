@@ -12,9 +12,7 @@
 
   <div class="relative mx-auto flex max-w-6xl flex-col gap-10 px-6 py-16 sm:py-20 lg:flex-row lg:items-center">
     <div class="flex-1 pt-10 sm:pt-0">
-      <p class="text-sm font-semibold uppercase tracking-[0.45em] text-emerald-100">
-        Roteiro Online
-      </p>
+      <img :src="landingLogo" alt="Roteiro Online" class="h-16 w-auto sm:h-20" />
 
       <h1 class="mt-4 text-4xl font-black leading-tight sm:text-5xl lg:text-6xl">
         Faça roteiros que vendem em minutos.
@@ -396,6 +394,9 @@
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
+import LandingLogo from "../../assets/Logo Branco - Roteiro Online.png";
+
+const landingLogo = LandingLogo;
 
 const heroMetrics = [
   { label: "Campanhas montadas por mês", value: "2x mais rápidas" },

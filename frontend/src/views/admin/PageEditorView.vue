@@ -83,20 +83,20 @@
           Publicar
         </button>
 
-        <div v-else class="flex flex-wrap items-center gap-2">
-          <span :class="toolbarStatusPillClass">
-            Publicada
-          </span>
-          <button
-            type="button"
-            @click="unpublishPage"
-            :class="toolbarWarningButtonClass"
-          >
-            Despublicar
-          </button>
+          <div v-else class="flex flex-wrap items-center gap-2">
+            <span :class="toolbarStatusPillClass">
+              Publicada
+            </span>
+            <button
+              type="button"
+              @click="unpublishPage"
+              :class="toolbarWarningButtonClass"
+            >
+              Despublicar
+            </button>
+          </div>
         </div>
       </div>
-    </div>
 
     
     <!-- Dialog de limite de plano (reutilizado também para "template no free") -->
@@ -1179,10 +1179,10 @@ function defaultSection(type: SectionType): PageSection {
       title: "Por que escolher a nossa agência?",
       subtitle: "Benefí­cios claros para ajudar na conversão",
       items: [
-        { icon: "coin", title: "Economize dinheiro", description: "Aproveite negociações especiais e otimize seu orçamento." },
-        { icon: "compass", title: "Mais liberdade", description: "Planeje quando quiser com apoio de especialistas locais." },
-        { icon: "support", title: "Apoio dedicado", description: "Suporte próximo antes, durante e depois da viagem." },
-        { icon: "spark", title: "Experiência única", description: "Curadoria de passeios e hospedagens memoráveis." }
+        { icon: "💰", title: "Economize dinheiro", description: "Aproveite negociações especiais e otimize seu orçamento." },
+        { icon: "🧭", title: "Mais liberdade", description: "Planeje quando quiser com apoio de especialistas locais." },
+        { icon: "🤝", title: "Apoio dedicado", description: "Suporte próximo antes, durante e depois da viagem." },
+        { icon: "✨", title: "Experiência única", description: "Curadoria de passeios e hospedagens memoráveis." }
       ]
     } as ReasonsSection);
   }
@@ -1329,6 +1329,34 @@ const publishPage = async () => {
       limitModal.value = { open: true, message: String(detail) };
     } else {
       errorMessage.value = "Erro ao publicar. Verifique se esta¡ logado e tem acesso a agência.";
+    }
+  }
+  };
+
+const unpublishPage = async () => {
+  if (!auth.token) {
+    errorMessage.value = "Sessão expirada. Faça login novamente.";
+    return;
+  }
+
+  if (!isPublished.value || !page.value) {
+    return;
+  }
+
+  errorMessage.value = "";
+  message.value = "";
+
+  try {
+    const res = await api.post(`/pages/${pageId}/publish`, { publish: false });
+    page.value = res.data;
+    message.value = "Página despublicada.";
+  } catch (err) {
+    console.error(err);
+    const detail = (err as any)?.response?.data?.detail;
+    if (detail) {
+      errorMessage.value = String(detail);
+    } else {
+      errorMessage.value = "Erro ao despublicar. Tente novamente.";
     }
   }
 };

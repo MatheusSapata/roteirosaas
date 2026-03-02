@@ -126,10 +126,12 @@ const ctaTrackType = computed(() =>
 const ctaEnabled = computed(() => props.section.ctaEnabled !== false);
 const isMobilePreview = computed(() => props.previewDevice === "mobile");
 const borderColor = computed(() => props.section.borderColor || props.section.ctaColor || "#0ea5e9");
-const borderStyle = computed(() => (props.section.borderEnabled ? { borderColor: borderColor.value } : {}));
+const borderStyle = computed(() =>
+  props.section.borderEnabled ? { borderColor: borderColor.value, borderWidth: "2px", borderStyle: "solid" } : {}
+);
 const outerClass = computed(() =>
   props.section.borderEnabled
-    ? "p-0 gap-0 md:flex-row md:items-stretch overflow-hidden rounded-[30px] bg-white/90 shadow-xl"
+    ? "my-6 border-2 border-transparent p-0 gap-0 md:flex-row md:items-stretch overflow-hidden rounded-[30px] bg-white/90 shadow-xl"
     : "gap-8 px-6 py-12 md:flex-row md:items-center md:gap-12"
 );
 const headingLabel = computed(() => props.section.headingLabel ?? props.section.badge ?? headingDefaults.label);

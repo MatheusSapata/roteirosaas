@@ -85,6 +85,18 @@ class PlanChangeRequest(BaseModel):
     plan: str
 
 
+class PaymentMethodUpdateRequest(BaseModel):
+    cycle: Optional[str] = None
+
+
+class CardUpdateRequest(BaseModel):
+    holder_name: str
+    number: str
+    expiry_month: str
+    expiry_year: str
+    ccv: str
+
+
 @router.post("/checkout", response_model=CheckoutResponse)
 def create_checkout(
     payload: CheckoutRequest,
@@ -325,4 +337,103 @@ def change_plan(
         preapproval_id=None,
         provider=provider,
         billing_cycle=billing_cycle,
+    )
+
+
+@router.post("/refresh-payment-method", response_model=CheckoutResponse)
+def refresh_payment_method(
+    payload: PaymentMethodUpdateRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> CheckoutResponse:
+    subscription = current_user.subscription
+    if not subscription or not subscription.plan or subscription.plan == "free":
+        raise HTTPException(status_code=400, detail="Nenhuma assinatura paga ativa para atualizar.")
+
+    plan_key = subscription.plan
+    plan_options = PLAN_PRICING.get(plan_key)
+    if not plan_options:
+        raise HTTPException(status_code=400, detail="Plano atual não suporta cobrança automática.")
+
+    cycle = (payload.cycle or subscription.billing_cycle or DEFAULT_CYCLE).lower()
+    plan_info = plan_options.get(cycle)
+    if not plan_info:
+        raise HTTPException(status_code=400, detail="Ciclo de cobrança inválido para o plano atual.")
+
+    client = _get_asaas_client()
+    if subscription.asaas_payment_link_id:
+        try:
+            client.delete_payment_link(subscription.asaas_payment_link_id)
+        except AsaasAPIError as exc:  # noqa: BLE001
+            logger.warning("Falha ao remover link de pagamento antigo no Asaas: %s", exc)
+
+    external_ref = _build_external_reference(current_user.id, plan_key, cycle)
+    redirect_url = settings.stripe_success_url or settings.mp_success_url
+    request_payload: Dict[str, Any] = {
+        "name": plan_info["title"],
+        "description": f"Atualização do {plan_info['title']}",
+        "value": plan_info["price"],
+        "billingType": settings.asaas_billing_type,
+        "chargeType": "RECURRENT",
+        "subscriptionCycle": plan_info["asaas_cycle"],
+        "dueDateLimitDays": 5,
+        "externalReference": external_ref,
+        "notificationEnabled": True,
+    }
+    if redirect_url:
+        request_payload["redirectUrl"] = redirect_url
+
+    try:
+        link = client.create_payment_link(request_payload)
+    except AsaasAPIError as exc:  # noqa: BLE001
+        logger.exception("Erro ao recriar link de pagamento Asaas: %s", exc)
+        raise HTTPException(status_code=502, detail="Erro ao gerar link de pagamento") from exc
+
+    subscription.asaas_payment_link_id = link.get("id")
+    subscription.external_reference = external_ref
+    subscription.preapproval_id = link.get("id")
+    subscription.billing_cycle = cycle
+    db.add(subscription)
+    db.commit()
+
+    checkout_url = link.get("url") or link.get("shortUrl") or ""
+    if not checkout_url:
+        raise HTTPException(status_code=502, detail="Asaas não retornou URL de pagamento")
+    return CheckoutResponse(init_point=checkout_url, preapproval_id=link.get("id"))
+
+
+@router.post("/update-card", response_model=BillingInfo)
+def update_card(
+    payload: CardUpdateRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> BillingInfo:
+    subscription = current_user.subscription
+    if not subscription or not subscription.asaas_subscription_id:
+        raise HTTPException(status_code=400, detail="Nenhuma assinatura com cartão ativo encontrada.")
+
+    card_payload = {
+        "holderName": payload.holder_name,
+        "number": payload.number,
+        "expiryMonth": payload.expiry_month,
+        "expiryYear": payload.expiry_year,
+        "ccv": payload.ccv,
+    }
+
+    client = _get_asaas_client()
+    try:
+        client.update_subscription_card(subscription.asaas_subscription_id, card_payload)
+    except AsaasAPIError as exc:  # noqa: BLE001
+        logger.exception("Erro ao atualizar cartão da assinatura Asaas: %s", exc)
+        raise HTTPException(status_code=502, detail="Erro ao atualizar cartão no Asaas") from exc
+
+    db.refresh(subscription)
+    return BillingInfo(
+        plan=subscription.plan or current_user.plan,
+        status=subscription.status or "active",
+        valid_until=subscription.valid_until,
+        failed_attempts=subscription.failed_attempts or 0,
+        preapproval_id=subscription.asaas_subscription_id,
+        provider=subscription.provider,
+        billing_cycle=subscription.billing_cycle or DEFAULT_CYCLE,
     )

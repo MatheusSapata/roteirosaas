@@ -1,0 +1,15 @@
+<svg width="320" height="120" viewBox="0 0 320 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title>Roteiro Online</title>
+  <g fill="#ffffff">
+    <path
+      d="M56 12C35.043 12 18 29.043 18 50c0 26 38 48 38 48s38-22 38-48c0-20.957-17.043-38-38-38zm0 58c-11.046 0-20-8.954-20-20s8.954-20 20-20 20 8.954 20 20-8.954 20-20 20z"
+    />
+    <path d="M43 52l26-12-10 27-4-10-12 2z" />
+  </g>
+  <text x="108" y="56" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="44" font-weight="700" fill="#ffffff">
+    roteiro
+  </text>
+  <text x="108" y="96" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="38" font-weight="500" fill="#ffffff">
+    online
+  </text>
+</svg>

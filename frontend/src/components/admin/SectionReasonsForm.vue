@@ -1,13 +1,5 @@
 <template>
   <div class="space-y-4">
-    <div class="flex items-center justify-between">
-      <h3 class="text-lg font-semibold text-slate-900">Motivos / Por que escolher</h3>
-      <label class="flex items-center gap-2 text-sm text-slate-600">
-        <input type="checkbox" v-model="local.enabled" class="h-4 w-4" />
-        Ativar
-      </label>
-    </div>
-
     <SectionHeadingControls v-model:label="local.headingLabel" v-model:style="local.headingLabelStyle" />
     <div class="grid gap-3 md:grid-cols-2">
       <div>
@@ -18,11 +10,6 @@
         <label class="text-sm font-semibold text-slate-600">Subtítulo</label>
         <input v-model="local.subtitle" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
       </div>
-    </div>
-
-    <div>
-      <label class="text-sm font-semibold text-slate-600">Cor de fundo</label>
-      <input v-model="local.backgroundColor" placeholder="#f8fafc" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
     </div>
 
     <div class="space-y-3">
@@ -41,7 +28,7 @@
               <input
                 v-model="item.icon"
                 class="w-full rounded-lg border border-slate-200 px-3 py-2"
-                placeholder="Ex.: ✈️ ou cole um emoji"
+                placeholder="Ex.: ? ou cole um emoji"
                 @focus="pendingIconIndex = index"
               />
             </div>
@@ -225,3 +212,4 @@ watch(
   { deep: true }
 );
 </script>
+

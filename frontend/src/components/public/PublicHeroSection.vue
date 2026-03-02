@@ -47,7 +47,6 @@
             >
               {{ section.ctaLabel || "Quero falar agora" }}
             </a>
-            <p class="text-[11px] text-white/75">Atendimento rápido e personalizado</p>
           </div>
         </div>
       </div>
@@ -118,7 +117,6 @@
             >
               {{ section.ctaLabel || "Quero falar agora" }}
             </a>
-            <p class="text-sm text-slate-100/90">Atendimento rápido e personalizado</p>
           </div>
         </div>
         <div class="md:w-5/12" v-if="section.videoUrl" :class="isMobilePreview ? '!w-full' : ''">
@@ -173,7 +171,6 @@
             >
                 {{ section.ctaLabel || "Quero reservar" }}
               </a>
-              <span class="text-sm text-slate-500">Atendimento rápido e personalizado</span>
             </div>
           </div>
           <div class="md:w-5/12" :class="isMobilePreview ? '!w-full' : ''">
@@ -312,7 +309,7 @@ const ctaHref = computed(() =>
 const ctaIsScroll = computed(() => ctaMode.value === "section" && !!props.section.ctaSectionId);
 const ctaTrackType = computed(() => (ctaMode.value === "section" ? "cta" : trackType(props.section.ctaLink)));
 const isMobilePreview = computed(() => props.previewDevice === "mobile");
-const mobileWrapperClasses = computed(() => ["relative block md:hidden px-4 pt-0 -mt-8", isMobilePreview.value ? "!block" : ""]);
+const mobileWrapperClasses = computed(() => ["relative block md:hidden px-0 pt-0 -mt-8", isMobilePreview.value ? "!block" : ""]);
 const desktopWrapperClasses = computed(() => ["relative hidden md:block", isMobilePreview.value ? "!hidden" : ""]);
 const mobileBaseColor = computed(() => {
   const candidate = props.section.gradientColor || props.section.backgroundColor;

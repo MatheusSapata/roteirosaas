@@ -3,7 +3,7 @@
     <div class="mx-auto max-w-6xl px-6 py-12">
       <div class="text-center">
         <div class="flex justify-center">
-          <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="headingAccent" />
+          <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" />
         </div>
         <h2 class="mt-2 text-3xl font-bold text-slate-900 md:text-4xl">{{ section.title }}</h2>
         <p v-if="section.subtitle" class="mt-2 text-base leading-relaxed text-slate-600 md:text-lg">{{ section.subtitle }}</p>
@@ -49,7 +49,6 @@ const headingDefaults = getSectionHeadingDefaults("reasons");
 const isMobilePreview = computed(() => props.previewDevice === "mobile");
 const headingLabel = computed(() => props.section.headingLabel ?? headingDefaults.label);
 const headingStyle = computed(() => props.section.headingLabelStyle || headingDefaults.style);
-const headingAccent = "#0ea5e9";
 const MAX_ITEMS = 8;
 
 const limitedItems = computed(() => (props.section.items || []).slice(0, MAX_ITEMS));

@@ -5,16 +5,8 @@
         class="hidden w-64 flex-shrink-0 flex-col justify-between border-r border-slate-200 bg-white/90 px-4 py-6 text-slate-800 shadow-md md:flex md:sticky md:top-0 md:h-screen"
       >
         <div class="flex flex-1 flex-col overflow-y-auto">
-          <div class="mb-8 flex items-center justify-center gap-3">
-            <template v-if="agencyLogo">
-              <img :src="agencyLogo" alt="Logo" class="h-16 w-16 rounded-lg object-contain" />
-            </template>
-            <template v-else>
-              <div class="min-w-0">
-                <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Painel</p>
-                <p class="text-lg font-bold truncate">{{ agencyName || 'Agencia' }}</p>
-              </div>
-            </template>
+          <div class="mb-8 flex items-center justify-center">
+            <img :src="sidebarLogoSrc" alt="Roteiro Online" class="max-h-16 w-full object-contain" />
           </div>
           <nav class="flex-1 space-y-1">
             <RouterLink
@@ -188,7 +180,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import { RouterLink, RouterView, useRoute, useRouter } from "vue-router";
-import { resolveMediaUrl } from "../utils/media";
+import SidebarLogo from "../assets/Logo Cor - Roteiro Online.png";
 import api from "../services/api";
 import { useAgencyStore } from "../store/useAgencyStore";
 import { useAuthStore } from "../store/useAuthStore";
@@ -227,9 +219,7 @@ const activeClass = "bg-slate-100 text-slate-900";
 const inactiveClass = "text-slate-700 hover:bg-slate-100";
 
 const agencyName = computed(() => agencyStore.currentAgency?.name || agencyStore.agencies[0]?.name || "");
-const agencyLogo = computed(() =>
-  resolveMediaUrl(agencyStore.currentAgency?.logo_url || agencyStore.agencies[0]?.logo_url || "")
-);
+const sidebarLogoSrc = SidebarLogo;
 
 const isActive = (to: string) => route.path.startsWith(to);
 
