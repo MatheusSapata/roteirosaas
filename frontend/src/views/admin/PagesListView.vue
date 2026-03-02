@@ -14,10 +14,18 @@
       </button>
     </div>
 
-    <div v-if="!hasAgency" class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-      Crie uma agencia primeiro em
-      <router-link to="/admin/agency" class="font-semibold underline">Configuracao da agencia</router-link>
-      para poder criar paginas.
+    <div v-if="!hasAgency" class="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 sm:flex-row sm:items-center sm:justify-between">
+      <span>
+        Crie uma agencia primeiro em
+        <router-link to="/admin/agency" class="font-semibold underline">Configuracao da agencia</router-link>
+        para poder criar paginas.
+      </span>
+      <router-link
+        to="/admin/agency"
+        class="inline-flex items-center justify-center rounded-full bg-amber-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-amber-500"
+      >
+        Criar minha agência
+      </router-link>
     </div>
 
     <div class="overflow-x-auto">
