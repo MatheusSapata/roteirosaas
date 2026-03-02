@@ -10,9 +10,8 @@
     />
   </div>
 
-  <div class="relative mx-auto flex max-w-6xl flex-col gap-10 px-6 py-20 sm:py-24 lg:flex-row lg:items-center">
-    
-    <div class="flex-1">
+  <div class="relative mx-auto flex max-w-6xl flex-col gap-10 px-6 py-16 sm:py-20 lg:flex-row lg:items-center">
+    <div class="flex-1 pt-10 sm:pt-0">
       <p class="text-sm font-semibold uppercase tracking-[0.45em] text-emerald-100">
         Roteiro Online
       </p>

@@ -5,10 +5,8 @@
         <div class="relative w-full overflow-hidden" style="aspect-ratio: 3 / 4; max-height: 60vh;">
           <div class="absolute inset-0 bg-cover bg-center" :style="mobileBackgroundStyle"></div>
           <div class="absolute inset-0" :style="mobileGradientStyle"></div>
-        </div>
-        <div class="relative overflow-hidden px-5 pb-8 text-center text-white" :style="{ background: mobileContentBg }">
-          <div class="inline-flex w-full flex-col items-center gap-4" :style="{ paddingTop: `${mobileLogoPadding}px` }">
-            <div class="flex justify-center" :style="{ marginTop: `-${mobileLogoLift}px` }">
+          <div class="absolute inset-0 flex items-end justify-center pb-6">
+            <div class="flex justify-center">
               <template v-if="logoSrc">
                 <div class="drop-shadow-xl" :style="logoBoxStyle">
                   <img :src="logoSrc" alt="Logo" class="h-full w-auto" />
@@ -18,10 +16,12 @@
                 {{ branding.agency_name || "Sua marca" }}
               </span>
             </div>
-            <div class="space-y-1 mt-2">
-              <h1 class="text-[26px] font-bold leading-tight">{{ section.title }}</h1>
-              <div v-if="subtitleHtml" class="text-sm text-white/85" v-html="subtitleHtml"></div>
-            </div>
+          </div>
+        </div>
+        <div class="relative overflow-hidden px-5 pb-8 pt-6 text-center text-white" :style="{ background: mobileContentBg }">
+          <div class="space-y-1 -mt-4 md:mt-0">
+            <h1 class="text-[26px] font-bold leading-tight">{{ section.title }}</h1>
+            <div v-if="subtitleHtml" class="text-sm text-white/85" v-html="subtitleHtml"></div>
           </div>
           <div v-if="chipsToShow.length" class="mt-4 flex flex-wrap items-center justify-center gap-2 text-[11px]">
             <span
@@ -303,8 +303,6 @@ const heroBackgroundImage = computed(() => resolveMediaUrl(props.section.backgro
 const logoSrc = computed(() => resolveMediaUrl(props.section.logoUrl));
 const logoSize = computed(() => props.section.logoSize ?? 64);
 const logoBoxStyle = computed(() => ({ height: `${logoSize.value}px` }));
-const mobileLogoPadding = -172;
-const mobileLogoLift = -150;
 const accent = computed(() => props.section.gradientColor || props.section.backgroundColor || "#0ea5e9");
 const ctaColor = computed(() => props.section.ctaColor || accent.value);
 const ctaMode = computed(() => props.section.ctaMode || "link");
@@ -314,7 +312,7 @@ const ctaHref = computed(() =>
 const ctaIsScroll = computed(() => ctaMode.value === "section" && !!props.section.ctaSectionId);
 const ctaTrackType = computed(() => (ctaMode.value === "section" ? "cta" : trackType(props.section.ctaLink)));
 const isMobilePreview = computed(() => props.previewDevice === "mobile");
-const mobileWrapperClasses = computed(() => ["relative block md:hidden px-4 pt-12", isMobilePreview.value ? "!block" : ""]);
+const mobileWrapperClasses = computed(() => ["relative block md:hidden px-4 pt-0", isMobilePreview.value ? "!block" : ""]);
 const desktopWrapperClasses = computed(() => ["relative hidden md:block", isMobilePreview.value ? "!hidden" : ""]);
 const mobileBaseColor = computed(() => {
   const candidate = props.section.gradientColor || props.section.backgroundColor;
