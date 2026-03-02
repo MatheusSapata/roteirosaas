@@ -88,7 +88,19 @@ def get_admin_metrics(
     timeseries = [TimeseriesPoint(label=str(d), value=c) for d, c in ts_rows]
 
     # MRR: soma dos preços mensais dos planos ativos (exceto free)
-    plan_price_map = {k: v["price"] for k, v in PLAN_PRICING.items()}
+    def get_monthly_price(plan_key: Optional[str], cycle_key: Optional[str]) -> float:
+        if not plan_key:
+            return 0.0
+        plan_info = PLAN_PRICING.get(plan_key)
+        if not plan_info:
+            return 0.0
+        cycle = (cycle_key or "monthly").lower()
+        cycle_info = plan_info.get(cycle)
+        if not cycle_info:
+            return 0.0
+        price = float(cycle_info.get("price", 0.0))
+        return price / 12.0 if cycle == "annual" else price
+
     mrr = 0.0
     active_subs = (
         db.query(Subscription)
@@ -96,8 +108,7 @@ def get_admin_metrics(
         .all()
     )
     for sub in active_subs:
-        price = plan_price_map.get(sub.plan, 0.0)
-        mrr += price
+        mrr += get_monthly_price(sub.plan, sub.billing_cycle)
 
     recent_agencies_rows = (
         db.query(Agency, func.count(Page.id).label("pages_count"))

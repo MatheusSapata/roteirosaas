@@ -59,21 +59,21 @@
           <p class="text-xs text-slate-500">
             Para alterar ou cancelar sua assinatura, fale com a nossa equipe. Você continua com acesso até o fim do período atual.
           </p>
-          <div class="flex flex-wrap gap-2">
+          <div class="flex flex-wrap gap-4">
             <button
-              class="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              class="inline-flex items-center justify-center rounded-full border border-emerald-600 bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500"
+              @click="goPlans"
+            >
+              Ver planos disponíveis
+            </button>
+            <button
+              class="text-xs font-medium text-slate-500 hover:text-slate-700 disabled:cursor-not-allowed disabled:text-slate-300"
               :disabled="loading || billing?.status === 'cancelled'"
               @click="cancelSubscription"
             >
               <span v-if="loading">Processando...</span>
               <span v-else-if="billing?.status === 'cancelled'">Assinatura já cancelada</span>
               <span v-else>Solicitar cancelamento</span>
-            </button>
-            <button
-              class="inline-flex items-center justify-center rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-              @click="goPlans"
-            >
-              Ver planos disponíveis
             </button>
           </div>
           <p v-if="message" class="text-xs font-semibold text-emerald-600">{{ message }}</p>
