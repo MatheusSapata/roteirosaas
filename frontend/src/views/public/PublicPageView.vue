@@ -18,7 +18,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, provide, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import api from "../../services/api";
 import PublicHeroSection from "../../components/public/PublicHeroSection.vue";
@@ -32,6 +32,7 @@ import PublicReasonsSection from "../../components/public/PublicReasonsSection.v
 import PublicCountdownSection from "../../components/public/PublicCountdownSection.vue";
 import PublicFreeFooterBrandSection from "../../components/public/PublicFreeFooterBrandSection.vue";
 import type { PageConfig, PageSection, SectionType, ThemeConfig } from "../../types/page";
+import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
 
 interface PublicPageResponse {
   id: number;
@@ -52,6 +53,9 @@ const theme = ref<ThemeConfig>({
   color2: "#ffffff",
   sidebarTheme: "light"
 });
+
+const brandingInfo = computed(() => pageData.value?.branding || {});
+provide(PUBLIC_BRANDING_KEY, brandingInfo);
 
 const publicComponents: Record<SectionType, any> = {
   hero: PublicHeroSection,
