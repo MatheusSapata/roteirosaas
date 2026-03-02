@@ -511,6 +511,7 @@ import type {
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import { sectionsInjectionKey } from "../../components/admin/sectionsContext";
 import { sectionLabels as defaultSectionLabels } from "../../utils/sectionLabels";
+import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
 
 interface Page {
   id: number;
@@ -696,6 +697,7 @@ const getBrowserStorage = () => {
   }
 };
 provide(sectionsInjectionKey, sections);
+provide(PUBLIC_BRANDING_KEY, computed(() => branding.value));
 
 const setSections = (value: PageSection[] | ((current: PageSection[]) => PageSection[])) => {
   const next = typeof value === "function" ? (value as (current: PageSection[]) => PageSection[])([...sections.value]) : value;

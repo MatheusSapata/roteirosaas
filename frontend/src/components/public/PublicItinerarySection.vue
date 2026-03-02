@@ -118,13 +118,25 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, inject, isRef, ref, watch } from "vue";
 import type { ItinerarySection } from "../../types/page";
 import SectionHeadingChip from "./SectionHeadingChip.vue";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import { sanitizeHtml } from "../../utils/sanitizeHtml";
 
+import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
+
 const props = defineProps<{ section: ItinerarySection }>();
+const branding = inject(PUBLIC_BRANDING_KEY, null);
+const brandingPrimary = computed(() => {
+  if (!branding) return "";
+  const data = isRef(branding) ? branding.value : branding;
+  if (typeof data === "object" && data) {
+    const color = (data as Record<string, any>).primary_color;
+    if (typeof color === "string" && color.trim()) return color.trim();
+  }
+  return "";
+});
 const headingDefaults = getSectionHeadingDefaults("itinerary");
 const defaultAccent = "#0ea5e9";
 
@@ -140,11 +152,7 @@ const isLight = (hex?: string) => {
   return luminance > 0.8;
 };
 
-const accent = computed(() => {
-  const bg = props.section.backgroundColor;
-  if (!bg || isLight(bg)) return defaultAccent;
-  return bg;
-});
+const accent = computed(() => brandingPrimary.value || defaultAccent);
 const headingLabel = computed(() => props.section.headingLabel ?? headingDefaults.label);
 const headingStyle = computed(() => props.section.headingLabelStyle || headingDefaults.style);
 const dayDescriptionHtml = (text?: string) => sanitizeHtml(text);

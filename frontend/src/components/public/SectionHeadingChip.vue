@@ -9,7 +9,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, inject, isRef } from "vue";
+import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
 
 const props = defineProps<{
   text?: string;
@@ -17,7 +18,19 @@ const props = defineProps<{
   styleType?: "filled" | "outline";
 }>();
 
-const accentColor = computed(() => props.accent?.trim() || "#0ea5e9");
+const branding = inject(PUBLIC_BRANDING_KEY, null);
+
+const brandingPrimary = computed(() => {
+  if (!branding) return "";
+  const data = isRef(branding) ? branding.value : branding;
+  if (typeof data === "object" && data) {
+    const color = (data as Record<string, any>).primary_color;
+    if (typeof color === "string" && color.trim()) return color.trim();
+  }
+  return "";
+});
+
+const accentColor = computed(() => brandingPrimary.value || props.accent?.trim() || "#0ea5e9");
 
 const textToShow = computed(() => {
   const t = props.text?.trim();
