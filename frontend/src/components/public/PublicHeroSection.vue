@@ -18,7 +18,7 @@
             </div>
           </div>
         </div>
-        <div class="relative overflow-hidden px-5 pb-8 pt-6 text-center text-white" :style="{ background: mobileContentBg }">
+        <div class="relative overflow-hidden px-5 pb-8 pt-4 text-center text-white" :style="{ background: mobileContentBg }">
           <div class="space-y-1 -mt-4 md:mt-0">
             <h1 class="text-[26px] font-bold leading-tight">{{ section.title }}</h1>
             <div v-if="subtitleHtml" class="text-sm text-white/85" v-html="subtitleHtml"></div>
