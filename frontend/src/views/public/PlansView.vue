@@ -167,7 +167,7 @@
           </div>
         </div>
 
-        <div class="mt-10 rounded-3xl border border-emerald-100 bg-emerald-50/50 p-6 shadow-sm">
+        <!-- <div class="mt-10 rounded-3xl border border-emerald-100 bg-emerald-50/50 p-6 shadow-sm">
           <div class="space-y-4">
             <div>
               <p class="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-600">Plano teste</p>
@@ -210,7 +210,7 @@
               {{ errorMessage }}
             </p>
           </div>
-        </div>
+        </div> -->
 
       </section>
     </div>
