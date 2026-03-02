@@ -166,6 +166,51 @@
             </div>
           </div>
         </div>
+
+        <div class="mt-10 rounded-3xl border border-emerald-100 bg-emerald-50/50 p-6 shadow-sm">
+          <div class="space-y-4">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-600">Plano teste</p>
+              <h3 class="text-2xl font-bold text-slate-900">Checkout rápido para validações</h3>
+              <p class="text-sm text-slate-600">
+                Use os botões abaixo para disparar o checkout com o plano de teste. Ele replica todos os benefícios do plano
+                Escala, mas com valores reduzidos só para homologação.
+              </p>
+            </div>
+
+            <ul class="grid gap-2 text-sm text-slate-700 sm:grid-cols-2">
+              <li v-for="feature in testPlanFeatures" :key="feature" class="flex items-start gap-2">
+                <span class="mt-1 text-emerald-600">✓</span>
+                <span>{{ feature }}</span>
+              </li>
+            </ul>
+
+            <div class="flex flex-wrap gap-3">
+              <button
+                type="button"
+                class="inline-flex items-center justify-center gap-2 rounded-full bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow transition hover:bg-emerald-500 disabled:opacity-60"
+                :disabled="loadingPlan === 'teste-monthly'"
+                @click="startTestCheckout('monthly')"
+              >
+                <span v-if="loadingPlan === 'teste-monthly'">Redirecionando...</span>
+                <span v-else>Testar mensal (R$ 5,00)</span>
+              </button>
+              <button
+                type="button"
+                class="inline-flex items-center justify-center gap-2 rounded-full bg-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow transition hover:bg-indigo-500 disabled:opacity-60"
+                :disabled="loadingPlan === 'teste-annual'"
+                @click="startTestCheckout('annual')"
+              >
+                <span v-if="loadingPlan === 'teste-annual'">Redirecionando...</span>
+                <span v-else>Testar anual (R$ 6,00)</span>
+              </button>
+            </div>
+
+            <p v-if="errorMessage && loadingPlan === null" class="text-xs font-semibold text-rose-600">
+              {{ errorMessage }}
+            </p>
+          </div>
+        </div>
       </section>
     </div>
   </div>
@@ -235,7 +280,8 @@ const planNames: Record<string, string> = {
   free: `Plano ${planLabels.free}`,
   essencial: `Plano ${planLabels.essencial}`,
   growth: `Plano ${planLabels.growth}`,
-  infinity: `Plano ${planLabels.infinity}`
+  infinity: `Plano ${planLabels.infinity}`,
+  teste: `Plano ${planLabels.teste}`
 };
 
 const planDefinitions: PlanDefinition[] = [
@@ -318,6 +364,8 @@ const planDefinitions: PlanDefinition[] = [
   }
 ] as const;
 
+const testPlanFeatures = planDefinitions.find(plan => plan.key === "infinity")?.features ?? [];
+
 const formatPrice = (value: number) =>
   value.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 });
 
@@ -339,16 +387,21 @@ const plans = computed<PlanCard[]>(() =>
   })
 );
 
-const goToCheckout = async (planKey: string) => {
-  if (planKey === activePlan.value) return;
+const goToCheckout = async (
+  planKey: string,
+  cycleOverride?: BillingCycle,
+  force = false,
+  loadingKey?: string
+) => {
+  if (!force && planKey === activePlan.value) return;
 
-  loadingPlan.value = planKey;
+  loadingPlan.value = loadingKey ?? planKey;
   errorMessage.value = null;
 
   try {
     const res = await api.post<{ init_point: string }>("/billing/checkout", {
       plan: planKey,
-      cycle: billingCycle.value
+      cycle: cycleOverride ?? billingCycle.value
     });
     window.location.href = res.data.init_point;
   } catch (err) {
@@ -362,6 +415,10 @@ const goToCheckout = async (planKey: string) => {
 const handlePlanClick = (planKey: string) => {
   if (planKey === activePlan.value) return;
   goToCheckout(planKey);
+};
+
+const startTestCheckout = (cycle: BillingCycle) => {
+  goToCheckout("teste", cycle, true, `teste-${cycle}`);
 };
 
 const statusLabel = computed(() => {

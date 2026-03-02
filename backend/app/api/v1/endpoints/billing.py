@@ -29,6 +29,10 @@ PLAN_PRICING = {
         "monthly": {"title": "Plano Infinity", "price": 129.90, "asaas_cycle": "MONTHLY"},
         "annual": {"title": "Plano Infinity Anual", "price": 1299.0, "asaas_cycle": "YEARLY"},
     },
+    "teste": {
+        "monthly": {"title": "Plano Teste", "price": 5.00, "asaas_cycle": "MONTHLY"},
+        "annual": {"title": "Plano Teste Anual", "price": 6.00, "asaas_cycle": "YEARLY"},
+    },
 }
 
 DEFAULT_CYCLE = "monthly"
@@ -104,8 +108,8 @@ def create_checkout(
         "name": plan_info["title"],
         "description": f"Assinatura {plan_info['title']}",
         "value": plan_info["price"],
-        "billingType": "UNDEFINED",
-        "chargeType": "SUBSCRIPTION",
+        "billingType": settings.asaas_billing_type,
+        "chargeType": "RECURRENT",
         "subscriptionCycle": plan_info["asaas_cycle"],
         "dueDateLimitDays": 5,
         "externalReference": external_ref,
