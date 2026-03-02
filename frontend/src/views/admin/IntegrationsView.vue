@@ -170,7 +170,7 @@ const savePixel = async () => {
     return;
   }
   try {
-    await api.post("/pixels", { name: nameInput.value.trim(), type: typeInput.value, value: idInput.value.trim() });
+    await api.post("/pixels/", { name: nameInput.value.trim(), type: typeInput.value, value: idInput.value.trim() });
     await fetchPixels();
     nameInput.value = "";
     idInput.value = "";
@@ -185,7 +185,7 @@ const removePixel = async (idx: number) => {
   const pixel = pixels.value[idx];
   if (!pixel) return;
   try {
-    await api.delete(`/pixels/${pixel.id}`);
+    await api.delete(`/pixels/${pixel.id}/`);
     await fetchPixels();
     message.value = "Conexão removida.";
   } catch (err) {
