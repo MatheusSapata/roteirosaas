@@ -211,6 +211,7 @@
             </p>
           </div>
         </div>
+
       </section>
     </div>
   </div>
@@ -269,10 +270,6 @@ const loadingPlan = ref<string | null>(null);
 const errorMessage = ref<string | null>(null);
 
 const billingInfo = ref<BillingInfo | null>(null);
-
-const actionLoading = ref(false);
-const actionMessage = ref("");
-const actionError = ref("");
 
 const activePlan = computed(() => billingInfo.value?.plan || authStore.user?.plan || "free");
 
@@ -421,31 +418,7 @@ const startTestCheckout = (cycle: BillingCycle) => {
   goToCheckout("teste", cycle, true, `teste-${cycle}`);
 };
 
-const statusLabel = computed(() => {
-  const status = billingInfo.value?.status || "inactive";
-  if (status === "active") return "Ativo";
-  if (status === "cancelled") return "Cancelado";
-  if (status === "cancel_at_period_end") return "Cancelará no fim do ciclo";
-  if (status === "past_due") return "Pagamento pendente";
-  return "Inativo";
-});
-
-const statusBadgeClass = computed(() => {
-  const status = billingInfo.value?.status || "inactive";
-  if (status === "active") return "rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700";
-  if (status === "cancelled") return "rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600";
-  if (status === "cancel_at_period_end") return "rounded-full bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700";
-  if (status === "past_due") return "rounded-full bg-red-50 px-2 py-1 text-xs font-semibold text-red-700";
-  return "rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-500";
-});
-
-const formatDate = (value?: string) => {
-  if (!value) return "";
-  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium" }).format(new Date(value));
-};
-
 const loadBilling = async () => {
-  actionError.value = "";
   try {
     const res = await api.get<BillingInfo>("/billing/me");
     billingInfo.value = res.data;
@@ -454,52 +427,6 @@ const loadBilling = async () => {
     }
   } catch (err) {
     console.error(err);
-    actionError.value = "Não foi possível carregar os dados de cobrança.";
-  }
-};
-
-const cancelSubscription = async () => {
-  if (!billingInfo.value || billingInfo.value.plan === "free") return;
-
-  const ok = window.confirm("Cancelar a renovação ao fim do ciclo? Você continuará com acesso até a data já paga.");
-  if (!ok) return;
-
-  actionLoading.value = true;
-  actionError.value = "";
-  actionMessage.value = "";
-
-  try {
-    await api.post("/billing/cancel");
-    await loadBilling();
-    actionMessage.value = "Renovação cancelada. Você manterá o acesso até o fim do ciclo atual.";
-  } catch (err) {
-    console.error(err);
-    actionError.value = "Não foi possível cancelar a assinatura. Tente novamente.";
-  } finally {
-    actionLoading.value = false;
-  }
-};
-
-const downgradeToFree = async () => {
-  if (!billingInfo.value || billingInfo.value.plan === "free") return;
-
-  const ok = window.confirm("Deseja voltar imediatamente ao plano gratuito? Os recursos dos planos pagos serão removidos.");
-  if (!ok) return;
-
-  actionLoading.value = true;
-  actionError.value = "";
-  actionMessage.value = "";
-
-  try {
-    await api.post("/billing/change-plan", { plan: "free" });
-    await authStore.fetchProfile();
-    await loadBilling();
-    actionMessage.value = "Downgrade concluído. Agora você está no plano gratuito.";
-  } catch (err) {
-    console.error(err);
-    actionError.value = "Não foi possível realizar o downgrade. Tente novamente.";
-  } finally {
-    actionLoading.value = false;
   }
 };
 

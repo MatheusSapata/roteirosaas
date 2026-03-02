@@ -80,22 +80,9 @@
       <label class="text-sm font-semibold text-slate-600">Cor de fundo</label>
       <input v-model="local.backgroundColor" placeholder="#e5eef9" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
     </div>
-
-    <div class="flex items-center gap-2">
-      <input type="checkbox" v-model="local.enabled" class="h-4 w-4" />
-      <label class="text-sm font-semibold text-slate-600">Ativar seção</label>
-    </div>
     <div class="flex items-center gap-2">
       <input type="checkbox" v-model="local.borderEnabled" class="h-4 w-4" />
       <label class="text-sm font-semibold text-slate-600">Ativar borda destacada (texto em card)</label>
-    </div>
-    <div v-if="local.borderEnabled">
-      <label class="text-sm font-semibold text-slate-600">Cor da borda</label>
-      <div class="mt-1 flex items-center gap-2">
-        <input type="color" v-model="local.borderColor" class="h-9 w-9 cursor-pointer rounded border border-slate-200 bg-white" />
-        <input v-model="local.borderColor" placeholder="#0ea5e9" class="w-full rounded-lg border border-slate-200 px-3 py-2" />
-      </div>
-      <p class="mt-1 text-xs text-slate-500">Usa por padrão a cor do CTA, mas pode ser personalizada.</p>
     </div>
   </div>
 </template>
