@@ -2,7 +2,7 @@
   <section class="relative overflow-hidden bg-[#05060f]" :id="section.anchorId || undefined">
     <div :class="mobileWrapperClasses">
       <div class="overflow-hidden bg-[#05060f] shadow-2xl shadow-black/30">
-        <div class="relative w-full overflow-hidden" style="aspect-ratio: 3 / 4; max-height: 60vh;">
+        <div class="relative w-full overflow-hidden" style="aspect-ratio: 3 / 4; max-height: 50vh;">
           <div class="absolute inset-0 bg-cover bg-center" :style="mobileBackgroundStyle"></div>
           <div class="absolute inset-0" :style="mobileGradientStyle"></div>
           <div class="absolute inset-0 flex items-end justify-center pb-6">
