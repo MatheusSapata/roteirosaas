@@ -13,7 +13,7 @@ def plan_limits(plan: str) -> Tuple[int | None, int | None]:
         return 3, None
     if plan == "growth":
         return 10, None
-    if plan == "infinity":
+    if plan in {"infinity", "teste"}:
         return None, None
     # free
     return 1, 4

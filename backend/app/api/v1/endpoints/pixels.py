@@ -14,7 +14,7 @@ def plan_limit(plan: str) -> int:
     return 1
   if plan == "growth":
     return 3
-  return 999999  # infinity
+  return 999999  # infinity e planos equivalentes
 
 
 @router.get("/", response_model=list[dict])
