@@ -312,7 +312,7 @@ const ctaHref = computed(() =>
 const ctaIsScroll = computed(() => ctaMode.value === "section" && !!props.section.ctaSectionId);
 const ctaTrackType = computed(() => (ctaMode.value === "section" ? "cta" : trackType(props.section.ctaLink)));
 const isMobilePreview = computed(() => props.previewDevice === "mobile");
-const mobileWrapperClasses = computed(() => ["relative block md:hidden px-4 pt-0", isMobilePreview.value ? "!block" : ""]);
+const mobileWrapperClasses = computed(() => ["relative block md:hidden px-4 pt-0 -mt-8", isMobilePreview.value ? "!block" : ""]);
 const desktopWrapperClasses = computed(() => ["relative hidden md:block", isMobilePreview.value ? "!hidden" : ""]);
 const mobileBaseColor = computed(() => {
   const candidate = props.section.gradientColor || props.section.backgroundColor;
