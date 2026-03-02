@@ -1,25 +1,22 @@
 <template>
   <div class="flex min-h-screen">
     <div
-      class="relative hidden w-3/5 items-center justify-center overflow-hidden bg-slate-900 lg:flex"
-      style="background-image: linear-gradient(135deg, rgba(15,23,42,0.85), rgba(14,165,233,0.7)), url('https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?auto=format&fit=crop&w=1400&q=80'); background-size: cover; background-position: center;"
+      class="relative hidden w-3/5 items-center justify-center overflow-hidden bg-[#41ce5f] lg:flex"
+      style="background-color: #41ce5f;"
     >
       <div class="relative z-10 max-w-xl space-y-6 p-16 text-white">
-        <p class="inline-flex items-center rounded-full bg-white/10 px-4 py-1 text-sm font-semibold backdrop-blur">
-          Bem-vindo ao painel Travel Pages
-        </p>
-        <h2 class="text-4xl font-bold leading-tight">Centralize seus planos, campanhas e resultados em um só lugar</h2>
-        <p class="text-lg text-white/80">
-          Dashboards em tempo real, modelos prontos e integrações com os principais canais para acelerar o crescimento da sua agência.
-        </p>
-        <div class="flex items-center gap-3 text-sm text-white/70">
-          <span class="h-1 w-12 rounded-full bg-cyan-300"></span>
-          Acesso seguro e monitorado 24h.
+        <img src="../../assets/Logo Branco - Roteiro Online.png" alt="Roteiro Online" class="w-full max-w-[180px]" />
+        <h2 class="text-4xl font-bold leading-tight text-white">Mais organização. Mais profissionalismo. Mais vendas.</h2>
+        <p class="text-lg text-white">
+          Acesse seus roteiros, edite informações, acompanhe acessos e mantenha tudo organizado para vender melhor.
+          </p>
+        <div class="flex items-center gap-3 text-sm text-white">
+          <span class="h-1 w-12 rounded-full bg-white"></span>
+          Seu painel disponível sempre que você precisar.
         </div>
       </div>
-      <div class="absolute inset-0 bg-gradient-to-br from-slate-900/40 to-slate-900/20"></div>
     </div>
-    <div class="flex w-full items-center justify-center px-4 py-10 lg:w-2/5 lg:px-12">
+    <div class="flex w-full items-center justify-center bg-[#f8f8f8] px-4 py-10 lg:w-2/5 lg:px-12">
       <div class="w-full max-w-md rounded-3xl border border-slate-100 bg-white p-8 shadow-xl shadow-slate-200/40">
         <div class="mb-8 space-y-2">
           <p class="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Bem-vindo ao roteiro online </p>
@@ -122,13 +119,23 @@
             <p class="mt-1 text-xs text-slate-500">Use sua senha com no mínimo 8 caracteres, incluindo maiúscula, minúscula e número.</p>
 
           </div>
-        <button type="submit" class="w-full rounded-lg bg-brand px-4 py-2 font-semibold text-white hover:bg-brand-dark">Entrar</button>
+        <button
+          type="submit"
+          class="w-full rounded-lg px-4 py-2 font-semibold text-white transition hover:opacity-90"
+          style="background-color: #41ce5f;"
+        >
+          Entrar
+        </button>
         <p class="text-center text-sm text-slate-600">
-          <router-link to="/forgot-password" class="text-brand">Esqueci minha senha</router-link>
+          <router-link to="/forgot-password" class="font-semibold transition hover:opacity-80" style="color: #41ce5f;"
+            >Esqueci minha senha</router-link
+          >
         </p>
         <p class="text-center text-sm text-slate-600">
           Novo aqui?
-          <router-link to="/register" class="text-brand">Criar conta</router-link>
+          <router-link to="/register" class="font-semibold transition hover:opacity-80" style="color: #41ce5f;"
+            >Criar conta</router-link
+          >
         </p>
           <p v-if="error" class="text-sm text-red-500">{{ error }}</p>
         </form>
