@@ -85,13 +85,16 @@ def apply_free_footer(cfg: Any, plan: str) -> Any:
 
 def enforce_page_limits(db: Session, page: Page, publish: bool, config: Any, plan: Optional[str] = None) -> Any:
     plan = plan or resolve_agency_plan(db, page.agency_id)
-    max_published, max_sections = plan_limits(plan)
+    max_pages, max_sections = plan_limits(plan)
 
-    # Limite de páginas publicadas (apenas ao publicar e se a página estava draft)
-    if publish and page.status != "published" and max_published is not None:
+    # Limite de paginas publicadas (apenas ao publicar e se a pagina estava draft)
+    if publish and page.status != "published" and max_pages is not None:
         published_count = db.query(Page).filter(Page.agency_id == page.agency_id, Page.status == "published").count()
-        if published_count >= max_published:
-            raise HTTPException(status_code=403, detail=f"Limite de {max_published} páginas publicadas para o plano {plan}.")
+        if published_count >= max_pages:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Limite de {max_pages} paginas permitido no plano {plan}. Ajuste suas paginas antes de publicar.",
+            )
 
     # Limite de seções e rodapé obrigatório no free
     cfg = normalize_config(config)
@@ -151,6 +154,14 @@ def create_page(
     payload["config_json"] = normalize_config(payload.get("config_json"))
     page = Page(**payload)
     plan = resolve_agency_plan(db, page.agency_id)
+    max_pages, _ = plan_limits(plan)
+    if max_pages is not None:
+        total_pages = db.query(Page).filter(Page.agency_id == page.agency_id).count()
+        if total_pages >= max_pages:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Limite de {max_pages} paginas permitido no plano {plan}. Exclua uma pagina antes de criar outra.",
+            )
     page.config_json = enforce_page_limits(db, page, publish=False, config=page.config_json, plan=plan)
     db.add(page)
     db.commit()

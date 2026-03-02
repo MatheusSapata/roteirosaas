@@ -21,8 +21,8 @@ def start_trial(user: User, plan: str, duration_days: int = 7) -> None:
 
 def _enforce_published_limits(user: User, db: Session) -> None:
     plan = user.plan or "free"
-    max_published, _ = plan_limits(plan)
-    if max_published is None:
+    max_pages, _ = plan_limits(plan)
+    if max_pages is None:
         return
     memberships = (
         db.query(AgencyUser)
@@ -39,9 +39,9 @@ def _enforce_published_limits(user: User, db: Session) -> None:
             .order_by(Page.published_at.asc(), Page.id.asc())
             .all()
         )
-        if len(published_pages) <= max_published:
+        if len(published_pages) <= max_pages:
             continue
-        for page in published_pages[max_published:]:
+        for page in published_pages[max_pages:]:
             page.status = PageStatus.draft
             page.published_at = None
 
