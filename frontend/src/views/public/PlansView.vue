@@ -15,7 +15,7 @@
         </h1>
 
         <p class="mx-auto mt-4 max-w-2xl text-base text-slate-600 md:text-lg">
-          Comece grátis com 1 roteiro. Faça upgrade só quando precisar de mais roteiros e recursos.
+          Comece grátis com uma página. Faça upgrade só quando precisar de mais páginas e recursos.
         </p>
 
         <div class="mt-6 flex flex-wrap items-center justify-center gap-3 text-sm text-slate-600">
@@ -35,61 +35,6 @@
           </div>
         </div>
       </header>
-
-      <section class="mx-auto max-w-5xl pb-10">
-        <div class="rounded-3xl border border-slate-100 bg-white/95 p-6 shadow-lg">
-          <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">Plano atual</p>
-              <h3 class="text-2xl font-bold text-slate-900">
-                {{ planNames[billingInfo?.plan || activePlan] }}
-              </h3>
-              <p class="text-sm text-slate-500">
-                Status:
-                <span :class="statusBadgeClass">{{ statusLabel }}</span>
-                <span v-if="billingInfo?.valid_until" class="ml-2 text-slate-400">
-                  Renovação: {{ formatDate(billingInfo.valid_until) }}
-                </span>
-              </p>
-            </div>
-
-            <div class="flex flex-wrap items-center gap-2">
-              <button
-                v-if="billingInfo?.plan !== 'free'"
-                type="button"
-                class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
-                :disabled="actionLoading"
-                @click="cancelSubscription"
-              >
-                Cancelar renovação
-              </button>
-
-              <button
-                v-if="billingInfo?.plan !== 'free'"
-                type="button"
-                class="rounded-full bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 ring-1 ring-red-100 hover:bg-red-100 disabled:opacity-60"
-                :disabled="actionLoading"
-                @click="downgradeToFree"
-              >
-                Voltar ao plano gratuito
-              </button>
-
-              <span v-if="!billingInfo" class="text-sm text-slate-400">Carregando cobrança...</span>
-            </div>
-          </div>
-
-          <p
-            v-if="actionMessage"
-            class="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700"
-          >
-            {{ actionMessage }}
-          </p>
-
-          <p v-if="actionError" class="mt-3 rounded-xl bg-red-50 px-3 py-2 text-sm font-semibold text-red-600">
-            {{ actionError }}
-          </p>
-        </div>
-      </section>
 
       <section id="planos" class="relative mx-auto max-w-7xl pb-16">
         <div class="mb-8 flex flex-col items-center gap-2">
