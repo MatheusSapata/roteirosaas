@@ -1,25 +1,22 @@
 <template>
   <div class="flex min-h-screen">
     <div
-      class="relative hidden w-3/5 items-center justify-center overflow-hidden bg-slate-900 lg:flex"
-      style="background-image: linear-gradient(135deg, rgba(15,23,42,0.85), rgba(14,165,233,0.7)), url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1400&q=80'); background-size: cover; background-position: center;"
+      class="relative hidden w-3/5 items-center justify-center overflow-hidden bg-[#41ce5f] lg:flex"
+      style="background-color: #41ce5f;"
     >
       <div class="relative z-10 max-w-xl space-y-6 p-16 text-white">
-        <p class="inline-flex items-center rounded-full bg-white/10 px-4 py-1 text-sm font-semibold backdrop-blur">
-          Plataforma Travel Pages SaaS
-        </p>
-        <h2 class="text-4xl font-bold leading-tight">Crie experiências digitais inesquecíveis para sua agência</h2>
-        <p class="text-lg text-white/80">
+        <img src="../../assets/Logo Branco - Roteiro Online.png" alt="Roteiro Online" class="w-full max-w-[180px]" />
+        <h2 class="text-4xl font-bold leading-tight text-white">Pare de mandar PDF. Venda suas viagens com páginas profissionais.</h2>
+        <p class="text-lg text-white">
           Construa landing pages, acompanhe leads e mantenha seu time focado no que importa. Tudo em uma única plataforma.
         </p>
-        <div class="flex items-center gap-3 text-sm text-white/70">
-          <span class="h-1 w-12 rounded-full bg-cyan-300"></span>
+        <div class="flex items-center gap-3 text-sm text-white">
+          <span class="h-1 w-12 rounded-full bg-white"></span>
           Centenas de agências já confiam no Travel Pages.
         </div>
       </div>
-      <div class="absolute inset-0 bg-gradient-to-br from-slate-900/40 to-slate-900/20"></div>
     </div>
-    <div class="flex w-full items-center justify-center px-4 py-10 lg:w-2/5 lg:px-12">
+    <div class="flex w-full items-center justify-center bg-[#f8f8f8] px-4 py-10 lg:w-2/5 lg:px-12">
       <div class="w-full max-w-md rounded-3xl border border-slate-100 bg-white p-8 shadow-xl shadow-slate-200/40">
         <div class="mb-8 space-y-2">
           <p class="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Comece agora</p>
@@ -79,16 +76,17 @@
         <button
           type="submit"
           :disabled="!canSubmit"
-          :class="[
-            'w-full rounded-lg px-4 py-2 font-semibold text-white transition-colors',
-            canSubmit ? 'bg-brand hover:bg-brand-dark' : 'cursor-not-allowed bg-slate-300 text-slate-600'
-          ]"
+          class="w-full rounded-lg px-4 py-2 font-semibold transition hover:opacity-90"
+          :class="canSubmit ? 'text-white cursor-pointer' : 'text-slate-600 cursor-not-allowed'"
+          :style="canSubmit ? { backgroundColor: '#41ce5f' } : { backgroundColor: '#e2e8f0' }"
         >
           Registrar
         </button>
         <p class="text-center text-sm text-slate-600">
           Já possui conta?
-          <router-link to="/login" class="text-brand">Entrar</router-link>
+          <router-link to="/login" class="font-semibold transition hover:opacity-80" style="color: #41ce5f;"
+            >Entrar</router-link
+          >
         </p>
         <p v-if="error" class="text-sm text-red-500">{{ error }}</p>
       </form>
