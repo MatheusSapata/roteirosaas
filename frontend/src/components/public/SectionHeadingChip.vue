@@ -30,7 +30,7 @@ const brandingPrimary = computed(() => {
   return "";
 });
 
-const accentColor = computed(() => brandingPrimary.value || props.accent?.trim() || "#0ea5e9");
+const accentColor = computed(() => props.accent?.trim() || brandingPrimary.value || "#0ea5e9");
 
 const textToShow = computed(() => {
   const t = props.text?.trim();
