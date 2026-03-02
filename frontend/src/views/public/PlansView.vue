@@ -316,7 +316,7 @@ const planDefinitions: PlanDefinition[] = [
     subtitle: "Para quem já vende excursões e quer mais presença online",
     highlight: "Para quem quer vender mais roteiros",
     features: [
-      "Até 5 roteiros online ativos",
+      "Até 3 roteiros online ativos",
       "Seções ilimitadas dentro de cada roteiro",
       "Salvar modelo padrão para copiar em novas viagens",
       "Conectar 1 pixel (Facebook ou Google)",
@@ -356,7 +356,7 @@ const planDefinitions: PlanDefinition[] = [
     subtitle: "Para agências que operam múltiplos grupos e querem dominar sua região",
     highlight: "Para dominar sua região",
     features: [
-      "Até 15 roteiros online ativos",
+      "Roteiros ilimitados",
       "Todos os recursos dos planos anteriores",
       "Ideal para múltiplos destinos simultâneos",
       "Página adicional: R$ 20,00 por roteiro extra"

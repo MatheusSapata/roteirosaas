@@ -516,7 +516,7 @@ const planMatrix: Record<"monthly" | "annual", Plan[]> = {
       price: "R$ 499,00",
       savings: "Equivalente a R$ 41,58/mês",
       features: [
-        "Até 5 roteiros online ativos",
+        "Até 3 roteiros online ativos",
         "Seções ilimitadas dentro de cada roteiro",
         "Salvar modelo padrão para copiar em novas viagens",
         "Conectar 1 pixel (Facebook ou Google)",
@@ -556,7 +556,7 @@ const planMatrix: Record<"monthly" | "annual", Plan[]> = {
       price: "R$ 1.299,00",
       tagline: "Ideal para operação contínua",
       features: [
-        "Até 15 roteiros online ativos",
+        "Roteiros ilimitados",
         "Todos os recursos dos planos anteriores",
         "Ideal para múltiplos destinos simultâneos",
         "Página adicional: R$ 20,00 por roteiro extra"
@@ -594,7 +594,7 @@ const planMatrix: Record<"monthly" | "annual", Plan[]> = {
       price: "R$ 59,90",
       tagline: "Mais recursos com pagamento mensal",
       features: [
-        "Até 5 roteiros online ativos",
+        "Até 3 roteiros online ativos",
         "Seções ilimitadas dentro de cada roteiro",
         "Salvar modelo padrão para copiar em novas viagens",
         "Conectar 1 pixel (Facebook ou Google)",
@@ -632,7 +632,7 @@ const planMatrix: Record<"monthly" | "annual", Plan[]> = {
       price: "R$ 139,90",
       tagline: "Ideal para operação contínua",
       features: [
-        "Até 15 roteiros online ativos",
+        "Roteiros ilimitados",
         "Todos os recursos dos planos anteriores",
         "Ideal para múltiplos destinos simultâneos",
         "Página adicional: R$ 20,00 por roteiro extra"

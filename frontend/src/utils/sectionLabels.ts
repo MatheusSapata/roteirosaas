@@ -1,15 +1,15 @@
 import type { PageSection, SectionType } from "../types/page";
 
 export const sectionLabels: Partial<Record<SectionType, string>> = {
-  hero: "Hero",
+  hero: "Banner",
   prices: "Preços",
-  itinerary: "Roteiro",
-  faq: "FAQ",
+  itinerary: "Itinerário",
+  faq: "Perguntas Frequentes",
   testimonials: "Depoimentos",
-  cta: "CTA",
-  story: "História",
-  reasons: "Motivos",
-  countdown: "Contagem",
+  cta: "Chamada para ação",
+  story: "Descritivo",
+  reasons: "Itens",
+  countdown: "Contador",
   free_footer_brand: "Rodapé obrigatório",
   gallery: "Galeria"
 };

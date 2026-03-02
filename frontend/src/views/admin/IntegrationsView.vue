@@ -22,7 +22,7 @@
         <div class="space-y-3">
           <p class="text-sm font-semibold text-slate-700">Plataforma</p>
           <select v-model="typeInput" class="w-full rounded-lg border border-slate-200 px-3 py-2" :disabled="!canEdit">
-            <option value="meta">Facebook</option>
+            <option value="meta">Meta</option>
             <option value="ga">Google</option>
           </select>
         </div>
@@ -185,7 +185,7 @@ const removePixel = async (idx: number) => {
   const pixel = pixels.value[idx];
   if (!pixel) return;
   try {
-    await api.delete(`/pixels/${pixel.id}/`);
+    await api.delete(`/pixels/${pixel.id}`);
     await fetchPixels();
     message.value = "Conexão removida.";
   } catch (err) {

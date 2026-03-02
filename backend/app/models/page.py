@@ -32,4 +32,9 @@ class Page(Base):
 
     agency = relationship("Agency", back_populates="pages", foreign_keys=[agency_id])
     template = relationship("PageTemplate", back_populates="pages")
-    stats = relationship("PageVisitStats", back_populates="page")
+    stats = relationship(
+        "PageVisitStats",
+        back_populates="page",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
