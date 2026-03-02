@@ -9,11 +9,12 @@ import PageEditorView from "../views/admin/PageEditorView.vue";
 import AgencySettingsView from "../views/admin/AgencySettingsView.vue";
 import PublicPageView from "../views/public/PublicPageView.vue";
 import PlansView from "../views/public/PlansView.vue";
+import MarketingLandingView from "../views/public/MarketingLandingView.vue";
 import AdminLayout from "../layouts/AdminLayout.vue";
 import { useAuthStore } from "../store/useAuthStore";
 
 const routes: RouteRecordRaw[] = [
-  { path: "/", redirect: "/login" },
+  { path: "/", name: "marketing", component: MarketingLandingView },
   { path: "/login", name: "login", component: LoginView, meta: { guestOnly: true } },
   { path: "/register", name: "register", component: RegisterView, meta: { guestOnly: true } },
   { path: "/forgot-password", name: "forgot-password", component: ForgotPasswordView, meta: { guestOnly: true } },
