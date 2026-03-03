@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen light-theme">
+  <div class="min-h-screen light-theme overflow-x-hidden">
     <div class="flex min-h-screen">
       <aside
         class="hidden w-64 flex-shrink-0 flex-col justify-between border-r border-slate-200 bg-white/90 px-4 py-6 text-slate-800 shadow-md md:flex md:sticky md:top-0 md:h-screen"
@@ -44,7 +44,7 @@
         </div>
       </aside>
 
-      <main class="flex-1">
+      <main class="flex-1 overflow-x-hidden">
         <header class="flex items-center justify-between bg-white px-4 py-3 text-slate-900 shadow-sm">
           <div class="flex items-center gap-3">
             <button
@@ -72,7 +72,6 @@
         v-if="mobileMenuOpen"
         class="fixed inset-0 z-40 flex md:hidden"
       >
-        <div class="flex-1 bg-slate-900/60" @click="mobileMenuOpen = false"></div>
         <div class="w-72 max-w-full bg-white p-5 shadow-2xl">
           <div class="mb-6 flex items-center justify-between">
             <div>
@@ -124,6 +123,7 @@
             </button>
           </div>
         </div>
+        <div class="flex-1 bg-slate-900/60" @click="mobileMenuOpen = false"></div>
       </div>
     </transition>
 
