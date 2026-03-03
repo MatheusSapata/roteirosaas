@@ -164,7 +164,7 @@ const brandingPrimary = computed(() => {
   return "";
 });
 const headingDefaults = getSectionHeadingDefaults("itinerary");
-const defaultAccent = "#0ea5e9";
+const defaultAccent = "#41ce5f";
 
 const isLight = (hex?: string) => {
   if (!hex) return true;

@@ -131,7 +131,7 @@ import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 const props = defineProps<{ section: CtaSection }>();
 const headingDefaults = getSectionHeadingDefaults("cta");
 
-const accent = computed(() => props.section.backgroundColor || "#0ea5e9");
+const accent = computed(() => props.section.backgroundColor || "#41ce5f");
 const buttonColor = computed(() => props.section.ctaColor || accent.value);
 const textColor = computed(() => props.section.textColor || (props.section.layout === "simple" ? "#ffffff" : "#0f172a"));
 const outerStyle = computed(() => (props.section.layout === "simple" ? {} : { background: accentSoftBg.value }));

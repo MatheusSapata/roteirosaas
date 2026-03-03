@@ -99,7 +99,7 @@
           />
           <input
             v-model="local.gradientColor"
-            placeholder="#0ea5e9"
+            placeholder="#41ce5f"
             class="w-full rounded-lg border border-slate-200 px-3 py-2"
           />
         </div>
@@ -212,9 +212,9 @@ const removeChip = (index: number) => {
 };
 
 const colorOnly = (value?: string) => {
-  if (!value) return "#0ea5e9";
+  if (!value) return "#41ce5f";
   const match = value.match(/#([0-9a-fA-F]{6})/);
-  return match ? `#${match[1]}` : "#0ea5e9";
+  return match ? `#${match[1]}` : "#41ce5f";
 };
 
 const onColorPick = (event: Event) => {

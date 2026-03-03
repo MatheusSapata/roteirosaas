@@ -361,68 +361,75 @@
                           </span>
                         </div>
                         <div class="pointer-events-auto flex flex-1 items-center justify-center px-4 pb-6">
-                          <div class="flex flex-wrap items-center justify-center gap-3">
-                            <button
-                              type="button"
-                              class="inline-flex items-center gap-2 rounded-full border border-white/40 bg-white/20 px-4 py-2 text-xs font-semibold text-white shadow-md transition hover:bg-white/30"
-                              @click.stop="openSectionEditor(idx)"
-                            >
-                              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M12 20h9" />
-                                <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z" />
-                              </svg>
-                              Editar seção
-                            </button>
-                            <button
-                              type="button"
-                              class="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-white/20"
-                              @click.stop="duplicateSection(idx)"
-                            >
-                              <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
-                                <rect x="9" y="9" width="11" height="11" rx="2" />
-                                <rect x="4" y="4" width="11" height="11" rx="2" />
-                              </svg>
-                              Duplicar
-                            </button>
-                            <button
-                              type="button"
-                              class="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-4 py-2 text-xs font-semibold text-white transition hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed"
-                              :disabled="idx === 0"
-                              @click.stop="moveSection(idx, -1)"
-                            >
-                              <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-                                <path d="m5 12 7-7 7 7" />
-                                <path d="M12 5v14" />
-                              </svg>
-                              Subir
-                            </button>
-                            <button
-                              type="button"
-                              class="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-4 py-2 text-xs font-semibold text-white transition hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed"
-                              :disabled="idx === sections.length - 1"
-                              @click.stop="moveSection(idx, 1)"
-                            >
-                              <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-                                <path d="m19 12-7 7-7-7" />
-                                <path d="M12 19V5" />
-                              </svg>
-                              Descer
-                            </button>
-                            <button
-                              type="button"
-                              class="inline-flex items-center gap-2 rounded-full border border-red-300/70 bg-red-400/10 px-4 py-2 text-xs font-semibold text-red-100 transition hover:bg-red-400/20"
-                              @click.stop="removeSection(idx)"
-                            >
-                              <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-                                <path d="M3 6h18" />
-                                <path d="M8 6V4h8v2" />
-                                <path d="m9 10 1 8" />
-                                <path d="m15 10-1 8" />
-                                <path d="M5 6l1 14h12l1-14" />
-                              </svg>
-                              Excluir
-                            </button>
-                          </div>
+                          <template v-if="!isLockedFooterSection(section)">
+                            <div class="flex flex-wrap items-center justify-center gap-3">
+                              <button
+                                type="button"
+                                class="inline-flex items-center gap-2 rounded-full border border-white/40 bg-white/20 px-4 py-2 text-xs font-semibold text-white shadow-md transition hover:bg-white/30"
+                                @click.stop="openSectionEditor(idx)"
+                              >
+                                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                  <path d="M12 20h9" />
+                                  <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z" />
+                                </svg>
+                                Editar seção
+                              </button>
+                              <button
+                                type="button"
+                                class="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-white/20"
+                                @click.stop="duplicateSection(idx)"
+                              >
+                                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+                                  <rect x="9" y="9" width="11" height="11" rx="2" />
+                                  <rect x="4" y="4" width="11" height="11" rx="2" />
+                                </svg>
+                                Duplicar
+                              </button>
+                              <button
+                                type="button"
+                                class="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-4 py-2 text-xs font-semibold text-white transition hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                                :disabled="idx === 0"
+                                @click.stop="moveSection(idx, -1)"
+                              >
+                                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                                  <path d="m5 12 7-7 7 7" />
+                                  <path d="M12 5v14" />
+                                </svg>
+                                Subir
+                              </button>
+                              <button
+                                type="button"
+                                class="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-4 py-2 text-xs font-semibold text-white transition hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                                :disabled="idx === sections.length - 1"
+                                @click.stop="moveSection(idx, 1)"
+                              >
+                                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                                  <path d="m19 12-7 7-7-7" />
+                                  <path d="M12 19V5" />
+                                </svg>
+                                Descer
+                              </button>
+                              <button
+                                type="button"
+                                class="inline-flex items-center gap-2 rounded-full border border-red-300/70 bg-red-400/10 px-4 py-2 text-xs font-semibold text-red-100 transition hover:bg-red-400/20"
+                                @click.stop="removeSection(idx)"
+                              >
+                                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                                  <path d="M3 6h18" />
+                                  <path d="M8 6V4h8v2" />
+                                  <path d="m9 10 1 8" />
+                                  <path d="m15 10-1 8" />
+                                  <path d="M5 6l1 14h12l1-14" />
+                                </svg>
+                                Excluir
+                              </button>
+                            </div>
+                          </template>
+                          <template v-else>
+                            <div class="rounded-full border border-white/30 bg-white/10 px-4 py-2 text-center text-xs font-semibold text-white">
+                              Rodapé obrigatório no plano gratuito. Não é possível editar, mover ou remover esta seção.
+                            </div>
+                          </template>
                         </div>
                       </div>
                       <div
@@ -432,7 +439,7 @@
                         Seção desativada. Clique em editar para ajustar e ativar novamente.
                       </div>
                     </div>
-                    <div class="mt-4 flex justify-center">
+                    <div v-if="!isLockedFooterSection(section)" class="mt-4 flex justify-center">
                       <button
                         type="button"
                         class="inline-flex items-center gap-2 rounded-full border border-emerald-400 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-100"
@@ -569,8 +576,9 @@ const successModal = ref({ open: false });
 const snackbar = ref({ open: false, text: "" });
 
 const isPublished = computed(() => page.value?.status === "published");
+const isFreePlan = computed(() => (auth.user?.plan || "free") === "free");
 
-const fallbackPrimaryColor = "#0ea5e9";
+const fallbackPrimaryColor = "#41ce5f";
 const heroDefaultGradient = "#0b0f19";
 const legacyHeroGradient = "#0a4ddf";
 
@@ -721,10 +729,26 @@ const getBrowserStorage = () => {
 provide(sectionsInjectionKey, sections);
 provide(PUBLIC_BRANDING_KEY, computed(() => branding.value));
 
+const isFooterSection = (section?: PageSection | null) => !!section && (section as any).type === "free_footer_brand";
+const enforceFooterConstraints = (list?: PageSection[] | null) => {
+  const normalized = (list || []).filter(Boolean);
+  if (!isFreePlan.value) return normalized;
+  const footerIndex = normalized.findIndex(isFooterSection);
+  if (footerIndex === -1) return normalized;
+  const footer = normalized.splice(footerIndex, 1)[0];
+  normalized.push(footer);
+  return normalized;
+};
+const isLockedFooterSection = (section?: PageSection | null) => isFreePlan.value && isFooterSection(section);
+
 const setSections = (value: PageSection[] | ((current: PageSection[]) => PageSection[])) => {
   const next = typeof value === "function" ? (value as (current: PageSection[]) => PageSection[])([...sections.value]) : value;
-  sections.value = (next || []).filter(Boolean);
+  sections.value = enforceFooterConstraints(next || []);
 };
+
+watch(isFreePlan, () => {
+  setSections(sections.value.slice());
+});
 
 interface PendingSectionUpdate {
   timer: ReturnType<typeof setTimeout>;
@@ -734,7 +758,7 @@ const pendingSectionUpdates: Record<number, PendingSectionUpdate> = {};
 const commitSectionValue = (index: number, value: PageSection) => {
   const next = sections.value.slice();
   next[index] = value;
-  sections.value = next;
+  setSections(next);
 };
 const flushPendingSectionUpdates = () => {
   Object.keys(pendingSectionUpdates).forEach(key => {
@@ -770,6 +794,37 @@ const ensureSectionAnchor = <T extends PageSection>(section: T): T => {
   return section;
 };
 const cloneWithNewAnchor = <T extends PageSection>(section: T): T => ({ ...section, anchorId: createAnchorId() } as T);
+
+const countStoryImages = (images?: string[]) =>
+  Array.isArray(images) ? images.filter(img => typeof img === "string" && img.trim().length > 0).length : 0;
+const automaticStoryLayout = (images?: string[]) => (countStoryImages(images) > 1 ? "gallery" : "single");
+const applyAutomaticStoryLayout = (story: StorySection) => {
+  const desired = automaticStoryLayout(story.images);
+  if (story.layout !== desired) {
+    story.layout = desired;
+  }
+};
+
+const storyMediaErrorText = "Adicione ao menos uma imagem ou video na secao Story antes de salvar.";
+const hasStoryImage = (section: StorySection) => countStoryImages(section.images) > 0;
+const hasStoryVideo = (section: StorySection) =>
+  typeof section.videoUrl === "string" && section.videoUrl.trim().length > 0;
+const validateSection = (section: PageSection | null): string | null => {
+  if (!section) return null;
+  if ((section as any).type === "story") {
+    const story = section as StorySection;
+    applyAutomaticStoryLayout(story);
+    if (!hasStoryImage(story) && !hasStoryVideo(story)) return storyMediaErrorText;
+  }
+  return null;
+};
+const validateAllSections = (): string | null => {
+  for (const section of sections.value) {
+    const error = validateSection(section);
+    if (error) return error;
+  }
+  return null;
+};
 
 const buildCatalogPreview = (type: SectionType): PageSection => {
   const base = clone(defaultSection(type));
@@ -1162,10 +1217,15 @@ function defaultSection(type: SectionType): PageSection {
 
   if (type === "story") {
     const headingDefaults = getSectionHeadingDefaults("story");
+    const defaultImages = [
+      "https://images.unsplash.com/photo-1502920514313-52581002a659?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80"
+    ];
     return ensureSectionAnchor({
       type: "story",
       enabled: true,
-      layout: "single",
+      layout: automaticStoryLayout(defaultImages),
       headingLabel: headingDefaults.label,
       headingLabelStyle: headingDefaults.style,
       imagePosition: "right",
@@ -1180,11 +1240,7 @@ function defaultSection(type: SectionType): PageSection {
       ctaSectionId: null,
       borderEnabled: false,
       borderColor: "#cbd5e1",
-      images: [
-        "https://images.unsplash.com/photo-1502920514313-52581002a659?auto=format&fit=crop&w=1200&q=80",
-        "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1200&q=80",
-        "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80"
-      ]
+      images: defaultImages
     } as StorySection);
   }
 
@@ -1322,6 +1378,12 @@ const saveConfig = async () => {
 
   try {
     flushPendingSectionUpdates();
+    const validationError = validateAllSections();
+    if (validationError) {
+      errorMessage.value = validationError;
+      showSnackbar(validationError);
+      return;
+    }
     await api.put(`/pages/${pageId}`, { title: pageTitle.value, slug: pageSlug.value });
 
     const configPayload = buildConfig();
@@ -1422,32 +1484,36 @@ const handleSectionPickerSelect = (type: SectionType) => {
 const addSection = (type: SectionType, insertIndex?: number) => {
   const next = clone(defaultSection(type));
   const current = sections.value.slice();
+  const footerIndex = current.findIndex(isFooterSection);
+  const maxInsertIndex = footerIndex >= 0 ? footerIndex : current.length;
   if (typeof insertIndex === "number") {
-    const safeIndex = Math.min(Math.max(insertIndex, 0), current.length);
+    const safeIndex = Math.min(Math.max(insertIndex, 0), maxInsertIndex);
     current.splice(safeIndex, 0, next);
   } else {
-    current.push(next);
+    current.splice(maxInsertIndex, 0, next);
   }
-  sections.value = current;
+  setSections(current);
   refreshPreview(true);
 };
 
 const scheduleWhatsAppUpdate = () => {
   clearTitleDebounce();
   whatsappTitleDebounce = setTimeout(() => {
-    sections.value = applyWhatsAppDefaults(sections.value.slice());
+    setSections(applyWhatsAppDefaults(sections.value.slice()));
   }, 500);
 };
 
 const duplicateSection = (index: number) => {
+  if (isLockedFooterSection(sections.value[index])) return;
   const copy = cloneWithNewAnchor(clone(sections.value[index]));
   const next = sections.value.slice();
   next.splice(index + 1, 0, copy);
-  sections.value = next;
+  setSections(next);
   refreshPreview(true);
 };
 
 const removeSection = (index: number) => {
+  if (isLockedFooterSection(sections.value[index])) return;
   // Permite remover hero apenas se houver mais de um
   if ((sections.value[index] as any)?.type === "hero") {
     const heroCount = sections.value.filter(s => (s as any).type === "hero").length;
@@ -1455,13 +1521,14 @@ const removeSection = (index: number) => {
   }
   const next = sections.value.slice();
   next.splice(index, 1);
-  sections.value = next;
+  setSections(next);
   refreshPreview(true);
 };
 
 const moveSection = (index: number, direction: number) => {
   const target = index + direction;
   if (target < 0 || target >= sections.value.length) return;
+  if (isLockedFooterSection(sections.value[index]) || isLockedFooterSection(sections.value[target])) return;
 
   setSections(current => {
     const next = [...current];
@@ -1476,6 +1543,7 @@ const moveSection = (index: number, direction: number) => {
 const openSectionEditor = (index: number) => {
   const target = sections.value[index];
   if (!target) return;
+  if (isLockedFooterSection(target)) return;
   editingSectionIndex.value = index;
   editingSectionDraft.value = clone(target);
 };
@@ -1527,6 +1595,13 @@ const refreshPreview = (immediate = false) => {
 
 const saveEditingSection = () => {
   if (editingSectionIndex.value === null || !editingSectionDraft.value) return;
+  const validationError = validateSection(editingSectionDraft.value);
+  if (validationError) {
+    errorMessage.value = validationError;
+    showSnackbar(validationError);
+    return;
+  }
+  errorMessage.value = "";
   updateSectionAt(editingSectionIndex.value, editingSectionDraft.value, true);
   closeSectionEditor();
   refreshPreview(true);

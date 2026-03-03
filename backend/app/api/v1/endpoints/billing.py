@@ -114,7 +114,7 @@ def create_checkout(
         raise HTTPException(status_code=400, detail="Ciclo de cobrança inválido")
 
     external_ref = _build_external_reference(current_user.id, plan_key, cycle)
-    redirect_url = settings.stripe_success_url or settings.mp_success_url
+    redirect_url = settings.asaas_success_url or settings.stripe_success_url or settings.mp_success_url
 
     request_payload: Dict[str, Any] = {
         "name": plan_info["title"],
@@ -368,7 +368,7 @@ def refresh_payment_method(
             logger.warning("Falha ao remover link de pagamento antigo no Asaas: %s", exc)
 
     external_ref = _build_external_reference(current_user.id, plan_key, cycle)
-    redirect_url = settings.stripe_success_url or settings.mp_success_url
+    redirect_url = settings.asaas_success_url or settings.stripe_success_url or settings.mp_success_url
     request_payload: Dict[str, Any] = {
         "name": plan_info["title"],
         "description": f"Atualização do {plan_info['title']}",

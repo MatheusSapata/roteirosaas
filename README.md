@@ -3,7 +3,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/FastAPI-005571?logo=fastapi&logoColor=white" alt="FastAPI Badge" />
   <img src="https://img.shields.io/badge/Vue.js-42b883?logo=vue.js&logoColor=white" alt="Vue 3 Badge" />
-  <img src="https://img.shields.io/badge/Tailwind_CSS-0ea5e9?logo=tailwindcss&logoColor=white" alt="Tailwind Badge" />
+  <img src="https://img.shields.io/badge/Tailwind_CSS-41ce5f?logo=tailwindcss&logoColor=white" alt="Tailwind Badge" />
   <img src="https://img.shields.io/badge/Stripe-6772E5?logo=stripe&logoColor=white" alt="Stripe Badge" />
   <img src="https://img.shields.io/badge/Mercado%20Pago-009ee3?logo=mercadopago&logoColor=white" alt="Mercado Pago Badge" />
 </p>

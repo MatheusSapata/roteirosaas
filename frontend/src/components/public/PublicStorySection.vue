@@ -111,7 +111,7 @@ const headingDefaults = getSectionHeadingDefaults("story");
 
 const isSingle = computed(() => props.section.layout !== "gallery");
 const imagePosition = computed(() => props.section.imagePosition || "right");
-const ctaColor = computed(() => props.section.ctaColor || "#0ea5e9");
+const ctaColor = computed(() => props.section.ctaColor || "#41ce5f");
 const ctaMode = computed(() => props.section.ctaMode || "link");
 const ctaHasTarget = computed(() =>
   ctaMode.value === "section" ? !!props.section.ctaSectionId : !!props.section.ctaLink
@@ -125,7 +125,7 @@ const ctaTrackType = computed(() =>
 );
 const ctaEnabled = computed(() => props.section.ctaEnabled !== false);
 const isMobilePreview = computed(() => props.previewDevice === "mobile");
-const borderColor = computed(() => props.section.borderColor || props.section.ctaColor || "#0ea5e9");
+const borderColor = computed(() => props.section.borderColor || props.section.ctaColor || "#41ce5f");
 const borderStyle = computed(() =>
   props.section.borderEnabled ? { borderColor: borderColor.value, borderWidth: "2px", borderStyle: "solid" } : {}
 );

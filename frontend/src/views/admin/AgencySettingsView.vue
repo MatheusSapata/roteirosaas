@@ -44,11 +44,11 @@
                 v-model="form.primary_color"
                 class="h-10 w-12 cursor-pointer rounded border border-slate-200 bg-white"
               />
-              <input
-                v-model="form.primary_color"
-                placeholder="#0ea5e9"
-                class="w-full rounded-lg border border-slate-200 px-3 py-2"
-              />
+                <input
+                  v-model="form.primary_color"
+                  placeholder="#41ce5f"
+                  class="w-full rounded-lg border border-slate-200 px-3 py-2"
+                />
             </div>
             <p class="text-xs text-slate-500">Essa cor será usada como base nos CTAs do editor. Você pode ajustar depois.</p>
           </div>
@@ -115,7 +115,7 @@ import { useAuthStore } from "../../store/useAuthStore";
 
 const agencyStore = useAgencyStore();
 const authStore = useAuthStore();
-const colorPalette = ["#0ea5e9", "#2563eb", "#8b5cf6", "#f59e0b", "#10b981", "#ef4444", "#0f172a", "#111827"];
+const colorPalette = ["#41ce5f", "#2563eb", "#8b5cf6", "#f59e0b", "#10b981", "#ef4444", "#0f172a", "#111827"];
 
 const form = reactive({
   id: 0,

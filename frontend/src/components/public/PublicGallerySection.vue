@@ -79,7 +79,7 @@ import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 const props = defineProps<{ section: GallerySection }>();
 const headingDefaults = getSectionHeadingDefaults("gallery");
 
-const accent = computed(() => props.section.backgroundColor || "#0ea5e9");
+const accent = computed(() => props.section.backgroundColor || "#41ce5f");
 const toRgba = (hex: string, alpha: number) => {
   const cleaned = hex.replace("#", "");
   const full = cleaned.length === 3 ? cleaned.split("").map(c => c + c).join("") : cleaned;
