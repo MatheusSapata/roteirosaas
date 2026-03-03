@@ -130,6 +130,7 @@ def create_checkout(
     if redirect_url:
         request_payload["redirectUrl"] = redirect_url
 
+    logger.info("Payload Asaas: %s", request_payload)
     try:
         link = client.create_payment_link(request_payload)
     except AsaasAPIError as exc:  # noqa: BLE001
