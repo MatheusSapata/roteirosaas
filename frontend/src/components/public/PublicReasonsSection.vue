@@ -13,7 +13,7 @@
         <article
           v-for="(item, idx) in limitedItems"
           :key="'mobile-' + idx"
-          class="flex w-full flex-col rounded-2xl bg-white/95 p-4 text-center shadow-[0_16px_40px_-28px_rgba(15,23,42,0.6)] ring-1 ring-slate-100"
+          class="mx-auto flex w-full max-w-[340px] flex-col rounded-2xl bg-white/95 p-4 text-center shadow-[0_16px_40px_-28px_rgba(15,23,42,0.6)] ring-1 ring-slate-100"
         >
           <ReasonCard :item="item" />
         </article>
@@ -77,7 +77,7 @@ const ReasonCard = defineComponent({
   setup(componentProps) {
     return () =>
       h("div", { class: "reason-card-content" }, [
-        h("div", { class: "mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-slate-50 text-2xl" }, [
+        h("div", { class: "mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-slate-50 text-3xl" }, [
           h("span", componentProps.item.icon || "⭐")
         ]),
         h("h3", { class: "mt-3 text-lg font-semibold text-slate-900" }, componentProps.item.title),
