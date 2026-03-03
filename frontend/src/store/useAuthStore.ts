@@ -7,7 +7,15 @@ interface User {
   email: string;
   name: string;
   cpf?: string;
+  cnpj?: string;
   whatsapp?: string;
+  address_street?: string | null;
+  address_number?: string | null;
+  address_complement?: string | null;
+  address_neighborhood?: string | null;
+  address_city?: string | null;
+  address_state?: string | null;
+  address_zipcode?: string | null;
   is_active: boolean;
   is_superuser: boolean;
   plan: string;
