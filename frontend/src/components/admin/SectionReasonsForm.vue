@@ -58,7 +58,7 @@
         </div>
         <div class="mt-2">
           <label class="text-sm font-semibold text-slate-600">Descrição</label>
-          <textarea v-model="item.description" rows="3" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"></textarea>
+          <RichTextEditor v-model="item.description" placeholder="Detalhe o benefício" />
         </div>
       </div>
       <div class="flex justify-end">
@@ -77,6 +77,7 @@
 <script setup lang="ts">
 import { computed, nextTick, reactive, ref, watch } from "vue";
 import SectionHeadingControls from "./inputs/SectionHeadingControls.vue";
+import RichTextEditor from "./inputs/RichTextEditor.vue";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import type { ReasonsSection } from "../../types/page";
 

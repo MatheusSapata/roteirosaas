@@ -106,23 +106,8 @@
         <p class="mt-1 text-xs text-slate-500">Use o seletor ou digite um hex (ex.: #0a4ddf). Gradiente usa essa cor como base.</p>
       </div>
     </div>
-    <div class="grid gap-3 md:grid-cols-2">
-      <div>
-        <label class="text-sm font-semibold text-slate-600">Cor do botão CTA</label>
-        <div class="mt-1 flex items-center gap-3">
-          <input
-            type="color"
-            class="h-10 w-14 rounded-lg border border-slate-200 bg-white"
-            :value="colorOnly(local.ctaColor)"
-            @input="onCtaColorPick"
-          />
-          <input
-            v-model="local.ctaColor"
-            placeholder="#0ea5e9"
-            class="w-full rounded-lg border border-slate-200 px-3 py-2"
-          />
-        </div>
-      </div>
+    <div class="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+      A cor do botão segue a opção global "Cor de botões e destaques" configurada no topo do editor.
     </div>
     <div class="grid gap-3 md:grid-cols-2">
       <div>
@@ -161,7 +146,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, reactive, watch } from "vue";
+import { nextTick, reactive, watch } from "vue";
 import ImageUploadField from "./inputs/ImageUploadField.vue";
 import CtaActionPicker from "./inputs/CtaActionPicker.vue";
 import RichTextEditor from "./inputs/RichTextEditor.vue";
@@ -235,11 +220,6 @@ const colorOnly = (value?: string) => {
 const onColorPick = (event: Event) => {
   const target = event.target as HTMLInputElement;
   local.gradientColor = target.value;
-};
-
-const onCtaColorPick = (event: Event) => {
-  const target = event.target as HTMLInputElement;
-  local.ctaColor = target.value;
 };
 
 const updateLogoSize = (delta: number) => {

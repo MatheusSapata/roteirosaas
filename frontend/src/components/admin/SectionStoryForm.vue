@@ -35,7 +35,7 @@
 
     <div class="flex items-center gap-2">
       <input type="checkbox" v-model="local.ctaEnabled" class="h-4 w-4" />
-      <label class="text-sm font-semibold text-slate-600">Inserir botČœo de CTA</label>
+      <label class="text-sm font-semibold text-slate-600">Inserir botão de CTA</label>
     </div>
     <div v-if="local.ctaEnabled" class="space-y-3">
       <CtaActionPicker
@@ -53,14 +53,8 @@
           <input v-model="local.ctaLink" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
         </div>
       </div>
-      <div class="grid gap-3 md:grid-cols-2">
-        <div>
-          <label class="text-sm font-semibold text-slate-600">Cor do botão (CTA)</label>
-          <div class="mt-1 flex items-center gap-2">
-            <input type="color" v-model="local.ctaColor" class="h-9 w-9 cursor-pointer rounded border border-slate-200 bg-white" />
-            <input v-model="local.ctaColor" placeholder="#0ea5e9" class="w-full rounded-lg border border-slate-200 px-3 py-2" />
-          </div>
-        </div>
+      <div class="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+        A cor do botão segue a opção global "Cor de botões e destaques" configurada no topo do editor.
       </div>
     </div>
 
