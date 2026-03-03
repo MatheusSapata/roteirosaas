@@ -174,6 +174,14 @@ def _cycle_duration(cycle: str) -> timedelta:
     return timedelta(days=days_map.get(normalized, 30))
 
 
+def _extract_resource_info(resource: Any) -> tuple[Optional[str], Dict[str, Any]]:
+    if isinstance(resource, dict):
+        return resource.get("id"), resource
+    if isinstance(resource, str):
+        return resource, {}
+    return None, {}
+
+
 def _set_subscription_active(subscription: Subscription, plan_key: str, due_date: Optional[str], cycle: str) -> None:
     subscription.plan = plan_key
     subscription.billing_cycle = cycle or DEFAULT_CYCLE
@@ -222,13 +230,15 @@ async def webhook(request: Request, db: Session = Depends(get_db)) -> Dict[str, 
             return {"received": True}
         subscription = _ensure_subscription(user)
         subscription.external_reference = payment.get("externalReference")
-        subscription.asaas_subscription_id = payment.get("subscription") or subscription.asaas_subscription_id
-        subscription.asaas_customer_id = payment.get("customer") or subscription.asaas_customer_id
-        subscription.asaas_payment_link_id = payment.get("paymentLink") or subscription.asaas_payment_link_id
+        sub_id, sub_data = _extract_resource_info(payment.get("subscription"))
+        customer_id, _ = _extract_resource_info(payment.get("customer"))
+        link_id, _ = _extract_resource_info(payment.get("paymentLink"))
+        subscription.asaas_subscription_id = sub_id or subscription.asaas_subscription_id
+        subscription.asaas_customer_id = customer_id or subscription.asaas_customer_id
+        subscription.asaas_payment_link_id = link_id or subscription.asaas_payment_link_id
 
         if event == "PAYMENT_CONFIRMED":
-            subscription_data = payment.get("subscription") or {}
-            next_due = payment.get("nextDueDate") or subscription_data.get("nextDueDate") or payment.get("dueDate")
+            next_due = payment.get("nextDueDate") or sub_data.get("nextDueDate") or payment.get("dueDate")
             _set_subscription_active(subscription, plan_key, next_due, cycle)
             user.plan = plan_key
         elif event == "PAYMENT_OVERDUE":
