@@ -40,12 +40,8 @@
           </option>
         </select>
       </div>
-      <div>
-        <label class="text-sm font-semibold text-slate-600">Cor do destaque</label>
-        <div class="mt-1 flex items-center gap-2">
-          <input type="color" v-model="local.ctaColor" class="h-9 w-9 cursor-pointer rounded border border-slate-200 bg-white" />
-          <input v-model="local.ctaColor" placeholder="#5b49ff" class="w-full rounded-lg border border-slate-200 px-3 py-2" />
-        </div>
+      <div class="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+        A cor do destaque segue a opção global "Cor de botões e destaques" configurada no topo do editor.
       </div>
     </div>
     <div>

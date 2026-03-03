@@ -178,7 +178,7 @@ const isLight = (hex?: string) => {
   return luminance > 0.8;
 };
 
-const accent = computed(() => brandingPrimary.value || defaultAccent);
+const accent = computed(() => props.section.ctaColor || brandingPrimary.value || defaultAccent);
 const headingLabel = computed(() => props.section.headingLabel ?? headingDefaults.label);
 const headingStyle = computed(() => props.section.headingLabelStyle || headingDefaults.style);
 const dayDescriptionHtml = (text?: string) => sanitizeHtml(text);

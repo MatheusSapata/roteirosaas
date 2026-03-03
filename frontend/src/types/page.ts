@@ -77,6 +77,7 @@ export interface ItinerarySection extends SectionBase {
   type: "itinerary";
   days: ItineraryDay[];
   layout?: "timeline" | "cards" | "minimal" | "steps";
+  ctaColor?: string;
 }
 
 export interface FaqItem {

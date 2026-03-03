@@ -43,6 +43,7 @@ import { computed, defineComponent, h } from "vue";
 import type { ReasonsSection, ReasonItem } from "../../types/page";
 import SectionHeadingChip from "./SectionHeadingChip.vue";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
+import { sanitizeHtml } from "../../utils/sanitizeHtml";
 
 const props = defineProps<{ section: ReasonsSection; previewDevice?: "desktop" | "mobile" }>();
 const headingDefaults = getSectionHeadingDefaults("reasons");
@@ -64,6 +65,8 @@ const desktopRows = computed(() => {
   return [first, second];
 });
 
+const descriptionHtml = (text?: string) => sanitizeHtml(text);
+
 const ReasonCard = defineComponent({
   props: {
     item: {
@@ -78,7 +81,10 @@ const ReasonCard = defineComponent({
           h("span", componentProps.item.icon || "⭐")
         ]),
         h("h3", { class: "mt-3 text-lg font-semibold text-slate-900" }, componentProps.item.title),
-        h("p", { class: "mt-2 text-sm leading-relaxed text-slate-600" }, componentProps.item.description)
+        h("div", {
+          class: "mt-2 w-full text-sm leading-relaxed text-slate-600",
+          innerHTML: descriptionHtml(componentProps.item.description)
+        })
       ]);
   }
 });

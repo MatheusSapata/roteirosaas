@@ -234,8 +234,28 @@
             <span>Cor 2</span>
             <input type="color" v-model="colorB" class="h-9 w-9 cursor-pointer rounded border border-slate-200 bg-white" />
           </label>
-          <span class="text-xs text-slate-500">Aplica alternância em todas as seções (exceto hero).</span>
-        </div>
+            <span class="text-xs text-slate-500">Aplica alternância em todas as seções (exceto hero).</span>
+          </div>
+          <div class="mt-4 flex flex-wrap items-center gap-3">
+            <div>
+              <label class="text-sm font-semibold text-slate-600">Cor de botões e destaques</label>
+              <div class="mt-1 flex items-center gap-2">
+                <input
+                  type="color"
+                  v-model="ctaColor"
+                  class="h-9 w-9 cursor-pointer rounded border border-slate-200 bg-white"
+                />
+                <span class="text-xs text-slate-500">Afeta CTAs, chips e elementos em destaque.</span>
+                <button
+                  type="button"
+                  class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:bg-slate-100"
+                  @click="refreshCtaColors"
+                >
+                  Atualizar cores
+                </button>
+              </div>
+            </div>
+          </div>
         <div class="mt-6 rounded-2xl border border-slate-100 px-4 py-4">
           <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
             <div class="space-y-1">
@@ -578,6 +598,7 @@ const editorPrefs = ref<EditorPreferences>({
 
 const colorA = ref(theme.value.color1);
 const colorB = ref(theme.value.color2);
+const ctaColor = ref(theme.value.ctaDefaultColor || fallbackPrimaryColor);
 const previewDevice = ref<"desktop" | "mobile">(editorPrefs.value.previewDevice || "desktop");
 const toolbarSecondaryButtonClass =
   "inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-white";
@@ -587,6 +608,7 @@ const toolbarWarningButtonClass =
   "inline-flex items-center gap-2 rounded-full border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 transition hover:bg-amber-100";
 const toolbarStatusPillClass =
   "inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700";
+let skipCtaWatcher = false;
 
 const buildCountdownTargetDate = () => {
   const date = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
@@ -799,24 +821,15 @@ const fillHeroLogoFromAgency = () => {
   );
 };
 
-const applyAgencyBranding = () => {
-  const primary = resolvePrimaryColor();
-  const agency = currentAgency.value;
-  branding.value = {
-    ...branding.value,
-    agency_name: agency?.name || branding.value.agency_name,
-    logo_url: agency?.logo_url || branding.value.logo_url,
-    primary_color: primary,
-    secondary_color: agency?.secondary_color || primary
-  };
-  theme.value.ctaDefaultColor = primary;
-  fillHeroLogoFromAgency();
-};
+const applyPrimaryToThemeAndSections = (oldDefault?: string, nextColor?: string, syncPicker = false) => {
+  const targetColor = nextColor || ctaColor.value || resolvePrimaryColor();
+  const previous = oldDefault || theme.value.ctaDefaultColor || fallbackPrimaryColor;
+  theme.value.ctaDefaultColor = targetColor;
 
-const applyPrimaryToThemeAndSections = (oldDefault?: string) => {
-  const primary = resolvePrimaryColor();
-  const previous = oldDefault || theme.value.ctaDefaultColor;
-  theme.value.ctaDefaultColor = primary;
+  if (syncPicker && ctaColor.value !== targetColor) {
+    skipCtaWatcher = true;
+    ctaColor.value = targetColor;
+  }
 
   setSections(current =>
     applySectionBackgrounds(
@@ -828,17 +841,37 @@ const applyPrimaryToThemeAndSections = (oldDefault?: string) => {
             !countdownBg ||
             countdownBg.toLowerCase?.() === fallbackPrimaryColor.toLowerCase() ||
             (!!previous && countdownBg.toLowerCase?.() === previous.toLowerCase());
-          if (shouldReplaceCountdown) (section as any).backgroundColor = primary;
+          if (shouldReplaceCountdown) (section as any).backgroundColor = targetColor;
         }
         const currentColor = (section as any).ctaColor as string | undefined;
         const shouldReplace =
           !currentColor ||
           currentColor.toLowerCase?.() === fallbackPrimaryColor.toLowerCase() ||
           (!!previous && currentColor.toLowerCase?.() === previous.toLowerCase());
-        return shouldReplace ? ({ ...(section as any), ctaColor: primary } as any) : section;
+        return shouldReplace ? ({ ...(section as any), ctaColor: targetColor } as any) : section;
       })
     )
   );
+};
+
+const applyAgencyBranding = () => {
+  const primary = resolvePrimaryColor();
+  const agency = currentAgency.value;
+  branding.value = {
+    ...branding.value,
+    agency_name: agency?.name || branding.value.agency_name,
+    logo_url: agency?.logo_url || branding.value.logo_url,
+    primary_color: primary,
+    secondary_color: agency?.secondary_color || primary
+  };
+  applyPrimaryToThemeAndSections(theme.value.ctaDefaultColor, primary, true);
+  fillHeroLogoFromAgency();
+};
+
+const refreshCtaColors = () => {
+  applyPrimaryToThemeAndSections(theme.value.ctaDefaultColor, ctaColor.value);
+  refreshPreview(true);
+  showSnackbar("Cores aplicadas nas seções");
 };
 
 const loadPixels = async () => {
@@ -902,7 +935,7 @@ const applySectionBackgrounds = (list: PageSection[]): PageSection[] => {
 
   const ensureButtonColor = (section: PageSection) => {
     const type = (section as any).type as SectionType;
-    const typesWithButton: SectionType[] = ["hero", "prices", "testimonials", "story", "cta"];
+    const typesWithButton: SectionType[] = ["hero", "prices", "testimonials", "story", "cta", "itinerary"];
     if (typesWithButton.includes(type)) {
       const currentColor = (section as any).ctaColor;
       const needsDefault =
@@ -1086,6 +1119,7 @@ function defaultSection(type: SectionType): PageSection {
       layout: "timeline",
       headingLabel: headingDefaults.label,
       headingLabelStyle: headingDefaults.style,
+      ctaColor: theme.value.ctaDefaultColor,
       days: [
         { day: "Dia 1", title: "Chegada", description: "Recepção no aeroporto e traslado." },
         { day: "Dia 2", title: "Trilhas", description: "Passeio pelas dunas e cachoeiras." }
@@ -1163,7 +1197,7 @@ function defaultSection(type: SectionType): PageSection {
       headingLabelStyle: headingDefaults.style,
       label: "Garanta sua vaga agora mesmo!",
       targetDate: buildCountdownTargetDate(),
-      backgroundColor: resolvePrimaryColor(),
+      backgroundColor: theme.value.ctaDefaultColor || resolvePrimaryColor(),
       textColor: "#ffffff",
       layout: "cards"
     } as CountdownSection);
@@ -1216,6 +1250,7 @@ const hydrateFromConfig = (config?: PageConfig | string | null) => {
       theme.value = { ...theme.value, ...parsed.theme };
       colorA.value = parsed.theme.color1 || colorA.value;
       colorB.value = parsed.theme.color2 || colorB.value;
+      if (parsed.theme.ctaDefaultColor) ctaColor.value = parsed.theme.ctaDefaultColor;
     }
 
     if (parsed.editor) {
@@ -1472,6 +1507,15 @@ watch(colorB, value => {
   theme.value.color2 = value;
 });
 
+watch(ctaColor, (value, previous) => {
+  if (!value) return;
+  if (skipCtaWatcher) {
+    skipCtaWatcher = false;
+    return;
+  }
+  applyPrimaryToThemeAndSections(previous, value);
+});
+
 watch(previewDevice, value => {
   editorPrefs.value.previewDevice = value;
 });
@@ -1540,6 +1584,7 @@ const applySavedTemplate = (): boolean => {
       theme.value = { ...theme.value, ...parsed.theme };
       if (parsed.theme.color1) colorA.value = parsed.theme.color1;
       if (parsed.theme.color2) colorB.value = parsed.theme.color2;
+      if (parsed.theme.ctaDefaultColor) ctaColor.value = parsed.theme.ctaDefaultColor;
     }
 
     if (parsed.sections && Array.isArray(parsed.sections) && parsed.sections.length) {
