@@ -25,28 +25,7 @@
       </button>
     </div>
 
-    <div class="grid gap-4 md:grid-cols-2">
-      <div class="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
-        <div class="flex items-start justify-between">
-          <div>
-            <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Dados</p>
-            <h2 class="text-xl font-bold text-slate-900">{{ user?.name }}</h2>
-            <p class="text-sm text-slate-600">{{ user?.email }}</p>
-          </div>
-          <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">ID {{ user?.id }}</span>
-        </div>
-        <div class="mt-4 space-y-2 text-sm text-slate-700">
-          <p><span class="font-semibold">Ativo:</span> {{ user?.is_active ? "Sim" : "Não" }}</p>
-          <p><span class="font-semibold">Plano atual:</span> {{ getPlanLabel(billing?.plan || user?.plan) }}</p>
-          <p><span class="font-semibold">Status da assinatura:</span> {{ billingStatusLabel }}</p>
-          <p>
-            <span class="font-semibold">Validade:</span>
-            <span v-if="billing?.valid_until">{{ formatDate(billing.valid_until) }}</span>
-            <span v-else>Sem validade definida</span>
-          </p>
-        </div>
-      </div>
-
+    <div class="space-y-4">
       <div class="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm space-y-4">
         <div class="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -80,6 +59,7 @@
           >
             <span>{{ showCardForm ? "Fechar formulário" : "Atualizar cartão" }}</span>
           </button>
+
           <a
             href="#"
             class="text-xs font-semibold text-slate-500 underline-offset-2 hover:text-slate-700 hover:underline"
@@ -97,6 +77,7 @@
           <p class="mb-3 text-xs text-slate-500">
             Nenhuma cobrança será feita agora. O novo cartão será usado automaticamente na próxima renovação.
           </p>
+
           <div class="grid gap-4 md:grid-cols-2">
             <label class="space-y-1 text-xs font-semibold">
               Nome impresso
@@ -107,6 +88,7 @@
                 placeholder="Nome completo"
               />
             </label>
+
             <label class="space-y-1 text-xs font-semibold">
               Número do cartão
               <input
@@ -117,6 +99,7 @@
                 placeholder="0000 0000 0000 0000"
               />
             </label>
+
             <label class="space-y-1 text-xs font-semibold">
               Mês de validade
               <input
@@ -128,6 +111,7 @@
                 placeholder="MM"
               />
             </label>
+
             <label class="space-y-1 text-xs font-semibold">
               Ano de validade
               <input
@@ -139,6 +123,7 @@
                 placeholder="AAAA"
               />
             </label>
+
             <label class="space-y-1 text-xs font-semibold">
               Código de segurança
               <input
@@ -151,6 +136,7 @@
               />
             </label>
           </div>
+
           <div class="mt-4 flex flex-wrap gap-3">
             <button
               class="inline-flex items-center justify-center rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500 disabled:opacity-60"
@@ -160,6 +146,7 @@
               <span v-if="cardSubmitting">Enviando...</span>
               <span v-else>Salvar novo cartão</span>
             </button>
+
             <button
               type="button"
               class="text-xs font-semibold text-slate-500 hover:text-slate-700"
@@ -173,9 +160,117 @@
         <p class="text-xs text-slate-500">
           Você manterá o acesso até o fim do período pago mesmo após cancelar ou voltar ao plano gratuito.
         </p>
-
         <p v-if="message" class="text-xs font-semibold text-emerald-600">{{ message }}</p>
         <p v-if="error" class="text-xs font-semibold text-rose-600">{{ error }}</p>
+      </div>
+
+      <div class="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Dados</p>
+            <h2 class="text-xl font-bold text-slate-900">Informações pessoais</h2>
+            <p class="text-sm text-slate-600">Revise ou ajuste os dados exibidos no painel.</p>
+          </div>
+        </div>
+
+        <div class="mt-6 grid gap-4 md:grid-cols-2">
+          <label class="space-y-1 text-xs font-semibold text-slate-500">
+            Nome completo
+            <input
+              type="text"
+              :value="user?.name || ''"
+              readonly
+              disabled
+              class="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+            />
+          </label>
+
+          <label class="space-y-1 text-xs font-semibold text-slate-500">
+            E-mail
+            <input
+              type="email"
+              :value="user?.email || ''"
+              readonly
+              disabled
+              class="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+            />
+          </label>
+          <label class="space-y-1 text-xs font-semibold text-slate-500">
+            CPF
+            <input
+              type="text"
+              :value="formattedCpf"
+              readonly
+              disabled
+              class="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+            />
+          </label>
+          <label class="space-y-1 text-xs font-semibold text-slate-500">
+            Telefone
+            <input
+              type="text"
+              :value="formattedPhone"
+              readonly
+              disabled
+              class="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+            />
+          </label>
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm space-y-4">
+        <div>
+          <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Segurança</p>
+          <h2 class="text-xl font-bold text-slate-900">Alterar senha</h2>
+          <p class="text-sm text-slate-600">
+            A senha precisa ter pelo menos 8 caracteres, conter letras maiúsculas e minúsculas e pelo menos um número.
+          </p>
+        </div>
+        <div class="grid gap-4 md:grid-cols-3">
+          <label class="space-y-1 text-xs font-semibold text-slate-500">
+            Senha atual
+            <input
+              v-model="passwordForm.current"
+              type="password"
+              class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              placeholder="••••••••"
+              autocomplete="current-password"
+            />
+          </label>
+          <label class="space-y-1 text-xs font-semibold text-slate-500">
+            Nova senha
+            <input
+              v-model="passwordForm.new"
+              type="password"
+              class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              placeholder="Nova senha"
+              autocomplete="new-password"
+            />
+          </label>
+          <label class="space-y-1 text-xs font-semibold text-slate-500">
+            Confirmar nova senha
+            <input
+              v-model="passwordForm.confirm"
+              type="password"
+              class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              placeholder="Repita a nova senha"
+              autocomplete="new-password"
+            />
+          </label>
+        </div>
+        <div class="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            class="rounded-full px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 disabled:opacity-60"
+            :disabled="passwordSaving"
+            style="background-color: #41ce5f"
+            @click="changePassword"
+          >
+            {{ passwordSaving ? "Alterando..." : "Salvar nova senha" }}
+          </button>
+          <span v-if="passwordMessage" class="text-xs font-semibold text-emerald-600">{{ passwordMessage }}</span>
+          <span v-if="passwordError" class="text-xs font-semibold text-rose-600">{{ passwordError }}</span>
+        </div>
       </div>
     </div>
   </div>
@@ -199,13 +294,27 @@ interface BillingInfo {
 
 const authStore = useAuthStore();
 const router = useRouter();
+
 const user = computed(() => authStore.user);
+const formattedCpf = computed(() => formatCpf(user.value?.cpf || ""));
+const formattedPhone = computed(() => formatPhone(user.value?.whatsapp || ""));
 const billing = ref<BillingInfo | null>(null);
+
 const message = ref<string | null>(null);
 const error = ref<string | null>(null);
+const passwordForm = reactive({
+  current: "",
+  new: "",
+  confirm: ""
+});
+const passwordSaving = ref(false);
+const passwordMessage = ref<string | null>(null);
+const passwordError = ref<string | null>(null);
+
 const actionLoading = ref(false);
 const showCardForm = ref(false);
 const cardSubmitting = ref(false);
+
 const cardForm = reactive({
   holderName: "",
   number: "",
@@ -213,6 +322,7 @@ const cardForm = reactive({
   expiryYear: "",
   ccv: ""
 });
+
 const billingStatusLabel = computed(() => {
   const status = billing.value?.status || "inactive";
   const statusMap: Record<string, string> = {
@@ -225,6 +335,7 @@ const billingStatusLabel = computed(() => {
   };
   return statusMap[status] || status;
 });
+
 const statusBadgeClass = computed(() => {
   const status = billing.value?.status || "inactive";
   if (status === "active") return "rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700";
@@ -234,13 +345,16 @@ const statusBadgeClass = computed(() => {
   if (status === "cancelled") return "rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600";
   return "rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500";
 });
+
 const billingCycleLabel = computed(() => {
   const cycle = billing.value?.billing_cycle;
   if (cycle === "annual") return "Plano anual";
   if (cycle === "monthly") return "Plano mensal";
   return "Ciclo padrão";
 });
+
 const currentPlanLabel = computed(() => getPlanLabel(billing.value?.plan || user.value?.plan));
+
 const isPaidPlan = computed(() => {
   const plan = billing.value?.plan || user.value?.plan;
   return !!plan && plan !== "free";
@@ -251,6 +365,27 @@ const formatDate = (iso?: string | null) => {
   const d = new Date(iso);
   return d.toLocaleDateString();
 };
+
+function formatCpf(cpf?: string | null) {
+  if (!cpf) return "";
+  const digits = cpf.replace(/\D/g, "").slice(0, 11);
+  if (!digits) return "";
+  return digits
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+}
+
+function formatPhone(phone?: string | null) {
+  if (!phone) return "";
+  const digits = phone.replace(/\D/g, "").slice(0, 11);
+  if (!digits) return "";
+  if (digits.length <= 2) return `(${digits}`;
+  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+}
+
 
 const loadBilling = async () => {
   try {
@@ -264,11 +399,16 @@ const loadBilling = async () => {
 
 const cancelSubscription = async () => {
   if (!isPaidPlan.value) return;
-  const confirmCancel = window.confirm("Cancelar a renovação? Você manterá o acesso até o fim do ciclo atual.");
+
+  const confirmCancel = window.confirm(
+    "Cancelar a renovação? Você manterá o acesso até o fim do ciclo atual."
+  );
   if (!confirmCancel) return;
+
   actionLoading.value = true;
   message.value = null;
   error.value = null;
+
   try {
     const res = await api.post<BillingInfo>("/billing/cancel");
     billing.value = res.data;
@@ -284,9 +424,7 @@ const cancelSubscription = async () => {
 const toggleCardForm = () => {
   if (!isPaidPlan.value) return;
   showCardForm.value = !showCardForm.value;
-  if (!showCardForm.value) {
-    resetCardForm();
-  }
+  if (!showCardForm.value) resetCardForm();
 };
 
 const resetCardForm = () => {
@@ -299,13 +437,16 @@ const resetCardForm = () => {
 
 const submitCardUpdate = async () => {
   if (!isPaidPlan.value) return;
+
   if (!cardForm.holderName || !cardForm.number || !cardForm.expiryMonth || !cardForm.expiryYear || !cardForm.ccv) {
     error.value = "Preencha todos os campos do cartão.";
     return;
   }
+
   cardSubmitting.value = true;
   message.value = null;
   error.value = null;
+
   try {
     await api.post("/billing/update-card", {
       holder_name: cardForm.holderName,
@@ -314,6 +455,7 @@ const submitCardUpdate = async () => {
       expiry_year: cardForm.expiryYear,
       ccv: cardForm.ccv
     });
+
     message.value = "Cartão atualizado com sucesso. Ele será usado na próxima renovação.";
     showCardForm.value = false;
     resetCardForm();
@@ -322,6 +464,35 @@ const submitCardUpdate = async () => {
     error.value = "Não foi possível atualizar o cartão. Verifique os dados e tente novamente.";
   } finally {
     cardSubmitting.value = false;
+  }
+};
+
+const changePassword = async () => {
+  passwordError.value = "";
+  passwordMessage.value = "";
+  if (!passwordForm.current || !passwordForm.new || !passwordForm.confirm) {
+    passwordError.value = "Informe a senha atual e a nova senha duas vezes.";
+    return;
+  }
+  if (passwordForm.new !== passwordForm.confirm) {
+    passwordError.value = "As senhas novas precisam coincidir.";
+    return;
+  }
+  passwordSaving.value = true;
+  try {
+    await api.post("/auth/me/password", {
+      current_password: passwordForm.current,
+      new_password: passwordForm.new
+    });
+    passwordMessage.value = "Senha atualizada com sucesso.";
+    passwordForm.current = "";
+    passwordForm.new = "";
+    passwordForm.confirm = "";
+  } catch (err) {
+    console.error(err);
+    passwordError.value = (err as any)?.response?.data?.detail || "Não foi possível alterar a senha.";
+  } finally {
+    passwordSaving.value = false;
   }
 };
 

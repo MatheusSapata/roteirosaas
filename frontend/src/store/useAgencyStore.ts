@@ -10,6 +10,7 @@ export interface Agency {
   primary_color?: string | null;
   secondary_color?: string | null;
   default_page_id?: number | null;
+  cta_whatsapp?: string | null;
 }
 
 export const useAgencyStore = defineStore("agency", () => {

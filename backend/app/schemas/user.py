@@ -10,7 +10,15 @@ class UserBase(BaseModel):
     plan: str = "free"
     subscription_id: Optional[int] = None
     cpf: Optional[str] = None
+    cnpj: Optional[str] = None
     whatsapp: Optional[str] = None
+    address_street: Optional[str] = None
+    address_number: Optional[str] = None
+    address_complement: Optional[str] = None
+    address_neighborhood: Optional[str] = None
+    address_city: Optional[str] = None
+    address_state: Optional[str] = None
+    address_zipcode: Optional[str] = None
 
 
 class UserCreate(UserBase):
@@ -47,6 +55,36 @@ class UserCreate(UserBase):
             raise ValueError("Informe o WhatsApp")
         return sanitized
 
+    @field_validator("cnpj")
+    @classmethod
+    def validate_cnpj(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        digits = "".join(filter(str.isdigit, value))
+        if digits and len(digits) != 14:
+            raise ValueError("CNPJ invǭlido")
+        return digits or None
+
+    @field_validator("address_zipcode")
+    @classmethod
+    def sanitize_zipcode(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        digits = "".join(filter(str.isdigit, value))
+        if digits and len(digits) != 8:
+            raise ValueError("CEP invǭlido")
+        return digits or None
+
+    @field_validator("address_state")
+    @classmethod
+    def sanitize_state(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        normalized = value.strip().upper()
+        if normalized and len(normalized) != 2:
+            raise ValueError("UF invǭlida")
+        return normalized or None
+
 
 class UserUpdate(BaseModel):
     name: Optional[str] = None
@@ -54,7 +92,15 @@ class UserUpdate(BaseModel):
     plan: Optional[str] = None
     subscription_id: Optional[int] = None
     cpf: Optional[str] = None
+    cnpj: Optional[str] = None
     whatsapp: Optional[str] = None
+    address_street: Optional[str] = None
+    address_number: Optional[str] = None
+    address_complement: Optional[str] = None
+    address_neighborhood: Optional[str] = None
+    address_city: Optional[str] = None
+    address_state: Optional[str] = None
+    address_zipcode: Optional[str] = None
 
     @field_validator("whatsapp")
     @classmethod
@@ -63,6 +109,36 @@ class UserUpdate(BaseModel):
             return value
         sanitized = "".join(filter(str.isdigit, value))
         return sanitized or None
+
+    @field_validator("cnpj")
+    @classmethod
+    def validate_cnpj(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        digits = "".join(filter(str.isdigit, value))
+        if digits and len(digits) != 14:
+            raise ValueError("CNPJ invǭlido")
+        return digits or None
+
+    @field_validator("address_zipcode")
+    @classmethod
+    def sanitize_zipcode(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        digits = "".join(filter(str.isdigit, value))
+        if digits and len(digits) != 8:
+            raise ValueError("CEP invǭlido")
+        return digits or None
+
+    @field_validator("address_state")
+    @classmethod
+    def sanitize_state(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        normalized = value.strip().upper()
+        if normalized and len(normalized) != 2:
+            raise ValueError("UF invǭlida")
+        return normalized or None
 
 
 class UserOut(UserBase):
@@ -94,6 +170,11 @@ class PasswordResetRequest(BaseModel):
 class PasswordResetConfirm(BaseModel):
     token: str
     password: str
+
+
+class PasswordChange(BaseModel):
+    current_password: str
+    new_password: str
 
 
 class PasswordResetByProfile(BaseModel):

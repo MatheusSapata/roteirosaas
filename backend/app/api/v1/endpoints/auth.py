@@ -15,6 +15,7 @@ from app.schemas.user import (
     PasswordResetByProfile,
     PasswordResetConfirm,
     PasswordResetRequest,
+    PasswordChange,
     Token,
     UserCreate,
     UserOut,
@@ -39,6 +40,10 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)) -> UserOut:
     existing_cpf = db.query(User).filter(User.cpf == user_in.cpf).first()
     if existing_cpf:
         raise HTTPException(status_code=400, detail="CPF already registered")
+    if user_in.cnpj:
+        existing_cnpj = db.query(User).filter(User.cnpj == user_in.cnpj).first()
+        if existing_cnpj:
+            raise HTTPException(status_code=400, detail="CNPJ already registered")
     try:
         auth_service.validate_password_strength(user_in.password)
     except ValueError as exc:
@@ -49,6 +54,14 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)) -> UserOut:
         name=user_in.name,
         cpf=user_in.cpf,
         whatsapp=user_in.whatsapp,
+        cnpj=user_in.cnpj,
+        address_street=user_in.address_street,
+        address_number=user_in.address_number,
+        address_complement=user_in.address_complement,
+        address_neighborhood=user_in.address_neighborhood,
+        address_city=user_in.address_city,
+        address_state=user_in.address_state,
+        address_zipcode=user_in.address_zipcode,
         hashed_password=hashed,
         plan=user_in.plan or "free"
     )
@@ -97,6 +110,11 @@ def update_me(user_in: UserUpdate, db: Session = Depends(get_db), current_user: 
         if existing_cpf:
             raise HTTPException(status_code=400, detail="CPF already registered")
 
+    if user_in.cnpj:
+        existing_cnpj = db.query(User).filter(User.cnpj == user_in.cnpj, User.id != current_user.id).first()
+        if existing_cnpj:
+            raise HTTPException(status_code=400, detail="CNPJ already registered")
+
     if user_in.password:
         try:
             auth_service.validate_password_strength(user_in.password)
@@ -111,13 +129,48 @@ def update_me(user_in: UserUpdate, db: Session = Depends(get_db), current_user: 
         current_user.subscription_id = user_in.subscription_id
     if user_in.cpf is not None:
         current_user.cpf = user_in.cpf
+    if user_in.cnpj is not None:
+        current_user.cnpj = user_in.cnpj
     if user_in.whatsapp is not None:
         current_user.whatsapp = user_in.whatsapp
+    if user_in.address_street is not None:
+        current_user.address_street = (user_in.address_street or "").strip() or None
+    if user_in.address_number is not None:
+        current_user.address_number = (user_in.address_number or "").strip() or None
+    if user_in.address_complement is not None:
+        current_user.address_complement = (user_in.address_complement or "").strip() or None
+    if user_in.address_neighborhood is not None:
+        current_user.address_neighborhood = (user_in.address_neighborhood or "").strip() or None
+    if user_in.address_city is not None:
+        current_user.address_city = (user_in.address_city or "").strip() or None
+    if user_in.address_state is not None:
+        current_user.address_state = user_in.address_state
+    if user_in.address_zipcode is not None:
+        current_user.address_zipcode = user_in.address_zipcode
 
     db.add(current_user)
     db.commit()
     db.refresh(current_user)
     return current_user
+
+
+@router.post("/me/password")
+def change_my_password(
+    payload: PasswordChange,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+) -> dict:
+    if not auth_service.verify_password(payload.current_password, current_user.hashed_password):
+        raise HTTPException(status_code=400, detail="Senha atual incorreta.")
+    try:
+        auth_service.validate_password_strength(payload.new_password)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    current_user.hashed_password = auth_service.get_password_hash(payload.new_password)
+    db.add(current_user)
+    db.commit()
+    return {"detail": "Senha atualizada com sucesso."}
 
 
 @router.post("/password/forgot")

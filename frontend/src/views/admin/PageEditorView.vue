@@ -842,7 +842,13 @@ const buildCatalogPreview = (type: SectionType): PageSection => {
 };
 
 const templateKey = computed(() => (auth.user ? `page_template_${auth.user.id}` : null));
-const whatsappDigits = computed(() => (auth.user?.whatsapp || "").replace(/\D/g, ""));
+const whatsappDigits = computed(() => {
+  const agency =
+    agencyStore.agencies.find(a => a.id === agencyStore.currentAgencyId) || agencyStore.agencies[0];
+  const agencyDigits = (agency?.cta_whatsapp || "").replace(/\D/g, "");
+  if (agencyDigits) return agencyDigits;
+  return (auth.user?.whatsapp || "").replace(/\D/g, "");
+});
 const buildWhatsappLink = (title: string) => {
   if (!whatsappDigits.value) return "";
   const text = encodeURIComponent(`Oi, tenho interesse no roteiro: ${title || "Roteiro"}`);
