@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     asaas_billing_type: Literal["BOLETO", "CREDIT_CARD", "PIX"] = Field(
         "CREDIT_CARD", alias="ASAAS_BILLING_TYPE"
     )
+    asaas_success_url: str | None = Field(None, alias="ASAAS_SUCCESS_URL")
     password_reset_token_minutes: int = Field(60, alias="PASSWORD_RESET_TOKEN_MINUTES")
     azure_storage_connection_string: str | None = Field(None, alias="AZURE_STORAGE_CONNECTION_STRING")
     azure_storage_container: str | None = Field(None, alias="AZURE_STORAGE_CONTAINER")

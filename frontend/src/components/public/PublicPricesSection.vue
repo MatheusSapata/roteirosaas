@@ -94,7 +94,7 @@ import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 const props = defineProps<{ section: PricesSection; ctaLink?: string }>();
 const ctaLink = props.ctaLink || "#";
 
-const defaultAccent = "#0ea5e9";
+const defaultAccent = "#41ce5f";
 const headingDefaults = getSectionHeadingDefaults("prices");
 const buttonColor = computed(() => props.section.ctaColor || defaultAccent);
 const accent = computed(() => buttonColor.value);

@@ -8,8 +8,8 @@ module.exports = {
       },
       colors: {
         brand: {
-          DEFAULT: "#0ea5e9",
-          dark: "#0a7ab8"
+          DEFAULT: "#41ce5f",
+          dark: "#2f9e49"
         }
       }
     }

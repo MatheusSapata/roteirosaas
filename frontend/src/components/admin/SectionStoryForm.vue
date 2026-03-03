@@ -1,17 +1,8 @@
 <template>
   <div class="space-y-3">
-    <SectionHeadingControls v-model:label="local.headingLabel" v-model:style="local.headingLabelStyle" />
     <div class="grid gap-3 md:grid-cols-2">
       <div>
-        <label class="text-sm font-semibold text-slate-600">Destaque</label>
-        <input v-model="local.badge" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
-      </div>
-      <div>
-        <label class="text-sm font-semibold text-slate-600">Layout</label>
-        <select v-model="local.layout" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2">
-          <option value="single">Imagem única + texto</option>
-          <option value="gallery">Texto + galeria com thumbs</option>
-        </select>
+        <SectionHeadingControls v-model:label="local.headingLabel" v-model:style="local.headingLabelStyle" />
       </div>
       <div>
         <label class="text-sm font-semibold text-slate-600">Posição da imagem</label>
@@ -63,6 +54,9 @@
       label="Imagens"
       hint="A primeira imagem é destacada na seção; nas thumbs, o clique alterna a principal."
     />
+    <div class="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+      Layout definido automaticamente: 1 imagem exibe destaque único; 2 ou mais ativam galeria.
+    </div>
 
     <div>
       <label class="text-sm font-semibold text-slate-600">Vídeo (YouTube opcional)</label>
@@ -106,6 +100,16 @@ const local = reactive<StorySection>({
   ctaMode: props.modelValue.ctaMode || "link",
   ctaSectionId: props.modelValue.ctaSectionId || null
 });
+const countValidImages = (images?: string[]) =>
+  Array.isArray(images) ? images.filter(img => typeof img === "string" && img.trim().length > 0).length : 0;
+const determineLayoutFromImages = (images?: string[]) => (countValidImages(images) > 1 ? "gallery" : "single");
+const applyAutomaticLayout = () => {
+  const desired = determineLayoutFromImages(local.images);
+  if (local.layout !== desired) {
+    local.layout = desired;
+  }
+};
+
 let syncing = false;
 const syncFromProps = (value: StorySection) => {
   syncing = true;
@@ -115,6 +119,7 @@ const syncFromProps = (value: StorySection) => {
   local.images = Array.isArray(value.images) ? [...value.images] : [];
   local.ctaMode = value.ctaMode || "link";
   local.ctaSectionId = value.ctaSectionId || null;
+  applyAutomaticLayout();
   nextTick(() => {
     syncing = false;
   });
@@ -125,6 +130,15 @@ watch(
   value => {
     if (!value) return;
     syncFromProps(value);
+  },
+  { deep: true }
+);
+
+watch(
+  () => local.images,
+  () => {
+    if (syncing) return;
+    applyAutomaticLayout();
   },
   { deep: true }
 );

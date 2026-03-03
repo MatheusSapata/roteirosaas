@@ -39,10 +39,11 @@
 
     <div
       v-if="isFree"
-      class="flex flex-col gap-4 rounded-2xl border border-emerald-100 bg-white p-5 shadow md:flex-row md:items-center md:justify-between"
+      class="flex flex-col gap-4 rounded-2xl border bg-white p-5 shadow md:flex-row md:items-center md:justify-between"
+      :style="{ borderColor: brandBorderSoft }"
     >
       <div>
-        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-500">Plano atual: Começo</p>
+        <p class="text-xs font-semibold uppercase tracking-[0.3em]" :style="{ color: brandGreen }">Plano atual: Começo</p>
         <p class="mt-1 text-base font-semibold text-slate-900">Desbloqueie métricas completas e integrações.</p>
         <p class="text-sm text-slate-600">
           Faça upgrade para organizar mais roteiros, liberar as seções bloqueadas e acompanhar desempenho em tempo real.
@@ -50,7 +51,8 @@
       </div>
 
       <button
-        class="self-start rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow hover:bg-emerald-500"
+        class="self-start rounded-full px-5 py-2 text-sm font-semibold text-white shadow transition hover:opacity-90"
+        :style="{ backgroundColor: brandGreen }"
         @click="goPlans"
       >
         Ver planos
@@ -66,7 +68,7 @@
           <span
             v-if="trend.pages !== null"
             class="text-xs font-semibold"
-            :class="trend.pages >= 0 ? 'text-emerald-600' : 'text-rose-600'"
+            :class="trend.pages >= 0 ? 'text-brand' : 'text-rose-600'"
           >
             {{ trend.pages > 0 ? "+" : "" }}{{ trend.pages }}%
           </span>
@@ -83,7 +85,7 @@
           <span
             v-if="trend.visits !== null"
             class="text-xs font-semibold"
-            :class="trend.visits >= 0 ? 'text-emerald-600' : 'text-rose-600'"
+            :class="trend.visits >= 0 ? 'text-brand' : 'text-rose-600'"
           >
             {{ trend.visits > 0 ? "+" : "" }}{{ trend.visits }}%
           </span>
@@ -108,7 +110,7 @@
           <span
             v-if="trend.clicks !== null"
             class="text-xs font-semibold"
-            :class="trend.clicks >= 0 ? 'text-emerald-600' : 'text-rose-600'"
+            :class="trend.clicks >= 0 ? 'text-brand' : 'text-rose-600'"
           >
             {{ trend.clicks > 0 ? "+" : "" }}{{ trend.clicks }}%
           </span>
@@ -169,7 +171,7 @@
                           :width="barWidth"
                           :height="Math.max(chartHeight - point.y, 1)"
                           rx="6"
-                          fill="#0ea5e9"
+                          fill="#41ce5f"
                           opacity="0.85"
                         />
                       </template>
@@ -396,6 +398,8 @@ const chartData = computed(() => {
 });
 
 const STATS_PERIOD_DAYS = 7;
+const brandGreen = "#41ce5f";
+const brandBorderSoft = "#cdeed9";
 
 const chartHeight = 280;
 const barWidth = 28;

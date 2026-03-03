@@ -79,7 +79,7 @@ const middle = computed(() => Math.ceil((props.section.items?.length || 0) / 2))
 const leftItems = computed(() => props.section.items?.slice(0, middle.value) || []);
 const rightItems = computed(() => props.section.items?.slice(middle.value) || []);
 
-const defaultAccent = "#0ea5e9";
+const defaultAccent = "#41ce5f";
 const isLight = (hex?: string) => {
   if (!hex) return true;
   const cleaned = hex.replace("#", "");
