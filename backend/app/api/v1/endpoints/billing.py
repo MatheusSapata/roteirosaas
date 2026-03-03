@@ -129,6 +129,10 @@ def create_checkout(
     }
     if redirect_url:
         request_payload["redirectUrl"] = redirect_url
+        request_payload["callback"] = {
+            "successUrl": redirect_url,
+            "autoRedirect": False
+        }
 
     logger.info("Payload Asaas: %s", request_payload)
     try:
