@@ -34,11 +34,19 @@
               </div>
               <span class="text-sm text-slate-500">{{ expanded[index] ? "−" : "+" }}</span>
             </button>
-            <div
-              v-if="expanded[index] && dayDescriptionHtml(day.description)"
-              class="mt-2 text-sm leading-relaxed text-slate-600"
-              v-html="dayDescriptionHtml(day.description)"
-            ></div>
+            <div v-if="expanded[index]" class="mt-2 space-y-3">
+              <div
+                v-if="dayDescriptionHtml(day.description)"
+                class="text-sm leading-relaxed text-slate-600"
+                v-html="dayDescriptionHtml(day.description)"
+              ></div>
+              <img
+                v-if="resolveDayImage(day.image)"
+                :src="resolveDayImage(day.image)"
+                alt="Imagem do dia"
+                class="h-80 w-full rounded-2xl object-cover"
+              />
+            </div>
           </div>
         </div>
 
@@ -73,6 +81,12 @@
               class="mt-2 text-sm leading-relaxed text-slate-600"
               v-html="dayDescriptionHtml(section.days[activeStep]?.description)"
             ></div>
+            <img
+              v-if="resolveDayImage(section.days[activeStep]?.image)"
+              :src="resolveDayImage(section.days[activeStep]?.image)"
+              alt="Imagem do passo"
+              class="mt-3 h-96 w-full rounded-2xl object-cover"
+            />
           </div>
         </div>
 
@@ -91,6 +105,12 @@
               class="text-sm leading-relaxed text-slate-600"
               v-html="dayDescriptionHtml(day.description)"
             ></div>
+            <img
+              v-if="resolveDayImage(day.image)"
+              :src="resolveDayImage(day.image)"
+              alt="Imagem do dia"
+              class="mt-3 h-72 w-full rounded-2xl object-cover"
+            />
           </div>
         </div>
 
@@ -109,6 +129,12 @@
               class="text-sm leading-relaxed text-slate-600"
               v-html="dayDescriptionHtml(day.description)"
             ></div>
+            <img
+              v-if="resolveDayImage(day.image)"
+              :src="resolveDayImage(day.image)"
+              alt="Imagem do dia"
+              class="mt-3 h-72 w-full rounded-2xl object-cover"
+            />
           </div>
         </div>
       </div>
@@ -123,7 +149,7 @@ import type { ItinerarySection } from "../../types/page";
 import SectionHeadingChip from "./SectionHeadingChip.vue";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import { sanitizeHtml } from "../../utils/sanitizeHtml";
-
+import { resolveMediaUrl } from "../../utils/media";
 import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
 
 const props = defineProps<{ section: ItinerarySection }>();
@@ -156,6 +182,10 @@ const accent = computed(() => brandingPrimary.value || defaultAccent);
 const headingLabel = computed(() => props.section.headingLabel ?? headingDefaults.label);
 const headingStyle = computed(() => props.section.headingLabelStyle || headingDefaults.style);
 const dayDescriptionHtml = (text?: string) => sanitizeHtml(text);
+const resolveDayImage = (image?: string) => {
+  if (!image) return "";
+  return resolveMediaUrl(image);
+};
 const expanded = ref<boolean[]>(props.section.days.map(() => false));
 const activeStep = ref<number | null>(null);
 
