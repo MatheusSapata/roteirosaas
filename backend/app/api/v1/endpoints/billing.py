@@ -168,18 +168,29 @@ def _ensure_subscription(user: User) -> Subscription:
     return subscription
 
 
+def _cycle_duration(cycle: str) -> timedelta:
+    normalized = (cycle or DEFAULT_CYCLE).lower()
+    days_map = {"monthly": 30, "annual": 365}
+    return timedelta(days=days_map.get(normalized, 30))
+
+
 def _set_subscription_active(subscription: Subscription, plan_key: str, due_date: Optional[str], cycle: str) -> None:
     subscription.plan = plan_key
     subscription.billing_cycle = cycle or DEFAULT_CYCLE
     subscription.status = "active"
     subscription.failed_attempts = 0
+    period = _cycle_duration(subscription.billing_cycle)
     if due_date:
         try:
-            subscription.valid_until = datetime.fromisoformat(due_date) + timedelta(days=1)
+            parsed_due = datetime.fromisoformat(due_date)
+            if parsed_due <= datetime.utcnow():
+                subscription.valid_until = datetime.utcnow() + period
+            else:
+                subscription.valid_until = parsed_due + timedelta(days=1)
         except ValueError:
-            subscription.valid_until = datetime.utcnow() + timedelta(days=30)
+            subscription.valid_until = datetime.utcnow() + period
     else:
-        subscription.valid_until = datetime.utcnow() + timedelta(days=30)
+        subscription.valid_until = datetime.utcnow() + period
 
 
 def _set_subscription_cancelled(subscription: Subscription) -> None:
@@ -216,7 +227,9 @@ async def webhook(request: Request, db: Session = Depends(get_db)) -> Dict[str, 
         subscription.asaas_payment_link_id = payment.get("paymentLink") or subscription.asaas_payment_link_id
 
         if event == "PAYMENT_CONFIRMED":
-            _set_subscription_active(subscription, plan_key, payment.get("nextDueDate") or payment.get("dueDate"), cycle)
+            subscription_data = payment.get("subscription") or {}
+            next_due = payment.get("nextDueDate") or subscription_data.get("nextDueDate") or payment.get("dueDate")
+            _set_subscription_active(subscription, plan_key, next_due, cycle)
             user.plan = plan_key
         elif event == "PAYMENT_OVERDUE":
             subscription.failed_attempts = (subscription.failed_attempts or 0) + 1
