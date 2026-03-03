@@ -15,6 +15,13 @@
         <div class="md:col-span-3">
           <RichTextEditor v-model="day.description" placeholder="Descrição detalhada do dia" />
         </div>
+        <div class="md:col-span-3">
+          <ImageUploadField
+            v-model="day.image"
+            label="Imagem opcional"
+            hint="Esta imagem aparece quando o visitante expande o dia."
+          />
+        </div>
         <button class="text-left text-sm text-red-500" @click="removeDay(index)">Remover</button>
       </div>
       <button class="text-sm font-semibold text-brand" @click="addDay">+ Adicionar dia</button>
@@ -49,6 +56,7 @@
 import { nextTick, reactive, watch } from "vue";
 import SectionHeadingControls from "./inputs/SectionHeadingControls.vue";
 import RichTextEditor from "./inputs/RichTextEditor.vue";
+import ImageUploadField from "./inputs/ImageUploadField.vue";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import type { ItinerarySection } from "../../types/page";
 
@@ -97,7 +105,7 @@ const colorOptions = [
   { label: "Grafite", value: "#0f172a" }
 ];
 
-const addDay = () => local.days.push({ day: "Dia", title: "", description: "" });
+const addDay = () => local.days.push({ day: "Dia", title: "", description: "", image: "" });
 const removeDay = (index: number) => local.days.splice(index, 1);
 
 watch(

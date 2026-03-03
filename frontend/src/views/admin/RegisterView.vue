@@ -6,13 +6,16 @@
     >
       <div class="relative z-10 max-w-xl space-y-6 p-16 text-white">
         <img src="../../assets/Logo Branco - Roteiro Online.png" alt="Roteiro Online" class="w-full max-w-[180px]" />
-        <h2 class="text-4xl font-bold leading-tight text-white">Pare de mandar PDF. Venda suas viagens com páginas profissionais.</h2>
+        <h2 class="text-4xl font-bold leading-tight text-white">Pare de mandar PDF! Venda suas viagens com páginas profissionais.</h2>
         <p class="text-lg text-white">
-          Construa landing pages, acompanhe leads e mantenha seu time focado no que importa. Tudo em uma única plataforma.
+         Tudo em um só lugar!<br> Crie páginas para suas viagens, centralize as informações e facilite a decisão do cliente. <br>Criado para a realidade de quem vive de vender viagens         
+        </p>
+        <p class="text-lg text-white">
+        
         </p>
         <div class="flex items-center gap-3 text-sm text-white">
           <span class="h-1 w-12 rounded-full bg-white"></span>
-          Centenas de agências já confiam no Travel Pages.
+          Você pode começar com 1 roteiro online sem pagar nada.
         </div>
       </div>
     </div>

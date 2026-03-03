@@ -6,7 +6,7 @@
     >
       <div class="relative z-10 max-w-xl space-y-6 p-16 text-white">
         <img src="../../assets/Logo Branco - Roteiro Online.png" alt="Roteiro Online" class="w-full max-w-[180px]" />
-        <h2 class="text-4xl font-bold leading-tight text-white">Mais organização. Mais profissionalismo. Mais vendas.</h2>
+        <h2 class="text-4xl font-bold leading-tight text-white">Mais organização<br>Mais profissionalismo<br>Mais vendas</h2>
         <p class="text-lg text-white">
           Acesse seus roteiros, edite informações, acompanhe acessos e mantenha tudo organizado para vender melhor.
           </p>

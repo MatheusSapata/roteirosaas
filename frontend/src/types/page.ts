@@ -70,6 +70,7 @@ export interface ItineraryDay {
   day: string;
   title: string;
   description: string;
+  image?: string;
 }
 
 export interface ItinerarySection extends SectionBase {
