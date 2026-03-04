@@ -10,3 +10,4 @@ from .media import MediaAsset
 from .stats import PageVisitStats
 from .subscription import Subscription
 from .pixel import Pixel
+from .lesson import Lesson
