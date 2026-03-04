@@ -167,7 +167,7 @@
           </div>
         </div>
 
-        <div class="mt-10 rounded-3xl border border-emerald-100 bg-emerald-50/50 p-6 shadow-sm">
+        <!-- <div class="mt-10 rounded-3xl border border-emerald-100 bg-emerald-50/50 p-6 shadow-sm">
           <div class="space-y-4">
             <div>
               <p class="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-600">Plano teste</p>
@@ -211,6 +211,7 @@
             </p>
           </div>
         </div>
+      -->
 
       </section>
     </div>
@@ -288,7 +289,7 @@ const planDefinitions: PlanDefinition[] = [
     name: "Plano Começo",
     subtitle: "Para quem está começando a organizar seus roteiros online",
     highlight: "Ideal para dar os primeiros passos",
-    features: ["1 roteiro online publicado", "Editor simples e fácil de usar", "Layout pronto para agência", "Relatório básico de cliques"],
+    features: ["1 roteiro online publicado", "Editor simples e fácil de usar", "Layout pronto para agência"],
     cta: "Criar meu primeiro roteiro",
     note: "Publique seu primeiro roteiro sem custos.",
     ctaClass: "bg-slate-900 hover:bg-slate-800",

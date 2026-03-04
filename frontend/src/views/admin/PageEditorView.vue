@@ -371,7 +371,7 @@
             ? 'mx-auto w-full max-w-[420px] overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-xl'
             : ''"
         >
-          <div :class="previewDevice === 'mobile' ? 'max-h-[80vh] overflow-y-auto' : ''">
+          <div :class="previewDevice === 'mobile' ? 'max-h-none overflow-visible' : ''">
             <div class="space-y-6">
               <template v-if="sections.length === 0">
                 <div class="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 px-4 py-12 text-center text-sm text-slate-500">

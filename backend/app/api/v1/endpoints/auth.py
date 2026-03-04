@@ -32,6 +32,10 @@ class TrialAckPayload(BaseModel):
     stage: Literal["start", "end"]
 
 
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
+
+
 @router.post("/register", response_model=UserOut)
 def register(user_in: UserCreate, db: Session = Depends(get_db)) -> UserOut:
     existing = db.query(User).filter(User.email == user_in.email).first()
@@ -95,7 +99,24 @@ def login(
     login_limiter.clear(client_ip)
     access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
     access_token = auth_service.create_access_token(data={"sub": user.email}, expires_delta=access_token_expires)
-    return Token(access_token=access_token, token_type="bearer")
+    refresh_token = auth_service.create_refresh_token(user.email)
+    return Token(access_token=access_token, refresh_token=refresh_token, token_type="bearer")
+
+
+@router.post("/refresh", response_model=Token)
+def refresh_token(payload: RefreshTokenRequest, db: Session = Depends(get_db)) -> Token:
+    data = auth_service.decode_token(payload.refresh_token)
+    if not data or data.get("scope") != "refresh":
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token inválido.")
+    email = data.get("sub")
+    if not email:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token inválido.")
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuário não encontrado.")
+    access_token = auth_service.create_access_token(data={"sub": email})
+    refresh_token = auth_service.create_refresh_token(email)
+    return Token(access_token=access_token, refresh_token=refresh_token, token_type="bearer")
 
 
 @router.get("/me", response_model=UserOut)

@@ -28,7 +28,7 @@
               v-for="(chip, idx) in chipsToShow"
               :key="idx"
               class="inline-flex items-center gap-2 rounded-full border px-4 py-1 text-xs font-semibold uppercase tracking-wide backdrop-blur"
-              :style="{ borderColor: accentBorder, background: accentChipBg, color: '#fff' }"
+              :style="{ borderColor: accentChipBorder, background: accentChipBg, color: '#fff' }"
             >
               <span class="inline-block h-2 w-2 rounded-full" :style="{ background: ctaColor }"></span>
               {{ chip }}
@@ -346,6 +346,13 @@ const toRgba = (hex: string, alpha: number) => {
 const accentSoft = computed(() => toRgba(accent.value, 0.12));
 const accentBorder = computed(() => toRgba(accent.value, 0.25));
 const accentChipBg = computed(() => toRgba(accent.value, 0.18));
+const accentChipBorder = computed(() => {
+  const source = ctaColor.value || accent.value;
+  if (source.startsWith("#")) {
+    return toRgba(source, 0.5);
+  }
+  return toRgba(accent.value, 0.5);
+});
 const mobileContentBg = computed(() => mobileBaseColor.value);
 const mobileBackgroundStyle = computed(() => {
   if (heroBackgroundImage.value) {

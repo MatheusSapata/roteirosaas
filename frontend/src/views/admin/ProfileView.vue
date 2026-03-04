@@ -177,22 +177,20 @@
           <label class="space-y-1 text-xs font-semibold text-slate-500">
             Nome completo
             <input
+              v-model="profileForm.name"
               type="text"
-              :value="user?.name || ''"
-              readonly
-              disabled
               class="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+              placeholder="Seu nome"
             />
           </label>
 
           <label class="space-y-1 text-xs font-semibold text-slate-500">
             E-mail
             <input
+              v-model="profileForm.email"
               type="email"
-              :value="user?.email || ''"
-              readonly
-              disabled
               class="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+              placeholder="email@exemplo.com"
             />
           </label>
           <label class="space-y-1 text-xs font-semibold text-slate-500">
@@ -208,13 +206,25 @@
           <label class="space-y-1 text-xs font-semibold text-slate-500">
             Telefone
             <input
+              v-model="profileForm.whatsapp"
               type="text"
-              :value="formattedPhone"
-              readonly
-              disabled
               class="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+              placeholder="(00) 00000-0000"
             />
           </label>
+        </div>
+        <div class="mt-4 flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            class="rounded-full px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 disabled:opacity-60"
+            style="background-color: #41ce5f"
+            :disabled="profileSaving"
+            @click="saveProfile"
+          >
+            {{ profileSaving ? "Salvando..." : "Salvar dados" }}
+          </button>
+          <span v-if="profileMessage" class="text-xs font-semibold text-emerald-600">{{ profileMessage }}</span>
+          <span v-if="profileError" class="text-xs font-semibold text-rose-600">{{ profileError }}</span>
         </div>
       </div>
 
@@ -277,7 +287,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, computed, reactive } from "vue";
+import { onMounted, ref, computed, reactive, watch } from "vue";
 import { useRouter } from "vue-router";
 import api from "../../services/api";
 import { useAuthStore } from "../../store/useAuthStore";
@@ -297,7 +307,6 @@ const router = useRouter();
 
 const user = computed(() => authStore.user);
 const formattedCpf = computed(() => formatCpf(user.value?.cpf || ""));
-const formattedPhone = computed(() => formatPhone(user.value?.whatsapp || ""));
 const billing = ref<BillingInfo | null>(null);
 
 const message = ref<string | null>(null);
@@ -310,6 +319,14 @@ const passwordForm = reactive({
 const passwordSaving = ref(false);
 const passwordMessage = ref<string | null>(null);
 const passwordError = ref<string | null>(null);
+const profileForm = reactive({
+  name: "",
+  email: "",
+  whatsapp: ""
+});
+const profileSaving = ref(false);
+const profileMessage = ref<string | null>(null);
+const profileError = ref<string | null>(null);
 
 const actionLoading = ref(false);
 const showCardForm = ref(false);
@@ -386,6 +403,31 @@ function formatPhone(phone?: string | null) {
   return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
 }
 
+
+const syncProfileForm = () => {
+  profileForm.name = user.value?.name || "";
+  profileForm.email = user.value?.email || "";
+  profileForm.whatsapp = formatPhone(user.value?.whatsapp || "");
+  profileMessage.value = null;
+  profileError.value = null;
+};
+
+watch(
+  () => user.value,
+  () => {
+    syncProfileForm();
+  },
+  { immediate: true }
+);
+
+watch(
+  () => profileForm.whatsapp,
+  value => {
+    if (value == null) return;
+    const formatted = formatPhone(value);
+    if (value !== formatted) profileForm.whatsapp = formatted;
+  }
+);
 
 const loadBilling = async () => {
   try {
@@ -493,6 +535,37 @@ const changePassword = async () => {
     passwordError.value = (err as any)?.response?.data?.detail || "Não foi possível alterar a senha.";
   } finally {
     passwordSaving.value = false;
+  }
+};
+
+const saveProfile = async () => {
+  profileError.value = null;
+  profileMessage.value = null;
+  const name = profileForm.name.trim();
+  const email = profileForm.email.trim();
+  if (!name || !email) {
+    profileError.value = "Informe nome e e-mail.";
+    return;
+  }
+  const phoneDigits = profileForm.whatsapp.replace(/\D/g, "");
+  if (phoneDigits && phoneDigits.length < 10) {
+    profileError.value = "Informe um telefone válido com DDD.";
+    return;
+  }
+  profileSaving.value = true;
+  try {
+    await api.put("/auth/me", {
+      name,
+      email,
+      whatsapp: phoneDigits || null
+    });
+    await authStore.fetchProfile();
+    profileMessage.value = "Dados atualizados com sucesso.";
+  } catch (err: any) {
+    console.error(err);
+    profileError.value = err?.response?.data?.detail || "Não foi possível salvar os dados.";
+  } finally {
+    profileSaving.value = false;
   }
 };
 
