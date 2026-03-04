@@ -101,7 +101,7 @@
 
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import api from "../../services/api";
 import { useAuthStore } from "../../store/useAuthStore";
@@ -109,6 +109,7 @@ import PasswordRequirements from "../../components/forms/PasswordRequirements.vu
 
 const router = useRouter();
 const auth = useAuthStore();
+const metaPixelId = import.meta.env.VITE_GLOBAL_META_PIXEL_ID;
 const name = ref("");
 const cpf = ref("");
 const email = ref("");
@@ -203,6 +204,7 @@ const onSubmit = async () => {
     const res = await api.post("/auth/login", form, { headers: { "Content-Type": "multipart/form-data" } });
     auth.setTokens(res.data.access_token, res.data.refresh_token);
     await auth.fetchProfile();
+    trackMetaCompleteRegistration();
     router.push("/admin/dashboard");
   } catch (err: any) {
     console.error(err);
@@ -210,8 +212,41 @@ const onSubmit = async () => {
     error.value = Array.isArray(detail) ? detail[0]?.msg : detail || "Erro ao registrar usuario.";
   }
 };
+
+const initializeMetaPixel = () => {
+  if (!metaPixelId || typeof window === "undefined") return;
+  const w = window as any;
+  if (w.__globalMetaPixelLoaded) return;
+  (function(f: any, b: any, e: any, v: any, n?: any, t?: any, s?: any) {
+    if (f.fbq) return;
+    n = f.fbq = function() {
+      n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
+    };
+    if (!f._fbq) f._fbq = n;
+    n.push = n;
+    n.loaded = !0;
+    n.version = "2.0";
+    n.queue = [];
+    t = b.createElement(e);
+    t.async = !0;
+    t.src = v;
+    s = b.getElementsByTagName(e)[0];
+    s.parentNode.insertBefore(t, s);
+  })(window, document, "script", "https://connect.facebook.net/en_US/fbevents.js");
+  (window as any).fbq("init", metaPixelId);
+  (window as any).__globalMetaPixelLoaded = true;
+};
+
+const trackMetaCompleteRegistration = () => {
+  if (!metaPixelId || typeof window === "undefined") return;
+  const fbq = (window as any).fbq;
+  if (!fbq) return;
+  fbq("track", "CompleteRegistration");
+};
+
+onMounted(() => {
+  if (metaPixelId) {
+    initializeMetaPixel();
+  }
+});
 </script>
-
-
-
-
