@@ -34,18 +34,18 @@
       </ul>
 
       <div class="mt-8 flex flex-wrap items-center gap-4">
-        <RouterLink
-          to="/register"
+        <a
+          href="#pricing-section"
           class="rounded-full bg-white px-10 py-3 text-base font-semibold text-emerald-700 shadow-xl shadow-emerald-900/30 transition hover:-translate-y-0.5 hover:bg-emerald-50"
         >
-          Começar agora
-        </RouterLink>
+          Comece agora
+        </a>
 
         <RouterLink
           to="/admin/planos"
           class="rounded-full border border-white/40 px-10 py-3 text-base font-semibold text-white transition hover:bg-white/10"
         >
-          Ver painel ao vivo
+          Ir para login
         </RouterLink>
       </div>
     </div>
@@ -262,7 +262,7 @@
       </div>
     </section>
 
-    <section class="bg-slate-50">
+    <section id="pricing-section" class="bg-slate-50">
       <div class="mx-auto max-w-6xl px-6 py-20">
         <div class="flex flex-col gap-4 text-center">
           <p class="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-500">Planos para cada fase</p>
