@@ -2,7 +2,7 @@
   <div class="min-h-screen light-theme overflow-x-hidden">
     <div class="flex min-h-screen">
       <aside
-        class="hidden w-64 flex-shrink-0 flex-col justify-between border-r border-slate-200 bg-white/90 px-4 py-6 text-slate-800 shadow-md md:flex md:sticky md:top-0 md:h-screen"
+        class="hidden w-64 flex-shrink-0 flex-col justify-between border-r border-slate-200 bg-white/90 px-4 py-6 text-slate-800 shadow-md md:fixed md:inset-y-0 md:left-0 md:flex"
       >
         <div class="flex flex-1 flex-col overflow-y-auto">
           <div class="mb-8 flex items-center justify-center">
@@ -44,7 +44,7 @@
         </div>
       </aside>
 
-      <main class="flex-1 overflow-x-hidden">
+      <main class="flex-1 overflow-x-hidden md:ml-64">
         <header class="flex items-center justify-between bg-white px-4 py-3 text-slate-900 shadow-sm">
           <div class="flex items-center gap-3">
             <button

@@ -20,7 +20,7 @@
             class="inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl"
             :style="{ background: buttonColor }"
           >
-            {{ section.ctaText || "Saiba mais" }}
+            {{ buttonLabel }}
           </a>
         </div>
       </div>
@@ -53,7 +53,7 @@
             class="inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl"
             :style="{ background: buttonColor }"
           >
-            Falar com especialista
+            {{ buttonLabel }}
           </a>
         </div>
 
@@ -82,7 +82,7 @@
             class="inline-flex items-center justify-center rounded-lg px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl"
             :style="{ background: buttonColor }"
           >
-            Reservar agora
+            {{ buttonLabel }}
           </a>
           </div>
         </div>
@@ -111,7 +111,7 @@
               class="inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl"
               :style="{ background: buttonColor }"
             >
-              Agendar contato
+              {{ buttonLabel }}
             </a>
           </div>
         </div>
@@ -145,6 +145,9 @@ const ctaHasTarget = computed(() =>
 const ctaIsScroll = computed(() => ctaMode.value === "section" && !!props.section.ctaSectionId);
 const headingLabel = computed(() => props.section.headingLabel ?? headingDefaults.label);
 const headingStyle = computed(() => props.section.headingLabelStyle || headingDefaults.style);
+const buttonLabel = computed(() =>
+  props.section.ctaText || (props.section.layout === "simple" ? "Saiba mais" : "Falar com especialista")
+);
 
 const toRgba = (hex: string, alpha: number) => {
   const cleaned = hex.replace("#", "");

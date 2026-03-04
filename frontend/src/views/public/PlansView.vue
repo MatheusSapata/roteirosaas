@@ -317,7 +317,7 @@ const planDefinitions: PlanDefinition[] = [
     ctaClass: "bg-emerald-600 hover:bg-emerald-500",
     prices: {
       monthly: { value: 49.9, period: "/mês" },
-      annual: { value: 499.0, period: "/ano", detail: "Equivalente a R$ 41,58/mês" }
+      annual: { value: 479.88, period: "/ano" }
     }
   },
   {
@@ -333,8 +333,8 @@ const planDefinitions: PlanDefinition[] = [
     note: "Mantenha vários destinos ativos o ano todo.",
     ctaClass: "bg-amber-500 hover:bg-amber-400",
     prices: {
-      monthly: { value: 79.9, period: "/mês" },
-      annual: { value: 799.0, period: "/ano", detail: "Economize quase 2 meses" }
+      monthly: { value: 89.99, period: "/mês" },
+      annual: { value: 839.88, period: "/ano" }
     }
   },
   {
@@ -346,8 +346,7 @@ const planDefinitions: PlanDefinition[] = [
     features: [
       "Roteiros ilimitados",
       "Todos os recursos dos planos anteriores",
-      "Ideal para múltiplos destinos simultâneos",
-      "Página adicional: R$ 20,00 por roteiro extra"
+      "Ideal para múltiplos destinos simultâneos"
     ],
     badge: "Para operação avançada",
     badgeTone: "bg-indigo-50 text-indigo-700 ring-indigo-100",
@@ -356,7 +355,7 @@ const planDefinitions: PlanDefinition[] = [
     ctaClass: "bg-indigo-600 hover:bg-indigo-500",
     prices: {
       monthly: { value: 129.9, period: "/mês" },
-      annual: { value: 1299.0, period: "/ano", detail: "Ideal para operação contínua" }
+      annual: { value: 1199.88, period: "/ano" }
     }
   }
 ] as const;
@@ -368,16 +367,33 @@ const formatPrice = (value: number) =>
 
 const plans = computed<PlanCard[]>(() =>
   planDefinitions.map(def => {
-    const priceInfo = def.prices[billingCycle.value] || def.prices.monthly;
-    const oldAnnualValue =
-      billingCycle.value === "annual" && def.prices.monthly.value > 0
-        ? def.prices.monthly.value * 12
-        : undefined;
+    const cycle = billingCycle.value;
+    const priceInfo = def.prices[cycle] || def.prices.monthly;
+    const isAnnual = cycle === "annual";
+    const monthlyPrice = def.prices.monthly.value;
+
+    let displayValue = priceInfo.value;
+    let period = priceInfo.period;
+    let detail = priceInfo.detail;
+    const annualSavings = monthlyPrice * 12 - priceInfo.value;
+
+    if (isAnnual) {
+      displayValue = priceInfo.value > 0 ? priceInfo.value / 12 : 0;
+      period = "/mês";
+      if (annualSavings > 0) {
+        detail = `Economize ${formatPrice(annualSavings)} por ano`;
+      } else if (!detail) {
+        detail = `Total anual de ${formatPrice(priceInfo.value)}`;
+      }
+    }
+
+    const oldAnnualValue = isAnnual && monthlyPrice > 0 ? monthlyPrice * 12 : undefined;
+
     return {
       ...def,
-      price: formatPrice(priceInfo.value),
-      period: priceInfo.period,
-      detail: priceInfo.detail,
+      price: formatPrice(displayValue),
+      period,
+      detail,
       oldPrice: oldAnnualValue ? formatPrice(oldAnnualValue) : undefined,
       isCurrent: def.key === activePlan.value
     };

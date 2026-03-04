@@ -167,18 +167,21 @@ const loadPage = async () => {
     }
 
     // Pixel / GA injection
-    const tracking: any = (parsed as any).tracking;
-    const pixel = tracking?.pixel;
-    const events = tracking?.events || {};
+    const tracking: any = (parsed as any).tracking || {};
+    const events = tracking.events || {};
     const sendPageView = events.pageView !== false;
-    if (pixel?.type === "meta" && pixel.value) {
-      injectMetaPixel(pixel.value, sendPageView);
+    const legacyPixel = tracking.pixel;
+    const metaPixel = tracking.metaPixel || (legacyPixel?.type === "meta" ? legacyPixel : null);
+    const gaPixel = tracking.gaPixel || (legacyPixel?.type === "ga" ? legacyPixel : null);
+    const activePixels = [metaPixel, gaPixel].filter(p => p && p.value);
+    if (metaPixel?.value) {
+      injectMetaPixel(metaPixel.value, sendPageView);
     }
-    if (pixel?.type === "ga" && pixel.value) {
-      injectGa(pixel.value, sendPageView);
+    if (gaPixel?.value) {
+      injectGa(gaPixel.value, sendPageView);
     }
-    if (events.ctaClicks !== false && pixel?.value) {
-      setupCtaTracking(pixel);
+    if (events.ctaClicks !== false && activePixels.length) {
+      setupCtaTracking(activePixels as { type: string; value: string }[]);
     }
   } catch (err) {
     console.error(err);
@@ -264,16 +267,19 @@ function injectGa(measurementId: string, sendPageView = true) {
   document.head.appendChild(script);
 }
 
-function setupCtaTracking(pixel: { type: string; value: string }) {
+function setupCtaTracking(pixels: { type: string; value: string }[]) {
+  if (!pixels.length) return;
   const handler = (event: Event) => {
     const el = findClosestElement(event.target, "[data-track-event='cta']");
     if (!el) return;
-    if (pixel.type === "meta" && (window as any).fbq) {
-      (window as any).fbq("trackCustom", "CTA_Click");
-    }
-    if (pixel.type === "ga" && (window as any).gtag) {
-      (window as any).gtag("event", "cta_click");
-    }
+    pixels.forEach(pixel => {
+      if (pixel.type === "meta" && (window as any).fbq) {
+        (window as any).fbq("trackCustom", "CTA_Click");
+      }
+      if (pixel.type === "ga" && (window as any).gtag) {
+        (window as any).gtag("event", "cta_click");
+      }
+    });
   };
   document.addEventListener("click", handler);
 }

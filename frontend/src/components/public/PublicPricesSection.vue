@@ -61,7 +61,7 @@
                 ]"
                 :style="{ background: item.highlight ? '#ffffff' : accent }"
               >
-                Reservar
+                {{ section.ctaLabel || "Reservar" }}
               </a>
             </div>
             <span

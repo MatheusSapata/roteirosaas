@@ -64,6 +64,7 @@ export interface PricesSection extends SectionBase {
   layout?: "cards" | "columns" | "highlight";
   ctaColor?: string;
   description?: string;
+  ctaLabel?: string;
 }
 
 export interface ItineraryDay {

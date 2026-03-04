@@ -11,6 +11,7 @@ from app.core.config import get_settings
 from app.models.subscription import Subscription
 from app.models.user import User
 from app.services.asaas import AsaasAPIError, AsaasClient
+from app.services.plans import effective_plan
 
 router = APIRouter()
 settings = get_settings()
@@ -19,15 +20,15 @@ logger = logging.getLogger(__name__)
 PLAN_PRICING = {
     "essencial": {
         "monthly": {"title": "Plano Essencial", "price": 49.90, "asaas_cycle": "MONTHLY"},
-        "annual": {"title": "Plano Essencial Anual", "price": 499.0, "asaas_cycle": "YEARLY"},
+        "annual": {"title": "Plano Essencial Anual", "price": 479.88, "asaas_cycle": "YEARLY"},
     },
     "growth": {
-        "monthly": {"title": "Plano Growth", "price": 79.90, "asaas_cycle": "MONTHLY"},
-        "annual": {"title": "Plano Growth Anual", "price": 799.0, "asaas_cycle": "YEARLY"},
+        "monthly": {"title": "Plano Growth", "price": 89.99, "asaas_cycle": "MONTHLY"},
+        "annual": {"title": "Plano Growth Anual", "price": 839.88, "asaas_cycle": "YEARLY"},
     },
     "infinity": {
         "monthly": {"title": "Plano Infinity", "price": 129.90, "asaas_cycle": "MONTHLY"},
-        "annual": {"title": "Plano Infinity Anual", "price": 1299.0, "asaas_cycle": "YEARLY"},
+        "annual": {"title": "Plano Infinity Anual", "price": 1199.88, "asaas_cycle": "YEARLY"},
     },
     "teste": {
         "monthly": {"title": "Plano Teste", "price": 5.00, "asaas_cycle": "MONTHLY"},
@@ -148,9 +149,7 @@ def create_checkout(
         db.flush()
         current_user.subscription_id = subscription.id
 
-    subscription.plan = plan_key
     subscription.provider = "asaas"
-    subscription.billing_cycle = cycle
     subscription.status = "pending"
     subscription.failed_attempts = 0
     subscription.asaas_payment_link_id = link.get("id")
@@ -177,6 +176,19 @@ def _cycle_duration(cycle: str) -> timedelta:
     normalized = (cycle or DEFAULT_CYCLE).lower()
     days_map = {"monthly": 30, "annual": 365}
     return timedelta(days=days_map.get(normalized, 30))
+
+
+def _build_billing_info(user: User) -> BillingInfo:
+    sub = user.subscription
+    return BillingInfo(
+        plan=effective_plan(user),
+        status=sub.status if sub else "inactive",
+        valid_until=sub.valid_until if sub else None,
+        failed_attempts=sub.failed_attempts if sub else 0,
+        preapproval_id=(sub.asaas_subscription_id or sub.preapproval_id) if sub else None,
+        provider=sub.provider if sub else None,
+        billing_cycle=sub.billing_cycle if sub else DEFAULT_CYCLE,
+    )
 
 
 def _extract_resource_info(resource: Any) -> tuple[Optional[str], Dict[str, Any]]:
@@ -279,16 +291,7 @@ async def webhook(request: Request, db: Session = Depends(get_db)) -> Dict[str, 
 
 @router.get("/me", response_model=BillingInfo)
 def get_billing_info(current_user: User = Depends(get_current_active_user)) -> BillingInfo:
-    sub = current_user.subscription
-    return BillingInfo(
-        plan=sub.plan if sub else current_user.plan,
-        status=sub.status if sub else "inactive",
-        valid_until=sub.valid_until if sub else None,
-        failed_attempts=sub.failed_attempts if sub else 0,
-        preapproval_id=(sub.asaas_subscription_id or sub.preapproval_id) if sub else None,
-        provider=sub.provider if sub else None,
-        billing_cycle=sub.billing_cycle if sub else DEFAULT_CYCLE,
-    )
+    return _build_billing_info(current_user)
 
 
 @router.post("/cancel", response_model=BillingInfo)
@@ -311,16 +314,9 @@ def cancel_subscription(current_user: User = Depends(get_current_active_user), d
     db.add(sub)
     db.commit()
     db.refresh(sub)
+    db.refresh(current_user)
 
-    return BillingInfo(
-        plan=sub.plan,
-        status=sub.status,
-        valid_until=sub.valid_until,
-        failed_attempts=sub.failed_attempts,
-        preapproval_id=sub.asaas_subscription_id,
-        provider=sub.provider,
-        billing_cycle=sub.billing_cycle,
-    )
+    return _build_billing_info(current_user)
 
 
 @router.post("/change-plan", response_model=BillingInfo)
@@ -353,19 +349,7 @@ def change_plan(
     db.commit()
     db.refresh(current_user)
 
-    status = sub.status if sub else "inactive"
-    failed_attempts = sub.failed_attempts if sub else 0
-    provider = sub.provider if sub else None
-    billing_cycle = sub.billing_cycle if sub else DEFAULT_CYCLE
-    return BillingInfo(
-        plan="free",
-        status=status,
-        valid_until=None,
-        failed_attempts=failed_attempts,
-        preapproval_id=None,
-        provider=provider,
-        billing_cycle=billing_cycle,
-    )
+    return _build_billing_info(current_user)
 
 
 @router.post("/refresh-payment-method", response_model=CheckoutResponse)
@@ -456,12 +440,5 @@ def update_card(
         raise HTTPException(status_code=502, detail="Erro ao atualizar cartão no Asaas") from exc
 
     db.refresh(subscription)
-    return BillingInfo(
-        plan=subscription.plan or current_user.plan,
-        status=subscription.status or "active",
-        valid_until=subscription.valid_until,
-        failed_attempts=subscription.failed_attempts or 0,
-        preapproval_id=subscription.asaas_subscription_id,
-        provider=subscription.provider,
-        billing_cycle=subscription.billing_cycle or DEFAULT_CYCLE,
-    )
+    db.refresh(current_user)
+    return _build_billing_info(current_user)
