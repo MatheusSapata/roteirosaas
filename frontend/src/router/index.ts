@@ -28,6 +28,7 @@ const routes: RouteRecordRaw[] = [
       { path: "dashboard", name: "dashboard", component: DashboardView },
       { path: "pages", name: "pages", component: PagesListView },
       { path: "pages/:id/edit", name: "page-edit", component: PageEditorView, props: true },
+      { path: "aulas", name: "lessons", component: () => import("../views/admin/AulasView.vue") },
       { path: "agency", name: "agency-settings", component: AgencySettingsView },
       { path: "planos", name: "plans", component: PlansView },
       { path: "integracoes", name: "integrations", component: () => import("../views/admin/IntegrationsView.vue") },
