@@ -6,7 +6,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, aliased
 
 from app.api.deps import get_current_superuser, get_db
@@ -27,6 +27,7 @@ from app.schemas.page import PageOut
 from app.services.trial import start_trial
 
 router = APIRouter()
+EXCLUDED_PLAN = "teste"
 
 
 class TrialRequest(BaseModel):
@@ -52,7 +53,8 @@ def get_admin_metrics(
     _: User = Depends(get_current_superuser),
 ) -> AdminMetricsOut:
     days = max(1, min(days, 365))
-    total_users = db.query(func.count(User.id)).scalar() or 0
+    plan_not_test = or_(User.plan.is_(None), func.lower(User.plan) != EXCLUDED_PLAN)
+    total_users = db.query(func.count(User.id)).filter(plan_not_test).scalar() or 0
     total_agencies = db.query(func.count(Agency.id)).scalar() or 0
     total_pages = db.query(func.count(Page.id)).scalar() or 0
     published_pages = (
@@ -179,6 +181,8 @@ def get_admin_metrics(
         .all()
     )
     for sub in active_subs:
+        if (sub.plan or "").lower() == EXCLUDED_PLAN:
+            continue
         mrr += get_monthly_price(sub.plan, sub.billing_cycle)
 
     recent_agencies_rows = (
