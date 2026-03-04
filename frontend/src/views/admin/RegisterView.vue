@@ -110,6 +110,7 @@ import PasswordRequirements from "../../components/forms/PasswordRequirements.vu
 const router = useRouter();
 const auth = useAuthStore();
 const metaPixelId = import.meta.env.VITE_GLOBAL_META_PIXEL_ID;
+const viajeChatApiKey = import.meta.env.VITE_VIAJECHAT_API_KEY || "crz_vRCzsXxHBIbJu_pUT5gEiU-RekrbE9NF";
 const name = ref("");
 const cpf = ref("");
 const email = ref("");
@@ -168,6 +169,28 @@ const canSubmit = computed(() => {
   );
 });
 
+const notifyViajeChat = async (payload: { name: string; email: string; phone: string }) => {
+  if (!viajeChatApiKey) return;
+  try {
+    await fetch("https://painel.viajechat.com.br/api/v1/deals/create", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${viajeChatApiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        contact: payload,
+        kanban: {
+          pipeline_name: "Roteiro Online",
+          column_name: "Novo Lead"
+        }
+      })
+    });
+  } catch (notifyErr) {
+    console.error("Erro ao enviar lead para ViajeChat", notifyErr);
+  }
+};
+
 const onSubmit = async () => {
   try {
     error.value = "";
@@ -197,6 +220,11 @@ const onSubmit = async () => {
       password: password.value,
       cpf: cpfDigits,
       whatsapp: `${dialCode.value}${phoneDigits}`
+    });
+    await notifyViajeChat({
+      name: name.value.trim(),
+      email: normalizedEmail,
+      phone: `${dialCode.value}${phoneDigits}`
     });
     const form = new FormData();
     form.append("username", normalizedEmail);
