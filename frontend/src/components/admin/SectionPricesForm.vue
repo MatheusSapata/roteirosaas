@@ -19,6 +19,15 @@
         ></textarea>
         <p class="text-xs text-slate-500">Mostra um aviso/observação abaixo do título da seção.</p>
       </div>
+      <div>
+        <label class="text-sm font-semibold text-slate-600">Texto do botão</label>
+        <input
+          v-model="local.ctaLabel"
+          placeholder="Ex.: Reservar agora"
+          class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2"
+        />
+        <p class="text-xs text-slate-500">Define o texto do botão exibido nos cards.</p>
+      </div>
       <div v-for="(item, index) in local.items" :key="index" class="space-y-3 rounded-lg border border-slate-100 p-3">
         <div class="grid gap-3 md:grid-cols-3">
           <input
@@ -109,6 +118,7 @@ const local = reactive<PricesSection>({
   layout: "columns",
   headingLabel: props.modelValue.headingLabel ?? headingDefaults.label,
   headingLabelStyle: props.modelValue.headingLabelStyle ?? headingDefaults.style,
+  ctaLabel: props.modelValue.ctaLabel || "Reservar agora",
   items: cloneItems(props.modelValue.items)
 });
 let syncing = false;
@@ -118,6 +128,7 @@ const syncFromProps = (value: PricesSection) => {
   local.layout = "columns";
   local.headingLabel = value.headingLabel ?? headingDefaults.label;
   local.headingLabelStyle = value.headingLabelStyle || headingDefaults.style;
+  local.ctaLabel = value.ctaLabel || "Reservar agora";
   local.items = cloneItems(value.items);
   nextTick(() => {
     syncing = false;

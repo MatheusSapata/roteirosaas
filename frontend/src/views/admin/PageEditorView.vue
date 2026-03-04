@@ -215,53 +215,66 @@
 
     <div class="space-y-4">
       <div class="rounded-2xl bg-white p-4 shadow-md">
-        <label class="text-sm font-semibold text-slate-600">Título</label>
-        <input v-model.lazy="pageTitle" @blur="scheduleWhatsAppUpdate" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
-        <div class="mt-3 flex flex-wrap items-center gap-2">
-          <label class="block text-sm font-semibold text-slate-600">Slug</label>
-          <span class="text-xs text-slate-500">
-            Slug é a parte do link depois da barra, sem espaços ou acentos. Ex.: meu-roteiro-incrivel.
-          </span>
-        </div>
-        <input v-model.lazy="pageSlug" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
-        <div class="mt-4 flex flex-wrap items-center gap-3 text-sm text-slate-600">
-          <label class="block text-sm font-semibold text-slate-600">Cores de fundo</label>
-          <label class="flex items-center gap-2">
-            <span>Cor 1</span>
-            <input type="color" v-model="colorA" class="h-9 w-9 cursor-pointer rounded border border-slate-200 bg-white" />
-          </label>
-          <label class="flex items-center gap-2">
-            <span>Cor 2</span>
-            <input type="color" v-model="colorB" class="h-9 w-9 cursor-pointer rounded border border-slate-200 bg-white" />
-          </label>
-            <span class="text-xs text-slate-500">Aplica alternância em todas as seções (exceto hero).</span>
+        <div class="mt-4 grid gap-4 md:grid-cols-2">
+          <div>
+            <label class="text-sm font-semibold text-slate-600">Título</label>
+            <input v-model.lazy="pageTitle" @blur="scheduleWhatsAppUpdate" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
           </div>
-          <div class="mt-4 flex flex-wrap items-center gap-3">
-            <div>
-              <label class="text-sm font-semibold text-slate-600">Cor de botões e destaques</label>
-              <div class="mt-1 flex items-center gap-2">
-                <input
-                  type="color"
-                  v-model="ctaColor"
-                  class="h-9 w-9 cursor-pointer rounded border border-slate-200 bg-white"
-                />
-                <span class="text-xs text-slate-500">Afeta CTAs, chips e elementos em destaque.</span>
-                <button
-                  type="button"
-                  class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:bg-slate-100"
-                  @click="refreshCtaColors"
-                >
-                  Atualizar cores
-                </button>
-              </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <label class="text-sm font-semibold text-slate-600">Slug</label>
+              <span class="text-xs text-slate-500">Slug é a parte do link depois da barra, sem espaços ou acentos. Ex.: meu-roteiro-incrivel.</span>
+            </div>
+            <input v-model.lazy="pageSlug" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
+          </div>
+        </div>
+        <div class="mt-4 grid gap-4 text-sm text-slate-600 md:grid-cols-2">
+          <div>
+            <div class="flex items-center gap-2">
+              <label class="block text-sm font-semibold text-slate-600">Cores de fundo</label>
+              <span class="text-xs text-slate-500">Aplica alternância em todas as seções (exceto hero).</span>
+            </div>
+            <div class="mt-1 flex flex-wrap items-center gap-2">
+              <label class="flex items-center gap-2">
+                <span>Cor 1</span>
+                <input type="color" v-model="colorA" class="h-9 w-9 cursor-pointer rounded border border-slate-200 bg-white" />
+              </label>
+              <label class="flex items-center gap-2">
+                <span>Cor 2</span>
+                <input type="color" v-model="colorB" class="h-9 w-9 cursor-pointer rounded border border-slate-200 bg-white" />
+              </label>
             </div>
           </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <label class="text-sm font-semibold text-slate-600">Cor de botões e destaques</label>
+              <span class="text-xs text-slate-500">Afeta CTAs, chips e elementos em destaque.</span>
+            </div>
+            <div class="mt-1 flex items-center gap-2">
+              <input
+                type="color"
+                v-model="ctaColor"
+                class="h-9 w-9 cursor-pointer rounded border border-slate-200 bg-white"
+              />
+              <button
+                type="button"
+                class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:bg-slate-100"
+                @click="refreshCtaColors"
+              >
+                Atualizar cores
+              </button>
+            </div>
+          </div>
+        </div>
         <div class="mt-6 rounded-2xl border border-slate-100 px-4 py-4">
-          <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div class="space-y-1">
               <p class="text-sm font-semibold text-slate-700">Pixel de rastreamento</p>
               <p class="text-xs text-slate-500">
-                Escolha um pixel cadastrado em Integrações e quais eventos deseja enviar. Disponível a partir do plano Essencial.
+                Escolha um pixel cadastrado em Integrações e quais eventos deseja enviar.
+              </p>
+              <p v-if="!canSelectPixel" class="text-xs text-slate-500">
+                Disponível a partir do plano Essencial.
               </p>
             </div>
 
@@ -274,25 +287,51 @@
               </div>
 
               <template v-else>
-                <select v-model="selectedPixel" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800">
-                  <option value="">Selecione</option>
-                  <option v-for="p in pixels" :key="p.name" :value="p.name">
-                    {{ p.name }} · {{ p.type === "meta" ? "Meta" : "GA4" }}
-                  </option>
-                </select>
+                <div class="grid gap-3 md:grid-cols-2">
+                  <div>
+                    <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Pixel Meta</label>
+                    <select
+                      v-model="selectedPixels.meta"
+                      class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800"
+                      :disabled="!metaPixelOptions.length"
+                    >
+                      <option value="">Sem pixel Meta</option>
+                      <option v-for="p in metaPixelOptions" :key="p.name" :value="p.name">
+                        {{ p.name }} – Meta
+                      </option>
+                    </select>
+                    <p v-if="!metaPixelOptions.length" class="mt-1 text-xs text-slate-500">Cadastre uma conexão Meta em Integrações.</p>
+                  </div>
+                  <div>
+                    <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Pixel Google</label>
+                    <select
+                      v-model="selectedPixels.ga"
+                      class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800"
+                      :disabled="!gaPixelOptions.length"
+                    >
+                      <option value="">Sem pixel Google</option>
+                      <option v-for="p in gaPixelOptions" :key="p.name" :value="p.name">
+                        {{ p.name }} – GA4
+                      </option>
+                    </select>
+                    <p v-if="!gaPixelOptions.length" class="mt-1 text-xs text-slate-500">Cadastre uma conexão GA4 em Integrações.</p>
+                  </div>
+                </div>
 
                 <div class="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700">
                   <p class="font-semibold text-slate-800">Eventos a enviar</p>
 
-                  <label class="mt-2 flex items-center gap-2">
-                    <input type="checkbox" v-model="trackingEvents.pageView" class="h-4 w-4" />
-                    Page view (carregamento da página)
-                  </label>
+                  <div class="mt-2 flex flex-wrap gap-4">
+                    <label class="flex items-center gap-2">
+                      <input type="checkbox" v-model="trackingEvents.pageView" class="h-4 w-4" />
+                      Page view (carregamento da página)
+                    </label>
 
-                  <label class="mt-1 flex items-center gap-2">
-                    <input type="checkbox" v-model="trackingEvents.ctaClicks" class="h-4 w-4" />
-                    Cliques em CTAs
-                  </label>
+                    <label class="flex items-center gap-2">
+                      <input type="checkbox" v-model="trackingEvents.ctaClicks" class="h-4 w-4" />
+                      Cliques em CTAs
+                    </label>
+                  </div>
                 </div>
               </template>
             </div>
@@ -301,28 +340,28 @@
       </div>
     </div>
 
-      <div class="rounded-3xl bg-white p-4 shadow-md">
+      <div class="md:sticky md:top-6 rounded-3xl bg-white p-4 shadow-md">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div class="flex flex-col gap-1">
           <h2 class="text-lg font-semibold text-slate-900">Preview visual</h2>
           <p class="text-xs text-slate-500">Clique no botão do topo para aplicar as alterações do formulário.</p>
         </div>
-        <div class="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 p-1 text-xs font-semibold text-slate-600">
+        <div class="inline-flex select-none items-center rounded-full border border-slate-200 bg-slate-50 p-1 text-sm font-semibold text-slate-600">
           <button
             type="button"
-            class="rounded-full px-3 py-1 transition"
-            :class="previewDevice === 'desktop' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'"
+            class="inline-flex select-none items-center gap-1 rounded-full px-3 py-1 transition"
+            :class="previewDevice === 'desktop' ? 'bg-brand text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'"
             @click="previewDevice = 'desktop'"
           >
-            Desktop
+            <span aria-hidden="true">🖥️</span> Desktop
           </button>
           <button
             type="button"
-            class="rounded-full px-3 py-1 transition"
-            :class="previewDevice === 'mobile' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'"
+            class="inline-flex select-none items-center gap-1 rounded-full px-3 py-1 transition"
+            :class="previewDevice === 'mobile' ? 'bg-brand text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'"
             @click="previewDevice = 'mobile'"
           >
-            Mobile
+            <span aria-hidden="true">📱</span> Mobile
           </button>
         </div>
       </div>
@@ -514,7 +553,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, provide, ref, shallowRef, watch } from "vue";
+import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, provide, reactive, ref, shallowRef, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import api from "../../services/api";
 import { useAuthStore } from "../../store/useAuthStore";
@@ -857,8 +896,12 @@ const buildWhatsappLink = (title: string) => {
 const lastAutoWhatsAppLink = ref<string | null>(null);
 
 const pixels = ref<{ id: number; name: string; type: "meta" | "ga"; value: string }[]>([]);
-const selectedPixel = ref<string | null>(null);
+const selectedPixels = reactive<{ meta: string; ga: string }>({ meta: "", ga: "" });
 const trackingEvents = ref({ pageView: true, ctaClicks: true });
+const metaPixelOptions = computed(() => pixels.value.filter(p => p.type === "meta"));
+const gaPixelOptions = computed(() => pixels.value.filter(p => p.type === "ga"));
+const resolveSelectedPixel = (type: "meta" | "ga", name: string) =>
+  name ? pixels.value.find(p => p.type === type && p.name === name) || null : null;
 
 const canSelectPixel = computed(() => (auth.user?.plan || "free") !== "free" && pixels.value.length > 0);
 
@@ -1032,12 +1075,16 @@ const buildConfig = (): PageConfig => ({
   theme: { ...theme.value, color1: colorA.value, color2: colorB.value },
   editor: { ...editorPrefs.value, previewEnabled: true, previewDevice: previewDevice.value },
   sections: applySectionBackgrounds(sections.value),
-  tracking: selectedPixel.value
-    ? {
-        pixel: pixels.value.find(p => p.name === selectedPixel.value) || null,
-        events: { ...trackingEvents.value }
-      }
-    : undefined
+  tracking: (() => {
+    const metaPixel = resolveSelectedPixel("meta", selectedPixels.meta);
+    const gaPixel = resolveSelectedPixel("ga", selectedPixels.ga);
+    if (!metaPixel && !gaPixel) return undefined;
+    return {
+      metaPixel,
+      gaPixel,
+      events: { ...trackingEvents.value }
+    };
+  })()
 });
 
 const hydratePreviewSections = (source?: PageSection[]) => {
@@ -1168,7 +1215,8 @@ function defaultSection(type: SectionType): PageSection {
           highlight: false
         }
       ],
-      ctaColor: theme.value.ctaDefaultColor
+      ctaColor: theme.value.ctaDefaultColor,
+      ctaLabel: "Reservar agora"
     } as PricesSection);
   }
 
@@ -1293,6 +1341,7 @@ function defaultSection(type: SectionType): PageSection {
     label: "Quero reservar pelo WhatsApp",
     link: buildWhatsappLink(pageTitle.value) || "https://wa.me/",
     description: "Fale com um especialista agora mesmo.",
+    ctaText: "Falar com especialista",
     ctaColor: theme.value.ctaDefaultColor,
     textColor: theme.value.ctaTextColor,
     fullWidth: true,
@@ -1329,7 +1378,15 @@ const hydrateFromConfig = (config?: PageConfig | string | null) => {
 
     // pixel selecionado e eventos
     const tracking: any = (parsed as any).tracking;
-    if (tracking?.pixel?.name) selectedPixel.value = tracking.pixel.name;
+    selectedPixels.meta = "";
+    selectedPixels.ga = "";
+    if (tracking) {
+      const legacyPixel = tracking.pixel;
+      const metaPixel = tracking.metaPixel || (legacyPixel?.type === "meta" ? legacyPixel : null);
+      const gaPixel = tracking.gaPixel || (legacyPixel?.type === "ga" ? legacyPixel : null);
+      if (metaPixel?.name) selectedPixels.meta = metaPixel.name;
+      if (gaPixel?.name) selectedPixels.ga = gaPixel.name;
+    }
     if (tracking?.events) {
       trackingEvents.value = {
         pageView: tracking.events.pageView !== false,

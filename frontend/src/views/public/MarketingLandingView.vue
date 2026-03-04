@@ -312,7 +312,13 @@
           <div class="mt-6 text-3xl font-black text-slate-900">
             <span v-if="plan.oldPrice" class="mr-2 text-base font-medium text-slate-400 line-through">{{ plan.oldPrice }}</span>
             {{ plan.price }}
-            <span class="text-base font-normal text-slate-500">/{{ billingPeriod === 'annual' ? "ano" : "mês" }}</span>
+            <span class="text-base font-normal text-slate-500">/{{ billingPeriod === 'annual' ? "mês" : "mês" }}</span>
+            <span
+              v-if="billingPeriod === 'annual'"
+              class="ml-2 text-xs font-semibold uppercase tracking-wide text-slate-400"
+            >
+              Plano anual
+            </span>
           </div>
           <p class="mt-1 text-sm font-semibold text-emerald-600" v-if="plan.savings">{{ plan.savings }}</p>
           <p class="text-sm text-slate-500" v-else>{{ plan.tagline }}</p>
@@ -513,8 +519,8 @@ const planMatrix: Record<"monthly" | "annual", Plan[]> = {
       name: "Plano Profissional",
       description: "Para quem já vende excursões e quer mais presença online",
       oldPrice: "R$ 598,80",
-      price: "R$ 499,00",
-      savings: "Equivalente a R$ 41,58/mês",
+      price: "R$ 39,99",
+      savings: "Economize R$ 238,92/ano",
       features: [
         "Até 3 roteiros online ativos",
         "Seções ilimitadas dentro de cada roteiro",
@@ -533,9 +539,9 @@ const planMatrix: Record<"monthly" | "annual", Plan[]> = {
       category: "Agência",
       name: "Plano Agência",
       description: "Para agências que querem vender todos os meses com previsibilidade",
-      oldPrice: "R$ 958,80",
-      price: "R$ 799,00",
-      savings: "Economize quase 2 meses",
+      oldPrice: "R$ 1.079,88",
+      price: "R$ 69,99",
+      savings: "Economize R$ 240,00/ano",
       features: [
         "Até 10 roteiros online ativos",
         "Conectar até 3 pixels",
@@ -553,13 +559,12 @@ const planMatrix: Record<"monthly" | "annual", Plan[]> = {
       name: "Plano Escala",
       description: "Para agências que operam múltiplos grupos e querem dominar sua região",
       oldPrice: "R$ 1.558,80",
-      price: "R$ 1.299,00",
-      tagline: "Ideal para operação contínua",
+      price: "R$ 99,99",
+      savings: "Economize R$ 478,92/ano",
       features: [
         "Roteiros ilimitados",
         "Todos os recursos dos planos anteriores",
-        "Ideal para múltiplos destinos simultâneos",
-        "Página adicional: R$ 20,00 por roteiro extra"
+        "Ideal para múltiplos destinos simultâneos"
       ],
       cta: "Quero estruturar minha escala",
       ctaColor: "bg-indigo-600 text-white hover:bg-indigo-700",
@@ -611,7 +616,7 @@ const planMatrix: Record<"monthly" | "annual", Plan[]> = {
       category: "Agência",
       name: "Plano Agência",
       description: "Para agências que querem vender todos os meses com previsibilidade",
-      price: "R$ 89,90",
+      price: "R$ 89,99",
       tagline: "Mais usado pelas agências",
       features: [
         "Até 10 roteiros online ativos",
@@ -634,8 +639,7 @@ const planMatrix: Record<"monthly" | "annual", Plan[]> = {
       features: [
         "Roteiros ilimitados",
         "Todos os recursos dos planos anteriores",
-        "Ideal para múltiplos destinos simultâneos",
-        "Página adicional: R$ 20,00 por roteiro extra"
+        "Ideal para múltiplos destinos simultâneos"
       ],
       cta: "Quero estruturar minha escala",
       ctaColor: "bg-indigo-600 text-white hover:bg-indigo-700",

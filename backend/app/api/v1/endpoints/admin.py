@@ -1,3 +1,6 @@
+import re
+import unicodedata
+from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import List, Optional
 
@@ -11,7 +14,8 @@ from app.api.v1.endpoints.billing import PLAN_PRICING
 from app.models.subscription import Subscription
 from app.models.user import User
 from app.models.agency import Agency
-from app.models.page import Page
+from app.models.agency_user import AgencyUser
+from app.models.page import Page, PageStatus
 from app.schemas.admin import (
     AdminAgencyOut,
     AdminMetricsOut,
@@ -19,6 +23,7 @@ from app.schemas.admin import (
     AdminUserOut,
     TimeseriesPoint,
 )
+from app.schemas.page import PageOut
 from app.services.trial import start_trial
 
 router = APIRouter()
@@ -27,6 +32,17 @@ router = APIRouter()
 class TrialRequest(BaseModel):
     plan: str = Field(default="infinity")
     days: int = Field(default=7, ge=1, le=30)
+
+
+class PageCloneRequest(BaseModel):
+    target_agency_id: int
+    title: Optional[str] = None
+
+
+def _slugify(value: str) -> str:
+    norm = unicodedata.normalize("NFKD", value or "").encode("ascii", "ignore").decode("ascii")
+    slug = re.sub(r"[^a-z0-9]+", "-", norm.lower()).strip("-")
+    return slug or f"pagina-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
 
 
 @router.get("/metrics", response_model=AdminMetricsOut)
@@ -39,7 +55,12 @@ def get_admin_metrics(
     total_users = db.query(func.count(User.id)).scalar() or 0
     total_agencies = db.query(func.count(Agency.id)).scalar() or 0
     total_pages = db.query(func.count(Page.id)).scalar() or 0
-    published_pages = db.query(func.count(Page.id)).filter(Page.status == "published").scalar() or 0
+    published_pages = (
+        db.query(func.count(Page.id))
+        .filter(Page.status == PageStatus.published)
+        .scalar()
+        or 0
+    )
 
     # planos
     plan_counts = (
@@ -53,6 +74,45 @@ def get_admin_metrics(
         label = f"{base} (trial)" if trial_plan else base
         plans.append({"plan": label, "count": count})
 
+    # agências relacionadas aos usuários
+    agency_links = (
+        db.query(AgencyUser.user_id, Agency.id, Agency.name, Agency.slug)
+        .join(Agency, Agency.id == AgencyUser.agency_id)
+        .order_by(AgencyUser.user_id, Agency.created_at)
+        .all()
+    )
+    agency_by_user: dict[int, tuple[int, str, str]] = {}
+    for user_id, agency_id, agency_name, agency_slug in agency_links:
+        agency_by_user.setdefault(user_id, (agency_id, agency_name, agency_slug))
+
+    pages_by_agency_count = {
+        agency_id: count
+        for agency_id, count in (
+            db.query(Page.agency_id, func.count(Page.id))
+            .filter(Page.status == PageStatus.published)
+            .group_by(Page.agency_id)
+            .all()
+        )
+        if agency_id is not None
+    }
+
+    pages_details = defaultdict(list)
+    for page_id, title, slug, status, agency_id, agency_slug in (
+        db.query(Page.id, Page.title, Page.slug, Page.status, Page.agency_id, Agency.slug)
+        .join(Agency, Agency.id == Page.agency_id)
+        .filter(Page.status == PageStatus.published)
+        .all()
+    ):
+        pages_details[agency_id].append(
+            {
+                "id": page_id,
+                "title": title,
+                "slug": slug,
+                "status": status,
+                "agency_slug": agency_slug,
+            }
+        )
+
     # lista de usuários com validade
     Sub = aliased(Subscription)
     users_rows = (
@@ -60,20 +120,31 @@ def get_admin_metrics(
         .outerjoin(Sub, Sub.id == User.subscription_id)
         .all()
     )
-    users: List[AdminUserOut] = [
-        AdminUserOut(
-          id=u.id,
-          name=u.name,
-          email=u.email,
-          plan=u.plan,
-          is_superuser=u.is_superuser,
-          created_at=u.created_at,
-          valid_until=valid_until,
-          trial_plan=u.trial_plan,
-          trial_ends_at=u.trial_ends_at,
+    users: List[AdminUserOut] = []
+    for u, valid_until in users_rows:
+        agency_info = agency_by_user.get(u.id)
+        agency_id = agency_info[0] if agency_info else None
+        agency_name = agency_info[1] if agency_info else None
+        agency_slug = agency_info[2] if agency_info else None
+        users.append(
+            AdminUserOut(
+                id=u.id,
+                name=u.name,
+                email=u.email,
+                plan=u.plan,
+                is_superuser=u.is_superuser,
+                created_at=u.created_at,
+                valid_until=valid_until,
+                trial_plan=u.trial_plan,
+                trial_ends_at=u.trial_ends_at,
+                agency_id=agency_id,
+                agency_name=agency_name,
+                agency_slug=agency_slug,
+                active_pages=pages_by_agency_count.get(agency_id, 0) if agency_id else 0,
+                whatsapp=u.whatsapp,
+                published_pages=pages_details.get(agency_id, []) if agency_id else [],
+            )
         )
-        for u, valid_until in users_rows
-    ]
 
     # timeseries novos usuários
     since = datetime.utcnow() - timedelta(days=days)
@@ -178,3 +249,60 @@ def grant_trial(
     db.commit()
     db.refresh(user)
     return user
+
+
+@router.post("/pages/{page_id}/clone", response_model=PageOut)
+def clone_shared_page(
+    page_id: int,
+    payload: PageCloneRequest,
+    current_user: User = Depends(get_current_superuser),
+    db: Session = Depends(get_db),
+) -> PageOut:
+    if not payload.target_agency_id:
+        raise HTTPException(status_code=400, detail="Agência destino obrigatória")
+
+    membership = (
+        db.query(AgencyUser)
+        .filter(AgencyUser.agency_id == payload.target_agency_id, AgencyUser.user_id == current_user.id)
+        .first()
+    )
+    if not membership:
+        raise HTTPException(status_code=403, detail="Você não participa da agência selecionada.")
+
+    page = (
+        db.query(Page)
+        .join(Agency, Agency.id == Page.agency_id)
+        .filter(Page.id == page_id, Page.status == PageStatus.published)
+        .first()
+    )
+    if not page:
+        raise HTTPException(status_code=404, detail="Página publicada não encontrada.")
+
+    title = (payload.title or page.title or "Página importada").strip()
+    slug_base = _slugify(title)
+    slug = slug_base
+    suffix = 1
+    while (
+        db.query(Page)
+        .filter(Page.agency_id == payload.target_agency_id, Page.slug == slug)
+        .first()
+        is not None
+    ):
+        suffix += 1
+        slug = f"{slug_base}-{suffix}"
+
+    new_page = Page(
+        agency_id=payload.target_agency_id,
+        template_id=page.template_id,
+        title=title,
+        slug=slug,
+        status=PageStatus.draft,
+        cover_image_url=page.cover_image_url,
+        seo_title=page.seo_title,
+        seo_description=page.seo_description,
+        config_json=page.config_json,
+    )
+    db.add(new_page)
+    db.commit()
+    db.refresh(new_page)
+    return new_page

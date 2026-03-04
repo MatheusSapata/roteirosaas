@@ -117,133 +117,189 @@
     <section class="rounded-2xl bg-white p-6 shadow-md ring-1 ring-slate-100">
       <div class="flex items-center justify-between">
         <div>
-          <h2 :class="['text-lg font-semibold', premiumMode ? 'text-white' : 'text-slate-900']">Usuarios</h2>
-          <p :class="['text-sm', premiumMode ? 'text-white/60' : 'text-slate-500']">Plano, validade e data de entrada.</p>
+          <h2 class="text-lg font-semibold text-slate-900">Usuarios</h2>
+          <p class="text-sm text-slate-500">Plano, validade e data de entrada.</p>
+        </div>
+      </div>
+      <div class="mt-4 grid gap-4 md:grid-cols-3">
+        <div class="md:col-span-1">
+          <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Buscar</label>
+          <input
+            v-model="userSearch"
+            type="text"
+            placeholder="Nome ou email"
+            class="mt-1 w-full rounded-full border border-slate-200 px-4 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+          />
+        </div>
+        <div>
+          <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Plano</label>
+          <select
+            v-model="userPlanFilter"
+            class="mt-1 w-full rounded-full border border-slate-200 px-4 py-2 text-sm text-slate-700 focus:border-emerald-500 focus:outline-none"
+          >
+            <option value="all">Todos os planos</option>
+            <option v-for="plan in userPlanOptions" :key="plan" :value="plan">{{ planLabel(plan) }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Agência</label>
+          <select
+            v-model="userAgencyFilter"
+            class="mt-1 w-full rounded-full border border-slate-200 px-4 py-2 text-sm text-slate-700 focus:border-emerald-500 focus:outline-none"
+          >
+            <option value="all">Todas</option>
+            <option value="__none">Sem agência</option>
+            <option v-for="agency in userAgencyOptions" :key="agency" :value="agency">{{ agency }}</option>
+          </select>
         </div>
       </div>
       <div class="mt-4 overflow-x-auto">
-        <table class="min-w-full text-sm" :class="tableRowDivider">
-          <thead :class="tableHeaderClass">
+        <table class="min-w-full text-sm text-slate-800 divide-y divide-slate-100 interactive-table">
+          <thead class="bg-slate-50 text-left text-slate-600">
             <tr>
-              <th class="px-3 py-2">Nome</th>
-              <th class="px-3 py-2">Email</th>
-              <th class="px-3 py-2">Plano</th>
-              <th class="px-3 py-2">Validade</th>
-              <th class="px-3 py-2">Entrada</th>
-              <th class="px-3 py-2">Superuser</th>
-              <th class="px-3 py-2 text-right">Trial 7 dias</th>
+              <th class="px-3 py-2 text-left">Nome</th>
+              <th class="px-3 py-2 text-left">Agência</th>
+              <th class="px-3 py-2 text-left">Qtd páginas ativas</th>
+              <th class="px-3 py-2 text-left">Plano</th>
+              <th class="px-3 py-2 text-left">Validade</th>
+              <th class="px-3 py-2 text-left">Entrada</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
-            <tr v-for="u in metrics?.users || []" :key="u.id" class="text-slate-800">
-              <td class="px-3 py-2" :class="premiumMode ? 'text-white' : 'text-slate-800'">{{ u.name }}</td>
-              <td class="px-3 py-2" :class="premiumMode ? 'text-white/80' : 'text-slate-800'">{{ u.email }}</td>
-              <td class="px-3 py-2 capitalize" :class="premiumMode ? 'text-white' : 'text-slate-800'">
-                {{ planLabel(u.plan) }}
-                <span
-                  v-if="u.trial_plan"
-                  class="ml-2 inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-700"
-                >
-                  Trial até {{ formatDate(u.trial_ends_at) }}
-                </span>
-              </td>
-              <td class="px-3 py-2">{{ formatDate(u.valid_until) }}</td>
-              <td class="px-3 py-2">{{ formatDate(u.created_at) }}</td>
-              <td class="px-3 py-2">{{ u.is_superuser ? "Sim" : "Nao" }}</td>
-              <td class="px-3 py-2 text-right">
-              <button
-                v-if="!u.is_superuser"
-                :class="[
-                  'rounded-full border px-3 py-1 text-xs font-semibold transition disabled:opacity-60',
-                  premiumMode ? 'border-white/30 text-white hover:bg-white/10' : 'border-slate-200 text-slate-700 hover:bg-emerald-50 hover:text-emerald-700'
-                ]"
-                :disabled="granting === u.id || Boolean(u.trial_plan)"
-                @click="openTrialDialog(u)"
+            <template v-for="u in filteredUsers" :key="u.id">
+              <tr
+                class="transition hover:bg-slate-50/70"
+                @click="toggleUserRow(u.id)"
               >
-                {{ u.trial_plan ? "Trial ativo" : "Liberar 7 dias" }}
-              </button>
-            </td>
-          </tr>
-            <tr v-if="!metrics?.users?.length">
-              <td colspan="7" :class="['px-3 py-4 text-center', premiumMode ? 'text-white/60' : 'text-slate-500']">Nenhum usuario encontrado.</td>
+                <td class="px-3 py-3">
+                  <div class="flex items-start gap-3">
+                    <button
+                      type="button"
+                      class="mt-1 rounded-full border border-slate-300 p-1 text-xs transition hover:bg-slate-100"
+                      @click.stop="toggleUserRow(u.id)"
+                    >
+                      <span :class="expandedUser === u.id ? 'rotate-90 inline-block transition' : 'inline-block transition'">▶</span>
+                    </button>
+                    <div>
+                      <p class="font-semibold text-slate-900">{{ u.name }}</p>
+                      <p class="text-xs text-slate-500">{{ u.email }}</p>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-3 py-3">
+                  <span class="text-slate-800">{{ u.agency_name || 'Sem agência' }}</span>
+                </td>
+                <td class="px-3 py-3 font-semibold text-slate-900">
+                  {{ u.active_pages ?? 0 }}
+                </td>
+                <td class="px-3 py-3 capitalize">
+                  <span class="text-slate-800">{{ planLabel(u.plan) }}</span>
+                  <span
+                    v-if="u.trial_plan"
+                    class="ml-2 inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-700"
+                  >
+                    Trial até {{ formatDate(u.trial_ends_at) }}
+                  </span>
+                </td>
+                <td class="px-3 py-3">{{ formatDate(u.valid_until) }}</td>
+                <td class="px-3 py-3">{{ formatDate(u.created_at) }}</td>
+              </tr>
+              <tr v-if="expandedUser === u.id">
+                <td colspan="6" class="px-3 pb-4">
+                  <div
+                    class="rounded-2xl border border-slate-100 bg-slate-50/70 p-4 text-sm text-slate-800 shadow-inner"
+                  >
+                    <div class="grid gap-4 md:grid-cols-2">
+                      <div>
+                        <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Contato</p>
+                        <p class="mt-1 font-semibold no-caret">{{ u.name }}</p>
+                        <p class="text-xs text-slate-500 no-caret">{{ u.email }}</p>
+                        <p class="text-xs text-slate-500 no-caret">{{ u.whatsapp || 'Sem telefone' }}</p>
+                      </div>
+                      <div>
+                        <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Agência</p>
+                        <p class="mt-1 font-semibold">{{ u.agency_name || 'Não vinculada' }}</p>
+                        <p class="text-xs text-slate-500">
+                          {{ u.active_pages ?? 0 }} páginas publicadas · Plano {{ planLabel(u.plan) }}
+                        </p>
+                      </div>
+                    </div>
+                    <div class="mt-4 flex flex-wrap items-center gap-3">
+                      <button
+                        v-if="!u.is_superuser"
+                        :class="[
+                          'rounded-full border px-4 py-2 text-xs font-semibold text-slate-700 transition disabled:opacity-60',
+                          'border-slate-200 hover:bg-emerald-50 hover:text-emerald-700'
+                        ]"
+                        :disabled="granting === u.id || Boolean(u.trial_plan)"
+                        @click.stop="openTrialDialog(u)"
+                      >
+                        {{ u.trial_plan ? 'Trial ativo' : 'Liberar 7 dias' }}
+                      </button>
+                      <span v-if="u.is_superuser" class="rounded-full bg-slate-200 px-3 py-1 text-xs font-semibold text-slate-700">Superuser</span>
+                    </div>
+                    <div class="mt-6">
+                      <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Páginas publicadas</p>
+                      <div v-if="u.published_pages?.length" class="mt-3 overflow-x-auto rounded-xl border border-slate-200 bg-white">
+                        <table class="min-w-full divide-y divide-slate-100 text-xs text-slate-700 interactive-table">
+                          <thead class="bg-slate-50 text-left text-slate-500">
+                            <tr>
+                              <th class="px-3 py-2">Título</th>
+                              <th class="px-3 py-2">Slug</th>
+                              <th class="px-3 py-2 text-right">Ações</th>
+                            </tr>
+                          </thead>
+                          <tbody class="divide-y divide-slate-100">
+                            <tr v-for="page in u.published_pages" :key="page.id">
+                              <td class="px-3 py-2 font-semibold text-slate-900">{{ page.title }}</td>
+                              <td class="px-3 py-2 text-[11px] text-slate-500">/{{ page.slug }}</td>
+                              <td class="px-3 py-2">
+                                <div class="flex justify-end gap-2">
+                                  <button
+                                    class="inline-flex items-center gap-1 rounded-full border border-slate-200 px-3 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-100"
+                                    @click.stop="viewPublishedPage(page)"
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13.5 4.5h6m0 0v6m0-6L12 12m4.5 7.5h-9a3 3 0 01-3-3v-9"/>
+                                    </svg>
+                                    Visualizar
+                                  </button>
+                                  <button
+                                    class="inline-flex items-center gap-1 rounded-full border border-slate-900/20 bg-slate-900/90 px-3 py-1 text-[11px] font-semibold text-white transition hover:bg-slate-900 disabled:opacity-60"
+                                    :disabled="savingPageId === page.id || !agencyStore.currentAgencyId"
+                                    @click.stop="clonePublishedPage(u, page)"
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 16.5h8M8 12h8m-8-4.5h8M6 19.5h12a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H9l-3 3v10.5A1.5 1.5 0 007.5 19.5z"/>
+                                    </svg>
+                                    {{ savingPageId === page.id ? 'Salvando...' : 'Salvar' }}
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                      <p v-else class="mt-3 rounded-xl border border-dashed border-slate-200 px-3 py-4 text-center text-xs text-slate-500">
+                        Nenhuma página publicada ainda.
+                      </p>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            </template>
+            <tr v-if="!filteredUsers.length">
+              <td colspan="6" class="px-3 py-4 text-center text-slate-500">
+                Nenhum usuario encontrado.
+              </td>
             </tr>
           </tbody>
         </table>
       </div>
     </section>
 
-    <section class="grid gap-4 lg:grid-cols-2">
-      <div class="rounded-2xl bg-white p-6 shadow-md ring-1 ring-slate-100">
-        <div class="flex items-center justify-between">
-          <div>
-            <h2 :class="['text-lg font-semibold', premiumMode ? 'text-white' : 'text-slate-900']">Agencias recentes</h2>
-            <p :class="['text-sm', premiumMode ? 'text-white/60' : 'text-slate-500']">Últimos cadastros com volume de páginas.</p>
-          </div>
-        </div>
-        <div class="mt-4 overflow-x-auto">
-          <table class="min-w-full divide-y divide-slate-200 text-sm">
-            <thead class="bg-slate-50 text-left text-slate-600">
-              <tr>
-                <th class="px-3 py-2">Agencia</th>
-                <th class="px-3 py-2">Slug</th>
-                <th class="px-3 py-2">Paginas</th>
-                <th class="px-3 py-2">Criada em</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100">
-              <tr v-for="agency in metrics?.agencies || []" :key="agency.id" :class="premiumMode ? 'text-white' : 'text-slate-800'">
-                <td class="px-3 py-2 font-semibold">{{ agency.name }}</td>
-                <td class="px-3 py-2 text-xs" :class="premiumMode ? 'text-white/70' : 'text-slate-500'">{{ agency.slug }}</td>
-                <td class="px-3 py-2">{{ agency.pages_count }}</td>
-                <td class="px-3 py-2">{{ formatDate(agency.created_at) }}</td>
-              </tr>
-              <tr v-if="!metrics?.agencies?.length">
-                <td colspan="4" :class="['px-3 py-4 text-center', premiumMode ? 'text-white/60' : 'text-slate-500']">Nenhuma agencia cadastrada.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
 
-      <div class="rounded-2xl bg-white p-6 shadow-md ring-1 ring-slate-100">
-        <div class="flex items-center justify-between">
-          <div>
-            <h2 :class="['text-lg font-semibold', premiumMode ? 'text-white' : 'text-slate-900']">Paginas recentes</h2>
-            <p :class="['text-sm', premiumMode ? 'text-white/60' : 'text-slate-500']">Últimas criações/publicações.</p>
-          </div>
-        </div>
-        <div class="mt-4 overflow-x-auto">
-          <table class="min-w-full divide-y divide-slate-200 text-sm">
-            <thead class="bg-slate-50 text-left text-slate-600">
-              <tr>
-                <th class="px-3 py-2">Titulo</th>
-                <th class="px-3 py-2">Agencia</th>
-                <th class="px-3 py-2">Status</th>
-                <th class="px-3 py-2">Criada</th>
-                <th class="px-3 py-2">Publicada</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100">
-              <tr v-for="page in metrics?.pages || []" :key="page.id" :class="premiumMode ? 'text-white' : 'text-slate-800'">
-                <td class="px-3 py-2 font-semibold">{{ page.title }}</td>
-                <td class="px-3 py-2">{{ page.agency_name }}</td>
-                <td
-                  class="px-3 py-2 capitalize"
-                  :class="page.status === 'published' ? (premiumMode ? 'text-emerald-300' : 'text-emerald-600') : premiumMode ? 'text-white/60' : 'text-slate-500'"
-                >
-                  {{ page.status }}
-                </td>
-                <td class="px-3 py-2">{{ formatDate(page.created_at) }}</td>
-                <td class="px-3 py-2">{{ formatDate(page.published_at) }}</td>
-              </tr>
-              <tr v-if="!metrics?.pages?.length">
-                <td colspan="5" :class="['px-3 py-4 text-center', premiumMode ? 'text-white/60' : 'text-slate-500']">Nenhuma página recente.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
+   
   </div>
   <transition name="fade">
     <div
@@ -303,9 +359,18 @@
 import { onMounted, ref, watch, computed } from "vue";
 import api from "../../services/api";
 import { useAuthStore } from "../../store/useAuthStore";
+import { useAgencyStore } from "../../store/useAgencyStore";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { getPlanLabel, planLabels } from "../../utils/planLabels";
+
+interface MetricsUserPage {
+  id: number;
+  title: string;
+  slug: string;
+  status: string;
+  agency_slug?: string | null;
+}
 
 interface Metrics {
   total_users: number;
@@ -326,6 +391,12 @@ interface Metrics {
     valid_until?: string;
     trial_plan?: string | null;
     trial_ends_at?: string | null;
+    agency_id?: number | null;
+    agency_name?: string | null;
+    agency_slug?: string | null;
+    active_pages?: number | null;
+    whatsapp?: string | null;
+    published_pages?: MetricsUserPage[];
   }[];
   agencies: {
     id: number;
@@ -348,9 +419,16 @@ const days = ref<"7" | "30" | "90">("30");
 const metrics = ref<Metrics | null>(null);
 const error = ref("");
 const auth = useAuthStore();
+const agencyStore = useAgencyStore();
 const granting = ref<number | null>(null);
 const snackbar = ref<{ open: boolean; text: string } | null>(null);
 const trialDialog = ref<{ open: boolean; user: any | null }>({ open: false, user: null });
+const premiumMode = computed(() => (auth.user?.plan || "").toLowerCase() === "infinity");
+const userSearch = ref("");
+const userPlanFilter = ref<string | "all">("all");
+const userAgencyFilter = ref<string>("all");
+const expandedUser = ref<number | null>(null);
+const savingPageId = ref<number | null>(null);
 
 const loadMetrics = async () => {
   error.value = "";
@@ -372,6 +450,87 @@ const formatDate = (val?: string) => {
   const d = new Date(val);
   if (isNaN(d.getTime())) return "--";
   return d.toLocaleDateString();
+};
+
+const showSnackbar = (text: string) => {
+  snackbar.value = { open: true, text };
+  setTimeout(() => {
+    snackbar.value = null;
+  }, 3000);
+};
+
+const viewPublishedPage = (page: MetricsUserPage) => {
+  if (!page.agency_slug) {
+    showSnackbar("Página sem agência vinculada.");
+    return;
+  }
+  const url = `/${page.agency_slug}/${page.slug}`;
+  window.open(url, "_blank", "noopener,noreferrer");
+};
+
+const clonePublishedPage = async (user: Metrics["users"][number], page: MetricsUserPage) => {
+  if (!agencyStore.currentAgencyId) {
+    showSnackbar("Selecione uma agência para salvar a página.");
+    return;
+  }
+  savingPageId.value = page.id;
+  try {
+    await api.post(`/admin/pages/${page.id}/clone`, {
+      target_agency_id: agencyStore.currentAgencyId,
+      title: `${page.title} - ${user.name}`.trim()
+    });
+    showSnackbar("Página salva na agência selecionada.");
+  } catch (err) {
+    console.error(err);
+    showSnackbar("Não foi possível salvar esta página.");
+  } finally {
+    savingPageId.value = null;
+  }
+};
+
+const userPlanOptions = computed(() => {
+  const plans = new Set<string>();
+  metrics.value?.users?.forEach(user => {
+    if (user.plan) plans.add(user.plan);
+  });
+  return Array.from(plans).sort();
+});
+
+const userAgencyOptions = computed(() => {
+  const agencies = new Set<string>();
+  metrics.value?.users?.forEach(user => {
+    if (user.agency_name) agencies.add(user.agency_name);
+  });
+  return Array.from(agencies).sort();
+});
+
+const filteredUsers = computed(() => {
+  const list = metrics.value?.users || [];
+  const search = userSearch.value.trim().toLowerCase();
+  return list
+    .filter(user => {
+      const matchesSearch =
+        !search ||
+        [user.name, user.email, user.agency_name]
+          .filter(Boolean)
+          .some(field => field!.toLowerCase().includes(search));
+      const matchesPlan = userPlanFilter.value === "all" || user.plan === userPlanFilter.value;
+      const matchesAgency =
+        userAgencyFilter.value === "all" ||
+        (userAgencyFilter.value === "__none"
+          ? !user.agency_name
+          : user.agency_name === userAgencyFilter.value);
+      return matchesSearch && matchesPlan && matchesAgency;
+    })
+    .sort((a, b) => {
+      const aDate = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const bDate = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return bDate - aDate;
+    });
+});
+
+const toggleUserRow = (userId: number) => {
+  expandedUser.value = expandedUser.value === userId ? null : userId;
 };
 
 const exportPdf = () => {
@@ -466,17 +625,15 @@ const grantTrial = async () => {
   error.value = "";
   try {
     await api.post(`/admin/users/${trialDialog.value.user.id}/grant-trial`, { plan: "infinity", days: 7 });
-    snackbar.value = { open: true, text: "Trial premium liberado por 7 dias." };
+    showSnackbar("Trial premium liberado por 7 dias.");
     closeTrialDialog();
     await loadMetrics();
   } catch (err) {
     console.error(err);
     error.value = "Não foi possível liberar o trial para este usuário.";
+    showSnackbar("Não foi possível liberar o trial para este usuário.");
   } finally {
     granting.value = null;
-    setTimeout(() => {
-      snackbar.value = null;
-    }, 3000);
   }
 };
 
@@ -487,9 +644,24 @@ const planLabel = (plan: string) => {
   return getPlanLabel(plan);
 };
 
+watch([userSearch, userPlanFilter, userAgencyFilter], () => {
+  expandedUser.value = null;
+});
+
+watch(metrics, () => {
+  expandedUser.value = null;
+});
+
 onMounted(async () => {
   if (!auth.user && auth.token) {
     await auth.fetchProfile();
+  }
+  if (!agencyStore.agencies.length) {
+    try {
+      await agencyStore.loadAgencies();
+    } catch (err) {
+      console.error(err);
+    }
   }
   await loadMetrics();
 });
@@ -513,5 +685,16 @@ watch(days, loadMetrics);
   background: rgba(255, 255, 255, 0.03);
   box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(14px);
+}
+
+.no-caret {
+  user-select: none;
+  caret-color: transparent;
+}
+
+.interactive-table,
+.interactive-table * {
+  user-select: none;
+  caret-color: transparent;
 }
 </style>

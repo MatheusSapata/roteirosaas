@@ -13,6 +13,14 @@
         <label class="text-sm font-semibold text-slate-600">Texto</label>
         <input v-model="local.label" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
       </div>
+      <div>
+        <label class="text-sm font-semibold text-slate-600">Texto do botão</label>
+        <input
+          v-model="local.ctaText"
+          placeholder="Ex.: Falar com especialista"
+          class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2"
+        />
+      </div>
       <div v-if="local.ctaMode !== 'section'">
         <label class="text-sm font-semibold text-slate-600">Link</label>
         <input v-model="local.link" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
@@ -88,6 +96,7 @@ const local = reactive<CtaSection>({
   headingLabelStyle: props.modelValue.headingLabelStyle ?? headingDefaults.style,
   ctaMode: props.modelValue.ctaMode || "link",
   ctaSectionId: props.modelValue.ctaSectionId || null,
+  ctaText: props.modelValue.ctaText || "Falar com especialista",
   ...props.modelValue
 });
 let syncing = false;
@@ -98,6 +107,7 @@ const syncFromProps = (value: CtaSection) => {
   local.headingLabelStyle = value.headingLabelStyle || headingDefaults.style;
   local.ctaMode = value.ctaMode || "link";
   local.ctaSectionId = value.ctaSectionId || null;
+  local.ctaText = value.ctaText || "Falar com especialista";
   nextTick(() => {
     syncing = false;
   });
