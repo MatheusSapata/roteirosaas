@@ -234,6 +234,7 @@ const initializeMetaPixel = () => {
     s.parentNode.insertBefore(t, s);
   })(window, document, "script", "https://connect.facebook.net/en_US/fbevents.js");
   (window as any).fbq("init", metaPixelId);
+  (window as any).fbq("track", "PageView");
   (window as any).__globalMetaPixelLoaded = true;
 };
 
