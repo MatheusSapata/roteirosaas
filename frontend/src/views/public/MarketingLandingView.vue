@@ -505,8 +505,7 @@ const planMatrix: Record<"monthly" | "annual", Plan[]> = {
       features: [
         "1 roteiro online publicado",
         "Editor simples e fácil de usar",
-        "Layout pronto para a agência",
-        "Relatório básico de cliques"
+        "Layout pronto para a agência"
       ],
       cta: "Plano atual",
       ctaColor: "bg-slate-200 text-slate-700 hover:bg-slate-300",
@@ -583,8 +582,7 @@ const planMatrix: Record<"monthly" | "annual", Plan[]> = {
       features: [
         "1 roteiro online publicado",
         "Editor simples e fácil de usar",
-        "Layout pronto para a agência",
-        "Relatório básico de cliques"
+        "Layout pronto para a agência"
       ],
       cta: "Plano atual",
       ctaColor: "bg-slate-200 text-slate-700 hover:bg-slate-300",

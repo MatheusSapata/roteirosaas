@@ -23,10 +23,18 @@ def get_password_hash(password: str) -> str:
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
+    to_encode["scope"] = "access"
     expire = datetime.utcnow() + (expires_delta or timedelta(minutes=settings.access_token_expire_minutes))
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
     return encoded_jwt
+
+
+def create_refresh_token(subject: str, expires_minutes: Optional[int] = None) -> str:
+    minutes = expires_minutes or settings.refresh_token_expire_minutes
+    expire = datetime.utcnow() + timedelta(minutes=minutes)
+    payload = {"sub": subject, "scope": "refresh", "exp": expire}
+    return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
 
 
 def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:

@@ -163,7 +163,7 @@ const onSubmit = async () => {
     form.append("username", email.value);
     form.append("password", password.value);
     const res = await api.post("/auth/login", form, { headers: { "Content-Type": "multipart/form-data" } });
-    auth.setToken(res.data.access_token);
+    auth.setTokens(res.data.access_token, res.data.refresh_token);
     await auth.fetchProfile();
     router.push("/admin/dashboard");
   } catch (err) {
