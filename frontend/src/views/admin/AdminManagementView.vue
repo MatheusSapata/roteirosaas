@@ -210,6 +210,7 @@
                 <th class="px-3 py-2 text-left">Nome</th>
                 <th class="px-3 py-2 text-left">Agência</th>
                 <th class="px-3 py-2 text-left">Qtd páginas ativas</th>
+                <th class="px-3 py-2 text-left">Qtd páginas rascunho</th>
                 <th class="px-3 py-2 text-left">Plano</th>
                 <th class="px-3 py-2 text-left">Validade</th>
                 <th class="px-3 py-2 text-left">Entrada</th>
@@ -245,6 +246,10 @@
                     {{ u.active_pages ?? 0 }}
                   </td>
 
+                  <td class="px-3 py-3 font-semibold text-slate-900">
+                    {{ u.draft_pages?.length ?? u.draft_pages_count ?? 0 }}
+                  </td>
+
                   <td class="px-3 py-3 capitalize">
                     <span class="text-slate-800">{{ planLabel(u.plan) }}</span>
                     <span
@@ -256,11 +261,11 @@
                   </td>
 
                   <td class="px-3 py-3">{{ formatDate(u.valid_until) }}</td>
-                  <td class="px-3 py-3">{{ formatDate(u.created_at) }}</td>
+                  <td class="px-3 py-3 whitespace-nowrap">{{ formatDateTime(u.created_at) }}</td>
                 </tr>
 
                 <tr v-if="expandedUser === u.id">
-                  <td colspan="6" class="px-3 pb-4">
+                  <td colspan="7" class="px-3 pb-4">
                     <div class="rounded-2xl border border-slate-100 bg-slate-50/70 p-4 text-sm text-slate-800 shadow-inner">
                       <div class="grid gap-4 md:grid-cols-2">
                         <div>
@@ -347,13 +352,53 @@
                           Nenhuma página publicada ainda.
                         </p>
                       </div>
+
+                      <div class="mt-6">
+                        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Páginas em rascunho</p>
+
+                        <div v-if="u.draft_pages?.length" class="mt-3 overflow-x-auto rounded-xl border border-slate-200 bg-white">
+                          <table class="min-w-full divide-y divide-slate-100 text-xs text-slate-700 interactive-table">
+                            <thead class="bg-slate-50 text-left text-slate-500">
+                              <tr>
+                                <th class="px-3 py-2">Título</th>
+                                <th class="px-3 py-2">Slug</th>
+                                <th class="px-3 py-2 text-right">Ações</th>
+                              </tr>
+                            </thead>
+
+                            <tbody class="divide-y divide-slate-100">
+                              <tr v-for="page in u.draft_pages" :key="page.id">
+                                <td class="px-3 py-2 font-semibold text-slate-900">{{ page.title }}</td>
+                                <td class="px-3 py-2 text-[11px] text-slate-500">/{{ page.slug }}</td>
+                                <td class="px-3 py-2">
+                                  <div class="flex justify-end">
+                                    <button
+                                      class="inline-flex items-center gap-1 rounded-full border border-slate-200 px-3 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-100"
+                                      @click.stop="goToPageEditor(page)"
+                                    >
+                                      Editar
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+
+                        <p
+                          v-else
+                          class="mt-3 rounded-xl border border-dashed border-slate-200 px-3 py-4 text-center text-xs text-slate-500"
+                        >
+                          Nenhum rascunho registrado.
+                        </p>
+                      </div>
                     </div>
                   </td>
                 </tr>
               </template>
 
               <tr v-if="!filteredUsers.length">
-                <td colspan="6" class="px-3 py-4 text-center text-slate-500">
+                <td colspan="7" class="px-3 py-4 text-center text-slate-500">
                   Nenhum usuario encontrado.
                 </td>
               </tr>
@@ -667,6 +712,7 @@
 
 <script setup lang="ts">
 import { onMounted, reactive, ref, watch, computed } from "vue";
+import { useRouter } from "vue-router";
 import api from "../../services/api";
 import { useAuthStore } from "../../store/useAuthStore";
 import { useAgencyStore } from "../../store/useAgencyStore";
@@ -708,6 +754,8 @@ interface Metrics {
     active_pages?: number | null;
     whatsapp?: string | null;
     published_pages?: MetricsUserPage[];
+    draft_pages?: MetricsUserPage[];
+    draft_pages_count?: number | null;
   }[];
   agencies: {
     id: number;
@@ -739,6 +787,7 @@ const metrics = ref<Metrics | null>(null);
 const error = ref("");
 const auth = useAuthStore();
 const agencyStore = useAgencyStore();
+const router = useRouter();
 const granting = ref<number | null>(null);
 const snackbar = ref<{ open: boolean; text: string } | null>(null);
 const trialDialog = ref<{ open: boolean; user: any | null }>({ open: false, user: null });
@@ -793,6 +842,15 @@ const formatDate = (val?: string) => {
   const d = new Date(val);
   if (isNaN(d.getTime())) return "--";
   return d.toLocaleDateString();
+};
+
+const formatDateTime = (val?: string) => {
+  if (!val) return "--";
+  const d = new Date(val);
+  if (isNaN(d.getTime())) return "--";
+  const date = d.toLocaleDateString();
+  const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return `${date} ${time}`;
 };
 
 const showSnackbar = (text: string) => {
@@ -947,6 +1005,10 @@ const clonePublishedPage = async (user: Metrics["users"][number], page: MetricsU
   }
 };
 
+const goToPageEditor = (page: MetricsUserPage) => {
+  router.push({ name: "page-edit", params: { id: page.id } });
+};
+
 const userPlanOptions = computed(() => {
   const plans = new Set<string>();
   metrics.value?.users?.forEach(user => {
@@ -1056,7 +1118,7 @@ const exportPdf = () => {
     u.email,
     planLabel(u.plan),
     u.trial_plan ? `Trial até ${formatDate(u.trial_ends_at)}` : "-",
-    formatDate(u.created_at)
+    formatDateTime(u.created_at)
   ]);
   autoTable(doc, {
     startY: cursor,
