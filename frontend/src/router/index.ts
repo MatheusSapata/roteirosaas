@@ -12,9 +12,10 @@ import PlansView from "../views/public/PlansView.vue";
 import MarketingLandingView from "../views/public/MarketingLandingView.vue";
 import AdminLayout from "../layouts/AdminLayout.vue";
 import { useAuthStore } from "../store/useAuthStore";
+import LoginView from "../views/admin/LoginView.vue";
 
 const routes: RouteRecordRaw[] = [
-  { path: "/", name: "marketing", component: MarketingLandingView },
+  { path: "/", name: "marketing", component: LoginView, meta: { guestOnly: true } },
   { path: "/login", name: "login", component: LoginView, meta: { guestOnly: true } },
   { path: "/register", name: "register", component: RegisterView, meta: { guestOnly: true } },
   { path: "/forgot-password", name: "forgot-password", component: ForgotPasswordView, meta: { guestOnly: true } },
