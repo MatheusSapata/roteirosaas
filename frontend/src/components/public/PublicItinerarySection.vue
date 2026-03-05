@@ -7,8 +7,8 @@
             <div class="mb-2 flex justify-center">
               <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="accent" />
             </div>
-            <h2 class="text-2xl font-bold text-slate-900">Dia a dia</h2>
-            <p class="text-sm text-slate-500">Visão clara do roteiro completo.</p>
+            <h1 class="text-2xl font-bold text-slate-900">{{ section.title || defaultTitle }}</h1>
+            <p class="text-sm text-slate-500">{{ section.subtitle || defaultSubtitle }}</p>
           </div>
         </div>
 
@@ -165,6 +165,8 @@ const brandingPrimary = computed(() => {
 });
 const headingDefaults = getSectionHeadingDefaults("itinerary");
 const defaultAccent = "#41ce5f";
+const defaultTitle = "Dia a dia";
+const defaultSubtitle = "Visão clara do roteiro completo.";
 
 const isLight = (hex?: string) => {
   if (!hex) return true;

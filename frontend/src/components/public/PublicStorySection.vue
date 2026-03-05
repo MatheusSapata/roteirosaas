@@ -5,7 +5,7 @@
       <div v-if="isSingle" class="flex w-full flex-col" :class="singleLayoutClass">
         <div :class="textBlockClass">
           <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="ctaColor" />
-          <h2 class="text-3xl font-bold leading-tight text-slate-900 md:text-4xl">{{ section.title }}</h2>
+        <h1 class="text-3xl font-bold leading-tight text-slate-900 md:text-4xl">{{ section.title }}</h1>
           <div v-if="storySubtitleHtml" class="text-base leading-relaxed text-slate-600 md:text-lg" v-html="storySubtitleHtml"></div>
           <div class="flex flex-wrap items-center gap-4">
             <a
@@ -46,7 +46,7 @@
       <div v-else class="grid w-full" :class="galleryLayoutClass">
         <div :class="['text-slate-800', textBlockClass, imagePosition === 'left' ? 'md:order-2' : 'md:order-1']">
           <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="ctaColor" />
-          <h2 class="text-3xl font-bold leading-tight text-slate-900 md:text-4xl">{{ section.title }}</h2>
+        <h1 class="text-3xl font-bold leading-tight text-slate-900 md:text-4xl">{{ section.title }}</h1>
           <div v-if="storySubtitleHtml" class="text-base leading-relaxed text-slate-600 md:text-lg" v-html="storySubtitleHtml"></div>
           <div class="flex flex-wrap items-center gap-4">
             <a

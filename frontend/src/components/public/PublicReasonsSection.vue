@@ -5,7 +5,7 @@
         <div class="flex justify-center">
           <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="accentColor" />
         </div>
-        <h2 class="mt-2 text-3xl font-bold text-slate-900 md:text-4xl">{{ section.title }}</h2>
+        <h1 class="mt-2 text-3xl font-bold text-slate-900 md:text-4xl">{{ section.title }}</h1>
         <p v-if="section.subtitle" class="mt-2 text-base leading-relaxed text-slate-600 md:text-lg">{{ section.subtitle }}</p>
       </div>
 

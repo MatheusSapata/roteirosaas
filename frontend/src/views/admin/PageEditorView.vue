@@ -1229,6 +1229,8 @@ function defaultSection(type: SectionType): PageSection {
       headingLabel: headingDefaults.label,
       headingLabelStyle: headingDefaults.style,
       ctaColor: theme.value.ctaDefaultColor,
+      title: "Dia a dia",
+      subtitle: "Visão clara do roteiro completo.",
       days: [
         { day: "Dia 1", title: "Chegada", description: "Recepção no aeroporto e traslado." },
         { day: "Dia 2", title: "Trilhas", description: "Passeio pelas dunas e cachoeiras." }

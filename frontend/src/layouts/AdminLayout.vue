@@ -350,6 +350,7 @@ watch(
   () => route.path,
   () => {
     mobileMenuOpen.value = false;
+    scrollToTop();
   }
 );
 
@@ -385,6 +386,10 @@ const acknowledgeTrial = async (stage: "start" | "end", redirectToPlans = false)
 };
 
 const formattedDate = computed(() => (trialEndDate.value ? trialEndDate.value.toLocaleDateString() : ""));
+const scrollToTop = () => {
+  if (typeof window === "undefined") return;
+  window.scrollTo({ top: 0, behavior: "auto" });
+};
 
 onMounted(async () => {
   if (!agencyStore.agencies.length) {
@@ -394,6 +399,7 @@ onMounted(async () => {
     await auth.fetchProfile();
   }
   checkCookieConsent();
+  scrollToTop();
 });
 
 const queuePlanTagSync = (plan: string | null | undefined) => {
