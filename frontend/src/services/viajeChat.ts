@@ -2,7 +2,7 @@ const VIAJECHAT_API_BASE = "https://painel.viajechat.com.br/api/v1";
 const API_KEY = import.meta.env.VITE_VIAJECHAT_API_KEY || "crz_vRCzsXxHBIbJu_pUT5gEiU-RekrbE9NF";
 
 export const viajeChatTagIds = {
-  ROTEIRO_ONLINE: "e13ed962-8cf3-40ce-afe9-b4c10cfcc672",
+  ROTEIRO_ONLINE: "c9b3c9e7-a081-44c1-993c-917dbb4e90bd",
   AGENCIA_CRIADA: "5ca87edb-0259-4941-bc79-98ce0a52fe1e",
   PLANO_AGENCIA: "ae856294-eaab-4e9d-8510-b8e1b2e3871b",
   PLANO_ESCALA: "f407945c-1d85-4459-9229-dd8b954ec3df",
