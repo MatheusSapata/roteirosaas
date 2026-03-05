@@ -11,18 +11,20 @@
         <div class="text-2xl font-extrabold tabular-nums md:text-3xl">
           {{ barTime }}
         </div>
-        <div class="flex items-center gap-2 text-sm font-semibold md:text-base">
-          <span class="text-lg md:text-xl">⏳</span>
-          <span class="text-right">{{ section.label || "Garanta sua vaga agora mesmo!" }}</span>
+        <div class="flex items-center gap-3">
+          <span class="text-3xl">&#9889;</span>
+          <h1 class="text-2xl font-bold leading-tight md:text-3xl">
+            {{ section.label || "Garanta sua vaga agora mesmo!" }}
+          </h1>
         </div>
       </div>
     </div>
 
     <div v-else class="mx-auto flex w-full max-w-6xl flex-col items-center gap-6 px-6 py-8">
       <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="headingAccent" />
-      <h3 class="text-center text-xl font-semibold" :style="{ color: section.textColor || '#ffffff' }">
+      <h1 class="text-center text-2xl font-semibold md:text-3xl" :style="{ color: section.textColor || '#ffffff' }">
         {{ section.label || "Coming soon..." }}
-      </h3>
+      </h1>
       <div class="grid grid-cols-2 gap-4 md:grid-cols-4">
         <div
           v-for="part in timeParts"

@@ -2,9 +2,9 @@
   <section class="w-full" :style="{ background: section.backgroundColor || '#ffffff' }" :id="section.anchorId || undefined">
     <div class="mx-auto flex max-w-6xl flex-col items-center px-6 py-12">
       <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="accent" />
-      <h2 class="text-center text-3xl font-bold leading-tight text-slate-900 md:text-4xl">
+      <h1 class="text-center text-3xl font-bold leading-tight text-slate-900 md:text-4xl">
         {{ section.title || "Depoimentos de clientes" }}
-      </h2>
+      </h1>
       <p class="mt-2 text-center text-sm text-slate-600 md:text-base">
         {{ section.subtitle || "O que dizem depois de viajar conosco" }}
       </p>

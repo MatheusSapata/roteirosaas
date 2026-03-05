@@ -6,7 +6,7 @@
           <div class="flex justify-center">
             <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="accent" />
           </div>
-          <h2 class="mt-3 text-2xl font-bold text-slate-900">Planos e opções</h2>
+          <h1 class="mt-3 text-2xl font-bold text-slate-900">Planos e opções</h1>
           <p class="text-sm text-slate-500">Escolha o formato que combina com você.</p>
         </div>
 

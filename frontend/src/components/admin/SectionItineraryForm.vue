@@ -2,6 +2,20 @@
   <div class="space-y-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
     <h3 class="text-lg font-semibold text-slate-900">Itinerário</h3>
     <SectionHeadingControls v-model:label="local.headingLabel" v-model:style="local.headingLabelStyle" />
+    <div class="grid gap-3 md:grid-cols-2">
+      <div>
+        <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Título</label>
+        <input v-model="local.title" placeholder="Dia a dia" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
+      </div>
+      <div>
+        <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Subtítulo</label>
+        <input
+          v-model="local.subtitle"
+          placeholder="Visão clara do roteiro completo"
+          class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2"
+        />
+      </div>
+    </div>
     <div class="space-y-3">
       <div v-for="(day, index) in local.days" :key="index" class="grid gap-3 rounded-lg border border-slate-100 p-3 md:grid-cols-3">
         <input v-model="day.day" placeholder="Dia" class="rounded-lg border border-slate-200 px-3 py-2" />
@@ -42,7 +56,9 @@ const local = reactive<ItinerarySection>({
   fullWidth: false,
   headingLabel: props.modelValue.headingLabel ?? headingDefaults.label,
   headingLabelStyle: props.modelValue.headingLabelStyle ?? headingDefaults.style,
-  days: Array.isArray(props.modelValue.days) ? [...props.modelValue.days] : []
+  days: Array.isArray(props.modelValue.days) ? [...props.modelValue.days] : [],
+  title: props.modelValue.title ?? "Dia a dia",
+  subtitle: props.modelValue.subtitle ?? "Visão clara do roteiro completo."
 });
 let syncing = false;
 const syncFromProps = (value: ItinerarySection) => {
@@ -54,6 +70,8 @@ const syncFromProps = (value: ItinerarySection) => {
   local.headingLabel = value.headingLabel ?? headingDefaults.label;
   local.headingLabelStyle = value.headingLabelStyle || headingDefaults.style;
   local.days = Array.isArray(value.days) ? value.days.map(day => ({ ...day })) : [];
+  local.title = value.title ?? "Dia a dia";
+  local.subtitle = value.subtitle ?? "Visão clara do roteiro completo.";
   nextTick(() => {
     syncing = false;
   });
