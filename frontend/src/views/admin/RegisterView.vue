@@ -106,6 +106,7 @@ import { useRouter } from "vue-router";
 import api from "../../services/api";
 import { useAuthStore } from "../../store/useAuthStore";
 import PasswordRequirements from "../../components/forms/PasswordRequirements.vue";
+import { addTagsToContactByEmail, viajeChatTagIds } from "../../services/viajeChat";
 
 const router = useRouter();
 const auth = useAuthStore();
@@ -226,6 +227,7 @@ const onSubmit = async () => {
       email: normalizedEmail,
       phone: `${dialCode.value}${phoneDigits}`
     });
+    await addTagsToContactByEmail(normalizedEmail, [viajeChatTagIds.ROTEIRO_ONLINE]);
     const form = new FormData();
     form.append("username", normalizedEmail);
     form.append("password", password.value);

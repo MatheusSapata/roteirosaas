@@ -37,6 +37,60 @@
       </button>
     </div>
 
+    <section
+      v-if="!allOnboardingStepsCompleted"
+      class="rounded-2xl bg-white p-5 shadow ring-1 ring-slate-100"
+    >
+      <p class="text-xs font-semibold uppercase tracking-[0.4em] text-slate-500">Comece por aqui</p>
+      <h2 class="mt-1 text-xl font-bold text-slate-900">Monte seu ambiente em 3 passos</h2>
+      <div class="relative mt-6">
+        <div class="absolute left-10 right-10 top-6 h-0.5 bg-slate-200"></div>
+        <div class="relative flex flex-col gap-6 md:flex-row md:justify-between">
+          <div
+            v-for="step in onboardingSteps"
+            :key="step.id"
+            class="flex flex-col items-center gap-3 text-center transition md:w-1/3"
+          >
+            <div class="relative flex flex-col items-center gap-2">
+              <div
+                class="flex h-12 w-12 items-center justify-center rounded-full border-4 text-sm font-semibold shadow-sm"
+                :class="step.completed ? 'border-emerald-200 bg-emerald-500 text-white' : 'border-slate-200 bg-white text-slate-700'"
+              >
+                <svg
+                  v-if="step.completed"
+                  viewBox="0 0 24 24"
+                  class="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M5 13l4 4L19 7" />
+                </svg>
+                <span v-else>{{ step.order }}</span>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-slate-900">{{ step.title }}</p>
+                <p class="text-xs text-slate-500 max-w-[180px] mx-auto">{{ step.subtitle }}</p>
+              </div>
+            </div>
+            <div v-if="!step.completed">
+              <button
+                type="button"
+                class="inline-flex items-center justify-center rounded-full px-6 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                :style="{ backgroundColor: brandGreen }"
+                :disabled="step.disabled"
+                @click="!step.disabled && step.action?.()"
+              >
+                {{ step.cta }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <div
       v-if="isFree"
       class="flex flex-col gap-4 rounded-2xl border bg-white p-5 shadow md:flex-row md:items-center md:justify-between"
@@ -351,6 +405,17 @@ interface StatsOverviewResponse {
   timeseries: SeriesPoint[];
 }
 
+interface OnboardingStep {
+  id: string;
+  order: number;
+  title: string;
+  subtitle: string;
+  completed: boolean;
+  cta?: string;
+  action?: (() => void) | null;
+  disabled?: boolean;
+}
+
 const auth = useAuthStore();
 const agencyStore = useAgencyStore();
 const router = useRouter();
@@ -506,6 +571,47 @@ const clicksHandleMove = clicksChart.handleMove;
 const clicksClearHover = clicksChart.clearHover;
 
 const publishedPages = computed(() => pages.value.filter((page) => page.status?.toLowerCase() === "published"));
+const hasAgency = computed(() => agencyStore.agencies.length > 0);
+const hasPublishedPage = computed(() => publishedPages.value.length > 0);
+
+const goToAgencySettings = () => {
+  router.push("/admin/agency");
+};
+
+const goToPagesList = () => {
+  router.push("/admin/pages");
+};
+
+const onboardingSteps = computed<OnboardingStep[]>(() => [
+  {
+    id: "finish-signup",
+    order: 1,
+    title: "Finalizar cadastro",
+    subtitle: "Seus dados estão completos.",
+    completed: true
+  },
+  {
+    id: "create-agency",
+    order: 2,
+    title: "Criar agência",
+    subtitle: hasAgency.value ? "Agência criada com sucesso." : "Cadastre sua primeira agência.",
+    completed: hasAgency.value,
+    cta: "Ir para Agências",
+    action: hasAgency.value ? null : goToAgencySettings
+  },
+  {
+    id: "publish-page",
+    order: 3,
+    title: "Publicar primeira página",
+    subtitle: hasPublishedPage.value ? "Sua primeira página já está no ar." : "Publique um roteiro para compartilhar.",
+    completed: hasPublishedPage.value,
+    cta: "Publicar agora",
+    action: hasPublishedPage.value ? null : goToPagesList,
+    disabled: !hasAgency.value
+  }
+]);
+
+const allOnboardingStepsCompleted = computed(() => onboardingSteps.value.every(step => step.completed));
 
 const fetchData = async () => {
   await agencyStore.loadAgencies();
