@@ -204,6 +204,7 @@ import ImageUploadField from "../../components/admin/inputs/ImageUploadField.vue
 import api from "../../services/api";
 import { useAgencyStore } from "../../store/useAgencyStore";
 import { useAuthStore } from "../../store/useAuthStore";
+import { addTagsToContactByEmail, viajeChatTagIds } from "../../services/viajeChat";
 
 const agencyStore = useAgencyStore();
 const authStore = useAuthStore();
@@ -413,6 +414,9 @@ const save = async () => {
 
     await saveCompanyData();
     syncCompanyData();
+    if (createdAgency && authStore.user?.email) {
+      await addTagsToContactByEmail(authStore.user.email, [viajeChatTagIds.AGENCIA_CRIADA]);
+    }
 
     phoneMessage.value = phoneDigits ? "Telefone salvo para os CTAs." : "Telefone removido dos CTAs.";
     message.value = createdAgency ? "Agência criada." : "Configurações atualizadas.";
