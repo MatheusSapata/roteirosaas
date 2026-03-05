@@ -65,6 +65,9 @@ export interface PricesSection extends SectionBase {
   ctaColor?: string;
   description?: string;
   ctaLabel?: string;
+  ctaLink?: string;
+  title?: string;
+  subtitle?: string;
 }
 
 export interface ItineraryDay {
@@ -92,6 +95,8 @@ export interface FaqSection extends SectionBase {
   type: "faq";
   items: FaqItem[];
   layout?: "accordion" | "split" | "compact";
+  title?: string;
+  subtitle?: string;
 }
 
 export interface Testimonial {

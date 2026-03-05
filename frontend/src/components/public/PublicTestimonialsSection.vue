@@ -5,9 +5,8 @@
       <h1 class="text-center text-3xl font-bold leading-tight text-slate-900 md:text-4xl">
         {{ section.title || "Depoimentos de clientes" }}
       </h1>
-      <p class="mt-2 text-center text-sm text-slate-600 md:text-base">
-        {{ section.subtitle || "O que dizem depois de viajar conosco" }}
-      </p>
+      <p class="mt-2 text-center text-sm text-slate-600 md:text-base" v-if="subtitleHtml" v-html="subtitleHtml"></p>
+      <p v-else class="mt-2 text-center text-sm text-slate-600 md:text-base">O que dizem depois de viajar conosco</p>
 
       <div class="mt-8 grid w-full gap-6 md:gap-6 justify-items-stretch" :class="gridClass">
         <article
@@ -64,6 +63,7 @@ import { isWhatsappLink } from "../../utils/links";
 import type { TestimonialsSection } from "../../types/page";
 import SectionHeadingChip from "./SectionHeadingChip.vue";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
+import { sanitizeHtml } from "../../utils/sanitizeHtml";
 
 const props = defineProps<{ section: TestimonialsSection }>();
 const headingDefaults = getSectionHeadingDefaults("testimonials");
@@ -85,6 +85,10 @@ const toRgba = (hex: string, alpha: number) => {
 const accentSoft = computed(() => toRgba(accent.value, 0.35));
 const headingLabel = computed(() => props.section.headingLabel ?? headingDefaults.label);
 const headingStyle = computed(() => props.section.headingLabelStyle || headingDefaults.style);
+const subtitleHtml = computed(() => {
+  const html = sanitizeHtml(props.section.subtitle);
+  return html || "";
+});
 
 const initials = (name?: string) => {
   if (!name) return "—";

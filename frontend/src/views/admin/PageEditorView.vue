@@ -888,10 +888,13 @@ const whatsappDigits = computed(() => {
   if (agencyDigits) return agencyDigits;
   return (auth.user?.whatsapp || "").replace(/\D/g, "");
 });
-const buildWhatsappLink = (title: string) => {
+const buildWhatsappLink = (title: string, planName?: string) => {
   if (!whatsappDigits.value) return "";
-  const text = encodeURIComponent(`Oi, tenho interesse no roteiro: ${title || "Roteiro"}`);
-  return `https://wa.me/${whatsappDigits.value}?text=${text}`;
+  const planText = planName?.trim();
+  const message = planText
+    ? `Oi, tenho interesse no plano ${planText} do roteiro: ${title || "Roteiro"}`
+    : `Oi, tenho interesse no roteiro: ${title || "Roteiro"}`;
+  return `https://wa.me/${whatsappDigits.value}?text=${encodeURIComponent(message)}`;
 };
 const lastAutoWhatsAppLink = ref<string | null>(null);
 
@@ -999,29 +1002,48 @@ const clone = <T>(val: T): T => {
 };
 
 const applyWhatsAppDefaults = (sectionsList: PageSection[]): PageSection[] => {
-  const newAuto = buildWhatsappLink(pageTitle.value);
-  const isAutoLink = (link?: string) => {
+  const baseAuto = buildWhatsappLink(pageTitle.value);
+  const isAutoLink = (link?: string, candidate?: string) => {
     if (!link) return true;
     const normalized = link.toLowerCase();
-    const candidates = [lastAutoWhatsAppLink.value, "https://wa.me/559999999", "https://wa.me/5599999999"].filter(Boolean) as string[];
+    const candidates = [
+      lastAutoWhatsAppLink.value,
+      candidate,
+      "https://wa.me/559999999",
+      "https://wa.me/5599999999"
+    ].filter(Boolean) as string[];
     if (candidates.some(c => normalized === c.toLowerCase())) return true;
     return normalized.includes("wa.me") && normalized.includes("interesse");
   };
 
   const updated = sectionsList.map(section => {
     const type = (section as any).type as SectionType;
-    if (!["hero", "story", "cta"].includes(type) || !newAuto) return section;
-    if ((section as any).ctaMode === "section") return section;
+    if (!["hero", "story", "cta", "prices"].includes(type)) return section;
+    let autoLink = baseAuto;
+    if (type === "prices") {
+      const firstPlan = ((section as any).items?.[0]?.title as string) || "";
+      autoLink = buildWhatsappLink(pageTitle.value, firstPlan);
+    }
+    if (!autoLink) return section;
     if (type === "story" && (section as any).ctaEnabled === false) return section;
-    const key = type === "cta" ? "link" : "ctaLink";
-    const current = (section as any)[key] as string | undefined;
-    if (!current || isAutoLink(current)) {
-      (section as any)[key] = newAuto;
+
+    if (type === "cta") {
+      const current = (section as any).link as string | undefined;
+      if (!current || isAutoLink(current, autoLink)) {
+        (section as any).link = autoLink;
+      }
+      return section;
+    }
+
+    if ((section as any).ctaMode === "section") return section;
+    const current = (section as any).ctaLink as string | undefined;
+    if (!current || isAutoLink(current, autoLink)) {
+      (section as any).ctaLink = autoLink;
     }
     return section;
   });
 
-  if (newAuto) lastAutoWhatsAppLink.value = newAuto;
+  if (baseAuto) lastAutoWhatsAppLink.value = baseAuto;
   return updated;
 };
 
@@ -1200,6 +1222,9 @@ function defaultSection(type: SectionType): PageSection {
       type: "prices",
       enabled: true,
       layout: "columns",
+      ctaLink: buildWhatsappLink(pageTitle.value, "Apartamento duplo") || "",
+      title: "Planos e opções",
+      subtitle: "Escolha o formato que combina com você.",
       headingLabel: headingDefaults.label,
       headingLabelStyle: headingDefaults.style,
       description: "Escolha o formato que combina com você.",
@@ -1244,6 +1269,8 @@ function defaultSection(type: SectionType): PageSection {
       type: "faq",
       enabled: true,
       layout: "accordion",
+      title: "Perguntas frequentes",
+      subtitle: "As dúvidas mais comuns sobre o roteiro.",
       headingLabel: headingDefaults.label,
       headingLabelStyle: headingDefaults.style,
       items: [
