@@ -30,6 +30,8 @@ class AdminUserOut(BaseModel):
     active_pages: Optional[int] = None
     whatsapp: Optional[str] = None
     published_pages: List[AdminUserPage] = Field(default_factory=list)
+    draft_pages: List[AdminUserPage] = Field(default_factory=list)
+    draft_pages_count: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
 

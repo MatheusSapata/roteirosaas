@@ -21,6 +21,7 @@ from app.schemas.admin import (
     AdminMetricsOut,
     AdminPageOut,
     AdminUserOut,
+    AdminUserPage,
     TimeseriesPoint,
 )
 from app.schemas.page import PageOut
@@ -102,7 +103,6 @@ def get_admin_metrics(
     for page_id, title, slug, status, agency_id, agency_slug in (
         db.query(Page.id, Page.title, Page.slug, Page.status, Page.agency_id, Agency.slug)
         .join(Agency, Agency.id == Page.agency_id)
-        .filter(Page.status == PageStatus.published)
         .all()
     ):
         pages_details[agency_id].append(
@@ -128,6 +128,17 @@ def get_admin_metrics(
         agency_id = agency_info[0] if agency_info else None
         agency_name = agency_info[1] if agency_info else None
         agency_slug = agency_info[2] if agency_info else None
+        pages_for_agency = pages_details.get(agency_id, []) if agency_id else []
+        user_published_pages = [
+            AdminUserPage(**page)
+            for page in pages_for_agency
+            if page.get("status") == PageStatus.published
+        ]
+        user_draft_pages = [
+            AdminUserPage(**page)
+            for page in pages_for_agency
+            if page.get("status") == PageStatus.draft
+        ]
         users.append(
             AdminUserOut(
                 id=u.id,
@@ -144,7 +155,9 @@ def get_admin_metrics(
                 agency_slug=agency_slug,
                 active_pages=pages_by_agency_count.get(agency_id, 0) if agency_id else 0,
                 whatsapp=u.whatsapp,
-                published_pages=pages_details.get(agency_id, []) if agency_id else [],
+                published_pages=user_published_pages,
+                draft_pages=user_draft_pages,
+                draft_pages_count=len(user_draft_pages),
             )
         )
 
@@ -211,7 +224,7 @@ def get_admin_metrics(
         .limit(8)
         .all()
     )
-    pages = [
+    pages_overview = [
         AdminPageOut(
             id=page.id,
             title=page.title,
@@ -231,7 +244,7 @@ def get_admin_metrics(
         plans=plans,
         users=users,
         agencies=agencies,
-        pages=pages,
+        pages=pages_overview,
         new_users_last_days=new_users_count,
         new_users_timeseries=timeseries,
         mrr=mrr,
