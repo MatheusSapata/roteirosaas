@@ -11,6 +11,7 @@ from app.core.config import get_settings
 from app.core.rate_limit import InMemoryRateLimiter
 from app.models.user import User
 from app.models.subscription import Subscription
+from app.models.user_tracking import UserTracking
 from app.schemas.user import (
     PasswordResetByProfile,
     PasswordResetConfirm,
@@ -76,6 +77,17 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)) -> UserOut:
     db.add(sub)
     db.flush()
     user.subscription_id = sub.id
+    if user_in.utm:
+        tracking = UserTracking(
+            user_id=user.id,
+            utm_source=user_in.utm.source,
+            utm_medium=user_in.utm.medium,
+            utm_campaign=user_in.utm.campaign,
+            utm_term=user_in.utm.term,
+            utm_content=user_in.utm.content,
+            referrer=user_in.utm.referrer,
+        )
+        db.add(tracking)
     start_trial(user, "trial", duration_days=7)
     db.commit()
     db.refresh(user)

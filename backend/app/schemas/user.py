@@ -21,10 +21,20 @@ class UserBase(BaseModel):
     address_zipcode: Optional[str] = None
 
 
+class UtmData(BaseModel):
+    source: Optional[str] = None
+    medium: Optional[str] = None
+    campaign: Optional[str] = None
+    term: Optional[str] = None
+    content: Optional[str] = None
+    referrer: Optional[str] = None
+
+
 class UserCreate(UserBase):
     password: str
     cpf: str
     whatsapp: str
+    utm: Optional[UtmData] = None
 
     @field_validator("cpf")
     @classmethod

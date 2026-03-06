@@ -14,6 +14,19 @@ class AdminUserPage(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class AdminUserTracking(BaseModel):
+    id: int
+    utm_source: Optional[str] = None
+    utm_medium: Optional[str] = None
+    utm_campaign: Optional[str] = None
+    utm_term: Optional[str] = None
+    utm_content: Optional[str] = None
+    referrer: Optional[str] = None
+    created_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class AdminUserOut(BaseModel):
     id: int
     name: str
@@ -32,6 +45,7 @@ class AdminUserOut(BaseModel):
     published_pages: List[AdminUserPage] = Field(default_factory=list)
     draft_pages: List[AdminUserPage] = Field(default_factory=list)
     draft_pages_count: Optional[int] = None
+    tracking: List[AdminUserTracking] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
 
