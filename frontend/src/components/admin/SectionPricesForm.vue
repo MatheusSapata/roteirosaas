@@ -60,7 +60,7 @@
           class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
         ></textarea>
         <p class="mt-1 text-xs text-slate-500">
-          Mostra um aviso/observação abaixo do título da seção.
+          Mostra um aviso/observação abaixo de todos os planos/valores no fim da seção.
         </p>
       </div>
     </div>

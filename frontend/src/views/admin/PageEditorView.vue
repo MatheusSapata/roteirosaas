@@ -888,12 +888,9 @@ const whatsappDigits = computed(() => {
   if (agencyDigits) return agencyDigits;
   return (auth.user?.whatsapp || "").replace(/\D/g, "");
 });
-const buildWhatsappLink = (title: string, planName?: string) => {
+const buildWhatsappLink = (title: string, _planName?: string) => {
   if (!whatsappDigits.value) return "";
-  const planText = planName?.trim();
-  const message = planText
-    ? `Oi, tenho interesse no plano ${planText} do roteiro: ${title || "Roteiro"}`
-    : `Oi, tenho interesse no roteiro: ${title || "Roteiro"}`;
+  const message = `Oi, tenho interesse no roteiro: ${title || "Roteiro"}`;
   return `https://wa.me/${whatsappDigits.value}?text=${encodeURIComponent(message)}`;
 };
 const lastAutoWhatsAppLink = ref<string | null>(null);
