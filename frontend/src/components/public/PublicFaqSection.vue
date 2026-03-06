@@ -6,8 +6,8 @@
           <div class="flex justify-center">
             <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="accent" />
           </div>
-          <h1 class="mt-3 text-2xl font-bold text-slate-900">Perguntas frequentes</h1>
-          <p class="text-sm text-slate-500">As dúvidas mais comuns sobre o roteiro.</p>
+          <h1 class="mt-3 text-2xl font-bold text-slate-900">{{ title }}</h1>
+          <p class="text-sm text-slate-500">{{ subtitle }}</p>
         </div>
 
         <!-- Accordion layout -->
@@ -67,13 +67,27 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, inject, isRef } from "vue";
 import type { FaqSection } from "../../types/page";
 import SectionHeadingChip from "./SectionHeadingChip.vue";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
+import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
 
 const props = defineProps<{ section: FaqSection }>();
 const headingDefaults = getSectionHeadingDefaults("faq");
+const defaultTitle = "Perguntas frequentes";
+const defaultSubtitle = "As dúvidas mais comuns sobre o roteiro.";
+const branding = inject(PUBLIC_BRANDING_KEY, null);
+
+const brandingPrimary = computed(() => {
+  if (!branding) return "";
+  const data = isRef(branding) ? branding.value : branding;
+  if (typeof data === "object" && data) {
+    const color = (data as Record<string, any>).primary_color;
+    if (typeof color === "string" && color.trim()) return color.trim();
+  }
+  return "";
+});
 
 const middle = computed(() => Math.ceil((props.section.items?.length || 0) / 2));
 const leftItems = computed(() => props.section.items?.slice(0, middle.value) || []);
@@ -93,6 +107,8 @@ const isLight = (hex?: string) => {
 };
 
 const accent = computed(() => {
+  const brandColor = brandingPrimary.value;
+  if (brandColor) return brandColor;
   const bg = props.section.backgroundColor;
   if (!bg || isLight(bg)) return defaultAccent;
   return bg;
@@ -109,5 +125,10 @@ const toRgba = (hex: string, alpha: number) => {
 const accentSoft = computed(() => toRgba(accent.value, 0.12));
 const headingLabel = computed(() => props.section.headingLabel ?? headingDefaults.label);
 const headingStyle = computed(() => props.section.headingLabelStyle || headingDefaults.style);
+const title = computed(() => (props.section.title && props.section.title.trim().length ? props.section.title : defaultTitle));
+const subtitle = computed(() => (props.section.subtitle && props.section.subtitle.trim().length ? props.section.subtitle : defaultSubtitle));
 </script>
+
+
+
 

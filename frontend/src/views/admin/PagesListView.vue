@@ -38,7 +38,7 @@
           <p class="text-sm text-slate-500">Escolha entre montar tudo do zero ou partir de um template pronto.</p>
         </div>
 
-        <div class="grid gap-4 md:grid-cols-2">
+        <div class="grid gap-4 md:grid-cols-3">
           <button
             class="rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50"
             @click="createPageFromScratch"
@@ -62,6 +62,19 @@
             <h3 class="mt-3 text-lg font-semibold text-slate-900">Criar a partir de modelo</h3>
             <p class="mt-1 text-sm text-slate-600">
               Selecione um layout pronto e personalize apenas o conteúdo.
+            </p>
+          </button>
+
+          <button
+            class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5 text-left text-slate-600 transition hover:-translate-y-0.5 hover:border-slate-300"
+            @click="createPageWithAi"
+          >
+            <span class="inline-flex items-center rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-indigo-700">
+              Em breve
+            </span>
+            <h3 class="mt-3 text-lg font-semibold text-slate-900">Criar com IA</h3>
+            <p class="mt-1 text-sm text-slate-600">
+              Gere um roteiro inicial com inteligência artificial e refine os detalhes depois.
             </p>
           </button>
         </div>
@@ -455,6 +468,10 @@ const showSnackbar = (text: string, tone: "success" | "error" = "success") => {
 
 const createPageFromTemplate = () => {
   showSnackbar("Funcionalidade em desenvolvimento. Em breve você poderá usar modelos prontos.");
+};
+
+const createPageWithAi = () => {
+  showSnackbar("Funcionalidade em desenvolvimento. Em breve você poderá criar páginas com IA.");
 };
 
 const slugify = (value: string) =>

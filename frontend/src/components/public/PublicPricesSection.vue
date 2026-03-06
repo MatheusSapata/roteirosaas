@@ -6,8 +6,8 @@
           <div class="flex justify-center">
             <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="accent" />
           </div>
-          <h1 class="mt-3 text-2xl font-bold text-slate-900">Planos e opções</h1>
-          <p class="text-sm text-slate-500">Escolha o formato que combina com você.</p>
+          <h1 class="mt-3 text-2xl font-bold text-slate-900">{{ title }}</h1>
+          <p class="text-sm text-slate-500">{{ subtitle }}</p>
         </div>
 
         <div class="space-y-8">
@@ -91,11 +91,12 @@ import { isWhatsappLink } from "../../utils/links";
 import SectionHeadingChip from "./SectionHeadingChip.vue";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 
-const props = defineProps<{ section: PricesSection; ctaLink?: string }>();
-const ctaLink = props.ctaLink || "#";
+const props = defineProps<{ section: PricesSection }>();
 
 const defaultAccent = "#41ce5f";
 const headingDefaults = getSectionHeadingDefaults("prices");
+const defaultTitle = "Planos e opções";
+const defaultSubtitle = "Escolha o formato que combina com você.";
 const buttonColor = computed(() => props.section.ctaColor || defaultAccent);
 const accent = computed(() => buttonColor.value);
 const toRgba = (hex: string, alpha: number) => {
@@ -111,6 +112,16 @@ const accentSoft = computed(() => toRgba(accent.value, 0.1));
 const accentBorder = computed(() => toRgba(accent.value, 0.25));
 const headingLabel = computed(() => props.section.headingLabel ?? headingDefaults.label);
 const headingStyle = computed(() => props.section.headingLabelStyle || headingDefaults.style);
+const sanitizeLink = (value?: string | null) => {
+  if (!value) return "";
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  if (/^[a-z][a-z0-9+.-]*:/i.test(trimmed) || trimmed.startsWith("#")) return trimmed;
+  return `https://${trimmed}`;
+};
+const ctaLink = computed(() => sanitizeLink(props.section.ctaLink));
+const title = computed(() => (props.section.title && props.section.title.trim().length ? props.section.title : defaultTitle));
+const subtitle = computed(() => (props.section.subtitle && props.section.subtitle.trim().length ? props.section.subtitle : defaultSubtitle));
 const highlightShadow = computed(() => toRgba(accent.value, 0.45));
 const highlightCardStyle = computed(() => ({
   background: accent.value,
@@ -137,6 +148,6 @@ const formatPrice = (price: number, currency?: PriceItem["currency"]) => {
     return `R$ ${price.toLocaleString("pt-BR")}`;
   }
 };
-const ctaTrackType = computed(() => (isWhatsappLink(ctaLink) ? "whatsapp" : "cta"));
+const ctaTrackType = computed(() => (ctaLink.value && isWhatsappLink(ctaLink.value) ? "whatsapp" : "cta"));
 </script>
 
