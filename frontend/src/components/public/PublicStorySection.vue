@@ -23,7 +23,7 @@
             </a>
           </div>
         </div>
-        <div :class="mediaContainerClass">
+        <div :class="[mediaContainerClass, isMobilePreview ? 'mt-6' : 'md:mt-0']">
           <div :class="mediaInnerClass">
             <template v-if="section.videoUrl">
               <div class="relative pt-[56.25%]">
@@ -64,7 +64,10 @@
             </a>
           </div>
         </div>
-        <div class="space-y-4" :class="[mediaContainerClass, imagePosition === 'left' ? 'md:order-1' : 'md:order-2']">
+        <div
+          class="space-y-4"
+          :class="[mediaContainerClass, imagePosition === 'left' ? 'md:order-1' : 'md:order-2', isMobilePreview ? 'mt-6' : 'md:mt-0']"
+        >
           <div :class="mediaInnerClass">
             <template v-if="section.videoUrl">
               <div class="relative pt-[56.25%]">
@@ -165,9 +168,11 @@ const textBlockClass = computed(() =>
     ? "flex-1 space-y-5 text-slate-800 bg-white px-6 py-8 md:px-10 md:py-12 flex flex-col justify-center"
     : "flex-1 space-y-5 text-slate-800 flex flex-col justify-center"
 );
-const mediaContainerClass = computed(() => (props.section.borderEnabled ? "flex-1 flex flex-col md:items-stretch" : "flex-1 flex flex-col md:items-stretch"));
+const mediaContainerClass = computed(() =>
+  props.section.borderEnabled ? "flex-1 flex flex-col w-full md:items-stretch" : "flex-1 flex flex-col w-full md:items-stretch"
+);
 const mediaInnerClass = computed(() =>
-  props.section.borderEnabled ? "flex-1 overflow-hidden" : "flex-1 overflow-hidden rounded-3xl shadow-2xl ring-1 ring-slate-200"
+  props.section.borderEnabled ? "flex-1 w-full overflow-hidden" : "flex-1 w-full overflow-hidden rounded-3xl shadow-2xl ring-1 ring-slate-200"
 );
 const iframeClass = computed(() =>
   props.section.borderEnabled

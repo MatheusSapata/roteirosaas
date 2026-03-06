@@ -1372,6 +1372,8 @@ function defaultSection(type: SectionType): PageSection {
     ctaText: "Falar com especialista",
     ctaColor: theme.value.ctaDefaultColor,
     textColor: theme.value.ctaTextColor,
+    highlight: false,
+    highlightColor: theme.value.ctaDefaultColor,
     fullWidth: true,
     ctaMode: "link",
     ctaSectionId: null

@@ -182,6 +182,8 @@ export interface CtaSection extends SectionBase {
   backgroundImage?: string;
   textColor?: string;
   ctaText?: string;
+  highlight?: boolean;
+  highlightColor?: string;
 }
 
 export type PageSection =
