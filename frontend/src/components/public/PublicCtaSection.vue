@@ -5,7 +5,7 @@
       <div class="absolute inset-0" :style="bgImageStyle"></div>
       <div class="relative mx-auto flex min-h-[300px] w-full max-w-6xl flex-col items-center justify-center px-6 py-12 text-center" :style="{ color: textColor }">
         <div class="flex justify-center">
-          <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="buttonColor" />
+          <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="headingAccent" />
         </div>
         <p class="text-2xl font-bold md:text-3xl">{{ section.label }}</p>
         <p class="mt-2 text-sm md:text-base" v-if="section.description">{{ section.description }}</p>
@@ -17,8 +17,8 @@
             data-track-event="cta"
             rel="noopener"
             :data-track-type="ctaTrackType"
-            class="inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl"
-            :style="{ background: buttonColor }"
+            class="inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl"
+            :style="{ background: buttonColor, color: buttonTextColor }"
           >
             {{ buttonLabel }}
           </a>
@@ -28,16 +28,25 @@
 
     <!-- Demais layouts dentro de container -->
     <div v-else class="mx-auto max-w-6xl px-6 py-12">
-      <div class="rounded-3xl bg-white/90 p-6 shadow-[0_16px_50px_-30px_rgba(15,23,42,0.55)] ring-1 ring-slate-100">
+      <div
+        :class="[
+          'rounded-3xl p-6 shadow-[0_16px_50px_-30px_rgba(15,23,42,0.55)]',
+          highlightActive ? 'ring-1 ring-white/30 bg-transparent' : 'bg-white/90 ring-1 ring-slate-100'
+        ]"
+        :style="cardWrapperStyle"
+      >
         <!-- Barra -->
         <div
           v-if="section.layout === 'bar' || !section.layout"
-          class="flex flex-col gap-4 rounded-2xl border border-slate-100 bg-white/90 px-5 py-4 shadow-lg md:flex-row md:items-center md:justify-between"
-          :style="{ borderColor: accentBorder }"
+          :class="[
+            'flex flex-col gap-4 rounded-2xl border px-5 py-4 shadow-lg md:flex-row md:items-center md:justify-between',
+            highlightActive ? 'border-white/40 bg-transparent' : 'border-slate-100 bg-white/90'
+          ]"
+          :style="{ borderColor: highlightBorderColor }"
         >
           <div class="space-y-1 text-center" :style="{ color: textColor }">
             <div class="flex justify-center">
-              <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="buttonColor" />
+              <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="headingAccent" />
             </div>
             <p class="text-lg font-semibold" :style="{ color: textColor }">{{ section.label }}</p>
             <p class="text-sm" :style="{ color: textColor }">{{ section.description }}</p>
@@ -50,8 +59,8 @@
             data-track-event="cta"
             rel="noopener"
             :data-track-type="ctaTrackType"
-            class="inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl"
-            :style="{ background: buttonColor }"
+            class="inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl"
+            :style="{ background: buttonColor, color: buttonTextColor }"
           >
             {{ buttonLabel }}
           </a>
@@ -60,12 +69,15 @@
         <!-- Split -->
         <div
           v-else-if="section.layout === 'split'"
-          class="grid gap-4 rounded-2xl border border-slate-100 bg-white/95 p-6 shadow-xl md:grid-cols-2"
-          :style="{ borderColor: accentBorder }"
+          :class="[
+            'grid gap-4 rounded-2xl border p-6 shadow-xl md:grid-cols-2',
+            highlightActive ? 'border-white/40 bg-transparent' : 'border-slate-100 bg-white/95'
+          ]"
+          :style="{ borderColor: highlightBorderColor }"
         >
           <div class="space-y-2 text-center" :style="{ color: textColor }">
             <div class="flex justify-center">
-              <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="buttonColor" />
+              <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="headingAccent" />
             </div>
             <p class="text-2xl font-bold" :style="{ color: textColor }">{{ section.label }}</p>
             <p class="text-sm" :style="{ color: textColor }">{{ section.description }}</p>
@@ -79,8 +91,8 @@
             data-track-event="cta"
             rel="noopener"
             :data-track-type="ctaTrackType"
-            class="inline-flex items-center justify-center rounded-lg px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl"
-            :style="{ background: buttonColor }"
+            class="inline-flex items-center justify-center rounded-lg px-6 py-3 text-sm font-semibold shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl"
+            :style="{ background: buttonColor, color: buttonTextColor }"
           >
             {{ buttonLabel }}
           </a>
@@ -90,13 +102,16 @@
         <!-- Card -->
         <div
           v-else
-          class="relative overflow-hidden rounded-3xl border border-slate-100 bg-white/95 p-6 shadow-2xl"
-          :style="{ borderColor: accentBorder }"
+          :class="[
+            'relative overflow-hidden rounded-3xl border p-6 shadow-2xl',
+            highlightActive ? 'border-white/40 bg-transparent' : 'border-slate-100 bg-white/95'
+          ]"
+          :style="{ borderColor: highlightBorderColor }"
         >
-          <div class="absolute inset-0 bg-gradient-to-br from-white via-white to-transparent"></div>
+          <div v-if="!highlightActive" class="absolute inset-0 bg-gradient-to-br from-white via-white to-transparent"></div>
           <div class="relative space-y-3 text-center" :style="{ color: textColor }">
             <div class="flex justify-center">
-              <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="buttonColor" />
+              <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="headingAccent" />
             </div>
             <p class="text-2xl font-bold" :style="{ color: textColor }">{{ section.label }}</p>
             <p class="text-sm" :style="{ color: textColor }">{{ section.description }}</p>
@@ -108,8 +123,8 @@
               data-track-event="cta"
               rel="noopener"
               :data-track-type="ctaTrackType"
-              class="inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl"
-              :style="{ background: buttonColor }"
+              class="inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl"
+              :style="{ background: buttonColor, color: buttonTextColor }"
             >
               {{ buttonLabel }}
             </a>
@@ -132,8 +147,13 @@ const props = defineProps<{ section: CtaSection }>();
 const headingDefaults = getSectionHeadingDefaults("cta");
 
 const accent = computed(() => props.section.backgroundColor || "#41ce5f");
-const buttonColor = computed(() => props.section.ctaColor || accent.value);
-const textColor = computed(() => props.section.textColor || (props.section.layout === "simple" ? "#ffffff" : "#0f172a"));
+const highlightActive = computed(() => !!props.section.highlight);
+const highlightColor = computed(() => props.section.highlightColor || props.section.ctaColor || accent.value);
+const buttonColor = computed(() => (highlightActive.value ? "#ffffff" : props.section.ctaColor || accent.value));
+const buttonTextColor = computed(() => (highlightActive.value ? "#0f172a" : "#ffffff"));
+const textColor = computed(() =>
+  highlightActive.value ? "#ffffff" : props.section.textColor || (props.section.layout === "simple" ? "#ffffff" : "#0f172a")
+);
 const outerStyle = computed(() => (props.section.layout === "simple" ? {} : { background: accentSoftBg.value }));
 const ctaMode = computed(() => props.section.ctaMode || "link");
 const ctaHref = computed(() =>
@@ -145,6 +165,7 @@ const ctaHasTarget = computed(() =>
 const ctaIsScroll = computed(() => ctaMode.value === "section" && !!props.section.ctaSectionId);
 const headingLabel = computed(() => props.section.headingLabel ?? headingDefaults.label);
 const headingStyle = computed(() => props.section.headingLabelStyle || headingDefaults.style);
+const headingAccent = computed(() => (highlightActive.value ? "#ffffff" : buttonColor.value));
 const buttonLabel = computed(() =>
   props.section.ctaText || (props.section.layout === "simple" ? "Saiba mais" : "Falar com especialista")
 );
@@ -159,20 +180,24 @@ const toRgba = (hex: string, alpha: number) => {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
 const accentBorder = computed(() => toRgba(accent.value, 0.25));
+const highlightBorderColor = computed(() => (highlightActive.value ? "rgba(255,255,255,0.4)" : accentBorder.value));
+const cardWrapperStyle = computed(() => (highlightActive.value ? { background: highlightColor.value } : {}));
 const accentSoftBg = computed(() => props.section.backgroundColor || `linear-gradient(135deg, ${toRgba(accent.value, 0.08)}, rgba(255,255,255,0.95))`);
 const backgroundImage = computed(() => resolveMediaUrl(props.section.backgroundImage));
 const ctaTrackType = computed(() =>
   ctaMode.value === "section" ? "cta" : isWhatsappLink(props.section.link || undefined) ? "whatsapp" : "cta"
 );
 const bgImageStyle = computed(() =>
-  backgroundImage.value
-    ? {
-        backgroundImage: `linear-gradient(180deg, rgba(0,0,0,0.25), rgba(0,0,0,0.35)), url(${backgroundImage.value})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center"
-      }
-    : {
-        background: props.section.backgroundColor || accent.value
-      }
+  highlightActive.value
+    ? { background: highlightColor.value }
+    : backgroundImage.value
+      ? {
+          backgroundImage: `linear-gradient(180deg, rgba(0,0,0,0.25), rgba(0,0,0,0.35)), url(${backgroundImage.value})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center"
+        }
+      : {
+          background: props.section.backgroundColor || accent.value
+        }
 );
 </script>
