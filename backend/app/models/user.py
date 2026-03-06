@@ -33,6 +33,9 @@ class User(Base):
     trial_ends_at = Column(DateTime(timezone=True), nullable=True)
     trial_ack_start = Column(Boolean, default=False)
     trial_ack_end = Column(Boolean, default=False)
+    trial_warn_3days_ack = Column(Boolean, default=False)
+    trial_warn_1day_ack = Column(Boolean, default=False)
+    trial_blocked = Column(Boolean, default=False)
 
     agencies = relationship("AgencyUser", back_populates="user")
     subscription = relationship("Subscription", uselist=False, foreign_keys=[subscription_id])

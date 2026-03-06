@@ -12,6 +12,7 @@ from app.models.subscription import Subscription
 from app.models.user import User
 from app.services.asaas import AsaasAPIError, AsaasClient
 from app.services.plans import effective_plan
+from app.services.trial import end_trial
 
 router = APIRouter()
 settings = get_settings()
@@ -258,6 +259,8 @@ async def webhook(request: Request, db: Session = Depends(get_db)) -> Dict[str, 
             next_due = payment.get("nextDueDate") or sub_data.get("nextDueDate") or payment.get("dueDate")
             _set_subscription_active(subscription, plan_key, next_due, cycle)
             user.plan = plan_key
+            if user.trial_plan:
+                end_trial(user, db, keep_plan=plan_key)
         elif event == "PAYMENT_OVERDUE":
             subscription.failed_attempts = (subscription.failed_attempts or 0) + 1
             if subscription.failed_attempts >= 3:

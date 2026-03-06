@@ -1,6 +1,15 @@
 <template>
   <div v-if="loading" class="flex min-h-screen items-center justify-center text-slate-600">Carregando pagina...</div>
-  <div v-else-if="!pageData" class="flex min-h-screen items-center justify-center text-red-500">Pagina nao encontrada.</div>
+  <div
+    v-else-if="!pageData"
+    class="flex min-h-screen flex-col items-center justify-center bg-[#05060f] px-4 text-center text-white"
+  >
+    <img :src="brandLogo" alt="Roteiro Online" class="w-56 max-w-full" />
+    <p class="mt-6 text-2xl font-semibold">Página não encontrada.</p>
+    <p class="mt-2 max-w-md text-base text-white/90">
+      O link que você acessou não existe mais ou foi removido. Peça um novo roteiro para a agência responsável.
+    </p>
+  </div>
   <div v-else class="min-h-screen">
     <template v-for="(section, idx) in sections" :key="idx">
       <PublicHeroSection
@@ -31,8 +40,10 @@ import PublicStorySection from "../../components/public/PublicStorySection.vue";
 import PublicReasonsSection from "../../components/public/PublicReasonsSection.vue";
 import PublicCountdownSection from "../../components/public/PublicCountdownSection.vue";
 import PublicFreeFooterBrandSection from "../../components/public/PublicFreeFooterBrandSection.vue";
-import type { PageConfig, PageSection, SectionType, ThemeConfig } from "../../types/page";
+import type { HeroSection, PageConfig, PageSection, SectionType, ThemeConfig } from "../../types/page";
 import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
+import BrandLogo from "../../assets/Logo Branco - Roteiro Online.png";
+import { resolveMediaUrl } from "../../utils/media";
 
 interface PublicPageResponse {
   id: number;
@@ -53,6 +64,9 @@ const theme = ref<ThemeConfig>({
   color2: "#ffffff",
   sidebarTheme: "light"
 });
+const brandLogo = BrandLogo;
+const defaultDescription =
+  "Link inválido ou página indisponível. Solicite um novo roteiro profissional no Roteiro Online.";
 
 const brandingInfo = computed(() => pageData.value?.branding || {});
 provide(PUBLIC_BRANDING_KEY, brandingInfo);
@@ -72,6 +86,22 @@ const publicComponents: Record<SectionType, any> = {
 
 let statsClickHandler: ((event: Event) => void) | null = null;
 let scrollAnchorHandler: ((event: Event) => void) | null = null;
+const heroSection = computed(() => sections.value.find(section => section.type === "hero") as HeroSection | undefined);
+const heroBackgroundImage = computed(() => {
+  const hero = heroSection.value;
+  if (hero?.backgroundImage) {
+    return resolveMediaUrl(hero.backgroundImage);
+  }
+  if (pageData.value?.cover_image_url) {
+    return resolveMediaUrl(pageData.value.cover_image_url);
+  }
+  return brandLogo;
+});
+const heroSubtitleText = computed(() => {
+  const hero = heroSection.value;
+  const raw = hero?.subtitle || "";
+  return raw.replace(/<[^>]+>/g, "").trim();
+});
 
 const findClosestElement = (target: EventTarget | null, selector: string): HTMLElement | null => {
   if (!target) return null;
@@ -128,6 +158,34 @@ const setupScrollAnchors = () => {
     anchor.scrollIntoView({ behavior: "smooth", block: "start" });
   };
   document.addEventListener("click", scrollAnchorHandler);
+};
+
+const ensureMetaTag = (selector: string, attr: "property" | "name", value: string) => {
+  if (typeof document === "undefined") return;
+  let tag = document.head.querySelector<HTMLMetaElement>(`meta[${attr}="${selector}"]`);
+  if (!tag) {
+    tag = document.createElement("meta");
+    tag.setAttribute(attr, selector);
+    document.head.appendChild(tag);
+  }
+  tag.setAttribute("content", value);
+};
+
+const applySeoMeta = (title?: string | null, description?: string | null, imageUrl?: string | null) => {
+  if (typeof document === "undefined") return;
+  const finalTitle = title ? `${title} | Roteiro Online` : "Roteiro Online";
+  const finalDescription = (description && description.trim()) || defaultDescription;
+  const finalImage = imageUrl || brandLogo;
+  document.title = finalTitle;
+  ensureMetaTag("og:title", "property", finalTitle);
+  ensureMetaTag("og:description", "property", finalDescription);
+  ensureMetaTag("og:image", "property", finalImage);
+  ensureMetaTag("og:type", "property", "website");
+  ensureMetaTag("twitter:card", "name", "summary_large_image");
+  ensureMetaTag("twitter:title", "name", finalTitle);
+  ensureMetaTag("twitter:description", "name", finalDescription);
+  ensureMetaTag("twitter:image", "name", finalImage);
+  ensureMetaTag("description", "name", finalDescription);
 };
 
 const trackVisit = () => {
@@ -206,6 +264,13 @@ watch(
   () => {
     loadPage();
   }
+);
+watch(
+  () => [pageData.value, heroBackgroundImage.value, heroSubtitleText.value],
+  () => {
+    applySeoMeta(pageData.value?.title, heroSubtitleText.value, heroBackgroundImage.value);
+  },
+  { immediate: true }
 );
 onUnmounted(() => {
   cleanupStatsTracking();

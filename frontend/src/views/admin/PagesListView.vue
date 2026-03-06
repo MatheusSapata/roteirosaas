@@ -84,8 +84,37 @@
             Cancelar
           </button>
         </div>
-      </div>
     </div>
+  </div>
+
+    <transition name="fade">
+      <div
+        v-if="trialLimitDialogOpen"
+        class="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/70 px-4"
+      >
+        <div class="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl">
+          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-rose-500">Limite atingido</p>
+          <h2 class="mt-3 text-2xl font-bold text-slate-900">Você usou as 3 páginas do plano trial</h2>
+          <p class="mt-2 text-sm text-slate-600">
+            Continue criando roteiros ilimitados ativando um plano agora mesmo.
+          </p>
+          <div class="mt-6 flex flex-wrap justify-end gap-3">
+            <button
+              class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              @click="trialLimitDialogOpen = false"
+            >
+              Fechar
+            </button>
+            <button
+              class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+              @click="goPlans"
+            >
+              Ver planos
+            </button>
+          </div>
+        </div>
+      </div>
+    </transition>
 
     <div class="overflow-x-auto">
       <div class="min-w-[880px] overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-md">
@@ -367,6 +396,7 @@ const snackbar = ref<{ open: boolean; text: string; tone: "success" | "error" }>
 const duplicateTitle = ref("");
 const duplicateSlug = ref("");
 const duplicateSourcePage = ref<Page | null>(null);
+const trialLimitDialogOpen = ref(false);
 
 const currentAgencySlug = computed(() => {
   const agency = agencyStore.agencies.find(a => a.id === agencyStore.currentAgencyId);
@@ -405,6 +435,26 @@ const loadPageStats = async () => {
   } catch (err) {
     console.error(err);
   }
+};
+
+const isTrialLimitError = (err: unknown) => {
+  const response = (err as any)?.response;
+  if (!response) return false;
+  const headerCode = (response.headers?.["x-error-code"] || response.headers?.["X-Error-Code"]) as string | undefined;
+  if (headerCode && String(headerCode).toLowerCase() === "trial_page_limit") {
+    return true;
+  }
+  const detail = response.data?.detail;
+  if (typeof detail === "string") {
+    return detail.toLowerCase().includes("plano trial");
+  }
+  return false;
+};
+
+const handleTrialLimitError = (err: unknown) => {
+  if (!isTrialLimitError(err)) return false;
+  trialLimitDialogOpen.value = true;
+  return true;
 };
 
 const buildFriendlySlug = () => {
@@ -455,6 +505,10 @@ const createPageFromScratch = async () => {
     createOptionsOpen.value = false;
   } catch (err) {
     console.error(err);
+    if (handleTrialLimitError(err)) {
+      createOptionsOpen.value = false;
+      return;
+    }
     const detail = (err as any)?.response?.data?.detail;
     errorMessage.value = detail || "Nao foi possivel criar a pagina. Verifique se voce esta logado e tem acesso a agencia.";
     createOptionsOpen.value = false;
@@ -529,6 +583,10 @@ const confirmDuplicate = async () => {
     router.push(`/admin/pages/${res.data.id}/edit`);
   } catch (err) {
     console.error(err);
+    if (handleTrialLimitError(err)) {
+      closeDuplicateDialog();
+      return;
+    }
     showSnackbar("Nao foi possivel duplicar. Verifique se o slug ja existe ou se voce esta logado.", "error");
   }
 };

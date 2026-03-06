@@ -10,6 +10,8 @@ router = APIRouter()
 def plan_limit(plan: str) -> int:
   if plan == "free":
     return 0
+  if plan == "trial":
+    return 999999
   if plan == "essencial":
     return 1
   if plan == "growth":

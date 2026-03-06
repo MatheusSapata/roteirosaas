@@ -158,6 +158,12 @@ def create_page(
     if max_pages is not None:
         total_pages = db.query(Page).filter(Page.agency_id == page.agency_id).count()
         if total_pages >= max_pages:
+            if plan == "trial":
+                raise HTTPException(
+                    status_code=403,
+                    detail="Você atingiu o limite de 3 páginas do plano trial. Escolha um plano pago para continuar criando roteiros.",
+                    headers={"X-Error-Code": "trial_page_limit"},
+                )
             raise HTTPException(
                 status_code=403,
                 detail=f"Limite de {max_pages} paginas permitido no plano {plan}. Exclua uma pagina antes de criar outra.",
