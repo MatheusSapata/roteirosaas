@@ -40,3 +40,4 @@ class User(Base):
     agencies = relationship("AgencyUser", back_populates="user")
     subscription = relationship("Subscription", uselist=False, foreign_keys=[subscription_id])
     pixels = relationship("Pixel", back_populates="user", cascade="all, delete-orphan")
+    tracking_entries = relationship("UserTracking", back_populates="user", cascade="all, delete-orphan")

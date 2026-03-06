@@ -170,6 +170,41 @@ const canSubmit = computed(() => {
   );
 });
 
+const utmParams = ref<Record<string, string>>({});
+
+const collectUtmParams = () => {
+  if (typeof window === "undefined") return;
+  const params = new URLSearchParams(window.location.search);
+  const collected: Record<string, string> = {};
+  ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"].forEach(key => {
+    const value = params.get(key);
+    if (value) collected[key] = value;
+  });
+  if (document.referrer) {
+    collected.referrer = document.referrer;
+  }
+  utmParams.value = collected;
+};
+
+const buildUtmPayload = () => {
+  const mapping: Record<string, string> = {
+    utm_source: "source",
+    utm_medium: "medium",
+    utm_campaign: "campaign",
+    utm_term: "term",
+    utm_content: "content",
+    referrer: "referrer"
+  };
+  const payload: Record<string, string> = {};
+  Object.entries(mapping).forEach(([from, to]) => {
+    const value = utmParams.value[from];
+    if (value) {
+      payload[to] = value;
+    }
+  });
+  return payload;
+};
+
 const notifyViajeChat = async (payload: { name: string; email: string; phone: string }) => {
   if (!viajeChatApiKey) return;
   try {
@@ -215,13 +250,19 @@ const onSubmit = async () => {
       return;
     }
 
-    await api.post("/auth/register", {
+    const registerPayload: Record<string, any> = {
       name: name.value,
       email: normalizedEmail,
       password: password.value,
       cpf: cpfDigits,
       whatsapp: `${dialCode.value}${phoneDigits}`
-    });
+    };
+    const utmPayload = buildUtmPayload();
+    if (Object.keys(utmPayload).length) {
+      registerPayload.utm = utmPayload;
+    }
+
+    await api.post("/auth/register", registerPayload);
     await notifyViajeChat({
       name: name.value.trim(),
       email: normalizedEmail,
@@ -276,6 +317,7 @@ const trackMetaCompleteRegistration = () => {
 };
 
 onMounted(() => {
+  collectUtmParams();
   if (metaPixelId) {
     initializeMetaPixel();
   }

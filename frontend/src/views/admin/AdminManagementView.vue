@@ -284,6 +284,40 @@
                         </div>
                       </div>
 
+                      <div class="mt-4">
+                        <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Origem / UTMs</p>
+                        <div
+                          v-if="u.tracking?.length"
+                          class="mt-2 space-y-3 rounded-2xl border border-white/40 bg-white/80 p-4 shadow-inner"
+                        >
+                          <div
+                            v-for="entry in u.tracking"
+                            :key="entry.id"
+                            class="rounded-2xl border border-slate-200 bg-white/90 p-3 shadow-sm"
+                          >
+                            <div class="flex flex-wrap gap-2">
+                              <span
+                                v-for="chip in buildUtmChips(entry)"
+                                :key="chip.label + chip.value"
+                                class="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold text-slate-600"
+                              >
+                                <span class="text-slate-400">{{ chip.label }}:</span>
+                                <span class="text-slate-900">{{ chip.value }}</span>
+                              </span>
+                            </div>
+                            <p class="mt-2 text-[11px] text-slate-500">
+                              Capturado em {{ formatDateTime(entry.created_at) || 'data desconhecida' }}
+                            </p>
+                          </div>
+                        </div>
+                        <p
+                          v-else
+                          class="mt-2 rounded-2xl border border-dashed border-slate-200 px-3 py-3 text-center text-xs text-slate-500"
+                        >
+                          Nenhuma informação de UTM registrada.
+                        </p>
+                      </div>
+
                       <div class="mt-4 flex flex-wrap items-center gap-3">
                         <button
                           v-if="!u.is_superuser"
@@ -729,6 +763,17 @@ interface MetricsUserPage {
   agency_slug?: string | null;
 }
 
+interface MetricsUserTracking {
+  id: number;
+  utm_source?: string | null;
+  utm_medium?: string | null;
+  utm_campaign?: string | null;
+  utm_term?: string | null;
+  utm_content?: string | null;
+  referrer?: string | null;
+  created_at?: string | null;
+}
+
 interface Metrics {
   total_users: number;
   total_agencies: number;
@@ -756,6 +801,7 @@ interface Metrics {
     published_pages?: MetricsUserPage[];
     draft_pages?: MetricsUserPage[];
     draft_pages_count?: number | null;
+    tracking?: MetricsUserTracking[];
   }[];
   agencies: {
     id: number;
@@ -821,6 +867,25 @@ const lessonForm = reactive({
 const editingLessonId = ref<number | null>(null);
 const isEditingLesson = computed(() => editingLessonId.value !== null);
 const lessonPreview = computed(() => normalizeVideoInput(lessonForm.videoInput || ""));
+
+const utmFieldMap: { key: keyof MetricsUserTracking; label: string }[] = [
+  { key: "utm_source", label: "Fonte" },
+  { key: "utm_medium", label: "Mídia" },
+  { key: "utm_campaign", label: "Campanha" },
+  { key: "utm_term", label: "Termo" },
+  { key: "utm_content", label: "Conteúdo" },
+  { key: "referrer", label: "Referrer" }
+];
+
+const buildUtmChips = (entry: MetricsUserTracking) => {
+  return utmFieldMap
+    .map(field => {
+      const value = entry[field.key];
+      if (!value) return null;
+      return { label: field.label, value };
+    })
+    .filter((item): item is { label: string; value: string } => Boolean(item));
+};
 
 const loadMetrics = async () => {
   error.value = "";

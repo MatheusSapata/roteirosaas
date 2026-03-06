@@ -11,3 +11,4 @@ from .stats import PageVisitStats
 from .subscription import Subscription
 from .pixel import Pixel
 from .lesson import Lesson
+from .user_tracking import UserTracking

@@ -13,6 +13,7 @@ from app.api.deps import get_current_superuser, get_db
 from app.api.v1.endpoints.billing import PLAN_PRICING
 from app.models.subscription import Subscription
 from app.models.user import User
+from app.models.user_tracking import UserTracking
 from app.models.agency import Agency
 from app.models.agency_user import AgencyUser
 from app.models.page import Page, PageStatus
@@ -22,6 +23,7 @@ from app.schemas.admin import (
     AdminPageOut,
     AdminUserOut,
     AdminUserPage,
+    AdminUserTracking,
     TimeseriesPoint,
 )
 from app.schemas.page import PageOut
@@ -122,6 +124,17 @@ def get_admin_metrics(
         .outerjoin(Sub, Sub.id == User.subscription_id)
         .all()
     )
+    user_ids = [u.id for u, _ in users_rows]
+    tracking_map: dict[int, list[UserTracking]] = {}
+    if user_ids:
+        tracking_rows = (
+            db.query(UserTracking)
+            .filter(UserTracking.user_id.in_(user_ids))
+            .order_by(UserTracking.created_at.desc())
+            .all()
+        )
+        for entry in tracking_rows:
+            tracking_map.setdefault(entry.user_id, []).append(entry)
     users: List[AdminUserOut] = []
     for u, valid_until in users_rows:
         agency_info = agency_by_user.get(u.id)
@@ -158,6 +171,7 @@ def get_admin_metrics(
                 published_pages=user_published_pages,
                 draft_pages=user_draft_pages,
                 draft_pages_count=len(user_draft_pages),
+                tracking=[AdminUserTracking.model_validate(entry) for entry in tracking_map.get(u.id, [])],
             )
         )
 
