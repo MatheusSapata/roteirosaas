@@ -151,6 +151,9 @@ class UserOut(UserBase):
     trial_ends_at: Optional[datetime] = None
     trial_ack_start: Optional[bool] = None
     trial_ack_end: Optional[bool] = None
+    trial_warn_3days_ack: Optional[bool] = None
+    trial_warn_1day_ack: Optional[bool] = None
+    trial_blocked: Optional[bool] = None
     model_config = ConfigDict(from_attributes=True)
 
 

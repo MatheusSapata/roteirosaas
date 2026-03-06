@@ -26,6 +26,9 @@ interface User {
   trial_ends_at?: string | null;
   trial_ack_start?: boolean;
   trial_ack_end?: boolean;
+  trial_warn_3days_ack?: boolean;
+  trial_warn_1day_ack?: boolean;
+  trial_blocked?: boolean;
 }
 
 const REFRESH_KEY = "refresh_token";

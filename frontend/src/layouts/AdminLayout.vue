@@ -143,11 +143,17 @@
         class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 px-4"
       >
         <div class="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl">
-          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-500">Upgrade exclusivo</p>
-          <h2 class="mt-3 text-2xl font-bold text-slate-900">Você ganhou o plano {{ trialPlanName }} por 7 dias!</h2>
+          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-500">Bem-vindo ao trial profissional</p>
+          <h2 class="mt-3 text-2xl font-bold text-slate-900">Plano {{ trialPlanName }} liberado até {{ formattedDate }}</h2>
           <p class="mt-2 text-sm text-slate-600">
-            Aproveite todos os recursos do plano premium até {{ formattedDate }}. Explore integrações, limites liberados e seções ilimitadas dentro de cada roteiro.
+            Durante estes 7 dias você pode testar tudo que usamos nos planos pagos:
           </p>
+          <ul class="mt-4 list-disc space-y-1 pl-6 text-sm text-slate-600">
+            <li>Criar até 3 páginas completas, com seções ilimitadas.</li>
+            <li>Duplicar roteiros, personalizar blocos premium e usar pixels ilimitados.</li>
+            <li>Publicar páginas sem rodapé da versão gratuita e acompanhar métricas em tempo real.</li>
+          </ul>
+          <p class="mt-4 text-sm text-slate-600">Explore à vontade e peça ajuda se quiser montar um roteiro profissional.</p>
           <div class="mt-6 flex flex-wrap justify-end gap-3">
             <button
               class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
@@ -162,27 +168,77 @@
 
     <transition name="fade">
       <div
-        v-if="showEndDialog"
+        v-if="showTrialWarning3Days"
         class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 px-4"
       >
         <div class="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl">
-          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-amber-500">Período finalizado</p>
-          <h2 class="mt-3 text-2xl font-bold text-slate-900">Gostou do plano {{ planLabels.infinity }}?</h2>
+          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-amber-500">Faltam 3 dias</p>
+          <h2 class="mt-3 text-2xl font-bold text-slate-900">Seu periodo trial termina em breve</h2>
           <p class="mt-2 text-sm text-slate-600">
-            Seu acesso promocional terminou. Escolha manter o plano completo ou voltar ao plano original.
+            Em 3 dias o acesso ao editor sera bloqueado. Escolha um plano para continuar criando roteiros ilimitados.
           </p>
           <div class="mt-6 flex flex-wrap justify-end gap-3">
             <button
               class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-              @click="acknowledgeTrial('end')"
+              @click="acknowledgeTrial('warn3')"
             >
-              Continuar no plano anterior
+              Depois
             </button>
             <button
               class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
-              @click="acknowledgeTrial('end', true)"
+              @click="acknowledgeTrial('warn3', true)"
             >
-              Assinar {{ planLabels.infinity }}
+              Ver planos
+            </button>
+          </div>
+        </div>
+      </div>
+    </transition>
+
+    <transition name="fade">
+      <div
+        v-if="showTrialWarning1Day"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 px-4"
+      >
+        <div class="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl">
+          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-rose-500">Últimas horas</p>
+          <h2 class="mt-3 text-2xl font-bold text-slate-900">Seu trial termina amanha</h2>
+          <p class="mt-2 text-sm text-slate-600">
+            Contrate agora para manter suas paginas ativas e seguir publicando novos roteiros sem interrupcao.
+          </p>
+          <div class="mt-6 flex flex-wrap justify-end gap-3">
+            <button
+              class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+              @click="acknowledgeTrial('warn1', true)"
+            >
+              Assinar agora
+            </button>
+          </div>
+        </div>
+      </div>
+    </transition>
+
+    <transition name="fade">
+      <div
+        v-if="showEndDialog"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 px-4"
+      >
+        <div class="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl">
+          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-rose-500">Trial encerrado</p>
+          <h2 class="mt-3 text-2xl font-bold text-slate-900">Você atingiu o limite do plano trial</h2>
+          <p class="mt-2 text-sm text-slate-600">Assine um plano para desbloquear seu painel e republicar seus roteiros.</p>
+          <div class="mt-6 flex flex-wrap justify-end gap-3">
+            <button
+              class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+              @click="goToPlans"
+            >
+              Ir para os planos
+            </button>
+            <button
+              class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              @click="dismissBlockedModal"
+            >
+              Fechar
             </button>
           </div>
         </div>
@@ -233,7 +289,7 @@ import SidebarLogo from "../assets/Logo Cor - Roteiro Online.png";
 import api from "../services/api";
 import { useAgencyStore } from "../store/useAgencyStore";
 import { useAuthStore } from "../store/useAuthStore";
-import { getPlanLabel, planLabels } from "../utils/planLabels";
+import { getPlanLabel } from "../utils/planLabels";
 import { syncPlanTagForEmail, viajeChatTagIds } from "../services/viajeChat";
 
 const route = useRoute();
@@ -318,8 +374,11 @@ const handleLogout = () => {
 
 const showWelcomeDialog = ref(false);
 const showEndDialog = ref(false);
+const showTrialWarning3Days = ref(false);
+const showTrialWarning1Day = ref(false);
 const mobileMenuOpen = ref(false);
 const trialPlanName = computed(() => getPlanLabel(auth.user?.trial_plan));
+const trialModalDismissed = ref(false);
 const planTagMap: Record<string, string> = {
   essencial: viajeChatTagIds.PLANO_PROFISSIONAL,
   growth: viajeChatTagIds.PLANO_AGENCIA,
@@ -336,6 +395,13 @@ const trialActive = computed(() => {
   if (!trialStartDate.value || !trialEndDate.value) return false;
   const now = new Date();
   return now >= trialStartDate.value && now <= trialEndDate.value;
+});
+const trialBlocked = computed(() => Boolean(auth.user?.trial_blocked));
+const trialDaysLeft = computed(() => {
+  if (!trialActive.value || !trialEndDate.value) return null;
+  const diff = trialEndDate.value.getTime() - Date.now();
+  if (diff <= 0) return 0;
+  return Math.ceil(diff / (1000 * 60 * 60 * 24));
 });
 
 watch(
@@ -355,30 +421,75 @@ watch(
 );
 
 watch(
-  () => [auth.user?.id, auth.user?.trial_ack_end, auth.user?.trial_plan, auth.user?.trial_ends_at],
+  () => [trialBlocked.value, route.fullPath],
   () => {
-    const ended = !auth.user?.trial_plan && auth.user?.trial_ack_end === false && !!auth.user?.trial_original_plan;
-    const expiredByDate =
-      auth.user?.trial_ack_end === false &&
-      auth.user?.trial_plan &&
-      trialEndDate.value &&
-      new Date() > trialEndDate.value;
-    showEndDialog.value = Boolean(ended || expiredByDate);
+    if (trialBlocked.value) {
+      if (route.path !== "/admin/planos" && route.path !== "/admin/dashboard") {
+        router.push("/admin/planos");
+        trialModalDismissed.value = false;
+        showEndDialog.value = false;
+        return;
+      }
+      if (route.path === "/admin/dashboard" && !trialModalDismissed.value) {
+        showEndDialog.value = true;
+      } else {
+        showEndDialog.value = false;
+      }
+    } else {
+      showEndDialog.value = false;
+      trialModalDismissed.value = false;
+    }
   },
   { immediate: true }
 );
 
-const acknowledgeTrial = async (stage: "start" | "end", redirectToPlans = false) => {
+watch(
+  () => [trialActive.value, auth.user?.trial_warn_3days_ack, trialDaysLeft.value],
+  () => {
+    const daysLeft = trialDaysLeft.value;
+    showTrialWarning3Days.value = Boolean(
+      trialActive.value && auth.user?.trial_warn_3days_ack === false && daysLeft !== null && daysLeft <= 3 && daysLeft > 1
+    );
+  },
+  { immediate: true }
+);
+
+watch(
+  () => [trialActive.value, auth.user?.trial_warn_1day_ack, trialDaysLeft.value],
+  () => {
+    const daysLeft = trialDaysLeft.value;
+    showTrialWarning1Day.value = Boolean(
+      trialActive.value && auth.user?.trial_warn_1day_ack === false && daysLeft !== null && daysLeft <= 1
+    );
+  },
+  { immediate: true }
+);
+
+const dismissBlockedModal = () => {
+  trialModalDismissed.value = true;
+  showEndDialog.value = false;
+};
+
+const goToPlans = () => {
+  router.push("/admin/planos");
+};
+
+const acknowledgeTrial = async (stage: "start" | "end" | "warn3" | "warn1", redirectToPlans = false) => {
   try {
     await api.post("/auth/trial/ack", { stage });
     await auth.fetchProfile();
     if (stage === "start") {
       showWelcomeDialog.value = false;
+    } else if (stage === "warn3") {
+      showTrialWarning3Days.value = false;
+    } else if (stage === "warn1") {
+      showTrialWarning1Day.value = false;
+      showTrialWarning3Days.value = false;
     } else {
       showEndDialog.value = false;
-      if (redirectToPlans) {
-        router.push("/admin/planos");
-      }
+    }
+    if (redirectToPlans) {
+      goToPlans();
     }
   } catch (err) {
     console.error("Erro ao confirmar trial", err);

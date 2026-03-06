@@ -22,6 +22,7 @@ from app.schemas.user import (
     UserUpdate,
 )
 from app.services import auth as auth_service
+from app.services.trial import start_trial
 
 router = APIRouter()
 settings = get_settings()
@@ -29,7 +30,7 @@ login_limiter = InMemoryRateLimiter(attempts=5, window_seconds=300, block_minute
 
 
 class TrialAckPayload(BaseModel):
-    stage: Literal["start", "end"]
+    stage: Literal["start", "end", "warn3", "warn1"]
 
 
 class RefreshTokenRequest(BaseModel):
@@ -75,6 +76,7 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)) -> UserOut:
     db.add(sub)
     db.flush()
     user.subscription_id = sub.id
+    start_trial(user, "trial", duration_days=7)
     db.commit()
     db.refresh(user)
     return user
@@ -262,6 +264,10 @@ def acknowledge_trial(
 ) -> UserOut:
     if payload.stage == "start":
         current_user.trial_ack_start = True
+    elif payload.stage == "warn3":
+        current_user.trial_warn_3days_ack = True
+    elif payload.stage == "warn1":
+        current_user.trial_warn_1day_ack = True
     else:
         current_user.trial_ack_end = True
         current_user.trial_original_plan = None

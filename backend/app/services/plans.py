@@ -9,6 +9,8 @@ def plan_limits(plan: str) -> Tuple[int | None, int | None]:
     max_pages: None = ilimitado e considera todas as paginas criadas (publicadas ou rascunhos).
     max_sections: None = sem limite; rodape free nao conta para o limite.
     """
+    if plan == "trial":
+        return 3, None
     if plan == "essencial":
         return 3, None
     if plan == "growth":

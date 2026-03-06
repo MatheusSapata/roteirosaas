@@ -12,7 +12,6 @@ import PlansView from "../views/public/PlansView.vue";
 import MarketingLandingView from "../views/public/MarketingLandingView.vue";
 import AdminLayout from "../layouts/AdminLayout.vue";
 import { useAuthStore } from "../store/useAuthStore";
-import LoginView from "../views/admin/LoginView.vue";
 
 const routes: RouteRecordRaw[] = [
   { path: "/", name: "marketing", component: LoginView, meta: { guestOnly: true } },
@@ -61,6 +60,8 @@ router.beforeEach(async (to, _from, next) => {
   const requiresAuth = to.matched.some(record => record.meta?.requiresAuth);
   const guestOnly = to.matched.some(record => record.meta?.guestOnly);
   const requiresSuperuser = to.matched.some(record => record.meta?.requiresSuperuser);
+  const targetIsPlans = to.name === "plans";
+  const targetIsDashboard = to.name === "dashboard";
 
   if (requiresAuth) {
     if (!auth.token) {
@@ -76,6 +77,10 @@ router.beforeEach(async (to, _from, next) => {
         return;
       }
     }
+    if (auth.user?.trial_blocked && !targetIsPlans && !targetIsDashboard) {
+      next({ name: "plans" });
+      return;
+    }
   }
 
   if (requiresSuperuser) {
@@ -86,7 +91,8 @@ router.beforeEach(async (to, _from, next) => {
   }
 
   if (guestOnly && auth.token) {
-    next({ name: "dashboard" });
+    const fallback = auth.user?.trial_blocked ? "plans" : "dashboard";
+    next({ name: fallback });
     return;
   }
 

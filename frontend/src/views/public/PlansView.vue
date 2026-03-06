@@ -36,6 +36,26 @@
         </div>
       </header>
 
+      <div
+        v-if="trialBlocked"
+        class="mx-auto mb-8 max-w-4xl rounded-3xl border border-rose-200 bg-rose-50 p-5 text-rose-900 shadow-sm"
+      >
+        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-rose-500">Trial encerrado</p>
+        <p class="mt-2 text-sm">
+          Seu período trial terminou e o painel foi bloqueado. Ative um plano para liberar novamente suas páginas e retomar as publicações.
+        </p>
+      </div>
+      <div
+        v-else-if="trialPlanActive"
+        class="mx-auto mb-8 max-w-4xl rounded-3xl border border-emerald-200 bg-emerald-50 p-5 text-emerald-900 shadow-sm"
+      >
+        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-500">Trial ativo</p>
+        <p class="mt-2 text-sm">
+          Você está aproveitando o plano Trial com até 3 páginas, seções e pixels ilimitados
+          <span v-if="trialEndsAtText">até {{ trialEndsAtText }}.</span>
+        </p>
+      </div>
+
       <section id="planos" class="relative mx-auto max-w-7xl pb-16">
         <div class="mb-8 flex flex-col items-center gap-2">
           <div class="inline-flex rounded-full bg-slate-100 p-1 text-sm font-semibold text-slate-500 shadow-inner">
@@ -59,7 +79,7 @@
           <p class="text-xs text-slate-500">{{ billingCycleDescriptions[billingCycle] }}</p>
         </div>
 
-        <div class="grid gap-8 md:grid-cols-2 xl:grid-cols-4">
+        <div class="mx-auto grid max-w-6xl gap-8 md:grid-cols-2 xl:grid-cols-3 justify-items-center">
           <article
             v-for="plan in plans"
             :key="plan.key"
@@ -260,6 +280,13 @@ interface BillingInfo {
 }
 
 const authStore = useAuthStore();
+const trialBlocked = computed(() => Boolean(authStore.user?.trial_blocked));
+const trialPlanActive = computed(() => authStore.user?.trial_plan === "trial");
+const trialEndsAtText = computed(() => {
+  const endsAt = authStore.user?.trial_ends_at;
+  if (!endsAt) return null;
+  return new Date(endsAt).toLocaleDateString("pt-BR");
+});
 
 const billingCycle = ref<BillingCycle>("annual");
 const billingCycleDescriptions: Record<BillingCycle, string> = {
@@ -283,21 +310,6 @@ const planNames: Record<string, string> = {
 };
 
 const planDefinitions: PlanDefinition[] = [
-  {
-    key: "free",
-    tier: "Começo",
-    name: "Plano Começo",
-    subtitle: "Para quem está começando a organizar seus roteiros online",
-    highlight: "Ideal para dar os primeiros passos",
-    features: ["1 roteiro online publicado", "Editor simples e fácil de usar", "Layout pronto para agência"],
-    cta: "Criar meu primeiro roteiro",
-    note: "Publique seu primeiro roteiro sem custos.",
-    ctaClass: "bg-slate-900 hover:bg-slate-800",
-    prices: {
-      monthly: { value: 0, period: "/mês" },
-      annual: { value: 0, period: "/ano" }
-    }
-  },
   {
     key: "essencial",
     tier: "Profissional",
