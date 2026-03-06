@@ -117,7 +117,7 @@
     </transition>
 
     <div class="overflow-x-auto">
-      <div class="min-w-[880px] overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-md">
+      <div class="overflow-hidden border-0 bg-transparent md:min-w-[880px] md:rounded-3xl md:border md:border-slate-100 md:bg-white md:shadow-md">
         <div
           class="hidden grid-cols-[1.2fr,0.9fr,0.9fr,1.6fr,0.6fr,1.9fr] gap-6 border-b border-slate-100 px-6 py-4 text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 md:grid"
         >
@@ -129,11 +129,11 @@
           <span class="text-right">Acoes</span>
         </div>
 
-        <div v-if="pages.length" class="divide-y divide-slate-100">
+        <div v-if="pages.length" class="space-y-4 md:space-y-0 md:divide-y md:divide-slate-100">
           <div
             v-for="page in pages"
             :key="page.id"
-            class="grid grid-cols-1 items-center gap-6 px-6 py-5 transition hover:bg-slate-50/70 md:grid-cols-[1.2fr,0.9fr,0.9fr,1.6fr,0.6fr,1.9fr]"
+            class="grid grid-cols-1 gap-4 rounded-2xl border border-slate-100 bg-white px-5 py-5 shadow-sm transition hover:border-slate-200 hover:bg-slate-50/70 md:grid-cols-[1.2fr,0.9fr,0.9fr,1.6fr,0.6fr,1.9fr] md:items-center md:gap-6 md:rounded-none md:border-0 md:bg-transparent md:px-6 md:py-5 md:shadow-none"
           >
             <div class="flex flex-wrap items-center gap-3">
               <p class="text-base font-semibold text-slate-900">{{ page.title }}</p>
@@ -145,7 +145,7 @@
               </span>
             </div>
 
-            <div class="flex justify-center">
+            <div class="hidden justify-center md:flex">
               <button
                 v-if="isFree"
                 type="button"
@@ -165,7 +165,7 @@
               </span>
             </div>
 
-            <div class="flex justify-center">
+            <div class="hidden justify-center md:flex">
               <button
                 v-if="isFree"
                 type="button"
@@ -185,107 +185,114 @@
               </span>
             </div>
 
-            <div class="flex flex-wrap items-center gap-3">
-              <template v-if="page.status === 'published' && pagePublicUrl(page)">
-                <a
-                  :href="pagePublicUrl(page)"
-                  target="_blank"
-                  class="max-w-[220px] truncate text-sm font-medium text-brand hover:text-brand-dark"
-                >
-                  {{ pagePublicUrl(page) }}
-                </a>
-                <button
-                  class="text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-600"
-                  @click="copyLink(page)"
-                >
-                  Copiar
-                </button>
-              </template>
-              <span v-else class="text-xs uppercase tracking-wide text-slate-400">Link disponivel apos publicar</span>
-            </div>
-
-            <div>
+            <div class="flex flex-col gap-2">
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-400 md:hidden">Status</p>
               <span
-                class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide"
+                class="inline-flex w-fit items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide"
                 :class="getStatusClasses(page.status)"
               >
                 {{ getStatusLabel(page.status) }}
               </span>
             </div>
 
-            <div class="flex flex-wrap items-center gap-2 md:justify-end">
-              <button
-                class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-slate-300 hover:text-slate-900"
-                title="Duplicar"
-                @click="openDuplicateDialog(page)"
-              >
-                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
-                  <rect x="9" y="9" width="11" height="11" rx="2" />
-                  <rect x="4" y="4" width="11" height="11" rx="2" />
-                </svg>
-              </button>
+            <div class="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-400 md:hidden">Link</p>
+              <div class="flex flex-wrap items-center gap-3">
+                <template v-if="page.status === 'published' && pagePublicUrl(page)">
+                  <a
+                    :href="pagePublicUrl(page)"
+                    target="_blank"
+                    class="max-w-[220px] truncate text-sm font-medium text-brand hover:text-brand-dark"
+                  >
+                    {{ pagePublicUrl(page) }}
+                  </a>
+                  <button
+                    class="text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-600"
+                    @click="copyLink(page)"
+                  >
+                    Copiar
+                  </button>
+                </template>
+                <span v-else class="text-xs uppercase tracking-wide text-slate-400">Link disponivel apos publicar</span>
+              </div>
+            </div>
 
-              <router-link
-                :to="`/admin/pages/${page.id}/edit`"
-                class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-slate-300 hover:text-slate-900"
-                title="Editar"
-              >
-                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
-                  <path d="M12 20h9" />
-                  <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z" />
-                </svg>
-              </router-link>
+            <div class="flex flex-col gap-2">
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-400 md:hidden">Ações</p>
+              <div class="flex flex-wrap items-center gap-2 md:justify-end">
+                <button
+                  class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-slate-300 hover:text-slate-900"
+                  title="Duplicar"
+                  @click="openDuplicateDialog(page)"
+                >
+                  <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+                    <rect x="9" y="9" width="11" height="11" rx="2" />
+                    <rect x="4" y="4" width="11" height="11" rx="2" />
+                  </svg>
+                </button>
 
-              <a
-                v-if="pagePublicUrl(page)"
-                :href="pagePublicUrl(page)"
-                target="_blank"
-                class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-slate-300 hover:text-slate-900"
-                title="Ver pagina"
-              >
-                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
-                  <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z" />
-                  <circle cx="12" cy="12" r="3" />
-                </svg>
-              </a>
+                <router-link
+                  :to="`/admin/pages/${page.id}/edit`"
+                  class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-slate-300 hover:text-slate-900"
+                  title="Editar"
+                >
+                  <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+                    <path d="M12 20h9" />
+                    <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z" />
+                  </svg>
+                </router-link>
 
-              <button
-                v-if="page.status === 'published'"
-                class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-amber-200 text-amber-500 transition hover:border-amber-300 hover:text-amber-600"
-                title="Despublicar"
-                @click="unpublishPage(page)"
-              >
-                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
-                  <path d="m7 10 5 5 5-5" />
-                  <path d="M12 4v10" />
-                </svg>
-              </button>
+                <a
+                  v-if="pagePublicUrl(page)"
+                  :href="pagePublicUrl(page)"
+                  target="_blank"
+                  class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-slate-300 hover:text-slate-900"
+                  title="Ver pagina"
+                >
+                  <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+                    <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                </a>
 
-              <button
-                v-if="page.status === 'published'"
-                class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
-                :disabled="page.is_default"
-                title="Definir padrao"
-                @click="setDefaultPage(page)"
-              >
-                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
-                  <path d="m12 3 2.09 6.26h6.58L15.29 13l2.12 6.24L12 15.77l-5.41 3.47L8.71 13 3.33 9.26h6.58Z" />
-                </svg>
-              </button>
+                <button
+                  v-if="page.status === 'published'"
+                  class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-amber-200 text-amber-500 transition hover:border-amber-300 hover:text-amber-600"
+                  title="Despublicar"
+                  @click="unpublishPage(page)"
+                >
+                  <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+                    <path d="m7 10 5 5 5-5" />
+                    <path d="M12 4v10" />
+                  </svg>
+                </button>
 
-              <button
-                class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-red-200 text-red-500 transition hover:border-red-300 hover:text-red-600"
-                title="Excluir"
-                @click="deletePage(page)"
-              >
-                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
-                  <path d="M3 6h18" />
-                  <path d="M8 6V4h8v2" />
-                  <path d="m9 10 1 8" />
-                  <path d="m15 10-1 8" />
-                  <path d="M5 6l1 14h12l1-14" />
-                </svg>
-              </button>
+                <button
+                  v-if="page.status === 'published'"
+                  class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+                  :disabled="page.is_default"
+                  title="Definir padrao"
+                  @click="setDefaultPage(page)"
+                >
+                  <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+                    <path d="m12 3 2.09 6.26h6.58L15.29 13l2.12 6.24L12 15.77l-5.41 3.47L8.71 13 3.33 9.26h6.58Z" />
+                  </svg>
+                </button>
+
+                <button
+                  class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-red-200 text-red-500 transition hover:border-red-300 hover:text-red-600"
+                  title="Excluir"
+                  @click="deletePage(page)"
+                >
+                  <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+                    <path d="M3 6h18" />
+                    <path d="M8 6V4h8v2" />
+                    <path d="m9 10 1 8" />
+                    <path d="m15 10-1 8" />
+                    <path d="M5 6l1 14h12l1-14" />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
         </div>
