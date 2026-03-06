@@ -348,6 +348,7 @@
         </div>
         <div class="inline-flex select-none items-center rounded-full border border-slate-200 bg-slate-50 p-1 text-sm font-semibold text-slate-600">
           <button
+            v-if="!isMobileViewport"
             type="button"
             class="inline-flex select-none items-center gap-1 rounded-full px-3 py-1 transition"
             :class="previewDevice === 'desktop' ? 'bg-brand text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'"
@@ -380,8 +381,16 @@
               </template>
               <template v-else>
                 <template v-for="(section, idx) in sections" :key="(section as any)?.anchorId || idx">
-                  <div v-if="section" class="space-y-3">
+                    <div v-if="section" class="space-y-3">
                     <div class="group relative overflow-hidden rounded-[32px] border border-transparent shadow transition hover:border-brand/30">
+                      <div
+                        v-if="(section as any).enabled && !isLockedFooterSection(section)"
+                        class="pointer-events-none absolute inset-x-0 top-4 z-10 flex justify-center"
+                      >
+                        <span class="rounded-full bg-slate-900/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-white shadow-lg">
+                          {{ previewEditInstruction }}
+                        </span>
+                      </div>
                       <component
                         v-if="(section as any).enabled"
                         :is="publicComponents[(section as any).type]"
@@ -649,6 +658,11 @@ const colorA = ref(theme.value.color1);
 const colorB = ref(theme.value.color2);
 const ctaColor = ref(theme.value.ctaDefaultColor || fallbackPrimaryColor);
 const previewDevice = ref<"desktop" | "mobile">(editorPrefs.value.previewDevice || "desktop");
+const isMobileViewport = ref(false);
+const previewEditInstruction = computed(() =>
+  isMobileViewport.value ? "Toque aqui para editar" : "Clique aqui para editar"
+);
+const hasWindow = typeof window !== "undefined";
 const toolbarSecondaryButtonClass =
   "inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-white";
 const toolbarPrimaryButtonClass =
@@ -658,6 +672,26 @@ const toolbarWarningButtonClass =
 const toolbarStatusPillClass =
   "inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700";
 let skipCtaWatcher = false;
+let removeViewportWatcher: (() => void) | null = null;
+
+const syncMobileViewport = () => {
+  if (!hasWindow) return;
+  const matches = window.innerWidth < 768;
+  isMobileViewport.value = matches;
+  if (matches && previewDevice.value !== "mobile") {
+    previewDevice.value = "mobile";
+  }
+};
+
+const setupViewportWatcher = () => {
+  if (!hasWindow) return;
+  syncMobileViewport();
+  const handler = () => syncMobileViewport();
+  window.addEventListener("resize", handler);
+  removeViewportWatcher = () => {
+    window.removeEventListener("resize", handler);
+  };
+};
 
 const buildCountdownTargetDate = () => {
   const date = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
@@ -758,7 +792,6 @@ const editingSectionComponent = computed(() => {
   return formComponents[type];
 });
 const isSectionEditorOpen = computed(() => editingSectionIndex.value !== null && !!editingSectionDraft.value);
-const hasWindow = typeof window !== "undefined";
 const getBrowserStorage = () => {
   if (!hasWindow) return null;
   try {
@@ -1193,6 +1226,10 @@ onBeforeUnmount(() => {
   clearPreviewScheduler();
   clearTitleDebounce();
   Object.values(pendingSectionUpdates).forEach(timeout => clearTimeout(timeout));
+  if (removeViewportWatcher) {
+    removeViewportWatcher();
+    removeViewportWatcher = null;
+  }
 });
 
 function defaultSection(type: SectionType): PageSection {
@@ -1849,6 +1886,7 @@ const viewPublicPage = () => {
 };
 
 onMounted(async () => {
+  setupViewportWatcher();
   await ensureProfile();
   await ensureAgencies();
   applyAgencyBranding();
