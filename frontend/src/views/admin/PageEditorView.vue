@@ -391,7 +391,7 @@
                       />
                       <div
                         v-if="(section as any).enabled"
-                        class="pointer-events-none absolute inset-0 z-10 flex flex-col bg-slate-900/80 opacity-0 backdrop-blur-lg transition duration-200 group-hover:opacity-100 group-focus-within:opacity-100"
+                        class="pointer-events-none absolute inset-0 z-10 flex flex-col bg-slate-900/10 opacity-0 transition duration-200 group-hover:opacity-100 group-focus-within:opacity-100"
                       >
                         <div class="flex items-start justify-between gap-3 p-4">
                           <span class="pointer-events-auto inline-flex items-center rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-slate-700">
@@ -399,8 +399,9 @@
                             <span v-if="(section as any).enabled === false" class="ml-1 text-red-500">(desativada)</span>
                           </span>
                         </div>
-                        <div class="pointer-events-auto flex flex-1 items-center justify-center px-4 pb-6">
-                          <template v-if="!isLockedFooterSection(section)">
+                        <div class="flex flex-1 items-center justify-center px-4 pb-6">
+                          <div class="pointer-events-auto rounded-[32px] bg-slate-900/60 px-5 py-4 text-center shadow-xl backdrop-blur-lg">
+                            <template v-if="!isLockedFooterSection(section)">
                             <div class="flex flex-wrap items-center justify-center gap-3">
                               <button
                                 type="button"
@@ -469,6 +470,7 @@
                               Rodapé obrigatório no plano gratuito. Não é possível editar, mover ou remover esta seção.
                             </div>
                           </template>
+                          </div>
                         </div>
                       </div>
                       <div
