@@ -720,10 +720,43 @@ const hasUnsavedChanges = ref(false);
 const initialLoadComplete = ref(false);
 const unsavedNavigationModal = ref({ open: false, saving: false });
 const pendingNavigationPath = ref<string | null>(null);
+const savedStateSnapshot = ref("");
+
+const computeStateSnapshot = () => {
+  const themeSnapshot = {
+    heroTheme: theme.value.heroTheme,
+    sidebarTheme: theme.value.sidebarTheme,
+    ctaTextColor: theme.value.ctaTextColor,
+    ctaDefaultColor: ctaColor.value,
+    color1: colorA.value,
+    color2: colorB.value
+  };
+  const editorSnapshot = {
+    previewLayout: editorPrefs.value.previewLayout,
+    previewDevice: previewDevice.value
+  };
+  return JSON.stringify({
+    title: pageTitle.value,
+    slug: pageSlug.value,
+    theme: themeSnapshot,
+    editor: editorSnapshot,
+    sections: sections.value
+  });
+};
+
+const syncSavedSnapshot = () => {
+  savedStateSnapshot.value = computeStateSnapshot();
+  hasUnsavedChanges.value = false;
+};
+
+const refreshUnsavedState = () => {
+  if (!initialLoadComplete.value) return;
+  const current = computeStateSnapshot();
+  hasUnsavedChanges.value = current !== savedStateSnapshot.value;
+};
 
 const markUnsavedChanges = () => {
-  if (!initialLoadComplete.value) return;
-  hasUnsavedChanges.value = true;
+  refreshUnsavedState();
 };
 
 const isPublished = computed(() => page.value?.status === "published");
@@ -1630,16 +1663,13 @@ const fetchPage = async () => {
     pageSlug.value = shouldReplaceWithGenerated ? generatedSlug : existingSlug || generatedSlug;
 
     hydrateFromConfig(res.data.config_json);
-
+    await nextTick();
+    syncSavedSnapshot();
+    initialLoadComplete.value = true;
     message.value = "";
   } catch (err) {
     console.error(err);
     errorMessage.value = "Não foi possível carregar a página.";
-  } finally {
-    if (!initialLoadComplete.value) {
-      hasUnsavedChanges.value = false;
-      initialLoadComplete.value = true;
-    }
   }
 };
 
@@ -1670,7 +1700,7 @@ const saveConfig = async (): Promise<boolean> => {
 
     message.value = "Configuração salva!";
     showSnackbar("Configuração salva");
-    hasUnsavedChanges.value = false;
+    syncSavedSnapshot();
     return true;
   } catch (err) {
     console.error(err);
