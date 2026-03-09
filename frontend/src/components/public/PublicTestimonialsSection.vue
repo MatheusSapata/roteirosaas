@@ -2,11 +2,18 @@
   <section class="w-full" :style="{ background: section.backgroundColor || '#ffffff' }" :id="section.anchorId || undefined">
     <div class="mx-auto flex max-w-6xl flex-col items-center px-6 py-12">
       <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="accent" />
-      <h1 class="text-center text-3xl font-bold leading-tight text-slate-900 md:text-4xl">
+      <h1 class="text-center text-3xl font-bold leading-tight md:text-4xl" :style="{ color: primaryText }">
         {{ section.title || "Depoimentos de clientes" }}
       </h1>
-      <p class="mt-2 text-center text-sm text-slate-600 md:text-base" v-if="subtitleHtml" v-html="subtitleHtml"></p>
-      <p v-else class="mt-2 text-center text-sm text-slate-600 md:text-base">O que dizem depois de viajar conosco</p>
+      <p
+        class="mt-2 text-center text-sm md:text-base"
+        v-if="subtitleHtml"
+        v-html="subtitleHtml"
+        :style="{ color: mutedText }"
+      ></p>
+      <p v-else class="mt-2 text-center text-sm md:text-base" :style="{ color: mutedText }">
+        O que dizem depois de viajar conosco
+      </p>
 
       <div class="mt-8 grid w-full gap-6 md:gap-6 justify-items-stretch" :class="gridClass">
         <article
@@ -64,6 +71,7 @@ import type { TestimonialsSection } from "../../types/page";
 import SectionHeadingChip from "./SectionHeadingChip.vue";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import { sanitizeHtml } from "../../utils/sanitizeHtml";
+import { deriveTextPalette } from "../../utils/colorContrast";
 
 const props = defineProps<{ section: TestimonialsSection }>();
 const headingDefaults = getSectionHeadingDefaults("testimonials");
@@ -89,6 +97,9 @@ const subtitleHtml = computed(() => {
   const html = sanitizeHtml(props.section.subtitle);
   return html || "";
 });
+const textPalette = computed(() => deriveTextPalette(props.section.textColor));
+const primaryText = computed(() => textPalette.value.primary);
+const mutedText = computed(() => textPalette.value.muted);
 
 const initials = (name?: string) => {
   if (!name) return "—";

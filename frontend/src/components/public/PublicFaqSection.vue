@@ -6,8 +6,8 @@
           <div class="flex justify-center">
             <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="accent" />
           </div>
-          <h1 class="mt-3 text-2xl font-bold text-slate-900">{{ title }}</h1>
-          <p class="text-sm text-slate-500">{{ subtitle }}</p>
+          <h1 class="mt-3 text-2xl font-bold" :style="{ color: primaryText }">{{ title }}</h1>
+          <p class="text-sm" :style="{ color: mutedText }">{{ subtitle }}</p>
         </div>
 
         <!-- Accordion layout -->
@@ -72,6 +72,7 @@ import type { FaqSection } from "../../types/page";
 import SectionHeadingChip from "./SectionHeadingChip.vue";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
+import { deriveTextPalette } from "../../utils/colorContrast";
 
 const props = defineProps<{ section: FaqSection }>();
 const headingDefaults = getSectionHeadingDefaults("faq");
@@ -127,6 +128,9 @@ const headingLabel = computed(() => props.section.headingLabel ?? headingDefault
 const headingStyle = computed(() => props.section.headingLabelStyle || headingDefaults.style);
 const title = computed(() => (props.section.title && props.section.title.trim().length ? props.section.title : defaultTitle));
 const subtitle = computed(() => (props.section.subtitle && props.section.subtitle.trim().length ? props.section.subtitle : defaultSubtitle));
+const textPalette = computed(() => deriveTextPalette(props.section.textColor));
+const primaryText = computed(() => textPalette.value.primary);
+const mutedText = computed(() => textPalette.value.muted);
 </script>
 
 

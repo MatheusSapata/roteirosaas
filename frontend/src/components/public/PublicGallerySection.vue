@@ -6,8 +6,8 @@
           <div class="flex justify-center">
             <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="accent" />
           </div>
-            <h1 class="mt-3 text-2xl font-bold text-slate-900">Explore o destino</h1>
-          <p class="text-sm text-slate-500">Imagens reais para sentir o clima da viagem.</p>
+            <h1 class="mt-3 text-2xl font-bold" :style="{ color: primaryText }">Explore o destino</h1>
+          <p class="text-sm" :style="{ color: mutedText }">Imagens reais para sentir o clima da viagem.</p>
         </div>
 
         <!-- Layout mosaico -->
@@ -62,7 +62,9 @@
               <div class="absolute inset-0 bg-gradient-to-t from-slate-900/40 via-transparent to-transparent opacity-0 transition group-hover:opacity-100"></div>
             </div>
           </div>
-          <p class="text-xs text-slate-500" :style="{ color: accent }">Passe para o lado para ver mais fotos</p>
+          <p class="text-xs" :style="{ color: mutedText }">
+            Passe para o lado para ver mais fotos
+          </p>
         </div>
       </div>
     </div>
@@ -75,6 +77,7 @@ import { resolveMediaUrl } from "../../utils/media";
 import type { GallerySection } from "../../types/page";
 import SectionHeadingChip from "./SectionHeadingChip.vue";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
+import { deriveTextPalette } from "../../utils/colorContrast";
 
 const props = defineProps<{ section: GallerySection }>();
 const headingDefaults = getSectionHeadingDefaults("gallery");
@@ -98,5 +101,8 @@ const resolvedImages = computed(() =>
     .map(img => resolveMediaUrl(img) || img)
     .filter(Boolean)
 );
+const textPalette = computed(() => deriveTextPalette(props.section.textColor));
+const primaryText = computed(() => textPalette.value.primary);
+const mutedText = computed(() => textPalette.value.muted);
 </script>
 

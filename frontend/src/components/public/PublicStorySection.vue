@@ -5,8 +5,15 @@
       <div v-if="isSingle" class="flex w-full flex-col" :class="singleLayoutClass">
         <div :class="textBlockClass">
           <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="ctaColor" />
-        <h1 class="text-3xl font-bold leading-tight text-slate-900 md:text-4xl">{{ section.title }}</h1>
-          <div v-if="storySubtitleHtml" class="text-base leading-relaxed text-slate-600 md:text-lg" v-html="storySubtitleHtml"></div>
+          <h1 class="text-3xl font-bold leading-tight md:text-4xl" :style="{ color: primaryText }">
+            {{ section.title }}
+          </h1>
+          <div
+            v-if="storySubtitleHtml"
+            class="text-base leading-relaxed md:text-lg"
+            :style="{ color: mutedText }"
+            v-html="storySubtitleHtml"
+          ></div>
           <div class="flex flex-wrap items-center gap-4">
             <a
               v-if="ctaEnabled && ctaHasTarget"
@@ -44,10 +51,17 @@
 
       <!-- Layout com galeria -->
       <div v-else class="grid w-full" :class="galleryLayoutClass">
-        <div :class="['text-slate-800', textBlockClass, imagePosition === 'left' ? 'md:order-2' : 'md:order-1']">
+        <div :class="[textBlockClass, imagePosition === 'left' ? 'md:order-2' : 'md:order-1']">
           <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="ctaColor" />
-        <h1 class="text-3xl font-bold leading-tight text-slate-900 md:text-4xl">{{ section.title }}</h1>
-          <div v-if="storySubtitleHtml" class="text-base leading-relaxed text-slate-600 md:text-lg" v-html="storySubtitleHtml"></div>
+          <h1 class="text-3xl font-bold leading-tight md:text-4xl" :style="{ color: primaryText }">
+            {{ section.title }}
+          </h1>
+          <div
+            v-if="storySubtitleHtml"
+            class="text-base leading-relaxed md:text-lg"
+            :style="{ color: mutedText }"
+            v-html="storySubtitleHtml"
+          ></div>
           <div class="flex flex-wrap items-center gap-4">
             <a
               v-if="ctaEnabled && ctaHasTarget"
@@ -108,6 +122,7 @@ import type { StorySection } from "../../types/page";
 import SectionHeadingChip from "./SectionHeadingChip.vue";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import { sanitizeHtml } from "../../utils/sanitizeHtml";
+import { deriveTextPalette } from "../../utils/colorContrast";
 
 const props = defineProps<{ section: StorySection; previewDevice?: "desktop" | "mobile" }>();
 const headingDefaults = getSectionHeadingDefaults("story");
@@ -140,6 +155,9 @@ const outerClass = computed(() =>
 const headingLabel = computed(() => props.section.headingLabel ?? props.section.badge ?? headingDefaults.label);
 const headingStyle = computed(() => props.section.headingLabelStyle || headingDefaults.style);
 const storySubtitleHtml = computed(() => sanitizeHtml(props.section.subtitle));
+const textPalette = computed(() => deriveTextPalette(props.section.textColor));
+const primaryText = computed(() => textPalette.value.primary);
+const mutedText = computed(() => textPalette.value.muted);
 const singleLayoutClass = computed(() => {
   const classes: string[] = [];
   if (props.section.borderEnabled) {
@@ -165,8 +183,8 @@ const galleryLayoutClass = computed(() => {
 });
 const textBlockClass = computed(() =>
   props.section.borderEnabled
-    ? "flex-1 space-y-5 text-slate-800 bg-white px-6 py-8 md:px-10 md:py-12 flex flex-col justify-center"
-    : "flex-1 space-y-5 text-slate-800 flex flex-col justify-center"
+    ? "flex-1 space-y-5 bg-white px-6 py-8 md:px-10 md:py-12 flex flex-col justify-center"
+    : "flex-1 space-y-5 flex flex-col justify-center"
 );
 const mediaContainerClass = computed(() =>
   props.section.borderEnabled ? "flex-1 flex flex-col w-full md:items-stretch" : "flex-1 flex flex-col w-full md:items-stretch"
