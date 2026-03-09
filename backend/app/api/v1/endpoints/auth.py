@@ -42,14 +42,14 @@ class RefreshTokenRequest(BaseModel):
 def register(user_in: UserCreate, db: Session = Depends(get_db)) -> UserOut:
     existing = db.query(User).filter(User.email == user_in.email).first()
     if existing:
-        raise HTTPException(status_code=400, detail="Email already registered")
+        raise HTTPException(status_code=400, detail="Email já registrado.")
     existing_cpf = db.query(User).filter(User.cpf == user_in.cpf).first()
     if existing_cpf:
-        raise HTTPException(status_code=400, detail="CPF already registered")
+        raise HTTPException(status_code=400, detail="CPF já registrado.")
     if user_in.cnpj:
         existing_cnpj = db.query(User).filter(User.cnpj == user_in.cnpj).first()
         if existing_cnpj:
-            raise HTTPException(status_code=400, detail="CNPJ already registered")
+            raise HTTPException(status_code=400, detail="CNPJ já registrado.")
     try:
         auth_service.validate_password_strength(user_in.password)
     except ValueError as exc:
@@ -109,7 +109,7 @@ def login(
     user = auth_service.authenticate_user(db, form_data.username, form_data.password)
     if not user:
         login_limiter.register_failure(client_ip)
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Email ou senha incorretos.")
     login_limiter.clear(client_ip)
     access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
     access_token = auth_service.create_access_token(data={"sub": user.email}, expires_delta=access_token_expires)
@@ -143,12 +143,12 @@ def update_me(user_in: UserUpdate, db: Session = Depends(get_db), current_user: 
     if user_in.cpf:
         existing_cpf = db.query(User).filter(User.cpf == user_in.cpf, User.id != current_user.id).first()
         if existing_cpf:
-            raise HTTPException(status_code=400, detail="CPF already registered")
+            raise HTTPException(status_code=400, detail="CPF já registrado.")
 
     if user_in.cnpj:
         existing_cnpj = db.query(User).filter(User.cnpj == user_in.cnpj, User.id != current_user.id).first()
         if existing_cnpj:
-            raise HTTPException(status_code=400, detail="CNPJ already registered")
+            raise HTTPException(status_code=400, detail="CNPJ já registrado.")
 
     if user_in.password:
         try:

@@ -26,7 +26,7 @@ def get_db() -> Generator[Session, None, None]:
 def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
+        detail="Não foi possível validar suas credenciais.",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
@@ -46,11 +46,11 @@ def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_
 
 def get_current_active_user(current_user: User = Depends(get_current_user)) -> User:
     if not current_user.is_active:
-        raise HTTPException(status_code=400, detail="Inactive user")
+        raise HTTPException(status_code=400, detail="Usuário inativo.")
     return current_user
 
 
 def get_current_superuser(current_user: User = Depends(get_current_user)) -> User:
     if not current_user.is_superuser:
-        raise HTTPException(status_code=403, detail="Insufficient permissions")
+        raise HTTPException(status_code=403, detail="Permissões insuficientes.")
     return current_user
