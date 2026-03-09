@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -14,6 +15,8 @@ from app.services.trial_tags import schedule_trial_tag_job
 settings = get_settings()
 
 Base.metadata.create_all(bind=engine)
+
+logging.basicConfig(level=logging.INFO)
 
 app = FastAPI(title=settings.app_name)
 
