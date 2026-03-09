@@ -14,7 +14,7 @@ router = APIRouter()
 def ensure_agency_member(db: Session, agency_id: int, user_id: int) -> None:
     membership = db.query(AgencyUser).filter(AgencyUser.agency_id == agency_id, AgencyUser.user_id == user_id).first()
     if not membership:
-        raise HTTPException(status_code=403, detail="Not part of this agency")
+        raise HTTPException(status_code=403, detail="Você não faz parte desta agência.")
 
 
 @router.post("/upload", response_model=MediaAssetOut)
@@ -38,8 +38,8 @@ async def upload_media(
 def get_media(media_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)) -> MediaAssetOut:
     asset = db.query(MediaAsset).filter(MediaAsset.id == media_id).first()
     if not asset:
-        raise HTTPException(status_code=404, detail="Media not found")
+        raise HTTPException(status_code=404, detail="Mídia não encontrada.")
     membership = db.query(AgencyUser).filter(AgencyUser.agency_id == asset.agency_id, AgencyUser.user_id == current_user.id).first()
     if not membership:
-        raise HTTPException(status_code=403, detail="Not part of this agency")
+        raise HTTPException(status_code=403, detail="Você não faz parte desta agência.")
     return asset

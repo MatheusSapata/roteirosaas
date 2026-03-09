@@ -20,7 +20,7 @@ def get_template(
 ) -> PageTemplateOut:
     template = db.query(PageTemplate).filter(PageTemplate.id == template_id).first()
     if not template:
-        raise HTTPException(status_code=404, detail="Template not found")
+        raise HTTPException(status_code=404, detail="Modelo não encontrado.")
     return template
 
 
@@ -28,7 +28,7 @@ def get_template(
 def create_template(template_in: PageTemplateCreate, db: Session = Depends(get_db)) -> PageTemplateOut:
     existing = db.query(PageTemplate).filter(PageTemplate.slug == template_in.slug).first()
     if existing:
-        raise HTTPException(status_code=400, detail="Template slug already exists")
+        raise HTTPException(status_code=400, detail="Slug de modelo já existe.")
     template = PageTemplate(**template_in.dict())
     db.add(template)
     db.commit()
@@ -40,7 +40,7 @@ def create_template(template_in: PageTemplateCreate, db: Session = Depends(get_d
 def update_template(template_id: int, template_in: PageTemplateUpdate, db: Session = Depends(get_db)) -> PageTemplateOut:
     template = db.query(PageTemplate).filter(PageTemplate.id == template_id).first()
     if not template:
-        raise HTTPException(status_code=404, detail="Template not found")
+        raise HTTPException(status_code=404, detail="Modelo não encontrado.")
     for key, value in template_in.dict(exclude_unset=True).items():
         setattr(template, key, value)
     db.add(template)

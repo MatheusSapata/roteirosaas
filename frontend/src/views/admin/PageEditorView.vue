@@ -218,14 +218,18 @@
         <div class="mt-4 grid gap-4 md:grid-cols-2">
           <div>
             <label class="text-sm font-semibold text-slate-600">Título</label>
-            <input v-model.lazy="pageTitle" @blur="scheduleWhatsAppUpdate" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
+            <input v-model="pageTitle" @blur="scheduleWhatsAppUpdate" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
           </div>
           <div>
             <div class="flex items-center gap-2">
               <label class="text-sm font-semibold text-slate-600">Slug</label>
               <span class="text-xs text-slate-500">Slug é a parte do link depois da barra, sem espaços ou acentos. Ex.: meu-roteiro-incrivel.</span>
             </div>
-            <input v-model.lazy="pageSlug" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
+            <input
+              :value="pageSlug"
+              @input="handleSlugInput"
+              class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2"
+            />
           </div>
         </div>
         <div class="mt-4 grid gap-4 text-sm text-slate-600 md:grid-cols-2">
@@ -569,6 +573,7 @@ import { useRoute, useRouter } from "vue-router";
 import api from "../../services/api";
 import { useAuthStore } from "../../store/useAuthStore";
 import { useAgencyStore } from "../../store/useAgencyStore";
+import { slugify } from "../../utils/slugify";
 import type {
   CtaSection,
   EditorPreferences,
@@ -614,12 +619,46 @@ const pageId = Number(route.params.id);
 const page = ref<Page | null>(null);
 const pageTitle = ref("");
 const pageSlug = ref("");
+const slugAutoSyncEnabled = ref(true);
+const PAGE_SLUG_FALLBACK = "pagina";
+
+const normalizeSlugInput = (value: string | undefined | null) => {
+  const trimmed = (value || "").trim();
+  if (!trimmed) return "";
+  return slugify(trimmed, PAGE_SLUG_FALLBACK);
+};
+
+const handleSlugInput = (event: Event) => {
+  slugAutoSyncEnabled.value = false;
+  const target = event.target as HTMLInputElement;
+  pageSlug.value = normalizeSlugInput(target.value);
+};
+
+watch(
+  pageTitle,
+  newTitle => {
+    if (!slugAutoSyncEnabled.value) return;
+    pageSlug.value = normalizeSlugInput(newTitle);
+  }
+);
 
 const auth = useAuthStore();
 const agencyStore = useAgencyStore();
 
 const message = ref("");
 const errorMessage = ref("");
+
+const ensureValidPageSlug = () => {
+  const normalized = normalizeSlugInput(pageSlug.value);
+  if (!normalized) {
+    const slugError = "Defina um slug válido para a página.";
+    errorMessage.value = slugError;
+    showSnackbar(slugError);
+    return false;
+  }
+  pageSlug.value = normalized;
+  return true;
+};
 
 const limitModal = ref({ open: false, message: "" });
 const successModal = ref({ open: false });
@@ -1467,6 +1506,7 @@ const hydrateFromConfig = (config?: PageConfig | string | null) => {
   }
 };
 
+const defaultPageSlugPattern = /^roteiro-\d+$/i;
 const fetchPage = async () => {
   if (!auth.token) {
     errorMessage.value = "Faça login novamente para editar.";
@@ -1485,8 +1525,13 @@ const fetchPage = async () => {
   try {
     const res = await api.get<Page>(`/pages/${pageId}`);
     page.value = res.data;
-    pageTitle.value = res.data.title;
-    pageSlug.value = res.data.slug;
+    const loadedTitle = res.data.title || "";
+    const existingSlug = (res.data.slug || "").trim();
+    const generatedSlug = normalizeSlugInput(loadedTitle);
+    const shouldReplaceWithGenerated = !existingSlug || defaultPageSlugPattern.test(existingSlug);
+    slugAutoSyncEnabled.value = shouldReplaceWithGenerated || existingSlug === generatedSlug;
+    pageTitle.value = loadedTitle;
+    pageSlug.value = shouldReplaceWithGenerated ? generatedSlug : existingSlug || generatedSlug;
 
     hydrateFromConfig(res.data.config_json);
 
@@ -1497,14 +1542,17 @@ const fetchPage = async () => {
   }
 };
 
-const saveConfig = async () => {
+const saveConfig = async (): Promise<boolean> => {
   if (!auth.token) {
-    errorMessage.value = "Sessão expirada. Faça login novamente.";
-    return;
+    errorMessage.value = "Sess�o expirada. Fa�a login novamente.";
+    return false;
   }
 
   errorMessage.value = "";
   message.value = "";
+  if (!ensureValidPageSlug()) {
+    return false;
+  }
 
   try {
     flushPendingSectionUpdates();
@@ -1512,23 +1560,25 @@ const saveConfig = async () => {
     if (validationError) {
       errorMessage.value = validationError;
       showSnackbar(validationError);
-      return;
+      return false;
     }
     await api.put(`/pages/${pageId}`, { title: pageTitle.value, slug: pageSlug.value });
 
     const configPayload = buildConfig();
     await api.put(`/pages/${pageId}/config`, { config: configPayload });
 
-    message.value = "Configuração salva!";
-    showSnackbar("Configuração salva");
+    message.value = "Configura��o salva!";
+    showSnackbar("Configura��o salva");
+    return true;
   } catch (err) {
     console.error(err);
     const detail = (err as any)?.response?.data?.detail;
     if (detail) {
       limitModal.value = { open: true, message: String(detail) };
     } else {
-      errorMessage.value = "Erro ao salvar configuração.";
+      errorMessage.value = "Erro ao salvar configura��o.";
     }
+    return false;
   }
 };
 
@@ -1542,7 +1592,8 @@ const publishPage = async () => {
   message.value = "";
 
   try {
-    await saveConfig();
+    const saved = await saveConfig();
+    if (!saved) return;
     const res = await api.post(`/pages/${pageId}/publish`, { publish: true });
     page.value = res.data;
 
@@ -1908,6 +1959,14 @@ onMounted(async () => {
   nextTick(() => setupSectionToolbarObserver());
 });
 </script>
+
+
+
+
+
+
+
+
 
 
 

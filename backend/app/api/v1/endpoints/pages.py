@@ -21,7 +21,7 @@ router = APIRouter()
 def ensure_agency_member(db: Session, agency_id: int, user_id: int) -> None:
     membership = db.query(AgencyUser).filter(AgencyUser.agency_id == agency_id, AgencyUser.user_id == user_id).first()
     if not membership:
-        raise HTTPException(status_code=403, detail="Not part of this agency")
+        raise HTTPException(status_code=403, detail="Você não faz parte desta agência.")
 
 
 def normalize_config(raw: Any) -> Any:
@@ -132,7 +132,7 @@ def get_page(
 ) -> PageOut:
     page = db.query(Page).filter(Page.id == page_id).first()
     if not page:
-        raise HTTPException(status_code=404, detail="Page not found")
+        raise HTTPException(status_code=404, detail="Página não encontrada.")
     ensure_agency_member(db, page.agency_id, current_user.id)
     plan = resolve_agency_plan(db, page.agency_id)
     page.config_json = apply_free_footer(normalize_config(page.config_json), plan)
@@ -149,7 +149,7 @@ def create_page(
     if page_in.template_id:
         template = db.query(PageTemplate).filter(PageTemplate.id == page_in.template_id).first()
         if not template:
-            raise HTTPException(status_code=404, detail="Template not found")
+            raise HTTPException(status_code=404, detail="Modelo não encontrado.")
     payload = page_in.dict()
     payload["config_json"] = normalize_config(payload.get("config_json"))
     page = Page(**payload)
@@ -185,7 +185,7 @@ def update_page(
 ) -> PageOut:
     page = db.query(Page).filter(Page.id == page_id).first()
     if not page:
-        raise HTTPException(status_code=404, detail="Page not found")
+        raise HTTPException(status_code=404, detail="Página não encontrada.")
     ensure_agency_member(db, page.agency_id, current_user.id)
     plan = resolve_agency_plan(db, page.agency_id)
     updates = page_in.dict(exclude_unset=True)
@@ -211,7 +211,7 @@ def update_page_config(
 ) -> PageOut:
     page = db.query(Page).filter(Page.id == page_id).first()
     if not page:
-        raise HTTPException(status_code=404, detail="Page not found")
+        raise HTTPException(status_code=404, detail="Página não encontrada.")
     ensure_agency_member(db, page.agency_id, current_user.id)
     plan = resolve_agency_plan(db, page.agency_id)
     normalized = normalize_config(payload.config)
@@ -233,7 +233,7 @@ def publish_page(
 ) -> PageOut:
     page = db.query(Page).filter(Page.id == page_id).first()
     if not page:
-        raise HTTPException(status_code=404, detail="Page not found")
+        raise HTTPException(status_code=404, detail="Página não encontrada.")
     ensure_agency_member(db, page.agency_id, current_user.id)
     plan = resolve_agency_plan(db, page.agency_id)
     # aplica limites por plano e enforce de seções/rodapé
@@ -264,7 +264,7 @@ def delete_page(
 ) -> JSONResponse:
     page = db.query(Page).filter(Page.id == page_id).first()
     if not page:
-        raise HTTPException(status_code=404, detail="Page not found")
+        raise HTTPException(status_code=404, detail="Página não encontrada.")
     ensure_agency_member(db, page.agency_id, current_user.id)
     agency = page.agency
     if agency and agency.default_page_id == page.id:
@@ -283,13 +283,13 @@ def set_default_page(
 ) -> PageOut:
     page = db.query(Page).filter(Page.id == page_id).first()
     if not page:
-        raise HTTPException(status_code=404, detail="Page not found")
+        raise HTTPException(status_code=404, detail="Página não encontrada.")
     ensure_agency_member(db, page.agency_id, current_user.id)
     if page.status != PageStatus.published:
-        raise HTTPException(status_code=400, detail="Only published pages can be set as default")
+        raise HTTPException(status_code=400, detail="Apenas páginas publicadas podem ser definidas como padrão.")
     agency = page.agency or db.query(Agency).filter(Agency.id == page.agency_id).first()
     if not agency:
-        raise HTTPException(status_code=404, detail="Agency not found")
+        raise HTTPException(status_code=404, detail="Agência não encontrada.")
     agency.default_page_id = page.id
     db.add(agency)
     db.commit()
@@ -307,7 +307,7 @@ def get_public_page(agency_slug: str, page_slug: str, db: Session = Depends(get_
         .first()
     )
     if not page:
-        raise HTTPException(status_code=404, detail="Page not found or not published")
+        raise HTTPException(status_code=404, detail="Página não encontrada ou não publicada.")
     plan = resolve_agency_plan(db, page.agency_id)
     branding = {
         "agency_name": page.agency.name,

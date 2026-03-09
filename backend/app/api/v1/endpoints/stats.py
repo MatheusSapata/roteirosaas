@@ -37,13 +37,13 @@ def ensure_agency_member(db: Session, agency_id: int, user_id: int) -> None:
         .first()
     )
     if not membership:
-        raise HTTPException(status_code=403, detail="Not part of this agency")
+        raise HTTPException(status_code=403, detail="Você não faz parte desta agência.")
 
 
 def ensure_published_page(db: Session, page_id: int) -> Page:
     page = db.query(Page).filter(Page.id == page_id, Page.status == "published").first()
     if not page:
-        raise HTTPException(status_code=404, detail="Page not found or not published")
+        raise HTTPException(status_code=404, detail="Página não encontrada ou não publicada.")
     return page
 
 
@@ -117,7 +117,7 @@ def stats_overview(
     if page_id is not None:
         page = ensure_published_page(db, page_id)
         if page.agency_id != agency_id:
-            raise HTTPException(status_code=403, detail="Página não pertence à agência solicitada")
+            raise HTTPException(status_code=403, detail="Página não pertence à agência solicitada.")
         base_query = base_query.filter(PageVisitStats.page_id == page_id)
 
     current_rows = base_query.filter(PageVisitStats.date >= since).all()

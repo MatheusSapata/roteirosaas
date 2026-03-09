@@ -48,7 +48,7 @@ def get_public_page(agency_slug: str, page_slug: str, db: Session = Depends(get_
         .first()
     )
     if not page:
-        raise HTTPException(status_code=404, detail="Page not found or not published")
+        raise HTTPException(status_code=404, detail="Página não encontrada ou não publicada.")
     return serialize_public_page(page, agency_slug, db)
 
 
@@ -57,12 +57,12 @@ def get_default_public_page(agency_slug: str, db: Session = Depends(get_db)) -> 
     normalized_slug = agency_slug.lower()
     agency = db.query(Agency).filter(func.lower(Agency.slug) == normalized_slug).first()
     if not agency or not agency.default_page_id:
-        raise HTTPException(status_code=404, detail="Default page not configured")
+        raise HTTPException(status_code=404, detail="Página padrão não configurada.")
     page = (
         db.query(Page)
         .filter(Page.id == agency.default_page_id, Page.status == "published")
         .first()
     )
     if not page:
-        raise HTTPException(status_code=404, detail="Default page not found or unpublished")
+        raise HTTPException(status_code=404, detail="Página padrão não encontrada ou não publicada.")
     return serialize_public_page(page, agency_slug, db)

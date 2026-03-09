@@ -14,10 +14,10 @@ router = APIRouter()
 def ensure_membership(db: Session, agency_id: int, user_id: int) -> Agency:
     agency = db.query(Agency).filter(Agency.id == agency_id).first()
     if not agency:
-        raise HTTPException(status_code=404, detail="Agency not found")
+        raise HTTPException(status_code=404, detail="Agência não encontrada.")
     membership = db.query(AgencyUser).filter(AgencyUser.agency_id == agency_id, AgencyUser.user_id == user_id).first()
     if not membership:
-        raise HTTPException(status_code=403, detail="Not part of this agency")
+        raise HTTPException(status_code=403, detail="Você não faz parte desta agência.")
     return agency
 
 
@@ -36,11 +36,7 @@ def create_agency(agency_in: AgencyCreate, current_user: User = Depends(get_curr
 
     existing_slug = db.query(Agency).filter(func.lower(Agency.slug) == normalized_slug).first()
     if existing_slug:
-        raise HTTPException(status_code=400, detail="Slug já está em uso")
-
-    existing_name = db.query(Agency).filter(func.lower(Agency.name) == normalized_name.lower()).first()
-    if existing_name:
-        raise HTTPException(status_code=400, detail="Nome de agência já está em uso")
+        raise HTTPException(status_code=400, detail="Slug já está em uso.")
 
     payload = agency_in.dict()
     payload["name"] = normalized_name
@@ -73,19 +69,11 @@ def update_agency(
             .first()
         )
         if existing_slug:
-            raise HTTPException(status_code=400, detail="Slug já está em uso")
+            raise HTTPException(status_code=400, detail="Slug já está em uso.")
         update_data["slug"] = normalized_slug
 
     if "name" in update_data and update_data["name"]:
-        normalized_name = update_data["name"].strip()
-        existing_name = (
-            db.query(Agency)
-            .filter(func.lower(Agency.name) == normalized_name.lower(), Agency.id != agency.id)
-            .first()
-        )
-        if existing_name:
-            raise HTTPException(status_code=400, detail="Nome de agência já está em uso")
-        update_data["name"] = normalized_name
+        update_data["name"] = update_data["name"].strip()
 
     for key, value in update_data.items():
         setattr(agency, key, value)
