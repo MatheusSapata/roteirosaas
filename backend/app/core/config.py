@@ -35,6 +35,15 @@ class Settings(BaseSettings):
     azure_storage_connection_string: str | None = Field(None, alias="AZURE_STORAGE_CONNECTION_STRING")
     azure_storage_container: str | None = Field(None, alias="AZURE_STORAGE_CONTAINER")
     azure_storage_base_url: str | None = Field(None, alias="AZURE_STORAGE_BASE_URL")
+    viajechat_api_base_url: str = Field("https://painel.viajechat.com.br/api/v1", alias="VIAJECHAT_API_BASE_URL")
+    viajechat_api_key: str | None = Field(None, alias="VIAJECHAT_API_KEY")
+    viajechat_tag_trial_5days: str | None = Field(None, alias="VIAJECHAT_TAG_TRIAL_5DAYS")
+    viajechat_tag_trial_3days: str | None = Field(None, alias="VIAJECHAT_TAG_TRIAL_3DAYS")
+    viajechat_tag_trial_1day: str | None = Field(None, alias="VIAJECHAT_TAG_TRIAL_1DAY")
+    viajechat_tag_trial_overdue: str | None = Field(None, alias="VIAJECHAT_TAG_TRIAL_OVERDUE_1DAY")
+    trial_tag_job_hour: int = Field(8, alias="TRIAL_TAG_JOB_HOUR")
+    trial_tag_job_minute: int = Field(0, alias="TRIAL_TAG_JOB_MINUTE")
+    trial_tag_job_timezone: str = Field("America/Sao_Paulo", alias="TRIAL_TAG_JOB_TIMEZONE")
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False, populate_by_name=True, extra="ignore")
 
