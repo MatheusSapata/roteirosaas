@@ -6,8 +6,8 @@
           <div class="flex justify-center">
             <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="accent" />
           </div>
-          <h1 class="mt-3 text-2xl font-bold text-slate-900">{{ title }}</h1>
-          <p class="text-sm text-slate-500">{{ subtitle }}</p>
+          <h1 class="mt-3 text-2xl font-bold" :style="{ color: primaryText }">{{ title }}</h1>
+          <p class="text-sm" :style="{ color: mutedText }">{{ subtitle }}</p>
         </div>
 
         <div class="space-y-8">
@@ -18,33 +18,37 @@
               'relative flex flex-col gap-4 rounded-2xl border p-5 text-center transition md:flex-row md:items-center md:justify-between md:text-left',
               item.highlight
                 ? 'border-transparent text-white shadow-xl hover:-translate-y-1 hover:shadow-2xl'
-                : 'border-slate-100 bg-white/95 text-slate-900 hover:-translate-y-0.5 hover:shadow-lg'
+                : 'border-slate-100 bg-white/95 hover:-translate-y-0.5 hover:shadow-lg'
             ]"
             :style="item.highlight ? highlightCardStyle : undefined"
           >
             <div class="space-y-2 text-center md:text-left">
               <p
                 v-if="item.titleLabel"
-                class="text-xs uppercase tracking-[0.2em] md:mt-0"
-                :class="[item.highlight ? 'text-white/80' : 'text-slate-500', 'mt-4']"
+                class="mt-4 text-xs uppercase tracking-[0.2em] md:mt-0"
+                :style="item.highlight ? { color: 'rgba(255,255,255,0.8)' } : { color: subtleText }"
               >
                 {{ item.titleLabel.toUpperCase() }}
               </p>
-              <p class="text-xl font-semibold" :class="item.highlight ? 'text-white' : 'text-slate-900'">{{ item.title }}</p>
+              <p class="text-xl font-semibold" :style="{ color: item.highlight ? '#ffffff' : primaryText }">{{ item.title }}</p>
             </div>
             <div class="flex flex-col items-center gap-4 md:flex-row md:items-center md:justify-between">
               <div class="space-y-1 md:text-right">
                 <p
                   v-if="item.priceLabel"
                   class="text-sm font-medium"
-                  :class="item.highlight ? 'text-white/80' : 'text-slate-500'"
+                  :style="item.highlight ? { color: 'rgba(255,255,255,0.8)' } : { color: mutedText }"
                 >
                   {{ item.priceLabel }}
                 </p>
                 <p class="text-3xl font-bold" :style="{ color: item.highlight ? '#ffffff' : accent }">
                   {{ formatPrice(item.price, item.currency) }}
                 </p>
-                <p v-if="item.description" class="text-xs" :class="item.highlight ? 'text-white/80' : 'text-slate-500'">
+                <p
+                  v-if="item.description"
+                  class="text-xs"
+                  :style="item.highlight ? { color: 'rgba(255,255,255,0.8)' } : { color: mutedText }"
+                >
                   {{ item.description }}
                 </p>
               </div>
@@ -76,7 +80,7 @@
 
         </div>
 
-        <p v-if="section.description" class="mt-6 text-sm text-slate-500 text-center md:text-left">
+        <p v-if="section.description" class="mt-6 text-sm text-center md:text-left" :style="{ color: mutedText }">
           {{ section.description }}
         </p>
       </div>
@@ -90,6 +94,7 @@ import type { CurrencyCode, PriceItem, PricesSection } from "../../types/page";
 import { isWhatsappLink } from "../../utils/links";
 import SectionHeadingChip from "./SectionHeadingChip.vue";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
+import { deriveTextPalette } from "../../utils/colorContrast";
 
 const props = defineProps<{ section: PricesSection }>();
 
@@ -128,6 +133,11 @@ const highlightCardStyle = computed(() => ({
   color: "#fff",
   boxShadow: `0 25px 60px -30px ${highlightShadow.value}`
 }));
+const textPalette = computed(() => deriveTextPalette(props.section.textColor));
+const primaryText = computed(() => textPalette.value.primary);
+const secondaryText = computed(() => textPalette.value.secondary);
+const mutedText = computed(() => textPalette.value.muted);
+const subtleText = computed(() => textPalette.value.subtle);
 const badgeStyle = (highlight: boolean) =>
   highlight
     ? { background: "#ffffff", color: accent.value, borderColor: "#ffffff" }

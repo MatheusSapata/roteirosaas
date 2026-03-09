@@ -7,8 +7,8 @@
             <div class="mb-2 flex justify-center">
               <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="accent" />
             </div>
-            <h1 class="text-2xl font-bold text-slate-900">{{ section.title || defaultTitle }}</h1>
-            <p class="text-sm text-slate-500">{{ section.subtitle || defaultSubtitle }}</p>
+            <h1 class="text-2xl font-bold" :style="{ color: primaryText }">{{ section.title || defaultTitle }}</h1>
+            <p class="text-sm" :style="{ color: mutedText }">{{ section.subtitle || defaultSubtitle }}</p>
           </div>
         </div>
 
@@ -151,6 +151,7 @@ import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import { sanitizeHtml } from "../../utils/sanitizeHtml";
 import { resolveMediaUrl } from "../../utils/media";
 import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
+import { deriveTextPalette } from "../../utils/colorContrast";
 
 const props = defineProps<{ section: ItinerarySection }>();
 const branding = inject(PUBLIC_BRANDING_KEY, null);
@@ -183,6 +184,9 @@ const isLight = (hex?: string) => {
 const accent = computed(() => props.section.ctaColor || brandingPrimary.value || defaultAccent);
 const headingLabel = computed(() => props.section.headingLabel ?? headingDefaults.label);
 const headingStyle = computed(() => props.section.headingLabelStyle || headingDefaults.style);
+const textPalette = computed(() => deriveTextPalette(props.section.textColor));
+const primaryText = computed(() => textPalette.value.primary);
+const mutedText = computed(() => textPalette.value.muted);
 const dayDescriptionHtml = (text?: string) => sanitizeHtml(text);
 const resolveDayImage = (image?: string) => {
   if (!image) return "";

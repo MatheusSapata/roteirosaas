@@ -15,6 +15,7 @@ export interface SectionBase {
   type: SectionType;
   enabled: boolean;
   backgroundColor?: string;
+  textColor?: string;
   fullWidth?: boolean;
   anchorId?: string;
   headingLabel?: string;

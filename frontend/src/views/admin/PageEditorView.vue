@@ -70,7 +70,8 @@
 
         <button
           @click="saveConfig"
-          :class="toolbarPrimaryButtonClass"
+          :disabled="!hasUnsavedChanges"
+          :class="[toolbarPrimaryButtonClass, { 'opacity-60 cursor-not-allowed': !hasUnsavedChanges }]"
         >
           Salvar
         </button>
@@ -121,6 +122,45 @@
             class="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white shadow hover:bg-brand-dark"
           >
             Ver planos
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Diálogo de confirmação ao sair sem salvar -->
+    <div
+      v-if="unsavedNavigationModal.open"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4"
+    >
+      <div class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+        <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">Atenção</p>
+        <h3 class="mt-2 text-xl font-bold text-slate-900">Alterações não salvas</h3>
+        <p class="mt-2 text-sm text-slate-600">
+          Você tem mudanças não salvas nesta página. Deseja salvar antes de sair?
+        </p>
+
+        <div class="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+            @click="cancelNavigationModal"
+          >
+            Continuar editando
+          </button>
+          <button
+            type="button"
+            class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+            @click="discardAndLeave"
+          >
+            Descartar e sair
+          </button>
+          <button
+            type="button"
+            class="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white shadow transition hover:bg-brand-dark disabled:opacity-60"
+            :disabled="unsavedNavigationModal.saving"
+            @click="saveAndLeave"
+          >
+            {{ unsavedNavigationModal.saving ? "Salvando..." : "Salvar e sair" }}
           </button>
         </div>
       </div>
@@ -569,7 +609,7 @@
 
 <script setup lang="ts">
 import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, provide, reactive, ref, shallowRef, watch } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { onBeforeRouteLeave, useRoute, useRouter } from "vue-router";
 import api from "../../services/api";
 import { useAuthStore } from "../../store/useAuthStore";
 import { useAgencyStore } from "../../store/useAgencyStore";
@@ -594,6 +634,7 @@ import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import { sectionsInjectionKey } from "../../components/admin/sectionsContext";
 import { sectionLabels as defaultSectionLabels } from "../../utils/sectionLabels";
 import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
+import { getReadableTextColor } from "../../utils/colorContrast";
 
 interface Page {
   id: number;
@@ -615,6 +656,16 @@ interface SectionCatalogItem {
 const route = useRoute();
 const router = useRouter();
 const pageId = Number(route.params.id);
+onBeforeRouteLeave((to, _from, next) => {
+  if (!hasUnsavedChanges.value) {
+    next();
+    return;
+  }
+  pendingNavigationPath.value = to.fullPath || null;
+  unsavedNavigationModal.value.open = true;
+  unsavedNavigationModal.value.saving = false;
+  next(false);
+});
 
 const page = ref<Page | null>(null);
 const pageTitle = ref("");
@@ -641,6 +692,8 @@ watch(
     pageSlug.value = normalizeSlugInput(newTitle);
   }
 );
+watch(pageTitle, () => markUnsavedChanges());
+watch(pageSlug, () => markUnsavedChanges());
 
 const auth = useAuthStore();
 const agencyStore = useAgencyStore();
@@ -663,6 +716,15 @@ const ensureValidPageSlug = () => {
 const limitModal = ref({ open: false, message: "" });
 const successModal = ref({ open: false });
 const snackbar = ref({ open: false, text: "" });
+const hasUnsavedChanges = ref(false);
+const initialLoadComplete = ref(false);
+const unsavedNavigationModal = ref({ open: false, saving: false });
+const pendingNavigationPath = ref<string | null>(null);
+
+const markUnsavedChanges = () => {
+  if (!initialLoadComplete.value) return;
+  hasUnsavedChanges.value = true;
+};
 
 const isPublished = computed(() => page.value?.status === "published");
 const isFreePlan = computed(() => (auth.user?.plan || "free") === "free");
@@ -702,6 +764,24 @@ const previewEditInstruction = computed(() =>
   isMobileViewport.value ? "Toque aqui para editar" : "Clique aqui para editar"
 );
 const hasWindow = typeof window !== "undefined";
+const beforeUnloadHandler = (event: BeforeUnloadEvent) => {
+  if (!hasUnsavedChanges.value) return;
+  event.preventDefault();
+  event.returnValue = "";
+};
+
+watch(
+  hasUnsavedChanges,
+  value => {
+    if (!hasWindow) return;
+    if (value) {
+      window.addEventListener("beforeunload", beforeUnloadHandler);
+    } else {
+      window.removeEventListener("beforeunload", beforeUnloadHandler);
+    }
+  },
+  { immediate: false }
+);
 const toolbarSecondaryButtonClass =
   "inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-white";
 const toolbarPrimaryButtonClass =
@@ -807,6 +887,13 @@ const publicComponents: Partial<Record<SectionType, any>> = {
 };
 
 const sections = shallowRef<PageSection[]>([]);
+watch(
+  () => sections.value,
+  () => {
+    markUnsavedChanges();
+  },
+  { deep: true }
+);
 const previewSections = ref<PageSection[]>([]);
 const previewReady = ref(false);
 const previewLoading = ref(false);
@@ -1159,6 +1246,12 @@ const applySectionBackgrounds = (list: PageSection[]): PageSection[] => {
     const backgroundColor = altIndex % 2 === 0 ? colorA.value : colorB.value;
     altIndex += 1;
     (normalized as any).backgroundColor = backgroundColor;
+    const readableText = getReadableTextColor(backgroundColor);
+    if (readableText) {
+      (normalized as any).textColor = readableText;
+    } else {
+      delete (normalized as any).textColor;
+    }
     return normalized;
   });
 };
@@ -1268,6 +1361,9 @@ onBeforeUnmount(() => {
   if (removeViewportWatcher) {
     removeViewportWatcher();
     removeViewportWatcher = null;
+  }
+  if (hasWindow) {
+    window.removeEventListener("beforeunload", beforeUnloadHandler);
   }
 });
 
@@ -1539,6 +1635,11 @@ const fetchPage = async () => {
   } catch (err) {
     console.error(err);
     errorMessage.value = "Não foi possível carregar a página.";
+  } finally {
+    if (!initialLoadComplete.value) {
+      hasUnsavedChanges.value = false;
+      initialLoadComplete.value = true;
+    }
   }
 };
 
@@ -1569,6 +1670,7 @@ const saveConfig = async (): Promise<boolean> => {
 
     message.value = "Configuração salva!";
     showSnackbar("Configuração salva");
+    hasUnsavedChanges.value = false;
     return true;
   } catch (err) {
     console.error(err);
@@ -1750,10 +1852,12 @@ watch([colorA, colorB], ([a, b], [_prevA, prevB]) => {
 
 watch(colorA, value => {
   theme.value.color1 = value;
+  markUnsavedChanges();
 });
 
 watch(colorB, value => {
   theme.value.color2 = value;
+  markUnsavedChanges();
 });
 
 watch(ctaColor, (value, previous) => {
@@ -1763,6 +1867,7 @@ watch(ctaColor, (value, previous) => {
     return;
   }
   applyPrimaryToThemeAndSections(previous, value);
+  markUnsavedChanges();
 });
 
 watch(previewDevice, value => {
@@ -1934,6 +2039,38 @@ const goPages = () => {
 const viewPublicPage = () => {
   if (!publicUrl.value || !hasWindow) return;
   window.open(publicUrl.value, "_blank");
+};
+
+const cancelNavigationModal = () => {
+  pendingNavigationPath.value = null;
+  unsavedNavigationModal.value.open = false;
+  unsavedNavigationModal.value.saving = false;
+};
+
+const proceedToPendingRoute = () => {
+  if (!pendingNavigationPath.value) return;
+  const target = pendingNavigationPath.value;
+  pendingNavigationPath.value = null;
+  unsavedNavigationModal.value.open = false;
+  unsavedNavigationModal.value.saving = false;
+  router.push(target).catch(() => {
+    /* ignore navigation failures */
+  });
+};
+
+const discardAndLeave = () => {
+  hasUnsavedChanges.value = false;
+  proceedToPendingRoute();
+};
+
+const saveAndLeave = async () => {
+  if (unsavedNavigationModal.value.saving) return;
+  unsavedNavigationModal.value.saving = true;
+  const saved = await saveConfig();
+  unsavedNavigationModal.value.saving = false;
+  if (!saved) return;
+  hasUnsavedChanges.value = false;
+  proceedToPendingRoute();
 };
 
 onMounted(async () => {

@@ -5,8 +5,14 @@
         <div class="flex justify-center">
           <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="accentColor" />
         </div>
-        <h1 class="mt-2 text-3xl font-bold text-slate-900 md:text-4xl">{{ section.title }}</h1>
-        <p v-if="section.subtitle" class="mt-2 text-base leading-relaxed text-slate-600 md:text-lg">{{ section.subtitle }}</p>
+        <h1 class="mt-2 text-3xl font-bold md:text-4xl" :style="{ color: primaryText }">{{ section.title }}</h1>
+        <p
+          v-if="section.subtitle"
+          class="mt-2 text-base leading-relaxed md:text-lg"
+          :style="{ color: mutedText }"
+        >
+          {{ section.subtitle }}
+        </p>
       </div>
 
       <div v-if="isMobilePreview" class="mt-8 flex flex-col gap-4">
@@ -45,6 +51,7 @@ import SectionHeadingChip from "./SectionHeadingChip.vue";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import { sanitizeHtml } from "../../utils/sanitizeHtml";
 import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
+import { deriveTextPalette } from "../../utils/colorContrast";
 
 const props = defineProps<{ section: ReasonsSection; previewDevice?: "desktop" | "mobile" }>();
 const headingDefaults = getSectionHeadingDefaults("reasons");
@@ -63,6 +70,9 @@ const brandingPrimary = computed(() => {
 });
 const accentColor = computed(() => props.section.ctaColor || brandingPrimary.value || "#41ce5f");
 const MAX_ITEMS = 8;
+const textPalette = computed(() => deriveTextPalette(props.section.textColor));
+const primaryText = computed(() => textPalette.value.primary);
+const mutedText = computed(() => textPalette.value.muted);
 
 const limitedItems = computed(() => (props.section.items || []).slice(0, MAX_ITEMS));
 
