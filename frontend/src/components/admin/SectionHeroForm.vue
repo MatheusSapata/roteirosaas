@@ -24,6 +24,8 @@
       <div class="space-y-2">
         <ImageUploadField
           v-model="local.logoUrl"
+          v-model:roundedValue="local.logoBorderRadius"
+          :rounded-max="logoRadiusMax"
           label="Logo da agência"
           hint="Envie a marca que aparecerá sobre o fundo."
           :enable-crop="true"
@@ -146,7 +148,7 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, reactive, watch } from "vue";
+import { computed, nextTick, reactive, watch } from "vue";
 import ImageUploadField from "./inputs/ImageUploadField.vue";
 import CtaActionPicker from "./inputs/CtaActionPicker.vue";
 import RichTextEditor from "./inputs/RichTextEditor.vue";
@@ -169,6 +171,7 @@ const local = reactive<HeroSection>({
   layout: sanitizeLayout(props.modelValue.layout),
   logoSize: props.modelValue.logoSize ?? 64,
   ...props.modelValue,
+  logoBorderRadius: props.modelValue.logoBorderRadius ?? 0,
   chips: props.modelValue.chips ? [...props.modelValue.chips] : [],
   ctaMode: props.modelValue.ctaMode || "link",
   ctaSectionId: props.modelValue.ctaSectionId || null
@@ -182,6 +185,7 @@ const syncFromProps = (value: HeroSection) => {
   syncing = true;
   Object.assign(local, value);
   local.logoSize = value.logoSize ?? 64;
+  local.logoBorderRadius = value.logoBorderRadius ?? 0;
   local.chips = value.chips ? [...value.chips] : [];
   local.layout = sanitizeLayout(value.layout);
   if (!local.chips.length) local.chips = [""];
@@ -227,6 +231,22 @@ const updateLogoSize = (delta: number) => {
   const next = Math.min(160, Math.max(48, current + delta));
   local.logoSize = next;
 };
+
+const logoRadiusMax = computed(() => Math.round((local.logoSize || 64) / 2));
+const ensureLogoRadiusBounds = () => {
+  const current = local.logoBorderRadius ?? 0;
+  const max = logoRadiusMax.value;
+  if (current > max) {
+    local.logoBorderRadius = max;
+  } else if (current < 0) {
+    local.logoBorderRadius = 0;
+  }
+};
+
+watch(
+  () => local.logoSize,
+  () => ensureLogoRadiusBounds()
+);
 
 watch(
   () => ({ ...local }),

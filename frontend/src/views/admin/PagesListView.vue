@@ -213,7 +213,7 @@
                     Copiar
                   </button>
                 </template>
-                <span v-else class="text-xs uppercase tracking-wide text-slate-400">Link disponivel após publicar</span>
+                <span v-else class="text-xs uppercase tracking-wide text-slate-400">Link disponível após publicar</span>
               </div>
             </div>
 

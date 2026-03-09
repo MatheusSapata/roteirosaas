@@ -1411,6 +1411,7 @@ function defaultSection(type: SectionType): PageSection {
       backgroundImage: "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=1600&q=80",
       gradientColor: heroDefaultGradient,
       logoUrl: currentAgency.value?.logo_url || "",
+      logoBorderRadius: 0,
       chips: ["Leito-cama 180º", "Wi-Fi a bordo", "Tomadas individuais", "Massagem a bordo"],
       ctaLabel: "Quero falar no WhatsApp",
       ctaLink: buildWhatsappLink(pageTitle.value) || "https://wa.me/",
