@@ -282,6 +282,29 @@ def grant_trial(
     return user
 
 
+@router.delete("/users/{user_id}")
+def delete_user_completely(
+    user_id: int,
+    _: User = Depends(get_current_superuser),
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado.")
+
+    memberships = db.query(AgencyUser).filter(AgencyUser.user_id == user_id).all()
+    owner_agency_ids = {membership.agency_id for membership in memberships if (membership.role or "").lower() == "owner"}
+
+    if owner_agency_ids:
+        db.query(Agency).filter(Agency.id.in_(owner_agency_ids)).delete(synchronize_session=False)
+
+    db.query(AgencyUser).filter(AgencyUser.user_id == user_id).delete(synchronize_session=False)
+
+    db.delete(user)
+    db.commit()
+    return {"detail": "Usuário e dados associados foram removidos."}
+
+
 @router.post("/pages/{page_id}/clone", response_model=PageOut)
 def clone_shared_page(
     page_id: int,
@@ -291,14 +314,6 @@ def clone_shared_page(
 ) -> PageOut:
     if not payload.target_agency_id:
         raise HTTPException(status_code=400, detail="Agência destino obrigatória")
-
-    membership = (
-        db.query(AgencyUser)
-        .filter(AgencyUser.agency_id == payload.target_agency_id, AgencyUser.user_id == current_user.id)
-        .first()
-    )
-    if not membership:
-        raise HTTPException(status_code=403, detail="Você não participa da agência selecionada.")
 
     page = (
         db.query(Page)
@@ -327,7 +342,8 @@ def clone_shared_page(
         template_id=page.template_id,
         title=title,
         slug=slug,
-        status=PageStatus.draft,
+        status=PageStatus.published,
+        published_at=datetime.utcnow(),
         cover_image_url=page.cover_image_url,
         seo_title=page.seo_title,
         seo_description=page.seo_description,

@@ -331,6 +331,30 @@
                           {{ u.trial_plan ? 'Trial ativo' : 'Liberar 7 dias' }}
                         </button>
 
+                        <button
+                          v-if="auth.user?.is_superuser"
+                          class="rounded-full border border-indigo-200 px-4 py-2 text-xs font-semibold text-indigo-600 transition hover:bg-indigo-50 disabled:opacity-50"
+                          :disabled="!u.agency_id || !agencyStore.currentAgencyId"
+                          @click.stop="openLinkPageDialog(u)"
+                          :title="
+                            !agencyStore.currentAgencyId
+                              ? 'Selecione uma agência de origem no painel'
+                              : !u.agency_id
+                                ? 'Usuário sem agência vinculada'
+                                : 'Vincular página pronta'
+                          "
+                        >
+                          Vincular página
+                        </button>
+
+                        <button
+                          v-if="!u.is_superuser"
+                          class="rounded-full border border-red-200 bg-red-50 px-4 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-100"
+                          @click.stop="openDeleteDialog(u)"
+                        >
+                          Excluir usuário
+                        </button>
+
                         <span
                           v-if="u.is_superuser"
                           class="rounded-full bg-slate-200 px-3 py-1 text-xs font-semibold text-slate-700"
@@ -692,7 +716,7 @@
       {{ snackbar.text }}
     </div>
   </transition>
-
+ 
   <!-- TRIAL MODAL -->
   <transition name="fade">
     <div
@@ -742,6 +766,132 @@
       </div>
     </div>
   </transition>
+
+  <!-- LINK PAGE MODAL -->
+  <transition name="fade">
+    <div
+      v-if="linkPageDialog.open && linkPageDialog.user"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 px-4"
+    >
+      <div class="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl">
+        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-indigo-500">Vincular página</p>
+        <h2 class="mt-3 text-2xl font-bold text-slate-900">
+          Escolha uma página para {{ linkPageDialog.user.name }}
+        </h2>
+        <p class="mt-2 text-sm text-slate-600">
+          Selecionamos as páginas da sua agência atual ({{ agencyStore.agencies.find(a => a.id === agencyStore.currentAgencyId)?.name || 'sem nome' }}).
+          A cópia será adicionada à agência do usuário.
+        </p>
+
+          <div class="mt-5 space-y-4">
+          <div
+            v-if="linkPageDialog.loading"
+            class="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm text-slate-600"
+          >
+            Carregando suas páginas...
+          </div>
+          <label
+            v-else-if="linkPageDialog.pages.length"
+            class="block text-sm font-semibold text-slate-700"
+          >
+            Selecione a página base
+            <select
+              v-model="linkPageDialog.selectedPageId"
+              class="mt-1 w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm"
+            >
+              <option value="" disabled>Escolha uma página</option>
+              <option
+                v-for="page in linkPageDialog.pages"
+                :key="page.id"
+                :value="page.id"
+              >
+                {{ page.title }} · {{ page.status === 'published' ? 'Publicada' : 'Rascunho' }}
+              </option>
+            </select>
+          </label>
+          <div
+            v-else
+            class="rounded-2xl border border-dashed border-slate-200 px-4 py-3 text-sm text-slate-500"
+          >
+            Nenhuma página encontrada na sua agência atual. Crie uma página primeiro.
+          </div>
+
+          <label class="block text-sm font-semibold text-slate-700">
+            Nome do roteiro
+            <input
+              v-model="linkPageDialog.newTitle"
+              type="text"
+              class="mt-1 w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm"
+              placeholder="Digite o novo nome"
+            />
+          </label>
+
+          <div class="rounded-2xl border border-dashed border-slate-200 px-3 py-2 text-xs text-slate-500">
+            Slug sugerido: <span class="font-semibold text-slate-900">/{{ linkPageDialog.newSlug }}</span>
+          </div>
+
+          <p v-if="linkPageDialog.error" class="rounded-2xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-600">
+            {{ linkPageDialog.error }}
+          </p>
+        </div>
+
+        <div class="mt-6 flex flex-wrap justify-end gap-3">
+          <button
+            class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            :disabled="linkPageDialog.saving"
+            @click="closeLinkPageDialog"
+          >
+            Cancelar
+          </button>
+          <button
+            class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-slate-800 disabled:opacity-60"
+            :disabled="linkPageDialog.saving || !linkPageDialog.selectedPageId || !linkPageDialog.newTitle.trim()"
+            @click="confirmLinkPage"
+          >
+            {{ linkPageDialog.saving ? "Publicando..." : "Publicar" }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </transition>
+
+  <!-- DELETE USER MODAL -->
+  <transition name="fade">
+    <div
+      v-if="deleteDialog.open && deleteDialog.user"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 px-4"
+    >
+      <div class="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl">
+        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-rose-500">Excluir usuário</p>
+        <h2 class="mt-3 text-2xl font-bold text-slate-900">Remover {{ deleteDialog.user.name }}?</h2>
+        <p class="mt-2 text-sm text-slate-600">
+          Essa ação apaga a conta, agências, páginas e registros de tracking vinculados. Ela não pode ser desfeita.
+        </p>
+        <p
+          v-if="deleteDialog.error"
+          class="mt-4 rounded-2xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-600"
+        >
+          {{ deleteDialog.error }}
+        </p>
+        <div class="mt-6 flex flex-wrap justify-end gap-3">
+          <button
+            class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+            :disabled="deleteDialog.loading"
+            @click="closeDeleteDialog"
+          >
+            Cancelar
+          </button>
+          <button
+            class="rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-red-500 disabled:opacity-60"
+            :disabled="deleteDialog.loading"
+            @click="confirmDeleteUser"
+          >
+            {{ deleteDialog.loading ? "Excluindo..." : "Excluir usuário" }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </transition>
 </template>
 
 <script setup lang="ts">
@@ -754,6 +904,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { getPlanLabel, planLabels } from "../../utils/planLabels";
 import { normalizeVideoInput, useLessonsStore, type Lesson } from "../../store/useLessonsStore";
+import { slugify } from "../../utils/slugify";
 
 interface MetricsUserPage {
   id: number;
@@ -837,6 +988,38 @@ const router = useRouter();
 const granting = ref<number | null>(null);
 const snackbar = ref<{ open: boolean; text: string } | null>(null);
 const trialDialog = ref<{ open: boolean; user: any | null }>({ open: false, user: null });
+const deleteDialog = ref<{
+  open: boolean;
+  user: Metrics["users"][number] | null;
+  loading: boolean;
+  error: string;
+}>({
+  open: false,
+  user: null,
+  loading: false,
+  error: ""
+});
+const linkPageDialog = ref<{
+  open: boolean;
+  user: Metrics["users"][number] | null;
+  pages: AdminPageSummary[];
+  selectedPageId: number | null;
+  newTitle: string;
+  newSlug: string;
+  saving: boolean;
+  loading: boolean;
+  error: string;
+}>({
+  open: false,
+  user: null,
+  pages: [],
+  selectedPageId: null,
+  newTitle: "",
+  newSlug: "",
+  saving: false,
+  loading: false,
+  error: ""
+});
 const premiumMode = computed(() => (auth.user?.plan || "").toLowerCase() === "infinity");
 const activeTab = ref<AdminTab>("dashboard");
 const tabButtonClass = (tab: AdminTab) =>
@@ -1223,6 +1406,136 @@ const grantTrial = async () => {
   }
 };
 
+const openDeleteDialog = (user: Metrics["users"][number]) => {
+  deleteDialog.value = { open: true, user, loading: false, error: "" };
+};
+
+const closeDeleteDialog = () => {
+  deleteDialog.value = { open: false, user: null, loading: false, error: "" };
+};
+
+const confirmDeleteUser = async () => {
+  const user = deleteDialog.value.user;
+  if (!user) return;
+  deleteDialog.value.loading = true;
+  deleteDialog.value.error = "";
+  try {
+    await api.delete(`/admin/users/${user.id}`);
+    deleteDialog.value.loading = false;
+    deleteDialog.value.open = false;
+    deleteDialog.value.user = null;
+    expandedUser.value = null;
+    await loadMetrics();
+    showSnackbar("Usuário excluído com sucesso.");
+  } catch (err: any) {
+    console.error(err);
+    deleteDialog.value.error =
+      err?.response?.data?.detail || "Não foi possível excluir o usuário. Tente novamente.";
+    deleteDialog.value.loading = false;
+  }
+};
+
+const updateLinkDialogSlug = () => {
+  linkPageDialog.value.newSlug = slugify(linkPageDialog.value.newTitle, "pagina");
+};
+
+watch(
+  () => linkPageDialog.value.newTitle,
+  () => updateLinkDialogSlug()
+);
+
+const handleLinkPageSelection = () => {
+  const page = linkPageDialog.value.pages.find(p => p.id === linkPageDialog.value.selectedPageId);
+  linkPageDialog.value.newTitle = page?.title || "";
+};
+
+watch(
+  () => linkPageDialog.value.selectedPageId,
+  () => handleLinkPageSelection()
+);
+
+const closeLinkPageDialog = () => {
+  linkPageDialog.value = {
+    open: false,
+    user: null,
+    pages: [],
+    selectedPageId: null,
+    newTitle: "",
+    newSlug: "",
+    saving: false,
+    loading: false,
+    error: ""
+  };
+};
+
+const openLinkPageDialog = async (user: Metrics["users"][number]) => {
+  if (!auth.user?.is_superuser) return;
+  if (!user.agency_id) {
+    showSnackbar("Usuário não possui agência vinculada.");
+    return;
+  }
+  if (!agencyStore.currentAgencyId) {
+    showSnackbar("Selecione uma agência de origem para listar suas páginas.");
+    return;
+  }
+  linkPageDialog.value.open = true;
+  linkPageDialog.value.user = user;
+  linkPageDialog.value.pages = [];
+  linkPageDialog.value.selectedPageId = null;
+  linkPageDialog.value.newTitle = "";
+  linkPageDialog.value.newSlug = "";
+  linkPageDialog.value.saving = false;
+  linkPageDialog.value.error = "";
+  linkPageDialog.value.loading = true;
+  try {
+    const res = await api.get<AdminPageSummary[]>(`/pages`, {
+      params: { agency_id: agencyStore.currentAgencyId }
+    });
+    linkPageDialog.value.pages = res.data || [];
+    if (linkPageDialog.value.pages.length) {
+      linkPageDialog.value.selectedPageId = linkPageDialog.value.pages[0].id;
+      linkPageDialog.value.newTitle = linkPageDialog.value.pages[0].title;
+      updateLinkDialogSlug();
+    }
+  } catch (err) {
+    console.error(err);
+    linkPageDialog.value.error = "Não foi possível carregar suas páginas.";
+  } finally {
+    linkPageDialog.value.loading = false;
+  }
+};
+
+const confirmLinkPage = async () => {
+  const dialog = linkPageDialog.value;
+  if (!dialog.user || !dialog.user.agency_id) {
+    dialog.error = "Usuário sem agência para vincular página.";
+    return;
+  }
+  if (!dialog.selectedPageId) {
+    dialog.error = "Selecione uma página para copiar.";
+    return;
+  }
+  const title = dialog.newTitle.trim();
+  if (!title) {
+    dialog.error = "Informe o nome do roteiro.";
+    return;
+  }
+  dialog.saving = true;
+  dialog.error = "";
+  try {
+    await api.post(`/admin/pages/${dialog.selectedPageId}/clone`, {
+      target_agency_id: dialog.user.agency_id,
+      title
+    });
+    showSnackbar("Página vinculada ao usuário.");
+    closeLinkPageDialog();
+    await loadMetrics();
+  } catch (err: any) {
+    console.error(err);
+    dialog.error = err?.response?.data?.detail || "Não foi possível vincular a página.";
+    dialog.saving = false;
+  }
+};
 const planLabel = (plan: string) => {
   if (!plan) return "Indefinido";
   const lower = plan.toLowerCase();
@@ -1286,3 +1599,9 @@ watch(days, loadMetrics);
 }
 </style>
 
+interface AdminPageSummary {
+  id: number;
+  title: string;
+  slug: string;
+  status: string;
+}
