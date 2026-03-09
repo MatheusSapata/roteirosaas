@@ -1,8 +1,11 @@
+import json
 import re
 import unicodedata
 from collections import defaultdict
+from copy import deepcopy
 from datetime import datetime, timedelta
-from typing import List, Optional
+from typing import Any, List, Optional
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -41,6 +44,45 @@ class TrialRequest(BaseModel):
 class PageCloneRequest(BaseModel):
     target_agency_id: int
     title: Optional[str] = None
+
+
+def _normalize_config(raw: Any) -> Any:
+    if raw is None:
+        return None
+    if isinstance(raw, str):
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError:
+            return raw
+    return raw
+
+
+def _sanitize_digits(value: Optional[str]) -> str:
+    return re.sub(r"\D", "", value or "")
+
+
+def _build_whatsapp_link(digits: str, title: str) -> str:
+    message = f"Oi, tenho interesse no roteiro: {title or 'Roteiro'}"
+    return f"https://wa.me/{digits}?text={quote(message)}"
+
+
+def _replace_whatsapp_links(node: Any, new_link: str) -> Any:
+    if not isinstance(node, (dict, list)):
+        return node
+
+    def walk(value: Any) -> None:
+        if isinstance(value, dict):
+            for key, item in value.items():
+                if isinstance(item, str) and "wa.me" in item:
+                    value[key] = new_link
+                else:
+                    walk(item)
+        elif isinstance(value, list):
+            for item in value:
+                walk(item)
+
+    walk(node)
+    return node
 
 
 def _slugify(value: str) -> str:
@@ -315,6 +357,10 @@ def clone_shared_page(
     if not payload.target_agency_id:
         raise HTTPException(status_code=400, detail="Agência destino obrigatória")
 
+    target_agency = db.query(Agency).filter(Agency.id == payload.target_agency_id).first()
+    if not target_agency:
+        raise HTTPException(status_code=404, detail="Agência destino não encontrada.")
+
     page = (
         db.query(Page)
         .join(Agency, Agency.id == Page.agency_id)
@@ -337,6 +383,13 @@ def clone_shared_page(
         suffix += 1
         slug = f"{slug_base}-{suffix}"
 
+    config_copy = deepcopy(page.config_json)
+    config_copy = _normalize_config(config_copy)
+    whatsapp_digits = _sanitize_digits(target_agency.cta_whatsapp)
+    if config_copy and whatsapp_digits:
+        new_link = _build_whatsapp_link(whatsapp_digits, title)
+        config_copy = _replace_whatsapp_links(config_copy, new_link)
+
     new_page = Page(
         agency_id=payload.target_agency_id,
         template_id=page.template_id,
@@ -347,7 +400,7 @@ def clone_shared_page(
         cover_image_url=page.cover_image_url,
         seo_title=page.seo_title,
         seo_description=page.seo_description,
-        config_json=page.config_json,
+        config_json=config_copy or page.config_json,
     )
     db.add(new_page)
     db.commit()
