@@ -1567,8 +1567,8 @@ const saveConfig = async (): Promise<boolean> => {
     const configPayload = buildConfig();
     await api.put(`/pages/${pageId}/config`, { config: configPayload });
 
-    message.value = "Configura��o salva!";
-    showSnackbar("Configura��o salva");
+    message.value = "Configuração salva!";
+    showSnackbar("Configuração salva");
     return true;
   } catch (err) {
     console.error(err);
@@ -1576,7 +1576,7 @@ const saveConfig = async (): Promise<boolean> => {
     if (detail) {
       limitModal.value = { open: true, message: String(detail) };
     } else {
-      errorMessage.value = "Erro ao salvar configura��o.";
+      errorMessage.value = "Erro ao salvar configuração.";
     }
     return false;
   }
