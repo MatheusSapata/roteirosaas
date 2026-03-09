@@ -116,9 +116,12 @@ def schedule_trial_tag_job() -> None:
             wait_seconds = (next_run - now).total_seconds()
             await asyncio.sleep(wait_seconds)
             try:
+                logger.info("Iniciando verificação automática de etiquetas trial.")
                 result = tag_trial_users()
                 if result:
                     logger.info("Etiquetas trial executadas: %s", result)
+                else:
+                    logger.info("Job de etiquetas trial finalizado: nenhum usuário elegível no momento.")
             except Exception:
                 logger.exception("Erro ao executar job diário de etiquetas trial.")
 

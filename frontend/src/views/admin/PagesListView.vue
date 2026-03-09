@@ -9,14 +9,14 @@
         class="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark disabled:cursor-not-allowed disabled:bg-slate-300"
         :disabled="!hasAgency"
       >
-        Nova pagina
+        Nova página
       </button>
     </div>
 
     <div v-if="!hasAgency" class="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 sm:flex-row sm:items-center sm:justify-between">
       <span>
         Crie uma agencia primeiro em
-        <router-link to="/admin/agency" class="font-semibold underline">Configuracao da agencia</router-link>
+        <router-link to="/admin/agency" class="font-semibold underline">Configuração da agência</router-link>
         para poder criar paginas.
       </span>
       <router-link
@@ -122,11 +122,11 @@
           class="hidden grid-cols-[1.2fr,0.9fr,0.9fr,1.6fr,0.6fr,1.9fr] gap-6 border-b border-slate-100 px-6 py-4 text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 md:grid"
         >
           <span>Nome</span>
-          <span>Visualizacoes</span>
+          <span>Visualizações</span>
           <span>Cliques CTA</span>
           <span>Link</span>
           <span>Status</span>
-          <span class="text-right">Acoes</span>
+          <span class="text-right">Ações</span>
         </div>
 
         <div v-if="pages.length" class="space-y-4 md:space-y-0 md:divide-y md:divide-slate-100">
@@ -213,7 +213,7 @@
                     Copiar
                   </button>
                 </template>
-                <span v-else class="text-xs uppercase tracking-wide text-slate-400">Link disponivel apos publicar</span>
+                <span v-else class="text-xs uppercase tracking-wide text-slate-400">Link disponivel após publicar</span>
               </div>
             </div>
 
@@ -256,7 +256,7 @@
                   :href="pagePublicUrl(page)"
                   target="_blank"
                   class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-slate-300 hover:text-slate-900"
-                  title="Ver pagina"
+                  title="Ver página"
                 >
                   <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
                     <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z" />
