@@ -46,28 +46,41 @@
       </aside>
 
       <main class="flex-1 overflow-x-hidden md:ml-64">
-        <header class="sticky top-0 z-30 flex items-center justify-between bg-white px-4 py-3 text-slate-900 shadow-sm md:static">
-          <div class="flex items-center gap-3">
-            <button
-              type="button"
-              class="inline-flex h-12 w-12 items-center justify-center rounded-full text-white shadow-lg transition md:hidden"
-              style="background-color: #41ce5f;"
-              @click="mobileMenuOpen = true"
-            >
-              <span class="sr-only">Abrir menu</span>
-              <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                <path d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
-            <h1 class="text-lg font-bold">Dashboard</h1>
-          </div>
-          <div class="flex items-center gap-2">
+        <header class="sticky top-0 z-30 bg-white px-4 py-3 text-slate-900 shadow-sm md:static">
+          <div class="flex items-center justify-between md:hidden">
             <img
               v-if="sidebarLogoSrc"
               :src="sidebarLogoSrc"
               alt="Roteiro Online"
-              class="h-12 w-auto md:hidden"
+              class="h-12 w-auto"
             />
+            <div class="flex items-center gap-2">
+              <h1 class="text-lg font-bold">Dashboard</h1>
+              <button
+                type="button"
+                class="inline-flex h-12 w-12 items-center justify-center rounded-full text-white shadow-lg transition"
+                style="background-color: #41ce5f;"
+                @click="mobileMenuOpen = true"
+              >
+                <span class="sr-only">Abrir menu</span>
+                <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <path d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="hidden items-center justify-between md:flex">
+            <div class="flex items-center gap-3">
+              <h1 class="text-lg font-bold">Dashboard</h1>
+            </div>
+            <div class="flex items-center gap-2">
+              <img
+                v-if="sidebarLogoSrc"
+                :src="sidebarLogoSrc"
+                alt="Roteiro Online"
+                class="h-14 w-auto"
+              />
+            </div>
           </div>
         </header>
         <div class="px-3 py-4 md:px-6 md:py-6">
