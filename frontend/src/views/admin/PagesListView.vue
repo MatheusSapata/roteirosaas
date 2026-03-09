@@ -185,8 +185,8 @@
               </span>
             </div>
 
-            <div class="flex flex-col gap-2">
-              <p class="text-xs font-semibold uppercase tracking-wide text-slate-400 md:hidden">Status</p>
+            <div class="flex flex-col gap-2 md:hidden">
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Status</p>
               <span
                 class="inline-flex w-fit items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide"
                 :class="getStatusClasses(page.status)"
@@ -215,6 +215,15 @@
                 </template>
                 <span v-else class="text-xs uppercase tracking-wide text-slate-400">Link disponivel apos publicar</span>
               </div>
+            </div>
+
+            <div class="hidden flex-col gap-2 md:flex">
+              <span
+                class="inline-flex w-fit items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide"
+                :class="getStatusClasses(page.status)"
+              >
+                {{ getStatusLabel(page.status) }}
+              </span>
             </div>
 
             <div class="flex flex-col gap-2">
