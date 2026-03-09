@@ -92,8 +92,9 @@
     <transition name="fade">
       <div
         v-if="mobileMenuOpen"
-        class="fixed inset-0 z-40 flex md:hidden"
+        class="fixed inset-0 z-40 flex justify-end md:hidden"
       >
+        <div class="flex-1 bg-slate-900/60" @click="mobileMenuOpen = false"></div>
         <div class="w-72 max-w-full bg-white p-5 shadow-2xl">
           <div class="mb-6 flex items-center justify-between">
             <div>
@@ -146,7 +147,6 @@
             </button>
           </div>
         </div>
-        <div class="flex-1 bg-slate-900/60" @click="mobileMenuOpen = false"></div>
       </div>
     </transition>
 
