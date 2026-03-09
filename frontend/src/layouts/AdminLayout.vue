@@ -941,12 +941,24 @@ onMounted(async () => {
   if (!agencyStore.agencies.length) {
     await agencyStore.loadAgencies();
   }
+  if (!agencyStore.currentAgencyId && agencyStore.agencies.length) {
+    agencyStore.currentAgencyId = agencyStore.agencies[0].id;
+  }
   if (!auth.user && auth.token) {
     await auth.fetchProfile();
   }
   checkCookieConsent();
   scrollToTop();
 });
+
+watch(
+  () => agencyStore.agencies.length,
+  length => {
+    if (!agencyStore.currentAgencyId && length > 0) {
+      agencyStore.currentAgencyId = agencyStore.agencies[0].id;
+    }
+  }
+);
 
 const queuePlanTagSync = (plan: string | null | undefined) => {
   const email = auth.user?.email;
