@@ -2,11 +2,21 @@
   <div class="space-y-2">
     <label v-if="label" class="text-sm font-semibold text-slate-600">{{ label }}</label>
     <div class="rounded-xl border border-slate-200 p-3">
-      <div
-        v-if="previewUrl"
-        class="mb-3 overflow-hidden rounded-lg border border-slate-200 bg-slate-50"
-      >
-        <img :src="previewUrl" alt="Pré-visualização" class="h-40 w-full object-cover" />
+      <div v-if="previewUrl" class="mb-3">
+        <div
+          v-if="supportsRounded"
+          class="flex items-center justify-center"
+        >
+          <div :style="previewRoundedBoxStyle">
+            <img :src="previewUrl" alt="Pré-visualização" :style="previewRoundedImageStyle" />
+          </div>
+        </div>
+        <div
+          v-else
+          class="overflow-hidden rounded-lg border border-slate-200 bg-slate-50"
+        >
+          <img :src="previewUrl" alt="Pré-visualização" class="h-40 w-full object-cover" />
+        </div>
       </div>
       <div class="flex flex-wrap items-center gap-3">
         <label
@@ -115,6 +125,37 @@
                   Rotacionar +
                 </button>
               </div>
+              <div v-if="supportsRounded" class="space-y-2 rounded-xl border border-dashed border-slate-200/80 bg-slate-50/70 p-3">
+                <div class="flex items-center justify-between">
+                  <span class="text-sm font-semibold text-slate-600">Arredondar logo</span>
+                  <span class="text-xs font-semibold text-slate-500">{{ Math.round(roundedControl) }} px</span>
+                </div>
+                <div class="flex items-center gap-3">
+                  <input
+                    type="range"
+                    class="flex-1 accent-brand"
+                    min="0"
+                    :max="roundedMaxValue"
+                    step="2"
+                    v-model.number="roundedControl"
+                  />
+                  <button
+                    type="button"
+                    class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                    @click="roundedControl = circleTarget"
+                  >
+                    Circular
+                  </button>
+                </div>
+                <div class="space-y-1">
+                  <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Prévia final</p>
+                  <div class="flex justify-center">
+                    <div :style="previewRoundedBoxStyle">
+                      <img :src="previewUrl || cropperModal.src" alt="Prévia" :style="previewRoundedImageStyle" />
+                    </div>
+                  </div>
+                </div>
+              </div>
               <p v-if="dialogError" class="text-xs text-red-500">{{ dialogError }}</p>
             </div>
           </div>
@@ -155,8 +196,13 @@ const props = defineProps<{
   enableCrop?: boolean;
   cropAspect?: number;
   editorTitle?: string;
+  roundedValue?: number;
+  roundedMax?: number;
 }>();
-const emit = defineEmits<{ (e: "update:modelValue", value: string | null): void }>();
+const emit = defineEmits<{
+  (e: "update:modelValue", value: string | null): void;
+  (e: "update:roundedValue", value: number): void;
+}>();
 
 const agencyStore = useAgencyStore();
 const uploading = ref(false);
@@ -169,6 +215,56 @@ const cropperImage = ref<HTMLImageElement | null>(null);
 const cropperInstance = ref<Cropper | null>(null);
 const pendingFile = ref<File | null>(null);
 
+const roundedControl = ref(props.roundedValue ?? 0);
+const supportsRounded = computed(() => typeof props.roundedMax === "number");
+const roundedMaxValue = computed(() => {
+  if (typeof props.roundedMax === "number") {
+    return Math.max(0, props.roundedMax);
+  }
+  return 0;
+});
+const circleTarget = computed(() => roundedMaxValue.value || 0);
+const previewBoxSize = 220;
+const previewSquareStyle = {
+  width: `${previewBoxSize}px`,
+  height: `${previewBoxSize}px`
+};
+const previewRoundedPixels = computed(() => {
+  if (!supportsRounded.value || !roundedMaxValue.value) return roundedControl.value || 0;
+  const max = previewBoxSize / 2;
+  return Math.min(max, (roundedControl.value / roundedMaxValue.value) * max);
+});
+
+watch(
+  () => props.roundedValue,
+  value => {
+    const normalized = typeof value === "number" ? value : 0;
+    if (normalized !== roundedControl.value) {
+      roundedControl.value = normalized;
+    }
+  }
+);
+
+watch(roundedControl, value => {
+  if (supportsRounded.value) {
+    const clamped = Math.min(roundedMaxValue.value, Math.max(0, value || 0));
+    if (clamped !== value) {
+      roundedControl.value = clamped;
+      return;
+    }
+    emit("update:roundedValue", clamped);
+  }
+});
+
+watch(
+  () => props.roundedMax,
+  max => {
+    if (typeof max === "number" && roundedControl.value > max) {
+      roundedControl.value = max;
+    }
+  }
+);
+
 const cropperModal = ref({
   open: false,
   src: "",
@@ -179,6 +275,28 @@ const cropperModal = ref({
 const previewUrl = computed(() => resolveMediaUrl(props.modelValue));
 const aspectRatio = computed(() => (typeof props.cropAspect === "number" ? props.cropAspect : NaN));
 const croppingEnabled = computed(() => !!props.enableCrop);
+const previewRoundedBoxStyle = computed(() => {
+  if (!supportsRounded.value) return {};
+  return {
+    ...previewSquareStyle,
+    borderRadius: `${previewRoundedPixels.value}px`,
+    border: "1px solid #e2e8f0",
+    background: "#fff",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    boxShadow: "inset 0 0 0 1px rgba(15,23,42,0.04)"
+  };
+});
+const previewRoundedImageStyle = computed(() => {
+  if (!supportsRounded.value) return {};
+  return {
+    maxWidth: "85%",
+    maxHeight: "85%",
+    objectFit: "contain",
+    borderRadius: `${previewRoundedPixels.value}px`
+  };
+});
 
 const ensureAgency = async () => {
   if (!agencyStore.currentAgencyId) {

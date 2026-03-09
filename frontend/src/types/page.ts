@@ -30,6 +30,7 @@ export interface HeroSection extends SectionBase {
   gradientColor?: string;
   logoUrl?: string;
   logoSize?: number;
+  logoBorderRadius?: number;
   chips?: string[];
   ctaLabel?: string;
   ctaLink?: string;

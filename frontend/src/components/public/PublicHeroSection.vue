@@ -12,8 +12,8 @@
           <div class="absolute inset-0 flex flex-col items-center gap-4 px-4 py-6">
             <div class="flex justify-center w-full mt-auto mb-2">
               <template v-if="logoSrc">
-                <div class="drop-shadow-xl" :style="logoBoxStyle">
-                  <img :src="logoSrc" alt="Logo" class="h-full w-auto" />
+                <div class="drop-shadow-xl overflow-hidden" :style="logoBoxStyle">
+                  <img :src="logoSrc" alt="Logo" class="h-full w-auto object-contain" :style="logoImageStyle" />
                 </div>
               </template>
               <span
@@ -111,8 +111,8 @@
                   v-if="logoSrc"
                   :src="logoSrc"
                   alt="Logo"
-                  class="w-auto drop-shadow-lg"
-                  :style="{ height: `${logoSize}px` }"
+                  class="w-auto drop-shadow-lg object-contain"
+                  :style="logoImageStyle"
                 />
                 <div v-else class="rounded-full bg-white/20 px-4 py-1 text-sm font-semibold uppercase tracking-[0.25em]">
                   {{ branding.agency_name || "Sua marca" }}
@@ -220,7 +220,15 @@ const layout = computed(() => props.section.layout || "classic");
 const heroBackgroundImage = computed(() => resolveMediaUrl(props.section.backgroundImage));
 const logoSrc = computed(() => resolveMediaUrl(props.section.logoUrl));
 const logoSize = computed(() => props.section.logoSize ?? 64);
-const logoBoxStyle = computed(() => ({ height: `${logoSize.value}px` }));
+const logoBorderRadius = computed(() => props.section.logoBorderRadius ?? 0);
+const logoBoxStyle = computed(() => ({
+  height: `${logoSize.value}px`,
+  borderRadius: `${logoBorderRadius.value}px`
+}));
+const logoImageStyle = computed(() => ({
+  height: `${logoSize.value}px`,
+  borderRadius: `${logoBorderRadius.value}px`
+}));
 const accent = computed(() => props.section.gradientColor || props.section.backgroundColor || "#41ce5f");
 const ctaColor = computed(() => props.section.ctaColor || accent.value);
 const ctaMode = computed(() => props.section.ctaMode || "link");
