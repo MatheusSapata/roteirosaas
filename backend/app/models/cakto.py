@@ -36,3 +36,22 @@ class CaktoOnboardingToken(Base):
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
 
     user = relationship("User", backref="cakto_onboarding_tokens")
+
+
+class CaktoCheckoutSession(Base):
+    __tablename__ = "cakto_checkout_sessions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    token = Column(String(64), unique=True, nullable=False, index=True)
+    plan_key = Column(String(50), nullable=False)
+    cycle = Column(String(20), nullable=False)
+    checkout_url = Column(String(512), nullable=False)
+    status = Column(String(20), nullable=False, default="pending")
+    order_id = Column(String(255), nullable=True)
+    order_ref = Column(String(255), nullable=True)
+    onboarding_token_id = Column(Integer, ForeignKey("cakto_onboarding_tokens.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+
+    onboarding_token = relationship("CaktoOnboardingToken")

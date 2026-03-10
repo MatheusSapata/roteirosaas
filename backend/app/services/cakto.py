@@ -7,11 +7,11 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, Optional
 from uuid import uuid4
 
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.models.cakto import CaktoEventLog, CaktoOnboardingToken
+from app.models.cakto import CaktoEventLog, CaktoOnboardingToken, CaktoCheckoutSession
 from app.models.subscription import Subscription
 from app.models.user import User
 from app.services import auth as auth_service
@@ -58,6 +58,41 @@ class CaktoIntegrationService:
             if offer_id or product_id:
                 mappings.append(PlanMapping(plan_key, cycle, offer_id, product_id))
         return mappings
+
+    def _mapping_for_plan(self, plan_key: str, cycle: str) -> PlanMapping | None:
+        target_cycle = (cycle or "monthly").lower()
+        target_plan = plan_key.lower()
+        for mapping in self.plan_mappings:
+            if mapping.plan_key == target_plan and mapping.cycle == target_cycle:
+                return mapping
+        return None
+
+    def create_checkout_session(self, plan_key: str, cycle: str | None = None) -> tuple[CaktoCheckoutSession, str]:
+        cycle_value = (cycle or "monthly").lower()
+        mapping = self._mapping_for_plan(plan_key, cycle_value)
+        if not mapping or not mapping.offer_id:
+            raise ValueError("Plano indisponível no checkout Cakto.")
+        base_url = f"https://pay.cakto.com.br/{mapping.offer_id}"
+        token = uuid4().hex
+        session = CaktoCheckoutSession(
+            token=token,
+            plan_key=mapping.plan_key,
+            cycle=mapping.cycle,
+            checkout_url=base_url,
+        )
+        self.db.add(session)
+        self.db.commit()
+        self.db.refresh(session)
+        separator = "&" if "?" in base_url else "?"
+        checkout_with_sck = f"{base_url}{separator}sck={token}"
+        return session, checkout_with_sck
+
+    def get_checkout_session(self, token: str) -> Optional[CaktoCheckoutSession]:
+        return (
+            self.db.query(CaktoCheckoutSession)
+            .filter(CaktoCheckoutSession.token == token)
+            .first()
+        )
 
     # ------------------------------------------------------------------ #
     # Webhook dispatcher
@@ -143,6 +178,25 @@ class CaktoIntegrationService:
             return None
         return record
 
+    def _normalize_email(self, email: str) -> str:
+        if not email:
+            raise ValueError("Informe o email utilizado na compra.")
+        normalized = email.strip().lower()
+        if not normalized:
+            raise ValueError("Informe um email válido.")
+        return normalized
+
+    def _get_user_by_email(self, email: str) -> User:
+        normalized = self._normalize_email(email)
+        user = (
+            self.db.query(User)
+            .filter(func.lower(User.email) == normalized)
+            .first()
+        )
+        if not user:
+            raise LookupError("Não encontramos nenhum cadastro com este email.")
+        return user
+
     def set_password_for_onboarding(
         self,
         *,
@@ -171,6 +225,24 @@ class CaktoIntegrationService:
         self.db.add_all([user, record])
         self.db.commit()
 
+    def lookup_manual_user(self, email: str) -> User:
+        return self._get_user_by_email(email)
+
+    def set_password_by_email(self, *, email: str, password: str) -> User:
+        user = self._get_user_by_email(email)
+
+        auth_service.validate_password_strength(password)
+        user.hashed_password = auth_service.get_password_hash(password)
+        user.is_active = True
+        keep_plan = user.plan
+        if not keep_plan and getattr(user, "subscription", None):
+            keep_plan = user.subscription.plan
+        end_trial(user, self.db, keep_plan=keep_plan)
+        self.db.add(user)
+        self.db.commit()
+        self.db.refresh(user)
+        return user
+
     # ------------------------------------------------------------------ #
     # Event handlers
     # ------------------------------------------------------------------ #
@@ -192,7 +264,7 @@ class CaktoIntegrationService:
         order_id = self._normalize_str(order.get("id"))
         order_ref = self._normalize_str(order.get("refId"))
 
-        user, created = self._upsert_user_and_subscription(
+        user, _created = self._upsert_user_and_subscription(
             customer=customer,
             address=order.get("address"),
             plan_key=plan.plan_key,
@@ -203,15 +275,22 @@ class CaktoIntegrationService:
             subscription_code=subscription_code,
         )
 
-        if created:
-            self._create_onboarding_token(
-                user=user,
-                plan_key=plan.plan_key,
-                cycle=plan.cycle,
+        onboarding_token = self._create_onboarding_token(
+            user=user,
+            plan_key=plan.plan_key,
+            cycle=plan.cycle,
+            order_id=order_id,
+            order_ref=order_ref,
+            subscription_code=subscription_code,
+            offer_id=offer_id,
+        )
+        session_token = self._extract_session_token(payload)
+        if session_token:
+            self._finalize_checkout_session(
+                session_token,
                 order_id=order_id,
                 order_ref=order_ref,
-                subscription_code=subscription_code,
-                offer_id=offer_id,
+                onboarding_token=onboarding_token,
             )
         self.db.commit()
         return f"Pedido {order_ref or order_id} processado via {event_type}."
@@ -285,6 +364,14 @@ class CaktoIntegrationService:
         if isinstance(product, dict):
             return self._normalize_str(product.get("id"))
         return None
+
+    def _extract_session_token(self, payload: Dict[str, Any]) -> str | None:
+        primary = self._primary_data(payload)
+        if isinstance(primary, dict):
+            token = primary.get("sck")
+            if token:
+                return self._normalize_str(token)
+        return self._normalize_str(payload.get("sck"))
 
     def _extract_subscription_code(self, payload: Dict[str, Any], order: Optional[Dict[str, Any]]) -> str | None:
         subscription = self._get_nested(payload, "data", "subscription") or (order or {}).get("subscription")
@@ -393,7 +480,7 @@ class CaktoIntegrationService:
         order_ref: str | None,
         subscription_code: str | None,
         offer_id: str | None,
-    ) -> None:
+    ) -> CaktoOnboardingToken:
         expiration_minutes = max(10, settings.cakto_password_token_minutes or 240)
         expires_at = datetime.utcnow() + timedelta(minutes=expiration_minutes)
 
@@ -414,6 +501,8 @@ class CaktoIntegrationService:
             expires_at=expires_at,
         )
         self.db.add(token)
+        self.db.flush()
+        return token
 
     def _find_subscription(self, *, subscription_code: str | None, order_id: str | None) -> Optional[Subscription]:
         if not subscription_code and not order_id:
@@ -424,6 +513,30 @@ class CaktoIntegrationService:
         if order_id:
             query = query.filter(Subscription.cakto_order_id == order_id)
         return query.first()
+
+    def _finalize_checkout_session(
+        self,
+        session_token: str | None,
+        *,
+        order_id: str | None,
+        order_ref: str | None,
+        onboarding_token: CaktoOnboardingToken,
+    ) -> None:
+        if not session_token:
+            return
+        session = (
+            self.db.query(CaktoCheckoutSession)
+            .filter(CaktoCheckoutSession.token == session_token)
+            .first()
+        )
+        if not session:
+            return
+        session.status = "ready"
+        session.order_id = order_id
+        session.order_ref = order_ref
+        session.onboarding_token_id = onboarding_token.id
+        session.completed_at = datetime.utcnow()
+        self.db.add(session)
 
     def _primary_data(self, payload: Dict[str, Any]) -> Any:
         data = payload.get("data")
