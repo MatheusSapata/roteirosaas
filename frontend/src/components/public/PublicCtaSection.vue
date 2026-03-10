@@ -8,7 +8,7 @@
           <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="headingAccent" />
         </div>
         <p class="text-2xl font-bold md:text-3xl">{{ section.label }}</p>
-        <p class="mt-2 text-sm md:text-base" v-if="section.description">{{ section.description }}</p>
+        <div class="mt-2 text-sm md:text-base" v-if="descriptionHtml" v-html="descriptionHtml"></div>
         <div class="mt-5 flex justify-center" v-if="ctaHasTarget">
           <a
             :href="ctaHref"
@@ -49,7 +49,7 @@
               <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="headingAccent" />
             </div>
             <p class="text-lg font-semibold" :style="{ color: textColor }">{{ section.label }}</p>
-            <p class="text-sm" :style="{ color: textColor }">{{ section.description }}</p>
+            <div class="text-sm" :style="{ color: textColor }" v-if="descriptionHtml" v-html="descriptionHtml"></div>
           </div>
           <a
             v-if="ctaHasTarget"
@@ -80,7 +80,7 @@
               <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="headingAccent" />
             </div>
             <p class="text-2xl font-bold" :style="{ color: textColor }">{{ section.label }}</p>
-            <p class="text-sm" :style="{ color: textColor }">{{ section.description }}</p>
+            <div class="text-sm" :style="{ color: textColor }" v-if="descriptionHtml" v-html="descriptionHtml"></div>
           </div>
           <div class="flex items-center justify-end">
           <a
@@ -114,7 +114,7 @@
               <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="headingAccent" />
             </div>
             <p class="text-2xl font-bold" :style="{ color: textColor }">{{ section.label }}</p>
-            <p class="text-sm" :style="{ color: textColor }">{{ section.description }}</p>
+            <div class="text-sm" :style="{ color: textColor }" v-if="descriptionHtml" v-html="descriptionHtml"></div>
             <a
               v-if="ctaHasTarget"
               :href="ctaHref"
@@ -142,6 +142,7 @@ import { isWhatsappLink } from "../../utils/links";
 import type { CtaSection } from "../../types/page";
 import SectionHeadingChip from "./SectionHeadingChip.vue";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
+import { sanitizeHtml } from "../../utils/sanitizeHtml";
 
 const props = defineProps<{ section: CtaSection }>();
 const headingDefaults = getSectionHeadingDefaults("cta");
@@ -169,6 +170,7 @@ const headingAccent = computed(() => (highlightActive.value ? "#ffffff" : button
 const buttonLabel = computed(() =>
   props.section.ctaText || (props.section.layout === "simple" ? "Saiba mais" : "Falar com especialista")
 );
+const descriptionHtml = computed(() => sanitizeHtml(props.section.description));
 
 const toRgba = (hex: string, alpha: number) => {
   const cleaned = hex.replace("#", "");

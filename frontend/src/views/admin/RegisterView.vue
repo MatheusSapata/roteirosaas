@@ -1,5 +1,5 @@
 <template>
-  <div class="flex min-h-screen">
+  <div class="flex min-h-screen bg-[#41ce5f] lg:bg-transparent">
     <div
       class="relative hidden w-3/5 items-center justify-center overflow-hidden bg-[#41ce5f] lg:flex"
       style="background-color: #41ce5f;"
@@ -19,7 +19,10 @@
         </div>
       </div>
     </div>
-    <div class="flex w-full items-center justify-center bg-[#f8f8f8] px-4 py-10 lg:w-2/5 lg:px-12">
+    <div class="flex w-full flex-col items-center bg-[#41ce5f] px-4 py-10 lg:w-2/5 lg:bg-[#f8f8f8] lg:px-12">
+      <div class="mb-8 flex w-full justify-center lg:hidden">
+        <img src="../../assets/Logo Branco - Roteiro Online.png" alt="Roteiro Online" class="w-32" />
+      </div>
       <div class="w-full max-w-md rounded-3xl border border-slate-100 bg-white p-8 shadow-xl shadow-slate-200/40">
         <div class="mb-8 space-y-2">
           <p class="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Comece agora</p>
