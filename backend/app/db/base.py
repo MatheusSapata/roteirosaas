@@ -6,4 +6,16 @@ class Base(DeclarativeBase):
 
 
 # Import models here for Alembic autogenerate
-from app.models import user, agency, page_template, page, media, stats, agency_user, subscription, pixel, lesson  # noqa: E402,F401
+from app.models import (
+    user,
+    agency,
+    page_template,
+    page,
+    media,
+    stats,
+    agency_user,
+    subscription,
+    pixel,
+    lesson,
+    cakto,
+)  # noqa: E402,F401

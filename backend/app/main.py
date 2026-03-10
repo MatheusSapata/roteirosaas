@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.api.v1.api import api_router
+from app.api import cakto as cakto_api
 from app.core.config import get_settings
 from app.db.base import Base
 from app.db.session import engine
@@ -29,6 +30,7 @@ app.add_middleware(
 )
 
 app.include_router(api_router)
+app.include_router(cakto_api.router)
 uploads_dir = Path("uploads")
 uploads_dir.mkdir(exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")

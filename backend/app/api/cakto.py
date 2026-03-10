@@ -1,0 +1,76 @@
+import secrets
+
+from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy.orm import Session
+
+from app.api.deps import get_db
+from app.core.config import get_settings
+from app.schemas.cakto import OnboardingPasswordPayload, OnboardingSessionResponse
+from app.services.cakto import CaktoIntegrationService
+
+router = APIRouter(prefix="/api/cakto", tags=["cakto"])
+settings = get_settings()
+
+
+@router.post("/webhook")
+async def receive_cakto_webhook(request: Request, db: Session = Depends(get_db)) -> dict:
+    secret = settings.cakto_webhook_secret
+    if secret:
+        provided = request.query_params.get("token") or request.headers.get("x-cakto-token")
+        if not provided or not secrets.compare_digest(provided, secret):
+            raise HTTPException(status_code=401, detail="Assinatura do webhook inválida.")
+    try:
+        payload = await request.json()
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Payload inválido") from exc
+
+    service = CaktoIntegrationService(db)
+    try:
+        message = service.process_event(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"detail": message}
+
+
+@router.get("/onboarding/session", response_model=OnboardingSessionResponse)
+def get_onboarding_session(
+    token: str | None = None,
+    order_id: str | None = None,
+    ref_id: str | None = None,
+    subscription_code: str | None = None,
+    db: Session = Depends(get_db),
+) -> OnboardingSessionResponse:
+    service = CaktoIntegrationService(db)
+    record = service.get_onboarding_record(token=token, order_id=order_id, ref_id=ref_id, subscription_code=subscription_code)
+    if not record:
+        raise HTTPException(status_code=404, detail="Sessão não encontrada ou expirada.")
+    user = record.user
+    return OnboardingSessionResponse(
+        email=user.email,
+        name=user.name,
+        plan=record.plan_key,
+        cycle=record.billing_cycle,
+    )
+
+
+@router.post("/onboarding/session/password")
+def finish_onboarding_session(
+    payload: OnboardingPasswordPayload,
+    token: str | None = None,
+    order_id: str | None = None,
+    ref_id: str | None = None,
+    subscription_code: str | None = None,
+    db: Session = Depends(get_db),
+) -> dict:
+    service = CaktoIntegrationService(db)
+    try:
+        service.set_password_for_onboarding(
+            password=payload.password,
+            token=token,
+            order_id=order_id,
+            ref_id=ref_id,
+            subscription_code=subscription_code,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"detail": "Senha definida com sucesso. Faça login para acessar o painel."}
