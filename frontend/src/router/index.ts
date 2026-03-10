@@ -4,6 +4,7 @@ import RegisterView from "../views/admin/RegisterView.vue";
 import ForgotPasswordView from "../views/admin/ForgotPasswordView.vue";
 import ResetPasswordView from "../views/admin/ResetPasswordView.vue";
 import CreatePasswordView from "../views/admin/CreatePasswordView.vue";
+import CheckoutProcessingView from "../views/public/CheckoutProcessingView.vue";
 import DashboardView from "../views/admin/DashboardView.vue";
 import PagesListView from "../views/admin/PagesListView.vue";
 import PageEditorView from "../views/admin/PageEditorView.vue";
@@ -21,6 +22,7 @@ const routes: RouteRecordRaw[] = [
   { path: "/forgot-password", name: "forgot-password", component: ForgotPasswordView, meta: { guestOnly: true } },
   { path: "/reset-password", name: "reset-password", component: ResetPasswordView, meta: { guestOnly: true } },
   { path: "/create-password", name: "create-password", component: CreatePasswordView, meta: { guestOnly: true } },
+  { path: "/pedido", name: "checkout-processing", component: CheckoutProcessingView, meta: { guestOnly: true } },
   { path: "/planos", redirect: "/admin/planos" },
   {
     path: "/admin",

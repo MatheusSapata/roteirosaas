@@ -203,11 +203,29 @@ const identifierParams = () => {
       params[key] = value.trim();
     }
   };
-  assign("order_id", order_id ?? orderId);
-  assign("ref_id", ref ?? ref_id);
+  assign("order_id", order_id ?? orderId ?? extractOrderFromReferrer());
+  assign("ref_id", ref ?? ref_id ?? extractRefFromReferrer());
   assign("token", token);
   assign("subscription_code", subscription_code);
   return params;
+};
+
+const extractOrderFromReferrer = (): string | null => {
+  if (typeof document === "undefined") return null;
+  const ref = document.referrer || "";
+  const match = ref.match(/payment\/status\/([a-f0-9-]+)/i);
+  if (match?.[1]) {
+    return match[1];
+  }
+  const idMatch = ref.match(/orders?\/([a-f0-9-]+)/i);
+  return idMatch?.[1] ?? null;
+};
+
+const extractRefFromReferrer = (): string | null => {
+  if (typeof document === "undefined") return null;
+  const ref = document.referrer || "";
+  const match = ref.match(/refId=([A-Za-z0-9]+)/i);
+  return match?.[1] ?? null;
 };
 
 const sessionMessage = computed(() => {
