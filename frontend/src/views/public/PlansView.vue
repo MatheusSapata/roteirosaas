@@ -241,6 +241,7 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from "vue";
 import api from "../../services/api";
+import { CHECKOUT_SESSION_STORAGE_KEY, createCaktoCheckoutSession } from "../../services/cakto";
 import { useAuthStore } from "../../store/useAuthStore";
 import { planLabels } from "../../utils/planLabels";
 
@@ -425,11 +426,10 @@ const goToCheckout = async (
   errorMessage.value = null;
 
   try {
-    const res = await api.post<{ init_point: string }>("/billing/checkout", {
-      plan: planKey,
-      cycle: cycleOverride ?? billingCycle.value
-    });
-    window.location.href = res.data.init_point;
+    const cycle = cycleOverride ?? billingCycle.value;
+    const { data } = await createCaktoCheckoutSession(planKey, cycle);
+    localStorage.setItem(CHECKOUT_SESSION_STORAGE_KEY, data.token);
+    window.location.href = data.checkout_url;
   } catch (err) {
     console.error(err);
     errorMessage.value = "Não foi possível iniciar o checkout. Tente novamente.";

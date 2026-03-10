@@ -4,7 +4,7 @@
       <img src="../../assets/Logo Branco - Roteiro Online.png" alt="Roteiro Online" class="mx-auto mb-6 w-32" />
       <h1 class="text-2xl font-bold text-slate-900">Processando seu acesso</h1>
       <p class="mt-3 text-sm text-slate-600">
-        Estamos confirmando seu pagamento e configurando seu painel. Isso leva poucos segundos.
+        {{ statusMessage }}
       </p>
       <div class="mt-6 flex justify-center">
         <span class="h-16 w-16 animate-spin rounded-full border-4 border-emerald-200 border-t-white"></span>
@@ -20,37 +20,46 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { computed, onMounted, ref } from "vue";
+import { useRouter } from "vue-router";
+import { CHECKOUT_SESSION_STORAGE_KEY, getCheckoutSessionStatus } from "../../services/cakto";
 
 const router = useRouter();
-const route = useRoute();
 
-const extractOrderFromReferrer = (): string | null => {
-  if (typeof document === "undefined") return null;
-  const ref = document.referrer || "";
-  const match = ref.match(/payment\/status\/([a-f0-9-]+)/i);
-  if (match?.[1]) return match[1];
-  const fallback = ref.match(/orders?\/([a-f0-9-]+)/i);
-  return fallback?.[1] ?? null;
-};
-
-const getOrderId = () => {
-  const maybe = route.query.order_id || route.query.orderId;
-  if (typeof maybe === "string" && maybe.trim()) return maybe.trim();
-  return extractOrderFromReferrer();
-};
-
-const orderId = getOrderId();
-const orderIdFound = computed(() => !!orderId);
+const sessionToken = ref<string | null>(null);
+const statusMessage = ref("Estamos finalizando tudo para você...");
+const hasError = ref(false);
+const orderIdFound = computed(() => !!sessionToken.value);
 
 onMounted(() => {
-  setTimeout(() => {
-    const params: Record<string, string> = {};
-    if (orderId) params.order_id = orderId;
-    const token = typeof route.query.token === "string" ? route.query.token : null;
-    if (token) params.token = token;
-    router.replace({ name: "create-password", query: params });
-  }, 5000);
+  const stored = localStorage.getItem(CHECKOUT_SESSION_STORAGE_KEY);
+  if (stored) {
+    sessionToken.value = stored;
+    pollStatus();
+  } else {
+    hasError.value = true;
+    statusMessage.value = "Não conseguimos identificar sua compra. Use o link do e-mail de confirmação.";
+  }
 });
+
+const pollStatus = async (attempt = 0) => {
+  if (!sessionToken.value) return;
+  try {
+    const { data } = await getCheckoutSessionStatus(sessionToken.value);
+    if (data.status === "ready" && data.redirect_token) {
+      localStorage.removeItem(CHECKOUT_SESSION_STORAGE_KEY);
+      router.replace({ name: "create-password", query: { token: data.redirect_token } });
+      return;
+    }
+    if (attempt >= 10) {
+      statusMessage.value = "O pagamento foi confirmado, mas ainda estamos finalizando seu acesso.";
+      return;
+    }
+    setTimeout(() => pollStatus(attempt + 1), 2000);
+  } catch (err) {
+    console.error(err);
+    hasError.value = true;
+    statusMessage.value = "Não conseguimos confirmar seu pedido. Use o link enviado por e-mail.";
+  }
+};
 </script>
