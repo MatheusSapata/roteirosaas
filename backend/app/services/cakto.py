@@ -253,6 +253,14 @@ class CaktoIntegrationService:
         return self._normalize_str(payload.get("id") or payload.get("event_id") or payload.get("eventId"))
 
     def _extract_order(self, payload: Dict[str, Any]) -> Dict[str, Any] | None:
+        primary = self._primary_data(payload)
+        if isinstance(primary, dict):
+            # Alguns eventos retornam o pedido diretamente dentro de data[]
+            if primary.get("id") and primary.get("status"):
+                return primary
+            nested = primary.get("order")
+            if isinstance(nested, dict):
+                return nested
         return (
             self._get_nested(payload, "data", "order")
             or self._get_nested(payload, "order")
@@ -417,12 +425,21 @@ class CaktoIntegrationService:
             query = query.filter(Subscription.cakto_order_id == order_id)
         return query.first()
 
+    def _primary_data(self, payload: Dict[str, Any]) -> Any:
+        data = payload.get("data")
+        if isinstance(data, list):
+            return data[0] if data else None
+        return data
+
     def _get_nested(self, data: Dict[str, Any], *keys: str) -> Any:
         current = data
         for key in keys:
-            if not isinstance(current, dict):
+            if isinstance(current, list):
+                current = current[0] if current else None
+            elif isinstance(current, dict):
+                current = current.get(key)
+            else:
                 return None
-            current = current.get(key)
             if current is None:
                 return None
         return current
