@@ -30,6 +30,18 @@
           <p class="text-sm text-slate-500">
             Defina uma senha para entrar no painel. Essa credencial será usada para logins futuros.
           </p>
+          <p
+            v-if="session && !sessionError"
+            class="text-base font-semibold text-slate-700"
+          >
+            Olá, {{ session?.name || session?.email }} 👋
+          </p>
+        </div>
+        <div
+          v-if="sessionMessage"
+          class="mb-4 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm text-slate-600"
+        >
+          {{ sessionMessage }}
         </div>
         <form class="space-y-5" @submit.prevent="onSubmit">
           <div>
@@ -40,12 +52,14 @@
                 :type="showPassword ? 'text' : 'password'"
                 required
                 minlength="8"
-                class="w-full rounded-lg border border-slate-200 px-3 py-2 pr-11 focus:border-brand focus:outline-none"
+                :disabled="isFormDisabled"
+                class="w-full rounded-lg border border-slate-200 px-3 py-2 pr-11 focus:border-brand focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100"
               />
               <button
                 type="button"
                 class="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-slate-600"
                 @click="showPassword = !showPassword"
+                :disabled="isFormDisabled"
                 aria-label="Alternar visualização da senha"
               >
                 <svg
@@ -88,12 +102,14 @@
                 v-model="confirmPassword"
                 :type="showConfirmPassword ? 'text' : 'password'"
                 required
-                class="w-full rounded-lg border border-slate-200 px-3 py-2 pr-11 focus:border-brand focus:outline-none"
+                :disabled="isFormDisabled"
+                class="w-full rounded-lg border border-slate-200 px-3 py-2 pr-11 focus:border-brand focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100"
               />
               <button
                 type="button"
                 class="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-slate-600"
                 @click="showConfirmPassword = !showConfirmPassword"
+                :disabled="isFormDisabled"
                 aria-label="Alternar visualização da confirmação de senha"
               >
                 <svg
@@ -132,12 +148,14 @@
           </div>
           <button
             type="submit"
+            :disabled="isFormDisabled"
             class="w-full rounded-lg px-4 py-2 font-semibold text-white transition hover:opacity-90"
+            :class="isFormDisabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'"
             style="background-color: #41ce5f;"
           >
-            Salvar senha
+            {{ isSubmitting ? "Salvando..." : "Salvar senha" }}
           </button>
-          <p v-if="error" class="text-center text-sm text-red-500">{{ error }}</p>
+          <p v-if="formError" class="text-center text-sm text-red-500">{{ formError }}</p>
           <p v-if="success" class="text-center text-sm text-emerald-600">{{ success }}</p>
         </form>
       </div>
@@ -146,25 +164,133 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import axios from "axios";
+import { computed, onMounted, ref } from "vue";
+import { useRoute, useRouter } from "vue-router";
+
+interface OnboardingSession {
+  email: string;
+  name?: string | null;
+  plan: string;
+  cycle: string;
+}
+
+const route = useRoute();
+const router = useRouter();
+
+const apiBase = (import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1").replace(/\/api\/v1\/?$/, "");
+const caktoClient = axios.create({
+  baseURL: `${apiBase}/api/cakto`
+});
 
 const password = ref("");
 const confirmPassword = ref("");
 const showPassword = ref(false);
 const showConfirmPassword = ref(false);
-const error = ref("");
+const formError = ref("");
 const success = ref("");
+const isSubmitting = ref(false);
+
+const session = ref<OnboardingSession | null>(null);
+const isLoadingSession = ref(true);
+const sessionError = ref("");
+
+const identifierParams = () => {
+  const params: Record<string, string> = {};
+  const { order_id, orderId, ref, ref_id, token, subscription_code } = route.query;
+  const assign = (key: string, value: unknown) => {
+    if (typeof value === "string" && value.trim()) {
+      params[key] = value.trim();
+    }
+  };
+  assign("order_id", order_id ?? orderId);
+  assign("ref_id", ref ?? ref_id);
+  assign("token", token);
+  assign("subscription_code", subscription_code);
+  return params;
+};
+
+const sessionMessage = computed(() => {
+  if (isLoadingSession.value) {
+    return "Estamos validando seu pedido. Aguarde um instante...";
+  }
+  if (sessionError.value) {
+    return sessionError.value;
+  }
+  if (session.value) {
+    return `Pedido localizado para ${session.value.email}. Plano ${session.value.plan} (${session.value.cycle}).`;
+  }
+  return "";
+});
+
+const isFormDisabled = computed(() => {
+  if (isLoadingSession.value || !!sessionError.value || !session.value) {
+    return true;
+  }
+  return isSubmitting.value;
+});
+
+const loadSession = async () => {
+  const params = identifierParams();
+  if (!Object.keys(params).length) {
+    sessionError.value = "Não conseguimos identificar seu pedido. Use o link enviado no e-mail de confirmação.";
+    isLoadingSession.value = false;
+    return;
+  }
+  try {
+    const { data } = await caktoClient.get<OnboardingSession>("/onboarding/session", { params });
+    session.value = data;
+  } catch (err: any) {
+    const detail = err?.response?.data?.detail;
+    sessionError.value = detail || "Não encontramos o pedido. Verifique o link ou fale com o suporte.";
+  } finally {
+    isLoadingSession.value = false;
+  }
+};
+
+onMounted(() => {
+  loadSession();
+});
+
+const redirectToLogin = () => {
+  setTimeout(() => {
+    router.push({ name: "login" });
+  }, 1500);
+};
 
 const onSubmit = () => {
-  error.value = "";
+  formError.value = "";
   success.value = "";
 
-  if (password.value !== confirmPassword.value) {
-    error.value = "As senhas não coincidem. Verifique e tente novamente.";
+  if (isFormDisabled.value) {
     return;
   }
 
-  // Apenas layout: aqui iríamos chamar o backend para definir a senha.
-  success.value = "Senha definida com sucesso! Você já pode acessar o painel.";
+  if (password.value !== confirmPassword.value) {
+    formError.value = "As senhas não coincidem. Verifique e tente novamente.";
+    return;
+  }
+
+  isSubmitting.value = true;
+  const params = identifierParams();
+
+  caktoClient
+    .post(
+      "/onboarding/session/password",
+      { password: password.value },
+      { params }
+    )
+    .then(() => {
+      success.value = "Senha definida com sucesso! Você já pode acessar o painel.";
+      formError.value = "";
+      redirectToLogin();
+    })
+    .catch(err => {
+      const detail = err?.response?.data?.detail;
+      formError.value = detail || "Não foi possível salvar sua senha. Tente novamente em instantes.";
+    })
+    .finally(() => {
+      isSubmitting.value = false;
+    });
 };
 </script>
