@@ -62,10 +62,10 @@ class CaktoIntegrationService:
         self._token_expires_at: datetime | None = None
         self._token_url = None
         if self.api_base_url:
-            base_for_token = self.api_base_url
+            base_for_token = self.api_base_url.rstrip("/")
             if base_for_token.endswith("/v1"):
                 base_for_token = base_for_token[:-3]
-            self._token_url = f"{base_for_token}/oauth/token/"
+            self._token_url = f"{base_for_token}/public_api/token/"
 
     def _load_plan_mappings(self) -> list[PlanMapping]:
         mappings: list[PlanMapping] = []
