@@ -433,7 +433,6 @@ class CaktoIntegrationService:
         if not self._token_url or not self.api_client_id or not self.api_client_secret:
             raise CaktoAPIError("Credenciais da API Cakto não configuradas.")
         payload = {
-            "grant_type": "client_credentials",
             "client_id": self.api_client_id,
             "client_secret": self.api_client_secret,
         }
