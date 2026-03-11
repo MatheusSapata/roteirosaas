@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session, aliased
 
 from app.api.deps import get_current_superuser, get_db
 from app.api.v1.endpoints.billing import PLAN_PRICING
+from app.models.cakto import CaktoOnboardingToken
 from app.models.subscription import Subscription
 from app.models.user import User
 from app.models.user_tracking import UserTracking
@@ -341,6 +342,7 @@ def delete_user_completely(
         db.query(Agency).filter(Agency.id.in_(owner_agency_ids)).delete(synchronize_session=False)
 
     db.query(AgencyUser).filter(AgencyUser.user_id == user_id).delete(synchronize_session=False)
+    db.query(CaktoOnboardingToken).filter(CaktoOnboardingToken.user_id == user_id).delete(synchronize_session=False)
 
     db.delete(user)
     db.commit()
