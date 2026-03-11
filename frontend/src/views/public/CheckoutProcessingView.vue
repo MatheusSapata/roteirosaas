@@ -2,7 +2,7 @@
   <div class="flex min-h-screen items-center justify-center bg-[#41ce5f] px-4">
     <div class="w-full max-w-md rounded-3xl bg-white/95 p-8 text-center shadow-2xl shadow-emerald-900/30">
       <img
-        src="../../assets/Logo Branco - Roteiro Online.png"
+        src="../../assets/Logo Cor - Roteiro Online.png"
         alt="Roteiro Online"
         class="mx-auto mb-6 w-32"
       />
