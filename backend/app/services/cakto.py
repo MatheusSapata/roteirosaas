@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, Optional
 from uuid import uuid4
 
+import httpx
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
@@ -19,6 +20,10 @@ from app.services.trial import end_trial
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
+
+
+class CaktoAPIError(Exception):
+    """Raised when a request to the Cakto API fails."""
 
 
 @dataclass
@@ -49,6 +54,18 @@ class CaktoIntegrationService:
     def __init__(self, db: Session):
         self.db = db
         self.plan_mappings = self._load_plan_mappings()
+        raw_base = getattr(settings, "cakto_api_base_url", None)
+        self.api_base_url = raw_base.rstrip("/") if isinstance(raw_base, str) else None
+        self.api_client_id = getattr(settings, "cakto_client_id", None)
+        self.api_client_secret = getattr(settings, "cakto_client_secret", None)
+        self._access_token: str | None = None
+        self._token_expires_at: datetime | None = None
+        self._token_url = None
+        if self.api_base_url:
+            base_for_token = self.api_base_url
+            if base_for_token.endswith("/v1"):
+                base_for_token = base_for_token[:-3]
+            self._token_url = f"{base_for_token}/oauth/token"
 
     def _load_plan_mappings(self) -> list[PlanMapping]:
         mappings: list[PlanMapping] = []
@@ -409,6 +426,59 @@ class CaktoIntegrationService:
                 if mapping.product_id and mapping.product_id == normalized_product:
                     return mapping
         return None
+
+    def _obtain_access_token(self) -> str:
+        if self._access_token and self._token_expires_at and datetime.utcnow() < self._token_expires_at:
+            return self._access_token
+        if not self._token_url or not self.api_client_id or not self.api_client_secret:
+            raise CaktoAPIError("Credenciais da API Cakto não configuradas.")
+        payload = {
+            "grant_type": "client_credentials",
+            "client_id": self.api_client_id,
+            "client_secret": self.api_client_secret,
+        }
+        response = httpx.post(self._token_url, data=payload, timeout=30)
+        if response.status_code >= 400:
+            raise CaktoAPIError(response.json() if response.content else {"detail": response.text})
+        data = response.json()
+        token = data.get("access_token")
+        expires_in = data.get("expires_in", 3600)
+        if not token:
+            raise CaktoAPIError("Resposta do token Cakto sem access_token.")
+        self._access_token = token
+        self._token_expires_at = datetime.utcnow() + timedelta(seconds=max(int(expires_in) - 30, 60))
+        return token
+
+    def cancel_remote_subscription(self, *, subscription_code: str | None, order_id: str | None) -> None:
+        """
+        Cancela a assinatura diretamente na API da Cakto.
+        """
+        if not self.api_base_url:
+            logger.info("Cakto API não configurada. Cancelamento remoto ignorado.")
+            return
+        if not subscription_code and not order_id:
+            raise CaktoAPIError("Nenhum identificador da assinatura Cakto foi informado.")
+
+        payload: dict[str, str] = {}
+        if subscription_code:
+            payload["subscription_code"] = subscription_code
+        if order_id:
+            payload["order_id"] = order_id
+
+        access_token = self._obtain_access_token()
+        url = f"{self.api_base_url}/subscriptions/cancel"
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        }
+        response = httpx.post(url, json=payload, headers=headers, timeout=30)
+        if response.status_code >= 400:
+            try:
+                data = response.json()
+            except ValueError:
+                data = {"detail": response.text}
+            raise CaktoAPIError(data)
 
     def _upsert_user_and_subscription(
         self,

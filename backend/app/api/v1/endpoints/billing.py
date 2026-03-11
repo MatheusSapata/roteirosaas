@@ -11,6 +11,7 @@ from app.core.config import get_settings
 from app.models.subscription import Subscription
 from app.models.user import User
 from app.services.asaas import AsaasAPIError, AsaasClient
+from app.services.cakto import CaktoAPIError, CaktoIntegrationService
 from app.services.plans import effective_plan
 from app.services.trial import end_trial
 
@@ -303,15 +304,26 @@ def cancel_subscription(current_user: User = Depends(get_current_active_user), d
     if not sub:
         raise HTTPException(status_code=404, detail="Assinatura não encontrada")
 
-    client = _get_asaas_client()
-    try:
-        if sub.asaas_subscription_id:
-            client.cancel_subscription(sub.asaas_subscription_id)
-        elif sub.asaas_payment_link_id:
-            client.delete_payment_link(sub.asaas_payment_link_id)
-    except AsaasAPIError as exc:  # noqa: BLE001
-        logger.exception("Erro ao cancelar assinatura Asaas: %s", exc)
-        raise HTTPException(status_code=502, detail="Erro ao cancelar assinatura") from exc
+    if sub.provider == "cakto":
+        service = CaktoIntegrationService(db)
+        try:
+            service.cancel_remote_subscription(
+                subscription_code=sub.cakto_subscription_code,
+                order_id=sub.cakto_order_id,
+            )
+        except CaktoAPIError as exc:  # noqa: BLE001
+            logger.exception("Erro ao cancelar assinatura Cakto: %s", exc)
+            raise HTTPException(status_code=502, detail="Erro ao cancelar assinatura") from exc
+    else:
+        client = _get_asaas_client()
+        try:
+            if sub.asaas_subscription_id:
+                client.cancel_subscription(sub.asaas_subscription_id)
+            elif sub.asaas_payment_link_id:
+                client.delete_payment_link(sub.asaas_payment_link_id)
+        except AsaasAPIError as exc:  # noqa: BLE001
+            logger.exception("Erro ao cancelar assinatura Asaas: %s", exc)
+            raise HTTPException(status_code=502, detail="Erro ao cancelar assinatura") from exc
 
     _set_subscription_cancelled(sub)
     db.add(sub)
