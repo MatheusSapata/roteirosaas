@@ -10,35 +10,55 @@
         <span class="h-16 w-16 animate-spin rounded-full border-4 border-emerald-200 border-t-white"></span>
       </div>
       <p class="mt-6 text-sm font-medium text-slate-700">
-        Em instantes você será levado para definir sua senha de acesso.
+        Em instantes vocǦ serǭ levado para definir sua senha de acesso.
       </p>
       <p v-if="!orderIdFound" class="mt-2 text-xs text-amber-600">
-        Caso o redirecionamento não aconteça, use o link do e-mail de confirmação.
+        Caso o redirecionamento nǜo aconte��a, use o link do e-mail de confirma��ǜo.
       </p>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
-import { useRouter } from "vue-router";
+import { computed, onMounted, onUnmounted, ref } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { CHECKOUT_SESSION_STORAGE_KEY, getCheckoutSessionStatus } from "../../services/cakto";
 
 const router = useRouter();
+const route = useRoute();
 
 const sessionToken = ref<string | null>(null);
-const statusMessage = ref("Estamos finalizando tudo para você...");
+const statusMessage = ref("Estamos finalizando tudo para vocǦ...");
 const hasError = ref(false);
 const orderIdFound = computed(() => !!sessionToken.value);
+let fallbackTimer: number | null = null;
 
 onMounted(() => {
   const stored = localStorage.getItem(CHECKOUT_SESSION_STORAGE_KEY);
-  if (stored) {
-    sessionToken.value = stored;
+  const queryToken =
+    (typeof route.query.sck === "string" && route.query.sck.trim()) ||
+    (typeof route.query.token === "string" && route.query.token.trim()) ||
+    null;
+  const effectiveToken = stored || queryToken;
+  if (effectiveToken) {
+    sessionToken.value = effectiveToken;
+    if (!stored && queryToken) {
+      localStorage.setItem(CHECKOUT_SESSION_STORAGE_KEY, queryToken);
+    }
     pollStatus();
   } else {
     hasError.value = true;
-    statusMessage.value = "Não conseguimos identificar sua compra. Use o link do e-mail de confirmação.";
+    statusMessage.value = "Nǜo conseguimos identificar sua compra. Use o link do e-mail de confirma��ǜo.";
+  }
+  fallbackTimer = window.setTimeout(() => {
+    router.replace({ name: "create-password" });
+  }, 5000);
+});
+
+onUnmounted(() => {
+  if (fallbackTimer) {
+    clearTimeout(fallbackTimer);
+    fallbackTimer = null;
   }
 });
 
@@ -48,6 +68,10 @@ const pollStatus = async (attempt = 0) => {
     const { data } = await getCheckoutSessionStatus(sessionToken.value);
     if (data.status === "ready" && data.redirect_token) {
       localStorage.removeItem(CHECKOUT_SESSION_STORAGE_KEY);
+      if (fallbackTimer) {
+        clearTimeout(fallbackTimer);
+        fallbackTimer = null;
+      }
       router.replace({ name: "create-password", query: { token: data.redirect_token } });
       return;
     }
@@ -59,7 +83,7 @@ const pollStatus = async (attempt = 0) => {
   } catch (err) {
     console.error(err);
     hasError.value = true;
-    statusMessage.value = "Não conseguimos confirmar seu pedido. Use o link enviado por e-mail.";
+    statusMessage.value = "Nǜo conseguimos confirmar seu pedido. Use o link enviado por e-mail.";
   }
 };
 </script>
