@@ -434,10 +434,14 @@ class CaktoIntegrationService:
             raise CaktoAPIError("Credenciais da API Cakto não configuradas.")
         payload = {
             "grant_type": "client_credentials",
-            "client_id": self.api_client_id,
-            "client_secret": self.api_client_secret,
         }
-        response = httpx.post(self._token_url, data=payload, timeout=30, follow_redirects=True)
+        response = httpx.post(
+            self._token_url,
+            data=payload,
+            timeout=30,
+            follow_redirects=True,
+            auth=(self.api_client_id, self.api_client_secret),
+        )
         if response.status_code >= 400:
             raise CaktoAPIError(response.json() if response.content else {"detail": response.text})
         data = response.json()
