@@ -10,6 +10,8 @@ class AdminUserPage(BaseModel):
     slug: str
     status: str
     agency_slug: Optional[str] = None
+    total_visits: int = 0
+    total_cta_clicks: int = 0
 
     model_config = ConfigDict(from_attributes=True)
 

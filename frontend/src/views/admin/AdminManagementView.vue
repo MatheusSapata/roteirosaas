@@ -372,6 +372,8 @@
                               <tr>
                                 <th class="px-3 py-2">Título</th>
                                 <th class="px-3 py-2">Slug</th>
+                                <th class="px-3 py-2 text-right">Visualizações</th>
+                                <th class="px-3 py-2 text-right">Cliques CTA</th>
                                 <th class="px-3 py-2 text-right">Ações</th>
                               </tr>
                             </thead>
@@ -380,6 +382,8 @@
                               <tr v-for="page in u.published_pages" :key="page.id">
                                 <td class="px-3 py-2 font-semibold text-slate-900">{{ page.title }}</td>
                                 <td class="px-3 py-2 text-[11px] text-slate-500">/{{ page.slug }}</td>
+                                <td class="px-3 py-2 text-right font-semibold text-slate-900">{{ page.total_visits ?? 0 }}</td>
+                                <td class="px-3 py-2 text-right font-semibold text-slate-900">{{ page.total_cta_clicks ?? 0 }}</td>
                                 <td class="px-3 py-2">
                                   <div class="flex justify-end gap-2">
                                     <button
@@ -911,6 +915,8 @@ interface MetricsUserPage {
   title: string;
   slug: string;
   status: string;
+  total_visits?: number;
+  total_cta_clicks?: number;
   agency_slug?: string | null;
 }
 
