@@ -423,7 +423,7 @@
         <div
           :class="previewDevice === 'mobile'
             ? (isMobileViewport
-              ? '-mx-4 w-[calc(100%+2rem)] overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-xl'
+              ? '-mx-4 w-[calc(100%+2rem)] overflow-hidden rounded-none border-0 bg-transparent shadow-none'
               : 'mx-auto w-full max-w-[420px] overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-xl')
             : ''"
         >
@@ -580,53 +580,55 @@
       </div>
     </div>
 
-    <div
-      v-if="isSectionEditorOpen && editingSectionComponent && editingSectionDraft"
-      class="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/70 px-4 py-10 md:py-20"
-      @click.self="closeSectionEditor"
-    >
+    <Teleport to="body">
       <div
-        class="w-full max-w-4xl overflow-hidden rounded-3xl bg-white shadow-2xl"
-        :class="isMobileViewport ? 'max-h-[75vh]' : 'md:max-h-none md:rounded-[32px] md:shadow-2xl'"
+        v-if="isSectionEditorOpen && editingSectionComponent && editingSectionDraft"
+        class="fixed inset-0 z-40 flex h-full w-full items-center justify-center bg-slate-900/80 px-4 py-10 md:py-20 backdrop-blur-sm"
+        @click.self="closeSectionEditor"
       >
-        <div class="flex flex-col gap-1 border-b border-slate-100 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Editar seção</p>
-            <h3 class="text-lg font-semibold text-slate-900">{{ editingSectionLabel }}</h3>
-          </div>
-          <button
-            class="rounded-full border border-slate-200 px-4 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
-            @click="closeSectionEditor"
-          >
-            Fechar
-          </button>
-        </div>
         <div
-          :class="isMobileViewport ? 'max-h-[calc(75vh-11rem)]' : 'max-h-[70vh]'"
-          class="overflow-y-auto px-6 py-4"
+          class="w-full max-w-4xl overflow-hidden rounded-3xl bg-white shadow-2xl"
+          :class="isMobileViewport ? 'max-h-[75vh]' : 'md:max-h-none md:rounded-[32px] md:shadow-2xl'"
         >
-          <component
-            :is="editingSectionComponent"
-            :modelValue="editingSectionDraft"
-            @update:modelValue="updateEditingDraft"
-          />
-        </div>
-        <div class="flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 px-6 py-4">
-          <button
-            class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
-            @click="closeSectionEditor"
+          <div class="flex flex-col gap-1 border-b border-slate-100 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Editar seção</p>
+              <h3 class="text-lg font-semibold text-slate-900">{{ editingSectionLabel }}</h3>
+            </div>
+            <button
+              class="rounded-full border border-slate-200 px-4 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+              @click="closeSectionEditor"
+            >
+              Fechar
+            </button>
+          </div>
+          <div
+            :class="isMobileViewport ? 'max-h-[calc(75vh-11rem)]' : 'max-h-[70vh]'"
+            class="overflow-y-auto px-6 py-4"
           >
-            Cancelar
-          </button>
-          <button
-            class="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white shadow hover:bg-brand-dark"
-            @click="saveEditingSection"
-          >
-            Salvar seção
-          </button>
+            <component
+              :is="editingSectionComponent"
+              :modelValue="editingSectionDraft"
+              @update:modelValue="updateEditingDraft"
+            />
+          </div>
+          <div class="flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 px-6 py-4">
+            <button
+              class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+              @click="closeSectionEditor"
+            >
+              Cancelar
+            </button>
+            <button
+              class="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white shadow hover:bg-brand-dark"
+              @click="saveEditingSection"
+            >
+              Salvar seção
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </Teleport>
     <transition name="fade">
       <div
         v-if="snackbar.open"
