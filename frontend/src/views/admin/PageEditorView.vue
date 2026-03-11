@@ -439,7 +439,7 @@
                     <div v-if="section" class="space-y-3">
                     <div
                       class="group relative overflow-hidden rounded-[32px] border border-transparent shadow transition hover:border-brand/30"
-                      @click="handleSectionTap(idx)"
+                      @click.capture="handleSectionTap(idx, $event)"
                       :ref="el => registerPreviewSection(el, idx)"
                     >
                       <component
@@ -986,8 +986,9 @@ const registerPreviewSection = (el: Element | null, idx: number) => {
   }
 };
 
-const handleSectionTap = (idx: number) => {
+const handleSectionTap = (idx: number, event?: Event) => {
   if (!isMobileOverlayMode.value) return;
+  const alreadyVisible = mobileOverlayVisible[idx];
   Object.keys(mobileOverlayVisible).forEach(key => {
     const otherIdx = Number(key);
     if (otherIdx !== idx) {
@@ -999,6 +1000,10 @@ const handleSectionTap = (idx: number) => {
   mobileOverlayVisible[idx] = true;
   mobileOverlayPersistent[idx] = true;
   clearMobileOverlayTimer(idx);
+  if (!alreadyVisible) {
+    event?.stopPropagation();
+    event?.preventDefault();
+  }
 };
 const previewSections = ref<PageSection[]>([]);
 const previewReady = ref(false);
