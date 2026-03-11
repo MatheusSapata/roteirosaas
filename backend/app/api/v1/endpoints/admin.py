@@ -16,6 +16,7 @@ from app.api.deps import get_current_superuser, get_db
 from app.api.v1.endpoints.billing import PLAN_PRICING
 from app.models.cakto import CaktoOnboardingToken
 from app.models.subscription import Subscription
+from app.models.stats import PageVisitStats
 from app.models.user import User
 from app.models.user_tracking import UserTracking
 from app.models.agency import Agency
@@ -144,12 +145,29 @@ def get_admin_metrics(
         if agency_id is not None
     }
 
+    stats_by_page = {
+        page_id: {
+            "total_visits": visits or 0,
+            "total_cta_clicks": clicks_cta or 0,
+        }
+        for page_id, visits, clicks_cta in (
+            db.query(
+                PageVisitStats.page_id,
+                func.sum(PageVisitStats.visits).label("visits"),
+                func.sum(PageVisitStats.clicks_cta).label("clicks_cta"),
+            )
+            .group_by(PageVisitStats.page_id)
+            .all()
+        )
+    }
+
     pages_details = defaultdict(list)
     for page_id, title, slug, status, agency_id, agency_slug in (
         db.query(Page.id, Page.title, Page.slug, Page.status, Page.agency_id, Agency.slug)
         .join(Agency, Agency.id == Page.agency_id)
         .all()
     ):
+        stats = stats_by_page.get(page_id, {"total_visits": 0, "total_cta_clicks": 0})
         pages_details[agency_id].append(
             {
                 "id": page_id,
@@ -157,6 +175,7 @@ def get_admin_metrics(
                 "slug": slug,
                 "status": status,
                 "agency_slug": agency_slug,
+                **stats,
             }
         )
 
