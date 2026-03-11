@@ -1,22 +1,27 @@
 <template>
-  <div class="min-h-screen bg-[#41ce5f] px-4 py-10 flex items-center justify-center">
-    <div class="w-full max-w-2xl">
+  <div class="min-h-screen bg-[#41ce5f] px-4 py-10">
+    <div class="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center">
+      <!-- TOPO FORA DO CARD -->
       <div class="mb-8 flex flex-col items-center text-center text-white">
-        <img src="../../assets/Logo Branco - Roteiro Online.png" alt="Roteiro Online" class="mb-4 w-32 drop-shadow-lg" />
-        <p class="text-xs font-semibold uppercase tracking-[0.5em] text-white/70">Roteiro Online</p>
-        <h1 class="mt-2 text-3xl font-bold">Seja bem-vindo!</h1>
-        <p class="mt-2 text-base text-white/85">Vamos finalizar seu cadastro agora mesmo.</p>
+        <img
+          src="../../assets/Logo Branco - Roteiro Online.png"
+          alt="Roteiro Online"
+          class="mb-6 w-32 drop-shadow-lg"
+        />
+        <h1 class="text-4xl font-bold">Seja bem-vindo!</h1>
+        <p class="mt-2 text-lg text-white/90">Vamos finalizar seu cadastro agora mesmo.</p>
       </div>
-      <div class="rounded-3xl bg-white/95 p-6 shadow-[0_30px_80px_rgba(0,0,0,0.25)] backdrop-blur md:p-10">
-        <transition name="step">
-          <div
-            v-if="!canSetPassword"
-            key="email-step"
-            class="rounded-2xl border border-slate-200 bg-white p-6"
-          >
+
+      <!-- CARD ÚNICO -->
+      <div class="w-full rounded-3xl bg-white p-6 shadow-[0_30px_80px_rgba(0,0,0,0.18)] md:p-8">
+        <transition name="step" mode="out-in">
+          <div v-if="!canSetPassword" key="email-step">
             <p class="text-sm font-semibold uppercase tracking-[0.35em] text-slate-500">Passo 1</p>
             <h2 class="mt-1 text-2xl font-bold text-slate-900">Valide seu e-mail</h2>
-            <p class="mt-2 text-sm text-slate-500">Digite o e-mail usado na compra e clique em avançar.</p>
+            <p class="mt-2 text-sm text-slate-500">
+              Digite o e-mail usado na compra e clique em avançar.
+            </p>
+
             <form class="mt-6 space-y-4" @submit.prevent="onEmailSubmit">
               <div>
                 <label class="text-sm font-semibold text-slate-600">E-mail usado na compra</label>
@@ -25,10 +30,11 @@
                   type="email"
                   required
                   :disabled="isValidatingEmail"
-                  class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3 text-base focus:border-brand focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100"
+                  class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3 text-base focus:border-[#41ce5f] focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100"
                   placeholder="voce@agencia.com"
                 />
               </div>
+
               <button
                 type="submit"
                 class="flex w-full items-center justify-center rounded-xl bg-[#41ce5f] px-4 py-3 text-base font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
@@ -37,20 +43,22 @@
                 {{ isValidatingEmail ? "Validando..." : "Avançar" }}
               </button>
             </form>
-            <p v-if="manualValidationError" class="mt-3 text-sm text-red-500">{{ manualValidationError }}</p>
+
+            <p v-if="manualValidationError" class="mt-3 text-sm text-red-500">
+              {{ manualValidationError }}
+            </p>
           </div>
-          <div
-            v-else
-            key="password-step"
-            class="rounded-2xl border border-slate-200 bg-white p-6 space-y-5"
-          >
+
+          <div v-else key="password-step" class="space-y-5">
             <div>
               <p class="text-xs font-semibold uppercase tracking-[0.5em] text-slate-500">Passo 2</p>
               <h2 class="mt-2 text-3xl font-bold text-slate-900">Olá, {{ identityName }}</h2>
               <p class="mt-2 text-sm text-slate-500">
-                Defina uma senha segura para acessar o painel. Assim que concluir, faremos o login automaticamente.
+                Defina uma senha segura para acessar o painel. Assim que concluir, faremos o login
+                automaticamente.
               </p>
             </div>
+
             <form class="space-y-5" @submit.prevent="onSubmit">
               <div>
                 <label class="text-sm font-semibold text-slate-600">Senha</label>
@@ -61,7 +69,7 @@
                     required
                     minlength="8"
                     :disabled="isSubmitting"
-                    class="w-full rounded-xl border border-slate-200 px-4 py-3 pr-12 focus:border-brand focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100"
+                    class="w-full rounded-xl border border-slate-200 px-4 py-3 pr-12 focus:border-[#41ce5f] focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100"
                   />
                   <button
                     type="button"
@@ -99,8 +107,11 @@
                     </svg>
                   </button>
                 </div>
-                <p class="mt-1 text-xs text-slate-500">Use pelo menos 8 caracteres com maiúsculas, minúsculas e números.</p>
+                <p class="mt-1 text-xs text-slate-500">
+                  Use pelo menos 8 caracteres com maiúsculas, minúsculas e números.
+                </p>
               </div>
+
               <div>
                 <label class="text-sm font-semibold text-slate-600">Confirmar senha</label>
                 <div class="relative mt-1">
@@ -109,7 +120,7 @@
                     :type="showConfirmPassword ? 'text' : 'password'"
                     required
                     :disabled="isSubmitting"
-                    class="w-full rounded-xl border border-slate-200 px-4 py-3 pr-12 focus:border-brand focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100"
+                    class="w-full rounded-xl border border-slate-200 px-4 py-3 pr-12 focus:border-[#41ce5f] focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100"
                   />
                   <button
                     type="button"
@@ -148,6 +159,7 @@
                   </button>
                 </div>
               </div>
+
               <button
                 type="submit"
                 class="w-full rounded-xl bg-[#41ce5f] px-4 py-3 text-base font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
@@ -155,6 +167,7 @@
               >
                 {{ isSubmitting ? "Salvando..." : "Finalizar e acessar" }}
               </button>
+
               <p v-if="formError" class="text-center text-sm text-red-500">{{ formError }}</p>
               <p v-if="success" class="text-center text-sm text-emerald-600">{{ success }}</p>
             </form>
@@ -164,7 +177,6 @@
     </div>
   </div>
 </template>
-
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
@@ -209,52 +221,59 @@ const manualValidatedEmail = ref("");
 const manualValidationError = ref("");
 const isValidatingEmail = ref(false);
 
-const identifierParams = () => {
-  const params: Record<string, string> = {};
-  const { order_id, orderId, ref, ref_id, token, subscription_code } = route.query;
-  const assign = (key: string, value: unknown) => {
-    if (typeof value === "string" && value.trim()) {
-      params[key] = value.trim();
-    }
-  };
-  assign("order_id", order_id ?? orderId ?? extractOrderFromReferrer());
-  assign("ref_id", ref ?? ref_id ?? extractRefFromReferrer());
-  assign("token", token);
-  assign("subscription_code", subscription_code);
-  return params;
-};
-
 const extractOrderFromReferrer = (): string | null => {
   if (typeof document === "undefined") return null;
-  const ref = document.referrer || "";
-  const match = ref.match(/payment\/status\/([a-f0-9-]+)/i);
-  if (match?.[1]) {
-    return match[1];
-  }
-  const idMatch = ref.match(/orders?\/([a-f0-9-]+)/i);
+  const referrer = document.referrer || "";
+  const match = referrer.match(/payment\/status\/([a-f0-9-]+)/i);
+  if (match?.[1]) return match[1];
+
+  const idMatch = referrer.match(/orders?\/([a-f0-9-]+)/i);
   return idMatch?.[1] ?? null;
 };
 
 const extractRefFromReferrer = (): string | null => {
   if (typeof document === "undefined") return null;
-  const ref = document.referrer || "";
-  const match = ref.match(/refId=([A-Za-z0-9]+)/i);
+  const referrer = document.referrer || "";
+  const match = referrer.match(/refId=([A-Za-z0-9]+)/i);
   return match?.[1] ?? null;
 };
 
-const canSetPassword = computed(() => {
-  return !!session.value || !!manualValidatedUser.value;
-});
+const identifierParams = () => {
+  const params: Record<string, string> = {};
+  const { order_id, orderId, ref, ref_id, token, subscription_code } = route.query;
 
-const identityEmail = computed(() => session.value?.email ?? manualValidatedUser.value?.email ?? "");
-const identityName = computed(() => session.value?.name ?? manualValidatedUser.value?.name ?? identityEmail.value);
+  const assign = (key: string, value: unknown) => {
+    if (typeof value === "string" && value.trim()) {
+      params[key] = value.trim();
+    }
+  };
+
+  assign("order_id", order_id ?? orderId ?? extractOrderFromReferrer());
+  assign("ref_id", ref ?? ref_id ?? extractRefFromReferrer());
+  assign("token", token);
+  assign("subscription_code", subscription_code);
+
+  return params;
+};
+
+const canSetPassword = computed(() => !!session.value || !!manualValidatedUser.value);
+
+const identityEmail = computed(
+  () => session.value?.email ?? manualValidatedUser.value?.email ?? ""
+);
+
+const identityName = computed(
+  () => session.value?.name ?? manualValidatedUser.value?.name ?? identityEmail.value
+);
 
 const loadSession = async () => {
   const params = identifierParams();
+
   if (!Object.keys(params).length) {
     isLoadingSession.value = false;
     return;
   }
+
   try {
     const { data } = await fetchOnboardingSession(params);
     session.value = data;
@@ -276,12 +295,15 @@ const resetManualValidation = () => {
   manualValidationError.value = "";
 };
 
-watch(email, newValue => {
+watch(email, (newValue) => {
   if (session.value) return;
+
   if (!newValue) {
     manualValidationError.value = "";
   }
+
   if (!manualValidatedEmail.value) return;
+
   if (newValue.trim().toLowerCase() !== manualValidatedEmail.value) {
     resetManualValidation();
   }
@@ -293,11 +315,14 @@ onMounted(() => {
 
 const onEmailSubmit = async () => {
   manualValidationError.value = "";
+
   if (!email.value.trim()) {
     manualValidationError.value = "Informe o e-mail utilizado na compra.";
     return;
   }
+
   isValidatingEmail.value = true;
+
   try {
     const normalized = email.value.trim().toLowerCase();
     const { data } = await validateManualOnboardingEmail({ email: normalized });
@@ -322,10 +347,12 @@ const autoLogin = async (loginEmail: string) => {
   const formData = new FormData();
   formData.append("username", loginEmail);
   formData.append("password", password.value);
+
   try {
     const res = await api.post("/auth/login", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
+
     auth.setTokens(res.data.access_token, res.data.refresh_token);
     await auth.fetchProfile();
     router.push("/admin/dashboard");
@@ -336,11 +363,19 @@ const autoLogin = async (loginEmail: string) => {
   }
 };
 
+const isStrongPassword = (value: string) => {
+  return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(value);
+};
+
 const onSubmit = async () => {
   formError.value = "";
   success.value = "";
 
-  if (!canSetPassword.value || isSubmitting.value) {
+  if (!canSetPassword.value || isSubmitting.value) return;
+
+  if (!isStrongPassword(password.value)) {
+    formError.value =
+      "A senha deve ter pelo menos 8 caracteres, com letra maiúscula, minúscula e número.";
     return;
   }
 
@@ -350,12 +385,14 @@ const onSubmit = async () => {
   }
 
   const loginEmail = identityEmail.value || email.value.trim().toLowerCase();
+
   if (!loginEmail) {
     formError.value = "Não conseguimos identificar o usuário. Valide seu e-mail novamente.";
     return;
   }
 
   isSubmitting.value = true;
+
   try {
     if (session.value) {
       await submitOnboardingPassword(identifierParams(), { password: password.value });
@@ -365,6 +402,7 @@ const onSubmit = async () => {
         password: password.value,
       });
     }
+
     success.value = "Senha definida com sucesso! Acessando seu painel...";
     await autoLogin(loginEmail);
   } catch (err: any) {
@@ -381,6 +419,7 @@ const onSubmit = async () => {
 .step-leave-active {
   transition: opacity 0.25s ease, transform 0.25s ease;
 }
+
 .step-enter-from,
 .step-leave-to {
   opacity: 0;
