@@ -53,8 +53,10 @@ class CaktoIntegrationService:
     def _load_plan_mappings(self) -> list[PlanMapping]:
         mappings: list[PlanMapping] = []
         for plan_key, cycle, offer_attr, product_attr in PLAN_ENV_SPECS:
-            offer_id = getattr(settings, offer_attr, None)
-            product_id = getattr(settings, product_attr, None)
+            raw_offer_id = getattr(settings, offer_attr, None)
+            raw_product_id = getattr(settings, product_attr, None)
+            offer_id = raw_offer_id.strip().lower() if isinstance(raw_offer_id, str) else raw_offer_id
+            product_id = raw_product_id.strip().lower() if isinstance(raw_product_id, str) else raw_product_id
             if offer_id or product_id:
                 mappings.append(PlanMapping(plan_key, cycle, offer_id, product_id))
         return mappings
@@ -396,11 +398,16 @@ class CaktoIntegrationService:
     def _resolve_plan(self, offer_id: str | None, product_id: str | None) -> Optional[PlanMapping]:
         if not self.plan_mappings:
             return None
-        for mapping in self.plan_mappings:
-            if mapping.offer_id and offer_id and mapping.offer_id == offer_id:
-                return mapping
-            if mapping.product_id and product_id and mapping.product_id == product_id:
-                return mapping
+        normalized_offer = offer_id.strip().lower() if isinstance(offer_id, str) else None
+        normalized_product = product_id.strip().lower() if isinstance(product_id, str) else None
+        if normalized_offer:
+            for mapping in self.plan_mappings:
+                if mapping.offer_id and mapping.offer_id == normalized_offer:
+                    return mapping
+        if normalized_product:
+            for mapping in self.plan_mappings:
+                if mapping.product_id and mapping.product_id == normalized_product:
+                    return mapping
         return None
 
     def _upsert_user_and_subscription(
