@@ -65,7 +65,7 @@ class CaktoIntegrationService:
             base_for_token = self.api_base_url
             if base_for_token.endswith("/v1"):
                 base_for_token = base_for_token[:-3]
-            self._token_url = f"{base_for_token}/oauth/token"
+            self._token_url = f"{base_for_token}/oauth/token/"
 
     def _load_plan_mappings(self) -> list[PlanMapping]:
         mappings: list[PlanMapping] = []
@@ -437,7 +437,7 @@ class CaktoIntegrationService:
             "client_id": self.api_client_id,
             "client_secret": self.api_client_secret,
         }
-        response = httpx.post(self._token_url, data=payload, timeout=30)
+        response = httpx.post(self._token_url, data=payload, timeout=30, follow_redirects=True)
         if response.status_code >= 400:
             raise CaktoAPIError(response.json() if response.content else {"detail": response.text})
         data = response.json()
