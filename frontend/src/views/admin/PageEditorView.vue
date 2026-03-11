@@ -389,8 +389,17 @@
         <div class="flex flex-col gap-1">
           <h2 class="text-lg font-semibold text-slate-900">Preview visual</h2>
           <p class="text-xs text-slate-500">Clique no botão do topo para aplicar as alterações do formulário.</p>
+          <p
+            v-if="isMobileViewport && previewDevice === 'mobile'"
+            class="rounded-2xl bg-amber-100 px-3 py-2 text-center text-sm font-semibold text-amber-700"
+          >
+            Toque sobre as seções para editar.
+          </p>
         </div>
-        <div class="inline-flex select-none items-center rounded-full border border-slate-200 bg-slate-50 p-1 text-sm font-semibold text-slate-600">
+        <div
+          v-if="!isMobileViewport"
+          class="inline-flex select-none items-center rounded-full border border-slate-200 bg-slate-50 p-1 text-sm font-semibold text-slate-600"
+        >
           <button
             v-if="!isMobileViewport"
             type="button"
@@ -413,7 +422,9 @@
       <div class="mt-4">
         <div
           :class="previewDevice === 'mobile'
-            ? 'mx-auto w-full max-w-[420px] overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-xl'
+            ? (isMobileViewport
+              ? '-mx-4 w-[calc(100%+2rem)] overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-xl'
+              : 'mx-auto w-full max-w-[420px] overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-xl')
             : ''"
         >
           <div :class="previewDevice === 'mobile' ? 'max-h-none overflow-visible' : ''">
@@ -426,15 +437,11 @@
               <template v-else>
                 <template v-for="(section, idx) in sections" :key="(section as any)?.anchorId || idx">
                     <div v-if="section" class="space-y-3">
-                    <div class="group relative overflow-hidden rounded-[32px] border border-transparent shadow transition hover:border-brand/30">
-                      <div
-                        v-if="(section as any).enabled && !isLockedFooterSection(section)"
-                        class="pointer-events-none absolute inset-x-0 top-4 z-10 flex justify-center"
-                      >
-                        <span class="rounded-full bg-slate-900/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-white shadow-lg">
-                          {{ previewEditInstruction }}
-                        </span>
-                      </div>
+                    <div
+                      class="group relative overflow-hidden rounded-[32px] border border-transparent shadow transition hover:border-brand/30"
+                      @click="handleSectionTap(idx)"
+                      :ref="el => registerPreviewSection(el, idx)"
+                    >
                       <component
                         v-if="(section as any).enabled"
                         :is="publicComponents[(section as any).type]"
@@ -444,7 +451,10 @@
                       />
                       <div
                         v-if="(section as any).enabled"
-                        class="pointer-events-none absolute inset-0 z-10 flex flex-col bg-slate-900/10 opacity-0 transition duration-200 group-hover:opacity-100 group-focus-within:opacity-100"
+                        :class="[
+                          'pointer-events-none absolute inset-0 z-10 flex flex-col bg-slate-900/10 opacity-0 transition duration-200 group-hover:opacity-100 group-focus-within:opacity-100',
+                          isMobileOverlayMode && mobileOverlayVisible[idx] ? '!opacity-100' : ''
+                        ]"
                       >
                         <div class="flex items-start justify-between gap-3 p-4">
                           <span class="pointer-events-auto inline-flex items-center rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-slate-700">
@@ -615,6 +625,7 @@ import { useAuthStore } from "../../store/useAuthStore";
 import { useAgencyStore } from "../../store/useAgencyStore";
 import { slugify } from "../../utils/slugify";
 import type {
+  BannerCardSection,
   CtaSection,
   EditorPreferences,
   FaqSection,
@@ -793,9 +804,7 @@ const colorB = ref(theme.value.color2);
 const ctaColor = ref(theme.value.ctaDefaultColor || fallbackPrimaryColor);
 const previewDevice = ref<"desktop" | "mobile">(editorPrefs.value.previewDevice || "desktop");
 const isMobileViewport = ref(false);
-const previewEditInstruction = computed(() =>
-  isMobileViewport.value ? "Toque aqui para editar" : "Clique aqui para editar"
-);
+const isMobileOverlayMode = computed(() => previewDevice.value === "mobile" || isMobileViewport.value);
 const hasWindow = typeof window !== "undefined";
 const beforeUnloadHandler = (event: BeforeUnloadEvent) => {
   if (!hasUnsavedChanges.value) return;
@@ -851,6 +860,7 @@ const buildCountdownTargetDate = () => {
 };
 
 const SectionHeroForm = defineAsyncComponent(() => import("../../components/admin/SectionHeroForm.vue"));
+const SectionBannerCardForm = defineAsyncComponent(() => import("../../components/admin/SectionBannerCardForm.vue"));
 const SectionPricesForm = defineAsyncComponent(() => import("../../components/admin/SectionPricesForm.vue"));
 const SectionItineraryForm = defineAsyncComponent(() => import("../../components/admin/SectionItineraryForm.vue"));
 const SectionFaqForm = defineAsyncComponent(() => import("../../components/admin/SectionFaqForm.vue"));
@@ -860,6 +870,7 @@ const SectionStoryForm = defineAsyncComponent(() => import("../../components/adm
 const SectionReasonsForm = defineAsyncComponent(() => import("../../components/admin/SectionReasonsForm.vue"));
 const SectionCountdownForm = defineAsyncComponent(() => import("../../components/admin/SectionCountdownForm.vue"));
 const PublicHeroSection = defineAsyncComponent(() => import("../../components/public/PublicHeroSection.vue"));
+const PublicBannerCardSection = defineAsyncComponent(() => import("../../components/public/PublicBannerCardSection.vue"));
 const PublicPricesSection = defineAsyncComponent(() => import("../../components/public/PublicPricesSection.vue"));
 const PublicItinerarySection = defineAsyncComponent(() => import("../../components/public/PublicItinerarySection.vue"));
 const PublicFaqSection = defineAsyncComponent(() => import("../../components/public/PublicFaqSection.vue"));
@@ -870,10 +881,22 @@ const PublicReasonsSection = defineAsyncComponent(() => import("../../components
 const PublicCountdownSection = defineAsyncComponent(() => import("../../components/public/PublicCountdownSection.vue"));
 const PublicFreeFooterBrandSection = defineAsyncComponent(() => import("../../components/public/PublicFreeFooterBrandSection.vue"));
 
-const sectionTypes: SectionType[] = ["hero", "prices", "itinerary", "faq", "testimonials", "cta", "story", "reasons", "countdown"];
+const sectionTypes: SectionType[] = [
+  "hero",
+  "banner_card",
+  "prices",
+  "itinerary",
+  "faq",
+  "testimonials",
+  "cta",
+  "story",
+  "reasons",
+  "countdown"
+];
 const sectionLabels = defaultSectionLabels;
 const sectionDescriptions: Partial<Record<SectionType, string>> = {
-  hero: "Blocoinicial com destaque visual, título, subtítulo e CTA principal.",
+  hero: "Bloco inicial com destaque visual, título, subtítulo e CTA principal.",
+  banner_card: "Banner em card com imagem de fundo, gradiente e CTA destacado.",
   prices: "Tabela com planos, valores e diferenciais para cada oferta.",
   itinerary: "Sequência de etapas/benefícios para explicar seu serviço ou roteiro.",
   faq: "Perguntas e respostas para antecipar dúvidas frequentes.",
@@ -885,6 +908,7 @@ const sectionDescriptions: Partial<Record<SectionType, string>> = {
 };
 const sectionAccents: Partial<Record<SectionType, string>> = {
   hero: "from-sky-100 to-slate-50",
+  banner_card: "from-emerald-600/90 to-emerald-400/70",
   prices: "from-amber-100 to-white",
   itinerary: "from-emerald-100/70 to-white",
   faq: "from-slate-100 to-white",
@@ -896,6 +920,7 @@ const sectionAccents: Partial<Record<SectionType, string>> = {
 };
 const formComponents: Partial<Record<SectionType, any>> = {
   hero: SectionHeroForm,
+  banner_card: SectionBannerCardForm,
   prices: SectionPricesForm,
   itinerary: SectionItineraryForm,
   faq: SectionFaqForm,
@@ -908,6 +933,7 @@ const formComponents: Partial<Record<SectionType, any>> = {
 
 const publicComponents: Partial<Record<SectionType, any>> = {
   hero: PublicHeroSection,
+  banner_card: PublicBannerCardSection,
   prices: PublicPricesSection,
   itinerary: PublicItinerarySection,
   faq: PublicFaqSection,
@@ -920,6 +946,9 @@ const publicComponents: Partial<Record<SectionType, any>> = {
 };
 
 const sections = shallowRef<PageSection[]>([]);
+const mobileOverlayVisible = reactive<Record<number, boolean>>({});
+const mobileOverlayPersistent = reactive<Record<number, boolean>>({});
+const mobileOverlayTimers: Record<number, ReturnType<typeof setTimeout> | null> = {};
 watch(
   () => sections.value,
   () => {
@@ -927,6 +956,50 @@ watch(
   },
   { deep: true }
 );
+
+const clearMobileOverlayTimer = (idx: number) => {
+  const timer = mobileOverlayTimers[idx];
+  if (timer) {
+    clearTimeout(timer);
+    mobileOverlayTimers[idx] = null;
+  }
+};
+
+watch(
+  () => isMobileOverlayMode.value,
+  value => {
+    if (!value) {
+      Object.keys(mobileOverlayTimers).forEach(key => clearMobileOverlayTimer(Number(key)));
+      Object.keys(mobileOverlayVisible).forEach(key => {
+        delete mobileOverlayVisible[Number(key)];
+        delete mobileOverlayPersistent[Number(key)];
+      });
+    }
+  }
+);
+
+const registerPreviewSection = (el: Element | null, idx: number) => {
+  if (!el) {
+    clearMobileOverlayTimer(idx);
+    delete mobileOverlayVisible[idx];
+    delete mobileOverlayPersistent[idx];
+  }
+};
+
+const handleSectionTap = (idx: number) => {
+  if (!isMobileOverlayMode.value) return;
+  Object.keys(mobileOverlayVisible).forEach(key => {
+    const otherIdx = Number(key);
+    if (otherIdx !== idx) {
+      mobileOverlayVisible[otherIdx] = false;
+      mobileOverlayPersistent[otherIdx] = false;
+      clearMobileOverlayTimer(otherIdx);
+    }
+  });
+  mobileOverlayVisible[idx] = true;
+  mobileOverlayPersistent[idx] = true;
+  clearMobileOverlayTimer(idx);
+};
 const previewSections = ref<PageSection[]>([]);
 const previewReady = ref(false);
 const previewLoading = ref(false);
@@ -1272,8 +1345,12 @@ const applySectionBackgrounds = (list: PageSection[]): PageSection[] => {
     if (
       (normalized as any).type === "hero" ||
       (normalized as any).type === "countdown" ||
-      (normalized as any).type === "free_footer_brand"
+      (normalized as any).type === "free_footer_brand" ||
+      (normalized as any).type === "banner_card"
     ) {
+      if ((normalized as any).type === "banner_card" && !(normalized as any).backgroundColor) {
+        (normalized as any).backgroundColor = colorA.value;
+      }
       return normalized;
     }
     const backgroundColor = altIndex % 2 === 0 ? colorA.value : colorB.value;
@@ -1391,6 +1468,7 @@ onBeforeUnmount(() => {
   clearPreviewScheduler();
   clearTitleDebounce();
   Object.values(pendingSectionUpdates).forEach(timeout => clearTimeout(timeout));
+  Object.keys(mobileOverlayTimers).forEach(key => clearMobileOverlayTimer(Number(key)));
   if (removeViewportWatcher) {
     removeViewportWatcher();
     removeViewportWatcher = null;
@@ -1419,6 +1497,29 @@ function defaultSection(type: SectionType): PageSection {
       ctaMode: "link",
       ctaSectionId: null
     } as HeroSection);
+  }
+
+  if (type === "banner_card") {
+    return ensureSectionAnchor({
+      type: "banner_card",
+      enabled: true,
+      backgroundColor: colorA.value,
+      title: "Conte com especialistas para transformar o seu roteiro.",
+      subtitle:
+        "Um banner compacto e elegante para reforçar a principal promessa ou próxima campanha.",
+      backgroundImage:
+        "https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=1600&q=80",
+      gradientColor: "#05060f",
+      cardBackground: "rgba(5,6,15,0.88)",
+      cardBorderColor: "rgba(255,255,255,0.25)",
+      textColor: "rgba(255,255,255,0.85)",
+      bodyColor: "rgba(255,255,255,0.85)",
+      ctaLabel: "Quero saber mais",
+      ctaLink: buildWhatsappLink(pageTitle.value) || "https://wa.me/",
+      ctaColor: theme.value.ctaDefaultColor,
+      ctaMode: "link",
+      ctaSectionId: null
+    } as BannerCardSection);
   }
 
   if (type === "prices") {
