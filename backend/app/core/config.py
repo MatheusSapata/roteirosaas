@@ -62,6 +62,9 @@ class Settings(BaseSettings):
     cakto_product_infinity_annual: str | None = Field(None, alias="CAKTO_PRODUCT_INFINITY_ANNUAL")
     cakto_product_teste_monthly: str | None = Field(None, alias="CAKTO_PRODUCT_TESTE_MONTHLY")
     cakto_product_teste_annual: str | None = Field(None, alias="CAKTO_PRODUCT_TESTE_ANNUAL")
+    cakto_api_base_url: str | None = Field(None, alias="CAKTO_API_BASE_URL")
+    cakto_client_id: str | None = Field(None, alias="CAKTO_CLIENT_ID")
+    cakto_client_secret: str | None = Field(None, alias="CAKTO_CLIENT_SECRET")
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False, populate_by_name=True, extra="ignore")
 
