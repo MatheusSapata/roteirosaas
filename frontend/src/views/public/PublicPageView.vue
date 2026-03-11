@@ -31,6 +31,7 @@ import { computed, onMounted, onUnmounted, provide, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import api from "../../services/api";
 import PublicHeroSection from "../../components/public/PublicHeroSection.vue";
+import PublicBannerCardSection from "../../components/public/PublicBannerCardSection.vue";
 import PublicPricesSection from "../../components/public/PublicPricesSection.vue";
 import PublicItinerarySection from "../../components/public/PublicItinerarySection.vue";
 import PublicFaqSection from "../../components/public/PublicFaqSection.vue";
@@ -73,6 +74,7 @@ provide(PUBLIC_BRANDING_KEY, brandingInfo);
 
 const publicComponents: Record<SectionType, any> = {
   hero: PublicHeroSection,
+  banner_card: PublicBannerCardSection,
   prices: PublicPricesSection,
   itinerary: PublicItinerarySection,
   faq: PublicFaqSection,

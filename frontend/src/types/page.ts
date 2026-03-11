@@ -1,5 +1,6 @@
 export type SectionType =
   | "hero"
+  | "banner_card"
   | "gallery"
   | "prices"
   | "itinerary"
@@ -39,6 +40,23 @@ export interface HeroSection extends SectionBase {
   ctaColor?: string;
   videoUrl?: string;
   layout?: "classic" | "split" | "card" | "immersive";
+}
+
+export interface BannerCardSection extends SectionBase {
+  type: "banner_card";
+  title: string;
+  subtitle?: string;
+  backgroundImage?: string;
+  gradientColor?: string;
+  cardBackground?: string;
+  cardBorderColor?: string;
+  textColor?: string;
+  bodyColor?: string;
+  ctaLabel?: string;
+  ctaLink?: string;
+  ctaMode?: "link" | "section";
+  ctaSectionId?: string | null;
+  ctaColor?: string;
 }
 
 export interface GallerySection extends SectionBase {
@@ -190,6 +208,7 @@ export interface CtaSection extends SectionBase {
 
 export type PageSection =
   | HeroSection
+  | BannerCardSection
   | GallerySection
   | PricesSection
   | ItinerarySection
