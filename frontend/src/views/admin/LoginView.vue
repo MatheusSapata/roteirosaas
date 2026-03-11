@@ -16,7 +16,9 @@
         </div>
       </div>
     </div>
-    <div class="flex w-full flex-col items-center bg-[#41ce5f] px-4 py-10 lg:w-2/5 lg:bg-[#f8f8f8] lg:px-12">
+    <div
+      class="flex w-full flex-col items-center bg-[#41ce5f] px-4 py-10 lg:min-h-screen lg:w-2/5 lg:justify-center lg:bg-[#f8f8f8] lg:px-12"
+    >
       <div class="mb-8 flex w-full justify-center lg:hidden">
         <img src="../../assets/Logo Branco - Roteiro Online.png" alt="Roteiro Online" class="w-32" />
       </div>

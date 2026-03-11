@@ -51,14 +51,14 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-3">
-          <button
+          <!-- <button
             class="inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 disabled:opacity-60"
             style="background-color: #41ce5f"
             :disabled="!isPaidPlan"
             @click="toggleCardForm"
           >
             <span>{{ showCardForm ? "Fechar formulário" : "Atualizar cartão" }}</span>
-          </button>
+          </button>-->
 
           <a
             href="#"
@@ -283,6 +283,41 @@
         </div>
       </div>
     </div>
+
+    <div
+      v-if="showCancelModal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 px-4"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div class="w-full max-w-md rounded-3xl bg-white p-6 text-left shadow-2xl shadow-emerald-900/20">
+        <div class="flex items-center justify-between">
+          <h3 class="text-lg font-semibold text-slate-900">Deseja proseguir com o cancelamento?</h3>
+          <button class="text-slate-400 transition hover:text-slate-600" @click="closeCancelModal">
+            <span class="sr-only">Fechar</span>
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <p class="mt-3 text-sm text-slate-600">
+          Vamos continuar o atendimento pelo WhatsApp. Confirme para abrir a conversa com nossa equipe.
+        </p>
+        <div class="mt-6 flex flex-wrap gap-3">
+          <button
+            class="inline-flex flex-1 items-center justify-center rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500"
+            @click="confirmCancelContact"
+          >
+            Falar no WhatsApp
+          </button>
+          <button
+            type="button"
+            class="flex-1 rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+            @click="closeCancelModal"
+          >
+            Voltar
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -330,6 +365,7 @@ const profileError = ref<string | null>(null);
 
 const actionLoading = ref(false);
 const showCardForm = ref(false);
+const showCancelModal = ref(false);
 const cardSubmitting = ref(false);
 
 const cardForm = reactive({
@@ -439,28 +475,24 @@ const loadBilling = async () => {
   }
 };
 
-const cancelSubscription = async () => {
+const cancelSubscription = () => {
   if (!isPaidPlan.value) return;
+  showCancelModal.value = true;
+};
 
-  const confirmCancel = window.confirm(
-    "Cancelar a renovação? Você manterá o acesso até o fim do ciclo atual."
-  );
-  if (!confirmCancel) return;
+const closeCancelModal = () => {
+  showCancelModal.value = false;
+};
 
-  actionLoading.value = true;
-  message.value = null;
-  error.value = null;
-
-  try {
-    const res = await api.post<BillingInfo>("/billing/cancel");
-    billing.value = res.data;
-    message.value = "Renovação cancelada. Acesso mantido até o fim do ciclo pago.";
-  } catch (err) {
-    console.error(err);
-    error.value = "Falha ao cancelar assinatura.";
-  } finally {
-    actionLoading.value = false;
-  }
+const confirmCancelContact = () => {
+  const formName = profileForm.name.trim();
+  const storedName = (user.value?.name || "").trim();
+  const clientName = formName || storedName || "cliente";
+  const message =
+    "olá , meu nome é : " + clientName + " . Eu gostaria de fazer o cancelamento da minha assinatura";
+  const whatsappUrl = `https://wa.me/5553991754616?text=${encodeURIComponent(message)}`;
+  window.open(whatsappUrl, "_blank", "noopener");
+  showCancelModal.value = false;
 };
 
 const toggleCardForm = () => {

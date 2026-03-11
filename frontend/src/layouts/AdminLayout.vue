@@ -54,11 +54,11 @@
               alt="Roteiro Online"
               class="h-12 w-auto"
             />
-            <div class="flex items-center gap-2">
-              <h1 class="text-lg font-bold">Dashboard</h1>
-              <button
-                type="button"
-                class="inline-flex h-12 w-12 items-center justify-center rounded-full text-white shadow-lg transition"
+          <div class="flex items-center gap-2">
+            <h1 class="text-lg font-bold">{{ currentPageTitle }}</h1>
+            <button
+              type="button"
+              class="inline-flex h-12 w-12 items-center justify-center rounded-full text-white shadow-lg transition"
                 style="background-color: #41ce5f;"
                 @click="mobileMenuOpen = true"
               >
@@ -71,15 +71,7 @@
           </div>
           <div class="hidden items-center justify-between md:flex">
             <div class="flex items-center gap-3">
-              <h1 class="text-lg font-bold">Dashboard</h1>
-            </div>
-            <div class="flex items-center gap-2">
-              <img
-                v-if="sidebarLogoSrc"
-                :src="sidebarLogoSrc"
-                alt="Roteiro Online"
-                class="h-14 w-auto"
-              />
+              <h1 class="text-lg font-bold">{{ currentPageTitle }}</h1>
             </div>
           </div>
         </header>
@@ -510,6 +502,18 @@ const navIconViewBoxes: Record<string, string> = {
 
 const navIconStrokeWidths: Record<string, string> = {};
 
+const routeTitleMap: Record<string, string> = {
+  dashboard: "Dashboard",
+  pages: "Páginas",
+  "page-edit": "Editar página",
+  lessons: "Aulas",
+  "agency-settings": "Minha Agência",
+  plans: "Planos",
+  integrations: "Integrações",
+  profile: "Perfil",
+  "admin-management": "Admin Master"
+};
+
 const navItems = computed(() => {
   const items = [
     { label: "Dashboard", to: "/admin/dashboard" },
@@ -523,6 +527,15 @@ const navItems = computed(() => {
     items.splice(1, 0, { label: "Admin Master", to: "/admin/administracao" });
   }
   return items;
+});
+
+const currentPageTitle = computed(() => {
+  const routeName = typeof route.name === "string" ? route.name : null;
+  if (routeName && routeTitleMap[routeName]) {
+    return routeTitleMap[routeName];
+  }
+  const matchedNav = navItems.value.find(item => route.path.startsWith(item.to));
+  return matchedNav?.label || "Dashboard";
 });
 
 const activeClass = "bg-slate-100 text-slate-900";
