@@ -345,7 +345,7 @@ const planDefinitions: PlanDefinition[] = [
     note: "Perfeito para quem já tem grupos rodando.",
     ctaClass: "bg-emerald-600 hover:bg-emerald-500",
     prices: {
-      monthly: { value: 49.9, period: "/mês" },
+      monthly: { value: 49.99, period: "/mês" },
       annual: { value: 479.88, period: "/ano" }
     }
   },
@@ -383,7 +383,7 @@ const planDefinitions: PlanDefinition[] = [
     note: "Pensado para agências com vários grupos ativos.",
     ctaClass: "bg-indigo-600 hover:bg-indigo-500",
     prices: {
-      monthly: { value: 129.9, period: "/mês" },
+      monthly: { value: 129.99, period: "/mês" },
       annual: { value: 1199.88, period: "/ano" }
     }
   }
