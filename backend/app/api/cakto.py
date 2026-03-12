@@ -43,7 +43,7 @@ def get_checkout_session_status(token: str, db: Session = Depends(get_db)) -> Ch
     if not session:
         raise HTTPException(status_code=404, detail="Sessão não encontrada.")
     redirect_token = session.onboarding_token.token if session.onboarding_token else None
-    status = "ready" if redirect_token else "pending"
+    status = "ready" if session.status == "ready" else "pending"
     return CheckoutSessionStatusResponse(
         status=status,
         order_id=session.order_id,

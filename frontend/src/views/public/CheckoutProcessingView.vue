@@ -85,7 +85,7 @@ const pollStatus = async (attempt = 0) => {
   try {
     const { data } = await getCheckoutSessionStatus(sessionToken.value);
 
-    if (data.status === "ready" && data.redirect_token) {
+    if (data.status === "ready") {
       localStorage.removeItem(CHECKOUT_SESSION_STORAGE_KEY);
 
       if (fallbackTimer) {
@@ -93,10 +93,17 @@ const pollStatus = async (attempt = 0) => {
         fallbackTimer = null;
       }
 
-      router.replace({
-        name: "create-password",
-        query: { token: data.redirect_token },
-      });
+      if (data.redirect_token) {
+        router.replace({
+          name: "create-password",
+          query: { token: data.redirect_token },
+        });
+      } else {
+        router.replace({
+          name: "login",
+          query: { checkout: "success" },
+        });
+      }
       return;
     }
 

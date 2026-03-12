@@ -280,10 +280,12 @@ class CaktoIntegrationService:
             raise ValueError("Não foi possível associar o pedido a um plano configurado.")
 
         subscription_code = self._extract_subscription_code(payload, order)
+        next_due_date = self._extract_next_due_date(payload, order)
+        valid_until = self._calculate_valid_until(plan.cycle, next_due_date)
         order_id = self._normalize_str(order.get("id"))
         order_ref = self._normalize_str(order.get("refId"))
 
-        user, _created = self._upsert_user_and_subscription(
+        user, created = self._upsert_user_and_subscription(
             customer=customer,
             address=order.get("address"),
             plan_key=plan.plan_key,
@@ -292,17 +294,20 @@ class CaktoIntegrationService:
             order_id=order_id,
             order_ref=order_ref,
             subscription_code=subscription_code,
+            valid_until=valid_until,
         )
 
-        onboarding_token = self._create_onboarding_token(
-            user=user,
-            plan_key=plan.plan_key,
-            cycle=plan.cycle,
-            order_id=order_id,
-            order_ref=order_ref,
-            subscription_code=subscription_code,
-            offer_id=offer_id,
-        )
+        onboarding_token = None
+        if created:
+            onboarding_token = self._create_onboarding_token(
+                user=user,
+                plan_key=plan.plan_key,
+                cycle=plan.cycle,
+                order_id=order_id,
+                order_ref=order_ref,
+                subscription_code=subscription_code,
+                offer_id=offer_id,
+            )
         session_token = self._extract_session_token(payload)
         if session_token:
             self._finalize_checkout_session(
@@ -400,6 +405,32 @@ class CaktoIntegrationService:
             return self._normalize_str(subscription)
         return None
 
+    def _extract_next_due_date(self, payload: Dict[str, Any], order: Optional[Dict[str, Any]]) -> str | None:
+        candidates = [
+            self._get_nested(payload, "data", "subscription", "nextDueDate"),
+            self._get_nested(payload, "data", "subscription", "next_due_date"),
+            self._get_nested(payload, "subscription", "nextDueDate"),
+            self._get_nested(payload, "subscription", "next_due_date"),
+            self._get_nested(payload, "data", "subscription", "currentPeriod", "end"),
+            self._get_nested(payload, "data", "subscription", "current_period", "end"),
+            self._get_nested(payload, "data", "order", "nextDueDate"),
+            self._get_nested(payload, "data", "order", "next_due_date"),
+        ]
+        if order:
+            candidates.extend(
+                [
+                    order.get("nextDueDate"),
+                    order.get("next_due_date"),
+                    order.get("dueDate"),
+                    order.get("due_date"),
+                ]
+            )
+        for candidate in candidates:
+            normalized = self._normalize_str(candidate)
+            if normalized:
+                return normalized
+        return None
+
     def _extract_order_id(self, payload: Dict[str, Any]) -> str | None:
         order = self._extract_order(payload)
         if not order:
@@ -411,6 +442,60 @@ class CaktoIntegrationService:
             return None
         text = str(value).strip()
         return text or None
+
+    def _normalize_document(self, value: Any) -> str | None:
+        normalized = self._normalize_str(value)
+        if not normalized:
+            return None
+        digits = "".join(ch for ch in normalized if ch.isdigit())
+        return digits or normalized
+
+    def _document_column_digits(self, column):
+        expression = func.coalesce(column, "")
+        for char in (".", "-", "/", " ", "_"):
+            expression = func.replace(expression, char, "")
+        return expression
+
+    def _get_user_by_document(self, document: str) -> Optional[User]:
+        target = "".join(ch for ch in document if ch.isdigit()) or document.strip()
+        if not target:
+            return None
+        sanitized_cpf = self._document_column_digits(User.cpf)
+        sanitized_cnpj = self._document_column_digits(User.cnpj)
+        return (
+            self.db.query(User)
+            .filter(
+                or_(
+                    sanitized_cpf == target,
+                    sanitized_cnpj == target,
+                )
+            )
+            .first()
+        )
+
+    def _parse_datetime(self, value: str | None) -> datetime | None:
+        if not value:
+            return None
+        text = value.strip()
+        if not text:
+            return None
+        if text.endswith("Z"):
+            text = f"{text[:-1]}+00:00"
+        try:
+            return datetime.fromisoformat(text)
+        except ValueError:
+            return None
+
+    def _calculate_valid_until(self, cycle: str, due_date: str | None) -> datetime:
+        normalized_cycle = (cycle or "monthly").lower()
+        period = timedelta(days=32 if normalized_cycle == "monthly" else 370)
+        parsed_due = self._parse_datetime(due_date)
+        now = datetime.utcnow()
+        if parsed_due:
+            if parsed_due <= now:
+                return now + period
+            return parsed_due + timedelta(days=1)
+        return now + period
 
     def _resolve_plan(self, offer_id: str | None, product_id: str | None) -> Optional[PlanMapping]:
         if not self.plan_mappings:
@@ -496,19 +581,31 @@ class CaktoIntegrationService:
         order_id: str | None,
         order_ref: str | None,
         subscription_code: str | None,
+        valid_until: datetime | None,
     ) -> tuple[User, bool]:
-        email = self._normalize_str(customer.get("email"))
-        if not email:
-            raise ValueError("Pedido sem e-mail do cliente.")
-        user = self.db.query(User).filter(User.email == email).first()
+        email = self._normalize_email(customer.get("email"))
+        doc_number = self._normalize_document(customer.get("docNumber"))
+        doc_type = (self._normalize_str(customer.get("docType")) or "cpf").lower()
+
+        user: Optional[User] = None
+        if doc_number:
+            user = self._get_user_by_document(doc_number)
+        if not user:
+            user = (
+                self.db.query(User)
+                .filter(func.lower(User.email) == email)
+                .first()
+            )
+
         created = False
         if not user:
             random_password = auth_service.get_password_hash(secrets.token_urlsafe(32))
             user = User(
-                email=email.lower(),
+                email=email,
                 name=customer.get("name") or "Cliente",
                 hashed_password=random_password,
-                cpf=self._normalize_str(customer.get("docNumber")),
+                cpf=doc_number if doc_number and doc_type != "cnpj" else None,
+                cnpj=doc_number if doc_number and doc_type == "cnpj" else None,
                 whatsapp=self._normalize_str(customer.get("phone")),
                 plan=plan_key,
                 is_active=True,
@@ -516,12 +613,27 @@ class CaktoIntegrationService:
             self.db.add(user)
             self.db.flush()
             created = True
+        else:
+            if user.email.lower() != email:
+                conflict = (
+                    self.db.query(User.id)
+                    .filter(func.lower(User.email) == email)
+                    .filter(User.id != user.id)
+                    .first()
+                )
+                if not conflict:
+                    user.email = email
 
         user.name = customer.get("name") or user.name
-        user.whatsapp = self._normalize_str(customer.get("phone")) or user.whatsapp
-        doc_number = self._normalize_str(customer.get("docNumber"))
-        if doc_number and not user.cpf:
-            user.cpf = doc_number
+        phone = self._normalize_str(customer.get("phone"))
+        user.whatsapp = phone or user.whatsapp
+        if doc_number:
+            if doc_type == "cnpj":
+                if not user.cnpj or self._normalize_document(user.cnpj) != doc_number:
+                    user.cnpj = doc_number
+            else:
+                if not user.cpf or self._normalize_document(user.cpf) != doc_number:
+                    user.cpf = doc_number
         if address:
             user.address_street = address.get("street") or user.address_street
             user.address_number = address.get("number") or user.address_number
@@ -546,6 +658,8 @@ class CaktoIntegrationService:
         subscription.cakto_order_id = order_id
         subscription.cakto_subscription_code = subscription_code
         subscription.external_reference = order_ref or subscription_code or subscription.external_reference
+        if valid_until:
+            subscription.valid_until = valid_until
 
         user.plan = plan_key
         end_trial(user, self.db, keep_plan=plan_key)
@@ -602,7 +716,7 @@ class CaktoIntegrationService:
         *,
         order_id: str | None,
         order_ref: str | None,
-        onboarding_token: CaktoOnboardingToken,
+        onboarding_token: CaktoOnboardingToken | None,
     ) -> None:
         if not session_token:
             return
@@ -616,7 +730,7 @@ class CaktoIntegrationService:
         session.status = "ready"
         session.order_id = order_id
         session.order_ref = order_ref
-        session.onboarding_token_id = onboarding_token.id
+        session.onboarding_token_id = onboarding_token.id if onboarding_token else None
         session.completed_at = datetime.utcnow()
         self.db.add(session)
 
