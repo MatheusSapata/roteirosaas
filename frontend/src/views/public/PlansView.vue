@@ -310,6 +310,21 @@ const planNames: Record<string, string> = {
   teste: `Plano ${planLabels.teste}`
 };
 
+const directCheckoutLinks: Record<string, Partial<Record<BillingCycle, string>>> = {
+  essencial: {
+    monthly: "https://pay.cakto.com.br/7o7zrup_800651",
+    annual: "https://pay.cakto.com.br/nxc42uz"
+  },
+  growth: {
+    monthly: "https://pay.cakto.com.br/n7vnc73_800688",
+    annual: "https://pay.cakto.com.br/32uvp8b"
+  },
+  infinity: {
+    monthly: "https://pay.cakto.com.br/iexkakw_800692",
+    annual: "https://pay.cakto.com.br/pxzgp5s"
+  }
+};
+
 const planDefinitions: PlanDefinition[] = [
   {
     key: "essencial",
@@ -429,7 +444,11 @@ const goToCheckout = async (
     const cycle = cycleOverride ?? billingCycle.value;
     const { data } = await createCaktoCheckoutSession(planKey, cycle);
     localStorage.setItem(CHECKOUT_SESSION_STORAGE_KEY, data.token);
-    window.location.href = data.checkout_url;
+    const directLink = directCheckoutLinks[planKey]?.[cycle];
+    const checkoutUrl = directLink
+      ? `${directLink}${directLink.includes("?") ? "&" : "?"}sck=${data.token}`
+      : data.checkout_url;
+    window.location.href = checkoutUrl;
   } catch (err) {
     console.error(err);
     errorMessage.value = "Não foi possível iniciar o checkout. Tente novamente.";
