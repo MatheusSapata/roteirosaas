@@ -96,7 +96,7 @@
 
                 <p v-if="contactEmail" :class="textPrimaryClass">
                   Email:
-                  <a class="text-emerald-600 hover:underline" :href="`mailto:${contactEmail}`">
+                  <a :class="[textLinkClass, 'hover:underline']" :href="`mailto:${contactEmail}`">
                     {{ contactEmail }}
                   </a>
                 </p>
@@ -182,9 +182,7 @@
                 :href="mapLink"
                 :class="[
                   'inline-flex items-center gap-1 rounded-full border px-3 py-1 text-[10px] uppercase tracking-widest transition',
-                  isLight
-                    ? 'border-emerald-200 text-emerald-700 hover:bg-emerald-50'
-                    : 'border-white/20 text-emerald-300 hover:bg-white/10'
+                  mapButtonClass
                 ]"
                 target="_blank"
                 rel="noopener"
@@ -236,9 +234,7 @@
               :href="mapLink"
               :class="[
                 'inline-flex items-center gap-1 rounded-full border px-3 py-1 text-[10px] uppercase tracking-widest transition',
-                isLight
-                  ? 'border-emerald-200 text-emerald-700 hover:bg-emerald-50'
-                  : 'border-white/20 text-emerald-300 hover:bg-white/10'
+                mapButtonClass
               ]"
               target="_blank"
               rel="noopener"
@@ -268,7 +264,6 @@
     </div>
   </section>
 </template>
-
 <script setup lang="ts">
 import { computed, inject } from "vue";
 import { siFacebook, siInstagram, siTiktok, siYoutube } from "simple-icons";
@@ -354,7 +349,36 @@ const cadasturLink = computed(() => agencyProfile.value?.cadastur_url || buildCa
 const shouldShowCadastur = computed(() => props.section.showCadastur !== false);
 
 const layoutMode = computed(() => props.section.displayVariant || "auto");
-const sectionBackground = computed(() => props.section.backgroundColor || resolvedBranding.value?.primary_color || "#05060f");
+
+const DEFAULT_ACCENT_COLOR = "#41ce5f";
+
+const accentBaseColor = computed(() => {
+  const themeAccent = resolvedBranding.value?.theme?.ctaDefaultColor;
+  if (typeof themeAccent === "string" && themeAccent.trim()) {
+    return themeAccent;
+  }
+
+  const primary = resolvedBranding.value?.primary_color;
+  if (typeof primary === "string" && primary.trim()) {
+    return primary;
+  }
+
+  return DEFAULT_ACCENT_COLOR;
+});
+
+const DEFAULT_SECTION_BG = "#05060f";
+
+const sectionBackground = computed(() => {
+  const bg = props.section.backgroundColor;
+
+  // se tiver cor personalizada e não for o default
+  if (bg && bg !== DEFAULT_SECTION_BG) {
+    return bg;
+  }
+
+  // gera automaticamente a partir da cor de destaque
+  return darkenColor(accentBaseColor.value, 0.4);
+});
 
 const isLight = computed(() => isLightBackground(sectionBackground.value));
 
@@ -364,6 +388,16 @@ const textPrimaryClass = computed(() =>
 
 const textSecondaryClass = computed(() =>
   isLight.value ? "text-slate-600" : "text-white/70"
+);
+
+const textLinkClass = computed(() =>
+  isLight.value ? "text-slate-900" : "text-white"
+);
+
+const mapButtonClass = computed(() =>
+  isLight.value
+    ? "border-slate-300 text-slate-900 hover:bg-slate-100"
+    : "border-white/20 text-white hover:bg-white/10"
 );
 
 const cadasturWrapperClasses = computed(() => {
@@ -409,6 +443,14 @@ function buildCadasturLink(cnpjDigits?: string | null) {
   return `https://cadastur.turismo.gov.br/cadastur/#!/public/qrcode/${cnpjDigits.replace(/\D/g, "")}`;
 }
 
+function clamp(value: number, min = 0, max = 255) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function toHex(value: number) {
+  return clamp(Math.round(value)).toString(16).padStart(2, "0");
+}
+
 function parseColor(value?: string | null): { r: number; g: number; b: number } | null {
   if (!value) return null;
   const trimmed = value.trim();
@@ -439,6 +481,19 @@ function parseColor(value?: string | null): { r: number; g: number; b: number } 
   }
 
   return null;
+}
+
+function darkenColor(color: string, amount = 0.4) {
+  const rgb = parseColor(color);
+  if (!rgb) return "#05060f";
+
+  const factor = 1 - amount;
+
+  const r = rgb.r * factor;
+  const g = rgb.g * factor;
+  const b = rgb.b * factor;
+
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
 }
 
 function isLightBackground(color?: string | null) {

@@ -224,14 +224,14 @@ const roundedMaxValue = computed(() => {
   return 0;
 });
 const circleTarget = computed(() => roundedMaxValue.value || 0);
-const previewBoxSize = 220;
+const previewBoxHeight = 160;
 const previewSquareStyle = {
-  width: `${previewBoxSize}px`,
-  height: `${previewBoxSize}px`
+  width: "100%",
+  height: `${previewBoxHeight}px`
 };
 const previewRoundedPixels = computed(() => {
   if (!supportsRounded.value || !roundedMaxValue.value) return roundedControl.value || 0;
-  const max = previewBoxSize / 2;
+  const max = previewBoxHeight / 2;
   return Math.min(max, (roundedControl.value / roundedMaxValue.value) * max);
 });
 

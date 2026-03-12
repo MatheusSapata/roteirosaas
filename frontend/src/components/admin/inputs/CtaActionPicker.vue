@@ -11,7 +11,7 @@
         :class="mode === 'link' ? 'border-slate-800 bg-slate-900 text-white' : 'border-slate-200 text-slate-600 hover:bg-slate-50'"
         @click="setMode('link')"
       >
-        CTA / Link externo
+        Whatsapp / Link externo
       </button>
       <button
         type="button"
@@ -20,7 +20,7 @@
         :disabled="!availableSections.length"
         @click="setMode('section')"
       >
-        Chamada para seção
+        Ir para seção
       </button>
     </div>
 
