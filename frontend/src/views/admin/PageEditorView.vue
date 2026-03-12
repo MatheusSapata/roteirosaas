@@ -1408,15 +1408,29 @@ const applySectionBackgrounds = (list: PageSection[]): PageSection[] => {
   return withWhatsApp.map(section => {
     if (!section) return section;
     const normalized = ensureButtonColor(normalizeHeroGradient(ensureSectionAnchor(section)));
-  if (
-    (normalized as any).type === "hero" ||
-    (normalized as any).type === "countdown" ||
-    (normalized as any).type === "free_footer_brand" ||
-    (normalized as any).type === "banner_card" ||
-    (normalized as any).type === "photo"
-  ) {
+    const type = (normalized as any).type as SectionType;
+
+    if (
+      type === "hero" ||
+      type === "countdown" ||
+      type === "free_footer_brand" ||
+      type === "banner_card"
+    ) {
       if ((normalized as any).type === "banner_card" && !(normalized as any).backgroundColor) {
         (normalized as any).backgroundColor = colorA.value;
+      }
+      return normalized;
+    }
+    if (type === "photo") {
+      const layout = (normalized as any).layout || "card";
+      if (layout === "card") {
+        const nextColor = altIndex % 2 === 0 ? colorA.value : colorB.value;
+        if (!(normalized as any).backgroundColor) {
+          (normalized as any).backgroundColor = nextColor;
+        }
+        altIndex += 1;
+      } else {
+        delete (normalized as any).backgroundColor;
       }
       return normalized;
     }
