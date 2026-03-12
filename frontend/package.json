@@ -16,6 +16,7 @@
     "jspdf": "^4.0.0",
     "jspdf-autotable": "^5.0.7",
     "pinia": "^2.1.7",
+    "simple-icons": "^11.15.0",
     "vue": "^3.4.0",
     "vue-router": "^4.3.0"
   },

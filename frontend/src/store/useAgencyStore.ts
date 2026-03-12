@@ -2,6 +2,14 @@ import { defineStore } from "pinia";
 import { ref } from "vue";
 import api from "../services/api";
 
+export type AgencySocialNetwork = "instagram" | "facebook" | "youtube" | "tiktok";
+
+export interface AgencySocialLink {
+  id: number;
+  network: AgencySocialNetwork;
+  url: string;
+}
+
 export interface Agency {
   id: number;
   name: string;
@@ -11,6 +19,7 @@ export interface Agency {
   secondary_color?: string | null;
   default_page_id?: number | null;
   cta_whatsapp?: string | null;
+  social_links?: AgencySocialLink[];
 }
 
 export const useAgencyStore = defineStore("agency", () => {

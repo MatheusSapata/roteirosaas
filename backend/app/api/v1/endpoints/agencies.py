@@ -4,11 +4,34 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_active_user, get_db
 from app.models.agency import Agency
+from app.models.agency_social_link import AgencySocialLink
 from app.models.agency_user import AgencyUser
 from app.models.user import User
-from app.schemas.agency import AgencyCreate, AgencyOut, AgencyUpdate
+from app.schemas.agency import AgencyCreate, AgencyOut, AgencyUpdate, AgencySocialLinkCreate
 
 router = APIRouter()
+
+
+def replace_social_links(agency: Agency, social_links: list[AgencySocialLinkCreate] | None) -> None:
+    if social_links is None:
+        return
+
+    existing_links = {link.network: link for link in agency.social_links}
+    seen_networks: set[str] = set()
+
+    for link in social_links:
+        if link.network in seen_networks:
+            continue
+        seen_networks.add(link.network)
+        existing = existing_links.get(link.network)
+        if existing:
+            existing.url = link.url
+        else:
+            agency.social_links.append(AgencySocialLink(network=link.network, url=link.url))
+
+    for link in list(agency.social_links):
+        if link.network not in seen_networks:
+            agency.social_links.remove(link)
 
 
 def ensure_membership(db: Session, agency_id: int, user_id: int) -> Agency:
@@ -38,10 +61,11 @@ def create_agency(agency_in: AgencyCreate, current_user: User = Depends(get_curr
     if existing_slug:
         raise HTTPException(status_code=400, detail="Slug já está em uso.")
 
-    payload = agency_in.dict()
+    payload = agency_in.dict(exclude={"social_links"})
     payload["name"] = normalized_name
     payload["slug"] = normalized_slug
     agency = Agency(**payload)
+    replace_social_links(agency, agency_in.social_links or [])
     db.add(agency)
     db.commit()
     db.refresh(agency)
@@ -59,7 +83,8 @@ def update_agency(
     db: Session = Depends(get_db),
 ) -> AgencyOut:
     agency = ensure_membership(db, agency_id, current_user.id)
-    update_data = agency_in.dict(exclude_unset=True)
+    update_data = agency_in.dict(exclude_unset=True, exclude={"social_links"})
+    social_links_data = agency_in.social_links
 
     if "slug" in update_data and update_data["slug"]:
         normalized_slug = update_data["slug"].strip().lower()
@@ -77,6 +102,8 @@ def update_agency(
 
     for key, value in update_data.items():
         setattr(agency, key, value)
+
+    replace_social_links(agency, social_links_data)
     db.add(agency)
     db.commit()
     db.refresh(agency)

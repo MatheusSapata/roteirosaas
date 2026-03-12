@@ -12,6 +12,7 @@ export const sectionLabels: Partial<Record<SectionType, string>> = {
   story: "Descritivo",
   reasons: "Itens",
   countdown: "Contador",
+  agency_footer: "Rodape da agencia",
   free_footer_brand: "Rodapé obrigatório",
   gallery: "Galeria"
 };
@@ -40,6 +41,8 @@ export const describeSection = (section: PageSection): string => {
       return "Galeria de imagens";
     case "photo":
       return section.altText || "Imagem destacada";
+    case "agency_footer":
+      return "Rodape institucional";
     case "free_footer_brand":
       return "Rodapé obrigatório";
     default:

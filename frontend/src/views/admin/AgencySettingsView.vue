@@ -98,7 +98,72 @@
           </div>
         </div>
 
-        <!-- <div class="grid gap-4 md:grid-cols-2">
+        <div class="space-y-4 rounded-2xl border border-slate-100 p-4">
+          <div class="space-y-1">
+            <label class="text-sm font-semibold text-slate-600">Redes sociais</label>
+            <p class="text-xs text-slate-500">
+              Informe os links das redes que irao aparecer nas paginas publicas e templates.
+            </p>
+          </div>
+
+          <div class="space-y-3">
+            <div
+              v-if="!form.social_links.length"
+              class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500"
+            >
+              Nenhuma rede social adicionada ainda.
+            </div>
+
+            <div
+              v-for="(social, index) in form.social_links"
+              :key="social.id ?? `social-${index}`"
+              class="space-y-3 rounded-2xl border border-slate-200/80 bg-slate-50/60 p-4"
+            >
+              <div class="flex flex-col gap-3 md:flex-row md:items-end">
+                <label class="flex-1 text-xs font-semibold text-slate-500">
+                  Rede
+                  <select
+                    v-model="social.network"
+                    class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                  >
+                    <option v-for="option in socialNetworkOptions" :key="option.value" :value="option.value">
+                      {{ option.label }}
+                    </option>
+                  </select>
+                </label>
+
+                <label class="flex-[2] text-xs font-semibold text-slate-500">
+                  Link
+                  <input
+                    v-model="social.url"
+                    type="url"
+                    :placeholder="socialNetworkPlaceholders[social.network]"
+                    class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                  />
+                </label>
+
+                <button
+                  type="button"
+                  class="text-sm font-semibold text-slate-500 hover:text-red-500"
+                  @click="removeSocialLink(index)"
+                >
+                  Remover
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            class="flex items-center gap-2 text-sm font-semibold text-emerald-600"
+            @click="addSocialLink"
+          >
+            <span class="text-lg leading-none">+</span>
+            Adicionar rede
+          </button>
+        </div>
+
+        <div class="grid gap-4 md:grid-cols-2">
           <label class="space-y-1 text-xs font-semibold text-slate-500 md:col-span-2">
             CNPJ
             <input
@@ -110,31 +175,31 @@
           </label>
 
           <label class="space-y-1 text-xs font-semibold text-slate-500 md:col-span-2">
+            CEP
+            <input
+              v-model="companyForm.address_zipcode"
+              type="text"
+              placeholder="00000-000"
+              class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              :disabled="isFetchingCep"
+              @blur="handleCepBlur"
+            />
+            <p class="text-[11px] text-slate-500">
+              Informe o CEP e completaremos rua, bairro, cidade e UF automaticamente. Você precisa preencher apenas número e complemento.
+            </p>
+            <div class="text-[11px]">
+              <span v-if="isFetchingCep" class="text-slate-500">Buscando endereço pelo CEP...</span>
+              <span v-else-if="cepError" class="text-red-500">{{ cepError }}</span>
+              <span v-else-if="cepMessage" class="text-emerald-600">{{ cepMessage }}</span>
+            </div>
+          </label>
+
+          <label class="space-y-1 text-xs font-semibold text-slate-500 md:col-span-3">
             Endereço / Rua
             <input
               v-model="companyForm.address_street"
               type="text"
               placeholder="Rua, avenida, estrada..."
-              class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            />
-          </label>
-
-          <label class="space-y-1 text-xs font-semibold text-slate-500">
-            Número
-            <input
-              v-model="companyForm.address_number"
-              type="text"
-              placeholder="123"
-              class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            />
-          </label>
-
-          <label class="space-y-1 text-xs font-semibold text-slate-500">
-            Complemento
-            <input
-              v-model="companyForm.address_complement"
-              type="text"
-              placeholder="Sala, bloco..."
               class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
             />
           </label>
@@ -169,17 +234,29 @@
               class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm uppercase"
             />
           </label>
-
           <label class="space-y-1 text-xs font-semibold text-slate-500">
-            CEP
+            Número
             <input
-              v-model="companyForm.address_zipcode"
+              v-model="companyForm.address_number"
               type="text"
-              placeholder="00000-000"
+              placeholder="123"
               class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
             />
           </label>
-        </div> -->
+
+          <label class="space-y-1 text-xs font-semibold text-slate-500">
+            Complemento
+            <input
+              v-model="companyForm.address_complement"
+              type="text"
+              placeholder="Sala, bloco..."
+              class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+            />
+          </label>
+
+
+
+        </div>
 
         <div class="flex items-center gap-3 pt-2">
           <button
@@ -210,6 +287,41 @@ const agencyStore = useAgencyStore();
 const authStore = useAuthStore();
 
 const colorPalette = ["#41ce5f", "#2563eb", "#8b5cf6", "#f59e0b", "#10b981", "#ef4444", "#0f172a"];
+const socialNetworkOptions = [
+  { label: "Instagram", value: "instagram" },
+  { label: "Facebook", value: "facebook" },
+  { label: "YouTube", value: "youtube" },
+  { label: "TikTok", value: "tiktok" }
+] as const;
+
+type SocialNetworkValue = (typeof socialNetworkOptions)[number]["value"];
+
+const socialNetworkPlaceholders: Record<SocialNetworkValue, string> = {
+  instagram: "https://instagram.com/sua-agencia",
+  facebook: "https://facebook.com/sua-agencia",
+  youtube: "https://youtube.com/@sua-agencia",
+  tiktok: "https://tiktok.com/@sua-agencia"
+};
+
+type SocialLinkFormEntry = {
+  id?: number;
+  network: SocialNetworkValue;
+  url: string;
+};
+
+type RawSocialLink = {
+  id?: number;
+  network?: string;
+  url?: string;
+};
+
+const isValidSocialNetwork = (value?: string): value is SocialNetworkValue => {
+  return socialNetworkOptions.some(option => option.value === value);
+};
+
+const normalizeSocialNetwork = (value?: string): SocialNetworkValue => {
+  return isValidSocialNetwork(value) ? value : socialNetworkOptions[0].value;
+};
 
 const form = reactive({
   id: 0,
@@ -218,7 +330,8 @@ const form = reactive({
   logo_url: "",
   primary_color: colorPalette[0],
   secondary_color: "",
-  cta_whatsapp: ""
+  cta_whatsapp: "",
+  social_links: [] as SocialLinkFormEntry[]
 });
 
 const hasAgency = ref(false);
@@ -229,6 +342,9 @@ const errorMessage = ref("");
 const phoneMessage = ref("");
 const phoneError = ref("");
 const phoneInput = ref("");
+const isFetchingCep = ref(false);
+const cepMessage = ref("");
+const cepError = ref("");
 const passwordForm = reactive({
   current: "",
   new: "",
@@ -248,6 +364,86 @@ const companyForm = reactive({
   address_state: "",
   address_zipcode: ""
 });
+
+const fillAddressFromCep = (payload: Record<string, any>) => {
+  companyForm.address_street = payload?.logradouro || "";
+  companyForm.address_neighborhood = payload?.bairro || "";
+  companyForm.address_city = payload?.localidade || "";
+  companyForm.address_state = (payload?.uf || "").toUpperCase().slice(0, 2);
+};
+
+const fetchAddressByCep = async (digits: string) => {
+  try {
+    isFetchingCep.value = true;
+    cepError.value = "";
+    cepMessage.value = "";
+
+    const response = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
+    const data = await response.json();
+    if (!response.ok || data?.erro) {
+      throw new Error("CEP nao encontrado.");
+    }
+
+    fillAddressFromCep(data);
+    cepMessage.value = "Endereco preenchido automaticamente pelo CEP.";
+  } catch (err) {
+    console.error(err);
+    cepError.value = "Nao conseguimos localizar esse CEP.";
+  } finally {
+    isFetchingCep.value = false;
+  }
+};
+
+const handleCepBlur = () => {
+  const digits = sanitizeDigits(companyForm.address_zipcode);
+  if (!digits) {
+    cepMessage.value = "";
+    cepError.value = "";
+    return;
+  }
+  if (digits.length !== 8) {
+    cepError.value = "CEP precisa ter 8 digitos.";
+    cepMessage.value = "";
+    return;
+  }
+  if (isFetchingCep.value) return;
+  fetchAddressByCep(digits);
+};
+
+const createEmptySocialLink = (): SocialLinkFormEntry => ({
+  network: socialNetworkOptions[0].value,
+  url: ""
+});
+
+const toFormSocialLinks = (links?: RawSocialLink[]) => {
+  if (!links?.length) return [];
+  return links.map(link => ({
+    id: link.id,
+    network: normalizeSocialNetwork(link.network),
+    url: link.url || ""
+  }));
+};
+
+const setFormSocialLinks = (links?: RawSocialLink[]) => {
+  form.social_links = toFormSocialLinks(links);
+};
+
+const addSocialLink = () => {
+  form.social_links.push(createEmptySocialLink());
+};
+
+const removeSocialLink = (index: number) => {
+  form.social_links.splice(index, 1);
+};
+
+const buildSocialLinksPayload = () => {
+  return form.social_links
+    .map(link => ({
+      network: link.network,
+      url: (link.url || "").trim()
+    }))
+    .filter(link => !!link.url);
+};
 
 const formatCnpj = (cnpj?: string | null) => {
   if (!cnpj) return "";
@@ -287,11 +483,14 @@ const syncCompanyData = () => {
   companyForm.address_city = profile?.address_city || "";
   companyForm.address_state = profile?.address_state || "";
   companyForm.address_zipcode = formatCep(profile?.address_zipcode || "");
+  cepMessage.value = "";
+  cepError.value = "";
 };
 
 const syncFormWithCurrent = () => {
   const agency = agencyStore.agencies.find(a => a.id === agencyStore.currentAgencyId);
   if (agency) Object.assign(form, agency);
+  setFormSocialLinks(agency?.social_links);
 
   if (!form.primary_color) form.primary_color = colorPalette[0];
 
@@ -392,7 +591,8 @@ const save = async () => {
     logo_url: form.logo_url,
     primary_color: form.primary_color,
     secondary_color: form.secondary_color,
-    cta_whatsapp: phoneDigits
+    cta_whatsapp: phoneDigits,
+    social_links: buildSocialLinksPayload()
   };
 
   let createdAgency = false;
@@ -403,6 +603,7 @@ const save = async () => {
     if (agencyStore.currentAgencyId) {
       const res = await api.put(`/agencies/${agencyStore.currentAgencyId}`, payload);
       Object.assign(form, res.data);
+      setFormSocialLinks(res.data?.social_links);
     } else {
       const res = await api.post("/agencies", payload);
       await agencyStore.loadAgencies();
@@ -441,7 +642,12 @@ watch(
   () => companyForm.address_zipcode,
   value => {
     const masked = formatCep(value || "");
-    if (value !== masked) companyForm.address_zipcode = masked;
+    if (value !== masked) {
+      companyForm.address_zipcode = masked;
+      return;
+    }
+    cepMessage.value = "";
+    cepError.value = "";
   }
 );
 
