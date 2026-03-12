@@ -1,147 +1,152 @@
 <template>
-  <div class="space-y-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+  <div class="space-y-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
     <div class="flex items-center justify-between">
       <h3 class="text-lg font-semibold text-slate-900">Hero</h3>
-      <label class="flex items-center gap-2 text-sm text-slate-600">
-        <input type="checkbox" v-model="local.enabled" class="h-4 w-4" />
-        Ativar
-      </label>
     </div>
-    <div class="grid gap-3 md:grid-cols-2">
-      <div>
-        <label class="text-sm font-semibold text-slate-600">Título</label>
-        <input v-model="local.title" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
-      </div>
-      <div>
-        <label class="text-sm font-semibold text-slate-600">Subtítulo</label>
-        <RichTextEditor v-model="local.subtitle" placeholder="Conte um pouco sobre o roteiro..." />
-      </div>
-      <ImageUploadField
-        v-model="local.backgroundImage"
-        label="Imagem de fundo"
-        hint="Formatos JPG/PNG. Essa imagem aparece ocupando todo o fundo do hero."
-      />
-      <div class="space-y-2">
-        <ImageUploadField
-          v-model="local.logoUrl"
-          v-model:roundedValue="local.logoBorderRadius"
-          :rounded-max="logoRadiusMax"
-          label="Logo da agência"
-          hint="Envie a marca que aparecerá sobre o fundo."
-          :enable-crop="true"
-          editor-title="Ajuste da logo"
-        />
-        <div class="flex items-center gap-2">
-          <label class="text-sm font-semibold text-slate-600">Tamanho da logo</label>
-          <input
-            v-model.number="local.logoSize"
-            type="number"
-            min="48"
-            max="160"
-            step="4"
-            class="w-24 rounded-lg border border-slate-200 px-2 py-1 text-sm"
-          />
-          <div class="flex gap-1">
-            <button
-              type="button"
-              class="rounded-full border border-slate-200 px-3 py-1 text-sm font-semibold text-slate-600 hover:bg-slate-50"
-              @click="updateLogoSize(-4)"
-            >
-              &minus;
-            </button>
-            <button
-              type="button"
-              class="rounded-full border border-slate-200 px-3 py-1 text-sm font-semibold text-slate-600 hover:bg-slate-50"
-              @click="updateLogoSize(4)"
-            >
-              +
-            </button>
+
+    <div class="space-y-4">
+      <div class="rounded-lg border border-slate-200 p-4">
+        <div class="grid gap-4 md:grid-cols-2">
+          <div class="space-y-4">
+            <div>
+              <label class="text-sm font-semibold text-slate-600">Titulo</label>
+              <input v-model="local.title" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
+            </div>
+            <div>
+              <label class="text-sm font-semibold text-slate-600">Subtitulo</label>
+              <RichTextEditor v-model="local.subtitle" placeholder="Conte um pouco sobre o roteiro..." />
+            </div>
+          </div>
+          <div>
+            <label class="text-sm font-semibold text-slate-600">Destaques</label>
+            <div class="space-y-2">
+              <div
+                v-for="(chip, index) in local.chips"
+                :key="index"
+                class="flex items-center gap-2"
+              >
+                <input
+                  v-model="local.chips[index]"
+                  class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                  placeholder="Ex.: Wi-Fi Starlink"
+                />
+                <button
+                  type="button"
+                  class="rounded-lg border border-slate-200 px-3 py-1 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+                  @click="removeChip(index)"
+                >
+                  Remover
+                </button>
+              </div>
+              <button
+                type="button"
+                class="text-sm font-semibold text-brand"
+                @click="addChip"
+              >
+                + Adicionar destaque
+              </button>
+            </div>
+            <p class="mt-1 text-xs text-slate-500">Cada destaque aparece em formato de selo no hero.</p>
           </div>
         </div>
-        <p class="text-xs text-slate-500">Use os botões ou digite o valor em pixels (mín. 48, máx. 160).</p>
       </div>
-      <div>
-        <label class="text-sm font-semibold text-slate-600">Vídeo (YouTube)</label>
-        <input v-model="local.videoUrl" placeholder="Link do YouTube ou iframe com src" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
-        <p class="mt-1 text-xs text-slate-500">Aceita link (watch/short/iframe). No layout imersivo, o vídeo aparece ao lado do texto.</p>
-      </div>
-      <CtaActionPicker
-        class="md:col-span-2"
-        v-model:mode="local.ctaMode"
-        v-model:sectionId="local.ctaSectionId"
-        :current-anchor="local.anchorId"
-      />
-      <div class="grid gap-2 md:grid-cols-2">
-        <div>
-          <label class="text-sm font-semibold text-slate-600">Texto do CTA</label>
-          <input v-model="local.ctaLabel" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
-        </div>
-        <div v-if="local.ctaMode !== 'section'">
-          <label class="text-sm font-semibold text-slate-600">Link do CTA</label>
-          <input v-model="local.ctaLink" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
-        </div>
-      </div>
-    </div>
-    <div class="grid gap-3 md:grid-cols-2">
-      <div>
-        <label class="text-sm font-semibold text-slate-600">Layout do Hero</label>
-        <select v-model="local.layout" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2">
-          <option value="immersive">Imersivo (background + gradiente + destaques)</option>
-          <option value="card">Card central com overlay</option>
-        </select>
-      </div>
-      <div>
-        <label class="text-sm font-semibold text-slate-600">Cor/hex do gradiente</label>
-        <div class="mt-1 flex items-center gap-3">
-          <input
-            type="color"
-            class="h-10 w-14 rounded-lg border border-slate-200 bg-white"
-            :value="colorOnly(local.gradientColor)"
-            @input="onColorPick"
-          />
-          <input
-            v-model="local.gradientColor"
-            placeholder="#41ce5f"
-            class="w-full rounded-lg border border-slate-200 px-3 py-2"
-          />
-        </div>
-        <p class="mt-1 text-xs text-slate-500">Use o seletor ou digite um hex (ex.: #0a4ddf). Gradiente usa essa cor como base.</p>
-      </div>
-    </div>
-    <div class="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
-      A cor do botão segue a opção global "Cor de botões e destaques" configurada no topo do editor.
-    </div>
-    <div class="grid gap-3 md:grid-cols-2">
-      <div>
-        <label class="text-sm font-semibold text-slate-600">Destaques</label>
-        <div class="space-y-2">
-          <div
-            v-for="(chip, index) in local.chips"
-            :key="index"
-            class="flex items-center gap-2"
-          >
-            <input
-              v-model="local.chips[index]"
-              class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              placeholder="Ex.: Wi-Fi Starlink"
+
+      <div class="rounded-lg border border-slate-200 p-4 space-y-4">
+        <div class="grid gap-4 md:grid-cols-2">
+          <div class="space-y-4">
+            <div class="space-y-2">
+              <ImageUploadField
+                v-model="local.logoUrl"
+                v-model:roundedValue="local.logoBorderRadius"
+                :rounded-max="logoRadiusMax"
+                label="Logo da agencia"
+                hint="Envie a marca que aparecera sobre o fundo."
+                :enable-crop="true"
+                editor-title="Ajuste da logo"
+              />
+              <div class="flex items-center gap-2">
+                <label class="text-sm font-semibold text-slate-600">Tamanho da logo</label>
+                <input
+                  v-model.number="local.logoSize"
+                  type="number"
+                  min="48"
+                  max="160"
+                  step="4"
+                  class="w-24 rounded-lg border border-slate-200 px-2 py-1 text-sm"
+                />
+                <div class="flex gap-1">
+                  <button
+                    type="button"
+                    class="rounded-full border border-slate-200 px-3 py-1 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+                    @click="updateLogoSize(-4)"
+                  >
+                    &minus;
+                  </button>
+                  <button
+                    type="button"
+                    class="rounded-full border border-slate-200 px-3 py-1 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+                    @click="updateLogoSize(4)"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+              <p class="text-xs text-slate-500">Use os botoes ou digite o valor em pixels (min. 48, max. 160).</p>
+            </div>
+          </div>
+          <div class="space-y-4">
+            <ImageUploadField
+              v-model="local.backgroundImage"
+              label="Imagem de fundo"
+              hint="Formatos JPG/PNG. Essa imagem aparece no fundo da hero."
             />
-            <button
-              type="button"
-              class="rounded-lg border border-slate-200 px-3 py-1 text-sm font-semibold text-slate-600 hover:bg-slate-50"
-              @click="removeChip(index)"
-            >
-              Remover
-            </button>
           </div>
-          <button
-            type="button"
-            class="text-sm font-semibold text-brand"
-            @click="addChip"
-          >
-            + Adicionar destaque
-          </button>
         </div>
-        <p class="mt-1 text-xs text-slate-500">Cada destaque aparece em formato de selo no hero.</p>
+        <div class="grid gap-4 md:grid-cols-2">
+          <div>
+            <label class="text-sm font-semibold text-slate-600">Cor/hex do gradiente</label>
+            <div class="mt-1 flex items-center gap-3">
+              <input
+                type="color"
+                class="h-10 w-14 rounded-lg border border-slate-200 bg-white"
+                :value="colorOnly(local.gradientColor)"
+                @input="onColorPick"
+              />
+              <input
+                v-model="local.gradientColor"
+                placeholder="#41ce5f"
+                class="w-full rounded-lg border border-slate-200 px-3 py-2"
+              />
+            </div>
+            <p class="mt-1 text-xs text-slate-500">Use o seletor ou digite um hex (ex.: #0a4ddf). Gradiente usa essa cor como base.</p>
+          </div>
+          <div>
+            <label class="text-sm font-semibold text-slate-600">Video (YouTube)</label>
+            <input v-model="local.videoUrl" placeholder="Link do YouTube ou iframe com src" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
+            <p class="mt-1 text-xs text-slate-500">Aceita link (watch/short/iframe). No layout imersivo, o video aparece ao lado do texto.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="rounded-lg border border-slate-200 p-4 space-y-4">
+        <CtaActionPicker
+          v-model:mode="local.ctaMode"
+          v-model:sectionId="local.ctaSectionId"
+          :current-anchor="local.anchorId"
+        />
+        <div class="grid gap-2 md:grid-cols-2">
+          <div>
+            <label class="text-sm font-semibold text-slate-600">Texto do CTA</label>
+            <input v-model="local.ctaLabel" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
+          </div>
+          <div v-if="local.ctaMode !== 'section'">
+            <label class="text-sm font-semibold text-slate-600">Link do CTA</label>
+            <input v-model="local.ctaLink" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
+          </div>
+        </div>
+        <div class="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+          A cor do botao segue a opcao global "Cor de botoes e destaques" configurada no topo do editor.
+        </div>
       </div>
     </div>
   </div>
@@ -157,20 +162,12 @@ import type { HeroSection } from "../../types/page";
 const props = defineProps<{ modelValue: HeroSection }>();
 const emit = defineEmits<{ (e: "update:modelValue", value: HeroSection): void }>();
 
-const allowedLayouts = ["immersive", "card"] as const;
-const defaultLayout: (typeof allowedLayouts)[number] = "immersive";
-
-const sanitizeLayout = (value?: string): HeroSection["layout"] => {
-  if (value && allowedLayouts.includes(value as (typeof allowedLayouts)[number])) {
-    return value as HeroSection["layout"];
-  }
-  return defaultLayout;
-};
+const HERO_LAYOUT: HeroSection["layout"] = "immersive";
 
 const local = reactive<HeroSection>({
-  layout: sanitizeLayout(props.modelValue.layout),
-  logoSize: props.modelValue.logoSize ?? 64,
   ...props.modelValue,
+  layout: HERO_LAYOUT,
+  logoSize: props.modelValue.logoSize ?? 64,
   logoBorderRadius: props.modelValue.logoBorderRadius ?? 0,
   chips: props.modelValue.chips ? [...props.modelValue.chips] : [],
   ctaMode: props.modelValue.ctaMode || "link",
@@ -187,7 +184,7 @@ const syncFromProps = (value: HeroSection) => {
   local.logoSize = value.logoSize ?? 64;
   local.logoBorderRadius = value.logoBorderRadius ?? 0;
   local.chips = value.chips ? [...value.chips] : [];
-  local.layout = sanitizeLayout(value.layout);
+  local.layout = HERO_LAYOUT;
   if (!local.chips.length) local.chips = [""];
   local.ctaMode = value.ctaMode || "link";
   local.ctaSectionId = value.ctaSectionId || null;
@@ -257,4 +254,3 @@ watch(
   { deep: true }
 );
 </script>
-

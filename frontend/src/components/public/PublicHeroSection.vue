@@ -216,7 +216,7 @@ import type { HeroSection } from "../../types/page";
 const props = defineProps<{ section: HeroSection; branding: Record<string, any>; previewDevice?: "desktop" | "mobile" }>();
 const subtitleHtml = computed(() => sanitizeHtml(props.section.subtitle));
 
-const layout = computed(() => props.section.layout || "classic");
+const layout = computed(() => "immersive");
 const heroBackgroundImage = computed(() => resolveMediaUrl(props.section.backgroundImage));
 const logoSrc = computed(() => resolveMediaUrl(props.section.logoUrl));
 const logoSize = computed(() => props.section.logoSize ?? 64);
