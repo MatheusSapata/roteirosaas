@@ -22,4 +22,5 @@ class Agency(Base):
     users = relationship("AgencyUser", back_populates="agency")
     pages = relationship("Page", back_populates="agency", foreign_keys="Page.agency_id")
     media = relationship("MediaAsset", back_populates="agency")
+    social_links = relationship("AgencySocialLink", back_populates="agency", cascade="all, delete-orphan")
     default_page = relationship("Page", foreign_keys=[default_page_id], post_update=True)

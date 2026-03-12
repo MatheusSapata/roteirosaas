@@ -235,7 +235,7 @@
                       :is="publicComponents[catalog.type]"
                       :section="catalog.previewSection"
                       :previewDevice="'desktop'"
-                      v-bind="catalog.type === 'hero' ? { branding } : {}"
+                      v-bind="sectionRequiresBranding(catalog.type) ? { branding } : {}"
                     />
                   </div>
                 </div>
@@ -447,7 +447,7 @@
                         :is="publicComponents[(section as any).type]"
                         :section="previewSections[idx] || section"
                         :previewDevice="previewDevice"
-                        v-bind="(section as any).type === 'hero' ? { branding } : {}"
+                        v-bind="sectionRequiresBranding((section as any).type) ? { branding } : {}"
                       />
                         <div
                           v-if="(section as any).enabled"
@@ -662,6 +662,7 @@ import type {
   StorySection,
   ReasonsSection,
   CountdownSection,
+  AgencyFooterSection,
   SectionType,
   ThemeConfig
 } from "../../types/page";
@@ -805,7 +806,8 @@ const branding = ref({
   agency_name: "Agencia",
   logo_url: "",
   primary_color: fallbackPrimaryColor,
-  secondary_color: fallbackPrimaryColor
+  secondary_color: fallbackPrimaryColor,
+  agency_profile: {}
 });
 
 const theme = ref<ThemeConfig>({
@@ -894,6 +896,7 @@ const SectionCtaForm = defineAsyncComponent(() => import("../../components/admin
 const SectionStoryForm = defineAsyncComponent(() => import("../../components/admin/SectionStoryForm.vue"));
 const SectionReasonsForm = defineAsyncComponent(() => import("../../components/admin/SectionReasonsForm.vue"));
 const SectionCountdownForm = defineAsyncComponent(() => import("../../components/admin/SectionCountdownForm.vue"));
+const SectionAgencyFooterForm = defineAsyncComponent(() => import("../../components/admin/SectionAgencyFooterForm.vue"));
 const PublicHeroSection = defineAsyncComponent(() => import("../../components/public/PublicHeroSection.vue"));
 const PublicBannerCardSection = defineAsyncComponent(() => import("../../components/public/PublicBannerCardSection.vue"));
 const PublicPricesSection = defineAsyncComponent(() => import("../../components/public/PublicPricesSection.vue"));
@@ -906,6 +909,7 @@ const PublicStorySection = defineAsyncComponent(() => import("../../components/p
 const PublicReasonsSection = defineAsyncComponent(() => import("../../components/public/PublicReasonsSection.vue"));
 const PublicCountdownSection = defineAsyncComponent(() => import("../../components/public/PublicCountdownSection.vue"));
 const PublicFreeFooterBrandSection = defineAsyncComponent(() => import("../../components/public/PublicFreeFooterBrandSection.vue"));
+const PublicAgencyFooterSection = defineAsyncComponent(() => import("../../components/public/PublicAgencyFooterSection.vue"));
 
 const sectionTypes: SectionType[] = [
   "hero",
@@ -918,7 +922,8 @@ const sectionTypes: SectionType[] = [
   "cta",
   "story",
   "reasons",
-  "countdown"
+  "countdown",
+  "agency_footer"
 ];
 const sectionLabels = defaultSectionLabels;
 const sectionDescriptions: Partial<Record<SectionType, string>> = {
@@ -932,7 +937,8 @@ const sectionDescriptions: Partial<Record<SectionType, string>> = {
   cta: "Chamada final impulsionando o lead para a ação desejada.",
   story: "Bloco de storytelling: Use para contar sua história,detalhamento do roteiro, e muito mais.",
   reasons: "Liste motivos, benefícios e serviços para reforçar a decisão.",
-  countdown: "Cria urgência com contador regressivo para promoções ou eventos."
+  countdown: "Cria urgência com contador regressivo para promoções ou eventos.",
+  agency_footer: "Cartão institucional com contatos, redes sociais e mapa da agência."
 };
 const sectionAccents: Partial<Record<SectionType, string>> = {
   hero: "from-sky-100 to-slate-50",
@@ -945,7 +951,8 @@ const sectionAccents: Partial<Record<SectionType, string>> = {
   cta: "from-cyan-100/70 to-white",
   story: "from-rose-100/70 to-white",
   reasons: "from-indigo-100/70 to-white",
-  countdown: "from-orange-100/70 to-white"
+  countdown: "from-orange-100/70 to-white",
+  agency_footer: "from-slate-900/90 to-slate-800/70"
 };
 const formComponents: Partial<Record<SectionType, any>> = {
   hero: SectionHeroForm,
@@ -958,7 +965,8 @@ const formComponents: Partial<Record<SectionType, any>> = {
   cta: SectionCtaForm,
   story: SectionStoryForm,
   reasons: SectionReasonsForm,
-  countdown: SectionCountdownForm
+  countdown: SectionCountdownForm,
+  agency_footer: SectionAgencyFooterForm
 };
 
 const publicComponents: Partial<Record<SectionType, any>> = {
@@ -973,8 +981,11 @@ const publicComponents: Partial<Record<SectionType, any>> = {
   story: PublicStorySection,
   reasons: PublicReasonsSection,
   countdown: PublicCountdownSection,
-  free_footer_brand: PublicFreeFooterBrandSection
+  free_footer_brand: PublicFreeFooterBrandSection,
+  agency_footer: PublicAgencyFooterSection
 };
+
+const sectionRequiresBranding = (type?: SectionType | string | null) => type === "hero" || type === "agency_footer";
 
 const sections = shallowRef<PageSection[]>([]);
 const mobileOverlayVisible = reactive<Record<number, boolean>>({});
@@ -1243,6 +1254,48 @@ const currentAgency = computed(() => {
   return selected || agencyStore.agencies[0] || null;
 });
 
+const sanitizeDigits = (value?: string | null) => (value || "").replace(/\D/g, "");
+const buildAddressText = (address: Record<string, string | undefined>) => {
+  const line1 = [address.street, address.number, address.complement].filter(Boolean).join(", ");
+  const line2 = [address.neighborhood, address.city, address.state, address.zipcode].filter(Boolean).join(", ");
+  return [line1, line2].filter(Boolean).join(" - ");
+};
+
+const buildAgencyProfile = () => {
+  const agency = currentAgency.value;
+  const user = auth.user;
+  const address = {
+    street: user?.address_street || "",
+    number: user?.address_number || "",
+    complement: user?.address_complement || "",
+    neighborhood: user?.address_neighborhood || "",
+    city: user?.address_city || "",
+    state: user?.address_state || "",
+    zipcode: user?.address_zipcode || ""
+  };
+  const addressText = buildAddressText(address);
+  const cnpjDigits = sanitizeDigits(user?.cnpj || "");
+  const phone = (agency?.cta_whatsapp || user?.whatsapp || "").trim();
+
+  return {
+    name: agency?.name || user?.name || "",
+    cnpj: user?.cnpj || "",
+    cnpj_digits: cnpjDigits || undefined,
+    email: user?.email || "",
+    phone,
+    social_links: agency?.social_links || [],
+    address,
+    address_text: addressText || "",
+    map_query: addressText || "",
+    map_embed_url: addressText
+      ? `https://www.google.com/maps?q=${encodeURIComponent(addressText)}&output=embed`
+      : "",
+    cadastur_url: cnpjDigits
+      ? `https://cadastur.turismo.gov.br/cadastur/#!/public/qrcode/${cnpjDigits}`
+      : ""
+  };
+};
+
 const resolvePrimaryColor = () => currentAgency.value?.primary_color || fallbackPrimaryColor;
 
 const fillHeroLogoFromAgency = () => {
@@ -1272,13 +1325,22 @@ const applyPrimaryToThemeAndSections = (oldDefault?: string, nextColor?: string,
     applySectionBackgrounds(
       current.map(section => {
         if (!section) return section;
-        if ((section as any).type === "countdown") {
+        const type = (section as any).type as SectionType;
+        if (type === "countdown") {
           const countdownBg = (section as any).backgroundColor as string | undefined;
           const shouldReplaceCountdown =
             !countdownBg ||
             countdownBg.toLowerCase?.() === fallbackPrimaryColor.toLowerCase() ||
             (!!previous && countdownBg.toLowerCase?.() === previous.toLowerCase());
           if (shouldReplaceCountdown) (section as any).backgroundColor = targetColor;
+        }
+        if (type === "agency_footer") {
+          const footerBg = (section as any).backgroundColor as string | undefined;
+          const shouldReplaceFooter =
+            !footerBg ||
+            footerBg.toLowerCase?.() === fallbackPrimaryColor.toLowerCase() ||
+            (!!previous && footerBg.toLowerCase?.() === previous.toLowerCase());
+          if (shouldReplaceFooter) (section as any).backgroundColor = targetColor;
         }
         const currentColor = (section as any).ctaColor as string | undefined;
         const shouldReplace =
@@ -1299,7 +1361,8 @@ const applyAgencyBranding = () => {
     agency_name: agency?.name || branding.value.agency_name,
     logo_url: agency?.logo_url || branding.value.logo_url,
     primary_color: primary,
-    secondary_color: agency?.secondary_color || primary
+    secondary_color: agency?.secondary_color || primary,
+    agency_profile: buildAgencyProfile()
   };
   applyPrimaryToThemeAndSections(theme.value.ctaDefaultColor, primary, true);
   fillHeroLogoFromAgency();
@@ -1414,8 +1477,12 @@ const applySectionBackgrounds = (list: PageSection[]): PageSection[] => {
       type === "hero" ||
       type === "countdown" ||
       type === "free_footer_brand" ||
-      type === "banner_card"
+      type === "banner_card" ||
+      type === "agency_footer"
     ) {
+      if (type === "agency_footer" && !(normalized as any).backgroundColor) {
+        (normalized as any).backgroundColor = theme.value.ctaDefaultColor || fallbackPrimaryColor;
+      }
       if ((normalized as any).type === "banner_card" && !(normalized as any).backgroundColor) {
         (normalized as any).backgroundColor = colorA.value;
       }
@@ -1446,6 +1513,24 @@ const applySectionBackgrounds = (list: PageSection[]): PageSection[] => {
     return normalized;
   });
 };
+
+watch(currentAgency, () => applyAgencyBranding(), { immediate: true });
+watch(
+  () => ({
+    cnpj: auth.user?.cnpj,
+    email: auth.user?.email,
+    whatsapp: auth.user?.whatsapp,
+    street: auth.user?.address_street,
+    number: auth.user?.address_number,
+    complement: auth.user?.address_complement,
+    neighborhood: auth.user?.address_neighborhood,
+    city: auth.user?.address_city,
+    state: auth.user?.address_state,
+    zipcode: auth.user?.address_zipcode
+  }),
+  () => applyAgencyBranding(),
+  { deep: true }
+);
 
 const buildConfig = (): PageConfig => ({
   version: 1,
@@ -1756,6 +1841,17 @@ function defaultSection(type: SectionType): PageSection {
         { icon: "✨", title: "Experiência única", description: "Curadoria de passeios e hospedagens memoráveis." }
       ]
     } as ReasonsSection);
+  }
+
+  if (type === "agency_footer") {
+    return ensureSectionAnchor({
+      type: "agency_footer",
+      enabled: true,
+      showCadastur: true,
+      displayVariant: "auto",
+      fullWidth: true,
+      backgroundColor: theme.value.ctaDefaultColor || fallbackPrimaryColor
+    } as AgencyFooterSection);
   }
 
   const headingDefaults = getSectionHeadingDefaults("cta");

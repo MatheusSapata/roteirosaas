@@ -3,6 +3,7 @@
 
 from .user import User
 from .agency import Agency
+from .agency_social_link import AgencySocialLink
 from .agency_user import AgencyUser
 from .page import Page
 from .page_template import PageTemplate

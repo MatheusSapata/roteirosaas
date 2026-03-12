@@ -11,6 +11,7 @@ export type SectionType =
   | "story"
   | "reasons"
   | "countdown"
+  | "agency_footer"
   | "free_footer_brand";
 
 export interface SectionBase {
@@ -157,6 +158,13 @@ export interface CountdownSection extends SectionBase {
   layout?: "bar" | "flip";
 }
 
+export interface AgencyFooterSection extends SectionBase {
+  type: "agency_footer";
+  showCadastur?: boolean;
+  displayVariant?: "auto" | "stacked" | "wide";
+  fullWidth?: boolean;
+}
+
 export interface FreeFooterBrandSection extends SectionBase {
   type: "free_footer_brand";
   text: string;
@@ -227,6 +235,7 @@ export type PageSection =
   | StorySection
   | ReasonsSection
   | CountdownSection
+  | AgencyFooterSection
   | FreeFooterBrandSection;
 
 export interface ThemeConfig {

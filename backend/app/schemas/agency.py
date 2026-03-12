@@ -1,6 +1,38 @@
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, field_validator
+
+
+AgencySocialNetwork = Literal["instagram", "facebook", "youtube", "tiktok"]
+
+
+class AgencySocialLinkBase(BaseModel):
+    network: AgencySocialNetwork
+    url: str
+
+    @field_validator("network")
+    @classmethod
+    def normalize_network(cls, value: str) -> str:
+        return value.lower()
+
+    @field_validator("url")
+    @classmethod
+    def sanitize_url(cls, value: str) -> str:
+        if value is None:
+            raise ValueError("URL obrigatoria.")
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("URL obrigatoria.")
+        return cleaned
+
+
+class AgencySocialLinkCreate(AgencySocialLinkBase):
+    pass
+
+
+class AgencySocialLinkOut(AgencySocialLinkBase):
+    id: int
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AgencyBase(BaseModel):
@@ -21,7 +53,7 @@ class AgencyBase(BaseModel):
 
 
 class AgencyCreate(AgencyBase):
-    pass
+    social_links: Optional[list[AgencySocialLinkCreate]] = None
 
 
 class AgencyUpdate(BaseModel):
@@ -32,6 +64,7 @@ class AgencyUpdate(BaseModel):
     secondary_color: Optional[str] = None
     default_page_id: Optional[int] = None
     cta_whatsapp: Optional[str] = None
+    social_links: Optional[list[AgencySocialLinkCreate]] = None
 
     @field_validator("cta_whatsapp")
     @classmethod
@@ -45,4 +78,5 @@ class AgencyUpdate(BaseModel):
 class AgencyOut(AgencyBase):
     id: int
     default_page_id: Optional[int] = None
+    social_links: list[AgencySocialLinkOut] = []
     model_config = ConfigDict(from_attributes=True)

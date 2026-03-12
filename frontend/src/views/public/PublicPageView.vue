@@ -21,6 +21,7 @@
         v-else-if="section?.enabled"
         :is="publicComponents[section.type]"
         :section="section"
+        v-bind="sectionRequiresBranding(section.type) ? { branding: pageData.branding } : {}"
       />
     </template>
   </div>
@@ -41,6 +42,7 @@ import PublicStorySection from "../../components/public/PublicStorySection.vue";
 import PublicReasonsSection from "../../components/public/PublicReasonsSection.vue";
 import PublicCountdownSection from "../../components/public/PublicCountdownSection.vue";
 import PublicFreeFooterBrandSection from "../../components/public/PublicFreeFooterBrandSection.vue";
+import PublicAgencyFooterSection from "../../components/public/PublicAgencyFooterSection.vue";
 import PublicPhotoSection from "../../components/public/PublicPhotoSection.vue";
 import type { HeroSection, PageConfig, PageSection, SectionType, ThemeConfig } from "../../types/page";
 import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
@@ -85,8 +87,11 @@ const publicComponents: Record<SectionType, any> = {
   story: PublicStorySection,
   reasons: PublicReasonsSection,
   countdown: PublicCountdownSection,
-  free_footer_brand: PublicFreeFooterBrandSection
+  free_footer_brand: PublicFreeFooterBrandSection,
+  agency_footer: PublicAgencyFooterSection
 };
+
+const sectionRequiresBranding = (type?: SectionType) => type === "hero" || type === "agency_footer";
 
 let statsClickHandler: ((event: Event) => void) | null = null;
 let scrollAnchorHandler: ((event: Event) => void) | null = null;
