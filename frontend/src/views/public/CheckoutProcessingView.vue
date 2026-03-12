@@ -29,6 +29,7 @@
 </template>
 
 <script setup lang="ts">
+import type { AxiosError } from "axios";
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { CHECKOUT_SESSION_STORAGE_KEY, getCheckoutSessionStatus } from "../../services/cakto";
@@ -37,11 +38,19 @@ const router = useRouter();
 const route = useRoute();
 
 const sessionToken = ref<string | null>(null);
-const statusMessage = ref("Estamos finalizando tudo para vocÃª...");
+const statusMessage = ref("Estamos finalizando tudo para você...");
 const hasError = ref(false);
 const orderIdFound = computed(() => !!sessionToken.value);
 
 let fallbackTimer: number | null = null;
+
+const redirectToLogin = () => {
+  localStorage.removeItem(CHECKOUT_SESSION_STORAGE_KEY);
+  router.replace({
+    name: "login",
+    query: { checkout: "success" },
+  });
+};
 
 onMounted(() => {
   const stored = localStorage.getItem(CHECKOUT_SESSION_STORAGE_KEY);
@@ -64,7 +73,7 @@ onMounted(() => {
   } else {
     hasError.value = true;
     statusMessage.value =
-      "NÃ£o conseguimos identificar sua compra. Use o link do e-mail de confirmaÃ§Ã£o.";
+      "Não conseguimos identificar sua compra. Use o link do e-mail de confirmação.";
   }
 
   fallbackTimer = window.setTimeout(() => {
@@ -99,10 +108,7 @@ const pollStatus = async (attempt = 0) => {
           query: { token: data.redirect_token },
         });
       } else {
-        router.replace({
-          name: "login",
-          query: { checkout: "success" },
-        });
+        redirectToLogin();
       }
       return;
     }
@@ -115,8 +121,16 @@ const pollStatus = async (attempt = 0) => {
     setTimeout(() => pollStatus(attempt + 1), 2000);
   } catch (err) {
     console.error(err);
+    const status = (err as AxiosError)?.response?.status;
+    if (status === 404) {
+      redirectToLogin();
+      return;
+    }
     hasError.value = true;
-    statusMessage.value = "NÃ£o conseguimos confirmar seu pedido. Use o link enviado por e-mail.";
+    statusMessage.value = "Não conseguimos confirmar seu pedido. Use o link enviado por e-mail.";
   }
 };
 </script>
+
+
+
