@@ -3,6 +3,7 @@
     class="relative w-full"
     :class="isFullLayout ? 'px-0 pb-0' : 'px-4 py-12'"
     :id="section.anchorId || undefined"
+    :style="sectionStyle"
   >
     <div v-if="imageSrc" :class="isFullLayout ? 'h-[380px] sm:h-[520px]' : 'mx-auto max-w-4xl'">
       <div
@@ -46,4 +47,9 @@ const props = defineProps<{ section: PhotoSection }>();
 const imageSrc = computed(() => resolveMediaUrl(props.section.image) || props.section.image || "");
 const altText = computed(() => props.section.altText || "Imagem ilustrativa");
 const isFullLayout = computed(() => (props.section.layout || "card") === "full");
+const sectionStyle = computed(() => {
+  if (isFullLayout.value) return undefined;
+  if (!props.section.backgroundColor) return undefined;
+  return { background: props.section.backgroundColor };
+});
 </script>

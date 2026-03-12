@@ -32,6 +32,30 @@
       </div>
     </div>
 
+    <div v-if="local.layout === 'card'">
+      <label class="text-sm font-semibold text-slate-600">Cor de fundo (opcional)</label>
+      <div class="mt-2 flex flex-wrap items-center gap-3">
+        <input
+          type="color"
+          v-model="colorPickerValue"
+          class="h-10 w-10 cursor-pointer rounded border border-slate-200 bg-white"
+        />
+        <input
+          v-model="customBackground"
+          placeholder="#f4f7ff"
+          class="w-full flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm font-mono"
+        />
+        <button
+          type="button"
+          class="rounded-full border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+          @click="customBackground = ''"
+        >
+          Usar alternância
+        </button>
+      </div>
+      <p class="mt-1 text-xs text-slate-500">Deixe em branco para seguir as cores configuradas na página.</p>
+    </div>
+
     <div>
       <label class="text-sm font-semibold text-slate-600">Texto alternativo (opcional)</label>
       <input
@@ -45,7 +69,7 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, reactive, watch } from "vue";
+import { computed, nextTick, reactive, ref, watch } from "vue";
 import ImageUploadField from "./inputs/ImageUploadField.vue";
 import type { PhotoSection } from "../../types/page";
 
@@ -58,13 +82,23 @@ const local = reactive<PhotoSection>({
   image: "",
   layout: "card",
   ...props.modelValue,
+  backgroundColor: props.modelValue.backgroundColor,
 });
 
 let syncing = false;
+const customBackground = ref(props.modelValue.backgroundColor || "");
+const colorPickerValue = computed({
+  get: () => customBackground.value || "#f4f7ff",
+  set: value => {
+    customBackground.value = value;
+  },
+});
+
 const syncFromProps = (value: PhotoSection) => {
   syncing = true;
   Object.assign(local, value);
   local.layout = value.layout || "card";
+  customBackground.value = value.backgroundColor || "";
   nextTick(() => {
     syncing = false;
   });
@@ -77,6 +111,25 @@ watch(
     syncFromProps(value);
   },
   { deep: true }
+);
+
+watch(
+  () => customBackground.value,
+  value => {
+    if (syncing) return;
+    const sanitized = value.trim();
+    local.backgroundColor = sanitized ? sanitized : undefined;
+  }
+);
+
+watch(
+  () => local.layout,
+  layout => {
+    if (layout === "full") {
+      customBackground.value = "";
+      local.backgroundColor = undefined;
+    }
+  }
 );
 
 watch(
