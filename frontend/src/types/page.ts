@@ -2,6 +2,7 @@ export type SectionType =
   | "hero"
   | "banner_card"
   | "gallery"
+  | "photo"
   | "prices"
   | "itinerary"
   | "faq"
@@ -63,6 +64,13 @@ export interface GallerySection extends SectionBase {
   type: "gallery";
   images: string[];
   layout?: "mosaic" | "grid" | "strip";
+}
+
+export interface PhotoSection extends SectionBase {
+  type: "photo";
+  image?: string;
+  layout?: "card" | "full";
+  altText?: string;
 }
 
 export type CurrencyCode = "BRL" | "USD" | "EUR" | "ARS";
@@ -210,6 +218,7 @@ export type PageSection =
   | HeroSection
   | BannerCardSection
   | GallerySection
+  | PhotoSection
   | PricesSection
   | ItinerarySection
   | FaqSection

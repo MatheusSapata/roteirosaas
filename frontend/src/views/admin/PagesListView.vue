@@ -473,20 +473,55 @@ const handleTrialLimitError = (err: unknown) => {
   return true;
 };
 
-const buildFriendlySlug = () => {
-  const existing = new Set(
+const buildDefaultTitleAndSlug = () => {
+  const titleBase = "Novo roteiro";
+  const slugBase = "novo-roteiro";
+
+  const existingSlugs = new Set(
     pages.value
       .map(page => page.slug)
-      .filter((slug): slug is string => !!slug)
+      .filter((slug): slug is string => Boolean(slug))
       .map(slug => slug.toLowerCase())
   );
+
+  const usedNumbers = new Set<number>();
+  const registerTitle = (value?: string | null) => {
+    if (!value) return;
+    const normalized = value.trim().toLowerCase();
+    const regex = new RegExp(`^${titleBase.toLowerCase()}(?:\\s+(\\d+))?$`);
+    const match = normalized.match(regex);
+    if (!match) return;
+    const number = match[1] ? Number.parseInt(match[1], 10) : 1;
+    if (!Number.isNaN(number)) usedNumbers.add(number);
+  };
+  const registerSlug = (value?: string | null) => {
+    if (!value) return;
+    const match = value.toLowerCase().match(new RegExp(`^${slugBase}-(\\d+)$`));
+    if (!match) return;
+    const number = match[1] ? Number.parseInt(match[1], 10) : 1;
+    if (!Number.isNaN(number)) usedNumbers.add(number);
+  };
+
+  pages.value.forEach(page => {
+    registerTitle(page.title);
+    registerSlug(page.slug);
+  });
+
   let counter = 1;
-  let candidate = `roteiro-${counter}`;
-  while (existing.has(candidate)) {
+  while (usedNumbers.has(counter)) {
     counter += 1;
-    candidate = `roteiro-${counter}`;
   }
-  return candidate;
+
+  let slugCandidate = `${slugBase}-${counter}`;
+  while (existingSlugs.has(slugCandidate)) {
+    counter += 1;
+    slugCandidate = `${slugBase}-${counter}`;
+  }
+
+  return {
+    title: `${titleBase} ${counter}`,
+    slug: slugCandidate
+  };
 };
 
 const openCreateModal = () => {
@@ -509,11 +544,11 @@ const createPageFromScratch = async () => {
     return;
   }
   try {
-    const friendlySlug = buildFriendlySlug();
+    const defaults = buildDefaultTitleAndSlug();
     const res = await api.post<Page>("/pages", {
       agency_id: agencyStore.currentAgencyId,
-      title: "Novo roteiro",
-      slug: friendlySlug || `novo-roteiro-${Date.now()}`,
+      title: defaults.title,
+      slug: defaults.slug,
       status: "draft"
     });
     pages.value.push({ ...res.data });
