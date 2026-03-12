@@ -656,6 +656,7 @@ import type {
   ItinerarySection,
   PageConfig,
   PageSection,
+  PhotoSection,
   PricesSection,
   TestimonialsSection,
   StorySection,
@@ -885,6 +886,7 @@ const buildCountdownTargetDate = () => {
 const SectionHeroForm = defineAsyncComponent(() => import("../../components/admin/SectionHeroForm.vue"));
 const SectionBannerCardForm = defineAsyncComponent(() => import("../../components/admin/SectionBannerCardForm.vue"));
 const SectionPricesForm = defineAsyncComponent(() => import("../../components/admin/SectionPricesForm.vue"));
+const SectionPhotoForm = defineAsyncComponent(() => import("../../components/admin/SectionPhotoForm.vue"));
 const SectionItineraryForm = defineAsyncComponent(() => import("../../components/admin/SectionItineraryForm.vue"));
 const SectionFaqForm = defineAsyncComponent(() => import("../../components/admin/SectionFaqForm.vue"));
 const SectionTestimonialsForm = defineAsyncComponent(() => import("../../components/admin/SectionTestimonialsForm.vue"));
@@ -895,6 +897,7 @@ const SectionCountdownForm = defineAsyncComponent(() => import("../../components
 const PublicHeroSection = defineAsyncComponent(() => import("../../components/public/PublicHeroSection.vue"));
 const PublicBannerCardSection = defineAsyncComponent(() => import("../../components/public/PublicBannerCardSection.vue"));
 const PublicPricesSection = defineAsyncComponent(() => import("../../components/public/PublicPricesSection.vue"));
+const PublicPhotoSection = defineAsyncComponent(() => import("../../components/public/PublicPhotoSection.vue"));
 const PublicItinerarySection = defineAsyncComponent(() => import("../../components/public/PublicItinerarySection.vue"));
 const PublicFaqSection = defineAsyncComponent(() => import("../../components/public/PublicFaqSection.vue"));
 const PublicTestimonialsSection = defineAsyncComponent(() => import("../../components/public/PublicTestimonialsSection.vue"));
@@ -907,6 +910,7 @@ const PublicFreeFooterBrandSection = defineAsyncComponent(() => import("../../co
 const sectionTypes: SectionType[] = [
   "hero",
   "banner_card",
+  "photo",
   "prices",
   "itinerary",
   "faq",
@@ -920,6 +924,7 @@ const sectionLabels = defaultSectionLabels;
 const sectionDescriptions: Partial<Record<SectionType, string>> = {
   hero: "Bloco inicial com destaque visual, título, subtítulo e CTA principal.",
   banner_card: "Banner em card com imagem de fundo, gradiente e CTA destacado.",
+  photo: "Uma única imagem em destaque. Escolha o layout card ou largura total.",
   prices: "Tabela com planos, valores e diferenciais para cada oferta.",
   itinerary: "Sequência de etapas/benefícios para explicar seu serviço ou roteiro.",
   faq: "Perguntas e respostas para antecipar dúvidas frequentes.",
@@ -932,6 +937,7 @@ const sectionDescriptions: Partial<Record<SectionType, string>> = {
 const sectionAccents: Partial<Record<SectionType, string>> = {
   hero: "from-sky-100 to-slate-50",
   banner_card: "from-emerald-600/90 to-emerald-400/70",
+  photo: "from-slate-100 to-white",
   prices: "from-amber-100 to-white",
   itinerary: "from-emerald-100/70 to-white",
   faq: "from-slate-100 to-white",
@@ -944,6 +950,7 @@ const sectionAccents: Partial<Record<SectionType, string>> = {
 const formComponents: Partial<Record<SectionType, any>> = {
   hero: SectionHeroForm,
   banner_card: SectionBannerCardForm,
+  photo: SectionPhotoForm,
   prices: SectionPricesForm,
   itinerary: SectionItineraryForm,
   faq: SectionFaqForm,
@@ -957,6 +964,7 @@ const formComponents: Partial<Record<SectionType, any>> = {
 const publicComponents: Partial<Record<SectionType, any>> = {
   hero: PublicHeroSection,
   banner_card: PublicBannerCardSection,
+  photo: PublicPhotoSection,
   prices: PublicPricesSection,
   itinerary: PublicItinerarySection,
   faq: PublicFaqSection,
@@ -1400,12 +1408,13 @@ const applySectionBackgrounds = (list: PageSection[]): PageSection[] => {
   return withWhatsApp.map(section => {
     if (!section) return section;
     const normalized = ensureButtonColor(normalizeHeroGradient(ensureSectionAnchor(section)));
-    if (
-      (normalized as any).type === "hero" ||
-      (normalized as any).type === "countdown" ||
-      (normalized as any).type === "free_footer_brand" ||
-      (normalized as any).type === "banner_card"
-    ) {
+  if (
+    (normalized as any).type === "hero" ||
+    (normalized as any).type === "countdown" ||
+    (normalized as any).type === "free_footer_brand" ||
+    (normalized as any).type === "banner_card" ||
+    (normalized as any).type === "photo"
+  ) {
       if ((normalized as any).type === "banner_card" && !(normalized as any).backgroundColor) {
         (normalized as any).backgroundColor = colorA.value;
       }
@@ -1578,6 +1587,17 @@ function defaultSection(type: SectionType): PageSection {
       ctaMode: "link",
       ctaSectionId: null
     } as BannerCardSection);
+  }
+
+  if (type === "photo") {
+    return ensureSectionAnchor({
+      type: "photo",
+      enabled: true,
+      image:
+        "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=1200&q=80",
+      layout: "card",
+      altText: "Imagem de destaque"
+    } as PhotoSection);
   }
 
   if (type === "prices") {

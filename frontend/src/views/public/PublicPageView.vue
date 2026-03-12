@@ -41,6 +41,7 @@ import PublicStorySection from "../../components/public/PublicStorySection.vue";
 import PublicReasonsSection from "../../components/public/PublicReasonsSection.vue";
 import PublicCountdownSection from "../../components/public/PublicCountdownSection.vue";
 import PublicFreeFooterBrandSection from "../../components/public/PublicFreeFooterBrandSection.vue";
+import PublicPhotoSection from "../../components/public/PublicPhotoSection.vue";
 import type { HeroSection, PageConfig, PageSection, SectionType, ThemeConfig } from "../../types/page";
 import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
 import BrandLogo from "../../assets/Logo Branco - Roteiro Online.png";
@@ -75,6 +76,7 @@ provide(PUBLIC_BRANDING_KEY, brandingInfo);
 const publicComponents: Record<SectionType, any> = {
   hero: PublicHeroSection,
   banner_card: PublicBannerCardSection,
+  photo: PublicPhotoSection,
   prices: PublicPricesSection,
   itinerary: PublicItinerarySection,
   faq: PublicFaqSection,
