@@ -7,13 +7,13 @@ from sqlalchemy.orm import Session, selectinload
 from app.api.deps import get_db
 from app.api.v1.endpoints.pages import apply_free_footer, normalize_config, resolve_agency_plan
 from app.models.agency import Agency
-from app.models.agency_domain import AgencyDomain
 from app.models.agency_user import AgencyUser
 from app.models.page import Page
 from app.schemas.page import PublicPageOut
 from app.services.public_page_resolver import PublicPageResolverService
 
 router = APIRouter()
+page_resolver = PublicPageResolverService()
 
 
 def sanitize_digits(value: str | None) -> str:
@@ -110,20 +110,7 @@ def base_page_query(db: Session):
     )
 
 
-def _custom_domain_page_query(db: Session, normalized_host: str):
-    return (
-        base_page_query(db)
-        .join(AgencyDomain, AgencyDomain.agency_id == Agency.id)
-        .filter(
-            func.lower(AgencyDomain.host) == normalized_host,
-            AgencyDomain.is_active.is_(True),
-            AgencyDomain.is_verified.is_(True),
-        )
-    )
-
-
-@router.get("/by-slug/{agency_slug}/{page_slug}", response_model=PublicPageOut)
-def get_public_page(agency_slug: str, page_slug: str, db: Session = Depends(get_db)) -> PublicPageOut:
+def _find_page_by_slug(db: Session, agency_slug: str, page_slug: str) -> Page:
     normalized_agency_slug = agency_slug.lower()
     normalized_page_slug = page_slug.lower()
     page = (
@@ -136,33 +123,35 @@ def get_public_page(agency_slug: str, page_slug: str, db: Session = Depends(get_
         .first()
     )
     if not page:
-        raise HTTPException(status_code=404, detail="Pǭgina nǜo encontrada ou nǜo publicada.")
-    return serialize_public_page(page, agency_slug, db)
+        raise HTTPException(status_code=404, detail="Página não encontrada ou não publicada.")
+    return page
 
 
-@router.get("/default/{agency_slug}", response_model=PublicPageOut)
-def get_default_public_page(agency_slug: str, db: Session = Depends(get_db)) -> PublicPageOut:
+def _find_default_page(db: Session, agency_slug: str) -> Page:
     normalized_slug = agency_slug.lower()
     agency = db.query(Agency).filter(func.lower(Agency.slug) == normalized_slug).first()
     if not agency or not agency.default_page_id:
-        raise HTTPException(status_code=404, detail="Pǭgina padrǜo nǜo configurada.")
+        raise HTTPException(status_code=404, detail="Página padrão não configurada.")
     page = (
         base_page_query(db)
         .filter(Page.id == agency.default_page_id, Page.status == "published")
         .first()
     )
     if not page:
-        raise HTTPException(status_code=404, detail="Pagina padrao nao encontrada ou nao publicada.")
+        raise HTTPException(status_code=404, detail="Página padrão não encontrada ou não publicada.")
+    return page
+
+
+@router.get("/by-slug/{agency_slug}/{page_slug}", response_model=PublicPageOut)
+def get_public_page(agency_slug: str, page_slug: str, db: Session = Depends(get_db)) -> PublicPageOut:
+    page = _find_page_by_slug(db, agency_slug, page_slug)
     return serialize_public_page(page, agency_slug, db)
 
 
-def _resolve_host_from_request(request: Request) -> str:
-    host_header = request.headers.get("x-forwarded-host") or request.headers.get("host")
-    normalized_host = PublicPageResolverService._normalize_hostname(host_header)
-    if not normalized_host:
-        raise HTTPException(status_code=404, detail="Dominio nao informado.")
-    return normalized_host
-
+@router.get("/default/{agency_slug}", response_model=PublicPageOut)
+def get_default_public_page(agency_slug: str, db: Session = Depends(get_db)) -> PublicPageOut:
+    page = _find_default_page(db, agency_slug)
+    return serialize_public_page(page, agency_slug, db)
 
 @router.get("/by-host", response_model=PublicPageOut)
 @router.get("/by-host/{page_slug}", response_model=PublicPageOut)
@@ -171,27 +160,24 @@ def get_public_page_by_host(
     page_slug: str | None = None,
     db: Session = Depends(get_db),
 ) -> PublicPageOut:
-    normalized_host = _resolve_host_from_request(request)
-    query = _custom_domain_page_query(db, normalized_host)
+    host_header = request.headers.get("x-forwarded-host") or request.headers.get("host")
+    scheme = request.headers.get("x-forwarded-proto") or request.url.scheme
+    path_value = f"/{page_slug}" if page_slug else "/"
 
-    if page_slug:
-        normalized_page_slug = page_slug.lower()
-        page = (
-            query.filter(
-                func.lower(Page.slug) == normalized_page_slug,
-                Page.status == "published",
-            ).first()
-        )
-        if not page:
-            raise HTTPException(status_code=404, detail="Pagina nao encontrada para este dominio.")
-        return serialize_public_page(page, page.agency.slug, db)
-
-    page = (
-        query.filter(
-            Page.id == Agency.default_page_id,
-            Page.status == "published",
-        ).first()
+    resolution = page_resolver.resolve(
+        host_header=host_header,
+        path=path_value,
+        scheme=scheme,
+        agency_slug_param=None,
+        page_slug_param=page_slug,
+        db=db,
     )
-    if not page:
-        raise HTTPException(status_code=404, detail="Pagina padrao nao encontrada para este dominio.")
-    return serialize_public_page(page, page.agency.slug, db)
+
+    if resolution.mode != "custom_domain":
+        raise HTTPException(status_code=404, detail="Dominio nao configurado.")
+
+    if resolution.page_slug:
+        page = _find_page_by_slug(db, resolution.agency_slug, resolution.page_slug)
+    else:
+        page = _find_default_page(db, resolution.agency_slug)
+    return serialize_public_page(page, resolution.agency_slug, db)
