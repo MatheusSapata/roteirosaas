@@ -7,7 +7,7 @@
             <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="accent" />
           </div>
           <h1 class="mt-3 text-2xl font-bold" :style="{ color: primaryText }">{{ title }}</h1>
-          <p class="text-sm" :style="{ color: mutedText }">{{ subtitle }}</p>
+          <p v-if="subtitle" class="text-sm" :style="{ color: mutedText }">{{ subtitle }}</p>
         </div>
 
         <div class="space-y-8">
@@ -126,7 +126,11 @@ const sanitizeLink = (value?: string | null) => {
 };
 const ctaLink = computed(() => sanitizeLink(props.section.ctaLink));
 const title = computed(() => (props.section.title && props.section.title.trim().length ? props.section.title : defaultTitle));
-const subtitle = computed(() => (props.section.subtitle && props.section.subtitle.trim().length ? props.section.subtitle : defaultSubtitle));
+const subtitle = computed(() => {
+  const raw = props.section.subtitle ?? null;
+  if (raw === null) return defaultSubtitle;
+  return raw.trim().length ? raw : "";
+});
 const highlightShadow = computed(() => toRgba(accent.value, 0.45));
 const highlightCardStyle = computed(() => ({
   background: accent.value,
