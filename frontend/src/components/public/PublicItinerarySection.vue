@@ -8,7 +8,7 @@
               <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="accent" />
             </div>
             <h1 class="text-2xl font-bold" :style="{ color: primaryText }">{{ section.title || defaultTitle }}</h1>
-            <p class="text-sm" :style="{ color: mutedText }">{{ section.subtitle || defaultSubtitle }}</p>
+            <p v-if="subtitle" class="text-sm" :style="{ color: mutedText }">{{ subtitle }}</p>
           </div>
         </div>
 
@@ -182,6 +182,11 @@ const isLight = (hex?: string) => {
 };
 
 const accent = computed(() => props.section.ctaColor || brandingPrimary.value || defaultAccent);
+const subtitle = computed(() => {
+  const raw = props.section.subtitle ?? null;
+  if (raw === null) return defaultSubtitle;
+  return raw.trim().length ? raw : "";
+});
 const headingLabel = computed(() => props.section.headingLabel ?? headingDefaults.label);
 const headingStyle = computed(() => props.section.headingLabelStyle || headingDefaults.style);
 const textPalette = computed(() => deriveTextPalette(props.section.textColor));
