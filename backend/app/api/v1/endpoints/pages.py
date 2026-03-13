@@ -56,6 +56,29 @@ def resolve_agency_plan(db: Session, agency_id: int) -> str:
     return "free"
 
 
+def derive_cover_image_from_config(raw: Any) -> Optional[str]:
+    """Extracts a representative cover image from the page config."""
+    config = normalize_config(raw)
+    if not isinstance(config, dict):
+        return None
+    sections = config.get("sections")
+    if not isinstance(sections, list):
+        return None
+    for section in sections:
+        if not isinstance(section, dict):
+            continue
+        if section.get("enabled") is False:
+            continue
+        if section.get("type") != "hero":
+            continue
+        image = section.get("backgroundImage") or section.get("background_image")
+        if isinstance(image, str):
+            trimmed = image.strip()
+            if trimmed:
+                return trimmed
+    return None
+
+
 DEFAULT_FREE_FOOTER_SECTION = {
     "type": "free_footer_brand",
     "text": "Página desenvolvida através do roteiroonline.com",
@@ -169,6 +192,7 @@ def create_page(
                 detail=f"Limite de {max_pages} paginas permitido no plano {plan}. Exclua uma pagina antes de criar outra.",
             )
     page.config_json = enforce_page_limits(db, page, publish=False, config=page.config_json, plan=plan)
+    page.cover_image_url = derive_cover_image_from_config(page.config_json)
     db.add(page)
     db.commit()
     db.refresh(page)
@@ -192,6 +216,8 @@ def update_page(
     if "config_json" in updates:
         normalized = normalize_config(updates.get("config_json"))
         updates["config_json"] = enforce_page_limits(db, page, publish=False, config=normalized, plan=plan)
+        if "cover_image_url" not in updates:
+            updates["cover_image_url"] = derive_cover_image_from_config(updates["config_json"])
     for key, value in updates.items():
         setattr(page, key, value)
     db.add(page)
@@ -216,6 +242,7 @@ def update_page_config(
     plan = resolve_agency_plan(db, page.agency_id)
     normalized = normalize_config(payload.config)
     page.config_json = enforce_page_limits(db, page, publish=False, config=normalized, plan=plan)
+    page.cover_image_url = derive_cover_image_from_config(page.config_json)
     db.add(page)
     db.commit()
     db.refresh(page)
