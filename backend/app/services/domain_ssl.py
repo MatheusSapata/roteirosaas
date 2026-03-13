@@ -15,7 +15,10 @@ class DomainSslService:
     def __init__(self, settings: Optional[Settings] = None) -> None:
         self.settings = settings or get_settings()
         self.logger = logging.getLogger(__name__)
-        self.provider_name = self.settings.custom_domain_ssl_provider
+        provider = (self.settings.custom_domain_ssl_provider or "").strip()
+        if provider.lower() == "manual":
+            provider = ""
+        self.provider_name = provider or None
         self.script_path = self.settings.custom_domain_ssl_script_path
 
     def queue_certificate_request(self, domain: AgencyDomain) -> None:
