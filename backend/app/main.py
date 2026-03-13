@@ -90,8 +90,8 @@ def serve_frontend_index() -> HTMLResponse:
 @app.get("/p/{agency_slug}/{page_slug}", response_class=HTMLResponse, include_in_schema=False)
 def serve_short_public_page(
     agency_slug: str,
-    page_slug: str | None = None,
     request: Request,
+    page_slug: str | None = None,
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
     return _serve_public_page(agency_slug, page_slug, request, db)
