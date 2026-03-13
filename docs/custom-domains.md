@@ -61,6 +61,7 @@
 | `DOMAIN_VERIFICATION_PREFIX`   | Prefixo aplicado no host do registro TXT de verificacao.               |
 | `CUSTOM_DOMAIN_SSL_PROVIDER`   | Nome/identificador do emissor de SSL (vazio = emissao manual).         |
 | `CUSTOM_DOMAIN_SSL_SCRIPT_PATH` | Caminho absoluto do script que emite certificados (quando `CUSTOM_DOMAIN_SSL_PROVIDER=certbot`). |
+| `VITE_PLATFORM_HOSTS`          | (Frontend) Lista de hosts oficiais para distinguir quando o acesso é via dominio da plataforma. |
 
 ## Como a tela do painel funciona
 
