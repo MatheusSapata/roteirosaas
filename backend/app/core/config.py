@@ -1,7 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -65,6 +65,32 @@ class Settings(BaseSettings):
     cakto_api_base_url: str | None = Field(None, alias="CAKTO_API_BASE_URL")
     cakto_client_id: str | None = Field(None, alias="CAKTO_CLIENT_ID")
     cakto_client_secret: str | None = Field(None, alias="CAKTO_CLIENT_SECRET")
+    platform_domains: list[str] = Field(
+        default_factory=lambda: ["roteiroonline.com", "www.roteiroonline.com", "localhost"],
+        alias="PLATFORM_DOMAINS",
+    )
+    forbidden_custom_hosts: list[str] = Field(
+        default_factory=lambda: ["roteiroonline.com", "www.roteiroonline.com", "localhost"],
+        alias="FORBIDDEN_CUSTOM_HOSTS",
+    )
+    custom_domain_cname_target: str = Field("roteiroonline.com", alias="CUSTOM_DOMAIN_CNAME_TARGET")
+    custom_domain_apex_ip: str | None = Field(None, alias="CUSTOM_DOMAIN_APEX_IP")
+    domain_verification_prefix: str = Field("_roteiroonline-verification", alias="DOMAIN_VERIFICATION_PREFIX")
+    platform_primary_domain: str | None = Field(None, alias="PLATFORM_PRIMARY_DOMAIN")
+    custom_domain_ssl_provider: str | None = Field(None, alias="CUSTOM_DOMAIN_SSL_PROVIDER")
+
+    @field_validator("platform_domains", "forbidden_custom_hosts", mode="before")
+    @classmethod
+    def split_csv_list(cls, value):
+        if not value:
+            return []
+        if isinstance(value, str):
+            return [item.strip() for item in value.split(",") if item.strip()]
+        return value
+
+    @property
+    def normalized_platform_domains(self) -> list[str]:
+        return [host.strip().lower() for host in self.platform_domains if host.strip()]
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False, populate_by_name=True, extra="ignore")
 

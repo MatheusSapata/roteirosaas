@@ -34,6 +34,12 @@ const routes: RouteRecordRaw[] = [
       { path: "pages/:id/edit", name: "page-edit", component: PageEditorView, props: true },
       { path: "aulas", name: "lessons", component: () => import("../views/admin/AulasView.vue") },
       { path: "agency", name: "agency-settings", component: AgencySettingsView },
+      {
+        path: "domains",
+        name: "agency-domains",
+        component: () => import("../views/admin/AgencyDomainsView.vue"),
+        meta: { allowedPlans: ["teste"] }
+      },
       { path: "planos", name: "plans", component: PlansView },
       { path: "integracoes", name: "integrations", component: () => import("../views/admin/IntegrationsView.vue") },
       { path: "perfil", name: "profile", component: () => import("../views/admin/ProfileView.vue") },
@@ -64,6 +70,8 @@ router.beforeEach(async (to, _from, next) => {
   const requiresAuth = to.matched.some(record => record.meta?.requiresAuth);
   const guestOnly = to.matched.some(record => record.meta?.guestOnly);
   const requiresSuperuser = to.matched.some(record => record.meta?.requiresSuperuser);
+  const restrictedPlanRecord = to.matched.find(record => Array.isArray((record.meta as any)?.allowedPlans));
+  const allowedPlans = restrictedPlanRecord ? ((restrictedPlanRecord.meta as any).allowedPlans as string[]) : null;
   const targetIsPlans = to.name === "plans";
   const targetIsDashboard = to.name === "dashboard";
 
@@ -83,6 +91,10 @@ router.beforeEach(async (to, _from, next) => {
     }
     if (auth.user?.trial_blocked && !targetIsPlans && !targetIsDashboard) {
       next({ name: "plans" });
+      return;
+    }
+    if (allowedPlans && (!auth.user?.plan || !allowedPlans.includes(auth.user.plan))) {
+      next({ name: "dashboard" });
       return;
     }
   }
