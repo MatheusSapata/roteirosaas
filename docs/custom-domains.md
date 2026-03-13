@@ -60,6 +60,7 @@
 | `CUSTOM_DOMAIN_APEX_IP`        | IP publico para registros A do dominio raiz.                           |
 | `DOMAIN_VERIFICATION_PREFIX`   | Prefixo aplicado no host do registro TXT de verificacao.               |
 | `CUSTOM_DOMAIN_SSL_PROVIDER`   | Nome/identificador do emissor de SSL (vazio = emissao manual).         |
+| `CUSTOM_DOMAIN_SSL_SCRIPT_PATH` | Caminho absoluto do script que emite certificados (quando `CUSTOM_DOMAIN_SSL_PROVIDER=certbot`). |
 
 ## Como a tela do painel funciona
 
@@ -70,3 +71,36 @@
   - Tornar primario
   - Excluir (apenas quando inativo)
 - O formulario valida hosts sem protocolo/path e permite marcar como primario no cadastro.
+
+## Automatizando SSL com Certbot (VPS Hostinger)
+
+1. **Instale o Certbot** no VPS (Ubuntu/Debian):
+   ```bash
+   sudo apt update && sudo apt install -y certbot python3-certbot-nginx
+   ```
+2. **Crie uma pasta webroot** compartilhada com o Nginx que responde pelos domínios customizados:
+   ```bash
+   sudo mkdir -p /var/www/roteiroonline/.well-known/acme-challenge
+   sudo chown -R www-data:www-data /var/www/roteiroonline
+   ```
+3. **Inclua no Nginx** (server block que atende os hosts customizados) para servir o webroot:
+   ```nginx
+   location /.well-known/acme-challenge/ {
+       root /var/www/roteiroonline;
+   }
+   ```
+4. **Copie o script** `backend/scripts/issue_custom_domain_cert.sh` para o VPS (ex.: `/opt/roteiroonline/issue_custom_domain_cert.sh`) e torne-o executável:
+   ```bash
+   sudo mkdir -p /opt/roteiroonline
+   sudo cp backend/scripts/issue_custom_domain_cert.sh /opt/roteiroonline/
+   sudo chmod +x /opt/roteiroonline/issue_custom_domain_cert.sh
+   ```
+5. **Exponha o script no container** (se estiver usando Docker) montando `/opt/roteiroonline` dentro do serviço `api`.
+6. **Configure o `.env` do backend**:
+   ```
+   CUSTOM_DOMAIN_SSL_PROVIDER=certbot
+   CUSTOM_DOMAIN_SSL_SCRIPT_PATH=/opt/roteiroonline/issue_custom_domain_cert.sh
+   CERTBOT_WEBROOT=/var/www/roteiroonline
+   CERTBOT_EMAIL=suporte@suaempresa.com.br
+   ```
+7. **Recrie o container** (`docker compose up -d --build api`). A partir de agora, quando um domínio for verificado o serviço chamará o script, rodará `certbot` e atualizará automaticamente `ssl_status=issued`. A cada emissão o `deploy-hook` incluso no script recarrega o Nginx para passar a servir o novo certificado.

@@ -78,6 +78,7 @@ class Settings(BaseSettings):
     domain_verification_prefix: str = Field("_roteiroonline-verification", alias="DOMAIN_VERIFICATION_PREFIX")
     platform_primary_domain: str | None = Field(None, alias="PLATFORM_PRIMARY_DOMAIN")
     custom_domain_ssl_provider: str | None = Field(None, alias="CUSTOM_DOMAIN_SSL_PROVIDER")
+    custom_domain_ssl_script_path: str | None = Field(None, alias="CUSTOM_DOMAIN_SSL_SCRIPT_PATH")
 
     @field_validator("platform_domains", "forbidden_custom_hosts", mode="before")
     @classmethod
