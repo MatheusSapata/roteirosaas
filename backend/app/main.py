@@ -20,10 +20,12 @@ from app.services.public_page_renderer import (
     load_frontend_index,
     render_public_page_html,
 )
+from app.services.public_page_resolver import PublicPageResolverService
 from app.services.subscription import schedule_expiration_job
 from app.services.trial_tags import schedule_trial_tag_job
 
 settings = get_settings()
+page_resolver = PublicPageResolverService(settings)
 
 Base.metadata.create_all(bind=engine)
 
@@ -66,23 +68,49 @@ def _safe_load_frontend() -> str:
 
 
 def _serve_public_page(
-    agency_slug: str,
-    page_slug: str | None,
     request: Request,
     db: Session,
+    agency_slug: str | None = None,
+    page_slug: str | None = None,
 ) -> HTMLResponse:
     try:
-        html = render_public_page_html(agency_slug, page_slug, page_url=str(request.url), db=db)
+        host_header = request.headers.get("x-forwarded-host") or request.headers.get("host")
+        scheme = request.headers.get("x-forwarded-proto") or request.url.scheme
+        resolution = page_resolver.resolve(
+            host_header=host_header,
+            path=request.url.path,
+            scheme=scheme,
+            agency_slug_param=agency_slug,
+            page_slug_param=page_slug,
+            db=db,
+        )
+        host_for_url = host_header or resolution.normalized_host or request.url.netloc
+        if resolution.mode == "platform_path" and settings.platform_primary_domain:
+            host_for_url = settings.platform_primary_domain
+        page_url = f"{resolution.scheme or 'https'}://{host_for_url}{request.url.path}"
+        html = render_public_page_html(resolution.agency_slug, resolution.page_slug, page_url=page_url, db=db)
         return _frontend_response(html)
     except PublicPageNotAvailable:
-        # Retorna o HTML padrão para permitir que o SPA trate o erro normalmente.
+        # Retorna o HTML padrao para permitir que o SPA trate o erro normalmente.
         return _frontend_response(_safe_load_frontend())
     except FrontendTemplateNotReady as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
+
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)
-def serve_frontend_index() -> HTMLResponse:
+def serve_frontend_index(request: Request, db: Session = Depends(get_db)) -> HTMLResponse:
+    host_header = request.headers.get("x-forwarded-host") or request.headers.get("host")
+    normalized_host = PublicPageResolverService._normalize_hostname(host_header)
+    if normalized_host in page_resolver.platform_hosts or not normalized_host:
+        return _frontend_response(_safe_load_frontend())
+    return _serve_public_page(request=request, db=db)
+
+
+@app.get("/admin/{full_path:path}", response_class=HTMLResponse, include_in_schema=False)
+@app.get("/admin", response_class=HTMLResponse, include_in_schema=False)
+def serve_admin_app(full_path: str = "") -> HTMLResponse:
+    # Sempre entrega o SPA padrao; o frontend decide qual tela mostrar.
     return _frontend_response(_safe_load_frontend())
 
 
@@ -94,10 +122,10 @@ def serve_short_public_page(
     page_slug: str | None = None,
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
-    return _serve_public_page(agency_slug, page_slug, request, db)
+    return _serve_public_page(request=request, db=db, agency_slug=agency_slug, page_slug=page_slug)
 
 
-RESERVED_PREFIXES = {"api", "assets", "uploads", "static"}
+RESERVED_PREFIXES = {"api", "assets", "uploads", "static", "admin"}
 
 
 @app.get("/{agency_slug}", response_class=HTMLResponse, include_in_schema=False)
@@ -108,7 +136,7 @@ def serve_agency_root(
 ) -> HTMLResponse:
     if agency_slug in RESERVED_PREFIXES:
         raise HTTPException(status_code=404, detail="Not Found")
-    return _serve_public_page(agency_slug, None, request, db)
+    return _serve_public_page(request=request, db=db, agency_slug=agency_slug, page_slug=None)
 
 
 @app.get("/{agency_slug}/{page_slug}", response_class=HTMLResponse, include_in_schema=False)
@@ -120,7 +148,7 @@ def serve_agency_page(
 ) -> HTMLResponse:
     if agency_slug in RESERVED_PREFIXES:
         raise HTTPException(status_code=404, detail="Not Found")
-    return _serve_public_page(agency_slug, page_slug, request, db)
+    return _serve_public_page(request=request, db=db, agency_slug=agency_slug, page_slug=page_slug)
 
 
 @app.on_event("startup")

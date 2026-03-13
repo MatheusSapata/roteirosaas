@@ -16,3 +16,5 @@ httpx
 mercadopago
 pytest
 azure-storage-blob
+dnspython
+publicsuffix2

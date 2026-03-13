@@ -14,3 +14,4 @@ from .pixel import Pixel
 from .lesson import Lesson
 from .user_tracking import UserTracking
 from .cakto import CaktoEventLog, CaktoOnboardingToken, CaktoCheckoutSession
+from .agency_domain import AgencyDomain

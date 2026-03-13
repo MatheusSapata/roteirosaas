@@ -18,4 +18,5 @@ from app.models import (
     pixel,
     lesson,
     cakto,
+    agency_domain,
 )  # noqa: E402,F401
