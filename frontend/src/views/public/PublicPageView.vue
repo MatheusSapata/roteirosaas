@@ -72,6 +72,19 @@ const brandLogo = BrandLogo;
 const defaultDescription =
   "Link inválido ou página indisponível. Solicite um novo roteiro profissional no Roteiro Online.";
 
+const defaultPlatformHosts = ["roteiroonline.com", "www.roteiroonline.com", "localhost", "127.0.0.1"];
+const envPlatformHosts = (import.meta.env.VITE_PLATFORM_HOSTS || "")
+  .split(",")
+  .map(host => host.trim().toLowerCase())
+  .filter(Boolean);
+const platformHosts = Array.from(new Set([...defaultPlatformHosts, ...envPlatformHosts]));
+
+const isPlatformHost = computed(() => {
+  if (typeof window === "undefined") return true;
+  const currentHost = window.location.hostname.toLowerCase();
+  return platformHosts.includes(currentHost);
+});
+
 const brandingInfo = computed(() => pageData.value?.branding || {});
 provide(PUBLIC_BRANDING_KEY, brandingInfo);
 
@@ -209,17 +222,27 @@ const resolveParam = (value: string | string[] | undefined) => {
 
 const loadPage = async () => {
   loading.value = true;
-  const agencySlug = resolveParam(route.params.agencySlug as string | string[] | undefined);
-  const pageSlug = resolveParam(route.params.pageSlug as string | string[] | undefined);
-  if (!agencySlug) {
+  const rawAgencyParam = resolveParam(route.params.agencySlug as string | string[] | undefined);
+  const rawPageParam = resolveParam(route.params.pageSlug as string | string[] | undefined);
+  const platformHost = isPlatformHost.value;
+
+  if (platformHost && !rawAgencyParam) {
     pageData.value = null;
     loading.value = false;
     return;
   }
+
+  const endpoint = (() => {
+    if (platformHost) {
+      return rawPageParam
+        ? `/public/pages/by-slug/${rawAgencyParam}/${rawPageParam}`
+        : `/public/pages/default/${rawAgencyParam}`;
+    }
+    const customPageSlug = rawPageParam || rawAgencyParam;
+    return customPageSlug ? `/public/pages/by-host/${customPageSlug}` : `/public/pages/by-host`;
+  })();
+
   try {
-    const endpoint = pageSlug
-      ? `/public/pages/by-slug/${agencySlug}/${pageSlug}`
-      : `/public/pages/default/${agencySlug}`;
     const res = await api.get<PublicPageResponse>(endpoint);
     pageData.value = res.data;
     pageId.value = res.data.id;
