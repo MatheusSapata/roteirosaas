@@ -691,6 +691,7 @@ import reasonsThumb from "../../assets/reasons-thumb.jpg";
 import footerThumb from "../../assets/footer-thumb.jpg";
 import countdownThumb from "../../assets/countdown-thumb.jpg";
 import storyThumb from "../../assets/story-thumb.jpg";
+import featuredVideoThumb from "../../assets/videoemdestaque.png";
 
 interface Page {
   id: number;
@@ -973,7 +974,7 @@ const sectionThumbnails: Partial<Record<SectionType, string>> = {
   itinerary: itineraryThumb,
   faq: faqThumb,
   testimonials: testimonialsThumb,
-  featured_video: storyThumb,
+  featured_video: featuredVideoThumb,
   cta: ctaThumb,
   story: storyThumb,
   reasons: reasonsThumb,
@@ -2197,14 +2198,6 @@ const duplicateSection = (index: number) => {
 
 const removeSection = (index: number) => {
   if (isLockedFooterSection(sections.value[index])) return;
-  // Permite remover hero apenas se houver mais de um
-  if ((sections.value[index] as any)?.type === "hero") {
-    const heroCount = sections.value.filter(s => (s as any).type === "hero").length;
-    if (heroCount <= 1) {
-      showSnackbar("A seção Hero é obrigatória e não pode ser removida.");
-      return;
-    }
-  }
   const next = sections.value.slice();
   next.splice(index, 1);
   setSections(next);
