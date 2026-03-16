@@ -14,7 +14,7 @@
             :style="{ color: mutedText }"
             v-html="storySubtitleHtml"
           ></div>
-          <div class="flex flex-wrap items-center gap-4">
+          <div :class="ctaContainerClass">
             <a
               v-if="ctaEnabled && ctaHasTarget"
               :href="ctaHref"
@@ -62,7 +62,7 @@
             :style="{ color: mutedText }"
             v-html="storySubtitleHtml"
           ></div>
-          <div class="flex flex-wrap items-center gap-4">
+          <div :class="ctaContainerClass">
             <a
               v-if="ctaEnabled && ctaHasTarget"
               :href="ctaHref"
@@ -181,11 +181,14 @@ const galleryLayoutClass = computed(() => {
 
   return base;
 });
-const textBlockClass = computed(() =>
-  props.section.borderEnabled
-    ? "flex-1 space-y-5 bg-white px-6 py-8 md:px-10 md:py-12 flex flex-col justify-center"
-    : "flex-1 space-y-5 flex flex-col justify-center"
-);
+const textBlockClass = computed(() => {
+  const baseClasses = props.section.borderEnabled
+    ? ["flex-1 space-y-5 bg-white px-6 py-8 md:px-10 md:py-12 flex flex-col justify-center"]
+    : ["flex-1 space-y-5 flex flex-col justify-center"];
+  baseClasses.push("text-center md:text-left", "items-center md:items-start");
+  return baseClasses.join(" ");
+});
+const ctaContainerClass = computed(() => "flex flex-wrap items-center gap-4 justify-center md:justify-start");
 const mediaContainerClass = computed(() =>
   props.section.borderEnabled ? "flex-1 flex flex-col w-full md:items-stretch" : "flex-1 flex flex-col w-full md:items-stretch"
 );

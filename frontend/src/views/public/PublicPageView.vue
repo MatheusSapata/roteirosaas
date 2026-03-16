@@ -37,6 +37,7 @@ import PublicPricesSection from "../../components/public/PublicPricesSection.vue
 import PublicItinerarySection from "../../components/public/PublicItinerarySection.vue";
 import PublicFaqSection from "../../components/public/PublicFaqSection.vue";
 import PublicTestimonialsSection from "../../components/public/PublicTestimonialsSection.vue";
+import PublicFeaturedVideoSection from "../../components/public/PublicFeaturedVideoSection.vue";
 import PublicCtaSection from "../../components/public/PublicCtaSection.vue";
 import PublicStorySection from "../../components/public/PublicStorySection.vue";
 import PublicReasonsSection from "../../components/public/PublicReasonsSection.vue";
@@ -96,6 +97,7 @@ const publicComponents: Record<SectionType, any> = {
   itinerary: PublicItinerarySection,
   faq: PublicFaqSection,
   testimonials: PublicTestimonialsSection,
+  featured_video: PublicFeaturedVideoSection,
   cta: PublicCtaSection,
   story: PublicStorySection,
   reasons: PublicReasonsSection,
