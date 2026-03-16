@@ -27,6 +27,9 @@ export const resolveMediaUrl = (value?: string | null): string | undefined => {
   if (/^(https?:)?\/\//i.test(value) || value.startsWith("data:")) {
     return value;
   }
+  if (value.startsWith("/assets/") || value.startsWith("assets/") || value.startsWith("/src/assets/")) {
+    return value.startsWith("/") ? value : `/${value}`;
+  }
   const normalized = ensureLeadingSlash(value);
 
   if (ABSOLUTE_MEDIA_BASE) {

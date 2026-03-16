@@ -88,27 +88,25 @@
   </div>
 
     <transition name="fade">
-      <div
-        v-if="trialLimitDialogOpen"
-        class="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/70 px-4"
-      >
+      <div v-if="planLimitDialog.open" class="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/70 px-4">
         <div class="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl">
           <p class="text-xs font-semibold uppercase tracking-[0.3em] text-rose-500">Limite atingido</p>
-          <h2 class="mt-3 text-2xl font-bold text-slate-900">Você usou as 3 páginas do plano trial</h2>
+          <h2 class="mt-3 text-2xl font-bold text-slate-900">
+            Voc? atingiu o limite
+            <template v-if="planLimitDialog.limit">de {{ planLimitDialog.limit }} p?ginas</template>
+            do plano {{ planLimitDialog.planLabel }}.
+          </h2>
           <p class="mt-2 text-sm text-slate-600">
-            Continue criando roteiros ilimitados ativando um plano agora mesmo.
+            Atualize seu plano para continuar publicando roteiros profissionais para sua ag?ncia.
           </p>
           <div class="mt-6 flex flex-wrap justify-end gap-3">
             <button
               class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-              @click="trialLimitDialogOpen = false"
+              @click="planLimitDialog.open = false"
             >
               Fechar
             </button>
-            <button
-              class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
-              @click="goPlans"
-            >
+            <button class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800" @click="goPlans">
               Ver planos
             </button>
           </div>
@@ -375,6 +373,7 @@ import { useRouter } from "vue-router";
 import api from "../../services/api";
 import { useAgencyStore } from "../../store/useAgencyStore";
 import { useAuthStore } from "../../store/useAuthStore";
+import { getPlanLabel } from "../../utils/planLabels";
 
 interface Page {
   id: number;
@@ -412,7 +411,11 @@ const snackbar = ref<{ open: boolean; text: string; tone: "success" | "error" }>
 const duplicateTitle = ref("");
 const duplicateSlug = ref("");
 const duplicateSourcePage = ref<Page | null>(null);
-const trialLimitDialogOpen = ref(false);
+const planLimitDialog = ref<{ open: boolean; planLabel: string; limit: number | null }>({
+  open: false,
+  planLabel: "",
+  limit: null
+});
 
 const currentAgencySlug = computed(() => {
   const agency = agencyStore.agencies.find(a => a.id === agencyStore.currentAgencyId);
@@ -453,23 +456,58 @@ const loadPageStats = async () => {
   }
 };
 
-const isTrialLimitError = (err: unknown) => {
+const extractPlanLimitInfo = (err: unknown) => {
   const response = (err as any)?.response;
-  if (!response) return false;
-  const headerCode = (response.headers?.["x-error-code"] || response.headers?.["X-Error-Code"]) as string | undefined;
-  if (headerCode && String(headerCode).toLowerCase() === "trial_page_limit") {
-    return true;
+  if (!response) return null;
+  const headers = response.headers || {};
+  const getHeader = (key: string) => headers?.[key] ?? headers?.[key.toLowerCase()];
+  const detail = typeof response.data?.detail === "string" ? response.data.detail : "";
+  const detailLower = detail.toLowerCase();
+  const code = String(getHeader("X-Error-Code") || "").toLowerCase();
+  const isKnownCode = code === "trial_page_limit" || code === "plan_page_limit";
+  if (!isKnownCode && !detailLower.includes("plano")) {
+    return null;
   }
-  const detail = response.data?.detail;
-  if (typeof detail === "string") {
-    return detail.toLowerCase().includes("plano trial");
+  let planKey = String(getHeader("X-Plan-Key") || "").toLowerCase();
+  if (!planKey) {
+    const planMatch = detailLower.match(/plano\s+([a-z]+)/);
+    if (planMatch?.[1]) {
+      planKey = planMatch[1];
+    }
   }
-  return false;
+  let planLabel = planKey ? getPlanLabel(planKey) : "";
+  if (!planLabel && detail) {
+    planLabel = detail;
+  }
+  const limitHeader = String(getHeader("X-Plan-Max-Pages") ?? "");
+  let limit: number | null = null;
+  if (limitHeader) {
+    const parsed = Number.parseInt(limitHeader, 10);
+    if (!Number.isNaN(parsed)) {
+      limit = parsed;
+    }
+  }
+  if (!limit) {
+    const limitMatch = detailLower.match(/limite\s+de\s+(\d+)/);
+    if (limitMatch?.[1]) {
+      const parsed = Number.parseInt(limitMatch[1], 10);
+      if (!Number.isNaN(parsed)) {
+        limit = parsed;
+      }
+    }
+  }
+  if (!planLabel) {
+    planLabel = "seu plano atual";
+  }
+  return { planLabel, limit };
 };
 
-const handleTrialLimitError = (err: unknown) => {
-  if (!isTrialLimitError(err)) return false;
-  trialLimitDialogOpen.value = true;
+const handlePlanLimitError = (err: unknown) => {
+  const info = extractPlanLimitInfo(err);
+  if (!info) return false;
+  planLimitDialog.value.planLabel = info.planLabel;
+  planLimitDialog.value.limit = info.limit ?? null;
+  planLimitDialog.value.open = true;
   return true;
 };
 
@@ -556,7 +594,7 @@ const createPageFromScratch = async () => {
     createOptionsOpen.value = false;
   } catch (err) {
     console.error(err);
-    if (handleTrialLimitError(err)) {
+    if (handlePlanLimitError(err)) {
       createOptionsOpen.value = false;
       return;
     }
@@ -634,7 +672,7 @@ const confirmDuplicate = async () => {
     router.push(`/admin/pages/${res.data.id}/edit`);
   } catch (err) {
     console.error(err);
-    if (handleTrialLimitError(err)) {
+    if (handlePlanLimitError(err)) {
       closeDuplicateDialog();
       return;
     }

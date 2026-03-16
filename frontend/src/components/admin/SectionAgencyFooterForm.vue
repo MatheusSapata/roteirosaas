@@ -21,20 +21,18 @@
           <option value="stacked">Sempre empilhado</option>
           <option value="wide">Sempre em bloco horizontal</option>
         </select>
-      </label>
-
-      <label class="space-y-2 text-sm font-semibold text-slate-600">
+      </label>      <label class="space-y-2 text-sm font-semibold text-slate-600">
         Cor de fundo
         <div class="flex items-center gap-2">
           <input type="color" v-model="local.backgroundColor" class="h-10 w-12 cursor-pointer rounded border border-slate-200 bg-white" />
           <input
             v-model="local.backgroundColor"
-            placeholder="#0b0f19"
+            placeholder="#2d2d2d"
             class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
           />
         </div>
         <p class="text-xs font-normal text-slate-500">
-          Por padrão usamos a cor definida em “Cor de botões e destaques” no Page Editor. Ajuste aqui se quiser um fundo diferente.
+          Por padrão usamos a cor fixa <span class="font-mono text-slate-700">#2d2d2d</span>, independente da cor de botões. Ajuste aqui se quiser outro fundo.
         </p>
       </label>
     </div>
@@ -58,6 +56,8 @@ import type { AgencyFooterSection } from "../../types/page";
 const props = defineProps<{ modelValue: AgencyFooterSection }>();
 const emit = defineEmits<{ (e: "update:modelValue", value: AgencyFooterSection): void }>();
 
+const DEFAULT_FOOTER_BG = "#2d2d2d";
+
 const local = reactive<AgencyFooterSection>({
   ...props.modelValue,
   type: "agency_footer",
@@ -65,7 +65,7 @@ const local = reactive<AgencyFooterSection>({
   fullWidth: props.modelValue.fullWidth ?? true,
   displayVariant: props.modelValue.displayVariant || "auto",
   showCadastur: props.modelValue.showCadastur !== false,
-  backgroundColor: props.modelValue.backgroundColor || "#0b0f19"
+  backgroundColor: props.modelValue.backgroundColor || DEFAULT_FOOTER_BG
 });
 
 let syncing = false;
@@ -76,7 +76,7 @@ const syncFromProps = (value: AgencyFooterSection) => {
   local.fullWidth = value.fullWidth ?? true;
   local.showCadastur = value.showCadastur !== false;
   local.enabled = value.enabled ?? true;
-  local.backgroundColor = value.backgroundColor || local.backgroundColor || "#0b0f19";
+  local.backgroundColor = value.backgroundColor || DEFAULT_FOOTER_BG;
   syncing = false;
 };
 
