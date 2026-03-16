@@ -1084,16 +1084,33 @@ const ensureMobileOverlayObserver = () => {
     entries => {
       if (!isMobileOverlayMode.value) return;
       entries.forEach(entry => {
-        if (!entry.isIntersecting || entry.intersectionRatio < 0.55) return;
         const idx = sectionIndexByElement.get(entry.target as Element);
         if (typeof idx !== "number") return;
+
+        if (!entry.isIntersecting || entry.intersectionRatio < 0.45) {
+          if (mobileOverlayVisible[idx]) {
+            mobileOverlayVisible[idx] = false;
+            clearMobileOverlayTimer(idx);
+          }
+          return;
+        }
+
         if (mobileOverlayVisible[idx]) return;
+
+        Object.keys(mobileOverlayVisible).forEach(key => {
+          const otherIdx = Number(key);
+          if (otherIdx !== idx && mobileOverlayVisible[otherIdx]) {
+            mobileOverlayVisible[otherIdx] = false;
+            clearMobileOverlayTimer(otherIdx);
+          }
+        });
+
         mobileOverlayVisible[idx] = true;
         mobileOverlayPersistent[idx] = false;
         scheduleMobileOverlayAutoHide(idx);
       });
     },
-    { root: null, threshold: 0.55 }
+    { root: null, threshold: [0.45] }
   );
   Object.values(previewSectionElements).forEach(el => {
     if (el) mobileOverlayObserver?.observe(el);
