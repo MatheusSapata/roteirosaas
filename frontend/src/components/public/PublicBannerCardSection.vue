@@ -100,11 +100,11 @@ const backgroundImageStyle = computed(() =>
 );
 
 const gradientOverlayStyle = computed(() => {
-  const base = toRgba(gradientChannels.value, 0.98);
-  const mid = toRgba(gradientChannels.value, 0.75);
-  const end = toRgba(gradientChannels.value, 0);
+  const base = toRgba(gradientChannels.value, 0.9);
+  const mid = toRgba(gradientChannels.value, 0.55);
+  const tail = toRgba(gradientChannels.value, 0.05);
   return {
-    background: `linear-gradient(115deg, ${base} 0%, ${mid} 50%, ${end} 80%)`
+    background: `linear-gradient(120deg, ${base} 0%, ${mid} 45%, ${tail} 100%)`
   };
 });
 

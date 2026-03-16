@@ -151,7 +151,7 @@
                   <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Prévia final</p>
                   <div class="flex justify-center">
                     <div :style="previewRoundedBoxStyle">
-                      <img :src="previewUrl || cropperModal.src" alt="Prévia" :style="previewRoundedImageStyle" />
+                      <img :src="roundedPreviewSrc" alt="Prévia" :style="previewRoundedImageStyle" />
                     </div>
                   </div>
                 </div>
@@ -185,9 +185,10 @@
 <script setup lang="ts">
 import Cropper from "cropperjs";
 import "cropperjs/dist/cropper.css";
-import { computed, nextTick, ref, watch } from "vue";
+import { computed, inject, nextTick, onBeforeUnmount, ref, watch } from "vue";
 import { useAgencyStore } from "../../../store/useAgencyStore";
 import { resolveMediaUrl, uploadImageFile } from "../../../utils/media";
+import { sectionUploadGuardKey } from "../sectionUploadGuard";
 
 const props = defineProps<{
   modelValue?: string | null;
@@ -214,6 +215,8 @@ const fileInput = ref<HTMLInputElement | null>(null);
 const cropperImage = ref<HTMLImageElement | null>(null);
 const cropperInstance = ref<Cropper | null>(null);
 const pendingFile = ref<File | null>(null);
+const sectionUploadGuard = inject(sectionUploadGuardKey, null);
+const uploadToken = Symbol("image-upload-field");
 
 const roundedControl = ref(props.roundedValue ?? 0);
 const supportsRounded = computed(() => typeof props.roundedMax === "number");
@@ -245,6 +248,15 @@ watch(
   }
 );
 
+watch(uploading, value => {
+  if (!sectionUploadGuard) return;
+  sectionUploadGuard.setUploading(uploadToken, Boolean(value));
+});
+
+onBeforeUnmount(() => {
+  sectionUploadGuard?.setUploading(uploadToken, false);
+});
+
 watch(roundedControl, value => {
   if (supportsRounded.value) {
     const clamped = Math.min(roundedMaxValue.value, Math.max(0, value || 0));
@@ -273,6 +285,12 @@ const cropperModal = ref({
 });
 
 const previewUrl = computed(() => resolveMediaUrl(props.modelValue));
+const roundedPreviewSrc = computed(() => {
+  if (cropperModal.value.open && cropperModal.value.src) {
+    return cropperModal.value.src;
+  }
+  return previewUrl.value || "";
+});
 const aspectRatio = computed(() => (typeof props.cropAspect === "number" ? props.cropAspect : NaN));
 const croppingEnabled = computed(() => !!props.enableCrop);
 const previewRoundedBoxStyle = computed(() => {

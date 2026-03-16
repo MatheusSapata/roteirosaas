@@ -2,10 +2,6 @@
   <div class="space-y-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
     <div class="flex items-center justify-between">
       <h3 class="text-lg font-semibold text-slate-900">Banner em Card</h3>
-      <label class="flex items-center gap-2 text-sm text-slate-600">
-        <input type="checkbox" v-model="local.enabled" class="h-4 w-4" />
-        Ativar
-      </label>
     </div>
 
     <div class="space-y-3">

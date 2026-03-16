@@ -1,7 +1,7 @@
 <template>
   <span
     v-if="textToShow"
-    class="inline-flex w-max shrink-0 items-center justify-center rounded-full border px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] whitespace-nowrap"
+    class="heading-chip mb-3 inline-flex w-max shrink-0 items-center justify-center rounded-full border px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] whitespace-nowrap"
     :style="chipStyle"
   >
     {{ textToShow.toUpperCase() }}
@@ -58,3 +58,20 @@ const chipStyle = computed(() => ({
   background: toRgba(accentColor.value, 0.08),
 }));
 </script>
+
+<style scoped>
+.heading-chip {
+  flex-wrap: nowrap;
+}
+
+@media (max-width: 640px) {
+  .heading-chip {
+    flex-wrap: wrap;
+    white-space: normal;
+    word-break: break-word;
+    width: 100%;
+    max-width: 100%;
+    text-align: center;
+  }
+}
+</style>

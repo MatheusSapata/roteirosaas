@@ -268,11 +268,11 @@
                   <td colspan="7" class="px-3 pb-4">
                     <div class="rounded-2xl border border-slate-100 bg-slate-50/70 p-4 text-sm text-slate-800 shadow-inner">
                       <div class="grid gap-4 md:grid-cols-2">
-                        <div>
+                        <div class="space-y-1 copyable">
                           <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Contato</p>
-                          <p class="mt-1 font-semibold no-caret">{{ u.name }}</p>
-                          <p class="text-xs text-slate-500 no-caret">{{ u.email }}</p>
-                          <p class="text-xs text-slate-500 no-caret">{{ u.whatsapp || 'Sem telefone' }}</p>
+                          <p class="mt-1 font-semibold">{{ u.name }}</p>
+                          <p class="text-xs text-slate-500">{{ u.email }}</p>
+                          <p class="text-xs text-slate-500">{{ u.whatsapp || 'Sem telefone' }}</p>
                         </div>
 
                         <div>
@@ -1593,15 +1593,15 @@ watch(days, loadMetrics);
   backdrop-filter: blur(14px);
 }
 
-.no-caret {
-  user-select: none;
-  caret-color: transparent;
-}
-
 .interactive-table,
 .interactive-table * {
-  user-select: none;
-  caret-color: transparent;
+  user-select: auto;
+  caret-color: inherit;
+}
+
+.copyable {
+  user-select: text !important;
+  caret-color: auto !important;
 }
 </style>
 

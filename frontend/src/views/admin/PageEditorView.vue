@@ -1,4 +1,4 @@
-﻿<template>
+<template>
 <div class="w-full space-y-6 px-4 py-10 md:px-8">
     <div class="sticky top-0 z-30 flex flex-col gap-3 border-b border-white/40 bg-slate-50/90 py-4 backdrop-blur md:flex-row md:items-center md:justify-between">
       <div>
@@ -228,17 +228,23 @@
               @click="handleSectionPickerSelect(catalog.type)"
             >
               <div class="relative h-44 w-full overflow-hidden rounded-t-2xl border-b border-slate-100 bg-slate-50">
-                <div class="absolute inset-0 bg-gradient-to-br" :class="catalog.accent"></div>
-                <div class="relative flex h-full w-full items-center justify-center overflow-hidden p-3">
-                  <div class="pointer-events-none origin-center scale-[0.55] transform rounded-[30px] border border-white/50 bg-white shadow">
-                    <component
-                      :is="publicComponents[catalog.type]"
-                      :section="catalog.previewSection"
-                      :previewDevice="'desktop'"
-                      v-bind="sectionRequiresBranding(catalog.type) ? { branding } : {}"
-                    />
+                <template v-if="catalog.thumbnail">
+                  <img :src="catalog.thumbnail" alt="" class="h-full w-full object-cover" />
+                  <div class="absolute inset-0 bg-gradient-to-t from-black/35 to-transparent"></div>
+                </template>
+                <template v-else>
+                  <div class="absolute inset-0 bg-gradient-to-br" :class="catalog.accent"></div>
+                  <div class="relative flex h-full w-full items-center justify-center overflow-hidden p-3">
+                    <div class="pointer-events-none origin-center scale-[0.55] transform rounded-[30px] border border-white/50 bg-white shadow">
+                      <component
+                        :is="publicComponents[catalog.type]"
+                        :section="catalog.previewSection"
+                        :previewDevice="'desktop'"
+                        v-bind="sectionRequiresBranding(catalog.type) ? { branding } : {}"
+                      />
+                    </div>
                   </div>
-                </div>
+                </template>
               </div>
               <div class="p-4">
                 <p class="text-sm font-semibold text-slate-800">{{ catalog.label }}</p>
@@ -668,9 +674,22 @@ import type {
 } from "../../types/page";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import { sectionsInjectionKey } from "../../components/admin/sectionsContext";
+import { sectionUploadGuardKey } from "../../components/admin/sectionUploadGuard";
 import { sectionLabels as defaultSectionLabels } from "../../utils/sectionLabels";
 import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
 import { getReadableTextColor } from "../../utils/colorContrast";
+import heroThumb from "../../assets/hero-thumb.jpg";
+import bannerCardThumb from "../../assets/banner-card-thumb.jpg";
+import photoThumb from "../../assets/photo-thumb.jpg";
+import pricesThumb from "../../assets/prices-thumb.jpg";
+import itineraryThumb from "../../assets/itinerary-thumb.jpg";
+import faqThumb from "../../assets/faq-thumb.jpg";
+import testimonialsThumb from "../../assets/testimonials-thumb.jpg";
+import ctaThumb from "../../assets/cta-thumb.jpg";
+import reasonsThumb from "../../assets/reasons-thumb.jpg";
+import footerThumb from "../../assets/footer-thumb.jpg";
+import countdownThumb from "../../assets/countdown-thumb.jpg";
+import storyThumb from "../../assets/story-thumb.jpg";
 
 interface Page {
   id: number;
@@ -687,6 +706,7 @@ interface SectionCatalogItem {
   description: string;
   accent: string;
   previewSection: PageSection;
+  thumbnail?: string;
 }
 
 const route = useRoute();
@@ -940,6 +960,20 @@ const sectionDescriptions: Partial<Record<SectionType, string>> = {
   countdown: "Cria urgência com contador regressivo para promoções ou eventos.",
   agency_footer: "Cartão institucional com contatos, redes sociais e mapa da agência."
 };
+const sectionThumbnails: Partial<Record<SectionType, string>> = {
+  hero: heroThumb,
+  banner_card: bannerCardThumb,
+  photo: photoThumb,
+  prices: pricesThumb,
+  itinerary: itineraryThumb,
+  faq: faqThumb,
+  testimonials: testimonialsThumb,
+  cta: ctaThumb,
+  story: storyThumb,
+  reasons: reasonsThumb,
+  countdown: countdownThumb,
+  agency_footer: footerThumb
+};
 const sectionAccents: Partial<Record<SectionType, string>> = {
   hero: "from-sky-100 to-slate-50",
   banner_card: "from-emerald-600/90 to-emerald-400/70",
@@ -1111,6 +1145,21 @@ const getBrowserStorage = () => {
 };
 provide(sectionsInjectionKey, sections);
 provide(PUBLIC_BRANDING_KEY, computed(() => branding.value));
+
+const uploadTokens = new Map<symbol, boolean>();
+const activeImageUploads = ref(0);
+const setSectionUploadState = (id: symbol, uploading: boolean) => {
+  if (uploading) {
+    uploadTokens.set(id, true);
+  } else {
+    uploadTokens.delete(id);
+  }
+  activeImageUploads.value = uploadTokens.size;
+};
+provide(sectionUploadGuardKey, {
+  setUploading: setSectionUploadState
+});
+const hasPendingImageUploads = computed(() => activeImageUploads.value > 0);
 
 const isFooterSection = (section?: PageSection | null) => !!section && (section as any).type === "free_footer_brand";
 const enforceFooterConstraints = (list?: PageSection[] | null) => {
@@ -1334,14 +1383,6 @@ const applyPrimaryToThemeAndSections = (oldDefault?: string, nextColor?: string,
             (!!previous && countdownBg.toLowerCase?.() === previous.toLowerCase());
           if (shouldReplaceCountdown) (section as any).backgroundColor = targetColor;
         }
-        if (type === "agency_footer") {
-          const footerBg = (section as any).backgroundColor as string | undefined;
-          const shouldReplaceFooter =
-            !footerBg ||
-            footerBg.toLowerCase?.() === fallbackPrimaryColor.toLowerCase() ||
-            (!!previous && footerBg.toLowerCase?.() === previous.toLowerCase());
-          if (shouldReplaceFooter) (section as any).backgroundColor = targetColor;
-        }
         const currentColor = (section as any).ctaColor as string | undefined;
         const shouldReplace =
           !currentColor ||
@@ -1440,6 +1481,7 @@ const applyWhatsAppDefaults = (sectionsList: PageSection[]): PageSection[] => {
   return updated;
 };
 
+const FOOTER_DEFAULT_BG = "#2d2d2d";
 const applySectionBackgrounds = (list: PageSection[]): PageSection[] => {
   const normalizeHeroGradient = (section: PageSection) => {
     if ((section as any).type !== "hero") return section;
@@ -1477,14 +1519,20 @@ const applySectionBackgrounds = (list: PageSection[]): PageSection[] => {
       type === "hero" ||
       type === "countdown" ||
       type === "free_footer_brand" ||
-      type === "banner_card" ||
-      type === "agency_footer"
+      type === "banner_card"
     ) {
-      if (type === "agency_footer" && !(normalized as any).backgroundColor) {
-        (normalized as any).backgroundColor = theme.value.ctaDefaultColor || fallbackPrimaryColor;
-      }
       if ((normalized as any).type === "banner_card" && !(normalized as any).backgroundColor) {
         (normalized as any).backgroundColor = colorA.value;
+      }
+      return normalized;
+    }
+    if (type === "agency_footer") {
+      const footerBg = ((normalized as any).backgroundColor || "").toLowerCase();
+      const primaryLower = (theme.value.ctaDefaultColor || fallbackPrimaryColor || "").toLowerCase();
+      const colorALower = colorA.value.toLowerCase();
+      const colorBLower = colorB.value.toLowerCase();
+      if (!footerBg || footerBg === primaryLower || footerBg === colorALower || footerBg === colorBLower) {
+        (normalized as any).backgroundColor = FOOTER_DEFAULT_BG;
       }
       return normalized;
     }
@@ -1499,6 +1547,10 @@ const applySectionBackgrounds = (list: PageSection[]): PageSection[] => {
       } else {
         delete (normalized as any).backgroundColor;
       }
+      return normalized;
+    }
+    if (type === "agency_footer") {
+      altIndex += 1;
       return normalized;
     }
     const backgroundColor = altIndex % 2 === 0 ? colorA.value : colorB.value;
@@ -1850,7 +1902,7 @@ function defaultSection(type: SectionType): PageSection {
       showCadastur: true,
       displayVariant: "auto",
       fullWidth: true,
-      backgroundColor: theme.value.ctaDefaultColor || fallbackPrimaryColor
+      backgroundColor: "#2d2d2d"
     } as AgencyFooterSection);
   }
 
@@ -2120,7 +2172,10 @@ const removeSection = (index: number) => {
   // Permite remover hero apenas se houver mais de um
   if ((sections.value[index] as any)?.type === "hero") {
     const heroCount = sections.value.filter(s => (s as any).type === "hero").length;
-    if (heroCount <= 1) return;
+    if (heroCount <= 1) {
+      showSnackbar("A seção Hero é obrigatória e não pode ser removida.");
+      return;
+    }
   }
   const next = sections.value.slice();
   next.splice(index, 1);
@@ -2201,6 +2256,10 @@ const refreshPreview = (immediate = false) => {
 
 const saveEditingSection = () => {
   if (editingSectionIndex.value === null || !editingSectionDraft.value) return;
+  if (hasPendingImageUploads.value) {
+    showSnackbar("A imagem ainda está sendo enviada. Aguarde antes de salvar.");
+    return;
+  }
   const validationError = validateSection(editingSectionDraft.value);
   if (validationError) {
     errorMessage.value = validationError;
@@ -2409,7 +2468,8 @@ onMounted(async () => {
     label: sectionLabels[type] || type,
     description: sectionDescriptions[type] || "Bloco personalizável para compor sua página.",
     accent: sectionAccents[type] || "from-slate-100 to-white",
-    previewSection: buildCatalogPreview(type)
+    previewSection: buildCatalogPreview(type),
+    thumbnail: sectionThumbnails[type]
   }));
   previewReady.value = true;
   schedulePreviewHydration(true);
