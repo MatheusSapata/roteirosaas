@@ -454,13 +454,17 @@
                         :section="previewSections[idx] || section"
                         :previewDevice="previewDevice"
                         v-bind="sectionRequiresBranding((section as any).type) ? { branding } : {}"
+                        :class="[
+                          'transition duration-200',
+                          desktopHoverEnabled ? 'group-hover:opacity-80 group-hover:brightness-95' : ''
+                        ]"
                       />
                         <div
                           v-if="(section as any).enabled"
                           :class="[
-                            'pointer-events-none absolute inset-0 z-10 flex flex-col bg-transparent opacity-0 transition duration-200 px-4 py-5',
-                            !isMobileOverlayMode ? 'group-hover:opacity-100 group-focus-within:opacity-100' : '',
-                            isMobileOverlayMode && mobileOverlayVisible[idx] ? '!opacity-100' : ''
+                            'pointer-events-none absolute inset-0 z-10 flex flex-col bg-slate-900/0 opacity-0 transition duration-200 px-4 py-5',
+                            !isMobileOverlayMode ? 'group-hover:opacity-100 group-hover:bg-slate-900/15 group-focus-within:opacity-100' : '',
+                            isMobileOverlayMode && mobileOverlayVisible[idx] ? '!opacity-100 !bg-slate-900/20' : ''
                           ]"
                         >
                           <div class="flex items-start justify-between gap-3 pb-3">
@@ -471,7 +475,7 @@
                           </div>
                         <div class="flex flex-1 items-center justify-center px-4 pb-8">
                           <div
-                            class="pointer-events-auto relative rounded-[36px] bg-slate-900/85 px-7 py-6 text-center shadow-2xl backdrop-blur-lg"
+                            class="pointer-events-auto relative rounded-[36px] bg-[#1f2330] px-7 py-6 text-center shadow-2xl backdrop-blur-lg"
                             @click.stop
                           >
                             <template v-if="!isLockedFooterSection(section)">
@@ -852,7 +856,8 @@ const colorB = ref(theme.value.color2);
 const ctaColor = ref(theme.value.ctaDefaultColor || fallbackPrimaryColor);
 const previewDevice = ref<"desktop" | "mobile">(editorPrefs.value.previewDevice || "desktop");
 const isMobileViewport = ref(false);
-const isMobileOverlayMode = computed(() => previewDevice.value === "mobile" || isMobileViewport.value);
+const isMobileOverlayMode = computed(() => isMobileViewport.value);
+const desktopHoverEnabled = computed(() => previewDevice.value === "desktop" && !isMobileViewport.value);
 const hasWindow = typeof window !== "undefined";
 const beforeUnloadHandler = (event: BeforeUnloadEvent) => {
   if (!hasUnsavedChanges.value) return;
@@ -1073,24 +1078,68 @@ const overlayButtonGridClass = computed(() =>
     : "flex flex-wrap items-center justify-center gap-3"
 );
 
+const ensureMobileOverlayObserver = () => {
+  if (!isMobileOverlayMode.value || mobileOverlayObserver || typeof IntersectionObserver === "undefined") return;
+  mobileOverlayObserver = new IntersectionObserver(
+    entries => {
+      if (!isMobileOverlayMode.value) return;
+      entries.forEach(entry => {
+        if (!entry.isIntersecting || entry.intersectionRatio < 0.55) return;
+        const idx = sectionIndexByElement.get(entry.target as Element);
+        if (typeof idx !== "number") return;
+        if (mobileOverlayVisible[idx]) return;
+        mobileOverlayVisible[idx] = true;
+        mobileOverlayPersistent[idx] = false;
+        scheduleMobileOverlayAutoHide(idx);
+      });
+    },
+    { root: null, threshold: 0.55 }
+  );
+  Object.values(previewSectionElements).forEach(el => {
+    if (el) mobileOverlayObserver?.observe(el);
+  });
+};
+
+const teardownMobileOverlayObserver = () => {
+  if (!mobileOverlayObserver) return;
+  mobileOverlayObserver.disconnect();
+  mobileOverlayObserver = null;
+};
+
 watch(
   () => isMobileOverlayMode.value,
   value => {
     if (!value) {
+      teardownMobileOverlayObserver();
       Object.keys(mobileOverlayTimers).forEach(key => clearMobileOverlayTimer(Number(key)));
       Object.keys(mobileOverlayVisible).forEach(key => {
         delete mobileOverlayVisible[Number(key)];
         delete mobileOverlayPersistent[Number(key)];
       });
+    } else {
+      ensureMobileOverlayObserver();
     }
   }
 );
 
 const registerPreviewSection = (el: Element | null, idx: number) => {
   if (!el) {
+    const existing = previewSectionElements[idx];
+    if (existing && mobileOverlayObserver) {
+      mobileOverlayObserver.unobserve(existing);
+    }
+    delete previewSectionElements[idx];
     clearMobileOverlayTimer(idx);
     delete mobileOverlayVisible[idx];
     delete mobileOverlayPersistent[idx];
+    return;
+  }
+
+  previewSectionElements[idx] = el;
+  sectionIndexByElement.set(el, idx);
+  if (mobileOverlayObserver) {
+    mobileOverlayObserver.unobserve(el);
+    mobileOverlayObserver.observe(el);
   }
 };
 
@@ -1122,6 +1171,9 @@ const closeMobileOverlay = (idx: number) => {
   clearMobileOverlayTimer(idx);
 };
 const previewSections = ref<PageSection[]>([]);
+const sectionIndexByElement = new WeakMap<Element, number>();
+const previewSectionElements: Record<number, Element | null> = {};
+let mobileOverlayObserver: IntersectionObserver | null = null;
 const previewReady = ref(false);
 const previewLoading = ref(false);
 const editingSectionIndex = ref<number | null>(null);
@@ -1698,6 +1750,7 @@ onBeforeUnmount(() => {
   clearTitleDebounce();
   Object.values(pendingSectionUpdates).forEach(timeout => clearTimeout(timeout));
   Object.keys(mobileOverlayTimers).forEach(key => clearMobileOverlayTimer(Number(key)));
+  teardownMobileOverlayObserver();
   if (removeViewportWatcher) {
     removeViewportWatcher();
     removeViewportWatcher = null;
