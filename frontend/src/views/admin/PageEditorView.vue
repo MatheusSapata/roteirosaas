@@ -1078,85 +1078,24 @@ const overlayButtonGridClass = computed(() =>
     : "flex flex-wrap items-center justify-center gap-3"
 );
 
-const ensureMobileOverlayObserver = () => {
-  if (!isMobileOverlayMode.value || mobileOverlayObserver || typeof IntersectionObserver === "undefined") return;
-  mobileOverlayObserver = new IntersectionObserver(
-    entries => {
-      if (!isMobileOverlayMode.value) return;
-      entries.forEach(entry => {
-        const idx = sectionIndexByElement.get(entry.target as Element);
-        if (typeof idx !== "number") return;
-
-        if (!entry.isIntersecting || entry.intersectionRatio < 0.45) {
-          if (mobileOverlayVisible[idx]) {
-            mobileOverlayVisible[idx] = false;
-            clearMobileOverlayTimer(idx);
-          }
-          return;
-        }
-
-        if (mobileOverlayVisible[idx]) return;
-
-        Object.keys(mobileOverlayVisible).forEach(key => {
-          const otherIdx = Number(key);
-          if (otherIdx !== idx && mobileOverlayVisible[otherIdx]) {
-            mobileOverlayVisible[otherIdx] = false;
-            clearMobileOverlayTimer(otherIdx);
-          }
-        });
-
-        mobileOverlayVisible[idx] = true;
-        mobileOverlayPersistent[idx] = false;
-        scheduleMobileOverlayAutoHide(idx);
-      });
-    },
-    { root: null, threshold: [0.45] }
-  );
-  Object.values(previewSectionElements).forEach(el => {
-    if (el) mobileOverlayObserver?.observe(el);
-  });
-};
-
-const teardownMobileOverlayObserver = () => {
-  if (!mobileOverlayObserver) return;
-  mobileOverlayObserver.disconnect();
-  mobileOverlayObserver = null;
-};
-
 watch(
   () => isMobileOverlayMode.value,
   value => {
     if (!value) {
-      teardownMobileOverlayObserver();
       Object.keys(mobileOverlayTimers).forEach(key => clearMobileOverlayTimer(Number(key)));
       Object.keys(mobileOverlayVisible).forEach(key => {
         delete mobileOverlayVisible[Number(key)];
         delete mobileOverlayPersistent[Number(key)];
       });
-    } else {
-      ensureMobileOverlayObserver();
     }
   }
 );
 
 const registerPreviewSection = (el: Element | null, idx: number) => {
   if (!el) {
-    const existing = previewSectionElements[idx];
-    if (existing && mobileOverlayObserver) {
-      mobileOverlayObserver.unobserve(existing);
-    }
-    delete previewSectionElements[idx];
     clearMobileOverlayTimer(idx);
     delete mobileOverlayVisible[idx];
     delete mobileOverlayPersistent[idx];
-    return;
-  }
-
-  previewSectionElements[idx] = el;
-  sectionIndexByElement.set(el, idx);
-  if (mobileOverlayObserver) {
-    mobileOverlayObserver.unobserve(el);
-    mobileOverlayObserver.observe(el);
   }
 };
 
@@ -1188,9 +1127,6 @@ const closeMobileOverlay = (idx: number) => {
   clearMobileOverlayTimer(idx);
 };
 const previewSections = ref<PageSection[]>([]);
-const sectionIndexByElement = new WeakMap<Element, number>();
-const previewSectionElements: Record<number, Element | null> = {};
-let mobileOverlayObserver: IntersectionObserver | null = null;
 const previewReady = ref(false);
 const previewLoading = ref(false);
 const editingSectionIndex = ref<number | null>(null);
@@ -1767,7 +1703,6 @@ onBeforeUnmount(() => {
   clearTitleDebounce();
   Object.values(pendingSectionUpdates).forEach(timeout => clearTimeout(timeout));
   Object.keys(mobileOverlayTimers).forEach(key => clearMobileOverlayTimer(Number(key)));
-  teardownMobileOverlayObserver();
   if (removeViewportWatcher) {
     removeViewportWatcher();
     removeViewportWatcher = null;
