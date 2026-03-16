@@ -1,10 +1,11 @@
 <template>
-  <span
-    v-if="textToShow"
-    class="heading-chip mb-3 inline-flex w-max shrink-0 items-center justify-center rounded-full border px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] whitespace-nowrap"
-    :style="chipStyle"
-  >
-    {{ textToShow.toUpperCase() }}
+  <span v-if="textToShow" class="heading-chip-wrapper">
+    <span
+      class="heading-chip mb-3 inline-flex w-auto max-w-full shrink-0 items-center justify-center rounded-full border px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] whitespace-normal md:whitespace-nowrap break-words"
+      :style="chipStyle"
+    >
+      {{ textToShow.toUpperCase() }}
+    </span>
   </span>
 </template>
 
@@ -60,16 +61,25 @@ const chipStyle = computed(() => ({
 </script>
 
 <style scoped>
+.heading-chip-wrapper {
+  display: inline-flex;
+  max-width: 100%;
+}
+
 .heading-chip {
   flex-wrap: nowrap;
 }
 
 @media (max-width: 640px) {
+  .heading-chip-wrapper {
+    width: 100%;
+    justify-content: center;
+  }
+
   .heading-chip {
     flex-wrap: wrap;
     white-space: normal;
     word-break: break-word;
-    width: 100%;
     max-width: 100%;
     text-align: center;
   }

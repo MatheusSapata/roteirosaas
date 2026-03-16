@@ -1,0 +1,97 @@
+<template>
+  <section class="w-full" :style="{ background: section.backgroundColor || '#f5f7fb' }" :id="section.anchorId || undefined">
+    <div class="mx-auto w-full max-w-5xl px-6 py-16 text-center">
+      <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="ctaColor" />
+      <h2 class="mt-3 text-3xl font-bold leading-tight md:text-4xl" :style="{ color: primaryText }">
+        {{ section.title || "Video em destaque" }}
+      </h2>
+      <div
+        v-if="subtitleHtml"
+        class="mt-3 text-base leading-relaxed md:text-lg"
+        :style="{ color: mutedText }"
+        v-html="subtitleHtml"
+      ></div>
+
+      <div v-if="embeddedVideoUrl" class="mt-8 w-full overflow-hidden rounded-[28px] shadow-2xl ring-1 ring-slate-200" :class="videoWrapperClass">
+        <div class="relative pt-[56.25%]">
+          <iframe
+            class="absolute inset-0 h-full w-full rounded-[28px]"
+            :src="embeddedVideoUrl"
+            title="Video em destaque"
+            frameborder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen
+          ></iframe>
+        </div>
+      </div>
+      <div v-else class="mt-8 rounded-3xl border border-dashed border-slate-200 bg-white/60 px-6 py-16 text-sm text-slate-500">
+        Adicione um link de video para aparecer aqui.
+      </div>
+
+      <div v-if="ctaHasTarget" class="mt-8">
+        <a
+          :href="ctaHref"
+          :data-scroll-target="ctaIsScroll ? 'true' : null"
+          target="_blank"
+          rel="noopener"
+          data-track-event="cta"
+          :data-track-type="ctaTrackType"
+          class="inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl"
+          :style="{ background: ctaColor }"
+        >
+          {{ section.ctaLabel || "Assistir agora" }}
+        </a>
+      </div>
+    </div>
+  </section>
+</template>
+
+<script setup lang="ts">
+import { computed } from "vue";
+import type { FeaturedVideoSection } from "../../types/page";
+import SectionHeadingChip from "./SectionHeadingChip.vue";
+import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
+import { sanitizeHtml } from "../../utils/sanitizeHtml";
+import { deriveTextPalette } from "../../utils/colorContrast";
+import { isWhatsappLink } from "../../utils/links";
+
+const props = defineProps<{ section: FeaturedVideoSection; previewDevice?: "desktop" | "mobile" }>();
+const headingDefaults = getSectionHeadingDefaults("featured_video");
+
+const headingLabel = computed(() => props.section.headingLabel ?? headingDefaults.label);
+const headingStyle = computed(() => props.section.headingLabelStyle || headingDefaults.style);
+const subtitleHtml = computed(() => sanitizeHtml(props.section.subtitle));
+const textPalette = computed(() => deriveTextPalette(props.section.textColor));
+const primaryText = computed(() => textPalette.value.primary);
+const mutedText = computed(() => textPalette.value.muted);
+const ctaColor = computed(() => props.section.ctaColor || "#41ce5f");
+const isMobilePreview = computed(() => props.previewDevice === "mobile");
+const videoWrapperClass = computed(() => (isMobilePreview.value ? "rounded-[18px]" : "rounded-[28px]"));
+
+const embeddedVideoUrl = computed(() => {
+  if (!props.section.videoUrl) return "";
+  let url = props.section.videoUrl.trim();
+  const iframeSrc = url.match(/src=["']([^"']+)["']/i);
+  if (iframeSrc?.[1]) {
+    url = iframeSrc[1];
+  }
+  if (!/^https?:\/\//i.test(url)) {
+    url = `https://${url}`.replace(/https?:\/\//i, "https://");
+  }
+  url = url.replace("watch?v=", "embed/").replace("youtu.be/", "www.youtube.com/embed/");
+  return url;
+});
+
+const ctaMode = computed(() => props.section.ctaMode || "link");
+const ctaHasTarget = computed(() =>
+  ctaMode.value === "section" ? !!props.section.ctaSectionId : !!props.section.ctaLink
+);
+const ctaHref = computed(() =>
+  ctaMode.value === "section" && props.section.ctaSectionId ? `#${props.section.ctaSectionId}` : props.section.ctaLink || "#"
+);
+const ctaIsScroll = computed(() => ctaMode.value === "section" && !!props.section.ctaSectionId);
+const ctaTrackType = computed(() =>
+  ctaMode.value === "section" ? "cta" : isWhatsappLink(props.section.ctaLink || undefined) ? "whatsapp" : "cta"
+);
+</script>
+

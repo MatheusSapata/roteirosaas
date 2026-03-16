@@ -8,6 +8,7 @@ export const sectionLabels: Partial<Record<SectionType, string>> = {
   itinerary: "Itinerário",
   faq: "Perguntas Frequentes",
   testimonials: "Depoimentos",
+  featured_video: "Video em destaque",
   cta: "Chamada para ação",
   story: "Descritivo",
   reasons: "Itens",
@@ -37,6 +38,8 @@ export const describeSection = (section: PageSection): string => {
       return section.items?.[0]?.question || "Perguntas frequentes";
     case "countdown":
       return section.label || "Contagem regressiva";
+    case "featured_video":
+      return section.title || "Video em destaque";
     case "gallery":
       return "Galeria de imagens";
     case "photo":

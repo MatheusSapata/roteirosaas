@@ -664,6 +664,7 @@ import type {
   PageSection,
   PhotoSection,
   PricesSection,
+  FeaturedVideoSection,
   TestimonialsSection,
   StorySection,
   ReasonsSection,
@@ -912,6 +913,7 @@ const SectionPhotoForm = defineAsyncComponent(() => import("../../components/adm
 const SectionItineraryForm = defineAsyncComponent(() => import("../../components/admin/SectionItineraryForm.vue"));
 const SectionFaqForm = defineAsyncComponent(() => import("../../components/admin/SectionFaqForm.vue"));
 const SectionTestimonialsForm = defineAsyncComponent(() => import("../../components/admin/SectionTestimonialsForm.vue"));
+const SectionFeaturedVideoForm = defineAsyncComponent(() => import("../../components/admin/SectionFeaturedVideoForm.vue"));
 const SectionCtaForm = defineAsyncComponent(() => import("../../components/admin/SectionCtaForm.vue"));
 const SectionStoryForm = defineAsyncComponent(() => import("../../components/admin/SectionStoryForm.vue"));
 const SectionReasonsForm = defineAsyncComponent(() => import("../../components/admin/SectionReasonsForm.vue"));
@@ -924,6 +926,7 @@ const PublicPhotoSection = defineAsyncComponent(() => import("../../components/p
 const PublicItinerarySection = defineAsyncComponent(() => import("../../components/public/PublicItinerarySection.vue"));
 const PublicFaqSection = defineAsyncComponent(() => import("../../components/public/PublicFaqSection.vue"));
 const PublicTestimonialsSection = defineAsyncComponent(() => import("../../components/public/PublicTestimonialsSection.vue"));
+const PublicFeaturedVideoSection = defineAsyncComponent(() => import("../../components/public/PublicFeaturedVideoSection.vue"));
 const PublicCtaSection = defineAsyncComponent(() => import("../../components/public/PublicCtaSection.vue"));
 const PublicStorySection = defineAsyncComponent(() => import("../../components/public/PublicStorySection.vue"));
 const PublicReasonsSection = defineAsyncComponent(() => import("../../components/public/PublicReasonsSection.vue"));
@@ -939,6 +942,7 @@ const sectionTypes: SectionType[] = [
   "itinerary",
   "faq",
   "testimonials",
+  "featured_video",
   "cta",
   "story",
   "reasons",
@@ -954,6 +958,7 @@ const sectionDescriptions: Partial<Record<SectionType, string>> = {
   itinerary: "Sequência de etapas/benefícios para explicar seu serviço ou roteiro.",
   faq: "Perguntas e respostas para antecipar dúvidas frequentes.",
   testimonials: "Carrossel ou lista com depoimentos de clientes.",
+  featured_video: "Destaque um video com titulo, subtitulo e CTA centralizado.",
   cta: "Chamada final impulsionando o lead para a ação desejada.",
   story: "Bloco de storytelling: Use para contar sua história,detalhamento do roteiro, e muito mais.",
   reasons: "Liste motivos, benefícios e serviços para reforçar a decisão.",
@@ -968,6 +973,7 @@ const sectionThumbnails: Partial<Record<SectionType, string>> = {
   itinerary: itineraryThumb,
   faq: faqThumb,
   testimonials: testimonialsThumb,
+  featured_video: storyThumb,
   cta: ctaThumb,
   story: storyThumb,
   reasons: reasonsThumb,
@@ -982,6 +988,7 @@ const sectionAccents: Partial<Record<SectionType, string>> = {
   itinerary: "from-emerald-100/70 to-white",
   faq: "from-slate-100 to-white",
   testimonials: "from-purple-100/70 to-white",
+  featured_video: "from-indigo-100/70 to-white",
   cta: "from-cyan-100/70 to-white",
   story: "from-rose-100/70 to-white",
   reasons: "from-indigo-100/70 to-white",
@@ -996,6 +1003,7 @@ const formComponents: Partial<Record<SectionType, any>> = {
   itinerary: SectionItineraryForm,
   faq: SectionFaqForm,
   testimonials: SectionTestimonialsForm,
+  featured_video: SectionFeaturedVideoForm,
   cta: SectionCtaForm,
   story: SectionStoryForm,
   reasons: SectionReasonsForm,
@@ -1011,6 +1019,7 @@ const publicComponents: Partial<Record<SectionType, any>> = {
   itinerary: PublicItinerarySection,
   faq: PublicFaqSection,
   testimonials: PublicTestimonialsSection,
+  featured_video: PublicFeaturedVideoSection,
   cta: PublicCtaSection,
   story: PublicStorySection,
   reasons: PublicReasonsSection,
@@ -1452,7 +1461,7 @@ const applyWhatsAppDefaults = (sectionsList: PageSection[]): PageSection[] => {
 
   const updated = sectionsList.map(section => {
     const type = (section as any).type as SectionType;
-    if (!["hero", "story", "cta", "prices"].includes(type)) return section;
+    if (!["hero", "story", "cta", "prices", "featured_video"].includes(type)) return section;
     let autoLink = baseAuto;
     if (type === "prices") {
       const firstPlan = ((section as any).items?.[0]?.title as string) || "";
@@ -1496,7 +1505,8 @@ const applySectionBackgrounds = (list: PageSection[]): PageSection[] => {
 
   const ensureButtonColor = (section: PageSection) => {
     const type = (section as any).type as SectionType;
-    const typesWithButton: SectionType[] = ["hero", "prices", "testimonials", "story", "cta", "itinerary"];
+    const typesWithButton: SectionType[] = ["hero", "prices", "testimonials", "featured_video", "story", "cta", "itinerary"];
+
     if (typesWithButton.includes(type)) {
       const currentColor = (section as any).ctaColor;
       const needsDefault =
@@ -1831,6 +1841,24 @@ function defaultSection(type: SectionType): PageSection {
       ctaMode: "link",
       ctaSectionId: null
     } as TestimonialsSection);
+  }
+
+  if (type === "featured_video") {
+    const headingDefaults = getSectionHeadingDefaults("featured_video");
+    return ensureSectionAnchor({
+      type: "featured_video",
+      enabled: true,
+      headingLabel: headingDefaults.label,
+      headingLabelStyle: headingDefaults.style,
+      title: "Assista ao roteiro em 2 minutos",
+      subtitle: "Mostre o clima da experiencia com um video curto e objetivo.",
+      videoUrl: "https://www.youtube.com/watch?v=ysz5S6PUM-U",
+      ctaLabel: "Falar com especialista",
+      ctaLink: buildWhatsappLink(pageTitle.value) || "https://wa.me/",
+      ctaMode: "link",
+      ctaSectionId: null,
+      ctaColor: theme.value.ctaDefaultColor
+    } as FeaturedVideoSection);
   }
 
   if (type === "story") {

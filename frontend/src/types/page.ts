@@ -7,6 +7,7 @@ export type SectionType =
   | "itinerary"
   | "faq"
   | "testimonials"
+  | "featured_video"
   | "cta"
   | "story"
   | "reasons"
@@ -149,6 +150,18 @@ export interface TestimonialsSection extends SectionBase {
   cardColor?: string;
 }
 
+export interface FeaturedVideoSection extends SectionBase {
+  type: "featured_video";
+  title: string;
+  subtitle?: string;
+  videoUrl?: string;
+  ctaLabel?: string;
+  ctaLink?: string;
+  ctaMode?: "link" | "section";
+  ctaSectionId?: string | null;
+  ctaColor?: string;
+}
+
 export interface CountdownSection extends SectionBase {
   type: "countdown";
   targetDate: string;
@@ -231,6 +244,7 @@ export type PageSection =
   | ItinerarySection
   | FaqSection
   | TestimonialsSection
+  | FeaturedVideoSection
   | CtaSection
   | StorySection
   | ReasonsSection
