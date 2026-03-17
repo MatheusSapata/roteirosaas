@@ -26,32 +26,36 @@
               <p
                 v-if="item.titleLabel"
                 class="mt-4 text-xs uppercase tracking-[0.2em] md:mt-0"
-                :style="item.highlight ? { color: 'rgba(255,255,255,0.8)' } : { color: subtleText }"
+                :style="item.highlight ? { color: 'rgba(255,255,255,0.8)' } : { color: cardSecondaryText }"
               >
                 {{ item.titleLabel.toUpperCase() }}
               </p>
-              <p class="text-xl font-semibold" :style="{ color: item.highlight ? '#ffffff' : primaryText }">{{ item.title }}</p>
+              <p class="text-xl font-semibold" :style="{ color: item.highlight ? '#ffffff' : cardPrimaryText }">{{ item.title }}</p>
             </div>
+
             <div class="flex flex-col items-center gap-4 md:flex-row md:items-center md:justify-between">
               <div class="space-y-1 md:text-right">
                 <p
                   v-if="item.priceLabel"
                   class="text-sm font-medium"
-                  :style="item.highlight ? { color: 'rgba(255,255,255,0.8)' } : { color: mutedText }"
+                  :style="item.highlight ? { color: 'rgba(255,255,255,0.8)' } : { color: cardSecondaryText }"
                 >
                   {{ item.priceLabel }}
                 </p>
+
                 <p class="text-3xl font-bold" :style="{ color: item.highlight ? '#ffffff' : accent }">
                   {{ formatPrice(item.price, item.currency) }}
                 </p>
+
                 <p
                   v-if="item.description"
                   class="text-xs"
-                  :style="item.highlight ? { color: 'rgba(255,255,255,0.8)' } : { color: mutedText }"
+                  :style="item.highlight ? { color: 'rgba(255,255,255,0.8)' } : { color: cardSecondaryText }"
                 >
                   {{ item.description }}
                 </p>
               </div>
+
               <a
                 v-if="ctaLink"
                 :href="ctaLink"
@@ -68,6 +72,7 @@
                 {{ section.ctaLabel || "Reservar" }}
               </a>
             </div>
+
             <span
               v-if="item.badge"
               class="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 rounded-full border px-4 py-1 text-xs font-semibold uppercase tracking-wide shadow-sm"
@@ -77,7 +82,6 @@
               {{ item.badge }}
             </span>
           </article>
-
         </div>
 
         <p v-if="section.description" class="mt-6 text-sm text-center md:text-left" :style="{ color: mutedText }">
@@ -102,8 +106,10 @@ const defaultAccent = "#41ce5f";
 const headingDefaults = getSectionHeadingDefaults("prices");
 const defaultTitle = "Planos e opções";
 const defaultSubtitle = "Escolha o formato que combina com você.";
+
 const buttonColor = computed(() => props.section.ctaColor || defaultAccent);
 const accent = computed(() => buttonColor.value);
+
 const toRgba = (hex: string, alpha: number) => {
   const cleaned = hex.replace("#", "");
   const full = cleaned.length === 3 ? cleaned.split("").map(c => c + c).join("") : cleaned;
@@ -113,10 +119,12 @@ const toRgba = (hex: string, alpha: number) => {
   const b = parseInt(full.substring(4, 6), 16);
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
+
 const accentSoft = computed(() => toRgba(accent.value, 0.1));
 const accentBorder = computed(() => toRgba(accent.value, 0.25));
 const headingLabel = computed(() => props.section.headingLabel ?? headingDefaults.label);
 const headingStyle = computed(() => props.section.headingLabelStyle || headingDefaults.style);
+
 const sanitizeLink = (value?: string | null) => {
   if (!value) return "";
   const trimmed = value.trim();
@@ -124,24 +132,33 @@ const sanitizeLink = (value?: string | null) => {
   if (/^[a-z][a-z0-9+.-]*:/i.test(trimmed) || trimmed.startsWith("#")) return trimmed;
   return `https://${trimmed}`;
 };
+
 const ctaLink = computed(() => sanitizeLink(props.section.ctaLink));
+
 const title = computed(() => (props.section.title && props.section.title.trim().length ? props.section.title : defaultTitle));
+
 const subtitle = computed(() => {
   const raw = props.section.subtitle ?? null;
   if (raw === null) return defaultSubtitle;
   return raw.trim().length ? raw : "";
 });
+
 const highlightShadow = computed(() => toRgba(accent.value, 0.45));
 const highlightCardStyle = computed(() => ({
   background: accent.value,
   color: "#fff",
   boxShadow: `0 25px 60px -30px ${highlightShadow.value}`
 }));
+
 const textPalette = computed(() => deriveTextPalette(props.section.textColor));
 const primaryText = computed(() => textPalette.value.primary);
 const secondaryText = computed(() => textPalette.value.secondary);
 const mutedText = computed(() => textPalette.value.muted);
 const subtleText = computed(() => textPalette.value.subtle);
+
+const cardPrimaryText = computed(() => "#0f172a");
+const cardSecondaryText = computed(() => "rgba(15,23,42,0.65)");
+
 const badgeStyle = (highlight: boolean) =>
   highlight
     ? { background: "#ffffff", color: accent.value, borderColor: "#ffffff" }
@@ -153,7 +170,9 @@ const currencyMap: Record<CurrencyCode, { locale: string; currency: CurrencyCode
   EUR: { locale: "de-DE", currency: "EUR" },
   ARS: { locale: "es-AR", currency: "ARS" }
 };
+
 const defaultCurrency = currencyMap.BRL;
+
 const formatPrice = (price: number, currency?: PriceItem["currency"]) => {
   const config = currencyMap[(currency as CurrencyCode) || "BRL"] || defaultCurrency;
   try {
@@ -162,6 +181,6 @@ const formatPrice = (price: number, currency?: PriceItem["currency"]) => {
     return `R$ ${price.toLocaleString("pt-BR")}`;
   }
 };
+
 const ctaTrackType = computed(() => (ctaLink.value && isWhatsappLink(ctaLink.value) ? "whatsapp" : "cta"));
 </script>
-
