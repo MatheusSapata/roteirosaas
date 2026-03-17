@@ -16,6 +16,7 @@ from app.models.cakto import CaktoEventLog, CaktoOnboardingToken, CaktoCheckoutS
 from app.models.subscription import Subscription
 from app.models.user import User
 from app.services import auth as auth_service
+from app.services.email import send_cakto_onboarding_email
 from app.services.trial import end_trial
 
 logger = logging.getLogger(__name__)
@@ -317,6 +318,16 @@ class CaktoIntegrationService:
                 onboarding_token=onboarding_token,
             )
         self.db.commit()
+        if onboarding_token:
+            try:
+                send_cakto_onboarding_email(
+                    user=user,
+                    onboarding_token=onboarding_token,
+                    plan_key=plan.plan_key,
+                    cycle=plan.cycle,
+                )
+            except Exception:  # pragma: no cover - envio de email nao deve quebrar o webhook
+                logger.exception("Erro ao enviar e-mail de onboarding para %s", user.email)
         return f"Pedido {order_ref or order_id} processado via {event_type}."
 
     def _handle_subscription_status(
