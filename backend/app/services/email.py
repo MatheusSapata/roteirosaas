@@ -3,15 +3,12 @@ from __future__ import annotations
 import logging
 import smtplib
 import ssl
-import base64
-import mimetypes
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import formataddr
 from typing import TYPE_CHECKING
 
 from app.core.config import get_settings
-from pathlib import Path
 
 if TYPE_CHECKING:  # pragma: no cover
     from app.models.cakto import CaktoOnboardingToken
@@ -96,25 +93,6 @@ def _cycle_label(cycle: str | None) -> str:
     return f"ciclo {cycle}"
 
 
-def _resolve_logo_src() -> str | None:
-    settings = get_settings()
-    if settings.email_logo_url:
-        return settings.email_logo_url
-    if settings.email_logo_path:
-        path = Path(settings.email_logo_path)
-        if path.exists():
-            mime, _ = mimetypes.guess_type(path.name)
-            if not mime:
-                mime = "image/png"
-            try:
-                data = path.read_bytes()
-                b64 = base64.b64encode(data).decode("ascii")
-                return f"data:{mime};base64,{b64}"
-            except Exception:  # pragma: no cover - file read issues
-                logger.exception("Nao foi possivel carregar logo em %s", path)
-    return None
-
-
 def send_cakto_onboarding_email(
     *,
     user: "User",
@@ -130,7 +108,7 @@ def send_cakto_onboarding_email(
         logger.info("SMTP nao configurado. Onboarding para %s nao sera enviado.", user.email)
         return
 
-    password_url = f"{settings.resolved_webapp_base_url}/create-password?token={onboarding_token.token}"
+    password_url = f"{settings.resolved_webapp_base_url}/create-password"
     plan_label = _plan_label(plan_key)
     cycle_label = _cycle_label(cycle)
     greeting_name = user.name or user.email
@@ -156,14 +134,6 @@ def send_cakto_onboarding_email(
         <p style="word-break:break-all;"><a href="{password_url}">{password_url}</a></p>
         <p>Qualquer duvida, basta responder este e-mail.</p>
         <p>Equipe Roteiro Online</p>
-    """
-
-    logo_src = _resolve_logo_src()
-    if logo_src:
-        html_body += f"""
-        <p style="margin-top:32px;">
-            <img src="{logo_src}" alt="Roteiro Online" style="height:48px;">
-        </p>
     """
 
     client.send_email(to_email=user.email, subject=subject, html_body=html_body, text_body=text_body)
