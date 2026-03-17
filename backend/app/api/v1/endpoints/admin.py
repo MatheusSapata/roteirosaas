@@ -19,6 +19,7 @@ from app.models.subscription import Subscription
 from app.models.stats import PageVisitStats
 from app.models.user import User
 from app.models.user_tracking import UserTracking
+from app.models.revenue import RevenueTotal
 from app.models.agency import Agency
 from app.models.agency_user import AgencyUser
 from app.models.page import Page, PageStatus
@@ -274,6 +275,9 @@ def get_admin_metrics(
             continue
         mrr += get_monthly_price(sub.plan, sub.billing_cycle)
 
+    revenue_row = db.query(RevenueTotal).order_by(RevenueTotal.id.asc()).first()
+    total_revenue_amount = float(revenue_row.total_amount or 0) if revenue_row else 0.0
+
     recent_agencies_rows = (
         db.query(Agency, func.count(Page.id).label("pages_count"))
         .outerjoin(Page, Page.agency_id == Agency.id)
@@ -324,6 +328,7 @@ def get_admin_metrics(
         new_users_last_days=new_users_count,
         new_users_timeseries=timeseries,
         mrr=mrr,
+        total_revenue=total_revenue_amount,
     )
 
 

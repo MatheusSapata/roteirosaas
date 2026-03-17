@@ -19,4 +19,5 @@ from app.models import (
     lesson,
     cakto,
     agency_domain,
+    revenue,
 )  # noqa: E402,F401

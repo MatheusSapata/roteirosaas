@@ -88,19 +88,20 @@
           <p class="text-xs text-slate-400">Somatório dos planos ativos.</p>
         </div>
         <div class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-          <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Novos usuarios ({{ days }}d)</p>
-          <p class="mt-2 text-3xl font-bold text-slate-900">{{ metrics?.new_users_last_days ?? "--" }}</p>
-          <p class="text-xs text-slate-400">Entradas recentes.</p>
+          <p class="text-xs uppercase tracking-[0.3em] text-slate-500">ARR estimado</p>
+          <p class="mt-2 text-3xl font-bold text-slate-900">
+            <span v-if="arrValue !== null">R$ {{ arrValue.toFixed(2) }}</span>
+            <span v-else>--</span>
+          </p>
+          <p class="text-xs text-slate-400">Projeção anual baseada no MRR.</p>
         </div>
         <div class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-          <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Distribuicao de planos</p>
-          <ul class="mt-3 space-y-1 text-sm text-slate-600">
-            <li v-for="p in metrics?.plans || []" :key="p.plan" class="flex justify-between">
-              <span class="capitalize">{{ planLabel(p.plan) }}</span>
-              <span class="font-semibold">{{ p.count }}</span>
-            </li>
-            <li v-if="!(metrics?.plans?.length)" class="text-xs text-slate-400">Sem dados ainda.</li>
-          </ul>
+          <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Faturamento total</p>
+          <p class="mt-2 text-3xl font-bold text-slate-900">
+            <span v-if="lifetimeRevenue !== null">R$ {{ lifetimeRevenue.toFixed(2) }}</span>
+            <span v-else>--</span>
+          </p>
+          <p class="text-xs text-slate-400">Somatório de todo o faturamento.</p>
         </div>
       </section>
 
@@ -135,20 +136,13 @@
         </div>
 
         <div class="rounded-2xl bg-white p-6 shadow-md ring-1 ring-slate-100">
-          <h3 class="text-sm font-semibold text-slate-900">Resumo geral</h3>
-          <ul class="mt-3 space-y-3 text-sm text-slate-700">
-            <li class="flex items-center justify-between">
-              <span>Usuarios ativos</span>
-              <span class="font-semibold">{{ metrics?.total_users ?? "--" }}</span>
+          <h3 class="text-sm font-semibold text-slate-900">Distribuicao de planos</h3>
+          <ul class="mt-3 space-y-1 text-sm text-slate-600">
+            <li v-for="p in metrics?.plans || []" :key="p.plan" class="flex justify-between">
+              <span class="capitalize">{{ planLabel(p.plan) }}</span>
+              <span class="font-semibold">{{ p.count }}</span>
             </li>
-            <li class="flex items-center justify-between">
-              <span>Agencias</span>
-              <span class="font-semibold">{{ metrics?.total_agencies ?? "--" }}</span>
-            </li>
-            <li class="flex items-center justify-between">
-              <span>Paginas publicadas</span>
-              <span class="font-semibold">{{ metrics?.published_pages ?? "--" }}</span>
-            </li>
+            <li v-if="!(metrics?.plans?.length)" class="text-xs text-slate-400">Sem dados ainda.</li>
           </ul>
         </div>
       </section>
@@ -937,6 +931,8 @@ interface Metrics {
   total_pages: number;
   published_pages: number;
   mrr: number;
+  total_revenue?: number;
+  lifetime_revenue?: number;
   new_users_last_days: number;
   plans: { plan: string; count: number }[];
   new_users_timeseries: { label: string; value: number }[];
@@ -987,6 +983,14 @@ const adminTabs: { id: AdminTab; label: string; description: string }[] = [
 
 const days = ref<"7" | "30" | "90">("30");
 const metrics = ref<Metrics | null>(null);
+const arrValue = computed(() => {
+  const mrrValue = metrics.value?.mrr;
+  return typeof mrrValue === "number" ? mrrValue * 12 : null;
+});
+const lifetimeRevenue = computed(() => {
+  const value = metrics.value?.total_revenue ?? metrics.value?.lifetime_revenue ?? null;
+  return typeof value === "number" ? value : null;
+});
 const error = ref("");
 const auth = useAuthStore();
 const agencyStore = useAgencyStore();
