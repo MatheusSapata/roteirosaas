@@ -89,8 +89,6 @@ class Settings(BaseSettings):
     smtp_use_tls: bool = Field(True, alias="SMTP_USE_TLS")
     smtp_use_ssl: bool = Field(False, alias="SMTP_USE_SSL")
     webapp_base_url: str | None = Field(None, alias="WEBAPP_BASE_URL")
-    email_logo_url: str | None = Field(None, alias="EMAIL_LOGO_URL")
-    email_logo_path: str | None = Field(None, alias="EMAIL_LOGO_PATH")
 
     @field_validator("platform_domains", "forbidden_custom_hosts", mode="before")
     @classmethod
