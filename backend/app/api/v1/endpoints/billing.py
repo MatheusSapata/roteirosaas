@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime, timedelta
+from decimal import Decimal, InvalidOperation
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -10,6 +11,7 @@ from app.api.deps import get_current_active_user, get_db
 from app.core.config import get_settings
 from app.models.subscription import Subscription
 from app.models.user import User
+from app.models.revenue import RevenueTotal
 from app.services.asaas import AsaasAPIError, AsaasClient
 from app.services.cakto import CaktoAPIError, CaktoIntegrationService
 from app.services.plans import effective_plan
@@ -180,6 +182,35 @@ def _cycle_duration(cycle: str) -> timedelta:
     return timedelta(days=days_map.get(normalized, 30))
 
 
+def _parse_decimal_value(raw_value: Any) -> Decimal:
+    if raw_value is None:
+        return Decimal("0")
+    try:
+        return Decimal(str(raw_value))
+    except (InvalidOperation, ValueError, TypeError):
+        return Decimal("0")
+
+
+def _get_or_create_revenue_total(db: Session) -> RevenueTotal:
+    entry = db.query(RevenueTotal).order_by(RevenueTotal.id.asc()).first()
+    if entry:
+        return entry
+    entry = RevenueTotal(total_amount=Decimal("0"))
+    db.add(entry)
+    db.flush()
+    return entry
+
+
+def _increase_total_revenue(db: Session, amount: Decimal) -> None:
+    if amount <= 0:
+        return
+    entry = _get_or_create_revenue_total(db)
+    current = _parse_decimal_value(entry.total_amount)
+    entry.total_amount = current + amount
+    entry.updated_at = datetime.utcnow()
+    db.add(entry)
+
+
 def _build_billing_info(user: User) -> BillingInfo:
     sub = user.subscription
     return BillingInfo(
@@ -260,6 +291,8 @@ async def webhook(request: Request, db: Session = Depends(get_db)) -> Dict[str, 
             next_due = payment.get("nextDueDate") or sub_data.get("nextDueDate") or payment.get("dueDate")
             _set_subscription_active(subscription, plan_key, next_due, cycle)
             user.plan = plan_key
+            payment_value = _parse_decimal_value(payment.get("netValue") or payment.get("value"))
+            _increase_total_revenue(db, payment_value)
             if user.trial_plan:
                 end_trial(user, db, keep_plan=plan_key)
         elif event == "PAYMENT_OVERDUE":

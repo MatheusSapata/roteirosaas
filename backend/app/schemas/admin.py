@@ -88,6 +88,7 @@ class AdminMetricsOut(BaseModel):
     total_agencies: int
     total_pages: int
     published_pages: int
+    total_revenue: float = 0.0
     plans: List[PlanCount]
     users: List[AdminUserOut]
     agencies: List[AdminAgencyOut]
