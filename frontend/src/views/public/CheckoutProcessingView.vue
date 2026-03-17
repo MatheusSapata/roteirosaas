@@ -38,7 +38,7 @@ const router = useRouter();
 const route = useRoute();
 
 const sessionToken = ref<string | null>(null);
-const statusMessage = ref("Estamos finalizando tudo para você...");
+const statusMessage = ref("Estamos finalizando tudo para vocÃª...");
 const hasError = ref(false);
 const orderIdFound = computed(() => !!sessionToken.value);
 
@@ -73,7 +73,7 @@ onMounted(() => {
   } else {
     hasError.value = true;
     statusMessage.value =
-      "Não conseguimos identificar sua compra. Use o link do e-mail de confirmação.";
+      "NÃ£o conseguimos identificar sua compra. Use o link do e-mail de confirmaÃ§Ã£o.";
   }
 
   fallbackTimer = window.setTimeout(() => {
@@ -127,7 +127,7 @@ const pollStatus = async (attempt = 0) => {
       return;
     }
     hasError.value = true;
-    statusMessage.value = "Não conseguimos confirmar seu pedido. Use o link enviado por e-mail.";
+    statusMessage.value = "NÃ£o conseguimos confirmar seu pedido. Use o link enviado por e-mail.";
   }
 };
 </script>

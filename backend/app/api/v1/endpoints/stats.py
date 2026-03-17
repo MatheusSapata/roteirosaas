@@ -99,14 +99,31 @@ def stats_overview(
     agency_id: int = Query(...),
     days: int = Query(7, ge=1, le=90),
     page_id: int | None = Query(None),
+    start_date: date | None = Query(None),
+    end_date: date | None = Query(None),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ) -> StatsOverviewOut:
     ensure_agency_member(db, agency_id, current_user.id)
-    days = max(1, min(days, 90))
-    today = date.today()
-    since = today - timedelta(days=days - 1)
+    custom_range = None
+    if start_date and end_date:
+        if end_date < start_date:
+            raise HTTPException(status_code=400, detail="O período informado é inválido.")
+        range_days = (end_date - start_date).days + 1
+        if range_days > 90:
+            raise HTTPException(status_code=400, detail="O período personalizado deve ter no máximo 90 dias.")
+        custom_range = (start_date, end_date, range_days)
+    elif start_date or end_date:
+        raise HTTPException(status_code=400, detail="Informe data inicial e final para o período personalizado.")
+
+    if custom_range:
+        since, until, days = custom_range
+    else:
+        days = max(1, min(days, 90))
+        until = date.today()
+        since = until - timedelta(days=days - 1)
     prev_since = since - timedelta(days=days)
+    prev_until = since - timedelta(days=1)
 
     base_query = (
         db.query(PageVisitStats)
@@ -120,8 +137,12 @@ def stats_overview(
             raise HTTPException(status_code=403, detail="Página não pertence à agência solicitada.")
         base_query = base_query.filter(PageVisitStats.page_id == page_id)
 
-    current_rows = base_query.filter(PageVisitStats.date >= since).all()
-    previous_rows = base_query.filter(PageVisitStats.date >= prev_since, PageVisitStats.date < since).all()
+    current_rows = base_query.filter(PageVisitStats.date >= since, PageVisitStats.date <= until).all()
+    previous_rows = (
+        base_query.filter(PageVisitStats.date >= prev_since, PageVisitStats.date <= prev_until).all()
+        if prev_since <= prev_until
+        else []
+    )
 
     totals = summarize(current_rows)
     prev_totals = summarize(previous_rows)
