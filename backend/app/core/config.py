@@ -79,6 +79,18 @@ class Settings(BaseSettings):
     platform_primary_domain: str | None = Field(None, alias="PLATFORM_PRIMARY_DOMAIN")
     custom_domain_ssl_provider: str | None = Field(None, alias="CUSTOM_DOMAIN_SSL_PROVIDER")
     custom_domain_ssl_script_path: str | None = Field(None, alias="CUSTOM_DOMAIN_SSL_SCRIPT_PATH")
+    smtp_host: str | None = Field(None, alias="SMTP_HOST")
+    smtp_port: int = Field(587, alias="SMTP_PORT")
+    smtp_username: str | None = Field(None, alias="SMTP_USERNAME")
+    smtp_password: str | None = Field(None, alias="SMTP_PASSWORD")
+    smtp_from_email: str | None = Field(None, alias="SMTP_FROM_EMAIL")
+    smtp_from_name: str | None = Field(None, alias="SMTP_FROM_NAME")
+    smtp_reply_to: str | None = Field(None, alias="SMTP_REPLY_TO")
+    smtp_use_tls: bool = Field(True, alias="SMTP_USE_TLS")
+    smtp_use_ssl: bool = Field(False, alias="SMTP_USE_SSL")
+    webapp_base_url: str | None = Field(None, alias="WEBAPP_BASE_URL")
+    email_logo_url: str | None = Field(None, alias="EMAIL_LOGO_URL")
+    email_logo_path: str | None = Field(None, alias="EMAIL_LOGO_PATH")
 
     @field_validator("platform_domains", "forbidden_custom_hosts", mode="before")
     @classmethod
@@ -92,6 +104,14 @@ class Settings(BaseSettings):
     @property
     def normalized_platform_domains(self) -> list[str]:
         return [host.strip().lower() for host in self.platform_domains if host.strip()]
+
+    @property
+    def resolved_webapp_base_url(self) -> str:
+        if self.webapp_base_url:
+            return self.webapp_base_url.rstrip("/")
+        if self.platform_primary_domain:
+            return f"https://{self.platform_primary_domain}".rstrip("/")
+        return "http://localhost:5173"
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False, populate_by_name=True, extra="ignore")
 
