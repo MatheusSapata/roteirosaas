@@ -3,11 +3,11 @@ import re
 import unicodedata
 from collections import defaultdict
 from copy import deepcopy
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any, List, Optional
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, aliased
@@ -96,11 +96,31 @@ def _slugify(value: str) -> str:
 
 @router.get("/metrics", response_model=AdminMetricsOut)
 def get_admin_metrics(
-    days: int = 30,
+    days: int = Query(30, ge=1, le=365),
+    start_date: date | None = Query(None),
+    end_date: date | None = Query(None),
     db: Session = Depends(get_db),
     _: User = Depends(get_current_superuser),
 ) -> AdminMetricsOut:
-    days = max(1, min(days, 365))
+    custom_range = None
+    if start_date and end_date:
+        if end_date < start_date:
+            raise HTTPException(status_code=400, detail="O período informado é inválido.")
+        range_days = (end_date - start_date).days + 1
+        if range_days > 365:
+            raise HTTPException(status_code=400, detail="O período personalizado deve ter no máximo 365 dias.")
+        since_dt = datetime.combine(start_date, datetime.min.time())
+        until_dt = datetime.combine(end_date, datetime.max.time())
+        custom_range = (since_dt, until_dt, range_days)
+    elif start_date or end_date:
+        raise HTTPException(status_code=400, detail="Informe data inicial e final para o período personalizado.")
+
+    if custom_range:
+        since_dt, until_dt, days = custom_range
+    else:
+        days = max(1, min(days, 365))
+        until_dt = datetime.utcnow()
+        since_dt = until_dt - timedelta(days=days)
     plan_not_test = or_(User.plan.is_(None), func.lower(User.plan) != EXCLUDED_PLAN)
     total_users = db.query(func.count(User.id)).filter(plan_not_test).scalar() or 0
     total_agencies = db.query(func.count(Agency.id)).scalar() or 0
@@ -239,11 +259,15 @@ def get_admin_metrics(
         )
 
     # timeseries novos usuários
-    since = datetime.utcnow() - timedelta(days=days)
-    new_users_count = db.query(func.count(User.id)).filter(User.created_at >= since).scalar() or 0
+    new_users_count = (
+        db.query(func.count(User.id))
+        .filter(User.created_at >= since_dt, User.created_at <= until_dt)
+        .scalar()
+        or 0
+    )
     ts_rows = (
         db.query(func.date(User.created_at), func.count(User.id))
-        .filter(User.created_at >= since)
+        .filter(User.created_at >= since_dt, User.created_at <= until_dt)
         .group_by(func.date(User.created_at))
         .order_by(func.date(User.created_at))
         .all()

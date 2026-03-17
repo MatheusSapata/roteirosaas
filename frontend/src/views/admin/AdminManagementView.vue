@@ -47,7 +47,22 @@
           <option value="7">Ultimos 7 dias</option>
           <option value="30">Ultimos 30 dias</option>
           <option value="90">Ultimos 90 dias</option>
+          <option value="custom">Personalizado</option>
         </select>
+        <div v-if="days === 'custom'" class="flex flex-wrap items-center gap-2 text-xs text-slate-600">
+          <label class="font-semibold">De</label>
+          <input
+            type="date"
+            v-model="customStartDate"
+            class="rounded-lg border border-slate-200 px-3 py-1 text-sm text-slate-700"
+          />
+          <span class="font-semibold">até</span>
+          <input
+            type="date"
+            v-model="customEndDate"
+            class="rounded-lg border border-slate-200 px-3 py-1 text-sm text-slate-700"
+          />
+        </div>
 
         <button
           @click="exportPdf"
@@ -109,27 +124,84 @@
         <div class="rounded-2xl bg-white p-6 shadow-md ring-1 ring-slate-100 lg:col-span-2">
           <div class="flex items-center justify-between">
             <div>
-              <h2 class="text-lg font-semibold text-slate-900">Novos usuarios ({{ days }}d)</h2>
+              <h2 class="text-lg font-semibold text-slate-900">Novos usuarios ({{ adminPeriodLabel }})</h2>
               <p class="text-sm text-slate-500">Entradas diárias.</p>
             </div>
           </div>
 
-          <div class="mt-4 h-64 rounded-xl bg-slate-50 p-4">
-            <div v-if="metrics?.new_users_timeseries?.length" class="flex h-full items-end gap-3">
-              <div
-                v-for="point in metrics.new_users_timeseries"
-                :key="point.label"
-                class="flex-1 rounded-2xl bg-white p-2 text-center shadow-sm"
-              >
-                <div
-                  class="mx-auto w-8 rounded-xl bg-gradient-to-t from-emerald-200 to-emerald-500"
-                  :style="{ height: Math.min(point.value * 10 + 10, 140) + 'px' }"
-                ></div>
-                <p class="mt-2 text-xs text-slate-500">{{ point.label }}</p>
-                <p class="text-sm font-semibold text-slate-900">{{ point.value }}</p>
+          <div class="mt-4 rounded-xl bg-slate-50 p-4">
+            <div v-if="newUsersPoints.length" class="space-y-3">
+              <div class="relative rounded-2xl border border-slate-100 bg-white/80 p-4">
+                <div class="pointer-events-none absolute inset-4">
+                  <div
+                    v-for="line in newUsersGridLines"
+                    :key="'grid-' + line"
+                    class="absolute left-0 right-0 border-t border-dashed border-emerald-100"
+                    :style="{ top: line + 'px' }"
+                  ></div>
+                </div>
+                <div class="relative" :style="{ height: newUsersChartHeight + 'px' }">
+                  <svg
+                    :viewBox="`0 0 ${newUsersChartWidth} ${newUsersChartHeight}`"
+                    preserveAspectRatio="none"
+                    class="h-full w-full text-emerald-500"
+                  >
+                    <defs>
+                      <linearGradient id="new-users-line" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stop-color="#0d9488" stop-opacity="0.95"></stop>
+                        <stop offset="100%" stop-color="#14b8a6" stop-opacity="0.65"></stop>
+                      </linearGradient>
+                      <linearGradient id="new-users-area" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stop-color="#5eead4" stop-opacity="0.35"></stop>
+                        <stop offset="100%" stop-color="#ecfeff" stop-opacity="0"></stop>
+                      </linearGradient>
+                    </defs>
+                    <path v-if="newUsersAreaPath" :d="newUsersAreaPath" fill="url(#new-users-area)" stroke="none" />
+                    <path
+                      v-if="newUsersLinePath"
+                      :d="newUsersLinePath"
+                      stroke="url(#new-users-line)"
+                      stroke-width="3"
+                      fill="none"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                    <template v-for="point in newUsersPoints" :key="point.label + '-dot'">
+                      <circle :cx="point.centerX" :cy="point.y" r="4.5" fill="#f8fffe" stroke="#0d9488" stroke-width="2" />
+                    </template>
+                  </svg>
+                  <div
+                    ref="newUsersSurfaceRef"
+                    class="absolute inset-0 cursor-crosshair"
+                    @mousemove="handleNewUsersMove"
+                    @mouseleave="clearNewUsersHover"
+                  ></div>
+                  <div
+                    v-if="newUsersHoverPoint"
+                    class="pointer-events-none absolute -translate-x-1/2 rounded-xl border border-white bg-slate-900/90 px-4 py-2 text-xs text-white shadow-lg"
+                    :style="newUsersTooltipStyle"
+                  >
+                    <p class="font-semibold">{{ newUsersHoverPoint.label }}</p>
+                    <p>Novos usuários: {{ newUsersHoverPoint.value }}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="text-xs text-slate-500">
+                <template v-if="compactNewUsersLabels && newUsersLabelRange">
+                  <div class="flex items-center justify-between font-semibold text-slate-700">
+                    <span>{{ newUsersLabelRange.start }}</span>
+                    <span>{{ newUsersLabelRange.end }}</span>
+                  </div>
+                </template>
+                <template v-else>
+                  <div class="flex flex-wrap justify-between gap-2 font-semibold text-slate-700">
+                    <span v-for="point in newUsersPoints" :key="point.label + '-label'">{{ point.label }}</span>
+                  </div>
+                </template>
               </div>
             </div>
-            <div class="flex h-full items-center justify-center text-sm text-slate-500" v-else>
+            <div class="flex h-64 items-center justify-center text-sm text-slate-500" v-else>
               Sem dados no periodo.
             </div>
           </div>
@@ -893,7 +965,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref, watch, computed } from "vue";
+import { onMounted, onUnmounted, reactive, ref, watch, computed } from "vue";
 import { useRouter } from "vue-router";
 import api from "../../services/api";
 import { useAuthStore } from "../../store/useAuthStore";
@@ -981,8 +1053,12 @@ const adminTabs: { id: AdminTab; label: string; description: string }[] = [
   { id: "lessons", label: "Gestão de aulas", description: "Treinamentos públicos" }
 ];
 
-const days = ref<"7" | "30" | "90">("30");
+type AdminPeriodOption = "7" | "30" | "90" | "custom";
+const days = ref<AdminPeriodOption>("30");
 const metrics = ref<Metrics | null>(null);
+const isMobile = ref(false);
+const customStartDate = ref("");
+const customEndDate = ref("");
 const arrValue = computed(() => {
   const mrrValue = metrics.value?.mrr;
   return typeof mrrValue === "number" ? mrrValue * 12 : null;
@@ -991,6 +1067,137 @@ const lifetimeRevenue = computed(() => {
   const value = metrics.value?.total_revenue ?? metrics.value?.lifetime_revenue ?? null;
   return typeof value === "number" ? value : null;
 });
+const newUsersSeries = computed(() => metrics.value?.new_users_timeseries ?? []);
+const NEW_USERS_CHART_HEIGHT = 240;
+const NEW_USERS_CHART_WIDTH = 640;
+const NEW_USERS_CHART_PADDING_Y = 28;
+const NEW_USERS_CHART_PADDING_X = 28;
+const newUsersChartHeight = NEW_USERS_CHART_HEIGHT;
+const newUsersChartWidth = NEW_USERS_CHART_WIDTH;
+const newUsersChartInnerHeight = NEW_USERS_CHART_HEIGHT - NEW_USERS_CHART_PADDING_Y * 2;
+const newUsersChartInnerWidth = NEW_USERS_CHART_WIDTH - NEW_USERS_CHART_PADDING_X * 2;
+const newUsersGridLineRatios = [0.2, 0.4, 0.6, 0.8];
+const newUsersGridLines = computed(() =>
+  newUsersGridLineRatios.map((ratio) => NEW_USERS_CHART_PADDING_Y + ratio * newUsersChartInnerHeight)
+);
+const isCustomAdminPeriod = computed(() => days.value === "custom");
+const adminCustomRangeReady = computed(
+  () => isCustomAdminPeriod.value && Boolean(customStartDate.value) && Boolean(customEndDate.value)
+);
+const adminOrderedRange = computed(() => {
+  if (!adminCustomRangeReady.value) return null;
+  const start = new Date(customStartDate.value);
+  const end = new Date(customEndDate.value);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
+  if (start.getTime() <= end.getTime()) {
+    return { startISO: customStartDate.value, endISO: customEndDate.value, startDate: start, endDate: end };
+  }
+  return { startISO: customEndDate.value, endISO: customStartDate.value, startDate: end, endDate: start };
+});
+const adminPeriodDays = computed(() => {
+  if (adminOrderedRange.value) {
+    const diff =
+      Math.floor(
+        (adminOrderedRange.value.endDate.getTime() - adminOrderedRange.value.startDate.getTime()) /
+          (1000 * 60 * 60 * 24)
+      ) + 1;
+    return Math.max(diff, 1);
+  }
+  return Number(days.value) || 30;
+});
+const adminPeriodLabel = computed(() => {
+  if (adminOrderedRange.value) {
+    return `${formatDate(adminOrderedRange.value.startISO)} a ${formatDate(adminOrderedRange.value.endISO)}`;
+  }
+  if (isCustomAdminPeriod.value) {
+    return "período personalizado";
+  }
+  return `últimos ${adminPeriodDays.value} dias`;
+});
+const newUsersMaxValue = computed(() => {
+  if (!newUsersSeries.value.length) return 1;
+  const maxValue = Math.max(...newUsersSeries.value.map((point) => point.value ?? 0));
+  return maxValue > 0 ? maxValue : 1;
+});
+const newUsersPoints = computed(() => {
+  const series = newUsersSeries.value;
+  if (!series.length) return [];
+  const count = series.length;
+  const step = count > 1 ? newUsersChartInnerWidth / (count - 1) : 0;
+  return series.map((point, index) => {
+    const value = point.value ?? 0;
+    const ratio = value / newUsersMaxValue.value;
+    const x = count === 1 ? NEW_USERS_CHART_WIDTH / 2 : NEW_USERS_CHART_PADDING_X + index * step;
+    return {
+      label: point.label,
+      value,
+      centerX: x,
+      y: NEW_USERS_CHART_PADDING_Y + (newUsersChartInnerHeight - ratio * newUsersChartInnerHeight)
+    };
+  });
+});
+const newUsersLinePath = computed(() => {
+  if (!newUsersPoints.value.length) return "";
+  return newUsersPoints.value
+    .map((point, index) => `${index === 0 ? "M" : "L"} ${point.centerX} ${point.y}`)
+    .join(" ");
+});
+const newUsersAreaPath = computed(() => {
+  const points = newUsersPoints.value;
+  if (!points.length) return "";
+  const baselineY = NEW_USERS_CHART_PADDING_Y + newUsersChartInnerHeight;
+  if (points.length === 1) {
+    const point = points[0];
+    return `M ${point.centerX} ${baselineY} L ${point.centerX} ${point.y} L ${point.centerX} ${baselineY} Z`;
+  }
+  const segments = points.map((point) => `L ${point.centerX} ${point.y}`).join(" ");
+  const first = points[0];
+  const last = points[points.length - 1];
+  return `M ${first.centerX} ${baselineY} ${segments} L ${last.centerX} ${baselineY} Z`;
+});
+const newUsersSurfaceRef = ref<HTMLDivElement | null>(null);
+const newUsersHoverPoint = ref<{ label: string; value: number; centerX: number; y: number } | null>(null);
+const newUsersTooltipStyle = computed(() => {
+  if (!newUsersHoverPoint.value) return { opacity: 0 };
+  const padding = 60;
+  const left = Math.min(
+    Math.max(newUsersHoverPoint.value.centerX, padding),
+    NEW_USERS_CHART_WIDTH - padding
+  );
+  const top = Math.max(newUsersHoverPoint.value.y - 60, 16);
+  return { left: `${left}px`, top: `${top}px`, opacity: 1 };
+});
+const handleNewUsersMove = (event: MouseEvent) => {
+  const surface = newUsersSurfaceRef.value;
+  const points = newUsersPoints.value;
+  if (!surface || !points.length) return;
+  const rect = surface.getBoundingClientRect();
+  const offsetX = event.clientX - rect.left;
+  let nearest = points[0];
+  let distance = Math.abs(offsetX - nearest.centerX);
+  for (const point of points) {
+    const diff = Math.abs(offsetX - point.centerX);
+    if (diff < distance) {
+      nearest = point;
+      distance = diff;
+    }
+  }
+  newUsersHoverPoint.value = nearest;
+};
+const clearNewUsersHover = () => {
+  newUsersHoverPoint.value = null;
+};
+const compactNewUsersLabels = computed(() => isMobile.value || adminPeriodDays.value >= 14);
+const newUsersLabelRange = computed(() => {
+  if (!compactNewUsersLabels.value || newUsersSeries.value.length < 2) return null;
+  const first = newUsersSeries.value[0]?.label || "";
+  const last = newUsersSeries.value[newUsersSeries.value.length - 1]?.label || "";
+  return { start: first, end: last };
+});
+const updateIsMobile = () => {
+  if (typeof window === "undefined") return;
+  isMobile.value = window.matchMedia("(max-width: 768px)").matches;
+};
 const error = ref("");
 const auth = useAuthStore();
 const agencyStore = useAgencyStore();
@@ -1082,8 +1289,18 @@ const buildUtmChips = (entry: MetricsUserTracking) => {
 
 const loadMetrics = async () => {
   error.value = "";
+  if (days.value === "custom" && !adminOrderedRange.value) {
+    return;
+  }
   try {
-    const res = await api.get("/admin/metrics", { params: { days: days.value } });
+    const params: Record<string, string | number> = {};
+    if (adminOrderedRange.value) {
+      params.start_date = adminOrderedRange.value.startISO;
+      params.end_date = adminOrderedRange.value.endISO;
+    } else {
+      params.days = Number(days.value);
+    }
+    const res = await api.get("/admin/metrics", { params });
     metrics.value = res.data;
   } catch (err: any) {
     metrics.value = null;
@@ -1326,7 +1543,7 @@ const exportPdf = () => {
   doc.text("Visão Gerencial · Relatório Premium", margin, cursor);
   cursor += lineHeight;
   doc.setFontSize(11);
-  doc.text(`Período: últimos ${days.value} dias`, margin, cursor);
+  doc.text(`Período: ${adminPeriodLabel.value}`, margin, cursor);
   cursor += lineHeight;
   doc.text(`Emitido em ${new Date().toLocaleString()}`, margin, cursor);
   cursor = 50;
@@ -1562,6 +1779,10 @@ watch(metrics, () => {
 });
 
 onMounted(async () => {
+  updateIsMobile();
+  if (typeof window !== "undefined") {
+    window.addEventListener("resize", updateIsMobile);
+  }
   if (!auth.user && auth.token) {
     await auth.fetchProfile();
   }
@@ -1576,7 +1797,27 @@ onMounted(async () => {
   await loadMetrics();
 });
 
-watch(days, loadMetrics);
+watch(
+  days,
+  async (value) => {
+    if (value === "custom" && !adminOrderedRange.value) return;
+    await loadMetrics();
+  }
+);
+
+watch(
+  [customStartDate, customEndDate],
+  async () => {
+    if (days.value !== "custom" || !adminOrderedRange.value) return;
+    await loadMetrics();
+  }
+);
+
+onUnmounted(() => {
+  if (typeof window !== "undefined") {
+    window.removeEventListener("resize", updateIsMobile);
+  }
+});
 </script>
 
 <style scoped>

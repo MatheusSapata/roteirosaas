@@ -134,7 +134,7 @@
         <p class="text-sm text-slate-500">Visitas (geral)</p>
         <div class="mt-2 flex items-end justify-between">
           <p class="text-3xl font-bold text-slate-900" :class="{ 'blurred-value': isFree }">
-            {{ totalVisits.toLocaleString("pt-BR") }}
+            {{ cardsTotalVisits.toLocaleString("pt-BR") }}
           </p>
           <span
             v-if="trend.visits !== null"
@@ -159,7 +159,7 @@
         <p class="text-sm text-slate-500">Cliques (geral)</p>
         <div class="mt-2 flex items-end justify-between">
           <p class="text-3xl font-bold text-slate-900" :class="{ 'blurred-value': isFree }">
-            {{ totalClicks.toLocaleString("pt-BR") }}
+            {{ cardsTotalClicks.toLocaleString("pt-BR") }}
           </p>
           <span
             v-if="trend.clicks !== null"
@@ -181,21 +181,47 @@
       </div>
     </section>
 
-    <div class="mb-2 flex flex-wrap items-center gap-2 text-xs text-slate-600">
-      <label class="font-semibold">Página:</label>
-      <select v-model="selectedPage" class="rounded-lg border border-slate-200 px-3 py-1 text-sm text-slate-700">
-        <option value="all">Todas as publicadas</option>
-        <option v-for="page in publishedPages" :key="page.id" :value="String(page.id)">
-          {{ page.title }}
-        </option>
-      </select>
+    <div class="mb-2 flex flex-wrap items-center gap-4 text-xs text-slate-600">
+      <div class="flex items-center gap-2">
+        <label class="font-semibold">Página:</label>
+        <select v-model="selectedPage" class="rounded-lg border border-slate-200 px-3 py-1 text-sm text-slate-700">
+          <option value="all">Todas as publicadas</option>
+          <option v-for="page in publishedPages" :key="page.id" :value="String(page.id)">
+            {{ page.title }}
+          </option>
+        </select>
+      </div>
+      <div class="flex flex-wrap items-center gap-3">
+        <label class="font-semibold">Período:</label>
+        <select v-model="selectedPeriod" class="rounded-lg border border-slate-200 px-3 py-1 text-sm text-slate-700">
+          <option v-for="period in statsPeriodOptions" :key="period" :value="period">
+            Últimos {{ period }} dias
+          </option>
+          <option value="custom">Personalizado</option>
+        </select>
+        <div v-if="selectedPeriod === 'custom'" class="flex flex-wrap items-center gap-2 text-xs text-slate-600">
+          <label class="font-semibold">De</label>
+          <input
+            type="date"
+            v-model="customStartDate"
+            class="rounded-lg border border-slate-200 px-3 py-1 text-sm text-slate-700"
+          />
+          <span class="font-semibold">até</span>
+          <input
+            type="date"
+            v-model="customEndDate"
+            class="rounded-lg border border-slate-200 px-3 py-1 text-sm text-slate-700"
+          />
+        </div>
+      </div>
     </div>
+
 
     <section class="grid gap-4 lg:grid-cols-2">
       <div class="rounded-2xl bg-white p-6 shadow-md ring-1 ring-slate-100">
         <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <h2 class="text-lg font-semibold text-slate-900">Visitas (últimos 7 dias)</h2>
+            <h2 class="text-lg font-semibold text-slate-900">Visitas ({{ chartPeriodLabel }})</h2>
             <p class="text-sm text-slate-500">Volume diário de acessos.</p>
           </div>
           <div class="text-3xl font-bold text-slate-900" :class="{ 'blurred-value': isFree }">
@@ -213,59 +239,72 @@
 
         <div class="mt-4 space-y-3">
           <div v-if="visitsPoints.length" class="rounded-xl bg-slate-50 p-6" :class="{ 'locked-blur': isFree }">
-            <div class="-mx-4 overflow-x-auto px-4">
-              <div class="flex min-w-full justify-center">
-                <div class="space-y-3" :style="chartContainerStyle">
-                  <div class="relative" :style="{ height: chartHeight + 'px' }">
-                    <svg :viewBox="`0 0 ${chartWidth} ${chartHeight}`" preserveAspectRatio="none" class="h-full w-full">
-                      <template v-for="point in visitsPoints" :key="point.label + '-visits'">
-                        <rect
-                          :x="point.x"
-                          :y="point.y"
-                          :width="barWidth"
-                          :height="Math.max(chartHeight - point.y, 1)"
-                          rx="6"
-                          fill="#41ce5f"
-                          opacity="0.85"
-                        />
-                      </template>
-                    </svg>
+            <div class="relative rounded-2xl border border-slate-100 bg-white/80 p-4">
+              <div class="pointer-events-none absolute inset-4">
+                <div
+                  v-for="line in chartGridLines"
+                  :key="'grid-visits-' + line"
+                  class="absolute left-0 right-0 border-t border-dashed border-emerald-100"
+                  :style="{ top: line + 'px' }"
+                ></div>
+              </div>
+              <div class="relative" :style="{ height: chartHeight + 'px' }">
+                <svg :viewBox="`0 0 ${chartWidth} ${chartHeight}`" preserveAspectRatio="none" class="h-full w-full text-emerald-500">
+                  <defs>
+                    <linearGradient id="visits-line-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stop-color="#16a34a" stop-opacity="0.95"></stop>
+                      <stop offset="100%" stop-color="#22c55e" stop-opacity="0.65"></stop>
+                    </linearGradient>
+                    <linearGradient id="visits-area-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stop-color="#86efac" stop-opacity="0.35"></stop>
+                      <stop offset="100%" stop-color="#f0fdf4" stop-opacity="0"></stop>
+                    </linearGradient>
+                  </defs>
+                  <path v-if="visitsAreaPath" :d="visitsAreaPath" fill="url(#visits-area-gradient)" stroke="none" />
+                  <path
+                    v-if="visitsLinePath"
+                    :d="visitsLinePath"
+                    stroke="url(#visits-line-gradient)"
+                    stroke-width="3"
+                    fill="none"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                  <template v-for="point in visitsPoints" :key="point.label + '-dot'">
+                    <circle :cx="point.centerX" :cy="point.y" r="4.5" fill="#f8fffe" stroke="#16a34a" stroke-width="2" />
+                  </template>
+                </svg>
 
-                    <div
-                      v-if="visitsHoverPoint"
-                      class="pointer-events-none absolute inset-y-0 w-px bg-slate-300"
-                      :style="{ left: visitsHoverPoint.centerX + 'px' }"
-                    ></div>
+                <div
+                  ref="visitsSurfaceRef"
+                  class="absolute inset-0 cursor-crosshair"
+                  @mousemove="visitsHandleMove"
+                  @mouseleave="visitsClearHover"
+                ></div>
 
-                    <div
-                      v-if="visitsHoverPoint"
-                      class="pointer-events-none absolute -translate-x-1/2 rounded-xl bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-lg ring-1 ring-slate-200"
-                      :style="visitsTooltipStyle"
-                    >
-                      <p class="text-[11px] font-semibold text-slate-500">{{ visitsHoverPoint.label }}</p>
-                      <p class="text-slate-800">Visitas: {{ visitsHoverPoint.value.toLocaleString("pt-BR") }}</p>
-                    </div>
-
-                    <div
-                      ref="visitsSurfaceRef"
-                      class="absolute inset-0 cursor-crosshair"
-                      @mousemove="visitsHandleMove"
-                      @mouseleave="visitsClearHover"
-                    ></div>
-                  </div>
-
-                  <div class="relative h-6 text-xs text-slate-500" :style="{ width: chartWidth + 'px' }">
-                    <span
-                      v-for="point in visitsPoints"
-                      :key="point.label + '-label-visits'"
-                      class="absolute -translate-x-1/2 whitespace-nowrap"
-                      :style="{ left: point.centerX + 'px' }"
-                    >
-                      {{ point.label }}
-                    </span>
-                  </div>
+                <div
+                  v-if="visitsHoverPoint"
+                  class="pointer-events-none absolute -translate-x-1/2 rounded-xl border border-white bg-slate-900/90 px-4 py-2 text-xs text-white shadow-lg"
+                  :style="visitsTooltipStyle"
+                >
+                  <p class="font-semibold">{{ visitsHoverPoint.label }}</p>
+                  <p>Visitas: {{ visitsHoverPoint.value.toLocaleString("pt-BR") }}</p>
                 </div>
               </div>
+            </div>
+
+            <div class="mt-2 text-xs text-slate-500">
+              <template v-if="compactChartLabels && chartLabelRange">
+                <div class="flex items-center justify-between font-semibold text-slate-700">
+                  <span>{{ chartLabelRange.start }}</span>
+                  <span>{{ chartLabelRange.end }}</span>
+                </div>
+              </template>
+              <template v-else>
+                <div class="flex flex-wrap justify-between gap-2 font-semibold text-slate-700">
+                  <span v-for="point in visitsPoints" :key="point.label + '-label-visits'">{{ point.label }}</span>
+                </div>
+              </template>
             </div>
           </div>
 
@@ -274,11 +313,10 @@
           </div>
         </div>
       </div>
-
       <div class="relative rounded-2xl bg-white p-6 shadow-md ring-1 ring-slate-100">
         <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <h2 class="text-lg font-semibold text-slate-900">Cliques (últimos 7 dias)</h2>
+            <h2 class="text-lg font-semibold text-slate-900">Cliques ({{ chartPeriodLabel }})</h2>
             <p class="text-sm text-slate-500">Total somado de cliques.</p>
           </div>
           <div class="text-3xl font-bold text-slate-900" :class="{ 'blurred-value': isFree }">
@@ -296,59 +334,72 @@
 
         <div class="mt-4 space-y-3">
           <div v-if="clicksPoints.length" class="rounded-xl bg-slate-50 p-6" :class="{ 'locked-blur': isFree }">
-            <div class="-mx-4 overflow-x-auto px-4">
-              <div class="flex min-w-full justify-center">
-                <div class="space-y-3" :style="chartContainerStyle">
-                  <div class="relative" :style="{ height: chartHeight + 'px' }">
-                    <svg :viewBox="`0 0 ${chartWidth} ${chartHeight}`" preserveAspectRatio="none" class="h-full w-full">
-                      <template v-for="point in clicksPoints" :key="point.label + '-clicks'">
-                        <rect
-                          :x="point.x"
-                          :y="point.y"
-                          :width="barWidth"
-                          :height="Math.max(chartHeight - point.y, 1)"
-                          rx="6"
-                          fill="#8b5cf6"
-                          opacity="0.85"
-                        />
-                      </template>
-                    </svg>
+            <div class="relative rounded-2xl border border-slate-100 bg-white/80 p-4">
+              <div class="pointer-events-none absolute inset-4">
+                <div
+                  v-for="line in chartGridLines"
+                  :key="'grid-clicks-' + line"
+                  class="absolute left-0 right-0 border-t border-dashed border-indigo-200"
+                  :style="{ top: line + 'px' }"
+                ></div>
+              </div>
+              <div class="relative" :style="{ height: chartHeight + 'px' }">
+                <svg :viewBox="`0 0 ${chartWidth} ${chartHeight}`" preserveAspectRatio="none" class="h-full w-full text-indigo-500">
+                  <defs>
+                    <linearGradient id="clicks-line-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stop-color="#7c3aed" stop-opacity="0.95"></stop>
+                      <stop offset="100%" stop-color="#a855f7" stop-opacity="0.65"></stop>
+                    </linearGradient>
+                    <linearGradient id="clicks-area-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stop-color="#ddd6fe" stop-opacity="0.35"></stop>
+                      <stop offset="100%" stop-color="#faf5ff" stop-opacity="0"></stop>
+                    </linearGradient>
+                  </defs>
+                  <path v-if="clicksAreaPath" :d="clicksAreaPath" fill="url(#clicks-area-gradient)" stroke="none" />
+                  <path
+                    v-if="clicksLinePath"
+                    :d="clicksLinePath"
+                    stroke="url(#clicks-line-gradient)"
+                    stroke-width="3"
+                    fill="none"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                  <template v-for="point in clicksPoints" :key="point.label + '-dot'">
+                    <circle :cx="point.centerX" :cy="point.y" r="4.5" fill="#f8f5ff" stroke="#7c3aed" stroke-width="2" />
+                  </template>
+                </svg>
 
-                    <div
-                      v-if="clicksHoverPoint"
-                      class="pointer-events-none absolute inset-y-0 w-px bg-slate-300"
-                      :style="{ left: clicksHoverPoint.centerX + 'px' }"
-                    ></div>
+                <div
+                  ref="clicksSurfaceRef"
+                  class="absolute inset-0 cursor-crosshair"
+                  @mousemove="clicksHandleMove"
+                  @mouseleave="clicksClearHover"
+                ></div>
 
-                    <div
-                      v-if="clicksHoverPoint"
-                      class="pointer-events-none absolute -translate-x-1/2 rounded-xl bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-lg ring-1 ring-slate-200"
-                      :style="clicksTooltipStyle"
-                    >
-                      <p class="text-[11px] font-semibold text-slate-500">{{ clicksHoverPoint.label }}</p>
-                      <p class="text-slate-800">Cliques: {{ clicksHoverPoint.value.toLocaleString("pt-BR") }}</p>
-                    </div>
-
-                    <div
-                      ref="clicksSurfaceRef"
-                      class="absolute inset-0 cursor-crosshair"
-                      @mousemove="clicksHandleMove"
-                      @mouseleave="clicksClearHover"
-                    ></div>
-                  </div>
-
-                  <div class="relative h-6 text-xs text-slate-500" :style="{ width: chartWidth + 'px' }">
-                    <span
-                      v-for="point in clicksPoints"
-                      :key="point.label + '-label-clicks'"
-                      class="absolute -translate-x-1/2 whitespace-nowrap"
-                      :style="{ left: point.centerX + 'px' }"
-                    >
-                      {{ point.label }}
-                    </span>
-                  </div>
+                <div
+                  v-if="clicksHoverPoint"
+                  class="pointer-events-none absolute -translate-x-1/2 rounded-xl border border-white bg-slate-900/90 px-4 py-2 text-xs text-white shadow-lg"
+                  :style="clicksTooltipStyle"
+                >
+                  <p class="font-semibold">{{ clicksHoverPoint.label }}</p>
+                  <p>Cliques: {{ clicksHoverPoint.value.toLocaleString("pt-BR") }}</p>
                 </div>
               </div>
+            </div>
+
+            <div class="mt-2 text-xs text-slate-500">
+              <template v-if="compactChartLabels && chartLabelRange">
+                <div class="flex items-center justify-between font-semibold text-slate-700">
+                  <span>{{ chartLabelRange.start }}</span>
+                  <span>{{ chartLabelRange.end }}</span>
+                </div>
+              </template>
+              <template v-else>
+                <div class="flex flex-wrap justify-between gap-2 font-semibold text-slate-700">
+                  <span v-for="point in clicksPoints" :key="point.label + '-label-clicks'">{{ point.label }}</span>
+                </div>
+              </template>
             </div>
           </div>
 
@@ -362,7 +413,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import api from "../../services/api";
 import { useAgencyStore } from "../../store/useAgencyStore";
@@ -383,7 +434,6 @@ type SeriesPoint = {
 
 type MetricPoint = {
   label: string;
-  x: number;
   centerX: number;
   y: number;
   value: number;
@@ -426,6 +476,13 @@ const pagesCount = ref(0);
 const selectedPage = ref<string>("all");
 const totalVisits = ref(0);
 const totalClicks = ref(0);
+const cardsTotalVisits = ref(0);
+const cardsTotalClicks = ref(0);
+const statsPeriodOptions = [7, 14, 30];
+const selectedPeriod = ref<number | "custom">(statsPeriodOptions[0]);
+const customStartDate = ref("");
+const customEndDate = ref("");
+const isMobile = ref(false);
 
 const isFree = computed(() => (auth.user?.plan || "free") === "free");
 
@@ -462,26 +519,63 @@ const chartData = computed(() => {
   return [];
 });
 
-const STATS_PERIOD_DAYS = 7;
 const brandGreen = "#41ce5f";
 const brandBorderSoft = "#cdeed9";
 
-const chartHeight = 280;
-const barWidth = 28;
-const barGap = 24;
-const horizontalPadding = 32;
+const lineChartHeight = 240;
+const lineChartWidth = 640;
+const lineChartPaddingX = 28;
+const lineChartPaddingY = 28;
+const lineChartInnerHeight = lineChartHeight - lineChartPaddingY * 2;
+const lineChartInnerWidth = lineChartWidth - lineChartPaddingX * 2;
+const chartGridLineRatios = [0.2, 0.4, 0.6, 0.8];
 
-const chartWidth = computed(() => {
-  const count = chartData.value.length;
-  if (!count) return 360;
-  const baseWidth = horizontalPadding * 2 + count * (barWidth + barGap);
-  return Math.max(baseWidth, 360);
+const chartHeight = lineChartHeight;
+const chartWidth = computed(() => lineChartWidth);
+const chartGridLines = computed(() =>
+  chartGridLineRatios.map((ratio) => lineChartPaddingY + ratio * lineChartInnerHeight)
+);
+const isCustomPeriod = computed(() => selectedPeriod.value === "custom");
+const customRangeReady = computed(
+  () => isCustomPeriod.value && Boolean(customStartDate.value) && Boolean(customEndDate.value)
+);
+const orderedCustomRange = computed(() => {
+  if (!customRangeReady.value) return null;
+  const start = new Date(customStartDate.value);
+  const end = new Date(customEndDate.value);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
+  if (start.getTime() <= end.getTime()) {
+    return { startISO: customStartDate.value, endISO: customEndDate.value, startDate: start, endDate: end };
+  }
+  return { startISO: customEndDate.value, endISO: customStartDate.value, startDate: end, endDate: start };
 });
-
-const chartContainerStyle = computed(() => ({
-  width: `${chartWidth.value}px`,
-  minWidth: `${chartWidth.value}px`
-}));
+const hasValidCustomRange = computed(() => Boolean(orderedCustomRange.value));
+const formatShortDate = (iso: string) => {
+  if (!iso) return "--";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "--";
+  return d.toLocaleDateString("pt-BR");
+};
+const selectedPeriodDays = computed(() => {
+  if (orderedCustomRange.value) {
+    const diff =
+      Math.floor(
+        (orderedCustomRange.value.endDate.getTime() - orderedCustomRange.value.startDate.getTime()) /
+          (1000 * 60 * 60 * 24)
+      ) + 1;
+    return Math.max(diff, 1);
+  }
+  return typeof selectedPeriod.value === "number" ? selectedPeriod.value : statsPeriodOptions[0];
+});
+const chartPeriodLabel = computed(() => {
+  if (orderedCustomRange.value) {
+    return `${formatShortDate(orderedCustomRange.value.startISO)} a ${formatShortDate(orderedCustomRange.value.endISO)}`;
+  }
+  if (isCustomPeriod.value) {
+    return "período personalizado";
+  }
+  return `últimos ${selectedPeriodDays.value} dias`;
+});
 
 const maxVisits = computed(() => {
   if (!chartData.value.length) return 1;
@@ -497,23 +591,57 @@ const maxClicks = computed(() => {
 
 const buildMetricPoints = (metric: "visits" | "clicks", maxValue: number): MetricPoint[] => {
   const safeMax = maxValue > 0 ? maxValue : 1;
+  if (!chartData.value.length) return [];
+  const count = chartData.value.length;
+  const step = count > 1 ? lineChartInnerWidth / (count - 1) : 0;
 
   return chartData.value.map((point, index) => {
-    const x = horizontalPadding + index * (barWidth + barGap);
-    const ratio = (point[metric] ?? 0) / safeMax;
+    const value = point[metric] ?? 0;
+    const ratio = value / safeMax;
+    const centerX = count === 1 ? lineChartWidth / 2 : lineChartPaddingX + index * step;
+    const y = lineChartPaddingY + (lineChartInnerHeight - ratio * lineChartInnerHeight);
 
     return {
       label: point.label,
-      x,
-      centerX: x + barWidth / 2,
-      y: chartHeight - ratio * chartHeight,
-      value: point[metric] ?? 0
+      centerX,
+      y,
+      value
     };
   });
 };
 
+const buildLinePath = (points: MetricPoint[]) => {
+  if (!points.length) return "";
+  return points.map((point, index) => `${index === 0 ? "M" : "L"} ${point.centerX} ${point.y}`).join(" ");
+};
+
+const buildAreaPath = (points: MetricPoint[]) => {
+  if (!points.length) return "";
+  const baselineY = lineChartPaddingY + lineChartInnerHeight;
+  if (points.length === 1) {
+    const point = points[0];
+    return `M ${point.centerX} ${baselineY} L ${point.centerX} ${point.y} L ${point.centerX} ${baselineY} Z`;
+  }
+  const segments = points.map((point) => `L ${point.centerX} ${point.y}`).join(" ");
+  const first = points[0];
+  const last = points[points.length - 1];
+  return `M ${first.centerX} ${baselineY} ${segments} L ${last.centerX} ${baselineY} Z`;
+};
+
 const visitsPoints = computed(() => buildMetricPoints("visits", maxVisits.value));
 const clicksPoints = computed(() => buildMetricPoints("clicks", maxClicks.value));
+const visitsLinePath = computed(() => buildLinePath(visitsPoints.value));
+const visitsAreaPath = computed(() => buildAreaPath(visitsPoints.value));
+const clicksLinePath = computed(() => buildLinePath(clicksPoints.value));
+const clicksAreaPath = computed(() => buildAreaPath(clicksPoints.value));
+const compactChartLabels = computed(() => isMobile.value || selectedPeriodDays.value >= 14);
+const chartLabelRange = computed(() => {
+  if (!compactChartLabels.value || chartData.value.length < 2) return null;
+  const first = chartData.value[0]?.label || "";
+  const last = chartData.value[chartData.value.length - 1]?.label || "";
+  if (!first || !last) return null;
+  return { start: first, end: last };
+});
 
 const createMetricHover = (pointsGetter: () => MetricPoint[]) => {
   const surfaceRef = ref<HTMLDivElement | null>(null);
@@ -522,7 +650,9 @@ const createMetricHover = (pointsGetter: () => MetricPoint[]) => {
   const tooltipStyle = computed(() => {
     if (!hoverPoint.value) return {};
     const padding = 40;
-    const left = Math.min(Math.max(hoverPoint.value.centerX, padding), chartWidth.value - padding);
+    const surfaceWidth = surfaceRef.value?.clientWidth || chartWidth.value;
+    const scaledX = (hoverPoint.value.centerX / chartWidth.value) * surfaceWidth;
+    const left = Math.min(Math.max(scaledX, padding), surfaceWidth - padding);
     const top = Math.max(hoverPoint.value.y - 40, 24);
     return { left: `${left}px`, top: `${top}px` };
   });
@@ -533,12 +663,14 @@ const createMetricHover = (pointsGetter: () => MetricPoint[]) => {
 
     const rect = surfaceRef.value.getBoundingClientRect();
     const offsetX = event.clientX - rect.left;
+    const surfaceWidth = surfaceRef.value.clientWidth || chartWidth.value;
+    const normalizedX = (offsetX / surfaceWidth) * chartWidth.value;
 
     let nearest = points[0];
-    let minDistance = Math.abs(nearest.centerX - offsetX);
+    let minDistance = Math.abs(nearest.centerX - normalizedX);
 
     for (const point of points) {
-      const distance = Math.abs(point.centerX - offsetX);
+      const distance = Math.abs(point.centerX - normalizedX);
       if (distance < minDistance) {
         nearest = point;
         minDistance = distance;
@@ -613,9 +745,79 @@ const onboardingSteps = computed<OnboardingStep[]>(() => [
 
 const allOnboardingStepsCompleted = computed(() => onboardingSteps.value.every(step => step.completed));
 
+const applyCardsStats = (stats: StatsOverviewResponse | null) => {
+  trend.pages = stats?.trend?.pages ?? null;
+  trend.visits = stats?.trend?.visits ?? null;
+  trend.whatsapp = stats?.trend?.whatsapp ?? null;
+  trend.clicks = stats?.trend?.clicks ?? null;
+  cardsTotalVisits.value = stats?.visits ?? 0;
+  cardsTotalClicks.value = (stats?.whatsapp ?? 0) + (stats?.cta ?? 0);
+};
+
+const applyChartStats = (stats: StatsOverviewResponse | null) => {
+  totalVisits.value = stats?.visits ?? 0;
+  totalClicks.value = (stats?.whatsapp ?? 0) + (stats?.cta ?? 0);
+  if (stats && Array.isArray(stats.timeseries)) {
+    chartDataRaw.value = stats.timeseries as SeriesPoint[];
+  } else {
+    chartDataRaw.value = [];
+  }
+  visitsChart.clearHover();
+  clicksChart.clearHover();
+};
+
+const appendRangeParams = (params: Record<string, string | number>) => {
+  if (orderedCustomRange.value) {
+    params.start_date = orderedCustomRange.value.startISO;
+    params.end_date = orderedCustomRange.value.endISO;
+  } else {
+    params.days = selectedPeriodDays.value;
+  }
+};
+
+const fetchOverviewStats = async (agencyId: number) => {
+  try {
+    const params: Record<string, string | number> = { agency_id: agencyId };
+    appendRangeParams(params);
+    const { data } = await api.get<StatsOverviewResponse>("/stats/overview", { params });
+    applyCardsStats(data);
+    if (selectedPage.value === "all") {
+      applyChartStats(data);
+    }
+  } catch {
+    applyCardsStats(null);
+    if (selectedPage.value === "all") {
+      applyChartStats(null);
+    }
+  }
+};
+
+const fetchSelectedPageStats = async (agencyId: number) => {
+  if (selectedPage.value === "all") return;
+
+  const pageId = Number(selectedPage.value);
+  if (Number.isNaN(pageId)) {
+    applyChartStats(null);
+    return;
+  }
+
+  try {
+    const params: Record<string, string | number> = {
+      agency_id: agencyId,
+      page_id: pageId
+    };
+    appendRangeParams(params);
+    const { data } = await api.get<StatsOverviewResponse>("/stats/overview", { params });
+    applyChartStats(data);
+  } catch {
+    applyChartStats(null);
+  }
+};
+
 const fetchData = async () => {
   await agencyStore.loadAgencies();
   if (!agencyStore.currentAgencyId) return;
+  if (selectedPeriod.value === "custom" && !hasValidCustomRange.value) return;
 
   const agencyId = agencyStore.currentAgencyId;
 
@@ -623,48 +825,8 @@ const fetchData = async () => {
   pages.value = res.data;
   pagesCount.value = res.data.length;
 
-  try {
-    const params: Record<string, string | number> = {
-      days: STATS_PERIOD_DAYS,
-      agency_id: agencyId
-    };
-
-    if (selectedPage.value !== "all") {
-      params.page_id = Number(selectedPage.value);
-    }
-
-    const s = await api.get<StatsOverviewResponse>("/stats/overview", { params });
-
-    trend.pages = s.data?.trend?.pages ?? null;
-    trend.visits = s.data?.trend?.visits ?? null;
-    trend.whatsapp = s.data?.trend?.whatsapp ?? null;
-    trend.clicks = s.data?.trend?.clicks ?? null;
-
-    totalVisits.value = s.data?.visits ?? 0;
-    totalClicks.value = (s.data?.whatsapp ?? 0) + (s.data?.cta ?? 0);
-
-    if (Array.isArray(s.data?.timeseries)) {
-      chartDataRaw.value = s.data.timeseries as SeriesPoint[];
-    } else {
-      chartDataRaw.value = [];
-    }
-
-    visitsChart.clearHover();
-    clicksChart.clearHover();
-  } catch {
-    trend.pages = null;
-    trend.visits = null;
-    trend.whatsapp = null;
-    trend.clicks = null;
-
-    totalVisits.value = 0;
-    totalClicks.value = 0;
-
-    chartDataRaw.value = [];
-
-    visitsChart.clearHover();
-    clicksChart.clearHover();
-  }
+  await fetchOverviewStats(agencyId);
+  await fetchSelectedPageStats(agencyId);
 };
 
 watch(
@@ -677,7 +839,46 @@ watch(
 );
 
 onMounted(fetchData);
-watch(selectedPage, fetchData);
+const updateIsMobile = () => {
+  if (typeof window === "undefined") return;
+  isMobile.value = window.matchMedia("(max-width: 768px)").matches;
+};
+onMounted(() => {
+  updateIsMobile();
+  window.addEventListener("resize", updateIsMobile);
+});
+onUnmounted(() => {
+  window.removeEventListener("resize", updateIsMobile);
+});
+watch(
+  selectedPage,
+  async () => {
+    if (!agencyStore.currentAgencyId) return;
+    await fetchSelectedPageStats(agencyStore.currentAgencyId);
+  }
+);
+
+watch(
+  selectedPeriod,
+  async (value) => {
+    if (!agencyStore.currentAgencyId) return;
+    if (value === "custom" && !hasValidCustomRange.value) return;
+    const agencyId = agencyStore.currentAgencyId;
+    await fetchOverviewStats(agencyId);
+    await fetchSelectedPageStats(agencyId);
+  }
+);
+
+watch(
+  [customStartDate, customEndDate],
+  async () => {
+    if (selectedPeriod.value !== "custom" || !hasValidCustomRange.value) return;
+    if (!agencyStore.currentAgencyId) return;
+    const agencyId = agencyStore.currentAgencyId;
+    await fetchOverviewStats(agencyId);
+    await fetchSelectedPageStats(agencyId);
+  }
+);
 
 const goPlans = () => {
   router.push("/admin/planos");
