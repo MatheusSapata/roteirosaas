@@ -8,30 +8,6 @@
       </div>
 
       <div class="flex flex-wrap items-center gap-2">
-        <div class="flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            @click="refreshPreview(true)"
-            :class="toolbarSecondaryButtonClass"
-          >
-            <svg
-              class="h-4 w-4"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.8"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
-              <polyline points="23 4 23 10 17 10" />
-              <polyline points="1 20 1 14 7 14" />
-              <path d="M3.51 9A9 9 0 0 1 21 10M20.49 15A9 9 0 0 1 3 14" />
-            </svg>
-            Atualizar preview
-          </button>
-        </div>
-
         <button
           @click="saveTemplate"
           :class="toolbarSecondaryButtonClass"
@@ -261,63 +237,58 @@
 
     <div class="space-y-4">
       <div class="rounded-2xl bg-white p-4 shadow-md">
-        <div class="mt-4 grid gap-4 md:grid-cols-2">
-          <div>
-            <label class="text-sm font-semibold text-slate-600">Título</label>
-            <input v-model="pageTitle" @blur="scheduleWhatsAppUpdate" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
-          </div>
-          <div>
-            <div class="flex items-center gap-2">
-              <label class="text-sm font-semibold text-slate-600">Slug</label>
-              <span class="text-xs text-slate-500">Slug é a parte do link depois da barra, sem espaços ou acentos. Ex.: meu-roteiro-incrivel.</span>
+        <div class="mt-4 grid gap-6 lg:grid-cols-2">
+          <div class="space-y-4 rounded-2xl border border-slate-100 px-4 py-4">
+            <div class="space-y-4">
+              <div>
+                <label class="text-sm font-semibold text-slate-600">Título</label>
+                <input v-model="pageTitle" @blur="scheduleWhatsAppUpdate" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
+              </div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <label class="text-sm font-semibold text-slate-600">Slug</label>
+                  <span class="text-xs text-slate-500">Slug é a parte do link depois da barra, sem espaços ou acentos. Ex.: meu-roteiro-incrivel.</span>
+                </div>
+                <input
+                  :value="pageSlug"
+                  @input="handleSlugInput"
+                  class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2"
+                />
+              </div>
             </div>
-            <input
-              :value="pageSlug"
-              @input="handleSlugInput"
-              class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2"
-            />
-          </div>
-        </div>
-        <div class="mt-4 grid gap-4 text-sm text-slate-600 md:grid-cols-2">
-          <div>
-            <div class="flex items-center gap-2">
-              <label class="block text-sm font-semibold text-slate-600">Cores de fundo</label>
-              <span class="text-xs text-slate-500">Aplica alternância em todas as seções (exceto hero).</span>
-            </div>
-            <div class="mt-1 flex flex-wrap items-center gap-2">
-              <label class="flex items-center gap-2">
-                <span>Cor 1</span>
-                <input type="color" v-model="colorA" class="h-9 w-9 cursor-pointer rounded border border-slate-200 bg-white" />
-              </label>
-              <label class="flex items-center gap-2">
-                <span>Cor 2</span>
-                <input type="color" v-model="colorB" class="h-9 w-9 cursor-pointer rounded border border-slate-200 bg-white" />
-              </label>
-            </div>
-          </div>
-          <div>
-            <div class="flex items-center gap-2">
-              <label class="text-sm font-semibold text-slate-600">Cor de botões e destaques</label>
-              <span class="text-xs text-slate-500">Afeta CTAs, chips e elementos em destaque.</span>
-            </div>
-            <div class="mt-1 flex items-center gap-2">
-              <input
-                type="color"
-                v-model="ctaColor"
-                class="h-9 w-9 cursor-pointer rounded border border-slate-200 bg-white"
-              />
-              <button
-                type="button"
-                class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:bg-slate-100"
-                @click="refreshCtaColors"
-              >
-                Atualizar cores
-              </button>
+            <div class="grid gap-4 text-sm text-slate-600 md:grid-cols-2">
+              <div>
+                <div class="flex items-center gap-2">
+                  <label class="block text-sm font-semibold text-slate-600">Cores de fundo</label>
+                  <span class="text-xs text-slate-500">Aplica alternância em todas as seções (exceto hero).</span>
+                </div>
+                <div class="mt-1 flex flex-wrap items-center gap-2">
+                  <label class="flex items-center gap-2">
+                    <span>Cor 1</span>
+                    <input type="color" v-model="colorA" class="h-9 w-9 cursor-pointer rounded border border-slate-200 bg-white" />
+                  </label>
+                  <label class="flex items-center gap-2">
+                    <span>Cor 2</span>
+                    <input type="color" v-model="colorB" class="h-9 w-9 cursor-pointer rounded border border-slate-200 bg-white" />
+                  </label>
+                </div>
+              </div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <label class="text-sm font-semibold text-slate-600">Cor de botões e destaques</label>
+                  <span class="text-xs text-slate-500">Afeta CTAs, chips e elementos em destaque.</span>
+                </div>
+                <div class="mt-1 flex items-center gap-2">
+                  <input
+                    type="color"
+                    v-model="ctaColor"
+                    class="h-9 w-9 cursor-pointer rounded border border-slate-200 bg-white"
+                  />
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-        <div class="mt-6 rounded-2xl border border-slate-100 px-4 py-4">
-          <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div class="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-4">
             <div class="space-y-1">
               <p class="text-sm font-semibold text-slate-700">Pixel de rastreamento</p>
               <p class="text-xs text-slate-500">
@@ -328,21 +299,21 @@
               </p>
             </div>
 
-            <div class="w-full max-w-xl space-y-3">
+            <div class="mt-4 space-y-3">
               <div
                 v-if="!canSelectPixel"
-                class="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500"
+                class="rounded-lg border border-dashed border-slate-200 bg-white/80 px-3 py-2 text-sm text-slate-500"
               >
                 Adicione pixels na página Integrações (plano Essencial ou superior).
               </div>
 
               <template v-else>
-                <div class="grid gap-3 md:grid-cols-2">
+                <div class="grid gap-3 sm:grid-cols-2">
                   <div>
                     <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Pixel Meta</label>
                     <select
                       v-model="selectedPixels.meta"
-                      class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800"
+                      class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800"
                       :disabled="!metaPixelOptions.length"
                     >
                       <option value="">Sem pixel Meta</option>
@@ -356,7 +327,7 @@
                     <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Pixel Google</label>
                     <select
                       v-model="selectedPixels.ga"
-                      class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800"
+                      class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800"
                       :disabled="!gaPixelOptions.length"
                     >
                       <option value="">Sem pixel Google</option>
@@ -368,7 +339,7 @@
                   </div>
                 </div>
 
-                <div class="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700">
+                <div class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
                   <p class="font-semibold text-slate-800">Eventos a enviar</p>
 
                   <div class="mt-2 flex flex-wrap gap-4">
@@ -1424,12 +1395,6 @@ const applyAgencyBranding = () => {
   fillHeroLogoFromAgency();
 };
 
-const refreshCtaColors = () => {
-  applyPrimaryToThemeAndSections(theme.value.ctaDefaultColor, ctaColor.value);
-  refreshPreview(true);
-  showSnackbar("Cores aplicadas nas seções");
-};
-
 const loadPixels = async () => {
   try {
     const res = await api.get("/pixels/");
@@ -2254,11 +2219,13 @@ watch([colorA, colorB], ([a, b], [_prevA, prevB]) => {
 watch(colorA, value => {
   theme.value.color1 = value;
   markUnsavedChanges();
+  refreshPreview(false);
 });
 
 watch(colorB, value => {
   theme.value.color2 = value;
   markUnsavedChanges();
+  refreshPreview(false);
 });
 
 watch(ctaColor, (value, previous) => {
@@ -2269,6 +2236,7 @@ watch(ctaColor, (value, previous) => {
   }
   applyPrimaryToThemeAndSections(previous, value);
   markUnsavedChanges();
+  refreshPreview(false);
 });
 
 watch(previewDevice, value => {
