@@ -169,13 +169,14 @@ def get_admin_metrics(
     stats_by_page = {
         page_id: {
             "total_visits": visits or 0,
-            "total_cta_clicks": clicks_cta or 0,
+            "total_cta_clicks": (clicks_cta or 0) + (clicks_whatsapp or 0),
         }
-        for page_id, visits, clicks_cta in (
+        for page_id, visits, clicks_cta, clicks_whatsapp in (
             db.query(
                 PageVisitStats.page_id,
                 func.sum(PageVisitStats.visits).label("visits"),
                 func.sum(PageVisitStats.clicks_cta).label("clicks_cta"),
+                func.sum(PageVisitStats.clicks_whatsapp).label("clicks_whatsapp"),
             )
             .group_by(PageVisitStats.page_id)
             .all()
