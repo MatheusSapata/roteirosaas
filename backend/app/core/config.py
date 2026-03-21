@@ -89,6 +89,11 @@ class Settings(BaseSettings):
     smtp_use_tls: bool = Field(True, alias="SMTP_USE_TLS")
     smtp_use_ssl: bool = Field(False, alias="SMTP_USE_SSL")
     webapp_base_url: str | None = Field(None, alias="WEBAPP_BASE_URL")
+    gemini_api_key: str | None = Field(None, alias="GEMINI_API_KEY")
+    gemini_api_base_url: str = Field("https://generativelanguage.googleapis.com", alias="GEMINI_API_BASE_URL")
+    gemini_text_model: str = Field("models/gemini-2.5-flash", alias="GEMINI_TEXT_MODEL")
+    gemini_fast_model: str | None = Field("models/gemini-2.5-flash", alias="GEMINI_FAST_MODEL")
+    gemini_image_model: str = Field("models/nano-banana-pro-preview", alias="GEMINI_IMAGE_MODEL")
 
     @field_validator("platform_domains", "forbidden_custom_hosts", mode="before")
     @classmethod

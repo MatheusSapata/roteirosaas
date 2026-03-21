@@ -24,11 +24,24 @@
           <RichTextEditor v-model="day.description" placeholder="Descrição detalhada do dia" />
         </div>
         <div class="md:col-span-3">
-          <ImageUploadField
-            v-model="day.image"
-            label="Imagem opcional"
-            hint="Esta imagem aparece quando o visitante expande o dia."
-          />
+          <div class="space-y-2 rounded-lg border border-dashed border-slate-200 p-3">
+            <div class="flex items-center justify-between text-sm font-semibold text-slate-600">
+              <span>Imagem opcional</span>
+              <button
+                v-if="day.image"
+                type="button"
+                class="text-xs font-semibold uppercase tracking-wide text-rose-500 hover:text-rose-600"
+                @click="removeDayImage(day)"
+              >
+                remover
+              </button>
+            </div>
+            <ImageUploadField
+              v-model="day.image"
+              label=""
+              hint="Esta imagem aparece quando o visitante expande o dia."
+            />
+          </div>
         </div>
         <button class="text-left text-sm text-red-500" @click="removeDay(index)">Remover</button>
       </div>
@@ -87,6 +100,9 @@ watch(
 );
 const addDay = () => local.days.push({ day: "Dia", title: "", description: "", image: "" });
 const removeDay = (index: number) => local.days.splice(index, 1);
+const removeDayImage = (day: ItinerarySection["days"][number]) => {
+  day.image = "";
+};
 
 watch(
   () => ({ ...local, days: local.days.map(day => ({ ...day })) }),

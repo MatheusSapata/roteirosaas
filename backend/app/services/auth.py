@@ -3,18 +3,27 @@ from typing import Optional
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
+from passlib.exc import UnknownHashError
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.models.user import User
 
-# Usa pbkdf2_sha256 para evitar limitações/bugs do backend bcrypt.
-pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
+# Usa pbkdf2_sha256 para novos hashes, mas mantém suporte a bcrypt legado.
+pwd_context = CryptContext(
+    schemes=["pbkdf2_sha256", "bcrypt"],
+    default="pbkdf2_sha256",
+    deprecated="auto",
+)
 settings = get_settings()
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        return pwd_context.verify(plain_password, hashed_password)
+    except (ValueError, UnknownHashError):
+        # Trata hashes legados desconhecidos como credenciais inválidas.
+        return False
 
 
 def get_password_hash(password: str) -> str:

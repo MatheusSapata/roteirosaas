@@ -87,6 +87,71 @@ const desktopRows = computed(() => {
   return [first, second];
 });
 
+const ICON_MAP: Record<string, string> = {
+  bus: "🚌",
+  fabus: "🚌",
+  shuttle: "🚌",
+  transport: "🚌",
+  water: "💦",
+  water_park: "🌊",
+  fawater: "💦",
+  pool: "🏊",
+  hotel: "🏨",
+  fahotel: "🏨",
+  family: "👨‍👩‍👧‍👦",
+  fafamily: "👨‍👩‍👧‍👦",
+  map: "🗺️",
+  location: "📍",
+  price: "💰",
+  wallet: "💰",
+  ticket: "🎟️",
+  support: "🤝",
+  guide: "🧭",
+  star: "⭐",
+  experience: "✨",
+  plane: "✈️",
+  airplane: "✈️",
+  flight: "✈️",
+  ship: "🚢",
+  cruise: "🛳️",
+  car: "🚗",
+  van: "🚐",
+  transportadora: "🚐",
+  mountain: "⛰️",
+  beach: "🏖️",
+  sun: "☀️",
+  camera: "📸",
+  photo: "📸",
+  adventure: "🧗",
+  relax: "🧘",
+  food: "🍽️",
+  restaurant: "🍽️",
+  wine: "🍷",
+  spa: "💆",
+  hiking: "🥾",
+  culture: "🎭",
+  art: "🎨",
+  museum: "🏛️",
+  shopping: "🛍️",
+  safety: "🛡️",
+  security: "🛡️",
+  clock: "⏰",
+  time: "⏰",
+  calendar: "📅",
+  guidebook: "📘",
+  whatsapp: "💬"
+};
+
+const normalizeIcon = (value?: string): string => {
+  if (!value) return "⭐";
+  const trimmed = value.trim();
+  if (!trimmed) return "⭐";
+  const lookup = ICON_MAP[trimmed.toLowerCase()];
+  if (lookup) return lookup;
+  if (trimmed.length <= 4) return trimmed.toUpperCase();
+  return trimmed;
+};
+
 const descriptionHtml = (text?: string) => sanitizeHtml(text);
 
 const ReasonCard = defineComponent({
@@ -97,10 +162,11 @@ const ReasonCard = defineComponent({
     }
   },
   setup(componentProps) {
+    const displayIcon = computed(() => normalizeIcon(componentProps.item.icon));
     return () =>
       h("div", { class: "reason-card-content" }, [
         h("div", { class: "mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-slate-50 text-3xl" }, [
-          h("span", componentProps.item.icon || "⭐")
+          h("span", displayIcon.value)
         ]),
         h("h3", { class: "mt-3 text-lg font-semibold text-slate-900" }, componentProps.item.title),
         h("div", {

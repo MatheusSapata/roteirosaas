@@ -54,25 +54,36 @@ const buildDefaultTargetDate = () => {
   return date.toISOString().slice(0, 16);
 };
 
+const DEFAULT_TEXT_COLOR = "#ffffff";
+
 const local = reactive<CountdownSection>({
   enabled: true,
   label: "Garanta sua vaga agora mesmo!",
   targetDate: props.modelValue.targetDate || buildDefaultTargetDate(),
   backgroundColor: "#ef4444",
-  textColor: "#ffffff",
-  layout: "flip",
+  textColor: DEFAULT_TEXT_COLOR,
   headingLabel: props.modelValue.headingLabel ?? headingDefaults.label,
   headingLabelStyle: props.modelValue.headingLabelStyle ?? headingDefaults.style,
   ...props.modelValue
 });
+
+if (
+  !props.modelValue.textColor ||
+  (typeof props.modelValue.textColor === "string" &&
+    props.modelValue.textColor.trim().toLowerCase() === DEFAULT_TEXT_COLOR)
+) {
+  local.textColor = "";
+}
 let syncing = false;
 const syncFromProps = (value: CountdownSection) => {
   syncing = true;
   Object.assign(local, value);
   local.targetDate = value.targetDate || buildDefaultTargetDate();
-  local.layout = "flip";
   local.headingLabel = value.headingLabel ?? headingDefaults.label;
   local.headingLabelStyle = value.headingLabelStyle || headingDefaults.style;
+  const normalizedTextColor =
+    typeof value.textColor === "string" ? value.textColor.trim().toLowerCase() : "";
+  local.textColor = !normalizedTextColor || normalizedTextColor === DEFAULT_TEXT_COLOR ? "" : value.textColor;
   nextTick(() => {
     syncing = false;
   });

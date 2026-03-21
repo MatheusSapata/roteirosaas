@@ -53,7 +53,7 @@
           rel="noopener"
           data-track-event="cta"
           :data-track-type="ctaTrackType"
-          class="inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl"
+          class="inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl"
           :style="{ background: accent }"
         >
           {{ section.ctaLabel || "Falar com especialista" }}

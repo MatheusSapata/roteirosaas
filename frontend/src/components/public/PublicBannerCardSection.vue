@@ -36,13 +36,27 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, inject, isRef } from "vue";
 import { resolveMediaUrl } from "../../utils/media";
 import { isWhatsappLink } from "../../utils/links";
 import { getReadableTextColor } from "../../utils/colorContrast";
 import type { BannerCardSection } from "../../types/page";
+import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
 
 const props = defineProps<{ section: BannerCardSection; previewDevice?: "desktop" | "mobile" }>();
+
+const branding = inject(PUBLIC_BRANDING_KEY, null);
+const brandingPrimary = computed(() => {
+  if (!branding) return "";
+  const data = isRef(branding) ? branding.value : branding;
+  if (typeof data === "object" && data) {
+    const color = (data as Record<string, any>).primary_color;
+    if (typeof color === "string" && color.trim()) {
+      return color.trim();
+    }
+  }
+  return "";
+});
 
 const fallbackChannels = { r: 5, g: 6, b: 15 };
 
@@ -124,7 +138,7 @@ const ctaHasTarget = computed(() =>
 const ctaHref = computed(() =>
   ctaIsScroll.value ? `#${props.section.ctaSectionId}` : props.section.ctaLink || "#"
 );
-const ctaColor = computed(() => props.section.ctaColor || "#41ce5f");
+const ctaColor = computed(() => props.section.ctaColor || brandingPrimary.value || "#41ce5f");
 const buttonTextColor = computed(() => getReadableTextColor(ctaColor.value));
 const ctaTrackType = computed(() =>
   ctaIsScroll.value ? "cta" : isWhatsappLink(props.section.ctaLink || undefined) ? "whatsapp" : "cta"

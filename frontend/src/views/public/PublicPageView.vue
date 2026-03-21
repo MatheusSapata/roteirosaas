@@ -16,6 +16,7 @@
         v-if="section?.enabled && section.type === 'hero'"
         :section="section"
         :branding="pageData.branding"
+        :primary-color="brandingPrimaryColor"
       />
       <component
         v-else-if="section?.enabled"
@@ -68,6 +69,14 @@ const theme = ref<ThemeConfig>({
   color1: "#f8fafc",
   color2: "#ffffff",
   sidebarTheme: "light"
+});
+const brandingPrimaryColor = computed(() => {
+  const themeColor = (theme.value.ctaDefaultColor || "").trim();
+  if (themeColor) return themeColor;
+  const data = pageData.value?.branding as Record<string, any> | undefined;
+  const agencyColor = typeof data?.primary_color === "string" ? data.primary_color.trim() : "";
+  if (agencyColor) return agencyColor;
+  return "#41ce5f";
 });
 const brandLogo = BrandLogo;
 const defaultDescription =
@@ -318,7 +327,22 @@ function applyBackgrounds(list: PageSection[]): PageSection[] {
     if (!section.anchorId) {
       section = { ...section, anchorId: `section-${Math.random().toString(36).slice(2, 9)}` };
     }
-    if (section.type === "hero" || section.type === "countdown" || section.type === "free_footer_brand") return section;
+    if (section.type === "hero" || section.type === "free_footer_brand") return section;
+    if (section.type === "countdown") {
+      const countdownColor = section.backgroundColor?.trim() || brandingPrimaryColor.value;
+      altIndex += 1;
+      return { ...section, backgroundColor: countdownColor };
+    }
+    if (section.type === "cta") {
+      const ctaColor = section.backgroundColor?.trim() || brandingPrimaryColor.value;
+      altIndex += 1;
+      return { ...section, backgroundColor: ctaColor };
+    }
+    if (section.type === "prices") {
+      const pricesCard = (section as any).cardColor?.trim() || brandingPrimaryColor.value;
+      altIndex += 1;
+      return { ...section, cardColor: pricesCard };
+    }
     const backgroundColor = section.backgroundColor || (altIndex % 2 === 0 ? theme.value.color1 : theme.value.color2);
     altIndex += 1;
     return { ...section, backgroundColor };

@@ -58,7 +58,6 @@ const headingDefaults = getSectionHeadingDefaults("cta");
 
 const local = reactive<CtaSection>({
   ...props.modelValue,
-  layout: props.modelValue.layout || "simple",
   headingLabel: props.modelValue.headingLabel ?? headingDefaults.label,
   headingLabelStyle: props.modelValue.headingLabelStyle ?? headingDefaults.style,
   link: props.modelValue.link || "https://wa.me/",

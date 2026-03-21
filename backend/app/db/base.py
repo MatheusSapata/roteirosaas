@@ -20,4 +20,5 @@ from app.models import (
     cakto,
     agency_domain,
     revenue,
+    ai_credit,
 )  # noqa: E402,F401

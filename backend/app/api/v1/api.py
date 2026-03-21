@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
+    ai,
     admin,
     agencies,
     agency_domains,
@@ -32,3 +33,4 @@ api_router.include_router(billing.router, prefix="/billing", tags=["billing"])
 api_router.include_router(pixels.router, prefix="/pixels", tags=["pixels"])
 api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
 api_router.include_router(lessons.router, prefix="/lessons", tags=["lessons"])
+api_router.include_router(ai.router, prefix="/ai", tags=["ai"])

@@ -29,6 +29,23 @@
           </nav>
         </div>
 
+        <div class="mt-6 rounded-2xl border border-slate-100 bg-slate-50/80 p-4 text-sm text-slate-600">
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-[0.4em] text-slate-500">Créditos IA</p>
+              <p class="text-xl font-bold text-slate-900">{{ aiCreditsLabel }}</p>
+            </div>
+            <button
+              type="button"
+              class="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white shadow hover:bg-slate-800"
+              @click="goPlans"
+            >
+              Gerenciar
+            </button>
+          </div>
+          <p class="mt-2 text-xs text-slate-500">Use créditos para criar páginas e imagens com IA.</p>
+        </div>
+
         <div class="mt-8 border-t border-slate-200 pt-4">
           <button
             type="button"
@@ -124,6 +141,22 @@
               <span>{{ item.label }}</span>
             </RouterLink>
           </nav>
+          <div class="mt-6 rounded-2xl border border-slate-100 bg-slate-50/80 p-4 text-sm text-slate-600">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-[0.4em] text-slate-500">Créditos IA</p>
+                <p class="text-xl font-bold text-slate-900">{{ aiCreditsLabel }}</p>
+              </div>
+              <button
+                type="button"
+                class="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white shadow hover:bg-slate-800"
+                @click="goPlans(); mobileMenuOpen = false"
+              >
+                Gerenciar
+              </button>
+            </div>
+            <p class="mt-2 text-xs text-slate-500">Crie páginas completas com IA.</p>
+          </div>
           <div class="mt-6 border-t border-slate-200 pt-4">
             <button
               type="button"
@@ -483,6 +516,7 @@ import { useAuthStore } from "../store/useAuthStore";
 import { getPlanLabel } from "../utils/planLabels";
 import { addTagsToContactByEmail, syncPlanTagForEmail, viajeChatTagIds } from "../services/viajeChat";
 import { slugify } from "../utils/slugify";
+import { fetchAiCredits } from "../services/ai";
 
 const route = useRoute();
 const router = useRouter();
@@ -550,6 +584,38 @@ const navItems = computed(() => {
   return items;
 });
 
+const aiCreditsBalance = ref<number | null>(null);
+const aiCreditsLoading = ref(false);
+const aiCreditsError = ref("");
+const aiCreditsLabel = computed(() => {
+  if (aiCreditsLoading.value) return "Consultando...";
+  if (aiCreditsError.value) return aiCreditsError.value;
+  if (aiCreditsBalance.value === null) return "—";
+  const value = aiCreditsBalance.value;
+  const unit = value === 1 ? "crédito" : "créditos";
+  return `${value} ${unit}`;
+});
+
+const loadAiCredits = async () => {
+  if (!auth.token) {
+    aiCreditsBalance.value = null;
+    aiCreditsError.value = "";
+    return;
+  }
+  aiCreditsLoading.value = true;
+  aiCreditsError.value = "";
+  try {
+    const res = await fetchAiCredits();
+    aiCreditsBalance.value = res.balance;
+  } catch (err) {
+    console.error(err);
+    aiCreditsBalance.value = null;
+    aiCreditsError.value = "indisponível";
+  } finally {
+    aiCreditsLoading.value = false;
+  }
+};
+
 const currentPageTitle = computed(() => {
   const routeName = typeof route.name === "string" ? route.name : null;
   if (routeName && routeTitleMap[routeName]) {
@@ -590,6 +656,10 @@ const dismissCookies = () => {
 const handleLogout = () => {
   auth.logout();
   router.push({ name: "login" });
+};
+
+const goPlans = () => {
+  router.push("/admin/planos");
 };
 
 const showWelcomeDialog = ref(false);
@@ -994,6 +1064,9 @@ onMounted(async () => {
   if (!auth.user && auth.token) {
     await auth.fetchProfile();
   }
+  if (auth.token) {
+    await loadAiCredits();
+  }
   checkCookieConsent();
   scrollToTop();
 });
@@ -1034,6 +1107,17 @@ watch(
   () => auth.user?.email,
   () => {
     lastSyncedPlan.value = null;
+  }
+);
+
+watch(
+  () => auth.token,
+  token => {
+    if (token) {
+      loadAiCredits();
+    } else {
+      aiCreditsBalance.value = null;
+    }
   }
 );
 </script>

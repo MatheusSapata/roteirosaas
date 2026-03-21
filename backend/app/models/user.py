@@ -41,3 +41,9 @@ class User(Base):
     subscription = relationship("Subscription", uselist=False, foreign_keys=[subscription_id])
     pixels = relationship("Pixel", back_populates="user", cascade="all, delete-orphan")
     tracking_entries = relationship("UserTracking", back_populates="user", cascade="all, delete-orphan")
+    ai_credit_wallet = relationship(
+        "AiCreditWallet",
+        uselist=False,
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )

@@ -356,6 +356,14 @@
     </div>
   </div>
 
+  <CreateAiPageModal
+    :open="aiModalOpen"
+    :agency-id="agencyStore.currentAgencyId"
+    @close="aiModalOpen = false"
+    @created="handleAiCreated"
+    @snackbar="handleAiSnackbar"
+  />
+
   <transition name="fade">
     <div
       v-if="snackbar.open"
@@ -374,6 +382,7 @@ import api from "../../services/api";
 import { useAgencyStore } from "../../store/useAgencyStore";
 import { useAuthStore } from "../../store/useAuthStore";
 import { getPlanLabel } from "../../utils/planLabels";
+import CreateAiPageModal from "../../components/admin/CreateAiPageModal.vue";
 
 interface Page {
   id: number;
@@ -408,6 +417,7 @@ const snackbar = ref<{ open: boolean; text: string; tone: "success" | "error" }>
   text: "",
   tone: "success"
 });
+const aiModalOpen = ref(false);
 const duplicateTitle = ref("");
 const duplicateSlug = ref("");
 const duplicateSourcePage = ref<Page | null>(null);
@@ -614,7 +624,21 @@ const createPageFromTemplate = () => {
 };
 
 const createPageWithAi = () => {
-  showSnackbar("Funcionalidade em desenvolvimento. Em breve você poderá criar páginas com IA.");
+  if (!agencyStore.currentAgencyId) {
+    showSnackbar("Selecione ou crie uma agência antes de usar a IA.", "error");
+    return;
+  }
+  createOptionsOpen.value = false;
+  aiModalOpen.value = true;
+};
+
+const handleAiCreated = (payload: { pageId: number; redirect: string }) => {
+  aiModalOpen.value = false;
+  router.push(payload.redirect);
+};
+
+const handleAiSnackbar = (payload: { text: string; tone?: "success" | "error" }) => {
+  showSnackbar(payload.text, payload.tone ?? "success");
 };
 
 const slugify = (value: string) =>

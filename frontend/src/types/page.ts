@@ -168,7 +168,6 @@ export interface CountdownSection extends SectionBase {
   label?: string;
   backgroundColor?: string;
   textColor?: string;
-  layout?: "bar" | "flip";
 }
 
 export interface AgencyFooterSection extends SectionBase {
@@ -226,7 +225,6 @@ export interface CtaSection extends SectionBase {
   ctaMode?: "link" | "section";
   ctaSectionId?: string | null;
   description?: string;
-  layout?: "bar" | "split" | "card" | "simple";
   ctaColor?: string;
   backgroundImage?: string;
   textColor?: string;

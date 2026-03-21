@@ -1,4 +1,4 @@
-<template>
+﻿<template>
 <div class="w-full space-y-6 px-4 py-10 md:px-8">
     <div class="sticky top-0 z-30 flex flex-col gap-3 border-b border-white/40 bg-slate-50/90 py-4 backdrop-blur md:flex-row md:items-center md:justify-between">
       <div>
@@ -216,7 +216,7 @@
                         :is="publicComponents[catalog.type]"
                         :section="catalog.previewSection"
                         :previewDevice="'desktop'"
-                        v-bind="sectionRequiresBranding(catalog.type) ? { branding } : {}"
+                        v-bind="previewBindingsFor(catalog.type)"
                       />
                     </div>
                   </div>
@@ -422,9 +422,9 @@
                       <component
                         v-if="(section as any).enabled"
                         :is="publicComponents[(section as any).type]"
-                        :section="previewSections[idx] || section"
+                        :section="section"
                         :previewDevice="previewDevice"
-                        v-bind="sectionRequiresBranding((section as any).type) ? { branding } : {}"
+                        v-bind="previewBindingsFor((section as any).type)"
                         :class="[
                           'transition duration-200',
                           desktopHoverEnabled ? 'group-hover:opacity-80 group-hover:brightness-95' : ''
@@ -622,7 +622,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, provide, reactive, ref, shallowRef, watch } from "vue";
+import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, provide, reactive, ref, watch } from "vue";
 import { onBeforeRouteLeave, useRoute, useRouter } from "vue-router";
 import api from "../../services/api";
 import { useAuthStore } from "../../store/useAuthStore";
@@ -754,6 +754,11 @@ const initialLoadComplete = ref(false);
 const unsavedNavigationModal = ref({ open: false, saving: false });
 const pendingNavigationPath = ref<string | null>(null);
 const savedStateSnapshot = ref("");
+const previewRenderNonce = ref(0);
+
+const forcePreviewRemount = () => {
+  previewRenderNonce.value += 1;
+};
 
 const computeStateSnapshot = () => {
   const themeSnapshot = {
@@ -825,6 +830,13 @@ const editorPrefs = ref<EditorPreferences>({
 const colorA = ref(theme.value.color1);
 const colorB = ref(theme.value.color2);
 const ctaColor = ref(theme.value.ctaDefaultColor || fallbackPrimaryColor);
+const previewPrimaryColor = computed(() => {
+  const themeColor = (theme.value.ctaDefaultColor || "").trim();
+  if (themeColor) return themeColor;
+  const brandingColor = (branding.value.primary_color || "").trim();
+  if (brandingColor) return brandingColor;
+  return fallbackPrimaryColor;
+});
 const previewDevice = ref<"desktop" | "mobile">(editorPrefs.value.previewDevice || "desktop");
 const isMobileViewport = ref(false);
 const isMobileOverlayMode = computed(() => isMobileViewport.value);
@@ -1006,8 +1018,19 @@ const publicComponents: Partial<Record<SectionType, any>> = {
 };
 
 const sectionRequiresBranding = (type?: SectionType | string | null) => type === "hero" || type === "agency_footer";
+const previewBindingsFor = (type?: SectionType | string | null) => {
+  const bindings: Record<string, any> = {};
+  if (!type) return bindings;
+  if (sectionRequiresBranding(type)) {
+    bindings.branding = branding.value;
+  }
+  if (type === "hero") {
+    bindings.primaryColor = previewPrimaryColor.value;
+  }
+  return bindings;
+};
 
-const sections = shallowRef<PageSection[]>([]);
+const sections = ref<PageSection[]>([]);
 const mobileOverlayVisible = reactive<Record<number, boolean>>({});
 const mobileOverlayPersistent = reactive<Record<number, boolean>>({});
 const mobileOverlayTimers: Record<number, ReturnType<typeof setTimeout> | null> = {};
@@ -1346,43 +1369,85 @@ const fillHeroLogoFromAgency = () => {
   );
 };
 
+
 const applyPrimaryToThemeAndSections = (oldDefault?: string, nextColor?: string, syncPicker = false) => {
   const targetColor = nextColor || ctaColor.value || resolvePrimaryColor();
   const previous = oldDefault || theme.value.ctaDefaultColor || fallbackPrimaryColor;
+
   theme.value.ctaDefaultColor = targetColor;
 
   if (syncPicker && ctaColor.value !== targetColor) {
     skipCtaWatcher = true;
     ctaColor.value = targetColor;
+
+    nextTick(() => {
+      skipCtaWatcher = false;
+    });
   }
 
   setSections(current =>
     applySectionBackgrounds(
       current.map(section => {
         if (!section) return section;
+
         const type = (section as any).type as SectionType;
+
         if (type === "countdown") {
           const countdownBg = (section as any).backgroundColor as string | undefined;
           const shouldReplaceCountdown =
             !countdownBg ||
             countdownBg.toLowerCase?.() === fallbackPrimaryColor.toLowerCase() ||
             (!!previous && countdownBg.toLowerCase?.() === previous.toLowerCase());
-          if (shouldReplaceCountdown) (section as any).backgroundColor = targetColor;
+
+          if (shouldReplaceCountdown) {
+            (section as any).backgroundColor = targetColor;
+          }
         }
+
+        if (type === "cta") {
+          const ctaBg = (section as any).backgroundColor as string | undefined;
+          const shouldReplaceCtaBackground =
+            !ctaBg ||
+            ctaBg.toLowerCase?.() === fallbackPrimaryColor.toLowerCase() ||
+            (!!previous && ctaBg.toLowerCase?.() === previous.toLowerCase());
+
+          if (shouldReplaceCtaBackground) {
+            (section as any).backgroundColor = targetColor;
+          }
+        }
+
         const currentColor = (section as any).ctaColor as string | undefined;
         const shouldReplace =
           !currentColor ||
           currentColor.toLowerCase?.() === fallbackPrimaryColor.toLowerCase() ||
           (!!previous && currentColor.toLowerCase?.() === previous.toLowerCase());
-        return shouldReplace ? ({ ...(section as any), ctaColor: targetColor } as any) : section;
+
+        const nextSection = shouldReplace
+          ? ({ ...(section as any), ctaColor: targetColor } as any)
+          : section;
+
+        if (type === "prices") {
+          const currentCardColor = (nextSection as any).cardColor as string | undefined;
+          const replaceCardColor =
+            !currentCardColor ||
+            currentCardColor.toLowerCase?.() === fallbackPrimaryColor.toLowerCase() ||
+            (!!previous && currentCardColor.toLowerCase?.() === previous.toLowerCase());
+
+          if (replaceCardColor) {
+            (nextSection as any).cardColor = targetColor;
+          }
+        }
+
+        return nextSection;
       })
     )
   );
 };
 
-const applyAgencyBranding = () => {
+const applyAgencyBranding = (options?: { forceCtaSync?: boolean }) => {
   const primary = resolvePrimaryColor();
   const agency = currentAgency.value;
+
   branding.value = {
     ...branding.value,
     agency_name: agency?.name || branding.value.agency_name,
@@ -1391,8 +1456,10 @@ const applyAgencyBranding = () => {
     secondary_color: agency?.secondary_color || primary,
     agency_profile: buildAgencyProfile()
   };
+
   applyPrimaryToThemeAndSections(theme.value.ctaDefaultColor, primary, true);
   fillHeroLogoFromAgency();
+
 };
 
 const loadPixels = async () => {
@@ -1476,7 +1543,7 @@ const applySectionBackgrounds = (list: PageSection[]): PageSection[] => {
 
   const ensureButtonColor = (section: PageSection) => {
     const type = (section as any).type as SectionType;
-    const typesWithButton: SectionType[] = ["hero", "prices", "testimonials", "featured_video", "story", "cta", "itinerary"];
+    const typesWithButton: SectionType[] = ["hero", "prices", "testimonials", "featured_video", "story", "cta", "itinerary", "faq"];
 
     if (typesWithButton.includes(type)) {
       const currentColor = (section as any).ctaColor;
@@ -1496,15 +1563,28 @@ const applySectionBackgrounds = (list: PageSection[]): PageSection[] => {
     const normalized = ensureButtonColor(normalizeHeroGradient(ensureSectionAnchor(section)));
     const type = (normalized as any).type as SectionType;
 
-    if (
-      type === "hero" ||
-      type === "countdown" ||
-      type === "free_footer_brand" ||
-      type === "banner_card"
-    ) {
+    const primaryBackground = theme.value.ctaDefaultColor || fallbackPrimaryColor;
+    if (type === "hero" || type === "free_footer_brand" || type === "banner_card") {
       if ((normalized as any).type === "banner_card" && !(normalized as any).backgroundColor) {
         (normalized as any).backgroundColor = colorA.value;
       }
+      return normalized;
+    }
+    if (type === "countdown" || type === "cta") {
+      if (!(normalized as any).backgroundColor) {
+        (normalized as any).backgroundColor = primaryBackground;
+      }
+      if (type === "cta" && !(normalized as any).textColor) {
+        (normalized as any).textColor = "#ffffff";
+      }
+      altIndex += 1;
+      return normalized;
+    }
+    if (type === "prices") {
+      if (!(normalized as any).cardColor) {
+        (normalized as any).cardColor = primaryBackground;
+      }
+      altIndex += 1;
       return normalized;
     }
     if (type === "agency_footer") {
@@ -1547,7 +1627,9 @@ const applySectionBackgrounds = (list: PageSection[]): PageSection[] => {
   });
 };
 
-watch(currentAgency, () => applyAgencyBranding(), { immediate: true });
+watch(currentAgency, () => {
+  applyAgencyBranding();
+}, { immediate: true });
 watch(
   () => ({
     cnpj: auth.user?.cnpj,
@@ -1561,7 +1643,9 @@ watch(
     state: auth.user?.address_state,
     zipcode: auth.user?.address_zipcode
   }),
-  () => applyAgencyBranding(),
+  value => {
+    applyAgencyBranding();
+  },
   { deep: true }
 );
 
@@ -1757,6 +1841,7 @@ function defaultSection(type: SectionType): PageSection {
         }
       ],
       ctaColor: theme.value.ctaDefaultColor,
+      cardColor: theme.value.ctaDefaultColor,
       ctaLabel: "Reservar agora"
     } as PricesSection);
   }
@@ -1909,7 +1994,6 @@ function defaultSection(type: SectionType): PageSection {
   return ensureSectionAnchor({
     type: "cta",
     enabled: true,
-    layout: "simple",
     headingLabel: headingDefaults.label,
     headingLabelStyle: headingDefaults.style,
     label: "Quero reservar pelo WhatsApp",
@@ -1925,6 +2009,26 @@ function defaultSection(type: SectionType): PageSection {
     ctaSectionId: null
   } as CtaSection);
 }
+
+const ensureAgencyPrimaryAsDefault = (forced = false) => {
+  const primary = resolvePrimaryColor();
+  if (!primary) return;
+  const normalizedCurrent = (theme.value.ctaDefaultColor || "").toLowerCase();
+  const normalizedPrimary = primary.toLowerCase();
+  const shouldForce =
+    forced ||
+    !normalizedCurrent ||
+    normalizedCurrent === fallbackPrimaryColor.toLowerCase() ||
+    normalizedCurrent === normalizedPrimary;
+  if (!shouldForce) return;
+  const needsPickerSync = (ctaColor.value || "").toLowerCase() !== primary.toLowerCase();
+  if (needsPickerSync) {
+    skipCtaWatcher = true;
+    ctaColor.value = primary;
+  }
+  applyPrimaryToThemeAndSections(theme.value.ctaDefaultColor, primary, true);
+  refreshPreview(true);
+};
 
 const hydrateFromConfig = (config?: PageConfig | string | null) => {
   if (!config) return;
@@ -1970,7 +2074,7 @@ const hydrateFromConfig = (config?: PageConfig | string | null) => {
       };
     }
 
-    applyPrimaryToThemeAndSections(oldDefaultCta);
+    ensureAgencyPrimaryAsDefault(!parsed.theme?.ctaDefaultColor);
   } catch (err) {
     console.error("Erro ao ler config_json", err);
   }
@@ -2229,14 +2333,15 @@ watch(colorB, value => {
 });
 
 watch(ctaColor, (value, previous) => {
-  if (!value) return;
+  if (!value || value === previous) return;
+
   if (skipCtaWatcher) {
-    skipCtaWatcher = false;
     return;
   }
+
   applyPrimaryToThemeAndSections(previous, value);
   markUnsavedChanges();
-  refreshPreview(false);
+  refreshPreview(true);
 });
 
 watch(previewDevice, value => {
@@ -2246,6 +2351,37 @@ watch(previewDevice, value => {
 const refreshPreview = (immediate = false) => {
   flushPendingSectionUpdates();
   schedulePreviewHydration(immediate);
+};
+
+const didInitialPreviewRefresh = ref(false);
+
+const runInitialPreviewRefresh = async () => {
+  if (didInitialPreviewRefresh.value) return;
+  didInitialPreviewRefresh.value = true;
+
+  await nextTick();
+  refreshPreview(true);
+
+  if (hasWindow && typeof window.requestAnimationFrame === "function") {
+    window.requestAnimationFrame(() => {
+      refreshPreview(true);
+    });
+    return;
+  }
+
+  setTimeout(() => {
+    refreshPreview(true);
+  }, 0);
+};
+
+const forceInitialCtaSync = () => {
+  const currentColor =
+    ctaColor.value ||
+    theme.value.ctaDefaultColor ||
+    resolvePrimaryColor() ||
+    fallbackPrimaryColor;
+
+  applyPrimaryToThemeAndSections(theme.value.ctaDefaultColor, currentColor, false);
 };
 
 const saveEditingSection = () => {
@@ -2323,7 +2459,12 @@ const applySavedTemplate = (): boolean => {
 
     if (parsed.sections && Array.isArray(parsed.sections) && parsed.sections.length) {
       setSections(applySectionBackgrounds(parsed.sections as PageSection[]));
-      applyPrimaryToThemeAndSections(oldDefaultCta);
+    const shouldForceAgencyColor =
+      !parsed.theme?.ctaDefaultColor ||
+      parsed.theme.ctaDefaultColor.toLowerCase?.() === fallbackPrimaryColor.toLowerCase();
+    const resolvedPrimary = resolvePrimaryColor();
+
+    ensureAgencyPrimaryAsDefault(!parsed.theme?.ctaDefaultColor);
       return true;
     }
   } catch (err) {
@@ -2445,18 +2586,25 @@ const saveAndLeave = async () => {
   hasUnsavedChanges.value = false;
   proceedToPendingRoute();
 };
-
 onMounted(async () => {
   setupViewportWatcher();
   await ensureProfile();
   await ensureAgencies();
-  applyAgencyBranding();
-  loadPixels();
-
-  const applied = applySavedTemplate();
-  if (!applied) setDefaultSectionsByPlan();
+  await loadPixels();
 
   await fetchPage();
+
+  // Só aplica fallback se a página realmente vier sem seções
+  if (!sections.value.length) {
+    const applied = applySavedTemplate();
+    if (!applied) {
+      setDefaultSectionsByPlan();
+    }
+  }
+
+  applyAgencyBranding();
+  ensureAgencyPrimaryAsDefault(true);
+
   sectionCatalog.value = sectionTypes.map(type => ({
     type,
     label: sectionLabels[type] || type,
@@ -2465,8 +2613,10 @@ onMounted(async () => {
     previewSection: buildCatalogPreview(type),
     thumbnail: sectionThumbnails[type]
   }));
+
   previewReady.value = true;
-  schedulePreviewHydration(true);
+  refreshPreview(true);
+
   nextTick(() => setupSectionToolbarObserver());
 });
 </script>

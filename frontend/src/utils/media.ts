@@ -1,4 +1,5 @@
 import api from "../services/api";
+import placeholderAsset from "../assets/placeholder.png";
 
 interface MediaAsset {
   id: number;
@@ -22,15 +23,25 @@ const ABSOLUTE_MEDIA_BASE = /^https?:\/\//i.test(MEDIA_BASE);
 
 const ensureLeadingSlash = (value: string) => (value.startsWith("/") ? value : `/${value}`);
 
+const PUBLIC_ASSET_PREFIXES = ["/assets/", "assets/", "/src/assets/"];
+const PLACEHOLDER_PATHS = new Set(["/placeholder.png", "placeholder.png"]);
+
 export const resolveMediaUrl = (value?: string | null): string | undefined => {
   if (!value) return undefined;
-  if (/^(https?:)?\/\//i.test(value) || value.startsWith("data:")) {
-    return value;
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  if (PLACEHOLDER_PATHS.has(trimmed)) {
+    return placeholderAsset;
   }
-  if (value.startsWith("/assets/") || value.startsWith("assets/") || value.startsWith("/src/assets/")) {
-    return value.startsWith("/") ? value : `/${value}`;
+  if (/^(https?:)?\/\//i.test(trimmed) || trimmed.startsWith("data:")) {
+    return trimmed;
   }
-  const normalized = ensureLeadingSlash(value);
+  const publicPrefix = PUBLIC_ASSET_PREFIXES.find(prefix => trimmed.startsWith(prefix));
+  if (publicPrefix) {
+    return trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+  }
+  const normalized = ensureLeadingSlash(trimmed);
 
   if (ABSOLUTE_MEDIA_BASE) {
     try {

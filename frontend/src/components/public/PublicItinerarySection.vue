@@ -30,7 +30,7 @@
               <div class="flex-1">
                 <p class="text-xs font-semibold uppercase tracking-wide" :style="{ color: accent }">{{ day.day }}</p>
                 <p class="text-lg font-semibold text-slate-900">{{ day.title }}</p>
-                <p v-if="!expanded[index]" class="text-xs text-slate-400 mt-0.5">Clique para ver detalhes</p>
+                <p v-if="!expanded[index]" class="mt-0.5 text-xs text-slate-400">Clique para ver detalhes</p>
               </div>
               <span class="text-sm text-slate-500">{{ expanded[index] ? "−" : "+" }}</span>
             </button>
@@ -62,7 +62,7 @@
                 @click="toggleStep(index)"
               >
                 <div
-                class="flex h-12 w-12 items-center justify-center rounded-full border-2 bg-white text-sm font-semibold shadow-sm transition hover:-translate-y-0.5"
+                  class="flex h-12 w-12 items-center justify-center rounded-full border-2 bg-white text-sm font-semibold shadow-sm transition hover:-translate-y-0.5"
                   :style="{ borderColor: accent.value, color: accent.value }"
                 >
                   {{ index + 1 }}
@@ -139,7 +139,6 @@
         </div>
       </div>
     </div>
-
   </section>
 </template>
 
@@ -155,6 +154,7 @@ import { deriveTextPalette } from "../../utils/colorContrast";
 
 const props = defineProps<{ section: ItinerarySection }>();
 const branding = inject(PUBLIC_BRANDING_KEY, null);
+
 const brandingPrimary = computed(() => {
   if (!branding) return "";
   const data = isRef(branding) ? branding.value : branding;
@@ -164,39 +164,38 @@ const brandingPrimary = computed(() => {
   }
   return "";
 });
+
 const headingDefaults = getSectionHeadingDefaults("itinerary");
 const defaultAccent = "#41ce5f";
 const defaultTitle = "Dia a dia";
 const defaultSubtitle = "Visão clara do roteiro completo.";
 
-const isLight = (hex?: string) => {
-  if (!hex) return true;
-  const cleaned = hex.replace("#", "");
-  const full = cleaned.length === 3 ? cleaned.split("").map(c => c + c).join("") : cleaned;
-  if (full.length !== 6) return true;
-  const r = parseInt(full.substring(0, 2), 16) / 255;
-  const g = parseInt(full.substring(2, 4), 16) / 255;
-  const b = parseInt(full.substring(4, 6), 16) / 255;
-  const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
-  return luminance > 0.8;
-};
-
 const accent = computed(() => props.section.ctaColor || brandingPrimary.value || defaultAccent);
+
 const subtitle = computed(() => {
   const raw = props.section.subtitle ?? null;
   if (raw === null) return defaultSubtitle;
   return raw.trim().length ? raw : "";
 });
+
 const headingLabel = computed(() => props.section.headingLabel ?? headingDefaults.label);
 const headingStyle = computed(() => props.section.headingLabelStyle || headingDefaults.style);
+
 const textPalette = computed(() => deriveTextPalette(props.section.textColor));
 const primaryText = computed(() => textPalette.value.primary);
 const mutedText = computed(() => textPalette.value.muted);
+
 const dayDescriptionHtml = (text?: string) => sanitizeHtml(text);
+
+/**
+ * No public itinerary, se não houver imagem, não mostra nada.
+ * Não usa placeholder.
+ */
 const resolveDayImage = (image?: string) => {
-  if (!image) return "";
-  return resolveMediaUrl(image);
+  const resolved = resolveMediaUrl(image);
+  return resolved && resolved.trim() ? resolved : "";
 };
+
 const expanded = ref<boolean[]>(props.section.days.map(() => false));
 const activeStep = ref<number | null>(null);
 
@@ -219,7 +218,7 @@ const toggleDay = (index: number) => {
 
 watch(
   () => props.section.days,
-  days => {
+  (days) => {
     expanded.value = (days || []).map(() => false);
     activeStep.value = null;
   },
@@ -230,4 +229,3 @@ const toggleStep = (index: number) => {
   activeStep.value = activeStep.value === index ? null : index;
 };
 </script>
-

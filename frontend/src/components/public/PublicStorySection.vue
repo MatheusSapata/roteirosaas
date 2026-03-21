@@ -23,7 +23,7 @@
               rel="noopener"
               data-track-event="cta"
               :data-track-type="ctaTrackType"
-              class="inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl"
+              class="inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl"
               :style="{ background: ctaColor }"
             >
               {{ section.ctaLabel || "Saiba mais" }}
@@ -71,7 +71,7 @@
               rel="noopener"
               data-track-event="cta"
               :data-track-type="ctaTrackType"
-              class="inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl"
+              class="inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl"
               :style="{ background: ctaColor }"
             >
               {{ section.ctaLabel || "Saiba mais" }}
@@ -115,7 +115,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, inject, isRef, ref, watch } from "vue";
 import { resolveMediaUrl } from "../../utils/media";
 import { isWhatsappLink } from "../../utils/links";
 import type { StorySection } from "../../types/page";
@@ -123,13 +123,27 @@ import SectionHeadingChip from "./SectionHeadingChip.vue";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import { sanitizeHtml } from "../../utils/sanitizeHtml";
 import { deriveTextPalette } from "../../utils/colorContrast";
+import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
 
 const props = defineProps<{ section: StorySection; previewDevice?: "desktop" | "mobile" }>();
 const headingDefaults = getSectionHeadingDefaults("story");
+const branding = inject(PUBLIC_BRANDING_KEY, null);
+const brandingPrimary = computed(() => {
+  if (!branding) return "";
+  const data = isRef(branding) ? branding.value : branding;
+  if (typeof data === "object" && data) {
+    const color = (data as Record<string, any>).primary_color;
+    if (typeof color === "string" && color.trim()) {
+      return color.trim();
+    }
+  }
+  return "";
+});
+const sectionAccent = computed(() => props.section.ctaColor || brandingPrimary.value || "#41ce5f");
 
 const isSingle = computed(() => props.section.layout !== "gallery");
 const imagePosition = computed(() => props.section.imagePosition || "right");
-const ctaColor = computed(() => props.section.ctaColor || "#41ce5f");
+const ctaColor = computed(() => sectionAccent.value);
 const ctaMode = computed(() => props.section.ctaMode || "link");
 const ctaHasTarget = computed(() =>
   ctaMode.value === "section" ? !!props.section.ctaSectionId : !!props.section.ctaLink
@@ -143,7 +157,9 @@ const ctaTrackType = computed(() =>
 );
 const ctaEnabled = computed(() => props.section.ctaEnabled !== false);
 const isMobilePreview = computed(() => props.previewDevice === "mobile");
-const borderColor = computed(() => props.section.borderColor || props.section.ctaColor || "#41ce5f");
+const borderColor = computed(
+  () => props.section.borderColor || props.section.ctaColor || brandingPrimary.value || "#41ce5f"
+);
 const borderStyle = computed(() =>
   props.section.borderEnabled ? { borderColor: borderColor.value, borderWidth: "2px", borderStyle: "solid" } : {}
 );

@@ -108,6 +108,8 @@ const isLight = (hex?: string) => {
 };
 
 const accent = computed(() => {
+  const sectionAccent = (props.section.ctaColor || "").trim();
+  if (sectionAccent) return sectionAccent;
   const brandColor = brandingPrimary.value;
   if (brandColor) return brandColor;
   const bg = props.section.backgroundColor;
@@ -128,7 +130,19 @@ const headingLabel = computed(() => props.section.headingLabel ?? headingDefault
 const headingStyle = computed(() => props.section.headingLabelStyle || headingDefaults.style);
 const title = computed(() => (props.section.title && props.section.title.trim().length ? props.section.title : defaultTitle));
 const subtitle = computed(() => (props.section.subtitle && props.section.subtitle.trim().length ? props.section.subtitle : defaultSubtitle));
-const textPalette = computed(() => deriveTextPalette(props.section.textColor));
+const backgroundColor = computed(() => props.section.backgroundColor || "");
+const fallbackTextColor = computed(() => {
+  if (props.section.textColor && props.section.textColor.trim()) {
+    return props.section.textColor;
+  }
+  const bg = backgroundColor.value;
+  if (bg && !isLight(bg)) {
+    return "#ffffff";
+  }
+  return "#0f172a";
+});
+
+const textPalette = computed(() => deriveTextPalette(fallbackTextColor.value));
 const primaryText = computed(() => textPalette.value.primary);
 const mutedText = computed(() => textPalette.value.muted);
 </script>
