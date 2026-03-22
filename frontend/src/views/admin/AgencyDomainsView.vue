@@ -316,7 +316,7 @@ const fetchDomains = async () => {
 const validateHostInput = (value: string) => {
   if (!value) return "Informe um host.";
   if (/^https?:\/\//i.test(value)) return "Informe apenas o host, sem http:// ou https://.";
-  if (/[\\s/]/.test(value)) return "O host nao deve conter espacos ou barras.";
+  if (/[\s/]/.test(value)) return "O host nao deve conter espacos ou barras.";
   if (!value.includes(".")) return "Use um dominio completo (ex.: minhaagencia.com).";
   return "";
 };
