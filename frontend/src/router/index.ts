@@ -15,7 +15,16 @@ import MarketingLandingView from "../views/public/MarketingLandingView.vue";
 import AdminLayout from "../layouts/AdminLayout.vue";
 import { useAuthStore } from "../store/useAuthStore";
 
-const routes: RouteRecordRaw[] = [
+const defaultPlatformHosts = ["roteiroonline.com", "www.roteiroonline.com", "localhost", "127.0.0.1"];
+const envPlatformHosts = (import.meta.env.VITE_PLATFORM_HOSTS || "")
+  .split(",")
+  .map(host => host.trim().toLowerCase())
+  .filter(Boolean);
+const platformHostSet = new Set([...defaultPlatformHosts, ...envPlatformHosts]);
+const currentHostname = typeof window !== "undefined" ? window.location.hostname.toLowerCase() : "";
+const isCustomDomainHost = !!currentHostname && !platformHostSet.has(currentHostname);
+
+const platformRoutes: RouteRecordRaw[] = [
   { path: "/", name: "marketing", component: LoginView, meta: { guestOnly: true } },
   { path: "/login", name: "login", component: LoginView, meta: { guestOnly: true } },
   { path: "/register", name: "register", component: RegisterView, meta: { guestOnly: true } },
@@ -59,6 +68,25 @@ const routes: RouteRecordRaw[] = [
     props: true
   }
 ];
+
+const customDomainRoutes: RouteRecordRaw[] = [
+  {
+    path: "/",
+    name: "custom-domain-default",
+    component: PublicPageView
+  },
+  {
+    path: "/:pageSlug",
+    name: "custom-domain-page",
+    component: PublicPageView
+  },
+  {
+    path: "/:pathMatch(.*)*",
+    redirect: "/"
+  }
+];
+
+const routes: RouteRecordRaw[] = isCustomDomainHost ? customDomainRoutes : platformRoutes;
 
 const router = createRouter({
   history: createWebHistory(),
