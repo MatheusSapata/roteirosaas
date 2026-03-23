@@ -1094,8 +1094,8 @@ async function handleBriefingFiles(event: Event) {
   if (!files || !files.length) return;
   attachmentsLoading.value = true;
   for (const file of Array.from(files).slice(0, 3)) {
-    if (file.size > 5 * 1024 * 1024) {
-      emit("snackbar", { text: `${file.name} é maior que 5MB.`, tone: "error" });
+    if (file.size > 10 * 1024 * 1024) {
+      emit("snackbar", { text: `${file.name} é maior que 10MB.`, tone: "error" });
       continue;
     }
     const data = await toBase64(file);
