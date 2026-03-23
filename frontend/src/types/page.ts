@@ -81,6 +81,7 @@ export interface BiographySection extends SectionBase {
   title: string;
   text: string;
   image?: string;
+  mobileImage?: string;
   overlayOpacity?: number;
   titleColor?: string;
 }
