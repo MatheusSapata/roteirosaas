@@ -3,6 +3,7 @@ export type SectionType =
   | "banner_card"
   | "gallery"
   | "photo"
+  | "biography"
   | "prices"
   | "itinerary"
   | "faq"
@@ -73,6 +74,15 @@ export interface PhotoSection extends SectionBase {
   image?: string;
   layout?: "card" | "full";
   altText?: string;
+}
+
+export interface BiographySection extends SectionBase {
+  type: "biography";
+  title: string;
+  text: string;
+  image?: string;
+  overlayOpacity?: number;
+  titleColor?: string;
 }
 
 export type CurrencyCode = "BRL" | "USD" | "EUR" | "ARS";
@@ -240,6 +250,7 @@ export type PageSection =
   | BannerCardSection
   | GallerySection
   | PhotoSection
+  | BiographySection
   | PricesSection
   | ItinerarySection
   | FaqSection
@@ -273,3 +284,4 @@ export interface PageConfig {
   editor?: EditorPreferences;
   version?: number;
 }
+

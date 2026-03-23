@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import os
+import logging
 from pathlib import Path
 from typing import Optional
 from uuid import uuid4
@@ -9,6 +9,8 @@ from azure.core.exceptions import ResourceExistsError
 from azure.storage.blob import BlobClient, BlobServiceClient, ContentSettings
 
 from app.core.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 
 class MediaStorage:
@@ -23,16 +25,22 @@ class MediaStorage:
         self._base_url: Optional[str] = None
 
         if connection and container:
-            self._blob_service = BlobServiceClient.from_connection_string(connection)
-            self._container_name = container
-            container_client = self._blob_service.get_container_client(container)
             try:
-                container_client.create_container()
-            except ResourceExistsError:
-                pass
-            account_name = self._blob_service.account_name
-            base = settings.azure_storage_base_url or f"https://{account_name}.blob.core.windows.net/{container}"
-            self._base_url = base.rstrip("/")
+                self._blob_service = BlobServiceClient.from_connection_string(connection)
+                self._container_name = container
+                container_client = self._blob_service.get_container_client(container)
+                try:
+                    container_client.create_container()
+                except ResourceExistsError:
+                    pass
+                account_name = self._blob_service.account_name
+                base = settings.azure_storage_base_url or f"https://{account_name}.blob.core.windows.net/{container}"
+                self._base_url = base.rstrip("/")
+            except Exception as exc:  # pragma: no cover - defensive fallback
+                logger.warning("Azure Blob initialization failed, using local media storage: %s", exc)
+                self._blob_service = None
+                self._container_name = None
+                self._base_url = None
 
     @property
     def is_remote(self) -> bool:

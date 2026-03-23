@@ -2,21 +2,21 @@
   <div class="min-h-screen light-theme overflow-x-hidden">
     <div class="flex min-h-screen">
       <aside
-        class="hidden w-64 flex-shrink-0 flex-col justify-between border-r border-slate-200 bg-white/90 px-4 py-6 text-slate-800 shadow-md md:fixed md:inset-y-0 md:left-0 md:flex"
+        class="hidden w-64 flex-shrink-0 flex-col justify-between border-r border-transparent bg-brand px-0 py-6 text-white shadow-md md:fixed md:inset-y-0 md:left-0 md:flex"
       >
-        <div class="flex flex-1 flex-col overflow-y-auto">
-          <div class="mb-8 flex items-center justify-center">
-            <img :src="sidebarLogoSrc" alt="Roteiro Online" class="max-h-16 w-full object-contain" />
+        <div class="flex flex-1 flex-col overflow-y-auto px-6">
+          <div class="mb-4 flex items-center justify-center">
+            <img :src="sidebarLogoSrc" alt="Roteiro Online" class="max-h-[4.4rem] object-contain md:max-h-16" />
           </div>
           <nav class="flex-1 space-y-1">
             <RouterLink
               v-for="item in navItems"
               :key="item.to"
               :to="item.to"
-              class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition"
+              class="flex items-center gap-2 rounded-lg pr-3 pl-0 py-2 text-sm font-semibold transition"
               :class="isActive(item.to) ? activeClass : inactiveClass"
             >
-              <span class="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-slate-600">
+              <span class="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-slate-600 md:bg-white/15 md:text-white">
                 <svg
                   :viewBox="navIconViewBoxes[item.to] || navIconViewBoxes.default"
                   :class="['h-4 w-4', navIconSizes[item.to]]"
@@ -29,24 +29,29 @@
           </nav>
         </div>
 
-        <div class="mt-8 border-t border-slate-200 pt-4">
+        <div class="mt-8 border-t border-white/20 px-6 pt-4">
           <button
             type="button"
             @click="handleLogout"
-            class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-red-50 hover:text-red-600"
+            class="flex w-full items-center gap-3 rounded-xl bg-white/10 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/15"
           >
-            <span class="flex h-7 w-7 items-center justify-center rounded-full bg-red-50 text-red-600">
-              <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-white/20">
+              <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M12 3v9m5.657-6.657a8 8 0 1 1-11.314 0" />
               </svg>
             </span>
-            <span>Sair</span>
+            <span class="text-base">Sair</span>
           </button>
         </div>
       </aside>
 
       <main class="flex-1 overflow-x-hidden md:ml-64">
-        <header class="sticky top-0 z-30 bg-white px-4 py-3 text-slate-900 shadow-sm md:static">
+        <header
+          :class="[
+            'sticky top-0 z-30 bg-brand px-4 py-3 text-white shadow-sm md:static md:bg-white md:text-slate-900',
+            { 'md:hidden': shouldHideDesktopHeader }
+          ]"
+        >
           <div class="flex items-center justify-between md:hidden">
             <img
               v-if="sidebarLogoSrc"
@@ -58,17 +63,16 @@
             <h1 class="text-lg font-bold">{{ currentPageTitle }}</h1>
             <button
               type="button"
-              class="inline-flex h-12 w-12 items-center justify-center rounded-full text-white shadow-lg transition"
-                style="background-color: #41ce5f;"
-                @click="mobileMenuOpen = true"
-              >
-                <span class="sr-only">Abrir menu</span>
-                <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                  <path d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              </button>
-            </div>
+              class="inline-flex items-center justify-center p-2 text-white transition"
+              @click="mobileMenuOpen = true"
+            >
+              <span class="sr-only">Abrir menu</span>
+              <svg viewBox="0 0 24 24" class="h-7 w-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <path d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
           </div>
+        </div>
           <div class="hidden items-center justify-between md:flex">
             <div class="flex items-center gap-3">
               <h1 class="text-lg font-bold">{{ currentPageTitle }}</h1>
@@ -87,15 +91,15 @@
         class="fixed inset-0 z-40 flex justify-end md:hidden"
       >
         <div class="flex-1 bg-slate-900/60" @click="mobileMenuOpen = false"></div>
-        <div class="w-72 max-w-full bg-white p-5 shadow-2xl">
+        <div class="w-72 max-w-full bg-brand p-5 text-white shadow-2xl">
           <div class="mb-6 flex items-center justify-between">
             <div>
-              <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Menu</p>
-              <p class="text-sm font-semibold text-slate-900 truncate">{{ agencyName || 'Agencia' }}</p>
+              <p class="text-xs uppercase tracking-[0.3em] text-white/70">Menu</p>
+              <p class="text-sm font-semibold truncate">{{ agencyName || 'Agencia' }}</p>
             </div>
             <button
               type="button"
-              class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-600"
+              class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/40 text-white"
               @click="mobileMenuOpen = false"
             >
               <span class="sr-only">Fechar</span>
@@ -109,11 +113,11 @@
               v-for="item in navItems"
               :key="'mobile-' + item.to"
               :to="item.to"
-              class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition"
-              :class="isActive(item.to) ? activeClass : inactiveClass"
+              class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-white transition"
+              :class="isActive(item.to) ? 'bg-white/20' : 'hover:bg-white/10'"
               @click="mobileMenuOpen = false"
             >
-              <span class="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-slate-600">
+              <span class="flex h-7 w-7 items-center justify-center rounded-full bg-white/20 text-white">
                 <svg
                   :viewBox="navIconViewBoxes[item.to] || navIconViewBoxes.default"
                   :class="['h-4 w-4', navIconSizes[item.to]]"
@@ -124,13 +128,13 @@
               <span>{{ item.label }}</span>
             </RouterLink>
           </nav>
-          <div class="mt-6 border-t border-slate-200 pt-4">
+          <div class="mt-6 border-t border-white/20 pt-4">
             <button
               type="button"
               @click="handleLogout"
-              class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-red-50 hover:text-red-600"
+              class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
             >
-              <span class="flex h-7 w-7 items-center justify-center rounded-full bg-red-50 text-red-600">
+              <span class="flex h-7 w-7 items-center justify-center rounded-full bg-white/20">
                 <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M12 3v9m5.657-6.657a8 8 0 1 1-11.314 0" />
                 </svg>
@@ -473,9 +477,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import { RouterLink, RouterView, useRoute, useRouter } from "vue-router";
-import SidebarLogo from "../assets/Logo Cor - Roteiro Online.png";
+import SidebarLogo from "../assets/Logo Branco - Roteiro Online.png";
 import ImageUploadField from "../components/admin/inputs/ImageUploadField.vue";
 import api from "../services/api";
 import { useAgencyStore } from "../store/useAgencyStore";
@@ -491,6 +495,25 @@ const auth = useAuthStore();
 const COOKIE_KEY = "global_cookie_consent";
 
 const showCookieConsent = ref(false);
+const hasWindow = typeof window !== "undefined";
+const isMobileViewport = ref(false);
+let removeViewportWatcher: (() => void) | null = null;
+
+const syncViewport = () => {
+  if (!hasWindow) return;
+  isMobileViewport.value = window.innerWidth < 768;
+};
+
+const setupViewportWatcher = () => {
+  if (!hasWindow) return;
+  syncViewport();
+  const handler = () => syncViewport();
+  window.addEventListener("resize", handler);
+  removeViewportWatcher = () => {
+    window.removeEventListener("resize", handler);
+    removeViewportWatcher = null;
+  };
+};
 
 const navIcons: Record<string, string> = {
   default: '<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2a8 8 0 1 1-8 8 8 8 0 0 1 8-8zm0 3v6l4 2" />',
@@ -529,6 +552,10 @@ const routeTitleMap: Record<string, string> = {
   profile: "Perfil",
   "admin-management": "Admin Master"
 };
+const currentRouteName = computed(() => (typeof route.name === "string" ? route.name : null));
+const isPageEditorRoute = computed(() => currentRouteName.value === "page-edit");
+const shouldHideDesktopHeader = computed(() => isPageEditorRoute.value && !isMobileViewport.value);
+
 
 const canAccessCustomDomains = computed(() => auth.user?.plan === "teste");
 
@@ -559,8 +586,8 @@ const currentPageTitle = computed(() => {
   return matchedNav?.label || "Dashboard";
 });
 
-const activeClass = "bg-slate-100 text-slate-900";
-const inactiveClass = "text-slate-700 hover:bg-slate-100";
+const activeClass = "bg-slate-100 text-slate-900 md:bg-white/20 md:text-white md:shadow-sm";
+const inactiveClass = "text-slate-700 hover:bg-slate-100 md:text-white/80 md:hover:bg-white/10 md:hover:text-white";
 
 const agencyName = computed(() => agencyStore.currentAgency?.name || agencyStore.agencies[0]?.name || "");
 const sidebarLogoSrc = SidebarLogo;
@@ -985,6 +1012,7 @@ const scrollToTop = () => {
 };
 
 onMounted(async () => {
+  setupViewportWatcher();
   if (!agencyStore.agencies.length) {
     await agencyStore.loadAgencies();
   }
@@ -996,6 +1024,12 @@ onMounted(async () => {
   }
   checkCookieConsent();
   scrollToTop();
+});
+
+onBeforeUnmount(() => {
+  if (removeViewportWatcher) {
+    removeViewportWatcher();
+  }
 });
 
 watch(

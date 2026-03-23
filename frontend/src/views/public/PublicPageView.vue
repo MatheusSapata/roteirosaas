@@ -45,6 +45,7 @@ import PublicCountdownSection from "../../components/public/PublicCountdownSecti
 import PublicFreeFooterBrandSection from "../../components/public/PublicFreeFooterBrandSection.vue";
 import PublicAgencyFooterSection from "../../components/public/PublicAgencyFooterSection.vue";
 import PublicPhotoSection from "../../components/public/PublicPhotoSection.vue";
+import PublicBiographySection from "../../components/public/PublicBiographySection.vue";
 import type { HeroSection, PageConfig, PageSection, SectionType, ThemeConfig } from "../../types/page";
 import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
 import BrandLogo from "../../assets/Logo Branco - Roteiro Online.png";
@@ -93,6 +94,7 @@ const publicComponents: Record<SectionType, any> = {
   hero: PublicHeroSection,
   banner_card: PublicBannerCardSection,
   photo: PublicPhotoSection,
+  biography: PublicBiographySection,
   prices: PublicPricesSection,
   itinerary: PublicItinerarySection,
   faq: PublicFaqSection,

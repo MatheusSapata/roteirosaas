@@ -4,6 +4,7 @@ export const sectionLabels: Partial<Record<SectionType, string>> = {
   hero: "Banner",
   banner_card: "Banner em Card",
   photo: "Foto destacada",
+  biography: "Biografia",
   prices: "Preços",
   itinerary: "Itinerário",
   faq: "Perguntas Frequentes",
@@ -44,6 +45,8 @@ export const describeSection = (section: PageSection): string => {
       return "Galeria de imagens";
     case "photo":
       return section.altText || "Imagem destacada";
+    case "biography":
+      return section.title || "Biografia";
     case "agency_footer":
       return "Rodape institucional";
     case "free_footer_brand":

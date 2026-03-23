@@ -238,8 +238,8 @@
         </div>
 
         <div class="mt-4 space-y-3">
-          <div v-if="visitsPoints.length" class="rounded-xl bg-slate-50 p-6" :class="{ 'locked-blur': isFree }">
-            <div class="relative rounded-2xl border border-slate-100 bg-white/80 p-4">
+          <div v-if="visitsPoints.length" class="rounded-2xl border border-slate-100 bg-white/90 p-6 shadow-inner" :class="{ 'locked-blur': isFree }">
+            <div class="relative rounded-2xl bg-transparent p-4">
               <div class="pointer-events-none absolute inset-4">
                 <div
                   v-for="line in chartGridLines"
@@ -251,27 +251,20 @@
               <div class="relative" :style="{ height: chartHeight + 'px' }">
                 <svg :viewBox="`0 0 ${chartWidth} ${chartHeight}`" preserveAspectRatio="none" class="h-full w-full text-emerald-500">
                   <defs>
-                    <linearGradient id="visits-line-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" stop-color="#16a34a" stop-opacity="0.95"></stop>
-                      <stop offset="100%" stop-color="#22c55e" stop-opacity="0.65"></stop>
-                    </linearGradient>
-                    <linearGradient id="visits-area-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" stop-color="#86efac" stop-opacity="0.35"></stop>
-                      <stop offset="100%" stop-color="#f0fdf4" stop-opacity="0"></stop>
+                    <linearGradient id="visits-bar-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stop-color="#22c55e" stop-opacity="0.95"></stop>
+                      <stop offset="100%" stop-color="#16a34a" stop-opacity="0.75"></stop>
                     </linearGradient>
                   </defs>
-                  <path v-if="visitsAreaPath" :d="visitsAreaPath" fill="url(#visits-area-gradient)" stroke="none" />
-                  <path
-                    v-if="visitsLinePath"
-                    :d="visitsLinePath"
-                    stroke="url(#visits-line-gradient)"
-                    stroke-width="3"
-                    fill="none"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                  <template v-for="point in visitsPoints" :key="point.label + '-dot'">
-                    <circle :cx="point.centerX" :cy="point.y" r="4.5" fill="#f8fffe" stroke="#16a34a" stroke-width="2" />
+                  <template v-for="point in visitsPoints" :key="point.label + '-bar'">
+                    <rect
+                      :x="point.barX"
+                      :y="point.y"
+                      :width="point.barWidth"
+                      :height="point.barHeight"
+                      rx="8"
+                      fill="url(#visits-bar-gradient)"
+                    />
                   </template>
                 </svg>
 
@@ -333,8 +326,8 @@
         </div>
 
         <div class="mt-4 space-y-3">
-          <div v-if="clicksPoints.length" class="rounded-xl bg-slate-50 p-6" :class="{ 'locked-blur': isFree }">
-            <div class="relative rounded-2xl border border-slate-100 bg-white/80 p-4">
+          <div v-if="clicksPoints.length" class="rounded-2xl border border-slate-100 bg-white/90 p-6 shadow-inner" :class="{ 'locked-blur': isFree }">
+            <div class="relative rounded-2xl bg-transparent p-4">
               <div class="pointer-events-none absolute inset-4">
                 <div
                   v-for="line in chartGridLines"
@@ -346,27 +339,20 @@
               <div class="relative" :style="{ height: chartHeight + 'px' }">
                 <svg :viewBox="`0 0 ${chartWidth} ${chartHeight}`" preserveAspectRatio="none" class="h-full w-full text-indigo-500">
                   <defs>
-                    <linearGradient id="clicks-line-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" stop-color="#7c3aed" stop-opacity="0.95"></stop>
-                      <stop offset="100%" stop-color="#a855f7" stop-opacity="0.65"></stop>
-                    </linearGradient>
-                    <linearGradient id="clicks-area-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" stop-color="#ddd6fe" stop-opacity="0.35"></stop>
-                      <stop offset="100%" stop-color="#faf5ff" stop-opacity="0"></stop>
+                    <linearGradient id="clicks-bar-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stop-color="#a855f7" stop-opacity="0.95"></stop>
+                      <stop offset="100%" stop-color="#7c3aed" stop-opacity="0.75"></stop>
                     </linearGradient>
                   </defs>
-                  <path v-if="clicksAreaPath" :d="clicksAreaPath" fill="url(#clicks-area-gradient)" stroke="none" />
-                  <path
-                    v-if="clicksLinePath"
-                    :d="clicksLinePath"
-                    stroke="url(#clicks-line-gradient)"
-                    stroke-width="3"
-                    fill="none"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                  <template v-for="point in clicksPoints" :key="point.label + '-dot'">
-                    <circle :cx="point.centerX" :cy="point.y" r="4.5" fill="#f8f5ff" stroke="#7c3aed" stroke-width="2" />
+                  <template v-for="point in clicksPoints" :key="point.label + '-bar'">
+                    <rect
+                      :x="point.barX"
+                      :y="point.y"
+                      :width="point.barWidth"
+                      :height="point.barHeight"
+                      rx="8"
+                      fill="url(#clicks-bar-gradient)"
+                    />
                   </template>
                 </svg>
 
@@ -435,8 +421,12 @@ type SeriesPoint = {
 type MetricPoint = {
   label: string;
   centerX: number;
+  centerPercent: number;
   y: number;
   value: number;
+  barX: number;
+  barWidth: number;
+  barHeight: number;
 };
 
 interface StatsTrendResponse {
@@ -593,47 +583,34 @@ const buildMetricPoints = (metric: "visits" | "clicks", maxValue: number): Metri
   const safeMax = maxValue > 0 ? maxValue : 1;
   if (!chartData.value.length) return [];
   const count = chartData.value.length;
-  const step = count > 1 ? lineChartInnerWidth / (count - 1) : 0;
+  const step = count > 1 ? lineChartInnerWidth / (count - 1) : lineChartInnerWidth;
+  const baseBarWidth =
+    count > 1 ? Math.max(8, Math.min(32, step * 0.7)) : Math.min(96, lineChartInnerWidth * 0.35);
 
   return chartData.value.map((point, index) => {
     const value = point[metric] ?? 0;
     const ratio = value / safeMax;
     const centerX = count === 1 ? lineChartWidth / 2 : lineChartPaddingX + index * step;
-    const y = lineChartPaddingY + (lineChartInnerHeight - ratio * lineChartInnerHeight);
+    const centerPercent = ((centerX - lineChartPaddingX) / lineChartInnerWidth) * 100;
+    const barHeight = ratio * lineChartInnerHeight;
+    const y = lineChartPaddingY + (lineChartInnerHeight - barHeight);
+    const barX = centerX - baseBarWidth / 2;
 
     return {
       label: point.label,
       centerX,
+      centerPercent,
       y,
-      value
+      value,
+      barX,
+      barWidth: baseBarWidth,
+      barHeight
     };
   });
 };
 
-const buildLinePath = (points: MetricPoint[]) => {
-  if (!points.length) return "";
-  return points.map((point, index) => `${index === 0 ? "M" : "L"} ${point.centerX} ${point.y}`).join(" ");
-};
-
-const buildAreaPath = (points: MetricPoint[]) => {
-  if (!points.length) return "";
-  const baselineY = lineChartPaddingY + lineChartInnerHeight;
-  if (points.length === 1) {
-    const point = points[0];
-    return `M ${point.centerX} ${baselineY} L ${point.centerX} ${point.y} L ${point.centerX} ${baselineY} Z`;
-  }
-  const segments = points.map((point) => `L ${point.centerX} ${point.y}`).join(" ");
-  const first = points[0];
-  const last = points[points.length - 1];
-  return `M ${first.centerX} ${baselineY} ${segments} L ${last.centerX} ${baselineY} Z`;
-};
-
 const visitsPoints = computed(() => buildMetricPoints("visits", maxVisits.value));
 const clicksPoints = computed(() => buildMetricPoints("clicks", maxClicks.value));
-const visitsLinePath = computed(() => buildLinePath(visitsPoints.value));
-const visitsAreaPath = computed(() => buildAreaPath(visitsPoints.value));
-const clicksLinePath = computed(() => buildLinePath(clicksPoints.value));
-const clicksAreaPath = computed(() => buildAreaPath(clicksPoints.value));
 const compactChartLabels = computed(() => isMobile.value || selectedPeriodDays.value >= 14);
 const chartLabelRange = computed(() => {
   if (!compactChartLabels.value || chartData.value.length < 2) return null;

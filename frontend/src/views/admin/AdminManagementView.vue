@@ -129,9 +129,12 @@
             </div>
           </div>
 
-          <div class="mt-4 rounded-xl bg-slate-50 p-4">
-            <div v-if="newUsersPoints.length" class="space-y-3">
-              <div class="relative rounded-2xl border border-slate-100 bg-white/80 p-4">
+          <div class="mt-4">
+            <div
+              v-if="newUsersPoints.length"
+              class="space-y-3 rounded-2xl border border-slate-100 bg-white/90 p-6 shadow-inner"
+            >
+              <div class="relative rounded-2xl bg-transparent p-4">
                 <div class="pointer-events-none absolute inset-4">
                   <div
                     v-for="line in newUsersGridLines"
@@ -141,33 +144,22 @@
                   ></div>
                 </div>
                 <div class="relative" :style="{ height: newUsersChartHeight + 'px' }">
-                  <svg
-                    :viewBox="`0 0 ${newUsersChartWidth} ${newUsersChartHeight}`"
-                    preserveAspectRatio="none"
-                    class="h-full w-full text-emerald-500"
-                  >
+                  <svg :viewBox="`0 0 ${newUsersChartWidth} ${newUsersChartHeight}`" preserveAspectRatio="none" class="h-full w-full">
                     <defs>
-                      <linearGradient id="new-users-line" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stop-color="#0d9488" stop-opacity="0.95"></stop>
-                        <stop offset="100%" stop-color="#14b8a6" stop-opacity="0.65"></stop>
-                      </linearGradient>
-                      <linearGradient id="new-users-area" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stop-color="#5eead4" stop-opacity="0.35"></stop>
-                        <stop offset="100%" stop-color="#ecfeff" stop-opacity="0"></stop>
+                      <linearGradient id="new-users-bar" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stop-color="#41ce5f" stop-opacity="0.95"></stop>
+                        <stop offset="100%" stop-color="#2ca751" stop-opacity="0.75"></stop>
                       </linearGradient>
                     </defs>
-                    <path v-if="newUsersAreaPath" :d="newUsersAreaPath" fill="url(#new-users-area)" stroke="none" />
-                    <path
-                      v-if="newUsersLinePath"
-                      :d="newUsersLinePath"
-                      stroke="url(#new-users-line)"
-                      stroke-width="3"
-                      fill="none"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                    <template v-for="point in newUsersPoints" :key="point.label + '-dot'">
-                      <circle :cx="point.centerX" :cy="point.y" r="4.5" fill="#f8fffe" stroke="#0d9488" stroke-width="2" />
+                    <template v-for="point in newUsersPoints" :key="point.label + '-bar'">
+                      <rect
+                        :x="point.barX"
+                        :y="point.y"
+                        :width="point.barWidth"
+                        :height="point.barHeight"
+                        rx="8"
+                        fill="url(#new-users-bar)"
+                      />
                     </template>
                   </svg>
                   <div
@@ -201,7 +193,10 @@
                 </template>
               </div>
             </div>
-            <div class="flex h-64 items-center justify-center text-sm text-slate-500" v-else>
+            <div
+              class="flex h-64 items-center justify-center rounded-2xl bg-slate-50 text-sm text-slate-500"
+              v-else
+            >
               Sem dados no periodo.
             </div>
           </div>
@@ -1122,38 +1117,28 @@ const newUsersMaxValue = computed(() => {
 const newUsersPoints = computed(() => {
   const series = newUsersSeries.value;
   if (!series.length) return [];
+  const safeMax = newUsersMaxValue.value > 0 ? newUsersMaxValue.value : 1;
   const count = series.length;
-  const step = count > 1 ? newUsersChartInnerWidth / (count - 1) : 0;
+  const step = count > 1 ? newUsersChartInnerWidth / (count - 1) : newUsersChartInnerWidth;
+  const baseWidth =
+    count > 1 ? Math.max(8, Math.min(32, step * 0.7)) : Math.min(96, newUsersChartInnerWidth * 0.35);
   return series.map((point, index) => {
     const value = point.value ?? 0;
-    const ratio = value / newUsersMaxValue.value;
-    const x = count === 1 ? NEW_USERS_CHART_WIDTH / 2 : NEW_USERS_CHART_PADDING_X + index * step;
+    const ratio = value / safeMax;
+    const centerX = count === 1 ? NEW_USERS_CHART_WIDTH / 2 : NEW_USERS_CHART_PADDING_X + index * step;
+    const barHeight = ratio * newUsersChartInnerHeight;
+    const y = NEW_USERS_CHART_PADDING_Y + (newUsersChartInnerHeight - barHeight);
+    const barX = centerX - baseWidth / 2;
     return {
       label: point.label,
       value,
-      centerX: x,
-      y: NEW_USERS_CHART_PADDING_Y + (newUsersChartInnerHeight - ratio * newUsersChartInnerHeight)
+      centerX,
+      y,
+      barX,
+      barWidth: baseWidth,
+      barHeight
     };
   });
-});
-const newUsersLinePath = computed(() => {
-  if (!newUsersPoints.value.length) return "";
-  return newUsersPoints.value
-    .map((point, index) => `${index === 0 ? "M" : "L"} ${point.centerX} ${point.y}`)
-    .join(" ");
-});
-const newUsersAreaPath = computed(() => {
-  const points = newUsersPoints.value;
-  if (!points.length) return "";
-  const baselineY = NEW_USERS_CHART_PADDING_Y + newUsersChartInnerHeight;
-  if (points.length === 1) {
-    const point = points[0];
-    return `M ${point.centerX} ${baselineY} L ${point.centerX} ${point.y} L ${point.centerX} ${baselineY} Z`;
-  }
-  const segments = points.map((point) => `L ${point.centerX} ${point.y}`).join(" ");
-  const first = points[0];
-  const last = points[points.length - 1];
-  return `M ${first.centerX} ${baselineY} ${segments} L ${last.centerX} ${baselineY} Z`;
 });
 const newUsersSurfaceRef = ref<HTMLDivElement | null>(null);
 const newUsersHoverPoint = ref<{ label: string; value: number; centerX: number; y: number } | null>(null);
@@ -1856,3 +1841,4 @@ interface AdminPageSummary {
   slug: string;
   status: string;
 }
+
