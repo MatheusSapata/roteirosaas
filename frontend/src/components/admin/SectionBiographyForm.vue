@@ -1,18 +1,32 @@
 <template>
   <div class="space-y-6">
-    <div>
-      <label class="text-sm font-semibold text-slate-600">Imagem de fundo</label>
-      <p class="text-xs text-slate-500">
-        Opcional. O título só aparece quando houver uma imagem carregada (recomendado 1920x640px).
-      </p>
-      <ImageUploadField
-        v-model="local.image"
-        class="mt-2"
-        hint="Recomendado 1920x640px"
-        :enable-crop="true"
-        :crop-aspect="3"
-        editor-title="Ajuste a imagem da biografia"
-      />
+    <div class="space-y-5">
+      <div>
+        <label class="text-sm font-semibold text-slate-600">Imagem desktop</label>
+        <p class="text-xs text-slate-500">
+          Opcional. O título só aparece quando houver uma imagem carregada (recomendado 1920x640px).
+        </p>
+        <ImageUploadField
+          v-model="local.image"
+          class="mt-2"
+          hint="Recomendado 1920x640px"
+          :enable-crop="true"
+          :crop-aspect="3"
+          editor-title="Ajuste a imagem da biografia"
+        />
+      </div>
+      <div>
+        <label class="text-sm font-semibold text-slate-600">Imagem mobile (opcional)</label>
+        <p class="text-xs text-slate-500">Use uma versão horizontal 2:1 para telas menores (ex.: 1600x800px).</p>
+        <ImageUploadField
+          v-model="local.mobileImage"
+          class="mt-2"
+          hint="Exibida automaticamente no mobile"
+          :enable-crop="true"
+          :crop-aspect="2"
+          editor-title="Ajuste a imagem mobile"
+        />
+      </div>
     </div>
 
     <div class="grid gap-6 md:grid-cols-2">
@@ -152,7 +166,7 @@ const overlay = computed({
   }
 });
 
-const hasImage = computed(() => !!(local.image || "").trim());
+const hasImage = computed(() => Boolean((local.image && local.image.trim()) || (local.mobileImage && local.mobileImage.trim())));
 
 let syncing = false;
 const syncFromProps = (value: BiographySection) => {
