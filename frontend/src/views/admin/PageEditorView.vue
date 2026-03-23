@@ -1,5 +1,5 @@
 <template>
-<div class="w-full space-y-6 px-4 py-10 md:px-8">
+<div class="w-full space-y-6 px-4 py-10 md:px-8 md:py-0">
     <div class="sticky top-0 z-30 flex flex-col gap-3 border-b border-white/40 bg-slate-50/90 py-4 backdrop-blur md:flex-row md:items-center md:justify-between">
       <div>
         <p class="text-sm uppercase tracking-wide text-slate-500">Editor de página</p>
@@ -630,6 +630,7 @@ import { useAgencyStore } from "../../store/useAgencyStore";
 import { slugify } from "../../utils/slugify";
 import type {
   BannerCardSection,
+  BiographySection,
   CtaSection,
   EditorPreferences,
   FaqSection,
@@ -667,6 +668,7 @@ import footerThumb from "../../assets/footer-thumb.jpg";
 import countdownThumb from "../../assets/countdown-thumb.jpg";
 import storyThumb from "../../assets/story-thumb.jpg";
 import featuredVideoThumb from "../../assets/videoemdestaque.png";
+import biographyThumb from "../../assets/biografia.png";
 
 interface Page {
   id: number;
@@ -887,6 +889,7 @@ const SectionHeroForm = defineAsyncComponent(() => import("../../components/admi
 const SectionBannerCardForm = defineAsyncComponent(() => import("../../components/admin/SectionBannerCardForm.vue"));
 const SectionPricesForm = defineAsyncComponent(() => import("../../components/admin/SectionPricesForm.vue"));
 const SectionPhotoForm = defineAsyncComponent(() => import("../../components/admin/SectionPhotoForm.vue"));
+const SectionBiographyForm = defineAsyncComponent(() => import("../../components/admin/SectionBiographyForm.vue"));
 const SectionItineraryForm = defineAsyncComponent(() => import("../../components/admin/SectionItineraryForm.vue"));
 const SectionFaqForm = defineAsyncComponent(() => import("../../components/admin/SectionFaqForm.vue"));
 const SectionTestimonialsForm = defineAsyncComponent(() => import("../../components/admin/SectionTestimonialsForm.vue"));
@@ -900,6 +903,7 @@ const PublicHeroSection = defineAsyncComponent(() => import("../../components/pu
 const PublicBannerCardSection = defineAsyncComponent(() => import("../../components/public/PublicBannerCardSection.vue"));
 const PublicPricesSection = defineAsyncComponent(() => import("../../components/public/PublicPricesSection.vue"));
 const PublicPhotoSection = defineAsyncComponent(() => import("../../components/public/PublicPhotoSection.vue"));
+const PublicBiographySection = defineAsyncComponent(() => import("../../components/public/PublicBiographySection.vue"));
 const PublicItinerarySection = defineAsyncComponent(() => import("../../components/public/PublicItinerarySection.vue"));
 const PublicFaqSection = defineAsyncComponent(() => import("../../components/public/PublicFaqSection.vue"));
 const PublicTestimonialsSection = defineAsyncComponent(() => import("../../components/public/PublicTestimonialsSection.vue"));
@@ -915,6 +919,7 @@ const sectionTypes: SectionType[] = [
   "hero",
   "banner_card",
   "photo",
+  "biography",
   "prices",
   "itinerary",
   "faq",
@@ -931,6 +936,7 @@ const sectionDescriptions: Partial<Record<SectionType, string>> = {
   hero: "Bloco inicial com destaque visual, título, subtítulo e CTA principal.",
   banner_card: "Banner em card com imagem de fundo, gradiente e CTA destacado.",
   photo: "Uma única imagem em destaque. Escolha o layout card ou largura total.",
+  biography: "Imagem em largura total com título sobreposto e texto descritivo.",
   prices: "Tabela com planos, valores e diferenciais para cada oferta.",
   itinerary: "Sequência de etapas/benefícios para explicar seu serviço ou roteiro.",
   faq: "Perguntas e respostas para antecipar dúvidas frequentes.",
@@ -946,6 +952,7 @@ const sectionThumbnails: Partial<Record<SectionType, string>> = {
   hero: heroThumb,
   banner_card: bannerCardThumb,
   photo: photoThumb,
+  biography: biographyThumb,
   prices: pricesThumb,
   itinerary: itineraryThumb,
   faq: faqThumb,
@@ -961,6 +968,7 @@ const sectionAccents: Partial<Record<SectionType, string>> = {
   hero: "from-sky-100 to-slate-50",
   banner_card: "from-emerald-600/90 to-emerald-400/70",
   photo: "from-slate-100 to-white",
+  biography: "from-slate-900/80 to-slate-800/60",
   prices: "from-amber-100 to-white",
   itinerary: "from-emerald-100/70 to-white",
   faq: "from-slate-100 to-white",
@@ -976,6 +984,7 @@ const formComponents: Partial<Record<SectionType, any>> = {
   hero: SectionHeroForm,
   banner_card: SectionBannerCardForm,
   photo: SectionPhotoForm,
+  biography: SectionBiographyForm,
   prices: SectionPricesForm,
   itinerary: SectionItineraryForm,
   faq: SectionFaqForm,
@@ -992,6 +1001,7 @@ const publicComponents: Partial<Record<SectionType, any>> = {
   hero: PublicHeroSection,
   banner_card: PublicBannerCardSection,
   photo: PublicPhotoSection,
+  biography: PublicBiographySection,
   prices: PublicPricesSection,
   itinerary: PublicItinerarySection,
   faq: PublicFaqSection,
@@ -1732,6 +1742,22 @@ function defaultSection(type: SectionType): PageSection {
     } as PhotoSection);
   }
 
+  if (type === "biography") {
+    return ensureSectionAnchor({
+      type: "biography",
+      enabled: true,
+      fullWidth: true,
+      title: "BIOGRAFIA",
+      text:
+        "Use esta seção para compartilhar sua trajetória, conquistas e bastidores. Histórias reais criam conexão com o visitante e reforçam sua autoridade no assunto.",
+      image:
+        "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1600&q=80",
+      overlayOpacity: 0.45,
+      titleColor: "#ffffff",
+      textColor: "#0f172a"
+    } as BiographySection);
+  }
+
   if (type === "prices") {
     const headingDefaults = getSectionHeadingDefaults("prices");
     return ensureSectionAnchor({
@@ -2157,24 +2183,26 @@ const scheduleWhatsAppUpdate = () => {
   }, 500);
 };
 
-const duplicateSection = (index: number) => {
+const duplicateSection = async (index: number) => {
   if (isLockedFooterSection(sections.value[index])) return;
   const copy = cloneWithNewAnchor(clone(sections.value[index]));
   const next = sections.value.slice();
   next.splice(index + 1, 0, copy);
   setSections(next);
   refreshPreview(true);
+  await saveConfig();
 };
 
-const removeSection = (index: number) => {
+const removeSection = async (index: number) => {
   if (isLockedFooterSection(sections.value[index])) return;
   const next = sections.value.slice();
   next.splice(index, 1);
   setSections(next);
   refreshPreview(true);
+  await saveConfig();
 };
 
-const moveSection = (index: number, direction: number) => {
+const moveSection = async (index: number, direction: number) => {
   const target = index + direction;
   if (target < 0 || target >= sections.value.length) return;
   if (isLockedFooterSection(sections.value[index]) || isLockedFooterSection(sections.value[target])) return;
@@ -2187,6 +2215,7 @@ const moveSection = (index: number, direction: number) => {
     return next;
   });
   refreshPreview(true);
+  await saveConfig();
 };
 
 const openSectionEditor = (index: number) => {
@@ -2248,7 +2277,7 @@ const refreshPreview = (immediate = false) => {
   schedulePreviewHydration(immediate);
 };
 
-const saveEditingSection = () => {
+const saveEditingSection = async () => {
   if (editingSectionIndex.value === null || !editingSectionDraft.value) return;
   if (hasPendingImageUploads.value) {
     showSnackbar("A imagem ainda está sendo enviada. Aguarde antes de salvar.");
@@ -2264,6 +2293,7 @@ const saveEditingSection = () => {
   updateSectionAt(editingSectionIndex.value, editingSectionDraft.value, true);
   closeSectionEditor();
   refreshPreview(true);
+  await saveConfig();
 };
 
 const setDefaultSectionsByPlan = () => {
