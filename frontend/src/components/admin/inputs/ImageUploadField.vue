@@ -429,7 +429,8 @@ const confirmCrop = async () => {
   dialogError.value = "";
   try {
     const canvas = cropperInstance.value.getCroppedCanvas({
-      width: 800,
+      maxWidth: 2560,
+      maxHeight: 2560,
       imageSmoothingEnabled: true,
       imageSmoothingQuality: "high"
     });
