@@ -95,7 +95,7 @@ const imageHeightClass = computed(() => {
   if (usingMobileImage.value) {
     return "h-auto";
   }
-  return props.section.fullWidth ? "h-[260px] sm:h-[320px] md:h-[640px]" : "h-[300px] sm:h-[360px] md:h-[480px]";
+  return props.section.fullWidth ? "h-[260px] sm:h-[320px] md:h-[480px]" : "h-[300px] sm:h-[360px] md:h-[480px]";
 });
 const imageStyle = computed(() => (usingMobileImage.value ? { aspectRatio: "2 / 1" } : {}));
 const overlayColor = computed(() => {
