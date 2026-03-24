@@ -43,7 +43,10 @@
       </div>
 
       <div class="flex flex-wrap items-center gap-2">
-        <select v-model="days" class="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700">
+        <select
+          v-model="days"
+          class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 transition focus:outline-none focus:ring-2 focus:ring-brand/20 dark:border-white/15 dark:bg-[#202020] dark:text-white"
+        >
           <option value="7">Ultimos 7 dias</option>
           <option value="30">Ultimos 30 dias</option>
           <option value="90">Ultimos 90 dias</option>
@@ -66,7 +69,7 @@
 
         <button
           @click="exportPdf"
-          class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+          class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-white/15 dark:bg-[#202020] dark:text-white dark:hover:bg-[#1a1a1a]"
         >
           Exportar PDF
         </button>
@@ -783,18 +786,18 @@
 
     <!-- LESSONS -->
     <template v-else-if="activeTab === 'lessons'">
-      <section class="rounded-3xl bg-white p-6 shadow-md ring-1 ring-slate-100">
+      <section class="rounded-3xl bg-white p-6 shadow-md ring-1 ring-slate-100 dark:bg-[#181818] dark:text-white dark:ring-white/10">
         <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p class="text-xs uppercase tracking-[0.4em] text-slate-500">Conteúdo exclusivo</p>
-            <h2 class="text-2xl font-bold text-slate-900">Gerenciar aulas</h2>
-            <p class="text-sm text-slate-500">As aulas cadastradas aqui aparecem para todos os administradores na aba "Aulas".</p>
+            <p class="text-xs uppercase tracking-[0.4em] text-slate-500 dark:text-white/60">Conteúdo exclusivo</p>
+            <h2 class="text-2xl font-bold text-slate-900 dark:text-white">Gerenciar aulas</h2>
+            <p class="text-sm text-slate-500 dark:text-white/70">As aulas cadastradas aqui aparecem para todos os administradores na aba "Aulas".</p>
           </div>
 
           <div class="flex flex-wrap gap-2">
             <button
               type="button"
-              class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-white/20 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
               @click="resetLessonForm"
             >
               Nova aula
@@ -802,7 +805,7 @@
 
             <button
               type="button"
-              class="rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-70"
+              class="rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-70 dark:border-amber-400/60 dark:bg-amber-500/15 dark:text-amber-50 dark:hover:bg-amber-500/25"
               :disabled="resettingLessons"
               @click="handleResetLessons"
             >
@@ -815,14 +818,14 @@
           <div class="space-y-4">
             <p
               v-if="lessonsLoading"
-              class="rounded-2xl border border-dashed border-slate-200 p-5 text-center text-sm text-slate-500"
+              class="rounded-2xl border border-dashed border-slate-200 p-5 text-center text-sm text-slate-500 dark:border-white/15 dark:text-white/60"
             >
               Carregando aulas...
             </p>
 
             <p
               v-else-if="!adminLessons.length"
-              class="rounded-2xl border border-dashed border-slate-200 p-5 text-center text-sm text-slate-500"
+              class="rounded-2xl border border-dashed border-slate-200 p-5 text-center text-sm text-slate-500 dark:border-white/15 dark:text-white/60"
             >
               Nenhuma aula cadastrada ainda.
             </p>
@@ -831,18 +834,18 @@
               <article
                 v-for="lesson in adminLessons"
                 :key="lesson.id"
-                class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm"
+                class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[#181818] dark:text-white"
               >
                 <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                   <div>
-                    <p class="text-xs uppercase tracking-[0.3em] text-slate-500">
+                    <p class="text-xs uppercase tracking-[0.3em] text-slate-500 dark:text-white/60">
                       {{ lesson.level || "Aula" }} • {{ lesson.duration || "Livre" }}
                     </p>
-                    <h4 class="mt-2 text-lg font-semibold text-slate-900">{{ lesson.title }}</h4>
-                    <p class="mt-1 text-sm text-slate-600">{{ lesson.description }}</p>
-                    <p class="mt-3 text-xs text-slate-500">
+                    <h4 class="mt-2 text-lg font-semibold text-slate-900 dark:text-white">{{ lesson.title }}</h4>
+                    <p class="mt-1 text-sm text-slate-600 dark:text-white/70">{{ lesson.description }}</p>
+                    <p class="mt-3 text-xs text-slate-500 dark:text-white/60">
                       Fonte:
-                      <span class="font-semibold text-slate-700">
+                      <span class="font-semibold text-slate-700 dark:text-white">
                         {{ lesson.videoType === "file" ? "Arquivo/URL direto" : "Embed/Youtube" }}
                       </span>
                     </p>
@@ -854,7 +857,7 @@
                 <div class="mt-4 flex flex-wrap gap-2">
                   <button
                     type="button"
-                    class="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                    class="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-white/15 dark:text-white dark:hover:bg-white/10"
                     @click="startLessonEdit(lesson)"
                   >
                     Editar
@@ -862,7 +865,7 @@
 
                   <button
                     type="button"
-                    class="inline-flex items-center gap-2 rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+                    class="inline-flex items-center gap-2 rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-red-400/50 dark:bg-red-500/15 dark:text-red-100 dark:hover:bg-red-500/25"
                     :disabled="deletingLessonId === lesson.id"
                     @click="deleteLesson(lesson.id)"
                   >
@@ -873,14 +876,14 @@
             </template>
           </div>
 
-          <form class="space-y-4 rounded-2xl bg-slate-50/70 p-5" @submit.prevent="saveLesson">
+          <form class="lessons-form space-y-4 rounded-2xl bg-slate-50/70 p-5 dark:bg-[#181818] dark:border dark:border-white/15" @submit.prevent="saveLesson">
             <div>
-              <p class="text-xs uppercase tracking-[0.3em] text-slate-500">{{ isEditingLesson ? "Editando aula" : "Cadastrar nova aula" }}</p>
-              <h3 class="text-xl font-semibold text-slate-900">{{ isEditingLesson ? "Atualizar conteúdo" : "Adicionar conteúdo" }}</h3>
-              <p class="text-sm text-slate-500">Informe título, descrição e o link ou iframe do vídeo.</p>
+              <p class="text-xs uppercase tracking-[0.3em] text-slate-500 dark:text-white/60">{{ isEditingLesson ? "Editando aula" : "Cadastrar nova aula" }}</p>
+              <h3 class="text-xl font-semibold text-slate-900 dark:text-white">{{ isEditingLesson ? "Atualizar conteudo" : "Adicionar conteudo" }}</h3>
+              <p class="text-sm text-slate-500 dark:text-white/70">Informe titulo, descricao e o link ou iframe do video.</p>
             </div>
 
-            <label class="block text-sm font-semibold text-slate-700">
+            <label class="block text-sm font-semibold text-slate-700 dark:text-white">
               Título
               <input
                 v-model="lessonForm.title"
@@ -891,18 +894,18 @@
               />
             </label>
 
-            <label class="block text-sm font-semibold text-slate-700">
+            <label class="block text-sm font-semibold text-slate-700 dark:text-white">
               Descrição / legenda
               <textarea
                 v-model="lessonForm.description"
                 rows="3"
-                class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 focus:border-brand focus:ring-brand"
+                class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 focus:border-brand focus:ring-brand dark:border-white/20 dark:bg-[#181818] dark:text-white dark:placeholder-white/70"
                 placeholder="Explique o que o usuário aprende nessa aula."
               ></textarea>
             </label>
 
             <div class="grid gap-3 md:grid-cols-2">
-              <label class="block text-sm font-semibold text-slate-700">
+              <label class="block text-sm font-semibold text-slate-700 dark:text-white">
                 Duração
                 <input
                   v-model="lessonForm.duration"
@@ -912,7 +915,7 @@
                 />
               </label>
 
-              <label class="block text-sm font-semibold text-slate-700">
+              <label class="block text-sm font-semibold text-slate-700 dark:text-white">
                 Nível
                 <input
                   v-model="lessonForm.level"
@@ -923,7 +926,7 @@
               </label>
             </div>
 
-            <label class="block text-sm font-semibold text-slate-700">
+            <label class="block text-sm font-semibold text-slate-700 dark:text-white">
               Thumbnail por link (opcional)
               <input
                 v-model="lessonForm.thumbnailUrl"
@@ -932,49 +935,49 @@
                 class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 focus:border-brand focus:ring-brand disabled:cursor-not-allowed disabled:bg-slate-100"
                 placeholder="https://..."
               />
-              <span v-if="lessonForm.thumbnailData" class="mt-1 block text-xs text-slate-500">
+              <span v-if="lessonForm.thumbnailData" class="mt-1 block text-xs text-slate-500 dark:text-white/60">
                 Limpe a imagem enviada para editar o link.
               </span>
             </label>
 
-            <div class="rounded-2xl border border-dashed border-slate-300 bg-white/70 p-4">
-              <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Upload opcional</p>
+            <div class="upload-zone rounded-2xl border border-dashed border-slate-300 bg-white/70 p-4 dark:border-white/15">
+              <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-white/60">Upload opcional</p>
 
               <div class="mt-2 flex flex-wrap items-center gap-3">
                 <input
                   type="file"
                   accept="image/*"
                   @change="handleThumbnailUpload"
-                  class="text-sm text-slate-600 file:mr-3 file:rounded-full file:border file:border-slate-300 file:bg-slate-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-slate-700 hover:file:bg-slate-100"
+                  class="text-sm text-slate-600 file:mr-3 file:rounded-full file:border file:border-slate-300 file:bg-slate-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-slate-700 hover:file:bg-slate-100 dark:text-white dark:file:border-white/30 dark:file:bg-white/10 dark:file:text-white dark:hover:file:bg-white/20"
                 />
 
                 <button
                   v-if="lessonForm.thumbnailData"
                   type="button"
-                  class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                  class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-white/15 dark:text-white dark:hover:bg-white/10"
                   @click="clearThumbnailUpload"
                 >
                   Remover imagem
                 </button>
               </div>
 
-              <p v-if="lessonForm.thumbnailUploadName" class="mt-2 text-xs text-slate-500">
+              <p v-if="lessonForm.thumbnailUploadName" class="mt-2 text-xs text-slate-500 dark:text-white/60">
                 Selecionado: {{ lessonForm.thumbnailUploadName }}
               </p>
             </div>
 
-            <label class="block text-sm font-semibold text-slate-700">
+            <label class="block text-sm font-semibold text-slate-700 dark:text-white">
               Link ou iframe do vídeo
               <textarea
                 v-model="lessonForm.videoInput"
                 rows="3"
-                class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 focus:border-brand focus:ring-brand"
+                class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 focus:border-brand focus:ring-brand dark:border-white/20 dark:bg-[#181818] dark:text-white dark:placeholder-white/70"
                 placeholder="Cole o link do YouTube ou o iframe completo."
                 required
               ></textarea>
             </label>
 
-            <div v-if="lessonPreview.videoUrl" class="rounded-2xl border border-slate-200 bg-white p-3">
+            <div v-if="lessonPreview.videoUrl" class="rounded-2xl border border-slate-200 bg-white p-3 dark:border-white/15 dark:bg-[#181818]">
               <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Prévia</p>
               <div class="mt-2 overflow-hidden rounded-xl">
                 <iframe
@@ -1107,7 +1110,7 @@
           </div>
           <label
             v-else-if="linkPageDialog.pages.length"
-            class="block text-sm font-semibold text-slate-700"
+            class="block text-sm font-semibold text-slate-700 dark:text-white"
           >
             Selecione a página base
             <select
@@ -1131,7 +1134,7 @@
             Nenhuma página encontrada na sua agência atual. Crie uma página primeiro.
           </div>
 
-          <label class="block text-sm font-semibold text-slate-700">
+          <label class="block text-sm font-semibold text-slate-700 dark:text-white">
             Nome do roteiro
             <input
               v-model="linkPageDialog.newTitle"
@@ -1479,8 +1482,8 @@ const premiumMode = computed(() => (auth.user?.plan || "").toLowerCase() === "in
 const activeTab = ref<AdminTab>("dashboard");
 const tabButtonClass = (tab: AdminTab) =>
   activeTab.value === tab
-    ? "bg-slate-900 text-white shadow-lg shadow-slate-900/30"
-    : "border border-slate-200 text-slate-600 hover:bg-slate-50";
+    ? "bg-slate-900 text-white shadow-lg shadow-slate-900/30 dark:bg-white dark:text-slate-900"
+    : "border border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:text-white/80 dark:hover:bg-white/5";
 
 type UserColumnKey = "name" | "agency_name" | "active_pages" | "draft_pages" | "plan" | "valid_until" | "created_at";
 interface UserColumn {
@@ -2387,6 +2390,39 @@ onUnmounted(() => {
   user-select: text !important;
   caret-color: auto !important;
 }
+
+:global(.dark-theme .lessons-form input:not([type='file']),
+.dark-theme .lessons-form textarea,
+.dark-theme .lessons-form select) {
+  background-color: #181818 !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: #f8fafc !important;
+}
+:global(.dark-theme .lessons-form input:not([type='file'])::placeholder,
+.dark-theme .lessons-form textarea::placeholder,
+.dark-theme .lessons-form select::placeholder) {
+  color: rgba(255, 255, 255, 0.55) !important;
+}
+:global(.dark-theme .lessons-form input[type='file']) {
+  color: #f8fafc !important;
+}
+:global(.dark-theme .lessons-form input[type='file']::file-selector-button) {
+  background-color: #181818 !important;
+  color: #f8fafc !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+:global(.dark-theme .lessons-form input[type='file']::-webkit-file-upload-button) {
+  background-color: #181818 !important;
+  color: #f8fafc !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+:global(.dark-theme .lessons-form .upload-zone) {
+  background-color: #181818;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+:global(.dark-theme .lessons-form .upload-zone input[type='file']) {
+  color: #e2e8f0;
+}
 </style>
 
 interface AdminPageSummary {
@@ -2395,4 +2431,3 @@ interface AdminPageSummary {
   slug: string;
   status: string;
 }
-

@@ -70,6 +70,27 @@ const redirectRoutes: RouteRecordRaw[] = [
     beforeEnter() {
       window.location.href = "https://pay.cakto.com.br/pxzgp5s";
     }
+  },
+  {
+    path: "/profissional",
+    component: RedirectPlaceholder,
+    beforeEnter() {
+      window.location.href = "https://pay.cakto.com.br/7o7zrup_818166";
+    }
+  },
+  {
+    path: "/agencia",
+    component: RedirectPlaceholder,
+    beforeEnter() {
+      window.location.href = "https://pay.cakto.com.br/n7vnc73_818167";
+    }
+  },
+  {
+    path: "/escala",
+    component: RedirectPlaceholder,
+    beforeEnter() {
+      window.location.href = "https://pay.cakto.com.br/iexkakw_818426";
+    }
   }
 ];
 

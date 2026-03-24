@@ -1,7 +1,6 @@
 <template>
   <div class="space-y-6">
-    <div class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
-      <p class="text-sm uppercase tracking-wide text-emerald-600">Publicacao</p>
+    <div class="space-y-2 md:pl-2">
       <h1 class="text-2xl font-bold text-slate-900">Dominios personalizados</h1>
       <p class="mt-2 text-sm text-slate-600">
         Use um dominio proprio para compartilhar seus roteiros sem depender do link padrao
@@ -22,12 +21,12 @@
         </p>
         <form class="mt-4 space-y-4" @submit.prevent="createDomain">
           <div>
-            <label class="text-sm font-medium text-slate-700">Host</label>
+           <label class="text-sm font-medium text-slate-700">Host</label>
             <input
               v-model="form.host"
               type="text"
               placeholder="www.suaagencia.com"
-              class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-200"
+              class="host-input mt-1 w-full rounded-xl px-3 py-2 text-sm text-white focus:border-[#3EBD59] focus:outline-none focus:ring-1 focus:ring-[#3EBD59]/40"
               :disabled="creating || loadingDomains"
             />
           </div>
@@ -41,9 +40,9 @@
             Tornar dominio principal ao ativar
           </label>
           <div class="space-y-2 text-sm">
-            <button
+<button
               type="submit"
-              class="inline-flex w-full items-center justify-center rounded-xl bg-emerald-500 px-4 py-2 font-semibold text-white shadow-sm transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:bg-emerald-300"
+              class="inline-flex w-full items-center justify-center rounded-xl bg-[#3EBD59] px-4 py-2 font-semibold text-white shadow-sm transition hover:bg-[#34a04c] disabled:cursor-not-allowed disabled:bg-[#3EBD59]/60"
               :disabled="creating || loadingDomains"
             >
               <span v-if="creating" class="animate-pulse">Salvando...</span>
@@ -102,6 +101,7 @@
                   :key="badge.label"
                   :class="[
                     'rounded-full px-3 py-1 text-xs font-semibold',
+                    badge.variant === 'active' ? 'bg-[#3EBD59] text-white' :
                     badge.variant === 'success' ? 'bg-emerald-100 text-emerald-800' :
                     badge.variant === 'warning' ? 'bg-amber-100 text-amber-800' :
                     badge.variant === 'info' ? 'bg-sky-100 text-sky-800' :
@@ -431,9 +431,9 @@ const removeDomain = (domain: AgencyDomain) => {
 };
 
 const buildStatusBadges = (domain: AgencyDomain) => {
-  const badges: { label: string; variant: "success" | "warning" | "danger" | "info" | "neutral" }[] = [];
+  const badges: { label: string; variant: "active" | "success" | "warning" | "danger" | "info" | "neutral" }[] = [];
   if (domain.is_active) {
-    badges.push({ label: "Ativo", variant: "success" });
+    badges.push({ label: "Ativo", variant: "active" });
   } else {
     badges.push({ label: "Inativo", variant: "neutral" });
   }
@@ -481,3 +481,12 @@ watch(
   }
 );
 </script>
+
+<style scoped>
+:global(.dark-theme .host-input) {
+  background-color: #05070f;
+  color: #f8fafc;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+</style>
+

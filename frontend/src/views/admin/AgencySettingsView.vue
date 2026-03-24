@@ -1,5 +1,5 @@
-﻿<template>
-  <div class="w-full space-y-6 px-4 py-8 md:px-8">
+<template>
+  <div class="agency-settings w-full space-y-6 px-4 py-8 md:px-8">
     <div>
       <p class="text-sm uppercase tracking-wide text-slate-500">Agência</p>
       <h1 class="text-3xl font-bold text-slate-900">Configurações</h1>
@@ -8,7 +8,7 @@
     <div class="rounded-2xl bg-white p-6 shadow-md">
       <form class="space-y-4" @submit.prevent="save">
         <div class="grid gap-4 md:grid-cols-2">
-          <div>
+          <div class="md:pl-2">
             <label class="text-sm font-semibold text-slate-600">Nome</label>
             <input v-model="form.name" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
           </div>
@@ -24,55 +24,19 @@
           </div>
         </div>
 
-        <div>
-          <label class="text-sm font-semibold text-slate-600">Cor primária</label>
-          <div class="mt-2 space-y-3">
-            <div class="flex flex-wrap gap-2">
-              <button
-                v-for="color in colorPalette"
-                :key="color"
-                type="button"
-                class="flex h-10 w-10 items-center justify-center rounded-full border transition"
-                :class="form.primary_color === color ? 'ring-2 ring-emerald-400 border-transparent' : 'border-slate-200'"
-                :style="{ background: color }"
-                @click="form.primary_color = color"
-                :aria-label="`Cor ${color}`"
-              ></button>
-            </div>
-
-            <div class="flex items-center gap-2">
-              <input
-                type="color"
-                v-model="form.primary_color"
-                class="h-10 w-12 cursor-pointer rounded border border-slate-200 bg-white"
-              />
-              <input
-                v-model="form.primary_color"
-                placeholder="#41ce5f"c
-                class="w-full rounded-lg border border-slate-200 px-3 py-2"
-              />
-            </div>
-
-            <p class="text-xs text-slate-500">
-              Essa cor será usada como base nos CTAs do editor. Você pode ajustar depois.
-            </p>
-          </div>
-        </div>
-
-        <div class="grid gap-6 lg:grid-cols-2">
-          <div>
-            <ImageUploadField
-              v-model="form.logo_url"
-              label="Logo da agência"
-              hint="Envie o arquivo da sua marca. Ela aparece no editor e nas páginas."
-              :enable-crop="true"
-              editor-title="Refine a logo da agência"
+        <div class="grid gap-4 md:grid-cols-3">
+          <label class="space-y-2 text-xs font-semibold text-slate-500 md:pl-2 md:pt-4">
+            CNPJ
+            <input
+              v-model="companyForm.cnpj"
+              type="text"
+              placeholder="00.000.000/0000-00"
+              class="w-full rounded-lg border border-slate-200 px-4 py-3 text-sm"
             />
-          </div>
-
-          <div class="space-y-4 rounded-2xl border border-slate-100 p-4">
+          </label>
+          <div class="space-y-2 md:pl-2">
+            <label class="text-sm font-semibold text-slate-600">WhatsApp da agência</label>
             <div class="space-y-2">
-              <label class="text-sm font-semibold text-slate-600">WhatsApp da agência</label>
               <div class="flex gap-2">
                 <div class="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2">
                   <span class="text-sm font-semibold text-slate-700">BR</span>
@@ -87,7 +51,7 @@
               </div>
 
               <p class="text-xs text-slate-500">
-                Usamos esse número como padrão para os links de WhatsApp nos CTAs.
+                Usamos esse numero como padrao para os links de WhatsApp nos CTAs.
               </p>
 
               <div class="flex flex-col gap-1 text-sm">
@@ -96,85 +60,109 @@
               </div>
             </div>
           </div>
-        </div>
 
-        <div class="space-y-4 rounded-2xl border border-slate-100 p-4">
-          <div class="space-y-1">
-            <label class="text-sm font-semibold text-slate-600">Redes sociais</label>
-            <p class="text-xs text-slate-500">
-              Informe os links das redes que irao aparecer nas paginas publicas e templates.
-            </p>
-          </div>
-
-          <div class="space-y-3">
-            <div
-              v-if="!form.social_links.length"
-              class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500"
-            >
-              Nenhuma rede social adicionada ainda.
-            </div>
-
-            <div
-              v-for="(social, index) in form.social_links"
-              :key="social.id ?? `social-${index}`"
-              class="space-y-3 rounded-2xl border border-slate-200/80 bg-slate-50/60 p-4"
-            >
-              <div class="flex flex-col gap-3 md:flex-row md:items-end">
-                <label class="flex-1 text-xs font-semibold text-slate-500">
-                  Rede
-                  <select
-                    v-model="social.network"
-                    class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
-                  >
-                    <option v-for="option in socialNetworkOptions" :key="option.value" :value="option.value">
-                      {{ option.label }}
-                    </option>
-                  </select>
-                </label>
-
-                <label class="flex-[2] text-xs font-semibold text-slate-500">
-                  Link
-                  <input
-                    v-model="social.url"
-                    type="url"
-                    :placeholder="socialNetworkPlaceholders[social.network]"
-                    class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                  />
-                </label>
-
-                <button
-                  type="button"
-                  class="text-sm font-semibold text-slate-500 hover:text-red-500"
-                  @click="removeSocialLink(index)"
-                >
-                  Remover
-                </button>
+          <div class="space-y-2 md:pl-2">
+            <label class="text-sm font-semibold text-slate-600">Cor primária</label>
+            <div class="space-y-2">
+              <div class="flex items-center gap-3">
+                <input
+                  type="color"
+                  v-model="form.primary_color"
+                  class="h-10 w-12 cursor-pointer rounded border border-slate-200 bg-white"
+                />
+                <input
+                  v-model="form.primary_color"
+                  placeholder="#41ce5f"
+                  class="flex-1 rounded-lg border border-slate-200 px-3 py-2"
+                />
               </div>
+              <p class="text-xs text-slate-500">
+                Essa cor sera usada como base nos CTAs do editor. Voce pode ajustar depois.
+              </p>
             </div>
           </div>
-
-          <button
-            type="button"
-            class="flex items-center gap-2 text-sm font-semibold text-emerald-600"
-            @click="addSocialLink"
-          >
-            <span class="text-lg leading-none">+</span>
-            Adicionar rede
-          </button>
         </div>
 
-        <div class="grid gap-4 md:grid-cols-2">
-          <label class="space-y-1 text-xs font-semibold text-slate-500 md:col-span-2">
-            CNPJ
-            <input
-              v-model="companyForm.cnpj"
-              type="text"
-              placeholder="00.000.000/0000-00"
-              class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+        <div class="grid gap-6 lg:grid-cols-2">
+          <div class="md:pl-2">
+            <ImageUploadField
+              class="agency-logo-upload"
+              v-model="form.logo_url"
+              label="Logo da agencia"
+              hint="Envie o arquivo da sua marca. Ela aparece no editor e nas paginas."
+              :enable-crop="true"
+              editor-title="Refine a logo da agencia"
             />
-          </label>
+          </div>
+          <div class="space-y-4 md:pl-2">
+            <div class="space-y-1 md:pl-0">
+              <label class="text-sm font-semibold text-slate-600">Redes sociais</label>
+              <p class="text-xs text-slate-500">
+                Informe os links das redes que irão aparecer nas paginas públicas e templates.
+              </p>
+            </div>
 
-          <label class="space-y-1 text-xs font-semibold text-slate-500 md:col-span-2">
+            <div class="space-y-4">
+              <div class="space-y-3">
+                <div
+                  v-if="!form.social_links.length"
+                  class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500 dark:border-white/20 dark:bg-transparent dark:text-white/70"
+                >
+                  Nenhuma rede social adicionada ainda.
+                </div>
+
+                <div
+                  v-for="(social, index) in form.social_links"
+                  :key="social.id ?? `social-${index}`"
+                  class="space-y-3 rounded-2xl border border-slate-200/80 bg-slate-50/60 p-4 dark:border-white/10 dark:bg-transparent"
+                >
+                  <div class="flex flex-col gap-3 md:flex-row md:items-end">
+                    <label class="flex-1 text-xs font-semibold text-slate-500 dark:text-white/70">
+                      Rede
+                      <select
+                        v-model="social.network"
+                        class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-white/15 dark:bg-[#05070f] dark:text-white"
+                      >
+                        <option v-for="option in socialNetworkOptions" :key="option.value" :value="option.value">
+                          {{ option.label }}
+                        </option>
+                      </select>
+                    </label>
+
+                    <label class="flex-[2] text-xs font-semibold text-slate-500 dark:text-white/70">
+                      Link
+                      <input
+                        v-model="social.url"
+                        type="url"
+                        :placeholder="socialNetworkPlaceholders[social.network]"
+                        class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-white/15 dark:bg-[#05070f] dark:text-white dark:placeholder-white/60"
+                      />
+                    </label>
+
+                    <button
+                      type="button"
+                      class="text-sm font-semibold text-slate-500 hover:text-red-500 dark:text-white/80 dark:hover:text-red-400"
+                      @click="removeSocialLink(index)"
+                    >
+                      Remover
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                class="flex items-center gap-2 rounded-full bg-[#2F9E49] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#26843a]"
+                @click="addSocialLink"
+              >
+                <span class="text-lg leading-none">+</span>
+                Adicionar rede
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="grid gap-4 md:grid-cols-2">
+          <label class="space-y-1 text-xs font-semibold text-slate-500 md:pl-2">
             CEP
             <input
               v-model="companyForm.address_zipcode"
@@ -194,7 +182,7 @@
             </div>
           </label>
 
-          <label class="space-y-1 text-xs font-semibold text-slate-500 md:col-span-3">
+          <label class="space-y-1 text-xs font-semibold text-slate-500">
             Endereço / Rua
             <input
               v-model="companyForm.address_street"
@@ -204,7 +192,7 @@
             />
           </label>
 
-          <label class="space-y-1 text-xs font-semibold text-slate-500">
+          <label class="space-y-1 text-xs font-semibold text-slate-500 md:pl-2">
             Bairro
             <input
               v-model="companyForm.address_neighborhood"
@@ -214,7 +202,7 @@
             />
           </label>
 
-          <label class="space-y-1 text-xs font-semibold text-slate-500">
+          <label class="space-y-1 text-xs font-semibold text-slate-500 md:pl-2">
             Cidade
             <input
               v-model="companyForm.address_city"
@@ -224,47 +212,46 @@
             />
           </label>
 
-          <label class="space-y-1 text-xs font-semibold text-slate-500">
-            UF
-            <input
-              v-model="companyForm.address_state"
-              type="text"
-              maxlength="2"
-              placeholder="SP"
-              class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm uppercase"
-            />
-          </label>
-          <label class="space-y-1 text-xs font-semibold text-slate-500">
-            Número
-            <input
-              v-model="companyForm.address_number"
-              type="text"
-              placeholder="123"
-              class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            />
-          </label>
-
-          <label class="space-y-1 text-xs font-semibold text-slate-500">
-            Complemento
-            <input
-              v-model="companyForm.address_complement"
-              type="text"
-              placeholder="Sala, bloco..."
-              class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            />
-          </label>
-
-
+          <div class="grid gap-4 md:grid-cols-3 md:col-span-2 md:pl-2">
+            <label class="space-y-1 text-xs font-semibold text-slate-500">
+              UF
+              <input
+                v-model="companyForm.address_state"
+                type="text"
+                maxlength="2"
+                placeholder="SP"
+                class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm uppercase"
+              />
+            </label>
+            <label class="space-y-1 text-xs font-semibold text-slate-500">
+              Número
+              <input
+                v-model="companyForm.address_number"
+                type="text"
+                placeholder="123"
+                class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              />
+            </label>
+            <label class="space-y-1 text-xs font-semibold text-slate-500">
+              Complemento
+              <input
+                v-model="companyForm.address_complement"
+                type="text"
+                placeholder="Sala, bloco..."
+                class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              />
+            </label>
+          </div>
 
         </div>
 
-        <div class="flex items-center gap-3 pt-2">
+        <div class="flex items-center gap-3 pt-2 md:pl-2">
           <button
             type="submit"
             class="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark disabled:cursor-not-allowed disabled:bg-slate-300"
             :disabled="saving"
           >
-            {{ saving ? "Salvando..." : (hasAgency ? "Salvar" : "Criar agência") }}
+            {{ saving ? "Salvando..." : (hasAgency ? "Salvar" : "Criar ag�ncia") }}
           </button>
 
           <span v-if="message" class="text-sm text-emerald-600">{{ message }}</span>
@@ -540,7 +527,7 @@ const changePassword = async () => {
   } catch (err) {
     console.error(err);
     passwordError.value =
-      (err as any)?.response?.data?.detail || "Não foi possível atualizar a senha.";
+      (err as any)?.response?.data?.detail || "N�o foi poss�vel atualizar a senha.";
   } finally {
     passwordSaving.value = false;
   }
@@ -577,7 +564,7 @@ const save = async () => {
 
   const phoneDigits = sanitizeDigits(phoneInput.value);
   if (phoneDigits && phoneDigits.length < 10) {
-    phoneError.value = "Informe um telefone válido para os CTAs.";
+    phoneError.value = "Informe um telefone v�lido para os CTAs.";
     return;
   }
 
@@ -620,11 +607,11 @@ const save = async () => {
     }
 
     phoneMessage.value = phoneDigits ? "Telefone salvo para os CTAs." : "Telefone removido dos CTAs.";
-    message.value = createdAgency ? "Agência criada." : "Configurações atualizadas.";
+    message.value = createdAgency ? "Ag�ncia criada." : "Configura��es atualizadas.";
   } catch (err) {
     console.error(err);
     const detail = (err as any)?.response?.data?.detail;
-    errorMessage.value = detail || "Não foi possível salvar/criar. Verifique login e permissões.";
+    errorMessage.value = detail || "N�o foi poss�vel salvar/criar. Verifique login e permiss�es.";
   } finally {
     saving.value = false;
   }
@@ -662,3 +649,37 @@ watch(
 
 onMounted(load);
 </script>
+
+<style scoped>
+:global(.dark-theme .agency-settings input:not([type='color']):not([type='checkbox']):not([type='radio']),
+.dark-theme .agency-settings textarea,
+.dark-theme .agency-settings select) {
+  background-color: #05070f;
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #f8fafc;
+}
+:global(.dark-theme .agency-settings input:not([type='color']):not([type='checkbox']):not([type='radio'])::placeholder,
+.dark-theme .agency-settings textarea::placeholder,
+.dark-theme .agency-settings select::placeholder) {
+  color: rgba(248, 250, 252, 0.65);
+}
+:global(.dark-theme .agency-settings input[type='file']::file-selector-button),
+:global(.dark-theme .agency-settings input[type='file']::-webkit-file-upload-button) {
+  background-color: #05070f;
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #f8fafc;
+}
+:global(.dark-theme .agency-settings input[type='color']) {
+  background-color: #05070f;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: none;
+}
+:global(.dark-theme .agency-settings .agency-logo-upload > .rounded-xl) {
+  border-color: rgba(255, 255, 255, 0.1);
+  background-color: #05070f;
+}
+:global(.dark-theme .agency-settings .agency-logo-upload .overflow-hidden.border) {
+  border-color: rgba(255, 255, 255, 0.15);
+  background-color: #05070f;
+}
+</style>

@@ -1,8 +1,11 @@
 <template>
-  <div class="min-h-screen light-theme overflow-x-hidden">
+  <div :class="['min-h-screen overflow-x-hidden', themeWrapperClass]">
     <div class="flex min-h-screen">
       <aside
-        class="hidden w-64 flex-shrink-0 flex-col justify-between border-r border-transparent bg-brand px-0 py-6 text-white shadow-md md:fixed md:inset-y-0 md:left-0 md:flex"
+        :class="[
+          'admin-sidebar hidden w-64 flex-shrink-0 flex-col justify-between border-r px-0 py-6 shadow-md md:fixed md:inset-y-0 md:left-0 md:flex',
+          isDarkTheme ? 'border-[#2b2b2b] bg-[#202020] text-white' : 'border-transparent bg-brand text-white'
+        ]"
       >
         <div class="flex flex-1 flex-col overflow-y-auto px-6">
           <div class="mb-4 flex items-center justify-center">
@@ -16,7 +19,12 @@
               class="flex items-center gap-2 rounded-lg pr-3 pl-0 py-2 text-sm font-semibold transition"
               :class="isActive(item.to) ? activeClass : inactiveClass"
             >
-              <span class="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-slate-600 md:bg-white/15 md:text-white">
+              <span
+                :class="[
+                  'flex h-7 w-7 items-center justify-center rounded-full',
+                  isDarkTheme ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600 md:bg-white/15 md:text-white'
+                ]"
+              >
                 <svg
                   :viewBox="navIconViewBoxes[item.to] || navIconViewBoxes.default"
                   :class="['h-4 w-4', navIconSizes[item.to]]"
@@ -29,13 +37,48 @@
           </nav>
         </div>
 
-        <div class="mt-8 border-t border-white/20 px-6 pt-4">
+        <div
+          :class="[
+            'mt-8 border-t px-6 pt-4 space-y-3',
+            isDarkTheme ? 'border-slate-800' : 'border-white/20'
+          ]"
+        >
+          <button
+            type="button"
+            class="flex w-full items-center justify-between rounded-xl border px-4 py-3 text-sm font-semibold transition"
+            :class="isDarkTheme ? 'border-white/20 bg-black text-white hover:bg-black/80' : 'border-white/30 bg-white/5 text-white hover:bg-white/10'"
+            @click="toggleTheme"
+          >
+            <div class="text-left">
+              <p class="text-sm font-semibold leading-tight">Tema escuro</p>
+              <p class="text-xs opacity-70">{{ isDarkTheme ? "Ativo" : "Desativado" }}</p>
+            </div>
+            <span
+              :class="[
+                'relative inline-flex h-6 w-11 items-center rounded-full transition',
+                isDarkTheme ? 'bg-[#3EBD59]' : 'bg-white/40'
+              ]"
+            >
+              <span
+                :class="[
+                  'inline-block h-5 w-5 rounded-full bg-white shadow transition toggle-knob',
+                  isDarkTheme ? 'translate-x-5' : 'translate-x-0'
+                ]"
+              ></span>
+            </span>
+          </button>
           <button
             type="button"
             @click="handleLogout"
-            class="flex w-full items-center gap-3 rounded-xl bg-white/10 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/15"
+            class="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition"
+            :class="isDarkTheme ? 'text-white hover:bg-white/10' : 'text-white/90 hover:bg-white/10'"
           >
-            <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-white/20">
+            <span
+              :class="[
+                'flex h-9 w-9 items-center justify-center rounded-xl',
+                isDarkTheme ? 'bg-transparent text-white' : 'bg-white/20'
+              ]"
+            >
               <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M12 3v9m5.657-6.657a8 8 0 1 1-11.314 0" />
               </svg>
@@ -45,10 +88,11 @@
         </div>
       </aside>
 
-      <main class="flex-1 overflow-x-hidden md:ml-64">
+      <main :class="['admin-main flex-1 overflow-x-hidden md:ml-64', isDarkTheme ? 'bg-slate-900 text-slate-100' : '']">
         <header
           :class="[
-            'sticky top-0 z-30 bg-brand px-4 py-3 text-white shadow-sm md:static md:bg-white md:text-slate-900',
+            'admin-header sticky top-0 z-30 px-4 py-3 shadow-sm transition-colors md:static',
+            isDarkTheme ? 'bg-slate-900 text-white' : 'bg-brand text-white md:bg-white md:text-slate-900',
             { 'md:hidden': shouldHideDesktopHeader }
           ]"
         >
@@ -63,7 +107,8 @@
             <h1 class="text-lg font-bold">{{ currentPageTitle }}</h1>
             <button
               type="button"
-              class="inline-flex items-center justify-center p-2 text-white transition"
+              class="inline-flex items-center justify-center rounded-full p-2 transition"
+              :class="isDarkTheme ? 'text-white hover:bg-white/5' : 'text-white'"
               @click="mobileMenuOpen = true"
             >
               <span class="sr-only">Abrir menu</span>
@@ -79,7 +124,7 @@
             </div>
           </div>
         </header>
-        <div class="px-3 py-4 md:px-6 md:py-6">
+        <div :class="['admin-content px-3 py-4 md:px-6 md:py-6', isDarkTheme ? 'text-slate-100' : '']">
           <RouterView />
         </div>
       </main>
@@ -91,15 +136,19 @@
         class="fixed inset-0 z-40 flex justify-end md:hidden"
       >
         <div class="flex-1 bg-slate-900/60" @click="mobileMenuOpen = false"></div>
-        <div class="w-72 max-w-full bg-brand p-5 text-white shadow-2xl">
+        <div
+          class="w-72 max-w-full rounded-l-3xl p-5 shadow-2xl transition-colors"
+          :class="isDarkTheme ? 'bg-[#202020] text-white' : 'bg-brand text-white'"
+        >
           <div class="mb-6 flex items-center justify-between">
             <div>
-              <p class="text-xs uppercase tracking-[0.3em] text-white/70">Menu</p>
+              <p class="text-xs uppercase tracking-[0.3em]" :class="isDarkTheme ? 'text-white/70' : 'text-white/70'">Menu</p>
               <p class="text-sm font-semibold truncate">{{ agencyName || 'Agencia' }}</p>
             </div>
             <button
               type="button"
-              class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/40 text-white"
+              class="inline-flex h-8 w-8 items-center justify-center rounded-full border"
+              :class="isDarkTheme ? 'border-white/40 text-white' : 'border-white/40 text-white'"
               @click="mobileMenuOpen = false"
             >
               <span class="sr-only">Fechar</span>
@@ -113,11 +162,25 @@
               v-for="item in navItems"
               :key="'mobile-' + item.to"
               :to="item.to"
-              class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-white transition"
-              :class="isActive(item.to) ? 'bg-white/20' : 'hover:bg-white/10'"
+              class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition"
+              :class="[
+                'text-white',
+                isActive(item.to)
+                  ? isDarkTheme
+                    ? 'bg-white/15 text-white'
+                    : 'bg-white/20'
+                  : isDarkTheme
+                    ? 'hover:bg-white/10'
+                    : 'hover:bg-white/10'
+              ]"
               @click="mobileMenuOpen = false"
             >
-              <span class="flex h-7 w-7 items-center justify-center rounded-full bg-white/20 text-white">
+              <span
+              :class="[
+                  'flex h-7 w-7 items-center justify-center rounded-full',
+                  isDarkTheme ? 'bg-white/10 text-white' : 'bg-white/20 text-white'
+                ]"
+              >
                 <svg
                   :viewBox="navIconViewBoxes[item.to] || navIconViewBoxes.default"
                   :class="['h-4 w-4', navIconSizes[item.to]]"
@@ -128,13 +191,45 @@
               <span>{{ item.label }}</span>
             </RouterLink>
           </nav>
-          <div class="mt-6 border-t border-white/20 pt-4">
+          <div
+            :class="[
+              'mt-6 border-t pt-4 space-y-3',
+              isDarkTheme ? 'border-lime-200/20' : 'border-white/20'
+            ]"
+          >
+            <button
+              type="button"
+              class="flex w-full items-center justify-between rounded-lg border px-3 py-2 text-sm font-semibold transition"
+              :class="isDarkTheme ? 'border-white/20 bg-black text-white hover:bg-black/80' : 'border-white/30 bg-white/5 text-white hover:bg-white/10'"
+              @click="toggleTheme"
+            >
+              <span>Tema escuro</span>
+              <span
+                :class="[
+                  'relative inline-flex h-5 w-10 items-center rounded-full transition',
+                  isDarkTheme ? 'bg-[#3EBD59]' : 'bg-white/40'
+                ]"
+              >
+                <span
+                :class="[
+                  'inline-block h-4 w-4 rounded-full bg-white shadow transition toggle-knob',
+                  isDarkTheme ? 'translate-x-5' : 'translate-x-0'
+                ]"
+              ></span>
+              </span>
+            </button>
             <button
               type="button"
               @click="handleLogout"
-              class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
+              class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition"
+              :class="isDarkTheme ? 'text-white hover:bg-white/10' : 'text-white hover:bg-white/10'"
             >
-              <span class="flex h-7 w-7 items-center justify-center rounded-full bg-white/20">
+              <span
+                :class="[
+                  'flex h-7 w-7 items-center justify-center rounded-full',
+                  isDarkTheme ? 'bg-transparent text-white' : 'bg-white/20'
+                ]"
+              >
                 <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M12 3v9m5.657-6.657a8 8 0 1 1-11.314 0" />
                 </svg>
@@ -484,6 +579,7 @@ import ImageUploadField from "../components/admin/inputs/ImageUploadField.vue";
 import api from "../services/api";
 import { useAgencyStore } from "../store/useAgencyStore";
 import { useAuthStore } from "../store/useAuthStore";
+import { useThemeStore } from "../store/useThemeStore";
 import { getPlanLabel } from "../utils/planLabels";
 import { addTagsToContactByEmail, syncPlanTagForEmail, viajeChatTagIds } from "../services/viajeChat";
 import { slugify } from "../utils/slugify";
@@ -492,7 +588,12 @@ const route = useRoute();
 const router = useRouter();
 const agencyStore = useAgencyStore();
 const auth = useAuthStore();
+const themeStore = useThemeStore();
 const COOKIE_KEY = "global_cookie_consent";
+
+const isDarkTheme = computed(() => themeStore.isDark);
+const themeWrapperClass = computed(() => (isDarkTheme.value ? "dark-theme" : "light-theme"));
+const toggleTheme = () => themeStore.toggleTheme();
 
 const showCookieConsent = ref(false);
 const hasWindow = typeof window !== "undefined";
@@ -552,9 +653,7 @@ const routeTitleMap: Record<string, string> = {
   profile: "Perfil",
   "admin-management": "Admin Master"
 };
-const currentRouteName = computed(() => (typeof route.name === "string" ? route.name : null));
-const isPageEditorRoute = computed(() => currentRouteName.value === "page-edit");
-const shouldHideDesktopHeader = computed(() => isPageEditorRoute.value && !isMobileViewport.value);
+const shouldHideDesktopHeader = computed(() => !isMobileViewport.value);
 
 
 const canAccessCustomDomains = computed(() => auth.user?.plan === "teste");
@@ -586,8 +685,16 @@ const currentPageTitle = computed(() => {
   return matchedNav?.label || "Dashboard";
 });
 
-const activeClass = "bg-slate-100 text-slate-900 md:bg-white/20 md:text-white md:shadow-sm";
-const inactiveClass = "text-slate-700 hover:bg-slate-100 md:text-white/80 md:hover:bg-white/10 md:hover:text-white";
+const activeClass = computed(() =>
+  isDarkTheme.value
+    ? "bg-white/15 text-white shadow-inner"
+    : "bg-slate-100 text-slate-900 md:bg-white/20 md:text-white md:shadow-sm"
+);
+const inactiveClass = computed(() =>
+  isDarkTheme.value
+    ? "text-white hover:bg-white/5"
+    : "text-slate-700 hover:bg-slate-100 md:text-white/80 md:hover:bg-white/10 md:hover:text-white"
+);
 
 const agencyName = computed(() => agencyStore.currentAgency?.name || agencyStore.agencies[0]?.name || "");
 const sidebarLogoSrc = SidebarLogo;
@@ -1076,6 +1183,73 @@ watch(
 .light-theme {
   background: #f8fafc;
   color: #0f172a;
+}
+.dark-theme {
+  background: #020617;
+  color: #f1f5f9;
+}
+.dark-theme .admin-main {
+  background: #05070f;
+  color: #f1f5f9;
+}
+.dark-theme .admin-content {
+  color: #f1f5f9;
+}
+.dark-theme .bg-white,
+.dark-theme .bg-slate-50,
+.dark-theme .bg-slate-100,
+.dark-theme .bg-gray-50,
+.dark-theme .bg-slate-200 {
+  background-color: #202020;
+  color: #f1f5f9;
+}
+.dark-theme .bg-white\/90 {
+  background-color: rgba(32, 32, 32, 0.92);
+  color: #f1f5f9;
+}
+.dark-theme .bg-white\/20,
+.dark-theme .bg-white\/15,
+.dark-theme .bg-white\/10,
+.dark-theme .bg-white\/5 {
+  background-color: rgba(255, 255, 255, 0.08);
+  color: #f1f5f9;
+}
+.toggle-knob {
+  background-color: #ffffff !important;
+}
+.dark-theme .text-slate-900,
+.dark-theme .text-slate-800 {
+  color: #f8fafc;
+}
+.dark-theme .text-slate-700,
+.dark-theme .text-slate-600 {
+  color: #e2e8f0;
+}
+.dark-theme .text-slate-500,
+.dark-theme .text-slate-400 {
+  color: #f5f5f5;
+}
+.dark-theme .border-slate-100,
+.dark-theme .border-slate-200,
+.dark-theme .border-slate-300 {
+  border-color: rgba(148, 163, 184, 0.5);
+}
+.dark-theme .ring-slate-100,
+.dark-theme .ring-slate-200 {
+  --tw-ring-color: rgba(148, 163, 184, 0.4);
+}
+.dark-theme input,
+.dark-theme textarea,
+.dark-theme select {
+  background-color: #020617;
+  color: #f1f5f9;
+  border-color: rgba(148, 163, 184, 0.6);
+}
+.dark-theme .shadow,
+.dark-theme .shadow-md,
+.dark-theme .shadow-lg,
+.dark-theme .shadow-inner {
+  --tw-shadow-color: rgba(0, 0, 0, 0.6);
 }
 .fade-enter-active,
 .fade-leave-active {

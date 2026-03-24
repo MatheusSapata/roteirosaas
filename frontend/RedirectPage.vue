@@ -20,6 +20,9 @@ const redirects = {
   agenciaanual: 'https://pay.cakto.com.br/32uvp8b',
   escalamensal: 'https://pay.cakto.com.br/iexkakw_800692',
   escalaanual: 'https://pay.cakto.com.br/pxzgp5s',
+  profissional: 'https://pay.cakto.com.br/7o7zrup_818166',
+  agencia: 'https://pay.cakto.com.br/n7vnc73_818167',
+  escala: 'https://pay.cakto.com.br/iexkakw_818426'
 }
 
 onMounted(() => {
