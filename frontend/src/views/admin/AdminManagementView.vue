@@ -225,56 +225,264 @@
           </div>
         </div>
 
-        <div class="mt-4 grid gap-4 md:grid-cols-3">
-          <div class="md:col-span-1">
-            <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Buscar</label>
-            <input
-              v-model="userSearch"
-              type="text"
-              placeholder="Nome ou email"
-              class="mt-1 w-full rounded-full border border-slate-200 px-4 py-2 text-sm focus:border-emerald-500 focus:outline-none"
-            />
-          </div>
-
-          <div>
-            <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Plano</label>
-            <select
-              v-model="userPlanFilter"
-              class="mt-1 w-full rounded-full border border-slate-200 px-4 py-2 text-sm text-slate-700 focus:border-emerald-500 focus:outline-none"
-            >
-              <option value="all">Todos os planos</option>
-              <option v-for="plan in userPlanOptions" :key="plan" :value="plan">
-                {{ planLabel(plan) }}
-              </option>
-            </select>
-          </div>
-
-          <div>
-            <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Agência</label>
-            <select
-              v-model="userAgencyFilter"
-              class="mt-1 w-full rounded-full border border-slate-200 px-4 py-2 text-sm text-slate-700 focus:border-emerald-500 focus:outline-none"
-            >
-              <option value="all">Todas</option>
-              <option value="__none">Sem agência</option>
-              <option v-for="agency in userAgencyOptions" :key="agency" :value="agency">
-                {{ agency }}
-              </option>
-            </select>
-          </div>
-        </div>
-
         <div class="mt-4 overflow-x-auto">
           <table class="min-w-full text-sm text-slate-800 divide-y divide-slate-100 interactive-table">
             <thead class="bg-slate-50 text-left text-slate-600">
               <tr>
-                <th class="px-3 py-2 text-left">Nome</th>
-                <th class="px-3 py-2 text-left">Agência</th>
-                <th class="px-3 py-2 text-left">Qtd páginas ativas</th>
-                <th class="px-3 py-2 text-left">Qtd páginas rascunho</th>
-                <th class="px-3 py-2 text-left">Plano</th>
-                <th class="px-3 py-2 text-left">Validade</th>
-                <th class="px-3 py-2 text-left">Entrada</th>
+                <th v-for="column in userTableColumns" :key="column.key" class="px-3 py-2">
+                  <div
+                    class="relative flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500"
+                    :class="column.align === 'right' ? 'justify-end text-right' : 'text-left'"
+                    :data-column-filter="column.key"
+                  >
+                    <button
+                      class="flex items-center gap-1 text-left"
+                      :class="column.sortable ? 'cursor-pointer select-none' : ''"
+                      type="button"
+                      @click.stop="column.sortable && toggleColumnSort(column.key)"
+                    >
+                      <span>{{ column.label }}</span>
+                      <span v-if="column.sortable" class="flex flex-col text-[10px] leading-3 text-slate-400">
+                        <svg
+                          class="h-3 w-3"
+                          :class="userSort.key === column.key && userSort.direction === 'desc' ? 'text-slate-900' : ''"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                        >
+                          <path d="m6 9 6-6 6 6" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                        <svg
+                          class="h-3 w-3 -mt-0.5"
+                          :class="userSort.key === column.key && userSort.direction === 'asc' ? 'text-slate-900' : ''"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                        >
+                          <path d="m6 15 6 6 6-6" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                      </span>
+                    </button>
+                    <button
+                      :ref="el => setFilterButtonRef(column.key, el as HTMLElement | null)"
+                      class="ml-auto inline-flex items-center justify-center rounded-full border px-2 py-1 text-[10px] font-semibold uppercase tracking-widest transition"
+                      :class="isFilterActive(column.key) ? 'border-emerald-400 bg-emerald-50 text-emerald-600' : 'border-slate-200 text-slate-400 hover:text-slate-600'"
+                      type="button"
+                      :data-column-filter="column.key"
+                      @click.stop="toggleColumnFilter(column.key, $event)"
+                    >
+                      <svg
+                        class="h-3.5 w-3.5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
+                        <path d="M4 5h16M7 12h10M10 19h4" stroke-linecap="round" />
+                      </svg>
+                    </button>
+                    <Teleport to="body" v-if="openFilterKey === column.key">
+                      <div
+                        class="fixed z-50 rounded-2xl border border-slate-200 bg-white/95 px-4 py-3 text-[11px] text-slate-600 shadow-[0_20px_45px_-25px_rgba(15,23,42,0.4)] backdrop-blur-sm"
+                        :data-column-filter="column.key"
+                        :style="filterPopoverStyle"
+                        @click.stop
+                      >
+                      <template v-if="column.key === 'name'">
+                        <p class="text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-400">
+                          Filtrar nome
+                        </p>
+                        <input
+                          v-model="userFilters.name"
+                          type="text"
+                          placeholder="Nome ou email"
+                          class="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-emerald-500 focus:outline-none"
+                        />
+                        <div class="mt-3 flex justify-end gap-4 text-[10px] font-semibold uppercase tracking-[0.2em]">
+                          <button class="text-slate-400 hover:text-slate-600" type="button" @click="clearColumnFilter(column.key)">
+                            Limpar
+                          </button>
+                          <button class="text-emerald-600 hover:text-emerald-500" type="button" @click="toggleColumnFilter(column.key)">
+                            Fechar
+                          </button>
+                        </div>
+                      </template>
+                      <template v-else-if="column.key === 'agency_name'">
+                        <p class="text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-400">
+                          Agências
+                        </p>
+                        <input
+                          v-model="agencyFilterSearch"
+                          type="text"
+                          placeholder="Buscar agência"
+                          class="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:border-emerald-500 focus:outline-none"
+                        />
+                        <div class="mt-2 max-h-48 space-y-2 overflow-y-auto pr-1">
+                          <label
+                            v-for="option in filteredAgencyFilterOptions"
+                            :key="option.value"
+                            class="flex cursor-pointer items-center gap-2 text-[11px]"
+                          >
+                            <input
+                              v-model="userFilters.agencies"
+                              type="checkbox"
+                              :value="option.value"
+                              class="rounded border-slate-300 text-emerald-500 focus:ring-emerald-500"
+                            />
+                            <span>{{ option.label }}</span>
+                          </label>
+                          <p v-if="!filteredAgencyFilterOptions.length" class="text-[10px] text-slate-400">
+                            Nenhuma agência encontrada.
+                          </p>
+                        </div>
+                        <div class="mt-3 flex justify-end gap-4 text-[10px] font-semibold uppercase tracking-[0.2em]">
+                          <button class="text-slate-400 hover:text-slate-600" type="button" @click="clearColumnFilter(column.key)">
+                            Limpar
+                          </button>
+                          <button class="text-emerald-600 hover:text-emerald-500" type="button" @click="toggleColumnFilter(column.key)">
+                            Fechar
+                          </button>
+                        </div>
+                      </template>
+                      <template v-else-if="column.key === 'plan'">
+                        <p class="text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-400">
+                          Planos
+                        </p>
+                        <div class="mt-2 max-h-48 space-y-2 overflow-y-auto pr-1">
+                          <label
+                            v-for="plan in userPlanOptions"
+                            :key="plan"
+                            class="flex cursor-pointer items-center gap-2 text-[11px]"
+                          >
+                            <input
+                              v-model="userFilters.plans"
+                              type="checkbox"
+                              :value="plan"
+                              class="rounded border-slate-300 text-emerald-500 focus:ring-emerald-500"
+                            />
+                            <span>{{ planLabel(plan) }}</span>
+                          </label>
+                          <p v-if="!userPlanOptions.length" class="text-[10px] text-slate-400">Sem planos.</p>
+                        </div>
+                        <div class="mt-3 flex justify-end gap-4 text-[10px] font-semibold uppercase tracking-[0.2em]">
+                          <button class="text-slate-400 hover:text-slate-600" type="button" @click="clearColumnFilter(column.key)">
+                            Limpar
+                          </button>
+                          <button class="text-emerald-600 hover:text-emerald-500" type="button" @click="toggleColumnFilter(column.key)">
+                            Fechar
+                          </button>
+                        </div>
+                      </template>
+                      <template v-else-if="column.key === 'active_pages'">
+                        <p class="text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-400">
+                          Qtde. páginas ativas
+                        </p>
+                        <div class="mt-2 flex gap-2">
+                          <input
+                            v-model="userFilters.activeMin"
+                            type="number"
+                            placeholder="Min"
+                            class="w-1/2 rounded-xl border border-slate-200 px-2 py-1 focus:border-emerald-500 focus:outline-none"
+                          />
+                          <input
+                            v-model="userFilters.activeMax"
+                            type="number"
+                            placeholder="Máx"
+                            class="w-1/2 rounded-xl border border-slate-200 px-2 py-1 focus:border-emerald-500 focus:outline-none"
+                          />
+                        </div>
+                        <div class="mt-3 flex justify-end gap-4 text-[10px] font-semibold uppercase tracking-[0.2em]">
+                          <button class="text-slate-400 hover:text-slate-600" type="button" @click="clearColumnFilter(column.key)">
+                            Limpar
+                          </button>
+                          <button class="text-emerald-600 hover:text-emerald-500" type="button" @click="toggleColumnFilter(column.key)">
+                            Fechar
+                          </button>
+                        </div>
+                      </template>
+                      <template v-else-if="column.key === 'draft_pages'">
+                        <p class="text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-400">
+                          Qtde. páginas rascunho
+                        </p>
+                        <div class="mt-2 flex gap-2">
+                          <input
+                            v-model="userFilters.draftMin"
+                            type="number"
+                            placeholder="Min"
+                            class="w-1/2 rounded-xl border border-slate-200 px-2 py-1 focus:border-emerald-500 focus:outline-none"
+                          />
+                          <input
+                            v-model="userFilters.draftMax"
+                            type="number"
+                            placeholder="Máx"
+                            class="w-1/2 rounded-xl border border-slate-200 px-2 py-1 focus:border-emerald-500 focus:outline-none"
+                          />
+                        </div>
+                        <div class="mt-3 flex justify-end gap-4 text-[10px] font-semibold uppercase tracking-[0.2em]">
+                          <button class="text-slate-400 hover:text-slate-600" type="button" @click="clearColumnFilter(column.key)">
+                            Limpar
+                          </button>
+                          <button class="text-emerald-600 hover:text-emerald-500" type="button" @click="toggleColumnFilter(column.key)">
+                            Fechar
+                          </button>
+                        </div>
+                      </template>
+                      <template v-else-if="column.key === 'valid_until'">
+                        <p class="text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-400">
+                          Validade (intervalo)
+                        </p>
+                        <div class="mt-2 space-y-2">
+                          <input
+                            v-model="userFilters.validFrom"
+                            type="date"
+                            class="w-full rounded-xl border border-slate-200 px-2 py-1 focus:border-emerald-500 focus:outline-none"
+                          />
+                          <input
+                            v-model="userFilters.validTo"
+                            type="date"
+                            class="w-full rounded-xl border border-slate-200 px-2 py-1 focus:border-emerald-500 focus:outline-none"
+                          />
+                        </div>
+                        <div class="mt-3 flex justify-end gap-4 text-[10px] font-semibold uppercase tracking-[0.2em]">
+                          <button class="text-slate-400 hover:text-slate-600" type="button" @click="clearColumnFilter(column.key)">
+                            Limpar
+                          </button>
+                          <button class="text-emerald-600 hover:text-emerald-500" type="button" @click="toggleColumnFilter(column.key)">
+                            Fechar
+                          </button>
+                        </div>
+                      </template>
+                      <template v-else-if="column.key === 'created_at'">
+                        <p class="text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-400">
+                          Entrada (intervalo)
+                        </p>
+                        <div class="mt-2 space-y-2">
+                          <input
+                            v-model="userFilters.createdFrom"
+                            type="date"
+                            class="w-full rounded-xl border border-slate-200 px-2 py-1 focus:border-emerald-500 focus:outline-none"
+                          />
+                          <input
+                            v-model="userFilters.createdTo"
+                            type="date"
+                            class="w-full rounded-xl border border-slate-200 px-2 py-1 focus:border-emerald-500 focus:outline-none"
+                          />
+                        </div>
+                        <div class="mt-3 flex justify-end gap-4 text-[10px] font-semibold uppercase tracking-[0.2em]">
+                          <button class="text-slate-400 hover:text-slate-600" type="button" @click="clearColumnFilter(column.key)">
+                            Limpar
+                          </button>
+                          <button class="text-emerald-600 hover:text-emerald-500" type="button" @click="toggleColumnFilter(column.key)">
+                            Fechar
+                          </button>
+                        </div>
+                      </template>
+                      </div>
+                    </Teleport>
+                  </div>
+                </th>
               </tr>
             </thead>
 
@@ -527,6 +735,48 @@
               </tr>
             </tbody>
           </table>
+
+          <div class="mt-4 flex flex-wrap items-center justify-between gap-4 text-xs text-slate-500">
+            <p>
+              Mostrando
+              <span class="font-semibold text-slate-700">{{ userPageRange.start }}-{{ userPageRange.end }}</span>
+              de
+              <span class="font-semibold text-slate-700">{{ filteredUsersTotal }}</span>
+              usuários
+            </p>
+            <div class="flex flex-wrap items-center gap-3">
+              <label class="flex items-center gap-2">
+                Linhas
+                <select
+                  v-model.number="userPageSize"
+                  class="rounded-full border border-slate-200 px-3 py-1 text-xs focus:border-emerald-500 focus:outline-none"
+                >
+                  <option v-for="option in userPageSizeOptions" :key="option" :value="option">
+                    {{ option }}
+                  </option>
+                </select>
+              </label>
+              <div class="flex items-center gap-2">
+                <button
+                  class="rounded-full border border-slate-200 px-3 py-1 font-semibold text-slate-600 disabled:opacity-40"
+                  type="button"
+                  :disabled="userPage === 1"
+                  @click="userPage = Math.max(1, userPage - 1)"
+                >
+                  Anterior
+                </button>
+                <span>Página {{ userPage }} de {{ totalUserPages }}</span>
+                <button
+                  class="rounded-full border border-slate-200 px-3 py-1 font-semibold text-slate-600 disabled:opacity-40"
+                  type="button"
+                  :disabled="userPage >= totalUserPages"
+                  @click="userPage = Math.min(totalUserPages, userPage + 1)"
+                >
+                  Próxima
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
     </template>
@@ -1182,6 +1432,9 @@ const newUsersLabelRange = computed(() => {
 const updateIsMobile = () => {
   if (typeof window === "undefined") return;
   isMobile.value = window.matchMedia("(max-width: 768px)").matches;
+  if (openFilterKey.value) {
+    updatePopoverPosition(openFilterKey.value);
+  }
 };
 const error = ref("");
 const auth = useAuthStore();
@@ -1228,9 +1481,67 @@ const tabButtonClass = (tab: AdminTab) =>
   activeTab.value === tab
     ? "bg-slate-900 text-white shadow-lg shadow-slate-900/30"
     : "border border-slate-200 text-slate-600 hover:bg-slate-50";
-const userSearch = ref("");
-const userPlanFilter = ref<string | "all">("all");
-const userAgencyFilter = ref<string>("all");
+
+type UserColumnKey = "name" | "agency_name" | "active_pages" | "draft_pages" | "plan" | "valid_until" | "created_at";
+interface UserColumn {
+  key: UserColumnKey;
+  label: string;
+  align?: "left" | "right";
+  sortable?: boolean;
+}
+
+const userTableColumns: UserColumn[] = [
+  { key: "name", label: "Nome", sortable: true },
+  { key: "agency_name", label: "Agência", sortable: true },
+  { key: "active_pages", label: "Qtd páginas ativas", align: "right", sortable: true },
+  { key: "draft_pages", label: "Qtd páginas rascunho", align: "right", sortable: true },
+  { key: "plan", label: "Plano", sortable: true },
+  { key: "valid_until", label: "Validade", sortable: true },
+  { key: "created_at", label: "Entrada", sortable: true }
+];
+
+const userFilters = reactive({
+  name: "",
+  agencies: [] as string[],
+  plans: [] as string[],
+  activeMin: "",
+  activeMax: "",
+  draftMin: "",
+  draftMax: "",
+  validFrom: "",
+  validTo: "",
+  createdFrom: "",
+  createdTo: ""
+});
+const userSort = reactive<{ key: UserColumnKey; direction: "asc" | "desc" }>({
+  key: "created_at",
+  direction: "desc"
+});
+const openFilterKey = ref<UserColumnKey | null>(null);
+const filterButtonRefs = ref<Record<UserColumnKey, HTMLElement | null>>({
+  name: null,
+  agency_name: null,
+  active_pages: null,
+  draft_pages: null,
+  plan: null,
+  valid_until: null,
+  created_at: null
+});
+const filterPopoverPosition = reactive({ left: 0, top: 0 });
+const filterPopoverWidth = 268;
+const filterPopoverStyle = computed(() => ({
+  left: `${filterPopoverPosition.left}px`,
+  top: `${filterPopoverPosition.top}px`,
+  width: `${filterPopoverWidth}px`
+}));
+const resetFilterSearch = (key: UserColumnKey) => {
+  if (key === "agency_name") {
+    agencyFilterSearch.value = "";
+  }
+};
+const userPage = ref(1);
+const userPageSizeOptions = [10, 25, 50];
+const userPageSize = ref(10);
 const expandedUser = ref<number | null>(null);
 const savingPageId = ref<number | null>(null);
 const lessonsStore = useLessonsStore();
@@ -1485,30 +1796,244 @@ const userAgencyOptions = computed(() => {
   return Array.from(agencies).sort();
 });
 
-const filteredUsers = computed(() => {
-  const list = metrics.value?.users || [];
-  const search = userSearch.value.trim().toLowerCase();
-  return list
-    .filter(user => {
-      const matchesSearch =
-        !search ||
-        [user.name, user.email, user.agency_name]
-          .filter(Boolean)
-          .some(field => field!.toLowerCase().includes(search));
-      const matchesPlan = userPlanFilter.value === "all" || user.plan === userPlanFilter.value;
-      const matchesAgency =
-        userAgencyFilter.value === "all" ||
-        (userAgencyFilter.value === "__none"
-          ? !user.agency_name
-          : user.agency_name === userAgencyFilter.value);
-      return matchesSearch && matchesPlan && matchesAgency;
-    })
-    .sort((a, b) => {
-      const aDate = a.created_at ? new Date(a.created_at).getTime() : 0;
-      const bDate = b.created_at ? new Date(b.created_at).getTime() : 0;
-      return bDate - aDate;
-    });
+const setFilterButtonRef = (key: UserColumnKey, el: HTMLElement | null) => {
+  if (!el) return;
+  filterButtonRefs.value[key] = el;
+};
+
+const agencyFilterOptions = computed(() => {
+  const base = userAgencyOptions.value.map(name => ({ value: name, label: name }));
+  return [{ value: "__none", label: "Sem agência" }, ...base];
 });
+const agencyFilterSearch = ref("");
+const filteredAgencyFilterOptions = computed(() => {
+  const term = agencyFilterSearch.value.trim().toLowerCase();
+  if (!term) return agencyFilterOptions.value;
+  return agencyFilterOptions.value.filter(option => option.label.toLowerCase().includes(term));
+});
+
+const coerceNumber = (value: string) => {
+  if (value === "" || value === null || value === undefined) return null;
+  const parsed = Number(value);
+  return Number.isNaN(parsed) ? null : parsed;
+};
+
+const matchesNumberRange = (value: number, min: number | null, max: number | null) => {
+  if (min !== null && value < min) return false;
+  if (max !== null && value > max) return false;
+  return true;
+};
+
+const matchesDateRange = (target: string | null | undefined, from: string, to: string) => {
+  if (!from && !to) return true;
+  const targetTime = target ? new Date(target).getTime() : null;
+  const fromTime = from ? new Date(from).getTime() : null;
+  const toTime = to ? new Date(to).getTime() : null;
+  if (fromTime !== null && (targetTime === null || targetTime < fromTime)) return false;
+  if (toTime !== null && (targetTime === null || targetTime > toTime)) return false;
+  return true;
+};
+
+const baseFilteredUsers = computed(() => {
+  const list = metrics.value?.users || [];
+  const nameTerm = userFilters.name.trim().toLowerCase();
+  const selectedAgencies = userFilters.agencies;
+  const selectedPlans = userFilters.plans;
+  const activeMin = coerceNumber(userFilters.activeMin);
+  const activeMax = coerceNumber(userFilters.activeMax);
+  const draftMin = coerceNumber(userFilters.draftMin);
+  const draftMax = coerceNumber(userFilters.draftMax);
+
+  return list.filter(user => {
+    const matchesName =
+      !nameTerm ||
+      [user.name, user.email]
+        .filter(Boolean)
+        .some(field => field!.toLowerCase().includes(nameTerm));
+
+    const agencyKey = user.agency_name || "__none";
+    const matchesAgency = !selectedAgencies.length || selectedAgencies.includes(agencyKey);
+    const matchesPlan = !selectedPlans.length || selectedPlans.includes(user.plan);
+
+    const activePages = user.active_pages ?? 0;
+    const draftPages =
+      typeof user.draft_pages_count === "number"
+        ? user.draft_pages_count
+        : user.draft_pages?.length ?? 0;
+
+    const matchesActive = matchesNumberRange(activePages, activeMin, activeMax);
+    const matchesDraft = matchesNumberRange(draftPages, draftMin, draftMax);
+    const matchesValid = matchesDateRange(user.valid_until, userFilters.validFrom, userFilters.validTo);
+    const matchesCreated = matchesDateRange(
+      user.created_at,
+      userFilters.createdFrom,
+      userFilters.createdTo
+    );
+
+    return matchesName && matchesAgency && matchesPlan && matchesActive && matchesDraft && matchesValid && matchesCreated;
+  });
+});
+
+const sortedUsers = computed(() => {
+  const list = [...baseFilteredUsers.value];
+  const key = userSort.key;
+  const direction = userSort.direction === "asc" ? 1 : -1;
+  const getValue = (user: Metrics["users"][number]) => {
+    switch (key) {
+      case "name":
+        return user.name?.toLowerCase() || "";
+      case "agency_name":
+        return user.agency_name?.toLowerCase() || "";
+      case "plan":
+        return user.plan?.toLowerCase() || "";
+      case "active_pages":
+        return user.active_pages ?? 0;
+      case "draft_pages":
+        return typeof user.draft_pages_count === "number"
+          ? user.draft_pages_count
+          : user.draft_pages?.length ?? 0;
+      case "valid_until":
+        return user.valid_until ? new Date(user.valid_until).getTime() : null;
+      case "created_at":
+        return user.created_at ? new Date(user.created_at).getTime() : null;
+      default:
+        return null;
+    }
+  };
+  return list.sort((a, b) => {
+    const aValue = getValue(a);
+    const bValue = getValue(b);
+    if (aValue === bValue) return 0;
+    if (aValue === null || aValue === undefined) return 1 * direction;
+    if (bValue === null || bValue === undefined) return -1 * direction;
+    if (typeof aValue === "number" && typeof bValue === "number") {
+      return (aValue - bValue) * direction;
+    }
+    return String(aValue).localeCompare(String(bValue)) * direction;
+  });
+});
+
+const filteredUsersTotal = computed(() => sortedUsers.value.length);
+
+const filteredUsers = computed(() => {
+  const start = (userPage.value - 1) * userPageSize.value;
+  return sortedUsers.value.slice(start, start + userPageSize.value);
+});
+
+const totalUserPages = computed(() => {
+  const total = filteredUsersTotal.value;
+  if (!total) return 1;
+  return Math.max(1, Math.ceil(total / userPageSize.value));
+});
+
+const userPageRange = computed(() => {
+  if (!filteredUsersTotal.value) return { start: 0, end: 0 };
+  const start = (userPage.value - 1) * userPageSize.value + 1;
+  const end = Math.min(filteredUsersTotal.value, start + userPageSize.value - 1);
+  return { start, end };
+});
+
+const updatePopoverPosition = (key: UserColumnKey, target?: HTMLElement | null) => {
+  const element = target || filterButtonRefs.value[key];
+  if (!element) return;
+  const rect = element.getBoundingClientRect();
+  const padding = 16;
+  const viewportWidth = typeof window !== "undefined" ? window.innerWidth : 0;
+  let left = rect.left + rect.width - filterPopoverWidth;
+  if (viewportWidth) {
+    left = Math.min(Math.max(left, padding), Math.max(padding, viewportWidth - filterPopoverWidth - padding));
+  }
+  filterPopoverPosition.left = left;
+  filterPopoverPosition.top = rect.bottom + 8;
+};
+
+const closeFilterPanel = (key?: UserColumnKey | null) => {
+  const current = key ?? openFilterKey.value;
+  if (!current) return;
+  resetFilterSearch(current);
+  openFilterKey.value = null;
+};
+
+const toggleColumnFilter = (key: UserColumnKey, event?: Event) => {
+  if (openFilterKey.value === key) {
+    closeFilterPanel(key);
+    return;
+  }
+  resetFilterSearch(key);
+  updatePopoverPosition(key, event?.currentTarget as HTMLElement | undefined | null);
+  openFilterKey.value = key;
+};
+
+const toggleColumnSort = (key: UserColumnKey) => {
+  if (userSort.key === key) {
+    userSort.direction = userSort.direction === "asc" ? "desc" : "asc";
+  } else {
+    userSort.key = key;
+    userSort.direction = "asc";
+  }
+};
+
+const clearColumnFilter = (key: UserColumnKey) => {
+  switch (key) {
+    case "name":
+      userFilters.name = "";
+      break;
+    case "agency_name":
+      userFilters.agencies = [];
+      break;
+    case "plan":
+      userFilters.plans = [];
+      break;
+    case "active_pages":
+      userFilters.activeMin = "";
+      userFilters.activeMax = "";
+      break;
+    case "draft_pages":
+      userFilters.draftMin = "";
+      userFilters.draftMax = "";
+      break;
+    case "valid_until":
+      userFilters.validFrom = "";
+      userFilters.validTo = "";
+      break;
+    case "created_at":
+      userFilters.createdFrom = "";
+      userFilters.createdTo = "";
+      break;
+  }
+};
+
+const isFilterActive = (key: UserColumnKey) => {
+  switch (key) {
+    case "name":
+      return Boolean(userFilters.name.trim());
+    case "agency_name":
+      return userFilters.agencies.length > 0;
+    case "plan":
+      return userFilters.plans.length > 0;
+    case "active_pages":
+      return Boolean(userFilters.activeMin || userFilters.activeMax);
+    case "draft_pages":
+      return Boolean(userFilters.draftMin || userFilters.draftMax);
+    case "valid_until":
+      return Boolean(userFilters.validFrom || userFilters.validTo);
+    case "created_at":
+      return Boolean(userFilters.createdFrom || userFilters.createdTo);
+    default:
+      return false;
+  }
+};
+
+const handleFilterOutsideClick = (event: MouseEvent) => {
+  if (!openFilterKey.value) return;
+  const path = event.composedPath();
+  const shouldKeepOpen = path.some(
+    el => (el as HTMLElement)?.dataset?.columnFilter === openFilterKey.value!
+  );
+  if (!shouldKeepOpen) {
+    closeFilterPanel();
+  }
+};
 
 const toggleUserRow = (userId: number) => {
   expandedUser.value = expandedUser.value === userId ? null : userId;
@@ -1755,8 +2280,35 @@ const planLabel = (plan: string) => {
   return getPlanLabel(plan);
 };
 
-watch([userSearch, userPlanFilter, userAgencyFilter], () => {
-  expandedUser.value = null;
+watch(
+  userFilters,
+  () => {
+    expandedUser.value = null;
+    userPage.value = 1;
+  },
+  { deep: true }
+);
+
+watch(
+  () => [userSort.key, userSort.direction],
+  () => {
+    expandedUser.value = null;
+  }
+);
+
+watch(filteredUsersTotal, total => {
+  if (!total) {
+    userPage.value = 1;
+    return;
+  }
+  const maxPage = Math.max(1, Math.ceil(total / userPageSize.value));
+  if (userPage.value > maxPage) {
+    userPage.value = maxPage;
+  }
+});
+
+watch(userPageSize, () => {
+  userPage.value = 1;
 });
 
 watch(metrics, () => {
@@ -1767,6 +2319,7 @@ onMounted(async () => {
   updateIsMobile();
   if (typeof window !== "undefined") {
     window.addEventListener("resize", updateIsMobile);
+    window.addEventListener("click", handleFilterOutsideClick);
   }
   if (!auth.user && auth.token) {
     await auth.fetchProfile();
@@ -1801,6 +2354,7 @@ watch(
 onUnmounted(() => {
   if (typeof window !== "undefined") {
     window.removeEventListener("resize", updateIsMobile);
+    window.removeEventListener("click", handleFilterOutsideClick);
   }
 });
 </script>

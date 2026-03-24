@@ -11,20 +11,70 @@ import PageEditorView from "../views/admin/PageEditorView.vue";
 import AgencySettingsView from "../views/admin/AgencySettingsView.vue";
 import PublicPageView from "../views/public/PublicPageView.vue";
 import PlansView from "../views/public/PlansView.vue";
-import MarketingLandingView from "../views/public/MarketingLandingView.vue";
 import AdminLayout from "../layouts/AdminLayout.vue";
 import { useAuthStore } from "../store/useAuthStore";
+
+const RedirectPlaceholder = {
+  template: "<div>Redirecionando...</div>"
+};
 
 const defaultPlatformHosts = ["roteiroonline.com", "www.roteiroonline.com", "localhost", "127.0.0.1"];
 const envPlatformHosts = (import.meta.env.VITE_PLATFORM_HOSTS || "")
   .split(",")
   .map(host => host.trim().toLowerCase())
   .filter(Boolean);
+
 const platformHostSet = new Set([...defaultPlatformHosts, ...envPlatformHosts]);
 const currentHostname = typeof window !== "undefined" ? window.location.hostname.toLowerCase() : "";
 const isCustomDomainHost = !!currentHostname && !platformHostSet.has(currentHostname);
 
+const redirectRoutes: RouteRecordRaw[] = [
+  {
+    path: "/profissionalmensal",
+    component: RedirectPlaceholder,
+    beforeEnter() {
+      window.location.href = "https://pay.cakto.com.br/7o7zrup_800651";
+    }
+  },
+  {
+    path: "/profissionalanual",
+    component: RedirectPlaceholder,
+    beforeEnter() {
+      window.location.href = "https://pay.cakto.com.br/nxc42uz";
+    }
+  },
+  {
+    path: "/agenciamensal",
+    component: RedirectPlaceholder,
+    beforeEnter() {
+      window.location.href = "https://pay.cakto.com.br/n7vnc73_800688";
+    }
+  },
+  {
+    path: "/agenciaanual",
+    component: RedirectPlaceholder,
+    beforeEnter() {
+      window.location.href = "https://pay.cakto.com.br/32uvp8b";
+    }
+  },
+  {
+    path: "/escalamensal",
+    component: RedirectPlaceholder,
+    beforeEnter() {
+      window.location.href = "https://pay.cakto.com.br/iexkakw_800692";
+    }
+  },
+  {
+    path: "/escalaanual",
+    component: RedirectPlaceholder,
+    beforeEnter() {
+      window.location.href = "https://pay.cakto.com.br/pxzgp5s";
+    }
+  }
+];
+
 const platformRoutes: RouteRecordRaw[] = [
+  ...redirectRoutes,
   { path: "/", name: "marketing", component: LoginView, meta: { guestOnly: true } },
   { path: "/login", name: "login", component: LoginView, meta: { guestOnly: true } },
   { path: "/register", name: "register", component: RegisterView, meta: { guestOnly: true } },
@@ -108,6 +158,7 @@ router.beforeEach(async (to, _from, next) => {
       next({ name: "login", query: { redirect: to.fullPath } });
       return;
     }
+
     if (!auth.user) {
       try {
         await auth.fetchProfile();
@@ -117,10 +168,12 @@ router.beforeEach(async (to, _from, next) => {
         return;
       }
     }
+
     if (auth.user?.trial_blocked && !targetIsPlans && !targetIsDashboard) {
       next({ name: "plans" });
       return;
     }
+
     if (allowedPlans && (!auth.user?.plan || !allowedPlans.includes(auth.user.plan))) {
       next({ name: "dashboard" });
       return;
