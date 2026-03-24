@@ -112,6 +112,7 @@ export interface PricesSection extends SectionBase {
 }
 
 export interface ItineraryDay {
+  id?: string;
   day: string;
   title: string;
   description: string;
