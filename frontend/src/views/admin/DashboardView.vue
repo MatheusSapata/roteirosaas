@@ -184,7 +184,10 @@
     <div class="mb-2 flex flex-wrap items-center gap-4 text-xs text-slate-600">
       <div class="flex items-center gap-2">
         <label class="font-semibold">Página:</label>
-        <select v-model="selectedPage" class="rounded-lg border border-slate-200 px-3 py-1 text-sm text-slate-700">
+        <select
+          v-model="selectedPage"
+          class="rounded-lg border border-slate-200 bg-white px-3 py-1 text-sm text-slate-700 transition focus:outline-none focus:ring-2 focus:ring-brand/20 dark:border-white/15 dark:bg-[#202020] dark:text-white"
+        >
           <option value="all">Todas as publicadas</option>
           <option v-for="page in publishedPages" :key="page.id" :value="String(page.id)">
             {{ page.title }}
@@ -193,7 +196,10 @@
       </div>
       <div class="flex flex-wrap items-center gap-3">
         <label class="font-semibold">Período:</label>
-        <select v-model="selectedPeriod" class="rounded-lg border border-slate-200 px-3 py-1 text-sm text-slate-700">
+        <select
+          v-model="selectedPeriod"
+          class="rounded-lg border border-slate-200 bg-white px-3 py-1 text-sm text-slate-700 transition focus:outline-none focus:ring-2 focus:ring-brand/20 dark:border-white/15 dark:bg-[#202020] dark:text-white"
+        >
           <option v-for="period in statsPeriodOptions" :key="period" :value="period">
             Últimos {{ period }} dias
           </option>

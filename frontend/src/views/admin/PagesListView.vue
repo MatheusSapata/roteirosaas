@@ -1,8 +1,8 @@
 <template>
   <div class="w-full space-y-6 px-4 py-8 md:px-8">
-    <div class="flex flex-wrap items-center justify-between gap-3">
+    <div class="flex flex-wrap items-center justify-between gap-3 dark:text-white">
       <div>
-        <p class="text-sm font-bold uppercase tracking-[0.3em] text-slate-500">Páginas</p>
+        <p class="text-sm font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-white">Páginas</p>
       </div>
       <button
         @click="openCreateModal"
@@ -31,7 +31,7 @@
       v-if="createOptionsOpen"
       class="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/60 px-4 py-8"
     >
-      <div class="w-full max-w-4xl rounded-3xl bg-white p-8 shadow-2xl">
+      <div class="w-full max-w-4xl rounded-3xl bg-white p-8 shadow-2xl dark:bg-[#202020] dark:text-white">
         <div class="mb-6 space-y-1">
           <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Novo roteiro</p>
           <h2 class="text-2xl font-bold text-slate-900">Como deseja começar?</h2>
@@ -40,47 +40,47 @@
 
         <div class="grid gap-4 md:grid-cols-3">
           <button
-            class="rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50"
+            class="rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 dark:border-[#363636] dark:bg-[#101010] dark:text-white dark:hover:bg-white/5"
             @click="createPageFromScratch"
           >
             <span class="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-700">
               Recomendado
             </span>
-            <h3 class="mt-3 text-lg font-semibold text-slate-900">Criar página do zero</h3>
-            <p class="mt-1 text-sm text-slate-600">
+              <h3 class="mt-3 text-lg font-semibold text-slate-900 dark:text-white">Criar página do zero</h3>
+              <p class="mt-1 text-sm text-slate-600 dark:text-slate-200">
               Acesse o editor completo para personalizar cada seção do seu roteiro.
             </p>
           </button>
 
           <button
-            class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5 text-left text-slate-600 transition hover:-translate-y-0.5 hover:border-slate-300"
+            class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5 text-left text-slate-600 transition hover:-translate-y-0.5 hover:border-slate-300 dark:border-[#363636] dark:bg-[#181818] dark:text-slate-200 dark:hover:border-white/10 dark:hover:bg-white/5"
             @click="createPageFromTemplate"
           >
             <span class="inline-flex items-center rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-indigo-700">
               Em breve
             </span>
-            <h3 class="mt-3 text-lg font-semibold text-slate-900">Criar a partir de modelo</h3>
-            <p class="mt-1 text-sm text-slate-600">
+              <h3 class="mt-3 text-lg font-semibold text-slate-900 dark:text-white">Criar a partir de modelo</h3>
+              <p class="mt-1 text-sm text-slate-600 dark:text-slate-200">
               Selecione um layout pronto e personalize apenas o conteúdo.
             </p>
           </button>
 
           <button
-            class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5 text-left text-slate-600 transition hover:-translate-y-0.5 hover:border-slate-300"
+            class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5 text-left text-slate-600 transition hover:-translate-y-0.5 hover:border-slate-300 dark:border-[#363636] dark:bg-[#181818] dark:text-slate-200 dark:hover:border-white/10 dark:hover:bg-white/5"
             @click="createPageWithAi"
           >
             <span class="inline-flex items-center rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-indigo-700">
               Em breve
             </span>
-            <h3 class="mt-3 text-lg font-semibold text-slate-900">Criar com IA</h3>
-            <p class="mt-1 text-sm text-slate-600">
+              <h3 class="mt-3 text-lg font-semibold text-slate-900 dark:text-white">Criar com IA</h3>
+              <p class="mt-1 text-sm text-slate-600 dark:text-slate-200">
               Gere um roteiro inicial com inteligência artificial e refine os detalhes depois.
             </p>
           </button>
         </div>
 
         <div class="mt-6 flex justify-end">
-          <button class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100" @click="closeCreateModal">
+          <button class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:border-[#363636] dark:text-white dark:hover:bg-white/10" @click="closeCreateModal">
             Cancelar
           </button>
         </div>
@@ -89,24 +89,24 @@
 
     <transition name="fade">
       <div v-if="planLimitDialog.open" class="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/70 px-4">
-        <div class="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl">
+        <div class="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl dark:bg-[#202020] dark:text-white">
           <p class="text-xs font-semibold uppercase tracking-[0.3em] text-rose-500">Limite atingido</p>
           <h2 class="mt-3 text-2xl font-bold text-slate-900">
             Voc? atingiu o limite
             <template v-if="planLimitDialog.limit">de {{ planLimitDialog.limit }} p?ginas</template>
             do plano {{ planLimitDialog.planLabel }}.
           </h2>
-          <p class="mt-2 text-sm text-slate-600">
+          <p class="mt-2 text-sm text-slate-600 dark:text-slate-200">
             Atualize seu plano para continuar publicando roteiros profissionais para sua ag?ncia.
           </p>
           <div class="mt-6 flex flex-wrap justify-end gap-3">
             <button
-              class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-[#363636] dark:text-white dark:hover:bg-white/10"
               @click="planLimitDialog.open = false"
             >
               Fechar
             </button>
-            <button class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800" @click="goPlans">
+            <button class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 dark:bg-brand dark:hover:bg-brand-dark" @click="goPlans">
               Ver planos
             </button>
           </div>
@@ -115,9 +115,9 @@
     </transition>
 
     <div class="overflow-x-auto">
-      <div class="overflow-hidden border-0 bg-transparent md:min-w-[880px] md:rounded-3xl md:border md:border-slate-100 md:bg-white md:shadow-md">
+      <div class="overflow-hidden border-0 bg-transparent md:min-w-[880px] md:rounded-3xl md:border md:border-slate-100 md:bg-white md:shadow-md dark:md:border-[#2b2b2b] dark:md:bg-[#202020]">
         <div
-          class="hidden grid-cols-[1.2fr,0.9fr,0.9fr,1.6fr,0.6fr,1.9fr] gap-6 border-b border-slate-100 px-6 py-4 text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 md:grid"
+          class="hidden grid-cols-[1.2fr,0.9fr,0.9fr,1.6fr,0.6fr,1.9fr] gap-6 border-b border-slate-100 px-6 py-4 text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 md:grid dark:border-[#2b2b2b] dark:text-white"
         >
           <span>Nome</span>
           <span>Visualizações</span>
@@ -127,11 +127,11 @@
           <span class="text-right">Ações</span>
         </div>
 
-        <div v-if="pages.length" class="space-y-4 md:space-y-0 md:divide-y md:divide-slate-100">
+        <div v-if="pages.length" class="space-y-4 md:space-y-0 md:divide-y md:divide-slate-100 dark:md:divide-[#2b2b2b]">
           <div
             v-for="page in pages"
             :key="page.id"
-            class="grid grid-cols-1 gap-4 rounded-2xl border border-slate-100 bg-white px-5 py-5 shadow-sm transition hover:border-slate-200 hover:bg-slate-50/70 md:grid-cols-[1.2fr,0.9fr,0.9fr,1.6fr,0.6fr,1.9fr] md:items-center md:gap-6 md:rounded-none md:border-0 md:bg-transparent md:px-6 md:py-5 md:shadow-none"
+            class="grid grid-cols-1 gap-4 rounded-2xl border border-slate-100 bg-white px-5 py-5 shadow-sm transition hover:border-slate-200 hover:bg-slate-50/70 md:grid-cols-[1.2fr,0.9fr,0.9fr,1.6fr,0.6fr,1.9fr] md:items-center md:gap-6 md:rounded-none md:border-0 md:bg-transparent md:px-6 md:py-5 md:shadow-none dark:border-[#2b2b2b] dark:bg-[#202020] dark:hover:bg-white/5"
           >
             <div class="flex flex-wrap items-center gap-3">
               <p class="text-base font-semibold text-slate-900">{{ page.title }}</p>
@@ -157,7 +157,7 @@
               </button>
               <span
                 v-else
-                class="inline-flex min-w-[3rem] justify-center rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-600"
+                class="inline-flex min-w-[3rem] justify-center rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-600 dark:bg-[#1EA751] dark:text-white"
               >
                 {{ getPageVisits(page.id) }}
               </span>
@@ -177,7 +177,7 @@
               </button>
               <span
                 v-else
-                class="inline-flex min-w-[3rem] justify-center rounded-full bg-indigo-50 px-3 py-1 text-sm font-semibold text-indigo-600"
+                class="inline-flex min-w-[3rem] justify-center rounded-full bg-indigo-50 px-3 py-1 text-sm font-semibold text-indigo-600 dark:bg-[#8544CE] dark:text-white"
               >
                 {{ getPageClicks(page.id) }}
               </span>
@@ -760,12 +760,12 @@ const deletePage = async (page: Page) => {
 const getStatusLabel = (status: string) => (status === "published" ? "Ativo" : status === "draft" ? "Rascunho" : status);
 const getStatusClasses = (status: string) => {
   if (status === "published") {
-    return "bg-emerald-50 text-emerald-600";
+    return "bg-emerald-50 text-[#2F9E49] dark:bg-[#2F9E49] dark:text-emerald-50";
   }
   if (status === "draft") {
-    return "bg-amber-50 text-amber-600";
+    return "bg-amber-50 text-amber-600 dark:bg-amber-600 dark:text-amber-50";
   }
-  return "bg-slate-100 text-slate-600";
+  return "bg-slate-100 text-slate-600 dark:bg-slate-600 dark:text-slate-100";
 };
 const getPageVisits = (pageId: number) => pageStats.value[pageId]?.visits ?? 0;
 const getPageClicks = (pageId: number) => {

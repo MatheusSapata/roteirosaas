@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-6">
+  <div class="profile-view space-y-6">
     <header class="flex flex-col gap-2">
       <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">Conta</p>
       <h1 class="text-2xl font-bold text-slate-900">Perfil e Assinatura</h1>
@@ -179,7 +179,7 @@
             <input
               v-model="profileForm.name"
               type="text"
-              class="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+              class="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 bg-white"
               placeholder="Seu nome"
             />
           </label>
@@ -189,7 +189,7 @@
             <input
               v-model="profileForm.email"
               type="email"
-              class="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+              class="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 bg-white"
               placeholder="email@exemplo.com"
             />
           </label>
@@ -200,7 +200,7 @@
               :value="formattedCpf"
               readonly
               disabled
-              class="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+              class="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 bg-white"
             />
           </label>
           <label class="space-y-1 text-xs font-semibold text-slate-500">
@@ -208,7 +208,7 @@
             <input
               v-model="profileForm.whatsapp"
               type="text"
-              class="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+              class="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 bg-white"
               placeholder="(00) 00000-0000"
             />
           </label>
@@ -391,7 +391,7 @@ const billingStatusLabel = computed(() => {
 
 const statusBadgeClass = computed(() => {
   const status = billing.value?.status || "inactive";
-  if (status === "active") return "rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700";
+  if (status === "active") return "rounded-full bg-[#3EBD59] px-3 py-1 text-xs font-semibold text-white";
   if (status === "cancel_at_period_end")
     return "rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700";
   if (status === "past_due") return "rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-700";
@@ -615,3 +615,12 @@ const goPlans = () => {
 
 onMounted(loadBilling);
 </script>
+
+<style scoped>
+:global(.dark-theme .profile-view input) {
+  background-color: #05070f !important;
+  color: #f8fafc;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+</style>
+

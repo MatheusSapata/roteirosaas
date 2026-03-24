@@ -1,6 +1,6 @@
 <template>
 <div class="w-full space-y-6 px-4 py-10 md:px-8 md:py-0">
-    <div class="sticky top-0 z-30 flex flex-col gap-3 border-b border-white/40 bg-slate-50/90 py-4 backdrop-blur md:flex-row md:items-center md:justify-between">
+    <div class="sticky top-0 z-30 flex flex-col gap-3 py-4 md:flex-row md:items-center md:justify-between">
       <div>
         <p class="text-sm uppercase tracking-wide text-slate-500">Editor de página</p>
         <h1 class="text-3xl font-bold text-slate-900">{{ page?.title || "Roteiro" }}</h1>
@@ -78,7 +78,7 @@
     
     <!-- Dialog de limite de plano (reutilizado também para "template no free") -->
     <div v-if="limitModal.open" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4">
-      <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+      <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-[#1f1f1f] dark:text-white">
         <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">Limite do plano</p>
         <h3 class="mt-2 text-xl font-bold text-slate-900">Ação indisponível</h3>
         <p class="mt-2 text-sm text-slate-600">
@@ -108,7 +108,7 @@
       v-if="unsavedNavigationModal.open"
       class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4"
     >
-      <div class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+      <div class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl dark:bg-[#1f1f1f] dark:text-white">
         <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">Atenção</p>
         <h3 class="mt-2 text-xl font-bold text-slate-900">Alterações não salvas</h3>
         <p class="mt-2 text-sm text-slate-600">
@@ -122,8 +122,8 @@
             @click="cancelNavigationModal"
           >
             Continuar editando
-          </button>
-          <button
+                              </button>
+                              <button
             type="button"
             class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
             @click="discardAndLeave"
@@ -144,7 +144,7 @@
 
     <!-- Dialog de sucesso ao publicar -->
     <div v-if="successModal.open" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4">
-      <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+      <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-[#1f1f1f] dark:text-white">
         <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">Publicação</p>
         <h3 class="mt-2 text-xl font-bold text-slate-900">Página publicada com sucesso</h3>
         <p class="mt-2 text-sm text-slate-600">Escolha o que deseja fazer em seguida.</p>
@@ -179,8 +179,8 @@
       class="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/60 px-4 py-8"
       @click.self="closeSectionPicker"
     >
-      <div class="w-full max-w-5xl rounded-3xl bg-white shadow-2xl">
-        <div class="flex flex-col gap-2 border-b border-slate-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+      <div class="w-full max-w-5xl rounded-3xl bg-white shadow-2xl dark:bg-[#1f1f1f] dark:text-white">
+        <div class="flex flex-col gap-2 border-b border-slate-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between dark:border-white/10">
           <div>
             <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Adicionar nova seção</p>
             <h3 class="text-lg font-semibold text-slate-900">Escolha um layout</h3>
@@ -200,10 +200,10 @@
               v-for="catalog in sectionCatalog"
               :key="catalog.type"
               type="button"
-              class="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white text-left shadow-sm transition hover:border-brand/40 focus:outline-none focus:ring-2 focus:ring-brand/40"
+            class="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white text-left shadow-sm transition hover:border-brand/40 focus:outline-none focus:ring-2 focus:ring-brand/40 dark:border-[#2b2b2b] dark:bg-[#181818]"
               @click="handleSectionPickerSelect(catalog.type)"
             >
-              <div class="relative h-44 w-full overflow-hidden rounded-t-2xl border-b border-slate-100 bg-slate-50">
+              <div class="relative h-44 w-full overflow-hidden rounded-t-2xl border-b border-slate-100 bg-slate-50 dark:border-white/10 dark:bg-[#121212]">
                 <template v-if="catalog.thumbnail">
                   <img :src="catalog.thumbnail" alt="" class="h-full w-full object-cover" />
                   <div class="absolute inset-0 bg-gradient-to-t from-black/35 to-transparent"></div>
@@ -236,13 +236,13 @@
     </div>
 
     <div class="space-y-4">
-      <div class="rounded-2xl bg-white p-4 shadow-md">
+      <div class="rounded-2xl bg-white p-4 shadow-md dark:bg-[#202020] dark:text-white">
         <div class="mt-4 grid gap-6 lg:grid-cols-2">
-          <div class="space-y-4 rounded-2xl border border-slate-100 px-4 py-4">
+          <div class="space-y-4 rounded-2xl border border-slate-100 px-4 py-4 dark:border-[#2b2b2b] dark:bg-[#181818]">
             <div class="space-y-4">
               <div>
                 <label class="text-sm font-semibold text-slate-600">Título</label>
-                <input v-model="pageTitle" @blur="scheduleWhatsAppUpdate" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
+                <input v-model="pageTitle" @blur="scheduleWhatsAppUpdate" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-900 dark:border-white/15 dark:bg-[#05070F] dark:text-white" />
               </div>
               <div>
                 <div class="flex items-center gap-2">
@@ -252,7 +252,7 @@
                 <input
                   :value="pageSlug"
                   @input="handleSlugInput"
-                  class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2"
+                  class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-900 dark:border-white/15 dark:bg-[#05070F] dark:text-white"
                 />
               </div>
             </div>
@@ -265,11 +265,11 @@
                 <div class="mt-1 flex flex-wrap items-center gap-2">
                   <label class="flex items-center gap-2">
                     <span>Cor 1</span>
-                    <input type="color" v-model="colorA" class="h-9 w-9 cursor-pointer rounded border border-slate-200 bg-white" />
+                    <input type="color" v-model="colorA" class="h-9 w-9 cursor-pointer rounded border border-slate-200 bg-white dark:border-[#363636] dark:bg-[#050505]" />
                   </label>
                   <label class="flex items-center gap-2">
                     <span>Cor 2</span>
-                    <input type="color" v-model="colorB" class="h-9 w-9 cursor-pointer rounded border border-slate-200 bg-white" />
+                    <input type="color" v-model="colorB" class="h-9 w-9 cursor-pointer rounded border border-slate-200 bg-white dark:border-[#363636] dark:bg-[#050505]" />
                   </label>
                 </div>
               </div>
@@ -282,13 +282,13 @@
                   <input
                     type="color"
                     v-model="ctaColor"
-                    class="h-9 w-9 cursor-pointer rounded border border-slate-200 bg-white"
+                    class="h-9 w-9 cursor-pointer rounded border border-slate-200 bg-white dark:border-[#363636] dark:bg-[#050505]"
                   />
                 </div>
               </div>
             </div>
           </div>
-          <div class="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-4">
+          <div class="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-4 dark:border-[#2b2b2b] dark:bg-[#1a1a1a]">
             <div class="space-y-1">
               <p class="text-sm font-semibold text-slate-700">Pixel de rastreamento</p>
               <p class="text-xs text-slate-500">
@@ -302,7 +302,7 @@
             <div class="mt-4 space-y-3">
               <div
                 v-if="!canSelectPixel"
-                class="rounded-lg border border-dashed border-slate-200 bg-white/80 px-3 py-2 text-sm text-slate-500"
+                class="rounded-lg border border-dashed border-slate-200 bg-white/80 px-3 py-2 text-sm text-slate-500 dark:border-[#363636] dark:bg-[#0d0d0d] dark:text-slate-300"
               >
                 Adicione pixels na página Integrações (plano Essencial ou superior).
               </div>
@@ -310,10 +310,10 @@
               <template v-else>
                 <div class="grid gap-3 sm:grid-cols-2">
                   <div>
-                    <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Pixel Meta</label>
+                    <label class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">Pixel Meta</label>
                     <select
                       v-model="selectedPixels.meta"
-                      class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800"
+                      class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-[#363636] dark:bg-[#101010] dark:text-white"
                       :disabled="!metaPixelOptions.length"
                     >
                       <option value="">Sem pixel Meta</option>
@@ -321,13 +321,13 @@
                         {{ p.name }} – Meta
                       </option>
                     </select>
-                    <p v-if="!metaPixelOptions.length" class="mt-1 text-xs text-slate-500">Cadastre uma conexão Meta em Integrações.</p>
+                    <p v-if="!metaPixelOptions.length" class="mt-1 text-xs text-slate-500 dark:text-slate-400">Cadastre uma conexão Meta em Integrações.</p>
                   </div>
                   <div>
-                    <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Pixel Google</label>
+                    <label class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">Pixel Google</label>
                     <select
                       v-model="selectedPixels.ga"
-                      class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800"
+                      class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-[#363636] dark:bg-[#101010] dark:text-white"
                       :disabled="!gaPixelOptions.length"
                     >
                       <option value="">Sem pixel Google</option>
@@ -335,12 +335,12 @@
                         {{ p.name }} – GA4
                       </option>
                     </select>
-                    <p v-if="!gaPixelOptions.length" class="mt-1 text-xs text-slate-500">Cadastre uma conexão GA4 em Integrações.</p>
+                    <p v-if="!gaPixelOptions.length" class="mt-1 text-xs text-slate-500 dark:text-slate-400">Cadastre uma conexão GA4 em Integrações.</p>
                   </div>
                 </div>
 
-                <div class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
-                  <p class="font-semibold text-slate-800">Eventos a enviar</p>
+                <div class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 dark:border-[#363636] dark:bg-[#101010] dark:text-slate-200">
+                  <p class="font-semibold text-slate-800 dark:text-white">Eventos a enviar</p>
 
                   <div class="mt-2 flex flex-wrap gap-4">
                     <label class="flex items-center gap-2">
@@ -361,7 +361,7 @@
       </div>
     </div>
 
-      <div class="md:sticky md:top-6 rounded-3xl bg-white p-4 shadow-md">
+      <div class="md:sticky md:top-6 rounded-3xl bg-white p-4 shadow-md dark:bg-[#202020] dark:text-white">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div class="flex flex-col gap-1">
           <h2 class="text-lg font-semibold text-slate-900">Preview visual</h2>
@@ -375,7 +375,7 @@
         </div>
         <div
           v-if="!isMobileViewport"
-          class="inline-flex select-none items-center rounded-full border border-slate-200 bg-slate-50 p-1 text-sm font-semibold text-slate-600"
+          class="inline-flex select-none items-center rounded-full border border-slate-200 bg-slate-50 p-1 text-sm font-semibold text-slate-600 dark:border-[#2b2b2b] dark:bg-[#181818] dark:text-slate-200"
         >
           <button
             v-if="!isMobileViewport"
@@ -405,7 +405,7 @@
             : ''"
         >
           <div :class="previewDevice === 'mobile' ? 'max-h-none overflow-visible' : ''">
-            <div class="space-y-6">
+            <div class="space-y-6 preview-light">
               <template v-if="sections.length === 0">
                 <div class="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 px-4 py-12 text-center text-sm text-slate-500">
                   Nenhuma seção adicionada ainda. Use os botões acima para criar o conteúdo.
@@ -450,82 +450,86 @@
                             @click.stop
                           >
                             <template v-if="!isLockedFooterSection(section)">
-                            <div
-                              :class="[
-                                isMobileOverlayMode
-                                  ? 'grid w-full grid-cols-2 gap-2'
-                                  : 'flex flex-wrap items-center justify-center gap-3'
-                              ]"
-                            >
+                        <div
+                          :class="[
+                            isMobileOverlayMode
+                              ? 'grid w-full grid-cols-2 gap-2'
+                              : 'flex flex-wrap items-center justify-center gap-3'
+                          ]"
+                        >
                               <button
                                 type="button"
-                                class="inline-flex items-center gap-2 rounded-full border border-white/40 bg-white/20 text-xs font-semibold text-white shadow-md transition hover:bg-white/30"
+                                class="overlay-action-button inline-flex items-center gap-2 rounded-full border border-white/40 bg-white/20 text-xs font-semibold text-white !text-white shadow-md transition hover:bg-white/30 dark:border-white/40 dark:bg-white/25 dark:text-white dark:hover:bg-white/40 dark:shadow-white/45"
                                 :class="[overlayButtonSizingClass, isMobileOverlayMode ? 'col-span-2' : '']"
                                 @click.stop="openSectionEditor(idx)"
                               >
-                                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                                  <path d="M12 20h9" />
-                                  <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z" />
-                                </svg>
-                                Editar seção
-                              </button>
-                              <button
-                                type="button"
-                                class="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 text-xs font-semibold text-white transition hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed"
-                                :class="overlayButtonSizingClass"
-                                :disabled="idx === 0"
-                                @click.stop="moveSection(idx, -1)"
-                              >
-                                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-                                  <path d="m5 12 7-7 7 7" />
-                                  <path d="M12 5v14" />
-                                </svg>
-                                Subir
-                              </button>
-                              <button
-                                type="button"
-                                class="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 text-xs font-semibold text-white transition hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed"
-                                :class="overlayButtonSizingClass"
-                                :disabled="idx === sections.length - 1"
-                                @click.stop="moveSection(idx, 1)"
-                              >
-                                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-                                  <path d="m19 12-7 7-7-7" />
-                                  <path d="M12 19V5" />
-                                </svg>
-                                Descer
-                              </button>
-                              <button
-                                type="button"
-                                class="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 text-xs font-semibold text-white shadow-sm transition hover:bg-white/20"
-                                :class="overlayButtonSizingClass"
-                                @click.stop="duplicateSection(idx)"
-                              >
-                                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
-                                  <rect x="9" y="9" width="11" height="11" rx="2" />
-                                  <rect x="4" y="4" width="11" height="11" rx="2" />
-                                </svg>
-                                Duplicar
-                              </button>
-                              <button
-                                type="button"
-                                class="inline-flex items-center gap-2 rounded-full border border-red-300/70 bg-red-400/10 text-xs font-semibold text-red-100 transition hover:bg-red-400/20"
-                                :class="overlayButtonSizingClass"
-                                @click.stop="removeSection(idx)"
-                              >
-                                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-                                  <path d="M3 6h18" />
-                                  <path d="M8 6V4h8v2" />
-                                  <path d="m9 10 1 8" />
-                                  <path d="m15 10-1 8" />
-                                  <path d="M5 6l1 14h12l1-14" />
-                                </svg>
-                                Excluir
-                              </button>
-                            </div>
-                          </template>
+                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                              <path d="M12 20h9" />
+                              <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z" />
+                            </svg>
+                            <span class="overlay-label text-white">Editar seção</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            class="overlay-action-button inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 text-xs font-semibold text-white !text-white transition hover:bg-white/20 dark:border-white/35 dark:bg-white/22 dark:text-white dark:hover:bg-white/35"
+                            :class="overlayButtonSizingClass"
+                            :disabled="idx === 0"
+                            @click.stop="moveSection(idx, -1)"
+                          >
+                            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                              <path d="m5 12 7-7 7 7" />
+                              <path d="M12 5v14" />
+                            </svg>
+                            <span class="overlay-label text-white">Subir</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            class="overlay-action-button inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 text-xs font-semibold text-white !text-white transition hover:bg-white/20 dark:border-white/35 dark:bg-white/22 dark:text-white dark:hover(bg-white/35"
+                            :class="overlayButtonSizingClass"
+                            :disabled="idx === sections.length - 1"
+                            @click.stop="moveSection(idx, 1)"
+                          >
+                            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                              <path d="m19 12-7 7-7-7" />
+                              <path d="M12 19V5" />
+                            </svg>
+                            <span class="overlay-label text-white">Descer</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            class="overlay-action-button inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 text-xs font-semibold text-white !text-white shadow-sm transition hover:bg-white/20 dark:border-white/25 dark:bg-white/15 dark:text-white dark:hover(bg-white/30"
+                            :class="overlayButtonSizingClass"
+                            @click.stop="duplicateSection(idx)"
+                          >
+                            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+                              <rect x="9" y="9" width="11" height="11" rx="2" />
+                              <rect x="4" y="4" width="11" height="11" rx="2" />
+                            </svg>
+                            <span class="overlay-label text-white">Duplicar</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            class="overlay-action-button inline-flex items-center gap-2 rounded-full border border-red-300/70 bg-red-400/10 text-xs font-semibold text-red-100 transition hover:bg-red-400/20 dark:border-red-400/60 dark:bg-red-500/25 dark:text-white dark:hover:bg-red-500/40 !text-white"
+                            :class="overlayButtonSizingClass"
+                            @click.stop="removeSection(idx)"
+                          >
+                            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                              <path d="M3 6h18" />
+                              <path d="M8 6V4h8v2" />
+                              <path d="m9 10 1 8" />
+                              <path d="m15 10-1 8" />
+                              <path d="M5 6l1 14h12l1-14" />
+                            </svg>
+                            <span class="overlay-label text-white">Excluir</span>
+                          </button>
+                        </div>
+                      </template>
                           <template v-else>
-                            <div class="rounded-full border border-white/30 bg-white/10 px-4 py-2 text-center text-xs font-semibold text-white">
+                            <div class="rounded-full border border-white/30 bg-white/10 px-4 py-2 text-center text-xs font-semibold text-white dark:border-white/18 dark:bg-white/10 dark:text-white">
                               Rodapé obrigatório no plano gratuito. Não é possível editar, mover ou remover esta seção.
                             </div>
                           </template>
@@ -534,7 +538,7 @@
                       </div>
                       <div
                         v-else
-                        class="bg-white/80 px-6 py-12 text-center text-sm font-semibold text-slate-500"
+                        class="bg-white/80 px-6 py-12 text-center text-sm font-semibold text-slate-500 dark:bg-white/4 dark:text-white/80"
                       >
                         Seção desativada. Clique em editar para ajustar e ativar novamente.
                       </div>
@@ -568,7 +572,7 @@
         @click.self="closeSectionEditor"
       >
         <div
-          class="w-full max-w-4xl overflow-hidden rounded-3xl bg-white shadow-2xl"
+          class="w-full max-w-4xl overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-[#1f1f1f] dark:text-white"
           :class="isMobileViewport ? 'max-h-[75vh]' : 'md:max-h-none md:rounded-[32px] md:shadow-2xl'"
         >
           <div class="flex flex-col gap-1 border-b border-slate-100 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
@@ -851,13 +855,13 @@ watch(
   { immediate: false }
 );
 const toolbarSecondaryButtonClass =
-  "inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-white";
+  "inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-white dark:border-white/20 dark:bg-white/5 dark:text-white dark:hover:bg-white/10";
 const toolbarPrimaryButtonClass =
-  "inline-flex items-center gap-2 rounded-full border border-brand bg-brand px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-dark";
+  "inline-flex items-center gap-2 rounded-full border border-brand bg-brand px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-dark dark:border-brand/80";
 const toolbarWarningButtonClass =
-  "inline-flex items-center gap-2 rounded-full border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 transition hover:bg-amber-100";
+  "inline-flex items-center gap-2 rounded-full border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 transition hover:bg-amber-100 dark:border-amber-300/60 dark:bg-amber-200/10 dark:text-amber-200 dark:hover:bg-amber-200/20";
 const toolbarStatusPillClass =
-  "inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700";
+  "inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 dark:border-emerald-400/30 dark:bg-emerald-500/10 dark:text-emerald-200";
 let skipCtaWatcher = false;
 let removeViewportWatcher: (() => void) | null = null;
 
@@ -2501,6 +2505,94 @@ onMounted(async () => {
 });
 </script>
 
+<style scoped>
+:global(.dark-theme .preview-light .bg-white) {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+:global(.dark-theme .preview-light .bg-white\/90) {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  color: #0f172a !important;
+}
+:global(.dark-theme .preview-light .bg-white\/80) {
+  background-color: rgba(255, 255, 255, 0.8) !important;
+  color: #0f172a !important;
+}
+:global(.dark-theme .preview-light .bg-white\/70) {
+  background-color: rgba(255, 255, 255, 0.7) !important;
+  color: #0f172a !important;
+}
+:global(.dark-theme .preview-light .bg-white\/60) {
+  background-color: rgba(255, 255, 255, 0.6) !important;
+  color: #0f172a !important;
+}
+:global(.dark-theme .preview-light .bg-white\/50) {
+  background-color: rgba(255, 255, 255, 0.5) !important;
+  color: #0f172a !important;
+}
+:global(.dark-theme .preview-light .bg-white\/40) {
+  background-color: rgba(255, 255, 255, 0.4) !important;
+  color: #0f172a !important;
+}
+:global(.dark-theme .preview-light .bg-white\/30) {
+  background-color: rgba(255, 255, 255, 0.3) !important;
+  color: #0f172a !important;
+}
+:global(.dark-theme .preview-light .bg-white\/20) {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+  color: #0f172a !important;
+}
+:global(.dark-theme .preview-light .bg-white\/10) {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  color: #0f172a !important;
+}
+:global(.dark-theme .preview-light .bg-white\/5) {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  color: #0f172a !important;
+}
+:global(.dark-theme .preview-light .bg-slate-50),
+:global(.dark-theme .preview-light .bg-slate-100),
+:global(.dark-theme .preview-light .bg-slate-200),
+:global(.dark-theme .preview-light .bg-gray-50) {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+:global(.dark-theme .preview-light .text-slate-900),
+:global(.dark-theme .preview-light .text-slate-800),
+:global(.dark-theme .preview-light .text-slate-700) {
+  color: #0f172a !important;
+}
+:global(.dark-theme .preview-light .text-slate-600),
+:global(.dark-theme .preview-light .text-slate-500),
+:global(.dark-theme .preview-light .text-slate-400) {
+  color: #475569 !important;
+}
+:global(.dark-theme .preview-light .border-slate-100),
+:global(.dark-theme .preview-light .border-slate-200),
+:global(.dark-theme .preview-light .border-slate-300) {
+  border-color: #e2e8f0 !important;
+}
+.preview-toolbar button {
+  color: #ffffff !important;
+}
+.preview-toolbar button * {
+  color: inherit !important;
+  stroke: currentColor !important;
+}
+.preview-toolbar button:disabled {
+  opacity: 0.65 !important;
+  cursor: not-allowed !important;
+}
+:deep(.overlay-action-button svg) {
+  color: inherit !important;
+  stroke: currentColor !important;
+}
+:deep(.overlay-action-button svg *) {
+  color: inherit !important;
+  stroke: currentColor !important;
+  fill: none !important;
+}
+</style>
 
 
 
@@ -2514,3 +2606,6 @@ onMounted(async () => {
 
 
 
+.overlay-label {
+  color: #ffffff !important;
+}
