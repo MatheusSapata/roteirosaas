@@ -92,7 +92,7 @@
         <header
           :class="[
             'admin-header sticky top-0 z-30 px-4 py-3 shadow-sm transition-colors md:static',
-            isDarkTheme ? 'bg-slate-900 text-white' : 'bg-brand text-white md:bg-white md:text-slate-900',
+            isDarkTheme ? 'bg-[#202020] text-white' : 'bg-brand text-white md:bg-white md:text-slate-900',
             { 'md:hidden': shouldHideDesktopHeader }
           ]"
         >
@@ -131,13 +131,17 @@
     </div>
 
     <transition name="fade">
-      <div
-        v-if="mobileMenuOpen"
-        class="fixed inset-0 z-40 flex justify-end md:hidden"
-      >
-        <div class="flex-1 bg-slate-900/60" @click="mobileMenuOpen = false"></div>
         <div
-          class="w-72 max-w-full rounded-l-3xl p-5 shadow-2xl transition-colors"
+          v-if="mobileMenuOpen"
+          class="fixed inset-0 z-40 flex justify-end md:hidden"
+        >
+        <div
+          class="flex-1"
+          :class="isDarkTheme ? 'bg-[#202020]/90' : 'bg-slate-900/60'"
+          @click="mobileMenuOpen = false"
+        ></div>
+        <div
+          class="w-72 max-w-full p-5 shadow-2xl transition-colors md:rounded-l-3xl"
           :class="isDarkTheme ? 'bg-[#202020] text-white' : 'bg-brand text-white'"
         >
           <div class="mb-6 flex items-center justify-between">
