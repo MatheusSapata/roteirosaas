@@ -30,3 +30,9 @@ class Agency(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+    lead_forms = relationship(
+        "LeadForm",
+        back_populates="agency",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )

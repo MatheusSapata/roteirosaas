@@ -114,7 +114,7 @@
     </div>
 
     <!-- Indicadores principais -->
-    <section class="grid gap-4 md:grid-cols-3">
+    <section class="grid gap-4" :class="showLeadCard ? 'md:grid-cols-4' : 'md:grid-cols-3'">
       <div class="rounded-2xl bg-white p-5 shadow-md ring-1 ring-slate-100">
         <p class="text-sm text-slate-500">Páginas</p>
         <div class="mt-2 flex items-end justify-between">
@@ -177,6 +177,22 @@
           >
             Desbloquear
           </button>
+        </div>
+      </div>
+
+      <div
+        v-if="showLeadCard"
+        class="rounded-2xl bg-white p-5 shadow-md ring-1 ring-slate-100"
+      >
+        <p class="text-sm text-slate-500">Leads</p>
+        <div class="mt-2 flex items-end justify-between">
+          <p class="text-3xl font-bold text-slate-900" :class="{ 'text-slate-400': leadCardLoading }">
+            {{ leadCardLoading ? "--" : formattedLeadTotal }}
+          </p>
+          <span class="text-xs text-slate-400">--</span>
+        </div>
+        <div v-if="leadCardLoading" class="mt-2 text-right text-xs text-slate-400">
+          Atualizando...
         </div>
       </div>
     </section>
@@ -406,10 +422,13 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
+import { storeToRefs } from "pinia";
 import { useRouter } from "vue-router";
 import api from "../../services/api";
 import { useAgencyStore } from "../../store/useAgencyStore";
 import { useAuthStore } from "../../store/useAuthStore";
+import { useLeadCaptureStore } from "../../store/useLeadCaptureStore";
+import { useLeadFeatureGate } from "../../composables/useLeadFeatureGate";
 
 interface Page {
   id: number;
@@ -465,6 +484,22 @@ interface OnboardingStep {
 const auth = useAuthStore();
 const agencyStore = useAgencyStore();
 const router = useRouter();
+const leadStore = useLeadCaptureStore();
+const { totalContacts, contactsLoading, contactsLoadedAtLeastOnce } = storeToRefs(leadStore);
+const { hasLeadFeatureAccess } = useLeadFeatureGate();
+const showLeadCard = computed(() => hasLeadFeatureAccess.value);
+const leadCardLoading = computed(
+  () => contactsLoading.value && !contactsLoadedAtLeastOnce.value
+);
+const formattedLeadTotal = computed(() => totalContacts.value.toLocaleString("pt-BR"));
+const ensureLeadContacts = async () => {
+  if (contactsLoadedAtLeastOnce.value || contactsLoading.value) return;
+  try {
+    await leadStore.fetchContacts();
+  } catch {
+    /* erros já são tratados no fluxo do módulo de leads */
+  }
+};
 
 const pages = ref<Page[]>([]);
 const pagesCount = ref(0);
@@ -833,6 +868,15 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener("resize", updateIsMobile);
 });
+watch(
+  showLeadCard,
+  (allowed) => {
+    if (allowed) {
+      ensureLeadContacts();
+    }
+  },
+  { immediate: true }
+);
 watch(
   selectedPage,
   async () => {

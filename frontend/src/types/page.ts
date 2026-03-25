@@ -1,3 +1,5 @@
+import type { PageLeadCaptureConfig } from "./leads";
+
 export type SectionType =
   | "hero"
   | "banner_card"
@@ -285,5 +287,7 @@ export interface PageConfig {
   theme?: ThemeConfig;
   editor?: EditorPreferences;
   version?: number;
+  leadCapture?: PageLeadCaptureConfig | null;
+  tracking?: any;
 }
 

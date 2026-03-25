@@ -361,6 +361,104 @@
       </div>
     </div>
 
+    <div
+      v-if="leadFeatureAllowed"
+      class="rounded-2xl bg-white p-4 shadow-md dark:bg-[#202020] dark:text-white"
+    >
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Captação de leads</p>
+          <h3 class="text-xl font-semibold text-slate-900 dark:text-white">Formulário</h3>
+          <p class="text-sm text-slate-500 dark:text-slate-400">
+            Escolha um formulário de captação para abrir antes do visitante acessar a página.
+          </p>
+        </div>
+        <button
+          type="button"
+          class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 dark:border-white/20 dark:text-white dark:hover:bg-white/10"
+          @click="goLeads"
+        >
+          Gerenciar formulários
+        </button>
+      </div>
+      <div class="mt-4 space-y-4 rounded-2xl border border-slate-100 p-4 dark:border-[#2b2b2b] dark:bg-[#181818]">
+        <div
+          v-if="leadFormsLoading"
+          class="rounded-xl border border-dashed border-slate-200 px-3 py-2 text-sm text-slate-500 dark:border-white/20 dark:text-slate-300"
+        >
+          Carregando formulários cadastrados...
+        </div>
+        <div
+          v-else-if="!leadForms.length"
+          class="rounded-xl border border-dashed border-slate-200 px-4 py-4 text-sm text-slate-500 dark:border-white/20 dark:text-slate-300"
+        >
+          Nenhum formulário disponível. Clique em <span class="font-semibold">“Gerenciar formulários”</span> para criar.
+        </div>
+        <div v-else class="space-y-4">
+          <div class="flex flex-col gap-4 md:flex-row md:items-center">
+            <div class="flex-1 space-y-1">
+              <label class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">Escolha um formulário</label>
+              <select
+                v-model="selectedLeadFormId"
+                class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-white/15 dark:bg-[#05070F] dark:text-white"
+              >
+                <option value="">Nenhum formulário selecionado</option>
+                <option v-for="form in leadForms" :key="form.id" :value="String(form.id)">
+                  {{ form.title || form.name }} ({{ form.total_leads ?? 0 }} leads)
+                </option>
+              </select>
+              <p class="text-xs text-slate-500 dark:text-slate-400">
+                Selecione o formulário e clique em “Ver prévia” para abrir o modal real.
+              </p>
+            </div>
+            <template v-if="selectedLeadForm">
+              <div class="flex items-center md:w-48 md:justify-center">
+                <button
+                  type="button"
+                  class="preview-pill w-full justify-center md:w-auto md:min-w-[10rem]"
+                  @click="openLeadFormPreview(selectedLeadForm)"
+                >
+                  Ver prévia
+                </button>
+              </div>
+              <div
+                class="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 md:w-auto"
+              >
+                <input
+                  type="checkbox"
+                  v-model="leadCaptureOptional"
+                  class="h-4 w-4 rounded border-slate-200 text-brand focus:ring-brand/40 dark:border-white/30"
+                />
+                <p class="font-semibold text-slate-800 dark:text-white">Permitir fechar sem enviar</p>
+              </div>
+            </template>
+          </div>
+          <div
+            v-if="selectedLeadForm"
+            class="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 dark:border-emerald-400/40 dark:bg-emerald-500/10 dark:text-emerald-200"
+          >
+            Formulário {{ leadCaptureOptional ? "opcional" : "obrigatório" }} ativo para esta página.
+          </div>
+        </div>
+      </div>
+    </div>
+    <div
+      v-else
+      class="rounded-2xl border border-dashed border-slate-200 bg-white/70 p-6 text-center shadow-inner dark:border-white/10 dark:bg-[#101010]/70"
+    >
+      <h3 class="text-xl font-semibold text-slate-900 dark:text-white">Captação de leads bloqueada</h3>
+      <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">
+        Este recurso está disponível a partir do plano Agência (Growth). Atualize seu plano para ativar o formulário obrigatório de leads.
+      </p>
+      <button
+        type="button"
+        class="mt-4 rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white shadow transition hover:bg-brand-dark"
+        @click="goPlans"
+      >
+        Ver planos
+      </button>
+    </div>
+
       <div class="md:sticky md:top-6 rounded-3xl bg-white p-4 shadow-md dark:bg-[#202020] dark:text-white">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div class="flex flex-col gap-1">
@@ -566,6 +664,32 @@
     </div>
 
     <Teleport to="body">
+      <transition name="fade">
+        <div
+          v-if="previewModalVisible && previewForm"
+          class="fixed inset-0 z-[120] flex min-h-screen items-center justify-center px-4 py-6"
+        >
+          <div
+            class="absolute inset-0 bg-slate-950/65 backdrop-blur-sm"
+            @click="hideLeadFormPreview"
+          ></div>
+          <div class="relative z-10 w-full max-w-xl">
+            <button
+              type="button"
+              class="absolute right-3 top-3 rounded-full bg-black/70 p-2 text-white shadow-lg"
+              @click="hideLeadFormPreview"
+            >
+              <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M6 6l12 12M6 18 18 6" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </button>
+            <LeadFormPreview v-if="previewForm" :form="previewForm" />
+          </div>
+        </div>
+      </transition>
+    </Teleport>
+
+    <Teleport to="body">
       <div
         v-if="isSectionEditorOpen && editingSectionComponent && editingSectionDraft"
         class="fixed inset-0 z-40 flex h-full w-full items-center justify-center bg-slate-900/80 px-4 py-10 md:py-20 backdrop-blur-sm"
@@ -631,6 +755,7 @@ import { onBeforeRouteLeave, useRoute, useRouter } from "vue-router";
 import api from "../../services/api";
 import { useAuthStore } from "../../store/useAuthStore";
 import { useAgencyStore } from "../../store/useAgencyStore";
+import { useLeadCaptureStore } from "../../store/useLeadCaptureStore";
 import { slugify } from "../../utils/slugify";
 import type {
   BannerCardSection,
@@ -653,12 +778,14 @@ import type {
   SectionType,
   ThemeConfig
 } from "../../types/page";
+import LeadFormPreview from "../../components/admin/leads/LeadFormPreview.vue";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import { sectionsInjectionKey } from "../../components/admin/sectionsContext";
 import { sectionUploadGuardKey } from "../../components/admin/sectionUploadGuard";
 import { sectionLabels as defaultSectionLabels } from "../../utils/sectionLabels";
 import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
 import { getReadableTextColor } from "../../utils/colorContrast";
+import { useLeadFeatureGate } from "../../composables/useLeadFeatureGate";
 import heroThumb from "../../assets/hero-thumb.jpg";
 import bannerCardThumb from "../../assets/banner-card-thumb.jpg";
 import photoThumb from "../../assets/photo-thumb.jpg";
@@ -736,6 +863,9 @@ watch(pageSlug, () => markUnsavedChanges());
 
 const auth = useAuthStore();
 const agencyStore = useAgencyStore();
+const leadCaptureStore = useLeadCaptureStore();
+const { hasLeadFeatureAccess } = useLeadFeatureGate();
+const leadFeatureAllowed = hasLeadFeatureAccess;
 
 const message = ref("");
 const errorMessage = ref("");
@@ -779,7 +909,13 @@ const computeStateSnapshot = () => {
     slug: pageSlug.value,
     theme: themeSnapshot,
     editor: editorSnapshot,
-    sections: sections.value
+    sections: sections.value,
+    leadCapture: selectedLeadFormId.value ? { formId: selectedLeadFormId.value, optional: leadCaptureOptional.value } : null,
+    tracking: {
+      meta: selectedPixels.meta,
+      ga: selectedPixels.ga,
+      events: { ...trackingEvents.value }
+    }
   });
 };
 
@@ -1295,6 +1431,59 @@ const metaPixelOptions = computed(() => pixels.value.filter(p => p.type === "met
 const gaPixelOptions = computed(() => pixels.value.filter(p => p.type === "ga"));
 const resolveSelectedPixel = (type: "meta" | "ga", name: string) =>
   name ? pixels.value.find(p => p.type === type && p.name === name) || null : null;
+const leadForms = computed(() => leadCaptureStore.forms);
+const leadFormsLoading = computed(() => leadCaptureStore.formsLoading);
+const selectedLeadFormId = ref<string>("");
+const leadCaptureOptional = ref(false);
+const selectedLeadForm = computed(() => leadCaptureStore.getFormById(selectedLeadFormId.value));
+
+const previewModalVisible = ref(false);
+const previewForm = ref<LeadForm | null>(null);
+
+watch(
+  () => ({ meta: selectedPixels.meta, ga: selectedPixels.ga }),
+  () => markUnsavedChanges()
+);
+watch(
+  () => ({ ...trackingEvents.value }),
+  () => markUnsavedChanges(),
+  { deep: true }
+);
+watch(selectedLeadFormId, value => {
+  if (!value) {
+    leadCaptureOptional.value = false;
+    hideLeadFormPreview();
+  }
+  markUnsavedChanges();
+});
+watch(leadCaptureOptional, () => markUnsavedChanges());
+watch(
+  leadForms,
+  () => {
+    if (selectedLeadFormId.value && !leadCaptureStore.getFormById(selectedLeadFormId.value)) {
+      selectedLeadFormId.value = "";
+    }
+  },
+  { deep: true }
+);
+
+watch(leadFormsLoading, value => {
+  if (value) {
+    hideLeadFormPreview();
+  }
+});
+
+const openLeadFormPreview = (form?: LeadForm | null) => {
+  const target = form || selectedLeadForm.value;
+  if (!target) return;
+  previewForm.value = { ...target };
+  previewModalVisible.value = true;
+};
+
+const hideLeadFormPreview = () => {
+  previewModalVisible.value = false;
+  previewForm.value = null;
+};
 
 const canSelectPixel = computed(() => (auth.user?.plan || "free") !== "free" && pixels.value.length > 0);
 
@@ -1584,6 +1773,7 @@ const buildConfig = (): PageConfig => ({
   theme: { ...theme.value, color1: colorA.value, color2: colorB.value },
   editor: { ...editorPrefs.value, previewEnabled: true, previewDevice: previewDevice.value },
   sections: applySectionBackgrounds(sections.value),
+  leadCapture: selectedLeadFormId.value ? { formId: selectedLeadFormId.value, optional: leadCaptureOptional.value } : null,
   tracking: (() => {
     const metaPixel = resolveSelectedPixel("meta", selectedPixels.meta);
     const gaPixel = resolveSelectedPixel("ga", selectedPixels.ga);
@@ -1999,6 +2189,15 @@ const hydrateFromConfig = (config?: PageConfig | string | null) => {
         ctaClicks: tracking.events.ctaClicks !== false
       };
     }
+
+  const leadCapture = (parsed as any).leadCapture;
+  if (leadCapture?.formId) {
+    selectedLeadFormId.value = String(leadCapture.formId);
+    leadCaptureOptional.value = !!leadCapture.optional;
+  } else {
+    selectedLeadFormId.value = "";
+    leadCaptureOptional.value = false;
+  }
 
     applyPrimaryToThemeAndSections(oldDefaultCta);
   } catch (err) {
@@ -2443,6 +2642,10 @@ const goPages = () => {
   router.push({ name: "pages" });
 };
 
+const goLeads = () => {
+  router.push({ name: "leads" });
+};
+
 const viewPublicPage = () => {
   if (!publicUrl.value || !hasWindow) return;
   window.open(publicUrl.value, "_blank");
@@ -2486,6 +2689,7 @@ onMounted(async () => {
   await ensureAgencies();
   applyAgencyBranding();
   loadPixels();
+  leadCaptureStore.fetchForms().catch(() => undefined);
 
   const applied = applySavedTemplate();
   if (!applied) setDefaultSectionsByPlan();
@@ -2506,70 +2710,155 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-:global(.dark-theme .preview-light .bg-white) {
+.form-card {
+  width: 100%;
+  border-radius: 1.25rem;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background-color: #ffffff;
+  padding: 1rem 1.25rem;
+  text-align: left;
+  transition: border-color 0.2s ease;
+}
+.form-card:hover {
+  border-color: rgba(59, 130, 246, 0.4);
+}
+.form-card--selected {
+  border-color: rgba(34, 197, 94, 0.6);
+  background-color: #ffffff;
+}
+.badge-success {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  padding: 0.15rem 0.75rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #065f46;
+  background-color: rgba(16, 185, 129, 0.12);
+}
+:global(.dark-theme) .badge-success,
+:global(.dark) .badge-success {
+  color: #d1fae5;
+  background-color: rgba(16, 185, 129, 0.3);
+}
+.preview-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  padding: 0.25rem 0.9rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background-color: #f1f5f9;
+  color: #0f172a;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.preview-pill:hover {
+  background-color: #e2e8f0;
+}
+:global(.dark-theme) .preview-pill,
+:global(.dark) .preview-pill {
+  background-color: rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+:global(.dark-theme) .preview-pill:hover,
+:global(.dark) .preview-pill:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+:global(.dark-theme .preview-light .bg-white),
+:global(.dark .preview-light .bg-white) {
   background-color: #ffffff !important;
   color: #0f172a !important;
 }
-:global(.dark-theme .preview-light .bg-white\/90) {
+:global(.dark-theme .preview-light .bg-white\/90),
+:global(.dark .preview-light .bg-white\/90) {
   background-color: rgba(255, 255, 255, 0.9) !important;
   color: #0f172a !important;
 }
-:global(.dark-theme .preview-light .bg-white\/80) {
+:global(.dark-theme .preview-light .bg-white\/80),
+:global(.dark .preview-light .bg-white\/80) {
   background-color: rgba(255, 255, 255, 0.8) !important;
   color: #0f172a !important;
 }
-:global(.dark-theme .preview-light .bg-white\/70) {
+:global(.dark-theme .preview-light .bg-white\/70),
+:global(.dark .preview-light .bg-white\/70) {
   background-color: rgba(255, 255, 255, 0.7) !important;
   color: #0f172a !important;
 }
-:global(.dark-theme .preview-light .bg-white\/60) {
+:global(.dark-theme .preview-light .bg-white\/60),
+:global(.dark .preview-light .bg-white\/60) {
   background-color: rgba(255, 255, 255, 0.6) !important;
   color: #0f172a !important;
 }
-:global(.dark-theme .preview-light .bg-white\/50) {
+:global(.dark-theme .preview-light .bg-white\/50),
+:global(.dark .preview-light .bg-white\/50) {
   background-color: rgba(255, 255, 255, 0.5) !important;
   color: #0f172a !important;
 }
-:global(.dark-theme .preview-light .bg-white\/40) {
+:global(.dark-theme .preview-light .bg-white\/40),
+:global(.dark .preview-light .bg-white\/40) {
   background-color: rgba(255, 255, 255, 0.4) !important;
   color: #0f172a !important;
 }
-:global(.dark-theme .preview-light .bg-white\/30) {
+:global(.dark-theme .preview-light .bg-white\/30),
+:global(.dark .preview-light .bg-white\/30) {
   background-color: rgba(255, 255, 255, 0.3) !important;
   color: #0f172a !important;
 }
-:global(.dark-theme .preview-light .bg-white\/20) {
+:global(.dark-theme .preview-light .bg-white\/20),
+:global(.dark .preview-light .bg-white\/20) {
   background-color: rgba(255, 255, 255, 0.2) !important;
   color: #0f172a !important;
 }
-:global(.dark-theme .preview-light .bg-white\/10) {
+:global(.dark-theme .preview-light .bg-white\/10),
+:global(.dark .preview-light .bg-white\/10) {
   background-color: rgba(255, 255, 255, 0.1) !important;
   color: #0f172a !important;
 }
-:global(.dark-theme .preview-light .bg-white\/5) {
+:global(.dark-theme .preview-light .bg-white\/5),
+:global(.dark .preview-light .bg-white\/5) {
   background-color: rgba(255, 255, 255, 0.05) !important;
   color: #0f172a !important;
 }
 :global(.dark-theme .preview-light .bg-slate-50),
+:global(.dark .preview-light .bg-slate-50),
 :global(.dark-theme .preview-light .bg-slate-100),
+:global(.dark .preview-light .bg-slate-100),
 :global(.dark-theme .preview-light .bg-slate-200),
-:global(.dark-theme .preview-light .bg-gray-50) {
+:global(.dark .preview-light .bg-slate-200),
+:global(.dark-theme .preview-light .bg-gray-50),
+:global(.dark .preview-light .bg-gray-50) {
   background-color: #f8fafc !important;
   color: #0f172a !important;
 }
 :global(.dark-theme .preview-light .text-slate-900),
+:global(.dark .preview-light .text-slate-900),
 :global(.dark-theme .preview-light .text-slate-800),
-:global(.dark-theme .preview-light .text-slate-700) {
+:global(.dark .preview-light .text-slate-800),
+:global(.dark-theme .preview-light .text-slate-700),
+:global(.dark .preview-light .text-slate-700) {
   color: #0f172a !important;
 }
 :global(.dark-theme .preview-light .text-slate-600),
+:global(.dark .preview-light .text-slate-600),
 :global(.dark-theme .preview-light .text-slate-500),
-:global(.dark-theme .preview-light .text-slate-400) {
+:global(.dark .preview-light .text-slate-500),
+:global(.dark-theme .preview-light .text-slate-400),
+:global(.dark .preview-light .text-slate-400) {
   color: #475569 !important;
 }
 :global(.dark-theme .preview-light .border-slate-100),
+:global(.dark .preview-light .border-slate-100),
 :global(.dark-theme .preview-light .border-slate-200),
-:global(.dark-theme .preview-light .border-slate-300) {
+:global(.dark .preview-light .border-slate-200),
+:global(.dark-theme .preview-light .border-slate-300),
+:global(.dark .preview-light .border-slate-300) {
   border-color: #e2e8f0 !important;
 }
 .preview-toolbar button {
