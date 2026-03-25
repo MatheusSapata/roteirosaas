@@ -25,6 +25,20 @@
       />
     </template>
   </div>
+  <PublicLeadCaptureModal
+    v-if="leadCaptureForm"
+    v-model="leadModalVisible"
+    :form="leadCaptureForm"
+    :source="pageId"
+    :page-id="pageId || undefined"
+    :page-slug="currentPageSlug || undefined"
+    :page-title="pageData?.title"
+    :page-url="pageUrl || undefined"
+    :branding-logo="brandingLogo"
+    :dismissible="leadCaptureOptional"
+    @submitted="handleLeadModalSubmitted"
+    @dismissed="handleLeadModalDismissed"
+  />
 </template>
 
 <script setup lang="ts">
@@ -44,12 +58,15 @@ import PublicReasonsSection from "../../components/public/PublicReasonsSection.v
 import PublicCountdownSection from "../../components/public/PublicCountdownSection.vue";
 import PublicFreeFooterBrandSection from "../../components/public/PublicFreeFooterBrandSection.vue";
 import PublicAgencyFooterSection from "../../components/public/PublicAgencyFooterSection.vue";
+import PublicLeadCaptureModal from "../../components/public/PublicLeadCaptureModal.vue";
 import PublicPhotoSection from "../../components/public/PublicPhotoSection.vue";
 import PublicBiographySection from "../../components/public/PublicBiographySection.vue";
 import type { HeroSection, PageConfig, PageSection, SectionType, ThemeConfig } from "../../types/page";
+import type { LeadForm } from "../../types/leads";
 import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
 import BrandLogo from "../../assets/Logo Branco - Roteiro Online.png";
 import { resolveMediaUrl } from "../../utils/media";
+import { fetchPublicLeadForm } from "../../services/leadCapture";
 
 interface PublicPageResponse {
   id: number;
@@ -65,6 +82,10 @@ const loading = ref(true);
 const pageData = ref<PublicPageResponse | null>(null);
 const sections = ref<PageSection[]>([]);
 const pageId = ref<number | null>(null);
+const pageUrl = ref<string>("");
+const leadCaptureForm = ref<LeadForm | null>(null);
+const leadModalVisible = ref(false);
+const leadCaptureOptional = ref(false);
 const theme = ref<ThemeConfig>({
   color1: "#f8fafc",
   color2: "#ffffff",
@@ -89,6 +110,16 @@ const isPlatformHost = computed(() => {
 
 const brandingInfo = computed(() => pageData.value?.branding || {});
 provide(PUBLIC_BRANDING_KEY, brandingInfo);
+const currentPageSlug = computed(() => {
+  if (pageData.value?.slug) return pageData.value.slug;
+  const param = route.params.pageSlug;
+  if (Array.isArray(param)) return param[0] || null;
+  return param || null;
+});
+const brandingLogo = computed(() => {
+  const branding = brandingInfo.value as { logo_url?: string };
+  return branding?.logo_url || "";
+});
 
 const publicComponents: Record<SectionType, any> = {
   hero: PublicHeroSection,
@@ -226,6 +257,8 @@ const resolveParam = (value: string | string[] | undefined) => {
 
 const loadPage = async () => {
   loading.value = true;
+  leadModalVisible.value = false;
+  leadCaptureForm.value = null;
   const rawAgencyParam = resolveParam(route.params.agencySlug as string | string[] | undefined);
   const rawPageParam = resolveParam(route.params.pageSlug as string | string[] | undefined);
   const platformHost = isPlatformHost.value;
@@ -254,6 +287,12 @@ const loadPage = async () => {
     const parsed = JSON.parse(configJson) as PageConfig;
     theme.value = { ...theme.value, ...(parsed.theme || {}) };
     sections.value = applyBackgrounds(parsed.sections || []);
+    await hydrateLeadCapture(parsed);
+    if (typeof window !== "undefined") {
+      pageUrl.value = window.location.href;
+    } else {
+      pageUrl.value = "";
+    }
     if (pageId.value) {
       trackVisit();
       setupStatsClickTracking(pageId.value);
@@ -283,8 +322,40 @@ const loadPage = async () => {
     pageId.value = null;
     cleanupStatsTracking();
     cleanupScrollAnchors();
+    leadCaptureForm.value = null;
+    leadModalVisible.value = false;
   } finally {
     loading.value = false;
+  }
+};
+
+const hydrateLeadCapture = async (config: PageConfig) => {
+  const formId = config?.leadCapture?.formId;
+  const optional = config?.leadCapture?.optional === true;
+  if (!formId) {
+    leadCaptureForm.value = null;
+    leadModalVisible.value = false;
+    leadCaptureOptional.value = false;
+    return;
+  }
+  try {
+    const form = await fetchPublicLeadForm(String(formId), {
+      pageId: pageId.value,
+      pageSlug: currentPageSlug.value
+    });
+    leadCaptureOptional.value = optional;
+    if (form.alreadySubmitted) {
+      leadCaptureForm.value = null;
+      leadModalVisible.value = false;
+      return;
+    }
+    leadCaptureForm.value = form;
+    leadModalVisible.value = true;
+  } catch (err) {
+    console.error("Erro ao carregar formulário público", err);
+    leadCaptureForm.value = null;
+    leadModalVisible.value = false;
+    leadCaptureOptional.value = false;
   }
 };
 
@@ -292,6 +363,14 @@ const getSection = (type: SectionType) => sections.value.find(section => section
 const sectionEnabled = (type: SectionType) => {
   const section = getSection(type);
   return !!section && (section as PageSection).enabled;
+};
+
+const handleLeadModalSubmitted = () => {
+  /* hook for future analytics */
+};
+
+const handleLeadModalDismissed = () => {
+  leadModalVisible.value = false;
 };
 
 onMounted(loadPage);

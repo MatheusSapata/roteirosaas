@@ -6,10 +6,12 @@ from app.api.v1.endpoints import (
     agency_domains,
     auth,
     billing,
+    lead_forms,
     lessons,
     media,
     pages,
     pixels,
+    public_lead_forms,
     public_pages,
     stats,
     templates,
@@ -32,3 +34,5 @@ api_router.include_router(billing.router, prefix="/billing", tags=["billing"])
 api_router.include_router(pixels.router, prefix="/pixels", tags=["pixels"])
 api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
 api_router.include_router(lessons.router, prefix="/lessons", tags=["lessons"])
+api_router.include_router(lead_forms.router, prefix="/lead-forms", tags=["lead-forms"])
+api_router.include_router(public_lead_forms.router, prefix="/public/lead-forms", tags=["public-lead-forms"])

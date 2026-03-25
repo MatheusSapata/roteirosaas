@@ -9,6 +9,7 @@ import DashboardView from "../views/admin/DashboardView.vue";
 import PagesListView from "../views/admin/PagesListView.vue";
 import PageEditorView from "../views/admin/PageEditorView.vue";
 import AgencySettingsView from "../views/admin/AgencySettingsView.vue";
+import LeadsView from "../views/admin/LeadsView.vue";
 import PublicPageView from "../views/public/PublicPageView.vue";
 import PlansView from "../views/public/PlansView.vue";
 import AdminLayout from "../layouts/AdminLayout.vue";
@@ -113,12 +114,12 @@ const platformRoutes: RouteRecordRaw[] = [
       { path: "pages", name: "pages", component: PagesListView },
       { path: "pages/:id/edit", name: "page-edit", component: PageEditorView, props: true },
       { path: "aulas", name: "lessons", component: () => import("../views/admin/AulasView.vue") },
+      { path: "leads", name: "leads", component: LeadsView },
       { path: "agency", name: "agency-settings", component: AgencySettingsView },
       {
         path: "domains",
         name: "agency-domains",
-        component: () => import("../views/admin/AgencyDomainsView.vue"),
-        meta: { allowedPlans: ["teste"] }
+        component: () => import("../views/admin/AgencyDomainsView.vue")
       },
       { path: "planos", name: "plans", component: PlansView },
       { path: "integracoes", name: "integrations", component: () => import("../views/admin/IntegrationsView.vue") },
@@ -169,8 +170,6 @@ router.beforeEach(async (to, _from, next) => {
   const requiresAuth = to.matched.some(record => record.meta?.requiresAuth);
   const guestOnly = to.matched.some(record => record.meta?.guestOnly);
   const requiresSuperuser = to.matched.some(record => record.meta?.requiresSuperuser);
-  const restrictedPlanRecord = to.matched.find(record => Array.isArray((record.meta as any)?.allowedPlans));
-  const allowedPlans = restrictedPlanRecord ? ((restrictedPlanRecord.meta as any).allowedPlans as string[]) : null;
   const targetIsPlans = to.name === "plans";
   const targetIsDashboard = to.name === "dashboard";
 
@@ -195,10 +194,6 @@ router.beforeEach(async (to, _from, next) => {
       return;
     }
 
-    if (allowedPlans && (!auth.user?.plan || !allowedPlans.includes(auth.user.plan))) {
-      next({ name: "dashboard" });
-      return;
-    }
   }
 
   if (requiresSuperuser) {

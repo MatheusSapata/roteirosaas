@@ -1,12 +1,16 @@
 <template>
-  <div class="space-y-6">
-    <div class="space-y-2 md:pl-2">
+  <div class="relative w-full">
+    <div
+      class="space-y-6"
+      :class="{ 'select-none opacity-60 blur-sm': !domainsAllowed }"
+    >
+      <div class="space-y-2 md:pl-2">
       <h1 class="text-2xl font-bold text-slate-900">Dominios personalizados</h1>
       <p class="mt-2 text-sm text-slate-600">
         Use um dominio proprio para compartilhar seus roteiros sem depender do link padrao
         {{ platformExample }}. Com um dominio customizado voce ganha mais autoridade e pode manter a marca da sua agencia.
       </p>
-    </div>
+      </div>
 
     <div v-if="!currentAgencyId" class="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-amber-900">
       <p class="font-semibold">Selecione ou crie uma agencia antes de configurar dominios.</p>
@@ -238,13 +242,35 @@
         A ativacao so sera permitida quando o certificado estiver pronto ou quando voce confirmar que ja possui SSL para o host.
       </p>
     </div>
+    </div>
+    <div
+      v-if="!domainsAllowed"
+      class="pointer-events-auto absolute inset-0 z-10 flex items-center justify-center bg-black/80 px-4 text-center text-white backdrop-blur-sm"
+    >
+      <div class="max-w-md rounded-3xl bg-[#202020] p-6 shadow-2xl">
+        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-300">Recurso premium</p>
+        <h2 class="mt-2 text-2xl font-bold text-white">Disponivel no plano Escala</h2>
+        <p class="mt-2 text-sm text-slate-200">
+          Dominios personalizados ficam liberados apenas no plano Escala. Faca upgrade para configurar seu host.
+        </p>
+        <button
+          type="button"
+          class="mt-4 w-full rounded-full bg-[#3EBD59] px-4 py-3 text-sm font-semibold text-white shadow transition hover:bg-[#34a04c]"
+          @click="goToPlans"
+        >
+          Conhecer planos
+        </button>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from "vue";
+import { useRouter } from "vue-router";
 import api from "../../services/api";
 import { useAgencyStore } from "../../store/useAgencyStore";
+import { useAuthStore } from "../../store/useAuthStore";
 
 interface DnsRecordInstruction {
   type: string;
@@ -278,6 +304,8 @@ interface AgencyDomain {
   instructions?: DomainInstructions | null;
 }
 
+const router = useRouter();
+const auth = useAuthStore();
 const agencyStore = useAgencyStore();
 const domains = ref<AgencyDomain[]>([]);
 const loadingDomains = ref(false);
@@ -295,12 +323,20 @@ const creating = ref(false);
 const actionState = ref<string | null>(null);
 const domainMessages = ref<Record<number, string>>({});
 
+const allowedDomainPlans = ["teste", "infinity"];
+const currentPlan = computed(() =>
+  (auth.user?.trial_plan || auth.user?.plan || "").toLowerCase()
+);
+const domainsAllowed = computed(() => allowedDomainPlans.includes(currentPlan.value));
 const currentAgencyId = computed(() => agencyStore.currentAgencyId);
 const currentAgencyName = computed(() => {
   const agency = agencyStore.agencies.find(a => a.id === agencyStore.currentAgencyId);
   return agency?.name || "Agencia sem nome";
 });
 const platformExample = computed(() => `${platformHosts[0] || "seusite.com"}/agencia/roteiro`);
+const goToPlans = () => {
+  router.push("/admin/planos");
+};
 
 const clearFormFeedback = () => {
   formError.value = "";
@@ -309,8 +345,9 @@ const clearFormFeedback = () => {
 
 const fetchDomains = async () => {
   domainMessages.value = {};
-  if (!currentAgencyId.value) {
+  if (!currentAgencyId.value || !domainsAllowed.value) {
     domains.value = [];
+    loadingDomains.value = false;
     return;
   }
   loadingDomains.value = true;
@@ -339,6 +376,10 @@ const validateHostInput = (value: string) => {
 
 const createDomain = async () => {
   clearFormFeedback();
+  if (!domainsAllowed.value) {
+    formError.value = "Recurso disponivel apenas no plano Infinity.";
+    return;
+  }
   if (!currentAgencyId.value) {
     formError.value = "Selecione uma agencia para continuar.";
     return;
@@ -378,6 +419,7 @@ const isActionRunning = (domainId: number, action?: string) => {
 };
 
 const runDomainAction = async (domainId: number, action: string, handler: () => Promise<void>) => {
+  if (!domainsAllowed.value) return;
   actionState.value = `${action}:${domainId}`;
   domainMessages.value = { ...domainMessages.value, [domainId]: "" };
   try {
@@ -483,19 +525,30 @@ onMounted(async () => {
   if (!agencyStore.agencies.length) {
     await agencyStore.loadAgencies();
   }
-  await fetchDomains();
+  if (domainsAllowed.value) {
+    await fetchDomains();
+  }
 });
 
 watch(
   () => agencyStore.currentAgencyId,
   async newId => {
-    if (newId) {
+    if (newId && domainsAllowed.value) {
       await fetchDomains();
     } else {
       domains.value = [];
     }
   }
 );
+
+watch(domainsAllowed, allowed => {
+  if (allowed) {
+    fetchDomains();
+  } else {
+    domains.value = [];
+    loadingDomains.value = false;
+  }
+});
 </script>
 
 <style scoped>
