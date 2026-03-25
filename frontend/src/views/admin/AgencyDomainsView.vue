@@ -62,7 +62,7 @@
         </div>
       </div>
 
-      <div class="space-y-4 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
+      <div class="space-y-4 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 dark:bg-[#202020] dark:ring-slate-800">
         <div class="flex items-center justify-between">
           <div>
             <h2 class="text-lg font-semibold text-slate-900">Dominios da agencia</h2>
@@ -72,24 +72,37 @@
           </div>
           <button
             type="button"
-            class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 hover:border-slate-300"
+            class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 hover:border-slate-300 dark:border-slate-600 dark:text-slate-200 dark:hover:border-slate-500"
             @click="fetchDomains"
             :disabled="loadingDomains"
           >
             Atualizar
           </button>
         </div>
-        <div v-if="listError" class="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        <div
+          v-if="listError"
+          class="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-200"
+        >
           {{ listError }}
         </div>
-        <div v-if="loadingDomains" class="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+        <div
+          v-if="loadingDomains"
+          class="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-300"
+        >
           Carregando dominios...
         </div>
-        <div v-else-if="!domains.length" class="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm text-slate-500">
+        <div
+          v-else-if="!domains.length"
+          class="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400"
+        >
           Nenhum dominio cadastrado ainda. Adicione um host para ver as instrucoes de DNS e verificacao.
         </div>
         <div v-else class="space-y-4">
-          <div v-for="domain in domains" :key="domain.id" class="rounded-2xl border border-slate-100 bg-slate-50/70 p-4 shadow-sm">
+          <div
+            v-for="domain in domains"
+            :key="domain.id"
+            class="rounded-2xl border border-slate-100 bg-slate-50/70 p-4 shadow-sm dark:border-slate-800 dark:bg-[#05070F]"
+          >
             <div class="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p class="text-lg font-semibold text-slate-900">{{ domain.host }}</p>
@@ -101,11 +114,11 @@
                   :key="badge.label"
                   :class="[
                     'rounded-full px-3 py-1 text-xs font-semibold',
-                    badge.variant === 'active' ? 'bg-[#3EBD59] text-white' :
-                    badge.variant === 'success' ? 'bg-emerald-100 text-emerald-800' :
-                    badge.variant === 'warning' ? 'bg-amber-100 text-amber-800' :
-                    badge.variant === 'info' ? 'bg-sky-100 text-sky-800' :
-                    badge.variant === 'danger' ? 'bg-red-100 text-red-700' : 'bg-slate-200 text-slate-700'
+                    badge.variant === 'active' ? 'bg-[#3EBD59] text-white dark:bg-[#34a04c]' :
+                    badge.variant === 'success' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-100' :
+                    badge.variant === 'warning' ? 'bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-100' :
+                    badge.variant === 'info' ? 'bg-sky-100 text-sky-800 dark:bg-sky-500/20 dark:text-sky-100' :
+                    badge.variant === 'danger' ? 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-100' : 'bg-slate-200 text-slate-700 dark:bg-slate-600/30 dark:text-slate-100'
                   ]"
                 >
                   {{ badge.label }}
@@ -113,16 +126,19 @@
               </div>
             </div>
 
-            <div v-if="domain.ssl_last_error" class="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">
+            <div
+              v-if="domain.ssl_last_error"
+              class="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-200"
+            >
               {{ domain.ssl_last_error }}
             </div>
 
-            <div v-if="domainMessages[domain.id]" class="mt-2 text-xs text-emerald-700">
+            <div v-if="domainMessages[domain.id]" class="mt-2 text-xs text-emerald-700 dark:text-emerald-300">
               {{ domainMessages[domain.id] }}
             </div>
 
             <div class="mt-4 grid gap-4 md:grid-cols-2">
-              <div class="rounded-xl border border-slate-200 bg-white/80 p-3 text-sm">
+              <div class="rounded-xl border border-slate-200 bg-white/80 p-3 text-sm dark:border-slate-800 dark:bg-[#05070F]">
                 <p class="font-semibold text-slate-900">Registro TXT (verificacao)</p>
                 <p class="text-xs text-slate-500">Host: <span class="font-mono text-slate-800">{{ domain.instructions?.verification.host }}</span></p>
                 <p class="text-xs text-slate-500">Valor: <span class="font-mono text-slate-800">{{ domain.verification_token }}</span></p>
@@ -131,7 +147,7 @@
                   {{ domain.instructions?.verification.description }}
                 </p>
               </div>
-              <div class="rounded-xl border border-slate-200 bg-white/80 p-3 text-sm">
+              <div class="rounded-xl border border-slate-200 bg-white/80 p-3 text-sm dark:border-slate-800 dark:bg-[#05070F]">
                 <p class="font-semibold text-slate-900">
                   Apontamento principal ({{ domain.instructions?.target.type }})
                 </p>
@@ -151,7 +167,7 @@
             <div class="mt-4 flex flex-wrap gap-2 text-sm">
               <button
                 type="button"
-                class="rounded-xl border border-slate-300 px-3 py-1 font-semibold text-slate-700 hover:border-slate-400 disabled:opacity-50"
+                class="rounded-xl border border-slate-300 px-3 py-1 font-semibold text-slate-700 hover:border-slate-400 disabled:opacity-50 dark:border-slate-600 dark:text-slate-100"
                 :disabled="isActionRunning(domain.id)"
                 @click="verifyDomain(domain)"
               >
@@ -160,7 +176,7 @@
               <button
                 v-if="!domain.is_active"
                 type="button"
-                class="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1 font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+                class="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1 font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-100 dark:hover:bg-emerald-500/20"
                 :disabled="isActionRunning(domain.id) || !domain.is_verified"
                 @click="activateDomain(domain)"
               >
@@ -169,7 +185,7 @@
               <button
                 v-else
                 type="button"
-                class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-1 font-semibold text-amber-700 hover:bg-amber-100 disabled:opacity-50"
+                class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-1 font-semibold text-amber-700 hover:bg-amber-100 disabled:opacity-50 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100 dark:hover:bg-amber-500/20"
                 :disabled="isActionRunning(domain.id)"
                 @click="deactivateDomain(domain)"
               >
@@ -177,7 +193,7 @@
               </button>
               <button
                 type="button"
-                class="rounded-xl border border-sky-200 bg-sky-50 px-3 py-1 font-semibold text-sky-700 hover:bg-sky-100 disabled:opacity-50"
+                class="rounded-xl border border-sky-200 bg-sky-50 px-3 py-1 font-semibold text-sky-700 hover:bg-sky-100 disabled:opacity-50 dark:border-sky-500/40 dark:bg-sky-500/10 dark:text-sky-100 dark:hover:bg-sky-500/20"
                 :disabled="isActionRunning(domain.id) || domain.is_primary"
                 @click="setPrimary(domain)"
               >
@@ -185,7 +201,7 @@
               </button>
               <button
                 type="button"
-                class="rounded-xl border border-red-200 bg-red-50 px-3 py-1 font-semibold text-red-700 hover:bg-red-100 disabled:opacity-50"
+                class="rounded-xl border border-red-200 bg-red-50 px-3 py-1 font-semibold text-red-700 hover:bg-red-100 disabled:opacity-50 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-100 dark:hover:bg-red-500/20"
                 :disabled="isActionRunning(domain.id) || domain.is_active"
                 @click="removeDomain(domain)"
               >

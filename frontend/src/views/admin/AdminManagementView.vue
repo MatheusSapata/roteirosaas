@@ -491,7 +491,7 @@
 
             <tbody class="divide-y divide-slate-100">
               <template v-for="u in filteredUsers" :key="u.id">
-                <tr class="transition hover:bg-slate-50/70" @click="toggleUserRow(u.id)">
+                <tr class="transition hover:bg-slate-50/70 dark:hover:bg-white/5" @click="toggleUserRow(u.id)">
                   <td class="px-3 py-3">
                     <div class="flex items-start gap-3">
                       <button
@@ -538,53 +538,55 @@
 
                 <tr v-if="expandedUser === u.id">
                   <td colspan="7" class="px-3 pb-4">
-                    <div class="rounded-2xl border border-slate-100 bg-slate-50/70 p-4 text-sm text-slate-800 shadow-inner">
+                    <div
+                      class="rounded-2xl border border-slate-100 bg-slate-50/70 p-4 text-sm text-slate-800 shadow-inner dark:border-white/10 dark:bg-[#202020] dark:text-white dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]"
+                    >
                       <div class="grid gap-4 md:grid-cols-2">
                         <div class="space-y-1 copyable">
-                          <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Contato</p>
+                          <p class="text-xs uppercase tracking-[0.3em] text-slate-500 dark:text-white/50">Contato</p>
                           <p class="mt-1 font-semibold">{{ u.name }}</p>
-                          <p class="text-xs text-slate-500">{{ u.email }}</p>
-                          <p class="text-xs text-slate-500">{{ u.whatsapp || 'Sem telefone' }}</p>
+                          <p class="text-xs text-slate-500 dark:text-white/60">{{ u.email }}</p>
+                          <p class="text-xs text-slate-500 dark:text-white/60">{{ u.whatsapp || 'Sem telefone' }}</p>
                         </div>
 
                         <div>
-                          <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Agência</p>
+                          <p class="text-xs uppercase tracking-[0.3em] text-slate-500 dark:text-white/50">Agência</p>
                           <p class="mt-1 font-semibold">{{ u.agency_name || 'Não vinculada' }}</p>
-                          <p class="text-xs text-slate-500">
+                          <p class="text-xs text-slate-500 dark:text-white/60">
                             {{ u.active_pages ?? 0 }} páginas publicadas · Plano {{ planLabel(u.plan) }}
                           </p>
                         </div>
                       </div>
 
                       <div class="mt-4">
-                        <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Origem / UTMs</p>
+                        <p class="text-xs uppercase tracking-[0.3em] text-slate-500 dark:text-white/50">Origem / UTMs</p>
                         <div
                           v-if="u.tracking?.length"
-                          class="mt-2 space-y-3 rounded-2xl border border-white/40 bg-white/80 p-4 shadow-inner"
+                          class="mt-2 space-y-3 rounded-2xl border border-white/40 bg-white/80 p-4 shadow-inner dark:border-white/5 dark:bg-[#05070F] dark:shadow-none"
                         >
                           <div
                             v-for="entry in u.tracking"
                             :key="entry.id"
-                            class="rounded-2xl border border-slate-200 bg-white/90 p-3 shadow-sm"
+                            class="rounded-2xl border border-slate-200 bg-white/90 p-3 shadow-sm dark:border-white/10 dark:bg-[#05070F]"
                           >
                             <div class="flex flex-wrap gap-2">
                               <span
                                 v-for="chip in buildUtmChips(entry)"
                                 :key="chip.label + chip.value"
-                                class="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold text-slate-600"
+                                class="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold text-slate-600 dark:border-white/10 dark:bg-white/10 dark:text-white/80"
                               >
-                                <span class="text-slate-400">{{ chip.label }}:</span>
-                                <span class="text-slate-900">{{ chip.value }}</span>
+                                <span class="text-slate-400 dark:text-white/60">{{ chip.label }}:</span>
+                                <span class="text-slate-900 dark:text-white">{{ chip.value }}</span>
                               </span>
                             </div>
-                            <p class="mt-2 text-[11px] text-slate-500">
+                            <p class="mt-2 text-[11px] text-slate-500 dark:text-white/60">
                               Capturado em {{ formatDateTime(entry.created_at) || 'data desconhecida' }}
                             </p>
                           </div>
                         </div>
                         <p
                           v-else
-                          class="mt-2 rounded-2xl border border-dashed border-slate-200 px-3 py-3 text-center text-xs text-slate-500"
+                          class="mt-2 rounded-2xl border border-dashed border-slate-200 px-3 py-3 text-center text-xs text-slate-500 dark:border-white/10 dark:text-white/60"
                         >
                           Nenhuma informação de UTM registrada.
                         </p>
@@ -595,7 +597,7 @@
                           v-if="!u.is_superuser"
                           :class="[
                             'rounded-full border px-4 py-2 text-xs font-semibold text-slate-700 transition disabled:opacity-60',
-                            'border-slate-200 hover:bg-emerald-50 hover:text-emerald-700'
+                            'border-slate-200 hover:bg-emerald-50 hover:text-emerald-700 dark:border-emerald-400/60 dark:text-emerald-100 dark:hover:bg-emerald-500/20'
                           ]"
                           :disabled="granting === u.id || Boolean(u.trial_plan)"
                           @click.stop="openTrialDialog(u)"
@@ -605,7 +607,7 @@
 
                         <button
                           v-if="auth.user?.is_superuser"
-                          class="rounded-full border border-indigo-200 px-4 py-2 text-xs font-semibold text-indigo-600 transition hover:bg-indigo-50 disabled:opacity-50"
+                          class="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 dark:border-white/10 dark:text-white dark:hover:bg-white/10"
                           :disabled="!u.agency_id || !agencyStore.currentAgencyId"
                           @click.stop="openLinkPageDialog(u)"
                           :title="
@@ -621,7 +623,7 @@
 
                         <button
                           v-if="!u.is_superuser"
-                          class="rounded-full border border-red-200 bg-red-50 px-4 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-100"
+                          class="rounded-full border border-red-200 bg-red-50 px-4 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-100 dark:border-red-500/60 dark:bg-red-500/10 dark:text-red-100 dark:hover:bg-red-500/20"
                           @click.stop="openDeleteDialog(u)"
                         >
                           Excluir usuário
@@ -629,18 +631,21 @@
 
                         <span
                           v-if="u.is_superuser"
-                          class="rounded-full bg-slate-200 px-3 py-1 text-xs font-semibold text-slate-700"
+                          class="rounded-full bg-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 dark:bg-white/10 dark:text-white"
                         >
                           Superuser
                         </span>
                       </div>
 
                       <div class="mt-6">
-                        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Páginas publicadas</p>
+                        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-white/50">Páginas publicadas</p>
 
-                        <div v-if="u.published_pages?.length" class="mt-3 overflow-x-auto rounded-xl border border-slate-200 bg-white">
-                          <table class="min-w-full divide-y divide-slate-100 text-xs text-slate-700 interactive-table">
-                            <thead class="bg-slate-50 text-left text-slate-500">
+                        <div
+                          v-if="u.published_pages?.length"
+                          class="mt-3 overflow-x-auto rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-[#05070F]"
+                        >
+                          <table class="min-w-full divide-y divide-slate-100 text-xs text-slate-700 interactive-table dark:divide-white/5 dark:text-white/80">
+                            <thead class="bg-slate-50 text-left text-slate-500 dark:bg-[#05070F] dark:text-white/60">
                               <tr>
                                 <th class="px-3 py-2">Título</th>
                                 <th class="px-3 py-2">Slug</th>
@@ -650,23 +655,23 @@
                               </tr>
                             </thead>
 
-                            <tbody class="divide-y divide-slate-100">
+                            <tbody class="divide-y divide-slate-100 dark:divide-white/5">
                               <tr v-for="page in u.published_pages" :key="page.id">
-                                <td class="px-3 py-2 font-semibold text-slate-900">{{ page.title }}</td>
-                                <td class="px-3 py-2 text-[11px] text-slate-500">/{{ page.slug }}</td>
-                                <td class="px-3 py-2 text-right font-semibold text-slate-900">{{ page.total_visits ?? 0 }}</td>
-                                <td class="px-3 py-2 text-right font-semibold text-slate-900">{{ page.total_cta_clicks ?? 0 }}</td>
+                                <td class="px-3 py-2 font-semibold text-slate-900 dark:text-white">{{ page.title }}</td>
+                                <td class="px-3 py-2 text-[11px] text-slate-500 dark:text-white/60">/{{ page.slug }}</td>
+                                <td class="px-3 py-2 text-right font-semibold text-slate-900 dark:text-white">{{ page.total_visits ?? 0 }}</td>
+                                <td class="px-3 py-2 text-right font-semibold text-slate-900 dark:text-white">{{ page.total_cta_clicks ?? 0 }}</td>
                                 <td class="px-3 py-2">
                                   <div class="flex justify-end gap-2">
                                     <button
-                                      class="inline-flex items-center gap-1 rounded-full border border-slate-200 px-3 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-100"
+                                      class="inline-flex items-center gap-1 rounded-full border border-slate-200 px-3 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-white/10 dark:text-white dark:hover:bg-white/10"
                                       @click.stop="viewPublishedPage(page)"
                                     >
                                       Visualizar
                                     </button>
 
                                     <button
-                                      class="inline-flex items-center gap-1 rounded-full border border-slate-900/20 bg-slate-900/90 px-3 py-1 text-[11px] font-semibold text-white transition hover:bg-slate-900 disabled:opacity-60"
+                                      class="inline-flex items-center gap-1 rounded-full border border-slate-900/20 bg-slate-900/90 px-3 py-1 text-[11px] font-semibold text-white transition hover:bg-slate-900 disabled:opacity-60 dark:border-white/10 dark:bg-white/15 dark:text-white dark:hover:bg-white/25"
                                       :disabled="savingPageId === page.id || !agencyStore.currentAgencyId"
                                       @click.stop="clonePublishedPage(u, page)"
                                     >
@@ -681,18 +686,21 @@
 
                         <p
                           v-else
-                          class="mt-3 rounded-xl border border-dashed border-slate-200 px-3 py-4 text-center text-xs text-slate-500"
+                          class="mt-3 rounded-xl border border-dashed border-slate-200 px-3 py-4 text-center text-xs text-slate-500 dark:border-white/10 dark:text-white/60"
                         >
                           Nenhuma página publicada ainda.
                         </p>
                       </div>
 
                       <div class="mt-6">
-                        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Páginas em rascunho</p>
+                        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-white/50">Páginas em rascunho</p>
 
-                        <div v-if="u.draft_pages?.length" class="mt-3 overflow-x-auto rounded-xl border border-slate-200 bg-white">
-                          <table class="min-w-full divide-y divide-slate-100 text-xs text-slate-700 interactive-table">
-                            <thead class="bg-slate-50 text-left text-slate-500">
+                        <div
+                          v-if="u.draft_pages?.length"
+                          class="mt-3 overflow-x-auto rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-[#05070F]"
+                        >
+                          <table class="min-w-full divide-y divide-slate-100 text-xs text-slate-700 interactive-table dark:divide-white/5 dark:text-white/80">
+                            <thead class="bg-slate-50 text-left text-slate-500 dark:bg-[#05070F] dark:text-white/60">
                               <tr>
                                 <th class="px-3 py-2">Título</th>
                                 <th class="px-3 py-2">Slug</th>
@@ -700,14 +708,14 @@
                               </tr>
                             </thead>
 
-                            <tbody class="divide-y divide-slate-100">
+                            <tbody class="divide-y divide-slate-100 dark:divide-white/5">
                               <tr v-for="page in u.draft_pages" :key="page.id">
-                                <td class="px-3 py-2 font-semibold text-slate-900">{{ page.title }}</td>
-                                <td class="px-3 py-2 text-[11px] text-slate-500">/{{ page.slug }}</td>
+                                <td class="px-3 py-2 font-semibold text-slate-900 dark:text-white">{{ page.title }}</td>
+                                <td class="px-3 py-2 text-[11px] text-slate-500 dark:text-white/60">/{{ page.slug }}</td>
                                 <td class="px-3 py-2">
                                   <div class="flex justify-end">
                                     <button
-                                      class="inline-flex items-center gap-1 rounded-full border border-slate-200 px-3 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-100"
+                                      class="inline-flex items-center gap-1 rounded-full border border-slate-200 px-3 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-white/10 dark:text-white dark:hover:bg-white/10"
                                       @click.stop="goToPageEditor(page)"
                                     >
                                       Editar
@@ -721,7 +729,7 @@
 
                         <p
                           v-else
-                          class="mt-3 rounded-xl border border-dashed border-slate-200 px-3 py-4 text-center text-xs text-slate-500"
+                          class="mt-3 rounded-xl border border-dashed border-slate-200 px-3 py-4 text-center text-xs text-slate-500 dark:border-white/10 dark:text-white/60"
                         >
                           Nenhum rascunho registrado.
                         </p>
