@@ -1,6 +1,7 @@
+from datetime import datetime, timezone
 from typing import Generator
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
@@ -10,8 +11,10 @@ from app.db.session import SessionLocal
 from app.models.agency import Agency
 from app.models.agency_user import AgencyUser
 from app.models.user import User
+from app.models.user_session import UserSession
 from app.schemas.user import TokenData
 from app.services.trial import sync_trial_status
+from app.services.session_monitor import summarize_user_agent
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 settings = get_settings()
@@ -25,23 +28,49 @@ def get_db() -> Generator[Session, None, None]:
         db.close()
 
 
-def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)) -> User:
+
+def get_current_user(request: Request, db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Não foi possível validar suas credenciais.",
+        detail="Nǜo foi possível validar suas credenciais.",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
         payload = jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
         email: str | None = payload.get("sub")
-        if email is None:
+        session_id: str | None = payload.get("sid")
+        if email is None or session_id is None:
             raise credentials_exception
-        token_data = TokenData(email=email)
+        token_data = TokenData(email=email, session_id=session_id)
     except JWTError as exc:  # pragma: no cover - segurança
         raise credentials_exception from exc
     user = db.query(User).filter(User.email == token_data.email).first()
     if user is None:
         raise credentials_exception
+    session = (
+        db.query(UserSession)
+        .filter(UserSession.id == token_data.session_id, UserSession.user_id == user.id)
+        .first()
+    )
+    if not session or session.revoked_at:
+        raise credentials_exception
+    now = datetime.now(timezone.utc)
+    if session.expires_at and session.expires_at < now:
+        raise credentials_exception
+    session.last_seen_at = now
+    if request.client and request.client.host:
+        session.ip_address = request.client.host
+    agent_header = (request.headers.get("user-agent") or "").strip()
+    if agent_header:
+        session.user_agent = agent_header[:500]
+        device_label, client_name = summarize_user_agent(agent_header)
+        session.device_label = device_label
+        session.client_name = client_name
+    current_path = (request.headers.get("X-Client-Path") or "").strip()
+    if current_path:
+        session.last_path = current_path[:255]
+    db.add(session)
+    db.commit()
     sync_trial_status(user, db)
     return user
 

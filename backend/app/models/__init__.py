@@ -17,3 +17,4 @@ from .cakto import CaktoEventLog, CaktoOnboardingToken, CaktoCheckoutSession
 from .agency_domain import AgencyDomain
 from .revenue import RevenueTotal
 from .lead_form import LeadForm, LeadFormSubmission, LeadStatus
+from .user_session import UserSession

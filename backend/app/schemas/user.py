@@ -175,6 +175,7 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     email: Optional[str] = None
+    session_id: Optional[str] = None
 
 
 class PasswordResetRequest(BaseModel):

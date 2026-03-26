@@ -21,19 +21,21 @@ def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None, session_id: Optional[str] = None) -> str:
     to_encode = data.copy()
     to_encode["scope"] = "access"
+    if session_id:
+        to_encode["sid"] = session_id
     expire = datetime.utcnow() + (expires_delta or timedelta(minutes=settings.access_token_expire_minutes))
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
     return encoded_jwt
 
 
-def create_refresh_token(subject: str, expires_minutes: Optional[int] = None) -> str:
+def create_refresh_token(subject: str, session_id: str, expires_minutes: Optional[int] = None) -> str:
     minutes = expires_minutes or settings.refresh_token_expire_minutes
     expire = datetime.utcnow() + timedelta(minutes=minutes)
-    payload = {"sub": subject, "scope": "refresh", "exp": expire}
+    payload = {"sub": subject, "scope": "refresh", "sid": session_id, "exp": expire}
     return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
 
 

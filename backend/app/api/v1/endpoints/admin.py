@@ -3,7 +3,7 @@ import re
 import unicodedata
 from collections import defaultdict
 from copy import deepcopy
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, List, Optional
 from urllib.parse import quote
 
@@ -19,6 +19,7 @@ from app.models.subscription import Subscription
 from app.models.stats import PageVisitStats
 from app.models.user import User
 from app.models.user_tracking import UserTracking
+from app.models.user_session import UserSession
 from app.models.revenue import RevenueTotal
 from app.models.agency import Agency
 from app.models.agency_user import AgencyUser
@@ -26,6 +27,8 @@ from app.models.page import Page, PageStatus
 from app.schemas.admin import (
     AdminAgencyOut,
     AdminMetricsOut,
+    AdminOnlineSession,
+    AdminOnlineSessionsResponse,
     AdminPageOut,
     AdminUserOut,
     AdminUserPage,
@@ -37,6 +40,7 @@ from app.services.trial import start_trial
 
 router = APIRouter()
 EXCLUDED_PLAN = "teste"
+ONLINE_WINDOW_MINUTES = 10
 
 
 class TrialRequest(BaseModel):
@@ -355,6 +359,104 @@ def get_admin_metrics(
         mrr=mrr,
         total_revenue=total_revenue_amount,
     )
+
+
+@router.get("/online-sessions", response_model=AdminOnlineSessionsResponse)
+def get_online_sessions(
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_superuser),
+) -> AdminOnlineSessionsResponse:
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(minutes=ONLINE_WINDOW_MINUTES)
+    session_rows = (
+        db.query(UserSession, User)
+        .join(User, User.id == UserSession.user_id)
+        .filter(
+            UserSession.revoked_at.is_(None),
+            UserSession.expires_at > now,
+            UserSession.last_seen_at >= cutoff,
+        )
+        .order_by(UserSession.last_seen_at.desc())
+        .all()
+    )
+    aggregated: dict[int, dict[str, Any]] = {}
+    for session, user in session_rows:
+        entry = aggregated.get(user.id)
+        if not entry:
+            entry = {"user": user, "latest": session, "count": 0}
+            aggregated[user.id] = entry
+        entry["count"] += 1
+        latest = entry["latest"]
+        if (
+            not latest.last_seen_at
+            or (session.last_seen_at and session.last_seen_at > latest.last_seen_at)
+        ):
+            entry["latest"] = session
+
+    sessions = [
+        AdminOnlineSession(
+            session_id=data["latest"].id,
+            user_id=user.id,
+            user_name=user.name,
+            user_email=user.email,
+            user_plan=user.plan,
+            ip_address=data["latest"].ip_address,
+            device_label=data["latest"].device_label,
+            client_name=data["latest"].client_name,
+            created_at=data["latest"].created_at,
+            last_seen_at=data["latest"].last_seen_at,
+            active_sessions=data["count"],
+            last_path=data["latest"].last_path,
+        )
+        for user_id, data in aggregated.items()
+        for user in [data["user"]]
+    ]
+    sessions.sort(key=lambda item: item.last_seen_at or now, reverse=True)
+    unique_users = len(aggregated)
+    return AdminOnlineSessionsResponse(
+        sessions=sessions,
+        total_online=len(session_rows),
+        unique_users=unique_users,
+        generated_at=now,
+    )
+
+
+@router.post("/online-sessions/{session_id}/revoke")
+def revoke_online_session(
+    session_id: str,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_superuser),
+) -> dict[str, str]:
+    session = db.query(UserSession).filter(UserSession.id == session_id).first()
+    if not session or session.revoked_at:
+        raise HTTPException(status_code=404, detail="Sessão não encontrada ou já encerrada.")
+    session.revoked_at = datetime.now(timezone.utc)
+    session.revoked_by_user_id = admin.id
+    db.add(session)
+    db.commit()
+    return {"detail": "Sessão encerrada com sucesso."}
+
+
+@router.post("/online-sessions/user/{user_id}/revoke")
+def revoke_user_sessions(
+    user_id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_superuser),
+) -> dict[str, str]:
+    now = datetime.now(timezone.utc)
+    sessions = (
+        db.query(UserSession)
+        .filter(UserSession.user_id == user_id, UserSession.revoked_at.is_(None))
+        .all()
+    )
+    if not sessions:
+        raise HTTPException(status_code=404, detail="Nenhuma sessão ativa encontrada para este usuário.")
+    for session in sessions:
+        session.revoked_at = now
+        session.revoked_by_user_id = admin.id
+        db.add(session)
+    db.commit()
+    return {"detail": f"{len(sessions)} sessão(ões) encerradas para este usuário."}
 
 
 @router.post("/users/{user_id}/grant-trial", response_model=AdminUserOut)
