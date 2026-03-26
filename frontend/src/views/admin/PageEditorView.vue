@@ -77,103 +77,106 @@
 
     
     <!-- Dialog de limite de plano (reutilizado também para "template no free") -->
-    <div v-if="limitModal.open" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4">
-      <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-[#1f1f1f] dark:text-white">
-        <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">Limite do plano</p>
-        <h3 class="mt-2 text-xl font-bold text-slate-900">Ação indisponível</h3>
-        <p class="mt-2 text-sm text-slate-600">
-          {{ limitModal.message || "Seu plano atual atingiu o limite. Atualize para continuar." }}
-        </p>
+    <Teleport to="body" v-if="limitModal.open">
+      <div class="fixed inset-0 z-50 flex items-center justify-center px-4 page-editor-overlay">
+        <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-[#1f1f1f] dark:text-white">
+          <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">Limite do plano</p>
+          <h3 class="mt-2 text-xl font-bold text-slate-900">Ação indisponível</h3>
+          <p class="mt-2 text-sm text-slate-600">
+            {{ limitModal.message || "Seu plano atual atingiu o limite. Atualize para continuar." }}
+          </p>
 
-        <div class="mt-4 flex flex-wrap gap-2">
-          <button
-            @click="limitModal.open = false"
-            class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
-          >
-            Fechar
-          </button>
+          <div class="mt-4 flex flex-wrap gap-2">
+            <button
+              @click="limitModal.open = false"
+              class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+            >
+              Fechar
+            </button>
 
-          <button
-            @click="goPlans"
-            class="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white shadow hover:bg-brand-dark"
-          >
-            Ver planos
-          </button>
+            <button
+              @click="goPlans"
+              class="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white shadow hover:bg-brand-dark"
+            >
+              Ver planos
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </Teleport>
 
     <!-- Diálogo de confirmação ao sair sem salvar -->
-    <div
-      v-if="unsavedNavigationModal.open"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4"
-    >
-      <div class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl dark:bg-[#1f1f1f] dark:text-white">
-        <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">Atenção</p>
-        <h3 class="mt-2 text-xl font-bold text-slate-900">Alterações não salvas</h3>
-        <p class="mt-2 text-sm text-slate-600">
-          Você tem mudanças não salvas nesta página. Deseja salvar antes de sair?
-        </p>
+    <Teleport to="body" v-if="unsavedNavigationModal.open">
+      <div class="fixed inset-0 z-50 flex items-center justify-center px-4 page-editor-overlay">
+        <div class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl dark:bg-[#1f1f1f] dark:text-white">
+          <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">Atenção</p>
+          <h3 class="mt-2 text-xl font-bold text-slate-900">Alterações não salvas</h3>
+          <p class="mt-2 text-sm text-slate-600">
+            Você tem mudanças não salvas nesta página. Deseja salvar antes de sair?
+          </p>
 
-        <div class="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end">
-          <button
-            type="button"
-            class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
-            @click="cancelNavigationModal"
-          >
-            Continuar editando
-                              </button>
-                              <button
-            type="button"
-            class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
-            @click="discardAndLeave"
-          >
-            Descartar e sair
-          </button>
-          <button
-            type="button"
-            class="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white shadow transition hover:bg-brand-dark disabled:opacity-60"
-            :disabled="unsavedNavigationModal.saving"
-            @click="saveAndLeave"
-          >
-            {{ unsavedNavigationModal.saving ? "Salvando..." : "Salvar e sair" }}
-          </button>
+          <div class="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+              @click="cancelNavigationModal"
+            >
+              Continuar editando
+            </button>
+            <button
+              type="button"
+              class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+              @click="discardAndLeave"
+            >
+              Descartar e sair
+            </button>
+            <button
+              type="button"
+              class="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white shadow transition hover:bg-brand-dark disabled:opacity-60"
+              :disabled="unsavedNavigationModal.saving"
+              @click="saveAndLeave"
+            >
+              {{ unsavedNavigationModal.saving ? "Salvando..." : "Salvar e sair" }}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </Teleport>
 
     <!-- Dialog de sucesso ao publicar -->
-    <div v-if="successModal.open" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4">
-      <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-[#1f1f1f] dark:text-white">
-        <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">Publicação</p>
-        <h3 class="mt-2 text-xl font-bold text-slate-900">Página publicada com sucesso</h3>
-        <p class="mt-2 text-sm text-slate-600">Escolha o que deseja fazer em seguida.</p>
+    <Teleport to="body" v-if="successModal.open">
+      <div class="fixed inset-0 z-50 flex items-center justify-center px-4 page-editor-overlay">
+        <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-[#1f1f1f] dark:text-white">
+          <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">Publicação</p>
+          <h3 class="mt-2 text-xl font-bold text-slate-900">Página publicada com sucesso</h3>
+          <p class="mt-2 text-sm text-slate-600">Escolha o que deseja fazer em seguida.</p>
 
-        <div class="mt-4 flex flex-wrap gap-2">
-          <button
-            @click="successModal.open = false"
-            class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
-          >
-            Fechar
-          </button>
+          <div class="mt-4 flex flex-wrap gap-2">
+            <button
+              @click="successModal.open = false"
+              class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+            >
+              Fechar
+            </button>
 
-          <button
-            @click="goPages"
-            class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
-          >
-            Voltar para páginas
-          </button>
+            <button
+              @click="goPages"
+              class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+            >
+              Voltar para páginas
+            </button>
 
-          <button
-            :disabled="!publicUrl"
-            @click="viewPublicPage"
-            class="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white shadow hover:bg-brand-dark disabled:opacity-50"
-          >
-            Ver página
-          </button>
+            <button
+              :disabled="!publicUrl"
+              @click="viewPublicPage"
+              class="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white shadow hover:bg-brand-dark disabled:opacity-50"
+            >
+              Ver página
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </Teleport>
     <div
       v-if="sectionPicker.open"
       class="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/60 px-4 py-8"
@@ -2710,6 +2713,10 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.page-editor-overlay {
+  background-color: #05070f80;
+}
+
 .form-card {
   width: 100%;
   border-radius: 1.25rem;

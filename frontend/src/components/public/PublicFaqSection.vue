@@ -6,7 +6,7 @@
           <div class="flex justify-center">
             <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="accent" />
           </div>
-          <h1 class="mt-3 text-2xl font-bold" :style="{ color: primaryText }">{{ title }}</h1>
+          <h1 class="mt-3 text-3xl font-bold md:text-4xl" :style="{ color: primaryText }">{{ title }}</h1>
           <p class="text-sm" :style="{ color: mutedText }">{{ subtitle }}</p>
         </div>
 
@@ -107,13 +107,7 @@ const isLight = (hex?: string) => {
   return luminance > 0.85;
 };
 
-const accent = computed(() => {
-  const brandColor = brandingPrimary.value;
-  if (brandColor) return brandColor;
-  const bg = props.section.backgroundColor;
-  if (!bg || isLight(bg)) return defaultAccent;
-  return bg;
-});
+const accent = computed(() => props.section.ctaColor?.trim() || brandingPrimary.value || defaultAccent);
 const toRgba = (hex: string, alpha: number) => {
   const cleaned = hex.replace("#", "");
   const full = cleaned.length === 3 ? cleaned.split("").map(c => c + c).join("") : cleaned;

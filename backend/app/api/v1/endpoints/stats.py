@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_active_user, get_db
 from app.models.agency_user import AgencyUser
+from app.models.lead_form import LeadFormSubmission
 from app.models.page import Page
 from app.models.stats import PageVisitStats
 from app.models.user import User
@@ -194,24 +195,48 @@ def stats_per_page(
     db: Session = Depends(get_db),
 ) -> list[PageStatsSummaryOut]:
     ensure_agency_member(db, agency_id, current_user.id)
-    rows = (
+    page_rows = db.query(Page.id).filter(Page.agency_id == agency_id).all()
+    page_ids = [row.id for row in page_rows]
+    if not page_ids:
+        return []
+
+    stats_rows = (
         db.query(
             PageVisitStats.page_id,
             func.coalesce(func.sum(PageVisitStats.visits), 0).label("visits"),
             func.coalesce(func.sum(PageVisitStats.clicks_cta), 0).label("clicks_cta"),
             func.coalesce(func.sum(PageVisitStats.clicks_whatsapp), 0).label("clicks_whatsapp"),
         )
-        .join(Page, Page.id == PageVisitStats.page_id)
-        .filter(Page.agency_id == agency_id)
+        .filter(PageVisitStats.page_id.in_(page_ids))
         .group_by(PageVisitStats.page_id)
         .all()
     )
-    return [
-        PageStatsSummaryOut(
-            page_id=row.page_id,
-            visits=row.visits or 0,
-            clicks_cta=row.clicks_cta or 0,
-            clicks_whatsapp=row.clicks_whatsapp or 0,
+    stats_map = {row.page_id: row for row in stats_rows}
+
+    lead_rows = (
+        db.query(
+            LeadFormSubmission.page_id,
+            func.count(LeadFormSubmission.id).label("leads"),
         )
-        for row in rows
-    ]
+        .filter(
+            LeadFormSubmission.agency_id == agency_id,
+            LeadFormSubmission.page_id.isnot(None),
+        )
+        .group_by(LeadFormSubmission.page_id)
+        .all()
+    )
+    leads_map = {row.page_id: row.leads for row in lead_rows}
+
+    summaries: list[PageStatsSummaryOut] = []
+    for page_id in page_ids:
+        stats = stats_map.get(page_id)
+        summaries.append(
+            PageStatsSummaryOut(
+                page_id=page_id,
+                visits=(stats.visits if stats else 0),
+                clicks_cta=(stats.clicks_cta if stats else 0),
+                clicks_whatsapp=(stats.clicks_whatsapp if stats else 0),
+                leads=leads_map.get(page_id, 0),
+            )
+        )
+    return summaries

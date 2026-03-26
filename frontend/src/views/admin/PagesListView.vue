@@ -117,11 +117,15 @@
     <div class="overflow-x-auto">
       <div class="overflow-hidden border-0 bg-transparent md:min-w-[880px] md:rounded-3xl md:border md:border-slate-100 md:bg-white md:shadow-md dark:md:border-[#2b2b2b] dark:md:bg-[#202020]">
         <div
-          class="hidden grid-cols-[1.2fr,0.9fr,0.9fr,1.6fr,0.6fr,1.9fr] gap-6 border-b border-slate-100 px-6 py-4 text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 md:grid dark:border-[#2b2b2b] dark:text-white"
+          :class="[
+            'hidden gap-6 border-b border-slate-100 px-6 py-4 text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 md:grid dark:border-[#2b2b2b] dark:text-white',
+            headerGridColumns
+          ]"
         >
           <span>Nome</span>
-          <span>Visualizações</span>
-          <span>Cliques CTA</span>
+          <span class="text-center">Visualizações</span>
+          <span class="text-center">Cliques CTA</span>
+          <span v-if="showLeadColumn" class="text-center">Leads</span>
           <span>Link</span>
           <span>Status</span>
           <span class="text-right">Ações</span>
@@ -131,7 +135,10 @@
           <div
             v-for="page in pages"
             :key="page.id"
-            class="grid grid-cols-1 gap-4 rounded-2xl border border-slate-100 bg-white px-5 py-5 shadow-sm transition hover:border-slate-200 hover:bg-slate-50/70 md:grid-cols-[1.2fr,0.9fr,0.9fr,1.6fr,0.6fr,1.9fr] md:items-center md:gap-6 md:rounded-none md:border-0 md:bg-transparent md:px-6 md:py-5 md:shadow-none dark:border-[#2b2b2b] dark:bg-[#202020] dark:hover:bg-white/5"
+            :class="[
+              'grid grid-cols-1 gap-4 rounded-2xl border border-slate-100 bg-white px-5 py-5 shadow-sm transition hover:border-slate-200 hover:bg-slate-50/70 md:items-center md:gap-6 md:rounded-none md:border-0 md:bg-transparent md:px-6 md:py-5 md:shadow-none dark:border-[#2b2b2b] dark:bg-[#202020] dark:hover:bg-white/5',
+              rowGridColumns
+            ]"
           >
             <div class="flex flex-wrap items-center gap-3">
               <p class="text-base font-semibold text-slate-900">{{ page.title }}</p>
@@ -143,7 +150,7 @@
               </span>
             </div>
 
-            <div class="hidden justify-center md:flex">
+            <div class="hidden md:flex md:w-full md:justify-center">
               <button
                 v-if="isFree"
                 type="button"
@@ -163,7 +170,7 @@
               </span>
             </div>
 
-            <div class="hidden justify-center md:flex">
+            <div class="hidden md:flex md:w-full md:justify-center">
               <button
                 v-if="isFree"
                 type="button"
@@ -183,6 +190,26 @@
               </span>
             </div>
 
+            <div v-if="showLeadColumn" class="hidden md:flex md:w-full md:justify-center">
+              <button
+                v-if="!hasLeadStatsAccess"
+                type="button"
+                class="inline-flex min-w-[3rem] items-center justify-center rounded-full border border-[#0185FB] bg-white px-4 py-1.5 text-xs font-semibold text-[#0185FB] shadow-sm transition hover:bg-slate-50"
+                title="Disponível a partir do plano Essencial. Faça upgrade para ver os leads por página."
+                @click="goPlans"
+              >
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                  <path d="m12 2 2.09 6.26h6.58L15.29 11l2.12 6.24L12 13.77l-5.41 3.47L8.71 11 3.33 8.26h6.58Z" />
+                </svg>
+              </button>
+              <span
+                v-else
+                class="inline-flex min-w-[3rem] justify-center rounded-full bg-[#0185FB] px-3 py-1 text-sm font-semibold text-white"
+              >
+                {{ getPageLeads(page.id) }}
+              </span>
+            </div>
+
             <div class="flex flex-col gap-2 md:hidden">
               <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Status</p>
               <span
@@ -195,7 +222,12 @@
 
             <div class="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
               <p class="text-xs font-semibold uppercase tracking-wide text-slate-400 md:hidden">Link</p>
-              <div class="flex flex-wrap items-center gap-3">
+              <div
+                class="flex flex-wrap items-center gap-3"
+                :class="{
+                  'md:justify-center md:text-center': !(page.status === 'published' && pagePublicUrl(page))
+                }"
+              >
                 <template v-if="page.status === 'published' && pagePublicUrl(page)">
                   <a
                     :href="pagePublicUrl(page)"
@@ -391,13 +423,14 @@ interface PageStatsSummary {
   visits: number;
   clicks_cta: number;
   clicks_whatsapp: number;
+  leads: number;
 }
 
 const router = useRouter();
 const agencyStore = useAgencyStore();
 const authStore = useAuthStore();
 const pages = ref<Page[]>([]);
-const pageStats = ref<Record<number, { visits: number; cta: number; whatsapp: number }>>({});
+const pageStats = ref<Record<number, { visits: number; cta: number; whatsapp: number; leads: number }>>({});
 const hasAgency = ref(false);
 const errorMessage = ref("");
 const message = ref("");
@@ -421,7 +454,20 @@ const currentAgencySlug = computed(() => {
   const agency = agencyStore.agencies.find(a => a.id === agencyStore.currentAgencyId);
   return agency?.slug || "";
 });
-const isFree = computed(() => (authStore.user?.plan || "free") === "free");
+const planKey = computed(() => (authStore.user?.plan || "free").toLowerCase());
+const isFree = computed(() => planKey.value === "free");
+const showLeadColumn = computed(() => planKey.value !== "essencial");
+const hasLeadStatsAccess = computed(() => ["growth", "infinity", "teste"].includes(planKey.value));
+const headerGridColumns = computed(() =>
+  showLeadColumn.value
+    ? "grid-cols-[1.2fr,0.9fr,0.9fr,0.8fr,1.6fr,0.8fr,1.9fr]"
+    : "grid-cols-[1.2fr,0.9fr,0.9fr,1.6fr,0.8fr,1.9fr]"
+);
+const rowGridColumns = computed(() =>
+  showLeadColumn.value
+    ? "md:grid-cols-[1.2fr,0.9fr,0.9fr,0.8fr,1.6fr,0.8fr,1.9fr]"
+    : "md:grid-cols-[1.2fr,0.9fr,0.9fr,1.6fr,0.8fr,1.9fr]"
+);
 
 const loadPages = async () => {
   errorMessage.value = "";
@@ -442,13 +488,19 @@ const loadPageStats = async () => {
   if (!agencyStore.currentAgencyId) return;
   try {
     const res = await api.get<PageStatsSummary[]>("/stats/pages", { params: { agency_id: agencyStore.currentAgencyId } });
-    const map: Record<number, { visits: number; cta: number; whatsapp: number }> = {};
+    const map: Record<number, { visits: number; cta: number; whatsapp: number; leads: number }> = {};
     res.data.forEach(item => {
       map[item.page_id] = {
         visits: item.visits ?? 0,
         cta: item.clicks_cta ?? 0,
-        whatsapp: item.clicks_whatsapp ?? 0
+        whatsapp: item.clicks_whatsapp ?? 0,
+        leads: item.leads ?? 0
       };
+    });
+    pages.value.forEach(page => {
+      if (!map[page.id]) {
+        map[page.id] = { visits: 0, cta: 0, whatsapp: 0, leads: 0 };
+      }
     });
     pageStats.value = map;
   } catch (err) {
@@ -773,6 +825,7 @@ const getPageClicks = (pageId: number) => {
   if (!stats) return 0;
   return (stats.cta ?? 0) + (stats.whatsapp ?? 0);
 };
+const getPageLeads = (pageId: number) => pageStats.value[pageId]?.leads ?? 0;
 
 const goPlans = () => {
   router.push("/admin/planos");

@@ -26,7 +26,7 @@
           :class="activeTab === 'contacts' ? activeTabClass : inactiveTabClass"
           @click="activeTab = 'contacts'"
         >
-          Contatos
+          Oportunidades
         </button>
         <button
           type="button"
@@ -46,26 +46,43 @@
         >
           + Novo formulário
         </button>
-        <div
-          v-if="activeTab === 'contacts' && !isMobileViewport"
-          class="inline-flex rounded-full bg-slate-100 p-1 dark:bg-white/10"
-        >
-          <button
-            type="button"
-            class="rounded-full px-4 py-2 text-sm font-semibold transition"
-            :class="contactViewMode === 'list' ? activeTabClass : inactiveTabClass"
-            @click="contactViewMode = 'list'"
-          >
-            Lista
-          </button>
-          <button
-            type="button"
-            class="rounded-full px-4 py-2 text-sm font-semibold transition"
-            :class="contactViewMode === 'kanban' ? activeTabClass : inactiveTabClass"
-            @click="contactViewMode = 'kanban'"
-          >
-            Kanban
-          </button>
+        <div v-if="activeTab === 'contacts' && !isMobileViewport" class="flex items-center gap-3">
+          <div v-if="contactViewMode === 'kanban'" class="flex items-center gap-2">
+            <select
+              v-model="kanbanPageFilter"
+              class="min-w-[160px] rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm outline-none transition focus:ring-2 focus:ring-brand dark:border-white/10 dark:bg-[#111319] dark:text-white"
+            >
+              <option v-for="option in kanbanPageOptions" :key="option.value" :value="option.value">
+                {{ option.label }}
+              </option>
+            </select>
+            <select
+              v-model="kanbanFormFilter"
+              class="min-w-[180px] rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm outline-none transition focus:ring-2 focus:ring-brand dark:border-white/10 dark:bg-[#111319] dark:text-white"
+            >
+              <option v-for="option in kanbanFormOptions" :key="option.value" :value="option.value">
+                {{ option.label }}
+              </option>
+            </select>
+          </div>
+          <div class="inline-flex rounded-full bg-slate-100 p-1 dark:bg-white/10">
+            <button
+              type="button"
+              class="rounded-full px-4 py-2 text-sm font-semibold transition"
+              :class="contactViewMode === 'list' ? activeTabClass : inactiveTabClass"
+              @click="contactViewMode = 'list'"
+            >
+              Lista
+            </button>
+            <button
+              type="button"
+              class="rounded-full px-4 py-2 text-sm font-semibold transition"
+              :class="contactViewMode === 'kanban' ? activeTabClass : inactiveTabClass"
+              @click="contactViewMode = 'kanban'"
+            >
+              Kanban
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -123,13 +140,6 @@
               <div class="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
                 <span>Atualizado em {{ formatDate(form.updated_at || form.created_at) }}</span>
                 <div class="flex gap-2">
-                  <button
-                    type="button"
-                    class="rounded-full border border-slate-200 px-3 py-1 font-semibold text-slate-600 transition hover:bg-slate-100 dark:border-white/20 dark:text-white dark:hover:bg-white/10"
-                    @click="copyFormId(form.id)"
-                  >
-                    Copiar ID
-                  </button>
                   <button
                     type="button"
                     class="rounded-full border border-slate-200 px-3 py-1 font-semibold text-slate-600 transition hover:bg-slate-100 dark:border-white/20 dark:text-white dark:hover:bg-white/10"
@@ -450,7 +460,7 @@
                         class="text-slate-700 transition hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-white/[0.03]"
                       >
                       <td class="px-2 py-2 font-semibold">{{ contact.name || "Sem nome" }}</td>
-                      <td class="px-2 py-2 font-semibold">{{ contact.form_name || group.formName || "-" }}</td>
+                      <td class="px-2 py-2 font-semibold">{{ getContactFormLabel(contact) }}</td>
                       <td class="px-2 py-2">
                         <div class="flex items-center gap-2">
                           <span class="font-mono text-sm">{{ contact.phone || "-" }}</span>
@@ -460,7 +470,7 @@
                             class="transition hover:opacity-80"
                             :style="{ color: '#29E870' }"
                             :title="`Chamar ${contact.phone} no WhatsApp`"
-                            @click="openWhatsapp(contact.phone, group.formName)"
+                            @click="openWhatsapp(contact.phone, getContactFormLabel(contact))"
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
                               <path
@@ -597,7 +607,7 @@
                       <div class="flex items-start justify-between gap-2">
                         <div>
                           <p class="text-sm font-semibold text-slate-800 dark:text-white">{{ contact.name || 'Sem nome' }}</p>
-                          <p class="text-[11px] text-slate-500 dark:text-slate-300">{{ contact.form_name || 'Formulário' }}</p>
+                          <p class="text-[11px] text-slate-500 dark:text-slate-300">{{ getContactFormLabel(contact) }}</p>
                         </div>
                         <button
                           type="button"
@@ -621,7 +631,7 @@
                             class="transition hover:opacity-80"
                             :style="{ color: '#29E870' }"
                             :title="`Chamar ${contact.phone} no WhatsApp`"
-                            @click="openWhatsapp(contact.phone, contact.form_name || 'Formulário')"
+                            @click="openWhatsapp(contact.phone, getContactFormLabel(contact))"
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
                               <path
@@ -745,6 +755,82 @@ const inactiveTabClass = "text-slate-500 hover:text-slate-800 dark:text-slate-30
 
 const forms = computed(() => leadStore.forms);
 const formsLoading = computed(() => leadStore.formsLoading);
+const allContacts = computed(() => leadStore.contacts);
+
+const DEFAULT_FORM_LABEL = "Sem formulário";
+const contactPageFilterValue = (contact: LeadContact) =>
+  contact.page_id === null || typeof contact.page_id === "undefined" ? "none" : String(contact.page_id);
+const contactFormFilterValue = (contact: LeadContact) =>
+  contact.form_id === null || typeof contact.form_id === "undefined" ? "none" : String(contact.form_id);
+const kanbanPageFilter = ref("all");
+const kanbanFormFilter = ref("all");
+const kanbanPageOptions = computed(() => {
+  const map = new Map<string, string>();
+  allContacts.value.forEach(contact => {
+    const value = contactPageFilterValue(contact);
+    const label = contact.page_title || contact.page_slug || "Sem página";
+    if (!map.has(value)) {
+      map.set(value, label);
+    }
+  });
+  const options = [{ label: "Todas as páginas", value: "all" }];
+  map.forEach((label, value) => {
+    options.push({ value, label });
+  });
+  return options;
+});
+const kanbanFormOptions = computed(() => {
+  const map = new Map<string, string>();
+  forms.value.forEach(form => {
+    const label = form.name?.trim() || form.title || `Formulário ${form.id}`;
+    map.set(String(form.id), label);
+  });
+  let hasEmptyForm = false;
+  allContacts.value.forEach(contact => {
+    const value = contactFormFilterValue(contact);
+    if (value === "none") {
+      hasEmptyForm = true;
+      return;
+    }
+    if (!map.has(value)) {
+      map.set(value, contact.form_name?.trim() || DEFAULT_FORM_LABEL);
+    }
+  });
+  const options = [{ label: "Todos os formulários", value: "all" }];
+  map.forEach((label, value) => options.push({ value, label }));
+  if (hasEmptyForm) {
+    options.push({ label: DEFAULT_FORM_LABEL, value: "none" });
+  }
+  return options;
+});
+watch(kanbanPageOptions, options => {
+  if (!options.some(option => option.value === kanbanPageFilter.value)) {
+    kanbanPageFilter.value = "all";
+  }
+});
+watch(kanbanFormOptions, options => {
+  if (!options.some(option => option.value === kanbanFormFilter.value)) {
+    kanbanFormFilter.value = "all";
+  }
+});
+const normalizeFormId = (value: string | number | null | undefined) => {
+  if (value === null || typeof value === "undefined") return null;
+  return String(value);
+};
+const findFormById = (formId: string | number | null | undefined): LeadForm | null => {
+  const targetId = normalizeFormId(formId);
+  if (!targetId) return null;
+  return forms.value.find(form => normalizeFormId(form.id) === targetId) || null;
+};
+const getContactFormLabel = (contact: LeadContact | null | undefined) => {
+  if (!contact) return DEFAULT_FORM_LABEL;
+  const found = findFormById(contact.form_id);
+  if (found?.name?.trim()) return found.name.trim();
+  if (contact.form_name?.trim()) return contact.form_name.trim();
+  if (found?.title?.trim()) return found.title.trim();
+  return DEFAULT_FORM_LABEL;
+};
+
 const groupedContacts = computed(() => leadStore.groupedContacts);
 const contactsLoading = computed(() => leadStore.contactsLoading);
 const leadStatuses = computed(() => leadStore.statuses);
@@ -758,7 +844,6 @@ const statusColorMap = computed<Record<string, string>>(() => {
   });
   return map;
 });
-const allContacts = computed(() => leadStore.contacts);
 const kanbanContainerHeight = computed(() => "calc(100vh - 260px)");
 const kanbanColumnHeight = computed(() => "calc(100vh - 300px)");
 const filterOptions = computed(() => {
@@ -777,7 +862,7 @@ const filterOptions = computed(() => {
   const pageLabels = allContacts.value.map(contact => contact.page_title || contact.page_slug || "Sem página");
   return {
     name: buildOptions(allContacts.value.map(contact => contact.name || "Sem nome"), "Sem nome"),
-    form: buildOptions(allContacts.value.map(contact => contact.form_name || "Sem formulário"), "Sem formulário"),
+    form: buildOptions(allContacts.value.map(contact => getContactFormLabel(contact)), DEFAULT_FORM_LABEL),
     phone: buildOptions(allContacts.value.map(contact => contact.phone || "Sem telefone"), "Sem telefone"),
     email: buildOptions(allContacts.value.map(contact => contact.email || "Sem e-mail"), "Sem e-mail"),
     city: buildOptions(allContacts.value.map(contact => contact.city || "Sem cidade"), "Sem cidade"),
@@ -810,7 +895,7 @@ const filteredGroupedContacts = computed(() => {
       return arr.includes(normalized);
     };
     if (!matchArray(listFilters.name, contact.name, "Sem nome")) return false;
-    if (!matchArray(listFilters.form, contact.form_name, "Sem formulário")) return false;
+    if (!matchArray(listFilters.form, getContactFormLabel(contact), DEFAULT_FORM_LABEL)) return false;
     if (!matchArray(listFilters.phone, contact.phone, "Sem telefone")) return false;
     if (!matchArray(listFilters.email, contact.email, "Sem e-mail")) return false;
     if (!matchArray(listFilters.city, contact.city, "Sem cidade")) return false;
@@ -842,6 +927,17 @@ const filteredGroupedContacts = computed(() => {
 const filteredContacts = computed(() =>
   filteredGroupedContacts.value.flatMap(group => group.contacts)
 );
+const kanbanFilteredContacts = computed(() =>
+  filteredContacts.value.filter(contact => {
+    if (kanbanPageFilter.value !== "all" && contactPageFilterValue(contact) !== kanbanPageFilter.value) {
+      return false;
+    }
+    if (kanbanFormFilter.value !== "all" && contactFormFilterValue(contact) !== kanbanFormFilter.value) {
+      return false;
+    }
+    return true;
+  })
+);
 const filteredContactsCount = computed(() => filteredContacts.value.length);
 const kanbanColumns = computed(() => {
   const sortedStatuses = [...leadStatuses.value].sort((a, b) => {
@@ -857,7 +953,7 @@ const kanbanColumns = computed(() => {
   baseOptions.forEach(option => {
     map[option.id] = [];
   });
-  filteredContacts.value.forEach(contact => {
+  kanbanFilteredContacts.value.forEach(contact => {
     const key = contact.status_id ? String(contact.status_id) : "null";
     if (!map[key]) map[key] = [];
     map[key].push(contact);

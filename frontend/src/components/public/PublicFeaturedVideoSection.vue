@@ -1,13 +1,15 @@
 <template>
   <section class="w-full" :style="{ background: section.backgroundColor || '#f5f7fb' }" :id="section.anchorId || undefined">
     <div class="mx-auto w-full max-w-5xl px-6 py-16 text-center">
-      <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="ctaColor" />
-      <h2 class="mt-3 text-3xl font-bold leading-tight md:text-4xl" :style="{ color: primaryText }">
+      <div class="flex justify-center mb-1">
+        <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="ctaColor" />
+      </div>
+      <h2 class="text-3xl font-bold leading-tight md:text-4xl" :style="{ color: primaryText }">
         {{ section.title || "Video em destaque" }}
       </h2>
       <div
         v-if="subtitleHtml"
-        class="mt-3 text-base leading-relaxed md:text-lg"
+        class="mt-1 text-base leading-relaxed md:text-lg"
         :style="{ color: mutedText }"
         v-html="subtitleHtml"
       ></div>

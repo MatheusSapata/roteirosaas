@@ -1,12 +1,14 @@
 <template>
   <section class="w-full" :style="{ background: section.backgroundColor || '#ffffff' }" :id="section.anchorId || undefined">
     <div class="mx-auto flex max-w-6xl flex-col items-center px-6 py-12">
-      <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="accent" />
+      <div class="flex justify-center mb-1">
+        <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="accent" />
+      </div>
       <h1 class="text-center text-3xl font-bold leading-tight md:text-4xl" :style="{ color: primaryText }">
         {{ section.title || "Depoimentos de clientes" }}
       </h1>
       <p
-        class="mt-2 text-center text-sm md:text-base"
+        class="text-center text-sm md:text-base"
         v-if="subtitleHtml"
         v-html="subtitleHtml"
         :style="{ color: mutedText }"
