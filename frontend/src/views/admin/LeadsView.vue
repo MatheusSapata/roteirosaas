@@ -150,25 +150,26 @@
           </div>
         </section>
 
-        <section v-else-if="activeTab === 'contacts'" class="space-y-6">
+        <section v-else-if="activeTab === 'contacts'" class="flex h-[calc(100vh-220px)] flex-col gap-6">
           <div v-if="contactsLoading && !groupedContacts.length" class="rounded-2xl border border-slate-100 px-4 py-6 text-center text-sm text-slate-500 dark:border-white/10 dark:text-slate-300">
             Carregando contatos...
           </div>
           <div v-else-if="!groupedContacts.length" class="rounded-2xl border border-dashed border-slate-200 px-4 py-10 text-center text-sm text-slate-500 dark:border-white/20 dark:text-slate-300">
             Nenhum lead captado ainda. Divulgue as páginas com formulário obrigatório para começar.
           </div>
-          <div v-else>
+          <div v-else class="flex flex-1 flex-col">
             <div v-if="contactViewMode === 'list' && !filteredGroupedContacts.length" class="rounded-2xl border border-dashed border-slate-200 px-4 py-10 text-center text-sm text-slate-500 dark:border-white/20 dark:text-slate-300">
               Nenhum contato encontrado com os filtros aplicados.
             </div>
-            <div v-else-if="contactViewMode === 'list'" class="space-y-6">
+            <div v-else-if="contactViewMode === 'list'" class="flex flex-1 flex-col">
               <article
                 v-for="group in filteredGroupedContacts"
                 :key="group.formId"
-                class="w-full rounded-3xl border border-slate-100 bg-white/90 p-4 shadow-sm dark:border-white/10 dark:bg-white/5"
+                class="flex flex-1 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-0 shadow-sm dark:border-white/10 dark:bg-[#202020]"
+                :style="{ minHeight: listTableMinHeight }"
               >
-                <div class="overflow-x-auto overflow-y-visible" @click="closeFilterPopover">
-                <div v-if="hasActiveFilters" class="mb-3 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-300">
+                <div class="flex flex-1 flex-col min-h-0" @click="closeFilterPopover">
+                <div v-if="hasActiveFilters" class="mb-3 flex flex-wrap items-center gap-2 px-4 pt-4 text-xs text-slate-500 dark:text-slate-300">
                   <span>Filtros ativos</span>
                   <button
                     type="button"
@@ -178,10 +179,11 @@
                     Limpar filtros
                   </button>
                 </div>
-                <table class="min-w-full divide-y divide-slate-100 text-sm dark:divide-white/10">
-                  <thead>
-                    <tr class="text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">
-                      <th class="relative px-2 py-2">
+                <div class="flex-1 min-h-0 overflow-auto">
+                <table class="min-w-full divide-y divide-slate-200 text-sm dark:divide-white/10">
+                  <thead class="sticky top-0 z-10 border-b border-slate-200 bg-white dark:border-white/10 dark:bg-[#202020]">
+                    <tr class="whitespace-nowrap text-left text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
+                      <th class="px-4 py-3 text-center">
                         <div class="flex items-center gap-1">
                           <span>Nome</span>
                           <button
@@ -441,8 +443,12 @@
                       <th class="px-2 py-2 text-center">Ações</th>
                     </tr>
                   </thead>
-                  <tbody class="divide-y divide-slate-100 dark:divide-white/5">
-                    <tr v-for="contact in group.contacts" :key="contact.id" class="text-slate-700 dark:text-slate-200">
+                  <tbody class="divide-y divide-slate-200 dark:divide-white/5">
+                    <tr
+                        v-for="contact in group.contacts"
+                        :key="contact.id"
+                        class="text-slate-700 transition hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-white/[0.03]"
+                      >
                       <td class="px-2 py-2 font-semibold">{{ contact.name || "Sem nome" }}</td>
                       <td class="px-2 py-2 font-semibold">{{ contact.form_name || group.formName || "-" }}</td>
                       <td class="px-2 py-2">
@@ -546,10 +552,11 @@
                   </tbody>
                 </table>
               </div>
-              </article>
-              <div class="text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">
+              <div class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">
                 {{ filteredContactsCount }} lead(s) exibidos
               </div>
+            </div>
+          </article>
             </div>
             <div
               v-else
@@ -700,6 +707,12 @@ const themeStore = useThemeStore();
 const { hasLeadFeatureAccess } = useLeadFeatureGate();
 const planAllowed = hasLeadFeatureAccess;
 const isDarkTheme = computed(() => themeStore.isDark);
+const listTableMinHeight = computed(() => {
+  if (typeof window === "undefined") return "24rem";
+  const viewportHeight = window.innerHeight || 768;
+  const usable = Math.max(viewportHeight - 360, 320);
+  return `${usable}px`;
+});
 const activeTab = ref<TabKey>("forms");
 type ContactViewMode = "list" | "kanban";
 const contactViewMode = ref<ContactViewMode>("list");
