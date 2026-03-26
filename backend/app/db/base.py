@@ -21,4 +21,5 @@ from app.models import (
     agency_domain,
     revenue,
     lead_form,
+    user_session,
 )  # noqa: E402,F401

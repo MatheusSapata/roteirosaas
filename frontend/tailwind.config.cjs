@@ -4,6 +4,19 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
+        sans: [
+          "'Inter'",
+          "'Montserrat'",
+          "'Oswald'",
+          "'General Sans'",
+          "system-ui",
+          "-apple-system",
+          "BlinkMacSystemFont",
+          "'Segoe UI'",
+          "Helvetica",
+          "Arial",
+          "sans-serif"
+        ],
         display: ["'DM Sans'", "Inter", "sans-serif"],
         body: ["'Inter'", "sans-serif"]
       },

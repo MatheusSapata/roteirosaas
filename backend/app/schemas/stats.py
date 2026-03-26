@@ -48,3 +48,4 @@ class PageStatsSummaryOut(BaseModel):
     visits: int
     clicks_cta: int
     clicks_whatsapp: int
+    leads: int = 0

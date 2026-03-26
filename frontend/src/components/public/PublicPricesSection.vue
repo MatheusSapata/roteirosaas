@@ -6,7 +6,7 @@
           <div class="flex justify-center">
             <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="accent" />
           </div>
-          <h1 class="mt-3 text-2xl font-bold" :style="{ color: primaryText }">{{ title }}</h1>
+          <h1 class="mt-1 text-3xl font-bold md:text-4xl" :style="{ color: primaryText }">{{ title }}</h1>
           <p v-if="subtitle" class="text-sm" :style="{ color: mutedText }">{{ subtitle }}</p>
         </div>
 
@@ -30,7 +30,7 @@
               >
                 {{ item.titleLabel.toUpperCase() }}
               </p>
-              <p class="text-xl font-semibold" :style="{ color: item.highlight ? '#ffffff' : cardPrimaryText }">{{ item.title }}</p>
+              <p class="text-xl font-bold md:text-2xl md:font-bold" :style="{ color: item.highlight ? '#ffffff' : cardPrimaryText }">{{ item.title }}</p>
             </div>
 
             <div class="flex flex-col items-center gap-4 md:flex-row md:items-center md:justify-between">

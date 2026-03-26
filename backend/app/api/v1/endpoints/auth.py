@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -11,6 +11,7 @@ from app.core.config import get_settings
 from app.core.rate_limit import InMemoryRateLimiter
 from app.models.user import User
 from app.models.subscription import Subscription
+from app.models.user_session import UserSession
 from app.models.user_tracking import UserTracking
 from app.schemas.user import (
     PasswordResetByProfile,
@@ -23,6 +24,7 @@ from app.schemas.user import (
     UserUpdate,
 )
 from app.services import auth as auth_service
+from app.services.session_monitor import summarize_user_agent
 from app.services.trial import start_trial
 
 router = APIRouter()
@@ -94,6 +96,7 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)) -> UserOut:
     return user
 
 
+
 @router.post("/login", response_model=Token)
 def login(
     request: Request,
@@ -112,24 +115,72 @@ def login(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Email ou senha incorretos.")
     login_limiter.clear(client_ip)
     access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
-    access_token = auth_service.create_access_token(data={"sub": user.email}, expires_delta=access_token_expires)
-    refresh_token = auth_service.create_refresh_token(user.email)
+    agent_header = (request.headers.get("user-agent") or "").strip()
+    device_label, client_name = summarize_user_agent(agent_header)
+    issued_at = datetime.now(timezone.utc)
+    current_path = (request.headers.get("X-Client-Path") or "").strip()
+    session = UserSession(
+        user_id=user.id,
+        ip_address=client_ip,
+        user_agent=agent_header[:500] or None,
+        device_label=device_label,
+        client_name=client_name,
+        created_at=issued_at,
+        last_seen_at=issued_at,
+        expires_at=issued_at + timedelta(minutes=settings.refresh_token_expire_minutes),
+        last_path=current_path[:255] or None,
+    )
+    db.add(session)
+    db.commit()
+    db.refresh(session)
+    access_token = auth_service.create_access_token(
+        data={"sub": user.email},
+        expires_delta=access_token_expires,
+        session_id=session.id,
+    )
+    refresh_token = auth_service.create_refresh_token(user.email, session.id)
     return Token(access_token=access_token, refresh_token=refresh_token, token_type="bearer")
 
 
 @router.post("/refresh", response_model=Token)
-def refresh_token(payload: RefreshTokenRequest, db: Session = Depends(get_db)) -> Token:
+def refresh_token(request: Request, payload: RefreshTokenRequest, db: Session = Depends(get_db)) -> Token:
     data = auth_service.decode_token(payload.refresh_token)
     if not data or data.get("scope") != "refresh":
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token inválido.")
     email = data.get("sub")
-    if not email:
+    session_id = data.get("sid")
+    if not email or not session_id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token inválido.")
     user = db.query(User).filter(User.email == email).first()
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuário não encontrado.")
-    access_token = auth_service.create_access_token(data={"sub": email})
-    refresh_token = auth_service.create_refresh_token(email)
+    session = (
+        db.query(UserSession)
+        .filter(UserSession.id == session_id, UserSession.user_id == user.id)
+        .first()
+    )
+    if not session or session.revoked_at:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Sessão expirada.")
+    now = datetime.now(timezone.utc)
+    if session.expires_at and session.expires_at < now:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Sessão expirada.")
+    session.last_seen_at = now
+    session.expires_at = now + timedelta(minutes=settings.refresh_token_expire_minutes)
+    if request.client and request.client.host:
+        session.ip_address = request.client.host
+    agent_header = (request.headers.get("user-agent") or "").strip()
+    if agent_header:
+        session.user_agent = agent_header[:500]
+        device_label, client_name = summarize_user_agent(agent_header)
+        session.device_label = device_label
+        session.client_name = client_name
+    current_path = (request.headers.get("X-Client-Path") or "").strip()
+    if current_path:
+        session.last_path = current_path[:255]
+    db.add(session)
+    db.commit()
+    access_token = auth_service.create_access_token(data={"sub": email}, session_id=session.id)
+    refresh_token = auth_service.create_refresh_token(email, session.id)
     return Token(access_token=access_token, refresh_token=refresh_token, token_type="bearer")
 
 

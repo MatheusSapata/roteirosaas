@@ -7,7 +7,7 @@
         <div class="flex justify-center">
           <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="headingAccent" />
         </div>
-        <p class="text-2xl font-bold md:text-3xl">{{ section.label }}</p>
+        <h1 class="text-3xl font-bold md:text-4xl">{{ section.label }}</h1>
         <div class="mt-2 text-sm md:text-base" v-if="descriptionHtml" v-html="descriptionHtml"></div>
         <div class="mt-5 flex justify-center" v-if="ctaHasTarget">
           <a
@@ -48,7 +48,7 @@
             <div class="flex justify-center">
               <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="headingAccent" />
             </div>
-            <p class="text-lg font-semibold" :style="{ color: textColor }">{{ section.label }}</p>
+            <h1 class="text-3xl font-bold md:text-4xl" :style="{ color: textColor }">{{ section.label }}</h1>
             <div class="text-sm" :style="{ color: textColor }" v-if="descriptionHtml" v-html="descriptionHtml"></div>
           </div>
           <a
@@ -79,7 +79,7 @@
             <div class="flex justify-center">
               <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="headingAccent" />
             </div>
-            <p class="text-2xl font-bold" :style="{ color: textColor }">{{ section.label }}</p>
+            <h1 class="text-3xl font-bold md:text-4xl" :style="{ color: textColor }">{{ section.label }}</h1>
             <div class="text-sm" :style="{ color: textColor }" v-if="descriptionHtml" v-html="descriptionHtml"></div>
           </div>
           <div class="flex items-center justify-end">
@@ -113,7 +113,7 @@
             <div class="flex justify-center">
               <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="headingAccent" />
             </div>
-            <p class="text-2xl font-bold" :style="{ color: textColor }">{{ section.label }}</p>
+            <h1 class="text-3xl font-bold md:text-4xl" :style="{ color: textColor }">{{ section.label }}</h1>
             <div class="text-sm" :style="{ color: textColor }" v-if="descriptionHtml" v-html="descriptionHtml"></div>
             <a
               v-if="ctaHasTarget"

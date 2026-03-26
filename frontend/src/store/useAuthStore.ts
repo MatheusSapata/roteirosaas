@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import api from "../services/api";
+import router from "../router";
 
 interface User {
   id: number;
@@ -32,6 +33,7 @@ interface User {
 }
 
 const REFRESH_KEY = "refresh_token";
+let responseInterceptorId: number | null = null;
 
 const parseJwt = (token: string) => {
   try {
@@ -153,6 +155,22 @@ export const useAuthStore = defineStore("auth", () => {
     setTokens(null, null);
     user.value = null;
   };
+
+  if (responseInterceptorId === null) {
+    responseInterceptorId = api.interceptors.response.use(
+      response => response,
+      error => {
+        if (error?.response?.status === 401) {
+          logout();
+          const current = router.currentRoute.value;
+          if (current.name !== "login") {
+            router.push({ name: "login", query: { redirect: current.fullPath } }).catch(() => {});
+          }
+        }
+        return Promise.reject(error);
+      }
+    );
+  }
 
   if (token.value) {
     api.defaults.headers.common.Authorization = `Bearer ${token.value}`;

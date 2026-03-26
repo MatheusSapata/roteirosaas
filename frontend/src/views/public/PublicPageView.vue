@@ -10,7 +10,7 @@
       O link que você acessou não existe mais ou foi removido. Peça um novo roteiro para a agência responsável.
     </p>
   </div>
-  <div v-else class="min-h-screen">
+  <div v-else class="public-page min-h-screen">
     <template v-for="(section, idx) in sections" :key="idx">
       <PublicHeroSection
         v-if="section?.enabled && section.type === 'hero'"
@@ -470,5 +470,17 @@ function setupCtaTracking(pixels: { type: string; value: string }[]) {
   margin-top: 0;
   margin-bottom: 0;
   display: block;
+}
+
+.public-page :deep(section h1),
+.public-page :deep(section h2),
+.public-page :deep(section h3) {
+  font-family: "Inter", "Montserrat", "Oswald", "General Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica,
+    Arial, sans-serif !important;
+  font-weight: 800 !important;
+}
+
+.public-page :deep(section h3) {
+  font-weight: 700 !important;
 }
 </style>

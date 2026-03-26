@@ -218,6 +218,142 @@
       </section>
     </template>
 
+    <template v-else-if="activeTab === 'monitor'">
+      <section class="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100 dark:bg-[#0f1118] dark:ring-white/10">
+        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.35em] text-slate-500 dark:text-white/60">
+              Monitoramento em tempo real
+            </p>
+            <h2 class="text-2xl font-bold text-slate-900 dark:text-white">Usuários online agora</h2>
+            <p class="text-sm text-slate-500 dark:text-white/60">Sessões autenticadas nos últimos 10 minutos.</p>
+            <p class="text-xs text-slate-400 dark:text-white/50">
+              {{ onlineSessionsMeta?.total_online ?? 0 }} sessões acompanhadas em tempo real.
+            </p>
+          </div>
+          <div class="flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-white/70">
+            <p v-if="monitorLastUpdated">Atualizado às {{ monitorLastUpdated }}</p>
+            <button
+              type="button"
+              class="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 font-semibold text-white transition hover:bg-slate-800 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
+              :disabled="onlineSessionsLoading"
+              @click="loadOnlineSessions(true)"
+            >
+              <svg
+                v-if="onlineSessionsLoading"
+                class="h-4 w-4 animate-spin text-white"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+              </svg>
+              <span>{{ onlineSessionsLoading ? "Atualizando..." : "Atualizar monitor" }}</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="mt-4">
+          <div
+            class="rounded-2xl border border-slate-100 bg-slate-50 p-4 text-slate-800 shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-white flex flex-wrap gap-6"
+          >
+            <div class="min-w-[180px] flex-1">
+              <p class="text-xs uppercase tracking-[0.3em] text-slate-500 dark:text-white/60">Usuários únicos</p>
+              <p class="mt-2 text-3xl font-bold">{{ onlineSessionsMeta?.unique_users ?? 0 }}</p>
+            </div>
+            <div class="min-w-[180px] flex-1">
+              <p class="text-xs uppercase tracking-[0.3em] text-slate-500 dark:text-white/60">Status do monitor</p>
+              <p class="mt-2 text-3xl font-bold">{{ monitorStatusLabel }}</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-6 space-y-4">
+          <div
+            v-if="onlineSessionsLoading && !onlineSessions.length"
+            class="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500 dark:border-white/15 dark:text-white/70"
+          >
+            Carregando sessões ativas...
+          </div>
+          <div
+            v-else-if="onlineSessionsError"
+            class="rounded-2xl border border-red-200 bg-red-50 p-6 text-center text-sm font-semibold text-red-600 dark:border-red-400/40 dark:bg-red-500/10 dark:text-red-200"
+          >
+            {{ onlineSessionsError }}
+          </div>
+          <div
+            v-else-if="!onlineSessions.length"
+            class="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500 dark:border-white/15 dark:text-white/70"
+          >
+            Nenhum usuário está online neste momento.
+          </div>
+          <div v-else class="grid gap-4 lg:grid-cols-2">
+            <article
+              v-for="session in onlineSessions"
+              :key="session.session_id"
+              class="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#05070f]"
+            >
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                  <div
+                    class="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-base font-semibold text-slate-700 dark:bg-white/10 dark:text-white"
+                  >
+                    {{ (session.user_name || "U").slice(0, 1).toUpperCase() }}
+                  </div>
+                  <div>
+                    <p class="text-base font-semibold text-slate-900 dark:text-white">{{ session.user_name }}</p>
+                    <p class="text-xs text-slate-500 dark:text-white/60">{{ session.user_email }}</p>
+                  </div>
+                </div>
+                <span
+                  class="inline-flex items-center rounded-full border border-slate-200 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-slate-600 dark:border-white/20 dark:text-white/80"
+                >
+                  {{ planLabel(session.user_plan) }}
+                </span>
+              </div>
+              <div class="mt-3 grid gap-3 text-sm text-slate-700 dark:text-white/80 md:grid-cols-2">
+                <div>
+                  <p class="text-[11px] uppercase tracking-[0.2em] text-slate-400 dark:text-white/50">Dispositivo</p>
+                  <p class="font-semibold">
+                    {{ session.device_label || "Desconhecido" }} · {{ session.client_name || "Navegador" }}
+                  </p>
+                </div>
+                <div>
+                  <p class="text-[11px] uppercase tracking-[0.2em] text-slate-400 dark:text-white/50">Última atividade</p>
+                  <p class="font-semibold">
+                    {{ formatRelativeMoment(session.last_seen_at) }} · {{ formatClock(session.last_seen_at) }}
+                  </p>
+                </div>
+                <div>
+                  <p class="text-[11px] uppercase tracking-[0.2em] text-slate-400 dark:text-white/50">Origem</p>
+                  <p class="font-semibold">{{ session.ip_address || "IP não identificado" }}</p>
+                </div>
+                <div v-if="session.last_path">
+                  <p class="text-[11px] uppercase tracking-[0.2em] text-slate-400 dark:text-white/50">Página atual</p>
+                  <p class="font-semibold break-all">{{ session.last_path }}</p>
+                </div>
+              </div>
+              <div class="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500 dark:text-white/70">
+                <span>{{ formatDurationSince(session.created_at) }}</span>
+                <span>{{ session.active_sessions }} {{ session.active_sessions === 1 ? "sessão" : "sessões" }}</span>
+                <button
+                  type="button"
+                  class="rounded-full border border-slate-200 px-4 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-white/30 dark:text-white dark:hover:bg-white/10"
+                  :disabled="revokingUserId === session.user_id"
+                  @click="revokeUserSessions(session)"
+                >
+                  {{ revokingUserId === session.user_id ? "Deslogando..." : "Deslogar usuário" }}
+                </button>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+    </template>
+
     <!-- USERS -->
     <template v-else-if="activeTab === 'users'">
       <section class="rounded-2xl bg-white p-6 shadow-md ring-1 ring-slate-100">
@@ -1301,10 +1437,33 @@ interface Metrics {
   }[];
 }
 
-type AdminTab = "dashboard" | "users" | "lessons";
+interface AdminOnlineSession {
+  session_id: string;
+  user_id: number;
+  user_name: string;
+  user_email: string;
+  user_plan: string;
+  ip_address?: string | null;
+  device_label?: string | null;
+  client_name?: string | null;
+  created_at: string;
+  last_seen_at: string;
+  active_sessions: number;
+  last_path?: string | null;
+}
+
+interface AdminOnlineSessionsResponse {
+  sessions: AdminOnlineSession[];
+  total_online: number;
+  unique_users: number;
+  generated_at: string;
+}
+
+type AdminTab = "dashboard" | "monitor" | "users" | "lessons";
 
 const adminTabs: { id: AdminTab; label: string; description: string }[] = [
   { id: "dashboard", label: "Dashboard", description: "Resumo e métricas" },
+  { id: "monitor", label: "Monitor", description: "Sessões online" },
   { id: "users", label: "Usuários", description: "Perfis e status" },
   { id: "lessons", label: "Gestão de aulas", description: "Treinamentos públicos" }
 ];
@@ -1324,6 +1483,21 @@ const lifetimeRevenue = computed(() => {
   return typeof value === "number" ? value : null;
 });
 const newUsersSeries = computed(() => metrics.value?.new_users_timeseries ?? []);
+
+const onlineSessions = ref<AdminOnlineSession[]>([]);
+const onlineSessionsMeta = ref<AdminOnlineSessionsResponse | null>(null);
+const onlineSessionsLoading = ref(false);
+const onlineSessionsError = ref("");
+const revokingUserId = ref<number | null>(null);
+let onlineSessionsInterval: number | null = null;
+const monitorStatusLabel = computed(() => (onlineSessionsLoading.value ? "Atualizando" : "Operacional"));
+const monitorLastUpdated = computed(() => {
+  const value = onlineSessionsMeta.value?.generated_at;
+  if (!value) return "";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return parsed.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+});
 const NEW_USERS_CHART_HEIGHT = 240;
 const NEW_USERS_CHART_WIDTH = 640;
 const NEW_USERS_CHART_PADDING_Y = 28;
@@ -1635,11 +1809,105 @@ const formatDateTime = (val?: string) => {
   return `${date} ${time}`;
 };
 
+const formatClock = (val?: string | null) => {
+  if (!val) return "--";
+  const d = new Date(val);
+  if (Number.isNaN(d.getTime())) return "--";
+  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+};
+
+const formatRelativeMoment = (val?: string | null) => {
+  if (!val) return "--";
+  const d = new Date(val);
+  if (Number.isNaN(d.getTime())) return "--";
+  const diff = Date.now() - d.getTime();
+  if (diff < 30_000) return "há instantes";
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return "há instantes";
+  if (minutes < 60) return `há ${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `há ${hours} h`;
+  const days = Math.floor(hours / 24);
+  return `há ${days} d`;
+};
+
+const formatDurationSince = (val?: string | null) => {
+  if (!val) return "--";
+  const d = new Date(val);
+  if (Number.isNaN(d.getTime())) return "--";
+  const diff = Date.now() - d.getTime();
+  if (diff < 60_000) return "Ativo há instantes";
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 60) return `Ativo há ${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `Ativo há ${hours} h`;
+  const days = Math.floor(hours / 24);
+  return `Ativo há ${days} d`;
+};
+
 const showSnackbar = (text: string) => {
   snackbar.value = { open: true, text };
   setTimeout(() => {
     snackbar.value = null;
   }, 3000);
+};
+
+const loadOnlineSessions = async (notify = false) => {
+  try {
+    onlineSessionsLoading.value = true;
+    onlineSessionsError.value = "";
+    const { data } = await api.get<AdminOnlineSessionsResponse>("/admin/online-sessions");
+    onlineSessions.value = data.sessions;
+    onlineSessionsMeta.value = data;
+    if (notify) {
+      showSnackbar("Monitor atualizado.");
+    }
+  } catch (err: any) {
+    console.error(err);
+    const message = err?.response?.data?.detail || "Não foi possível carregar o monitor agora.";
+    onlineSessionsError.value = message;
+    if (notify) {
+      showSnackbar(message);
+    }
+  } finally {
+    onlineSessionsLoading.value = false;
+  }
+};
+
+const startOnlineSessionsPolling = () => {
+  if (typeof window === "undefined") return;
+  if (onlineSessionsInterval) {
+    window.clearInterval(onlineSessionsInterval);
+  }
+  onlineSessionsInterval = window.setInterval(() => {
+    if (activeTab.value === "monitor") {
+      loadOnlineSessions();
+    }
+  }, 20000);
+};
+
+const stopOnlineSessionsPolling = () => {
+  if (typeof window === "undefined") return;
+  if (onlineSessionsInterval) {
+    window.clearInterval(onlineSessionsInterval);
+    onlineSessionsInterval = null;
+  }
+};
+
+const revokeUserSessions = async (session: AdminOnlineSession) => {
+  if (revokingUserId.value) return;
+  revokingUserId.value = session.user_id;
+  try {
+    await api.post(`/admin/online-sessions/user/${session.user_id}/revoke`);
+    showSnackbar(`Sessões de ${session.user_name} encerradas.`);
+    await loadOnlineSessions();
+  } catch (err: any) {
+    console.error(err);
+    const detail = err?.response?.data?.detail || "Não foi possível deslogar este usuário.";
+    showSnackbar(detail);
+  } finally {
+    revokingUserId.value = null;
+  }
 };
 
 const handleThumbnailUpload = (event: Event) => {
@@ -2344,6 +2612,8 @@ onMounted(async () => {
   }
   await lessonsStore.ensureLessons();
   await loadMetrics();
+  await loadOnlineSessions();
+  startOnlineSessionsPolling();
 });
 
 watch(
@@ -2362,11 +2632,18 @@ watch(
   }
 );
 
+watch(activeTab, (tab) => {
+  if (tab === "monitor") {
+    loadOnlineSessions();
+  }
+});
+
 onUnmounted(() => {
   if (typeof window !== "undefined") {
     window.removeEventListener("resize", updateIsMobile);
     window.removeEventListener("click", handleFilterOutsideClick);
   }
+  stopOnlineSessionsPolling();
 });
 </script>
 

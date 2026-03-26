@@ -43,13 +43,16 @@
         </div>
 
         <!-- conteúdo -->
-        <div class="relative overflow-hidden px-5 pb-12 pt-1 text-center text-white md:pb-8" :style="{ background: mobileContentBg }">
-          <div class="space-y-1 md:mt-0">
-            <h1 class="text-[26px] font-bold leading-tight">{{ section.title }}</h1>
-            <div v-if="subtitleHtml" class="text-sm text-white/85" v-html="subtitleHtml"></div>
+        <div
+          class="relative -mt-6 overflow-hidden px-5 pb-12 pt-1 text-center text-white md:mt-0 md:pb-8"
+          :style="{ background: mobileContentBg }"
+        >
+          <div class="space-y-0.5 md:mt-0">
+            <h1 class="text-[32px] font-bold leading-tight">{{ section.title }}</h1>
+            <div v-if="subtitleHtml" class="text-sm text-white/85 leading-tight" v-html="subtitleHtml"></div>
           </div>
 
-          <div v-if="chipsToShow.length" class="mt-4 flex flex-wrap items-center justify-center gap-2 text-[11px]">
+          <div v-if="chipsToShow.length" class="mt-4 flex flex-wrap items-center justify-center gap-1.5 text-[11px]">
             <span
               v-for="(chip, idx) in chipsToShow"
               :key="idx"
@@ -61,7 +64,7 @@
             </span>
           </div>
 
-          <div class="mt-5 space-y-1">
+          <div class="mt-5 space-y-0.5">
             <a
               :href="ctaHref"
               :data-scroll-target="ctaIsScroll ? 'true' : null"

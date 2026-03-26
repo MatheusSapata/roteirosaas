@@ -7,7 +7,7 @@
             <div class="mb-2 flex justify-center">
               <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="accent" />
             </div>
-            <h1 class="text-2xl font-bold" :style="{ color: primaryText }">{{ section.title || defaultTitle }}</h1>
+            <h1 class="text-3xl font-bold md:text-4xl" :style="{ color: primaryText }">{{ section.title || defaultTitle }}</h1>
             <p v-if="subtitle" class="text-sm" :style="{ color: mutedText }">{{ subtitle }}</p>
           </div>
         </div>

@@ -83,6 +83,28 @@ class PlanCount(BaseModel):
     count: int
 
 
+class AdminOnlineSession(BaseModel):
+    session_id: str
+    user_id: int
+    user_name: str
+    user_email: EmailStr
+    user_plan: str
+    ip_address: Optional[str] = None
+    device_label: Optional[str] = None
+    client_name: Optional[str] = None
+    created_at: datetime
+    last_seen_at: datetime
+    active_sessions: int = 1
+    last_path: Optional[str] = None
+
+
+class AdminOnlineSessionsResponse(BaseModel):
+    sessions: List[AdminOnlineSession]
+    total_online: int
+    unique_users: int
+    generated_at: datetime
+
+
 class AdminMetricsOut(BaseModel):
     total_users: int
     total_agencies: int
