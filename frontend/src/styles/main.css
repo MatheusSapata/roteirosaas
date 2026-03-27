@@ -13,3 +13,68 @@ body {
   font-family: "Inter", "Montserrat", "Oswald", "General Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     Helvetica, Arial, sans-serif;
 }
+
+.hero-cta-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-cta-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: -35% -5%;
+  width: 90%;
+  background: linear-gradient(
+    120deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.35) 30%,
+    rgba(255, 255, 255, 0.95) 50%,
+    rgba(255, 255, 255, 0.35) 70%,
+    transparent 90%
+  );
+  transform: translateX(-150%) skewX(-10deg);
+  animation: hero-cta-shimmer 1.8s ease-in-out 0.2s infinite;
+  pointer-events: none;
+  opacity: 0;
+}
+
+@keyframes hero-cta-shimmer {
+  0% {
+    transform: translateX(-150%) skewX(-10deg);
+    opacity: 0;
+  }
+  5% {
+    opacity: 0;
+  }
+  18% {
+    opacity: 0.65;
+  }
+  40% {
+    transform: translateX(-20%) skewX(-10deg);
+    opacity: 0.4;
+  }
+  65% {
+    opacity: 0.2;
+  }
+  82% {
+    opacity: 0.12;
+  }
+  92% {
+    opacity: 0.02;
+  }
+  100% {
+    transform: translateX(150%) skewX(-10deg);
+    opacity: 0;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .hero-cta-desktop-hover {
+    transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
+  }
+
+  .hero-cta-desktop-hover:hover {
+    transform: scale(1.07);
+    box-shadow: 0 25px 50px -20px rgba(15, 23, 42, 0.7);
+  }
+}

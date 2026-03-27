@@ -17,20 +17,26 @@
             :class="[
               'relative flex flex-col gap-4 rounded-2xl border p-5 text-center transition md:flex-row md:items-center md:justify-between md:text-left',
               item.highlight
-                ? 'border-transparent text-white shadow-xl hover:-translate-y-1 hover:shadow-2xl'
+                ? 'border-transparent shadow-xl hover:-translate-y-1 hover:shadow-2xl'
                 : 'border-slate-100 bg-white/95 hover:-translate-y-0.5 hover:shadow-lg'
             ]"
-            :style="item.highlight ? highlightCardStyle : undefined"
+            :style="itemCardStyle(item)"
           >
             <div class="space-y-2 text-center md:text-left">
               <p
                 v-if="item.titleLabel"
                 class="mt-4 text-xs uppercase tracking-[0.2em] md:mt-0"
-                :style="item.highlight ? { color: 'rgba(255,255,255,0.8)' } : { color: cardSecondaryText }"
+                :style="{ color: itemSecondaryTextColor(item) }"
               >
                 {{ item.titleLabel.toUpperCase() }}
               </p>
-              <p class="text-xl font-bold md:text-2xl md:font-bold" :style="{ color: item.highlight ? '#ffffff' : cardPrimaryText }">{{ item.title }}</p>
+
+              <p
+                class="text-xl font-bold md:text-2xl md:font-bold"
+                :style="{ color: itemPrimaryTextColor(item) }"
+              >
+                {{ item.title }}
+              </p>
             </div>
 
             <div class="flex flex-col items-center gap-4 md:flex-row md:items-center md:justify-between">
@@ -38,19 +44,22 @@
                 <p
                   v-if="item.priceLabel"
                   class="text-sm font-medium"
-                  :style="item.highlight ? { color: 'rgba(255,255,255,0.8)' } : { color: cardSecondaryText }"
+                  :style="{ color: itemSecondaryTextColor(item) }"
                 >
                   {{ item.priceLabel }}
                 </p>
 
-                <p class="text-3xl font-bold" :style="{ color: item.highlight ? '#ffffff' : accent }">
+                <p
+                  class="text-3xl font-bold"
+                  :style="{ color: itemPriceColor(item) }"
+                >
                   {{ formatPrice(item.price, item.currency) }}
                 </p>
 
                 <p
                   v-if="item.description"
                   class="text-xs"
-                  :style="item.highlight ? { color: 'rgba(255,255,255,0.8)' } : { color: cardSecondaryText }"
+                  :style="{ color: itemSecondaryTextColor(item) }"
                 >
                   {{ item.description }}
                 </p>
@@ -64,10 +73,10 @@
                 data-track-event="cta"
                 :data-track-type="trackType(itemLink(item))"
                 :class="[
-                  'inline-flex items-center justify-center rounded-full px-5 py-2 text-sm font-semibold shadow-md transition w-full md:w-auto max-w-sm mx-auto md:mx-0',
-                  item.highlight ? 'text-slate-900 hover:-translate-y-0.5 hover:shadow-xl' : 'text-white hover:-translate-y-0.5 hover:shadow-lg'
+                  'inline-flex items-center justify-center rounded-full px-5 py-2 text-sm font-semibold shadow-md transition w-full md:w-auto max-w-sm mx-auto md:mx-0 hero-cta-shimmer hero-cta-desktop-hover',
+                  item.highlight ? 'hover:-translate-y-0.5 hover:shadow-xl' : 'hover:-translate-y-0.5 hover:shadow-lg'
                 ]"
-                :style="{ background: item.highlight ? '#ffffff' : accent }"
+                :style="{ background: buttonBackground(item), color: buttonTextColor(item) }"
               >
                 {{ item.ctaLabel || section.ctaLabel || "Reservar" }}
               </a>
@@ -91,14 +100,13 @@
     </div>
   </section>
 </template>
-
 <script setup lang="ts">
 import { computed } from "vue";
 import type { CurrencyCode, PriceItem, PricesSection } from "../../types/page";
 import { isWhatsappLink } from "../../utils/links";
 import SectionHeadingChip from "./SectionHeadingChip.vue";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
-import { deriveTextPalette } from "../../utils/colorContrast";
+import { deriveTextPalette, getReadableTextColor } from "../../utils/colorContrast";
 
 const props = defineProps<{ section: PricesSection }>();
 
@@ -112,30 +120,41 @@ const accent = computed(() => buttonColor.value);
 
 const toRgba = (hex: string, alpha: number) => {
   const cleaned = hex.replace("#", "");
-  const full = cleaned.length === 3 ? cleaned.split("").map(c => c + c).join("") : cleaned;
-  if (full.length !== 6) return `rgba(14,165,233,${alpha})`;
+  const full = cleaned.length === 3 ? cleaned.split("").map((c) => c + c).join("") : cleaned;
+
+  if (full.length !== 6) {
+    return `rgba(14,165,233,${alpha})`;
+  }
+
   const r = parseInt(full.substring(0, 2), 16);
   const g = parseInt(full.substring(2, 4), 16);
   const b = parseInt(full.substring(4, 6), 16);
+
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
 
-const accentSoft = computed(() => toRgba(accent.value, 0.1));
 const accentBorder = computed(() => toRgba(accent.value, 0.25));
 const headingLabel = computed(() => props.section.headingLabel ?? headingDefaults.label);
 const headingStyle = computed(() => props.section.headingLabelStyle || headingDefaults.style);
 
 const sanitizeLink = (value?: string | null) => {
   if (!value) return "";
+
   const trimmed = value.trim();
   if (!trimmed) return "";
-  if (/^[a-z][a-z0-9+.-]*:/i.test(trimmed) || trimmed.startsWith("#")) return trimmed;
+
+  if (/^[a-z][a-z0-9+.-]*:/i.test(trimmed) || trimmed.startsWith("#")) {
+    return trimmed;
+  }
+
   return `https://${trimmed}`;
 };
 
 const baseCtaLink = computed(() => sanitizeLink(props.section.ctaLink));
 
-const title = computed(() => (props.section.title && props.section.title.trim().length ? props.section.title : defaultTitle));
+const title = computed(() =>
+  props.section.title && props.section.title.trim().length ? props.section.title : defaultTitle
+);
 
 const subtitle = computed(() => {
   const raw = props.section.subtitle ?? null;
@@ -144,25 +163,73 @@ const subtitle = computed(() => {
 });
 
 const highlightShadow = computed(() => toRgba(accent.value, 0.45));
-const highlightCardStyle = computed(() => ({
-  background: accent.value,
-  color: "#fff",
-  boxShadow: `0 25px 60px -30px ${highlightShadow.value}`
-}));
 
 const textPalette = computed(() => deriveTextPalette(props.section.textColor));
 const primaryText = computed(() => textPalette.value.primary);
-const secondaryText = computed(() => textPalette.value.secondary);
 const mutedText = computed(() => textPalette.value.muted);
-const subtleText = computed(() => textPalette.value.subtle);
 
-const cardPrimaryText = computed(() => "#0f172a");
-const cardSecondaryText = computed(() => "rgba(15,23,42,0.65)");
+const normalCardBackground = "#ffffff";
+
+const normalizeColor = (color?: string | null) => (color || "").trim().toLowerCase();
+
+const isReadableColorLight = (background: string) => {
+  const readable = normalizeColor(getReadableTextColor(background));
+  return readable === "#ffffff" || readable === "#fff" || readable === "white" || readable === "rgb(255,255,255)" || readable === "rgb(255, 255, 255)";
+};
+
+const itemBackground = (item: PriceItem) => {
+  return item.highlight ? accent.value : normalCardBackground;
+};
+
+const itemPrimaryTextColor = (item: PriceItem) => {
+  return getReadableTextColor(itemBackground(item));
+};
+
+const itemSecondaryTextColor = (item: PriceItem) => {
+  const background = itemBackground(item);
+  const useLightText = isReadableColorLight(background);
+
+  if (useLightText) {
+    return "rgba(255,255,255,0.88)";
+  }
+
+  return "rgba(15,23,42,0.72)";
+};
+
+const itemPriceColor = (item: PriceItem) => {
+  if (item.highlight) {
+    return itemPrimaryTextColor(item);
+  }
+
+  const accentNeedsLightText = isReadableColorLight(accent.value);
+  return accentNeedsLightText ? accent.value : "#0f172a";
+};
+
+const itemCardStyle = (item: PriceItem) => {
+  if (item.highlight) {
+    return {
+      background: accent.value,
+      color: itemPrimaryTextColor(item),
+      boxShadow: `0 25px 60px -30px ${highlightShadow.value}`
+    };
+  }
+
+  return {
+    background: normalCardBackground
+  };
+};
 
 const badgeStyle = (highlight: boolean) =>
   highlight
     ? { background: "#ffffff", color: accent.value, borderColor: "#ffffff" }
-    : { background: toRgba(accent.value, 0.12), color: accent.value, borderColor: toRgba(accent.value, 0.4) };
+    : {
+        background: toRgba(accent.value, 0.12),
+        color: accent.value,
+        borderColor: toRgba(accent.value, 0.4)
+      };
+
+const buttonBackground = (item: PriceItem) => (item.highlight ? "#ffffff" : accent.value);
+const buttonTextColor = (item: PriceItem) => getReadableTextColor(buttonBackground(item));
 
 const currencyMap: Record<CurrencyCode, { locale: string; currency: CurrencyCode }> = {
   BRL: { locale: "pt-BR", currency: "BRL" },
@@ -175,8 +242,12 @@ const defaultCurrency = currencyMap.BRL;
 
 const formatPrice = (price: number, currency?: PriceItem["currency"]) => {
   const config = currencyMap[(currency as CurrencyCode) || "BRL"] || defaultCurrency;
+
   try {
-    return new Intl.NumberFormat(config.locale, { style: "currency", currency: config.currency }).format(price);
+    return new Intl.NumberFormat(config.locale, {
+      style: "currency",
+      currency: config.currency
+    }).format(price);
   } catch {
     return `R$ ${price.toLocaleString("pt-BR")}`;
   }
@@ -186,5 +257,6 @@ const itemLink = (item: PriceItem) => {
   const specific = sanitizeLink(item.ctaLink);
   return specific || baseCtaLink.value;
 };
+
 const trackType = (link?: string) => (link && isWhatsappLink(link) ? "whatsapp" : "cta");
 </script>

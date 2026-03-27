@@ -17,7 +17,7 @@
             data-track-event="cta"
             rel="noopener"
             :data-track-type="ctaTrackType"
-            class="inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl"
+            class="inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl hero-cta-shimmer hero-cta-desktop-hover"
             :style="{ background: buttonColor, color: buttonTextColor }"
           >
             {{ buttonLabel }}
@@ -59,7 +59,7 @@
             data-track-event="cta"
             rel="noopener"
             :data-track-type="ctaTrackType"
-            class="inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl"
+            class="inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl hero-cta-shimmer hero-cta-desktop-hover"
             :style="{ background: buttonColor, color: buttonTextColor }"
           >
             {{ buttonLabel }}
@@ -91,7 +91,7 @@
             data-track-event="cta"
             rel="noopener"
             :data-track-type="ctaTrackType"
-            class="inline-flex items-center justify-center rounded-lg px-6 py-3 text-sm font-semibold shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl"
+            class="inline-flex items-center justify-center rounded-lg px-6 py-3 text-sm font-semibold shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl hero-cta-shimmer hero-cta-desktop-hover"
             :style="{ background: buttonColor, color: buttonTextColor }"
           >
             {{ buttonLabel }}
@@ -123,7 +123,7 @@
               data-track-event="cta"
               rel="noopener"
               :data-track-type="ctaTrackType"
-              class="inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl"
+              class="inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl hero-cta-shimmer hero-cta-desktop-hover"
               :style="{ background: buttonColor, color: buttonTextColor }"
             >
               {{ buttonLabel }}
@@ -143,6 +143,7 @@ import type { CtaSection } from "../../types/page";
 import SectionHeadingChip from "./SectionHeadingChip.vue";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import { sanitizeHtml } from "../../utils/sanitizeHtml";
+import { getReadableTextColor } from "../../utils/colorContrast";
 
 const props = defineProps<{ section: CtaSection }>();
 const headingDefaults = getSectionHeadingDefaults("cta");
@@ -151,7 +152,7 @@ const accent = computed(() => props.section.backgroundColor || "#41ce5f");
 const highlightActive = computed(() => !!props.section.highlight);
 const highlightColor = computed(() => props.section.highlightColor || props.section.ctaColor || accent.value);
 const buttonColor = computed(() => (highlightActive.value ? "#ffffff" : props.section.ctaColor || accent.value));
-const buttonTextColor = computed(() => (highlightActive.value ? "#0f172a" : "#ffffff"));
+const buttonTextColor = computed(() => getReadableTextColor(buttonColor.value));
 const textColor = computed(() =>
   highlightActive.value ? "#ffffff" : props.section.textColor || (props.section.layout === "simple" ? "#ffffff" : "#0f172a")
 );

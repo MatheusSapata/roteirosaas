@@ -23,7 +23,7 @@
               rel="noopener"
               data-track-event="cta"
               :data-track-type="ctaTrackType"
-              class="inline-flex min-w-[180px] items-center justify-center rounded-full px-6 py-3 text-sm font-semibold shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl"
+              class="inline-flex min-w-[180px] items-center justify-center rounded-full px-6 py-3 text-sm font-semibold shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl hero-cta-shimmer hero-cta-desktop-hover"
               :style="{ background: ctaColor, color: buttonTextColor }"
             >
               {{ section.ctaLabel || "Falar agora" }}

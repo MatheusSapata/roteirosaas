@@ -30,7 +30,7 @@
         Adicione um link de video para aparecer aqui.
       </div>
 
-      <div v-if="ctaHasTarget" class="mt-8">
+      <div v-if="ctaEnabled && ctaHasTarget" class="mt-8">
         <a
           :href="ctaHref"
           :data-scroll-target="ctaIsScroll ? 'true' : null"
@@ -38,8 +38,8 @@
           rel="noopener"
           data-track-event="cta"
           :data-track-type="ctaTrackType"
-          class="inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl"
-          :style="{ background: ctaColor }"
+          class="inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl hero-cta-shimmer hero-cta-desktop-hover"
+          :style="{ background: ctaColor, color: ctaTextColor }"
         >
           {{ section.ctaLabel || "Assistir agora" }}
         </a>
@@ -54,7 +54,7 @@ import type { FeaturedVideoSection } from "../../types/page";
 import SectionHeadingChip from "./SectionHeadingChip.vue";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import { sanitizeHtml } from "../../utils/sanitizeHtml";
-import { deriveTextPalette } from "../../utils/colorContrast";
+import { deriveTextPalette, getReadableTextColor } from "../../utils/colorContrast";
 import { isWhatsappLink } from "../../utils/links";
 import { normalizeYoutubeEmbedUrl } from "../../utils/video";
 
@@ -68,11 +68,13 @@ const textPalette = computed(() => deriveTextPalette(props.section.textColor));
 const primaryText = computed(() => textPalette.value.primary);
 const mutedText = computed(() => textPalette.value.muted);
 const ctaColor = computed(() => props.section.ctaColor || "#41ce5f");
+const ctaTextColor = computed(() => getReadableTextColor(ctaColor.value));
 const isMobilePreview = computed(() => props.previewDevice === "mobile");
 const videoWrapperClass = computed(() => (isMobilePreview.value ? "rounded-[18px]" : "rounded-[28px]"));
 
 const embeddedVideoUrl = computed(() => normalizeYoutubeEmbedUrl(props.section.videoUrl));
 
+const ctaEnabled = computed(() => props.section.ctaEnabled !== false);
 const ctaMode = computed(() => props.section.ctaMode || "link");
 const ctaHasTarget = computed(() =>
   ctaMode.value === "section" ? !!props.section.ctaSectionId : !!props.section.ctaLink

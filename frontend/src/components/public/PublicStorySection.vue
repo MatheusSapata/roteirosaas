@@ -29,11 +29,11 @@
               data-track-event="cta"
               :data-track-type="ctaTrackType"
               :class="[
-                'inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl',
+                'inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl',
                 desktopCtaHoverClass,
                 ctaShimmerClass
               ]"
-              :style="{ background: ctaColor }"
+              :style="{ background: ctaColor, color: ctaTextColor }"
             >
               {{ section.ctaLabel || "Saiba mais" }}
             </a>
@@ -87,11 +87,11 @@
               data-track-event="cta"
               :data-track-type="ctaTrackType"
               :class="[
-                'inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl',
+                'inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl',
                 desktopCtaHoverClass,
                 ctaShimmerClass
               ]"
-              :style="{ background: ctaColor }"
+              :style="{ background: ctaColor, color: ctaTextColor }"
             >
               {{ section.ctaLabel || "Saiba mais" }}
             </a>
@@ -234,7 +234,7 @@ import type { StorySection } from "../../types/page";
 import SectionHeadingChip from "./SectionHeadingChip.vue";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import { sanitizeHtml } from "../../utils/sanitizeHtml";
-import { deriveTextPalette } from "../../utils/colorContrast";
+import { deriveTextPalette, getReadableTextColor } from "../../utils/colorContrast";
 
 const props = defineProps<{ section: StorySection; previewDevice?: "desktop" | "mobile" }>();
 const headingDefaults = getSectionHeadingDefaults("story");
@@ -242,6 +242,7 @@ const headingDefaults = getSectionHeadingDefaults("story");
 const isSingle = computed(() => props.section.layout !== "gallery");
 const imagePosition = computed(() => props.section.imagePosition || "right");
 const ctaColor = computed(() => props.section.ctaColor || "#41ce5f");
+const ctaTextColor = computed(() => getReadableTextColor(ctaColor.value));
 const ctaMode = computed(() => props.section.ctaMode || "link");
 const ctaHasTarget = computed(() =>
   ctaMode.value === "section" ? !!props.section.ctaSectionId : !!props.section.ctaLink
