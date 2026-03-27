@@ -216,6 +216,8 @@ export interface StorySection extends SectionBase {
   ctaSectionId?: string | null;
   ctaColor?: string;
   ctaEnabled?: boolean;
+  enableAnimation?: boolean;
+  ctaShimmer?: boolean;
   images: string[];
   videoUrls?: string[];
   videoUrl?: string;

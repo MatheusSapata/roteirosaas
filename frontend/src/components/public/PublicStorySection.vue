@@ -28,7 +28,11 @@
               rel="noopener"
               data-track-event="cta"
               :data-track-type="ctaTrackType"
-              class="inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl"
+              :class="[
+                'inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl',
+                desktopCtaHoverClass,
+                ctaShimmerClass
+              ]"
               :style="{ background: ctaColor }"
             >
               {{ section.ctaLabel || "Saiba mais" }}
@@ -82,7 +86,11 @@
               rel="noopener"
               data-track-event="cta"
               :data-track-type="ctaTrackType"
-              class="inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl"
+              :class="[
+                'inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl',
+                desktopCtaHoverClass,
+                ctaShimmerClass
+              ]"
               :style="{ background: ctaColor }"
             >
               {{ section.ctaLabel || "Saiba mais" }}
@@ -246,6 +254,9 @@ const ctaTrackType = computed(() =>
   ctaMode.value === "section" ? "cta" : isWhatsappLink(props.section.ctaLink || undefined) ? "whatsapp" : "cta"
 );
 const ctaEnabled = computed(() => props.section.ctaEnabled !== false);
+const animateContent = computed(() => props.section.enableAnimation !== false);
+const ctaShimmerClass = computed(() => (animateContent.value && props.section.ctaShimmer ? "hero-cta-shimmer" : ""));
+const desktopCtaHoverClass = computed(() => (animateContent.value ? "hero-cta-desktop-hover" : ""));
 const isMobilePreview = computed(() => props.previewDevice === "mobile");
 const borderColor = computed(() => props.section.borderColor || props.section.ctaColor || "#41ce5f");
 const borderStyle = computed(() =>
@@ -442,6 +453,9 @@ const clampValue = (value: number, min = 0, max = 1) => Math.min(max, Math.max(m
 const desktopAnimationProgress = computed(() => clampValue((intersectionProgress.value - 0.08) / 0.8));
 const mobileAnimationProgress = computed(() => clampValue((intersectionProgress.value - 0.08) / 0.8));
 const textAnimationStyle = computed(() => {
+  if (!animateContent.value) {
+    return { opacity: "1", transform: "translate3d(0, 0, 0)" };
+  }
   const progress = animateAsDesktop.value ? desktopAnimationProgress.value : mobileAnimationProgress.value;
   const eased = Math.pow(progress, 1.4);
   const offsetY = (1 - eased) * 40;
@@ -454,6 +468,9 @@ const textAnimationStyle = computed(() => {
   };
 });
 const mediaAnimationStyle = computed(() => {
+  if (!animateContent.value) {
+    return { opacity: "1", transform: "translate3d(0, 0, 0)" };
+  }
   const progress = animateAsDesktop.value ? desktopAnimationProgress.value : mobileAnimationProgress.value;
   const eased = Math.pow(progress, 1.4);
   const offsetY = (1 - eased) * 40;

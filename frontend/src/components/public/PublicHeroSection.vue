@@ -426,12 +426,12 @@ const desktopCtaHoverClass = computed(() => (props.section.enableAnimation ? "he
   animation-delay: 0.55s;
 }
 
-.hero-cta-shimmer {
+:global(.hero-cta-shimmer) {
   position: relative;
   overflow: hidden;
 }
 
-.hero-cta-shimmer::after {
+:global(.hero-cta-shimmer::after) {
   content: "";
   position: absolute;
   inset: -35% -5%;
@@ -481,11 +481,11 @@ const desktopCtaHoverClass = computed(() => (props.section.enableAnimation ? "he
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .hero-cta-desktop-hover {
+  :global(.hero-cta-desktop-hover) {
     transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
   }
 
-  .hero-cta-desktop-hover:hover {
+  :global(.hero-cta-desktop-hover:hover) {
     transform: scale(1.07);
     box-shadow: 0 25px 50px -20px rgba(15, 23, 42, 0.7);
   }

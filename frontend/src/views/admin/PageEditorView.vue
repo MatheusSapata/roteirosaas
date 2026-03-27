@@ -2092,6 +2092,8 @@ function defaultSection(type: SectionType): PageSection {
       ctaLink: buildWhatsappLink(pageTitle.value) || "https://wa.me/",
       ctaColor: theme.value.ctaDefaultColor,
       ctaEnabled: true,
+      enableAnimation: true,
+      ctaShimmer: false,
       ctaMode: "link",
       ctaSectionId: null,
       borderEnabled: false,
