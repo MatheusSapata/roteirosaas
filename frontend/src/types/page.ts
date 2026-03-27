@@ -46,6 +46,9 @@ export interface HeroSection extends SectionBase {
   ctaColor?: string;
   videoUrl?: string;
   layout?: "classic" | "split" | "card" | "immersive";
+  enableAnimation?: boolean;
+  animationDuration?: number;
+  ctaShimmer?: boolean;
 }
 
 export interface BannerCardSection extends SectionBase {
@@ -234,6 +237,9 @@ export interface ReasonsSection extends SectionBase {
   items: ReasonItem[];
   backgroundColor?: string;
   layout?: "grid";
+  enableAnimation?: boolean;
+  animationDuration?: number;
+  cardAnimationStagger?: number;
 }
 
 export interface CtaSection extends SectionBase {

@@ -1914,7 +1914,10 @@ function defaultSection(type: SectionType): PageSection {
       ctaLink: buildWhatsappLink(pageTitle.value) || "https://wa.me/",
       ctaColor: theme.value.ctaDefaultColor,
       ctaMode: "link",
-      ctaSectionId: null
+      ctaSectionId: null,
+      enableAnimation: false,
+      animationDuration: 1000,
+      ctaShimmer: false
     } as HeroSection);
   }
 
@@ -2127,7 +2130,10 @@ function defaultSection(type: SectionType): PageSection {
         { icon: "🧭", title: "Mais liberdade", description: "Planeje quando quiser com apoio de especialistas locais." },
         { icon: "🤝", title: "Apoio dedicado", description: "Suporte próximo antes, durante e depois da viagem." },
         { icon: "✨", title: "Experiência única", description: "Curadoria de passeios e hospedagens memoráveis." }
-      ]
+      ],
+      enableAnimation: false,
+      animationDuration: 1000,
+      cardAnimationStagger: 300
     } as ReasonsSection);
   }
 

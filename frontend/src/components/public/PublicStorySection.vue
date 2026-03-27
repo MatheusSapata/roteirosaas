@@ -1,9 +1,14 @@
 <template>
-  <section class="w-full" :style="{ background: section.backgroundColor || '#e5eef9' }" :id="section.anchorId || undefined">
+  <section
+    ref="sectionRef"
+    class="w-full"
+    :style="{ background: section.backgroundColor || '#e5eef9' }"
+    :id="section.anchorId || undefined"
+  >
     <div class="mx-auto flex max-w-6xl flex-col" :class="outerClass" :style="borderStyle">
       <!-- Layout com imagem única -->
       <div v-if="isSingle" class="flex w-full flex-col" :class="singleLayoutClass">
-        <div :class="textBlockClass">
+        <div :class="textBlockClass" :style="textAnimationStyle">
           <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="ctaColor" />
           <h1 class="text-3xl font-bold leading-tight md:text-4xl" :style="{ color: primaryText }">
             {{ section.title }}
@@ -30,10 +35,10 @@
             </a>
           </div>
         </div>
-        <div :class="[mediaContainerClass, isMobilePreview ? 'mt-6' : 'md:mt-0']">
+        <div :class="[mediaContainerClass, isMobilePreview ? 'mt-6' : 'md:mt-0']" :style="mediaAnimationStyle">
           <div :class="mediaInnerClass">
             <template v-if="primaryMedia?.type === 'video'">
-              <div class="relative pt-[56.25%]">
+              <div class="relative pt-[56.25%]" @pointerdown="handlePrimaryPointerDown">
                 <iframe
                   :class="iframeClass"
                   :src="primaryMedia.url"
@@ -49,7 +54,7 @@
               :src="primaryMedia.url"
               alt="Destaque"
               class="h-full w-full cursor-zoom-in object-cover"
-              @click="openLightbox(primaryMedia)"
+              @click="handlePrimaryImageClick(primaryMedia, 0)"
             />
           </div>
         </div>
@@ -57,7 +62,7 @@
 
       <!-- Layout com galeria -->
       <div v-else class="grid w-full" :class="galleryLayoutClass">
-        <div :class="[textBlockClass, imagePosition === 'left' ? 'md:order-2' : 'md:order-1']">
+        <div :class="[textBlockClass, imagePosition === 'left' ? 'md:order-2' : 'md:order-1']" :style="textAnimationStyle">
           <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="ctaColor" />
           <h1 class="text-3xl font-bold leading-tight md:text-4xl" :style="{ color: primaryText }">
             {{ section.title }}
@@ -87,10 +92,11 @@
         <div
           class="space-y-4"
           :class="[mediaContainerClass, imagePosition === 'left' ? 'md:order-1' : 'md:order-2', isMobilePreview ? 'mt-6' : 'md:mt-0']"
+          :style="mediaAnimationStyle"
         >
           <div :class="mediaInnerClass">
             <template v-if="activeMedia?.type === 'video'">
-              <div class="relative pt-[56.25%]">
+              <div class="relative pt-[56.25%]" @pointerdown="handlePrimaryPointerDown">
                 <iframe
                   :class="iframeClass"
                   :src="activeMedia.url"
@@ -106,7 +112,7 @@
               :src="activeMedia.url"
               alt="Destaque"
               :class="[galleryImageClass, 'cursor-zoom-in']"
-              @click="openLightbox(activeMedia)"
+              @click="handlePrimaryImageClick(activeMedia, activeIndex)"
             />
           </div>
           <div
@@ -118,8 +124,9 @@
               v-for="(media, idx) in mediaItems"
               :key="`media-thumb-${idx}`"
               class="overflow-hidden rounded-xl ring-2 transition"
-              :class="idx === activeIndex ? 'ring-slate-900' : 'ring-transparent hover:ring-slate-300'"
-              @click="activeIndex = idx"
+              :class="idx === activeIndex ? 'ring-current' : 'ring-transparent hover:ring-slate-300'"
+              :style="idx === activeIndex ? activeThumbnailStyle : undefined"
+              @click="handleThumbnailClick(idx)"
             >
               <template v-if="media.type === 'image'">
                 <img :src="media.url" alt="Thumb" :class="thumbnailImageClass" />
@@ -161,13 +168,48 @@
               <path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6l-12 12" />
             </svg>
           </button>
-          <div class="max-h-[90vh] w-full max-w-5xl">
-            <img
-              v-if="lightboxMedia?.type === 'image'"
-              :src="lightboxMedia.url"
-              alt="Visualização ampliada"
-              class="h-full w-full rounded-3xl object-contain"
-            />
+          <div class="relative max-h-[90vh] w-full max-w-5xl">
+            <template v-if="lightboxMedia?.type === 'image'">
+              <img
+                :src="lightboxMedia.url"
+                alt="Visualização ampliada"
+                class="h-full w-full rounded-3xl object-contain"
+              />
+            </template>
+            <template v-else-if="lightboxMedia?.type === 'video'">
+              <div class="relative w-full rounded-3xl bg-black pt-[56.25%]">
+                <iframe
+                  class="absolute inset-0 h-full w-full rounded-3xl"
+                  :src="lightboxMedia.url"
+                  title="Vídeo ampliado"
+                  frameborder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowfullscreen
+                ></iframe>
+              </div>
+            </template>
+            <button
+              v-if="canNavigateLightbox"
+              class="absolute left-[-48px] top-1/2 -translate-y-1/2 rounded-full bg-white/20 p-3 text-white transition hover:bg-white/35"
+              type="button"
+              @click.stop="showPrevLightbox"
+              aria-label="Ver anterior"
+            >
+              <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 18l-6-6 6-6" />
+              </svg>
+            </button>
+            <button
+              v-if="canNavigateLightbox"
+              class="absolute right-[-48px] top-1/2 -translate-y-1/2 rounded-full bg-white/20 p-3 text-white transition hover:bg-white/35"
+              type="button"
+              @click.stop="showNextLightbox"
+              aria-label="Ver próxima"
+            >
+              <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 6l6 6-6 6" />
+              </svg>
+            </button>
           </div>
         </div>
       </Transition>
@@ -176,7 +218,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { resolveMediaUrl } from "../../utils/media";
 import { isWhatsappLink } from "../../utils/links";
 import { normalizeYoutubeEmbedUrl, extractYoutubeId } from "../../utils/video";
@@ -255,12 +297,12 @@ const mediaContainerClass = computed(() =>
   props.section.borderEnabled ? "flex-1 flex flex-col w-full md:items-stretch" : "flex-1 flex flex-col w-full md:items-stretch"
 );
 const mediaInnerClass = computed(() =>
-  props.section.borderEnabled ? "flex-1 w-full overflow-hidden" : "flex-1 w-full overflow-hidden rounded-3xl shadow-2xl ring-1 ring-slate-200"
+  props.section.borderEnabled ? "flex-1 w-full overflow-hidden" : "flex-1 w-full overflow-hidden rounded-3xl shadow-2xl"
 );
 const iframeClass = computed(() =>
   props.section.borderEnabled
     ? "absolute inset-0 h-full w-full object-cover"
-    : "absolute inset-0 h-full w-full rounded-3xl object-cover"
+    : "absolute inset-0 h-full w-full object-cover"
 );
 const galleryImageClass = computed(() =>
   props.section.borderEnabled ? "h-full w-full object-cover" : "h-80 w-full object-cover md:h-96"
@@ -277,6 +319,7 @@ const thumbnailGridStyle = computed(() => {
 });
 const thumbnailImageClass = computed(() => "w-full aspect-[4/3] object-cover");
 const thumbnailVideoWrapperClass = computed(() => "relative overflow-hidden rounded-xl bg-slate-900/70 text-white w-full aspect-[4/3]");
+const activeThumbnailStyle = computed(() => ({ "--tw-ring-color": ctaColor.value, "--tw-ring-offset-width": "1px", "--tw-ring-width": "2.5px", color: ctaColor.value }));
 const youtubeThumbnail = (url: string) => {
   const id = extractYoutubeId(url);
   return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : "";
@@ -316,13 +359,136 @@ const primaryMedia = computed(() => mediaItems.value[0] || null);
 const activeIndex = ref(0);
 const activeMedia = computed(() => mediaItems.value[activeIndex.value] || null);
 const lightboxMedia = ref<StoryMediaItem | null>(null);
+const lightboxIndex = ref<number | null>(null);
 const hasWindow = typeof window !== "undefined";
-const openLightbox = (media?: StoryMediaItem | null) => {
-  if (!media || media.type !== "image") return;
-  lightboxMedia.value = media;
+const userInteracted = ref(false);
+let autoCycleTimer: number | null = null;
+const AUTO_CYCLE_INTERVAL = 5000;
+const stopAutoCycle = () => {
+  if (autoCycleTimer && hasWindow) {
+    window.clearInterval(autoCycleTimer);
+    autoCycleTimer = null;
+  }
+};
+const scheduleAutoCycle = () => {
+  if (!hasWindow || userInteracted.value || isSingle.value || mediaItems.value.length <= 1) {
+    stopAutoCycle();
+    return;
+  }
+  stopAutoCycle();
+  autoCycleTimer = window.setInterval(() => {
+    activeIndex.value = (activeIndex.value + 1) % mediaItems.value.length;
+  }, AUTO_CYCLE_INTERVAL);
+};
+const registerUserInteraction = () => {
+  if (userInteracted.value) return;
+  userInteracted.value = true;
+  stopAutoCycle();
+};
+const goToLightboxIndex = (index: number) => {
+  const items = mediaItems.value;
+  if (!items.length) return;
+  const normalized = ((index % items.length) + items.length) % items.length;
+  lightboxIndex.value = normalized;
+  lightboxMedia.value = items[normalized] || null;
+};
+const openLightbox = (media?: StoryMediaItem | null, index?: number) => {
+  if (!media) return;
+  registerUserInteraction();
+  if (typeof index === "number") {
+    goToLightboxIndex(index);
+    return;
+  }
+  const found = mediaItems.value.findIndex(item => item === media);
+  goToLightboxIndex(found >= 0 ? found : 0);
 };
 const closeLightbox = () => {
   lightboxMedia.value = null;
+  lightboxIndex.value = null;
+  if (!userInteracted.value) {
+    scheduleAutoCycle();
+  }
+};
+const showNextLightbox = () => {
+  if (lightboxIndex.value === null) return;
+  goToLightboxIndex(lightboxIndex.value + 1);
+};
+const showPrevLightbox = () => {
+  if (lightboxIndex.value === null) return;
+  goToLightboxIndex(lightboxIndex.value - 1);
+};
+const handlePrimaryImageClick = (media?: StoryMediaItem | null, index?: number) => {
+  if (!media) return;
+  openLightbox(media, index);
+};
+const handlePrimaryPointerDown = () => {
+  registerUserInteraction();
+};
+const handleThumbnailClick = (index: number) => {
+  activeIndex.value = index;
+  registerUserInteraction();
+};
+const sectionRef = ref<HTMLElement | null>(null);
+const intersectionProgress = ref(0);
+const isDesktopViewport = ref(true);
+const viewMode = computed(() => {
+  if (props.previewDevice === "mobile") return "mobile";
+  if (props.previewDevice === "desktop") return "desktop";
+  return isDesktopViewport.value ? "desktop" : "mobile";
+});
+const animateAsDesktop = computed(() => viewMode.value === "desktop");
+const hasRevealedMobile = ref(false);
+const clampValue = (value: number, min = 0, max = 1) => Math.min(max, Math.max(min, value));
+const desktopAnimationProgress = computed(() => clampValue((intersectionProgress.value - 0.08) / 0.8));
+const mobileAnimationProgress = computed(() => clampValue((intersectionProgress.value - 0.08) / 0.8));
+const textAnimationStyle = computed(() => {
+  const progress = animateAsDesktop.value ? desktopAnimationProgress.value : mobileAnimationProgress.value;
+  const eased = Math.pow(progress, 1.4);
+  const offsetY = (1 - eased) * 40;
+  if (!animateAsDesktop.value && hasRevealedMobile.value) {
+    return { opacity: "1", transform: "translate3d(0, 0, 0)" };
+  }
+  return {
+    opacity: eased.toString(),
+    transform: `translate3d(0, ${offsetY}px,0)`
+  };
+});
+const mediaAnimationStyle = computed(() => {
+  const progress = animateAsDesktop.value ? desktopAnimationProgress.value : mobileAnimationProgress.value;
+  const eased = Math.pow(progress, 1.4);
+  const offsetY = (1 - eased) * 40;
+  if (!animateAsDesktop.value && hasRevealedMobile.value) {
+    return { opacity: "1", transform: "translate3d(0, 0, 0)" };
+  }
+  return {
+    opacity: eased.toString(),
+    transform: `translate3d(0, ${offsetY}px,0)`
+  };
+});
+const canNavigateLightbox = computed(() => mediaItems.value.length > 1);
+const scrollThresholds = Array.from({ length: 21 }, (_, index) => index / 20);
+let scrollObserver: IntersectionObserver | null = null;
+const handleResize = () => {
+  if (!hasWindow) return;
+  isDesktopViewport.value = window.innerWidth >= 1024;
+};
+const setupScrollObserver = () => {
+  if (!hasWindow || !sectionRef.value) return;
+  if (scrollObserver) {
+    scrollObserver.disconnect();
+    scrollObserver = null;
+  }
+  scrollObserver = new IntersectionObserver(
+    entries => {
+      entries.forEach(entry => {
+        if (entry.target === sectionRef.value) {
+          intersectionProgress.value = entry.intersectionRatio;
+        }
+      });
+    },
+    { threshold: scrollThresholds }
+  );
+  scrollObserver.observe(sectionRef.value);
 };
 const handleKeydown = (event: KeyboardEvent) => {
   if (event.key === "Escape") {
@@ -333,6 +499,11 @@ watch(
   () => [props.section.images, props.section.videoUrls, props.section.videoUrl],
   () => {
     activeIndex.value = 0;
+    userInteracted.value = false;
+    lightboxIndex.value = null;
+    lightboxMedia.value = null;
+    stopAutoCycle();
+    nextTick(() => scheduleAutoCycle());
   },
   { deep: true }
 );
@@ -340,8 +511,25 @@ watch(
 watch(
   mediaItems,
   newItems => {
-    if (activeIndex.value > 0 && activeIndex.value >= newItems.length) {
+    if (!newItems.length) {
       activeIndex.value = 0;
+      lightboxIndex.value = null;
+      lightboxMedia.value = null;
+      stopAutoCycle();
+      return;
+    }
+    if (activeIndex.value >= newItems.length) {
+      activeIndex.value = 0;
+    }
+    if (lightboxIndex.value !== null) {
+      if (lightboxIndex.value >= newItems.length) {
+        goToLightboxIndex(newItems.length - 1);
+      } else {
+        goToLightboxIndex(lightboxIndex.value);
+      }
+    }
+    if (!userInteracted.value) {
+      nextTick(() => scheduleAutoCycle());
     }
   },
   { deep: true }
@@ -361,9 +549,66 @@ watch(
   }
 );
 
+watch(
+  () => isSingle.value,
+  () => {
+    if (userInteracted.value) {
+      stopAutoCycle();
+      return;
+    }
+    nextTick(() => scheduleAutoCycle());
+  }
+);
+
+watch(
+  () => userInteracted.value,
+  value => {
+    if (value) {
+      stopAutoCycle();
+    } else {
+      nextTick(() => scheduleAutoCycle());
+    }
+  }
+);
+
+watch(viewMode, mode => {
+  if (mode === "desktop") {
+    hasRevealedMobile.value = false;
+  }
+});
+
+watch(
+  () => intersectionProgress.value,
+  value => {
+    if (!animateAsDesktop.value && !hasRevealedMobile.value && value >= 0.96) {
+      hasRevealedMobile.value = true;
+    }
+  }
+);
+
+watch(sectionRef, () => {
+  if (!hasWindow) return;
+  setupScrollObserver();
+});
+
+onMounted(() => {
+  if (hasWindow) {
+    handleResize();
+    window.addEventListener("resize", handleResize);
+  }
+  setupScrollObserver();
+  scheduleAutoCycle();
+});
+
 onBeforeUnmount(() => {
   if (!hasWindow) return;
+  stopAutoCycle();
+  if (scrollObserver) {
+    scrollObserver.disconnect();
+    scrollObserver = null;
+  }
   window.removeEventListener("keydown", handleKeydown);
+  window.removeEventListener("resize", handleResize);
   document.body.style.removeProperty("overflow");
 });
 </script>

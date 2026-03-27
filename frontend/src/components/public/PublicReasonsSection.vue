@@ -15,17 +15,23 @@
         </p>
       </div>
 
-      <div v-if="isMobilePreview" class="mt-8 flex flex-col gap-4">
+      <div v-if="isMobilePreview" ref="cardsWrapperRef" class="mt-8 flex flex-col gap-4">
         <article
           v-for="(item, idx) in limitedItems"
           :key="'mobile-' + idx"
-          class="mx-auto flex w-full max-w-[340px] flex-col rounded-2xl bg-white/95 p-4 text-center shadow-[0_16px_40px_-28px_rgba(15,23,42,0.6)] ring-1 ring-slate-100"
+          :class="[
+            'mx-auto flex w-full max-w-[340px] flex-col rounded-2xl bg-white/95 p-4 text-center shadow-[0_16px_40px_-28px_rgba(15,23,42,0.6)] ring-1 ring-slate-100',
+            ...cardClasses(idx)
+          ]"
+          :style="cardStyle(idx)"
+          :data-card-index="idx"
+          :ref="el => registerMobileCardRef(el, idx)"
         >
           <ReasonCard :item="item" />
         </article>
       </div>
 
-      <div v-else class="mt-8 flex flex-col items-center gap-5">
+      <div v-else ref="cardsWrapperRef" class="mt-8 flex flex-col items-center gap-5">
         <div
           v-for="(row, rowIndex) in desktopRows"
           :key="'row-' + rowIndex"
@@ -34,7 +40,11 @@
           <article
             v-for="(item, idx) in row"
             :key="'card-' + rowIndex + '-' + idx"
-            class="flex w-full max-w-[260px] flex-col rounded-2xl bg-white/95 p-4 text-center shadow-[0_16px_40px_-28px_rgba(15,23,42,0.6)] ring-1 ring-slate-100"
+            :class="[
+              'flex w-full max-w-[260px] flex-col rounded-2xl bg-white/95 p-4 text-center shadow-[0_16px_40px_-28px_rgba(15,23,42,0.6)] ring-1 ring-slate-100',
+              ...cardClasses(desktopRowOffsets[rowIndex] + idx)
+            ]"
+            :style="cardStyle(desktopRowOffsets[rowIndex] + idx)"
           >
             <ReasonCard :item="item" />
           </article>
@@ -45,7 +55,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineComponent, h, inject, isRef } from "vue";
+import { computed, defineComponent, h, inject, isRef, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import type { ReasonsSection, ReasonItem } from "../../types/page";
 import SectionHeadingChip from "./SectionHeadingChip.vue";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
@@ -75,6 +85,24 @@ const primaryText = computed(() => textPalette.value.primary);
 const mutedText = computed(() => textPalette.value.muted);
 
 const limitedItems = computed(() => (props.section.items || []).slice(0, MAX_ITEMS));
+const cardsInView = ref(false);
+const cardsWrapperRef = ref<HTMLElement | null>(null);
+const revealedMobileCards = ref<boolean[]>([]);
+const mobileCardRefs = ref<(HTMLElement | null)[]>([]);
+let cardsObserver: IntersectionObserver | null = null;
+let mobileCardsObserver: IntersectionObserver | null = null;
+const animationEnabled = computed(() => !!props.section.enableAnimation);
+const clampDuration = (value?: number) => {
+  const raw = typeof value === "number" && !Number.isNaN(value) ? value : 550;
+  return Math.min(2000, Math.max(200, Math.round(raw)));
+};
+const clampStagger = (value?: number) => {
+  const raw = typeof value === "number" && !Number.isNaN(value) ? value : 150;
+  return Math.min(800, Math.max(40, Math.round(raw)));
+};
+const animationDurationMs = computed(() => clampDuration(props.section.animationDuration));
+const animationStaggerMs = computed(() => clampStagger(props.section.cardAnimationStagger));
+const mobileStaggerMs = 4000;
 
 const desktopRows = computed(() => {
   const items = limitedItems.value;
@@ -85,6 +113,17 @@ const desktopRows = computed(() => {
   const first = items.slice(0, firstRowCount);
   const second = items.slice(firstRowCount);
   return [first, second];
+});
+
+const desktopRowOffsets = computed(() => {
+  const rows = desktopRows.value;
+  const offsets: number[] = [];
+  let current = 0;
+  rows.forEach(row => {
+    offsets.push(current);
+    current += row.length;
+  });
+  return offsets;
 });
 
 const descriptionHtml = (text?: string) => sanitizeHtml(text);
@@ -110,4 +149,174 @@ const ReasonCard = defineComponent({
       ]);
   }
 });
+
+const cardClasses = (index: number) => {
+  if (!animationEnabled.value) return [];
+  const isMobile = isMobilePreview.value;
+  const isVisible = isMobile ? !!revealedMobileCards.value[index] : cardsInView.value;
+  return ["reason-card", isVisible ? "reason-card-visible" : "reason-card-hidden"];
+};
+
+const cardStyle = (index: number) => {
+  if (!animationEnabled.value) return undefined;
+  if (isMobilePreview.value) {
+    return {
+      "--reason-duration": `${animationDurationMs.value}ms`,
+      "--reason-delay": `${Math.max(0, index) * mobileStaggerMs}ms`
+    };
+  }
+  const delay = cardsInView.value ? Math.max(0, index) * animationStaggerMs.value : 0;
+  return {
+    "--reason-duration": `${animationDurationMs.value}ms`,
+    "--reason-delay": `${delay}ms`
+  };
+};
+
+const setupObserver = () => {
+  if (typeof window === "undefined" || cardsInView.value || !animationEnabled.value || isMobilePreview.value) return;
+  if (cardsObserver) {
+    cardsObserver.disconnect();
+    cardsObserver = null;
+  }
+  if (!cardsWrapperRef.value) return;
+  cardsObserver = new IntersectionObserver(
+    entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          cardsInView.value = true;
+          if (cardsObserver) {
+            cardsObserver.disconnect();
+            cardsObserver = null;
+          }
+        }
+      });
+    },
+    { threshold: 0.5 }
+  );
+  cardsObserver.observe(cardsWrapperRef.value);
+};
+
+const registerMobileCardRef = (el: HTMLElement | null, index: number) => {
+  mobileCardRefs.value[index] = el;
+  if (el) {
+    el.dataset.cardIndex = String(index);
+  }
+};
+
+const observeNextMobileCard = (fromIndex = 0) => {
+  if (!mobileCardsObserver || !animationEnabled.value || !isMobilePreview.value) return;
+  for (let i = fromIndex; i < mobileCardRefs.value.length; i++) {
+    if (!revealedMobileCards.value[i] && mobileCardRefs.value[i]) {
+      mobileCardsObserver.observe(mobileCardRefs.value[i]!);
+      break;
+    }
+  }
+};
+
+const setupMobileCardsObserver = () => {
+  if (typeof window === "undefined" || !animationEnabled.value || !isMobilePreview.value) return;
+  if (mobileCardsObserver) {
+    mobileCardsObserver.disconnect();
+    mobileCardsObserver = null;
+  }
+  mobileCardsObserver = new IntersectionObserver(
+    entries => {
+      entries.forEach(entry => {
+        const target = entry.target as HTMLElement;
+        const dataIndex = target.dataset.cardIndex;
+        const index = typeof dataIndex === "string" ? Number(dataIndex) : NaN;
+        if (entry.isIntersecting && !Number.isNaN(index)) {
+          revealedMobileCards.value[index] = true;
+          mobileCardsObserver?.unobserve(target);
+          observeNextMobileCard(index + 1);
+        }
+      });
+    },
+    { threshold: 0.1, rootMargin: "0px 0px -20% 0px" }
+  );
+  observeNextMobileCard(0);
+};
+
+onMounted(() => {
+  setupObserver();
+  if (isMobilePreview.value && animationEnabled.value) {
+    nextTick(() => setupMobileCardsObserver());
+  }
+});
+
+watch(cardsWrapperRef, () => {
+  if (!cardsInView.value && animationEnabled.value && !isMobilePreview.value) {
+    setupObserver();
+  }
+});
+
+watch(animationEnabled, enabled => {
+  if (!enabled) {
+    cardsInView.value = false;
+    revealedMobileCards.value = limitedItems.value.map(() => true);
+    if (cardsObserver) {
+      cardsObserver.disconnect();
+      cardsObserver = null;
+    }
+    if (mobileCardsObserver) {
+      mobileCardsObserver.disconnect();
+      mobileCardsObserver = null;
+    }
+    return;
+  }
+  cardsInView.value = false;
+  revealedMobileCards.value = limitedItems.value.map(() => (isMobilePreview.value ? false : true));
+  nextTick(() => {
+    setupObserver();
+    if (isMobilePreview.value) {
+      setupMobileCardsObserver();
+    }
+  });
+});
+
+watch(
+  () => [limitedItems.value.length, isMobilePreview.value, animationEnabled.value],
+  () => {
+    revealedMobileCards.value = limitedItems.value.map(() => (animationEnabled.value && isMobilePreview.value ? false : true));
+    mobileCardRefs.value = limitedItems.value.map(() => null);
+    nextTick(() => {
+      if (animationEnabled.value && isMobilePreview.value) {
+        setupMobileCardsObserver();
+      }
+    });
+  },
+  { immediate: true }
+);
+
+onBeforeUnmount(() => {
+  if (cardsObserver) {
+    cardsObserver.disconnect();
+    cardsObserver = null;
+  }
+  if (mobileCardsObserver) {
+    mobileCardsObserver.disconnect();
+    mobileCardsObserver = null;
+  }
+});
 </script>
+
+<style scoped>
+.reason-card {
+  opacity: 0;
+  transform: translateY(20px);
+  transition-property: opacity, transform;
+  transition-duration: var(--reason-duration, 0.55s);
+  transition-delay: var(--reason-delay, 0s);
+  will-change: opacity, transform;
+}
+
+.reason-card-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.reason-card-hidden {
+  opacity: 0;
+  transform: translateY(20px);
+}
+</style>
