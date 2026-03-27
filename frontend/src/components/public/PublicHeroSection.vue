@@ -214,6 +214,7 @@ import { computed } from "vue";
 import { resolveMediaUrl } from "../../utils/media";
 import { isWhatsappLink } from "../../utils/links";
 import { sanitizeHtml } from "../../utils/sanitizeHtml";
+import { normalizeYoutubeEmbedUrl } from "../../utils/video";
 import type { HeroSection } from "../../types/page";
 
 const props = defineProps<{ section: HeroSection; branding: Record<string, any>; previewDevice?: "desktop" | "mobile" }>();
@@ -249,21 +250,7 @@ const mobileBaseColor = computed(() => {
   return "#05060f";
 });
 
-const normalizeVideoUrl = (raw?: string) => {
-  if (!raw) return "";
-  let url = raw.trim();
-  const iframeSrc = url.match(/src=["']([^"']+)["']/i);
-  if (iframeSrc?.[1]) {
-    url = iframeSrc[1];
-  }
-  if (!url.startsWith("http")) {
-    url = `https://${url}`;
-  }
-  url = url.replace("watch?v=", "embed/").replace("youtu.be/", "www.youtube.com/embed/");
-  return url;
-};
-
-const embeddedVideoUrl = computed(() => normalizeVideoUrl(props.section.videoUrl));
+const embeddedVideoUrl = computed(() => normalizeYoutubeEmbedUrl(props.section.videoUrl));
 
 const toRgba = (hex: string, alpha: number) => {
   const cleaned = hex.replace("#", "");

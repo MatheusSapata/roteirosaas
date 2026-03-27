@@ -56,6 +56,7 @@ import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import { sanitizeHtml } from "../../utils/sanitizeHtml";
 import { deriveTextPalette } from "../../utils/colorContrast";
 import { isWhatsappLink } from "../../utils/links";
+import { normalizeYoutubeEmbedUrl } from "../../utils/video";
 
 const props = defineProps<{ section: FeaturedVideoSection; previewDevice?: "desktop" | "mobile" }>();
 const headingDefaults = getSectionHeadingDefaults("featured_video");
@@ -70,19 +71,7 @@ const ctaColor = computed(() => props.section.ctaColor || "#41ce5f");
 const isMobilePreview = computed(() => props.previewDevice === "mobile");
 const videoWrapperClass = computed(() => (isMobilePreview.value ? "rounded-[18px]" : "rounded-[28px]"));
 
-const embeddedVideoUrl = computed(() => {
-  if (!props.section.videoUrl) return "";
-  let url = props.section.videoUrl.trim();
-  const iframeSrc = url.match(/src=["']([^"']+)["']/i);
-  if (iframeSrc?.[1]) {
-    url = iframeSrc[1];
-  }
-  if (!/^https?:\/\//i.test(url)) {
-    url = `https://${url}`.replace(/https?:\/\//i, "https://");
-  }
-  url = url.replace("watch?v=", "embed/").replace("youtu.be/", "www.youtube.com/embed/");
-  return url;
-});
+const embeddedVideoUrl = computed(() => normalizeYoutubeEmbedUrl(props.section.videoUrl));
 
 const ctaMode = computed(() => props.section.ctaMode || "link");
 const ctaHasTarget = computed(() =>

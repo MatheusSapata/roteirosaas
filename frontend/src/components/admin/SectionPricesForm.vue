@@ -147,13 +147,24 @@
           </div>
         </div>
 
-        <div>
-          <label class="mb-1 block text-xs font-semibold text-slate-500">Texto do botao para este plano</label>
-          <input
-            v-model="item.ctaLabel"
-            placeholder="Deixe vazio para usar o texto geral"
-            class="w-full rounded-lg border border-slate-200 px-3 py-2"
-          />
+        <div class="grid gap-3 md:grid-cols-2">
+          <div>
+            <label class="mb-1 block text-xs font-semibold text-slate-500">Texto do botao para este plano</label>
+            <input
+              v-model="item.ctaLabel"
+              placeholder="Deixe vazio para usar o texto geral"
+              class="w-full rounded-lg border border-slate-200 px-3 py-2"
+            />
+          </div>
+          <div>
+            <label class="mb-1 block text-xs font-semibold text-slate-500">Link do botao</label>
+            <input
+              v-model="item.ctaLink"
+              placeholder="https://..."
+              class="w-full rounded-lg border border-slate-200 px-3 py-2"
+            />
+            <p class="mt-1 text-xs text-slate-500">Se vazio, usa o link geral.</p>
+          </div>
         </div>
 
         <div class="flex flex-wrap items-center justify-between gap-3">
@@ -215,6 +226,7 @@ const cloneItems = (items?: PriceItem[]): PriceItem[] =>
         priceLabel: item.priceLabel || "",
         badge: item.badge || "",
         ctaLabel: item.ctaLabel || "",
+        ctaLink: item.ctaLink || "",
         currency: (item.currency as CurrencyCode) || "BRL",
         highlight: !!item.highlight
       }))
@@ -273,6 +285,7 @@ const addItem = () => {
     priceLabel: "",
     badge: "",
     ctaLabel: "",
+    ctaLink: "",
     currency: "BRL",
     highlight: false
   });
@@ -296,6 +309,7 @@ watch(
       priceLabel: item.priceLabel || "",
       badge: item.badge || "",
       ctaLabel: item.ctaLabel || "",
+      ctaLink: normalizeLink(item.ctaLink),
       currency: (item.currency as CurrencyCode) || "BRL",
       highlight: !!item.highlight
     }))

@@ -100,6 +100,7 @@ export interface PriceItem {
   badge?: string;
   highlight?: boolean;
   ctaLabel?: string;
+  ctaLink?: string;
 }
 
 export interface PricesSection extends SectionBase {
@@ -213,6 +214,7 @@ export interface StorySection extends SectionBase {
   ctaColor?: string;
   ctaEnabled?: boolean;
   images: string[];
+  videoUrls?: string[];
   videoUrl?: string;
   backgroundColor?: string;
   borderEnabled?: boolean;

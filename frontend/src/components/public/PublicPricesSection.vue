@@ -57,12 +57,12 @@
               </div>
 
               <a
-                v-if="ctaLink"
-                :href="ctaLink"
+                v-if="itemLink(item)"
+                :href="itemLink(item)"
                 target="_blank"
                 rel="noopener"
                 data-track-event="cta"
-                :data-track-type="ctaTrackType"
+                :data-track-type="trackType(itemLink(item))"
                 :class="[
                   'inline-flex items-center justify-center rounded-full px-5 py-2 text-sm font-semibold shadow-md transition w-full md:w-auto max-w-sm mx-auto md:mx-0',
                   item.highlight ? 'text-slate-900 hover:-translate-y-0.5 hover:shadow-xl' : 'text-white hover:-translate-y-0.5 hover:shadow-lg'
@@ -133,7 +133,7 @@ const sanitizeLink = (value?: string | null) => {
   return `https://${trimmed}`;
 };
 
-const ctaLink = computed(() => sanitizeLink(props.section.ctaLink));
+const baseCtaLink = computed(() => sanitizeLink(props.section.ctaLink));
 
 const title = computed(() => (props.section.title && props.section.title.trim().length ? props.section.title : defaultTitle));
 
@@ -182,5 +182,9 @@ const formatPrice = (price: number, currency?: PriceItem["currency"]) => {
   }
 };
 
-const ctaTrackType = computed(() => (ctaLink.value && isWhatsappLink(ctaLink.value) ? "whatsapp" : "cta"));
+const itemLink = (item: PriceItem) => {
+  const specific = sanitizeLink(item.ctaLink);
+  return specific || baseCtaLink.value;
+};
+const trackType = (link?: string) => (link && isWhatsappLink(link) ? "whatsapp" : "cta");
 </script>

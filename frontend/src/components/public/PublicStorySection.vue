@@ -32,11 +32,11 @@
         </div>
         <div :class="[mediaContainerClass, isMobilePreview ? 'mt-6' : 'md:mt-0']">
           <div :class="mediaInnerClass">
-            <template v-if="section.videoUrl">
+            <template v-if="primaryMedia?.type === 'video'">
               <div class="relative pt-[56.25%]">
                 <iframe
                   :class="iframeClass"
-                  :src="embeddedVideoUrl"
+                  :src="primaryMedia.url"
                   title="Video"
                   frameborder="0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -44,7 +44,13 @@
                 ></iframe>
               </div>
             </template>
-            <img v-else :src="primaryImage" alt="Destaque" class="h-full w-full object-cover" />
+            <img
+              v-else-if="primaryMedia"
+              :src="primaryMedia.url"
+              alt="Destaque"
+              class="h-full w-full cursor-zoom-in object-cover"
+              @click="openLightbox(primaryMedia)"
+            />
           </div>
         </div>
       </div>
@@ -83,11 +89,11 @@
           :class="[mediaContainerClass, imagePosition === 'left' ? 'md:order-1' : 'md:order-2', isMobilePreview ? 'mt-6' : 'md:mt-0']"
         >
           <div :class="mediaInnerClass">
-            <template v-if="section.videoUrl">
+            <template v-if="activeMedia?.type === 'video'">
               <div class="relative pt-[56.25%]">
                 <iframe
                   :class="iframeClass"
-                  :src="embeddedVideoUrl"
+                  :src="activeMedia.url"
                   title="Video"
                   frameborder="0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -95,29 +101,85 @@
                 ></iframe>
               </div>
             </template>
-            <img v-else :src="activeImage" alt="Destaque" :class="galleryImageClass" />
+            <img
+              v-else-if="activeMedia"
+              :src="activeMedia.url"
+              alt="Destaque"
+              :class="[galleryImageClass, 'cursor-zoom-in']"
+              @click="openLightbox(activeMedia)"
+            />
           </div>
-          <div v-if="!section.videoUrl" class="flex flex-wrap gap-3">
+          <div
+            v-if="mediaItems.length > 1"
+            :class="thumbnailContainerClass"
+            :style="thumbnailGridStyle"
+          >
             <button
-              v-for="(img, idx) in resolvedImages"
-              :key="idx"
+              v-for="(media, idx) in mediaItems"
+              :key="`media-thumb-${idx}`"
               class="overflow-hidden rounded-xl ring-2 transition"
               :class="idx === activeIndex ? 'ring-slate-900' : 'ring-transparent hover:ring-slate-300'"
               @click="activeIndex = idx"
             >
-              <img :src="img" alt="Thumb" class="h-20 w-28 object-cover" />
+              <template v-if="media.type === 'image'">
+                <img :src="media.url" alt="Thumb" :class="thumbnailImageClass" />
+              </template>
+              <template v-else>
+                <div :class="thumbnailVideoWrapperClass">
+                  <img
+                    v-if="media.thumb"
+                    :src="media.thumb"
+                    alt="Thumb vídeo"
+                    class="h-full w-full object-cover opacity-80"
+                  />
+                  <div class="absolute inset-0 flex items-center justify-center">
+                    <svg class="h-6 w-6 text-white" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M8 5v14l11-7z"></path>
+                    </svg>
+                  </div>
+                </div>
+              </template>
             </button>
           </div>
         </div>
       </div>
     </div>
+    <Teleport to="body">
+      <Transition name="fade">
+        <div
+          v-if="lightboxMedia"
+          class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4 py-6 backdrop-blur-sm"
+          @click.self="closeLightbox"
+        >
+          <button
+            class="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white transition hover:bg-white/20"
+            type="button"
+            @click="closeLightbox"
+            aria-label="Fechar visualização"
+          >
+            <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6l-12 12" />
+            </svg>
+          </button>
+          <div class="max-h-[90vh] w-full max-w-5xl">
+            <img
+              v-if="lightboxMedia?.type === 'image'"
+              :src="lightboxMedia.url"
+              alt="Visualização ampliada"
+              class="h-full w-full rounded-3xl object-contain"
+            />
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </section>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { resolveMediaUrl } from "../../utils/media";
 import { isWhatsappLink } from "../../utils/links";
+import { normalizeYoutubeEmbedUrl, extractYoutubeId } from "../../utils/video";
 import type { StorySection } from "../../types/page";
 import SectionHeadingChip from "./SectionHeadingChip.vue";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
@@ -203,31 +265,106 @@ const iframeClass = computed(() =>
 const galleryImageClass = computed(() =>
   props.section.borderEnabled ? "h-full w-full object-cover" : "h-80 w-full object-cover md:h-96"
 );
-const embeddedVideoUrl = computed(() => {
-  if (!props.section.videoUrl) return "";
-  let url = props.section.videoUrl.trim();
-  const iframeSrc = url.match(/src=["']([^"']+)["']/i);
-  if (iframeSrc?.[1]) {
-    url = iframeSrc[1];
-  }
-  if (!url.startsWith("http")) {
-    url = `https://${url}`;
-  }
-  url = url.replace("watch?v=", "embed/").replace("youtu.be/", "www.youtube.com/embed/");
-  return url;
+const thumbnailContainerClass = computed(() =>
+  isMobilePreview.value ? "w-full grid grid-cols-2 gap-2" : "w-full grid gap-3 justify-items-stretch"
+);
+const thumbnailGridStyle = computed(() => {
+  if (isMobilePreview.value) return undefined;
+  const columns = Math.min(mediaItems.value.length, 5);
+  return {
+    gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`
+  };
 });
+const thumbnailImageClass = computed(() => "w-full aspect-[4/3] object-cover");
+const thumbnailVideoWrapperClass = computed(() => "relative overflow-hidden rounded-xl bg-slate-900/70 text-white w-full aspect-[4/3]");
+const youtubeThumbnail = (url: string) => {
+  const id = extractYoutubeId(url);
+  return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : "";
+};
+type StoryMediaItem =
+  | { type: "video"; url: string; thumb?: string }
+  | { type: "image"; url: string };
+const videoInputs = computed(() => {
+  const list = Array.isArray(props.section.videoUrls)
+    ? props.section.videoUrls.map(video => (typeof video === "string" ? video.trim() : "")).filter(Boolean)
+    : [];
+  if (typeof props.section.videoUrl === "string") {
+    const legacy = props.section.videoUrl.trim();
+    if (legacy && !list.includes(legacy)) {
+      list.unshift(legacy);
+    }
+  }
+  return list;
+});
+const resolvedVideos = computed<StoryMediaItem[]>(() =>
+  videoInputs.value
+    .map(url => {
+      const normalized = normalizeYoutubeEmbedUrl(url);
+      if (!normalized) return null;
+      return { type: "video" as const, url: normalized, thumb: youtubeThumbnail(url) };
+    })
+    .filter((item): item is StoryMediaItem => !!item)
+);
 const resolvedImages = computed(() =>
   (props.section.images || []).map(img => resolveMediaUrl(img) || img).filter(Boolean)
 );
+const mediaItems = computed<StoryMediaItem[]>(() => [
+  ...resolvedVideos.value,
+  ...resolvedImages.value.map(url => ({ type: "image" as const, url }))
+]);
+const primaryMedia = computed(() => mediaItems.value[0] || null);
 const activeIndex = ref(0);
-const activeImage = computed(() => resolvedImages.value[activeIndex.value] || "");
-const primaryImage = computed(() => resolvedImages.value[0] || "");
-
+const activeMedia = computed(() => mediaItems.value[activeIndex.value] || null);
+const lightboxMedia = ref<StoryMediaItem | null>(null);
+const hasWindow = typeof window !== "undefined";
+const openLightbox = (media?: StoryMediaItem | null) => {
+  if (!media || media.type !== "image") return;
+  lightboxMedia.value = media;
+};
+const closeLightbox = () => {
+  lightboxMedia.value = null;
+};
+const handleKeydown = (event: KeyboardEvent) => {
+  if (event.key === "Escape") {
+    closeLightbox();
+  }
+};
 watch(
-  () => props.section.images,
+  () => [props.section.images, props.section.videoUrls, props.section.videoUrl],
   () => {
     activeIndex.value = 0;
+  },
+  { deep: true }
+);
+
+watch(
+  mediaItems,
+  newItems => {
+    if (activeIndex.value > 0 && activeIndex.value >= newItems.length) {
+      activeIndex.value = 0;
+    }
+  },
+  { deep: true }
+);
+
+watch(
+  () => lightboxMedia.value,
+  value => {
+    if (!hasWindow) return;
+    if (value) {
+      window.addEventListener("keydown", handleKeydown);
+      document.body.style.setProperty("overflow", "hidden");
+    } else {
+      window.removeEventListener("keydown", handleKeydown);
+      document.body.style.removeProperty("overflow");
+    }
   }
 );
+
+onBeforeUnmount(() => {
+  if (!hasWindow) return;
+  window.removeEventListener("keydown", handleKeydown);
+  document.body.style.removeProperty("overflow");
+});
 </script>
 
