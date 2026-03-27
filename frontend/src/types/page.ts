@@ -174,6 +174,7 @@ export interface FeaturedVideoSection extends SectionBase {
   title: string;
   subtitle?: string;
   videoUrl?: string;
+  ctaEnabled?: boolean;
   ctaLabel?: string;
   ctaLink?: string;
   ctaMode?: "link" | "section";

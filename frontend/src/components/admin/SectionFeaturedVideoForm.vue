@@ -30,7 +30,12 @@
       <p class="mt-1 text-xs text-slate-500">Aceita links completos ou o código iframe do YouTube/Vimeo.</p>
     </div>
 
-    <div class="space-y-3 rounded-xl border border-slate-200 p-4">
+    <div class="flex items-center gap-2">
+      <input type="checkbox" v-model="local.ctaEnabled" class="h-4 w-4" />
+      <label class="text-sm font-semibold text-slate-600">Mostrar botao de CTA</label>
+    </div>
+
+    <div v-if="local.ctaEnabled" class="space-y-3 rounded-xl border border-slate-200 p-4">
       <div class="flex items-center justify-between">
         <p class="text-sm font-semibold text-slate-600">Botão principal</p>
         <span class="text-xs text-slate-500">Defina o destino do CTA</span>
@@ -89,6 +94,7 @@ const local = reactive<FeaturedVideoSection>({
   title: props.modelValue.title || "",
   subtitle: props.modelValue.subtitle || "",
   videoUrl: props.modelValue.videoUrl || "",
+  ctaEnabled: props.modelValue.ctaEnabled !== false,
   ctaLabel: props.modelValue.ctaLabel || "Assistir agora",
   ctaLink: props.modelValue.ctaLink || "https://wa.me/",
   ctaMode: props.modelValue.ctaMode || "link",
@@ -104,6 +110,7 @@ const syncFromProps = (value: FeaturedVideoSection) => {
   local.title = value.title || "";
   local.subtitle = value.subtitle || "";
   local.videoUrl = value.videoUrl || "";
+  local.ctaEnabled = value.ctaEnabled !== false;
   local.ctaLabel = value.ctaLabel || "Assistir agora";
   local.ctaLink = value.ctaLink || "https://wa.me/";
   local.ctaMode = value.ctaMode || "link";

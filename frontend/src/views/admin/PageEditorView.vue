@@ -2063,6 +2063,7 @@ function defaultSection(type: SectionType): PageSection {
       title: "Assista ao roteiro em 2 minutos",
       subtitle: "Mostre o clima da experiencia com um video curto e objetivo.",
       videoUrl: "https://www.youtube.com/watch?v=ysz5S6PUM-U",
+      ctaEnabled: true,
       ctaLabel: "Falar com especialista",
       ctaLink: buildWhatsappLink(pageTitle.value) || "https://wa.me/",
       ctaMode: "link",

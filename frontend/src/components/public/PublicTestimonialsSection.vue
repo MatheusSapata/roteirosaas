@@ -55,8 +55,8 @@
           rel="noopener"
           data-track-event="cta"
           :data-track-type="ctaTrackType"
-          class="inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl"
-          :style="{ background: accent }"
+          class="inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl hero-cta-shimmer hero-cta-desktop-hover"
+          :style="{ background: accent, color: ctaTextColor }"
         >
           {{ section.ctaLabel || "Falar com especialista" }}
         </a>
@@ -73,12 +73,13 @@ import type { TestimonialsSection } from "../../types/page";
 import SectionHeadingChip from "./SectionHeadingChip.vue";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import { sanitizeHtml } from "../../utils/sanitizeHtml";
-import { deriveTextPalette } from "../../utils/colorContrast";
+import { deriveTextPalette, getReadableTextColor } from "../../utils/colorContrast";
 
 const props = defineProps<{ section: TestimonialsSection }>();
 const headingDefaults = getSectionHeadingDefaults("testimonials");
 
 const accent = computed(() => props.section.ctaColor || "#5b49ff");
+const ctaTextColor = computed(() => getReadableTextColor(accent.value));
 const accentBackground = computed(() => props.section.backgroundColor || "linear-gradient(135deg,#5b49ff,#3b82f6)");
 const cardColor = computed(() => props.section.cardColor || "#ffffff");
 

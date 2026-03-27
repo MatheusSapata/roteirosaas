@@ -81,8 +81,8 @@
               rel="noopener"
               data-track-event="cta"
               :data-track-type="ctaTrackType"
-              :class="['inline-flex w-full items-center justify-center rounded-full px-5 py-3 text-sm font-semibold text-white shadow-xl shadow-black/40 transition hover:-translate-y-0.5 hover:shadow-2xl', ctaShimmerClass]"
-              :style="{ background: ctaColor }"
+              :class="['inline-flex w-full items-center justify-center rounded-full px-5 py-3 text-sm font-semibold shadow-xl shadow-black/40 transition hover:-translate-y-0.5 hover:shadow-2xl', ctaShimmerClass]"
+              :style="{ background: ctaColor, color: ctaTextColor }"
             >
               {{ section.ctaLabel || "Quero falar agora" }}
             </a>
@@ -172,8 +172,8 @@
                   rel="noopener"
                   data-track-event="cta"
                   :data-track-type="ctaTrackType"
-                  :class="['inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold text-white shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl', ctaShimmerClass, desktopCtaHoverClass]"
-                  :style="{ background: ctaColor }"
+                  :class="['inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl', ctaShimmerClass, desktopCtaHoverClass]"
+                  :style="{ background: ctaColor, color: ctaTextColor }"
                 >
                   {{ section.ctaLabel || "Quero falar agora" }}
                 </a>
@@ -234,6 +234,7 @@ import { resolveMediaUrl } from "../../utils/media";
 import { isWhatsappLink } from "../../utils/links";
 import { sanitizeHtml } from "../../utils/sanitizeHtml";
 import { normalizeYoutubeEmbedUrl } from "../../utils/video";
+import { getReadableTextColor } from "../../utils/colorContrast";
 import type { HeroSection } from "../../types/page";
 
 const props = defineProps<{ section: HeroSection; branding: Record<string, any>; previewDevice?: "desktop" | "mobile" }>();
@@ -254,6 +255,7 @@ const logoImageStyle = computed(() => ({
 }));
 const accent = computed(() => props.section.gradientColor || props.section.backgroundColor || "#41ce5f");
 const ctaColor = computed(() => props.section.ctaColor || accent.value);
+const ctaTextColor = computed(() => getReadableTextColor(ctaColor.value));
 const ctaMode = computed(() => props.section.ctaMode || "link");
 const ctaHref = computed(() =>
   ctaMode.value === "section" && props.section.ctaSectionId ? `#${props.section.ctaSectionId}` : props.section.ctaLink || "#"
@@ -422,70 +424,5 @@ const desktopCtaHoverClass = computed(() => "hero-cta-desktop-hover");
 
 .hero-delay-6 {
   animation-delay: 0.55s;
-}
-
-:global(.hero-cta-shimmer) {
-  position: relative;
-  overflow: hidden;
-}
-
-:global(.hero-cta-shimmer::after) {
-  content: "";
-  position: absolute;
-  inset: -35% -5%;
-  width: 90%;
-  background: linear-gradient(
-    120deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.35) 30%,
-    rgba(255, 255, 255, 0.95) 50%,
-    rgba(255, 255, 255, 0.35) 70%,
-    transparent 90%
-  );
-  transform: translateX(-150%) skewX(-10deg);
-  animation: hero-cta-shimmer 1.8s ease-in-out 0.2s infinite;
-  pointer-events: none;
-  opacity: 0;
-}
-
-@keyframes hero-cta-shimmer {
-  0% {
-    transform: translateX(-150%) skewX(-10deg);
-    opacity: 0;
-  }
-  5% {
-    opacity: 0;
-  }
-  18% {
-    opacity: 0.65;
-  }
-  40% {
-    transform: translateX(-20%) skewX(-10deg);
-    opacity: 0.4;
-  }
-  65% {
-    opacity: 0.2;
-  }
-  82% {
-    opacity: 0.12;
-  }
-  92% {
-    opacity: 0.02;
-  }
-  100% {
-    transform: translateX(150%) skewX(-10deg);
-    opacity: 0;
-  }
-}
-
-@media (hover: hover) and (pointer: fine) {
-  :global(.hero-cta-desktop-hover) {
-    transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
-  }
-
-  :global(.hero-cta-desktop-hover:hover) {
-    transform: scale(1.07);
-    box-shadow: 0 25px 50px -20px rgba(15, 23, 42, 0.7);
-  }
 }
 </style>
