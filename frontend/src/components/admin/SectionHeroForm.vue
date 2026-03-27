@@ -149,32 +149,8 @@
         </div>
       </div>
 
-      <div class="rounded-lg border border-slate-200 p-4 space-y-3">
-        <label class="flex items-start gap-3">
-          <input
-            v-model="local.enableAnimation"
-            type="checkbox"
-            class="mt-1 h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand"
-          />
-          <div>
-            <span class="text-sm font-semibold text-slate-700">Animar entrada do conteudo</span>
-            <p class="text-xs text-slate-500">
-              Logo, titulo, subtitulo e botao surgem em 1000ms com fade-in suave ao carregar a pagina.
-            </p>
-          </div>
-        </label>
-        <label class="flex items-start gap-3">
-          <input
-            v-model="local.ctaShimmer"
-            type="checkbox"
-            class="mt-1 h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand"
-            :disabled="!local.enableAnimation"
-          />
-          <div>
-            <span class="text-sm font-semibold text-slate-700">Adicionar brilho animado no botao</span>
-            <p class="text-xs text-slate-500">Disponivel apenas quando o fade-in estiver ativado.</p>
-          </div>
-        </label>
+      <div class="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+        Animacoes de fade-in e o brilho do botao estao sempre ativos nesta secao.
       </div>
     </div>
   </div>
@@ -201,17 +177,13 @@ const local = reactive<HeroSection>({
   chips: props.modelValue.chips ? [...props.modelValue.chips] : [],
   ctaMode: props.modelValue.ctaMode || "link",
   ctaSectionId: props.modelValue.ctaSectionId || null,
-  enableAnimation: props.modelValue.enableAnimation ?? false,
+  enableAnimation: true,
   animationDuration: HERO_ANIMATION_DURATION,
-  ctaShimmer: props.modelValue.ctaShimmer ?? false
+  ctaShimmer: true
 });
 if (!local.chips || !local.chips.length) {
   local.chips = [""];
 }
-if (!local.enableAnimation) {
-  local.ctaShimmer = false;
-}
-
 let syncing = false;
 const syncFromProps = (value: HeroSection) => {
   syncing = true;
@@ -223,12 +195,9 @@ const syncFromProps = (value: HeroSection) => {
   if (!local.chips.length) local.chips = [""];
   local.ctaMode = value.ctaMode || "link";
   local.ctaSectionId = value.ctaSectionId || null;
-  local.enableAnimation = value.enableAnimation ?? false;
+  local.enableAnimation = true;
   local.animationDuration = HERO_ANIMATION_DURATION;
-  local.ctaShimmer = value.ctaShimmer ?? false;
-  if (!local.enableAnimation) {
-    local.ctaShimmer = false;
-  }
+  local.ctaShimmer = true;
   nextTick(() => {
     syncing = false;
   });
@@ -284,16 +253,6 @@ const ensureLogoRadiusBounds = () => {
 watch(
   () => local.logoSize,
   () => ensureLogoRadiusBounds()
-);
-
-watch(
-  () => local.enableAnimation,
-  value => {
-    local.animationDuration = HERO_ANIMATION_DURATION;
-    if (!value) {
-      local.ctaShimmer = false;
-    }
-  }
 );
 
 watch(

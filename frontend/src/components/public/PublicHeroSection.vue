@@ -373,15 +373,13 @@ const immersiveGradient = computed(() => {
 
 const chipsToShow = computed(() => props.section.chips || []);
 const trackType = (link?: string | null) => (isWhatsappLink(link || undefined) ? "whatsapp" : "cta");
-const animateContent = computed(() => !!props.section.enableAnimation);
+const animateContent = computed(() => true);
 const HERO_ANIMATION_MS = 1000;
 const animationDuration = computed(() => HERO_ANIMATION_MS);
-const animationVars = computed(() =>
-  animateContent.value ? { "--hero-anim-duration": `${animationDuration.value}ms` } : {}
-);
-const animationClasses = (step: number) => (animateContent.value ? ["hero-fade", `hero-delay-${Math.min(Math.max(step, 1), 6)}`] : []);
-const ctaShimmerClass = computed(() => (props.section.enableAnimation && props.section.ctaShimmer ? "hero-cta-shimmer" : ""));
-const desktopCtaHoverClass = computed(() => (props.section.enableAnimation ? "hero-cta-desktop-hover" : ""));
+const animationVars = computed(() => ({ "--hero-anim-duration": `${animationDuration.value}ms` }));
+const animationClasses = (step: number) => ["hero-fade", `hero-delay-${Math.min(Math.max(step, 1), 6)}`];
+const ctaShimmerClass = computed(() => "hero-cta-shimmer");
+const desktopCtaHoverClass = computed(() => "hero-cta-desktop-hover");
 </script>
 
 <style scoped>

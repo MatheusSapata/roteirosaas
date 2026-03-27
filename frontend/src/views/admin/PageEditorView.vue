@@ -1915,9 +1915,9 @@ function defaultSection(type: SectionType): PageSection {
       ctaColor: theme.value.ctaDefaultColor,
       ctaMode: "link",
       ctaSectionId: null,
-      enableAnimation: false,
+      enableAnimation: true,
       animationDuration: 1000,
-      ctaShimmer: false
+      ctaShimmer: true
     } as HeroSection);
   }
 
@@ -2093,7 +2093,7 @@ function defaultSection(type: SectionType): PageSection {
       ctaColor: theme.value.ctaDefaultColor,
       ctaEnabled: true,
       enableAnimation: true,
-      ctaShimmer: false,
+      ctaShimmer: true,
       ctaMode: "link",
       ctaSectionId: null,
       borderEnabled: false,
@@ -2133,7 +2133,7 @@ function defaultSection(type: SectionType): PageSection {
         { icon: "🤝", title: "Apoio dedicado", description: "Suporte próximo antes, durante e depois da viagem." },
         { icon: "✨", title: "Experiência única", description: "Curadoria de passeios e hospedagens memoráveis." }
       ],
-      enableAnimation: false,
+      enableAnimation: true,
       animationDuration: 1000,
       cardAnimationStagger: 300
     } as ReasonsSection);

@@ -72,18 +72,8 @@
       </div>
     </div>
 
-    <div class="rounded-lg border border-slate-200 p-4">
-      <label class="flex items-start gap-3">
-        <input
-          v-model="local.enableAnimation"
-          type="checkbox"
-          class="mt-1 h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand"
-        />
-        <div>
-          <span class="text-sm font-semibold text-slate-700">Animar entrada dos cards</span>
-          <p class="text-xs text-slate-500">Fade-in padrão com efeito em cascata quando a seção entra no campo de visão.</p>
-        </div>
-      </label>
+    <div class="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+      Animacoes em fade-in dos cards sao aplicadas automaticamente nesta secao.
     </div>
 
   </div>
@@ -113,7 +103,7 @@ const local = reactive<ReasonsSection>({
   ...props.modelValue,
   headingLabel: props.modelValue.headingLabel ?? headingDefaults.label,
   headingLabelStyle: props.modelValue.headingLabelStyle ?? headingDefaults.style,
-  enableAnimation: props.modelValue.enableAnimation ?? false,
+  enableAnimation: true,
   animationDuration: clampDuration(props.modelValue.animationDuration),
   cardAnimationStagger: clampStagger(props.modelValue.cardAnimationStagger)
 });
@@ -124,7 +114,7 @@ const syncFromProps = (value: ReasonsSection) => {
   local.headingLabel = value.headingLabel ?? headingDefaults.label;
   local.headingLabelStyle = value.headingLabelStyle || headingDefaults.style;
   local.items = Array.isArray(value.items) ? value.items.map(item => ({ ...item })) : [];
-  local.enableAnimation = value.enableAnimation ?? false;
+  local.enableAnimation = true;
   local.animationDuration = clampDuration(value.animationDuration);
   local.cardAnimationStagger = clampStagger(value.cardAnimationStagger);
   iconOpen.value = local.items.map(() => false);
@@ -239,14 +229,5 @@ watch(
   { deep: true }
 );
 
-watch(
-  () => local.enableAnimation,
-  value => {
-    if (value) {
-      local.animationDuration = DEFAULT_ANIMATION_DURATION;
-      local.cardAnimationStagger = DEFAULT_ANIMATION_STAGGER;
-    }
-  }
-);
 </script>
 

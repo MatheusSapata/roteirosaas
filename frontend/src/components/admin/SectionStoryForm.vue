@@ -49,30 +49,8 @@
       </div>
     </div>
 
-    <div class="rounded-lg border border-slate-200 p-4 space-y-3">
-      <label class="flex items-start gap-3">
-        <input
-          v-model="local.enableAnimation"
-          type="checkbox"
-          class="mt-1 h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand"
-        />
-        <div>
-          <span class="text-sm font-semibold text-slate-700">Animar aparicao do conteudo</span>
-          <p class="text-xs text-slate-500">Texto e imagens surgem com leve fade-in ao entrar na tela.</p>
-        </div>
-      </label>
-      <label class="flex items-start gap-3">
-        <input
-          v-model="local.ctaShimmer"
-          type="checkbox"
-          class="mt-1 h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand"
-          :disabled="!local.enableAnimation"
-        />
-        <div>
-          <span class="text-sm font-semibold text-slate-700">Adicionar brilho no botão de CTA</span>
-          <p class="text-xs text-slate-500">Disponivel apenas quando a animacao estiver ativa.</p>
-        </div>
-      </label>
+    <div class="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+      Animacoes de fade-in e o brilho do botao de CTA sao aplicados automaticamente nesta secao.
     </div>
 
     <MultiImageUploadField
@@ -147,14 +125,11 @@ const local = reactive<StorySection>({
   headingLabel: props.modelValue.headingLabel ?? headingDefaults.label,
   headingLabelStyle: props.modelValue.headingLabelStyle ?? headingDefaults.style,
   ...props.modelValue,
-  enableAnimation: props.modelValue.enableAnimation !== false,
-  ctaShimmer: props.modelValue.ctaShimmer ?? false,
+  enableAnimation: true,
+  ctaShimmer: true,
   ctaMode: props.modelValue.ctaMode || "link",
   ctaSectionId: props.modelValue.ctaSectionId || null
 });
-if (!local.enableAnimation) {
-  local.ctaShimmer = false;
-}
 const countValidImages = (images?: string[]) =>
   Array.isArray(images) ? images.filter(img => typeof img === "string" && img.trim().length > 0).length : 0;
 const countValidVideos = (videos?: string[]) =>
@@ -178,11 +153,8 @@ const syncFromProps = (value: StorySection) => {
   local.videoUrl = local.videoUrls[0] || "";
   local.ctaMode = value.ctaMode || "link";
   local.ctaSectionId = value.ctaSectionId || null;
-  local.enableAnimation = value.enableAnimation !== false;
-  local.ctaShimmer = value.ctaShimmer ?? false;
-  if (!local.enableAnimation) {
-    local.ctaShimmer = false;
-  }
+  local.enableAnimation = true;
+  local.ctaShimmer = true;
   applyAutomaticLayout();
   nextTick(() => {
     syncing = false;
@@ -228,15 +200,6 @@ watch(
     applyAutomaticLayout();
   },
   { deep: true }
-);
-
-watch(
-  () => local.enableAnimation,
-  value => {
-    if (!value) {
-      local.ctaShimmer = false;
-    }
-  }
 );
 
 watch(

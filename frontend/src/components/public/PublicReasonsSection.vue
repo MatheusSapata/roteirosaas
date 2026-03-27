@@ -91,7 +91,7 @@ const revealedMobileCards = ref<boolean[]>([]);
 const mobileCardRefs = ref<(HTMLElement | null)[]>([]);
 let cardsObserver: IntersectionObserver | null = null;
 let mobileCardsObserver: IntersectionObserver | null = null;
-const animationEnabled = computed(() => !!props.section.enableAnimation);
+const animationEnabled = computed(() => true);
 const clampDuration = (value?: number) => {
   const raw = typeof value === "number" && !Number.isNaN(value) ? value : 550;
   return Math.min(2000, Math.max(200, Math.round(raw)));

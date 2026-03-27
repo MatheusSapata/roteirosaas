@@ -254,9 +254,9 @@ const ctaTrackType = computed(() =>
   ctaMode.value === "section" ? "cta" : isWhatsappLink(props.section.ctaLink || undefined) ? "whatsapp" : "cta"
 );
 const ctaEnabled = computed(() => props.section.ctaEnabled !== false);
-const animateContent = computed(() => props.section.enableAnimation !== false);
-const ctaShimmerClass = computed(() => (animateContent.value && props.section.ctaShimmer ? "hero-cta-shimmer" : ""));
-const desktopCtaHoverClass = computed(() => (animateContent.value ? "hero-cta-desktop-hover" : ""));
+const animateContent = computed(() => true);
+const ctaShimmerClass = computed(() => "hero-cta-shimmer");
+const desktopCtaHoverClass = computed(() => "hero-cta-desktop-hover");
 const isMobilePreview = computed(() => props.previewDevice === "mobile");
 const borderColor = computed(() => props.section.borderColor || props.section.ctaColor || "#41ce5f");
 const borderStyle = computed(() =>
