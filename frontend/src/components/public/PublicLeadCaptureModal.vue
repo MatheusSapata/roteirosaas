@@ -7,7 +7,7 @@
       >
         <div class="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"></div>
         <div
-          class="relative z-10 w-full max-w-lg rounded-[32px] border border-white/10 bg-white/95 p-6 text-slate-900 shadow-2xl backdrop-blur-sm dark:bg-slate-900/95 dark:text-white"
+          class="relative z-10 w-full max-w-md rounded-[24px] border border-white/10 bg-white/95 p-5 text-slate-900 shadow-2xl backdrop-blur-sm dark:bg-slate-900/95 dark:text-white"
         >
           <button
             v-if="dismissible"
@@ -20,9 +20,9 @@
               <path d="M6 6l12 12M6 18L18 6" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
           </button>
-          <div class="space-y-5">
+          <div class="space-y-4">
             <div class="space-y-2 text-center">
-              <div v-if="brandingLogo" class="flex justify-center">
+              <div v-if="showBrandingLogo" class="flex justify-center">
                 <img :src="brandingLogo" alt="Logo da agência" class="h-16 w-16 rounded-xl object-contain" />
               </div>
               <h2 class="text-2xl font-bold">{{ form.title || "Faça parte da lista" }}</h2>
@@ -31,7 +31,7 @@
               </p>
             </div>
 
-            <form class="space-y-4" @submit.prevent="handleSubmit">
+            <form class="space-y-3" @submit.prevent="handleSubmit">
               <div v-for="field in form.fields" :key="field.id" class="space-y-1">
                 <label class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                   {{ field.label }}
@@ -42,15 +42,15 @@
                   :placeholder="field.placeholder"
                   :type="inputType(field.type)"
                   :inputmode="inputMode(field.type)"
-                  class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 shadow-sm focus:border-brand focus:ring-2 focus:ring-brand/50 dark:border-white/10 dark:bg-slate-900 dark:text-white"
+                  class="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-900 shadow-sm focus:border-brand focus:ring-2 focus:ring-brand/50 dark:border-white/10 dark:bg-slate-900 dark:text-white"
                 />
                 <p v-if="errors[field.id]" class="text-xs text-rose-500">{{ errors[field.id] }}</p>
               </div>
 
               <button
                 type="submit"
-                class="flex w-full items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold text-white shadow-lg transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
-                :style="{ backgroundColor: form.buttonColor || '#22c55e' }"
+                class="flex w-full items-center justify-center rounded-2xl px-3.5 py-2.5 text-sm font-semibold shadow-lg transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
+                :style="{ backgroundColor: buttonBackgroundColor, color: buttonTextColor }"
                 :disabled="loading"
               >
                 {{ loading ? "Enviando..." : form.buttonLabel || "Enviar" }}
@@ -68,7 +68,7 @@
 </template>
 
 <script setup lang="ts">
-import { onUnmounted, reactive, ref, watch } from "vue";
+import { computed, onUnmounted, reactive, ref, watch } from "vue";
 import { submitLeadForm } from "../../services/leadCapture";
 import type { LeadForm } from "../../types/leads";
 
@@ -82,6 +82,7 @@ const props = defineProps<{
   pageTitle?: string | null;
   pageUrl?: string | null;
   dismissible?: boolean;
+  accentColor?: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -94,6 +95,22 @@ const formState = reactive<Record<string, string>>({});
 const errors = reactive<Record<string, string>>({});
 const loading = ref(false);
 const generalError = ref("");
+const FALLBACK_ACCENT_COLOR = "#22c55e";
+const showBrandingLogo = computed(() => {
+  if (!props.brandingLogo) return false;
+  if (props.form && props.form.showLogo === false) return false;
+  return true;
+});
+
+const buttonBackgroundColor = computed(() => {
+  const accent = (props.accentColor || "").trim();
+  if (accent) return accent;
+  const formColor = props.form?.buttonColor?.trim();
+  if (formColor) return formColor;
+  return FALLBACK_ACCENT_COLOR;
+});
+
+const buttonTextColor = computed(() => (isLightColor(buttonBackgroundColor.value) ? "#0f172a" : "#ffffff"));
 
 const resetState = () => {
   Object.keys(formState).forEach(key => delete formState[key]);
@@ -209,6 +226,45 @@ watch(
 );
 
 onUnmounted(() => lockScroll(false));
+
+function isLightColor(color?: string | null) {
+  const rgb = parseColor(color);
+  if (!rgb) return false;
+  const luminance = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
+  return luminance >= 0.6;
+}
+
+function parseColor(value?: string | null): { r: number; g: number; b: number } | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+
+  if (trimmed.startsWith("#")) {
+    let hex = trimmed.slice(1);
+    if (hex.length === 3) {
+      hex = hex
+        .split("")
+        .map(char => char + char)
+        .join("");
+    }
+    if (hex.length !== 6) return null;
+    const num = Number.parseInt(hex, 16);
+    if (Number.isNaN(num)) return null;
+    return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
+  }
+
+  if (trimmed.startsWith("rgb")) {
+    const parts = trimmed
+      .replace(/[rgba()]/g, "")
+      .split(",")
+      .map(part => Number(part.trim()));
+
+    if (parts.length >= 3 && parts.every(n => Number.isFinite(n))) {
+      return { r: parts[0], g: parts[1], b: parts[2] };
+    }
+  }
+
+  return null;
+}
 </script>
 
 <style scoped>

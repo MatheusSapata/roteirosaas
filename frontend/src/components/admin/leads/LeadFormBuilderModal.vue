@@ -52,36 +52,29 @@
                     ></textarea>
                   </div>
                 </div>
-                <div class="space-y-3 rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-3 dark:border-white/20 dark:bg-[#0f1322]">
-                  <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">Botão</p>
-                  <div class="grid gap-3 md:grid-cols-2">
-                    <div>
-                      <label class="text-xs font-semibold text-slate-500 dark:text-slate-300">Texto</label>
-                      <input
-                        v-model="state.buttonLabel"
-                      class="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-inner dark:border-white/15 dark:bg-[#0f1628] dark:text-white"
-                        placeholder="Quero receber agora"
-                      />
-                    </div>
-                    <div>
-                      <label class="text-xs font-semibold text-slate-500 dark:text-slate-300">Cor</label>
-                      <div class="mt-1 flex rounded-2xl border border-slate-200 bg-white text-sm shadow-inner dark:border-white/15 dark:bg-black/40">
-                        <input
-                          type="color"
-                          v-model="state.buttonColor"
-                          class="h-10 w-10 cursor-pointer rounded-l-2xl border-r border-slate-200 bg-white dark:border-white/20 dark:bg-black/30"
-                        />
-                        <input
-                          v-model="state.buttonColor"
-                          class="w-20 rounded-r-2xl bg-transparent px-3 py-2 text-slate-800 focus:outline-none dark:text-white"
-                          maxlength="9"
-                        />
-                      </div>
-                    </div>
+                <div class="grid gap-3 md:grid-cols-2">
+                  <div>
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">Texto do botão</p>
+                    <input
+                      v-model="state.buttonLabel"
+                      class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-inner dark:border-white/15 dark:bg-[#0f1628] dark:text-white"
+                      placeholder="Quero receber agora"
+                    />
+                    <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                      A cor seguirá automaticamente a cor de destaque da página.
+                    </p>
                   </div>
+
+                  <label class="flex h-full items-start gap-3 rounded-2xl border border-slate-100 bg-white/80 px-4 py-3 text-sm font-semibold text-slate-600 shadow-sm dark:border-white/15 dark:bg-white/5 dark:text-white">
+                    <input type="checkbox" v-model="state.showLogo" class="mt-1 h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand" />
+                    <span>
+                      Exibir logo da agência no topo
+                      <span class="block text-xs font-normal text-slate-500 dark:text-slate-400">Desmarque caso prefira um formulário sem branding.</span>
+                    </span>
+                  </label>
                 </div>
                 <div>
-                  <label class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">Status inicial</label>
+                  <label class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">Status inicial do lead</label>
                   <select
                     v-model="state.defaultStatusId"
                     class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-white/20 dark:bg-[#0c1221] dark:text-white"
@@ -190,7 +183,7 @@
               </div>
             </div>
 
-            <div class="hidden border-l border-slate-100 bg-slate-50 px-6 py-6 dark:border-white/5 dark:bg-[#0b0f1a] lg:block">
+            <div class="hidden border-l border-slate-100 bg-slate-50 px-6 py-6 dark:border-white/5 dark:bg-[#0b0f1a] lg:block builder-preview">
               <LeadFormPreview :form="state" interactive @reorder="reorderFieldsFromPreview" />
             </div>
           </div>
@@ -199,8 +192,7 @@
             <p v-if="errorMessage" class="text-sm text-rose-500">
               {{ errorMessage }}
             </p>
-            <span v-else class="text-xs uppercase tracking-[0.3em] text-slate-400">ID temporário: {{ editingId || "novo" }}</span>
-            <div class="flex flex-wrap gap-3">
+            <div class="flex flex-wrap gap-3 self-end md:ml-auto md:justify-end">
               <button
                 type="button"
                 class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 dark:border-white/15 dark:text-white dark:hover:bg-white/10"
@@ -240,8 +232,6 @@ const emit = defineEmits<{
   "update:modelValue": [value: boolean];
   save: [{ id: string | null; form: LeadFormPayload }];
 }>();
-
-const DEFAULT_BUTTON_COLOR = "#3CC96C";
 
 const generateId = () => `field-${Math.random().toString(36).slice(2, 9)}`;
 
@@ -288,7 +278,8 @@ const state = reactive<LeadFormPayload>({
   title: "",
   subtitle: "",
   buttonLabel: "Enviar",
-  buttonColor: DEFAULT_BUTTON_COLOR,
+  buttonColor: "",
+  showLogo: true,
   fields: [],
   defaultStatusId: null
 });
@@ -346,7 +337,8 @@ const resetState = () => {
   state.title = "";
   state.subtitle = "";
   state.buttonLabel = "Enviar";
-  state.buttonColor = DEFAULT_BUTTON_COLOR;
+  state.buttonColor = "";
+  state.showLogo = true;
   state.fields = [];
   state.defaultStatusId = null;
   editingId.value = null;
@@ -362,7 +354,8 @@ const hydrateFromForm = (form?: LeadForm | null) => {
   state.title = form.title || "";
   state.subtitle = form.subtitle || "";
   state.buttonLabel = form.buttonLabel || "Enviar";
-  state.buttonColor = form.buttonColor || DEFAULT_BUTTON_COLOR;
+  state.buttonColor = "";
+  state.showLogo = form.showLogo !== false;
   state.fields = (form.fields || []).map(field => createFieldFromPreset(field.type, field));
   state.defaultStatusId = form.defaultStatusId ? String(form.defaultStatusId) : null;
   editingId.value = form.id;
@@ -401,19 +394,28 @@ const resolveStatusPayload = () => {
   return Number.isNaN(parsed) ? state.defaultStatusId : parsed;
 };
 
-const buildPayload = (): LeadFormPayload => ({
-  name: state.name.trim(),
-  title: state.title.trim(),
-  subtitle: state.subtitle?.trim() || "",
-  buttonLabel: state.buttonLabel?.trim() || "Enviar",
-  buttonColor: state.buttonColor || DEFAULT_BUTTON_COLOR,
-  fields: state.fields.map(field => ({
-    ...field,
-    label: field.label?.trim() || presetLabel(field.type),
-    placeholder: field.placeholder?.trim() || ""
-  })),
-  defaultStatusId: resolveStatusPayload()
-});
+const buildPayload = (): LeadFormPayload => {
+  const cleanButtonColor = state.buttonColor?.trim() || "";
+  const payload: LeadFormPayload = {
+    name: state.name.trim(),
+    title: state.title.trim(),
+    subtitle: state.subtitle?.trim() || "",
+    buttonLabel: state.buttonLabel?.trim() || "Enviar",
+    showLogo: state.showLogo !== false,
+    fields: state.fields.map(field => ({
+      ...field,
+      label: field.label?.trim() || presetLabel(field.type),
+      placeholder: field.placeholder?.trim() || ""
+    })),
+    defaultStatusId: resolveStatusPayload()
+  };
+
+  if (cleanButtonColor) {
+    payload.buttonColor = cleanButtonColor;
+  }
+
+  return payload;
+};
 
 const handleSubmit = () => {
   if (!validate()) return;
@@ -475,5 +477,9 @@ onUnmounted(() => lockScroll(false));
 }
 :global(.dark-theme .lead-form-builder-modal .builder-left .text-slate-500) {
   color: #cbd5f5;
+}
+.builder-preview {
+  transform: scale(0.85);
+  transform-origin: top center;
 }
 </style>

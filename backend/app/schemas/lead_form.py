@@ -30,6 +30,7 @@ class LeadFormBase(BaseModel):
     subtitle: Optional[str] = None
     button_label: str = Field(..., alias="buttonLabel")
     button_color: Optional[str] = Field(None, alias="buttonColor")
+    show_logo: bool = Field(True, alias="showLogo")
     fields: list[LeadFormFieldSchema]
     default_status_id: Optional[int] = Field(None, alias="defaultStatusId")
 
@@ -59,6 +60,7 @@ class LeadFormUpdate(BaseModel):
     subtitle: Optional[str] = None
     button_label: Optional[str] = Field(None, alias="buttonLabel")
     button_color: Optional[str] = Field(None, alias="buttonColor")
+    show_logo: Optional[bool] = Field(None, alias="showLogo")
     fields: Optional[list[LeadFormFieldSchema]] = None
     default_status_id: Optional[int] = Field(None, alias="defaultStatusId")
 
@@ -118,6 +120,7 @@ class LeadFormPublicOut(BaseModel):
     subtitle: Optional[str] = None
     button_label: str = Field(..., alias="buttonLabel")
     button_color: Optional[str] = Field(None, alias="buttonColor")
+    show_logo: bool = Field(True, alias="showLogo")
     fields: list[LeadFormFieldSchema]
     default_status_id: Optional[int] = Field(None, alias="defaultStatusId")
     default_status_name: Optional[str] = Field(None, alias="defaultStatusName")

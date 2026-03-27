@@ -1,7 +1,7 @@
 <template>
   <div class="lead-form-preview rounded-2xl border border-slate-200 bg-slate-50 p-5 shadow-inner dark:border-white/10 dark:bg-white/5">
     <div class="flex flex-col items-center text-center">
-      <div v-if="agencyLogo" class="mb-3 flex justify-center">
+      <div v-if="agencyLogo && displayLogo" class="mb-3 flex justify-center">
         <img :src="agencyLogo" alt="Logo da agência" class="h-16 w-16 rounded-xl object-contain" />
       </div>
       <h3 class="mt-2 text-xl font-bold text-slate-900 dark:text-white">
@@ -67,6 +67,7 @@ const { agencies, currentAgencyId } = storeToRefs(agencyStore);
 
 const currentAgency = computed(() => agencies.value.find(agency => agency.id === currentAgencyId.value) || agencies.value[0] || null);
 const agencyLogo = computed(() => currentAgency.value?.logo_url || "");
+const displayLogo = computed(() => props.form.showLogo !== false);
 
 const presetLabels: Record<string, string> = {
   name: "Nome completo",
