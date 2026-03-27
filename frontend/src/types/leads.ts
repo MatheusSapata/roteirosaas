@@ -15,6 +15,7 @@ export interface LeadForm {
   subtitle?: string;
   buttonLabel: string;
   buttonColor?: string;
+  showLogo?: boolean;
   fields: LeadFormField[];
   defaultStatusId?: string | number | null;
   defaultStatusName?: string | null;
@@ -30,6 +31,7 @@ export interface LeadFormPayload {
   subtitle?: string;
   buttonLabel: string;
   buttonColor?: string;
+  showLogo?: boolean;
   fields: LeadFormField[];
   defaultStatusId?: string | number | null;
 }

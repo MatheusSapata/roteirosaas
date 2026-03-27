@@ -191,7 +191,6 @@
               class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
             />
           </label>
-
           <label class="space-y-1 text-xs font-semibold text-slate-500 md:pl-2">
             Bairro
             <input
@@ -607,11 +606,11 @@ const save = async () => {
     }
 
     phoneMessage.value = phoneDigits ? "Telefone salvo para os CTAs." : "Telefone removido dos CTAs.";
-    message.value = createdAgency ? "Ag�ncia criada." : "Configura��es atualizadas.";
+    message.value = createdAgency ? "Agência criada." : "Configurações atualizadas.";
   } catch (err) {
     console.error(err);
     const detail = (err as any)?.response?.data?.detail;
-    errorMessage.value = detail || "N�o foi poss�vel salvar/criar. Verifique login e permiss�es.";
+    errorMessage.value = detail || "Não foi possível salvar/criar. Verifique login e permissões.";
   } finally {
     saving.value = false;
   }

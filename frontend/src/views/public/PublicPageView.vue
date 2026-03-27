@@ -36,6 +36,7 @@
     :page-url="pageUrl || undefined"
     :branding-logo="brandingLogo"
     :dismissible="leadCaptureOptional"
+    :accent-color="leadAccentColor || undefined"
     @submitted="handleLeadModalSubmitted"
     @dismissed="handleLeadModalDismissed"
   />
@@ -110,6 +111,13 @@ const isPlatformHost = computed(() => {
 
 const brandingInfo = computed(() => pageData.value?.branding || {});
 provide(PUBLIC_BRANDING_KEY, brandingInfo);
+const leadAccentColor = computed(() => {
+  const primary = (theme.value?.ctaDefaultColor || "").trim();
+  if (primary) return primary;
+  const brandingTheme = (brandingInfo.value as Record<string, any>)?.theme as Record<string, any> | undefined;
+  const fallback = typeof brandingTheme?.ctaDefaultColor === "string" ? brandingTheme.ctaDefaultColor.trim() : "";
+  return fallback;
+});
 const currentPageSlug = computed(() => {
   if (pageData.value?.slug) return pageData.value.slug;
   const param = route.params.pageSlug;

@@ -1,7 +1,7 @@
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
+from sqlalchemy.sql import expression, func
 
 from app.db.base import Base
 
@@ -29,6 +29,7 @@ class LeadForm(Base):
   subtitle = Column(String(1000), nullable=True)
   button_label = Column(String(120), nullable=False)
   button_color = Column(String(50), nullable=True)
+  show_logo = Column(Boolean, nullable=False, server_default=expression.true())
   fields = Column(JSONB, nullable=False)
   default_status_id = Column(Integer, ForeignKey("lead_statuses.id", ondelete="SET NULL"), nullable=True, index=True)
   created_at = Column(DateTime(timezone=True), server_default=func.now())

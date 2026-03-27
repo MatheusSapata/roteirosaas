@@ -94,6 +94,7 @@ def create_lead_form(
         subtitle=form_in.subtitle.strip() if form_in.subtitle else None,
         button_label=form_in.button_label.strip(),
         button_color=form_in.button_color,
+        show_logo=form_in.show_logo,
         fields=[field.dict() for field in form_in.fields],
         default_status_id=default_status_id,
     )

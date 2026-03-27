@@ -19,7 +19,7 @@
             :style="{ borderColor: accentSoft }"
           >
             <summary class="cursor-pointer text-sm font-semibold text-slate-900">{{ item.question }}</summary>
-            <p class="mt-2 text-sm leading-relaxed text-slate-600">{{ item.answer }}</p>
+            <div class="mt-2 text-sm leading-relaxed text-slate-600 faq-answer" v-html="formatAnswer(item.answer)"></div>
           </details>
         </div>
 
@@ -33,7 +33,7 @@
               :style="{ borderColor: accentSoft }"
             >
               <p class="text-sm font-semibold text-slate-900">{{ item.question }}</p>
-              <p class="text-sm leading-relaxed text-slate-600">{{ item.answer }}</p>
+              <div class="text-sm leading-relaxed text-slate-600 faq-answer" v-html="formatAnswer(item.answer)"></div>
             </div>
           </div>
           <div class="space-y-3">
@@ -44,7 +44,7 @@
               :style="{ borderColor: accentSoft }"
             >
               <p class="text-sm font-semibold text-slate-900">{{ item.question }}</p>
-              <p class="text-sm leading-relaxed text-slate-600">{{ item.answer }}</p>
+              <div class="text-sm leading-relaxed text-slate-600 faq-answer" v-html="formatAnswer(item.answer)"></div>
             </div>
           </div>
         </div>
@@ -58,7 +58,7 @@
             :style="{ borderColor: accentSoft }"
           >
             <p class="text-sm font-semibold text-slate-900">{{ item.question }}</p>
-            <p class="text-sm leading-relaxed text-slate-600">{{ item.answer }}</p>
+            <div class="text-sm leading-relaxed text-slate-600 faq-answer" v-html="formatAnswer(item.answer)"></div>
           </div>
         </div>
       </div>
@@ -73,6 +73,7 @@ import SectionHeadingChip from "./SectionHeadingChip.vue";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
 import { deriveTextPalette } from "../../utils/colorContrast";
+import { sanitizeHtml } from "../../utils/sanitizeHtml";
 
 const props = defineProps<{ section: FaqSection }>();
 const headingDefaults = getSectionHeadingDefaults("faq");
@@ -125,6 +126,11 @@ const subtitle = computed(() => (props.section.subtitle && props.section.subtitl
 const textPalette = computed(() => deriveTextPalette(props.section.textColor));
 const primaryText = computed(() => textPalette.value.primary);
 const mutedText = computed(() => textPalette.value.muted);
+
+const formatAnswer = (value?: string) => {
+  const sanitized = sanitizeHtml(value);
+  return sanitized || "";
+};
 </script>
 
 

@@ -11,7 +11,7 @@
           <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Subtí­tulo</label>
           <input
             v-model="local.subtitle"
-            placeholder="VisÃ£o clara do roteiro completo"
+            placeholder="Visão clara do roteiro completo"
             class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2"
           />
         </div>

@@ -147,6 +147,15 @@
           </div>
         </div>
 
+        <div>
+          <label class="mb-1 block text-xs font-semibold text-slate-500">Texto do botao para este plano</label>
+          <input
+            v-model="item.ctaLabel"
+            placeholder="Deixe vazio para usar o texto geral"
+            class="w-full rounded-lg border border-slate-200 px-3 py-2"
+          />
+        </div>
+
         <div class="flex flex-wrap items-center justify-between gap-3">
           <label class="flex items-center gap-2 text-sm font-semibold text-slate-600">
             <input type="checkbox" v-model="item.highlight" class="h-4 w-4" />
@@ -205,6 +214,7 @@ const cloneItems = (items?: PriceItem[]): PriceItem[] =>
         description: item.description || "",
         priceLabel: item.priceLabel || "",
         badge: item.badge || "",
+        ctaLabel: item.ctaLabel || "",
         currency: (item.currency as CurrencyCode) || "BRL",
         highlight: !!item.highlight
       }))
@@ -262,6 +272,7 @@ const addItem = () => {
     description: "",
     priceLabel: "",
     badge: "",
+    ctaLabel: "",
     currency: "BRL",
     highlight: false
   });
@@ -284,6 +295,7 @@ watch(
       description: item.description || "",
       priceLabel: item.priceLabel || "",
       badge: item.badge || "",
+      ctaLabel: item.ctaLabel || "",
       currency: (item.currency as CurrencyCode) || "BRL",
       highlight: !!item.highlight
     }))

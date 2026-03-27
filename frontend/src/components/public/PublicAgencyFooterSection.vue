@@ -68,7 +68,7 @@
                   target="_blank"
                   rel="noopener"
                 >
-                  <svg viewBox="0 0 24 24" class="h-5 w-5" fill="currentColor">
+                  <svg viewBox="0 0 24 24" class="h-5 w-5" fill="currentColor" :style="{ color: socialIconColor }">
                     <path :d="link.iconPath" />
                   </svg>
                 </a>
@@ -164,7 +164,7 @@
                   target="_blank"
                   rel="noopener"
                 >
-                  <svg viewBox="0 0 24 24" class="h-5 w-5" fill="currentColor">
+                  <svg viewBox="0 0 24 24" class="h-5 w-5" fill="currentColor" :style="{ color: socialIconColor }">
                     <path :d="link.iconPath" />
                   </svg>
                 </a>
@@ -367,6 +367,9 @@ const accentBaseColor = computed(() => {
 });
 
 const DEFAULT_SECTION_BG = "#2d2d2d";
+const ICON_LIGHT_COLOR = "#ffffff";
+const ICON_DARK_COLOR = "#0f172a";
+const MIN_ICON_CONTRAST_RATIO = 4.5;
 
 const sectionBackground = computed(() => {
   const bg = (props.section.backgroundColor || "").trim();
@@ -404,6 +407,10 @@ const cadasturWrapperClasses = computed(() => {
     ? `${base} bg-transparent`
     : `${base} bg-white shadow-sm`;
 });
+
+const socialIconColor = computed(() =>
+  getContrastAwareColor(sectionBackground.value, ICON_LIGHT_COLOR, ICON_DARK_COLOR, isLight.value)
+);
 
 function formatCnpj(value?: string | null) {
   if (!value) return "";
@@ -507,6 +514,57 @@ function isLightBackground(color?: string | null) {
   if (!rgb) return false;
   const luminance = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
   return luminance >= 0.55;
+}
+
+function getContrastAwareColor(
+  backgroundColor?: string | null,
+  lightColor = ICON_LIGHT_COLOR,
+  darkColor = ICON_DARK_COLOR,
+  fallbackIsLight = false
+) {
+  const backgroundRgb = parseColor(backgroundColor);
+  const lightRgb = parseColor(lightColor);
+  const darkRgb = parseColor(darkColor);
+
+  if (!backgroundRgb || !lightRgb || !darkRgb) {
+    return fallbackIsLight ? darkColor : lightColor;
+  }
+
+  const backgroundLuminance = relativeLuminance(backgroundRgb);
+  const lightLuminance = relativeLuminance(lightRgb);
+  const darkLuminance = relativeLuminance(darkRgb);
+
+  const contrastWithLight = calculateContrastRatio(backgroundLuminance, lightLuminance);
+  const contrastWithDark = calculateContrastRatio(backgroundLuminance, darkLuminance);
+
+  if (contrastWithLight >= MIN_ICON_CONTRAST_RATIO && contrastWithLight >= contrastWithDark) {
+    return lightColor;
+  }
+
+  if (contrastWithDark >= MIN_ICON_CONTRAST_RATIO) {
+    return darkColor;
+  }
+
+  return contrastWithLight > contrastWithDark ? lightColor : darkColor;
+}
+
+function relativeLuminance(rgb: { r: number; g: number; b: number }) {
+  const toLinear = (value: number) => {
+    const channel = value / 255;
+    return channel <= 0.03928 ? channel / 12.92 : Math.pow((channel + 0.055) / 1.055, 2.4);
+  };
+
+  const r = toLinear(rgb.r);
+  const g = toLinear(rgb.g);
+  const b = toLinear(rgb.b);
+
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function calculateContrastRatio(l1: number, l2: number) {
+  const lighter = Math.max(l1, l2);
+  const darker = Math.min(l1, l2);
+  return (lighter + 0.05) / (darker + 0.05);
 }
 
 function rgbToHsl(r: number, g: number, b: number) {

@@ -99,6 +99,7 @@ export interface PriceItem {
   priceLabel?: string;
   badge?: string;
   highlight?: boolean;
+  ctaLabel?: string;
 }
 
 export interface PricesSection extends SectionBase {

@@ -31,11 +31,7 @@
           class="mb-3 w-full rounded-lg border border-slate-200 px-3 py-2"
         />
         <label class="text-sm font-semibold text-slate-600 mb-1 block">Resposta</label>
-        <textarea
-          v-model="item.answer"
-          placeholder="Resposta"
-          class="w-full rounded-lg border border-slate-200 px-3 py-2"
-        ></textarea>
+        <RichTextEditor v-model="item.answer" placeholder="Adicione uma resposta formatada" />
         <button class="text-sm text-red-500" @click="removeItem(index)">Remover</button>
       </div>
       <button class="text-sm font-semibold text-brand" @click="addItem">+ Adicionar pergunta</button>
@@ -46,6 +42,7 @@
 <script setup lang="ts">
 import { nextTick, reactive, watch } from "vue";
 import SectionHeadingControls from "./inputs/SectionHeadingControls.vue";
+import RichTextEditor from "./inputs/RichTextEditor.vue";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import type { FaqSection } from "../../types/page";
 
