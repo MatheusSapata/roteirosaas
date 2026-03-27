@@ -71,6 +71,11 @@
         </button>
       </div>
     </div>
+
+    <div class="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+      Animacoes em fade-in dos cards sao aplicadas automaticamente nesta secao.
+    </div>
+
   </div>
 </template>
 
@@ -85,14 +90,22 @@ const props = defineProps<{ modelValue: ReasonsSection }>();
 const emit = defineEmits<{ (e: "update:modelValue", value: ReasonsSection): void }>();
 const headingDefaults = getSectionHeadingDefaults("reasons");
 
+const DEFAULT_ANIMATION_DURATION = 1000;
+const DEFAULT_ANIMATION_STAGGER = 300;
+const clampDuration = () => DEFAULT_ANIMATION_DURATION;
+const clampStagger = () => DEFAULT_ANIMATION_STAGGER;
+
 const local = reactive<ReasonsSection>({
   type: "reasons",
   enabled: true,
   layout: "grid",
   items: [],
+  ...props.modelValue,
   headingLabel: props.modelValue.headingLabel ?? headingDefaults.label,
   headingLabelStyle: props.modelValue.headingLabelStyle ?? headingDefaults.style,
-  ...props.modelValue
+  enableAnimation: true,
+  animationDuration: clampDuration(props.modelValue.animationDuration),
+  cardAnimationStagger: clampStagger(props.modelValue.cardAnimationStagger)
 });
 let syncing = false;
 const syncFromProps = (value: ReasonsSection) => {
@@ -101,6 +114,9 @@ const syncFromProps = (value: ReasonsSection) => {
   local.headingLabel = value.headingLabel ?? headingDefaults.label;
   local.headingLabelStyle = value.headingLabelStyle || headingDefaults.style;
   local.items = Array.isArray(value.items) ? value.items.map(item => ({ ...item })) : [];
+  local.enableAnimation = true;
+  local.animationDuration = clampDuration(value.animationDuration);
+  local.cardAnimationStagger = clampStagger(value.cardAnimationStagger);
   iconOpen.value = local.items.map(() => false);
   nextTick(() => {
     syncing = false;
@@ -212,5 +228,6 @@ watch(
   },
   { deep: true }
 );
+
 </script>
 

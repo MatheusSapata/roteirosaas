@@ -451,7 +451,7 @@
     >
       <h3 class="text-xl font-semibold text-slate-900 dark:text-white">Captação de leads bloqueada</h3>
       <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">
-        Este recurso está disponível a partir do plano Agência (Growth). Atualize seu plano para ativar o formulário obrigatório de leads.
+        Este recurso está disponível a partir do plano Agência. Atualize seu plano para ativar o formulário obrigatório de leads.
       </p>
       <button
         type="button"
@@ -1368,9 +1368,23 @@ const cloneWithNewAnchor = <T extends PageSection>(section: T): T => ({ ...secti
 
 const countStoryImages = (images?: string[]) =>
   Array.isArray(images) ? images.filter(img => typeof img === "string" && img.trim().length > 0).length : 0;
-const automaticStoryLayout = (images?: string[]) => (countStoryImages(images) > 1 ? "gallery" : "single");
+const collectStoryVideos = (videos?: string[], fallback?: string) => {
+  const normalized = Array.isArray(videos)
+    ? videos.map(video => (typeof video === "string" ? video.trim() : "")).filter(video => video.length > 0)
+    : [];
+  if (typeof fallback === "string") {
+    const trimmed = fallback.trim();
+    if (trimmed && !normalized.includes(trimmed)) {
+      normalized.unshift(trimmed);
+    }
+  }
+  return normalized;
+};
+const countStoryVideos = (videos?: string[], fallback?: string) => collectStoryVideos(videos, fallback).length;
+const automaticStoryLayout = (images?: string[], videos?: string[], fallbackVideo?: string) =>
+  countStoryImages(images) + countStoryVideos(videos, fallbackVideo) > 1 ? "gallery" : "single";
 const applyAutomaticStoryLayout = (story: StorySection) => {
-  const desired = automaticStoryLayout(story.images);
+  const desired = automaticStoryLayout(story.images, story.videoUrls, story.videoUrl);
   if (story.layout !== desired) {
     story.layout = desired;
   }
@@ -1378,8 +1392,7 @@ const applyAutomaticStoryLayout = (story: StorySection) => {
 
 const storyMediaErrorText = "Adicione ao menos uma imagem ou video na secao Story antes de salvar.";
 const hasStoryImage = (section: StorySection) => countStoryImages(section.images) > 0;
-const hasStoryVideo = (section: StorySection) =>
-  typeof section.videoUrl === "string" && section.videoUrl.trim().length > 0;
+const hasStoryVideo = (section: StorySection) => countStoryVideos(section.videoUrls, section.videoUrl) > 0;
 const validateSection = (section: PageSection | null): string | null => {
   if (!section) return null;
   if ((section as any).type === "story") {
@@ -1901,7 +1914,10 @@ function defaultSection(type: SectionType): PageSection {
       ctaLink: buildWhatsappLink(pageTitle.value) || "https://wa.me/",
       ctaColor: theme.value.ctaDefaultColor,
       ctaMode: "link",
-      ctaSectionId: null
+      ctaSectionId: null,
+      enableAnimation: true,
+      animationDuration: 1000,
+      ctaShimmer: true
     } as HeroSection);
   }
 
@@ -2076,11 +2092,14 @@ function defaultSection(type: SectionType): PageSection {
       ctaLink: buildWhatsappLink(pageTitle.value) || "https://wa.me/",
       ctaColor: theme.value.ctaDefaultColor,
       ctaEnabled: true,
+      enableAnimation: true,
+      ctaShimmer: true,
       ctaMode: "link",
       ctaSectionId: null,
       borderEnabled: false,
       borderColor: "#cbd5e1",
-      images: defaultImages
+      images: defaultImages,
+      videoUrls: []
     } as StorySection);
   }
 
@@ -2113,7 +2132,10 @@ function defaultSection(type: SectionType): PageSection {
         { icon: "🧭", title: "Mais liberdade", description: "Planeje quando quiser com apoio de especialistas locais." },
         { icon: "🤝", title: "Apoio dedicado", description: "Suporte próximo antes, durante e depois da viagem." },
         { icon: "✨", title: "Experiência única", description: "Curadoria de passeios e hospedagens memoráveis." }
-      ]
+      ],
+      enableAnimation: true,
+      animationDuration: 1000,
+      cardAnimationStagger: 300
     } as ReasonsSection);
   }
 

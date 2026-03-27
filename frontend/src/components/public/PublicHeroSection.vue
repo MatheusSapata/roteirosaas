@@ -1,5 +1,5 @@
 <template>
-  <section class="relative overflow-hidden bg-[#05060f]" :id="section.anchorId || undefined">
+  <section class="relative overflow-hidden bg-[#05060f]" :id="section.anchorId || undefined" :style="animationVars">
     <!-- MOBILE -->
     <div :class="mobileWrapperClasses">
       <div class="overflow-hidden bg-[#05060f] shadow-2xl shadow-black/30">
@@ -10,7 +10,7 @@
           <div v-if="embeddedVideoUrl" class="absolute inset-0" :style="mobileVideoOverlayStyle"></div>
 
           <div class="absolute inset-0 flex flex-col items-center gap-4 px-4 py-6">
-            <div class="flex justify-center w-full mt-auto mb-2">
+            <div class="flex justify-center w-full mt-auto mb-2" :class="animationClasses(1)">
               <template v-if="logoSrc">
                 <div class="drop-shadow-xl overflow-hidden" :style="logoBoxStyle">
                   <img :src="logoSrc" alt="Logo" class="h-full w-auto object-contain" :style="logoImageStyle" />
@@ -48,11 +48,20 @@
           :style="{ background: mobileContentBg }"
         >
           <div class="space-y-0.5 md:mt-0">
-            <h1 class="text-[32px] font-bold leading-tight">{{ section.title }}</h1>
-            <div v-if="subtitleHtml" class="text-sm text-white/85 leading-tight" v-html="subtitleHtml"></div>
+            <h1 class="text-[32px] font-bold leading-tight" :class="animationClasses(2)">{{ section.title }}</h1>
+            <div
+              v-if="subtitleHtml"
+              class="text-sm text-white/85 leading-tight"
+              :class="animationClasses(3)"
+              v-html="subtitleHtml"
+            ></div>
           </div>
 
-          <div v-if="chipsToShow.length" class="mt-4 flex flex-wrap items-center justify-center gap-1.5 text-[11px]">
+          <div
+            v-if="chipsToShow.length"
+            class="mt-4 flex flex-wrap items-center justify-center gap-1.5 text-[11px]"
+            :class="animationClasses(4)"
+          >
             <span
               v-for="(chip, idx) in chipsToShow"
               :key="idx"
@@ -64,7 +73,7 @@
             </span>
           </div>
 
-          <div class="mt-5 space-y-0.5">
+          <div class="mt-5 space-y-0.5" :class="animationClasses(5)">
             <a
               :href="ctaHref"
               :data-scroll-target="ctaIsScroll ? 'true' : null"
@@ -72,7 +81,7 @@
               rel="noopener"
               data-track-event="cta"
               :data-track-type="ctaTrackType"
-              class="inline-flex w-full items-center justify-center rounded-full px-5 py-3 text-sm font-semibold text-white shadow-xl shadow-black/40 transition hover:-translate-y-0.5 hover:shadow-2xl"
+              :class="['inline-flex w-full items-center justify-center rounded-full px-5 py-3 text-sm font-semibold text-white shadow-xl shadow-black/40 transition hover:-translate-y-0.5 hover:shadow-2xl', ctaShimmerClass]"
               :style="{ background: ctaColor }"
             >
               {{ section.ctaLabel || "Quero falar agora" }}
@@ -109,7 +118,7 @@
               class="max-w-3xl space-y-5 text-white md:w-7/12 text-center md:text-left"
               :class="isMobilePreview ? '!w-full !text-center' : ''"
             >
-              <div class="flex items-center gap-3">
+              <div class="flex items-center gap-3" :class="animationClasses(1)">
                 <img
                   v-if="logoSrc"
                   :src="logoSrc"
@@ -122,18 +131,25 @@
                 </div>
               </div>
 
-              <h1 class="text-3xl font-bold leading-tight md:text-5xl" :class="isMobilePreview ? '!text-3xl' : ''">
+              <h1
+                class="text-3xl font-bold leading-tight md:text-5xl"
+                :class="[isMobilePreview ? '!text-3xl' : '', ...animationClasses(2)]"
+              >
                 {{ section.title }}
               </h1>
 
               <div
                 v-if="subtitleHtml"
                 class="text-base text-slate-100 md:text-xl"
-                :class="isMobilePreview ? '!text-base' : ''"
+                :class="[isMobilePreview ? '!text-base' : '', ...animationClasses(3)]"
                 v-html="subtitleHtml"
               ></div>
 
-              <div v-if="chipsToShow.length" class="flex flex-wrap justify-center gap-3 md:justify-start" :class="isMobilePreview ? '!justify-center' : ''">
+              <div
+                v-if="chipsToShow.length"
+                class="flex flex-wrap justify-center gap-3 md:justify-start"
+                :class="[isMobilePreview ? '!justify-center' : '', ...animationClasses(4)]"
+              >
                 <span
                   v-for="(chip, idx) in chipsToShow"
                   :key="idx"
@@ -145,7 +161,10 @@
                 </span>
               </div>
 
-              <div class="flex flex-col items-center gap-3 sm:flex-row sm:items-center sm:justify-start" :class="isMobilePreview ? '!flex-col !items-center !justify-center' : ''">
+              <div
+                class="flex flex-col items-center gap-3 sm:flex-row sm:items-center sm:justify-start"
+                :class="[isMobilePreview ? '!flex-col !items-center !justify-center' : '', ...animationClasses(5)]"
+              >
                 <a
                   :href="ctaHref"
                   :data-scroll-target="ctaIsScroll ? 'true' : null"
@@ -153,7 +172,7 @@
                   rel="noopener"
                   data-track-event="cta"
                   :data-track-type="ctaTrackType"
-                  class="inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold text-white shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl"
+                  :class="['inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold text-white shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl', ctaShimmerClass, desktopCtaHoverClass]"
                   :style="{ background: ctaColor }"
                 >
                   {{ section.ctaLabel || "Quero falar agora" }}
@@ -214,6 +233,7 @@ import { computed } from "vue";
 import { resolveMediaUrl } from "../../utils/media";
 import { isWhatsappLink } from "../../utils/links";
 import { sanitizeHtml } from "../../utils/sanitizeHtml";
+import { normalizeYoutubeEmbedUrl } from "../../utils/video";
 import type { HeroSection } from "../../types/page";
 
 const props = defineProps<{ section: HeroSection; branding: Record<string, any>; previewDevice?: "desktop" | "mobile" }>();
@@ -249,21 +269,7 @@ const mobileBaseColor = computed(() => {
   return "#05060f";
 });
 
-const normalizeVideoUrl = (raw?: string) => {
-  if (!raw) return "";
-  let url = raw.trim();
-  const iframeSrc = url.match(/src=["']([^"']+)["']/i);
-  if (iframeSrc?.[1]) {
-    url = iframeSrc[1];
-  }
-  if (!url.startsWith("http")) {
-    url = `https://${url}`;
-  }
-  url = url.replace("watch?v=", "embed/").replace("youtu.be/", "www.youtube.com/embed/");
-  return url;
-};
-
-const embeddedVideoUrl = computed(() => normalizeVideoUrl(props.section.videoUrl));
+const embeddedVideoUrl = computed(() => normalizeYoutubeEmbedUrl(props.section.videoUrl));
 
 const toRgba = (hex: string, alpha: number) => {
   const cleaned = hex.replace("#", "");
@@ -367,4 +373,119 @@ const immersiveGradient = computed(() => {
 
 const chipsToShow = computed(() => props.section.chips || []);
 const trackType = (link?: string | null) => (isWhatsappLink(link || undefined) ? "whatsapp" : "cta");
+const animateContent = computed(() => true);
+const HERO_ANIMATION_MS = 1000;
+const animationDuration = computed(() => HERO_ANIMATION_MS);
+const animationVars = computed(() => ({ "--hero-anim-duration": `${animationDuration.value}ms` }));
+const animationClasses = (step: number) => ["hero-fade", `hero-delay-${Math.min(Math.max(step, 1), 6)}`];
+const ctaShimmerClass = computed(() => "hero-cta-shimmer");
+const desktopCtaHoverClass = computed(() => "hero-cta-desktop-hover");
 </script>
+
+<style scoped>
+@keyframes hero-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hero-fade {
+  opacity: 0;
+  transform: translateY(16px);
+  animation: hero-fade-in var(--hero-anim-duration, 0.6s) ease forwards;
+}
+
+.hero-delay-1 {
+  animation-delay: 0.05s;
+}
+
+.hero-delay-2 {
+  animation-delay: 0.15s;
+}
+
+.hero-delay-3 {
+  animation-delay: 0.25s;
+}
+
+.hero-delay-4 {
+  animation-delay: 0.35s;
+}
+
+.hero-delay-5 {
+  animation-delay: 0.45s;
+}
+
+.hero-delay-6 {
+  animation-delay: 0.55s;
+}
+
+:global(.hero-cta-shimmer) {
+  position: relative;
+  overflow: hidden;
+}
+
+:global(.hero-cta-shimmer::after) {
+  content: "";
+  position: absolute;
+  inset: -35% -5%;
+  width: 90%;
+  background: linear-gradient(
+    120deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.35) 30%,
+    rgba(255, 255, 255, 0.95) 50%,
+    rgba(255, 255, 255, 0.35) 70%,
+    transparent 90%
+  );
+  transform: translateX(-150%) skewX(-10deg);
+  animation: hero-cta-shimmer 1.8s ease-in-out 0.2s infinite;
+  pointer-events: none;
+  opacity: 0;
+}
+
+@keyframes hero-cta-shimmer {
+  0% {
+    transform: translateX(-150%) skewX(-10deg);
+    opacity: 0;
+  }
+  5% {
+    opacity: 0;
+  }
+  18% {
+    opacity: 0.65;
+  }
+  40% {
+    transform: translateX(-20%) skewX(-10deg);
+    opacity: 0.4;
+  }
+  65% {
+    opacity: 0.2;
+  }
+  82% {
+    opacity: 0.12;
+  }
+  92% {
+    opacity: 0.02;
+  }
+  100% {
+    transform: translateX(150%) skewX(-10deg);
+    opacity: 0;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  :global(.hero-cta-desktop-hover) {
+    transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
+  }
+
+  :global(.hero-cta-desktop-hover:hover) {
+    transform: scale(1.07);
+    box-shadow: 0 25px 50px -20px rgba(15, 23, 42, 0.7);
+  }
+}
+</style>

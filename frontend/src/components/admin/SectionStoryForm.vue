@@ -49,6 +49,10 @@
       </div>
     </div>
 
+    <div class="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+      Animacoes de fade-in e o brilho do botao de CTA sao aplicados automaticamente nesta secao.
+    </div>
+
     <MultiImageUploadField
       v-model="local.images"
       label="Imagens"
@@ -58,10 +62,25 @@
       Layout definido automaticamente: 1 imagem exibe destaque único; 2 ou mais ativam galeria.
     </div>
 
-    <div>
-      <label class="text-sm font-semibold text-slate-600">Vídeo (YouTube opcional)</label>
-      <input v-model="local.videoUrl" placeholder="Link ou iframe do YouTube" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
-      <p class="mt-1 text-xs text-slate-500">Se preencher, substitui a imagem principal pelo vídeo.</p>
+    <div class="space-y-2">
+      <div class="flex items-center justify-between">
+        <label class="text-sm font-semibold text-slate-600">Vídeos do YouTube</label>
+        <button type="button" class="text-sm font-semibold text-brand" @click="addVideoField">+ Adicionar vídeo</button>
+      </div>
+      <p class="text-xs text-slate-500">Cole links do YouTube ou iframes; exibimos sempre antes das imagens.</p>
+      <div v-if="local.videoUrls?.length" class="space-y-2">
+        <div v-for="(video, index) in local.videoUrls" :key="`video-${index}`" class="flex items-center gap-2">
+          <input
+            v-model="local.videoUrls[index]"
+            placeholder="https://www.youtube.com/watch?v=..."
+            class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2"
+          />
+          <button type="button" class="text-sm font-semibold text-rose-500" @click="removeVideoField(index)">Remover</button>
+        </div>
+      </div>
+      <div v-else class="rounded-lg border border-dashed border-slate-200 px-3 py-2 text-xs text-slate-500">
+        Nenhum vídeo adicionado ainda.
+      </div>
     </div>
 
     <div>
@@ -88,23 +107,36 @@ const props = defineProps<{ modelValue: StorySection }>();
 const emit = defineEmits<{ (e: "update:modelValue", value: StorySection): void }>();
 const headingDefaults = getSectionHeadingDefaults("story");
 
+const normalizeVideoList = (section: StorySection) => {
+  const list = Array.isArray(section.videoUrls) ? [...section.videoUrls] : [];
+  if (!list.length && typeof section.videoUrl === "string" && section.videoUrl.trim().length > 0) {
+    list.push(section.videoUrl);
+  }
+  return list;
+};
+
 const local = reactive<StorySection>({
   type: "story",
   layout: "single",
   enabled: true,
   images: [],
+  videoUrls: normalizeVideoList(props.modelValue),
   ctaEnabled: true,
   headingLabel: props.modelValue.headingLabel ?? headingDefaults.label,
   headingLabelStyle: props.modelValue.headingLabelStyle ?? headingDefaults.style,
   ...props.modelValue,
+  enableAnimation: true,
+  ctaShimmer: true,
   ctaMode: props.modelValue.ctaMode || "link",
   ctaSectionId: props.modelValue.ctaSectionId || null
 });
 const countValidImages = (images?: string[]) =>
   Array.isArray(images) ? images.filter(img => typeof img === "string" && img.trim().length > 0).length : 0;
-const determineLayoutFromImages = (images?: string[]) => (countValidImages(images) > 1 ? "gallery" : "single");
+const countValidVideos = (videos?: string[]) =>
+  Array.isArray(videos) ? videos.filter(video => typeof video === "string" && video.trim().length > 0).length : 0;
+const determineLayoutFromMedia = () => (countValidImages(local.images) + countValidVideos(local.videoUrls) > 1 ? "gallery" : "single");
 const applyAutomaticLayout = () => {
-  const desired = determineLayoutFromImages(local.images);
+  const desired = determineLayoutFromMedia();
   if (local.layout !== desired) {
     local.layout = desired;
   }
@@ -117,12 +149,29 @@ const syncFromProps = (value: StorySection) => {
   local.headingLabel = value.headingLabel ?? headingDefaults.label;
   local.headingLabelStyle = value.headingLabelStyle || headingDefaults.style;
   local.images = Array.isArray(value.images) ? [...value.images] : [];
+  local.videoUrls = normalizeVideoList(value);
+  local.videoUrl = local.videoUrls[0] || "";
   local.ctaMode = value.ctaMode || "link";
   local.ctaSectionId = value.ctaSectionId || null;
+  local.enableAnimation = true;
+  local.ctaShimmer = true;
   applyAutomaticLayout();
   nextTick(() => {
     syncing = false;
   });
+};
+
+const addVideoField = () => {
+  if (!Array.isArray(local.videoUrls)) {
+    local.videoUrls = [];
+  }
+  local.videoUrls.push("");
+};
+
+const removeVideoField = (index: number) => {
+  if (!Array.isArray(local.videoUrls)) return;
+  local.videoUrls = local.videoUrls.filter((_, i) => i !== index);
+  local.videoUrl = local.videoUrls[0] || "";
 };
 
 watch(
@@ -130,6 +179,16 @@ watch(
   value => {
     if (!value) return;
     syncFromProps(value);
+  },
+  { deep: true }
+);
+
+watch(
+  () => local.videoUrls,
+  () => {
+    if (syncing) return;
+    local.videoUrl = Array.isArray(local.videoUrls) && local.videoUrls.length ? local.videoUrls[0] : "";
+    applyAutomaticLayout();
   },
   { deep: true }
 );

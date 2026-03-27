@@ -46,6 +46,9 @@ export interface HeroSection extends SectionBase {
   ctaColor?: string;
   videoUrl?: string;
   layout?: "classic" | "split" | "card" | "immersive";
+  enableAnimation?: boolean;
+  animationDuration?: number;
+  ctaShimmer?: boolean;
 }
 
 export interface BannerCardSection extends SectionBase {
@@ -100,6 +103,7 @@ export interface PriceItem {
   badge?: string;
   highlight?: boolean;
   ctaLabel?: string;
+  ctaLink?: string;
 }
 
 export interface PricesSection extends SectionBase {
@@ -212,7 +216,10 @@ export interface StorySection extends SectionBase {
   ctaSectionId?: string | null;
   ctaColor?: string;
   ctaEnabled?: boolean;
+  enableAnimation?: boolean;
+  ctaShimmer?: boolean;
   images: string[];
+  videoUrls?: string[];
   videoUrl?: string;
   backgroundColor?: string;
   borderEnabled?: boolean;
@@ -232,6 +239,9 @@ export interface ReasonsSection extends SectionBase {
   items: ReasonItem[];
   backgroundColor?: string;
   layout?: "grid";
+  enableAnimation?: boolean;
+  animationDuration?: number;
+  cardAnimationStagger?: number;
 }
 
 export interface CtaSection extends SectionBase {
