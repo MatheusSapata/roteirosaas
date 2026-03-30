@@ -4,6 +4,7 @@ import logging
 import secrets
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Any, Dict, Optional
 from uuid import uuid4
 
@@ -21,6 +22,7 @@ from app.services.trial import end_trial
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
+ZERO_DECIMAL = Decimal("0.00")
 
 
 class CaktoAPIError(Exception):
@@ -285,6 +287,8 @@ class CaktoIntegrationService:
         valid_until = self._calculate_valid_until(plan.cycle, next_due_date)
         order_id = self._normalize_str(order.get("id"))
         order_ref = self._normalize_str(order.get("refId"))
+        order_amount = self._extract_order_amount(order, payload)
+        monthly_amount = self._calculate_mrr_amount(order_amount, plan.cycle)
 
         user, created = self._upsert_user_and_subscription(
             customer=customer,
@@ -297,6 +301,9 @@ class CaktoIntegrationService:
             subscription_code=subscription_code,
             valid_until=valid_until,
         )
+        if monthly_amount is not None and user.subscription:
+            user.subscription.mrr_amount = monthly_amount
+            self.db.add(user.subscription)
 
         onboarding_token = None
         if created:
@@ -343,8 +350,17 @@ class CaktoIntegrationService:
         if not subscription:
             raise ValueError("Assinatura não encontrada para atualização.")
 
+        order = self._extract_order(payload)
+        incoming_amount = self._extract_order_amount(order, payload)
+        new_amount = self._calculate_mrr_amount(incoming_amount, subscription.billing_cycle)
+
         subscription.status = status
         subscription.updated_at = datetime.utcnow()
+        if status.lower() == "active":
+            if new_amount is not None:
+                subscription.mrr_amount = new_amount
+        else:
+            subscription.mrr_amount = ZERO_DECIMAL
         if downgrade_plan and subscription.user:
             subscription.user.plan = "free"
             subscription.user.subscription = subscription
@@ -366,6 +382,20 @@ class CaktoIntegrationService:
     def _extract_event_id(self, payload: Dict[str, Any]) -> str | None:
         return self._normalize_str(payload.get("id") or payload.get("event_id") or payload.get("eventId"))
 
+    def _to_decimal(self, value: Any) -> Decimal | None:
+        if value is None:
+            return None
+        text = str(value).strip()
+        if not text:
+            return None
+        normalized = "".join(ch for ch in text.replace(",", ".") if ch.isdigit() or ch in {".", "-"})
+        if not normalized:
+            return None
+        try:
+            return Decimal(normalized)
+        except (InvalidOperation, ValueError):
+            return None
+
     def _extract_order(self, payload: Dict[str, Any]) -> Dict[str, Any] | None:
         primary = self._primary_data(payload)
         if isinstance(primary, dict):
@@ -383,6 +413,41 @@ class CaktoIntegrationService:
 
     def _extract_customer(self, order: Dict[str, Any], payload: Dict[str, Any]) -> Dict[str, Any] | None:
         return order.get("customer") or self._get_nested(payload, "data", "customer")
+
+    def _extract_order_amount(self, order: Dict[str, Any] | None, payload: Dict[str, Any]) -> Decimal | None:
+        candidates: list[Any] = []
+
+        def push(value: Any) -> None:
+            if value is not None:
+                candidates.append(value)
+
+        if isinstance(order, dict):
+            push(order.get("amount"))
+            push(order.get("amount_paid"))
+            push(order.get("netAmount"))
+            push(order.get("net_amount"))
+            push(order.get("price"))
+            push(order.get("baseAmount"))
+            push(order.get("base_amount"))
+
+        primary = self._primary_data(payload)
+        if isinstance(primary, dict):
+            push(primary.get("amount"))
+            push(primary.get("netAmount"))
+            push(primary.get("net_amount"))
+
+        subscription_info = self._get_nested(payload, "data", "subscription")
+        if isinstance(subscription_info, dict):
+            push(subscription_info.get("amount"))
+            current_period = subscription_info.get("currentPeriod") or subscription_info.get("current_period")
+            if isinstance(current_period, dict):
+                push(current_period.get("amount"))
+
+        for candidate in candidates:
+            decimal_value = self._to_decimal(candidate)
+            if decimal_value is not None:
+                return decimal_value
+        return None
 
     def _extract_offer_id(self, order: Dict[str, Any], payload: Dict[str, Any]) -> str | None:
         offer = order.get("offer") or self._get_nested(payload, "data", "offer")
@@ -507,6 +572,18 @@ class CaktoIntegrationService:
                 return now + period
             return parsed_due + timedelta(days=1)
         return now + period
+
+    def _calculate_mrr_amount(self, amount: Decimal | None, cycle: str | None) -> Decimal | None:
+        if amount is None:
+            return None
+        normalized_cycle = (cycle or "monthly").lower()
+        monthly_value = amount
+        if normalized_cycle == "annual":
+            monthly_value = amount / Decimal("12")
+        monthly_value = monthly_value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        if monthly_value < ZERO_DECIMAL:
+            return ZERO_DECIMAL
+        return monthly_value
 
     def _resolve_plan(self, offer_id: str | None, product_id: str | None) -> Optional[PlanMapping]:
         if not self.plan_mappings:

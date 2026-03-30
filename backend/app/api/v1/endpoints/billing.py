@@ -259,6 +259,7 @@ def set_subscription_cancelled(subscription: Subscription) -> None:
     subscription.asaas_payment_link_id = None
     subscription.external_reference = None
     subscription.billing_cycle = DEFAULT_CYCLE
+    subscription.mrr_amount = 0
 
 
 @router.post("/webhook")

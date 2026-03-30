@@ -13,7 +13,7 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, aliased
 
 from app.api.deps import get_current_superuser, get_db
-from app.api.v1.endpoints.billing import PLAN_PRICING, set_subscription_cancelled
+from app.api.v1.endpoints.billing import set_subscription_cancelled
 from app.models.cakto import CaktoOnboardingToken
 from app.models.subscription import Subscription
 from app.models.stats import PageVisitStats
@@ -290,30 +290,14 @@ def get_admin_metrics(
     )
     timeseries = [TimeseriesPoint(label=str(d), value=c) for d, c in ts_rows]
 
-    # MRR: soma dos preços mensais dos planos ativos (exceto free)
-    def get_monthly_price(plan_key: Optional[str], cycle_key: Optional[str]) -> float:
-        if not plan_key:
-            return 0.0
-        plan_info = PLAN_PRICING.get(plan_key)
-        if not plan_info:
-            return 0.0
-        cycle = (cycle_key or "monthly").lower()
-        cycle_info = plan_info.get(cycle)
-        if not cycle_info:
-            return 0.0
-        price = float(cycle_info.get("price", 0.0))
-        return price / 12.0 if cycle == "annual" else price
-
-    mrr = 0.0
-    active_subs = (
-        db.query(Subscription)
+    mrr = (
+        db.query(func.coalesce(func.sum(Subscription.mrr_amount), 0))
         .filter(Subscription.status == "active")
-        .all()
+        .filter(or_(Subscription.plan.is_(None), func.lower(Subscription.plan) != EXCLUDED_PLAN))
+        .scalar()
+        or 0
     )
-    for sub in active_subs:
-        if (sub.plan or "").lower() == EXCLUDED_PLAN:
-            continue
-        mrr += get_monthly_price(sub.plan, sub.billing_cycle)
+    mrr = float(mrr)
 
     revenue_row = db.query(RevenueTotal).order_by(RevenueTotal.id.asc()).first()
     total_revenue_amount = float(revenue_row.total_amount or 0) if revenue_row else 0.0
