@@ -581,6 +581,34 @@ class CaktoIntegrationService:
                 data = {"detail": response.text}
             raise CaktoAPIError(data)
 
+    def request_order_refund(self, *, order_id: str, reason: str | None = None) -> None:
+        """
+        Solicita o reembolso de um pedido na API da Cakto.
+        """
+        if not self.api_base_url:
+            raise CaktoAPIError("Cakto API não configurada.")
+        if not order_id:
+            raise CaktoAPIError("order_id obrigatório para reembolso.")
+
+        payload: dict[str, str] = {}
+        if reason:
+            payload["reason"] = reason
+
+        access_token = self._obtain_access_token()
+        url = f"{self.api_base_url}/orders/{order_id}/refund/"
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        }
+        response = httpx.post(url, json=payload or {}, headers=headers, timeout=30)
+        if response.status_code >= 400:
+            try:
+                data = response.json()
+            except ValueError:
+                data = {"detail": response.text}
+            raise CaktoAPIError(data)
+
     def _upsert_user_and_subscription(
         self,
         *,

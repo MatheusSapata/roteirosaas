@@ -758,6 +758,15 @@
                         </button>
 
                         <button
+                          v-if="canRefundUser(u)"
+                          class="rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-xs font-semibold text-amber-700 transition hover:bg-amber-100 disabled:opacity-60 dark:border-amber-400/60 dark:bg-amber-500/10 dark:text-amber-100 dark:hover:bg-amber-500/20"
+                          :disabled="refundDialog.loading"
+                          @click.stop="openRefundDialog(u)"
+                        >
+                          Reembolsar usuário
+                        </button>
+
+                        <button
                           v-if="!u.is_superuser"
                           class="rounded-full border border-red-200 bg-red-50 px-4 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-100 dark:border-red-500/60 dark:bg-red-500/10 dark:text-red-100 dark:hover:bg-red-500/20"
                           @click.stop="openDeleteDialog(u)"
@@ -1354,6 +1363,45 @@
       </div>
     </div>
   </transition>
+
+  <!-- REFUND USER MODAL -->
+  <transition name="fade">
+    <div
+      v-if="refundDialog.open && refundDialog.user"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 px-4"
+    >
+      <div class="w-full max-w-xl rounded-3xl bg-white p-8 shadow-2xl">
+        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-amber-600">Reembolsar usuário</p>
+        <h2 class="mt-3 text-2xl font-bold text-slate-900">Reembolsar {{ refundDialog.user.name }}?</h2>
+        <p class="mt-2 text-sm text-slate-600">
+          Ao confirmar, vamos acionar o reembolso na Cakto, cancelar a assinatura, despublicar todas as páginas deste cliente
+          e bloquear o acesso imediatamente. Essa ação não pode ser desfeita.
+        </p>
+        <p
+          v-if="refundDialog.error"
+          class="mt-4 rounded-2xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-600"
+        >
+          {{ refundDialog.error }}
+        </p>
+        <div class="mt-6 flex flex-wrap justify-end gap-3">
+          <button
+            class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+            :disabled="refundDialog.loading"
+            @click="closeRefundDialog"
+          >
+            Cancelar
+          </button>
+          <button
+            class="rounded-full bg-amber-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-amber-500 disabled:opacity-60"
+            :disabled="refundDialog.loading"
+            @click="confirmRefund"
+          >
+            {{ refundDialog.loading ? "Processando..." : "Confirmar reembolso" }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </transition>
 </template>
 
 <script setup lang="ts">
@@ -1405,6 +1453,7 @@ interface Metrics {
     name: string;
     email: string;
     plan: string;
+    is_active: boolean;
     is_superuser: boolean;
     created_at?: string;
     valid_until?: string;
@@ -1419,6 +1468,10 @@ interface Metrics {
     draft_pages?: MetricsUserPage[];
     draft_pages_count?: number | null;
     tracking?: MetricsUserTracking[];
+    subscription_provider?: string | null;
+    subscription_status?: string | null;
+    subscription_cakto_order_id?: string | null;
+    subscription_cakto_subscription_code?: string | null;
   }[];
   agencies: {
     id: number;
@@ -1629,6 +1682,17 @@ const granting = ref<number | null>(null);
 const snackbar = ref<{ open: boolean; text: string } | null>(null);
 const trialDialog = ref<{ open: boolean; user: any | null }>({ open: false, user: null });
 const deleteDialog = ref<{
+  open: boolean;
+  user: Metrics["users"][number] | null;
+  loading: boolean;
+  error: string;
+}>({
+  open: false,
+  user: null,
+  loading: false,
+  error: ""
+});
+const refundDialog = ref<{
   open: boolean;
   user: Metrics["users"][number] | null;
   loading: boolean;
@@ -2453,6 +2517,40 @@ const confirmDeleteUser = async () => {
 
 const updateLinkDialogSlug = () => {
   linkPageDialog.value.newSlug = slugify(linkPageDialog.value.newTitle, "pagina");
+};
+
+const canRefundUser = (user: Metrics["users"][number]) => {
+  if (user.is_superuser) return false;
+  const provider = (user.subscription_provider || "").toLowerCase();
+  const status = (user.subscription_status || "").toLowerCase();
+  return provider === "cakto" && Boolean(user.subscription_cakto_order_id) && status === "active" && user.is_active !== false;
+};
+
+const openRefundDialog = (user: Metrics["users"][number]) => {
+  if (!auth.user?.is_superuser) return;
+  refundDialog.value = { open: true, user, loading: false, error: "" };
+};
+
+const closeRefundDialog = () => {
+  refundDialog.value = { open: false, user: null, loading: false, error: "" };
+};
+
+const confirmRefund = async () => {
+  const dialog = refundDialog.value;
+  if (!dialog.user) return;
+  dialog.loading = true;
+  dialog.error = "";
+  try {
+    await api.post(`/admin/users/${dialog.user.id}/refund`, {});
+    showSnackbar("Reembolso solicitado e conta bloqueada.");
+    closeRefundDialog();
+    expandedUser.value = null;
+    await loadMetrics();
+  } catch (err: any) {
+    console.error(err);
+    dialog.error = err?.response?.data?.detail || "Não foi possível solicitar o reembolso agora.";
+    dialog.loading = false;
+  }
 };
 
 watch(
