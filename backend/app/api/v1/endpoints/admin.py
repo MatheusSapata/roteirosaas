@@ -13,7 +13,7 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, aliased
 
 from app.api.deps import get_current_superuser, get_db
-from app.api.v1.endpoints.billing import PLAN_PRICING
+from app.api.v1.endpoints.billing import PLAN_PRICING, set_subscription_cancelled
 from app.models.cakto import CaktoOnboardingToken
 from app.models.subscription import Subscription
 from app.models.stats import PageVisitStats
@@ -36,7 +36,8 @@ from app.schemas.admin import (
     TimeseriesPoint,
 )
 from app.schemas.page import PageOut
-from app.services.trial import start_trial
+from app.services.cakto import CaktoAPIError, CaktoIntegrationService
+from app.services.trial import start_trial, unpublish_all_user_pages
 
 router = APIRouter()
 EXCLUDED_PLAN = "teste"
@@ -51,6 +52,10 @@ class TrialRequest(BaseModel):
 class PageCloneRequest(BaseModel):
     target_agency_id: int
     title: Optional[str] = None
+
+
+class RefundRequest(BaseModel):
+    reason: Optional[str] = None
 
 
 def _normalize_config(raw: Any) -> Any:
@@ -208,7 +213,7 @@ def get_admin_metrics(
     # lista de usuários com validade
     Sub = aliased(Subscription)
     users_rows = (
-        db.query(User, Sub.valid_until)
+        db.query(User, Sub)
         .outerjoin(Sub, Sub.id == User.subscription_id)
         .all()
     )
@@ -224,7 +229,8 @@ def get_admin_metrics(
         for entry in tracking_rows:
             tracking_map.setdefault(entry.user_id, []).append(entry)
     users: List[AdminUserOut] = []
-    for u, valid_until in users_rows:
+    for u, sub in users_rows:
+        valid_until = sub.valid_until if sub else None
         agency_info = agency_by_user.get(u.id)
         agency_id = agency_info[0] if agency_info else None
         agency_name = agency_info[1] if agency_info else None
@@ -246,6 +252,7 @@ def get_admin_metrics(
                 name=u.name,
                 email=u.email,
                 plan=u.plan,
+                is_active=u.is_active,
                 is_superuser=u.is_superuser,
                 created_at=u.created_at,
                 valid_until=valid_until,
@@ -260,6 +267,10 @@ def get_admin_metrics(
                 draft_pages=user_draft_pages,
                 draft_pages_count=len(user_draft_pages),
                 tracking=[AdminUserTracking.model_validate(entry) for entry in tracking_map.get(u.id, [])],
+                subscription_provider=sub.provider if sub else None,
+                subscription_status=sub.status if sub else None,
+                subscription_cakto_order_id=sub.cakto_order_id if sub else None,
+                subscription_cakto_subscription_code=sub.cakto_subscription_code if sub else None,
             )
         )
 
@@ -474,6 +485,48 @@ def grant_trial(
     db.commit()
     db.refresh(user)
     return user
+
+
+@router.post("/users/{user_id}/refund")
+def refund_user_subscription(
+    user_id: int,
+    payload: RefundRequest,
+    _: User = Depends(get_current_superuser),
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    user = (
+        db.query(User)
+        .filter(User.id == user_id)
+        .first()
+    )
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado.")
+
+    subscription = user.subscription
+    if not subscription or (subscription.provider or "").lower() != "cakto":
+        raise HTTPException(status_code=400, detail="Usuário não possui assinatura ativa via Cakto.")
+    if not subscription.cakto_order_id:
+        raise HTTPException(status_code=400, detail="Pedido Cakto não encontrado para este usuário.")
+
+    service = CaktoIntegrationService(db)
+    try:
+        service.request_order_refund(order_id=subscription.cakto_order_id, reason=payload.reason)
+    except CaktoAPIError as exc:  # noqa: BLE001
+        raw_detail = exc.args[0] if exc.args else "Erro ao solicitar reembolso."
+        if isinstance(raw_detail, dict):
+            detail = raw_detail.get("detail") or raw_detail.get("message") or str(raw_detail)
+        else:
+            detail = str(raw_detail)
+        raise HTTPException(status_code=502, detail=detail) from exc
+
+    set_subscription_cancelled(subscription)
+    user.plan = "free"
+    user.is_active = False
+    unpublish_all_user_pages(user, db)
+    db.add_all([user, subscription])
+    db.commit()
+    db.refresh(user)
+    return {"detail": "Reembolso solicitado e usuário bloqueado."}
 
 
 @router.delete("/users/{user_id}")

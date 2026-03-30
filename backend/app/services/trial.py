@@ -88,6 +88,13 @@ def end_trial(user: User, db: Optional[Session] = None, keep_plan: Optional[str]
             _enforce_published_limits(user, db, unpublish_all=True)
 
 
+def unpublish_all_user_pages(user: User, db: Session) -> None:
+    """
+    Força todas as páginas publicadas das agências do usuário a virarem rascunho.
+    """
+    _enforce_published_limits(user, db, unpublish_all=True)
+
+
 def sync_trial_status(user: User, db: Session) -> None:
     if not user.trial_plan or not user.trial_started_at or user.trial_blocked:
         return

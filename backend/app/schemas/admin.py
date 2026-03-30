@@ -34,6 +34,7 @@ class AdminUserOut(BaseModel):
     name: str
     email: EmailStr
     plan: str
+    is_active: bool
     is_superuser: bool
     created_at: Optional[datetime] = None
     valid_until: Optional[datetime] = None
@@ -48,6 +49,10 @@ class AdminUserOut(BaseModel):
     draft_pages: List[AdminUserPage] = Field(default_factory=list)
     draft_pages_count: Optional[int] = None
     tracking: List[AdminUserTracking] = Field(default_factory=list)
+    subscription_provider: Optional[str] = None
+    subscription_status: Optional[str] = None
+    subscription_cakto_order_id: Optional[str] = None
+    subscription_cakto_subscription_code: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

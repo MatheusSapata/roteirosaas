@@ -251,7 +251,7 @@ def _set_subscription_active(subscription: Subscription, plan_key: str, due_date
         subscription.valid_until = datetime.utcnow() + period
 
 
-def _set_subscription_cancelled(subscription: Subscription) -> None:
+def set_subscription_cancelled(subscription: Subscription) -> None:
     subscription.plan = "free"
     subscription.status = "cancelled"
     subscription.valid_until = None
@@ -298,7 +298,7 @@ async def webhook(request: Request, db: Session = Depends(get_db)) -> Dict[str, 
         elif event == "PAYMENT_OVERDUE":
             subscription.failed_attempts = (subscription.failed_attempts or 0) + 1
             if subscription.failed_attempts >= 3:
-                _set_subscription_cancelled(subscription)
+                set_subscription_cancelled(subscription)
                 user.plan = "free"
         else:
             subscription.status = "pending"
@@ -315,7 +315,7 @@ async def webhook(request: Request, db: Session = Depends(get_db)) -> Dict[str, 
         subscription = db.query(Subscription).filter(Subscription.asaas_subscription_id == sub_id).first()
         if subscription:
             user = db.query(User).get(subscription.user_id)
-            _set_subscription_cancelled(subscription)
+            set_subscription_cancelled(subscription)
             if user:
                 user.plan = "free"
                 db.add(user)
@@ -358,7 +358,7 @@ def cancel_subscription(current_user: User = Depends(get_current_active_user), d
             logger.exception("Erro ao cancelar assinatura Asaas: %s", exc)
             raise HTTPException(status_code=502, detail="Erro ao cancelar assinatura") from exc
 
-    _set_subscription_cancelled(sub)
+    set_subscription_cancelled(sub)
     db.add(sub)
     db.commit()
     db.refresh(sub)
@@ -389,7 +389,7 @@ def change_plan(
             logger.exception("Erro ao encerrar assinatura Asaas ao mudar para free: %s", exc)
             raise HTTPException(status_code=502, detail="Erro ao cancelar assinatura no Asaas") from exc
 
-        _set_subscription_cancelled(sub)
+        set_subscription_cancelled(sub)
         db.add(sub)
 
     current_user.plan = "free"
