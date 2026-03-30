@@ -1,24 +1,24 @@
 <template>
   <div class="agency-settings w-full space-y-6 px-4 py-8 md:px-8">
     <div>
-      <p class="text-sm uppercase tracking-wide text-slate-500">Agência</p>
-      <h1 class="text-3xl font-bold text-slate-900">Configurações</h1>
+      <p class="text-sm uppercase tracking-wide text-slate-500">{{ viewCopy.hero.eyebrow }}</p>
+      <h1 class="text-3xl font-bold text-slate-900">{{ viewCopy.hero.title }}</h1>
     </div>
 
     <div class="rounded-2xl bg-white p-6 shadow-md">
       <form class="space-y-4" @submit.prevent="save">
         <div class="grid gap-4 md:grid-cols-2">
           <div class="md:pl-2">
-            <label class="text-sm font-semibold text-slate-600">Nome</label>
+            <label class="text-sm font-semibold text-slate-600">{{ viewCopy.general.nameLabel }}</label>
             <input v-model="form.name" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
           </div>
 
           <div>
-            <label class="text-sm font-semibold text-slate-600">Slug</label>
+            <label class="text-sm font-semibold text-slate-600">{{ viewCopy.general.slugLabel }}</label>
             <div class="mt-1 space-y-1">
               <input v-model="form.slug" class="w-full rounded-lg border border-slate-200 px-3 py-2" />
               <p class="text-xs text-slate-500">
-                Slug é a parte do link depois da barra, sem espaços ou acentos. Ex.: minha-agencia-incrivel.
+                {{ viewCopy.general.slugHint }}
               </p>
             </div>
           </div>
@@ -26,16 +26,16 @@
 
         <div class="grid gap-4 md:grid-cols-3">
           <label class="space-y-2 text-xs font-semibold text-slate-500 md:pl-2 md:pt-4">
-            CNPJ
+            {{ viewCopy.company.cnpjLabel }}
             <input
               v-model="companyForm.cnpj"
               type="text"
-              placeholder="00.000.000/0000-00"
+              :placeholder="viewCopy.company.cnpjPlaceholder"
               class="w-full rounded-lg border border-slate-200 px-4 py-3 text-sm"
             />
           </label>
           <div class="space-y-2 md:pl-2">
-            <label class="text-sm font-semibold text-slate-600">WhatsApp da agência</label>
+            <label class="text-sm font-semibold text-slate-600">{{ viewCopy.contact.whatsappLabel }}</label>
             <div class="space-y-2">
               <div class="flex gap-2">
                 <div class="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2">
@@ -44,14 +44,14 @@
                 </div>
                 <input
                   v-model="phoneInput"
-                  placeholder="11999999999"
+                  :placeholder="viewCopy.contact.whatsappPlaceholder"
                   class="w-full rounded-lg border border-slate-200 px-3 py-2"
                   inputmode="numeric"
                 />
               </div>
 
               <p class="text-xs text-slate-500">
-                Usamos esse numero como padrao para os links de WhatsApp nos CTAs.
+                {{ viewCopy.contact.whatsappHelper }}
               </p>
 
               <div class="flex flex-col gap-1 text-sm">
@@ -62,7 +62,7 @@
           </div>
 
           <div class="space-y-2 md:pl-2">
-            <label class="text-sm font-semibold text-slate-600">Cor primária</label>
+            <label class="text-sm font-semibold text-slate-600">{{ viewCopy.theme.primaryColorLabel }}</label>
             <div class="space-y-2">
               <div class="flex items-center gap-3">
                 <input
@@ -72,12 +72,12 @@
                 />
                 <input
                   v-model="form.primary_color"
-                  placeholder="#41ce5f"
+                  :placeholder="viewCopy.theme.primaryColorPlaceholder"
                   class="flex-1 rounded-lg border border-slate-200 px-3 py-2"
                 />
               </div>
               <p class="text-xs text-slate-500">
-                Essa cor sera usada como base nos CTAs do editor. Voce pode ajustar depois.
+                {{ viewCopy.theme.primaryColorHint }}
               </p>
             </div>
           </div>
@@ -88,17 +88,17 @@
             <ImageUploadField
               class="agency-logo-upload"
               v-model="form.logo_url"
-              label="Logo da agencia"
-              hint="Envie o arquivo da sua marca. Ela aparece no editor e nas paginas."
+              :label="viewCopy.logoField.label"
+              :hint="viewCopy.logoField.hint"
               :enable-crop="true"
-              editor-title="Refine a logo da agencia"
+              :editor-title="viewCopy.logoField.editorTitle"
             />
           </div>
           <div class="space-y-4 md:pl-2">
             <div class="space-y-1 md:pl-0">
-              <label class="text-sm font-semibold text-slate-600">Redes sociais</label>
+              <label class="text-sm font-semibold text-slate-600">{{ viewCopy.socialSection.label }}</label>
               <p class="text-xs text-slate-500">
-                Informe os links das redes que irão aparecer nas paginas públicas e templates.
+                {{ viewCopy.socialSection.helper }}
               </p>
             </div>
 
@@ -108,7 +108,7 @@
                   v-if="!form.social_links.length"
                   class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500 dark:border-white/20 dark:bg-transparent dark:text-white/70"
                 >
-                  Nenhuma rede social adicionada ainda.
+                  {{ viewCopy.socialSection.empty }}
                 </div>
 
                 <div
@@ -118,7 +118,7 @@
                 >
                   <div class="flex flex-col gap-3 md:flex-row md:items-end">
                     <label class="flex-1 text-xs font-semibold text-slate-500 dark:text-white/70">
-                      Rede
+                      {{ viewCopy.socialSection.networkLabel }}
                       <select
                         v-model="social.network"
                         class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-white/15 dark:bg-[#05070f] dark:text-white"
@@ -130,7 +130,7 @@
                     </label>
 
                     <label class="flex-[2] text-xs font-semibold text-slate-500 dark:text-white/70">
-                      Link
+                      {{ viewCopy.socialSection.linkLabel }}
                       <input
                         v-model="social.url"
                         type="url"
@@ -144,7 +144,7 @@
                       class="text-sm font-semibold text-slate-500 hover:text-red-500 dark:text-white/80 dark:hover:text-red-400"
                       @click="removeSocialLink(index)"
                     >
-                      Remover
+                      {{ viewCopy.socialSection.removeButton }}
                     </button>
                   </div>
                 </div>
@@ -156,92 +156,91 @@
                 @click="addSocialLink"
               >
                 <span class="text-lg leading-none">+</span>
-                Adicionar rede
+                {{ viewCopy.socialSection.addButton }}
               </button>
             </div>
           </div>
         </div>
         <div class="grid gap-4 md:grid-cols-2">
           <label class="space-y-1 text-xs font-semibold text-slate-500 md:pl-2">
-            CEP
+            {{ viewCopy.address.cepLabel }}
             <input
               v-model="companyForm.address_zipcode"
               type="text"
-              placeholder="00000-000"
+              :placeholder="viewCopy.address.cepPlaceholder"
               class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
               :disabled="isFetchingCep"
               @blur="handleCepBlur"
             />
             <p class="text-[11px] text-slate-500">
-              Informe o CEP e completaremos rua, bairro, cidade e UF automaticamente. Você precisa preencher apenas número e complemento.
+              {{ viewCopy.address.cepHelper }}
             </p>
             <div class="text-[11px]">
-              <span v-if="isFetchingCep" class="text-slate-500">Buscando endereço pelo CEP...</span>
+              <span v-if="isFetchingCep" class="text-slate-500">{{ viewCopy.cep.fetching }}</span>
               <span v-else-if="cepError" class="text-red-500">{{ cepError }}</span>
               <span v-else-if="cepMessage" class="text-emerald-600">{{ cepMessage }}</span>
             </div>
           </label>
 
           <label class="space-y-1 text-xs font-semibold text-slate-500">
-            Endereço / Rua
+            {{ viewCopy.address.streetLabel }}
             <input
               v-model="companyForm.address_street"
               type="text"
-              placeholder="Rua, avenida, estrada..."
+              :placeholder="viewCopy.address.streetPlaceholder"
               class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
             />
           </label>
           <label class="space-y-1 text-xs font-semibold text-slate-500 md:pl-2">
-            Bairro
+            {{ viewCopy.address.neighborhoodLabel }}
             <input
               v-model="companyForm.address_neighborhood"
               type="text"
-              placeholder="Bairro"
+              :placeholder="viewCopy.address.neighborhoodPlaceholder"
               class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
             />
           </label>
 
           <label class="space-y-1 text-xs font-semibold text-slate-500 md:pl-2">
-            Cidade
+            {{ viewCopy.address.cityLabel }}
             <input
               v-model="companyForm.address_city"
               type="text"
-              placeholder="Cidade"
+              :placeholder="viewCopy.address.cityPlaceholder"
               class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
             />
           </label>
 
           <div class="grid gap-4 md:grid-cols-3 md:col-span-2 md:pl-2">
             <label class="space-y-1 text-xs font-semibold text-slate-500">
-              UF
+              {{ viewCopy.address.stateLabel }}
               <input
                 v-model="companyForm.address_state"
                 type="text"
                 maxlength="2"
-                placeholder="SP"
+                :placeholder="viewCopy.address.statePlaceholder"
                 class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm uppercase"
               />
             </label>
             <label class="space-y-1 text-xs font-semibold text-slate-500">
-              Número
+              {{ viewCopy.address.numberLabel }}
               <input
                 v-model="companyForm.address_number"
                 type="text"
-                placeholder="123"
+                :placeholder="viewCopy.address.numberPlaceholder"
                 class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
               />
             </label>
             <label class="space-y-1 text-xs font-semibold text-slate-500">
-              Complemento
+              {{ viewCopy.address.complementLabel }}
               <input
                 v-model="companyForm.address_complement"
                 type="text"
-                placeholder="Sala, bloco..."
+                :placeholder="viewCopy.address.complementPlaceholder"
                 class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
               />
             </label>
           </div>
-
         </div>
 
         <div class="flex items-center gap-3 pt-2 md:pl-2">
@@ -250,7 +249,7 @@
             class="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark disabled:cursor-not-allowed disabled:bg-slate-300"
             :disabled="saving"
           >
-            {{ saving ? "Salvando..." : (hasAgency ? "Salvar" : "Criar ag�ncia") }}
+            {{ saving ? viewCopy.actions.saving : (hasAgency ? viewCopy.actions.save : viewCopy.actions.create) }}
           </button>
 
           <span v-if="message" class="text-sm text-emerald-600">{{ message }}</span>
@@ -268,9 +267,125 @@ import api from "../../services/api";
 import { useAgencyStore } from "../../store/useAgencyStore";
 import { useAuthStore } from "../../store/useAuthStore";
 import { addTagsToContactByEmail, viajeChatTagIds } from "../../services/viajeChat";
+import { createAdminLocalizer } from "../../utils/adminI18n";
 
 const agencyStore = useAgencyStore();
 const authStore = useAuthStore();
+
+const t = createAdminLocalizer();
+
+const viewCopy = {
+  hero: {
+    eyebrow: t({ pt: "Agência", es: "Agencia" }),
+    title: t({ pt: "Configurações", es: "Configuraciones" })
+  },
+  general: {
+    nameLabel: t({ pt: "Nome", es: "Nombre" }),
+    slugLabel: t({ pt: "Slug", es: "Slug" }),
+    slugHint: t({
+      pt: "Slug é a parte do link depois da barra, sem espaços ou acentos. Ex.: minha-agencia-incrivel.",
+      es: "Slug es la parte del enlace después de la barra, sin espacios ni acentos. Ej.: mi-agencia-increible."
+    })
+  },
+  company: {
+    cnpjLabel: t({ pt: "CNPJ", es: "CNPJ" }),
+    cnpjPlaceholder: t({ pt: "00.000.000/0000-00", es: "00.000.000/0000-00" })
+  },
+  contact: {
+    whatsappLabel: t({ pt: "WhatsApp da agência", es: "WhatsApp de la agencia" }),
+    whatsappPlaceholder: t({ pt: "11999999999", es: "11999999999" }),
+    whatsappHelper: t({
+      pt: "Usamos esse número como padrão para os links de WhatsApp nos CTAs.",
+      es: "Usamos este número como predeterminado para los enlaces de WhatsApp en los CTAs."
+    }),
+    phoneSaved: t({ pt: "Telefone salvo para os CTAs.", es: "Teléfono guardado para los CTAs." }),
+    phoneRemoved: t({ pt: "Telefone removido dos CTAs.", es: "Teléfono quitado de los CTAs." }),
+    invalidPhone: t({ pt: "Informe um telefone válido para os CTAs.", es: "Ingresa un teléfono válido para los CTAs." })
+  },
+  theme: {
+    primaryColorLabel: t({ pt: "Cor primária", es: "Color principal" }),
+    primaryColorPlaceholder: t({ pt: "#41ce5f", es: "#41ce5f" }),
+    primaryColorHint: t({
+      pt: "Essa cor será usada como base nos CTAs do editor. Você pode ajustar depois.",
+      es: "Este color se usa como base en los CTAs del editor. Puedes ajustarlo después."
+    })
+  },
+  logoField: {
+    label: t({ pt: "Logo da agência", es: "Logotipo de la agencia" }),
+    hint: t({
+      pt: "Envie o arquivo da sua marca. Ela aparece no editor e nas páginas.",
+      es: "Sube el archivo de tu marca. Aparece en el editor y en las páginas."
+    }),
+    editorTitle: t({ pt: "Refine a logo da agência", es: "Refina el logo de la agencia" })
+  },
+  socialSection: {
+    label: t({ pt: "Redes sociais", es: "Redes sociales" }),
+    helper: t({
+      pt: "Informe os links das redes que irão aparecer nas páginas públicas e templates.",
+      es: "Ingresa los enlaces que aparecerán en las páginas públicas y plantillas."
+    }),
+    empty: t({ pt: "Nenhuma rede social adicionada ainda.", es: "Ninguna red social agregada todavía." }),
+    networkLabel: t({ pt: "Rede", es: "Red" }),
+    linkLabel: t({ pt: "Link", es: "Enlace" }),
+    removeButton: t({ pt: "Remover", es: "Eliminar" }),
+    addButton: t({ pt: "Adicionar rede", es: "Agregar red" }),
+    placeholders: {
+      instagram: t({ pt: "https://instagram.com/sua-agencia", es: "https://instagram.com/tu-agencia" }),
+      facebook: t({ pt: "https://facebook.com/sua-agencia", es: "https://facebook.com/tu-agencia" }),
+      youtube: t({ pt: "https://youtube.com/@sua-agencia", es: "https://youtube.com/@tu-agencia" }),
+      tiktok: t({ pt: "https://tiktok.com/@sua-agencia", es: "https://tiktok.com/@tu-agencia" })
+    }
+  },
+  address: {
+    cepLabel: t({ pt: "CEP", es: "CEP" }),
+    cepPlaceholder: t({ pt: "00000-000", es: "00000-000" }),
+    cepHelper: t({
+      pt: "Informe o CEP e completaremos rua, bairro, cidade e UF automaticamente. Você precisa preencher apenas número e complemento.",
+      es: "Ingresa el CEP y completaremos calle, barrio, ciudad y estado automáticamente. Solo necesitas llenar número y complemento."
+    }),
+    streetLabel: t({ pt: "Endereço / Rua", es: "Dirección / Calle" }),
+    streetPlaceholder: t({ pt: "Rua, avenida, estrada...", es: "Calle, avenida, carretera..." }),
+    neighborhoodLabel: t({ pt: "Bairro", es: "Barrio" }),
+    neighborhoodPlaceholder: t({ pt: "Bairro", es: "Barrio" }),
+    cityLabel: t({ pt: "Cidade", es: "Ciudad" }),
+    cityPlaceholder: t({ pt: "Cidade", es: "Ciudad" }),
+    stateLabel: t({ pt: "UF", es: "Estado (UF)" }),
+    statePlaceholder: t({ pt: "SP", es: "SP" }),
+    numberLabel: t({ pt: "Número", es: "Número" }),
+    numberPlaceholder: t({ pt: "123", es: "123" }),
+    complementLabel: t({ pt: "Complemento", es: "Complemento" }),
+    complementPlaceholder: t({ pt: "Sala, bloco...", es: "Sala, bloque..." })
+  },
+  cep: {
+    fetching: t({ pt: "Buscando endereço pelo CEP...", es: "Buscando dirección por el CEP..." }),
+    lookupError: t({ pt: "Não conseguimos localizar esse CEP.", es: "No pudimos localizar ese CEP." }),
+    autofill: t({ pt: "Endereço preenchido automaticamente pelo CEP.", es: "Dirección completada automáticamente por el CEP." }),
+    notFound: t({ pt: "CEP não encontrado.", es: "CEP no encontrado." }),
+    lengthError: t({ pt: "CEP precisa ter 8 dígitos.", es: "El CEP debe tener 8 dígitos." })
+  },
+  actions: {
+    saving: t({ pt: "Salvando...", es: "Guardando..." }),
+    save: t({ pt: "Salvar", es: "Guardar" }),
+    create: t({ pt: "Criar agência", es: "Crear agencia" })
+  },
+  validations: {
+    missingNameSlug: t({ pt: "Informe nome e slug.", es: "Ingresa el nombre y el slug." })
+  },
+  feedback: {
+    agencyCreated: t({ pt: "Agência criada.", es: "Agencia creada." }),
+    agencyUpdated: t({ pt: "Configurações atualizadas.", es: "Configuraciones actualizadas." }),
+    saveError: t({
+      pt: "Não foi possível salvar/criar. Verifique login e permissões.",
+      es: "No fue posible guardar/crear. Verifica el login y los permisos."
+    })
+  },
+  password: {
+    missingFields: t({ pt: "Informe todas as senhas.", es: "Ingresa todas las contraseñas." }),
+    mismatch: t({ pt: "As senhas novas precisam coincidir.", es: "Las contraseñas nuevas deben coincidir." }),
+    success: t({ pt: "Senha atualizada com sucesso.", es: "Contraseña actualizada con éxito." }),
+    failure: t({ pt: "Não foi possível atualizar a senha.", es: "No fue posible actualizar la contraseña." })
+  }
+};
 
 const colorPalette = ["#41ce5f", "#2563eb", "#8b5cf6", "#f59e0b", "#10b981", "#ef4444", "#0f172a"];
 const socialNetworkOptions = [
@@ -283,10 +398,10 @@ const socialNetworkOptions = [
 type SocialNetworkValue = (typeof socialNetworkOptions)[number]["value"];
 
 const socialNetworkPlaceholders: Record<SocialNetworkValue, string> = {
-  instagram: "https://instagram.com/sua-agencia",
-  facebook: "https://facebook.com/sua-agencia",
-  youtube: "https://youtube.com/@sua-agencia",
-  tiktok: "https://tiktok.com/@sua-agencia"
+  instagram: viewCopy.socialSection.placeholders.instagram,
+  facebook: viewCopy.socialSection.placeholders.facebook,
+  youtube: viewCopy.socialSection.placeholders.youtube,
+  tiktok: viewCopy.socialSection.placeholders.tiktok
 };
 
 type SocialLinkFormEntry = {
@@ -367,14 +482,14 @@ const fetchAddressByCep = async (digits: string) => {
     const response = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
     const data = await response.json();
     if (!response.ok || data?.erro) {
-      throw new Error("CEP nao encontrado.");
+      throw new Error(viewCopy.cep.notFound);
     }
 
     fillAddressFromCep(data);
-    cepMessage.value = "Endereco preenchido automaticamente pelo CEP.";
+    cepMessage.value = viewCopy.cep.autofill;
   } catch (err) {
     console.error(err);
-    cepError.value = "Nao conseguimos localizar esse CEP.";
+    cepError.value = viewCopy.cep.lookupError;
   } finally {
     isFetchingCep.value = false;
   }
@@ -388,7 +503,7 @@ const handleCepBlur = () => {
     return;
   }
   if (digits.length !== 8) {
-    cepError.value = "CEP precisa ter 8 digitos.";
+    cepError.value = viewCopy.cep.lengthError;
     cepMessage.value = "";
     return;
   }
@@ -506,11 +621,11 @@ const changePassword = async () => {
   passwordError.value = "";
   passwordMessage.value = "";
   if (!passwordForm.current || !passwordForm.new || !passwordForm.confirm) {
-    passwordError.value = "Informe todas as senhas.";
+    passwordError.value = viewCopy.password.missingFields;
     return;
   }
   if (passwordForm.new !== passwordForm.confirm) {
-    passwordError.value = "As senhas novas precisam coincidir.";
+    passwordError.value = viewCopy.password.mismatch;
     return;
   }
   passwordSaving.value = true;
@@ -519,14 +634,14 @@ const changePassword = async () => {
       current_password: passwordForm.current,
       new_password: passwordForm.new
     });
-    passwordMessage.value = "Senha atualizada com sucesso.";
+    passwordMessage.value = viewCopy.password.success;
     passwordForm.current = "";
     passwordForm.new = "";
     passwordForm.confirm = "";
   } catch (err) {
     console.error(err);
     passwordError.value =
-      (err as any)?.response?.data?.detail || "N�o foi poss�vel atualizar a senha.";
+      (err as any)?.response?.data?.detail || viewCopy.password.failure;
   } finally {
     passwordSaving.value = false;
   }
@@ -554,7 +669,7 @@ const save = async () => {
   phoneError.value = "";
 
   if (!form.name || !form.slug) {
-    errorMessage.value = "Informe nome e slug.";
+    errorMessage.value = viewCopy.validations.missingNameSlug;
     return;
   }
 
@@ -563,7 +678,7 @@ const save = async () => {
 
   const phoneDigits = sanitizeDigits(phoneInput.value);
   if (phoneDigits && phoneDigits.length < 10) {
-    phoneError.value = "Informe um telefone v�lido para os CTAs.";
+    phoneError.value = viewCopy.contact.invalidPhone;
     return;
   }
 
@@ -605,12 +720,12 @@ const save = async () => {
       await addTagsToContactByEmail(authStore.user.email, [viajeChatTagIds.AGENCIA_CRIADA]);
     }
 
-    phoneMessage.value = phoneDigits ? "Telefone salvo para os CTAs." : "Telefone removido dos CTAs.";
-    message.value = createdAgency ? "Agência criada." : "Configurações atualizadas.";
+    phoneMessage.value = phoneDigits ? viewCopy.contact.phoneSaved : viewCopy.contact.phoneRemoved;
+    message.value = createdAgency ? viewCopy.feedback.agencyCreated : viewCopy.feedback.agencyUpdated;
   } catch (err) {
     console.error(err);
     const detail = (err as any)?.response?.data?.detail;
-    errorMessage.value = detail || "Não foi possível salvar/criar. Verifique login e permissões.";
+    errorMessage.value = detail || viewCopy.feedback.saveError;
   } finally {
     saving.value = false;
   }

@@ -1,17 +1,21 @@
-<template>
+﻿<template>
   <div class="space-y-3 -mt-6">
     <div class="space-y-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <SectionHeadingControls v-model:label="local.headingLabel" v-model:style="local.headingLabelStyle" />
       <div class="grid gap-3 md:grid-cols-2">
         <div>
-          <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Tí­tulo</label>
-          <input v-model="local.title" placeholder="Dia a dia" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
+          <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ viewCopy.fields.titleLabel }}</label>
+          <input
+            v-model="local.title"
+            :placeholder="viewCopy.fields.titlePlaceholder"
+            class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2"
+          />
         </div>
         <div>
-          <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Subtí­tulo</label>
+          <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ viewCopy.fields.subtitleLabel }}</label>
           <input
             v-model="local.subtitle"
-            placeholder="Visão clara do roteiro completo"
+            :placeholder="viewCopy.fields.subtitlePlaceholder"
             class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2"
           />
         </div>
@@ -29,11 +33,11 @@
             :class="selectedDayIndex === index ? 'border-brand bg-brand/10 text-brand' : 'border-slate-200 text-slate-500 hover:border-brand/60 hover:text-brand'"
             @click="selectedDayIndex = index"
           >
-            {{ day.day || `Dia ${index + 1}` }}
+            {{ day.day || formatDayChipLabel(index + 1) }}
           </button>
         </div>
-        <span v-else class="text-sm text-slate-500">Nenhum dia cadastrado.</span>
-        <button class="text-sm font-semibold text-brand" type="button" @click="addDay">+ Adicionar dia</button>
+        <span v-else class="text-sm text-slate-500">{{ viewCopy.days.emptyMessage }}</span>
+        <button class="text-sm font-semibold text-brand" type="button" @click="addDay">{{ viewCopy.days.addButton }}</button>
       </div>
       <p v-if="local.days.length" class="flex items-center gap-1 text-xs text-slate-400">
         <svg aria-hidden="true" class="h-4 w-4 text-slate-300" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
@@ -41,51 +45,65 @@
           <path d="M12 11v5" stroke-linecap="round" />
           <path d="M12 8h.01" stroke-linecap="round" />
         </svg>
-        Arraste e solte os dias para reordenar.
+        {{ viewCopy.days.reorderHint }}
       </p>
       <div v-if="currentDay" class="grid gap-3 rounded-lg border border-slate-100 p-3 md:grid-cols-2">
         <div class="space-y-3">
           <div class="grid gap-3 md:grid-cols-2">
             <div>
-              <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Dia</label>
-              <input v-model="currentDay.day" placeholder="Dia" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
+              <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ viewCopy.days.dayLabel }}</label>
+              <input
+                v-model="currentDay.day"
+                :placeholder="viewCopy.days.dayPlaceholder"
+                class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2"
+              />
             </div>
             <div>
-              <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Tí­tulo do dia</label>
-              <input v-model="currentDay.title" placeholder="T­tulo" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
+              <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ viewCopy.days.dayTitleLabel }}</label>
+              <input
+                v-model="currentDay.title"
+                :placeholder="viewCopy.days.dayTitlePlaceholder"
+                class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2"
+              />
             </div>
           </div>
           <div>
-            <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Descrição</label>
+            <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ viewCopy.days.descriptionLabel }}</label>
             <div class="mt-1">
-              <RichTextEditor :key="currentDay?.id || selectedDayIndex" v-model="currentDay.description" placeholder="Descrição detalhada do dia" />
+              <RichTextEditor
+                :key="currentDay?.id || selectedDayIndex"
+                v-model="currentDay.description"
+                :placeholder="viewCopy.days.descriptionPlaceholder"
+              />
             </div>
           </div>
         </div>
         <div>
           <div class="flex h-full flex-col justify-between space-y-2 rounded-lg border border-dashed border-slate-200 p-3">
             <div class="flex items-center justify-between text-sm font-semibold text-slate-600">
-              <span>Imagem opcional</span>
+              <span>{{ viewCopy.days.imageLabel }}</span>
               <button
                 v-if="currentDay.image"
                 type="button"
                 class="text-xs font-semibold uppercase tracking-wide text-rose-500 hover:text-rose-600"
                 @click="removeDayImage(currentDay)"
               >
-                remover
+                {{ viewCopy.days.removeImage }}
               </button>
             </div>
             <ImageUploadField
               v-model="currentDay.image"
               label=""
-              hint="Esta imagem aparece quando o visitante expande o dia."
+              :hint="viewCopy.days.imageHint"
             />
           </div>
         </div>
-        <button class="text-left text-sm text-red-500 md:col-span-2" type="button" @click="removeDay(selectedDayIndex)">Remover este dia</button>
+        <button class="text-left text-sm text-red-500 md:col-span-2" type="button" @click="removeDay(selectedDayIndex)">
+          {{ viewCopy.days.removeDayButton }}
+        </button>
       </div>
       <div v-else class="rounded-lg border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500">
-        Clique em "+ Adicionar dia" para começar a montar o cronograma.
+        {{ viewCopy.days.emptyStateHint }}
       </div>
     </div>
   </div>
@@ -99,10 +117,47 @@ import RichTextEditor from "./inputs/RichTextEditor.vue";
 import ImageUploadField from "./inputs/ImageUploadField.vue";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import type { ItinerarySection } from "../../types/page";
+import { createAdminLocalizer } from "../../utils/adminI18n";
 
 const props = defineProps<{ modelValue: ItinerarySection }>();
 const emit = defineEmits<{ (e: "update:modelValue", value: ItinerarySection): void }>();
 const headingDefaults = getSectionHeadingDefaults("itinerary");
+const t = createAdminLocalizer();
+
+const viewCopy = {
+  fields: {
+    titleLabel: t({ pt: "Titulo", es: "Titulo" }),
+    titlePlaceholder: t({ pt: "Dia a dia", es: "Dia a dia" }),
+    subtitleLabel: t({ pt: "Subtitulo", es: "Subtitulo" }),
+    subtitlePlaceholder: t({ pt: "Visao clara do roteiro completo", es: "Vision clara del itinerario completo" })
+  },
+  days: {
+    emptyMessage: t({ pt: "Nenhum dia cadastrado.", es: "Ningun dia registrado." }),
+    addButton: t({ pt: "+ Adicionar dia", es: "+ Agregar dia" }),
+    reorderHint: t({ pt: "Arraste e solte os dias para reordenar.", es: "Arrastra y suelta los dias para reordenar." }),
+    chipPrefix: t({ pt: "Dia", es: "Dia" }),
+    dayLabel: t({ pt: "Dia", es: "Dia" }),
+    dayPlaceholder: t({ pt: "Dia", es: "Dia" }),
+    dayTitleLabel: t({ pt: "Titulo do dia", es: "Titulo del dia" }),
+    dayTitlePlaceholder: t({ pt: "Titulo", es: "Titulo" }),
+    descriptionLabel: t({ pt: "Descricao", es: "Descripcion" }),
+    descriptionPlaceholder: t({ pt: "Descricao detalhada do dia", es: "Descripcion detallada del dia" }),
+    imageLabel: t({ pt: "Imagem opcional", es: "Imagen opcional" }),
+    removeImage: t({ pt: "Remover", es: "Eliminar" }),
+    imageHint: t({
+      pt: "Esta imagem aparece quando o visitante expande o dia.",
+      es: "Esta imagen aparece cuando el visitante expande el dia."
+    }),
+    removeDayButton: t({ pt: "Remover este dia", es: "Eliminar este dia" }),
+    emptyStateHint: t({
+      pt: "Clique em \"+ Adicionar dia\" para comecar a montar o cronograma.",
+      es: "Haz clic en \"+ Agregar dia\" para empezar a armar el cronograma."
+    })
+  }
+};
+
+const formatDayChipLabel = (index: number) => `${viewCopy.days.chipPrefix} ${index}`;
+
 const selectedDayIndex = ref(0);
 const dayChipsRef = ref<HTMLElement | null>(null);
 let chipsSortable: Sortable | null = null;
@@ -131,8 +186,8 @@ const local = reactive<ItinerarySection>({
   headingLabel: props.modelValue.headingLabel ?? headingDefaults.label,
   headingLabelStyle: props.modelValue.headingLabelStyle ?? headingDefaults.style,
   days: normalizeDays(props.modelValue.days),
-  title: props.modelValue.title ?? "Dia a dia",
-  subtitle: props.modelValue.subtitle ?? "Visão clara do roteiro completo."
+  title: props.modelValue.title ?? viewCopy.fields.titlePlaceholder,
+  subtitle: props.modelValue.subtitle ?? viewCopy.fields.subtitlePlaceholder
 });
 const currentDay = computed(() => local.days[selectedDayIndex.value] || null);
 
@@ -159,8 +214,8 @@ const syncFromProps = (value: ItinerarySection) => {
   local.headingLabel = value.headingLabel ?? headingDefaults.label;
   local.headingLabelStyle = value.headingLabelStyle || headingDefaults.style;
   local.days = normalizeDays(value.days);
-  local.title = value.title ?? "Dia a dia";
-  local.subtitle = value.subtitle ?? "Visão clara do roteiro completo.";
+  local.title = value.title ?? viewCopy.fields.titlePlaceholder;
+  local.subtitle = value.subtitle ?? viewCopy.fields.subtitlePlaceholder;
   ensureSelectedDay();
   scheduleSortableRefresh();
   nextTick(() => {
@@ -287,6 +342,3 @@ watch(
   cursor: grabbing !important;
 }
 </style>
-
-
-

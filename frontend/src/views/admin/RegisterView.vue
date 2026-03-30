@@ -5,116 +5,178 @@
       style="background-color: #41ce5f;"
     >
       <div class="relative z-10 max-w-xl space-y-6 p-16 text-white">
-        <img src="../../assets/Logo Branco - Roteiro Online.png" alt="Roteiro Online" class="w-full max-w-[180px]" />
-        <h2 class="text-4xl font-bold leading-tight text-white">Pare de mandar PDF! Venda suas viagens com páginas profissionais.</h2>
-        <p class="text-lg text-white">
-         Tudo em um só lugar!<br> Crie páginas para suas viagens, centralize as informações e facilite a decisão do cliente. <br>Criado para a realidade de quem vive de vender viagens         
-        </p>
-        <p class="text-lg text-white">
-        
-        </p>
+        <img src="../../assets/Logo Branco - Roteiro Online.png" :alt="viewCopy.brand.alt" class="w-full max-w-[180px]" />
+        <h2 class="text-4xl font-bold leading-tight text-white" v-html="viewCopy.hero.headline"></h2>
+        <p class="text-lg text-white" v-html="viewCopy.hero.description"></p>
         <div class="flex items-center gap-3 text-sm text-white">
           <span class="h-1 w-12 rounded-full bg-white"></span>
-          Você pode começar com 1 roteiro online sem pagar nada.
+          {{ viewCopy.hero.note }}
         </div>
       </div>
     </div>
     <div class="flex w-full flex-col items-center bg-[#41ce5f] px-4 py-10 lg:w-2/5 lg:bg-[#f8f8f8] lg:px-12">
       <div class="mb-8 flex w-full justify-center lg:hidden">
-        <img src="../../assets/Logo Branco - Roteiro Online.png" alt="Roteiro Online" class="w-32" />
+        <img src="../../assets/Logo Branco - Roteiro Online.png" :alt="viewCopy.brand.alt" class="w-32" />
       </div>
       <div class="w-full max-w-md rounded-3xl border border-slate-100 bg-white p-8 shadow-xl shadow-slate-200/40">
         <div class="mb-8 space-y-2">
-          <p class="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Comece agora</p>
-          <h1 class="text-3xl font-bold text-slate-900">Criar conta</h1>
-          <p class="text-sm text-slate-500">Preencha seus dados para criar seu painel e publicar páginas.</p>
+          <p class="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">{{ viewCopy.card.eyebrow }}</p>
+          <h1 class="text-3xl font-bold text-slate-900">{{ viewCopy.card.title }}</h1>
+          <p class="text-sm text-slate-500">{{ viewCopy.card.description }}</p>
         </div>
         <form class="space-y-4" @submit.prevent="onSubmit">
-        <div>
-          <label class="text-sm font-semibold text-slate-600">Nome</label>
-          <input v-model="name" required class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 focus:border-brand focus:outline-none" />
-        </div>
-        <div>
-          <label class="text-sm font-semibold text-slate-600">CPF</label>
-          <input
-            v-model="cpf"
-            required
-            maxlength="14"
-            placeholder="000.000.000-00"
-            class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 focus:border-brand focus:outline-none"
-            @input="maskCpf"
-          />
-        </div>
-        <div>
-          <label class="text-sm font-semibold text-slate-600">E-mail</label>
-          <input v-model="email" type="email" required class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 focus:border-brand focus:outline-none" />
-        </div>
-        <div>
-          <label class="text-sm font-semibold text-slate-600">Senha</label>
-          <input
-            v-model="password"
-            type="password"
-            required
-            class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 focus:border-brand focus:outline-none"
-            placeholder="Min. 8 caracteres, com maiuscula, minuscula e numero"
-          />
-          <PasswordRequirements :password="password" />
-        </div>
-        <div>
-          <label class="text-sm font-semibold text-slate-600">WhatsApp</label>
-          <div class="mt-1 flex gap-2">
-            <div class="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-2">
-              <select v-model="dialCode" class="bg-transparent text-sm font-semibold focus:outline-none">
-                <option v-for="option in dialOptions" :key="option.code" :value="option.code">
-                  {{ option.flag }} {{ option.code }}
-                </option>
-              </select>
-            </div>
+          <div>
+            <label class="text-sm font-semibold text-slate-600">{{ viewCopy.form.nameLabel }}</label>
+            <input v-model="name" required class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 focus:border-brand focus:outline-none" />
+          </div>
+          <div>
+            <label class="text-sm font-semibold text-slate-600">{{ viewCopy.form.cpfLabel }}</label>
             <input
-              v-model="whatsapp"
+              v-model="cpf"
               required
-              placeholder="11999999999"
-              class="w-full rounded-lg border border-slate-200 px-3 py-2 focus:border-brand focus:outline-none"
+              maxlength="14"
+              :placeholder="viewCopy.form.cpfPlaceholder"
+              class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 focus:border-brand focus:outline-none"
+              @input="maskCpf"
             />
           </div>
-          <p class="mt-1 text-xs text-slate-500">DDI fixo do Brasil (+55) e número apenas com dígitos.</p>
-        </div>
-        <button
-          type="submit"
-          :disabled="!canSubmit"
-          class="w-full rounded-lg px-4 py-2 font-semibold transition hover:opacity-90"
-          :class="canSubmit ? 'text-white cursor-pointer' : 'text-slate-600 cursor-not-allowed'"
-          :style="canSubmit ? { backgroundColor: '#41ce5f' } : { backgroundColor: '#e2e8f0' }"
-        >
-          Registrar
-        </button>
-        <p class="text-center text-sm text-slate-600">
-          Já possui conta?
-          <router-link to="/login" class="font-semibold transition hover:opacity-80" style="color: #41ce5f;"
-            >Entrar</router-link
+          <div>
+            <label class="text-sm font-semibold text-slate-600">{{ viewCopy.form.emailLabel }}</label>
+            <input
+              v-model="email"
+              type="email"
+              required
+              class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 focus:border-brand focus:outline-none"
+            />
+          </div>
+          <div>
+            <label class="text-sm font-semibold text-slate-600">{{ viewCopy.form.passwordLabel }}</label>
+            <input
+              v-model="password"
+              type="password"
+              required
+              class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 focus:border-brand focus:outline-none"
+              :placeholder="viewCopy.form.passwordPlaceholder"
+            />
+            <PasswordRequirements :password="password" />
+          </div>
+          <div>
+            <label class="text-sm font-semibold text-slate-600">{{ viewCopy.form.whatsappLabel }}</label>
+            <div class="mt-1 flex gap-2">
+              <div class="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-2">
+                <select v-model="dialCode" class="bg-transparent text-sm font-semibold focus:outline-none">
+                  <option v-for="option in dialOptions" :key="option.code" :value="option.code">
+                    {{ option.flag }} {{ option.code }}
+                  </option>
+                </select>
+              </div>
+              <input
+                v-model="whatsapp"
+                required
+                :placeholder="viewCopy.form.whatsappPlaceholder"
+                class="w-full rounded-lg border border-slate-200 px-3 py-2 focus:border-brand focus:outline-none"
+              />
+            </div>
+            <p class="mt-1 text-xs text-slate-500">{{ viewCopy.form.whatsappHelper }}</p>
+          </div>
+          <button
+            type="submit"
+            :disabled="!canSubmit"
+            class="w-full rounded-lg px-4 py-2 font-semibold transition hover:opacity-90"
+            :class="canSubmit ? 'text-white cursor-pointer' : 'text-slate-600 cursor-not-allowed'"
+            :style="canSubmit ? { backgroundColor: '#41ce5f' } : { backgroundColor: '#e2e8f0' }"
           >
-        </p>
-        <p v-if="error" class="text-sm text-red-500">{{ error }}</p>
-      </form>
+            {{ viewCopy.form.submit }}
+          </button>
+          <p class="text-center text-sm text-slate-600">
+            {{ viewCopy.links.loginPrompt }}
+            <router-link to="/login" class="font-semibold transition hover:opacity-80" style="color: #41ce5f;">
+              {{ viewCopy.links.loginCta }}
+            </router-link>
+          </p>
+          <p v-if="error" class="text-sm text-red-500">{{ error }}</p>
+        </form>
+      </div>
     </div>
   </div>
-</div>
 </template>
-
-
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
+import PasswordRequirements from "../../components/forms/PasswordRequirements.vue";
 import api from "../../services/api";
 import { useAuthStore } from "../../store/useAuthStore";
-import PasswordRequirements from "../../components/forms/PasswordRequirements.vue";
 import { addTagsToContactByEmail, viajeChatTagIds } from "../../services/viajeChat";
+import { createAdminLocalizer } from "../../utils/adminI18n";
 
 const router = useRouter();
 const auth = useAuthStore();
+const t = createAdminLocalizer();
+
+const viewCopy = {
+  brand: {
+    alt: t({ pt: "Roteiro Online", es: "Roteiro Online" })
+  },
+  hero: {
+    headline: t({
+      pt: "Pare de mandar PDF!<br>Venda suas viagens com páginas profissionais.",
+      es: "Deja de enviar PDF.<br>Vende tus viajes con páginas profesionales."
+    }),
+    description: t({
+      pt: "Tudo em um só lugar. Crie páginas para suas viagens, centralize as informações e facilite a decisão do cliente.",
+      es: "Todo en un solo lugar. Crea páginas para tus viajes, centraliza la información y facilita la decisión del cliente."
+    }),
+    note: t({
+      pt: "Você pode começar com 1 roteiro online sem pagar nada.",
+      es: "Puedes empezar con 1 itinerario online sin pagar nada."
+    })
+  },
+  card: {
+    eyebrow: t({ pt: "Comece agora", es: "Empieza ahora" }),
+    title: t({ pt: "Criar conta", es: "Crear cuenta" }),
+    description: t({
+      pt: "Preencha seus dados para criar seu painel e publicar páginas.",
+      es: "Completa tus datos para crear tu panel y publicar páginas."
+    })
+  },
+  form: {
+    nameLabel: t({ pt: "Nome", es: "Nombre" }),
+    cpfLabel: t({ pt: "CPF", es: "CPF" }),
+    cpfPlaceholder: t({ pt: "000.000.000-00", es: "000.000.000-00" }),
+    emailLabel: t({ pt: "E-mail", es: "Correo" }),
+    passwordLabel: t({ pt: "Senha", es: "Contraseña" }),
+    passwordPlaceholder: t({
+      pt: "Min. 8 caracteres, com maiúscula, minúscula e número",
+      es: "Mín. 8 caracteres con mayúscula, minúscula y número"
+    }),
+    whatsappLabel: t({ pt: "WhatsApp", es: "WhatsApp" }),
+    whatsappPlaceholder: t({ pt: "11999999999", es: "11999999999" }),
+    whatsappHelper: t({
+      pt: "DDI fixo do Brasil (+55) e número apenas com dígitos.",
+      es: "DDI fijo de Brasil (+55) y número solo con dígitos."
+    }),
+    submit: t({ pt: "Registrar", es: "Registrar" })
+  },
+  links: {
+    loginPrompt: t({ pt: "Já possui conta?", es: "¿Ya tienes cuenta?" }),
+    loginCta: t({ pt: "Entrar", es: "Iniciar sesión" })
+  },
+  feedback: {
+    emailInvalid: t({ pt: "E-mail inválido.", es: "Correo inválido." }),
+    passwordInvalid: t({
+      pt: "A senha deve ter pelo menos 8 caracteres, com maiúscula, minúscula e número.",
+      es: "La contraseña debe tener al menos 8 caracteres con mayúsculas, minúsculas y números."
+    }),
+    cpfInvalid: t({ pt: "CPF inválido.", es: "CPF inválido." }),
+    whatsappMissing: t({ pt: "Informe o WhatsApp.", es: "Ingresa el WhatsApp." }),
+    defaultError: t({ pt: "Erro ao registrar usuário.", es: "Error al registrar usuario." })
+  }
+};
+
 const metaPixelId = import.meta.env.VITE_GLOBAL_META_PIXEL_ID;
 const viajeChatApiKey = import.meta.env.VITE_VIAJECHAT_API_KEY || "crz_vRCzsXxHBIbJu_pUT5gEiU-RekrbE9NF";
+
 const name = ref("");
 const cpf = ref("");
 const email = ref("");
@@ -165,11 +227,11 @@ const canSubmit = computed(() => {
   const phoneDigits = sanitizedWhatsapp();
   return Boolean(
     name.value.trim() &&
-    emailRegex.test(normalizedEmail) &&
-    passwordValid.value &&
-    cpfDigits.length === 11 &&
-    isValidCpf(cpfDigits) &&
-    phoneDigits.length >= 10
+      emailRegex.test(normalizedEmail) &&
+      passwordValid.value &&
+      cpfDigits.length === 11 &&
+      isValidCpf(cpfDigits) &&
+      phoneDigits.length >= 10
   );
 });
 
@@ -235,21 +297,21 @@ const onSubmit = async () => {
     error.value = "";
     const normalizedEmail = email.value.trim();
     if (!emailRegex.test(normalizedEmail)) {
-      error.value = "E-mail invalido.";
+      error.value = viewCopy.feedback.emailInvalid;
       return;
     }
     if (!passwordValid.value) {
-      error.value = "A senha deve ter pelo menos 8 caracteres, com maiuscula, minuscula e numero.";
+      error.value = viewCopy.feedback.passwordInvalid;
       return;
     }
     const cpfDigits = sanitizedCpf();
     if (!isValidCpf(cpfDigits)) {
-      error.value = "CPF invalido.";
+      error.value = viewCopy.feedback.cpfInvalid;
       return;
     }
     const phoneDigits = sanitizedWhatsapp();
     if (!phoneDigits) {
-      error.value = "Informe o WhatsApp.";
+      error.value = viewCopy.feedback.whatsappMissing;
       return;
     }
 
@@ -283,7 +345,7 @@ const onSubmit = async () => {
   } catch (err: any) {
     console.error(err);
     const detail = err?.response?.data?.detail;
-    error.value = Array.isArray(detail) ? detail[0]?.msg : detail || "Erro ao registrar usuario.";
+    error.value = Array.isArray(detail) ? detail[0]?.msg : detail || viewCopy.feedback.defaultError;
   }
 };
 

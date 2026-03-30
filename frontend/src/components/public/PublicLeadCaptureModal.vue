@@ -15,7 +15,7 @@
             class="absolute right-4 top-4 rounded-full bg-white/70 p-1 text-slate-700 shadow-sm transition hover:bg-white dark:bg-slate-800/70 dark:text-white"
             @click="handleDismiss"
           >
-            <span class="sr-only">Fechar</span>
+            <span class="sr-only">{{ closeLabel }}</span>
             <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M6 6l12 12M6 18L18 6" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
@@ -25,9 +25,9 @@
               <div v-if="showBrandingLogo" class="flex justify-center">
                 <img :src="brandingLogo" alt="Logo da agência" class="h-16 w-16 rounded-xl object-contain" />
               </div>
-              <h2 class="text-2xl font-bold">{{ form.title || "Faça parte da lista" }}</h2>
+              <h2 class="text-2xl font-bold">{{ modalTitle }}</h2>
               <p class="text-sm text-slate-500 dark:text-slate-300">
-                {{ form.subtitle || "Preencha para continuar explorando este roteiro." }}
+                {{ modalSubtitle }}
               </p>
             </div>
 
@@ -53,12 +53,12 @@
                 :style="{ backgroundColor: buttonBackgroundColor, color: buttonTextColor }"
                 :disabled="loading"
               >
-                {{ loading ? "Enviando..." : form.buttonLabel || "Enviar" }}
+                {{ loading ? sendingLabel : submitLabel }}
               </button>
             </form>
             <p v-if="generalError" class="text-center text-sm text-rose-500">{{ generalError }}</p>
             <p class="text-center text-xs text-slate-400">
-              Seus dados são enviados para a agência responsável por esta página.
+              {{ privacyNotice }}
             </p>
           </div>
         </div>
@@ -71,6 +71,7 @@
 import { computed, onUnmounted, reactive, ref, watch } from "vue";
 import { submitLeadForm } from "../../services/leadCapture";
 import type { LeadForm } from "../../types/leads";
+import { createLocalizer, getCurrentLanguage } from "../../utils/i18n";
 
 const props = defineProps<{
   modelValue: boolean;
@@ -96,6 +97,25 @@ const errors = reactive<Record<string, string>>({});
 const loading = ref(false);
 const generalError = ref("");
 const FALLBACK_ACCENT_COLOR = "#22c55e";
+const modalCopy = {
+  close: { pt: "Fechar", es: "Cerrar" },
+  defaultTitle: { pt: "Faça parte da lista", es: "Únete a la lista" },
+  defaultSubtitle: {
+    pt: "Preencha para continuar explorando este roteiro.",
+    es: "Completa para seguir explorando este itinerario."
+  },
+  sending: { pt: "Enviando...", es: "Enviando..." },
+  submit: { pt: "Enviar", es: "Enviar" },
+  privacy: {
+    pt: "Seus dados são enviados para a agência responsável por esta página.",
+    es: "Tus datos se envían a la agencia responsable de esta página."
+  },
+  required: { pt: "Campo obrigatório", es: "Campo obligatorio" },
+  invalidEmail: { pt: "Informe um e-mail válido", es: "Ingresa un e-mail válido" },
+  generalError: { pt: "Não foi possível enviar. Tente novamente.", es: "No fue posible enviar. Intenta nuevamente." }
+} as const;
+const currentLanguage = getCurrentLanguage();
+const localize = createLocalizer(currentLanguage);
 const showBrandingLogo = computed(() => {
   if (!props.brandingLogo) return false;
   if (props.form && props.form.showLogo === false) return false;
@@ -111,6 +131,21 @@ const buttonBackgroundColor = computed(() => {
 });
 
 const buttonTextColor = computed(() => (isLightColor(buttonBackgroundColor.value) ? "#0f172a" : "#ffffff"));
+const closeLabel = computed(() => localize(modalCopy.close));
+const modalTitle = computed(() => {
+  const provided = localize((props.form?.title as any) ?? null).trim();
+  return provided.length ? provided : localize(modalCopy.defaultTitle);
+});
+const modalSubtitle = computed(() => {
+  const provided = localize((props.form?.subtitle as any) ?? null).trim();
+  return provided.length ? provided : localize(modalCopy.defaultSubtitle);
+});
+const submitLabel = computed(() => {
+  const provided = localize((props.form?.buttonLabel as any) ?? null).trim();
+  return provided.length ? provided : localize(modalCopy.submit);
+});
+const sendingLabel = computed(() => localize(modalCopy.sending));
+const privacyNotice = computed(() => localize(modalCopy.privacy));
 
 const resetState = () => {
   Object.keys(formState).forEach(key => delete formState[key]);
@@ -132,7 +167,7 @@ const validate = () => {
   (props.form?.fields || []).forEach(field => {
     const value = (formState[field.id] || "").trim();
     if (field.required && !value) {
-      errors[field.id] = "Campo obrigatório";
+      errors[field.id] = localize(modalCopy.required);
       valid = false;
     } else {
       errors[field.id] = "";
@@ -140,7 +175,7 @@ const validate = () => {
     if (field.type === "email" && value) {
       const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
       if (!emailPattern.test(value)) {
-        errors[field.id] = "Informe um e-mail válido";
+        errors[field.id] = localize(modalCopy.invalidEmail);
         valid = false;
       }
     }
@@ -176,7 +211,7 @@ const handleSubmit = async () => {
     finalize();
   } catch (err) {
     console.error("Erro ao enviar formulário de lead", err);
-    generalError.value = "Não foi possível enviar. Tente novamente.";
+    generalError.value = localize(modalCopy.generalError);
   } finally {
     loading.value = false;
   }

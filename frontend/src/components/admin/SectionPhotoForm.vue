@@ -1,39 +1,39 @@
 <template>
   <div class="space-y-4">
     <div>
-      <label class="text-sm font-semibold text-slate-600">Imagem</label>
-      <p class="text-xs text-slate-500">Envie uma imagem em alta resolução (PNG ou JPG).</p>
+      <label class="text-sm font-semibold text-slate-600">{{ viewCopy.image.label }}</label>
+      <p class="text-xs text-slate-500">{{ viewCopy.image.helper }}</p>
       <ImageUploadField v-model="local.image" class="mt-2" />
     </div>
 
     <div>
-      <label class="text-sm font-semibold text-slate-600">Layout</label>
+      <label class="text-sm font-semibold text-slate-600">{{ viewCopy.layout.label }}</label>
       <div class="mt-2 grid gap-3 md:grid-cols-2">
         <label
           class="flex cursor-pointer flex-col gap-2 rounded-2xl border px-4 py-3 text-sm font-semibold transition"
           :class="local.layout === 'card' ? 'border-brand bg-brand/5 text-brand' : 'border-slate-200 text-slate-600'"
         >
           <span class="flex items-center justify-between">
-            <span>Card centralizado</span>
+            <span>{{ viewCopy.layout.cardLabel }}</span>
             <input type="radio" class="text-brand" value="card" v-model="local.layout" />
           </span>
-          <span class="text-xs font-normal text-slate-500">A imagem fica dentro de um card com sombra.</span>
+          <span class="text-xs font-normal text-slate-500">{{ viewCopy.layout.cardHelper }}</span>
         </label>
         <label
           class="flex cursor-pointer flex-col gap-2 rounded-2xl border px-4 py-3 text-sm font-semibold transition"
           :class="local.layout === 'full' ? 'border-brand bg-brand/5 text-brand' : 'border-slate-200 text-slate-600'"
         >
           <span class="flex items-center justify-between">
-            <span>Tela cheia</span>
+            <span>{{ viewCopy.layout.fullLabel }}</span>
             <input type="radio" class="text-brand" value="full" v-model="local.layout" />
           </span>
-          <span class="text-xs font-normal text-slate-500">A imagem ocupa a largura total, semelhante ao hero.</span>
+          <span class="text-xs font-normal text-slate-500">{{ viewCopy.layout.fullHelper }}</span>
         </label>
       </div>
     </div>
 
     <div v-if="local.layout === 'card'">
-      <label class="text-sm font-semibold text-slate-600">Cor de fundo (opcional)</label>
+      <label class="text-sm font-semibold text-slate-600">{{ viewCopy.background.label }}</label>
       <div class="mt-2 flex flex-wrap items-center gap-3">
         <input
           type="color"
@@ -50,20 +50,20 @@
           class="rounded-full border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
           @click="customBackground = ''"
         >
-          Usar alternância
+          {{ viewCopy.background.useAlternate }}
         </button>
       </div>
-      <p class="mt-1 text-xs text-slate-500">Deixe em branco para seguir as cores configuradas na página.</p>
+      <p class="mt-1 text-xs text-slate-500">{{ viewCopy.background.helper }}</p>
     </div>
 
     <div>
-      <label class="text-sm font-semibold text-slate-600">Texto alternativo (opcional)</label>
+      <label class="text-sm font-semibold text-slate-600">{{ viewCopy.altText.label }}</label>
       <input
         v-model="local.altText"
-        placeholder="Descreva brevemente a imagem"
+        :placeholder="viewCopy.altText.placeholder"
         class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
       />
-      <p class="mt-1 text-xs text-slate-500">IMPORTANTE para acessibilidade e SEO.</p>
+      <p class="mt-1 text-xs text-slate-500">{{ viewCopy.altText.helper }}</p>
     </div>
   </div>
 </template>
@@ -72,9 +72,35 @@
 import { computed, nextTick, reactive, ref, watch } from "vue";
 import ImageUploadField from "./inputs/ImageUploadField.vue";
 import type { PhotoSection } from "../../types/page";
+import { createAdminLocalizer } from "../../utils/adminI18n";
 
 const props = defineProps<{ modelValue: PhotoSection }>();
 const emit = defineEmits<{ (e: "update:modelValue", value: PhotoSection): void }>();
+const t = createAdminLocalizer();
+
+const viewCopy = {
+  image: {
+    label: t({ pt: "Imagem", es: "Imagen" }),
+    helper: t({ pt: "Envie uma imagem em alta resolução (PNG ou JPG).", es: "Sube una imagen en alta resolución (PNG o JPG)." })
+  },
+  layout: {
+    label: t({ pt: "Layout", es: "Layout" }),
+    cardLabel: t({ pt: "Card centralizado", es: "Card centrado" }),
+    cardHelper: t({ pt: "A imagem fica dentro de um card com sombra.", es: "La imagen queda dentro de un card con sombra." }),
+    fullLabel: t({ pt: "Tela cheia", es: "Pantalla completa" }),
+    fullHelper: t({ pt: "A imagem ocupa a largura total, semelhante ao hero.", es: "La imagen ocupa todo el ancho, similar al hero." })
+  },
+  background: {
+    label: t({ pt: "Cor de fundo (opcional)", es: "Color de fondo (opcional)" }),
+    useAlternate: t({ pt: "Usar alternância", es: "Usar alternancia" }),
+    helper: t({ pt: "Deixe em branco para seguir as cores configuradas na página.", es: "Déjalo en blanco para seguir los colores configurados en la página." })
+  },
+  altText: {
+    label: t({ pt: "Texto alternativo (opcional)", es: "Texto alternativo (opcional)" }),
+    placeholder: t({ pt: "Descreva brevemente a imagem", es: "Describe brevemente la imagen" }),
+    helper: t({ pt: "Importante para acessibilidade e SEO.", es: "Importante para accesibilidad y SEO." })
+  }
+};
 
 const local = reactive<PhotoSection>({
   type: "photo",

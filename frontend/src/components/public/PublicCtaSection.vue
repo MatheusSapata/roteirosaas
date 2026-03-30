@@ -7,7 +7,7 @@
         <div class="flex justify-center">
           <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="headingAccent" />
         </div>
-        <h1 class="text-3xl font-bold md:text-4xl">{{ section.label }}</h1>
+        <h1 class="text-3xl font-bold md:text-4xl">{{ sectionLabel }}</h1>
         <div class="mt-2 text-sm md:text-base" v-if="descriptionHtml" v-html="descriptionHtml"></div>
         <div class="mt-5 flex justify-center" v-if="ctaHasTarget">
           <a
@@ -48,7 +48,7 @@
             <div class="flex justify-center">
               <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="headingAccent" />
             </div>
-            <h1 class="text-3xl font-bold md:text-4xl" :style="{ color: textColor }">{{ section.label }}</h1>
+            <h1 class="text-3xl font-bold md:text-4xl" :style="{ color: textColor }">{{ sectionLabel }}</h1>
             <div class="text-sm" :style="{ color: textColor }" v-if="descriptionHtml" v-html="descriptionHtml"></div>
           </div>
           <a
@@ -79,7 +79,7 @@
             <div class="flex justify-center">
               <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="headingAccent" />
             </div>
-            <h1 class="text-3xl font-bold md:text-4xl" :style="{ color: textColor }">{{ section.label }}</h1>
+            <h1 class="text-3xl font-bold md:text-4xl" :style="{ color: textColor }">{{ sectionLabel }}</h1>
             <div class="text-sm" :style="{ color: textColor }" v-if="descriptionHtml" v-html="descriptionHtml"></div>
           </div>
           <div class="flex items-center justify-end">
@@ -113,7 +113,7 @@
             <div class="flex justify-center">
               <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="headingAccent" />
             </div>
-            <h1 class="text-3xl font-bold md:text-4xl" :style="{ color: textColor }">{{ section.label }}</h1>
+            <h1 class="text-3xl font-bold md:text-4xl" :style="{ color: textColor }">{{ sectionLabel }}</h1>
             <div class="text-sm" :style="{ color: textColor }" v-if="descriptionHtml" v-html="descriptionHtml"></div>
             <a
               v-if="ctaHasTarget"
@@ -144,9 +144,16 @@ import SectionHeadingChip from "./SectionHeadingChip.vue";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import { sanitizeHtml } from "../../utils/sanitizeHtml";
 import { getReadableTextColor } from "../../utils/colorContrast";
+import { createLocalizer, getCurrentLanguage } from "../../utils/i18n";
 
 const props = defineProps<{ section: CtaSection }>();
 const headingDefaults = getSectionHeadingDefaults("cta");
+const ctaCopy = {
+  simpleButton: { pt: "Saiba mais", es: "Ver más" },
+  defaultButton: { pt: "Falar com especialista", es: "Hablar con un especialista" }
+} as const;
+const currentLanguage = getCurrentLanguage();
+const localize = createLocalizer(currentLanguage);
 
 const accent = computed(() => props.section.backgroundColor || "#41ce5f");
 const highlightActive = computed(() => !!props.section.highlight);
@@ -165,13 +172,21 @@ const ctaHasTarget = computed(() =>
   ctaMode.value === "section" ? !!props.section.ctaSectionId : !!props.section.link
 );
 const ctaIsScroll = computed(() => ctaMode.value === "section" && !!props.section.ctaSectionId);
-const headingLabel = computed(() => props.section.headingLabel ?? headingDefaults.label);
+const headingLabel = computed(() => {
+  const override = localize(props.section.headingLabel);
+  if (override.trim().length) return override;
+  const fallback = headingDefaults.label;
+  return typeof fallback === "string" ? fallback : localize(fallback);
+});
 const headingStyle = computed(() => props.section.headingLabelStyle || headingDefaults.style);
 const headingAccent = computed(() => (highlightActive.value ? "#ffffff" : buttonColor.value));
-const buttonLabel = computed(() =>
-  props.section.ctaText || (props.section.layout === "simple" ? "Saiba mais" : "Falar com especialista")
-);
-const descriptionHtml = computed(() => sanitizeHtml(props.section.description));
+const buttonLabel = computed(() => {
+  const override = localize(props.section.ctaText).trim();
+  if (override.length) return override;
+  return props.section.layout === "simple" ? localize(ctaCopy.simpleButton) : localize(ctaCopy.defaultButton);
+});
+const descriptionHtml = computed(() => sanitizeHtml(localize(props.section.description)));
+const sectionLabel = computed(() => localize(props.section.label));
 
 const toRgba = (hex: string, alpha: number) => {
   const cleaned = hex.replace("#", "");

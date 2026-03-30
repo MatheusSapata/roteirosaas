@@ -14,6 +14,7 @@ import PublicPageView from "../views/public/PublicPageView.vue";
 import PlansView from "../views/public/PlansView.vue";
 import AdminLayout from "../layouts/AdminLayout.vue";
 import { useAuthStore } from "../store/useAuthStore";
+import { resolveCurrentLanguage, setCurrentLanguage } from "../utils/i18n";
 
 const RedirectPlaceholder = {
   template: "<div>Redirecionando...</div>"
@@ -27,6 +28,8 @@ const envPlatformHosts = (import.meta.env.VITE_PLATFORM_HOSTS || "")
 
 const platformHostSet = new Set([...defaultPlatformHosts, ...envPlatformHosts]);
 const currentHostname = typeof window !== "undefined" ? window.location.hostname.toLowerCase() : "";
+const resolvedLanguage = resolveCurrentLanguage(currentHostname);
+setCurrentLanguage(resolvedLanguage);
 const isCustomDomainHost = !!currentHostname && !platformHostSet.has(currentHostname);
 
 const redirectRoutes: RouteRecordRaw[] = [

@@ -11,7 +11,7 @@
         <div :class="textBlockClass" :style="textAnimationStyle">
           <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="ctaColor" />
           <h1 class="text-3xl font-bold leading-tight md:text-4xl" :style="{ color: primaryText }">
-            {{ section.title }}
+            {{ storyTitleText }}
           </h1>
           <div
             v-if="storySubtitleHtml"
@@ -35,7 +35,7 @@
               ]"
               :style="{ background: ctaColor, color: ctaTextColor }"
             >
-              {{ section.ctaLabel || "Saiba mais" }}
+              {{ ctaLabelText }}
             </a>
           </div>
         </div>
@@ -46,7 +46,7 @@
                 <iframe
                   :class="iframeClass"
                   :src="primaryMedia.url"
-                  title="Video"
+                  :title="videoTitleText"
                   frameborder="0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowfullscreen
@@ -56,7 +56,7 @@
             <img
               v-else-if="primaryMedia"
               :src="primaryMedia.url"
-              alt="Destaque"
+              :alt="imageAltText"
               class="h-full w-full cursor-zoom-in object-cover"
               @click="handlePrimaryImageClick(primaryMedia, 0)"
             />
@@ -69,7 +69,7 @@
         <div :class="[textBlockClass, imagePosition === 'left' ? 'md:order-2' : 'md:order-1']" :style="textAnimationStyle">
           <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="ctaColor" />
           <h1 class="text-3xl font-bold leading-tight md:text-4xl" :style="{ color: primaryText }">
-            {{ section.title }}
+            {{ storyTitleText }}
           </h1>
           <div
             v-if="storySubtitleHtml"
@@ -93,7 +93,7 @@
               ]"
               :style="{ background: ctaColor, color: ctaTextColor }"
             >
-              {{ section.ctaLabel || "Saiba mais" }}
+              {{ ctaLabelText }}
             </a>
           </div>
         </div>
@@ -108,7 +108,7 @@
                 <iframe
                   :class="iframeClass"
                   :src="activeMedia.url"
-                  title="Video"
+                  :title="videoTitleText"
                   frameborder="0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowfullscreen
@@ -118,7 +118,7 @@
             <img
               v-else-if="activeMedia"
               :src="activeMedia.url"
-              alt="Destaque"
+              :alt="imageAltText"
               :class="[galleryImageClass, 'cursor-zoom-in']"
               @click="handlePrimaryImageClick(activeMedia, activeIndex)"
             />
@@ -170,7 +170,7 @@
             class="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white transition hover:bg-white/20"
             type="button"
             @click="closeLightbox"
-            aria-label="Fechar visualização"
+            :aria-label="lightboxCloseLabel"
           >
             <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6l-12 12" />
@@ -180,7 +180,7 @@
             <template v-if="lightboxMedia?.type === 'image'">
               <img
                 :src="lightboxMedia.url"
-                alt="Visualização ampliada"
+                :alt="lightboxImageAlt"
                 class="h-full w-full rounded-3xl object-contain"
               />
             </template>
@@ -189,7 +189,7 @@
                 <iframe
                   class="absolute inset-0 h-full w-full rounded-3xl"
                   :src="lightboxMedia.url"
-                  title="Vídeo ampliado"
+                  :title="lightboxVideoTitle"
                   frameborder="0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowfullscreen
@@ -201,7 +201,7 @@
               class="absolute left-[-48px] top-1/2 -translate-y-1/2 rounded-full bg-white/20 p-3 text-white transition hover:bg-white/35"
               type="button"
               @click.stop="showPrevLightbox"
-              aria-label="Ver anterior"
+              :aria-label="lightboxPrevLabel"
             >
               <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M15 18l-6-6 6-6" />
@@ -212,7 +212,7 @@
               class="absolute right-[-48px] top-1/2 -translate-y-1/2 rounded-full bg-white/20 p-3 text-white transition hover:bg-white/35"
               type="button"
               @click.stop="showNextLightbox"
-              aria-label="Ver próxima"
+              :aria-label="lightboxNextLabel"
             >
               <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 6l6 6-6 6" />
@@ -235,9 +235,22 @@ import SectionHeadingChip from "./SectionHeadingChip.vue";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import { sanitizeHtml } from "../../utils/sanitizeHtml";
 import { deriveTextPalette, getReadableTextColor } from "../../utils/colorContrast";
+import { createLocalizer, getCurrentLanguage } from "../../utils/i18n";
 
 const props = defineProps<{ section: StorySection; previewDevice?: "desktop" | "mobile" }>();
+const localize = createLocalizer(getCurrentLanguage());
 const headingDefaults = getSectionHeadingDefaults("story");
+const storyCopy = {
+  title: { pt: "História em destaque", es: "Historia destacada" },
+  cta: { pt: "Saiba mais", es: "Saber más" },
+  videoTitle: { pt: "Vídeo em destaque", es: "Video destacado" },
+  imageAlt: { pt: "Imagem destaque", es: "Imagen destacada" },
+  lightboxClose: { pt: "Fechar visualização", es: "Cerrar visualización" },
+  lightboxImageAlt: { pt: "Visualização ampliada", es: "Visualización ampliada" },
+  lightboxVideoTitle: { pt: "Vídeo ampliado", es: "Video ampliado" },
+  lightboxPrev: { pt: "Ver anterior", es: "Ver anterior" },
+  lightboxNext: { pt: "Ver próxima", es: "Ver siguiente" }
+} as const;
 
 const isSingle = computed(() => props.section.layout !== "gallery");
 const imagePosition = computed(() => props.section.imagePosition || "right");
@@ -255,6 +268,10 @@ const ctaTrackType = computed(() =>
   ctaMode.value === "section" ? "cta" : isWhatsappLink(props.section.ctaLink || undefined) ? "whatsapp" : "cta"
 );
 const ctaEnabled = computed(() => props.section.ctaEnabled !== false);
+const ctaLabelText = computed(() => {
+  const text = localize(props.section.ctaLabel).trim();
+  return text.length ? text : localize(storyCopy.cta);
+});
 const animateContent = computed(() => true);
 const ctaShimmerClass = computed(() => "hero-cta-shimmer");
 const desktopCtaHoverClass = computed(() => "hero-cta-desktop-hover");
@@ -268,9 +285,20 @@ const outerClass = computed(() =>
     ? "my-6 border-2 border-transparent p-0 gap-0 md:flex-row md:items-stretch overflow-hidden rounded-[30px] bg-white/90 shadow-xl"
     : "gap-8 px-6 py-12 md:flex-row md:items-center md:gap-12"
 );
-const headingLabel = computed(() => props.section.headingLabel ?? props.section.badge ?? headingDefaults.label);
+const headingLabel = computed(() => {
+  const label = localize(props.section.headingLabel).trim();
+  if (label.length) return label;
+  const badge = localize(props.section.badge).trim();
+  if (badge.length) return badge;
+  const fallback = headingDefaults.label;
+  return typeof fallback === "string" ? fallback : localize(fallback);
+});
 const headingStyle = computed(() => props.section.headingLabelStyle || headingDefaults.style);
-const storySubtitleHtml = computed(() => sanitizeHtml(props.section.subtitle));
+const storyTitleText = computed(() => {
+  const text = localize(props.section.title).trim();
+  return text.length ? text : localize(storyCopy.title);
+});
+const storySubtitleHtml = computed(() => sanitizeHtml(localize(props.section.subtitle)));
 const textPalette = computed(() => deriveTextPalette(props.section.textColor));
 const primaryText = computed(() => textPalette.value.primary);
 const mutedText = computed(() => textPalette.value.muted);
@@ -331,6 +359,13 @@ const thumbnailGridStyle = computed(() => {
 });
 const thumbnailImageClass = computed(() => "w-full aspect-[4/3] object-cover");
 const thumbnailVideoWrapperClass = computed(() => "relative overflow-hidden rounded-xl bg-slate-900/70 text-white w-full aspect-[4/3]");
+const videoTitleText = computed(() => localize(storyCopy.videoTitle));
+const imageAltText = computed(() => localize(storyCopy.imageAlt));
+const lightboxCloseLabel = computed(() => localize(storyCopy.lightboxClose));
+const lightboxImageAlt = computed(() => localize(storyCopy.lightboxImageAlt));
+const lightboxVideoTitle = computed(() => localize(storyCopy.lightboxVideoTitle));
+const lightboxPrevLabel = computed(() => localize(storyCopy.lightboxPrev));
+const lightboxNextLabel = computed(() => localize(storyCopy.lightboxNext));
 const activeThumbnailStyle = computed(() => ({ "--tw-ring-color": ctaColor.value, "--tw-ring-offset-width": "1px", "--tw-ring-width": "2.5px", color: ctaColor.value }));
 const youtubeThumbnail = (url: string) => {
   const id = extractYoutubeId(url);

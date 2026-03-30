@@ -5,33 +5,33 @@
         <div
           class="mx-auto inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-amber-500 shadow-sm ring-1 ring-amber-100"
         >
-          <span>Planos</span>
+          <span>{{ heroChipLabel }}</span>
           <span class="h-1 w-1 rounded-full bg-amber-400"></span>
-          <span>Escolha o melhor para você</span>
+          <span>{{ heroChipDetail }}</span>
         </div>
 
         <h1 class="mt-6 text-4xl font-black tracking-tight text-slate-900 md:text-5xl">
-          Planos pensados para crescer com sua agência
+          {{ heroTitle }}
         </h1>
 
         <p class="mx-auto mt-4 max-w-2xl text-base text-slate-600 md:text-lg">
-          Comece grátis com uma página. Faça upgrade só quando precisar de mais páginas e recursos.
+          {{ heroDescription }}
         </p>
 
         <div class="mt-6 flex flex-wrap items-center justify-center gap-3 text-sm text-slate-600">
           <div class="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 shadow-sm ring-1 ring-slate-200">
             <span class="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">✓</span>
-            <span>Upgrade instantâneo</span>
+            <span>{{ heroHighlights.upgrade }}</span>
           </div>
 
           <div class="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 shadow-sm ring-1 ring-slate-200">
             <span class="flex h-6 w-6 items-center justify-center rounded-full bg-amber-100 text-amber-600">⚡</span>
-            <span>Sem taxas de setup</span>
+            <span>{{ heroHighlights.setup }}</span>
           </div>
 
           <div class="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 shadow-sm ring-1 ring-slate-200">
             <span class="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">↻</span>
-            <span>Downgrade quando quiser</span>
+            <span>{{ heroHighlights.downgrade }}</span>
           </div>
         </div>
       </header>
@@ -40,19 +40,17 @@
         v-if="trialBlocked"
         class="mx-auto mb-8 max-w-4xl rounded-3xl border border-rose-200 bg-rose-50 p-5 text-rose-900 shadow-sm"
       >
-        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-rose-500">Trial encerrado</p>
-        <p class="mt-2 text-sm">
-          Seu período trial terminou e o painel foi bloqueado. Ative um plano para liberar novamente suas páginas e retomar as publicações.
-        </p>
+        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-rose-500">{{ trialBlockedTitle }}</p>
+        <p class="mt-2 text-sm">{{ trialBlockedDescription }}</p>
       </div>
       <div
         v-else-if="trialPlanActive"
         class="mx-auto mb-8 max-w-4xl rounded-3xl border border-emerald-200 bg-emerald-50 p-5 text-emerald-900 shadow-sm"
       >
-        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-500">Trial ativo</p>
+        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-500">{{ trialActiveTitle }}</p>
         <p class="mt-2 text-sm">
-          Você está aproveitando o plano Trial com até 3 páginas, seções e pixels ilimitados
-          <span v-if="trialEndsAtText">até {{ trialEndsAtText }}.</span>
+          {{ trialActiveDescription }}
+          <span v-if="trialEndsAtText">{{ trialActiveUntilLabel }} {{ trialEndsAtText }}.</span>
         </p>
       </div>
 
@@ -65,7 +63,7 @@
               :class="billingCycle === 'monthly' ? 'bg-white text-slate-900 shadow' : ''"
               @click="billingCycle = 'monthly'"
             >
-              Mensal
+              {{ billingCycleLabels.monthly }}
             </button>
             <button
               type="button"
@@ -73,7 +71,7 @@
               :class="billingCycle === 'annual' ? 'bg-white text-slate-900 shadow' : ''"
               @click="billingCycle = 'annual'"
             >
-              Anual
+              {{ billingCycleLabels.annual }}
             </button>
           </div>
           <p class="text-xs text-slate-500">{{ billingCycleDescriptions[billingCycle] }}</p>
@@ -95,7 +93,7 @@
                 class="inline-flex items-center gap-2 whitespace-nowrap rounded-full bg-emerald-100 px-3 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-emerald-800 shadow-sm ring-1 ring-emerald-200"
               >
                 <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
-                Seu plano atual
+                {{ currentPlanBadgeLabel }}
               </span>
 
               <span
@@ -151,8 +149,8 @@
                 :disabled="plan.isCurrent || loadingPlan === plan.key"
                 @click="handlePlanClick(plan.key)"
               >
-                <span v-if="plan.isCurrent">Plano atual</span>
-                <span v-else-if="loadingPlan === plan.key">Redirecionando...</span>
+                <span v-if="plan.isCurrent">{{ planButtonLabels.current }}</span>
+                <span v-else-if="loadingPlan === plan.key">{{ planButtonLabels.redirecting }}</span>
                 <span v-else>{{ plan.cta }}</span>
                 <span v-if="!plan.isCurrent && loadingPlan !== plan.key" aria-hidden="true">→</span>
               </button>
@@ -170,9 +168,9 @@
           class="mt-10 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-white px-6 py-5 shadow-[0_16px_50px_-35px_rgba(15,23,42,0.45)] ring-1 ring-slate-100"
         >
           <div>
-            <p class="text-sm font-semibold text-amber-600">Transparência total</p>
+            <p class="text-sm font-semibold text-amber-600">{{ transparencyTitle }}</p>
             <p class="text-sm text-slate-600">
-              Sem taxas de cancelamento ou contratos longos. Troque ou cancele com 1 clique.
+              {{ transparencyDescription }}
             </p>
           </div>
 
@@ -181,8 +179,8 @@
               24/7
             </span>
             <div>
-              <p class="font-semibold text-slate-900">Suporte prioritário</p>
-              <p class="text-xs text-slate-500">Atendimento em português via chat e WhatsApp.</p>
+              <p class="font-semibold text-slate-900">{{ supportTitle }}</p>
+              <p class="text-xs text-slate-500">{{ supportDescription }}</p>
             </div>
           </div>
         </div>
@@ -244,6 +242,100 @@ import api from "../../services/api";
 import { CHECKOUT_SESSION_STORAGE_KEY, createCaktoCheckoutSession } from "../../services/cakto";
 import { useAuthStore } from "../../store/useAuthStore";
 import { planLabels } from "../../utils/planLabels";
+import { createLocalizer, getCurrentLanguage } from "../../utils/i18n";
+import type { LocalizedString, SupportedLanguage } from "../../utils/i18n";
+
+const currentLanguage = getCurrentLanguage();
+const localize = createLocalizer(currentLanguage);
+const localeByLanguage: Record<SupportedLanguage, string> = {
+  pt: "pt-BR",
+  es: "es-ES"
+};
+const dateLocale = localeByLanguage[currentLanguage] || "pt-BR";
+
+const viewCopy = {
+  hero: {
+    chipLabel: { pt: "Planos", es: "Planes" },
+    chipDetail: { pt: "Escolha o melhor para você", es: "Elige el mejor para ti" },
+    title: { pt: "Planos pensados para crescer com sua agência", es: "Planes pensados para crecer con tu agencia" },
+    description: {
+      pt: "Comece grátis com uma página. Faça upgrade só quando precisar de mais páginas e recursos.",
+      es: "Empieza gratis con una página. Haz upgrade solo cuando necesites más páginas y recursos."
+    },
+    highlights: {
+      upgrade: { pt: "Upgrade instantâneo", es: "Upgrade instantáneo" },
+      setup: { pt: "Sem taxas de setup", es: "Sin tarifas de configuración" },
+      downgrade: { pt: "Downgrade quando quiser", es: "Baja de plan cuando quieras" }
+    }
+  },
+  trial: {
+    blockedTitle: { pt: "Trial encerrado", es: "Trial finalizado" },
+    blockedDescription: {
+      pt: "Seu período trial terminou e o painel foi bloqueado. Ative um plano para liberar novamente suas páginas e retomar as publicações.",
+      es: "Tu período de prueba terminó y el panel fue bloqueado. Activa un plan para liberar tus páginas otra vez y retomar las publicaciones."
+    },
+    activeTitle: { pt: "Trial ativo", es: "Trial activo" },
+    activeDescription: {
+      pt: "Você está aproveitando o plano Trial com até 3 páginas, seções e pixels ilimitados",
+      es: "Estás aprovechando el plan Trial con hasta 3 páginas, secciones y píxeles ilimitados"
+    },
+    activeUntil: { pt: "até", es: "hasta" }
+  },
+  billing: {
+    monthlyLabel: { pt: "Mensal", es: "Mensual" },
+    annualLabel: { pt: "Anual", es: "Anual" },
+    monthlyDescription: { pt: "Pague mês a mês", es: "Paga mes a mes" },
+    annualDescription: { pt: "Economize escolhendo o plano anual", es: "Ahorra eligiendo el plan anual" }
+  },
+  badges: {
+    currentPlan: { pt: "Seu plano atual", es: "Tu plan actual" }
+  },
+  buttons: {
+    currentPlan: { pt: "Plano atual", es: "Plan actual" },
+    redirecting: { pt: "Redirecionando...", es: "Redirigiendo..." }
+  },
+  transparency: {
+    title: { pt: "Transparência total", es: "Transparencia total" },
+    description: {
+      pt: "Sem taxas de cancelamento ou contratos longos. Troque ou cancele com 1 clique.",
+      es: "Sin tasas de cancelación ni contratos largos. Cambia o cancela con 1 clic."
+    },
+    supportTitle: { pt: "Suporte prioritário", es: "Soporte prioritario" },
+    supportDescription: {
+      pt: "Atendimento em português via chat e WhatsApp.",
+      es: "Atención en portugués por chat y WhatsApp."
+    }
+  },
+  checkoutError: {
+    pt: "Não foi possível iniciar o checkout. Tente novamente.",
+    es: "No fue posible iniciar el checkout. Intenta nuevamente."
+  }
+} as const;
+
+const heroChipLabel = localize(viewCopy.hero.chipLabel);
+const heroChipDetail = localize(viewCopy.hero.chipDetail);
+const heroTitle = localize(viewCopy.hero.title);
+const heroDescription = localize(viewCopy.hero.description);
+const heroHighlights = {
+  upgrade: localize(viewCopy.hero.highlights.upgrade),
+  setup: localize(viewCopy.hero.highlights.setup),
+  downgrade: localize(viewCopy.hero.highlights.downgrade)
+};
+const trialBlockedTitle = localize(viewCopy.trial.blockedTitle);
+const trialBlockedDescription = localize(viewCopy.trial.blockedDescription);
+const trialActiveTitle = localize(viewCopy.trial.activeTitle);
+const trialActiveDescription = localize(viewCopy.trial.activeDescription);
+const trialActiveUntilLabel = localize(viewCopy.trial.activeUntil);
+const currentPlanBadgeLabel = localize(viewCopy.badges.currentPlan);
+const planButtonLabels = {
+  current: localize(viewCopy.buttons.currentPlan),
+  redirecting: localize(viewCopy.buttons.redirecting)
+};
+const transparencyTitle = localize(viewCopy.transparency.title);
+const transparencyDescription = localize(viewCopy.transparency.description);
+const supportTitle = localize(viewCopy.transparency.supportTitle);
+const supportDescription = localize(viewCopy.transparency.supportDescription);
+const checkoutErrorMessage = localize(viewCopy.checkoutError);
 
 interface PlanCard {
   key: string;
@@ -264,8 +356,19 @@ interface PlanCard {
   isCurrent?: boolean;
 }
 
-interface PlanDefinition extends Omit<PlanCard, "price" | "period" | "detail" | "isCurrent"> {
-  prices: Record<BillingCycle, { value: number; period: string; detail?: string }>;
+interface PlanDefinition {
+  key: string;
+  tier: LocalizedString;
+  name: LocalizedString;
+  subtitle: LocalizedString;
+  highlight: LocalizedString;
+  features: LocalizedString[];
+  badge?: LocalizedString;
+  badgeTone?: string;
+  cta: LocalizedString;
+  note: LocalizedString;
+  ctaClass: string;
+  prices: Record<BillingCycle, { value: number; period: LocalizedString; detail?: LocalizedString }>;
 }
 
 type BillingCycle = "monthly" | "annual";
@@ -280,20 +383,26 @@ interface BillingInfo {
   billing_cycle?: string;
 }
 
+const billingCycleLabels: Record<BillingCycle, string> = {
+  monthly: localize(viewCopy.billing.monthlyLabel),
+  annual: localize(viewCopy.billing.annualLabel)
+};
+
+const billingCycleDescriptions: Record<BillingCycle, string> = {
+  monthly: localize(viewCopy.billing.monthlyDescription),
+  annual: localize(viewCopy.billing.annualDescription)
+};
+
 const authStore = useAuthStore();
 const trialBlocked = computed(() => Boolean(authStore.user?.trial_blocked));
 const trialPlanActive = computed(() => authStore.user?.trial_plan === "trial");
 const trialEndsAtText = computed(() => {
   const endsAt = authStore.user?.trial_ends_at;
   if (!endsAt) return null;
-  return new Date(endsAt).toLocaleDateString("pt-BR");
+  return new Date(endsAt).toLocaleDateString(dateLocale);
 });
 
 const billingCycle = ref<BillingCycle>("annual");
-const billingCycleDescriptions: Record<BillingCycle, string> = {
-  monthly: "Pague mês a mês",
-  annual: "Economize escolhendo o plano anual"
-};
 
 const loadingPlan = ref<string | null>(null);
 const errorMessage = ref<string | null>(null);
@@ -325,74 +434,100 @@ const directCheckoutLinks: Record<string, Partial<Record<BillingCycle, string>>>
   }
 };
 
+const pricePeriods: Record<BillingCycle, LocalizedString> = {
+  monthly: { pt: "/mês", es: "/mes" },
+  annual: { pt: "/ano", es: "/año" }
+};
+
 const planDefinitions: PlanDefinition[] = [
   {
     key: "essencial",
-    tier: "Profissional",
-    name: "Plano Profissional",
-    subtitle: "Para quem já vende excursões e quer mais presença online",
-    highlight: "Para quem quer vender mais roteiros",
+    tier: { pt: "Profissional", es: "Profesional" },
+    name: { pt: "Plano Profissional", es: "Plan Profesional" },
+    subtitle: {
+      pt: "Para quem já vende excursões e quer mais presença online",
+      es: "Para quienes ya venden excursiones y quieren más presencia online"
+    },
+    highlight: { pt: "Para quem quer vender mais roteiros", es: "Para quien quiere vender más itinerarios" },
     features: [
-      "Até 3 roteiros online ativos",
-      "Seções ilimitadas dentro de cada roteiro",
-      "Salvar modelo padrão para copiar em novas viagens",
-      "Conectar 1 pixel (Facebook ou Google)",
-      "Componentes extras (depoimentos, contagem regressiva, FAQ)"
+      { pt: "Até 3 roteiros online ativos", es: "Hasta 3 itinerarios online activos" },
+      { pt: "Seções ilimitadas dentro de cada roteiro", es: "Secciones ilimitadas dentro de cada itinerario" },
+      { pt: "Salvar modelo padrão para copiar em novas viagens", es: "Guardar un modelo base para copiar en nuevos viajes" },
+      { pt: "Conectar 1 pixel (Facebook ou Google)", es: "Conectar 1 píxel (Facebook o Google)" },
+      { pt: "Componentes extras (depoimentos, contagem regressiva, FAQ)", es: "Componentes extra (testimonios, cuenta regresiva, FAQ)" }
     ],
-    badge: "Recomendado para crescer",
+    badge: { pt: "Recomendado para crescer", es: "Recomendado para crecer" },
     badgeTone: "bg-emerald-50 text-emerald-700 ring-emerald-100",
-    cta: "Quero organizar minhas viagens",
-    note: "Perfeito para quem já tem grupos rodando.",
+    cta: { pt: "Quero organizar minhas viagens", es: "Quiero organizar mis viajes" },
+    note: { pt: "Perfeito para quem já tem grupos rodando.", es: "Perfecto para quienes ya tienen grupos en marcha." },
     ctaClass: "bg-emerald-600 hover:bg-emerald-500",
     prices: {
-      monthly: { value: 49.99, period: "/mês" },
-      annual: { value: 479.88, period: "/ano" }
+      monthly: { value: 49.99, period: pricePeriods.monthly },
+      annual: { value: 479.88, period: pricePeriods.annual }
     }
   },
   {
     key: "growth",
-    tier: "Agência",
-    name: "Plano Agência",
-    subtitle: "Para agências que querem vender todos os meses com previsibilidade",
-    highlight: "Mais usado pelas agências",
-    features: ["Até 10 roteiros online ativos", "Conectar até 3 pixels", "Duplicação rápida de páginas", "Todos os recursos do Profissional"],
-    badge: "Mais popular",
+    tier: { pt: "Agência", es: "Agencia" },
+    name: { pt: "Plano Agência", es: "Plan Agencia" },
+    subtitle: {
+      pt: "Para agências que querem vender todos os meses com previsibilidade",
+      es: "Para agencias que quieren vender todos los meses con previsibilidad"
+    },
+    highlight: { pt: "Mais usado pelas agências", es: "El más usado por las agencias" },
+    features: [
+      { pt: "Até 10 roteiros online ativos", es: "Hasta 10 itinerarios online activos" },
+      { pt: "Conectar até 3 pixels", es: "Conectar hasta 3 píxeles" },
+      { pt: "Duplicação rápida de páginas", es: "Duplicación rápida de páginas" },
+      { pt: "Todos os recursos do Profissional", es: "Todos los recursos del Profesional" }
+    ],
+    badge: { pt: "Mais popular", es: "Más popular" },
     badgeTone: "bg-amber-100 text-amber-800 ring-amber-200",
-    cta: "Quero escalar minhas vendas",
-    note: "Mantenha vários destinos ativos o ano todo.",
+    cta: { pt: "Quero escalar minhas vendas", es: "Quiero escalar mis ventas" },
+    note: { pt: "Mantenha vários destinos ativos o ano todo.", es: "Mantén varios destinos activos todo el año." },
     ctaClass: "bg-amber-500 hover:bg-amber-400",
     prices: {
-      monthly: { value: 89.99, period: "/mês" },
-      annual: { value: 839.88, period: "/ano" }
+      monthly: { value: 89.99, period: pricePeriods.monthly },
+      annual: { value: 839.88, period: pricePeriods.annual }
     }
   },
   {
     key: "infinity",
-    tier: "Escala",
-    name: "Plano Escala",
-    subtitle: "Para agências que operam múltiplos grupos e querem dominar sua região",
-    highlight: "Para dominar sua região",
+    tier: { pt: "Escala", es: "Escala" },
+    name: { pt: "Plano Escala", es: "Plan Escala" },
+    subtitle: {
+      pt: "Para agências que operam múltiplos grupos e querem dominar sua região",
+      es: "Para agencias que operan múltiples grupos y quieren dominar su región"
+    },
+    highlight: { pt: "Para dominar sua região", es: "Para dominar tu región" },
     features: [
-      "Roteiros ilimitados",
-      "Todos os recursos dos planos anteriores",
-      "Ideal para múltiplos destinos simultâneos"
+      { pt: "Roteiros ilimitados", es: "Itinerarios ilimitados" },
+      { pt: "Todos os recursos dos planos anteriores", es: "Todos los recursos de los planes anteriores" },
+      { pt: "Ideal para múltiplos destinos simultâneos", es: "Ideal para múltiples destinos simultáneos" }
     ],
-    badge: "Para operação avançada",
+    badge: { pt: "Para operação avançada", es: "Para operación avanzada" },
     badgeTone: "bg-indigo-50 text-indigo-700 ring-indigo-100",
-    cta: "Quero estruturar minha escala",
-    note: "Pensado para agências com vários grupos ativos.",
+    cta: { pt: "Quero estruturar minha escala", es: "Quiero estructurar mi escala" },
+    note: { pt: "Pensado para agências com vários grupos ativos.", es: "Pensado para agencias con varios grupos activos." },
     ctaClass: "bg-indigo-600 hover:bg-indigo-500",
     prices: {
-      monthly: { value: 129.99, period: "/mês" },
-      annual: { value: 1199.88, period: "/ano" }
+      monthly: { value: 129.99, period: pricePeriods.monthly },
+      annual: { value: 1199.88, period: pricePeriods.annual }
     }
   }
-] as const;
+];
 
-const testPlanFeatures = planDefinitions.find(plan => plan.key === "infinity")?.features ?? [];
+const testPlanFeatures =
+  planDefinitions.find(plan => plan.key === "infinity")?.features.map(feature => localize(feature)) ?? [];
 
 const formatPrice = (value: number) =>
   value.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 });
+
+const formatAnnualSavingsDetail = (formattedValue: string) =>
+  currentLanguage === "es" ? `Ahorra ${formattedValue} por año` : `Economize ${formattedValue} por ano`;
+
+const formatAnnualTotalDetail = (formattedValue: string) =>
+  currentLanguage === "es" ? `Total anual de ${formattedValue}` : `Total anual de ${formattedValue}`;
 
 const plans = computed<PlanCard[]>(() =>
   planDefinitions.map(def => {
@@ -402,24 +537,36 @@ const plans = computed<PlanCard[]>(() =>
     const monthlyPrice = def.prices.monthly.value;
 
     let displayValue = priceInfo.value;
-    let period = priceInfo.period;
-    let detail = priceInfo.detail;
+    let period = localize(priceInfo.period);
+    let detail = localize(priceInfo.detail).trim();
+    detail = detail.length ? detail : undefined;
     const annualSavings = monthlyPrice * 12 - priceInfo.value;
 
     if (isAnnual) {
       displayValue = priceInfo.value > 0 ? priceInfo.value / 12 : 0;
-      period = "/mês";
+      period = localize(def.prices.monthly.period);
       if (annualSavings > 0) {
-        detail = `Economize ${formatPrice(annualSavings)} por ano`;
+        detail = formatAnnualSavingsDetail(formatPrice(annualSavings));
       } else if (!detail) {
-        detail = `Total anual de ${formatPrice(priceInfo.value)}`;
+        detail = formatAnnualTotalDetail(formatPrice(priceInfo.value));
       }
     }
 
     const oldAnnualValue = isAnnual && monthlyPrice > 0 ? monthlyPrice * 12 : undefined;
+    const badge = localize(def.badge).trim();
 
     return {
-      ...def,
+      key: def.key,
+      tier: localize(def.tier),
+      name: localize(def.name),
+      subtitle: localize(def.subtitle),
+      highlight: localize(def.highlight),
+      features: def.features.map(feature => localize(feature)),
+      badge: badge.length ? badge : undefined,
+      badgeTone: def.badgeTone,
+      cta: localize(def.cta),
+      note: localize(def.note),
+      ctaClass: def.ctaClass,
       price: formatPrice(displayValue),
       period,
       detail,
@@ -451,7 +598,7 @@ const goToCheckout = async (
     window.location.href = checkoutUrl;
   } catch (err) {
     console.error(err);
-    errorMessage.value = "Não foi possível iniciar o checkout. Tente novamente.";
+    errorMessage.value = checkoutErrorMessage;
   } finally {
     loadingPlan.value = null;
   }

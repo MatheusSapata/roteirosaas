@@ -2,9 +2,9 @@
   <div class="w-full space-y-6 px-4 py-8 md:px-8">
     <header class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
       <div>
-        <p class="text-sm uppercase tracking-[0.25em] text-slate-500">Painel</p>
-        <h1 class="text-3xl font-bold text-slate-900">Olá, {{ auth.user?.name || "agente" }}</h1>
-        <p class="text-sm text-slate-500">Visão geral das páginas, integrações e performance.</p>
+        <p class="text-sm uppercase tracking-[0.25em] text-slate-500">{{ viewCopy.header.eyebrow }}</p>
+        <h1 class="text-3xl font-bold text-slate-900">{{ viewCopy.header.greetingPrefix }}, {{ auth.user?.name || viewCopy.header.fallbackName }}</h1>
+        <p class="text-sm text-slate-500">{{ viewCopy.header.description }}</p>
       </div>
 
       <div class="flex flex-wrap items-center gap-3">
@@ -12,7 +12,7 @@
           @click="auth.logout()"
           class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
         >
-          Sair
+          {{ viewCopy.header.logout }}
         </button>
       </div>
     </header>
@@ -22,18 +22,18 @@
       class="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 p-5 text-slate-800 shadow-sm md:flex-row md:items-center md:justify-between"
     >
       <div>
-        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-amber-600">Trial ativo</p>
+        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-amber-600">{{ viewCopy.trial.eyebrow }}</p>
         <p class="text-base font-semibold">
-          Você está aproveitando o plano {{ trialInfo.plan }} até {{ trialInfo.endsAt }}.
+          {{ viewCopy.trial.message(trialInfo.plan, trialInfo.endsAt) }}
         </p>
-        <p class="text-sm text-slate-600">Contrate agora para manter os recursos premium sem interrupção.</p>
+        <p class="text-sm text-slate-600">{{ viewCopy.trial.description }}</p>
       </div>
 
       <button
         class="inline-flex items-center justify-center rounded-full bg-amber-600 px-5 py-2 text-sm font-semibold text-white shadow hover:bg-amber-500"
         @click="goPlans"
       >
-        Ativar plano
+        {{ viewCopy.trial.cta }}
       </button>
     </div>
 
@@ -41,8 +41,8 @@
       v-if="!allOnboardingStepsCompleted"
       class="rounded-2xl bg-white p-5 shadow ring-1 ring-slate-100"
     >
-      <p class="text-xs font-semibold uppercase tracking-[0.4em] text-slate-500">Comece por aqui</p>
-      <h2 class="mt-1 text-xl font-bold text-slate-900">Monte seu ambiente em 3 passos</h2>
+      <p class="text-xs font-semibold uppercase tracking-[0.4em] text-slate-500">{{ viewCopy.onboarding.eyebrow }}</p>
+      <h2 class="mt-1 text-xl font-bold text-slate-900">{{ viewCopy.onboarding.title }}</h2>
       <div class="relative mt-6">
         <div class="absolute left-10 right-10 top-6 h-0.5 bg-slate-200"></div>
         <div class="relative flex flex-col gap-6 md:flex-row md:justify-between">
@@ -97,10 +97,10 @@
       :style="{ borderColor: brandBorderSoft }"
     >
       <div>
-        <p class="text-xs font-semibold uppercase tracking-[0.3em]" :style="{ color: brandGreen }">Plano atual: Começo</p>
-        <p class="mt-1 text-base font-semibold text-slate-900">Desbloqueie métricas completas e integrações.</p>
+        <p class="text-xs font-semibold uppercase tracking-[0.3em]" :style="{ color: brandGreen }">{{ viewCopy.planBanner.eyebrow(currentPlanLabel) }}</p>
+        <p class="mt-1 text-base font-semibold text-slate-900">{{ viewCopy.planBanner.title }}</p>
         <p class="text-sm text-slate-600">
-          Faça upgrade para organizar mais roteiros, liberar as seções bloqueadas e acompanhar desempenho em tempo real.
+          {{ viewCopy.planBanner.description }}
         </p>
       </div>
 
@@ -109,14 +109,14 @@
         :style="{ backgroundColor: brandGreen }"
         @click="goPlans"
       >
-        Ver planos
+        {{ viewCopy.planBanner.cta }}
       </button>
     </div>
 
     <!-- Indicadores principais -->
     <section class="grid gap-4" :class="showLeadCard ? 'md:grid-cols-4' : 'md:grid-cols-3'">
       <div class="rounded-2xl bg-white p-5 shadow-md ring-1 ring-slate-100">
-        <p class="text-sm text-slate-500">Páginas</p>
+        <p class="text-sm text-slate-500">{{ viewCopy.metrics.pagesTitle }}</p>
         <div class="mt-2 flex items-end justify-between">
           <p class="text-3xl font-bold text-slate-900">{{ pagesCount }}</p>
           <span
@@ -131,10 +131,10 @@
       </div>
 
       <div class="rounded-2xl bg-white p-5 shadow-md ring-1 ring-slate-100">
-        <p class="text-sm text-slate-500">Visitas (geral)</p>
+        <p class="text-sm text-slate-500">{{ viewCopy.metrics.visitsTitle }}</p>
         <div class="mt-2 flex items-end justify-between">
           <p class="text-3xl font-bold text-slate-900" :class="{ 'blurred-value': isFree }">
-            {{ cardsTotalVisits.toLocaleString("pt-BR") }}
+            {{ cardsTotalVisits.toLocaleString(numberLocale) }}
           </p>
           <span
             v-if="trend.visits !== null"
@@ -150,16 +150,16 @@
             class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
             @click="goPlans"
           >
-            Desbloquear
+            {{ viewCopy.metrics.unlock }}
           </button>
         </div>
       </div>
 
       <div class="rounded-2xl bg-white p-5 shadow-md ring-1 ring-slate-100">
-        <p class="text-sm text-slate-500">Cliques (geral)</p>
+        <p class="text-sm text-slate-500">{{ viewCopy.metrics.clicksTitle }}</p>
         <div class="mt-2 flex items-end justify-between">
           <p class="text-3xl font-bold text-slate-900" :class="{ 'blurred-value': isFree }">
-            {{ cardsTotalClicks.toLocaleString("pt-BR") }}
+            {{ cardsTotalClicks.toLocaleString(numberLocale) }}
           </p>
           <span
             v-if="trend.clicks !== null"
@@ -175,7 +175,7 @@
             class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
             @click="goPlans"
           >
-            Desbloquear
+            {{ viewCopy.metrics.unlock }}
           </button>
         </div>
       </div>
@@ -184,7 +184,7 @@
         v-if="showLeadCard"
         class="rounded-2xl bg-white p-5 shadow-md ring-1 ring-slate-100"
       >
-        <p class="text-sm text-slate-500">Leads</p>
+        <p class="text-sm text-slate-500">{{ viewCopy.metrics.leadsTitle }}</p>
         <div class="mt-2 flex items-end justify-between">
           <p class="text-3xl font-bold text-slate-900" :class="{ 'text-slate-400': leadCardLoading }">
             {{ leadCardLoading ? "--" : formattedLeadTotal }}
@@ -192,43 +192,43 @@
           <span class="text-xs text-slate-400">--</span>
         </div>
         <div v-if="leadCardLoading" class="mt-2 text-right text-xs text-slate-400">
-          Atualizando...
+          {{ viewCopy.metrics.leadLoading }}
         </div>
       </div>
     </section>
 
     <div class="mb-2 flex flex-wrap items-center gap-4 text-xs text-slate-600">
       <div class="flex items-center gap-2">
-        <label class="font-semibold">Página:</label>
+        <label class="font-semibold">{{ viewCopy.filters.pageLabel }}</label>
         <select
           v-model="selectedPage"
           class="rounded-lg border border-slate-200 bg-white px-3 py-1 text-sm text-slate-700 transition focus:outline-none focus:ring-2 focus:ring-brand/20 dark:border-white/15 dark:bg-[#202020] dark:text-white"
         >
-          <option value="all">Todas as publicadas</option>
+          <option value="all">{{ viewCopy.filters.allPagesOption }}</option>
           <option v-for="page in publishedPages" :key="page.id" :value="String(page.id)">
             {{ page.title }}
           </option>
         </select>
       </div>
       <div class="flex flex-wrap items-center gap-3">
-        <label class="font-semibold">Período:</label>
+        <label class="font-semibold">{{ viewCopy.filters.periodLabel }}</label>
         <select
           v-model="selectedPeriod"
           class="rounded-lg border border-slate-200 bg-white px-3 py-1 text-sm text-slate-700 transition focus:outline-none focus:ring-2 focus:ring-brand/20 dark:border-white/15 dark:bg-[#202020] dark:text-white"
         >
           <option v-for="period in statsPeriodOptions" :key="period" :value="period">
-            Últimos {{ period }} dias
+            {{ viewCopy.filters.lastDaysOption(period) }}
           </option>
-          <option value="custom">Personalizado</option>
+          <option value="custom">{{ viewCopy.filters.customOption }}</option>
         </select>
         <div v-if="selectedPeriod === 'custom'" class="flex flex-wrap items-center gap-2 text-xs text-slate-600">
-          <label class="font-semibold">De</label>
+          <label class="font-semibold">{{ viewCopy.filters.fromLabel }}</label>
           <input
             type="date"
             v-model="customStartDate"
             class="rounded-lg border border-slate-200 px-3 py-1 text-sm text-slate-700"
           />
-          <span class="font-semibold">até</span>
+          <span class="font-semibold">{{ viewCopy.filters.toLabel }}</span>
           <input
             type="date"
             v-model="customEndDate"
@@ -243,11 +243,11 @@
       <div class="rounded-2xl bg-white p-6 shadow-md ring-1 ring-slate-100">
         <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <h2 class="text-lg font-semibold text-slate-900">Visitas ({{ chartPeriodLabel }})</h2>
-            <p class="text-sm text-slate-500">Volume diário de acessos.</p>
+            <h2 class="text-lg font-semibold text-slate-900">{{ viewCopy.charts.visitsTitle(chartPeriodLabel) }}</h2>
+            <p class="text-sm text-slate-500">{{ viewCopy.charts.visitsDescription }}</p>
           </div>
           <div class="text-3xl font-bold text-slate-900" :class="{ 'blurred-value': isFree }">
-            {{ totalVisits.toLocaleString("pt-BR") }}
+            {{ totalVisits.toLocaleString(numberLocale) }}
           </div>
         </div>
         <div v-if="isFree" class="mt-2 flex justify-end">
@@ -255,7 +255,7 @@
             class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
             @click="goPlans"
           >
-            Ver planos
+            {{ viewCopy.planBanner.cta }}
           </button>
         </div>
 
@@ -303,7 +303,7 @@
                   :style="visitsTooltipStyle"
                 >
                   <p class="font-semibold">{{ visitsHoverPoint.label }}</p>
-                  <p>Visitas: {{ visitsHoverPoint.value.toLocaleString("pt-BR") }}</p>
+                  <p>{{ viewCopy.charts.tooltipVisits }}: {{ visitsHoverPoint.value.toLocaleString(numberLocale) }}</p>
                 </div>
               </div>
             </div>
@@ -324,18 +324,18 @@
           </div>
 
           <div v-else class="flex h-48 items-center justify-center rounded-xl bg-slate-50 text-sm text-slate-500">
-            Sem dados de série temporal.
+            {{ viewCopy.charts.empty }}
           </div>
         </div>
       </div>
       <div class="relative rounded-2xl bg-white p-6 shadow-md ring-1 ring-slate-100">
         <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <h2 class="text-lg font-semibold text-slate-900">Cliques ({{ chartPeriodLabel }})</h2>
-            <p class="text-sm text-slate-500">Total somado de cliques.</p>
+            <h2 class="text-lg font-semibold text-slate-900">{{ viewCopy.charts.clicksTitle(chartPeriodLabel) }}</h2>
+            <p class="text-sm text-slate-500">{{ viewCopy.charts.clicksDescription }}</p>
           </div>
           <div class="text-3xl font-bold text-slate-900" :class="{ 'blurred-value': isFree }">
-            {{ totalClicks.toLocaleString("pt-BR") }}
+            {{ totalClicks.toLocaleString(numberLocale) }}
           </div>
         </div>
         <div v-if="isFree" class="mt-2 flex justify-end">
@@ -343,7 +343,7 @@
             class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
             @click="goPlans"
           >
-            Ver planos
+            {{ viewCopy.planBanner.cta }}
           </button>
         </div>
 
@@ -391,7 +391,7 @@
                   :style="clicksTooltipStyle"
                 >
                   <p class="font-semibold">{{ clicksHoverPoint.label }}</p>
-                  <p>Cliques: {{ clicksHoverPoint.value.toLocaleString("pt-BR") }}</p>
+                  <p>{{ viewCopy.charts.tooltipClicks }}: {{ clicksHoverPoint.value.toLocaleString(numberLocale) }}</p>
                 </div>
               </div>
             </div>
@@ -412,7 +412,7 @@
           </div>
 
           <div v-else class="flex h-48 items-center justify-center rounded-xl bg-slate-50 text-sm text-slate-500">
-            Sem dados de série temporal.
+            {{ viewCopy.charts.empty }}
           </div>
         </div>
       </div>
@@ -429,6 +429,7 @@ import { useAgencyStore } from "../../store/useAgencyStore";
 import { useAuthStore } from "../../store/useAuthStore";
 import { useLeadCaptureStore } from "../../store/useLeadCaptureStore";
 import { useLeadFeatureGate } from "../../composables/useLeadFeatureGate";
+import { createAdminLocalizer, getAdminLanguage } from "../../utils/adminI18n";
 
 interface Page {
   id: number;
@@ -487,11 +488,121 @@ const router = useRouter();
 const leadStore = useLeadCaptureStore();
 const { totalContacts, contactsLoading, contactsLoadedAtLeastOnce } = storeToRefs(leadStore);
 const { hasLeadFeatureAccess } = useLeadFeatureGate();
+const adminLanguage = getAdminLanguage();
+const numberLocale = adminLanguage === "es" ? "es-ES" : "pt-BR";
+const dateLocale = numberLocale;
+const t = createAdminLocalizer(adminLanguage);
+
+const viewCopy = {
+  header: {
+    eyebrow: t({ pt: "Painel", es: "Panel" }),
+    greetingPrefix: t({ pt: "Olá", es: "Hola" }),
+    fallbackName: t({ pt: "agente", es: "agente" }),
+    description: t({ pt: "Visão geral das páginas, integrações e performance.", es: "Vista general de páginas, integraciones y rendimiento." }),
+    logout: t({ pt: "Sair", es: "Salir" })
+  },
+  trial: {
+    eyebrow: t({ pt: "Trial ativo", es: "Prueba activa" }),
+    message: (plan: string, endsAt: string) =>
+      t({
+        pt: `Você está aproveitando o plano ${plan} até ${endsAt}.`,
+        es: `Estás aprovechando el plan ${plan} hasta ${endsAt}.`
+      }),
+    description: t({
+      pt: "Contrate agora para manter os recursos premium sem interrupção.",
+      es: "Contrata ahora para mantener los recursos premium sin interrupciones."
+    }),
+    cta: t({ pt: "Ativar plano", es: "Activar plan" })
+  },
+  onboarding: {
+    eyebrow: t({ pt: "Comece por aqui", es: "Empieza por aquí" }),
+    title: t({ pt: "Monte seu ambiente em 3 passos", es: "Prepara tu entorno en 3 pasos" }),
+    steps: {
+      finish: {
+        title: t({ pt: "Finalizar cadastro", es: "Finalizar registro" }),
+        subtitle: t({ pt: "Seus dados estão completos.", es: "Tus datos están completos." })
+      },
+      createAgency: {
+        title: t({ pt: "Criar agência", es: "Crear agencia" }),
+        subtitlePending: t({ pt: "Cadastre sua primeira agência.", es: "Registra tu primera agencia." }),
+        subtitleDone: t({ pt: "Agência criada com sucesso.", es: "Agencia creada con éxito." }),
+        cta: t({ pt: "Ir para Agências", es: "Ir a Agencias" })
+      },
+      publish: {
+        title: t({ pt: "Publicar primeira página", es: "Publicar primera página" }),
+        subtitlePending: t({ pt: "Publique um roteiro para compartilhar.", es: "Publica un itinerario para compartir." }),
+        subtitleDone: t({ pt: "Sua primeira página já está no ar.", es: "Tu primera página ya está publicada." }),
+        cta: t({ pt: "Publicar agora", es: "Publicar ahora" })
+      }
+    }
+  },
+  planBanner: {
+    eyebrow: (plan: string) =>
+      t({
+        pt: `Plano atual: ${plan}`,
+        es: `Plan actual: ${plan}`
+      }),
+    title: t({ pt: "Desbloqueie métricas completas e integrações.", es: "Desbloquea métricas completas e integraciones." }),
+    description: t({
+      pt: "Faça upgrade para organizar mais roteiros, liberar as seções bloqueadas e acompanhar desempenho em tempo real.",
+      es: "Haz upgrade para organizar más itinerarios, liberar secciones bloqueadas y seguir el desempeño en tiempo real."
+    }),
+    cta: t({ pt: "Ver planos", es: "Ver planes" })
+  },
+  metrics: {
+    pagesTitle: t({ pt: "Páginas", es: "Páginas" }),
+    visitsTitle: t({ pt: "Visitas (geral)", es: "Visitas (general)" }),
+    clicksTitle: t({ pt: "Cliques (geral)", es: "Clics (general)" }),
+    leadsTitle: t({ pt: "Leads", es: "Leads" }),
+    unlock: t({ pt: "Desbloquear", es: "Desbloquear" }),
+    leadLoading: t({ pt: "Atualizando...", es: "Actualizando..." })
+  },
+  filters: {
+    pageLabel: t({ pt: "Página:", es: "Página:" }),
+    allPagesOption: t({ pt: "Todas as publicadas", es: "Todas las publicadas" }),
+    periodLabel: t({ pt: "Período:", es: "Período:" }),
+    lastDaysOption: (days: number) => t({ pt: `Últimos ${days} dias`, es: `Últimos ${days} días` }),
+    customOption: t({ pt: "Personalizado", es: "Personalizado" }),
+    fromLabel: t({ pt: "De", es: "Del" }),
+    toLabel: t({ pt: "até", es: "al" }),
+    customPeriodLabel: t({ pt: "período personalizado", es: "período personalizado" }),
+    customRangeLabel: (start: string, end: string) =>
+      t({
+        pt: `${start} a ${end}`,
+        es: `${start} a ${end}`
+      })
+  },
+  charts: {
+    visitsTitle: (period: string) => t({ pt: `Visitas (${period})`, es: `Visitas (${period})` }),
+    visitsDescription: t({ pt: "Volume diário de acessos.", es: "Volumen diario de accesos." }),
+    clicksTitle: (period: string) => t({ pt: `Cliques (${period})`, es: `Clics (${period})` }),
+    clicksDescription: t({ pt: "Total somado de cliques.", es: "Total acumulado de clics." }),
+    tooltipVisits: t({ pt: "Visitas", es: "Visitas" }),
+    tooltipClicks: t({ pt: "Cliques", es: "Clics" }),
+    empty: t({ pt: "Sem dados de série temporal.", es: "Sin datos de serie temporal." })
+  },
+  planNames: {
+    free: t({ pt: "Começo", es: "Inicio" }),
+    essencial: t({ pt: "Essencial", es: "Esencial" }),
+    profissional: t({ pt: "Profissional", es: "Profesional" }),
+    growth: t({ pt: "Agência", es: "Agencia" }),
+    infinity: t({ pt: "Escala", es: "Escala" })
+  }
+};
+
+const resolvePlanLabel = (plan?: string | null) => {
+  if (!plan) return viewCopy.planNames.free;
+  const key = plan.toLowerCase() as keyof typeof viewCopy.planNames;
+  return viewCopy.planNames[key] ?? plan;
+};
+
+const currentPlanLabel = computed(() => resolvePlanLabel(auth.user?.plan || "free"));
+
 const showLeadCard = computed(() => hasLeadFeatureAccess.value);
 const leadCardLoading = computed(
   () => contactsLoading.value && !contactsLoadedAtLeastOnce.value
 );
-const formattedLeadTotal = computed(() => totalContacts.value.toLocaleString("pt-BR"));
+const formattedLeadTotal = computed(() => totalContacts.value.toLocaleString(numberLocale));
 const ensureLeadContacts = async () => {
   if (contactsLoadedAtLeastOnce.value || contactsLoading.value) return;
   try {
@@ -522,12 +633,12 @@ const trialInfo = computed(() => {
   const endsAt = auth.user?.trial_ends_at;
   if (!tPlan || !endsAt) return null;
 
-  const planLabel = tPlan.charAt(0).toUpperCase() + tPlan.slice(1);
+  const planLabel = resolvePlanLabel(tPlan);
   const date = new Date(endsAt);
 
   return {
     plan: planLabel,
-    endsAt: date.toLocaleDateString("pt-BR")
+    endsAt: date.toLocaleDateString(dateLocale)
   };
 });
 
@@ -585,7 +696,7 @@ const formatShortDate = (iso: string) => {
   if (!iso) return "--";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "--";
-  return d.toLocaleDateString("pt-BR");
+  return d.toLocaleDateString(dateLocale);
 };
 const selectedPeriodDays = computed(() => {
   if (orderedCustomRange.value) {
@@ -600,12 +711,15 @@ const selectedPeriodDays = computed(() => {
 });
 const chartPeriodLabel = computed(() => {
   if (orderedCustomRange.value) {
-    return `${formatShortDate(orderedCustomRange.value.startISO)} a ${formatShortDate(orderedCustomRange.value.endISO)}`;
+    return viewCopy.filters.customRangeLabel(
+      formatShortDate(orderedCustomRange.value.startISO),
+      formatShortDate(orderedCustomRange.value.endISO)
+    );
   }
   if (isCustomPeriod.value) {
-    return "período personalizado";
+    return viewCopy.filters.customPeriodLabel;
   }
-  return `últimos ${selectedPeriodDays.value} dias`;
+  return viewCopy.filters.lastDaysOption(selectedPeriodDays.value);
 });
 
 const maxVisits = computed(() => {
@@ -736,26 +850,30 @@ const onboardingSteps = computed<OnboardingStep[]>(() => [
   {
     id: "finish-signup",
     order: 1,
-    title: "Finalizar cadastro",
-    subtitle: "Seus dados estão completos.",
+    title: viewCopy.onboarding.steps.finish.title,
+    subtitle: viewCopy.onboarding.steps.finish.subtitle,
     completed: true
   },
   {
     id: "create-agency",
     order: 2,
-    title: "Criar agência",
-    subtitle: hasAgency.value ? "Agência criada com sucesso." : "Cadastre sua primeira agência.",
+    title: viewCopy.onboarding.steps.createAgency.title,
+    subtitle: hasAgency.value
+      ? viewCopy.onboarding.steps.createAgency.subtitleDone
+      : viewCopy.onboarding.steps.createAgency.subtitlePending,
     completed: hasAgency.value,
-    cta: "Ir para Agências",
+    cta: hasAgency.value ? undefined : viewCopy.onboarding.steps.createAgency.cta,
     action: hasAgency.value ? null : goToAgencySettings
   },
   {
     id: "publish-page",
     order: 3,
-    title: "Publicar primeira página",
-    subtitle: hasPublishedPage.value ? "Sua primeira página já está no ar." : "Publique um roteiro para compartilhar.",
+    title: viewCopy.onboarding.steps.publish.title,
+    subtitle: hasPublishedPage.value
+      ? viewCopy.onboarding.steps.publish.subtitleDone
+      : viewCopy.onboarding.steps.publish.subtitlePending,
     completed: hasPublishedPage.value,
-    cta: "Publicar agora",
+    cta: hasPublishedPage.value ? undefined : viewCopy.onboarding.steps.publish.cta,
     action: hasPublishedPage.value ? null : goToPagesList,
     disabled: !hasAgency.value
   }

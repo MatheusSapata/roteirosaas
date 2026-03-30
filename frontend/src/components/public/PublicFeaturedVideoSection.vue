@@ -5,7 +5,7 @@
         <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="ctaColor" />
       </div>
       <h2 class="text-3xl font-bold leading-tight md:text-4xl" :style="{ color: primaryText }">
-        {{ section.title || "Video em destaque" }}
+        {{ featuredTitle }}
       </h2>
       <div
         v-if="subtitleHtml"
@@ -19,7 +19,7 @@
           <iframe
             class="absolute inset-0 h-full w-full rounded-[28px]"
             :src="embeddedVideoUrl"
-            title="Video em destaque"
+            :title="featuredTitle"
             frameborder="0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowfullscreen
@@ -27,7 +27,7 @@
         </div>
       </div>
       <div v-else class="mt-8 rounded-3xl border border-dashed border-slate-200 bg-white/60 px-6 py-16 text-sm text-slate-500">
-        Adicione um link de video para aparecer aqui.
+        {{ emptyVideoText }}
       </div>
 
       <div v-if="ctaEnabled && ctaHasTarget" class="mt-8">
@@ -41,7 +41,7 @@
           class="inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl hero-cta-shimmer hero-cta-desktop-hover"
           :style="{ background: ctaColor, color: ctaTextColor }"
         >
-          {{ section.ctaLabel || "Assistir agora" }}
+          {{ ctaLabel }}
         </a>
       </div>
     </div>
@@ -57,13 +57,29 @@ import { sanitizeHtml } from "../../utils/sanitizeHtml";
 import { deriveTextPalette, getReadableTextColor } from "../../utils/colorContrast";
 import { isWhatsappLink } from "../../utils/links";
 import { normalizeYoutubeEmbedUrl } from "../../utils/video";
+import { createLocalizer, getCurrentLanguage } from "../../utils/i18n";
 
 const props = defineProps<{ section: FeaturedVideoSection; previewDevice?: "desktop" | "mobile" }>();
 const headingDefaults = getSectionHeadingDefaults("featured_video");
+const localize = createLocalizer(getCurrentLanguage());
+const featuredCopy = {
+  headingFallback: { pt: headingDefaults.label || "Vídeo em destaque", es: "Video destacado" },
+  title: { pt: "Vídeo em destaque", es: "Video destacado" },
+  empty: { pt: "Adicione um link de vídeo para aparecer aqui.", es: "Agrega un enlace de video para mostrar aquí." },
+  cta: { pt: "Assistir agora", es: "Ver ahora" }
+} as const;
 
-const headingLabel = computed(() => props.section.headingLabel ?? headingDefaults.label);
+const headingLabel = computed(() => {
+  const custom = localize(props.section.headingLabel).trim();
+  if (custom.length) return custom;
+  return localize(featuredCopy.headingFallback);
+});
 const headingStyle = computed(() => props.section.headingLabelStyle || headingDefaults.style);
-const subtitleHtml = computed(() => sanitizeHtml(props.section.subtitle));
+const featuredTitle = computed(() => {
+  const title = localize(props.section.title).trim();
+  return title.length ? title : localize(featuredCopy.title);
+});
+const subtitleHtml = computed(() => sanitizeHtml(localize(props.section.subtitle)));
 const textPalette = computed(() => deriveTextPalette(props.section.textColor));
 const primaryText = computed(() => textPalette.value.primary);
 const mutedText = computed(() => textPalette.value.muted);
@@ -73,6 +89,7 @@ const isMobilePreview = computed(() => props.previewDevice === "mobile");
 const videoWrapperClass = computed(() => (isMobilePreview.value ? "rounded-[18px]" : "rounded-[28px]"));
 
 const embeddedVideoUrl = computed(() => normalizeYoutubeEmbedUrl(props.section.videoUrl));
+const emptyVideoText = computed(() => localize(featuredCopy.empty));
 
 const ctaEnabled = computed(() => props.section.ctaEnabled !== false);
 const ctaMode = computed(() => props.section.ctaMode || "link");
@@ -86,5 +103,9 @@ const ctaIsScroll = computed(() => ctaMode.value === "section" && !!props.sectio
 const ctaTrackType = computed(() =>
   ctaMode.value === "section" ? "cta" : isWhatsappLink(props.section.ctaLink || undefined) ? "whatsapp" : "cta"
 );
+const ctaLabel = computed(() => {
+  const text = localize(props.section.ctaLabel).trim();
+  return text.length ? text : localize(featuredCopy.cta);
+});
 </script>
 

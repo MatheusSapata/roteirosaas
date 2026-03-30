@@ -21,16 +21,16 @@
                 isLight ? 'text-slate-500' : 'text-white/45'
               ]"
             >
-              Agência
+              {{ agencyHeadingText }}
             </p>
 
             <div class="space-y-3">
               <h4 :class="['text-xl font-semibold tracking-tight sm:text-2xl', textPrimaryClass]">
-                {{ companyName || "Sua agência cadastrada" }}
+                {{ companyName || fallbackCompanyName }}
               </h4>
 
               <p v-if="cnpjText" :class="['text-sm', textSecondaryClass]">
-                <span class="font-medium">CNPJ</span>
+                <span class="font-medium">{{ cnpjLabel }}</span>
                 <span class="ml-2">{{ cnpjText }}</span>
               </p>
             </div>
@@ -51,7 +51,7 @@
                   isLight ? 'text-slate-500' : 'text-white/60'
                 ]"
               >
-                Acesse agora nossas redes sociais
+                {{ socialHeading }}
               </p>
 
               <div class="flex gap-3">
@@ -85,17 +85,17 @@
                   isLight ? 'text-slate-500' : 'text-white/50'
                 ]"
               >
-                Contatos
+                {{ contactsHeading }}
               </p>
 
               <template v-if="hasContactInfo">
                 <p v-if="phoneText" :class="['font-medium', textPrimaryClass]">
-                  Telefone:
+                  {{ phoneLabel }}
                   <span :class="['font-normal', textSecondaryClass]">{{ phoneText }}</span>
                 </p>
 
                 <p v-if="contactEmail" :class="textPrimaryClass">
-                  Email:
+                  {{ emailLabel }}
                   <a :class="[textLinkClass, 'hover:underline']" :href="`mailto:${contactEmail}`">
                     {{ contactEmail }}
                   </a>
@@ -103,7 +103,7 @@
               </template>
 
               <p v-else :class="textSecondaryClass">
-                Atualize os contatos da agência para exibir telefone e email.
+                {{ contactsEmptyMessage }}
               </p>
             </div>
 
@@ -114,7 +114,7 @@
                   isLight ? 'text-slate-500' : 'text-white/50'
                 ]"
               >
-                Endereço
+                {{ addressHeadingText }}
               </p>
 
               <template v-if="addressText">
@@ -187,7 +187,7 @@
                 target="_blank"
                 rel="noopener"
               >
-                Abrir no Maps
+                {{ mapButtonText }}
                 <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                   <path d="M7 17 17 7M7 7h10v10" />
                 </svg>
@@ -227,7 +227,7 @@
           class="hidden w-full md:block md:w-[420px] md:flex-shrink-0"
         >
           <div :class="['flex items-center justify-between pb-3 text-xs font-semibold', textSecondaryClass]">
-            <span>Localização da agência</span>
+            <span>{{ mapHeadingText }}</span>
 
             <a
               v-if="mapLink"
@@ -239,7 +239,7 @@
               target="_blank"
               rel="noopener"
             >
-              Abrir no Maps
+              {{ mapButtonText }}
               <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                 <path d="M7 17 17 7M7 7h10v10" />
               </svg>
@@ -271,12 +271,42 @@ import type { AgencyFooterSection } from "../../types/page";
 import type { AgencySocialNetwork } from "../../store/useAgencyStore";
 import cadasturLogo from "../../assets/cadastur-logo.png";
 import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
+import { createLocalizer, getCurrentLanguage, type LocalizedString } from "../../utils/i18n";
 
 const props = defineProps<{
   section: AgencyFooterSection;
   branding?: Record<string, any>;
   previewDevice?: "desktop" | "mobile";
 }>();
+
+const localize = createLocalizer(getCurrentLanguage());
+const footerCopy = {
+  agencyHeading: { pt: "Agência", es: "Agencia" },
+  fallbackAgencyName: { pt: "Sua agência cadastrada", es: "Tu agencia registrada" },
+  cnpjLabel: { pt: "CNPJ", es: "CNPJ" },
+  socialHeading: { pt: "Acesse agora nossas redes sociais", es: "Accede ahora a nuestras redes sociales" },
+  contactsHeading: { pt: "Contatos", es: "Contactos" },
+  phoneLabel: { pt: "Telefone:", es: "Teléfono:" },
+  emailLabel: { pt: "Email:", es: "Correo:" },
+  contactsEmpty: {
+    pt: "Atualize os contatos da agência para exibir telefone e email.",
+    es: "Actualiza los contactos de la agencia para mostrar teléfono y correo."
+  },
+  addressHeading: { pt: "Endereço", es: "Dirección" },
+  mapButton: { pt: "Abrir no Maps", es: "Abrir en Maps" },
+  mapHeading: { pt: "Localização da agência", es: "Ubicación de la agencia" }
+} as const;
+const agencyHeadingText = localize(footerCopy.agencyHeading);
+const fallbackCompanyName = localize(footerCopy.fallbackAgencyName);
+const cnpjLabel = localize(footerCopy.cnpjLabel);
+const socialHeading = localize(footerCopy.socialHeading);
+const contactsHeading = localize(footerCopy.contactsHeading);
+const phoneLabel = localize(footerCopy.phoneLabel);
+const emailLabel = localize(footerCopy.emailLabel);
+const contactsEmptyMessage = localize(footerCopy.contactsEmpty);
+const addressHeadingText = localize(footerCopy.addressHeading);
+const mapButtonText = localize(footerCopy.mapButton);
+const mapHeadingText = localize(footerCopy.mapHeading);
 
 const providedBranding = inject(PUBLIC_BRANDING_KEY, null) as any;
 
@@ -325,11 +355,11 @@ const SOCIAL_ICON_MAP: Record<AgencySocialNetwork, string> = {
   tiktok: siTiktok.path
 };
 
-const SOCIAL_LABELS: Record<AgencySocialNetwork, string> = {
-  instagram: "Instagram",
-  facebook: "Facebook",
-  youtube: "YouTube",
-  tiktok: "TikTok"
+const SOCIAL_LABELS: Record<AgencySocialNetwork, LocalizedString> = {
+  instagram: { pt: "Instagram", es: "Instagram" },
+  facebook: { pt: "Facebook", es: "Facebook" },
+  youtube: { pt: "YouTube", es: "YouTube" },
+  tiktok: { pt: "TikTok", es: "TikTok" }
 };
 
 const socialLinks = computed(() => {
@@ -340,7 +370,7 @@ const socialLinks = computed(() => {
       ...link,
       network: link.network as AgencySocialNetwork,
       iconPath: SOCIAL_ICON_MAP[link.network as AgencySocialNetwork],
-      label: SOCIAL_LABELS[link.network as AgencySocialNetwork]
+      label: localize(SOCIAL_LABELS[link.network as AgencySocialNetwork])
     }))
     .filter(link => !!link.iconPath);
 });

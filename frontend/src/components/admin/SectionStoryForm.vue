@@ -1,32 +1,32 @@
-<template>
+﻿<template>
   <div class="space-y-3">
     <div class="grid gap-3 md:grid-cols-2">
       <div>
         <SectionHeadingControls v-model:label="local.headingLabel" v-model:style="local.headingLabelStyle" />
       </div>
       <div>
-        <label class="text-sm font-semibold text-slate-600">Posição da imagem</label>
+        <label class="text-sm font-semibold text-slate-600">{{ viewCopy.imagePosition.label }}</label>
         <select v-model="local.imagePosition" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2">
-          <option value="right">Direita</option>
-          <option value="left">Esquerda</option>
+          <option value="right">{{ viewCopy.imagePosition.right }}</option>
+          <option value="left">{{ viewCopy.imagePosition.left }}</option>
         </select>
       </div>
     </div>
 
     <div class="grid gap-3 md:grid-cols-2">
       <div>
-        <label class="text-sm font-semibold text-slate-600">Título</label>
+        <label class="text-sm font-semibold text-slate-600">{{ viewCopy.fields.titleLabel }}</label>
         <input v-model="local.title" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
       </div>
       <div>
-        <label class="text-sm font-semibold text-slate-600">Subtítulo</label>
-        <RichTextEditor v-model="local.subtitle" placeholder="Conte a história da agência..." />
+        <label class="text-sm font-semibold text-slate-600">{{ viewCopy.fields.subtitleLabel }}</label>
+        <RichTextEditor v-model="local.subtitle" :placeholder="viewCopy.fields.subtitlePlaceholder" />
       </div>
     </div>
 
     <div class="flex items-center gap-2">
       <input type="checkbox" v-model="local.ctaEnabled" class="h-4 w-4" />
-      <label class="text-sm font-semibold text-slate-600">Inserir botão de CTA</label>
+      <label class="text-sm font-semibold text-slate-600">{{ viewCopy.cta.toggleLabel }}</label>
     </div>
     <div v-if="local.ctaEnabled" class="space-y-3">
       <CtaActionPicker
@@ -36,60 +36,64 @@
       />
       <div class="grid gap-3 md:grid-cols-2">
         <div>
-          <label class="text-sm font-semibold text-slate-600">Texto do CTA</label>
+          <label class="text-sm font-semibold text-slate-600">{{ viewCopy.cta.textLabel }}</label>
           <input v-model="local.ctaLabel" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
         </div>
         <div v-if="local.ctaMode !== 'section'">
-          <label class="text-sm font-semibold text-slate-600">Link do CTA</label>
+          <label class="text-sm font-semibold text-slate-600">{{ viewCopy.cta.linkLabel }}</label>
           <input v-model="local.ctaLink" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
         </div>
       </div>
       <div class="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
-        A cor do botão segue a opção global "Cor de botões e destaques" configurada no topo do editor.
+        {{ viewCopy.cta.helper }}
       </div>
     </div>
 
     <div class="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
-      Animacoes de fade-in e o brilho do botao de CTA sao aplicados automaticamente nesta secao.
+      {{ viewCopy.notes.animations }}
     </div>
 
     <MultiImageUploadField
       v-model="local.images"
-      label="Imagens"
-      hint="A primeira imagem é destacada na seção; nas thumbs, o clique alterna a principal."
+      :label="viewCopy.gallery.label"
+      :hint="viewCopy.gallery.hint"
     />
     <div class="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
-      Layout definido automaticamente: 1 imagem exibe destaque único; 2 ou mais ativam galeria.
+      {{ viewCopy.gallery.layoutHint }}
     </div>
 
     <div class="space-y-2">
       <div class="flex items-center justify-between">
-        <label class="text-sm font-semibold text-slate-600">Vídeos do YouTube</label>
-        <button type="button" class="text-sm font-semibold text-brand" @click="addVideoField">+ Adicionar vídeo</button>
+        <label class="text-sm font-semibold text-slate-600">{{ viewCopy.videos.label }}</label>
+        <button type="button" class="text-sm font-semibold text-brand" @click="addVideoField">
+          {{ viewCopy.videos.addButton }}
+        </button>
       </div>
-      <p class="text-xs text-slate-500">Cole links do YouTube ou iframes; exibimos sempre antes das imagens.</p>
+      <p class="text-xs text-slate-500">{{ viewCopy.videos.helper }}</p>
       <div v-if="local.videoUrls?.length" class="space-y-2">
         <div v-for="(video, index) in local.videoUrls" :key="`video-${index}`" class="flex items-center gap-2">
           <input
             v-model="local.videoUrls[index]"
-            placeholder="https://www.youtube.com/watch?v=..."
+            :placeholder="viewCopy.videos.placeholder"
             class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2"
           />
-          <button type="button" class="text-sm font-semibold text-rose-500" @click="removeVideoField(index)">Remover</button>
+          <button type="button" class="text-sm font-semibold text-rose-500" @click="removeVideoField(index)">
+            {{ viewCopy.videos.removeButton }}
+          </button>
         </div>
       </div>
       <div v-else class="rounded-lg border border-dashed border-slate-200 px-3 py-2 text-xs text-slate-500">
-        Nenhum vídeo adicionado ainda.
+        {{ viewCopy.videos.emptyState }}
       </div>
     </div>
 
     <div>
-      <label class="text-sm font-semibold text-slate-600">Cor de fundo</label>
+      <label class="text-sm font-semibold text-slate-600">{{ viewCopy.styles.backgroundLabel }}</label>
       <input v-model="local.backgroundColor" placeholder="#e5eef9" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
     </div>
     <div class="flex items-center gap-2">
       <input type="checkbox" v-model="local.borderEnabled" class="h-4 w-4" />
-      <label class="text-sm font-semibold text-slate-600">Ativar borda destacada (texto em card)</label>
+      <label class="text-sm font-semibold text-slate-600">{{ viewCopy.styles.borderLabel }}</label>
     </div>
   </div>
 </template>
@@ -102,10 +106,66 @@ import RichTextEditor from "./inputs/RichTextEditor.vue";
 import SectionHeadingControls from "./inputs/SectionHeadingControls.vue";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import type { StorySection } from "../../types/page";
+import { createAdminLocalizer } from "../../utils/adminI18n";
 
 const props = defineProps<{ modelValue: StorySection }>();
 const emit = defineEmits<{ (e: "update:modelValue", value: StorySection): void }>();
 const headingDefaults = getSectionHeadingDefaults("story");
+const t = createAdminLocalizer();
+
+const viewCopy = {
+  imagePosition: {
+    label: t({ pt: "Posicao da imagem", es: "Posicion de la imagen" }),
+    right: t({ pt: "Direita", es: "Derecha" }),
+    left: t({ pt: "Esquerda", es: "Izquierda" })
+  },
+  fields: {
+    titleLabel: t({ pt: "Titulo", es: "Titulo" }),
+    subtitleLabel: t({ pt: "Subtitulo", es: "Subtitulo" }),
+    subtitlePlaceholder: t({ pt: "Conte a historia da agencia...", es: "Cuenta la historia de la agencia..." })
+  },
+  cta: {
+    toggleLabel: t({ pt: "Inserir botao de CTA", es: "Insertar boton de CTA" }),
+    textLabel: t({ pt: "Texto do CTA", es: "Texto del CTA" }),
+    linkLabel: t({ pt: "Link do CTA", es: "Link del CTA" }),
+    helper: t({
+      pt: "A cor do botao segue a opcao global 'Cor de botoes e destaques' configurada no topo do editor.",
+      es: "El color del boton sigue la opcion global 'Color de botones y destacados' configurada en la parte superior del editor."
+    })
+  },
+  notes: {
+    animations: t({
+      pt: "Animacoes de fade-in e o brilho do botao de CTA sao aplicados automaticamente nesta secao.",
+      es: "Las animaciones de fade-in y el brillo del boton CTA se aplican automaticamente en esta seccion."
+    })
+  },
+  gallery: {
+    label: t({ pt: "Imagens", es: "Imagenes" }),
+    hint: t({
+      pt: "A primeira imagem e destacada; nas thumbs, o clique alterna a principal.",
+      es: "La primera imagen se destaca; en las miniaturas, el clic alterna la principal."
+    }),
+    layoutHint: t({
+      pt: "Layout definido automaticamente: 1 imagem exibe destaque unico; 2 ou mais ativam galeria.",
+      es: "Layout definido automaticamente: 1 imagen muestra destaque unico; 2 o mas activan galeria."
+    })
+  },
+  videos: {
+    label: t({ pt: "Videos do YouTube", es: "Videos de YouTube" }),
+    addButton: t({ pt: "+ Adicionar video", es: "+ Agregar video" }),
+    helper: t({
+      pt: "Cole links do YouTube ou iframes; exibimos sempre antes das imagens.",
+      es: "Pega enlaces de YouTube o iframes; los mostramos antes de las imagenes."
+    }),
+    placeholder: t({ pt: "https://www.youtube.com/watch?v=...", es: "https://www.youtube.com/watch?v=..." }),
+    removeButton: t({ pt: "Remover", es: "Eliminar" }),
+    emptyState: t({ pt: "Nenhum video adicionado ainda.", es: "Ningun video agregado todavia." })
+  },
+  styles: {
+    backgroundLabel: t({ pt: "Cor de fundo", es: "Color de fondo" }),
+    borderLabel: t({ pt: "Ativar borda destacada (texto em card)", es: "Activar borde destacado (texto en tarjeta)" })
+  }
+};
 
 const normalizeVideoList = (section: StorySection) => {
   const list = Array.isArray(section.videoUrls) ? [...section.videoUrls] : [];

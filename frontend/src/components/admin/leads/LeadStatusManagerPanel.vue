@@ -1,18 +1,17 @@
 <template>
   <section class="space-y-6">
     <header class="flex flex-col gap-2 border-b border-slate-100 pb-4 dark:border-white/10">
-      
-      <h2 class="text-2xl font-bold text-slate-900 dark:text-white">Configurações de status</h2>
+      <h2 class="text-2xl font-bold text-slate-900 dark:text-white">{{ viewCopy.header.title }}</h2>
       <p class="text-sm text-slate-500 dark:text-slate-300">
-        Crie, edite e personalize os status utilizados para organizar seus contatos.
+        {{ viewCopy.header.description }}
       </p>
     </header>
 
     <div class="space-y-6">
       <div>
-        <p class="text-sm font-semibold text-slate-700 dark:text-slate-100">Status existentes</p>
-        <p v-if="loading && !statusList.length" class="mt-2 text-sm text-slate-500">Carregando status...</p>
-        <p v-else-if="!statusList.length" class="mt-2 text-sm text-slate-500">Nenhum status cadastrado ainda.</p>
+        <p class="text-sm font-semibold text-slate-700 dark:text-slate-100">{{ viewCopy.existing.title }}</p>
+        <p v-if="loading && !statusList.length" class="mt-2 text-sm text-slate-500">{{ viewCopy.existing.loading }}</p>
+        <p v-else-if="!statusList.length" class="mt-2 text-sm text-slate-500">{{ viewCopy.existing.empty }}</p>
         <ul v-else class="mt-3 space-y-2">
           <li
             v-for="status in statusList"
@@ -24,7 +23,7 @@
                 <input
                   type="color"
                   v-model="editableColors[idKey(status.id)]"
-                  aria-label="Selecionar cor do status"
+                  :aria-label="viewCopy.existing.colorAria"
                   class="absolute inset-0 h-full w-full cursor-pointer opacity-0"
                 />
                 <span
@@ -45,7 +44,7 @@
                 :disabled="!canSave(status) || savingMap[idKey(status.id)]"
                 @click="handleUpdateStatus(status)"
               >
-                {{ savingMap[idKey(status.id)] ? "Salvando..." : "Salvar" }}
+                {{ savingMap[idKey(status.id)] ? viewCopy.actions.saving : viewCopy.actions.save }}
               </button>
               <button
                 type="button"
@@ -53,7 +52,7 @@
                 :disabled="deletingMap[idKey(status.id)]"
                 @click="handleDeleteStatus(status)"
               >
-                {{ deletingMap[idKey(status.id)] ? "Excluindo..." : "Excluir" }}
+                {{ deletingMap[idKey(status.id)] ? viewCopy.actions.deleting : viewCopy.actions.delete }}
               </button>
             </div>
           </li>
@@ -61,13 +60,13 @@
       </div>
 
       <div class="border-t border-slate-100 pt-4 dark:border-white/10">
-        <p class="text-sm	font-semibold text-slate-700 dark:text-slate-100">Adicionar novo status</p>
+        <p class="text-sm font-semibold text-slate-700 dark:text-slate-100">{{ viewCopy.newStatus.title }}</p>
         <div class="mt-3 flex flex-col gap-3 md:flex-row md:items-center">
           <label class="relative block h-10 w-10 cursor-pointer">
             <input
               v-model="newStatusColor"
               type="color"
-              aria-label="Selecionar cor do novo status"
+              :aria-label="viewCopy.newStatus.colorAria"
               class="absolute inset-0 h-full w-full cursor-pointer opacity-0"
             />
             <span class="block h-full w-full rounded-full border border-slate-200 dark:border-white/10" :style="{ backgroundColor: newStatusColor }"></span>
@@ -75,7 +74,7 @@
           <input
             v-model="newStatusName"
             type="text"
-            placeholder="Nome do status"
+            :placeholder="viewCopy.newStatus.placeholder"
             class="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand focus:ring-1 focus:ring-brand/50 dark:border-white/10 dark:bg-transparent"
           />
           <button
@@ -84,7 +83,7 @@
             :disabled="!newStatusName.trim() || creating"
             @click="handleCreateStatus"
           >
-            {{ creating ? "Criando..." : "Adicionar" }}
+            {{ creating ? viewCopy.newStatus.creating : viewCopy.newStatus.submit }}
           </button>
         </div>
       </div>
@@ -104,9 +103,56 @@
 import { computed, onMounted, reactive, ref, watch } from "vue";
 import type { LeadStatus } from "../../../types/leads";
 import { useLeadCaptureStore } from "../../../store/useLeadCaptureStore";
+import { createAdminLocalizer, getAdminLanguage } from "../../../utils/adminI18n";
 
 const leadStore = useLeadCaptureStore();
 const defaultStatusColor = "#22c55e";
+
+const adminLanguage = getAdminLanguage();
+const t = createAdminLocalizer(adminLanguage);
+
+const viewCopy = {
+  header: {
+    title: t({ pt: "Configurações de status", es: "Configuración de estados" }),
+    description: t({
+      pt: "Crie, edite e personalize os status utilizados para organizar seus contatos.",
+      es: "Crea, edita y personaliza los estados usados para organizar tus contactos."
+    })
+  },
+  existing: {
+    title: t({ pt: "Status existentes", es: "Estados existentes" }),
+    loading: t({ pt: "Carregando status...", es: "Cargando estados..." }),
+    empty: t({ pt: "Nenhum status cadastrado ainda.", es: "Aún no hay estados registrados." }),
+    colorAria: t({ pt: "Selecionar cor do status", es: "Seleccionar color del estado" })
+  },
+  actions: {
+    save: t({ pt: "Salvar", es: "Guardar" }),
+    saving: t({ pt: "Salvando...", es: "Guardando..." }),
+    delete: t({ pt: "Excluir", es: "Eliminar" }),
+    deleting: t({ pt: "Excluindo...", es: "Eliminando..." })
+  },
+  newStatus: {
+    title: t({ pt: "Adicionar novo status", es: "Agregar nuevo estado" }),
+    colorAria: t({ pt: "Selecionar cor do novo status", es: "Seleccionar color del nuevo estado" }),
+    placeholder: t({ pt: "Nome do status", es: "Nombre del estado" }),
+    submit: t({ pt: "Adicionar", es: "Agregar" }),
+    creating: t({ pt: "Criando...", es: "Creando..." })
+  },
+  feedback: {
+    loadError: t({ pt: "Não foi possível carregar os status.", es: "No fue posible cargar los estados." }),
+    createSuccess: t({ pt: "Status criado com sucesso.", es: "Estado creado con éxito." }),
+    createError: t({ pt: "Não foi possível criar o status.", es: "No fue posible crear el estado." }),
+    updateSuccess: t({ pt: "Status atualizado.", es: "Estado actualizado." }),
+    updateError: t({ pt: "Erro ao atualizar status.", es: "Error al actualizar el estado." }),
+    deleteSuccess: t({ pt: "Status removido.", es: "Estado eliminado." }),
+    deleteError: t({ pt: "Não foi possível remover o status.", es: "No fue posible eliminar el estado." }),
+    confirmDelete: (name: string) =>
+      t({
+        pt: `Excluir o status "${name}"?`,
+        es: `¿Eliminar el estado "${name}"?`
+      })
+  }
+};
 
 const newStatusName = ref("");
 const newStatusColor = ref(defaultStatusColor);
@@ -130,7 +176,7 @@ const setFeedback = (text = "", error = false) => {
 };
 
 const ensureStatuses = () =>
-  leadStore.fetchStatuses().catch(() => setFeedback("Não foi possível carregar os status.", true));
+  leadStore.fetchStatuses().catch(() => setFeedback(viewCopy.feedback.loadError, true));
 
 onMounted(() => ensureStatuses());
 
@@ -164,10 +210,10 @@ const handleCreateStatus = async () => {
     await leadStore.createStatus({ name, color });
     newStatusName.value = "";
     newStatusColor.value = defaultStatusColor;
-    setFeedback("Status criado com sucesso.");
+    setFeedback(viewCopy.feedback.createSuccess);
   } catch (err) {
     console.error(err);
-    setFeedback("Não foi possível criar o status.", true);
+    setFeedback(viewCopy.feedback.createError, true);
   } finally {
     creating.value = false;
   }
@@ -190,10 +236,10 @@ const handleUpdateStatus = async (status: LeadStatus) => {
       name: (editableNames[key] || status.name).trim(),
       color: editableColors[key] || status.color || defaultStatusColor
     });
-    setFeedback("Status atualizado.");
+    setFeedback(viewCopy.feedback.updateSuccess);
   } catch (err) {
     console.error(err);
-    setFeedback("Erro ao atualizar status.", true);
+    setFeedback(viewCopy.feedback.updateError, true);
   } finally {
     savingMap[key] = false;
   }
@@ -202,17 +248,17 @@ const handleUpdateStatus = async (status: LeadStatus) => {
 const handleDeleteStatus = async (status: LeadStatus) => {
   const key = idKey(status.id);
   if (deletingMap[key]) return;
-  const confirmed = window.confirm(`Excluir o status "${status.name}"?`);
+  const confirmed = window.confirm(viewCopy.feedback.confirmDelete(status.name));
   if (!confirmed) return;
   deletingMap[key] = true;
   try {
     await leadStore.deleteStatus(status.id);
     delete editableNames[key];
     delete editableColors[key];
-    setFeedback("Status removido.");
+    setFeedback(viewCopy.feedback.deleteSuccess);
   } catch (err) {
     console.error(err);
-    setFeedback("Não foi possível remover o status.", true);
+    setFeedback(viewCopy.feedback.deleteError, true);
   } finally {
     deletingMap[key] = false;
   }

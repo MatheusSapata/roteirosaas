@@ -1,4 +1,5 @@
 import type { PageLeadCaptureConfig } from "./leads";
+import type { LocalizedString } from "../utils/i18n";
 
 export type SectionType =
   | "hero"
@@ -25,21 +26,21 @@ export interface SectionBase {
   textColor?: string;
   fullWidth?: boolean;
   anchorId?: string;
-  headingLabel?: string;
+  headingLabel?: LocalizedString;
   headingLabelStyle?: "filled" | "outline";
 }
 
 export interface HeroSection extends SectionBase {
   type: "hero";
-  title: string;
-  subtitle?: string;
+  title: LocalizedString;
+  subtitle?: LocalizedString;
   backgroundImage?: string;
   gradientColor?: string;
   logoUrl?: string;
   logoSize?: number;
   logoBorderRadius?: number;
-  chips?: string[];
-  ctaLabel?: string;
+  chips?: LocalizedString[];
+  ctaLabel?: LocalizedString;
   ctaLink?: string;
   ctaMode?: "link" | "section";
   ctaSectionId?: string | null;
@@ -53,15 +54,15 @@ export interface HeroSection extends SectionBase {
 
 export interface BannerCardSection extends SectionBase {
   type: "banner_card";
-  title: string;
-  subtitle?: string;
+  title: LocalizedString;
+  subtitle?: LocalizedString;
   backgroundImage?: string;
   gradientColor?: string;
   cardBackground?: string;
   cardBorderColor?: string;
   textColor?: string;
   bodyColor?: string;
-  ctaLabel?: string;
+  ctaLabel?: LocalizedString;
   ctaLink?: string;
   ctaMode?: "link" | "section";
   ctaSectionId?: string | null;
@@ -78,31 +79,33 @@ export interface PhotoSection extends SectionBase {
   type: "photo";
   image?: string;
   layout?: "card" | "full";
-  altText?: string;
+  altText?: LocalizedString;
 }
 
 export interface BiographySection extends SectionBase {
   type: "biography";
-  title: string;
-  text: string;
+  title: LocalizedString;
+  text: LocalizedString;
   image?: string;
   mobileImage?: string;
   overlayOpacity?: number;
   titleColor?: string;
+  titleFontSize?: number;
+  textFontSize?: number;
 }
 
 export type CurrencyCode = "BRL" | "USD" | "EUR" | "ARS";
 
 export interface PriceItem {
-  title: string;
+  title: LocalizedString;
   price: number;
-  description?: string;
+  description?: LocalizedString;
   currency?: CurrencyCode;
-  titleLabel?: string;
-  priceLabel?: string;
-  badge?: string;
+  titleLabel?: LocalizedString;
+  priceLabel?: LocalizedString;
+  badge?: LocalizedString;
   highlight?: boolean;
-  ctaLabel?: string;
+  ctaLabel?: LocalizedString;
   ctaLink?: string;
 }
 
@@ -111,18 +114,18 @@ export interface PricesSection extends SectionBase {
   items: PriceItem[];
   layout?: "cards" | "columns" | "highlight";
   ctaColor?: string;
-  description?: string;
-  ctaLabel?: string;
+  description?: LocalizedString;
+  ctaLabel?: LocalizedString;
   ctaLink?: string;
-  title?: string;
-  subtitle?: string;
+  title?: LocalizedString;
+  subtitle?: LocalizedString;
 }
 
 export interface ItineraryDay {
   id?: string;
-  day: string;
-  title: string;
-  description: string;
+  day: LocalizedString;
+  title: LocalizedString;
+  description: LocalizedString;
   image?: string;
 }
 
@@ -131,37 +134,37 @@ export interface ItinerarySection extends SectionBase {
   days: ItineraryDay[];
   layout?: "timeline" | "cards" | "minimal" | "steps";
   ctaColor?: string;
-  title?: string;
-  subtitle?: string;
+  title?: LocalizedString;
+  subtitle?: LocalizedString;
 }
 
 export interface FaqItem {
-  question: string;
-  answer: string;
+  question: LocalizedString;
+  answer: LocalizedString;
 }
 
 export interface FaqSection extends SectionBase {
   type: "faq";
   items: FaqItem[];
   layout?: "accordion" | "split" | "compact";
-  title?: string;
-  subtitle?: string;
+  title?: LocalizedString;
+  subtitle?: LocalizedString;
 }
 
 export interface Testimonial {
-  name: string;
-  text: string;
+  name: LocalizedString;
+  text: LocalizedString;
   avatar?: string;
-  role?: string;
+  role?: LocalizedString;
 }
 
 export interface TestimonialsSection extends SectionBase {
   type: "testimonials";
   items: Testimonial[];
   layout?: "grid" | "stacked" | "highlight" | "cards";
-  title?: string;
-  subtitle?: string;
-  ctaLabel?: string;
+  title?: LocalizedString;
+  subtitle?: LocalizedString;
+  ctaLabel?: LocalizedString;
   ctaLink?: string;
   ctaMode?: "link" | "section";
   ctaSectionId?: string | null;
@@ -171,11 +174,11 @@ export interface TestimonialsSection extends SectionBase {
 
 export interface FeaturedVideoSection extends SectionBase {
   type: "featured_video";
-  title: string;
-  subtitle?: string;
+  title: LocalizedString;
+  subtitle?: LocalizedString;
   videoUrl?: string;
   ctaEnabled?: boolean;
-  ctaLabel?: string;
+  ctaLabel?: LocalizedString;
   ctaLink?: string;
   ctaMode?: "link" | "section";
   ctaSectionId?: string | null;
@@ -185,7 +188,7 @@ export interface FeaturedVideoSection extends SectionBase {
 export interface CountdownSection extends SectionBase {
   type: "countdown";
   targetDate: string;
-  label?: string;
+  label?: LocalizedString;
   backgroundColor?: string;
   textColor?: string;
   layout?: "bar" | "flip";
@@ -200,7 +203,7 @@ export interface AgencyFooterSection extends SectionBase {
 
 export interface FreeFooterBrandSection extends SectionBase {
   type: "free_footer_brand";
-  text: string;
+  text: LocalizedString;
   align?: "left" | "center" | "right";
 }
 
@@ -208,10 +211,10 @@ export interface StorySection extends SectionBase {
   type: "story";
   layout?: "single" | "gallery";
   imagePosition?: "left" | "right";
-  badge?: string;
-  title: string;
-  subtitle?: string;
-  ctaLabel?: string;
+  badge?: LocalizedString;
+  title: LocalizedString;
+  subtitle?: LocalizedString;
+  ctaLabel?: LocalizedString;
   ctaLink?: string;
   ctaMode?: "link" | "section";
   ctaSectionId?: string | null;
@@ -229,14 +232,14 @@ export interface StorySection extends SectionBase {
 
 export interface ReasonItem {
   icon?: string;
-  title: string;
-  description?: string;
+  title: LocalizedString;
+  description?: LocalizedString;
 }
 
 export interface ReasonsSection extends SectionBase {
   type: "reasons";
-  title: string;
-  subtitle?: string;
+  title: LocalizedString;
+  subtitle?: LocalizedString;
   items: ReasonItem[];
   backgroundColor?: string;
   layout?: "grid";
@@ -247,16 +250,16 @@ export interface ReasonsSection extends SectionBase {
 
 export interface CtaSection extends SectionBase {
   type: "cta";
-  label: string;
+  label: LocalizedString;
   link?: string;
   ctaMode?: "link" | "section";
   ctaSectionId?: string | null;
-  description?: string;
+  description?: LocalizedString;
   layout?: "bar" | "split" | "card" | "simple";
   ctaColor?: string;
   backgroundImage?: string;
   textColor?: string;
-  ctaText?: string;
+  ctaText?: LocalizedString;
   highlight?: boolean;
   highlightColor?: string;
 }

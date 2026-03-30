@@ -2,28 +2,32 @@
   <div class="w-full space-y-6 px-4 py-8 md:px-8">
     <div class="flex flex-wrap items-center justify-between gap-3 dark:text-white">
       <div>
-        <p class="text-sm font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-white">Páginas</p>
+        <p class="text-sm font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-white">
+          {{ viewCopy.header.eyebrow }}
+        </p>
       </div>
       <button
         @click="openCreateModal"
         class="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark disabled:cursor-not-allowed disabled:bg-slate-300"
         :disabled="!hasAgency"
       >
-        Nova página
+        {{ viewCopy.header.newPage }}
       </button>
     </div>
 
     <div v-if="!hasAgency" class="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 sm:flex-row sm:items-center sm:justify-between">
       <span>
-        Crie uma agencia primeiro em
-        <router-link to="/admin/agency" class="font-semibold underline">Configuração da agência</router-link>
-        para poder criar paginas.
+        {{ viewCopy.emptyStates.noAgency.prefix }}
+        <router-link to="/admin/agency" class="font-semibold underline">
+          {{ viewCopy.emptyStates.noAgency.link }}
+        </router-link>
+        {{ viewCopy.emptyStates.noAgency.suffix }}
       </span>
       <router-link
         to="/admin/agency"
         class="inline-flex items-center justify-center rounded-full bg-amber-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-amber-500"
       >
-        Criar minha agência
+        {{ viewCopy.emptyStates.noAgency.cta }}
       </router-link>
     </div>
 
@@ -33,9 +37,15 @@
     >
       <div class="w-full max-w-4xl rounded-3xl bg-white p-8 shadow-2xl dark:bg-[#202020] dark:text-white">
         <div class="mb-6 space-y-1">
-          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Novo roteiro</p>
-          <h2 class="text-2xl font-bold text-slate-900">Como deseja começar?</h2>
-          <p class="text-sm text-slate-500">Escolha entre montar tudo do zero ou partir de um template pronto.</p>
+          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">
+            {{ viewCopy.actions.createModal.eyebrow }}
+          </p>
+          <h2 class="text-2xl font-bold text-slate-900">
+            {{ viewCopy.actions.createModal.title }}
+          </h2>
+          <p class="text-sm text-slate-500">
+            {{ viewCopy.actions.createModal.description }}
+          </p>
         </div>
 
         <div class="grid gap-4 md:grid-cols-3">
@@ -44,11 +54,13 @@
             @click="createPageFromScratch"
           >
             <span class="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-700">
-              Recomendado
+              {{ viewCopy.actions.createModal.scratch.badge }}
             </span>
-              <h3 class="mt-3 text-lg font-semibold text-slate-900 dark:text-white">Criar página do zero</h3>
+              <h3 class="mt-3 text-lg font-semibold text-slate-900 dark:text-white">
+                {{ viewCopy.actions.createModal.scratch.title }}
+              </h3>
               <p class="mt-1 text-sm text-slate-600 dark:text-slate-200">
-              Acesse o editor completo para personalizar cada seção do seu roteiro.
+              {{ viewCopy.actions.createModal.scratch.description }}
             </p>
           </button>
 
@@ -57,11 +69,13 @@
             @click="createPageFromTemplate"
           >
             <span class="inline-flex items-center rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-indigo-700">
-              Em breve
+              {{ viewCopy.actions.createModal.template.badge }}
             </span>
-              <h3 class="mt-3 text-lg font-semibold text-slate-900 dark:text-white">Criar a partir de modelo</h3>
+              <h3 class="mt-3 text-lg font-semibold text-slate-900 dark:text-white">
+                {{ viewCopy.actions.createModal.template.title }}
+              </h3>
               <p class="mt-1 text-sm text-slate-600 dark:text-slate-200">
-              Selecione um layout pronto e personalize apenas o conteúdo.
+              {{ viewCopy.actions.createModal.template.description }}
             </p>
           </button>
 
@@ -70,18 +84,20 @@
             @click="createPageWithAi"
           >
             <span class="inline-flex items-center rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-indigo-700">
-              Em breve
+              {{ viewCopy.actions.createModal.ai.badge }}
             </span>
-              <h3 class="mt-3 text-lg font-semibold text-slate-900 dark:text-white">Criar com IA</h3>
+              <h3 class="mt-3 text-lg font-semibold text-slate-900 dark:text-white">
+                {{ viewCopy.actions.createModal.ai.title }}
+              </h3>
               <p class="mt-1 text-sm text-slate-600 dark:text-slate-200">
-              Gere um roteiro inicial com inteligência artificial e refine os detalhes depois.
+              {{ viewCopy.actions.createModal.ai.description }}
             </p>
           </button>
         </div>
 
         <div class="mt-6 flex justify-end">
           <button class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:border-[#363636] dark:text-white dark:hover:bg-white/10" @click="closeCreateModal">
-            Cancelar
+            {{ viewCopy.actions.createModal.cancel }}
           </button>
         </div>
     </div>
@@ -90,24 +106,24 @@
     <transition name="fade">
       <div v-if="planLimitDialog.open" class="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/70 px-4">
         <div class="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl dark:bg-[#202020] dark:text-white">
-          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-rose-500">Limite atingido</p>
+          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-rose-500">
+            {{ viewCopy.actions.planLimit.badge }}
+          </p>
           <h2 class="mt-3 text-2xl font-bold text-slate-900">
-            Voc? atingiu o limite
-            <template v-if="planLimitDialog.limit">de {{ planLimitDialog.limit }} p?ginas</template>
-            do plano {{ planLimitDialog.planLabel }}.
+            {{ planLimitHeading }}{{ planLimitDialog.planLabel }}.
           </h2>
           <p class="mt-2 text-sm text-slate-600 dark:text-slate-200">
-            Atualize seu plano para continuar publicando roteiros profissionais para sua ag?ncia.
+            {{ viewCopy.actions.planLimit.description }}
           </p>
           <div class="mt-6 flex flex-wrap justify-end gap-3">
             <button
               class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-[#363636] dark:text-white dark:hover:bg-white/10"
               @click="planLimitDialog.open = false"
             >
-              Fechar
+              {{ viewCopy.actions.planLimit.close }}
             </button>
             <button class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 dark:bg-brand dark:hover:bg-brand-dark" @click="goPlans">
-              Ver planos
+              {{ viewCopy.actions.planLimit.viewPlans }}
             </button>
           </div>
         </div>
@@ -122,13 +138,13 @@
             headerGridColumns
           ]"
         >
-          <span>Nome</span>
-          <span class="text-center">Visualizações</span>
-          <span class="text-center">Cliques CTA</span>
-          <span v-if="showLeadColumn" class="text-center">Leads</span>
-          <span>Link</span>
-          <span>Status</span>
-          <span class="text-right">Ações</span>
+          <span>{{ viewCopy.table.columns.name }}</span>
+          <span class="text-center">{{ viewCopy.table.columns.views }}</span>
+          <span class="text-center">{{ viewCopy.table.columns.ctaClicks }}</span>
+          <span v-if="showLeadColumn" class="text-center">{{ viewCopy.table.columns.leads }}</span>
+          <span>{{ viewCopy.table.columns.link }}</span>
+          <span>{{ viewCopy.table.columns.status }}</span>
+          <span class="text-right">{{ viewCopy.table.columns.actions }}</span>
         </div>
 
         <div v-if="pages.length" class="space-y-4 md:space-y-0 md:divide-y md:divide-slate-100 dark:md:divide-[#2b2b2b]">
@@ -146,7 +162,7 @@
                 v-if="page.is_default"
                 class="rounded-full bg-emerald-50 px-3 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-600 ring-1 ring-emerald-100"
               >
-                Padrao
+                {{ viewCopy.table.badges.default }}
               </span>
             </div>
 
@@ -155,7 +171,7 @@
                 v-if="isFree"
                 type="button"
                 class="inline-flex min-w-[3rem] items-center justify-center rounded-full border border-emerald-200 bg-white px-4 py-1.5 text-sm font-semibold text-emerald-600 shadow-sm transition hover:bg-emerald-50"
-                title="Funcionalidade premium. Faca upgrade."
+                :title="viewCopy.table.premiumHints.stats"
                 @click="goPlans"
               >
                 <svg class="h-4.5 w-4.5" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
@@ -175,7 +191,7 @@
                 v-if="isFree"
                 type="button"
                 class="inline-flex min-w-[3rem] items-center justify-center rounded-full border border-indigo-200 bg-white px-4 py-1.5 text-sm font-semibold text-indigo-600 shadow-sm transition hover:bg-indigo-50"
-                title="Funcionalidade premium. Faca upgrade."
+                :title="viewCopy.table.premiumHints.stats"
                 @click="goPlans"
               >
                 <svg class="h-4.5 w-4.5" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
@@ -195,7 +211,7 @@
                 v-if="!hasLeadStatsAccess"
                 type="button"
                 class="inline-flex min-w-[3rem] items-center justify-center rounded-full border border-[#0185FB] bg-white px-4 py-1.5 text-xs font-semibold text-[#0185FB] shadow-sm transition hover:bg-slate-50"
-                title="Disponível a partir do plano Essencial. Faça upgrade para ver os leads por página."
+                :title="viewCopy.table.premiumHints.leads"
                 @click="goPlans"
               >
                 <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
@@ -211,7 +227,9 @@
             </div>
 
             <div class="flex flex-col gap-2 md:hidden">
-              <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Status</p>
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                {{ viewCopy.table.columns.status }}
+              </p>
               <span
                 class="inline-flex w-fit items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide"
                 :class="getStatusClasses(page.status)"
@@ -221,7 +239,9 @@
             </div>
 
             <div class="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
-              <p class="text-xs font-semibold uppercase tracking-wide text-slate-400 md:hidden">Link</p>
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-400 md:hidden">
+                {{ viewCopy.table.columns.link }}
+              </p>
               <div
                 class="flex flex-wrap items-center gap-3"
                 :class="{
@@ -239,11 +259,13 @@
                   <button
                     class="text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-600"
                     @click="copyLink(page)"
-                  >
-                    Copiar
+                 >
+                    {{ viewCopy.actions.copy.button }}
                   </button>
                 </template>
-                <span v-else class="text-xs uppercase tracking-wide text-slate-400">Link disponível após publicar</span>
+                <span v-else class="text-xs uppercase tracking-wide text-slate-400">
+                  {{ viewCopy.table.linkUnavailable }}
+                </span>
               </div>
             </div>
 
@@ -257,11 +279,13 @@
             </div>
 
             <div class="flex flex-col gap-2">
-              <p class="text-xs font-semibold uppercase tracking-wide text-slate-400 md:hidden">Ações</p>
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-400 md:hidden">
+                {{ viewCopy.table.columns.actions }}
+              </p>
               <div class="flex flex-wrap items-center gap-2 md:justify-end">
                 <button
                   class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-slate-300 hover:text-slate-900"
-                  title="Duplicar"
+                  :title="viewCopy.actions.rowMenu.duplicate"
                   @click="openDuplicateDialog(page)"
                 >
                   <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
@@ -273,7 +297,7 @@
                 <router-link
                   :to="`/admin/pages/${page.id}/edit`"
                   class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-slate-300 hover:text-slate-900"
-                  title="Editar"
+                  :title="viewCopy.actions.rowMenu.edit"
                 >
                   <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
                     <path d="M12 20h9" />
@@ -286,7 +310,7 @@
                   :href="pagePublicUrl(page)"
                   target="_blank"
                   class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-slate-300 hover:text-slate-900"
-                  title="Ver página"
+                  :title="viewCopy.actions.rowMenu.viewPage"
                 >
                   <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
                     <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z" />
@@ -297,7 +321,7 @@
                 <button
                   v-if="page.status === 'published'"
                   class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-amber-200 text-amber-500 transition hover:border-amber-300 hover:text-amber-600"
-                  title="Despublicar"
+                  :title="viewCopy.actions.rowMenu.unpublish"
                   @click="unpublishPage(page)"
                 >
                   <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
@@ -310,7 +334,7 @@
                   v-if="page.status === 'published'"
                   class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
                   :disabled="page.is_default"
-                  title="Definir padrao"
+                  :title="viewCopy.actions.rowMenu.setDefault"
                   @click="setDefaultPage(page)"
                 >
                   <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
@@ -320,7 +344,7 @@
 
                 <button
                   class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-red-200 text-red-500 transition hover:border-red-300 hover:text-red-600"
-                  title="Excluir"
+                  :title="viewCopy.actions.rowMenu.delete"
                   @click="deletePage(page)"
                 >
                   <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
@@ -336,7 +360,9 @@
           </div>
         </div>
 
-        <div v-else class="px-6 py-10 text-center text-sm text-slate-500">Nenhuma pagina ainda.</div>
+        <div v-else class="px-6 py-10 text-center text-sm text-slate-500">
+          {{ viewCopy.emptyStates.noPages.title }}
+        </div>
       </div>
     </div>
 
@@ -349,39 +375,49 @@
       <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl ring-1 ring-slate-200">
         <div class="flex items-start justify-between">
           <div>
-            <h3 class="text-lg font-semibold text-slate-900">Duplicar pagina</h3>
-            <p class="text-sm text-slate-500">Cria um rascunho copiando conteudo e ajustando slug.</p>
+            <h3 class="text-lg font-semibold text-slate-900">
+              {{ viewCopy.dialogs.duplicate.title }}
+            </h3>
+            <p class="text-sm text-slate-500">
+              {{ viewCopy.dialogs.duplicate.description }}
+            </p>
           </div>
           <button class="text-slate-500 hover:text-slate-700" @click="closeDuplicateDialog">x</button>
         </div>
         <div class="mt-4 space-y-4">
           <div>
-            <label class="text-sm font-semibold text-slate-700">Titulo</label>
+            <label class="text-sm font-semibold text-slate-700">
+              {{ viewCopy.dialogs.duplicate.titleLabel }}
+            </label>
             <input
               v-model="duplicateTitle"
               class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2"
-              placeholder="Novo titulo"
+              :placeholder="viewCopy.dialogs.duplicate.titlePlaceholder"
               @input="autoSlugFromTitle"
             />
           </div>
           <div>
-            <label class="text-sm font-semibold text-slate-700">Slug</label>
+            <label class="text-sm font-semibold text-slate-700">{{ viewCopy.dialogs.duplicate.slugLabel }}</label>
             <input
               v-model="duplicateSlug"
               class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2"
-              placeholder="novo-slug"
+              :placeholder="viewCopy.dialogs.duplicate.slugPlaceholder"
             />
-            <p class="mt-1 text-xs text-slate-500">Link final: /{{ currentAgencySlug }}/{{ duplicateSlug || 'slug' }}</p>
+            <p class="mt-1 text-xs text-slate-500">
+              {{ viewCopy.dialogs.duplicate.finalLink }}: /{{ currentAgencySlug }}/{{ duplicateSlug || "slug" }}
+            </p>
           </div>
         </div>
         <div class="mt-6 flex items-center justify-end gap-3">
-          <button class="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-700 hover:bg-slate-100" @click="closeDuplicateDialog">Cancelar</button>
+          <button class="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-700 hover:bg-slate-100" @click="closeDuplicateDialog">
+            {{ viewCopy.dialogs.duplicate.cancel }}
+          </button>
           <button
             class="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark disabled:cursor-not-allowed disabled:bg-slate-300"
             :disabled="!duplicateTitle || !duplicateSlug"
             @click="confirmDuplicate"
           >
-            Duplicar
+            {{ viewCopy.dialogs.duplicate.confirm }}
           </button>
         </div>
       </div>
@@ -406,6 +442,7 @@ import api from "../../services/api";
 import { useAgencyStore } from "../../store/useAgencyStore";
 import { useAuthStore } from "../../store/useAuthStore";
 import { getPlanLabel } from "../../utils/planLabels";
+import { createAdminLocalizer, getAdminLanguage } from "../../utils/adminI18n";
 
 interface Page {
   id: number;
@@ -429,6 +466,220 @@ interface PageStatsSummary {
 const router = useRouter();
 const agencyStore = useAgencyStore();
 const authStore = useAuthStore();
+const adminLanguage = getAdminLanguage();
+const t = createAdminLocalizer(adminLanguage);
+
+const localizeViewCopy = (value: unknown): any => {
+  if (Array.isArray(value)) {
+    return value.map(item => localizeViewCopy(item));
+  }
+  if (value && typeof value === "object") {
+    const entry = value as Record<string, unknown>;
+    if ("pt" in entry || "es" in entry) {
+      return t(entry as any);
+    }
+    return Object.fromEntries(Object.entries(entry).map(([key, child]) => [key, localizeViewCopy(child)]));
+  }
+  return value;
+};
+
+const viewCopySource = {
+  header: {
+    eyebrow: { pt: "Páginas", es: "Páginas" },
+    newPage: { pt: "Nova página", es: "Nueva página" }
+  },
+  actions: {
+    createModal: {
+      eyebrow: { pt: "Novo roteiro", es: "Nuevo itinerario" },
+      title: { pt: "Como deseja começar?", es: "¿Cómo deseas empezar?" },
+      description: {
+        pt: "Escolha entre montar tudo do zero ou partir de um template pronto.",
+        es: "Elige entre construir todo desde cero o partir de un template listo."
+      },
+      scratch: {
+        badge: { pt: "Recomendado", es: "Recomendado" },
+        title: { pt: "Criar página do zero", es: "Crear página desde cero" },
+        description: {
+          pt: "Acesse o editor completo para personalizar cada seção do seu roteiro.",
+          es: "Accede al editor completo para personalizar cada sección de tu itinerario."
+        }
+      },
+      template: {
+        badge: { pt: "Em breve", es: "Pronto" },
+        title: { pt: "Criar a partir de modelo", es: "Crear desde un modelo" },
+        description: {
+          pt: "Selecione um layout pronto e personalize apenas o conteúdo.",
+          es: "Elige un layout listo y personaliza solo el contenido."
+        }
+      },
+      ai: {
+        badge: { pt: "Em breve", es: "Pronto" },
+        title: { pt: "Criar com IA", es: "Crear con IA" },
+        description: {
+          pt: "Gere um roteiro inicial com inteligência artificial e refine os detalhes depois.",
+          es: "Genera un itinerario inicial con inteligencia artificial y ajusta los detalles después."
+        }
+      },
+      cancel: { pt: "Cancelar", es: "Cancelar" }
+    },
+    planLimit: {
+      badge: { pt: "Limite atingido", es: "Límite alcanzado" },
+      heading: { pt: "Você atingiu o limite", es: "Alcanzaste el límite" },
+      limitIntro: { pt: "de", es: "de" },
+      limitUnit: { pt: "páginas", es: "páginas" },
+      planPrefix: { pt: "do plano", es: "del plan" },
+      description: {
+        pt: "Atualize seu plano para continuar publicando roteiros profissionais para sua agência.",
+        es: "Actualiza tu plan para seguir publicando itinerarios profesionales para tu agencia."
+      },
+      close: { pt: "Fechar", es: "Cerrar" },
+      viewPlans: { pt: "Ver planos", es: "Ver planes" }
+    },
+    rowMenu: {
+      duplicate: { pt: "Duplicar", es: "Duplicar" },
+      edit: { pt: "Editar", es: "Editar" },
+      viewPage: { pt: "Ver página", es: "Ver página" },
+      unpublish: { pt: "Despublicar", es: "Anular publicación" },
+      setDefault: { pt: "Definir como principal", es: "Marcar como principal" },
+      delete: { pt: "Excluir", es: "Eliminar" }
+    },
+    copy: { button: { pt: "Copiar", es: "Copiar" } }
+  },
+  dialogs: {
+    duplicate: {
+      title: { pt: "Duplicar página", es: "Duplicar página" },
+      description: {
+        pt: "Crie um rascunho copiando conteúdo e ajustando o slug.",
+        es: "Crea un borrador copiando el contenido y ajustando el slug."
+      },
+      titleLabel: { pt: "Título", es: "Título" },
+      titlePlaceholder: { pt: "Novo título", es: "Nuevo título" },
+      slugLabel: { pt: "Slug", es: "Slug" },
+      slugPlaceholder: { pt: "novo-slug", es: "nuevo-slug" },
+      finalLink: { pt: "Link final", es: "Link final" },
+      cancel: { pt: "Cancelar", es: "Cancelar" },
+      confirm: { pt: "Duplicar", es: "Duplicar" }
+    },
+    deleteConfirm: {
+      message: {
+        pt: 'Tem certeza que deseja excluir "{title}"? Esta ação não pode ser desfeita.',
+        es: '¿Seguro que deseas eliminar "{title}"? Esta acción no se puede deshacer.'
+      }
+    }
+  },
+  emptyStates: {
+    noAgency: {
+      prefix: { pt: "Crie uma agência primeiro em", es: "Crea una agencia primero en" },
+      link: { pt: "Configuração da agência", es: "Configuración de la agencia" },
+      suffix: { pt: "para poder criar páginas.", es: "para poder crear páginas." },
+      cta: { pt: "Criar minha agência", es: "Crear mi agencia" }
+    },
+    noPages: {
+      title: { pt: "Nenhuma página ainda.", es: "Aún no hay páginas." }
+    }
+  },
+  table: {
+    columns: {
+      name: { pt: "Nome", es: "Nombre" },
+      views: { pt: "Visualizações", es: "Visualizaciones" },
+      ctaClicks: { pt: "Cliques CTA", es: "Clics CTA" },
+      leads: { pt: "Leads", es: "Leads" },
+      link: { pt: "Link", es: "Link" },
+      status: { pt: "Status", es: "Estado" },
+      actions: { pt: "Ações", es: "Acciones" }
+    },
+    badges: {
+      default: { pt: "Padrão", es: "Predeterminado" }
+    },
+    premiumHints: {
+      stats: { pt: "Funcionalidade premium. Faça upgrade.", es: "Funcionalidad premium. Haz upgrade." },
+      leads: {
+        pt: "Disponível a partir do plano Essencial. Faça upgrade para ver os leads por página.",
+        es: "Disponible desde el plan Esencial. Haz upgrade para ver los leads por página."
+      }
+    },
+    linkUnavailable: { pt: "Link disponível após publicar", es: "Link disponible después de publicar" }
+  },
+  labels: {
+    planCurrentFallback: { pt: "seu plano atual", es: "tu plan actual" },
+    creation: {
+      titleBase: { pt: "Novo roteiro", es: "Nuevo itinerario" },
+      slugBase: { pt: "novo-roteiro", es: "nuevo-itinerario" }
+    },
+    duplicateSuffix: {
+      title: { pt: "cópia", es: "copia" },
+      slug: { pt: "copia", es: "copia" }
+    },
+    statuses: {
+      published: { pt: "Ativo", es: "Activo" },
+      draft: { pt: "Rascunho", es: "Borrador" }
+    }
+  },
+  messages: {
+    loadError: {
+      pt: "Não foi possível carregar as páginas.",
+      es: "No fue posible cargar las páginas."
+    },
+    createAgencyRequired: {
+      pt: "Crie uma agência antes de adicionar páginas.",
+      es: "Crea una agencia antes de añadir páginas."
+    },
+    createPageError: {
+      pt: "Não foi possível criar a página. Verifique se você está logado e possui acesso à agência.",
+      es: "No fue posible crear la página. Verifica si iniciaste sesión y tienes acceso a la agencia."
+    },
+    templateWip: {
+      pt: "Funcionalidade em desenvolvimento. Em breve você poderá usar modelos prontos.",
+      es: "Funcionalidad en desarrollo. Pronto podrás usar modelos listos."
+    },
+    aiWip: {
+      pt: "Funcionalidade em desenvolvimento. Em breve você poderá criar páginas com IA.",
+      es: "Funcionalidad en desarrollo. Pronto podrás crear páginas con IA."
+    },
+    duplicateSuccess: { pt: "Página duplicada.", es: "Página duplicada." },
+    duplicateError: {
+      pt: "Não foi possível duplicar. Verifique se o slug já existe ou se você está logado.",
+      es: "No fue posible duplicar. Verifica si el slug ya existe o si iniciaste sesión."
+    },
+    selectAgency: { pt: "Selecione uma agência.", es: "Selecciona una agencia." },
+    copySuccess: {
+      pt: "Link copiado para a área de transferência.",
+      es: "Link copiado al portapapeles."
+    },
+    copyError: {
+      pt: "Não foi possível copiar o link.",
+      es: "No fue posible copiar el enlace."
+    },
+    onlyPublishedDefault: {
+      pt: "Apenas páginas publicadas podem ser padrão.",
+      es: "Solo las páginas publicadas pueden ser predeterminadas."
+    },
+    setDefaultSuccess: {
+      pt: '"{title}" definida como página padrão.',
+      es: '"{title}" definida como página principal.'
+    },
+    setDefaultError: {
+      pt: "Não foi possível definir a página padrão.",
+      es: "No fue posible definir la página principal."
+    },
+    unpublishSuccess: {
+      pt: '"{title}" movida para rascunho.',
+      es: '"{title}" movida a borrador.'
+    },
+    unpublishError: {
+      pt: "Não foi possível despublicar a página.",
+      es: "No fue posible despublicar la página."
+    },
+    deleteSuccess: { pt: "Página excluída.", es: "Página eliminada." },
+    deleteError: {
+      pt: "Não foi possível excluir a página.",
+      es: "No fue posible eliminar la página."
+    }
+  }
+};
+
+const viewCopy = localizeViewCopy(viewCopySource);
+
 const pages = ref<Page[]>([]);
 const pageStats = ref<Record<number, { visits: number; cta: number; whatsapp: number; leads: number }>>({});
 const hasAgency = ref(false);
@@ -448,6 +699,13 @@ const planLimitDialog = ref<{ open: boolean; planLabel: string; limit: number | 
   open: false,
   planLabel: "",
   limit: null
+});
+const planLimitHeading = computed(() => {
+  const limit = planLimitDialog.value.limit;
+  const limitPart = limit
+    ? ` ${viewCopy.actions.planLimit.limitIntro} ${limit} ${viewCopy.actions.planLimit.limitUnit}`
+    : "";
+  return `${viewCopy.actions.planLimit.heading}${limitPart} ${viewCopy.actions.planLimit.planPrefix} `;
 });
 
 const currentAgencySlug = computed(() => {
@@ -480,7 +738,7 @@ const loadPages = async () => {
     await loadPageStats();
   } catch (err) {
     console.error(err);
-    showSnackbar("Nao foi possivel carregar as paginas.", "error");
+    showSnackbar(viewCopy.messages.loadError, "error");
   }
 };
 
@@ -549,7 +807,7 @@ const extractPlanLimitInfo = (err: unknown) => {
     }
   }
   if (!planLabel) {
-    planLabel = "seu plano atual";
+    planLabel = viewCopy.labels.planCurrentFallback;
   }
   return { planLabel, limit };
 };
@@ -564,8 +822,8 @@ const handlePlanLimitError = (err: unknown) => {
 };
 
 const buildDefaultTitleAndSlug = () => {
-  const titleBase = "Novo roteiro";
-  const slugBase = "novo-roteiro";
+  const titleBase = viewCopy.labels.creation.titleBase;
+  const slugBase = viewCopy.labels.creation.slugBase;
 
   const existingSlugs = new Set(
     pages.value
@@ -616,7 +874,7 @@ const buildDefaultTitleAndSlug = () => {
 
 const openCreateModal = () => {
   if (!agencyStore.currentAgencyId) {
-    showSnackbar("Crie uma agencia antes de adicionar paginas.", "error");
+    showSnackbar(viewCopy.messages.createAgencyRequired, "error");
     return;
   }
   createOptionsOpen.value = true;
@@ -630,7 +888,7 @@ const createPageFromScratch = async () => {
   errorMessage.value = "";
   message.value = "";
   if (!agencyStore.currentAgencyId) {
-    errorMessage.value = "Crie uma agencia antes de adicionar paginas.";
+    errorMessage.value = viewCopy.messages.createAgencyRequired;
     return;
   }
   try {
@@ -651,7 +909,7 @@ const createPageFromScratch = async () => {
       return;
     }
     const detail = (err as any)?.response?.data?.detail;
-    errorMessage.value = detail || "Nao foi possivel criar a pagina. Verifique se voce esta logado e tem acesso a agencia.";
+    errorMessage.value = detail || viewCopy.messages.createPageError;
     createOptionsOpen.value = false;
   }
 };
@@ -662,11 +920,11 @@ const showSnackbar = (text: string, tone: "success" | "error" = "success") => {
 };
 
 const createPageFromTemplate = () => {
-  showSnackbar("Funcionalidade em desenvolvimento. Em breve você poderá usar modelos prontos.");
+  showSnackbar(viewCopy.messages.templateWip);
 };
 
 const createPageWithAi = () => {
-  showSnackbar("Funcionalidade em desenvolvimento. Em breve você poderá criar páginas com IA.");
+  showSnackbar(viewCopy.messages.aiWip);
 };
 
 const slugify = (value: string) =>
@@ -678,10 +936,15 @@ const slugify = (value: string) =>
     .replace(/^-+|-+$/g, "")
     .substring(0, 80) || `pagina-${Date.now()}`;
 
+const buildDeleteConfirmMessage = (title: string) =>
+  viewCopy.dialogs.deleteConfirm.message.replace("{title}", title);
+
 const openDuplicateDialog = (page: Page) => {
   duplicateSourcePage.value = page;
-  duplicateTitle.value = `${page.title} (copia)`;
-  const baseSlug = page.slug ? `${page.slug}-copia` : duplicateTitle.value;
+  duplicateTitle.value = `${page.title} (${viewCopy.labels.duplicateSuffix.title})`;
+  const baseSlug = page.slug
+    ? `${page.slug}-${viewCopy.labels.duplicateSuffix.slug}`
+    : duplicateTitle.value;
   duplicateSlug.value = slugify(baseSlug);
   duplicateDialogOpen.value = true;
 };
@@ -703,7 +966,7 @@ const confirmDuplicate = async () => {
   errorMessage.value = "";
   message.value = "";
   if (!agencyStore.currentAgencyId) {
-    showSnackbar("Selecione uma agencia.", "error");
+    showSnackbar(viewCopy.messages.selectAgency, "error");
     return;
   }
   try {
@@ -719,7 +982,7 @@ const confirmDuplicate = async () => {
       template_id: fullPage.template_id || null,
       config_json: fullPage.config_json || null
     });
-    showSnackbar("Pagina duplicada.");
+    showSnackbar(viewCopy.messages.duplicateSuccess);
     closeDuplicateDialog();
     router.push(`/admin/pages/${res.data.id}/edit`);
   } catch (err) {
@@ -728,7 +991,7 @@ const confirmDuplicate = async () => {
       closeDuplicateDialog();
       return;
     }
-    showSnackbar("Nao foi possivel duplicar. Verifique se o slug ja existe ou se voce esta logado.", "error");
+    showSnackbar(viewCopy.messages.duplicateError, "error");
   }
 };
 
@@ -742,20 +1005,20 @@ const copyLink = async (page: Page) => {
   if (!url) return;
   try {
     await navigator.clipboard.writeText(url);
-    showSnackbar("Link copiado para a area de transferencia.");
+    showSnackbar(viewCopy.messages.copySuccess);
   } catch {
-    showSnackbar("Nao foi possivel copiar o link.", "error");
+    showSnackbar(viewCopy.messages.copyError, "error");
   }
 };
 
 const setDefaultPage = async (page: Page) => {
   if (page.status !== "published") {
-    showSnackbar("Apenas paginas publicadas podem ser padrao.", "error");
+    showSnackbar(viewCopy.messages.onlyPublishedDefault, "error");
     return;
   }
   try {
     await api.post(`/pages/${page.id}/set-default`);
-    showSnackbar(`"${page.title}" definida como pagina padrao.`);
+    showSnackbar(viewCopy.messages.setDefaultSuccess.replace("{title}", page.title));
     pages.value = pages.value.map(p => ({ ...p, is_default: p.id === page.id }));
     const agency = agencyStore.agencies.find(a => a.id === agencyStore.currentAgencyId);
     if (agency) {
@@ -764,7 +1027,7 @@ const setDefaultPage = async (page: Page) => {
   } catch (err) {
     console.error(err);
     const detail = (err as any)?.response?.data?.detail;
-    showSnackbar(detail || "Nao foi possivel definir a pagina padrao.", "error");
+    showSnackbar(detail || viewCopy.messages.setDefaultError, "error");
   }
 };
 
@@ -776,7 +1039,7 @@ const unpublishPage = async (page: Page) => {
       if (p.id !== page.id) return p;
       return { ...p, status: "draft", is_default: false };
     });
-    showSnackbar(`"${page.title}" movida para rascunho.`);
+    showSnackbar(viewCopy.messages.unpublishSuccess.replace("{title}", page.title));
     if (page.is_default) {
       const agency = agencyStore.agencies.find(a => a.id === agencyStore.currentAgencyId);
       if (agency) {
@@ -785,18 +1048,18 @@ const unpublishPage = async (page: Page) => {
     }
   } catch (err) {
     console.error(err);
-    showSnackbar("Nao foi possivel despublicar a pagina.", "error");
+    showSnackbar(viewCopy.messages.unpublishError, "error");
   }
 };
 
 const deletePage = async (page: Page) => {
-  if (!confirm(`Tem certeza que deseja excluir "${page.title}"? Esta acao nao pode ser desfeita.`)) {
+  if (!confirm(buildDeleteConfirmMessage(page.title))) {
     return;
   }
   try {
     await api.delete(`/pages/${page.id}`);
     pages.value = pages.value.filter(p => p.id !== page.id);
-    showSnackbar("Pagina excluida.");
+    showSnackbar(viewCopy.messages.deleteSuccess);
     if (page.is_default) {
       const agency = agencyStore.agencies.find(a => a.id === agencyStore.currentAgencyId);
       if (agency) {
@@ -805,11 +1068,19 @@ const deletePage = async (page: Page) => {
     }
   } catch (err) {
     console.error(err);
-    showSnackbar("Nao foi possivel excluir a pagina.", "error");
+    showSnackbar(viewCopy.messages.deleteError, "error");
   }
 };
 
-const getStatusLabel = (status: string) => (status === "published" ? "Ativo" : status === "draft" ? "Rascunho" : status);
+const getStatusLabel = (status: string) => {
+  if (status === "published") {
+    return viewCopy.labels.statuses.published;
+  }
+  if (status === "draft") {
+    return viewCopy.labels.statuses.draft;
+  }
+  return status;
+};
 const getStatusClasses = (status: string) => {
   if (status === "published") {
     return "bg-emerald-50 text-[#2F9E49] dark:bg-[#2F9E49] dark:text-emerald-50";

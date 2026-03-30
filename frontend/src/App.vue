@@ -9,10 +9,10 @@
         <div class="flex flex-col gap-2 rounded-3xl border border-slate-200 bg-white/95 p-4 shadow-2xl backdrop-blur">
           <div class="flex flex-col items-center gap-3 text-center md:flex-row md:items-center md:justify-center md:text-left">
             <div class="md:flex-1">
-              <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Cookies</p>
+              <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">{{ cookieHeading }}</p>
               <p class="text-sm text-slate-600">
-                <span class="block">Utilizamos cookies para manter sua sessão segura e oferecer uma melhor experiência nas páginas publicadas.</span>
-                <span class="block">Continuando sem aceitar, alguns recursos podem não funcionar.</span>
+                <span class="block">{{ cookieLine1 }}</span>
+                <span class="block">{{ cookieLine2 }}</span>
               </p>
             </div>
             <div class="flex w-full flex-wrap items-center justify-center gap-2 md:w-auto md:justify-center">
@@ -21,14 +21,14 @@
                 class="order-1 text-[11px] font-semibold text-slate-500 underline-offset-2 hover:text-slate-700 hover:underline md:order-none"
                 @click="dismissCookies"
               >
-                Continuar sem aceitar
+                {{ cookieRejectLabel }}
               </button>
               <button
                 type="button"
                 class="order-2 w-full rounded-full bg-slate-900 px-5 py-2.5 text-xs font-semibold text-white hover:bg-slate-800 md:order-none md:w-auto md:text-sm"
                 @click="acceptCookies"
               >
-                Aceitar cookies
+                {{ cookieAcceptLabel }}
               </button>
             </div>
           </div>
@@ -41,10 +41,30 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
+import { createLocalizer, getCurrentLanguage } from "./utils/i18n";
 
 const route = useRoute();
+const localize = createLocalizer(getCurrentLanguage());
+const cookieCopy = {
+  heading: { pt: "Cookies", es: "Cookies" },
+  line1: {
+    pt: "Utilizamos cookies para manter sua sessão segura e oferecer uma melhor experiência nas páginas publicadas.",
+    es: "Utilizamos cookies para mantener tu sesión segura y ofrecer una mejor experiencia en las páginas publicadas."
+  },
+  line2: {
+    pt: "Continuando sem aceitar, alguns recursos podem não funcionar.",
+    es: "Si continúas sin aceptar, algunos recursos pueden no funcionar."
+  },
+  accept: { pt: "Aceitar cookies", es: "Aceptar cookies" },
+  reject: { pt: "Continuar sem aceitar", es: "Continuar sin aceptar" }
+} as const;
 const COOKIE_KEY = "global_cookie_consent";
 const showPublicCookieBanner = ref(false);
+const cookieHeading = localize(cookieCopy.heading);
+const cookieLine1 = localize(cookieCopy.line1);
+const cookieLine2 = localize(cookieCopy.line2);
+const cookieAcceptLabel = localize(cookieCopy.accept);
+const cookieRejectLabel = localize(cookieCopy.reject);
 
 const checkCookieConsent = () => {
   if (typeof window === "undefined") return;

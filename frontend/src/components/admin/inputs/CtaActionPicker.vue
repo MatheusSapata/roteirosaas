@@ -1,8 +1,8 @@
-<template>
+﻿<template>
   <div class="space-y-2">
     <div class="flex items-center justify-between">
       <label class="text-sm font-semibold text-slate-600">{{ label }}</label>
-      <span class="text-xs text-slate-500">Escolha o destino do botão</span>
+      <span class="text-xs text-slate-500">{{ copy.destinationHint }}</span>
     </div>
     <div class="flex flex-wrap gap-2">
       <button
@@ -11,7 +11,7 @@
         :class="mode === 'link' ? 'border-slate-800 bg-slate-900 text-white' : 'border-slate-200 text-slate-600 hover:bg-slate-50'"
         @click="setMode('link')"
       >
-        Whatsapp / Link externo
+        {{ copy.options.link }}
       </button>
       <button
         type="button"
@@ -20,7 +20,7 @@
         :disabled="!availableSections.length"
         @click="setMode('section')"
       >
-        Ir para seção
+        {{ copy.options.section }}
       </button>
     </div>
 
@@ -30,10 +30,10 @@
         <p class="text-base font-semibold">{{ selectedSection.title }}</p>
         <p class="text-xs text-emerald-800">{{ selectedSection.description }}</p>
       </div>
-      <p v-else class="text-xs text-emerald-800">Selecione abaixo para onde o botão deve rolar.</p>
+      <p v-else class="text-xs text-emerald-800">{{ copy.sectionSelect.helper }}</p>
       <div class="mt-3 flex flex-wrap gap-2">
         <button type="button" class="rounded-full border border-emerald-600 px-3 py-1 text-xs font-semibold text-emerald-700" @click="dialogOpen = true">
-          Escolher seção
+          {{ copy.sectionSelect.choose }}
         </button>
         <button
           v-if="selectedSection"
@@ -41,11 +41,11 @@
           class="rounded-full border border-transparent px-3 py-1 text-xs font-semibold text-emerald-800 hover:border-emerald-600"
           @click="emit('update:sectionId', null)"
         >
-          Limpar
+          {{ copy.sectionSelect.clear }}
         </button>
       </div>
       <p v-if="!availableSections.length" class="mt-2 text-xs text-emerald-800">
-        Adicione e ative outras seções para usá-las como destino.
+        {{ copy.sectionSelect.empty }}
       </p>
     </div>
 
@@ -54,11 +54,11 @@
         <div class="w-full max-w-3xl rounded-2xl bg-white p-6 shadow-2xl">
           <div class="flex items-center justify-between">
             <div>
-              <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Selecionar seção</p>
-              <h3 class="text-lg font-semibold text-slate-900">Escolha o destino do botão</h3>
+              <p class="text-xs uppercase tracking-[0.3em] text-slate-500">{{ copy.dialog.subtitle }}</p>
+              <h3 class="text-lg font-semibold text-slate-900">{{ copy.dialog.title }}</h3>
             </div>
             <button type="button" class="text-sm font-semibold text-slate-500 hover:text-slate-900" @click="dialogOpen = false">
-              Fechar
+              {{ copy.dialog.close }}
             </button>
           </div>
           <div class="mt-5 grid gap-3 md:grid-cols-2">
@@ -75,7 +75,7 @@
             </button>
           </div>
           <p v-if="!availableSections.length" class="mt-4 text-sm text-slate-500">
-            Ainda não há outras seções ativas para rolar. Adicione novas seções no editor.
+            {{ copy.dialog.noSections }}
           </p>
         </div>
       </div>
@@ -88,6 +88,7 @@ import { computed, inject, ref } from "vue";
 import type { PageSection } from "../../../types/page";
 import { sectionsInjectionKey } from "../sectionsContext";
 import { describeSection, sectionLabels } from "../../../utils/sectionLabels";
+import { createAdminLocalizer } from "../../../utils/adminI18n";
 
 const props = defineProps<{
   mode?: "link" | "section";
@@ -102,9 +103,33 @@ const emit = defineEmits<{
 
 const dialogOpen = ref(false);
 const sections = inject(sectionsInjectionKey, ref<PageSection[]>([]));
+const t = createAdminLocalizer();
+
+const copy = {
+  destinationHint: t({ pt: "Escolha o destino do botão", es: "Elige el destino del botón" }),
+  options: {
+    link: t({ pt: "Whatsapp / Link externo", es: "Whatsapp / Link externo" }),
+    section: t({ pt: "Ir para seção", es: "Ir a la sección" })
+  },
+  sectionSelect: {
+    helper: t({ pt: "Selecione abaixo para onde o botão deve rolar.", es: "Selecciona abajo a dónde debe hacer scroll el botón." }),
+    choose: t({ pt: "Escolher seção", es: "Elegir sección" }),
+    clear: t({ pt: "Limpar", es: "Limpiar" }),
+    empty: t({ pt: "Adicione e ative outras seções para usá-las como destino.", es: "Agrega y activa otras secciones para usarlas como destino." })
+  },
+  dialog: {
+    subtitle: t({ pt: "Selecionar seção", es: "Seleccionar sección" }),
+    title: t({ pt: "Escolha o destino do botão", es: "Elige el destino del botón" }),
+    close: t({ pt: "Fechar", es: "Cerrar" }),
+    noSections: t({
+      pt: "Ainda não há outras seções ativas para rolar. Adicione novas seções no editor.",
+      es: "Aún no hay otras secciones activas para hacer scroll. Agrega nuevas secciones en el editor."
+    })
+  }
+};
 
 const normalizedMode = computed(() => props.mode || "link");
-const label = computed(() => props.label || "Ação do botão");
+const label = computed(() => props.label || t({ pt: "Ação do botão", es: "Acción del botón" }));
 
 const availableSections = computed(() => {
   const list = sections?.value || [];
@@ -113,7 +138,7 @@ const availableSections = computed(() => {
     .map(section => ({
       anchorId: section.anchorId as string,
       type: section.type,
-      typeLabel: sectionLabels[section.type] || "Seção",
+      typeLabel: sectionLabels[section.type] || t({ pt: "Seção", es: "Sección" }),
       title: describeSection(section),
       description: section.type === "hero" ? section.subtitle || "" : section.type === "story" ? section.subtitle || "" : ""
     }));

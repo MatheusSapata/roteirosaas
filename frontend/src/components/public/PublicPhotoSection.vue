@@ -32,7 +32,7 @@
       v-else
       class="mx-auto max-w-3xl rounded-3xl border border-dashed border-slate-300 bg-slate-50/70 px-6 py-12 text-center text-slate-500"
     >
-      Adicione uma imagem para esta seção.
+      {{ emptyStateText }}
     </div>
   </section>
 </template>
@@ -41,11 +41,21 @@
 import { computed } from "vue";
 import type { PhotoSection } from "../../types/page";
 import { resolveMediaUrl } from "../../utils/media";
+import { createLocalizer, getCurrentLanguage } from "../../utils/i18n";
 
 const props = defineProps<{ section: PhotoSection }>();
+const localize = createLocalizer(getCurrentLanguage());
+const photoCopy = {
+  alt: { pt: "Imagem ilustrativa", es: "Imagen ilustrativa" },
+  empty: { pt: "Adicione uma imagem para esta seção.", es: "Agrega una imagen para esta sección." }
+} as const;
 
 const imageSrc = computed(() => resolveMediaUrl(props.section.image) || props.section.image || "");
-const altText = computed(() => props.section.altText || "Imagem ilustrativa");
+const altText = computed(() => {
+  const text = localize(props.section.altText);
+  return text.trim().length ? text : localize(photoCopy.alt);
+});
+const emptyStateText = computed(() => localize(photoCopy.empty));
 const isFullLayout = computed(() => (props.section.layout || "card") === "full");
 const sectionStyle = computed(() => {
   if (isFullLayout.value) return undefined;

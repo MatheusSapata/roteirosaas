@@ -50,8 +50,8 @@
             @click="toggleTheme"
           >
             <div class="text-left">
-              <p class="text-sm font-semibold leading-tight">Tema escuro</p>
-              <p class="text-xs opacity-70">{{ isDarkTheme ? "Ativo" : "Desativado" }}</p>
+              <p class="text-sm font-semibold leading-tight">{{ viewCopy.themeToggle.title }}</p>
+              <p class="text-xs opacity-70">{{ isDarkTheme ? viewCopy.themeToggle.active : viewCopy.themeToggle.inactive }}</p>
             </div>
             <span
               :class="[
@@ -83,7 +83,7 @@
                 <path d="M12 3v9m5.657-6.657a8 8 0 1 1-11.314 0" />
               </svg>
             </span>
-            <span class="text-base">Sair</span>
+            <span class="text-base">{{ viewCopy.sidebar.logout }}</span>
           </button>
         </div>
       </aside>
@@ -111,7 +111,7 @@
               :class="isDarkTheme ? 'text-white hover:bg-white/5' : 'text-white'"
               @click="mobileMenuOpen = true"
             >
-              <span class="sr-only">Abrir menu</span>
+              <span class="sr-only">{{ viewCopy.sidebar.openMenu }}</span>
               <svg viewBox="0 0 24 24" class="h-7 w-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                 <path d="M4 6h16M4 12h16M4 18h16" />
               </svg>
@@ -146,7 +146,9 @@
         >
           <div class="mb-6 flex items-center justify-between">
             <div>
-              <p class="text-xs uppercase tracking-[0.3em]" :class="isDarkTheme ? 'text-white/70' : 'text-white/70'">Menu</p>
+              <p class="text-xs uppercase tracking-[0.3em]" :class="isDarkTheme ? 'text-white/70' : 'text-white/70'">
+                {{ viewCopy.sidebar.menuLabel }}
+              </p>
               <p class="text-sm font-semibold truncate">{{ agencyName || 'Agencia' }}</p>
             </div>
             <button
@@ -155,7 +157,7 @@
               :class="isDarkTheme ? 'border-white/40 text-white' : 'border-white/40 text-white'"
               @click="mobileMenuOpen = false"
             >
-              <span class="sr-only">Fechar</span>
+              <span class="sr-only">{{ viewCopy.sidebar.closeMenu }}</span>
               <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                 <path d="M6 6l12 12M6 18 18 6" />
               </svg>
@@ -207,7 +209,7 @@
               :class="isDarkTheme ? 'border-white/20 bg-black text-white hover:bg-black/80' : 'border-white/30 bg-white/5 text-white hover:bg-white/10'"
               @click="toggleTheme"
             >
-              <span>Tema escuro</span>
+              <span>{{ viewCopy.themeToggle.label }}</span>
               <span
                 :class="[
                   'relative inline-flex h-5 w-10 items-center rounded-full transition',
@@ -238,7 +240,7 @@
                   <path d="M12 3v9m5.657-6.657a8 8 0 1 1-11.314 0" />
                 </svg>
               </span>
-              <span>Sair</span>
+              <span>{{ viewCopy.sidebar.logout }}</span>
             </button>
           </div>
         </div>
@@ -251,25 +253,25 @@
         class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 px-4"
       >
         <div class="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl">
-          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-500">Bem-vindo ao trial profissional</p>
-          <h2 class="mt-3 text-2xl font-bold text-slate-900">Plano {{ trialPlanName }} liberado até {{ formattedDate }}</h2>
+          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-500">{{ viewCopy.trial.welcome.eyebrow }}</p>
+          <h2 class="mt-3 text-2xl font-bold text-slate-900">
+            {{ viewCopy.trial.welcome.titlePrefix }} {{ trialPlanName }} {{ viewCopy.trial.welcome.titleConnector }} {{ formattedDate }}
+          </h2>
           <p class="mt-2 text-sm text-slate-600">
-            Durante estes 7 dias você pode testar tudo que usamos nos planos pagos:
+            {{ viewCopy.trial.welcome.description }}
           </p>
           <ul class="mt-4 list-disc space-y-1 pl-6 text-sm text-slate-600">
-            <li>Criar até 3 páginas completas, com seções ilimitadas.</li>
-            <li>Duplicar roteiros, personalizar blocos premium e usar pixels ilimitados.</li>
-            <li>Publicar páginas sem rodapé da versão gratuita e acompanhar métricas em tempo real.</li>
+            <li v-for="(feature, featureIndex) in viewCopy.trial.welcome.features" :key="`trial-welcome-feature-${featureIndex}`">
+              {{ feature }}
+            </li>
           </ul>
-          <p class="mt-4 text-sm text-slate-600">Explore à vontade e peça ajuda se quiser montar um roteiro profissional.</p>
-          <div class="mt-6 flex flex-wrap justify-end gap-3">
-            <button
-              class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-              @click="startAgencySetupFlow"
-            >
-              Começar agora
-            </button>
-          </div>
+          <p class="mt-4 text-sm text-slate-600">{{ viewCopy.trial.welcome.closing }}</p>
+          <button
+            class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            @click="startAgencySetupFlow"
+          >
+            {{ viewCopy.trial.welcome.cta }}
+          </button>
         </div>
       </div>
     </transition>
@@ -283,16 +285,16 @@
           <template v-if="agencySetupStep === 'name'">
             <div class="space-y-6">
               <div>
-                <p class="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-500">Comece por aqui</p>
-                <h2 class="mt-3 text-3xl font-bold text-slate-900">Qual nome da sua agência?</h2>
-                <p class="mt-2 text-base text-slate-500">Esse nome aparece no painel e nas páginas. Você pode alterar depois.</p>
+                <p class="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-500">{{ viewCopy.onboarding.name.eyebrow }}</p>
+                <h2 class="mt-3 text-3xl font-bold text-slate-900">{{ viewCopy.onboarding.name.title }}</h2>
+                <p class="mt-2 text-base text-slate-500">{{ viewCopy.onboarding.name.description }}</p>
               </div>
               <div>
-                <label class="text-sm font-semibold text-slate-600">Nome da agência</label>
+                <label class="text-sm font-semibold text-slate-600">{{ viewCopy.onboarding.name.label }}</label>
                 <input
                   v-model="agencySetupForm.name"
                   class="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-lg font-semibold text-slate-900"
-                  placeholder="Ex.: MariaTur"
+                  :placeholder="viewCopy.onboarding.name.placeholder"
                 />
               </div>
               <p v-if="agencySetupError" class="rounded-2xl bg-rose-50 px-4 py-3 text-sm font-medium text-rose-600">
@@ -300,14 +302,14 @@
               </p>
               <div class="mt-6 flex flex-wrap justify-end gap-3">
                 <button class="rounded-full border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50" @click="requestAgencySetupClose">
-                  Fechar
+                  {{ viewCopy.onboarding.actions.close }}
                 </button>
                 <button
                   class="rounded-full bg-brand px-6 py-2 text-sm font-semibold text-white shadow hover:bg-brand-dark disabled:cursor-not-allowed disabled:bg-slate-300"
                   @click="goToNextAgencySetupStep"
                   :disabled="agencySetupStepLoading"
                 >
-                  {{ agencySetupStepLoading ? "Avançando..." : "Avançar" }}
+                  {{ agencySetupStepLoading ? viewCopy.onboarding.actions.advancing : viewCopy.onboarding.actions.next }}
                 </button>
               </div>
             </div>
@@ -315,32 +317,32 @@
           <template v-else-if="agencySetupStep === 'logo'">
             <div class="space-y-6">
               <div>
-                <p class="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-500">Personalize</p>
-                <h2 class="mt-3 text-3xl font-bold text-slate-900">Logo da sua agência</h2>
-                <p class="mt-2 text-base text-slate-500">Envie o arquivo da sua marca. Você pode trocar depois.</p>
+                <p class="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-500">{{ viewCopy.onboarding.logo.eyebrow }}</p>
+                <h2 class="mt-3 text-3xl font-bold text-slate-900">{{ viewCopy.onboarding.logo.title }}</h2>
+                <p class="mt-2 text-base text-slate-500">{{ viewCopy.onboarding.logo.description }}</p>
               </div>
               <ImageUploadField
                 v-model="agencySetupForm.logo_url"
-                label="Logo"
-                hint="Formatos permitidos: JPG e PNG · Tamanho máximo: 10MB"
+                :label="viewCopy.onboarding.logo.fieldLabel"
+                :hint="viewCopy.onboarding.logo.hint"
                 :enable-crop="true"
-                editor-title="Ajuste a logo da agência"
+                :editor-title="viewCopy.onboarding.logo.editorTitle"
               />
               <p v-if="agencySetupError" class="rounded-2xl bg-rose-50 px-4 py-3 text-sm font-medium text-rose-600">
                 {{ agencySetupError }}
               </p>
               <div class="mt-6 flex flex-wrap justify-end gap-3">
                 <button class="rounded-full border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50" @click="requestAgencySetupClose">
-                  Fechar
+                  {{ viewCopy.onboarding.actions.close }}
                 </button>
                 <button class="rounded-full border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" @click="goToPreviousAgencySetupStep">
-                  Voltar
+                  {{ viewCopy.onboarding.actions.back }}
                 </button>
                 <button
                   class="rounded-full bg-brand px-6 py-2 text-sm font-semibold text-white shadow hover:bg-brand-dark"
                   @click="goToNextAgencySetupStep"
                 >
-                  Avançar
+                  {{ viewCopy.onboarding.actions.next }}
                 </button>
               </div>
             </div>
@@ -348,9 +350,9 @@
           <template v-else-if="agencySetupStep === 'color'">
             <div class="space-y-6">
               <div>
-                <p class="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-500">Defina o estilo</p>
-                <h2 class="mt-3 text-3xl font-bold text-slate-900">Qual a cor principal da sua agência?</h2>
-                <p class="mt-2 text-base text-slate-500">Usamos essa cor nos botões e destaques padrão do editor.</p>
+                <p class="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-500">{{ viewCopy.onboarding.color.eyebrow }}</p>
+                <h2 class="mt-3 text-3xl font-bold text-slate-900">{{ viewCopy.onboarding.color.title }}</h2>
+                <p class="mt-2 text-base text-slate-500">{{ viewCopy.onboarding.color.description }}</p>
               </div>
               <div class="flex flex-col gap-4 rounded-2xl border border-slate-100 p-4">
                 <div class="flex items-center gap-4">
@@ -360,13 +362,13 @@
                       v-model="agencySetupForm.primary_color"
                       class="h-16 w-16 cursor-pointer rounded-full border border-slate-200 bg-white p-2"
                     />
-                    <span class="mt-2 text-xs font-semibold text-slate-500">Clique aqui para alterar</span>
+                    <span class="mt-2 text-xs font-semibold text-slate-500">{{ viewCopy.onboarding.color.pickerHint }}</span>
                   </div>
                   <div class="flex-1">
-                    <label class="text-sm font-semibold text-slate-600">Código hexadecimal</label>
+                    <label class="text-sm font-semibold text-slate-600">{{ viewCopy.onboarding.color.hexLabel }}</label>
                     <input
                       v-model="agencySetupForm.primary_color"
-                      placeholder="#41ce5f"
+                      :placeholder="viewCopy.onboarding.color.placeholder"
                       class="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-lg font-semibold uppercase tracking-wide text-slate-900"
                     />
                   </div>
@@ -377,17 +379,17 @@
               </p>
               <div class="mt-6 flex flex-wrap justify-end gap-3">
                 <button class="rounded-full border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50" @click="requestAgencySetupClose">
-                  Fechar
+                  {{ viewCopy.onboarding.actions.close }}
                 </button>
                 <button class="rounded-full border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" @click="goToPreviousAgencySetupStep">
-                  Voltar
+                  {{ viewCopy.onboarding.actions.back }}
                 </button>
                 <button
                   class="rounded-full bg-brand px-6 py-2 text-sm font-semibold text-white shadow hover:bg-brand-dark disabled:cursor-not-allowed disabled:bg-slate-300"
                   @click="submitAgencySetup"
                   :disabled="agencySetupSaving"
                 >
-                  {{ agencySetupSaving ? "Criando..." : "Criar agência" }}
+                  {{ agencySetupSaving ? viewCopy.onboarding.actions.creating : viewCopy.onboarding.actions.createAgency }}
                 </button>
               </div>
             </div>
@@ -400,22 +402,22 @@
                 </svg>
               </div>
               <div>
-                <h2 class="text-3xl font-bold text-slate-900">Parabéns, sua agência foi criada!</h2>
-                <p class="mt-3 text-base text-slate-500">Agora você pode criar sua primeira página personalizada.</p>
+                <h2 class="text-3xl font-bold text-slate-900">{{ viewCopy.onboarding.success.title }}</h2>
+                <p class="mt-3 text-base text-slate-500">{{ viewCopy.onboarding.success.description }}</p>
               </div>
               <p v-if="createFirstPageError" class="rounded-2xl bg-rose-50 px-4 py-3 text-sm font-medium text-rose-600">
                 {{ createFirstPageError }}
               </p>
               <div class="mt-6 flex flex-wrap justify-center gap-3">
                 <button class="rounded-full border border-slate-200 px-6 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" @click="closeAgencySetupFlow">
-                  Fechar
+                  {{ viewCopy.onboarding.actions.close }}
                 </button>
                 <button
                   class="rounded-full bg-brand px-6 py-2 text-sm font-semibold text-white shadow hover:bg-brand-dark disabled:cursor-not-allowed disabled:bg-slate-300"
                   @click="createFirstPageFromOnboarding"
                   :disabled="createFirstPageLoading"
                 >
-                  {{ createFirstPageLoading ? "Criando..." : "Criar minha primeira página" }}
+                  {{ createFirstPageLoading ? viewCopy.onboarding.actions.creatingFirstPage : viewCopy.onboarding.actions.createFirstPage }}
                 </button>
               </div>
             </div>
@@ -430,15 +432,15 @@
         class="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/70 px-4"
       >
         <div class="w-full max-w-md rounded-3xl bg-white p-6 text-center shadow-2xl">
-          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-amber-500">Atenção</p>
-          <h2 class="mt-3 text-2xl font-bold text-slate-900">Há alterações não salvas</h2>
-          <p class="mt-2 text-sm text-slate-600">Se fechar agora, você perderá o que preencheu. Deseja realmente sair?</p>
+          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-amber-500">{{ viewCopy.onboarding.unsaved.eyebrow }}</p>
+          <h2 class="mt-3 text-2xl font-bold text-slate-900">{{ viewCopy.onboarding.unsaved.title }}</h2>
+          <p class="mt-2 text-sm text-slate-600">{{ viewCopy.onboarding.unsaved.description }}</p>
           <div class="mt-6 flex flex-wrap justify-center gap-3">
             <button class="rounded-full border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50" @click="keepAgencySetupEditing">
-              Continuar editando
+              {{ viewCopy.onboarding.actions.continueEditing }}
             </button>
             <button class="rounded-full bg-brand px-6 py-2 text-sm font-semibold text-white shadow hover:bg-brand-dark" @click="confirmAgencySetupDiscard">
-              Descartar e fechar
+              {{ viewCopy.onboarding.actions.discardAndClose }}
             </button>
           </div>
         </div>
@@ -451,46 +453,45 @@
         class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 px-4"
       >
         <div class="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl">
-          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-amber-500">Faltam 3 dias</p>
-          <h2 class="mt-3 text-2xl font-bold text-slate-900">Seu periodo trial termina em breve</h2>
+          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-amber-500">{{ viewCopy.trial.warn3.eyebrow }}</p>
+          <h2 class="mt-3 text-2xl font-bold text-slate-900">{{ viewCopy.trial.warn3.title }}</h2>
           <p class="mt-2 text-sm text-slate-600">
-            Em 3 dias o acesso ao editor sera bloqueado. Escolha um plano para continuar criando roteiros ilimitados.
+            {{ viewCopy.trial.warn3.description }}
           </p>
           <div class="mt-6 flex flex-wrap justify-end gap-3">
             <button
               class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
               @click="acknowledgeTrial('warn3')"
             >
-              Depois
+              {{ viewCopy.trial.warn3.dismiss }}
             </button>
             <button
               class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
               @click="acknowledgeTrial('warn3', true)"
             >
-              Ver planos
+              {{ viewCopy.trial.warn3.goPlans }}
             </button>
           </div>
         </div>
       </div>
     </transition>
-
     <transition name="fade">
       <div
         v-if="showTrialWarning1Day"
         class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 px-4"
       >
         <div class="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl">
-          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-rose-500">Últimas horas</p>
-          <h2 class="mt-3 text-2xl font-bold text-slate-900">Seu trial termina amanha</h2>
+          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-rose-500">{{ viewCopy.trial.warn1.eyebrow }}</p>
+          <h2 class="mt-3 text-2xl font-bold text-slate-900">{{ viewCopy.trial.warn1.title }}</h2>
           <p class="mt-2 text-sm text-slate-600">
-            Contrate agora para manter suas paginas ativas e seguir publicando novos roteiros sem interrupcao.
+            {{ viewCopy.trial.warn1.description }}
           </p>
           <div class="mt-6 flex flex-wrap justify-end gap-3">
             <button
               class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
               @click="acknowledgeTrial('warn1', true)"
             >
-              Assinar agora
+              {{ viewCopy.trial.warn1.subscribe }}
             </button>
           </div>
         </div>
@@ -503,26 +504,27 @@
         class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 px-4"
       >
         <div class="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl">
-          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-rose-500">Trial encerrado</p>
-          <h2 class="mt-3 text-2xl font-bold text-slate-900">Você atingiu o limite do plano trial</h2>
-          <p class="mt-2 text-sm text-slate-600">Assine um plano para desbloquear seu painel e republicar seus roteiros.</p>
+          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-rose-500">{{ viewCopy.trial.blocked.eyebrow }}</p>
+          <h2 class="mt-3 text-2xl font-bold text-slate-900">{{ viewCopy.trial.blocked.title }}</h2>
+          <p class="mt-2 text-sm text-slate-600">{{ viewCopy.trial.blocked.description }}</p>
           <div class="mt-6 flex flex-wrap justify-end gap-3">
             <button
               class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
               @click="goToPlans"
             >
-              Ir para os planos
+              {{ viewCopy.trial.blocked.goPlans }}
             </button>
             <button
               class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
               @click="dismissBlockedModal"
             >
-              Fechar
+              {{ viewCopy.trial.blocked.close }}
             </button>
           </div>
         </div>
       </div>
     </transition>
+
 
     <transition name="fade">
       <div
@@ -532,10 +534,10 @@
         <div class="flex flex-col gap-2 rounded-3xl border border-slate-200 bg-white/95 p-4 shadow-2xl backdrop-blur">
           <div class="flex flex-col items-center gap-3 text-center md:flex-row md:items-center md:justify-center md:text-left">
             <div class="md:flex-1">
-              <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Cookies</p>
+              <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">{{ viewCopy.cookies.title }}</p>
               <p class="text-sm text-slate-600">
-                <span class="block">Utilizamos cookies e armazenamento local para manter sua sessão segura e salvar preferências.</span>
-                <span class="block">Se optar por continuar sem aceitar, alguns recursos podem apresentar limitações.</span>
+                <span class="block">{{ viewCopy.cookies.descriptionLine1 }}</span>
+                <span class="block">{{ viewCopy.cookies.descriptionLine2 }}</span>
               </p>
             </div>
             <div class="flex w-full flex-wrap items-center justify-center gap-2 md:w-auto md:justify-center">
@@ -544,14 +546,14 @@
                 class="order-1 text-[11px] font-semibold text-slate-500 underline-offset-2 hover:text-slate-700 hover:underline md:order-none"
                 @click="dismissCookies"
               >
-                Continuar sem aceitar
+                {{ viewCopy.cookies.skip }}
               </button>
               <button
                 type="button"
                 class="order-2 w-full rounded-full bg-slate-900 px-5 py-2.5 text-xs font-semibold text-white hover:bg-slate-800 md:order-none md:w-auto md:text-sm"
                 @click="acceptCookies"
               >
-                Aceitar cookies
+                {{ viewCopy.cookies.accept }}
               </button>
             </div>
           </div>
@@ -570,7 +572,7 @@
           d="M19.05 4.91A9.82 9.82 0 0 0 12.04 2c-5.46 0-9.91 4.45-9.91 9.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21c5.46 0 9.91-4.45 9.91-9.91c0-2.65-1.03-5.14-2.9-7.01m-7.01 15.24c-1.48 0-2.93-.4-4.2-1.15l-.3-.18l-3.12.82l.83-3.04l-.2-.31a8.26 8.26 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24c2.2 0 4.27.86 5.82 2.42a8.18 8.18 0 0 1 2.41 5.83c.02 4.54-3.68 8.23-8.22 8.23m4.52-6.16c-.25-.12-1.47-.72-1.69-.81c-.23-.08-.39-.12-.56.12c-.17.25-.64.81-.78.97c-.14.17-.29.19-.54.06c-.25-.12-1.05-.39-1.99-1.23c-.74-.66-1.23-1.47-1.38-1.72c-.14-.25-.02-.38.11-.51c.11-.11.25-.29.37-.43s.17-.25.25-.41c.08-.17.04-.31-.02-.43s-.56-1.34-.76-1.84c-.2-.48-.41-.42-.56-.43h-.48c-.17 0-.43.06-.66.31c-.22.25-.86.85-.86 2.07s.89 2.4 1.01 2.56c.12.17 1.75 2.67 4.23 3.74c.59.26 1.05.41 1.41.52c.59.19 1.13.16 1.56.1c.48-.07 1.47-.6 1.67-1.18c.21-.58.21-1.07.14-1.18s-.22-.16-.47-.28"
         />
       </svg>
-      <span class="ml-0 max-w-0 overflow-hidden whitespace-nowrap text-sm font-semibold opacity-0 transition-all duration-200 group-hover:ml-3 group-hover:max-w-[140px] group-hover:opacity-100">Precisa de ajuda?</span>
+      <span class="ml-0 max-w-0 overflow-hidden whitespace-nowrap text-sm font-semibold opacity-0 transition-all duration-200 group-hover:ml-3 group-hover:max-w-[140px] group-hover:opacity-100">{{ viewCopy.support.prompt }}</span>
     </a>
   </div>
 </template>
@@ -587,6 +589,7 @@ import { useThemeStore } from "../store/useThemeStore";
 import { getPlanLabel } from "../utils/planLabels";
 import { addTagsToContactByEmail, syncPlanTagForEmail, viajeChatTagIds } from "../services/viajeChat";
 import { slugify } from "../utils/slugify";
+import { createAdminLocalizer } from "../utils/adminI18n";
 
 const route = useRoute();
 const router = useRouter();
@@ -594,6 +597,163 @@ const agencyStore = useAgencyStore();
 const auth = useAuthStore();
 const themeStore = useThemeStore();
 const COOKIE_KEY = "global_cookie_consent";
+const t = createAdminLocalizer();
+
+const navCopy = {
+  dashboard: { pt: "Dashboard", es: "Dashboard" },
+  adminMaster: { pt: "Admin Master", es: "Admin Master" },
+  pages: { pt: "Páginas", es: "Páginas" },
+  leads: { pt: "Leads", es: "Leads" },
+  integrations: { pt: "Integrações", es: "Integraciones" },
+  domains: { pt: "Domínios", es: "Dominios" },
+  agency: { pt: "Minha Agência", es: "Mi Agencia" },
+  profile: { pt: "Perfil", es: "Perfil" },
+  lessons: { pt: "Aulas", es: "Cursos" },
+  plans: { pt: "Planos", es: "Planes" }
+} as const;
+
+const navLabel = (key: keyof typeof navCopy) => t(navCopy[key]);
+const viewCopy = {
+  themeToggle: {
+    title: t({ pt: "Tema escuro", es: "Tema oscuro" }),
+    active: t({ pt: "Ativo", es: "Activo" }),
+    inactive: t({ pt: "Desativado", es: "Desactivado" }),
+    label: t({ pt: "Tema escuro", es: "Tema oscuro" })
+  },
+  sidebar: {
+    logout: t({ pt: "Sair", es: "Salir" }),
+    menuLabel: t({ pt: "Menu", es: "MenÃº" }),
+    openMenu: t({ pt: "Abrir menu", es: "Abrir menÃº" }),
+    closeMenu: t({ pt: "Fechar", es: "Cerrar" })
+  },
+  support: {
+    prompt: t({ pt: "Precisa de ajuda?", es: "Â¿Necesita ayuda?" })
+  },
+  trial: {
+    welcome: {
+      eyebrow: t({ pt: "Bem-vindo ao trial profissional", es: "Bienvenido al trial profesional" }),
+      titlePrefix: t({ pt: "Plano", es: "Plan" }),
+      titleConnector: t({ pt: "liberado até", es: "habilitado hasta" }),
+      description: t({
+        pt: "Durante estes 7 dias você pode testar tudo que usamos nos planos pagos:",
+        es: "Durante estos 7 días puedes probar todo lo que usamos en los planes pagos:"
+      }),
+      features: [
+        t({ pt: "Criar até 3 páginas completas, com seções ilimitadas.", es: "Crear hasta 3 páginas completas con secciones ilimitadas." }),
+        t({
+          pt: "Duplicar roteiros, personalizar blocos premium e usar pixels ilimitados.",
+          es: "Duplicar itinerarios, personalizar bloques premium y usar píxeles ilimitados."
+        }),
+        t({
+          pt: "Publicar páginas sem rodapé da versão gratuita e acompanhar métricas em tempo real.",
+          es: "Publicar páginas sin el pie de la versión gratuita y seguir métricas en tiempo real."
+        })
+      ],
+      closing: t({
+        pt: "Explore à vontade e chame nosso time se quiser montar um roteiro profissional.",
+        es: "Explora con libertad y pídenos ayuda si quieres armar un itinerario profesional."
+      }),
+      cta: t({ pt: "Começar agora", es: "Comenzar ahora" })
+    },
+    warn3: {
+      eyebrow: t({ pt: "Faltam 3 dias", es: "Faltan 3 dÃ­as" }),
+      title: t({ pt: "Seu perÃ­odo trial termina em breve", es: "Tu perÃ­odo de prueba termina pronto" }),
+      description: t({
+        pt: "Em 3 dias o acesso ao editor serÃ¡ bloqueado. Escolha um plano para continuar criando roteiros ilimitados.",
+        es: "En 3 dÃ­as se bloquearÃ¡ el acceso al editor. Elige un plan para seguir creando itinerarios ilimitados."
+      }),
+      dismiss: t({ pt: "Depois", es: "DespuÃ©s" }),
+      goPlans: t({ pt: "Ver planos", es: "Ver planes" })
+    },
+    warn1: {
+      eyebrow: t({ pt: "Ãšltimas horas", es: "Ãšltimas horas" }),
+      title: t({ pt: "Seu trial termina amanhÃ£", es: "Tu trial termina maÃ±ana" }),
+      description: t({
+        pt: "Contrate agora para manter suas pÃ¡ginas ativas e seguir publicando novos roteiros sem interrupÃ§Ã£o.",
+        es: "Contrata ahora para mantener tus pÃ¡ginas activas y seguir publicando nuevos itinerarios sin interrupciÃ³n."
+      }),
+      subscribe: t({ pt: "Assinar agora", es: "Suscribirme ahora" })
+    },
+    blocked: {
+      eyebrow: t({ pt: "Trial encerrado", es: "Trial finalizado" }),
+      title: t({ pt: "VocÃª atingiu o limite do plano trial", es: "Alcanzaste el lÃ­mite del plan trial" }),
+      description: t({
+        pt: "Assine um plano para desbloquear seu painel e republicar seus roteiros.",
+        es: "SuscrÃ­bete para desbloquear tu panel y volver a publicar tus itinerarios."
+      }),
+      goPlans: t({ pt: "Ir para os planos", es: "Ir a los planes" }),
+      close: t({ pt: "Fechar", es: "Cerrar" })
+    }
+  },
+  cookies: {
+    title: t({ pt: "Cookies", es: "Cookies" }),
+    descriptionLine1: t({
+      pt: "Utilizamos cookies e armazenamento local para manter sua sessÃ£o segura e salvar preferÃªncias.",
+      es: "Usamos cookies y almacenamiento local para mantener tu sesiÃ³n segura y guardar preferencias."
+    }),
+    descriptionLine2: t({
+      pt: "Se optar por continuar sem aceitar, alguns recursos podem apresentar limitaÃ§Ãµes.",
+      es: "Si decides seguir sin aceptar, algunas funciones pueden presentar limitaciones."
+    }),
+    skip: t({ pt: "Continuar sem aceitar", es: "Seguir sin aceptar" }),
+    accept: t({ pt: "Aceitar cookies", es: "Aceptar cookies" })
+  },
+  onboarding: {
+    firstPageTitle: t({ pt: "Meu primeiro roteiro", es: "Mi primer itinerario" }),
+    name: {
+      eyebrow: t({ pt: "Comece por aqui", es: "Empieza por aquÃ­" }),
+      title: t({ pt: "Qual nome da sua agÃªncia?", es: "Â¿CuÃ¡l es el nombre de tu agencia?" }),
+      description: t({ pt: "Esse nome aparece no painel e nas pÃ¡ginas. VocÃª pode alterar depois.", es: "Este nombre aparece en el panel y en las pÃ¡ginas. Puedes cambiarlo despuÃ©s." }),
+      label: t({ pt: "Nome da agÃªncia", es: "Nombre de la agencia" }),
+      placeholder: t({ pt: "Ex.: MariaTur", es: "Ej.: MariaTur" })
+    },
+    logo: {
+      eyebrow: t({ pt: "Personalize", es: "Personaliza" }),
+      title: t({ pt: "Logo da sua agÃªncia", es: "Logo de tu agencia" }),
+      description: t({ pt: "Envie o arquivo da sua marca. VocÃª pode trocar depois.", es: "Sube el archivo de tu marca. Puedes cambiarlo despuÃ©s." }),
+      fieldLabel: t({ pt: "Logo", es: "Logo" }),
+      hint: t({ pt: "Formatos permitidos: JPG e PNG - Tamanho mÃ¡ximo: 10MB", es: "Formatos permitidos: JPG y PNG - TamaÃ±o mÃ¡ximo: 10MB" }),
+      editorTitle: t({ pt: "Ajuste a logo da agÃªncia", es: "Ajusta el logo de la agencia" })
+    },
+    color: {
+      eyebrow: t({ pt: "Defina o estilo", es: "Define el estilo" }),
+      title: t({ pt: "Qual a cor principal da sua agÃªncia?", es: "Â¿CuÃ¡l es el color principal de tu agencia?" }),
+      description: t({ pt: "Usamos essa cor nos botÃµes e destaques padrÃ£o do editor.", es: "Usamos este color en los botones y destacados predeterminados del editor." }),
+      pickerHint: t({ pt: "Clique aqui para alterar", es: "Haz clic aquÃ­ para cambiar" }),
+      hexLabel: t({ pt: "CÃ³digo hexadecimal", es: "CÃ³digo hexadecimal" }),
+      placeholder: t({ pt: "#41ce5f", es: "#41ce5f" })
+    },
+    success: {
+      title: t({ pt: "ParabÃ©ns, sua agÃªncia foi criada!", es: "Â¡Felicidades, tu agencia fue creada!" }),
+      description: t({ pt: "Agora vocÃª pode criar sua primeira pÃ¡gina personalizada.", es: "Ahora puedes crear tu primera pÃ¡gina personalizada." })
+    },
+    unsaved: {
+      eyebrow: t({ pt: "AtenÃ§Ã£o", es: "AtenciÃ³n" }),
+      title: t({ pt: "HÃ¡ alteraÃ§Ãµes nÃ£o salvas", es: "Hay cambios no guardados" }),
+      description: t({ pt: "Se fechar agora, vocÃª perderÃ¡ o que preencheu. Deseja realmente sair?", es: "Si cierras ahora, perderÃ¡s lo que completaste. Â¿Deseas salir?" })
+    },
+    actions: {
+      close: t({ pt: "Fechar", es: "Cerrar" }),
+      next: t({ pt: "AvanÃ§ar", es: "Avanzar" }),
+      advancing: t({ pt: "AvanÃ§ando...", es: "Avanzando..." }),
+      back: t({ pt: "Voltar", es: "Volver" }),
+      creating: t({ pt: "Criando...", es: "Creando..." }),
+      createAgency: t({ pt: "Criar agÃªncia", es: "Crear agencia" }),
+      creatingFirstPage: t({ pt: "Criando...", es: "Creando..." }),
+      createFirstPage: t({ pt: "Criar minha primeira pÃ¡gina", es: "Crear mi primera pÃ¡gina" }),
+      continueEditing: t({ pt: "Continuar editando", es: "Seguir editando" }),
+      discardAndClose: t({ pt: "Descartar e fechar", es: "Descartar y cerrar" })
+    },
+    errors: {
+      missingName: t({ pt: "Informe o nome da sua agÃªncia.", es: "Informa el nombre de tu agencia." }),
+      cannotAdvance: t({ pt: "NÃ£o foi possÃ­vel avanÃ§ar. Tente novamente.", es: "No fue posible avanzar. Intenta nuevamente." }),
+      cannotCreateAgency: t({ pt: "NÃ£o foi possÃ­vel criar a agÃªncia. Tente novamente.", es: "No fue posible crear la agencia. Intenta nuevamente." }),
+      mustCreateAgency: t({ pt: "Crie sua agÃªncia antes de adicionar pÃ¡ginas.", es: "Crea tu agencia antes de agregar pÃ¡ginas." }),
+      cannotCreatePage: t({ pt: "NÃ£o foi possÃ­vel criar a pÃ¡gina agora.", es: "No fue posible crear la pÃ¡gina ahora." }),
+      slugUnavailable: t({ pt: "NÃ£o foi possÃ­vel gerar um slug disponÃ­vel para esta agÃªncia. Ajuste o nome e tente novamente.", es: "No fue posible generar un slug disponible para esta agencia. Ajusta el nombre e intÃ©ntalo nuevamente." })
+    }
+  }
+} as const;
 
 const isDarkTheme = computed(() => themeStore.isDark);
 const themeWrapperClass = computed(() => (isDarkTheme.value ? "dark-theme" : "light-theme"));
@@ -647,17 +807,17 @@ const navIconViewBoxes: Record<string, string> = {
 const navIconStrokeWidths: Record<string, string> = {};
 
 const routeTitleMap: Record<string, string> = {
-  dashboard: "Dashboard",
-  pages: "Páginas",
-  leads: "Captação de leads",
-  "page-edit": "Editar página",
-  lessons: "Aulas",
-  "agency-settings": "Minha Agência",
-  "agency-domains": "Dominios personalizados",
-  plans: "Planos",
-  integrations: "Integrações",
-  profile: "Perfil",
-  "admin-management": "Admin Master"
+  dashboard: navLabel("dashboard"),
+  pages: navLabel("pages"),
+  leads: t({ pt: "CaptaÃƒÂ§ÃƒÂ£o de leads", es: "CaptaciÃƒÂ³n de leads" }),
+  "page-edit": t({ pt: "Editar pÃƒÂ¡gina", es: "Editar pÃƒÂ¡gina" }),
+  lessons: navLabel("lessons"),
+  "agency-settings": navLabel("agency"),
+  "agency-domains": navLabel("domains"),
+  plans: navLabel("plans"),
+  integrations: navLabel("integrations"),
+  profile: navLabel("profile"),
+  "admin-management": navLabel("adminMaster")
 };
 const shouldHideDesktopHeader = computed(() => !isMobileViewport.value);
 
@@ -665,19 +825,19 @@ const canAccessCustomDomains = computed(() => true);
 
 const navItems = computed(() => {
   const items = [
-    { label: "Dashboard", to: "/admin/dashboard" },
-    { label: "Páginas", to: "/admin/pages" },
-    { label: "Leads", to: "/admin/leads" },
-    { label: "Integrações", to: "/admin/integracoes" },
-    { label: "Minha Agência", to: "/admin/agency" },
-    { label: "Perfil", to: "/admin/perfil" },
-    { label: "Aulas", to: "/admin/aulas" }
+    { label: navLabel("dashboard"), to: "/admin/dashboard" },
+    { label: navLabel("pages"), to: "/admin/pages" },
+    { label: navLabel("leads"), to: "/admin/leads" },
+    { label: navLabel("integrations"), to: "/admin/integracoes" },
+    { label: navLabel("agency"), to: "/admin/agency" },
+    { label: navLabel("profile"), to: "/admin/perfil" },
+    { label: navLabel("lessons"), to: "/admin/aulas" }
   ];
   if (canAccessCustomDomains.value) {
-    items.splice(4, 0, { label: "Dominios", to: "/admin/domains" });
+    items.splice(4, 0, { label: navLabel("domains"), to: "/admin/domains" });
   }
   if (auth.user?.is_superuser) {
-    items.splice(1, 0, { label: "Admin Master", to: "/admin/administracao" });
+    items.splice(1, 0, { label: navLabel("adminMaster"), to: "/admin/administracao" });
   }
   return items;
 });
@@ -688,7 +848,7 @@ const currentPageTitle = computed(() => {
     return routeTitleMap[routeName];
   }
   const matchedNav = navItems.value.find(item => route.path.startsWith(item.to));
-  return matchedNav?.label || "Dashboard";
+  return matchedNav?.label || navLabel("dashboard");
 });
 
 const activeClass = computed(() =>
@@ -945,7 +1105,7 @@ const createAgencyWithSlugFallback = async (payload: AgencyPayload) => {
       throw err;
     }
   }
-  throw new Error("Não foi possível gerar um slug disponível para esta agência. Ajuste o nome e tente novamente.");
+  throw new Error(viewCopy.onboarding.errors.slugUnavailable);
 };
 
 const upsertAgencyDuringSetup = async (name: string) => {
@@ -986,7 +1146,7 @@ const goToNextAgencySetupStep = async () => {
   if (agencySetupStep.value === "name") {
     const trimmed = agencySetupForm.name.trim();
     if (!trimmed) {
-      agencySetupError.value = "Informe o nome da sua agência.";
+      agencySetupError.value = viewCopy.onboarding.errors.missingName;
       return;
     }
     agencySetupForm.name = trimmed;
@@ -997,7 +1157,7 @@ const goToNextAgencySetupStep = async () => {
     } catch (err) {
       console.error(err);
       const detail = (err as any)?.response?.data?.detail || (err as Error)?.message;
-      agencySetupError.value = detail || "Não foi possível avançar. Tente novamente.";
+      agencySetupError.value = detail || viewCopy.onboarding.errors.cannotAdvance;
     } finally {
       agencySetupStepLoading.value = false;
     }
@@ -1047,7 +1207,7 @@ const submitAgencySetup = async () => {
   const trimmed = agencySetupForm.name.trim();
   if (!trimmed) {
     agencySetupStep.value = "name";
-    agencySetupError.value = "Informe o nome da sua agência.";
+    agencySetupError.value = viewCopy.onboarding.errors.missingName;
     return;
   }
 
@@ -1083,7 +1243,7 @@ const submitAgencySetup = async () => {
   } catch (err) {
     console.error(err);
     const detail = (err as any)?.response?.data?.detail || (err as Error)?.message;
-    agencySetupError.value = detail || "Não foi possível criar a agência. Tente novamente.";
+    agencySetupError.value = detail || viewCopy.onboarding.errors.cannotCreateAgency;
   } finally {
     agencySetupSaving.value = false;
   }
@@ -1094,7 +1254,7 @@ const createFirstPageFromOnboarding = async () => {
     ensureAgencySelection(agencySetupCreatedId.value);
   }
   if (!agencyStore.currentAgencyId) {
-    createFirstPageError.value = "Crie sua agência antes de adicionar páginas.";
+    createFirstPageError.value = viewCopy.onboarding.errors.mustCreateAgency;
     return;
   }
   createFirstPageError.value = "";
@@ -1103,7 +1263,7 @@ const createFirstPageFromOnboarding = async () => {
     const slug = slugify(`${agencySetupForm.name || "pagina"}-inicial`, "pagina");
     const res = await api.post<{ id: number }>("/pages", {
       agency_id: agencyStore.currentAgencyId,
-      title: "Meu primeiro roteiro",
+      title: viewCopy.onboarding.firstPageTitle,
       slug,
       status: "draft"
     });
@@ -1112,7 +1272,7 @@ const createFirstPageFromOnboarding = async () => {
   } catch (err) {
     console.error(err);
     const detail = (err as any)?.response?.data?.detail || (err as Error)?.message;
-    createFirstPageError.value = detail || "Não foi possível criar a página agora.";
+    createFirstPageError.value = detail || viewCopy.onboarding.errors.cannotCreatePage;
   } finally {
     createFirstPageLoading.value = false;
   }
@@ -1266,6 +1426,13 @@ watch(
   opacity: 0;
 }
 </style>
+
+
+
+
+
+
+
 
 
 
