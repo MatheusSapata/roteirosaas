@@ -569,9 +569,8 @@ const sanitizeDigits = (value?: string | null) => {
 };
 
 const sanitizeText = (value?: string | null) => {
-  if (!value) return null;
-  const trimmed = value.trim();
-  return trimmed || null;
+  if (value == null) return null;
+  return value.trim();
 };
 
 const syncCompanyData = () => {

@@ -476,55 +476,46 @@ const handleThumbnailClick = (index: number) => {
   registerUserInteraction();
 };
 const sectionRef = ref<HTMLElement | null>(null);
-const intersectionProgress = ref(0);
-const isDesktopViewport = ref(true);
-const viewMode = computed(() => {
-  if (props.previewDevice === "mobile") return "mobile";
-  if (props.previewDevice === "desktop") return "desktop";
-  return isDesktopViewport.value ? "desktop" : "mobile";
-});
-const animateAsDesktop = computed(() => viewMode.value === "desktop");
-const hasRevealedMobile = ref(false);
-const clampValue = (value: number, min = 0, max = 1) => Math.min(max, Math.max(min, value));
-const desktopAnimationProgress = computed(() => clampValue((intersectionProgress.value - 0.08) / 0.8));
-const mobileAnimationProgress = computed(() => clampValue((intersectionProgress.value - 0.08) / 0.8));
+const revealThreshold = 0.2;
+const contentVisible = ref(!hasWindow);
+const fadeTransition = "opacity 1.5s ease, transform 1.5s ease";
 const textAnimationStyle = computed(() => {
   if (!animateContent.value) {
     return { opacity: "1", transform: "translate3d(0, 0, 0)" };
   }
-  const progress = animateAsDesktop.value ? desktopAnimationProgress.value : mobileAnimationProgress.value;
-  const eased = Math.pow(progress, 1.4);
-  const offsetY = (1 - eased) * 40;
-  if (!animateAsDesktop.value && hasRevealedMobile.value) {
-    return { opacity: "1", transform: "translate3d(0, 0, 0)" };
+  if (!contentVisible.value) {
+    return {
+      opacity: "0",
+      transform: "translate3d(0, 20px, 0)",
+      transition: fadeTransition
+    };
   }
   return {
-    opacity: eased.toString(),
-    transform: `translate3d(0, ${offsetY}px,0)`
+    opacity: "1",
+    transform: "translate3d(0, 0, 0)",
+    transition: fadeTransition
   };
 });
 const mediaAnimationStyle = computed(() => {
   if (!animateContent.value) {
     return { opacity: "1", transform: "translate3d(0, 0, 0)" };
   }
-  const progress = animateAsDesktop.value ? desktopAnimationProgress.value : mobileAnimationProgress.value;
-  const eased = Math.pow(progress, 1.4);
-  const offsetY = (1 - eased) * 40;
-  if (!animateAsDesktop.value && hasRevealedMobile.value) {
-    return { opacity: "1", transform: "translate3d(0, 0, 0)" };
+  if (!contentVisible.value) {
+    return {
+      opacity: "0",
+      transform: "translate3d(0, 20px, 0)",
+      transition: fadeTransition
+    };
   }
   return {
-    opacity: eased.toString(),
-    transform: `translate3d(0, ${offsetY}px,0)`
+    opacity: "1",
+    transform: "translate3d(0, 0, 0)",
+    transition: fadeTransition
   };
 });
 const canNavigateLightbox = computed(() => mediaItems.value.length > 1);
 const scrollThresholds = Array.from({ length: 21 }, (_, index) => index / 20);
 let scrollObserver: IntersectionObserver | null = null;
-const handleResize = () => {
-  if (!hasWindow) return;
-  isDesktopViewport.value = window.innerWidth >= 1024;
-};
 const setupScrollObserver = () => {
   if (!hasWindow || !sectionRef.value) return;
   if (scrollObserver) {
@@ -535,7 +526,9 @@ const setupScrollObserver = () => {
     entries => {
       entries.forEach(entry => {
         if (entry.target === sectionRef.value) {
-          intersectionProgress.value = entry.intersectionRatio;
+          if (!contentVisible.value && entry.intersectionRatio >= revealThreshold) {
+            contentVisible.value = true;
+          }
         }
       });
     },
@@ -624,31 +617,12 @@ watch(
   }
 );
 
-watch(viewMode, mode => {
-  if (mode === "desktop") {
-    hasRevealedMobile.value = false;
-  }
-});
-
-watch(
-  () => intersectionProgress.value,
-  value => {
-    if (!animateAsDesktop.value && !hasRevealedMobile.value && value >= 0.96) {
-      hasRevealedMobile.value = true;
-    }
-  }
-);
-
 watch(sectionRef, () => {
   if (!hasWindow) return;
   setupScrollObserver();
 });
 
 onMounted(() => {
-  if (hasWindow) {
-    handleResize();
-    window.addEventListener("resize", handleResize);
-  }
   setupScrollObserver();
   scheduleAutoCycle();
 });
@@ -661,7 +635,6 @@ onBeforeUnmount(() => {
     scrollObserver = null;
   }
   window.removeEventListener("keydown", handleKeydown);
-  window.removeEventListener("resize", handleResize);
   document.body.style.removeProperty("overflow");
 });
 </script>
