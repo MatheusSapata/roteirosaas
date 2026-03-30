@@ -1,35 +1,39 @@
 <template>
   <div class="space-y-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
     <div class="flex items-center justify-between">
-      <h3 class="text-lg font-semibold text-slate-900">Contagem regressiva</h3>
+      <h3 class="text-lg font-semibold text-slate-900">{{ viewCopy.header.title }}</h3>
       <label class="flex items-center gap-2 text-sm text-slate-600">
         <input type="checkbox" v-model="local.enabled" class="h-4 w-4" />
-        Ativar
+        {{ viewCopy.header.toggle }}
       </label>
     </div>
 
     <SectionHeadingControls v-model:label="local.headingLabel" v-model:style="local.headingLabelStyle" />
     <div class="grid gap-3 md:grid-cols-2">
       <div>
-        <label class="text-sm font-semibold text-slate-600">Texto</label>
-        <input v-model="local.label" placeholder="Garanta sua vaga agora mesmo!" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
+        <label class="text-sm font-semibold text-slate-600">{{ viewCopy.fields.textLabel }}</label>
+        <input
+          v-model="local.label"
+          :placeholder="viewCopy.fields.textPlaceholder"
+          class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2"
+        />
       </div>
       <div>
-        <label class="text-sm font-semibold text-slate-600">Data/hora alvo</label>
+        <label class="text-sm font-semibold text-slate-600">{{ viewCopy.fields.dateLabel }}</label>
         <input v-model="local.targetDate" type="datetime-local" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
       </div>
     </div>
 
     <div class="grid gap-3 md:grid-cols-2">
       <div>
-        <label class="text-sm font-semibold text-slate-600">Cor de fundo</label>
+        <label class="text-sm font-semibold text-slate-600">{{ viewCopy.styles.background }}</label>
         <div class="mt-1 flex items-center gap-2">
           <input type="color" v-model="local.backgroundColor" class="h-9 w-9 cursor-pointer rounded border border-slate-200 bg-white" />
           <input v-model="local.backgroundColor" placeholder="#ef4444" class="w-full rounded-lg border border-slate-200 px-3 py-2" />
         </div>
       </div>
       <div>
-        <label class="text-sm font-semibold text-slate-600">Cor do texto</label>
+        <label class="text-sm font-semibold text-slate-600">{{ viewCopy.styles.text }}</label>
         <div class="mt-1 flex items-center gap-2">
           <input type="color" v-model="local.textColor" class="h-9 w-9 cursor-pointer rounded border border-slate-200 bg-white" />
           <input v-model="local.textColor" placeholder="#ffffff" class="w-full rounded-lg border border-slate-200 px-3 py-2" />
@@ -44,10 +48,28 @@ import { nextTick, reactive, watch } from "vue";
 import SectionHeadingControls from "./inputs/SectionHeadingControls.vue";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import type { CountdownSection } from "../../types/page";
+import { createAdminLocalizer } from "../../utils/adminI18n";
 
 const props = defineProps<{ modelValue: CountdownSection }>();
 const emit = defineEmits<{ (e: "update:modelValue", value: CountdownSection): void }>();
 const headingDefaults = getSectionHeadingDefaults("countdown");
+const t = createAdminLocalizer();
+
+const viewCopy = {
+  header: {
+    title: t({ pt: "Contagem regressiva", es: "Cuenta regresiva" }),
+    toggle: t({ pt: "Ativar", es: "Activar" })
+  },
+  fields: {
+    textLabel: t({ pt: "Texto", es: "Texto" }),
+    textPlaceholder: t({ pt: "Garanta sua vaga agora mesmo!", es: "¡Asegura tu lugar ahora mismo!" }),
+    dateLabel: t({ pt: "Data/hora alvo", es: "Fecha/hora objetivo" })
+  },
+  styles: {
+    background: t({ pt: "Cor de fundo", es: "Color de fondo" }),
+    text: t({ pt: "Cor do texto", es: "Color del texto" })
+  }
+};
 
 const buildDefaultTargetDate = () => {
   const date = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
@@ -56,7 +78,7 @@ const buildDefaultTargetDate = () => {
 
 const local = reactive<CountdownSection>({
   enabled: true,
-  label: "Garanta sua vaga agora mesmo!",
+  label: viewCopy.fields.textPlaceholder,
   targetDate: props.modelValue.targetDate || buildDefaultTargetDate(),
   backgroundColor: "#ef4444",
   textColor: "#ffffff",

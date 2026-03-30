@@ -1,37 +1,37 @@
 <template>
   <div class="min-h-screen bg-[#41ce5f] px-4 py-10">
     <div class="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center">
-      <!-- TOPO FORA DO CARD -->
       <div class="mb-8 flex flex-col items-center text-center text-white">
         <img
           src="../../assets/Logo Branco - Roteiro Online.png"
-          alt="Roteiro Online"
+          :alt="viewCopy.brand.alt"
           class="mb-6 w-32 drop-shadow-lg"
         />
-        <h1 class="text-4xl font-bold">Seja bem-vindo!</h1>
-        <p class="mt-2 text-lg text-white/90">Vamos finalizar seu cadastro agora mesmo.</p>
+        <h1 class="text-4xl font-bold">{{ viewCopy.hero.title }}</h1>
+        <p class="mt-2 text-lg text-white/90">{{ viewCopy.hero.description }}</p>
       </div>
 
-      <!-- CARD ÚNICO -->
       <div class="w-full rounded-3xl bg-white p-6 shadow-[0_30px_80px_rgba(0,0,0,0.18)] md:p-8">
         <transition name="step" mode="out-in">
           <div v-if="!canSetPassword" key="email-step">
-            <p class="text-sm font-semibold uppercase tracking-[0.35em] text-slate-500">Passo 1</p>
-            <h2 class="mt-1 text-2xl font-bold text-slate-900">Valide seu e-mail</h2>
+            <p class="text-sm font-semibold uppercase tracking-[0.35em] text-slate-500">
+              {{ viewCopy.emailStep.badge }}
+            </p>
+            <h2 class="mt-1 text-2xl font-bold text-slate-900">{{ viewCopy.emailStep.title }}</h2>
             <p class="mt-2 text-sm text-slate-500">
-              Digite o e-mail usado na compra e clique em avançar.
+              {{ viewCopy.emailStep.description }}
             </p>
 
             <form class="mt-6 space-y-4" @submit.prevent="onEmailSubmit">
               <div>
-                <label class="text-sm font-semibold text-slate-600">E-mail usado na compra</label>
+                <label class="text-sm font-semibold text-slate-600">{{ viewCopy.emailStep.label }}</label>
                 <input
                   v-model.trim="email"
                   type="email"
                   required
                   :disabled="isValidatingEmail"
                   class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3 text-base focus:border-[#41ce5f] focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100"
-                  placeholder="voce@agencia.com"
+                  :placeholder="viewCopy.emailStep.placeholder"
                 />
               </div>
 
@@ -40,7 +40,7 @@
                 class="flex w-full items-center justify-center rounded-xl bg-[#41ce5f] px-4 py-3 text-base font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
                 :disabled="isValidatingEmail"
               >
-                {{ isValidatingEmail ? "Validando..." : "Avançar" }}
+                {{ isValidatingEmail ? viewCopy.emailStep.buttonLoading : viewCopy.emailStep.buttonSubmit }}
               </button>
             </form>
 
@@ -51,17 +51,20 @@
 
           <div v-else key="password-step" class="space-y-5">
             <div>
-              <p class="text-xs font-semibold uppercase tracking-[0.5em] text-slate-500">Passo 2</p>
-              <h2 class="mt-2 text-3xl font-bold text-slate-900">Olá, {{ identityName }}</h2>
+              <p class="text-xs font-semibold uppercase tracking-[0.5em] text-slate-500">
+                {{ viewCopy.passwordStep.badge }}
+              </p>
+              <h2 class="mt-2 text-3xl font-bold text-slate-900">
+                {{ viewCopy.passwordStep.greeting(identityName) }}
+              </h2>
               <p class="mt-2 text-sm text-slate-500">
-                Defina uma senha segura para acessar o painel. Assim que concluir, faremos o login
-                automaticamente.
+                {{ viewCopy.passwordStep.description }}
               </p>
             </div>
 
             <form class="space-y-5" @submit.prevent="onSubmit">
               <div>
-                <label class="text-sm font-semibold text-slate-600">Senha</label>
+                <label class="text-sm font-semibold text-slate-600">{{ viewCopy.passwordForm.passwordLabel }}</label>
                 <div class="relative mt-1">
                   <input
                     v-model="password"
@@ -76,7 +79,7 @@
                     class="absolute inset-y-0 right-4 flex items-center text-slate-400 hover:text-slate-600"
                     @click="showPassword = !showPassword"
                     :disabled="isSubmitting"
-                    aria-label="Alternar visualização da senha"
+                    :aria-label="viewCopy.passwordForm.togglePasswordAria"
                   >
                     <svg
                       v-if="!showPassword"
@@ -108,12 +111,12 @@
                   </button>
                 </div>
                 <p class="mt-1 text-xs text-slate-500">
-                  Use pelo menos 8 caracteres com maiúsculas, minúsculas e números.
+                  {{ viewCopy.passwordForm.helper }}
                 </p>
               </div>
 
               <div>
-                <label class="text-sm font-semibold text-slate-600">Confirmar senha</label>
+                <label class="text-sm font-semibold text-slate-600">{{ viewCopy.passwordForm.confirmLabel }}</label>
                 <div class="relative mt-1">
                   <input
                     v-model="confirmPassword"
@@ -127,7 +130,7 @@
                     class="absolute inset-y-0 right-4 flex items-center text-slate-400 hover:text-slate-600"
                     @click="showConfirmPassword = !showConfirmPassword"
                     :disabled="isSubmitting"
-                    aria-label="Alternar visualização da confirmação de senha"
+                    :aria-label="viewCopy.passwordForm.toggleConfirmAria"
                   >
                     <svg
                       v-if="!showConfirmPassword"
@@ -165,7 +168,7 @@
                 class="w-full rounded-xl bg-[#41ce5f] px-4 py-3 text-base font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
                 :disabled="isSubmitting"
               >
-                {{ isSubmitting ? "Salvando..." : "Finalizar e acessar" }}
+                {{ isSubmitting ? viewCopy.passwordForm.submitSaving : viewCopy.passwordForm.submitLabel }}
               </button>
 
               <p v-if="formError" class="text-center text-sm text-red-500">{{ formError }}</p>
@@ -177,6 +180,7 @@
     </div>
   </div>
 </template>
+
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
@@ -185,9 +189,10 @@ import {
   fetchOnboardingSession,
   submitManualOnboardingPassword,
   submitOnboardingPassword,
-  validateManualOnboardingEmail,
+  validateManualOnboardingEmail
 } from "../../services/cakto";
 import { useAuthStore } from "../../store/useAuthStore";
+import { createAdminLocalizer } from "../../utils/adminI18n";
 
 interface OnboardingSession {
   email: string;
@@ -204,6 +209,87 @@ interface ManualValidation {
 const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
+const t = createAdminLocalizer();
+
+const viewCopy = {
+  brand: {
+    alt: t({ pt: "Roteiro Online", es: "Roteiro Online" })
+  },
+  hero: {
+    title: t({ pt: "Seja bem-vindo!", es: "¡Bienvenido!" }),
+    description: t({ pt: "Vamos finalizar seu cadastro agora mesmo.", es: "Terminemos tu registro ahora mismo." })
+  },
+  emailStep: {
+    badge: t({ pt: "Passo 1", es: "Paso 1" }),
+    title: t({ pt: "Valide seu e-mail", es: "Verifica tu correo" }),
+    description: t({
+      pt: "Digite o e-mail usado na compra e clique em avançar.",
+      es: "Ingresa el correo usado en la compra y haz clic en avanzar."
+    }),
+    label: t({ pt: "E-mail usado na compra", es: "Correo usado en la compra" }),
+    placeholder: t({ pt: "voce@agencia.com", es: "tu@agencia.com" }),
+    buttonLoading: t({ pt: "Validando...", es: "Validando..." }),
+    buttonSubmit: t({ pt: "Avançar", es: "Avanzar" })
+  },
+  passwordStep: {
+    badge: t({ pt: "Passo 2", es: "Paso 2" }),
+    greeting: (name: string) => t({ pt: `Olá, ${name}`, es: `Hola, ${name}` }),
+    description: t({
+      pt: "Defina uma senha segura para acessar o painel. Assim que concluir, faremos o login automaticamente.",
+      es: "Crea una contraseña segura para acceder al panel. Al finalizar, iniciaremos sesión automáticamente."
+    })
+  },
+  passwordForm: {
+    passwordLabel: t({ pt: "Senha", es: "Contraseña" }),
+    helper: t({
+      pt: "Use pelo menos 8 caracteres com maiúsculas, minúsculas e números.",
+      es: "Usa al menos 8 caracteres con mayúsculas, minúsculas y números."
+    }),
+    confirmLabel: t({ pt: "Confirmar senha", es: "Confirmar contraseña" }),
+    togglePasswordAria: t({
+      pt: "Alternar visualização da senha",
+      es: "Alternar visualización de la contraseña"
+    }),
+    toggleConfirmAria: t({
+      pt: "Alternar visualização da confirmação de senha",
+      es: "Alternar visualización de la confirmación de contraseña"
+    }),
+    submitSaving: t({ pt: "Salvando...", es: "Guardando..." }),
+    submitLabel: t({ pt: "Finalizar e acessar", es: "Finalizar y acceder" })
+  },
+  feedback: {
+    sessionNotFound: t({
+      pt: "Não encontramos o pedido automaticamente. Valide o e-mail usado na compra para continuar.",
+      es: "No encontramos el pedido automáticamente. Valida el correo usado en la compra para continuar."
+    }),
+    emailRequired: t({ pt: "Informe o e-mail utilizado na compra.", es: "Ingresa el correo utilizado en la compra." }),
+    emailNotFound: t({ pt: "Não encontramos o cadastro para este e-mail.", es: "No encontramos un registro para este correo." }),
+    passwordRequirements: t({
+      pt: "A senha deve ter pelo menos 8 caracteres, com letra maiúscula, minúscula e número.",
+      es: "La contraseña debe tener al menos 8 caracteres, con mayúsculas, minúsculas y números."
+    }),
+    passwordMismatch: t({
+      pt: "As senhas não coincidem. Verifique e tente novamente.",
+      es: "Las contraseñas no coinciden. Verifica e intenta de nuevo."
+    }),
+    userNotIdentified: t({
+      pt: "Não conseguimos identificar o usuário. Valide seu e-mail novamente.",
+      es: "No pudimos identificar al usuario. Valida tu correo nuevamente."
+    }),
+    success: t({
+      pt: "Senha definida com sucesso! Acessando seu painel...",
+      es: "Contraseña definida con éxito. Accediendo a tu panel..."
+    }),
+    redirecting: t({
+      pt: "Senha definida! Você será redirecionado para fazer login.",
+      es: "Contraseña definida. Serás redirigido para iniciar sesión."
+    }),
+    saveError: t({
+      pt: "Não foi possível salvar sua senha. Tente novamente em instantes.",
+      es: "No fue posible guardar tu contraseña. Inténtalo nuevamente en instantes."
+    })
+  }
+};
 
 const password = ref("");
 const confirmPassword = ref("");
@@ -258,13 +344,9 @@ const identifierParams = () => {
 
 const canSetPassword = computed(() => !!session.value || !!manualValidatedUser.value);
 
-const identityEmail = computed(
-  () => session.value?.email ?? manualValidatedUser.value?.email ?? ""
-);
+const identityEmail = computed(() => session.value?.email ?? manualValidatedUser.value?.email ?? "");
 
-const identityName = computed(
-  () => session.value?.name ?? manualValidatedUser.value?.name ?? identityEmail.value
-);
+const identityName = computed(() => session.value?.name ?? manualValidatedUser.value?.name ?? identityEmail.value);
 
 const loadSession = async () => {
   const params = identifierParams();
@@ -281,9 +363,7 @@ const loadSession = async () => {
     manualValidationError.value = "";
   } catch (err: any) {
     const detail = err?.response?.data?.detail;
-    manualValidationError.value =
-      detail ||
-      "Não encontramos o pedido automaticamente. Valide o e-mail usado na compra para continuar.";
+    manualValidationError.value = detail || viewCopy.feedback.sessionNotFound;
   } finally {
     isLoadingSession.value = false;
   }
@@ -295,7 +375,7 @@ const resetManualValidation = () => {
   manualValidationError.value = "";
 };
 
-watch(email, (newValue) => {
+watch(email, newValue => {
   if (session.value) return;
 
   if (!newValue) {
@@ -317,7 +397,7 @@ const onEmailSubmit = async () => {
   manualValidationError.value = "";
 
   if (!email.value.trim()) {
-    manualValidationError.value = "Informe o e-mail utilizado na compra.";
+    manualValidationError.value = viewCopy.feedback.emailRequired;
     return;
   }
 
@@ -331,7 +411,7 @@ const onEmailSubmit = async () => {
     email.value = data.email;
   } catch (err: any) {
     const detail = err?.response?.data?.detail;
-    manualValidationError.value = detail || "Não encontramos o cadastro para este e-mail.";
+    manualValidationError.value = detail || viewCopy.feedback.emailNotFound;
   } finally {
     isValidatingEmail.value = false;
   }
@@ -350,7 +430,7 @@ const autoLogin = async (loginEmail: string) => {
 
   try {
     const res = await api.post("/auth/login", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
+      headers: { "Content-Type": "multipart/form-data" }
     });
 
     auth.setTokens(res.data.access_token, res.data.refresh_token);
@@ -358,7 +438,7 @@ const autoLogin = async (loginEmail: string) => {
     router.push("/admin/dashboard");
   } catch (err) {
     console.error("Auto login failed", err);
-    success.value = "Senha definida! Você será redirecionado para fazer login.";
+    success.value = viewCopy.feedback.redirecting;
     redirectToLogin();
   }
 };
@@ -374,20 +454,19 @@ const onSubmit = async () => {
   if (!canSetPassword.value || isSubmitting.value) return;
 
   if (!isStrongPassword(password.value)) {
-    formError.value =
-      "A senha deve ter pelo menos 8 caracteres, com letra maiúscula, minúscula e número.";
+    formError.value = viewCopy.feedback.passwordRequirements;
     return;
   }
 
   if (password.value !== confirmPassword.value) {
-    formError.value = "As senhas não coincidem. Verifique e tente novamente.";
+    formError.value = viewCopy.feedback.passwordMismatch;
     return;
   }
 
   const loginEmail = identityEmail.value || email.value.trim().toLowerCase();
 
   if (!loginEmail) {
-    formError.value = "Não conseguimos identificar o usuário. Valide seu e-mail novamente.";
+    formError.value = viewCopy.feedback.userNotIdentified;
     return;
   }
 
@@ -399,15 +478,15 @@ const onSubmit = async () => {
     } else {
       await submitManualOnboardingPassword({
         email: manualValidatedUser.value?.email || loginEmail,
-        password: password.value,
+        password: password.value
       });
     }
 
-    success.value = "Senha definida com sucesso! Acessando seu painel...";
+    success.value = viewCopy.feedback.success;
     await autoLogin(loginEmail);
   } catch (err: any) {
     const detail = err?.response?.data?.detail;
-    formError.value = detail || "Não foi possível salvar sua senha. Tente novamente em instantes.";
+    formError.value = detail || viewCopy.feedback.saveError;
   } finally {
     isSubmitting.value = false;
   }

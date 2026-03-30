@@ -11,7 +11,7 @@
       >
         <img
           :src="imageUrl"
-          alt="Biografia"
+          :alt="imageAltText"
           :class="[imageHeightClass, 'w-full', imageFitClass]"
           :style="imageStyle"
         />
@@ -41,9 +41,14 @@ import { computed, onMounted, onUnmounted, ref } from "vue";
 import { resolveMediaUrl } from "../../utils/media";
 import { sanitizeHtml } from "../../utils/sanitizeHtml";
 import type { BiographySection } from "../../types/page";
+import { createLocalizer, getCurrentLanguage } from "../../utils/i18n";
 
 const props = defineProps<{ section: BiographySection; previewDevice?: "desktop" | "mobile" }>();
 const isMobileViewport = ref(false);
+const localize = createLocalizer(getCurrentLanguage());
+const biographyCopy = {
+  defaultAlt: { pt: "Biografia", es: "Biografía" }
+} as const;
 const detectViewport = () => {
   if (typeof window === "undefined") return;
   isMobileViewport.value = window.innerWidth <= 640;
@@ -103,7 +108,7 @@ const overlayColor = computed(() => {
   const safe = Math.min(Math.max(value, 0), 0.9);
   return `rgba(0,0,0,${safe})`;
 });
-const displayTitle = computed(() => (props.section.title && props.section.title.trim()) || "");
+const displayTitle = computed(() => localize(props.section.title).trim());
 const titleColor = computed(() => props.section.titleColor || "#ffffff");
 const bodyColor = computed(() => props.section.textColor || "#0f172a");
 const titleSize = computed(() => {
@@ -112,5 +117,10 @@ const titleSize = computed(() => {
   return `${limited}px`;
 });
 const textSize = computed(() => `${props.section.textFontSize ?? 18}px`);
-const textHtml = computed(() => sanitizeHtml(props.section.text || ""));
+const textHtml = computed(() => sanitizeHtml(localize(props.section.text)));
+const imageAltText = computed(() => {
+  const customAlt = localize(props.section.title).trim();
+  if (customAlt.length) return customAlt;
+  return localize(biographyCopy.defaultAlt);
+});
 </script>

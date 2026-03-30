@@ -12,9 +12,10 @@
 <script setup lang="ts">
 import { computed, inject, isRef } from "vue";
 import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
+import { createLocalizer, getCurrentLanguage, type LocalizedString } from "../../utils/i18n";
 
 const props = defineProps<{
-  text?: string;
+  text?: LocalizedString;
   accent?: string;
   styleType?: "filled" | "outline";
 }>();
@@ -32,10 +33,10 @@ const brandingPrimary = computed(() => {
 });
 
 const accentColor = computed(() => props.accent?.trim() || brandingPrimary.value || "#41ce5f");
-
+const localize = createLocalizer(getCurrentLanguage());
 const textToShow = computed(() => {
-  const t = props.text?.trim();
-  return t && t.length ? t : "";
+  const localized = localize(props.text);
+  return localized.trim();
 });
 
 const toRgba = (hex: string, alpha: number) => {

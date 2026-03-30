@@ -1,13 +1,15 @@
 <template>
-  <div v-if="loading" class="flex min-h-screen items-center justify-center text-slate-600">Carregando pagina...</div>
+  <div v-if="loading" class="flex min-h-screen items-center justify-center text-slate-600">
+    {{ localize(publicPageCopy.loading) }}
+  </div>
   <div
     v-else-if="!pageData"
     class="flex min-h-screen flex-col items-center justify-center bg-[#05060f] px-4 text-center text-white"
   >
     <img :src="brandLogo" alt="Roteiro Online" class="w-56 max-w-full" />
-    <p class="mt-6 text-2xl font-semibold">Página não encontrada.</p>
+    <p class="mt-6 text-2xl font-semibold">{{ localize(publicPageCopy.notFoundTitle) }}</p>
     <p class="mt-2 max-w-md text-base text-white/90">
-      O link que você acessou não existe mais ou foi removido. Peça um novo roteiro para a agência responsável.
+      {{ localize(publicPageCopy.notFoundDescription) }}
     </p>
   </div>
   <div v-else class="public-page min-h-screen">
@@ -32,7 +34,7 @@
     :source="pageId"
     :page-id="pageId || undefined"
     :page-slug="currentPageSlug || undefined"
-    :page-title="pageData?.title"
+    :page-title="pageTitleText"
     :page-url="pageUrl || undefined"
     :branding-logo="brandingLogo"
     :dismissible="leadCaptureOptional"
@@ -68,10 +70,11 @@ import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
 import BrandLogo from "../../assets/Logo Branco - Roteiro Online.png";
 import { resolveMediaUrl } from "../../utils/media";
 import { fetchPublicLeadForm } from "../../services/leadCapture";
+import { createLocalizer, getCurrentLanguage, getLocalizedValue, type LocalizedString } from "../../utils/i18n";
 
 interface PublicPageResponse {
   id: number;
-  title: string;
+  title: LocalizedString;
   slug: string;
   branding: Record<string, unknown>;
   config: string | PageConfig;
@@ -93,8 +96,21 @@ const theme = ref<ThemeConfig>({
   sidebarTheme: "light"
 });
 const brandLogo = BrandLogo;
-const defaultDescription =
-  "Link inválido ou página indisponível. Solicite um novo roteiro profissional no Roteiro Online.";
+const currentLanguage = getCurrentLanguage();
+const localize = createLocalizer(currentLanguage);
+const publicPageCopy = {
+  loading: { pt: "Carregando página...", es: "Cargando página..." },
+  notFoundTitle: { pt: "Página não encontrada.", es: "Página no encontrada." },
+  notFoundDescription: {
+    pt: "O link que você acessou não existe mais ou foi removido. Peça um novo roteiro para a agência responsável.",
+    es: "El enlace que abriste ya no existe o fue removido. Solicita un nuevo itinerario a la agencia responsable."
+  },
+  invalidLinkDescription: {
+    pt: "Link inválido ou página indisponível. Solicite um novo roteiro profissional no Roteiro Online.",
+    es: "Enlace inválido o página no disponible. Solicita un nuevo itinerario profesional en Roteiro Online."
+  }
+} as const;
+const defaultDescription = publicPageCopy.invalidLinkDescription;
 
 const defaultPlatformHosts = ["roteiroonline.com", "www.roteiroonline.com", "localhost", "127.0.0.1"];
 const envPlatformHosts = (import.meta.env.VITE_PLATFORM_HOSTS || "")
@@ -152,6 +168,7 @@ const sectionRequiresBranding = (type?: SectionType) => type === "hero" || type 
 let statsClickHandler: ((event: Event) => void) | null = null;
 let scrollAnchorHandler: ((event: Event) => void) | null = null;
 const heroSection = computed(() => sections.value.find(section => section.type === "hero") as HeroSection | undefined);
+const pageTitleText = computed(() => getLocalizedValue(pageData.value?.title as LocalizedString, currentLanguage));
 const heroBackgroundImage = computed(() => {
   const hero = heroSection.value;
   if (hero?.backgroundImage) {
@@ -164,7 +181,7 @@ const heroBackgroundImage = computed(() => {
 });
 const heroSubtitleText = computed(() => {
   const hero = heroSection.value;
-  const raw = hero?.subtitle || "";
+  const raw = getLocalizedValue(hero?.subtitle as LocalizedString, currentLanguage);
   return raw.replace(/<[^>]+>/g, "").trim();
 });
 
@@ -239,7 +256,7 @@ const ensureMetaTag = (selector: string, attr: "property" | "name", value: strin
 const applySeoMeta = (title?: string | null, description?: string | null, imageUrl?: string | null) => {
   if (typeof document === "undefined") return;
   const finalTitle = title ? `${title} | Roteiro Online` : "Roteiro Online";
-  const finalDescription = (description && description.trim()) || defaultDescription;
+  const finalDescription = (description && description.trim()) || localize(defaultDescription);
   const finalImage = imageUrl || brandLogo;
   document.title = finalTitle;
   ensureMetaTag("og:title", "property", finalTitle);
@@ -391,7 +408,7 @@ watch(
 watch(
   () => [pageData.value, heroBackgroundImage.value, heroSubtitleText.value],
   () => {
-    applySeoMeta(pageData.value?.title, heroSubtitleText.value, heroBackgroundImage.value);
+    applySeoMeta(pageTitleText.value, heroSubtitleText.value, heroBackgroundImage.value);
   },
   { immediate: true }
 );

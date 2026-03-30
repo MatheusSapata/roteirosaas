@@ -1,24 +1,24 @@
-<template>
+﻿<template>
   <div class="space-y-3 rounded-xl border border-slate-200 p-4 shadow-sm">
     <div class="flex items-center justify-between">
-      <h3 class="text-lg font-semibold text-slate-900">Depoimentos</h3>
+      <h3 class="text-lg font-semibold text-slate-900">{{ viewCopy.header.title }}</h3>
     </div>
 
     <SectionHeadingControls v-model:label="local.headingLabel" v-model:style="local.headingLabelStyle" />
 
     <div class="grid gap-3 md:grid-cols-2">
       <div>
-        <label class="text-sm font-semibold text-slate-600">Título da seção</label>
+        <label class="text-sm font-semibold text-slate-600">{{ viewCopy.fields.sectionTitle }}</label>
         <input
           v-model="local.title"
-          placeholder="Quem já viajou com a gente"
+          :placeholder="viewCopy.fields.sectionTitlePlaceholder"
           class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2"
         />
       </div>
 
       <div>
-        <label class="text-sm font-semibold text-slate-600">Subtítulo</label>
-        <RichTextEditor v-model="local.subtitle" placeholder="Feedbacks reais de clientes" />
+        <label class="text-sm font-semibold text-slate-600">{{ viewCopy.fields.sectionSubtitle }}</label>
+        <RichTextEditor v-model="local.subtitle" :placeholder="viewCopy.fields.sectionSubtitlePlaceholder" />
       </div>
     </div>
 
@@ -29,35 +29,35 @@
         class="rounded-lg border border-slate-100 p-4 space-y-3 md:flex md:gap-4 md:space-y-0"
       >
         <div class="md:w-40">
-          <label class="mb-1 block text-sm font-semibold text-slate-600">Foto</label>
+          <label class="mb-1 block text-sm font-semibold text-slate-600">{{ viewCopy.items.photo }}</label>
           <ImageUploadField v-model="item.avatar" label="" hint="" />
         </div>
 
         <div class="flex-1 space-y-3">
           <div class="grid gap-3 md:grid-cols-[1fr,1fr]">
             <div>
-              <label class="mb-1 block text-sm font-semibold text-slate-600">Nome</label>
+              <label class="mb-1 block text-sm font-semibold text-slate-600">{{ viewCopy.items.name }}</label>
               <input
                 v-model="item.name"
-                placeholder="Nome"
+                :placeholder="viewCopy.items.namePlaceholder"
                 class="w-full rounded-lg border border-slate-200 px-3 py-2"
               />
             </div>
             <div>
-              <label class="mb-1 block text-sm font-semibold text-slate-600">Etiqueta</label>
+              <label class="mb-1 block text-sm font-semibold text-slate-600">{{ viewCopy.items.role }}</label>
               <input
                 v-model="item.role"
-                placeholder="(opcional)"
+                :placeholder="viewCopy.items.rolePlaceholder"
                 class="w-full rounded-lg border border-slate-200 px-3 py-2"
               />
             </div>
           </div>
 
           <div>
-            <label class="mb-1 block text-sm font-semibold text-slate-600">Depoimento</label>
+            <label class="mb-1 block text-sm font-semibold text-slate-600">{{ viewCopy.items.text }}</label>
             <textarea
               v-model="item.text"
-              placeholder="Depoimento"
+              :placeholder="viewCopy.items.textPlaceholder"
               class="w-full min-h-[110px] rounded-lg border border-slate-200 px-3 py-2 md:min-h-[180px]"
             ></textarea>
           </div>
@@ -68,14 +68,14 @@
               class="text-sm text-red-500 hover:text-red-600"
               @click="removeItem(index)"
             >
-              Remover
+              {{ viewCopy.items.removeButton }}
             </button>
           </div>
         </div>
       </div>
 
       <button type="button" class="text-sm font-semibold text-brand" @click="addItem">
-        + Adicionar depoimento
+        {{ viewCopy.items.addButton }}
       </button>
     </div>
   </div>
@@ -89,11 +89,36 @@ import RichTextEditor from "./inputs/RichTextEditor.vue";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import type { TestimonialsSection } from "../../types/page";
 import defaultAvatarImage from "../../assets/avatar.jpeg";
+import { createAdminLocalizer } from "../../utils/adminI18n";
 
 const props = defineProps<{ modelValue: TestimonialsSection }>();
 const emit = defineEmits<{ (e: "update:modelValue", value: TestimonialsSection): void }>();
 
 const headingDefaults = getSectionHeadingDefaults("testimonials");
+const t = createAdminLocalizer();
+
+const viewCopy = {
+  header: {
+    title: t({ pt: "Depoimentos", es: "Testimonios" })
+  },
+  fields: {
+    sectionTitle: t({ pt: "Título da seção", es: "Título de la sección" }),
+    sectionTitlePlaceholder: t({ pt: "Quem já viajou com a gente", es: "Quién ya viajó con nosotros" }),
+    sectionSubtitle: t({ pt: "Subtítulo", es: "Subtítulo" }),
+    sectionSubtitlePlaceholder: t({ pt: "Feedbacks reais de clientes", es: "Comentarios reales de clientes" })
+  },
+  items: {
+    photo: t({ pt: "Foto", es: "Foto" }),
+    name: t({ pt: "Nome", es: "Nombre" }),
+    namePlaceholder: t({ pt: "Nome", es: "Nombre" }),
+    role: t({ pt: "Etiqueta", es: "Etiqueta" }),
+    rolePlaceholder: t({ pt: "(opcional)", es: "(opcional)" }),
+    text: t({ pt: "Depoimento", es: "Testimonio" }),
+    textPlaceholder: t({ pt: "Depoimento", es: "Testimonio" }),
+    removeButton: t({ pt: "Remover", es: "Eliminar" }),
+    addButton: t({ pt: "+ Adicionar depoimento", es: "+ Agregar testimonio" })
+  }
+};
 
 const local = reactive<TestimonialsSection>({
   layout: "grid",
@@ -102,7 +127,6 @@ const local = reactive<TestimonialsSection>({
   title: props.modelValue.title || "",
   subtitle: props.modelValue.subtitle || "",
   ...props.modelValue,
-  // sempre clonar itens pra não mutar props direto
   items: Array.isArray(props.modelValue.items)
     ? props.modelValue.items.map(i => ({ ...i, avatar: i.avatar || defaultAvatarImage }))
     : []
@@ -112,9 +136,7 @@ let syncing = false;
 
 const syncFromProps = (value: TestimonialsSection) => {
   syncing = true;
-
   Object.assign(local, value);
-
   local.layout = value.layout || "grid";
   local.headingLabel = value.headingLabel ?? headingDefaults.label;
   local.headingLabelStyle = value.headingLabelStyle ?? headingDefaults.style;
@@ -123,7 +145,6 @@ const syncFromProps = (value: TestimonialsSection) => {
   local.items = Array.isArray(value.items)
     ? value.items.map(i => ({ ...i, avatar: i.avatar || defaultAvatarImage }))
     : [];
-
   nextTick(() => {
     syncing = false;
   });
@@ -150,8 +171,6 @@ watch(
   () => ({ ...local, items: local.items.map(i => ({ ...i })) }),
   value => {
     if (syncing) return;
-
-    // remove lixo de versões antigas (cta/background/cardColor etc) caso existam no objeto
     const cleaned = { ...(value as any) };
     delete cleaned.backgroundColor;
     delete cleaned.cardColor;
@@ -159,7 +178,6 @@ watch(
     delete cleaned.ctaSectionId;
     delete cleaned.ctaLink;
     delete cleaned.ctaLabel;
-
     emit("update:modelValue", cleaned as TestimonialsSection);
   },
   { deep: true }

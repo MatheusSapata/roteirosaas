@@ -5,16 +5,11 @@
         <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="accent" />
       </div>
       <h1 class="text-center text-3xl font-bold leading-tight md:text-4xl" :style="{ color: primaryText }">
-        {{ section.title || "Depoimentos de clientes" }}
+        {{ titleText }}
       </h1>
-      <p
-        class="text-center text-sm md:text-base"
-        v-if="subtitleHtml"
-        v-html="subtitleHtml"
-        :style="{ color: mutedText }"
-      ></p>
+      <p v-if="subtitleHtml" class="text-center text-sm md:text-base" v-html="subtitleHtml" :style="{ color: mutedText }"></p>
       <p v-else class="mt-2 text-center text-sm md:text-base" :style="{ color: mutedText }">
-        O que dizem depois de viajar conosco
+        {{ defaultSubtitle }}
       </p>
 
       <div class="mt-8 grid w-full gap-6 md:gap-6 justify-items-stretch" :class="gridClass">
@@ -27,12 +22,12 @@
           <div class="flex items-center justify-between gap-3">
             <div class="flex items-center gap-3">
               <div class="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-sm font-semibold text-slate-500">
-                <img v-if="item.avatarUrl" :src="item.avatarUrl" alt="Avatar" class="h-full w-full object-cover" />
+                <img v-if="item.avatarUrl" :src="item.avatarUrl" :alt="avatarAltText" class="h-full w-full object-cover" />
                 <span v-else>{{ initials(item.name) }}</span>
               </div>
               <div>
-                <p class="text-sm font-semibold text-slate-900">{{ item.name }}</p>
-                <p class="text-xs text-slate-500">{{ item.role }}</p>
+                <p class="text-sm font-semibold text-slate-900">{{ itemName(item) }}</p>
+                <p class="text-xs text-slate-500">{{ itemRole(item) }}</p>
               </div>
             </div>
           </div>
@@ -42,7 +37,7 @@
           </div>
 
           <p class="mt-4 text-base leading-relaxed text-slate-800">
-            {{ item.text }}
+            {{ itemText(item) }}
           </p>
         </article>
       </div>
@@ -58,7 +53,7 @@
           class="inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl hero-cta-shimmer hero-cta-desktop-hover"
           :style="{ background: accent, color: ctaTextColor }"
         >
-          {{ section.ctaLabel || "Falar com especialista" }}
+          {{ ctaLabelText }}
         </a>
       </div>
     </div>
@@ -74,9 +69,17 @@ import SectionHeadingChip from "./SectionHeadingChip.vue";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import { sanitizeHtml } from "../../utils/sanitizeHtml";
 import { deriveTextPalette, getReadableTextColor } from "../../utils/colorContrast";
+import { createLocalizer, getCurrentLanguage } from "../../utils/i18n";
 
 const props = defineProps<{ section: TestimonialsSection }>();
 const headingDefaults = getSectionHeadingDefaults("testimonials");
+const localize = createLocalizer(getCurrentLanguage());
+const testimonialsCopy = {
+  title: { pt: "Depoimentos de clientes", es: "Testimonios de clientes" },
+  subtitle: { pt: "O que dizem depois de viajar conosco", es: "Lo que dicen después de viajar con nosotros" },
+  avatarAlt: { pt: "Avatar", es: "Avatar" },
+  ctaLabel: { pt: "Falar com especialista", es: "Hablar con un especialista" }
+} as const;
 
 const accent = computed(() => props.section.ctaColor || "#5b49ff");
 const ctaTextColor = computed(() => getReadableTextColor(accent.value));
@@ -94,23 +97,41 @@ const toRgba = (hex: string, alpha: number) => {
 };
 
 const accentSoft = computed(() => toRgba(accent.value, 0.35));
-const headingLabel = computed(() => props.section.headingLabel ?? headingDefaults.label);
+const headingLabel = computed(() => {
+  const label = localize(props.section.headingLabel).trim();
+  if (label.length) return label;
+  const fallback = headingDefaults.label;
+  return typeof fallback === "string" ? fallback : localize(fallback);
+});
 const headingStyle = computed(() => props.section.headingLabelStyle || headingDefaults.style);
+const titleText = computed(() => {
+  const text = localize(props.section.title).trim();
+  return text.length ? text : localize(testimonialsCopy.title);
+});
 const subtitleHtml = computed(() => {
-  const html = sanitizeHtml(props.section.subtitle);
+  const html = sanitizeHtml(localize(props.section.subtitle));
   return html || "";
 });
+const defaultSubtitle = computed(() => localize(testimonialsCopy.subtitle));
 const textPalette = computed(() => deriveTextPalette(props.section.textColor));
 const primaryText = computed(() => textPalette.value.primary);
 const mutedText = computed(() => textPalette.value.muted);
 
+const avatarAltText = computed(() => localize(testimonialsCopy.avatarAlt));
 const initials = (name?: string) => {
-  if (!name) return "—";
-  const parts = name.trim().split(" ").filter(Boolean);
+  const raw = localize(name).trim();
+  if (!raw) return "-";
+  const parts = raw.split(" ").filter(Boolean);
   const first = parts[0]?.[0] || "";
   const last = parts.length > 1 ? parts[parts.length - 1][0] : "";
-  return (first + last).toUpperCase() || "—";
+  return (first + last).toUpperCase() || "-";
 };
+const itemName = (item: any) => {
+  const name = localize(item?.name).trim();
+  return name.length ? name : initials(item?.name);
+};
+const itemRole = (item: any) => localize(item?.role).trim();
+const itemText = (item: any) => localize(item?.text).trim();
 const displayed = computed(() => props.section.items?.slice(0, 3) || []);
 const displayedWithMedia = computed(() =>
   displayed.value.map(item => ({
@@ -135,4 +156,8 @@ const ctaIsScroll = computed(() => ctaMode.value === "section" && !!props.sectio
 const ctaTrackType = computed(() =>
   ctaMode.value === "section" ? "cta" : isWhatsappLink(props.section.ctaLink || undefined) ? "whatsapp" : "cta"
 );
+const ctaLabelText = computed(() => {
+  const text = localize(props.section.ctaLabel).trim();
+  return text.length ? text : localize(testimonialsCopy.ctaLabel);
+});
 </script>

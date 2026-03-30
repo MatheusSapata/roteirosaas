@@ -5,13 +5,9 @@
         <div class="flex justify-center">
           <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="accentColor" />
         </div>
-        <h1 class="mt-2 text-3xl font-bold md:text-4xl" :style="{ color: primaryText }">{{ section.title }}</h1>
-        <p
-          v-if="section.subtitle"
-          class="mt-2 text-base leading-relaxed md:text-lg"
-          :style="{ color: mutedText }"
-        >
-          {{ section.subtitle }}
+        <h1 class="mt-2 text-3xl font-bold md:text-4xl" :style="{ color: primaryText }">{{ titleText }}</h1>
+        <p v-if="subtitleText" class="mt-2 text-base leading-relaxed md:text-lg" :style="{ color: mutedText }">
+          {{ subtitleText }}
         </p>
       </div>
 
@@ -27,7 +23,7 @@
           :data-card-index="idx"
           :ref="el => registerMobileCardRef(el, idx)"
         >
-          <ReasonCard :item="item" />
+          <ReasonCard :item="item" :index="idx" />
         </article>
       </div>
 
@@ -46,7 +42,7 @@
             ]"
             :style="cardStyle(desktopRowOffsets[rowIndex] + idx)"
           >
-            <ReasonCard :item="item" />
+            <ReasonCard :item="item" :index="desktopRowOffsets[rowIndex] + idx" />
           </article>
         </div>
       </div>
@@ -62,12 +58,30 @@ import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import { sanitizeHtml } from "../../utils/sanitizeHtml";
 import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
 import { deriveTextPalette } from "../../utils/colorContrast";
+import { createLocalizer, getCurrentLanguage } from "../../utils/i18n";
 
 const props = defineProps<{ section: ReasonsSection; previewDevice?: "desktop" | "mobile" }>();
+const localize = createLocalizer(getCurrentLanguage());
 const headingDefaults = getSectionHeadingDefaults("reasons");
+const reasonsCopy = {
+  title: { pt: "Motivos para escolher", es: "Motivos para elegir" },
+  subtitle: { pt: "", es: "" },
+  itemTitle: { pt: "Motivo", es: "Motivo" },
+  itemDescription: { pt: "Atualize este motivo com detalhes.", es: "Actualiza este motivo con detalles." }
+} as const;
 const isMobilePreview = computed(() => props.previewDevice === "mobile");
-const headingLabel = computed(() => props.section.headingLabel ?? headingDefaults.label);
+const headingLabel = computed(() => {
+  const label = localize(props.section.headingLabel).trim();
+  if (label.length) return label;
+  const fallback = headingDefaults.label;
+  return typeof fallback === "string" ? fallback : localize(fallback);
+});
 const headingStyle = computed(() => props.section.headingLabelStyle || headingDefaults.style);
+const titleText = computed(() => {
+  const text = localize(props.section.title).trim();
+  return text.length ? text : localize(reasonsCopy.title);
+});
+const subtitleText = computed(() => localize(props.section.subtitle).trim());
 const branding = inject(PUBLIC_BRANDING_KEY, null);
 const brandingPrimary = computed(() => {
   if (!branding) return "";
@@ -126,7 +140,14 @@ const desktopRowOffsets = computed(() => {
   return offsets;
 });
 
-const descriptionHtml = (text?: string) => sanitizeHtml(text);
+const descriptionHtml = (text?: any) => {
+  const localized = localize(text);
+  const sanitized = sanitizeHtml(localized);
+  if (sanitized && sanitized.trim().length) {
+    return sanitized;
+  }
+  return sanitizeHtml(localize(reasonsCopy.itemDescription));
+};
 
 const ReasonCard = defineComponent({
   props: {

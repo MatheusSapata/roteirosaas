@@ -14,7 +14,7 @@
       <div class="flex items-center gap-2">
           <span class="text-3xl">&#9889;</span>
           <h1 class="text-3xl font-bold leading-tight md:text-4xl">
-            {{ section.label || "Garanta sua vaga agora mesmo!" }}
+            {{ countdownLabel }}
           </h1>
         </div>
       </div>
@@ -25,7 +25,7 @@
         <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="headingAccent" />
       </div>
       <h1 class="text-center text-3xl font-bold md:text-4xl mb-1" :style="{ color: section.textColor || '#ffffff' }">
-        {{ section.label || "Coming soon..." }}
+        {{ countdownLabel }}
       </h1>
       <div class="mt-1 grid grid-cols-2 gap-3 md:grid-cols-4 pb-4">
         <div
@@ -48,22 +48,50 @@ import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import type { CountdownSection } from "../../types/page";
 import SectionHeadingChip from "./SectionHeadingChip.vue";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
+import { createLocalizer, getCurrentLanguage } from "../../utils/i18n";
 
 const props = defineProps<{ section: CountdownSection }>();
 const headingDefaults = getSectionHeadingDefaults("countdown");
+const localize = createLocalizer(getCurrentLanguage());
+const countdownCopy = {
+  headingFallback: { pt: headingDefaults.label || "Contagem regressiva", es: "Cuenta regresiva" },
+  barLabel: { pt: "Garanta sua vaga agora mesmo!", es: "Asegura tu lugar ahora mismo" },
+  defaultLabel: { pt: "Em breve...", es: "Próximamente..." },
+  time: {
+    days: { pt: "Dias", es: "Días" },
+    hours: { pt: "Horas", es: "Horas" },
+    minutes: { pt: "Minutos", es: "Minutos" },
+    seconds: { pt: "Segundos", es: "Segundos" }
+  }
+} as const;
 
 const layout = computed(() => props.section.layout || "bar");
 const barBackground = computed(() => (layout.value === "bar" ? "#f8fafc" : props.section.backgroundColor || "#0b1324"));
-const headingLabel = computed(() => props.section.headingLabel ?? headingDefaults.label);
+const headingLabel = computed(() => {
+  const custom = localize(props.section.headingLabel).trim();
+  if (custom.length) return custom;
+  return localize(countdownCopy.headingFallback);
+});
 const headingStyle = computed(() => props.section.headingLabelStyle || headingDefaults.style);
 const headingAccent = computed(() => props.section.textColor || "#ffffff");
+const countdownLabel = computed(() => {
+  const custom = localize(props.section.label).trim();
+  if (custom.length) return custom;
+  return layout.value === "bar" ? localize(countdownCopy.barLabel) : localize(countdownCopy.defaultLabel);
+});
 
 const barTime = ref("00:00:00");
+const timeLabels = {
+  days: localize(countdownCopy.time.days),
+  hours: localize(countdownCopy.time.hours),
+  minutes: localize(countdownCopy.time.minutes),
+  seconds: localize(countdownCopy.time.seconds)
+};
 const timeParts = ref([
-  { label: "Dias", value: "00" },
-  { label: "Horas", value: "00" },
-  { label: "Minutos", value: "00" },
-  { label: "Segundos", value: "00" }
+  { label: timeLabels.days, value: "00" },
+  { label: timeLabels.hours, value: "00" },
+  { label: timeLabels.minutes, value: "00" },
+  { label: timeLabels.seconds, value: "00" }
 ]);
 let timer: number | undefined;
 
@@ -92,10 +120,10 @@ const tick = () => {
     const fallbackSeconds = totalSecondsFallback % 60;
     barTime.value = `${pad(Math.floor(totalSecondsFallback / 3600))}:${pad(fallbackMinutes)}:${pad(fallbackSeconds)}`;
     timeParts.value = [
-      { label: "Dias", value: pad(fallbackDays) },
-      { label: "Horas", value: pad(fallbackHours) },
-      { label: "Minutos", value: pad(fallbackMinutes) },
-      { label: "Segundos", value: pad(fallbackSeconds) }
+      { label: timeLabels.days, value: pad(fallbackDays) },
+      { label: timeLabels.hours, value: pad(fallbackHours) },
+      { label: timeLabels.minutes, value: pad(fallbackMinutes) },
+      { label: timeLabels.seconds, value: pad(fallbackSeconds) }
     ];
     return;
   }
@@ -107,10 +135,10 @@ const tick = () => {
   const totalHours = Math.floor(totalSeconds / 3600);
   barTime.value = `${pad(totalHours)}:${pad(minutes)}:${pad(seconds)}`;
   timeParts.value = [
-    { label: "Dias", value: pad(days) },
-    { label: "Horas", value: pad(hours) },
-    { label: "Minutos", value: pad(minutes) },
-    { label: "Segundos", value: pad(seconds) }
+    { label: timeLabels.days, value: pad(days) },
+    { label: timeLabels.hours, value: pad(hours) },
+    { label: timeLabels.minutes, value: pad(minutes) },
+    { label: timeLabels.seconds, value: pad(seconds) }
   ];
 };
 

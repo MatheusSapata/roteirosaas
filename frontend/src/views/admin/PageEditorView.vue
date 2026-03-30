@@ -2,9 +2,9 @@
 <div class="w-full space-y-6 px-4 py-10 md:px-8 md:py-0">
     <div class="sticky top-0 z-30 flex flex-col gap-3 py-4 md:flex-row md:items-center md:justify-between">
       <div>
-        <p class="text-sm uppercase tracking-wide text-slate-500">Editor de página</p>
-        <h1 class="text-3xl font-bold text-slate-900">{{ page?.title || "Roteiro" }}</h1>
-        <p class="text-sm text-slate-500">Monte a página por seções, salve e visualize ao lado.</p>
+        <p class="text-sm uppercase tracking-wide text-slate-500">{{ viewCopy.header.eyebrow }}</p>
+        <h1 class="text-3xl font-bold text-slate-900">{{ page?.title || viewCopy.header.defaultTitle }}</h1>
+        <p class="text-sm text-slate-500">{{ viewCopy.header.subtitle }}</p>
       </div>
 
       <div class="flex flex-wrap items-center gap-2">
@@ -12,14 +12,14 @@
           @click="saveTemplate"
           :class="toolbarSecondaryButtonClass"
         >
-          Salvar como template padrão
+          {{ viewCopy.toolbar.saveTemplate }}
         </button>
 
         <button
           @click="goBack"
           :class="toolbarSecondaryButtonClass"
         >
-          Voltar
+          {{ viewCopy.actions.goBack }}
         </button>
 
         <button
@@ -41,7 +41,7 @@
             <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" />
             <circle cx="12" cy="12" r="3" />
           </svg>
-          Visualizar página
+          {{ viewCopy.actions.viewPage }}
         </button>
 
         <button
@@ -49,7 +49,7 @@
           :disabled="!hasUnsavedChanges"
           :class="[toolbarPrimaryButtonClass, { 'opacity-60 cursor-not-allowed': !hasUnsavedChanges }]"
         >
-          Salvar
+          {{ viewCopy.toolbar.save }}
         </button>
 
         <button
@@ -57,19 +57,19 @@
           @click="publishPage"
           :class="toolbarPrimaryButtonClass"
         >
-          Publicar
+          {{ viewCopy.toolbar.publish }}
         </button>
 
           <div v-else class="flex flex-wrap items-center gap-2">
             <span :class="toolbarStatusPillClass">
-              Publicada
+              {{ viewCopy.toolbar.published }}
             </span>
             <button
               type="button"
               @click="unpublishPage"
               :class="toolbarWarningButtonClass"
             >
-              Despublicar
+              {{ viewCopy.toolbar.unpublish }}
             </button>
           </div>
         </div>
@@ -80,10 +80,10 @@
     <Teleport to="body" v-if="limitModal.open">
       <div class="fixed inset-0 z-50 flex items-center justify-center px-4 page-editor-overlay">
         <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-[#1f1f1f] dark:text-white">
-          <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">Limite do plano</p>
-          <h3 class="mt-2 text-xl font-bold text-slate-900">Ação indisponível</h3>
+          <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">{{ viewCopy.limitModal.eyebrow }}</p>
+          <h3 class="mt-2 text-xl font-bold text-slate-900">{{ viewCopy.limitModal.title }}</h3>
           <p class="mt-2 text-sm text-slate-600">
-            {{ limitModal.message || "Seu plano atual atingiu o limite. Atualize para continuar." }}
+            {{ limitModal.message || viewCopy.limitModal.description }}
           </p>
 
           <div class="mt-4 flex flex-wrap gap-2">
@@ -91,14 +91,14 @@
               @click="limitModal.open = false"
               class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
             >
-              Fechar
+              {{ viewCopy.actions.close }}
             </button>
 
             <button
               @click="goPlans"
               class="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white shadow hover:bg-brand-dark"
             >
-              Ver planos
+              {{ viewCopy.actions.viewPlans }}
             </button>
           </div>
         </div>
@@ -109,10 +109,10 @@
     <Teleport to="body" v-if="unsavedNavigationModal.open">
       <div class="fixed inset-0 z-50 flex items-center justify-center px-4 page-editor-overlay">
         <div class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl dark:bg-[#1f1f1f] dark:text-white">
-          <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">Atenção</p>
-          <h3 class="mt-2 text-xl font-bold text-slate-900">Alterações não salvas</h3>
+          <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">{{ viewCopy.unsavedModal.eyebrow }}</p>
+          <h3 class="mt-2 text-xl font-bold text-slate-900">{{ viewCopy.unsavedModal.title }}</h3>
           <p class="mt-2 text-sm text-slate-600">
-            Você tem mudanças não salvas nesta página. Deseja salvar antes de sair?
+            {{ viewCopy.unsavedModal.description }}
           </p>
 
           <div class="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end">
@@ -121,14 +121,14 @@
               class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
               @click="cancelNavigationModal"
             >
-              Continuar editando
+              {{ viewCopy.unsavedModal.continueEditing }}
             </button>
             <button
               type="button"
               class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
               @click="discardAndLeave"
             >
-              Descartar e sair
+              {{ viewCopy.unsavedModal.discardAndExit }}
             </button>
             <button
               type="button"
@@ -136,7 +136,7 @@
               :disabled="unsavedNavigationModal.saving"
               @click="saveAndLeave"
             >
-              {{ unsavedNavigationModal.saving ? "Salvando..." : "Salvar e sair" }}
+              {{ unsavedNavigationModal.saving ? viewCopy.unsavedModal.saving : viewCopy.unsavedModal.saveAndLeave }}
             </button>
           </div>
         </div>
@@ -147,23 +147,23 @@
     <Teleport to="body" v-if="successModal.open">
       <div class="fixed inset-0 z-50 flex items-center justify-center px-4 page-editor-overlay">
         <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-[#1f1f1f] dark:text-white">
-          <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">Publicação</p>
-          <h3 class="mt-2 text-xl font-bold text-slate-900">Página publicada com sucesso</h3>
-          <p class="mt-2 text-sm text-slate-600">Escolha o que deseja fazer em seguida.</p>
+          <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">{{ viewCopy.successModal.eyebrow }}</p>
+          <h3 class="mt-2 text-xl font-bold text-slate-900">{{ viewCopy.successModal.title }}</h3>
+          <p class="mt-2 text-sm text-slate-600">{{ viewCopy.successModal.description }}</p>
 
           <div class="mt-4 flex flex-wrap gap-2">
             <button
               @click="successModal.open = false"
               class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
             >
-              Fechar
+              {{ viewCopy.actions.close }}
             </button>
 
             <button
               @click="goPages"
               class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
             >
-              Voltar para páginas
+              {{ viewCopy.successModal.viewPages }}
             </button>
 
             <button
@@ -171,7 +171,7 @@
               @click="viewPublicPage"
               class="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white shadow hover:bg-brand-dark disabled:opacity-50"
             >
-              Ver página
+              {{ viewCopy.actions.viewPage }}
             </button>
           </div>
         </div>
@@ -244,13 +244,13 @@
           <div class="space-y-4 rounded-2xl border border-slate-100 px-4 py-4 dark:border-[#2b2b2b] dark:bg-[#181818]">
             <div class="space-y-4">
               <div>
-                <label class="text-sm font-semibold text-slate-600">Título</label>
+                <label class="text-sm font-semibold text-slate-600">{{ viewCopy.form.titleLabel }}</label>
                 <input v-model="pageTitle" @blur="scheduleWhatsAppUpdate" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-900 dark:border-white/15 dark:bg-[#05070F] dark:text-white" />
               </div>
               <div>
                 <div class="flex items-center gap-2">
-                  <label class="text-sm font-semibold text-slate-600">Slug</label>
-                  <span class="text-xs text-slate-500">Slug é a parte do link depois da barra, sem espaços ou acentos. Ex.: meu-roteiro-incrivel.</span>
+                  <label class="text-sm font-semibold text-slate-600">{{ viewCopy.form.slugLabel }}</label>
+                  <span class="text-xs text-slate-500">{{ viewCopy.form.slugHint }}</span>
                 </div>
                 <input
                   :value="pageSlug"
@@ -262,24 +262,24 @@
             <div class="grid gap-4 text-sm text-slate-600 md:grid-cols-2">
               <div>
                 <div class="flex items-center gap-2">
-                  <label class="block text-sm font-semibold text-slate-600">Cores de fundo</label>
-                  <span class="text-xs text-slate-500">Aplica alternância em todas as seções (exceto hero).</span>
+                  <label class="block text-sm font-semibold text-slate-600">{{ viewCopy.form.backgroundLabel }}</label>
+                  <span class="text-xs text-slate-500">{{ viewCopy.form.backgroundHint }}</span>
                 </div>
                 <div class="mt-1 flex flex-wrap items-center gap-2">
                   <label class="flex items-center gap-2">
-                    <span>Cor 1</span>
+                    <span>{{ viewCopy.form.colorA }}</span>
                     <input type="color" v-model="colorA" class="h-9 w-9 cursor-pointer rounded border border-slate-200 bg-white dark:border-[#363636] dark:bg-[#050505]" />
                   </label>
                   <label class="flex items-center gap-2">
-                    <span>Cor 2</span>
+                    <span>{{ viewCopy.form.colorB }}</span>
                     <input type="color" v-model="colorB" class="h-9 w-9 cursor-pointer rounded border border-slate-200 bg-white dark:border-[#363636] dark:bg-[#050505]" />
                   </label>
                 </div>
               </div>
               <div>
                 <div class="flex items-center gap-2">
-                  <label class="text-sm font-semibold text-slate-600">Cor de botões e destaques</label>
-                  <span class="text-xs text-slate-500">Afeta CTAs, chips e elementos em destaque.</span>
+                  <label class="text-sm font-semibold text-slate-600">{{ viewCopy.form.ctaColorLabel }}</label>
+                  <span class="text-xs text-slate-500">{{ viewCopy.form.ctaColorHint }}</span>
                 </div>
                 <div class="mt-1 flex items-center gap-2">
                   <input
@@ -293,12 +293,12 @@
           </div>
           <div class="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-4 dark:border-[#2b2b2b] dark:bg-[#1a1a1a]">
             <div class="space-y-1">
-              <p class="text-sm font-semibold text-slate-700">Pixel de rastreamento</p>
+              <p class="text-sm font-semibold text-slate-700">{{ viewCopy.pixels.title }}</p>
               <p class="text-xs text-slate-500">
-                Escolha um pixel cadastrado em Integrações e quais eventos deseja enviar.
+                {{ viewCopy.pixels.helper }}
               </p>
               <p v-if="!canSelectPixel" class="text-xs text-slate-500">
-                Disponível a partir do plano Essencial.
+                {{ viewCopy.pixels.planHint }}
               </p>
             </div>
 
@@ -307,53 +307,53 @@
                 v-if="!canSelectPixel"
                 class="rounded-lg border border-dashed border-slate-200 bg-white/80 px-3 py-2 text-sm text-slate-500 dark:border-[#363636] dark:bg-[#0d0d0d] dark:text-slate-300"
               >
-                Adicione pixels na página Integrações (plano Essencial ou superior).
+                {{ viewCopy.pixels.lockedHint }}
               </div>
 
               <template v-else>
                 <div class="grid gap-3 sm:grid-cols-2">
                   <div>
-                    <label class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">Pixel Meta</label>
+                    <label class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">{{ viewCopy.pixels.metaLabel }}</label>
                     <select
                       v-model="selectedPixels.meta"
                       class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-[#363636] dark:bg-[#101010] dark:text-white"
                       :disabled="!metaPixelOptions.length"
                     >
-                      <option value="">Sem pixel Meta</option>
+                      <option value="">{{ viewCopy.pixels.metaPlaceholder }}</option>
                       <option v-for="p in metaPixelOptions" :key="p.name" :value="p.name">
-                        {{ p.name }} – Meta
+                        {{ p.name }} — Meta
                       </option>
                     </select>
-                    <p v-if="!metaPixelOptions.length" class="mt-1 text-xs text-slate-500 dark:text-slate-400">Cadastre uma conexão Meta em Integrações.</p>
+                    <p v-if="!metaPixelOptions.length" class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ viewCopy.pixels.metaEmptyHint }}</p>
                   </div>
                   <div>
-                    <label class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">Pixel Google</label>
+                    <label class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">{{ viewCopy.pixels.googleLabel }}</label>
                     <select
                       v-model="selectedPixels.ga"
                       class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-[#363636] dark:bg-[#101010] dark:text-white"
                       :disabled="!gaPixelOptions.length"
                     >
-                      <option value="">Sem pixel Google</option>
+                      <option value="">{{ viewCopy.pixels.googlePlaceholder }}</option>
                       <option v-for="p in gaPixelOptions" :key="p.name" :value="p.name">
-                        {{ p.name }} – GA4
+                        {{ p.name }} — GA4
                       </option>
                     </select>
-                    <p v-if="!gaPixelOptions.length" class="mt-1 text-xs text-slate-500 dark:text-slate-400">Cadastre uma conexão GA4 em Integrações.</p>
+                    <p v-if="!gaPixelOptions.length" class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ viewCopy.pixels.googleEmptyHint }}</p>
                   </div>
                 </div>
 
                 <div class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 dark:border-[#363636] dark:bg-[#101010] dark:text-slate-200">
-                  <p class="font-semibold text-slate-800 dark:text-white">Eventos a enviar</p>
+                  <p class="font-semibold text-slate-800 dark:text-white">{{ viewCopy.pixels.eventsTitle }}</p>
 
                   <div class="mt-2 flex flex-wrap gap-4">
                     <label class="flex items-center gap-2">
                       <input type="checkbox" v-model="trackingEvents.pageView" class="h-4 w-4" />
-                      Page view (carregamento da página)
+                      {{ viewCopy.pixels.eventPageView }}
                     </label>
 
                     <label class="flex items-center gap-2">
                       <input type="checkbox" v-model="trackingEvents.ctaClicks" class="h-4 w-4" />
-                      Cliques em CTAs
+                      {{ viewCopy.pixels.eventCtaClicks }}
                     </label>
                   </div>
                 </div>
@@ -370,10 +370,10 @@
     >
       <div class="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Captação de leads</p>
-          <h3 class="text-xl font-semibold text-slate-900 dark:text-white">Formulário</h3>
+          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">{{ viewCopy.leadSection.badge }}</p>
+          <h3 class="text-xl font-semibold text-slate-900 dark:text-white">{{ viewCopy.leadSection.title }}</h3>
           <p class="text-sm text-slate-500 dark:text-slate-400">
-            Escolha um formulário de captação para abrir antes do visitante acessar a página.
+            {{ viewCopy.leadSection.description }}
           </p>
         </div>
         <button
@@ -381,7 +381,7 @@
           class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 dark:border-white/20 dark:text-white dark:hover:bg-white/10"
           @click="goLeads"
         >
-          Gerenciar formulários
+          {{ viewCopy.leadSection.manageButton }}
         </button>
       </div>
       <div class="mt-4 space-y-4 rounded-2xl border border-slate-100 p-4 dark:border-[#2b2b2b] dark:bg-[#181818]">
@@ -389,29 +389,30 @@
           v-if="leadFormsLoading"
           class="rounded-xl border border-dashed border-slate-200 px-3 py-2 text-sm text-slate-500 dark:border-white/20 dark:text-slate-300"
         >
-          Carregando formulários cadastrados...
+          {{ viewCopy.leadSection.loading }}
         </div>
         <div
           v-else-if="!leadForms.length"
           class="rounded-xl border border-dashed border-slate-200 px-4 py-4 text-sm text-slate-500 dark:border-white/20 dark:text-slate-300"
         >
-          Nenhum formulário disponível. Clique em <span class="font-semibold">“Gerenciar formulários”</span> para criar.
+          {{ viewCopy.leadSection.empty }}
+          <span class="font-semibold">{{ viewCopy.leadSection.emptyAction }}</span>
         </div>
         <div v-else class="space-y-4">
           <div class="flex flex-col gap-4 md:flex-row md:items-center">
             <div class="flex-1 space-y-1">
-              <label class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">Escolha um formulário</label>
+              <label class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">{{ viewCopy.leadSection.selectLabel }}</label>
               <select
                 v-model="selectedLeadFormId"
                 class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-white/15 dark:bg-[#05070F] dark:text-white"
               >
-                <option value="">Nenhum formulário selecionado</option>
+                <option value="">{{ viewCopy.leadSection.selectPlaceholder }}</option>
                 <option v-for="form in leadForms" :key="form.id" :value="String(form.id)">
                   {{ form.title || form.name }} ({{ form.total_leads ?? 0 }} leads)
                 </option>
               </select>
               <p class="text-xs text-slate-500 dark:text-slate-400">
-                Selecione o formulário e clique em “Ver prévia” para abrir o modal real.
+                {{ viewCopy.leadSection.selectHint }}
               </p>
             </div>
             <template v-if="selectedLeadForm">
@@ -421,7 +422,7 @@
                   class="preview-pill w-full justify-center md:w-auto md:min-w-[10rem]"
                   @click="openLeadFormPreview(selectedLeadForm)"
                 >
-                  Ver prévia
+                  {{ viewCopy.leadSection.previewButton }}
                 </button>
               </div>
               <div
@@ -432,7 +433,7 @@
                   v-model="leadCaptureOptional"
                   class="h-4 w-4 rounded border-slate-200 text-brand focus:ring-brand/40 dark:border-white/30"
                 />
-                <p class="font-semibold text-slate-800 dark:text-white">Permitir fechar sem enviar</p>
+                <p class="font-semibold text-slate-800 dark:text-white">{{ viewCopy.leadSection.optionalToggle }}</p>
               </div>
             </template>
           </div>
@@ -440,7 +441,7 @@
             v-if="selectedLeadForm"
             class="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 dark:border-emerald-400/40 dark:bg-emerald-500/10 dark:text-emerald-200"
           >
-            Formulário {{ leadCaptureOptional ? "opcional" : "obrigatório" }} ativo para esta página.
+            {{ leadCaptureOptional ? viewCopy.leadSection.optionalActive : viewCopy.leadSection.requiredActive }}
           </div>
         </div>
       </div>
@@ -449,29 +450,29 @@
       v-else
       class="rounded-2xl border border-dashed border-slate-200 bg-white/70 p-6 text-center shadow-inner dark:border-white/10 dark:bg-[#101010]/70"
     >
-      <h3 class="text-xl font-semibold text-slate-900 dark:text-white">Captação de leads bloqueada</h3>
+      <h3 class="text-xl font-semibold text-slate-900 dark:text-white">{{ viewCopy.leadSection.blockedTitle }}</h3>
       <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">
-        Este recurso está disponível a partir do plano Agência. Atualize seu plano para ativar o formulário obrigatório de leads.
+        {{ viewCopy.leadSection.blockedDescription }}
       </p>
       <button
         type="button"
         class="mt-4 rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white shadow transition hover:bg-brand-dark"
         @click="goPlans"
       >
-        Ver planos
+        {{ viewCopy.actions.viewPlans }}
       </button>
     </div>
 
       <div class="md:sticky md:top-6 rounded-3xl bg-white p-4 shadow-md dark:bg-[#202020] dark:text-white">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div class="flex flex-col gap-1">
-          <h2 class="text-lg font-semibold text-slate-900">Preview visual</h2>
-          <p class="text-xs text-slate-500">Clique no botão do topo para aplicar as alterações do formulário.</p>
+          <h2 class="text-lg font-semibold text-slate-900">{{ viewCopy.preview.title }}</h2>
+          <p class="text-xs text-slate-500">{{ viewCopy.preview.helper }}</p>
           <p
             v-if="isMobileViewport && previewDevice === 'mobile'"
             class="rounded-2xl bg-amber-100 px-3 py-2 text-center text-sm font-semibold text-amber-700"
           >
-            Toque sobre as seções para editar.
+            {{ viewCopy.preview.mobileHint }}
           </p>
         </div>
         <div
@@ -485,7 +486,7 @@
             :class="previewDevice === 'desktop' ? 'bg-brand text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'"
             @click="previewDevice = 'desktop'"
           >
-            <span aria-hidden="true">🖥️</span> Desktop
+            <span aria-hidden="true">🖥️</span> {{ viewCopy.preview.desktopLabel }}
           </button>
           <button
             type="button"
@@ -493,7 +494,7 @@
             :class="previewDevice === 'mobile' ? 'bg-brand text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'"
             @click="previewDevice = 'mobile'"
           >
-            <span aria-hidden="true">📱</span> Mobile
+            <span aria-hidden="true">📱</span> {{ viewCopy.preview.mobileLabel }}
           </button>
         </div>
       </div>
@@ -509,7 +510,7 @@
             <div class="space-y-6 preview-light">
               <template v-if="sections.length === 0">
                 <div class="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 px-4 py-12 text-center text-sm text-slate-500">
-                  Nenhuma seção adicionada ainda. Use os botões acima para criar o conteúdo.
+                  {{ viewCopy.preview.emptyState }}
                 </div>
               </template>
               <template v-else>
@@ -568,7 +569,7 @@
                               <path d="M12 20h9" />
                               <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z" />
                             </svg>
-                            <span class="overlay-label text-white">Editar seção</span>
+                            <span class="overlay-label text-white">{{ viewCopy.overlay.edit }}</span>
                           </button>
 
                           <button
@@ -582,7 +583,7 @@
                               <path d="m5 12 7-7 7 7" />
                               <path d="M12 5v14" />
                             </svg>
-                            <span class="overlay-label text-white">Subir</span>
+                            <span class="overlay-label text-white">{{ viewCopy.overlay.moveUp }}</span>
                           </button>
 
                           <button
@@ -596,7 +597,7 @@
                               <path d="m19 12-7 7-7-7" />
                               <path d="M12 19V5" />
                             </svg>
-                            <span class="overlay-label text-white">Descer</span>
+                            <span class="overlay-label text-white">{{ viewCopy.overlay.moveDown }}</span>
                           </button>
 
                           <button
@@ -609,7 +610,7 @@
                               <rect x="9" y="9" width="11" height="11" rx="2" />
                               <rect x="4" y="4" width="11" height="11" rx="2" />
                             </svg>
-                            <span class="overlay-label text-white">Duplicar</span>
+                            <span class="overlay-label text-white">{{ viewCopy.overlay.duplicate }}</span>
                           </button>
 
                           <button
@@ -625,13 +626,13 @@
                               <path d="m15 10-1 8" />
                               <path d="M5 6l1 14h12l1-14" />
                             </svg>
-                            <span class="overlay-label text-white">Excluir</span>
+                            <span class="overlay-label text-white">{{ viewCopy.overlay.delete }}</span>
                           </button>
                         </div>
                       </template>
                           <template v-else>
                             <div class="rounded-full border border-white/30 bg-white/10 px-4 py-2 text-center text-xs font-semibold text-white dark:border-white/18 dark:bg-white/10 dark:text-white">
-                              Rodapé obrigatório no plano gratuito. Não é possível editar, mover ou remover esta seção.
+                              {{ viewCopy.overlay.footerLocked }}
                             </div>
                           </template>
                           </div>
@@ -641,7 +642,7 @@
                         v-else
                         class="bg-white/80 px-6 py-12 text-center text-sm font-semibold text-slate-500 dark:bg-white/4 dark:text-white/80"
                       >
-                        Seção desativada. Clique em editar para ajustar e ativar novamente.
+                        {{ viewCopy.overlay.disabledSection }}
                       </div>
                     </div>
                     <div v-if="!isLockedFooterSection(section)" class="mt-4 flex justify-center">
@@ -654,7 +655,7 @@
                           <path d="M12 5v14" />
                           <path d="M5 12h14" />
                         </svg>
-                        Adicionar seção abaixo
+                        {{ viewCopy.overlay.addBelow }}
                       </button>
                     </div>
                   </div>
@@ -704,14 +705,14 @@
         >
           <div class="flex flex-col gap-1 border-b border-slate-100 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Editar seção</p>
+              <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">{{ viewCopy.sectionDialog.eyebrow }}</p>
               <h3 class="text-lg font-semibold text-slate-900">{{ editingSectionLabel }}</h3>
             </div>
             <button
               class="rounded-full border border-slate-200 px-4 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
               @click="closeSectionEditor"
             >
-              Fechar
+              {{ viewCopy.actions.close }}
             </button>
           </div>
           <div
@@ -729,13 +730,13 @@
               class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
               @click="closeSectionEditor"
             >
-              Cancelar
+              {{ viewCopy.sectionDialog.cancel }}
             </button>
             <button
               class="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white shadow hover:bg-brand-dark"
               @click="saveEditingSection"
             >
-              Salvar seção
+              {{ viewCopy.sectionDialog.save }}
             </button>
           </div>
         </div>
@@ -789,6 +790,7 @@ import { sectionLabels as defaultSectionLabels } from "../../utils/sectionLabels
 import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
 import { getReadableTextColor } from "../../utils/colorContrast";
 import { useLeadFeatureGate } from "../../composables/useLeadFeatureGate";
+import { createAdminLocalizer } from "../../utils/adminI18n";
 import heroThumb from "../../assets/hero-thumb.jpg";
 import bannerCardThumb from "../../assets/banner-card-thumb.jpg";
 import photoThumb from "../../assets/photo-thumb.jpg";
@@ -869,6 +871,185 @@ const agencyStore = useAgencyStore();
 const leadCaptureStore = useLeadCaptureStore();
 const { hasLeadFeatureAccess } = useLeadFeatureGate();
 const leadFeatureAllowed = hasLeadFeatureAccess;
+const t = createAdminLocalizer();
+
+const viewCopy = {
+  header: {
+    eyebrow: t({ pt: "Editor de página", es: "Editor de páginas" }),
+    defaultTitle: t({ pt: "Roteiro", es: "Itinerario" }),
+    subtitle: t({
+      pt: "Monte a página por seções, salve e visualize ao lado.",
+      es: "Arma la página por secciones, guarda y visualiza al lado."
+    })
+  },
+  toolbar: {
+    saveTemplate: t({ pt: "Salvar como template padrão", es: "Guardar como plantilla predeterminada" }),
+    save: t({ pt: "Salvar", es: "Guardar" }),
+    publish: t({ pt: "Publicar", es: "Publicar" }),
+    published: t({ pt: "Publicada", es: "Publicada" }),
+    unpublish: t({ pt: "Despublicar", es: "Despublicar" })
+  },
+  actions: {
+    goBack: t({ pt: "Voltar", es: "Volver" }),
+    viewPage: t({ pt: "Visualizar página", es: "Ver página" }),
+    close: t({ pt: "Fechar", es: "Cerrar" }),
+    viewPlans: t({ pt: "Ver planos", es: "Ver planes" })
+  },
+  limitModal: {
+    eyebrow: t({ pt: "Limite do plano", es: "Límite del plan" }),
+    title: t({ pt: "Ação indisponível", es: "Acción indisponible" }),
+    description: t({
+      pt: "Seu plano atual atingiu o limite. Atualize para continuar.",
+      es: "Tu plan actual alcanzó el límite. Actualiza para continuar."
+    }),
+    templatePlan: t({
+      pt: "Salvar template está disponível apenas a partir do plano Essencial. Atualize seu plano para liberar.",
+      es: "Guardar plantillas está disponible solo a partir del plan Esencial. Actualiza tu plan para liberar."
+    })
+  },
+  unsavedModal: {
+    eyebrow: t({ pt: "Atenção", es: "Atención" }),
+    title: t({ pt: "Alterações não salvas", es: "Cambios no guardados" }),
+    description: t({
+      pt: "Você tem mudanças não salvas nesta página. Deseja salvar antes de sair?",
+      es: "Tienes cambios no guardados en esta página. ¿Quieres guardar antes de salir?"
+    }),
+    continueEditing: t({ pt: "Continuar editando", es: "Seguir editando" }),
+    discardAndExit: t({ pt: "Descartar e sair", es: "Descartar y salir" }),
+    saving: t({ pt: "Salvando...", es: "Guardando..." }),
+    saveAndLeave: t({ pt: "Salvar e sair", es: "Guardar y salir" })
+  },
+  successModal: {
+    eyebrow: t({ pt: "Publicação", es: "Publicación" }),
+    title: t({ pt: "Página publicada com sucesso", es: "Página publicada con éxito" }),
+    description: t({
+      pt: "Escolha o que deseja fazer em seguida.",
+      es: "Elige qué hacer a continuación."
+    }),
+    viewPages: t({ pt: "Voltar para páginas", es: "Volver a páginas" })
+  },
+  form: {
+    titleLabel: t({ pt: "Título", es: "Título" }),
+    slugLabel: t({ pt: "Slug", es: "Slug" }),
+    slugHint: t({
+      pt: "Slug é a parte do link depois da barra, sem espaços ou acentos. Ex.: meu-roteiro-incrivel.",
+      es: "Slug es la parte del enlace después de la barra, sin espacios ni acentos. Ej.: mi-itinerario-increible."
+    }),
+    backgroundLabel: t({ pt: "Cores de fundo", es: "Colores de fondo" }),
+    backgroundHint: t({ pt: "Aplica alternância em todas as seções (exceto hero).", es: "Aplica un alternado en todas las secciones (excepto hero)." }),
+    colorA: t({ pt: "Cor 1", es: "Color 1" }),
+    colorB: t({ pt: "Cor 2", es: "Color 2" }),
+    ctaColorLabel: t({ pt: "Cor de botões e destaques", es: "Color de botones y destacados" }),
+    ctaColorHint: t({ pt: "Afeta CTAs, chips e elementos em destaque.", es: "Afecta CTAs, chips y elementos destacados." })
+  },
+  pixels: {
+    title: t({ pt: "Pixel de rastreamento", es: "Pixel de seguimiento" }),
+    helper: t({
+      pt: "Escolha um pixel cadastrado em Integrações e quais eventos deseja enviar.",
+      es: "Elige un pixel registrado en Integraciones y qué eventos deseas enviar."
+    }),
+    planHint: t({ pt: "Disponível a partir do plano Essencial.", es: "Disponible a partir del plan Esencial." }),
+    lockedHint: t({
+      pt: "Adicione pixels na página Integrações (plano Essencial ou superior).",
+      es: "Agrega pixels en la página Integraciones (plan Esencial o superior)."
+    }),
+    metaLabel: t({ pt: "Pixel Meta", es: "Pixel Meta" }),
+    metaPlaceholder: t({ pt: "Sem pixel Meta", es: "Sin pixel Meta" }),
+    metaEmptyHint: t({ pt: "Cadastre uma conexão Meta em Integrações.", es: "Registra una conexión Meta en Integraciones." }),
+    googleLabel: t({ pt: "Pixel Google", es: "Pixel Google" }),
+    googlePlaceholder: t({ pt: "Sem pixel Google", es: "Sin pixel Google" }),
+    googleEmptyHint: t({ pt: "Cadastre uma conexão GA4 em Integrações.", es: "Registra una conexión GA4 en Integraciones." }),
+    eventsTitle: t({ pt: "Eventos a enviar", es: "Eventos a enviar" }),
+    eventPageView: t({ pt: "Page view (carregamento da página)", es: "Page view (carga de la página)" }),
+    eventCtaClicks: t({ pt: "Cliques em CTAs", es: "Clics en CTAs" })
+  },
+  validation: {
+    slugRequired: t({ pt: "Defina um slug válido para a página.", es: "Define un slug válido para la página." })
+  },
+  leadSection: {
+    badge: t({ pt: "Captação de leads", es: "Captación de leads" }),
+    title: t({ pt: "Formulário", es: "Formulario" }),
+    description: t({
+      pt: "Escolha um formulário de captação para abrir antes do visitante acessar a página.",
+      es: "Elige un formulario de captación para abrir antes de o visitante acessar la página."
+    }),
+    manageButton: t({ pt: "Gerenciar formulários", es: "Gestionar formularios" }),
+    loading: t({ pt: "Carregando formulários cadastrados...", es: "Cargando formularios registrados..." }),
+    empty: t({ pt: "Nenhum formulário disponível. Clique em", es: "No hay formularios disponibles. Haz clic en" }),
+    emptyAction: t({ pt: "“Gerenciar formulários” para criar.", es: "“Gestionar formularios” para crear uno." }),
+    selectLabel: t({ pt: "Escolha um formulário", es: "Elige un formulario" }),
+    selectPlaceholder: t({ pt: "Nenhum formulário selecionado", es: "Ningún formulario seleccionado" }),
+    selectHint: t({ pt: "Selecione o formulário e clique em “Ver prévia” para abrir o modal real.", es: "Selecciona el formulario y haz clic en “Ver previa” para abrir el modal real." }),
+    previewButton: t({ pt: "Ver prévia", es: "Ver previa" }),
+    optionalToggle: t({ pt: "Permitir fechar sem enviar", es: "Permitir cerrar sin enviar" }),
+    optionalActive: t({ pt: "Formulário opcional ativo para esta página.", es: "Formulario opcional activo para esta página." }),
+    requiredActive: t({ pt: "Formulário obrigatório ativo para esta página.", es: "Formulario obligatorio activo para esta página." }),
+    blockedTitle: t({ pt: "Captação de leads bloqueada", es: "Captación de leads bloqueada" }),
+    blockedDescription: t({
+      pt: "Este recurso está disponível a partir do plano Agência. Atualize seu plano para ativar o formulário obrigatório de leads.",
+      es: "Este recurso está disponible a partir del plan Agencia. Actualiza tu plan para activar el formulario obligatorio de leads."
+    })
+  },
+  preview: {
+    title: t({ pt: "Preview visual", es: "Preview visual" }),
+    helper: t({ pt: "Clique no botão do topo para aplicar as alterações do formulário.", es: "Haz clic en el botón superior para aplicar los cambios del formulario." }),
+    mobileHint: t({ pt: "Toque sobre as seções para editar.", es: "Toca sobre las secciones para editar." }),
+    desktopLabel: t({ pt: "Desktop", es: "Desktop" }),
+    mobileLabel: t({ pt: "Mobile", es: "Mobile" }),
+    emptyState: t({
+      pt: "Nenhuma seção adicionada ainda. Use os botões acima para criar o conteúdo.",
+      es: "Aún no hay secciones añadidas. Usa los botones de arriba para crear el contenido."
+    })
+  },
+  overlay: {
+    edit: t({ pt: "Editar seção", es: "Editar sección" }),
+    moveUp: t({ pt: "Subir", es: "Subir" }),
+    moveDown: t({ pt: "Descer", es: "Bajar" }),
+    duplicate: t({ pt: "Duplicar", es: "Duplicar" }),
+    delete: t({ pt: "Excluir", es: "Eliminar" }),
+    footerLocked: t({
+      pt: "Rodapé obrigatório no plano gratuito. Não é possível editar, mover ou remover esta seção.",
+      es: "Rodapié obligatorio en el plan gratuito. No es posible editar, mover o remover esta sección."
+    }),
+    disabledSection: t({
+      pt: "Seção desativada. Clique em editar para ajustar e ativar novamente.",
+      es: "Sección desactivada. Haz clic en editar para ajustarla y activarla nuevamente."
+    }),
+    addBelow: t({ pt: "Adicionar seção abaixo", es: "Agregar sección abajo" })
+  },
+  sectionDialog: {
+    eyebrow: t({ pt: "Editar seção", es: "Editar sección" }),
+    cancel: t({ pt: "Cancelar", es: "Cancelar" }),
+    save: t({ pt: "Salvar seção", es: "Guardar sección" })
+  },
+  feedback: {
+    loginAgain: t({ pt: "Faça login novamente para editar.", es: "Vuelve a iniciar sesión para editar." }),
+    sessionExpired: t({ pt: "Sessão expirada. Faça login novamente.", es: "Sesión expirada. Inicia sesión nuevamente." }),
+    pageLoadError: t({ pt: "Não foi possível carregar a página.", es: "No fue posible cargar la página." }),
+    configSaved: t({ pt: "Configuração salva!", es: "¡Configuración guardada!" }),
+    configSavedToast: t({ pt: "Configuração salva", es: "Configuración guardada" }),
+    configSaveError: t({ pt: "Erro ao salvar configuração.", es: "Error al guardar la configuración." }),
+    publishSuccess: t({ pt: "Página publicada!", es: "¡Página publicada!" }),
+    publishError: t({
+      pt: "Erro ao publicar. Verifique se está logado e tem acesso à agência.",
+      es: "Error al publicar. Verifica si estás logueado y tienes acceso a la agencia."
+    }),
+    unpublishSuccess: t({ pt: "Página despublicada.", es: "Página despublicada." }),
+    unpublishError: t({ pt: "Erro ao despublicar. Tente novamente.", es: "Error al despublicar. Intenta nuevamente." }),
+    imageUploading: t({
+      pt: "A imagem ainda está sendo enviada. Aguarde antes de salvar.",
+      es: "La imagen aún se está enviando. Espera antes de guardar."
+    }),
+    templateLoginRequired: t({ pt: "Faça login para salvar um template.", es: "Inicia sesión para guardar una plantilla." }),
+    templateUnavailable: t({ pt: "Recurso indisponível no momento.", es: "Recurso no disponible en este momento." }),
+    templateSaved: t({
+      pt: "Template salvo! Novas páginas iniciarão com essa estrutura.",
+      es: "¡Plantilla guardada! Las nuevas páginas iniciarán con esta estructura."
+    }),
+    templateSavedToast: t({ pt: "Template salvo com sucesso", es: "Plantilla guardada con éxito" }),
+    templateSaveError: t({ pt: "Não foi possível salvar o template.", es: "No fue posible guardar la plantilla." })
+  }
+};
 
 const message = ref("");
 const errorMessage = ref("");
@@ -876,7 +1057,7 @@ const errorMessage = ref("");
 const ensureValidPageSlug = () => {
   const normalized = normalizeSlugInput(pageSlug.value);
   if (!normalized) {
-    const slugError = "Defina um slug válido para a página.";
+    const slugError = viewCopy.validation.slugRequired;
     errorMessage.value = slugError;
     showSnackbar(slugError);
     return false;
@@ -1076,21 +1257,68 @@ const sectionTypes: SectionType[] = [
 ];
 const sectionLabels = defaultSectionLabels;
 const sectionDescriptions: Partial<Record<SectionType, string>> = {
-  hero: "Bloco inicial com destaque visual, título, subtítulo e CTA principal.",
-  banner_card: "Banner em card com imagem de fundo, gradiente e CTA destacado.",
-  photo: "Uma única imagem em destaque. Escolha o layout card ou largura total.",
-  biography: "Imagem em largura total com título sobreposto e texto descritivo.",
-  prices: "Tabela com planos, valores e diferenciais para cada oferta.",
-  itinerary: "Sequência de etapas/benefícios para explicar seu serviço ou roteiro.",
-  faq: "Perguntas e respostas para antecipar dúvidas frequentes.",
-  testimonials: "Carrossel ou lista com depoimentos de clientes.",
-  featured_video: "Destaque um video com titulo, subtitulo e CTA centralizado.",
-  cta: "Chamada final impulsionando o lead para a ação desejada.",
-  story: "Bloco de storytelling: Use para contar sua história,detalhamento do roteiro, e muito mais.",
-  reasons: "Liste motivos, benefícios e serviços para reforçar a decisão.",
-  countdown: "Cria urgência com contador regressivo para promoções ou eventos.",
-  agency_footer: "Cartão institucional com contatos, redes sociais e mapa da agência."
+  hero: t({
+    pt: "Bloco inicial com destaque visual, título, subtítulo e CTA principal.",
+    es: "Bloque inicial con destaque visual, título, subtítulo y CTA principal."
+  }),
+  banner_card: t({
+    pt: "Banner em card com imagem de fundo, gradiente e CTA destacado.",
+    es: "Banner en formato card con imagen de fondo, gradiente y CTA destacado."
+  }),
+  photo: t({
+    pt: "Uma única imagem em destaque. Escolha o layout card ou largura total.",
+    es: "Una única imagen destacada. Elige entre layout card o ancho completo."
+  }),
+  biography: t({
+    pt: "Imagem em largura total com título sobreposto e texto descritivo.",
+    es: "Imagen a ancho completo con título superpuesto y texto descriptivo."
+  }),
+  prices: t({
+    pt: "Tabela com planos, valores e diferenciais para cada oferta.",
+    es: "Tabla con planes, precios y diferenciales para cada oferta."
+  }),
+  itinerary: t({
+    pt: "Sequência de etapas/benefícios para explicar seu serviço ou roteiro.",
+    es: "Secuencia de etapas/beneficios para explicar tu servicio o itinerario."
+  }),
+  faq: t({
+    pt: "Perguntas e respostas para antecipar dúvidas frequentes.",
+    es: "Preguntas y respuestas para anticipar dudas frecuentes."
+  }),
+  testimonials: t({
+    pt: "Carrossel ou lista com depoimentos de clientes.",
+    es: "Carrusel o lista con testimonios de clientes."
+  }),
+  featured_video: t({
+    pt: "Destaque um vídeo com título, subtítulo e CTA centralizado.",
+    es: "Destaca un video con título, subtítulo y CTA centrado."
+  }),
+  cta: t({
+    pt: "Chamada final impulsionando o lead para a ação desejada.",
+    es: "Llamado final que impulsa al lead hacia la acción deseada."
+  }),
+  story: t({
+    pt: "Bloco de storytelling para contar sua história, bastidores ou roteiro.",
+    es: "Bloque de storytelling para contar tu historia, bastidores o itinerario."
+  }),
+  reasons: t({
+    pt: "Liste motivos, benefícios e serviços para reforçar a decisão.",
+    es: "Lista motivos, beneficios y servicios para reforzar la decisión."
+  }),
+  countdown: t({
+    pt: "Cria urgência com contador regressivo para promoções ou eventos.",
+    es: "Crea urgencia con un contador regresivo para promociones o eventos."
+  }),
+  agency_footer: t({
+    pt: "Cartão institucional com contatos, redes sociais e mapa da agência.",
+    es: "Tarjeta institucional con contactos, redes sociales y mapa de la agencia."
+  })
 };
+const catalogFallbackDescription = t({
+  pt: "Bloco personalizável para compor sua página.",
+  es: "Bloque personalizable para componer tu página."
+});
+
 const sectionThumbnails: Partial<Record<SectionType, string>> = {
   hero: heroThumb,
   banner_card: bannerCardThumb,
@@ -1390,7 +1618,10 @@ const applyAutomaticStoryLayout = (story: StorySection) => {
   }
 };
 
-const storyMediaErrorText = "Adicione ao menos uma imagem ou video na secao Story antes de salvar.";
+const storyMediaErrorText = t({
+  pt: "Adicione ao menos uma imagem ou vídeo na seção Story antes de salvar.",
+  es: "Agrega al menos una imagen o video en la sección Story antes de guardar."
+});
 const hasStoryImage = (section: StorySection) => countStoryImages(section.images) > 0;
 const hasStoryVideo = (section: StorySection) => countStoryVideos(section.videoUrls, section.videoUrl) > 0;
 const validateSection = (section: PageSection | null): string | null => {
@@ -1960,14 +2191,18 @@ function defaultSection(type: SectionType): PageSection {
       type: "biography",
       enabled: true,
       fullWidth: true,
-      title: "BIOGRAFIA",
-      text:
-        "Use esta seção para compartilhar sua trajetória, conquistas e bastidores. Histórias reais criam conexão com o visitante e reforçam sua autoridade no assunto.",
+      title: { pt: "BIOGRAFIA", es: "BIOGRAFÍA" },
+      text: {
+        pt: "Use esta se��o para compartilhar sua trajet�ria, conquistas e bastidores. Hist�rias reais criam conex�o com o visitante e refor�am sua autoridade no assunto.",
+        es: "Usa esta secci�n para compartir tu trayectoria, logros y bastidores. Las historias reales generan conexi�n y refuerzan tu autoridad."
+      },
       image:
         "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1600&q=80",
       overlayOpacity: 0.45,
       titleColor: "#ffffff",
-      textColor: "#0f172a"
+      textColor: "#0f172a",
+      titleFontSize: 72,
+      textFontSize: 18
     } as BiographySection);
   }
 
@@ -2234,7 +2469,7 @@ const hydrateFromConfig = (config?: PageConfig | string | null) => {
 const defaultPageSlugPattern = /^roteiro-\d+$/i;
 const fetchPage = async () => {
   if (!auth.token) {
-    errorMessage.value = "Faça login novamente para editar.";
+    errorMessage.value = viewCopy.feedback.loginAgain;
     return;
   }
 
@@ -2242,7 +2477,7 @@ const fetchPage = async () => {
     try {
       await auth.fetchProfile();
     } catch (err) {
-      errorMessage.value = "Sessão expirada. Faça login novamente.";
+      errorMessage.value = viewCopy.feedback.sessionExpired;
       return;
     }
   }
@@ -2265,13 +2500,13 @@ const fetchPage = async () => {
     message.value = "";
   } catch (err) {
     console.error(err);
-    errorMessage.value = "Não foi possível carregar a página.";
+    errorMessage.value = viewCopy.feedback.pageLoadError;
   }
 };
 
 const saveConfig = async (): Promise<boolean> => {
   if (!auth.token) {
-    errorMessage.value = "Sess�o expirada. Fa�a login novamente.";
+    errorMessage.value = viewCopy.feedback.sessionExpired;
     return false;
   }
 
@@ -2294,8 +2529,8 @@ const saveConfig = async (): Promise<boolean> => {
     const configPayload = buildConfig();
     await api.put(`/pages/${pageId}/config`, { config: configPayload });
 
-    message.value = "Configuração salva!";
-    showSnackbar("Configuração salva");
+    message.value = viewCopy.feedback.configSaved;
+    showSnackbar(viewCopy.feedback.configSavedToast);
     syncSavedSnapshot();
     return true;
   } catch (err) {
@@ -2304,7 +2539,7 @@ const saveConfig = async (): Promise<boolean> => {
     if (detail) {
       limitModal.value = { open: true, message: String(detail) };
     } else {
-      errorMessage.value = "Erro ao salvar configuração.";
+      errorMessage.value = viewCopy.feedback.configSaveError;
     }
     return false;
   }
@@ -2312,7 +2547,7 @@ const saveConfig = async (): Promise<boolean> => {
 
 const publishPage = async () => {
   if (!auth.token) {
-    errorMessage.value = "Sessão expirada. Faça login novamente.";
+    errorMessage.value = viewCopy.feedback.sessionExpired;
     return;
   }
 
@@ -2325,7 +2560,7 @@ const publishPage = async () => {
     const res = await api.post(`/pages/${pageId}/publish`, { publish: true });
     page.value = res.data;
 
-    message.value = "Página publicada!";
+    message.value = viewCopy.feedback.publishSuccess;
     successModal.value.open = true;
   } catch (err) {
     console.error(err);
@@ -2334,14 +2569,14 @@ const publishPage = async () => {
     if (detail) {
       limitModal.value = { open: true, message: String(detail) };
     } else {
-      errorMessage.value = "Erro ao publicar. Verifique se esta¡ logado e tem acesso a agência.";
+      errorMessage.value = viewCopy.feedback.publishError;
     }
   }
   };
 
 const unpublishPage = async () => {
   if (!auth.token) {
-    errorMessage.value = "Sessão expirada. Faça login novamente.";
+    errorMessage.value = viewCopy.feedback.sessionExpired;
     return;
   }
 
@@ -2355,14 +2590,14 @@ const unpublishPage = async () => {
   try {
     const res = await api.post(`/pages/${pageId}/publish`, { publish: false });
     page.value = res.data;
-    message.value = "Página despublicada.";
+    message.value = viewCopy.feedback.unpublishSuccess;
   } catch (err) {
     console.error(err);
     const detail = (err as any)?.response?.data?.detail;
     if (detail) {
       errorMessage.value = String(detail);
     } else {
-      errorMessage.value = "Erro ao despublicar. Tente novamente.";
+      errorMessage.value = viewCopy.feedback.unpublishError;
     }
   }
 };
@@ -2509,7 +2744,7 @@ const refreshPreview = (immediate = false) => {
 const saveEditingSection = async () => {
   if (editingSectionIndex.value === null || !editingSectionDraft.value) return;
   if (hasPendingImageUploads.value) {
-    showSnackbar("A imagem ainda está sendo enviada. Aguarde antes de salvar.");
+    showSnackbar(viewCopy.feedback.imageUploading);
     return;
   }
   const validationError = validateSection(editingSectionDraft.value);
@@ -2604,7 +2839,7 @@ const showSnackbar = (text: string) => {
 const saveTemplate = () => {
   // se nÃ£o logou
   if (!auth.user) {
-    errorMessage.value = "Faça login para salvar um template.";
+    errorMessage.value = viewCopy.feedback.templateLoginRequired;
     return;
   }
 
@@ -2613,14 +2848,14 @@ const saveTemplate = () => {
   if (plan === "free") {
     limitModal.value = {
       open: true,
-      message: "Salvar template esta¡ disponí­vel apenas a partir do plano Essencial. Atualize seu plano para liberar."
+      message: viewCopy.limitModal.templatePlan
     };
     return;
   }
 
   const key = templateKey.value;
   if (!key) {
-    errorMessage.value = "Faça login para salvar um template.";
+    errorMessage.value = viewCopy.feedback.templateLoginRequired;
     return;
   }
 
@@ -2633,16 +2868,16 @@ const saveTemplate = () => {
 
     const storage = getBrowserStorage();
     if (!storage) {
-      errorMessage.value = "Recurso indisponivel no momento.";
+      errorMessage.value = viewCopy.feedback.templateUnavailable;
       return;
     }
 
     storage.setItem(key, JSON.stringify(payload));
-    message.value = "Template salvo! Novas páginas iniciarão com essa estrutura.";
-    showSnackbar("Template salvo com sucesso");
+    message.value = viewCopy.feedback.templateSaved;
+    showSnackbar(viewCopy.feedback.templateSavedToast);
   } catch (err) {
     console.error(err);
-    errorMessage.value = "Não foi possí­vel salvar o template.";
+    errorMessage.value = viewCopy.feedback.templateSaveError;
   }
 };
 
@@ -2724,7 +2959,7 @@ onMounted(async () => {
   sectionCatalog.value = sectionTypes.map(type => ({
     type,
     label: sectionLabels[type] || type,
-    description: sectionDescriptions[type] || "Bloco personalizável para compor sua página.",
+    description: sectionDescriptions[type] || catalogFallbackDescription,
     accent: sectionAccents[type] || "from-slate-100 to-white",
     previewSection: buildCatalogPreview(type),
     thumbnail: sectionThumbnails[type]

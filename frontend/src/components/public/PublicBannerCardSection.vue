@@ -8,12 +8,12 @@
         </div>
         <div class="banner-text relative z-10 flex min-h-full flex-col justify-center gap-4 p-8 text-left md:p-12" :style="{ color: textColor }">
           <p
-            v-if="section.headingLabel"
+            v-if="headingLabel"
             class="text-xs font-semibold uppercase tracking-[0.35em] text-white/80"
           >
-            {{ section.headingLabel }}
+            {{ headingLabel }}
           </p>
-          <h2 class="banner-title text-3xl font-bold leading-tight md:text-4xl" :style="{ color: titleColor }">{{ section.title }}</h2>
+          <h2 class="banner-title text-3xl font-bold leading-tight md:text-4xl" :style="{ color: titleColor }">{{ bannerTitle }}</h2>
           <div class="mt-2">
             <a
               v-if="ctaHasTarget"
@@ -26,7 +26,7 @@
               class="inline-flex min-w-[180px] items-center justify-center rounded-full px-6 py-3 text-sm font-semibold shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl hero-cta-shimmer hero-cta-desktop-hover"
               :style="{ background: ctaColor, color: buttonTextColor }"
             >
-              {{ section.ctaLabel || "Falar agora" }}
+              {{ ctaLabel }}
             </a>
           </div>
         </div>
@@ -41,8 +41,11 @@ import { resolveMediaUrl } from "../../utils/media";
 import { isWhatsappLink } from "../../utils/links";
 import { getReadableTextColor } from "../../utils/colorContrast";
 import type { BannerCardSection } from "../../types/page";
+import { createLocalizer, getCurrentLanguage } from "../../utils/i18n";
 
 const props = defineProps<{ section: BannerCardSection; previewDevice?: "desktop" | "mobile" }>();
+const bannerCopy = { cta: { pt: "Falar agora", es: "Hablar ahora" } } as const;
+const localize = createLocalizer(getCurrentLanguage());
 
 const fallbackChannels = { r: 5, g: 6, b: 15 };
 
@@ -108,6 +111,11 @@ const gradientOverlayStyle = computed(() => {
   };
 });
 
+const headingLabel = computed(() => {
+  const text = localize(props.section.headingLabel);
+  return text.trim();
+});
+const bannerTitle = computed(() => localize(props.section.title));
 const cardSurfaceStyle = computed(() => ({
   borderColor: props.section.cardBorderColor || "rgba(255,255,255,0.25)",
   background: props.section.cardBackground || "rgba(5,6,15,0.85)"
@@ -129,6 +137,10 @@ const buttonTextColor = computed(() => getReadableTextColor(ctaColor.value));
 const ctaTrackType = computed(() =>
   ctaIsScroll.value ? "cta" : isWhatsappLink(props.section.ctaLink || undefined) ? "whatsapp" : "cta"
 );
+const ctaLabel = computed(() => {
+  const override = localize(props.section.ctaLabel).trim();
+  return override || localize(bannerCopy.cta);
+});
 </script>
 
 <style scoped>

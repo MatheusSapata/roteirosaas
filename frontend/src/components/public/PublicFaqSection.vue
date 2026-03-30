@@ -7,18 +7,18 @@
             <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="accent" />
           </div>
           <h1 class="mt-3 text-3xl font-bold md:text-4xl" :style="{ color: primaryText }">{{ title }}</h1>
-          <p class="text-sm" :style="{ color: mutedText }">{{ subtitle }}</p>
+          <p v-if="subtitle" class="text-sm" :style="{ color: mutedText }">{{ subtitle }}</p>
         </div>
 
         <!-- Accordion layout -->
         <div v-if="section.layout === 'accordion' || !section.layout" class="space-y-3">
           <details
-            v-for="(item, index) in section.items"
+            v-for="(item, index) in section.items || []"
             :key="index"
             class="group rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
             :style="{ borderColor: accentSoft }"
           >
-            <summary class="cursor-pointer text-sm font-semibold text-slate-900">{{ item.question }}</summary>
+            <summary class="cursor-pointer text-sm font-semibold text-slate-900">{{ questionText(item) }}</summary>
             <div class="mt-2 text-sm leading-relaxed text-slate-600 faq-answer" v-html="formatAnswer(item.answer)"></div>
           </details>
         </div>
@@ -32,7 +32,7 @@
               class="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm"
               :style="{ borderColor: accentSoft }"
             >
-              <p class="text-sm font-semibold text-slate-900">{{ item.question }}</p>
+              <p class="text-sm font-semibold text-slate-900">{{ questionText(item) }}</p>
               <div class="text-sm leading-relaxed text-slate-600 faq-answer" v-html="formatAnswer(item.answer)"></div>
             </div>
           </div>
@@ -43,7 +43,7 @@
               class="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm"
               :style="{ borderColor: accentSoft }"
             >
-              <p class="text-sm font-semibold text-slate-900">{{ item.question }}</p>
+              <p class="text-sm font-semibold text-slate-900">{{ questionText(item) }}</p>
               <div class="text-sm leading-relaxed text-slate-600 faq-answer" v-html="formatAnswer(item.answer)"></div>
             </div>
           </div>
@@ -52,12 +52,12 @@
         <!-- Compact layout -->
         <div v-else class="grid gap-3 md:grid-cols-2">
           <div
-            v-for="(item, index) in section.items"
+            v-for="(item, index) in section.items || []"
             :key="index"
             class="rounded-xl border border-slate-100 bg-white/90 p-3 shadow-sm"
             :style="{ borderColor: accentSoft }"
           >
-            <p class="text-sm font-semibold text-slate-900">{{ item.question }}</p>
+            <p class="text-sm font-semibold text-slate-900">{{ questionText(item) }}</p>
             <div class="text-sm leading-relaxed text-slate-600 faq-answer" v-html="formatAnswer(item.answer)"></div>
           </div>
         </div>
@@ -68,18 +68,21 @@
 
 <script setup lang="ts">
 import { computed, inject, isRef } from "vue";
-import type { FaqSection } from "../../types/page";
+import type { FaqItem, FaqSection } from "../../types/page";
 import SectionHeadingChip from "./SectionHeadingChip.vue";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
 import { deriveTextPalette } from "../../utils/colorContrast";
 import { sanitizeHtml } from "../../utils/sanitizeHtml";
+import { createLocalizer, getCurrentLanguage } from "../../utils/i18n";
 
 const props = defineProps<{ section: FaqSection }>();
 const headingDefaults = getSectionHeadingDefaults("faq");
-const defaultTitle = "Perguntas frequentes";
-const defaultSubtitle = "As dúvidas mais comuns sobre o roteiro.";
+const defaultTitle = { pt: "Perguntas frequentes", es: "Preguntas frecuentes" };
+const defaultSubtitle = { pt: "As dúvidas mais comuns sobre o roteiro.", es: "Las dudas más comunes sobre el itinerario." };
 const branding = inject(PUBLIC_BRANDING_KEY, null);
+const currentLanguage = getCurrentLanguage();
+const localize = createLocalizer(currentLanguage);
 
 const brandingPrimary = computed(() => {
   if (!branding) return "";
@@ -119,18 +122,30 @@ const toRgba = (hex: string, alpha: number) => {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
 const accentSoft = computed(() => toRgba(accent.value, 0.12));
-const headingLabel = computed(() => props.section.headingLabel ?? headingDefaults.label);
+const headingLabel = computed(() => {
+  const override = localize(props.section.headingLabel);
+  if (override.trim().length) return override;
+  const fallback = headingDefaults.label;
+  return typeof fallback === "string" ? fallback : localize(fallback);
+});
 const headingStyle = computed(() => props.section.headingLabelStyle || headingDefaults.style);
-const title = computed(() => (props.section.title && props.section.title.trim().length ? props.section.title : defaultTitle));
-const subtitle = computed(() => (props.section.subtitle && props.section.subtitle.trim().length ? props.section.subtitle : defaultSubtitle));
+const title = computed(() => {
+  const text = localize(props.section.title);
+  return text.trim().length ? text : localize(defaultTitle);
+});
+const subtitle = computed(() => {
+  const text = localize(props.section.subtitle);
+  return text.trim().length ? text : localize(defaultSubtitle);
+});
 const textPalette = computed(() => deriveTextPalette(props.section.textColor));
 const primaryText = computed(() => textPalette.value.primary);
 const mutedText = computed(() => textPalette.value.muted);
 
-const formatAnswer = (value?: string) => {
-  const sanitized = sanitizeHtml(value);
+const formatAnswer = (value?: any) => {
+  const sanitized = sanitizeHtml(localize(value));
   return sanitized || "";
 };
+const questionText = (item: FaqItem) => localize(item.question);
 </script>
 
 

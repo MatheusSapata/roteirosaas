@@ -20,7 +20,7 @@
                 v-else
                 class="rounded-full bg-white/15 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-white"
               >
-                {{ branding.agency_name || "Sua marca" }}
+                {{ branding.agency_name || fallbackBrandName }}
               </span>
             </div>
 
@@ -48,7 +48,7 @@
           :style="{ background: mobileContentBg }"
         >
           <div class="space-y-0.5 md:mt-0">
-            <h1 class="text-[32px] font-bold leading-tight" :class="animationClasses(2)">{{ section.title }}</h1>
+            <h1 class="text-[32px] font-bold leading-tight" :class="animationClasses(2)">{{ heroTitle }}</h1>
             <div
               v-if="subtitleHtml"
               class="text-sm text-white/85 leading-tight"
@@ -84,7 +84,7 @@
               :class="['inline-flex w-full items-center justify-center rounded-full px-5 py-3 text-sm font-semibold shadow-xl shadow-black/40 transition hover:-translate-y-0.5 hover:shadow-2xl', ctaShimmerClass]"
               :style="{ background: ctaColor, color: ctaTextColor }"
             >
-              {{ section.ctaLabel || "Quero falar agora" }}
+              {{ ctaLabel }}
             </a>
           </div>
         </div>
@@ -127,7 +127,7 @@
                   :style="logoImageStyle"
                 />
                 <div v-else class="rounded-full bg-white/20 px-4 py-1 text-sm font-semibold uppercase tracking-[0.25em]">
-                  {{ branding.agency_name || "Sua marca" }}
+                  {{ branding.agency_name || fallbackBrandName }}
                 </div>
               </div>
 
@@ -135,7 +135,7 @@
                 class="text-3xl font-bold leading-tight md:text-5xl"
                 :class="[isMobilePreview ? '!text-3xl' : '', ...animationClasses(2)]"
               >
-                {{ section.title }}
+                {{ heroTitle }}
               </h1>
 
               <div
@@ -175,7 +175,7 @@
                   :class="['inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl', ctaShimmerClass, desktopCtaHoverClass]"
                   :style="{ background: ctaColor, color: ctaTextColor }"
                 >
-                  {{ section.ctaLabel || "Quero falar agora" }}
+                  {{ ctaLabel }}
                 </a>
               </div>
             </div>
@@ -236,9 +236,18 @@ import { sanitizeHtml } from "../../utils/sanitizeHtml";
 import { normalizeYoutubeEmbedUrl } from "../../utils/video";
 import { getReadableTextColor } from "../../utils/colorContrast";
 import type { HeroSection } from "../../types/page";
+import { createLocalizer, getCurrentLanguage } from "../../utils/i18n";
 
 const props = defineProps<{ section: HeroSection; branding: Record<string, any>; previewDevice?: "desktop" | "mobile" }>();
-const subtitleHtml = computed(() => sanitizeHtml(props.section.subtitle));
+const heroCopy = {
+  defaultCta: { pt: "Quero falar agora", es: "Quiero hablar ahora" },
+  fallbackBrand: { pt: "Sua marca", es: "Tu marca" }
+} as const;
+const currentLanguage = getCurrentLanguage();
+const localize = createLocalizer(currentLanguage);
+
+const heroTitle = computed(() => localize(props.section.title));
+const subtitleHtml = computed(() => sanitizeHtml(localize(props.section.subtitle)));
 
 const layout = computed(() => "immersive");
 const heroBackgroundImage = computed(() => resolveMediaUrl(props.section.backgroundImage));
@@ -262,6 +271,7 @@ const ctaHref = computed(() =>
 );
 const ctaIsScroll = computed(() => ctaMode.value === "section" && !!props.section.ctaSectionId);
 const ctaTrackType = computed(() => (ctaMode.value === "section" ? "cta" : trackType(props.section.ctaLink)));
+const ctaLabel = computed(() => localize(props.section.ctaLabel) || localize(heroCopy.defaultCta));
 const isMobilePreview = computed(() => props.previewDevice === "mobile");
 const mobileWrapperClasses = computed(() => ["relative block md:hidden px-0 pt-0 -mt-8", isMobilePreview.value ? "!block" : ""]);
 const desktopWrapperClasses = computed(() => ["relative hidden md:block", isMobilePreview.value ? "!hidden" : ""]);
@@ -373,7 +383,12 @@ const immersiveGradient = computed(() => {
   };
 });
 
-const chipsToShow = computed(() => props.section.chips || []);
+const chipsToShow = computed(() =>
+  (props.section.chips || [])
+    .map(chip => localize(chip))
+    .filter(chip => typeof chip === "string" && chip.trim().length)
+);
+const fallbackBrandName = computed(() => localize(heroCopy.fallbackBrand));
 const trackType = (link?: string | null) => (isWhatsappLink(link || undefined) ? "whatsapp" : "cta");
 const animateContent = computed(() => true);
 const HERO_ANIMATION_MS = 1000;

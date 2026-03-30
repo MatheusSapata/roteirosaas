@@ -6,8 +6,8 @@
           <div class="flex justify-center">
             <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="accent" />
           </div>
-            <h1 class="mt-3 text-2xl font-bold" :style="{ color: primaryText }">Explore o destino</h1>
-          <p class="text-sm" :style="{ color: mutedText }">Imagens reais para sentir o clima da viagem.</p>
+            <h1 class="mt-3 text-2xl font-bold" :style="{ color: primaryText }">{{ galleryTitle }}</h1>
+          <p class="text-sm" :style="{ color: mutedText }">{{ gallerySubtitle }}</p>
         </div>
 
         <!-- Layout mosaico -->
@@ -63,7 +63,7 @@
             </div>
           </div>
           <p class="text-xs" :style="{ color: mutedText }">
-            Passe para o lado para ver mais fotos
+            {{ galleryHint }}
           </p>
         </div>
       </div>
@@ -78,9 +78,17 @@ import type { GallerySection } from "../../types/page";
 import SectionHeadingChip from "./SectionHeadingChip.vue";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import { deriveTextPalette } from "../../utils/colorContrast";
+import { createLocalizer, getCurrentLanguage } from "../../utils/i18n";
 
 const props = defineProps<{ section: GallerySection }>();
 const headingDefaults = getSectionHeadingDefaults("gallery");
+const localize = createLocalizer(getCurrentLanguage());
+const galleryCopy = {
+  headingFallback: { pt: headingDefaults.label || "Galeria", es: "Galería" },
+  title: { pt: "Explore o destino", es: "Explora el destino" },
+  subtitle: { pt: "Imagens reais para sentir o clima da viagem.", es: "Imágenes reales para sentir el clima del viaje." },
+  hint: { pt: "Passe para o lado para ver mais fotos", es: "Desliza para ver más fotos" }
+} as const;
 
 const accent = computed(() => props.section.backgroundColor || "#41ce5f");
 const toRgba = (hex: string, alpha: number) => {
@@ -94,7 +102,11 @@ const toRgba = (hex: string, alpha: number) => {
 };
 const accentSoft = computed(() => toRgba(accent.value, 0.1));
 const accentBorder = computed(() => toRgba(accent.value, 0.25));
-const headingLabel = computed(() => props.section.headingLabel ?? headingDefaults.label);
+const headingLabel = computed(() => {
+  const custom = localize(props.section.headingLabel).trim();
+  if (custom.length) return custom;
+  return localize(galleryCopy.headingFallback);
+});
 const headingStyle = computed(() => props.section.headingLabelStyle || headingDefaults.style);
 const resolvedImages = computed(() =>
   (props.section.images || [])
@@ -104,5 +116,8 @@ const resolvedImages = computed(() =>
 const textPalette = computed(() => deriveTextPalette(props.section.textColor));
 const primaryText = computed(() => textPalette.value.primary);
 const mutedText = computed(() => textPalette.value.muted);
+const galleryTitle = computed(() => localize(galleryCopy.title));
+const gallerySubtitle = computed(() => localize(galleryCopy.subtitle));
+const galleryHint = computed(() => localize(galleryCopy.hint));
 </script>
 
