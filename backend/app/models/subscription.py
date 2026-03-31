@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, Numeric, String
 from sqlalchemy.orm import relationship
 
 from app.db.base import Base
@@ -28,6 +28,7 @@ class Subscription(Base):
     failed_attempts = Column(Integer, nullable=False, default=0)
     status = Column(String(50), nullable=False, default="active")
     valid_until = Column(DateTime(timezone=True), nullable=True)
+    mrr_amount = Column(Numeric(12, 2), nullable=False, default=0)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow)
 
