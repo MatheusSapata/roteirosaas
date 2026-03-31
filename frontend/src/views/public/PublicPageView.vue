@@ -17,13 +17,13 @@
       <PublicHeroSection
         v-if="section?.enabled && section.type === 'hero'"
         :section="section"
-        :branding="pageData.branding"
+        v-bind="sectionExtraProps(section, idx)"
       />
       <component
         v-else-if="section?.enabled"
         :is="publicComponents[section.type]"
         :section="section"
-        v-bind="sectionRequiresBranding(section.type) ? { branding: pageData.branding } : {}"
+        v-bind="sectionExtraProps(section, idx)"
       />
     </template>
   </div>
@@ -164,6 +164,35 @@ const publicComponents: Record<SectionType, any> = {
 };
 
 const sectionRequiresBranding = (type?: SectionType) => type === "hero" || type === "agency_footer";
+const findPrevEnabledSection = (index: number) => {
+  for (let i = index - 1; i >= 0; i -= 1) {
+    const candidate = sections.value[i];
+    if (candidate?.enabled) return candidate;
+  }
+  return null;
+};
+
+const findNextEnabledSection = (index: number) => {
+  for (let i = index + 1; i < sections.value.length; i += 1) {
+    const candidate = sections.value[i];
+    if (candidate?.enabled) return candidate;
+  }
+  return null;
+};
+
+const sectionExtraProps = (section: PageSection, index: number) => {
+  const extra: Record<string, unknown> = {};
+  if (sectionRequiresBranding(section.type)) {
+    extra.branding = pageData.value?.branding;
+  }
+  if (section.type === "banner_card") {
+    const prev = findPrevEnabledSection(index);
+    const next = findNextEnabledSection(index);
+    extra.prevIsBannerCard = prev?.type === "banner_card";
+    extra.nextIsBannerCard = next?.type === "banner_card";
+  }
+  return extra;
+};
 
 let statsClickHandler: ((event: Event) => void) | null = null;
 let scrollAnchorHandler: ((event: Event) => void) | null = null;

@@ -1,5 +1,5 @@
 <template>
-<section class="px-4 py-4" :id="section.anchorId || undefined" :style="{ background: section.backgroundColor || '#020617' }">
+<section :class="sectionPaddingClasses" :id="section.anchorId || undefined" :style="{ background: section.backgroundColor || '#020617' }">
     <div class="mx-auto max-w-5xl">
       <div class="relative flex items-center overflow-hidden rounded-[32px] border shadow-2xl min-h-[250px] md:min-h-[350px]" :style="cardSurfaceStyle">
         <div class="absolute inset-0">
@@ -43,7 +43,12 @@ import { getReadableTextColor } from "../../utils/colorContrast";
 import type { BannerCardSection } from "../../types/page";
 import { createLocalizer, getCurrentLanguage } from "../../utils/i18n";
 
-const props = defineProps<{ section: BannerCardSection; previewDevice?: "desktop" | "mobile" }>();
+const props = defineProps<{
+  section: BannerCardSection;
+  previewDevice?: "desktop" | "mobile";
+  prevIsBannerCard?: boolean;
+  nextIsBannerCard?: boolean;
+}>();
 const bannerCopy = { cta: { pt: "Falar agora", es: "Hablar ahora" } } as const;
 const localize = createLocalizer(getCurrentLanguage());
 
@@ -110,6 +115,11 @@ const gradientOverlayStyle = computed(() => {
     background: `linear-gradient(120deg, ${base} 0%, ${mid} 45%, ${tail} 100%)`
   };
 });
+const sectionPaddingClasses = computed(() => [
+  "px-4",
+  props.prevIsBannerCard ? "pt-2" : "pt-8",
+  props.nextIsBannerCard ? "pb-2" : "pb-8"
+]);
 
 const headingLabel = computed(() => {
   const text = localize(props.section.headingLabel);

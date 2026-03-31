@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="w-full space-y-6 px-4 py-8 md:px-8">
     <!-- HEADER -->
     
@@ -38,7 +38,7 @@
           Visao gerencial
         </h1>
         <p :class="['text-sm', premiumMode ? 'text-white/60' : 'text-slate-500']">
-          Resumo de usuarios, planos, validade e MRR.
+          Resumo de usuários, planos, validade e MRR.
         </p>
       </div>
 
@@ -59,7 +59,7 @@
             v-model="customStartDate"
             class="rounded-lg border border-slate-200 px-3 py-1 text-sm text-slate-700"
           />
-          <span class="font-semibold">até</span>
+          <span class="font-semibold">at├®</span>
           <input
             type="date"
             v-model="customEndDate"
@@ -78,17 +78,17 @@
     
       <section class="grid gap-4 md:grid-cols-4">
         <div class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-          <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Usuarios</p>
+          <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Usuários</p>
           <p class="mt-2 text-3xl font-bold text-slate-900">{{ metrics?.total_users ?? "--" }}</p>
           <p class="text-xs text-slate-400">Contas ativas no SaaS.</p>
         </div>
         <div class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-          <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Agencias</p>
+          <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Agências</p>
           <p class="mt-2 text-3xl font-bold text-slate-900">{{ metrics?.total_agencies ?? "--" }}</p>
           <p class="text-xs text-slate-400">Times cadastrados.</p>
         </div>
         <div class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-          <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Paginas totais</p>
+          <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Páginas totais</p>
           <p class="mt-2 text-3xl font-bold text-slate-900">{{ metrics?.total_pages ?? "--" }}</p>
           <p class="text-xs text-slate-400">Inclui rascunhos e publicadas.</p>
         </div>
@@ -127,7 +127,7 @@
         <div class="rounded-2xl bg-white p-6 shadow-md ring-1 ring-slate-100 lg:col-span-2">
           <div class="flex items-center justify-between">
             <div>
-              <h2 class="text-lg font-semibold text-slate-900">Novos usuarios ({{ adminPeriodLabel }})</h2>
+              <h2 class="text-lg font-semibold text-slate-900">Novos usuários ({{ adminPeriodLabel }})</h2>
               <p class="text-sm text-slate-500">Entradas diárias.</p>
             </div>
           </div>
@@ -200,13 +200,13 @@
               class="flex h-64 items-center justify-center rounded-2xl bg-slate-50 text-sm text-slate-500"
               v-else
             >
-              Sem dados no periodo.
+              Sem dados no período.
             </div>
           </div>
         </div>
 
         <div class="rounded-2xl bg-white p-6 shadow-md ring-1 ring-slate-100">
-          <h3 class="text-sm font-semibold text-slate-900">Distribuicao de planos</h3>
+          <h3 class="text-sm font-semibold text-slate-900">Distribuição de planos</h3>
           <ul class="mt-3 space-y-1 text-sm text-slate-600">
             <li v-for="p in metrics?.plans || []" :key="p.plan" class="flex justify-between">
               <span class="capitalize">{{ planLabel(p.plan) }}</span>
@@ -232,7 +232,7 @@
             </p>
           </div>
           <div class="flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-white/70">
-            <p v-if="monitorLastUpdated">Atualizado às {{ monitorLastUpdated }}</p>
+            <p v-if="monitorLastUpdated">Atualizado ás {{ monitorLastUpdated }}</p>
             <button
               type="button"
               class="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 font-semibold text-white transition hover:bg-slate-800 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
@@ -276,7 +276,7 @@
             v-if="onlineSessionsLoading && !onlineSessions.length"
             class="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500 dark:border-white/15 dark:text-white/70"
           >
-            Carregando sessões ativas...
+            Carregando sess├Áes ativas...
           </div>
           <div
             v-else-if="onlineSessionsError"
@@ -288,7 +288,7 @@
             v-else-if="!onlineSessions.length"
             class="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500 dark:border-white/15 dark:text-white/70"
           >
-            Nenhum usuário está online neste momento.
+            Nenhum usuário est├í online neste momento.
           </div>
           <div v-else class="grid gap-4 lg:grid-cols-2">
             <article
@@ -318,13 +318,13 @@
                 <div>
                   <p class="text-[11px] uppercase tracking-[0.2em] text-slate-400 dark:text-white/50">Dispositivo</p>
                   <p class="font-semibold">
-                    {{ session.device_label || "Desconhecido" }} · {{ session.client_name || "Navegador" }}
+                    {{ session.device_label || "Desconhecido" }} | {{ session.client_name || "Navegador" }}
                   </p>
                 </div>
                 <div>
-                  <p class="text-[11px] uppercase tracking-[0.2em] text-slate-400 dark:text-white/50">Última atividade</p>
+                  <p class="text-[11px] uppercase tracking-[0.2em] text-slate-400 dark:text-white/50">├Ültima atividade</p>
                   <p class="font-semibold">
-                    {{ formatRelativeMoment(session.last_seen_at) }} · {{ formatClock(session.last_seen_at) }}
+                    {{ formatRelativeMoment(session.last_seen_at) }} há {{ formatClock(session.last_seen_at) }}
                   </p>
                 </div>
                 <div>
@@ -332,7 +332,7 @@
                   <p class="font-semibold">{{ session.ip_address || "IP não identificado" }}</p>
                 </div>
                 <div v-if="session.last_path">
-                  <p class="text-[11px] uppercase tracking-[0.2em] text-slate-400 dark:text-white/50">Página atual</p>
+                  <p class="text-[11px] uppercase tracking-[0.2em] text-slate-400 dark:text-white/50">página atual</p>
                   <p class="font-semibold break-all">{{ session.last_path }}</p>
                 </div>
               </div>
@@ -528,7 +528,7 @@
                           <input
                             v-model="userFilters.activeMax"
                             type="number"
-                            placeholder="Máx"
+                            placeholder="M├íx"
                             class="w-1/2 rounded-xl border border-slate-200 px-2 py-1 focus:border-emerald-500 focus:outline-none"
                           />
                         </div>
@@ -555,7 +555,7 @@
                           <input
                             v-model="userFilters.draftMax"
                             type="number"
-                            placeholder="Máx"
+                            placeholder="M├íx"
                             class="w-1/2 rounded-xl border border-slate-200 px-2 py-1 focus:border-emerald-500 focus:outline-none"
                           />
                         </div>
@@ -635,8 +635,12 @@
                         class="mt-1 rounded-full border border-slate-300 p-1 text-xs transition hover:bg-slate-100"
                         @click.stop="toggleUserRow(u.id)"
                       >
-                        <span :class="expandedUser === u.id ? 'rotate-90 inline-block transition' : 'inline-block transition'">
-                          ▶
+                        <span
+                          :class="expandedUser === u.id ? 'rotate-90 inline-block transition' : 'inline-block transition'"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                          </svg>
                         </span>
                       </button>
                       <div>
@@ -664,7 +668,7 @@
                       v-if="u.trial_plan"
                       class="ml-2 inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-700"
                     >
-                      Trial até {{ formatDate(u.trial_ends_at) }}
+                      Trial at├® {{ formatDate(u.trial_ends_at) }}
                     </span>
                   </td>
 
@@ -687,9 +691,9 @@
 
                         <div>
                           <p class="text-xs uppercase tracking-[0.3em] text-slate-500 dark:text-white/50">Agência</p>
-                          <p class="mt-1 font-semibold">{{ u.agency_name || 'Não vinculada' }}</p>
+                          <p class="mt-1 font-semibold">{{ u.agency_name || 'N├úo vinculada' }}</p>
                           <p class="text-xs text-slate-500 dark:text-white/60">
-                            {{ u.active_pages ?? 0 }} páginas publicadas · Plano {{ planLabel(u.plan) }}
+                            {{ u.active_pages ?? 0 }} páginas publicadas ┬À Plano {{ planLabel(u.plan) }}
                           </p>
                         </div>
                       </div>
@@ -724,7 +728,7 @@
                           v-else
                           class="mt-2 rounded-2xl border border-dashed border-slate-200 px-3 py-3 text-center text-xs text-slate-500 dark:border-white/10 dark:text-white/60"
                         >
-                          Nenhuma informação de UTM registrada.
+                          Nenhuma informa├º├úo de UTM registrada.
                         </p>
                       </div>
 
@@ -748,9 +752,9 @@
                           @click.stop="openLinkPageDialog(u)"
                           :title="
                             !agencyStore.currentAgencyId
-                              ? 'Selecione uma agência de origem no painel'
+                              ? 'Selecione uma Agência de origem no painel'
                               : !u.agency_id
-                                ? 'Usuário sem agência vinculada'
+                                ? 'usuário sem Agência vinculada'
                                 : 'Vincular página pronta'
                           "
                         >
@@ -783,7 +787,7 @@
                       </div>
 
                       <div class="mt-6">
-                        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-white/50">Páginas publicadas</p>
+                        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-white/50">páginas publicadas</p>
 
                         <div
                           v-if="u.published_pages?.length"
@@ -794,9 +798,9 @@
                               <tr>
                                 <th class="px-3 py-2">Título</th>
                                 <th class="px-3 py-2">Slug</th>
-                                <th class="px-3 py-2 text-right">Visualizações</th>
+                                <th class="px-3 py-2 text-right">Visualiza├º├Áes</th>
                                 <th class="px-3 py-2 text-right">Cliques CTA</th>
-                                <th class="px-3 py-2 text-right">Ações</th>
+                                <th class="px-3 py-2 text-right">A├º├Áes</th>
                               </tr>
                             </thead>
 
@@ -838,7 +842,7 @@
                       </div>
 
                       <div class="mt-6">
-                        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-white/50">Páginas em rascunho</p>
+                        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-white/50">páginas em rascunho</p>
 
                         <div
                           v-if="u.draft_pages?.length"
@@ -849,7 +853,7 @@
                               <tr>
                                 <th class="px-3 py-2">Título</th>
                                 <th class="px-3 py-2">Slug</th>
-                                <th class="px-3 py-2 text-right">Ações</th>
+                                <th class="px-3 py-2 text-right">A├º├Áes</th>
                               </tr>
                             </thead>
 
@@ -921,7 +925,7 @@
                 >
                   Anterior
                 </button>
-                <span>Página {{ userPage }} de {{ totalUserPages }}</span>
+                <span>página {{ userPage }} de {{ totalUserPages }}</span>
                 <button
                   class="rounded-full border border-slate-200 px-3 py-1 font-semibold text-slate-600 disabled:opacity-40"
                   type="button"
@@ -942,7 +946,7 @@
       <section class="rounded-3xl bg-white p-6 shadow-md ring-1 ring-slate-100 dark:bg-[#181818] dark:text-white dark:ring-white/10">
         <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p class="text-xs uppercase tracking-[0.4em] text-slate-500 dark:text-white/60">Conteúdo exclusivo</p>
+            <p class="text-xs uppercase tracking-[0.4em] text-slate-500 dark:text-white/60">Conteúdoo exclusivo</p>
             <h2 class="text-2xl font-bold text-slate-900 dark:text-white">Gerenciar aulas</h2>
             <p class="text-sm text-slate-500 dark:text-white/70">As aulas cadastradas aqui aparecem para todos os administradores na aba "Aulas".</p>
           </div>
@@ -992,7 +996,7 @@
                 <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                   <div>
                     <p class="text-xs uppercase tracking-[0.3em] text-slate-500 dark:text-white/60">
-                      {{ lesson.level || "Aula" }} • {{ lesson.duration || "Livre" }}
+                      {{ lesson.level || "Aula" }} Duração {{ lesson.duration || "Livre" }}
                     </p>
                     <h4 class="mt-2 text-lg font-semibold text-slate-900 dark:text-white">{{ lesson.title }}</h4>
                     <p class="mt-1 text-sm text-slate-600 dark:text-white/70">{{ lesson.description }}</p>
@@ -1059,7 +1063,7 @@
 
             <div class="grid gap-3 md:grid-cols-2">
               <label class="block text-sm font-semibold text-slate-700 dark:text-white">
-                Duração
+                Duraçao
                 <input
                   v-model="lessonForm.duration"
                   type="text"
@@ -1074,7 +1078,7 @@
                   v-model="lessonForm.level"
                   type="text"
                   class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 focus:border-brand focus:ring-brand"
-                  placeholder="Fundamentos, Estratégia..."
+                  placeholder="Fundamentos, Estrat├®gia..."
                 />
               </label>
             </div>
@@ -1169,7 +1173,7 @@
                 class="rounded-full border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                 @click="resetLessonForm"
               >
-                Cancelar edição
+                Cancelar edi├º├úo
               </button>
             </div>
           </form>
@@ -1185,18 +1189,18 @@
             <p class="text-xs uppercase tracking-[0.4em] text-slate-500 dark:text-white/60">Curadoria</p>
             <h2 class="text-2xl font-bold text-slate-900 dark:text-white">Biblioteca de modelos</h2>
             <p class="text-sm text-slate-500 dark:text-white/70">
-              Selecione uma agência de origem para transformar páginas em modelos oficiais.
+              Selecione uma Agência de origem para transformar páginas em modelos oficiais.
             </p>
           </div>
           <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
             <div data-template-agency-selector="true">
-              <label class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-white/60">AgǦncia</label>
+              <label class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-white/60">Agência</label>
               <div class="relative mt-1 w-64">
                 <input
                   ref="templateAgencySearchInput"
                   v-model="templateAgencySearch"
                   type="text"
-                  placeholder="Buscar agǦncia"
+                  placeholder="Buscar agência"
                   class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 pr-10 text-sm text-slate-900 focus:border-brand focus:outline-none dark:border-white/15 dark:bg-[#101010] dark:text-white"
                   @focus="handleTemplateAgencyInputFocus"
                 />
@@ -1222,7 +1226,7 @@
                   v-if="templateAgencyDropdownOpen"
                   class="absolute left-0 right-0 z-30 mt-2 w-full rounded-2xl border border-slate-200 bg-white shadow-xl dark:border-white/15 dark:bg-[#101010]"
                 >
-                  <p v-if="templateAgencyLoading" class="px-4 py-3 text-sm text-slate-500 dark:text-white/70">Buscando agências...</p>
+                  <p v-if="templateAgencyLoading" class="px-4 py-3 text-sm text-slate-500 dark:text-white/70">Buscando Agências...</p>
                   <p v-else-if="templateAgencyError" class="px-4 py-3 text-sm text-red-600 dark:text-red-200">{{ templateAgencyError }}</p>
                   <ul
                     v-else-if="templateAgencyOptions.length"
@@ -1237,12 +1241,12 @@
                       >
                         <span class="text-sm font-semibold text-slate-900 dark:text-white">{{ agency.name }}</span>
                         <span class="text-xs text-slate-500 dark:text-white/70">
-                          /{{ agency.slug }} · {{ agency.pages_count }} páginas
+                          /{{ agency.slug }} ┬À {{ agency.pages_count }} páginas
                         </span>
                       </button>
                     </li>
                   </ul>
-                  <p v-else class="px-4 py-3 text-sm text-slate-500 dark:text-white/70">Nenhuma agência encontrada.</p>
+                  <p v-else class="px-4 py-3 text-sm text-slate-500 dark:text-white/70">Nenhuma Agência encontrada.</p>
                 </div>
               </div>
             </div>
@@ -1281,7 +1285,7 @@
         </header>
         <div class="mt-6">
           <p v-if="!templateAgencyId" class="rounded-2xl border border-dashed border-slate-200 p-5 text-center text-sm text-slate-500 dark:border-white/15 dark:text-white/70">
-            Selecione uma agência para listar as páginas disponíveis.
+            Selecione uma Agência para listar as páginas disponíveis.
           </p>
           <p v-else-if="templatePagesLoading" class="rounded-2xl border border-dashed border-slate-200 p-5 text-center text-sm text-slate-500 dark:border-white/15 dark:text-white/70">
             Carregando páginas...
@@ -1290,7 +1294,7 @@
             {{ templatePagesError }}
           </p>
           <p v-else-if="!templatePages.length" class="rounded-2xl border border-dashed border-slate-200 p-5 text-center text-sm text-slate-500 dark:border-white/15 dark:text-white/70">
-            Nenhum roteiro encontrado para a agência selecionada.
+            Nenhum roteiro encontrado para a Agência selecionada.
           </p>
           <div v-else class="overflow-x-auto">
             <table class="min-w-full divide-y divide-slate-100 text-sm dark:divide-white/5">
@@ -1370,17 +1374,6 @@
               :key="template.id"
               class="flex flex-col rounded-2xl border border-slate-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg dark:border-white/10 dark:bg-[#1a1a1a]"
             >
-              <div class="aspect-video w-full overflow-hidden rounded-2xl bg-slate-100 dark:bg-white/5">
-                <img
-                  v-if="templatePreviewImage(template)"
-                  :src="templatePreviewImage(template)"
-                  alt=""
-                  class="h-full w-full object-cover"
-                />
-                <div v-else class="flex h-full w-full items-center justify-center text-xs uppercase tracking-[0.3em] text-slate-400 dark:text-white/40">
-                  Sem miniatura
-                </div>
-              </div>
               <div class="flex flex-1 flex-col p-4">
                 <div class="flex items-center gap-2">
                   <h4 class="flex-1 text-lg font-semibold text-slate-900 dark:text-white">{{ template.name }}</h4>
@@ -1396,7 +1389,7 @@
                 </p>
                 <div class="mt-3 flex flex-wrap gap-2 text-xs text-slate-500 dark:text-white/60">
                   <span class="rounded-full bg-slate-100 px-3 py-1 dark:bg-white/10">
-                    {{ templateStats(template).enabledSections }} seções ativas
+                    {{ templateStats(template).enabledSections }} sessões ativas
                   </span>
                   <span class="rounded-full bg-slate-100 px-3 py-1 dark:bg-white/10">
                     Total: {{ templateStats(template).totalSections }}
@@ -1409,6 +1402,13 @@
                     @click="openTemplatePreview(template)"
                   >
                     Visualizar
+                  </button>
+                  <button
+                    type="button"
+                    class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-900"
+                    @click="openTemplateEditDialog(template)"
+                  >
+                    Editar
                   </button>
                   <button
                     type="button"
@@ -1431,9 +1431,15 @@
         @click.self="closeTemplateDialog"
       >
         <div class="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl dark:bg-[#202020] dark:text-white">
-          <h3 class="text-xl font-semibold text-slate-900 dark:text-white">Adicionar modelo</h3>
+          <h3 class="text-xl font-semibold text-slate-900 dark:text-white">
+            {{ templateDialog.mode === "edit" ? "Editar modelo" : "Adicionar modelo" }}
+          </h3>
           <p class="mt-1 text-sm text-slate-500 dark:text-white/70">
-            Defina o nome e o identificador público para este template.
+            {{
+              templateDialog.mode === "edit"
+                ? "Atualize o nome, slug e descrição do modelo."
+                : "Defina o nome e o identificador público para este template."
+            }}
           </p>
           <div class="mt-4 space-y-3">
             <div>
@@ -1480,7 +1486,13 @@
               :disabled="templateDialog.saving"
               @click="submitTemplateDialog"
             >
-              {{ templateDialog.saving ? "Salvando..." : "Salvar modelo" }}
+              {{
+                templateDialog.saving
+                  ? "Salvando..."
+                  : templateDialog.mode === "edit"
+                    ? "Salvar alterações"
+                    : "Salvar modelo"
+              }}
             </button>
           </div>
         </div>
@@ -1494,7 +1506,7 @@
         <div class="h-[90vh] w-full max-w-4xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl dark:bg-[#101010] dark:text-white">
           <div class="mb-4 flex items-center justify-between">
             <div>
-              <p class="text-xs uppercase tracking-[0.4em] text-slate-500 dark:text-white/60">Pré-visualização</p>
+              <p class="text-xs uppercase tracking-[0.4em] text-slate-500 dark:text-white/60">Pr├®-visualiza├º├úo</p>
               <h3 class="text-lg font-semibold text-slate-900 dark:text-white">
                 {{ templatePreviewDialog.template?.name }}
               </h3>
@@ -1513,7 +1525,7 @@
             :branding="templatePreviewBranding"
           />
           <p v-else class="rounded-2xl border border-dashed border-slate-200 p-5 text-center text-sm text-slate-500 dark:border-white/15 dark:text-white/70">
-            Não conseguimos renderizar este modelo.
+            N├úo conseguimos renderizar este modelo.
           </p>
         </div>
       </div>
@@ -1557,7 +1569,7 @@
         </div>
 
         <p class="mt-5 text-sm text-slate-600">
-          O usuário receberá acesso total ao plano {{ planLabels.infinity }} por 7 dias. Enviaremos alertas no painel dele para aproveitar o período promocional.
+          O usuário receber├í acesso total ao plano {{ planLabels.infinity }} por 7 dias. Enviaremos alertas no painel dele para aproveitar o período promocional.
         </p>
 
         <div class="mt-6 flex justify-end gap-3">
@@ -1592,8 +1604,8 @@
           Escolha uma página para {{ linkPageDialog.user.name }}
         </h2>
         <p class="mt-2 text-sm text-slate-600">
-          Selecionamos as páginas da sua agência atual ({{ agencyStore.agencies.find(a => a.id === agencyStore.currentAgencyId)?.name || 'sem nome' }}).
-          A cópia será adicionada à agência do usuário.
+          Selecionamos as páginas da sua Agência atual ({{ agencyStore.agencies.find(a => a.id === agencyStore.currentAgencyId)?.name || 'sem nome' }}).
+          A c├│pia ser├í adicionada ├á Agência do usuário.
         </p>
 
           <div class="mt-5 space-y-4">
@@ -1618,7 +1630,7 @@
                 :key="page.id"
                 :value="page.id"
               >
-                {{ page.title }} · {{ page.status === 'published' ? 'Publicada' : 'Rascunho' }}
+                {{ page.title }} ┬À {{ page.status === 'published' ? 'Publicada' : 'Rascunho' }}
               </option>
             </select>
           </label>
@@ -1626,7 +1638,7 @@
             v-else
             class="rounded-2xl border border-dashed border-slate-200 px-4 py-3 text-sm text-slate-500"
           >
-            Nenhuma página encontrada na sua agência atual. Crie uma página primeiro.
+            Nenhuma página encontrada na sua Agência atual. Crie uma página primeiro.
           </div>
 
           <label class="block text-sm font-semibold text-slate-700 dark:text-white">
@@ -1678,7 +1690,7 @@
         <p class="text-xs font-semibold uppercase tracking-[0.3em] text-rose-500">Excluir usuário</p>
         <h2 class="mt-3 text-2xl font-bold text-slate-900">Remover {{ deleteDialog.user.name }}?</h2>
         <p class="mt-2 text-sm text-slate-600">
-          Essa ação apaga a conta, agências, páginas e registros de tracking vinculados. Ela não pode ser desfeita.
+          Essa a├º├úo apaga a conta, Agências, páginas e registros de tracking vinculados. Ela n├úo pode ser desfeita.
         </p>
         <p
           v-if="deleteDialog.error"
@@ -1717,7 +1729,7 @@
         <h2 class="mt-3 text-2xl font-bold text-slate-900">Reembolsar {{ refundDialog.user.name }}?</h2>
         <p class="mt-2 text-sm text-slate-600">
           Ao confirmar, vamos acionar o reembolso na Cakto, cancelar a assinatura, despublicar todas as páginas deste cliente
-          e bloquear o acesso imediatamente. Essa ação não pode ser desfeita.
+          e bloquear o acesso imediatamente. Essa a├º├úo n├úo pode ser desfeita.
         </p>
         <p
           v-if="refundDialog.error"
@@ -1758,9 +1770,9 @@ import { getPlanLabel, planLabels } from "../../utils/planLabels";
 import { normalizeVideoInput, useLessonsStore, type Lesson } from "../../store/useLessonsStore";
 import { slugify } from "../../utils/slugify";
 import PageTemplatePreview from "../../components/admin/PageTemplatePreview.vue";
-import { listPageTemplates, createTemplateFromPage, deleteTemplate } from "../../services/templates";
+import { listPageTemplates, createTemplateFromPage, deleteTemplate, updateTemplate } from "../../services/templates";
 import type { PageTemplate } from "../../types/templates";
-import { applyTemplateBranding, extractTemplatePreviewImage, summarizeTemplate } from "../../utils/pageTemplates";
+import { applyTemplateBranding, summarizeTemplate } from "../../utils/pageTemplates";
 import { sanitizeDigits, buildWhatsappLink } from "../../utils/whatsapp";
 
 interface MetricsUserPage {
@@ -1862,6 +1874,7 @@ interface AdminOnlineSessionsResponse {
 }
 
 type AdminTab = "dashboard" | "monitor" | "users" | "lessons" | "templates";
+type TemplateDialogMode = "create" | "edit";
 
 const adminTabs: { id: AdminTab; label: string; description: string }[] = [
   { id: "dashboard", label: "Dashboard", description: "Resumo e métricas" },
@@ -1945,7 +1958,7 @@ const adminPeriodLabel = computed(() => {
   if (isCustomAdminPeriod.value) {
     return "período personalizado";
   }
-  return `últimos ${adminPeriodDays.value} dias`;
+  return `Ultimos ${adminPeriodDays.value} dias`;
 });
 const newUsersMaxValue = computed(() => {
   if (!newUsersSeries.value.length) return 1;
@@ -2094,7 +2107,9 @@ const pageTemplatesError = ref("");
 const deletingTemplateId = ref<number | null>(null);
 const templateDialog = reactive({
   open: false,
+  mode: "create" as TemplateDialogMode,
   page: null as AdminPageSummary | null,
+  templateId: null as number | null,
   name: "",
   slug: "",
   description: "",
@@ -2128,7 +2143,7 @@ const fetchTemplateAgencies = async (term?: string) => {
   } catch (err: any) {
     console.error(err);
     if (requestId === templateAgencySearchRequestId) {
-      templateAgencyError.value = err?.response?.data?.detail || "Não foi possível buscar agências.";
+      templateAgencyError.value = err?.response?.data?.detail || "N├úo foi poss├¡vel buscar Agências.";
       templateAgencyOptions.value = [];
     }
   } finally {
@@ -2190,7 +2205,7 @@ const loadTemplatePages = async () => {
     templatePages.value = data || [];
   } catch (err: any) {
     console.error(err);
-    templatePagesError.value = err?.response?.data?.detail || "Não foi possível carregar as páginas.";
+    templatePagesError.value = err?.response?.data?.detail || "N├úo foi poss├¡vel carregar as páginas.";
   } finally {
     templatePagesLoading.value = false;
   }
@@ -2202,12 +2217,14 @@ const loadTemplates = async () => {
     pageTemplates.value = await listPageTemplates();
   } catch (err: any) {
     console.error(err);
-    pageTemplatesError.value = err?.response?.data?.detail || "Não foi possível carregar os modelos.";
+    pageTemplatesError.value = err?.response?.data?.detail || "N├úo foi poss├¡vel carregar os modelos.";
   } finally {
     pageTemplatesLoading.value = false;
   }
 };
-const openTemplateDialog = (page: AdminPageSummary) => {
+const openTemplateCreateDialog = (page: AdminPageSummary) => {
+  templateDialog.mode = "create";
+  templateDialog.templateId = null;
   templateDialog.page = page;
   templateDialog.name = page.title;
   templateDialog.slug = slugify(page.title, "modelo");
@@ -2219,21 +2236,20 @@ const openTemplateDialog = (page: AdminPageSummary) => {
 };
 const closeTemplateDialog = () => {
   templateDialog.open = false;
+  templateDialog.mode = "create";
   templateDialog.page = null;
+  templateDialog.templateId = null;
   templateDialog.name = "";
   templateDialog.slug = "";
   templateDialog.description = "";
   templateDialog.error = "";
   templateDialog.saving = false;
+  templateSlugAuto.value = "";
 };
 const handleTemplateSlugInput = () => {
   templateSlugAuto.value = templateDialog.slug;
 };
 const submitTemplateDialog = async () => {
-  if (!templateDialog.page) {
-    templateDialog.error = "Selecione uma página para criar o modelo.";
-    return;
-  }
   const name = templateDialog.name.trim();
   const slug = templateDialog.slug.trim();
   if (!name || !slug) {
@@ -2243,18 +2259,39 @@ const submitTemplateDialog = async () => {
   templateDialog.saving = true;
   templateDialog.error = "";
   try {
-    await createTemplateFromPage({
-      page_id: templateDialog.page.id,
-      name,
-      slug,
-      description: templateDialog.description.trim() || undefined
-    });
-    showSnackbar("Modelo criado com sucesso.");
+    if (templateDialog.mode === "edit") {
+      if (!templateDialog.templateId) {
+        templateDialog.error = "Modelo inválido.";
+        templateDialog.saving = false;
+        return;
+      }
+      await updateTemplate(templateDialog.templateId, {
+        name,
+        slug,
+        description: templateDialog.description.trim() || null
+      });
+      showSnackbar("Modelo atualizado com sucesso.");
+    } else {
+      if (!templateDialog.page) {
+        templateDialog.error = "Selecione uma página para criar o modelo.";
+        templateDialog.saving = false;
+        return;
+      }
+      await createTemplateFromPage({
+        page_id: templateDialog.page.id,
+        name,
+        slug,
+        description: templateDialog.description.trim() || undefined
+      });
+      showSnackbar("Modelo criado com sucesso.");
+    }
     closeTemplateDialog();
     await loadTemplates();
   } catch (err: any) {
     console.error(err);
-    templateDialog.error = err?.response?.data?.detail || "Não foi possível criar o modelo.";
+    templateDialog.error =
+      err?.response?.data?.detail ||
+      (templateDialog.mode === "edit" ? "Não foi possível atualizar o modelo." : "Não foi possível criar o modelo.");
     templateDialog.saving = false;
   }
 };
@@ -2265,6 +2302,18 @@ const openTemplatePreview = (template: PageTemplate) => {
 const closeTemplatePreview = () => {
   templatePreviewDialog.open = false;
   templatePreviewDialog.template = null;
+};
+const openTemplateEditDialog = (template: PageTemplate) => {
+  templateDialog.mode = "edit";
+  templateDialog.page = null;
+  templateDialog.templateId = template.id;
+  templateDialog.name = template.name;
+  templateDialog.slug = template.slug;
+  templateDialog.description = template.description || "";
+  templateDialog.error = "";
+  templateDialog.saving = false;
+  templateSlugAuto.value = templateDialog.slug;
+  templateDialog.open = true;
 };
 const handleDeleteTemplate = async (template: PageTemplate) => {
   if (deletingTemplateId.value) return;
@@ -2277,7 +2326,7 @@ const handleDeleteTemplate = async (template: PageTemplate) => {
     showSnackbar("Modelo removido com sucesso.");
   } catch (err: any) {
     console.error(err);
-    const detail = err?.response?.data?.detail || "Não foi possível remover o modelo.";
+    const detail = err?.response?.data?.detail || "N├úo foi poss├¡vel remover o modelo.";
     showSnackbar(detail);
   } finally {
     deletingTemplateId.value = null;
@@ -2292,7 +2341,7 @@ const previewWhatsappDigits = computed(() => {
 const templatePreviewBranding = computed(() => {
   const agency = previewAgency.value;
   return {
-    agency_name: agency?.name || "Sua agência",
+    agency_name: agency?.name || "Sua Agência",
     logo_url: agency?.logo_url || "",
     primary_color: agency?.primary_color || "#0f172a",
     secondary_color: agency?.secondary_color || agency?.primary_color || "#1f2937",
@@ -2310,7 +2359,6 @@ const templatePreviewConfig = computed(() => {
     enforcePrimaryColor: !!templatePreviewBranding.value.primary_color
   });
 });
-const templatePreviewImage = (template: PageTemplate) => extractTemplatePreviewImage(template);
 const templateStats = (template: PageTemplate) => summarizeTemplate(template);
 
 type UserColumnKey = "name" | "agency_name" | "active_pages" | "draft_pages" | "plan" | "valid_until" | "created_at";
@@ -2397,10 +2445,10 @@ const lessonPreview = computed(() => normalizeVideoInput(lessonForm.videoInput |
 
 const utmFieldMap: { key: keyof MetricsUserTracking; label: string }[] = [
   { key: "utm_source", label: "Fonte" },
-  { key: "utm_medium", label: "Mídia" },
+  { key: "utm_medium", label: "M├¡dia" },
   { key: "utm_campaign", label: "Campanha" },
   { key: "utm_term", label: "Termo" },
-  { key: "utm_content", label: "Conteúdo" },
+  { key: "utm_content", label: "Conteúdoo" },
   { key: "referrer", label: "Referrer" }
 ];
 
@@ -2510,7 +2558,7 @@ const loadOnlineSessions = async (notify = false) => {
     }
   } catch (err: any) {
     console.error(err);
-    const message = err?.response?.data?.detail || "Não foi possível carregar o monitor agora.";
+    const message = err?.response?.data?.detail || "N├úo foi poss├¡vel carregar o monitor agora.";
     onlineSessionsError.value = message;
     if (notify) {
       showSnackbar(message);
@@ -2545,11 +2593,11 @@ const revokeUserSessions = async (session: AdminOnlineSession) => {
   revokingUserId.value = session.user_id;
   try {
     await api.post(`/admin/online-sessions/user/${session.user_id}/revoke`);
-    showSnackbar(`Sessões de ${session.user_name} encerradas.`);
+    showSnackbar(`Sess├Áes de ${session.user_name} encerradas.`);
     await loadOnlineSessions();
   } catch (err: any) {
     console.error(err);
-    const detail = err?.response?.data?.detail || "Não foi possível deslogar este usuário.";
+    const detail = err?.response?.data?.detail || "N├úo foi poss├¡vel deslogar este usuário.";
     showSnackbar(detail);
   } finally {
     revokingUserId.value = null;
@@ -2567,7 +2615,7 @@ const handleThumbnailUpload = (event: Event) => {
   }
   const maxSize = 4 * 1024 * 1024;
   if (file.size > maxSize) {
-    showSnackbar("Imagem muito grande (máximo 4MB).");
+    showSnackbar("Imagem muito grande (m├íximo 4MB).");
     input.value = "";
     return;
   }
@@ -2612,12 +2660,12 @@ const startLessonEdit = (lesson: Lesson) => {
 
 const saveLesson = async () => {
   if (!lessonForm.title.trim() || !lessonForm.videoInput.trim()) {
-    showSnackbar("Informe título e link do vídeo.");
+    showSnackbar("Informe Título e link do v├¡deo.");
     return;
   }
   const parsed = normalizeVideoInput(lessonForm.videoInput);
   if (!parsed.videoUrl) {
-    showSnackbar("Link de vídeo inválido.");
+    showSnackbar("Link de v├¡deo inv├ílido.");
     return;
   }
   const payload = {
@@ -2642,7 +2690,7 @@ const saveLesson = async () => {
     resetLessonForm();
   } catch (err) {
     console.error(err);
-    showSnackbar("Não foi possível salvar a aula.");
+    showSnackbar("N├úo foi poss├¡vel salvar a aula.");
   } finally {
     lessonSaving.value = false;
   }
@@ -2659,14 +2707,14 @@ const deleteLesson = async (lessonId: number) => {
     showSnackbar("Aula removida.");
   } catch (err) {
     console.error(err);
-    showSnackbar("Não foi possível remover a aula.");
+    showSnackbar("N├úo foi poss├¡vel remover a aula.");
   } finally {
     deletingLessonId.value = null;
   }
 };
 
 const handleResetLessons = () => {
-  if (!confirm("Restaurar a lista padrão de aulas?")) return;
+  if (!confirm("Restaurar a lista padr├úo de aulas?")) return;
   lessonsStore.resetLessons();
   resetLessonForm();
   showSnackbar("Aulas restauradas.");
@@ -2674,7 +2722,7 @@ const handleResetLessons = () => {
 
 const viewPublishedPage = (page: MetricsUserPage) => {
   if (!page.agency_slug) {
-    showSnackbar("Página sem agência vinculada.");
+    showSnackbar("página sem Agência vinculada.");
     return;
   }
   const url = `/${page.agency_slug}/${page.slug}`;
@@ -2683,7 +2731,7 @@ const viewPublishedPage = (page: MetricsUserPage) => {
 
 const clonePublishedPage = async (user: Metrics["users"][number], page: MetricsUserPage) => {
   if (!agencyStore.currentAgencyId) {
-    showSnackbar("Selecione uma agência para salvar a página.");
+    showSnackbar("Selecione uma Agência para salvar a página.");
     return;
   }
   savingPageId.value = page.id;
@@ -2692,10 +2740,10 @@ const clonePublishedPage = async (user: Metrics["users"][number], page: MetricsU
       target_agency_id: agencyStore.currentAgencyId,
       title: `${page.title} - ${user.name}`.trim()
     });
-    showSnackbar("Página salva na agência selecionada.");
+    showSnackbar("página salva na Agência selecionada.");
   } catch (err) {
     console.error(err);
-    showSnackbar("Não foi possível salvar esta página.");
+    showSnackbar("N├úo foi poss├¡vel salvar esta página.");
   } finally {
     savingPageId.value = null;
   }
@@ -2728,7 +2776,7 @@ const setFilterButtonRef = (key: UserColumnKey, el: HTMLElement | null) => {
 
 const agencyFilterOptions = computed(() => {
   const base = userAgencyOptions.value.map(name => ({ value: name, label: name }));
-  return [{ value: "__none", label: "Sem agência" }, ...base];
+  return [{ value: "__none", label: "Sem Agência" }, ...base];
 });
 const agencyFilterSearch = ref("");
 const filteredAgencyFilterOptions = computed(() => {
@@ -2984,10 +3032,10 @@ const exportPdf = () => {
   doc.rect(0, 0, 210, 40, "F");
   doc.setTextColor("#ffffff");
   doc.setFontSize(18);
-  doc.text("Visão Gerencial · Relatório Premium", margin, cursor);
+  doc.text("Vis├úo Gerencial ┬À Relat├│rio Premium", margin, cursor);
   cursor += lineHeight;
   doc.setFontSize(11);
-  doc.text(`Período: ${adminPeriodLabel.value}`, margin, cursor);
+  doc.text(`período: ${adminPeriodLabel.value}`, margin, cursor);
   cursor += lineHeight;
   doc.text(`Emitido em ${new Date().toLocaleString()}`, margin, cursor);
   cursor = 50;
@@ -2998,10 +3046,10 @@ const exportPdf = () => {
   cursor += lineHeight;
 
   const KPI_ROWS = [
-    ["Usuários ativos", metrics.value.total_users ?? "--"],
+    ["usuários ativos", metrics.value.total_users ?? "--"],
     ["Agências", metrics.value.total_agencies ?? "--"],
-    ["Páginas totais", metrics.value.total_pages ?? "--"],
-    ["Páginas publicadas", metrics.value.published_pages ?? "--"],
+    ["páginas totais", metrics.value.total_pages ?? "--"],
+    ["páginas publicadas", metrics.value.published_pages ?? "--"],
     ["MRR estimado", `R$ ${(metrics.value.mrr ?? 0).toFixed(2)}`],
     ["Novos usuários (período)", metrics.value.new_users_last_days ?? "--"]
   ];
@@ -3016,7 +3064,7 @@ const exportPdf = () => {
   cursor = (doc as any).lastAutoTable.finalY + 10;
 
   doc.setFontSize(14);
-  doc.text("Distribuição de planos", margin, cursor);
+  doc.text("Distribui├º├úo de planos", margin, cursor);
   cursor += lineHeight;
   const planRows = (metrics.value.plans || []).map(plan => [planLabel(plan.plan), String(plan.count)]);
   autoTable(doc, {
@@ -3030,13 +3078,13 @@ const exportPdf = () => {
   cursor = (doc as any).lastAutoTable.finalY + 10;
 
   doc.setFontSize(14);
-  doc.text("Usuários · Trial e planos", margin, cursor);
+  doc.text("usuários ┬À Trial e planos", margin, cursor);
   cursor += lineHeight;
   const userRows = (metrics.value.users || []).slice(0, 12).map(u => [
     u.name,
     u.email,
     planLabel(u.plan),
-    u.trial_plan ? `Trial até ${formatDate(u.trial_ends_at)}` : "-",
+    u.trial_plan ? `Trial at├® ${formatDate(u.trial_ends_at)}` : "-",
     formatDateTime(u.created_at)
   ]);
   autoTable(doc, {
@@ -3070,8 +3118,8 @@ const grantTrial = async () => {
     await loadMetrics();
   } catch (err) {
     console.error(err);
-    error.value = "Não foi possível liberar o trial para este usuário.";
-    showSnackbar("Não foi possível liberar o trial para este usuário.");
+    error.value = "N├úo foi poss├¡vel liberar o trial para este usuário.";
+    showSnackbar("N├úo foi poss├¡vel liberar o trial para este usuário.");
   } finally {
     granting.value = null;
   }
@@ -3097,11 +3145,11 @@ const confirmDeleteUser = async () => {
     deleteDialog.value.user = null;
     expandedUser.value = null;
     await loadMetrics();
-    showSnackbar("Usuário excluído com sucesso.");
+    showSnackbar("usuário exclu├¡do com sucesso.");
   } catch (err: any) {
     console.error(err);
     deleteDialog.value.error =
-      err?.response?.data?.detail || "Não foi possível excluir o usuário. Tente novamente.";
+      err?.response?.data?.detail || "N├úo foi poss├¡vel excluir o usuário. Tente novamente.";
     deleteDialog.value.loading = false;
   }
 };
@@ -3139,7 +3187,7 @@ const confirmRefund = async () => {
     await loadMetrics();
   } catch (err: any) {
     console.error(err);
-    dialog.error = err?.response?.data?.detail || "Não foi possível solicitar o reembolso agora.";
+    dialog.error = err?.response?.data?.detail || "N├úo foi poss├¡vel solicitar o reembolso agora.";
     dialog.loading = false;
   }
 };
@@ -3176,11 +3224,11 @@ const closeLinkPageDialog = () => {
 const openLinkPageDialog = async (user: Metrics["users"][number]) => {
   if (!auth.user?.is_superuser) return;
   if (!user.agency_id) {
-    showSnackbar("Usuário não possui agência vinculada.");
+    showSnackbar("usuário n├úo possui Agência vinculada.");
     return;
   }
   if (!agencyStore.currentAgencyId) {
-    showSnackbar("Selecione uma agência de origem para listar suas páginas.");
+    showSnackbar("Selecione uma Agência de origem para listar suas páginas.");
     return;
   }
   linkPageDialog.value.open = true;
@@ -3204,7 +3252,7 @@ const openLinkPageDialog = async (user: Metrics["users"][number]) => {
     }
   } catch (err) {
     console.error(err);
-    linkPageDialog.value.error = "Não foi possível carregar suas páginas.";
+    linkPageDialog.value.error = "N├úo foi poss├¡vel carregar suas páginas.";
   } finally {
     linkPageDialog.value.loading = false;
   }
@@ -3213,7 +3261,7 @@ const openLinkPageDialog = async (user: Metrics["users"][number]) => {
 const confirmLinkPage = async () => {
   const dialog = linkPageDialog.value;
   if (!dialog.user || !dialog.user.agency_id) {
-    dialog.error = "Usuário sem agência para vincular página.";
+    dialog.error = "usuário sem Agência para vincular página.";
     return;
   }
   if (!dialog.selectedPageId) {
@@ -3232,12 +3280,12 @@ const confirmLinkPage = async () => {
       target_agency_id: dialog.user.agency_id,
       title
     });
-    showSnackbar("Página vinculada ao usuário.");
+    showSnackbar("página vinculada ao usuário.");
     closeLinkPageDialog();
     await loadMetrics();
   } catch (err: any) {
     console.error(err);
-    dialog.error = err?.response?.data?.detail || "Não foi possível vincular a página.";
+    dialog.error = err?.response?.data?.detail || "N├úo foi poss├¡vel vincular a página.";
     dialog.saving = false;
   }
 };
@@ -3289,7 +3337,7 @@ watch(metrics, value => {
 watch(
   () => templateDialog.name,
   value => {
-    if (!templateDialog.open) return;
+    if (!templateDialog.open || templateDialog.mode !== "create") return;
     if (!templateDialog.slug || templateDialog.slug === templateSlugAuto.value) {
       const next = slugify(value, "modelo");
       templateDialog.slug = next;

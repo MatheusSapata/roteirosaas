@@ -16,3 +16,10 @@ export interface CreateTemplateFromPagePayload {
   description?: string;
   is_default?: boolean;
 }
+
+export interface UpdateTemplatePayload {
+  name?: string;
+  slug?: string;
+  description?: string | null;
+  is_default?: boolean;
+}

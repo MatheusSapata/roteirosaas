@@ -7,13 +7,13 @@
       <PublicHeroSection
         v-if="section?.enabled && section.type === 'hero'"
         :section="section"
-        v-bind="sectionExtraProps(section.type)"
+        v-bind="sectionExtraProps(section, idx)"
       />
       <component
         v-else-if="section?.enabled"
         :is="publicComponents[section.type]"
         :section="section"
-        v-bind="sectionExtraProps(section.type)"
+        v-bind="sectionExtraProps(section, idx)"
       />
     </template>
   </div>
@@ -77,13 +77,34 @@ const sections = computed<PageSection[]>(() => props.config?.sections || []);
 const branding = computed(() => props.branding || {});
 const previewAwareSections: SectionType[] = ["hero", "banner_card", "story", "featured_video", "reasons", "agency_footer", "biography"];
 const sectionSupportsPreviewDevice = (type?: SectionType) => !!type && previewAwareSections.includes(type);
-const sectionExtraProps = (type?: SectionType) => {
+const findPrevEnabledSection = (index: number) => {
+  for (let i = index - 1; i >= 0; i -= 1) {
+    const candidate = sections.value[i];
+    if (candidate?.enabled) return candidate;
+  }
+  return null;
+};
+const findNextEnabledSection = (index: number) => {
+  for (let i = index + 1; i < sections.value.length; i += 1) {
+    const candidate = sections.value[i];
+    if (candidate?.enabled) return candidate;
+  }
+  return null;
+};
+const sectionExtraProps = (section?: PageSection, index?: number) => {
   const extra: Record<string, unknown> = {};
+  const type = section?.type;
   if (sectionRequiresBranding(type)) {
     extra.branding = branding.value;
   }
   if (sectionSupportsPreviewDevice(type)) {
     extra.previewDevice = props.previewDevice;
+  }
+  if (type === "banner_card" && typeof index === "number") {
+    const prev = findPrevEnabledSection(index);
+    const next = findNextEnabledSection(index);
+    extra.prevIsBannerCard = prev?.type === "banner_card";
+    extra.nextIsBannerCard = next?.type === "banner_card";
   }
   return extra;
 };
