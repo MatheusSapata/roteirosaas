@@ -1290,31 +1290,31 @@ const sectionTypes: SectionType[] = [
 const sectionLabels = defaultSectionLabels;
 const sectionDescriptions: Partial<Record<SectionType, string>> = {
   hero: t({
-    pt: "Bloco inicial com destaque visual, tÃ­tulo, subtÃ­tulo e CTA principal.",
-    es: "Bloque inicial con destaque visual, tÃ­tulo, subtÃ­tulo y CTA principal."
+    pt: "Bloco inicial com destaque visual, título, subtítulo e CTA principal.",
+    es: "Bloque inicial con destaque visual, título, subtítulo y CTA principal."
   }),
   banner_card: t({
     pt: "Banner em card com imagem de fundo, gradiente e CTA destacado.",
     es: "Banner en formato card con imagen de fondo, gradiente y CTA destacado."
   }),
   photo: t({
-    pt: "Uma Ãºnica imagem em destaque. Escolha o layout card ou largura total.",
-    es: "Una Ãºnica imagen destacada. Elige entre layout card o ancho completo."
+    pt: "Uma única imagem em destaque. Escolha o layout card ou largura total.",
+    es: "Una única imagen destacada. Elige entre layout card o ancho completo."
   }),
   biography: t({
-    pt: "Imagem em largura total com tÃ­tulo sobreposto e texto descritivo.",
-    es: "Imagen a ancho completo con tÃ­tulo superpuesto y texto descriptivo."
+    pt: "Imagem em largura total com título sobreposto e texto descritivo.",
+    es: "Imagen a ancho completo con título superpuesto y texto descriptivo."
   }),
   prices: t({
     pt: "Tabela com planos, valores e diferenciais para cada oferta.",
     es: "Tabla con planes, precios y diferenciales para cada oferta."
   }),
   itinerary: t({
-    pt: "SequÃªncia de etapas/benefÃ­cios para explicar seu serviÃ§o ou roteiro.",
+    pt: "Sequência de etapas/benefícios para explicar seu serviço ou roteiro.",
     es: "Secuencia de etapas/beneficios para explicar tu servicio o itinerario."
   }),
   faq: t({
-    pt: "Perguntas e respostas para antecipar dÃºvidas frequentes.",
+    pt: "Perguntas e respostas para antecipar dúvidas frequentes.",
     es: "Preguntas y respuestas para anticipar dudas frecuentes."
   }),
   testimonials: t({
@@ -1322,33 +1322,34 @@ const sectionDescriptions: Partial<Record<SectionType, string>> = {
     es: "Carrusel o lista con testimonios de clientes."
   }),
   featured_video: t({
-    pt: "Destaque um vÃ­deo com tÃ­tulo, subtÃ­tulo e CTA centralizado.",
-    es: "Destaca un video con tÃ­tulo, subtÃ­tulo y CTA centrado."
+    pt: "Destaque um vídeo com título, subtítulo e CTA centralizado.",
+    es: "Destaca un video con título, subtítulo y CTA centrado."
   }),
   cta: t({
-    pt: "Chamada final impulsionando o lead para a aÃ§Ã£o desejada.",
-    es: "Llamado final que impulsa al lead hacia la acciÃ³n deseada."
+    pt: "Chamada final impulsionando o lead para a ação desejada.",
+    es: "Llamado final que impulsa al lead hacia la acción deseada."
   }),
   story: t({
-    pt: "Bloco de storytelling para contar sua histÃ³ria, bastidores ou roteiro.",
+    pt: "Bloco de storytelling para contar sua história, bastidores ou roteiro.",
     es: "Bloque de storytelling para contar tu historia, bastidores o itinerario."
   }),
   reasons: t({
-    pt: "Liste motivos, benefÃ­cios e serviÃ§os para reforÃ§ar a decisÃ£o.",
-    es: "Lista motivos, beneficios y servicios para reforzar la decisiÃ³n."
+    pt: "Liste motivos, benefícios e serviços para reforçar a decisão.",
+    es: "Lista motivos, beneficios y servicios para reforzar la decisión."
   }),
   countdown: t({
-    pt: "Cria urgÃªncia com contador regressivo para promoÃ§Ãµes ou eventos.",
+    pt: "Cria urgência com contador regressivo para promoções ou eventos.",
     es: "Crea urgencia con un contador regresivo para promociones o eventos."
   }),
   agency_footer: t({
-    pt: "CartÃ£o institucional com contatos, redes sociais e mapa da agÃªncia.",
+    pt: "Cartão institucional com contatos, redes sociais e mapa da agência.",
     es: "Tarjeta institucional con contactos, redes sociales y mapa de la agencia."
   })
 };
+
 const catalogFallbackDescription = t({
-  pt: "Bloco personalizÃ¡vel para compor sua pÃ¡gina.",
-  es: "Bloque personalizable para componer tu pÃ¡gina."
+  pt: "Bloco personalizável para compor sua página.",
+  es: "Bloque personalizable para componer tu página."
 });
 
 const sectionThumbnails: Partial<Record<SectionType, string>> = {
@@ -1651,8 +1652,8 @@ const applyAutomaticStoryLayout = (story: StorySection) => {
 };
 
 const storyMediaErrorText = t({
-  pt: "Adicione ao menos uma imagem ou vÃ­deo na seÃ§Ã£o Story antes de salvar.",
-  es: "Agrega al menos una imagen o video en la secciÃ³n Story antes de guardar."
+  pt: "Adicione ao menos uma imagem ou ví­deo na seção Story antes de salvar.",
+  es: "Agrega al menos una imagen o video en la seccion Story antes de guardar."
 });
 const hasStoryImage = (section: StorySection) => countStoryImages(section.images) > 0;
 const hasStoryVideo = (section: StorySection) => countStoryVideos(section.videoUrls, section.videoUrl) > 0;
@@ -1676,8 +1677,8 @@ const validateAllSections = (): string | null => {
 const buildCatalogPreview = (type: SectionType): PageSection => {
   const base = clone(defaultSection(type));
   if (type === "hero") {
-    (base as any).title = "TÃ­tulo impactante";
-    (base as any).subtitle = "Explique rapidamente o benefÃ­cio oferecido.";
+    (base as any).title = "Tí­tulo impactante";
+    (base as any).subtitle = "Explique rapidamente o benefí­cio oferecido.";
   }
   if (Array.isArray((base as any).items)) {
     (base as any).items = (base as any).items.slice(0, 2);

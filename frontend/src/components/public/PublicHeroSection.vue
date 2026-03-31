@@ -112,11 +112,17 @@
           <div
             v-if="layout === 'immersive'"
             class="relative z-10 flex flex-col gap-6 py-6 md:min-h-[540px] md:flex-row md:items-center md:gap-12 md:py-10"
-            :class="isMobilePreview ? '!flex-col !gap-6 !py-6' : ''"
+            :class="[
+              isMobilePreview ? '!flex-col !gap-6 !py-6' : '',
+              isDesktopPreview ? '!min-h-[540px] !flex-row !items-center !gap-12 !py-10' : ''
+            ]"
           >
             <div
               class="max-w-3xl space-y-5 text-white md:w-7/12 text-center md:text-left"
-              :class="isMobilePreview ? '!w-full !text-center' : ''"
+              :class="[
+                isMobilePreview ? '!w-full !text-center' : '',
+                isDesktopPreview ? '!w-7/12 !text-left' : ''
+              ]"
             >
               <div class="flex items-center gap-3" :class="animationClasses(1)">
                 <img
@@ -133,7 +139,11 @@
 
               <h1
                 class="text-3xl font-bold leading-tight md:text-5xl"
-                :class="[isMobilePreview ? '!text-3xl' : '', ...animationClasses(2)]"
+                :class="[
+                  isMobilePreview ? '!text-3xl' : '',
+                  isDesktopPreview ? '!text-5xl' : '',
+                  ...animationClasses(2)
+                ]"
               >
                 {{ heroTitle }}
               </h1>
@@ -141,14 +151,22 @@
               <div
                 v-if="subtitleHtml"
                 class="text-base text-slate-100 md:text-xl"
-                :class="[isMobilePreview ? '!text-base' : '', ...animationClasses(3)]"
+                :class="[
+                  isMobilePreview ? '!text-base' : '',
+                  isDesktopPreview ? '!text-xl' : '',
+                  ...animationClasses(3)
+                ]"
                 v-html="subtitleHtml"
               ></div>
 
               <div
                 v-if="chipsToShow.length"
                 class="flex flex-wrap justify-center gap-3 md:justify-start"
-                :class="[isMobilePreview ? '!justify-center' : '', ...animationClasses(4)]"
+                :class="[
+                  isMobilePreview ? '!justify-center' : '',
+                  isDesktopPreview ? '!justify-start' : '',
+                  ...animationClasses(4)
+                ]"
               >
                 <span
                   v-for="(chip, idx) in chipsToShow"
@@ -163,7 +181,11 @@
 
               <div
                 class="flex flex-col items-center gap-3 sm:flex-row sm:items-center sm:justify-start"
-                :class="[isMobilePreview ? '!flex-col !items-center !justify-center' : '', ...animationClasses(5)]"
+                :class="[
+                  isMobilePreview ? '!flex-col !items-center !justify-center' : '',
+                  isDesktopPreview ? '!flex-row !items-center !justify-start' : '',
+                  ...animationClasses(5)
+                ]"
               >
                 <a
                   :href="ctaHref"
@@ -180,10 +202,17 @@
               </div>
             </div>
 
-            <div class="md:w-6/12 lg:w-5/12" v-if="section.videoUrl" :class="isMobilePreview ? '!w-full !mt-6' : ''">
+            <div
+              class="md:w-6/12 lg:w-5/12"
+              v-if="section.videoUrl"
+              :class="[
+                isMobilePreview ? '!w-full !mt-6' : '',
+                isDesktopPreview ? '!w-6/12 !mt-0' : ''
+              ]"
+            >
               <div
                 class="relative overflow-hidden rounded-3xl bg-transparent shadow-2xl ring-1 ring-white/40"
-                :class="!isMobilePreview ? 'md:scale-[1.05] md:origin-center' : ''"
+                :class="[isDesktopPreview ? '!scale-[1.05] !origin-center' : '']"
               >
                 <div class="relative pt-[56.25%]">
                   <iframe
@@ -197,14 +226,24 @@
                 </div>
               </div>
             </div>
-            <div v-else class="md:w-6/12 lg:w-5/12" :class="isMobilePreview ? '!w-full' : ''"></div>
+            <div
+              v-else
+              class="md:w-6/12 lg:w-5/12"
+              :class="[
+                isMobilePreview ? '!w-full' : '',
+                isDesktopPreview ? '!w-6/12' : ''
+              ]"
+            ></div>
           </div>
 
           <!-- Layout clássico -->
           <div
             v-else-if="layout === 'classic'"
             class="relative z-10 flex flex-col gap-6 rounded-3xl bg-white/75 p-6 text-center shadow-[0_20px_60px_-35px_rgba(15,23,42,0.6)] ring-1 ring-white/60 backdrop-blur md:p-8 md:text-left"
-            :class="isMobilePreview ? '!p-6 !text-center' : ''"
+            :class="[
+              isMobilePreview ? '!p-6 !text-center' : '',
+              isDesktopPreview ? '!p-8 !text-left' : ''
+            ]"
           >
             <!-- (o resto do teu classic/split/card pode ficar igual, só cuida os fechamentos) -->
             <!-- ... -->
@@ -214,7 +253,10 @@
           <div
             v-else-if="layout === 'split'"
             class="relative z-10 grid items-center gap-6 rounded-3xl bg-white/75 p-6 text-center shadow-[0_20px_60px_-35px_rgba(15,23,42,0.6)] ring-1 ring-white/60 backdrop-blur md:grid-cols-2 md:gap-8 md:p-8 md:text-left"
-            :class="isMobilePreview ? '!grid-cols-1 !text-center !p-6' : ''"
+            :class="[
+              isMobilePreview ? '!grid-cols-1 !text-center !p-6' : '',
+              isDesktopPreview ? '!grid-cols-2 !gap-8 !p-8 !text-left' : ''
+            ]"
           >
             <!-- ... -->
           </div>
@@ -273,8 +315,17 @@ const ctaIsScroll = computed(() => ctaMode.value === "section" && !!props.sectio
 const ctaTrackType = computed(() => (ctaMode.value === "section" ? "cta" : trackType(props.section.ctaLink)));
 const ctaLabel = computed(() => localize(props.section.ctaLabel) || localize(heroCopy.defaultCta));
 const isMobilePreview = computed(() => props.previewDevice === "mobile");
-const mobileWrapperClasses = computed(() => ["relative block md:hidden px-0 pt-0 -mt-8", isMobilePreview.value ? "!block" : ""]);
-const desktopWrapperClasses = computed(() => ["relative hidden md:block", isMobilePreview.value ? "!hidden" : ""]);
+const isDesktopPreview = computed(() => props.previewDevice === "desktop");
+const mobileWrapperClasses = computed(() => [
+  "relative block md:hidden px-0 pt-0 -mt-8",
+  isDesktopPreview.value ? "!hidden" : "",
+  isMobilePreview.value ? "!block" : ""
+]);
+const desktopWrapperClasses = computed(() => [
+  "relative hidden md:block",
+  isMobilePreview.value ? "!hidden" : "",
+  isDesktopPreview.value ? "!block" : ""
+]);
 const mobileBaseColor = computed(() => {
   const candidate = props.section.gradientColor || props.section.backgroundColor;
   if (candidate && candidate.startsWith("#")) return candidate;
@@ -358,6 +409,7 @@ const accentVars = computed(() => ({
 const containerClasses = computed(() => [
   "relative flex flex-col gap-8 px-5 py-8 md:px-10 md:py-16",
   isMobilePreview.value ? "!px-5 !py-8" : "",
+  isDesktopPreview.value ? "!px-10 !py-16" : "",
   layout.value === "immersive" ? "mx-auto max-w-6xl" : props.section.fullWidth ? "w-full" : "mx-auto max-w-6xl"
 ]);
 

@@ -809,8 +809,8 @@ const navIconStrokeWidths: Record<string, string> = {};
 const routeTitleMap: Record<string, string> = {
   dashboard: navLabel("dashboard"),
   pages: navLabel("pages"),
-  leads: t({ pt: "CaptaÃƒÂ§ÃƒÂ£o de leads", es: "CaptaciÃƒÂ³n de leads" }),
-  "page-edit": t({ pt: "Editar pÃƒÂ¡gina", es: "Editar pÃƒÂ¡gina" }),
+  leads: t({ pt: "Captação de leads", es: "Captacion de leads" }),
+  "page-edit": t({ pt: "Editar página", es: "Editar página" }),
   lessons: navLabel("lessons"),
   "agency-settings": navLabel("agency"),
   "agency-domains": navLabel("domains"),
