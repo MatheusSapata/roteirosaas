@@ -356,6 +356,44 @@ def get_admin_metrics(
     )
 
 
+@router.get("/agencies/search", response_model=list[AdminAgencyOut])
+def search_admin_agencies(
+    q: str | None = Query(None, description="Nome ou slug da agência"),
+    limit: int = Query(40, ge=1, le=100),
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_superuser),
+) -> list[AdminAgencyOut]:
+    normalized = (q or "").strip().lower()
+    query = (
+        db.query(Agency, func.count(Page.id).label("pages_count"))
+        .outerjoin(Page, Page.agency_id == Agency.id)
+        .group_by(Agency.id)
+    )
+    if normalized:
+        pattern = f"%{normalized}%"
+        query = query.filter(
+            or_(
+                func.lower(Agency.name).like(pattern),
+                func.lower(Agency.slug).like(pattern),
+            )
+        )
+    result_rows = (
+        query.order_by(func.lower(Agency.name))
+        .limit(limit)
+        .all()
+    )
+    return [
+        AdminAgencyOut(
+            id=agency.id,
+            name=agency.name,
+            slug=agency.slug,
+            created_at=agency.created_at,
+            pages_count=pages_count or 0,
+        )
+        for agency, pages_count in result_rows
+    ]
+
+
 @router.get("/online-sessions", response_model=AdminOnlineSessionsResponse)
 def get_online_sessions(
     db: Session = Depends(get_db),

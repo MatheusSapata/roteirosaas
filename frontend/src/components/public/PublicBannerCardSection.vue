@@ -1,5 +1,5 @@
 <template>
-<section class="px-4 py-12" :id="section.anchorId || undefined" :style="{ background: section.backgroundColor || '#020617' }">
+<section class="px-4 py-4" :id="section.anchorId || undefined" :style="{ background: section.backgroundColor || '#020617' }">
     <div class="mx-auto max-w-5xl">
       <div class="relative flex items-center overflow-hidden rounded-[32px] border shadow-2xl min-h-[250px] md:min-h-[350px]" :style="cardSurfaceStyle">
         <div class="absolute inset-0">
