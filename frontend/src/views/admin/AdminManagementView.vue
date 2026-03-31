@@ -1189,16 +1189,62 @@
             </p>
           </div>
           <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
-            <div>
-              <label class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-white/60">Agência</label>
-              <select
-                v-model.number="templateAgencyId"
-                class="mt-1 w-64 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 focus:border-brand focus:outline-none dark:border-white/15 dark:bg-[#101010] dark:text-white"
-              >
-                <option v-for="agency in templateAgencyOptions" :key="agency.id" :value="agency.id">
-                  {{ agency.name }}
-                </option>
-              </select>
+            <div data-template-agency-selector="true">
+              <label class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-white/60">AgǦncia</label>
+              <div class="relative mt-1 w-64">
+                <input
+                  ref="templateAgencySearchInput"
+                  v-model="templateAgencySearch"
+                  type="text"
+                  placeholder="Buscar agǦncia"
+                  class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 pr-10 text-sm text-slate-900 focus:border-brand focus:outline-none dark:border-white/15 dark:bg-[#101010] dark:text-white"
+                  @focus="handleTemplateAgencyInputFocus"
+                />
+                <button
+                  type="button"
+                  class="absolute inset-y-0 right-3 flex items-center text-slate-400 transition hover:text-slate-600 dark:hover:text-white"
+                  @click="toggleTemplateAgencyDropdown"
+                >
+                  <svg
+                    class="h-4 w-4 transition"
+                    :class="templateAgencyDropdownOpen ? 'rotate-180' : ''"
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M5 8l5 5 5-5" />
+                  </svg>
+                </button>
+                <div
+                  v-if="templateAgencyDropdownOpen"
+                  class="absolute left-0 right-0 z-30 mt-2 w-full rounded-2xl border border-slate-200 bg-white shadow-xl dark:border-white/15 dark:bg-[#101010]"
+                >
+                  <p v-if="templateAgencyLoading" class="px-4 py-3 text-sm text-slate-500 dark:text-white/70">Buscando agências...</p>
+                  <p v-else-if="templateAgencyError" class="px-4 py-3 text-sm text-red-600 dark:text-red-200">{{ templateAgencyError }}</p>
+                  <ul
+                    v-else-if="templateAgencyOptions.length"
+                    class="max-h-60 divide-y divide-slate-100 overflow-y-auto py-1 dark:divide-white/5"
+                  >
+                    <li v-for="agency in templateAgencyOptions" :key="agency.id">
+                      <button
+                        type="button"
+                        class="flex w-full flex-col gap-0.5 px-4 py-2 text-left transition hover:bg-slate-50 dark:hover:bg-white/10"
+                        :class="agency.id === templateAgencyId ? 'bg-slate-50 dark:bg-white/5' : ''"
+                        @click="selectTemplateAgency(agency)"
+                      >
+                        <span class="text-sm font-semibold text-slate-900 dark:text-white">{{ agency.name }}</span>
+                        <span class="text-xs text-slate-500 dark:text-white/70">
+                          /{{ agency.slug }} · {{ agency.pages_count }} páginas
+                        </span>
+                      </button>
+                    </li>
+                  </ul>
+                  <p v-else class="px-4 py-3 text-sm text-slate-500 dark:text-white/70">Nenhuma agência encontrada.</p>
+                </div>
+              </div>
             </div>
             <button
               type="button"
@@ -1791,6 +1837,8 @@ interface Metrics {
   }[];
 }
 
+type AdminAgencySummary = Metrics["agencies"][number];
+
 interface AdminOnlineSession {
   session_id: string;
   user_id: number;
@@ -2027,11 +2075,16 @@ const linkPageDialog = ref<{
   error: ""
 });
 const templateAgencyId = ref<number | null>(null);
-const templateAgencyOptions = computed(() => {
-  const adminAgencies = metrics.value?.agencies ?? [];
-  if (adminAgencies.length) return adminAgencies;
-  return agencyStore.agencies;
-});
+const templateAgencyOptions = ref<AdminAgencySummary[]>([]);
+const templateAgencySearch = ref("");
+const templateAgencyDropdownOpen = ref(false);
+const templateAgencyLoading = ref(false);
+const templateAgencyError = ref("");
+const templateAgencyFetchedOnce = ref(false);
+const templateAgencySearchInput = ref<HTMLInputElement | null>(null);
+let templateAgencySearchDebounce: ReturnType<typeof setTimeout> | null = null;
+let templateAgencySearchRequestId = 0;
+let skipTemplateAgencySearchWatcher = false;
 const templatePages = ref<AdminPageSummary[]>([]);
 const templatePagesLoading = ref(false);
 const templatePagesError = ref("");
@@ -2053,6 +2106,62 @@ const templatePreviewDialog = reactive({
   open: false,
   template: null as PageTemplate | null
 });
+const updateTemplateAgencySearchLabel = (value: string) => {
+  skipTemplateAgencySearchWatcher = true;
+  templateAgencySearch.value = value;
+};
+const fetchTemplateAgencies = async (term?: string) => {
+  const requestId = ++templateAgencySearchRequestId;
+  templateAgencyLoading.value = true;
+  templateAgencyError.value = "";
+  const params: Record<string, string | number> = { limit: 40 };
+  const query = term?.trim();
+  if (query) {
+    params.q = query;
+  }
+  try {
+    const { data } = await api.get<AdminAgencySummary[]>("/admin/agencies/search", { params });
+    if (requestId === templateAgencySearchRequestId) {
+      templateAgencyOptions.value = data || [];
+      templateAgencyFetchedOnce.value = true;
+    }
+  } catch (err: any) {
+    console.error(err);
+    if (requestId === templateAgencySearchRequestId) {
+      templateAgencyError.value = err?.response?.data?.detail || "Não foi possível buscar agências.";
+      templateAgencyOptions.value = [];
+    }
+  } finally {
+    if (requestId === templateAgencySearchRequestId) {
+      templateAgencyLoading.value = false;
+    }
+  }
+};
+const ensureTemplateAgencyOptions = () => {
+  if (!templateAgencyFetchedOnce.value && !templateAgencyLoading.value) {
+    void fetchTemplateAgencies(templateAgencySearch.value);
+  }
+};
+const openTemplateAgencyDropdown = () => {
+  templateAgencyDropdownOpen.value = true;
+  ensureTemplateAgencyOptions();
+};
+const toggleTemplateAgencyDropdown = () => {
+  if (templateAgencyDropdownOpen.value) {
+    templateAgencyDropdownOpen.value = false;
+    return;
+  }
+  openTemplateAgencyDropdown();
+  templateAgencySearchInput.value?.focus();
+};
+const handleTemplateAgencyInputFocus = () => {
+  openTemplateAgencyDropdown();
+};
+const selectTemplateAgency = (agency: AdminAgencySummary) => {
+  templateAgencyId.value = agency.id;
+  updateTemplateAgencySearchLabel(agency.name);
+  templateAgencyDropdownOpen.value = false;
+};
 const premiumMode = computed(() => (auth.user?.plan || "").toLowerCase() === "infinity");
 const activeTab = ref<AdminTab>("dashboard");
 const tabButtonClass = (tab: AdminTab) =>
@@ -2841,13 +2950,22 @@ const isFilterActive = (key: UserColumnKey) => {
 };
 
 const handleFilterOutsideClick = (event: MouseEvent) => {
-  if (!openFilterKey.value) return;
   const path = event.composedPath();
-  const shouldKeepOpen = path.some(
-    el => (el as HTMLElement)?.dataset?.columnFilter === openFilterKey.value!
-  );
-  if (!shouldKeepOpen) {
-    closeFilterPanel();
+  if (openFilterKey.value) {
+    const shouldKeepOpen = path.some(
+      el => (el as HTMLElement)?.dataset?.columnFilter === openFilterKey.value!
+    );
+    if (!shouldKeepOpen) {
+      closeFilterPanel();
+    }
+  }
+  if (templateAgencyDropdownOpen.value) {
+    const insideAgencySelector = path.some(
+      el => (el as HTMLElement)?.dataset?.templateAgencySelector === "true"
+    );
+    if (!insideAgencySelector) {
+      templateAgencyDropdownOpen.value = false;
+    }
   }
 };
 
@@ -3161,8 +3279,11 @@ watch(userPageSize, () => {
   userPage.value = 1;
 });
 
-watch(metrics, () => {
+watch(metrics, value => {
   expandedUser.value = null;
+  if (!templateAgencyOptions.value.length && value?.agencies?.length) {
+    templateAgencyOptions.value = value.agencies;
+  }
 });
 
 watch(
@@ -3178,15 +3299,41 @@ watch(
 );
 
 watch(
+  templateAgencySearch,
+  value => {
+    if (skipTemplateAgencySearchWatcher) {
+      skipTemplateAgencySearchWatcher = false;
+      return;
+    }
+    if (templateAgencySearchDebounce) {
+      clearTimeout(templateAgencySearchDebounce);
+    }
+    templateAgencyDropdownOpen.value = true;
+    templateAgencySearchDebounce = setTimeout(() => {
+      void fetchTemplateAgencies(value);
+    }, 250);
+  }
+);
+
+watch(
   templateAgencyOptions,
   options => {
     if (!options?.length) {
-      templateAgencyId.value = null;
+      if (!templateAgencySearch.value.trim()) {
+        templateAgencyId.value = null;
+        updateTemplateAgencySearchLabel("");
+      }
       return;
     }
     const exists = options.some(option => option.id === templateAgencyId.value);
-    if (!exists) {
-      templateAgencyId.value = options[0]?.id ?? null;
+    if (!templateAgencyId.value && options[0] && !templateAgencySearch.value.trim()) {
+      templateAgencyId.value = options[0].id;
+      updateTemplateAgencySearchLabel(options[0].name);
+      return;
+    }
+    if (!exists && options[0] && !templateAgencySearch.value.trim()) {
+      templateAgencyId.value = options[0].id;
+      updateTemplateAgencySearchLabel(options[0].name);
     }
   },
   { immediate: true }
@@ -3247,6 +3394,7 @@ watch(activeTab, (tab) => {
     loadOnlineSessions();
   }
   if (tab === "templates") {
+    ensureTemplateAgencyOptions();
     if (!pageTemplates.value.length) {
       loadTemplates();
     }
@@ -3260,6 +3408,10 @@ onUnmounted(() => {
   if (typeof window !== "undefined") {
     window.removeEventListener("resize", updateIsMobile);
     window.removeEventListener("click", handleFilterOutsideClick);
+  }
+  if (templateAgencySearchDebounce) {
+    clearTimeout(templateAgencySearchDebounce);
+    templateAgencySearchDebounce = null;
   }
   stopOnlineSessionsPolling();
 });
