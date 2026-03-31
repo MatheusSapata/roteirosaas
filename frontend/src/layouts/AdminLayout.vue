@@ -1,5 +1,5 @@
 <template>
-  <div :class="['min-h-screen overflow-x-hidden', themeWrapperClass]">
+  <div :class="['min-h-screen overflow-x-hidden admin-scale-85', themeWrapperClass]">
     <div class="flex min-h-screen">
       <aside
         :class="[
@@ -1346,6 +1346,16 @@ watch(
 </script>
 
 <style>
+.admin-scale-85 {
+  zoom: 0.85;
+}
+@supports not (zoom: 1) {
+  .admin-scale-85 {
+    transform: scale(0.85);
+    transform-origin: top center;
+    width: calc(100% / 0.85);
+  }
+}
 .light-theme {
   background: #f8fafc;
   color: #0f172a;

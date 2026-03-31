@@ -1,4 +1,4 @@
-<template>
+﻿<template>
 <div class="w-full space-y-6 px-4 py-10 md:px-8 md:py-0">
     <div class="sticky top-0 z-30 flex flex-col gap-3 py-4 md:flex-row md:items-center md:justify-between">
       <div>
@@ -76,7 +76,7 @@
       </div>
 
     
-    <!-- Dialog de limite de plano (reutilizado também para "template no free") -->
+    <!-- Dialog de limite de plano (reutilizado tambÃ©m para "template no free") -->
     <Teleport to="body" v-if="limitModal.open">
       <div class="fixed inset-0 z-50 flex items-center justify-center px-4 page-editor-overlay">
         <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-[#1f1f1f] dark:text-white">
@@ -105,7 +105,7 @@
       </div>
     </Teleport>
 
-    <!-- Diálogo de confirmação ao sair sem salvar -->
+    <!-- DiÃ¡logo de confirmaÃ§Ã£o ao sair sem salvar -->
     <Teleport to="body" v-if="unsavedNavigationModal.open">
       <div class="fixed inset-0 z-50 flex items-center justify-center px-4 page-editor-overlay">
         <div class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl dark:bg-[#1f1f1f] dark:text-white">
@@ -185,9 +185,9 @@
       <div class="w-full max-w-5xl rounded-3xl bg-white shadow-2xl dark:bg-[#1f1f1f] dark:text-white">
         <div class="flex flex-col gap-2 border-b border-slate-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between dark:border-white/10">
           <div>
-            <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Adicionar nova seção</p>
+            <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Adicionar nova seÃ§Ã£o</p>
             <h3 class="text-lg font-semibold text-slate-900">Escolha um layout</h3>
-            <p class="text-sm text-slate-500">A nova seção será inserida logo abaixo do bloco selecionado.</p>
+            <p class="text-sm text-slate-500">A nova seÃ§Ã£o serÃ¡ inserida logo abaixo do bloco selecionado.</p>
           </div>
           <button
             type="button"
@@ -321,7 +321,7 @@
                     >
                       <option value="">{{ viewCopy.pixels.metaPlaceholder }}</option>
                       <option v-for="p in metaPixelOptions" :key="p.name" :value="p.name">
-                        {{ p.name }} — Meta
+                        {{ p.name }} â€” Meta
                       </option>
                     </select>
                     <p v-if="!metaPixelOptions.length" class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ viewCopy.pixels.metaEmptyHint }}</p>
@@ -335,7 +335,7 @@
                     >
                       <option value="">{{ viewCopy.pixels.googlePlaceholder }}</option>
                       <option v-for="p in gaPixelOptions" :key="p.name" :value="p.name">
-                        {{ p.name }} — GA4
+                        {{ p.name }} â€” GA4
                       </option>
                     </select>
                     <p v-if="!gaPixelOptions.length" class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ viewCopy.pixels.googleEmptyHint }}</p>
@@ -510,7 +510,20 @@
             <div class="space-y-6 preview-light">
               <template v-if="sections.length === 0">
                 <div class="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 px-4 py-12 text-center text-sm text-slate-500">
-                  {{ viewCopy.preview.emptyState }}
+                  <p>{{ viewCopy.preview.emptyState }}</p>
+                  <div class="mt-6 flex justify-center">
+                    <button
+                      type="button"
+                      class="inline-flex items-center gap-2 rounded-full border border-emerald-400 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-100"
+                      @click="openSectionPicker(null)"
+                    >
+                      <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 5v14" />
+                        <path d="M5 12h14" />
+                      </svg>
+                      {{ viewCopy.preview.emptyAction }}
+                    </button>
+                  </div>
                 </div>
               </template>
               <template v-else>
@@ -897,14 +910,14 @@ const viewCopy = {
   },
   limitModal: {
     eyebrow: t({ pt: "Limite do plano", es: "Límite del plan" }),
-    title: t({ pt: "Ação indisponível", es: "Acción indisponible" }),
+    title: t({ pt: "Ação indisponível", es: "Acción no disponible" }),
     description: t({
       pt: "Seu plano atual atingiu o limite. Atualize para continuar.",
       es: "Tu plan actual alcanzó el límite. Actualiza para continuar."
     }),
     templatePlan: t({
       pt: "Salvar template está disponível apenas a partir do plano Essencial. Atualize seu plano para liberar.",
-      es: "Guardar plantillas está disponible solo a partir del plan Esencial. Actualiza tu plan para liberar."
+      es: "Guardar plantillas está disponible solo a partir del plan Esencial. Actualiza tu plan para desbloquearlo."
     })
   },
   unsavedModal: {
@@ -936,11 +949,17 @@ const viewCopy = {
       es: "Slug es la parte del enlace después de la barra, sin espacios ni acentos. Ej.: mi-itinerario-increible."
     }),
     backgroundLabel: t({ pt: "Cores de fundo", es: "Colores de fondo" }),
-    backgroundHint: t({ pt: "Aplica alternância em todas as seções (exceto hero).", es: "Aplica un alternado en todas las secciones (excepto hero)." }),
+    backgroundHint: t({
+      pt: "Aplica alternância em todas as seções (exceto hero).",
+      es: "Aplica alternancia en todas las secciones (excepto hero)."
+    }),
     colorA: t({ pt: "Cor 1", es: "Color 1" }),
     colorB: t({ pt: "Cor 2", es: "Color 2" }),
     ctaColorLabel: t({ pt: "Cor de botões e destaques", es: "Color de botones y destacados" }),
-    ctaColorHint: t({ pt: "Afeta CTAs, chips e elementos em destaque.", es: "Afecta CTAs, chips y elementos destacados." })
+    ctaColorHint: t({
+      pt: "Afeta CTAs, chips e elementos em destaque.",
+      es: "Afecta CTAs, chips y elementos destacados."
+    })
   },
   pixels: {
     title: t({ pt: "Pixel de rastreamento", es: "Pixel de seguimiento" }),
@@ -951,14 +970,20 @@ const viewCopy = {
     planHint: t({ pt: "Disponível a partir do plano Essencial.", es: "Disponible a partir del plan Esencial." }),
     lockedHint: t({
       pt: "Adicione pixels na página Integrações (plano Essencial ou superior).",
-      es: "Agrega pixels en la página Integraciones (plan Esencial o superior)."
+      es: "Agrega píxeles en la página Integraciones (plan Esencial o superior)."
     }),
     metaLabel: t({ pt: "Pixel Meta", es: "Pixel Meta" }),
     metaPlaceholder: t({ pt: "Sem pixel Meta", es: "Sin pixel Meta" }),
-    metaEmptyHint: t({ pt: "Cadastre uma conexão Meta em Integrações.", es: "Registra una conexión Meta en Integraciones." }),
+    metaEmptyHint: t({
+      pt: "Cadastre uma conexão Meta em Integrações.",
+      es: "Registra una conexión Meta en Integraciones."
+    }),
     googleLabel: t({ pt: "Pixel Google", es: "Pixel Google" }),
     googlePlaceholder: t({ pt: "Sem pixel Google", es: "Sin pixel Google" }),
-    googleEmptyHint: t({ pt: "Cadastre uma conexão GA4 em Integrações.", es: "Registra una conexión GA4 en Integraciones." }),
+    googleEmptyHint: t({
+      pt: "Cadastre uma conexão GA4 em Integrações.",
+      es: "Registra una conexión GA4 en Integraciones."
+    }),
     eventsTitle: t({ pt: "Eventos a enviar", es: "Eventos a enviar" }),
     eventPageView: t({ pt: "Page view (carregamento da página)", es: "Page view (carga de la página)" }),
     eventCtaClicks: t({ pt: "Cliques em CTAs", es: "Clics en CTAs" })
@@ -971,7 +996,7 @@ const viewCopy = {
     title: t({ pt: "Formulário", es: "Formulario" }),
     description: t({
       pt: "Escolha um formulário de captação para abrir antes do visitante acessar a página.",
-      es: "Elige un formulario de captación para abrir antes de o visitante acessar la página."
+      es: "Elige un formulario de captación para abrir antes de que el visitante acceda a la página."
     }),
     manageButton: t({ pt: "Gerenciar formulários", es: "Gestionar formularios" }),
     loading: t({ pt: "Carregando formulários cadastrados...", es: "Cargando formularios registrados..." }),
@@ -979,7 +1004,10 @@ const viewCopy = {
     emptyAction: t({ pt: "“Gerenciar formulários” para criar.", es: "“Gestionar formularios” para crear uno." }),
     selectLabel: t({ pt: "Escolha um formulário", es: "Elige un formulario" }),
     selectPlaceholder: t({ pt: "Nenhum formulário selecionado", es: "Ningún formulario seleccionado" }),
-    selectHint: t({ pt: "Selecione o formulário e clique em “Ver prévia” para abrir o modal real.", es: "Selecciona el formulario y haz clic en “Ver previa” para abrir el modal real." }),
+    selectHint: t({
+      pt: "Selecione o formulário e clique em “Ver prévia” para abrir o modal real.",
+      es: "Selecciona el formulario y haz clic en “Ver previa” para abrir el modal real."
+    }),
     previewButton: t({ pt: "Ver prévia", es: "Ver previa" }),
     optionalToggle: t({ pt: "Permitir fechar sem enviar", es: "Permitir cerrar sin enviar" }),
     optionalActive: t({ pt: "Formulário opcional ativo para esta página.", es: "Formulario opcional activo para esta página." }),
@@ -991,15 +1019,19 @@ const viewCopy = {
     })
   },
   preview: {
-    title: t({ pt: "Preview visual", es: "Preview visual" }),
-    helper: t({ pt: "Clique no botão do topo para aplicar as alterações do formulário.", es: "Haz clic en el botón superior para aplicar los cambios del formulario." }),
-    mobileHint: t({ pt: "Toque sobre as seções para editar.", es: "Toca sobre las secciones para editar." }),
+    title: t({ pt: "Preview visual", es: "Vista previa visual" }),
+    helper: t({
+      pt: "Clique no botão do topo para aplicar as alterações do formulário.",
+      es: "Haz clic en el botón superior para aplicar los cambios del formulario."
+    }),
+    mobileHint: t({ pt: "Toque sobre as seções para editar.", es: "Toca las secciones para editarlas." }),
     desktopLabel: t({ pt: "Desktop", es: "Desktop" }),
     mobileLabel: t({ pt: "Mobile", es: "Mobile" }),
     emptyState: t({
-      pt: "Nenhuma seção adicionada ainda. Use os botões acima para criar o conteúdo.",
-      es: "Aún no hay secciones añadidas. Usa los botones de arriba para crear el contenido."
-    })
+      pt: "Nenhuma seção adicionada ainda. Use o botão abaixo para criar o conteúdo.",
+      es: "Aún no hay secciones añadidas. Usa el botón de abajo para crear el contenido."
+    }),
+    emptyAction: t({ pt: "Adicionar primeira seção", es: "Agregar primera sección" })
   },
   overlay: {
     edit: t({ pt: "Editar seção", es: "Editar sección" }),
@@ -1009,7 +1041,7 @@ const viewCopy = {
     delete: t({ pt: "Excluir", es: "Eliminar" }),
     footerLocked: t({
       pt: "Rodapé obrigatório no plano gratuito. Não é possível editar, mover ou remover esta seção.",
-      es: "Rodapié obligatorio en el plan gratuito. No es posible editar, mover o remover esta sección."
+      es: "El pie de página es obligatorio en el plan gratuito. No es posible editar, mover ni eliminar esta sección."
     }),
     disabledSection: t({
       pt: "Seção desativada. Clique em editar para ajustar e ativar novamente.",
@@ -1258,31 +1290,31 @@ const sectionTypes: SectionType[] = [
 const sectionLabels = defaultSectionLabels;
 const sectionDescriptions: Partial<Record<SectionType, string>> = {
   hero: t({
-    pt: "Bloco inicial com destaque visual, título, subtítulo e CTA principal.",
-    es: "Bloque inicial con destaque visual, título, subtítulo y CTA principal."
+    pt: "Bloco inicial com destaque visual, tÃ­tulo, subtÃ­tulo e CTA principal.",
+    es: "Bloque inicial con destaque visual, tÃ­tulo, subtÃ­tulo y CTA principal."
   }),
   banner_card: t({
     pt: "Banner em card com imagem de fundo, gradiente e CTA destacado.",
     es: "Banner en formato card con imagen de fondo, gradiente y CTA destacado."
   }),
   photo: t({
-    pt: "Uma única imagem em destaque. Escolha o layout card ou largura total.",
-    es: "Una única imagen destacada. Elige entre layout card o ancho completo."
+    pt: "Uma Ãºnica imagem em destaque. Escolha o layout card ou largura total.",
+    es: "Una Ãºnica imagen destacada. Elige entre layout card o ancho completo."
   }),
   biography: t({
-    pt: "Imagem em largura total com título sobreposto e texto descritivo.",
-    es: "Imagen a ancho completo con título superpuesto y texto descriptivo."
+    pt: "Imagem em largura total com tÃ­tulo sobreposto e texto descritivo.",
+    es: "Imagen a ancho completo con tÃ­tulo superpuesto y texto descriptivo."
   }),
   prices: t({
     pt: "Tabela com planos, valores e diferenciais para cada oferta.",
     es: "Tabla con planes, precios y diferenciales para cada oferta."
   }),
   itinerary: t({
-    pt: "Sequência de etapas/benefícios para explicar seu serviço ou roteiro.",
+    pt: "SequÃªncia de etapas/benefÃ­cios para explicar seu serviÃ§o ou roteiro.",
     es: "Secuencia de etapas/beneficios para explicar tu servicio o itinerario."
   }),
   faq: t({
-    pt: "Perguntas e respostas para antecipar dúvidas frequentes.",
+    pt: "Perguntas e respostas para antecipar dÃºvidas frequentes.",
     es: "Preguntas y respuestas para anticipar dudas frecuentes."
   }),
   testimonials: t({
@@ -1290,33 +1322,33 @@ const sectionDescriptions: Partial<Record<SectionType, string>> = {
     es: "Carrusel o lista con testimonios de clientes."
   }),
   featured_video: t({
-    pt: "Destaque um vídeo com título, subtítulo e CTA centralizado.",
-    es: "Destaca un video con título, subtítulo y CTA centrado."
+    pt: "Destaque um vÃ­deo com tÃ­tulo, subtÃ­tulo e CTA centralizado.",
+    es: "Destaca un video con tÃ­tulo, subtÃ­tulo y CTA centrado."
   }),
   cta: t({
-    pt: "Chamada final impulsionando o lead para a ação desejada.",
-    es: "Llamado final que impulsa al lead hacia la acción deseada."
+    pt: "Chamada final impulsionando o lead para a aÃ§Ã£o desejada.",
+    es: "Llamado final que impulsa al lead hacia la acciÃ³n deseada."
   }),
   story: t({
-    pt: "Bloco de storytelling para contar sua história, bastidores ou roteiro.",
+    pt: "Bloco de storytelling para contar sua histÃ³ria, bastidores ou roteiro.",
     es: "Bloque de storytelling para contar tu historia, bastidores o itinerario."
   }),
   reasons: t({
-    pt: "Liste motivos, benefícios e serviços para reforçar a decisão.",
-    es: "Lista motivos, beneficios y servicios para reforzar la decisión."
+    pt: "Liste motivos, benefÃ­cios e serviÃ§os para reforÃ§ar a decisÃ£o.",
+    es: "Lista motivos, beneficios y servicios para reforzar la decisiÃ³n."
   }),
   countdown: t({
-    pt: "Cria urgência com contador regressivo para promoções ou eventos.",
+    pt: "Cria urgÃªncia com contador regressivo para promoÃ§Ãµes ou eventos.",
     es: "Crea urgencia con un contador regresivo para promociones o eventos."
   }),
   agency_footer: t({
-    pt: "Cartão institucional com contatos, redes sociais e mapa da agência.",
+    pt: "CartÃ£o institucional com contatos, redes sociais e mapa da agÃªncia.",
     es: "Tarjeta institucional con contactos, redes sociales y mapa de la agencia."
   })
 };
 const catalogFallbackDescription = t({
-  pt: "Bloco personalizável para compor sua página.",
-  es: "Bloque personalizable para componer tu página."
+  pt: "Bloco personalizÃ¡vel para compor sua pÃ¡gina.",
+  es: "Bloque personalizable para componer tu pÃ¡gina."
 });
 
 const sectionThumbnails: Partial<Record<SectionType, string>> = {
@@ -1619,8 +1651,8 @@ const applyAutomaticStoryLayout = (story: StorySection) => {
 };
 
 const storyMediaErrorText = t({
-  pt: "Adicione ao menos uma imagem ou vídeo na seção Story antes de salvar.",
-  es: "Agrega al menos una imagen o video en la sección Story antes de guardar."
+  pt: "Adicione ao menos uma imagem ou vÃ­deo na seÃ§Ã£o Story antes de salvar.",
+  es: "Agrega al menos una imagen o video en la secciÃ³n Story antes de guardar."
 });
 const hasStoryImage = (section: StorySection) => countStoryImages(section.images) > 0;
 const hasStoryVideo = (section: StorySection) => countStoryVideos(section.videoUrls, section.videoUrl) > 0;
@@ -1644,8 +1676,8 @@ const validateAllSections = (): string | null => {
 const buildCatalogPreview = (type: SectionType): PageSection => {
   const base = clone(defaultSection(type));
   if (type === "hero") {
-    (base as any).title = "Título impactante";
-    (base as any).subtitle = "Explique rapidamente o benefício oferecido.";
+    (base as any).title = "TÃ­tulo impactante";
+    (base as any).subtitle = "Explique rapidamente o benefÃ­cio oferecido.";
   }
   if (Array.isArray((base as any).items)) {
     (base as any).items = (base as any).items.slice(0, 2);
@@ -1856,7 +1888,7 @@ const loadPixels = async () => {
 
 const clone = <T>(val: T): T => {
   try {
-    // structuredClone pode nÃ£o existir em browsers antigos; fallback seguro
+    // structuredClone pode nÃƒÂ£o existir em browsers antigos; fallback seguro
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     return typeof structuredClone === "function" ? structuredClone(val) : JSON.parse(JSON.stringify(val));
@@ -2130,250 +2162,250 @@ onBeforeUnmount(() => {
 
 function defaultSection(type: SectionType): PageSection {
   if (type === "hero") {
-    return ensureSectionAnchor({
-      type: "hero",
-      enabled: true,
-      layout: "immersive",
-      title: "Viajar com conforto e segurança nunca foi tão fácil.",
-      subtitle: "Conectamos você aos melhores destinos do Brasil com frota premium e atendimento próximo.",
-      backgroundImage: "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=1600&q=80",
-      gradientColor: heroDefaultGradient,
-      logoUrl: currentAgency.value?.logo_url || "",
-      logoBorderRadius: 0,
-      chips: ["Leito-cama 180º", "Wi-Fi a bordo", "Tomadas individuais", "Massagem a bordo"],
-      ctaLabel: "Quero falar no WhatsApp",
-      ctaLink: buildWhatsappLink(pageTitle.value) || "https://wa.me/",
-      ctaColor: theme.value.ctaDefaultColor,
-      ctaMode: "link",
-      ctaSectionId: null,
-      enableAnimation: true,
-      animationDuration: 1000,
-      ctaShimmer: true
-    } as HeroSection);
-  }
+  return ensureSectionAnchor({
+    type: "hero",
+    enabled: true,
+    layout: "immersive",
+    title: "Viajar com conforto e segurança nunca foi tão fácil.",
+    subtitle: "Conectamos você aos melhores destinos do Brasil com frota premium e atendimento próximo.",
+    backgroundImage: "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=1600&q=80",
+    gradientColor: heroDefaultGradient,
+    logoUrl: currentAgency.value?.logo_url || "",
+    logoBorderRadius: 0,
+    chips: ["Leito-cama 180º", "Wi-Fi a bordo", "Tomadas individuais", "Massagem a bordo"],
+    ctaLabel: "Quero falar no WhatsApp",
+    ctaLink: buildWhatsappLink(pageTitle.value) || "https://wa.me/",
+    ctaColor: theme.value.ctaDefaultColor,
+    ctaMode: "link",
+    ctaSectionId: null,
+    enableAnimation: true,
+    animationDuration: 1000,
+    ctaShimmer: true
+  } as HeroSection);
+}
 
-  if (type === "banner_card") {
-    return ensureSectionAnchor({
-      type: "banner_card",
-      enabled: true,
-      backgroundColor: colorA.value,
-      title: "Conte com especialistas para transformar o seu roteiro.",
-      subtitle:
-        "Um banner compacto e elegante para reforçar a principal promessa ou próxima campanha.",
-      backgroundImage:
-        "https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=1600&q=80",
-      gradientColor: "#05060f",
-      cardBackground: "rgba(5,6,15,0.88)",
-      cardBorderColor: "rgba(255,255,255,0.25)",
-      textColor: "rgba(255,255,255,0.85)",
-      bodyColor: "rgba(255,255,255,0.85)",
-      ctaLabel: "Quero saber mais",
-      ctaLink: buildWhatsappLink(pageTitle.value) || "https://wa.me/",
-      ctaColor: theme.value.ctaDefaultColor,
-      ctaMode: "link",
-      ctaSectionId: null
-    } as BannerCardSection);
-  }
+if (type === "banner_card") {
+  return ensureSectionAnchor({
+    type: "banner_card",
+    enabled: true,
+    backgroundColor: colorA.value,
+    title: "Conte com especialistas para transformar o seu roteiro.",
+    subtitle:
+      "Um banner compacto e elegante para reforçar a principal promessa ou próxima campanha.",
+    backgroundImage:
+      "https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=1600&q=80",
+    gradientColor: "#05060f",
+    cardBackground: "rgba(5,6,15,0.88)",
+    cardBorderColor: "rgba(255,255,255,0.25)",
+    textColor: "rgba(255,255,255,0.85)",
+    bodyColor: "rgba(255,255,255,0.85)",
+    ctaLabel: "Quero saber mais",
+    ctaLink: buildWhatsappLink(pageTitle.value) || "https://wa.me/",
+    ctaColor: theme.value.ctaDefaultColor,
+    ctaMode: "link",
+    ctaSectionId: null
+  } as BannerCardSection);
+}
 
-  if (type === "photo") {
-    return ensureSectionAnchor({
-      type: "photo",
-      enabled: true,
-      image:
-        "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=1200&q=80",
-      layout: "card",
-      altText: "Imagem de destaque"
-    } as PhotoSection);
-  }
+if (type === "photo") {
+  return ensureSectionAnchor({
+    type: "photo",
+    enabled: true,
+    image:
+      "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=1200&q=80",
+    layout: "card",
+    altText: "Imagem de destaque"
+  } as PhotoSection);
+}
 
-  if (type === "biography") {
-    return ensureSectionAnchor({
-      type: "biography",
-      enabled: true,
-      fullWidth: true,
-      title: { pt: "BIOGRAFIA", es: "BIOGRAFÍA" },
-      text: {
-        pt: "Use esta se��o para compartilhar sua trajet�ria, conquistas e bastidores. Hist�rias reais criam conex�o com o visitante e refor�am sua autoridade no assunto.",
-        es: "Usa esta secci�n para compartir tu trayectoria, logros y bastidores. Las historias reales generan conexi�n y refuerzan tu autoridad."
-      },
-      image:
-        "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1600&q=80",
-      overlayOpacity: 0.45,
-      titleColor: "#ffffff",
-      textColor: "#0f172a",
-      titleFontSize: 72,
-      textFontSize: 18
-    } as BiographySection);
-  }
+if (type === "biography") {
+  return ensureSectionAnchor({
+    type: "biography",
+    enabled: true,
+    fullWidth: true,
+    title: { pt: "BIOGRAFIA", es: "BIOGRAFÍA" },
+    text: {
+      pt: "Use esta seção para compartilhar sua trajetória, conquistas e bastidores. Histórias reais criam conexão com o visitante e reforçam sua autoridade no assunto.",
+      es: "Usa esta sección para compartir tu trayectoria, logros y bastidores. Las historias reales generan conexión con el visitante y refuerzan tu autoridad."
+    },
+    image:
+      "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1600&q=80",
+    overlayOpacity: 0.45,
+    titleColor: "#ffffff",
+    textColor: "#0f172a",
+    titleFontSize: 72,
+    textFontSize: 18
+  } as BiographySection);
+}
 
-  if (type === "prices") {
-    const headingDefaults = getSectionHeadingDefaults("prices");
-    return ensureSectionAnchor({
-      type: "prices",
-      enabled: true,
-      layout: "columns",
-      ctaLink: buildWhatsappLink(pageTitle.value, "Apartamento duplo") || "",
-      title: "Planos e opções",
-      subtitle: "Escolha o formato que combina com você.",
-      headingLabel: headingDefaults.label,
-      headingLabelStyle: headingDefaults.style,
-      description: "Escolha o formato que combina com você.",
-      items: [
-        {
-          title: "Apartamento duplo",
-          price: 3490,
-          description: "Por pessoa",
-          titleLabel: "Pacote",
-          priceLabel: "Por pessoa",
-          currency: "BRL",
-          badge: "",
-          highlight: false
-        }
-      ],
-      ctaColor: theme.value.ctaDefaultColor,
-      ctaLabel: "Reservar agora"
-    } as PricesSection);
-  }
+if (type === "prices") {
+  const headingDefaults = getSectionHeadingDefaults("prices");
+  return ensureSectionAnchor({
+    type: "prices",
+    enabled: true,
+    layout: "columns",
+    ctaLink: buildWhatsappLink(pageTitle.value, "Apartamento duplo") || "",
+    title: "Planos e opções",
+    subtitle: "Escolha o formato que combina com você.",
+    headingLabel: headingDefaults.label,
+    headingLabelStyle: headingDefaults.style,
+    description: "Escolha o formato que combina com você.",
+    items: [
+      {
+        title: "Apartamento duplo",
+        price: 3490,
+        description: "Por pessoa",
+        titleLabel: "Pacote",
+        priceLabel: "Por pessoa",
+        currency: "BRL",
+        badge: "",
+        highlight: false
+      }
+    ],
+    ctaColor: theme.value.ctaDefaultColor,
+    ctaLabel: "Reservar agora"
+  } as PricesSection);
+}
 
-  if (type === "itinerary") {
-    const headingDefaults = getSectionHeadingDefaults("itinerary");
-    return ensureSectionAnchor({
-      type: "itinerary",
-      enabled: true,
-      layout: "timeline",
-      headingLabel: headingDefaults.label,
-      headingLabelStyle: headingDefaults.style,
-      ctaColor: theme.value.ctaDefaultColor,
-      title: "Dia a dia",
-      subtitle: "Visão clara do roteiro completo.",
-      days: [
-        { day: "Dia 1", title: "Chegada", description: "Recepção no aeroporto e traslado." },
-        { day: "Dia 2", title: "Trilhas", description: "Passeio pelas dunas e cachoeiras." }
-      ]
-    } as ItinerarySection);
-  }
+if (type === "itinerary") {
+  const headingDefaults = getSectionHeadingDefaults("itinerary");
+  return ensureSectionAnchor({
+    type: "itinerary",
+    enabled: true,
+    layout: "timeline",
+    headingLabel: headingDefaults.label,
+    headingLabelStyle: headingDefaults.style,
+    ctaColor: theme.value.ctaDefaultColor,
+    title: "Dia a dia",
+    subtitle: "Visão clara do roteiro completo.",
+    days: [
+      { day: "Dia 1", title: "Chegada", description: "Recepção no aeroporto e traslado." },
+      { day: "Dia 2", title: "Trilhas", description: "Passeio pelas dunas e cachoeiras." }
+    ]
+  } as ItinerarySection);
+}
 
-  if (type === "faq") {
-    const headingDefaults = getSectionHeadingDefaults("faq");
-    return ensureSectionAnchor({
-      type: "faq",
-      enabled: true,
-      layout: "accordion",
-      title: "Perguntas frequentes",
-      subtitle: "As dúvidas mais comuns sobre o roteiro.",
-      headingLabel: headingDefaults.label,
-      headingLabelStyle: headingDefaults.style,
-      items: [
-        { question: "O que está incluído?", answer: "Hospedagem, transporte interno e passeios." },
-        { question: "Como reservar?", answer: "Clique no botão de WhatsApp e fale com a equipe." }
-      ]
-    } as FaqSection);
-  }
+if (type === "faq") {
+  const headingDefaults = getSectionHeadingDefaults("faq");
+  return ensureSectionAnchor({
+    type: "faq",
+    enabled: true,
+    layout: "accordion",
+    title: "Perguntas frequentes",
+    subtitle: "As dúvidas mais comuns sobre o roteiro.",
+    headingLabel: headingDefaults.label,
+    headingLabelStyle: headingDefaults.style,
+    items: [
+      { question: "O que está incluído?", answer: "Hospedagem, transporte interno e passeios." },
+      { question: "Como reservar?", answer: "Clique no botão de WhatsApp e fale com a equipe." }
+    ]
+  } as FaqSection);
+}
 
-  if (type === "testimonials") {
-    const headingDefaults = getSectionHeadingDefaults("testimonials");
-    return ensureSectionAnchor({
-      type: "testimonials",
-      enabled: true,
-      layout: "grid",
-      headingLabel: headingDefaults.label,
-      headingLabelStyle: headingDefaults.style,
-      title: "Quem já viajou com a gente",
-      subtitle: "Feedbacks reais de clientes",
-      items: [{ name: "Mariana", text: "Viagem incrí­vel, super bem organizada!", avatar: "" }],
-      cardColor: "#ffffff",
-      ctaColor: theme.value.ctaDefaultColor,
-      ctaMode: "link",
-      ctaSectionId: null
-    } as TestimonialsSection);
-  }
+if (type === "testimonials") {
+  const headingDefaults = getSectionHeadingDefaults("testimonials");
+  return ensureSectionAnchor({
+    type: "testimonials",
+    enabled: true,
+    layout: "grid",
+    headingLabel: headingDefaults.label,
+    headingLabelStyle: headingDefaults.style,
+    title: "Quem já viajou com a gente",
+    subtitle: "Feedbacks reais de clientes",
+    items: [{ name: "Mariana", text: "Viagem incrível, super bem organizada!", avatar: "" }],
+    cardColor: "#ffffff",
+    ctaColor: theme.value.ctaDefaultColor,
+    ctaMode: "link",
+    ctaSectionId: null
+  } as TestimonialsSection);
+}
 
-  if (type === "featured_video") {
-    const headingDefaults = getSectionHeadingDefaults("featured_video");
-    return ensureSectionAnchor({
-      type: "featured_video",
-      enabled: true,
-      headingLabel: headingDefaults.label,
-      headingLabelStyle: headingDefaults.style,
-      title: "Assista ao roteiro em 2 minutos",
-      subtitle: "Mostre o clima da experiencia com um video curto e objetivo.",
-      videoUrl: "https://www.youtube.com/watch?v=ysz5S6PUM-U",
-      ctaEnabled: true,
-      ctaLabel: "Falar com especialista",
-      ctaLink: buildWhatsappLink(pageTitle.value) || "https://wa.me/",
-      ctaMode: "link",
-      ctaSectionId: null,
-      ctaColor: theme.value.ctaDefaultColor
-    } as FeaturedVideoSection);
-  }
+if (type === "featured_video") {
+  const headingDefaults = getSectionHeadingDefaults("featured_video");
+  return ensureSectionAnchor({
+    type: "featured_video",
+    enabled: true,
+    headingLabel: headingDefaults.label,
+    headingLabelStyle: headingDefaults.style,
+    title: "Assista ao roteiro em 2 minutos",
+    subtitle: "Mostre o clima da experiência com um vídeo curto e objetivo.",
+    videoUrl: "https://www.youtube.com/watch?v=ysz5S6PUM-U",
+    ctaEnabled: true,
+    ctaLabel: "Falar com especialista",
+    ctaLink: buildWhatsappLink(pageTitle.value) || "https://wa.me/",
+    ctaMode: "link",
+    ctaSectionId: null,
+    ctaColor: theme.value.ctaDefaultColor
+  } as FeaturedVideoSection);
+}
 
-  if (type === "story") {
-    const headingDefaults = getSectionHeadingDefaults("story");
-    const defaultImages = [
-      "https://images.unsplash.com/photo-1502920514313-52581002a659?auto=format&fit=crop&w=1200&q=80",
-      "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1200&q=80",
-      "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80"
-    ];
-    return ensureSectionAnchor({
-      type: "story",
-      enabled: true,
-      layout: automaticStoryLayout(defaultImages),
-      headingLabel: headingDefaults.label,
-      headingLabelStyle: headingDefaults.style,
-      imagePosition: "right",
-      badge: "Sobre nós",
-      title: "Conheça nossa história",
-      subtitle: "Somos uma equipe apaixonada por criar experiências memoráveis de viagem, com atendimento próximo e cuidadoso.",
-      ctaLabel: "Quero saber mais",
-      ctaLink: buildWhatsappLink(pageTitle.value) || "https://wa.me/",
-      ctaColor: theme.value.ctaDefaultColor,
-      ctaEnabled: true,
-      enableAnimation: true,
-      ctaShimmer: true,
-      ctaMode: "link",
-      ctaSectionId: null,
-      borderEnabled: false,
-      borderColor: "#cbd5e1",
-      images: defaultImages,
-      videoUrls: []
-    } as StorySection);
-  }
+if (type === "story") {
+  const headingDefaults = getSectionHeadingDefaults("story");
+  const defaultImages = [
+    "https://images.unsplash.com/photo-1502920514313-52581002a659?auto=format&fit=crop&w=1200&q=80",
+    "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1200&q=80",
+    "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80"
+  ];
+  return ensureSectionAnchor({
+    type: "story",
+    enabled: true,
+    layout: automaticStoryLayout(defaultImages),
+    headingLabel: headingDefaults.label,
+    headingLabelStyle: headingDefaults.style,
+    imagePosition: "right",
+    badge: "Sobre nós",
+    title: "Conheça nossa história",
+    subtitle: "Somos uma equipe apaixonada por criar experiências memoráveis de viagem, com atendimento próximo e cuidadoso.",
+    ctaLabel: "Quero saber mais",
+    ctaLink: buildWhatsappLink(pageTitle.value) || "https://wa.me/",
+    ctaColor: theme.value.ctaDefaultColor,
+    ctaEnabled: true,
+    enableAnimation: true,
+    ctaShimmer: true,
+    ctaMode: "link",
+    ctaSectionId: null,
+    borderEnabled: false,
+    borderColor: "#cbd5e1",
+    images: defaultImages,
+    videoUrls: []
+  } as StorySection);
+}
 
-  if (type === "countdown") {
-    const headingDefaults = getSectionHeadingDefaults("countdown");
-    return ensureSectionAnchor({
-      type: "countdown",
-      enabled: true,
-      headingLabel: headingDefaults.label,
-      headingLabelStyle: headingDefaults.style,
-      label: "Garanta sua vaga agora mesmo!",
-      targetDate: buildCountdownTargetDate(),
-      backgroundColor: theme.value.ctaDefaultColor || resolvePrimaryColor(),
-      textColor: "#ffffff",
-      layout: "cards"
-    } as CountdownSection);
-  }
+if (type === "countdown") {
+  const headingDefaults = getSectionHeadingDefaults("countdown");
+  return ensureSectionAnchor({
+    type: "countdown",
+    enabled: true,
+    headingLabel: headingDefaults.label,
+    headingLabelStyle: headingDefaults.style,
+    label: "Garanta sua vaga agora mesmo!",
+    targetDate: buildCountdownTargetDate(),
+    backgroundColor: theme.value.ctaDefaultColor || resolvePrimaryColor(),
+    textColor: "#ffffff",
+    layout: "cards"
+  } as CountdownSection);
+}
 
-  if (type === "reasons") {
-    const headingDefaults = getSectionHeadingDefaults("reasons");
-    return ensureSectionAnchor({
-      type: "reasons",
-      enabled: true,
-      headingLabel: headingDefaults.label,
-      headingLabelStyle: headingDefaults.style,
-      title: "Por que escolher a nossa agência?",
-      subtitle: "Benefí­cios claros para ajudar na conversão",
-      items: [
-        { icon: "💰", title: "Economize dinheiro", description: "Aproveite negociações especiais e otimize seu orçamento." },
-        { icon: "🧭", title: "Mais liberdade", description: "Planeje quando quiser com apoio de especialistas locais." },
-        { icon: "🤝", title: "Apoio dedicado", description: "Suporte próximo antes, durante e depois da viagem." },
-        { icon: "✨", title: "Experiência única", description: "Curadoria de passeios e hospedagens memoráveis." }
-      ],
-      enableAnimation: true,
-      animationDuration: 1000,
-      cardAnimationStagger: 300
-    } as ReasonsSection);
-  }
+if (type === "reasons") {
+  const headingDefaults = getSectionHeadingDefaults("reasons");
+  return ensureSectionAnchor({
+    type: "reasons",
+    enabled: true,
+    headingLabel: headingDefaults.label,
+    headingLabelStyle: headingDefaults.style,
+    title: "Por que escolher a nossa agência?",
+    subtitle: "Benefícios claros para ajudar na conversão",
+    items: [
+      { icon: "💰", title: "Economize dinheiro", description: "Aproveite negociações especiais e otimize seu orçamento." },
+      { icon: "🧭", title: "Mais liberdade", description: "Planeje quando quiser com apoio de especialistas locais." },
+      { icon: "🤝", title: "Apoio dedicado", description: "Suporte próximo antes, durante e depois da viagem." },
+      { icon: "✨", title: "Experiência única", description: "Curadoria de passeios e hospedagens memoráveis." }
+    ],
+    enableAnimation: true,
+    animationDuration: 1000,
+    cardAnimationStagger: 300
+  } as ReasonsSection);
+}
 
   if (type === "agency_footer") {
     return ensureSectionAnchor({
@@ -2760,30 +2792,6 @@ const saveEditingSection = async () => {
   await saveConfig();
 };
 
-const setDefaultSectionsByPlan = () => {
-  const plan = auth.user?.plan || "free";
-
-  if (plan === "free") {
-    setSections([defaultSection("hero"), defaultSection("story"), defaultSection("itinerary"), defaultSection("cta")]);
-  } else {
-    const storyRight = defaultSection("story") as any;
-    storyRight.imagePosition = "right";
-
-    const storyLeft = defaultSection("story") as any;
-    storyLeft.imagePosition = "left";
-
-    setSections([
-      defaultSection("hero"),
-      defaultSection("reasons"),
-      storyRight,
-      storyLeft,
-      defaultSection("itinerary"),
-      defaultSection("countdown"),
-      defaultSection("cta")
-    ]);
-  }
-};
-
 const ensureProfile = async () => {
   if (!auth.user) {
     try {
@@ -2833,11 +2841,11 @@ const showSnackbar = (text: string) => {
 };
 
 /**
- * âœ… BLOQUEIO: plano free NÃƒO pode salvar template.
+ * Ã¢Å“â€¦ BLOQUEIO: plano free NÃƒÆ’O pode salvar template.
  * Deve abrir dialog com Fechar / Ver planos.
  */
 const saveTemplate = () => {
-  // se nÃ£o logou
+  // se nÃƒÂ£o logou
   if (!auth.user) {
     errorMessage.value = viewCopy.feedback.templateLoginRequired;
     return;
@@ -2952,8 +2960,7 @@ onMounted(async () => {
   loadPixels();
   leadCaptureStore.fetchForms().catch(() => undefined);
 
-  const applied = applySavedTemplate();
-  if (!applied) setDefaultSectionsByPlan();
+  applySavedTemplate();
 
   await fetchPage();
   sectionCatalog.value = sectionTypes.map(type => ({

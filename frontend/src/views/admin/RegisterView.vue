@@ -128,8 +128,8 @@ const viewCopy = {
       es: "Todo en un solo lugar. Crea páginas para tus viajes, centraliza la información y facilita la decisión del cliente."
     }),
     note: t({
-      pt: "Você pode começar com 1 roteiro online sem pagar nada.",
-      es: "Puedes empezar con 1 itinerario online sin pagar nada."
+      pt: "Você pode começar testando todas as funcionalidades por 7 dias.",
+      es: "Puedes comenzar probando todas las funcionalidades durante 7 días."
     })
   },
   card: {

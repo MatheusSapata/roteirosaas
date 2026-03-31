@@ -20,29 +20,30 @@
         v-if="templateModal.open"
         class="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/80 px-4 py-6"
       >
-        <div class="relative max-h-[90vh] w-full max-w-7xl overflow-hidden rounded-3xl bg-white p-6 shadow-2xl dark:bg-[#202020] dark:text-white">
-          <div class="flex flex-col gap-2 border-b border-slate-100 pb-4 md:flex-row md:items-center md:justify-between dark:border-white/10">
-            <div>
-              <p class="text-xs uppercase tracking-[0.4em] text-slate-500 dark:text-white/60">
-                {{ viewCopy.templateModal.title }}
-              </p>
-              <h2 class="text-2xl font-semibold text-slate-900 dark:text-white">
-                {{ viewCopy.templateModal.listTitle }}
-              </h2>
-              <p class="text-sm text-slate-500 dark:text-white/70">
-                {{ viewCopy.templateModal.subtitle }}
-              </p>
+        <div class="relative w-full max-w-7xl rounded-3xl bg-white shadow-2xl dark:bg-[#202020] dark:text-white">
+          <div class="max-h-[90vh] overflow-y-auto p-6">
+            <div class="flex flex-col gap-2 border-b border-slate-100 pb-4 md:flex-row md:items-center md:justify-between dark:border-white/10">
+              <div>
+                <p class="text-xs uppercase tracking-[0.4em] text-slate-500 dark:text-white/60">
+                  {{ viewCopy.templateModal.title }}
+                </p>
+                <h2 class="text-2xl font-semibold text-slate-900 dark:text-white">
+                  {{ viewCopy.templateModal.listTitle }}
+                </h2>
+                <p class="text-sm text-slate-500 dark:text-white/70">
+                  {{ viewCopy.templateModal.subtitle }}
+                </p>
+              </div>
+              <button
+                type="button"
+                class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-white/15 dark:text-white"
+                @click="closeTemplateModal"
+              >
+                {{ viewCopy.templateModal.cancel }}
+              </button>
             </div>
-            <button
-              type="button"
-              class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-white/15 dark:text-white"
-              @click="closeTemplateModal"
-            >
-              {{ viewCopy.templateModal.cancel }}
-            </button>
-          </div>
 
-          <div class="mt-6 grid gap-6 overflow-hidden lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+            <div class="mt-6 grid gap-6 overflow-hidden lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
             <div class="space-y-4">
               <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-white/60">
                 {{ viewCopy.templateModal.listTitle }}
@@ -69,7 +70,7 @@
                 {{ viewCopy.templateModal.listEmpty }}
               </p>
 
-              <div v-else class="h-[70vh] space-y-3 overflow-y-auto pr-2">
+              <div v-else class="h-[55vh] space-y-3 overflow-y-auto pr-2">
                 <p class="text-xs text-slate-500 dark:text-white/60">
                   {{ viewCopy.templateModal.selectHint }}
                 </p>
@@ -89,21 +90,6 @@
                     class="flex flex-1 items-center gap-3 text-left"
                     @click="selectTemplateForModal(template)"
                   >
-                    <div class="h-12 w-16 overflow-hidden rounded-xl bg-slate-100 dark:bg-white/10">
-                      <img
-                        v-if="templatePreviewImage(template)"
-                        :src="templatePreviewImage(template)"
-                        alt=""
-                        class="h-full w-full object-cover"
-                      />
-                      <div
-                        v-else
-                        class="flex h-full w-full items-center justify-center text-[11px] uppercase tracking-[0.3em] text-slate-400 dark:text-white/50"
-                      >
-                        {{ viewCopy.table.columns.name }}
-                      </div>
-                    </div>
-
                     <div>
                       <p class="text-sm font-semibold">{{ template.name }}</p>
                       <p class="text-xs text-slate-500 dark:text-white/60">
@@ -162,7 +148,7 @@
                 <div
                   v-if="!isMobileViewport || !previewFullscreen"
                   ref="templatePreviewContainer"
-                  class="preview-scroll max-h-[70vh] overflow-y-auto rounded-xl bg-white pb-4 dark:bg-[#181818] dark:text-white"
+                  class="preview-scroll max-h-[55vh] overflow-y-auto rounded-xl bg-white pb-4 dark:bg-[#181818] dark:text-white"
                 >
                   <template v-if="templateModal.selectedTemplate && templatePreviewConfig">
                     <div
@@ -196,6 +182,7 @@
               </div>
             </div>
           </div>
+        </div>
           <transition name="fade">
             <div
               v-if="isMobileViewport && previewFullscreen && templateModal.selectedTemplate && templatePreviewConfig"
@@ -732,7 +719,7 @@ import { createAdminLocalizer, getAdminLanguage } from "../../utils/adminI18n";
 import PageTemplatePreview from "../../components/admin/PageTemplatePreview.vue";
 import { listPageTemplates } from "../../services/templates";
 import type { PageTemplate } from "../../types/templates";
-import { applyTemplateBranding, extractTemplatePreviewImage } from "../../utils/pageTemplates";
+import { applyTemplateBranding } from "../../utils/pageTemplates";
 import { sanitizeDigits, buildWhatsappLink } from "../../utils/whatsapp";
 
 interface Page {
@@ -1197,7 +1184,6 @@ watch(
     previewContentObserver.observe(el);
   }
 );
-const templatePreviewImage = (template: PageTemplate) => extractTemplatePreviewImage(template);
 const planKey = computed(() => (authStore.user?.plan || "free").toLowerCase());
 const isFree = computed(() => planKey.value === "free");
 const showLeadColumn = computed(() => planKey.value !== "essencial");

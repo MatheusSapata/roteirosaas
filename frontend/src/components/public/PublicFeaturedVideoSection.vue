@@ -4,9 +4,9 @@
       <div class="flex justify-center mb-1">
         <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="ctaColor" />
       </div>
-      <h2 class="text-3xl font-bold leading-tight md:text-4xl" :style="{ color: primaryText }">
+      <h1 class="text-3xl font-bold leading-tight md:text-4xl" :style="{ color: primaryText }">
         {{ featuredTitle }}
-      </h2>
+      </h1>
       <div
         v-if="subtitleHtml"
         class="mt-1 text-base leading-relaxed md:text-lg"
