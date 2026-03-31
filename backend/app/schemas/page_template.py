@@ -26,3 +26,11 @@ class PageTemplateUpdate(BaseModel):
 class PageTemplateOut(PageTemplateBase):
     id: int
     model_config = ConfigDict(from_attributes=True)
+
+
+class PageTemplateFromPage(BaseModel):
+    page_id: int
+    name: str
+    slug: str
+    description: Optional[str] = None
+    is_default: bool = False

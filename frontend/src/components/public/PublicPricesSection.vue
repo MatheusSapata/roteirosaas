@@ -106,7 +106,7 @@ import { computed } from "vue";
 import type { CurrencyCode, PriceItem, PricesSection } from "../../types/page";
 import { isWhatsappLink } from "../../utils/links";
 import SectionHeadingChip from "./SectionHeadingChip.vue";
-import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
+import { getSectionHeadingDefaults, resolveHeadingLabel } from "../../utils/sectionHeadings";
 import { deriveTextPalette, getReadableTextColor } from "../../utils/colorContrast";
 import { createLocalizer, getCurrentLanguage } from "../../utils/i18n";
 
@@ -142,12 +142,9 @@ const toRgba = (hex: string, alpha: number) => {
 };
 
 const accentBorder = computed(() => toRgba(accent.value, 0.25));
-const headingLabel = computed(() => {
-  const override = localize(props.section.headingLabel);
-  if (override.trim().length) return override;
-  const fallback = headingDefaults.label;
-  return typeof fallback === "string" ? fallback : localize(fallback);
-});
+const headingLabel = computed(() =>
+  resolveHeadingLabel(props.section.headingLabel, headingDefaults.label, localize)
+);
 const headingStyle = computed(() => props.section.headingLabelStyle || headingDefaults.style);
 
 const sanitizeLink = (value?: string | null) => {

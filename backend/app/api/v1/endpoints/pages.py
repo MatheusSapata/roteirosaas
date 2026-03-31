@@ -1,5 +1,7 @@
 from datetime import datetime
+from copy import deepcopy
 import json
+import re
 from typing import Any, Optional, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -13,13 +15,16 @@ from app.models.page import Page, PageStatus
 from app.models.page_template import PageTemplate
 from app.models.user import User
 from app.schemas.page import PageConfigUpdate, PageCreate, PageOut, PagePublish, PageUpdate, PublicPageOut
+from app.services.page_templates import apply_template_branding, build_whatsapp_link
 from app.services.plans import effective_plan, plan_limits
 
 router = APIRouter()
 
 
-def ensure_agency_member(db: Session, agency_id: int, user_id: int) -> None:
-    membership = db.query(AgencyUser).filter(AgencyUser.agency_id == agency_id, AgencyUser.user_id == user_id).first()
+def ensure_agency_member(db: Session, agency_id: int, user: User) -> None:
+    if getattr(user, "is_superuser", False):
+        return
+    membership = db.query(AgencyUser).filter(AgencyUser.agency_id == agency_id, AgencyUser.user_id == user.id).first()
     if not membership:
         raise HTTPException(status_code=403, detail="Você não faz parte desta agência.")
 
@@ -106,6 +111,37 @@ def apply_free_footer(cfg: Any, plan: str) -> Any:
     return cfg
 
 
+def sanitize_digits(value: Optional[str]) -> str:
+    return re.sub(r"\D", "", value or "")
+
+
+def resolve_agency_whatsapp(db: Session, agency_id: int) -> str:
+    agency = db.query(Agency).filter(Agency.id == agency_id).first()
+    if agency:
+        digits = sanitize_digits(agency.cta_whatsapp)
+        if digits:
+            return digits
+
+    owner = (
+        db.query(User)
+        .join(AgencyUser, AgencyUser.user_id == User.id)
+        .filter(AgencyUser.agency_id == agency_id, AgencyUser.role == "owner")
+        .first()
+    )
+    if owner:
+        digits = sanitize_digits(getattr(owner, "whatsapp", ""))
+        if digits:
+            return digits
+
+    fallback = (
+        db.query(User)
+        .join(AgencyUser, AgencyUser.user_id == User.id)
+        .filter(AgencyUser.agency_id == agency_id)
+        .first()
+    )
+    return sanitize_digits(getattr(fallback, "whatsapp", "")) if fallback else ""
+
+
 def enforce_page_limits(db: Session, page: Page, publish: bool, config: Any, plan: Optional[str] = None) -> Any:
     plan = plan or resolve_agency_plan(db, page.agency_id)
     max_pages, max_sections = plan_limits(plan)
@@ -140,7 +176,7 @@ def list_pages(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ) -> list[PageOut]:
-    ensure_agency_member(db, agency_id, current_user.id)
+    ensure_agency_member(db, agency_id, current_user)
     agency = db.query(Agency).filter(Agency.id == agency_id).first()
     default_id = agency.default_page_id if agency else None
     pages = db.query(Page).filter(Page.agency_id == agency_id).order_by(Page.created_at.desc()).all()
@@ -156,7 +192,7 @@ def get_page(
     page = db.query(Page).filter(Page.id == page_id).first()
     if not page:
         raise HTTPException(status_code=404, detail="Página não encontrada.")
-    ensure_agency_member(db, page.agency_id, current_user.id)
+    ensure_agency_member(db, page.agency_id, current_user)
     plan = resolve_agency_plan(db, page.agency_id)
     page.config_json = apply_free_footer(normalize_config(page.config_json), plan)
     default_id = page.agency.default_page_id if page.agency else None
@@ -168,14 +204,31 @@ def get_page(
 def create_page(
     page_in: PageCreate, current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
 ) -> PageOut:
-    ensure_agency_member(db, page_in.agency_id, current_user.id)
+    ensure_agency_member(db, page_in.agency_id, current_user)
+    template = None
     if page_in.template_id:
         template = db.query(PageTemplate).filter(PageTemplate.id == page_in.template_id).first()
         if not template:
             raise HTTPException(status_code=404, detail="Modelo não encontrado.")
     payload = page_in.dict()
     payload["config_json"] = normalize_config(payload.get("config_json"))
+    if template and payload["config_json"] is None:
+        payload["config_json"] = deepcopy(template.config_json)
+
+    agency = db.query(Agency).filter(Agency.id == page_in.agency_id).first()
+    if not agency:
+        raise HTTPException(status_code=404, detail="Agência não encontrada.")
+
     page = Page(**payload)
+    if template:
+        whatsapp_digits = resolve_agency_whatsapp(db, page.agency_id)
+        whatsapp_link = build_whatsapp_link(whatsapp_digits, page.title) if whatsapp_digits else None
+        page.config_json = apply_template_branding(
+            page.config_json,
+            logo_url=getattr(agency, "logo_url", None),
+            whatsapp_link=whatsapp_link,
+        )
+
     plan = resolve_agency_plan(db, page.agency_id)
     max_pages, _ = plan_limits(plan)
     if max_pages is not None:
@@ -216,7 +269,7 @@ def update_page(
     page = db.query(Page).filter(Page.id == page_id).first()
     if not page:
         raise HTTPException(status_code=404, detail="Página não encontrada.")
-    ensure_agency_member(db, page.agency_id, current_user.id)
+    ensure_agency_member(db, page.agency_id, current_user)
     plan = resolve_agency_plan(db, page.agency_id)
     updates = page_in.dict(exclude_unset=True)
     if "config_json" in updates:
@@ -244,7 +297,7 @@ def update_page_config(
     page = db.query(Page).filter(Page.id == page_id).first()
     if not page:
         raise HTTPException(status_code=404, detail="Página não encontrada.")
-    ensure_agency_member(db, page.agency_id, current_user.id)
+    ensure_agency_member(db, page.agency_id, current_user)
     plan = resolve_agency_plan(db, page.agency_id)
     normalized = normalize_config(payload.config)
     page.config_json = enforce_page_limits(db, page, publish=False, config=normalized, plan=plan)
@@ -267,7 +320,7 @@ def publish_page(
     page = db.query(Page).filter(Page.id == page_id).first()
     if not page:
         raise HTTPException(status_code=404, detail="Página não encontrada.")
-    ensure_agency_member(db, page.agency_id, current_user.id)
+    ensure_agency_member(db, page.agency_id, current_user)
     plan = resolve_agency_plan(db, page.agency_id)
     # aplica limites por plano e enforce de seções/rodapé
     page.config_json = enforce_page_limits(db, page, payload.publish, page.config_json, plan=plan)
@@ -298,7 +351,7 @@ def delete_page(
     page = db.query(Page).filter(Page.id == page_id).first()
     if not page:
         raise HTTPException(status_code=404, detail="Página não encontrada.")
-    ensure_agency_member(db, page.agency_id, current_user.id)
+    ensure_agency_member(db, page.agency_id, current_user)
     agency = page.agency
     if agency and agency.default_page_id == page.id:
         agency.default_page_id = None
@@ -317,7 +370,7 @@ def set_default_page(
     page = db.query(Page).filter(Page.id == page_id).first()
     if not page:
         raise HTTPException(status_code=404, detail="Página não encontrada.")
-    ensure_agency_member(db, page.agency_id, current_user.id)
+    ensure_agency_member(db, page.agency_id, current_user)
     if page.status != PageStatus.published:
         raise HTTPException(status_code=400, detail="Apenas páginas publicadas podem ser definidas como padrão.")
     agency = page.agency or db.query(Agency).filter(Agency.id == page.agency_id).first()

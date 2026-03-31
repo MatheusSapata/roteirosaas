@@ -1,12 +1,28 @@
+import re
+import unicodedata
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_active_user, get_current_superuser, get_db
+from app.models.page import Page
 from app.models.page_template import PageTemplate
-from app.schemas.page_template import PageTemplateCreate, PageTemplateOut, PageTemplateUpdate
 from app.models.user import User
+from app.schemas.page_template import (
+    PageTemplateCreate,
+    PageTemplateFromPage,
+    PageTemplateOut,
+    PageTemplateUpdate,
+)
+from app.services.page_templates import scrub_template_config
 
 router = APIRouter()
+
+
+def _slugify(value: str) -> str:
+    normalized = unicodedata.normalize("NFKD", value or "").encode("ascii", "ignore").decode("ascii")
+    slug = re.sub(r"[^a-z0-9]+", "-", normalized.lower()).strip("-")
+    return slug or "modelo"
 
 
 @router.get("", response_model=list[PageTemplateOut])
@@ -26,10 +42,38 @@ def get_template(
 
 @router.post("", response_model=PageTemplateOut, dependencies=[Depends(get_current_superuser)])
 def create_template(template_in: PageTemplateCreate, db: Session = Depends(get_db)) -> PageTemplateOut:
-    existing = db.query(PageTemplate).filter(PageTemplate.slug == template_in.slug).first()
+    slug = _slugify(template_in.slug)
+    existing = db.query(PageTemplate).filter(PageTemplate.slug == slug).first()
     if existing:
         raise HTTPException(status_code=400, detail="Slug de modelo já existe.")
-    template = PageTemplate(**template_in.dict())
+    payload = template_in.dict()
+    payload["slug"] = slug
+    template = PageTemplate(**payload)
+    db.add(template)
+    db.commit()
+    db.refresh(template)
+    return template
+
+
+@router.post("/from-page", response_model=PageTemplateOut, dependencies=[Depends(get_current_superuser)])
+def create_template_from_page(payload: PageTemplateFromPage, db: Session = Depends(get_db)) -> PageTemplateOut:
+    slug = _slugify(payload.slug)
+    existing = db.query(PageTemplate).filter(PageTemplate.slug == slug).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Slug de modelo já existe.")
+    page = db.query(Page).filter(Page.id == payload.page_id).first()
+    if not page:
+        raise HTTPException(status_code=404, detail="Página não encontrada.")
+    if not page.config_json:
+        raise HTTPException(status_code=400, detail="Página não possui conteúdo configurado.")
+    sanitized_config = scrub_template_config(page.config_json)
+    template = PageTemplate(
+        name=payload.name,
+        slug=slug,
+        description=payload.description,
+        is_default=payload.is_default,
+        config_json=sanitized_config or {},
+    )
     db.add(template)
     db.commit()
     db.refresh(template)
@@ -41,9 +85,32 @@ def update_template(template_id: int, template_in: PageTemplateUpdate, db: Sessi
     template = db.query(PageTemplate).filter(PageTemplate.id == template_id).first()
     if not template:
         raise HTTPException(status_code=404, detail="Modelo não encontrado.")
-    for key, value in template_in.dict(exclude_unset=True).items():
+    updates = template_in.dict(exclude_unset=True)
+    if "slug" in updates and updates["slug"]:
+        updates["slug"] = _slugify(updates["slug"])
+        existing = (
+            db.query(PageTemplate)
+            .filter(PageTemplate.slug == updates["slug"], PageTemplate.id != template_id)
+            .first()
+        )
+        if existing:
+            raise HTTPException(status_code=400, detail="Slug de modelo já existe.")
+    for key, value in updates.items():
         setattr(template, key, value)
     db.add(template)
     db.commit()
     db.refresh(template)
     return template
+
+
+@router.delete(
+    "/{template_id}",
+    status_code=204,
+    dependencies=[Depends(get_current_superuser)],
+)
+def delete_template(template_id: int, db: Session = Depends(get_db)) -> None:
+    template = db.query(PageTemplate).filter(PageTemplate.id == template_id).first()
+    if not template:
+        raise HTTPException(status_code=404, detail="Modelo não encontrado.")
+    db.delete(template)
+    db.commit()

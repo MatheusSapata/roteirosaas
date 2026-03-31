@@ -1,4 +1,5 @@
 import type { SectionType } from "../types/page";
+import type { LocalizedString } from "./i18n";
 
 export type HeadingStyle = "filled" | "outline";
 
@@ -17,4 +18,24 @@ const HEADING_DEFAULTS: Partial<Record<SectionType, { label: string; style: Head
 
 export const getSectionHeadingDefaults = (type: SectionType) => {
   return HEADING_DEFAULTS[type] || { label: "", style: "outline" };
+};
+
+export const resolveHeadingLabel = (
+  label: LocalizedString,
+  fallback: LocalizedString = "",
+  localize: (value: LocalizedString) => string
+): string => {
+  if (label !== null && typeof label !== "undefined") {
+    return localize(label).trim();
+  }
+
+  if (fallback === null || typeof fallback === "undefined") {
+    return "";
+  }
+
+  if (typeof fallback === "string") {
+    return fallback.trim();
+  }
+
+  return localize(fallback).trim();
 };

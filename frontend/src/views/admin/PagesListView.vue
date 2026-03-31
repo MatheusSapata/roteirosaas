@@ -15,7 +15,279 @@
       </button>
     </div>
 
-    <div v-if="!hasAgency" class="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 sm:flex-row sm:items-center sm:justify-between">
+    <teleport to="body">
+      <div
+        v-if="templateModal.open"
+        class="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/80 px-4 py-6"
+      >
+        <div class="relative max-h-[90vh] w-full max-w-7xl overflow-hidden rounded-3xl bg-white p-6 shadow-2xl dark:bg-[#202020] dark:text-white">
+          <div class="flex flex-col gap-2 border-b border-slate-100 pb-4 md:flex-row md:items-center md:justify-between dark:border-white/10">
+            <div>
+              <p class="text-xs uppercase tracking-[0.4em] text-slate-500 dark:text-white/60">
+                {{ viewCopy.templateModal.title }}
+              </p>
+              <h2 class="text-2xl font-semibold text-slate-900 dark:text-white">
+                {{ viewCopy.templateModal.listTitle }}
+              </h2>
+              <p class="text-sm text-slate-500 dark:text-white/70">
+                {{ viewCopy.templateModal.subtitle }}
+              </p>
+            </div>
+            <button
+              type="button"
+              class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-white/15 dark:text-white"
+              @click="closeTemplateModal"
+            >
+              {{ viewCopy.templateModal.cancel }}
+            </button>
+          </div>
+
+          <div class="mt-6 grid gap-6 overflow-hidden lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+            <div class="space-y-4">
+              <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-white/60">
+                {{ viewCopy.templateModal.listTitle }}
+              </p>
+
+              <p
+                v-if="templateModal.loading"
+                class="rounded-2xl border border-dashed border-slate-200 p-4 text-center text-sm text-slate-500 dark:border-white/10 dark:text-white/70"
+              >
+                {{ viewCopy.templateModal.listLoading }}
+              </p>
+
+              <p
+                v-else-if="templateModal.error && !templateModal.templates.length"
+                class="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-400/40 dark:bg-red-500/10 dark:text-red-200"
+              >
+                {{ templateModal.error }}
+              </p>
+
+              <p
+                v-else-if="!templateModal.templates.length"
+                class="rounded-2xl border border-dashed border-slate-200 p-4 text-center text-sm text-slate-500 dark:border-white/10 dark:text-white/70"
+              >
+                {{ viewCopy.templateModal.listEmpty }}
+              </p>
+
+              <div v-else class="h-[70vh] space-y-3 overflow-y-auto pr-2">
+                <p class="text-xs text-slate-500 dark:text-white/60">
+                  {{ viewCopy.templateModal.selectHint }}
+                </p>
+
+                <div
+                  v-for="template in templateModal.templates"
+                  :key="template.id"
+                  class="flex flex-col gap-3 rounded-2xl border px-4 py-3 transition sm:flex-row sm:items-center"
+                  :class="
+                    templateModal.selectedTemplate && templateModal.selectedTemplate.id === template.id
+                      ? 'border-slate-900 bg-slate-900/5 text-slate-900 dark:border-white dark:bg-white/10 dark:text-white'
+                      : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50 dark:border-white/15 dark:hover:bg-white/5'
+                  "
+                >
+                  <button
+                    type="button"
+                    class="flex flex-1 items-center gap-3 text-left"
+                    @click="selectTemplateForModal(template)"
+                  >
+                    <div class="h-12 w-16 overflow-hidden rounded-xl bg-slate-100 dark:bg-white/10">
+                      <img
+                        v-if="templatePreviewImage(template)"
+                        :src="templatePreviewImage(template)"
+                        alt=""
+                        class="h-full w-full object-cover"
+                      />
+                      <div
+                        v-else
+                        class="flex h-full w-full items-center justify-center text-[11px] uppercase tracking-[0.3em] text-slate-400 dark:text-white/50"
+                      >
+                        {{ viewCopy.table.columns.name }}
+                      </div>
+                    </div>
+
+                    <div>
+                      <p class="text-sm font-semibold">{{ template.name }}</p>
+                      <p class="text-xs text-slate-500 dark:text-white/60">
+                        {{ template.description || "Sem descrição" }}
+                      </p>
+                    </div>
+                  </button>
+
+                  <div class="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-white/15 dark:text-white"
+                      @click="handleTemplatePreview(template)"
+                    >
+                      Visualizar
+                    </button>
+                    <button
+                      type="button"
+                      class="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-900"
+                      @click="useTemplateNow(template)"
+                    >
+                      Usar esse
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="space-y-4">
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-white/60">
+                  {{ viewCopy.templateModal.previewHeading }}
+                </p>
+
+                <div class="inline-flex items-center rounded-full border border-slate-200 bg-white p-1 text-xs font-semibold dark:border-white/10 dark:bg-[#101010]">
+                  <button
+                    type="button"
+                    class="rounded-full px-3 py-1 transition"
+                    :class="templatePreviewDevice === 'desktop' ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'text-slate-500 dark:text-white/70'"
+                    @click="templatePreviewDevice = 'desktop'"
+                  >
+                    Desktop
+                  </button>
+                  <button
+                    type="button"
+                    class="rounded-full px-3 py-1 transition"
+                    :class="templatePreviewDevice === 'mobile' ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'text-slate-500 dark:text-white/70'"
+                    @click="templatePreviewDevice = 'mobile'"
+                  >
+                    Mobile
+                  </button>
+                </div>
+              </div>
+
+              <div class="rounded-2xl border border-slate-100 bg-slate-50 p-4 dark:border-white/10 dark:bg-[#111111]">
+                <div
+                  v-if="!isMobileViewport || !previewFullscreen"
+                  ref="templatePreviewContainer"
+                  class="preview-scroll max-h-[70vh] overflow-y-auto rounded-xl bg-white pb-4 dark:bg-[#181818] dark:text-white"
+                >
+                  <template v-if="templateModal.selectedTemplate && templatePreviewConfig">
+                    <div
+                      class="preview-scale-wrapper"
+                      :class="{ 'preview-mobile-center': templatePreviewDevice === 'mobile' }"
+                      :style="templatePreviewWrapperStyle"
+                    >
+                      <div class="preview-scale" :style="templatePreviewStyle">
+                        <div ref="templatePreviewContent">
+                          <PageTemplatePreview
+                            :config="templatePreviewConfig"
+                            :preview-device="templatePreviewDevice"
+                            :branding="{
+                              agency_name: currentAgency?.name || authStore.user?.name || '',
+                              logo_url: currentAgency?.logo_url || '',
+                              primary_color: currentAgency?.primary_color || '#0f172a',
+                              secondary_color: currentAgency?.secondary_color || '#1f2937'
+                            }"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+
+                  <template v-else>
+                    <p class="py-10 text-center text-sm text-slate-500 dark:text-white/70">
+                      {{ viewCopy.templateModal.previewEmpty }}
+                    </p>
+                  </template>
+                </div>
+              </div>
+            </div>
+          </div>
+          <transition name="fade">
+            <div
+              v-if="isMobileViewport && previewFullscreen && templateModal.selectedTemplate && templatePreviewConfig"
+              class="absolute inset-0 z-20 flex flex-col bg-white px-4 pb-6 pt-5 dark:bg-[#202020]"
+            >
+              <div class="mb-4 border-b border-slate-100 pb-3 dark:border-white/10">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-white/60">
+                      {{ viewCopy.templateModal.previewHeading }}
+                    </p>
+                    <p class="text-sm font-semibold text-slate-900 dark:text-white">
+                      {{ templateModal.selectedTemplate?.name }}
+                    </p>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <div class="inline-flex items-center rounded-full border border-slate-200 bg-white p-1 text-xs font-semibold dark:border-white/10 dark:bg-[#101010]">
+                      <button
+                        type="button"
+                        class="rounded-full px-3 py-1 transition"
+                        :class="templatePreviewDevice === 'desktop' ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'text-slate-500 dark:text-white/70'"
+                        @click="templatePreviewDevice = 'desktop'"
+                      >
+                        Desktop
+                      </button>
+                      <button
+                        type="button"
+                        class="rounded-full px-3 py-1 transition"
+                        :class="templatePreviewDevice === 'mobile' ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'text-slate-500 dark:text-white/70'"
+                        @click="templatePreviewDevice = 'mobile'"
+                      >
+                        Mobile
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      class="rounded-full border border-slate-200 p-2 text-slate-600 transition hover:bg-slate-50 dark:border-white/15 dark:text-white dark:hover:bg-white/10"
+                      @click="closePreviewFullscreen"
+                    >
+                      <span class="sr-only">{{ viewCopy.templateModal.cancel }}</span>
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 6l12 12M6 18L18 6" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="flex-1 overflow-hidden">
+                <div
+                  ref="templatePreviewContainer"
+                  class="preview-scroll h-full overflow-y-auto rounded-xl bg-white pb-4 dark:bg-[#181818] dark:text-white"
+                >
+                  <template v-if="templateModal.selectedTemplate && templatePreviewConfig">
+                    <div
+                      class="preview-scale-wrapper"
+                      :class="{ 'preview-mobile-center': templatePreviewDevice === 'mobile' }"
+                      :style="templatePreviewWrapperStyle"
+                    >
+                      <div class="preview-scale" :style="templatePreviewStyle">
+                        <div ref="templatePreviewContent">
+                          <PageTemplatePreview
+                            :config="templatePreviewConfig"
+                            :preview-device="templatePreviewDevice"
+                            :branding="{
+                              agency_name: currentAgency?.name || authStore.user?.name || '',
+                              logo_url: currentAgency?.logo_url || '',
+                              primary_color: currentAgency?.primary_color || '#0f172a',
+                              secondary_color: currentAgency?.secondary_color || '#1f2937'
+                            }"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+
+                  <template v-else>
+                    <p class="py-10 text-center text-sm text-slate-500 dark:text-white/70">
+                      {{ viewCopy.templateModal.previewEmpty }}
+                    </p>
+                  </template>
+                </div>
+              </div>
+            </div>
+          </transition>
+        </div>
+      </div>
+    </teleport>
+
+    <div
+      v-if="!hasAgency"
+      class="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 sm:flex-row sm:items-center sm:justify-between"
+    >
       <span>
         {{ viewCopy.emptyStates.noAgency.prefix }}
         <router-link to="/admin/agency" class="font-semibold underline">
@@ -31,77 +303,82 @@
       </router-link>
     </div>
 
-    <div
-      v-if="createOptionsOpen"
-      class="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/60 px-4 py-8"
-    >
-      <div class="w-full max-w-4xl rounded-3xl bg-white p-8 shadow-2xl dark:bg-[#202020] dark:text-white">
-        <div class="mb-6 space-y-1">
-          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">
-            {{ viewCopy.actions.createModal.eyebrow }}
-          </p>
-          <h2 class="text-2xl font-bold text-slate-900">
-            {{ viewCopy.actions.createModal.title }}
-          </h2>
-          <p class="text-sm text-slate-500">
-            {{ viewCopy.actions.createModal.description }}
-          </p>
-        </div>
+    <teleport to="body">
+      <div
+        v-if="createOptionsOpen"
+        class="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/60 px-4 py-8"
+      >
+        <div class="w-full max-w-4xl rounded-3xl bg-white p-8 shadow-2xl dark:bg-[#202020] dark:text-white">
+          <div class="mb-6 space-y-1">
+            <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">
+              {{ viewCopy.actions.createModal.eyebrow }}
+            </p>
+            <h2 class="text-2xl font-bold text-slate-900">
+              {{ viewCopy.actions.createModal.title }}
+            </h2>
+            <p class="text-sm text-slate-500">
+              {{ viewCopy.actions.createModal.description }}
+            </p>
+          </div>
 
-        <div class="grid gap-4 md:grid-cols-3">
-          <button
-            class="rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 dark:border-[#363636] dark:bg-[#101010] dark:text-white dark:hover:bg-white/5"
-            @click="createPageFromScratch"
-          >
-            <span class="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-700">
-              {{ viewCopy.actions.createModal.scratch.badge }}
-            </span>
+          <div class="grid gap-4 md:grid-cols-3">
+            <button
+              class="rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 dark:border-[#363636] dark:bg-[#101010] dark:text-white dark:hover:bg-white/5"
+              @click="createPageFromScratch"
+            >
+              <span class="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                {{ viewCopy.actions.createModal.scratch.badge }}
+              </span>
               <h3 class="mt-3 text-lg font-semibold text-slate-900 dark:text-white">
                 {{ viewCopy.actions.createModal.scratch.title }}
               </h3>
               <p class="mt-1 text-sm text-slate-600 dark:text-slate-200">
-              {{ viewCopy.actions.createModal.scratch.description }}
-            </p>
-          </button>
+                {{ viewCopy.actions.createModal.scratch.description }}
+              </p>
+            </button>
 
-          <button
-            class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5 text-left text-slate-600 transition hover:-translate-y-0.5 hover:border-slate-300 dark:border-[#363636] dark:bg-[#181818] dark:text-slate-200 dark:hover:border-white/10 dark:hover:bg-white/5"
-            @click="createPageFromTemplate"
-          >
-            <span class="inline-flex items-center rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-indigo-700">
-              {{ viewCopy.actions.createModal.template.badge }}
-            </span>
+            <button
+              class="rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 dark:border-[#363636] dark:bg-[#101010] dark:text-white dark:hover:bg-white/5"
+              @click="createPageFromTemplate"
+            >
+              <span class="inline-flex items-center rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-indigo-700">
+                {{ viewCopy.actions.createModal.template.badge }}
+              </span>
               <h3 class="mt-3 text-lg font-semibold text-slate-900 dark:text-white">
                 {{ viewCopy.actions.createModal.template.title }}
               </h3>
               <p class="mt-1 text-sm text-slate-600 dark:text-slate-200">
-              {{ viewCopy.actions.createModal.template.description }}
-            </p>
-          </button>
+                {{ viewCopy.actions.createModal.template.description }}
+              </p>
+            </button>
 
-          <button
-            class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5 text-left text-slate-600 transition hover:-translate-y-0.5 hover:border-slate-300 dark:border-[#363636] dark:bg-[#181818] dark:text-slate-200 dark:hover:border-white/10 dark:hover:bg-white/5"
-            @click="createPageWithAi"
-          >
-            <span class="inline-flex items-center rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-indigo-700">
-              {{ viewCopy.actions.createModal.ai.badge }}
-            </span>
+            <button
+              class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5 text-left text-slate-600 transition hover:-translate-y-0.5 hover:border-slate-300 dark:border-[#363636] dark:bg-[#181818] dark:text-slate-200 dark:hover:border-white/10 dark:hover:bg-white/5"
+              @click="createPageWithAi"
+            >
+              <span class="inline-flex items-center rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-indigo-700">
+                {{ viewCopy.actions.createModal.ai.badge }}
+              </span>
               <h3 class="mt-3 text-lg font-semibold text-slate-900 dark:text-white">
                 {{ viewCopy.actions.createModal.ai.title }}
               </h3>
               <p class="mt-1 text-sm text-slate-600 dark:text-slate-200">
-              {{ viewCopy.actions.createModal.ai.description }}
-            </p>
-          </button>
-        </div>
+                {{ viewCopy.actions.createModal.ai.description }}
+              </p>
+            </button>
+          </div>
 
-        <div class="mt-6 flex justify-end">
-          <button class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:border-[#363636] dark:text-white dark:hover:bg-white/10" @click="closeCreateModal">
-            {{ viewCopy.actions.createModal.cancel }}
-          </button>
+          <div class="mt-6 flex justify-end">
+            <button
+              class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:border-[#363636] dark:text-white dark:hover:bg-white/10"
+              @click="closeCreateModal"
+            >
+              {{ viewCopy.actions.createModal.cancel }}
+            </button>
+          </div>
         </div>
-    </div>
-  </div>
+      </div>
+    </teleport>
 
     <transition name="fade">
       <div v-if="planLimitDialog.open" class="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/70 px-4">
@@ -122,7 +399,10 @@
             >
               {{ viewCopy.actions.planLimit.close }}
             </button>
-            <button class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 dark:bg-brand dark:hover:bg-brand-dark" @click="goPlans">
+            <button
+              class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 dark:bg-brand dark:hover:bg-brand-dark"
+              @click="goPlans"
+            >
               {{ viewCopy.actions.planLimit.viewPlans }}
             </button>
           </div>
@@ -244,9 +524,7 @@
               </p>
               <div
                 class="flex flex-wrap items-center gap-3"
-                :class="{
-                  'md:justify-center md:text-center': !(page.status === 'published' && pagePublicUrl(page))
-                }"
+                :class="{ 'md:justify-center md:text-center': !(page.status === 'published' && pagePublicUrl(page)) }"
               >
                 <template v-if="page.status === 'published' && pagePublicUrl(page)">
                   <a
@@ -259,7 +537,7 @@
                   <button
                     class="text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-600"
                     @click="copyLink(page)"
-                 >
+                  >
                     {{ viewCopy.actions.copy.button }}
                   </button>
                 </template>
@@ -384,6 +662,7 @@
           </div>
           <button class="text-slate-500 hover:text-slate-700" @click="closeDuplicateDialog">x</button>
         </div>
+
         <div class="mt-4 space-y-4">
           <div>
             <label class="text-sm font-semibold text-slate-700">
@@ -396,8 +675,11 @@
               @input="autoSlugFromTitle"
             />
           </div>
+
           <div>
-            <label class="text-sm font-semibold text-slate-700">{{ viewCopy.dialogs.duplicate.slugLabel }}</label>
+            <label class="text-sm font-semibold text-slate-700">
+              {{ viewCopy.dialogs.duplicate.slugLabel }}
+            </label>
             <input
               v-model="duplicateSlug"
               class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2"
@@ -408,8 +690,12 @@
             </p>
           </div>
         </div>
+
         <div class="mt-6 flex items-center justify-end gap-3">
-          <button class="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-700 hover:bg-slate-100" @click="closeDuplicateDialog">
+          <button
+            class="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
+            @click="closeDuplicateDialog"
+          >
             {{ viewCopy.dialogs.duplicate.cancel }}
           </button>
           <button
@@ -436,13 +722,18 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import api from "../../services/api";
 import { useAgencyStore } from "../../store/useAgencyStore";
 import { useAuthStore } from "../../store/useAuthStore";
 import { getPlanLabel } from "../../utils/planLabels";
 import { createAdminLocalizer, getAdminLanguage } from "../../utils/adminI18n";
+import PageTemplatePreview from "../../components/admin/PageTemplatePreview.vue";
+import { listPageTemplates } from "../../services/templates";
+import type { PageTemplate } from "../../types/templates";
+import { applyTemplateBranding, extractTemplatePreviewImage } from "../../utils/pageTemplates";
+import { sanitizeDigits, buildWhatsappLink } from "../../utils/whatsapp";
 
 interface Page {
   id: number;
@@ -505,7 +796,7 @@ const viewCopySource = {
         }
       },
       template: {
-        badge: { pt: "Em breve", es: "Pronto" },
+        badge: { pt: "Templates", es: "Plantillas" },
         title: { pt: "Criar a partir de modelo", es: "Crear desde un modelo" },
         description: {
           pt: "Selecione um layout pronto e personalize apenas o conteúdo.",
@@ -544,6 +835,41 @@ const viewCopySource = {
       delete: { pt: "Excluir", es: "Eliminar" }
     },
     copy: { button: { pt: "Copiar", es: "Copiar" } }
+  },
+  templateModal: {
+    title: { pt: "Escolha um modelo", es: "Elige un modelo" },
+    subtitle: {
+      pt: "Use modelos oficiais para acelerar a criacao e foque apenas nos detalhes do roteiro.",
+      es: "Usa plantillas oficiales para acelerar la creacion y enfocate en los detalles."
+    },
+    listTitle: { pt: "Modelos disponiveis", es: "Modelos disponibles" },
+    listLoading: { pt: "Carregando modelos...", es: "Cargando modelos..." },
+    listEmpty: {
+      pt: "Nenhum modelo disponivel no momento.",
+      es: "No hay modelos disponibles en este momento."
+    },
+    listError: {
+      pt: "Nao foi possivel carregar os modelos.",
+      es: "No fue posible cargar los modelos."
+    },
+    selectHint: {
+      pt: "Selecione um modelo para visualizar e criar sua pagina.",
+      es: "Selecciona un modelo para visualizar y crear tu pagina."
+    },
+    previewHeading: { pt: "Pre-visualizacão", es: "Previsualizacion" },
+    previewEmpty: {
+      pt: "Escolha um modelo para visualizar o design.",
+      es: "Elige un modelo para visualizar el diseno."
+    },
+    formTitle: { pt: "Detalhes da nova pagina", es: "Detalles de la nueva pagina" },
+    nameLabel: { pt: "Titulo da pagina", es: "Titulo de la pagina" },
+    slugLabel: { pt: "Slug", es: "Slug" },
+    slugHint: {
+      pt: "Este slug completa o link publico do roteiro.",
+      es: "Este slug completa el enlace publico del itinerario."
+    },
+    cancel: { pt: "Cancelar", es: "Cancelar" },
+    create: { pt: "Criar pagina", es: "Crear pagina" }
   },
   dialogs: {
     duplicate: {
@@ -628,9 +954,21 @@ const viewCopySource = {
       pt: "Não foi possível criar a página. Verifique se você está logado e possui acesso à agência.",
       es: "No fue posible crear la página. Verifica si iniciaste sesión y tienes acceso a la agencia."
     },
-    templateWip: {
-      pt: "Funcionalidade em desenvolvimento. Em breve você poderá usar modelos prontos.",
-      es: "Funcionalidad en desarrollo. Pronto podrás usar modelos listos."
+    templateLoadError: {
+      pt: "Não foi possível carregar os modelos.",
+      es: "No fue posible cargar los modelos."
+    },
+    templateSelectPrompt: {
+      pt: "Selecione um modelo para continuar.",
+      es: "Selecciona un modelo para continuar."
+    },
+    templateCreateSuccess: {
+      pt: "Página criada a partir do modelo.",
+      es: "Página creada desde la plantilla."
+    },
+    templateCreateError: {
+      pt: "Não foi possível criar a página com este modelo.",
+      es: "No fue posible crear la página con esta plantilla."
     },
     aiWip: {
       pt: "Funcionalidade em desenvolvimento. Em breve você poderá criar páginas com IA.",
@@ -712,6 +1050,154 @@ const currentAgencySlug = computed(() => {
   const agency = agencyStore.agencies.find(a => a.id === agencyStore.currentAgencyId);
   return agency?.slug || "";
 });
+const currentAgency = computed(() => {
+  return agencyStore.agencies.find(a => a.id === agencyStore.currentAgencyId) || null;
+});
+const templateModal = ref<{
+  open: boolean;
+  loading: boolean;
+  templates: PageTemplate[];
+  error: string;
+  selectedTemplate: PageTemplate | null;
+  pageTitle: string;
+  pageSlug: string;
+  slugAuto: string;
+  saving: boolean;
+}>({
+  open: false,
+  loading: false,
+  templates: [],
+  error: "",
+  selectedTemplate: null,
+  pageTitle: "",
+  pageSlug: "",
+  slugAuto: "",
+  saving: false
+});
+const templatePreviewConfig = computed(() => {
+  if (!templateModal.value.selectedTemplate) return null;
+  const brandingAgency = currentAgency.value;
+  const digits = sanitizeDigits(brandingAgency?.cta_whatsapp || authStore.user?.whatsapp || "");
+  const whatsappLink = templateModal.value.selectedTemplate
+    ? buildWhatsappLink(digits, templateModal.value.selectedTemplate.name)
+    : "";
+  const logoUrl = brandingAgency?.logo_url || "";
+  const primaryColor = brandingAgency?.primary_color || null;
+  return applyTemplateBranding(templateModal.value.selectedTemplate.config_json, {
+    logoUrl,
+    whatsappLink,
+    primaryColor,
+    enforcePrimaryColor: !!primaryColor
+  });
+});
+const templatePreviewDevice = ref<"desktop" | "mobile">("desktop");
+const templatePreviewContainer = ref<HTMLElement | null>(null);
+const templatePreviewContent = ref<HTMLElement | null>(null);
+const templatePreviewScale = ref(0.55);
+const previewFullscreen = ref(false);
+const isMobileViewport = ref(false);
+let previewViewportQuery: MediaQueryList | null = null;
+let previewViewportListener: ((event: MediaQueryListEvent) => void) | null = null;
+const basePreviewWidth = computed(() => (templatePreviewDevice.value === "desktop" ? 1440 : 384));
+const templatePreviewContentHeight = ref(0);
+const scaledPreviewHeight = computed(() => templatePreviewContentHeight.value * templatePreviewScale.value);
+const updatePreviewViewportMatch = (matches?: boolean) => {
+  const isMatch = typeof matches === "boolean" ? matches : previewViewportQuery?.matches ?? false;
+  isMobileViewport.value = isMatch;
+  if (!isMatch) {
+    previewFullscreen.value = false;
+  }
+};
+const setupPreviewViewportListener = () => {
+  if (typeof window === "undefined" || !window.matchMedia) return;
+  previewViewportQuery = window.matchMedia("(max-width: 768px)");
+  updatePreviewViewportMatch(previewViewportQuery.matches);
+  previewViewportListener = (event: MediaQueryListEvent) => updatePreviewViewportMatch(event.matches);
+  if (previewViewportQuery.addEventListener) {
+    previewViewportQuery.addEventListener("change", previewViewportListener);
+  } else if (previewViewportListener) {
+    previewViewportQuery.addListener(previewViewportListener);
+  }
+};
+const teardownPreviewViewportListener = () => {
+  if (previewViewportQuery && previewViewportListener) {
+    if (previewViewportQuery.removeEventListener) {
+      previewViewportQuery.removeEventListener("change", previewViewportListener);
+    } else {
+      previewViewportQuery.removeListener(previewViewportListener);
+    }
+  }
+  previewViewportQuery = null;
+  previewViewportListener = null;
+};
+const recomputePreviewScale = () => {
+  if (!templateModal.value.open) return;
+  const container = templatePreviewContainer.value;
+  if (!container) return;
+  const available = container.clientWidth;
+  const baseWidth = basePreviewWidth.value;
+  const scale = Math.min(available / baseWidth, 1);
+  templatePreviewScale.value = scale > 0 ? scale : 1;
+};
+const templatePreviewStyle = computed(() => {
+  const scale = templatePreviewScale.value;
+  return {
+    width: `${basePreviewWidth.value}px`,
+    transform: `scale(${scale})`,
+    transformOrigin: templatePreviewDevice.value === "mobile" ? "top center" : "top left"
+  };
+});
+const templatePreviewWrapperStyle = computed(() => {
+  const height = scaledPreviewHeight.value;
+  if (!height) return {};
+  return { height: `${height}px` };
+});
+watch(templatePreviewDevice, () => {
+  nextTick(() => {
+    recomputePreviewScale();
+    if (templatePreviewContainer.value) {
+      templatePreviewContainer.value.scrollTo({ top: 0 });
+    }
+  });
+});
+watch(
+  () => templateModal.value.open,
+  open => {
+    if (open) {
+      nextTick(recomputePreviewScale);
+    } else {
+      previewFullscreen.value = false;
+    }
+  }
+);
+watch(
+  () => templatePreviewContainer.value,
+  el => {
+    if (!previewResizeObserver) return;
+    previewResizeObserver.disconnect();
+    if (el) {
+      previewResizeObserver.observe(el);
+      nextTick(recomputePreviewScale);
+    }
+  }
+);
+watch(
+  () => templatePreviewContent.value,
+  el => {
+    previewContentObserver?.disconnect();
+    if (!el) {
+      templatePreviewContentHeight.value = 0;
+      return;
+    }
+    templatePreviewContentHeight.value = el.offsetHeight;
+    previewContentObserver = new ResizeObserver(entries => {
+      if (!entries.length) return;
+      templatePreviewContentHeight.value = entries[0].contentRect.height;
+    });
+    previewContentObserver.observe(el);
+  }
+);
+const templatePreviewImage = (template: PageTemplate) => extractTemplatePreviewImage(template);
 const planKey = computed(() => (authStore.user?.plan || "free").toLowerCase());
 const isFree = computed(() => planKey.value === "free");
 const showLeadColumn = computed(() => planKey.value !== "essencial");
@@ -763,6 +1249,113 @@ const loadPageStats = async () => {
     pageStats.value = map;
   } catch (err) {
     console.error(err);
+  }
+};
+
+const loadTemplateOptions = async () => {
+  templateModal.value.loading = true;
+  templateModal.value.error = "";
+  try {
+    templateModal.value.templates = await listPageTemplates();
+  } catch (err) {
+    console.error(err);
+    templateModal.value.error = viewCopy.messages.templateLoadError;
+  } finally {
+    templateModal.value.loading = false;
+  }
+};
+
+const openTemplateModal = async () => {
+  if (!agencyStore.currentAgencyId) {
+    showSnackbar(viewCopy.messages.createAgencyRequired, "error");
+    return;
+  }
+  templateModal.value.open = true;
+  templateModal.value.selectedTemplate = null;
+  templateModal.value.pageTitle = "";
+  templateModal.value.pageSlug = "";
+  templateModal.value.slugAuto = "";
+  templateModal.value.error = "";
+  previewFullscreen.value = false;
+  if (!templateModal.value.templates.length) {
+    await loadTemplateOptions();
+  }
+};
+
+const closeTemplateModal = () => {
+  templateModal.value.open = false;
+  templateModal.value.selectedTemplate = null;
+  templateModal.value.pageTitle = "";
+  templateModal.value.pageSlug = "";
+  templateModal.value.slugAuto = "";
+  templateModal.value.error = "";
+  templateModal.value.saving = false;
+  previewFullscreen.value = false;
+};
+
+const selectTemplateForModal = (template: PageTemplate) => {
+  templateModal.value.selectedTemplate = template;
+  templateModal.value.pageTitle = template.name;
+  const slug = slugify(template.name);
+  templateModal.value.pageSlug = slug;
+  templateModal.value.slugAuto = slug;
+  templateModal.value.error = "";
+};
+const handleTemplatePreview = (template: PageTemplate) => {
+  selectTemplateForModal(template);
+  if (isMobileViewport.value) {
+    templatePreviewDevice.value = "mobile";
+    previewFullscreen.value = true;
+  }
+};
+
+const handleTemplateSlugInput = () => {
+  templateModal.value.slugAuto = templateModal.value.pageSlug;
+};
+const closePreviewFullscreen = () => {
+  previewFullscreen.value = false;
+};
+
+const createPageFromTemplateApi = async (templateId: number, title: string, slug: string) => {
+  if (!agencyStore.currentAgencyId) {
+    throw new Error(viewCopy.messages.createAgencyRequired);
+  }
+  const res = await api.post<Page>("/pages", {
+    agency_id: agencyStore.currentAgencyId,
+    title,
+    slug,
+    status: "draft",
+    template_id: templateId
+  });
+  pages.value.push({ ...res.data });
+  return res.data;
+};
+
+const submitTemplateModal = async () => {
+  /* Form removed; delegate creation to useTemplateNow */
+  useTemplateNow(templateModal.value.selectedTemplate!);
+};
+
+const useTemplateNow = async (template: PageTemplate) => {
+  templateModal.value.selectedTemplate = template;
+  templateModal.value.pageTitle = template.name;
+  templateModal.value.pageSlug = template.slug;
+  templateModal.value.slugAuto = template.slug;
+  try {
+    const page = await createPageFromTemplateApi(template.id, template.name, template.slug);
+    showSnackbar(viewCopy.messages.templateCreateSuccess);
+    closeTemplateModal();
+    createOptionsOpen.value = false;
+    router.push(`/admin/pages/${page.id}/edit`);
+  } catch (err: any) {
+    console.error(err);
+    if (handlePlanLimitError(err)) {
+      closeTemplateModal();
+      createOptionsOpen.value = false;
+      return;
+    }
+    const detail = err?.response?.data?.detail || err?.message;
+    showSnackbar(detail || viewCopy.messages.templateCreateError, "error");
   }
 };
 
@@ -920,7 +1513,8 @@ const showSnackbar = (text: string, tone: "success" | "error" = "success") => {
 };
 
 const createPageFromTemplate = () => {
-  showSnackbar(viewCopy.messages.templateWip);
+  createOptionsOpen.value = false;
+  openTemplateModal();
 };
 
 const createPageWithAi = () => {
@@ -1101,6 +1695,35 @@ const getPageLeads = (pageId: number) => pageStats.value[pageId]?.leads ?? 0;
 const goPlans = () => {
   router.push("/admin/planos");
 };
+let previewResizeObserver: ResizeObserver | null = null;
+let previewContentObserver: ResizeObserver | null = null;
+const handleWindowResize = () => recomputePreviewScale();
+onMounted(() => {
+  setupPreviewViewportListener();
+  previewResizeObserver = new ResizeObserver(() => recomputePreviewScale());
+  if (templatePreviewContainer.value) {
+    previewResizeObserver.observe(templatePreviewContainer.value);
+  }
+  window.addEventListener("resize", handleWindowResize);
+});
+onBeforeUnmount(() => {
+  teardownPreviewViewportListener();
+  previewResizeObserver?.disconnect();
+  previewContentObserver?.disconnect();
+  window.removeEventListener("resize", handleWindowResize);
+});
+
+watch(
+  () => templateModal.value.pageTitle,
+  value => {
+    if (!templateModal.value.open) return;
+    if (!templateModal.value.pageSlug || templateModal.value.pageSlug === templateModal.value.slugAuto) {
+      const slug = slugify(value);
+      templateModal.value.pageSlug = slug;
+      templateModal.value.slugAuto = slug;
+    }
+  }
+);
 
 onMounted(loadPages);
 </script>
@@ -1111,5 +1734,28 @@ onMounted(loadPages);
   opacity: 0.15;
   pointer-events: none;
   user-select: none;
+}
+
+.preview-scroll {
+  padding-bottom: 2rem;
+  overflow-x: hidden;
+}
+
+.preview-scale-wrapper {
+  width: 100%;
+  display: block;
+  position: relative;
+  overflow: hidden;
+}
+
+.preview-mobile-center {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.preview-scale {
+  transition: transform 0.2s ease, width 0.2s ease;
+  display: block;
 }
 </style>

@@ -702,55 +702,55 @@ const viewCopy = {
     firstPageTitle: t({ pt: "Meu primeiro roteiro", es: "Mi primer itinerario" }),
     name: {
       eyebrow: t({ pt: "Comece por aqui", es: "Empieza por aquÃ­" }),
-      title: t({ pt: "Qual nome da sua agÃªncia?", es: "Â¿CuÃ¡l es el nombre de tu agencia?" }),
-      description: t({ pt: "Esse nome aparece no painel e nas pÃ¡ginas. VocÃª pode alterar depois.", es: "Este nombre aparece en el panel y en las pÃ¡ginas. Puedes cambiarlo despuÃ©s." }),
-      label: t({ pt: "Nome da agÃªncia", es: "Nombre de la agencia" }),
+      title: t({ pt: "Qual nome da sua agência?", es: "Â¿CuÃ¡l es el nombre de tu agencia?" }),
+      description: t({ pt: "Esse nome aparece no painel e nas páginas. Você pode alterar depois.", es: "Este nombre aparece en el panel y en las paginas. Puedes cambiarlo despuÃ©s." }),
+      label: t({ pt: "Nome da agência", es: "Nombre de la agencia" }),
       placeholder: t({ pt: "Ex.: MariaTur", es: "Ej.: MariaTur" })
     },
     logo: {
       eyebrow: t({ pt: "Personalize", es: "Personaliza" }),
       title: t({ pt: "Logo da sua agÃªncia", es: "Logo de tu agencia" }),
-      description: t({ pt: "Envie o arquivo da sua marca. VocÃª pode trocar depois.", es: "Sube el archivo de tu marca. Puedes cambiarlo despuÃ©s." }),
+      description: t({ pt: "Envie o arquivo da sua marca. Você pode trocar depois.", es: "Sube el archivo de tu marca. Puedes cambiarlo despues." }),
       fieldLabel: t({ pt: "Logo", es: "Logo" }),
-      hint: t({ pt: "Formatos permitidos: JPG e PNG - Tamanho mÃ¡ximo: 10MB", es: "Formatos permitidos: JPG y PNG - TamaÃ±o mÃ¡ximo: 10MB" }),
-      editorTitle: t({ pt: "Ajuste a logo da agÃªncia", es: "Ajusta el logo de la agencia" })
+      hint: t({ pt: "Formatos permitidos: JPG e PNG - Tamanho máximo: 10MB", es: "Formatos permitidos: JPG y PNG - Tamanho máximo: 10MB" }),
+      editorTitle: t({ pt: "Ajuste a logo da agência", es: "Ajusta el logo de la agencia" })
     },
     color: {
       eyebrow: t({ pt: "Defina o estilo", es: "Define el estilo" }),
-      title: t({ pt: "Qual a cor principal da sua agÃªncia?", es: "Â¿CuÃ¡l es el color principal de tu agencia?" }),
-      description: t({ pt: "Usamos essa cor nos botÃµes e destaques padrÃ£o do editor.", es: "Usamos este color en los botones y destacados predeterminados del editor." }),
+      title: t({ pt: "Qual a cor principal da sua agência?", es: "Â¿CuÃ¡l es el color principal de tu agencia?" }),
+      description: t({ pt: "Usamos essa cor nos botões e destaques padrão do editor.", es: "Usamos este color en los botones y destacados predeterminados del editor." }),
       pickerHint: t({ pt: "Clique aqui para alterar", es: "Haz clic aquÃ­ para cambiar" }),
-      hexLabel: t({ pt: "CÃ³digo hexadecimal", es: "CÃ³digo hexadecimal" }),
+      hexLabel: t({ pt: "Código hexadecimal", es: "CÃ³digo hexadecimal" }),
       placeholder: t({ pt: "#41ce5f", es: "#41ce5f" })
     },
     success: {
-      title: t({ pt: "ParabÃ©ns, sua agÃªncia foi criada!", es: "Â¡Felicidades, tu agencia fue creada!" }),
-      description: t({ pt: "Agora vocÃª pode criar sua primeira pÃ¡gina personalizada.", es: "Ahora puedes crear tu primera pÃ¡gina personalizada." })
+      title: t({ pt: "Parabéns, sua agência foi criada!", es: "Â¡Felicidades, tu agencia fue creada!" }),
+      description: t({ pt: "Agora você pode criar sua primeira pÃ¡gina personalizada.", es: "Ahora puedes crear tu primera pÃ¡gina personalizada." })
     },
     unsaved: {
-      eyebrow: t({ pt: "AtenÃ§Ã£o", es: "AtenciÃ³n" }),
-      title: t({ pt: "HÃ¡ alteraÃ§Ãµes nÃ£o salvas", es: "Hay cambios no guardados" }),
-      description: t({ pt: "Se fechar agora, vocÃª perderÃ¡ o que preencheu. Deseja realmente sair?", es: "Si cierras ahora, perderÃ¡s lo que completaste. Â¿Deseas salir?" })
+      eyebrow: t({ pt: "Atenção", es: "Atencion" }),
+      title: t({ pt: "Há alterações não salvas", es: "Hay cambios no guardados" }),
+      description: t({ pt: "Se fechar agora, vocÃª perderá o que preencheu. Deseja realmente sair?", es: "Si cierras ahora, perderÃ¡s lo que completaste. Â¿Deseas salir?" })
     },
     actions: {
       close: t({ pt: "Fechar", es: "Cerrar" }),
-      next: t({ pt: "AvanÃ§ar", es: "Avanzar" }),
-      advancing: t({ pt: "AvanÃ§ando...", es: "Avanzando..." }),
+      next: t({ pt: "Avançar", es: "Avanzar" }),
+      advancing: t({ pt: "Avançando...", es: "Avanzando..." }),
       back: t({ pt: "Voltar", es: "Volver" }),
       creating: t({ pt: "Criando...", es: "Creando..." }),
-      createAgency: t({ pt: "Criar agÃªncia", es: "Crear agencia" }),
+      createAgency: t({ pt: "Criar agência", es: "Crear agencia" }),
       creatingFirstPage: t({ pt: "Criando...", es: "Creando..." }),
-      createFirstPage: t({ pt: "Criar minha primeira pÃ¡gina", es: "Crear mi primera pÃ¡gina" }),
+      createFirstPage: t({ pt: "Criar minha primeira página", es: "Crear mi primera pÃ¡gina" }),
       continueEditing: t({ pt: "Continuar editando", es: "Seguir editando" }),
       discardAndClose: t({ pt: "Descartar e fechar", es: "Descartar y cerrar" })
     },
     errors: {
-      missingName: t({ pt: "Informe o nome da sua agÃªncia.", es: "Informa el nombre de tu agencia." }),
-      cannotAdvance: t({ pt: "NÃ£o foi possÃ­vel avanÃ§ar. Tente novamente.", es: "No fue posible avanzar. Intenta nuevamente." }),
-      cannotCreateAgency: t({ pt: "NÃ£o foi possÃ­vel criar a agÃªncia. Tente novamente.", es: "No fue posible crear la agencia. Intenta nuevamente." }),
-      mustCreateAgency: t({ pt: "Crie sua agÃªncia antes de adicionar pÃ¡ginas.", es: "Crea tu agencia antes de agregar pÃ¡ginas." }),
-      cannotCreatePage: t({ pt: "NÃ£o foi possÃ­vel criar a pÃ¡gina agora.", es: "No fue posible crear la pÃ¡gina ahora." }),
-      slugUnavailable: t({ pt: "NÃ£o foi possÃ­vel gerar um slug disponÃ­vel para esta agÃªncia. Ajuste o nome e tente novamente.", es: "No fue posible generar un slug disponible para esta agencia. Ajusta el nombre e intÃ©ntalo nuevamente." })
+      missingName: t({ pt: "Informe o nome da sua agência.", es: "Informa el nombre de tu agencia." }),
+      cannotAdvance: t({ pt: "Não foi possÃ­vel avançaar. Tente novamente.", es: "No fue posible avanzar. Intenta nuevamente." }),
+      cannotCreateAgency: t({ pt: "Não foi possÃ­vel criar a agência. Tente novamente.", es: "No fue posible crear la agencia. Intenta nuevamente." }),
+      mustCreateAgency: t({ pt: "Crie sua agência antes de adicionar páginas.", es: "Crea tu agencia antes de agregar pÃ¡ginas." }),
+      cannotCreatePage: t({ pt: "Não foi possí­vel criar a página agora.", es: "No fue posible crear la pÃ¡gina ahora." }),
+      slugUnavailable: t({ pt: "Não foi possí­vel gerar um slug disponí­vel para esta agência. Ajuste o nome e tente novamente.", es: "No fue posible generar un slug disponible para esta agencia. Ajusta el nombre e intÃ©ntalo nuevamente." })
     }
   }
 } as const;

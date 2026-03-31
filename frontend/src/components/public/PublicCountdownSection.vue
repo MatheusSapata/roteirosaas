@@ -47,7 +47,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import type { CountdownSection } from "../../types/page";
 import SectionHeadingChip from "./SectionHeadingChip.vue";
-import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
+import { getSectionHeadingDefaults, resolveHeadingLabel } from "../../utils/sectionHeadings";
 import { createLocalizer, getCurrentLanguage } from "../../utils/i18n";
 
 const props = defineProps<{ section: CountdownSection }>();
@@ -67,11 +67,9 @@ const countdownCopy = {
 
 const layout = computed(() => props.section.layout || "bar");
 const barBackground = computed(() => (layout.value === "bar" ? "#f8fafc" : props.section.backgroundColor || "#0b1324"));
-const headingLabel = computed(() => {
-  const custom = localize(props.section.headingLabel).trim();
-  if (custom.length) return custom;
-  return localize(countdownCopy.headingFallback);
-});
+const headingLabel = computed(() =>
+  resolveHeadingLabel(props.section.headingLabel, countdownCopy.headingFallback, localize)
+);
 const headingStyle = computed(() => props.section.headingLabelStyle || headingDefaults.style);
 const headingAccent = computed(() => props.section.textColor || "#ffffff");
 const countdownLabel = computed(() => {
