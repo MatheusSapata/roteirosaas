@@ -70,7 +70,7 @@
 import { computed, inject, isRef } from "vue";
 import type { FaqItem, FaqSection } from "../../types/page";
 import SectionHeadingChip from "./SectionHeadingChip.vue";
-import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
+import { getSectionHeadingDefaults, resolveHeadingLabel } from "../../utils/sectionHeadings";
 import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
 import { deriveTextPalette } from "../../utils/colorContrast";
 import { sanitizeHtml } from "../../utils/sanitizeHtml";
@@ -122,12 +122,9 @@ const toRgba = (hex: string, alpha: number) => {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
 const accentSoft = computed(() => toRgba(accent.value, 0.12));
-const headingLabel = computed(() => {
-  const override = localize(props.section.headingLabel);
-  if (override.trim().length) return override;
-  const fallback = headingDefaults.label;
-  return typeof fallback === "string" ? fallback : localize(fallback);
-});
+const headingLabel = computed(() =>
+  resolveHeadingLabel(props.section.headingLabel, headingDefaults.label, localize)
+);
 const headingStyle = computed(() => props.section.headingLabelStyle || headingDefaults.style);
 const title = computed(() => {
   const text = localize(props.section.title);

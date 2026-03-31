@@ -52,7 +52,7 @@
 import { computed } from "vue";
 import type { FeaturedVideoSection } from "../../types/page";
 import SectionHeadingChip from "./SectionHeadingChip.vue";
-import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
+import { getSectionHeadingDefaults, resolveHeadingLabel } from "../../utils/sectionHeadings";
 import { sanitizeHtml } from "../../utils/sanitizeHtml";
 import { deriveTextPalette, getReadableTextColor } from "../../utils/colorContrast";
 import { isWhatsappLink } from "../../utils/links";
@@ -69,11 +69,9 @@ const featuredCopy = {
   cta: { pt: "Assistir agora", es: "Ver ahora" }
 } as const;
 
-const headingLabel = computed(() => {
-  const custom = localize(props.section.headingLabel).trim();
-  if (custom.length) return custom;
-  return localize(featuredCopy.headingFallback);
-});
+const headingLabel = computed(() =>
+  resolveHeadingLabel(props.section.headingLabel, featuredCopy.headingFallback, localize)
+);
 const headingStyle = computed(() => props.section.headingLabelStyle || headingDefaults.style);
 const featuredTitle = computed(() => {
   const title = localize(props.section.title).trim();

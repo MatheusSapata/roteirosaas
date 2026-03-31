@@ -232,7 +232,7 @@ import { isWhatsappLink } from "../../utils/links";
 import { normalizeYoutubeEmbedUrl, extractYoutubeId } from "../../utils/video";
 import type { StorySection } from "../../types/page";
 import SectionHeadingChip from "./SectionHeadingChip.vue";
-import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
+import { getSectionHeadingDefaults, resolveHeadingLabel } from "../../utils/sectionHeadings";
 import { sanitizeHtml } from "../../utils/sanitizeHtml";
 import { deriveTextPalette, getReadableTextColor } from "../../utils/colorContrast";
 import { createLocalizer, getCurrentLanguage } from "../../utils/i18n";
@@ -286,12 +286,18 @@ const outerClass = computed(() =>
     : "gap-8 px-6 py-12 md:flex-row md:items-center md:gap-12"
 );
 const headingLabel = computed(() => {
-  const label = localize(props.section.headingLabel).trim();
-  if (label.length) return label;
   const badge = localize(props.section.badge).trim();
+  const labelField = props.section.headingLabel;
+
+  if (labelField !== null && typeof labelField !== "undefined") {
+    const label = localize(labelField).trim();
+    if (label.length) return label;
+    return "";
+  }
+
   if (badge.length) return badge;
-  const fallback = headingDefaults.label;
-  return typeof fallback === "string" ? fallback : localize(fallback);
+
+  return resolveHeadingLabel(labelField, headingDefaults.label, localize);
 });
 const headingStyle = computed(() => props.section.headingLabelStyle || headingDefaults.style);
 const storyTitleText = computed(() => {

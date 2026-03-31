@@ -147,7 +147,7 @@
 import { computed, inject, isRef, ref, watch } from "vue";
 import type { ItineraryDay, ItinerarySection } from "../../types/page";
 import SectionHeadingChip from "./SectionHeadingChip.vue";
-import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
+import { getSectionHeadingDefaults, resolveHeadingLabel } from "../../utils/sectionHeadings";
 import { sanitizeHtml } from "../../utils/sanitizeHtml";
 import { resolveMediaUrl } from "../../utils/media";
 import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
@@ -202,11 +202,9 @@ const subtitleText = computed(() => {
   const text = localize(raw).trim();
   return text;
 });
-const headingLabel = computed(() => {
-  const custom = localize(props.section.headingLabel).trim();
-  if (custom.length) return custom;
-  return headingDefaults.label;
-});
+const headingLabel = computed(() =>
+  resolveHeadingLabel(props.section.headingLabel, headingDefaults.label, localize)
+);
 const headingStyle = computed(() => props.section.headingLabelStyle || headingDefaults.style);
 const textPalette = computed(() => deriveTextPalette(props.section.textColor));
 const primaryText = computed(() => textPalette.value.primary);

@@ -66,7 +66,7 @@ import { resolveMediaUrl } from "../../utils/media";
 import { isWhatsappLink } from "../../utils/links";
 import type { TestimonialsSection } from "../../types/page";
 import SectionHeadingChip from "./SectionHeadingChip.vue";
-import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
+import { getSectionHeadingDefaults, resolveHeadingLabel } from "../../utils/sectionHeadings";
 import { sanitizeHtml } from "../../utils/sanitizeHtml";
 import { deriveTextPalette, getReadableTextColor } from "../../utils/colorContrast";
 import { createLocalizer, getCurrentLanguage } from "../../utils/i18n";
@@ -97,12 +97,9 @@ const toRgba = (hex: string, alpha: number) => {
 };
 
 const accentSoft = computed(() => toRgba(accent.value, 0.35));
-const headingLabel = computed(() => {
-  const label = localize(props.section.headingLabel).trim();
-  if (label.length) return label;
-  const fallback = headingDefaults.label;
-  return typeof fallback === "string" ? fallback : localize(fallback);
-});
+const headingLabel = computed(() =>
+  resolveHeadingLabel(props.section.headingLabel, headingDefaults.label, localize)
+);
 const headingStyle = computed(() => props.section.headingLabelStyle || headingDefaults.style);
 const titleText = computed(() => {
   const text = localize(props.section.title).trim();

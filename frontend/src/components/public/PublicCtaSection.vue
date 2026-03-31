@@ -141,7 +141,7 @@ import { resolveMediaUrl } from "../../utils/media";
 import { isWhatsappLink } from "../../utils/links";
 import type { CtaSection } from "../../types/page";
 import SectionHeadingChip from "./SectionHeadingChip.vue";
-import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
+import { getSectionHeadingDefaults, resolveHeadingLabel } from "../../utils/sectionHeadings";
 import { sanitizeHtml } from "../../utils/sanitizeHtml";
 import { getReadableTextColor } from "../../utils/colorContrast";
 import { createLocalizer, getCurrentLanguage } from "../../utils/i18n";
@@ -172,12 +172,9 @@ const ctaHasTarget = computed(() =>
   ctaMode.value === "section" ? !!props.section.ctaSectionId : !!props.section.link
 );
 const ctaIsScroll = computed(() => ctaMode.value === "section" && !!props.section.ctaSectionId);
-const headingLabel = computed(() => {
-  const override = localize(props.section.headingLabel);
-  if (override.trim().length) return override;
-  const fallback = headingDefaults.label;
-  return typeof fallback === "string" ? fallback : localize(fallback);
-});
+const headingLabel = computed(() =>
+  resolveHeadingLabel(props.section.headingLabel, headingDefaults.label, localize)
+);
 const headingStyle = computed(() => props.section.headingLabelStyle || headingDefaults.style);
 const headingAccent = computed(() => (highlightActive.value ? "#ffffff" : buttonColor.value));
 const buttonLabel = computed(() => {

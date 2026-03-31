@@ -76,7 +76,7 @@ import { computed } from "vue";
 import { resolveMediaUrl } from "../../utils/media";
 import type { GallerySection } from "../../types/page";
 import SectionHeadingChip from "./SectionHeadingChip.vue";
-import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
+import { getSectionHeadingDefaults, resolveHeadingLabel } from "../../utils/sectionHeadings";
 import { deriveTextPalette } from "../../utils/colorContrast";
 import { createLocalizer, getCurrentLanguage } from "../../utils/i18n";
 
@@ -102,11 +102,9 @@ const toRgba = (hex: string, alpha: number) => {
 };
 const accentSoft = computed(() => toRgba(accent.value, 0.1));
 const accentBorder = computed(() => toRgba(accent.value, 0.25));
-const headingLabel = computed(() => {
-  const custom = localize(props.section.headingLabel).trim();
-  if (custom.length) return custom;
-  return localize(galleryCopy.headingFallback);
-});
+const headingLabel = computed(() =>
+  resolveHeadingLabel(props.section.headingLabel, galleryCopy.headingFallback, localize)
+);
 const headingStyle = computed(() => props.section.headingLabelStyle || headingDefaults.style);
 const resolvedImages = computed(() =>
   (props.section.images || [])

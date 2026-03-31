@@ -1176,6 +1176,302 @@
         </div>
       </section>
     </template>
+
+    <!-- TEMPLATES -->
+    <template v-else-if="activeTab === 'templates'">
+      <section class="rounded-3xl bg-white p-6 shadow-md ring-1 ring-slate-100 dark:bg-[#181818] dark:text-white dark:ring-white/10">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div class="flex-1">
+            <p class="text-xs uppercase tracking-[0.4em] text-slate-500 dark:text-white/60">Curadoria</p>
+            <h2 class="text-2xl font-bold text-slate-900 dark:text-white">Biblioteca de modelos</h2>
+            <p class="text-sm text-slate-500 dark:text-white/70">
+              Selecione uma agência de origem para transformar páginas em modelos oficiais.
+            </p>
+          </div>
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <div>
+              <label class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-white/60">Agência</label>
+              <select
+                v-model.number="templateAgencyId"
+                class="mt-1 w-64 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 focus:border-brand focus:outline-none dark:border-white/15 dark:bg-[#101010] dark:text-white"
+              >
+                <option v-for="agency in templateAgencyOptions" :key="agency.id" :value="agency.id">
+                  {{ agency.name }}
+                </option>
+              </select>
+            </div>
+            <button
+              type="button"
+              class="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-white/15 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
+              :disabled="templatePagesLoading || !templateAgencyId"
+              @click="loadTemplatePages"
+            >
+              Recarregar páginas
+            </button>
+            <button
+              type="button"
+              class="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-white/15 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
+              :disabled="pageTemplatesLoading"
+              @click="loadTemplates"
+            >
+              Atualizar modelos
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="rounded-3xl bg-white p-6 shadow-md ring-1 ring-slate-100 dark:bg-[#181818] dark:text-white dark:ring-white/10">
+        <header class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p class="text-xs uppercase tracking-[0.4em] text-slate-500 dark:text-white/60">Origem</p>
+            <h3 class="text-xl font-semibold text-slate-900 dark:text-white">Roteiros disponíveis</h3>
+            <p class="text-sm text-slate-500 dark:text-white/70">
+              Escolha um roteiro pronto para salvar como modelo. Apenas páginas publicadas são recomendadas.
+            </p>
+          </div>
+          <span class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400 dark:text-white/60">
+            {{ templatePages.length }} páginas
+          </span>
+        </header>
+        <div class="mt-6">
+          <p v-if="!templateAgencyId" class="rounded-2xl border border-dashed border-slate-200 p-5 text-center text-sm text-slate-500 dark:border-white/15 dark:text-white/70">
+            Selecione uma agência para listar as páginas disponíveis.
+          </p>
+          <p v-else-if="templatePagesLoading" class="rounded-2xl border border-dashed border-slate-200 p-5 text-center text-sm text-slate-500 dark:border-white/15 dark:text-white/70">
+            Carregando páginas...
+          </p>
+          <p v-else-if="templatePagesError" class="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-700 dark:border-red-400/40 dark:bg-red-500/10 dark:text-red-200">
+            {{ templatePagesError }}
+          </p>
+          <p v-else-if="!templatePages.length" class="rounded-2xl border border-dashed border-slate-200 p-5 text-center text-sm text-slate-500 dark:border-white/15 dark:text-white/70">
+            Nenhum roteiro encontrado para a agência selecionada.
+          </p>
+          <div v-else class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-100 text-sm dark:divide-white/5">
+              <thead>
+                <tr class="text-left text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-white/60">
+                  <th class="px-3 py-2">Título</th>
+                  <th class="px-3 py-2">Status</th>
+                  <th class="px-3 py-2">Slug</th>
+                  <th class="px-3 py-2 text-right">Ações</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100 dark:divide-white/5">
+                <tr v-for="page in templatePages" :key="page.id" class="text-slate-700 dark:text-white/80">
+                  <td class="px-3 py-3 font-semibold">{{ page.title }}</td>
+                  <td class="px-3 py-3">
+                    <span
+                      class="rounded-full px-3 py-1 text-xs font-semibold"
+                      :class="page.status === 'published' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-200' : 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-100'"
+                    >
+                      {{ page.status === 'published' ? 'Publicado' : 'Rascunho' }}
+                    </span>
+                  </td>
+                  <td class="px-3 py-3 text-sm text-slate-500 dark:text-white/60">/{{ page.slug }}</td>
+                  <td class="px-3 py-3">
+                    <div class="flex flex-wrap justify-end gap-2">
+                      <a
+                        v-if="templatePublicUrl(page)"
+                        :href="templatePublicUrl(page)"
+                        class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-white/15 dark:text-white"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Visualizar
+                      </a>
+                      <button
+                        type="button"
+                        class="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-900"
+                        @click="openTemplateDialog(page)"
+                      >
+                        Adicionar como modelo
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="rounded-3xl bg-white p-6 shadow-md ring-1 ring-slate-100 dark:bg-[#181818] dark:text-white dark:ring-white/10">
+        <header class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p class="text-xs uppercase tracking-[0.4em] text-slate-500 dark:text-white/60">Coleção</p>
+            <h3 class="text-xl font-semibold text-slate-900 dark:text-white">Modelos publicados</h3>
+            <p class="text-sm text-slate-500 dark:text-white/70">
+              Utilize os modelos para acelerar a criação de novas páginas com identidade consistente.
+            </p>
+          </div>
+          <span class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400 dark:text-white/60">
+            {{ pageTemplates.length }} modelos
+          </span>
+        </header>
+        <div class="mt-6">
+          <p v-if="pageTemplatesLoading" class="rounded-2xl border border-dashed border-slate-200 p-5 text-center text-sm text-slate-500 dark:border-white/15 dark:text-white/70">
+            Carregando modelos...
+          </p>
+          <p v-else-if="pageTemplatesError" class="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-700 dark:border-red-400/40 dark:bg-red-500/10 dark:text-red-200">
+            {{ pageTemplatesError }}
+          </p>
+          <p v-else-if="!pageTemplates.length" class="rounded-2xl border border-dashed border-slate-200 p-5 text-center text-sm text-slate-500 dark:border-white/15 dark:text-white/70">
+            Nenhum modelo cadastrado ainda. Crie um usando os roteiros da sua rede.
+          </p>
+          <div v-else class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <article
+              v-for="template in pageTemplates"
+              :key="template.id"
+              class="flex flex-col rounded-2xl border border-slate-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg dark:border-white/10 dark:bg-[#1a1a1a]"
+            >
+              <div class="aspect-video w-full overflow-hidden rounded-2xl bg-slate-100 dark:bg-white/5">
+                <img
+                  v-if="templatePreviewImage(template)"
+                  :src="templatePreviewImage(template)"
+                  alt=""
+                  class="h-full w-full object-cover"
+                />
+                <div v-else class="flex h-full w-full items-center justify-center text-xs uppercase tracking-[0.3em] text-slate-400 dark:text-white/40">
+                  Sem miniatura
+                </div>
+              </div>
+              <div class="flex flex-1 flex-col p-4">
+                <div class="flex items-center gap-2">
+                  <h4 class="flex-1 text-lg font-semibold text-slate-900 dark:text-white">{{ template.name }}</h4>
+                  <span
+                    v-if="template.is_default"
+                    class="rounded-full bg-emerald-100 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-200"
+                  >
+                    Padrão
+                  </span>
+                </div>
+                <p class="mt-1 text-sm text-slate-500 dark:text-white/60">
+                  {{ template.description || "Sem descrição" }}
+                </p>
+                <div class="mt-3 flex flex-wrap gap-2 text-xs text-slate-500 dark:text-white/60">
+                  <span class="rounded-full bg-slate-100 px-3 py-1 dark:bg-white/10">
+                    {{ templateStats(template).enabledSections }} seções ativas
+                  </span>
+                  <span class="rounded-full bg-slate-100 px-3 py-1 dark:bg-white/10">
+                    Total: {{ templateStats(template).totalSections }}
+                  </span>
+                </div>
+                <div class="mt-4 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-white/15 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
+                    @click="openTemplatePreview(template)"
+                  >
+                    Visualizar
+                  </button>
+                  <button
+                    type="button"
+                    class="rounded-full border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50 dark:border-red-400/40 dark:bg-red-500/10 dark:text-red-200"
+                    :disabled="deletingTemplateId === template.id"
+                    @click="handleDeleteTemplate(template)"
+                  >
+                    {{ deletingTemplateId === template.id ? "Excluindo..." : "Excluir" }}
+                  </button>
+                </div>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <div
+        v-if="templateDialog.open"
+        class="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/70 px-4 py-8"
+        @click.self="closeTemplateDialog"
+      >
+        <div class="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl dark:bg-[#202020] dark:text-white">
+          <h3 class="text-xl font-semibold text-slate-900 dark:text-white">Adicionar modelo</h3>
+          <p class="mt-1 text-sm text-slate-500 dark:text-white/70">
+            Defina o nome e o identificador público para este template.
+          </p>
+          <div class="mt-4 space-y-3">
+            <div>
+              <label class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-white/60">Nome</label>
+              <input
+                v-model="templateDialog.name"
+                type="text"
+                class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm focus:border-brand focus:outline-none dark:border-white/15 dark:bg-[#101010] dark:text-white"
+              />
+            </div>
+            <div>
+              <label class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-white/60">Slug</label>
+              <input
+                v-model="templateDialog.slug"
+                type="text"
+                class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm focus:border-brand focus:outline-none dark:border-white/15 dark:bg-[#101010] dark:text-white"
+                @input="handleTemplateSlugInput"
+              />
+            </div>
+            <div>
+              <label class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-white/60">Descrição</label>
+              <textarea
+                v-model="templateDialog.description"
+                rows="3"
+                class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm focus:border-brand focus:outline-none dark:border-white/15 dark:bg-[#101010] dark:text-white"
+                placeholder="Resumo do que este modelo entrega"
+              ></textarea>
+            </div>
+            <p v-if="templateDialog.error" class="text-sm text-red-600 dark:text-red-300">
+              {{ templateDialog.error }}
+            </p>
+          </div>
+          <div class="mt-6 flex justify-end gap-2">
+            <button
+              type="button"
+              class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-white/15 dark:text-white"
+              @click="closeTemplateDialog"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-900"
+              :disabled="templateDialog.saving"
+              @click="submitTemplateDialog"
+            >
+              {{ templateDialog.saving ? "Salvando..." : "Salvar modelo" }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div
+        v-if="templatePreviewDialog.open"
+        class="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/80 px-4 py-8"
+        @click.self="closeTemplatePreview"
+      >
+        <div class="h-[90vh] w-full max-w-4xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl dark:bg-[#101010] dark:text-white">
+          <div class="mb-4 flex items-center justify-between">
+            <div>
+              <p class="text-xs uppercase tracking-[0.4em] text-slate-500 dark:text-white/60">Pré-visualização</p>
+              <h3 class="text-lg font-semibold text-slate-900 dark:text-white">
+                {{ templatePreviewDialog.template?.name }}
+              </h3>
+            </div>
+            <button
+              type="button"
+              class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-white/20 dark:text-white"
+              @click="closeTemplatePreview"
+            >
+              Fechar
+            </button>
+          </div>
+          <PageTemplatePreview
+            v-if="templatePreviewConfig"
+            :config="templatePreviewConfig"
+            :branding="templatePreviewBranding"
+          />
+          <p v-else class="rounded-2xl border border-dashed border-slate-200 p-5 text-center text-sm text-slate-500 dark:border-white/15 dark:text-white/70">
+            Não conseguimos renderizar este modelo.
+          </p>
+        </div>
+      </div>
+    </template>
   </div>
 
   <!-- SNACKBAR -->
@@ -1415,6 +1711,11 @@ import autoTable from "jspdf-autotable";
 import { getPlanLabel, planLabels } from "../../utils/planLabels";
 import { normalizeVideoInput, useLessonsStore, type Lesson } from "../../store/useLessonsStore";
 import { slugify } from "../../utils/slugify";
+import PageTemplatePreview from "../../components/admin/PageTemplatePreview.vue";
+import { listPageTemplates, createTemplateFromPage, deleteTemplate } from "../../services/templates";
+import type { PageTemplate } from "../../types/templates";
+import { applyTemplateBranding, extractTemplatePreviewImage, summarizeTemplate } from "../../utils/pageTemplates";
+import { sanitizeDigits, buildWhatsappLink } from "../../utils/whatsapp";
 
 interface MetricsUserPage {
   id: number;
@@ -1512,13 +1813,14 @@ interface AdminOnlineSessionsResponse {
   generated_at: string;
 }
 
-type AdminTab = "dashboard" | "monitor" | "users" | "lessons";
+type AdminTab = "dashboard" | "monitor" | "users" | "lessons" | "templates";
 
 const adminTabs: { id: AdminTab; label: string; description: string }[] = [
   { id: "dashboard", label: "Dashboard", description: "Resumo e métricas" },
   { id: "monitor", label: "Monitor", description: "Sessões online" },
   { id: "users", label: "Usuários", description: "Perfis e status" },
-  { id: "lessons", label: "Gestão de aulas", description: "Treinamentos públicos" }
+  { id: "lessons", label: "Gestão de aulas", description: "Treinamentos públicos" },
+  { id: "templates", label: "Templates", description: "Modelos oficiais" }
 ];
 
 type AdminPeriodOption = "7" | "30" | "90" | "custom";
@@ -1724,12 +2026,183 @@ const linkPageDialog = ref<{
   loading: false,
   error: ""
 });
+const templateAgencyId = ref<number | null>(null);
+const templateAgencyOptions = computed(() => {
+  const adminAgencies = metrics.value?.agencies ?? [];
+  if (adminAgencies.length) return adminAgencies;
+  return agencyStore.agencies;
+});
+const templatePages = ref<AdminPageSummary[]>([]);
+const templatePagesLoading = ref(false);
+const templatePagesError = ref("");
+const pageTemplates = ref<PageTemplate[]>([]);
+const pageTemplatesLoading = ref(false);
+const pageTemplatesError = ref("");
+const deletingTemplateId = ref<number | null>(null);
+const templateDialog = reactive({
+  open: false,
+  page: null as AdminPageSummary | null,
+  name: "",
+  slug: "",
+  description: "",
+  error: "",
+  saving: false
+});
+const templateSlugAuto = ref("");
+const templatePreviewDialog = reactive({
+  open: false,
+  template: null as PageTemplate | null
+});
 const premiumMode = computed(() => (auth.user?.plan || "").toLowerCase() === "infinity");
 const activeTab = ref<AdminTab>("dashboard");
 const tabButtonClass = (tab: AdminTab) =>
   activeTab.value === tab
     ? "bg-slate-900 text-white shadow-lg shadow-slate-900/30 dark:bg-white dark:text-slate-900"
     : "border border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:text-white/80 dark:hover:bg-white/5";
+const selectedTemplateAgency = computed(() => {
+  return templateAgencyOptions.value.find(agency => agency.id === templateAgencyId.value) || null;
+});
+const templatePublicUrl = (page: AdminPageSummary) => {
+  const agencySlug = selectedTemplateAgency.value?.slug;
+  if (!agencySlug) return "";
+  return `/${agencySlug}/${page.slug}`;
+};
+const loadTemplatePages = async () => {
+  if (!templateAgencyId.value) {
+    templatePages.value = [];
+    return;
+  }
+  try {
+    templatePagesLoading.value = true;
+    templatePagesError.value = "";
+    const { data } = await api.get<AdminPageSummary[]>("/pages", {
+      params: { agency_id: templateAgencyId.value }
+    });
+    templatePages.value = data || [];
+  } catch (err: any) {
+    console.error(err);
+    templatePagesError.value = err?.response?.data?.detail || "Não foi possível carregar as páginas.";
+  } finally {
+    templatePagesLoading.value = false;
+  }
+};
+const loadTemplates = async () => {
+  try {
+    pageTemplatesLoading.value = true;
+    pageTemplatesError.value = "";
+    pageTemplates.value = await listPageTemplates();
+  } catch (err: any) {
+    console.error(err);
+    pageTemplatesError.value = err?.response?.data?.detail || "Não foi possível carregar os modelos.";
+  } finally {
+    pageTemplatesLoading.value = false;
+  }
+};
+const openTemplateDialog = (page: AdminPageSummary) => {
+  templateDialog.page = page;
+  templateDialog.name = page.title;
+  templateDialog.slug = slugify(page.title, "modelo");
+  templateDialog.description = "";
+  templateDialog.error = "";
+  templateDialog.saving = false;
+  templateSlugAuto.value = templateDialog.slug;
+  templateDialog.open = true;
+};
+const closeTemplateDialog = () => {
+  templateDialog.open = false;
+  templateDialog.page = null;
+  templateDialog.name = "";
+  templateDialog.slug = "";
+  templateDialog.description = "";
+  templateDialog.error = "";
+  templateDialog.saving = false;
+};
+const handleTemplateSlugInput = () => {
+  templateSlugAuto.value = templateDialog.slug;
+};
+const submitTemplateDialog = async () => {
+  if (!templateDialog.page) {
+    templateDialog.error = "Selecione uma página para criar o modelo.";
+    return;
+  }
+  const name = templateDialog.name.trim();
+  const slug = templateDialog.slug.trim();
+  if (!name || !slug) {
+    templateDialog.error = "Informe nome e slug do template.";
+    return;
+  }
+  templateDialog.saving = true;
+  templateDialog.error = "";
+  try {
+    await createTemplateFromPage({
+      page_id: templateDialog.page.id,
+      name,
+      slug,
+      description: templateDialog.description.trim() || undefined
+    });
+    showSnackbar("Modelo criado com sucesso.");
+    closeTemplateDialog();
+    await loadTemplates();
+  } catch (err: any) {
+    console.error(err);
+    templateDialog.error = err?.response?.data?.detail || "Não foi possível criar o modelo.";
+    templateDialog.saving = false;
+  }
+};
+const openTemplatePreview = (template: PageTemplate) => {
+  templatePreviewDialog.template = template;
+  templatePreviewDialog.open = true;
+};
+const closeTemplatePreview = () => {
+  templatePreviewDialog.open = false;
+  templatePreviewDialog.template = null;
+};
+const handleDeleteTemplate = async (template: PageTemplate) => {
+  if (deletingTemplateId.value) return;
+  const confirmed = window.confirm(`Deseja realmente excluir o modelo "${template.name}"?`);
+  if (!confirmed) return;
+  try {
+    deletingTemplateId.value = template.id;
+    await deleteTemplate(template.id);
+    pageTemplates.value = pageTemplates.value.filter(item => item.id !== template.id);
+    showSnackbar("Modelo removido com sucesso.");
+  } catch (err: any) {
+    console.error(err);
+    const detail = err?.response?.data?.detail || "Não foi possível remover o modelo.";
+    showSnackbar(detail);
+  } finally {
+    deletingTemplateId.value = null;
+  }
+};
+const previewAgency = computed(() => selectedTemplateAgency.value || agencyStore.agencies[0] || null);
+const previewWhatsappDigits = computed(() => {
+  const agencyDigits = sanitizeDigits(previewAgency.value?.cta_whatsapp || "");
+  if (agencyDigits) return agencyDigits;
+  return sanitizeDigits(auth.user?.whatsapp || "");
+});
+const templatePreviewBranding = computed(() => {
+  const agency = previewAgency.value;
+  return {
+    agency_name: agency?.name || "Sua agência",
+    logo_url: agency?.logo_url || "",
+    primary_color: agency?.primary_color || "#0f172a",
+    secondary_color: agency?.secondary_color || agency?.primary_color || "#1f2937",
+    whatsapp_link: templatePreviewDialog.template
+      ? buildWhatsappLink(previewWhatsappDigits.value, templatePreviewDialog.template.name)
+      : ""
+  };
+});
+const templatePreviewConfig = computed(() => {
+  if (!templatePreviewDialog.template) return null;
+  return applyTemplateBranding(templatePreviewDialog.template.config_json, {
+    logoUrl: templatePreviewBranding.value.logo_url,
+    whatsappLink: templatePreviewBranding.value.whatsapp_link,
+    primaryColor: templatePreviewBranding.value.primary_color,
+    enforcePrimaryColor: !!templatePreviewBranding.value.primary_color
+  });
+});
+const templatePreviewImage = (template: PageTemplate) => extractTemplatePreviewImage(template);
+const templateStats = (template: PageTemplate) => summarizeTemplate(template);
 
 type UserColumnKey = "name" | "agency_name" | "active_pages" | "draft_pages" | "plan" | "valid_until" | "created_at";
 interface UserColumn {
@@ -2692,6 +3165,45 @@ watch(metrics, () => {
   expandedUser.value = null;
 });
 
+watch(
+  () => templateDialog.name,
+  value => {
+    if (!templateDialog.open) return;
+    if (!templateDialog.slug || templateDialog.slug === templateSlugAuto.value) {
+      const next = slugify(value, "modelo");
+      templateDialog.slug = next;
+      templateSlugAuto.value = next;
+    }
+  }
+);
+
+watch(
+  templateAgencyOptions,
+  options => {
+    if (!options?.length) {
+      templateAgencyId.value = null;
+      return;
+    }
+    const exists = options.some(option => option.id === templateAgencyId.value);
+    if (!exists) {
+      templateAgencyId.value = options[0]?.id ?? null;
+    }
+  },
+  { immediate: true }
+);
+
+watch(
+  templateAgencyId,
+  async value => {
+    if (activeTab.value === "templates" && value) {
+      await loadTemplatePages();
+    }
+    if (!value) {
+      templatePages.value = [];
+    }
+  }
+);
+
 onMounted(async () => {
   updateIsMobile();
   if (typeof window !== "undefined") {
@@ -2733,6 +3245,14 @@ watch(
 watch(activeTab, (tab) => {
   if (tab === "monitor") {
     loadOnlineSessions();
+  }
+  if (tab === "templates") {
+    if (!pageTemplates.value.length) {
+      loadTemplates();
+    }
+    if (templateAgencyId.value) {
+      loadTemplatePages();
+    }
   }
 });
 

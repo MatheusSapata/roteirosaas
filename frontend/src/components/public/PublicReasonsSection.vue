@@ -54,7 +54,7 @@
 import { computed, defineComponent, h, inject, isRef, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import type { ReasonsSection, ReasonItem } from "../../types/page";
 import SectionHeadingChip from "./SectionHeadingChip.vue";
-import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
+import { getSectionHeadingDefaults, resolveHeadingLabel } from "../../utils/sectionHeadings";
 import { sanitizeHtml } from "../../utils/sanitizeHtml";
 import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
 import { deriveTextPalette } from "../../utils/colorContrast";
@@ -70,12 +70,9 @@ const reasonsCopy = {
   itemDescription: { pt: "Atualize este motivo com detalhes.", es: "Actualiza este motivo con detalles." }
 } as const;
 const isMobilePreview = computed(() => props.previewDevice === "mobile");
-const headingLabel = computed(() => {
-  const label = localize(props.section.headingLabel).trim();
-  if (label.length) return label;
-  const fallback = headingDefaults.label;
-  return typeof fallback === "string" ? fallback : localize(fallback);
-});
+const headingLabel = computed(() =>
+  resolveHeadingLabel(props.section.headingLabel, headingDefaults.label, localize)
+);
 const headingStyle = computed(() => props.section.headingLabelStyle || headingDefaults.style);
 const titleText = computed(() => {
   const text = localize(props.section.title).trim();
@@ -116,7 +113,7 @@ const clampStagger = (value?: number) => {
 };
 const animationDurationMs = computed(() => clampDuration(props.section.animationDuration));
 const animationStaggerMs = computed(() => clampStagger(props.section.cardAnimationStagger));
-const mobileStaggerMs = 4000;
+const mobileStaggerMs = 500;
 
 const desktopRows = computed(() => {
   const items = limitedItems.value;
