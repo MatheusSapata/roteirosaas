@@ -39,7 +39,11 @@
             </a>
           </div>
         </div>
-        <div :class="[mediaContainerClass, isMobilePreview ? 'mt-6' : 'md:mt-0']" :style="mediaAnimationStyle">
+        <div :class="[
+          mediaContainerClass,
+          isMobilePreview ? 'mt-6' : '',
+          isDesktopPreview ? '!mt-0' : ''
+        ]" :style="mediaAnimationStyle">
           <div :class="mediaInnerClass">
             <template v-if="primaryMedia?.type === 'video'">
               <div class="relative pt-[56.25%]" @pointerdown="handlePrimaryPointerDown">
@@ -66,7 +70,18 @@
 
       <!-- Layout com galeria -->
       <div v-else class="grid w-full" :class="galleryLayoutClass">
-        <div :class="[textBlockClass, imagePosition === 'left' ? 'md:order-2' : 'md:order-1']" :style="textAnimationStyle">
+        <div
+          :class="[
+            textBlockClass,
+            imagePosition === 'left' ? 'md:order-2' : 'md:order-1',
+            isDesktopPreview
+              ? imagePosition === 'left'
+                ? '!order-2'
+                : '!order-1'
+              : ''
+          ]"
+          :style="textAnimationStyle"
+        >
           <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="ctaColor" />
           <h1 class="text-3xl font-bold leading-tight md:text-4xl" :style="{ color: primaryText }">
             {{ storyTitleText }}
@@ -99,7 +114,17 @@
         </div>
         <div
           class="space-y-4"
-          :class="[mediaContainerClass, imagePosition === 'left' ? 'md:order-1' : 'md:order-2', isMobilePreview ? 'mt-6' : 'md:mt-0']"
+          :class="[
+            mediaContainerClass,
+            imagePosition === 'left' ? 'md:order-1' : 'md:order-2',
+            isDesktopPreview
+              ? imagePosition === 'left'
+                ? '!order-1'
+                : '!order-2'
+              : '',
+            isMobilePreview ? 'mt-6' : '',
+            isDesktopPreview ? '!mt-0' : ''
+          ]"
           :style="mediaAnimationStyle"
         >
           <div :class="mediaInnerClass">
@@ -276,6 +301,7 @@ const animateContent = computed(() => true);
 const ctaShimmerClass = computed(() => "hero-cta-shimmer");
 const desktopCtaHoverClass = computed(() => "hero-cta-desktop-hover");
 const isMobilePreview = computed(() => props.previewDevice === "mobile");
+const isDesktopPreview = computed(() => props.previewDevice === "desktop");
 const borderColor = computed(() => props.section.borderColor || props.section.ctaColor || "#41ce5f");
 const borderStyle = computed(() =>
   props.section.borderEnabled ? { borderColor: borderColor.value, borderWidth: "2px", borderStyle: "solid" } : {}
@@ -315,8 +341,10 @@ const singleLayoutClass = computed(() => {
   } else {
     classes.push("items-center", "gap-4", "md:gap-12");
   }
-  if (!isMobilePreview.value) {
-    classes.push(imagePosition.value === "left" ? "md:flex-row-reverse" : "md:flex-row");
+  if (isMobilePreview.value) {
+    classes.push("!flex-col");
+  } else if (isDesktopPreview.value) {
+    classes.push(imagePosition.value === "left" ? "!flex-row-reverse" : "!flex-row");
   }
   return classes;
 });
@@ -327,6 +355,8 @@ const galleryLayoutClass = computed(() => {
 
   if (isMobilePreview.value) {
     base.push("!grid-cols-1", "!md:grid-cols-1");
+  } else if (isDesktopPreview.value) {
+    base.push("!grid-cols-2");
   }
 
   return base;
@@ -336,9 +366,16 @@ const textBlockClass = computed(() => {
     ? ["flex-1 space-y-5 bg-white px-6 py-8 md:px-10 md:py-12 flex flex-col justify-center"]
     : ["flex-1 space-y-5 flex flex-col justify-center"];
   baseClasses.push("text-center md:text-left", "items-center md:items-start");
+  if (isDesktopPreview.value) {
+    baseClasses.push("!text-left", "!items-start");
+  }
   return baseClasses.join(" ");
 });
-const ctaContainerClass = computed(() => "flex flex-wrap items-center gap-4 justify-center md:justify-start");
+const ctaContainerClass = computed(() =>
+  ["flex flex-wrap items-center gap-4 justify-center md:justify-start", isDesktopPreview.value ? "!justify-start" : ""]
+    .filter(Boolean)
+    .join(" ")
+);
 const mediaContainerClass = computed(() =>
   props.section.borderEnabled ? "flex-1 flex flex-col w-full md:items-stretch" : "flex-1 flex flex-col w-full md:items-stretch"
 );

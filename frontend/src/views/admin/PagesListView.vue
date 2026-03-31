@@ -22,7 +22,7 @@
       >
         <div class="relative w-full max-w-7xl rounded-3xl bg-white shadow-2xl dark:bg-[#202020] dark:text-white">
           <div class="max-h-[90vh] overflow-y-auto p-6">
-            <div class="flex flex-col gap-2 border-b border-slate-100 pb-4 md:flex-row md:items-center md:justify-between dark:border-white/10">
+            <div class="relative flex flex-col gap-2 border-b border-slate-100 pb-4 md:flex-row md:items-center md:justify-between dark:border-white/10">
               <div>
                 <p class="text-xs uppercase tracking-[0.4em] text-slate-500 dark:text-white/60">
                   {{ viewCopy.templateModal.title }}
@@ -36,18 +36,21 @@
               </div>
               <button
                 type="button"
-                class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-white/15 dark:text-white"
+                class="absolute -right-2 -top-2 inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-50 dark:border-white/15 dark:bg-[#202020] dark:text-white dark:hover:bg-white/10"
                 @click="closeTemplateModal"
+                aria-label="Fechar"
               >
-                {{ viewCopy.templateModal.cancel }}
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4.5 w-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M6 6l12 12M6 18L18 6" />
+                </svg>
               </button>
             </div>
 
             <div class="mt-6 grid gap-6 overflow-hidden lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
-            <div class="space-y-4">
-              <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-white/60">
-                {{ viewCopy.templateModal.listTitle }}
-              </p>
+              <div class="space-y-4">
+                <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-white/60">
+                  {{ viewCopy.templateModal.listTitle }}
+                </p>
 
               <p
                 v-if="templateModal.loading"
@@ -88,7 +91,9 @@
                   <button
                     type="button"
                     class="flex flex-1 items-center gap-3 text-left"
-                    @click="selectTemplateForModal(template)"
+                    :class="isMobileViewport ? 'cursor-default opacity-80' : ''"
+                    @click="handleTemplateCardClick(template)"
+                    :disabled="isMobileViewport"
                   >
                     <div>
                       <p class="text-sm font-semibold">{{ template.name }}</p>
@@ -118,7 +123,7 @@
               </div>
             </div>
 
-            <div class="space-y-4">
+            <div class="space-y-4" v-if="!isMobileViewport">
               <div class="flex flex-wrap items-center justify-between gap-3">
                 <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-white/60">
                   {{ viewCopy.templateModal.previewHeading }}
@@ -129,7 +134,7 @@
                     type="button"
                     class="rounded-full px-3 py-1 transition"
                     :class="templatePreviewDevice === 'desktop' ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'text-slate-500 dark:text-white/70'"
-                    @click="templatePreviewDevice = 'desktop'"
+                    @click="setTemplatePreviewDevice('desktop', true)"
                   >
                     Desktop
                   </button>
@@ -137,7 +142,7 @@
                     type="button"
                     class="rounded-full px-3 py-1 transition"
                     :class="templatePreviewDevice === 'mobile' ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'text-slate-500 dark:text-white/70'"
-                    @click="templatePreviewDevice = 'mobile'"
+                    @click="setTemplatePreviewDevice('mobile', true)"
                   >
                     Mobile
                   </button>
@@ -186,7 +191,7 @@
           <transition name="fade">
             <div
               v-if="isMobileViewport && previewFullscreen && templateModal.selectedTemplate && templatePreviewConfig"
-              class="absolute inset-0 z-20 flex flex-col bg-white px-4 pb-6 pt-5 dark:bg-[#202020]"
+              class="absolute inset-0 z-20 m-3 flex flex-col rounded-3xl bg-white px-4 pb-6 pt-5 shadow-2xl dark:bg-[#202020]"
             >
               <div class="mb-4 border-b border-slate-100 pb-3 dark:border-white/10">
                 <div class="flex flex-wrap items-center justify-between gap-3">
@@ -204,7 +209,7 @@
                         type="button"
                         class="rounded-full px-3 py-1 transition"
                         :class="templatePreviewDevice === 'desktop' ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'text-slate-500 dark:text-white/70'"
-                        @click="templatePreviewDevice = 'desktop'"
+                        @click="setTemplatePreviewDevice('desktop', true)"
                       >
                         Desktop
                       </button>
@@ -212,7 +217,7 @@
                         type="button"
                         class="rounded-full px-3 py-1 transition"
                         :class="templatePreviewDevice === 'mobile' ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'text-slate-500 dark:text-white/70'"
-                        @click="templatePreviewDevice = 'mobile'"
+                        @click="setTemplatePreviewDevice('mobile', true)"
                       >
                         Mobile
                       </button>
@@ -296,7 +301,7 @@
         class="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/60 px-4 py-8"
       >
         <div class="w-full max-w-4xl rounded-3xl bg-white p-8 shadow-2xl dark:bg-[#202020] dark:text-white">
-          <div class="mb-6 space-y-1">
+          <div class="relative mb-6 space-y-1">
             <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">
               {{ viewCopy.actions.createModal.eyebrow }}
             </p>
@@ -306,6 +311,16 @@
             <p class="text-sm text-slate-500">
               {{ viewCopy.actions.createModal.description }}
             </p>
+            <button
+              type="button"
+              class="absolute -right-2 -top-2 inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-50 dark:border-[#363636] dark:bg-[#202020] dark:text-white dark:hover:bg-white/10"
+              @click="closeCreateModal"
+              aria-label="Fechar"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 6l12 12M6 18L18 6" />
+              </svg>
+            </button>
           </div>
 
           <div class="grid gap-4 md:grid-cols-3">
@@ -313,13 +328,16 @@
               class="rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 dark:border-[#363636] dark:bg-[#101010] dark:text-white dark:hover:bg-white/5"
               @click="createPageFromScratch"
             >
-              <span class="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-700">
+              <span
+                v-if="!isMobileViewport"
+                class="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-700"
+              >
                 {{ viewCopy.actions.createModal.scratch.badge }}
               </span>
               <h3 class="mt-3 text-lg font-semibold text-slate-900 dark:text-white">
                 {{ viewCopy.actions.createModal.scratch.title }}
               </h3>
-              <p class="mt-1 text-sm text-slate-600 dark:text-slate-200">
+              <p v-if="!isMobileViewport" class="mt-1 text-sm text-slate-600 dark:text-slate-200">
                 {{ viewCopy.actions.createModal.scratch.description }}
               </p>
             </button>
@@ -328,13 +346,16 @@
               class="rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 dark:border-[#363636] dark:bg-[#101010] dark:text-white dark:hover:bg-white/5"
               @click="createPageFromTemplate"
             >
-              <span class="inline-flex items-center rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-indigo-700">
+              <span
+                v-if="!isMobileViewport"
+                class="inline-flex items-center rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-indigo-700"
+              >
                 {{ viewCopy.actions.createModal.template.badge }}
               </span>
               <h3 class="mt-3 text-lg font-semibold text-slate-900 dark:text-white">
                 {{ viewCopy.actions.createModal.template.title }}
               </h3>
-              <p class="mt-1 text-sm text-slate-600 dark:text-slate-200">
+              <p v-if="!isMobileViewport" class="mt-1 text-sm text-slate-600 dark:text-slate-200">
                 {{ viewCopy.actions.createModal.template.description }}
               </p>
             </button>
@@ -343,26 +364,21 @@
               class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5 text-left text-slate-600 transition hover:-translate-y-0.5 hover:border-slate-300 dark:border-[#363636] dark:bg-[#181818] dark:text-slate-200 dark:hover:border-white/10 dark:hover:bg-white/5"
               @click="createPageWithAi"
             >
-              <span class="inline-flex items-center rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-indigo-700">
+              <span
+                v-if="!isMobileViewport"
+                class="inline-flex items-center rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-indigo-700"
+              >
                 {{ viewCopy.actions.createModal.ai.badge }}
               </span>
               <h3 class="mt-3 text-lg font-semibold text-slate-900 dark:text-white">
                 {{ viewCopy.actions.createModal.ai.title }}
               </h3>
-              <p class="mt-1 text-sm text-slate-600 dark:text-slate-200">
+              <p v-if="!isMobileViewport" class="mt-1 text-sm text-slate-600 dark:text-slate-200">
                 {{ viewCopy.actions.createModal.ai.description }}
               </p>
             </button>
           </div>
 
-          <div class="mt-6 flex justify-end">
-            <button
-              class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:border-[#363636] dark:text-white dark:hover:bg-white/10"
-              @click="closeCreateModal"
-            >
-              {{ viewCopy.actions.createModal.cancel }}
-            </button>
-          </div>
         </div>
       </div>
     </teleport>
@@ -700,7 +716,7 @@
   <transition name="fade">
     <div
       v-if="snackbar.open"
-      class="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full px-5 py-3 text-sm font-semibold text-white shadow-2xl"
+      class="fixed bottom-6 left-1/2 z-[300] max-w-[90vw] -translate-x-1/2 rounded-3xl px-5 py-3 text-sm font-semibold text-white shadow-2xl sm:max-w-md"
       :class="snackbar.tone === 'error' ? 'bg-rose-600' : 'bg-slate-900'"
     >
       {{ snackbar.text }}
@@ -958,8 +974,8 @@ const viewCopySource = {
       es: "No fue posible crear la página con esta plantilla."
     },
     aiWip: {
-      pt: "Funcionalidade em desenvolvimento. Em breve você poderá criar páginas com IA.",
-      es: "Funcionalidad en desarrollo. Pronto podrás crear páginas con IA."
+      pt: "Funcionalidade em desenvolvimento.",
+      es: "Funcionalidad en desarrollo."
     },
     duplicateSuccess: { pt: "Página duplicada.", es: "Página duplicada." },
     duplicateError: {
@@ -1078,11 +1094,25 @@ const templatePreviewConfig = computed(() => {
   });
 });
 const templatePreviewDevice = ref<"desktop" | "mobile">("desktop");
+const templatePreviewDeviceLocked = ref(false);
+const setTemplatePreviewDevice = (device: "desktop" | "mobile", lock = false) => {
+  if (!lock && templatePreviewDeviceLocked.value) return;
+  if (templatePreviewDevice.value !== device) {
+    templatePreviewDevice.value = device;
+  }
+  if (lock) {
+    templatePreviewDeviceLocked.value = true;
+  }
+};
 const templatePreviewContainer = ref<HTMLElement | null>(null);
 const templatePreviewContent = ref<HTMLElement | null>(null);
 const templatePreviewScale = ref(0.55);
 const previewFullscreen = ref(false);
 const isMobileViewport = ref(false);
+const resetTemplatePreviewDevice = () => {
+  templatePreviewDeviceLocked.value = false;
+  templatePreviewDevice.value = isMobileViewport.value ? "mobile" : "desktop";
+};
 let previewViewportQuery: MediaQueryList | null = null;
 let previewViewportListener: ((event: MediaQueryListEvent) => void) | null = null;
 const basePreviewWidth = computed(() => (templatePreviewDevice.value === "desktop" ? 1440 : 384));
@@ -1146,6 +1176,10 @@ watch(templatePreviewDevice, () => {
       templatePreviewContainer.value.scrollTo({ top: 0 });
     }
   });
+});
+
+watch(isMobileViewport, value => {
+  setTemplatePreviewDevice(value ? "mobile" : "desktop");
 });
 watch(
   () => templateModal.value.open,
@@ -1263,6 +1297,7 @@ const openTemplateModal = async () => {
   templateModal.value.slugAuto = "";
   templateModal.value.error = "";
   previewFullscreen.value = false;
+  resetTemplatePreviewDevice();
   if (!templateModal.value.templates.length) {
     await loadTemplateOptions();
   }
@@ -1277,6 +1312,7 @@ const closeTemplateModal = () => {
   templateModal.value.error = "";
   templateModal.value.saving = false;
   previewFullscreen.value = false;
+  resetTemplatePreviewDevice();
 };
 
 const selectTemplateForModal = (template: PageTemplate) => {
@@ -1287,10 +1323,14 @@ const selectTemplateForModal = (template: PageTemplate) => {
   templateModal.value.slugAuto = slug;
   templateModal.value.error = "";
 };
+const handleTemplateCardClick = (template: PageTemplate) => {
+  if (isMobileViewport.value) return;
+  selectTemplateForModal(template);
+};
 const handleTemplatePreview = (template: PageTemplate) => {
   selectTemplateForModal(template);
   if (isMobileViewport.value) {
-    templatePreviewDevice.value = "mobile";
+    setTemplatePreviewDevice("mobile");
     previewFullscreen.value = true;
   }
 };
