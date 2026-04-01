@@ -193,8 +193,15 @@
               v-if="isMobileViewport && previewFullscreen && templateModal.selectedTemplate && templatePreviewConfig"
               class="absolute inset-0 z-20 m-3 flex flex-col rounded-3xl bg-white px-4 pb-6 pt-5 shadow-2xl dark:bg-[#202020]"
             >
-              <div class="mb-4 border-b border-slate-100 pb-3 dark:border-white/10">
-                <div class="flex flex-wrap items-center justify-between gap-3">
+              <div class="relative mb-4 border-b border-slate-100 pb-3 dark:border-white/10">
+                <button
+                  type="button"
+                  class="absolute right-0 top-0 rounded-full border border-slate-200 px-4 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600 transition hover:bg-slate-50 dark:border-white/15 dark:text-white dark:hover:bg-white/10"
+                  @click="closePreviewFullscreen"
+                >
+                  {{ viewCopy.templateModal.back }}
+                </button>
+                <div class="flex flex-wrap items-center justify-between gap-3 pr-24">
                   <div>
                     <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-white/60">
                       {{ viewCopy.templateModal.previewHeading }}
@@ -222,16 +229,6 @@
                         Mobile
                       </button>
                     </div>
-                    <button
-                      type="button"
-                      class="rounded-full border border-slate-200 p-2 text-slate-600 transition hover:bg-slate-50 dark:border-white/15 dark:text-white dark:hover:bg-white/10"
-                      @click="closePreviewFullscreen"
-                    >
-                      <span class="sr-only">{{ viewCopy.templateModal.cancel }}</span>
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 6l12 12M6 18L18 6" />
-                      </svg>
-                    </button>
                   </div>
                 </div>
               </div>
@@ -302,15 +299,9 @@
       >
         <div class="w-full max-w-4xl rounded-3xl bg-white p-8 shadow-2xl dark:bg-[#202020] dark:text-white">
           <div class="relative mb-6 space-y-1">
-            <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">
-              {{ viewCopy.actions.createModal.eyebrow }}
-            </p>
             <h2 class="text-2xl font-bold text-slate-900">
               {{ viewCopy.actions.createModal.title }}
             </h2>
-            <p class="text-sm text-slate-500">
-              {{ viewCopy.actions.createModal.description }}
-            </p>
             <button
               type="button"
               class="absolute -right-2 -top-2 inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-50 dark:border-[#363636] dark:bg-[#202020] dark:text-white dark:hover:bg-white/10"
@@ -329,7 +320,6 @@
               @click="createPageFromScratch"
             >
               <span
-                v-if="!isMobileViewport"
                 class="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-700"
               >
                 {{ viewCopy.actions.createModal.scratch.badge }}
@@ -337,7 +327,7 @@
               <h3 class="mt-3 text-lg font-semibold text-slate-900 dark:text-white">
                 {{ viewCopy.actions.createModal.scratch.title }}
               </h3>
-              <p v-if="!isMobileViewport" class="mt-1 text-sm text-slate-600 dark:text-slate-200">
+              <p class="mt-1 text-sm text-slate-600 dark:text-slate-200">
                 {{ viewCopy.actions.createModal.scratch.description }}
               </p>
             </button>
@@ -347,7 +337,6 @@
               @click="createPageFromTemplate"
             >
               <span
-                v-if="!isMobileViewport"
                 class="inline-flex items-center rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-indigo-700"
               >
                 {{ viewCopy.actions.createModal.template.badge }}
@@ -355,7 +344,7 @@
               <h3 class="mt-3 text-lg font-semibold text-slate-900 dark:text-white">
                 {{ viewCopy.actions.createModal.template.title }}
               </h3>
-              <p v-if="!isMobileViewport" class="mt-1 text-sm text-slate-600 dark:text-slate-200">
+              <p class="mt-1 text-sm text-slate-600 dark:text-slate-200">
                 {{ viewCopy.actions.createModal.template.description }}
               </p>
             </button>
@@ -365,7 +354,6 @@
               @click="createPageWithAi"
             >
               <span
-                v-if="!isMobileViewport"
                 class="inline-flex items-center rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-indigo-700"
               >
                 {{ viewCopy.actions.createModal.ai.badge }}
@@ -373,7 +361,7 @@
               <h3 class="mt-3 text-lg font-semibold text-slate-900 dark:text-white">
                 {{ viewCopy.actions.createModal.ai.title }}
               </h3>
-              <p v-if="!isMobileViewport" class="mt-1 text-sm text-slate-600 dark:text-slate-200">
+              <p class="mt-1 text-sm text-slate-600 dark:text-slate-200">
                 {{ viewCopy.actions.createModal.ai.description }}
               </p>
             </button>
@@ -871,6 +859,7 @@ const viewCopySource = {
       pt: "Este slug completa o link publico do roteiro.",
       es: "Este slug completa el enlace publico del itinerario."
     },
+    back: { pt: "Voltar", es: "Volver" },
     cancel: { pt: "Cancelar", es: "Cancelar" },
     create: { pt: "Criar pagina", es: "Crear pagina" }
   },
@@ -1783,5 +1772,13 @@ onMounted(loadPages);
 .preview-scale {
   transition: transform 0.2s ease, width 0.2s ease;
   display: block;
+}
+
+@media (max-width: 768px) {
+  :global(input),
+  :global(textarea),
+  :global(select) {
+    font-size: 16px;
+  }
 }
 </style>
