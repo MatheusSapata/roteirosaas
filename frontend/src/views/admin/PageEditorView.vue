@@ -1,5 +1,5 @@
 ﻿<template>
-<div class="w-full space-y-6 px-4 py-10 md:px-8 md:py-0">
+<div class="page-editor-view w-full space-y-6 px-4 py-10 md:px-8 md:py-0">
     <div class="sticky top-0 z-30 flex flex-col gap-3 py-4 md:flex-row md:items-center md:justify-between">
       <div>
         <p class="text-sm uppercase tracking-wide text-slate-500">{{ viewCopy.header.eyebrow }}</p>
@@ -3153,6 +3153,14 @@ onMounted(async () => {
   color: inherit !important;
   stroke: currentColor !important;
   fill: none !important;
+}
+
+@media (max-width: 768px) {
+  :global(.page-editor-view input),
+  :global(.page-editor-view textarea),
+  :global(.page-editor-view select) {
+    font-size: 16px;
+  }
 }
 </style>
 
