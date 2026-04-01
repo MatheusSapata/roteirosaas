@@ -619,7 +619,8 @@ const navCopy = {
   agency: { pt: "Minha Agência", es: "Mi Agencia" },
   profile: { pt: "Perfil", es: "Perfil" },
   lessons: { pt: "Aulas", es: "Cursos" },
-  plans: { pt: "Planos", es: "Planes" }
+  plans: { pt: "Planos", es: "Planes" },
+  finance: { pt: "Financeiro", es: "Financiero" }
 } as const;
 
 const navLabel = (key: keyof typeof navCopy) => t(navCopy[key]);
@@ -811,6 +812,7 @@ const navIcons: Record<string, string> = {
   "/admin/dashboard": '<path fill="none" stroke="currentColor" stroke-width="1.8" d="M4 5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1zm10 0a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1zM4 16a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1zm10-3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1z"/>' ,
   "/admin/pages": '<g fill="none" stroke="currentColor" stroke-width="2"><path d="M6.142 6.142C8.904 3.381 10.284 2 12 2s3.096 1.38 5.858 4.142S22 10.284 22 12s-1.38 3.096-4.142 5.858S13.716 22 12 22s-3.096-1.38-5.858-4.142S2 13.716 2 12s1.38-3.096 4.142-5.858Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M16 11.5L13.333 9M16 11.5L13.333 14M16 11.5h-5.333C9.777 11.5 8 12 8 14"/></g>',
   "/admin/leads": '<path fill="currentColor" d="m17 21l1.8 1.77c.5.5 1.2.1 1.2-.49V18l2.8-3.4A1 1 0 0 0 22 13h-7c-.8 0-1.3 1-.8 1.6L17 18zm-2-1H2v-3c0-2.7 5.3-4 8-4c.6 0 1.3.1 2.1.2c-.2.6-.1 1.3.1 1.9c-.7-.1-1.5-.2-2.2-.2c-3 0-6.1 1.5-6.1 2.1v1.1h10.6l.5.6zM10 4C7.8 4 6 5.8 6 8s1.8 4 4 4s4-1.8 4-4s-1.8-4-4-4m0 6c-1.1 0-2-.9-2-2s.9-2 2-2s2 .9 2 2s-.9 2-2 2"/>',
+  "/admin/financeiro": '<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 11h16M4 7h16M4 15h10M12 3v2m0 14v2"/>',
   "/admin/integracoes": '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M18.364 19.364a9 9 0 1 0-12.728 0"/><path d="M15.536 16.536a5 5 0 1 0-7.072 0"/><path d="M11 13a1 1 0 1 0 2 0a1 1 0 1 0-2 0"/></g>',
   "/admin/agency": '<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.3" d="M4 11.452V16.8c0 1.12 0 1.68.218 2.109c.192.376.497.682.874.873c.427.218.987.218 2.105.218h9.606c1.118 0 1.677 0 2.104-.218a2 2 0 0 0 .875-.873c.218-.428.218-.987.218-2.105v-5.352c0-.534 0-.801-.065-1.05a2 2 0 0 0-.28-.617c-.145-.213-.345-.39-.748-.741l-4.8-4.2c-.746-.653-1.12-.98-1.54-1.104c-.37-.11-.764-.11-1.135 0c-.42.124-.792.45-1.538 1.102L5.093 9.044c-.402.352-.603.528-.747.74a2 2 0 0 0-.281.618C4 10.65 4 10.918 4 11.452"/>',
   "/admin/domains": '<g transform="translate(3 3) scale(1.1)"><path fill="currentColor" d="M9 0a9 9 0 1 0 0 18A9 9 0 0 0 9 0M1.11 9.68h2.51c.04.91.167 1.814.38 2.7H1.84a7.9 7.9 0 0 1-.73-2.7m8.57-5.4V1.19a4.13 4.13 0 0 1 2.22 2q.308.521.54 1.08zm3.22 1.35c.232.883.37 1.788.41 2.7H9.68v-2.7zM8.32 1.19v3.09H5.56A8.5 8.5 0 0 1 6.1 3.2a4.13 4.13 0 0 1 2.22-2.01m0 4.44v2.7H4.7c.04-.912.178-1.817.41-2.7zm-4.7 2.69H1.11a7.9 7.9 0 0 1 .73-2.7H4a14 14 0 0 0-.38 2.7M4.7 9.68h3.62v2.7H5.11a13 13 0 0 1-.41-2.7m3.63 4v3.09a4.13 4.13 0 0 1-2.22-2a8.5 8.5 0 0 1-.54-1.08zm1.35 3.09v-3.04h2.76a8.5 8.5 0 0 1-.54 1.08a4.13 4.13 0 0 1-2.22 2zm0-4.44v-2.7h3.62a13 13 0 0 1-.41 2.7zm4.71-2.7h2.51a7.9 7.9 0 0 1-.73 2.7H14c.21-.87.337-1.757.38-2.65zm0-1.35A14 14 0 0 0 14 5.63h2.16c.403.85.65 1.764.73 2.7zm1-4H13.6a8.9 8.9 0 0 0-1.39-2.52a8 8 0 0 1 3.14 2.52zm-9.6-2.52A8.9 8.9 0 0 0 4.4 4.28H2.65a8 8 0 0 1 3.14-2.52m-3.15 12H4.4a8.9 8.9 0 0 0 1.39 2.52a8 8 0 0 1-3.14-2.55zm9.56 2.52a8.9 8.9 0 0 0 1.39-2.52h1.76a8 8 0 0 1-3.14 2.48z"/></g>',
@@ -840,6 +842,7 @@ const routeTitleMap: Record<string, string> = {
   lessons: navLabel("lessons"),
   "agency-settings": navLabel("agency"),
   "agency-domains": navLabel("domains"),
+  finance: navLabel("finance"),
   plans: navLabel("plans"),
   integrations: navLabel("integrations"),
   profile: navLabel("profile"),
@@ -854,13 +857,14 @@ const navItems = computed(() => {
     { label: navLabel("dashboard"), to: "/admin/dashboard" },
     { label: navLabel("pages"), to: "/admin/pages" },
     { label: navLabel("leads"), to: "/admin/leads" },
+    { label: navLabel("finance"), to: "/admin/financeiro" },
     { label: navLabel("integrations"), to: "/admin/integracoes" },
     { label: navLabel("agency"), to: "/admin/agency" },
     { label: navLabel("profile"), to: "/admin/perfil" },
     { label: navLabel("lessons"), to: "/admin/aulas" }
   ];
   if (canAccessCustomDomains.value) {
-    items.splice(4, 0, { label: navLabel("domains"), to: "/admin/domains" });
+    items.splice(5, 0, { label: navLabel("domains"), to: "/admin/domains" });
   }
   if (auth.user?.is_superuser) {
     items.splice(1, 0, { label: navLabel("adminMaster"), to: "/admin/administracao" });

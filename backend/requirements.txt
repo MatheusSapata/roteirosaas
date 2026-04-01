@@ -14,6 +14,7 @@ pillow
 anyio
 httpx
 mercadopago
+stripe
 pytest
 azure-storage-blob
 dnspython

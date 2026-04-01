@@ -165,6 +165,10 @@ class UserOut(UserBase):
     trial_warn_3days_ack: Optional[bool] = None
     trial_warn_1day_ack: Optional[bool] = None
     trial_blocked: Optional[bool] = None
+    stripe_account_id: Optional[str] = None
+    stripe_onboarding_completed: Optional[bool] = None
+    stripe_charges_enabled: Optional[bool] = None
+    stripe_payouts_enabled: Optional[bool] = None
     model_config = ConfigDict(from_attributes=True)
 
 

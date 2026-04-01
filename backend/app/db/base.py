@@ -22,4 +22,6 @@ from app.models import (
     revenue,
     lead_form,
     user_session,
+    sale,
+    stripe_account,
 )  # noqa: E402,F401

@@ -150,6 +150,89 @@
           <label class="text-xs font-semibold text-slate-600">{{ viewCopy.items.highlightLabel }}</label>
         </div>
 
+        <div class="rounded-2xl border border-dashed border-emerald-200/70 p-3">
+          <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-wide text-emerald-700">{{ viewCopy.checkout.title }}</p>
+              <p class="text-xs text-slate-500">{{ viewCopy.checkout.description }}</p>
+            </div>
+            <label class="inline-flex items-center gap-2 text-xs font-semibold text-slate-600">
+              <input
+                type="checkbox"
+                v-model="item.checkout.enabled"
+                class="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+              />
+              <span>{{
+                item.checkout?.enabled ? viewCopy.checkout.enabledLabel : viewCopy.checkout.disabledLabel
+              }}</span>
+            </label>
+          </div>
+          <div v-if="item.checkout?.enabled" class="mt-4 space-y-3">
+            <div class="grid gap-3 md:grid-cols-2">
+              <div>
+                <label class="mb-1 block text-xs font-semibold text-slate-500">{{ viewCopy.checkout.productId }}</label>
+                <div class="flex gap-2">
+                  <input
+                    v-model="item.checkout.productId"
+                    readonly
+                    class="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-mono"
+                  />
+                  <button
+                    type="button"
+                    class="rounded-lg border border-emerald-200 px-3 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
+                    @click="copyProductId(item.checkout.productId)"
+                  >
+                    {{ copiedProductId === item.checkout.productId ? viewCopy.checkout.copied : viewCopy.checkout.copy }}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label class="mb-1 block text-xs font-semibold text-slate-500">{{ viewCopy.checkout.passengersRequired }}</label>
+                <input
+                  v-model.number="item.checkout.passengersRequired"
+                  type="number"
+                  min="0"
+                  class="w-full rounded-lg border border-slate-200 px-3 py-2"
+                />
+                <p class="mt-1 text-[11px] text-slate-500">{{ viewCopy.checkout.passengersHint }}</p>
+              </div>
+            </div>
+            <div class="grid gap-3 md:grid-cols-3">
+              <div>
+                <label class="mb-1 block text-xs font-semibold text-slate-500">{{ viewCopy.checkout.installments }}</label>
+                <input
+                  v-model.number="item.checkout.installments"
+                  type="number"
+                  min="1"
+                  class="w-full rounded-lg border border-slate-200 px-3 py-2"
+                />
+                <p class="mt-1 text-[11px] text-slate-500">{{ viewCopy.checkout.installmentsHint }}</p>
+              </div>
+              <div>
+                <label class="mb-1 block text-xs font-semibold text-slate-500">{{ viewCopy.checkout.interestMode }}</label>
+                <select
+                  v-model="item.checkout.interestMode"
+                  class="w-full rounded-lg border border-slate-200 px-3 py-2"
+                >
+                  <option v-for="option in checkoutInterestOptions" :key="option.value" :value="option.value">
+                    {{ option.label }}
+                  </option>
+                </select>
+              </div>
+              <div>
+                <label class="mb-1 block text-xs font-semibold text-slate-500">{{ viewCopy.checkout.maxNoInterest }}</label>
+                <input
+                  v-model.number="item.checkout.maxInstallmentsNoInterest"
+                  type="number"
+                  min="0"
+                  class="w-full rounded-lg border border-slate-200 px-3 py-2"
+                />
+                <p class="mt-1 text-[11px] text-slate-500">{{ viewCopy.checkout.maxNoInterestHint }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <button
           class="text-sm font-semibold text-rose-500"
           type="button"
@@ -171,10 +254,10 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, reactive, watch } from "vue";
+import { nextTick, onBeforeUnmount, reactive, ref, watch } from "vue";
 import SectionHeadingControls from "./inputs/SectionHeadingControls.vue";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
-import type { CurrencyCode, PriceItem, PricesSection } from "../../types/page";
+import type { CurrencyCode, PriceCheckoutConfig, PriceItem, PricesSection } from "../../types/page";
 import { createAdminLocalizer } from "../../utils/adminI18n";
 
 const props = defineProps<{ modelValue: PricesSection }>();
@@ -224,6 +307,38 @@ const viewCopy = {
     highlightLabel: t({ pt: "Destacar este plano", es: "Destacar este plan" }),
     removeButton: t({ pt: "Remover plano", es: "Eliminar plan" }),
     addButton: t({ pt: "+ Adicionar plano", es: "+ Agregar plan" })
+  },
+  checkout: {
+    title: t({ pt: "Checkout & vendas", es: "Checkout y ventas" }),
+    description: t({
+      pt: "Ative para vender diretamente via Stripe Connect.",
+      es: "Activa para vender directamente con Stripe Connect."
+    }),
+    productId: t({ pt: "ID do produto", es: "ID del producto" }),
+    copy: t({ pt: "Copiar ID", es: "Copiar ID" }),
+    copied: t({ pt: "Copiado!", es: "¡Copiado!" }),
+    passengersRequired: t({ pt: "Qtd. passageiros", es: "Cant. pasajeros" }),
+    passengersHint: t({
+      pt: "Define quantos passageiros devem preencher o pós-venda.",
+      es: "Define cuántos pasajeros deben completar el post-viaje."
+    }),
+    installments: t({ pt: "Parcelas máximas", es: "Cuotas máximas" }),
+    installmentsHint: t({
+      pt: "Informe até quantas parcelas oferecer.",
+      es: "Indica hasta cuántas cuotas ofrecer."
+    }),
+    interestMode: t({ pt: "Juros", es: "Interés" }),
+    interestModes: {
+      merchant: t({ pt: "Agência absorve juros", es: "Agencia asume intereses" }),
+      client: t({ pt: "Cliente paga juros", es: "Cliente paga intereses" })
+    },
+    maxNoInterest: t({ pt: "Parcelas sem juros", es: "Cuotas sin interés" }),
+    maxNoInterestHint: t({
+      pt: "0 = nenhuma. Use para limitar as sem juros.",
+      es: "0 = ninguna. Úsalo para limitar las sin interés."
+    }),
+    enabledLabel: t({ pt: "Ativado", es: "Activado" }),
+    disabledLabel: t({ pt: "Desativado", es: "Desactivado" })
   }
 };
 
@@ -232,6 +347,11 @@ const currencyOptions: { label: string; value: CurrencyCode }[] = [
   { label: t({ pt: "Dolar (US$)", es: "Dolar (US$)" }), value: "USD" },
   { label: t({ pt: "Euro (€)", es: "Euro (€)" }), value: "EUR" },
   { label: t({ pt: "Pesos ($)", es: "Pesos ($)" }), value: "ARS" }
+];
+
+const checkoutInterestOptions = [
+  { label: viewCopy.checkout.interestModes.merchant, value: "merchant" },
+  { label: viewCopy.checkout.interestModes.client, value: "client" }
 ];
 
 const headingDefaults = getSectionHeadingDefaults("prices");
@@ -247,6 +367,22 @@ const normalizeLink = (value?: string | null) => {
   return `https://${trimmed}`;
 };
 
+const generateProductId = () => {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return `price_${Math.random().toString(36).slice(2, 10)}`;
+};
+
+const ensureCheckoutConfig = (checkout?: PriceCheckoutConfig | null): PriceCheckoutConfig => ({
+  enabled: checkout?.enabled ?? false,
+  productId: checkout?.productId || generateProductId(),
+  passengersRequired: Number(checkout?.passengersRequired ?? 0),
+  installments: Number(checkout?.installments ?? 1),
+  interestMode: checkout?.interestMode === "client" ? "client" : "merchant",
+  maxInstallmentsNoInterest: checkout?.maxInstallmentsNoInterest ?? 0
+});
+
 const cloneItems = (items?: PriceItem[]): PriceItem[] =>
   Array.isArray(items)
     ? items.map(item => ({
@@ -260,7 +396,8 @@ const cloneItems = (items?: PriceItem[]): PriceItem[] =>
         ctaLabel: item.ctaLabel || "",
         ctaLink: item.ctaLink || "",
         currency: (item.currency as CurrencyCode) || "BRL",
-        highlight: !!item.highlight
+        highlight: !!item.highlight,
+        checkout: ensureCheckoutConfig(item.checkout)
       }))
     : [];
 
@@ -316,13 +453,49 @@ const addItem = () => {
     ctaLabel: "",
     ctaLink: "",
     currency: "BRL",
-    highlight: false
+    highlight: false,
+    checkout: ensureCheckoutConfig()
   });
 };
 
 const removeItem = (index: number) => {
   local.items.splice(index, 1);
 };
+
+const copiedProductId = ref<string | null>(null);
+let copyTimeout: number | null = null;
+
+const copyProductId = async (productId: string) => {
+  try {
+    if (navigator?.clipboard?.writeText) {
+      await navigator.clipboard.writeText(productId);
+    } else {
+      const textarea = document.createElement("textarea");
+      textarea.value = productId;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+    }
+    copiedProductId.value = productId;
+    if (copyTimeout) {
+      window.clearTimeout(copyTimeout);
+    }
+    copyTimeout = window.setTimeout(() => {
+      copiedProductId.value = null;
+      copyTimeout = null;
+    }, 2000);
+  } catch {
+    copiedProductId.value = null;
+  }
+};
+
+onBeforeUnmount(() => {
+  if (copyTimeout) {
+    window.clearTimeout(copyTimeout);
+    copyTimeout = null;
+  }
+});
 
 watch(
   () => ({
@@ -340,7 +513,8 @@ watch(
       ctaLabel: item.ctaLabel || "",
       ctaLink: normalizeLink(item.ctaLink),
       currency: (item.currency as CurrencyCode) || "BRL",
-      highlight: !!item.highlight
+      highlight: !!item.highlight,
+      checkout: ensureCheckoutConfig(item.checkout)
     }))
   }),
   value => {

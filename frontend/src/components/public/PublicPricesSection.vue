@@ -65,8 +65,19 @@
                 </p>
               </div>
 
+              <button
+                v-if="isCheckoutEnabled(item) && checkoutAvailable"
+                type="button"
+                data-track-event="checkout"
+                class="inline-flex w-full max-w-sm items-center justify-center rounded-full px-5 py-2 text-sm font-semibold shadow-md transition hero-cta-shimmer hero-cta-desktop-hover md:w-auto md:mx-0 mx-auto"
+                :class="item.highlight ? 'hover:-translate-y-0.5 hover:shadow-xl' : 'hover:-translate-y-0.5 hover:shadow-lg'"
+                :style="{ background: buttonBackground(item), color: buttonTextColor(item) }"
+                @click="handleCheckoutClick(item)"
+              >
+                {{ itemCtaLabel(item) }}
+              </button>
               <a
-                v-if="itemLink(item)"
+                v-else-if="itemLink(item)"
                 :href="itemLink(item)"
                 target="_blank"
                 rel="noopener"
@@ -102,13 +113,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, inject } from "vue";
 import type { CurrencyCode, PriceItem, PricesSection } from "../../types/page";
 import { isWhatsappLink } from "../../utils/links";
 import SectionHeadingChip from "./SectionHeadingChip.vue";
 import { getSectionHeadingDefaults, resolveHeadingLabel } from "../../utils/sectionHeadings";
 import { deriveTextPalette, getReadableTextColor } from "../../utils/colorContrast";
 import { createLocalizer, getCurrentLanguage } from "../../utils/i18n";
+import { PUBLIC_CHECKOUT_KEY } from "../../utils/checkoutKeys";
 
 const props = defineProps<{ section: PricesSection }>();
 
@@ -264,6 +276,9 @@ const currencyMap: Record<CurrencyCode, { locale: string; currency: CurrencyCode
 };
 const defaultCurrency = currencyMap.BRL;
 
+const checkoutBridge = inject(PUBLIC_CHECKOUT_KEY, null);
+const checkoutAvailable = computed(() => !!checkoutBridge);
+
 const formatPrice = (price: number, currency?: PriceItem["currency"]) => {
   const config = currencyMap[(currency as CurrencyCode) || "BRL"] || defaultCurrency;
 
@@ -280,6 +295,13 @@ const formatPrice = (price: number, currency?: PriceItem["currency"]) => {
 const itemLink = (item: PriceItem) => {
   const specific = sanitizeLink(item.ctaLink);
   return specific || baseCtaLink.value;
+};
+
+const isCheckoutEnabled = (item: PriceItem) => !!(item.checkout && item.checkout.enabled && item.checkout.productId);
+
+const handleCheckoutClick = (item: PriceItem) => {
+  if (!checkoutBridge || !isCheckoutEnabled(item)) return;
+  checkoutBridge.startCheckout({ section: props.section, item });
 };
 
 const trackType = (link?: string) => (link && isWhatsappLink(link) ? "whatsapp" : "cta");

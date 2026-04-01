@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     mp_payer_test_email: str | None = Field(None, alias="MP_PAYER_TEST_EMAIL")
     stripe_secret_key: str | None = Field(None, alias="STRIPE_SECRET_KEY")
     stripe_webhook_secret: str | None = Field(None, alias="STRIPE_WEBHOOK_SECRET")
+    stripe_connect_webhook_secret: str | None = Field(None, alias="STRIPE_CONNECT_WEBHOOK_SECRET")
+    stripe_publishable_key: str | None = Field(None, alias="STRIPE_PUBLISHABLE_KEY")
     stripe_price_essencial: str | None = Field(None, alias="STRIPE_PRICE_ESSENCIAL")
     stripe_price_growth: str | None = Field(None, alias="STRIPE_PRICE_GROWTH")
     stripe_price_infinity: str | None = Field(None, alias="STRIPE_PRICE_INFINITY")

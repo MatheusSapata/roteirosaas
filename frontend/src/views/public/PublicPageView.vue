@@ -42,6 +42,20 @@
     @submitted="handleLeadModalSubmitted"
     @dismissed="handleLeadModalDismissed"
   />
+  <PublicCheckoutModal
+    v-model="checkoutVisible"
+    :page-id="pageId"
+    :page-slug="currentPageSlug"
+    :agency-slug="currentAgencySlug"
+    :page-url="pageUrl"
+    :product="checkoutProduct"
+    @payment-succeeded="handleCheckoutSucceeded"
+  />
+  <PublicPassengerModal
+    v-model="passengerModalVisible"
+    :token="passengerToken"
+    @completed="handlePassengerCompleted"
+  />
 </template>
 
 <script setup lang="ts">
@@ -63,6 +77,8 @@ import PublicCountdownSection from "../../components/public/PublicCountdownSecti
 import PublicFreeFooterBrandSection from "../../components/public/PublicFreeFooterBrandSection.vue";
 import PublicAgencyFooterSection from "../../components/public/PublicAgencyFooterSection.vue";
 import PublicLeadCaptureModal from "../../components/public/PublicLeadCaptureModal.vue";
+import PublicCheckoutModal from "../../components/public/PublicCheckoutModal.vue";
+import PublicPassengerModal from "../../components/public/PublicPassengerModal.vue";
 import PublicPhotoSection from "../../components/public/PublicPhotoSection.vue";
 import PublicBiographySection from "../../components/public/PublicBiographySection.vue";
 import type { HeroSection, PageConfig, PageSection, SectionType, ThemeConfig } from "../../types/page";
@@ -72,6 +88,7 @@ import BrandLogo from "../../assets/Logo Branco - Roteiro Online.png";
 import { resolveMediaUrl } from "../../utils/media";
 import { fetchPublicLeadForm } from "../../services/leadCapture";
 import { createLocalizer, getCurrentLanguage, getLocalizedValue, type LocalizedString } from "../../utils/i18n";
+import { PUBLIC_CHECKOUT_KEY, type PublicCheckoutPayload } from "../../utils/checkoutKeys";
 
 interface PublicPageResponse {
   id: number;
@@ -80,6 +97,14 @@ interface PublicPageResponse {
   branding: Record<string, unknown>;
   config: string | PageConfig;
   cover_image_url?: string;
+}
+
+interface CheckoutProduct {
+  productId: string;
+  title: string;
+  price: number;
+  currency?: string;
+  passengersRequired: number;
 }
 
 const route = useRoute();
@@ -91,6 +116,10 @@ const pageUrl = ref<string>("");
 const leadCaptureForm = ref<LeadForm | null>(null);
 const leadModalVisible = ref(false);
 const leadCaptureOptional = ref(false);
+const checkoutVisible = ref(false);
+const checkoutProduct = ref<CheckoutProduct | null>(null);
+const passengerModalVisible = ref(false);
+const passengerToken = ref<string | null>(null);
 const theme = ref<ThemeConfig>({
   color1: "#f8fafc",
   color2: "#ffffff",
@@ -129,6 +158,19 @@ const isPlatformHost = computed(() => {
 const brandingInfo = computed(() => pageData.value?.branding || {});
 const statsApi = computed(() => (isPlatformHost.value ? api : platformApi));
 provide(PUBLIC_BRANDING_KEY, brandingInfo);
+
+const startCheckout = ({ item }: PublicCheckoutPayload) => {
+  if (!item.checkout?.productId) return;
+  checkoutProduct.value = {
+    productId: item.checkout.productId,
+    title: localize(item.title),
+    price: Number(item.price || 0),
+    currency: item.currency || "BRL",
+    passengersRequired: Number(item.checkout.passengersRequired || 0)
+  };
+  checkoutVisible.value = true;
+};
+provide(PUBLIC_CHECKOUT_KEY, { startCheckout });
 const leadAccentColor = computed(() => {
   const primary = (theme.value?.ctaDefaultColor || "").trim();
   if (primary) return primary;
@@ -141,6 +183,11 @@ const currentPageSlug = computed(() => {
   const param = route.params.pageSlug;
   if (Array.isArray(param)) return param[0] || null;
   return param || null;
+});
+const currentAgencySlug = computed(() => {
+  const param = route.params.agencySlug;
+  if (Array.isArray(param)) return param[0] || null;
+  return typeof param === "string" ? param : null;
 });
 const brandingLogo = computed(() => {
   const branding = brandingInfo.value as { logo_url?: string };
@@ -422,11 +469,20 @@ const sectionEnabled = (type: SectionType) => {
 };
 
 const handleLeadModalSubmitted = () => {
-  /* hook for future analytics */
+  leadModalVisible.value = false;
 };
 
 const handleLeadModalDismissed = () => {
   leadModalVisible.value = false;
+};
+
+const handleCheckoutSucceeded = (payload: { passengerToken: string; saleId: number }) => {
+  passengerToken.value = payload.passengerToken;
+  passengerModalVisible.value = true;
+};
+
+const handlePassengerCompleted = () => {
+  passengerModalVisible.value = false;
 };
 
 onMounted(loadPage);
@@ -436,6 +492,12 @@ watch(
     loadPage();
   }
 );
+
+watch(checkoutVisible, value => {
+  if (!value) {
+    checkoutProduct.value = null;
+  }
+});
 watch(
   () => [pageData.value, heroBackgroundImage.value, heroSubtitleText.value],
   () => {

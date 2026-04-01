@@ -106,6 +106,7 @@ const platformRoutes: RouteRecordRaw[] = [
   { path: "/forgot-password", name: "forgot-password", component: ForgotPasswordView, meta: { guestOnly: true } },
   { path: "/reset-password", name: "reset-password", component: ResetPasswordView, meta: { guestOnly: true } },
   { path: "/create-password", name: "create-password", component: CreatePasswordView, meta: { guestOnly: true } },
+  { path: "/passageiros/:token", name: "passenger-form", component: () => import("../views/public/PassengerFormView.vue") },
   { path: "/pedido", name: "checkout-processing", component: CheckoutProcessingView, meta: { guestOnly: true } },
   { path: "/planos", redirect: "/admin/planos" },
   {
@@ -118,6 +119,7 @@ const platformRoutes: RouteRecordRaw[] = [
       { path: "pages/:id/edit", name: "page-edit", component: PageEditorView, props: true },
       { path: "aulas", name: "lessons", component: () => import("../views/admin/AulasView.vue") },
       { path: "leads", name: "leads", component: LeadsView },
+      { path: "financeiro", name: "finance", component: () => import("../views/admin/FinanceView.vue") },
       { path: "agency", name: "agency-settings", component: AgencySettingsView },
       {
         path: "domains",
