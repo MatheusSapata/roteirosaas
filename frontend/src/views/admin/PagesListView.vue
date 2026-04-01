@@ -320,7 +320,7 @@
               @click="createPageFromScratch"
             >
               <span
-                class="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-700"
+                class="inline-flex items-center rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-indigo-700"
               >
                 {{ viewCopy.actions.createModal.scratch.badge }}
               </span>
@@ -337,7 +337,7 @@
               @click="createPageFromTemplate"
             >
               <span
-                class="inline-flex items-center rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-indigo-700"
+                class="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-700"
               >
                 {{ viewCopy.actions.createModal.template.badge }}
               </span>
@@ -779,7 +779,7 @@ const viewCopySource = {
         es: "Elige entre construir todo desde cero o partir de un template listo."
       },
       scratch: {
-        badge: { pt: "Recomendado", es: "Recomendado" },
+        badge: { pt: "Crie como quiser", es: "Plantillas" },
         title: { pt: "Criar página do zero", es: "Crear página desde cero" },
         description: {
           pt: "Acesse o editor completo para personalizar cada seção do seu roteiro.",
@@ -787,7 +787,7 @@ const viewCopySource = {
         }
       },
       template: {
-        badge: { pt: "Templates", es: "Plantillas" },
+        badge: { pt: "Recomendado", es: "Recomendado" },
         title: { pt: "Criar a partir de modelo", es: "Crear desde un modelo" },
         description: {
           pt: "Selecione um layout pronto e personalize apenas o conteúdo.",
