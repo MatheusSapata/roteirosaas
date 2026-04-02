@@ -268,6 +268,7 @@ import { useAgencyStore } from "../../store/useAgencyStore";
 import { useAuthStore } from "../../store/useAuthStore";
 import { addTagsToContactByEmail, viajeChatTagIds } from "../../services/viajeChat";
 import { createAdminLocalizer } from "../../utils/adminI18n";
+import { normalizeWhatsappDigits } from "../../utils/whatsapp";
 
 const agencyStore = useAgencyStore();
 const authStore = useAuthStore();
@@ -595,7 +596,8 @@ const syncFormWithCurrent = () => {
   if (!form.primary_color) form.primary_color = colorPalette[0];
 
   const fallbackPhone = form.cta_whatsapp || authStore.user?.whatsapp || "";
-  phoneInput.value = fallbackPhone.replace(/\D/g, "");
+  const fallbackDigits = fallbackPhone.replace(/\D/g, "");
+  phoneInput.value = fallbackDigits.replace(/^0?55/, "");
 
   syncCompanyData();
 };
@@ -675,15 +677,17 @@ const save = async () => {
   const normalizedName = form.name.trim();
   const normalizedSlug = form.slug.trim().toLowerCase();
 
-  const phoneDigits = sanitizeDigits(phoneInput.value);
-  if (phoneDigits && phoneDigits.length < 10) {
+  const rawPhoneDigits = (phoneInput.value || "").replace(/\D/g, "");
+  if (rawPhoneDigits && rawPhoneDigits.length < 10) {
     phoneError.value = viewCopy.contact.invalidPhone;
     return;
   }
 
+  const phoneDigits = rawPhoneDigits ? normalizeWhatsappDigits(rawPhoneDigits) : "";
+
   form.name = normalizedName;
   form.slug = normalizedSlug;
-  form.cta_whatsapp = phoneDigits || "";
+  form.cta_whatsapp = phoneDigits;
 
   const payload = {
     name: normalizedName,

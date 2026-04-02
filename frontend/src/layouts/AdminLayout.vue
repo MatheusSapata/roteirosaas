@@ -1,5 +1,11 @@
 <template>
-  <div :class="['min-h-screen overflow-x-hidden admin-scale-85', themeWrapperClass]">
+ <div
+    :class="[
+      'min-h-screen overflow-x-hidden text-[14px]',
+      isDarkTheme ? 'bg-[#05070f] text-slate-100' : 'bg-slate-50 text-slate-900',
+      themeWrapperClass
+    ]"
+  >
     <div class="flex min-h-screen">
       <aside
         :class="[
@@ -87,8 +93,7 @@
           </button>
         </div>
       </aside>
-
-      <main :class="['admin-main flex-1 overflow-x-hidden md:ml-64', isDarkTheme ? 'bg-slate-900 text-slate-100' : '']">
+      <main :class="['admin-main flex-1 overflow-x-hidden md:ml-64',isDarkTheme ? 'bg-[#05070f] text-slate-100' : 'bg-slate-50 text-slate-900']">
         <header
           :class="[
             'admin-header sticky top-0 z-30 px-4 py-3 shadow-sm transition-colors md:static',
@@ -124,7 +129,12 @@
             </div>
           </div>
         </header>
-        <div :class="['admin-content px-3 py-4 md:px-6 md:py-6', isDarkTheme ? 'text-slate-100' : '']">
+        <div
+          :class="[
+            'admin-content min-h-screen px-3 py-4 md:px-6 md:py-6',
+            isDarkTheme ? 'text-slate-100' : 'text-slate-900'
+          ]"
+        >
           <RouterView />
         </div>
       </main>
@@ -761,8 +771,24 @@ const toggleTheme = () => themeStore.toggleTheme();
 
 const showCookieConsent = ref(false);
 const hasWindow = typeof window !== "undefined";
+const bodyDarkClass = "admin-body-dark";
+const bodyLightClass = "admin-body-light";
 const isMobileViewport = ref(false);
 let removeViewportWatcher: (() => void) | null = null;
+
+const syncBodyTheme = (dark: boolean) => {
+  if (!hasWindow) return;
+  document.body.classList.toggle(bodyDarkClass, dark);
+  document.body.classList.toggle(bodyLightClass, !dark);
+};
+
+watch(
+  isDarkTheme,
+  value => {
+    syncBodyTheme(value);
+  },
+  { immediate: true }
+);
 
 const syncViewport = () => {
   if (!hasWindow) return;
@@ -1303,6 +1329,9 @@ onBeforeUnmount(() => {
   if (removeViewportWatcher) {
     removeViewportWatcher();
   }
+  if (hasWindow) {
+    document.body.classList.remove(bodyDarkClass, bodyLightClass);
+  }
 });
 
 watch(
@@ -1344,33 +1373,83 @@ watch(
   }
 );
 </script>
-
 <style>
+/* =========================
+   SCALE GLOBAL CORRIGIDO
+========================= */
+
 .admin-scale-85 {
   zoom: 0.85;
+  min-height: 100vh;
 }
-@supports not (zoom: 1) {
+
   .admin-scale-85 {
-    transform: scale(0.85);
-    transform-origin: top center;
-    width: calc(100% / 0.85);
-  }
+  min-height: 100vh;
 }
+
+
+/* =========================
+   ROOT / FUNDO GLOBAL
+========================= */
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+body.admin-body-dark {
+  background-color: #05070f;
+}
+
+body.admin-body-light {
+  background-color: #f8fafc;
+}
+
+
+/* =========================
+   THEMES
+========================= */
+
 .light-theme {
   background: #f8fafc;
   color: #0f172a;
 }
+
 .dark-theme {
   background: #020617;
   color: #f1f5f9;
 }
+
+
+/* =========================
+   ADMIN LAYOUT FIX
+========================= */
+
+.admin-main {
+  min-height: 100vh;
+}
+
+.admin-content {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+
+/* =========================
+   DARK MODE OVERRIDES
+========================= */
+
 .dark-theme .admin-main {
   background: #05070f;
   color: #f1f5f9;
 }
+
 .dark-theme .admin-content {
   color: #f1f5f9;
 }
+
 .dark-theme .bg-white,
 .dark-theme .bg-slate-50,
 .dark-theme .bg-slate-100,
@@ -1379,10 +1458,12 @@ watch(
   background-color: #202020;
   color: #f1f5f9;
 }
+
 .dark-theme .bg-white\/90 {
   background-color: rgba(32, 32, 32, 0.92);
   color: #f1f5f9;
 }
+
 .dark-theme .bg-white\/20,
 .dark-theme .bg-white\/15,
 .dark-theme .bg-white\/10,
@@ -1390,30 +1471,48 @@ watch(
   background-color: rgba(255, 255, 255, 0.08);
   color: #f1f5f9;
 }
-.toggle-knob {
-  background-color: #ffffff !important;
-}
+
+
+/* =========================
+   TEXT COLORS
+========================= */
+
 .dark-theme .text-slate-900,
 .dark-theme .text-slate-800 {
   color: #f8fafc;
 }
+
 .dark-theme .text-slate-700,
 .dark-theme .text-slate-600 {
   color: #e2e8f0;
 }
+
 .dark-theme .text-slate-500,
 .dark-theme .text-slate-400 {
   color: #f5f5f5;
 }
+
+
+/* =========================
+   BORDERS / RINGS
+========================= */
+
 .dark-theme .border-slate-100,
 .dark-theme .border-slate-200,
 .dark-theme .border-slate-300 {
   border-color: rgba(148, 163, 184, 0.5);
 }
+
 .dark-theme .ring-slate-100,
 .dark-theme .ring-slate-200 {
   --tw-ring-color: rgba(148, 163, 184, 0.4);
 }
+
+
+/* =========================
+   INPUTS
+========================= */
+
 .dark-theme input,
 .dark-theme textarea,
 .dark-theme select {
@@ -1421,16 +1520,38 @@ watch(
   color: #f1f5f9;
   border-color: rgba(148, 163, 184, 0.6);
 }
+
+
+/* =========================
+   SHADOW
+========================= */
+
 .dark-theme .shadow,
 .dark-theme .shadow-md,
 .dark-theme .shadow-lg,
 .dark-theme .shadow-inner {
   --tw-shadow-color: rgba(0, 0, 0, 0.6);
 }
+
+
+/* =========================
+   TOGGLE
+========================= */
+
+.toggle-knob {
+  background-color: #ffffff !important;
+}
+
+
+/* =========================
+   ANIMATION
+========================= */
+
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.3s ease;
 }
+
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;

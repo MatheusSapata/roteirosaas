@@ -804,6 +804,7 @@ import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
 import { getReadableTextColor } from "../../utils/colorContrast";
 import { useLeadFeatureGate } from "../../composables/useLeadFeatureGate";
 import { createAdminLocalizer } from "../../utils/adminI18n";
+import { normalizeWhatsappDigits } from "../../utils/whatsapp";
 import heroThumb from "../../assets/hero-thumb.jpg";
 import bannerCardThumb from "../../assets/banner-card-thumb.jpg";
 import photoThumb from "../../assets/photo-thumb.jpg";
@@ -1693,9 +1694,9 @@ const templateKey = computed(() => (auth.user ? `page_template_${auth.user.id}` 
 const whatsappDigits = computed(() => {
   const agency =
     agencyStore.agencies.find(a => a.id === agencyStore.currentAgencyId) || agencyStore.agencies[0];
-  const agencyDigits = (agency?.cta_whatsapp || "").replace(/\D/g, "");
+  const agencyDigits = normalizeWhatsappDigits(agency?.cta_whatsapp || "");
   if (agencyDigits) return agencyDigits;
-  return (auth.user?.whatsapp || "").replace(/\D/g, "");
+  return normalizeWhatsappDigits(auth.user?.whatsapp || "");
 });
 const buildWhatsappLink = (title: string, _planName?: string) => {
   if (!whatsappDigits.value) return "";

@@ -5,6 +5,8 @@ from urllib.parse import quote
 
 WHATSAPP_PLACEHOLDER = "{{WHATSAPP_LINK}}"
 LOGO_PLACEHOLDER = "{{AGENCY_LOGO_URL}}"
+BRAZIL_COUNTRY_CODE = "55"
+LOCAL_PHONE_LENGTHS = {10, 11}
 
 
 def normalize_config(raw: Any) -> Any:
@@ -72,8 +74,20 @@ def sanitize_digits(value: Optional[str]) -> str:
     return "".join(ch for ch in value if ch.isdigit())
 
 
-def build_whatsapp_link(digits: str, title: str) -> str:
+def normalize_whatsapp_digits(value: Optional[str]) -> str:
+    digits = sanitize_digits(value).lstrip("0")
     if not digits:
         return ""
+    if digits.startswith(BRAZIL_COUNTRY_CODE):
+        return digits
+    if len(digits) in LOCAL_PHONE_LENGTHS:
+        return f"{BRAZIL_COUNTRY_CODE}{digits}"
+    return digits
+
+
+def build_whatsapp_link(digits: str, title: str) -> str:
+    normalized = normalize_whatsapp_digits(digits)
+    if not normalized:
+        return ""
     message = f"Oi, tenho interesse no roteiro: {title or 'Roteiro'}"
-    return f"https://wa.me/{digits}?text={quote(message)}"
+    return f"https://wa.me/{normalized}?text={quote(message)}"
