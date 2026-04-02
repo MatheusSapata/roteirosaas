@@ -1,8 +1,7 @@
 <template>
 
 
-
-  <div class="relative w-full min-h-screen">
+<div class="relative w-full min-h-[calc(100vh-0px)]">
 
 
 
@@ -3394,6 +3393,7 @@ import { useLeadFeatureGate } from "../../composables/useLeadFeatureGate";
 
 import { createAdminLocalizer, getAdminLanguage } from "../../utils/adminI18n";
 import type { AdminLanguage, AdminTranslatable } from "../../utils/adminI18n";
+import { normalizeWhatsappDigits } from "../../utils/whatsapp";
 
 
 
@@ -4994,8 +4994,6 @@ const handleBuilderSave = async (payload: { id: string | null; form: LeadFormPay
 
 
 
-const sanitizePhone = (phone?: string) => (phone || "").replace(/\D/g, "");
-
 
 
 
@@ -5006,7 +5004,7 @@ const openWhatsapp = (phone: string | undefined, formName: string) => {
 
 
 
-  const digits = sanitizePhone(phone);
+  const digits = normalizeWhatsappDigits(phone);
 
 
 
@@ -7246,6 +7244,17 @@ watch(activeTab, value => {
 
 
 
+:global(.dark-theme) .kanban-column {
+  background-color: #0f1524;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+:global(.dark-theme) .kanban-column__header {
+  background-color: #131b2f;
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #f8fafc;
+}
+
 :global(.dark-theme) .filter-popover {
 
 
@@ -7262,9 +7271,31 @@ watch(activeTab, value => {
 
 
 
+:global(.dark-theme) .kanban-column {
+  background-color: #0f1524;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+:global(.dark-theme) .kanban-column__header {
+  background-color: #131b2f;
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #f8fafc;
+}
+
 :global(.dark-theme) .filter-popover input,
 
 
+
+:global(.dark-theme) .kanban-column {
+  background-color: #0f1524;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+:global(.dark-theme) .kanban-column__header {
+  background-color: #131b2f;
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #f8fafc;
+}
 
 :global(.dark-theme) .filter-popover select {
 
@@ -7303,6 +7334,7 @@ watch(activeTab, value => {
 
 
 </style>
+
 
 
 

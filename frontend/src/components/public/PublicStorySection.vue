@@ -341,6 +341,9 @@ const singleLayoutClass = computed(() => {
   } else {
     classes.push("items-center", "gap-4", "md:gap-12");
   }
+  if (!isDesktopPreview.value) {
+    classes.push(imagePosition.value === "left" ? "md:flex-row-reverse" : "md:flex-row");
+  }
   if (isMobilePreview.value) {
     classes.push("!flex-col");
   } else if (isDesktopPreview.value) {

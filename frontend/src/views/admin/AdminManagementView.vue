@@ -2222,7 +2222,7 @@ const loadTemplates = async () => {
     pageTemplatesLoading.value = false;
   }
 };
-const openTemplateCreateDialog = (page: AdminPageSummary) => {
+const openTemplateDialog = (page: AdminPageSummary) => {
   templateDialog.mode = "create";
   templateDialog.templateId = null;
   templateDialog.page = page;

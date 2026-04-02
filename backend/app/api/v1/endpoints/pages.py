@@ -112,7 +112,15 @@ def apply_free_footer(cfg: Any, plan: str) -> Any:
 
 
 def sanitize_digits(value: Optional[str]) -> str:
-    return re.sub(r"\D", "", value or "")
+    digits = re.sub(r"\D", "", value or "")
+    digits = digits.lstrip("0")
+    if not digits:
+        return ""
+    if digits.startswith("55"):
+        return digits
+    if len(digits) in (10, 11):
+        return f"55{digits}"
+    return digits
 
 
 def resolve_agency_whatsapp(db: Session, agency_id: int) -> str:

@@ -30,7 +30,7 @@
               v-model="form.host"
               type="text"
               :placeholder="viewCopy.form.hostPlaceholder"
-              class="host-input mt-1 w-full rounded-xl px-3 py-2 text-sm text-white focus:border-[#3EBD59] focus:outline-none focus:ring-1 focus:ring-[#3EBD59]/40"
+              class="host-input mt-1 w-full rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-white focus:border-[#3EBD59] focus:outline-none focus:ring-1 focus:ring-[#3EBD59]/40"
               :disabled="creating || loadingDomains"
             />
           </div>

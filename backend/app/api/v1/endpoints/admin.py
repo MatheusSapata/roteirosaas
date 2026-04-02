@@ -70,12 +70,23 @@ def _normalize_config(raw: Any) -> Any:
 
 
 def _sanitize_digits(value: Optional[str]) -> str:
-    return re.sub(r"\D", "", value or "")
+    digits = re.sub(r"\D", "", value or "")
+    digits = digits.lstrip("0")
+    if not digits:
+        return ""
+    if digits.startswith("55"):
+        return digits
+    if len(digits) in (10, 11):
+        return f"55{digits}"
+    return digits
 
 
 def _build_whatsapp_link(digits: str, title: str) -> str:
+    normalized = _sanitize_digits(digits)
+    if not normalized:
+        return ""
     message = f"Oi, tenho interesse no roteiro: {title or 'Roteiro'}"
-    return f"https://wa.me/{digits}?text={quote(message)}"
+    return f"https://wa.me/{normalized}?text={quote(message)}"
 
 
 def _replace_whatsapp_links(node: Any, new_link: str) -> Any:
