@@ -191,6 +191,13 @@ def read_users_me(current_user: User = Depends(get_current_active_user)) -> User
 
 @router.put("/me", response_model=UserOut)
 def update_me(user_in: UserUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)) -> UserOut:
+    if user_in.email:
+        normalized_email = user_in.email.strip().lower()
+        existing_email = db.query(User).filter(User.email == normalized_email, User.id != current_user.id).first()
+        if existing_email:
+            raise HTTPException(status_code=400, detail="Email jǭ registrado.")
+        current_user.email = normalized_email
+
     if user_in.cpf:
         existing_cpf = db.query(User).filter(User.cpf == user_in.cpf, User.id != current_user.id).first()
         if existing_cpf:
