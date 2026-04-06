@@ -97,6 +97,7 @@ class UserCreate(UserBase):
 
 
 class UserUpdate(BaseModel):
+    email: Optional[EmailStr] = None
     name: Optional[str] = None
     password: Optional[str] = None
     plan: Optional[str] = None

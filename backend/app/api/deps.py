@@ -44,15 +44,11 @@ def get_current_user(request: Request, db: Session = Depends(get_db), token: str
         token_data = TokenData(email=email, session_id=session_id)
     except JWTError as exc:  # pragma: no cover - segurança
         raise credentials_exception from exc
-    user = db.query(User).filter(User.email == token_data.email).first()
-    if user is None:
+    session = db.query(UserSession).filter(UserSession.id == token_data.session_id).first()
+    if not session or session.revoked_at or not session.user_id:
         raise credentials_exception
-    session = (
-        db.query(UserSession)
-        .filter(UserSession.id == token_data.session_id, UserSession.user_id == user.id)
-        .first()
-    )
-    if not session or session.revoked_at:
+    user = db.query(User).filter(User.id == session.user_id).first()
+    if user is None:
         raise credentials_exception
     now = datetime.now(timezone.utc)
     if session.expires_at and session.expires_at < now:
