@@ -1,4 +1,5 @@
 import api from "../services/api";
+import { API_BASE_URL, API_ROOT_URL } from "./apiBase";
 
 interface MediaAsset {
   id: number;
@@ -10,11 +11,10 @@ const buildMediaBase = () => {
   const explicit = import.meta.env.VITE_MEDIA_BASE;
   if (explicit) return explicit.endsWith("/") ? explicit.slice(0, -1) : explicit;
 
-  const apiBase = import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
-  if (apiBase.endsWith("/api/v1")) {
-    return `${apiBase.replace(/\/api\/v1$/, "")}/uploads`;
+  if (API_BASE_URL.endsWith("/api/v1")) {
+    return `${API_ROOT_URL}/uploads`;
   }
-  return `${apiBase.replace(/\/$/, "")}/uploads`;
+  return `${API_BASE_URL.replace(/\/$/, "")}/uploads`;
 };
 
 const MEDIA_BASE = buildMediaBase();

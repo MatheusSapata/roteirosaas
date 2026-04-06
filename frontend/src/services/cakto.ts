@@ -1,8 +1,7 @@
 import axios from "axios";
+import { API_ROOT_URL } from "../utils/apiBase";
 
-const defaultApi = import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
-const apiRoot = defaultApi.replace(/\/api\/v1\/?$/, "");
-const caktoBaseUrl = `${apiRoot}/api/cakto`;
+const caktoBaseUrl = `${API_ROOT_URL}/api/cakto`;
 
 export const CHECKOUT_SESSION_STORAGE_KEY = "caktoCheckoutToken";
 
