@@ -6,6 +6,7 @@ interface ImportMetaEnv {
   readonly VITE_CUSTOM_DOMAIN_CNAME_TARGET?: string;
   readonly VITE_CUSTOM_DOMAIN_APEX_IP?: string;
   readonly VITE_PLATFORM_HOSTS?: string;
+  readonly VITE_PLATFORM_ORIGIN?: string;
 }
 
 interface ImportMeta {
