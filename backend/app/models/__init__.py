@@ -19,4 +19,15 @@ from .revenue import RevenueTotal
 from .lead_form import LeadForm, LeadFormSubmission, LeadStatus
 from .user_session import UserSession
 from .sale import Sale, SalePassenger
+from .sale_item import SaleItem, SalePaymentLink
+from .product import (
+    Product,
+    ProductStatus,
+    ProductInventoryStrategy,
+    ProductVariation,
+    ProductVariationStatus,
+    ProductVariationStockMode,
+    ProductInventoryEvent,
+    ProductInventoryEventAction,
+)
 from .stripe_account import StripeAccount

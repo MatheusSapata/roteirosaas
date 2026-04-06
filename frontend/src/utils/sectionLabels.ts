@@ -6,15 +6,16 @@ export const sectionLabels: Partial<Record<SectionType, string>> = {
   photo: "Foto destacada",
   biography: "Biografia",
   prices: "Preços",
+  products: "Produtos",
   itinerary: "Itinerário",
   faq: "Perguntas Frequentes",
   testimonials: "Depoimentos",
-  featured_video: "Video em destaque",
+  featured_video: "Vídeo em destaque",
   cta: "Chamada para ação",
   story: "Descritivo",
   reasons: "Itens",
   countdown: "Contador",
-  agency_footer: "Rodape da agencia",
+  agency_footer: "Rodapé da agência",
   free_footer_brand: "Rodapé obrigatório",
   gallery: "Galeria"
 };
@@ -31,6 +32,8 @@ export const describeSection = (section: PageSection): string => {
       return section.label || "Chamada principal";
     case "prices":
       return section.items?.[0]?.title || "Planos e valores";
+    case "products":
+      return section.title || "Produtos e pacotes";
     case "itinerary":
       return section.days?.[0]?.title || "Roteiro personalizado";
     case "reasons":
@@ -40,7 +43,7 @@ export const describeSection = (section: PageSection): string => {
     case "countdown":
       return section.label || "Contagem regressiva";
     case "featured_video":
-      return section.title || "Video em destaque";
+      return section.title || "Vídeo em destaque";
     case "gallery":
       return "Galeria de imagens";
     case "photo":
@@ -48,7 +51,7 @@ export const describeSection = (section: PageSection): string => {
     case "biography":
       return section.title || "Biografia";
     case "agency_footer":
-      return "Rodape institucional";
+      return "Rodapé institucional";
     case "free_footer_brand":
       return "Rodapé obrigatório";
     default:

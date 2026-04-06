@@ -6,14 +6,18 @@ from app.models.sale import Sale
 from app.schemas.finance import (
     PassengerFormResponse,
     PassengerInput,
+    ProductCheckoutRequest,
     PublicCheckoutRequest,
     PublicCheckoutResponse,
 )
+from app.schemas.products import ProductDetail
 from app.services.finance import (
     create_checkout_sale,
+    create_product_checkout_sale,
     serialize_passenger,
     update_passengers_from_payload,
 )
+from app.services.products import get_public_product, serialize_product_detail
 
 router = APIRouter()
 
@@ -38,6 +42,38 @@ def create_public_payment_intent(
         client_secret=client_secret,
         passenger_token=sale.passenger_form_token,
     )
+
+
+@router.post("/products/checkout/payment-intent", response_model=PublicCheckoutResponse)
+def create_product_checkout_intent(
+    payload: ProductCheckoutRequest,
+    db: Session = Depends(get_db),
+) -> PublicCheckoutResponse:
+    sale, client_secret = create_product_checkout_sale(
+        db=db,
+        product_public_id=payload.product_id,
+        cart_items=payload.items,
+        customer=payload.customer.model_dump(),
+        channel=payload.channel or "page",
+        page_id=payload.page_id,
+        page_slug=payload.page_slug,
+        agency_slug=payload.agency_slug,
+        source_url=payload.source_url,
+    )
+    return PublicCheckoutResponse(
+        sale_id=sale.id,
+        client_secret=client_secret,
+        passenger_token=sale.passenger_form_token,
+    )
+
+
+@router.get("/products/{public_id}", response_model=ProductDetail)
+def get_public_product_detail(
+    public_id: str,
+    db: Session = Depends(get_db),
+) -> ProductDetail:
+    product = get_public_product(public_id, db)
+    return serialize_product_detail(product)
 
 
 def _sale_by_token(db: Session, token: str) -> Sale:

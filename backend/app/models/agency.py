@@ -37,3 +37,9 @@ class Agency(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+    products = relationship(
+        "Product",
+        back_populates="agency",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )

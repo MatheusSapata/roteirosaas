@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Optional
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 
 class StripeAccountStatus(BaseModel):
@@ -38,10 +38,43 @@ class PublicCheckoutRequest(BaseModel):
     customer: SaleCustomerPayload
 
 
+class CheckoutCartItem(BaseModel):
+    variation_id: str
+    quantity: int = Field(..., ge=1)
+
+
+class ProductCheckoutRequest(BaseModel):
+    product_id: str
+    items: list[CheckoutCartItem]
+    customer: SaleCustomerPayload
+    page_id: int | None = None
+    page_slug: str | None = None
+    agency_slug: str | None = None
+    source_url: str | None = None
+    channel: str = "page"
+
+
+class PosCheckoutRequest(BaseModel):
+    product_id: str
+    items: list[CheckoutCartItem]
+    customer: SaleCustomerPayload
+    channel: str = "pos"
+
+
+class PaymentLinkRequest(PosCheckoutRequest):
+    expires_in_minutes: int | None = Field(default=60, ge=5, le=1440)
+
+
 class PublicCheckoutResponse(BaseModel):
     sale_id: int
     client_secret: str
     passenger_token: str
+
+
+class PaymentLinkResponse(BaseModel):
+    sale_id: int
+    token: str
+    url: str
 
 
 class PassengerInput(BaseModel):
@@ -68,6 +101,7 @@ class SalePassengerOut(BaseModel):
 class SaleSummary(BaseModel):
     id: int
     created_at: Optional[datetime] = None
+    product_public_id: str | None = None
     product_title: str
     product_description: str | None = None
     amount_cents: int
@@ -82,13 +116,27 @@ class SaleSummary(BaseModel):
     payout_status: str
     passenger_status: str
     passengers_required: int
+    channel: str
     customer_name: str | None = None
     customer_email: str | None = None
     customer_phone: str | None = None
 
 
+class SaleItemOut(BaseModel):
+    id: int
+    variation_public_id: str | None = None
+    variation_name: str
+    quantity: int
+    unit_price: int
+    total_price: int
+    currency: str
+    people_count: int
+    status: str
+
+
 class SaleDetail(SaleSummary):
     passengers: list[SalePassengerOut]
+    items: list[SaleItemOut]
 
 
 class SaleListResponse(BaseModel):

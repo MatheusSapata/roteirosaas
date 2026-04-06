@@ -8,6 +8,7 @@ export type SectionType =
   | "photo"
   | "biography"
   | "prices"
+  | "products"
   | "itinerary"
   | "faq"
   | "testimonials"
@@ -120,6 +121,17 @@ export interface PricesSection extends SectionBase {
   ctaLink?: string;
   title?: LocalizedString;
   subtitle?: LocalizedString;
+}
+
+export interface ProductsSection extends SectionBase {
+  type: "products";
+  productId: string | null;
+  title?: LocalizedString;
+  subtitle?: LocalizedString;
+  accentColor?: string;
+  ctaLabel?: LocalizedString;
+  sharedBadgeLabel?: LocalizedString;
+  variantBadgeLabel?: LocalizedString;
 }
 
 export interface PriceCheckoutConfig {
@@ -281,6 +293,7 @@ export type PageSection =
   | PhotoSection
   | BiographySection
   | PricesSection
+  | ProductsSection
   | ItinerarySection
   | FaqSection
   | TestimonialsSection

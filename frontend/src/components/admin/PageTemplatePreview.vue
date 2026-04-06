@@ -24,6 +24,7 @@ import { computed, provide } from "vue";
 import PublicHeroSection from "../public/PublicHeroSection.vue";
 import PublicBannerCardSection from "../public/PublicBannerCardSection.vue";
 import PublicPricesSection from "../public/PublicPricesSection.vue";
+import PublicProductsSection from "../public/PublicProductsSection.vue";
 import PublicItinerarySection from "../public/PublicItinerarySection.vue";
 import PublicFaqSection from "../public/PublicFaqSection.vue";
 import PublicTestimonialsSection from "../public/PublicTestimonialsSection.vue";
@@ -43,6 +44,7 @@ const publicComponents: Record<string, unknown> = {
   hero: PublicHeroSection,
   banner_card: PublicBannerCardSection,
   prices: PublicPricesSection,
+  products: PublicProductsSection,
   itinerary: PublicItinerarySection,
   faq: PublicFaqSection,
   testimonials: PublicTestimonialsSection,

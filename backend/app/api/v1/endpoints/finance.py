@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import stripe
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_active_user, get_db
@@ -11,21 +11,43 @@ from app.models.user import User
 from app.schemas.finance import (
     PassengerInput,
     PassengerLinkResponse,
+    PaymentLinkRequest,
+    PaymentLinkResponse,
+    PosCheckoutRequest,
+    PublicCheckoutResponse,
     SaleDetail,
     SaleListResponse,
     StripeAccountStatus,
     StripeOnboardingLinkResponse,
 )
+from app.schemas.products import (
+    InventoryAdjustmentPayload,
+    ProductDetail,
+    ProductListResponse,
+    ProductPayload,
+)
 from app.services.finance import (
     apply_payment_intent_update,
     create_onboarding_link,
+    create_payment_link_sale,
+    create_pos_sale,
     fetch_stripe_account_status,
     handle_payout_event,
     mark_sale_payment_failed,
     serialize_passenger,
     serialize_sale,
+    serialize_sale_item,
     sync_account_status,
     update_passengers_from_payload,
+)
+from app.services.products import (
+    adjust_inventory,
+    create_product,
+    delete_product as delete_product_service,
+    get_product_by_public_id,
+    list_products_for_user,
+    serialize_product_detail,
+    update_product,
 )
 
 router = APIRouter()
@@ -83,6 +105,109 @@ def create_stripe_onboarding_link(
     return StripeOnboardingLinkResponse(url=url)
 
 
+@router.get("/products", response_model=ProductListResponse)
+def list_products_endpoint(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> ProductListResponse:
+    items = list_products_for_user(current_user, db)
+    return ProductListResponse(items=items)
+
+
+@router.post("/products", response_model=ProductDetail)
+def create_product_endpoint(
+    payload: ProductPayload,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> ProductDetail:
+    product = create_product(payload, current_user, db)
+    return serialize_product_detail(product)
+
+
+@router.get("/products/{public_id}", response_model=ProductDetail)
+def get_product_endpoint(
+    public_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> ProductDetail:
+    product = get_product_by_public_id(public_id, current_user, db)
+    return serialize_product_detail(product)
+
+
+@router.put("/products/{public_id}", response_model=ProductDetail)
+def update_product_endpoint(
+    public_id: str,
+    payload: ProductPayload,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> ProductDetail:
+    product = get_product_by_public_id(public_id, current_user, db)
+    product = update_product(product, payload, current_user, db)
+    return serialize_product_detail(product)
+
+
+@router.delete("/products/{public_id}", status_code=204)
+def delete_product_endpoint(
+    public_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> Response:
+    delete_product_service(public_id, current_user, db)
+    return Response(status_code=204)
+
+
+@router.post("/products/{public_id}/inventory", response_model=ProductDetail)
+def adjust_inventory_endpoint(
+    public_id: str,
+    payload: InventoryAdjustmentPayload,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> ProductDetail:
+    product = get_product_by_public_id(public_id, current_user, db)
+    product = adjust_inventory(product, payload, current_user, db)
+    return serialize_product_detail(product)
+
+
+@router.post("/products/{public_id}/pos/checkout", response_model=PublicCheckoutResponse)
+def create_pos_checkout_endpoint(
+    public_id: str,
+    payload: PosCheckoutRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> PublicCheckoutResponse:
+    if payload.product_id and payload.product_id != public_id:
+        raise HTTPException(status_code=400, detail="Produto inválido.")
+    sale, client_secret = create_pos_sale(
+        db=db,
+        product_public_id=public_id,
+        payload=payload,
+        current_user=current_user,
+    )
+    return PublicCheckoutResponse(
+        sale_id=sale.id,
+        client_secret=client_secret,
+        passenger_token=sale.passenger_form_token,
+    )
+
+
+@router.post("/products/{public_id}/payment-links", response_model=PaymentLinkResponse)
+def create_payment_link_endpoint(
+    public_id: str,
+    payload: PaymentLinkRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> PaymentLinkResponse:
+    link = create_payment_link_sale(
+        db=db,
+        product_public_id=public_id,
+        payload=payload,
+        current_user=current_user,
+    )
+    base_url = settings.resolved_webapp_base_url.rstrip("/")
+    url = f"{base_url}/pagamentos/{link.token}"
+    return PaymentLinkResponse(sale_id=link.sale_id, token=link.token, url=url)
+
+
 @router.get("/sales", response_model=SaleListResponse)
 def list_sales(
     page: int = 1,
@@ -112,7 +237,8 @@ def get_sale_details(
     sale = _sale_or_404(db, sale_id, current_user.id)
     summary = serialize_sale(sale)
     passengers = [serialize_passenger(passenger) for passenger in sale.passengers]
-    return SaleDetail(**summary.model_dump(), passengers=passengers)
+    items = [serialize_sale_item(item) for item in sale.items]
+    return SaleDetail(**summary.model_dump(), passengers=passengers, items=items)
 
 
 @router.post("/sales/{sale_id}/passengers", response_model=SaleDetail)
@@ -126,7 +252,8 @@ def save_sale_passengers(
     sale = update_passengers_from_payload(sale, payload, db)
     summary = serialize_sale(sale)
     passengers = [serialize_passenger(passenger) for passenger in sale.passengers]
-    return SaleDetail(**summary.model_dump(), passengers=passengers)
+    items = [serialize_sale_item(item) for item in sale.items]
+    return SaleDetail(**summary.model_dump(), passengers=passengers, items=items)
 
 
 @router.get("/sales/{sale_id}/passenger-form-link", response_model=PassengerLinkResponse)

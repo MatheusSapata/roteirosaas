@@ -47,3 +47,4 @@ class User(Base):
     tracking_entries = relationship("UserTracking", back_populates="user", cascade="all, delete-orphan")
     stripe_account = relationship("StripeAccount", back_populates="user", uselist=False)
     sales = relationship("Sale", back_populates="user", cascade="all, delete-orphan")
+    products = relationship("Product", back_populates="user", cascade="all, delete-orphan")

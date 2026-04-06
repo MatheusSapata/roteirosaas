@@ -6,11 +6,11 @@
           <div class="flex items-start justify-between gap-4">
             <div>
               <p class="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-600">Checkout seguro</p>
-              <h2 class="text-2xl font-bold text-slate-900">{{ product?.title }}</h2>
-              <p class="text-sm text-slate-500" v-if="product">
-                {{ formatCurrency(product.price, product.currency) }}
-                <span v-if="product.passengersRequired > 0" class="text-slate-400">
-                  • {{ product.passengersRequired }} passageiros
+              <h2 class="text-2xl font-bold text-slate-900">{{ checkoutData?.productName || "Selecione os pacotes" }}</h2>
+              <p class="text-sm text-slate-500" v-if="hasCart">
+                {{ formatCurrency(checkoutData?.totalAmount || 0, checkoutData?.currency || "BRL") }}
+                <span v-if="passengersCount > 0" class="text-slate-400">
+                  • {{ passengersCount }} {{ passengersCount === 1 ? "passageiro" : "passageiros" }}
                 </span>
               </p>
             </div>
@@ -24,11 +24,39 @@
             </button>
           </div>
 
-          <div v-if="!product" class="mt-6 rounded-xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500">
-            Selecione um plano para continuar.
+          <div v-if="!hasCart" class="mt-6 rounded-xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500">
+            Monte seu carrinho na seção de produtos para continuar.
           </div>
 
-          <form v-else-if="!clientSecret" class="mt-6 space-y-4" @submit.prevent="submitCustomerDetails">
+          <form v-else-if="hasCart && !clientSecret" class="mt-6 space-y-4" @submit.prevent="submitCustomerDetails">
+            <div class="rounded-2xl border border-slate-100 bg-slate-50/70 p-4">
+              <div class="flex items-center justify-between">
+                <p class="text-sm font-semibold text-slate-700">Resumo da compra</p>
+                <p class="text-xs text-slate-500">Atualiza em tempo real</p>
+              </div>
+              <ul class="mt-3 space-y-2">
+                <li v-for="item in cartItems" :key="item.variationId" class="flex items-center justify-between text-sm text-slate-700">
+                  <div>
+                    <p class="font-semibold text-slate-900">{{ item.quantity }}x {{ item.name }}</p>
+                    <p class="text-xs text-slate-500">
+                      Inclui {{ item.peopleCount * item.quantity }}
+                      {{ item.peopleCount * item.quantity === 1 ? "passageiro" : "passageiros" }}
+                    </p>
+                  </div>
+                  <p class="font-semibold text-slate-900">
+                    {{ formatCurrency(item.unitAmount * item.quantity, item.currency) }}
+                  </p>
+                </li>
+              </ul>
+              <div class="mt-3 flex items-center justify-between border-t border-slate-200 pt-3 text-sm font-semibold text-slate-900">
+                <span>Total</span>
+                <span>{{ formatCurrency(checkoutData?.totalAmount || 0, checkoutData?.currency || "BRL") }}</span>
+              </div>
+              <p class="mt-1 text-xs text-slate-500" v-if="passengersCount > 0">
+                Após o pagamento coletaremos os dados de {{ passengersCount }}
+                {{ passengersCount === 1 ? "passageiro" : "passageiros" }}.
+              </p>
+            </div>
             <div class="grid gap-4 md:grid-cols-2">
               <div class="md:col-span-2">
                 <label class="mb-1 block text-sm font-semibold text-slate-600">Nome completo</label>
@@ -73,7 +101,7 @@
               <button
                 type="submit"
                 class="rounded-full bg-emerald-500 px-6 py-3 font-semibold text-white shadow-lg shadow-emerald-500/40 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-emerald-300"
-                :disabled="loading || !isFormValid"
+                :disabled="loading || !isFormValid || !hasCart"
               >
                 {{ loading ? "Preparando..." : "Ir para pagamento" }}
               </button>
@@ -109,16 +137,9 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { loadStripe, type Stripe, type StripeElements, type StripePaymentElement } from "@stripe/stripe-js";
-import { createPublicCheckoutIntent } from "../../services/finance";
-import type { CheckoutIntentRequest } from "../../types/finance";
-
-interface CheckoutProduct {
-  productId: string;
-  title: string;
-  price: number;
-  currency?: string;
-  passengersRequired: number;
-}
+import { createProductPublicCheckoutIntent } from "../../services/finance";
+import type { ProductCheckoutRequest } from "../../types/finance";
+import type { ProductCheckoutPayload } from "../../utils/checkoutKeys";
 
 const props = defineProps<{
   modelValue: boolean;
@@ -126,7 +147,7 @@ const props = defineProps<{
   pageSlug?: string | null;
   agencySlug?: string | null;
   pageUrl?: string | null;
-  product: CheckoutProduct | null;
+  checkoutData: ProductCheckoutPayload | null;
 }>();
 
 const emit = defineEmits<{
@@ -142,6 +163,9 @@ const clientSecret = ref<string | null>(null);
 const passengerToken = ref<string | null>(null);
 const saleId = ref<number | null>(null);
 const paymentElementRef = ref<HTMLDivElement | null>(null);
+const cartItems = computed(() => props.checkoutData?.items ?? []);
+const hasCart = computed(() => cartItems.value.length > 0);
+const passengersCount = computed(() => props.checkoutData?.passengersRequired || 0);
 
 const publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || "";
 const stripePromise = publishableKey ? loadStripe(publishableKey) : null;
@@ -166,36 +190,45 @@ const isFormValid = computed(
   () => !!customer.value.name.trim() && !!customer.value.email.trim() && !!customer.value.phone.trim()
 );
 
-const formatCurrency = (price: number, currency = "BRL") => {
+const formatCurrency = (amountCents: number, currency = "BRL") => {
+  const value = (amountCents || 0) / 100;
   try {
-    return new Intl.NumberFormat("pt-BR", { style: "currency", currency }).format(price);
+    return new Intl.NumberFormat("pt-BR", { style: "currency", currency }).format(value);
   } catch {
-    return `R$ ${price.toFixed(2)}`;
+    return `R$ ${value.toFixed(2)}`;
   }
 };
 
 const submitCustomerDetails = async () => {
-  if (!props.product || !props.pageId) return;
+  if (!props.checkoutData || !props.pageId || !hasCart.value) {
+    errorMessage.value = "Selecione os pacotes para continuar.";
+    return;
+  }
   if (!publishableKey) {
     errorMessage.value = "Stripe não configurado.";
     return;
   }
   loading.value = true;
   errorMessage.value = null;
-  const payload: CheckoutIntentRequest = {
-    page_id: props.pageId,
-    product_id: props.product.productId,
-    page_slug: props.pageSlug ?? undefined,
-    agency_slug: props.agencySlug ?? undefined,
-    source_url: props.pageUrl ?? (typeof window !== "undefined" ? window.location.href : undefined),
+  const payload: ProductCheckoutRequest = {
+    product_id: props.checkoutData.productId,
+    items: cartItems.value.map(item => ({
+      variation_id: item.variationId,
+      quantity: item.quantity
+    })),
     customer: {
       name: customer.value.name.trim(),
       email: customer.value.email.trim(),
       phone: customer.value.phone.trim()
-    }
+    },
+    page_id: props.pageId,
+    page_slug: props.pageSlug ?? undefined,
+    agency_slug: props.agencySlug ?? undefined,
+    source_url: props.pageUrl ?? (typeof window !== "undefined" ? window.location.href : undefined),
+    channel: "public_page"
   };
   try {
-    const { data } = await createPublicCheckoutIntent(payload);
+    const { data } = await createProductPublicCheckoutIntent(payload);
     clientSecret.value = data.client_secret;
     passengerToken.value = data.passenger_token;
     saleId.value = data.sale_id;
@@ -259,6 +292,15 @@ const confirmPayment = async () => {
 
 watch(
   () => props.modelValue,
+  value => {
+    if (!value) {
+      resetState();
+    }
+  }
+);
+
+watch(
+  () => props.checkoutData,
   value => {
     if (!value) {
       resetState();

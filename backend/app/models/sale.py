@@ -52,6 +52,8 @@ class Sale(Base):
     page_slug = Column(String(255), nullable=True)
     section_id = Column(String(64), nullable=True)
     price_item_id = Column(String(64), nullable=True)
+    product_id = Column(Integer, ForeignKey("products.id", ondelete="SET NULL"), nullable=True, index=True)
+    product_public_id = Column(String(36), nullable=True, index=True)
     product_title = Column(String(255), nullable=False)
     product_description = Column(String(500), nullable=True)
     currency = Column(String(3), nullable=False, default="brl")
@@ -69,6 +71,7 @@ class Sale(Base):
     payout_status = Column(String(50), nullable=False, default=SalePayoutStatus.pending.value)
     passenger_status = Column(String(50), nullable=False, default=SalePassengerStatus.not_started.value)
     passengers_required = Column(Integer, nullable=False, default=0)
+    channel = Column(String(20), nullable=False, default="page")
     passenger_form_token = Column(String(128), nullable=False, unique=True, index=True)
     stripe_payment_intent_id = Column(String(120), nullable=False, unique=True, index=True)
     stripe_charge_id = Column(String(120), nullable=True)
@@ -82,7 +85,11 @@ class Sale(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     user = relationship("User", back_populates="sales")
+    product = relationship("Product", back_populates="sales")
     passengers = relationship("SalePassenger", back_populates="sale", cascade="all, delete-orphan")
+    items = relationship("SaleItem", back_populates="sale", cascade="all, delete-orphan")
+    inventory_events = relationship("ProductInventoryEvent", back_populates="sale", cascade="all, delete-orphan")
+    payment_link = relationship("SalePaymentLink", back_populates="sale", uselist=False, cascade="all, delete-orphan")
 
 
 class SalePassenger(Base):

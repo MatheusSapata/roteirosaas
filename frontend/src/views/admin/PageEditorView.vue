@@ -786,6 +786,7 @@ import type {
   PageSection,
   PhotoSection,
   PricesSection,
+  ProductsSection,
   FeaturedVideoSection,
   TestimonialsSection,
   StorySection,
@@ -809,6 +810,7 @@ import heroThumb from "../../assets/hero-thumb.jpg";
 import bannerCardThumb from "../../assets/banner-card-thumb.jpg";
 import photoThumb from "../../assets/photo-thumb.jpg";
 import pricesThumb from "../../assets/prices-thumb.jpg";
+import productsThumb from "../../assets/products-thumb.svg";
 import itineraryThumb from "../../assets/itinerary-thumb.jpg";
 import faqThumb from "../../assets/faq-thumb.jpg";
 import testimonialsThumb from "../../assets/testimonials-thumb.jpg";
@@ -1245,6 +1247,7 @@ const buildCountdownTargetDate = () => {
 const SectionHeroForm = defineAsyncComponent(() => import("../../components/admin/SectionHeroForm.vue"));
 const SectionBannerCardForm = defineAsyncComponent(() => import("../../components/admin/SectionBannerCardForm.vue"));
 const SectionPricesForm = defineAsyncComponent(() => import("../../components/admin/SectionPricesForm.vue"));
+const SectionProductsForm = defineAsyncComponent(() => import("../../components/admin/SectionProductsForm.vue"));
 const SectionPhotoForm = defineAsyncComponent(() => import("../../components/admin/SectionPhotoForm.vue"));
 const SectionBiographyForm = defineAsyncComponent(() => import("../../components/admin/SectionBiographyForm.vue"));
 const SectionItineraryForm = defineAsyncComponent(() => import("../../components/admin/SectionItineraryForm.vue"));
@@ -1259,6 +1262,7 @@ const SectionAgencyFooterForm = defineAsyncComponent(() => import("../../compone
 const PublicHeroSection = defineAsyncComponent(() => import("../../components/public/PublicHeroSection.vue"));
 const PublicBannerCardSection = defineAsyncComponent(() => import("../../components/public/PublicBannerCardSection.vue"));
 const PublicPricesSection = defineAsyncComponent(() => import("../../components/public/PublicPricesSection.vue"));
+const PublicProductsSection = defineAsyncComponent(() => import("../../components/public/PublicProductsSection.vue"));
 const PublicPhotoSection = defineAsyncComponent(() => import("../../components/public/PublicPhotoSection.vue"));
 const PublicBiographySection = defineAsyncComponent(() => import("../../components/public/PublicBiographySection.vue"));
 const PublicItinerarySection = defineAsyncComponent(() => import("../../components/public/PublicItinerarySection.vue"));
@@ -1278,6 +1282,7 @@ const sectionTypes: SectionType[] = [
   "photo",
   "biography",
   "prices",
+  "products",
   "itinerary",
   "faq",
   "testimonials",
@@ -1309,6 +1314,10 @@ const sectionDescriptions: Partial<Record<SectionType, string>> = {
   prices: t({
     pt: "Tabela com planos, valores e diferenciais para cada oferta.",
     es: "Tabla con planes, precios y diferenciales para cada oferta."
+  }),
+  products: t({
+    pt: "Bloco comercial com produtos reais, variações, estoque e checkout conectado ao financeiro.",
+    es: "Bloque comercial con productos reales, variaciones, stock y checkout conectado al financiero."
   }),
   itinerary: t({
     pt: "Sequência de etapas/benefícios para explicar seu serviço ou roteiro.",
@@ -1359,6 +1368,7 @@ const sectionThumbnails: Partial<Record<SectionType, string>> = {
   photo: photoThumb,
   biography: biographyThumb,
   prices: pricesThumb,
+  products: productsThumb,
   itinerary: itineraryThumb,
   faq: faqThumb,
   testimonials: testimonialsThumb,
@@ -1375,6 +1385,7 @@ const sectionAccents: Partial<Record<SectionType, string>> = {
   photo: "from-slate-100 to-white",
   biography: "from-slate-900/80 to-slate-800/60",
   prices: "from-amber-100 to-white",
+  products: "from-emerald-100/70 to-white",
   itinerary: "from-emerald-100/70 to-white",
   faq: "from-slate-100 to-white",
   testimonials: "from-purple-100/70 to-white",
@@ -1391,6 +1402,7 @@ const formComponents: Partial<Record<SectionType, any>> = {
   photo: SectionPhotoForm,
   biography: SectionBiographyForm,
   prices: SectionPricesForm,
+  products: SectionProductsForm,
   itinerary: SectionItineraryForm,
   faq: SectionFaqForm,
   testimonials: SectionTestimonialsForm,
@@ -1408,6 +1420,7 @@ const publicComponents: Partial<Record<SectionType, any>> = {
   photo: PublicPhotoSection,
   biography: PublicBiographySection,
   prices: PublicPricesSection,
+  products: PublicProductsSection,
   itinerary: PublicItinerarySection,
   faq: PublicFaqSection,
   testimonials: PublicTestimonialsSection,
@@ -2268,6 +2281,21 @@ if (type === "prices") {
     ctaColor: theme.value.ctaDefaultColor,
     ctaLabel: "Reservar agora"
   } as PricesSection);
+}
+
+if (type === "products") {
+  const headingDefaults = getSectionHeadingDefaults("products");
+  return ensureSectionAnchor({
+    type: "products",
+    enabled: true,
+    productId: null,
+    headingLabel: headingDefaults.label,
+    headingLabelStyle: headingDefaults.style,
+    title: "Pacotes disponíveis",
+    subtitle: "Conecte seus produtos do financeiro com carrinho e checkout premium.",
+    ctaLabel: "Ir para checkout",
+    accentColor: theme.value.ctaDefaultColor
+  } as ProductsSection);
 }
 
 if (type === "itinerary") {

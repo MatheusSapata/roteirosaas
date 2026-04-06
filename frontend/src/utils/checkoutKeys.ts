@@ -1,13 +1,28 @@
 import type { InjectionKey } from "vue";
-import type { PriceItem, PricesSection } from "../types/page";
 
-export interface PublicCheckoutPayload {
-  section: PricesSection;
-  item: PriceItem;
+export interface ProductCheckoutItemPayload {
+  variationId: string;
+  name: string;
+  quantity: number;
+  unitAmount: number;
+  currency: string;
+  peopleCount: number;
 }
 
-export interface PublicCheckoutBridge {
-  startCheckout: (payload: PublicCheckoutPayload) => void;
+export interface ProductCheckoutPayload {
+  productId: string;
+  productName: string;
+  productDescription?: string | null;
+  currency: string;
+  totalAmount: number;
+  passengersRequired: number;
+  items: ProductCheckoutItemPayload[];
 }
 
-export const PUBLIC_CHECKOUT_KEY: InjectionKey<PublicCheckoutBridge | null> = Symbol("public-checkout");
+export interface PublicProductCheckoutBridge {
+  startCheckout: (payload: ProductCheckoutPayload) => void;
+}
+
+export const PUBLIC_PRODUCT_CHECKOUT_KEY: InjectionKey<PublicProductCheckoutBridge | null> = Symbol(
+  "public-product-checkout"
+);

@@ -1,16 +1,22 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import secrets
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime, timedelta
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Any, Iterable
 
 from fastapi import HTTPException
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.models.agency_user import AgencyUser
 from app.models.page import Page
+from app.models.product import (
+    Product,
+    ProductStatus,
+    ProductVariation,
+    ProductVariationStatus,
+)
 from app.models.sale import (
     Sale,
     SaleFinancialStatus,
@@ -19,9 +25,20 @@ from app.models.sale import (
     SalePaymentStatus,
     SalePayoutStatus,
 )
+from app.models.sale_item import SaleItem, SaleItemStatus, SalePaymentLink, SalePaymentLinkStatus
 from app.models.stripe_account import StripeAccount
 from app.models.user import User
-from app.schemas.finance import PassengerInput, SalePassengerOut, SaleSummary
+from app.schemas.finance import (
+    CheckoutCartItem,
+    PassengerInput,
+    PaymentLinkRequest,
+    PaymentLinkResponse,
+    PosCheckoutRequest,
+    ProductCheckoutRequest,
+    SaleItemOut,
+    SalePassengerOut,
+    SaleSummary,
+)
 from app.services.stripe_connect import (
     create_account_link,
     create_express_account,
@@ -29,6 +46,11 @@ from app.services.stripe_connect import (
     iter_payout_transactions,
     retrieve_account,
     retrieve_balance_transaction,
+)
+from app.services.products import (
+    reserve_inventory_for_item,
+    confirm_inventory_for_sale,
+    release_inventory_for_sale,
 )
 
 
@@ -64,7 +86,7 @@ def _to_decimal(value: Any) -> Decimal:
         return Decimal(str(value))
     if isinstance(value, str):
         return Decimal(value)
-    raise HTTPException(status_code=400, detail="Valor de preço inválido.")
+    raise HTTPException(status_code=400, detail="Valor de preÃ§o invÃ¡lido.")
 
 
 def _to_cents(value: Decimal) -> int:
@@ -117,9 +139,101 @@ def _find_price_item(config: dict[str, Any], product_id: str, section_hint: str 
                     raw_item=raw_item,
                     checkout_config=checkout_config,
                 )
-    raise HTTPException(status_code=404, detail="Produto não encontrado no configurador da página.")
+    raise HTTPException(status_code=404, detail="Produto nÃ£o encontrado no configurador da pÃ¡gina.")
 
 
+
+
+def _lock_product_for_checkout(db: Session, public_id: str) -> Product:
+    product = (
+        db.query(Product)
+        .filter(Product.public_id == public_id)
+        .options(selectinload(Product.variations), selectinload(Product.user))
+        .with_for_update(of=Product)
+        .first()
+    )
+    if not product:
+        raise HTTPException(status_code=404, detail="Produto não encontrado.")
+    if product.status != ProductStatus.active.value:
+        raise HTTPException(status_code=400, detail="Produto inativo.")
+    return product
+
+
+def _resolve_cart_lines(
+    db: Session,
+    product: Product,
+    cart_items: Iterable[CheckoutCartItem],
+) -> list[ProductCartLine]:
+    aggregated: dict[str, int] = {}
+    for item in cart_items:
+        if item.quantity <= 0:
+            raise HTTPException(status_code=400, detail="Quantidade inválida.")
+        aggregated[item.variation_id] = aggregated.get(item.variation_id, 0) + item.quantity
+    if not aggregated:
+        raise HTTPException(status_code=400, detail="Selecione ao menos uma variação.")
+    variations = (
+        db.query(ProductVariation)
+        .filter(
+            ProductVariation.product_id == product.id,
+            ProductVariation.public_id.in_(aggregated.keys()),
+        )
+        .with_for_update()
+        .all()
+    )
+    if len(variations) != len(aggregated):
+        raise HTTPException(status_code=404, detail="Variação não encontrada.")
+    variation_map = {variation.public_id: variation for variation in variations}
+    lines: list[ProductCartLine] = []
+    for public_id, quantity in aggregated.items():
+        variation = variation_map[public_id]
+        if variation.status != ProductVariationStatus.active.value:
+            raise HTTPException(status_code=400, detail=f"Variação indisponível: {variation.name}.")
+        lines.append(ProductCartLine(variation=variation, quantity=quantity))
+    lines.sort(key=lambda line: line.variation.sort_order)
+    return lines
+
+
+def _cart_currency(lines: Iterable[ProductCartLine]) -> str:
+    currencies = {(line.variation.currency or "BRL").upper() for line in lines}
+    if not currencies:
+        return "BRL"
+    if len(currencies) > 1:
+        raise HTTPException(status_code=400, detail="Todas as variações devem usar a mesma moeda.")
+    return currencies.pop()
+
+
+def _cart_total_amount(lines: Iterable[ProductCartLine]) -> int:
+    total = 0
+    for line in lines:
+        total += line.variation.price_cents * line.quantity
+    return total
+
+
+def _cart_passengers(lines: Iterable[ProductCartLine]) -> int:
+    passengers = 0
+    for line in lines:
+        passengers += (line.variation.people_included or 1) * line.quantity
+    return passengers
+
+
+def _build_sale_items_from_lines(sale: Sale, product: Product, lines: Iterable[ProductCartLine]) -> None:
+    for line in lines:
+        variation = line.variation
+        item = SaleItem(
+            product_id=product.id,
+            product_public_id=product.public_id,
+            variation_id=variation.id,
+            variation_public_id=variation.public_id,
+            variation_name=variation.name,
+            variation_description=variation.description,
+            currency=(variation.currency or "BRL").lower(),
+            unit_price=variation.price_cents,
+            quantity=line.quantity,
+            total_price=variation.price_cents * line.quantity,
+            people_count=(variation.people_included or 1) * line.quantity,
+            stock_mode=variation.stock_mode,
+        )
+        sale.items.append(item)
 def _trim(value: str | None, length: int) -> str | None:
     if value is None:
         return None
@@ -140,7 +254,7 @@ def _pick_agency_owner(db: Session, agency_id: int) -> User:
     for rel in membership:
         if rel.user:
             return rel.user
-    raise HTTPException(status_code=400, detail="Agência sem usuário responsável.")
+    raise HTTPException(status_code=400, detail="AgÃªncia sem usuÃ¡rio responsÃ¡vel.")
 
 
 def ensure_stripe_account_record(user: User, db: Session) -> StripeAccount:
@@ -201,6 +315,154 @@ def create_onboarding_link(user: User, db: Session, *, refresh_url: str, return_
     return link.url
 
 
+def create_product_checkout_sale(
+    *,
+    db: Session,
+    product_public_id: str,
+    cart_items: list[CheckoutCartItem],
+    customer: dict[str, str],
+    channel: str,
+    page_id: int | None = None,
+    page_slug: str | None = None,
+    agency_slug: str | None = None,
+    source_url: str | None = None,
+    acting_user: User | None = None,
+) -> tuple[Sale, str]:
+    product = _lock_product_for_checkout(db, product_public_id)
+    owner = product.user
+    if not owner:
+        raise HTTPException(status_code=400, detail="Produto sem responsável.")
+    if acting_user and acting_user.id != owner.id:
+        raise HTTPException(status_code=403, detail="Acesso negado ao produto.")
+    if channel not in {"page", "pos"}:
+        raise HTTPException(status_code=400, detail="Canal inválido.")
+    if owner.stripe_account_id is None or not owner.stripe_charges_enabled:
+        raise HTTPException(status_code=400, detail="Conta Stripe da agência não está apta a receber pagamentos.")
+
+    lines = _resolve_cart_lines(db, product, cart_items)
+    currency = _cart_currency(lines)
+    amount_cents = _cart_total_amount(lines)
+    if amount_cents <= 0:
+        raise HTTPException(status_code=400, detail="Valor do pedido inválido.")
+    passengers_required = _cart_passengers(lines)
+    commission_cents = calculate_platform_fee(amount_cents)
+
+    passenger_token = secrets.token_urlsafe(24)
+    metadata = {
+        "product_public_id": product.public_id,
+        "channel": channel,
+        "agency_id": product.agency_id,
+        "page_id": page_id,
+        "page_slug": page_slug,
+        "agency_slug": agency_slug,
+        "sale_passenger_token": passenger_token,
+    }
+    payment_intent = create_payment_intent(
+        amount=amount_cents,
+        currency=currency.lower(),
+        stripe_account_id=owner.stripe_account_id,  # type: ignore[arg-type]
+        application_fee_amount=commission_cents,
+        metadata_json=metadata,
+        customer_email=customer.get("email"),
+        description=_trim(product.name, 255),
+    )
+
+    sale = Sale(
+        user_id=owner.id,
+        agency_id=product.agency_id,
+        page_id=page_id,
+        page_slug=page_slug,
+        product_id=product.id,
+        product_public_id=product.public_id,
+        product_title=_trim(product.name, 255) or "",
+        product_description=_trim(product.description, 500),
+        currency=currency.lower(),
+        amount=amount_cents,
+        commission_amount=commission_cents,
+        stripe_application_fee_amount=commission_cents,
+        passengers_required=passengers_required,
+        passenger_form_token=passenger_token,
+        installments=1,
+        interest_mode="merchant",
+        metadata_json={
+            "channel": channel,
+            "source_url": source_url,
+            "agency_slug": agency_slug,
+            "page_id": page_id,
+        },
+        customer_name=_trim(customer.get("name"), 255),
+        customer_email=_trim(customer.get("email"), 255),
+        customer_phone=_trim(customer.get("phone"), 50),
+        stripe_payment_intent_id=payment_intent.id,
+        stripe_destination_account=owner.stripe_account_id,
+        channel=channel,
+    )
+
+    _build_sale_items_from_lines(sale, product, lines)
+    db.add(sale)
+    db.flush()
+
+    for item in sale.items:
+        reserve_inventory_for_item(
+            db=db,
+            product=product,
+            variation=item.variation,
+            quantity=item.quantity,
+            sale=sale,
+            sale_item=item,
+        )
+
+    db.commit()
+    db.refresh(sale)
+    return sale, payment_intent.client_secret
+
+
+def create_pos_sale(
+    *,
+    db: Session,
+    product_public_id: str,
+    payload: PosCheckoutRequest,
+    current_user: User,
+) -> tuple[Sale, str]:
+    sale, client_secret = create_product_checkout_sale(
+        db=db,
+        product_public_id=product_public_id,
+        cart_items=payload.items,
+        customer=payload.customer.model_dump(),
+        channel="pos",
+        acting_user=current_user,
+    )
+    return sale, client_secret
+
+
+def create_payment_link_sale(
+    *,
+    db: Session,
+    product_public_id: str,
+    payload: PaymentLinkRequest,
+    current_user: User,
+    expires_in_minutes: int | None = None,
+) -> SalePaymentLink:
+    sale, _ = create_product_checkout_sale(
+        db=db,
+        product_public_id=product_public_id,
+        cart_items=payload.items,
+        customer=payload.customer.model_dump(),
+        channel="link",
+        acting_user=current_user,
+    )
+    expiration_minutes = expires_in_minutes or payload.expires_in_minutes or 60
+    link = SalePaymentLink(
+        sale_id=sale.id,
+        created_by_user_id=current_user.id,
+        expires_at=datetime.utcnow() + timedelta(minutes=expiration_minutes),
+    )
+    db.add(link)
+    db.commit()
+    db.refresh(link)
+    return link
+
+
 def create_checkout_sale(
     *,
     db: Session,
@@ -219,18 +481,18 @@ def create_checkout_sale(
         .first()
     )
     if not page:
-        raise HTTPException(status_code=404, detail="Página não encontrada.")
+        raise HTTPException(status_code=404, detail="PÃ¡gina nÃ£o encontrada.")
     config = page.config_json or {}
     resolution = _find_price_item(config, product_id, section_id)
     if resolution.currency != "BRL":
-        raise HTTPException(status_code=400, detail="Apenas valores em BRL são aceitos.")
+        raise HTTPException(status_code=400, detail="Apenas valores em BRL sÃ£o aceitos.")
     owner = _pick_agency_owner(db, page.agency_id)
     if not owner.stripe_account_id or not owner.stripe_charges_enabled:
-        raise HTTPException(status_code=400, detail="Conta Stripe da agência não está apta a receber pagamentos.")
+        raise HTTPException(status_code=400, detail="Conta Stripe da agÃªncia nÃ£o estÃ¡ apta a receber pagamentos.")
 
     amount_cents = _to_cents(resolution.price_decimal)
     if amount_cents <= 0:
-        raise HTTPException(status_code=400, detail="Valor do produto inválido.")
+        raise HTTPException(status_code=400, detail="Valor do produto invÃ¡lido.")
     commission_cents = calculate_platform_fee(amount_cents)
 
     passenger_token = secrets.token_urlsafe(24)
@@ -296,6 +558,7 @@ def serialize_sale(sale: Sale) -> SaleSummary:
     return SaleSummary(
         id=sale.id,
         created_at=sale.created_at,
+        product_public_id=sale.product_public_id,
         product_title=sale.product_title,
         product_description=sale.product_description,
         amount_cents=sale.amount,
@@ -310,9 +573,24 @@ def serialize_sale(sale: Sale) -> SaleSummary:
         payout_status=sale.payout_status,
         passenger_status=sale.passenger_status,
         passengers_required=sale.passengers_required,
+        channel=sale.channel,
         customer_name=sale.customer_name,
         customer_email=sale.customer_email,
         customer_phone=sale.customer_phone,
+    )
+
+
+def serialize_sale_item(item: SaleItem) -> SaleItemOut:
+    return SaleItemOut(
+        id=item.id,
+        variation_public_id=item.variation_public_id,
+        variation_name=item.variation_name,
+        quantity=item.quantity,
+        unit_price=item.unit_price,
+        total_price=item.total_price,
+        currency=item.currency,
+        people_count=item.people_count,
+        status=item.status,
     )
 
 
@@ -338,7 +616,7 @@ def update_passengers_from_payload(sale: Sale, passenger_payload: Iterable[Passe
             try:
                 birthdate_value = date.fromisoformat(payload.birthdate)
             except ValueError as exc:
-                raise HTTPException(status_code=400, detail="Data de nascimento inválida.") from exc
+                raise HTTPException(status_code=400, detail="Data de nascimento invÃ¡lida.") from exc
         passenger = SalePassenger(
             sale_id=sale.id,
             name=_trim(payload.name, 255) or "",
@@ -398,6 +676,8 @@ def apply_payment_intent_update(
         else:
             sale.payout_status = SalePayoutStatus.pending.value
         sale.financial_status = SaleFinancialStatus.finalized.value
+    if sale.payment_status == SalePaymentStatus.succeeded.value:
+        confirm_inventory_for_sale(sale, db)
     db.add(sale)
     db.commit()
     db.refresh(sale)
@@ -406,6 +686,7 @@ def apply_payment_intent_update(
 
 def mark_sale_payment_failed(sale: Sale, db: Session) -> Sale:
     sale.payment_status = SalePaymentStatus.canceled.value
+    release_inventory_for_sale(sale, db)
     db.add(sale)
     db.commit()
     db.refresh(sale)
@@ -458,3 +739,13 @@ class CheckoutPriceResolution:
     raw_section: dict[str, Any]
     raw_item: dict[str, Any]
     checkout_config: dict[str, Any]
+
+
+@dataclass
+class ProductCartLine:
+    variation: ProductVariation
+    quantity: int
+
+
+
+

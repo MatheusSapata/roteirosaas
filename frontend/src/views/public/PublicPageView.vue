@@ -48,7 +48,7 @@
     :page-slug="currentPageSlug"
     :agency-slug="currentAgencySlug"
     :page-url="pageUrl"
-    :product="checkoutProduct"
+    :checkout-data="checkoutData"
     @payment-succeeded="handleCheckoutSucceeded"
   />
   <PublicPassengerModal
@@ -66,6 +66,7 @@ import platformApi from "../../services/platformApi";
 import PublicHeroSection from "../../components/public/PublicHeroSection.vue";
 import PublicBannerCardSection from "../../components/public/PublicBannerCardSection.vue";
 import PublicPricesSection from "../../components/public/PublicPricesSection.vue";
+import PublicProductsSection from "../../components/public/PublicProductsSection.vue";
 import PublicItinerarySection from "../../components/public/PublicItinerarySection.vue";
 import PublicFaqSection from "../../components/public/PublicFaqSection.vue";
 import PublicTestimonialsSection from "../../components/public/PublicTestimonialsSection.vue";
@@ -88,7 +89,7 @@ import BrandLogo from "../../assets/Logo Branco - Roteiro Online.png";
 import { resolveMediaUrl } from "../../utils/media";
 import { fetchPublicLeadForm } from "../../services/leadCapture";
 import { createLocalizer, getCurrentLanguage, getLocalizedValue, type LocalizedString } from "../../utils/i18n";
-import { PUBLIC_CHECKOUT_KEY, type PublicCheckoutPayload } from "../../utils/checkoutKeys";
+import { PUBLIC_PRODUCT_CHECKOUT_KEY, type ProductCheckoutPayload } from "../../utils/checkoutKeys";
 
 interface PublicPageResponse {
   id: number;
@@ -97,14 +98,6 @@ interface PublicPageResponse {
   branding: Record<string, unknown>;
   config: string | PageConfig;
   cover_image_url?: string;
-}
-
-interface CheckoutProduct {
-  productId: string;
-  title: string;
-  price: number;
-  currency?: string;
-  passengersRequired: number;
 }
 
 const route = useRoute();
@@ -117,7 +110,7 @@ const leadCaptureForm = ref<LeadForm | null>(null);
 const leadModalVisible = ref(false);
 const leadCaptureOptional = ref(false);
 const checkoutVisible = ref(false);
-const checkoutProduct = ref<CheckoutProduct | null>(null);
+const checkoutData = ref<ProductCheckoutPayload | null>(null);
 const passengerModalVisible = ref(false);
 const passengerToken = ref<string | null>(null);
 const theme = ref<ThemeConfig>({
@@ -159,18 +152,11 @@ const brandingInfo = computed(() => pageData.value?.branding || {});
 const statsApi = computed(() => (isPlatformHost.value ? api : platformApi));
 provide(PUBLIC_BRANDING_KEY, brandingInfo);
 
-const startCheckout = ({ item }: PublicCheckoutPayload) => {
-  if (!item.checkout?.productId) return;
-  checkoutProduct.value = {
-    productId: item.checkout.productId,
-    title: localize(item.title),
-    price: Number(item.price || 0),
-    currency: item.currency || "BRL",
-    passengersRequired: Number(item.checkout.passengersRequired || 0)
-  };
+const startCheckout = (payload: ProductCheckoutPayload) => {
+  checkoutData.value = payload;
   checkoutVisible.value = true;
 };
-provide(PUBLIC_CHECKOUT_KEY, { startCheckout });
+provide(PUBLIC_PRODUCT_CHECKOUT_KEY, { startCheckout });
 const leadAccentColor = computed(() => {
   const primary = (theme.value?.ctaDefaultColor || "").trim();
   if (primary) return primary;
@@ -200,6 +186,7 @@ const publicComponents: Record<SectionType, any> = {
   photo: PublicPhotoSection,
   biography: PublicBiographySection,
   prices: PublicPricesSection,
+  products: PublicProductsSection,
   itinerary: PublicItinerarySection,
   faq: PublicFaqSection,
   testimonials: PublicTestimonialsSection,
@@ -495,7 +482,7 @@ watch(
 
 watch(checkoutVisible, value => {
   if (!value) {
-    checkoutProduct.value = null;
+    checkoutData.value = null;
   }
 });
 watch(

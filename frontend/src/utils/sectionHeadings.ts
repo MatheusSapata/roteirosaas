@@ -6,6 +6,7 @@ export type HeadingStyle = "filled" | "outline";
 const HEADING_DEFAULTS: Partial<Record<SectionType, { label: string; style: HeadingStyle }>> = {
   gallery: { label: "Galeria", style: "outline" },
   prices: { label: "Investimento", style: "outline" },
+  products: { label: "Pacotes", style: "outline" },
   itinerary: { label: "Itinerário", style: "outline" },
   faq: { label: "FAQ", style: "outline" },
   story: { label: "Sobre nós", style: "outline" },
