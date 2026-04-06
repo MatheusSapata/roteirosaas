@@ -351,8 +351,40 @@ class CaktoIntegrationService:
             raise ValueError("Assinatura não encontrada para atualização.")
 
         order = self._extract_order(payload)
+        offer_id = self._extract_offer_id(order, payload)
+        product_id = self._extract_product_id(order, payload)
         incoming_amount = self._extract_order_amount(order, payload)
         new_amount = self._calculate_mrr_amount(incoming_amount, subscription.billing_cycle)
+
+        if status.lower() == "cancelled":
+            incoming_plan = None
+            if offer_id or product_id:
+                mapping = self._resolve_plan(offer_id, product_id)
+                if mapping:
+                    incoming_plan = mapping.plan_key
+            current_plan = subscription.plan.lower() if subscription.plan else None
+            should_ignore = False
+            if incoming_plan and current_plan and incoming_plan != current_plan:
+                should_ignore = True
+            elif not incoming_plan and offer_id and subscription.cakto_offer_id and offer_id != subscription.cakto_offer_id:
+                should_ignore = True
+            if should_ignore:
+                user_identifier = None
+                if subscription.user and subscription.user.email:
+                    user_identifier = subscription.user.email
+                elif subscription.user_id:
+                    user_identifier = f"id={subscription.user_id}"
+                logger.info(
+                    "Cliente já com upgrade (%s). Cancelamento ignorado para assinatura %s. Evento pertence à oferta %s (plano %s), assinatura está no plano %s.",
+                    user_identifier or "cliente desconhecido",
+                    subscription_code or order_id,
+                    offer_id,
+                    incoming_plan or "desconhecido",
+                    subscription.plan,
+                )
+                return (
+                    f"Cliente já com upgrade. Assinatura {subscription_code or order_id} já migrada para outro plano; cancelamento ignorado."
+                )
 
         subscription.status = status
         subscription.updated_at = datetime.utcnow()
@@ -449,18 +481,20 @@ class CaktoIntegrationService:
                 return decimal_value
         return None
 
-    def _extract_offer_id(self, order: Dict[str, Any], payload: Dict[str, Any]) -> str | None:
-        offer = order.get("offer") or self._get_nested(payload, "data", "offer")
+    def _extract_offer_id(self, order: Dict[str, Any] | None, payload: Dict[str, Any]) -> str | None:
+        order_data = order or {}
+        offer = order_data.get("offer") or self._get_nested(payload, "data", "offer")
         if isinstance(offer, dict):
             return self._normalize_str(offer.get("id") or offer.get("code"))
         return self._normalize_str(
-            order.get("offer_id")
-            or order.get("offerId")
-            or self._get_nested(order, "offer", "id")
+            order_data.get("offer_id")
+            or order_data.get("offerId")
+            or self._get_nested(order_data, "offer", "id")
         )
 
-    def _extract_product_id(self, order: Dict[str, Any], payload: Dict[str, Any]) -> str | None:
-        product = order.get("product") or self._get_nested(payload, "data", "product")
+    def _extract_product_id(self, order: Dict[str, Any] | None, payload: Dict[str, Any]) -> str | None:
+        order_data = order or {}
+        product = order_data.get("product") or self._get_nested(payload, "data", "product")
         if isinstance(product, dict):
             return self._normalize_str(product.get("id"))
         return None

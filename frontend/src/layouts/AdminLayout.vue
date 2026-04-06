@@ -735,7 +735,7 @@ const viewCopy = {
     },
     success: {
       title: t({ pt: "Parabéns, sua agência foi criada!", es: "Â¡Felicidades, tu agencia fue creada!" }),
-      description: t({ pt: "Agora você pode criar sua primeira pÃ¡gina personalizada.", es: "Ahora puedes crear tu primera pÃ¡gina personalizada." })
+      description: t({ pt: "Agora você pode criar sua primeira página personalizada.", es: "Ahora puedes crear tu primera pÃ¡gina personalizada." })
     },
     unsaved: {
       eyebrow: t({ pt: "Atenção", es: "Atencion" }),
