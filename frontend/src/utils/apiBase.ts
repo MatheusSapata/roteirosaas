@@ -1,4 +1,4 @@
-import { getPlatformOrigin, isCurrentHostPlatform } from "./platform";
+import { getPlatformOrigin } from "./platform";
 
 const rawApiBase = (import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1").trim();
 
@@ -14,12 +14,10 @@ const computeBaseUrl = (): string => {
     return stripTrailingSlash(rawApiBase);
   }
   const path = resolvePath();
-  const platformOrigin = getPlatformOrigin();
   if (typeof window !== "undefined" && window.location?.origin) {
-    const origin = isCurrentHostPlatform() ? window.location.origin : platformOrigin;
-    return `${stripTrailingSlash(origin)}${path}`;
+    return `${stripTrailingSlash(window.location.origin)}${path}`;
   }
-  return `${platformOrigin}${path}`;
+  return `${getPlatformOrigin()}${path}`;
 };
 
 const computePlatformBaseUrl = (): string => {
