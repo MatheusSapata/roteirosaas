@@ -1045,6 +1045,17 @@ const currentAgencySlug = computed(() => {
 const currentAgency = computed(() => {
   return agencyStore.agencies.find(a => a.id === agencyStore.currentAgencyId) || null;
 });
+const currentAgencyPrimaryDomain = agencyStore.currentPrimaryDomain;
+
+watch(
+  () => agencyStore.currentAgencyId,
+  id => {
+    if (id) {
+      agencyStore.loadPrimaryDomain(id);
+    }
+  },
+  { immediate: true }
+);
 const templateModal = ref<{
   open: boolean;
   loading: boolean;
@@ -1604,8 +1615,21 @@ const confirmDuplicate = async () => {
   }
 };
 
+const normalizeHostUrl = (host: string | null | undefined) => {
+  if (!host) return "";
+  const trimmed = host.trim();
+  if (!trimmed) return "";
+  const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  return withProtocol.replace(/\/+$/, "");
+};
+
 const pagePublicUrl = (page: Page) => {
-  if (!currentAgencySlug.value || !page.slug) return "";
+  if (!page.slug) return "";
+  const customHost = normalizeHostUrl(currentAgencyPrimaryDomain.value);
+  if (customHost) {
+    return `${customHost}/${page.slug}`;
+  }
+  if (!currentAgencySlug.value) return "";
   return `${window.location.origin}/${currentAgencySlug.value}/${page.slug}`;
 };
 
