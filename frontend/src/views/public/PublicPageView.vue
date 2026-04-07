@@ -48,6 +48,7 @@
 import { computed, onMounted, onUnmounted, provide, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import api from "../../services/api";
+import platformApi from "../../services/platformApi";
 import PublicHeroSection from "../../components/public/PublicHeroSection.vue";
 import PublicBannerCardSection from "../../components/public/PublicBannerCardSection.vue";
 import PublicPricesSection from "../../components/public/PublicPricesSection.vue";
@@ -126,6 +127,7 @@ const isPlatformHost = computed(() => {
 });
 
 const brandingInfo = computed(() => pageData.value?.branding || {});
+const statsApi = computed(() => (isPlatformHost.value ? api : platformApi));
 provide(PUBLIC_BRANDING_KEY, brandingInfo);
 const leadAccentColor = computed(() => {
   const primary = (theme.value?.ctaDefaultColor || "").trim();
@@ -242,7 +244,7 @@ const cleanupScrollAnchors = () => {
 const handleTrackedClick = (type: "cta" | "whatsapp") => {
   if (!pageId.value) return;
   const endpoint = type === "whatsapp" ? `/stats/${pageId.value}/track-whatsapp-click` : `/stats/${pageId.value}/track-cta`;
-  api.post(endpoint).catch(() => undefined);
+  statsApi.value.post(endpoint).catch(() => undefined);
 };
 
 const setupStatsClickTracking = (id: number) => {
@@ -301,7 +303,7 @@ const applySeoMeta = (title?: string | null, description?: string | null, imageU
 
 const trackVisit = () => {
   if (!pageId.value) return;
-  api.post(`/stats/${pageId.value}/track-visit`).catch(() => undefined);
+  statsApi.value.post(`/stats/${pageId.value}/track-visit`).catch(() => undefined);
 };
 
 const resolveParam = (value: string | string[] | undefined) => {
