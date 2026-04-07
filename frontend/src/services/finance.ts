@@ -1,7 +1,6 @@
 import api from "./api";
 import type {
   CheckoutIntentRequest,
-  CheckoutIntentResponse,
   Passenger,
   PassengerFormResponse,
   PassengerLinkResponse,
@@ -13,14 +12,10 @@ import type {
   ProductListResponse,
   ProductPayload,
   InventoryAdjustmentPayload,
+  PublicCheckoutResponse,
   SaleDetail,
   SaleListResponse,
-  StripeAccountStatus,
 } from "../types/finance";
-
-export const fetchStripeAccountStatus = () => api.get<StripeAccountStatus>("/finance/account");
-
-export const createStripeOnboardingLink = () => api.post<{ url: string }>("/finance/account/connect");
 
 export const listProducts = () => api.get<ProductListResponse>("/finance/products");
 
@@ -40,7 +35,7 @@ export const adjustProductInventory = (publicId: string, payload: InventoryAdjus
   api.post<ProductDetail>(`/finance/products/${publicId}/inventory`, payload);
 
 export const createPosCheckout = (publicId: string, payload: PosCheckoutRequest) =>
-  api.post<CheckoutIntentResponse>(`/finance/products/${publicId}/pos/checkout`, payload);
+  api.post<PublicCheckoutResponse>(`/finance/products/${publicId}/pos/checkout`, payload);
 
 export const createProductPaymentLink = (publicId: string, payload: PaymentLinkRequest) =>
   api.post<PaymentLinkResponse>(`/finance/products/${publicId}/payment-links`, payload);
@@ -57,10 +52,18 @@ export const getPassengerLink = (saleId: number) =>
   api.get<PassengerLinkResponse>(`/finance/sales/${saleId}/passenger-form-link`);
 
 export const createPublicCheckoutIntent = (payload: CheckoutIntentRequest) =>
-  api.post<CheckoutIntentResponse>("/public/finance/checkout/payment-intent", payload);
+  api.post<PublicCheckoutResponse>("/public/finance/checkout/payment-intent", payload);
 
 export const createProductPublicCheckoutIntent = (payload: ProductCheckoutRequest) =>
-  api.post<CheckoutIntentResponse>("/public/finance/products/checkout/payment-intent", payload);
+  api.post<PublicCheckoutResponse>("/public/finance/products/checkout/payment-intent", payload);
+
+export const confirmPublicSale = (
+  saleId: number,
+  payload: { payment_method: string; installments: number },
+) => api.post<PublicCheckoutResponse>(`/public/finance/sales/${saleId}/confirm`, payload);
+
+export const simulateSaleStatus = (saleId: number, status: string) =>
+  api.post<SaleDetail>(`/finance/sales/${saleId}/simulate-status`, { status });
 
 export const getPublicPassengerForm = (token: string) =>
   api.get<PassengerFormResponse>(`/public/finance/sales/${token}`);

@@ -17,11 +17,11 @@ from app.db.base import Base
 
 
 class SalePaymentStatus(str, Enum):  # type: ignore[misc]
-    requires_payment_method = "requires_payment_method"
-    requires_action = "requires_action"
+    pending = "pending"
     processing = "processing"
-    succeeded = "succeeded"
+    paid = "paid"
     canceled = "canceled"
+    refunded = "refunded"
 
 
 class SalePayoutStatus(str, Enum):  # type: ignore[misc]
@@ -50,6 +50,7 @@ class Sale(Base):
     agency_id = Column(Integer, ForeignKey("agencies.id", ondelete="SET NULL"), nullable=True, index=True)
     page_id = Column(Integer, ForeignKey("pages.id", ondelete="SET NULL"), nullable=True)
     page_slug = Column(String(255), nullable=True)
+    page_title = Column(String(255), nullable=True)
     section_id = Column(String(64), nullable=True)
     price_item_id = Column(String(64), nullable=True)
     product_id = Column(Integer, ForeignKey("products.id", ondelete="SET NULL"), nullable=True, index=True)
@@ -57,23 +58,33 @@ class Sale(Base):
     product_title = Column(String(255), nullable=False)
     product_description = Column(String(500), nullable=True)
     currency = Column(String(3), nullable=False, default="brl")
-    amount = Column(Integer, nullable=False)
-    commission_amount = Column(Integer, nullable=False)
-    stripe_application_fee_amount = Column(Integer, nullable=False)
+    base_amount = Column(Integer, nullable=False, default=0)
+    gross_amount = Column(Integer, nullable=False, default=0)
+    platform_fee_amount = Column(Integer, nullable=False, default=0)
+    gateway_fee_estimated = Column(Integer, nullable=False, default=0)
+    agency_net_amount = Column(Integer, nullable=False, default=0)
+    spread_percentage = Column(Integer, nullable=False, default=0)
+    amount = Column(Integer, nullable=False)  # legacy total kept for compatibility
+    commission_amount = Column(Integer, nullable=False, default=0)  # legacy platform fee
+    stripe_application_fee_amount = Column(Integer, nullable=False, default=0)  # legacy fee column
     net_amount = Column(Integer, nullable=True)
     stripe_fee_amount = Column(Integer, nullable=True)
     payment_method = Column(String(50), nullable=True)
     installments = Column(Integer, nullable=False, default=1)
     interest_mode = Column(String(20), nullable=False, default="merchant")
     max_installments_no_interest = Column(Integer, nullable=True)
-    payment_status = Column(String(50), nullable=False, default=SalePaymentStatus.requires_payment_method.value)
+    payment_status = Column(String(50), nullable=False, default=SalePaymentStatus.pending.value)
+    provider_status = Column(String(50), nullable=False, default=SalePaymentStatus.pending.value)
     financial_status = Column(String(50), nullable=False, default=SaleFinancialStatus.pending.value)
     payout_status = Column(String(50), nullable=False, default=SalePayoutStatus.pending.value)
     passenger_status = Column(String(50), nullable=False, default=SalePassengerStatus.not_started.value)
     passengers_required = Column(Integer, nullable=False, default=0)
     channel = Column(String(20), nullable=False, default="page")
     passenger_form_token = Column(String(128), nullable=False, unique=True, index=True)
-    stripe_payment_intent_id = Column(String(120), nullable=False, unique=True, index=True)
+    provider = Column(String(50), nullable=False, default="blimboo")
+    provider_charge_id = Column(String(120), nullable=False, unique=True, index=True)
+    provider_metadata = Column(JSONB, nullable=True)
+    stripe_payment_intent_id = Column(String(120), nullable=True, index=True)
     stripe_charge_id = Column(String(120), nullable=True)
     stripe_balance_transaction_id = Column(String(120), nullable=True)
     stripe_destination_account = Column(String(120), nullable=True)
@@ -81,6 +92,7 @@ class Sale(Base):
     customer_email = Column(String(255), nullable=True)
     customer_phone = Column(String(50), nullable=True)
     metadata_json = Column(JSONB, nullable=True)
+    paid_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

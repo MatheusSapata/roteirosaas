@@ -6,20 +6,17 @@ from typing import Any, Optional
 from pydantic import BaseModel, EmailStr, Field
 
 
-class StripeAccountStatus(BaseModel):
-    connected: bool
-    account_id: str | None = None
-    onboarding_completed: bool
-    charges_enabled: bool
-    payouts_enabled: bool
-    email: str | None = None
-    country: str | None = None
-    currency: str | None = None
-    requirements: list[str] | None = None
-
-
-class StripeOnboardingLinkResponse(BaseModel):
-    url: str
+class PaymentBreakdown(BaseModel):
+    base_amount_cents: int
+    gross_amount_cents: int
+    platform_fee_amount_cents: int
+    gateway_fee_estimated_cents: int
+    agency_net_amount_cents: int
+    installment_amount_cents: int
+    installments: int
+    currency: str
+    payment_method: str
+    spread_percentage: float
 
 
 class SaleCustomerPayload(BaseModel):
@@ -67,14 +64,26 @@ class PaymentLinkRequest(PosCheckoutRequest):
 
 class PublicCheckoutResponse(BaseModel):
     sale_id: int
-    client_secret: str
+    checkout_reference: str
     passenger_token: str
+    provider: str
+    provider_status: str
+    breakdown: PaymentBreakdown
 
 
 class PaymentLinkResponse(BaseModel):
     sale_id: int
     token: str
     url: str
+
+
+class PaymentConfirmationRequest(BaseModel):
+    payment_method: str = "credit_card"
+    installments: int = Field(1, ge=1, le=12)
+
+
+class SaleStatusSimulationRequest(BaseModel):
+    status: str = Field(..., pattern="^(pending|processing|paid|canceled|refunded)$")
 
 
 class PassengerInput(BaseModel):
@@ -104,11 +113,23 @@ class SaleSummary(BaseModel):
     product_public_id: str | None = None
     product_title: str
     product_description: str | None = None
+    page_title: str | None = None
+    page_slug: str | None = None
     amount_cents: int
+    base_amount_cents: int
+    gross_amount_cents: int
     currency: str
     commission_cents: int
-    stripe_fee_cents: int | None = None
+    platform_fee_amount_cents: int
+    gateway_fee_estimated_cents: int
+    agency_net_amount_cents: int
+    installment_amount_cents: int
     net_amount_cents: int | None = None
+    spread_percentage: float
+    provider: str
+    provider_charge_id: str | None = None
+    provider_status: str
+    paid_at: Optional[datetime] = None
     payment_method: str | None = None
     installments: int
     payment_status: str
@@ -154,7 +175,19 @@ class PassengerLinkResponse(BaseModel):
 class PassengerFormResponse(BaseModel):
     sale_id: int
     product_title: str
+    product_description: str | None = None
     passengers_required: int
     passenger_status: str
+    payment_status: str
+    payout_status: str
+    amount_cents: int
+    gross_amount_cents: int
+    installment_amount_cents: int
+    installments: int
+    channel: str
+    customer_name: str | None = None
+    customer_email: str | None = None
+    customer_phone: str | None = None
     passengers: list[SalePassengerOut]
+    items: list[SaleItemOut]
 

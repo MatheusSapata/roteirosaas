@@ -1,14 +1,17 @@
-export interface StripeAccountStatus {
-  connected: boolean;
-  account_id: string | null;
-  onboarding_completed: boolean;
-  charges_enabled: boolean;
-  payouts_enabled: boolean;
-  email: string | null;
-  country: string | null;
-  currency: string | null;
-  requirements: string[] | null;
+export interface PaymentBreakdown {
+  base_amount_cents: number;
+  gross_amount_cents: number;
+  platform_fee_amount_cents: number;
+  gateway_fee_estimated_cents: number;
+  agency_net_amount_cents: number;
+  installment_amount_cents: number;
+  installments: number;
+  currency: string;
+  payment_method: string;
+  spread_percentage: number;
 }
+
+export type SalePaymentStatus = "pending" | "processing" | "paid" | "canceled" | "refunded";
 
 export interface CheckoutCartItem {
   variation_id: string;
@@ -104,14 +107,26 @@ export interface SaleSummary {
   product_public_id?: string | null;
   product_title: string;
   product_description?: string | null;
+  page_title?: string | null;
+  page_slug?: string | null;
   amount_cents: number;
+  base_amount_cents: number;
+  gross_amount_cents: number;
   currency: string;
   commission_cents: number;
-  stripe_fee_cents: number | null;
+  platform_fee_amount_cents: number;
+  gateway_fee_estimated_cents: number;
+  agency_net_amount_cents: number;
+  installment_amount_cents: number;
   net_amount_cents: number | null;
+  spread_percentage: number;
+  provider: string;
+  provider_charge_id?: string | null;
+  provider_status: SalePaymentStatus;
+  paid_at?: string | null;
   payment_method: string | null;
   installments: number;
-  payment_status: string;
+  payment_status: SalePaymentStatus;
   financial_status: string;
   payout_status: string;
   passenger_status: string;
@@ -164,18 +179,33 @@ export interface CheckoutIntentRequest {
   };
 }
 
-export interface CheckoutIntentResponse {
+export interface PublicCheckoutResponse {
   sale_id: number;
-  client_secret: string;
+  checkout_reference: string;
   passenger_token: string;
+  provider: string;
+  provider_status: SalePaymentStatus;
+  breakdown: PaymentBreakdown;
 }
 
 export interface PassengerFormResponse {
   sale_id: number;
   product_title: string;
+  product_description?: string | null;
   passengers_required: number;
   passenger_status: string;
+  payment_status: SalePaymentStatus;
+  payout_status: string;
+  amount_cents: number;
+  gross_amount_cents: number;
+  installment_amount_cents: number;
+  installments: number;
+  channel: string;
+  customer_name?: string | null;
+  customer_email?: string | null;
+  customer_phone?: string | null;
   passengers: Passenger[];
+  items: SaleItem[];
 }
 
 export interface ProductCheckoutRequest {
@@ -190,8 +220,10 @@ export interface ProductCheckoutRequest {
 }
 
 export interface PosCheckoutRequest {
+  product_id: string;
   items: CheckoutCartItem[];
   customer: CheckoutCustomer;
+  channel?: string;
 }
 
 export interface PaymentLinkRequest extends PosCheckoutRequest {

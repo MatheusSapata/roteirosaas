@@ -9,7 +9,6 @@
     "lint": "echo \"add lint tooling\""
   },
   "dependencies": {
-    "@stripe/stripe-js": "^3.0.0",
     "@vueup/vue-quill": "^1.2.0",
     "axios": "^1.6.0",
     "cropperjs": "^1.6.1",

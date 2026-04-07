@@ -123,17 +123,60 @@
         <p class="text-sm text-slate-500">Total de vendas: {{ salesPagination.total }}</p>
         <button class="pill" @click="loadSales">Atualizar</button>
       </div>
-      <div v-if="!sales.length" class="placeholder-card">Nenhuma venda encontrada.</div>
-      <div v-else class="grid gap-4">
+      <div class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div class="grid gap-4 md:grid-cols-2">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Status pagamento</p>
+            <div class="mt-2 flex flex-wrap gap-2">
+              <button
+                v-for="option in paymentFilterOptions"
+                :key="option.value"
+                type="button"
+                class="rounded-full border px-3 py-1 text-xs font-semibold transition"
+                :class="
+                  paymentFilter === option.value
+                    ? 'border-emerald-500 bg-emerald-500 text-white'
+                    : 'border-slate-200 bg-slate-100 text-slate-600 hover:border-slate-300'
+                "
+                @click="paymentFilter = option.value"
+              >
+                {{ option.label }}
+              </button>
+            </div>
+          </div>
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Passageiros</p>
+            <div class="mt-2 flex flex-wrap gap-2">
+              <button
+                v-for="option in passengerFilterOptions"
+                :key="option.value"
+                type="button"
+                class="rounded-full border px-3 py-1 text-xs font-semibold transition"
+                :class="
+                  passengerFilter === option.value
+                    ? 'border-emerald-500 bg-emerald-500 text-white'
+                    : 'border-slate-200 bg-slate-100 text-slate-600 hover:border-slate-300'
+                "
+                @click="passengerFilter = option.value"
+              >
+                {{ option.label }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div v-if="!filteredSales.length" class="placeholder-card">Nenhuma venda encontrada.</div>
+      <div v-else class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <article
-          v-for="sale in sales"
+          v-for="sale in filteredSales"
           :key="sale.id"
-          class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
+          class="h-full rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
         >
           <div class="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                Venda #{{ sale.id }} • {{ sale.channel === 'pos' ? 'PDV' : sale.channel === 'link' ? 'Link' : 'Checkout' }}
+                Venda #{{ sale.id }} • {{ saleChannelLabel(sale.channel) }}
+                <span v-if="salePageLabel(sale)">• {{ salePageLabel(sale) }}</span>
               </p>
               <h3 class="text-lg font-semibold text-slate-900">{{ sale.product_title }}</h3>
               <p class="text-sm text-slate-500">
@@ -155,59 +198,15 @@
           <div class="mt-4 flex flex-wrap gap-2">
             <button class="pill" @click="openSaleDetails(sale.id)">Detalhes</button>
             <button class="pill" @click="openPassengerModal(sale.id)">Passageiros</button>
-            <button class="pill" @click="copyPassengerLink(sale.id)">Copiar link passageiros</button>
+            <button class="pill" :disabled="sale.payment_status !== 'paid'" @click="copyPassengerLink(sale.id)">
+              Copiar link passageiros
+            </button>
           </div>
         </article>
       </div>
     </section>
 
-    <section v-else class="grid gap-4 md:grid-cols-2">
-      <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow">
-        <h3 class="text-lg font-semibold text-slate-900">Conta Stripe</h3>
-        <p class="mt-1 text-sm text-slate-500">Conecte sua conta para o checkout público e PDV.</p>
-        <div class="mt-4 space-y-2 text-sm">
-          <p>
-            <span class="font-semibold text-slate-600">Status:</span>
-            <span :class="accountStatus?.connected ? 'text-emerald-600' : 'text-rose-500'">
-              {{ accountStatus?.connected ? 'Conectado' : 'Não conectado' }}
-            </span>
-          </p>
-          <p><span class="font-semibold text-slate-600">E-mail:</span> {{ accountStatus?.email || '-' }}</p>
-          <p>
-            <span class="font-semibold text-slate-600">Cobranças:</span>
-            <span :class="accountStatus?.charges_enabled ? 'text-emerald-600' : 'text-rose-500'">
-              {{ accountStatus?.charges_enabled ? 'Liberadas' : 'Pendentes' }}
-            </span>
-          </p>
-          <p>
-            <span class="font-semibold text-slate-600">Pagamentos:</span>
-            <span :class="accountStatus?.payouts_enabled ? 'text-emerald-600' : 'text-rose-500'">
-              {{ accountStatus?.payouts_enabled ? 'Liberados' : 'Pendentes' }}
-            </span>
-          </p>
-        </div>
-        <div class="mt-6 flex flex-wrap gap-3">
-          <button class="btn-primary" :disabled="onboardingLoading" @click="startOnboarding">
-            {{ accountStatus?.connected ? 'Atualizar dados' : 'Conectar Stripe' }}
-          </button>
-          <button type="button" class="text-sm font-semibold text-slate-500" @click="loadAccountStatus">Atualizar status</button>
-        </div>
-        <div v-if="accountStatus?.requirements?.length" class="mt-4 rounded-2xl bg-amber-50 p-4 text-sm text-amber-700">
-          <p class="font-semibold">Pendências</p>
-          <ul class="mt-2 list-disc pl-5">
-            <li v-for="req in accountStatus.requirements" :key="req">{{ req }}</li>
-          </ul>
-        </div>
-      </div>
-      <div class="rounded-3xl border border-emerald-100 bg-emerald-50 p-6 text-slate-800 shadow">
-        <h3 class="text-lg font-semibold">Como funciona</h3>
-        <ul class="mt-3 space-y-2 text-sm">
-          <li>• Checkout Stripe integrado às páginas e ao PDV.</li>
-          <li>• Repasse automático com taxa de 1,5%.</li>
-          <li>• Controle de estoque centralizado para evitar overbooking.</li>
-        </ul>
-      </div>
-    </section>
+    
     <!-- Product modal -->
     <div v-if="productModalVisible" class="modal-overlay !mt-0">
       <div class="modal-card modal-card--product">
@@ -401,7 +400,23 @@
               <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Resumo</p>
               <p class="text-sm text-slate-500">Passageiros estimados: <span class="font-semibold text-slate-900">{{ posPassengers }}</span></p>
               <p class="text-2xl font-semibold text-slate-900">{{ formatCurrency(posTotal) }}</p>
-              <p v-if="posResult" class="mt-2 text-xs text-emerald-600">Venda #{{ posResult.sale_id }} criada.</p>
+              <div
+                v-if="posResult"
+                class="mt-3 space-y-1 rounded-2xl bg-emerald-50 p-3 text-xs text-emerald-900"
+              >
+                <p class="text-sm font-semibold">Cobrança criada!</p>
+                <p>Venda #{{ posResult.sale_id }} • {{ paymentStatusLabel(posResult.provider_status) }}</p>
+                <p>Ref: {{ posResult.checkout_reference }}</p>
+                <p>{{ posResult.breakdown.installments }}x de {{ formatCurrency(posResult.breakdown.installment_amount_cents) }}</p>
+                <button
+                  type="button"
+                  class="text-[11px] font-semibold text-emerald-700 underline"
+                  :disabled="posResult.provider_status !== 'paid'"
+                  @click="copyPassengerLink(posResult.sale_id)"
+                >
+                  Copiar link de passageiros
+                </button>
+              </div>
             </div>
           </div>
           <div v-if="posProduct" class="space-y-2 rounded-2xl border border-slate-100 p-3">
@@ -522,10 +537,82 @@
           </div>
           <button class="text-slate-500" @click="saleDetailsVisible = false">×</button>
         </header>
-        <div class="space-y-3 text-sm">
-          <p><span class="font-semibold text-slate-600">Cliente:</span> {{ selectedSale.customer_name || 'Não informado' }}</p>
-          <p><span class="font-semibold text-slate-600">Valor:</span> {{ formatCurrency(selectedSale.amount_cents) }}</p>
-          <p><span class="font-semibold text-slate-600">Canal:</span> {{ selectedSale.channel }}</p>
+        <div class="space-y-4 text-sm">
+          <div class="flex flex-wrap gap-2 text-xs font-semibold">
+            <span :class="['badge', statusClasses.payment[paymentStatusKey(selectedSale.payment_status)]]">
+              {{ paymentStatusLabel(selectedSale.payment_status) }}
+            </span>
+            <span :class="['badge', statusClasses.payout[payoutStatusKey(selectedSale.payout_status)]]">
+              {{ payoutStatusLabel(selectedSale.payout_status) }}
+            </span>
+            <span :class="['badge', statusClasses.passengers[passengerStatusKey(selectedSale.passenger_status)]]">
+              {{ passengerStatusLabel(selectedSale.passenger_status) }}
+            </span>
+          </div>
+          <div class="grid gap-3 md:grid-cols-2">
+            <div class="rounded-2xl border border-slate-100 p-3">
+              <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Cliente</p>
+              <p class="mt-1"><span class="font-semibold text-slate-600">Nome:</span> {{ selectedSale.customer_name || "Não informado" }}</p>
+              <p><span class="font-semibold text-slate-600">E-mail:</span> {{ selectedSale.customer_email || "Não informado" }}</p>
+              <p><span class="font-semibold text-slate-600">Telefone:</span> {{ selectedSale.customer_phone || "Não informado" }}</p>
+              <p><span class="font-semibold text-slate-600">Canal:</span> {{ saleChannelLabel(selectedSale.channel) }}</p>
+              <p v-if="salePageLabel(selectedSale)"><span class="font-semibold text-slate-600">Página:</span> {{ salePageLabel(selectedSale) }}</p>
+              <p><span class="font-semibold text-slate-600">Criada em:</span> {{ formatDateTime(selectedSale.created_at) }}</p>
+            </div>
+            <div class="rounded-2xl border border-slate-100 p-3">
+              <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Provedor</p>
+              <p class="mt-1"><span class="font-semibold text-slate-600">Gateway:</span> {{ selectedSale.provider }}</p>
+              <p><span class="font-semibold text-slate-600">Charge ID:</span> {{ selectedSale.provider_charge_id }}</p>
+              <p><span class="font-semibold text-slate-600">Status:</span> {{ paymentStatusLabel(selectedSale.provider_status) }}</p>
+              <p><span class="font-semibold text-slate-600">Parcelas:</span> {{ selectedSale.installments }}x de {{ formatCurrency(selectedSale.installment_amount_cents) }}</p>
+            </div>
+          </div>
+          <div class="rounded-2xl border border-slate-100 p-3">
+            <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Resumo financeiro</p>
+            <dl class="mt-2 grid gap-3 sm:grid-cols-2">
+              <div>
+                <dt class="text-xs text-slate-500">Valor base</dt>
+                <dd class="text-lg font-semibold text-slate-900">{{ formatCurrency(selectedSale.base_amount_cents) }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-slate-500">Valor bruto</dt>
+                <dd class="text-lg font-semibold text-slate-900">{{ formatCurrency(selectedSale.gross_amount_cents) }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-slate-500">Taxa plataforma</dt>
+                <dd class="text-lg font-semibold text-slate-900">{{ formatCurrency(selectedSale.platform_fee_amount_cents) }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-slate-500">Taxa gateway</dt>
+                <dd class="text-lg font-semibold text-slate-900">{{ formatCurrency(selectedSale.gateway_fee_estimated_cents) }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-slate-500">Repasse agência</dt>
+                <dd class="text-lg font-semibold text-slate-900">{{ formatCurrency(selectedSale.agency_net_amount_cents) }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-slate-500">Parcelamento</dt>
+                <dd class="text-lg font-semibold text-slate-900">
+                  {{ selectedSale.installments }}x de {{ formatCurrency(selectedSale.installment_amount_cents) }}
+                </dd>
+              </div>
+            </dl>
+            <p class="mt-2 text-xs text-slate-500">Spread estimado: {{ formatPercent(selectedSale.spread_percentage) }}</p>
+          </div>
+          <div class="rounded-2xl border border-slate-100 p-3">
+            <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Simular status</p>
+            <div class="mt-2 flex flex-wrap gap-3">
+              <select v-model="simulationStatus" class="input w-full max-w-xs">
+                <option v-for="option in saleStatusOptions" :key="option.value" :value="option.value">
+                  {{ option.label }}
+                </option>
+              </select>
+              <button class="btn-primary" :disabled="simulatingStatus" @click="applySimulatedStatus">
+                {{ simulatingStatus ? 'Aplicando...' : 'Aplicar' }}
+              </button>
+            </div>
+            <p class="mt-2 text-xs text-slate-500">Use para testar o fluxo de webhook simulado.</p>
+          </div>
           <div>
             <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Itens</p>
             <ul class="mt-2 space-y-2">
@@ -542,8 +629,9 @@
       </div>
     </div>
 
+
     <div v-if="passengerModalVisible && passengerSale" class="modal-overlay !mt-0">
-      <div class="modal-card max-w-2xl">
+      <div class="modal-card max-w-3xl">
         <header class="mb-4 flex items-center justify-between">
           <div>
             <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">
@@ -553,18 +641,170 @@
           </div>
           <button class="text-slate-500" @click="closePassengerModal">×</button>
         </header>
-        <div class="max-h-[60vh] space-y-3 overflow-y-auto">
-          <div v-for="(passenger, index) in passengerForm" :key="index" class="rounded-xl border border-slate-100 p-3">
-            <p class="text-sm font-semibold text-slate-900">Passageiro {{ index + 1 }}</p>
-            <input v-model="passenger.name" class="input mt-2" placeholder="Nome completo" />
-            <input v-model="passenger.cpf" class="input mt-2" placeholder="CPF" />
-            <input v-model="passenger.phone" class="input mt-2" placeholder="Telefone" />
-            <textarea v-model="passenger.extras" rows="2" class="input mt-2" placeholder="Observações"></textarea>
+        <div class="max-h-[65vh] space-y-4 overflow-y-auto">
+          <div class="rounded-3xl border border-slate-100 bg-slate-50/60 p-4">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Resumo da venda</p>
+                <h4 class="text-lg font-semibold text-slate-900">{{ passengerSale.product_title }}</h4>
+                <p class="text-sm text-slate-500">
+                  Venda #{{ passengerSale.id }} • {{ saleChannelLabel(passengerSale.channel) }}
+                </p>
+                <p class="text-sm text-slate-500">
+                  Cliente: <span class="font-semibold text-slate-900">{{ passengerSale.customer_name || "Não informado" }}</span>
+                </p>
+              </div>
+            </div>
+            <div class="mt-4 grid gap-4 text-sm sm:grid-cols-2">
+              <div class="space-y-2">
+                <div>
+                  <p class="text-xs uppercase tracking-wide text-slate-400">Descrição do produto</p>
+                  <p class="text-base font-semibold text-slate-900">
+                    {{ passengerSale.product_description || "Sem descrição" }}
+                  </p>
+                </div>
+                <div>
+                  <p class="text-xs uppercase tracking-wide text-slate-400">Passageiros previstos</p>
+                  <p class="text-base font-semibold text-slate-900">{{ passengerSale.passengers_required }}</p>
+                </div>
+                <div>
+                  <p class="text-xs uppercase tracking-wide text-slate-400">Canal</p>
+                  <p class="text-base font-semibold text-slate-900">{{ saleChannelLabel(passengerSale.channel) }}</p>
+                </div>
+              </div>
+              <div>
+                <p class="text-xs uppercase tracking-wide text-slate-400">Pacotes e variações</p>
+                <ul class="mt-2 space-y-1 text-slate-600">
+                  <li
+                    v-for="item in passengerSale.items"
+                    :key="item.id"
+                    class="rounded-xl border border-slate-100 bg-white px-3 py-2 text-sm"
+                  >
+                    <p class="font-semibold text-slate-900">{{ item.variation_name }}</p>
+                    <p>
+                      {{ item.quantity }} x {{ formatCurrency(item.unit_price) }}
+                      <span class="text-xs text-slate-500">
+                        ({{ item.people_count * item.quantity }} passageiros)
+                      </span>
+                    </p>
+                  </li>
+                  <li v-if="!passengerSale.items.length" class="text-xs text-slate-500">
+                    Nenhum item associado.
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="rounded-3xl border border-slate-100 p-4">
+            <div class="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 pb-3">
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-600">Dados dos passageiros</p>
+                <p class="text-sm text-slate-500">Informe todos os passageiros para liberar a viagem.</p>
+              </div>
+              <div v-if="canManagePassengers" class="flex flex-wrap gap-2">
+                <button type="button" class="pill" @click="addManualPassenger">+ Passageiro</button>
+                <button
+                  type="button"
+                  class="pill"
+                  :disabled="!passengerSale"
+                  @click="passengerSale && copyPassengerLink(passengerSale.id)"
+                >
+                  Enviar link
+                </button>
+              </div>
+            </div>
+            <div v-if="passengerForm.length" class="space-y-4 pt-4">
+              <div class="flex flex-wrap gap-2">
+                <button
+                  v-for="(passenger, index) in passengerForm"
+                  :key="`tab-${index}`"
+                  type="button"
+                  class="rounded-full border px-3 py-1 text-xs font-semibold transition"
+                  :class="
+                    activePassengerTab === index
+                      ? 'border-emerald-500 bg-emerald-500 text-white'
+                      : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                  "
+                  @click="activePassengerTab = index"
+                >
+                  Passageiro {{ index + 1 }}
+                </button>
+              </div>
+              <div
+                v-for="(passenger, index) in passengerForm"
+                v-show="activePassengerTab === index"
+                :key="`panel-${index}`"
+                class="space-y-4 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm"
+              >
+                <div class="flex items-center justify-between">
+                  <p class="text-sm font-semibold text-slate-900">Passageiro {{ index + 1 }}</p>
+                  <button
+                    v-if="canManagePassengers && passengerForm.length > 1"
+                    type="button"
+                    class="text-xs font-semibold text-rose-500"
+                    @click="removeManualPassenger(index)"
+                  >
+                    Remover
+                  </button>
+                </div>
+                <div class="grid gap-3 md:grid-cols-2">
+                  <div class="md:col-span-2">
+                    <label class="input-label">Nome completo</label>
+                    <input v-model="passenger.name" class="input mt-1" placeholder="Nome completo" />
+                  </div>
+                  <div>
+                    <label class="input-label">CPF</label>
+                    <input v-model="passenger.cpf" class="input mt-1" placeholder="000.000.000-00" />
+                  </div>
+                  <div>
+                    <label class="input-label">Nascimento</label>
+                    <input v-model="passenger.birthdate" type="date" class="input mt-1" />
+                  </div>
+                  <div>
+                    <label class="input-label">Telefone</label>
+                    <input v-model="passenger.phone" class="input mt-1" placeholder="(00) 00000-0000" />
+                  </div>
+                  <div>
+                    <label class="input-label">WhatsApp</label>
+                    <input v-model="passenger.whatsapp" class="input mt-1" placeholder="(00) 00000-0000" />
+                  </div>
+                  <div class="md:col-span-2">
+                    <label class="input-label">Local de embarque</label>
+                    <input v-model="passenger.boarding_location" class="input mt-1" placeholder="Ponto de encontro" />
+                  </div>
+                </div>
+                <div>
+                  <label class="input-label">Observações</label>
+                  <textarea
+                    v-model="passenger.extras"
+                    rows="3"
+                    class="input mt-1"
+                    placeholder="Informações importantes"
+                  ></textarea>
+                </div>
+              </div>
+            </div>
+            <div v-else class="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500">
+              <p>Nenhum passageiro cadastrado ainda.</p>
+              <p class="mt-1 text-xs text-slate-400">Use os botões acima para adicionar manualmente ou enviar o link.</p>
+              <div v-if="canManagePassengers" class="mt-4 flex flex-wrap justify-center gap-2">
+                <button type="button" class="pill" @click="startManualPassengerInput">Adicionar passageiros</button>
+                <button
+                  type="button"
+                  class="pill"
+                  :disabled="!passengerSale"
+                  @click="passengerSale && copyPassengerLink(passengerSale.id)"
+                >
+                  Enviar link para o cliente
+                </button>
+              </div>
+            </div>
           </div>
         </div>
         <footer class="mt-4 flex justify-end gap-3">
           <button class="pill" @click="closePassengerModal">Cancelar</button>
-          <button class="btn-primary" :disabled="passengerSaving" @click="savePassengers">
+          <button class="btn-primary" :disabled="passengerSaving || !passengerForm.length" @click="savePassengers">
             {{ passengerSaving ? 'Salvando...' : 'Salvar passageiros' }}
           </button>
         </footer>
@@ -573,10 +813,8 @@
   </div>
 </template>
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref, watch } from "vue";
 import {
-  fetchStripeAccountStatus,
-  createStripeOnboardingLink,
   listSales,
   getSaleDetails,
   saveSalePassengers,
@@ -589,21 +827,23 @@ import {
   createPosCheckout,
   createProductPaymentLink,
   deleteProduct,
+  simulateSaleStatus,
 } from "../../services/finance";
 import type {
   CheckoutCartItem,
   InventoryAdjustmentPayload,
   Passenger,
   PaymentLinkResponse,
+  PublicCheckoutResponse,
   ProductDetail,
   ProductPayload,
   ProductSummary,
   SaleDetail,
   SaleSummary,
-  StripeAccountStatus,
+  SalePaymentStatus,
 } from "../../types/finance";
 
-type ActiveTab = "products" | "sales" | "config";
+type ActiveTab = "products" | "sales";
 
 type ProductVariationForm = {
   public_id: string | null;
@@ -633,22 +873,80 @@ type ProductFormState = {
 const tabs: { label: string; value: ActiveTab }[] = [
   { label: "Produtos", value: "products" },
   { label: "Vendas", value: "sales" },
-  { label: "Configurações", value: "config" },
 ];
 
 const activeTab = ref<ActiveTab>("products");
-const accountStatus = ref<StripeAccountStatus | null>(null);
-const onboardingLoading = ref(false);
-
 const sales = ref<SaleSummary[]>([]);
 const salesPagination = ref({ total: 0, page: 1, pageSize: 20 });
 const selectedSale = ref<SaleDetail | null>(null);
 const saleDetailsVisible = ref(false);
 
+type PaymentFilter = "all" | SalePaymentStatus;
+type PassengerFilter = "all" | "not_started" | "partial" | "completed";
+
+const paymentFilterOptions: { label: string; value: PaymentFilter }[] = [
+  { label: "Todos", value: "all" },
+  { label: "Pagos", value: "paid" },
+  { label: "Processando", value: "processing" },
+  { label: "Pendentes", value: "pending" },
+  { label: "Cancelados", value: "canceled" },
+  { label: "Reembolsados", value: "refunded" },
+];
+
+const passengerFilterOptions: { label: string; value: PassengerFilter }[] = [
+  { label: "Todos", value: "all" },
+  { label: "Sem passageiros", value: "not_started" },
+  { label: "Parcial", value: "partial" },
+  { label: "Completos", value: "completed" },
+];
+
+const paymentFilter = ref<PaymentFilter>("all");
+const passengerFilter = ref<PassengerFilter>("all");
+
+const filteredSales = computed(() =>
+  sales.value.filter(s => {
+    const paymentMatch = paymentFilter.value === "all" || s.payment_status === paymentFilter.value;
+    const passengerMatch = passengerFilter.value === "all" || s.passenger_status === passengerFilter.value;
+    return paymentMatch && passengerMatch;
+  }),
+);
+
 const passengerSale = ref<SaleDetail | null>(null);
 const passengerModalVisible = ref(false);
 const passengerForm = ref<Passenger[]>([]);
 const passengerSaving = ref(false);
+const activePassengerTab = ref(0);
+const canManagePassengers = computed(() => passengerSale.value?.payment_status === "paid");
+
+const manualPassengerTemplate = (): Passenger => ({
+  id: Date.now() * -1,
+  name: "",
+  cpf: "",
+  birthdate: "",
+  phone: "",
+  whatsapp: "",
+  boarding_location: "",
+  extras: "",
+});
+
+const startManualPassengerInput = () => {
+  if (!canManagePassengers.value || passengerForm.value.length) return;
+  const count = Math.max(passengerSale.value?.passengers_required || 1, 1);
+  passengerForm.value = Array.from({ length: count }, () => manualPassengerTemplate());
+  activePassengerTab.value = 0;
+};
+
+const addManualPassenger = () => {
+  if (!canManagePassengers.value) return;
+  passengerForm.value.push(manualPassengerTemplate());
+  activePassengerTab.value = passengerForm.value.length - 1;
+};
+
+const removeManualPassenger = (index: number) => {
+  if (!canManagePassengers.value) return;
+  if (passengerForm.value.length <= 1) return;
+  passengerForm.value.splice(index, 1);
+};
 
 const products = ref<ProductSummary[]>([]);
 const productsLoading = ref(false);
@@ -697,7 +995,7 @@ const posProductId = ref<string>("");
 const posCustomer = reactive({ name: "", email: "", phone: "" });
 const posSelections = reactive<Record<string, number>>({});
 const posSaving = ref(false);
-const posResult = ref<{ sale_id: number; client_secret: string; passenger_token: string } | null>(null);
+const posResult = ref<PublicCheckoutResponse | null>(null);
 
 const paymentLinkModalVisible = ref(false);
 const paymentLinkProduct = ref<ProductSummary | null>(null);
@@ -712,11 +1010,22 @@ const deleteModalVisible = ref(false);
 const deleteTarget = ref<ProductSummary | null>(null);
 const deleteLoading = ref(false);
 
+const saleStatusOptions: { label: string; value: SalePaymentStatus }[] = [
+  { label: "Pendente", value: "pending" },
+  { label: "Processando", value: "processing" },
+  { label: "Pago", value: "paid" },
+  { label: "Cancelado", value: "canceled" },
+  { label: "Reembolsado", value: "refunded" },
+];
+const simulationStatus = ref<SalePaymentStatus>("pending");
+const simulatingStatus = ref(false);
+
 const statusClasses = {
   payment: {
-    succeeded: "bg-emerald-100 text-emerald-700",
+    paid: "bg-emerald-100 text-emerald-700",
     processing: "bg-amber-100 text-amber-700",
     canceled: "bg-rose-100 text-rose-600",
+    refunded: "bg-sky-100 text-sky-700",
     pending: "bg-slate-100 text-slate-600",
   },
   payout: {
@@ -730,6 +1039,17 @@ const statusClasses = {
     partial: "bg-amber-100 text-amber-700",
     completed: "bg-emerald-100 text-emerald-700",
   },
+};
+
+const upsertSaleSummary = (detail: SaleDetail) => {
+  const { passengers, items, ...summary } = detail;
+  const summaryData = summary as SaleSummary;
+  const index = sales.value.findIndex(item => item.id === summaryData.id);
+  if (index >= 0) {
+    sales.value[index] = summaryData;
+  } else {
+    sales.value.unshift(summaryData);
+  }
 };
 
 const resetProductForm = () => {
@@ -1025,27 +1345,6 @@ const confirmDeleteProduct = async () => {
   }
 };
 
-const loadAccountStatus = async () => {
-  try {
-    const { data } = await fetchStripeAccountStatus();
-    accountStatus.value = data;
-  } catch (err) {
-    console.error("Erro ao carregar status Stripe", err);
-  }
-};
-
-const startOnboarding = async () => {
-  onboardingLoading.value = true;
-  try {
-    const { data } = await createStripeOnboardingLink();
-    window.location.assign(data.url);
-  } catch (err) {
-    console.error("Erro ao iniciar onboarding", err);
-  } finally {
-    onboardingLoading.value = false;
-  }
-};
-
 const loadSales = async () => {
   try {
     const { data } = await listSales(salesPagination.value.page, salesPagination.value.pageSize);
@@ -1099,17 +1398,83 @@ const savePassengers = async () => {
   }
 };
 
+const getCachedPaymentStatus = (saleId: number): string | null => {
+  if (passengerSale.value?.id === saleId) return passengerSale.value.payment_status;
+  if (selectedSale.value?.id === saleId) return selectedSale.value.payment_status;
+  const summary = sales.value.find(item => item.id === saleId);
+  return summary ? summary.payment_status : null;
+};
+
+const resolveSalePaymentStatus = async (saleId: number): Promise<string | null> => {
+  const cached = getCachedPaymentStatus(saleId);
+  if (cached) return cached;
+  try {
+    const { data } = await getSaleDetails(saleId);
+    upsertSaleSummary(data);
+    return data.payment_status;
+  } catch (err) {
+    console.error("Erro ao verificar status da venda", err);
+    return null;
+  }
+};
+
 const copyPassengerLink = async (saleId: number) => {
+  const paymentStatus = await resolveSalePaymentStatus(saleId);
+  if (paymentStatus !== "paid") {
+    if (typeof window !== "undefined" && window.alert) {
+      window.alert("O formulário de passageiros só é liberado após confirmação do pagamento.");
+    }
+    return;
+  }
   try {
     const { data } = await getPassengerLink(saleId);
-    await navigator.clipboard.writeText((data as { url: string }).url);
+    await copyText(data.url);
   } catch (err) {
     console.error("Erro ao copiar link", err);
+  }
+};
+
+const applySimulatedStatus = async () => {
+  if (!selectedSale.value) return;
+  simulatingStatus.value = true;
+  try {
+    const { data } = await simulateSaleStatus(selectedSale.value.id, simulationStatus.value);
+    selectedSale.value = data;
+    upsertSaleSummary(data);
+  } catch (err) {
+    console.error("Erro ao simular status", err);
+  } finally {
+    simulatingStatus.value = false;
   }
 };
 const formatCurrency = (value?: number | null) => {
   const cents = typeof value === "number" ? value : 0;
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cents / 100);
+};
+
+const formatDateTime = (value?: string | null) => {
+  if (!value) return "Não informado";
+  try {
+    return new Date(value).toLocaleString("pt-BR");
+  } catch {
+    return value;
+  }
+};
+
+const formatPercent = (value?: number | null) => {
+  if (typeof value !== "number") return "0%";
+  return `${value.toFixed(2)}%`;
+};
+
+const saleChannelLabel = (channel: string) => {
+  if (channel === "pos") return "PDV";
+  if (channel === "link") return "Link";
+  return "Checkout";
+};
+
+const salePageLabel = (sale?: SaleSummary | SaleDetail | null) => {
+  if (!sale) return "";
+  return sale.page_title || sale.page_slug || "";
 };
 
 const tripDateLabel = (product: ProductSummary) => {
@@ -1138,11 +1503,11 @@ const inventoryBadge = (product: ProductSummary) => {
 };
 
 const paymentStatusLabel = (status: string) => ({
-  succeeded: "Pago",
+  pending: "Pendente",
   processing: "Processando",
-  requires_payment_method: "Aguardando",
-  requires_action: "Ação necessária",
+  paid: "Pago",
   canceled: "Cancelado",
+  refunded: "Reembolsado",
 }[status] || status);
 
 const payoutStatusLabel = (status: string) => ({
@@ -1159,9 +1524,10 @@ const passengerStatusLabel = (status: string) => ({
 }[status] || status);
 
 const paymentStatusKey = (status: string) => {
-  if (status === "succeeded") return "succeeded";
+  if (status === "paid") return "paid";
   if (status === "processing") return "processing";
   if (status === "canceled") return "canceled";
+  if (status === "refunded") return "refunded";
   return "pending";
 };
 
@@ -1178,22 +1544,68 @@ const passengerStatusKey = (status: string) => {
   return "not_started";
 };
 
+watch(
+  () => selectedSale.value,
+  value => {
+    simulationStatus.value = (value?.payment_status as SalePaymentStatus) || "pending";
+  },
+);
+
+watch(
+  () => passengerForm.value.length,
+  length => {
+    if (!length) {
+      activePassengerTab.value = 0;
+    } else if (activePassengerTab.value >= length) {
+      activePassengerTab.value = length - 1;
+    }
+  },
+);
+
+watch(
+  () => passengerModalVisible.value,
+  visible => {
+    if (!visible) {
+      activePassengerTab.value = 0;
+    }
+  },
+);
+
 const copyText = async (text: string) => {
+  if (!text) return;
   try {
-    await navigator.clipboard.writeText(text);
+    if (navigator?.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return;
+    }
+    throw new Error("Clipboard API indisponível");
   } catch (err) {
-    console.error("Erro ao copiar texto", err);
+    try {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+    } catch (fallbackErr) {
+      console.error("Erro ao copiar texto", fallbackErr || err);
+    }
   }
 };
 
 onMounted(async () => {
-  await Promise.all([loadAccountStatus(), loadSales(), loadProducts()]);
+  await Promise.all([loadSales(), loadProducts()]);
 });
 </script>
 
 <style scoped>
 .pill {
   @apply rounded-full border border-slate-200 px-4 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-slate-300;
+}
+.pill:disabled {
+  @apply cursor-not-allowed border-slate-100 text-slate-400 opacity-60 hover:border-slate-100;
 }
 .btn-primary {
   @apply rounded-full bg-emerald-500 px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 disabled:bg-emerald-300;

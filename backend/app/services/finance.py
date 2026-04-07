@@ -26,43 +26,29 @@ from app.models.sale import (
     SalePayoutStatus,
 )
 from app.models.sale_item import SaleItem, SaleItemStatus, SalePaymentLink, SalePaymentLinkStatus
-from app.models.stripe_account import StripeAccount
 from app.models.user import User
 from app.schemas.finance import (
     CheckoutCartItem,
     PassengerInput,
+    PaymentBreakdown,
     PaymentLinkRequest,
     PaymentLinkResponse,
     PosCheckoutRequest,
     ProductCheckoutRequest,
+    PublicCheckoutResponse,
     SaleItemOut,
     SalePassengerOut,
     SaleSummary,
 )
-from app.services.stripe_connect import (
-    create_account_link,
-    create_express_account,
-    create_payment_intent,
-    iter_payout_transactions,
-    retrieve_account,
-    retrieve_balance_transaction,
-)
+from app.services.payments import get_payment_provider
+from app.services.payments.base import PaymentCharge, PaymentChargeRequest
 from app.services.products import (
     reserve_inventory_for_item,
     confirm_inventory_for_sale,
     release_inventory_for_sale,
 )
 
-
-def calculate_platform_fee(amount_in_cents: int) -> int:
-    """
-    Calcula a comiss\u00e3o fixa de 1.5% sobre o valor final da transa\u00e7\u00e3o.
-    """
-    if amount_in_cents <= 0:
-        return 0
-    fee = Decimal(amount_in_cents) * Decimal("0.015")
-    rounded = int(fee.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
-    return max(rounded, 1)
+payment_provider = get_payment_provider()
 
 
 def _localized_value(value: Any) -> str:
@@ -92,6 +78,60 @@ def _to_decimal(value: Any) -> Decimal:
 def _to_cents(value: Decimal) -> int:
     cents = (value * Decimal("100")).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
     return int(cents)
+
+
+def _create_payment_charge(
+    *,
+    base_amount_cents: int,
+    currency: str,
+    installments: int,
+    payment_method: str,
+    metadata: dict[str, str | int | None] | None = None,
+) -> PaymentCharge:
+    if base_amount_cents <= 0:
+        raise HTTPException(status_code=400, detail="Valor do pedido invǭlido.")
+    request = PaymentChargeRequest(
+        base_amount=base_amount_cents,
+        currency=currency.upper(),
+        installments=max(1, installments),
+        payment_method=payment_method or "credit_card",
+        metadata=metadata or {},
+    )
+    return payment_provider.initialize_charge(request)
+
+
+def _apply_charge_to_sale(sale: Sale, charge: PaymentCharge) -> None:
+    sale.provider = charge.provider
+    sale.provider_charge_id = charge.provider_charge_id
+    sale.provider_status = charge.provider_status.value
+    sale.payment_status = charge.provider_status.value
+    sale.payment_method = charge.payment_method
+    sale.installments = charge.installments
+    sale.currency = charge.currency
+    sale.base_amount = charge.base_amount
+    sale.gross_amount = charge.gross_amount
+    sale.platform_fee_amount = charge.platform_fee_amount
+    sale.gateway_fee_estimated = charge.gateway_fee_estimated
+    sale.agency_net_amount = charge.agency_net_amount
+    sale.spread_percentage = charge.spread_percentage_bps
+    sale.amount = charge.gross_amount
+    sale.commission_amount = charge.platform_fee_amount
+    sale.stripe_application_fee_amount = charge.platform_fee_amount
+    sale.net_amount = charge.agency_net_amount
+    metadata = dict(sale.provider_metadata or {})
+    metadata["installment_amount"] = charge.installment_amount
+    sale.provider_metadata = metadata
+
+
+def _installment_amount(sale: Sale) -> int:
+    if sale.provider_metadata and "installment_amount" in sale.provider_metadata:
+        try:
+            return int(sale.provider_metadata["installment_amount"])
+        except (ValueError, TypeError):
+            pass
+    if sale.gross_amount and sale.installments:
+        return int(sale.gross_amount / max(1, sale.installments))
+    return 0
 
 
 def _find_price_item(config: dict[str, Any], product_id: str, section_hint: str | None = None) -> CheckoutPriceResolution:
@@ -257,64 +297,6 @@ def _pick_agency_owner(db: Session, agency_id: int) -> User:
     raise HTTPException(status_code=400, detail="AgÃªncia sem usuÃ¡rio responsÃ¡vel.")
 
 
-def ensure_stripe_account_record(user: User, db: Session) -> StripeAccount:
-    record = db.query(StripeAccount).filter(StripeAccount.user_id == user.id).first()
-    if record and user.stripe_account_id:
-        return record
-    account = create_express_account(user.email)
-    record = record or StripeAccount(user_id=user.id, stripe_account_id=account.id)
-    record.stripe_account_id = account.id
-    record.email = account.get("email")
-    record.country = account.get("country")
-    record.default_currency = account.get("default_currency")
-    record.charges_enabled = bool(account.get("charges_enabled"))
-    record.payouts_enabled = bool(account.get("payouts_enabled"))
-    record.details_submitted = bool(account.get("details_submitted"))
-    record.onboarding_completed = record.details_submitted
-    record.requirements = account.get("requirements")
-    user.stripe_account_id = account.id
-    user.stripe_charges_enabled = record.charges_enabled
-    user.stripe_payouts_enabled = record.payouts_enabled
-    user.stripe_onboarding_completed = record.onboarding_completed
-    db.add(record)
-    db.add(user)
-    db.commit()
-    db.refresh(record)
-    return record
-
-
-def sync_account_status(user: User, account_data: dict[str, Any], db: Session) -> StripeAccount:
-    record = db.query(StripeAccount).filter(StripeAccount.user_id == user.id).first()
-    if not record:
-        record = StripeAccount(user_id=user.id, stripe_account_id=account_data["id"])
-    record.stripe_account_id = account_data["id"]
-    record.email = account_data.get("email")
-    record.country = account_data.get("country")
-    record.default_currency = account_data.get("default_currency")
-    record.charges_enabled = bool(account_data.get("charges_enabled"))
-    record.payouts_enabled = bool(account_data.get("payouts_enabled"))
-    record.details_submitted = bool(account_data.get("details_submitted"))
-    record.onboarding_completed = record.details_submitted
-    record.requirements = account_data.get("requirements")
-
-    user.stripe_account_id = record.stripe_account_id
-    user.stripe_charges_enabled = record.charges_enabled
-    user.stripe_payouts_enabled = record.payouts_enabled
-    user.stripe_onboarding_completed = record.onboarding_completed
-
-    db.add(record)
-    db.add(user)
-    db.commit()
-    db.refresh(record)
-    return record
-
-
-def create_onboarding_link(user: User, db: Session, *, refresh_url: str, return_url: str) -> str:
-    record = ensure_stripe_account_record(user, db)
-    link = create_account_link(record.stripe_account_id, refresh_url=refresh_url, return_url=return_url)
-    return link.url
-
-
 def create_product_checkout_sale(
     *,
     db: Session,
@@ -327,28 +309,28 @@ def create_product_checkout_sale(
     agency_slug: str | None = None,
     source_url: str | None = None,
     acting_user: User | None = None,
-) -> tuple[Sale, str]:
+) -> tuple[Sale, PaymentCharge]:
     product = _lock_product_for_checkout(db, product_public_id)
     owner = product.user
     if not owner:
-        raise HTTPException(status_code=400, detail="Produto sem responsável.")
+        raise HTTPException(status_code=400, detail="Produto sem responsavel.")
     if acting_user and acting_user.id != owner.id:
         raise HTTPException(status_code=403, detail="Acesso negado ao produto.")
-    if channel not in {"page", "pos"}:
-        raise HTTPException(status_code=400, detail="Canal inválido.")
-    if owner.stripe_account_id is None or not owner.stripe_charges_enabled:
-        raise HTTPException(status_code=400, detail="Conta Stripe da agência não está apta a receber pagamentos.")
+    if channel not in {"page", "public_page", "pos", "link"}:
+        raise HTTPException(status_code=400, detail="Canal invalido.")
 
     lines = _resolve_cart_lines(db, product, cart_items)
     currency = _cart_currency(lines)
     amount_cents = _cart_total_amount(lines)
-    if amount_cents <= 0:
-        raise HTTPException(status_code=400, detail="Valor do pedido inválido.")
     passengers_required = _cart_passengers(lines)
-    commission_cents = calculate_platform_fee(amount_cents)
 
     passenger_token = secrets.token_urlsafe(24)
-    metadata = {
+    page_title_snapshot: str | None = None
+    if page_id:
+        page_ref = db.query(Page).filter(Page.id == page_id).first()
+        if page_ref and page_ref.title:
+            page_title_snapshot = _trim(page_ref.title, 255)
+    charge_metadata = {
         "product_public_id": product.public_id,
         "channel": channel,
         "agency_id": product.agency_id,
@@ -357,14 +339,12 @@ def create_product_checkout_sale(
         "agency_slug": agency_slug,
         "sale_passenger_token": passenger_token,
     }
-    payment_intent = create_payment_intent(
-        amount=amount_cents,
-        currency=currency.lower(),
-        stripe_account_id=owner.stripe_account_id,  # type: ignore[arg-type]
-        application_fee_amount=commission_cents,
-        metadata_json=metadata,
-        customer_email=customer.get("email"),
-        description=_trim(product.name, 255),
+    charge = _create_payment_charge(
+        base_amount_cents=amount_cents,
+        currency=currency,
+        installments=1,
+        payment_method="credit_card",
+        metadata=charge_metadata,
     )
 
     sale = Sale(
@@ -372,17 +352,14 @@ def create_product_checkout_sale(
         agency_id=product.agency_id,
         page_id=page_id,
         page_slug=page_slug,
+        page_title=page_title_snapshot,
         product_id=product.id,
         product_public_id=product.public_id,
         product_title=_trim(product.name, 255) or "",
         product_description=_trim(product.description, 500),
         currency=currency.lower(),
-        amount=amount_cents,
-        commission_amount=commission_cents,
-        stripe_application_fee_amount=commission_cents,
         passengers_required=passengers_required,
         passenger_form_token=passenger_token,
-        installments=1,
         interest_mode="merchant",
         metadata_json={
             "channel": channel,
@@ -393,10 +370,9 @@ def create_product_checkout_sale(
         customer_name=_trim(customer.get("name"), 255),
         customer_email=_trim(customer.get("email"), 255),
         customer_phone=_trim(customer.get("phone"), 50),
-        stripe_payment_intent_id=payment_intent.id,
-        stripe_destination_account=owner.stripe_account_id,
         channel=channel,
     )
+    _apply_charge_to_sale(sale, charge)
 
     _build_sale_items_from_lines(sale, product, lines)
     db.add(sale)
@@ -414,17 +390,15 @@ def create_product_checkout_sale(
 
     db.commit()
     db.refresh(sale)
-    return sale, payment_intent.client_secret
-
-
+    return sale, charge
 def create_pos_sale(
     *,
     db: Session,
     product_public_id: str,
     payload: PosCheckoutRequest,
     current_user: User,
-) -> tuple[Sale, str]:
-    sale, client_secret = create_product_checkout_sale(
+) -> tuple[Sale, PaymentCharge]:
+    sale, charge = create_product_checkout_sale(
         db=db,
         product_public_id=product_public_id,
         cart_items=payload.items,
@@ -432,7 +406,7 @@ def create_pos_sale(
         channel="pos",
         acting_user=current_user,
     )
-    return sale, client_secret
+    return sale, charge
 
 
 def create_payment_link_sale(
@@ -443,7 +417,7 @@ def create_payment_link_sale(
     current_user: User,
     expires_in_minutes: int | None = None,
 ) -> SalePaymentLink:
-    sale, _ = create_product_checkout_sale(
+    sale, _charge = create_product_checkout_sale(
         db=db,
         product_public_id=product_public_id,
         cart_items=payload.items,
@@ -473,7 +447,7 @@ def create_checkout_sale(
     source_url: str | None = None,
     page_slug: str | None = None,
     agency_slug: str | None = None,
-) -> tuple[Sale, str]:
+) -> tuple[Sale, PaymentCharge]:
     page = (
         db.query(Page)
         .options(joinedload(Page.agency).joinedload(Page.agency.users).joinedload(AgencyUser.user))
@@ -481,20 +455,14 @@ def create_checkout_sale(
         .first()
     )
     if not page:
-        raise HTTPException(status_code=404, detail="PÃ¡gina nÃ£o encontrada.")
+        raise HTTPException(status_code=404, detail="Pagina nao encontrada.")
     config = page.config_json or {}
     resolution = _find_price_item(config, product_id, section_id)
     if resolution.currency != "BRL":
-        raise HTTPException(status_code=400, detail="Apenas valores em BRL sÃ£o aceitos.")
+        raise HTTPException(status_code=400, detail="Apenas valores em BRL sao aceitos.")
     owner = _pick_agency_owner(db, page.agency_id)
-    if not owner.stripe_account_id or not owner.stripe_charges_enabled:
-        raise HTTPException(status_code=400, detail="Conta Stripe da agÃªncia nÃ£o estÃ¡ apta a receber pagamentos.")
 
     amount_cents = _to_cents(resolution.price_decimal)
-    if amount_cents <= 0:
-        raise HTTPException(status_code=400, detail="Valor do produto invÃ¡lido.")
-    commission_cents = calculate_platform_fee(amount_cents)
-
     passenger_token = secrets.token_urlsafe(24)
     metadata_raw = {
         "sale_passenger_token": passenger_token,
@@ -508,15 +476,12 @@ def create_checkout_sale(
         "page_url": source_url,
     }
     metadata = {key: str(value) for key, value in metadata_raw.items() if value is not None}
-    description = f"{page.title} - {resolution.title}"
-    payment_intent = create_payment_intent(
-        amount=amount_cents,
-        currency="brl",
-        stripe_account_id=owner.stripe_account_id,  # type: ignore[arg-type]
-        application_fee_amount=commission_cents,
-        metadata_json=metadata,
-        customer_email=customer.get("email"),
-        description=description[:255],
+    charge = _create_payment_charge(
+        base_amount_cents=amount_cents,
+        currency="BRL",
+        installments=max(1, resolution.installments),
+        payment_method="credit_card",
+        metadata=metadata,
     )
 
     sale = Sale(
@@ -524,14 +489,12 @@ def create_checkout_sale(
         agency_id=page.agency_id,
         page_id=page.id,
         page_slug=page.slug,
+        page_title=_trim(page.title, 255),
         section_id=resolution.section_id,
         price_item_id=product_id,
         product_title=_trim(resolution.title, 255) or "",
         product_description=_trim(resolution.description, 500),
         currency="brl",
-        amount=amount_cents,
-        commission_amount=commission_cents,
-        stripe_application_fee_amount=commission_cents,
         passengers_required=resolution.passengers_required,
         passenger_form_token=passenger_token,
         installments=resolution.installments,
@@ -545,27 +508,45 @@ def create_checkout_sale(
         customer_name=_trim(customer.get("name"), 255),
         customer_email=_trim(customer.get("email"), 255),
         customer_phone=_trim(customer.get("phone"), 50),
-        stripe_payment_intent_id=payment_intent.id,
-        stripe_destination_account=owner.stripe_account_id,
+        channel="page",
     )
+    _apply_charge_to_sale(sale, charge)
+
     db.add(sale)
     db.commit()
     db.refresh(sale)
-    return sale, payment_intent.client_secret
-
-
+    return sale, charge
 def serialize_sale(sale: Sale) -> SaleSummary:
+    gross_amount = sale.gross_amount or sale.amount
+    base_amount = sale.base_amount or sale.amount
+    platform_fee = sale.platform_fee_amount or sale.commission_amount
+    gateway_fee = sale.gateway_fee_estimated or (sale.stripe_fee_amount or 0)
+    agency_net = sale.agency_net_amount or sale.net_amount or 0
+    installment_amount = _installment_amount(sale)
+    spread_percent = (sale.spread_percentage or 0) / 100
     return SaleSummary(
         id=sale.id,
         created_at=sale.created_at,
         product_public_id=sale.product_public_id,
         product_title=sale.product_title,
         product_description=sale.product_description,
-        amount_cents=sale.amount,
+        page_title=sale.page_title,
+        page_slug=sale.page_slug,
+        amount_cents=gross_amount,
+        base_amount_cents=base_amount,
+        gross_amount_cents=gross_amount,
         currency=sale.currency,
-        commission_cents=sale.commission_amount,
-        net_amount_cents=sale.net_amount,
-        stripe_fee_cents=sale.stripe_fee_amount,
+        commission_cents=platform_fee,
+        platform_fee_amount_cents=platform_fee,
+        gateway_fee_estimated_cents=gateway_fee,
+        agency_net_amount_cents=agency_net,
+        installment_amount_cents=installment_amount,
+        net_amount_cents=agency_net,
+        spread_percentage=spread_percent,
+        provider=sale.provider,
+        provider_charge_id=sale.provider_charge_id,
+        provider_status=sale.provider_status,
+        paid_at=sale.paid_at,
         payment_method=sale.payment_method,
         installments=sale.installments,
         payment_status=sale.payment_status,
@@ -577,6 +558,58 @@ def serialize_sale(sale: Sale) -> SaleSummary:
         customer_name=sale.customer_name,
         customer_email=sale.customer_email,
         customer_phone=sale.customer_phone,
+    )
+
+
+def serialize_checkout_breakdown(charge: PaymentCharge) -> PaymentBreakdown:
+    return PaymentBreakdown(
+        base_amount_cents=charge.base_amount,
+        gross_amount_cents=charge.gross_amount,
+        platform_fee_amount_cents=charge.platform_fee_amount,
+        gateway_fee_estimated_cents=charge.gateway_fee_estimated,
+        agency_net_amount_cents=charge.agency_net_amount,
+        installment_amount_cents=charge.installment_amount,
+        installments=charge.installments,
+        currency=charge.currency,
+        payment_method=charge.payment_method,
+        spread_percentage=charge.spread_percentage_bps / 100,
+    )
+
+
+def serialize_checkout_response(sale: Sale, charge: PaymentCharge | None = None) -> PublicCheckoutResponse:
+    if charge:
+        breakdown = serialize_checkout_breakdown(charge)
+        return PublicCheckoutResponse(
+            sale_id=sale.id,
+            checkout_reference=charge.provider_charge_id,
+            passenger_token=sale.passenger_form_token,
+            provider=charge.provider,
+            provider_status=charge.provider_status.value,
+            breakdown=breakdown,
+        )
+    return serialize_checkout_response_from_sale(sale)
+
+
+def serialize_checkout_response_from_sale(sale: Sale) -> PublicCheckoutResponse:
+    breakdown = PaymentBreakdown(
+        base_amount_cents=sale.base_amount,
+        gross_amount_cents=sale.gross_amount or sale.amount,
+        platform_fee_amount_cents=sale.platform_fee_amount or sale.commission_amount,
+        gateway_fee_estimated_cents=sale.gateway_fee_estimated or (sale.stripe_fee_amount or 0),
+        agency_net_amount_cents=sale.agency_net_amount or (sale.net_amount or 0),
+        installment_amount_cents=_installment_amount(sale),
+        installments=sale.installments,
+        currency=sale.currency,
+        payment_method=sale.payment_method or "credit_card",
+        spread_percentage=(sale.spread_percentage or 0) / 100,
+    )
+    return PublicCheckoutResponse(
+        sale_id=sale.id,
+        checkout_reference=sale.provider_charge_id,
+        passenger_token=sale.passenger_form_token,
+        provider=sale.provider,
+        provider_status=sale.payment_status,
+        breakdown=breakdown,
     )
 
 
@@ -645,83 +678,41 @@ def compute_passenger_status(sale: Sale) -> str:
     return SalePassengerStatus.partial.value
 
 
-def apply_payment_intent_update(
-    sale: Sale,
-    payment_intent: dict[str, Any],
-    *,
-    stripe_account: str | None,
-    db: Session,
-) -> Sale:
-    sale.payment_status = payment_intent.get("status") or SalePaymentStatus.processing.value
-    charges = payment_intent.get("charges", {}).get("data", [])
-    if charges:
-        charge = charges[0]
-        sale.stripe_charge_id = charge.get("id")
-        sale.payment_method = (charge.get("payment_method_details") or {}).get("type") or charge.get("payment_method")
-        card_info = (charge.get("payment_method_details") or {}).get("card") or {}
-        installments_info = (card_info.get("installments") or {}).get("plan") or {}
-        if installments_info.get("count"):
-            sale.installments = installments_info["count"]
-        sale.stripe_balance_transaction_id = charge.get("balance_transaction")
-        sale.stripe_destination_account = (
-            (charge.get("transfer_data") or {}).get("destination") or sale.stripe_destination_account
-        )
-    if sale.stripe_balance_transaction_id:
-        balance_tx = retrieve_balance_transaction(sale.stripe_balance_transaction_id, stripe_account=stripe_account)
-        sale.stripe_fee_amount = abs(int(balance_tx.get("fee") or 0))
-        sale.net_amount = sale.amount - sale.commission_amount - (sale.stripe_fee_amount or 0)
-        availability = balance_tx.get("status")
-        if availability == "available":
-            sale.payout_status = SalePayoutStatus.available.value
-        else:
-            sale.payout_status = SalePayoutStatus.pending.value
+def _set_sale_payment_status(sale: Sale, status: SalePaymentStatus, db: Session) -> Sale:
+    if sale.payment_status == status.value:
+        return sale
+    sale.payment_status = status.value
+    sale.provider_status = status.value
+    if status == SalePaymentStatus.paid:
         sale.financial_status = SaleFinancialStatus.finalized.value
-    if sale.payment_status == SalePaymentStatus.succeeded.value:
+        sale.payout_status = SalePayoutStatus.available.value
+        sale.paid_at = datetime.utcnow()
         confirm_inventory_for_sale(sale, db)
-    db.add(sale)
-    db.commit()
-    db.refresh(sale)
-    return sale
-
-
-def mark_sale_payment_failed(sale: Sale, db: Session) -> Sale:
-    sale.payment_status = SalePaymentStatus.canceled.value
-    release_inventory_for_sale(sale, db)
-    db.add(sale)
-    db.commit()
-    db.refresh(sale)
-    return sale
-
-
-def handle_payout_event(*, db: Session, stripe_account: str, payout_id: str, status: str) -> None:
-    transactions = iter_payout_transactions(payout_id, stripe_account=stripe_account)
-    for tx in transactions:
-        source = tx.get("source")
-        if not source or not source.startswith("ch_"):
-            continue
-        sale = db.query(Sale).filter(Sale.stripe_charge_id == source).first()
-        if not sale:
-            continue
-        if status == "paid":
-            sale.payout_status = SalePayoutStatus.payout_paid.value
+    elif status in {SalePaymentStatus.canceled, SalePaymentStatus.refunded}:
+        release_inventory_for_sale(sale, db)
+        if status == SalePaymentStatus.refunded:
+            sale.financial_status = SaleFinancialStatus.finalized.value
         else:
-            sale.payout_status = SalePayoutStatus.payout_failed.value
-        db.add(sale)
+            sale.financial_status = SaleFinancialStatus.pending.value
+        sale.payout_status = SalePayoutStatus.pending.value
+        sale.paid_at = None
+    else:
+        sale.financial_status = SaleFinancialStatus.pending.value
+        sale.payout_status = SalePayoutStatus.pending.value
+    db.add(sale)
     db.commit()
+    db.refresh(sale)
+    return sale
 
 
-def fetch_stripe_account_status(user: User, db: Session) -> StripeAccount | None:
-    if not user.stripe_account_id:
-        return None
-    record = (
-        db.query(StripeAccount)
-        .filter(StripeAccount.user_id == user.id, StripeAccount.stripe_account_id == user.stripe_account_id)
-        .first()
-    )
-    if not record:
-        data = retrieve_account(user.stripe_account_id)
-        return sync_account_status(user, data, db)
-    return record
+def complete_sale_payment(sale: Sale, db: Session) -> Sale:
+    return _set_sale_payment_status(sale, SalePaymentStatus.paid, db)
+
+
+def simulate_sale_status(sale: Sale, status: SalePaymentStatus, db: Session) -> Sale:
+    return _set_sale_payment_status(sale, status, db)
+
+
 @dataclass
 class CheckoutPriceResolution:
     section_id: str
