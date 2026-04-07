@@ -715,6 +715,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
+import { storeToRefs } from "pinia";
 import api from "../../services/api";
 import { useAgencyStore } from "../../store/useAgencyStore";
 import { useAuthStore } from "../../store/useAuthStore";
@@ -747,6 +748,7 @@ interface PageStatsSummary {
 
 const router = useRouter();
 const agencyStore = useAgencyStore();
+const { currentPrimaryDomain } = storeToRefs(agencyStore);
 const authStore = useAuthStore();
 const adminLanguage = getAdminLanguage();
 const t = createAdminLocalizer(adminLanguage);
@@ -1045,7 +1047,7 @@ const currentAgencySlug = computed(() => {
 const currentAgency = computed(() => {
   return agencyStore.agencies.find(a => a.id === agencyStore.currentAgencyId) || null;
 });
-const currentAgencyPrimaryDomain = agencyStore.currentPrimaryDomain;
+const currentAgencyPrimaryDomain = currentPrimaryDomain;
 
 watch(
   () => agencyStore.currentAgencyId,
