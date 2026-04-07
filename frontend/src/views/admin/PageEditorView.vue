@@ -2014,7 +2014,7 @@ const applySectionBackgrounds = (list: PageSection[]): PageSection[] => {
       }
       return normalized;
     }
-    if (type === "agency_footer") {
+    if (type === "biography") {
       altIndex += 1;
       return normalized;
     }
