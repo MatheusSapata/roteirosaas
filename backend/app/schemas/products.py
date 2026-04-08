@@ -25,6 +25,7 @@ class ProductPayload(BaseModel):
     description: str | None = None
     status: Literal["draft", "active", "inactive"] = "draft"
     agency_id: int | None = None
+    template_contract_id: int | None = None
     trip_date: date | None = None
     date_is_flexible: bool = False
     inventory_strategy: Literal["manual", "unlimited"] = "manual"
@@ -61,6 +62,8 @@ class ProductSummary(BaseModel):
     id: int
     public_id: str
     agency_id: int | None = None
+    template_contract_id: int | None = None
+    template_contract_name: str | None = None
     name: str
     description: str | None = None
     status: str

@@ -91,6 +91,8 @@ class Settings(BaseSettings):
     smtp_use_tls: bool = Field(True, alias="SMTP_USE_TLS")
     smtp_use_ssl: bool = Field(False, alias="SMTP_USE_SSL")
     webapp_base_url: str | None = Field(None, alias="WEBAPP_BASE_URL")
+    signature_webapp_base_url: str | None = Field(None, alias="SIGNATURE_WEBAPP_BASE_URL")
+    verification_webapp_base_url: str | None = Field(None, alias="VERIFICATION_WEBAPP_BASE_URL")
 
     @field_validator("platform_domains", "forbidden_custom_hosts", mode="before")
     @classmethod
@@ -112,6 +114,20 @@ class Settings(BaseSettings):
         if self.platform_primary_domain:
             return f"https://{self.platform_primary_domain}".rstrip("/")
         return "http://localhost:5173"
+
+    @property
+    def resolved_signature_base_url(self) -> str:
+        if self.signature_webapp_base_url:
+            return self.signature_webapp_base_url.rstrip("/")
+        return "http://localhost:5173"
+
+    @property
+    def resolved_verification_base_url(self) -> str:
+        if self.verification_webapp_base_url:
+            return self.verification_webapp_base_url.rstrip("/")
+        if self.signature_webapp_base_url:
+            return self.signature_webapp_base_url.rstrip("/")
+        return self.resolved_webapp_base_url
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False, populate_by_name=True, extra="ignore")
 

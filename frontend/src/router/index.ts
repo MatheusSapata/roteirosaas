@@ -107,6 +107,17 @@ const platformRoutes: RouteRecordRaw[] = [
   { path: "/reset-password", name: "reset-password", component: ResetPasswordView, meta: { guestOnly: true } },
   { path: "/create-password", name: "create-password", component: CreatePasswordView, meta: { guestOnly: true } },
   { path: "/passageiros/:token", name: "passenger-form", component: () => import("../views/public/PassengerFormView.vue") },
+  { path: "/assinatura/:token", name: "contract-signature", component: () => import("../views/public/SignatureView.vue") },
+  {
+    path: "/assinatura/sucesso/:token",
+    name: "contract-signature-success",
+    component: () => import("../views/public/SignatureSuccessView.vue")
+  },
+  {
+    path: "/verificar/:token",
+    name: "contract-verification",
+    component: () => import("../views/public/ContractVerificationView.vue")
+  },
   { path: "/pedido", name: "checkout-processing", component: CheckoutProcessingView, meta: { guestOnly: true } },
   { path: "/planos", redirect: "/admin/planos" },
   {
@@ -120,6 +131,7 @@ const platformRoutes: RouteRecordRaw[] = [
       { path: "aulas", name: "lessons", component: () => import("../views/admin/AulasView.vue") },
       { path: "leads", name: "leads", component: LeadsView },
       { path: "financeiro", name: "finance", component: () => import("../views/admin/FinanceView.vue") },
+      { path: "juridico", name: "legal", component: () => import("../views/admin/LegalView.vue") },
       { path: "agency", name: "agency-settings", component: AgencySettingsView },
       {
         path: "domains",

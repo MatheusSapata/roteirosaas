@@ -43,3 +43,15 @@ class Agency(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+    legal_contract_templates = relationship(
+        "LegalContractTemplate",
+        back_populates="agency",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    legal_contracts = relationship(
+        "LegalContract",
+        back_populates="agency",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )

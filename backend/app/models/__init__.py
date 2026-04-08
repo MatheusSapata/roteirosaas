@@ -18,7 +18,14 @@ from .agency_domain import AgencyDomain
 from .revenue import RevenueTotal
 from .lead_form import LeadForm, LeadFormSubmission, LeadStatus
 from .user_session import UserSession
-from .sale import Sale, SalePassenger
+from .sale import (
+    Sale,
+    SalePassenger,
+    SalePaymentStatus,
+    SalePassengerStatus,
+    SalePayoutStatus,
+    SaleFinancialStatus,
+)
 from .sale_item import SaleItem, SalePaymentLink
 from .product import (
     Product,
@@ -31,3 +38,11 @@ from .product import (
     ProductInventoryEventAction,
 )
 from .stripe_account import StripeAccount
+from .legal import (
+    LegalContractTemplate,
+    LegalContract,
+    LegalContractStatus,
+    LegalContractSignatureStatus,
+    LegalContractSignatureType,
+    LegalSignatureProfile,
+)

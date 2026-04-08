@@ -7,12 +7,14 @@ from app.api.v1.endpoints import (
     auth,
     billing,
     finance,
+    legal,
     lead_forms,
     lessons,
     media,
     pages,
     pixels,
     public_finance,
+    public_legal,
     public_lead_forms,
     public_pages,
     stats,
@@ -40,3 +42,5 @@ api_router.include_router(lead_forms.router, prefix="/lead-forms", tags=["lead-f
 api_router.include_router(public_lead_forms.router, prefix="/public/lead-forms", tags=["public-lead-forms"])
 api_router.include_router(finance.router, prefix="/finance", tags=["finance"])
 api_router.include_router(public_finance.router, prefix="/public/finance", tags=["public-finance"])
+api_router.include_router(legal.router, prefix="/legal", tags=["legal"])
+api_router.include_router(public_legal.router, prefix="/public/legal", tags=["public-legal"])

@@ -47,6 +47,7 @@ from app.services.products import (
     confirm_inventory_for_sale,
     release_inventory_for_sale,
 )
+from app.services.legal import maybe_generate_contract_for_sale
 
 payment_provider = get_payment_provider()
 
@@ -665,6 +666,7 @@ def update_passengers_from_payload(sale: Sale, passenger_payload: Iterable[Passe
     db.add(sale)
     db.commit()
     db.refresh(sale)
+    maybe_generate_contract_for_sale(sale, db)
     return sale
 
 
@@ -702,6 +704,8 @@ def _set_sale_payment_status(sale: Sale, status: SalePaymentStatus, db: Session)
     db.add(sale)
     db.commit()
     db.refresh(sale)
+    if sale.payment_status == SalePaymentStatus.paid.value:
+        maybe_generate_contract_for_sale(sale, db)
     return sale
 
 

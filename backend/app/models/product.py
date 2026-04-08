@@ -38,6 +38,12 @@ class Product(Base):
     public_id = Column(String(36), default=lambda: str(uuid.uuid4()), nullable=False, unique=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     agency_id = Column(Integer, ForeignKey("agencies.id", ondelete="SET NULL"), nullable=True, index=True)
+    template_contract_id = Column(
+        Integer,
+        ForeignKey("legal_contract_templates.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     name = Column(String(255), nullable=False)
     description = Column(String(2000), nullable=True)
     status = Column(String(20), nullable=False, default=ProductStatus.draft.value)
@@ -55,6 +61,7 @@ class Product(Base):
 
     agency = relationship("Agency", back_populates="products")
     user = relationship("User", back_populates="products")
+    template_contract = relationship("LegalContractTemplate", back_populates="products")
     variations = relationship("ProductVariation", back_populates="product", cascade="all, delete-orphan")
     inventory_events = relationship(
         "ProductInventoryEvent",

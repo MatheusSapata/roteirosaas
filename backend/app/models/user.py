@@ -48,3 +48,19 @@ class User(Base):
     stripe_account = relationship("StripeAccount", back_populates="user", uselist=False)
     sales = relationship("Sale", back_populates="user", cascade="all, delete-orphan")
     products = relationship("Product", back_populates="user", cascade="all, delete-orphan")
+    legal_contract_templates = relationship(
+        "LegalContractTemplate",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    legal_contracts = relationship(
+        "LegalContract",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    legal_signature_profile = relationship(
+        "LegalSignatureProfile",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        uselist=False,
+    )

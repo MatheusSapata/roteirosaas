@@ -102,6 +102,7 @@ class Sale(Base):
     items = relationship("SaleItem", back_populates="sale", cascade="all, delete-orphan")
     inventory_events = relationship("ProductInventoryEvent", back_populates="sale", cascade="all, delete-orphan")
     payment_link = relationship("SalePaymentLink", back_populates="sale", uselist=False, cascade="all, delete-orphan")
+    contract = relationship("LegalContract", back_populates="sale", uselist=False)
 
 
 class SalePassenger(Base):

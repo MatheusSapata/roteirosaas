@@ -45,6 +45,8 @@ export interface ProductSummary {
   id: number;
   public_id: string;
   agency_id?: number | null;
+  template_contract_id?: number | null;
+  template_contract_name?: string | null;
   name: string;
   description?: string | null;
   status: string;
@@ -86,6 +88,7 @@ export interface ProductPayload {
   description?: string | null;
   status: string;
   agency_id?: number | null;
+  template_contract_id?: number | null;
   trip_date?: string | null;
   date_is_flexible: boolean;
   inventory_strategy: "manual" | "unlimited";

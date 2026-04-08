@@ -6,6 +6,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session, joinedload
 
 from app.models.agency_user import AgencyUser
+from app.models.legal import LegalContractTemplate
 from app.models.product import (
     Product,
     ProductInventoryEvent,
@@ -65,6 +66,8 @@ def serialize_product(product: Product) -> ProductSummary:
         id=product.id,
         public_id=product.public_id,
         agency_id=product.agency_id,
+        template_contract_id=product.template_contract_id,
+        template_contract_name=product.template_contract.name if product.template_contract else None,
         name=product.name,
         description=product.description,
         status=product.status,
@@ -93,7 +96,7 @@ def list_products_for_user(user: User, db: Session) -> list[ProductSummary]:
     products = (
         db.query(Product)
         .filter(Product.user_id == user.id)
-        .options(joinedload(Product.variations))
+        .options(joinedload(Product.variations), joinedload(Product.template_contract))
         .order_by(Product.created_at.desc())
         .all()
     )
@@ -113,6 +116,21 @@ def _resolve_agency_id(payload: ProductPayload, user: User, db: Session) -> int 
 
     membership = db.query(AgencyUser).filter(AgencyUser.user_id == user.id).order_by(AgencyUser.role.asc()).first()
     return membership.agency_id if membership else None
+
+
+def _resolve_template_contract_id(template_id: int | None, user: User, db: Session) -> int | None:
+    if not template_id:
+        return None
+    template = (
+        db.query(LegalContractTemplate)
+        .filter(LegalContractTemplate.id == template_id, LegalContractTemplate.user_id == user.id)
+        .first()
+    )
+    if not template:
+        raise HTTPException(status_code=400, detail="Template jurídico inválido.")
+    if not template.is_active:
+        raise HTTPException(status_code=400, detail="Template jurídico inativo.")
+    return template.id
 
 
 def _sync_variations(product: Product, payload: Sequence[ProductVariationPayload]) -> None:
@@ -156,6 +174,7 @@ def create_product(payload: ProductPayload, user: User, db: Session) -> Product:
     product = Product(
         user_id=user.id,
         agency_id=agency_id,
+        template_contract_id=_resolve_template_contract_id(payload.template_contract_id, user, db),
         name=payload.name.strip(),
         description=_clean_text(payload.description),
         status=payload.status,
@@ -178,7 +197,7 @@ def get_product_by_public_id(public_id: str, user: User, db: Session) -> Product
     product = (
         db.query(Product)
         .filter(Product.public_id == public_id, Product.user_id == user.id)
-        .options(joinedload(Product.variations))
+        .options(joinedload(Product.variations), joinedload(Product.template_contract))
         .first()
     )
     if not product:
@@ -197,6 +216,7 @@ def update_product(product: Product, payload: ProductPayload, user: User, db: Se
     product.total_slots = payload.total_slots
     product.available_slots = min(payload.available_slots, payload.total_slots)
     product.allow_oversell = payload.allow_oversell
+    product.template_contract_id = _resolve_template_contract_id(payload.template_contract_id, user, db)
     _sync_variations(product, payload.variations)
     db.add(product)
     db.commit()

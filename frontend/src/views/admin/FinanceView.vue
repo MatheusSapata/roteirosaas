@@ -119,12 +119,26 @@
       </div>
     </section>
     <section v-else-if="activeTab === 'sales'" class="space-y-4">
-      <div class="flex items-center justify-between">
+      <div class="flex flex-wrap items-center justify-between gap-3">
         <p class="text-sm text-slate-500">Total de vendas: {{ salesPagination.total }}</p>
-        <button class="pill" @click="loadSales">Atualizar</button>
+        <div class="flex flex-wrap items-center gap-3">
+          <div class="flex items-center rounded-full border border-slate-200 bg-slate-100 p-1 text-xs font-semibold text-slate-500">
+            <button
+              v-for="option in salesViewOptions"
+              :key="option.value"
+              type="button"
+              class="rounded-full px-3 py-1 transition"
+              :class="salesViewMode === option.value ? 'bg-white text-slate-900 shadow' : 'hover:text-slate-700'"
+              @click="salesViewMode = option.value"
+            >
+              {{ option.label }}
+            </button>
+          </div>
+          <button class="pill" @click="loadSales">Atualizar</button>
+        </div>
       </div>
       <div class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div class="grid gap-4 md:grid-cols-2">
+        <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <div>
             <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Status pagamento</p>
             <div class="mt-2 flex flex-wrap gap-2">
@@ -163,46 +177,126 @@
               </button>
             </div>
           </div>
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Fonte</p>
+            <div class="mt-2 flex flex-wrap gap-2">
+              <button
+                v-for="option in channelFilterOptions"
+                :key="option.value"
+                type="button"
+                class="rounded-full border px-3 py-1 text-xs font-semibold transition"
+                :class="
+                  channelFilter === option.value
+                    ? 'border-emerald-500 bg-emerald-500 text-white'
+                    : 'border-slate-200 bg-slate-100 text-slate-600 hover:border-slate-300'
+                "
+                @click="channelFilter = option.value"
+              >
+                {{ option.label }}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
       <div v-if="!filteredSales.length" class="placeholder-card">Nenhuma venda encontrada.</div>
-      <div v-else class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <article
-          v-for="sale in filteredSales"
-          :key="sale.id"
-          class="h-full rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
-        >
-          <div class="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                Venda #{{ sale.id }} • {{ saleChannelLabel(sale.channel) }}
-                <span v-if="salePageLabel(sale)">• {{ salePageLabel(sale) }}</span>
-              </p>
-              <h3 class="text-lg font-semibold text-slate-900">{{ sale.product_title }}</h3>
-              <p class="text-sm text-slate-500">
-                {{ formatCurrency(sale.amount_cents) }} • {{ sale.installments }}x • {{ sale.customer_name || 'Cliente' }}
-              </p>
+      <div v-else>
+        <div v-if="salesViewMode === 'cards'" class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <article
+            v-for="sale in filteredSales"
+            :key="sale.id"
+            class="h-full rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
+          >
+            <div class="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  Venda #{{ sale.id }} • {{ saleChannelLabel(sale.channel) }}
+                  <span v-if="salePageLabel(sale)">• {{ salePageLabel(sale) }}</span>
+                </p>
+                <h3 class="text-lg font-semibold text-slate-900">{{ sale.product_title }}</h3>
+                <p class="text-sm text-slate-500">
+                  {{ formatCurrency(sale.amount_cents) }} • {{ sale.installments }}x •
+                  {{ sale.customer_name || 'Cliente' }}
+                </p>
+              </div>
+              <div class="flex flex-wrap gap-2 text-xs font-semibold">
+                <span :class="['badge', statusClasses.payment[paymentStatusKey(sale.payment_status)]]">
+                  {{ paymentStatusLabel(sale.payment_status) }}
+                </span>
+                <span :class="['badge', statusClasses.payout[payoutStatusKey(sale.payout_status)]]">
+                  {{ payoutStatusLabel(sale.payout_status) }}
+                </span>
+                <span :class="['badge', statusClasses.passengers[passengerStatusKey(sale.passenger_status)]]">
+                  {{ passengerStatusLabel(sale.passenger_status) }}
+                </span>
+              </div>
             </div>
-            <div class="flex flex-wrap gap-2 text-xs font-semibold">
-              <span :class="['badge', statusClasses.payment[paymentStatusKey(sale.payment_status)]]">
-                {{ paymentStatusLabel(sale.payment_status) }}
-              </span>
-              <span :class="['badge', statusClasses.payout[payoutStatusKey(sale.payout_status)]]">
-                {{ payoutStatusLabel(sale.payout_status) }}
-              </span>
-              <span :class="['badge', statusClasses.passengers[passengerStatusKey(sale.passenger_status)]]">
-                {{ passengerStatusLabel(sale.passenger_status) }}
-              </span>
+            <div class="mt-4 flex flex-wrap gap-2">
+              <button class="pill" @click="openSaleDetails(sale.id)">Detalhes</button>
+              <button class="pill" @click="openPassengerModal(sale.id)">Passageiros</button>
+              <button class="pill" :disabled="sale.payment_status !== 'paid'" @click="copyPassengerLink(sale.id)">
+                Copiar link passageiros
+              </button>
             </div>
-          </div>
-          <div class="mt-4 flex flex-wrap gap-2">
-            <button class="pill" @click="openSaleDetails(sale.id)">Detalhes</button>
-            <button class="pill" @click="openPassengerModal(sale.id)">Passageiros</button>
-            <button class="pill" :disabled="sale.payment_status !== 'paid'" @click="copyPassengerLink(sale.id)">
-              Copiar link passageiros
-            </button>
-          </div>
-        </article>
+          </article>
+        </div>
+        <div v-else class="overflow-x-auto rounded-3xl border border-slate-200 bg-white">
+          <table class="min-w-full divide-y divide-slate-200 text-sm text-center">
+            <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+              <tr>
+                <th class="px-3 py-2">ID</th>
+                <th class="px-3 py-2">Produto</th>
+                <th class="px-3 py-2">Fonte</th>
+                <th class="px-3 py-2">Cliente</th>
+                <th class="px-3 py-2">Status</th>
+                <th class="px-3 py-2">Pagamento</th>
+                <th class="px-3 py-2">Ações</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              <tr v-for="sale in filteredSales" :key="sale.id">
+                <td class="px-3 py-3 align-middle text-sm font-semibold text-slate-900">#{{ sale.id }}</td>
+                <td class="px-3 py-3 align-middle">
+                  <p class="text-sm font-semibold text-slate-900">{{ sale.product_title }}</p>
+                </td>
+                <td class="px-3 py-3 align-middle text-sm text-slate-600">
+                  <p class="font-semibold text-slate-900">{{ saleChannelLabel(sale.channel) }}</p>
+                  <p class="text-xs text-slate-500" v-if="salePageLabel(sale)">
+                    {{ salePageLabel(sale) }}
+                  </p>
+                </td>
+                <td class="px-3 py-3 align-middle text-sm text-slate-600">
+                  {{ sale.customer_name || 'Cliente' }}
+                </td>
+                <td class="px-3 py-3 align-middle">
+                  <div class="flex flex-wrap justify-center gap-2 text-xs font-semibold">
+                    <span :class="['badge', statusClasses.payment[paymentStatusKey(sale.payment_status)]]">
+                      {{ paymentStatusLabel(sale.payment_status) }}
+                    </span>
+                    <span :class="['badge', statusClasses.payout[payoutStatusKey(sale.payout_status)]]">
+                      {{ payoutStatusLabel(sale.payout_status) }}
+                    </span>
+                    <span :class="['badge', statusClasses.passengers[passengerStatusKey(sale.passenger_status)]]">
+                      {{ passengerStatusLabel(sale.passenger_status) }}
+                    </span>
+                  </div>
+                </td>
+                <td class="px-3 py-3 align-middle text-sm text-slate-600">
+                  <p class="font-semibold text-slate-900">{{ formatCurrency(sale.amount_cents) }}</p>
+                  <p class="text-xs text-slate-500">{{ sale.installments }}x</p>
+                </td>
+                <td class="px-3 py-3 align-middle">
+                  <div class="flex flex-wrap justify-center gap-2">
+                    <button class="pill" @click="openSaleDetails(sale.id)">Detalhes</button>
+                    <button class="pill" @click="openPassengerModal(sale.id)">Passageiros</button>
+                    <button class="pill" :disabled="sale.payment_status !== 'paid'" @click="copyPassengerLink(sale.id)">
+                      Copiar link
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
 
@@ -844,6 +938,7 @@ import type {
 } from "../../types/finance";
 
 type ActiveTab = "products" | "sales";
+type SalesViewMode = "cards" | "table";
 
 type ProductVariationForm = {
   public_id: string | null;
@@ -874,8 +969,13 @@ const tabs: { label: string; value: ActiveTab }[] = [
   { label: "Produtos", value: "products" },
   { label: "Vendas", value: "sales" },
 ];
+const salesViewOptions: { label: string; value: SalesViewMode }[] = [
+  { label: "Cards", value: "cards" },
+  { label: "Tabela", value: "table" },
+];
 
 const activeTab = ref<ActiveTab>("products");
+const salesViewMode = ref<SalesViewMode>("cards");
 const sales = ref<SaleSummary[]>([]);
 const salesPagination = ref({ total: 0, page: 1, pageSize: 20 });
 const selectedSale = ref<SaleDetail | null>(null);
@@ -883,6 +983,7 @@ const saleDetailsVisible = ref(false);
 
 type PaymentFilter = "all" | SalePaymentStatus;
 type PassengerFilter = "all" | "not_started" | "partial" | "completed";
+type ChannelFilter = "all" | "pos" | "checkout";
 
 const paymentFilterOptions: { label: string; value: PaymentFilter }[] = [
   { label: "Todos", value: "all" },
@@ -899,15 +1000,23 @@ const passengerFilterOptions: { label: string; value: PassengerFilter }[] = [
   { label: "Parcial", value: "partial" },
   { label: "Completos", value: "completed" },
 ];
+const channelFilterOptions: { label: string; value: ChannelFilter }[] = [
+  { label: "Todos", value: "all" },
+  { label: "PDV", value: "pos" },
+  { label: "Checkout", value: "checkout" },
+];
 
 const paymentFilter = ref<PaymentFilter>("all");
 const passengerFilter = ref<PassengerFilter>("all");
+const channelFilter = ref<ChannelFilter>("all");
+const channelFilterKey = (channel: string): ChannelFilter => (channel === "pos" ? "pos" : "checkout");
 
 const filteredSales = computed(() =>
   sales.value.filter(s => {
     const paymentMatch = paymentFilter.value === "all" || s.payment_status === paymentFilter.value;
     const passengerMatch = passengerFilter.value === "all" || s.passenger_status === passengerFilter.value;
-    return paymentMatch && passengerMatch;
+    const channelMatch = channelFilter.value === "all" || channelFilter.value === channelFilterKey(s.channel);
+    return paymentMatch && passengerMatch && channelMatch;
   }),
 );
 

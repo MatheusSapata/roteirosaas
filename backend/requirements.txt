@@ -19,3 +19,5 @@ pytest
 azure-storage-blob
 dnspython
 publicsuffix2
+xhtml2pdf
+qrcode[pil]
