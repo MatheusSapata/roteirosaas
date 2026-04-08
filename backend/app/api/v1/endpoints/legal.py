@@ -13,6 +13,7 @@ from app.schemas.legal import (
     LegalTemplateListResponse,
     LegalTemplatePayload,
     LegalVariablesResponse,
+    LegalContractAuditEventList,
 )
 from app.services.legal import (
     create_template,
@@ -31,6 +32,7 @@ from app.services.legal import (
     serialize_variable_categories,
     update_template,
 )
+from app.services.legal_audit import legal_contract_audit_service
 
 router = APIRouter()
 
@@ -144,6 +146,30 @@ def get_contract_verification_endpoint(
     db: Session = Depends(get_db),
 ) -> LegalContractVerificationDetail:
     return get_contract_verification_detail(contract_id, current_user, db)
+
+
+@router.get("/contracts/{contract_id}/audit-events", response_model=LegalContractAuditEventList)
+def list_contract_audit_events_endpoint(
+    contract_id: int,
+    full: bool = False,
+    limit: int = 8,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> LegalContractAuditEventList:
+    contract = get_contract(contract_id, current_user, db)
+    normalized_limit = legal_contract_audit_service.normalize_limit(limit, full=full)
+    created = legal_contract_audit_service.ensure_backfilled_events(contract, db)
+    if created:
+        db.commit()
+    events, has_more = legal_contract_audit_service.list_events_for_contract(
+        contract.id,
+        db,
+        limit=normalized_limit,
+    )
+    return LegalContractAuditEventList(
+        items=[legal_contract_audit_service.serialize_event(event) for event in events],
+        has_more=has_more and not full,
+    )
 
 
 @router.post("/contracts/{contract_id}/verification/regenerate", response_model=LegalContractVerificationDetail)

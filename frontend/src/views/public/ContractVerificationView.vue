@@ -109,25 +109,15 @@
         </section>
 
         <section class="grid gap-5 lg:grid-cols-2">
-          <div class="card">
-            <p class="eyebrow">Status das assinaturas</p>
-            <div class="mt-4 space-y-3 text-sm text-slate-600">
-              <p>
-                <strong>Cliente:</strong>
-                {{ signatureStatusLabel(detail.signature_status) }}
-                <span v-if="detail.signature_signed_at"> · {{ formatDateTime(detail.signature_signed_at) }}</span>
-              </p>
-              <p>
-                <strong>Agência:</strong> {{ signatureStatusLabel(detail.agency_signature_status) }}
-                <span v-if="detail.agency_signature_signed_at"> · {{ formatDateTime(detail.agency_signature_signed_at) }}</span>
-              </p>
-            </div>
-          </div>
-
+          <DocumentStatusSummary
+            :items="documentStatusItems"
+            :footer-text="documentStatusFooter"
+            class="h-full"
+          />
           <div class="card">
             <p class="eyebrow">PDF assinado</p>
             <p class="mt-2 text-sm text-slate-600">
-              Acesse o PDF final para conferência visual do documento assinado e registrado.
+              Acesse o PDF final para confer?ncia visual do documento assinado e registrado.
             </p>
 
             <div class="mt-4 flex flex-wrap gap-3">
@@ -145,7 +135,7 @@
                 :disabled="!detail.pdf_url"
                 @click="openPdf(detail.pdf_url)"
               >
-                Versão original
+                Vers?o original
               </button>
             </div>
           </div>
@@ -160,6 +150,7 @@ import { computed, onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
 import { isAxiosError } from "axios";
 import PublicBrandHeader from "../../components/legal/PublicBrandHeader.vue";
+import DocumentStatusSummary from "../../components/legal/DocumentStatusSummary.vue";
 import PlatformLogo from "../../assets/sidebar-logo.svg";
 import { getPublicContractVerification } from "../../services/legal";
 import type { LegalContractVerificationDetail, LegalContractVerificationStatus } from "../../types/legal";
@@ -171,6 +162,7 @@ const errorMessage = ref("");
 const currentUrl = window.location.href;
 const platformName = "Roteiro Online";
 const platformLogo = PlatformLogo;
+const verificationToken = computed(() => String(route.params.token || "").trim());
 
 const statusLabels: Record<LegalContractVerificationStatus, string> = {
   valid: "Documento válido",
@@ -184,7 +176,7 @@ const loadDetail = async () => {
   loading.value = true;
   errorMessage.value = "";
   detail.value = null;
-  const token = String(route.params.token || "").trim();
+  const token = verificationToken.value;
 
   try {
     const { data } = await getPublicContractVerification(token);
@@ -192,9 +184,9 @@ const loadDetail = async () => {
   } catch (error) {
     if (isAxiosError(error)) {
       errorMessage.value =
-        (error.response?.data as { detail?: string })?.detail || "Não foi possível verificar o documento.";
+        (error.response?.data as { detail?: string })?.detail || "Nǜo foi poss��vel verificar o documento.";
     } else {
-      errorMessage.value = "Não foi possível verificar o documento.";
+      errorMessage.value = "Nǜo foi poss��vel verificar o documento.";
     }
   } finally {
     loading.value = false;
@@ -225,13 +217,79 @@ const signatureLabel = (value?: string | null) => {
   if (value === "drawn") return "Assinatura desenhada";
   return value;
 };
-
-const signatureStatusLabel = (value?: string | null) => {
-  if (!value) return "Indisponível";
-  if (value === "signed") return "Assinado";
-  if (value === "pending") return "Pendente";
-  return value;
+type DocumentStatusItem = {
+  id: string;
+  title: string;
+  description?: string;
 };
+
+const documentStatusItems = computed<DocumentStatusItem[]>(() => {
+  const current = detail.value;
+  if (!current) return [];
+  const items: DocumentStatusItem[] = [];
+
+  if (current.agency_signature_status === "signed") {
+    items.push({
+      id: "agency_signature",
+      title: "Assinatura institucional aplicada",
+      description: current.agency_signature_signed_at
+        ? `Concluída em ${formatDateTime(current.agency_signature_signed_at)}`
+        : undefined
+    });
+  }
+
+  if (current.signature_status === "signed") {
+    items.push({
+      id: "customer_signature",
+      title: "Cliente assinou o contrato",
+      description: current.signature_signed_at ? `Concluída em ${formatDateTime(current.signature_signed_at)}` : undefined
+    });
+  }
+
+  if (current.signed_pdf_url || current.signed_pdf_generated_at) {
+    items.push({
+      id: "signed_pdf",
+      title: "Documento final consolidado",
+      description: current.signed_pdf_generated_at
+        ? `Disponível desde ${formatDateTime(current.signed_pdf_generated_at)}`
+        : "Versão assinada pronta para consulta."
+    });
+  }
+
+  if (current.document_hash) {
+    items.push({
+      id: "document_hash",
+      title: "Integridade verificada",
+      description: `Hash ${String(current.document_hash_algorithm || "SHA-256").toUpperCase()} calculado`
+    });
+  }
+
+  if (current.verification_url) {
+    items.push({
+      id: "public_verification",
+      title: "Verificação pública liberada",
+      description: current.verification_generated_at
+        ? `Publicado em ${formatDateTime(current.verification_generated_at)}`
+        : "Link público disponível."
+    });
+  }
+
+  return items;
+});
+
+const documentStatusFooter = computed(() => {
+  const current = detail.value;
+  if (
+    current &&
+    current.agency_signature_status === "signed" &&
+    current.signature_status === "signed" &&
+    current.document_hash &&
+    current.verification_url
+  ) {
+    return "✔ Documento seguro e totalmente validado";
+  }
+  return documentStatusItems.value.length ? "Etapas essenciais concluídas" : null;
+});
 
 const formatDate = (value?: string | null) => {
   if (!value) return "";

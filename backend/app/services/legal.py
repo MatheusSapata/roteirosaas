@@ -4,6 +4,7 @@ import base64
 import binascii
 import logging
 import re
+from dataclasses import dataclass
 from datetime import date, datetime
 from html import escape
 from io import BytesIO
@@ -20,6 +21,8 @@ from xhtml2pdf import pisa
 from app.models import (
     AgencyUser,
     LegalContract,
+    LegalContractAuditActorType,
+    LegalContractAuditEventType,
     LegalContractSignatureStatus,
     LegalContractSignatureType,
     LegalContractStatus,
@@ -52,6 +55,7 @@ from app.schemas.legal import (
 from app.core.config import get_settings
 from app.services.media_storage import media_storage
 from app.services.legal_verification import legal_verification_service
+from app.services.legal_audit import legal_contract_audit_service
 
 
 
@@ -75,25 +79,39 @@ _TYPED_SIGNATURE_STYLES = {"classic", "cursive", "elegant"}
 _DEFAULT_TYPED_STYLE = "classic"
 
 
+@dataclass
+class SignatureMetadataUpdate:
+    changed: bool = False
+    token_created: bool = False
+
+
+@dataclass
+class VerificationMetadataUpdate:
+    changed: bool = False
+    published: bool = False
+    qr_created: bool = False
+
+
 def _build_signature_link(token: str) -> str:
     settings = get_settings()
     base = settings.resolved_signature_base_url.rstrip("/")
     return f"{base}/assinatura/{token}"
 
 
-def _ensure_signature_metadata(contract: LegalContract) -> bool:
+def _ensure_signature_metadata(contract: LegalContract, db: Session) -> SignatureMetadataUpdate:
     changed = False
-
+    token_created = False
     if not contract.signature_status:
         contract.signature_status = LegalContractSignatureStatus.pending.value
         changed = True
 
     if contract.status != LegalContractStatus.generated.value or not contract.pdf_url:
-        return changed
+        return SignatureMetadataUpdate(changed=changed, token_created=token_created)
 
     if not contract.signature_token:
         contract.signature_token = token_urlsafe(32)
         changed = True
+        token_created = True
 
     if contract.signature_token:
         expected_link = _build_signature_link(contract.signature_token)
@@ -101,7 +119,53 @@ def _ensure_signature_metadata(contract: LegalContract) -> bool:
             contract.signature_link = expected_link
             changed = True
 
-    return changed
+    if token_created:
+        legal_contract_audit_service.record_event(
+            contract,
+            LegalContractAuditEventType.signature_link_created,
+            db,
+            actor_type=LegalContractAuditActorType.system,
+            metadata={
+                "signature_token": contract.signature_token,
+                "signature_link": contract.signature_link,
+            },
+        )
+
+    return SignatureMetadataUpdate(changed=changed, token_created=token_created)
+
+
+def _ensure_verification_metadata(contract: LegalContract, db: Session) -> VerificationMetadataUpdate:
+    had_token = bool(contract.verification_token)
+    had_qr = bool(contract.verification_qr_image_data)
+    changed = legal_verification_service.ensure_contract_metadata(contract)
+
+    if not changed:
+        return VerificationMetadataUpdate()
+
+    db.add(contract)
+    published = False
+    qr_created = False
+
+    if contract.verification_url and not had_token:
+        published = True
+        legal_contract_audit_service.record_event(
+            contract,
+            LegalContractAuditEventType.verification_published,
+            db,
+            actor_type=LegalContractAuditActorType.system,
+            metadata={"verification_url": contract.verification_url},
+        )
+
+    if contract.verification_qr_image_data and not had_qr:
+        qr_created = True
+        legal_contract_audit_service.record_event(
+            contract,
+            LegalContractAuditEventType.qr_generated,
+            db,
+            actor_type=LegalContractAuditActorType.system,
+        )
+
+    return VerificationMetadataUpdate(changed=True, published=published, qr_created=qr_created)
 
 
 def _decode_signature_image(data_url: str) -> tuple[bytes, str]:
@@ -968,7 +1032,9 @@ def list_contracts(user: User, db: Session) -> list[LegalContractOut]:
 
     for contract in contracts:
 
-        if _ensure_signature_metadata(contract):
+        signature_metadata = _ensure_signature_metadata(contract, db)
+
+        if signature_metadata.changed:
 
             metadata_updated = True
 
@@ -978,9 +1044,8 @@ def list_contracts(user: User, db: Session) -> list[LegalContractOut]:
 
             signed_generated = True
 
-        if legal_verification_service.ensure_contract_metadata(contract):
+        if _ensure_verification_metadata(contract, db).changed:
             metadata_updated = True
-            db.add(contract)
 
     if metadata_updated or signed_generated:
 
@@ -1011,7 +1076,9 @@ def get_contract(contract_id: int, user: User, db: Session) -> LegalContract:
 
     updated = False
 
-    if _ensure_signature_metadata(contract):
+    signature_metadata = _ensure_signature_metadata(contract, db)
+
+    if signature_metadata.changed:
 
         db.add(contract)
 
@@ -1021,8 +1088,7 @@ def get_contract(contract_id: int, user: User, db: Session) -> LegalContract:
 
         updated = True
 
-    if legal_verification_service.ensure_contract_metadata(contract):
-        db.add(contract)
+    if _ensure_verification_metadata(contract, db).changed:
         updated = True
 
     if updated:
@@ -1054,7 +1120,9 @@ def get_contract_verification_detail(contract_id: int, user: User, db: Session) 
 
     updated = False
 
-    if _ensure_signature_metadata(contract):
+    signature_metadata = _ensure_signature_metadata(contract, db)
+
+    if signature_metadata.changed:
 
         db.add(contract)
 
@@ -1064,10 +1132,7 @@ def get_contract_verification_detail(contract_id: int, user: User, db: Session) 
 
         updated = True
 
-    if legal_verification_service.ensure_contract_metadata(contract):
-
-        db.add(contract)
-
+    if _ensure_verification_metadata(contract, db).changed:
         updated = True
 
     if updated:
@@ -1104,6 +1169,14 @@ def regenerate_contract_verification(contract_id: int, user: User, db: Session) 
         raise HTTPException(status_code=400, detail="Contrato ainda não foi assinado.")
 
     _generate_signed_contract_pdf(contract, db)
+    legal_contract_audit_service.record_event(
+        contract,
+        LegalContractAuditEventType.verification_regenerated,
+        db,
+        actor_type=LegalContractAuditActorType.agency,
+        metadata={"user_id": user.id},
+        allow_duplicates=True,
+    )
 
     db.commit()
 
@@ -1112,38 +1185,39 @@ def regenerate_contract_verification(contract_id: int, user: User, db: Session) 
     return serialize_verification_detail(contract)
 
 
-def get_contract_verification_by_token(token: str, db: Session) -> LegalContractVerificationDetail:
-
+def get_contract_by_verification_token(token: str, db: Session) -> LegalContract:
     normalized = token.strip()
 
     if not normalized:
-
-        raise HTTPException(status_code=404, detail="Documento não encontrado.")
+        raise HTTPException(status_code=404, detail="Documento nǜo encontrado.")
 
     contract = (
-
         db.query(LegalContract)
-
         .options(joinedload(LegalContract.agency))
-
         .filter(
             or_(
                 LegalContract.verification_token == normalized,
                 LegalContract.signature_token == normalized,
             )
         )
-
         .first()
-
     )
 
     if not contract:
+        raise HTTPException(status_code=404, detail="Documento nǜo encontrado.")
 
-        raise HTTPException(status_code=404, detail="Documento não encontrado.")
+    return contract
+
+
+def get_contract_verification_by_token(token: str, db: Session) -> LegalContractVerificationDetail:
+
+    contract = get_contract_by_verification_token(token, db)
 
     updated = False
 
-    if _ensure_signature_metadata(contract):
+    signature_metadata = _ensure_signature_metadata(contract, db)
+
+    if signature_metadata.changed:
 
         db.add(contract)
 
@@ -1153,10 +1227,7 @@ def get_contract_verification_by_token(token: str, db: Session) -> LegalContract
 
         updated = True
 
-    if legal_verification_service.ensure_contract_metadata(contract):
-
-        db.add(contract)
-
+    if _ensure_verification_metadata(contract, db).changed:
         updated = True
 
     if updated:
@@ -2088,6 +2159,14 @@ def maybe_generate_contract_for_sale(sale: Sale, db: Session) -> LegalContract |
 
         db.flush()
 
+        legal_contract_audit_service.record_event(
+            contract,
+            LegalContractAuditEventType.contract_created,
+            db,
+            actor_type=LegalContractAuditActorType.system,
+            metadata={"sale_id": sale_with_details.id},
+        )
+
     else:
 
         contract.template_id = template.id
@@ -2109,7 +2188,14 @@ def maybe_generate_contract_for_sale(sale: Sale, db: Session) -> LegalContract |
     agency_profile = _get_signature_profile_by_user_id(contract.user_id, db)
     if agency_profile and agency_profile.agency_id and not contract.agency_id:
         contract.agency_id = agency_profile.agency_id
-    _apply_agency_signature_profile(contract, agency_profile)
+    applied_signature = _apply_agency_signature_profile(contract, agency_profile)
+    if applied_signature:
+        legal_contract_audit_service.record_event(
+            contract,
+            LegalContractAuditEventType.agency_signature_applied,
+            db,
+            actor_type=LegalContractAuditActorType.agency,
+        )
 
     try:
 
@@ -2145,9 +2231,10 @@ def maybe_generate_contract_for_sale(sale: Sale, db: Session) -> LegalContract |
 
         contract.last_error = None
 
-        _ensure_signature_metadata(contract)
+        signature_metadata = _ensure_signature_metadata(contract, db)
 
-        db.add(contract)
+        if signature_metadata.changed:
+            db.add(contract)
 
         db.commit()
 
@@ -2175,6 +2262,7 @@ def _generate_signed_contract_pdf(
     db: Session,
     inline_signature_image: str | None = None,
 ) -> None:
+    previous_hash = contract.document_hash
     if contract.signature_status != LegalContractSignatureStatus.signed.value:
         return
     if not contract.signature_signed_at:
@@ -2193,8 +2281,7 @@ def _generate_signed_contract_pdf(
         return
 
     context = _build_contract_context(sale, product)
-    if legal_verification_service.ensure_contract_metadata(contract):
-        db.add(contract)
+    _ensure_verification_metadata(contract, db)
     verification_payload = legal_verification_service.serialize_contract(contract)
     summary_block = _render_signature_summary_block(
         contract,
@@ -2234,6 +2321,30 @@ def _generate_signed_contract_pdf(
     contract.signed_pdf_generated_at = datetime.utcnow()
     db.add(contract)
 
+    legal_contract_audit_service.record_event(
+        contract,
+        LegalContractAuditEventType.signed_pdf_generated,
+        db,
+        actor_type=LegalContractAuditActorType.system,
+        occurred_at=contract.signed_pdf_generated_at,
+        metadata={"signed_pdf_url": contract.signed_pdf_url},
+        allow_duplicates=True,
+    )
+
+    if contract.document_hash and contract.document_hash != previous_hash:
+        legal_contract_audit_service.record_event(
+            contract,
+            LegalContractAuditEventType.document_hashed,
+            db,
+            actor_type=LegalContractAuditActorType.system,
+            occurred_at=contract.verification_generated_at or contract.signed_pdf_generated_at,
+            metadata={
+                "hash": contract.document_hash,
+                "algorithm": contract.document_hash_algorithm,
+            },
+            allow_duplicates=True,
+        )
+
 
 def _ensure_signed_pdf(contract: LegalContract, db: Session) -> bool:
     if contract.signature_status != LegalContractSignatureStatus.signed.value:
@@ -2248,7 +2359,7 @@ def _ensure_signed_pdf(contract: LegalContract, db: Session) -> bool:
         return False
 
 
-def _apply_agency_signature_profile(contract: LegalContract, profile: LegalSignatureProfile | None) -> None:
+def _apply_agency_signature_profile(contract: LegalContract, profile: LegalSignatureProfile | None) -> bool:
     if not profile:
         contract.agency_signature_status = LegalContractSignatureStatus.pending.value
         contract.agency_signature_signed_at = None
@@ -2261,7 +2372,8 @@ def _apply_agency_signature_profile(contract: LegalContract, profile: LegalSigna
         contract.agency_signature_typed_value = None
         contract.agency_signature_image_url = None
         contract.agency_signature_image_data = None
-        return
+        return False
+    previously_signed = contract.agency_signature_status == LegalContractSignatureStatus.signed.value
     now = datetime.utcnow()
     contract.agency_signature_status = LegalContractSignatureStatus.signed.value
     contract.agency_signature_signed_at = now
@@ -2280,6 +2392,7 @@ def _apply_agency_signature_profile(contract: LegalContract, profile: LegalSigna
         contract.agency_signature_font_style = profile.font_style or _DEFAULT_TYPED_STYLE
         contract.agency_signature_image_url = None
         contract.agency_signature_image_data = None
+    return not previously_signed
 
 
 def _build_agency_signature_payload(contract: LegalContract) -> dict | None:
@@ -2317,7 +2430,8 @@ def get_contract_for_signature(token: str, db: Session) -> LegalContractSignatur
     if not contract:
         raise HTTPException(status_code=404, detail="Assinatura não encontrada.")
 
-    if _ensure_signature_metadata(contract):
+    signature_metadata = _ensure_signature_metadata(contract, db)
+    if signature_metadata.changed:
         db.add(contract)
         db.commit()
         db.refresh(contract)
@@ -2326,10 +2440,20 @@ def get_contract_for_signature(token: str, db: Session) -> LegalContractSignatur
         db.commit()
         db.refresh(contract)
 
-    if legal_verification_service.ensure_contract_metadata(contract):
-        db.add(contract)
+    verification_metadata = _ensure_verification_metadata(contract, db)
+    if verification_metadata.changed:
         db.commit()
         db.refresh(contract)
+
+    event_created = legal_contract_audit_service.record_event(
+        contract,
+        LegalContractAuditEventType.signer_opened,
+        db,
+        actor_type=LegalContractAuditActorType.customer,
+        metadata={"signature_token": normalized},
+    )
+    if event_created:
+        db.commit()
 
     return serialize_signature_contract(contract)
 
@@ -2355,7 +2479,8 @@ def submit_contract_signature(
     if not contract:
         raise HTTPException(status_code=404, detail="Assinatura não encontrada.")
 
-    if _ensure_signature_metadata(contract):
+    signature_metadata = _ensure_signature_metadata(contract, db)
+    if signature_metadata.changed:
         db.add(contract)
         db.flush()
 
@@ -2401,6 +2526,19 @@ def submit_contract_signature(
     contract.signature_signed_at = datetime.utcnow()
     contract.signature_ip = _extract_client_ip(request)
     contract.signature_user_agent = request.headers.get("user-agent")
+
+    legal_contract_audit_service.record_event(
+        contract,
+        LegalContractAuditEventType.customer_signed,
+        db,
+        actor_type=LegalContractAuditActorType.customer,
+        occurred_at=contract.signature_signed_at,
+        metadata={
+            "signature_type": signature_type,
+            "ip": contract.signature_ip,
+            "user_agent": contract.signature_user_agent,
+        },
+    )
 
     db.add(contract)
     db.flush()

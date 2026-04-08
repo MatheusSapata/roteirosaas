@@ -67,7 +67,10 @@ import { getPublicPassengerForm, submitPublicPassengers } from "../../services/f
 import type { Passenger, PassengerFormResponse } from "../../types/finance";
 
 const props = defineProps<{ modelValue: boolean; token: string | null }>();
-const emit = defineEmits<{ (e: "update:modelValue", value: boolean): void; (e: "completed"): void }>();
+const emit = defineEmits<{
+  (e: "update:modelValue", value: boolean): void;
+  (e: "completed", payload?: { contractSignatureLink?: string | null; contractSignatureToken?: string | null }): void;
+}>();
 
 const visible = computed(() => props.modelValue);
 const passengers = ref<Passenger[]>([]);
@@ -77,6 +80,7 @@ const loading = ref(false);
 const saving = ref(false);
 const errorMessage = ref<string | null>(null);
 const successVisible = ref(false);
+const lastContractInfo = ref<{ contractSignatureLink: string | null; contractSignatureToken: string | null } | null>(null);
 const canSubmitPassengers = computed(() => passengerFields.value?.valid ?? false);
 let successTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -86,6 +90,7 @@ const resetSuccessState = () => {
     successTimer = null;
   }
   successVisible.value = false;
+  lastContractInfo.value = null;
 };
 
 const handleClose = () => {
@@ -122,9 +127,14 @@ const submitPassengers = async () => {
     formInfo.value = data;
     passengers.value = data.passengers || [];
     successVisible.value = true;
+    lastContractInfo.value = {
+      contractSignatureLink: data.contract_signature_link || null,
+      contractSignatureToken: data.contract_signature_token || null,
+    };
     successTimer = setTimeout(() => {
+      const payload = lastContractInfo.value || undefined;
       resetSuccessState();
-      emit("completed");
+      emit("completed", payload);
       emit("update:modelValue", false);
     }, 3000);
   } catch (err: any) {

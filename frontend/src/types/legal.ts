@@ -174,6 +174,23 @@ export interface LegalContractVerificationDetail {
   message: string;
 }
 
+export interface LegalContractAuditEvent {
+  id: number;
+  contract_id: number;
+  event_type: string;
+  title: string;
+  description?: string | null;
+  actor_type: string;
+  occurred_at: string;
+  is_reconstructed: boolean;
+  metadata?: Record<string, unknown> | null;
+}
+
+export interface LegalContractAuditEventList {
+  items: LegalContractAuditEvent[];
+  has_more: boolean;
+}
+
 export type SignatureFontStyle = "classic" | "cursive" | "elegant";
 
 export interface LegalSignatureProfilePayload {

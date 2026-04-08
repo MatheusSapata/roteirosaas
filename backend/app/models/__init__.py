@@ -45,4 +45,7 @@ from .legal import (
     LegalContractSignatureStatus,
     LegalContractSignatureType,
     LegalSignatureProfile,
+    LegalContractAuditEvent,
+    LegalContractAuditEventType,
+    LegalContractAuditActorType,
 )

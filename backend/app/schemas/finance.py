@@ -190,4 +190,7 @@ class PassengerFormResponse(BaseModel):
     customer_phone: str | None = None
     passengers: list[SalePassengerOut]
     items: list[SaleItemOut]
+    contract_id: int | None = None
+    contract_signature_link: str | None = None
+    contract_signature_token: str | None = None
 

@@ -6,6 +6,7 @@ import type {
   LegalContractSignatureSubmitPayload,
   LegalContractSignatureSubmitResponse,
   LegalContractVerificationDetail,
+  LegalContractAuditEventList,
   LegalSignatureProfile,
   LegalSignatureProfilePayload,
   LegalTemplateDetail,
@@ -37,6 +38,11 @@ export const getLegalContractDetail = (contractId: number) =>
 export const getLegalContractVerification = (contractId: number) =>
   api.get<LegalContractVerificationDetail>(`/legal/contracts/${contractId}/verification`);
 
+export const getLegalContractAuditEvents = (
+  contractId: number,
+  params?: { limit?: number; full?: boolean }
+) => api.get<LegalContractAuditEventList>(`/legal/contracts/${contractId}/audit-events`, { params });
+
 export const regenerateLegalContractVerification = (contractId: number) =>
   api.post<LegalContractVerificationDetail>(`/legal/contracts/${contractId}/verification/regenerate`, {});
 
@@ -48,6 +54,11 @@ export const submitSignatureContract = (token: string, payload: LegalContractSig
 
 export const getPublicContractVerification = (token: string) =>
   api.get<LegalContractVerificationDetail>(`/public/legal/verification/${token}`);
+
+export const getPublicContractAuditEvents = (
+  token: string,
+  params?: { limit?: number; full?: boolean }
+) => api.get<LegalContractAuditEventList>(`/public/legal/verification/${token}/audit-events`, { params });
 
 export const getLegalSignatureProfile = () =>
   api.get<LegalSignatureProfile | null>("/legal/signature-profile");

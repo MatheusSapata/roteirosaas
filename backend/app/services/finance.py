@@ -667,6 +667,7 @@ def update_passengers_from_payload(sale: Sale, passenger_payload: Iterable[Passe
     db.commit()
     db.refresh(sale)
     maybe_generate_contract_for_sale(sale, db)
+    db.refresh(sale)
     return sale
 
 
@@ -706,6 +707,7 @@ def _set_sale_payment_status(sale: Sale, status: SalePaymentStatus, db: Session)
     db.refresh(sale)
     if sale.payment_status == SalePaymentStatus.paid.value:
         maybe_generate_contract_for_sale(sale, db)
+        db.refresh(sale)
     return sale
 
 

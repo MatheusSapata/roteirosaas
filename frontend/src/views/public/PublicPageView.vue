@@ -56,6 +56,10 @@
     :token="passengerToken"
     @completed="handlePassengerCompleted"
   />
+  <ContractReadyModal
+    v-model="contractModalVisible"
+    :signature-link="contractSignatureLink"
+  />
 </template>
 
 <script setup lang="ts">
@@ -80,6 +84,7 @@ import PublicAgencyFooterSection from "../../components/public/PublicAgencyFoote
 import PublicLeadCaptureModal from "../../components/public/PublicLeadCaptureModal.vue";
 import PublicCheckoutModal from "../../components/public/PublicCheckoutModal.vue";
 import PublicPassengerModal from "../../components/public/PublicPassengerModal.vue";
+import ContractReadyModal from "../../components/legal/ContractReadyModal.vue";
 import PublicPhotoSection from "../../components/public/PublicPhotoSection.vue";
 import PublicBiographySection from "../../components/public/PublicBiographySection.vue";
 import type { HeroSection, PageConfig, PageSection, SectionType, ThemeConfig } from "../../types/page";
@@ -113,6 +118,8 @@ const checkoutVisible = ref(false);
 const checkoutData = ref<ProductCheckoutPayload | null>(null);
 const passengerModalVisible = ref(false);
 const passengerToken = ref<string | null>(null);
+const contractModalVisible = ref(false);
+const contractSignatureLink = ref<string | null>(null);
 const theme = ref<ThemeConfig>({
   color1: "#f8fafc",
   color2: "#ffffff",
@@ -468,8 +475,12 @@ const handleCheckoutSucceeded = (payload: { passengerToken: string; saleId: numb
   passengerModalVisible.value = true;
 };
 
-const handlePassengerCompleted = () => {
+const handlePassengerCompleted = (payload?: { contractSignatureLink?: string | null }) => {
   passengerModalVisible.value = false;
+  if (payload?.contractSignatureLink) {
+    contractSignatureLink.value = payload.contractSignatureLink;
+    contractModalVisible.value = true;
+  }
 };
 
 onMounted(loadPage);
@@ -483,6 +494,11 @@ watch(
 watch(checkoutVisible, value => {
   if (!value) {
     checkoutData.value = null;
+  }
+});
+watch(contractModalVisible, value => {
+  if (!value) {
+    contractSignatureLink.value = null;
   }
 });
 watch(

@@ -14,6 +14,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -135,3 +136,39 @@ class LegalContract(Base):
     agency = relationship("Agency", back_populates="legal_contracts")
     sale = relationship("Sale", back_populates="contract")
     template = relationship("LegalContractTemplate", back_populates="contracts")
+
+
+class LegalContractAuditEventType(str, Enum):  # type: ignore[misc]
+    contract_created = "contract_created"
+    agency_signature_applied = "agency_signature_applied"
+    signature_link_created = "signature_link_created"
+    signer_opened = "signer_opened"
+    customer_signed = "customer_signed"
+    signed_pdf_generated = "signed_pdf_generated"
+    document_hashed = "document_hashed"
+    verification_published = "verification_published"
+    qr_generated = "qr_generated"
+    verification_regenerated = "verification_regenerated"
+
+
+class LegalContractAuditActorType(str, Enum):  # type: ignore[misc]
+    system = "system"
+    customer = "customer"
+    agency = "agency"
+
+
+class LegalContractAuditEvent(Base):
+    __tablename__ = "legal_contract_audit_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    contract_id = Column(Integer, ForeignKey("legal_contracts.id", ondelete="CASCADE"), nullable=False, index=True)
+    event_type = Column(String(64), nullable=False, index=True)
+    title = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    actor_type = Column(String(20), nullable=False, default=LegalContractAuditActorType.system.value)
+    occurred_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    metadata_json = Column(JSONB, nullable=True)
+    is_reconstructed = Column(Boolean, nullable=False, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    contract = relationship("LegalContract", backref="audit_events")

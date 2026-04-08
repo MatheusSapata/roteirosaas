@@ -209,6 +209,9 @@ export interface PassengerFormResponse {
   customer_phone?: string | null;
   passengers: Passenger[];
   items: SaleItem[];
+  contract_id?: number | null;
+  contract_signature_link?: string | null;
+  contract_signature_token?: string | null;
 }
 
 export interface ProductCheckoutRequest {

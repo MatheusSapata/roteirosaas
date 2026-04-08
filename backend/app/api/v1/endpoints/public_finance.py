@@ -1,5 +1,5 @@
 ﻿from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import get_db
 from app.models.sale import Sale, SalePaymentStatus
@@ -75,14 +75,19 @@ def get_public_product_detail(
 
 
 def _sale_by_token(db: Session, token: str) -> Sale:
-    sale = db.query(Sale).filter(Sale.passenger_form_token == token).first()
+    sale = (
+        db.query(Sale)
+        .options(joinedload(Sale.contract))
+        .filter(Sale.passenger_form_token == token)
+        .first()
+    )
     if not sale:
         raise HTTPException(status_code=404, detail="Venda nao encontrada.")
     return sale
 
 
 def _sale_by_id(db: Session, sale_id: int) -> Sale:
-    sale = db.query(Sale).filter(Sale.id == sale_id).first()
+    sale = db.query(Sale).options(joinedload(Sale.contract)).filter(Sale.id == sale_id).first()
     if not sale:
         raise HTTPException(status_code=404, detail="Venda nao encontrada.")
     return sale
@@ -91,6 +96,7 @@ def _sale_by_id(db: Session, sale_id: int) -> Sale:
 def _serialize_passenger_form(sale: Sale) -> PassengerFormResponse:
     passengers = [serialize_passenger(passenger) for passenger in sale.passengers]
     items = [serialize_sale_item(item) for item in sale.items]
+    contract = sale.contract
     return PassengerFormResponse(
         sale_id=sale.id,
         product_title=sale.product_title,
@@ -109,6 +115,9 @@ def _serialize_passenger_form(sale: Sale) -> PassengerFormResponse:
         customer_phone=sale.customer_phone,
         passengers=passengers,
         items=items,
+        contract_id=contract.id if contract else None,
+        contract_signature_link=contract.signature_link if contract else None,
+        contract_signature_token=contract.signature_token if contract else None,
     )
 
 

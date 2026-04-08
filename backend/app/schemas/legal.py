@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -190,6 +190,23 @@ class LegalContractVerificationDetail(BaseModel):
     verification_qr_image_data: str | None = None
     verification_generated_at: datetime | None = None
     message: str
+
+
+class LegalContractAuditEventOut(BaseModel):
+    id: int
+    contract_id: int
+    event_type: str
+    title: str
+    description: str | None = None
+    actor_type: str
+    occurred_at: datetime
+    is_reconstructed: bool = False
+    metadata: dict[str, Any] | None = None
+
+
+class LegalContractAuditEventList(BaseModel):
+    items: list[LegalContractAuditEventOut]
+    has_more: bool = False
 
 
 class LegalSignatureProfilePayload(BaseModel):
