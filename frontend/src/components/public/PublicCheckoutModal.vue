@@ -12,6 +12,9 @@
                 <span v-if="passengersCount > 0" class="text-slate-400">
                   • {{ passengersCount }} {{ passengersCount === 1 ? "passageiro" : "passageiros" }}
                 </span>
+                <span v-if="capacityCount" class="text-slate-400">
+                  • Ocupação {{ capacityCount }}
+                </span>
               </p>
             </div>
             <button type="button" class="rounded-full p-2 text-slate-500 transition hover:bg-slate-100" @click="handleClose">
@@ -38,12 +41,18 @@
                   <div>
                     <p class="font-semibold text-slate-900">{{ item.quantity }}x {{ item.name }}</p>
                     <p class="text-xs text-slate-500">
-                      Inclui {{ item.peopleCount * item.quantity }}
-                      {{ item.peopleCount * item.quantity === 1 ? "passageiro" : "passageiros" }}
+                      Inclui {{ item.peopleCount }}
+                      {{ item.peopleCount === 1 ? "passageiro" : "passageiros" }} • Ocupação: {{ item.consumedCapacity }}
                     </p>
+                    <ul v-if="item.childBreakdown.length" class="text-[11px] text-slate-500">
+                      <li v-for="child in item.childBreakdown" :key="child.key">
+                        {{ child.quantity }}x {{ child.label }} —
+                        +{{ formatCurrency(child.totalAmount, item.currency) }}
+                      </li>
+                    </ul>
                   </div>
                   <p class="font-semibold text-slate-900">
-                    {{ formatCurrency(item.unitAmount * item.quantity, item.currency) }}
+                    {{ formatCurrency(item.unitAmount * item.quantity + item.childExtraAmount, item.currency) }}
                   </p>
                 </li>
               </ul>
@@ -51,10 +60,13 @@
                 <span>Total</span>
                 <span>{{ formatCurrency(checkoutData?.totalAmount || 0, checkoutData?.currency || "BRL") }}</span>
               </div>
-              <p class="mt-1 text-xs text-slate-500" v-if="passengersCount > 0">
+            <div class="mt-1 space-y-1 text-xs text-slate-500">
+              <p v-if="passengersCount > 0">
                 Após o pagamento coletaremos os dados de {{ passengersCount }}
                 {{ passengersCount === 1 ? "passageiro" : "passageiros" }}.
               </p>
+              <p v-if="capacityCount">Ocupação estimada: {{ capacityCount }} vaga(s).</p>
+            </div>
             </div>
 
             <div class="grid gap-4 md:grid-cols-2">
@@ -193,7 +205,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: "update:modelValue", value: boolean): void;
-  (e: "payment-succeeded", payload: { passengerToken: string; saleId: number }): void;
+  (e: "payment-succeeded", payload: { passengerToken: string | null; saleId: number }): void;
 }>();
 
 const visible = computed(() => props.modelValue);
@@ -207,6 +219,7 @@ const errorMessage = ref<string | null>(null);
 const cartItems = computed(() => props.checkoutData?.items ?? []);
 const hasCart = computed(() => cartItems.value.length > 0);
 const passengersCount = computed(() => props.checkoutData?.passengersRequired || 0);
+const capacityCount = computed(() => props.checkoutData?.consumedCapacity || 0);
 
 const resetState = () => {
   customer.value = { name: "", email: "", phone: "" };
@@ -245,6 +258,7 @@ const submitCustomerDetails = async () => {
     items: cartItems.value.map(item => ({
       variation_id: item.variationId,
       quantity: item.quantity,
+      children: item.children,
     })),
     customer: {
       name: customer.value.name.trim(),
@@ -279,7 +293,7 @@ const confirmPayment = async () => {
     });
     saleResult.value = data;
     emit("payment-succeeded", {
-      passengerToken: data.passenger_token,
+      passengerToken: data.passenger_token ?? null,
       saleId: data.sale_id,
     });
     emit("update:modelValue", false);

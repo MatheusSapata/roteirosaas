@@ -55,6 +55,11 @@ class Product(Base):
     reserved_slots = Column(Integer, nullable=False, default=0)
     sold_slots = Column(Integer, nullable=False, default=0)
     allow_oversell = Column(Boolean, nullable=False, default=False)
+    has_rooms = Column(Boolean, nullable=False, default=False)
+    is_road_trip = Column(Boolean, nullable=False, default=False)
+    card_interest_mode = Column(String(20), nullable=False, default="merchant")
+    checkout_banner_url = Column(String(500), nullable=True)
+    checkout_product_image_url = Column(String(500), nullable=True)
     metadata_json = Column(JSONB, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -63,6 +68,7 @@ class Product(Base):
     user = relationship("User", back_populates="products")
     template_contract = relationship("LegalContractTemplate", back_populates="products")
     variations = relationship("ProductVariation", back_populates="product", cascade="all, delete-orphan")
+    rooms = relationship("ProductRoom", back_populates="product", cascade="all, delete-orphan")
     inventory_events = relationship(
         "ProductInventoryEvent",
         back_populates="product",
@@ -82,6 +88,11 @@ class ProductVariationStockMode(str, Enum):  # type: ignore[misc]
     variant = "variant"
 
 
+class ProductAccommodationMode(str, Enum):  # type: ignore[misc]
+    private = "private"
+    shared = "shared"
+
+
 class ProductVariation(Base):
     __tablename__ = "product_variations"
 
@@ -95,11 +106,17 @@ class ProductVariation(Base):
     people_included = Column(Integer, nullable=False, default=1)
     status = Column(String(20), nullable=False, default=ProductVariationStatus.active.value)
     stock_mode = Column(String(20), nullable=False, default=ProductVariationStockMode.shared.value)
+    has_accommodation = Column(Boolean, nullable=False, default=False)
+    accommodation_mode = Column(String(20), nullable=False, default=ProductAccommodationMode.private.value)
+    room_capacity = Column(Integer, nullable=False, default=1)
+    slots_per_unit = Column(Integer, nullable=False, default=1)
     total_slots = Column(Integer, nullable=True)
     available_slots = Column(Integer, nullable=True)
     reserved_slots = Column(Integer, nullable=True)
     sold_slots = Column(Integer, nullable=True)
     sort_order = Column(Integer, nullable=False, default=0)
+    child_policy_enabled = Column(Boolean, nullable=False, default=False)
+    child_pricing_rules = Column(JSONB, nullable=True)
     metadata_json = Column(JSONB, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -142,3 +159,18 @@ class ProductInventoryEvent(Base):
     variation = relationship("ProductVariation", back_populates="inventory_events")
     sale = relationship("Sale", back_populates="inventory_events")
     sale_item = relationship("SaleItem", back_populates="inventory_events")
+
+
+class ProductRoom(Base):
+    __tablename__ = "product_rooms"
+
+    id = Column(Integer, primary_key=True, index=True)
+    product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"), nullable=False, index=True)
+    name = Column(String(255), nullable=False)
+    capacity = Column(Integer, nullable=False, default=1)
+    is_private = Column(Boolean, nullable=False, default=False)
+    stock_quantity = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    product = relationship("Product", back_populates="rooms")

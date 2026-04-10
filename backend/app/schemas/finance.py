@@ -35,9 +35,15 @@ class PublicCheckoutRequest(BaseModel):
     customer: SaleCustomerPayload
 
 
+class CheckoutChildSelection(BaseModel):
+    key: str
+    quantity: int = Field(0, ge=0)
+
+
 class CheckoutCartItem(BaseModel):
     variation_id: str
     quantity: int = Field(..., ge=1)
+    children: list[CheckoutChildSelection] = Field(default_factory=list)
 
 
 class ProductCheckoutRequest(BaseModel):
@@ -65,7 +71,7 @@ class PaymentLinkRequest(PosCheckoutRequest):
 class PublicCheckoutResponse(BaseModel):
     sale_id: int
     checkout_reference: str
-    passenger_token: str
+    passenger_token: str | None = None
     provider: str
     provider_status: str
     breakdown: PaymentBreakdown
@@ -80,6 +86,7 @@ class PaymentLinkResponse(BaseModel):
 class PaymentConfirmationRequest(BaseModel):
     payment_method: str = "credit_card"
     installments: int = Field(1, ge=1, le=12)
+    customer: SaleCustomerPayload | None = None
 
 
 class SaleStatusSimulationRequest(BaseModel):
@@ -98,6 +105,9 @@ class PassengerInput(BaseModel):
 
 class SalePassengerOut(BaseModel):
     id: int
+    passenger_group_id: int | None = None
+    passenger_index: int | None = None
+    type: str
     name: str
     cpf: str | None = None
     birthdate: str | None = None
@@ -105,6 +115,57 @@ class SalePassengerOut(BaseModel):
     whatsapp: str | None = None
     boarding_location: str | None = None
     extras: str | None = None
+
+
+class PassengerGroupPassengerInput(BaseModel):
+    passenger_index: int = Field(..., ge=1)
+    type: str = "adult"
+    name: str
+    cpf: str | None = None
+    birthdate: str | None = None
+    phone: str | None = None
+    whatsapp: str | None = None
+    boarding_location: str | None = None
+    extras: str | None = None
+
+
+class PassengerGroupSaveRequest(BaseModel):
+    passengers: list[PassengerGroupPassengerInput]
+
+
+class PassengerGroupOut(BaseModel):
+    id: int
+    sale_item_id: int
+    product_id: int | None = None
+    product_name: str
+    label: str
+    group_index: int
+    capacity: int
+    occupied_slots: int
+    status: str
+    allows_children: bool
+    passengers: list[SalePassengerOut]
+
+
+class PassengerGroupListResponse(BaseModel):
+    sale_id: int
+    passenger_status: str
+    passengers_required: int
+    total_capacity: int
+    groups: list[PassengerGroupOut]
+    contract_id: int | None = None
+    contract_signature_link: str | None = None
+    contract_signature_token: str | None = None
+
+
+class AgencyBlimbooSettings(BaseModel):
+    token: str | None = None
+    has_token: bool = False
+    updated_at: Optional[datetime] = None
+
+
+class AgencyBlimbooSettingsPayload(BaseModel):
+    token: str | None = None
 
 
 class SaleSummary(BaseModel):
@@ -137,10 +198,25 @@ class SaleSummary(BaseModel):
     payout_status: str
     passenger_status: str
     passengers_required: int
+    consumed_capacity: int
     channel: str
     customer_name: str | None = None
     customer_email: str | None = None
     customer_phone: str | None = None
+    has_rooms: bool
+    is_road_trip: bool
+    requires_passengers: bool
+    requires_rooming: bool
+
+
+class SaleItemChildBreakdown(BaseModel):
+    key: str
+    label: str
+    quantity: int
+    unit_amount_cents: int
+    total_amount_cents: int
+    counts_towards_capacity: bool
+    counts_as_passenger: bool
 
 
 class SaleItemOut(BaseModel):
@@ -152,12 +228,21 @@ class SaleItemOut(BaseModel):
     total_price: int
     currency: str
     people_count: int
+    consumed_capacity: int
+    accommodation_mode: str
+    room_capacity: int
+    slots_per_unit: int
+    slots_reserved: int
+    occupancy_status: str
+    child_extra_amount_cents: int
+    child_breakdown: list[SaleItemChildBreakdown]
     status: str
 
 
 class SaleDetail(SaleSummary):
     passengers: list[SalePassengerOut]
     items: list[SaleItemOut]
+    passenger_groups: list[PassengerGroupOut] | None = None
 
 
 class SaleListResponse(BaseModel):
@@ -177,6 +262,7 @@ class PassengerFormResponse(BaseModel):
     product_title: str
     product_description: str | None = None
     passengers_required: int
+    consumed_capacity: int
     passenger_status: str
     payment_status: str
     payout_status: str
@@ -188,9 +274,15 @@ class PassengerFormResponse(BaseModel):
     customer_name: str | None = None
     customer_email: str | None = None
     customer_phone: str | None = None
+    boarding_locations: list[str] = Field(default_factory=list)
     passengers: list[SalePassengerOut]
     items: list[SaleItemOut]
     contract_id: int | None = None
     contract_signature_link: str | None = None
     contract_signature_token: str | None = None
+    groups: list[PassengerGroupOut]
+    has_rooms: bool
+    is_road_trip: bool
+    requires_passengers: bool
+    requires_rooming: bool
 

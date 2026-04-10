@@ -50,6 +50,14 @@ class MediaStorage:
         assert self._blob_service and self._container_name
         return self._blob_service.get_blob_client(container=self._container_name, blob=blob_name)
 
+    @property
+    def base_url(self) -> Optional[str]:
+        return self._base_url
+
+    @property
+    def local_dir(self) -> Path:
+        return self._local_dir
+
     def save(self, data: bytes, filename: str, content_type: Optional[str] = None) -> str:
         extension = Path(filename).suffix or ""
         blob_name = f"{uuid4()}{extension}"

@@ -3,6 +3,7 @@
 
 from .user import User
 from .agency import Agency
+from .agency_payment_settings import AgencyPaymentSettings
 from .agency_social_link import AgencySocialLink
 from .agency_user import AgencyUser
 from .page import Page
@@ -26,17 +27,21 @@ from .sale import (
     SalePayoutStatus,
     SaleFinancialStatus,
 )
+from .passenger_group import PassengerGroup, PassengerGroupStatus, PassengerType
 from .sale_item import SaleItem, SalePaymentLink
 from .product import (
     Product,
     ProductStatus,
     ProductInventoryStrategy,
     ProductVariation,
+    ProductAccommodationMode,
     ProductVariationStatus,
     ProductVariationStockMode,
     ProductInventoryEvent,
     ProductInventoryEventAction,
+    ProductRoom,
 )
+from .rooming import RoomingRoom, RoomingAssignment
 from .stripe_account import StripeAccount
 from .legal import (
     LegalContractTemplate,

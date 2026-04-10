@@ -81,12 +81,17 @@
         </div>
         <div class="mt-3">
           <label class="mb-1 block text-xs font-semibold text-slate-500">Local de embarque</label>
-          <input
+          <select
             v-model="currentPassenger.boarding_location"
-            type="text"
-            :readonly="readonly"
+            :disabled="readonly"
             class="w-full rounded-lg border border-slate-200 px-3 py-2"
-          />
+          >
+            <option value="">Não definir</option>
+            <option v-for="option in boardingOptions" :key="option" :value="option">
+              {{ option }}
+            </option>
+          </select>
+          <p v-if="!boardingOptions.length" class="mt-1 text-xs text-slate-500">Nenhum local cadastrado.</p>
         </div>
         <div class="mt-3">
           <label class="mb-1 block text-xs font-semibold text-slate-500">Observações</label>
@@ -122,10 +127,12 @@ const props = defineProps<{
   modelValue: Passenger[];
   passengersRequired?: number;
   readonly?: boolean;
+  boardingOptions?: string[];
 }>();
 const emit = defineEmits<{ (e: "update:modelValue", value: Passenger[]): void }>();
 
 const passengers = ref<EditablePassenger[]>([]);
+const boardingOptions = computed(() => props.boardingOptions || []);
 let syncing = false;
 const activePassengerIndex = ref(0);
 const currentPassenger = computed(() => passengers.value[activePassengerIndex.value] || null);

@@ -19,3 +19,7 @@ class MediaAssetOut(MediaAssetBase):
     agency_id: int
     created_at: Optional[datetime] = None
     model_config = ConfigDict(from_attributes=True)
+
+
+class MediaProxyResponse(BaseModel):
+    data_url: str

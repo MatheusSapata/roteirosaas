@@ -60,7 +60,7 @@
         v-else-if="!productOptions.length"
         class="rounded-xl border border-dashed border-slate-200 p-4 text-center text-sm text-slate-500"
       >
-        Nenhum produto encontrado. Cadastre produtos em Financeiro &gt; Produtos para habilitar esta seção.
+        Nenhum produto encontrado. Cadastre itens no menu Produtos para habilitar esta seção.
       </div>
       <div v-else class="space-y-3">
         <label

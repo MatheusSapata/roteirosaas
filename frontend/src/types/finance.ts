@@ -13,9 +13,15 @@ export interface PaymentBreakdown {
 
 export type SalePaymentStatus = "pending" | "processing" | "paid" | "canceled" | "refunded";
 
+export interface CheckoutChildSelection {
+  key: string;
+  quantity: number;
+}
+
 export interface CheckoutCartItem {
   variation_id: string;
   quantity: number;
+  children?: CheckoutChildSelection[];
 }
 
 export interface CheckoutCustomer {
@@ -23,6 +29,21 @@ export interface CheckoutCustomer {
   email: string;
   phone: string;
 }
+
+export interface ChildPricingRule {
+  key: string;
+  label: string;
+  min_age: number;
+  max_age: number;
+  enabled: boolean;
+  pricing_mode: "free" | "extra";
+  extra_amount_cents: number;
+  counts_towards_capacity: boolean;
+  counts_as_passenger: boolean;
+  max_quantity: number | null;
+}
+
+export interface ChildPricingRulePayload extends ChildPricingRule {}
 
 export interface ProductVariation {
   id: number;
@@ -34,11 +55,33 @@ export interface ProductVariation {
   people_included: number;
   status: string;
   stock_mode: string;
+  has_accommodation: boolean;
+  accommodation_mode: "private" | "shared";
+  room_capacity: number;
+  slots_per_unit: number;
   total_slots?: number | null;
   available_slots?: number | null;
   reserved_slots?: number | null;
   sold_slots?: number | null;
   sort_order: number;
+  child_policy_enabled: boolean;
+  child_pricing_rules: ChildPricingRule[];
+}
+
+export interface ProductRoom {
+  id: number;
+  name: string;
+  capacity: number;
+  is_private: boolean;
+  stock_quantity: number;
+}
+
+export interface ProductRoomPayload {
+  id?: number | null;
+  name: string;
+  capacity: number;
+  is_private: boolean;
+  stock_quantity: number;
 }
 
 export interface ProductSummary {
@@ -58,12 +101,19 @@ export interface ProductSummary {
   sold_slots: number;
   inventory_strategy: "manual" | "unlimited";
   allow_oversell: boolean;
+  card_interest_mode: "merchant" | "customer";
+  checkout_banner_url?: string | null;
+  checkout_product_image_url?: string | null;
   variations: ProductVariation[];
+  boarding_locations: string[];
+  has_rooms: boolean;
+  is_road_trip: boolean;
 }
 
 export interface ProductDetail extends ProductSummary {
   created_at: string;
   updated_at?: string | null;
+  rooms: ProductRoom[];
 }
 
 export interface ProductListResponse {
@@ -79,8 +129,14 @@ export interface ProductVariationPayload {
   people_included: number;
   status: string;
   stock_mode: string;
+  has_accommodation?: boolean;
+  accommodation_mode: "private" | "shared";
+  room_capacity: number;
+  slots_per_unit: number;
   total_slots?: number | null;
   available_slots?: number | null;
+  child_policy_enabled?: boolean;
+  child_pricing_rules?: ChildPricingRulePayload[];
 }
 
 export interface ProductPayload {
@@ -95,7 +151,18 @@ export interface ProductPayload {
   total_slots: number;
   available_slots: number;
   allow_oversell: boolean;
+  card_interest_mode: "merchant" | "customer";
+  checkout_banner_url?: string | null;
+  checkout_product_image_url?: string | null;
   variations: ProductVariationPayload[];
+  boarding_locations: string[];
+  has_rooms: boolean;
+  is_road_trip: boolean;
+  rooms: ProductRoomPayload[];
+}
+
+export interface ProductBoardingLocationsPayload {
+  locations: string[];
 }
 
 export interface InventoryAdjustmentPayload {
@@ -134,14 +201,25 @@ export interface SaleSummary {
   payout_status: string;
   passenger_status: string;
   passengers_required: number;
+  consumed_capacity: number;
   channel: string;
   customer_name: string | null;
   customer_email: string | null;
   customer_phone: string | null;
+  boarding_locations: string[];
+  has_rooms: boolean;
+  is_road_trip: boolean;
+  requires_passengers: boolean;
+  requires_rooming: boolean;
 }
+
+export type PassengerType = "adult" | "child_free" | "child_paid";
 
 export interface Passenger {
   id: number;
+  passenger_group_id?: number | null;
+  passenger_index?: number | null;
+  type: PassengerType;
   name: string;
   cpf?: string | null;
   birthdate?: string | null;
@@ -151,9 +229,59 @@ export interface Passenger {
   extras?: string | null;
 }
 
+export interface PassengerGroup {
+  id: number;
+  sale_item_id: number;
+  product_id?: number | null;
+  product_name: string;
+  label: string;
+  group_index: number;
+  capacity: number;
+  occupied_slots: number;
+  status: "pending" | "partial" | "complete";
+  allows_children: boolean;
+  passengers: Passenger[];
+}
+
+export interface PassengerGroupListResponse {
+  sale_id: number;
+  passenger_status: string;
+  passengers_required: number;
+  total_capacity: number;
+  groups: PassengerGroup[];
+  contract_id?: number | null;
+  contract_signature_link?: string | null;
+  contract_signature_token?: string | null;
+}
+
+export interface AgencyBlimbooSettings {
+  token?: string | null;
+  has_token: boolean;
+  updated_at?: string | null;
+}
+
+export interface AgencyBlimbooSettingsPayload {
+  token?: string | null;
+}
+
+export interface PassengerGroupSavePayload {
+  passengers: {
+    passenger_index: number;
+    type: PassengerType;
+    name: string;
+    cpf?: string | null;
+    birthdate?: string | null;
+    phone?: string | null;
+    whatsapp?: string | null;
+    boarding_location?: string | null;
+    extras?: string | null;
+  }[];
+}
+
 export interface SaleDetail extends SaleSummary {
   passengers: Passenger[];
   items: SaleItem[];
+  passenger_groups?: PassengerGroup[] | null;
 }
 
 export interface SaleListResponse {
@@ -185,7 +313,7 @@ export interface CheckoutIntentRequest {
 export interface PublicCheckoutResponse {
   sale_id: number;
   checkout_reference: string;
-  passenger_token: string;
+  passenger_token?: string | null;
   provider: string;
   provider_status: SalePaymentStatus;
   breakdown: PaymentBreakdown;
@@ -196,6 +324,7 @@ export interface PassengerFormResponse {
   product_title: string;
   product_description?: string | null;
   passengers_required: number;
+  consumed_capacity: number;
   passenger_status: string;
   payment_status: SalePaymentStatus;
   payout_status: string;
@@ -212,6 +341,12 @@ export interface PassengerFormResponse {
   contract_id?: number | null;
   contract_signature_link?: string | null;
   contract_signature_token?: string | null;
+  groups: PassengerGroup[];
+  boarding_locations: string[];
+  has_rooms: boolean;
+  is_road_trip: boolean;
+  requires_passengers: boolean;
+  requires_rooming: boolean;
 }
 
 export interface ProductCheckoutRequest {
@@ -251,5 +386,23 @@ export interface SaleItem {
   total_price: number;
   currency: string;
   people_count: number;
+  consumed_capacity: number;
+  accommodation_mode: "private" | "shared";
+  room_capacity: number;
+  slots_per_unit: number;
+  slots_reserved: number;
+  occupancy_status: "pending_assignment" | "partial" | "complete";
+  child_extra_amount_cents: number;
+  child_breakdown: SaleItemChildBreakdown[];
   status: string;
+}
+
+export interface SaleItemChildBreakdown {
+  key: string;
+  label: string;
+  quantity: number;
+  unit_amount_cents: number;
+  total_amount_cents: number;
+  counts_towards_capacity: boolean;
+  counts_as_passenger: boolean;
 }

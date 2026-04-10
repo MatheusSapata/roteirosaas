@@ -25,6 +25,7 @@ from app.models import (
     sale,
     sale_item,
     product,
+    rooming,
     stripe_account,
     legal,
 )  # noqa: E402,F401

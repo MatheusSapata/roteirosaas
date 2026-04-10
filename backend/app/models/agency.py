@@ -55,3 +55,10 @@ class Agency(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+    payment_settings = relationship(
+        "AgencyPaymentSettings",
+        back_populates="agency",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        uselist=False,
+    )

@@ -1316,8 +1316,8 @@ const sectionDescriptions: Partial<Record<SectionType, string>> = {
     es: "Tabla con planes, precios y diferenciales para cada oferta."
   }),
   products: t({
-    pt: "Bloco comercial com produtos reais, variações, estoque e checkout conectado ao financeiro.",
-    es: "Bloque comercial con productos reales, variaciones, stock y checkout conectado al financiero."
+    pt: "Bloco comercial com produtos reais, variações, estoque e checkout conectado ao módulo de Produtos.",
+    es: "Bloque comercial con productos reales, variaciones, stock y checkout conectado al módulo de Productos."
   }),
   itinerary: t({
     pt: "Sequência de etapas/benefícios para explicar seu serviço ou roteiro.",
@@ -2292,7 +2292,7 @@ if (type === "products") {
     headingLabel: headingDefaults.label,
     headingLabelStyle: headingDefaults.style,
     title: "Pacotes disponíveis",
-    subtitle: "Conecte seus produtos do financeiro com carrinho e checkout premium.",
+    subtitle: "Conecte seus produtos cadastrados no menu Produtos com carrinho e checkout premium.",
     ctaLabel: "Ir para checkout",
     accentColor: theme.value.ctaDefaultColor
   } as ProductsSection);

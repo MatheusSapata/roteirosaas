@@ -1,5 +1,6 @@
 ﻿from __future__ import annotations
 
+import logging
 import secrets
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
@@ -9,10 +10,13 @@ from typing import Any, Iterable
 from fastapi import HTTPException
 from sqlalchemy.orm import Session, joinedload, selectinload
 
+from app.core.config import get_settings
+from app.models.agency import Agency
 from app.models.agency_user import AgencyUser
 from app.models.page import Page
 from app.models.product import (
     Product,
+    ProductAccommodationMode,
     ProductStatus,
     ProductVariation,
     ProductVariationStatus,
@@ -20,12 +24,17 @@ from app.models.product import (
 from app.models.sale import (
     Sale,
     SaleFinancialStatus,
-    SalePassenger,
     SalePassengerStatus,
     SalePaymentStatus,
     SalePayoutStatus,
 )
-from app.models.sale_item import SaleItem, SaleItemStatus, SalePaymentLink, SalePaymentLinkStatus
+from app.models.sale_item import (
+    SaleItem,
+    SaleItemOccupancyStatus,
+    SaleItemStatus,
+    SalePaymentLink,
+    SalePaymentLinkStatus,
+)
 from app.models.user import User
 from app.schemas.finance import (
     CheckoutCartItem,
@@ -36,20 +45,28 @@ from app.schemas.finance import (
     PosCheckoutRequest,
     ProductCheckoutRequest,
     PublicCheckoutResponse,
+    SaleItemChildBreakdown,
     SaleItemOut,
-    SalePassengerOut,
     SaleSummary,
 )
+from app.services.agency_integrations import get_agency_blimboo_token
+from app.services.email import EmailClient
 from app.services.payments import get_payment_provider
 from app.services.payments.base import PaymentCharge, PaymentChargeRequest
+from app.services.package_pricing import PackageComposition, calculate_package_composition
 from app.services.products import (
-    reserve_inventory_for_item,
     confirm_inventory_for_sale,
+    reserve_inventory_for_item,
     release_inventory_for_sale,
 )
+from app.services.passenger_groups import (
+    assign_passengers_flat,
+    ensure_passenger_groups,
+    serialize_passenger,
+    serialize_passenger_group,
+)
 from app.services.legal import maybe_generate_contract_for_sale
-
-payment_provider = get_payment_provider()
+logger = logging.getLogger(__name__)
 
 
 def _localized_value(value: Any) -> str:
@@ -81,8 +98,231 @@ def _to_cents(value: Decimal) -> int:
     return int(cents)
 
 
+def _normalize_boarding_locations(raw: Any) -> list[str]:
+    if not isinstance(raw, list):
+        return []
+    cleaned: list[str] = []
+    seen = set()
+    for entry in raw:
+        if not isinstance(entry, str):
+            continue
+        text = entry.strip()
+        if not text:
+            continue
+        normalized = text[:255]
+        key = normalized.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        cleaned.append(normalized)
+    return cleaned
+
+
+def _boarding_locations_from_sale(sale: Sale) -> list[str]:
+    metadata = sale.metadata_json or {}
+    flags = sale_flags(sale)
+    flags = sale_flags(sale)
+    locations = _normalize_boarding_locations(metadata.get("boarding_locations"))
+    if locations:
+        return locations
+    product_metadata = sale.product.metadata_json if sale.product else None
+    return _normalize_boarding_locations(product_metadata.get("boarding_locations") if product_metadata else None)
+
+
+def _format_brl_amount(amount_cents: int | None) -> str:
+    cents = amount_cents or 0
+    amount = Decimal(cents) / Decimal("100")
+    formatted = f"{amount:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    return f"R$ {formatted}"
+
+
+def _resolve_agency_label(sale: Sale, db: Session) -> str:
+
+    settings = get_settings()
+
+    if sale.agency_id:
+
+        agency = db.query(Agency).filter(Agency.id == sale.agency_id).first()
+
+        if agency and agency.name:
+
+            return agency.name
+
+    return settings.app_name or "Roteiro Online"
+
+
+
+
+
+def _resolve_customer_name(sale: Sale) -> str:
+
+    return sale.customer_name or sale.customer_email or "cliente"
+
+
+
+
+
+def _send_pos_checkout_email(sale: Sale, db: Session) -> None:
+    if not sale.customer_email or not sale.passenger_form_token or not sale_requires_passengers(sale):
+        return
+
+    settings = get_settings()
+
+    base_url = (settings.resolved_webapp_base_url or "").rstrip("/")
+
+    passenger_url = f"{base_url}/passageiros/{sale.passenger_form_token}"
+
+    agency_label = _resolve_agency_label(sale, db)
+
+    product_label = sale.product_title or "sua compra"
+
+    amount_label = _format_brl_amount((sale.gross_amount or sale.amount or 0))
+
+    customer_name = _resolve_customer_name(sale)
+
+    sale_reference = f"#{sale.id}"
+
+    subject = f"{agency_label} - Detalhes da sua compra"
+
+    text_body = (
+
+        f"Ola {customer_name},\n\n"
+
+        f"Registramos a sua compra do pacote {product_label} com a agencia {agency_label}.\n"
+
+        f"Valor cobrado: {amount_label}\n"
+
+        f"Venda: {sale_reference}\n\n"
+
+        f"Acesse o link abaixo para preencher os passageiros e acompanhar a viagem:\n"
+
+        f"{passenger_url}\n\n"
+
+        "Se tiver duvidas basta responder este e-mail.\n"
+
+        f"{agency_label}"
+
+    )
+
+    html_body = f"""
+
+        <p>Ola {customer_name},</p>
+
+        <p>Registramos a sua compra do pacote <strong>{product_label}</strong> com a agencia <strong>{agency_label}</strong>.</p>
+
+        <ul style=\"padding-left:16px;color:#0f172a;\">
+
+            <li><strong>Valor:</strong> {amount_label}</li>
+
+            <li><strong>Venda:</strong> {sale_reference}</li>
+
+        </ul>
+
+        <p>Acesse o link abaixo para acompanhar a viagem e preencher os dados dos passageiros:</p>
+
+        <p style=\"margin:24px 0;\">
+
+            <a href=\"{passenger_url}\" style=\"background-color:#10b981;color:#fff;padding:12px 20px;border-radius:999px;font-weight:600;text-decoration:none;\">
+
+                Abrir formulario de passageiros
+
+            </a>
+
+        </p>
+
+        <p>Se preferir, copie e cole este link no navegador:</p>
+
+        <p style=\"word-break:break-all;\"><a href=\"{passenger_url}\">{passenger_url}</a></p>
+
+        <p>Se tiver duvidas basta responder este e-mail.</p>
+
+        <p>{agency_label}</p>
+
+    """
+
+    try:
+
+        EmailClient().send_email(
+
+            to_email=sale.customer_email,
+
+            subject=subject,
+
+            html_body=html_body,
+
+            text_body=text_body,
+
+        ) 
+    except Exception:  # pragma: no cover - envio de e-mail nao deve bloquear fluxo
+
+        logger.exception("Falha ao enviar e-mail de confirmacao para venda POS %s", sale.id)
+
+
+def _payment_link_url(token: str) -> str:
+    settings = get_settings()
+    base_url = (settings.resolved_webapp_base_url or "").rstrip("/")
+    return f"{base_url}/pagamentos/{token}"
+
+
+def _send_payment_link_email(sale: Sale, link: SalePaymentLink, db: Session) -> None:
+    if not sale.customer_email:
+        return
+    payment_url = _payment_link_url(link.token)
+    agency_label = _resolve_agency_label(sale, db)
+    product_label = sale.product_title or "seu pacote"
+    amount_label = _format_brl_amount(sale.gross_amount or sale.amount or 0)
+    customer_name = _resolve_customer_name(sale)
+    sale_reference = f"#{sale.id}"
+    expires_label = link.expires_at.strftime("%d/%m/%Y %H:%M") if link.expires_at else ""
+    expires_line = f"Valido ate: {expires_label}\n" if expires_label else ""
+    subject = f"{agency_label} - Link de pagamento"
+    text_body = (
+        f"Ola {customer_name},\n\n"
+        f"Geramos um link de pagamento para o pacote {product_label} da agencia {agency_label}.\n"
+        f"Valor: {amount_label} ({sale_reference})\n"
+        f"Acesse: {payment_url}\n"
+        f"{expires_line}"
+        "\n"
+        "Caso ja tenha pago, ignore esta mensagem. Duvidas? Basta responder este e-mail.\n"
+        f"{agency_label}"
+    )
+    expires_paragraph = f"<p>Link valido ate <strong>{expires_label}</strong>.</p>" if expires_label else ""
+    html_body = f"""
+        <p>Ola {customer_name},</p>
+        <p>Segue o link para concluir o pagamento do pacote <strong>{product_label}</strong> com a agencia <strong>{agency_label}</strong>.</p>
+        <ul style="padding-left:16px;color:#0f172a;">
+            <li><strong>Valor:</strong> {amount_label}</li>
+            <li><strong>Venda:</strong> {sale_reference}</li>
+        </ul>
+        {expires_paragraph}
+        <p style="margin:24px 0;">
+            <a href="{payment_url}" style="background-color:#10b981;color:#fff;padding:12px 20px;border-radius:999px;font-weight:600;text-decoration:none;">
+                Abrir link de pagamento
+            </a>
+        </p>
+        <p>Se preferir, copie e cole este link no navegador:</p>
+        <p style="word-break:break-all;"><a href="{payment_url}">{payment_url}</a></p>
+        <p>Qualquer duvida basta responder este e-mail.</p>
+        <p>{agency_label}</p>
+    """
+    try:
+        EmailClient().send_email(
+            to_email=sale.customer_email,
+            subject=subject,
+            html_body=html_body,
+            text_body=text_body,
+        )
+    except Exception:  # pragma: no cover
+        logger.exception("Falha ao enviar e-mail de link de pagamento para venda %s", sale.id)
+
+def _payment_provider_for_agency(db: Session, agency_id: int | None):
+    token = get_agency_blimboo_token(db, agency_id)
+    return get_payment_provider(token)
+
 def _create_payment_charge(
     *,
+    db: Session,
+    agency_id: int | None,
     base_amount_cents: int,
     currency: str,
     installments: int,
@@ -98,7 +338,8 @@ def _create_payment_charge(
         payment_method=payment_method or "credit_card",
         metadata=metadata or {},
     )
-    return payment_provider.initialize_charge(request)
+    provider = _payment_provider_for_agency(db, agency_id)
+    return provider.initialize_charge(request)
 
 
 def _apply_charge_to_sale(sale: Sale, charge: PaymentCharge) -> None:
@@ -205,11 +446,21 @@ def _resolve_cart_lines(
     product: Product,
     cart_items: Iterable[CheckoutCartItem],
 ) -> list[ProductCartLine]:
-    aggregated: dict[str, int] = {}
+    aggregated: dict[str, dict[str, Any]] = {}
     for item in cart_items:
         if item.quantity <= 0:
             raise HTTPException(status_code=400, detail="Quantidade inválida.")
-        aggregated[item.variation_id] = aggregated.get(item.variation_id, 0) + item.quantity
+        bucket = aggregated.setdefault(item.variation_id, {"quantity": 0, "children": {}})
+        bucket["quantity"] += item.quantity
+        children = bucket["children"]
+        for child in item.children or []:
+            key = str(child.key)
+            if not key:
+                continue
+            qty = max(0, child.quantity)
+            if qty <= 0:
+                continue
+            children[key] = children.get(key, 0) + qty
     if not aggregated:
         raise HTTPException(status_code=400, detail="Selecione ao menos uma variação.")
     variations = (
@@ -225,11 +476,25 @@ def _resolve_cart_lines(
         raise HTTPException(status_code=404, detail="Variação não encontrada.")
     variation_map = {variation.public_id: variation for variation in variations}
     lines: list[ProductCartLine] = []
-    for public_id, quantity in aggregated.items():
+    for public_id, payload in aggregated.items():
         variation = variation_map[public_id]
         if variation.status != ProductVariationStatus.active.value:
             raise HTTPException(status_code=400, detail=f"Variação indisponível: {variation.name}.")
-        lines.append(ProductCartLine(variation=variation, quantity=quantity))
+        quantity = payload["quantity"]
+        children = payload["children"]
+        composition = calculate_package_composition(
+            variation=variation,
+            quantity=quantity,
+            child_counts=children,
+        )
+        lines.append(
+            ProductCartLine(
+                variation=variation,
+                quantity=quantity,
+                children=dict(children),
+                composition=composition,
+            )
+        )
     lines.sort(key=lambda line: line.variation.sort_order)
     return lines
 
@@ -246,20 +511,77 @@ def _cart_currency(lines: Iterable[ProductCartLine]) -> str:
 def _cart_total_amount(lines: Iterable[ProductCartLine]) -> int:
     total = 0
     for line in lines:
-        total += line.variation.price_cents * line.quantity
+        total += line.composition.total_price_cents
     return total
 
 
 def _cart_passengers(lines: Iterable[ProductCartLine]) -> int:
     passengers = 0
     for line in lines:
-        passengers += (line.variation.people_included or 1) * line.quantity
+        passengers += line.composition.total_passengers
     return passengers
 
 
-def _build_sale_items_from_lines(sale: Sale, product: Product, lines: Iterable[ProductCartLine]) -> None:
+def _cart_capacity(lines: Iterable[ProductCartLine]) -> int:
+    capacity = 0
+    for line in lines:
+        capacity += line.composition.total_capacity
+    return capacity
+
+
+def _product_behavior_flags(product: Product | None) -> dict[str, bool]:
+    has_rooms = bool(getattr(product, "has_rooms", False)) if product else False
+    is_road_trip = bool(getattr(product, "is_road_trip", False)) if product else False
+    return {
+        "has_rooms": has_rooms,
+        "is_road_trip": is_road_trip,
+        "requires_passengers": is_road_trip,
+        "requires_rooming": has_rooms,
+    }
+
+
+def _resolve_metadata_flags(metadata: dict[str, Any] | None, defaults: dict[str, bool]) -> dict[str, bool]:
+    flags = defaults.copy()
+    if metadata:
+        raw_flags = metadata.get("product_flags")
+        if isinstance(raw_flags, dict):
+            for key in ("has_rooms", "is_road_trip", "requires_passengers", "requires_rooming"):
+                if key in raw_flags:
+                    flags[key] = bool(raw_flags[key])
+    return flags
+
+
+def sale_flags(sale: Sale) -> dict[str, bool]:
+    metadata = sale.metadata_json if isinstance(sale.metadata_json, dict) else None
+    defaults = _product_behavior_flags(sale.product)
+    return _resolve_metadata_flags(metadata, defaults)
+
+
+def sale_requires_passengers(sale: Sale) -> bool:
+    return bool(sale_flags(sale).get("requires_passengers"))
+
+
+def sale_requires_rooming(sale: Sale) -> bool:
+    return bool(sale_flags(sale).get("requires_rooming"))
+
+
+def _build_sale_items_from_lines(sale: Sale, product: Product, lines: Iterable[ProductCartLine]) -> list[SaleItem]:
+    created: list[SaleItem] = []
     for line in lines:
         variation = line.variation
+        composition = line.composition
+        quantity = max(1, line.quantity)
+        consumed_capacity = max(0, composition.total_capacity)
+        base_unit_slots = variation.slots_per_unit or variation.people_included or 1
+        unit_capacity = max(1, base_unit_slots)
+        if consumed_capacity and quantity:
+            base_capacity = consumed_capacity // quantity
+            if consumed_capacity % quantity:
+                base_capacity += 1
+            unit_capacity = max(unit_capacity, base_capacity)
+        slots_reserved = consumed_capacity
+        room_capacity = variation.room_capacity or unit_capacity
+        accommodation_mode = variation.accommodation_mode or ProductAccommodationMode.private.value
         item = SaleItem(
             product_id=product.id,
             product_public_id=product.public_id,
@@ -270,11 +592,35 @@ def _build_sale_items_from_lines(sale: Sale, product: Product, lines: Iterable[P
             currency=(variation.currency or "BRL").lower(),
             unit_price=variation.price_cents,
             quantity=line.quantity,
-            total_price=variation.price_cents * line.quantity,
-            people_count=(variation.people_included or 1) * line.quantity,
+            total_price=composition.total_price_cents,
+            people_count=composition.total_passengers,
+            occupancy=unit_capacity,
+            allows_children=bool(variation.child_policy_enabled),
+            children_rules_snapshot=variation.child_pricing_rules,
             stock_mode=variation.stock_mode,
+            accommodation_mode=accommodation_mode,
+            room_capacity=room_capacity,
+            slots_per_unit=base_unit_slots,
+            slots_reserved=slots_reserved,
+            metadata_json={
+                "base_passengers": composition.base_passengers,
+                "base_capacity": composition.base_capacity,
+                "child_passengers": composition.child_passengers,
+                "child_capacity": composition.child_capacity,
+                "child_extra_amount_cents": composition.child_extra_cents,
+                "child_breakdown": [child.serialize() for child in composition.child_breakdown],
+                "child_quantities": line.children,
+                "child_policy_enabled": variation.child_policy_enabled,
+                "consumed_capacity": composition.total_capacity,
+                "accommodation_mode": accommodation_mode,
+                "room_capacity": room_capacity,
+                "slots_per_unit": base_unit_slots,
+                "slots_reserved": slots_reserved,
+            },
         )
         sale.items.append(item)
+        created.append(item)
+    return created
 def _trim(value: str | None, length: int) -> str | None:
     if value is None:
         return None
@@ -323,9 +669,27 @@ def create_product_checkout_sale(
     lines = _resolve_cart_lines(db, product, cart_items)
     currency = _cart_currency(lines)
     amount_cents = _cart_total_amount(lines)
-    passengers_required = _cart_passengers(lines)
+    passengers_total = _cart_passengers(lines)
+    consumed_capacity = _cart_capacity(lines)
+    product_flags = _product_behavior_flags(product)
+    passengers_required = passengers_total if product_flags["requires_passengers"] else 0
+    package_composition = [
+        {
+            "variation_public_id": line.variation.public_id,
+            "variation_name": line.variation.name,
+            "quantity": line.quantity,
+            "base_passengers": line.composition.base_passengers,
+            "child_passengers": line.composition.child_passengers,
+            "consumed_capacity": line.composition.total_capacity,
+            "child_breakdown": [child.serialize() for child in line.composition.child_breakdown],
+        }
+        for line in lines
+    ]
 
     passenger_token = secrets.token_urlsafe(24)
+    passenger_status = (
+        SalePassengerStatus.not_started.value if product_flags["requires_passengers"] else SalePassengerStatus.completed.value
+    )
     page_title_snapshot: str | None = None
     if page_id:
         page_ref = db.query(Page).filter(Page.id == page_id).first()
@@ -338,9 +702,13 @@ def create_product_checkout_sale(
         "page_id": page_id,
         "page_slug": page_slug,
         "agency_slug": agency_slug,
+        "passengers_required": passengers_required,
+        "consumed_capacity": consumed_capacity,
         "sale_passenger_token": passenger_token,
     }
     charge = _create_payment_charge(
+        db=db,
+        agency_id=product.agency_id,
         base_amount_cents=amount_cents,
         currency=currency,
         installments=1,
@@ -360,13 +728,18 @@ def create_product_checkout_sale(
         product_description=_trim(product.description, 500),
         currency=currency.lower(),
         passengers_required=passengers_required,
+        passenger_status=passenger_status,
         passenger_form_token=passenger_token,
-        interest_mode="merchant",
+        interest_mode=product.card_interest_mode or "merchant",
         metadata_json={
             "channel": channel,
             "source_url": source_url,
             "agency_slug": agency_slug,
             "page_id": page_id,
+            "consumed_capacity": consumed_capacity,
+            "package_composition": package_composition,
+            "boarding_locations": _normalize_boarding_locations((product.metadata_json or {}).get("boarding_locations")),
+            "product_flags": product_flags,
         },
         customer_name=_trim(customer.get("name"), 255),
         customer_email=_trim(customer.get("email"), 255),
@@ -375,16 +748,16 @@ def create_product_checkout_sale(
     )
     _apply_charge_to_sale(sale, charge)
 
-    _build_sale_items_from_lines(sale, product, lines)
+    built_items = _build_sale_items_from_lines(sale, product, lines)
     db.add(sale)
     db.flush()
 
-    for item in sale.items:
+    for line, item in zip(lines, built_items):
         reserve_inventory_for_item(
             db=db,
             product=product,
-            variation=item.variation,
-            quantity=item.quantity,
+            variation=line.variation,
+            capacity_units=line.composition.total_capacity,
             sale=sale,
             sale_item=item,
         )
@@ -407,7 +780,11 @@ def create_pos_sale(
         channel="pos",
         acting_user=current_user,
     )
-    return sale, charge
+    provider = _payment_provider_for_agency(db, sale.agency_id)
+    updated_charge = provider.update_status(charge, SalePaymentStatus.paid)
+    sale = _set_sale_payment_status(sale, SalePaymentStatus.paid, db)
+    _send_pos_checkout_email(sale, db)
+    return sale, updated_charge
 
 
 def create_payment_link_sale(
@@ -435,6 +812,7 @@ def create_payment_link_sale(
     db.add(link)
     db.commit()
     db.refresh(link)
+    _send_payment_link_email(sale, link, db)
     return link
 
 
@@ -478,6 +856,8 @@ def create_checkout_sale(
     }
     metadata = {key: str(value) for key, value in metadata_raw.items() if value is not None}
     charge = _create_payment_charge(
+        db=db,
+        agency_id=page.agency_id,
         base_amount_cents=amount_cents,
         currency="BRL",
         installments=max(1, resolution.installments),
@@ -525,6 +905,11 @@ def serialize_sale(sale: Sale) -> SaleSummary:
     agency_net = sale.agency_net_amount or sale.net_amount or 0
     installment_amount = _installment_amount(sale)
     spread_percent = (sale.spread_percentage or 0) / 100
+    metadata = sale.metadata_json or {}
+    flags = sale_flags(sale)
+    consumed_capacity = metadata.get("consumed_capacity")
+    if not isinstance(consumed_capacity, int):
+        consumed_capacity = sale.passengers_required
     return SaleSummary(
         id=sale.id,
         created_at=sale.created_at,
@@ -555,10 +940,16 @@ def serialize_sale(sale: Sale) -> SaleSummary:
         payout_status=sale.payout_status,
         passenger_status=sale.passenger_status,
         passengers_required=sale.passengers_required,
+        consumed_capacity=consumed_capacity,
         channel=sale.channel,
         customer_name=sale.customer_name,
         customer_email=sale.customer_email,
         customer_phone=sale.customer_phone,
+        boarding_locations=_boarding_locations_from_sale(sale),
+        has_rooms=flags["has_rooms"],
+        is_road_trip=flags["is_road_trip"],
+        requires_passengers=flags["requires_passengers"],
+        requires_rooming=flags["requires_rooming"],
     )
 
 
@@ -580,10 +971,11 @@ def serialize_checkout_breakdown(charge: PaymentCharge) -> PaymentBreakdown:
 def serialize_checkout_response(sale: Sale, charge: PaymentCharge | None = None) -> PublicCheckoutResponse:
     if charge:
         breakdown = serialize_checkout_breakdown(charge)
+        passenger_token = sale.passenger_form_token if sale_requires_passengers(sale) else None
         return PublicCheckoutResponse(
             sale_id=sale.id,
             checkout_reference=charge.provider_charge_id,
-            passenger_token=sale.passenger_form_token,
+            passenger_token=passenger_token,
             provider=charge.provider,
             provider_status=charge.provider_status.value,
             breakdown=breakdown,
@@ -604,10 +996,11 @@ def serialize_checkout_response_from_sale(sale: Sale) -> PublicCheckoutResponse:
         payment_method=sale.payment_method or "credit_card",
         spread_percentage=(sale.spread_percentage or 0) / 100,
     )
+    passenger_token = sale.passenger_form_token if sale_requires_passengers(sale) else None
     return PublicCheckoutResponse(
         sale_id=sale.id,
         checkout_reference=sale.provider_charge_id,
-        passenger_token=sale.passenger_form_token,
+        passenger_token=passenger_token,
         provider=sale.provider,
         provider_status=sale.payment_status,
         breakdown=breakdown,
@@ -615,6 +1008,43 @@ def serialize_checkout_response_from_sale(sale: Sale) -> PublicCheckoutResponse:
 
 
 def serialize_sale_item(item: SaleItem) -> SaleItemOut:
+    metadata = item.metadata_json or {}
+    breakdown_payload = metadata.get("child_breakdown") or []
+    breakdown: list[SaleItemChildBreakdown] = []
+    for entry in breakdown_payload:
+        try:
+            breakdown.append(
+                SaleItemChildBreakdown(
+                    key=str(entry.get("key", "")),
+                    label=str(entry.get("label", "")),
+                    quantity=int(entry.get("quantity") or 0),
+                    unit_amount_cents=int(entry.get("unit_amount_cents") or 0),
+                    total_amount_cents=int(entry.get("total_amount_cents") or 0),
+                    counts_towards_capacity=bool(entry.get("counts_towards_capacity")),
+                    counts_as_passenger=bool(entry.get("counts_as_passenger", True)),
+                )
+            )
+        except (ValueError, TypeError):
+            continue
+    consumed_capacity = metadata.get("consumed_capacity")
+    if not isinstance(consumed_capacity, int):
+        consumed_capacity = item.people_count
+    slots_reserved = item.slots_reserved or metadata.get("slots_reserved")
+    if not isinstance(slots_reserved, int):
+        slots_reserved = consumed_capacity
+    room_capacity = item.room_capacity or metadata.get("room_capacity") or item.occupancy
+    if not isinstance(room_capacity, int):
+        room_capacity = item.occupancy or consumed_capacity
+    slots_per_unit = item.slots_per_unit or metadata.get("slots_per_unit") or item.occupancy
+    if not isinstance(slots_per_unit, int):
+        slots_per_unit = item.occupancy or consumed_capacity
+    accommodation_mode = item.accommodation_mode or metadata.get("accommodation_mode")
+    if not isinstance(accommodation_mode, str) or not accommodation_mode:
+        accommodation_mode = ProductAccommodationMode.private.value
+    occupancy_status = item.occupancy_status or SaleItemOccupancyStatus.pending.value
+    child_extra_amount = metadata.get("child_extra_amount_cents")
+    if not isinstance(child_extra_amount, int):
+        child_extra_amount = 0
     return SaleItemOut(
         id=item.id,
         variation_public_id=item.variation_public_id,
@@ -624,62 +1054,28 @@ def serialize_sale_item(item: SaleItem) -> SaleItemOut:
         total_price=item.total_price,
         currency=item.currency,
         people_count=item.people_count,
+        consumed_capacity=consumed_capacity,
+        accommodation_mode=accommodation_mode,
+        room_capacity=room_capacity,
+        slots_per_unit=slots_per_unit,
+        slots_reserved=slots_reserved,
+        occupancy_status=occupancy_status,
+        child_extra_amount_cents=child_extra_amount,
+        child_breakdown=breakdown,
         status=item.status,
     )
 
 
-def serialize_passenger(passenger: SalePassenger) -> SalePassengerOut:
-    return SalePassengerOut(
-        id=passenger.id,
-        name=passenger.name,
-        cpf=passenger.cpf,
-        birthdate=passenger.birthdate.isoformat() if passenger.birthdate else None,
-        phone=passenger.phone,
-        whatsapp=passenger.whatsapp,
-        boarding_location=passenger.boarding_location,
-        extras=passenger.extras,
-    )
-
-
 def update_passengers_from_payload(sale: Sale, passenger_payload: Iterable[PassengerInput], db: Session) -> Sale:
-    sale.passengers.clear()
-    db.flush()
-    for payload in passenger_payload:
-        birthdate_value = None
-        if payload.birthdate:
-            try:
-                birthdate_value = date.fromisoformat(payload.birthdate)
-            except ValueError as exc:
-                raise HTTPException(status_code=400, detail="Data de nascimento invÃ¡lida.") from exc
-        passenger = SalePassenger(
-            sale_id=sale.id,
-            name=_trim(payload.name, 255) or "",
-            cpf=_trim(payload.cpf, 20),
-            birthdate=birthdate_value,
-            phone=_trim(payload.phone, 50),
-            whatsapp=_trim(payload.whatsapp, 50),
-            boarding_location=_trim(payload.boarding_location, 255),
-            extras=_trim(payload.extras, 1000),
-        )
-        sale.passengers.append(passenger)
-    sale.passenger_status = compute_passenger_status(sale)
+    if not sale_requires_passengers(sale):
+        raise HTTPException(status_code=400, detail="Venda nao exige passageiros.")
+    sale = assign_passengers_flat(sale, passenger_payload, db)
     db.add(sale)
     db.commit()
     db.refresh(sale)
     maybe_generate_contract_for_sale(sale, db)
     db.refresh(sale)
     return sale
-
-
-def compute_passenger_status(sale: Sale) -> str:
-    if not sale.passengers:
-        return SalePassengerStatus.not_started.value
-    if sale.passengers_required and len(sale.passengers) >= sale.passengers_required:
-        has_missing = any(not passenger.name or not passenger.cpf for passenger in sale.passengers)
-        if not has_missing:
-            return SalePassengerStatus.completed.value
-    return SalePassengerStatus.partial.value
-
 
 def _set_sale_payment_status(sale: Sale, status: SalePaymentStatus, db: Session) -> Sale:
     if sale.payment_status == status.value:
@@ -742,6 +1138,8 @@ class CheckoutPriceResolution:
 class ProductCartLine:
     variation: ProductVariation
     quantity: int
+    children: dict[str, int]
+    composition: PackageComposition
 
 
 

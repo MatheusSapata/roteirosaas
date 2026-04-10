@@ -14,6 +14,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from app.db.base import Base
+from app.models.passenger_group import PassengerType
 
 
 class SalePaymentStatus(str, Enum):  # type: ignore[misc]
@@ -99,6 +100,12 @@ class Sale(Base):
     user = relationship("User", back_populates="sales")
     product = relationship("Product", back_populates="sales")
     passengers = relationship("SalePassenger", back_populates="sale", cascade="all, delete-orphan")
+    passenger_groups = relationship(
+        "PassengerGroup",
+        back_populates="sale",
+        cascade="all, delete-orphan",
+        order_by="PassengerGroup.sort_order",
+    )
     items = relationship("SaleItem", back_populates="sale", cascade="all, delete-orphan")
     inventory_events = relationship("ProductInventoryEvent", back_populates="sale", cascade="all, delete-orphan")
     payment_link = relationship("SalePaymentLink", back_populates="sale", uselist=False, cascade="all, delete-orphan")
@@ -110,6 +117,9 @@ class SalePassenger(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     sale_id = Column(Integer, ForeignKey("sales.id", ondelete="CASCADE"), nullable=False, index=True)
+    passenger_group_id = Column(Integer, ForeignKey("passenger_groups.id", ondelete="CASCADE"), nullable=True, index=True)
+    passenger_index = Column(Integer, nullable=True)
+    type = Column(String(20), nullable=False, default=PassengerType.adult.value)
     name = Column(String(255), nullable=False)
     cpf = Column(String(20), nullable=True)
     birthdate = Column(Date, nullable=True)
@@ -121,3 +131,4 @@ class SalePassenger(Base):
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
 
     sale = relationship("Sale", back_populates="passengers")
+    passenger_group = relationship("PassengerGroup", back_populates="passengers")

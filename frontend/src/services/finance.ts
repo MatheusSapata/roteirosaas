@@ -1,8 +1,13 @@
 import api from "./api";
 import type {
+  AgencyBlimbooSettings,
+  AgencyBlimbooSettingsPayload,
   CheckoutIntentRequest,
   Passenger,
   PassengerFormResponse,
+  PassengerGroup,
+  PassengerGroupListResponse,
+  PassengerGroupSavePayload,
   PassengerLinkResponse,
   PaymentLinkRequest,
   PaymentLinkResponse,
@@ -11,6 +16,7 @@ import type {
   ProductDetail,
   ProductListResponse,
   ProductPayload,
+  ProductBoardingLocationsPayload,
   InventoryAdjustmentPayload,
   PublicCheckoutResponse,
   SaleDetail,
@@ -28,6 +34,9 @@ export const createProduct = (payload: ProductPayload) => api.post<ProductDetail
 
 export const updateProduct = (publicId: string, payload: ProductPayload) =>
   api.put<ProductDetail>(`/finance/products/${publicId}`, payload);
+
+export const updateProductBoardingLocations = (publicId: string, payload: ProductBoardingLocationsPayload) =>
+  api.put<ProductDetail>(`/finance/products/${publicId}/boarding-locations`, payload);
 
 export const deleteProduct = (publicId: string) => api.delete(`/finance/products/${publicId}`);
 
@@ -48,6 +57,12 @@ export const getSaleDetails = (saleId: number) => api.get<SaleDetail>(`/finance/
 export const saveSalePassengers = (saleId: number, passengers: Passenger[]) =>
   api.post<SaleDetail>(`/finance/sales/${saleId}/passengers`, passengers);
 
+export const getSalePassengerGroups = (saleId: number) =>
+  api.get<PassengerGroupListResponse>(`/finance/sales/${saleId}/passenger-groups`);
+
+export const savePassengerGroupPassengers = (groupId: number, payload: PassengerGroupSavePayload) =>
+  api.put<PassengerGroup>(`/finance/passenger-groups/${groupId}/passengers`, payload);
+
 export const getPassengerLink = (saleId: number) =>
   api.get<PassengerLinkResponse>(`/finance/sales/${saleId}/passenger-form-link`);
 
@@ -56,6 +71,9 @@ export const createPublicCheckoutIntent = (payload: CheckoutIntentRequest) =>
 
 export const createProductPublicCheckoutIntent = (payload: ProductCheckoutRequest) =>
   api.post<PublicCheckoutResponse>("/public/finance/products/checkout/payment-intent", payload);
+
+export const getPublicPaymentLinkDetails = (token: string) =>
+  api.get<SaleDetail>(`/public/finance/payment-links/${token}`);
 
 export const confirmPublicSale = (
   saleId: number,
@@ -70,3 +88,14 @@ export const getPublicPassengerForm = (token: string) =>
 
 export const submitPublicPassengers = (token: string, passengers: Passenger[]) =>
   api.post<PassengerFormResponse>(`/public/finance/sales/${token}/passengers`, passengers);
+
+export const getPublicPassengerGroups = (token: string) =>
+  api.get<PassengerGroupListResponse>(`/public/finance/sales/${token}/passenger-groups`);
+
+export const savePublicPassengerGroup = (token: string, groupId: number, payload: PassengerGroupSavePayload) =>
+  api.put<PassengerGroup>(`/public/finance/sales/${token}/passenger-groups/${groupId}`, payload);
+
+export const getBlimbooSettings = () => api.get<AgencyBlimbooSettings>("/finance/settings/blimboo");
+
+export const saveBlimbooSettings = (payload: AgencyBlimbooSettingsPayload) =>
+  api.post<AgencyBlimbooSettings>("/finance/settings/blimboo", payload);

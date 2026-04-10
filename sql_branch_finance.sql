@@ -337,6 +337,8 @@ CREATE TABLE products (
     reserved_slots INTEGER DEFAULT '0' NOT NULL, 
     sold_slots INTEGER DEFAULT '0' NOT NULL, 
     allow_oversell BOOLEAN DEFAULT false NOT NULL, 
+    has_rooms BOOLEAN DEFAULT false NOT NULL, 
+    is_road_trip BOOLEAN DEFAULT false NOT NULL, 
     metadata_json JSONB, 
     created_at TIMESTAMP WITH TIME ZONE DEFAULT now(), 
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(), 
@@ -375,6 +377,21 @@ CREATE TABLE product_variations (
 );
 
 CREATE INDEX ix_product_variations_product_id ON product_variations (product_id);
+
+CREATE TABLE product_rooms (
+    id SERIAL NOT NULL,
+    product_id INTEGER NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    capacity INTEGER DEFAULT '1' NOT NULL,
+    is_private BOOLEAN DEFAULT false NOT NULL,
+    stock_quantity INTEGER DEFAULT '0' NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
+    PRIMARY KEY (id),
+    FOREIGN KEY(product_id) REFERENCES products (id) ON DELETE CASCADE
+);
+
+CREATE INDEX ix_product_rooms_product_id ON product_rooms (product_id);
 
 CREATE TABLE sale_items (
     id SERIAL NOT NULL, 

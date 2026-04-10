@@ -14,8 +14,10 @@ from app.models.product import (
     ProductInventoryStrategy,
     ProductStatus,
     ProductVariation,
+    ProductAccommodationMode,
     ProductVariationStatus,
     ProductVariationStockMode,
+    ProductRoom,
 )
 from app.models.sale import Sale
 from app.models.sale_item import SaleItem, SaleItemStatus
@@ -27,7 +29,10 @@ from app.schemas.products import (
     ProductSummary,
     ProductVariationOut,
     ProductVariationPayload,
+    ProductRoomPayload,
+    ProductRoomOut,
 )
+from app.services.package_pricing import normalize_child_pricing_rules, serialize_child_pricing_rules
 
 
 def _clean_text(value: str | None) -> str | None:
@@ -37,12 +42,144 @@ def _clean_text(value: str | None) -> str | None:
     return text or None
 
 
+def _normalize_accommodation_settings(
+    *,
+    mode: str | None,
+    room_capacity: int | None,
+    slots_per_unit: int | None,
+) -> tuple[str, int, int]:
+    normalized_mode = (mode or ProductAccommodationMode.private.value).strip().lower()
+    valid_modes = {entry.value for entry in ProductAccommodationMode}
+    if normalized_mode not in valid_modes:
+        raise HTTPException(status_code=400, detail="Modo de acomoda��o invǭlido.")
+    capacity = max(1, int(room_capacity or 1))
+    slots = max(1, int(slots_per_unit or 1))
+    if normalized_mode == ProductAccommodationMode.private.value and slots != capacity:
+        raise HTTPException(status_code=400, detail="Pacotes privativos devem reservar todas as vagas do quarto.")
+    if normalized_mode == ProductAccommodationMode.shared.value and slots > capacity:
+        raise HTTPException(status_code=400, detail="Vagas por unidade nǜo podem exceder a capacidade do quarto.")
+    return normalized_mode, capacity, slots
+
+
+def _sanitize_boarding_locations(locations: list[str] | None) -> list[str]:
+    if not locations:
+        return []
+    sanitized: list[str] = []
+    seen = set()
+    for location in locations:
+        if not location:
+            continue
+        text = location.strip()
+        if not text:
+            continue
+        normalized = text[:255]
+        key = normalized.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        sanitized.append(normalized)
+    return sanitized
+
+
+def _normalize_room_payloads(payload: list[ProductRoomPayload] | None) -> list[dict[str, object]]:
+    if not payload:
+        return []
+    normalized: list[dict[str, object]] = []
+    for entry in payload:
+        raw = entry.model_dump() if hasattr(entry, "model_dump") else dict(entry)  # type: ignore[arg-type]
+        name = _clean_text(str(raw.get("name") or "")) or "Acomodação"
+        capacity = max(1, int(raw.get("capacity") or 1))
+        stock_quantity = raw.get("stock_quantity") or 0
+        try:
+            stock = int(stock_quantity)
+        except (TypeError, ValueError):
+            stock = 0
+        stock = max(0, stock)
+        normalized.append(
+            {
+                "id": raw.get("id"),
+                "name": name[:255],
+                "capacity": capacity,
+                "is_private": bool(raw.get("is_private", False)),
+                "stock_quantity": stock,
+            }
+        )
+    return normalized
+
+
+def _extract_boarding_locations(product: Product) -> list[str]:
+    metadata = product.metadata_json or {}
+    raw = metadata.get("boarding_locations")
+    if isinstance(raw, list):
+        raw_list = [entry for entry in raw if isinstance(entry, str)]
+        return _sanitize_boarding_locations(raw_list)
+    return []
+
+
+def _apply_boarding_locations(product: Product, locations: list[str]) -> None:
+    metadata = dict(product.metadata_json or {})
+    metadata["boarding_locations"] = locations
+    product.metadata_json = metadata
+
+
+def _serialize_product_room(room: ProductRoom) -> ProductRoomOut:
+    return ProductRoomOut(
+        id=room.id,
+        name=room.name,
+        capacity=room.capacity or 1,
+        is_private=bool(room.is_private),
+        stock_quantity=room.stock_quantity or 0,
+    )
+
+
+def _apply_rooms(product: Product, rooms_payload: list[ProductRoomPayload] | None) -> None:
+    normalized = _normalize_room_payloads(rooms_payload)
+    existing_map = {room.id: room for room in list(product.rooms or []) if room.id is not None}
+    retained: set[int] = set()
+    new_rooms: list[ProductRoom] = []
+    for entry in normalized:
+        room_id = entry.get("id")
+        if room_id and room_id in existing_map:
+            room = existing_map[room_id]
+            room.name = entry["name"]  # type: ignore[assignment]
+            room.capacity = entry["capacity"]  # type: ignore[assignment]
+            room.is_private = bool(entry["is_private"])
+            room.stock_quantity = entry["stock_quantity"]  # type: ignore[assignment]
+            retained.add(room_id)
+        else:
+            new_rooms.append(
+                ProductRoom(
+                    name=entry["name"],  # type: ignore[arg-type]
+                    capacity=entry["capacity"],  # type: ignore[arg-type]
+                    is_private=bool(entry["is_private"]),
+                    stock_quantity=entry["stock_quantity"],  # type: ignore[arg-type]
+                )
+            )
+    for room_id, room in existing_map.items():
+        if room_id not in retained:
+            product.rooms.remove(room)
+    product.rooms.extend(new_rooms)
+
+
+def _normalize_child_rules_payload(rules: list[dict[str, object]] | list | None) -> list[dict[str, object]]:
+    if not rules:
+        return serialize_child_pricing_rules(normalize_child_pricing_rules(None))
+    raw_rules: list[dict[str, object]] = []
+    for rule in rules:
+        if hasattr(rule, "model_dump"):
+            raw_rules.append(rule.model_dump())
+        elif isinstance(rule, dict):
+            raw_rules.append(rule)
+    return serialize_child_pricing_rules(normalize_child_pricing_rules(raw_rules))
+
+
 def _ensure_owner(product: Product, user: User) -> None:
     if product.user_id != user.id:
         raise HTTPException(status_code=404, detail="Produto não encontrado.")
 
 
 def _serialize_variation(variation: ProductVariation) -> ProductVariationOut:
+    child_rules = serialize_child_pricing_rules(normalize_child_pricing_rules(variation.child_pricing_rules or []))
     return ProductVariationOut(
         id=variation.id,
         public_id=variation.public_id,
@@ -53,11 +190,17 @@ def _serialize_variation(variation: ProductVariation) -> ProductVariationOut:
         people_included=variation.people_included,
         status=variation.status,
         stock_mode=variation.stock_mode,
+        has_accommodation=bool(variation.has_accommodation),
+        accommodation_mode=variation.accommodation_mode or ProductAccommodationMode.private.value,
+        room_capacity=variation.room_capacity or 1,
+        slots_per_unit=variation.slots_per_unit or 1,
         total_slots=variation.total_slots,
         available_slots=variation.available_slots,
         reserved_slots=variation.reserved_slots,
         sold_slots=variation.sold_slots,
         sort_order=variation.sort_order,
+        child_policy_enabled=variation.child_policy_enabled,
+        child_pricing_rules=child_rules,
     )
 
 
@@ -79,7 +222,13 @@ def serialize_product(product: Product) -> ProductSummary:
         sold_slots=product.sold_slots,
         inventory_strategy=product.inventory_strategy,
         allow_oversell=product.allow_oversell,
+        card_interest_mode=product.card_interest_mode or "merchant",
+        checkout_banner_url=_clean_text(product.checkout_banner_url),
+        checkout_product_image_url=_clean_text(product.checkout_product_image_url),
         variations=[_serialize_variation(variation) for variation in sorted(product.variations, key=lambda v: v.sort_order)],
+        boarding_locations=_extract_boarding_locations(product),
+        has_rooms=bool(product.has_rooms),
+        is_road_trip=bool(product.is_road_trip),
     )
 
 
@@ -89,6 +238,7 @@ def serialize_product_detail(product: Product) -> ProductDetail:
         **summary.model_dump(),
         created_at=product.created_at,
         updated_at=product.updated_at,
+        rooms=[_serialize_product_room(room) for room in sorted(product.rooms or [], key=lambda r: (r.capacity, r.name.lower()))],
     )
 
 
@@ -96,7 +246,7 @@ def list_products_for_user(user: User, db: Session) -> list[ProductSummary]:
     products = (
         db.query(Product)
         .filter(Product.user_id == user.id)
-        .options(joinedload(Product.variations), joinedload(Product.template_contract))
+        .options(joinedload(Product.variations), joinedload(Product.template_contract), joinedload(Product.rooms))
         .order_by(Product.created_at.desc())
         .all()
     )
@@ -150,7 +300,23 @@ def _sync_variations(product: Product, payload: Sequence[ProductVariationPayload
         record.people_included = variation_payload.people_included
         record.status = variation_payload.status
         record.stock_mode = variation_payload.stock_mode
+        record.has_accommodation = bool(variation_payload.has_accommodation)
+        (
+            record.accommodation_mode,
+            record.room_capacity,
+            record.slots_per_unit,
+        ) = _normalize_accommodation_settings(
+            mode=variation_payload.accommodation_mode,
+            room_capacity=variation_payload.room_capacity,
+            slots_per_unit=variation_payload.slots_per_unit,
+        )
+        if not record.has_accommodation:
+            record.accommodation_mode = ProductAccommodationMode.private.value
+            record.room_capacity = 1
+            record.slots_per_unit = 1
         record.sort_order = index
+        record.child_policy_enabled = variation_payload.child_policy_enabled
+        record.child_pricing_rules = _normalize_child_rules_payload(variation_payload.child_pricing_rules)
 
         if variation_payload.stock_mode == ProductVariationStockMode.variant.value:
             record.total_slots = variation_payload.total_slots or 0
@@ -184,10 +350,22 @@ def create_product(payload: ProductPayload, user: User, db: Session) -> Product:
         total_slots=payload.total_slots,
         available_slots=min(payload.available_slots, payload.total_slots),
         allow_oversell=payload.allow_oversell,
+        is_road_trip=bool(payload.is_road_trip),
+        card_interest_mode=payload.card_interest_mode,
+        checkout_banner_url=_clean_text(payload.checkout_banner_url),
+        checkout_product_image_url=_clean_text(payload.checkout_product_image_url),
     )
+    _apply_boarding_locations(product, _sanitize_boarding_locations(payload.boarding_locations))
     db.add(product)
     db.flush()
     _sync_variations(product, payload.variations)
+    product.has_rooms = any(variation.has_accommodation for variation in product.variations)
+    if not product.has_rooms:
+        product.rooms = []
+    if product.has_rooms and payload.rooms:
+        _apply_rooms(product, payload.rooms)
+    else:
+        product.rooms = []
     db.commit()
     db.refresh(product)
     return product
@@ -216,8 +394,19 @@ def update_product(product: Product, payload: ProductPayload, user: User, db: Se
     product.total_slots = payload.total_slots
     product.available_slots = min(payload.available_slots, payload.total_slots)
     product.allow_oversell = payload.allow_oversell
+    product.is_road_trip = bool(payload.is_road_trip)
+    product.card_interest_mode = payload.card_interest_mode
+    product.checkout_banner_url = _clean_text(payload.checkout_banner_url)
+    product.checkout_product_image_url = _clean_text(payload.checkout_product_image_url)
     product.template_contract_id = _resolve_template_contract_id(payload.template_contract_id, user, db)
+    _apply_boarding_locations(product, _sanitize_boarding_locations(payload.boarding_locations))
     _sync_variations(product, payload.variations)
+    product.has_rooms = any(variation.has_accommodation for variation in product.variations)
+    if product.has_rooms and payload.rooms:
+        _apply_rooms(product, payload.rooms)
+    else:
+        for room in list(product.rooms or []):
+            product.rooms.remove(room)
     db.add(product)
     db.commit()
     db.refresh(product)
@@ -236,6 +425,16 @@ def delete_product(public_id: str, user: User, db: Session) -> None:
     _ensure_owner(product, user)
     db.delete(product)
     db.commit()
+
+
+def update_product_boarding_locations(product: Product, locations: list[str], user: User, db: Session) -> Product:
+    _ensure_owner(product, user)
+    sanitized = _sanitize_boarding_locations(locations)
+    _apply_boarding_locations(product, sanitized)
+    db.add(product)
+    db.commit()
+    db.refresh(product)
+    return product
 
 
 def adjust_inventory(product: Product, payload: InventoryAdjustmentPayload, user: User, db: Session) -> Product:
@@ -277,7 +476,7 @@ def adjust_inventory(product: Product, payload: InventoryAdjustmentPayload, user
 def get_public_product(public_id: str, db: Session) -> Product:
     product = (
         db.query(Product)
-        .options(joinedload(Product.variations))
+        .options(joinedload(Product.variations), joinedload(Product.rooms))
         .filter(Product.public_id == public_id, Product.status == ProductStatus.active.value)
         .first()
     )
@@ -291,28 +490,28 @@ def reserve_inventory_for_item(
     db: Session,
     product: Product,
     variation: ProductVariation | None,
-    quantity: int,
+    capacity_units: int,
     sale: Sale,
     sale_item: SaleItem,
 ) -> None:
-    if quantity <= 0:
+    if capacity_units <= 0:
         return
 
     reserved_product = 0
     reserved_variant = 0
 
     if product.inventory_strategy == ProductInventoryStrategy.manual.value and not product.allow_oversell:
-        if product.available_slots < quantity:
+        if product.available_slots < capacity_units:
             raise HTTPException(status_code=400, detail="Sem vagas suficientes para o produto.")
         before = product.available_slots
-        product.available_slots -= quantity
-        product.reserved_slots += quantity
-        reserved_product = quantity
+        product.available_slots -= capacity_units
+        product.reserved_slots += capacity_units
+        reserved_product = capacity_units
         db.add(
             ProductInventoryEvent(
                 product=product,
                 action=ProductInventoryEventAction.reserve.value,
-                quantity=quantity,
+                quantity=capacity_units,
                 available_before=before,
                 available_after=product.available_slots,
                 sale=sale,
@@ -320,29 +519,17 @@ def reserve_inventory_for_item(
             )
         )
     else:
-        product.reserved_slots += quantity
+        product.reserved_slots += capacity_units
 
     if variation:
-        variation.reserved_slots = (variation.reserved_slots or 0) + quantity
+        variation.reserved_slots = (variation.reserved_slots or 0) + capacity_units
         if variation.stock_mode == ProductVariationStockMode.variant.value:
             available_now = variation.available_slots or 0
-            if available_now < quantity:
-                raise HTTPException(status_code=400, detail=f"Sem vagas suficientes em {variation.name}.")
-            before = available_now
-            variation.available_slots = available_now - quantity
-            reserved_variant = quantity
-            db.add(
-                ProductInventoryEvent(
-                    product=product,
-                    variation=variation,
-                    action=ProductInventoryEventAction.reserve.value,
-                    quantity=quantity,
-                    available_before=before,
-                    available_after=variation.available_slots,
-                    sale=sale,
-                    sale_item=sale_item,
-                )
-            )
+            if available_now < capacity_units:
+                raise HTTPException(status_code=400, detail="Sem vagas suficientes para a variação.")
+            variation.available_slots = available_now - capacity_units
+            variation.reserved_slots = (variation.reserved_slots or 0) + capacity_units
+            reserved_variant = capacity_units
 
     sale_item.reserved_from_product = reserved_product
     sale_item.reserved_from_variant = reserved_variant

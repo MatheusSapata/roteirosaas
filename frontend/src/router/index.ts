@@ -114,6 +114,11 @@ const platformRoutes: RouteRecordRaw[] = [
     component: () => import("../views/public/SignatureSuccessView.vue")
   },
   {
+    path: "/pagamentos/:token",
+    name: "payment-link",
+    component: () => import("../views/public/PaymentLinkView.vue")
+  },
+  {
     path: "/verificar/:token",
     name: "contract-verification",
     component: () => import("../views/public/ContractVerificationView.vue")
@@ -130,7 +135,31 @@ const platformRoutes: RouteRecordRaw[] = [
       { path: "pages/:id/edit", name: "page-edit", component: PageEditorView, props: true },
       { path: "aulas", name: "lessons", component: () => import("../views/admin/AulasView.vue") },
       { path: "leads", name: "leads", component: LeadsView },
-      { path: "financeiro", name: "finance", component: () => import("../views/admin/FinanceView.vue") },
+      {
+        path: "produtos",
+        name: "products",
+        component: () => import("../views/admin/FinanceView.vue"),
+        meta: { section: "products" }
+      },
+      {
+        path: "produtos/:productId/passageiros",
+        name: "product-passengers",
+        component: () => import("../views/admin/ProductPassengersView.vue"),
+        meta: { section: "products" }
+      },
+      {
+        path: "produtos/:productId/rooming-list",
+        name: "product-rooming-list",
+        component: () => import("../views/admin/RoomingListView.vue"),
+        meta: { section: "products" }
+      },
+      {
+        path: "vendas",
+        name: "sales",
+        component: () => import("../views/admin/FinanceView.vue"),
+        meta: { section: "sales" }
+      },
+      { path: "financeiro", redirect: { name: "products" } },
       { path: "juridico", name: "legal", component: () => import("../views/admin/LegalView.vue") },
       { path: "agency", name: "agency-settings", component: AgencySettingsView },
       {
@@ -159,6 +188,11 @@ const platformRoutes: RouteRecordRaw[] = [
 ];
 
 const customDomainRoutes: RouteRecordRaw[] = [
+  {
+    path: "/pagamentos/:token",
+    name: "custom-domain-payment-link",
+    component: () => import("../views/public/PaymentLinkView.vue")
+  },
   {
     path: "/",
     name: "custom-domain-default",

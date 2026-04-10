@@ -85,6 +85,85 @@
               <span v-if="isOutOfStock(variation)" class="font-semibold text-rose-600">Sem vagas</span>
               <span v-else-if="isLowStock(variation)" class="font-semibold text-amber-600">Últimas vagas</span>
             </div>
+            <div
+              v-if="hasEnabledChildRules(variation)"
+              class="space-y-2 rounded-2xl border border-slate-100 bg-slate-50/80 p-3"
+            >
+              <div class="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">
+                <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Crianças</p>
+                <button
+                  type="button"
+                  class="text-[11px] font-semibold text-slate-500 hover:text-slate-900"
+                  @click="toggleChildPanel(variation)"
+                >
+                  {{ isChildPanelCollapsed(variation) ? "Expandir" : "Recolher" }}
+                  <span
+                    class="ml-1 inline-block transition-transform"
+                    :class="isChildPanelCollapsed(variation) ? '' : 'rotate-180'"
+                  >
+                    ▾
+                  </span>
+                </button>
+              </div>
+              <div v-show="!isChildPanelCollapsed(variation)" class="space-y-2">
+                <template v-for="rule in childRules(variation)" :key="`${variation.public_id}-${rule.key}`">
+                  <div
+                    v-if="rule.enabled"
+                    class="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white px-3 py-2"
+                  >
+                    <div>
+                      <p class="text-sm font-semibold text-slate-900">{{ rule.label }}</p>
+                      <p class="text-[11px] text-slate-500">
+                        {{ rule.min_age }}-{{ rule.max_age }} anos •
+                        {{ rule.pricing_mode === "free" ? "Gratuito" : `+${formatCurrency(rule.extra_amount_cents)}` }} •
+                        {{ rule.counts_towards_capacity ? "Consome vaga" : "Não consome vaga" }}
+                      </p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <button
+                        type="button"
+                        class="grid h-7 w-7 place-items-center rounded-full border border-slate-200 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
+                        @click="adjustChildSelection(variation, rule.key, -1)"
+                        :disabled="(cart[variation.public_id]?.children[rule.key] || 0) <= 0"
+                      >
+                        &minus;
+                      </button>
+                      <span class="min-w-[2ch] text-center font-semibold text-slate-900">
+                        {{ cart[variation.public_id]?.children[rule.key] || 0 }}
+                      </span>
+                      <button
+                        type="button"
+                        class="grid h-7 w-7 place-items-center rounded-full border border-slate-200 bg-white text-sm font-semibold text-slate-900 disabled:cursor-not-allowed disabled:opacity-40"
+                        @click="adjustChildSelection(variation, rule.key, 1)"
+                        :disabled="!canIncrementChildSelection(variation, rule.key)"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+            <div v-if="compositionsByVariation.get(variation.public_id)" class="text-[11px] text-slate-500">
+              <span>
+                Passageiros: {{ compositionsByVariation.get(variation.public_id)?.totalPassengers || 0 }}
+              </span>
+              •
+              <span>
+                Ocupação: {{ compositionsByVariation.get(variation.public_id)?.totalCapacity || 0 }}
+              </span>
+              <span
+                v-if="compositionsByVariation.get(variation.public_id)?.childExtraCents"
+                class="ml-1 text-emerald-600"
+              >
+                + Crianças: {{
+                  formatCurrency(
+                    compositionsByVariation.get(variation.public_id)?.childExtraCents || 0,
+                    variation.currency
+                  )
+                }}
+              </span>
+            </div>
           </article>
 
           <div
@@ -129,14 +208,22 @@
               >
                 <div>
                   <p class="font-semibold text-slate-900">{{ item.quantity }}x {{ item.variation.name }}</p>
-                  <p class="text-xs text-slate-500">
-                    {{ item.peopleCount }} {{ item.peopleCount === 1 ? "passageiro" : "passageiros" }}
-                  </p>
+                    <p class="text-xs text-slate-500">
+                      {{ item.composition.totalPassengers }}
+                      {{ item.composition.totalPassengers === 1 ? "passageiro" : "passageiros" }}
+                      • Ocupação: {{ item.composition.totalCapacity }}
+                    </p>
+                    <ul v-if="item.composition.childBreakdown.length" class="mt-1 text-[11px] text-slate-500">
+                      <li v-for="child in item.composition.childBreakdown" :key="child.key">
+                        {{ child.quantity }}x {{ child.label }} —
+                        +{{ formatCurrency(child.totalAmountCents, item.variation.currency) }}
+                      </li>
+                    </ul>
                 </div>
                 <div class="text-right">
-                  <p class="font-semibold text-slate-900">
-                    {{ formatCurrency(item.lineTotal, item.variation.currency) }}
-                  </p>
+                    <p class="font-semibold text-slate-900">
+                      {{ formatCurrency(item.composition.totalPriceCents, item.variation.currency) }}
+                    </p>
                   <button
                     type="button"
                     class="text-[11px] font-semibold text-rose-500 hover:underline"
@@ -154,6 +241,9 @@
             </div>
             <p v-if="cartPassengers" class="text-xs text-slate-500">
               Inclui {{ cartPassengers }} {{ cartPassengers === 1 ? "passageiro" : "passageiros" }}.
+            </p>
+            <p v-if="cartCapacity" class="text-xs text-slate-500">
+              Ocupação estimada: {{ cartCapacity }} vaga(s).
             </p>
             <button
               type="button"
@@ -182,11 +272,17 @@ import { computed, inject, onMounted, reactive, ref, watch } from "vue";
 import SectionHeadingChip from "./SectionHeadingChip.vue";
 import { getSectionHeadingDefaults, resolveHeadingLabel } from "../../utils/sectionHeadings";
 import type { ProductsSection } from "../../types/page";
-import type { ProductDetail, ProductVariation } from "../../types/finance";
+import type { ChildPricingRule, ProductDetail, ProductVariation } from "../../types/finance";
 import { getPublicProductDetail } from "../../services/finance";
 import { createLocalizer, getCurrentLanguage, type LocalizedString } from "../../utils/i18n";
 import { deriveTextPalette } from "../../utils/colorContrast";
 import { PUBLIC_PRODUCT_CHECKOUT_KEY, type ProductCheckoutPayload } from "../../utils/checkoutKeys";
+import {
+  calculatePackageComposition,
+  emptyChildSelection,
+  sanitizeChildSelection,
+  type PackageComposition,
+} from "../../utils/packagePricing";
 
 const props = defineProps<{ section: ProductsSection }>();
 
@@ -197,8 +293,74 @@ const localize = createLocalizer(currentLanguage);
 const loading = ref(false);
 const errorMessage = ref<string | null>(null);
 const product = ref<ProductDetail | null>(null);
-const cart = reactive<Record<string, number>>({});
+type PackageSelectionState = {
+  quantity: number;
+  children: Record<string, number>;
+};
+const cart = reactive<Record<string, PackageSelectionState>>({});
 const checkoutBridge = inject(PUBLIC_PRODUCT_CHECKOUT_KEY, null);
+const childPanelState = reactive<Record<string, boolean>>({});
+
+const createSelectionState = (variation: ProductVariation): PackageSelectionState => ({
+  quantity: 0,
+  children: emptyChildSelection(variation),
+});
+
+const ensureSelectionState = (variation: ProductVariation) => {
+  if (!cart[variation.public_id]) {
+    cart[variation.public_id] = createSelectionState(variation);
+  }
+  return cart[variation.public_id];
+};
+
+const syncSelectionChildren = (selection: PackageSelectionState, variation: ProductVariation) => {
+  const sanitized = sanitizeChildSelection(variation, selection.quantity, selection.children);
+  Object.keys(selection.children).forEach(key => delete selection.children[key]);
+  Object.entries(sanitized).forEach(([key, value]) => {
+    selection.children[key] = value;
+  });
+};
+
+const updateSelectionQuantity = (variation: ProductVariation) => {
+  const selection = ensureSelectionState(variation);
+  selection.quantity = Math.max(0, Math.floor(selection.quantity || 0));
+  syncSelectionChildren(selection, variation);
+};
+
+const adjustChildSelection = (variation: ProductVariation, key: string, delta: number) => {
+  const selection = ensureSelectionState(variation);
+  selection.children[key] = Math.max(0, (selection.children[key] || 0) + delta);
+  syncSelectionChildren(selection, variation);
+};
+
+const childRules = (variation: ProductVariation) => {
+  const raw = variation.child_pricing_rules;
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((rule): rule is ChildPricingRule => !!rule && typeof rule === "object");
+};
+
+const selectionChildrenPayload = (selection: PackageSelectionState) =>
+  Object.entries(selection.children)
+    .filter(([, quantity]) => quantity && quantity > 0)
+    .map(([key, quantity]) => ({ key, quantity }));
+
+const ruleMaxForSelection = (variation: ProductVariation, selection: PackageSelectionState, key: string) => {
+  const rule = childRules(variation).find(r => r.key === key);
+  if (!rule || !rule.enabled) return 0;
+  if (!selection.quantity) return 0;
+  if (rule.max_quantity === null || typeof rule.max_quantity === "undefined") {
+    return Number.POSITIVE_INFINITY;
+  }
+  return Math.max(0, rule.max_quantity) * selection.quantity;
+};
+
+const canIncrementChildSelection = (variation: ProductVariation, key: string) => {
+  const selection = ensureSelectionState(variation);
+  const limit = ruleMaxForSelection(variation, selection, key);
+  if (!Number.isFinite(limit)) return true;
+  return (selection.children[key] || 0) < limit;
+};
+
 
 const sectionStyle = computed(() => ({
   background: props.section.backgroundColor || "linear-gradient(180deg,#f8fafc,#fff)"
@@ -278,7 +440,7 @@ const fetchProduct = async () => {
   resetCart();
   if (!props.section.productId) {
     product.value = null;
-    errorMessage.value = "Selecione um produto no painel financeiro para ativar esta seção.";
+    errorMessage.value = "Selecione um produto no menu Produtos do painel para ativar esta seção.";
     return;
   }
   loading.value = true;
@@ -313,20 +475,22 @@ watch(
   }
 );
 
-const getQuantity = (variation: ProductVariation) => cart[variation.public_id] || 0;
+const getQuantity = (variation: ProductVariation) => cart[variation.public_id]?.quantity || 0;
 const setQuantity = (variation: ProductVariation, quantity: number) => {
   const safeQuantity = Math.max(0, Math.floor(quantity));
   if (safeQuantity <= 0) {
     delete cart[variation.public_id];
-  } else {
-    const max = getMaxSelectable(variation);
-    const next = max === Number.MAX_SAFE_INTEGER ? safeQuantity : Math.min(safeQuantity, max);
-    if (next <= 0) {
-      delete cart[variation.public_id];
-    } else {
-      cart[variation.public_id] = next;
-    }
+    return;
   }
+  const max = getMaxSelectable(variation);
+  const next = max === Number.MAX_SAFE_INTEGER ? safeQuantity : Math.min(safeQuantity, max);
+  if (next <= 0) {
+    delete cart[variation.public_id];
+    return;
+  }
+  const selection = ensureSelectionState(variation);
+  selection.quantity = next;
+  syncSelectionChildren(selection, variation);
 };
 
 const sharedSelectedCount = (excludeId?: string) =>
@@ -407,30 +571,59 @@ const variationBadge = (variation: ProductVariation) => {
 
 interface SelectedItem {
   variation: ProductVariation;
+  selection: PackageSelectionState;
   quantity: number;
-  lineTotal: number;
-  peopleCount: number;
+  composition: PackageComposition;
 }
 
 const selectedItems = computed<SelectedItem[]>(() =>
   activeVariations.value
     .map(variation => {
-      const quantity = getQuantity(variation);
-      if (!quantity) return null;
+      const selection = cart[variation.public_id];
+      if (!selection || !selection.quantity) return null;
+      const composition = calculatePackageComposition(variation, selection.quantity, selection.children);
       return {
         variation,
-        quantity,
-        lineTotal: variation.price_cents * quantity,
-        peopleCount: quantity * (variation.people_included || 1)
+        selection,
+        quantity: selection.quantity,
+        composition,
       };
     })
     .filter(Boolean) as SelectedItem[]
 );
+const compositionsByVariation = computed(() => {
+  const map = new Map<string, PackageComposition>();
+  selectedItems.value.forEach(item => {
+    map.set(item.variation.public_id, item.composition);
+  });
+  return map;
+});
 
-const cartTotalCents = computed(() => selectedItems.value.reduce((sum, item) => sum + item.lineTotal, 0));
-const cartPassengers = computed(() =>
-  selectedItems.value.reduce((sum, item) => sum + item.peopleCount, 0)
+const hasEnabledChildRules = (variation: ProductVariation) =>
+  variation.child_policy_enabled && childRules(variation).some(rule => rule.enabled);
+
+const isChildPanelCollapsed = (variation: ProductVariation) => !!childPanelState[variation.public_id];
+const toggleChildPanel = (variation: ProductVariation) => {
+  childPanelState[variation.public_id] = !isChildPanelCollapsed(variation);
+};
+
+watch(
+  () => activeVariations.value.map(variation => variation.public_id),
+  ids => {
+    ids.forEach(id => {
+      if (!(id in childPanelState)) childPanelState[id] = false;
+    });
+    Object.keys(childPanelState).forEach(key => {
+      if (!ids.includes(key)) delete childPanelState[key];
+    });
+  },
+  { immediate: true },
 );
+const cartTotalCents = computed(() => selectedItems.value.reduce((sum, item) => sum + item.composition.totalPriceCents, 0));
+const cartPassengers = computed(() =>
+  selectedItems.value.reduce((sum, item) => sum + item.composition.totalPassengers, 0)
+);
+const cartCapacity = computed(() => selectedItems.value.reduce((sum, item) => sum + item.composition.totalCapacity, 0));
 const cartCurrency = computed(() => {
   const selected = selectedItems.value[0];
   if (selected) return selected.variation.currency;
@@ -479,13 +672,24 @@ const handleCheckout = () => {
     currency: cartCurrency.value,
     totalAmount: cartTotalCents.value,
     passengersRequired: cartPassengers.value,
+    consumedCapacity: cartCapacity.value,
     items: selectedItems.value.map(item => ({
       variationId: item.variation.public_id,
       name: item.variation.name,
       quantity: item.quantity,
       unitAmount: item.variation.price_cents,
       currency: item.variation.currency,
-      peopleCount: item.peopleCount
+      peopleCount: item.composition.totalPassengers,
+      consumedCapacity: item.composition.totalCapacity,
+      childExtraAmount: item.composition.childExtraCents,
+      childBreakdown: item.composition.childBreakdown.map(child => ({
+        key: child.key,
+        label: child.label,
+        quantity: child.quantity,
+        unitAmount: child.unitAmountCents,
+        totalAmount: child.totalAmountCents
+      })),
+      children: selectionChildrenPayload(item.selection)
     }))
   };
   checkoutBridge.startCheckout(payload);

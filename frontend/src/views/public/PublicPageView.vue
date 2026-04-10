@@ -470,9 +470,9 @@ const handleLeadModalDismissed = () => {
   leadModalVisible.value = false;
 };
 
-const handleCheckoutSucceeded = (payload: { passengerToken: string; saleId: number }) => {
-  passengerToken.value = payload.passengerToken;
-  passengerModalVisible.value = true;
+const handleCheckoutSucceeded = (payload: { passengerToken: string | null; saleId: number }) => {
+  passengerToken.value = payload.passengerToken || null;
+  passengerModalVisible.value = !!payload.passengerToken;
 };
 
 const handlePassengerCompleted = (payload?: { contractSignatureLink?: string | null }) => {

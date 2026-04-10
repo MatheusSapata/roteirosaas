@@ -3,17 +3,13 @@ from __future__ import annotations
 import uuid
 from enum import Enum
 
-from sqlalchemy import (
-    Column,
-    DateTime,
-    ForeignKey,
-    Integer,
-    String,
-)
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from app.db.base import Base
+from app.models.product import ProductAccommodationMode
 
 
 class SaleItemStatus(str, Enum):  # type: ignore[misc]
@@ -21,6 +17,12 @@ class SaleItemStatus(str, Enum):  # type: ignore[misc]
     confirmed = "confirmed"
     canceled = "canceled"
     refunded = "refunded"
+
+
+class SaleItemOccupancyStatus(str, Enum):  # type: ignore[misc]
+    pending = "pending_assignment"
+    partial = "partial"
+    complete = "complete"
 
 
 class SaleItem(Base):
@@ -39,10 +41,23 @@ class SaleItem(Base):
     quantity = Column(Integer, nullable=False, default=1)
     total_price = Column(Integer, nullable=False)
     people_count = Column(Integer, nullable=False, default=1)
+    occupancy = Column(Integer, nullable=False, default=1)
+    allows_children = Column(Boolean, nullable=False, default=False)
+    children_rules_snapshot = Column(JSONB, nullable=True)
     stock_mode = Column(String(20), nullable=False, default="shared")
+    accommodation_mode = Column(String(20), nullable=False, default=ProductAccommodationMode.private.value)
+    room_capacity = Column(Integer, nullable=False, default=1)
+    slots_per_unit = Column(Integer, nullable=False, default=1)
+    slots_reserved = Column(Integer, nullable=False, default=0)
+    occupancy_status = Column(
+        String(20),
+        nullable=False,
+        default=SaleItemOccupancyStatus.pending.value,
+    )
     reserved_from_product = Column(Integer, nullable=False, default=0)
     reserved_from_variant = Column(Integer, nullable=False, default=0)
     status = Column(String(20), nullable=False, default=SaleItemStatus.pending.value)
+    metadata_json = Column(JSONB, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -50,6 +65,7 @@ class SaleItem(Base):
     product = relationship("Product")
     variation = relationship("ProductVariation", back_populates="sale_items")
     inventory_events = relationship("ProductInventoryEvent", back_populates="sale_item", cascade="all, delete-orphan")
+    passenger_groups = relationship("PassengerGroup", back_populates="sale_item", cascade="all, delete-orphan")
 
 
 class SalePaymentLinkStatus(str, Enum):  # type: ignore[misc]

@@ -93,6 +93,8 @@ class Settings(BaseSettings):
     webapp_base_url: str | None = Field(None, alias="WEBAPP_BASE_URL")
     signature_webapp_base_url: str | None = Field(None, alias="SIGNATURE_WEBAPP_BASE_URL")
     verification_webapp_base_url: str | None = Field(None, alias="VERIFICATION_WEBAPP_BASE_URL")
+    blimboo_api_base_url: str | None = Field("https://test.blimboo.com/api", alias="BLIMBOO_API_BASE_URL")
+    blimboo_api_token: str | None = Field(None, alias="BLIMBOO_API_TOKEN")
 
     @field_validator("platform_domains", "forbidden_custom_hosts", mode="before")
     @classmethod
