@@ -389,8 +389,30 @@ class CaktoIntegrationService:
         subscription.status = status
         subscription.updated_at = datetime.utcnow()
         if status.lower() == "active":
+            mapping = None
+            if offer_id or product_id:
+                mapping = self._resolve_plan(offer_id, product_id)
+            next_due_date = self._extract_next_due_date(payload, order)
+            target_cycle = None
+            if mapping:
+                subscription.plan = mapping.plan_key
+                subscription.billing_cycle = mapping.cycle
+                target_cycle = mapping.cycle
+                if subscription.user:
+                    subscription.user.plan = mapping.plan_key
+                    self.db.add(subscription.user)
+            else:
+                target_cycle = subscription.billing_cycle
+            if next_due_date or target_cycle:
+                subscription.valid_until = self._calculate_valid_until(target_cycle or subscription.billing_cycle, next_due_date)
             if new_amount is not None:
                 subscription.mrr_amount = new_amount
+            if offer_id:
+                subscription.cakto_offer_id = offer_id
+            if order_id:
+                subscription.cakto_order_id = order_id
+            if subscription_code:
+                subscription.cakto_subscription_code = subscription_code
         else:
             subscription.mrr_amount = ZERO_DECIMAL
         if downgrade_plan and subscription.user:
