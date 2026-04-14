@@ -893,12 +893,14 @@ class CaktoIntegrationService:
     def _get_nested(self, data: Dict[str, Any], *keys: str) -> Any:
         current = data
         for key in keys:
+            if current is None:
+                return None
             if isinstance(current, list):
                 current = current[0] if current else None
-            elif isinstance(current, dict):
+            if current is None:
+                return None
+            if isinstance(current, dict):
                 current = current.get(key)
             else:
-                return None
-            if current is None:
                 return None
         return current
