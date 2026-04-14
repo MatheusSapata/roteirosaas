@@ -851,14 +851,47 @@ class CaktoIntegrationService:
         return token
 
     def _find_subscription(self, *, subscription_code: str | None, order_id: str | None) -> Optional[Subscription]:
+        masked_sub_code = f"{subscription_code[:6]}..." if subscription_code else None
+        masked_order_id = f"{order_id[:6]}..." if order_id else None
+        logger.info(
+            "Buscando assinatura (subscription_code=%s, order_id=%s).",
+            masked_sub_code,
+            masked_order_id,
+        )
         if not subscription_code and not order_id:
+            logger.warning("Busca abortada: nenhum identificador fornecido.")
             return None
-        query = self.db.query(Subscription)
+
         if subscription_code:
-            query = query.filter(Subscription.cakto_subscription_code == subscription_code)
+            logger.debug("Tentando localizar assinatura pelo subscription_code %s.", masked_sub_code)
+            subscription = (
+                self.db.query(Subscription)
+                .filter(Subscription.cakto_subscription_code == subscription_code)
+                .first()
+            )
+            if subscription:
+                logger.info("Assinatura %s encontrada pelo subscription_code %s.", subscription.id, masked_sub_code)
+                return subscription
+            logger.info("Nenhuma assinatura encontrada com subscription_code %s.", masked_sub_code)
+
         if order_id:
-            query = query.filter(Subscription.cakto_order_id == order_id)
-        return query.first()
+            logger.debug("Tentando localizar assinatura pelo order_id %s.", masked_order_id)
+            subscription = (
+                self.db.query(Subscription)
+                .filter(Subscription.cakto_order_id == order_id)
+                .first()
+            )
+            if subscription:
+                logger.info("Assinatura %s encontrada pelo order_id %s.", subscription.id, masked_order_id)
+                return subscription
+            logger.info("Nenhuma assinatura encontrada com order_id %s.", masked_order_id)
+
+        logger.error(
+            "Falha ao localizar assinatura (subscription_code=%s, order_id=%s).",
+            masked_sub_code,
+            masked_order_id,
+        )
+        return None
 
     def _finalize_checkout_session(
         self,
