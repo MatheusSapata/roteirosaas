@@ -14,7 +14,7 @@
           <button type="button" class="pill" :disabled="productsLoading || !products.length" @click="openPaymentLinkModal()">
             Gerar link
           </button>
-          <button type="button" class="btn-primary" @click="openProductModal()">Criar produto</button>
+          <router-link class="btn-primary" :to="{ name: 'product-create' }">Criar produto</router-link>
         </div>
       </div>
 
@@ -23,109 +23,43 @@
         Nenhum produto cadastrado. Clique em <strong>Criar produto</strong> para comear.
       </div>
       <div v-else class="grid gap-5 lg:grid-cols-2 xl:grid-cols-3">
-        <article
-          v-for="product in products"
-          :key="product.public_id"
-          class="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
-        >
-          <header class="flex flex-wrap items-start justify-between gap-3">
+        <article v-for="product in products" :key="product.public_id" class="product-card">
+          <header class="product-card__header">
             <div>
-              <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Produto #{{ product.id }}</p>
-              <h3 class="text-xl font-semibold text-slate-900">{{ product.name }}</h3>
-              <p v-if="product.description" class="text-sm text-slate-500">{{ product.description }}</p>
-              <p class="text-xs text-slate-500">{{ tripDateLabel(product) }}</p>
-              <div class="mt-2 flex flex-wrap gap-2 text-[11px] font-semibold text-slate-500">
-                <span v-if="product.is_road_trip" class="badge badge-muted">Excursão rodoviária</span>
-                <span v-if="product.has_rooms" class="badge badge-muted">Hospedagem</span>
-              </div>
+              <p class="product-card__eyebrow">Produto #{{ product.id }}</p>
+              <h3 class="product-card__title">{{ product.name }}</h3>
+              <p class="product-card__date">{{ tripDateLabel(product) }}</p>
             </div>
-            <div class="flex flex-col items-end gap-2 text-xs font-semibold">
-              <span :class="['rounded-full px-3 py-1', productStatusClass(product.status)]">
+            <div class="product-card__status">
+              <span class="status-pill" :class="productStatusClass(product.status)">
                 {{ productStatusLabel(product.status) }}
               </span>
-              <span class="rounded-full bg-slate-100 px-3 py-1 text-slate-600">{{ inventoryBadge(product) }}</span>
+              <span class="inventory-pill">{{ inventoryBadge(product) }}</span>
             </div>
           </header>
-
-          <dl class="grid grid-cols-2 gap-3 text-center text-sm font-semibold md:grid-cols-4">
-            <div class="stat-card">
+          <dl class="product-card__metrics">
+            <div>
               <dt>Totais</dt>
               <dd>{{ product.total_slots }}</dd>
             </div>
-            <div class="stat-card">
-              <dt>Dispon&iacute;veis</dt>
-              <dd class="text-emerald-600">{{ product.available_slots }}</dd>
+            <div>
+              <dt>Disponiveis</dt>
+              <dd>{{ product.available_slots }}</dd>
             </div>
-            <div class="stat-card">
+            <div>
               <dt>Reservadas</dt>
-              <dd class="text-amber-600">{{ product.reserved_slots }}</dd>
+              <dd>{{ product.reserved_slots }}</dd>
             </div>
-            <div class="stat-card">
+            <div>
               <dt>Vendidas</dt>
-              <dd class="text-emerald-800">{{ product.sold_slots }}</dd>
+              <dd>{{ product.sold_slots }}</dd>
             </div>
           </dl>
-
-          <div class="mt-4 rounded-2xl border border-slate-100 bg-slate-50/60 p-3">
-            <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Contrato vinculado</p>
-            <p class="mt-1 text-sm font-semibold text-slate-900">{{ productContractLabel(product) }}</p>
-            <p v-if="!product.template_contract_id" class="text-xs text-slate-500">
-              Vincule um template para gerar contratos automaticamente aps cada venda.
-            </p>
-          </div>
-
-          <div class="space-y-2 rounded-2xl border border-slate-100 p-3">
-            <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Pacotes</p>
-            <div
-              v-for="variation in product.variations || []"
-              :key="variation.public_id"
-              class="flex flex-wrap items-start justify-between gap-3 rounded-xl bg-slate-50 p-3"
-            >
-              <div>
-                <p class="text-sm font-semibold text-slate-900">
-                  {{ variation.name }}
-                  <span
-                    class="ml-2 rounded-full px-2 py-0.5 text-[11px] font-semibold"
-                    :class="variation.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500'"
-                  >
-                    {{ variation.status === 'active' ? 'Ativo' : 'Inativo' }}
-                  </span>
-                </p>
-                <p v-if="variation.description" class="text-xs text-slate-500">{{ variation.description }}</p>
-                <p class="text-xs text-slate-500">Inclui {{ variation.people_included }} pessoa(s)</p>
-              </div>
-              <div class="text-right text-sm font-semibold text-slate-900">
-                {{ formatCurrency(variation.price_cents) }}
-                <p class="text-xs text-slate-500">
-                  Estoque:
-                  <span v-if="variation.stock_mode === 'variant'">
-                    {{ variation.available_slots ?? 0 }} / {{ variation.total_slots ?? 0 }}
-                  </span>
-                  <span v-else>herda produto</span>
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div class="flex flex-wrap gap-2">
-            <button type="button" class="pill" @click="openProductModal(product)">Editar</button>
-            <button type="button" class="pill" @click="openInventoryModal(product)">Ajustar estoque</button>
-            <button type="button" class="pill" @click="openPosModal(product)">Nova venda</button>
-            <button type="button" class="pill" @click="goToProductPassengers(product)">
-              Lista de passageiros
-            </button>
-            <button
-              type="button"
-              class="pill"
-              :disabled="!product.has_rooms"
-              :title="product.has_rooms ? 'Abrir rooming list' : 'Disponível apenas para produtos com hospedagem'"
-              @click="product.has_rooms && goToRoomingList(product)"
-            >
-              Rooming List
-            </button>
-            <button type="button" class="pill" @click="openPaymentLinkModal(product)">Link pagamento</button>
-            <button type="button" class="pill text-rose-600" @click="openDeleteModal(product)">Excluir</button>
-          </div>
+          <footer class="product-card__footer">
+            <router-link class="btn-primary" :to="{ name: 'product-detail', params: { productId: product.public_id } }">
+              Ver produto
+            </router-link>
+          </footer>
         </article>
       </div>
     </section>
@@ -426,425 +360,6 @@
     </section>
 
     
-    <!-- Product modal -->
-    <div v-if="productModalVisible" class="modal-overlay !mt-0">
-      <div class="modal-card modal-card--product">
-        <header class="flex items-center justify-between border-b border-slate-100 pb-4">
-          <div>
-            <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">
-              {{ editingProductId ? 'Editar produto' : 'Novo produto' }}
-            </p>
-            <h3 class="text-lg font-semibold text-slate-900">{{ productForm.name || 'Nova viagem' }}</h3>
-          </div>
-          <button
-            type="button"
-            class="h-9 w-9 rounded-full border border-slate-200 text-lg font-semibold text-slate-500 transition hover:border-slate-300 hover:text-slate-900"
-            aria-label="Fechar modal de produto"
-            @click="productModalVisible = false"
-          >
-            &times;
-          </button>
-        </header>
-
-        <div class="modal-body custom-scroll space-y-4">
-          <div class="grid gap-4 md:grid-cols-2">
-            <div>
-              <label class="input-label">Nome</label>
-              <input v-model="productForm.name" class="input" placeholder="Expedi&ccedil;&atilde;o Amaz&ocirc;nia" />
-            </div>
-            <div>
-              <label class="input-label">Status</label>
-              <select v-model="productForm.status" class="input">
-                <option value="draft">Rascunho</option>
-                <option value="active">Ativo</option>
-                <option value="inactive">Inativo</option>
-              </select>
-            </div>
-          </div>
-          <div>
-            <label class="input-label">Descri&ccedil;&atilde;o</label>
-            <textarea v-model="productForm.description" rows="2" class="input" placeholder="Resumo da viagem"></textarea>
-          </div>
-          <div class="grid gap-4 md:grid-cols-3">
-            <div>
-              <label class="input-label">Data da viagem</label>
-              <input type="date" v-model="productForm.trip_date" class="input" />
-            </div>
-            <div class="flex items-center gap-2">
-              <label class="input-label">Sem data definida</label>
-              <input type="checkbox" v-model="productForm.date_is_flexible" class="h-4 w-4" />
-            </div>
-            <div>
-              <label class="input-label">Estrat&eacute;gia de estoque</label>
-              <select v-model="productForm.inventory_strategy" class="input">
-                <option value="manual">Manual</option>
-                <option value="unlimited">Ilimitado</option>
-              </select>
-            </div>
-          </div>
-          <div class="grid gap-4 md:grid-cols-3">
-            <div>
-              <label class="input-label">Vagas totais</label>
-              <input type="number" min="0" class="input" v-model.number="productForm.total_slots" :disabled="productForm.inventory_strategy === 'unlimited'" />
-            </div>
-            <div>
-              <label class="input-label">Dispon&iacute;veis</label>
-              <input type="number" min="0" class="input" v-model.number="productForm.available_slots" :disabled="productForm.inventory_strategy === 'unlimited'" />
-            </div>
-            <div class="flex items-center gap-2">
-              <label class="input-label">Permitir overbooking</label>
-              <input type="checkbox" v-model="productForm.allow_oversell" class="h-4 w-4" />
-            </div>
-          </div>
-          <div>
-          <label class="input-label">Juros do cart&atilde;o de cr&eacute;dito</label>
-          <select v-model="productForm.card_interest_mode" class="input">
-            <option value="merchant">Assumir juros do parcelamento</option>
-            <option value="customer">Repassar juros ao cliente</option>
-          </select>
-          <p class="mt-1 text-xs text-slate-500">
-            Escolha quem arca com os custos de parcelamento nas vendas com cart&atilde;o de cr&eacute;dito.
-          </p>
-        </div>
-        <div class="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
-          <label class="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800">
-            <input type="checkbox" class="mt-1 h-4 w-4" v-model="productForm.is_road_trip" />
-            <span>
-              <span class="block text-base text-slate-900">&Eacute; excurs&atilde;o rodovi&aacute;ria</span>
-              <span class="text-xs font-normal text-slate-500">Ative apenas quando precisar habilitar configura&ccedil;&otilde;es de transporte rodovi&aacute;rio (mapa de assentos).</span>
-            </span>
-          </label>
-          <button
-            v-if="productForm.is_road_trip"
-            type="button"
-            class="pill whitespace-nowrap"
-            :disabled="!editingProductId"
-            :title="!editingProductId ? 'Salve o produto para acessar o mapa de transporte' : ''"
-            @click="openRoadTripConfig"
-          >
-            Configurar rodovi&aacute;rio
-          </button>
-        </div>
-
-        <div>
-          <label class="input-label">Contrato vinculado</label>
-            <div class="flex flex-col gap-2 md:flex-row md:items-center">
-              <select v-model="productForm.template_contract_id" class="input md:flex-1">
-                <option :value="null">Sem contrato autom&aacute;tico</option>
-                <option v-for="template in contractTemplates" :key="template.id" :value="template.id">
-                  {{ template.name }}
-                </option>
-              </select>
-              <button type="button" class="pill" @click="openBoardingLocationsModal">
-                Definir locais de embarque
-              </button>
-            </div>
-            <p class="mt-1 text-xs text-slate-500">O cliente receber&aacute; este template ao concluir a compra.</p>
-            <p v-if="contractTemplatesLoading" class="text-xs text-slate-400">Carregando contratos...</p>
-            <p v-else-if="!contractTemplates.length" class="text-xs text-amber-600">
-              Nenhum template dispon&iacute;vel. Configure em Jur&iacute;dico &gt; Contratos.
-            </p>
-          </div>
-          <div class="space-y-4 rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
-            <div class="flex flex-col gap-1">
-              <p class="text-sm font-semibold text-slate-900">Apar&ecirc;ncia do checkout</p>
-              <p class="text-xs text-slate-500">
-                Personalize o banner e a imagem de destaque exibidos no checkout p&uacute;blico. Use imagens em alta resolu&ccedil;&atilde;o para transmitir
-                confian&ccedil;a e profissionalismo.
-              </p>
-            </div>
-            <div class="grid gap-4 md:grid-cols-2">
-              <ImageUploadField
-                v-model="productForm.checkout_banner_url"
-                label="Banner do checkout"
-                :hint="'Recomendado 1600x600px (horizontal). Formatos: JPG ou PNG.'"
-                :enable-crop="true"
-                :crop-aspect="16 / 6"
-              />
-              <ImageUploadField
-                v-model="productForm.checkout_product_image_url"
-                label="Imagem do produto"
-                :hint="'Use imagem quadrada ou retrato leve (ex.: 800x1000px).' "
-                :enable-crop="true"
-                :crop-aspect="4 / 5"
-              />
-            </div>
-          </div>
-          <div class="space-y-3 rounded-2xl border border-slate-100 p-3">
-            <div class="flex items-center justify-between">
-              <div>
-                <p class="text-sm font-semibold text-slate-900">Pacotes</p>
-                <p class="text-xs text-slate-500">Defina varia&ccedil;&otilde;es de pre&ccedil;o e estoque.</p>
-              </div>
-              <button type="button" class="text-xs font-semibold text-emerald-600" @click="addVariation">+ Adicionar</button>
-            </div>
-            <div v-for="(variation, index) in productForm.variations" :key="index" class="space-y-2 rounded-xl bg-slate-50/80 p-3">
-              <div class="flex items-center justify-between">
-                <p class="text-sm font-semibold text-slate-900">Pacote {{ index + 1 }}</p>
-                <button type="button" class="text-xs text-rose-500" @click="removeVariation(index)" :disabled="productForm.variations.length === 1">
-                  Remover
-                </button>
-              </div>
-              <div class="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label class="input-label">Nome</label>
-                  <input v-model="variation.name" class="input" placeholder="Pacote premium" />
-                </div>
-                <div>
-                  <label class="input-label">Pre&ccedil;o (R$)</label>
-                  <input type="number" min="0" step="0.01" class="input" v-model.number="variation.price" />
-                </div>
-              </div>
-              <div class="grid gap-4 md:grid-cols-3">
-                <div>
-                  <label class="input-label">Pessoas inclu&iacute;das</label>
-                  <input type="number" min="1" class="input" v-model.number="variation.people_included" />
-                </div>
-                <div>
-                  <label class="input-label">Status</label>
-                  <select v-model="variation.status" class="input">
-                    <option value="active">Ativo</option>
-                    <option value="inactive">Inativo</option>
-                  </select>
-                </div>
-                <div>
-                  <label class="input-label">Controle</label>
-                  <select v-model="variation.stock_mode" class="input">
-                    <option value="shared">Herda produto</option>
-                    <option value="variant">Pr&oacute;prio</option>
-                  </select>
-                </div>
-              </div>
-              <div class="space-y-2 rounded-2xl border border-emerald-100/60 bg-white/80 p-3">
-                <div class="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <p class="text-sm font-semibold text-slate-900">Acomoda&ccedil;&atilde;o</p>
-                    <p class="text-xs text-slate-500">Controle se a unidade fecha um quarto completo ou vende vagas compartilhadas.</p>
-                  </div>
-                  <div class="flex flex-wrap items-center gap-3">
-                    <label class="flex items-center gap-2 text-xs font-semibold text-slate-600">
-                      <input type="checkbox" v-model="variation.has_accommodation" @change="handleHasAccommodationToggle(variation)" />
-                      Este pacote inclui hospedagem
-                    </label>
-                    <button
-                      v-if="variation.has_accommodation"
-                      type="button"
-                      class="text-xs font-semibold text-slate-500 hover:text-slate-900"
-                      @click="toggleAccommodationCollapse(variation, index)"
-                    >
-                      {{ isAccommodationCollapsed(variation, index) ? "Expandir" : "Recolher" }}
-                    </button>
-                  </div>
-                </div>
-                <p v-if="!variation.has_accommodation" class="text-xs text-slate-500">
-                  Ative a hospedagem para liberar a configura&ccedil;&atilde;o das acomoda&ccedil;&otilde;es deste pacote.
-                </p>
-                <div v-show="variation.has_accommodation && !isAccommodationCollapsed(variation, index)" class="space-y-2">
-                  <div class="grid gap-3 md:grid-cols-3">
-                    <div>
-                      <label class="input-label">Tipo</label>
-                      <select v-model="variation.accommodation_mode" class="input" @change="handleAccommodationModeChange(variation)">
-                        <option value="private">Privativa</option>
-                        <option value="shared">Compartilhada</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label class="input-label">Capacidade total do quarto</label>
-                      <input
-                        type="number"
-                        min="1"
-                        class="input"
-                        v-model.number="variation.room_capacity"
-                        @blur="sanitizeRoomCapacity(variation)"
-                      />
-                      <p class="mt-1 text-[11px] text-slate-500">Ex.: duplo = 2, triplo = 3, qu&aacute;druplo = 4.</p>
-                    </div>
-                    <div>
-                      <label class="input-label">Vagas por unidade</label>
-                      <input
-                        type="number"
-                        min="1"
-                        class="input"
-                        v-model.number="variation.slots_per_unit"
-                        @blur="sanitizeSlotsPerUnit(variation)"
-                        :disabled="variation.accommodation_mode === 'private'"
-                      />
-                      <p class="mt-1 text-[11px] text-slate-500">Quantas vagas cada venda bloqueia.</p>
-                    </div>
-                  </div>
-                  <p class="text-xs text-slate-500">
-                    <span class="font-semibold text-slate-700">Privativa:</span> cada venda fecha o quarto inteiro.
-                    <span class="ml-1 font-semibold text-slate-700">Compartilhada:</span> permite reservar parte das vagas sem exigir lota&ccedil;&atilde;o total.
-                  </p>
-                </div>
-              </div>
-              <div v-if="variation.stock_mode === 'variant'" class="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label class="input-label">Total</label>
-                  <input type="number" min="0" class="input" v-model.number="variation.total_slots" />
-                </div>
-                <div>
-                  <label class="input-label">Dispon&iacute;veis</label>
-                  <input type="number" min="0" class="input" v-model.number="variation.available_slots" />
-                </div>
-              </div>
-              <div>
-                <label class="input-label">Descri&ccedil;&atilde;o</label>
-                <textarea v-model="variation.description" rows="2" class="input" placeholder="Detalhes do pacote"></textarea>
-              </div>
-              <div class="rounded-2xl border border-slate-100 bg-white p-3">
-                <div class="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <p class="text-sm font-semibold text-slate-900">Pol&iacute;tica infantil</p>
-                    <p class="text-xs text-slate-500">Configure faixas e cobran&ccedil;as por crian&ccedil;a.</p>
-                  </div>
-                  <div class="flex flex-wrap items-center gap-3">
-                    <button
-                      v-if="variation.child_policy_enabled"
-                      type="button"
-                      class="text-xs font-semibold text-slate-500 hover:text-slate-900"
-                      @click="toggleChildPolicyCollapse(variation, index)"
-                    >
-                      <span>{{ isChildPolicyCollapsed(variation, index) ? "Expandir campos" : "Recolher campos" }}</span>
-                      <span
-                        class="ml-1 inline-block transition-transform"
-                        :class="isChildPolicyCollapsed(variation, index) ? '' : 'rotate-180'"
-                      >&#9662;</span>
-                    </button>
-                    <label class="flex items-center gap-2 text-xs font-semibold text-slate-600">
-                      <input type="checkbox" v-model="variation.child_policy_enabled" />
-                      Permitir crian&ccedil;as
-                    </label>
-                  </div>
-                </div>
-                <p class="mt-1 text-xs text-slate-500">
-                  Defina como cada faixa impacta o valor, passageiros e vagas. Quando desativado, nenhuma crian&ccedil;a &eacute; aceita.
-                </p>
-                <div v-if="variation.child_policy_enabled">
-                  <div v-show="!isChildPolicyCollapsed(variation, index)" class="mt-3 space-y-3">
-                    <div
-                      v-for="rule in variation.child_pricing_rules"
-                      :key="rule.key"
-                      class="space-y-3 rounded-2xl border border-slate-100 bg-slate-50/70 p-3"
-                    >
-                      <div class="flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                          <p class="text-sm font-semibold text-slate-900">{{ describeChildRange(rule) }}</p>
-                          <p class="text-xs text-slate-500">{{ childRuleSubtitle(rule) }}</p>
-                        </div>
-                        <label class="flex items-center gap-2 text-xs font-semibold text-slate-600">
-                          <input type="checkbox" v-model="rule.enabled" />
-                          Habilitar faixa
-                        </label>
-                      </div>
-                      <div class="grid gap-3 md:grid-cols-2">
-                        <div>
-                          <label class="input-label">Idade m&iacute;nima (anos)</label>
-                          <input
-                            type="number"
-                            min="0"
-                            class="input"
-                            v-model.number="rule.min_age"
-                            @blur="sanitizeRuleAges(rule)"
-                          />
-                        </div>
-                        <div>
-                          <label class="input-label">Idade m&aacute;xima (anos)</label>
-                          <input
-                            type="number"
-                            min="0"
-                            class="input"
-                            v-model.number="rule.max_age"
-                            @blur="sanitizeRuleAges(rule)"
-                          />
-                        </div>
-                      </div>
-                      <div class="grid gap-3 md:grid-cols-2">
-                        <div>
-                          <label class="input-label">Tipo de cobran&ccedil;a</label>
-                          <select
-                            v-model="rule.pricing_mode"
-                            class="input"
-                            @change="rule.pricing_mode === 'free' && (rule.extra_amount = 0)"
-                          >
-                            <option value="free">Gratuito</option>
-                            <option value="extra">Valor adicional</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label class="input-label">Valor adicional (R$)</label>
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            class="input"
-                            v-model.number="rule.extra_amount"
-                            :disabled="rule.pricing_mode === 'free'"
-                          />
-                        </div>
-                      </div>
-                      <div class="grid gap-3 md:grid-cols-3">
-                        <label class="flex items-center gap-2 text-xs font-semibold text-slate-600">
-                          <input type="checkbox" v-model="rule.counts_towards_capacity" />
-                          Consome vaga?
-                        </label>
-                        <label class="flex items-center gap-2 text-xs font-semibold text-slate-600">
-                          <input type="checkbox" v-model="rule.counts_as_passenger" />
-                          Conta como passageiro?
-                        </label>
-                        <div>
-                          <label class="input-label">M&aacute;ximo por pacote</label>
-                          <input type="number" min="0" class="input" v-model.number="rule.max_quantity" />
-                          <p class="mt-1 text-[11px] text-slate-500">Deixe vazio para ilimitado.</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <footer class="modal-footer">
-          <button type="button" class="pill" @click="productModalVisible = false">Cancelar</button>
-          <button type="button" class="btn-primary" :disabled="productSaving" @click="saveProduct">
-            {{ productSaving ? 'Salvando...' : 'Salvar produto' }}
-          </button>
-        </footer>
-      </div>
-    </div>
-    <div v-if="inventoryModalVisible && inventoryProduct" class="modal-overlay !mt-0">
-      <div class="modal-card max-w-md">
-        <header class="mb-4 flex items-center justify-between">
-          <div>
-            <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Ajustar estoque</p>
-            <h3 class="text-lg font-semibold text-slate-900">{{ inventoryProduct.name }}</h3>
-          </div>
-          <button class="text-slate-500" @click="inventoryModalVisible = false"></button>
-        </header>
-        <div class="space-y-3">
-          <div>
-            <label class="input-label">Vagas totais</label>
-            <input type="number" min="0" class="input" v-model.number="inventoryForm.total_slots" />
-          </div>
-          <div>
-            <label class="input-label">Dispon&iacute;veis</label>
-            <input type="number" min="0" class="input" v-model.number="inventoryForm.available_slots" />
-          </div>
-          <div>
-            <label class="input-label">Observa&ccedil;&atilde;o</label>
-            <textarea rows="2" class="input" v-model="inventoryForm.note" placeholder="Motivo do ajuste"></textarea>
-          </div>
-        </div>
-        <footer class="mt-6 flex justify-end gap-3">
-          <button class="pill" @click="inventoryModalVisible = false">Cancelar</button>
-          <button class="btn-primary" :disabled="inventorySaving" @click="saveInventoryAdjustment">
-            {{ inventorySaving ? 'Aplicando...' : 'Aplicar' }}
-          </button>
-        </footer>
-      </div>
-    </div>
-
     <div v-if="posModalVisible" class="modal-overlay !mt-0">
       <div class="modal-card max-w-3xl">
         <header class="mb-4 flex items-center justify-between">
@@ -1104,59 +619,6 @@
           <button class="pill" @click="closePaymentLinkModal">Cancelar</button>
           <button class="btn-primary" :disabled="paymentLinkSaving || !paymentLinkProduct || !paymentLinkItems.length" @click="submitPaymentLink">
             {{ paymentLinkSaving ? 'Gerando...' : 'Gerar link' }}
-          </button>
-        </footer>
-      </div>
-    </div>
-
-    <div v-if="boardingLocationsModalVisible" class="modal-overlay !mt-0">
-      <div class="modal-card max-w-lg">
-        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
-          <div>
-            <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Locais de embarque</p>
-            <h3 class="text-lg font-semibold text-slate-900">
-              {{ productForm.name || "Novo produto" }}
-            </h3>
-          </div>
-          <button class="pill" type="button" @click="closeBoardingLocationsModal">Fechar</button>
-        </header>
-        <div class="mt-4 space-y-4">
-          <div
-            v-if="boardingLocationsLoading"
-            class="rounded-2xl border border-dashed border-slate-200 p-4 text-sm text-slate-500"
-          >
-            Carregando locais de embarque...
-          </div>
-          <div v-else class="space-y-3">
-            <p class="text-xs text-slate-500">
-              Informe todos os pontos de embarque Dispon&iacute;veis. Eles podem ser usados em contratos e formulrios.
-            </p>
-            <div
-              v-for="(location, index) in boardingLocationsForm"
-              :key="`boarding-location-${index}`"
-              class="flex items-center gap-2"
-            >
-              <input
-                v-model="boardingLocationsForm[index]"
-                type="text"
-                class="input flex-1"
-                placeholder="Ex: Aeroporto de Congonhas"
-              />
-              <button
-                class="h-9 w-9 rounded-full border border-slate-200 text-sm font-semibold text-slate-600 transition hover:border-slate-300"
-                type="button"
-                @click="removeBoardingLocationField(index)"
-              >
-                &minus;
-              </button>
-            </div>
-            <button class="pill" type="button" @click="addBoardingLocationField">Adicionar local</button>
-          </div>
-        </div>
-        <footer class="modal-footer">
-          <button class="pill" type="button" @click="closeBoardingLocationsModal">Cancelar</button>
-          <button class="btn-primary" type="button" :disabled="boardingLocationsSaving" @click="saveBoardingLocations">
-            {{ boardingLocationsSaving ? "Salvando..." : "Salvar locais" }}
           </button>
         </footer>
       </div>
@@ -1628,7 +1090,6 @@ import {
 } from "../../services/finance";
 import { listLegalTemplates } from "../../services/legal";
 import { calculatePackageComposition, emptyChildSelection, sanitizeChildSelection } from "../../utils/packagePricing";
-import ImageUploadField from "../../components/admin/inputs/ImageUploadField.vue";
 import type {
   CheckoutChildSelection,
   ChildPricingRule,
@@ -3264,6 +2725,39 @@ onMounted(async () => {
 }
 .stat-card dd {
   @apply text-lg text-slate-900;
+}
+.product-card {
+  @apply rounded-3xl border border-slate-100 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+.product-card__header {
+  @apply flex flex-wrap items-start justify-between gap-3;
+}
+.product-card__eyebrow {
+  @apply text-xs font-semibold uppercase tracking-[0.3em] text-slate-400;
+}
+.product-card__title {
+  @apply text-xl font-semibold text-slate-900;
+}
+.product-card__date {
+  @apply text-xs text-slate-500;
+}
+.product-card__status {
+  @apply flex flex-col items-end gap-2 text-xs font-semibold;
+}
+.product-card__metrics {
+  @apply grid grid-cols-2 gap-3 text-center text-sm font-semibold md:grid-cols-4;
+}
+.product-card__footer {
+  @apply flex justify-end;
+}
+.status-pill {
+  @apply rounded-full px-3 py-1;
+}
+.inventory-pill {
+  @apply rounded-full bg-slate-100 px-3 py-1 text-slate-600;
 }
 .badge {
   @apply rounded-full px-3 py-1;
