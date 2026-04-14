@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import secrets
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Any, Dict, Optional
 from uuid import uuid4
@@ -618,15 +618,26 @@ class CaktoIntegrationService:
         except ValueError:
             return None
 
+    
     def _calculate_valid_until(self, cycle: str, due_date: str | None) -> datetime:
         normalized_cycle = (cycle or "monthly").lower()
         period = timedelta(days=32 if normalized_cycle == "monthly" else 370)
+
         parsed_due = self._parse_datetime(due_date)
-        now = datetime.utcnow()
+
+        # 🔥 CORREÇÃO: usar datetime com timezone (aware)
+        now = datetime.now(timezone.utc)
+
         if parsed_due:
+            # Garantir que parsed_due também esteja em UTC
+            if parsed_due.tzinfo is None:
+                parsed_due = parsed_due.replace(tzinfo=timezone.utc)
+
             if parsed_due <= now:
                 return now + period
+
             return parsed_due + timedelta(days=1)
+
         return now + period
 
     def _calculate_mrr_amount(self, amount: Decimal | None, cycle: str | None) -> Decimal | None:
