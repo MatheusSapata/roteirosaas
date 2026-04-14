@@ -1,8 +1,8 @@
-<template>
+﻿<template>
   <div class="min-h-screen bg-slate-50 px-4 py-10">
     <div class="mx-auto max-w-4xl space-y-6">
       <div v-if="loading" class="card">
-        <p class="text-sm text-slate-600">Preparando sua confirmação...</p>
+        <p class="text-sm text-slate-600">Preparando sua confirmaÃ§Ã£o...</p>
       </div>
 
       <div v-else-if="errorMessage" class="card card--error">
@@ -19,12 +19,12 @@
         />
 
         <section class="card hero-card">
-          <div class="hero-icon">✔</div>
+          <div class="hero-icon">âœ”</div>
           <div class="hero-content">
             <p class="eyebrow">Documento assinado</p>
-            <h1 class="hero-title">Assinatura concluída com sucesso</h1>
+            <h1 class="hero-title">Assinatura concluÃ­da com sucesso</h1>
             <p class="hero-subtitle">
-              Sua assinatura foi registrada com integridade verificável. O documento já pode ser validado online.
+              Sua assinatura foi registrada com integridade verificÃ¡vel. O documento jÃ¡ pode ser validado online.
             </p>
           </div>
           <div class="hero-actions">
@@ -35,8 +35,34 @@
               Abrir PDF assinado
             </button>
             <button type="button" class="btn-ghost" :disabled="!verificationLink" @click="copyVerificationLink">
-              Copiar link de verificação
+              Copiar link de verificaÃ§Ã£o
             </button>
+          </div>
+        </section>
+
+        <section v-if="shouldShowSeatCta" class="card seat-cta">
+          <div>
+            <p class="eyebrow">Assentos rodoviarios</p>
+            <h3 class="seat-cta__title">
+              {{ seatStatus?.seats_selected ? "Assentos registrados" : "Defina os assentos da excursao" }}
+            </h3>
+            <p class="seat-cta__subtitle">
+              {{ seatStatusMessage }}
+            </p>
+            <p v-if="seatStatus?.message && !seatStatus?.can_select_seats" class="seat-cta__message">
+              {{ seatStatus.message }}
+            </p>
+          </div>
+          <div class="seat-cta__actions">
+            <button
+              type="button"
+              class="btn-primary"
+              :disabled="!seatStatus?.can_select_seats || seatStatusLoading"
+              @click="openSeatModal"
+            >
+              Definir assentos
+            </button>
+            <span v-if="seatStatusLoading" class="seat-cta__loading">Atualizando...</span>
           </div>
         </section>
 
@@ -49,8 +75,8 @@
                 <p class="value">{{ contract.signature_name || contract.buyer_name }}</p>
               </div>
               <div>
-                <p class="label">Agência responsável</p>
-                <p class="value">{{ contract.agency_name || "Agência" }}</p>
+                <p class="label">AgÃªncia responsÃ¡vel</p>
+                <p class="value">{{ contract.agency_name || "AgÃªncia" }}</p>
               </div>
               <div>
                 <p class="label">Data e hora</p>
@@ -63,7 +89,7 @@
             </div>
 
             <div class="mt-6 rounded-2xl bg-slate-50 p-4 text-xs text-slate-500">
-              Este documento foi registrado na plataforma {{ platformName }} com hash criptográfico para garantir sua
+              Este documento foi registrado na plataforma {{ platformName }} com hash criptogrÃ¡fico para garantir sua
               integridade.
             </div>
 
@@ -72,25 +98,31 @@
                 Cliente: {{ signatureStatusLabel(contract.signature_status) }}
               </div>
               <div class="status-pill status-pill--success">
-                Agência: {{ signatureStatusLabel(contract.agency_signature_status) }}
+                AgÃªncia: {{ signatureStatusLabel(contract.agency_signature_status) }}
               </div>
             </div>
           </div>
 
           <div class="card">
-            <p class="eyebrow">QR code de verificação</p>
+            <p class="eyebrow">QR code de verificaÃ§Ã£o</p>
             <div class="mt-4 flex flex-col items-center gap-4 rounded-2xl border border-dashed border-slate-200 p-5">
               <img
                 v-if="contract.verification_qr_image_data"
                 :src="contract.verification_qr_image_data"
-                alt="QR Code de verificação"
+                alt="QR Code de verificaÃ§Ã£o"
                 class="h-40 w-40"
               />
-              <div v-else class="qr-fallback">QR indisponível</div>
+              <div v-else class="qr-fallback">QR indisponÃ­vel</div>
               <p class="text-center text-xs text-slate-500">{{ verificationLink }}</p>
             </div>
           </div>
         </section>
+        <SeatSelectionModal
+          :token="signatureToken"
+          :open="seatModalOpen"
+          @close="handleSeatModalClose"
+          @updated="handleSeatContextUpdated"
+        />
       </template>
     </div>
   </div>
@@ -102,8 +134,11 @@ import { useRoute, useRouter } from "vue-router";
 import { isAxiosError } from "axios";
 import PublicBrandHeader from "../../components/legal/PublicBrandHeader.vue";
 import PlatformLogo from "../../assets/sidebar-logo.svg";
+import SeatSelectionModal from "../../components/public/SeatSelectionModal.vue";
 import { getPublicSignatureContract } from "../../services/legal";
+import { getPostSignatureSeatStatus } from "../../services/transport";
 import type { LegalContractSignaturePublic } from "../../types/legal";
+import type { SeatPostSignatureStatus } from "../../types/transport";
 
 const route = useRoute();
 const router = useRouter();
@@ -112,31 +147,50 @@ const contract = ref<LegalContractSignaturePublic | null>(null);
 const errorMessage = ref("");
 const platformName = "Roteiro Online";
 const platformLogo = PlatformLogo;
+const seatStatus = ref<SeatPostSignatureStatus | null>(null);
+const seatStatusLoading = ref(false);
+const seatModalOpen = ref(false);
+
+const signatureToken = computed(() => String(route.params.token || "").trim());
 
 const loadContract = async () => {
   loading.value = true;
   errorMessage.value = "";
-  const token = String(route.params.token || "").trim();
-  if (!token) {
-    errorMessage.value = "Link inválido.";
+  if (!signatureToken.value) {
+    errorMessage.value = "Link invalido.";
     loading.value = false;
     return;
   }
   try {
-    const { data } = await getPublicSignatureContract(token);
+    const { data } = await getPublicSignatureContract(signatureToken.value);
     if (data.signature_status !== "signed") {
-      router.replace({ name: "contract-signature", params: { token } });
+      router.replace({ name: "contract-signature", params: { token: signatureToken.value } });
       return;
     }
     contract.value = data;
+    void loadSeatStatus();
   } catch (error) {
     if (isAxiosError(error)) {
-      errorMessage.value = (error.response?.data as { detail?: string })?.detail || "Assinatura não encontrada.";
+      errorMessage.value = (error.response?.data as { detail?: string })?.detail || "Assinatura nao encontrada.";
     } else {
-      errorMessage.value = "Não foi possível carregar os dados da assinatura.";
+      errorMessage.value = "Nao foi possivel carregar os dados da assinatura.";
     }
   } finally {
     loading.value = false;
+  }
+};
+
+const loadSeatStatus = async () => {
+  if (!signatureToken.value) return;
+  seatStatusLoading.value = true;
+  try {
+    const { data } = await getPostSignatureSeatStatus(signatureToken.value);
+    seatStatus.value = data;
+  } catch (error) {
+    console.error("Erro ao carregar status de assentos", error);
+    seatStatus.value = null;
+  } finally {
+    seatStatusLoading.value = false;
   }
 };
 
@@ -172,12 +226,12 @@ const copyVerificationLink = async () => {
       document.body.removeChild(textarea);
     }
   } catch (error) {
-    console.error("Não foi possível copiar o link de verificação", error);
+    console.error("Nao foi possivel copiar o link de verificacao", error);
   }
 };
 
 const signatureStatusLabel = (status?: string | null) => {
-  if (!status) return "Indisponível";
+  if (!status) return "Indisponivel";
   if (status === "signed") return "Assinado";
   if (status === "pending") return "Pendente";
   return status;
@@ -190,6 +244,31 @@ const formatDateTime = (value?: string | null) => {
   const day = date.toLocaleDateString("pt-BR");
   const time = date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
   return `${day} ${time}`;
+};
+
+const shouldShowSeatCta = computed(() => !!seatStatus.value?.is_road_trip);
+
+const seatStatusMessage = computed(() => {
+  if (!seatStatus.value) return "Em breve voce podera escolher os assentos desta excursao.";
+  if (seatStatus.value.can_select_seats) {
+    return seatStatus.value.seats_selected
+      ? "Voce pode revisar ou ajustar os assentos escolhidos para os passageiros."
+      : "Escolha os assentos preferenciais para os passageiros desta compra.";
+  }
+  return seatStatus.value.message || "Estamos preparando o mapa de assentos para voce.";
+});
+
+const openSeatModal = () => {
+  seatModalOpen.value = true;
+};
+
+const handleSeatModalClose = () => {
+  seatModalOpen.value = false;
+  void loadSeatStatus();
+};
+
+const handleSeatContextUpdated = () => {
+  void loadSeatStatus();
 };
 </script>
 
@@ -239,4 +318,23 @@ const formatDateTime = (value?: string | null) => {
 .qr-fallback {
   @apply flex h-40 w-40 items-center justify-center rounded-2xl border border-dashed border-slate-300 text-xs font-semibold text-slate-500;
 }
+.seat-cta {
+  @apply flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between;
+}
+.seat-cta__title {
+  @apply text-lg font-semibold text-slate-900;
+}
+.seat-cta__subtitle {
+  @apply text-sm text-slate-600;
+}
+.seat-cta__actions {
+  @apply flex items-center gap-3;
+}
+.seat-cta__message {
+  @apply mt-1 text-sm text-amber-600;
+}
+.seat-cta__loading {
+  @apply text-xs text-slate-500;
+}
 </style>
+

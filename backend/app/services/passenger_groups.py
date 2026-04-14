@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
-from typing import Iterable, Sequence
+from typing import Any, Iterable, Mapping, Sequence
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
@@ -71,10 +71,14 @@ def _is_passenger_complete(passenger: SalePassenger) -> bool:
 def _refresh_group_progress(group: PassengerGroup) -> None:
     occupied = sum(_slot_value(passenger) for passenger in group.passengers)
     group.occupied_slots = max(0, occupied)
-    if not group.passengers or group.occupied_slots == 0:
+    required_slots = len(_group_slot_types(group))
+    completed_slots = sum(1 for passenger in group.passengers if _is_passenger_complete(passenger))
+    if not group.passengers or completed_slots == 0:
         group.status = PassengerGroupStatus.pending.value
         return
-    if group.occupied_slots >= group.capacity and all(_is_passenger_complete(p) for p in group.passengers):
+    if group.occupied_slots >= group.capacity and completed_slots >= required_slots and all(
+        _is_passenger_complete(p) for p in group.passengers
+    ):
         group.status = PassengerGroupStatus.complete.value
     else:
         group.status = PassengerGroupStatus.partial.value
@@ -91,6 +95,98 @@ def _reserved_slots(item: SaleItem) -> int:
         return int(consumed_capacity)
     quantity = max(item.quantity or 0, 1)
     return max(0, _unit_capacity(item) * quantity)
+
+
+def _sanitize_child_quantities(raw: Any) -> dict[str, int]:
+    if not isinstance(raw, Mapping):
+        return {}
+    result: dict[str, int] = {}
+    for key, value in raw.items():
+        try:
+            quantity = int(value)
+        except (TypeError, ValueError):
+            continue
+        if quantity <= 0:
+            continue
+        result[str(key)] = quantity
+    return result
+
+
+def _distribute_child_plan(child_quantities: Mapping[str, int], quantity: int) -> list[dict[str, int]]:
+    if quantity <= 0:
+        return []
+    plan: list[dict[str, int]] = [dict() for _ in range(quantity)]
+    for key, total in child_quantities.items():
+        base = total // quantity
+        remainder = total % quantity
+        for idx in range(quantity):
+            assigned = base + (1 if idx < remainder else 0)
+            if assigned <= 0:
+                continue
+            plan[idx][key] = assigned
+    return plan
+
+
+def _child_plan_entry(group: PassengerGroup) -> dict[str, int]:
+    item = group.sale_item
+    if not item:
+        return {}
+    metadata = item.metadata_json or {}
+    quantity = max(item.quantity or 0, 1)
+    plan: list[dict[str, int]] = []
+    raw_plan = metadata.get("child_slots_plan")
+    if isinstance(raw_plan, list):
+        for entry in raw_plan:
+            if isinstance(entry, Mapping):
+                sanitized = _sanitize_child_quantities(entry)
+                plan.append(sanitized)
+    if not plan:
+        quantities = _sanitize_child_quantities(metadata.get("child_quantities"))
+        plan = _distribute_child_plan(quantities, quantity)
+    if not plan:
+        passengers_total = int(item.people_count or 0)
+        seat_capacity_total = group.capacity * quantity
+        extras_total = max(0, passengers_total - seat_capacity_total)
+        if extras_total > 0:
+            plan = _distribute_child_plan({"__fallback_child": extras_total}, quantity)
+    if not plan:
+        return {}
+    index = max(0, min(group.group_index - 1, len(plan) - 1))
+    return plan[index] or {}
+
+
+def _group_slot_types(group: PassengerGroup) -> list[str]:
+    slot_types: list[str] = [PassengerType.adult.value for _ in range(max(group.capacity, 0))]
+    if not group.sale_item:
+        return slot_types
+    rules_snapshot = group.sale_item.children_rules_snapshot or group.children_rules_snapshot or []
+    rules: dict[str, Mapping[str, Any]] = {}
+    for raw_rule in rules_snapshot or []:
+        if isinstance(raw_rule, Mapping):
+            key = str(raw_rule.get("key") or "")
+            if key:
+                rules[key] = raw_rule
+    child_entry = _child_plan_entry(group)
+    for key, quantity in child_entry.items():
+        rule = rules.get(key)
+        if rule:
+            if not rule.get("counts_as_passenger"):
+                continue
+            if rule.get("counts_towards_capacity"):
+                # already accounted in base capacity
+                continue
+            passenger_type = (
+                PassengerType.child_paid.value if (rule.get("pricing_mode") == "extra") else PassengerType.child_free.value
+            )
+        else:
+            passenger_type = PassengerType.child_free.value
+        for _ in range(max(0, int(quantity))):
+            slot_types.append(passenger_type)
+    return slot_types
+
+
+def _group_slot_limit(group: PassengerGroup) -> int:
+    return len(_group_slot_types(group))
 
 
 def _refresh_sale_item_occupancy(item: SaleItem) -> None:
@@ -204,6 +300,7 @@ def serialize_passenger_group(group: PassengerGroup) -> PassengerGroupOut:
         occupied_slots=group.occupied_slots,
         status=group.status,
         allows_children=group.allows_children,
+        slot_types=_group_slot_types(group),
         passengers=[serialize_passenger(passenger) for passenger in passengers],
     )
 
@@ -240,9 +337,11 @@ def save_group_passengers(
     index_set = set()
     existing = {passenger.passenger_index: passenger for passenger in group.passengers}
     new_passengers: list[SalePassenger] = []
+    slot_types = _group_slot_types(group)
+    slot_limit = len(slot_types)
 
     for entry in payload:
-        if entry.passenger_index < 1 or entry.passenger_index > group.capacity:
+        if entry.passenger_index < 1 or entry.passenger_index > slot_limit:
             raise HTTPException(status_code=400, detail="Índice do passageiro fora da capacidade do grupo.")
         if entry.passenger_index in index_set:
             raise HTTPException(status_code=400, detail="Cada posição do grupo deve ser única.")
@@ -260,7 +359,8 @@ def save_group_passengers(
                 passenger_index=entry.passenger_index,
             )
             new_passengers.append(passenger)
-        passenger.type = entry.type or PassengerType.adult.value
+        default_type = slot_types[entry.passenger_index - 1] if entry.passenger_index - 1 < len(slot_types) else PassengerType.adult.value
+        passenger.type = entry.type or default_type
         passenger.name = _trim(entry.name, 255) or ""
         passenger.cpf = _trim(entry.cpf, 20)
         passenger.birthdate = _parse_birthdate(entry.birthdate)
@@ -312,18 +412,19 @@ def assign_passengers_flat(sale: Sale, passenger_payload: Iterable[PassengerInpu
         db.flush()
         return sale
 
-    total_capacity = sum(group.capacity for group in groups)
-    if len(flat_payload) > total_capacity:
+    total_slots = sum(len(_group_slot_types(group)) for group in groups)
+    if len(flat_payload) > total_slots:
         raise HTTPException(status_code=400, detail="Quantidade de passageiros excede a capacidade dos grupos.")
 
     offset = 0
     for group in groups:
-        subset = flat_payload[offset : offset + group.capacity]
+        slot_types = _group_slot_types(group)
+        subset = flat_payload[offset : offset + len(slot_types)]
         offset += len(subset)
         group_payload = [
             PassengerGroupPassengerInput(
                 passenger_index=index + 1,
-                type=PassengerType.adult.value,
+                type=slot_types[index] if index < len(slot_types) else PassengerType.adult.value,
                 name=entry.name,
                 cpf=entry.cpf,
                 birthdate=entry.birthdate,

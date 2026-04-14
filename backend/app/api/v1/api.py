@@ -17,8 +17,10 @@ from app.api.v1.endpoints import (
     public_legal,
     public_lead_forms,
     public_pages,
+    public_transport,
     stats,
     templates,
+    transport,
 )
 
 api_router = APIRouter(prefix="/api/v1")
@@ -44,3 +46,5 @@ api_router.include_router(finance.router, prefix="/finance", tags=["finance"])
 api_router.include_router(public_finance.router, prefix="/public/finance", tags=["public-finance"])
 api_router.include_router(legal.router, prefix="/legal", tags=["legal"])
 api_router.include_router(public_legal.router, prefix="/public/legal", tags=["public-legal"])
+api_router.include_router(transport.router, prefix="/transport", tags=["transport"])
+api_router.include_router(public_transport.router, prefix="/public/transport", tags=["public-transport"])

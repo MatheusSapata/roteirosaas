@@ -429,7 +429,11 @@ const submitAssignPassenger = async () => {
     errorMessage.value = "Quarto bloqueado para alterações.";
     return;
   }
-  if (targetRoom.occupancy >= targetRoom.capacity) {
+  const passenger = roomingData.value?.pending_passengers.find(
+    pending => pending.id === assignContext.passengerId,
+  );
+  const consumesCapacity = passenger?.consumes_capacity !== false;
+  if (consumesCapacity && targetRoom.occupancy >= targetRoom.capacity) {
     closeAssignModal();
     openSwapModal(assignContext.passengerId, targetRoom);
     return;

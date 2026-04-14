@@ -340,11 +340,11 @@ const passengerChipState = (state: "empty" | "partial" | "complete") => {
   return "passenger-chip-empty";
 };
 
-const createSlot = (groupId: number, index: number, passenger?: Passenger) => ({
+const createSlot = (groupId: number, index: number, passenger?: Passenger, slotType?: PassengerType) => ({
   id: passenger?.id,
   passenger_group_id: groupId,
   passenger_index: index,
-  type: (passenger?.type as PassengerType) || "adult",
+  type: (passenger?.type as PassengerType) || slotType || "adult",
   name: passenger?.name || "",
   cpf: passenger?.cpf || "",
   birthdate: passenger?.birthdate || "",
@@ -354,12 +354,23 @@ const createSlot = (groupId: number, index: number, passenger?: Passenger) => ({
   extras: passenger?.extras || "",
 });
 
+const resolvedSlotTypes = (group: PassengerGroup): PassengerType[] => {
+  if (Array.isArray(group.slot_types) && group.slot_types.length) {
+    return [...group.slot_types] as PassengerType[];
+  }
+  const fallbackLength = Math.max(group.capacity, 0);
+  return Array.from({ length: fallbackLength }, () => "adult" as PassengerType);
+};
+
 const normalizeGroup = (group: PassengerGroup): PassengerGroupForm => {
-  const passengers: PassengerSlot[] = Array.from({ length: group.capacity }, (_, idx) => {
+  const slotTypes = resolvedSlotTypes(group);
+  const slotCount = Math.max(slotTypes.length, group.passengers?.length || 0);
+  const passengers: PassengerSlot[] = Array.from({ length: slotCount }, (_, idx) => {
     const existing = (group.passengers || []).find(entry => entry.passenger_index === idx + 1);
-    return createSlot(group.id, idx + 1, existing);
+    const slotType = slotTypes[idx] || slotTypes[slotTypes.length - 1] || ("adult" as PassengerType);
+    return createSlot(group.id, idx + 1, existing, slotType);
   });
-  return { ...group, passengers };
+  return { ...group, slot_types: slotTypes, passengers };
 };
 
 const selectGroup = (index: number) => {

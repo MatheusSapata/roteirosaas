@@ -5,7 +5,7 @@ import secrets
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from decimal import Decimal, ROUND_HALF_UP
-from typing import Any, Iterable
+from typing import Any, Iterable, Mapping
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session, joinedload, selectinload
@@ -453,14 +453,23 @@ def _resolve_cart_lines(
         bucket = aggregated.setdefault(item.variation_id, {"quantity": 0, "children": {}})
         bucket["quantity"] += item.quantity
         children = bucket["children"]
-        for child in item.children or []:
-            key = str(child.key)
-            if not key:
+        raw_children = item.children or []
+        if isinstance(raw_children, dict):
+            iterator = raw_children.items()
+        else:
+            iterator = ((getattr(child, "key", None), getattr(child, "quantity", 0)) for child in raw_children)
+        for key, raw_qty in iterator:
+            key_str = str(key or "").strip()
+            if not key_str:
                 continue
-            qty = max(0, child.quantity)
+            try:
+                qty = int(raw_qty)
+            except (TypeError, ValueError):
+                continue
+            qty = max(0, qty)
             if qty <= 0:
                 continue
-            children[key] = children.get(key, 0) + qty
+            children[key_str] = children.get(key_str, 0) + qty
     if not aggregated:
         raise HTTPException(status_code=400, detail="Selecione ao menos uma variação.")
     variations = (
@@ -529,13 +538,34 @@ def _cart_capacity(lines: Iterable[ProductCartLine]) -> int:
     return capacity
 
 
+def _distribute_child_slots(child_quantities: Mapping[str, int], quantity: int) -> list[dict[str, int]]:
+    if quantity <= 0:
+        return []
+    plan: list[dict[str, int]] = [dict() for _ in range(quantity)]
+    for key, raw_total in (child_quantities or {}).items():
+        try:
+            total = int(raw_total)
+        except (TypeError, ValueError):
+            total = 0
+        if total <= 0:
+            continue
+        base = total // quantity
+        remainder = total % quantity
+        for index in range(quantity):
+            assigned = base + (1 if index < remainder else 0)
+            if assigned <= 0:
+                continue
+            plan[index][str(key)] = assigned
+    return plan
+
+
 def _product_behavior_flags(product: Product | None) -> dict[str, bool]:
     has_rooms = bool(getattr(product, "has_rooms", False)) if product else False
     is_road_trip = bool(getattr(product, "is_road_trip", False)) if product else False
     return {
         "has_rooms": has_rooms,
         "is_road_trip": is_road_trip,
-        "requires_passengers": is_road_trip,
+        "requires_passengers": True,
         "requires_rooming": has_rooms,
     }
 
@@ -582,6 +612,15 @@ def _build_sale_items_from_lines(sale: Sale, product: Product, lines: Iterable[P
         slots_reserved = consumed_capacity
         room_capacity = variation.room_capacity or unit_capacity
         accommodation_mode = variation.accommodation_mode or ProductAccommodationMode.private.value
+        child_quantities: dict[str, int] = {}
+        for key, raw_value in (line.children or {}).items():
+            try:
+                value_int = int(raw_value)
+            except (TypeError, ValueError):
+                continue
+            if value_int <= 0:
+                continue
+            child_quantities[str(key)] = value_int
         item = SaleItem(
             product_id=product.id,
             product_public_id=product.public_id,
@@ -609,7 +648,8 @@ def _build_sale_items_from_lines(sale: Sale, product: Product, lines: Iterable[P
                 "child_capacity": composition.child_capacity,
                 "child_extra_amount_cents": composition.child_extra_cents,
                 "child_breakdown": [child.serialize() for child in composition.child_breakdown],
-                "child_quantities": line.children,
+                "child_quantities": child_quantities,
+                "child_slots_plan": _distribute_child_slots(child_quantities, quantity),
                 "child_policy_enabled": variation.child_policy_enabled,
                 "consumed_capacity": composition.total_capacity,
                 "accommodation_mode": accommodation_mode,

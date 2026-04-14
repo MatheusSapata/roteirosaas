@@ -35,15 +35,10 @@ class PublicCheckoutRequest(BaseModel):
     customer: SaleCustomerPayload
 
 
-class CheckoutChildSelection(BaseModel):
-    key: str
-    quantity: int = Field(0, ge=0)
-
-
 class CheckoutCartItem(BaseModel):
     variation_id: str
     quantity: int = Field(..., ge=1)
-    children: list[CheckoutChildSelection] = Field(default_factory=list)
+    children: dict[str, int] = Field(default_factory=dict)
 
 
 class ProductCheckoutRequest(BaseModel):
@@ -144,6 +139,7 @@ class PassengerGroupOut(BaseModel):
     occupied_slots: int
     status: str
     allows_children: bool
+    slot_types: list[str]
     passengers: list[SalePassengerOut]
 
 

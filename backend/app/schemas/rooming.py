@@ -29,6 +29,7 @@ class RoomingPassenger(BaseModel):
     accommodation_key: str | None = None
     capacity_required: int | None = None
     is_private: bool = False
+    consumes_capacity: bool = True
 
 
 class RoomingRoomOut(BaseModel):

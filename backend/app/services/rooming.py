@@ -13,7 +13,7 @@ from app.models.product import Product, ProductAccommodationMode, ProductVariati
 from app.models.rooming import RoomingAssignment, RoomingRoom
 from app.models.sale import Sale, SalePassenger
 from app.models.sale_item import SaleItem
-from app.models.passenger_group import PassengerGroup
+from app.models.passenger_group import PassengerGroup, PassengerType
 from app.schemas.rooming import (
     AutoMatchApplyResponse,
     AutoMatchNewRoomPreview,
@@ -66,6 +66,7 @@ class PassengerProfile:
     accommodation_key: str | None
     capacity_required: int | None
     is_private: bool
+    consumes_capacity: bool
 
 
 def _passenger_profile(passenger: SalePassenger) -> PassengerProfile:
@@ -74,16 +75,20 @@ def _passenger_profile(passenger: SalePassenger) -> PassengerProfile:
     accommodation_key = None
     capacity_required = None
     is_private = False
+    consumes_capacity = True
     if sale_item:
         fallback_capacity = sale_item.room_capacity or sale_item.people_count or 1
         accommodation_key = sale_item.variation_public_id or f"capacity:{fallback_capacity}"
         capacity_required = group.capacity if group and group.capacity else fallback_capacity
         is_private = sale_item.accommodation_mode == ProductAccommodationMode.private.value
+    if passenger.type == PassengerType.child_free.value:
+        consumes_capacity = False
     normalized_key = accommodation_key[:64] if accommodation_key else None
     return PassengerProfile(
         accommodation_key=normalized_key,
         capacity_required=capacity_required,
         is_private=is_private,
+        consumes_capacity=consumes_capacity,
     )
 
 
@@ -109,6 +114,7 @@ def _serialize_passenger(passenger: SalePassenger, assigned_room_id: int | None)
         accommodation_key=profile.accommodation_key,
         capacity_required=profile.capacity_required,
         is_private=profile.is_private,
+        consumes_capacity=profile.consumes_capacity,
     )
 
 
@@ -118,7 +124,7 @@ def _serialize_room(room: RoomingRoom) -> RoomingRoomOut:
         if not assignment.passenger:
             continue
         passengers.append(_serialize_passenger(assignment.passenger, room.id))
-    occupancy = len(passengers)
+    occupancy = sum(1 for passenger in passengers if passenger.consumes_capacity)
     variation_public_id = room.variation.public_id if room.variation else None
     accommodation_label = room.accommodation_label or (room.variation.name if room.variation else None)
     return RoomingRoomOut(
@@ -136,6 +142,25 @@ def _serialize_room(room: RoomingRoom) -> RoomingRoomOut:
         origin=room.origin,
         sale_id=room.sale_id,
     )
+
+
+def _room_capacity_usage(room: RoomingRoom) -> int:
+    usage = 0
+    for assignment in room.assignments or []:
+        passenger = assignment.passenger
+        if not passenger:
+            continue
+        profile = _passenger_profile(passenger)
+        if profile.consumes_capacity:
+            usage += 1
+    return usage
+
+
+def _room_has_space_for(room: RoomingRoom, passenger: SalePassenger) -> bool:
+    profile = _passenger_profile(passenger)
+    if not profile.consumes_capacity:
+        return True
+    return _room_capacity_usage(room) < room.capacity
 
 
 def _assert_room_accepts_passenger(room: RoomingRoom, passenger: SalePassenger) -> None:
@@ -448,7 +473,7 @@ def assign_passenger(
     )
     if not passenger:
         raise HTTPException(status_code=404, detail="Passageiro não encontrado para este produto.")
-    if len(room.assignments or []) >= room.capacity:
+    if not _room_has_space_for(room, passenger):
         raise HTTPException(status_code=400, detail="Capacidade máxima do quarto atingida.")
     existing_assignment = (
         db.query(RoomingAssignment)
@@ -701,7 +726,7 @@ def _generate_snapshot_token(rooms: list[RoomingRoom], pending_infos: list[Passe
         "rooms": [
             {
                 "id": room.id,
-                "occupancy": len(room.assignments or []),
+                "occupancy": _room_capacity_usage(room),
                 "updated_at": room.updated_at.isoformat() if room.updated_at else None,
                 "locked": bool(room.locked),
             }
@@ -720,6 +745,8 @@ def _build_auto_match_plan(product: Product, db: Session) -> AutoMatchPlan:
         if serialized.assigned_room_id:
             continue
         if serialized.is_private or not serialized.accommodation_key:
+            continue
+        if not serialized.consumes_capacity:
             continue
         capacity = serialized.capacity_required or 1
         if capacity <= 0:
@@ -759,11 +786,11 @@ def _build_auto_match_plan(product: Product, db: Session) -> AutoMatchPlan:
         passengers_list.sort(key=lambda info: info.passenger.id)
         rooms_for_key = sorted(
             rooms_by_key.get(key, []),
-            key=lambda room: len(room.assignments or []),
+            key=lambda room: _room_capacity_usage(room),
             reverse=True,
         )
         for room in rooms_for_key:
-            available = room.capacity - len(room.assignments or [])
+            available = room.capacity - _room_capacity_usage(room)
             if available <= 0 or not passengers_list:
                 continue
             selected = passengers_list[:available]
@@ -779,6 +806,23 @@ def _build_auto_match_plan(product: Product, db: Session) -> AutoMatchPlan:
             passengers_list = passengers_list[capacity:]
             base_label = chunk[0].label or f"{capacity} pessoas"
             display_label = f"Quarto {base_label}"
+            new_rooms.append(
+                AutoMatchNewRoomPlan(
+                    accommodation_key=key,
+                    capacity=capacity,
+                    variation_id=chunk[0].variation_id,
+                    label=base_label,
+                    display_label=display_label,
+                    passengers=chunk,
+                )
+            )
+        if passengers_list:
+            chunk = passengers_list[:]
+            passengers_list = []
+            base_label = chunk[0].label or f"{capacity} pessoas"
+            display_label = f"Quarto {base_label}"
+            if len(chunk) < capacity:
+                display_label = f"{display_label} (incompleto)"
             new_rooms.append(
                 AutoMatchNewRoomPlan(
                     accommodation_key=key,
@@ -1011,8 +1055,7 @@ def move_passenger(product: Product, passenger_id: int, target_room_id: int, db:
     if room.locked:
         raise HTTPException(status_code=400, detail="Este quarto está bloqueado para alterações.")
     _assert_room_accepts_passenger(room, passenger)
-    available = room.capacity - len(room.assignments or [])
-    if available <= 0:
+    if not _room_has_space_for(room, passenger):
         raise HTTPException(status_code=400, detail="Quarto cheio. Utilize a troca de passageiros.")
     _clear_existing_assignment(product.id, passenger.id, db, allow_locked=False)
     db.add(RoomingAssignment(room_id=room.id, passenger_id=passenger.id))
@@ -1042,7 +1085,7 @@ def swap_passengers(
         raise HTTPException(status_code=400, detail="Este quarto está bloqueado para alterações.")
     if source_room.locked:
         raise HTTPException(status_code=400, detail="Não é possível remover o passageiro do quarto de origem.")
-    occupancy = len(target_room.assignments or [])
+    occupancy = _room_capacity_usage(target_room)
     if occupancy < target_room.capacity:
         raise HTTPException(status_code=400, detail="Quarto possui vagas livres. Faça a alocação normal.")
     outgoing_assignment = next((a for a in target_room.assignments if a.passenger_id == outgoing_passenger_id), None)
@@ -1075,7 +1118,7 @@ def replace_passenger(
     target_room = _load_room_with_assignments(product.id, target_room_id, db)
     if target_room.locked:
         raise HTTPException(status_code=400, detail="Este quarto está bloqueado para alterações.")
-    occupancy = len(target_room.assignments or [])
+    occupancy = _room_capacity_usage(target_room)
     if occupancy < target_room.capacity:
         raise HTTPException(status_code=400, detail="Quarto possui vagas livres. Faça a alocação normal.")
     outgoing_assignment = next((a for a in target_room.assignments if a.passenger_id == outgoing_passenger_id), None)

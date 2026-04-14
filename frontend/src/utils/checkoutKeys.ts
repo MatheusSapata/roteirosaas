@@ -11,7 +11,7 @@ export interface ProductCheckoutItemPayload {
   consumedCapacity: number;
   childExtraAmount: number;
   childBreakdown: ProductCheckoutChildBreakdown[];
-  children: CheckoutChildSelection[];
+  children: CheckoutChildSelection;
 }
 
 export interface ProductCheckoutPayload {

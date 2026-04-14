@@ -1,0 +1,1613 @@
+<template>
+  <div v-if="open" class="seat-modal">
+    <div class="seat-modal__backdrop" @click="handleClose"></div>
+    <div class="seat-modal__panel" :class="{ 'seat-modal__panel--compact': context && !canSelectSeats }">
+      <header class="seat-modal__header" :class="{ 'seat-modal__header--center': !canSelectSeats }">
+        <div class="seat-modal__headline">
+          <p class="eyebrow" v-if="canSelectSeats">Mapa de assentos</p>
+          <p class="eyebrow" v-else>Reserva confirmada</p>
+          <h2 v-if="canSelectSeats">
+            Escolha o assento para:
+            <span class="seat-modal__focus">{{ activePassenger?.name || "seu passageiro" }}</span>
+          </h2>
+                    <h2 v-else class="seat-modal__title">
+            <span class="seat-modal__icon">&#10003;</span>
+            Assentos confirmados
+          </h2>
+          <p class="subtitle">
+            {{ context?.product_name }} &middot;
+            {{ formattedTripDate || "Data a confirmar" }}
+          </p>
+          <p v-if="context?.trip_vehicle" class="subtitle subtitle--muted">
+            Onibus liberado: {{ context.trip_vehicle.display_name || "Operacional" }} &middot;
+            {{ context.trip_vehicle.occupied_seats }}/{{ context.trip_vehicle.capacity }} ocupados
+          </p>
+
+          <p v-if="canSelectSeats" class="subtitle subtitle--muted">Selecione um passageiro abaixo e clique em um assento livre.</p>
+        </div>
+        <button type="button" class="btn-ghost" @click="handleClose">Fechar</button>
+      </header>
+
+      <div v-if="loading" class="seat-modal__state">
+        <div class="spinner"></div>
+        <p>Carregando mapa de assentos...</p>
+      </div>
+
+      <div v-else-if="errorMessage" class="seat-modal__state seat-modal__state--error">
+        <p>{{ errorMessage }}</p>
+        <button type="button" class="btn-secondary" @click="() => loadContext(activeVehicleId)">Tentar novamente</button>
+      </div>
+
+      <div v-else-if="context && canSelectSeats" class="seat-modal__content selection-layout">
+          <aside class="passenger-panel">
+            <div class="panel-card">
+              <p class="eyebrow mb-2">Passageiros</p>
+              <p class="progress-text">
+                {{ context.stats.assigned_passengers }} de {{ context.passengers.length }} passageiros com assento
+              </p>
+              <div class="progress-bar">
+                <div
+                  class="progress-bar__fill"
+                  :style="{ width: progressPercentage + '%' }"
+                ></div>
+              </div>
+              <ul class="passenger-list">
+                <li
+                  v-for="(passenger, index) in context.passengers"
+                  :key="passenger.id"
+                  :class="[
+                    'passenger-item',
+                    passenger.id === activePassengerId ? 'passenger-item--active' : '',
+                    passenger.status === 'assigned' ? 'passenger-item--assigned' : '',
+                  ]"
+                  @click="setActivePassenger(passenger.id)"
+                  :aria-selected="passenger.id === activePassengerId"
+                >
+                  <div class="passenger-item__index">{{ index + 1 }}</div>
+                  <div class="passenger-item__info">
+                    <p class="passenger-name">{{ passenger.name }}</p>
+                    <p
+                      class="passenger-seat"
+                      :class="passenger.status === 'assigned' ? 'passenger-seat--assigned' : 'passenger-seat--empty'"
+                    >
+                      {{ passengerSeatSummary(passenger) }}
+                    </p>
+                  </div>
+                  <span
+                    :class="[
+                      'passenger-status-badge',
+                      passenger.status === 'assigned'
+                        ? 'passenger-status-badge--assigned'
+                        : 'passenger-status-badge--pending',
+                    ]"
+                  >
+                    {{ passengerStatusLabel(passenger) }}
+                  </span>
+                </li>
+              </ul>
+            </div>
+          </aside>
+
+          <section class="map-panel">
+            <div class="panel-card map-card">
+              <div v-if="vehicleOptions.length > 1" class="vehicle-tabs">
+                <button
+                  v-for="vehicle in vehicleOptions"
+                  :key="vehicle.id"
+                  type="button"
+                  :class="['vehicle-tab', vehicle.id === activeVehicleId ? 'vehicle-tab--active' : '']"
+                  @click="selectVehicle(vehicle.id)"
+                >
+                  <span class="vehicle-tab__name">{{ vehicle.display_name || `Veiculo ${vehicle.order_index}` }}</span>
+                  <span class="vehicle-tab__meta">
+                    {{ vehicle.occupied_seats }}/{{ vehicle.capacity }} ocupados
+                  </span>
+                </button>
+              </div>
+              <ul class="map-legend">
+                <li class="legend-item">
+                  <span class="legend-dot legend-dot--available"></span>
+                  <span>Livre</span>
+                </li>
+                <li class="legend-item">
+                  <span class="legend-dot legend-dot--selected"></span>
+                  <span>Selecionado</span>
+                </li>
+                <li class="legend-item">
+                  <span class="legend-dot legend-dot--occupied"></span>
+                  <span>Ocupado</span>
+                </li>
+                <li class="legend-item">
+                  <span class="legend-dot legend-dot--blocked"></span>
+                  <span>Bloqueado</span>
+                </li>
+                <li class="legend-item">
+                  <span class="legend-dot legend-dot--mine"></span>
+                  <span>Seu grupo</span>
+                </li>
+              </ul>
+              <div v-if="seatDecks.length" class="deck-wrapper">
+                <div class="deck-tabs" v-if="seatDecks.length > 1">
+                  <button
+                    v-for="deck in seatDecks"
+                    :key="deck.key"
+                    type="button"
+                    :class="['deck-tab', deck.key === currentDeck?.key ? 'deck-tab--active' : '']"
+                    @click="activeDeckKey = deck.key"
+                  >
+                    {{ deck.label || `Andar ${deck.key}` }}
+                  </button>
+                </div>
+                <div v-if="currentDeck" class="deck-section">
+                  <div class="bus-stage">
+                    <span class="bus-front-label">Frente do onibus</span>
+                    <div class="bus-shell">
+                      <div class="bus-front">
+                        <div class="bus-front__window"></div>
+                        <div class="bus-front__driver"></div>
+                      </div>
+                      <div class="bus-body">
+                       <div
+                          class="bus-grid"
+                          :class="{ 'bus-grid--desktop-horizontal': isDesktop }"
+                          :style="{ gridTemplateColumns: `repeat(${displayDeck.columns || 1}, minmax(40px, 1fr))` }"
+                        >
+                          <div
+                            v-for="cell in displayDeck.cells"
+                            :key="`${displayDeck.key}-${cell.key}`"
+                            :class="cellClasses(cell)"
+                            @click="handleSeatClick(cell)"
+                            :title="seatTooltip(cell)"
+                            role="button"
+                            tabindex="0"
+                          >
+                            <span v-if="cell.seat" class="seat-label">
+                              {{ cell.seat.seat_label || cell.seat.seat_number }}
+                            </span>
+                          </div>
+                        </div>  
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div v-else class="empty-state">Layout indisponivel para renderizacao.</div>
+              <p class="map-note">Os assentos podem sofrer ajustes pela agencia.</p>
+            </div>
+          </section>
+
+          <aside class="info-panel">
+            <div class="panel-card info-card">
+              <p class="eyebrow mb-2">Resumo</p>
+              <div class="info-summary">
+                <span class="info-summary__label">Passageiro</span>
+                <span class="info-summary__value">{{ activePassenger?.name || "Selecione um passageiro" }}</span>
+              </div>
+              <div class="info-summary">
+                <span class="info-summary__label">Assento selecionado</span>
+                <span class="info-summary__value info-summary__value--seat">{{ activeSeatLabel }}</span>
+              </div>
+              <div class="info-summary">
+                <span class="info-summary__label">Status</span>
+                <span :class="['status-pill', passengerStatusClass(activePassenger)]">
+                  {{ passengerStatusLabel(activePassenger) }}
+                </span>
+              </div>
+              <p class="info-note" v-if="context.preference_notice">
+                {{ context.preference_notice }}
+              </p>
+              <div v-if="context.boarding_notes" class="boarding-notes">
+                <p class="eyebrow mb-1">Observacoes</p>
+                <p class="text-sm text-slate-600">
+                  {{ context.boarding_notes }}
+                </p>
+              </div>
+              <div v-if="selectingSeat" class="inline-loading">
+                <div class="spinner spinner--sm"></div>
+                <span>Registrando assento...</span>
+              </div>
+              <p v-if="selectionError" class="selection-error">{{ selectionError }}</p>
+              <button
+                type="button"
+                class="btn-primary w-full mt-6"
+                :disabled="!hasPendingSelections || selectingSeat"
+                @click="confirmSelection"
+              >
+                Confirmar reserva
+              </button>
+              <button type="button" class="btn-secondary mt-2 w-full" @click="handleClose">
+                Fechar
+              </button>
+            </div>
+          </aside>
+        </div>
+
+      <div v-else-if="context" class="seat-modal__content summary-only">
+        <div class="confirmation-card">
+          <h3>Assentos confirmados</h3>
+          <p>
+            {{ context.message || "Sua reserva ja possui assentos confirmados. Confira os detalhes abaixo." }}
+          </p>
+        </div>
+        <ul class="passenger-summary-list">
+          <li
+            v-for="passenger in context.passengers"
+            :key="passenger.id"
+            class="passenger-summary-card"
+          >
+            <div>
+              <p class="passenger-name">{{ passenger.name }}</p>
+              <p class="passenger-seat">
+                Assento: {{ passenger.seat_label || passenger.seat_number || "Atribuicao pendente" }}
+              </p>
+            </div>
+            <span class="status-pill status-pill--success">Confirmado</span>
+          </li>
+        </ul>
+        <p class="summary-note">
+          Os assentos escolhidos podem sofrer ajustes operacionais pela agencia.
+        </p>
+        <button type="button" class="btn-primary mt-4" @click="handleClose">Finalizar</button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { isAxiosError } from "axios";
+import type { SeatSelectionContext, TripSeatOut, VehicleLayoutCellSchema } from "../../types/transport";
+import { getPublicSeatSelectionContext, selectSeatForSignature } from "../../services/transport";
+
+interface SeatCellEntry {
+  key: string;
+  schema?: VehicleLayoutCellSchema;
+  seat: TripSeatOut | null;
+}
+
+interface SeatDeckView {
+  key: string;
+  label: string;
+  columns: number;
+  cells: SeatCellEntry[];
+}
+
+type PassengerEntry = SeatSelectionContext["passengers"][number] | null;
+
+const props = defineProps<{
+  token: string;
+  open: boolean;
+}>();
+
+const emit = defineEmits<{
+  (event: "close"): void;
+  (event: "updated", ctx: SeatSelectionContext): void;
+}>();
+
+const loading = ref(false);
+const context = ref<SeatSelectionContext | null>(null);
+const errorMessage = ref("");
+const selectionError = ref("");
+const activePassengerId = ref<number | null>(null);
+const pendingSelections = ref<Record<number, SeatCellEntry | null>>({});
+const selectingSeat = ref(false);
+const activeDeckKey = ref<string | null>(null);
+const isDesktop = ref(false);
+const activeVehicleId = ref<number | null>(null);
+
+const updateViewport = () => {
+  if (typeof window === "undefined") return;
+  isDesktop.value = window.innerWidth >= 1024;
+};
+
+const formattedTripDate = computed(() => {
+  if (!context.value?.trip_date) return "";
+  const date = new Date(context.value.trip_date);
+  if (Number.isNaN(date.getTime())) return context.value.trip_date;
+  return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+});
+
+const activePassenger = computed(() =>
+  context.value?.passengers.find(passenger => passenger.id === activePassengerId.value) || null
+);
+
+const pendingSeatForActive = computed(() => {
+  if (!activePassengerId.value) return null;
+  return pendingSelections.value[activePassengerId.value] || null;
+});
+
+const hasPendingSelections = computed(() =>
+  Object.values(pendingSelections.value).some(entry => entry?.seat)
+);
+
+const canSelectSeats = computed(() => {
+  if (!context.value) return false;
+  const total = context.value.passengers.length;
+  const assigned = context.value.stats.assigned_passengers;
+  return Boolean(context.value.can_assign && assigned < total);
+});
+
+const activeSeatLabel = computed(() => {
+  const pending = pendingSeatForActive.value;
+  if (pending?.seat) {
+    return pending.seat.seat_label || pending.seat.seat_number || "Assento selecionado";
+  }
+  if (!activePassenger.value) return "Clique em um assento livre";
+  return (
+    activePassenger.value.seat_label ||
+    activePassenger.value.seat_number ||
+    "Clique em um assento livre"
+  );
+});
+
+const progressPercentage = computed(() => {
+  if (!context.value) return 0;
+  const total = context.value.passengers.length || 1;
+  return Math.min(100, Math.round((context.value.stats.assigned_passengers / total) * 100));
+});
+
+const vehicleOptions = computed(() => context.value?.vehicles || []);
+
+const seatDecks = computed<SeatDeckView[]>(() => {
+  const schema = context.value?.layout?.layout_schema;
+  if (!schema) return [];
+
+  const decks = schema.decks?.length
+    ? schema.decks
+    : schema.rows && schema.cols
+      ? [
+          {
+            key: "andar_unico",
+            label: "Andar unico",
+            rows: schema.rows,
+            cols: schema.cols,
+            cells: schema.cells,
+          },
+        ]
+      : [];
+
+  const seatMap = new Map<string, TripSeatOut>();
+
+  (context.value?.seats || []).forEach(seat => {
+    const deckKey = seat.deck_key || decks[0]?.key || "andar_unico";
+    seatMap.set(`${deckKey}:${seat.row_index}-${seat.col_index}`, seat);
+  });
+
+  return decks.map(deck => {
+    const cells: SeatCellEntry[] = [];
+
+    for (let row = 0; row < deck.rows; row += 1) {
+      for (let col = 0; col < deck.cols; col += 1) {
+        const key = `${row}-${col}`;
+        const seat = seatMap.get(`${deck.key}:${key}`) || null;
+        const schemaCell = deck.cells.find(cell => cell.row === row && cell.col === col);
+
+        cells.push({
+          key,
+          schema: schemaCell,
+          seat,
+        });
+      }
+    }
+
+    return {
+      key: deck.key,
+      label: deck.label,
+      columns: deck.cols,
+      cells,
+    };
+  });
+});
+
+const currentDeck = computed<SeatDeckView | null>(() => {
+  const decks = seatDecks.value;
+  if (!decks.length) return null;
+  return decks.find(deck => deck.key === activeDeckKey.value) || decks[0];
+});
+
+const transposeDeck = (deck: SeatDeckView): SeatDeckView => {
+  const originalColumns = deck.columns || 1;
+  const originalRows = Math.ceil(deck.cells.length / originalColumns);
+
+  const matrix: SeatCellEntry[][] = Array.from({ length: originalRows }, (_, row) =>
+    deck.cells.slice(row * originalColumns, (row + 1) * originalColumns)
+  );
+
+  const transposedCells: SeatCellEntry[] = [];
+
+  for (let col = originalColumns - 1; col >= 0; col -= 1) {
+    for (let row = 0; row < originalRows; row += 1) {
+      const cell = matrix[row]?.[col];
+      if (!cell) continue;
+
+      transposedCells.push({
+        ...cell,
+        key: `desktop-${col}-${row}`,
+      });
+    }
+  }
+
+  return {
+    key: `${deck.key}-desktop`,
+    label: deck.label,
+    columns: originalRows,
+    cells: transposedCells,
+  };
+};
+
+const displayDeck = computed<SeatDeckView>(() => {
+  if (!currentDeck.value) {
+    return {
+      key: "empty",
+      label: "",
+      columns: 1,
+      cells: [],
+    };
+  }
+
+  return isDesktop.value ? transposeDeck(currentDeck.value) : currentDeck.value;
+});
+
+const loadContext = async (vehicleId?: number | null) => {
+  if (!props.token || !props.open) return;
+
+  loading.value = true;
+  errorMessage.value = "";
+
+  try {
+    const { data } = await getPublicSeatSelectionContext(props.token, vehicleId || undefined);
+    context.value = data;
+    activeVehicleId.value = data.trip_vehicle?.id || null;
+    pendingSelections.value = {};
+    selectionError.value = "";
+
+    if (!activePassengerId.value && data.passengers.length) {
+      activePassengerId.value = data.passengers[0].id;
+    } else if (activePassengerId.value) {
+      const stillExists = data.passengers.some(passenger => passenger.id === activePassengerId.value);
+      if (!stillExists && data.passengers.length) {
+        activePassengerId.value = data.passengers[0].id;
+      }
+    }
+  } catch (error) {
+    if (isAxiosError(error)) {
+      errorMessage.value =
+        (error.response?.data as { detail?: string })?.detail ||
+        "Nao foi possivel carregar o mapa de assentos.";
+    } else {
+      errorMessage.value = "Nao foi possivel carregar o mapa de assentos.";
+    }
+  } finally {
+    loading.value = false;
+  }
+};
+
+const setActivePassenger = (passengerId: number) => {
+  activePassengerId.value = passengerId;
+  selectionError.value = "";
+};
+
+const selectVehicle = (vehicleId: number) => {
+  if (vehicleId === activeVehicleId.value || loading.value) return;
+  activeVehicleId.value = vehicleId;
+  void loadContext(vehicleId);
+};
+
+const passengerSeatSummary = (passenger?: PassengerEntry) => {
+  if (!passenger) return "Sem assento definido";
+
+  const pending = passenger.id ? pendingSelections.value[passenger.id] : null;
+  if (pending?.seat) {
+    return `Selecionado: ${pending.seat.seat_label || pending.seat.seat_number || "Assento"}`;
+  }
+
+  const seat = passenger.seat_label || passenger.seat_number;
+  return seat ? `Assento ${seat}` : "Sem assento definido";
+};
+
+const passengerStatusLabel = (passenger?: PassengerEntry) =>
+  passenger?.status === "assigned" ? "Confirmado" : "Pendente";
+
+const passengerStatusClass = (passenger?: PassengerEntry) =>
+  passenger?.status === "assigned" ? "status-pill--success" : "status-pill--pending";
+
+const findPendingSeatOwner = (seatId?: number | null) => {
+  if (!seatId) return null;
+
+  for (const [passengerKey, entry] of Object.entries(pendingSelections.value)) {
+    if (entry?.seat?.id === seatId) {
+      return Number(passengerKey);
+    }
+  }
+
+  return null;
+};
+
+const seatTooltip = (entry: SeatCellEntry) => {
+  if (!entry.seat) {
+    if (entry.schema?.type === "aisle") return "Corredor do onibus";
+    if (entry.schema?.selectable === false) return "Espaco nao selecionavel";
+    return "Area vazia";
+  }
+
+  const label = entry.seat.seat_label || entry.seat.seat_number || "Assento";
+  const pendingOwner = findPendingSeatOwner(entry.seat.id);
+
+  if (pendingOwner && pendingOwner !== activePassengerId.value) {
+    return `Assento ${label} reservado para outro passageiro`;
+  }
+
+  if (entry.seat.is_blocked || !entry.seat.is_selectable) return `Assento ${label} bloqueado`;
+  if (entry.seat.is_occupied && !entry.seat.occupied_by_current_sale) return `Assento ${label} ocupado`;
+  if (entry.seat.is_occupied) return `Assento ${label} do seu grupo`;
+
+  return `Clique para selecionar o assento ${label}`;
+};
+
+const cellClasses = (entry: SeatCellEntry) => {
+  const classes = ["seat-cell"];
+
+  if (!entry.schema) {
+    classes.push("seat-cell--empty");
+    return classes;
+  }
+
+  if (entry.schema.type === "aisle" || entry.schema.type === "empty") {
+    classes.push("seat-cell--aisle");
+    return classes;
+  }
+
+  if (!entry.seat) {
+    classes.push(entry.schema.selectable === false ? "seat-cell--blocked" : "seat-cell--available");
+    return classes;
+  }
+
+  const seat = entry.seat;
+  const pendingOwner = findPendingSeatOwner(seat.id);
+
+  if (pendingOwner) {
+    if (pendingOwner === activePassengerId.value) {
+      classes.push("seat-cell--selected");
+    } else {
+      classes.push("seat-cell--occupied");
+    }
+    return classes;
+  }
+
+  if (seat.is_blocked || !seat.is_selectable) {
+    classes.push("seat-cell--blocked");
+  } else if (seat.is_occupied && !seat.occupied_by_current_sale) {
+    classes.push("seat-cell--occupied");
+  } else if (seat.is_occupied && activePassengerId.value === seat.occupied_by_passenger_id) {
+    classes.push("seat-cell--selected");
+  } else if (seat.is_occupied) {
+    classes.push("seat-cell--mine");
+  } else {
+    classes.push("seat-cell--available");
+  }
+
+  return classes;
+};
+
+const handleSeatClick = (entry: SeatCellEntry) => {
+  if (!context.value || !entry.seat) return;
+  if (!activePassengerId.value) return;
+
+  if (!entry.seat.is_selectable || entry.seat.is_blocked) {
+    selectionError.value = "Este assento nao pode ser selecionado.";
+    return;
+  }
+
+  if (entry.seat.is_occupied) {
+    if (entry.seat.occupied_by_current_sale) {
+      selectionError.value = "Este assento ja pertence ao seu grupo.";
+    } else {
+      selectionError.value = "Assento ja ocupado.";
+    }
+    return;
+  }
+
+  const pendingOwner = findPendingSeatOwner(entry.seat.id);
+  if (pendingOwner && pendingOwner !== activePassengerId.value) {
+    selectionError.value = "Assento reservado para outro passageiro.";
+    return;
+  }
+
+  pendingSelections.value = {
+    ...pendingSelections.value,
+    [activePassengerId.value]: entry,
+  };
+  selectionError.value = "";
+};
+
+const confirmSelection = async () => {
+  if (!context.value) return;
+
+  const entries = Object.entries(pendingSelections.value).filter(([, entry]) => entry?.seat);
+
+  if (!entries.length) {
+    selectionError.value = "Selecione ao menos um assento antes de confirmar.";
+    return;
+  }
+
+  selectingSeat.value = true;
+  selectionError.value = "";
+
+  try {
+    for (const [passengerKey, entry] of entries) {
+      const passengerId = Number(passengerKey);
+      if (!entry?.seat) continue;
+
+      await selectSeatForSignature(props.token, {
+        passenger_id: passengerId,
+        seat_id: entry.seat.id,
+      });
+    }
+
+    await loadContext(activeVehicleId.value);
+    pendingSelections.value = {};
+    emit("updated", context.value!);
+    handleClose();
+  } catch (error) {
+    if (isAxiosError(error)) {
+      selectionError.value =
+        (error.response?.data as { detail?: string })?.detail ||
+        "Nao foi possivel registrar os assentos.";
+    } else {
+      selectionError.value = "Nao foi possivel registrar os assentos.";
+    }
+  } finally {
+    selectingSeat.value = false;
+  }
+};
+
+const handleClose = () => {
+  pendingSelections.value = {};
+  selectionError.value = "";
+  activeVehicleId.value = null;
+  emit("close");
+};
+
+watch(
+  () => props.open,
+  value => {
+    if (value) {
+      void loadContext(activeVehicleId.value);
+    }
+  }
+);
+
+watch(seatDecks, decks => {
+  if (!decks.length) {
+    activeDeckKey.value = null;
+    return;
+  }
+
+  if (!activeDeckKey.value || !decks.some(deck => deck.key === activeDeckKey.value)) {
+    activeDeckKey.value = decks[0].key;
+  }
+});
+
+onMounted(() => {
+  updateViewport();
+  window.addEventListener("resize", updateViewport);
+
+  if (props.open) {
+    void loadContext(activeVehicleId.value);
+  }
+});
+
+onBeforeUnmount(() => {
+  if (typeof window !== "undefined") {
+    window.removeEventListener("resize", updateViewport);
+  }
+});
+</script>
+
+<style scoped>
+.seat-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.seat-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(8px);
+}
+
+.seat-modal__panel {
+  position: relative;
+  z-index: 41;
+  width: 100%;
+  max-width: 1480px;
+  max-height: 90vh;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 32px;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  box-shadow: 0 40px 80px rgba(15, 23, 42, 0.25);
+}
+
+.seat-modal__panel--compact {
+  max-width: 640px;
+}
+
+.seat-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.seat-modal__header--center {
+  flex-direction: column;
+  gap: 0.75rem;
+  text-align: center;
+}
+
+.seat-modal__headline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.seat-modal__focus {
+  color: #0ea5e9;
+  font-weight: 700;
+}
+
+.seat-modal__title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.seat-modal__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: #22c55e;
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.seat-modal__state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  text-align: center;
+  color: #1e293b;
+}
+
+.seat-modal__state--error {
+  color: #b91c1c;
+}
+
+.seat-modal__state--info {
+  color: #0f172a;
+}
+
+.subtitle {
+  font-size: 0.9rem;
+  color: #475569;
+}
+
+.subtitle--muted {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  margin-top: 0.1rem;
+}
+
+.seat-modal__content {
+  display: grid;
+  grid-template-columns: minmax(240px, 300px) minmax(620px, 0.95fr) minmax(240px, 300px);
+  gap: 1rem;
+  padding-top: 1.5rem;
+  overflow: hidden;
+  flex: 1;
+}
+
+.panel-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  padding: 1rem;
+  background: #fff;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.02);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.passenger-panel .panel-card {
+  overflow: hidden;
+  gap: 1rem;
+}
+
+.passenger-list {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  overflow-y: auto;
+}
+
+.passenger-item {
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 0.75rem 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+  background: #fff;
+}
+
+.passenger-item__index {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.passenger-item--active {
+  border-color: #0ea5e9;
+  box-shadow: 0 12px 25px rgba(14, 165, 233, 0.15);
+}
+
+.passenger-item--assigned {
+  background: #f0fdf4;
+}
+
+.passenger-item__info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.passenger-name {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.passenger-seat {
+  font-size: 0.75rem;
+  color: #475569;
+}
+
+.passenger-seat--assigned {
+  color: #0f172a;
+}
+
+.passenger-seat--empty {
+  color: #94a3b8;
+}
+
+.passenger-status-badge {
+  border-radius: 999px;
+  padding: 0.2rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+  min-width: 110px;
+  text-align: center;
+}
+
+.passenger-status-badge--assigned {
+  color: #15803d;
+  background: #dcfce7;
+  border-color: #86efac;
+}
+
+.passenger-status-badge--pending {
+  color: #b45309;
+  background: #fffbeb;
+  border-color: #fcd34d;
+}
+
+.map-panel,
+.map-card,
+.deck-section,
+.bus-stage {
+  min-width: 0;
+}
+
+.map-card {
+  overflow: visible;
+  gap: 1.25rem;
+}
+
+.deck-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
+.vehicle-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.vehicle-tab {
+  border-radius: 999px;
+  border: 1px solid #cbd5f5;
+  padding: 0.4rem 1rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #475569;
+  background: #fff;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 150px;
+  transition: all 0.2s ease;
+}
+
+.vehicle-tab--active {
+  border-color: #0ea5e9;
+  background: #e0f2fe;
+  color: #0c4a6e;
+  box-shadow: 0 12px 24px rgba(14, 165, 233, 0.2);
+}
+
+.vehicle-tab__name {
+  font-weight: 700;
+}
+
+.vehicle-tab__meta {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: #94a3b8;
+}
+
+.deck-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.deck-tab {
+  border-radius: 999px;
+  border: 1px solid #cbd5f5;
+  padding: 0.35rem 0.9rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #475569;
+  background: #fff;
+  transition: all 0.2s ease;
+}
+
+.deck-tab--active {
+  color: #0369a1;
+  background: #e0f2fe;
+  border-color: #0ea5e9;
+}
+
+.deck-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.deck-heading {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.bus-stage {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.bus-front-label {
+  align-self: center;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.bus-shell {
+  width: 100%;
+  padding: 1rem 0.5rem 1rem;
+  position: relative;
+  border-radius: 32px;
+  background: transparent;
+}
+
+.bus-front {
+  position: absolute;
+  top: 0.6rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.bus-front__window {
+  width: 80px;
+  height: 12px;
+  border-radius: 999px;
+  background: #cbd5f5;
+}
+
+.bus-front__driver {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: #0ea5e9;
+}
+
+.bus-body {
+  margin-top: 2rem;
+  padding: 0 0.25rem 0.5rem;
+  display: flex;
+  justify-content: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-height: none;
+  min-width: 0;
+  width: 100%;
+}
+
+.map-legend {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.25rem;
+  list-style: none;
+  padding: 0;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.legend-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  display: inline-block;
+}
+
+.legend-dot--available {
+  background: #dcfce7;
+  border-color: #15803d;
+}
+
+.legend-dot--selected {
+  background: linear-gradient(135deg, #0ea5e9, #0284c7);
+  border-color: #0ea5e9;
+}
+
+.legend-dot--occupied {
+  background: #fed7aa;
+  border-color: #c2410c;
+}
+
+.legend-dot--blocked {
+  background: #fee2e2;
+  border-color: #be123c;
+}
+
+.legend-dot--mine {
+  background: #e0e7ff;
+  border-color: #4c1d95;
+}
+
+.map-note {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.bus-grid {
+  display: grid;
+  gap: 10px;
+  background: linear-gradient(180deg, #f8fafc, #f1f5f9);
+  padding: 1rem;
+  border-radius: 28px;
+  border: 1px solid #e2e8f0;
+  justify-content: center;
+  justify-items: center;
+  width: max-content;
+  min-width: unset;
+  max-width: none;
+  margin: 0 auto;
+}
+
+.bus-grid--desktop-horizontal {
+  min-width: 0;
+}
+
+.seat-cell {
+  width: 42px;
+  height: 46px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #0f172a;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  background: #fff;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.08);
+}
+
+.seat-cell--available {
+  background: #f0f9ff;
+  border-color: #bae6fd;
+}
+
+.seat-cell--available:hover {
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 10px 20px rgba(2, 132, 199, 0.2);
+}
+
+.seat-cell--selected {
+  background: linear-gradient(135deg, #0ea5e9, #0284c7);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 12px 24px rgba(2, 132, 199, 0.35);
+}
+
+.seat-cell--selected {
+  transform: scale(1.08);
+}
+
+.seat-cell--mine {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  color: #0f172a;
+  box-shadow: 0 10px 18px rgba(59, 130, 246, 0.25);
+  cursor: not-allowed;
+}
+
+.seat-cell--occupied {
+  background: #e2e8f0;
+  color: #64748b;
+  cursor: not-allowed;
+  border-color: #cbd5f5;
+  box-shadow: none;
+}
+
+.seat-cell--blocked {
+  background: #f8fafc;
+  color: #94a3b8;
+  cursor: not-allowed;
+  border-style: dashed;
+  border-color: #cbd5f5;
+  box-shadow: none;
+}
+
+.seat-cell--aisle {
+  width: 24px;
+  height: 40px;
+  background: linear-gradient(90deg, rgba(148, 163, 184, 0.35), rgba(209, 213, 219, 0.1));
+  border-radius: 20px;
+  border: none;
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.2);
+  cursor: default;
+  opacity: 1;
+  pointer-events: none;
+}
+
+.seat-cell--aisle {
+  opacity: 0.5;
+}
+
+
+@media (min-width: 1024px) {
+  .bus-stage {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+  }
+
+  .bus-front-label {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    letter-spacing: 0.2em;
+    font-size: 0.7rem;
+  }
+
+  .bus-shell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .bus-front {
+    position: relative;
+    top: auto;
+    left: auto;
+    transform: none;
+
+    margin-right: 0.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .bus-front {
+    flex-direction: row;
+    gap: 0.3rem;
+  }
+
+  .bus-front__window {
+    width: 12px;
+    height: 60px;
+    border-radius: 999px;
+  }
+
+  .bus-front__driver {
+    width: 10px;
+    height: 10px;
+  }
+}
+.seat-cell--empty {
+  opacity: 0;
+  cursor: default;
+  pointer-events: none;
+}
+
+.seat-cell:hover {
+  transform: translateY(-2px);
+}
+
+.seat-label {
+  pointer-events: none;
+  color: inherit;
+}
+
+.info-card {
+  gap: 0.75rem;
+}
+
+.info-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.info-summary:last-of-type {
+  border-bottom: none;
+}
+
+.info-summary__label {
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.info-summary__value {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.info-summary__value--seat {
+  color: #0ea5e9;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0.2rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.status-pill--success {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.status-pill--pending {
+  background: #fef9c3;
+  color: #b45309;
+}
+
+.summary-only {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+  align-items: center;
+  text-align: center;
+}
+
+.confirmation-card {
+  padding: 1.5rem;
+  border-radius: 24px;
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(14, 165, 233, 0.1));
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  text-align: center;
+  width: min(420px, 100%);
+}
+
+.summary-note {
+  font-size: 0.85rem;
+  color: #475569;
+  text-align: center;
+}
+
+.summary-only .btn-primary {
+  width: min(320px, 100%);
+  margin: 0 auto;
+}
+
+.passenger-summary-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+  align-items: center;
+}
+
+.passenger-summary-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-radius: 18px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.02);
+  width: min(380px, 100%);
+}
+
+.summary-card {
+  width: 100%;
+}
+
+.selection-error {
+  font-size: 0.8rem;
+  color: #b91c1c;
+  margin-top: 0.5rem;
+}
+
+.info-note {
+  font-size: 0.85rem;
+  color: #475569;
+  margin-top: 0.5rem;
+}
+
+.boarding-notes {
+  background: #f8fafc;
+  padding: 0.75rem;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+}
+
+.btn-ghost {
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+  color: #0f172a;
+  transition: color 0.2s;
+}
+
+.btn-ghost:hover {
+  color: #0ea5e9;
+}
+
+.btn-secondary {
+  border-radius: 999px;
+  border: 1px solid #cbd5f5;
+  padding: 0.5rem 1.25rem;
+  font-weight: 600;
+}
+
+.btn-primary {
+  border-radius: 999px;
+  padding: 0.75rem 1.25rem;
+  font-weight: 600;
+  background: #0f766e;
+  color: #fff;
+}
+
+.progress-text {
+  font-size: 0.85rem;
+  color: #475569;
+}
+
+.progress-bar {
+  height: 4px;
+  width: 100%;
+  border-radius: 999px;
+  background: #e2e8f0;
+  overflow: hidden;
+  margin-top: 0.25rem;
+}
+
+.progress-bar__fill {
+  height: 100%;
+  background: linear-gradient(90deg, #22c55e, #0ea5e9);
+  transition: width 0.3s ease;
+}
+
+.inline-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: #0f172a;
+}
+
+.spinner {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 3px solid #e2e8f0;
+  border-top-color: #0ea5e9;
+  animation: spin 1s linear infinite;
+}
+
+.spinner--sm {
+  width: 18px;
+  height: 18px;
+  border-width: 2px;
+}
+
+.empty-state {
+  padding: 2rem;
+  text-align: center;
+  color: #94a3b8;
+  border: 1px dashed #cbd5f5;
+  border-radius: 16px;
+}
+
+@media (max-width: 1024px) {
+  .seat-modal__panel {
+    max-width: 100%;
+    padding: 1.25rem;
+    border-radius: 24px;
+  }
+
+  .seat-modal__content {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+  }
+
+  .seat-modal__header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .panel-card {
+    min-height: auto;
+  }
+
+  .bus-front {
+    top: 0.4rem;
+  }
+
+  .bus-body {
+    justify-content: flex-start;
+    overflow-x: auto;
+  }
+
+  .bus-grid {
+    width: max-content;
+  }
+}
+
+@media (min-width: 1024px) {
+  .seat-modal__panel {
+    max-width: 1480px;
+  }
+
+  .seat-modal__content {
+    grid-template-columns: minmax(250px, 320px) minmax(680px, 1fr) minmax(250px, 320px);
+    align-items: stretch;
+  }
+
+  .map-panel,
+  .map-card,
+  .deck-section,
+  .bus-stage,
+  .bus-shell,
+  .bus-body {
+    min-width: 0;
+    width: 100%;
+  }
+
+ .bus-stage {
+  justify-content: center;
+}
+
+  .bus-shell {
+    padding: 1rem 0.25rem 0.75rem;
+  }
+
+  .bus-front-label {
+    margin-bottom: 0.75rem;
+  }
+
+  .bus-body {
+    overflow-x: hidden;
+    overflow-y: hidden;
+    justify-content: center;
+    padding: 0 0.25rem 0.5rem;
+  }
+
+  .bus-grid {
+    width: max-content;
+    max-width: 100%;
+    min-width: 0;
+    margin: 0 auto;
+    padding: 1rem;
+    gap: 10px;
+  }
+
+  .seat-cell {
+    width: 40px;
+    height: 44px;
+  }
+
+  .seat-cell--aisle {
+    width: 22px;
+    height: 38px;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+</style>
+

@@ -53,7 +53,7 @@
               <dd>{{ product.total_slots }}</dd>
             </div>
             <div class="stat-card">
-              <dt>Disponveis</dt>
+              <dt>Dispon&iacute;veis</dt>
               <dd class="text-emerald-600">{{ product.available_slots }}</dd>
             </div>
             <div class="stat-card">
@@ -111,13 +111,7 @@
             <button type="button" class="pill" @click="openProductModal(product)">Editar</button>
             <button type="button" class="pill" @click="openInventoryModal(product)">Ajustar estoque</button>
             <button type="button" class="pill" @click="openPosModal(product)">Nova venda</button>
-            <button
-              type="button"
-              class="pill"
-              :disabled="!product.is_road_trip"
-              :title="product.is_road_trip ? 'Visualizar passageiros' : 'Disponível apenas para produtos com transporte rodoviário'"
-              @click="product.is_road_trip && goToProductPassengers(product)"
-            >
+            <button type="button" class="pill" @click="goToProductPassengers(product)">
               Lista de passageiros
             </button>
             <button
@@ -456,7 +450,7 @@
           <div class="grid gap-4 md:grid-cols-2">
             <div>
               <label class="input-label">Nome</label>
-              <input v-model="productForm.name" class="input" placeholder="Expedio Amaznia" />
+              <input v-model="productForm.name" class="input" placeholder="Expedi&ccedil;&atilde;o Amaz&ocirc;nia" />
             </div>
             <div>
               <label class="input-label">Status</label>
@@ -468,7 +462,7 @@
             </div>
           </div>
           <div>
-            <label class="input-label">Descrio</label>
+            <label class="input-label">Descri&ccedil;&atilde;o</label>
             <textarea v-model="productForm.description" rows="2" class="input" placeholder="Resumo da viagem"></textarea>
           </div>
           <div class="grid gap-4 md:grid-cols-3">
@@ -481,7 +475,7 @@
               <input type="checkbox" v-model="productForm.date_is_flexible" class="h-4 w-4" />
             </div>
             <div>
-              <label class="input-label">Estratgia de estoque</label>
+              <label class="input-label">Estrat&eacute;gia de estoque</label>
               <select v-model="productForm.inventory_strategy" class="input">
                 <option value="manual">Manual</option>
                 <option value="unlimited">Ilimitado</option>
@@ -494,7 +488,7 @@
               <input type="number" min="0" class="input" v-model.number="productForm.total_slots" :disabled="productForm.inventory_strategy === 'unlimited'" />
             </div>
             <div>
-              <label class="input-label">Disponveis</label>
+              <label class="input-label">Dispon&iacute;veis</label>
               <input type="number" min="0" class="input" v-model.number="productForm.available_slots" :disabled="productForm.inventory_strategy === 'unlimited'" />
             </div>
             <div class="flex items-center gap-2">
@@ -503,30 +497,40 @@
             </div>
           </div>
           <div>
-          <label class="input-label">Juros do cartao de credito</label>
+          <label class="input-label">Juros do cart&atilde;o de cr&eacute;dito</label>
           <select v-model="productForm.card_interest_mode" class="input">
             <option value="merchant">Assumir juros do parcelamento</option>
             <option value="customer">Repassar juros ao cliente</option>
           </select>
           <p class="mt-1 text-xs text-slate-500">
-            Escolha quem arca com os custos de parcelamento nas vendas com cartao de credito.
+            Escolha quem arca com os custos de parcelamento nas vendas com cart&atilde;o de cr&eacute;dito.
           </p>
         </div>
-        <div class="grid gap-4 md:grid-cols-2">
+        <div class="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
           <label class="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800">
             <input type="checkbox" class="mt-1 h-4 w-4" v-model="productForm.is_road_trip" />
             <span>
-              <span class="block text-base text-slate-900">? excurs?o rodovi?ria</span>
-              <span class="text-xs font-normal text-slate-500">Ao marcar, o sistema exigir? lista de passageiros e liberar? o formul?rio p?blico.</span>
+              <span class="block text-base text-slate-900">&Eacute; excurs&atilde;o rodovi&aacute;ria</span>
+              <span class="text-xs font-normal text-slate-500">Ative apenas quando precisar habilitar configura&ccedil;&otilde;es de transporte rodovi&aacute;rio (mapa de assentos).</span>
             </span>
           </label>
+          <button
+            v-if="productForm.is_road_trip"
+            type="button"
+            class="pill whitespace-nowrap"
+            :disabled="!editingProductId"
+            :title="!editingProductId ? 'Salve o produto para acessar o mapa de transporte' : ''"
+            @click="openRoadTripConfig"
+          >
+            Configurar rodovi&aacute;rio
+          </button>
         </div>
 
         <div>
           <label class="input-label">Contrato vinculado</label>
             <div class="flex flex-col gap-2 md:flex-row md:items-center">
               <select v-model="productForm.template_contract_id" class="input md:flex-1">
-                <option :value="null">Sem contrato automtico</option>
+                <option :value="null">Sem contrato autom&aacute;tico</option>
                 <option v-for="template in contractTemplates" :key="template.id" :value="template.id">
                   {{ template.name }}
                 </option>
@@ -535,18 +539,18 @@
                 Definir locais de embarque
               </button>
             </div>
-            <p class="mt-1 text-xs text-slate-500">O cliente receber este template ao concluir a compra.</p>
+            <p class="mt-1 text-xs text-slate-500">O cliente receber&aacute; este template ao concluir a compra.</p>
             <p v-if="contractTemplatesLoading" class="text-xs text-slate-400">Carregando contratos...</p>
             <p v-else-if="!contractTemplates.length" class="text-xs text-amber-600">
-              Nenhum template disponvel. Configure em Jurdico &gt; Contratos.
+              Nenhum template dispon&iacute;vel. Configure em Jur&iacute;dico &gt; Contratos.
             </p>
           </div>
           <div class="space-y-4 rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
             <div class="flex flex-col gap-1">
-              <p class="text-sm font-semibold text-slate-900">Aparncia do checkout</p>
+              <p class="text-sm font-semibold text-slate-900">Apar&ecirc;ncia do checkout</p>
               <p class="text-xs text-slate-500">
-                Personalize o banner e a imagem de destaque exibidos no checkout pblico. Use imagens em alta resoluo para transmitir
-                confiana e profissionalismo.
+                Personalize o banner e a imagem de destaque exibidos no checkout p&uacute;blico. Use imagens em alta resolu&ccedil;&atilde;o para transmitir
+                confian&ccedil;a e profissionalismo.
               </p>
             </div>
             <div class="grid gap-4 md:grid-cols-2">
@@ -570,7 +574,7 @@
             <div class="flex items-center justify-between">
               <div>
                 <p class="text-sm font-semibold text-slate-900">Pacotes</p>
-                <p class="text-xs text-slate-500">Defina variaes de preo e estoque.</p>
+                <p class="text-xs text-slate-500">Defina varia&ccedil;&otilde;es de pre&ccedil;o e estoque.</p>
               </div>
               <button type="button" class="text-xs font-semibold text-emerald-600" @click="addVariation">+ Adicionar</button>
             </div>
@@ -587,13 +591,13 @@
                   <input v-model="variation.name" class="input" placeholder="Pacote premium" />
                 </div>
                 <div>
-                  <label class="input-label">Preo (R$)</label>
+                  <label class="input-label">Pre&ccedil;o (R$)</label>
                   <input type="number" min="0" step="0.01" class="input" v-model.number="variation.price" />
                 </div>
               </div>
               <div class="grid gap-4 md:grid-cols-3">
                 <div>
-                  <label class="input-label">Pessoas includas</label>
+                  <label class="input-label">Pessoas inclu&iacute;das</label>
                   <input type="number" min="1" class="input" v-model.number="variation.people_included" />
                 </div>
                 <div>
@@ -607,14 +611,14 @@
                   <label class="input-label">Controle</label>
                   <select v-model="variation.stock_mode" class="input">
                     <option value="shared">Herda produto</option>
-                    <option value="variant">Prprio</option>
+                    <option value="variant">Pr&oacute;prio</option>
                   </select>
                 </div>
               </div>
               <div class="space-y-2 rounded-2xl border border-emerald-100/60 bg-white/80 p-3">
                 <div class="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <p class="text-sm font-semibold text-slate-900">Acomodao</p>
+                    <p class="text-sm font-semibold text-slate-900">Acomoda&ccedil;&atilde;o</p>
                     <p class="text-xs text-slate-500">Controle se a unidade fecha um quarto completo ou vende vagas compartilhadas.</p>
                   </div>
                   <div class="flex flex-wrap items-center gap-3">
@@ -633,7 +637,7 @@
                   </div>
                 </div>
                 <p v-if="!variation.has_accommodation" class="text-xs text-slate-500">
-                  Ative a hospedagem para liberar a configuração das acomodações deste pacote.
+                  Ative a hospedagem para liberar a configura&ccedil;&atilde;o das acomoda&ccedil;&otilde;es deste pacote.
                 </p>
                 <div v-show="variation.has_accommodation && !isAccommodationCollapsed(variation, index)" class="space-y-2">
                   <div class="grid gap-3 md:grid-cols-3">
@@ -653,7 +657,7 @@
                         v-model.number="variation.room_capacity"
                         @blur="sanitizeRoomCapacity(variation)"
                       />
-                      <p class="mt-1 text-[11px] text-slate-500">Ex.: duplo = 2, triplo = 3, qudruplo = 4.</p>
+                      <p class="mt-1 text-[11px] text-slate-500">Ex.: duplo = 2, triplo = 3, qu&aacute;druplo = 4.</p>
                     </div>
                     <div>
                       <label class="input-label">Vagas por unidade</label>
@@ -670,7 +674,7 @@
                   </div>
                   <p class="text-xs text-slate-500">
                     <span class="font-semibold text-slate-700">Privativa:</span> cada venda fecha o quarto inteiro.
-                    <span class="ml-1 font-semibold text-slate-700">Compartilhada:</span> permite reservar parte das vagas sem exigir lotao total.
+                    <span class="ml-1 font-semibold text-slate-700">Compartilhada:</span> permite reservar parte das vagas sem exigir lota&ccedil;&atilde;o total.
                   </p>
                 </div>
               </div>
@@ -680,19 +684,19 @@
                   <input type="number" min="0" class="input" v-model.number="variation.total_slots" />
                 </div>
                 <div>
-                  <label class="input-label">Disponveis</label>
+                  <label class="input-label">Dispon&iacute;veis</label>
                   <input type="number" min="0" class="input" v-model.number="variation.available_slots" />
                 </div>
               </div>
               <div>
-                <label class="input-label">Descrio</label>
+                <label class="input-label">Descri&ccedil;&atilde;o</label>
                 <textarea v-model="variation.description" rows="2" class="input" placeholder="Detalhes do pacote"></textarea>
               </div>
               <div class="rounded-2xl border border-slate-100 bg-white p-3">
                 <div class="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <p class="text-sm font-semibold text-slate-900">Poltica infantil</p>
-                    <p class="text-xs text-slate-500">Configure faixas e cobranas por criana.</p>
+                    <p class="text-sm font-semibold text-slate-900">Pol&iacute;tica infantil</p>
+                    <p class="text-xs text-slate-500">Configure faixas e cobran&ccedil;as por crian&ccedil;a.</p>
                   </div>
                   <div class="flex flex-wrap items-center gap-3">
                     <button
@@ -705,18 +709,16 @@
                       <span
                         class="ml-1 inline-block transition-transform"
                         :class="isChildPolicyCollapsed(variation, index) ? '' : 'rotate-180'"
-                      >
-                        ?
-                      </span>
+                      >&#9662;</span>
                     </button>
                     <label class="flex items-center gap-2 text-xs font-semibold text-slate-600">
                       <input type="checkbox" v-model="variation.child_policy_enabled" />
-                      Permitir crianas
+                      Permitir crian&ccedil;as
                     </label>
                   </div>
                 </div>
                 <p class="mt-1 text-xs text-slate-500">
-                  Defina como cada faixa impacta o valor, passageiros e vagas. Quando desativado, nenhuma criana  aceita.
+                  Defina como cada faixa impacta o valor, passageiros e vagas. Quando desativado, nenhuma crian&ccedil;a &eacute; aceita.
                 </p>
                 <div v-if="variation.child_policy_enabled">
                   <div v-show="!isChildPolicyCollapsed(variation, index)" class="mt-3 space-y-3">
@@ -737,7 +739,7 @@
                       </div>
                       <div class="grid gap-3 md:grid-cols-2">
                         <div>
-                          <label class="input-label">Idade mnima (anos)</label>
+                          <label class="input-label">Idade m&iacute;nima (anos)</label>
                           <input
                             type="number"
                             min="0"
@@ -747,7 +749,7 @@
                           />
                         </div>
                         <div>
-                          <label class="input-label">Idade mxima (anos)</label>
+                          <label class="input-label">Idade m&aacute;xima (anos)</label>
                           <input
                             type="number"
                             min="0"
@@ -759,7 +761,7 @@
                       </div>
                       <div class="grid gap-3 md:grid-cols-2">
                         <div>
-                          <label class="input-label">Tipo de cobrana</label>
+                          <label class="input-label">Tipo de cobran&ccedil;a</label>
                           <select
                             v-model="rule.pricing_mode"
                             class="input"
@@ -791,7 +793,7 @@
                           Conta como passageiro?
                         </label>
                         <div>
-                          <label class="input-label">Mximo por pacote</label>
+                          <label class="input-label">M&aacute;ximo por pacote</label>
                           <input type="number" min="0" class="input" v-model.number="rule.max_quantity" />
                           <p class="mt-1 text-[11px] text-slate-500">Deixe vazio para ilimitado.</p>
                         </div>
@@ -826,11 +828,11 @@
             <input type="number" min="0" class="input" v-model.number="inventoryForm.total_slots" />
           </div>
           <div>
-            <label class="input-label">Disponveis</label>
+            <label class="input-label">Dispon&iacute;veis</label>
             <input type="number" min="0" class="input" v-model.number="inventoryForm.available_slots" />
           </div>
           <div>
-            <label class="input-label">Observao</label>
+            <label class="input-label">Observa&ccedil;&atilde;o</label>
             <textarea rows="2" class="input" v-model="inventoryForm.note" placeholder="Motivo do ajuste"></textarea>
           </div>
         </div>
@@ -921,7 +923,7 @@
                 v-if="hasEnabledChildRules(variation)"
                 class="space-y-2 rounded-2xl border border-slate-100 bg-white/80 p-3"
               >
-                <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Crianas</p>
+                <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">crian&ccedil;as</p>
                 <div
                   v-for="rule in enabledChildRules(variation)"
                   :key="`${variation.public_id}-${rule.key}`"
@@ -1052,7 +1054,7 @@
                 v-if="hasEnabledChildRules(variation)"
                 class="space-y-2 rounded-2xl border border-slate-100 bg-white/80 p-3"
               >
-                <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Crianas</p>
+                <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">crian&ccedil;as</p>
                 <div
                   v-for="rule in enabledChildRules(variation)"
                   :key="`${variation.public_id}-${rule.key}`"
@@ -1127,7 +1129,7 @@
           </div>
           <div v-else class="space-y-3">
             <p class="text-xs text-slate-500">
-              Informe todos os pontos de embarque disponveis. Eles podem ser usados em contratos e formulrios.
+              Informe todos os pontos de embarque Dispon&iacute;veis. Eles podem ser usados em contratos e formulrios.
             </p>
             <div
               v-for="(location, index) in boardingLocationsForm"
@@ -1344,9 +1346,9 @@
             <div class="grid gap-4 text-sm md:grid-cols-2">
               <div class="space-y-2">
                 <div>
-                  <p class="text-xs uppercase tracking-wide text-slate-400">Descrio do produto</p>
+                  <p class="text-xs uppercase tracking-wide text-slate-400">Descri&ccedil;&atilde;o do produto</p>
                   <p class="text-base font-semibold text-slate-900">
-                    {{ passengerSale.product_description || "Sem descrio" }}
+                    {{ passengerSale.product_description || "Sem Descri&ccedil;&atilde;o" }}
                   </p>
                 </div>
                 <div>
@@ -1446,7 +1448,7 @@
                       <p class="text-xs uppercase tracking-wide text-slate-400">Resumo do grupo</p>
                       <p class="text-sm font-semibold text-slate-900">{{ activePassengerGroup.product_name }}</p>
                       <p class="text-xs text-slate-500">
-                        Capacidade {{ activePassengerGroup.capacity }} pessoas
+                        Passageiros previstos: {{ activePassengerGroup.passengers.length }}
                       </p>
                     </div>
                     <div class="rounded-full bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-600">
@@ -1479,8 +1481,8 @@
                         <label class="input-label">Tipo</label>
                         <select v-model="activePassenger.type" class="input mt-1" :disabled="!canManagePassengers">
                           <option value="adult">Adulto</option>
-                          <option value="child_paid">Criana paga</option>
-                          <option value="child_free">Criana gratuita</option>
+                          <option value="child_paid">crian&ccedil;a paga</option>
+                          <option value="child_free">crian&ccedil;a gratuita</option>
                         </select>
                       </div>
                       <div class="md:col-span-2">
@@ -1559,7 +1561,7 @@
                 </div>
               </div>
               <div v-else class="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500">
-                Nenhum grupo de passageiros disponvel para esta venda.
+                Nenhum grupo de passageiros Dispon&iacute;vel para esta venda.
               </div>
             </template>
           </section>
@@ -1959,11 +1961,16 @@ const passengerChipState = (state: "empty" | "partial" | "complete") => {
   return "passenger-chip-empty";
 };
 
-const createPassengerSlot = (groupId: number, slotIndex: number, passenger?: Passenger): PassengerFormState => ({
+const createPassengerSlot = (
+  groupId: number,
+  slotIndex: number,
+  passenger?: Passenger,
+  defaultType: PassengerType = "adult",
+): PassengerFormState => ({
   id: passenger?.id ?? undefined,
   passenger_group_id: groupId,
   passenger_index: slotIndex,
-  type: (passenger?.type as PassengerType) || "adult",
+  type: (passenger?.type as PassengerType) || defaultType,
   name: passenger?.name || "",
   cpf: passenger?.cpf || "",
   birthdate: passenger?.birthdate || "",
@@ -1974,11 +1981,13 @@ const createPassengerSlot = (groupId: number, slotIndex: number, passenger?: Pas
 });
 
 const normalizePassengerGroup = (group: PassengerGroup): PassengerGroupFormState => {
-  const passengers: PassengerFormState[] = Array.from({ length: group.capacity }, (_, idx) => {
+  const slotTypes =
+    (group.slot_types && group.slot_types.length ? group.slot_types : Array.from({ length: group.capacity }, () => "adult")) as PassengerType[];
+  const passengers: PassengerFormState[] = slotTypes.map((slotType, idx) => {
     const existing = (group.passengers || []).find(entry => entry.passenger_index === idx + 1);
-    return createPassengerSlot(group.id, idx + 1, existing);
+    return createPassengerSlot(group.id, idx + 1, existing, slotType);
   });
-  return { ...group, passengers };
+  return { ...group, passengers, slot_types: slotTypes };
 };
 
 const selectPassengerGroup = (index: number) => {
@@ -2870,6 +2879,16 @@ const closePassengerModal = () => {
 };
 
 const router = useRouter();
+const openRoadTripConfig = () => {
+  if (!productForm.is_road_trip) return;
+  if (!editingProductId.value) {
+    if (typeof window !== "undefined" && window.alert) {
+      window.alert("Salve o produto para configurar o transporte rodoviário.");
+    }
+    return;
+  }
+  router.push({ name: "product-seats", params: { productId: editingProductId.value } });
+};
 const goToProductPassengers = (product: ProductSummary) => {
   if (!product.is_road_trip) {
     if (typeof window !== "undefined" && window.alert) {
@@ -3078,7 +3097,7 @@ const paymentStatusLabel = (status: string) => ({
 
 const payoutStatusLabel = (status: string) => ({
   pending: "Aguardando",
-  available: "Disponvel",
+  available: "Dispon&iacute;vel",
   payout_paid: "Recebido",
   payout_failed: "Falha",
 }[status] || status);
@@ -3154,7 +3173,7 @@ const copyText = async (text: string) => {
       await navigator.clipboard.writeText(text);
       return;
     }
-    throw new Error("Clipboard API indisponvel");
+    throw new Error("Clipboard API inDispon&iacute;vel");
   } catch (err) {
     try {
       const textarea = document.createElement("textarea");
@@ -3338,6 +3357,11 @@ onMounted(async () => {
   @apply text-xs font-semibold text-slate-500;
 }
 </style>
+
+
+
+
+
 
 
 

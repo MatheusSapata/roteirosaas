@@ -621,6 +621,7 @@ const navCopy = {
   lessons: { pt: "Aulas", es: "Cursos" },
   plans: { pt: "Planos", es: "Planes" },
   products: { pt: "Produtos", es: "Productos" },
+  fleet: { pt: "Frota", es: "Flota" },
   sales: { pt: "Vendas", es: "Ventas" },
   legal: { pt: "Contratos", es: "Contratos" }
 } as const;
@@ -815,6 +816,7 @@ const navIcons: Record<string, string> = {
   "/admin/pages": '<g fill="none" stroke="currentColor" stroke-width="2"><path d="M6.142 6.142C8.904 3.381 10.284 2 12 2s3.096 1.38 5.858 4.142S22 10.284 22 12s-1.38 3.096-4.142 5.858S13.716 22 12 22s-3.096-1.38-5.858-4.142S2 13.716 2 12s1.38-3.096 4.142-5.858Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M16 11.5L13.333 9M16 11.5L13.333 14M16 11.5h-5.333C9.777 11.5 8 12 8 14"/></g>',
   "/admin/leads": '<path fill="currentColor" d="m17 21l1.8 1.77c.5.5 1.2.1 1.2-.49V18l2.8-3.4A1 1 0 0 0 22 13h-7c-.8 0-1.3 1-.8 1.6L17 18zm-2-1H2v-3c0-2.7 5.3-4 8-4c.6 0 1.3.1 2.1.2c-.2.6-.1 1.3.1 1.9c-.7-.1-1.5-.2-2.2-.2c-3 0-6.1 1.5-6.1 2.1v1.1h10.6l.5.6zM10 4C7.8 4 6 5.8 6 8s1.8 4 4 4s4-1.8 4-4s-1.8-4-4-4m0 6c-1.1 0-2-.9-2-2s.9-2 2-2s2 .9 2 2s-.9 2-2 2"/>',
   "/admin/produtos": '<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 11h16M4 7h16M4 15h10M12 3v2m0 14v2"/>',
+  "/admin/assentos": '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><rect x="4" y="5" width="16" height="10" rx="2"/><path d="M4 15v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/><path d="M10 9h4"/></g>',
   "/admin/vendas": '<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m3 5l2 12h14l2-9H5.4M3 5h18M7 21a1 1 0 1 0 0-2a1 1 0 0 0 0 2m10 0a1 1 0 1 0 0-2a1 1 0 0 0 0 2"/>',
   "/admin/juridico": '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M12 4v16"/><path d="M5 8l-3 6h6l-3-6Zm13 0l-3 6h6l-3-6Z"/><path d="M2 14h18"/><path d="M9 20h6"/></g>',
   "/admin/integracoes": '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M18.364 19.364a9 9 0 1 0-12.728 0"/><path d="M15.536 16.536a5 5 0 1 0-7.072 0"/><path d="M11 13a1 1 0 1 0 2 0a1 1 0 1 0-2 0"/></g>',
@@ -847,6 +849,8 @@ const routeTitleMap: Record<string, string> = {
   "agency-settings": navLabel("agency"),
   "agency-domains": navLabel("domains"),
   products: navLabel("products"),
+  "seat-layouts": navLabel("fleet"),
+  "product-seats": navLabel("fleet"),
   sales: navLabel("sales"),
   legal: navLabel("legal"),
   plans: navLabel("plans"),
@@ -864,6 +868,7 @@ const navItems = computed(() => {
     { label: navLabel("pages"), to: "/admin/pages" },
     { label: navLabel("leads"), to: "/admin/leads" },
     { label: navLabel("products"), to: "/admin/produtos" },
+    { label: navLabel("fleet"), to: "/admin/assentos" },
     { label: navLabel("sales"), to: "/admin/vendas" },
     { label: navLabel("legal"), to: "/admin/juridico" },
     { label: navLabel("integrations"), to: "/admin/integracoes" },

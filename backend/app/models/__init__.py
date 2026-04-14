@@ -54,3 +54,17 @@ from .legal import (
     LegalContractAuditEventType,
     LegalContractAuditActorType,
 )
+from .transport import (
+    VehicleLayout,
+    Vehicle,
+    TripTransportConfig,
+    TripVehicle,
+    TripVehicleStatus,
+    TripSeat,
+    SeatAssignment,
+    SeatChangeLog,
+    SeatCellType,
+    SeatAssignmentActor,
+    SeatAssignmentStatus,
+    SeatChangeActorRole,
+)

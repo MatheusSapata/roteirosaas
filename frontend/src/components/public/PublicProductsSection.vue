@@ -339,10 +339,14 @@ const childRules = (variation: ProductVariation) => {
   return raw.filter((rule): rule is ChildPricingRule => !!rule && typeof rule === "object");
 };
 
-const selectionChildrenPayload = (selection: PackageSelectionState) =>
-  Object.entries(selection.children)
-    .filter(([, quantity]) => quantity && quantity > 0)
-    .map(([key, quantity]) => ({ key, quantity }));
+const selectionChildrenPayload = (selection: PackageSelectionState) => {
+  const payload: Record<string, number> = {};
+  Object.entries(selection.children).forEach(([key, quantity]) => {
+    if (!quantity || quantity <= 0) return;
+    payload[key] = quantity;
+  });
+  return payload;
+};
 
 const ruleMaxForSelection = (variation: ProductVariation, selection: PackageSelectionState, key: string) => {
   const rule = childRules(variation).find(r => r.key === key);

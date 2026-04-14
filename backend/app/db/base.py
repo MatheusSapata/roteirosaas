@@ -28,4 +28,5 @@ from app.models import (
     rooming,
     stripe_account,
     legal,
+    transport,
 )  # noqa: E402,F401

@@ -154,6 +154,18 @@ const platformRoutes: RouteRecordRaw[] = [
         meta: { section: "products" }
       },
       {
+        path: "produtos/:productId/assentos",
+        name: "product-seats",
+        component: () => import("../views/admin/ProductSeatsView.vue"),
+        meta: { section: "products" }
+      },
+      {
+        path: "assentos",
+        name: "seat-layouts",
+        component: () => import("../views/admin/SeatLayoutsView.vue"),
+        meta: { section: "products" }
+      },
+      {
         path: "vendas",
         name: "sales",
         component: () => import("../views/admin/FinanceView.vue"),

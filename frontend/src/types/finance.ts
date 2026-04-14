@@ -13,15 +13,12 @@ export interface PaymentBreakdown {
 
 export type SalePaymentStatus = "pending" | "processing" | "paid" | "canceled" | "refunded";
 
-export interface CheckoutChildSelection {
-  key: string;
-  quantity: number;
-}
+export type CheckoutChildSelection = Record<string, number>;
 
 export interface CheckoutCartItem {
   variation_id: string;
   quantity: number;
-  children?: CheckoutChildSelection[];
+  children?: CheckoutChildSelection;
 }
 
 export interface CheckoutCustomer {
@@ -240,6 +237,7 @@ export interface PassengerGroup {
   occupied_slots: number;
   status: "pending" | "partial" | "complete";
   allows_children: boolean;
+  slot_types: PassengerType[];
   passengers: Passenger[];
 }
 

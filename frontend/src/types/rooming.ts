@@ -15,6 +15,7 @@ export interface RoomingPassenger {
   accommodation_key?: string | null;
   capacity_required?: number | null;
   is_private?: boolean;
+  consumes_capacity?: boolean;
 }
 
 export interface RoomingRoom {
