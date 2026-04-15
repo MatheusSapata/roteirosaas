@@ -13,10 +13,19 @@
 
       <div class="drawer__body">
         <div v-if="loading" class="placeholder">Carregando templates disponiveis...</div>
-        <div v-else-if="!templates.length" class="placeholder">
-          Nenhum template cadastrado. Configure em Juridico &gt; Contratos.
-        </div>
         <div v-else class="space-y-3">
+          <label class="template-option">
+            <input type="radio" :value="null" v-model="selected" />
+            <div>
+              <p class="title">Sem contrato</p>
+              <p class="muted">Nenhum documento sera enviado automaticamente para este produto.</p>
+            </div>
+          </label>
+
+          <div v-if="!templates.length" class="placeholder">
+            Nenhum template cadastrado. Configure em Juridico &gt; Contratos.
+          </div>
+
           <label v-for="template in templates" :key="template.id" class="template-option">
             <input type="radio" :value="template.id" v-model="selected" />
             <div>
@@ -30,7 +39,7 @@
 
       <footer class="drawer__footer">
         <button type="button" class="pill" @click="$emit('close')">Cancelar</button>
-        <button type="button" class="btn-primary" :disabled="saving || !selected" @click="submit">
+        <button type="button" class="btn-primary" :disabled="saving" @click="submit">
           {{ saving ? "Salvando..." : "Salvar template" }}
         </button>
       </footer>
@@ -52,7 +61,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: "close"): void;
-  (e: "save", templateId: number): void;
+  (e: "save", templateId: number | null): void;
   (e: "manage"): void;
 }>();
 
@@ -67,8 +76,7 @@ watch(
 );
 
 const submit = () => {
-  if (!selected.value) return;
-  emit("save", selected.value);
+  emit("save", selected.value ?? null);
 };
 </script>
 

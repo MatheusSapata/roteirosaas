@@ -117,6 +117,11 @@ export interface ProductListResponse {
   items: ProductSummary[];
 }
 
+export interface ProductInventoryRebuildResponse {
+  scanned_products: number;
+  updated_products: number;
+}
+
 export interface ProductVariationPayload {
   public_id?: string | null;
   name: string;
@@ -148,7 +153,7 @@ export interface ProductPayload {
   total_slots: number;
   available_slots: number;
   allow_oversell: boolean;
-  card_interest_mode: "merchant" | "customer";
+  card_interest_mode?: "merchant" | "customer";
   checkout_banner_url?: string | null;
   checkout_product_image_url?: string | null;
   variations: ProductVariationPayload[];
@@ -367,12 +372,59 @@ export interface PosCheckoutRequest {
 
 export interface PaymentLinkRequest extends PosCheckoutRequest {
   expires_in_minutes?: number;
+  interest_mode?: "merchant" | "customer";
+  max_installments_no_interest?: number;
 }
 
 export interface PaymentLinkResponse {
   sale_id: number;
   token: string;
   url: string;
+}
+
+export interface PaymentInstallmentOption {
+  installments: number;
+  installment_amount_cents: number;
+  total_amount_cents: number;
+  has_interest: boolean;
+}
+
+export interface PaymentPricingResponse {
+  payment_method: string;
+  currency: string;
+  base_amount_cents: number;
+  options: PaymentInstallmentOption[];
+}
+
+export interface PaymentMethodSummary {
+  payment_method: string;
+  currency: string;
+  base_amount_cents: number;
+  total_amount_cents: number;
+  gateway_fee_estimated_cents: number;
+  agency_net_amount_cents: number;
+  installment_amount_cents: number;
+  installments: number;
+}
+
+export interface PaymentLinkSimulationRequest {
+  product_id: string;
+  items: CheckoutCartItem[];
+  customer?: CheckoutCustomer;
+  channel?: string;
+  interest_mode?: "merchant" | "customer";
+  max_installments_no_interest?: number;
+}
+
+export interface PaymentLinkSimulationResponse {
+  currency: string;
+  base_amount_cents: number;
+  pix: PaymentMethodSummary;
+  boleto: PaymentMethodSummary;
+  merchant_credit_card: PaymentPricingResponse;
+  customer_credit_card: PaymentPricingResponse;
+  effective_credit_card: PaymentPricingResponse;
+  max_installments_no_interest?: number | null;
 }
 
 export interface SaleItem {

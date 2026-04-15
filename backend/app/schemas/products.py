@@ -59,7 +59,7 @@ class ProductPayload(BaseModel):
     total_slots: int = Field(0, ge=0)
     available_slots: int = Field(0, ge=0)
     allow_oversell: bool = False
-    card_interest_mode: Literal["merchant", "customer"] = "merchant"
+    card_interest_mode: Literal["merchant", "customer"] | None = None
     checkout_banner_url: str | None = Field(default=None, max_length=500)
     checkout_product_image_url: str | None = Field(default=None, max_length=500)
     variations: list[ProductVariationPayload] = Field(default_factory=list)
@@ -144,3 +144,8 @@ class ProductDetail(ProductSummary):
 
 class ProductListResponse(BaseModel):
     items: list[ProductSummary]
+
+
+class ProductInventoryRebuildResponse(BaseModel):
+    scanned_products: int
+    updated_products: int

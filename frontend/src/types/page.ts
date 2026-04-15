@@ -108,7 +108,6 @@ export interface PriceItem {
   highlight?: boolean;
   ctaLabel?: LocalizedString;
   ctaLink?: string;
-  checkout?: PriceCheckoutConfig;
 }
 
 export interface PricesSection extends SectionBase {
@@ -132,14 +131,8 @@ export interface ProductsSection extends SectionBase {
   ctaLabel?: LocalizedString;
   sharedBadgeLabel?: LocalizedString;
   variantBadgeLabel?: LocalizedString;
-}
-
-export interface PriceCheckoutConfig {
-  enabled?: boolean;
-  productId: string;
-  passengersRequired?: number;
   installments?: number;
-  interestMode?: "merchant" | "client";
+  interestMode?: "merchant" | "customer";
   maxInstallmentsNoInterest?: number;
 }
 

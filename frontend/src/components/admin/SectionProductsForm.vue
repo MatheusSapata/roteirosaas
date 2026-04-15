@@ -35,6 +35,24 @@
       </div>
     </div>
 
+    <div class="grid gap-3 md:grid-cols-3">
+      <div>
+        <label class="input-label">Parcelas máximas</label>
+        <input v-model.number="local.installments" type="number" min="1" max="12" class="input" />
+      </div>
+      <div>
+        <label class="input-label">Juros do cartão</label>
+        <select v-model="local.interestMode" class="input">
+          <option value="merchant">Agência assume</option>
+          <option value="customer">Cliente assume</option>
+        </select>
+      </div>
+      <div>
+        <label class="input-label">Parcelas sem juros</label>
+        <input v-model.number="local.maxInstallmentsNoInterest" type="number" min="1" max="12" class="input" />
+      </div>
+    </div>
+
     <div class="space-y-2">
       <div class="flex items-center justify-between">
         <div>
@@ -118,6 +136,9 @@ const defaultCtaLabel = "Ir para checkout";
 const defaultSharedBadge = "Estoque compartilhado";
 const defaultVariantBadge = "Estoque individual";
 const defaultAccent = "#059669";
+const defaultInstallments = 1;
+const defaultInterestMode = "merchant";
+const defaultMaxNoInterest = 1;
 
 const props = defineProps<{ modelValue: ProductsSection }>();
 const emit = defineEmits<{ (e: "update:modelValue", value: ProductsSection): void }>();
@@ -133,7 +154,10 @@ const local = reactive<ProductsSection>({
   ctaLabel: props.modelValue.ctaLabel ?? defaultCtaLabel,
   accentColor: props.modelValue.accentColor ?? defaultAccent,
   sharedBadgeLabel: props.modelValue.sharedBadgeLabel ?? defaultSharedBadge,
-  variantBadgeLabel: props.modelValue.variantBadgeLabel ?? defaultVariantBadge
+  variantBadgeLabel: props.modelValue.variantBadgeLabel ?? defaultVariantBadge,
+  installments: props.modelValue.installments ?? defaultInstallments,
+  interestMode: props.modelValue.interestMode ?? defaultInterestMode,
+  maxInstallmentsNoInterest: props.modelValue.maxInstallmentsNoInterest ?? defaultMaxNoInterest
 });
 
 const formatCurrency = (value?: number | null) => {
@@ -168,12 +192,26 @@ watch(
     local.accentColor = value.accentColor ?? defaultAccent;
     local.sharedBadgeLabel = value.sharedBadgeLabel ?? defaultSharedBadge;
     local.variantBadgeLabel = value.variantBadgeLabel ?? defaultVariantBadge;
+    local.installments = value.installments ?? defaultInstallments;
+    local.interestMode = value.interestMode ?? defaultInterestMode;
+    local.maxInstallmentsNoInterest = value.maxInstallmentsNoInterest ?? defaultMaxNoInterest;
   },
   { deep: true }
 );
 
 watch(
-  () => ({ ...local }),
+  () => ({
+    ...local,
+    installments: Math.max(1, Math.min(12, Number(local.installments || defaultInstallments))),
+    interestMode: local.interestMode === "customer" ? "customer" : "merchant",
+    maxInstallmentsNoInterest: Math.max(
+      1,
+      Math.min(
+        Math.max(1, Math.min(12, Number(local.installments || defaultInstallments))),
+        Number(local.maxInstallmentsNoInterest || defaultMaxNoInterest)
+      )
+    )
+  }),
   value => {
     emit("update:modelValue", value as ProductsSection);
   },

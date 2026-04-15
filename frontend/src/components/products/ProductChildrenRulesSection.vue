@@ -1,37 +1,33 @@
 <template>
-  <section class="card">
-    <header class="card-header">
+  <section class="children-shell">
+    <header class="section-head">
       <div>
         <p class="eyebrow">Politica infantil</p>
-        <h2>Criancas e faixas etarias</h2>
-        <p class="muted">Controle quem pode viajar em cada pacote, cobrancas extras e impacto em vagas.</p>
+        <h2>Resumo executivo das faixas</h2>
+        <p class="support-copy">Leitura rapida de regras ativas, impacto em ocupacao e estrategia comercial.</p>
       </div>
+      <button type="button" class="section-link" @click="$emit('edit-summary')">Gerenciar faixas</button>
     </header>
 
-    <div class="policy-summary" v-if="rules.length">
-      <p class="text-sm text-slate-600">
-        {{ enabledCount }} faixa(s) ativa(s) distribuida(s) entre os pacotes. Ajuste as regras para refinar sua estrategia
-        comercial.
-      </p>
-    </div>
-    <div v-else class="empty-state">
-      <p class="font-semibold text-slate-700">Nenhuma faixa configurada.</p>
-      <p class="text-sm text-slate-500">Ative politicas infantis nos pacotes para oferecer tarifas diferenciadas.</p>
+    <div v-if="rules.length" class="summary-banner">
+      <strong>{{ enabledCount }} faixa(s) ativa(s)</strong>
+      <p>{{ enabledCount ? "Regras distribuidas entre os pacotes para controlar capacidade e cobranca." : "A politica existe, mas ainda nao ha faixa ativa." }}</p>
     </div>
 
     <div v-if="rules.length" class="rules-grid">
       <article v-for="rule in rules" :key="`${rule.variationIndex}-${rule.key}`" class="rule-card">
-        <header>
+        <div class="rule-head">
           <div>
-            <p class="variation">{{ rule.variationName }}</p>
+            <span class="variation">{{ rule.variationName }}</span>
             <h3>{{ rule.label || rule.key }}</h3>
-            <p class="ages">{{ rule.min_age }} a {{ rule.max_age }} anos</p>
+            <p>{{ rule.min_age }} a {{ rule.max_age }} anos</p>
           </div>
-          <span class="badge" :class="rule.enabled ? 'badge-success' : 'badge-muted'">
+          <span class="badge" :class="rule.enabled ? 'badge--active' : 'badge--muted'">
             {{ rule.enabled ? "Ativa" : "Inativa" }}
           </span>
-        </header>
-        <dl>
+        </div>
+
+        <dl class="rule-facts">
           <div>
             <dt>Tipo</dt>
             <dd>{{ rule.pricing_mode === "extra" ? "Adicional" : "Gratuito" }}</dd>
@@ -41,22 +37,24 @@
             <dd>{{ rule.pricing_mode === "extra" ? formatCurrency(rule.extra_amount) : "R$ 0,00" }}</dd>
           </div>
           <div>
-            <dt>Maximo por pacote</dt>
+            <dt>Limite</dt>
             <dd>{{ rule.max_quantity ?? "Sem limite" }}</dd>
           </div>
         </dl>
+
         <div class="chips">
-          <span class="chip" :class="rule.counts_towards_capacity ? 'chip-emerald' : 'chip-muted'">
-            Consome vaga
-          </span>
-          <span class="chip" :class="rule.counts_as_passenger ? 'chip-emerald' : 'chip-muted'">
-            Conta como passageiro
-          </span>
+          <span class="chip" :class="rule.counts_towards_capacity ? 'chip--active' : 'chip--muted'">Consome vaga</span>
+          <span class="chip" :class="rule.counts_as_passenger ? 'chip--active' : 'chip--muted'">Conta passageiro</span>
         </div>
-        <footer>
-          <button type="button" class="pill" @click="$emit('edit', rule)">Editar faixa</button>
-        </footer>
+
+        <button type="button" class="rule-link" @click="$emit('edit', rule)">Editar faixa</button>
       </article>
+    </div>
+
+    <div v-else class="empty-state">
+      <strong>Nenhuma faixa configurada</strong>
+      <p>Ative politicas infantis nos pacotes para oferecer regras comerciais mais sofisticadas.</p>
+      <button type="button" class="empty-cta" @click="$emit('edit-summary')">Gerenciar faixas</button>
     </div>
   </section>
 </template>
@@ -90,8 +88,9 @@ const props = defineProps<{
   }>;
 }>();
 
-const emit = defineEmits<{
+defineEmits<{
   (e: "edit", payload: ChildRuleView): void;
+  (e: "edit-summary"): void;
 }>();
 
 const rules = computed<ChildRuleView[]>(() =>
@@ -112,130 +111,230 @@ const formatCurrency = (value: number) =>
 </script>
 
 <style scoped>
-.card {
-  background: white;
-  border-radius: 1.5rem;
-  border: 1px solid #e2e8f0;
-  padding: 1.5rem;
-  box-shadow: 0 15px 40px -25px rgba(15, 23, 42, 0.35);
+.children-shell {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1.4rem;
+  padding: 1.65rem;
+  border-radius: 1.75rem;
+  border: 1px solid rgba(226, 232, 240, 0.7);
+  background: #fff;
+  box-shadow: 0 6px 24px rgba(15, 23, 42, 0.04);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
-.card-header {
+
+.children-shell:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+}
+
+.section-head {
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
 }
+
 .eyebrow {
+  margin: 0 0 0.32rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  letter-spacing: 0.3em;
-  font-size: 0.7rem;
   color: #94a3b8;
+  font-weight: 700;
 }
-.muted {
-  font-size: 0.9rem;
+
+.section-head h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: #0f172a;
+}
+
+.support-copy {
+  margin: 0.5rem 0 0;
   color: #64748b;
+  line-height: 1.6;
 }
-.policy-summary {
-  background: #f8fafc;
+
+.section-link,
+.rule-link,
+.empty-cta {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.summary-banner,
+.empty-state {
+  padding: 1.2rem 1.25rem;
   border-radius: 1.1rem;
-  padding: 1rem 1.25rem;
-  border: 1px solid #e2e8f0;
+  border: 1px solid rgba(226, 232, 240, 0.78);
+  background: linear-gradient(180deg, rgba(250, 251, 253, 0.92), rgba(248, 250, 252, 0.78));
 }
+
+.summary-banner strong,
+.empty-state strong {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: #0f172a;
+}
+
+.summary-banner p,
+.empty-state p {
+  margin: 0;
+  color: #64748b;
+  line-height: 1.6;
+}
+
 .rules-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(245px, 1fr));
+  gap: 0.85rem;
 }
+
 .rule-card {
-  border: 1px solid #e2e8f0;
-  border-radius: 0.9rem;
-  padding: 0.75rem;
-  background: #fff;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 1rem;
+  padding: 1.15rem;
+  border-radius: 1.3rem;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  background: rgba(255, 255, 255, 0.76);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
-.rule-card header {
+
+.rule-card:hover {
+  transform: translateY(-1px);
+  border-color: rgba(203, 213, 225, 0.92);
+  box-shadow: 0 16px 30px -24px rgba(15, 23, 42, 0.1);
+}
+
+.rule-head {
   display: flex;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: 0.75rem;
 }
+
 .variation {
-  font-size: 0.75rem;
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  letter-spacing: 0.2em;
   color: #94a3b8;
+  font-weight: 700;
 }
-.rule-card h3 {
+
+.rule-head h3 {
+  margin: 0;
   font-size: 1rem;
-  font-weight: 600;
   color: #0f172a;
 }
-.ages {
-  font-size: 0.85rem;
+
+.rule-head p {
+  margin: 0.22rem 0 0;
   color: #64748b;
 }
+
 .badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.28rem 0.75rem;
   border-radius: 999px;
-  padding: 0.25rem 0.75rem;
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: 0.74rem;
+  font-weight: 700;
 }
-.badge-success {
-  background: rgba(52, 211, 153, 0.2);
-  color: #047857;
+
+.badge--active {
+  color: #0f766e;
+  background: rgba(45, 212, 191, 0.14);
+  border: 1px solid rgba(45, 212, 191, 0.24);
 }
-.badge-muted {
-  background: rgba(148, 163, 184, 0.2);
+
+.badge--muted {
   color: #475569;
+  background: rgba(148, 163, 184, 0.16);
+  border: 1px solid rgba(148, 163, 184, 0.2);
 }
-.rule-card dl {
+
+.rule-facts {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.5rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0;
 }
-.rule-card dt {
-  font-size: 0.7rem;
+
+.rule-facts dt {
+  margin-bottom: 0.22rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: #94a3b8;
+  font-weight: 700;
 }
-.rule-card dd {
-  font-size: 0.95rem;
-  font-weight: 600;
+
+.rule-facts dd {
+  margin: 0;
   color: #0f172a;
+  font-weight: 600;
 }
+
 .chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
+  gap: 0.5rem;
 }
+
 .chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.28rem 0.78rem;
   border-radius: 999px;
-  padding: 0.25rem 0.75rem;
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: 0.76rem;
+  font-weight: 700;
 }
-.chip-emerald {
-  background: rgba(52, 211, 153, 0.15);
-  color: #047857;
+
+.chip--active {
+  color: #0f766e;
+  background: rgba(240, 253, 250, 0.95);
+  border: 1px solid rgba(45, 212, 191, 0.2);
 }
-.chip-muted {
-  background: rgba(148, 163, 184, 0.15);
+
+.chip--muted {
   color: #475569;
+  background: rgba(248, 250, 252, 0.95);
+  border: 1px solid rgba(203, 213, 225, 0.85);
 }
-.pill {
-  border-radius: 999px;
-  border: 1px solid rgba(15, 23, 42, 0.2);
-  padding: 0.4rem 1rem;
-  font-weight: 600;
-}
+
 .empty-state {
-  border: 1px dashed #cbd5f5;
-  border-radius: 1.25rem;
-  padding: 1.5rem;
-  text-align: center;
-  background: #f8fafc;
+  text-align: left;
+}
+
+.empty-cta {
+  margin-top: 0.9rem;
+}
+
+@media (max-width: 720px) {
+  .children-shell {
+    padding: 1.25rem;
+    border-radius: 1.35rem;
+  }
+
+  .section-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .rule-facts {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

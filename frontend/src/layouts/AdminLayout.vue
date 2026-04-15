@@ -618,6 +618,7 @@ const navCopy = {
   domains: { pt: "Domínios", es: "Dominios" },
   agency: { pt: "Minha Agência", es: "Mi Agencia" },
   profile: { pt: "Perfil", es: "Perfil" },
+  settings: { pt: "ConfiguraÃ§Ãµes", es: "Configuraciones" },
   lessons: { pt: "Aulas", es: "Cursos" },
   plans: { pt: "Planos", es: "Planes" },
   products: { pt: "Produtos", es: "Productos" },
@@ -626,7 +627,12 @@ const navCopy = {
   legal: { pt: "Contratos", es: "Contratos" }
 } as const;
 
-const navLabel = (key: keyof typeof navCopy) => t(navCopy[key]);
+const navLabel = (key: keyof typeof navCopy) => {
+  if (key === "settings") {
+    return t({ pt: "Configurações", es: "Configuraciones" });
+  }
+  return t(navCopy[key]);
+};
 const viewCopy = {
   themeToggle: {
     title: t({ pt: "Tema escuro", es: "Tema oscuro" }),
@@ -820,6 +826,7 @@ const navIcons: Record<string, string> = {
   "/admin/vendas": '<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m3 5l2 12h14l2-9H5.4M3 5h18M7 21a1 1 0 1 0 0-2a1 1 0 0 0 0 2m10 0a1 1 0 1 0 0-2a1 1 0 0 0 0 2"/>',
   "/admin/juridico": '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M12 4v16"/><path d="M5 8l-3 6h6l-3-6Zm13 0l-3 6h6l-3-6Z"/><path d="M2 14h18"/><path d="M9 20h6"/></g>',
   "/admin/integracoes": '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M18.364 19.364a9 9 0 1 0-12.728 0"/><path d="M15.536 16.536a5 5 0 1 0-7.072 0"/><path d="M11 13a1 1 0 1 0 2 0a1 1 0 1 0-2 0"/></g>',
+  "/admin/configuracoes": '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83a2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33a1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0a2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1a1.65 1.65 0 0 0-.33-1.82L4.21 7.2a2 2 0 0 1 0-2.83a2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0a2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></g>',
   "/admin/agency": '<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.3" d="M4 11.452V16.8c0 1.12 0 1.68.218 2.109c.192.376.497.682.874.873c.427.218.987.218 2.105.218h9.606c1.118 0 1.677 0 2.104-.218a2 2 0 0 0 .875-.873c.218-.428.218-.987.218-2.105v-5.352c0-.534 0-.801-.065-1.05a2 2 0 0 0-.28-.617c-.145-.213-.345-.39-.748-.741l-4.8-4.2c-.746-.653-1.12-.98-1.54-1.104c-.37-.11-.764-.11-1.135 0c-.42.124-.792.45-1.538 1.102L5.093 9.044c-.402.352-.603.528-.747.74a2 2 0 0 0-.281.618C4 10.65 4 10.918 4 11.452"/>',
   "/admin/domains": '<g transform="translate(3 3) scale(1.1)"><path fill="currentColor" d="M9 0a9 9 0 1 0 0 18A9 9 0 0 0 9 0M1.11 9.68h2.51c.04.91.167 1.814.38 2.7H1.84a7.9 7.9 0 0 1-.73-2.7m8.57-5.4V1.19a4.13 4.13 0 0 1 2.22 2q.308.521.54 1.08zm3.22 1.35c.232.883.37 1.788.41 2.7H9.68v-2.7zM8.32 1.19v3.09H5.56A8.5 8.5 0 0 1 6.1 3.2a4.13 4.13 0 0 1 2.22-2.01m0 4.44v2.7H4.7c.04-.912.178-1.817.41-2.7zm-4.7 2.69H1.11a7.9 7.9 0 0 1 .73-2.7H4a14 14 0 0 0-.38 2.7M4.7 9.68h3.62v2.7H5.11a13 13 0 0 1-.41-2.7m3.63 4v3.09a4.13 4.13 0 0 1-2.22-2a8.5 8.5 0 0 1-.54-1.08zm1.35 3.09v-3.04h2.76a8.5 8.5 0 0 1-.54 1.08a4.13 4.13 0 0 1-2.22 2zm0-4.44v-2.7h3.62a13 13 0 0 1-.41 2.7zm4.71-2.7h2.51a7.9 7.9 0 0 1-.73 2.7H14c.21-.87.337-1.757.38-2.65zm0-1.35A14 14 0 0 0 14 5.63h2.16c.403.85.65 1.764.73 2.7zm1-4H13.6a8.9 8.9 0 0 0-1.39-2.52a8 8 0 0 1 3.14 2.52zm-9.6-2.52A8.9 8.9 0 0 0 4.4 4.28H2.65a8 8 0 0 1 3.14-2.52m-3.15 12H4.4a8.9 8.9 0 0 0 1.39 2.52a8 8 0 0 1-3.14-2.55zm9.56 2.52a8.9 8.9 0 0 0 1.39-2.52h1.76a8 8 0 0 1-3.14 2.48z"/></g>',
   "/admin/perfil": '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></g>',
@@ -830,7 +837,8 @@ const navIcons: Record<string, string> = {
 };
 
 const navIconSizes: Record<string, string> = {
-  "/admin/agency": "h-4 w-4"
+  "/admin/agency": "h-4 w-4",
+  "/admin/configuracoes": "h-4 w-4"
 };
 
 const navIconViewBoxes: Record<string, string> = {
@@ -846,8 +854,7 @@ const routeTitleMap: Record<string, string> = {
   leads: t({ pt: "Captação de leads", es: "Captacion de leads" }),
   "page-edit": t({ pt: "Editar página", es: "Editar página" }),
   lessons: navLabel("lessons"),
-  "agency-settings": navLabel("agency"),
-  "agency-domains": navLabel("domains"),
+  settings: navLabel("settings"),
   products: navLabel("products"),
   "seat-layouts": navLabel("fleet"),
   "product-seats": navLabel("fleet"),
@@ -855,7 +862,6 @@ const routeTitleMap: Record<string, string> = {
   legal: navLabel("legal"),
   plans: navLabel("plans"),
   integrations: navLabel("integrations"),
-  profile: navLabel("profile"),
   "admin-management": navLabel("adminMaster")
 };
 const shouldHideDesktopHeader = computed(() => !isMobileViewport.value);
@@ -868,17 +874,12 @@ const navItems = computed(() => {
     { label: navLabel("pages"), to: "/admin/pages" },
     { label: navLabel("leads"), to: "/admin/leads" },
     { label: navLabel("products"), to: "/admin/produtos" },
-    { label: navLabel("fleet"), to: "/admin/assentos" },
     { label: navLabel("sales"), to: "/admin/vendas" },
     { label: navLabel("legal"), to: "/admin/juridico" },
     { label: navLabel("integrations"), to: "/admin/integracoes" },
-    { label: navLabel("agency"), to: "/admin/agency" },
-    { label: navLabel("profile"), to: "/admin/perfil" },
+    { label: navLabel("settings"), to: "/admin/configuracoes" },
     { label: navLabel("lessons"), to: "/admin/aulas" }
   ];
-  if (canAccessCustomDomains.value) {
-    items.splice(5, 0, { label: navLabel("domains"), to: "/admin/domains" });
-  }
   if (auth.user?.is_superuser) {
     items.splice(1, 0, { label: navLabel("adminMaster"), to: "/admin/administracao" });
   }

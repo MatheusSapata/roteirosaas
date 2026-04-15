@@ -839,7 +839,7 @@ const hasAgency = computed(() => agencyStore.agencies.length > 0);
 const hasPublishedPage = computed(() => publishedPages.value.length > 0);
 
 const goToAgencySettings = () => {
-  router.push("/admin/agency");
+  router.push("/admin/configuracoes?tab=agency");
 };
 
 const goToPagesList = () => {

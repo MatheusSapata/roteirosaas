@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
@@ -9,6 +10,8 @@ from app.models.sale import Sale, SalePaymentStatus
 from app.models.sale_item import SalePaymentLink, SalePaymentLinkStatus
 from app.schemas.finance import (
     PaymentConfirmationRequest,
+    PaymentInstallmentOption,
+    PaymentPricingResponse,
     PassengerFormResponse,
     PassengerInput,
     PassengerGroupListResponse,
@@ -20,6 +23,8 @@ from app.schemas.finance import (
     SaleDetail,
 )
 from app.schemas.products import ProductDetail
+from app.services.agency_integrations import get_agency_blimboo_token
+from app.core.config import get_settings
 from app.services.finance import (
     complete_sale_payment,
     create_checkout_sale,
@@ -36,6 +41,12 @@ from app.services.finance import (
     sale_requires_passengers,
 )
 from app.services.legal import maybe_generate_contract_for_sale
+from app.services.payments.blimboo_api import BlimbooAPIClient, BlimbooAPIError
+from app.services.payments.blimboo_pricing import (
+    build_fallback_credit_card_pricing,
+    fetch_credit_card_pricing,
+    merge_credit_card_pricing,
+)
 from app.services.passenger_groups import (
     ensure_passenger_groups,
     save_group_passengers,
@@ -44,6 +55,13 @@ from app.services.passenger_groups import (
 from app.services.products import get_public_product, serialize_product_detail
 
 router = APIRouter()
+settings = get_settings()
+
+BLIMBOO_CURRENCY_MAP = {
+    "BRL": 1,
+}
+
+BLIMBOO_CREDIT_CARD_METHOD = 2
 
 
 @router.post("/checkout/payment-intent", response_model=PublicCheckoutResponse)
@@ -116,6 +134,173 @@ def get_payment_link_details(
         items=items,
         passenger_groups=passenger_groups,
     )
+
+
+def _money_to_cents(value) -> int | None:
+    if value is None or value == "":
+        return None
+    try:
+        decimal_value = Decimal(str(value))
+    except (InvalidOperation, ValueError, TypeError):
+        return None
+    return int((decimal_value * 100).quantize(Decimal("1")))
+
+
+def _coerce_int(value) -> int | None:
+    if value is None or value == "":
+        return None
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return None
+
+
+def _collect_pricing_options(payload, max_installments: int) -> list[PaymentInstallmentOption]:
+    resolved: dict[int, PaymentInstallmentOption] = {}
+
+    def _register(entry: dict, forced_installments: int | None = None) -> None:
+        installments = forced_installments
+        if installments is None:
+            installments = (
+                _coerce_int(entry.get("installments"))
+                or _coerce_int(entry.get("installment"))
+                or _coerce_int(entry.get("parcel"))
+                or _coerce_int(entry.get("times"))
+                or _coerce_int(entry.get("quantity"))
+                or _coerce_int(entry.get("number"))
+            )
+        if not installments or installments < 1 or installments > max(1, max_installments):
+            return
+
+        total_amount = (
+            _money_to_cents(entry.get("total_amount"))
+            or _money_to_cents(entry.get("gross_amount"))
+            or _money_to_cents(entry.get("amount"))
+            or _money_to_cents(entry.get("total"))
+            or _money_to_cents(entry.get("price"))
+            or _money_to_cents(entry.get("value"))
+        )
+        installment_amount = (
+            _money_to_cents(entry.get("installment_amount"))
+            or _money_to_cents(entry.get("installment_value"))
+            or _money_to_cents(entry.get("amount_per_installment"))
+            or _money_to_cents(entry.get("parcel_amount"))
+            or _money_to_cents(entry.get("value_per_installment"))
+        )
+
+        if total_amount is None and installment_amount is None:
+            return
+        if total_amount is None and installment_amount is not None:
+            total_amount = installment_amount * installments
+        if installment_amount is None and total_amount is not None:
+            installment_amount = int(round(total_amount / max(installments, 1)))
+        if total_amount is None or installment_amount is None:
+            return
+
+        resolved[installments] = PaymentInstallmentOption(
+            installments=installments,
+            installment_amount_cents=max(0, installment_amount),
+            total_amount_cents=max(0, total_amount),
+            has_interest=False,
+        )
+
+    def _walk(node) -> None:
+        if isinstance(node, list):
+            for item in node:
+                _walk(item)
+            return
+        if not isinstance(node, dict):
+            return
+
+        _register(node)
+        for key, value in node.items():
+            forced_installments = _coerce_int(key) if isinstance(key, str) and key.isdigit() else None
+            if forced_installments and isinstance(value, dict):
+                _register(value, forced_installments=forced_installments)
+            _walk(value)
+
+    _walk(payload)
+    return sorted(resolved.values(), key=lambda option: option.installments)
+
+
+def _resolve_interest_candidates(interest_mode: str | None) -> list[int]:
+    # Inference from the docs: interest_by is integer, but the enum mapping is not documented.
+    normalized = (interest_mode or "").lower()
+    preferred = 2 if normalized in {"customer", "client"} else 1
+    alternatives = [preferred, 1 if preferred == 2 else 2]
+    deduped: list[int] = []
+    for candidate in alternatives:
+        if candidate not in deduped:
+            deduped.append(candidate)
+    return deduped
+
+
+def _resolve_pricing_max_installments(sale: Sale) -> int:
+    configured = sale.installments or 0
+    if sale.channel == "page" and configured > 0:
+        return max(1, min(configured, 12))
+    return 12
+
+
+def _build_fallback_pricing(sale: Sale) -> PaymentPricingResponse:
+    base_amount_cents = sale.gross_amount or sale.amount or 0
+    max_installments = _resolve_pricing_max_installments(sale)
+    options = [
+        PaymentInstallmentOption(
+            installments=installments,
+            installment_amount_cents=int(round(base_amount_cents / installments)),
+            total_amount_cents=base_amount_cents,
+            has_interest=False,
+        )
+        for installments in range(1, max_installments + 1)
+    ]
+    return PaymentPricingResponse(
+        payment_method="credit_card",
+        currency=(sale.currency or "BRL").upper(),
+        base_amount_cents=base_amount_cents,
+        options=options,
+    )
+
+
+@router.get("/payment-links/{token}/pricing", response_model=PaymentPricingResponse)
+def get_payment_link_pricing(
+    token: str,
+    db: Session = Depends(get_db),
+) -> PaymentPricingResponse:
+    sale = _sale_by_payment_link_token(db, token)
+    currency = (sale.currency or "BRL").upper()
+    base_amount_cents = sale.gross_amount or sale.amount or 0
+    max_installments = _resolve_pricing_max_installments(sale)
+    api_token = get_agency_blimboo_token(db, sale.agency_id)
+    merchant_pricing = fetch_credit_card_pricing(
+        api_base_url=settings.blimboo_api_base_url or "",
+        api_token=api_token,
+        currency=currency,
+        base_amount_cents=base_amount_cents,
+        interest_mode="merchant",
+        max_installments=max_installments,
+    )
+    if sale.interest_mode == "merchant":
+        return merchant_pricing
+
+    customer_pricing = fetch_credit_card_pricing(
+        api_base_url=settings.blimboo_api_base_url or "",
+        api_token=api_token,
+        currency=currency,
+        base_amount_cents=base_amount_cents,
+        interest_mode="customer",
+        max_installments=max_installments,
+    )
+    if sale.max_installments_no_interest:
+        return merge_credit_card_pricing(
+            currency=currency,
+            base_amount_cents=base_amount_cents,
+            merchant_pricing=merchant_pricing,
+            customer_pricing=customer_pricing,
+            max_installments=max_installments,
+            max_installments_no_interest=sale.max_installments_no_interest,
+        )
+    return customer_pricing
 
 
 def _sale_by_token(db: Session, token: str) -> Sale:

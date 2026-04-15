@@ -54,7 +54,10 @@
             {{ passengersLoading ? "Carregando..." : "Recarregar" }}
           </button>
           <button class="pill" :disabled="!sortedPassengerRows.length || passengersLoading" @click="openExportDialog">
-            Exportar
+            Exportar PDF
+          </button>
+          <button class="pill" :disabled="!sortedPassengerRows.length || passengersLoading || isExportingExcel" @click="exportPassengersExcel">
+            {{ isExportingExcel ? "Gerando Excel..." : "Exportar Excel" }}
           </button>
         </div>
       </div>
@@ -128,6 +131,29 @@
               </p>
             </header>
             <div class="space-y-2">
+              <div class="rounded-2xl border border-slate-200 px-4 py-3">
+                <p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Orientação do PDF</p>
+                <div class="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    class="pill"
+                    :class="pdfOrientation === 'portrait' ? 'bg-slate-900 text-white hover:bg-slate-800' : ''"
+                    :disabled="isExportingPdf"
+                    @click="pdfOrientation = 'portrait'"
+                  >
+                    Retrato
+                  </button>
+                  <button
+                    type="button"
+                    class="pill"
+                    :class="pdfOrientation === 'landscape' ? 'bg-slate-900 text-white hover:bg-slate-800' : ''"
+                    :disabled="isExportingPdf"
+                    @click="pdfOrientation = 'landscape'"
+                  >
+                    Paisagem
+                  </button>
+                </div>
+              </div>
               <label
                 v-for="column in exportColumns"
                 :key="column.id"
@@ -177,6 +203,7 @@ import { getProductDetail, getSaleDetails, listSales } from "../../services/fina
 import type { Passenger, ProductDetail, SalePaymentStatus, SaleSummary } from "../../types/finance";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import * as XLSX from "xlsx";
 import { useAgencyStore } from "../../store/useAgencyStore";
 import { fetchMediaDataUrl } from "../../services/media";
 
@@ -189,6 +216,7 @@ interface ProductPassengerRow {
 }
 
 type SortMode = "default" | "alpha" | "boarding" | "boarding_alpha";
+type PdfOrientation = "portrait" | "landscape";
 
 interface ExportColumnDefinition {
   id: string;
@@ -210,6 +238,8 @@ const errorMessage = ref<string | null>(null);
 const exportDialogOpen = ref(false);
 const exportError = ref<string | null>(null);
 const isExportingPdf = ref(false);
+const isExportingExcel = ref(false);
+const pdfOrientation = ref<PdfOrientation>("portrait");
 
 const currentAgency = computed(() => agencyStore.agencies.find(a => a.id === agencyStore.currentAgencyId) || null);
 const exportAgency = computed(() => {
@@ -423,6 +453,7 @@ const fetchAgencyLogoDataUrl = async (): Promise<string | null> => {
 const openExportDialog = () => {
   if (!sortedPassengerRows.value.length) return;
   exportError.value = null;
+  pdfOrientation.value = "portrait";
   exportDialogOpen.value = true;
 };
 
@@ -443,7 +474,7 @@ const exportPassengersPdf = async () => {
   isExportingPdf.value = true;
   exportError.value = null;
   try {
-    const doc = new jsPDF("p", "mm", "a4");
+    const doc = new jsPDF(pdfOrientation.value === "landscape" ? "l" : "p", "mm", "a4");
     const leftMargin = 16;
     let cursorY = 20;
 
@@ -491,6 +522,33 @@ const exportPassengersPdf = async () => {
     exportError.value = "Não foi possível gerar o PDF. Tente novamente.";
   } finally {
     isExportingPdf.value = false;
+  }
+};
+
+const exportPassengersExcel = async () => {
+  if (!sortedPassengerRows.value.length) return;
+  isExportingExcel.value = true;
+  try {
+    const headerRows = [
+      ["Produto", product.value?.name || "Produto sem nome"],
+      ["Data da viagem", tripDateLabel.value],
+      ["Total de passageiros", String(sortedPassengerRows.value.length)],
+      [],
+    ];
+    const tableHeaders = exportColumns.map(column => column.label);
+    const tableRows = sortedPassengerRows.value.map(row => exportColumns.map(column => column.getValue(row)));
+    const worksheet = XLSX.utils.aoa_to_sheet([
+      ...headerRows,
+      tableHeaders,
+      ...tableRows,
+    ]);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Passageiros");
+    XLSX.writeFile(workbook, buildPdfFilename(product.value?.name).replace(/\.pdf$/i, ".xlsx"));
+  } catch (err) {
+    console.error("Erro ao exportar passageiros para Excel", err);
+  } finally {
+    isExportingExcel.value = false;
   }
 };
 

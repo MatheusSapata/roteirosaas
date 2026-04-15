@@ -246,7 +246,15 @@ type PassengerGroupForm = PassengerGroup & { passengers: PassengerSlot[] };
 const props = defineProps<{ modelValue: boolean; token: string | null }>();
 const emit = defineEmits<{
   (e: "update:modelValue", value: boolean): void;
-  (e: "completed", payload?: { contractSignatureLink?: string | null; contractSignatureToken?: string | null }): void;
+  (
+    e: "completed",
+    payload?: {
+      contractSignatureLink?: string | null;
+      contractSignatureToken?: string | null;
+      passengerToken?: string | null;
+      isRoadTrip?: boolean;
+    },
+  ): void;
 }>();
 
 const visible = computed(() => props.modelValue);
@@ -499,7 +507,11 @@ const submitPassengers = async () => {
       contractSignatureToken: formInfo.value?.contract_signature_token || null,
     };
     successTimer = setTimeout(() => {
-      const payload = lastContractInfo.value || undefined;
+      const payload = {
+        ...(lastContractInfo.value || {}),
+        passengerToken: props.token || null,
+        isRoadTrip: !!formInfo.value?.is_road_trip,
+      };
       resetSuccessState();
       emit("completed", payload);
       emit("update:modelValue", false);

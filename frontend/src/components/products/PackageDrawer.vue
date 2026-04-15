@@ -43,7 +43,7 @@
           <label class="field">
             <span>Controle de estoque</span>
             <select v-model="localForm.stock_mode">
-              <option value="product">Seguir produto</option>
+              <option value="shared">Seguir produto</option>
               <option value="variant">Personalizado</option>
             </select>
           </label>
@@ -123,20 +123,35 @@
                   <input type="number" min="0" step="0.01" v-model.number="rule.extra_amount" />
                 </label>
               </div>
-              <div class="grid-2">
-                <label class="toggle">
-                  <input type="checkbox" v-model="rule.counts_towards_capacity" />
-                  <span>Consome vaga</span>
-                </label>
-                <label class="toggle">
-                  <input type="checkbox" v-model="rule.counts_as_passenger" />
-                  <span>Conta como passageiro</span>
-                </label>
+              <div class="rule-definition">
+                <div class="rule-definition__header">
+                  <span>Capacidade e limite</span>
+                </div>
+                <div class="rule-definition__content">
+                  <label class="toggle-card">
+                    <div class="toggle-card__control">
+                      <input type="checkbox" v-model="rule.counts_towards_capacity" />
+                    </div>
+                    <div class="toggle-card__copy">
+                      <strong>Consome vaga</strong>
+                      <p>Usa capacidade do pacote.</p>
+                    </div>
+                  </label>
+                  <label class="toggle-card">
+                    <div class="toggle-card__control">
+                      <input type="checkbox" v-model="rule.counts_as_passenger" />
+                    </div>
+                    <div class="toggle-card__copy">
+                      <strong>Conta como passageiro</strong>
+                      <p>Entra na contagem de passageiros.</p>
+                    </div>
+                  </label>
+                  <label class="field rule-definition__limit">
+                    <span>Maximo por pacote</span>
+                    <input type="number" min="0" v-model.number="rule.max_quantity" placeholder="Sem limite" />
+                  </label>
+                </div>
               </div>
-              <label class="field">
-                <span>Maximo por pacote</span>
-                <input type="number" min="0" v-model.number="rule.max_quantity" />
-              </label>
             </div>
           </div>
         </div>
@@ -230,7 +245,7 @@ const localForm = reactive<PackageForm>({
   price: 0,
   people_included: 1,
   status: "active",
-  stock_mode: "product",
+  stock_mode: "shared",
   has_accommodation: false,
   accommodation_mode: "private",
   room_capacity: 1,
@@ -250,7 +265,7 @@ const fillForm = (variation?: PackageForm | null) => {
       price: 0,
       people_included: 1,
       status: "active",
-      stock_mode: "product",
+      stock_mode: "shared",
       has_accommodation: false,
       accommodation_mode: "private",
       room_capacity: 1,
@@ -299,7 +314,7 @@ const submit = () => {
   background: rgba(15, 23, 42, 0.4);
 }
 .drawer__panel {
-  width: min(480px, 90vw);
+  width: min(560px, 92vw);
   background: #fff;
   border-radius: 1.5rem 0 0 1.5rem;
   box-shadow: -20px 0 60px rgba(15, 23, 42, 0.2);
@@ -392,6 +407,58 @@ const submit = () => {
   align-items: center;
   margin-bottom: 0.75rem;
 }
+.rule-definition {
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  padding: 0.8rem;
+  background: #f8fafc;
+}
+.rule-definition__header {
+  margin-bottom: 0.65rem;
+}
+.rule-definition__header span {
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  font-weight: 700;
+}
+.rule-definition__content {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  align-items: stretch;
+}
+.toggle-card {
+  display: flex;
+  gap: 0.65rem;
+  align-items: flex-start;
+  min-height: 84px;
+  border: 1px solid #dbe3ef;
+  border-radius: 0.95rem;
+  background: #fff;
+  padding: 0.75rem;
+}
+.toggle-card__control {
+  padding-top: 0.15rem;
+}
+.toggle-card__copy strong {
+  display: block;
+  font-size: 0.9rem;
+  color: #0f172a;
+}
+.toggle-card__copy p {
+  margin: 0.25rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: #64748b;
+}
+.rule-definition__limit {
+  grid-column: 1 / -1;
+}
+.rule-definition__limit input::placeholder {
+  color: #94a3b8;
+}
 .pill {
   border-radius: 999px;
   border: 1px solid rgba(15, 23, 42, 0.2);
@@ -407,5 +474,10 @@ const submit = () => {
   color: white;
   padding: 0.5rem 1.25rem;
   font-weight: 600;
+}
+@media (max-width: 640px) {
+  .rule-definition__content {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

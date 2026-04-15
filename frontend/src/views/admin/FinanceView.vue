@@ -8,6 +8,14 @@
           <p class="text-sm text-slate-500">Cadastre viagens, gerencie estoque e acione o PDV interno.</p>
         </div>
         <div class="flex flex-wrap gap-3">
+          <button
+            type="button"
+            class="pill"
+            :disabled="productsLoading || inventoryRebuildLoading || !products.length"
+            @click="handleRebuildProductInventory"
+          >
+            {{ inventoryRebuildLoading ? "Reprocessando..." : "Reprocessar estoque" }}
+          </button>
           <button type="button" class="pill" :disabled="productsLoading || !products.length" @click="openPosModal()">
             Nova venda
           </button>
@@ -22,45 +30,111 @@
       <div v-else-if="!products.length" class="placeholder-card">
         Nenhum produto cadastrado. Clique em <strong>Criar produto</strong> para comear.
       </div>
-      <div v-else class="grid gap-5 lg:grid-cols-2 xl:grid-cols-3">
-        <article v-for="product in products" :key="product.public_id" class="product-card">
-          <header class="product-card__header">
-            <div>
-              <p class="product-card__eyebrow">Produto #{{ product.id }}</p>
-              <h3 class="product-card__title">{{ product.name }}</h3>
-              <p class="product-card__date">{{ tripDateLabel(product) }}</p>
+      <div v-else class="space-y-4">
+        <div class="products-toolbar">
+          <div class="products-toolbar__filters">
+            <label class="products-toolbar__search">
+              <span class="sr-only">Buscar produto</span>
+              <input
+                v-model.trim="productSearch"
+                type="search"
+                class="input products-toolbar__input"
+                placeholder="Buscar produto..."
+              />
+            </label>
+            <label class="products-toolbar__select">
+              <span class="sr-only">Filtrar por status</span>
+              <select v-model="productStatusFilter" class="input products-toolbar__input">
+                <option v-for="option in productStatusOptions" :key="option.value" :value="option.value">
+                  {{ option.label }}
+                </option>
+              </select>
+            </label>
+            <label class="products-toolbar__select">
+              <span class="sr-only">Ordenar produtos</span>
+              <select v-model="productSort" class="input products-toolbar__input">
+                <option v-for="option in productSortOptions" :key="option.value" :value="option.value">
+                  {{ option.label }}
+                </option>
+              </select>
+            </label>
+          </div>
+          <p class="products-toolbar__count">
+            {{ filteredProducts.length }} {{ filteredProducts.length === 1 ? "produto" : "produtos" }}
+          </p>
+        </div>
+
+        <div v-if="!filteredProducts.length" class="placeholder-card">
+          Nenhum produto encontrado com os filtros atuais.
+        </div>
+        <div v-else class="products-list-surface">
+        <div class="products-list-scroll">
+          <div class="products-list-header product-list-grid">
+            <span class="products-list-header__cell products-list-header__cell-product">Produto</span>
+            <span class="products-list-header__cell products-list-header__cell-date">Data</span>
+            <span class="products-list-header__cell products-list-header__cell-metric">Totais</span>
+            <span class="products-list-header__cell products-list-header__cell-metric">Disponíveis</span>
+            <span class="products-list-header__cell products-list-header__cell-metric">Reservadas</span>
+            <span class="products-list-header__cell products-list-header__cell-metric">Vendidas</span>
+            <span class="products-list-header__cell products-list-header__cell-status">Status</span>
+            <span class="products-list-header__cell products-list-header__cell-actions">Ações</span>
+          </div>
+
+          <article
+            v-for="product in filteredProducts"
+            :key="product.public_id"
+            class="products-row product-list-grid"
+          >
+            <div class="products-row__product">
+              <div class="products-row__thumb-wrap">
+                <img
+                  v-if="productImageUrl(product)"
+                  :src="productImageUrl(product) || undefined"
+                  :alt="product.name"
+                  class="products-row__thumb"
+                />
+                <div v-else class="products-row__thumb products-row__thumb--fallback">
+                  {{ product.name.slice(0, 1) }}
+                </div>
+              </div>
+              <div class="products-row__identity">
+                <h3 class="products-row__title">{{ product.name }}</h3>
+              </div>
             </div>
-            <div class="product-card__status">
+
+            <div class="products-row__metric">
+              <span class="products-row__date">{{ tripDateLabel(product) }}</span>
+            </div>
+            <div class="products-row__metric">
+              <span class="products-row__metric-value">{{ product.total_slots }}</span>
+            </div>
+            <div class="products-row__metric products-row__metric--available">
+              <span class="products-row__metric-value">{{ product.available_slots }}</span>
+            </div>
+            <div class="products-row__metric products-row__metric--reserved">
+              <span class="products-row__metric-value">{{ product.reserved_slots }}</span>
+            </div>
+            <div class="products-row__metric products-row__metric--sold">
+              <span class="products-row__metric-value">{{ product.sold_slots }}</span>
+            </div>
+
+            <div class="products-row__status">
               <span class="status-pill" :class="productStatusClass(product.status)">
                 {{ productStatusLabel(product.status) }}
               </span>
-              <span class="inventory-pill">{{ inventoryBadge(product) }}</span>
             </div>
-          </header>
-          <dl class="product-card__metrics">
-            <div>
-              <dt>Totais</dt>
-              <dd>{{ product.total_slots }}</dd>
+
+            <div class="products-row__actions">
+              <router-link
+                class="products-row__link"
+                :to="{ name: 'product-detail', params: { productId: product.public_id } }"
+              >
+                Ver produto
+              </router-link>
             </div>
-            <div>
-              <dt>Disponiveis</dt>
-              <dd>{{ product.available_slots }}</dd>
-            </div>
-            <div>
-              <dt>Reservadas</dt>
-              <dd>{{ product.reserved_slots }}</dd>
-            </div>
-            <div>
-              <dt>Vendidas</dt>
-              <dd>{{ product.sold_slots }}</dd>
-            </div>
-          </dl>
-          <footer class="product-card__footer">
-            <router-link class="btn-primary" :to="{ name: 'product-detail', params: { productId: product.public_id } }">
-              Ver produto
-            </router-link>
-          </footer>
-        </article>
+          </article>
+        </div>
+      </div>
       </div>
     </section>
     <section v-else-if="activeTab === 'sales'" class="space-y-4">
@@ -1076,6 +1150,7 @@ import {
   getSalePassengerGroups,
   savePassengerGroupPassengers,
   listProducts,
+  rebuildProductInventory,
   getProductDetail,
   createProduct,
   updateProduct,
@@ -1090,6 +1165,7 @@ import {
 } from "../../services/finance";
 import { listLegalTemplates } from "../../services/legal";
 import { calculatePackageComposition, emptyChildSelection, sanitizeChildSelection } from "../../utils/packagePricing";
+import { resolveMediaUrl } from "../../utils/media";
 import type {
   CheckoutChildSelection,
   ChildPricingRule,
@@ -1538,8 +1614,26 @@ const finalizePassengerModal = () => {
 
 const products = ref<ProductSummary[]>([]);
 const productsLoading = ref(false);
+const inventoryRebuildLoading = ref(false);
+const productSearch = ref("");
+const productStatusFilter = ref<"all" | "active" | "draft" | "inactive">("all");
+const productSort = ref<"date-desc" | "date-asc" | "name-asc" | "available-desc">("date-desc");
 const contractTemplates = ref<LegalTemplateSummary[]>([]);
 const contractTemplatesLoading = ref(false);
+
+const productStatusOptions = [
+  { label: "Todos os status", value: "all" },
+  { label: "Ativos", value: "active" },
+  { label: "Rascunhos", value: "draft" },
+  { label: "Inativos", value: "inactive" },
+] as const;
+
+const productSortOptions = [
+  { label: "Mais recentes", value: "date-desc" },
+  { label: "Data mais antiga", value: "date-asc" },
+  { label: "Nome A-Z", value: "name-asc" },
+  { label: "Mais disponibilidade", value: "available-desc" },
+] as const;
 
 const productModalVisible = ref(false);
 const productSaving = ref(false);
@@ -1972,6 +2066,26 @@ const loadProducts = async () => {
     console.error("Erro ao carregar produtos", err);
   } finally {
     productsLoading.value = false;
+  }
+};
+
+const handleRebuildProductInventory = async () => {
+  inventoryRebuildLoading.value = true;
+  try {
+    const { data } = await rebuildProductInventory();
+    await loadProducts();
+    if (typeof window !== "undefined" && window.alert) {
+      window.alert(
+        `Estoque reprocessado. ${data.updated_products} de ${data.scanned_products} produto(s) foram atualizados.`,
+      );
+    }
+  } catch (err) {
+    console.error("Erro ao reprocessar estoque", err);
+    if (typeof window !== "undefined" && window.alert) {
+      window.alert("Não foi possível reprocessar o estoque agora.");
+    }
+  } finally {
+    inventoryRebuildLoading.value = false;
   }
 };
 
@@ -2528,6 +2642,9 @@ const tripDateLabel = (product: ProductSummary) => {
   return "Sem data definida";
 };
 
+const productImageUrl = (product: ProductSummary) =>
+  resolveMediaUrl(product.checkout_product_image_url || product.checkout_banner_url || "");
+
 const productContractLabel = (product: ProductSummary) =>
   product.template_contract_name || "Sem contrato vinculado";
 
@@ -2547,6 +2664,38 @@ const inventoryBadge = (product: ProductSummary) => {
   if (product.inventory_strategy === "unlimited") return "Estoque ilimitado";
   return `Manual  ${product.available_slots}/${product.total_slots} vagas`;
 };
+
+const productDateSortValue = (product: ProductSummary) => {
+  if (!product.trip_date) return Number.NEGATIVE_INFINITY;
+  const timestamp = new Date(product.trip_date).getTime();
+  return Number.isFinite(timestamp) ? timestamp : Number.NEGATIVE_INFINITY;
+};
+
+const filteredProducts = computed(() => {
+  const search = productSearch.value.trim().toLowerCase();
+  const filtered = products.value.filter(product => {
+    const matchesSearch =
+      !search ||
+      product.name.toLowerCase().includes(search) ||
+      String(product.id).includes(search) ||
+      tripDateLabel(product).toLowerCase().includes(search);
+    const matchesStatus = productStatusFilter.value === "all" || product.status === productStatusFilter.value;
+    return matchesSearch && matchesStatus;
+  });
+
+  return [...filtered].sort((a, b) => {
+    if (productSort.value === "name-asc") {
+      return a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" });
+    }
+    if (productSort.value === "available-desc") {
+      return b.available_slots - a.available_slots;
+    }
+    const left = productDateSortValue(a);
+    const right = productDateSortValue(b);
+    if (productSort.value === "date-asc") return left - right;
+    return right - left;
+  });
+});
 
 const paymentStatusLabel = (status: string) => ({
   pending: "Pendente",
@@ -2726,32 +2875,112 @@ onMounted(async () => {
 .stat-card dd {
   @apply text-lg text-slate-900;
 }
-.product-card {
-  @apply rounded-3xl border border-slate-100 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg;
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
+.products-toolbar {
+  @apply flex flex-wrap items-center justify-between gap-3 rounded-[28px] border border-slate-200/80 bg-white px-4 py-4 shadow-[0_3px_14px_rgba(15,23,42,0.04)];
 }
-.product-card__header {
-  @apply flex flex-wrap items-start justify-between gap-3;
+.products-toolbar__filters {
+  @apply flex min-w-0 flex-1 flex-wrap items-center gap-3;
 }
-.product-card__eyebrow {
-  @apply text-xs font-semibold uppercase tracking-[0.3em] text-slate-400;
+.products-toolbar__search {
+  @apply min-w-[280px] flex-[1.3];
 }
-.product-card__title {
-  @apply text-xl font-semibold text-slate-900;
+.products-toolbar__select {
+  @apply min-w-[180px];
 }
-.product-card__date {
-  @apply text-xs text-slate-500;
+.products-toolbar__input {
+  @apply h-11 rounded-full border-slate-200 bg-slate-50/70 px-4 text-sm text-slate-700 shadow-none focus:border-emerald-500 focus:bg-white;
 }
-.product-card__status {
-  @apply flex flex-col items-end gap-2 text-xs font-semibold;
+.products-toolbar__count {
+  @apply text-sm font-medium text-slate-500;
 }
-.product-card__metrics {
-  @apply grid grid-cols-2 gap-3 text-center text-sm font-semibold md:grid-cols-4;
+.products-list-surface {
+  @apply rounded-[30px] border border-slate-200/80 bg-white p-3 shadow-[0_10px_30px_rgba(15,23,42,0.05)];
 }
-.product-card__footer {
-  @apply flex justify-end;
+.products-list-scroll {
+  @apply overflow-x-auto;
+}
+.product-list-grid {
+  display: grid;
+  grid-template-columns:
+    minmax(320px, 2.2fr)
+    minmax(132px, 0.9fr)
+    minmax(92px, 0.7fr)
+    minmax(118px, 0.9fr)
+    minmax(118px, 0.9fr)
+    minmax(118px, 0.9fr)
+    minmax(140px, 0.9fr)
+    minmax(168px, 0.95fr);
+  gap: 1rem;
+  align-items: center;
+  min-width: 1220px;
+}
+.products-list-header {
+  @apply px-5 pb-3 pt-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400;
+}
+.products-list-header__cell {
+  @apply block;
+}
+.products-list-header__cell-product {
+  @apply text-left;
+}
+.products-list-header__cell-date,
+.products-list-header__cell-metric,
+.products-list-header__cell-status {
+  @apply text-center;
+}
+.products-list-header__cell-actions {
+  @apply text-right;
+}
+.products-row {
+  @apply rounded-[24px] border border-slate-200/80 bg-white px-5 py-3 shadow-[0_3px_12px_rgba(15,23,42,0.04)];
+}
+.products-row + .products-row {
+  @apply mt-3;
+}
+.products-row__product {
+  @apply flex min-w-0 items-center gap-4;
+}
+.products-row__thumb-wrap {
+  @apply flex-shrink-0;
+}
+.products-row__thumb {
+  @apply h-16 w-16 rounded-2xl border border-slate-200 bg-white object-contain p-1 shadow-sm;
+}
+.products-row__thumb--fallback {
+  @apply flex items-center justify-center bg-slate-100 text-lg font-bold uppercase text-slate-500;
+}
+.products-row__identity {
+  @apply flex min-w-0 items-center;
+}
+.products-row__title {
+  @apply truncate text-[18px] font-semibold tracking-[-0.01em] text-slate-950;
+}
+.products-row__metric {
+  @apply text-center;
+}
+.products-row__metric-value {
+  @apply text-[20px] font-semibold text-slate-950;
+}
+.products-row__metric--available .products-row__metric-value {
+  @apply text-sky-600;
+}
+.products-row__metric--reserved .products-row__metric-value {
+  color: #ca8a04;
+}
+.products-row__metric--sold .products-row__metric-value {
+  @apply text-emerald-600;
+}
+.products-row__date {
+  @apply text-sm font-semibold text-slate-700;
+}
+.products-row__status {
+  @apply flex items-center justify-center;
+}
+.products-row__actions {
+  @apply flex items-center justify-end;
+}
+.products-row__link {
+  @apply inline-flex min-w-[144px] items-center justify-center rounded-full border border-slate-200 bg-white px-6 py-2 text-sm font-semibold text-slate-700 transition-all duration-200 hover:-translate-y-[1px] hover:border-slate-300 hover:text-slate-950;
 }
 .status-pill {
   @apply rounded-full px-3 py-1;

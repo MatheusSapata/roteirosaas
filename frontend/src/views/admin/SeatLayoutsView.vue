@@ -1,6 +1,6 @@
 <template>
   <div class="page">
-    <header class="page-header">
+    <header v-if="false" class="page-header">
       <div>
         <p class="eyebrow">Biblioteca de layouts</p>
         <h1>Mapas de assentos</h1>
@@ -9,12 +9,195 @@
         </p>
       </div>
       <div class="actions">
-        <button type="button" class="btn-secondary" @click="loadData">Atualizar</button>
-        <button type="button" class="btn-primary" @click="openEditor()">Novo layout</button>
+        <button type="button" class="btn-secondary" @click="activeTab === 'layouts' ? loadData() : loadVehicles()">
+          Atualizar
+        </button>
+        <button v-if="activeTab === 'layouts'" type="button" class="btn-primary" @click="openEditor()">Novo layout</button>
       </div>
     </header>
 
-    <section class="layouts-grid">
+    <section class="library-tabs">
+      <button
+        type="button"
+        :class="['library-tab', activeTab === 'layouts' ? 'library-tab--active' : '']"
+        @click="activeTab = 'layouts'"
+      >
+        Layouts
+      </button>
+      <button
+        type="button"
+        :class="['library-tab', activeTab === 'vehicles' ? 'library-tab--active' : '']"
+        @click="activeTab = 'vehicles'"
+      >
+        Veiculos
+      </button>
+    </section>
+
+    <section v-if="activeTab === 'layouts'" class="list-section">
+      <div class="list-section__header">
+        <div>
+          <h2>Layouts cadastrados</h2>
+        </div>
+        <div class="actions">
+          <button type="button" class="btn-secondary" @click="loadData">Atualizar</button>
+          <button type="button" class="btn-primary" @click="openEditor()">Novo layout</button>
+        </div>
+      </div>
+
+      <div class="list-surface">
+        <div class="list-header list-grid-layouts">
+          <span>Layout</span>
+          <span>Tipo</span>
+          <span>Lugares</span>
+          <span>Andares</span>
+          <span>Status</span>
+          <span class="list-header__actions">Acoes</span>
+        </div>
+
+        <div v-if="loading" class="placeholder-card">Carregando layouts...</div>
+
+        <template v-else-if="layouts.length">
+          <article
+            v-for="layout in layouts"
+            :key="layout.id"
+            class="list-row list-grid-layouts"
+          >
+            <div class="list-primary">
+              <p class="list-title">{{ layout.name }}</p>
+            </div>
+            <span class="list-text">{{ layout.vehicle_type }}</span>
+            <span class="list-text">{{ layout.seat_count }}</span>
+            <span class="list-text">{{ layout.deck_mode === "double" ? "2 andares" : "1 andar" }}</span>
+            <span :class="['status-pill', layout.is_active ? 'status-pill--success' : 'status-pill--muted']">
+              {{ layout.is_active ? "Ativo" : "Inativo" }}
+            </span>
+            <div class="list-actions">
+              <button type="button" class="btn-light" @click="openEditor(layout.id)">Editar</button>
+              <button type="button" class="btn-light" @click="duplicateLayout(layout.id)">Duplicar</button>
+              <button type="button" class="btn-ghost" @click="deleteLayout(layout.id)">Excluir</button>
+            </div>
+          </article>
+        </template>
+
+        <div v-else class="placeholder-card">Nenhum layout cadastrado.</div>
+      </div>
+    </section>
+
+    <section v-else class="list-section">
+      <div class="list-section__header">
+        <div>
+          <h2>Veiculos da agencia</h2>
+        </div>
+      </div>
+
+      <div class="list-surface">
+        <div class="list-header list-grid-vehicles">
+          <span>Veiculo</span>
+          <span>Placa</span>
+          <span>Layout base</span>
+          <span>Status</span>
+          <span class="list-header__actions">Acoes</span>
+        </div>
+
+        <template v-if="vehicles.length">
+          <article
+            v-for="vehicle in vehicles"
+            :key="vehicle.id"
+            class="list-row list-grid-vehicles"
+          >
+            <div class="list-primary list-primary--with-photo">
+              <button
+                type="button"
+                class="vehicle-photo vehicle-photo--button"
+                :disabled="!vehicle.photo_url"
+                @click="openVehiclePhoto(vehicle.photo_url)"
+              >
+                <img v-if="vehicle.photo_url" :src="vehicle.photo_url" :alt="vehicle.name" class="vehicle-photo__image" />
+                <span v-else>{{ vehicle.name.slice(0, 1) }}</span>
+                <span v-if="vehicle.photo_url" class="vehicle-photo__overlay" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="6"></circle>
+                    <path d="m20 20-4.2-4.2"></path>
+                  </svg>
+                </span>
+              </button>
+              <p class="list-title">{{ vehicle.name }}</p>
+            </div>
+            <span class="list-text">{{ vehicle.plate || "Sem placa" }}</span>
+            <span class="list-text">{{ layoutNameById(vehicle.layout_id) || "Layout padrao" }}</span>
+            <span :class="['status-pill', vehicle.is_active ? 'status-pill--success' : 'status-pill--muted']">
+              {{ vehicle.is_active ? "Ativo" : "Inativo" }}
+            </span>
+            <div class="list-actions">
+              <button type="button" class="btn-light" @click="editVehicle(vehicle)">Editar</button>
+              <button type="button" class="btn-ghost" @click="removeVehicle(vehicle.id)">Excluir</button>
+            </div>
+          </article>
+        </template>
+
+        <div v-else class="placeholder-card">Nenhum veiculo cadastrado.</div>
+      </div>
+
+      <form class="vehicle-form-panel" @submit.prevent="saveVehicle">
+        <div class="vehicle-form-panel__header">
+          <div class="vehicle-form-panel__title">
+            <h3>{{ vehicleForm.id ? "Editar veiculo" : "Novo veiculo" }}</h3>
+            <label class="checkbox-field vehicle-form-panel__toggle">
+              <input type="checkbox" v-model="vehicleForm.is_active" />
+              <span>Veiculo ativo</span>
+            </label>
+          </div>
+          <div class="vehicle-form-panel__actions">
+            <button type="submit" class="btn-primary" :disabled="vehicleSaving">
+              {{ vehicleForm.id ? "Atualizar veiculo" : "Cadastrar veiculo" }}
+            </button>
+            <button type="button" class="btn-ghost" @click="resetVehicleForm">Limpar</button>
+          </div>
+        </div>
+
+        <section class="vehicle-form-group">
+          <div class="vehicle-form-group__header">
+            <p class="vehicle-form-group__eyebrow">Identificacao do veiculo</p>
+          </div>
+          <div class="vehicle-form-grid vehicle-form-grid--identity">
+            <ImageUploadField
+              class="vehicle-form-panel__image-field"
+              v-model="vehicleForm.photo_url"
+              label="Foto do veiculo"
+              hint="Envie a imagem para salvar no blob e reutilizar na frota."
+            />
+            <div class="vehicle-identity-card">
+              <label class="form-field">
+                <span>Nome</span>
+                <input v-model="vehicleForm.name" required placeholder="Double deck executivo" />
+              </label>
+              <label class="form-field">
+                <span>Placa</span>
+                <input v-model="vehicleForm.plate" placeholder="ABC1D23" />
+              </label>
+              <label class="form-field">
+                <span>Layout base</span>
+                <select v-model.number="vehicleForm.layout_id">
+                  <option :value="undefined">Padrao</option>
+                  <option v-for="layout in layouts" :key="layout.id" :value="layout.id">
+                    {{ layout.name }}
+                  </option>
+                </select>
+              </label>
+            </div>
+          </div>
+        </section>
+      </form>
+    </section>
+
+    <div v-if="vehiclePhotoPreview" class="image-lightbox" @click.self="closeVehiclePhoto">
+      <div class="image-lightbox__dialog">
+        <button type="button" class="image-lightbox__close" @click="closeVehiclePhoto">Fechar</button>
+        <img :src="vehiclePhotoPreview" alt="Foto ampliada do veiculo" class="image-lightbox__image" />
+      </div>
+    </div>
+
+    <section v-if="false" class="layouts-grid">
       <div v-if="loading" class="placeholder-card">Carregando layouts...</div>
       <template v-else>
         <article
@@ -64,7 +247,7 @@
       </template>
     </section>
 
-    <section class="vehicles-section">
+    <section v-if="false" class="vehicles-section">
       <div class="vehicle-header">
         <div>
           <p class="eyebrow">Frota cadastrada</p>
@@ -321,6 +504,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from "vue";
+import ImageUploadField from "../../components/admin/inputs/ImageUploadField.vue";
 import type {
   VehicleLayoutDetail,
   VehicleLayoutPayload,
@@ -376,6 +560,7 @@ const layouts = ref<VehicleLayoutDetail[]>([]);
 const loading = ref(false);
 const editorVisible = ref(false);
 const editorSaving = ref(false);
+const activeTab = ref<"layouts" | "vehicles">("layouts");
 const activeDeckIndex = ref(0);
 const isDoubleDeck = computed(() => editorState.deckMode === "double");
 
@@ -506,12 +691,14 @@ const vehicleForm = reactive<VehicleOut>({
   id: 0,
   name: "",
   plate: "",
+  photo_url: "",
   partner_name: "",
   layout_id: undefined,
   is_active: true,
   created_at: "",
 });
 const vehicleSaving = ref(false);
+const vehiclePhotoPreview = ref<string | null>(null);
 
 const editorGrid = computed<EditorCell[]>(() => {
   const cells: EditorCell[] = [];
@@ -832,6 +1019,7 @@ const editVehicle = (vehicle: VehicleOut) => {
   vehicleForm.id = vehicle.id;
   vehicleForm.name = vehicle.name;
   vehicleForm.plate = vehicle.plate || "";
+  vehicleForm.photo_url = vehicle.photo_url || "";
   vehicleForm.partner_name = vehicle.partner_name || "";
   vehicleForm.layout_id = vehicle.layout_id ?? undefined;
   vehicleForm.is_active = vehicle.is_active;
@@ -841,9 +1029,19 @@ const resetVehicleForm = () => {
   vehicleForm.id = 0;
   vehicleForm.name = "";
   vehicleForm.plate = "";
+  vehicleForm.photo_url = "";
   vehicleForm.partner_name = "";
   vehicleForm.layout_id = undefined;
   vehicleForm.is_active = true;
+};
+
+const openVehiclePhoto = (photoUrl?: string | null) => {
+  if (!photoUrl) return;
+  vehiclePhotoPreview.value = photoUrl;
+};
+
+const closeVehiclePhoto = () => {
+  vehiclePhotoPreview.value = null;
 };
 
 const saveVehicle = async () => {
@@ -852,6 +1050,7 @@ const saveVehicle = async () => {
     const payload: VehiclePayload = {
       name: vehicleForm.name,
       plate: vehicleForm.plate || null,
+      photo_url: vehicleForm.photo_url || null,
       partner_name: vehicleForm.partner_name || null,
       layout_id: vehicleForm.layout_id ?? null,
       is_active: vehicleForm.is_active,
@@ -922,7 +1121,7 @@ onMounted(() => {
   @apply flex gap-3;
 }
 .btn-primary {
-  @apply rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow transition hover:bg-emerald-700;
+  @apply rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white shadow transition hover:bg-brand-dark;
 }
 .btn-secondary {
   @apply rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-emerald-400;
@@ -932,6 +1131,173 @@ onMounted(() => {
 }
 .btn-ghost {
   @apply rounded-full px-3 py-1 text-sm font-semibold text-slate-500 hover:text-emerald-600;
+}
+.library-tabs {
+  @apply flex items-center gap-2 rounded-[24px] border border-slate-200 bg-white p-2 shadow-sm;
+}
+.library-tab {
+  @apply rounded-full px-4 py-2 text-sm font-semibold text-slate-700 transition;
+  color: #31496b;
+}
+.library-tab--active {
+  background: #3ecf5e;
+  color: #ffffff;
+  box-shadow: 0 8px 20px rgba(62, 207, 94, 0.2);
+}
+.list-section {
+  @apply space-y-4 rounded-3xl border border-slate-100 bg-white p-5 shadow-sm;
+}
+.list-section__header {
+  @apply flex items-center justify-between gap-4;
+}
+.list-section__header h2 {
+  @apply text-xl font-bold text-slate-900;
+}
+.list-surface {
+  @apply overflow-hidden rounded-3xl border border-slate-100 bg-slate-50/40;
+}
+.list-header,
+.list-row {
+  @apply grid items-center gap-4 px-5;
+}
+.list-header {
+  @apply border-b border-slate-100 bg-white py-4 text-xs font-semibold uppercase tracking-[0.3em] text-slate-400;
+}
+.list-row {
+  @apply min-h-[68px] border-b border-slate-100 bg-white py-3 last:border-b-0;
+}
+.list-grid-layouts {
+  grid-template-columns: minmax(260px, 2.1fr) minmax(120px, 1fr) 96px 110px 110px minmax(220px, 1.4fr);
+}
+.list-grid-vehicles {
+  grid-template-columns: minmax(240px, 1.8fr) minmax(120px, 1fr) minmax(180px, 1.2fr) 110px minmax(180px, 1fr);
+}
+.list-header__actions {
+  @apply text-right;
+}
+.list-primary {
+  @apply min-w-0;
+}
+.list-primary--with-photo {
+  @apply flex items-center gap-3;
+}
+.list-title {
+  @apply truncate text-base font-semibold text-slate-900;
+}
+.list-subtitle {
+  @apply mt-1 truncate text-sm text-slate-500;
+}
+.list-text {
+  @apply text-sm font-medium text-slate-600;
+}
+.list-actions {
+  @apply flex flex-wrap items-center justify-end gap-2;
+}
+.vehicle-form-panel {
+  @apply space-y-4 rounded-3xl border border-slate-100 bg-slate-50/60 p-5;
+}
+.vehicle-form-group {
+  @apply space-y-3 rounded-2xl border border-slate-200 bg-white/70 p-4;
+}
+.vehicle-form-group__header {
+  @apply flex items-center;
+}
+.vehicle-form-group__eyebrow {
+  @apply text-xs font-semibold uppercase tracking-[0.28em] text-slate-400;
+}
+.vehicle-form-panel__header {
+  @apply flex items-center justify-between gap-4;
+}
+.vehicle-form-panel__title {
+  @apply flex items-center gap-4;
+}
+.vehicle-form-panel__title h3 {
+  @apply text-lg font-bold text-slate-900;
+}
+.vehicle-form-panel__actions {
+  @apply flex items-center gap-3;
+}
+.vehicle-form-grid {
+  @apply grid gap-4 md:grid-cols-2 xl:grid-cols-4;
+}
+.vehicle-form-grid--primary {
+  @apply xl:grid-cols-3;
+}
+.vehicle-form-grid--secondary {
+  @apply items-start xl:grid-cols-[280px_minmax(0,1fr)];
+}
+.vehicle-form-grid--identity {
+  @apply items-start xl:grid-cols-[280px_minmax(0,1fr)];
+}
+.vehicle-form-panel__toggle {
+  @apply rounded-full border border-slate-200 bg-white px-4 py-2 font-semibold text-slate-600;
+}
+.vehicle-identity-card {
+  @apply space-y-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-4;
+}
+.vehicle-form-panel__helper {
+  @apply rounded-2xl border border-dashed border-slate-200 bg-white/70 p-4;
+}
+.vehicle-form-panel__helper-title {
+  @apply text-sm font-semibold text-slate-800;
+}
+.vehicle-form-panel__helper-text {
+  @apply mt-1 max-w-xl text-sm text-slate-500;
+}
+.vehicle-form-panel__image-field {
+  @apply max-w-[280px];
+}
+.vehicle-photo {
+  @apply flex h-[88px] w-[88px] flex-shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-white text-base font-bold uppercase text-slate-500;
+}
+.vehicle-photo--button {
+  @apply relative transition;
+}
+.vehicle-photo--button:disabled {
+  @apply cursor-default;
+}
+.vehicle-photo--button:not(:disabled):hover .vehicle-photo__overlay {
+  opacity: 1;
+}
+.vehicle-photo__image {
+  @apply h-full w-full object-contain p-1;
+}
+.vehicle-photo__overlay {
+  @apply absolute inset-0 flex items-center justify-center rounded-2xl text-white opacity-0 transition;
+  background: rgba(15, 23, 42, 0.42);
+}
+.vehicle-photo__overlay svg {
+  @apply h-6 w-6;
+}
+.image-lightbox {
+  @apply fixed inset-0 z-50 flex items-center justify-center p-6;
+  background: rgba(2, 6, 23, 0.72);
+}
+.image-lightbox__dialog {
+  @apply relative flex max-h-[90vh] w-full max-w-5xl items-center justify-center rounded-3xl bg-white p-4 shadow-2xl;
+}
+.image-lightbox__close {
+  @apply absolute right-4 top-4 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50;
+}
+.image-lightbox__image {
+  @apply max-h-[80vh] w-auto max-w-full rounded-2xl object-contain;
+}
+.vehicle-form-panel :deep(.vehicle-form-panel__image-field > .space-y-2 > .rounded-xl) {
+  @apply p-2;
+}
+.vehicle-form-panel :deep(.vehicle-form-panel__image-field img.h-40) {
+  @apply h-28;
+}
+.vehicle-form-panel :deep(.vehicle-form-panel__image-field .rounded-lg.border.border-slate-200.bg-slate-50) {
+  @apply rounded-2xl;
+}
+@media (max-width: 1279px) {
+  .vehicle-form-grid--identity {
+    grid-template-columns: 1fr;
+  }
+  .vehicle-form-panel__image-field {
+    @apply max-w-none;
+  }
 }
 .layouts-grid {
   @apply grid gap-4 md:grid-cols-2;
@@ -976,7 +1342,7 @@ onMounted(() => {
   @apply rounded-full bg-white px-2 py-1;
 }
 .status-pill {
-  @apply rounded-full px-3 py-1 text-xs font-semibold;
+  @apply inline-flex w-fit rounded-full px-3 py-1 text-xs font-semibold;
 }
 .status-pill--success {
   @apply bg-emerald-100 text-emerald-600;
@@ -1175,5 +1541,20 @@ onMounted(() => {
 }
 .placeholder-card {
   @apply rounded-3xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500;
+}
+@media (max-width: 1180px) {
+  .list-grid-layouts,
+  .list-grid-vehicles {
+    grid-template-columns: 1fr;
+  }
+  .list-header {
+    @apply hidden;
+  }
+  .list-row {
+    @apply gap-2;
+  }
+  .list-actions {
+    @apply justify-start;
+  }
 }
 </style>

@@ -8,7 +8,6 @@ import CheckoutProcessingView from "../views/public/CheckoutProcessingView.vue";
 import DashboardView from "../views/admin/DashboardView.vue";
 import PagesListView from "../views/admin/PagesListView.vue";
 import PageEditorView from "../views/admin/PageEditorView.vue";
-import AgencySettingsView from "../views/admin/AgencySettingsView.vue";
 import LeadsView from "../views/admin/LeadsView.vue";
 import PublicPageView from "../views/public/PublicPageView.vue";
 import PlansView from "../views/public/PlansView.vue";
@@ -174,8 +173,8 @@ const platformRoutes: RouteRecordRaw[] = [
       {
         path: "assentos",
         name: "seat-layouts",
-        component: () => import("../views/admin/SeatLayoutsView.vue"),
-        meta: { section: "products" }
+        redirect: { name: "settings", query: { tab: "fleet" } },
+        meta: { section: "settings" }
       },
       {
         path: "vendas",
@@ -185,15 +184,25 @@ const platformRoutes: RouteRecordRaw[] = [
       },
       { path: "financeiro", redirect: { name: "products" } },
       { path: "juridico", name: "legal", component: () => import("../views/admin/LegalView.vue") },
-      { path: "agency", name: "agency-settings", component: AgencySettingsView },
+      {
+        path: "configuracoes",
+        name: "settings",
+        component: () => import("../views/admin/SettingsView.vue")
+      },
+      {
+        path: "agency",
+        redirect: { name: "settings", query: { tab: "agency" } }
+      },
       {
         path: "domains",
-        name: "agency-domains",
-        component: () => import("../views/admin/AgencyDomainsView.vue")
+        redirect: { name: "settings", query: { tab: "domains" } }
       },
       { path: "planos", name: "plans", component: PlansView },
       { path: "integracoes", name: "integrations", component: () => import("../views/admin/IntegrationsView.vue") },
-      { path: "perfil", name: "profile", component: () => import("../views/admin/ProfileView.vue") },
+      {
+        path: "perfil",
+        redirect: { name: "settings", query: { tab: "profile" } }
+      },
       {
         path: "administracao",
         name: "admin-management",

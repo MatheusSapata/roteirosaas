@@ -1,8 +1,8 @@
-﻿<template>
+<template>
   <div class="min-h-screen bg-slate-50 px-4 py-10">
     <div class="mx-auto max-w-4xl space-y-6">
       <div v-if="loading" class="card">
-        <p class="text-sm text-slate-600">Preparando sua confirmaÃ§Ã£o...</p>
+        <p class="text-sm text-slate-600">Preparando sua confirmação...</p>
       </div>
 
       <div v-else-if="errorMessage" class="card card--error">
@@ -19,12 +19,12 @@
         />
 
         <section class="card hero-card">
-          <div class="hero-icon">âœ”</div>
+          <div class="hero-icon">✓</div>
           <div class="hero-content">
             <p class="eyebrow">Documento assinado</p>
-            <h1 class="hero-title">Assinatura concluÃ­da com sucesso</h1>
+            <h1 class="hero-title">Assinatura concluída com sucesso</h1>
             <p class="hero-subtitle">
-              Sua assinatura foi registrada com integridade verificÃ¡vel. O documento jÃ¡ pode ser validado online.
+              Sua assinatura foi registrada com integridade verificável. O documento já pode ser validado online.
             </p>
           </div>
           <div class="hero-actions">
@@ -35,16 +35,16 @@
               Abrir PDF assinado
             </button>
             <button type="button" class="btn-ghost" :disabled="!verificationLink" @click="copyVerificationLink">
-              Copiar link de verificaÃ§Ã£o
+              Copiar link de verificação
             </button>
           </div>
         </section>
 
         <section v-if="shouldShowSeatCta" class="card seat-cta">
           <div>
-            <p class="eyebrow">Assentos rodoviarios</p>
+            <p class="eyebrow">Assentos rodoviários</p>
             <h3 class="seat-cta__title">
-              {{ seatStatus?.seats_selected ? "Assentos registrados" : "Defina os assentos da excursao" }}
+              {{ seatStatus?.seats_selected ? "Assentos registrados" : "Defina os assentos da excursão" }}
             </h3>
             <p class="seat-cta__subtitle">
               {{ seatStatusMessage }}
@@ -75,8 +75,8 @@
                 <p class="value">{{ contract.signature_name || contract.buyer_name }}</p>
               </div>
               <div>
-                <p class="label">AgÃªncia responsÃ¡vel</p>
-                <p class="value">{{ contract.agency_name || "AgÃªncia" }}</p>
+                <p class="label">Agência responsável</p>
+                <p class="value">{{ contract.agency_name || "Agência" }}</p>
               </div>
               <div>
                 <p class="label">Data e hora</p>
@@ -89,7 +89,7 @@
             </div>
 
             <div class="mt-6 rounded-2xl bg-slate-50 p-4 text-xs text-slate-500">
-              Este documento foi registrado na plataforma {{ platformName }} com hash criptogrÃ¡fico para garantir sua
+              Este documento foi registrado na plataforma {{ platformName }} com hash criptográfico para garantir sua
               integridade.
             </div>
 
@@ -98,21 +98,21 @@
                 Cliente: {{ signatureStatusLabel(contract.signature_status) }}
               </div>
               <div class="status-pill status-pill--success">
-                AgÃªncia: {{ signatureStatusLabel(contract.agency_signature_status) }}
+                Agência: {{ signatureStatusLabel(contract.agency_signature_status) }}
               </div>
             </div>
           </div>
 
           <div class="card">
-            <p class="eyebrow">QR code de verificaÃ§Ã£o</p>
+            <p class="eyebrow">QR code de verificação</p>
             <div class="mt-4 flex flex-col items-center gap-4 rounded-2xl border border-dashed border-slate-200 p-5">
               <img
                 v-if="contract.verification_qr_image_data"
                 :src="contract.verification_qr_image_data"
-                alt="QR Code de verificaÃ§Ã£o"
+                alt="QR Code de verificação"
                 class="h-40 w-40"
               />
-              <div v-else class="qr-fallback">QR indisponÃ­vel</div>
+              <div v-else class="qr-fallback">QR indisponível</div>
               <p class="text-center text-xs text-slate-500">{{ verificationLink }}</p>
             </div>
           </div>
@@ -157,7 +157,7 @@ const loadContract = async () => {
   loading.value = true;
   errorMessage.value = "";
   if (!signatureToken.value) {
-    errorMessage.value = "Link invalido.";
+    errorMessage.value = "Link inválido.";
     loading.value = false;
     return;
   }
@@ -171,9 +171,9 @@ const loadContract = async () => {
     void loadSeatStatus();
   } catch (error) {
     if (isAxiosError(error)) {
-      errorMessage.value = (error.response?.data as { detail?: string })?.detail || "Assinatura nao encontrada.";
+      errorMessage.value = (error.response?.data as { detail?: string })?.detail || "Assinatura não encontrada.";
     } else {
-      errorMessage.value = "Nao foi possivel carregar os dados da assinatura.";
+      errorMessage.value = "Não foi possível carregar os dados da assinatura.";
     }
   } finally {
     loading.value = false;
@@ -226,12 +226,12 @@ const copyVerificationLink = async () => {
       document.body.removeChild(textarea);
     }
   } catch (error) {
-    console.error("Nao foi possivel copiar o link de verificacao", error);
+    console.error("Não foi possível copiar o link de verificação", error);
   }
 };
 
 const signatureStatusLabel = (status?: string | null) => {
-  if (!status) return "Indisponivel";
+  if (!status) return "Indisponível";
   if (status === "signed") return "Assinado";
   if (status === "pending") return "Pendente";
   return status;
@@ -249,13 +249,13 @@ const formatDateTime = (value?: string | null) => {
 const shouldShowSeatCta = computed(() => !!seatStatus.value?.is_road_trip);
 
 const seatStatusMessage = computed(() => {
-  if (!seatStatus.value) return "Em breve voce podera escolher os assentos desta excursao.";
+  if (!seatStatus.value) return "Em breve você poderá escolher os assentos desta excursão.";
   if (seatStatus.value.can_select_seats) {
     return seatStatus.value.seats_selected
-      ? "Voce pode revisar ou ajustar os assentos escolhidos para os passageiros."
+      ? "Você pode revisar ou ajustar os assentos escolhidos para os passageiros."
       : "Escolha os assentos preferenciais para os passageiros desta compra.";
   }
-  return seatStatus.value.message || "Estamos preparando o mapa de assentos para voce.";
+  return seatStatus.value.message || "Estamos preparando o mapa de assentos para você.";
 });
 
 const openSeatModal = () => {
@@ -337,4 +337,3 @@ const handleSeatContextUpdated = () => {
   @apply text-xs text-slate-500;
 }
 </style>
-

@@ -279,13 +279,13 @@
     >
       <span>
         {{ viewCopy.emptyStates.noAgency.prefix }}
-        <router-link to="/admin/agency" class="font-semibold underline">
+        <router-link to="/admin/configuracoes?tab=agency" class="font-semibold underline">
           {{ viewCopy.emptyStates.noAgency.link }}
         </router-link>
         {{ viewCopy.emptyStates.noAgency.suffix }}
       </span>
       <router-link
-        to="/admin/agency"
+        to="/admin/configuracoes?tab=agency"
         class="inline-flex items-center justify-center rounded-full bg-amber-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-amber-500"
       >
         {{ viewCopy.emptyStates.noAgency.cta }}

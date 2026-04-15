@@ -94,6 +94,7 @@ class VehicleLayoutListResponse(BaseModel):
 class VehiclePayload(BaseModel):
     name: str
     plate: str | None = None
+    photo_url: str | None = None
     partner_name: str | None = None
     layout_id: int | None = None
     is_active: bool = True
@@ -111,9 +112,9 @@ class VehicleListResponse(BaseModel):
 
 class SeatPostSignatureStatus(BaseModel):
     sale_id: int
-    contract_id: int
+    contract_id: int | None = None
     product_id: int
-    signature_status: str
+    signature_status: str | None = None
     is_road_trip: bool
     has_layout: bool
     seats_generated: bool

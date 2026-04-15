@@ -1,11 +1,70 @@
 <template>
   <div class="sidebar-stack">
-    <section class="sidebar-card">
-      <div class="card-title">
-        <p class="eyebrow">Resumo operacional</p>
-        <h3>{{ statusLabel }}</h3>
+    <section class="sidebar-card sidebar-card--status">
+      <div class="status-head">
+        <div>
+          <p class="eyebrow">Situacao</p>
+          <h3>{{ statusLabel }}</h3>
+        </div>
+        <span class="status-dot" :class="`status-dot--${statusTone}`"></span>
       </div>
-      <div class="summary-items">
+
+      <p class="status-summary">
+        {{ metrics.sold }} venda(s) confirmada(s), {{ metrics.available }} vaga(s) livres e ocupacao atual de
+        {{ occupancyLabel }}.
+      </p>
+
+      <div class="mini-metrics">
+        <article>
+          <span>Disponiveis</span>
+          <strong>{{ metrics.available }}</strong>
+        </article>
+        <article>
+          <span>Vendidas</span>
+          <strong>{{ metrics.sold }}</strong>
+        </article>
+        <article>
+          <span>Sincronia</span>
+          <strong>{{ savingCopy }}</strong>
+        </article>
+      </div>
+    </section>
+
+    <section class="sidebar-card">
+      <div class="card-head">
+        <p class="eyebrow">Acoes rapidas</p>
+        <p class="support-copy">Fluxos principais para venda, operacao e atendimento.</p>
+      </div>
+
+      <div class="action-list">
+        <button type="button" class="action-btn action-btn--primary" :disabled="quickActionsDisabled" @click="$emit('action', 'sale')">
+          Nova venda
+        </button>
+        <button type="button" class="action-btn" :disabled="quickActionsDisabled" @click="$emit('action', 'payment-link')">
+          Link de pagamento
+        </button>
+        <button type="button" class="action-btn" :disabled="quickActionsDisabled" @click="$emit('action', 'inventory')">
+          Ajustar operacao
+        </button>
+        <button type="button" class="action-btn action-btn--soft" :disabled="!passengersEnabled" @click="$emit('action', 'passengers')">
+          Passageiros
+        </button>
+        <button type="button" class="action-btn action-btn--soft" :disabled="!product.has_accommodation" @click="$emit('action', 'rooming')">
+          Rooming list
+        </button>
+        <button type="button" class="action-btn action-btn--soft" :disabled="!product.is_road_trip" @click="$emit('action', 'seatmap')">
+          Mapa de assentos
+        </button>
+      </div>
+    </section>
+
+    <section class="sidebar-card sidebar-card--system">
+      <div class="card-head">
+        <p class="eyebrow">Estado do sistema</p>
+        <p class="support-copy">Resumo executivo do produto e salvamento automatico.</p>
+      </div>
+
+      <div class="system-list">
         <div>
           <span>Data</span>
           <strong>{{ tripDateLabel }}</strong>
@@ -16,72 +75,18 @@
         </div>
         <div>
           <span>Overbooking</span>
-          <strong>{{ product.allow_oversell ? "Ativo" : "Desativado" }}</strong>
+          <strong>{{ product.allow_oversell ? "Habilitado" : "Desativado" }}</strong>
         </div>
         <div>
           <span>Rodoviario</span>
-          <strong>{{ product.is_road_trip ? "Sim" : "Nao" }}</strong>
-        </div>
-        <div>
-          <span>Hospedagem</span>
-          <strong>{{ product.has_accommodation ? "Sim" : "Nao" }}</strong>
+          <strong>{{ product.is_road_trip ? "Ativo" : "Inativo" }}</strong>
         </div>
       </div>
-    </section>
 
-    <section class="sidebar-card metrics-card">
-      <p class="eyebrow">Metricas</p>
-      <div class="metric-grid">
-        <div>
-          <p>Totais</p>
-          <strong>{{ metrics.total }}</strong>
-        </div>
-        <div>
-          <p>Disponiveis</p>
-          <strong>{{ metrics.available }}</strong>
-        </div>
-        <div>
-          <p>Reservadas</p>
-          <strong>{{ metrics.reserved }}</strong>
-        </div>
-        <div>
-          <p>Vendidas</p>
-          <strong>{{ metrics.sold }}</strong>
-        </div>
-        <div>
-          <p>Ocupacao</p>
-          <strong>{{ occupancyLabel }}</strong>
-        </div>
+      <div class="save-inline">
+        <SaveStatusIndicator :state="savingState" :updated-at="lastSavedAt" />
       </div>
     </section>
-
-    <section class="sidebar-card actions-card">
-      <p class="eyebrow">Acoes rapidas</p>
-      <div class="action-grid">
-        <button type="button" class="btn btn-primary" @click="$emit('action', 'sale')" :disabled="quickActionsDisabled">
-          Nova venda
-        </button>
-        <button type="button" class="btn ghost" @click="$emit('action', 'payment-link')" :disabled="quickActionsDisabled">
-          Link de pagamento
-        </button>
-        <button type="button" class="btn ghost" @click="$emit('action', 'inventory')" :disabled="quickActionsDisabled">
-          Ajustar estoque
-        </button>
-        <button type="button" class="btn ghost" @click="$emit('action', 'passengers')" :disabled="!passengersEnabled">
-          Passageiros
-        </button>
-        <button type="button" class="btn ghost" @click="$emit('action', 'rooming')" :disabled="!product.has_accommodation">
-          Rooming list
-        </button>
-        <button type="button" class="btn ghost" @click="$emit('action', 'seatmap')" :disabled="!product.is_road_trip">
-          Mapa de assentos
-        </button>
-      </div>
-    </section>
-
-    <div class="save-inline">
-      <SaveStatusIndicator :state="savingState" :updated-at="lastSavedAt" />
-    </div>
   </div>
 </template>
 
@@ -127,6 +132,12 @@ const statusLabel = computed(() => {
   return "Rascunho";
 });
 
+const statusTone = computed(() => {
+  if (props.product.status === "active") return "success";
+  if (props.product.status === "archived") return "muted";
+  return "warning";
+});
+
 const tripDateLabel = computed(() => {
   if (!props.product.trip_date) return "Sem data";
   try {
@@ -138,97 +149,181 @@ const tripDateLabel = computed(() => {
 });
 
 const inventoryLabel = computed(() =>
-  props.product.inventory_strategy === "unlimited" ? "Ilimitado" : "Manual",
+  props.product.inventory_strategy === "unlimited" ? "Estoque ilimitado" : "Estoque manual",
 );
 
 const occupancyLabel = computed(() => `${Math.min(100, Math.max(0, props.metrics.occupancy)).toFixed(0)}%`);
-
 const quickActionsDisabled = computed(() => !!props.actionsDisabled);
 const passengersEnabled = computed(() => props.product.is_road_trip && (props.canPassengers ?? true));
+const savingCopy = computed(() => {
+  if (props.savingState === "saving") return "Salvando";
+  if (props.savingState === "saved") return "Sincronizado";
+  if (props.savingState === "error") return "Revisar";
+  if (props.savingState === "dirty") return "Pendente";
+  return "Estavel";
+});
 </script>
 
 <style scoped>
 .sidebar-stack {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1.15rem;
 }
+
 .sidebar-card {
-  background: white;
-  border-radius: 1.25rem;
-  border: 1px solid #e2e8f0;
-  padding: 1.35rem;
-  box-shadow: 0 20px 45px -35px rgba(15, 23, 42, 0.4);
+  padding: 1.25rem;
+  border-radius: 1.45rem;
+  border: 1px solid rgba(226, 232, 240, 0.7);
+  background: #fff;
+  box-shadow: 0 6px 24px rgba(15, 23, 42, 0.04);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
-.save-inline {
-  margin-top: 0.5rem;
+
+.sidebar-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
 }
-.card-title h3 {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #0f172a;
+
+.sidebar-card--status {
+  padding-bottom: 1.2rem;
 }
-.eyebrow {
-  text-transform: uppercase;
-  letter-spacing: 0.3em;
-  font-size: 0.7rem;
-  color: #94a3b8;
-  margin-bottom: 0.4rem;
-}
-.summary-items {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+
+.status-head,
+.card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
   gap: 0.8rem;
-  font-size: 0.85rem;
-  color: #475569;
 }
-.summary-items span {
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: #94a3b8;
-}
-.metric-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.75rem;
-}
-.metric-grid p {
-  font-size: 0.7rem;
-  letter-spacing: 0.1em;
+
+.eyebrow {
+  margin: 0 0 0.28rem;
+  font-size: 0.69rem;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: #94a3b8;
+  font-weight: 700;
 }
-.metric-grid strong {
-  font-size: 1.1rem;
+
+.status-head h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
   color: #0f172a;
 }
-.action-grid {
+
+.status-dot {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 999px;
+  margin-top: 0.4rem;
+  box-shadow: 0 0 0 6px rgba(148, 163, 184, 0.08);
+}
+
+.status-dot--success { background: #14b8a6; }
+.status-dot--muted { background: #94a3b8; }
+.status-dot--warning { background: #f97316; }
+
+.status-summary,
+.support-copy {
+  margin: 0.7rem 0 0;
+  font-size: 0.88rem;
+  line-height: 1.6;
+  color: #64748b;
+}
+
+.mini-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.mini-metrics article,
+.system-list div {
+  padding: 0.8rem 0.85rem;
+  border-radius: 0.95rem;
+  background: rgba(248, 250, 252, 0.7);
+  border: 1px solid rgba(226, 232, 240, 0.72);
+}
+
+.mini-metrics span,
+.system-list span {
+  display: block;
+  margin-bottom: 0.28rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  font-weight: 700;
+}
+
+.mini-metrics strong,
+.system-list strong {
+  font-size: 0.95rem;
+  color: #0f172a;
+}
+
+.action-list {
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
+  gap: 0.55rem;
+  margin-top: 0.95rem;
 }
-.action-grid .btn {
+
+.action-btn {
+  width: 100%;
+  min-height: 2.85rem;
+  padding: 0.75rem 0.95rem;
   border-radius: 1rem;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  padding: 0.55rem 0.9rem;
-  font-weight: 600;
+  border: 1px solid rgba(203, 213, 225, 0.88);
+  background: rgba(255, 255, 255, 0.92);
+  color: #0f172a;
+  font-weight: 700;
   text-align: left;
-  background: transparent;
-  color: #0f172a;
+  transition: transform 0.18s ease, box-shadow 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
 }
-.action-grid .btn.btn-primary {
-  background: #0f172a;
-  color: white;
+
+.action-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 18px 28px -24px rgba(15, 23, 42, 0.35);
 }
-.action-grid .btn.ghost {
-  background: transparent;
-  color: #0f172a;
+
+.action-btn:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
 }
-.action-grid .btn:disabled {
-  opacity: 0.4;
+
+.action-btn--primary {
+  color: #fff;
+  border-color: rgba(16, 185, 129, 0.1);
+  background: linear-gradient(180deg, #10b981, #059669);
+  box-shadow: 0 18px 30px -24px rgba(16, 185, 129, 0.42);
 }
-.save-card {
-  background: #fff;
+
+.action-btn--soft {
+  background: rgba(248, 250, 252, 0.94);
+}
+
+.system-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+  margin-top: 0.95rem;
+}
+
+.save-inline {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(226, 232, 240, 0.9);
+}
+
+@media (max-width: 720px) {
+  .mini-metrics,
+  .system-list {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

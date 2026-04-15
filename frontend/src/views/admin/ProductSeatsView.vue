@@ -297,7 +297,7 @@
                 <div
                   class="bus-grid"
                   :class="{ 'bus-grid--desktop-horizontal': isDesktop }"
-                  :style="{ gridTemplateColumns: `repeat(${displayDeck?.columns || 1}, minmax(56px, 1fr))` }"
+                  :style="{ gridTemplateColumns: `repeat(${displayDeck?.columns || 1}, minmax(46px, 1fr))` }"
                 >
                   <button
                     v-for="cell in displayDeck?.cells || []"
@@ -446,8 +446,8 @@
                 <p class="history-actor">{{ historyActorLabel(entry) }}</p>
                 <p class="history-action">{{ historyActionLabel(entry) }}</p>
                 <p class="history-passenger-line">
-                  <span class="history-passenger-label">Passageiro</span>
-                  <span class="history-passenger-name">{{ historyPassengerName(entry) }}</span>
+                  <span class="history-passenger-label">{{ historySubjectLabel(entry) }}</span>
+                  <span class="history-passenger-name">{{ historySubjectValue(entry) }}</span>
                 </p>
                 <p v-if="historyChangeDetail(entry)" class="history-detail">
                   {{ historyChangeDetail(entry) }}
@@ -596,15 +596,16 @@ const ensureVehiclesList = () => {
 const syncVehicleCollapseStates = () => {
   const nextState: Record<string, boolean> = {};
   configForm.value.vehicles.forEach(entry => {
-    nextState[entry.localKey] = collapsedVehicles.value[entry.localKey] ?? false;
+    nextState[entry.localKey] = collapsedVehicles.value[entry.localKey] ?? true;
   });
   collapsedVehicles.value = nextState;
 };
 
 const addVehicleEntry = () => {
   const order = configForm.value.vehicles.length + 1;
+  const localKey = createVehicleKey();
   configForm.value.vehicles.push({
-    localKey: createVehicleKey(),
+    localKey,
     displayName: `Veiculo ${order}`,
     capacity: 40,
     orderIndex: order,
@@ -612,6 +613,10 @@ const addVehicleEntry = () => {
     isActive: true,
     autoActivateNext: true,
   });
+  collapsedVehicles.value = {
+    ...collapsedVehicles.value,
+    [localKey]: true,
+  };
   syncVehicleCollapseStates();
 };
 
@@ -929,6 +934,20 @@ const historyActorLabel = (entry: SeatHistoryEntry) => {
 const describeHistoryEntry = (entry: SeatHistoryEntry) => {
   const oldSeat = entry.old_seat_label || null;
   const newSeat = entry.new_seat_label || null;
+  const hasPassenger = !!(entry.passenger_id || entry.passenger_name);
+
+  if (!hasPassenger) {
+    if (oldSeat && !newSeat) {
+      return { action: "Bloqueou assento", detail: oldSeat };
+    }
+    if (!oldSeat && newSeat) {
+      return { action: "Desbloqueou assento", detail: newSeat };
+    }
+    if (entry.reason) {
+      return { action: sentenceCase(entry.reason), detail: oldSeat || newSeat || "" };
+    }
+    return { action: "Atualizacao operacional", detail: oldSeat || newSeat || "" };
+  }
 
   if (oldSeat && newSeat && oldSeat !== newSeat) {
     return { action: "Moveu assento", detail: `${oldSeat} → ${newSeat}` };
@@ -951,6 +970,10 @@ const describeHistoryEntry = (entry: SeatHistoryEntry) => {
 const historyActionLabel = (entry: SeatHistoryEntry) => describeHistoryEntry(entry).action;
 const historyPassengerName = (entry: SeatHistoryEntry) => entry.passenger_name || "Sem identificacao";
 const historyChangeDetail = (entry: SeatHistoryEntry) => describeHistoryEntry(entry).detail;
+const historySubjectLabel = (entry: SeatHistoryEntry) =>
+  entry.passenger_id || entry.passenger_name ? "Passageiro" : "Assento";
+const historySubjectValue = (entry: SeatHistoryEntry) =>
+  entry.passenger_name || entry.old_seat_label || entry.new_seat_label || "Sem identificacao";
 
 const vehicleStatusLabel = (status?: TripVehicleStatus | null) => {
   if (status === "active") return "Ativo";
@@ -1141,7 +1164,7 @@ const loadSeatContext = async (tripVehicleId?: number | null) => {
 
 const loadHistory = async () => {
   const response = await getSeatHistory(productId.value);
-  history.value = response.data || [];
+  history.value = response.data?.items || [];
 };
 
 const syncConfigForm = (payload: Awaited<ReturnType<typeof getTripTransportConfig>>["data"]) => {
@@ -1457,14 +1480,16 @@ onBeforeUnmount(() => {
 .operations-grid {
   @apply grid gap-6;
   grid-template-columns: minmax(0, 1fr);
+  align-items: start;
 }
 @media (min-width: 1024px) {
   .operations-grid {
-    grid-template-columns: 20% 55% 25%;
+    grid-template-columns: minmax(250px, 0.9fr) minmax(0, 1.75fr) minmax(240px, 0.82fr);
   }
 }
 .operations-column {
   @apply space-y-4;
+  min-width: 0;
 }
 .panel {
   @apply flex flex-col gap-4 rounded-3xl border border-slate-100 bg-white p-4 shadow-sm;
@@ -1545,25 +1570,25 @@ onBeforeUnmount(() => {
   @apply border-emerald-200 bg-emerald-50 text-emerald-700;
 }
 .map-panel {
-  @apply gap-6;
+  @apply gap-4;
 }
 .map-stage {
-  @apply space-y-4;
+  @apply space-y-3;
 }
 .map-stage__summary {
-  @apply flex flex-col gap-2 rounded-2xl border border-slate-100 bg-slate-50/70 p-4 md:flex-row md:items-center md:justify-between;
+  @apply flex flex-col gap-2 rounded-2xl border border-slate-100 bg-slate-50/70 p-3 md:flex-row md:items-center md:justify-between;
 }
 .map-stage__title {
-  @apply text-lg font-semibold text-slate-900;
+  @apply text-base font-semibold text-slate-900;
 }
 .map-stage__meta {
-  @apply text-sm text-slate-600;
+  @apply text-xs text-slate-600;
 }
 .deck-tabs {
   @apply flex flex-wrap gap-2;
 }
 .deck-tab {
-  @apply inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600;
+  @apply inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1 text-[11px] font-semibold text-slate-600;
 }
 .deck-tab--active {
   @apply border-emerald-300 bg-emerald-50 text-emerald-700;
@@ -1572,16 +1597,16 @@ onBeforeUnmount(() => {
   @apply rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold;
 }
 .bus-shell {
-  @apply relative mx-auto w-full rounded-[2.5rem] border border-slate-100 bg-slate-50/60 p-6 shadow-inner;
+  @apply relative mx-auto w-full rounded-[2.25rem] border border-slate-100 bg-slate-50/60 p-4 shadow-inner;
 }
 .bus-shell::after {
   content: "";
-  @apply pointer-events-none absolute inset-3 rounded-[2rem] border border-white/50;
+  @apply pointer-events-none absolute inset-2.5 rounded-[1.85rem] border border-white/50;
 }
 .seat-cell {
-  @apply flex min-h-[58px] min-w-[58px] items-center justify-center rounded-2xl border text-xs font-semibold text-slate-500 shadow-sm transition;
+  @apply flex min-h-[48px] min-w-[48px] items-center justify-center rounded-[1.15rem] border text-[11px] font-semibold text-slate-500 shadow-sm transition;
   width: 100%;
-  max-width: 70px;
+  max-width: 56px;
 }
 .seat-cell--available {
   @apply border-slate-200 bg-slate-50 text-slate-500;
@@ -1606,7 +1631,7 @@ onBeforeUnmount(() => {
 }
 .seat-cell--aisle::after {
   content: "";
-  @apply mx-auto block h-6 w-6 rounded-full bg-slate-200/80;
+  @apply mx-auto block h-5 w-5 rounded-full bg-slate-200/80;
 }
 .seat-cell:hover {
   @apply -translate-y-0.5;
@@ -1624,10 +1649,10 @@ onBeforeUnmount(() => {
   @apply text-sm text-slate-500;
 }
 .map-legend {
-  @apply flex flex-wrap gap-2 text-[11px] text-slate-500;
+  @apply flex flex-wrap gap-2 text-[10px] text-slate-500;
 }
 .legend-item {
-  @apply inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1;
+  @apply inline-flex items-center gap-2 rounded-full border border-slate-200 px-2.5 py-1;
 }
 .legend-item--available {
   @apply border-slate-200 bg-slate-50 text-slate-600;
@@ -1646,6 +1671,7 @@ onBeforeUnmount(() => {
 }
 .stats-grid div {
   @apply rounded-2xl border border-slate-100 bg-slate-50/70 p-3;
+  min-width: 0;
 }
 .stats-grid dt {
   @apply text-xs uppercase tracking-[0.2em] text-slate-400;
@@ -1749,7 +1775,9 @@ onBeforeUnmount(() => {
 }
 
 .map-panel,
-.map-column {
+.map-column,
+.passengers-column,
+.info-column {
   min-width: 0;
   width: 100%;
 }
@@ -1785,7 +1813,7 @@ onBeforeUnmount(() => {
 
 .bus-shell {
   width: 100%;
-  padding: 1rem 0.5rem 1rem;
+  padding: 0.85rem 0.35rem 0.85rem;
 }
 
 .bus-body {
@@ -1800,12 +1828,12 @@ onBeforeUnmount(() => {
 
 .bus-grid {
   display: grid;
-  gap: 10px;
+  gap: 8px;
   justify-content: center;
   justify-items: center;
   width: 100%;
   margin: 0;
-  padding: 1rem 1.25rem;
+  padding: 0.85rem 1rem;
 }
 
 @media (min-width: 1024px) {
@@ -1824,8 +1852,8 @@ onBeforeUnmount(() => {
     min-width: 0;
     max-width: none;
     margin: 0;
-    padding: 1.25rem 1.75rem;
-    gap: 14px;
+    padding: 1rem 1.25rem;
+    gap: 10px;
   }
   .bus-stage__layout {
     flex-direction: row;
@@ -1838,13 +1866,13 @@ onBeforeUnmount(() => {
   }
 
   .seat-cell {
-    width: 56px;
-    height: 48px;
+    width: 48px;
+    height: 42px;
   }
 
   .seat-cell--aisle {
-    width: 34px;
-    height: 42px;
+    width: 28px;
+    height: 36px;
   }
 }
 

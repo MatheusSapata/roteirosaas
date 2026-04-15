@@ -46,13 +46,6 @@
               <option value="unlimited">Ilimitado</option>
             </select>
           </label>
-          <label class="field">
-            <span>Juros do cartao</span>
-            <select v-model="form.card_interest_mode">
-              <option value="merchant">Agencia assume</option>
-              <option value="customer">Cliente assume</option>
-            </select>
-          </label>
         </div>
 
         <div v-if="form.inventory_strategy === 'manual'" class="grid-2">
@@ -99,7 +92,6 @@ type GeneralForm = {
   total_slots: number;
   available_slots: number;
   allow_oversell: boolean;
-  card_interest_mode: "merchant" | "customer";
   is_road_trip: boolean;
 };
 
@@ -124,7 +116,6 @@ const form = reactive<GeneralForm>({
   total_slots: 0,
   available_slots: 0,
   allow_oversell: false,
-  card_interest_mode: "merchant",
   is_road_trip: false,
 });
 

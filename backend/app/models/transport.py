@@ -50,6 +50,7 @@ class Vehicle(Base):
     agency_id = Column(Integer, ForeignKey("agencies.id", ondelete="CASCADE"), nullable=False, index=True)
     name = Column(String(120), nullable=False)
     plate = Column(String(32), nullable=True)
+    photo_url = Column(String(500), nullable=True)
     partner_name = Column(String(120), nullable=True)
     layout_id = Column(Integer, ForeignKey("vehicle_layouts.id", ondelete="SET NULL"), nullable=True, index=True)
     is_active = Column(Boolean, nullable=False, default=True)

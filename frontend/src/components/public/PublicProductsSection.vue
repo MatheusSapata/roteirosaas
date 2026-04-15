@@ -80,8 +80,7 @@
               </div>
             </div>
 
-            <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
-              <span>{{ variationAvailabilityText(variation) }}</span>
+            <div class="flex flex-wrap items-center justify-end gap-2 text-xs text-slate-500">
               <span v-if="isOutOfStock(variation)" class="font-semibold text-rose-600">Sem vagas</span>
               <span v-else-if="isLowStock(variation)" class="font-semibold text-amber-600">Últimas vagas</span>
             </div>

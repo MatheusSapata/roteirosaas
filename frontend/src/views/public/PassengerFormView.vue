@@ -234,11 +234,19 @@
       </div>
     </div>
   </div>
+  <SeatSelectionModal
+    v-if="token && !formInfo?.contract_signature_link && formInfo?.is_road_trip"
+    :token="token"
+    token-type="sale"
+    :open="seatModalOpen"
+    @close="seatModalOpen = false"
+  />
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
+import SeatSelectionModal from "../../components/public/SeatSelectionModal.vue";
 import {
   getPublicPassengerForm,
   getPublicPassengerGroups,
@@ -279,6 +287,7 @@ const errorMessage = ref<string | null>(null);
 const passengerGroups = ref<PassengerGroupForm[]>([]);
 const activeGroupIndex = ref(0);
 const activePassengerIndex = ref(0);
+const seatModalOpen = ref(false);
 
 const token = computed(() => {
   const value = route.params.token;
@@ -470,6 +479,9 @@ const submitPassengers = async () => {
     }
     await loadPassengerGroups();
     alert("Passageiros enviados com sucesso!");
+    if (!formInfo.value?.contract_signature_link && formInfo.value?.is_road_trip) {
+      seatModalOpen.value = true;
+    }
   } catch (err: any) {
     errorMessage.value = err?.response?.data?.detail || "Não foi possível salvar os passageiros.";
   } finally {

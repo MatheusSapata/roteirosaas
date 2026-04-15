@@ -70,6 +70,7 @@ export interface VehicleLayoutPayload {
 export interface VehiclePayload {
   name: string;
   plate?: string | null;
+  photo_url?: string | null;
   partner_name?: string | null;
   layout_id?: number | null;
   is_active: boolean;
@@ -87,9 +88,9 @@ export interface VehicleListResponse {
 
 export interface SeatPostSignatureStatus {
   sale_id: number;
-  contract_id: number;
+  contract_id?: number | null;
   product_id: number;
-  signature_status: string;
+  signature_status?: string | null;
   is_road_trip: boolean;
   has_layout: boolean;
   seats_generated: boolean;

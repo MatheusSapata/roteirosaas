@@ -1,65 +1,65 @@
 <template>
-  <section class="card">
-    <header class="card-header">
+  <section class="operations-shell">
+    <header class="section-head">
       <div>
-        <p class="eyebrow">Operacao da viagem</p>
-        <h2>Fluxos operacionais</h2>
-        <p class="muted">Gerencie transporte, embarques e integracoes com passageiros.</p>
+        <p class="eyebrow">Operacao em tempo real</p>
+        <h2>Painel de controle operacional</h2>
+        <p class="support-copy">Leitura rapida da saude do produto, transporte e capacidade ativa.</p>
       </div>
-      <button type="button" class="pill" @click="$emit('open-transport')" :disabled="!canConfigure">
-        Configurar rodoviario
+      <button type="button" class="section-link" :disabled="!canConfigure" @click="$emit('open-transport')">
+        Ajustar transporte
       </button>
     </header>
 
-    <div class="status-tiles">
-      <article class="tile">
-        <p>Estrategia</p>
+    <div class="status-rail">
+      <article class="rail-item" :class="transportReady ? 'rail-item--ok' : 'rail-item--warn'">
+        <span class="rail-dot"></span>
+        <div>
+          <strong>{{ transportReady ? "Transporte pronto" : "Transporte pendente" }}</strong>
+          <p>{{ transportReady ? "Fluxo preparado para alocar passageiros." : "Defina estrutura de embarque e capacidade." }}</p>
+        </div>
+      </article>
+
+      <article class="rail-item" :class="boardingCount ? 'rail-item--ok' : 'rail-item--warn'">
+        <span class="rail-dot"></span>
+        <div>
+          <strong>{{ boardingLabel }}</strong>
+          <p>{{ boardingCount ? "Locais publicados para venda e operacao." : "Nenhum local de embarque informado." }}</p>
+        </div>
+      </article>
+
+      <article class="rail-item" :class="product.hasRooms ? 'rail-item--ok' : 'rail-item--muted'">
+        <span class="rail-dot"></span>
+        <div>
+          <strong>{{ product.hasRooms ? "Hospedagem integrada" : "Sem hospedagem" }}</strong>
+          <p>{{ product.hasRooms ? "Pacotes conectados ao fluxo de rooming." : "Produto opera sem configuracao de quartos." }}</p>
+        </div>
+      </article>
+    </div>
+
+    <div class="operation-facts">
+      <article>
+        <span>Estrategia</span>
         <strong>{{ inventoryLabel }}</strong>
-        <span :class="['badge-pill', product.inventory_strategy === 'manual' ? 'badge-pill-warm' : 'badge-pill-cool']">
-          {{ product.inventory_strategy === "manual" ? "Controle manual" : "Estoque ilimitado" }}
-        </span>
       </article>
-      <article class="tile">
-        <p>Overbooking</p>
+      <article>
+        <span>Overbooking</span>
         <strong>{{ product.allow_oversell ? "Habilitado" : "Desativado" }}</strong>
-        <span :class="['badge-pill', product.allow_oversell ? 'badge-pill-on' : 'badge-pill-muted']">
-          {{ product.allow_oversell ? "Flexivel" : "Conservador" }}
-        </span>
       </article>
-      <article class="tile">
-        <p>Rodoviario</p>
+      <article>
+        <span>Rodoviario</span>
         <strong>{{ product.is_road_trip ? "Ativo" : "Inativo" }}</strong>
-        <span :class="['badge-pill', product.is_road_trip ? 'badge-pill-on' : 'badge-pill-muted']">
-          {{ product.is_road_trip ? "Transportes habilitados" : "Sem transporte" }}
-        </span>
-      </article>
-      <article class="tile">
-        <p>Transporte</p>
-        <strong>{{ transportReady ? "Configurado" : "Pendente" }}</strong>
-        <span :class="['badge-pill', transportReady ? 'badge-pill-on' : 'badge-pill-warn']">
-          {{ transportReady ? "Pronto para passageiros" : "Defina layouts" }}
-        </span>
-      </article>
-      <article class="tile">
-        <p>Embarques</p>
-        <strong>{{ boardingLabel }}</strong>
-        <span class="badge-pill badge-pill-muted">Fluxo operacional</span>
-      </article>
-      <article class="tile">
-        <p>Hospedagem</p>
-        <strong>{{ product.hasRooms ? "Com quartos" : "Sem hospedagem" }}</strong>
-        <span class="badge-pill badge-pill-muted">{{ product.hasRooms ? "Integra rooming" : "Opcional" }}</span>
       </article>
     </div>
 
     <div class="action-row">
-      <button type="button" class="action" @click="$emit('open-boarding')" :disabled="boardingDisabled">
+      <button type="button" class="action-btn" :disabled="boardingDisabled" @click="$emit('open-boarding')">
         Gerenciar embarques
       </button>
-      <button type="button" class="action" @click="$emit('open-seatmap')" :disabled="!product.is_road_trip || seatmapDisabled">
+      <button type="button" class="action-btn" :disabled="!product.is_road_trip || seatmapDisabled" @click="$emit('open-seatmap')">
         Abrir mapa de assentos
       </button>
-      <button type="button" class="action" @click="$emit('open-rooming')" :disabled="!product.hasRooms">
+      <button type="button" class="action-btn" :disabled="!product.hasRooms" @click="$emit('open-rooming')">
         Rooming list
       </button>
     </div>
@@ -90,123 +90,197 @@ defineEmits<{
 }>();
 
 const inventoryLabel = computed(() =>
-  props.product.inventory_strategy === "unlimited" ? "Ilimitado" : "Manual",
+  props.product.inventory_strategy === "unlimited" ? "Estoque ilimitado" : "Estoque manual",
 );
 
 const boardingLabel = computed(() => {
-  if (!props.boardingCount) return "Nao definidos";
-  return props.boardingCount === 1 ? "1 local" : `${props.boardingCount} locais`;
+  if (!props.boardingCount) return "Embarques pendentes";
+  return props.boardingCount === 1 ? "1 embarque publicado" : `${props.boardingCount} embarques publicados`;
 });
 
 const boardingDisabled = computed(() => false);
 </script>
 
 <style scoped>
-.card {
-  background: white;
-  border-radius: 1.5rem;
-  border: 1px solid #e2e8f0;
-  padding: 1.5rem;
-  box-shadow: 0 20px 45px -20px rgba(15, 23, 42, 0.25);
+.operations-shell {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1.45rem;
+  padding: 1.65rem;
+  border-radius: 1.75rem;
+  border: 1px solid rgba(226, 232, 240, 0.7);
+  background: #fff;
+  box-shadow: 0 6px 24px rgba(15, 23, 42, 0.04);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
-.card-header {
+
+.operations-shell:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+}
+
+.section-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
 }
+
 .eyebrow {
+  margin: 0 0 0.32rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  letter-spacing: 0.3em;
-  font-size: 0.7rem;
   color: #94a3b8;
+  font-weight: 700;
 }
-.muted {
-  font-size: 0.9rem;
-  color: #64748b;
-}
-.pill {
-  border-radius: 999px;
-  border: 1px solid rgba(15, 23, 42, 0.2);
-  padding: 0.4rem 1.1rem;
+
+.section-head h2 {
+  margin: 0;
+  font-size: 1.1rem;
   font-weight: 600;
-}
-.status-tiles {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 1rem;
-}
-.tile {
-  border: 1px solid #e2e8f0;
-  border-radius: 1.25rem;
-  padding: 1rem;
-  background: #f8fafc;
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-.tile p {
-  font-size: 0.7rem;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: #94a3b8;
-}
-.tile strong {
-  font-size: 1.15rem;
+  letter-spacing: -0.03em;
   color: #0f172a;
 }
-.badge-pill {
-  align-self: flex-start;
+
+.support-copy {
+  margin: 0.5rem 0 0;
+  color: #64748b;
+  line-height: 1.6;
+}
+
+.section-link {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.status-rail {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.rail-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.9rem;
+  padding: 1rem 1.05rem;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 1rem;
+  background: linear-gradient(180deg, rgba(250, 251, 253, 0.92), rgba(248, 250, 252, 0.72));
+  box-shadow: 0 12px 26px -24px rgba(15, 23, 42, 0.14);
+}
+
+.rail-dot {
+  width: 0.75rem;
+  height: 0.75rem;
   border-radius: 999px;
-  padding: 0.25rem 0.9rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  border: 1px solid rgba(15, 23, 42, 0.1);
-  color: #475569;
+  margin-top: 0.28rem;
+  flex-shrink: 0;
 }
-.badge-pill-on {
-  background: rgba(16, 185, 129, 0.18);
-  border-color: rgba(16, 185, 129, 0.45);
-  color: #047857;
+
+.rail-item strong {
+  display: block;
+  margin-bottom: 0.28rem;
+  font-size: 0.92rem;
+  color: #0f172a;
 }
-.badge-pill-warm {
-  background: rgba(249, 115, 22, 0.15);
-  border-color: rgba(251, 146, 60, 0.4);
-  color: #9a3412;
+
+.rail-item p {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: #64748b;
 }
-.badge-pill-cool {
-  background: rgba(14, 165, 233, 0.14);
-  border-color: rgba(56, 189, 248, 0.35);
-  color: #0369a1;
+
+.rail-item--ok .rail-dot {
+  background: #14b8a6;
+  box-shadow: 0 0 0 6px rgba(45, 212, 191, 0.12);
 }
-.badge-pill-muted {
-  background: rgba(148, 163, 184, 0.15);
+
+.rail-item--warn .rail-dot {
+  background: #f97316;
+  box-shadow: 0 0 0 6px rgba(251, 146, 60, 0.14);
 }
-.badge-pill-warn {
-  background: rgba(251, 191, 36, 0.18);
-  border-color: rgba(251, 191, 36, 0.5);
-  color: #92400e;
+
+.rail-item--muted .rail-dot {
+  background: #94a3b8;
+  box-shadow: 0 0 0 6px rgba(148, 163, 184, 0.12);
 }
+
+.operation-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.operation-facts article {
+  border-radius: 1rem;
+  border: 1px solid rgba(226, 232, 240, 0.75);
+  background: rgba(248, 250, 252, 0.7);
+  padding: 0.9rem 1rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.operation-facts span {
+  display: block;
+  margin-bottom: 0.32rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  font-weight: 700;
+}
+
+.operation-facts strong {
+  color: #0f172a;
+}
+
 .action-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem;
+  gap: 0.7rem;
 }
-.action {
-  flex: 1;
-  min-width: 160px;
+
+.action-btn {
+  min-height: 2.75rem;
+  padding: 0.72rem 1rem;
   border-radius: 1rem;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  padding: 0.65rem 1rem;
-  font-weight: 600;
-  text-align: center;
-  background: white;
+  border: 1px solid rgba(203, 213, 225, 0.88);
+  background: rgba(255, 255, 255, 0.92);
   color: #0f172a;
+  font-weight: 700;
+  transition: transform 0.18s ease, box-shadow 0.2s ease;
 }
-.action:disabled {
-  opacity: 0.4;
+
+.action-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 30px -24px rgba(15, 23, 42, 0.35);
+}
+
+.action-btn:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+@media (max-width: 840px) {
+  .operation-facts {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .operations-shell {
+    padding: 1.25rem;
+    border-radius: 1.35rem;
+  }
+
+  .section-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 </style>

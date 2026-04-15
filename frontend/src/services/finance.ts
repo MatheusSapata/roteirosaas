@@ -9,8 +9,11 @@ import type {
   PassengerGroupListResponse,
   PassengerGroupSavePayload,
   PassengerLinkResponse,
+  PaymentPricingResponse,
   PaymentLinkRequest,
   PaymentLinkResponse,
+  PaymentLinkSimulationRequest,
+  PaymentLinkSimulationResponse,
   PosCheckoutRequest,
   ProductCheckoutRequest,
   ProductDetail,
@@ -18,12 +21,16 @@ import type {
   ProductPayload,
   ProductBoardingLocationsPayload,
   InventoryAdjustmentPayload,
+  ProductInventoryRebuildResponse,
   PublicCheckoutResponse,
   SaleDetail,
   SaleListResponse,
 } from "../types/finance";
 
 export const listProducts = () => api.get<ProductListResponse>("/finance/products");
+
+export const rebuildProductInventory = () =>
+  api.post<ProductInventoryRebuildResponse>("/finance/products/rebuild-inventory");
 
 export const getProductDetail = (publicId: string) => api.get<ProductDetail>(`/finance/products/${publicId}`);
 
@@ -48,6 +55,9 @@ export const createPosCheckout = (publicId: string, payload: PosCheckoutRequest)
 
 export const createProductPaymentLink = (publicId: string, payload: PaymentLinkRequest) =>
   api.post<PaymentLinkResponse>(`/finance/products/${publicId}/payment-links`, payload);
+
+export const simulateProductPaymentLink = (publicId: string, payload: PaymentLinkSimulationRequest) =>
+  api.post<PaymentLinkSimulationResponse>(`/finance/products/${publicId}/payment-links/simulation`, payload);
 
 export const listSales = (page = 1, pageSize = 20) =>
   api.get<SaleListResponse>("/finance/sales", { params: { page, page_size: pageSize } });
@@ -74,6 +84,9 @@ export const createProductPublicCheckoutIntent = (payload: ProductCheckoutReques
 
 export const getPublicPaymentLinkDetails = (token: string) =>
   api.get<SaleDetail>(`/public/finance/payment-links/${token}`);
+
+export const getPublicPaymentLinkPricing = (token: string) =>
+  api.get<PaymentPricingResponse>(`/public/finance/payment-links/${token}/pricing`);
 
 export const confirmPublicSale = (
   saleId: number,

@@ -1,6 +1,9 @@
 <template>
-  <div v-if="loading" class="flex min-h-screen items-center justify-center text-slate-600">
-    {{ localize(publicPageCopy.loading) }}
+  <div
+    v-if="loading"
+    class="flex min-h-screen flex-col items-center justify-center bg-black px-6 text-center text-white"
+  >
+    <div class="h-12 w-12 animate-spin rounded-full border-4 border-white/15 border-t-white"></div>
   </div>
   <div
     v-else-if="!pageData"
@@ -56,6 +59,13 @@
     :token="passengerToken"
     @completed="handlePassengerCompleted"
   />
+  <SeatSelectionModal
+    v-if="seatSelectionToken"
+    :token="seatSelectionToken"
+    token-type="sale"
+    :open="seatModalVisible"
+    @close="seatModalVisible = false"
+  />
   <ContractReadyModal
     v-model="contractModalVisible"
     :signature-link="contractSignatureLink"
@@ -84,6 +94,7 @@ import PublicAgencyFooterSection from "../../components/public/PublicAgencyFoote
 import PublicLeadCaptureModal from "../../components/public/PublicLeadCaptureModal.vue";
 import PublicCheckoutModal from "../../components/public/PublicCheckoutModal.vue";
 import PublicPassengerModal from "../../components/public/PublicPassengerModal.vue";
+import SeatSelectionModal from "../../components/public/SeatSelectionModal.vue";
 import ContractReadyModal from "../../components/legal/ContractReadyModal.vue";
 import PublicPhotoSection from "../../components/public/PublicPhotoSection.vue";
 import PublicBiographySection from "../../components/public/PublicBiographySection.vue";
@@ -118,6 +129,8 @@ const checkoutVisible = ref(false);
 const checkoutData = ref<ProductCheckoutPayload | null>(null);
 const passengerModalVisible = ref(false);
 const passengerToken = ref<string | null>(null);
+const seatModalVisible = ref(false);
+const seatSelectionToken = ref<string | null>(null);
 const contractModalVisible = ref(false);
 const contractSignatureLink = ref<string | null>(null);
 const theme = ref<ThemeConfig>({
@@ -475,11 +488,23 @@ const handleCheckoutSucceeded = (payload: { passengerToken: string | null; saleI
   passengerModalVisible.value = !!payload.passengerToken;
 };
 
-const handlePassengerCompleted = (payload?: { contractSignatureLink?: string | null }) => {
+const handlePassengerCompleted = (payload?: {
+  contractSignatureLink?: string | null;
+  contractSignatureToken?: string | null;
+  passengerToken?: string | null;
+  isRoadTrip?: boolean;
+}) => {
   passengerModalVisible.value = false;
   if (payload?.contractSignatureLink) {
     contractSignatureLink.value = payload.contractSignatureLink;
     contractModalVisible.value = true;
+    seatModalVisible.value = false;
+    seatSelectionToken.value = null;
+    return;
+  }
+  if (payload?.isRoadTrip && payload?.passengerToken) {
+    seatSelectionToken.value = payload.passengerToken;
+    seatModalVisible.value = true;
   }
 };
 
@@ -499,6 +524,11 @@ watch(checkoutVisible, value => {
 watch(contractModalVisible, value => {
   if (!value) {
     contractSignatureLink.value = null;
+  }
+});
+watch(seatModalVisible, value => {
+  if (!value) {
+    seatSelectionToken.value = null;
   }
 });
 watch(

@@ -1,148 +1,88 @@
 <template>
   <div class="product-page" v-if="!loading && productReady">
-    <section class="product-hero">
-      <div class="hero-info">
-        <div class="hero-topline">
-          <span class="pill">{{ statusLabel }}</span>
-          <span class="hero-meta">{{ heroMeta }}</span>
+    <ProductDetailHero
+      :title="productForm.name || 'Produto sem nome'"
+      :subtitle="heroSubtitle"
+      :status-label="statusLabel"
+      :status-tone="statusTone"
+      :hero-meta="heroMeta"
+      :trip-date-label="tripDateDisplay"
+      :operation-label="productForm.is_road_trip ? 'Operacao rodoviaria' : 'Produto comercial'"
+      :inventory-label="inventoryStrategyLabel"
+      :image-url="heroImage"
+      :is-create="isCreate"
+      :saving="saving"
+      :disabled="!productPublicId"
+      :status-action-label="productForm.status === 'active' ? 'Desativar' : 'Ativar'"
+      :stats="heroStats"
+      :quick-actions="heroQuickActions"
+      @create="createNewProduct"
+      @sale="startNewSale"
+      @duplicate="duplicateProduct"
+      @toggle-status="toggleProductStatus"
+      @edit="openDrawer('general')"
+      @quick-action="handleQuickAction"
+    />
+
+    <section v-if="packageReports.length" class="package-report-section">
+      <div class="package-report-section__header">
+        <div>
+          <p class="package-report-section__eyebrow">Relatorio por pacote</p>
+          <h2>Pacotes e total consolidado</h2>
         </div>
-        <h1>{{ productForm.name || "Produto sem nome" }}</h1>
-        <p class="hero-description">{{ heroSubtitle }}</p>
-        <div class="hero-meta row">
-          <span>{{ tripDateDisplay }}</span>
-          <span v-if="productForm.is_road_trip">· Operacao rodoviaria</span>
-          <span>· {{ inventoryStrategyLabel }}</span>
-        </div>
-        <div class="hero-actions">
-          <template v-if="isCreate">
-            <button type="button" class="btn-primary" @click="createNewProduct" :disabled="saving">
-              {{ saving ? "Criando..." : "Criar produto" }}
-            </button>
-          </template>
-          <template v-else>
-            <button type="button" class="btn-primary" @click="startNewSale">Nova venda</button>
-            <button type="button" class="btn-ghost" @click="duplicateProduct" :disabled="saving">Duplicar</button>
-            <button type="button" class="btn-ghost" @click="toggleProductStatus" :disabled="saving">
-              {{ productForm.status === "active" ? "Desativar" : "Ativar" }}
-            </button>
-          </template>
-        </div>
-        <div class="hero-metrics row">
-          <span><strong>{{ sidebarMetrics.available }}</strong> vagas livres</span>
-          <span><strong>{{ sidebarMetrics.sold }}</strong> vendidas</span>
-          <span><strong>{{ sidebarMetrics.occupancy.toFixed(0) }}%</strong> ocupacao</span>
+        <div class="package-report-section__total">
+          <span>Total</span>
+          <strong>{{ packageReportsTotal.revenue }}</strong>
+          <small>{{ packageReportsTotal.sold }} venda(s)</small>
         </div>
       </div>
-      <div class="hero-media" v-if="heroImage">
-        <img :src="heroImage" alt="" />
+
+      <div class="package-report-section__list">
+        <article v-for="report in packageReports" :key="report.name" class="package-report-item">
+          <div>
+            <strong>{{ report.name }}</strong>
+            <p>{{ report.occupancyLabel }}</p>
+          </div>
+          <div class="package-report-item__meta">
+            <span>{{ report.sold }} venda(s)</span>
+            <strong>{{ report.revenue }}</strong>
+          </div>
+        </article>
       </div>
     </section>
 
     <div class="product-layout">
       <main class="product-main">
-        <section class="summary-section">
-          <header>
-            <h2>Visao geral</h2>
-            <button type="button" class="text-button" @click="openDrawer('general')">Editar dados</button>
-          </header>
-          <p class="summary-text">{{ summaryText }}</p>
-          <ul class="summary-list">
-            <li>Status: <strong>{{ statusLabel }}</strong></li>
-            <li>Estrategia: <strong>{{ inventoryStrategyLabel }}</strong></li>
-            <li>Overbooking: <strong>{{ productForm.allow_oversell ? "habilitado" : "desativado" }}</strong></li>
-            <li>Rodoviario: <strong>{{ productForm.is_road_trip ? "habilitado" : "desativado" }}</strong></li>
-          </ul>
-        </section>
+        <PackagesSection
+          :variations="productForm.variations"
+          @add="openPackageDrawer()"
+          @edit="openPackageDrawer"
+          @duplicate="duplicateVariation"
+          @remove="removeVariationAt"
+        />
 
-        <section class="status-section">
-          <header>
-            <h2>Operacao em tempo real</h2>
-            <button type="button" class="text-button" @click="openTransportDrawer">Ajustar transporte</button>
-          </header>
-          <ul>
-            <li :class="transportReady ? 'ok' : 'warn'">
-              <span>{{ transportReady ? "Transporte pronto para alocar passageiros." : "Defina layouts e embarques." }}</span>
-            </li>
-            <li :class="productForm.boarding_locations.length ? 'ok' : 'warn'">
-              <span v-if="productForm.boarding_locations.length">
-                {{ productForm.boarding_locations.length }} locais de embarque publicados.
-              </span>
-              <span v-else>Nenhum local de embarque informado.</span>
-            </li>
-            <li :class="hasAccommodation ? 'ok' : 'mute'">
-              <span>{{ hasAccommodation ? "Hospedagem configurada nos pacotes." : "Sem hospedagem ligada aos pacotes." }}</span>
-            </li>
-          </ul>
-        </section>
+        <ProductChildrenRulesSection
+          :variations="productForm.variations"
+          @edit="openChildrenDrawer"
+          @edit-summary="manageChildPolicies"
+        />
 
-        <section class="packages-section">
-          <header>
-            <h2>Pacotes e tarifas</h2>
-            <button type="button" class="text-button" @click="openPackageDrawer()">Adicionar pacote</button>
-          </header>
-          <div class="packages-list">
-            <PackageCard
-              v-for="(variation, index) in productForm.variations"
-              :key="variation.public_id || index"
-              :variation="variation"
-              @edit="openPackageDrawer(variation, index)"
-              @duplicate="duplicateVariation(variation)"
-              @remove="removeVariationAt(index)"
-            />
-          </div>
-        </section>
+        <ProductCheckoutMediaSection
+          :banner-url="productForm.checkout_banner_url"
+          :product-image-url="productForm.checkout_product_image_url"
+          @edit="openMediaDrawer"
+        />
 
-        <section class="child-policy-section">
-          <header>
-            <div>
-              <h2>Politica infantil</h2>
-              <p>{{ childPolicySummary }}</p>
-            </div>
-            <button type="button" class="text-button" @click="manageChildPolicies">Gerenciar faixas</button>
-          </header>
-        </section>
-
-        <section class="checkout-preview-section">
-          <header>
-            <h2>Preview do checkout</h2>
-            <button type="button" class="text-button" @click="openMediaDrawer">Atualizar midia</button>
-          </header>
-          <ProductCheckoutMediaSection
-            :banner-url="productForm.checkout_banner_url"
-            :product-image-url="productForm.checkout_product_image_url"
-            @edit="openMediaDrawer"
-          />
-        </section>
-
-        <section class="contract-section">
-          <header>
-            <h2>Contrato e documentos</h2>
-            <button type="button" class="text-button" @click="openContractDrawer">
-              {{ productForm.template_contract_id ? "Alterar template" : "Vincular template" }}
-            </button>
-          </header>
-          <p>{{ contractSummary }}</p>
-        </section>
+        <ProductContractSection
+          :has-template="!!productForm.template_contract_id"
+          :template-name="currentTemplateName"
+          :template-description="currentTemplateDescription"
+          :disabled="!canEditContracts"
+          @change="openContractDrawer"
+          @view="viewCurrentTemplate"
+          @manage="goToContractManagement"
+        />
       </main>
-
-      <aside class="insight-panel">
-        <div class="panel-row">
-          <h3>Situacao</h3>
-          <p>{{ statusLabel }} · {{ sidebarMetrics.sold }} vendas · {{ sidebarMetrics.available }} vagas livres</p>
-        </div>
-        <div class="panel-row actions">
-          <button type="button" class="btn-primary w-full" @click="startNewSale" :disabled="!productPublicId">
-            Nova venda
-          </button>
-          <button type="button" class="btn-ghost w-full" @click="openPaymentLinkFlow" :disabled="!productPublicId">
-            Link de pagamento
-          </button>
-          <button type="button" class="btn-ghost w-full" @click="openTransportDrawer">Ajustar operacao</button>
-        </div>
-        <div class="panel-row save-status">
-          <SaveStatusIndicator :state="autoSaveState" :updated-at="lastSavedAt" />
-        </div>
-      </aside>
     </div>
 
     <PackageDrawer
@@ -218,11 +158,13 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import SaveStatusIndicator from "../../components/products/SaveStatusIndicator.vue";
-import PackageCard from "../../components/products/PackageCard.vue";
+import ProductDetailHero from "../../components/products/ProductDetailHero.vue";
+import PackagesSection from "../../components/products/PackagesSection.vue";
 import PackageDrawer from "../../components/products/PackageDrawer.vue";
 import ProductGeneralDrawer from "../../components/products/ProductGeneralDrawer.vue";
 import ProductCheckoutMediaSection from "../../components/products/ProductCheckoutMediaSection.vue";
+import ProductChildrenRulesSection from "../../components/products/ProductChildrenRulesSection.vue";
+import ProductContractSection from "../../components/products/ProductContractSection.vue";
 import TransportConfigDrawer from "../../components/products/TransportConfigDrawer.vue";
 import BoardingLocationsDrawer from "../../components/products/BoardingLocationsDrawer.vue";
 import ChildrenRuleDrawer from "../../components/products/ChildrenRuleDrawer.vue";
@@ -279,7 +221,6 @@ type ProductFormState = {
   total_slots: number;
   available_slots: number;
   allow_oversell: boolean;
-  card_interest_mode: "merchant" | "customer";
   template_contract_id: number | null;
   template_contract_name: string | null;
   checkout_banner_url: string | null;
@@ -368,7 +309,7 @@ const defaultVariation = (): ProductVariationForm => ({
   price: 0,
   people_included: 1,
   status: "active",
-  stock_mode: "product",
+  stock_mode: "shared",
   has_accommodation: false,
   accommodation_mode: "private",
   room_capacity: 1,
@@ -392,7 +333,6 @@ const productForm = reactive<ProductFormState>({
   total_slots: 0,
   available_slots: 0,
   allow_oversell: false,
-  card_interest_mode: "merchant",
   template_contract_id: null,
   template_contract_name: null,
   checkout_banner_url: null,
@@ -450,20 +390,15 @@ const heroMeta = computed(() => {
   bits.push(productForm.inventory_strategy === "manual" ? "estoque controlado" : "estoque infinito");
   return bits.join(" · ");
 });
-const summaryText = computed(() =>
-  productForm.description
-    ? productForm.description
-    : "Adicione uma descricao envolvente para apresentar este produto aos clientes.",
-);
 const statusLabel = computed(() => {
   if (productForm.status === "active") return "Ativo";
   if (productForm.status === "archived") return "Arquivado";
   return "Rascunho";
 });
-const statusBadgeClass = computed(() => {
-  if (productForm.status === "active") return "badge-success";
-  if (productForm.status === "archived") return "badge-muted";
-  return "badge-warning";
+const statusTone = computed<"success" | "muted" | "warning">(() => {
+  if (productForm.status === "active") return "success";
+  if (productForm.status === "archived") return "muted";
+  return "warning";
 });
 const inventoryStrategyLabel = computed(() =>
   productForm.inventory_strategy === "unlimited" ? "Estoque ilimitado" : "Estoque manual",
@@ -476,6 +411,13 @@ const tripDateDisplay = computed(() => {
     return productForm.trip_date;
   }
 });
+const formatCurrency = (value: number) =>
+  new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: 2,
+  }).format(value || 0);
+
 const sidebarMetrics = computed(() => {
   const total = Math.max(0, productForm.total_slots);
   const available = Math.max(0, Math.min(productForm.available_slots, total));
@@ -483,6 +425,52 @@ const sidebarMetrics = computed(() => {
   const sold = productForm.variations.reduce((sum, variation) => sum + (variation.sold_slots || 0), 0);
   const occupancy = total > 0 ? ((total - available) / total) * 100 : 0;
   return { total, available, reserved, sold, occupancy };
+});
+const estimatedRevenueTotal = computed(() =>
+  productForm.variations.reduce((sum, variation) => sum + (variation.price || 0) * (variation.sold_slots || 0), 0),
+);
+const occupancyStatLabel = computed(() => {
+  if (productForm.is_road_trip && hasAccommodation.value) return "Assento + quarto";
+  if (productForm.is_road_trip) return "Assentos ocupados";
+  if (hasAccommodation.value) return "Vagas no quarto";
+  return "Ocupacao";
+});
+const heroStats = computed(() => [
+  { label: "Vagas livres", value: sidebarMetrics.value.available },
+  { label: "Vendidas", value: sidebarMetrics.value.sold },
+  { label: occupancyStatLabel.value, value: `${sidebarMetrics.value.occupancy.toFixed(0)}%` },
+  { label: "Faturamento total", value: formatCurrency(estimatedRevenueTotal.value) },
+]);
+const resolvePackageOccupancyLabel = (variation: ProductVariationForm) => {
+  if (productForm.is_road_trip && variation.has_accommodation) return "Ocupa assento no onibus e vaga no quarto";
+  if (productForm.is_road_trip) return "Ocupa assento no onibus";
+  if (variation.has_accommodation) return "Ocupa vaga no quarto";
+  return "Ocupa capacidade do produto";
+};
+const packageReports = computed(() =>
+  productForm.variations.map(variation => ({
+    name: variation.name || "Pacote sem nome",
+    sold: variation.sold_slots || 0,
+    revenue: formatCurrency((variation.price || 0) * (variation.sold_slots || 0)),
+    occupancyLabel: resolvePackageOccupancyLabel(variation),
+  })),
+);
+const packageReportsTotal = computed(() => ({
+  sold: packageReports.value.reduce((sum, variation) => sum + variation.sold, 0),
+  revenue: formatCurrency(estimatedRevenueTotal.value),
+}));
+const heroQuickActions = computed(() => {
+  const items: Array<{ key: "payment-link" | "passengers" | "rooming" | "seatmap"; label: string; disabled: boolean }> = [
+    { key: "payment-link", label: "Link de pagamento", disabled: !productPublicId.value },
+  ];
+  if (productForm.is_road_trip) {
+    items.push({ key: "passengers", label: "Passageiros", disabled: !productPublicId.value });
+    items.push({ key: "seatmap", label: "Mapa de assentos", disabled: !productPublicId.value });
+  }
+  if (hasAccommodation.value) {
+    items.push({ key: "rooming", label: "Rooming list", disabled: !productPublicId.value });
+  }
+  return items;
 });
 const transportReady = computed(() => productForm.is_road_trip && productForm.boarding_locations.length > 0);
 const transportFormValue = computed(() => ({
@@ -521,10 +509,6 @@ const childPolicySummary = computed(() => {
   const more = enabled.length > 3 ? ` +${enabled.length - 3}` : "";
   return `${enabled.length} faixa(s) ativas: ${labels}${more}`;
 });
-const contractSummary = computed(() => {
-  if (!productForm.template_contract_id) return "Nenhum template vinculado · contratos nao sao enviados automaticamente.";
-  return `Template ${currentTemplateName.value || "definido"} enviado automaticamente apos confirmacao.`;
-});
 
 const resetForm = () => {
   productForm.name = "";
@@ -536,7 +520,6 @@ const resetForm = () => {
   productForm.total_slots = 0;
   productForm.available_slots = 0;
   productForm.allow_oversell = false;
-  productForm.card_interest_mode = "merchant";
   productForm.template_contract_id = null;
   productForm.template_contract_name = null;
   productForm.checkout_banner_url = null;
@@ -556,7 +539,6 @@ const mapDetailToForm = (detail: ProductDetail) => {
   productForm.total_slots = detail.total_slots;
   productForm.available_slots = detail.available_slots;
   productForm.allow_oversell = detail.allow_oversell;
-  productForm.card_interest_mode = detail.card_interest_mode || "merchant";
   productForm.template_contract_id = detail.template_contract_id ?? null;
   productForm.template_contract_name = detail.template_contract_name ?? null;
   productForm.checkout_banner_url = detail.checkout_banner_url ?? null;
@@ -596,7 +578,6 @@ const buildPayload = (): ProductPayload => ({
   total_slots: productForm.total_slots,
   available_slots: productForm.available_slots,
   allow_oversell: productForm.allow_oversell,
-  card_interest_mode: productForm.card_interest_mode,
   template_contract_id: productForm.template_contract_id ?? undefined,
   checkout_banner_url: productForm.checkout_banner_url || undefined,
   checkout_product_image_url: productForm.checkout_product_image_url || undefined,
@@ -883,10 +864,10 @@ const openContractDrawer = async () => {
   openDrawer("contract");
 };
 
-const saveContractTemplate = async (templateId: number) => {
+const saveContractTemplate = async (templateId: number | null) => {
   productForm.template_contract_id = templateId;
   const template = contractTemplates.value.find(item => item.id === templateId);
-  productForm.template_contract_name = template?.name || productForm.template_contract_name;
+  productForm.template_contract_name = template?.name || null;
   if (!productPublicId.value) {
     closeDrawer("contract");
     return;
@@ -968,11 +949,7 @@ const openPaymentLinkFlow = () => {
   router.push({ name: "sales", query: { product: productPublicId.value, action: "payment-link" } });
 };
 
-const handleSidebarAction = (action: string) => {
-  if (action === "sale") {
-    startNewSale();
-    return;
-  }
+const handleQuickAction = (action: string) => {
   if (action === "passengers" && productPublicId.value) {
     router.push({ name: "product-passengers", params: { productId: productPublicId.value } });
     return;
@@ -987,10 +964,6 @@ const handleSidebarAction = (action: string) => {
   }
   if (action === "payment-link") {
     openPaymentLinkFlow();
-    return;
-  }
-  if (action === "inventory") {
-    openDrawer("general");
   }
 };
 
@@ -998,6 +971,7 @@ const loadProduct = async () => {
   loading.value = true;
   if (!productPublicId.value) {
     resetForm();
+    drawerState.general = true;
     loading.value = false;
     return;
   }
@@ -1026,6 +1000,83 @@ watch(
   flex-direction: column;
   gap: 2.5rem;
   padding-bottom: 4rem;
+}
+.package-report-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.45rem 1.55rem;
+  border-radius: 1.75rem;
+  background: #fff;
+  border: 1px solid rgba(226, 232, 240, 0.72);
+  box-shadow: 0 6px 24px rgba(15, 23, 42, 0.04);
+}
+.package-report-section__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.package-report-section__eyebrow {
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  font-weight: 700;
+}
+.package-report-section__header h2 {
+  margin: 0;
+  font-size: 1.12rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+.package-report-section__total {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.12rem;
+  text-align: right;
+}
+.package-report-section__total span,
+.package-report-section__total small {
+  color: #94a3b8;
+}
+.package-report-section__total strong {
+  font-size: 1.08rem;
+  color: #0f172a;
+}
+.package-report-section__list {
+  display: grid;
+  gap: 0.75rem;
+}
+.package-report-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(226, 232, 240, 0.78);
+}
+.package-report-item:first-child {
+  padding-top: 0;
+  border-top: none;
+}
+.package-report-item strong {
+  color: #0f172a;
+}
+.package-report-item p,
+.package-report-item__meta span {
+  margin: 0.22rem 0 0;
+  font-size: 0.84rem;
+  color: #64748b;
+}
+.package-report-item__meta {
+  text-align: right;
+}
+.package-report-item__meta strong {
+  display: block;
+  margin-top: 0.2rem;
 }
 .product-hero {
   display: grid;
@@ -1083,11 +1134,6 @@ watch(
 .product-layout {
   display: grid;
   gap: 2rem;
-}
-@media (min-width: 1024px) {
-  .product-layout {
-    grid-template-columns: minmax(0, 3fr) minmax(260px, 1fr);
-  }
 }
 .summary-section,
 .status-section,
@@ -1168,37 +1214,6 @@ watch(
   flex-direction: column;
   gap: 1rem;
 }
-.insight-panel {
-  position: sticky;
-  top: 4rem;
-  align-self: start;
-  border: 1px solid #e2e8f0;
-  border-radius: 1.5rem;
-  padding: 1.25rem;
-  background: white;
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-}
-.panel-row h3 {
-  margin: 0 0 0.25rem;
-  font-size: 1rem;
-  color: #0f172a;
-}
-.panel-row p {
-  margin: 0;
-  color: #475569;
-  font-size: 0.9rem;
-}
-.panel-row.actions {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-.panel-row.save-status {
-  border-top: 1px solid #e2e8f0;
-  padding-top: 0.75rem;
-}
 .btn-primary {
   border-radius: 999px;
   background: #0f172a;
@@ -1248,5 +1263,105 @@ watch(
   justify-content: center;
   color: #475569;
 }
+
+.product-page {
+  gap: 2.35rem;
+}
+
+.product-layout {
+  gap: 2rem;
+}
+
+.product-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.section-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 1.55rem;
+  padding: 1.6rem;
+  border-radius: 1.75rem;
+  background: #fff;
+  border: 1px solid rgba(226, 232, 240, 0.7);
+  box-shadow: 0 6px 24px rgba(15, 23, 42, 0.04);
+  margin-top: 0;
+}
+
+.packages-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.25rem;
+}
+
+.section-kicker {
+  margin: 0 0 0.45rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  font-weight: 700;
+}
+
+.packages-header h2 {
+  margin: 0;
+  font-size: 1.56rem;
+  letter-spacing: -0.045em;
+  color: #0f172a;
+}
+
+.packages-header p:last-child {
+  margin: 0.55rem 0 0;
+  max-width: 42rem;
+  font-size: 0.96rem;
+  color: #64748b;
+  line-height: 1.6;
+}
+
+.section-button {
+  min-height: 2.95rem;
+  padding: 0.78rem 1.15rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(15, 23, 42, 0.05);
+  background: linear-gradient(180deg, #111827, #0f172a);
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 18px 34px -26px rgba(15, 23, 42, 0.45);
+}
+
+@media (max-width: 720px) {
+  .product-page {
+    gap: 1.5rem;
+  }
+
+  .package-report-section {
+    padding: 1.2rem;
+  }
+
+  .package-report-section__header,
+  .package-report-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .package-report-section__total,
+  .package-report-item__meta {
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .section-shell {
+    padding: 1.25rem;
+  }
+
+  .packages-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
 </style>
+
 

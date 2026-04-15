@@ -344,6 +344,7 @@ def _serialize_vehicle(vehicle: Vehicle) -> VehicleOut:
         id=vehicle.id,
         name=vehicle.name,
         plate=vehicle.plate,
+        photo_url=vehicle.photo_url,
         partner_name=vehicle.partner_name,
         layout_id=vehicle.layout_id,
         is_active=vehicle.is_active,
@@ -380,6 +381,7 @@ def create_vehicle(user: User, payload: VehiclePayload, db: Session) -> VehicleO
         agency_id=agency_id,
         name=payload.name.strip(),
         plate=payload.plate.strip() if payload.plate else None,
+        photo_url=payload.photo_url.strip() if payload.photo_url else None,
         partner_name=payload.partner_name.strip() if payload.partner_name else None,
         layout_id=payload.layout_id,
         is_active=payload.is_active,
@@ -395,6 +397,7 @@ def update_vehicle(user: User, vehicle_id: int, payload: VehiclePayload, db: Ses
     vehicle = _vehicle_by_id(vehicle_id, agency_id, db)
     vehicle.name = payload.name.strip()
     vehicle.plate = payload.plate.strip() if payload.plate else None
+    vehicle.photo_url = payload.photo_url.strip() if payload.photo_url else None
     vehicle.partner_name = payload.partner_name.strip() if payload.partner_name else None
     vehicle.layout_id = payload.layout_id
     vehicle.is_active = payload.is_active
@@ -589,7 +592,6 @@ def _apply_trip_vehicle_payloads(
     )
     if ref_layout:
         config.layout_schema_checksum = _layout_schema_checksum(ref_layout.layout_schema)
-    _sync_trip_vehicle_statuses(product.id, db)
 
 def _serialize_trip_config(config: TripTransportConfig, seat_count: int, db: Session) -> TripTransportConfigOut:
     layout_summary = _serialize_layout_summary(config.layout) if config.layout else None
@@ -758,6 +760,21 @@ def _contract_by_token(token: str, db: Session) -> LegalContract:
     return contract
 
 
+def _sale_by_passenger_token(token: str, db: Session) -> Sale:
+    normalized = (token or "").strip()
+    if not normalized:
+        raise HTTPException(status_code=404, detail="Venda nao encontrada.")
+    sale = (
+        db.query(Sale)
+        .options(joinedload(Sale.product), joinedload(Sale.contract))
+        .filter(Sale.passenger_form_token == normalized)
+        .first()
+    )
+    if not sale or not sale.product:
+        raise HTTPException(status_code=404, detail="Venda nao encontrada.")
+    return sale
+
+
 def _passenger_records(product: Product, db: Session) -> list[SalePassenger]:
     return (
         db.query(SalePassenger)
@@ -910,9 +927,11 @@ def get_trip_seat_map(product: Product, db: Session, trip_vehicle_id: int | None
     )
 
 
-def get_post_signature_status(token: str, db: Session) -> SeatPostSignatureStatus:
-    contract = _contract_by_token(token, db)
-    sale = contract.sale
+def _seat_selection_status_for_sale(
+    sale: Sale,
+    contract: LegalContract | None,
+    db: Session,
+) -> SeatPostSignatureStatus:
     product = sale.product
     if not sale or not product:
         raise HTTPException(status_code=404, detail="Venda ou produto nao encontrado.")
@@ -940,7 +959,10 @@ def get_post_signature_status(token: str, db: Session) -> SeatPostSignatureStatu
         .count()
         > 0
     )
-    signature_signed = contract.signature_status == LegalContractSignatureStatus.signed.value
+    requires_signature = contract is not None
+    signature_signed = (
+        contract.signature_status == LegalContractSignatureStatus.signed.value if contract else True
+    )
     can_select = (
         signature_signed
         and payment_confirmed
@@ -963,13 +985,13 @@ def get_post_signature_status(token: str, db: Session) -> SeatPostSignatureStatu
         message = "Finalize o cadastro dos passageiros para escolher os assentos."
     elif not payment_confirmed:
         message = "Pagamento ainda nao confirmado."
-    elif not signature_signed:
+    elif requires_signature and not signature_signed:
         message = "Assinatura ainda nao foi concluida."
     return SeatPostSignatureStatus(
         sale_id=sale.id,
-        contract_id=contract.id,
+        contract_id=contract.id if contract else None,
         product_id=product.id,
-        signature_status=contract.signature_status,
+        signature_status=contract.signature_status if contract else None,
         is_road_trip=config.is_road_trip,
         has_layout=bool((active_vehicle and active_vehicle.layout_id) or config.layout_id),
         seats_generated=seats_generated,
@@ -981,11 +1003,30 @@ def get_post_signature_status(token: str, db: Session) -> SeatPostSignatureStatu
     )
 
 
+def get_post_signature_status(token: str, db: Session) -> SeatPostSignatureStatus:
+    contract = _contract_by_token(token, db)
+    return _seat_selection_status_for_sale(contract.sale, contract, db)
+
+
+def get_post_sale_status(token: str, db: Session) -> SeatPostSignatureStatus:
+    sale = _sale_by_passenger_token(token, db)
+    return _seat_selection_status_for_sale(sale, sale.contract, db)
+
+
 def get_public_seat_selection_context(token: str, db: Session, trip_vehicle_id: int | None = None) -> SeatSelectionContext:
     contract = _contract_by_token(token, db)
     sale = contract.sale
     if not sale:
         raise HTTPException(status_code=404, detail="Venda nao encontrada.")
+    return get_seat_selection_context(sale, db, trip_vehicle_id=trip_vehicle_id)
+
+
+def get_public_seat_selection_context_by_sale(
+    token: str,
+    db: Session,
+    trip_vehicle_id: int | None = None,
+) -> SeatSelectionContext:
+    sale = _sale_by_passenger_token(token, db)
     return get_seat_selection_context(sale, db, trip_vehicle_id=trip_vehicle_id)
 
 
@@ -1009,17 +1050,36 @@ def select_seat_for_signature(
     return get_seat_selection_context(sale, db, trip_vehicle_id=assignment.trip_vehicle_id)
 
 
+def select_seat_for_sale(
+    token: str,
+    payload: SeatAssignmentPayload,
+    db: Session,
+) -> SeatSelectionContext:
+    sale = _sale_by_passenger_token(token, db)
+    if not sale or not sale.product:
+        raise HTTPException(status_code=404, detail="Venda nao encontrada.")
+    _ensure_sale_ready_for_selection(sale, db)
+    assignment = assign_seat_to_passenger(
+        sale.product,
+        payload,
+        actor=SeatAssignmentActor.customer,
+        db=db,
+        expected_sale_id=sale.id,
+    )
+    return get_seat_selection_context(sale, db, trip_vehicle_id=assignment.trip_vehicle_id)
+
+
 def _ensure_sale_ready_for_selection(sale: Sale, db: Session) -> None:
     if sale.payment_status != SalePaymentStatus.paid.value:
         raise HTTPException(status_code=400, detail="Pagamento ainda nao confirmado.")
     if sale.passenger_status != SalePassengerStatus.completed.value:
         raise HTTPException(status_code=400, detail="Preencha todos os passageiros antes de definir assentos.")
-    contract = (
+    contract = sale.contract or (
         db.query(LegalContract)
         .filter(LegalContract.sale_id == sale.id)
         .first()
     )
-    if not contract or contract.signature_status != "signed":
+    if contract and contract.signature_status != "signed":
         raise HTTPException(status_code=400, detail="Contrato nao esta assinado.")
 
 
@@ -1055,7 +1115,11 @@ def get_seat_selection_context(sale: Sale, db: Session, trip_vehicle_id: int | N
     passenger_items = [_passenger_summary(passenger, assignment_map) for passenger in passengers]
     stats = _seat_stats(seats, passenger_items)
     reference = sale.provider_charge_id or sale.product_public_id or str(sale.id)
-    vehicle_options = [vehicle for vehicle in _trip_vehicle_summaries(product.id, db) if vehicle.is_active]
+    vehicle_options = [
+        vehicle
+        for vehicle in _trip_vehicle_summaries(product.id, db)
+        if vehicle.is_active and vehicle.status == TripVehicleStatus.active.value
+    ]
     return SeatSelectionContext(
         product_id=product.id,
         product_name=product.name,

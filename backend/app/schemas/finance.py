@@ -61,6 +61,8 @@ class PosCheckoutRequest(BaseModel):
 
 class PaymentLinkRequest(PosCheckoutRequest):
     expires_in_minutes: int | None = Field(default=60, ge=5, le=1440)
+    interest_mode: str | None = Field(default=None, pattern="^(merchant|customer|client)$")
+    max_installments_no_interest: int | None = Field(default=None, ge=1, le=12)
 
 
 class PublicCheckoutResponse(BaseModel):
@@ -82,6 +84,51 @@ class PaymentConfirmationRequest(BaseModel):
     payment_method: str = "credit_card"
     installments: int = Field(1, ge=1, le=12)
     customer: SaleCustomerPayload | None = None
+
+
+class PaymentInstallmentOption(BaseModel):
+    installments: int = Field(..., ge=1, le=12)
+    installment_amount_cents: int = Field(..., ge=0)
+    total_amount_cents: int = Field(..., ge=0)
+    has_interest: bool = False
+
+
+class PaymentPricingResponse(BaseModel):
+    payment_method: str
+    currency: str
+    base_amount_cents: int = Field(..., ge=0)
+    options: list[PaymentInstallmentOption]
+
+
+class PaymentMethodSummary(BaseModel):
+    payment_method: str
+    currency: str
+    base_amount_cents: int = Field(..., ge=0)
+    total_amount_cents: int = Field(..., ge=0)
+    gateway_fee_estimated_cents: int = Field(..., ge=0)
+    agency_net_amount_cents: int = Field(..., ge=0)
+    installment_amount_cents: int = Field(..., ge=0)
+    installments: int = Field(1, ge=1, le=12)
+
+
+class PaymentLinkSimulationRequest(BaseModel):
+    product_id: str
+    items: list[CheckoutCartItem]
+    customer: SaleCustomerPayload | None = None
+    channel: str = "pos"
+    interest_mode: str | None = Field(default=None, pattern="^(merchant|customer|client)$")
+    max_installments_no_interest: int | None = Field(default=None, ge=1, le=12)
+
+
+class PaymentLinkSimulationResponse(BaseModel):
+    currency: str
+    base_amount_cents: int = Field(..., ge=0)
+    pix: PaymentMethodSummary
+    boleto: PaymentMethodSummary
+    merchant_credit_card: PaymentPricingResponse
+    customer_credit_card: PaymentPricingResponse
+    effective_credit_card: PaymentPricingResponse
+    max_installments_no_interest: int | None = Field(default=None, ge=1, le=12)
 
 
 class SaleStatusSimulationRequest(BaseModel):

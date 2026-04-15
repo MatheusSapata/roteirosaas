@@ -2294,7 +2294,10 @@ if (type === "products") {
     title: "Pacotes disponíveis",
     subtitle: "Conecte seus produtos cadastrados no menu Produtos com carrinho e checkout premium.",
     ctaLabel: "Ir para checkout",
-    accentColor: theme.value.ctaDefaultColor
+    accentColor: theme.value.ctaDefaultColor,
+    installments: 1,
+    interestMode: "merchant",
+    maxInstallmentsNoInterest: 1
   } as ProductsSection);
 }
 

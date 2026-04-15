@@ -56,6 +56,10 @@ class BlimbooAPIClient:
         """Creates a charge on Blimboo using the provided payload."""
         return self._request("POST", "/charges", json=payload)
 
+    def get_pricing(self, payload: dict[str, Any]) -> Any:
+        """Fetches the pricing table for the informed payment scenario."""
+        return self._request("POST", "/pricing", json=payload)
+
     def get_charge(self, charge_id: str) -> Any:
         """Fetch a charge information by its id/reference."""
         return self._request("GET", f"/charges/{charge_id}")

@@ -20,13 +20,24 @@ import type {
 export const getPostSignatureSeatStatus = (token: string) =>
   api.get<SeatPostSignatureStatus>(`/public/transport/signatures/${token}/status`);
 
+export const getPostSaleSeatStatus = (token: string) =>
+  api.get<SeatPostSignatureStatus>(`/public/transport/sales/${token}/status`);
+
 export const getPublicSeatSelectionContext = (token: string, tripVehicleId?: number) =>
   api.get<SeatSelectionContext>(`/public/transport/signatures/${token}/seats`, {
     params: tripVehicleId ? { trip_vehicle_id: tripVehicleId } : undefined,
   });
 
+export const getPublicSaleSeatSelectionContext = (token: string, tripVehicleId?: number) =>
+  api.get<SeatSelectionContext>(`/public/transport/sales/${token}/seats`, {
+    params: tripVehicleId ? { trip_vehicle_id: tripVehicleId } : undefined,
+  });
+
 export const selectSeatForSignature = (token: string, payload: SeatAssignmentPayload) =>
   api.post<SeatSelectionContext>(`/public/transport/signatures/${token}/seats`, payload);
+
+export const selectSeatForSale = (token: string, payload: SeatAssignmentPayload) =>
+  api.post<SeatSelectionContext>(`/public/transport/sales/${token}/seats`, payload);
 
 export const listVehicleLayouts = () => api.get<VehicleLayoutListResponse>("/transport/layouts");
 

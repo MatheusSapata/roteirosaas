@@ -18,6 +18,9 @@ from app.schemas.finance import (
     PassengerLinkResponse,
     PaymentLinkRequest,
     PaymentLinkResponse,
+    PaymentLinkSimulationRequest,
+    PaymentLinkSimulationResponse,
+    PaymentMethodSummary,
     PosCheckoutRequest,
     PublicCheckoutResponse,
     SaleDetail,
@@ -27,6 +30,7 @@ from app.schemas.finance import (
 from app.schemas.products import (
     InventoryAdjustmentPayload,
     ProductDetail,
+    ProductInventoryRebuildResponse,
     ProductListResponse,
     ProductPayload,
     ProductBoardingLocationsPayload,
@@ -45,11 +49,16 @@ from app.schemas.rooming import (
     SwapPassengersPayload,
 )
 from app.services.agency_integrations import (
+    get_agency_blimboo_token,
     get_agency_payment_settings,
     get_user_default_agency_id,
     save_agency_blimboo_token,
 )
 from app.services.finance import (
+    _cart_currency,
+    _cart_total_amount,
+    _lock_product_for_checkout,
+    _resolve_cart_lines,
     create_payment_link_sale,
     create_pos_sale,
     serialize_checkout_response,
@@ -59,6 +68,13 @@ from app.services.finance import (
     simulate_sale_status,
     update_passengers_from_payload,
     sale_requires_passengers,
+)
+from app.services.payments.blimboo_api import BlimbooAPIClient, BlimbooAPIError
+from app.services.payments.blimboo_pricing import money_to_cents
+from app.services.payments.blimboo_pricing import (
+    build_fallback_credit_card_pricing,
+    fetch_credit_card_pricing,
+    merge_credit_card_pricing,
 )
 from app.services.passenger_groups import (
     ensure_passenger_groups,
@@ -72,6 +88,7 @@ from app.services.products import (
     delete_product as delete_product_service,
     get_product_by_public_id,
     list_products_for_user,
+    rebuild_inventory_snapshots_for_user,
     serialize_product_detail,
     update_product,
     update_product_boarding_locations,
@@ -91,6 +108,84 @@ from app.services.rooming import (
 
 router = APIRouter()
 settings = get_settings()
+
+
+def _build_method_summary_fallback(*, payment_method: str, currency: str, base_amount_cents: int) -> PaymentMethodSummary:
+    return PaymentMethodSummary(
+        payment_method=payment_method,
+        currency=currency,
+        base_amount_cents=base_amount_cents,
+        total_amount_cents=base_amount_cents,
+        gateway_fee_estimated_cents=0,
+        agency_net_amount_cents=base_amount_cents,
+        installment_amount_cents=base_amount_cents,
+        installments=1,
+    )
+
+
+def _build_method_summary_from_quote(
+    *,
+    payment_method: str,
+    currency: str,
+    base_amount_cents: int,
+    api_token: str | None,
+) -> PaymentMethodSummary:
+    if not api_token:
+        return _build_method_summary_fallback(
+            payment_method=payment_method,
+            currency=currency,
+            base_amount_cents=base_amount_cents,
+        )
+    try:
+        client = BlimbooAPIClient(settings.blimboo_api_base_url or "", api_token)
+        response = client.quote_payment(
+            {
+                "amount": round(base_amount_cents / 100, 2),
+                "currency": currency,
+                "installments": 1,
+                "payment_method": payment_method,
+            }
+        )
+    except (BlimbooAPIError, ValueError):
+        return _build_method_summary_fallback(
+            payment_method=payment_method,
+            currency=currency,
+            base_amount_cents=base_amount_cents,
+        )
+
+    payload = response.get("data") if isinstance(response, dict) and isinstance(response.get("data"), dict) else response
+    if not isinstance(payload, dict):
+        return _build_method_summary_fallback(
+            payment_method=payment_method,
+            currency=currency,
+            base_amount_cents=base_amount_cents,
+        )
+    quote_payload = payload.get("quote") if isinstance(payload.get("quote"), dict) else payload
+    if not isinstance(quote_payload, dict):
+        return _build_method_summary_fallback(
+            payment_method=payment_method,
+            currency=currency,
+            base_amount_cents=base_amount_cents,
+        )
+
+    gross_amount_cents = money_to_cents(quote_payload.get("gross_amount")) or money_to_cents(quote_payload.get("amount"))
+    gateway_fee_estimated_cents = money_to_cents(quote_payload.get("gateway_fee_estimated")) or 0
+    agency_net_amount_cents = money_to_cents(quote_payload.get("agency_net_amount"))
+
+    total_amount_cents = gross_amount_cents if gross_amount_cents is not None else base_amount_cents
+    if agency_net_amount_cents is None:
+        agency_net_amount_cents = max(0, total_amount_cents - gateway_fee_estimated_cents)
+
+    return PaymentMethodSummary(
+        payment_method=payment_method,
+        currency=currency,
+        base_amount_cents=base_amount_cents,
+        total_amount_cents=total_amount_cents,
+        gateway_fee_estimated_cents=gateway_fee_estimated_cents,
+        agency_net_amount_cents=agency_net_amount_cents,
+        installment_amount_cents=total_amount_cents,
+        installments=1,
+    )
 
 
 def _sale_or_404(db: Session, sale_id: int, user_id: int) -> Sale:
@@ -144,6 +239,14 @@ def list_products_endpoint(
 ) -> ProductListResponse:
     items = list_products_for_user(current_user, db)
     return ProductListResponse(items=items)
+
+
+@router.post("/products/rebuild-inventory", response_model=ProductInventoryRebuildResponse)
+def rebuild_products_inventory_endpoint(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> ProductInventoryRebuildResponse:
+    return rebuild_inventory_snapshots_for_user(current_user, db)
 
 
 @router.post("/products", response_model=ProductDetail)
@@ -246,6 +349,95 @@ def create_payment_link_endpoint(
     base_url = settings.resolved_webapp_base_url.rstrip("/")
     url = f"{base_url}/pagamentos/{link.token}"
     return PaymentLinkResponse(sale_id=link.sale_id, token=link.token, url=url)
+
+
+@router.post("/products/{public_id}/payment-links/simulation", response_model=PaymentLinkSimulationResponse)
+def simulate_payment_link_endpoint(
+    public_id: str,
+    payload: PaymentLinkSimulationRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> PaymentLinkSimulationResponse:
+    if payload.product_id and payload.product_id != public_id:
+        raise HTTPException(status_code=400, detail="Produto invalido.")
+
+    product = _lock_product_for_checkout(db, public_id)
+    if not product.user or product.user.id != current_user.id:
+        raise HTTPException(status_code=403, detail="Acesso negado ao produto.")
+
+    lines = _resolve_cart_lines(db, product, payload.items)
+    currency = _cart_currency(lines).upper()
+    base_amount_cents = _cart_total_amount(lines)
+    max_installments = 12
+    max_no_interest = payload.max_installments_no_interest
+
+    api_token = get_agency_blimboo_token(db, product.agency_id)
+    pix_summary = _build_method_summary_from_quote(
+        payment_method="pix",
+        currency=currency,
+        base_amount_cents=base_amount_cents,
+        api_token=api_token,
+    )
+    boleto_summary = _build_method_summary_from_quote(
+        payment_method="boleto",
+        currency=currency,
+        base_amount_cents=base_amount_cents,
+        api_token=api_token,
+    )
+    merchant_pricing = fetch_credit_card_pricing(
+        api_base_url=settings.blimboo_api_base_url or "",
+        api_token=api_token,
+        currency=currency,
+        base_amount_cents=base_amount_cents,
+        interest_mode="merchant",
+        max_installments=max_installments,
+    )
+    customer_pricing = fetch_credit_card_pricing(
+        api_base_url=settings.blimboo_api_base_url or "",
+        api_token=api_token,
+        currency=currency,
+        base_amount_cents=base_amount_cents,
+        interest_mode="customer",
+        max_installments=max_installments,
+    )
+
+    if payload.interest_mode == "merchant":
+        effective_credit_card = merchant_pricing
+    elif max_no_interest:
+        effective_credit_card = merge_credit_card_pricing(
+            currency=currency,
+            base_amount_cents=base_amount_cents,
+            merchant_pricing=merchant_pricing,
+            customer_pricing=customer_pricing,
+            max_installments=max_installments,
+            max_installments_no_interest=max_no_interest,
+        )
+    else:
+        effective_credit_card = customer_pricing
+
+    if not merchant_pricing.options:
+        merchant_pricing = build_fallback_credit_card_pricing(
+            currency=currency,
+            base_amount_cents=base_amount_cents,
+            max_installments=max_installments,
+        )
+    if not customer_pricing.options:
+        customer_pricing = build_fallback_credit_card_pricing(
+            currency=currency,
+            base_amount_cents=base_amount_cents,
+            max_installments=max_installments,
+        )
+
+    return PaymentLinkSimulationResponse(
+        currency=currency,
+        base_amount_cents=base_amount_cents,
+        pix=pix_summary,
+        boleto=boleto_summary,
+        merchant_credit_card=merchant_pricing,
+        customer_credit_card=customer_pricing,
+        effective_credit_card=effective_credit_card,
+        max_installments_no_interest=max_no_interest,
+    )
 
 
 @router.get("/sales", response_model=SaleListResponse)

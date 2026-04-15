@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import defaultdict
 from typing import Iterable, Sequence
 
 from fastapi import HTTPException
@@ -19,12 +20,13 @@ from app.models.product import (
     ProductVariationStockMode,
     ProductRoom,
 )
-from app.models.sale import Sale
+from app.models.sale import Sale, SalePaymentStatus
 from app.models.sale_item import SaleItem, SaleItemStatus
 from app.models.user import User
 from app.schemas.products import (
     InventoryAdjustmentPayload,
     ProductDetail,
+    ProductInventoryRebuildResponse,
     ProductPayload,
     ProductSummary,
     ProductVariationOut,
@@ -204,6 +206,123 @@ def _serialize_variation(variation: ProductVariation) -> ProductVariationOut:
     )
 
 
+def _inventory_units_for_item(item: SaleItem) -> int:
+    if item.slots_reserved and item.slots_reserved > 0:
+        return int(item.slots_reserved)
+    metadata = item.metadata_json or {}
+    consumed_capacity = metadata.get("consumed_capacity")
+    if isinstance(consumed_capacity, int) and consumed_capacity > 0:
+        return consumed_capacity
+    quantity = max(int(item.quantity or 0), 1)
+    occupancy = max(int(item.occupancy or 0), 1)
+    return occupancy * quantity
+
+
+def _collect_inventory_counters(
+    db: Session,
+    product_ids: Sequence[int],
+) -> tuple[dict[int, dict[str, int]], dict[int, dict[str, int]]]:
+    product_counts: dict[int, dict[str, int]] = defaultdict(lambda: {"reserved": 0, "sold": 0})
+    variation_counts: dict[int, dict[str, int]] = defaultdict(lambda: {"reserved": 0, "sold": 0})
+    if not product_ids:
+        return product_counts, variation_counts
+
+    rows = (
+        db.query(SaleItem, Sale.payment_status)
+        .join(Sale, SaleItem.sale_id == Sale.id)
+        .filter(SaleItem.product_id.in_(product_ids))
+        .all()
+    )
+
+    ignored_item_statuses = {SaleItemStatus.canceled.value, SaleItemStatus.refunded.value}
+    for item, payment_status in rows:
+        if not item.product_id:
+            continue
+        if (item.status or SaleItemStatus.pending.value) in ignored_item_statuses:
+            continue
+
+        units = _inventory_units_for_item(item)
+        if units <= 0:
+            continue
+
+        bucket: str | None = None
+        if payment_status == SalePaymentStatus.paid.value:
+            bucket = "sold"
+        elif payment_status in {SalePaymentStatus.pending.value, SalePaymentStatus.processing.value}:
+            bucket = "reserved"
+        if not bucket:
+            continue
+
+        product_counts[item.product_id][bucket] += units
+        if item.variation_id:
+            variation_counts[item.variation_id][bucket] += units
+
+    return product_counts, variation_counts
+
+
+def _apply_inventory_snapshot(
+    product: Product,
+    product_counts: dict[int, dict[str, int]],
+    variation_counts: dict[int, dict[str, int]],
+) -> bool:
+    changed = False
+    counters = product_counts.get(product.id, {})
+    reserved = max(int(counters.get("reserved", 0)), 0)
+    sold = max(int(counters.get("sold", 0)), 0)
+
+    if product.reserved_slots != reserved:
+        product.reserved_slots = reserved
+        changed = True
+    if product.sold_slots != sold:
+        product.sold_slots = sold
+        changed = True
+
+    for variation in product.variations:
+        counters = variation_counts.get(variation.id, {})
+        variation_reserved = max(int(counters.get("reserved", 0)), 0)
+        variation_sold = max(int(counters.get("sold", 0)), 0)
+
+        if (variation.reserved_slots or 0) != variation_reserved:
+            variation.reserved_slots = variation_reserved
+            changed = True
+        if (variation.sold_slots or 0) != variation_sold:
+            variation.sold_slots = variation_sold
+            changed = True
+
+    return changed
+
+
+def _reconcile_inventory_snapshots(products: Sequence[Product], db: Session) -> int:
+    if not products:
+        return 0
+    product_counts, variation_counts = _collect_inventory_counters(
+        db,
+        [product.id for product in products if product.id is not None],
+    )
+    updated_products = 0
+    for product in products:
+        if _apply_inventory_snapshot(product, product_counts, variation_counts):
+            db.add(product)
+            updated_products += 1
+    if updated_products:
+        db.commit()
+    return updated_products
+
+
+def rebuild_inventory_snapshots_for_user(user: User, db: Session) -> ProductInventoryRebuildResponse:
+    products = (
+        db.query(Product)
+        .filter(Product.user_id == user.id)
+        .options(joinedload(Product.variations), joinedload(Product.template_contract), joinedload(Product.rooms))
+        .all()
+    )
+    updated_products = _reconcile_inventory_snapshots(products, db)
+    return ProductInventoryRebuildResponse(
+        scanned_products=len(products),
+        updated_products=updated_products,
+    )
+
+
 def serialize_product(product: Product) -> ProductSummary:
     return ProductSummary(
         id=product.id,
@@ -250,6 +369,7 @@ def list_products_for_user(user: User, db: Session) -> list[ProductSummary]:
         .order_by(Product.created_at.desc())
         .all()
     )
+    _reconcile_inventory_snapshots(products, db)
     return [serialize_product(record) for record in products]
 
 
@@ -351,7 +471,7 @@ def create_product(payload: ProductPayload, user: User, db: Session) -> Product:
         available_slots=min(payload.available_slots, payload.total_slots),
         allow_oversell=payload.allow_oversell,
         is_road_trip=bool(payload.is_road_trip),
-        card_interest_mode=payload.card_interest_mode,
+        card_interest_mode=payload.card_interest_mode or "merchant",
         checkout_banner_url=_clean_text(payload.checkout_banner_url),
         checkout_product_image_url=_clean_text(payload.checkout_product_image_url),
     )
@@ -380,6 +500,7 @@ def get_product_by_public_id(public_id: str, user: User, db: Session) -> Product
     )
     if not product:
         raise HTTPException(status_code=404, detail="Produto não encontrado.")
+    _reconcile_inventory_snapshots([product], db)
     return product
 
 
@@ -395,7 +516,8 @@ def update_product(product: Product, payload: ProductPayload, user: User, db: Se
     product.available_slots = min(payload.available_slots, payload.total_slots)
     product.allow_oversell = payload.allow_oversell
     product.is_road_trip = bool(payload.is_road_trip)
-    product.card_interest_mode = payload.card_interest_mode
+    if payload.card_interest_mode is not None:
+        product.card_interest_mode = payload.card_interest_mode
     product.checkout_banner_url = _clean_text(payload.checkout_banner_url)
     product.checkout_product_image_url = _clean_text(payload.checkout_product_image_url)
     product.template_contract_id = _resolve_template_contract_id(payload.template_contract_id, user, db)
@@ -482,6 +604,7 @@ def get_public_product(public_id: str, db: Session) -> Product:
     )
     if not product:
         raise HTTPException(status_code=404, detail="Produto não encontrado.")
+    _reconcile_inventory_snapshots([product], db)
     return product
 
 

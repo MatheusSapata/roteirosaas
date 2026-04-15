@@ -5,21 +5,23 @@
       <header class="seat-modal__header" :class="{ 'seat-modal__header--center': !canSelectSeats }">
         <div class="seat-modal__headline">
           <p class="eyebrow" v-if="canSelectSeats">Mapa de assentos</p>
-          <p class="eyebrow" v-else>Reserva confirmada</p>
           <h2 v-if="canSelectSeats">
             Escolha o assento para:
             <span class="seat-modal__focus">{{ activePassenger?.name || "seu passageiro" }}</span>
           </h2>
-                    <h2 v-else class="seat-modal__title">
-            <span class="seat-modal__icon">&#10003;</span>
-            Assentos confirmados
-          </h2>
-          <p class="subtitle">
+          <div v-else class="seat-modal__hero">
+            <div class="seat-modal__hero-icon">&#10003;</div>
+            <div class="seat-modal__hero-copy">
+              <h2 class="seat-modal__hero-title">Reserva confirmada</h2>
+              <p class="seat-modal__hero-subtitle">Seus assentos foram garantidos</p>
+            </div>
+          </div>
+          <p class="subtitle" :class="{ 'subtitle--centered': !canSelectSeats }">
             {{ context?.product_name }} &middot;
             {{ formattedTripDate || "Data a confirmar" }}
           </p>
-          <p v-if="context?.trip_vehicle" class="subtitle subtitle--muted">
-            Onibus liberado: {{ context.trip_vehicle.display_name || "Operacional" }} &middot;
+          <p v-if="context?.trip_vehicle" class="subtitle subtitle--muted" :class="{ 'subtitle--centered': !canSelectSeats }">
+            Ônibus liberado: {{ context.trip_vehicle.display_name || "Operacional" }} &middot;
             {{ context.trip_vehicle.occupied_seats }}/{{ context.trip_vehicle.capacity }} ocupados
           </p>
 
@@ -148,9 +150,14 @@
                       </div>
                       <div class="bus-body">
                        <div
+                          ref="busBodyRef"
                           class="bus-grid"
                           :class="{ 'bus-grid--desktop-horizontal': isDesktop }"
-                          :style="{ gridTemplateColumns: `repeat(${displayDeck.columns || 1}, minmax(40px, 1fr))` }"
+                          :style="{
+                            '--seat-unit': `${seatGridUnit}px`,
+                            '--seat-gap': `${seatGridGap}px`,
+                            gridTemplateColumns: `repeat(${displayDeck.columns || 1}, minmax(${seatGridUnit}px, ${seatGridUnit}px))`,
+                          }"
                         >
                           <div
                             v-for="cell in displayDeck.cells"
@@ -223,31 +230,75 @@
         </div>
 
       <div v-else-if="context" class="seat-modal__content summary-only">
-        <div class="confirmation-card">
-          <h3>Assentos confirmados</h3>
-          <p>
-            {{ context.message || "Sua reserva ja possui assentos confirmados. Confira os detalhes abaixo." }}
-          </p>
+        <section class="summary-hero">
+          <div class="summary-hero__intro summary-hero__intro--plain">
+            <h3>Detalhes da sua reserva</h3>
+            <p>
+              {{ context.message || "Confira abaixo os passageiros e assentos atribuídos." }}
+            </p>
+          </div>
+          <div class="summary-stats">
+            <div class="summary-stat">
+              <span class="summary-stat__label">Passageiros</span>
+              <strong class="summary-stat__value">{{ context.passengers.length }}</strong>
+            </div>
+            <div class="summary-stat" v-if="context.trip_vehicle">
+              <span class="summary-stat__label">Veículo</span>
+              <strong class="summary-stat__value">
+                {{ context.trip_vehicle.display_name || `Veículo ${context.trip_vehicle.order_index}` }}
+              </strong>
+            </div>
+            <div class="summary-stat">
+              <span class="summary-stat__label">Data</span>
+              <strong class="summary-stat__value">{{ formattedTripDate || "A confirmar" }}</strong>
+            </div>
+            <div class="summary-status-desktop">
+              <span class="summary-list-header__status">Todos os assentos garantidos</span>
+            </div>
+          </div>
+        </section>
+
+        <div class="summary-list-header">
+          <p class="summary-list-header__title">Passageiros e assentos</p>
+          <span class="summary-list-header__status summary-list-header__status--mobile">Todos os assentos garantidos</span>
         </div>
+
         <ul class="passenger-summary-list">
           <li
             v-for="passenger in context.passengers"
             :key="passenger.id"
             class="passenger-summary-card"
           >
-            <div>
-              <p class="passenger-name">{{ passenger.name }}</p>
-              <p class="passenger-seat">
-                Assento: {{ passenger.seat_label || passenger.seat_number || "Atribuicao pendente" }}
-              </p>
+            <div class="passenger-summary-card__identity">
+              <div class="passenger-summary-card__avatar">
+                {{ passenger.name.slice(0, 1) }}
+              </div>
+              <div>
+                <p class="passenger-name">{{ passenger.name }}</p>
+                <p class="passenger-seat">Passageiro confirmado</p>
+              </div>
             </div>
-            <span class="status-pill status-pill--success">Confirmado</span>
+            <div class="passenger-summary-card__meta">
+              <span class="passenger-summary-card__seat-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <path
+                    fill="currentColor"
+                    d="M7 18S4 10 4 6s2-4 2-4h1s1 0 1 1s-1 1-1 3s3 4 3 7s-3 5-3 5m5-1c-1 0-4 2.5-4 2.5c-.3.2-.2.5 0 .8c0 0 1 1.8 3 1.8h6c1.1 0 2-.9 2-2v-1c0-1.1-.9-2-2-2h-5Z"
+                  />
+                </svg>
+              </span>
+              <strong class="passenger-summary-card__seat-value">
+                {{ passenger.seat_label || passenger.seat_number || "Pendente" }}
+              </strong>
+            </div>
           </li>
         </ul>
-        <p class="summary-note">
-          Os assentos escolhidos podem sofrer ajustes operacionais pela agencia.
-        </p>
-        <button type="button" class="btn-primary mt-4" @click="handleClose">Finalizar</button>
+        <div class="summary-footer">
+          <p class="summary-note">
+            Os assentos escolhidos podem sofrer ajustes operacionais pela agência.
+          </p>
+          <button type="button" class="btn-primary summary-footer__action" @click="handleClose">Concluir reserva</button>
+        </div>
       </div>
     </div>
   </div>
@@ -257,7 +308,12 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { isAxiosError } from "axios";
 import type { SeatSelectionContext, TripSeatOut, VehicleLayoutCellSchema } from "../../types/transport";
-import { getPublicSeatSelectionContext, selectSeatForSignature } from "../../services/transport";
+import {
+  getPublicSaleSeatSelectionContext,
+  getPublicSeatSelectionContext,
+  selectSeatForSale,
+  selectSeatForSignature,
+} from "../../services/transport";
 
 interface SeatCellEntry {
   key: string;
@@ -277,6 +333,7 @@ type PassengerEntry = SeatSelectionContext["passengers"][number] | null;
 const props = defineProps<{
   token: string;
   open: boolean;
+  tokenType?: "signature" | "sale";
 }>();
 
 const emit = defineEmits<{
@@ -294,6 +351,10 @@ const selectingSeat = ref(false);
 const activeDeckKey = ref<string | null>(null);
 const isDesktop = ref(false);
 const activeVehicleId = ref<number | null>(null);
+const resolvedTokenType = computed(() => props.tokenType || "signature");
+const busBodyRef = ref<HTMLElement | null>(null);
+const mapAvailableWidth = ref(0);
+let busResizeObserver: ResizeObserver | null = null;
 
 const updateViewport = () => {
   if (typeof window === "undefined") return;
@@ -448,6 +509,41 @@ const displayDeck = computed<SeatDeckView>(() => {
   return isDesktop.value ? transposeDeck(currentDeck.value) : currentDeck.value;
 });
 
+const seatGridGap = computed(() => (isDesktop.value ? 8 : 6));
+
+const seatGridUnit = computed(() => {
+  const columns = displayDeck.value?.columns || 1;
+  const fallback = isDesktop.value ? 48 : 36;
+  const min = isDesktop.value ? 34 : 28;
+  const max = isDesktop.value ? 64 : 46;
+  const available = mapAvailableWidth.value;
+
+  if (!available || columns <= 0) return fallback;
+
+  const innerPadding = isDesktop.value ? 24 : 16;
+  const usable = available - innerPadding;
+  const raw = Math.floor((usable - seatGridGap.value * Math.max(columns - 1, 0)) / columns);
+
+  return Math.max(min, Math.min(max, raw || fallback));
+});
+
+const syncBusBodyWidth = () => {
+  if (!busBodyRef.value) return;
+  mapAvailableWidth.value = Math.floor(busBodyRef.value.clientWidth);
+};
+
+const bindBusResizeObserver = () => {
+  if (typeof window === "undefined" || typeof ResizeObserver === "undefined") return;
+  busResizeObserver?.disconnect();
+  busResizeObserver = null;
+  if (!busBodyRef.value) return;
+  busResizeObserver = new ResizeObserver(() => {
+    syncBusBodyWidth();
+  });
+  busResizeObserver.observe(busBodyRef.value);
+  syncBusBodyWidth();
+};
+
 const loadContext = async (vehicleId?: number | null) => {
   if (!props.token || !props.open) return;
 
@@ -455,7 +551,9 @@ const loadContext = async (vehicleId?: number | null) => {
   errorMessage.value = "";
 
   try {
-    const { data } = await getPublicSeatSelectionContext(props.token, vehicleId || undefined);
+    const loader =
+      resolvedTokenType.value === "sale" ? getPublicSaleSeatSelectionContext : getPublicSeatSelectionContext;
+    const { data } = await loader(props.token, vehicleId || undefined);
     context.value = data;
     activeVehicleId.value = data.trip_vehicle?.id || null;
     pendingSelections.value = {};
@@ -638,7 +736,8 @@ const confirmSelection = async () => {
       const passengerId = Number(passengerKey);
       if (!entry?.seat) continue;
 
-      await selectSeatForSignature(props.token, {
+      const selector = resolvedTokenType.value === "sale" ? selectSeatForSale : selectSeatForSignature;
+      await selector(props.token, {
         passenger_id: passengerId,
         seat_id: entry.seat.id,
       });
@@ -646,8 +745,8 @@ const confirmSelection = async () => {
 
     await loadContext(activeVehicleId.value);
     pendingSelections.value = {};
+    selectionError.value = "";
     emit("updated", context.value!);
-    handleClose();
   } catch (error) {
     if (isAxiosError(error)) {
       selectionError.value =
@@ -673,6 +772,13 @@ watch(
   value => {
     if (value) {
       void loadContext(activeVehicleId.value);
+      requestAnimationFrame(() => {
+        bindBusResizeObserver();
+        syncBusBodyWidth();
+      });
+    } else {
+      busResizeObserver?.disconnect();
+      busResizeObserver = null;
     }
   }
 );
@@ -686,21 +792,33 @@ watch(seatDecks, decks => {
   if (!activeDeckKey.value || !decks.some(deck => deck.key === activeDeckKey.value)) {
     activeDeckKey.value = decks[0].key;
   }
+  requestAnimationFrame(() => {
+    bindBusResizeObserver();
+    syncBusBodyWidth();
+  });
 });
 
 onMounted(() => {
   updateViewport();
   window.addEventListener("resize", updateViewport);
+  window.addEventListener("resize", syncBusBodyWidth);
 
   if (props.open) {
     void loadContext(activeVehicleId.value);
+    requestAnimationFrame(() => {
+      bindBusResizeObserver();
+      syncBusBodyWidth();
+    });
   }
 });
 
 onBeforeUnmount(() => {
   if (typeof window !== "undefined") {
     window.removeEventListener("resize", updateViewport);
+    window.removeEventListener("resize", syncBusBodyWidth);
   }
+  busResizeObserver?.disconnect();
+  busResizeObserver = null;
 });
 </script>
 
@@ -738,7 +856,7 @@ onBeforeUnmount(() => {
 }
 
 .seat-modal__panel--compact {
-  max-width: 640px;
+  max-width: 760px;
 }
 
 .seat-modal__header {
@@ -751,7 +869,7 @@ onBeforeUnmount(() => {
 
 .seat-modal__header--center {
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1rem;
   text-align: center;
 }
 
@@ -770,6 +888,46 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+.seat-modal__hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.seat-modal__hero-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 999px;
+  background: #10b981;
+  color: #fff;
+  font-size: 1.65rem;
+  font-weight: 700;
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3);
+}
+
+.seat-modal__hero-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.seat-modal__hero-title {
+  font-size: 24px;
+  line-height: 1.2;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.seat-modal__hero-subtitle {
+  font-size: 15px;
+  color: #475569;
 }
 
 .seat-modal__icon {
@@ -807,6 +965,10 @@ onBeforeUnmount(() => {
 .subtitle {
   font-size: 0.9rem;
   color: #475569;
+}
+
+.subtitle--centered {
+  text-align: center;
 }
 
 .subtitle--muted {
@@ -1077,7 +1239,7 @@ onBeforeUnmount(() => {
   padding: 0 0.25rem 0.5rem;
   display: flex;
   justify-content: center;
-  overflow-x: auto;
+  overflow-x: hidden;
   overflow-y: hidden;
   max-height: none;
   min-width: 0;
@@ -1142,16 +1304,16 @@ onBeforeUnmount(() => {
 
 .bus-grid {
   display: grid;
-  gap: 10px;
+  gap: var(--seat-gap, 8px);
   background: linear-gradient(180deg, #f8fafc, #f1f5f9);
   padding: 1rem;
   border-radius: 28px;
   border: 1px solid #e2e8f0;
   justify-content: center;
   justify-items: center;
-  width: max-content;
-  min-width: unset;
-  max-width: none;
+  width: fit-content;
+  max-width: 100%;
+  min-width: 0;
   margin: 0 auto;
 }
 
@@ -1160,8 +1322,8 @@ onBeforeUnmount(() => {
 }
 
 .seat-cell {
-  width: 42px;
-  height: 46px;
+  width: var(--seat-unit, 40px);
+  height: calc(var(--seat-unit, 40px) + 4px);
   border-radius: 12px;
   display: flex;
   align-items: center;
@@ -1223,8 +1385,8 @@ onBeforeUnmount(() => {
 }
 
 .seat-cell--aisle {
-  width: 24px;
-  height: 40px;
+  width: calc(var(--seat-unit, 40px) * 0.56);
+  height: calc(var(--seat-unit, 40px) + 1px);
   background: linear-gradient(90deg, rgba(148, 163, 184, 0.35), rgba(209, 213, 219, 0.1));
   border-radius: 20px;
   border: none;
@@ -1358,57 +1520,334 @@ onBeforeUnmount(() => {
 .summary-only {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.5rem;
   width: 100%;
+  max-width: 680px;
+  margin: 0 auto;
   align-items: center;
   text-align: center;
 }
 
-.confirmation-card {
+.summary-hero {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  align-items: center;
+  justify-items: center;
+  width: 100%;
+}
+
+.summary-hero__intro {
   padding: 1.5rem;
   border-radius: 24px;
-  background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(14, 165, 233, 0.1));
-  border: 1px solid rgba(34, 197, 94, 0.3);
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  box-shadow: 0 10px 30px rgba(16, 185, 129, 0.08);
+}
+
+.summary-hero__intro--plain {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 0.5rem 0 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  align-items: center;
   text-align: center;
-  width: min(420px, 100%);
+}
+
+.summary-hero__intro h3 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #0f172a;
+  max-width: none;
+}
+
+.summary-hero__intro p {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: #475569;
+  max-width: 60ch;
+}
+
+.summary-hero__inline-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.summary-stats {
+  display: grid;
+  gap: 0.75rem;
+  align-content: start;
+  justify-content: center;
+  width: 100%;
+  max-width: 640px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.summary-stat {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 96px;
+  padding: 1rem 1.1rem;
+  border-radius: 20px;
+  border: 1px solid rgba(226, 232, 240, 0.7);
+  background: #fff;
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.04);
+  transition: all 0.2s ease;
+}
+
+.summary-stat:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+}
+
+.summary-stat__label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.summary-stat__value {
+  margin-top: 0.4rem;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #0f172a;
 }
 
 .summary-note {
   font-size: 0.85rem;
   color: #475569;
   text-align: center;
-}
-
-.summary-only .btn-primary {
-  width: min(320px, 100%);
-  margin: 0 auto;
+  max-width: 52ch;
 }
 
 .passenger-summary-list {
   list-style: none;
   padding: 0;
   margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.9rem;
   width: 100%;
+  max-width: 640px;
+  justify-content: center;
+}
+
+.summary-list-header {
+  display: flex;
   align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  width: 100%;
+  text-align: center;
+}
+
+.summary-list-header__title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.summary-list-header__status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0.4rem 0.85rem;
+  background: #d1fae5;
+  color: #047857;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.summary-list-header__status--mobile {
+  display: inline-flex;
+}
+
+.summary-status-desktop {
+  display: none;
 }
 
 .passenger-summary-card {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  padding: 1rem;
-  border-radius: 18px;
-  border: 1px solid #e2e8f0;
+  gap: 0.85rem;
+  padding: 1rem 1.05rem;
+  border-radius: 20px;
+  border: 1px solid rgba(226, 232, 240, 0.8);
   background: #fff;
-  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.02);
-  width: min(380px, 100%);
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.04);
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.passenger-summary-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+}
+
+.passenger-summary-card__identity {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-width: 0;
+  grid-column: 1 / 3;
+}
+
+.passenger-summary-card__avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  background: #d1fae5;
+  color: #047857;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.passenger-summary-card__meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-self: end;
+  gap: 0.1rem;
+  flex-shrink: 0;
+  min-width: 56px;
+}
+
+.passenger-summary-card__seat-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  color: #94a3b8;
+}
+
+.passenger-summary-card__seat-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.passenger-summary-card__seat-value {
+  font-size: 1.125rem;
+  color: #0f172a;
+  line-height: 1;
 }
 
 .summary-card {
   width: 100%;
+}
+
+.summary-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.9rem;
+  padding-top: 0.5rem;
+}
+
+.summary-footer__action {
+  width: min(360px, 100%);
+}
+
+.summary-footer .btn-primary {
+  padding: 1rem 2rem;
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: 999px;
+  background: #059669;
+  color: #fff;
+  box-shadow: 0 10px 30px rgba(16, 185, 129, 0.25);
+  transition: all 0.2s ease;
+}
+
+.summary-footer .btn-primary:hover {
+  transform: translateY(-1px);
+  background: #047857;
+}
+
+@media (max-width: 1279px) {
+  .summary-stats {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    justify-content: center;
+  }
+}
+
+@media (min-width: 1280px) {
+  .summary-hero__intro--plain {
+    gap: 0.45rem;
+    padding-top: 0;
+  }
+
+  .summary-hero__intro h3 {
+    max-width: none;
+  }
+
+  .summary-hero__intro p {
+    max-width: 60ch;
+  }
+
+  .passenger-summary-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    justify-content: center;
+  }
+
+  .summary-stats {
+    grid-template-columns: repeat(4, minmax(140px, 180px));
+    align-items: end;
+    gap: 1.25rem;
+    padding-bottom: 0.35rem;
+    border-bottom: 1px solid #e2e8f0;
+    justify-content: center;
+  }
+
+  .summary-stat {
+    min-height: auto;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .summary-stat:hover {
+    transform: none;
+    box-shadow: none;
+  }
+
+  .summary-stat__value {
+    margin-top: 0.3rem;
+  }
+
+  .summary-status-desktop {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .summary-list-header {
+    margin-top: 0.1rem;
+  }
+
+  .summary-list-header__status--mobile {
+    display: none;
+  }
 }
 
 .selection-error {
@@ -1536,22 +1975,161 @@ onBeforeUnmount(() => {
   }
 
   .bus-body {
-    justify-content: flex-start;
-    overflow-x: auto;
+    justify-content: center;
+    overflow-x: hidden;
   }
 
   .bus-grid {
-    width: max-content;
+    width: fit-content;
+    max-width: 100%;
+  }
+
+  .summary-list-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .summary-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .passenger-summary-list {
+    grid-template-columns: 1fr;
+  }
+
+  .passenger-summary-card {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+  }
+
+  .passenger-summary-card__identity {
+    grid-column: auto;
+    justify-content: center;
+  }
+
+  .passenger-summary-card__meta {
+    align-items: center;
+    justify-self: center;
+  }
+}
+
+@media (max-width: 767px) {
+  .seat-modal {
+    padding: 0.75rem;
+  }
+
+  .seat-modal__panel {
+    max-height: 94vh;
+    padding: 1rem;
+    border-radius: 22px;
+  }
+
+  .seat-modal__header--center {
+    gap: 0.85rem;
+  }
+
+  .seat-modal__hero {
+    gap: 0.75rem;
+  }
+
+  .seat-modal__hero-icon {
+    width: 56px;
+    height: 56px;
+    font-size: 1.35rem;
+  }
+
+  .seat-modal__hero-title {
+    font-size: 1.35rem;
+  }
+
+  .seat-modal__hero-subtitle {
+    font-size: 0.95rem;
+  }
+
+  .subtitle,
+  .subtitle--muted {
+    font-size: 0.84rem;
+  }
+
+  .summary-only {
+    gap: 1.25rem;
+  }
+
+  .summary-hero__intro--plain {
+    gap: 0.65rem;
+    padding-top: 0.15rem;
+  }
+
+  .summary-hero__intro h3 {
+    max-width: none;
+    font-size: 1.2rem;
+  }
+
+  .summary-hero__intro p {
+    max-width: none;
+    font-size: 0.92rem;
+  }
+
+  .summary-hero__inline-meta {
+    font-size: 0.82rem;
+  }
+
+  .summary-stats {
+    grid-template-columns: 1fr;
+    gap: 0.7rem;
+  }
+
+  .summary-stat {
+    min-height: auto;
+    padding: 0.95rem 1rem;
+  }
+
+  .summary-list-header__status {
+    width: 100%;
+  }
+
+  .passenger-summary-card {
+    padding: 1rem;
+  }
+
+  .passenger-summary-card__avatar {
+    width: 40px;
+    height: 40px;
+  }
+
+  .passenger-name {
+    font-size: 0.98rem;
+  }
+
+  .passenger-seat {
+    font-size: 0.8rem;
+  }
+
+  .passenger-summary-card__seat-value {
+    font-size: 1rem;
+  }
+
+  .summary-footer {
+    padding-top: 0.25rem;
+  }
+
+  .summary-footer__action {
+    width: 100%;
   }
 }
 
 @media (min-width: 1024px) {
   .seat-modal__panel {
-    max-width: 1480px;
+    max-width: 1360px;
+  }
+
+  .seat-modal__panel.seat-modal__panel--compact {
+    max-width: 760px;
   }
 
   .seat-modal__content {
-    grid-template-columns: minmax(250px, 320px) minmax(680px, 1fr) minmax(250px, 320px);
+    grid-template-columns: minmax(230px, 280px) minmax(720px, 1.18fr) minmax(230px, 280px);
     align-items: stretch;
   }
 
@@ -1585,22 +2163,22 @@ onBeforeUnmount(() => {
   }
 
   .bus-grid {
-    width: max-content;
+    width: fit-content;
     max-width: 100%;
     min-width: 0;
     margin: 0 auto;
     padding: 1rem;
-    gap: 10px;
+    gap: var(--seat-gap, 8px);
   }
 
   .seat-cell {
-    width: 40px;
-    height: 44px;
+    width: var(--seat-unit, 40px);
+    height: calc(var(--seat-unit, 40px) + 4px);
   }
 
   .seat-cell--aisle {
-    width: 22px;
-    height: 38px;
+    width: calc(var(--seat-unit, 40px) * 0.56);
+    height: calc(var(--seat-unit, 40px) - 2px);
   }
 }
 

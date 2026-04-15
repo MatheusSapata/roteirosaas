@@ -696,6 +696,8 @@ def create_product_checkout_sale(
     agency_slug: str | None = None,
     source_url: str | None = None,
     acting_user: User | None = None,
+    interest_mode_override: str | None = None,
+    max_installments_no_interest_override: int | None = None,
 ) -> tuple[Sale, PaymentCharge]:
     product = _lock_product_for_checkout(db, product_public_id)
     owner = product.user
@@ -756,6 +758,15 @@ def create_product_checkout_sale(
         metadata=charge_metadata,
     )
 
+    resolved_interest_mode = str(interest_mode_override or product.card_interest_mode or "merchant").lower()
+    if resolved_interest_mode == "client":
+        resolved_interest_mode = "customer"
+    if resolved_interest_mode not in {"merchant", "customer"}:
+        resolved_interest_mode = "merchant"
+    resolved_max_no_interest = int(max_installments_no_interest_override) if max_installments_no_interest_override else None
+    if resolved_max_no_interest is not None:
+        resolved_max_no_interest = max(1, min(resolved_max_no_interest, 12))
+
     sale = Sale(
         user_id=owner.id,
         agency_id=product.agency_id,
@@ -770,7 +781,8 @@ def create_product_checkout_sale(
         passengers_required=passengers_required,
         passenger_status=passenger_status,
         passenger_form_token=passenger_token,
-        interest_mode=product.card_interest_mode or "merchant",
+        interest_mode=resolved_interest_mode,
+        max_installments_no_interest=resolved_max_no_interest,
         metadata_json={
             "channel": channel,
             "source_url": source_url,
@@ -842,6 +854,8 @@ def create_payment_link_sale(
         customer=payload.customer.model_dump(),
         channel="link",
         acting_user=current_user,
+        interest_mode_override=payload.interest_mode,
+        max_installments_no_interest_override=payload.max_installments_no_interest,
     )
     expiration_minutes = expires_in_minutes or payload.expires_in_minutes or 60
     link = SalePaymentLink(
