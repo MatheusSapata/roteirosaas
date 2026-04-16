@@ -215,7 +215,13 @@
 
 
 
-            <div v-if="contactViewMode === 'kanban'" class="flex items-center gap-2">
+            <div v-if="contactViewMode === 'kanban'" class="flex items-center gap-3">
+
+              <div class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">
+
+                {{ filteredContactsCount }} {{ viewCopy.contacts.summary }}
+
+              </div>
 
 
 
@@ -795,7 +801,7 @@
 
 
 
-          <section v-else-if="activeTab === 'contacts'" class="flex h-[calc(100vh-220px)] flex-col gap-6">
+          <section v-else-if="activeTab === 'contacts'" class="flex h-[calc(100vh-280px)] min-h-0 flex-col gap-6">
 
 
 
@@ -2779,11 +2785,10 @@
 
 
 
-  class="kanban-scroll mb-8 overflow-x-auto overflow-y-hidden rounded-3xl border border-slate-100 bg-white/90 p-4 pb-6 shadow-sm dark:border-white/10 dark:bg-white/5"
+  class="kanban-scroll flex-1 min-h-0 overflow-x-auto overflow-y-hidden rounded-3xl border border-slate-100 bg-white/90 p-4 pb-6 shadow-sm dark:border-white/10 dark:bg-white/5"
 
 
 
-  :style="{ height: kanbanContainerHeight }"
 
 
 
@@ -3175,15 +3180,6 @@
 
 
 
-  <div class="mt-2 text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">
-
-
-
-    {{ filteredContactsCount }} {{ viewCopy.contacts.summary }}
-
-
-
-  </div>
 
 
 
@@ -3673,14 +3669,6 @@ const listTableMinHeight = computed(() => {
 
 
 });
-
-
-
-
-
-
-
-const kanbanContainerHeight = computed(() => "calc(100vh - 260px)");
 
 
 

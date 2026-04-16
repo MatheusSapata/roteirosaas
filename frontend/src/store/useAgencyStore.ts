@@ -17,6 +17,7 @@ export interface Agency {
   logo_url?: string | null;
   primary_color?: string | null;
   secondary_color?: string | null;
+  contact_email?: string | null;
   default_page_id?: number | null;
   cta_whatsapp?: string | null;
   social_links?: AgencySocialLink[];

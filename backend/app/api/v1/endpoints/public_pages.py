@@ -56,12 +56,13 @@ def build_agency_profile(agency: Agency) -> dict[str, object]:
     map_embed_url = f"https://www.google.com/maps?q={quote_plus(address_text)}&output=embed" if address_text else None
     cnpj_digits = sanitize_digits(owner.cnpj if owner else None)
     contact_phone = agency.cta_whatsapp or (owner.whatsapp if owner else None)
+    contact_email = (agency.contact_email or "").strip() or (owner.email if owner else None)
 
     return {
         "name": agency.name,
         "cnpj": owner.cnpj if owner else None,
         "cnpj_digits": cnpj_digits or None,
-        "email": owner.email if owner else None,
+        "email": contact_email,
         "phone": contact_phone,
         "social_links": [{"network": link.network, "url": link.url} for link in agency.social_links or []],
         "address": address,

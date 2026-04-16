@@ -1,11 +1,14 @@
 <template>
-  <div class="space-y-2">
-    <label v-if="label" class="text-sm font-semibold text-slate-600">{{ label }}</label>
-    <div class="rounded-xl border border-slate-200 p-3">
+  <div class="flex h-full flex-col gap-2">
+    <div v-if="label" class="space-y-1">
+      <label class="text-sm font-semibold text-slate-600">{{ label }}</label>
+      <p v-if="labelDescription" class="text-xs text-slate-500">{{ labelDescription }}</p>
+    </div>
+    <div class="flex flex-1 flex-col rounded-xl border border-slate-200 p-3">
       <div v-if="previewUrl" class="mb-3">
         <div
           v-if="supportsRounded"
-          class="flex items-center justify-center"
+          class="flex w-full items-center justify-center"
         >
           <div :style="previewRoundedBoxStyle">
             <img :src="previewUrl" alt="Pré-visualização" :style="previewRoundedImageStyle" />
@@ -13,9 +16,9 @@
         </div>
         <div
           v-else
-          class="overflow-hidden rounded-lg border border-slate-200 bg-slate-50"
+          class="flex max-h-[320px] min-h-[220px] w-full items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50"
         >
-          <img :src="previewUrl" alt="Pré-visualização" class="h-40 w-full object-cover" />
+          <img :src="previewUrl" alt="Pré-visualização" class="h-full min-h-[220px] w-full object-cover" />
         </div>
       </div>
       <div class="flex flex-wrap items-center gap-3">
@@ -193,6 +196,7 @@ import { sectionUploadGuardKey } from "../sectionUploadGuard";
 const props = defineProps<{
   modelValue?: string | null;
   label?: string;
+  labelDescription?: string;
   hint?: string;
   enableCrop?: boolean;
   cropAspect?: number;

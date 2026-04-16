@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="agency-settings w-full space-y-6 px-4 py-8 md:px-8">
     <div>
       <p class="text-sm uppercase tracking-wide text-slate-500">{{ viewCopy.hero.eyebrow }}</p>
@@ -7,7 +7,7 @@
 
     <div class="rounded-2xl bg-white p-6 shadow-md">
       <form class="space-y-4" @submit.prevent="save">
-        <div class="grid gap-4 md:grid-cols-2">
+        <div class="grid gap-4 md:grid-cols-3">
           <div class="md:pl-2">
             <label class="text-sm font-semibold text-slate-600">{{ viewCopy.general.nameLabel }}</label>
             <input v-model="form.name" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
@@ -19,6 +19,27 @@
               <input v-model="form.slug" class="w-full rounded-lg border border-slate-200 px-3 py-2" />
               <p class="text-xs text-slate-500">
                 {{ viewCopy.general.slugHint }}
+              </p>
+            </div>
+          </div>
+
+          <div class="space-y-2 md:pl-2">
+            <label class="text-sm font-semibold text-slate-600">{{ viewCopy.theme.primaryColorLabel }}</label>
+            <div class="space-y-2">
+              <div class="flex items-center gap-3">
+                <input
+                  type="color"
+                  v-model="form.primary_color"
+                  class="h-10 w-12 cursor-pointer rounded border border-slate-200 bg-white"
+                />
+                <input
+                  v-model="form.primary_color"
+                  :placeholder="viewCopy.theme.primaryColorPlaceholder"
+                  class="flex-1 rounded-lg border border-slate-200 px-3 py-2"
+                />
+              </div>
+              <p class="text-xs text-slate-500">
+                {{ viewCopy.theme.primaryColorHint }}
               </p>
             </div>
           </div>
@@ -62,105 +83,21 @@
           </div>
 
           <div class="space-y-2 md:pl-2">
-            <label class="text-sm font-semibold text-slate-600">{{ viewCopy.theme.primaryColorLabel }}</label>
+            <label class="text-sm font-semibold text-slate-600">{{ viewCopy.contact.emailLabel }}</label>
             <div class="space-y-2">
-              <div class="flex items-center gap-3">
-                <input
-                  type="color"
-                  v-model="form.primary_color"
-                  class="h-10 w-12 cursor-pointer rounded border border-slate-200 bg-white"
-                />
-                <input
-                  v-model="form.primary_color"
-                  :placeholder="viewCopy.theme.primaryColorPlaceholder"
-                  class="flex-1 rounded-lg border border-slate-200 px-3 py-2"
-                />
-              </div>
+              <input
+                v-model="form.contact_email"
+                type="email"
+                :placeholder="viewCopy.contact.emailPlaceholder"
+                class="w-full rounded-lg border border-slate-200 px-3 py-2"
+              />
               <p class="text-xs text-slate-500">
-                {{ viewCopy.theme.primaryColorHint }}
+                {{ viewCopy.contact.emailHelper }}
               </p>
             </div>
           </div>
         </div>
 
-        <div class="grid gap-6 lg:grid-cols-2">
-          <div class="md:pl-2">
-            <ImageUploadField
-              class="agency-logo-upload"
-              v-model="form.logo_url"
-              :label="viewCopy.logoField.label"
-              :hint="viewCopy.logoField.hint"
-              :enable-crop="true"
-              :editor-title="viewCopy.logoField.editorTitle"
-            />
-          </div>
-          <div class="space-y-4 md:pl-2">
-            <div class="space-y-1 md:pl-0">
-              <label class="text-sm font-semibold text-slate-600">{{ viewCopy.socialSection.label }}</label>
-              <p class="text-xs text-slate-500">
-                {{ viewCopy.socialSection.helper }}
-              </p>
-            </div>
-
-            <div class="space-y-4">
-              <div class="space-y-3">
-                <div
-                  v-if="!form.social_links.length"
-                  class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500 dark:border-white/20 dark:bg-transparent dark:text-white/70"
-                >
-                  {{ viewCopy.socialSection.empty }}
-                </div>
-
-                <div
-                  v-for="(social, index) in form.social_links"
-                  :key="social.id ?? `social-${index}`"
-                  class="space-y-3 rounded-2xl border border-slate-200/80 bg-slate-50/60 p-4 dark:border-white/10 dark:bg-transparent"
-                >
-                  <div class="flex flex-col gap-3 md:flex-row md:items-end">
-                    <label class="flex-1 text-xs font-semibold text-slate-500 dark:text-white/70">
-                      {{ viewCopy.socialSection.networkLabel }}
-                      <select
-                        v-model="social.network"
-                        class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-white/15 dark:bg-[#05070f] dark:text-white"
-                      >
-                        <option v-for="option in socialNetworkOptions" :key="option.value" :value="option.value">
-                          {{ option.label }}
-                        </option>
-                      </select>
-                    </label>
-
-                    <label class="flex-[2] text-xs font-semibold text-slate-500 dark:text-white/70">
-                      {{ viewCopy.socialSection.linkLabel }}
-                      <input
-                        v-model="social.url"
-                        type="url"
-                        :placeholder="socialNetworkPlaceholders[social.network]"
-                        class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-white/15 dark:bg-[#05070f] dark:text-white dark:placeholder-white/60"
-                      />
-                    </label>
-
-                    <button
-                      type="button"
-                      class="text-sm font-semibold text-slate-500 hover:text-red-500 dark:text-white/80 dark:hover:text-red-400"
-                      @click="removeSocialLink(index)"
-                    >
-                      {{ viewCopy.socialSection.removeButton }}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                class="flex items-center gap-2 rounded-full bg-[#2F9E49] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#26843a]"
-                @click="addSocialLink"
-              >
-                <span class="text-lg leading-none">+</span>
-                {{ viewCopy.socialSection.addButton }}
-              </button>
-            </div>
-          </div>
-        </div>
         <div class="grid gap-4 md:grid-cols-2">
           <label class="space-y-1 text-xs font-semibold text-slate-500 md:pl-2">
             {{ viewCopy.address.cepLabel }}
@@ -242,6 +179,86 @@
             </label>
           </div>
         </div>
+        <div class="grid items-stretch gap-6 lg:grid-cols-2">
+          <div class="flex h-full flex-col md:pl-2">
+            <ImageUploadField
+              class="agency-logo-upload h-full"
+              v-model="form.logo_url"
+              :label="viewCopy.logoField.label"
+              :label-description="viewCopy.logoField.labelDescription"
+              :enable-crop="true"
+              :editor-title="viewCopy.logoField.editorTitle"
+            />
+          </div>
+          <div class="space-y-4 md:pl-2">
+            <div class="flex items-start justify-between gap-4 md:pl-0">
+              <div class="space-y-1">
+                <label class="text-sm font-semibold text-slate-600">{{ viewCopy.socialSection.label }}</label>
+                <p class="text-xs text-slate-500">
+                  {{ viewCopy.socialSection.helper }}
+                </p>
+              </div>
+              <button
+                type="button"
+                class="flex shrink-0 items-center gap-2 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark"
+                @click="addSocialLink"
+              >
+                <span class="text-lg leading-none">+</span>
+                {{ viewCopy.socialSection.addButton }}
+              </button>
+            </div>
+
+            <div class="space-y-4">
+              <div class="space-y-3">
+                <div
+                  v-if="!form.social_links.length"
+                  class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500 dark:border-white/20 dark:bg-transparent dark:text-white/70"
+                >
+                  {{ viewCopy.socialSection.empty }}
+                </div>
+
+                <div
+                  v-for="(social, index) in form.social_links"
+                  :key="social.id ?? `social-${index}`"
+                  class="space-y-3 rounded-2xl border border-slate-200/80 bg-slate-50/60 p-4 dark:border-white/10 dark:bg-transparent"
+                >
+                  <div class="flex flex-col gap-3 md:flex-row md:items-end">
+                    <label class="flex-1 text-xs font-semibold text-slate-500 dark:text-white/70">
+                      {{ viewCopy.socialSection.networkLabel }}
+                      <select
+                        v-model="social.network"
+                        class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-white/15 dark:bg-[#05070f] dark:text-white"
+                      >
+                        <option v-for="option in socialNetworkOptions" :key="option.value" :value="option.value">
+                          {{ option.label }}
+                        </option>
+                      </select>
+                    </label>
+
+                    <label class="flex-[2] text-xs font-semibold text-slate-500 dark:text-white/70">
+                      {{ viewCopy.socialSection.linkLabel }}
+                      <input
+                        v-model="social.url"
+                        type="url"
+                        class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-white/15 dark:bg-[#05070f] dark:text-white dark:placeholder-white/60"
+                      />
+                    </label>
+
+                    <button
+                      type="button"
+                      class="text-sm font-semibold text-slate-500 hover:text-red-500 dark:text-white/80 dark:hover:text-red-400"
+                      @click="removeSocialLink(index)"
+                    >
+                      {{ viewCopy.socialSection.removeButton }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+        
 
         <div class="flex items-center gap-3 pt-2 md:pl-2">
           <button
@@ -299,6 +316,12 @@ const viewCopy = {
       pt: "Usamos esse número como padrão para os links de WhatsApp nos CTAs.",
       es: "Usamos este número como predeterminado para los enlaces de WhatsApp en los CTAs."
     }),
+    emailLabel: t({ pt: "Email da agência", es: "Email de la agencia" }),
+    emailPlaceholder: t({ pt: "contato@suaagencia.com", es: "contacto@tuagencia.com" }),
+    emailHelper: t({
+      pt: "Esse email aparecerá no contato da seção de rodapé das páginas.",
+      es: "Este correo aparecerá en el contacto de la sección de pie de página de las páginas."
+    }),
     phoneSaved: t({ pt: "Telefone salvo para os CTAs.", es: "Teléfono guardado para los CTAs." }),
     phoneRemoved: t({ pt: "Telefone removido dos CTAs.", es: "Teléfono quitado de los CTAs." }),
     invalidPhone: t({ pt: "Informe um telefone válido para os CTAs.", es: "Ingresa un teléfono válido para los CTAs." })
@@ -313,6 +336,10 @@ const viewCopy = {
   },
   logoField: {
     label: t({ pt: "Logo da agência", es: "Logotipo de la agencia" }),
+    labelDescription: t({
+      pt: "Esta logo aparecerá automaticamente em todas as suas páginas",
+      es: "Este logotipo aparecerá automáticamente en todas tus páginas"
+    }),
     hint: t({
       pt: "Envie o arquivo da sua marca. Ela aparece no editor e nas páginas.",
       es: "Sube el archivo de tu marca. Aparece en el editor y en las páginas."
@@ -398,13 +425,6 @@ const socialNetworkOptions = [
 
 type SocialNetworkValue = (typeof socialNetworkOptions)[number]["value"];
 
-const socialNetworkPlaceholders: Record<SocialNetworkValue, string> = {
-  instagram: viewCopy.socialSection.placeholders.instagram,
-  facebook: viewCopy.socialSection.placeholders.facebook,
-  youtube: viewCopy.socialSection.placeholders.youtube,
-  tiktok: viewCopy.socialSection.placeholders.tiktok
-};
-
 type SocialLinkFormEntry = {
   id?: number;
   network: SocialNetworkValue;
@@ -425,6 +445,12 @@ const normalizeSocialNetwork = (value?: string): SocialNetworkValue => {
   return isValidSocialNetwork(value) ? value : socialNetworkOptions[0].value;
 };
 
+const createDefaultSocialLinks = (): SocialLinkFormEntry[] =>
+  socialNetworkOptions.map(option => ({
+    network: option.value,
+    url: ""
+  }));
+
 const form = reactive({
   id: 0,
   name: "",
@@ -432,8 +458,9 @@ const form = reactive({
   logo_url: "",
   primary_color: colorPalette[0],
   secondary_color: "",
+  contact_email: "",
   cta_whatsapp: "",
-  social_links: [] as SocialLinkFormEntry[]
+  social_links: createDefaultSocialLinks()
 });
 
 const hasAgency = ref(false);
@@ -518,7 +545,7 @@ const createEmptySocialLink = (): SocialLinkFormEntry => ({
 });
 
 const toFormSocialLinks = (links?: RawSocialLink[]) => {
-  if (!links?.length) return [];
+  if (!links?.length) return createDefaultSocialLinks();
   return links.map(link => ({
     id: link.id,
     network: normalizeSocialNetwork(link.network),
@@ -594,6 +621,7 @@ const syncFormWithCurrent = () => {
   setFormSocialLinks(agency?.social_links);
 
   if (!form.primary_color) form.primary_color = colorPalette[0];
+  if (!form.contact_email) form.contact_email = "";
 
   const fallbackPhone = form.cta_whatsapp || authStore.user?.whatsapp || "";
   const fallbackDigits = fallbackPhone.replace(/\D/g, "");
@@ -695,6 +723,7 @@ const save = async () => {
     logo_url: form.logo_url,
     primary_color: form.primary_color,
     secondary_color: form.secondary_color,
+    contact_email: sanitizeText(form.contact_email),
     cta_whatsapp: phoneDigits,
     social_links: buildSocialLinksPayload()
   };

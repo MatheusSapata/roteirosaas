@@ -1795,12 +1795,13 @@ const buildAgencyProfile = () => {
   const addressText = buildAddressText(address);
   const cnpjDigits = sanitizeDigits(user?.cnpj || "");
   const phone = (agency?.cta_whatsapp || user?.whatsapp || "").trim();
+  const email = (agency?.contact_email || user?.email || "").trim();
 
   return {
     name: agency?.name || user?.name || "",
     cnpj: user?.cnpj || "",
     cnpj_digits: cnpjDigits || undefined,
-    email: user?.email || "",
+    email,
     phone,
     social_links: agency?.social_links || [],
     address,
