@@ -107,7 +107,7 @@
               </p>
             </div>
 
-            <div class="space-y-2">
+            <div v-if="addressText" class="space-y-2">
               <p
                 :class="[
                   'text-xs font-semibold uppercase tracking-widest',
@@ -117,17 +117,11 @@
                 {{ addressHeadingText }}
               </p>
 
-              <template v-if="addressText">
-                <p :class="['font-medium', textPrimaryClass]">
-                  {{ addressLine1 }}
-                </p>
-                <p v-if="addressLine2" :class="textSecondaryClass">
-                  {{ addressLine2 }}
-                </p>
-              </template>
-
-              <p v-else :class="textSecondaryClass">
-                Informe CEP e endereço completos nas configurações.
+              <p :class="['font-medium', textPrimaryClass]">
+                {{ addressLine1 }}
+              </p>
+              <p v-if="addressLine2" :class="textSecondaryClass">
+                {{ addressLine2 }}
               </p>
             </div>
           </div>
@@ -365,10 +359,16 @@ const SOCIAL_LABELS: Record<AgencySocialNetwork, LocalizedString> = {
 const socialLinks = computed(() => {
   const links = Array.isArray(agencyProfile.value?.social_links) ? agencyProfile.value.social_links : [];
   return links
-    .filter(link => typeof link?.network === "string" && typeof link?.url === "string")
+    .filter(
+      link =>
+        typeof link?.network === "string" &&
+        typeof link?.url === "string" &&
+        link.url.trim().length > 0
+    )
     .map(link => ({
       ...link,
       network: link.network as AgencySocialNetwork,
+      url: link.url.trim(),
       iconPath: SOCIAL_ICON_MAP[link.network as AgencySocialNetwork],
       label: localize(SOCIAL_LABELS[link.network as AgencySocialNetwork])
     }))

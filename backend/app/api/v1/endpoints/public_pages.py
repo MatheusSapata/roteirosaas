@@ -61,7 +61,7 @@ def build_agency_profile(agency: Agency) -> dict[str, object]:
         "name": agency.name,
         "cnpj": owner.cnpj if owner else None,
         "cnpj_digits": cnpj_digits or None,
-        "email": owner.email if owner else None,
+        "email": agency.contact_email or None,
         "phone": contact_phone,
         "social_links": [{"network": link.network, "url": link.url} for link in agency.social_links or []],
         "address": address,

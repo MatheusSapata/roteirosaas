@@ -1800,7 +1800,7 @@ const buildAgencyProfile = () => {
     name: agency?.name || user?.name || "",
     cnpj: user?.cnpj || "",
     cnpj_digits: cnpjDigits || undefined,
-    email: user?.email || "",
+    email: agency?.contact_email || "",
     phone,
     social_links: agency?.social_links || [],
     address,

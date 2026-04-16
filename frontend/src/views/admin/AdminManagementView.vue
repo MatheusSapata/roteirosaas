@@ -59,7 +59,7 @@
             v-model="customStartDate"
             class="rounded-lg border border-slate-200 px-3 py-1 text-sm text-slate-700"
           />
-          <span class="font-semibold">at├®</span>
+          <span class="font-semibold">até</span>
           <input
             type="date"
             v-model="customEndDate"
@@ -276,7 +276,7 @@
             v-if="onlineSessionsLoading && !onlineSessions.length"
             class="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500 dark:border-white/15 dark:text-white/70"
           >
-            Carregando sess├Áes ativas...
+            Carregando sessões ativas...
           </div>
           <div
             v-else-if="onlineSessionsError"
@@ -288,7 +288,7 @@
             v-else-if="!onlineSessions.length"
             class="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500 dark:border-white/15 dark:text-white/70"
           >
-            Nenhum usuário est├í online neste momento.
+            Nenhum usuário está online neste momento.
           </div>
           <div v-else class="grid gap-4 lg:grid-cols-2">
             <article
@@ -322,7 +322,7 @@
                   </p>
                 </div>
                 <div>
-                  <p class="text-[11px] uppercase tracking-[0.2em] text-slate-400 dark:text-white/50">├Ültima atividade</p>
+                  <p class="text-[11px] uppercase tracking-[0.2em] text-slate-400 dark:text-white/50">Última atividade</p>
                   <p class="font-semibold">
                     {{ formatRelativeMoment(session.last_seen_at) }} há {{ formatClock(session.last_seen_at) }}
                   </p>
@@ -448,6 +448,25 @@
                           </button>
                         </div>
                       </template>
+                      <template v-else-if="column.key === 'whatsapp'">
+                        <p class="text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-400">
+                          Filtrar WhatsApp
+                        </p>
+                        <input
+                          v-model="userFilters.whatsapp"
+                          type="text"
+                          placeholder="Telefone"
+                          class="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-emerald-500 focus:outline-none"
+                        />
+                        <div class="mt-3 flex justify-end gap-4 text-[10px] font-semibold uppercase tracking-[0.2em]">
+                          <button class="text-slate-400 hover:text-slate-600" type="button" @click="clearColumnFilter(column.key)">
+                            Limpar
+                          </button>
+                          <button class="text-emerald-600 hover:text-emerald-500" type="button" @click="toggleColumnFilter(column.key)">
+                            Fechar
+                          </button>
+                        </div>
+                      </template>
                       <template v-else-if="column.key === 'agency_name'">
                         <p class="text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-400">
                           Agências
@@ -528,7 +547,7 @@
                           <input
                             v-model="userFilters.activeMax"
                             type="number"
-                            placeholder="M├íx"
+                            placeholder="Máx"
                             class="w-1/2 rounded-xl border border-slate-200 px-2 py-1 focus:border-emerald-500 focus:outline-none"
                           />
                         </div>
@@ -555,7 +574,7 @@
                           <input
                             v-model="userFilters.draftMax"
                             type="number"
-                            placeholder="M├íx"
+                            placeholder="Máx"
                             class="w-1/2 rounded-xl border border-slate-200 px-2 py-1 focus:border-emerald-500 focus:outline-none"
                           />
                         </div>
@@ -651,6 +670,10 @@
                   </td>
 
                   <td class="px-3 py-3">
+                    <span class="text-slate-800">{{ u.whatsapp || '--' }}</span>
+                  </td>
+
+                  <td class="px-3 py-3">
                     <span class="text-slate-800">{{ u.agency_name || 'Sem agência' }}</span>
                   </td>
 
@@ -668,7 +691,7 @@
                       v-if="u.trial_plan"
                       class="ml-2 inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-700"
                     >
-                      Trial at├® {{ formatDate(u.trial_ends_at) }}
+                      Trial até {{ formatDate(u.trial_ends_at) }}
                     </span>
                   </td>
 
@@ -677,7 +700,7 @@
                 </tr>
 
                 <tr v-if="expandedUser === u.id">
-                  <td colspan="7" class="px-3 pb-4">
+                  <td colspan="8" class="px-3 pb-4">
                     <div
                       class="rounded-2xl border border-slate-100 bg-slate-50/70 p-4 text-sm text-slate-800 shadow-inner dark:border-white/10 dark:bg-[#202020] dark:text-white dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]"
                     >
@@ -691,9 +714,9 @@
 
                         <div>
                           <p class="text-xs uppercase tracking-[0.3em] text-slate-500 dark:text-white/50">Agência</p>
-                          <p class="mt-1 font-semibold">{{ u.agency_name || 'N├úo vinculada' }}</p>
+                          <p class="mt-1 font-semibold">{{ u.agency_name || 'Não vinculada' }}</p>
                           <p class="text-xs text-slate-500 dark:text-white/60">
-                            {{ u.active_pages ?? 0 }} páginas publicadas ┬À Plano {{ planLabel(u.plan) }}
+                            {{ u.active_pages ?? 0 }} páginas publicadas • Plano {{ planLabel(u.plan) }}
                           </p>
                         </div>
                       </div>
@@ -728,7 +751,7 @@
                           v-else
                           class="mt-2 rounded-2xl border border-dashed border-slate-200 px-3 py-3 text-center text-xs text-slate-500 dark:border-white/10 dark:text-white/60"
                         >
-                          Nenhuma informa├º├úo de UTM registrada.
+                          Nenhuma informação de UTM registrada.
                         </p>
                       </div>
 
@@ -798,9 +821,9 @@
                               <tr>
                                 <th class="px-3 py-2">Título</th>
                                 <th class="px-3 py-2">Slug</th>
-                                <th class="px-3 py-2 text-right">Visualiza├º├Áes</th>
+                                <th class="px-3 py-2 text-right">Visualizações</th>
                                 <th class="px-3 py-2 text-right">Cliques CTA</th>
-                                <th class="px-3 py-2 text-right">A├º├Áes</th>
+                                <th class="px-3 py-2 text-right">Ações</th>
                               </tr>
                             </thead>
 
@@ -853,7 +876,7 @@
                               <tr>
                                 <th class="px-3 py-2">Título</th>
                                 <th class="px-3 py-2">Slug</th>
-                                <th class="px-3 py-2 text-right">A├º├Áes</th>
+                                <th class="px-3 py-2 text-right">Ações</th>
                               </tr>
                             </thead>
 
@@ -1078,7 +1101,7 @@
                   v-model="lessonForm.level"
                   type="text"
                   class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 focus:border-brand focus:ring-brand"
-                  placeholder="Fundamentos, Estrat├®gia..."
+                  placeholder="Fundamentos, Estratégia..."
                 />
               </label>
             </div>
@@ -1173,7 +1196,7 @@
                 class="rounded-full border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                 @click="resetLessonForm"
               >
-                Cancelar edi├º├úo
+                Cancelar edição
               </button>
             </div>
           </form>
@@ -1241,7 +1264,7 @@
                       >
                         <span class="text-sm font-semibold text-slate-900 dark:text-white">{{ agency.name }}</span>
                         <span class="text-xs text-slate-500 dark:text-white/70">
-                          /{{ agency.slug }} ┬À {{ agency.pages_count }} páginas
+                          /{{ agency.slug }} • {{ agency.pages_count }} páginas
                         </span>
                       </button>
                     </li>
@@ -1506,7 +1529,7 @@
         <div class="h-[90vh] w-full max-w-4xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl dark:bg-[#101010] dark:text-white">
           <div class="mb-4 flex items-center justify-between">
             <div>
-              <p class="text-xs uppercase tracking-[0.4em] text-slate-500 dark:text-white/60">Pr├®-visualiza├º├úo</p>
+              <p class="text-xs uppercase tracking-[0.4em] text-slate-500 dark:text-white/60">Pré-visualização</p>
               <h3 class="text-lg font-semibold text-slate-900 dark:text-white">
                 {{ templatePreviewDialog.template?.name }}
               </h3>
@@ -1525,7 +1548,7 @@
             :branding="templatePreviewBranding"
           />
           <p v-else class="rounded-2xl border border-dashed border-slate-200 p-5 text-center text-sm text-slate-500 dark:border-white/15 dark:text-white/70">
-            N├úo conseguimos renderizar este modelo.
+            Não conseguimos renderizar este modelo.
           </p>
         </div>
       </div>
@@ -1569,7 +1592,7 @@
         </div>
 
         <p class="mt-5 text-sm text-slate-600">
-          O usuário receber├í acesso total ao plano {{ planLabels.infinity }} por 7 dias. Enviaremos alertas no painel dele para aproveitar o período promocional.
+          O usuário receberá acesso total ao plano {{ planLabels.infinity }} por 7 dias. Enviaremos alertas no painel dele para aproveitar o período promocional.
         </p>
 
         <div class="mt-6 flex justify-end gap-3">
@@ -1605,7 +1628,7 @@
         </h2>
         <p class="mt-2 text-sm text-slate-600">
           Selecionamos as páginas da sua Agência atual ({{ agencyStore.agencies.find(a => a.id === agencyStore.currentAgencyId)?.name || 'sem nome' }}).
-          A c├│pia ser├í adicionada ├á Agência do usuário.
+          A cópia será adicionada à Agência do usuário.
         </p>
 
           <div class="mt-5 space-y-4">
@@ -1630,7 +1653,7 @@
                 :key="page.id"
                 :value="page.id"
               >
-                {{ page.title }} ┬À {{ page.status === 'published' ? 'Publicada' : 'Rascunho' }}
+                {{ page.title }} • {{ page.status === 'published' ? 'Publicada' : 'Rascunho' }}
               </option>
             </select>
           </label>
@@ -1690,7 +1713,7 @@
         <p class="text-xs font-semibold uppercase tracking-[0.3em] text-rose-500">Excluir usuário</p>
         <h2 class="mt-3 text-2xl font-bold text-slate-900">Remover {{ deleteDialog.user.name }}?</h2>
         <p class="mt-2 text-sm text-slate-600">
-          Essa a├º├úo apaga a conta, Agências, páginas e registros de tracking vinculados. Ela n├úo pode ser desfeita.
+          Essa ação apaga a conta, Agências, páginas e registros de tracking vinculados. Ela não pode ser desfeita.
         </p>
         <p
           v-if="deleteDialog.error"
@@ -1729,7 +1752,7 @@
         <h2 class="mt-3 text-2xl font-bold text-slate-900">Reembolsar {{ refundDialog.user.name }}?</h2>
         <p class="mt-2 text-sm text-slate-600">
           Ao confirmar, vamos acionar o reembolso na Cakto, cancelar a assinatura, despublicar todas as páginas deste cliente
-          e bloquear o acesso imediatamente. Essa a├º├úo n├úo pode ser desfeita.
+          e bloquear o acesso imediatamente. Essa ação não pode ser desfeita.
         </p>
         <p
           v-if="refundDialog.error"
@@ -2143,7 +2166,7 @@ const fetchTemplateAgencies = async (term?: string) => {
   } catch (err: any) {
     console.error(err);
     if (requestId === templateAgencySearchRequestId) {
-      templateAgencyError.value = err?.response?.data?.detail || "N├úo foi poss├¡vel buscar Agências.";
+      templateAgencyError.value = err?.response?.data?.detail || "Não foi possível buscar Agências.";
       templateAgencyOptions.value = [];
     }
   } finally {
@@ -2205,7 +2228,7 @@ const loadTemplatePages = async () => {
     templatePages.value = data || [];
   } catch (err: any) {
     console.error(err);
-    templatePagesError.value = err?.response?.data?.detail || "N├úo foi poss├¡vel carregar as páginas.";
+    templatePagesError.value = err?.response?.data?.detail || "Não foi possível carregar as páginas.";
   } finally {
     templatePagesLoading.value = false;
   }
@@ -2217,7 +2240,7 @@ const loadTemplates = async () => {
     pageTemplates.value = await listPageTemplates();
   } catch (err: any) {
     console.error(err);
-    pageTemplatesError.value = err?.response?.data?.detail || "N├úo foi poss├¡vel carregar os modelos.";
+    pageTemplatesError.value = err?.response?.data?.detail || "Não foi possível carregar os modelos.";
   } finally {
     pageTemplatesLoading.value = false;
   }
@@ -2326,7 +2349,7 @@ const handleDeleteTemplate = async (template: PageTemplate) => {
     showSnackbar("Modelo removido com sucesso.");
   } catch (err: any) {
     console.error(err);
-    const detail = err?.response?.data?.detail || "N├úo foi poss├¡vel remover o modelo.";
+    const detail = err?.response?.data?.detail || "Não foi possível remover o modelo.";
     showSnackbar(detail);
   } finally {
     deletingTemplateId.value = null;
@@ -2361,7 +2384,7 @@ const templatePreviewConfig = computed(() => {
 });
 const templateStats = (template: PageTemplate) => summarizeTemplate(template);
 
-type UserColumnKey = "name" | "agency_name" | "active_pages" | "draft_pages" | "plan" | "valid_until" | "created_at";
+type UserColumnKey = "name" | "whatsapp" | "agency_name" | "active_pages" | "draft_pages" | "plan" | "valid_until" | "created_at";
 interface UserColumn {
   key: UserColumnKey;
   label: string;
@@ -2371,6 +2394,7 @@ interface UserColumn {
 
 const userTableColumns: UserColumn[] = [
   { key: "name", label: "Nome", sortable: true },
+  { key: "whatsapp", label: "WhatsApp", sortable: true },
   { key: "agency_name", label: "Agência", sortable: true },
   { key: "active_pages", label: "Qtd páginas ativas", align: "right", sortable: true },
   { key: "draft_pages", label: "Qtd páginas rascunho", align: "right", sortable: true },
@@ -2381,6 +2405,7 @@ const userTableColumns: UserColumn[] = [
 
 const userFilters = reactive({
   name: "",
+  whatsapp: "",
   agencies: [] as string[],
   plans: [] as string[],
   activeMin: "",
@@ -2399,6 +2424,7 @@ const userSort = reactive<{ key: UserColumnKey; direction: "asc" | "desc" }>({
 const openFilterKey = ref<UserColumnKey | null>(null);
 const filterButtonRefs = ref<Record<UserColumnKey, HTMLElement | null>>({
   name: null,
+  whatsapp: null,
   agency_name: null,
   active_pages: null,
   draft_pages: null,
@@ -2445,7 +2471,7 @@ const lessonPreview = computed(() => normalizeVideoInput(lessonForm.videoInput |
 
 const utmFieldMap: { key: keyof MetricsUserTracking; label: string }[] = [
   { key: "utm_source", label: "Fonte" },
-  { key: "utm_medium", label: "M├¡dia" },
+  { key: "utm_medium", label: "Mídia" },
   { key: "utm_campaign", label: "Campanha" },
   { key: "utm_term", label: "Termo" },
   { key: "utm_content", label: "Conteúdoo" },
@@ -2558,7 +2584,7 @@ const loadOnlineSessions = async (notify = false) => {
     }
   } catch (err: any) {
     console.error(err);
-    const message = err?.response?.data?.detail || "N├úo foi poss├¡vel carregar o monitor agora.";
+    const message = err?.response?.data?.detail || "Não foi possível carregar o monitor agora.";
     onlineSessionsError.value = message;
     if (notify) {
       showSnackbar(message);
@@ -2593,11 +2619,11 @@ const revokeUserSessions = async (session: AdminOnlineSession) => {
   revokingUserId.value = session.user_id;
   try {
     await api.post(`/admin/online-sessions/user/${session.user_id}/revoke`);
-    showSnackbar(`Sess├Áes de ${session.user_name} encerradas.`);
+    showSnackbar(`Sessões de ${session.user_name} encerradas.`);
     await loadOnlineSessions();
   } catch (err: any) {
     console.error(err);
-    const detail = err?.response?.data?.detail || "N├úo foi poss├¡vel deslogar este usuário.";
+    const detail = err?.response?.data?.detail || "Não foi possível deslogar este usuário.";
     showSnackbar(detail);
   } finally {
     revokingUserId.value = null;
@@ -2615,7 +2641,7 @@ const handleThumbnailUpload = (event: Event) => {
   }
   const maxSize = 4 * 1024 * 1024;
   if (file.size > maxSize) {
-    showSnackbar("Imagem muito grande (m├íximo 4MB).");
+    showSnackbar("Imagem muito grande (máximo 4MB).");
     input.value = "";
     return;
   }
@@ -2660,12 +2686,12 @@ const startLessonEdit = (lesson: Lesson) => {
 
 const saveLesson = async () => {
   if (!lessonForm.title.trim() || !lessonForm.videoInput.trim()) {
-    showSnackbar("Informe Título e link do v├¡deo.");
+    showSnackbar("Informe Título e link do vídeo.");
     return;
   }
   const parsed = normalizeVideoInput(lessonForm.videoInput);
   if (!parsed.videoUrl) {
-    showSnackbar("Link de v├¡deo inv├ílido.");
+    showSnackbar("Link de vídeo inválido.");
     return;
   }
   const payload = {
@@ -2690,7 +2716,7 @@ const saveLesson = async () => {
     resetLessonForm();
   } catch (err) {
     console.error(err);
-    showSnackbar("N├úo foi poss├¡vel salvar a aula.");
+    showSnackbar("Não foi possível salvar a aula.");
   } finally {
     lessonSaving.value = false;
   }
@@ -2707,14 +2733,14 @@ const deleteLesson = async (lessonId: number) => {
     showSnackbar("Aula removida.");
   } catch (err) {
     console.error(err);
-    showSnackbar("N├úo foi poss├¡vel remover a aula.");
+    showSnackbar("Não foi possível remover a aula.");
   } finally {
     deletingLessonId.value = null;
   }
 };
 
 const handleResetLessons = () => {
-  if (!confirm("Restaurar a lista padr├úo de aulas?")) return;
+  if (!confirm("Restaurar a lista padrão de aulas?")) return;
   lessonsStore.resetLessons();
   resetLessonForm();
   showSnackbar("Aulas restauradas.");
@@ -2743,7 +2769,7 @@ const clonePublishedPage = async (user: Metrics["users"][number], page: MetricsU
     showSnackbar("página salva na Agência selecionada.");
   } catch (err) {
     console.error(err);
-    showSnackbar("N├úo foi poss├¡vel salvar esta página.");
+    showSnackbar("Não foi possível salvar esta página.");
   } finally {
     savingPageId.value = null;
   }
@@ -2823,6 +2849,8 @@ const baseFilteredUsers = computed(() => {
       [user.name, user.email]
         .filter(Boolean)
         .some(field => field!.toLowerCase().includes(nameTerm));
+    const whatsappTerm = userFilters.whatsapp.trim().toLowerCase();
+    const matchesWhatsapp = !whatsappTerm || (user.whatsapp || "").toLowerCase().includes(whatsappTerm);
 
     const agencyKey = user.agency_name || "__none";
     const matchesAgency = !selectedAgencies.length || selectedAgencies.includes(agencyKey);
@@ -2843,7 +2871,16 @@ const baseFilteredUsers = computed(() => {
       userFilters.createdTo
     );
 
-    return matchesName && matchesAgency && matchesPlan && matchesActive && matchesDraft && matchesValid && matchesCreated;
+    return (
+      matchesName &&
+      matchesWhatsapp &&
+      matchesAgency &&
+      matchesPlan &&
+      matchesActive &&
+      matchesDraft &&
+      matchesValid &&
+      matchesCreated
+    );
   });
 });
 
@@ -2855,6 +2892,8 @@ const sortedUsers = computed(() => {
     switch (key) {
       case "name":
         return user.name?.toLowerCase() || "";
+      case "whatsapp":
+        return user.whatsapp?.toLowerCase() || "";
       case "agency_name":
         return user.agency_name?.toLowerCase() || "";
       case "plan":
@@ -2951,6 +2990,9 @@ const clearColumnFilter = (key: UserColumnKey) => {
     case "name":
       userFilters.name = "";
       break;
+    case "whatsapp":
+      userFilters.whatsapp = "";
+      break;
     case "agency_name":
       userFilters.agencies = [];
       break;
@@ -2980,6 +3022,8 @@ const isFilterActive = (key: UserColumnKey) => {
   switch (key) {
     case "name":
       return Boolean(userFilters.name.trim());
+    case "whatsapp":
+      return Boolean(userFilters.whatsapp.trim());
     case "agency_name":
       return userFilters.agencies.length > 0;
     case "plan":
@@ -3032,7 +3076,7 @@ const exportPdf = () => {
   doc.rect(0, 0, 210, 40, "F");
   doc.setTextColor("#ffffff");
   doc.setFontSize(18);
-  doc.text("Vis├úo Gerencial ┬À Relat├│rio Premium", margin, cursor);
+  doc.text("Visão Gerencial • Relatório Premium", margin, cursor);
   cursor += lineHeight;
   doc.setFontSize(11);
   doc.text(`período: ${adminPeriodLabel.value}`, margin, cursor);
@@ -3064,7 +3108,7 @@ const exportPdf = () => {
   cursor = (doc as any).lastAutoTable.finalY + 10;
 
   doc.setFontSize(14);
-  doc.text("Distribui├º├úo de planos", margin, cursor);
+  doc.text("Distribuição de planos", margin, cursor);
   cursor += lineHeight;
   const planRows = (metrics.value.plans || []).map(plan => [planLabel(plan.plan), String(plan.count)]);
   autoTable(doc, {
@@ -3078,13 +3122,13 @@ const exportPdf = () => {
   cursor = (doc as any).lastAutoTable.finalY + 10;
 
   doc.setFontSize(14);
-  doc.text("usuários ┬À Trial e planos", margin, cursor);
+  doc.text("usuários • Trial e planos", margin, cursor);
   cursor += lineHeight;
   const userRows = (metrics.value.users || []).slice(0, 12).map(u => [
     u.name,
     u.email,
     planLabel(u.plan),
-    u.trial_plan ? `Trial at├® ${formatDate(u.trial_ends_at)}` : "-",
+    u.trial_plan ? `Trial até ${formatDate(u.trial_ends_at)}` : "-",
     formatDateTime(u.created_at)
   ]);
   autoTable(doc, {
@@ -3118,8 +3162,8 @@ const grantTrial = async () => {
     await loadMetrics();
   } catch (err) {
     console.error(err);
-    error.value = "N├úo foi poss├¡vel liberar o trial para este usuário.";
-    showSnackbar("N├úo foi poss├¡vel liberar o trial para este usuário.");
+    error.value = "Não foi possível liberar o trial para este usuário.";
+    showSnackbar("Não foi possível liberar o trial para este usuário.");
   } finally {
     granting.value = null;
   }
@@ -3145,11 +3189,11 @@ const confirmDeleteUser = async () => {
     deleteDialog.value.user = null;
     expandedUser.value = null;
     await loadMetrics();
-    showSnackbar("usuário exclu├¡do com sucesso.");
+    showSnackbar("usuário excluído com sucesso.");
   } catch (err: any) {
     console.error(err);
     deleteDialog.value.error =
-      err?.response?.data?.detail || "N├úo foi poss├¡vel excluir o usuário. Tente novamente.";
+      err?.response?.data?.detail || "Não foi possível excluir o usuário. Tente novamente.";
     deleteDialog.value.loading = false;
   }
 };
@@ -3187,7 +3231,7 @@ const confirmRefund = async () => {
     await loadMetrics();
   } catch (err: any) {
     console.error(err);
-    dialog.error = err?.response?.data?.detail || "N├úo foi poss├¡vel solicitar o reembolso agora.";
+    dialog.error = err?.response?.data?.detail || "Não foi possível solicitar o reembolso agora.";
     dialog.loading = false;
   }
 };
@@ -3224,7 +3268,7 @@ const closeLinkPageDialog = () => {
 const openLinkPageDialog = async (user: Metrics["users"][number]) => {
   if (!auth.user?.is_superuser) return;
   if (!user.agency_id) {
-    showSnackbar("usuário n├úo possui Agência vinculada.");
+    showSnackbar("usuário não possui Agência vinculada.");
     return;
   }
   if (!agencyStore.currentAgencyId) {
@@ -3252,7 +3296,7 @@ const openLinkPageDialog = async (user: Metrics["users"][number]) => {
     }
   } catch (err) {
     console.error(err);
-    linkPageDialog.value.error = "N├úo foi poss├¡vel carregar suas páginas.";
+    linkPageDialog.value.error = "Não foi possível carregar suas páginas.";
   } finally {
     linkPageDialog.value.loading = false;
   }
@@ -3285,7 +3329,7 @@ const confirmLinkPage = async () => {
     await loadMetrics();
   } catch (err: any) {
     console.error(err);
-    dialog.error = err?.response?.data?.detail || "N├úo foi poss├¡vel vincular a página.";
+    dialog.error = err?.response?.data?.detail || "Não foi possível vincular a página.";
     dialog.saving = false;
   }
 };

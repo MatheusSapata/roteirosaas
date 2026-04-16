@@ -191,6 +191,8 @@ def read_users_me(current_user: User = Depends(get_current_active_user)) -> User
 
 @router.put("/me", response_model=UserOut)
 def update_me(user_in: UserUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)) -> UserOut:
+    provided_fields = user_in.model_fields_set
+
     if user_in.email:
         normalized_email = user_in.email.strip().lower()
         existing_email = db.query(User).filter(User.email == normalized_email, User.id != current_user.id).first()
@@ -220,25 +222,25 @@ def update_me(user_in: UserUpdate, db: Session = Depends(get_db), current_user: 
         current_user.plan = user_in.plan
     if user_in.subscription_id is not None:
         current_user.subscription_id = user_in.subscription_id
-    if user_in.cpf is not None:
+    if "cpf" in provided_fields:
         current_user.cpf = user_in.cpf
-    if user_in.cnpj is not None:
+    if "cnpj" in provided_fields:
         current_user.cnpj = user_in.cnpj
-    if user_in.whatsapp is not None:
+    if "whatsapp" in provided_fields:
         current_user.whatsapp = user_in.whatsapp
-    if user_in.address_street is not None:
+    if "address_street" in provided_fields:
         current_user.address_street = (user_in.address_street or "").strip() or None
-    if user_in.address_number is not None:
+    if "address_number" in provided_fields:
         current_user.address_number = (user_in.address_number or "").strip() or None
-    if user_in.address_complement is not None:
+    if "address_complement" in provided_fields:
         current_user.address_complement = (user_in.address_complement or "").strip() or None
-    if user_in.address_neighborhood is not None:
+    if "address_neighborhood" in provided_fields:
         current_user.address_neighborhood = (user_in.address_neighborhood or "").strip() or None
-    if user_in.address_city is not None:
+    if "address_city" in provided_fields:
         current_user.address_city = (user_in.address_city or "").strip() or None
-    if user_in.address_state is not None:
+    if "address_state" in provided_fields:
         current_user.address_state = user_in.address_state
-    if user_in.address_zipcode is not None:
+    if "address_zipcode" in provided_fields:
         current_user.address_zipcode = user_in.address_zipcode
 
     db.add(current_user)
