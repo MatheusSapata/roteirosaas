@@ -11,6 +11,39 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+    <script>
+      (function () {
+        var hostname = window.location.hostname.toLowerCase();
+        var path = window.location.pathname;
+        var platformHosts = new Set(["roteiroonline.com", "www.roteiroonline.com", "localhost", "127.0.0.1"]);
+        var knownPlatformPaths = new Set([
+          "/",
+          "/login",
+          "/register",
+          "/forgot-password",
+          "/reset-password",
+          "/create-password",
+          "/pedido",
+          "/planos",
+          "/profissionalmensal",
+          "/profissionalanual",
+          "/agenciamensal",
+          "/agenciaanual",
+          "/escalamensal",
+          "/escalaanual",
+          "/profissional",
+          "/agencia",
+          "/escala"
+        ]);
+        var isCustomDomain = hostname && !platformHosts.has(hostname);
+        var isPublicPlatformRoute = path.startsWith("/p/") || (!knownPlatformPaths.has(path) && !path.startsWith("/admin"));
+        if (isCustomDomain || isPublicPlatformRoute) {
+          document.documentElement.style.backgroundColor = "#000";
+          document.body.classList.add("public-shell");
+          document.body.style.backgroundColor = "#000";
+        }
+      })();
+    </script>
   </head>
   <body class="font-body bg-slate-50 text-slate-900">
     <div id="app"></div>
