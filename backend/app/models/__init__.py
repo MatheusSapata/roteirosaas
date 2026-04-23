@@ -18,3 +18,6 @@ from .agency_domain import AgencyDomain
 from .revenue import RevenueTotal
 from .lead_form import LeadForm, LeadFormSubmission, LeadStatus
 from .user_session import UserSession
+from .external_api_key import ExternalApiKey
+from .flight_lookup_cache import FlightLookupCache
+from .flight_section import FlightSectionJourney, FlightSectionSegment

@@ -10,6 +10,7 @@ from app.models.agency import Agency
 from app.models.agency_user import AgencyUser
 from app.models.page import Page
 from app.schemas.page import PublicPageOut
+from app.services.flight_sections import inject_flight_sections_into_config
 from app.services.public_page_resolver import PublicPageResolverService
 
 router = APIRouter()
@@ -78,6 +79,7 @@ def build_agency_profile(agency: Agency) -> dict[str, object]:
 def serialize_public_page(page: Page, agency_slug: str, db: Session) -> PublicPageOut:
     plan = resolve_agency_plan(db, page.agency_id)
     config = apply_free_footer(normalize_config(page.config_json), plan) or {}
+    config = inject_flight_sections_into_config(db, page.id, config, include_lookup_status=False)
     branding = {
         "agency_name": page.agency.name,
         "logo_url": page.agency.logo_url,

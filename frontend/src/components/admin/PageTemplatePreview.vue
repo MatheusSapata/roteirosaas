@@ -34,6 +34,7 @@ import PublicReasonsSection from "../public/PublicReasonsSection.vue";
 import PublicCountdownSection from "../public/PublicCountdownSection.vue";
 import PublicFreeFooterBrandSection from "../public/PublicFreeFooterBrandSection.vue";
 import PublicAgencyFooterSection from "../public/PublicAgencyFooterSection.vue";
+import PublicFlightDetailsSection from "../public/PublicFlightDetailsSection.vue";
 import PublicPhotoSection from "../public/PublicPhotoSection.vue";
 import PublicBiographySection from "../public/PublicBiographySection.vue";
 import type { PageConfig, PageSection, SectionType } from "../../types/page";
@@ -51,6 +52,7 @@ const publicComponents: Record<string, unknown> = {
   story: PublicStorySection,
   reasons: PublicReasonsSection,
   countdown: PublicCountdownSection,
+  flight_details: PublicFlightDetailsSection,
   free_footer_brand: PublicFreeFooterBrandSection,
   agency_footer: PublicAgencyFooterSection,
   photo: PublicPhotoSection,
@@ -84,7 +86,8 @@ const previewAwareSections: SectionType[] = [
   "testimonials",
   "prices",
   "agency_footer",
-  "biography"
+  "biography",
+  "flight_details"
 ];
 const sectionSupportsPreviewDevice = (type?: SectionType) => !!type && previewAwareSections.includes(type);
 const findPrevEnabledSection = (index: number) => {

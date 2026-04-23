@@ -1556,6 +1556,9 @@
         </div>
       </div>
     </template>
+    <template v-else-if="activeTab === 'flight_apis'">
+      <FlightApiKeysPanel />
+    </template>
   </div>
 
   <!-- SNACKBAR -->
@@ -1796,6 +1799,7 @@ import { getPlanLabel, planLabels } from "../../utils/planLabels";
 import { normalizeVideoInput, useLessonsStore, type Lesson } from "../../store/useLessonsStore";
 import { slugify } from "../../utils/slugify";
 import PageTemplatePreview from "../../components/admin/PageTemplatePreview.vue";
+import FlightApiKeysPanel from "../../components/admin/FlightApiKeysPanel.vue";
 import { listPageTemplates, createTemplateFromPage, deleteTemplate, updateTemplate } from "../../services/templates";
 import type { PageTemplate } from "../../types/templates";
 import { applyTemplateBranding, summarizeTemplate } from "../../utils/pageTemplates";
@@ -1899,7 +1903,7 @@ interface AdminOnlineSessionsResponse {
   generated_at: string;
 }
 
-type AdminTab = "dashboard" | "monitor" | "users" | "lessons" | "templates";
+type AdminTab = "dashboard" | "monitor" | "users" | "lessons" | "templates" | "flight_apis";
 type TemplateDialogMode = "create" | "edit";
 
 const adminTabs: { id: AdminTab; label: string; description: string }[] = [
@@ -1907,7 +1911,8 @@ const adminTabs: { id: AdminTab; label: string; description: string }[] = [
   { id: "monitor", label: "Monitor", description: "Sessões online" },
   { id: "users", label: "Usuários", description: "Perfis e status" },
   { id: "lessons", label: "Gestão de aulas", description: "Treinamentos públicos" },
-  { id: "templates", label: "Templates", description: "Modelos oficiais" }
+  { id: "templates", label: "Templates", description: "Modelos oficiais" },
+  { id: "flight_apis", label: "APIs de voo", description: "Chaves e consumo" }
 ];
 
 type AdminPeriodOption = "7" | "30" | "90" | "custom";

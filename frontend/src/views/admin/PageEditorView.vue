@@ -792,6 +792,7 @@ import type {
   ReasonsSection,
   CountdownSection,
   AgencyFooterSection,
+  FlightDetailsSection,
   SectionType,
   ThemeConfig
 } from "../../types/page";
@@ -1256,6 +1257,7 @@ const SectionStoryForm = defineAsyncComponent(() => import("../../components/adm
 const SectionReasonsForm = defineAsyncComponent(() => import("../../components/admin/SectionReasonsForm.vue"));
 const SectionCountdownForm = defineAsyncComponent(() => import("../../components/admin/SectionCountdownForm.vue"));
 const SectionAgencyFooterForm = defineAsyncComponent(() => import("../../components/admin/SectionAgencyFooterForm.vue"));
+const SectionFlightDetailsForm = defineAsyncComponent(() => import("../../components/admin/SectionFlightDetailsForm.vue"));
 const PublicHeroSection = defineAsyncComponent(() => import("../../components/public/PublicHeroSection.vue"));
 const PublicBannerCardSection = defineAsyncComponent(() => import("../../components/public/PublicBannerCardSection.vue"));
 const PublicPricesSection = defineAsyncComponent(() => import("../../components/public/PublicPricesSection.vue"));
@@ -1271,6 +1273,7 @@ const PublicReasonsSection = defineAsyncComponent(() => import("../../components
 const PublicCountdownSection = defineAsyncComponent(() => import("../../components/public/PublicCountdownSection.vue"));
 const PublicFreeFooterBrandSection = defineAsyncComponent(() => import("../../components/public/PublicFreeFooterBrandSection.vue"));
 const PublicAgencyFooterSection = defineAsyncComponent(() => import("../../components/public/PublicAgencyFooterSection.vue"));
+const PublicFlightDetailsSection = defineAsyncComponent(() => import("../../components/public/PublicFlightDetailsSection.vue"));
 
 const sectionTypes: SectionType[] = [
   "hero",
@@ -1286,6 +1289,7 @@ const sectionTypes: SectionType[] = [
   "story",
   "reasons",
   "countdown",
+  "flight_details",
   "agency_footer"
 ];
 const sectionLabels = defaultSectionLabels;
@@ -1342,6 +1346,10 @@ const sectionDescriptions: Partial<Record<SectionType, string>> = {
     pt: "Cria urgência com contador regressivo para promoções ou eventos.",
     es: "Crea urgencia con un contador regresivo para promociones o eventos."
   }),
+  flight_details: t({
+    pt: "Mostra voos de ida e volta com multiplos trechos, bagagens e visual premium.",
+    es: "Muestra vuelos de ida y vuelta con multiples tramos, equipajes y visual premium."
+  }),
   agency_footer: t({
     pt: "Cartão institucional com contatos, redes sociais e mapa da agência.",
     es: "Tarjeta institucional con contactos, redes sociales y mapa de la agencia."
@@ -1367,6 +1375,7 @@ const sectionThumbnails: Partial<Record<SectionType, string>> = {
   story: storyThumb,
   reasons: reasonsThumb,
   countdown: countdownThumb,
+  flight_details: itineraryThumb,
   agency_footer: footerThumb
 };
 const sectionAccents: Partial<Record<SectionType, string>> = {
@@ -1383,6 +1392,7 @@ const sectionAccents: Partial<Record<SectionType, string>> = {
   story: "from-rose-100/70 to-white",
   reasons: "from-indigo-100/70 to-white",
   countdown: "from-orange-100/70 to-white",
+  flight_details: "from-sky-100/70 to-white",
   agency_footer: "from-slate-900/90 to-slate-800/70"
 };
 const formComponents: Partial<Record<SectionType, any>> = {
@@ -1399,6 +1409,7 @@ const formComponents: Partial<Record<SectionType, any>> = {
   story: SectionStoryForm,
   reasons: SectionReasonsForm,
   countdown: SectionCountdownForm,
+  flight_details: SectionFlightDetailsForm,
   agency_footer: SectionAgencyFooterForm
 };
 
@@ -1416,6 +1427,7 @@ const publicComponents: Partial<Record<SectionType, any>> = {
   story: PublicStorySection,
   reasons: PublicReasonsSection,
   countdown: PublicCountdownSection,
+  flight_details: PublicFlightDetailsSection,
   free_footer_brand: PublicFreeFooterBrandSection,
   agency_footer: PublicAgencyFooterSection
 };
@@ -2414,6 +2426,20 @@ if (type === "reasons") {
     animationDuration: 1000,
     cardAnimationStagger: 300
   } as ReasonsSection);
+}
+
+if (type === "flight_details") {
+  return ensureSectionAnchor({
+    type: "flight_details",
+    enabled: true,
+    sectionId: `flight-${Math.random().toString(36).slice(2, 10)}`,
+    title: "Informacoes do voo",
+    subtitle: "Confira os detalhes dos voos inclusos no pacote",
+    visualStyle: "decolar",
+    showOutbound: true,
+    showInbound: true,
+    journeys: []
+  } as FlightDetailsSection);
 }
 
   if (type === "agency_footer") {

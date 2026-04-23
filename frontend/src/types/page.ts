@@ -17,6 +17,7 @@ export type SectionType =
   | "reasons"
   | "countdown"
   | "agency_footer"
+  | "flight_details"
   | "free_footer_brand";
 
 export interface SectionBase {
@@ -201,6 +202,66 @@ export interface AgencyFooterSection extends SectionBase {
   fullWidth?: boolean;
 }
 
+export interface FlightSectionSegment {
+  id?: number;
+  journey_id?: number;
+  sort_order?: number;
+  source_mode?: "manual" | "airlabs";
+  flight_number?: string;
+  flight_iata?: string;
+  flight_icao?: string;
+  flight_date?: string;
+  airline_name?: string;
+  airline_iata?: string;
+  airline_icao?: string;
+  airline_logo_url?: string;
+  departure_airport_iata?: string;
+  departure_airport_name?: string;
+  departure_city?: string;
+  departure_country?: string;
+  departure_terminal?: string;
+  departure_gate?: string;
+  departure_datetime?: string;
+  arrival_airport_iata?: string;
+  arrival_airport_name?: string;
+  arrival_city?: string;
+  arrival_country?: string;
+  arrival_terminal?: string;
+  arrival_gate?: string;
+  arrival_datetime?: string;
+  duration_minutes?: number;
+  cabin_class?: string;
+  status?: string;
+  included_personal_item?: boolean;
+  included_carry_on?: boolean;
+  included_checked_bag?: boolean;
+  notes?: string;
+  raw_provider_response?: Record<string, any> | null;
+}
+
+export interface FlightSectionJourney {
+  id?: number;
+  page_id?: number;
+  section_id?: string;
+  direction: "outbound" | "inbound";
+  title?: string;
+  sort_order?: number;
+  is_enabled?: boolean;
+  segments: FlightSectionSegment[];
+}
+
+export interface FlightDetailsSection extends SectionBase {
+  type: "flight_details";
+  sectionId?: string;
+  title?: LocalizedString;
+  subtitle?: LocalizedString;
+  visualStyle?: "compact" | "decolar";
+  showOutbound?: boolean;
+  showInbound?: boolean;
+  journeys?: FlightSectionJourney[];
+  lookupAvailable?: boolean;
+}
+
 export interface FreeFooterBrandSection extends SectionBase {
   type: "free_footer_brand";
   text: LocalizedString;
@@ -280,6 +341,7 @@ export type PageSection =
   | ReasonsSection
   | CountdownSection
   | AgencyFooterSection
+  | FlightDetailsSection
   | FreeFooterBrandSection;
 
 export interface ThemeConfig {
