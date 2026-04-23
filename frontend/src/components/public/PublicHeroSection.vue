@@ -4,13 +4,13 @@
     <div :class="mobileWrapperClasses">
       <div class="overflow-hidden bg-[#05060f] shadow-2xl shadow-black/30">
         <!-- capa -->
-        <div class="relative w-full min-h-[46svh] overflow-hidden" style="aspect-ratio: 3 / 4; max-height: 50vh;">
+        <div class="relative w-full overflow-hidden" style="aspect-ratio: 3 / 4; max-height: 50vh;">
           <div class="absolute inset-0 bg-cover bg-center" :style="mobileBackgroundStyle"></div>
           <div class="absolute inset-0" :style="mobileGradientStyle"></div>
           <div v-if="embeddedVideoUrl" class="absolute inset-0" :style="mobileVideoOverlayStyle"></div>
 
-          <div class="absolute inset-0 flex flex-col items-center justify-between gap-4 px-4 py-6">
-            <div class="flex min-h-0 flex-1 items-start justify-center w-full pt-1" :class="animationClasses(1)">
+          <div class="absolute inset-0 flex flex-col items-center gap-4 px-4 py-6">
+            <div class="flex justify-center w-full mt-auto mb-2" :class="animationClasses(1)">
               <template v-if="logoSrc">
                 <div class="drop-shadow-xl overflow-hidden" :style="logoBoxStyle">
                   <img :src="logoSrc" alt="Logo" class="h-full w-auto object-contain" :style="logoImageStyle" />
@@ -24,7 +24,7 @@
               </span>
             </div>
 
-            <div v-if="embeddedVideoUrl" class="w-full max-w-[320px] mb-2 mt-auto">
+            <div v-if="embeddedVideoUrl" class="w-full max-w-[320px] mb-2">
               <div class="overflow-hidden rounded-2xl border border-white/10 bg-black/30 shadow-xl ring-1 ring-white/10">
                 <div class="relative pt-[56.25%]">
                   <iframe
@@ -44,10 +44,10 @@
 
         <!-- conteúdo -->
         <div
-          class="relative flex min-h-[34svh] flex-col justify-center -mt-6 overflow-hidden px-5 pb-12 pt-4 text-center text-white md:mt-0 md:pb-8"
+          class="relative -mt-6 overflow-hidden px-5 pb-12 pt-1 text-center text-white md:mt-0 md:pb-8"
           :style="{ background: mobileContentBg }"
         >
-          <div class="space-y-2 md:mt-0">
+          <div class="space-y-0.5 md:mt-0">
             <h1 class="text-[32px] font-bold leading-tight" :class="animationClasses(2)">{{ heroTitle }}</h1>
             <div
               v-if="subtitleHtml"
@@ -111,17 +111,17 @@
           <!-- Layout imersivo -->
           <div
             v-if="layout === 'immersive'"
-            class="relative z-10 box-border flex h-[90svh] max-h-[90svh] flex-col justify-center gap-8 overflow-hidden py-8 md:flex-row md:items-center md:justify-between md:gap-14 md:py-12"
+            class="relative z-10 flex flex-col gap-6 py-6 md:min-h-[540px] md:flex-row md:items-center md:gap-12 md:py-10"
             :class="[
-              isMobilePreview ? '!h-[90svh] !max-h-[90svh] !flex-col !justify-center !gap-8 !py-8' : '',
-              isDesktopPreview ? '!h-[90svh] !max-h-[90svh] !flex-row !items-center !justify-between !gap-14 !py-12' : ''
+              isMobilePreview ? '!flex-col !gap-6 !py-6' : '',
+              isDesktopPreview ? '!min-h-[540px] !flex-row !items-center !gap-12 !py-10' : ''
             ]"
           >
             <div
-              class="max-w-3xl space-y-6 text-white md:w-[54%] text-center md:text-left"
+              class="max-w-3xl space-y-5 text-white md:w-7/12 text-center md:text-left"
               :class="[
                 isMobilePreview ? '!w-full !text-center' : '',
-                isDesktopPreview ? '!w-[54%] !text-left' : ''
+                isDesktopPreview ? '!w-7/12 !text-left' : ''
               ]"
             >
               <div class="flex items-center gap-3" :class="animationClasses(1)">
@@ -180,7 +180,7 @@
               </div>
 
               <div
-                class="flex flex-col items-center gap-4 sm:flex-row sm:items-center sm:justify-start"
+                class="flex flex-col items-center gap-3 sm:flex-row sm:items-center sm:justify-start"
                 :class="[
                   isMobilePreview ? '!flex-col !items-center !justify-center' : '',
                   isDesktopPreview ? '!flex-row !items-center !justify-start' : '',
@@ -203,11 +203,11 @@
             </div>
 
             <div
-              class="md:w-[42%] lg:w-[40%]"
+              class="md:w-6/12 lg:w-5/12"
               v-if="section.videoUrl"
               :class="[
                 isMobilePreview ? '!w-full !mt-6' : '',
-                isDesktopPreview ? '!w-[42%] !mt-0' : ''
+                isDesktopPreview ? '!w-6/12 !mt-0' : ''
               ]"
             >
               <div
@@ -228,10 +228,10 @@
             </div>
             <div
               v-else
-              class="md:w-[42%] lg:w-[40%]"
+              class="md:w-6/12 lg:w-5/12"
               :class="[
                 isMobilePreview ? '!w-full' : '',
-                isDesktopPreview ? '!w-[42%]' : ''
+                isDesktopPreview ? '!w-6/12' : ''
               ]"
             ></div>
           </div>
@@ -407,10 +407,9 @@ const accentVars = computed(() => ({
 }));
 
 const containerClasses = computed(() => [
-  "relative flex flex-col gap-8 px-6 py-8 md:px-6 md:py-16",
-  isMobilePreview.value ? "!px-6 !py-8" : "",
-  isDesktopPreview.value ? "!px-6 !py-16" : "",
-  layout.value === "immersive" ? "!py-0 md:!py-0" : "",
+  "relative flex flex-col gap-8 px-5 py-8 md:px-10 md:py-16",
+  isMobilePreview.value ? "!px-5 !py-8" : "",
+  isDesktopPreview.value ? "!px-10 !py-16" : "",
   layout.value === "immersive" ? "mx-auto max-w-6xl" : props.section.fullWidth ? "w-full" : "mx-auto max-w-6xl"
 ]);
 

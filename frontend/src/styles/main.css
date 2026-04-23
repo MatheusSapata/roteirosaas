@@ -14,12 +14,6 @@ body {
     Helvetica, Arial, sans-serif;
 }
 
-body.public-shell,
-body.public-shell #app {
-  background-color: #000;
-  background-image: none;
-}
-
 .hero-cta-shimmer {
   position: relative;
   overflow: hidden;

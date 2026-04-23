@@ -1,5 +1,5 @@
 <template>
-  <section class="w-full" :style="{ background: sectionBackground }" :id="section.anchorId || undefined">
+  <section class="w-full" :style="{ background: section.backgroundColor || 'linear-gradient(180deg,#f8fafc,#fff)' }" :id="section.anchorId || undefined">
     <div class="mx-auto max-w-6xl px-6 py-12">
       <div class="text-center">
         <div class="flex justify-center">
@@ -16,7 +16,7 @@
           v-for="(item, idx) in limitedItems"
           :key="'mobile-' + idx"
           :class="[
-            'mx-auto flex w-full max-w-[340px] flex-col rounded-2xl p-4 text-center',
+            'mx-auto flex w-full max-w-[340px] flex-col rounded-2xl bg-white/95 p-4 text-center shadow-[0_16px_40px_-28px_rgba(15,23,42,0.6)] ring-1 ring-slate-100',
             ...cardClasses(idx)
           ]"
           :style="cardStyle(idx)"
@@ -37,7 +37,7 @@
             v-for="(item, idx) in row"
             :key="'card-' + rowIndex + '-' + idx"
             :class="[
-              'flex w-full max-w-[260px] flex-col rounded-2xl p-4 text-center',
+              'flex w-full max-w-[260px] flex-col rounded-2xl bg-white/95 p-4 text-center shadow-[0_16px_40px_-28px_rgba(15,23,42,0.6)] ring-1 ring-slate-100',
               ...cardClasses(desktopRowOffsets[rowIndex] + idx)
             ]"
             :style="cardStyle(desktopRowOffsets[rowIndex] + idx)"
@@ -57,7 +57,7 @@ import SectionHeadingChip from "./SectionHeadingChip.vue";
 import { getSectionHeadingDefaults, resolveHeadingLabel } from "../../utils/sectionHeadings";
 import { sanitizeHtml } from "../../utils/sanitizeHtml";
 import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
-import { deriveTextPalette, getRelativeLuminance, normalizeHexColor } from "../../utils/colorContrast";
+import { deriveTextPalette } from "../../utils/colorContrast";
 import { createLocalizer, getCurrentLanguage } from "../../utils/i18n";
 
 const props = defineProps<{ section: ReasonsSection; previewDevice?: "desktop" | "mobile" }>();
@@ -91,29 +91,9 @@ const brandingPrimary = computed(() => {
 });
 const accentColor = computed(() => props.section.ctaColor || brandingPrimary.value || "#41ce5f");
 const MAX_ITEMS = 8;
-const sectionBackground = computed(() => props.section.backgroundColor || "linear-gradient(180deg,#f8fafc,#fff)");
-const sectionBackgroundHex = computed(() => normalizeHexColor(props.section.backgroundColor));
 const textPalette = computed(() => deriveTextPalette(props.section.textColor));
-const sectionBackgroundIsLight = computed(() => {
-  if (!sectionBackgroundHex.value) return !textPalette.value.isLight;
-  return getRelativeLuminance(sectionBackgroundHex.value) > 0.7;
-});
 const primaryText = computed(() => textPalette.value.primary);
 const mutedText = computed(() => textPalette.value.muted);
-const neutralShadow = "0 18px 38px -28px rgba(15,23,42,0.28)";
-
-const toRgba = (hex: string, alpha: number) => {
-  const cleaned = hex.replace("#", "");
-  const full = cleaned.length === 3 ? cleaned.split("").map(c => c + c).join("") : cleaned;
-  if (full.length !== 6) return `rgba(14,165,233,${alpha})`;
-  const r = parseInt(full.substring(0, 2), 16);
-  const g = parseInt(full.substring(2, 4), 16);
-  const b = parseInt(full.substring(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-};
-
-const accentShadow = computed(() => toRgba(accentColor.value, 0.35));
-const darkCardBorder = computed(() => `1px solid ${toRgba(accentColor.value, 0.42)}`);
 
 const limitedItems = computed(() => (props.section.items || []).slice(0, MAX_ITEMS));
 const cardsInView = ref(false);
@@ -176,31 +156,12 @@ const ReasonCard = defineComponent({
   setup(componentProps) {
     return () =>
       h("div", { class: "reason-card-content" }, [
-        h("div", {
-          class: "mx-auto flex h-16 w-16 items-center justify-center rounded-full",
-          style: {
-            background: "transparent",
-            color: accentColor.value
-          }
-        }, [
-          h("span", {
-            style: {
-              fontSize: sectionBackgroundIsLight.value ? "2.25rem" : "2.25rem",
-              lineHeight: "1"
-            }
-          }, componentProps.item.icon || "*")
+        h("div", { class: "mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-slate-50 text-3xl" }, [
+          h("span", componentProps.item.icon || "⭐")
         ]),
-        h("h3", {
-          class: "mt-1 text-[20px] font-bold leading-tight",
-          style: {
-            color: sectionBackgroundIsLight.value ? "#0f172a" : "#f8fafc"
-          }
-        }, componentProps.item.title),
+        h("h3", { class: "mt-3 text-lg font-semibold text-slate-900" }, componentProps.item.title),
         h("div", {
-          class: "mt-2 w-full text-sm leading-relaxed",
-          style: {
-            color: sectionBackgroundIsLight.value ? "#475569" : "rgba(241,245,249,0.82)"
-          },
+          class: "mt-2 w-full text-sm leading-relaxed text-slate-600",
           innerHTML: descriptionHtml(componentProps.item.description)
         })
       ]);
@@ -215,23 +176,15 @@ const cardClasses = (index: number) => {
 };
 
 const cardStyle = (index: number) => {
-  const baseStyle = {
-    background: sectionBackgroundIsLight.value ? "#ffffff" : "rgba(255,255,255,0.10)",
-    border: sectionBackgroundIsLight.value ? "none" : darkCardBorder.value,
-    boxShadow: sectionBackgroundIsLight.value ? neutralShadow : `0 22px 46px -30px ${accentShadow.value}`
-  } as Record<string, string>;
-
-  if (!animationEnabled.value) return baseStyle;
+  if (!animationEnabled.value) return undefined;
   if (isMobilePreview.value) {
     return {
-      ...baseStyle,
       "--reason-duration": `${animationDurationMs.value}ms`,
       "--reason-delay": `${Math.max(0, index) * mobileStaggerMs}ms`
     };
   }
   const delay = cardsInView.value ? Math.max(0, index) * animationStaggerMs.value : 0;
   return {
-    ...baseStyle,
     "--reason-duration": `${animationDurationMs.value}ms`,
     "--reason-delay": `${delay}ms`
   };
@@ -384,5 +337,4 @@ onBeforeUnmount(() => {
   opacity: 0;
   transform: translateY(20px);
 }
-
 </style>

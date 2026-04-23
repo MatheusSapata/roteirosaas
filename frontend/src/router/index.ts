@@ -184,7 +184,7 @@ router.beforeEach(async (to, _from, next) => {
 
     if (!auth.user) {
       try {
-        await auth.ensureHydrated();
+        await auth.fetchProfile();
       } catch {
         auth.logout();
         next({ name: "login", query: { redirect: to.fullPath } });

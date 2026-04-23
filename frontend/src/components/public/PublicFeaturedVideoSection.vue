@@ -14,7 +14,7 @@
         v-html="subtitleHtml"
       ></div>
 
-      <div v-if="embeddedVideoUrl" class="mx-auto mt-8 w-full max-w-4xl overflow-hidden rounded-[28px] shadow-2xl ring-1 ring-slate-200" :class="videoWrapperClass">
+      <div v-if="embeddedVideoUrl" class="mt-8 w-full overflow-hidden rounded-[28px] shadow-2xl ring-1 ring-slate-200" :class="videoWrapperClass">
         <div class="relative pt-[56.25%]">
           <iframe
             class="absolute inset-0 h-full w-full rounded-[28px]"

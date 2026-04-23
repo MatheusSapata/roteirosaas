@@ -6,9 +6,7 @@
           <div class="flex justify-center">
             <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="accent" />
           </div>
-          <h1 :class="['mt-1 text-3xl font-bold', isMobilePreview ? '' : 'md:text-4xl']" :style="{ color: primaryText }">
-            {{ title }}
-          </h1>
+          <h1 class="mt-1 text-3xl font-bold md:text-4xl" :style="{ color: primaryText }">{{ title }}</h1>
           <p v-if="subtitle" class="text-sm" :style="{ color: mutedText }">{{ subtitle }}</p>
         </div>
 
@@ -17,33 +15,32 @@
             v-for="(item, index) in section.items || []"
             :key="'column-' + index"
             :class="[
-              'relative flex flex-col gap-4 rounded-2xl border p-5 text-center transition',
-              isMobilePreview ? '' : 'md:flex-row md:items-center md:justify-between md:text-left',
+              'relative flex flex-col gap-4 rounded-2xl border p-5 text-center transition md:flex-row md:items-center md:justify-between md:text-left',
               item.highlight
                 ? 'border-transparent shadow-xl hover:-translate-y-1 hover:shadow-2xl'
                 : 'border-slate-100 bg-white/95 hover:-translate-y-0.5 hover:shadow-lg'
             ]"
             :style="itemCardStyle(item)"
           >
-            <div :class="['space-y-2 text-center', isMobilePreview ? '' : 'md:text-left']">
+            <div class="space-y-2 text-center md:text-left">
               <p
                 v-if="itemTitleLabel(item)"
-                :class="['mt-4 text-xs uppercase tracking-[0.2em]', isMobilePreview ? '' : 'md:mt-0']"
+                class="mt-4 text-xs uppercase tracking-[0.2em] md:mt-0"
                 :style="{ color: itemSecondaryTextColor(item) }"
               >
                 {{ itemTitleLabel(item).toUpperCase() }}
               </p>
 
               <p
-                :class="['text-xl font-bold', isMobilePreview ? '' : 'md:text-2xl md:font-bold']"
+                class="text-xl font-bold md:text-2xl md:font-bold"
                 :style="{ color: itemPrimaryTextColor(item) }"
               >
                 {{ itemTitle(item) }}
               </p>
             </div>
 
-            <div :class="['flex flex-col items-center gap-4', isMobilePreview ? '' : 'md:flex-row md:items-center md:justify-between']">
-              <div :class="['space-y-1', isMobilePreview ? 'text-center' : 'md:text-right']">
+            <div class="flex flex-col items-center gap-4 md:flex-row md:items-center md:justify-between">
+              <div class="space-y-1 md:text-right">
                 <p
                   v-if="itemPriceLabel(item)"
                   class="text-sm font-medium"
@@ -76,8 +73,7 @@
                 data-track-event="cta"
                 :data-track-type="trackType(itemLink(item))"
                 :class="[
-                  'inline-flex items-center justify-center rounded-full px-5 py-2 text-sm font-semibold shadow-md transition w-full max-w-sm mx-auto hero-cta-shimmer hero-cta-desktop-hover',
-                  isMobilePreview ? '' : 'md:w-auto md:mx-0',
+                  'inline-flex items-center justify-center rounded-full px-5 py-2 text-sm font-semibold shadow-md transition w-full md:w-auto max-w-sm mx-auto md:mx-0 hero-cta-shimmer hero-cta-desktop-hover',
                   item.highlight ? 'hover:-translate-y-0.5 hover:shadow-xl' : 'hover:-translate-y-0.5 hover:shadow-lg'
                 ]"
                 :style="{ background: buttonBackground(item), color: buttonTextColor(item) }"
@@ -97,7 +93,7 @@
           </article>
         </div>
 
-        <p v-if="sectionDescription" :class="['mt-6 text-sm text-center', isMobilePreview ? '' : 'md:text-left']" :style="{ color: mutedText }">
+        <p v-if="sectionDescription" class="mt-6 text-sm text-center md:text-left" :style="{ color: mutedText }">
           {{ sectionDescription }}
         </p>
       </div>
@@ -114,10 +110,9 @@ import { getSectionHeadingDefaults, resolveHeadingLabel } from "../../utils/sect
 import { deriveTextPalette, getReadableTextColor } from "../../utils/colorContrast";
 import { createLocalizer, getCurrentLanguage } from "../../utils/i18n";
 
-const props = defineProps<{ section: PricesSection; previewDevice?: "desktop" | "mobile" }>();
+const props = defineProps<{ section: PricesSection }>();
 
 const defaultAccent = "#41ce5f";
-const isMobilePreview = computed(() => props.previewDevice === "mobile");
 const headingDefaults = getSectionHeadingDefaults("prices");
 const defaultCopy = {
   title: { pt: "Planos e opções", es: "Planes y opciones" },

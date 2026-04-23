@@ -1,9 +1,5 @@
 <template>
   <div class="w-full space-y-6 px-4 py-8 md:px-8">
-    <div v-if="isBootstrappingDashboard" class="flex min-h-[60vh] items-center justify-center">
-      <div class="h-12 w-12 animate-spin rounded-full border-4 border-brand/20 border-t-brand"></div>
-    </div>
-    <template v-else>
     <header class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
       <div>
         <p class="text-sm uppercase tracking-[0.25em] text-slate-500">{{ viewCopy.header.eyebrow }}</p>
@@ -421,7 +417,6 @@
         </div>
       </div>
     </section>
-    </template>
   </div>
 </template>
 
@@ -630,7 +625,6 @@ const selectedPeriod = ref<number | "custom">(statsPeriodOptions[0]);
 const customStartDate = ref("");
 const customEndDate = ref("");
 const isMobile = ref(false);
-const isBootstrappingDashboard = ref(true);
 
 const isFree = computed(() => (auth.user?.plan || "free") === "free");
 
@@ -638,11 +632,9 @@ const trialInfo = computed(() => {
   const tPlan = auth.user?.trial_plan;
   const endsAt = auth.user?.trial_ends_at;
   if (!tPlan || !endsAt) return null;
-  if (auth.user?.trial_blocked) return null;
 
   const planLabel = resolvePlanLabel(tPlan);
   const date = new Date(endsAt);
-  if (Number.isNaN(date.getTime()) || date.getTime() < Date.now()) return null;
 
   return {
     plan: planLabel,
@@ -959,22 +951,18 @@ const fetchSelectedPageStats = async (agencyId: number) => {
 };
 
 const fetchData = async () => {
-  try {
-    await agencyStore.loadAgencies();
-    if (!agencyStore.currentAgencyId) return;
-    if (selectedPeriod.value === "custom" && !hasValidCustomRange.value) return;
+  await agencyStore.loadAgencies();
+  if (!agencyStore.currentAgencyId) return;
+  if (selectedPeriod.value === "custom" && !hasValidCustomRange.value) return;
 
-    const agencyId = agencyStore.currentAgencyId;
+  const agencyId = agencyStore.currentAgencyId;
 
-    const res = await api.get<Page[]>("/pages", { params: { agency_id: agencyId } });
-    pages.value = res.data;
-    pagesCount.value = res.data.length;
+  const res = await api.get<Page[]>("/pages", { params: { agency_id: agencyId } });
+  pages.value = res.data;
+  pagesCount.value = res.data.length;
 
-    await fetchOverviewStats(agencyId);
-    await fetchSelectedPageStats(agencyId);
-  } finally {
-    isBootstrappingDashboard.value = false;
-  }
+  await fetchOverviewStats(agencyId);
+  await fetchSelectedPageStats(agencyId);
 };
 
 watch(

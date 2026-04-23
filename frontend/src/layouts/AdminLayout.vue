@@ -1,23 +1,12 @@
 <template>
-  <div
+ <div
     :class="[
-      'min-h-screen overflow-x-hidden text-[14px] md:h-screen md:overflow-hidden',
+      'min-h-screen overflow-x-hidden text-[14px]',
       isDarkTheme ? 'bg-[#05070f] text-slate-100' : 'bg-slate-50 text-slate-900',
       themeWrapperClass
     ]"
   >
-    <div v-if="showAuthSplash" class="flex min-h-screen items-center justify-center md:h-screen">
-      <div class="flex flex-col items-center gap-4">
-        <div
-          :class="[
-            'h-12 w-12 animate-spin rounded-full border-4 border-transparent',
-            isDarkTheme ? 'border-t-white border-r-white/40' : 'border-t-brand border-r-brand/35'
-          ]"
-        ></div>
-      </div>
-    </div>
-    <template v-else>
-    <div class="flex min-h-screen md:h-screen">
+    <div class="flex min-h-screen">
       <aside
         :class="[
           'admin-sidebar hidden w-64 flex-shrink-0 flex-col justify-between border-r px-0 py-6 shadow-md md:fixed md:inset-y-0 md:left-0 md:flex',
@@ -104,7 +93,7 @@
           </button>
         </div>
       </aside>
-      <main :class="['admin-main flex min-h-0 flex-1 flex-col overflow-x-hidden md:ml-64',isDarkTheme ? 'bg-[#05070f] text-slate-100' : 'bg-slate-50 text-slate-900']">
+      <main :class="['admin-main flex-1 overflow-x-hidden md:ml-64',isDarkTheme ? 'bg-[#05070f] text-slate-100' : 'bg-slate-50 text-slate-900']">
         <header
           :class="[
             'admin-header sticky top-0 z-30 px-4 py-3 shadow-sm transition-colors md:static',
@@ -142,7 +131,7 @@
         </header>
         <div
           :class="[
-            'admin-content flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3 py-4 md:px-6 md:py-6',
+            'admin-content min-h-screen px-3 py-4 md:px-6 md:py-6',
             isDarkTheme ? 'text-slate-100' : 'text-slate-900'
           ]"
         >
@@ -150,7 +139,6 @@
         </div>
       </main>
     </div>
-    </template>
 
     <transition name="fade">
         <div
@@ -528,13 +516,19 @@
         <div class="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl">
           <p class="text-xs font-semibold uppercase tracking-[0.3em] text-rose-500">{{ viewCopy.trial.blocked.eyebrow }}</p>
           <h2 class="mt-3 text-2xl font-bold text-slate-900">{{ viewCopy.trial.blocked.title }}</h2>
-          <p class="mt-2 text-sm text-slate-600">{{ blockedTrialDescription }}</p>
-          <div class="mt-6 flex flex-wrap justify-end">
+          <p class="mt-2 text-sm text-slate-600">{{ viewCopy.trial.blocked.description }}</p>
+          <div class="mt-6 flex flex-wrap justify-end gap-3">
             <button
               class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
               @click="goToPlans"
             >
               {{ viewCopy.trial.blocked.goPlans }}
+            </button>
+            <button
+              class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              @click="dismissBlockedModal"
+            >
+              {{ viewCopy.trial.blocked.close }}
             </button>
           </div>
         </div>
@@ -611,12 +605,6 @@ const route = useRoute();
 const router = useRouter();
 const agencyStore = useAgencyStore();
 const auth = useAuthStore();
-const routeRequiresAuth = computed(() => route.matched.some(record => record.meta?.requiresAuth));
-const showAuthSplash = computed(() => {
-  if (!routeRequiresAuth.value) return false;
-  if (!auth.token) return false;
-  return auth.isHydrating || !auth.user;
-});
 const themeStore = useThemeStore();
 const COOKIE_KEY = "global_cookie_consent";
 const t = createAdminLocalizer();
@@ -644,12 +632,12 @@ const viewCopy = {
   },
   sidebar: {
     logout: t({ pt: "Sair", es: "Salir" }),
-    menuLabel: t({ pt: "Menu", es: "Menú" }),
-    openMenu: t({ pt: "Abrir menu", es: "Abrir menú" }),
+    menuLabel: t({ pt: "Menu", es: "MenÃº" }),
+    openMenu: t({ pt: "Abrir menu", es: "Abrir menÃº" }),
     closeMenu: t({ pt: "Fechar", es: "Cerrar" })
   },
   support: {
-    prompt: t({ pt: "Precisa de ajuda?", es: "¿Necesita ayuda?" })
+    prompt: t({ pt: "Precisa de ajuda?", es: "Â¿Necesita ayuda?" })
   },
   trial: {
     welcome: {
@@ -678,30 +666,30 @@ const viewCopy = {
       cta: t({ pt: "Começar agora", es: "Comenzar ahora" })
     },
     warn3: {
-      eyebrow: t({ pt: "Faltam 3 dias", es: "Faltan 3 días" }),
-      title: t({ pt: "Seu período trial termina em breve", es: "Tu período de prueba termina pronto" }),
+      eyebrow: t({ pt: "Faltam 3 dias", es: "Faltan 3 dÃ­as" }),
+      title: t({ pt: "Seu perÃ­odo trial termina em breve", es: "Tu perÃ­odo de prueba termina pronto" }),
       description: t({
-        pt: "Em 3 dias o acesso ao editor será bloqueado. Escolha um plano para continuar criando roteiros ilimitados.",
-        es: "En 3 días se bloqueará el acceso al editor. Elige un plan para seguir creando itinerarios ilimitados."
+        pt: "Em 3 dias o acesso ao editor serÃ¡ bloqueado. Escolha um plano para continuar criando roteiros ilimitados.",
+        es: "En 3 dÃ­as se bloquearÃ¡ el acceso al editor. Elige un plan para seguir creando itinerarios ilimitados."
       }),
-      dismiss: t({ pt: "Depois", es: "Después" }),
+      dismiss: t({ pt: "Depois", es: "DespuÃ©s" }),
       goPlans: t({ pt: "Ver planos", es: "Ver planes" })
     },
     warn1: {
-      eyebrow: t({ pt: "Últimas horas", es: "Últimas horas" }),
-      title: t({ pt: "Seu trial termina amanhã", es: "Tu trial termina mañana" }),
+      eyebrow: t({ pt: "Ãšltimas horas", es: "Ãšltimas horas" }),
+      title: t({ pt: "Seu trial termina amanhÃ£", es: "Tu trial termina maÃ±ana" }),
       description: t({
-        pt: "Contrate agora para manter suas páginas ativas e seguir publicando novos roteiros sem interrupção.",
-        es: "Contrata ahora para mantener tus páginas activas y seguir publicando nuevos itinerarios sin interrupción."
+        pt: "Contrate agora para manter suas pÃ¡ginas ativas e seguir publicando novos roteiros sem interrupÃ§Ã£o.",
+        es: "Contrata ahora para mantener tus pÃ¡ginas activas y seguir publicando nuevos itinerarios sin interrupciÃ³n."
       }),
       subscribe: t({ pt: "Assinar agora", es: "Suscribirme ahora" })
     },
     blocked: {
       eyebrow: t({ pt: "Trial encerrado", es: "Trial finalizado" }),
-      title: t({ pt: "Você atingiu o limite do plano trial", es: "Alcanzaste el límite del plan trial" }),
+      title: t({ pt: "VocÃª atingiu o limite do plano trial", es: "Alcanzaste el lÃ­mite del plan trial" }),
       description: t({
         pt: "Assine um plano para desbloquear seu painel e republicar seus roteiros.",
-        es: "Suscríbete para desbloquear tu panel y volver a publicar tus itinerarios."
+        es: "SuscrÃ­bete para desbloquear tu panel y volver a publicar tus itinerarios."
       }),
       goPlans: t({ pt: "Ir para os planos", es: "Ir a los planes" }),
       close: t({ pt: "Fechar", es: "Cerrar" })
@@ -710,11 +698,11 @@ const viewCopy = {
   cookies: {
     title: t({ pt: "Cookies", es: "Cookies" }),
     descriptionLine1: t({
-      pt: "Utilizamos cookies e armazenamento local para manter sua sessão segura e salvar preferências.",
-      es: "Usamos cookies y almacenamiento local para mantener tu sesión segura y guardar preferencias."
+      pt: "Utilizamos cookies e armazenamento local para manter sua sessÃ£o segura e salvar preferÃªncias.",
+      es: "Usamos cookies y almacenamiento local para mantener tu sesiÃ³n segura y guardar preferencias."
     }),
     descriptionLine2: t({
-      pt: "Se optar por continuar sem aceitar, alguns recursos podem apresentar limitações.",
+      pt: "Se optar por continuar sem aceitar, alguns recursos podem apresentar limitaÃ§Ãµes.",
       es: "Si decides seguir sin aceptar, algunas funciones pueden presentar limitaciones."
     }),
     skip: t({ pt: "Continuar sem aceitar", es: "Seguir sin aceptar" }),
@@ -723,15 +711,15 @@ const viewCopy = {
   onboarding: {
     firstPageTitle: t({ pt: "Meu primeiro roteiro", es: "Mi primer itinerario" }),
     name: {
-      eyebrow: t({ pt: "Comece por aqui", es: "Empieza por aquí" }),
-      title: t({ pt: "Qual nome da sua agência?", es: "¿Cuál es el nombre de tu agencia?" }),
-      description: t({ pt: "Esse nome aparece no painel e nas páginas. Você pode alterar depois.", es: "Este nombre aparece en el panel y en las páginas. Puedes cambiarlo después." }),
+      eyebrow: t({ pt: "Comece por aqui", es: "Empieza por aquÃ­" }),
+      title: t({ pt: "Qual nome da sua agência?", es: "Â¿CuÃ¡l es el nombre de tu agencia?" }),
+      description: t({ pt: "Esse nome aparece no painel e nas páginas. Você pode alterar depois.", es: "Este nombre aparece en el panel y en las paginas. Puedes cambiarlo despuÃ©s." }),
       label: t({ pt: "Nome da agência", es: "Nombre de la agencia" }),
       placeholder: t({ pt: "Ex.: MariaTur", es: "Ej.: MariaTur" })
     },
     logo: {
       eyebrow: t({ pt: "Personalize", es: "Personaliza" }),
-      title: t({ pt: "Logo da sua agência", es: "Logo de tu agencia" }),
+      title: t({ pt: "Logo da sua agÃªncia", es: "Logo de tu agencia" }),
       description: t({ pt: "Envie o arquivo da sua marca. Você pode trocar depois.", es: "Sube el archivo de tu marca. Puedes cambiarlo despues." }),
       fieldLabel: t({ pt: "Logo", es: "Logo" }),
       hint: t({ pt: "Formatos permitidos: JPG e PNG - Tamanho máximo: 10MB", es: "Formatos permitidos: JPG y PNG - Tamanho máximo: 10MB" }),
@@ -739,20 +727,20 @@ const viewCopy = {
     },
     color: {
       eyebrow: t({ pt: "Defina o estilo", es: "Define el estilo" }),
-      title: t({ pt: "Qual a cor principal da sua agência?", es: "¿Cuál es el color principal de tu agencia?" }),
+      title: t({ pt: "Qual a cor principal da sua agência?", es: "Â¿CuÃ¡l es el color principal de tu agencia?" }),
       description: t({ pt: "Usamos essa cor nos botões e destaques padrão do editor.", es: "Usamos este color en los botones y destacados predeterminados del editor." }),
-      pickerHint: t({ pt: "Clique aqui para alterar", es: "Haz clic aquí para cambiar" }),
-      hexLabel: t({ pt: "Código hexadecimal", es: "Código hexadecimal" }),
+      pickerHint: t({ pt: "Clique aqui para alterar", es: "Haz clic aquÃ­ para cambiar" }),
+      hexLabel: t({ pt: "Código hexadecimal", es: "CÃ³digo hexadecimal" }),
       placeholder: t({ pt: "#41ce5f", es: "#41ce5f" })
     },
     success: {
-      title: t({ pt: "Parabéns, sua agência foi criada!", es: "¡Felicidades, tu agencia fue creada!" }),
-      description: t({ pt: "Agora você pode criar sua primeira página personalizada.", es: "Ahora puedes crear tu primera página personalizada." })
+      title: t({ pt: "Parabéns, sua agência foi criada!", es: "Â¡Felicidades, tu agencia fue creada!" }),
+      description: t({ pt: "Agora você pode criar sua primeira página personalizada.", es: "Ahora puedes crear tu primera pÃ¡gina personalizada." })
     },
     unsaved: {
       eyebrow: t({ pt: "Atenção", es: "Atencion" }),
       title: t({ pt: "Há alterações não salvas", es: "Hay cambios no guardados" }),
-      description: t({ pt: "Se fechar agora, você perderá o que preencheu. Deseja realmente sair?", es: "Si cierras ahora, perderás lo que completaste. ¿Deseas salir?" })
+      description: t({ pt: "Se fechar agora, vocÃª perderá o que preencheu. Deseja realmente sair?", es: "Si cierras ahora, perderÃ¡s lo que completaste. Â¿Deseas salir?" })
     },
     actions: {
       close: t({ pt: "Fechar", es: "Cerrar" }),
@@ -762,17 +750,17 @@ const viewCopy = {
       creating: t({ pt: "Criando...", es: "Creando..." }),
       createAgency: t({ pt: "Criar agência", es: "Crear agencia" }),
       creatingFirstPage: t({ pt: "Criando...", es: "Creando..." }),
-      createFirstPage: t({ pt: "Criar minha primeira página", es: "Crear mi primera página" }),
+      createFirstPage: t({ pt: "Criar minha primeira página", es: "Crear mi primera pÃ¡gina" }),
       continueEditing: t({ pt: "Continuar editando", es: "Seguir editando" }),
       discardAndClose: t({ pt: "Descartar e fechar", es: "Descartar y cerrar" })
     },
     errors: {
       missingName: t({ pt: "Informe o nome da sua agência.", es: "Informa el nombre de tu agencia." }),
-      cannotAdvance: t({ pt: "Não foi possível avançar. Tente novamente.", es: "No fue posible avanzar. Intenta nuevamente." }),
-      cannotCreateAgency: t({ pt: "Não foi possível criar a agência. Tente novamente.", es: "No fue posible crear la agencia. Intenta nuevamente." }),
-      mustCreateAgency: t({ pt: "Crie sua agência antes de adicionar páginas.", es: "Crea tu agencia antes de agregar páginas." }),
-      cannotCreatePage: t({ pt: "Não foi possível criar a página agora.", es: "No fue posible crear la página ahora." }),
-      slugUnavailable: t({ pt: "Não foi possível gerar um slug disponível para esta agência. Ajuste o nome e tente novamente.", es: "No fue posible generar un slug disponible para esta agencia. Ajusta el nombre e inténtalo nuevamente." })
+      cannotAdvance: t({ pt: "Não foi possÃ­vel avançaar. Tente novamente.", es: "No fue posible avanzar. Intenta nuevamente." }),
+      cannotCreateAgency: t({ pt: "Não foi possÃ­vel criar a agência. Tente novamente.", es: "No fue posible crear la agencia. Intenta nuevamente." }),
+      mustCreateAgency: t({ pt: "Crie sua agência antes de adicionar páginas.", es: "Crea tu agencia antes de agregar pÃ¡ginas." }),
+      cannotCreatePage: t({ pt: "Não foi possí­vel criar a página agora.", es: "No fue posible crear la pÃ¡gina ahora." }),
+      slugUnavailable: t({ pt: "Não foi possí­vel gerar um slug disponí­vel para esta agência. Ajuste o nome e tente novamente.", es: "No fue posible generar un slug disponible para esta agencia. Ajusta el nombre e intÃ©ntalo nuevamente." })
     }
   }
 } as const;
@@ -936,6 +924,7 @@ const showTrialWarning3Days = ref(false);
 const showTrialWarning1Day = ref(false);
 const mobileMenuOpen = ref(false);
 const trialPlanName = computed(() => getPlanLabel(auth.user?.trial_plan));
+const trialModalDismissed = ref(false);
 const planTagMap: Record<string, string> = {
   essencial: viajeChatTagIds.PLANO_PROFISSIONAL,
   growth: viajeChatTagIds.PLANO_AGENCIA,
@@ -1009,16 +998,6 @@ const trialActive = computed(() => {
   return now >= trialStartDate.value && now <= trialEndDate.value;
 });
 const trialBlocked = computed(() => Boolean(auth.user?.trial_blocked));
-const blockedTrialEndDateLabel = computed(() => {
-  if (!trialEndDate.value || Number.isNaN(trialEndDate.value.getTime())) {
-    return "data indisponível";
-  }
-  return trialEndDate.value.toLocaleDateString();
-});
-const blockedTrialDescription = computed(
-  () =>
-    `Seu trial terminou em ${blockedTrialEndDateLabel.value}. Assine um plano para desbloquear seu painel e voltar a publicar seus roteiros.`
-);
 const trialDaysLeft = computed(() => {
   if (!trialActive.value || !trialEndDate.value) return null;
   const diff = trialEndDate.value.getTime() - Date.now();
@@ -1046,9 +1025,20 @@ watch(
   () => [trialBlocked.value, route.fullPath],
   () => {
     if (trialBlocked.value) {
-      showEndDialog.value = route.path !== "/admin/planos";
+      if (route.path !== "/admin/planos" && route.path !== "/admin/dashboard") {
+        router.push("/admin/planos");
+        trialModalDismissed.value = false;
+        showEndDialog.value = false;
+        return;
+      }
+      if (route.path === "/admin/dashboard" && !trialModalDismissed.value) {
+        showEndDialog.value = true;
+      } else {
+        showEndDialog.value = false;
+      }
     } else {
       showEndDialog.value = false;
+      trialModalDismissed.value = false;
     }
   },
   { immediate: true }
@@ -1075,6 +1065,11 @@ watch(
   },
   { immediate: true }
 );
+
+const dismissBlockedModal = () => {
+  trialModalDismissed.value = true;
+  showEndDialog.value = false;
+};
 
 const goToPlans = () => {
   router.push("/admin/planos");
@@ -1317,9 +1312,6 @@ const scrollToTop = () => {
 
 onMounted(async () => {
   setupViewportWatcher();
-  if (auth.token && !auth.user) {
-    await auth.ensureHydrated().catch(() => undefined);
-  }
   if (!agencyStore.agencies.length) {
     await agencyStore.loadAgencies();
   }
@@ -1435,14 +1427,13 @@ body.admin-body-light {
 ========================= */
 
 .admin-main {
-  min-height: 0;
-  height: 100%;
+  min-height: 100vh;
 }
 
 .admin-content {
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
-  min-height: 0;
 }
 
 

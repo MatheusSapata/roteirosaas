@@ -1,8 +1,5 @@
 <template>
-  <div v-if="isBootstrappingPages" class="flex min-h-[60vh] w-full items-center justify-center px-4 py-8 md:px-8">
-    <div class="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-brand"></div>
-  </div>
-  <div v-else class="w-full space-y-6 px-4 py-8 md:px-8">
+  <div class="w-full space-y-6 px-4 py-8 md:px-8">
     <div class="flex flex-wrap items-center justify-between gap-3 dark:text-white">
       <div>
         <p class="text-sm font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-white">
@@ -1227,7 +1224,6 @@ const planKey = computed(() => (authStore.user?.plan || "free").toLowerCase());
 const isFree = computed(() => planKey.value === "free");
 const showLeadColumn = computed(() => planKey.value !== "essencial");
 const hasLeadStatsAccess = computed(() => ["growth", "infinity", "teste"].includes(planKey.value));
-const isBootstrappingPages = ref(true);
 const headerGridColumns = computed(() =>
   showLeadColumn.value
     ? "grid-cols-[1.2fr,0.9fr,0.9fr,0.8fr,1.6fr,0.8fr,1.9fr]"
@@ -1251,14 +1247,6 @@ const loadPages = async () => {
   } catch (err) {
     console.error(err);
     showSnackbar(viewCopy.messages.loadError, "error");
-  }
-};
-
-const bootstrapPages = async () => {
-  try {
-    await loadPages();
-  } finally {
-    isBootstrappingPages.value = false;
   }
 };
 
@@ -1778,7 +1766,7 @@ watch(
   }
 );
 
-onMounted(bootstrapPages);
+onMounted(loadPages);
 </script>
 
 <style scoped>

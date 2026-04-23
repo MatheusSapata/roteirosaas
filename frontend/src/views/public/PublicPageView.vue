@@ -1,6 +1,6 @@
 <template>
-  <div v-if="loading" class="flex min-h-screen flex-col items-center justify-center bg-black px-4 text-center text-white">
-    <div class="h-12 w-12 animate-spin rounded-full border-4 border-white/20 border-t-white"></div>
+  <div v-if="loading" class="flex min-h-screen items-center justify-center text-slate-600">
+    {{ localize(publicPageCopy.loading) }}
   </div>
   <div
     v-else-if="!pageData"
@@ -12,7 +12,7 @@
       {{ localize(publicPageCopy.notFoundDescription) }}
     </p>
   </div>
-  <div v-else class="public-page min-h-screen overflow-x-hidden">
+  <div v-else class="public-page min-h-screen">
     <template v-for="(section, idx) in sections" :key="idx">
       <PublicHeroSection
         v-if="section?.enabled && section.type === 'hero'"
@@ -522,10 +522,6 @@ function setupCtaTracking(pixels: { type: string; value: string }[]) {
 </script>
 
 <style scoped>
-.public-page {
-  overflow-x: hidden;
-}
-
 .public-page :deep(section) {
   margin-top: 0;
   margin-bottom: 0;

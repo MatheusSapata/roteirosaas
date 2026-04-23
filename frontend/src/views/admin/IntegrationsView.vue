@@ -1,8 +1,5 @@
 ﻿<template>
-  <div v-if="isBootstrappingIntegrations" class="flex min-h-[60vh] w-full items-center justify-center px-4 py-8 md:px-8">
-    <div class="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-brand"></div>
-  </div>
-  <div v-else class="w-full space-y-6 px-4 py-8 md:px-8">
+  <div class="w-full space-y-6 px-4 py-8 md:px-8">
     <header class="space-y-1">
       <p class="text-sm uppercase tracking-[0.2em] text-slate-500 dark:text-white/70">
         {{ viewCopy.header.eyebrow }}
@@ -234,7 +231,6 @@ const nameInput = ref("");
 const typeInput = ref<PixelType>("meta");
 const idInput = ref("");
 const pixels = ref<PixelEntry[]>([]);
-const isBootstrappingIntegrations = ref(true);
 const message = ref("");
 const errorMessage = ref("");
 
@@ -332,11 +328,7 @@ const removePixel = async (idx: number) => {
   }
 };
 
-onMounted(async () => {
-  try {
-    await fetchPixels();
-  } finally {
-    isBootstrappingIntegrations.value = false;
-  }
+onMounted(() => {
+  fetchPixels();
 });
 </script>
