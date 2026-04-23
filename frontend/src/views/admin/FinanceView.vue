@@ -176,18 +176,6 @@
           >
             Nova venda
           </button>
-          <div class="flex items-center rounded-full border border-slate-200 bg-slate-100 p-1 text-xs font-semibold text-slate-500">
-            <button
-              v-for="option in salesViewOptions"
-              :key="option.value"
-              type="button"
-              class="rounded-full px-3 py-1 transition"
-              :class="salesViewMode === option.value ? 'bg-white text-slate-900 shadow' : 'hover:text-slate-700'"
-              @click="salesViewMode = option.value"
-            >
-              {{ option.label }}
-            </button>
-          </div>
           <button class="pill" @click="loadSales">Atualizar</button>
         </div>
       </div>
@@ -254,58 +242,7 @@
       </div>
       <div v-if="!filteredSales.length" class="placeholder-card">Nenhuma venda encontrada.</div>
       <div v-else>
-        <div v-if="salesViewMode === 'cards'" class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <article
-            v-for="sale in filteredSales"
-            :key="sale.id"
-            class="h-full rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
-          >
-            <div class="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                  Venda #{{ sale.id }}  {{ saleChannelLabel(sale.channel) }}
-                  <span v-if="salePageLabel(sale)"> {{ salePageLabel(sale) }}</span>
-                </p>
-                <h3 class="text-lg font-semibold text-slate-900">{{ sale.product_title }}</h3>
-                <p class="text-sm text-slate-500">
-                  {{ formatCurrency(sale.amount_cents) }}  {{ sale.installments }}x 
-                  {{ sale.customer_name || 'Cliente' }}
-                </p>
-              </div>
-              <div class="flex flex-wrap gap-2 text-xs font-semibold">
-                <span :class="['badge', statusClasses.payment[paymentStatusKey(sale.payment_status)]]">
-                  {{ paymentStatusLabel(sale.payment_status) }}
-                </span>
-                <span :class="['badge', statusClasses.payout[payoutStatusKey(sale.payout_status)]]">
-                  {{ payoutStatusLabel(sale.payout_status) }}
-                </span>
-                <span :class="['badge', statusClasses.passengers[passengerStatusKey(sale.passenger_status)]]">
-                  {{ passengerStatusLabel(sale.passenger_status) }}
-                </span>
-              </div>
-            </div>
-            <div class="mt-4 flex flex-wrap gap-2">
-              <button class="pill" @click="openSaleDetails(sale.id)">Detalhes</button>
-              <button
-                class="pill"
-                :disabled="!sale.requires_passengers"
-                :title="sale.requires_passengers ? 'Gerenciar passageiros' : 'Este produto não exige passageiros.'"
-                @click="sale.requires_passengers && openPassengerModal(sale.id)"
-              >
-                Passageiros
-              </button>
-              <button
-                class="pill"
-                :disabled="sale.payment_status !== 'paid' || !sale.requires_passengers"
-                :title="sale.requires_passengers ? 'Copiar link público' : 'Este produto não exige formulário de passageiros.'"
-                @click="copyPassengerLink(sale.id)"
-              >
-                Copiar link passageiros
-              </button>
-            </div>
-          </article>
-        </div>
-        <div v-else class="overflow-x-auto rounded-3xl border border-slate-200 bg-white">
+        <div class="overflow-x-auto rounded-3xl border border-slate-200 bg-white">
           <table class="min-w-full divide-y divide-slate-200 text-sm text-center">
             <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
               <tr>
@@ -884,7 +821,7 @@
                 <div>
                   <p class="text-xs uppercase tracking-wide text-slate-400">Descri&ccedil;&atilde;o do produto</p>
                   <p class="text-base font-semibold text-slate-900">
-                    {{ passengerSale.product_description || "Sem Descri&ccedil;&atilde;o" }}
+                    {{ passengerSale.product_description || "Sem descrição" }}
                   </p>
                 </div>
                 <div>
@@ -1097,7 +1034,7 @@
                 </div>
               </div>
               <div v-else class="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500">
-                Nenhum grupo de passageiros Dispon&iacute;vel para esta venda.
+                Nenhum grupo de passageiros disponível para esta venda.
               </div>
             </template>
           </section>
@@ -1191,7 +1128,6 @@ import type {
 import type { LegalTemplateSummary } from "../../types/legal";
 
 type ActiveTab = "products" | "sales";
-type SalesViewMode = "cards" | "table";
 type SalesTab = "overview" | "settings";
 type CardInterestMode = "merchant" | "customer";
 
@@ -1261,6 +1197,7 @@ type ProductFormState = {
   variations: ProductVariationForm[];
   boarding_locations: string[];
   is_road_trip: boolean;
+  allowed_payment_methods: Array<"pix" | "credit_card" | "boleto">;
 };
 
 type PackageSelectionState = {
@@ -1363,11 +1300,6 @@ const serializeRuleForm = (rule: ChildPricingRuleForm): ChildPricingRulePayload 
   };
 };
 
-const salesViewOptions: { label: string; value: SalesViewMode }[] = [
-  { label: "Cards", value: "cards" },
-  { label: "Tabela", value: "table" },
-];
-
 const route = useRoute();
 const activeTab = ref<ActiveTab>("products");
 watch(
@@ -1378,7 +1310,6 @@ watch(
   { immediate: true },
 );
 const salesTab = ref<SalesTab>("overview");
-const salesViewMode = ref<SalesViewMode>("cards");
 const sales = ref<SaleSummary[]>([]);
 const salesPagination = ref({ total: 0, page: 1, pageSize: 20 });
 const selectedSale = ref<SaleDetail | null>(null);
@@ -1804,6 +1735,7 @@ const productForm = reactive<ProductFormState>({
   variations: [defaultVariation()],
   boarding_locations: [],
   is_road_trip: false,
+  allowed_payment_methods: ["pix", "credit_card", "boleto"],
 });
 
 const childPolicyCollapseState = reactive<Record<string, boolean>>({});
@@ -1931,6 +1863,7 @@ const resetProductForm = () => {
   productForm.variations = [defaultVariation()];
   productForm.boarding_locations = [];
   productForm.is_road_trip = false;
+  productForm.allowed_payment_methods = ["pix", "credit_card", "boleto"];
 };
 
 const mapDetailToForm = (detail: ProductDetail) => {
@@ -1949,6 +1882,9 @@ const mapDetailToForm = (detail: ProductDetail) => {
   productForm.checkout_product_image_url = detail.checkout_product_image_url ?? null;
   productForm.boarding_locations = detail.boarding_locations ? [...detail.boarding_locations] : [];
   productForm.is_road_trip = detail.is_road_trip;
+  productForm.allowed_payment_methods = Array.isArray(detail.allowed_payment_methods) && detail.allowed_payment_methods.length
+    ? [...detail.allowed_payment_methods]
+    : ["pix", "credit_card", "boleto"];
   productForm.variations = detail.variations.map(variation => ({
     public_id: variation.public_id,
     name: variation.name,
@@ -2015,6 +1951,7 @@ const buildProductPayload = (): ProductPayload => ({
   boarding_locations: [...productForm.boarding_locations],
   has_rooms: productForm.variations.some(variation => variation.has_accommodation),
   is_road_trip: productForm.is_road_trip,
+  allowed_payment_methods: productForm.allowed_payment_methods,
   rooms: [],
 });
 
@@ -2707,7 +2644,7 @@ const paymentStatusLabel = (status: string) => ({
 
 const payoutStatusLabel = (status: string) => ({
   pending: "Aguardando",
-  available: "Dispon&iacute;vel",
+  available: "Disponível",
   payout_paid: "Recebido",
   payout_failed: "Falha",
 }[status] || status);
@@ -2783,7 +2720,7 @@ const copyText = async (text: string) => {
       await navigator.clipboard.writeText(text);
       return;
     }
-    throw new Error("Clipboard API inDispon&iacute;vel");
+    throw new Error("Clipboard API indisponível");
   } catch (err) {
     try {
       const textarea = document.createElement("textarea");

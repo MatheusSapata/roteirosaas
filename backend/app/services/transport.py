@@ -13,16 +13,21 @@ from app.models import (
     LegalContract,
     LegalContractSignatureStatus,
     Product,
+    ProductScheduleMode,
     Sale,
+    SaleItem,
     SalePassenger,
     SalePassengerStatus,
     SalePaymentStatus,
+    Departure,
+    PassengerGroup,
     SeatAssignment,
     SeatAssignmentActor,
     SeatAssignmentStatus,
     SeatChangeActorRole,
     SeatChangeLog,
     TripSeat,
+    TripDepartureInstance,
     TripTransportConfig,
     TripVehicle,
     TripVehicleStatus,
@@ -32,6 +37,8 @@ from app.models import (
 )
 from app.schemas.transport import (
     PassengerSeatSummary,
+    SaleSeatSelectionProduct,
+    SaleSeatSelectionProductsResponse,
     SeatAdminAssignmentPayload,
     SeatAssignmentPayload,
     SeatBlockPayload,
@@ -123,14 +130,205 @@ def _compute_layout_metrics(schema: VehicleLayoutSchema) -> _SeatMetrics:
     )
 
 
+def _is_segmented_seat_map(product: Product, config: TripTransportConfig) -> bool:
+    return (
+        config.is_road_trip
+        and product.schedule_mode == ProductScheduleMode.recurring.value
+    )
+
+
+def _departure_for_product(product_id: int, departure_id: int, db: Session) -> Departure:
+    departure = (
+        db.query(Departure)
+        .filter(
+            Departure.id == departure_id,
+            Departure.product_id == product_id,
+            Departure.deleted_at.is_(None),
+        )
+        .first()
+    )
+    if not departure:
+        raise HTTPException(status_code=404, detail="Saida nao encontrada para este produto.")
+    return departure
+
+
+def _ensure_departure_instance(product: Product, departure: Departure, db: Session) -> TripDepartureInstance:
+    instance = (
+        db.query(TripDepartureInstance)
+        .filter(
+            TripDepartureInstance.product_id == product.id,
+            TripDepartureInstance.departure_id == departure.id,
+        )
+        .first()
+    )
+    if instance:
+        if instance.travel_date != departure.date or instance.departure_time != departure.time:
+            instance.travel_date = departure.date
+            instance.departure_time = departure.time
+            db.add(instance)
+            db.flush()
+        return instance
+    instance = TripDepartureInstance(
+        product_id=product.id,
+        departure_id=departure.id,
+        travel_date=departure.date,
+        departure_time=departure.time,
+    )
+    db.add(instance)
+    db.flush()
+    return instance
+
+
+def _first_sold_departure_for_product(product_id: int, db: Session) -> Departure | None:
+    return (
+        db.query(Departure)
+        .join(SaleItem, SaleItem.departure_id == Departure.id)
+        .filter(
+            Departure.product_id == product_id,
+            Departure.deleted_at.is_(None),
+            SaleItem.departure_id.is_not(None),
+        )
+        .order_by(Departure.date.asc(), Departure.time.asc(), Departure.id.asc())
+        .first()
+    )
+
+
+def _resolve_admin_departure_instance(
+    product: Product,
+    *,
+    departure_id: int | None,
+    db: Session,
+) -> TripDepartureInstance | None:
+    target = _departure_for_product(product.id, departure_id, db) if departure_id else _first_sold_departure_for_product(product.id, db)
+    if not target:
+        return None
+    return _ensure_departure_instance(product, target, db)
+
+
+def _sale_departure_ids(sale: Sale, db: Session, product_id: int | None = None) -> list[int]:
+    filters = [
+        SaleItem.sale_id == sale.id,
+        SaleItem.departure_id.is_not(None),
+    ]
+    if product_id is not None:
+        filters.append(SaleItem.product_id == product_id)
+    rows = (
+        db.query(SaleItem.departure_id)
+        .filter(*filters)
+        .distinct()
+        .all()
+    )
+    return [int(row.departure_id) for row in rows if row.departure_id is not None]
+
+
+def _resolve_sale_transport_product(sale: Sale, db: Session) -> Product:
+    return _resolve_sale_transport_product_with_hint(sale, db)
+
+
+def _sale_transport_products(sale: Sale, db: Session) -> list[Product]:
+    preferred_product_id = sale.product.id if sale.product and sale.product.is_road_trip else None
+    sale_product_ids = [
+        int(row.product_id)
+        for row in (
+            db.query(SaleItem.product_id)
+            .filter(SaleItem.sale_id == sale.id, SaleItem.product_id.is_not(None))
+            .distinct()
+            .all()
+        )
+        if row.product_id is not None
+    ]
+    if preferred_product_id and preferred_product_id not in sale_product_ids:
+        sale_product_ids.append(preferred_product_id)
+    if not sale_product_ids:
+        return []
+    products = (
+        db.query(Product)
+        .filter(
+            Product.id.in_(sale_product_ids),
+            Product.is_road_trip.is_(True),
+        )
+        .order_by(Product.id.asc())
+        .all()
+    )
+    return products
+
+
+def _resolve_sale_transport_product_with_hint(
+    sale: Sale,
+    db: Session,
+    product_public_id: str | None = None,
+) -> Product:
+    road_trip_products = _sale_transport_products(sale, db)
+    if not road_trip_products:
+        if sale.product:
+            return sale.product
+        raise HTTPException(status_code=404, detail="Produto nao encontrado para a venda.")
+    if product_public_id:
+        normalized = product_public_id.strip()
+        match = next((product for product in road_trip_products if product.public_id == normalized), None)
+        if not match:
+            raise HTTPException(status_code=404, detail="Produto rodoviario nao encontrado para esta venda.")
+        return match
+    if len(road_trip_products) == 1:
+        return road_trip_products[0]
+    raise HTTPException(
+        status_code=400,
+        detail="Venda possui mais de uma excursao rodoviaria. Selecione uma saida especifica.",
+    )
+
+
+def _resolve_sale_departure_instance(
+    sale: Sale,
+    product: Product,
+    *,
+    departure_id: int | None,
+    db: Session,
+) -> TripDepartureInstance:
+    sale_departure_ids = (
+        db.query(SaleItem.departure_id)
+        .filter(
+            SaleItem.sale_id == sale.id,
+            SaleItem.product_id == product.id,
+            SaleItem.departure_id.is_not(None),
+        )
+        .distinct()
+        .all()
+    )
+    departure_ids = [int(row.departure_id) for row in sale_departure_ids if row.departure_id is not None]
+    if departure_id is not None:
+        if departure_id not in departure_ids:
+            raise HTTPException(status_code=400, detail="Saida informada nao pertence a esta venda.")
+        departure = _departure_for_product(product.id, departure_id, db)
+        return _ensure_departure_instance(product, departure, db)
+    if len(departure_ids) == 1:
+        departure = _departure_for_product(product.id, departure_ids[0], db)
+        return _ensure_departure_instance(product, departure, db)
+    if not departure_ids:
+        raise HTTPException(status_code=400, detail="Venda sem saida valida para mapa de assentos.")
+    raise HTTPException(
+        status_code=400,
+        detail="Venda possui mais de uma saida. Informe departure_id para escolher o mapa correto.",
+    )
+
+
 def _trip_vehicle_counts(
-    product_id: int, db: Session
+    product_id: int,
+    db: Session,
+    departure_instance_id: int | None = None,
 ) -> tuple[dict[int, int], dict[int, int], dict[int, int]]:
+    seat_filters = [TripSeat.product_id == product_id]
+    assignment_filters = [SeatAssignment.product_id == product_id]
+    if departure_instance_id is None:
+        seat_filters.append(TripSeat.departure_instance_id.is_(None))
+        assignment_filters.append(SeatAssignment.departure_instance_id.is_(None))
+    else:
+        seat_filters.append(TripSeat.departure_instance_id == departure_instance_id)
+        assignment_filters.append(SeatAssignment.departure_instance_id == departure_instance_id)
     seat_counts = {
         row.trip_vehicle_id: row.count
         for row in (
             db.query(TripSeat.trip_vehicle_id, func.count(TripSeat.id).label("count"))
-            .filter(TripSeat.product_id == product_id)
+            .filter(*seat_filters)
             .group_by(TripSeat.trip_vehicle_id)
             .all()
         )
@@ -139,7 +337,7 @@ def _trip_vehicle_counts(
         row.trip_vehicle_id: row.count
         for row in (
             db.query(SeatAssignment.trip_vehicle_id, func.count(SeatAssignment.id).label("count"))
-            .filter(SeatAssignment.product_id == product_id)
+            .filter(*assignment_filters)
             .group_by(SeatAssignment.trip_vehicle_id)
             .all()
         )
@@ -149,7 +347,7 @@ def _trip_vehicle_counts(
         for row in (
             db.query(TripSeat.trip_vehicle_id, func.count(TripSeat.id).label("count"))
             .filter(
-                TripSeat.product_id == product_id,
+                *seat_filters,
                 or_(TripSeat.is_blocked.is_(True), TripSeat.is_selectable.is_(False)),
             )
             .group_by(TripSeat.trip_vehicle_id)
@@ -437,7 +635,11 @@ def _ensure_trip_config(product: Product, db: Session) -> TripTransportConfig:
     return config
 
 
-def _trip_vehicle_summaries(product_id: int, db: Session) -> list[TripVehicleOut]:
+def _trip_vehicle_summaries(
+    product_id: int,
+    db: Session,
+    departure_instance_id: int | None = None,
+) -> list[TripVehicleOut]:
     vehicles = (
         db.query(TripVehicle)
         .options(joinedload(TripVehicle.vehicle), joinedload(TripVehicle.layout))
@@ -445,7 +647,11 @@ def _trip_vehicle_summaries(product_id: int, db: Session) -> list[TripVehicleOut
         .order_by(TripVehicle.order_index.asc(), TripVehicle.id.asc())
         .all()
     )
-    seat_counts, assignment_counts, blocked_counts = _trip_vehicle_counts(product_id, db)
+    seat_counts, assignment_counts, blocked_counts = _trip_vehicle_counts(
+        product_id,
+        db,
+        departure_instance_id=departure_instance_id,
+    )
     return [
         _serialize_trip_vehicle(vehicle, seat_counts, assignment_counts, blocked_counts) for vehicle in vehicles
     ]
@@ -467,19 +673,31 @@ def _resolve_active_trip_vehicle(product: Product, db: Session) -> TripVehicle |
     )
 
 
-def _trip_vehicle_snapshot(vehicle: TripVehicle, db: Session) -> TripVehicleOut:
-    seat_counts, assignment_counts, blocked_counts = _trip_vehicle_counts(vehicle.product_id, db)
+def _trip_vehicle_snapshot(
+    vehicle: TripVehicle,
+    db: Session,
+    departure_instance_id: int | None = None,
+) -> TripVehicleOut:
+    seat_counts, assignment_counts, blocked_counts = _trip_vehicle_counts(
+        vehicle.product_id,
+        db,
+        departure_instance_id=departure_instance_id,
+    )
     return _serialize_trip_vehicle(vehicle, seat_counts, assignment_counts, blocked_counts)
 
 
-def _sync_trip_vehicle_statuses(product_id: int, db: Session) -> None:
+def _sync_trip_vehicle_statuses(product_id: int, db: Session, departure_instance_id: int | None = None) -> None:
     vehicles = (
         db.query(TripVehicle)
         .filter(TripVehicle.product_id == product_id)
         .order_by(TripVehicle.order_index.asc(), TripVehicle.id.asc())
         .all()
     )
-    seat_counts, assignment_counts, blocked_counts = _trip_vehicle_counts(product_id, db)
+    seat_counts, assignment_counts, blocked_counts = _trip_vehicle_counts(
+        product_id,
+        db,
+        departure_instance_id=departure_instance_id,
+    )
     activation_available = True
     active_assigned = False
     for vehicle in vehicles:
@@ -683,14 +901,26 @@ def _generate_trip_vehicle_seats(
     layout: VehicleLayout,
     db: Session,
     force: bool = False,
+    departure_instance_id: int | None = None,
 ) -> None:
+    assignment_filters = [
+        SeatAssignment.product_id == product.id,
+        SeatAssignment.trip_vehicle_id == trip_vehicle.id,
+    ]
+    seat_filters = [
+        TripSeat.product_id == product.id,
+        TripSeat.trip_vehicle_id == trip_vehicle.id,
+    ]
+    if departure_instance_id is None:
+        assignment_filters.append(SeatAssignment.departure_instance_id.is_(None))
+        seat_filters.append(TripSeat.departure_instance_id.is_(None))
+    else:
+        assignment_filters.append(SeatAssignment.departure_instance_id == departure_instance_id)
+        seat_filters.append(TripSeat.departure_instance_id == departure_instance_id)
     if not force:
         assignments_exist = (
             db.query(SeatAssignment.id)
-            .filter(
-                SeatAssignment.product_id == product.id,
-                SeatAssignment.trip_vehicle_id == trip_vehicle.id,
-            )
+            .filter(*assignment_filters)
             .first()
         )
         if assignments_exist:
@@ -698,14 +928,8 @@ def _generate_trip_vehicle_seats(
                 status_code=409,
                 detail="Ja existem assentos atribuidos neste veiculo. Confirme a regeneracao para substituir o mapa.",
             )
-    db.query(SeatAssignment).filter(
-        SeatAssignment.product_id == product.id,
-        SeatAssignment.trip_vehicle_id == trip_vehicle.id,
-    ).delete(synchronize_session=False)
-    db.query(TripSeat).filter(
-        TripSeat.product_id == product.id,
-        TripSeat.trip_vehicle_id == trip_vehicle.id,
-    ).delete(synchronize_session=False)
+    db.query(SeatAssignment).filter(*assignment_filters).delete(synchronize_session=False)
+    db.query(TripSeat).filter(*seat_filters).delete(synchronize_session=False)
     schema = LayoutSchemaModel.model_validate(layout.layout_schema)
     counter = 0
     for deck_order, deck in enumerate(_resolve_decks(schema)):
@@ -723,6 +947,7 @@ def _generate_trip_vehicle_seats(
             meta.setdefault("deck_order", deck_order)
             trip_seat = TripSeat(
                 product_id=product.id,
+                departure_instance_id=departure_instance_id,
                 layout_id=layout.id,
                 trip_vehicle_id=trip_vehicle.id,
                 seat_number=seat_number,
@@ -751,11 +976,14 @@ def _contract_by_token(token: str, db: Session) -> LegalContract:
         raise HTTPException(status_code=404, detail="Assinatura nao encontrada.")
     contract = (
         db.query(LegalContract)
-        .options(joinedload(LegalContract.sale).joinedload(Sale.product))
+        .options(
+            joinedload(LegalContract.sale).joinedload(Sale.product),
+            joinedload(LegalContract.sale).joinedload(Sale.items),
+        )
         .filter(LegalContract.signature_token == normalized)
         .first()
     )
-    if not contract or not contract.sale or not contract.sale.product:
+    if not contract or not contract.sale:
         raise HTTPException(status_code=404, detail="Assinatura nao encontrada.")
     return contract
 
@@ -766,29 +994,56 @@ def _sale_by_passenger_token(token: str, db: Session) -> Sale:
         raise HTTPException(status_code=404, detail="Venda nao encontrada.")
     sale = (
         db.query(Sale)
-        .options(joinedload(Sale.product), joinedload(Sale.contract))
+        .options(joinedload(Sale.product), joinedload(Sale.items), joinedload(Sale.contract))
         .filter(Sale.passenger_form_token == normalized)
         .first()
     )
-    if not sale or not sale.product:
+    if not sale:
         raise HTTPException(status_code=404, detail="Venda nao encontrada.")
     return sale
 
 
-def _passenger_records(product: Product, db: Session) -> list[SalePassenger]:
-    return (
+def _passenger_records(
+    product: Product,
+    db: Session,
+    departure_id: int | None = None,
+) -> list[SalePassenger]:
+    section_sale_group_ids = (
+        db.query(PassengerGroup.id)
+        .join(SaleItem, SaleItem.id == PassengerGroup.sale_item_id)
+        .filter(SaleItem.product_id == product.id)
+        .subquery()
+    )
+    query = (
         db.query(SalePassenger)
         .join(Sale, Sale.id == SalePassenger.sale_id)
-        .options(joinedload(SalePassenger.sale))
+        .options(
+            joinedload(SalePassenger.sale),
+            joinedload(SalePassenger.passenger_group).joinedload(PassengerGroup.sale_item),
+        )
         .filter(
-            _sale_product_filter(product),
+            or_(
+                _sale_product_filter(product),
+                SalePassenger.passenger_group_id.in_(section_sale_group_ids),
+            ),
             SalePassenger.type != PassengerType.child_free.value,
         )
-        .all()
     )
+    if departure_id is not None:
+        query = (
+            query.join(PassengerGroup, PassengerGroup.id == SalePassenger.passenger_group_id)
+            .join(SaleItem, SaleItem.id == PassengerGroup.sale_item_id)
+            .filter(SaleItem.departure_id == departure_id)
+        )
+    return query.all()
 
 
-def _trip_seat_records(product: Product, db: Session, trip_vehicle_id: int | None = None) -> list[TripSeat]:
+def _trip_seat_records(
+    product: Product,
+    db: Session,
+    trip_vehicle_id: int | None = None,
+    departure_instance_id: int | None = None,
+) -> list[TripSeat]:
     query = (
         db.query(TripSeat)
         .filter(TripSeat.product_id == product.id)
@@ -799,18 +1054,31 @@ def _trip_seat_records(product: Product, db: Session, trip_vehicle_id: int | Non
         )
         .order_by(TripSeat.row_index.asc(), TripSeat.col_index.asc())
     )
+    if departure_instance_id is None:
+        query = query.filter(TripSeat.departure_instance_id.is_(None))
+    else:
+        query = query.filter(TripSeat.departure_instance_id == departure_instance_id)
     if trip_vehicle_id:
         query = query.filter(TripSeat.trip_vehicle_id == trip_vehicle_id)
     return query.all()
 
 
-def _passenger_assignment_map(product_id: int, db: Session) -> dict[int, TripSeat]:
+def _passenger_assignment_map(
+    product_id: int,
+    db: Session,
+    departure_instance_id: int | None = None,
+) -> dict[int, TripSeat]:
+    filters = [SeatAssignment.product_id == product_id]
+    if departure_instance_id is None:
+        filters.append(SeatAssignment.departure_instance_id.is_(None))
+    else:
+        filters.append(SeatAssignment.departure_instance_id == departure_instance_id)
     assignments = (
         db.query(SeatAssignment)
         .options(
             joinedload(SeatAssignment.seat)
         )
-        .filter(SeatAssignment.product_id == product_id)
+        .filter(*filters)
         .all()
     )
     mapping: dict[int, TripSeat] = {}
@@ -884,8 +1152,29 @@ def _seat_stats(seats: Iterable[TripSeat], passengers: Iterable[PassengerSeatSum
     )
 
 
-def get_trip_seat_map(product: Product, db: Session, trip_vehicle_id: int | None = None) -> SeatMapContext:
+def _departure_time_str(departure: Departure | None) -> str | None:
+    if not departure:
+        return None
+    return departure.time.strftime("%H:%M")
+
+
+def get_trip_seat_map(
+    product: Product,
+    db: Session,
+    trip_vehicle_id: int | None = None,
+    departure_id: int | None = None,
+) -> SeatMapContext:
     config = _ensure_trip_config(product, db)
+    segmented = _is_segmented_seat_map(product, config)
+    departure_instance = _resolve_admin_departure_instance(product, departure_id=departure_id, db=db) if segmented else None
+    departure = departure_instance.departure if departure_instance else None
+    departure_instance_id = departure_instance.id if departure_instance else None
+    if config.is_road_trip:
+        _sync_trip_vehicle_statuses(
+            product.id,
+            db,
+            departure_instance_id=departure_instance_id if segmented else None,
+        )
     target_vehicle = None
     layout = None
     seats: list[TripSeat] = []
@@ -900,22 +1189,62 @@ def get_trip_seat_map(product: Product, db: Session, trip_vehicle_id: int | None
             ).first()
         if target_vehicle:
             layout = _serialize_layout_detail(target_vehicle.layout) if target_vehicle.layout else None
-            seats = _trip_seat_records(product, db, trip_vehicle_id=target_vehicle.id)
-        vehicle_options = _trip_vehicle_summaries(product.id, db)
+            if segmented and departure_instance and layout and not _trip_seat_records(
+                product,
+                db,
+                trip_vehicle_id=target_vehicle.id,
+                departure_instance_id=departure_instance_id,
+            ):
+                _generate_trip_vehicle_seats(
+                    product,
+                    target_vehicle,
+                    target_vehicle.layout,
+                    db,
+                    force=True,
+                    departure_instance_id=departure_instance_id,
+                )
+                db.commit()
+            seats = _trip_seat_records(
+                product,
+                db,
+                trip_vehicle_id=target_vehicle.id,
+                departure_instance_id=departure_instance_id if segmented else None,
+            )
+        vehicle_options = _trip_vehicle_summaries(
+            product.id,
+            db,
+            departure_instance_id=departure_instance_id if segmented else None,
+        )
     else:
         layout = _serialize_layout_detail(config.layout) if config.layout else None
-        seats = _trip_seat_records(product, db)
+        seats = _trip_seat_records(product, db, departure_instance_id=None)
         vehicle_options = []
-    passengers = _passenger_records(product, db)
-    assignment_map = _passenger_assignment_map(product.id, db)
+    passengers = _passenger_records(product, db, departure_id=departure.id if departure else None)
+    assignment_map = _passenger_assignment_map(
+        product.id,
+        db,
+        departure_instance_id=departure_instance_id if segmented else None,
+    )
     passenger_items = [_passenger_summary(passenger, assignment_map) for passenger in passengers]
     stats = _seat_stats(seats, passenger_items)
-    trip_vehicle_summary = _trip_vehicle_snapshot(target_vehicle, db) if target_vehicle else None
+    trip_vehicle_summary = (
+        _trip_vehicle_snapshot(
+            target_vehicle,
+            db,
+            departure_instance_id=departure_instance_id if segmented else None,
+        )
+        if target_vehicle
+        else None
+    )
     return SeatMapContext(
         product_id=product.id,
         product_name=product.name,
         product_public_id=product.public_id,
         trip_date=product.trip_date,
+        departure_instance_id=departure_instance_id,
+        departure_id=departure.id if departure else None,
+        departure_date=departure.date if departure else None,
+        departure_time=_departure_time_str(departure),
         trip_vehicle=trip_vehicle_summary,
         vehicles=vehicle_options,
         layout=layout,
@@ -932,22 +1261,56 @@ def _seat_selection_status_for_sale(
     contract: LegalContract | None,
     db: Session,
 ) -> SeatPostSignatureStatus:
-    product = sale.product
-    if not sale or not product:
+    if not sale:
         raise HTTPException(status_code=404, detail="Venda ou produto nao encontrado.")
+    product = _resolve_sale_transport_product(sale, db)
     config = _ensure_trip_config(product, db)
+    segmented = _is_segmented_seat_map(product, config)
+    departure_instance = None
+    if segmented:
+        try:
+            departure_instance = _resolve_sale_departure_instance(sale, product, departure_id=None, db=db)
+        except HTTPException:
+            departure_instance = None
+    departure_instance_id = departure_instance.id if departure_instance else None
+    if config.is_road_trip:
+        _sync_trip_vehicle_statuses(
+            product.id,
+            db,
+            departure_instance_id=departure_instance_id if segmented else None,
+        )
+    seat_filters = [TripSeat.product_id == product.id]
+    assignment_filters = [SeatAssignment.sale_id == sale.id]
+    if segmented:
+        if departure_instance_id is not None:
+            seat_filters.append(TripSeat.departure_instance_id == departure_instance_id)
+            assignment_filters.append(SeatAssignment.departure_instance_id == departure_instance_id)
+        else:
+            seat_filters.append(TripSeat.departure_instance_id.is_not(None))
+            assignment_filters.append(SeatAssignment.departure_instance_id.is_not(None))
+    else:
+        seat_filters.append(TripSeat.departure_instance_id.is_(None))
+        assignment_filters.append(SeatAssignment.departure_instance_id.is_(None))
     seats_generated = (
         db.query(TripSeat.id)
-        .filter(TripSeat.product_id == product.id)
+        .filter(*seat_filters)
         .first()
         is not None
     )
     active_vehicle = _resolve_active_trip_vehicle(product, db) if config.is_road_trip else None
     active_vehicle_seats_generated = False
     if active_vehicle:
+        active_vehicle_filters = [TripSeat.trip_vehicle_id == active_vehicle.id]
+        if segmented:
+            if departure_instance_id is not None:
+                active_vehicle_filters.append(TripSeat.departure_instance_id == departure_instance_id)
+            else:
+                active_vehicle_filters.append(TripSeat.departure_instance_id.is_not(None))
+        else:
+            active_vehicle_filters.append(TripSeat.departure_instance_id.is_(None))
         active_vehicle_seats_generated = (
             db.query(TripSeat.id)
-            .filter(TripSeat.trip_vehicle_id == active_vehicle.id)
+            .filter(*active_vehicle_filters)
             .first()
             is not None
         )
@@ -955,7 +1318,7 @@ def _seat_selection_status_for_sale(
     passengers_completed = sale.passenger_status == SalePassengerStatus.completed.value
     seats_selected = (
         db.query(SeatAssignment.id)
-        .filter(SeatAssignment.sale_id == sale.id)
+        .filter(*assignment_filters)
         .count()
         > 0
     )
@@ -1013,60 +1376,106 @@ def get_post_sale_status(token: str, db: Session) -> SeatPostSignatureStatus:
     return _seat_selection_status_for_sale(sale, sale.contract, db)
 
 
-def get_public_seat_selection_context(token: str, db: Session, trip_vehicle_id: int | None = None) -> SeatSelectionContext:
+def list_sale_seat_selection_products(token: str, db: Session) -> SaleSeatSelectionProductsResponse:
+    sale = _sale_by_passenger_token(token, db)
+    products = _sale_transport_products(sale, db)
+    return SaleSeatSelectionProductsResponse(
+        sale_id=sale.id,
+        items=[
+            SaleSeatSelectionProduct(
+                product_id=product.id,
+                product_public_id=product.public_id,
+                product_name=product.name,
+            )
+            for product in products
+            if product.public_id
+        ],
+    )
+
+
+def get_public_seat_selection_context(
+    token: str,
+    db: Session,
+    trip_vehicle_id: int | None = None,
+    departure_id: int | None = None,
+) -> SeatSelectionContext:
     contract = _contract_by_token(token, db)
     sale = contract.sale
     if not sale:
         raise HTTPException(status_code=404, detail="Venda nao encontrada.")
-    return get_seat_selection_context(sale, db, trip_vehicle_id=trip_vehicle_id)
+    return get_seat_selection_context(sale, db, trip_vehicle_id=trip_vehicle_id, departure_id=departure_id)
 
 
 def get_public_seat_selection_context_by_sale(
     token: str,
     db: Session,
     trip_vehicle_id: int | None = None,
+    departure_id: int | None = None,
+    product_public_id: str | None = None,
 ) -> SeatSelectionContext:
     sale = _sale_by_passenger_token(token, db)
-    return get_seat_selection_context(sale, db, trip_vehicle_id=trip_vehicle_id)
+    return get_seat_selection_context(
+        sale,
+        db,
+        trip_vehicle_id=trip_vehicle_id,
+        departure_id=departure_id,
+        product_public_id=product_public_id,
+    )
 
 
 def select_seat_for_signature(
     token: str,
     payload: SeatAssignmentPayload,
     db: Session,
+    departure_id: int | None = None,
 ) -> SeatSelectionContext:
     contract = _contract_by_token(token, db)
     sale = contract.sale
-    if not sale or not sale.product:
+    if not sale:
         raise HTTPException(status_code=404, detail="Venda nao encontrada.")
     _ensure_sale_ready_for_selection(sale, db)
+    product = _resolve_sale_transport_product(sale, db)
     assignment = assign_seat_to_passenger(
-        sale.product,
+        product,
         payload,
         actor=SeatAssignmentActor.customer,
         db=db,
         expected_sale_id=sale.id,
     )
-    return get_seat_selection_context(sale, db, trip_vehicle_id=assignment.trip_vehicle_id)
+    return get_seat_selection_context(
+        sale,
+        db,
+        trip_vehicle_id=assignment.trip_vehicle_id,
+        departure_id=departure_id,
+    )
 
 
 def select_seat_for_sale(
     token: str,
     payload: SeatAssignmentPayload,
     db: Session,
+    departure_id: int | None = None,
+    product_public_id: str | None = None,
 ) -> SeatSelectionContext:
     sale = _sale_by_passenger_token(token, db)
-    if not sale or not sale.product:
+    if not sale:
         raise HTTPException(status_code=404, detail="Venda nao encontrada.")
     _ensure_sale_ready_for_selection(sale, db)
+    product = _resolve_sale_transport_product_with_hint(sale, db, product_public_id=product_public_id)
     assignment = assign_seat_to_passenger(
-        sale.product,
+        product,
         payload,
         actor=SeatAssignmentActor.customer,
         db=db,
         expected_sale_id=sale.id,
     )
-    return get_seat_selection_context(sale, db, trip_vehicle_id=assignment.trip_vehicle_id)
+    return get_seat_selection_context(
+        sale,
+        db,
+        trip_vehicle_id=assignment.trip_vehicle_id,
+        departure_id=departure_id,
+        product_public_id=product.public_id,
+    )
 
 
 def _ensure_sale_ready_for_selection(sale: Sale, db: Session) -> None:
@@ -1083,14 +1492,27 @@ def _ensure_sale_ready_for_selection(sale: Sale, db: Session) -> None:
         raise HTTPException(status_code=400, detail="Contrato nao esta assinado.")
 
 
-def get_seat_selection_context(sale: Sale, db: Session, trip_vehicle_id: int | None = None) -> SeatSelectionContext:
+def get_seat_selection_context(
+    sale: Sale,
+    db: Session,
+    trip_vehicle_id: int | None = None,
+    departure_id: int | None = None,
+    product_public_id: str | None = None,
+) -> SeatSelectionContext:
     _ensure_sale_ready_for_selection(sale, db)
-    product = sale.product
-    if not product:
-        raise HTTPException(status_code=404, detail="Produto nao encontrado para a venda.")
+    product = _resolve_sale_transport_product_with_hint(sale, db, product_public_id=product_public_id)
     config = _ensure_trip_config(product, db)
     if not config.is_road_trip:
         raise HTTPException(status_code=404, detail="Assentos indisponiveis para esta excursao.")
+    segmented = _is_segmented_seat_map(product, config)
+    departure_instance = _resolve_sale_departure_instance(sale, product, departure_id=departure_id, db=db) if segmented else None
+    departure_instance_id = departure_instance.id if departure_instance else None
+    departure = departure_instance.departure if departure_instance else None
+    _sync_trip_vehicle_statuses(
+        product.id,
+        db,
+        departure_instance_id=departure_instance_id if segmented else None,
+    )
     vehicle_query = db.query(TripVehicle).filter(TripVehicle.product_id == product.id)
     active_vehicle = None
     if trip_vehicle_id:
@@ -1099,25 +1521,62 @@ def get_seat_selection_context(sale: Sale, db: Session, trip_vehicle_id: int | N
         active_vehicle = _resolve_active_trip_vehicle(product, db)
     if not active_vehicle:
         raise HTTPException(status_code=409, detail="Nenhum veiculo disponivel para selecao no momento.")
-    seats = _trip_seat_records(product, db, trip_vehicle_id=active_vehicle.id)
+    if not active_vehicle.is_active or active_vehicle.status != TripVehicleStatus.active.value:
+        raise HTTPException(status_code=409, detail="Veiculo informado ainda nao esta liberado para selecao.")
+    if segmented and departure_instance and active_vehicle.layout and not _trip_seat_records(
+        product,
+        db,
+        trip_vehicle_id=active_vehicle.id,
+        departure_instance_id=departure_instance_id,
+    ):
+        _generate_trip_vehicle_seats(
+            product,
+            active_vehicle,
+            active_vehicle.layout,
+            db,
+            force=True,
+            departure_instance_id=departure_instance_id,
+        )
+        db.commit()
+    seats = _trip_seat_records(
+        product,
+        db,
+        trip_vehicle_id=active_vehicle.id,
+        departure_instance_id=departure_instance_id if segmented else None,
+    )
     if not seats:
         raise HTTPException(status_code=409, detail="Mapa de assentos nao foi configurado para este veiculo.")
     layout = _serialize_layout_detail(active_vehicle.layout) if active_vehicle.layout else None
-    passengers = (
+    passengers_query = (
         db.query(SalePassenger)
+        .options(joinedload(SalePassenger.passenger_group).joinedload(PassengerGroup.sale_item))
         .filter(
             SalePassenger.sale_id == sale.id,
             SalePassenger.type != PassengerType.child_free.value,
         )
-        .all()
     )
-    assignment_map = _passenger_assignment_map(product.id, db)
+    if segmented and departure is not None:
+        passengers_query = (
+            passengers_query.join(PassengerGroup, PassengerGroup.id == SalePassenger.passenger_group_id)
+            .join(SaleItem, SaleItem.id == PassengerGroup.sale_item_id)
+            .filter(SaleItem.departure_id == departure.id)
+        )
+    passengers = passengers_query.all()
+    assignment_map = _passenger_assignment_map(
+        product.id,
+        db,
+        departure_instance_id=departure_instance_id if segmented else None,
+    )
     passenger_items = [_passenger_summary(passenger, assignment_map) for passenger in passengers]
     stats = _seat_stats(seats, passenger_items)
     reference = sale.provider_charge_id or sale.product_public_id or str(sale.id)
     vehicle_options = [
         vehicle
-        for vehicle in _trip_vehicle_summaries(product.id, db)
+        for vehicle in _trip_vehicle_summaries(
+            product.id,
+            db,
+            departure_instance_id=departure_instance_id if segmented else None,
+        )
         if vehicle.is_active and vehicle.status == TripVehicleStatus.active.value
     ]
     return SeatSelectionContext(
@@ -1125,7 +1584,15 @@ def get_seat_selection_context(sale: Sale, db: Session, trip_vehicle_id: int | N
         product_name=product.name,
         product_public_id=product.public_id,
         trip_date=product.trip_date,
-        trip_vehicle=_trip_vehicle_snapshot(active_vehicle, db),
+        departure_instance_id=departure_instance_id,
+        departure_id=departure.id if departure else None,
+        departure_date=departure.date if departure else None,
+        departure_time=_departure_time_str(departure),
+        trip_vehicle=_trip_vehicle_snapshot(
+            active_vehicle,
+            db,
+            departure_instance_id=departure_instance_id if segmented else None,
+        ),
         vehicles=vehicle_options,
         layout=layout,
         seats=[_serialize_trip_seat(seat, current_sale_id=sale.id) for seat in seats],
@@ -1141,20 +1608,66 @@ def get_seat_selection_context(sale: Sale, db: Session, trip_vehicle_id: int | N
     )
 
 
-def _assignment_for_passenger(passenger_id: int, db: Session) -> SeatAssignment | None:
-    return (
-        db.query(SeatAssignment)
-        .filter(SeatAssignment.passenger_id == passenger_id)
-        .first()
-    )
+def _resolve_passenger_departure_id(passenger: SalePassenger, product: Product, db: Session) -> int | None:
+    group = passenger.passenger_group
+    if group and group.sale_item and group.sale_item.departure_id:
+        return int(group.sale_item.departure_id)
+    sale = passenger.sale
+    if not sale:
+        return None
+    departure_ids = _sale_departure_ids(sale, db, product_id=product.id)
+    if len(departure_ids) == 1:
+        return departure_ids[0]
+    if product.schedule_mode == ProductScheduleMode.recurring.value:
+        raise HTTPException(status_code=400, detail="Passageiro sem saida definida para mapa de assentos.")
+    return None
 
 
-def _seat_by_id(seat_id: int, product_id: int, db: Session) -> TripSeat:
-    seat = (
-        db.query(TripSeat)
-        .filter(TripSeat.id == seat_id, TripSeat.product_id == product_id)
-        .first()
+def _resolve_passenger_departure_instance(
+    passenger: SalePassenger,
+    product: Product,
+    config: TripTransportConfig,
+    db: Session,
+) -> TripDepartureInstance | None:
+    if not _is_segmented_seat_map(product, config):
+        return None
+    departure_id = _resolve_passenger_departure_id(passenger, product, db)
+    if departure_id is None:
+        return None
+    departure = _departure_for_product(product.id, departure_id, db)
+    return _ensure_departure_instance(product, departure, db)
+
+
+def _assignment_for_passenger(
+    passenger_id: int,
+    product_id: int,
+    db: Session,
+    departure_instance_id: int | None = None,
+) -> SeatAssignment | None:
+    query = db.query(SeatAssignment).filter(
+        SeatAssignment.passenger_id == passenger_id,
+        SeatAssignment.product_id == product_id,
     )
+    if departure_instance_id is None:
+        query = query.filter(SeatAssignment.departure_instance_id.is_(None))
+    else:
+        query = query.filter(SeatAssignment.departure_instance_id == departure_instance_id)
+    return query.first()
+
+
+def _seat_by_id(
+    seat_id: int,
+    product_id: int,
+    db: Session,
+    departure_instance_id: int | None = None,
+) -> TripSeat:
+    query = db.query(TripSeat).filter(
+        TripSeat.id == seat_id,
+        TripSeat.product_id == product_id,
+    )
+    if departure_instance_id is not None:
+        query = query.filter(TripSeat.departure_instance_id == departure_instance_id)
+    seat = query.first()
     if not seat:
         raise HTTPException(status_code=404, detail="Assento nao encontrado.")
     return seat
@@ -1163,14 +1676,29 @@ def _seat_by_id(seat_id: int, product_id: int, db: Session) -> TripSeat:
 def _passenger_by_id(passenger_id: int, product: Product, db: Session, expected_sale_id: int | None = None) -> SalePassenger:
     passenger = (
         db.query(SalePassenger)
-        .options(joinedload(SalePassenger.sale))
+        .options(
+            joinedload(SalePassenger.sale),
+            joinedload(SalePassenger.passenger_group).joinedload(PassengerGroup.sale_item),
+        )
         .filter(SalePassenger.id == passenger_id)
         .first()
     )
     if not passenger:
         raise HTTPException(status_code=404, detail="Passageiro nao encontrado.")
     sale = passenger.sale
-    if not sale or (sale.product_id != product.id and sale.product_public_id != product.public_id):
+    group = passenger.passenger_group
+    group_product_id = group.product_id if group else None
+    group_item_product_id = group.sale_item.product_id if group and group.sale_item else None
+    belongs_to_product = bool(
+        sale
+        and (
+            sale.product_id == product.id
+            or sale.product_public_id == product.public_id
+            or group_product_id == product.id
+            or group_item_product_id == product.id
+        )
+    )
+    if not belongs_to_product:
         raise HTTPException(status_code=404, detail="Passageiro nao pertence a esta viagem.")
     if expected_sale_id and sale.id != expected_sale_id:
         raise HTTPException(status_code=404, detail="Passageiro nao pertence a este pedido.")
@@ -1190,9 +1718,11 @@ def _log_seat_change(
     reason: str | None,
     db: Session,
     trip_vehicle_id: int | None = None,
+    departure_instance_id: int | None = None,
 ) -> None:
     log = SeatChangeLog(
         product_id=product_id,
+        departure_instance_id=departure_instance_id,
         passenger_id=passenger.id if passenger else None,
         sale_id=sale_id,
         old_seat_id=old_seat_id,
@@ -1215,11 +1745,22 @@ def assign_seat_to_passenger(
     status_override: str | None = None,
     expected_sale_id: int | None = None,
 ) -> SeatAssignment:
-    seat = _seat_by_id(payload.seat_id, product.id, db)
+    config = _ensure_trip_config(product, db)
+    segmented = _is_segmented_seat_map(product, config)
+    passenger = _passenger_by_id(payload.passenger_id, product, db, expected_sale_id=expected_sale_id)
+    departure_instance = _resolve_passenger_departure_instance(passenger, product, config, db) if segmented else None
+    departure_instance_id = departure_instance.id if departure_instance else None
+    seat = _seat_by_id(payload.seat_id, product.id, db, departure_instance_id=departure_instance_id if segmented else None)
+    if segmented and seat.departure_instance_id != departure_instance_id:
+        raise HTTPException(status_code=400, detail="Assento informado pertence a outra saida.")
     if not seat.is_selectable or seat.is_blocked:
         raise HTTPException(status_code=400, detail="Assento indisponivel para selecao.")
-    passenger = _passenger_by_id(payload.passenger_id, product, db, expected_sale_id=expected_sale_id)
-    existing_assignment = _assignment_for_passenger(passenger.id, db)
+    existing_assignment = _assignment_for_passenger(
+        passenger.id,
+        product.id,
+        db,
+        departure_instance_id=departure_instance_id if segmented else None,
+    )
     if existing_assignment and existing_assignment.seat_id == seat.id:
         return existing_assignment
     occupant = seat.assignments[0] if seat.assignments else None
@@ -1238,9 +1779,11 @@ def assign_seat_to_passenger(
             "Liberado para nova selecao",
             db,
             trip_vehicle_id=existing_assignment.trip_vehicle_id if existing_assignment else None,
+            departure_instance_id=departure_instance_id if segmented else None,
         )
     assignment = SeatAssignment(
         product_id=product.id,
+        departure_instance_id=departure_instance_id if segmented else None,
         seat_id=seat.id,
         passenger_id=passenger.id,
         sale_id=passenger.sale_id,
@@ -1261,9 +1804,14 @@ def assign_seat_to_passenger(
         notes,
         db,
         trip_vehicle_id=seat.trip_vehicle_id,
+        departure_instance_id=departure_instance_id if segmented else None,
     )
     db.flush()
-    _sync_trip_vehicle_statuses(product.id, db)
+    _sync_trip_vehicle_statuses(
+        product.id,
+        db,
+        departure_instance_id=departure_instance_id if segmented else None,
+    )
     db.commit()
     db.refresh(assignment)
     return assignment
@@ -1278,8 +1826,17 @@ def drop_passenger_assignment(
     reason: str | None = None,
     expected_sale_id: int | None = None,
 ) -> None:
+    config = _ensure_trip_config(product, db)
+    segmented = _is_segmented_seat_map(product, config)
     passenger = _passenger_by_id(passenger_id, product, db, expected_sale_id=expected_sale_id)
-    assignment = _assignment_for_passenger(passenger.id, db)
+    departure_instance = _resolve_passenger_departure_instance(passenger, product, config, db) if segmented else None
+    departure_instance_id = departure_instance.id if departure_instance else None
+    assignment = _assignment_for_passenger(
+        passenger.id,
+        product.id,
+        db,
+        departure_instance_id=departure_instance_id if segmented else None,
+    )
     if not assignment:
         return
     old_seat_id = assignment.seat_id
@@ -1295,14 +1852,29 @@ def drop_passenger_assignment(
         reason or "Removido",
         db,
         trip_vehicle_id=assignment.trip_vehicle_id,
+        departure_instance_id=departure_instance_id if segmented else None,
     )
     db.flush()
-    _sync_trip_vehicle_statuses(product.id, db)
+    _sync_trip_vehicle_statuses(
+        product.id,
+        db,
+        departure_instance_id=departure_instance_id if segmented else None,
+    )
     db.commit()
 
 
-def block_trip_seat(product: Product, payload: SeatBlockPayload, db: Session, user: User | None = None) -> TripSeatOut:
-    seat = _seat_by_id(payload.seat_id, product.id, db)
+def block_trip_seat(
+    product: Product,
+    payload: SeatBlockPayload,
+    db: Session,
+    user: User | None = None,
+    departure_id: int | None = None,
+) -> TripSeatOut:
+    config = _ensure_trip_config(product, db)
+    segmented = _is_segmented_seat_map(product, config)
+    departure_instance = _resolve_admin_departure_instance(product, departure_id=departure_id, db=db) if segmented else None
+    departure_instance_id = departure_instance.id if departure_instance else None
+    seat = _seat_by_id(payload.seat_id, product.id, db, departure_instance_id=departure_instance_id if segmented else None)
     seat.is_blocked = payload.is_blocked
     db.add(seat)
     _log_seat_change(
@@ -1316,14 +1888,36 @@ def block_trip_seat(product: Product, payload: SeatBlockPayload, db: Session, us
         payload.reason,
         db,
         trip_vehicle_id=seat.trip_vehicle_id,
+        departure_instance_id=departure_instance_id if segmented else None,
     )
-    _sync_trip_vehicle_statuses(product.id, db)
+    _sync_trip_vehicle_statuses(
+        product.id,
+        db,
+        departure_instance_id=departure_instance_id if segmented else None,
+    )
     db.commit()
     db.refresh(seat)
     return _serialize_trip_seat(seat)
 
 
-def list_seat_history(product: Product, limit: int, db: Session) -> SeatHistoryResponse:
+def list_seat_history(
+    product: Product,
+    limit: int,
+    db: Session,
+    departure_id: int | None = None,
+) -> SeatHistoryResponse:
+    config = _ensure_trip_config(product, db)
+    segmented = _is_segmented_seat_map(product, config)
+    departure_instance = _resolve_admin_departure_instance(product, departure_id=departure_id, db=db) if segmented else None
+    departure_instance_id = departure_instance.id if departure_instance else None
+    filters = [SeatChangeLog.product_id == product.id]
+    if segmented:
+        if departure_instance_id is None:
+            filters.append(SeatChangeLog.departure_instance_id.is_not(None))
+        else:
+            filters.append(SeatChangeLog.departure_instance_id == departure_instance_id)
+    else:
+        filters.append(SeatChangeLog.departure_instance_id.is_(None))
     query = (
         db.query(SeatChangeLog)
         .options(
@@ -1331,7 +1925,7 @@ def list_seat_history(product: Product, limit: int, db: Session) -> SeatHistoryR
             joinedload(SeatChangeLog.old_seat),
             joinedload(SeatChangeLog.new_seat),
         )
-        .filter(SeatChangeLog.product_id == product.id)
+        .filter(*filters)
         .order_by(SeatChangeLog.created_at.desc())
     )
     items = query.limit(limit + 1).all()

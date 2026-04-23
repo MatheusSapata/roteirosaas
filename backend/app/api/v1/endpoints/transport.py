@@ -159,11 +159,12 @@ def save_transport_config_endpoint(
 def get_seat_map_endpoint(
     public_id: str,
     trip_vehicle_id: int | None = None,
+    departure_id: int | None = None,
     user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ) -> SeatMapContext:
     product = _product(public_id, user, db)
-    return get_trip_seat_map(product, db, trip_vehicle_id=trip_vehicle_id)
+    return get_trip_seat_map(product, db, trip_vehicle_id=trip_vehicle_id, departure_id=departure_id)
 
 
 @router.post("/products/{public_id}/seats/assignments", response_model=SeatMapContext)
@@ -171,6 +172,7 @@ def assign_seat_endpoint(
     public_id: str,
     payload: SeatAdminAssignmentPayload,
     trip_vehicle_id: int | None = None,
+    departure_id: int | None = None,
     user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ) -> SeatMapContext:
@@ -184,7 +186,7 @@ def assign_seat_endpoint(
         notes=payload.notes,
         status_override=payload.assignment_status,
     )
-    return get_trip_seat_map(product, db, trip_vehicle_id=trip_vehicle_id)
+    return get_trip_seat_map(product, db, trip_vehicle_id=trip_vehicle_id, departure_id=departure_id)
 
 
 @router.delete("/products/{public_id}/seats/passengers/{passenger_id}", status_code=204)
@@ -210,21 +212,23 @@ def block_seat_endpoint(
     public_id: str,
     payload: SeatBlockPayload,
     trip_vehicle_id: int | None = None,
+    departure_id: int | None = None,
     user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ) -> SeatMapContext:
     product = _product(public_id, user, db)
-    block_trip_seat(product, payload, db, user=user)
-    return get_trip_seat_map(product, db, trip_vehicle_id=trip_vehicle_id)
+    block_trip_seat(product, payload, db, user=user, departure_id=departure_id)
+    return get_trip_seat_map(product, db, trip_vehicle_id=trip_vehicle_id, departure_id=departure_id)
 
 
 @router.get("/products/{public_id}/seat-history", response_model=SeatHistoryResponse)
 def seat_history_endpoint(
     public_id: str,
     limit: int = 20,
+    departure_id: int | None = None,
     user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ) -> SeatHistoryResponse:
     product = _product(public_id, user, db)
     normalized_limit = max(1, min(limit, 100))
-    return list_seat_history(product, normalized_limit, db)
+    return list_seat_history(product, normalized_limit, db, departure_id=departure_id)

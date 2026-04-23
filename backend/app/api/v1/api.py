@@ -18,6 +18,7 @@ from app.api.v1.endpoints import (
     public_lead_forms,
     public_pages,
     public_transport,
+    schedule,
     stats,
     templates,
     transport,
@@ -43,6 +44,8 @@ api_router.include_router(lessons.router, prefix="/lessons", tags=["lessons"])
 api_router.include_router(lead_forms.router, prefix="/lead-forms", tags=["lead-forms"])
 api_router.include_router(public_lead_forms.router, prefix="/public/lead-forms", tags=["public-lead-forms"])
 api_router.include_router(finance.router, prefix="/finance", tags=["finance"])
+api_router.include_router(schedule.router, prefix="/finance", tags=["finance-schedule"])
+api_router.include_router(schedule.router, prefix="/public/finance", tags=["public-finance-schedule"])
 api_router.include_router(public_finance.router, prefix="/public/finance", tags=["public-finance"])
 api_router.include_router(legal.router, prefix="/legal", tags=["legal"])
 api_router.include_router(public_legal.router, prefix="/public/legal", tags=["public-legal"])

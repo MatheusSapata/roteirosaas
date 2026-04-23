@@ -125,6 +125,17 @@ class SeatPostSignatureStatus(BaseModel):
     message: str | None = None
 
 
+class SaleSeatSelectionProduct(BaseModel):
+    product_id: int
+    product_public_id: str
+    product_name: str
+
+
+class SaleSeatSelectionProductsResponse(BaseModel):
+    sale_id: int
+    items: list[SaleSeatSelectionProduct] = Field(default_factory=list)
+
+
 class TripVehiclePayload(BaseModel):
     id: int | None = None
     vehicle_id: int | None = None
@@ -202,6 +213,10 @@ class SeatMapContext(BaseModel):
     product_name: str
     product_public_id: str | None = None
     trip_date: date | None = None
+    departure_instance_id: int | None = None
+    departure_id: int | None = None
+    departure_date: date | None = None
+    departure_time: str | None = None
     trip_vehicle: TripVehicleOut | None = None
     vehicles: list[TripVehicleOut] = Field(default_factory=list)
     layout: VehicleLayoutDetail | None = None

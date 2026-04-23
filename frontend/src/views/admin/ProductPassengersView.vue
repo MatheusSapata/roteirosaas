@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="space-y-6">
     <header class="flex flex-wrap items-start justify-between gap-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
       <div>
@@ -15,19 +15,13 @@
         <button class="pill" @click="goBack">Voltar</button>
       </div>
     </header>
-
-    <div
-      v-if="!canViewPassengers"
-      class="rounded-3xl border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm"
-    >
-      Este produto não exige lista de passageiros. Nenhuma ação é necessária.
-    </div>
-    <section v-else class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+    <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
       <div class="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Passageiros</p>
           <p class="text-sm text-slate-500">
-            {{ passengerRows.length }} passageiros listados
+            {{ sortedPassengerRows.length }} passageiros listados
+            <span v-if="hasActiveFilters"> de {{ passengerRows.length }}</span>
             <span v-if="relatedSalesCount"> • {{ relatedSalesCount }} venda(s)</span>
           </p>
           <p class="text-xs text-slate-500" v-if="passengerRows.length">
@@ -45,10 +39,14 @@
               <option value="alpha">Ordem alfabética</option>
               <option value="boarding">Local de embarque</option>
               <option value="boarding_alpha">Local de embarque + ordem alfabética</option>
+              <option value="departure">Horário</option>
             </select>
           </div>
           <button class="pill" type="button" @click="resetSort" :disabled="sortMode === 'default'">
-            Redefinir
+            Redefinir ordem
+          </button>
+          <button class="pill" type="button" @click="resetFilters" :disabled="!hasActiveFilters">
+            Limpar filtros
           </button>
           <button class="pill" :disabled="passengersLoading" @click="refreshPassengers">
             {{ passengersLoading ? "Carregando..." : "Recarregar" }}
@@ -62,6 +60,78 @@
         </div>
       </div>
 
+      <div v-if="passengerRows.length || hasActiveFilters" class="mt-4 grid gap-3 rounded-2xl border border-slate-100 bg-slate-50/70 p-3 md:grid-cols-2 xl:grid-cols-6">
+        <label class="space-y-1">
+          <span class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Busca</span>
+          <input
+            v-model="searchQuery"
+            type="search"
+            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-slate-300 focus:outline-none"
+            placeholder="Nome, CPF, contato, embarque..."
+          />
+        </label>
+        <label class="space-y-1">
+          <span class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Tipo</span>
+          <select
+            v-model="passengerTypeFilter"
+            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-slate-300 focus:outline-none"
+          >
+            <option value="all">Todos</option>
+            <option v-for="option in typeFilterOptions" :key="option" :value="option">
+              {{ option }}
+            </option>
+          </select>
+        </label>
+        <label class="space-y-1">
+          <span class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Embarque</span>
+          <select
+            v-model="boardingFilter"
+            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-slate-300 focus:outline-none"
+          >
+            <option value="all">Todos</option>
+            <option v-for="option in boardingFilterOptions" :key="option" :value="option">
+              {{ option }}
+            </option>
+          </select>
+        </label>
+        <label class="space-y-1">
+          <span class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Data</span>
+          <select
+            v-model="departureDateFilter"
+            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-slate-300 focus:outline-none"
+          >
+            <option value="all">Todas</option>
+            <option v-for="option in departureDateFilterOptions" :key="option" :value="option">
+              {{ option }}
+            </option>
+          </select>
+        </label>
+        <label class="space-y-1">
+          <span class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Horário</span>
+          <select
+            v-model="departureFilter"
+            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-slate-300 focus:outline-none"
+          >
+            <option value="all">Todos</option>
+            <option v-for="option in departureFilterOptions" :key="option" :value="option">
+              {{ option }}
+            </option>
+          </select>
+        </label>
+        <label class="space-y-1">
+          <span class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Venda</span>
+          <select
+            v-model="saleFilter"
+            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-slate-300 focus:outline-none"
+          >
+            <option value="all">Todas</option>
+            <option v-for="saleId in saleFilterOptions" :key="saleId" :value="String(saleId)">
+              #{{ saleId }}
+            </option>
+          </select>
+        </label>
+      </div>
+
       <div v-if="passengersLoading" class="mt-4 rounded-2xl border border-dashed border-slate-200 p-4 text-sm text-slate-500">
         Carregando lista de passageiros...
       </div>
@@ -70,6 +140,9 @@
       </div>
       <div v-else-if="!passengerRows.length" class="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm text-slate-500">
         Nenhum passageiro preenchido para as vendas deste produto.
+      </div>
+      <div v-else-if="!sortedPassengerRows.length" class="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm text-slate-500">
+        Nenhum passageiro encontrado com os filtros aplicados.
       </div>
       <div v-else class="mt-4 overflow-hidden rounded-2xl border border-slate-100">
         <div class="max-h-[480px] overflow-y-auto custom-scroll">
@@ -82,6 +155,8 @@
                 <th class="px-3 py-2 text-left">Contato</th>
                 <th class="px-3 py-2 text-left">Tipo</th>
                 <th class="px-3 py-2 text-left">Embarque</th>
+                <th class="px-3 py-2 text-left">Data</th>
+                <th class="px-3 py-2 text-left">Horário</th>
                 <th class="px-3 py-2 text-left">Venda</th>
               </tr>
             </thead>
@@ -106,6 +181,12 @@
                   {{ row.passenger.boarding_location || "Não informado" }}
                 </td>
                 <td class="px-3 py-3 text-sm text-slate-600">
+                  {{ row.departureDateLabel }}
+                </td>
+                <td class="px-3 py-3 text-sm text-slate-600">
+                  {{ row.departureLabel }}
+                </td>
+                <td class="px-3 py-3 text-sm text-slate-600">
                   <p class="font-semibold text-slate-900">#{{ row.saleId }}</p>
                 </td>
               </tr>
@@ -115,7 +196,7 @@
       </div>
     </section>
 
-    <teleport v-if="canViewPassengers" to="body">
+    <teleport to="body">
       <transition name="fade">
         <div
           v-if="exportDialogOpen"
@@ -170,7 +251,7 @@
               </label>
             </div>
             <p class="text-xs text-slate-500">
-              Cabeçalho do PDF: logo da agência, nome do produto e data do produto. Após a tabela adicionamos o selo “Passageiros”.
+              Cabeçalho do PDF: logo da agência, nome do produto e data do produto. Após a tabela adicionamos o selo "Passageiros".
             </p>
             <p v-if="exportError" class="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-2 text-sm text-rose-700">
               {{ exportError }}
@@ -213,9 +294,12 @@ interface ProductPassengerRow {
   paymentStatus: SalePaymentStatus;
   channel: string;
   groupLabel: string | null;
+  departureId: number | null;
+  departureDateLabel: string;
+  departureLabel: string;
 }
 
-type SortMode = "default" | "alpha" | "boarding" | "boarding_alpha";
+type SortMode = "default" | "alpha" | "boarding" | "boarding_alpha" | "departure";
 type PdfOrientation = "portrait" | "landscape";
 
 interface ExportColumnDefinition {
@@ -229,10 +313,15 @@ const router = useRouter();
 const agencyStore = useAgencyStore();
 const productId = computed(() => route.params.productId as string);
 const product = ref<ProductDetail | null>(null);
-const canViewPassengers = computed(() => !!product.value?.is_road_trip);
 const passengersLoading = ref(false);
 const passengerRows = ref<ProductPassengerRow[]>([]);
 const sortMode = ref<SortMode>("default");
+const searchQuery = ref("");
+const passengerTypeFilter = ref("all");
+const boardingFilter = ref("all");
+const departureDateFilter = ref("all");
+const departureFilter = ref("all");
+const saleFilter = ref("all");
 const relatedSalesCount = ref(0);
 const errorMessage = ref<string | null>(null);
 const exportDialogOpen = ref(false);
@@ -249,9 +338,86 @@ const exportAgency = computed(() => {
   return currentAgency.value;
 });
 
+const typeFilterOptions = computed(() => {
+  const labels = new Set<string>();
+  passengerRows.value.forEach(row => labels.add(passengerTypeLabel(row.passenger.type)));
+  return Array.from(labels).sort((a, b) => a.localeCompare(b, "pt-BR"));
+});
+
+const boardingFilterOptions = computed(() => {
+  const labels = new Set<string>();
+  passengerRows.value.forEach(row => {
+    const value = (row.passenger.boarding_location || "").trim() || "Não informado";
+    labels.add(value);
+  });
+  return Array.from(labels).sort((a, b) => a.localeCompare(b, "pt-BR"));
+});
+
+const departureFilterOptions = computed(() => {
+  const labels = new Set<string>();
+  passengerRows.value.forEach(row => {
+    const value = (row.departureLabel || "").trim();
+    if (value) labels.add(value);
+  });
+  return Array.from(labels).sort((a, b) => a.localeCompare(b, "pt-BR"));
+});
+
+const departureDateFilterOptions = computed(() => {
+  const labels = new Set<string>();
+  passengerRows.value.forEach(row => {
+    const value = (row.departureDateLabel || "").trim();
+    if (value) labels.add(value);
+  });
+  return Array.from(labels).sort((a, b) => a.localeCompare(b, "pt-BR"));
+});
+
+const saleFilterOptions = computed(() => {
+  const ids = new Set<number>();
+  passengerRows.value.forEach(row => ids.add(row.saleId));
+  return Array.from(ids).sort((a, b) => a - b);
+});
+
+const hasActiveFilters = computed(
+  () =>
+    !!searchQuery.value.trim() ||
+    passengerTypeFilter.value !== "all" ||
+    boardingFilter.value !== "all" ||
+    departureDateFilter.value !== "all" ||
+    departureFilter.value !== "all" ||
+    saleFilter.value !== "all",
+);
+
+const filteredPassengerRows = computed(() => {
+  const term = searchQuery.value.trim().toLowerCase();
+  return passengerRows.value.filter(row => {
+    const passengerType = passengerTypeLabel(row.passenger.type);
+    const boarding = row.passenger.boarding_location || "Não informado";
+    const departureDate = row.departureDateLabel || "Sem data";
+    const departure = row.departureLabel || "Sem horário";
+    if (passengerTypeFilter.value !== "all" && passengerType !== passengerTypeFilter.value) return false;
+    if (boardingFilter.value !== "all" && boarding !== boardingFilter.value) return false;
+    if (departureDateFilter.value !== "all" && departureDate !== departureDateFilter.value) return false;
+    if (departureFilter.value !== "all" && departure !== departureFilter.value) return false;
+    if (saleFilter.value !== "all" && String(row.saleId) !== saleFilter.value) return false;
+    if (!term) return true;
+    const searchable = [
+      row.passenger.name || "",
+      row.passenger.cpf || "",
+      passengerContact(row.passenger),
+      boarding,
+      departureDate,
+      departure,
+      passengerType,
+      `#${row.saleId}`,
+    ]
+      .join(" ")
+      .toLowerCase();
+    return searchable.includes(term);
+  });
+});
 const sortedPassengerRows = computed(() => {
-  if (sortMode.value === "default") return passengerRows.value;
-  const rows = [...passengerRows.value];
+  if (sortMode.value === "default") return filteredPassengerRows.value;
+  const rows = [...filteredPassengerRows.value];
   if (sortMode.value === "alpha") {
     rows.sort((a, b) => a.passenger.name.localeCompare(b.passenger.name));
   } else if (sortMode.value === "boarding") {
@@ -268,12 +434,34 @@ const sortedPassengerRows = computed(() => {
       if (aKey === bKey) return a.passenger.name.localeCompare(b.passenger.name);
       return aKey.localeCompare(bKey);
     });
+  } else if (sortMode.value === "departure") {
+    rows.sort((a, b) => {
+      const aHasDeparture = Number.isFinite(a.departureId);
+      const bHasDeparture = Number.isFinite(b.departureId);
+      if (aHasDeparture && bHasDeparture) {
+        const diff = Number(a.departureId) - Number(b.departureId);
+        if (diff !== 0) return diff;
+      } else if (aHasDeparture !== bHasDeparture) {
+        return aHasDeparture ? -1 : 1;
+      }
+      if (a.saleId !== b.saleId) return a.saleId - b.saleId;
+      return a.passenger.name.localeCompare(b.passenger.name);
+    });
   }
   return rows;
 });
 
 const resetSort = () => {
   sortMode.value = "default";
+};
+
+const resetFilters = () => {
+  searchQuery.value = "";
+  passengerTypeFilter.value = "all";
+  boardingFilter.value = "all";
+  departureDateFilter.value = "all";
+  departureFilter.value = "all";
+  saleFilter.value = "all";
 };
 
 const loadProduct = async () => {
@@ -288,33 +476,27 @@ const loadProduct = async () => {
 };
 
 const fetchSalesForProduct = async (): Promise<SaleSummary[]> => {
-  const matches: SaleSummary[] = [];
+  const sales: SaleSummary[] = [];
   let page = 1;
   const pageSize = 100;
   let totalPages = 1;
   do {
     const { data } = await listSales(page, pageSize);
-    matches.push(...data.items.filter(item => item.product_public_id === productId.value));
+    sales.push(...data.items.filter(item => item.requires_passengers));
     totalPages = Math.max(1, Math.ceil(data.total / data.page_size));
     page += 1;
   } while (page <= totalPages);
-  return matches;
+  return sales;
 };
 
 const refreshPassengers = async () => {
   if (!productId.value) return;
-  if (product.value && !product.value.is_road_trip) {
-    passengerRows.value = [];
-    relatedSalesCount.value = 0;
-    errorMessage.value = "Este produto não exige lista de passageiros.";
-    return;
-  }
   passengersLoading.value = true;
   errorMessage.value = null;
   try {
     const sales = await fetchSalesForProduct();
-    relatedSalesCount.value = sales.length;
     if (!sales.length) {
+      relatedSalesCount.value = 0;
       passengerRows.value = [];
       return;
     }
@@ -328,23 +510,56 @@ const refreshPassengers = async () => {
     );
 
     const rows: ProductPassengerRow[] = [];
+    const matchedSaleIds = new Set<number>();
+    const currentProductDbId = Number(product.value?.id || 0) || null;
     details.forEach(detail => {
       if (!detail) return;
+      const allItems = detail.items || [];
+      const targetItems = currentProductDbId
+        ? allItems.filter(item => Number(item.product_id || 0) === currentProductDbId)
+        : [];
+      const fallbackDirectSale = detail.product_public_id === productId.value;
+      const hasTargetItems = targetItems.length > 0;
+      if (!hasTargetItems && !fallbackDirectSale) return;
+
       const groupLabels = new Map<number, string>();
+      const departureByGroup = new Map<number, number | null>();
+      const sourceItems = hasTargetItems ? targetItems : allItems;
+      const sourceItemIds = new Set(sourceItems.map(item => item.id));
+      const itemById = new Map(sourceItems.map(item => [item.id, item]));
       detail.passenger_groups?.forEach(group => {
         if (group.id) {
+          if (!sourceItemIds.has(group.sale_item_id)) return;
           groupLabels.set(group.id, group.label || `${group.product_name} #${group.group_index}`);
+          const item = itemById.get(group.sale_item_id);
+          departureByGroup.set(group.id, item?.departure_id ?? null);
         }
       });
       detail.passengers.forEach(passenger => {
+        if (passenger.passenger_group_id && !groupLabels.has(passenger.passenger_group_id)) return;
+        if (!passenger.passenger_group_id && !fallbackDirectSale) return;
         const label = passenger.passenger_group_id ? groupLabels.get(passenger.passenger_group_id) || null : null;
+        const departureId = passenger.passenger_group_id ? departureByGroup.get(passenger.passenger_group_id) ?? null : null;
+        const item = passenger.passenger_group_id
+          ? itemById.get(
+              detail.passenger_groups?.find(group => group.id === passenger.passenger_group_id)?.sale_item_id || 0,
+            )
+          : undefined;
+        const departureDate = (item?.departure_date || "").trim();
+        const departureDateLabel = formatDepartureDate(departureDate);
+        const departureTime = (item?.departure_time || "").trim();
+        const departureLabel = departureTime || (departureId ? `#${departureId}` : "Sem horário");
         rows.push({
           saleId: detail.id,
           passenger,
           paymentStatus: detail.payment_status,
           channel: detail.channel,
           groupLabel: label,
+          departureId,
+          departureDateLabel,
+          departureLabel,
         });
+        matchedSaleIds.add(detail.id);
       });
     });
 
@@ -353,6 +568,7 @@ const refreshPassengers = async () => {
       return a.passenger.name.localeCompare(b.passenger.name);
     });
 
+    relatedSalesCount.value = matchedSaleIds.size;
     passengerRows.value = rows;
   } catch (err) {
     console.error("Erro ao carregar passageiros do produto", err);
@@ -383,6 +599,18 @@ const passengerBirthdate = (passenger: Passenger) => {
   }
 };
 
+const formatDepartureDate = (value?: string | null) => {
+  if (!value) return "Sem data";
+  const raw = String(value).trim();
+  if (!raw) return "Sem data";
+  const isoPart = raw.includes("T") ? raw.split("T")[0] : raw;
+  const parsed = new Date(`${isoPart}T00:00:00`);
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed.toLocaleDateString("pt-BR");
+  }
+  return raw;
+};
+
 const tripDateLabel = computed(() => {
   if (!product.value?.trip_date) return "Sem data definida";
   try {
@@ -400,6 +628,8 @@ const exportColumns: ExportColumnDefinition[] = [
   { id: "contact", label: "Contato", getValue: row => passengerContact(row.passenger) },
   { id: "type", label: "Tipo", getValue: row => passengerTypeLabel(row.passenger.type) },
   { id: "boarding", label: "Embarque", getValue: row => row.passenger.boarding_location || "Não informado" },
+  { id: "departure_date", label: "Data", getValue: row => row.departureDateLabel },
+  { id: "departure", label: "Horário", getValue: row => row.departureLabel },
   { id: "sale", label: "Venda", getValue: row => `#${row.saleId}` },
 ];
 
@@ -608,3 +838,5 @@ watch(
   opacity: 0;
 }
 </style>
+
+

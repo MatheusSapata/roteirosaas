@@ -1,13 +1,11 @@
 <template>
-  <div v-if="open" class="seat-modal">
-    <div class="seat-modal__backdrop" @click="handleClose"></div>
-    <div class="seat-modal__panel" :class="{ 'seat-modal__panel--compact': context && !canSelectSeats }">
-      <header class="seat-modal__header" :class="{ 'seat-modal__header--center': !canSelectSeats }">
-        <div class="seat-modal__headline">
-          <p class="eyebrow" v-if="canSelectSeats">Mapa de assentos</p>
+  <section class="seat-step" :class="{ 'seat-step--summary': context && !canSelectSeats }">
+    <div class="seat-step__shell">
+      <header v-if="showHeader" class="seat-step__header" :class="{ 'seat-step__header--center': !canSelectSeats }">
+        <div class="seat-step__headline">
+          <p class="seat-step__eyebrow" v-if="canSelectSeats">Selecao de assentos</p>
           <h2 v-if="canSelectSeats">
-            Escolha o assento para:
-            <span class="seat-modal__focus">{{ activePassenger?.name || "seu passageiro" }}</span>
+            Escolha de assentos
           </h2>
           <div v-else class="seat-modal__hero">
             <div class="seat-modal__hero-icon">&#10003;</div>
@@ -16,18 +14,28 @@
               <p class="seat-modal__hero-subtitle">Seus assentos foram garantidos</p>
             </div>
           </div>
-          <p class="subtitle" :class="{ 'subtitle--centered': !canSelectSeats }">
+          <p v-if="canSelectSeats" class="seat-step__meta">
+            <span>{{ context?.product_name || "Produto" }}</span>
+            <span>{{ context?.trip_vehicle?.display_name || "Veiculo 1" }}</span>
+            <span>{{ context?.trip_vehicle ? `${context.trip_vehicle.occupied_seats}/${context.trip_vehicle.capacity} ocupados` : "Ocupacao a confirmar" }}</span>
+            <span>Etapa 2 de 2</span>
+          </p>
+          <p v-else class="subtitle" :class="{ 'subtitle--centered': !canSelectSeats }">
             {{ context?.product_name }} &middot;
             {{ formattedTripDate || "Data a confirmar" }}
           </p>
-          <p v-if="context?.trip_vehicle" class="subtitle subtitle--muted" :class="{ 'subtitle--centered': !canSelectSeats }">
+          <p v-if="!canSelectSeats && context?.trip_vehicle" class="subtitle subtitle--muted" :class="{ 'subtitle--centered': !canSelectSeats }">
             Ônibus liberado: {{ context.trip_vehicle.display_name || "Operacional" }} &middot;
             {{ context.trip_vehicle.occupied_seats }}/{{ context.trip_vehicle.capacity }} ocupados
           </p>
-
-          <p v-if="canSelectSeats" class="subtitle subtitle--muted">Selecione um passageiro abaixo e clique em um assento livre.</p>
         </div>
-        <button type="button" class="btn-ghost" @click="handleClose">Fechar</button>
+        <div v-if="canSelectSeats" class="seat-step__progress">
+          <span>Etapa 2 de 2</span>
+          <strong>{{ context?.stats.assigned_passengers || 0 }}/{{ context?.passengers.length || 0 }} com assento</strong>
+          <div class="seat-step__progress-track">
+            <div class="seat-step__progress-fill" :style="{ width: progressPercentage + '%' }"></div>
+          </div>
+        </div>
       </header>
 
       <div v-if="loading" class="seat-modal__state">
@@ -40,10 +48,13 @@
         <button type="button" class="btn-secondary" @click="() => loadContext(activeVehicleId)">Tentar novamente</button>
       </div>
 
-      <div v-else-if="context && canSelectSeats" class="seat-modal__content selection-layout">
+      <div v-else-if="context && canSelectSeats" class="seat-step__content selection-layout">
           <aside class="passenger-panel">
             <div class="panel-card">
-              <p class="eyebrow mb-2">Passageiros</p>
+              <div class="panel-heading">
+                <p class="eyebrow">Passageiros</p>
+                <strong>{{ context.passengers.length }}</strong>
+              </div>
               <p class="progress-text">
                 {{ context.stats.assigned_passengers }} de {{ context.passengers.length }} passageiros com assento
               </p>
@@ -92,6 +103,17 @@
 
           <section class="map-panel">
             <div class="panel-card map-card">
+              <div class="map-card__header">
+                <div>
+                  <p class="eyebrow">Mapa de assentos</p>
+                  <h3>{{ context.trip_vehicle?.display_name || "Veiculo operacional" }}</h3>
+                  <span>Selecione um assento livre para o passageiro ativo.</span>
+                </div>
+                <div class="map-card__kpi" v-if="context.trip_vehicle">
+                  <strong>{{ context.trip_vehicle.occupied_seats }}/{{ context.trip_vehicle.capacity }}</strong>
+                  <span>ocupados</span>
+                </div>
+              </div>
               <div v-if="vehicleOptions.length > 1" class="vehicle-tabs">
                 <button
                   v-for="vehicle in vehicleOptions"
@@ -185,7 +207,10 @@
 
           <aside class="info-panel">
             <div class="panel-card info-card">
-              <p class="eyebrow mb-2">Resumo</p>
+              <div class="panel-heading">
+                <p class="eyebrow">Resumo</p>
+                <strong>{{ progressPercentage }}%</strong>
+              </div>
               <div class="info-summary">
                 <span class="info-summary__label">Passageiro</span>
                 <span class="info-summary__value">{{ activePassenger?.name || "Selecione um passageiro" }}</span>
@@ -199,6 +224,13 @@
                 <span :class="['status-pill', passengerStatusClass(activePassenger)]">
                   {{ passengerStatusLabel(activePassenger) }}
                 </span>
+              </div>
+              <div class="info-summary">
+                <span class="info-summary__label">Progresso</span>
+                <span class="info-summary__value">{{ context.stats.assigned_passengers }} de {{ context.passengers.length }} concluidos</span>
+                <div class="progress-bar progress-bar--summary">
+                  <div class="progress-bar__fill" :style="{ width: progressPercentage + '%' }"></div>
+                </div>
               </div>
               <p class="info-note" v-if="context.preference_notice">
                 {{ context.preference_notice }}
@@ -220,16 +252,16 @@
                 :disabled="!hasPendingSelections || selectingSeat"
                 @click="confirmSelection"
               >
-                Confirmar reserva
+                Confirmar assentos
               </button>
-              <button type="button" class="btn-secondary mt-2 w-full" @click="handleClose">
-                Fechar
+              <button type="button" class="btn-secondary mt-2 w-full" @click="handleBack">
+                Voltar para passageiros
               </button>
             </div>
           </aside>
         </div>
 
-      <div v-else-if="context" class="seat-modal__content summary-only">
+      <div v-else-if="context" class="seat-step__content summary-only">
         <section class="summary-hero">
           <div class="summary-hero__intro summary-hero__intro--plain">
             <h3>Detalhes da sua reserva</h3>
@@ -297,11 +329,11 @@
           <p class="summary-note">
             Os assentos escolhidos podem sofrer ajustes operacionais pela agência.
           </p>
-          <button type="button" class="btn-primary summary-footer__action" @click="handleClose">Concluir reserva</button>
+          <button type="button" class="btn-primary summary-footer__action" @click="handleBack">Voltar para passageiros</button>
         </div>
       </div>
     </div>
-  </div>
+  </section>
 </template>
 
 <script setup lang="ts">
@@ -332,14 +364,15 @@ type PassengerEntry = SeatSelectionContext["passengers"][number] | null;
 
 const props = defineProps<{
   token: string;
-  open: boolean;
   tokenType?: "signature" | "sale";
   productPublicId?: string | null;
+  showHeader?: boolean;
 }>();
 
 const emit = defineEmits<{
-  (event: "close"): void;
+  (event: "back"): void;
   (event: "updated", ctx: SeatSelectionContext): void;
+  (event: "context-loaded", ctx: SeatSelectionContext): void;
 }>();
 
 const loading = ref(false);
@@ -546,7 +579,7 @@ const bindBusResizeObserver = () => {
 };
 
 const loadContext = async (vehicleId?: number | null) => {
-  if (!props.token || !props.open) return;
+  if (!props.token) return;
 
   loading.value = true;
   errorMessage.value = "";
@@ -562,6 +595,7 @@ const loadContext = async (vehicleId?: number | null) => {
           )
         : await getPublicSeatSelectionContext(props.token, vehicleId || undefined);
     context.value = data;
+    emit("context-loaded", data);
     activeVehicleId.value = data.trip_vehicle?.id || null;
     pendingSelections.value = {};
     selectionError.value = "";
@@ -779,33 +813,15 @@ const confirmSelection = async () => {
   }
 };
 
-const handleClose = () => {
+const handleBack = () => {
   pendingSelections.value = {};
   selectionError.value = "";
-  activeVehicleId.value = null;
-  emit("close");
+  emit("back");
 };
-
-watch(
-  () => props.open,
-  value => {
-    if (value) {
-      void loadContext(activeVehicleId.value);
-      requestAnimationFrame(() => {
-        bindBusResizeObserver();
-        syncBusBodyWidth();
-      });
-    } else {
-      busResizeObserver?.disconnect();
-      busResizeObserver = null;
-    }
-  }
-);
 
 watch(
   () => props.productPublicId,
   () => {
-    if (!props.open) return;
     activeVehicleId.value = null;
     activePassengerId.value = null;
     pendingSelections.value = {};
@@ -834,13 +850,11 @@ onMounted(() => {
   window.addEventListener("resize", updateViewport);
   window.addEventListener("resize", syncBusBodyWidth);
 
-  if (props.open) {
-    void loadContext(activeVehicleId.value);
-    requestAnimationFrame(() => {
-      bindBusResizeObserver();
-      syncBusBodyWidth();
-    });
-  }
+  void loadContext(activeVehicleId.value);
+  requestAnimationFrame(() => {
+    bindBusResizeObserver();
+    syncBusBodyWidth();
+  });
 });
 
 onBeforeUnmount(() => {
@@ -854,60 +868,128 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.seat-modal {
-  position: fixed;
-  inset: 0;
-  z-index: 40;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1.5rem;
-}
-
-.seat-modal__backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.45);
-  backdrop-filter: blur(8px);
-}
-
-.seat-modal__panel {
-  position: relative;
-  z-index: 41;
+.seat-step {
   width: 100%;
-  max-width: 1480px;
-  max-height: 90vh;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 32px;
-  padding: 2rem;
+  animation: seat-step-enter 0.28s ease both;
+}
+
+.seat-step__shell {
+  width: min(1520px, 100%);
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
-  box-shadow: 0 40px 80px rgba(15, 23, 42, 0.25);
+  gap: 1.5rem;
 }
 
-.seat-modal__panel--compact {
-  max-width: 760px;
-}
-
-.seat-modal__header {
+.seat-step__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid #e2e8f0;
+  gap: 1.35rem;
+  padding: 1.25rem 1.4rem;
+  border: 1px solid rgba(203, 213, 225, 0.72);
+  border-radius: 28px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.92)),
+    radial-gradient(circle at 82% 0%, rgba(14, 165, 233, 0.08), transparent 34%);
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.09), inset 0 1px 0 rgba(255, 255, 255, 0.92);
 }
 
-.seat-modal__header--center {
+.seat-step__header--center {
   flex-direction: column;
   gap: 1rem;
   text-align: center;
 }
 
-.seat-modal__headline {
+.seat-step__headline {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.2rem;
+  max-width: 980px;
+}
+
+.seat-step__headline h2 {
+  font-size: clamp(2.125rem, 2.8vw, 2.5rem);
+  line-height: 1.02;
+  font-weight: 750;
+  color: #08111f;
+  letter-spacing: 0;
+  margin-top: 0.15rem;
+}
+
+.seat-step__eyebrow {
+  width: fit-content;
+  border-radius: 999px;
+  border: 1px solid rgba(14, 165, 233, 0.2);
+  background: linear-gradient(180deg, #f0f9ff, #ffffff);
+  padding: 0.34rem 0.72rem;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #0369a1;
+}
+
+.seat-step__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+  margin-top: 0.5rem;
+  color: #5f6b7a;
+  font-size: 0.86rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.seat-step__meta span {
+  display: inline-flex;
+  align-items: center;
+}
+
+.seat-step__meta span:not(:last-child)::after {
+  content: "•";
+  margin-left: 0.6rem;
+  color: #94a3b8;
+}
+
+.seat-step__progress {
+  display: grid;
+  min-width: 214px;
+  gap: 0.4rem;
+  border-radius: 18px;
+  border: 1px solid rgba(16, 185, 129, 0.24);
+  background: linear-gradient(180deg, #ecfdf5, #ffffff);
+  padding: 0.9rem 1rem;
+  text-align: right;
+  box-shadow: 0 18px 36px rgba(5, 150, 105, 0.09);
+}
+
+.seat-step__progress span {
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #047857;
+}
+
+.seat-step__progress strong {
+  font-size: 0.98rem;
+  color: #064e3b;
+}
+
+.seat-step__progress-track {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(6, 78, 59, 0.1);
+}
+
+.seat-step__progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #064e3b, #059669, #0ea5e9);
+  transition: width 0.3s ease;
 }
 
 .seat-modal__focus {
@@ -975,7 +1057,7 @@ onBeforeUnmount(() => {
 }
 
 .seat-modal__state {
-  flex: 1;
+  min-height: 420px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -994,8 +1076,9 @@ onBeforeUnmount(() => {
 }
 
 .subtitle {
-  font-size: 0.9rem;
-  color: #475569;
+  font-size: 0.98rem;
+  color: #4b5868;
+  line-height: 1.6;
 }
 
 .subtitle--centered {
@@ -1003,63 +1086,105 @@ onBeforeUnmount(() => {
 }
 
 .subtitle--muted {
-  font-size: 0.85rem;
-  color: #94a3b8;
+  font-size: 0.9rem;
+  color: #7a8797;
   margin-top: 0.1rem;
 }
 
-.seat-modal__content {
+.seat-step__content {
   display: grid;
-  grid-template-columns: minmax(240px, 300px) minmax(620px, 0.95fr) minmax(240px, 300px);
-  gap: 1rem;
-  padding-top: 1.5rem;
+  grid-template-columns: minmax(300px, 340px) minmax(620px, 1fr) minmax(320px, 360px);
+  gap: 1.5rem;
+  padding: 0;
   overflow: hidden;
-  flex: 1;
+  align-items: start;
 }
 
 .panel-card {
-  border: 1px solid #e2e8f0;
-  border-radius: 20px;
-  padding: 1rem;
-  background: #fff;
-  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.02);
+  border: 1px solid rgba(226, 232, 240, 0.92);
+  border-radius: 28px;
+  padding: 1.35rem;
+  background: linear-gradient(180deg, #ffffff, #fbfdff);
+  box-shadow: 0 22px 56px rgba(15, 23, 42, 0.065), inset 0 1px 0 rgba(255, 255, 255, 0.95);
   height: 100%;
   display: flex;
   flex-direction: column;
 }
 
+.panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.panel-heading strong {
+  display: inline-flex;
+  min-width: 42px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid rgba(203, 213, 225, 0.8);
+  background: #f8fafc;
+  color: #0f172a;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.eyebrow {
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.passenger-panel,
+.info-panel {
+  position: sticky;
+  top: 1.25rem;
+}
+
 .passenger-panel .panel-card {
   overflow: hidden;
-  gap: 1rem;
+  gap: 1.05rem;
 }
 
 .passenger-list {
-  margin-top: 1rem;
+  margin-top: 0.45rem;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.7rem;
   overflow-y: auto;
 }
 
 .passenger-item {
-  border: 1px solid #e2e8f0;
-  border-radius: 16px;
-  padding: 0.75rem 0.9rem;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  border-radius: 20px;
+  padding: 0.9rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
   cursor: pointer;
-  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
-  background: #fff;
+  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s, background 0.2s;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.035);
+}
+
+.passenger-item:hover {
+  transform: translateY(-1px);
+  border-color: #cbd5e1;
+  box-shadow: 0 16px 30px rgba(15, 23, 42, 0.07);
 }
 
 .passenger-item__index {
-  width: 34px;
-  height: 34px;
-  border-radius: 999px;
-  background: #f1f5f9;
-  font-weight: 700;
+  width: 38px;
+  height: 38px;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #f8fafc, #e2e8f0);
+  font-weight: 850;
   font-size: 0.85rem;
   color: #475569;
   display: flex;
@@ -1068,12 +1193,13 @@ onBeforeUnmount(() => {
 }
 
 .passenger-item--active {
-  border-color: #0ea5e9;
-  box-shadow: 0 12px 25px rgba(14, 165, 233, 0.15);
+  border-color: rgba(14, 165, 233, 0.55);
+  background: linear-gradient(180deg, #f0f9ff, #ffffff);
+  box-shadow: 0 18px 34px rgba(14, 165, 233, 0.14);
 }
 
 .passenger-item--assigned {
-  background: #f0fdf4;
+  background: linear-gradient(180deg, #ecfdf5, #ffffff);
 }
 
 .passenger-item__info {
@@ -1083,8 +1209,9 @@ onBeforeUnmount(() => {
 }
 
 .passenger-name {
-  font-weight: 600;
+  font-weight: 800;
   color: #0f172a;
+  line-height: 1.25;
 }
 
 .passenger-seat {
@@ -1102,24 +1229,24 @@ onBeforeUnmount(() => {
 
 .passenger-status-badge {
   border-radius: 999px;
-  padding: 0.2rem 0.75rem;
-  font-size: 0.75rem;
-  font-weight: 600;
+  padding: 0.28rem 0.72rem;
+  font-size: 0.7rem;
+  font-weight: 800;
   border: 1px solid transparent;
   min-width: 110px;
   text-align: center;
 }
 
 .passenger-status-badge--assigned {
-  color: #15803d;
-  background: #dcfce7;
+  color: #065f46;
+  background: #d1fae5;
   border-color: #86efac;
 }
 
 .passenger-status-badge--pending {
-  color: #b45309;
+  color: #92400e;
   background: #fffbeb;
-  border-color: #fcd34d;
+  border-color: #fde68a;
 }
 
 .map-panel,
@@ -1131,7 +1258,58 @@ onBeforeUnmount(() => {
 
 .map-card {
   overflow: visible;
-  gap: 1.25rem;
+  gap: 1.35rem;
+  min-height: 680px;
+  padding: 1.5rem;
+}
+
+.map-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.25rem 0 0.95rem;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+}
+
+.map-card__header h3 {
+  margin-top: 0.35rem;
+  font-size: 1.35rem;
+  font-weight: 850;
+  line-height: 1.15;
+  color: #0f172a;
+}
+
+.map-card__header span {
+  display: inline-block;
+  margin-top: 0.35rem;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.map-card__kpi {
+  min-width: 118px;
+  border-radius: 20px;
+  border: 1px solid rgba(14, 165, 233, 0.16);
+  background: linear-gradient(180deg, #f0f9ff, #ffffff);
+  padding: 0.85rem;
+  text-align: right;
+}
+
+.map-card__kpi strong {
+  display: block;
+  color: #0c4a6e;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.map-card__kpi span {
+  margin-top: 0.25rem;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
 }
 
 .deck-wrapper {
@@ -1144,14 +1322,14 @@ onBeforeUnmount(() => {
 .vehicle-tabs {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
+  gap: 0.6rem;
+  margin-bottom: 0;
 }
 
 .vehicle-tab {
-  border-radius: 999px;
-  border: 1px solid #cbd5f5;
-  padding: 0.4rem 1rem;
+  border-radius: 16px;
+  border: 1px solid rgba(203, 213, 225, 0.9);
+  padding: 0.65rem 1rem;
   font-size: 0.8rem;
   font-weight: 600;
   color: #475569;
@@ -1164,10 +1342,10 @@ onBeforeUnmount(() => {
 }
 
 .vehicle-tab--active {
-  border-color: #0ea5e9;
-  background: #e0f2fe;
+  border-color: rgba(14, 165, 233, 0.4);
+  background: linear-gradient(180deg, #e0f2fe, #ffffff);
   color: #0c4a6e;
-  box-shadow: 0 12px 24px rgba(14, 165, 233, 0.2);
+  box-shadow: 0 14px 28px rgba(14, 165, 233, 0.14);
 }
 
 .vehicle-tab__name {
@@ -1188,9 +1366,9 @@ onBeforeUnmount(() => {
 }
 
 .deck-tab {
-  border-radius: 999px;
-  border: 1px solid #cbd5f5;
-  padding: 0.35rem 0.9rem;
+  border-radius: 14px;
+  border: 1px solid rgba(203, 213, 225, 0.9);
+  padding: 0.5rem 0.9rem;
   font-size: 0.8rem;
   font-weight: 600;
   color: #475569;
@@ -1201,7 +1379,7 @@ onBeforeUnmount(() => {
 .deck-tab--active {
   color: #0369a1;
   background: #e0f2fe;
-  border-color: #0ea5e9;
+  border-color: rgba(14, 165, 233, 0.42);
 }
 
 .deck-section {
@@ -1226,7 +1404,7 @@ onBeforeUnmount(() => {
 .bus-front-label {
   align-self: center;
   font-size: 0.65rem;
-  font-weight: 600;
+  font-weight: 850;
   letter-spacing: 0.3em;
   text-transform: uppercase;
   color: #94a3b8;
@@ -1234,10 +1412,10 @@ onBeforeUnmount(() => {
 
 .bus-shell {
   width: 100%;
-  padding: 1rem 0.5rem 1rem;
+  padding: 1.35rem 0.75rem 1.1rem;
   position: relative;
   border-radius: 32px;
-  background: transparent;
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.72), rgba(255, 255, 255, 0.2));
 }
 
 .bus-front {
@@ -1252,17 +1430,19 @@ onBeforeUnmount(() => {
 }
 
 .bus-front__window {
-  width: 80px;
-  height: 12px;
+  width: 88px;
+  height: 14px;
   border-radius: 999px;
-  background: #cbd5f5;
+  background: linear-gradient(90deg, #cbd5e1, #e2e8f0);
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.08);
 }
 
 .bus-front__driver {
   width: 12px;
   height: 12px;
   border-radius: 999px;
-  background: #0ea5e9;
+  background: #0369a1;
+  box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.1);
 }
 
 .bus-body {
@@ -1279,9 +1459,9 @@ onBeforeUnmount(() => {
 
 .map-legend {
   display: flex;
-  gap: 0.75rem;
+  gap: 0.55rem;
   flex-wrap: wrap;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0;
   list-style: none;
   padding: 0;
 }
@@ -1289,9 +1469,13 @@ onBeforeUnmount(() => {
 .legend-item {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  font-size: 0.75rem;
-  font-weight: 600;
+  gap: 0.4rem;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 999px;
+  background: #ffffff;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.74rem;
+  font-weight: 800;
   color: #475569;
 }
 
@@ -1336,16 +1520,19 @@ onBeforeUnmount(() => {
 .bus-grid {
   display: grid;
   gap: var(--seat-gap, 8px);
-  background: linear-gradient(180deg, #f8fafc, #f1f5f9);
-  padding: 1rem;
-  border-radius: 28px;
-  border: 1px solid #e2e8f0;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(14, 165, 233, 0.05), transparent 38%),
+    linear-gradient(180deg, #ffffff, #f8fafc);
+  padding: 1.35rem;
+  border-radius: 32px;
+  border: 1px solid rgba(203, 213, 225, 0.9);
   justify-content: center;
   justify-items: center;
   width: fit-content;
   max-width: 100%;
   min-width: 0;
   margin: 0 auto;
+  box-shadow: inset 0 1px 16px rgba(15, 23, 42, 0.035), 0 18px 42px rgba(15, 23, 42, 0.07);
 }
 
 .bus-grid--desktop-horizontal {
@@ -1355,35 +1542,36 @@ onBeforeUnmount(() => {
 .seat-cell {
   width: var(--seat-unit, 40px);
   height: calc(var(--seat-unit, 40px) + 4px);
-  border-radius: 12px;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.72rem;
-  font-weight: 600;
+  font-size: 0.74rem;
+  font-weight: 850;
   color: #0f172a;
   border: 1px solid rgba(148, 163, 184, 0.4);
   cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
-  background: #fff;
-  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.08);
+  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease, border-color 0.16s ease;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.075), inset 0 1px 0 rgba(255, 255, 255, 0.95);
 }
 
 .seat-cell--available {
-  background: #f0f9ff;
+  background: linear-gradient(180deg, #ffffff, #f0f9ff);
   border-color: #bae6fd;
 }
 
 .seat-cell--available:hover {
-  transform: translateY(-3px) scale(1.05);
-  box-shadow: 0 10px 20px rgba(2, 132, 199, 0.2);
+  transform: translateY(-4px) scale(1.04);
+  border-color: #38bdf8;
+  box-shadow: 0 16px 30px rgba(2, 132, 199, 0.18);
 }
 
 .seat-cell--selected {
-  background: linear-gradient(135deg, #0ea5e9, #0284c7);
+  background: linear-gradient(135deg, #075985, #0ea5e9);
   color: #fff;
   border-color: transparent;
-  box-shadow: 0 12px 24px rgba(2, 132, 199, 0.35);
+  box-shadow: 0 16px 32px rgba(2, 132, 199, 0.32);
 }
 
 .seat-cell--selected {
@@ -1391,7 +1579,7 @@ onBeforeUnmount(() => {
 }
 
 .seat-cell--mine {
-  background: #dbeafe;
+  background: linear-gradient(180deg, #dbeafe, #eff6ff);
   border-color: #93c5fd;
   color: #0f172a;
   box-shadow: 0 10px 18px rgba(59, 130, 246, 0.25);
@@ -1399,7 +1587,7 @@ onBeforeUnmount(() => {
 }
 
 .seat-cell--occupied {
-  background: #e2e8f0;
+  background: linear-gradient(180deg, #f1f5f9, #e2e8f0);
   color: #64748b;
   cursor: not-allowed;
   border-color: #cbd5f5;
@@ -1496,14 +1684,14 @@ onBeforeUnmount(() => {
 }
 
 .info-card {
-  gap: 0.75rem;
+  gap: 0.9rem;
 }
 
 .info-summary {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  padding: 0.5rem 0;
+  gap: 0.35rem;
+  padding: 0.75rem 0;
   border-bottom: 1px solid #e2e8f0;
 }
 
@@ -1512,20 +1700,21 @@ onBeforeUnmount(() => {
 }
 
 .info-summary__label {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: #94a3b8;
 }
 
 .info-summary__value {
-  font-size: 1rem;
-  font-weight: 600;
+  font-size: 1.03rem;
+  font-weight: 800;
   color: #0f172a;
 }
 
 .info-summary__value--seat {
-  color: #0ea5e9;
+  color: #0369a1;
+  font-size: 1.35rem;
 }
 
 .status-pill {
@@ -1533,9 +1722,10 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  padding: 0.2rem 0.75rem;
+  width: fit-content;
+  padding: 0.35rem 0.8rem;
   font-size: 0.8rem;
-  font-weight: 600;
+  font-weight: 800;
 }
 
 .status-pill--success {
@@ -1914,18 +2104,42 @@ onBeforeUnmount(() => {
 }
 
 .btn-secondary {
-  border-radius: 999px;
-  border: 1px solid #cbd5f5;
-  padding: 0.5rem 1.25rem;
-  font-weight: 600;
+  min-height: 46px;
+  border-radius: 15px;
+  border: 1px solid #cbd5e1;
+  padding: 0.75rem 1.25rem;
+  font-weight: 800;
+  color: #334155;
+  background: #ffffff;
+  transition: all 0.18s ease;
+}
+
+.btn-secondary:hover {
+  transform: translateY(-1px);
+  border-color: #94a3b8;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.07);
 }
 
 .btn-primary {
-  border-radius: 999px;
-  padding: 0.75rem 1.25rem;
-  font-weight: 600;
-  background: #0f766e;
+  min-height: 52px;
+  border-radius: 16px;
+  padding: 0.9rem 1.25rem;
+  font-weight: 850;
+  background: linear-gradient(135deg, #064e3b, #059669);
   color: #fff;
+  box-shadow: 0 16px 32px rgba(5, 150, 105, 0.24);
+  transition: all 0.18s ease;
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 20px 38px rgba(5, 150, 105, 0.28);
+}
+
+.btn-primary:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+  box-shadow: none;
 }
 
 .progress-text {
@@ -1934,7 +2148,7 @@ onBeforeUnmount(() => {
 }
 
 .progress-bar {
-  height: 4px;
+  height: 7px;
   width: 100%;
   border-radius: 999px;
   background: #e2e8f0;
@@ -1944,8 +2158,12 @@ onBeforeUnmount(() => {
 
 .progress-bar__fill {
   height: 100%;
-  background: linear-gradient(90deg, #22c55e, #0ea5e9);
+  background: linear-gradient(90deg, #064e3b, #059669, #0ea5e9);
   transition: width 0.3s ease;
+}
+
+.progress-bar--summary {
+  margin-top: 0.35rem;
 }
 
 .inline-loading {
@@ -1980,21 +2198,27 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 1024px) {
-  .seat-modal__panel {
-    max-width: 100%;
-    padding: 1.25rem;
+  .seat-step__header {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 1.1rem;
     border-radius: 24px;
   }
 
-  .seat-modal__content {
-    grid-template-columns: 1fr;
-    overflow-y: auto;
+  .seat-step__progress {
+    width: 100%;
+    min-width: 0;
+    text-align: left;
   }
 
-  .seat-modal__header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.75rem;
+  .seat-step__content {
+    grid-template-columns: 1fr;
+    overflow: visible;
+  }
+
+  .passenger-panel,
+  .info-panel {
+    position: static;
   }
 
   .panel-card {
@@ -2046,17 +2270,20 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 767px) {
-  .seat-modal {
-    padding: 0.75rem;
+  .seat-step__headline h2 {
+    font-size: 1.75rem;
   }
 
-  .seat-modal__panel {
-    max-height: 94vh;
-    padding: 1rem;
-    border-radius: 22px;
+  .seat-step__meta {
+    gap: 0.35rem;
+    font-size: 0.8rem;
   }
 
-  .seat-modal__header--center {
+  .seat-step__meta span:not(:last-child)::after {
+    margin-left: 0.35rem;
+  }
+
+  .seat-step__header--center {
     gap: 0.85rem;
   }
 
@@ -2151,16 +2378,8 @@ onBeforeUnmount(() => {
 }
 
 @media (min-width: 1024px) {
-  .seat-modal__panel {
-    max-width: 1360px;
-  }
-
-  .seat-modal__panel.seat-modal__panel--compact {
-    max-width: 760px;
-  }
-
-  .seat-modal__content {
-    grid-template-columns: minmax(230px, 280px) minmax(720px, 1.18fr) minmax(230px, 280px);
+  .seat-step__content {
+    grid-template-columns: minmax(280px, 340px) minmax(620px, 1fr) minmax(300px, 360px);
     align-items: stretch;
   }
 
@@ -2218,5 +2437,15 @@ onBeforeUnmount(() => {
     transform: rotate(360deg);
   }
 }
-</style>
 
+@keyframes seat-step-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+</style>

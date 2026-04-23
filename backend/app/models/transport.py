@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from enum import Enum
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import Boolean, Column, Date, DateTime, ForeignKey, Integer, String, Time, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship, foreign
 from sqlalchemy.sql import func
@@ -127,6 +127,25 @@ class TripVehicle(Base):
     assignments = relationship("SeatAssignment", back_populates="trip_vehicle")
 
 
+class TripDepartureInstance(Base):
+    __tablename__ = "trip_departure_instances"
+    __table_args__ = (UniqueConstraint("product_id", "departure_id", name="uq_trip_departure_instance_product_departure"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"), nullable=False, index=True)
+    departure_id = Column(Integer, ForeignKey("departures.id", ondelete="CASCADE"), nullable=False, index=True)
+    travel_date = Column(Date, nullable=False, index=True)
+    departure_time = Column(Time, nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    product = relationship("Product")
+    departure = relationship("Departure")
+    seats = relationship("TripSeat", back_populates="departure_instance")
+    assignments = relationship("SeatAssignment", back_populates="departure_instance")
+    seat_changes = relationship("SeatChangeLog", back_populates="departure_instance")
+
+
 class SeatCellType(str, Enum):  # type: ignore[misc]
     seat = "seat"
     preferential = "preferential"
@@ -142,14 +161,31 @@ class SeatCellType(str, Enum):  # type: ignore[misc]
 class TripSeat(Base):
     __tablename__ = "trip_seats"
     __table_args__ = (
-        UniqueConstraint("product_id", "trip_vehicle_id", "seat_number", name="uq_trip_seat_number_per_vehicle"),
         UniqueConstraint(
-            "trip_vehicle_id", "deck_key", "row_index", "col_index", name="uq_trip_seat_grid_per_vehicle"
+            "product_id",
+            "trip_vehicle_id",
+            "departure_instance_id",
+            "seat_number",
+            name="uq_trip_seat_number_per_vehicle",
+        ),
+        UniqueConstraint(
+            "trip_vehicle_id",
+            "departure_instance_id",
+            "deck_key",
+            "row_index",
+            "col_index",
+            name="uq_trip_seat_grid_per_vehicle",
         ),
     )
 
     id = Column(Integer, primary_key=True, index=True)
     product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"), nullable=False, index=True)
+    departure_instance_id = Column(
+        Integer,
+        ForeignKey("trip_departure_instances.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
     layout_id = Column(Integer, ForeignKey("vehicle_layouts.id", ondelete="SET NULL"), nullable=True, index=True)
     trip_vehicle_id = Column(Integer, ForeignKey("trip_vehicles.id", ondelete="CASCADE"), nullable=False, index=True)
     seat_number = Column(String(32), nullable=False)
@@ -168,6 +204,7 @@ class TripSeat(Base):
 
     layout = relationship("VehicleLayout", back_populates="trip_seats")
     trip_vehicle = relationship("TripVehicle", back_populates="seats")
+    departure_instance = relationship("TripDepartureInstance", back_populates="seats")
     trip_config = relationship(
         "TripTransportConfig",
         primaryjoin=lambda: foreign(TripSeat.product_id) == TripTransportConfig.product_id,
@@ -197,12 +234,28 @@ class SeatAssignmentStatus(str, Enum):  # type: ignore[misc]
 class SeatAssignment(Base):
     __tablename__ = "seat_assignments"
     __table_args__ = (
-        UniqueConstraint("product_id", "passenger_id", name="uq_seat_assignment_passenger"),
-        UniqueConstraint("product_id", "seat_id", name="uq_seat_assignment_seat"),
+        UniqueConstraint(
+            "product_id",
+            "departure_instance_id",
+            "passenger_id",
+            name="uq_seat_assignment_passenger",
+        ),
+        UniqueConstraint(
+            "product_id",
+            "departure_instance_id",
+            "seat_id",
+            name="uq_seat_assignment_seat",
+        ),
     )
 
     id = Column(Integer, primary_key=True, index=True)
     product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"), nullable=False, index=True)
+    departure_instance_id = Column(
+        Integer,
+        ForeignKey("trip_departure_instances.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
     seat_id = Column(Integer, ForeignKey("trip_seats.id", ondelete="CASCADE"), nullable=False, index=True)
     trip_vehicle_id = Column(Integer, ForeignKey("trip_vehicles.id", ondelete="CASCADE"), nullable=False, index=True)
     passenger_id = Column(Integer, ForeignKey("passengers.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -215,6 +268,7 @@ class SeatAssignment(Base):
 
     seat = relationship("TripSeat", back_populates="assignments")
     trip_vehicle = relationship("TripVehicle", back_populates="assignments")
+    departure_instance = relationship("TripDepartureInstance", back_populates="assignments")
     passenger = relationship("SalePassenger")
     sale = relationship("Sale")
 
@@ -230,6 +284,12 @@ class SeatChangeLog(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"), nullable=False, index=True)
+    departure_instance_id = Column(
+        Integer,
+        ForeignKey("trip_departure_instances.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     passenger_id = Column(Integer, ForeignKey("passengers.id", ondelete="CASCADE"), nullable=True, index=True)
     trip_vehicle_id = Column(Integer, ForeignKey("trip_vehicles.id", ondelete="SET NULL"), nullable=True, index=True)
     sale_id = Column(Integer, ForeignKey("sales.id", ondelete="CASCADE"), nullable=True, index=True)
@@ -241,6 +301,7 @@ class SeatChangeLog(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     passenger = relationship("SalePassenger")
+    departure_instance = relationship("TripDepartureInstance", back_populates="seat_changes")
     trip_vehicle = relationship("TripVehicle")
     sale = relationship("Sale")
     old_seat = relationship("TripSeat", foreign_keys=[old_seat_id])

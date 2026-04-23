@@ -33,6 +33,7 @@ from .product import (
     Product,
     ProductStatus,
     ProductInventoryStrategy,
+    ProductScheduleMode,
     ProductVariation,
     ProductAccommodationMode,
     ProductVariationStatus,
@@ -40,6 +41,19 @@ from .product import (
     ProductInventoryEvent,
     ProductInventoryEventAction,
     ProductRoom,
+)
+from .schedule import (
+    Departure,
+    DepartureStatus,
+    DepartureSourceType,
+    ScheduleTemplate,
+    ScheduleTemplateType,
+    ScheduleTemplateWeekday,
+    ScheduleTemplateTime,
+    ScheduleTemplateCalendarDate,
+    ScheduleTemplateCalendarDateTime,
+    ScheduleException,
+    ScheduleExceptionType,
 )
 from .rooming import RoomingRoom, RoomingAssignment
 from .stripe_account import StripeAccount
@@ -60,6 +74,7 @@ from .transport import (
     TripTransportConfig,
     TripVehicle,
     TripVehicleStatus,
+    TripDepartureInstance,
     TripSeat,
     SeatAssignment,
     SeatChangeLog,

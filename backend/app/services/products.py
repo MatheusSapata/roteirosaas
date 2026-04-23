@@ -13,6 +13,7 @@ from app.models.product import (
     ProductInventoryEvent,
     ProductInventoryEventAction,
     ProductInventoryStrategy,
+    ProductScheduleMode,
     ProductStatus,
     ProductVariation,
     ProductAccommodationMode,
@@ -36,12 +37,25 @@ from app.schemas.products import (
 )
 from app.services.package_pricing import normalize_child_pricing_rules, serialize_child_pricing_rules
 
+DEFAULT_ALLOWED_PAYMENT_METHODS = ["pix", "credit_card", "boleto"]
+VALID_ALLOWED_PAYMENT_METHODS = set(DEFAULT_ALLOWED_PAYMENT_METHODS)
+
 
 def _clean_text(value: str | None) -> str | None:
     if value is None:
         return None
     text = value.strip()
     return text or None
+
+
+def _validate_schedule_settings(*, schedule_mode: str, timezone: str | None) -> tuple[str, str | None]:
+    normalized_mode = (schedule_mode or ProductScheduleMode.fixed_date.value).strip().lower()
+    if normalized_mode not in {entry.value for entry in ProductScheduleMode}:
+        raise HTTPException(status_code=400, detail="Modo de agenda invalido.")
+    normalized_timezone = _clean_text(timezone)
+    if normalized_mode == ProductScheduleMode.recurring.value and not normalized_timezone:
+        raise HTTPException(status_code=400, detail="Timezone e obrigatorio para produtos recorrentes.")
+    return normalized_mode, normalized_timezone
 
 
 def _normalize_accommodation_settings(
@@ -81,6 +95,22 @@ def _sanitize_boarding_locations(locations: list[str] | None) -> list[str]:
         seen.add(key)
         sanitized.append(normalized)
     return sanitized
+
+
+def _normalize_allowed_payment_methods(raw: list[str] | None) -> list[str]:
+    if not raw:
+        return list(DEFAULT_ALLOWED_PAYMENT_METHODS)
+    seen: set[str] = set()
+    normalized: list[str] = []
+    for entry in raw:
+        method = str(entry or "").strip().lower()
+        if method not in VALID_ALLOWED_PAYMENT_METHODS:
+            continue
+        if method in seen:
+            continue
+        seen.add(method)
+        normalized.append(method)
+    return normalized or list(DEFAULT_ALLOWED_PAYMENT_METHODS)
 
 
 def _normalize_room_payloads(payload: list[ProductRoomPayload] | None) -> list[dict[str, object]]:
@@ -342,8 +372,11 @@ def serialize_product(product: Product) -> ProductSummary:
         inventory_strategy=product.inventory_strategy,
         allow_oversell=product.allow_oversell,
         card_interest_mode=product.card_interest_mode or "merchant",
+        allowed_payment_methods=_normalize_allowed_payment_methods(product.allowed_payment_methods),
         checkout_banner_url=_clean_text(product.checkout_banner_url),
         checkout_product_image_url=_clean_text(product.checkout_product_image_url),
+        schedule_mode=product.schedule_mode or ProductScheduleMode.fixed_date.value,
+        timezone=_clean_text(product.timezone),
         variations=[_serialize_variation(variation) for variation in sorted(product.variations, key=lambda v: v.sort_order)],
         boarding_locations=_extract_boarding_locations(product),
         has_rooms=bool(product.has_rooms),
@@ -457,6 +490,7 @@ def _sync_variations(product: Product, payload: Sequence[ProductVariationPayload
 
 def create_product(payload: ProductPayload, user: User, db: Session) -> Product:
     agency_id = _resolve_agency_id(payload, user, db)
+    schedule_mode, timezone = _validate_schedule_settings(schedule_mode=payload.schedule_mode, timezone=payload.timezone)
     product = Product(
         user_id=user.id,
         agency_id=agency_id,
@@ -472,8 +506,11 @@ def create_product(payload: ProductPayload, user: User, db: Session) -> Product:
         allow_oversell=payload.allow_oversell,
         is_road_trip=bool(payload.is_road_trip),
         card_interest_mode=payload.card_interest_mode or "merchant",
+        allowed_payment_methods=_normalize_allowed_payment_methods(payload.allowed_payment_methods),
         checkout_banner_url=_clean_text(payload.checkout_banner_url),
         checkout_product_image_url=_clean_text(payload.checkout_product_image_url),
+        schedule_mode=schedule_mode,
+        timezone=timezone,
     )
     _apply_boarding_locations(product, _sanitize_boarding_locations(payload.boarding_locations))
     db.add(product)
@@ -506,6 +543,7 @@ def get_product_by_public_id(public_id: str, user: User, db: Session) -> Product
 
 def update_product(product: Product, payload: ProductPayload, user: User, db: Session) -> Product:
     _ensure_owner(product, user)
+    schedule_mode, timezone = _validate_schedule_settings(schedule_mode=payload.schedule_mode, timezone=payload.timezone)
     product.name = payload.name.strip()
     product.description = _clean_text(payload.description)
     product.status = payload.status
@@ -518,8 +556,11 @@ def update_product(product: Product, payload: ProductPayload, user: User, db: Se
     product.is_road_trip = bool(payload.is_road_trip)
     if payload.card_interest_mode is not None:
         product.card_interest_mode = payload.card_interest_mode
+    product.allowed_payment_methods = _normalize_allowed_payment_methods(payload.allowed_payment_methods)
     product.checkout_banner_url = _clean_text(payload.checkout_banner_url)
     product.checkout_product_image_url = _clean_text(payload.checkout_product_image_url)
+    product.schedule_mode = schedule_mode
+    product.timezone = timezone
     product.template_contract_id = _resolve_template_contract_id(payload.template_contract_id, user, db)
     _apply_boarding_locations(product, _sanitize_boarding_locations(payload.boarding_locations))
     _sync_variations(product, payload.variations)

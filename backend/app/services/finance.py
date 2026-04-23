@@ -17,10 +17,12 @@ from app.models.page import Page
 from app.models.product import (
     Product,
     ProductAccommodationMode,
+    ProductScheduleMode,
     ProductStatus,
     ProductVariation,
     ProductVariationStatus,
 )
+from app.models.schedule import Departure
 from app.models.sale import (
     Sale,
     SaleFinancialStatus,
@@ -45,13 +47,22 @@ from app.schemas.finance import (
     PosCheckoutRequest,
     ProductCheckoutRequest,
     PublicCheckoutResponse,
+    SectionDiscountConfig,
+    SectionProductsCheckoutRequest,
     SaleItemChildBreakdown,
     SaleItemOut,
     SaleSummary,
 )
+from app.models.transport import TripDepartureInstance
+from app.services.departures import (
+    DepartureBookingService,
+    DepartureCapacityService,
+    DeparturePricingService,
+)
 from app.services.agency_integrations import get_agency_blimboo_token
 from app.services.email import EmailClient
 from app.services.payments import get_payment_provider
+from app.services.payments.blimboo_api import BlimbooAPIError
 from app.services.payments.base import PaymentCharge, PaymentChargeRequest
 from app.services.package_pricing import PackageComposition, calculate_package_composition
 from app.services.products import (
@@ -66,6 +77,11 @@ from app.services.passenger_groups import (
     serialize_passenger_group,
 )
 from app.services.legal import maybe_generate_contract_for_sale
+from app.services.payment_compatibility_service import (
+    DEFAULT_ALLOWED_PAYMENT_METHODS,
+    ensure_exact_compatibility,
+    normalize_allowed_payment_methods,
+)
 logger = logging.getLogger(__name__)
 
 
@@ -98,6 +114,41 @@ def _to_cents(value: Decimal) -> int:
     return int(cents)
 
 
+def _normalize_allowed_payment_methods(raw: Any) -> list[str]:
+    return normalize_allowed_payment_methods(raw)
+
+
+def _product_allowed_payment_methods(product: Product | None) -> list[str]:
+    if not product:
+        return list(DEFAULT_ALLOWED_PAYMENT_METHODS)
+    return _normalize_allowed_payment_methods(product.allowed_payment_methods)
+
+
+def _fee_mode_from_section(section: dict[str, Any] | None) -> str:
+    if not isinstance(section, dict):
+        return "absorb"
+    raw = str(
+        section.get("feeMode")
+        or section.get("fee_mode")
+        or "absorb"
+    ).strip().lower()
+    return raw if raw in {"absorb", "pass_through"} else "absorb"
+
+
+def _fee_mode_for_sale(sale: Sale) -> str:
+    metadata = sale.metadata_json or {}
+    raw = str(metadata.get("fee_mode") or "absorb").strip().lower()
+    return raw if raw in {"absorb", "pass_through"} else "absorb"
+
+
+def _allowed_payment_methods_for_sale(sale: Sale) -> list[str]:
+    metadata = sale.metadata_json or {}
+    from_metadata = _normalize_allowed_payment_methods(metadata.get("allowed_payment_methods"))
+    if from_metadata:
+        return from_metadata
+    return _product_allowed_payment_methods(sale.product)
+
+
 def _normalize_boarding_locations(raw: Any) -> list[str]:
     if not isinstance(raw, list):
         return []
@@ -120,8 +171,6 @@ def _normalize_boarding_locations(raw: Any) -> list[str]:
 
 def _boarding_locations_from_sale(sale: Sale) -> list[str]:
     metadata = sale.metadata_json or {}
-    flags = sale_flags(sale)
-    flags = sale_flags(sale)
     locations = _normalize_boarding_locations(metadata.get("boarding_locations"))
     if locations:
         return locations
@@ -328,9 +377,29 @@ def _create_payment_charge(
     installments: int,
     payment_method: str,
     metadata: dict[str, str | int | None] | None = None,
+    defer_provider: bool = False,
 ) -> PaymentCharge:
     if base_amount_cents <= 0:
         raise HTTPException(status_code=400, detail="Valor do pedido invǭlido.")
+    if defer_provider:
+        normalized_installments = max(1, installments)
+        pending_reference = f"pending-{secrets.token_hex(8)}"
+        return PaymentCharge(
+            base_amount=base_amount_cents,
+            gross_amount=base_amount_cents,
+            platform_fee_amount=0,
+            gateway_fee_estimated=0,
+            agency_net_amount=base_amount_cents,
+            spread_percentage_bps=0,
+            installment_amount=int(round(base_amount_cents / normalized_installments)),
+            installments=normalized_installments,
+            payment_method=payment_method or "pix",
+            currency=currency.upper(),
+            provider="blimboo",
+            provider_charge_id=pending_reference,
+            provider_status=SalePaymentStatus.pending,
+            metadata=metadata or {},
+        )
     request = PaymentChargeRequest(
         base_amount=base_amount_cents,
         currency=currency.upper(),
@@ -339,7 +408,10 @@ def _create_payment_charge(
         metadata=metadata or {},
     )
     provider = _payment_provider_for_agency(db, agency_id)
-    return provider.initialize_charge(request)
+    try:
+        return provider.initialize_charge(request)
+    except BlimbooAPIError as exc:
+        raise HTTPException(status_code=502, detail=f"Nao foi possivel iniciar a cobranca. {exc}") from exc
 
 
 def _apply_charge_to_sale(sale: Sale, charge: PaymentCharge) -> None:
@@ -446,11 +518,15 @@ def _resolve_cart_lines(
     product: Product,
     cart_items: Iterable[CheckoutCartItem],
 ) -> list[ProductCartLine]:
-    aggregated: dict[str, dict[str, Any]] = {}
+    aggregated: dict[tuple[str, int | None], dict[str, Any]] = {}
+    is_recurring = product.schedule_mode == ProductScheduleMode.recurring.value
     for item in cart_items:
         if item.quantity <= 0:
             raise HTTPException(status_code=400, detail="Quantidade inválida.")
-        bucket = aggregated.setdefault(item.variation_id, {"quantity": 0, "children": {}})
+        departure_id = int(item.departure_id) if item.departure_id is not None else None
+        if is_recurring and departure_id is None:
+            raise HTTPException(status_code=400, detail="Produto recorrente exige departure_id por item.")
+        bucket = aggregated.setdefault((item.variation_id, departure_id), {"quantity": 0, "children": {}, "departure_id": departure_id})
         bucket["quantity"] += item.quantity
         children = bucket["children"]
         raw_children = item.children or []
@@ -472,20 +548,22 @@ def _resolve_cart_lines(
             children[key_str] = children.get(key_str, 0) + qty
     if not aggregated:
         raise HTTPException(status_code=400, detail="Selecione ao menos uma variação.")
+    variation_ids = [variation_id for variation_id, _ in aggregated.keys()]
     variations = (
         db.query(ProductVariation)
         .filter(
             ProductVariation.product_id == product.id,
-            ProductVariation.public_id.in_(aggregated.keys()),
+            ProductVariation.public_id.in_(variation_ids),
         )
         .with_for_update()
         .all()
     )
-    if len(variations) != len(aggregated):
+    if len(variations) != len(set(variation_ids)):
         raise HTTPException(status_code=404, detail="Variação não encontrada.")
     variation_map = {variation.public_id: variation for variation in variations}
     lines: list[ProductCartLine] = []
-    for public_id, payload in aggregated.items():
+    for key, payload in aggregated.items():
+        public_id, departure_id = key
         variation = variation_map[public_id]
         if variation.status != ProductVariationStatus.active.value:
             raise HTTPException(status_code=400, detail=f"Variação indisponível: {variation.name}.")
@@ -502,9 +580,10 @@ def _resolve_cart_lines(
                 quantity=quantity,
                 children=dict(children),
                 composition=composition,
+                departure_id=departure_id,
             )
         )
-    lines.sort(key=lambda line: line.variation.sort_order)
+    lines.sort(key=lambda line: (line.variation.sort_order, line.departure_id or 0))
     return lines
 
 
@@ -520,7 +599,7 @@ def _cart_currency(lines: Iterable[ProductCartLine]) -> str:
 def _cart_total_amount(lines: Iterable[ProductCartLine]) -> int:
     total = 0
     for line in lines:
-        total += line.composition.total_price_cents
+        total += int(line.total_amount_cents if line.total_amount_cents is not None else line.composition.total_price_cents)
     return total
 
 
@@ -536,6 +615,49 @@ def _cart_capacity(lines: Iterable[ProductCartLine]) -> int:
     for line in lines:
         capacity += line.composition.total_capacity
     return capacity
+
+
+def _line_capacity_units(line: ProductCartLine) -> int:
+    return max(int(line.composition.total_capacity or 0), 0)
+
+
+def _apply_departure_pricing_and_validate(
+    *,
+    db: Session,
+    product: Product,
+    lines: list[ProductCartLine],
+) -> dict[int, Departure]:
+    locked_departures: dict[int, Departure] = {}
+    is_recurring = product.schedule_mode == ProductScheduleMode.recurring.value
+    if not is_recurring:
+        for line in lines:
+            line.override_unit_price_cents = None
+            line.total_amount_cents = line.composition.total_price_cents
+        return locked_departures
+
+    for line in lines:
+        if line.departure_id is None:
+            raise HTTPException(status_code=400, detail="Produto recorrente exige departure_id por item.")
+        departure = locked_departures.get(line.departure_id)
+        if departure is None:
+            departure = DepartureBookingService.lock_for_booking(db, departure_id=line.departure_id, product_id=product.id)
+            locked_departures[line.departure_id] = departure
+        requested_units = _line_capacity_units(line)
+        DepartureCapacityService.validate_sellable(departure=departure, requested_units=requested_units)
+        override_unit_price = DeparturePricingService.resolve_price(default_price=line.variation.price_cents, departure=departure)
+        line.override_unit_price_cents = int(override_unit_price)
+        line.total_amount_cents = int((override_unit_price * line.quantity) + line.composition.child_extra_cents)
+    return locked_departures
+
+
+def _reserve_departure_capacity_for_lines(*, lines: list[ProductCartLine], departures: dict[int, Departure]) -> None:
+    for line in lines:
+        if line.departure_id is None:
+            continue
+        departure = departures.get(line.departure_id)
+        if not departure:
+            continue
+        DepartureCapacityService.reserve(departure=departure, units=_line_capacity_units(line))
 
 
 def _distribute_child_slots(child_quantities: Mapping[str, int], quantity: int) -> list[dict[str, int]]:
@@ -584,7 +706,17 @@ def _resolve_metadata_flags(metadata: dict[str, Any] | None, defaults: dict[str,
 def sale_flags(sale: Sale) -> dict[str, bool]:
     metadata = sale.metadata_json if isinstance(sale.metadata_json, dict) else None
     defaults = _product_behavior_flags(sale.product)
-    return _resolve_metadata_flags(metadata, defaults)
+    flags = _resolve_metadata_flags(metadata, defaults)
+    checkout_mode = str((metadata or {}).get("checkout_mode") or "").strip().lower()
+    selected_products = (metadata or {}).get("selected_products")
+    is_product_flow = bool(sale.product_id or sale.product_public_id)
+    is_section_multi_product = checkout_mode == "section_multi_product" or (
+        isinstance(selected_products, list) and len(selected_products) > 0
+    )
+    if is_product_flow or is_section_multi_product:
+        # Regra de negocio: toda venda de produto exige lista de passageiros.
+        flags["requires_passengers"] = True
+    return flags
 
 
 def sale_requires_passengers(sale: Sale) -> bool:
@@ -623,15 +755,27 @@ def _build_sale_items_from_lines(sale: Sale, product: Product, lines: Iterable[P
             child_quantities[str(key)] = value_int
         item = SaleItem(
             product_id=product.id,
+            departure_id=line.departure_id,
             product_public_id=product.public_id,
             variation_id=variation.id,
             variation_public_id=variation.public_id,
             variation_name=variation.name,
             variation_description=variation.description,
             currency=(variation.currency or "BRL").lower(),
-            unit_price=variation.price_cents,
+            unit_price=int(line.override_unit_price_cents if line.override_unit_price_cents is not None else variation.price_cents),
             quantity=line.quantity,
-            total_price=composition.total_price_cents,
+            subtotal_amount_cents=int(
+                (line.override_unit_price_cents if line.override_unit_price_cents is not None else variation.price_cents) * line.quantity
+            ),
+            discount_amount_cents=int(max(line.discount_amount_cents or 0, 0)),
+            total_amount_cents=int(
+                (line.total_amount_cents if line.total_amount_cents is not None else composition.total_price_cents)
+                - max(line.discount_amount_cents or 0, 0)
+            ),
+            total_price=int(
+                (line.total_amount_cents if line.total_amount_cents is not None else composition.total_price_cents)
+                - max(line.discount_amount_cents or 0, 0)
+            ),
             people_count=composition.total_passengers,
             occupancy=unit_capacity,
             allows_children=bool(variation.child_policy_enabled),
@@ -656,11 +800,58 @@ def _build_sale_items_from_lines(sale: Sale, product: Product, lines: Iterable[P
                 "room_capacity": room_capacity,
                 "slots_per_unit": base_unit_slots,
                 "slots_reserved": slots_reserved,
+                "departure_id": line.departure_id,
             },
         )
         sale.items.append(item)
         created.append(item)
     return created
+
+
+def _ensure_trip_departure_instances_for_sale_items(product: Product, sale_items: Iterable[SaleItem], db: Session) -> None:
+    if not product.is_road_trip or product.schedule_mode != ProductScheduleMode.recurring.value:
+        return
+    departure_ids = {
+        int(item.departure_id)
+        for item in sale_items
+        if item.departure_id is not None
+    }
+    if not departure_ids:
+        return
+    departures = (
+        db.query(Departure)
+        .filter(
+            Departure.product_id == product.id,
+            Departure.id.in_(departure_ids),
+            Departure.deleted_at.is_(None),
+        )
+        .all()
+    )
+    departures_by_id = {departure.id: departure for departure in departures}
+    for departure_id in departure_ids:
+        departure = departures_by_id.get(departure_id)
+        if not departure:
+            continue
+        exists = (
+            db.query(TripDepartureInstance.id)
+            .filter(
+                TripDepartureInstance.product_id == product.id,
+                TripDepartureInstance.departure_id == departure.id,
+            )
+            .first()
+        )
+        if exists:
+            continue
+        db.add(
+            TripDepartureInstance(
+                product_id=product.id,
+                departure_id=departure.id,
+                travel_date=departure.date,
+                departure_time=departure.time,
+            )
+        )
+
+
 def _trim(value: str | None, length: int) -> str | None:
     if value is None:
         return None
@@ -709,6 +900,7 @@ def create_product_checkout_sale(
         raise HTTPException(status_code=400, detail="Canal invalido.")
 
     lines = _resolve_cart_lines(db, product, cart_items)
+    locked_departures = _apply_departure_pricing_and_validate(db=db, product=product, lines=lines)
     currency = _cart_currency(lines)
     amount_cents = _cart_total_amount(lines)
     passengers_total = _cart_passengers(lines)
@@ -720,9 +912,11 @@ def create_product_checkout_sale(
             "variation_public_id": line.variation.public_id,
             "variation_name": line.variation.name,
             "quantity": line.quantity,
+            "departure_id": line.departure_id,
             "base_passengers": line.composition.base_passengers,
             "child_passengers": line.composition.child_passengers,
             "consumed_capacity": line.composition.total_capacity,
+            "line_total_amount_cents": int(line.total_amount_cents if line.total_amount_cents is not None else line.composition.total_price_cents),
             "child_breakdown": [child.serialize() for child in line.composition.child_breakdown],
         }
         for line in lines
@@ -747,6 +941,10 @@ def create_product_checkout_sale(
         "passengers_required": passengers_required,
         "consumed_capacity": consumed_capacity,
         "sale_passenger_token": passenger_token,
+        "customer_name": _trim(customer.get("name"), 255),
+        "customer_email": _trim(customer.get("email"), 255),
+        "customer_phone": _trim(customer.get("phone"), 50),
+        "description": _trim(product.name, 255),
     }
     charge = _create_payment_charge(
         db=db,
@@ -756,6 +954,7 @@ def create_product_checkout_sale(
         installments=1,
         payment_method="credit_card",
         metadata=charge_metadata,
+        defer_provider=channel == "public_page",
     )
 
     resolved_interest_mode = str(interest_mode_override or product.card_interest_mode or "merchant").lower()
@@ -789,6 +988,8 @@ def create_product_checkout_sale(
             "agency_slug": agency_slug,
             "page_id": page_id,
             "consumed_capacity": consumed_capacity,
+            "fee_mode": "absorb",
+            "allowed_payment_methods": _product_allowed_payment_methods(product),
             "package_composition": package_composition,
             "boarding_locations": _normalize_boarding_locations((product.metadata_json or {}).get("boarding_locations")),
             "product_flags": product_flags,
@@ -803,6 +1004,7 @@ def create_product_checkout_sale(
     built_items = _build_sale_items_from_lines(sale, product, lines)
     db.add(sale)
     db.flush()
+    _ensure_trip_departure_instances_for_sale_items(product, built_items, db)
 
     for line, item in zip(lines, built_items):
         reserve_inventory_for_item(
@@ -813,6 +1015,285 @@ def create_product_checkout_sale(
             sale=sale,
             sale_item=item,
         )
+    _reserve_departure_capacity_for_lines(lines=lines, departures=locked_departures)
+
+    db.commit()
+    db.refresh(sale)
+    return sale, charge
+
+
+def _resolve_products_section(config: dict[str, Any], section_id: str) -> dict[str, Any]:
+    sections = config.get("sections") or []
+    for idx, raw_section in enumerate(sections):
+        if not isinstance(raw_section, dict) or raw_section.get("type") != "products":
+            continue
+        candidate_id = (
+            raw_section.get("id")
+            or raw_section.get("section_id")
+            or raw_section.get("sectionId")
+            or raw_section.get("anchorId")
+            or f"products-{idx}"
+        )
+        if str(candidate_id) == str(section_id):
+            return raw_section
+    raise HTTPException(status_code=404, detail="Secao de produtos nao encontrada.")
+
+
+def _section_product_ids(section: dict[str, Any]) -> list[str]:
+    product_ids_raw = section.get("productIds")
+    product_ids: list[str] = []
+    if isinstance(product_ids_raw, list):
+        for entry in product_ids_raw:
+            text = str(entry or "").strip()
+            if text:
+                product_ids.append(text)
+    legacy_id = str(section.get("productId") or "").strip()
+    if legacy_id and legacy_id not in product_ids:
+        product_ids.append(legacy_id)
+    return product_ids
+
+
+def _validate_payment_method_compatibility(products: list[Product]) -> list[str]:
+    groups = [_product_allowed_payment_methods(product) for product in products]
+    return ensure_exact_compatibility(groups)
+
+
+def _compute_section_discount_amount(
+    *,
+    subtotal_cents: int,
+    selected_products: list[str],
+    discount: SectionDiscountConfig | None,
+) -> int:
+    if subtotal_cents <= 0 or not discount:
+        return 0
+    if not discount.rule_type or not discount.discount_type or discount.discount_value is None:
+        return 0
+    selected_set = set(selected_products)
+    eligible = False
+    if discount.rule_type == "min_quantity":
+        minimum = max(int(discount.min_selected_products or 0), 1)
+        eligible = len(selected_set) >= minimum
+    elif discount.rule_type == "exact_combination":
+        required = {str(product_id).strip() for product_id in (discount.required_product_ids or []) if str(product_id).strip()}
+        eligible = bool(required) and required.issubset(selected_set)
+    if not eligible:
+        return 0
+    if discount.discount_type == "fixed":
+        fixed_cents = max(int(discount.discount_value or 0), 0)
+        return min(fixed_cents, subtotal_cents)
+    percent = max(min(int(discount.discount_value or 0), 100), 0)
+    return int(round(subtotal_cents * (percent / 100)))
+
+
+def _section_discount_from_config(section: dict[str, Any]) -> SectionDiscountConfig | None:
+    raw = section.get("discount")
+    if not isinstance(raw, dict):
+        return None
+    try:
+        return SectionDiscountConfig(
+            rule_type=raw.get("ruleType"),
+            min_selected_products=raw.get("minSelectedProducts"),
+            required_product_ids=raw.get("requiredProductIds") or [],
+            discount_type=raw.get("discountType"),
+            discount_value=raw.get("discountValue"),
+        )
+    except Exception:
+        return None
+
+
+def _distribute_discount(lines: list[ProductCartLine], discount_total_cents: int) -> None:
+    if discount_total_cents <= 0 or not lines:
+        return
+    gross_totals = [max(int(line.total_amount_cents or line.composition.total_price_cents), 0) for line in lines]
+    subtotal = sum(gross_totals)
+    if subtotal <= 0:
+        return
+    remaining = min(discount_total_cents, subtotal)
+    for idx, line in enumerate(lines):
+        if remaining <= 0:
+            break
+        base = gross_totals[idx]
+        if base <= 0:
+            continue
+        if idx == len(lines) - 1:
+            applied = min(remaining, base)
+        else:
+            proportional = int(round(discount_total_cents * (base / subtotal)))
+            applied = min(max(proportional, 0), base, remaining)
+        line.discount_amount_cents = applied
+        remaining -= applied
+
+
+def create_section_products_checkout_sale(
+    *,
+    db: Session,
+    payload: SectionProductsCheckoutRequest,
+) -> tuple[Sale, PaymentCharge]:
+    if not payload.products:
+        raise HTTPException(status_code=400, detail="Selecione ao menos um produto.")
+
+    page = (
+        db.query(Page)
+        .options(joinedload(Page.agency).joinedload(Agency.users).joinedload(AgencyUser.user))
+        .filter(Page.id == payload.page_id, Page.status == "published")
+        .first()
+    )
+    if not page:
+        raise HTTPException(status_code=404, detail="Pagina nao encontrada.")
+
+    section = _resolve_products_section(page.config_json or {}, payload.section_id)
+    allowed_products = set(_section_product_ids(section))
+    if not allowed_products:
+        raise HTTPException(status_code=400, detail="Secao sem produtos configurados.")
+
+    owner = _pick_agency_owner(db, page.agency_id)
+    selected_product_ids = [entry.product_id for entry in payload.products]
+    if not selected_product_ids:
+        raise HTTPException(status_code=400, detail="Selecione ao menos um produto.")
+    if len(set(selected_product_ids)) != len(selected_product_ids):
+        raise HTTPException(status_code=400, detail="Produto duplicado na selecao.")
+    for product_id in selected_product_ids:
+        if product_id not in allowed_products:
+            raise HTTPException(status_code=400, detail="Produto nao permitido nesta secao.")
+
+    product_lines: list[tuple[Product, list[ProductCartLine], dict[int, Departure]]] = []
+    all_lines: list[ProductCartLine] = []
+    for selection in payload.products:
+        product = _lock_product_for_checkout(db, selection.product_id)
+        if page.agency_id and product.agency_id and product.agency_id != page.agency_id:
+            raise HTTPException(status_code=400, detail="Produto de outra agencia nao permitido na secao.")
+        lines = _resolve_cart_lines(db, product, selection.items)
+        locked_departures = _apply_departure_pricing_and_validate(db=db, product=product, lines=lines)
+        product_lines.append((product, lines, locked_departures))
+        all_lines.extend(lines)
+
+    selected_products = [entry[0] for entry in product_lines]
+    compatible_methods = _validate_payment_method_compatibility(selected_products)
+    fee_mode = _fee_mode_from_section(section)
+    raw_max_installments = section.get("installments") or 12
+    try:
+        checkout_max_installments = max(1, min(int(raw_max_installments or 12), 12))
+    except (TypeError, ValueError):
+        checkout_max_installments = 12
+    raw_interest_mode = str(section.get("interestMode") or section.get("interest_mode") or "").strip().lower()
+    if raw_interest_mode == "client":
+        raw_interest_mode = "customer"
+    if raw_interest_mode not in {"merchant", "customer"}:
+        raw_interest_mode = "merchant"
+    raw_max_no_interest = section.get("maxInstallmentsNoInterest") or section.get("max_installments_no_interest")
+    try:
+        checkout_max_no_interest = int(raw_max_no_interest) if raw_max_no_interest else None
+    except (TypeError, ValueError):
+        checkout_max_no_interest = None
+    if checkout_max_no_interest is not None:
+        checkout_max_no_interest = max(1, min(checkout_max_no_interest, checkout_max_installments))
+    if fee_mode == "pass_through":
+        checkout_max_no_interest = None
+
+    aggregated_flags = {
+        "has_rooms": any(bool(product.has_rooms) for product, _, _ in product_lines),
+        "is_road_trip": any(bool(product.is_road_trip) for product, _, _ in product_lines),
+        "requires_passengers": True,
+        "requires_rooming": any(bool(product.has_rooms) for product, _, _ in product_lines),
+    }
+
+    currencies = _cart_currency(all_lines)
+    subtotal_cents = _cart_total_amount(all_lines)
+    total_passengers = _cart_passengers(all_lines)
+    total_capacity = _cart_capacity(all_lines)
+    effective_discount = payload.discount or _section_discount_from_config(section)
+    discount_cents = _compute_section_discount_amount(
+        subtotal_cents=subtotal_cents,
+        selected_products=selected_product_ids,
+        discount=effective_discount,
+    )
+    _distribute_discount(all_lines, discount_cents)
+    amount_cents = max(subtotal_cents - discount_cents, 0)
+    if amount_cents <= 0:
+        raise HTTPException(status_code=400, detail="Valor final invalido para checkout.")
+
+    passenger_token = secrets.token_urlsafe(24)
+    charge_metadata = {
+        "section_id": payload.section_id,
+        "page_id": page.id,
+        "channel": payload.channel or "public_page",
+        "agency_id": page.agency_id,
+        "agency_slug": payload.agency_slug or (page.agency.slug if page.agency else None),
+        "sale_passenger_token": passenger_token,
+        "consumed_capacity": total_capacity,
+        "customer_name": _trim(payload.customer.name, 255),
+        "customer_email": _trim(payload.customer.email, 255),
+        "customer_phone": _trim(payload.customer.phone, 50),
+        "description": _trim(str(section.get("title") or "Checkout multi-produto"), 255),
+    }
+    charge = _create_payment_charge(
+        db=db,
+        agency_id=page.agency_id,
+        base_amount_cents=amount_cents,
+        currency=currencies,
+        installments=1,
+        payment_method="credit_card",
+        metadata=charge_metadata,
+        defer_provider=(payload.channel or "public_page") == "public_page",
+    )
+
+    sale = Sale(
+        user_id=owner.id,
+        agency_id=page.agency_id,
+        page_id=page.id,
+        page_slug=page.slug,
+        page_title=_trim(page.title, 255),
+        section_id=payload.section_id,
+        product_id=None,
+        product_public_id=None,
+        product_title=_trim(str(section.get("title") or "Checkout multi-produto"), 255) or "Checkout multi-produto",
+        product_description=_trim(str(section.get("subtitle") or "Compra com multiplos itens"), 500),
+        currency=currencies.lower(),
+        passengers_required=total_passengers,
+        passenger_status=SalePassengerStatus.not_started.value,
+        passenger_form_token=passenger_token,
+        interest_mode=raw_interest_mode,
+        max_installments_no_interest=checkout_max_no_interest,
+        metadata_json={
+            "channel": payload.channel or "public_page",
+            "source_url": payload.source_url,
+            "agency_slug": payload.agency_slug,
+            "page_id": page.id,
+            "consumed_capacity": total_capacity,
+            "checkout_mode": "section_multi_product",
+            "fee_mode": fee_mode,
+            "allowed_payment_methods": compatible_methods,
+            "selected_products": selected_product_ids,
+            "subtotal_cents": subtotal_cents,
+            "discount_cents": discount_cents,
+            "discount_config": effective_discount.model_dump() if effective_discount else None,
+            "checkout_max_installments": checkout_max_installments,
+            "checkout_interest_mode": raw_interest_mode,
+            "checkout_max_installments_no_interest": checkout_max_no_interest,
+            "product_flags": aggregated_flags,
+        },
+        customer_name=_trim(payload.customer.name, 255),
+        customer_email=_trim(payload.customer.email, 255),
+        customer_phone=_trim(payload.customer.phone, 50),
+        channel=payload.channel or "public_page",
+    )
+    _apply_charge_to_sale(sale, charge)
+    db.add(sale)
+    db.flush()
+
+    for product, lines, departures in product_lines:
+        built_items = _build_sale_items_from_lines(sale, product, lines)
+        _ensure_trip_departure_instances_for_sale_items(product, built_items, db)
+        for line, item in zip(lines, built_items):
+            reserve_inventory_for_item(
+                db=db,
+                product=product,
+                variation=line.variation,
+                capacity_units=line.composition.total_capacity,
+                sale=sale,
+                sale_item=item,
+            )
+        _reserve_departure_capacity_for_lines(lines=lines, departures=departures)
 
     db.commit()
     db.refresh(sale)
@@ -883,7 +1364,7 @@ def create_checkout_sale(
 ) -> tuple[Sale, PaymentCharge]:
     page = (
         db.query(Page)
-        .options(joinedload(Page.agency).joinedload(Page.agency.users).joinedload(AgencyUser.user))
+        .options(joinedload(Page.agency).joinedload(Agency.users).joinedload(AgencyUser.user))
         .filter(Page.id == page_id, Page.status == "published")
         .first()
     )
@@ -907,6 +1388,10 @@ def create_checkout_sale(
         "section_id": resolution.section_id,
         "user_id": owner.id,
         "page_url": source_url,
+        "customer_name": _trim(customer.get("name"), 255),
+        "customer_email": _trim(customer.get("email"), 255),
+        "customer_phone": _trim(customer.get("phone"), 50),
+        "description": _trim(resolution.title, 255),
     }
     metadata = {key: str(value) for key, value in metadata_raw.items() if value is not None}
     charge = _create_payment_charge(
@@ -917,6 +1402,7 @@ def create_checkout_sale(
         installments=max(1, resolution.installments),
         payment_method="credit_card",
         metadata=metadata,
+        defer_provider=True,
     )
 
     sale = Sale(
@@ -1023,6 +1509,8 @@ def serialize_checkout_breakdown(charge: PaymentCharge) -> PaymentBreakdown:
 
 
 def serialize_checkout_response(sale: Sale, charge: PaymentCharge | None = None) -> PublicCheckoutResponse:
+    allowed_methods = _allowed_payment_methods_for_sale(sale)
+    fee_mode = _fee_mode_for_sale(sale)
     if charge:
         breakdown = serialize_checkout_breakdown(charge)
         passenger_token = sale.passenger_form_token if sale_requires_passengers(sale) else None
@@ -1033,11 +1521,15 @@ def serialize_checkout_response(sale: Sale, charge: PaymentCharge | None = None)
             provider=charge.provider,
             provider_status=charge.provider_status.value,
             breakdown=breakdown,
+            allowed_payment_methods=allowed_methods,
+            fee_mode=fee_mode,            
         )
     return serialize_checkout_response_from_sale(sale)
 
 
 def serialize_checkout_response_from_sale(sale: Sale) -> PublicCheckoutResponse:
+    allowed_methods = _allowed_payment_methods_for_sale(sale)
+    fee_mode = _fee_mode_for_sale(sale)
     breakdown = PaymentBreakdown(
         base_amount_cents=sale.base_amount,
         gross_amount_cents=sale.gross_amount or sale.amount,
@@ -1058,11 +1550,16 @@ def serialize_checkout_response_from_sale(sale: Sale) -> PublicCheckoutResponse:
         provider=sale.provider,
         provider_status=sale.payment_status,
         breakdown=breakdown,
+        allowed_payment_methods=allowed_methods,
+        fee_mode=fee_mode,
+        provider_payload=(sale.provider_metadata or {}).get("last_provider_payload"),
     )
 
 
 def serialize_sale_item(item: SaleItem) -> SaleItemOut:
     metadata = item.metadata_json or {}
+    departure_date = item.departure.date.isoformat() if item.departure and item.departure.date else None
+    departure_time = item.departure.time.strftime("%H:%M") if item.departure and item.departure.time else None
     breakdown_payload = metadata.get("child_breakdown") or []
     breakdown: list[SaleItemChildBreakdown] = []
     for entry in breakdown_payload:
@@ -1101,6 +1598,12 @@ def serialize_sale_item(item: SaleItem) -> SaleItemOut:
         child_extra_amount = 0
     return SaleItemOut(
         id=item.id,
+        product_id=item.product_id,
+        product_name=item.product.name if item.product else None,
+        product_image_url=item.product.checkout_product_image_url if item.product else None,
+        departure_id=item.departure_id,
+        departure_date=departure_date,
+        departure_time=departure_time,
         variation_public_id=item.variation_public_id,
         variation_name=item.variation_name,
         quantity=item.quantity,
@@ -1116,6 +1619,9 @@ def serialize_sale_item(item: SaleItem) -> SaleItemOut:
         occupancy_status=occupancy_status,
         child_extra_amount_cents=child_extra_amount,
         child_breakdown=breakdown,
+        subtotal_amount_cents=item.subtotal_amount_cents or item.total_price or 0,
+        discount_amount_cents=item.discount_amount_cents or 0,
+        total_amount_cents=item.total_amount_cents or item.total_price or 0,
         status=item.status,
     )
 
@@ -1131,6 +1637,32 @@ def update_passengers_from_payload(sale: Sale, passenger_payload: Iterable[Passe
     db.refresh(sale)
     return sale
 
+
+def _sale_item_capacity_units(item: SaleItem) -> int:
+    metadata = item.metadata_json or {}
+    consumed_capacity = metadata.get("consumed_capacity")
+    if isinstance(consumed_capacity, int) and consumed_capacity > 0:
+        return consumed_capacity
+    if item.slots_reserved and item.slots_reserved > 0:
+        return int(item.slots_reserved)
+    return max(int(item.people_count or 0), 0)
+
+
+def _sync_departure_capacity_for_sale(*, sale: Sale, db: Session, action: str) -> None:
+    if action not in {"confirm", "release_reserved"}:
+        return
+    for item in sale.items or []:
+        if not item.departure_id:
+            continue
+        departure = DepartureBookingService.lock_for_booking(db, departure_id=item.departure_id, product_id=item.product_id)
+        units = _sale_item_capacity_units(item)
+        if action == "confirm":
+            DepartureCapacityService.confirm(departure=departure, units=units)
+        else:
+            DepartureCapacityService.release_reserved(departure=departure, units=units)
+        db.add(departure)
+
+
 def _set_sale_payment_status(sale: Sale, status: SalePaymentStatus, db: Session) -> Sale:
     if sale.payment_status == status.value:
         return sale
@@ -1140,8 +1672,10 @@ def _set_sale_payment_status(sale: Sale, status: SalePaymentStatus, db: Session)
         sale.financial_status = SaleFinancialStatus.finalized.value
         sale.payout_status = SalePayoutStatus.available.value
         sale.paid_at = datetime.utcnow()
+        _sync_departure_capacity_for_sale(sale=sale, db=db, action="confirm")
         confirm_inventory_for_sale(sale, db)
     elif status in {SalePaymentStatus.canceled, SalePaymentStatus.refunded}:
+        _sync_departure_capacity_for_sale(sale=sale, db=db, action="release_reserved")
         release_inventory_for_sale(sale, db)
         if status == SalePaymentStatus.refunded:
             sale.financial_status = SaleFinancialStatus.finalized.value
@@ -1194,6 +1728,10 @@ class ProductCartLine:
     quantity: int
     children: dict[str, int]
     composition: PackageComposition
+    departure_id: int | None = None
+    override_unit_price_cents: int | None = None
+    total_amount_cents: int | None = None
+    discount_amount_cents: int = 0
 
 
 

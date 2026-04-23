@@ -60,8 +60,13 @@ class ProductPayload(BaseModel):
     available_slots: int = Field(0, ge=0)
     allow_oversell: bool = False
     card_interest_mode: Literal["merchant", "customer"] | None = None
+    allowed_payment_methods: list[Literal["pix", "credit_card", "boleto"]] = Field(
+        default_factory=lambda: ["pix", "credit_card", "boleto"]
+    )
     checkout_banner_url: str | None = Field(default=None, max_length=500)
     checkout_product_image_url: str | None = Field(default=None, max_length=500)
+    schedule_mode: Literal["fixed_date", "recurring"] = "fixed_date"
+    timezone: str | None = Field(default=None, max_length=64)
     variations: list[ProductVariationPayload] = Field(default_factory=list)
     boarding_locations: list[str] = Field(default_factory=list)
     has_rooms: bool | None = None
@@ -128,8 +133,11 @@ class ProductSummary(BaseModel):
     inventory_strategy: str
     allow_oversell: bool
     card_interest_mode: str
+    allowed_payment_methods: list[str] = Field(default_factory=lambda: ["pix", "credit_card", "boleto"])
     checkout_banner_url: str | None = None
     checkout_product_image_url: str | None = None
+    schedule_mode: str
+    timezone: str | None = None
     variations: list[ProductVariationOut]
     boarding_locations: list[str] = Field(default_factory=list)
     has_rooms: bool

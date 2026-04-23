@@ -227,7 +227,6 @@
                 <th class="px-6 py-3">{{ copy.contracts.date }}</th>
                 <th class="px-6 py-3">{{ copy.contracts.status }}</th>
                 <th class="px-6 py-3">{{ copy.contracts.signature.column }}</th>
-                <th class="px-6 py-3">{{ copy.contracts.verification.column }}</th>
                 <th class="px-6 py-3 text-right">{{ copy.contracts.actions }}</th>
               </tr>
             </thead>
@@ -271,11 +270,6 @@
                       {{ copy.contracts.signature.unavailable }}
                     </p>
 
-                    <p v-else-if="contract.signature_status === 'signed'" class="text-xs text-slate-500">
-                      {{ copy.contracts.signature.signedBy }}
-                      {{ contract.signature_name || contract.buyer_name }}
-                    </p>
-
                     <div v-if="contract.signature_status === 'pending'" class="flex flex-wrap gap-2">
                       <button
                         type="button"
@@ -295,43 +289,20 @@
                         {{ copy.contracts.signature.open }}
                       </button>
                     </div>
-
-                    <p v-else class="text-xs text-slate-500">
-                      {{ copy.contracts.signature.completed }}
-                    </p>
-                  </div>
-                </td>
-
-                <td class="px-6 py-4">
-                  <div class="space-y-2">
-                    <div class="flex flex-wrap items-center gap-2">
-                      <span :class="verificationBadgeClass(contractVerificationStatus(contract))">
-                        {{ verificationStatusLabel(contractVerificationStatus(contract)) }}
-                      </span>
-                      <button
-                        type="button"
-                        class="text-xs font-semibold text-emerald-600 underline-offset-4 hover:underline"
-                        @click="openVerificationModal(contract)"
-                      >
-                        {{ copy.contracts.verification.view }}
-                      </button>
-                    </div>
-                    <div v-if="contract.verification_url" class="flex flex-wrap gap-2">
-                      <button type="button" class="pill pill--ghost" @click="copyVerificationLink(contract)">
-                        {{ copy.contracts.verification.copy }}
-                      </button>
-                      <button type="button" class="pill" @click="openVerificationLink(contract)">
-                        {{ copy.contracts.verification.open }}
-                      </button>
-                    </div>
-                    <p v-else class="text-xs text-slate-500">
-                      {{ copy.contracts.verification.unavailable }}
-                    </p>
                   </div>
                 </td>
 
                 <td class="px-6 py-4">
                   <div class="flex justify-end gap-2">
+                    <button
+                      v-if="contract.verification_url"
+                      type="button"
+                      class="pill pill--ghost"
+                      @click="openVerificationLink(contract)"
+                    >
+                      {{ copy.contracts.verification.open }}
+                    </button>
+
                     <template v-if="contract.signed_pdf_url">
                       <button type="button" class="pill" @click="viewContractPdf(contract.signed_pdf_url)">
                         {{ copy.contracts.signedView }}
@@ -837,7 +808,7 @@ const copy = {
     verification: {
       column: t({ pt: "Verificação", es: "Verificación" }),
       view: t({ pt: "Ver detalhes", es: "Ver detalles" }),
-      open: t({ pt: "Abrir página pública", es: "Abrir página pública" }),
+      open: t({ pt: "Página de verificação", es: "Página de verificación" }),
       copy: t({ pt: "Copiar link", es: "Copiar enlace" }),
       copied: t({ pt: "Link de verificação copiado.", es: "Enlace de verificación copiado." }),
       copyError: t({ pt: "Não foi possível copiar o link de verificação.", es: "No se pudo copiar el enlace de verificación." }),

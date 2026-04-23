@@ -54,6 +54,36 @@
     :checkout-data="checkoutData"
     @payment-succeeded="handleCheckoutSucceeded"
   />
+  <transition name="payment-approved-fade">
+    <div v-if="paymentApprovedModalVisible" class="payment-approved-overlay" role="dialog" aria-modal="true">
+      <div class="payment-approved-panel">
+        <button type="button" class="payment-approved-close" aria-label="Fechar" @click="closePaymentApprovedModal">
+          &times;
+        </button>
+        <div class="payment-approved-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </div>
+        <p class="payment-approved-eyebrow">Pagamento aprovado</p>
+        <h2 class="payment-approved-title">Sua compra foi confirmada</h2>
+        <p class="payment-approved-text">
+          Agora falta preencher os dados dos passageiros para concluir a reserva com a agência responsável.
+        </p>
+        <button
+          v-if="passengerToken"
+          type="button"
+          class="payment-approved-primary"
+          @click="goToPassengerPage"
+        >
+          Preencher passageiros
+        </button>
+        <p v-else class="payment-approved-note">
+          O formulário de passageiros será enviado pela agência responsável.
+        </p>
+      </div>
+    </div>
+  </transition>
   <PublicPassengerModal
     v-model="passengerModalVisible"
     :token="passengerToken"
@@ -62,9 +92,10 @@
   <SeatSelectionModal
     v-if="seatSelectionToken"
     :token="seatSelectionToken"
+    :product-public-id="currentSeatSelectionProductId"
     token-type="sale"
     :open="seatModalVisible"
-    @close="seatModalVisible = false"
+    @close="handleSeatModalClose"
   />
   <ContractReadyModal
     v-model="contractModalVisible"
@@ -74,7 +105,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, provide, ref, watch } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import api from "../../services/api";
 import platformApi from "../../services/platformApi";
 import PublicHeroSection from "../../components/public/PublicHeroSection.vue";
@@ -98,6 +129,7 @@ import SeatSelectionModal from "../../components/public/SeatSelectionModal.vue";
 import ContractReadyModal from "../../components/legal/ContractReadyModal.vue";
 import PublicPhotoSection from "../../components/public/PublicPhotoSection.vue";
 import PublicBiographySection from "../../components/public/PublicBiographySection.vue";
+import { getSaleSeatSelectionProducts } from "../../services/transport";
 import type { HeroSection, PageConfig, PageSection, SectionType, ThemeConfig } from "../../types/page";
 import type { LeadForm } from "../../types/leads";
 import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
@@ -117,6 +149,7 @@ interface PublicPageResponse {
 }
 
 const route = useRoute();
+const router = useRouter();
 const loading = ref(true);
 const pageData = ref<PublicPageResponse | null>(null);
 const sections = ref<PageSection[]>([]);
@@ -129,8 +162,11 @@ const checkoutVisible = ref(false);
 const checkoutData = ref<ProductCheckoutPayload | null>(null);
 const passengerModalVisible = ref(false);
 const passengerToken = ref<string | null>(null);
+const paymentApprovedModalVisible = ref(false);
 const seatModalVisible = ref(false);
 const seatSelectionToken = ref<string | null>(null);
+const seatSelectionProductQueue = ref<string[]>([]);
+const seatSelectionProductIndex = ref(0);
 const contractModalVisible = ref(false);
 const contractSignatureLink = ref<string | null>(null);
 const theme = ref<ThemeConfig>({
@@ -240,6 +276,9 @@ const sectionExtraProps = (section: PageSection, index: number) => {
   const extra: Record<string, unknown> = {};
   if (sectionRequiresBranding(section.type)) {
     extra.branding = pageData.value?.branding;
+  }
+  if (section.type === "products") {
+    extra.sectionIndex = index;
   }
   if (section.type === "banner_card") {
     const prev = findPrevEnabledSection(index);
@@ -475,6 +514,11 @@ const sectionEnabled = (type: SectionType) => {
   return !!section && (section as PageSection).enabled;
 };
 
+const currentSeatSelectionProductId = computed(() => {
+  if (!seatSelectionProductQueue.value.length) return null;
+  return seatSelectionProductQueue.value[seatSelectionProductIndex.value] || null;
+});
+
 const handleLeadModalSubmitted = () => {
   leadModalVisible.value = false;
 };
@@ -485,10 +529,21 @@ const handleLeadModalDismissed = () => {
 
 const handleCheckoutSucceeded = (payload: { passengerToken: string | null; saleId: number }) => {
   passengerToken.value = payload.passengerToken || null;
-  passengerModalVisible.value = !!payload.passengerToken;
+  passengerModalVisible.value = false;
+  paymentApprovedModalVisible.value = true;
 };
 
-const handlePassengerCompleted = (payload?: {
+const closePaymentApprovedModal = () => {
+  paymentApprovedModalVisible.value = false;
+};
+
+const goToPassengerPage = async () => {
+  if (!passengerToken.value) return;
+  paymentApprovedModalVisible.value = false;
+  await router.push({ name: "passenger-form", params: { token: passengerToken.value } });
+};
+
+const handlePassengerCompleted = async (payload?: {
   contractSignatureLink?: string | null;
   contractSignatureToken?: string | null;
   passengerToken?: string | null;
@@ -504,8 +559,33 @@ const handlePassengerCompleted = (payload?: {
   }
   if (payload?.isRoadTrip && payload?.passengerToken) {
     seatSelectionToken.value = payload.passengerToken;
+    seatSelectionProductQueue.value = [];
+    seatSelectionProductIndex.value = 0;
+    try {
+      const { data } = await getSaleSeatSelectionProducts(payload.passengerToken);
+      const queue = (data.items || [])
+        .map(item => item.product_public_id)
+        .filter(Boolean);
+      seatSelectionProductQueue.value = queue;
+      seatSelectionProductIndex.value = 0;
+    } catch (error) {
+      console.error("Erro ao carregar produtos para selecao de assentos", error);
+      seatSelectionProductQueue.value = [];
+    }
     seatModalVisible.value = true;
   }
+};
+
+const handleSeatModalClose = () => {
+  if (seatSelectionProductQueue.value.length > 0 && seatSelectionProductIndex.value < seatSelectionProductQueue.value.length - 1) {
+    seatSelectionProductIndex.value += 1;
+    seatModalVisible.value = true;
+    return;
+  }
+  seatModalVisible.value = false;
+  seatSelectionToken.value = null;
+  seatSelectionProductQueue.value = [];
+  seatSelectionProductIndex.value = 0;
 };
 
 onMounted(loadPage);
@@ -529,6 +609,8 @@ watch(contractModalVisible, value => {
 watch(seatModalVisible, value => {
   if (!value) {
     seatSelectionToken.value = null;
+    seatSelectionProductQueue.value = [];
+    seatSelectionProductIndex.value = 0;
   }
 });
 watch(
@@ -633,5 +715,122 @@ function setupCtaTracking(pixels: { type: string; value: string }[]) {
 
 .public-page :deep(section h3) {
   font-weight: 700 !important;
+}
+
+.payment-approved-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  background: rgba(15, 23, 42, 0.58);
+  backdrop-filter: blur(10px);
+}
+
+.payment-approved-panel {
+  position: relative;
+  width: min(100%, 430px);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 28px;
+  background: #ffffff;
+  padding: 2rem;
+  text-align: center;
+  box-shadow: 0 28px 80px rgba(15, 23, 42, 0.22);
+}
+
+.payment-approved-close {
+  position: absolute;
+  right: 1rem;
+  top: 1rem;
+  display: inline-flex;
+  height: 2.4rem;
+  width: 2.4rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #64748b;
+  font-size: 1.35rem;
+  line-height: 1;
+  transition: all 0.2s ease;
+}
+
+.payment-approved-close:hover {
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.payment-approved-icon {
+  display: inline-flex;
+  height: 4.25rem;
+  width: 4.25rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #ecfdf5;
+  color: #059669;
+  box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.16);
+}
+
+.payment-approved-icon svg {
+  height: 2rem;
+  width: 2rem;
+}
+
+.payment-approved-eyebrow {
+  margin-top: 1.25rem;
+  color: #059669;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.payment-approved-title {
+  margin-top: 0.45rem;
+  color: #0f172a;
+  font-size: 1.65rem;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.payment-approved-text,
+.payment-approved-note {
+  margin-top: 0.85rem;
+  color: #64748b;
+  font-size: 0.98rem;
+  line-height: 1.65;
+}
+
+.payment-approved-primary {
+  margin-top: 1.5rem;
+  width: 100%;
+  border: 0;
+  border-radius: 16px;
+  background: #059669;
+  padding: 0.95rem 1.25rem;
+  color: #ffffff;
+  font-size: 0.98rem;
+  font-weight: 800;
+  transition: all 0.2s ease;
+}
+
+.payment-approved-primary:hover {
+  background: #047857;
+  transform: translateY(-1px);
+  box-shadow: 0 14px 30px rgba(5, 150, 105, 0.24);
+}
+
+.payment-approved-fade-enter-active,
+.payment-approved-fade-leave-active {
+  transition: opacity 0.18s ease;
+}
+
+.payment-approved-fade-enter-from,
+.payment-approved-fade-leave-to {
+  opacity: 0;
 }
 </style>

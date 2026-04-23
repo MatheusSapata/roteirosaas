@@ -3,7 +3,6 @@ from __future__ import annotations
 from app.core.config import get_settings
 
 from .blimboo_api import BlimbooAPIClient
-from .blimboo_mock import SimulatedBlimbooProvider
 from .blimboo_provider import BlimbooPaymentProvider
 
 settings = get_settings()
@@ -27,4 +26,4 @@ def get_payment_provider(api_token: str | None = None) -> BlimbooPaymentProvider
 
 provider = get_payment_provider()
 
-__all__ = ["provider", "get_payment_provider", "SimulatedBlimbooProvider", "BlimbooPaymentProvider", "BlimbooAPIClient"]
+__all__ = ["provider", "get_payment_provider", "BlimbooPaymentProvider", "BlimbooAPIClient"]

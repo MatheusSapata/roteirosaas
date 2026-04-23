@@ -101,6 +101,17 @@ export interface SeatPostSignatureStatus {
   message?: string | null;
 }
 
+export interface SaleSeatSelectionProduct {
+  product_id: number;
+  product_public_id: string;
+  product_name: string;
+}
+
+export interface SaleSeatSelectionProductsResponse {
+  sale_id: number;
+  items: SaleSeatSelectionProduct[];
+}
+
 export type TripVehicleStatus = "inactive" | "active" | "full";
 
 export interface TripVehicleSummary {
@@ -200,6 +211,10 @@ export interface SeatMapContext {
   product_name: string;
   product_public_id?: string | null;
   trip_date?: string | null;
+  departure_instance_id?: number | null;
+  departure_id?: number | null;
+  departure_date?: string | null;
+  departure_time?: string | null;
   trip_vehicle?: TripVehicleSummary | null;
   vehicles: TripVehicleSummary[];
   layout?: VehicleLayoutDetail | null;

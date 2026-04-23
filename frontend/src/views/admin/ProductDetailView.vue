@@ -53,6 +53,17 @@
 
     <div class="product-layout">
       <main class="product-main">
+        <section v-if="productForm.schedule_mode === 'recurring'" class="recurring-panel">
+          <ScheduleTemplateEditor
+            v-if="productPublicId"
+            v-model="scheduleTemplateForm"
+            :loading="scheduleLoading"
+            @save="saveScheduleTemplate"
+            @generate="generateDeparturesPreview"
+          />
+          <DeparturePreviewList :departures="scheduleDepartures" />
+        </section>
+
         <PackagesSection
           :variations="productForm.variations"
           @add="openPackageDrawer()"
@@ -165,14 +176,34 @@ import ProductGeneralDrawer from "../../components/products/ProductGeneralDrawer
 import ProductCheckoutMediaSection from "../../components/products/ProductCheckoutMediaSection.vue";
 import ProductChildrenRulesSection from "../../components/products/ProductChildrenRulesSection.vue";
 import ProductContractSection from "../../components/products/ProductContractSection.vue";
+import DeparturePreviewList from "../../components/schedule/DeparturePreviewList.vue";
+import ScheduleTemplateEditor from "../../components/schedule/ScheduleTemplateEditor.vue";
 import TransportConfigDrawer from "../../components/products/TransportConfigDrawer.vue";
 import BoardingLocationsDrawer from "../../components/products/BoardingLocationsDrawer.vue";
 import ChildrenRuleDrawer from "../../components/products/ChildrenRuleDrawer.vue";
 import CheckoutMediaDrawer from "../../components/products/CheckoutMediaDrawer.vue";
 import ContractDrawer from "../../components/products/ContractDrawer.vue";
-import { createProduct, getProductDetail, updateProduct, updateProductBoardingLocations } from "../../services/finance";
+import {
+  createProduct,
+  createScheduleTemplate,
+  generateScheduleDepartures,
+  getProductDetail,
+  listScheduleDepartures,
+  listScheduleTemplates,
+  updateProduct,
+  updateProductBoardingLocations,
+  updateScheduleTemplate,
+} from "../../services/finance";
 import { listLegalTemplates } from "../../services/legal";
-import type { ChildPricingRule, ChildPricingRulePayload, ProductDetail, ProductPayload } from "../../types/finance";
+import type {
+  ChildPricingRule,
+  ChildPricingRulePayload,
+  DepartureSummary,
+  ProductDetail,
+  ProductPayload,
+  ScheduleTemplate,
+  ScheduleTemplatePayload,
+} from "../../types/finance";
 import type { LegalTemplateSummary } from "../../types/legal";
 
 type ChildRuleKey = "under_5" | "age_5_12";
@@ -225,9 +256,12 @@ type ProductFormState = {
   template_contract_name: string | null;
   checkout_banner_url: string | null;
   checkout_product_image_url: string | null;
+  schedule_mode: "fixed_date" | "recurring";
+  timezone: string | null;
   variations: ProductVariationForm[];
   boarding_locations: string[];
   is_road_trip: boolean;
+  allowed_payment_methods: Array<"pix" | "credit_card" | "boleto">;
 };
 
 type DrawerKey = "general" | "package" | "transport" | "boarding" | "childRule" | "media" | "contract";
@@ -337,9 +371,12 @@ const productForm = reactive<ProductFormState>({
   template_contract_name: null,
   checkout_banner_url: null,
   checkout_product_image_url: null,
+  schedule_mode: "fixed_date",
+  timezone: "America/Sao_Paulo",
   variations: [],
   boarding_locations: [],
   is_road_trip: false,
+  allowed_payment_methods: ["pix", "credit_card", "boleto"],
 });
 const loading = ref(true);
 const saving = ref(false);
@@ -372,6 +409,22 @@ const mediaSaving = ref(false);
 const contractTemplates = ref<LegalTemplateSummary[]>([]);
 const contractTemplatesLoading = ref(false);
 const contractSaving = ref(false);
+const scheduleLoading = ref(false);
+const scheduleTemplateId = ref<number | null>(null);
+const scheduleDepartures = ref<DepartureSummary[]>([]);
+const scheduleTemplateForm = reactive<ScheduleTemplatePayload>({
+  template_type: "weekday",
+  start_date: new Date().toISOString().slice(0, 10),
+  end_date: null,
+  timezone: "America/Sao_Paulo",
+  default_capacity: 0,
+  default_price: null,
+  generation_horizon_days: 90,
+  is_active: true,
+  weekdays: [0, 1, 2, 3, 4, 5, 6].map(weekday => ({ weekday, is_enabled: false })),
+  times: [{ time: "09:00", capacity_override: null, price_override: null, sort_order: 0, is_active: true }],
+  calendar_dates: [],
+});
 
 const heroImage = computed(() => productForm.checkout_banner_url || productForm.checkout_product_image_url);
 const hasAccommodation = computed(() => productForm.variations.some(variation => variation.has_accommodation));
@@ -462,9 +515,9 @@ const packageReportsTotal = computed(() => ({
 const heroQuickActions = computed(() => {
   const items: Array<{ key: "payment-link" | "passengers" | "rooming" | "seatmap"; label: string; disabled: boolean }> = [
     { key: "payment-link", label: "Link de pagamento", disabled: !productPublicId.value },
+    { key: "passengers", label: "Passageiros", disabled: !productPublicId.value },
   ];
   if (productForm.is_road_trip) {
-    items.push({ key: "passengers", label: "Passageiros", disabled: !productPublicId.value });
     items.push({ key: "seatmap", label: "Mapa de assentos", disabled: !productPublicId.value });
   }
   if (hasAccommodation.value) {
@@ -524,8 +577,11 @@ const resetForm = () => {
   productForm.template_contract_name = null;
   productForm.checkout_banner_url = null;
   productForm.checkout_product_image_url = null;
+  productForm.schedule_mode = "fixed_date";
+  productForm.timezone = "America/Sao_Paulo";
   productForm.boarding_locations = [];
   productForm.is_road_trip = false;
+  productForm.allowed_payment_methods = ["pix", "credit_card", "boleto"];
   productForm.variations = [defaultVariation()];
 };
 
@@ -543,8 +599,13 @@ const mapDetailToForm = (detail: ProductDetail) => {
   productForm.template_contract_name = detail.template_contract_name ?? null;
   productForm.checkout_banner_url = detail.checkout_banner_url ?? null;
   productForm.checkout_product_image_url = detail.checkout_product_image_url ?? null;
+  productForm.schedule_mode = detail.schedule_mode || "fixed_date";
+  productForm.timezone = detail.timezone ?? "America/Sao_Paulo";
   productForm.boarding_locations = detail.boarding_locations ? [...detail.boarding_locations] : [];
   productForm.is_road_trip = detail.is_road_trip;
+  productForm.allowed_payment_methods = Array.isArray(detail.allowed_payment_methods) && detail.allowed_payment_methods.length
+    ? [...detail.allowed_payment_methods]
+    : ["pix", "credit_card", "boleto"];
   productForm.variations = detail.variations.map(variation => ({
     public_id: variation.public_id,
     name: variation.name,
@@ -568,6 +629,70 @@ const mapDetailToForm = (detail: ProductDetail) => {
   }
 };
 
+const applyScheduleTemplate = (template?: ScheduleTemplate | null) => {
+  if (!template) {
+    scheduleTemplateId.value = null;
+    scheduleTemplateForm.template_type = "weekday";
+    scheduleTemplateForm.start_date = new Date().toISOString().slice(0, 10);
+    scheduleTemplateForm.end_date = null;
+    scheduleTemplateForm.timezone = productForm.timezone || "America/Sao_Paulo";
+    scheduleTemplateForm.default_capacity = productForm.total_slots || 0;
+    scheduleTemplateForm.default_price = null;
+    scheduleTemplateForm.generation_horizon_days = 90;
+    scheduleTemplateForm.is_active = true;
+    scheduleTemplateForm.weekdays = [0, 1, 2, 3, 4, 5, 6].map(weekday => ({ weekday, is_enabled: false }));
+    scheduleTemplateForm.times = [{ time: "09:00", capacity_override: null, price_override: null, sort_order: 0, is_active: true }];
+    scheduleTemplateForm.calendar_dates = [];
+    return;
+  }
+  scheduleTemplateId.value = template.id;
+  scheduleTemplateForm.template_type = template.template_type;
+  scheduleTemplateForm.start_date = template.start_date;
+  scheduleTemplateForm.end_date = template.end_date ?? null;
+  scheduleTemplateForm.timezone = template.timezone;
+  scheduleTemplateForm.default_capacity = template.default_capacity ?? null;
+  scheduleTemplateForm.default_price = template.default_price ?? null;
+  scheduleTemplateForm.generation_horizon_days = template.generation_horizon_days;
+  scheduleTemplateForm.is_active = template.is_active;
+  scheduleTemplateForm.weekdays = template.weekdays?.length
+    ? template.weekdays.map(entry => ({ ...entry }))
+    : [0, 1, 2, 3, 4, 5, 6].map(weekday => ({ weekday, is_enabled: false }));
+  scheduleTemplateForm.times = template.times?.length
+    ? template.times.map(entry => ({ ...entry }))
+    : [{ time: "09:00", capacity_override: null, price_override: null, sort_order: 0, is_active: true }];
+  scheduleTemplateForm.calendar_dates = template.calendar_dates?.length
+    ? template.calendar_dates.map(entry => ({
+        ...entry,
+        times: (entry.times || []).map(time => ({ ...time })),
+      }))
+    : [];
+};
+
+const loadScheduleState = async () => {
+  if (!productPublicId.value || productForm.schedule_mode !== "recurring") {
+    scheduleDepartures.value = [];
+    applyScheduleTemplate(null);
+    return;
+  }
+  scheduleLoading.value = true;
+  try {
+    const [{ data: templates }, { data: departures }] = await Promise.all([
+      listScheduleTemplates(productPublicId.value),
+      listScheduleDepartures(
+        productPublicId.value,
+        new Date(Date.now() - 1000 * 60 * 60 * 24 * 60).toISOString().slice(0, 10),
+        new Date(Date.now() + 1000 * 60 * 60 * 24 * 60).toISOString().slice(0, 10),
+      ),
+    ]);
+    applyScheduleTemplate(templates[0] || null);
+    scheduleDepartures.value = departures.items || [];
+  } catch (err) {
+    console.error("Erro ao carregar agenda recorrente", err);
+  } finally {
+    scheduleLoading.value = false;
+  }
+};
+
 const buildPayload = (): ProductPayload => ({
   name: productForm.name.trim(),
   description: productForm.description,
@@ -581,6 +706,8 @@ const buildPayload = (): ProductPayload => ({
   template_contract_id: productForm.template_contract_id ?? undefined,
   checkout_banner_url: productForm.checkout_banner_url || undefined,
   checkout_product_image_url: productForm.checkout_product_image_url || undefined,
+  schedule_mode: productForm.schedule_mode,
+  timezone: productForm.schedule_mode === "recurring" ? productForm.timezone || undefined : undefined,
   variations: productForm.variations.map(variation => ({
     public_id: variation.public_id || undefined,
     name: variation.name.trim(),
@@ -604,6 +731,7 @@ const buildPayload = (): ProductPayload => ({
   boarding_locations: [...productForm.boarding_locations],
   has_rooms: productForm.variations.some(variation => variation.has_accommodation),
   is_road_trip: productForm.is_road_trip,
+  allowed_payment_methods: productForm.allowed_payment_methods,
   rooms: [],
 });
 
@@ -626,6 +754,9 @@ const runAutoSave = async () => {
     const payload = buildPayload();
     const { data } = await updateProduct(productPublicId.value, payload);
     mapDetailToForm(data);
+    if (productForm.schedule_mode === "recurring") {
+      await loadScheduleState();
+    }
     autoSaveState.value = "saved";
     lastSavedAt.value = new Date();
   } catch (err) {
@@ -898,6 +1029,137 @@ const saveGeneral = async (payload?: Partial<ProductFormState>) => {
   closeDrawer("general");
 };
 
+const normalizeScheduleTemplatePayload = (raw: ScheduleTemplatePayload): ScheduleTemplatePayload | null => {
+  const timezone = (raw.timezone || productForm.timezone || "America/Sao_Paulo").trim();
+  const startDate = (raw.start_date || "").trim();
+  const endDateRaw = typeof raw.end_date === "string" ? raw.end_date.trim() : raw.end_date;
+
+  if (!startDate) {
+    console.error("Template inválido: start_date ausente.");
+    return null;
+  }
+  if (!timezone) {
+    console.error("Template inválido: timezone ausente.");
+    return null;
+  }
+
+  if (raw.template_type === "weekday") {
+    const defaultCapacity = Math.max(0, Number(productForm.total_slots || raw.default_capacity || 0));
+    const weekdays = (raw.weekdays || []).map(entry => ({
+      weekday: Number(entry.weekday),
+      is_enabled: !!entry.is_enabled,
+    }));
+    const enabledWeekdays = weekdays.filter(entry => entry.is_enabled);
+    const times = (raw.times || [])
+      .map((entry, idx) => ({
+        time: String(entry.time || "").trim(),
+        capacity_override: null,
+        price_override: null,
+        sort_order: idx,
+        is_active: entry.is_active !== false,
+      }))
+      .filter(entry => entry.time.length > 0);
+
+    if (!enabledWeekdays.length) {
+      console.error("Template inválido: nenhum dia da semana ativo.");
+      return null;
+    }
+    if (!times.length) {
+      console.error("Template inválido: nenhum horário válido.");
+      return null;
+    }
+
+    return {
+      ...raw,
+      template_type: "weekday",
+      start_date: startDate,
+      end_date: endDateRaw ? String(endDateRaw) : null,
+      timezone,
+      default_capacity: defaultCapacity,
+      default_price: null,
+      weekdays,
+      times,
+      calendar_dates: [],
+    };
+  }
+
+  const calendarDates = (raw.calendar_dates || [])
+    .map(entry => ({
+      date: String(entry.date || "").trim(),
+      is_active: entry.is_active !== false,
+      times: (entry.times || [])
+        .map(time => ({
+          time: String(time.time || "").trim(),
+          capacity_override: null,
+          price_override: null,
+          is_active: time.is_active !== false,
+        }))
+        .filter(time => time.time.length > 0),
+    }))
+    .filter(entry => entry.date.length > 0 && entry.times.length > 0);
+
+  if (!calendarDates.length) {
+    console.error("Template inválido: calendário sem datas/horários válidos.");
+    return null;
+  }
+
+  return {
+    ...raw,
+    template_type: "calendar",
+    start_date: startDate,
+    end_date: endDateRaw ? String(endDateRaw) : null,
+    timezone,
+    default_capacity: Math.max(0, Number(productForm.total_slots || raw.default_capacity || 0)),
+    default_price: null,
+    weekdays: [],
+    times: [],
+    calendar_dates: calendarDates,
+  };
+};
+
+const saveScheduleTemplate = async (payload: ScheduleTemplatePayload) => {
+  if (!productPublicId.value) return;
+  if (productForm.schedule_mode !== "recurring") return;
+  const normalizedPayload = normalizeScheduleTemplatePayload(payload);
+  if (!normalizedPayload) {
+    console.error("Template recorrente não enviado por dados inválidos.");
+    return;
+  }
+  scheduleLoading.value = true;
+  try {
+    if (scheduleTemplateId.value) {
+      const { data } = await updateScheduleTemplate(productPublicId.value, scheduleTemplateId.value, normalizedPayload);
+      applyScheduleTemplate(data);
+    } else {
+      const { data } = await createScheduleTemplate(productPublicId.value, normalizedPayload);
+      applyScheduleTemplate(data);
+    }
+  } catch (err) {
+    const detail = (err as any)?.response?.data?.detail;
+    console.error("Erro ao salvar template recorrente", detail || err);
+  } finally {
+    scheduleLoading.value = false;
+  }
+};
+
+const generateDeparturesPreview = async () => {
+  if (!productPublicId.value) return;
+  scheduleLoading.value = true;
+  try {
+    await generateScheduleDepartures(productPublicId.value);
+    const { data } = await listScheduleDepartures(
+      productPublicId.value,
+      new Date(Date.now() - 1000 * 60 * 60 * 24 * 60).toISOString().slice(0, 10),
+      new Date(Date.now() + 1000 * 60 * 60 * 24 * 90).toISOString().slice(0, 10),
+    );
+    scheduleDepartures.value = data.items || [];
+  } catch (err) {
+    console.error("Erro ao gerar saídas recorrentes", err);
+  } finally {
+    scheduleLoading.value = false;
+  }
+};
+
 const toggleProductStatus = async () => {
   if (!productPublicId.value) return;
   productForm.status = productForm.status === "active" ? "draft" : "active";
@@ -971,6 +1233,8 @@ const loadProduct = async () => {
   loading.value = true;
   if (!productPublicId.value) {
     resetForm();
+    applyScheduleTemplate(null);
+    scheduleDepartures.value = [];
     drawerState.general = true;
     loading.value = false;
     return;
@@ -978,6 +1242,7 @@ const loadProduct = async () => {
   try {
     const { data } = await getProductDetail(productPublicId.value);
     mapDetailToForm(data);
+    await loadScheduleState();
   } catch (err) {
     console.error("Erro ao carregar produto", err);
   } finally {
@@ -1276,6 +1541,12 @@ watch(
   display: flex;
   flex-direction: column;
   gap: 2rem;
+}
+
+.recurring-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
 }
 
 .section-shell {

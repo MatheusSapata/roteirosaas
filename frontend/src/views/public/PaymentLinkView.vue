@@ -486,12 +486,13 @@
 </template>
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { confirmPublicSale, getPublicPaymentLinkDetails, getPublicPaymentLinkPricing, getPublicProductDetail } from "../../services/finance";
 import type { PaymentInstallmentOption, ProductDetail, PublicCheckoutResponse, SaleDetail } from "../../types/finance";
 import BrandLogo from "../../assets/Logo Cor - Roteiro Online.png";
 
 const route = useRoute();
+const router = useRouter();
 const brandLogo = BrandLogo;
 
 const sale = ref<SaleDetail | null>(null);
@@ -821,6 +822,12 @@ const buildCustomerPayload = () => ({
   phone: buyer.phone.trim() || sale.value?.customer_phone || "",
 });
 
+const redirectToPassengerForm = async (passengerToken?: string | null) => {
+  if (!passengerToken) return false;
+  await router.push({ name: "passenger-form", params: { token: passengerToken } });
+  return true;
+};
+
 const confirmPayment = async () => {
   if (!sale.value || isPaid.value) return;
   confirming.value = true;
@@ -841,6 +848,9 @@ const confirmPayment = async () => {
       customer_email: customerPayload.email,
       customer_phone: customerPayload.phone,
     } as SaleDetail;
+    if (requiresPassengers.value && (await redirectToPassengerForm(data.passenger_token))) {
+      return;
+    }
     showSuccessModal.value = true;
   } catch (err: any) {
     confirmError.value = err?.response?.data?.detail || "Não foi possível confirmar o pagamento.";

@@ -125,6 +125,15 @@ export interface PricesSection extends SectionBase {
 export interface ProductsSection extends SectionBase {
   type: "products";
   productId: string | null;
+  productIds?: string[];
+  feeMode?: "absorb" | "pass_through";
+  discount?: {
+    ruleType?: "min_quantity" | "exact_combination" | null;
+    minSelectedProducts?: number | null;
+    requiredProductIds?: string[];
+    discountType?: "fixed" | "percentage" | null;
+    discountValue?: number | null;
+  } | null;
   title?: LocalizedString;
   subtitle?: LocalizedString;
   accentColor?: string;
@@ -133,7 +142,7 @@ export interface ProductsSection extends SectionBase {
   variantBadgeLabel?: LocalizedString;
   installments?: number;
   interestMode?: "merchant" | "customer";
-  maxInstallmentsNoInterest?: number;
+  maxInstallmentsNoInterest?: number | null;
 }
 
 export interface ItineraryDay {

@@ -19,6 +19,7 @@ export interface CheckoutCartItem {
   variation_id: string;
   quantity: number;
   children?: CheckoutChildSelection;
+  departure_id?: number | null;
 }
 
 export interface CheckoutCustomer {
@@ -99,6 +100,9 @@ export interface ProductSummary {
   inventory_strategy: "manual" | "unlimited";
   allow_oversell: boolean;
   card_interest_mode: "merchant" | "customer";
+  allowed_payment_methods: Array<"pix" | "credit_card" | "boleto">;
+  schedule_mode: "fixed_date" | "recurring";
+  timezone?: string | null;
   checkout_banner_url?: string | null;
   checkout_product_image_url?: string | null;
   variations: ProductVariation[];
@@ -154,6 +158,9 @@ export interface ProductPayload {
   available_slots: number;
   allow_oversell: boolean;
   card_interest_mode?: "merchant" | "customer";
+  allowed_payment_methods?: Array<"pix" | "credit_card" | "boleto">;
+  schedule_mode?: "fixed_date" | "recurring";
+  timezone?: string | null;
   checkout_banner_url?: string | null;
   checkout_product_image_url?: string | null;
   variations: ProductVariationPayload[];
@@ -236,6 +243,7 @@ export interface PassengerGroup {
   sale_item_id: number;
   product_id?: number | null;
   product_name: string;
+  package_name?: string | null;
   label: string;
   group_index: number;
   capacity: number;
@@ -320,10 +328,23 @@ export interface PublicCheckoutResponse {
   provider: string;
   provider_status: SalePaymentStatus;
   breakdown: PaymentBreakdown;
+  allowed_payment_methods?: Array<"pix" | "credit_card" | "boleto">;
+  fee_mode?: "absorb" | "pass_through";
+  provider_payload?: Record<string, unknown> | null;
+  message?: string | null;
+}
+
+export interface SalePaymentMethodAvailabilityResponse {
+  sale_id: number;
+  allowed_payment_methods: Array<"pix" | "credit_card" | "boleto">;
+  fee_mode: "absorb" | "pass_through";
 }
 
 export interface PassengerFormResponse {
   sale_id: number;
+  agency_name?: string | null;
+  agency_logo_url?: string | null;
+  agency_whatsapp?: string | null;
   product_title: string;
   product_description?: string | null;
   passengers_required: number;
@@ -393,7 +414,8 @@ export interface PaymentPricingResponse {
   payment_method: string;
   currency: string;
   base_amount_cents: number;
-  options: PaymentInstallmentOption[];
+  options?: PaymentInstallmentOption[];
+  prices?: Array<number | string>;
 }
 
 export interface PaymentMethodSummary {
@@ -429,6 +451,12 @@ export interface PaymentLinkSimulationResponse {
 
 export interface SaleItem {
   id: number;
+  product_id?: number | null;
+  product_name?: string | null;
+  product_image_url?: string | null;
+  departure_id?: number | null;
+  departure_date?: string | null;
+  departure_time?: string | null;
   variation_public_id?: string | null;
   variation_name: string;
   quantity: number;
@@ -444,7 +472,189 @@ export interface SaleItem {
   occupancy_status: "pending_assignment" | "partial" | "complete";
   child_extra_amount_cents: number;
   child_breakdown: SaleItemChildBreakdown[];
+  subtotal_amount_cents: number;
+  discount_amount_cents: number;
+  total_amount_cents: number;
   status: string;
+}
+
+export interface ScheduleTemplateWeekdayPayload {
+  weekday: number;
+  is_enabled: boolean;
+}
+
+export interface ScheduleTemplateTimePayload {
+  time: string;
+  capacity_override?: number | null;
+  price_override?: number | null;
+  sort_order: number;
+  is_active: boolean;
+}
+
+export interface ScheduleTemplateCalendarDateTimePayload {
+  time: string;
+  capacity_override?: number | null;
+  price_override?: number | null;
+  is_active: boolean;
+}
+
+export interface ScheduleTemplateCalendarDatePayload {
+  date: string;
+  is_active: boolean;
+  times: ScheduleTemplateCalendarDateTimePayload[];
+}
+
+export interface ScheduleTemplatePayload {
+  template_type: "weekday" | "calendar";
+  start_date: string;
+  end_date?: string | null;
+  timezone: string;
+  default_capacity?: number | null;
+  default_price?: number | null;
+  generation_horizon_days: number;
+  is_active: boolean;
+  weekdays: ScheduleTemplateWeekdayPayload[];
+  times: ScheduleTemplateTimePayload[];
+  calendar_dates: ScheduleTemplateCalendarDatePayload[];
+}
+
+export interface ScheduleTemplate extends ScheduleTemplatePayload {
+  id: number;
+  product_id: number;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface DepartureSummary {
+  id: number;
+  product_id: number;
+  schedule_template_id?: number | null;
+  date: string;
+  time: string;
+  starts_at: string;
+  ends_at?: string | null;
+  timezone: string;
+  status: "draft" | "active" | "full" | "closed" | "canceled";
+  capacity_total: number;
+  capacity_reserved: number;
+  capacity_sold: number;
+  capacity_available: number;
+  price_override?: number | null;
+  is_manual_override: boolean;
+  notes?: string | null;
+  source_type?: string | null;
+}
+
+export interface DepartureListResponse {
+  items: DepartureSummary[];
+}
+
+export interface ScheduleGenerateResponse {
+  generated: number;
+  updated: number;
+  total: number;
+}
+
+export interface ScheduleExceptionPayload {
+  exception_type: "block_date" | "block_time" | "cancel_departure" | "close_departure" | "capacity_override" | "price_override";
+  schedule_template_id?: number | null;
+  date: string;
+  time?: string | null;
+  new_status?: "draft" | "active" | "full" | "closed" | "canceled" | null;
+  capacity_override?: number | null;
+  price_override?: number | null;
+  reason?: string | null;
+}
+
+export interface ScheduleException extends ScheduleExceptionPayload {
+  id: number;
+  product_id: number;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface ScheduleExceptionListResponse {
+  items: ScheduleException[];
+}
+
+export interface PublicDepartureCalendarDay {
+  date: string;
+  day: number;
+  available: boolean;
+  departures_count: number;
+  low_availability: boolean;
+  status: string;
+}
+
+export interface PublicDepartureCalendarResponse {
+  product_id: number;
+  month: string;
+  timezone: string;
+  days: PublicDepartureCalendarDay[];
+}
+
+export interface PublicDepartureTimeSlot {
+  departure_id: number;
+  time: string;
+  available: boolean;
+  remaining_capacity: number;
+  effective_price?: number | null;
+  status: string;
+  label: string;
+  low_availability: boolean;
+}
+
+export interface PublicDepartureTimesResponse {
+  product_id: number;
+  date: string;
+  timezone: string;
+  slots: PublicDepartureTimeSlot[];
+}
+
+export interface PublicDepartureValidateResponse {
+  valid: boolean;
+  reason?: string | null;
+  final_price?: number | null;
+  snapshot?: DepartureSummary | null;
+}
+
+export interface SectionDiscountConfig {
+  rule_type?: "min_quantity" | "exact_combination" | null;
+  min_selected_products?: number | null;
+  required_product_ids?: string[];
+  discount_type?: "fixed" | "percentage" | null;
+  discount_value?: number | null;
+}
+
+export interface SectionProductSelection {
+  product_id: string;
+  items: CheckoutCartItem[];
+}
+
+export interface SectionProductsCheckoutRequest {
+  page_id: number;
+  section_id: string;
+  customer: CheckoutCustomer;
+  products: SectionProductSelection[];
+  discount?: SectionDiscountConfig | null;
+  page_slug?: string | null;
+  agency_slug?: string | null;
+  source_url?: string | null;
+  channel?: string;
+}
+
+export interface SectionProductsPricingRequest {
+  page_id: number;
+  section_id: string;
+  fee_mode?: "absorb" | "pass_through";
+  products: SectionProductSelection[];
+  base_amount_cents: number;
+  currency: string;
+  discount?: SectionDiscountConfig | null;
+  page_slug?: string | null;
+  agency_slug?: string | null;
+  source_url?: string | null;
+  channel?: string;
 }
 
 export interface SaleItemChildBreakdown {

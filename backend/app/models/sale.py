@@ -98,6 +98,7 @@ class Sale(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     user = relationship("User", back_populates="sales")
+    agency = relationship("Agency")
     product = relationship("Product", back_populates="sales")
     passengers = relationship("SalePassenger", back_populates="sale", cascade="all, delete-orphan")
     passenger_groups = relationship(

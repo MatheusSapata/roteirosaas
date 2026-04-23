@@ -27,8 +27,12 @@ class BlimbooAPIClient:
 
     def _request(self, method: str, path: str, **kwargs: Any) -> Any:
         url = f"{self.base_url}{path if path.startswith('/') else '/' + path}"
+        request_headers = dict(self._headers)
+        extra_headers = kwargs.pop("headers", None)
+        if isinstance(extra_headers, dict):
+            request_headers.update(extra_headers)
         try:
-            response = httpx.request(method, url, headers=self._headers, timeout=30, **kwargs)
+            response = httpx.request(method, url, headers=request_headers, timeout=30, **kwargs)
         except httpx.HTTPError as exc:  # pragma: no cover - network failure
             raise BlimbooAPIError(str(exc)) from exc
         if response.status_code >= 400:
@@ -55,6 +59,19 @@ class BlimbooAPIClient:
     def create_charge(self, payload: dict[str, Any]) -> Any:
         """Creates a charge on Blimboo using the provided payload."""
         return self._request("POST", "/charges", json=payload)
+
+    def create_charge_wrapped(self, payload: dict[str, Any]) -> Any:
+        """Creates a charge wrapping payload in 'data' for compatibility."""
+        return self._request("POST", "/charges", json={"data": payload})
+
+    def create_charge_form(self, payload: dict[str, Any]) -> Any:
+        """Creates a charge using x-www-form-urlencoded for compatibility."""
+        return self._request(
+            "POST",
+            "/charges",
+            data=payload,
+            headers={"content-type": "application/x-www-form-urlencoded"},
+        )
 
     def get_pricing(self, payload: dict[str, Any]) -> Any:
         """Fetches the pricing table for the informed payment scenario."""

@@ -20,9 +20,21 @@ import type {
   ProductListResponse,
   ProductPayload,
   ProductBoardingLocationsPayload,
+  DepartureListResponse,
+  PublicDepartureCalendarResponse,
+  PublicDepartureTimesResponse,
+  PublicDepartureValidateResponse,
   InventoryAdjustmentPayload,
+  ScheduleException,
+  ScheduleExceptionListResponse,
+  ScheduleExceptionPayload,
+  ScheduleGenerateResponse,
+  ScheduleTemplate,
+  ScheduleTemplatePayload,
   ProductInventoryRebuildResponse,
   PublicCheckoutResponse,
+  SectionProductsPricingRequest,
+  SectionProductsCheckoutRequest,
   SaleDetail,
   SaleListResponse,
 } from "../types/finance";
@@ -82,6 +94,12 @@ export const createPublicCheckoutIntent = (payload: CheckoutIntentRequest) =>
 export const createProductPublicCheckoutIntent = (payload: ProductCheckoutRequest) =>
   api.post<PublicCheckoutResponse>("/public/finance/products/checkout/payment-intent", payload);
 
+export const createSectionProductsPublicCheckoutIntent = (payload: SectionProductsCheckoutRequest) =>
+  api.post<PublicCheckoutResponse>("/public/finance/sections/products/checkout/payment-intent", payload);
+
+export const getSectionProductsPublicPricing = (payload: SectionProductsPricingRequest) =>
+  api.post<PaymentPricingResponse>("/public/finance/sections/products/checkout/pricing", payload);
+
 export const getPublicPaymentLinkDetails = (token: string) =>
   api.get<SaleDetail>(`/public/finance/payment-links/${token}`);
 
@@ -90,8 +108,29 @@ export const getPublicPaymentLinkPricing = (token: string) =>
 
 export const confirmPublicSale = (
   saleId: number,
-  payload: { payment_method: string; installments: number },
+  payload: {
+    payment_method: "pix" | "credit_card" | "boleto";
+    installments: number;
+    total_amount_cents?: number;
+    customer?: {
+      name: string;
+      email: string;
+      phone: string;
+    };
+    card_holder_name?: string;
+    card_number?: string;
+    card_exp_month?: number;
+    card_exp_year?: number;
+    card_cvv?: string;
+    payer_document?: string;
+    payer_passport?: string;
+    payer_nationality?: string;
+    payer_zipcode?: string;
+  },
 ) => api.post<PublicCheckoutResponse>(`/public/finance/sales/${saleId}/confirm`, payload);
+
+export const getPublicSaleStatus = (saleId: number) =>
+  api.get<PublicCheckoutResponse>(`/public/finance/sales/${saleId}/status`);
 
 export const simulateSaleStatus = (saleId: number, status: string) =>
   api.post<SaleDetail>(`/finance/sales/${saleId}/simulate-status`, { status });
@@ -112,3 +151,49 @@ export const getBlimbooSettings = () => api.get<AgencyBlimbooSettings>("/finance
 
 export const saveBlimbooSettings = (payload: AgencyBlimbooSettingsPayload) =>
   api.post<AgencyBlimbooSettings>("/finance/settings/blimboo", payload);
+
+export const listScheduleTemplates = (productPublicId: string) =>
+  api.get<ScheduleTemplate[]>(`/finance/products/${productPublicId}/schedule/templates`);
+
+export const createScheduleTemplate = (productPublicId: string, payload: ScheduleTemplatePayload) =>
+  api.post<ScheduleTemplate>(`/finance/products/${productPublicId}/schedule/templates`, payload);
+
+export const updateScheduleTemplate = (productPublicId: string, templateId: number, payload: ScheduleTemplatePayload) =>
+  api.put<ScheduleTemplate>(`/finance/products/${productPublicId}/schedule/templates/${templateId}`, payload);
+
+export const deleteScheduleTemplate = (productPublicId: string, templateId: number) =>
+  api.delete(`/finance/products/${productPublicId}/schedule/templates/${templateId}`);
+
+export const generateScheduleDepartures = (
+  productPublicId: string,
+  payload: { from_date?: string | null; to_date?: string | null } = {},
+) => api.post<ScheduleGenerateResponse>(`/finance/products/${productPublicId}/schedule/generate`, payload);
+
+export const listScheduleDepartures = (productPublicId: string, fromDate: string, toDate: string) =>
+  api.get<DepartureListResponse>(`/finance/products/${productPublicId}/schedule/departures`, {
+    params: { from_date: fromDate, to_date: toDate },
+  });
+
+export const deleteScheduleDeparture = (productPublicId: string, departureId: number) =>
+  api.delete(`/finance/products/${productPublicId}/schedule/departures/${departureId}`);
+
+export const listScheduleExceptions = (productPublicId: string) =>
+  api.get<ScheduleExceptionListResponse>(`/finance/products/${productPublicId}/schedule/exceptions`);
+
+export const createScheduleException = (productPublicId: string, payload: ScheduleExceptionPayload) =>
+  api.post<ScheduleException>(`/finance/products/${productPublicId}/schedule/exceptions`, payload);
+
+export const updateScheduleException = (productPublicId: string, exceptionId: number, payload: ScheduleExceptionPayload) =>
+  api.put<ScheduleException>(`/finance/products/${productPublicId}/schedule/exceptions/${exceptionId}`, payload);
+
+export const deleteScheduleException = (productPublicId: string, exceptionId: number) =>
+  api.delete(`/finance/products/${productPublicId}/schedule/exceptions/${exceptionId}`);
+
+export const getPublicDepartureCalendar = (productPublicId: string, month: string) =>
+  api.get<PublicDepartureCalendarResponse>(`/public/finance/products/${productPublicId}/schedule/calendar`, { params: { month } });
+
+export const getPublicDepartureTimes = (productPublicId: string, date: string) =>
+  api.get<PublicDepartureTimesResponse>(`/public/finance/products/${productPublicId}/schedule/times`, { params: { date } });
+
+export const validatePublicDeparture = (productPublicId: string, payload: { product_id: string; departure_id: number; quantity: number }) =>
+  api.post<PublicDepartureValidateResponse>(`/public/finance/products/${productPublicId}/schedule/validate`, payload);

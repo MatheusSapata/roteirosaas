@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, EmailStr, Field
 
@@ -39,6 +39,7 @@ class CheckoutCartItem(BaseModel):
     variation_id: str
     quantity: int = Field(..., ge=1)
     children: dict[str, int] = Field(default_factory=dict)
+    departure_id: int | None = None
 
 
 class ProductCheckoutRequest(BaseModel):
@@ -50,6 +51,45 @@ class ProductCheckoutRequest(BaseModel):
     agency_slug: str | None = None
     source_url: str | None = None
     channel: str = "page"
+
+
+class SectionDiscountConfig(BaseModel):
+    rule_type: Literal["min_quantity", "exact_combination"] | None = None
+    min_selected_products: int | None = Field(default=None, ge=1)
+    required_product_ids: list[str] = Field(default_factory=list)
+    discount_type: Literal["fixed", "percentage"] | None = None
+    discount_value: int | None = Field(default=None, ge=0)
+
+
+class SectionProductSelection(BaseModel):
+    product_id: str
+    items: list[CheckoutCartItem]
+
+
+class SectionProductsCheckoutRequest(BaseModel):
+    page_id: int
+    section_id: str
+    customer: SaleCustomerPayload
+    products: list[SectionProductSelection]
+    discount: SectionDiscountConfig | None = None
+    page_slug: str | None = None
+    agency_slug: str | None = None
+    source_url: str | None = None
+    channel: str = "public_page"
+
+
+class SectionProductsPricingRequest(BaseModel):
+    page_id: int
+    section_id: str
+    fee_mode: Literal["absorb", "pass_through"] | None = None
+    products: list[SectionProductSelection]
+    base_amount_cents: int = Field(..., ge=0)
+    currency: str = "BRL"
+    discount: SectionDiscountConfig | None = None
+    page_slug: str | None = None
+    agency_slug: str | None = None
+    source_url: str | None = None
+    channel: str = "public_page"
 
 
 class PosCheckoutRequest(BaseModel):
@@ -72,6 +112,10 @@ class PublicCheckoutResponse(BaseModel):
     provider: str
     provider_status: str
     breakdown: PaymentBreakdown
+    allowed_payment_methods: list[str] = Field(default_factory=lambda: ["pix", "credit_card", "boleto"])
+    fee_mode: Literal["absorb", "pass_through"] = "absorb"
+    provider_payload: dict[str, Any] | None = None
+    message: str | None = None
 
 
 class PaymentLinkResponse(BaseModel):
@@ -81,9 +125,19 @@ class PaymentLinkResponse(BaseModel):
 
 
 class PaymentConfirmationRequest(BaseModel):
-    payment_method: str = "credit_card"
+    payment_method: Literal["pix", "credit_card", "boleto"] = "pix"
     installments: int = Field(1, ge=1, le=12)
+    total_amount_cents: int | None = Field(default=None, ge=1)
     customer: SaleCustomerPayload | None = None
+    card_holder_name: str | None = None
+    card_number: str | None = None
+    card_exp_month: int | None = Field(default=None, ge=1, le=12)
+    card_exp_year: int | None = Field(default=None, ge=2000, le=2200)
+    card_cvv: str | None = None
+    payer_document: str | None = None
+    payer_passport: str | None = None
+    payer_nationality: str | None = None
+    payer_zipcode: str | None = None
 
 
 class PaymentInstallmentOption(BaseModel):
@@ -98,6 +152,12 @@ class PaymentPricingResponse(BaseModel):
     currency: str
     base_amount_cents: int = Field(..., ge=0)
     options: list[PaymentInstallmentOption]
+
+
+class SalePaymentMethodAvailabilityResponse(BaseModel):
+    sale_id: int
+    allowed_payment_methods: list[str]
+    fee_mode: Literal["absorb", "pass_through"] = "absorb"
 
 
 class PaymentMethodSummary(BaseModel):
@@ -180,6 +240,7 @@ class PassengerGroupOut(BaseModel):
     sale_item_id: int
     product_id: int | None = None
     product_name: str
+    package_name: str | None = None
     label: str
     group_index: int
     capacity: int
@@ -264,6 +325,12 @@ class SaleItemChildBreakdown(BaseModel):
 
 class SaleItemOut(BaseModel):
     id: int
+    product_id: int | None = None
+    product_name: str | None = None
+    product_image_url: str | None = None
+    departure_id: int | None = None
+    departure_date: str | None = None
+    departure_time: str | None = None
     variation_public_id: str | None = None
     variation_name: str
     quantity: int
@@ -279,6 +346,9 @@ class SaleItemOut(BaseModel):
     occupancy_status: str
     child_extra_amount_cents: int
     child_breakdown: list[SaleItemChildBreakdown]
+    subtotal_amount_cents: int
+    discount_amount_cents: int
+    total_amount_cents: int
     status: str
 
 
@@ -302,6 +372,9 @@ class PassengerLinkResponse(BaseModel):
 
 class PassengerFormResponse(BaseModel):
     sale_id: int
+    agency_name: str | None = None
+    agency_logo_url: str | None = None
+    agency_whatsapp: str | None = None
     product_title: str
     product_description: str | None = None
     passengers_required: int

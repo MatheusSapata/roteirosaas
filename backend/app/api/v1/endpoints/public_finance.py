@@ -1,11 +1,15 @@
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
+import logging
+from typing import Any
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import get_db
 from app.models.passenger_group import PassengerGroup
+from app.models.page import Page
 from app.models.sale import Sale, SalePaymentStatus
 from app.models.sale_item import SalePaymentLink, SalePaymentLinkStatus
 from app.schemas.finance import (
@@ -20,6 +24,8 @@ from app.schemas.finance import (
     ProductCheckoutRequest,
     PublicCheckoutRequest,
     PublicCheckoutResponse,
+    SectionProductsCheckoutRequest,
+    SectionProductsPricingRequest,
     SaleDetail,
 )
 from app.schemas.products import ProductDetail
@@ -29,6 +35,18 @@ from app.services.finance import (
     complete_sale_payment,
     create_checkout_sale,
     create_product_checkout_sale,
+    create_section_products_checkout_sale,
+    _apply_departure_pricing_and_validate,
+    _cart_currency,
+    _cart_total_amount,
+    _compute_section_discount_amount,
+    _fee_mode_from_section,
+    _lock_product_for_checkout,
+    _resolve_cart_lines,
+    _resolve_products_section,
+    _section_discount_from_config,
+    _section_product_ids,
+    _validate_payment_method_compatibility,
     sale_flags,
     serialize_checkout_response,
     serialize_checkout_response_from_sale,
@@ -41,8 +59,23 @@ from app.services.finance import (
     sale_requires_passengers,
 )
 from app.services.legal import maybe_generate_contract_for_sale
+from app.services.blimboo_service import (
+    ChargeBuildInput,
+    ChargeCardInput,
+    ChargeCustomerInput,
+    PAYMENT_METHOD_TO_BLIMBOO,
+    build_charge_payload,
+    create_blimboo_charge,
+)
+from app.services.checkout_state import build_checkout_state
+from app.services.payment_compatibility_service import normalize_allowed_payment_methods
+from app.services.pricing_service import (
+    pricing_from_sale,
+    resolve_quote_total_cents as resolve_quote_total_cents_from_provider,
+)
 from app.services.payments.blimboo_api import BlimbooAPIClient, BlimbooAPIError
 from app.services.payments.blimboo_pricing import (
+    BLIMBOO_CURRENCY_MAP,
     build_fallback_credit_card_pricing,
     fetch_credit_card_pricing,
     merge_credit_card_pricing,
@@ -56,12 +89,7 @@ from app.services.products import get_public_product, serialize_product_detail
 
 router = APIRouter()
 settings = get_settings()
-
-BLIMBOO_CURRENCY_MAP = {
-    "BRL": 1,
-}
-
-BLIMBOO_CREDIT_CARD_METHOD = 2
+logger = logging.getLogger(__name__)
 
 
 @router.post("/checkout/payment-intent", response_model=PublicCheckoutResponse)
@@ -99,6 +127,157 @@ def create_product_checkout_intent(
         source_url=payload.source_url,
     )
     return serialize_checkout_response(sale, charge)
+
+
+@router.post("/sections/products/checkout/payment-intent", response_model=PublicCheckoutResponse)
+def create_section_products_checkout_intent(
+    payload: SectionProductsCheckoutRequest,
+    db: Session = Depends(get_db),
+) -> PublicCheckoutResponse:
+    sale, charge = create_section_products_checkout_sale(db=db, payload=payload)
+    return serialize_checkout_response(sale, charge)
+
+
+@router.post("/sections/products/checkout/pricing", response_model=PaymentPricingResponse)
+def get_section_products_checkout_pricing(
+    payload: SectionProductsPricingRequest,
+    db: Session = Depends(get_db),
+) -> PaymentPricingResponse:
+    if not payload.products:
+        raise HTTPException(status_code=400, detail="Selecione ao menos um produto.")
+
+    page = db.query(Page).filter(Page.id == payload.page_id, Page.status == "published").first()
+    if not page:
+        raise HTTPException(status_code=404, detail="Pagina nao encontrada.")
+
+    section = _resolve_products_section(page.config_json or {}, payload.section_id)
+    allowed_products = set(_section_product_ids(section))
+    if not allowed_products:
+        raise HTTPException(status_code=400, detail="Secao sem produtos configurados.")
+
+    product_lines = []
+    all_lines = []
+    selected_product_ids = [entry.product_id for entry in payload.products]
+    if len(set(selected_product_ids)) != len(selected_product_ids):
+        raise HTTPException(status_code=400, detail="Produto duplicado na selecao.")
+
+    for selection in payload.products:
+        if selection.product_id not in allowed_products:
+            raise HTTPException(status_code=400, detail="Produto nao permitido nesta secao.")
+        product = _lock_product_for_checkout(db, selection.product_id)
+        if page.agency_id and product.agency_id and product.agency_id != page.agency_id:
+            raise HTTPException(status_code=400, detail="Produto de outra agencia nao permitido na secao.")
+        lines = _resolve_cart_lines(db, product, selection.items)
+        _apply_departure_pricing_and_validate(db=db, product=product, lines=lines)
+        product_lines.append((product, lines, {}))
+        all_lines.extend(lines)
+
+    if not all_lines:
+        raise HTTPException(status_code=400, detail="Selecione ao menos um pacote.")
+
+    selected_products = [entry[0] for entry in product_lines]
+    compatible_methods = _validate_payment_method_compatibility(selected_products)
+    if "credit_card" not in compatible_methods:
+        raise HTTPException(status_code=400, detail="Cartao indisponivel para esta selecao.")
+
+    currency = (payload.currency or "BRL").upper()
+    base_amount_cents = int(payload.base_amount_cents or 0)
+    if base_amount_cents <= 0:
+        raise HTTPException(status_code=400, detail="Valor final invalido para checkout.")
+
+    raw_max_installments = section.get("installments") or 12
+    try:
+        max_installments = max(1, min(int(raw_max_installments or 12), 12))
+    except (TypeError, ValueError):
+        max_installments = 12
+
+    raw_interest_mode = str(section.get("interestMode") or section.get("interest_mode") or "").strip().lower()
+    if raw_interest_mode == "client":
+        raw_interest_mode = "customer"
+    if raw_interest_mode not in {"merchant", "customer"}:
+        raw_interest_mode = "merchant"
+
+    raw_max_no_interest = section.get("maxInstallmentsNoInterest") or section.get("max_installments_no_interest")
+    try:
+        max_no_interest = int(raw_max_no_interest) if raw_max_no_interest else None
+    except (TypeError, ValueError):
+        max_no_interest = None
+    if max_no_interest is not None:
+        max_no_interest = max(1, min(max_no_interest, max_installments))
+        if raw_interest_mode == "merchant":
+            # "Ate X sem juros" exige comparacao entre merchant/customer.
+            raw_interest_mode = "customer"
+
+    fee_mode = payload.fee_mode or _fee_mode_from_section(section)
+    if fee_mode not in {"absorb", "pass_through"}:
+        fee_mode = "absorb"
+    if fee_mode == "pass_through":
+        max_no_interest = None
+    api_token = get_agency_blimboo_token(db, page.agency_id)
+    logger.info(
+        "public pricing request page_id=%s section_id=%s fee_mode=%s currency=%s base_amount_cents=%s max_installments=%s raw_interest_mode=%s max_no_interest=%s products=%s",
+        payload.page_id,
+        payload.section_id,
+        fee_mode,
+        currency,
+        base_amount_cents,
+        max_installments,
+        raw_interest_mode,
+        max_no_interest,
+        [entry.product_id for entry in payload.products],
+    )
+    if fee_mode == "pass_through":
+        return _build_pass_through_credit_card_pricing(
+            api_token=api_token,
+            currency=currency,
+            base_amount_cents=base_amount_cents,
+            max_installments=max_installments,
+        )
+
+    merchant_pricing = fetch_credit_card_pricing(
+        api_base_url=settings.blimboo_api_base_url or "",
+        api_token=api_token,
+        currency=currency,
+        base_amount_cents=base_amount_cents,
+        interest_mode="merchant",
+        max_installments=max_installments,
+    )
+    customer_pricing = fetch_credit_card_pricing(
+        api_base_url=settings.blimboo_api_base_url or "",
+        api_token=api_token,
+        currency=currency,
+        base_amount_cents=base_amount_cents,
+        interest_mode="customer",
+        max_installments=max_installments,
+    )
+
+    if raw_interest_mode == "merchant":
+        effective_credit_card = merchant_pricing
+    elif max_no_interest:
+        effective_credit_card = merge_credit_card_pricing(
+            currency=currency,
+            base_amount_cents=base_amount_cents,
+            merchant_pricing=merchant_pricing,
+            customer_pricing=customer_pricing,
+            max_installments=max_installments,
+            max_installments_no_interest=max_no_interest,
+        )
+    else:
+        effective_credit_card = customer_pricing
+
+    if not effective_credit_card.options:
+        effective_credit_card = build_fallback_credit_card_pricing(
+            currency=currency,
+            base_amount_cents=base_amount_cents,
+            max_installments=max_installments,
+        )
+
+    logger.info(
+        "public pricing response fee_mode=%s result=%s",
+        fee_mode,
+        effective_credit_card.model_dump(),
+    )
+    return effective_credit_card
 
 
 @router.get("/products/{public_id}", response_model=ProductDetail)
@@ -157,6 +336,22 @@ def _coerce_int(value) -> int | None:
 
 def _collect_pricing_options(payload, max_installments: int) -> list[PaymentInstallmentOption]:
     resolved: dict[int, PaymentInstallmentOption] = {}
+
+    if isinstance(payload, dict):
+        raw_prices = payload.get("prices")
+        if isinstance(raw_prices, list):
+            for index, raw_price in enumerate(raw_prices, start=1):
+                if index > max(1, max_installments):
+                    break
+                total_amount = _money_to_cents(raw_price)
+                if total_amount is None:
+                    continue
+                resolved[index] = PaymentInstallmentOption(
+                    installments=index,
+                    installment_amount_cents=int(round(total_amount / index)),
+                    total_amount_cents=max(0, total_amount),
+                    has_interest=False,
+                )
 
     def _register(entry: dict, forced_installments: int | None = None) -> None:
         installments = forced_installments
@@ -226,7 +421,7 @@ def _collect_pricing_options(payload, max_installments: int) -> list[PaymentInst
 def _resolve_interest_candidates(interest_mode: str | None) -> list[int]:
     # Inference from the docs: interest_by is integer, but the enum mapping is not documented.
     normalized = (interest_mode or "").lower()
-    preferred = 2 if normalized in {"customer", "client"} else 1
+    preferred = 1 if normalized in {"customer", "client"} else 2
     alternatives = [preferred, 1 if preferred == 2 else 2]
     deduped: list[int] = []
     for candidate in alternatives:
@@ -236,10 +431,176 @@ def _resolve_interest_candidates(interest_mode: str | None) -> list[int]:
 
 
 def _resolve_pricing_max_installments(sale: Sale) -> int:
-    configured = sale.installments or 0
-    if sale.channel == "page" and configured > 0:
+    metadata = sale.metadata_json or {}
+    raw_configured = metadata.get("checkout_max_installments")
+    configured = 0
+    if raw_configured is not None:
+        try:
+            configured = int(raw_configured)
+        except (TypeError, ValueError):
+            configured = 0
+    if configured <= 0:
+        configured = int(sale.installments or 0)
+    if configured > 0:
         return max(1, min(configured, 12))
+    if sale.channel == "page":
+        configured = int(sale.installments or 0)
+        if configured > 0:
+            return max(1, min(configured, 12))
+        return 12
     return 12
+
+
+def _build_quote_based_credit_card_pricing(
+    *,
+    api_token: str,
+    currency: str,
+    base_amount_cents: int,
+    max_installments: int,
+    fee_mode: str,
+) -> PaymentPricingResponse:
+    client = BlimbooAPIClient(settings.blimboo_api_base_url or "", api_token)
+    options: list[PaymentInstallmentOption] = []
+    provider_payloads: list[dict[str, Any]] = []
+    provider_responses: list[Any] = []
+
+    for installments in range(1, max_installments + 1):
+        quoted_total_cents: int | None = None
+        quote_payload = {
+            "amount": round(base_amount_cents / 100, 2),
+            "currency": currency,
+            "method": PAYMENT_METHOD_TO_BLIMBOO["credit_card"],
+            "payment_method": "credit_card",
+            "installments": installments,
+        }
+        provider_payloads.append(quote_payload)
+        try:
+            quote_response = client.quote_payment(quote_payload)
+            provider_responses.append(quote_response)
+            provider_payload = _extract_provider_payload(quote_response)
+            quoted_total_cents = resolve_quote_total_cents_from_provider(provider_payload)
+        except BlimbooAPIError as exc:
+            provider_responses.append({"error": str(exc), "installments": installments})
+            quoted_total_cents = None
+
+        pricing = pricing_from_sale(base_amount_cents, quoted_total_cents, fee_mode)
+        total_amount_cents = max(0, pricing.final_amount_cents)
+        installment_amount_cents = int(round(total_amount_cents / max(installments, 1)))
+        options.append(
+            PaymentInstallmentOption(
+                installments=installments,
+                installment_amount_cents=installment_amount_cents,
+                total_amount_cents=total_amount_cents,
+                has_interest=total_amount_cents > base_amount_cents,
+            )
+        )
+
+    result = PaymentPricingResponse(
+        payment_method="credit_card",
+        currency=currency,
+        base_amount_cents=base_amount_cents,
+        options=options,
+    )
+    logger.info(
+        "public pricing quote path fee_mode=%s payloads=%s responses=%s result=%s",
+        fee_mode,
+        provider_payloads,
+        provider_responses,
+        result.model_dump(),
+    )
+    return result
+
+
+def _build_pass_through_credit_card_pricing(
+    *,
+    api_token: str,
+    currency: str,
+    base_amount_cents: int,
+    max_installments: int,
+) -> PaymentPricingResponse:
+    currency_code = BLIMBOO_CURRENCY_MAP.get((currency or "").upper())
+    if currency_code is None:
+        result = build_fallback_credit_card_pricing(
+            currency=currency,
+            base_amount_cents=base_amount_cents,
+            max_installments=max_installments,
+        )
+        logger.info("public pricing pass_through fallback unsupported currency result=%s", result.model_dump())
+        return result
+
+    provider_payloads: list[dict[str, Any]] = []
+    provider_responses: list[Any] = []
+    best_result: PaymentPricingResponse | None = None
+
+    client = BlimbooAPIClient(settings.blimboo_api_base_url or "", api_token)
+    amount = round(base_amount_cents / 100, 2)
+    for interest_by in _resolve_interest_candidates("customer"):
+        payload = {
+            "currency": currency_code,
+            "method": PAYMENT_METHOD_TO_BLIMBOO["credit_card"],
+            "interest_by": interest_by,
+            "advancing_receivables": 1,
+            "amount": amount,
+        }
+        provider_payloads.append(payload)
+        try:
+            response = client.get_pricing(payload)
+            provider_responses.append(response)
+            options = _collect_pricing_options(response, max_installments=max_installments)
+            if options:
+                normalized_options = [
+                    PaymentInstallmentOption(
+                        installments=option.installments,
+                        installment_amount_cents=option.installment_amount_cents,
+                        total_amount_cents=option.total_amount_cents,
+                        has_interest=option.total_amount_cents > base_amount_cents,
+                    )
+                    for option in options
+                ]
+                result = PaymentPricingResponse(
+                    payment_method="credit_card",
+                    currency=currency,
+                    base_amount_cents=base_amount_cents,
+                    options=normalized_options,
+                )
+                if any(option.total_amount_cents > base_amount_cents for option in normalized_options):
+                    logger.info(
+                        "public pricing pass_through success url=%s method=POST payloads=%s responses=%s result=%s",
+                        f"{client.base_url}/pricing",
+                        provider_payloads,
+                        provider_responses,
+                        result.model_dump(),
+                    )
+                    return result
+                if best_result is None:
+                    best_result = result
+        except (BlimbooAPIError, ValueError) as exc:
+            provider_responses.append({"error": str(exc)})
+            continue
+
+    if best_result is not None:
+        logger.info(
+            "public pricing pass_through success without interest url=%s method=POST payloads=%s responses=%s result=%s",
+            f"{client.base_url}/pricing",
+            provider_payloads,
+            provider_responses,
+            best_result.model_dump(),
+        )
+        return best_result
+
+    logger.info(
+        "public pricing pass_through fallback url=%s method=POST payloads=%s responses=%s",
+        f"{client.base_url}/pricing",
+        provider_payloads,
+        provider_responses,
+    )
+    result = build_fallback_credit_card_pricing(
+        currency=currency,
+        base_amount_cents=base_amount_cents,
+        max_installments=max_installments,
+    )
+    logger.info("public pricing pass_through fallback result=%s", result.model_dump())
+    return result
 
 
 def _build_fallback_pricing(sale: Sale) -> PaymentPricingResponse:
@@ -272,6 +633,14 @@ def get_payment_link_pricing(
     base_amount_cents = sale.gross_amount or sale.amount or 0
     max_installments = _resolve_pricing_max_installments(sale)
     api_token = get_agency_blimboo_token(db, sale.agency_id)
+    if _sale_fee_mode(sale) == "pass_through":
+        return _build_pass_through_credit_card_pricing(
+            api_token=api_token,
+            currency=currency,
+            base_amount_cents=base_amount_cents,
+            max_installments=max_installments,
+        )
+
     merchant_pricing = fetch_credit_card_pricing(
         api_base_url=settings.blimboo_api_base_url or "",
         api_token=api_token,
@@ -368,8 +737,12 @@ def _serialize_passenger_form(sale: Sale, db: Session) -> PassengerFormResponse:
     db.commit()
     passenger_groups = [serialize_passenger_group(group) for group in groups]
     contract = sale.contract
+    agency = sale.agency or (sale.product.agency if sale.product else None)
     return PassengerFormResponse(
         sale_id=sale.id,
+        agency_name=agency.name if agency else None,
+        agency_logo_url=agency.logo_url if agency else None,
+        agency_whatsapp=agency.cta_whatsapp if agency else None,
         product_title=sale.product_title,
         product_description=sale.product_description,
         passengers_required=sale.passengers_required,
@@ -399,6 +772,120 @@ def _serialize_passenger_form(sale: Sale, db: Session) -> PassengerFormResponse:
     )
 
 
+def _normalize_allowed_payment_methods(raw: Any) -> list[str]:
+    return normalize_allowed_payment_methods(raw)
+
+
+def _allowed_methods_for_sale(sale: Sale) -> list[str]:
+    metadata = sale.metadata_json or {}
+    metadata_methods = _normalize_allowed_payment_methods(metadata.get("allowed_payment_methods"))
+    if metadata_methods:
+        return metadata_methods
+    if sale.product:
+        return _normalize_allowed_payment_methods(getattr(sale.product, "allowed_payment_methods", None))
+    return ["pix", "credit_card", "boleto"]
+
+
+def _sale_fee_mode(sale: Sale) -> str:
+    metadata = sale.metadata_json or {}
+    value = str(metadata.get("fee_mode") or "absorb").strip().lower()
+    return value if value in {"absorb", "pass_through"} else "absorb"
+
+
+def _extract_provider_payload(payload: Any) -> dict[str, Any]:
+    if isinstance(payload, dict):
+        extracted: dict[str, Any] = {}
+        nested_data = payload.get("data")
+        if isinstance(nested_data, dict):
+            extracted.update(nested_data)
+        # Preserva campos de nivel raiz (ex.: boleto_url, linha_digitavel,
+        # installments, links) que podem nao estar dentro de "data".
+        for key, value in payload.items():
+            if key == "data":
+                continue
+            if key not in extracted:
+                extracted[key] = value
+        return extracted or payload
+    return {}
+
+
+def _merge_provider_payload(previous: Any, current: Any) -> dict[str, Any]:
+    prev = previous if isinstance(previous, dict) else {}
+    curr = current if isinstance(current, dict) else {}
+    merged: dict[str, Any] = dict(prev)
+    for key, value in curr.items():
+        if isinstance(value, dict) and isinstance(prev.get(key), dict):
+            merged[key] = _merge_provider_payload(prev.get(key), value)
+            continue
+        merged[key] = value
+    return merged
+
+
+def _status_from_blimboo(payload: dict[str, Any]) -> SalePaymentStatus:
+    charge = payload.get("charge") if isinstance(payload.get("charge"), dict) else {}
+    raw_value = payload.get("status") or payload.get("provider_status") or charge.get("status") or "pending"
+    if isinstance(raw_value, (int, float)):
+        # Tabela oficial Blimboo:
+        # 0 = Em aberto, 1 = Em dia, 2 = Concluido/Pago, 3 = Estornado, -1 = Cancelada.
+        numeric = int(raw_value)
+        if numeric == 2:
+            return SalePaymentStatus.paid
+        if numeric == 3:
+            return SalePaymentStatus.refunded
+        if numeric in {-1, 4, 5, 6}:
+            return SalePaymentStatus.canceled
+        if numeric == 1:
+            return SalePaymentStatus.processing
+        if numeric == 0:
+            return SalePaymentStatus.pending
+        return SalePaymentStatus.pending
+    raw = str(raw_value).strip().lower()
+    if raw in {"paid", "approved", "succeeded", "success", "captured"}:
+        return SalePaymentStatus.paid
+    if raw in {"canceled", "cancelled", "refused", "rejected", "failed", "denied"}:
+        return SalePaymentStatus.canceled
+    if raw in {"processing", "in_process", "pending", "waiting_payment", "awaiting_payment"}:
+        return SalePaymentStatus.processing
+    return SalePaymentStatus.pending
+
+
+def _resolve_provider_charge_id(payload: dict[str, Any], sale_id: int) -> str:
+    charge = payload.get("charge") if isinstance(payload.get("charge"), dict) else {}
+    for key in ("id", "charge_id", "provider_charge_id", "transaction_id", "reference"):
+        value = payload.get(key)
+        if value:
+            return str(value)
+    for key in ("uuid", "id", "charge_id", "reference"):
+        value = charge.get(key)
+        if value:
+            return str(value)
+    return f"sale-{sale_id}-{uuid4().hex[:12]}"
+
+
+def _resolve_quote_total_cents(payload: dict[str, Any]) -> int | None:
+    return resolve_quote_total_cents_from_provider(payload)
+
+
+def _update_sale_status_without_completion(sale: Sale, status: SalePaymentStatus, db: Session) -> None:
+    sale.provider_status = status.value
+    sale.payment_status = status.value
+    if status in {SalePaymentStatus.processing, SalePaymentStatus.pending}:
+        sale.financial_status = "pending"
+        sale.payout_status = "pending"
+        sale.paid_at = None
+    db.add(sale)
+    db.commit()
+    db.refresh(sale)
+
+
+def _status_message(status: SalePaymentStatus) -> str:
+    if status == SalePaymentStatus.paid:
+        return "Pagamento aprovado."
+    if status == SalePaymentStatus.canceled:
+        return "Pagamento recusado."
+    return "Pagamento pendente."
+
+
 @router.post("/sales/{sale_id}/confirm", response_model=PublicCheckoutResponse)
 def confirm_sale_payment(
     sale_id: int,
@@ -410,10 +897,197 @@ def confirm_sale_payment(
         sale.customer_name = payload.customer.name
         sale.customer_email = payload.customer.email
         sale.customer_phone = payload.customer.phone
-    sale.payment_method = payload.payment_method or sale.payment_method
-    sale.installments = payload.installments or sale.installments
-    sale = complete_sale_payment(sale, db)
-    return serialize_checkout_response_from_sale(sale)
+    allowed_methods = _allowed_methods_for_sale(sale)
+    fee_mode = _sale_fee_mode(sale)
+    state = build_checkout_state(
+        sale=sale,
+        payment_method=payload.payment_method or sale.payment_method or "pix",
+        installments=payload.installments or sale.installments or 1,
+        fee_mode=fee_mode,
+        allowed_payment_methods=allowed_methods,
+    )
+    if state.payment_method == "credit_card":
+        max_installments = _resolve_pricing_max_installments(sale)
+        if state.installments > max_installments:
+            raise HTTPException(status_code=400, detail=f"Parcelamento maximo permitido: {max_installments}x.")
+
+    if not str(sale.customer_name or "").strip() or not str(sale.customer_email or "").strip() or not str(sale.customer_phone or "").strip():
+        raise HTTPException(status_code=400, detail="Revise os dados obrigatorios do pagamento.")
+    payer_passport = str(payload.payer_passport or payload.payer_document or "").strip()
+    payer_nationality = str(payload.payer_nationality or "").strip().upper()
+    if not payer_passport or not payer_nationality:
+        raise HTTPException(status_code=400, detail="Revise os dados obrigatorios do pagamento.")
+
+    api_token = get_agency_blimboo_token(db, sale.agency_id)
+    if not api_token:
+        raise HTTPException(status_code=400, detail="Token da Blimboo nao configurado para este usuario.")
+    if not settings.blimboo_api_base_url:
+        raise HTTPException(status_code=500, detail="Base URL da Blimboo nao configurada.")
+
+    client = BlimbooAPIClient(settings.blimboo_api_base_url or "", api_token)
+    quote_payload: dict[str, Any] | None = None
+    quoted_total_cents: int | None = None
+    selected_total_cents = int(payload.total_amount_cents or 0)
+    if selected_total_cents > 0 and selected_total_cents >= state.base_amount_cents:
+        quoted_total_cents = selected_total_cents
+    if state.fee_mode == "pass_through":
+        try:
+            method_code = PAYMENT_METHOD_TO_BLIMBOO[state.payment_method]
+            quote_response = client.quote_payment(
+                {
+                    "amount": round(state.base_amount_cents / 100, 2),
+                    "currency": state.currency,
+                    "method": method_code,
+                    "payment_method": state.payment_method,
+                    "installments": state.installments,
+                }
+            )
+            quote_payload = _extract_provider_payload(quote_response)
+            quote_total = _resolve_quote_total_cents(quote_payload)
+            if quote_total and quote_total > 0:
+                quoted_total_cents = quote_total
+        except BlimbooAPIError:
+            if not quoted_total_cents:
+                quoted_total_cents = None
+
+    pricing_mode = "pass_through" if quoted_total_cents and quoted_total_cents > 0 else state.fee_mode
+    pricing = pricing_from_sale(state.base_amount_cents, quoted_total_cents, pricing_mode)
+    order_id = f"sale-{sale.id}-{uuid4().hex[:8]}"
+    charge_payload = build_charge_payload(
+        ChargeBuildInput(
+            payment_method=state.payment_method,
+            installments=state.installments,
+            currency=state.currency,
+            amount_cents=pricing.final_amount_cents,
+            description=sale.product_title or f"Venda #{sale.id}",
+            customer=ChargeCustomerInput(
+                name=str(sale.customer_name or "").strip(),
+                email=str(sale.customer_email or "").strip(),
+                phone_number=str(sale.customer_phone or "").strip(),
+                nationality=payer_nationality,
+                passport=payer_passport,
+            ),
+            order_id=order_id,
+            metadata={
+                "sale_id": sale.id,
+                "agency_id": sale.agency_id,
+                "fee_mode": state.fee_mode,
+                "base_amount_cents": pricing.base_amount_cents,
+                "final_amount_cents": pricing.final_amount_cents,
+            },
+            card=(
+                ChargeCardInput(
+                    holder_name=str(payload.card_holder_name or "").strip(),
+                    number=str(payload.card_number or "").strip(),
+                    exp_month=int(payload.card_exp_month or 0),
+                    exp_year=int(payload.card_exp_year or 0),
+                    cvv=str(payload.card_cvv or "").strip(),
+                )
+                if state.payment_method == "credit_card"
+                else None
+            ),
+        )
+    )
+    provider_payload = create_blimboo_charge(client, charge_payload)
+
+    provider_status = _status_from_blimboo(provider_payload)
+    provider_charge_id = _resolve_provider_charge_id(provider_payload, sale.id)
+
+    sale.provider = "blimboo"
+    sale.provider_charge_id = provider_charge_id
+    sale.payment_method = state.payment_method
+    sale.installments = state.installments
+    sale.currency = state.currency.lower()
+    sale.base_amount = pricing.base_amount_cents
+    sale.gross_amount = pricing.final_amount_cents
+    sale.amount = pricing.final_amount_cents
+    sale.gateway_fee_estimated = pricing.fee_amount_cents
+    sale.agency_net_amount = pricing.base_amount_cents if state.fee_mode == "pass_through" else max(0, pricing.final_amount_cents - pricing.fee_amount_cents)
+    provider_metadata = dict(sale.provider_metadata or {})
+    provider_metadata["installment_amount"] = int(round(pricing.final_amount_cents / max(1, state.installments)))
+    provider_metadata["last_provider_payload"] = provider_payload
+    provider_metadata["last_provider_request"] = charge_payload
+    provider_metadata["last_provider_quote"] = quote_payload
+    sale.provider_metadata = provider_metadata
+    db.add(sale)
+    db.flush()
+
+    if provider_status == SalePaymentStatus.paid:
+        sale = complete_sale_payment(sale, db)
+        response = serialize_checkout_response_from_sale(sale)
+        response.message = "Pagamento aprovado."
+        return response
+
+    _update_sale_status_without_completion(sale, provider_status, db)
+    response = serialize_checkout_response_from_sale(sale)
+    if provider_status == SalePaymentStatus.canceled:
+        response.message = "Pagamento recusado."
+    elif provider_status == SalePaymentStatus.processing:
+        response.message = "Pagamento pendente."
+    else:
+        response.message = "Pagamento pendente."
+    return response
+
+
+@router.get("/sales/{sale_id}/status", response_model=PublicCheckoutResponse)
+def get_sale_payment_status(
+    sale_id: int,
+    db: Session = Depends(get_db),
+) -> PublicCheckoutResponse:
+    sale = _sale_by_id(db, sale_id)
+
+    terminal_statuses = {
+        SalePaymentStatus.paid.value,
+        SalePaymentStatus.canceled.value,
+        SalePaymentStatus.refunded.value,
+    }
+    if sale.payment_status in terminal_statuses:
+        response = serialize_checkout_response_from_sale(sale)
+        response.message = _status_message(SalePaymentStatus(sale.payment_status))
+        return response
+
+    if sale.provider != "blimboo" or not sale.provider_charge_id:
+        response = serialize_checkout_response_from_sale(sale)
+        response.message = "Pagamento pendente."
+        return response
+
+    api_token = get_agency_blimboo_token(db, sale.agency_id)
+    if not api_token or not settings.blimboo_api_base_url:
+        response = serialize_checkout_response_from_sale(sale)
+        response.message = "Pagamento pendente."
+        return response
+
+    client = BlimbooAPIClient(settings.blimboo_api_base_url or "", api_token)
+    try:
+        raw_payload = client.get_charge(sale.provider_charge_id)
+        provider_payload = _extract_provider_payload(raw_payload)
+    except BlimbooAPIError:
+        response = serialize_checkout_response_from_sale(sale)
+        response.message = "Pagamento pendente."
+        return response
+
+    provider_status = _status_from_blimboo(provider_payload)
+    resolved_charge_id = _resolve_provider_charge_id(provider_payload, sale.id)
+    if resolved_charge_id:
+        sale.provider_charge_id = resolved_charge_id
+    metadata = dict(sale.provider_metadata or {})
+    metadata["last_provider_payload"] = _merge_provider_payload(
+        metadata.get("last_provider_payload"),
+        provider_payload,
+    )
+    metadata["last_provider_status_check_at"] = datetime.now(timezone.utc).isoformat()
+    sale.provider_metadata = metadata
+    db.add(sale)
+    db.flush()
+
+    if provider_status == SalePaymentStatus.paid:
+        sale = complete_sale_payment(sale, db)
+    else:
+        _update_sale_status_without_completion(sale, provider_status, db)
+
+    response = serialize_checkout_response_from_sale(sale)
+    response.message = _status_message(provider_status)
+    return response
 
 
 @router.get("/sales/{token}", response_model=PassengerFormResponse)

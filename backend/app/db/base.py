@@ -25,6 +25,7 @@ from app.models import (
     sale,
     sale_item,
     product,
+    schedule,
     rooming,
     stripe_account,
     legal,

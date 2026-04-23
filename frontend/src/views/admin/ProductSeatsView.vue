@@ -18,6 +18,14 @@
         </p>
       </div>
       <div class="header-actions">
+        <label v-if="departureOptions.length" class="departure-select">
+          <span>Saida</span>
+          <select v-model.number="selectedDepartureId" @change="handleDepartureChange">
+            <option v-for="departure in departureOptions" :key="departure.id" :value="departure.id">
+              {{ departureOptionLabel(departure) }}
+            </option>
+          </select>
+        </label>
         <router-link class="btn-secondary" :to="{ name: 'seat-layouts' }">Biblioteca de layouts</router-link>
         <button type="button" class="btn-primary" @click="refreshSeatData">Atualizar</button>
       </div>
@@ -480,6 +488,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
+import type { DepartureSummary } from "../../types/finance";
 import type {
   PassengerSeatSummary,
   SeatHistoryEntry,
@@ -491,6 +500,7 @@ import type {
   VehicleLayoutSummary,
   VehicleOut,
 } from "../../types/transport";
+import { listScheduleDepartures } from "../../services/finance";
 import {
   assignSeatAdmin,
   blockSeatRequest,
@@ -544,6 +554,7 @@ const layouts = ref<VehicleLayoutSummary[]>([]);
 const vehicles = ref<VehicleOut[]>([]);
 const configVehicles = ref<TripVehicleSummary[]>([]);
 const selectedTripVehicleId = ref<number | null>(null);
+const selectedDepartureId = ref<number | null>(null);
 const selectedPassengerId = ref<number | null>(null);
 const selectedSeatId = ref<number | null>(null);
 const configSaving = ref(false);
@@ -554,6 +565,7 @@ const blockPromptSeat = ref<TripSeatOut | null>(null);
 const historyExpanded = ref(false);
 const collapsedVehicles = ref<Record<string, boolean>>({});
 const isDesktop = ref(false);
+const departureOptions = ref<DepartureSummary[]>([]);
 
 const configForm = ref({
   isRoadTrip: false,
@@ -819,11 +831,13 @@ const selectedSeatPassengerId = computed(() => selectedSeat.value?.occupied_by_p
 const selectedPassengerNeedsSeat = computed(() => selectedPassenger.value?.status === "unassigned");
 
 const tripDateLabel = computed(() => {
-  const date = seatContext.value?.trip_date;
+  const date = seatContext.value?.departure_date || seatContext.value?.trip_date;
   if (!date) return "Sem data definida";
   const parsed = new Date(date);
   if (Number.isNaN(parsed.getTime())) return date;
-  return parsed.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
+  const label = parsed.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
+  const time = seatContext.value?.departure_time;
+  return time ? `${label} - ${time}` : label;
 });
 
 const currentVehicle = computed(() => {
@@ -839,6 +853,19 @@ const currentVehicleLabel = computed(() => {
   if (!vehicle) return null;
   return vehicle.display_name || vehicle.vehicle?.name || `Veiculo ${vehicle.order_index}`;
 });
+
+const departureOptionLabel = (departure: DepartureSummary) => {
+  const parsed = new Date(`${departure.date}T00:00:00`);
+  const dateLabel = Number.isNaN(parsed.getTime())
+    ? departure.date
+    : parsed.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
+  const reserved = Number(departure.capacity_reserved || 0);
+  const sold = Number(departure.capacity_sold || 0);
+  const total = Number(departure.capacity_total || 0);
+  const demand = sold > 0 ? sold : reserved;
+  const suffix = total > 0 ? `(${demand}/${total})` : "";
+  return `${dateLabel} - ${departure.time} ${suffix}`.trim();
+};
 
 const passengerSeatLabel = (passenger: PassengerSeatSummary) =>
   passenger.seat_label || passenger.seat_number || "";
@@ -997,8 +1024,8 @@ const switchVehicle = async (vehicleId: number) => {
   activeDeckKey.value = null;
   selectedSeatId.value = null;
   selectedPassengerId.value = null;
-  await loadSeatContext(vehicleId);
-  await loadHistory();
+  await loadSeatContext(vehicleId, selectedDepartureId.value);
+  await loadHistory(selectedDepartureId.value);
 };
 
 const formatDate = (value?: string | null) => {
@@ -1084,10 +1111,10 @@ const assignPassengerToSeat = async (passengerId: number, seatId: number) => {
     trip_vehicle_id: selectedTripVehicleId.value,
     passenger_id: passengerId,
     seat_id: seatId,
-  });
+  }, selectedTripVehicleId.value || undefined, selectedDepartureId.value || undefined);
 
-  await loadSeatContext(selectedTripVehicleId.value);
-  await loadHistory();
+  await loadSeatContext(selectedTripVehicleId.value, selectedDepartureId.value);
+  await loadHistory(selectedDepartureId.value);
 
   selectedPassengerId.value = null;
   selectedSeatId.value = seatId;
@@ -1097,9 +1124,9 @@ const removeAssignment = async (passengerId: number) => {
   await removePassengerSeat(productId.value, passengerId);
 
   if (selectedTripVehicleId.value) {
-    await loadSeatContext(selectedTripVehicleId.value);
+    await loadSeatContext(selectedTripVehicleId.value, selectedDepartureId.value);
   }
-  await loadHistory();
+  await loadHistory(selectedDepartureId.value);
 
   if (selectedPassengerId.value === passengerId) {
     selectedPassengerId.value = null;
@@ -1118,12 +1145,13 @@ const blockSelectedSeat = async (shouldBlock: boolean) => {
     productId.value,
     { seat_id: selectedSeat.value.id, is_blocked: false },
     selectedTripVehicleId.value || undefined,
+    selectedDepartureId.value || undefined,
   );
 
   if (selectedTripVehicleId.value) {
-    await loadSeatContext(selectedTripVehicleId.value);
+    await loadSeatContext(selectedTripVehicleId.value, selectedDepartureId.value);
   }
-  await loadHistory();
+  await loadHistory(selectedDepartureId.value);
 };
 
 const cancelBlockPrompt = () => {
@@ -1137,18 +1165,23 @@ const confirmBlockPrompt = async () => {
     productId.value,
     { seat_id: blockPromptSeat.value.id, is_blocked: true },
     selectedTripVehicleId.value || undefined,
+    selectedDepartureId.value || undefined,
   );
 
   blockPromptSeat.value = null;
 
   if (selectedTripVehicleId.value) {
-    await loadSeatContext(selectedTripVehicleId.value);
+    await loadSeatContext(selectedTripVehicleId.value, selectedDepartureId.value);
   }
-  await loadHistory();
+  await loadHistory(selectedDepartureId.value);
 };
 
-const loadSeatContext = async (tripVehicleId?: number | null) => {
-  const response = await getSeatMapContext(productId.value, tripVehicleId || undefined);
+const loadSeatContext = async (tripVehicleId?: number | null, departureId?: number | null) => {
+  const response = await getSeatMapContext(
+    productId.value,
+    tripVehicleId || undefined,
+    departureId || undefined,
+  );
   seatContext.value = response.data;
 
   if (seatContext.value?.vehicles && seatContext.value.vehicles.length) {
@@ -1158,13 +1191,51 @@ const loadSeatContext = async (tripVehicleId?: number | null) => {
   if (seatContext.value?.trip_vehicle?.id) {
     selectedTripVehicleId.value = seatContext.value.trip_vehicle.id;
   }
+  if (seatContext.value?.departure_id) {
+    selectedDepartureId.value = seatContext.value.departure_id;
+  }
 
   selectedSeatId.value = null;
 };
 
-const loadHistory = async () => {
-  const response = await getSeatHistory(productId.value);
+const loadHistory = async (departureId?: number | null | unknown) => {
+  const resolvedDepartureId =
+    typeof departureId === "number" && Number.isFinite(departureId) ? departureId : selectedDepartureId.value;
+  const response = await getSeatHistory(productId.value, 20, resolvedDepartureId || undefined);
   history.value = response.data?.items || [];
+};
+
+const loadDepartureOptions = async () => {
+  const now = new Date();
+  const from = new Date(now);
+  from.setDate(from.getDate() - 30);
+  const to = new Date(now);
+  to.setDate(to.getDate() + 180);
+  try {
+    const { data } = await listScheduleDepartures(
+      productId.value,
+      from.toISOString().slice(0, 10),
+      to.toISOString().slice(0, 10),
+    );
+    const validItems = (data.items || []).filter(item => item.status !== "canceled");
+    const itemsWithDemand = validItems.filter(
+      item => (item.capacity_sold || 0) > 0 || (item.capacity_reserved || 0) > 0,
+    );
+    departureOptions.value = (itemsWithDemand.length ? itemsWithDemand : validItems).sort((a, b) =>
+      `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`),
+    );
+    if (!selectedDepartureId.value && departureOptions.value.length) {
+      selectedDepartureId.value = departureOptions.value[0].id;
+    }
+  } catch {
+    departureOptions.value = [];
+  }
+};
+
+const handleDepartureChange = async () => {
+  const vehicleId = selectedTripVehicleId.value;
+  await loadSeatContext(vehicleId || undefined, selectedDepartureId.value);
+  await loadHistory(selectedDepartureId.value);
 };
 
 const syncConfigForm = (payload: Awaited<ReturnType<typeof getTripTransportConfig>>["data"]) => {
@@ -1204,6 +1275,7 @@ const loadVehicles = async () => {
 
 const loadAll = async () => {
   await Promise.all([loadVehicles(), loadConfig()]);
+  await loadDepartureOptions();
   configVehicles.value = configForm.value.vehicles.map((vehicle, index) => ({
     id: vehicle.id || -(index + 1),
     vehicle_id: vehicle.vehicleId,
@@ -1226,22 +1298,22 @@ const loadAll = async () => {
     null;
 
   if (initialVehicleId) {
-    await loadSeatContext(initialVehicleId);
+    await loadSeatContext(initialVehicleId, selectedDepartureId.value);
   } else {
-    await loadSeatContext();
+    await loadSeatContext(undefined, selectedDepartureId.value);
   }
 
-  await loadHistory();
+  await loadHistory(selectedDepartureId.value);
 };
 
 const refreshSeatData = async () => {
   const vehicleId = selectedTripVehicleId.value;
   if (vehicleId) {
-    await loadSeatContext(vehicleId);
+    await loadSeatContext(vehicleId, selectedDepartureId.value);
   } else {
-    await loadSeatContext();
+    await loadSeatContext(undefined, selectedDepartureId.value);
   }
-  await loadHistory();
+  await loadHistory(selectedDepartureId.value);
 };
 
 const saveConfig = async () => {
@@ -1318,6 +1390,15 @@ onBeforeUnmount(() => {
 }
 .header-actions {
   @apply flex flex-wrap gap-3;
+}
+.departure-select {
+  @apply flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500;
+}
+.departure-select span {
+  @apply whitespace-nowrap;
+}
+.departure-select select {
+  @apply rounded-full border border-slate-200 bg-white px-3 py-1 text-sm font-semibold normal-case tracking-normal text-slate-700 focus:border-slate-300 focus:outline-none;
 }
 .btn-primary {
   @apply rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60;

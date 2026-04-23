@@ -40,6 +40,19 @@
         </label>
         <div class="grid-2">
           <label class="field">
+            <span>Modo de agenda</span>
+            <select v-model="form.schedule_mode">
+              <option value="fixed_date">Fixed date</option>
+              <option value="recurring">Recurring</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Timezone</span>
+            <input v-model="form.timezone" :disabled="form.schedule_mode !== 'recurring'" placeholder="America/Sao_Paulo" />
+          </label>
+        </div>
+        <div class="grid-2">
+          <label class="field">
             <span>Estrategia de estoque</span>
             <select v-model="form.inventory_strategy">
               <option value="manual">Manual</option>
@@ -67,6 +80,23 @@
           <input type="checkbox" v-model="form.is_road_trip" />
           <span>Excursao rodoviaria</span>
         </label>
+
+        <section class="payment-methods">
+          <p class="payment-methods__title">Formas de pagamento permitidas</p>
+          <label class="toggle">
+            <input type="checkbox" :checked="hasMethod('pix')" @change="toggleMethod('pix', $event)" />
+            <span>PIX</span>
+          </label>
+          <label class="toggle">
+            <input type="checkbox" :checked="hasMethod('credit_card')" @change="toggleMethod('credit_card', $event)" />
+            <span>Cartão de crédito</span>
+          </label>
+          <label class="toggle">
+            <input type="checkbox" :checked="hasMethod('boleto')" @change="toggleMethod('boleto', $event)" />
+            <span>Boleto</span>
+          </label>
+          <p class="payment-methods__hint">Essas formas serão exibidas no checkout.</p>
+        </section>
       </div>
 
       <footer class="drawer__footer">
@@ -93,6 +123,9 @@ type GeneralForm = {
   available_slots: number;
   allow_oversell: boolean;
   is_road_trip: boolean;
+  schedule_mode: "fixed_date" | "recurring";
+  timezone: string | null;
+  allowed_payment_methods: Array<"pix" | "credit_card" | "boleto">;
 };
 
 const props = defineProps<{
@@ -117,6 +150,9 @@ const form = reactive<GeneralForm>({
   available_slots: 0,
   allow_oversell: false,
   is_road_trip: false,
+  schedule_mode: "fixed_date",
+  timezone: "America/Sao_Paulo",
+  allowed_payment_methods: ["pix", "credit_card", "boleto"],
 });
 
 watch(
@@ -129,7 +165,24 @@ watch(
 );
 
 const submit = () => {
+  if (!form.allowed_payment_methods.length) {
+    form.allowed_payment_methods = ["pix"];
+  }
   emit("save", { ...form });
+};
+
+const hasMethod = (method: "pix" | "credit_card" | "boleto") => form.allowed_payment_methods.includes(method);
+
+const toggleMethod = (method: "pix" | "credit_card" | "boleto", event: Event) => {
+  const checked = (event.target as HTMLInputElement).checked;
+  if (checked && !form.allowed_payment_methods.includes(method)) {
+    form.allowed_payment_methods = [...form.allowed_payment_methods, method];
+    return;
+  }
+  if (!checked) {
+    const next = form.allowed_payment_methods.filter(item => item !== method);
+    form.allowed_payment_methods = next.length ? next : ["pix"];
+  }
 };
 </script>
 
@@ -214,6 +267,22 @@ const submit = () => {
   gap: 0.5rem;
   font-size: 0.85rem;
   color: #475569;
+}
+.payment-methods {
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  padding: 0.8rem;
+  background: #f8fafc;
+}
+.payment-methods__title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 0.35rem;
+}
+.payment-methods__hint {
+  font-size: 0.75rem;
+  color: #64748b;
 }
 .pill {
   border-radius: 999px;

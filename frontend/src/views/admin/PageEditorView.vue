@@ -2289,15 +2289,17 @@ if (type === "products") {
     type: "products",
     enabled: true,
     productId: null,
+    productIds: [],
+    discount: null,
     headingLabel: headingDefaults.label,
     headingLabelStyle: headingDefaults.style,
     title: "Pacotes disponíveis",
     subtitle: "Conecte seus produtos cadastrados no menu Produtos com carrinho e checkout premium.",
     ctaLabel: "Ir para checkout",
     accentColor: theme.value.ctaDefaultColor,
-    installments: 1,
+    installments: 12,
     interestMode: "merchant",
-    maxInstallmentsNoInterest: 1
+    maxInstallmentsNoInterest: null
   } as ProductsSection);
 }
 

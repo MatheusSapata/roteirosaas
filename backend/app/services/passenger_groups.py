@@ -289,11 +289,17 @@ def serialize_passenger(passenger: SalePassenger) -> SalePassengerOut:
 
 def serialize_passenger_group(group: PassengerGroup) -> PassengerGroupOut:
     passengers = sorted(group.passengers or [], key=lambda passenger: passenger.passenger_index or 0)
+    sale_item = group.sale_item
+    product_name = None
+    if sale_item and sale_item.product:
+        product_name = sale_item.product.name
+    package_name = sale_item.variation_name if sale_item else group.product_name_snapshot
     return PassengerGroupOut(
         id=group.id,
         sale_item_id=group.sale_item_id,
         product_id=group.product_id,
-        product_name=group.product_name_snapshot,
+        product_name=product_name or group.product_name_snapshot,
+        package_name=package_name,
         label=group.label,
         group_index=group.group_index,
         capacity=group.capacity,

@@ -31,6 +31,11 @@ class ProductInventoryStrategy(str, Enum):  # type: ignore[misc]
     unlimited = "unlimited"
 
 
+class ProductScheduleMode(str, Enum):  # type: ignore[misc]
+    fixed_date = "fixed_date"
+    recurring = "recurring"
+
+
 class Product(Base):
     __tablename__ = "products"
 
@@ -60,6 +65,9 @@ class Product(Base):
     card_interest_mode = Column(String(20), nullable=False, default="merchant")
     checkout_banner_url = Column(String(500), nullable=True)
     checkout_product_image_url = Column(String(500), nullable=True)
+    allowed_payment_methods = Column(JSONB, nullable=True)
+    schedule_mode = Column(String(20), nullable=False, default=ProductScheduleMode.fixed_date.value)
+    timezone = Column(String(64), nullable=True)
     metadata_json = Column(JSONB, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -69,6 +77,9 @@ class Product(Base):
     template_contract = relationship("LegalContractTemplate", back_populates="products")
     variations = relationship("ProductVariation", back_populates="product", cascade="all, delete-orphan")
     rooms = relationship("ProductRoom", back_populates="product", cascade="all, delete-orphan")
+    departures = relationship("Departure", back_populates="product", cascade="all, delete-orphan")
+    schedule_templates = relationship("ScheduleTemplate", back_populates="product", cascade="all, delete-orphan")
+    schedule_exceptions = relationship("ScheduleException", back_populates="product", cascade="all, delete-orphan")
     inventory_events = relationship(
         "ProductInventoryEvent",
         back_populates="product",
