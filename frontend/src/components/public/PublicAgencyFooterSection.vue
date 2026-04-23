@@ -2,16 +2,13 @@
   <section
     v-if="section.enabled !== false"
     :id="section.anchorId || undefined"
-    class="px-4 py-12 sm:px-6 lg:px-12"
+    class="px-4 py-12 sm:px-6"
     :style="{ background: sectionBackground }"
   >
-    <div class="mx-auto w-full max-w-6xl">
+    <div class="mx-auto w-full max-w-6xl px-6">
       <div
         class="flex flex-col gap-10"
-        :class="{
-          'md:flex-row md:items-start md:justify-between': layoutMode !== 'stacked',
-          'md:flex-col': layoutMode === 'stacked'
-        }"
+        :class="layoutClass"
       >
         <div class="flex-1 space-y-8">
           <div class="max-w-2xl space-y-4">
@@ -40,7 +37,7 @@
           <div
             v-if="socialLinks.length"
             :class="[
-              'md:hidden rounded-[22px] border p-4',
+              mobileOnlyClass,
               isLight ? 'border-slate-200 bg-white/70' : 'border-white/15 bg-white/5'
             ]"
           >
@@ -77,7 +74,7 @@
           </div>
 
           <!-- CONTATOS / ENDEREÇO -->
-          <div class="grid gap-6 text-sm md:grid-cols-2">
+          <div :class="['grid gap-6 text-sm', isMobilePreview ? 'grid-cols-1' : 'md:grid-cols-2']">
             <div class="space-y-2">
               <p
                 :class="[
@@ -130,11 +127,11 @@
           <div
             v-if="socialLinks.length"
             :class="[
-              'hidden md:block rounded-[22px] border p-4',
+              desktopOnlyClass,
               isLight ? 'border-slate-200 bg-white/70' : 'border-white/15 bg-white/5'
             ]"
           >
-            <div class="flex flex-col items-center gap-4 text-center md:flex-col md:items-start md:text-left lg:flex-row lg:items-center lg:justify-between">
+            <div :class="desktopSocialInnerClass">
               <p
                 :class="[
                   'text-xs font-semibold uppercase tracking-[0.3em]',
@@ -167,7 +164,7 @@
           </div>
 
           <!-- MAPA MOBILE -->
-          <div v-if="mapEmbedUrl" class="w-full md:hidden">
+          <div v-if="mapEmbedUrl" :class="mobileMapClass">
             <div :class="['flex items-center justify-between pb-3 text-xs font-semibold', textSecondaryClass]">
               <span>Localização da agência</span>
 
@@ -216,10 +213,7 @@
         </div>
 
         <!-- MAPA DESKTOP -->
-        <div
-          v-if="mapEmbedUrl"
-          class="hidden w-full md:block md:w-[420px] md:flex-shrink-0"
-        >
+        <div v-if="mapEmbedUrl" :class="desktopMapClass">
           <div :class="['flex items-center justify-between pb-3 text-xs font-semibold', textSecondaryClass]">
             <span>{{ mapHeadingText }}</span>
 
@@ -379,6 +373,26 @@ const cadasturLink = computed(() => agencyProfile.value?.cadastur_url || buildCa
 const shouldShowCadastur = computed(() => props.section.showCadastur !== false);
 
 const layoutMode = computed(() => props.section.displayVariant || "auto");
+const isMobilePreview = computed(() => props.previewDevice === "mobile");
+const layoutClass = computed(() => {
+  if (layoutMode.value === "stacked") {
+    return isMobilePreview.value ? "flex-col" : "md:flex-col";
+  }
+  return isMobilePreview.value ? "flex-col" : "md:flex-row md:items-start md:justify-between";
+});
+const mobileOnlyClass = computed(() => (isMobilePreview.value ? "rounded-[22px] border p-4" : "md:hidden rounded-[22px] border p-4"));
+const desktopOnlyClass = computed(() =>
+  isMobilePreview.value ? "hidden rounded-[22px] border p-4" : "hidden md:block rounded-[22px] border p-4"
+);
+const desktopSocialInnerClass = computed(() =>
+  isMobilePreview.value
+    ? "flex flex-col items-center gap-4 text-center"
+    : "flex flex-col items-center gap-4 text-center md:flex-col md:items-start md:text-left lg:flex-row lg:items-center lg:justify-between"
+);
+const mobileMapClass = computed(() => (isMobilePreview.value ? "w-full" : "w-full md:hidden"));
+const desktopMapClass = computed(() =>
+  isMobilePreview.value ? "hidden w-full" : "hidden w-full md:block md:w-[420px] md:flex-shrink-0"
+);
 
 const DEFAULT_ACCENT_COLOR = "#41ce5f";
 

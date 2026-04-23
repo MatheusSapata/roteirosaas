@@ -1,12 +1,12 @@
 <template>
 <section class="w-full" :id="section.anchorId || undefined">
   <div
-    class="mx-auto w-full space-y-6"
+    class="mx-auto w-full space-y-6 pb-[30px]"
     :class="section.fullWidth ? 'max-w-none px-0 md:px-0' : 'max-w-6xl px-4 md:px-0'"
   >
       <div
         v-if="hasImage"
-        class="relative bg-slate-900 shadow-2xl"
+        class="relative bg-slate-900"
         :class="imageWrapperClass"
       >
         <img
@@ -91,11 +91,11 @@ const imageUrl = computed(() => {
 const usingMobileImage = computed(() => Boolean(mobileImageUrl.value && imageUrl.value === mobileImageUrl.value));
 const imageWrapperClass = computed(() => {
   if (props.section.fullWidth && !isPreview.value) {
-    return "w-screen relative left-1/2 right-1/2 -ml-[50vw] md:left-auto md:right-auto md:ml-0";
+    return "w-full";
   }
-  return "w-full rounded-[36px]";
+  return "w-full";
 });
-const imageFitClass = computed(() => (isPreview.value ? "object-contain" : "object-cover"));
+const imageFitClass = computed(() => "object-cover");
 const imageHeightClass = computed(() => {
   if (usingMobileImage.value) {
     return "h-auto";

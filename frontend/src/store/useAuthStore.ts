@@ -56,8 +56,10 @@ export const useAuthStore = defineStore("auth", () => {
   const token = ref<string | null>(typeof window !== "undefined" ? localStorage.getItem("token") : null);
   const refreshToken = ref<string | null>(typeof window !== "undefined" ? localStorage.getItem(REFRESH_KEY) : null);
   const user = ref<User | null>(null);
+  const isHydrating = ref(Boolean(token.value));
   let refreshTimeout: number | null = null;
   let refreshing: Promise<void> | null = null;
+  let hydrating: Promise<void> | null = null;
 
   const persistToken = (value: string | null) => {
     if (typeof window === "undefined") return;
@@ -156,10 +158,31 @@ export const useAuthStore = defineStore("auth", () => {
     user.value = res.data;
   };
 
+  const ensureHydrated = async () => {
+    if (!token.value) {
+      isHydrating.value = false;
+      return;
+    }
+    if (!hydrating) {
+      isHydrating.value = true;
+      hydrating = (async () => {
+        try {
+          await fetchProfile();
+        } finally {
+          isHydrating.value = false;
+          hydrating = null;
+        }
+      })();
+    }
+    return hydrating;
+  };
+
   const logout = () => {
     clearRefreshTimer();
     setTokens(null, null);
     user.value = null;
+    isHydrating.value = false;
+    hydrating = null;
   };
 
   if (responseInterceptorId === null) {
@@ -200,8 +223,10 @@ export const useAuthStore = defineStore("auth", () => {
   if (token.value) {
     api.defaults.headers.common.Authorization = `Bearer ${token.value}`;
     scheduleRefresh();
-    fetchProfile().catch(() => logout());
+    ensureHydrated().catch(() => logout());
+  } else {
+    isHydrating.value = false;
   }
 
-  return { token, user, refreshToken, setTokens, fetchProfile, logout, refreshAccessToken };
+  return { token, user, refreshToken, isHydrating, setTokens, fetchProfile, ensureHydrated, logout, refreshAccessToken };
 });

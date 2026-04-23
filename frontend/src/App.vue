@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-slate-50 text-slate-900">
+  <div :class="appShellClass">
     <router-view />
     <transition name="fade">
       <div
@@ -39,7 +39,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { createLocalizer, getCurrentLanguage } from "./utils/i18n";
 
@@ -65,6 +65,22 @@ const cookieLine1 = localize(cookieCopy.line1);
 const cookieLine2 = localize(cookieCopy.line2);
 const cookieAcceptLabel = localize(cookieCopy.accept);
 const cookieRejectLabel = localize(cookieCopy.reject);
+const publicRouteNames = new Set(["public-page", "custom-domain-default", "custom-domain-page"]);
+const publicShellClass = "public-shell";
+const isPublicShellRoute = computed(() => {
+  const routeName = typeof route.name === "string" ? route.name : "";
+  return publicRouteNames.has(routeName);
+});
+const appShellClass = computed(() =>
+  isPublicShellRoute.value
+    ? "min-h-screen bg-black text-white"
+    : "min-h-screen bg-slate-50 text-slate-900"
+);
+
+const syncBodyShell = (usePublicShell: boolean) => {
+  if (typeof document === "undefined") return;
+  document.body.classList.toggle(publicShellClass, usePublicShell);
+};
 
 const checkCookieConsent = () => {
   if (typeof window === "undefined") return;
@@ -94,8 +110,20 @@ watch(
   }
 );
 
+watch(
+  isPublicShellRoute,
+  value => {
+    syncBodyShell(value);
+  },
+  { immediate: true }
+);
+
 onMounted(() => {
   checkCookieConsent();
+});
+
+onBeforeUnmount(() => {
+  syncBodyShell(false);
 });
 </script>
 

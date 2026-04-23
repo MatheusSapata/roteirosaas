@@ -4,30 +4,38 @@
       <div class="flex justify-center mb-1">
         <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="accent" />
       </div>
-      <h1 class="text-center text-3xl font-bold leading-tight md:text-4xl" :style="{ color: primaryText }">
+      <h1
+        :class="['text-center font-bold leading-tight', isMobilePreview ? 'text-3xl' : 'text-3xl md:text-4xl']"
+        :style="{ color: primaryText }"
+      >
         {{ titleText }}
       </h1>
-      <p v-if="subtitleHtml" class="text-center text-sm md:text-base" v-html="subtitleHtml" :style="{ color: mutedText }"></p>
-      <p v-else class="mt-2 text-center text-sm md:text-base" :style="{ color: mutedText }">
+      <p
+        v-if="subtitleHtml"
+        :class="['text-center text-sm', isMobilePreview ? '' : 'md:text-base']"
+        v-html="subtitleHtml"
+        :style="{ color: mutedText }"
+      ></p>
+      <p v-else :class="['mt-2 text-center text-sm', isMobilePreview ? '' : 'md:text-base']" :style="{ color: mutedText }">
         {{ defaultSubtitle }}
       </p>
 
-      <div class="mt-8 grid w-full gap-6 md:gap-6 justify-items-stretch" :class="gridClass">
+      <div class="mt-8 grid w-full justify-items-stretch gap-6" :class="gridClass">
         <article
           v-for="(item, index) in displayedWithMedia"
           :key="index"
-          class="h-full w-full rounded-[20px] p-6 text-slate-900 shadow-xl md:p-7"
-          :style="{ background: cardColor }"
+          class="h-full w-full rounded-[20px] p-6 md:p-7"
+          :style="testimonialCardStyle"
         >
           <div class="flex items-center justify-between gap-3">
             <div class="flex items-center gap-3">
-              <div class="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-sm font-semibold text-slate-500">
+              <div class="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full text-sm font-semibold" :style="avatarStyle">
                 <img v-if="item.avatarUrl" :src="item.avatarUrl" :alt="avatarAltText" class="h-full w-full object-cover" />
                 <span v-else>{{ initials(item.name) }}</span>
               </div>
               <div>
-                <p class="text-sm font-semibold text-slate-900">{{ itemName(item) }}</p>
-                <p class="text-xs text-slate-500">{{ itemRole(item) }}</p>
+                <p class="text-[18px] font-semibold leading-tight" :style="{ color: testimonialTitleColor }">{{ itemName(item) }}</p>
+                <p class="text-[16px] leading-tight" :style="{ color: testimonialMetaColor }">{{ itemRole(item) }}</p>
               </div>
             </div>
           </div>
@@ -36,7 +44,7 @@
             <span v-for="star in 5" :key="star">★</span>
           </div>
 
-          <p class="mt-4 text-base leading-relaxed text-slate-800">
+          <p class="mt-4 text-base leading-relaxed" :style="{ color: testimonialBodyColor }">
             {{ itemText(item) }}
           </p>
         </article>
@@ -68,10 +76,10 @@ import type { TestimonialsSection } from "../../types/page";
 import SectionHeadingChip from "./SectionHeadingChip.vue";
 import { getSectionHeadingDefaults, resolveHeadingLabel } from "../../utils/sectionHeadings";
 import { sanitizeHtml } from "../../utils/sanitizeHtml";
-import { deriveTextPalette, getReadableTextColor } from "../../utils/colorContrast";
+import { deriveTextPalette, getReadableTextColor, getRelativeLuminance, normalizeHexColor } from "../../utils/colorContrast";
 import { createLocalizer, getCurrentLanguage } from "../../utils/i18n";
 
-const props = defineProps<{ section: TestimonialsSection }>();
+const props = defineProps<{ section: TestimonialsSection; previewDevice?: "desktop" | "mobile" }>();
 const headingDefaults = getSectionHeadingDefaults("testimonials");
 const localize = createLocalizer(getCurrentLanguage());
 const testimonialsCopy = {
@@ -82,9 +90,11 @@ const testimonialsCopy = {
 } as const;
 
 const accent = computed(() => props.section.ctaColor || "#5b49ff");
+const isMobilePreview = computed(() => props.previewDevice === "mobile");
 const ctaTextColor = computed(() => getReadableTextColor(accent.value));
 const accentBackground = computed(() => props.section.backgroundColor || "linear-gradient(135deg,#5b49ff,#3b82f6)");
-const cardColor = computed(() => props.section.cardColor || "#ffffff");
+const sectionBackground = computed(() => props.section.backgroundColor || "#ffffff");
+const sectionBackgroundHex = computed(() => normalizeHexColor(props.section.backgroundColor));
 
 const toRgba = (hex: string, alpha: number) => {
   const cleaned = hex.replace("#", "");
@@ -111,8 +121,26 @@ const subtitleHtml = computed(() => {
 });
 const defaultSubtitle = computed(() => localize(testimonialsCopy.subtitle));
 const textPalette = computed(() => deriveTextPalette(props.section.textColor));
+const sectionBackgroundIsLight = computed(() => {
+  if (!sectionBackgroundHex.value) return !textPalette.value.isLight;
+  return getRelativeLuminance(sectionBackgroundHex.value) > 0.7;
+});
 const primaryText = computed(() => textPalette.value.primary);
 const mutedText = computed(() => textPalette.value.muted);
+const neutralShadow = "0 18px 38px -28px rgba(15,23,42,0.28)";
+const darkCardBorder = computed(() => `1px solid ${toRgba(accent.value, 0.42)}`);
+const testimonialCardStyle = computed(() => ({
+  background: sectionBackgroundIsLight.value ? "#ffffff" : "rgba(255,255,255,0.10)",
+  border: sectionBackgroundIsLight.value ? "none" : darkCardBorder.value,
+  boxShadow: sectionBackgroundIsLight.value ? neutralShadow : `0 22px 46px -30px ${accentSoft.value}`
+}));
+const avatarStyle = computed(() => ({
+  background: sectionBackgroundIsLight.value ? "rgba(241,245,249,0.95)" : toRgba(accent.value, 0.12),
+  color: sectionBackgroundIsLight.value ? "#64748b" : "rgba(241,245,249,0.82)"
+}));
+const testimonialTitleColor = computed(() => (sectionBackgroundIsLight.value ? "#0f172a" : "#f8fafc"));
+const testimonialMetaColor = computed(() => (sectionBackgroundIsLight.value ? "#64748b" : "rgba(241,245,249,0.68)"));
+const testimonialBodyColor = computed(() => (sectionBackgroundIsLight.value ? "#1e293b" : "rgba(241,245,249,0.82)"));
 
 const avatarAltText = computed(() => localize(testimonialsCopy.avatarAlt));
 const initials = (name?: string) => {
@@ -139,8 +167,8 @@ const displayedWithMedia = computed(() =>
 const gridClass = computed(() => {
   const count = displayedWithMedia.value.length;
   if (count === 1) return "grid-cols-1";
-  if (count === 2) return "grid-cols-1 md:grid-cols-2";
-  return "grid-cols-1 md:grid-cols-3";
+  if (count === 2) return isMobilePreview.value ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2";
+  return isMobilePreview.value ? "grid-cols-1" : "grid-cols-1 md:grid-cols-3";
 });
 const ctaMode = computed(() => props.section.ctaMode || "link");
 const ctaHref = computed(() =>

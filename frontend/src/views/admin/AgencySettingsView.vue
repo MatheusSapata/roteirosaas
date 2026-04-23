@@ -1,5 +1,8 @@
 ﻿<template>
-  <div class="agency-settings w-full space-y-6 px-4 py-8 md:px-8">
+  <div v-if="isBootstrappingAgencySettings" class="flex min-h-[60vh] w-full items-center justify-center px-4 py-8 md:px-8">
+    <div class="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-brand"></div>
+  </div>
+  <div v-else class="agency-settings w-full space-y-6 px-4 py-8 md:px-8">
     <div>
       <p class="text-sm uppercase tracking-wide text-slate-500">{{ viewCopy.hero.eyebrow }}</p>
       <h1 class="text-3xl font-bold text-slate-900">{{ viewCopy.hero.title }}</h1>
@@ -464,6 +467,7 @@ const form = reactive({
 });
 
 const hasAgency = ref(false);
+const isBootstrappingAgencySettings = ref(true);
 const saving = ref(false);
 const message = ref("");
 const errorMessage = ref("");
@@ -691,6 +695,14 @@ const load = async () => {
   if (hasAgency.value) syncFormWithCurrent();
 };
 
+const bootstrapAgencySettings = async () => {
+  try {
+    await load();
+  } finally {
+    isBootstrappingAgencySettings.value = false;
+  }
+};
+
 const save = async () => {
   errorMessage.value = "";
   message.value = "";
@@ -793,7 +805,7 @@ watch(
   }
 );
 
-onMounted(load);
+onMounted(bootstrapAgencySettings);
 </script>
 
 <style scoped>

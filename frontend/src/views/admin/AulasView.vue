@@ -1,5 +1,8 @@
 <template>
-  <div class="space-y-8 px-4 py-6 md:px-8">
+  <div v-if="isBootstrappingLessons" class="flex min-h-[60vh] w-full items-center justify-center px-4 py-8 md:px-8">
+    <div class="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-brand"></div>
+  </div>
+  <div v-else class="space-y-8 px-4 py-6 md:px-8">
     <section class="rounded-3xl bg-white/95 p-6 shadow-xl shadow-slate-200/70 dark:bg-[#202020] dark:text-white dark:shadow-none">
       <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
@@ -136,6 +139,7 @@ import { useLessonsStore } from "../../store/useLessonsStore";
 const lessonsStore = useLessonsStore();
 const lessons = computed(() => lessonsStore.sortedLessons);
 const lessonsLoading = computed(() => lessonsStore.loading);
+const isBootstrappingLessons = ref(true);
 
 const activeLessonId = ref<number | null>(null);
 const completedLessons = ref<number[]>([]);
@@ -170,9 +174,13 @@ const selectLesson = (lessonId: number) => {
 };
 
 onMounted(async () => {
-  await lessonsStore.ensureLessons();
-  if (!activeLessonId.value && lessons.value.length) {
-    activeLessonId.value = lessons.value[0].id;
+  try {
+    await lessonsStore.ensureLessons();
+    if (!activeLessonId.value && lessons.value.length) {
+      activeLessonId.value = lessons.value[0].id;
+    }
+  } finally {
+    isBootstrappingLessons.value = false;
   }
 });
 </script>

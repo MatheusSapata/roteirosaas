@@ -1,5 +1,8 @@
 <template>
-  <div class="relative w-full">
+  <div v-if="isBootstrappingDomains" class="flex min-h-[60vh] w-full items-center justify-center px-4 py-8">
+    <div class="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-brand"></div>
+  </div>
+  <div v-else class="relative w-full">
     <div
       class="space-y-6"
       :class="{ 'select-none opacity-60 blur-sm': !domainsAllowed }"
@@ -482,6 +485,7 @@ const viewCopy = {
   }
 };
 const domains = ref<AgencyDomain[]>([]);
+const isBootstrappingDomains = ref(true);
 const loadingDomains = ref(false);
 const listError = ref("");
 const platformHosts = ["roteiroonline.com", "www.roteiroonline.com"];
@@ -687,11 +691,15 @@ const formatDate = (value?: string | null) => {
 };
 
 onMounted(async () => {
-  if (!agencyStore.agencies.length) {
-    await agencyStore.loadAgencies();
-  }
-  if (domainsAllowed.value) {
-    await fetchDomains();
+  try {
+    if (!agencyStore.agencies.length) {
+      await agencyStore.loadAgencies();
+    }
+    if (domainsAllowed.value) {
+      await fetchDomains();
+    }
+  } finally {
+    isBootstrappingDomains.value = false;
   }
 });
 
