@@ -1,67 +1,40 @@
 <template>
   <div class="space-y-6">
     <div class="space-y-5">
-    <div>
-      <label class="text-sm font-semibold text-slate-600">{{ viewCopy.desktopImage.label }}</label>
-      <p class="text-xs text-slate-500">
-        {{ viewCopy.desktopImage.helper }}
-      </p>
-      <ImageUploadField
-        v-model="local.image"
-        class="mt-2"
-        :hint="viewCopy.desktopImage.hint"
-        :enable-crop="true"
-        :crop-aspect="3"
-        :editor-title="viewCopy.desktopImage.editorTitle"
-      />
-    </div>
-    <div>
-      <label class="text-sm font-semibold text-slate-600">{{ viewCopy.mobileImage.label }}</label>
-      <p class="text-xs text-slate-500">{{ viewCopy.mobileImage.helper }}</p>
-      <ImageUploadField
-        v-model="local.mobileImage"
-        class="mt-2"
-        :hint="viewCopy.mobileImage.hint"
-        :enable-crop="true"
-        :crop-aspect="2"
-        :editor-title="viewCopy.mobileImage.editorTitle"
-      />
-    </div>
+      <div>
+        <label class="text-sm font-semibold text-slate-600">{{ viewCopy.desktopImage.label }}</label>
+        <p class="text-xs text-slate-500">
+          {{ viewCopy.desktopImage.helper }}
+        </p>
+        <ImageUploadField
+          v-model="local.image"
+          class="mt-2"
+          :hint="viewCopy.desktopImage.hint"
+          :enable-crop="true"
+          :crop-aspect="3"
+          :editor-title="viewCopy.desktopImage.editorTitle"
+        />
+      </div>
+      <div>
+        <label class="text-sm font-semibold text-slate-600">{{ viewCopy.mobileImage.label }}</label>
+        <p class="text-xs text-slate-500">{{ viewCopy.mobileImage.helper }}</p>
+        <ImageUploadField
+          v-model="local.mobileImage"
+          class="mt-2"
+          :hint="viewCopy.mobileImage.hint"
+          :enable-crop="true"
+          :crop-aspect="2"
+          :editor-title="viewCopy.mobileImage.editorTitle"
+        />
+      </div>
     </div>
 
     <div class="grid gap-6 md:grid-cols-2">
       <div class="space-y-5">
-        <div class="rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
-          <div class="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                {{ viewCopy.languageSwitcher.label }}
-              </p>
-              <p class="text-xs text-slate-500">{{ viewCopy.languageSwitcher.helper }}</p>
-            </div>
-            <div class="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 p-1">
-              <button
-                v-for="option in languageOptions"
-                :key="option.key"
-                type="button"
-                class="rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide transition"
-                :class="option.key === activeLanguage ? 'bg-brand text-white shadow-sm' : 'text-slate-500 hover:text-slate-900'"
-                @click="activeLanguage = option.key"
-              >
-                {{ option.shortLabel }}
-              </button>
-            </div>
-          </div>
-        </div>
         <div v-if="hasImage">
-          <label class="text-sm font-semibold text-slate-600">
-            {{ viewCopy.title.label }}
-            <span class="ml-1 text-xs font-normal uppercase tracking-wide text-slate-400">
-              ({{ currentLanguageLabel }})
-            </span>
-          </label>
+          <label class="text-sm font-semibold text-slate-600">{{ viewCopy.title.label }}</label>
           <input
-            v-model="titleInputValue"
+            v-model="local.title"
             class="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold uppercase tracking-wide"
             :placeholder="viewCopy.title.placeholder"
           />
@@ -69,17 +42,11 @@
         </div>
 
         <div>
-          <label class="text-sm font-semibold text-slate-600">
-            {{ viewCopy.subtitle.label }}
-            <span class="ml-1 text-xs font-normal uppercase tracking-wide text-slate-400">
-              ({{ currentLanguageLabel }})
-            </span>
-          </label>
+          <label class="text-sm font-semibold text-slate-600">{{ viewCopy.text.label }}</label>
           <RichTextEditor
-            :key="`biography-text-${activeLanguage}`"
-            v-model="textInputValue"
+            v-model="local.text"
             class="mt-2"
-            :placeholder="viewCopy.subtitle.placeholder"
+            :placeholder="viewCopy.text.placeholder"
           />
         </div>
       </div>
@@ -89,22 +56,22 @@
           <div>
             <label class="text-sm font-semibold text-slate-600">{{ viewCopy.font.titleLabel }}</label>
             <input
+              v-model.number="local.titleFontSize"
               type="number"
               min="24"
               max="160"
               step="2"
-              v-model.number="local.titleFontSize"
               class="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
             />
           </div>
           <div>
             <label class="text-sm font-semibold text-slate-600">{{ viewCopy.font.textLabel }}</label>
             <input
+              v-model.number="local.textFontSize"
               type="number"
               min="14"
               max="48"
               step="1"
-              v-model.number="local.textFontSize"
               class="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
             />
           </div>
@@ -114,7 +81,7 @@
           <div>
             <label class="text-sm font-semibold text-slate-600">{{ viewCopy.colors.titleColor }}</label>
             <div class="mt-2 flex items-center gap-3">
-              <input type="color" v-model="titleColor" class="h-10 w-10 cursor-pointer rounded border border-slate-200" />
+              <input v-model="titleColor" type="color" class="h-10 w-10 cursor-pointer rounded border border-slate-200" />
               <input
                 v-model="local.titleColor"
                 placeholder="#ffffff"
@@ -125,7 +92,7 @@
           <div>
             <label class="text-sm font-semibold text-slate-600">{{ viewCopy.colors.textColor }}</label>
             <div class="mt-2 flex items-center gap-3">
-              <input type="color" v-model="textColor" class="h-10 w-10 cursor-pointer rounded border border-slate-200" />
+              <input v-model="textColor" type="color" class="h-10 w-10 cursor-pointer rounded border border-slate-200" />
               <input
                 v-model="local.textColor"
                 placeholder="#0f172a"
@@ -138,11 +105,11 @@
         <div>
           <label class="text-sm font-semibold text-slate-600">{{ viewCopy.overlay.label }}</label>
           <input
+            v-model.number="overlay"
             type="range"
             min="0"
             max="0.85"
             step="0.05"
-            v-model.number="overlay"
             class="mt-2 w-full"
           />
           <p class="mt-1 text-xs text-slate-500">{{ viewCopy.overlay.helper }}</p>
@@ -153,70 +120,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, reactive, ref, watch } from "vue";
+import { computed, nextTick, reactive, watch } from "vue";
 import ImageUploadField from "./inputs/ImageUploadField.vue";
 import RichTextEditor from "./inputs/RichTextEditor.vue";
 import type { BiographySection } from "../../types/page";
-import { createAdminLocalizer, getAdminLanguage } from "../../utils/adminI18n";
-import { createTranslatable, type LocalizedString, type SupportedLanguage } from "../../utils/i18n";
+import { createAdminLocalizer } from "../../utils/adminI18n";
 
 const props = defineProps<{ modelValue: BiographySection }>();
 const emit = defineEmits<{ (e: "update:modelValue", value: BiographySection): void }>();
 const t = createAdminLocalizer();
-const adminLanguage = getAdminLanguage();
-
-const languageOptions = [
-  { key: "pt" as SupportedLanguage, label: t({ pt: "Português", es: "Portugués" }), shortLabel: "PT" },
-  { key: "es" as SupportedLanguage, label: t({ pt: "Espanhol", es: "Español" }), shortLabel: "ES" }
-] as const;
-
-const isLocalizedRecord = (value: LocalizedString): value is Partial<Record<SupportedLanguage, string>> =>
-  typeof value === "object" && value !== null;
-
-const readLocalizedField = (value: LocalizedString, lang: SupportedLanguage) => {
-  if (value === null || typeof value === "undefined") return "";
-  if (typeof value === "string") {
-    return lang === "pt" ? value : "";
-  }
-  const candidate = value[lang];
-  if (typeof candidate === "string") {
-    return candidate;
-  }
-  return "";
-};
-
-const writeLocalizedField = (current: LocalizedString, lang: SupportedLanguage, nextValue: string): LocalizedString => {
-  const normalized = typeof nextValue === "string" ? nextValue : "";
-  const trimmed = normalized.trim();
-  if (lang === "pt" && typeof current === "string") {
-    return normalized;
-  }
-  const record: Partial<Record<SupportedLanguage, string>> = isLocalizedRecord(current) ? { ...current } : {};
-  if (typeof current === "string" && current.trim().length) {
-    record.pt = current;
-  }
-  if (trimmed.length === 0) {
-    delete record[lang];
-  } else {
-    record[lang] = normalized;
-  }
-  const keys = Object.keys(record);
-  if (!keys.length) return "";
-  if (keys.length === 1 && keys[0] === "pt") {
-    return record.pt ?? "";
-  }
-  return record;
-};
-
-const ensureLanguage = (lang: SupportedLanguage): SupportedLanguage => {
-  const found = languageOptions.find(option => option.key === lang);
-  return found ? found.key : "pt";
-};
-
-const activeLanguage = ref<SupportedLanguage>(ensureLanguage(adminLanguage));
-const currentLanguageLabel = computed(
-  () => languageOptions.find(option => option.key === activeLanguage.value)?.label || languageOptions[0].label
-);
 
 const viewCopy = {
   desktopImage: {
@@ -242,8 +154,8 @@ const viewCopy = {
     placeholder: t({ pt: "BIOGRAFIA", es: "BIOGRAFÍA" }),
     helper: t({ pt: "Use letras maiúsculas para reforçar o impacto visual.", es: "Usa mayúsculas para reforzar el impacto visual." })
   },
-  subtitle: {
-    label: t({ pt: "Subtítulo / Texto abaixo", es: "Subtítulo / Texto debajo" }),
+  text: {
+    label: t({ pt: "Texto abaixo", es: "Texto debajo" }),
     placeholder: t({
       pt: "Conte a história da sua agência, bastidores e conquistas...",
       es: "Cuenta la historia de tu agencia, bastidores y logros..."
@@ -260,47 +172,43 @@ const viewCopy = {
   overlay: {
     label: t({ pt: "Intensidade da sobreposição", es: "Intensidad de la superposición" }),
     helper: t({ pt: "Escurece a foto para garantir que o título fique legível.", es: "Oscurece la foto para garantizar que el título sea legible." })
-  },
-  languageSwitcher: {
-    label: t({ pt: "Conte�do por idioma", es: "Contenido por idioma" }),
-    helper: t({ pt: "Edite os textos em Portugu�s ou Espanhol.", es: "Edita los textos en Portugués o Español." })
   }
 };
 
-const biographyDefaults = createTranslatable({
-  title: { pt: "BIOGRAFIA", es: "BIOGRAFÍA" },
-  text: {
-    pt: "Use esta se��o para compartilhar a história da sua agência, bastidores e fatos que criam conexão com o visitante.",
-    es: "Usa esta sección para compartir la historia de tu agencia, bastidores y hechos que crean conexión con el visitante."
+const defaultBodyText =
+  "Use esta seção para compartilhar a história da sua agência, bastidores e fatos que criam conexão com o visitante.";
+
+const normalizeLegacyLocalizedText = (value: unknown, fallback: string) => {
+  if (typeof value === "string") return value;
+  if (!value || typeof value !== "object") return fallback;
+  const record = value as Record<string, unknown>;
+  const preferredKeys = ["pt", "es"];
+  for (const key of preferredKeys) {
+    const candidate = record[key];
+    if (typeof candidate === "string" && candidate.trim()) {
+      return candidate;
+    }
   }
-});
+  for (const candidate of Object.values(record)) {
+    if (typeof candidate === "string" && candidate.trim()) {
+      return candidate;
+    }
+  }
+  return fallback;
+};
 
 const local = reactive<BiographySection>({
   type: "biography",
   enabled: true,
   fullWidth: true,
-  title: biographyDefaults.title,
-  text: biographyDefaults.text,
   overlayOpacity: 0.45,
   titleColor: "#ffffff",
   textColor: "#0f172a",
   titleFontSize: 72,
   textFontSize: 18,
-  ...props.modelValue
-});
-
-const titleInputValue = computed({
-  get: () => readLocalizedField(local.title, activeLanguage.value),
-  set: value => {
-    local.title = writeLocalizedField(local.title, activeLanguage.value, value);
-  }
-});
-
-const textInputValue = computed({
-  get: () => readLocalizedField(local.text, activeLanguage.value),
-  set: value => {
-    local.text = writeLocalizedField(local.text, activeLanguage.value, value);
-  }
+  ...props.modelValue,
+  title: normalizeLegacyLocalizedText(props.modelValue?.title, "BIOGRAFIA"),
+  text: normalizeLegacyLocalizedText(props.modelValue?.text, defaultBodyText)
 });
 
 const clampNumber = (value: number | undefined, fallback: number, min: number, max: number) => {
@@ -333,6 +241,8 @@ const syncFromProps = (value: BiographySection) => {
   syncing = true;
   Object.assign(local, {
     ...value,
+    title: normalizeLegacyLocalizedText(value.title, "BIOGRAFIA"),
+    text: normalizeLegacyLocalizedText(value.text, defaultBodyText),
     overlayOpacity: typeof value.overlayOpacity === "number" ? value.overlayOpacity : 0.45,
     fullWidth: value.fullWidth ?? true,
     titleFontSize: clampNumber(value.titleFontSize, 72, 24, 160),

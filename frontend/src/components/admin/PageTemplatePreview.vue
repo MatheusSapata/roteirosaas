@@ -75,7 +75,17 @@ provide(PUBLIC_BRANDING_KEY, computed(() => props.branding || {}));
 
 const sections = computed<PageSection[]>(() => props.config?.sections || []);
 const branding = computed(() => props.branding || {});
-const previewAwareSections: SectionType[] = ["hero", "banner_card", "story", "featured_video", "reasons", "agency_footer", "biography"];
+const previewAwareSections: SectionType[] = [
+  "hero",
+  "banner_card",
+  "story",
+  "featured_video",
+  "reasons",
+  "testimonials",
+  "prices",
+  "agency_footer",
+  "biography"
+];
 const sectionSupportsPreviewDevice = (type?: SectionType) => !!type && previewAwareSections.includes(type);
 const findPrevEnabledSection = (index: number) => {
   for (let i = index - 1; i >= 0; i -= 1) {

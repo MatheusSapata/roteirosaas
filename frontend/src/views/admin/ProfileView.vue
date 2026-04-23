@@ -1,5 +1,8 @@
 <template>
-  <div class="profile-view space-y-6">
+  <div v-if="isBootstrappingProfile" class="flex min-h-[60vh] w-full items-center justify-center px-4 py-8">
+    <div class="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-brand"></div>
+  </div>
+  <div v-else class="profile-view space-y-6">
     <header class="flex flex-col gap-2">
       <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">{{ viewCopy.header.eyebrow }}</p>
       <h1 class="text-2xl font-bold text-slate-900">{{ viewCopy.header.title }}</h1>
@@ -494,6 +497,7 @@ const viewCopy = {
 const user = computed(() => authStore.user);
 const formattedCpf = computed(() => formatCpf(user.value?.cpf || ""));
 const billing = ref<BillingInfo | null>(null);
+const isBootstrappingProfile = ref(true);
 
 const message = ref<string | null>(null);
 const error = ref<string | null>(null);
@@ -766,7 +770,16 @@ const goPlans = () => {
   router.push("/admin/planos");
 };
 
-onMounted(loadBilling);
+onMounted(async () => {
+  try {
+    if (authStore.token && !authStore.user) {
+      await authStore.ensureHydrated();
+    }
+    await loadBilling();
+  } finally {
+    isBootstrappingProfile.value = false;
+  }
+});
 </script>
 
 <style scoped>

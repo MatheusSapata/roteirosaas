@@ -3,6 +3,12 @@ import { ref } from "vue";
 import api from "../services/api";
 import router from "../router";
 
+type RetryableRequestConfig = {
+  _retry?: boolean;
+  headers?: Record<string, string>;
+  url?: string;
+};
+
 interface User {
   id: number;
   email: string;
@@ -50,8 +56,10 @@ export const useAuthStore = defineStore("auth", () => {
   const token = ref<string | null>(typeof window !== "undefined" ? localStorage.getItem("token") : null);
   const refreshToken = ref<string | null>(typeof window !== "undefined" ? localStorage.getItem(REFRESH_KEY) : null);
   const user = ref<User | null>(null);
+  const isHydrating = ref(Boolean(token.value));
   let refreshTimeout: number | null = null;
   let refreshing: Promise<void> | null = null;
+  let hydrating: Promise<void> | null = null;
 
   const persistToken = (value: string | null) => {
     if (typeof window === "undefined") return;
@@ -150,18 +158,58 @@ export const useAuthStore = defineStore("auth", () => {
     user.value = res.data;
   };
 
+  const ensureHydrated = async () => {
+    if (!token.value) {
+      isHydrating.value = false;
+      return;
+    }
+    if (!hydrating) {
+      isHydrating.value = true;
+      hydrating = (async () => {
+        try {
+          await fetchProfile();
+        } finally {
+          isHydrating.value = false;
+          hydrating = null;
+        }
+      })();
+    }
+    return hydrating;
+  };
+
   const logout = () => {
     clearRefreshTimer();
     setTokens(null, null);
     user.value = null;
+    isHydrating.value = false;
+    hydrating = null;
   };
 
   if (responseInterceptorId === null) {
     responseInterceptorId = api.interceptors.response.use(
       response => response,
-      error => {
-        if (error?.response?.status === 401) {
+      async error => {
+        const status = error?.response?.status;
+        const originalRequest = error?.config as RetryableRequestConfig | undefined;
+        const isRefreshRequest = (originalRequest?.url || "").includes("/auth/refresh");
+
+        if (status === 401 && !isRefreshRequest && originalRequest && !originalRequest._retry && refreshToken.value) {
+          originalRequest._retry = true;
+          try {
+            await refreshAccessToken();
+            originalRequest.headers = originalRequest.headers || {};
+            if (token.value) {
+              originalRequest.headers.Authorization = `Bearer ${token.value}`;
+            }
+            return api(originalRequest);
+          } catch {
+            logout();
+          }
+        } else if (status === 401) {
           logout();
+        }
+
+        if (status === 401) {
           const current = router.currentRoute.value;
           if (current.name !== "login") {
             router.push({ name: "login", query: { redirect: current.fullPath } }).catch(() => {});
@@ -175,8 +223,10 @@ export const useAuthStore = defineStore("auth", () => {
   if (token.value) {
     api.defaults.headers.common.Authorization = `Bearer ${token.value}`;
     scheduleRefresh();
-    fetchProfile().catch(() => logout());
+    ensureHydrated().catch(() => logout());
+  } else {
+    isHydrating.value = false;
   }
 
-  return { token, user, refreshToken, setTokens, fetchProfile, logout, refreshAccessToken };
+  return { token, user, refreshToken, isHydrating, setTokens, fetchProfile, ensureHydrated, logout, refreshAccessToken };
 });

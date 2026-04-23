@@ -1,5 +1,8 @@
 ﻿<template>
-  <div class="w-full space-y-6 px-4 py-8 md:px-8">
+  <div v-if="isBootstrappingAdminManagement" class="flex min-h-[60vh] w-full items-center justify-center px-4 py-8 md:px-8">
+    <div class="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-brand"></div>
+  </div>
+  <div v-else class="w-full space-y-6 px-4 py-8 md:px-8">
     <!-- HEADER -->
     
 
@@ -2061,6 +2064,7 @@ const updateIsMobile = () => {
   }
 };
 const error = ref("");
+const isBootstrappingAdminManagement = ref(true);
 const auth = useAuthStore();
 const agencyStore = useAgencyStore();
 const router = useRouter();
@@ -3449,20 +3453,24 @@ onMounted(async () => {
     window.addEventListener("resize", updateIsMobile);
     window.addEventListener("click", handleFilterOutsideClick);
   }
-  if (!auth.user && auth.token) {
-    await auth.fetchProfile();
-  }
-  if (!agencyStore.agencies.length) {
-    try {
-      await agencyStore.loadAgencies();
-    } catch (err) {
-      console.error(err);
+  try {
+    if (!auth.user && auth.token) {
+      await auth.fetchProfile();
     }
+    if (!agencyStore.agencies.length) {
+      try {
+        await agencyStore.loadAgencies();
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    await lessonsStore.ensureLessons();
+    await loadMetrics();
+    await loadOnlineSessions();
+    startOnlineSessionsPolling();
+  } finally {
+    isBootstrappingAdminManagement.value = false;
   }
-  await lessonsStore.ensureLessons();
-  await loadMetrics();
-  await loadOnlineSessions();
-  startOnlineSessionsPolling();
 });
 
 watch(

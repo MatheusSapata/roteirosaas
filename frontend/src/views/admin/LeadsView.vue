@@ -1,7 +1,8 @@
 <template>
-
-
-<div class="relative w-full min-h-[calc(100vh-0px)]">
+<div v-if="isBootstrappingLeads" class="flex min-h-[60vh] w-full items-center justify-center px-4 py-8">
+  <div class="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-brand"></div>
+</div>
+<div v-else class="leads-page-shell relative flex h-full min-h-0 w-full flex-col overflow-hidden">
 
 
 
@@ -9,7 +10,7 @@
 
 
 
-      class="leads-page w-full space-y-5 px-4 py-4 md:px-5"
+      class="leads-page flex min-h-0 flex-1 flex-col gap-5 overflow-hidden px-4 py-4 md:px-5"
 
 
 
@@ -21,7 +22,7 @@
 
 
 
-      <div>
+      <div class="shrink-0">
 
 
 
@@ -59,7 +60,7 @@
 
 
 
-      <div class="flex w-full flex-wrap items-center justify-between gap-3 text-sm font-semibold">
+      <div class="shrink-0 flex w-full flex-wrap items-center justify-between gap-3 text-sm font-semibold">
 
 
 
@@ -389,7 +390,7 @@
 
 
 
-      <div class="w-full">
+      <div class="flex min-h-0 flex-1 flex-col">
 
 
 
@@ -437,7 +438,7 @@
 
 
 
-        <div>
+        <div class="flex min-h-0 flex-1 flex-col">
 
 
 
@@ -801,7 +802,7 @@
 
 
 
-          <section v-else-if="activeTab === 'contacts'" class="flex h-[calc(100vh-280px)] min-h-0 flex-col gap-6">
+          <section v-else-if="activeTab === 'contacts'" class="flex min-h-0 flex-1 flex-col gap-6 overflow-hidden">
 
 
 
@@ -861,7 +862,7 @@
 
 
 
-            <div v-else class="flex flex-1 flex-col">
+            <div v-else class="flex min-h-0 flex-1 flex-col overflow-hidden">
 
 
 
@@ -893,7 +894,7 @@
 
 
 
-              <div v-else-if="contactViewMode === 'list'" class="flex flex-1 flex-col">
+              <div v-else-if="contactViewMode === 'list'" class="flex min-h-0 flex-1 flex-col overflow-hidden">
 
 
 
@@ -2796,7 +2797,7 @@
 
 
 
-  <div class="flex h-full min-h-0 gap-4">
+  <div class="flex h-full min-h-0 items-stretch gap-4">
 
 
 
@@ -2828,7 +2829,7 @@
 
 
 
-        class="kanban-column__header sticky top-0 z-10 flex items-center justify-between rounded-2xl border px-3 py-2"
+        class="kanban-column__header sticky top-0 z-10 flex shrink-0 items-center justify-between rounded-2xl border px-3 py-2"
 
 
 
@@ -2860,7 +2861,7 @@
 
 
 
-        class="mt-3 flex-1 overflow-y-auto overflow-x-hidden rounded-2xl bg-transparent pr-1"
+        class="mt-3 flex-1 min-h-0 overflow-y-auto overflow-x-hidden rounded-2xl bg-transparent pr-1"
 
 
 
@@ -3426,6 +3427,7 @@ const leadStore = useLeadCaptureStore();
 
 
 const themeStore = useThemeStore();
+const isBootstrappingLeads = ref(true);
 
 
 
@@ -6084,6 +6086,34 @@ const ensureStatuses = () => leadStore.fetchStatuses().catch(() => undefined);
 
 
 
+const bootstrapLeads = async () => {
+
+
+
+  try {
+
+
+
+    await Promise.all([loadForms(), loadContacts(), ensureStatuses()]);
+
+
+
+  } finally {
+
+
+
+    isBootstrappingLeads.value = false;
+
+
+
+  }
+
+
+
+};
+
+
+
 
 
 
@@ -6316,7 +6346,7 @@ const goToPlans = () => {
 
 
 
-onMounted(() => {
+onMounted(async () => {
 
 
 
@@ -6328,23 +6358,15 @@ onMounted(() => {
 
 
 
-  loadForms();
-
-
-
-  loadContacts();
-
-
-
-  ensureStatuses();
-
-
-
   updateViewportMode();
 
 
 
   window.addEventListener("resize", updateViewportMode);
+
+
+
+  await bootstrapLeads();
 
 
 
@@ -7317,6 +7339,16 @@ watch(activeTab, value => {
 
 
 
+}
+
+.leads-page-shell,
+.leads-page,
+.kanban-scroll {
+  min-height: 0;
+}
+
+.kanban-column__header {
+  flex-shrink: 0;
 }
 
 
