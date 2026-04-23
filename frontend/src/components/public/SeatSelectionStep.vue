@@ -1,5 +1,5 @@
 <template>
-  <section class="seat-step" :class="{ 'seat-step--summary': context && !canSelectSeats }">
+  <section class="seat-step" :class="{ 'seat-step--summary': context && !canSelectSeats, 'seat-step--embedded': showHeader === false }">
     <div class="seat-step__shell">
       <header v-if="showHeader" class="seat-step__header" :class="{ 'seat-step__header--center': !canSelectSeats }">
         <div class="seat-step__headline">
@@ -871,6 +871,10 @@ onBeforeUnmount(() => {
 .seat-step {
   width: 100%;
   animation: seat-step-enter 0.28s ease both;
+}
+
+.seat-step--embedded .seat-step__shell {
+  gap: 0;
 }
 
 .seat-step__shell {

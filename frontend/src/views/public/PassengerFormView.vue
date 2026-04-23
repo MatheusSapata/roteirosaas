@@ -6,7 +6,25 @@
       class="passenger-page__container relative z-10 mx-auto grid w-full gap-5"
       :class="{ 'passenger-page__container--seats': viewMode === 'seats' }"
     >
-      <section v-if="viewMode === 'passengers'" class="hero-card flex flex-col gap-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:flex-row md:items-center md:justify-between">
+      <ReservationWizardHeader
+        :agency-name="agencyName"
+        :agency-initials="agencyInitials"
+        :logo-url="agencyLogoUrl"
+        :eyebrow="'Preenchimento da reserva'"
+        :title="wizardHeaderTitle"
+        :subtitle="wizardHeaderSubtitle"
+        :support-href="supportWhatsappHref"
+        :payment-label="currentStep === 1 ? paymentStatusLabel(formInfo?.payment_status || 'processing') : null"
+        :show-back="true"
+        :back-label="currentStep === 1 ? 'Voltar' : 'Voltar para passageiros'"
+        @back="handleWizardBack"
+      />
+
+      <ReservationWizardStepper
+        :steps="wizardSteps"
+      />
+
+      <section v-if="false" class="hero-card flex flex-col gap-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:flex-row md:items-center md:justify-between">
         <div class="hero-card__brand flex items-center gap-4">
           <div class="hero-card__logo grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200">
             <img
@@ -47,7 +65,7 @@
         </div>
       </section>
 
-      <section v-else class="seat-stage-header">
+      <section v-if="false" class="seat-stage-header">
         <div class="seat-stage-header__brand">
           <div class="seat-stage-header__logo">
             <img
@@ -291,7 +309,7 @@
                   :disabled="saving || !passengerGroups.length"
                   @click="submitPassengers"
                 >
-                  {{ saving && savingGroupMode === "all" ? "Enviando..." : "Enviar passageiros" }}
+                  {{ saving && savingGroupMode === "all" ? "Salvando..." : primaryStepCtaLabel }}
                 </button>
               </div>
             </template>
@@ -357,7 +375,7 @@
         :disabled="saving || !passengerGroups.length"
         @click="submitPassengers"
       >
-        {{ saving && savingGroupMode === "all" ? "Enviando..." : "Enviar passageiros" }}
+        {{ saving && savingGroupMode === "all" ? "Salvando..." : primaryStepCtaLabel }}
       </button>
     </div>
   </div>
@@ -367,6 +385,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
+import ReservationWizardHeader from "../../components/public/ReservationWizardHeader.vue";
+import ReservationWizardStepper from "../../components/public/ReservationWizardStepper.vue";
 import SeatSelectionStep from "../../components/public/SeatSelectionStep.vue";
 import {
   getPublicPassengerForm,
@@ -453,7 +473,39 @@ const formItemsMap = computed(() => new Map(formItems.value.map(item => [item.id
 const activeGroup = computed(() => passengerGroups.value[activeGroupIndex.value] || null);
 const activePassenger = computed(() => activeGroup.value?.passengers[activePassengerIndex.value] || null);
 const boardingOptions = computed(() => formInfo.value?.boarding_locations || []);
-const canUseSeatSelection = computed(() => Boolean(!formInfo.value?.contract_signature_link && formInfo.value?.is_road_trip));
+const hasSeatMap = computed(() => Boolean(!formInfo.value?.contract_signature_link && formInfo.value?.is_road_trip));
+const canUseSeatSelection = hasSeatMap;
+const currentStep = computed<1 | 2>(() => (viewMode.value === "seats" ? 2 : 1));
+const wizardHeaderTitle = computed(() => "Complete sua reserva");
+const wizardHeaderSubtitle = computed(() =>
+  currentStep.value === 1
+    ? "Finalize os dados dos viajantes para concluir sua compra com seguranca."
+    : "Finalize os ultimos detalhes da reserva e escolha os assentos dos passageiros."
+);
+const primaryStepCtaLabel = computed(() =>
+  hasSeatMap.value ? "Continuar para assentos" : "Enviar passageiros"
+);
+const wizardSteps = computed(() => {
+  const steps = [
+    {
+      key: "passengers",
+      label: "Passageiros",
+      hint: "Dados dos viajantes",
+      state: currentStep.value === 1 ? "active" : "done",
+    },
+  ] as Array<{ key: string; label: string; hint: string; state: "done" | "active" | "upcoming" }>;
+
+  if (hasSeatMap.value) {
+    steps.push({
+      key: "seats",
+      label: "Assentos",
+      hint: "Selecao do mapa",
+      state: currentStep.value === 2 ? "active" : "upcoming",
+    });
+  }
+
+  return steps;
+});
 const seatHeaderMeta = computed(() => {
   const ctx = seatSelectionContext.value;
   const product = ctx?.product_name || formInfo.value?.product_title || "Produto";
@@ -789,7 +841,7 @@ const submitPassengers = async () => {
       await saveGroup(group);
     }
     await loadPassengerGroups();
-    setSuccessMessage("Passageiros enviados com sucesso.");
+    setSuccessMessage(hasSeatMap.value ? "Passageiros salvos. Continue para a etapa de assentos." : "Passageiros enviados com sucesso.");
     if (canUseSeatSelection.value) {
       seatStepVisited.value = true;
       viewMode.value = "seats";
@@ -809,6 +861,14 @@ const handleSeatSelectionUpdated = (_context: SeatSelectionContext) => {
 
 const handleSeatSelectionContextLoaded = (context: SeatSelectionContext) => {
   seatSelectionContext.value = context;
+};
+
+const handleWizardBack = () => {
+  if (currentStep.value === 2) {
+    viewMode.value = "passengers";
+    return;
+  }
+  history.back();
 };
 
 watch(
