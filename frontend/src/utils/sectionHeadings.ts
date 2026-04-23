@@ -13,7 +13,8 @@ const HEADING_DEFAULTS: Partial<Record<SectionType, { label: string; style: Head
   testimonials: { label: "Depoimentos", style: "outline" },
   featured_video: { label: "Video em destaque", style: "outline" },
   cta: { label: "Convite", style: "outline" },
-  countdown: { label: "Contagem regressiva", style: "outline" }
+  countdown: { label: "Contagem regressiva", style: "outline" },
+  flight_details: { label: "Detalhes do voo", style: "outline" }
 };
 
 export const getSectionHeadingDefaults = (type: SectionType) => {
