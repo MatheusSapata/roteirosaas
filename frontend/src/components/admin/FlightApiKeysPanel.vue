@@ -5,7 +5,7 @@
         <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Integracoes Master</p>
         <h2 class="mt-2 text-2xl font-bold text-slate-900">APIs de Voo</h2>
         <p class="mt-1 text-sm text-slate-500">
-          Gerencie as chaves usadas no editor. A pagina publica nunca consulta a AirLabs.
+          Gerencie as chaves usadas no editor. A pagina publica usa apenas dados salvos no banco.
         </p>
       </div>
       <button
@@ -21,10 +21,18 @@
       {{ errorMessage }}
     </div>
 
-    <div class="grid gap-3 md:grid-cols-4">
+    <div class="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
       <article class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-        <p class="text-xs uppercase tracking-wide text-slate-500">Chaves ativas</p>
-        <p class="mt-1 text-2xl font-bold text-slate-900">{{ summary.active_keys ?? 0 }}</p>
+        <p class="text-xs uppercase tracking-wide text-slate-500">Provider principal</p>
+        <p class="mt-1 text-base font-bold text-slate-900">AeroDataBox</p>
+      </article>
+      <article class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <p class="text-xs uppercase tracking-wide text-slate-500">Marketplace</p>
+        <p class="mt-1 text-base font-bold text-slate-900">RapidAPI</p>
+      </article>
+      <article class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <p class="text-xs uppercase tracking-wide text-slate-500">Chaves AeroDataBox ativas</p>
+        <p class="mt-1 text-2xl font-bold text-slate-900">{{ summary.active_keys_aerodatabox ?? 0 }}</p>
       </article>
       <article class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
         <p class="text-xs uppercase tracking-wide text-slate-500">Uso mensal estimado</p>
@@ -33,13 +41,26 @@
         </p>
       </article>
       <article class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-        <p class="text-xs uppercase tracking-wide text-slate-500">Provider principal</p>
-        <p class="mt-1 text-2xl font-bold text-slate-900">AirLabs</p>
+        <p class="text-xs uppercase tracking-wide text-slate-500">Consultas servidas por cache</p>
+        <p class="mt-1 text-2xl font-bold text-slate-900">{{ summary.cache_served_estimated ?? 0 }}</p>
       </article>
       <article class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-        <p class="text-xs uppercase tracking-wide text-slate-500">Ultima consulta</p>
-        <p class="mt-1 text-sm font-semibold text-slate-900">{{ formatDateTime(summary.last_used_at) || "Nunca" }}</p>
+        <p class="text-xs uppercase tracking-wide text-slate-500">Requests reais do mes</p>
+        <p class="mt-1 text-2xl font-bold text-slate-900">{{ summary.real_requests_month ?? 0 }}</p>
       </article>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-2">
+      <button
+        v-for="option in providerFilters"
+        :key="option.value"
+        type="button"
+        class="rounded-full border px-3 py-1 text-xs font-semibold"
+        :class="providerFilter === option.value ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 text-slate-600'"
+        @click="providerFilter = option.value"
+      >
+        {{ option.label }}
+      </button>
     </div>
 
     <div class="overflow-x-auto rounded-2xl border border-slate-200">
@@ -47,8 +68,9 @@
         <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
           <tr>
             <th class="px-3 py-2">Status</th>
-            <th class="px-3 py-2">Nome da chave</th>
             <th class="px-3 py-2">Provider</th>
+            <th class="px-3 py-2">Marketplace</th>
+            <th class="px-3 py-2">Nome</th>
             <th class="px-3 py-2">Uso mensal</th>
             <th class="px-3 py-2">Limite</th>
             <th class="px-3 py-2">Prioridade</th>
@@ -58,26 +80,27 @@
         </thead>
         <tbody>
           <tr v-if="loading" class="border-t border-slate-100">
-            <td colspan="8" class="px-3 py-4 text-center text-slate-500">Carregando chaves...</td>
+            <td colspan="9" class="px-3 py-4 text-center text-slate-500">Carregando chaves...</td>
           </tr>
-          <tr v-for="item in items" :key="item.id" class="border-t border-slate-100">
+          <tr v-for="item in filteredItems" :key="item.id" class="border-t border-slate-100">
             <td class="px-3 py-2">
               <span class="inline-flex rounded-full px-2 py-1 text-xs font-semibold" :class="statusClass(item.status)">
                 {{ statusLabel(item.status, item.is_active) }}
               </span>
             </td>
+            <td class="px-3 py-2 text-slate-700">{{ providerLabel(item.provider) }}</td>
+            <td class="px-3 py-2 text-slate-700">{{ item.marketplace || "-" }}</td>
             <td class="px-3 py-2">
               <p class="font-semibold text-slate-800">{{ item.label }}</p>
               <p class="text-xs text-slate-500">{{ item.key_masked }}</p>
             </td>
-            <td class="px-3 py-2 text-slate-700">{{ item.provider }}</td>
             <td class="px-3 py-2 text-slate-700">{{ item.monthly_usage_estimated }}</td>
             <td class="px-3 py-2 text-slate-700">{{ item.monthly_limit }}</td>
             <td class="px-3 py-2 text-slate-700">{{ item.priority }}</td>
             <td class="px-3 py-2 text-xs text-slate-500">{{ formatDateTime(item.last_used_at) || "Nunca" }}</td>
             <td class="px-3 py-2">
               <div class="flex flex-wrap gap-1">
-                <button class="rounded border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-600" @click="runTest(item.id)">Testar</button>
+                <button class="rounded border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-600" @click="runTest(item.id)">Testar conexao</button>
                 <button
                   v-if="item.is_active"
                   class="rounded border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700"
@@ -93,13 +116,13 @@
                   Ativar
                 </button>
                 <button class="rounded border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-600" @click="openEditModal(item)">Editar</button>
-                <button class="rounded border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-600" @click="resetUsage(item.id)">Reset uso</button>
+                <button class="rounded border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-600" @click="resetUsage(item.id)">Resetar uso</button>
                 <button class="rounded border border-rose-200 bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-600" @click="removeKey(item.id)">Excluir</button>
               </div>
             </td>
           </tr>
-          <tr v-if="!loading && !items.length" class="border-t border-slate-100">
-            <td colspan="8" class="px-3 py-4 text-center text-slate-500">Nenhuma chave cadastrada.</td>
+          <tr v-if="!loading && !filteredItems.length" class="border-t border-slate-100">
+            <td colspan="9" class="px-3 py-4 text-center text-slate-500">Nenhuma chave cadastrada.</td>
           </tr>
         </tbody>
       </table>
@@ -107,12 +130,27 @@
 
     <Teleport to="body">
       <div v-if="createModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/65 px-4">
-        <div class="w-full max-w-lg rounded-2xl bg-white p-5 shadow-2xl">
+        <div class="w-full max-w-2xl rounded-2xl bg-white p-5 shadow-2xl">
           <div class="flex items-center justify-between">
-            <h3 class="text-lg font-bold text-slate-900">Nova chave AirLabs</h3>
+            <h3 class="text-lg font-bold text-slate-900">Nova chave de voo</h3>
             <button class="text-sm text-slate-500" @click="createModalOpen = false">Fechar</button>
           </div>
           <div class="mt-4 grid gap-3 md:grid-cols-2">
+            <div>
+              <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Provider</label>
+              <select v-model="createForm.provider" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2">
+                <option value="aerodatabox">AeroDataBox</option>
+                <option value="airlabs">AirLabs</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Marketplace</label>
+              <input v-model="createForm.marketplace" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
+            </div>
+            <div class="md:col-span-2">
+              <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Host</label>
+              <input v-model="createForm.api_host" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
+            </div>
             <div class="md:col-span-2">
               <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Nome interno</label>
               <input v-model="createForm.label" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
@@ -130,8 +168,11 @@
               <input v-model.number="createForm.priority" type="number" min="1" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
             </div>
             <div>
-              <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Dia de reset</label>
-              <input v-model.number="createForm.reset_day" type="number" min="1" max="31" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
+              <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Status</label>
+              <select v-model="createForm.status" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2">
+                <option value="active">active</option>
+                <option value="paused">paused</option>
+              </select>
             </div>
             <div class="flex items-end">
               <label class="inline-flex items-center gap-2 text-sm text-slate-600">
@@ -155,12 +196,24 @@
 
     <Teleport to="body">
       <div v-if="editModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/65 px-4">
-        <div class="w-full max-w-lg rounded-2xl bg-white p-5 shadow-2xl">
+        <div class="w-full max-w-2xl rounded-2xl bg-white p-5 shadow-2xl">
           <div class="flex items-center justify-between">
             <h3 class="text-lg font-bold text-slate-900">Editar chave</h3>
             <button class="text-sm text-slate-500" @click="editModalOpen = false">Fechar</button>
           </div>
           <div class="mt-4 grid gap-3 md:grid-cols-2">
+            <div>
+              <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Provider</label>
+              <input :value="providerLabel(editForm.provider)" disabled class="mt-1 w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2" />
+            </div>
+            <div>
+              <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Marketplace</label>
+              <input v-model="editForm.marketplace" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
+            </div>
+            <div class="md:col-span-2">
+              <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Host</label>
+              <input v-model="editForm.api_host" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
+            </div>
             <div class="md:col-span-2">
               <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Nome interno</label>
               <input v-model="editForm.label" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
@@ -208,7 +261,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref, watch } from "vue";
 import {
   activateFlightApiKey,
   createFlightApiKey,
@@ -221,24 +274,42 @@ import {
   type FlightApiKey
 } from "../../services/flightDetails";
 
+const providerFilters = [
+  { value: "all", label: "Todos" },
+  { value: "aerodatabox", label: "AeroDataBox" },
+  { value: "airlabs", label: "AirLabs" }
+];
+
 const loading = ref(false);
 const saving = ref(false);
 const errorMessage = ref("");
 const items = ref<FlightApiKey[]>([]);
+const providerFilter = ref<"all" | "aerodatabox" | "airlabs">("all");
+
 const summary = reactive({
-  provider: "airlabs",
+  provider: "all",
+  provider_primary: "aerodatabox",
+  marketplace_primary: "rapidapi",
   active_keys: 0,
+  active_keys_aerodatabox: 0,
+  active_keys_airlabs: 0,
   monthly_usage_estimated: 0,
   monthly_limit: 0,
+  real_requests_month: 0,
+  cache_served_estimated: 0,
   last_used_at: null as string | null
 });
 
 const createModalOpen = ref(false);
 const createForm = reactive({
+  provider: "aerodatabox",
+  marketplace: "rapidapi",
+  api_host: "aerodatabox.p.rapidapi.com",
   label: "",
   api_key: "",
-  monthly_limit: 1000,
+  monthly_limit: 6000,
   priority: 1,
+  status: "active",
   reset_day: null as number | null,
   is_active: true,
   notes: ""
@@ -247,14 +318,28 @@ const createForm = reactive({
 const editModalOpen = ref(false);
 const editTargetId = ref<number | null>(null);
 const editForm = reactive({
+  provider: "aerodatabox",
+  marketplace: "rapidapi",
+  api_host: "aerodatabox.p.rapidapi.com",
   label: "",
   api_key: "",
-  monthly_limit: 1000,
+  monthly_limit: 6000,
   priority: 1,
   status: "active",
   is_active: true,
   notes: ""
 });
+
+const filteredItems = computed(() => {
+  if (providerFilter.value === "all") return items.value;
+  return items.value.filter(item => item.provider === providerFilter.value);
+});
+
+const providerLabel = (provider?: string | null) => {
+  if (provider === "aerodatabox") return "AeroDataBox";
+  if (provider === "airlabs") return "AirLabs";
+  return provider || "-";
+};
 
 const statusClass = (status: string) => {
   if (status === "active") return "bg-emerald-100 text-emerald-700";
@@ -279,16 +364,39 @@ const formatDateTime = (value?: string | null) => {
   return date.toLocaleString("pt-BR");
 };
 
+const applyProviderDefaults = (target: { provider: string; marketplace: string; api_host: string; monthly_limit: number }) => {
+  if (target.provider === "aerodatabox") {
+    target.marketplace = "rapidapi";
+    target.api_host = "aerodatabox.p.rapidapi.com";
+    target.monthly_limit = 6000;
+    return;
+  }
+  target.marketplace = "direct";
+  target.api_host = "";
+  target.monthly_limit = 1000;
+};
+
+watch(
+  () => createForm.provider,
+  () => applyProviderDefaults(createForm)
+);
+
 const load = async () => {
   loading.value = true;
   errorMessage.value = "";
   try {
     const response = await listFlightApiKeys();
     items.value = response.items || [];
-    summary.provider = response.summary?.provider || "airlabs";
+    summary.provider = response.summary?.provider || "all";
+    summary.provider_primary = response.summary?.provider_primary || "aerodatabox";
+    summary.marketplace_primary = response.summary?.marketplace_primary || "rapidapi";
     summary.active_keys = response.summary?.active_keys || 0;
+    summary.active_keys_aerodatabox = response.summary?.active_keys_aerodatabox || 0;
+    summary.active_keys_airlabs = response.summary?.active_keys_airlabs || 0;
     summary.monthly_usage_estimated = response.summary?.monthly_usage_estimated || 0;
     summary.monthly_limit = response.summary?.monthly_limit || 0;
+    summary.real_requests_month = response.summary?.real_requests_month || 0;
+    summary.cache_served_estimated = response.summary?.cache_served_estimated || 0;
     summary.last_used_at = response.summary?.last_used_at || null;
   } catch (error: any) {
     errorMessage.value = error?.response?.data?.detail || "Nao foi possivel carregar as chaves.";
@@ -298,10 +406,14 @@ const load = async () => {
 };
 
 const openCreateModal = () => {
+  createForm.provider = "aerodatabox";
+  createForm.marketplace = "rapidapi";
+  createForm.api_host = "aerodatabox.p.rapidapi.com";
   createForm.label = "";
   createForm.api_key = "";
-  createForm.monthly_limit = 1000;
+  createForm.monthly_limit = 6000;
   createForm.priority = 1;
+  createForm.status = "active";
   createForm.reset_day = null;
   createForm.is_active = true;
   createForm.notes = "";
@@ -317,11 +429,14 @@ const createKey = async (testAfterCreate: boolean) => {
   errorMessage.value = "";
   try {
     const created = await createFlightApiKey({
-      provider: "airlabs",
+      provider: createForm.provider,
+      marketplace: createForm.marketplace || null,
+      api_host: createForm.api_host || null,
       label: createForm.label.trim(),
       api_key: createForm.api_key.trim(),
       monthly_limit: createForm.monthly_limit,
       priority: createForm.priority,
+      status: createForm.status,
       reset_day: createForm.reset_day,
       is_active: createForm.is_active,
       notes: createForm.notes
@@ -340,6 +455,9 @@ const createKey = async (testAfterCreate: boolean) => {
 
 const openEditModal = (item: FlightApiKey) => {
   editTargetId.value = item.id;
+  editForm.provider = item.provider;
+  editForm.marketplace = item.marketplace || (item.provider === "aerodatabox" ? "rapidapi" : "direct");
+  editForm.api_host = item.api_host || (item.provider === "aerodatabox" ? "aerodatabox.p.rapidapi.com" : "");
   editForm.label = item.label;
   editForm.api_key = "";
   editForm.monthly_limit = item.monthly_limit;
@@ -356,6 +474,8 @@ const saveEdit = async () => {
   errorMessage.value = "";
   try {
     await updateFlightApiKey(editTargetId.value, {
+      marketplace: editForm.marketplace || null,
+      api_host: editForm.api_host || null,
       label: editForm.label,
       api_key: editForm.api_key || undefined,
       monthly_limit: editForm.monthly_limit,

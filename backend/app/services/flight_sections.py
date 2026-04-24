@@ -138,7 +138,11 @@ def inject_flight_sections_into_config(db: Session, page_id: int, config: Any, *
     for journey in journeys:
         grouped.setdefault(journey.section_id, []).append(_serialize_journey(journey))
 
-    lookup_available = FlightProviderKeyManager(db).has_available_key("airlabs") if include_lookup_status else None
+    lookup_available = (
+        FlightProviderKeyManager(db).has_any_available_key(("aerodatabox", "airlabs"))
+        if include_lookup_status
+        else None
+    )
     now_iso = datetime.utcnow().isoformat()
     for section in sections:
         if not isinstance(section, dict) or section.get("type") != "flight_details":

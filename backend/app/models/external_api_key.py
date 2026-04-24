@@ -8,7 +8,9 @@ class ExternalApiKey(Base):
     __tablename__ = "external_api_keys"
 
     id = Column(Integer, primary_key=True, index=True)
-    provider = Column(String(50), nullable=False, index=True, default="airlabs")
+    provider = Column(String(50), nullable=False, index=True, default="aerodatabox")
+    marketplace = Column(String(50), nullable=True, index=True)
+    api_host = Column(String(255), nullable=True)
     label = Column(String(255), nullable=False)
     api_key_encrypted = Column(Text, nullable=False)
     api_key_last4 = Column(String(12), nullable=True)
