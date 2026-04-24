@@ -2,7 +2,7 @@
   <section class="w-full" :style="{ background: section.backgroundColor || 'linear-gradient(180deg,#f8fafc,#fff)' }" :id="section.anchorId || undefined">
     <div class="mx-auto max-w-6xl px-6 py-12">
       <div class="space-y-6">
-        <div class="pb-4 text-center" :style="{ borderBottom: `1px solid ${accentBorder}` }">
+        <div class="mx-auto max-w-3xl pb-4 text-center" :style="{ borderBottom: `1px solid ${accentBorder}` }">
           <div class="flex justify-center">
             <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="accent" />
           </div>
@@ -17,7 +17,7 @@
             v-for="(item, index) in section.items || []"
             :key="'column-' + index"
             :class="[
-              'relative flex flex-col gap-4 rounded-2xl border p-5 text-center transition',
+              'relative mx-auto w-full max-w-3xl flex flex-col gap-4 rounded-2xl border p-5 text-center transition',
               isMobilePreview ? '' : 'md:flex-row md:items-center md:justify-between md:text-left',
               item.highlight
                 ? 'border-transparent shadow-xl hover:-translate-y-1 hover:shadow-2xl'
@@ -97,7 +97,11 @@
           </article>
         </div>
 
-        <p v-if="sectionDescription" :class="['mt-6 text-sm text-center', isMobilePreview ? '' : 'md:text-left']" :style="{ color: mutedText }">
+        <p
+          v-if="sectionDescription"
+          :class="['mx-auto w-full max-w-3xl mt-6 text-sm text-center', isMobilePreview ? '' : 'md:text-left']"
+          :style="{ color: mutedText }"
+        >
           {{ sectionDescription }}
         </p>
       </div>
@@ -187,12 +191,13 @@ const sectionDescription = computed(() => {
 
 const sectionCtaLabel = computed(() => localize(props.section.ctaLabel));
 const highlightShadow = computed(() => toRgba(accent.value, 0.45));
+const nonHighlightBorderColor = computed(() => toRgba(accent.value, 0.55));
 
 const textPalette = computed(() => deriveTextPalette(props.section.textColor));
 const primaryText = computed(() => textPalette.value.primary);
 const mutedText = computed(() => textPalette.value.muted);
 
-const normalCardBackground = "#ffffff";
+const firstHexColor = (input?: string | null) => input?.match(/#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})\b/)?.[0] || "";
 
 const normalizeColor = (color?: string | null) => (color || "").trim().toLowerCase();
 
@@ -207,17 +212,28 @@ const isReadableColorLight = (background: string) => {
   );
 };
 
+const sectionUsesDarkBackground = computed(() => {
+  const sectionBg = firstHexColor(props.section.backgroundColor);
+  if (sectionBg) return isReadableColorLight(sectionBg);
+  return textPalette.value.isLight;
+});
+
+const normalCardBackground = computed(() =>
+  sectionUsesDarkBackground.value ? "rgba(255,255,255,0.10)" : "#ffffff"
+);
+
 const itemBackground = (item: PriceItem) => {
-  return item.highlight ? accent.value : normalCardBackground;
+  return item.highlight ? accent.value : normalCardBackground.value;
 };
 
+const itemUsesLightText = (item: PriceItem) => (item.highlight ? isReadableColorLight(accent.value) : sectionUsesDarkBackground.value);
+
 const itemPrimaryTextColor = (item: PriceItem) => {
-  return getReadableTextColor(itemBackground(item));
+  return itemUsesLightText(item) ? "#ffffff" : "#0f172a";
 };
 
 const itemSecondaryTextColor = (item: PriceItem) => {
-  const background = itemBackground(item);
-  const useLightText = isReadableColorLight(background);
+  const useLightText = itemUsesLightText(item);
 
   if (useLightText) {
     return "rgba(255,255,255,0.88)";
@@ -244,9 +260,14 @@ const itemCardStyle = (item: PriceItem) => {
     };
   }
 
-  return {
-    background: normalCardBackground
-  };
+  return sectionUsesDarkBackground.value
+    ? {
+        background: normalCardBackground.value,
+        borderColor: nonHighlightBorderColor.value
+      }
+    : {
+        background: normalCardBackground.value
+      };
 };
 
 const badgeStyle = (highlight: boolean) =>
