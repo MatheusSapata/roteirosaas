@@ -62,6 +62,7 @@ import PublicReasonsSection from "../../components/public/PublicReasonsSection.v
 import PublicCountdownSection from "../../components/public/PublicCountdownSection.vue";
 import PublicFreeFooterBrandSection from "../../components/public/PublicFreeFooterBrandSection.vue";
 import PublicAgencyFooterSection from "../../components/public/PublicAgencyFooterSection.vue";
+import PublicFlightDetailsSection from "../../components/public/PublicFlightDetailsSection.vue";
 import PublicLeadCaptureModal from "../../components/public/PublicLeadCaptureModal.vue";
 import PublicPhotoSection from "../../components/public/PublicPhotoSection.vue";
 import PublicBiographySection from "../../components/public/PublicBiographySection.vue";
@@ -161,6 +162,7 @@ const publicComponents: Record<SectionType, any> = {
   story: PublicStorySection,
   reasons: PublicReasonsSection,
   countdown: PublicCountdownSection,
+  flight_details: PublicFlightDetailsSection,
   free_footer_brand: PublicFreeFooterBrandSection,
   agency_footer: PublicAgencyFooterSection
 };

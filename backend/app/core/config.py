@@ -89,6 +89,17 @@ class Settings(BaseSettings):
     smtp_use_tls: bool = Field(True, alias="SMTP_USE_TLS")
     smtp_use_ssl: bool = Field(False, alias="SMTP_USE_SSL")
     webapp_base_url: str | None = Field(None, alias="WEBAPP_BASE_URL")
+    airlabs_base_url: str = Field("https://airlabs.co/api/v9", alias="AIRLABS_BASE_URL")
+    airlabs_api_key: str | None = Field(None, alias="AIRLABS_API_KEY")
+    airlabs_timeout_seconds: int = Field(20, alias="AIRLABS_TIMEOUT_SECONDS")
+    aerodatabox_rapidapi_host: str = Field("aerodatabox.p.rapidapi.com", alias="AERODATABOX_RAPIDAPI_HOST")
+    aerodatabox_rapidapi_base_url: str = Field(
+        "https://aerodatabox.p.rapidapi.com", alias="AERODATABOX_RAPIDAPI_BASE_URL"
+    )
+    aerodatabox_rapidapi_key: str | None = Field(None, alias="AERODATABOX_RAPIDAPI_KEY")
+    aerodatabox_timeout_seconds: int = Field(20, alias="AERODATABOX_TIMEOUT_SECONDS")
+    flight_lookup_cache_ttl_minutes: int = Field(720, alias="FLIGHT_LOOKUP_CACHE_TTL_MINUTES")
+    flight_api_keys_encryption_key: str | None = Field(None, alias="FLIGHT_API_KEYS_ENCRYPTION_KEY")
 
     @field_validator("platform_domains", "forbidden_custom_hosts", mode="before")
     @classmethod

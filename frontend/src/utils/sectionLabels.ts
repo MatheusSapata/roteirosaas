@@ -5,17 +5,18 @@ export const sectionLabels: Partial<Record<SectionType, string>> = {
   banner_card: "Banner em Card",
   photo: "Foto destacada",
   biography: "Biografia",
-  prices: "Preços",
-  itinerary: "Itinerário",
+  prices: "Precos",
+  itinerary: "Itinerario",
   faq: "Perguntas Frequentes",
   testimonials: "Depoimentos",
   featured_video: "Video em destaque",
-  cta: "Chamada para ação",
+  cta: "Chamada para acao",
   story: "Descritivo",
   reasons: "Itens",
   countdown: "Contador",
   agency_footer: "Rodape da agencia",
-  free_footer_brand: "Rodapé obrigatório",
+  flight_details: "Detalhes do voo",
+  free_footer_brand: "Rodape obrigatorio",
   gallery: "Galeria"
 };
 
@@ -24,7 +25,7 @@ export const describeSection = (section: PageSection): string => {
     case "hero":
     case "story":
     case "banner_card":
-      return section.title || section.subtitle || "Sem título";
+      return section.title || section.subtitle || "Sem titulo";
     case "testimonials":
       return section.title || "Depoimentos dos clientes";
     case "cta":
@@ -49,9 +50,11 @@ export const describeSection = (section: PageSection): string => {
       return section.title || "Biografia";
     case "agency_footer":
       return "Rodape institucional";
+    case "flight_details":
+      return section.title || "Informacoes de voo";
     case "free_footer_brand":
-      return "Rodapé obrigatório";
+      return "Rodape obrigatorio";
     default:
-      return "Seção";
+      return "Secao";
   }
 };

@@ -15,6 +15,11 @@ from app.models.page import Page, PageStatus
 from app.models.page_template import PageTemplate
 from app.models.user import User
 from app.schemas.page import PageConfigUpdate, PageCreate, PageOut, PagePublish, PageUpdate, PublicPageOut
+from app.services.flight_sections import (
+    cleanup_removed_flight_sections,
+    ensure_flight_section_ids,
+    inject_flight_sections_into_config,
+)
 from app.services.page_templates import apply_template_branding, build_whatsapp_link
 from app.services.plans import effective_plan, plan_limits
 
@@ -175,6 +180,7 @@ def enforce_page_limits(db: Session, page: Page, publish: bool, config: Any, pla
                 raise HTTPException(status_code=403, detail=f"Limite de {max_sections} seções por página no plano {plan}.")
             cfg["sections"] = sections
     cfg = apply_free_footer(cfg, plan)
+    cfg = ensure_flight_section_ids(cfg)
     return cfg
 
 
@@ -203,6 +209,7 @@ def get_page(
     ensure_agency_member(db, page.agency_id, current_user)
     plan = resolve_agency_plan(db, page.agency_id)
     page.config_json = apply_free_footer(normalize_config(page.config_json), plan)
+    page.config_json = inject_flight_sections_into_config(db, page.id, page.config_json, include_lookup_status=True)
     default_id = page.agency.default_page_id if page.agency else None
     setattr(page, "is_default", bool(default_id and page.id == default_id))
     return page
@@ -283,6 +290,7 @@ def update_page(
     if "config_json" in updates:
         normalized = normalize_config(updates.get("config_json"))
         updates["config_json"] = enforce_page_limits(db, page, publish=False, config=normalized, plan=plan)
+        cleanup_removed_flight_sections(db, page.id, updates["config_json"])
         if "cover_image_url" not in updates:
             updates["cover_image_url"] = derive_cover_image_from_config(updates["config_json"])
     for key, value in updates.items():
@@ -309,6 +317,7 @@ def update_page_config(
     plan = resolve_agency_plan(db, page.agency_id)
     normalized = normalize_config(payload.config)
     page.config_json = enforce_page_limits(db, page, publish=False, config=normalized, plan=plan)
+    cleanup_removed_flight_sections(db, page.id, page.config_json)
     page.cover_image_url = derive_cover_image_from_config(page.config_json)
     db.add(page)
     db.commit()
@@ -410,6 +419,7 @@ def get_public_page(agency_slug: str, page_slug: str, db: Session = Depends(get_
         "secondary_color": page.agency.secondary_color,
     }
     config = apply_free_footer(normalize_config(page.config_json), plan) or {}
+    config = inject_flight_sections_into_config(db, page.id, config, include_lookup_status=False)
     return PublicPageOut(
         id=page.id,
         title=page.title,
