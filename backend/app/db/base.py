@@ -22,4 +22,7 @@ from app.models import (
     revenue,
     lead_form,
     user_session,
+    external_api_key,
+    flight_lookup_cache,
+    flight_section,
 )  # noqa: E402,F401
