@@ -7,9 +7,43 @@ export interface FlightJourneysResponse {
 }
 
 export interface FlightLookupResponse {
+  success?: boolean;
   provider: string;
+  marketplace?: string | null;
   from_cache: boolean;
+  fallback_used?: boolean;
+  provider_message?: string;
+  lookup_mode?: string;
   message: string;
+  data?: {
+    flight_number?: string | null;
+    flight_iata?: string | null;
+    flight_icao?: string | null;
+    airline_name?: string | null;
+    airline_iata?: string | null;
+    airline_icao?: string | null;
+    airline_logo_url?: string | null;
+    departure?: {
+      iata?: string | null;
+      airport?: string | null;
+      city?: string | null;
+      country?: string | null;
+      terminal?: string | null;
+      gate?: string | null;
+      datetime?: string | null;
+    };
+    arrival?: {
+      iata?: string | null;
+      airport?: string | null;
+      city?: string | null;
+      country?: string | null;
+      terminal?: string | null;
+      gate?: string | null;
+      datetime?: string | null;
+    };
+    duration_minutes?: number | null;
+    status?: string | null;
+  };
   flight: {
     flight_number?: string | null;
     flight_iata?: string | null;
@@ -44,6 +78,8 @@ export interface FlightLookupResponse {
 export interface FlightApiKey {
   id: number;
   provider: string;
+  marketplace?: string | null;
+  api_host?: string | null;
   label: string;
   key_masked: string;
   is_active: boolean;
@@ -64,9 +100,15 @@ export interface FlightApiKeysResponse {
   items: FlightApiKey[];
   summary: {
     provider: string;
+    provider_primary?: string;
+    marketplace_primary?: string;
     active_keys: number;
+    active_keys_aerodatabox?: number;
+    active_keys_airlabs?: number;
     monthly_usage_estimated: number;
     monthly_limit: number;
+    real_requests_month?: number;
+    cache_served_estimated?: number;
     last_used_at?: string | null;
   };
 }
@@ -169,6 +211,8 @@ export const lookupFlight = async (
   payload: {
     flight_number: string;
     flight_date: string;
+    force_refresh?: boolean;
+    preferred_provider?: string;
     journey_id?: number;
     segment_id?: number;
   }
@@ -186,6 +230,8 @@ export const listFlightApiKeys = async () => {
 
 export const createFlightApiKey = async (payload: {
   provider?: string;
+  marketplace?: string | null;
+  api_host?: string | null;
   label: string;
   api_key: string;
   is_active?: boolean;
@@ -202,6 +248,8 @@ export const createFlightApiKey = async (payload: {
 export const updateFlightApiKey = async (
   id: number,
   payload: Partial<{
+    marketplace: string | null;
+    api_host: string | null;
     label: string;
     api_key: string;
     is_active: boolean;

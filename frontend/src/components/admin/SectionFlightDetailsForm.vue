@@ -82,13 +82,21 @@
           class="rounded-2xl border border-slate-200 bg-slate-50 p-3"
         >
           <div class="flex flex-wrap items-center justify-between gap-2">
-            <button
-              type="button"
-              class="text-left text-sm font-semibold text-slate-700"
-              @click="selectSegment(segment.id || null)"
-            >
-              {{ segmentTitle(segment, index) }}
-            </button>
+            <div class="flex min-w-0 items-center gap-2">
+              <AirlineLogo
+                :airline-iata="segment.airline_iata"
+                :airline-name="segment.airline_name"
+                :custom-url="segment.airline_logo_url"
+                size-class="h-7 w-7"
+              />
+              <button
+                type="button"
+                class="min-w-0 text-left text-sm font-semibold text-slate-700"
+                @click="selectSegment(segment.id || null)"
+              >
+                {{ segmentTitle(segment, index) }}
+              </button>
+            </div>
             <div class="flex items-center gap-2">
               <button
                 type="button"
@@ -149,17 +157,47 @@
               type="button"
               class="w-full rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
               :disabled="lookupLoading || !lookupAvailable || !lookupFlightNumber || !lookupFlightDate"
-              @click="runLookup"
+              @click="runLookup(false)"
             >
-              {{ lookupLoading ? "Buscando..." : "Buscar na AirLabs" }}
+              {{ lookupLoading ? "Buscando..." : "Buscar voo" }}
             </button>
           </div>
         </div>
+        <div class="mt-2 flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            class="rounded border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-600 disabled:opacity-60"
+            :disabled="lookupLoading || !lookupAvailable || !lookupFlightNumber || !lookupFlightDate"
+            @click="runLookup(true)"
+          >
+            Atualizar dados pela API
+          </button>
+          <span v-if="lookupState && lookupState !== 'idle'" class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+            {{ lookupStateLabel }}
+          </span>
+        </div>
         <p v-if="lookupMessage" class="mt-2 text-xs text-emerald-700">{{ lookupMessage }}</p>
+        <p v-if="lookupProviderInfo" class="mt-1 text-xs text-slate-600">{{ lookupProviderInfo }}</p>
         <p v-if="lookupError" class="mt-2 text-xs text-rose-600">{{ lookupError }}</p>
       </div>
 
-      <div class="mt-4 grid gap-3 md:grid-cols-3">
+      <div class="mt-4 grid gap-3 md:grid-cols-4">
+        <div class="flex items-end">
+          <div class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Logo automatica</p>
+            <div class="mt-2 flex items-center gap-2">
+              <AirlineLogo
+                :airline-iata="selectedSegmentDraft.airline_iata"
+                :airline-name="selectedSegmentDraft.airline_name"
+                :custom-url="selectedSegmentDraft.airline_logo_url"
+                size-class="h-10 w-10 sm:h-12 sm:w-12"
+              />
+              <p class="text-xs text-slate-500">
+                {{ (selectedSegmentDraft.airline_iata || "---").toUpperCase() }}
+              </p>
+            </div>
+          </div>
+        </div>
         <div>
           <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Companhia aerea</label>
           <input v-model="selectedSegmentDraft.airline_name" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
@@ -186,10 +224,6 @@
             <input v-model="selectedSegmentDraft.departure_country" class="rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="Pais" />
             <input v-model="selectedSegmentDraft.departure_datetime" type="datetime-local" class="rounded-lg border border-slate-200 px-3 py-2 text-sm" />
           </div>
-          <div class="mt-2 grid gap-2 md:grid-cols-2">
-            <input v-model="selectedSegmentDraft.departure_terminal" class="rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="Terminal" />
-            <input v-model="selectedSegmentDraft.departure_gate" class="rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="Portao" />
-          </div>
         </div>
         <div class="rounded-xl border border-slate-200 p-3">
           <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Destino</p>
@@ -201,10 +235,6 @@
           <div class="mt-2 grid gap-2 md:grid-cols-2">
             <input v-model="selectedSegmentDraft.arrival_country" class="rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="Pais" />
             <input v-model="selectedSegmentDraft.arrival_datetime" type="datetime-local" class="rounded-lg border border-slate-200 px-3 py-2 text-sm" />
-          </div>
-          <div class="mt-2 grid gap-2 md:grid-cols-2">
-            <input v-model="selectedSegmentDraft.arrival_terminal" class="rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="Terminal" />
-            <input v-model="selectedSegmentDraft.arrival_gate" class="rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="Portao" />
           </div>
         </div>
       </div>
@@ -281,6 +311,7 @@
 import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import type { FlightDetailsSection, FlightSectionJourney, FlightSectionSegment } from "../../types/page";
+import AirlineLogo from "../shared/AirlineLogo.vue";
 import {
   bootstrapFlightJourneys,
   createFlightSegment,
@@ -319,9 +350,20 @@ const selectedSegmentDraft = ref<FlightSectionSegment | null>(null);
 const lookupLoading = ref(false);
 const lookupMessage = ref("");
 const lookupError = ref("");
+const lookupProviderInfo = ref("");
+const lookupState = ref<"idle" | "loading" | "success" | "cache" | "fallback" | "error">("idle");
 const lookupFlightNumber = ref("");
 const lookupFlightDate = ref("");
 const savingSegment = ref(false);
+
+const lookupStateLabel = computed(() => {
+  if (lookupState.value === "loading") return "Carregando";
+  if (lookupState.value === "success") return "Sucesso";
+  if (lookupState.value === "cache") return "Cache";
+  if (lookupState.value === "fallback") return "Fallback";
+  if (lookupState.value === "error") return "Erro";
+  return "";
+});
 
 const emitLocal = () => {
   emit("update:modelValue", {
@@ -506,25 +548,47 @@ const saveSegment = async () => {
   }
 };
 
-const runLookup = async () => {
+const runLookup = async (forceRefresh = false) => {
   if (!pageId.value || !sectionId.value || !lookupFlightNumber.value || !lookupFlightDate.value) return;
   lookupLoading.value = true;
+  lookupState.value = "loading";
   lookupError.value = "";
   lookupMessage.value = "";
+  lookupProviderInfo.value = "";
   try {
     const response = await lookupFlight(pageId.value, sectionId.value, {
       flight_number: lookupFlightNumber.value.trim().toUpperCase(),
       flight_date: lookupFlightDate.value,
+      force_refresh: forceRefresh,
+      preferred_provider: "aerodatabox",
       journey_id: activeJourney.value?.id,
       segment_id: selectedSegmentDraft.value?.id
     });
-    lookupMessage.value = response.message;
+    if (response.from_cache) {
+      lookupState.value = "cache";
+      lookupMessage.value = "Dados carregados do cache. Nenhuma requisicao externa foi consumida.";
+    } else if (response.fallback_used) {
+      lookupState.value = "fallback";
+      lookupMessage.value = "AeroDataBox falhou. Dados obtidos pelo provider fallback.";
+    } else if (response.provider === "aerodatabox") {
+      lookupState.value = "success";
+      lookupMessage.value = "Dados encontrados via AeroDataBox.";
+    } else {
+      lookupState.value = "success";
+      lookupMessage.value = response.message || "Consulta realizada com sucesso.";
+    }
+    if (response.provider === "aerodatabox" && (response.marketplace || "").toLowerCase() === "rapidapi") {
+      lookupProviderInfo.value = "Provider: AeroDataBox via RapidAPI.";
+    } else if (response.provider_message) {
+      lookupProviderInfo.value = response.provider_message;
+    }
     await reloadJourneys();
   } catch (error: any) {
     const status = Number(error?.response?.status || 0);
+    lookupState.value = "error";
     lookupError.value =
       error?.response?.data?.detail ||
-      "Nao foi possivel consultar os dados automaticos agora. Preencha manualmente ou tente novamente mais tarde.";
+      "Nao foi possivel buscar automaticamente. Voce pode preencher manualmente.";
     if (status === 503) {
       await reloadJourneys();
     }

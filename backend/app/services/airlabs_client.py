@@ -8,6 +8,7 @@ from typing import Any
 import httpx
 
 from app.core.config import get_settings
+from app.services.flight_provider_interface import FlightProviderInterface
 
 
 class AirlabsClientError(Exception):
@@ -53,11 +54,17 @@ def split_flight_designator(value: str) -> tuple[str | None, str | None]:
     return None, None
 
 
-class AirlabsClient:
+class AirlabsClient(FlightProviderInterface):
     def __init__(self) -> None:
         settings = get_settings()
         self.base_url = settings.airlabs_base_url.rstrip("/")
         self.timeout = max(5, int(settings.airlabs_timeout_seconds or 20))
+
+    def provider_name(self) -> str:
+        return "airlabs"
+
+    def supports_future_lookup(self) -> bool:
+        return False
 
     def _request(self, path: str, params: dict[str, Any]) -> dict[str, Any]:
         url = f"{self.base_url}{path}"
@@ -498,3 +505,12 @@ class AirlabsClient:
             status_code=404,
             payload=last_payload or {"flight_iata": normalized, "dep_date": target_date.isoformat()},
         )
+
+    def lookup_flight_by_number(self, api_key: str, flight_number: str, flight_date: date) -> dict[str, Any]:
+        result = self.lookup_flight(api_key, flight_number, flight_date.isoformat())
+        return {
+            "payload": result.payload,
+            "selected_flight": result.selected_flight,
+            "lookup_mode": result.lookup_mode,
+            "marketplace": "direct",
+        }

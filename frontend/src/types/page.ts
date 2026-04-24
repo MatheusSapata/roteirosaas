@@ -206,7 +206,7 @@ export interface FlightSectionSegment {
   id?: number;
   journey_id?: number;
   sort_order?: number;
-  source_mode?: "manual" | "airlabs";
+  source_mode?: "manual" | "airlabs" | "aerodatabox";
   flight_number?: string;
   flight_iata?: string;
   flight_icao?: string;
