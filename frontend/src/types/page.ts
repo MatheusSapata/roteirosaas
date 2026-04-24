@@ -255,6 +255,7 @@ export interface FlightDetailsSection extends SectionBase {
   sectionId?: string;
   title?: LocalizedString;
   subtitle?: LocalizedString;
+  generalInfo?: LocalizedString;
   ctaColor?: string;
   visualStyle?: "compact" | "decolar";
   showOutbound?: boolean;

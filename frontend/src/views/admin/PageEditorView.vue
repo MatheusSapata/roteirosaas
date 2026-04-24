@@ -2432,6 +2432,7 @@ if (type === "flight_details") {
     sectionId: `flight-${Math.random().toString(36).slice(2, 10)}`,
     title: "Informações do voo",
     subtitle: "Confira os detalhes dos voos inclusos no pacote",
+    generalInfo: "",
     ctaColor: theme.value.ctaDefaultColor,
     visualStyle: "decolar",
     showOutbound: true,
