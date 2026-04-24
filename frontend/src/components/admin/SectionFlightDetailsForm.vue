@@ -7,7 +7,7 @@
           <input
             v-model="local.title"
             class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2"
-            placeholder="Informacoes do voo"
+            placeholder="Informações do voo"
           />
         </div>
         <div>
@@ -332,7 +332,7 @@ const local = reactive<FlightDetailsSection>({
   ...props.modelValue,
   type: "flight_details",
   enabled: props.modelValue.enabled ?? true,
-  title: props.modelValue.title || "Informacoes do voo",
+  title: props.modelValue.title || "Informações do voo",
   subtitle: props.modelValue.subtitle || "Confira os detalhes dos voos inclusos no pacote",
   ctaColor: props.modelValue.ctaColor || "",
   visualStyle: props.modelValue.visualStyle || "decolar",
@@ -379,7 +379,7 @@ watch(
   () => props.modelValue,
   value => {
     local.enabled = value.enabled ?? true;
-    local.title = value.title || "Informacoes do voo";
+    local.title = value.title || "Informações do voo";
     local.subtitle = value.subtitle || "Confira os detalhes dos voos inclusos no pacote";
     local.ctaColor = value.ctaColor || "";
     local.visualStyle = value.visualStyle || "decolar";
