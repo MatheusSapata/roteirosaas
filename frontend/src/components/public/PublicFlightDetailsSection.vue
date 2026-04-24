@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <section
     class="w-full py-10 md:py-12"
     :id="section.anchorId || undefined"
@@ -68,8 +68,8 @@
             </div>
 
             <div :class="summaryGridClass" class="mt-3">
-              <div class="min-w-0 md:text-right">
-                <p class="text-[22px] font-bold leading-none md:text-[28px]" :style="accentTextStyle">{{ firstTime(journey) }}</p>
+              <div :class="firstSummaryColClass">
+                <p class="text-[20px] font-bold leading-none md:text-[28px]" :style="accentTextStyle">{{ firstTime(journey) }}</p>
                 <p class="mt-1 text-xs font-semibold uppercase tracking-[0.08em] text-slate-700">{{ firstIata(journey) }}</p>
                 <p class="text-sm text-slate-600">{{ firstCity(journey) }}</p>
               </div>
@@ -108,13 +108,14 @@
               </div>
 
               <div class="min-w-0">
-                <p class="text-[22px] font-bold leading-none md:text-[28px]" :style="accentTextStyle">{{ lastTime(journey) }}</p>
+                <p class="text-[20px] font-bold leading-none md:text-[28px]" :style="accentTextStyle">{{ lastTime(journey) }}</p>
                 <p class="mt-1 text-xs font-semibold uppercase tracking-[0.08em] text-slate-700">{{ lastIata(journey) }}</p>
                 <p class="text-sm text-slate-600">{{ lastCity(journey) }}</p>
               </div>
 
-              <div class="min-w-0 md:justify-self-center">
-                <p class="inline-flex items-center justify-center gap-1.5 whitespace-nowrap text-sm text-slate-600">
+              <div :class="metaSummaryRowClass">
+                <div :class="durationSummaryColClass">
+                  <p class="inline-flex items-center justify-center gap-1.5 whitespace-nowrap text-sm text-slate-600">
                   <svg
                     class="h-4 w-4 shrink-0 text-slate-500"
                     viewBox="0 0 24 24"
@@ -130,21 +131,22 @@
                   </svg>
                   <span class="truncate">Duração: <strong class="font-semibold text-slate-800">{{ journeyDurationLabel(journey) }}</strong></span>
                 </p>
-              </div>
+                </div>
 
-              <div class="min-w-0 md:justify-self-center">
-                <div class="flex min-w-0 items-center justify-center gap-2">
-                  <AirlineLogo
-                    :airline-iata="journeyAirlineIata(journey)"
-                    :airline-name="journeyAirlineName(journey)"
-                    :custom-url="journeyAirlineLogo(journey)"
-                    size-class="h-8 w-8"
-                  />
-                  <span class="truncate text-sm font-semibold text-slate-800">{{ journeyAirlineName(journey) }}</span>
+                <div :class="airlineSummaryColClass">
+                  <div class="flex min-w-0 items-center justify-center gap-2">
+                    <AirlineLogo
+                      :airline-iata="journeyAirlineIata(journey)"
+                      :airline-name="journeyAirlineName(journey)"
+                      :custom-url="journeyAirlineLogo(journey)"
+                      size-class="h-8 w-8"
+                    />
+                    <span class="truncate text-sm font-semibold text-slate-800">{{ journeyAirlineName(journey) }}</span>
+                  </div>
                 </div>
               </div>
 
-              <div class="min-w-0 md:justify-self-end">
+              <div :class="toggleSummaryColClass">
                 <button
                   type="button"
                   class="inline-flex items-center gap-1 whitespace-nowrap text-sm font-semibold"
@@ -185,8 +187,99 @@
                   :class="segmentIndex > 0 ? 'border-t border-slate-200/70' : ''"
                   :style="segmentDividerStyle(segmentIndex)"
                 >
-                  <div :class="segmentGridClass">
-                    <div class="min-w-0 text-left md:text-center">
+                  <template v-if="useMobileSummaryLayout">
+                    <div class="grid grid-cols-[14px_minmax(0,1fr)] gap-x-3">
+                      <div></div>
+                      <p class="mb-0.5 text-xs text-slate-500">{{ segmentDateLabel(segment) }}</p>
+
+                      <div class="relative flex items-center justify-center">
+                        <span
+                          class="absolute left-1/2 top-1/2 bottom-0 w-px -translate-x-1/2 rounded-full"
+                          :style="mobileSegmentLineStyle"
+                        ></span>
+                        <span
+                          class="relative z-[1] h-2.5 w-2.5 rounded-full border-[1.8px]"
+                          :style="mobileSegmentStartDotStyle"
+                        ></span>
+                      </div>
+                      <p class="mt-0.5 mb-1.5 flex items-baseline gap-2">
+                        <span class="text-[34px] font-bold leading-none" :style="accentTextStyle">{{ departureTime(segment) }}</span>
+                        <span class="text-sm font-semibold uppercase tracking-[0.06em] text-slate-700">{{ segment.departure_airport_iata || "---" }}</span>
+                      </p>
+
+                      <div class="relative">
+                        <span
+                          class="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 rounded-full"
+                          :style="mobileSegmentLineStyle"
+                        ></span>
+                      </div>
+                      <div class="space-y-0.5">
+                        <p class="mt-1 text-[24px] font-semibold leading-none text-slate-900">{{ segment.departure_city || "Cidade não informada" }}</p>
+                        <p class="mt-0.5 text-sm text-slate-500">{{ departureAirportLabel(segment) }}</p>
+                        <p v-if="departureTerminal(segment)" class="text-sm text-slate-500">{{ departureTerminal(segment) }}</p>
+                      </div>
+
+                      <div class="relative">
+                        <span
+                          class="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 rounded-full"
+                          :style="mobileSegmentLineStyle"
+                        ></span>
+                      </div>
+                      <p class="my-3 inline-flex items-center gap-1.5 text-sm text-slate-600">
+                        <svg
+                          class="h-4 w-4"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.8"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          aria-hidden="true"
+                        >
+                          <circle cx="12" cy="12" r="9" />
+                          <path d="M12 7v5l3 2" />
+                        </svg>
+                        <span>
+                          Duração <strong class="font-semibold text-slate-800">{{ segmentDurationLabel(segment) }}</strong>
+                          <span class="text-slate-400"> · </span>
+                          {{ segmentAircraftLabel(segment) }}
+                        </span>
+                      </p>
+
+                      <div class="relative">
+                        <span
+                          class="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 rounded-full"
+                          :style="mobileSegmentLineStyle"
+                        ></span>
+                      </div>
+                      <p class="mt-1 text-xs text-slate-500">{{ segmentDateLabel(segment) }}</p>
+
+                      <div class="relative flex items-center justify-center">
+                        <span
+                          class="absolute left-1/2 top-0 bottom-1/2 w-px -translate-x-1/2 rounded-full"
+                          :style="mobileSegmentLineStyle"
+                        ></span>
+                        <span
+                          class="relative z-[1] h-2.5 w-2.5 rounded-full"
+                          :style="accentDotStyle"
+                        ></span>
+                      </div>
+                      <p class="mt-0.5 mb-1.5 flex items-baseline gap-2">
+                        <span class="text-[34px] font-bold leading-none" :style="accentTextStyle">{{ arrivalTime(segment) }}</span>
+                        <span class="text-sm font-semibold uppercase tracking-[0.06em] text-slate-700">{{ segment.arrival_airport_iata || "---" }}</span>
+                      </p>
+
+                      <div></div>
+                      <div class="space-y-0.5">
+                        <p class="mt-1 text-[24px] font-semibold leading-none text-slate-900">{{ segment.arrival_city || "Cidade não informada" }}</p>
+                        <p class="mt-0.5 text-sm text-slate-500">{{ arrivalAirportLabel(segment) }}</p>
+                        <p v-if="arrivalTerminal(segment)" class="text-sm text-slate-500">{{ arrivalTerminal(segment) }}</p>
+                      </div>
+                    </div>
+                  </template>
+
+                  <div v-else :class="segmentGridClass">
+                    <div :class="segmentDepartureColClass">
                       <p class="text-xs text-slate-500">{{ segmentDateLabel(segment) }}</p>
                       <p class="mt-1 text-[24px] font-bold leading-none md:text-[34px]" :style="accentTextStyle">
                         {{ departureTime(segment) }}
@@ -194,13 +287,13 @@
                       <p class="mt-1 text-sm font-semibold uppercase tracking-[0.08em] text-slate-800">
                         {{ segment.departure_airport_iata || "---" }}
                       </p>
-                      <p class="mt-1 text-base text-slate-800">{{ segment.departure_city || "Cidade não informada" }}</p>
-                      <p class="text-sm text-slate-500">{{ segment.departure_airport_name || "Aeroporto não informado" }}</p>
-                      <p v-if="departureTerminal(segment)" class="text-sm text-slate-500">{{ departureTerminal(segment) }}</p>
+                      <p class="mt-1 text-sm text-slate-800 md:text-base">{{ segment.departure_city || "Cidade não informada" }}</p>
+                      <p class="text-xs text-slate-500 md:text-sm">{{ departureAirportLabel(segment) }}</p>
+                      <p v-if="departureTerminal(segment)" class="text-xs text-slate-500 md:text-sm">{{ departureTerminal(segment) }}</p>
                     </div>
 
                     <div class="min-w-0">
-                      <div class="mx-auto flex max-w-[320px] flex-col items-center gap-2 text-center">
+                      <div :class="segmentMiddleInnerClass">
                         <p class="inline-flex items-center gap-1.5 text-sm text-slate-600">
                           <svg
                             class="h-4 w-4"
@@ -246,7 +339,7 @@
                       </div>
                     </div>
 
-                    <div class="min-w-0 text-left md:text-center">
+                    <div :class="segmentArrivalColClass">
                       <p class="text-xs text-slate-500">{{ segmentDateLabel(segment) }}</p>
                       <p class="mt-1 text-[24px] font-bold leading-none md:text-[34px]" :style="accentTextStyle">
                         {{ arrivalTime(segment) }}
@@ -254,9 +347,9 @@
                       <p class="mt-1 text-sm font-semibold uppercase tracking-[0.08em] text-slate-800">
                         {{ segment.arrival_airport_iata || "---" }}
                       </p>
-                      <p class="mt-1 text-base text-slate-800">{{ segment.arrival_city || "Cidade não informada" }}</p>
-                      <p class="text-sm text-slate-500">{{ segment.arrival_airport_name || "Aeroporto não informado" }}</p>
-                      <p v-if="arrivalTerminal(segment)" class="text-sm text-slate-500">{{ arrivalTerminal(segment) }}</p>
+                      <p class="mt-1 text-sm text-slate-800 md:text-base">{{ segment.arrival_city || "Cidade não informada" }}</p>
+                      <p class="text-xs text-slate-500 md:text-sm">{{ arrivalAirportLabel(segment) }}</p>
+                      <p v-if="arrivalTerminal(segment)" class="text-xs text-slate-500 md:text-sm">{{ arrivalTerminal(segment) }}</p>
                     </div>
                   </div>
 
@@ -306,7 +399,7 @@
                 <div
                   v-if="segmentIndex < segmentsFor(journey).length - 1 && layoverLabel(segmentsFor(journey), segmentIndex)"
                   class="border-y border-slate-200/80 bg-white px-4 py-3 md:px-6"
-                  :style="darkInnerBorderStyle"
+                  :style="layoverRowStyle"
                 >
                   <div class="flex flex-wrap items-center justify-center gap-2 text-xs text-slate-600">
                     <span class="inline-flex items-center gap-1.5">
@@ -327,7 +420,7 @@
                     </span>
                     <span
                       v-if="isLongLayover(segmentsFor(journey), segmentIndex)"
-                      class="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700"
+                      :class="longLayoverBadgeClass"
                     >
                       Tempo longo de espera
                     </span>
@@ -344,7 +437,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, inject, isRef, ref } from "vue";
+import { computed, inject, isRef, onBeforeUnmount, onMounted, ref } from "vue";
 import type { FlightDetailsSection, FlightSectionJourney, FlightSectionSegment } from "../../types/page";
 import { createLocalizer, getCurrentLanguage } from "../../utils/i18n";
 import AirlineLogo from "../shared/AirlineLogo.vue";
@@ -359,6 +452,20 @@ const headingDefaults = getSectionHeadingDefaults("flight_details");
 const branding = inject(PUBLIC_BRANDING_KEY, null);
 
 const isMobilePreview = computed(() => props.previewDevice === "mobile");
+const isNarrowViewport = ref(false);
+const syncViewportMode = () => {
+  if (typeof window === "undefined") return;
+  isNarrowViewport.value = window.innerWidth < 768;
+};
+onMounted(() => {
+  syncViewportMode();
+  window.addEventListener("resize", syncViewportMode, { passive: true });
+});
+onBeforeUnmount(() => {
+  if (typeof window === "undefined") return;
+  window.removeEventListener("resize", syncViewportMode);
+});
+const useMobileSummaryLayout = computed(() => isMobilePreview.value || isNarrowViewport.value);
 const sectionBackground = computed(() => props.section.backgroundColor || "#ffffff");
 const extractFirstHexColor = (value?: string | null) => {
   if (!value) return null;
@@ -439,6 +546,13 @@ const darkAccentBorderColor = computed(() => {
 const accentTextStyle = computed(() => ({ color: accentColor.value }));
 const accentLineStyle = computed(() => ({ backgroundColor: accentSoftColor.value }));
 const accentDotStyle = computed(() => ({ backgroundColor: accentColor.value }));
+const mobileSegmentLineStyle = computed(() => ({
+  backgroundColor: sectionBackgroundIsLight.value ? "#cbd5e1" : darkAccentBorderColor.value
+}));
+const mobileSegmentStartDotStyle = computed(() => ({
+  borderColor: accentColor.value,
+  backgroundColor: sectionBackgroundIsLight.value ? "#ffffff" : "rgba(15,23,42,0.82)"
+}));
 const timelinePointStyle = (isEdge: boolean) => ({
   borderColor: accentColor.value,
   backgroundColor: isEdge ? accentColor.value : "#ffffff"
@@ -469,6 +583,19 @@ const segmentDividerStyle = (segmentIndex: number) =>
 const expandedAreaStyle = computed(() => ({
   backgroundColor: sectionBackgroundIsLight.value ? "rgba(0,0,0,0.02)" : "rgba(255,255,255,0.05)"
 }));
+const layoverRowStyle = computed(() =>
+  sectionBackgroundIsLight.value
+    ? {}
+    : {
+        borderColor: darkAccentBorderColor.value,
+        backgroundColor: "rgba(255,255,255,0.03)"
+      }
+);
+const longLayoverBadgeClass = computed(() =>
+  sectionBackgroundIsLight.value
+    ? "rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700"
+    : "rounded-full border border-amber-300/35 bg-amber-500/18 px-2 py-0.5 text-[11px] font-semibold text-amber-100"
+);
 
 const visibleJourneys = computed(() => {
   const journeys = (props.section.journeys || []).filter(journey => journey.is_enabled !== false);
@@ -495,19 +622,45 @@ const isJourneyExpanded = (journey: FlightSectionJourney, index: number) => {
   const key = journeyKey(journey, index);
   const stored = expandedByKey.value[key];
   if (typeof stored === "boolean") return stored;
-  return index === 0;
+  return false;
 };
 
 const summaryGridClass = computed(() =>
-  isMobilePreview.value
-    ? "grid gap-3"
+  useMobileSummaryLayout.value
+    ? "grid items-center gap-x-3 gap-y-3 grid-cols-[minmax(0,1fr)_minmax(120px,1.2fr)_minmax(0,1fr)]"
     : "grid gap-3 md:items-center md:grid-cols-[140px_minmax(0,1fr)_140px_170px_150px_120px]"
+);
+const firstSummaryColClass = computed(() =>
+  useMobileSummaryLayout.value ? "min-w-0 text-right" : "min-w-0 md:text-right"
+);
+const metaSummaryRowClass = computed(() =>
+  useMobileSummaryLayout.value ? "min-w-0 col-span-3 flex items-center justify-center gap-3" : "contents"
+);
+const durationSummaryColClass = computed(() =>
+  useMobileSummaryLayout.value ? "min-w-0" : "min-w-0 md:justify-self-center"
+);
+const airlineSummaryColClass = computed(() =>
+  useMobileSummaryLayout.value ? "min-w-0" : "min-w-0 md:justify-self-center"
+);
+const toggleSummaryColClass = computed(() =>
+  useMobileSummaryLayout.value ? "min-w-0 col-span-3 justify-self-center" : "min-w-0 md:justify-self-end"
 );
 
 const segmentGridClass = computed(() =>
-  isMobilePreview.value
-    ? "grid gap-4"
+  useMobileSummaryLayout.value
+    ? "grid items-start gap-x-3 gap-y-3 grid-cols-[minmax(0,1fr)_minmax(120px,1.15fr)_minmax(0,1fr)]"
     : "grid gap-6 md:grid-cols-[220px_minmax(0,1fr)_220px] md:items-center md:gap-8"
+);
+const segmentDepartureColClass = computed(() =>
+  useMobileSummaryLayout.value ? "min-w-0 text-right" : "min-w-0 text-left md:text-center"
+);
+const segmentArrivalColClass = computed(() =>
+  useMobileSummaryLayout.value ? "min-w-0 text-left" : "min-w-0 text-left md:text-center"
+);
+const segmentMiddleInnerClass = computed(() =>
+  useMobileSummaryLayout.value
+    ? "mx-auto flex w-full max-w-[170px] flex-col items-center gap-1.5 text-center"
+    : "mx-auto flex max-w-[320px] flex-col items-center gap-2 text-center"
 );
 
 const segmentsFor = (journey: FlightSectionJourney): FlightSectionSegment[] =>
@@ -657,6 +810,34 @@ const arrivalTerminal = (segment: FlightSectionSegment) => {
 const segmentFlightCode = (segment: FlightSectionSegment) =>
   segment.flight_number || segment.flight_iata || segment.flight_icao || "--";
 
+const normalizeSearchText = (value?: string | null) =>
+  String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+
+const compactAirportName = (city?: string | null, airportName?: string | null) => {
+  const airport = String(airportName || "").trim();
+  if (!airport) return "Aeroporto não informado";
+  const cityLabel = String(city || "").trim();
+  if (!cityLabel) return airport;
+
+  const normalizedAirport = normalizeSearchText(airport);
+  const normalizedCity = normalizeSearchText(cityLabel);
+  if (!normalizedCity || !normalizedAirport.startsWith(normalizedCity)) return airport;
+
+  const escapedCity = cityLabel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const compact = airport.replace(new RegExp(`^${escapedCity}[\\s\\-,:|]*`, "i"), "").trim();
+  return compact || airport;
+};
+
+const departureAirportLabel = (segment: FlightSectionSegment) =>
+  compactAirportName(segment.departure_city, segment.departure_airport_name);
+
+const arrivalAirportLabel = (segment: FlightSectionSegment) =>
+  compactAirportName(segment.arrival_city, segment.arrival_airport_name);
+
 const baggageTooltip = (type: "carry_on" | "personal_item" | "checked_bag", included?: boolean) => {
   const status = included ? "incluida" : "nao incluida";
   if (type === "carry_on") return `Bagagem de mao ${status}`;
@@ -743,3 +924,8 @@ const isLongLayover = (segments: FlightSectionSegment[], index: number) => layov
   color: #f8fafc !important;
 }
 </style>
+
+
+
+
+
