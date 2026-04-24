@@ -9,8 +9,8 @@
           <div class="absolute inset-0" :style="mobileGradientStyle"></div>
           <div v-if="embeddedVideoUrl" class="absolute inset-0" :style="mobileVideoOverlayStyle"></div>
 
-          <div class="absolute inset-0 flex flex-col items-center justify-between gap-4 px-4 py-6">
-            <div class="flex min-h-0 flex-1 items-start justify-center w-full pt-1" :class="animationClasses(1)">
+          <div class="absolute inset-0 flex flex-col items-center gap-4 px-4 py-6">
+            <div class="flex justify-center w-full mt-auto mb-2" :class="animationClasses(1)">
               <template v-if="logoSrc">
                 <div class="drop-shadow-xl overflow-hidden" :style="logoBoxStyle">
                   <img :src="logoSrc" alt="Logo" class="h-full w-auto object-contain" :style="logoImageStyle" />
@@ -24,7 +24,7 @@
               </span>
             </div>
 
-            <div v-if="embeddedVideoUrl" class="w-full max-w-[320px] mb-2 mt-auto">
+            <div v-if="embeddedVideoUrl" class="w-full max-w-[320px] mb-2">
               <div class="overflow-hidden rounded-2xl border border-white/10 bg-black/30 shadow-xl ring-1 ring-white/10">
                 <div class="relative pt-[56.25%]">
                   <iframe
@@ -81,8 +81,8 @@
               rel="noopener"
               data-track-event="cta"
               :data-track-type="ctaTrackType"
-              :class="['inline-flex w-full items-center justify-center rounded-full px-5 py-3 text-sm font-semibold shadow-xl shadow-black/40 transition hover:-translate-y-0.5 hover:shadow-2xl', ctaShimmerClass]"
-              :style="{ background: ctaColor, color: ctaTextColor }"
+              :class="['inline-flex w-full items-center justify-center rounded-full px-5 py-3 text-sm font-semibold transition hover:-translate-y-0.5 hero-cta-soft-shadow', ctaShimmerClass]"
+              :style="ctaButtonStyle"
             >
               {{ ctaLabel }}
             </a>
@@ -194,8 +194,8 @@
                   rel="noopener"
                   data-track-event="cta"
                   :data-track-type="ctaTrackType"
-                  :class="['inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl', ctaShimmerClass, desktopCtaHoverClass]"
-                  :style="{ background: ctaColor, color: ctaTextColor }"
+                  :class="['inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold transition hover:-translate-y-0.5 hero-cta-soft-shadow', ctaShimmerClass, desktopCtaHoverClass]"
+                  :style="ctaButtonStyle"
                 >
                   {{ ctaLabel }}
                 </a>
@@ -343,6 +343,7 @@ const toRgba = (hex: string, alpha: number) => {
   const b = parseInt(full.substring(4, 6), 16);
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
+const firstHexColor = (input: string) => input.match(/#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})\b/)?.[0] || "";
 
 const accentSoft = computed(() => toRgba(accent.value, 0.12));
 const accentBorder = computed(() => toRgba(accent.value, 0.25));
@@ -354,6 +355,19 @@ const accentChipBorder = computed(() => {
   }
   return toRgba(accent.value, 0.5);
 });
+const ctaShadowBaseColor = computed(() => {
+  const fromCta = firstHexColor(ctaColor.value || "");
+  if (fromCta) return fromCta;
+  const fromAccent = firstHexColor(accent.value || "");
+  if (fromAccent) return fromAccent;
+  return "#a855f7";
+});
+const ctaButtonStyle = computed(() => ({
+  background: ctaColor.value,
+  color: ctaTextColor.value,
+  "--hero-cta-shadow": `0 6px 12px rgba(5, 6, 15, 0.24), 0 12px 28px ${toRgba(ctaShadowBaseColor.value, 0.34)}`,
+  "--hero-cta-shadow-hover": `0 8px 16px rgba(5, 6, 15, 0.28), 0 16px 34px ${toRgba(ctaShadowBaseColor.value, 0.45)}`
+}));
 const mobileContentBg = computed(() => mobileBaseColor.value);
 const mobileBackgroundStyle = computed(() => {
   if (heroBackgroundImage.value) {
@@ -492,5 +506,13 @@ const desktopCtaHoverClass = computed(() => "hero-cta-desktop-hover");
 
 .hero-delay-6 {
   animation-delay: 0.55s;
+}
+
+.hero-cta-soft-shadow {
+  box-shadow: var(--hero-cta-shadow, 0 6px 12px rgba(5, 6, 15, 0.24), 0 12px 28px rgba(168, 85, 247, 0.34));
+}
+
+.hero-cta-soft-shadow:hover {
+  box-shadow: var(--hero-cta-shadow-hover, 0 8px 16px rgba(5, 6, 15, 0.28), 0 16px 34px rgba(168, 85, 247, 0.45));
 }
 </style>

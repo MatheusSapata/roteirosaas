@@ -1,5 +1,5 @@
 <template>
-<section class="w-full" :id="section.anchorId || undefined">
+<section class="w-full" :id="section.anchorId || undefined" :style="sectionStyle">
   <div
     class="mx-auto w-full space-y-6 pb-[30px]"
     :class="section.fullWidth ? 'max-w-none px-0 md:px-0' : 'max-w-6xl px-4 md:px-0'"
@@ -28,8 +28,8 @@
       </div>
 
       <div
-        class="mx-auto max-w-4xl leading-relaxed px-4 md:px-0"
-        :style="{ color: bodyColor, fontSize: textSize }"
+        class="mx-auto max-w-4xl px-6 text-base leading-relaxed md:px-6 md:text-lg"
+        :style="bodyTextStyle"
         v-html="textHtml"
       ></div>
     </div>
@@ -40,6 +40,7 @@
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { resolveMediaUrl } from "../../utils/media";
 import { sanitizeHtml } from "../../utils/sanitizeHtml";
+import { getReadableTextColor, getRelativeLuminance, normalizeHexColor } from "../../utils/colorContrast";
 import type { BiographySection } from "../../types/page";
 import { createLocalizer, getCurrentLanguage } from "../../utils/i18n";
 
@@ -110,13 +111,50 @@ const overlayColor = computed(() => {
 });
 const displayTitle = computed(() => localize(props.section.title).trim());
 const titleColor = computed(() => props.section.titleColor || "#ffffff");
-const bodyColor = computed(() => props.section.textColor || "#0f172a");
+const DEFAULT_BODY_TEXT_COLOR = "#0f172a";
+const sectionStyle = computed(() => {
+  if (!props.section.backgroundColor) return undefined;
+  return { backgroundColor: props.section.backgroundColor };
+});
+const normalizedBackgroundColor = computed(() => normalizeHexColor(props.section.backgroundColor));
+const rawBodyColor = computed(() => (typeof props.section.textColor === "string" ? props.section.textColor.trim() : ""));
+const normalizedBodyColor = computed(() => normalizeHexColor(rawBodyColor.value));
+const contrastRatio = (a: number, b: number) => {
+  const light = Math.max(a, b);
+  const dark = Math.min(a, b);
+  return (light + 0.05) / (dark + 0.05);
+};
+const bodyColor = computed(() => {
+  if (!normalizedBackgroundColor.value) {
+    return rawBodyColor.value || DEFAULT_BODY_TEXT_COLOR;
+  }
+
+  const readable = getReadableTextColor(normalizedBackgroundColor.value);
+  if (!rawBodyColor.value) return readable;
+  if (!normalizedBodyColor.value) return rawBodyColor.value;
+
+  const ratio = contrastRatio(
+    getRelativeLuminance(normalizedBodyColor.value),
+    getRelativeLuminance(normalizedBackgroundColor.value)
+  );
+  if (normalizedBodyColor.value === DEFAULT_BODY_TEXT_COLOR || ratio < 4.5) {
+    return readable;
+  }
+  return rawBodyColor.value;
+});
+const bodyTextStyle = computed(() => {
+  const configuredSize = props.section.textFontSize;
+  const style: Record<string, string> = { color: bodyColor.value };
+  if (typeof configuredSize === "number" && configuredSize !== 18) {
+    style.fontSize = `${configuredSize}px`;
+  }
+  return style;
+});
 const titleSize = computed(() => {
   const base = props.section.titleFontSize ?? 72;
   const limited = isMobileView.value ? Math.min(base, 40) : base;
   return `${limited}px`;
 });
-const textSize = computed(() => `${props.section.textFontSize ?? 18}px`);
 const textHtml = computed(() => sanitizeHtml(localize(props.section.text)));
 const imageAltText = computed(() => {
   const customAlt = localize(props.section.title).trim();

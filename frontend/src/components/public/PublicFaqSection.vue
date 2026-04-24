@@ -119,7 +119,11 @@ const leftItems = computed(() => props.section.items?.slice(0, middle.value) || 
 const rightItems = computed(() => props.section.items?.slice(middle.value) || []);
 
 const defaultAccent = "#41ce5f";
-const accent = computed(() => brandingThemeAccent.value || brandingPrimary.value || props.section.ctaColor?.trim() || defaultAccent);
+const sectionAccent = computed(() => {
+  const candidate = (props.section as Record<string, any>)?.ctaColor;
+  return typeof candidate === "string" ? candidate.trim() : "";
+});
+const accent = computed(() => sectionAccent.value || brandingThemeAccent.value || brandingPrimary.value || defaultAccent);
 const sectionBackground = computed(() => props.section.backgroundColor || "linear-gradient(180deg,#f8fafc,#fff)");
 const sectionBackgroundHex = computed(() => normalizeHexColor(props.section.backgroundColor));
 const toRgba = (hex: string, alpha: number) => {
