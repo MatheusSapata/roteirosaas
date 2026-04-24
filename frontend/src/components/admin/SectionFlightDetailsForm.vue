@@ -37,7 +37,7 @@
         <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Layout</label>
         <select v-model="local.visualStyle" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2">
           <option value="compact">Compacto</option>
-          <option value="decolar">Completo nivel Decolar</option>
+          <option value="decolar">Completo</option>
         </select>
       </div>
       <p v-if="!lookupAvailable" class="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
@@ -334,6 +334,7 @@ const local = reactive<FlightDetailsSection>({
   enabled: props.modelValue.enabled ?? true,
   title: props.modelValue.title || "Informacoes do voo",
   subtitle: props.modelValue.subtitle || "Confira os detalhes dos voos inclusos no pacote",
+  ctaColor: props.modelValue.ctaColor || "",
   visualStyle: props.modelValue.visualStyle || "decolar",
   showOutbound: props.modelValue.showOutbound ?? true,
   showInbound: props.modelValue.showInbound ?? true,
@@ -380,6 +381,7 @@ watch(
     local.enabled = value.enabled ?? true;
     local.title = value.title || "Informacoes do voo";
     local.subtitle = value.subtitle || "Confira os detalhes dos voos inclusos no pacote";
+    local.ctaColor = value.ctaColor || "";
     local.visualStyle = value.visualStyle || "decolar";
     local.showOutbound = value.showOutbound ?? true;
     local.showInbound = value.showInbound ?? true;
@@ -391,7 +393,7 @@ watch(
 );
 
 watch(
-  () => [local.enabled, local.title, local.subtitle, local.visualStyle, local.showOutbound, local.showInbound, local.sectionId],
+  () => [local.enabled, local.title, local.subtitle, local.ctaColor, local.visualStyle, local.showOutbound, local.showInbound, local.sectionId],
   () => emitLocal(),
   { deep: true }
 );
