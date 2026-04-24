@@ -820,6 +820,7 @@ import countdownThumb from "../../assets/countdown-thumb.jpg";
 import storyThumb from "../../assets/story-thumb.jpg";
 import featuredVideoThumb from "../../assets/videoemdestaque.png";
 import biographyThumb from "../../assets/biografia.png";
+import flightsThumb from "../../assets/voos-thumb.png";
 
 interface Page {
   id: number;
@@ -1375,7 +1376,7 @@ const sectionThumbnails: Partial<Record<SectionType, string>> = {
   story: storyThumb,
   reasons: reasonsThumb,
   countdown: countdownThumb,
-  flight_details: itineraryThumb,
+  flight_details: flightsThumb,
   agency_footer: footerThumb
 };
 const sectionAccents: Partial<Record<SectionType, string>> = {
@@ -2429,7 +2430,7 @@ if (type === "flight_details") {
     type: "flight_details",
     enabled: true,
     sectionId: `flight-${Math.random().toString(36).slice(2, 10)}`,
-    title: "Informacoes do voo",
+    title: "Informações do voo",
     subtitle: "Confira os detalhes dos voos inclusos no pacote",
     ctaColor: theme.value.ctaDefaultColor,
     visualStyle: "decolar",

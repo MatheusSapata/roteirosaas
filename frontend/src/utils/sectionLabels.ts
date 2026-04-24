@@ -51,7 +51,7 @@ export const describeSection = (section: PageSection): string => {
     case "agency_footer":
       return "Rodape institucional";
     case "flight_details":
-      return section.title || "Informacoes de voo";
+      return section.title || "Informacões de voo";
     case "free_footer_brand":
       return "Rodape obrigatorio";
     default:
