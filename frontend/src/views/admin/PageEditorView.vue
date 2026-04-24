@@ -2021,10 +2021,6 @@ const applySectionBackgrounds = (list: PageSection[]): PageSection[] => {
       }
       return normalized;
     }
-    if (type === "biography") {
-      altIndex += 1;
-      return normalized;
-    }
     const backgroundColor = altIndex % 2 === 0 ? colorA.value : colorB.value;
     altIndex += 1;
     (normalized as any).backgroundColor = backgroundColor;
