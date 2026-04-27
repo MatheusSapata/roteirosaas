@@ -88,7 +88,16 @@
               <template v-if="hasContactInfo">
                 <p v-if="phoneText" :class="['font-medium', textPrimaryClass]">
                   {{ phoneLabel }}
-                  <span :class="['font-normal', textSecondaryClass]">{{ phoneText }}</span>
+                  <a
+                    v-if="phoneWhatsappLink"
+                    :href="phoneWhatsappLink"
+                    :class="[textLinkClass, 'font-normal hover:underline']"
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    {{ phoneText }}
+                  </a>
+                  <span v-else :class="['font-normal', textSecondaryClass]">{{ phoneText }}</span>
                 </p>
 
                 <p v-if="contactEmail" :class="textPrimaryClass">
@@ -260,6 +269,7 @@ import type { AgencySocialNetwork } from "../../store/useAgencyStore";
 import cadasturLogo from "../../assets/cadastur-logo.png";
 import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
 import { createLocalizer, getCurrentLanguage, type LocalizedString } from "../../utils/i18n";
+import { normalizeWhatsappDigits } from "../../utils/whatsapp";
 
 const props = defineProps<{
   section: AgencyFooterSection;
@@ -311,7 +321,12 @@ const agencyProfile = computed<Record<string, any>>(() => resolvedBranding.value
 const companyName = computed(() => agencyProfile.value?.name || resolvedBranding.value?.agency_name || "");
 const cnpjText = computed(() => formatCnpj(agencyProfile.value?.cnpj));
 const contactEmail = computed(() => agencyProfile.value?.email || "");
-const phoneText = computed(() => formatPhone(agencyProfile.value?.phone || ""));
+const phoneSource = computed(() => agencyProfile.value?.phone || "");
+const phoneText = computed(() => formatPhone(phoneSource.value));
+const phoneWhatsappLink = computed(() => {
+  const digits = normalizeWhatsappDigits(phoneSource.value);
+  return digits ? `https://wa.me/${digits}` : "";
+});
 const hasContactInfo = computed(() => !!phoneText.value || !!contactEmail.value);
 
 const address = computed(() => agencyProfile.value?.address || {});
@@ -369,7 +384,28 @@ const socialLinks = computed(() => {
     .filter(link => !!link.iconPath);
 });
 
-const cadasturLink = computed(() => agencyProfile.value?.cadastur_url || buildCadasturLink(agencyProfile.value?.cnpj_digits));
+const cadasturDocumentType = computed<"cnpj" | "cpf">(() =>
+  props.section.cadasturDocumentType === "cpf" ? "cpf" : "cnpj"
+);
+const cadasturDigits = computed(() => {
+  if (cadasturDocumentType.value === "cpf") {
+    return sanitizeDocumentDigits(agencyProfile.value?.cpf_digits || agencyProfile.value?.cpf);
+  }
+  return sanitizeDocumentDigits(agencyProfile.value?.cnpj_digits || agencyProfile.value?.cnpj);
+});
+const cadasturLink = computed(() => {
+  const urls = agencyProfile.value?.cadastur_urls || {};
+  const selected =
+    cadasturDocumentType.value === "cpf"
+      ? typeof urls.cpf === "string"
+        ? urls.cpf
+        : ""
+      : typeof urls.cnpj === "string"
+        ? urls.cnpj
+        : "";
+  if (selected) return selected;
+  return buildCadasturLink(cadasturDigits.value);
+});
 const shouldShowCadastur = computed(() => props.section.showCadastur !== false);
 
 const layoutMode = computed(() => props.section.displayVariant || "auto");
@@ -469,15 +505,29 @@ function formatCnpj(value?: string | null) {
 
 function formatPhone(value?: string | null) {
   if (!value) return "";
-  const digits = value.replace(/\D/g, "");
-  if (!digits) return "";
+  const normalized = normalizeWhatsappDigits(value);
+  if (!normalized) return "";
+
+  const hasBrazilCode = normalized.startsWith("55");
+  const localDigits = hasBrazilCode ? normalized.slice(2) : normalized;
+  const localFormatted = formatLocalPhone(localDigits);
+  if (!localFormatted) {
+    return hasBrazilCode ? `+55 ${localDigits}`.trim() : localDigits;
+  }
+  if (hasBrazilCode) {
+    return `+55 ${localFormatted}`;
+  }
+  return localFormatted;
+}
+
+function formatLocalPhone(digits: string) {
   if (digits.length === 10) {
     return digits.replace(/(\d{2})(\d{4})(\d{4})/, "($1) $2-$3");
   }
-  if (digits.length >= 11) {
+  if (digits.length === 11) {
     return digits.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
   }
-  return value;
+  return "";
 }
 
 function buildMapUrl(query?: string) {
@@ -485,9 +535,14 @@ function buildMapUrl(query?: string) {
   return `https://www.google.com/maps?q=${encodeURIComponent(query)}&output=embed`;
 }
 
-function buildCadasturLink(cnpjDigits?: string | null) {
-  if (!cnpjDigits) return "";
-  return `https://cadastur.turismo.gov.br/cadastur/#!/public/qrcode/${cnpjDigits.replace(/\D/g, "")}`;
+function sanitizeDocumentDigits(value?: string | null) {
+  return (value || "").replace(/\D/g, "");
+}
+
+function buildCadasturLink(documentDigits?: string | null) {
+  const digits = sanitizeDocumentDigits(documentDigits);
+  if (!digits) return "";
+  return `https://cadastur.turismo.gov.br/cadastur/#!/public/qrcode/${digits}`;
 }
 
 function clamp(value: number, min = 0, max = 255) {

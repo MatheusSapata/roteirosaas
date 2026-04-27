@@ -198,6 +198,7 @@ export interface CountdownSection extends SectionBase {
 export interface AgencyFooterSection extends SectionBase {
   type: "agency_footer";
   showCadastur?: boolean;
+  cadasturDocumentType?: "cnpj" | "cpf";
   displayVariant?: "auto" | "stacked" | "wide";
   fullWidth?: boolean;
 }
