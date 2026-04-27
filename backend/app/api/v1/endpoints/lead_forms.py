@@ -43,12 +43,17 @@ def _serialize_contact(submission: LeadFormSubmission) -> LeadContactOut:
         page_slug=submission.page_slug,
         page_url=submission.page_url,
         name=submission.name,
+        cpf=submission.cpf,
         phone=submission.phone,
         email=submission.email,
         city=submission.city,
+        source=submission.source,
+        opportunity_name=submission.opportunity_name,
+        estimated_value_cents=submission.estimated_value_cents,
         status_id=submission.status_id,
         status_name=submission.status.name if submission.status else None,
         status_color=submission.status.color if submission.status else None,
+        client_id=submission.client_id,
         created_at=submission.created_at,
     )
 

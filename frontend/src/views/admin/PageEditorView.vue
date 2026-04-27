@@ -1813,11 +1813,20 @@ const buildAgencyProfile = () => {
   };
   const addressText = buildAddressText(address);
   const cnpjDigits = sanitizeDigits(user?.cnpj || "");
+  const cpfDigits = sanitizeDigits(user?.cpf || "");
   const phone = (agency?.cta_whatsapp || user?.whatsapp || "").trim();
   const email = (agency?.contact_email || user?.email || "").trim();
+  const cadasturCnpjUrl = cnpjDigits
+    ? `https://cadastur.turismo.gov.br/cadastur/#!/public/qrcode/${cnpjDigits}`
+    : "";
+  const cadasturCpfUrl = cpfDigits
+    ? `https://cadastur.turismo.gov.br/cadastur/#!/public/qrcode/${cpfDigits}`
+    : "";
 
   return {
     name: agency?.name || user?.name || "",
+    cpf: user?.cpf || "",
+    cpf_digits: cpfDigits || undefined,
     cnpj: user?.cnpj || "",
     cnpj_digits: cnpjDigits || undefined,
     email,
@@ -1829,9 +1838,11 @@ const buildAgencyProfile = () => {
     map_embed_url: addressText
       ? `https://www.google.com/maps?q=${encodeURIComponent(addressText)}&output=embed`
       : "",
-    cadastur_url: cnpjDigits
-      ? `https://cadastur.turismo.gov.br/cadastur/#!/public/qrcode/${cnpjDigits}`
-      : ""
+    cadastur_url: cadasturCnpjUrl,
+    cadastur_urls: {
+      cnpj: cadasturCnpjUrl,
+      cpf: cadasturCpfUrl
+    }
   };
 };
 
@@ -2050,6 +2061,7 @@ const applySectionBackgrounds = (list: PageSection[]): PageSection[] => {
 watch(currentAgency, () => applyAgencyBranding(), { immediate: true });
 watch(
   () => ({
+    cpf: auth.user?.cpf,
     cnpj: auth.user?.cnpj,
     email: auth.user?.email,
     whatsapp: auth.user?.whatsapp,
@@ -2432,6 +2444,7 @@ if (type === "flight_details") {
     sectionId: `flight-${Math.random().toString(36).slice(2, 10)}`,
     title: "Informações do voo",
     subtitle: "Confira os detalhes dos voos inclusos no pacote",
+    generalInfo: "",
     ctaColor: theme.value.ctaDefaultColor,
     visualStyle: "decolar",
     showOutbound: true,

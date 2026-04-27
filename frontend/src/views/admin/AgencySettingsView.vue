@@ -49,14 +49,23 @@
         </div>
 
         <div class="grid gap-4 md:grid-cols-3">
-          <label class="space-y-2 text-xs font-semibold text-slate-500 md:pl-2 md:pt-4">
+          <label class="space-y-2 text-sm font-semibold text-slate-600 md:pl-2">
             {{ viewCopy.company.cnpjLabel }}
-            <input
-              v-model="companyForm.cnpj"
-              type="text"
-              :placeholder="viewCopy.company.cnpjPlaceholder"
-              class="w-full rounded-lg border border-slate-200 px-4 py-3 text-sm"
-            />
+            <div class="mt-1 flex gap-2">
+              <select
+                v-model="companyForm.documentType"
+                class="w-28 rounded-lg border border-slate-200 bg-white px-3 py-3 text-sm font-semibold text-slate-700"
+              >
+                <option value="cnpj">{{ viewCopy.company.documentTypeCnpj }}</option>
+                <option value="cpf">{{ viewCopy.company.documentTypeCpf }}</option>
+              </select>
+              <input
+                v-model="companyForm.cnpj"
+                type="text"
+                :placeholder="companyDocumentPlaceholder"
+                class="w-full rounded-lg border border-slate-200 px-4 py-3 text-sm"
+              />
+            </div>
           </label>
           <div class="space-y-2 md:pl-2">
             <label class="text-sm font-semibold text-slate-600">{{ viewCopy.contact.whatsappLabel }}</label>
@@ -281,7 +290,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref, watch } from "vue";
+import { computed, onMounted, reactive, ref, watch } from "vue";
 import ImageUploadField from "../../components/admin/inputs/ImageUploadField.vue";
 import api from "../../services/api";
 import { useAgencyStore } from "../../store/useAgencyStore";
@@ -309,8 +318,11 @@ const viewCopy = {
     })
   },
   company: {
-    cnpjLabel: t({ pt: "CNPJ", es: "CNPJ" }),
-    cnpjPlaceholder: t({ pt: "00.000.000/0000-00", es: "00.000.000/0000-00" })
+    cnpjLabel: t({ pt: "CNPJ ou CPF do responsável", es: "CNPJ o CPF del responsable" }),
+    documentTypeCnpj: t({ pt: "CNPJ", es: "CNPJ" }),
+    documentTypeCpf: t({ pt: "CPF", es: "CPF" }),
+    cnpjPlaceholder: t({ pt: "00.000.000/0000-00", es: "00.000.000/0000-00" }),
+    cpfPlaceholder: t({ pt: "000.000.000-00", es: "000.000.000-00" })
   },
   contact: {
     whatsappLabel: t({ pt: "WhatsApp da agência", es: "WhatsApp de la agencia" }),
@@ -488,6 +500,7 @@ const passwordMessage = ref("");
 const passwordError = ref("");
 
 const companyForm = reactive({
+  documentType: "cnpj" as "cnpj" | "cpf",
   cnpj: "",
   address_street: "",
   address_number: "",
@@ -578,6 +591,15 @@ const buildSocialLinksPayload = () => {
     .filter(link => !!link.url);
 };
 
+const formatCpf = (cpf?: string | null) => {
+  if (!cpf) return "";
+  const digits = cpf.replace(/\D/g, "").slice(0, 11);
+  return digits
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+};
+
 const formatCnpj = (cnpj?: string | null) => {
   if (!cnpj) return "";
   const digits = cnpj.replace(/\D/g, "").slice(0, 14);
@@ -587,6 +609,16 @@ const formatCnpj = (cnpj?: string | null) => {
     .replace(/(\d{3})(\d)/, "$1/$2")
     .replace(/(\d{4})(\d{1,2})$/, "$1-$2");
 };
+
+const formatCompanyDocument = (value?: string | null, type: "cnpj" | "cpf" = "cnpj") => {
+  if (!value) return "";
+  const digits = value.replace(/\D/g, "");
+  return type === "cpf" ? formatCpf(digits.slice(0, 11)) : formatCnpj(digits.slice(0, 14));
+};
+
+const companyDocumentPlaceholder = computed(() =>
+  companyForm.documentType === "cpf" ? viewCopy.company.cpfPlaceholder : viewCopy.company.cnpjPlaceholder
+);
 
 const formatCep = (cep?: string | null) => {
   if (!cep) return "";
@@ -607,7 +639,18 @@ const sanitizeText = (value?: string | null) => {
 
 const syncCompanyData = () => {
   const profile = authStore.user;
-  companyForm.cnpj = formatCnpj(profile?.cnpj || "");
+  const cnpjDigits = (profile?.cnpj || "").replace(/\D/g, "");
+  const cpfDigits = (profile?.cpf || "").replace(/\D/g, "");
+  if (cnpjDigits) {
+    companyForm.documentType = "cnpj";
+    companyForm.cnpj = formatCompanyDocument(cnpjDigits, "cnpj");
+  } else if (cpfDigits) {
+    companyForm.documentType = "cpf";
+    companyForm.cnpj = formatCompanyDocument(cpfDigits, "cpf");
+  } else {
+    companyForm.documentType = "cnpj";
+    companyForm.cnpj = "";
+  }
   companyForm.address_street = profile?.address_street || "";
   companyForm.address_number = profile?.address_number || "";
   companyForm.address_complement = profile?.address_complement || "";
@@ -635,8 +678,10 @@ const syncFormWithCurrent = () => {
 };
 
 const saveCompanyData = async () => {
+  const documentDigits = sanitizeDigits(companyForm.cnpj);
   const payload = {
-    cnpj: sanitizeDigits(companyForm.cnpj),
+    cnpj: companyForm.documentType === "cnpj" ? documentDigits : null,
+    cpf: companyForm.documentType === "cpf" ? documentDigits : null,
     address_street: sanitizeText(companyForm.address_street),
     address_number: sanitizeText(companyForm.address_number),
     address_complement: sanitizeText(companyForm.address_complement),
@@ -778,8 +823,15 @@ const save = async () => {
 watch(
   () => companyForm.cnpj,
   value => {
-    const masked = formatCnpj(value || "");
+    const masked = formatCompanyDocument(value || "", companyForm.documentType);
     if (value !== masked) companyForm.cnpj = masked;
+  }
+);
+
+watch(
+  () => companyForm.documentType,
+  value => {
+    companyForm.cnpj = formatCompanyDocument(companyForm.cnpj || "", value);
   }
 );
 

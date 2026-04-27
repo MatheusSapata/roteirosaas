@@ -34,11 +34,12 @@
         </label>
       </div>
       <div class="mt-3">
-        <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Layout</label>
-        <select v-model="local.visualStyle" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2">
-          <option value="compact">Compacto</option>
-          <option value="decolar">Completo</option>
-        </select>
+        <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Informacoes adicionais</label>
+        <RichTextEditor
+          v-model="local.generalInfo"
+          class="mt-1"
+          placeholder="Ex.: regras de alteracao, check-in, documentos obrigatorios."
+        />
       </div>
       <p v-if="!lookupAvailable" class="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
         Busca automatica indisponivel. Preencha manualmente.
@@ -312,6 +313,7 @@ import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import type { FlightDetailsSection, FlightSectionJourney, FlightSectionSegment } from "../../types/page";
 import AirlineLogo from "../shared/AirlineLogo.vue";
+import RichTextEditor from "./inputs/RichTextEditor.vue";
 import {
   bootstrapFlightJourneys,
   createFlightSegment,
@@ -327,6 +329,25 @@ const emit = defineEmits<{ (e: "update:modelValue", value: FlightDetailsSection)
 
 const route = useRoute();
 const pageId = computed(() => route.params.id as string);
+const DEFAULT_VISUAL_STYLE: FlightDetailsSection["visualStyle"] = "decolar";
+const normalizeLegacyLocalizedText = (value: unknown, fallback = "") => {
+  if (typeof value === "string") return value;
+  if (!value || typeof value !== "object") return fallback;
+  const record = value as Record<string, unknown>;
+  const preferredKeys = ["pt", "es"];
+  for (const key of preferredKeys) {
+    const candidate = record[key];
+    if (typeof candidate === "string" && candidate.trim()) {
+      return candidate;
+    }
+  }
+  for (const candidate of Object.values(record)) {
+    if (typeof candidate === "string" && candidate.trim()) {
+      return candidate;
+    }
+  }
+  return fallback;
+};
 
 const local = reactive<FlightDetailsSection>({
   ...props.modelValue,
@@ -334,8 +355,9 @@ const local = reactive<FlightDetailsSection>({
   enabled: props.modelValue.enabled ?? true,
   title: props.modelValue.title || "Informações do voo",
   subtitle: props.modelValue.subtitle || "Confira os detalhes dos voos inclusos no pacote",
+  generalInfo: normalizeLegacyLocalizedText(props.modelValue.generalInfo),
   ctaColor: props.modelValue.ctaColor || "",
-  visualStyle: props.modelValue.visualStyle || "decolar",
+  visualStyle: DEFAULT_VISUAL_STYLE,
   showOutbound: props.modelValue.showOutbound ?? true,
   showInbound: props.modelValue.showInbound ?? true,
   journeys: props.modelValue.journeys || [],
@@ -369,6 +391,7 @@ const lookupStateLabel = computed(() => {
 const emitLocal = () => {
   emit("update:modelValue", {
     ...local,
+    visualStyle: DEFAULT_VISUAL_STYLE,
     sectionId: local.sectionId,
     journeys: journeys.value,
     lookupAvailable: lookupAvailable.value
@@ -381,8 +404,9 @@ watch(
     local.enabled = value.enabled ?? true;
     local.title = value.title || "Informações do voo";
     local.subtitle = value.subtitle || "Confira os detalhes dos voos inclusos no pacote";
+    local.generalInfo = normalizeLegacyLocalizedText(value.generalInfo);
     local.ctaColor = value.ctaColor || "";
-    local.visualStyle = value.visualStyle || "decolar";
+    local.visualStyle = DEFAULT_VISUAL_STYLE;
     local.showOutbound = value.showOutbound ?? true;
     local.showInbound = value.showInbound ?? true;
     local.sectionId = value.sectionId || value.anchorId || local.sectionId || `flight-${Math.random().toString(36).slice(2, 10)}`;
@@ -393,7 +417,7 @@ watch(
 );
 
 watch(
-  () => [local.enabled, local.title, local.subtitle, local.ctaColor, local.visualStyle, local.showOutbound, local.showInbound, local.sectionId],
+  () => [local.enabled, local.title, local.subtitle, local.generalInfo, local.ctaColor, local.showOutbound, local.showInbound, local.sectionId],
   () => emitLocal(),
   { deep: true }
 );

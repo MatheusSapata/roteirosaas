@@ -73,14 +73,18 @@ const presetLabels: Record<string, string> = {
   name: "Nome completo",
   phone: "Telefone / WhatsApp",
   email: "E-mail",
-  city: "Cidade"
+  city: "Cidade",
+  cpf: "CPF",
+  birthdate: "Data de nascimento"
 };
 
 const presetPlaceholders: Record<string, string> = {
   name: "Seu nome",
   phone: "(11) 99999-9999",
   email: "voce@email.com",
-  city: "São Paulo - SP"
+  city: "São Paulo - SP",
+  cpf: "000.000.000-00",
+  birthdate: "1990-01-31"
 };
 
 const visibleFields = computed<LeadFormField[]>(() => (props.form.fields || []).filter(Boolean));

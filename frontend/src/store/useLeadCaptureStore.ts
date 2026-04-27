@@ -2,10 +2,20 @@ import { defineStore } from "pinia";
 import { computed, ref } from "vue";
 import api from "../services/api";
 import type {
+  Client,
+  ClientDetail,
+  ClientFilters,
+  ClientPayload,
+  ClientSummary,
   LeadContact,
   LeadContactGroup,
+  LeadDocument,
   LeadForm,
   LeadFormPayload,
+  ManualOpportunityPayload,
+  OpportunityFinalizePayload,
+  OpportunityDetails,
+  OpportunityUpdatePayload,
   LeadStatus,
   LeadStatusPayload
 } from "../types/leads";
@@ -45,6 +55,12 @@ export const useLeadCaptureStore = defineStore("leadCapture", () => {
   const statuses = ref<LeadStatus[]>([]);
   const statusesLoading = ref(false);
   const statusesLoadedAtLeastOnce = ref(false);
+  const clients = ref<Client[]>([]);
+  const clientsLoading = ref(false);
+  const opportunityDetails = ref<OpportunityDetails | null>(null);
+  const opportunityDetailsLoading = ref(false);
+  const clientDetail = ref<ClientDetail | null>(null);
+  const clientDetailLoading = ref(false);
   const lastError = ref<string | null>(null);
   const agencyStore = useAgencyStore();
 
@@ -158,6 +174,38 @@ export const useLeadCaptureStore = defineStore("leadCapture", () => {
     );
   };
 
+  const replaceContactFromOpportunity = (updated: OpportunityDetails) => {
+    const leadContact: LeadContact = {
+      id: updated.id,
+      form_id: updated.formId,
+      form_name: updated.formName,
+      page_id: updated.pageId ?? null,
+      page_title: updated.pageTitle ?? null,
+      page_slug: updated.pageSlug ?? null,
+      page_url: updated.pageUrl ?? null,
+      name: updated.name ?? undefined,
+      cpf: updated.cpf ?? undefined,
+      phone: updated.phone ?? undefined,
+      email: updated.email ?? undefined,
+      city: updated.city ?? undefined,
+      source: updated.source ?? undefined,
+      opportunity_name: updated.opportunityName ?? undefined,
+      estimated_value_cents: updated.estimatedValueCents ?? undefined,
+      status_id: updated.statusId ?? null,
+      status_name: updated.statusName ?? null,
+      status_color: updated.statusColor ?? null,
+      client_id: updated.client?.id ?? null,
+      created_at: updated.created_at
+    };
+    const target = normalizeId(leadContact.id);
+    const exists = contacts.value.some(contact => normalizeId(contact.id) === target);
+    if (exists) {
+      replaceContact(leadContact);
+      return;
+    }
+    contacts.value = [leadContact, ...contacts.value];
+  };
+
   const statusSortValue = (status: LeadStatus) => {
     const created = status.created_at ? Date.parse(status.created_at) : Number.NaN;
     if (!Number.isNaN(created)) return created;
@@ -172,6 +220,21 @@ export const useLeadCaptureStore = defineStore("leadCapture", () => {
       if (diff !== 0) return diff;
       return String(a.id).localeCompare(String(b.id));
     });
+  };
+
+  const upsertStatusFromOpportunity = (opportunity: OpportunityDetails) => {
+    if (!opportunity.statusId || !opportunity.statusName || !opportunity.statusColor) return;
+    const nextStatus: LeadStatus = {
+      id: opportunity.statusId,
+      name: opportunity.statusName,
+      color: opportunity.statusColor
+    };
+    const exists = statuses.value.some(status => normalizeId(status.id) === normalizeId(nextStatus.id));
+    statuses.value = sortStatuses(
+      exists
+        ? statuses.value.map(status => (normalizeId(status.id) === normalizeId(nextStatus.id) ? { ...status, ...nextStatus } : status))
+        : [...statuses.value, nextStatus]
+    );
   };
 
   const fetchStatuses = async (force = false) => {
@@ -238,6 +301,197 @@ export const useLeadCaptureStore = defineStore("leadCapture", () => {
     contacts.value = contacts.value.filter(contact => normalizeId(contact.id) !== target);
   };
 
+  const fetchOpportunityDetails = async (contactId: string | number) => {
+    opportunityDetailsLoading.value = true;
+    lastError.value = null;
+    try {
+      const res = await api.get<OpportunityDetails>(`/lead-forms/contacts/${contactId}/details`);
+      opportunityDetails.value = res.data;
+      upsertStatusFromOpportunity(res.data);
+      replaceContactFromOpportunity(res.data);
+      return res.data;
+    } catch (err) {
+      console.error("Erro ao carregar detalhes da oportunidade", err);
+      lastError.value = "Não foi possível carregar os detalhes da oportunidade.";
+      throw err;
+    } finally {
+      opportunityDetailsLoading.value = false;
+    }
+  };
+
+  const updateOpportunity = async (
+    contactId: string | number,
+    payload: OpportunityUpdatePayload
+  ) => {
+    const res = await api.patch<OpportunityDetails>(`/lead-forms/contacts/${contactId}`, payload);
+    opportunityDetails.value = res.data;
+    upsertStatusFromOpportunity(res.data);
+    replaceContactFromOpportunity(res.data);
+    return res.data;
+  };
+
+  const addOpportunityNote = async (contactId: string | number, content: string) => {
+    const res = await api.post(`/lead-forms/contacts/${contactId}/notes`, { content });
+    await fetchOpportunityDetails(contactId);
+    return res.data;
+  };
+
+  const uploadOpportunityDocument = async (contactId: string | number, file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await api.post<LeadDocument>(`/lead-forms/contacts/${contactId}/documents`, formData, {
+      headers: { "Content-Type": "multipart/form-data" }
+    });
+    await fetchOpportunityDetails(contactId);
+    return res.data;
+  };
+
+  const deleteDocument = async (documentId: number) => {
+    await api.delete(`/documents/${documentId}`);
+    if (opportunityDetails.value) {
+      opportunityDetails.value.documents = opportunityDetails.value.documents.filter(
+        document => document.id !== documentId
+      );
+    }
+    if (clientDetail.value) {
+      clientDetail.value.documents = clientDetail.value.documents.filter(
+        document => document.id !== documentId
+      );
+    }
+  };
+
+  const linkOpportunityClient = async (contactId: string | number, clientId: number) => {
+    const res = await api.post<OpportunityDetails>(`/lead-forms/contacts/${contactId}/link-client`, {
+      clientId
+    });
+    opportunityDetails.value = res.data;
+    upsertStatusFromOpportunity(res.data);
+    replaceContactFromOpportunity(res.data);
+    return res.data;
+  };
+
+  const unlinkOpportunityClient = async (contactId: string | number) => {
+    const res = await api.delete<OpportunityDetails>(`/lead-forms/contacts/${contactId}/link-client`);
+    opportunityDetails.value = res.data;
+    upsertStatusFromOpportunity(res.data);
+    replaceContactFromOpportunity(res.data);
+    return res.data;
+  };
+
+  const searchClients = async (query: string) => {
+    const agencyId = await resolveAgencyId();
+    const res = await api.get<ClientSummary[]>("/clients/search", {
+      params: { agencyId, q: query }
+    });
+    return res.data;
+  };
+
+  const createClient = async (payload: Omit<ClientPayload, "agencyId">) => {
+    const agencyId = await resolveAgencyId();
+    const res = await api.post<Client>("/clients", { ...payload, agencyId });
+    clients.value = [res.data, ...clients.value.filter(client => client.id !== res.data.id)];
+    return res.data;
+  };
+
+  const fetchClients = async (filters: ClientFilters = {}) => {
+    clientsLoading.value = true;
+    lastError.value = null;
+    try {
+      const agencyId = await resolveAgencyId();
+      const res = await api.get<Client[]>("/clients", {
+        params: { agencyId, ...filters }
+      });
+      clients.value = res.data;
+      return res.data;
+    } catch (err) {
+      console.error("Erro ao carregar clientes", err);
+      lastError.value = "Não foi possível carregar clientes.";
+      throw err;
+    } finally {
+      clientsLoading.value = false;
+    }
+  };
+
+  const fetchClientDetail = async (clientId: string | number) => {
+    clientDetailLoading.value = true;
+    lastError.value = null;
+    try {
+      const res = await api.get<ClientDetail>(`/clients/${clientId}`);
+      clientDetail.value = res.data;
+      return res.data;
+    } catch (err) {
+      console.error("Erro ao carregar cliente", err);
+      lastError.value = "Não foi possível carregar o cliente.";
+      throw err;
+    } finally {
+      clientDetailLoading.value = false;
+    }
+  };
+
+  const updateClient = async (
+    clientId: string | number,
+    payload: Partial<Omit<ClientPayload, "agencyId">>
+  ) => {
+    const res = await api.patch<Client>(`/clients/${clientId}`, payload);
+    clients.value = clients.value.map(client => (client.id === res.data.id ? res.data : client));
+    if (clientDetail.value?.id === res.data.id) {
+      clientDetail.value = {
+        ...clientDetail.value,
+        ...res.data
+      };
+    }
+    return res.data;
+  };
+
+  const createClientNote = async (clientId: string | number, content: string) => {
+    const res = await api.post(`/clients/${clientId}/notes`, { content });
+    await fetchClientDetail(clientId);
+    return res.data;
+  };
+
+  const finalizeOpportunity = async (
+    contactId: string | number,
+    payload: OpportunityFinalizePayload
+  ) => {
+    const res = await api.post<OpportunityDetails>(`/lead-forms/contacts/${contactId}/finalize`, payload);
+    opportunityDetails.value = res.data;
+    upsertStatusFromOpportunity(res.data);
+    replaceContactFromOpportunity(res.data);
+    return res.data;
+  };
+
+  const createManualOpportunity = async (payload: Omit<ManualOpportunityPayload, "agencyId">) => {
+    const agencyId = await resolveAgencyId();
+    const res = await api.post<OpportunityDetails>("/lead-forms/contacts/manual", {
+      ...payload,
+      agencyId
+    });
+    opportunityDetails.value = res.data;
+    upsertStatusFromOpportunity(res.data);
+    replaceContactFromOpportunity(res.data);
+    return res.data;
+  };
+
+  const uploadClientDocument = async (clientId: string | number, file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await api.post<LeadDocument>(`/clients/${clientId}/documents`, formData, {
+      headers: { "Content-Type": "multipart/form-data" }
+    });
+    await fetchClientDetail(clientId);
+    return res.data;
+  };
+
+  const createOpportunityFromClient = async (
+    clientId: string | number,
+    payload: OpportunityUpdatePayload
+  ) => {
+    const res = await api.post<OpportunityDetails>(`/clients/${clientId}/opportunities`, payload);
+    replaceContactFromOpportunity(res.data);
+    await fetchClientDetail(clientId);
+    return res.data;
+  };
+
   return {
     forms,
     formsLoading,
@@ -252,6 +506,12 @@ export const useLeadCaptureStore = defineStore("leadCapture", () => {
     statuses,
     statusesLoading,
     statusesLoadedAtLeastOnce,
+    clients,
+    clientsLoading,
+    opportunityDetails,
+    opportunityDetailsLoading,
+    clientDetail,
+    clientDetailLoading,
     fetchForms,
     refreshForms,
     createForm,
@@ -264,6 +524,23 @@ export const useLeadCaptureStore = defineStore("leadCapture", () => {
     updateStatus,
     deleteStatus,
     setContactStatus,
-    deleteContact
+    deleteContact,
+    fetchOpportunityDetails,
+    updateOpportunity,
+    finalizeOpportunity,
+    createManualOpportunity,
+    addOpportunityNote,
+    uploadOpportunityDocument,
+    deleteDocument,
+    linkOpportunityClient,
+    unlinkOpportunityClient,
+    searchClients,
+    createClient,
+    fetchClients,
+    fetchClientDetail,
+    updateClient,
+    createClientNote,
+    uploadClientDocument,
+    createOpportunityFromClient
   };
 });

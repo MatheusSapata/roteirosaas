@@ -9,8 +9,8 @@
           <div class="absolute inset-0" :style="mobileGradientStyle"></div>
           <div v-if="embeddedVideoUrl" class="absolute inset-0" :style="mobileVideoOverlayStyle"></div>
 
-          <div class="absolute inset-0 flex flex-col items-center gap-4 px-4 py-6">
-            <div class="flex justify-center w-full mt-auto mb-2" :class="animationClasses(1)">
+          <div class="absolute inset-0 flex flex-col items-center gap-3 px-4 py-6">
+            <div class="flex w-full justify-center mt-auto mb-0" :class="animationClasses(1)">
               <template v-if="logoSrc">
                 <div class="drop-shadow-xl overflow-hidden" :style="logoBoxStyle">
                   <img :src="logoSrc" alt="Logo" class="h-full w-auto object-contain" :style="logoImageStyle" />
@@ -44,7 +44,7 @@
 
         <!-- conteúdo -->
         <div
-          class="relative flex min-h-[34svh] flex-col justify-center -mt-6 overflow-hidden px-5 pb-12 pt-4 text-center text-white md:mt-0 md:pb-8"
+          class="relative flex min-h-[34svh] flex-col justify-center -mt-4 overflow-hidden px-5 pb-12 pt-2 text-center text-white md:mt-0 md:pb-8"
           :style="{ background: mobileContentBg }"
         >
           <div class="space-y-2 md:mt-0">

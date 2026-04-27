@@ -56,11 +56,20 @@ def build_agency_profile(agency: Agency) -> dict[str, object]:
     address_text = build_map_query(address)
     map_embed_url = f"https://www.google.com/maps?q={quote_plus(address_text)}&output=embed" if address_text else None
     cnpj_digits = sanitize_digits(owner.cnpj if owner else None)
+    cpf_digits = sanitize_digits(owner.cpf if owner else None)
     contact_phone = agency.cta_whatsapp or (owner.whatsapp if owner else None)
     contact_email = (agency.contact_email or "").strip() or (owner.email if owner else None)
+    cadastur_cnpj_url = (
+        f"https://cadastur.turismo.gov.br/cadastur/#!/public/qrcode/{cnpj_digits}" if cnpj_digits else None
+    )
+    cadastur_cpf_url = (
+        f"https://cadastur.turismo.gov.br/cadastur/#!/public/qrcode/{cpf_digits}" if cpf_digits else None
+    )
 
     return {
         "name": agency.name,
+        "cpf": owner.cpf if owner else None,
+        "cpf_digits": cpf_digits or None,
         "cnpj": owner.cnpj if owner else None,
         "cnpj_digits": cnpj_digits or None,
         "email": contact_email,
@@ -70,9 +79,11 @@ def build_agency_profile(agency: Agency) -> dict[str, object]:
         "address_text": address_text or None,
         "map_query": address_text or None,
         "map_embed_url": map_embed_url,
-        "cadastur_url": f"https://cadastur.turismo.gov.br/cadastur/#!/public/qrcode/{cnpj_digits}"
-        if cnpj_digits
-        else None,
+        "cadastur_url": cadastur_cnpj_url,
+        "cadastur_urls": {
+            "cnpj": cadastur_cnpj_url,
+            "cpf": cadastur_cpf_url,
+        },
     }
 
 

@@ -89,7 +89,10 @@ const viewCopy = {
   },
   cadastur: {
     label: t({ pt: "Exibir selo Cadastur", es: "Mostrar sello Cadastur" }),
-    helper: t({ pt: "Será mostrado apenas se houver um CNPJ válido. O link usa automaticamente o documento informado.", es: "Se mostrará solo si hay un CNPJ válido. El enlace usa automáticamente el documento informado." })
+    helper: t({
+      pt: "Habilite para mostrar o selo usando automaticamente o CPF/CNPJ salvo em Configurações da Agência.",
+      es: "Activa para mostrar el sello usando automáticamente el CPF/CNPJ guardado en Configuraciones de la Agencia."
+    })
   }
 };
 

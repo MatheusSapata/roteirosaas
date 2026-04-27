@@ -10,6 +10,7 @@ import PagesListView from "../views/admin/PagesListView.vue";
 import PageEditorView from "../views/admin/PageEditorView.vue";
 import AgencySettingsView from "../views/admin/AgencySettingsView.vue";
 import LeadsView from "../views/admin/LeadsView.vue";
+import ClientDetailView from "../views/admin/ClientDetailView.vue";
 import PublicPageView from "../views/public/PublicPageView.vue";
 import PlansView from "../views/public/PlansView.vue";
 import AdminLayout from "../layouts/AdminLayout.vue";
@@ -98,6 +99,54 @@ const redirectRoutes: RouteRecordRaw[] = [
   }
 ];
 
+const resolveLegacyLeadsRedirect = (to: any) => {
+  const nextQuery = { ...(to.query || {}) } as Record<string, unknown>;
+  const rawTab = nextQuery.tab;
+  delete nextQuery.tab;
+  const tab = Array.isArray(rawTab) ? rawTab[0] : rawTab;
+
+  if (tab === "forms") {
+    return { path: "/admin/leads/forms", query: nextQuery };
+  }
+  if (tab === "opportunities" || tab === "contacts") {
+    return { path: "/admin/leads/opportunities", query: nextQuery };
+  }
+  if (tab === "clients") {
+    return { path: "/admin/leads/clients", query: nextQuery };
+  }
+  if (tab === "settings") {
+    return { path: "/admin/leads/settings", query: nextQuery };
+  }
+  if (nextQuery.opportunityId) {
+    return { path: "/admin/leads/opportunities", query: nextQuery };
+  }
+  return { path: "/admin/leads/forms", query: nextQuery };
+};
+
+const resolveLegacyAdminManagementRedirect = (to: any) => {
+  const nextQuery = { ...(to.query || {}) } as Record<string, unknown>;
+  const rawTab = nextQuery.tab;
+  delete nextQuery.tab;
+  const tab = Array.isArray(rawTab) ? rawTab[0] : rawTab;
+
+  if (tab === "monitor") {
+    return { path: "/admin/administracao/monitor", query: nextQuery };
+  }
+  if (tab === "users") {
+    return { path: "/admin/administracao/usuarios", query: nextQuery };
+  }
+  if (tab === "lessons") {
+    return { path: "/admin/administracao/aulas", query: nextQuery };
+  }
+  if (tab === "templates") {
+    return { path: "/admin/administracao/templates", query: nextQuery };
+  }
+  if (tab === "flight_apis" || tab === "flight-apis") {
+    return { path: "/admin/administracao/apis-voo", query: nextQuery };
+  }
+  return { path: "/admin/administracao/dashboard", query: nextQuery };
+};
+
 const platformRoutes: RouteRecordRaw[] = [
   ...redirectRoutes,
   { path: "/", name: "marketing", component: LoginView, meta: { guestOnly: true } },
@@ -117,7 +166,21 @@ const platformRoutes: RouteRecordRaw[] = [
       { path: "pages", name: "pages", component: PagesListView },
       { path: "pages/:id/edit", name: "page-edit", component: PageEditorView, props: true },
       { path: "aulas", name: "lessons", component: () => import("../views/admin/AulasView.vue") },
-      { path: "leads", name: "leads", component: LeadsView },
+      { path: "leads", redirect: to => resolveLegacyLeadsRedirect(to) },
+      { path: "leads/forms", name: "leads-forms", component: LeadsView },
+      { path: "leads/opportunities", name: "leads-opportunities", component: LeadsView },
+      { path: "leads/clients", name: "leads-clients", component: LeadsView },
+      { path: "leads/clients/:id", name: "client-detail", component: ClientDetailView, props: true },
+      { path: "leads/settings", name: "leads-settings", component: LeadsView },
+      {
+        path: "clientes",
+        name: "clients",
+        redirect: to => ({ path: "/admin/leads/clients", query: { ...(to.query || {}) } })
+      },
+      {
+        path: "clientes/:id",
+        redirect: to => ({ path: `/admin/leads/clients/${to.params.id}`, query: { ...(to.query || {}) } })
+      },
       { path: "agency", name: "agency-settings", component: AgencySettingsView },
       {
         path: "domains",
@@ -129,7 +192,42 @@ const platformRoutes: RouteRecordRaw[] = [
       { path: "perfil", name: "profile", component: () => import("../views/admin/ProfileView.vue") },
       {
         path: "administracao",
-        name: "admin-management",
+        redirect: to => resolveLegacyAdminManagementRedirect(to),
+        meta: { requiresSuperuser: true }
+      },
+      {
+        path: "administracao/dashboard",
+        name: "admin-management-dashboard",
+        component: () => import("../views/admin/AdminManagementView.vue"),
+        meta: { requiresSuperuser: true }
+      },
+      {
+        path: "administracao/monitor",
+        name: "admin-management-monitor",
+        component: () => import("../views/admin/AdminManagementView.vue"),
+        meta: { requiresSuperuser: true }
+      },
+      {
+        path: "administracao/usuarios",
+        name: "admin-management-users",
+        component: () => import("../views/admin/AdminManagementView.vue"),
+        meta: { requiresSuperuser: true }
+      },
+      {
+        path: "administracao/aulas",
+        name: "admin-management-lessons",
+        component: () => import("../views/admin/AdminManagementView.vue"),
+        meta: { requiresSuperuser: true }
+      },
+      {
+        path: "administracao/templates",
+        name: "admin-management-templates",
+        component: () => import("../views/admin/AdminManagementView.vue"),
+        meta: { requiresSuperuser: true }
+      },
+      {
+        path: "administracao/apis-voo",
+        name: "admin-management-flight-apis",
         component: () => import("../views/admin/AdminManagementView.vue"),
         meta: { requiresSuperuser: true }
       }

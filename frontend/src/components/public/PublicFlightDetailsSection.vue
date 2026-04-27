@@ -203,7 +203,7 @@
                         ></span>
                       </div>
                       <p class="mt-0.5 mb-1.5 flex items-baseline gap-2">
-                        <span class="text-[34px] font-bold leading-none" :style="accentTextStyle">{{ departureTime(segment) }}</span>
+                        <span class="text-[26px] font-bold leading-none" :style="accentTextStyle">{{ departureTime(segment) }}</span>
                         <span class="text-sm font-semibold uppercase tracking-[0.06em] text-slate-700">{{ segment.departure_airport_iata || "---" }}</span>
                       </p>
 
@@ -214,7 +214,7 @@
                         ></span>
                       </div>
                       <div class="space-y-0.5">
-                        <p class="mt-1 text-[24px] font-semibold leading-none text-slate-900">{{ segment.departure_city || "Cidade não informada" }}</p>
+                        <p class="mt-1 text-[18px] font-semibold leading-none text-slate-900">{{ segment.departure_city || "Cidade não informada" }}</p>
                         <p class="mt-0.5 text-sm text-slate-500">{{ departureAirportLabel(segment) }}</p>
                         <p v-if="departureTerminal(segment)" class="text-sm text-slate-500">{{ departureTerminal(segment) }}</p>
                       </div>
@@ -265,13 +265,13 @@
                         ></span>
                       </div>
                       <p class="mt-0.5 mb-1.5 flex items-baseline gap-2">
-                        <span class="text-[34px] font-bold leading-none" :style="accentTextStyle">{{ arrivalTime(segment) }}</span>
+                        <span class="text-[26px] font-bold leading-none" :style="accentTextStyle">{{ arrivalTime(segment) }}</span>
                         <span class="text-sm font-semibold uppercase tracking-[0.06em] text-slate-700">{{ segment.arrival_airport_iata || "---" }}</span>
                       </p>
 
                       <div></div>
                       <div class="space-y-0.5">
-                        <p class="mt-1 text-[24px] font-semibold leading-none text-slate-900">{{ segment.arrival_city || "Cidade não informada" }}</p>
+                        <p class="mt-1 text-[18px] font-semibold leading-none text-slate-900">{{ segment.arrival_city || "Cidade não informada" }}</p>
                         <p class="mt-0.5 text-sm text-slate-500">{{ arrivalAirportLabel(segment) }}</p>
                         <p v-if="arrivalTerminal(segment)" class="text-sm text-slate-500">{{ arrivalTerminal(segment) }}</p>
                       </div>
@@ -431,6 +431,10 @@
           </transition>
         </article>
 
+        <div v-if="hasSectionGeneralInfo" class="rounded-2xl border border-[#e5e7eb] px-4 py-4 md:px-6" :style="generalInfoCardStyle">
+          <p class="text-xs font-semibold uppercase tracking-[0.08em]" :style="generalInfoTitleStyle">Informações gerais</p>
+          <div class="general-info-html mt-2 text-sm" :style="generalInfoTextStyle" v-html="sectionGeneralInfoHtml"></div>
+        </div>
       </div>
     </div>
   </section>
@@ -445,6 +449,7 @@ import SectionHeadingChip from "./SectionHeadingChip.vue";
 import { getSectionHeadingDefaults, resolveHeadingLabel } from "../../utils/sectionHeadings";
 import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
 import { deriveTextPalette, getRelativeLuminance, normalizeHexColor } from "../../utils/colorContrast";
+import { sanitizeHtml } from "../../utils/sanitizeHtml";
 
 const props = defineProps<{ section: FlightDetailsSection; previewDevice?: "desktop" | "mobile" }>();
 const localize = createLocalizer(getCurrentLanguage());
@@ -485,6 +490,18 @@ const sectionTitle = computed(() => {
   return title || "Informações do voo";
 });
 const sectionSubtitle = computed(() => localize(props.section.subtitle).trim());
+const sectionGeneralInfoHtml = computed(() => sanitizeHtml(localize(props.section.generalInfo)));
+const hasVisibleText = (value: string) => {
+  const plain = value
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/[\u00a0\u200b\u200c\u200d\ufeff]/g, " ")
+    .trim();
+  return plain.length > 0;
+};
+const hasSectionGeneralInfo = computed(() => hasVisibleText(sectionGeneralInfoHtml.value));
 const brandingPrimary = computed(() => {
   if (!branding) return "";
   const data = isRef(branding) ? branding.value : branding;
@@ -590,6 +607,23 @@ const layoverRowStyle = computed(() =>
         borderColor: darkAccentBorderColor.value,
         backgroundColor: "rgba(255,255,255,0.03)"
       }
+);
+const generalInfoCardStyle = computed(() =>
+  sectionBackgroundIsLight.value
+    ? {
+        borderColor: "#e2e8f0",
+        backgroundColor: "#f8fafc"
+      }
+    : {
+        borderColor: darkAccentBorderColor.value,
+        backgroundColor: "rgba(255,255,255,0.08)"
+      }
+);
+const generalInfoTitleStyle = computed(() =>
+  sectionBackgroundIsLight.value ? { color: "#64748b" } : { color: "rgba(248,250,252,0.9)" }
+);
+const generalInfoTextStyle = computed(() =>
+  sectionBackgroundIsLight.value ? { color: "#334155" } : { color: "rgba(248,250,252,0.96)" }
 );
 const longLayoverBadgeClass = computed(() =>
   sectionBackgroundIsLight.value
@@ -922,6 +956,24 @@ const isLongLayover = (segments: FlightSectionSegment[], index: number) => layov
 .flight-card[data-dark="true"] .text-slate-500,
 .flight-card[data-dark="true"] .text-slate-400 {
   color: #f8fafc !important;
+}
+
+.general-info-html :deep(p) {
+  margin: 0;
+}
+
+.general-info-html :deep(p + p) {
+  margin-top: 0.5rem;
+}
+
+.general-info-html :deep(ul),
+.general-info-html :deep(ol) {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.general-info-html :deep(li + li) {
+  margin-top: 0.2rem;
 }
 </style>
 

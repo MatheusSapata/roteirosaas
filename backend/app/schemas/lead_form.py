@@ -6,7 +6,7 @@ from typing import Literal, Optional
 from pydantic import BaseModel, Field, validator
 from pydantic.config import ConfigDict
 
-LeadFieldType = Literal["name", "phone", "email", "city"]
+LeadFieldType = Literal["name", "phone", "email", "city", "cpf", "birthdate"]
 
 
 class LeadFormFieldSchema(BaseModel):
@@ -102,12 +102,17 @@ class LeadContactOut(BaseModel):
     page_slug: Optional[str] = Field(None, alias="page_slug")
     page_url: Optional[str] = Field(None, alias="page_url")
     name: Optional[str] = None
+    cpf: Optional[str] = None
     phone: Optional[str] = None
     email: Optional[str] = None
     city: Optional[str] = None
+    source: Optional[str] = None
+    opportunity_name: Optional[str] = Field(None, alias="opportunity_name")
+    estimated_value_cents: Optional[int] = Field(None, alias="estimated_value_cents")
     status_id: Optional[int] = Field(None, alias="status_id")
     status_name: Optional[str] = Field(None, alias="status_name")
     status_color: Optional[str] = Field(None, alias="status_color")
+    client_id: Optional[int] = Field(None, alias="client_id")
     created_at: Optional[datetime] = Field(None, alias="created_at")
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)

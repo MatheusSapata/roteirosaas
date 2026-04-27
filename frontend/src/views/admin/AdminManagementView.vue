@@ -11,29 +11,10 @@
       {{ error }}
     </div>
 
-    <!-- TABS -->
-    <section class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
-      <div class="flex flex-wrap gap-3">
-        <button
-          v-for="tab in adminTabs"
-          :key="tab.id"
-          type="button"
-          class="flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition"
-          :class="tabButtonClass(tab.id)"
-          @click="activeTab = tab.id"
-        >
-          <span>{{ tab.label }}</span>
-          <span class="text-xs font-normal text-slate-400" v-if="activeTab !== tab.id">
-            {{ tab.description }}
-          </span>
-        </button>
-      </div>
-    </section>
-
     <!-- DASHBOARD -->
     <template v-if="activeTab === 'dashboard'">
       <header class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-      <div>
+      <div v-if="isMobile">
         <p :class="['text-xs uppercase tracking-[0.25em]', premiumMode ? 'text-white/50' : 'text-slate-500']">
           Administracao
         </p>
@@ -1789,7 +1770,7 @@
 
 <script setup lang="ts">
 import { onMounted, onUnmounted, reactive, ref, watch, computed } from "vue";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import api from "../../services/api";
 import { useAuthStore } from "../../store/useAuthStore";
 import { useAgencyStore } from "../../store/useAgencyStore";
@@ -1905,15 +1886,6 @@ interface AdminOnlineSessionsResponse {
 
 type AdminTab = "dashboard" | "monitor" | "users" | "lessons" | "templates" | "flight_apis";
 type TemplateDialogMode = "create" | "edit";
-
-const adminTabs: { id: AdminTab; label: string; description: string }[] = [
-  { id: "dashboard", label: "Dashboard", description: "Resumo e métricas" },
-  { id: "monitor", label: "Monitor", description: "Sessões online" },
-  { id: "users", label: "Usuários", description: "Perfis e status" },
-  { id: "lessons", label: "Gestão de aulas", description: "Treinamentos públicos" },
-  { id: "templates", label: "Templates", description: "Modelos oficiais" },
-  { id: "flight_apis", label: "APIs de voo", description: "Chaves e consumo" }
-];
 
 type AdminPeriodOption = "7" | "30" | "90" | "custom";
 const days = ref<AdminPeriodOption>("30");
@@ -2072,6 +2044,7 @@ const error = ref("");
 const isBootstrappingAdminManagement = ref(true);
 const auth = useAuthStore();
 const agencyStore = useAgencyStore();
+const route = useRoute();
 const router = useRouter();
 const granting = ref<number | null>(null);
 const snackbar = ref<{ open: boolean; text: string } | null>(null);
@@ -2211,10 +2184,30 @@ const selectTemplateAgency = (agency: AdminAgencySummary) => {
 };
 const premiumMode = computed(() => (auth.user?.plan || "").toLowerCase() === "infinity");
 const activeTab = ref<AdminTab>("dashboard");
-const tabButtonClass = (tab: AdminTab) =>
-  activeTab.value === tab
-    ? "bg-slate-900 text-white shadow-lg shadow-slate-900/30 dark:bg-white dark:text-slate-900"
-    : "border border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:text-white/80 dark:hover:bg-white/5";
+const syncActiveTabFromRoute = () => {
+  const routeName = typeof route.name === "string" ? route.name : "";
+  if (routeName === "admin-management-monitor") {
+    activeTab.value = "monitor";
+    return;
+  }
+  if (routeName === "admin-management-users") {
+    activeTab.value = "users";
+    return;
+  }
+  if (routeName === "admin-management-lessons") {
+    activeTab.value = "lessons";
+    return;
+  }
+  if (routeName === "admin-management-templates") {
+    activeTab.value = "templates";
+    return;
+  }
+  if (routeName === "admin-management-flight-apis") {
+    activeTab.value = "flight_apis";
+    return;
+  }
+  activeTab.value = "dashboard";
+};
 const selectedTemplateAgency = computed(() => {
   return templateAgencyOptions.value.find(agency => agency.id === templateAgencyId.value) || null;
 });
@@ -3492,6 +3485,14 @@ watch(
     if (days.value !== "custom" || !adminOrderedRange.value) return;
     await loadMetrics();
   }
+);
+
+watch(
+  () => route.name,
+  () => {
+    syncActiveTabFromRoute();
+  },
+  { immediate: true }
 );
 
 watch(activeTab, (tab) => {
