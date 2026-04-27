@@ -6,9 +6,12 @@ from app.api.v1.endpoints import (
     agency_domains,
     auth,
     billing,
+    clients,
+    documents,
     flight_api_keys,
     flight_sections,
     lead_forms,
+    lead_crm,
     lessons,
     media,
     pages,
@@ -39,4 +42,7 @@ api_router.include_router(flight_api_keys.router, prefix="/admin", tags=["flight
 api_router.include_router(flight_sections.router, tags=["flight-sections"])
 api_router.include_router(lessons.router, prefix="/lessons", tags=["lessons"])
 api_router.include_router(lead_forms.router, prefix="/lead-forms", tags=["lead-forms"])
+api_router.include_router(lead_crm.router, prefix="/lead-forms", tags=["lead-crm"])
 api_router.include_router(public_lead_forms.router, prefix="/public/lead-forms", tags=["public-lead-forms"])
+api_router.include_router(clients.router, prefix="/clients", tags=["clients"])
+api_router.include_router(documents.router, prefix="/documents", tags=["documents"])

@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Column, Date, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import expression, func
@@ -56,14 +56,44 @@ class LeadFormSubmission(Base):
   page_slug = Column(String(255), nullable=True)
   page_url = Column(String(500), nullable=True)
   name = Column(String(255), nullable=True)
+  cpf = Column(String(20), nullable=True)
+  cpf_normalized = Column(String(11), nullable=True, index=True)
   phone = Column(String(50), nullable=True)
+  phone_normalized = Column(String(20), nullable=True, index=True)
   email = Column(String(255), nullable=True)
+  email_normalized = Column(String(255), nullable=True, index=True)
   city = Column(String(255), nullable=True)
+  birthdate = Column(Date, nullable=True)
   payload = Column(JSONB, nullable=False)
   source = Column(String(255), nullable=True)
   status_id = Column(Integer, ForeignKey("lead_statuses.id", ondelete="SET NULL"), nullable=True, index=True)
+  client_id = Column(Integer, ForeignKey("clients.id", ondelete="SET NULL"), nullable=True, index=True)
+  opportunity_name = Column(String(255), nullable=True)
+  estimated_value_cents = Column(Integer, nullable=True)
+  expected_close_date = Column(Date, nullable=True)
+  internal_notes = Column(Text, nullable=True)
+  auto_linked_by = Column(String(20), nullable=True, index=True)
+  auto_linked_at = Column(DateTime(timezone=True), nullable=True, index=True)
+  close_outcome = Column(String(20), nullable=True, index=True)
+  closed_at = Column(DateTime(timezone=True), nullable=True, index=True)
+  responsible_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
   created_at = Column(DateTime(timezone=True), server_default=func.now())
+  updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
   fingerprint_hash = Column(String(128), nullable=True, index=True)
 
   form = relationship("LeadForm", back_populates="submissions")
   status = relationship("LeadStatus", back_populates="submissions")
+  client = relationship("Client", back_populates="opportunities")
+  responsible_user = relationship("User", foreign_keys=[responsible_user_id])
+  notes = relationship(
+    "OpportunityNote",
+    back_populates="opportunity",
+    cascade="all, delete-orphan",
+    passive_deletes=True,
+  )
+  documents = relationship(
+    "Document",
+    back_populates="opportunity",
+    cascade="all, delete-orphan",
+    passive_deletes=True,
+  )

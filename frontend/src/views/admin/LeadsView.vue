@@ -22,7 +22,7 @@
 
 
 
-      <div class="shrink-0">
+      <div class="shrink-0 md:hidden">
 
 
 
@@ -60,115 +60,7 @@
 
 
 
-      <div class="shrink-0 flex w-full flex-wrap items-center justify-between gap-3 text-sm font-semibold">
-
-
-
-        <div class="flex flex-wrap gap-2">
-
-
-
-          <button
-
-
-
-            type="button"
-
-
-
-            class="rounded-full px-4 py-2 transition"
-
-
-
-            :class="activeTab === 'forms' ? activeTabClass : inactiveTabClass"
-
-
-
-            @click="activeTab = 'forms'"
-
-
-
-          >
-
-
-
-            {{ viewCopy.tabs.forms }}
-
-
-
-          </button>
-
-
-
-          <button
-
-
-
-            type="button"
-
-
-
-            class="rounded-full px-4 py-2 transition"
-
-
-
-            :class="activeTab === 'contacts' ? activeTabClass : inactiveTabClass"
-
-
-
-            @click="activeTab = 'contacts'"
-
-
-
-          >
-
-
-
-            {{ viewCopy.tabs.contacts }}
-
-
-
-          </button>
-
-
-
-          <button
-
-
-
-            type="button"
-
-
-
-            class="rounded-full px-4 py-2 transition"
-
-
-
-            :class="activeTab === 'settings' ? activeTabClass : inactiveTabClass"
-
-
-
-            @click="activeTab = 'settings'"
-
-
-
-          >
-
-
-
-            {{ viewCopy.tabs.settings }}
-
-
-
-          </button>
-
-
-
-        </div>
-
-
-
-
+      <div class="shrink-0 flex w-full flex-wrap items-center justify-end gap-3 text-sm font-semibold">
 
 
 
@@ -213,6 +105,16 @@
 
 
           <div v-if="activeTab === 'contacts' && !isMobileViewport" class="flex items-center gap-3">
+
+
+
+            <button
+              type="button"
+              class="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:bg-brand-dark"
+              @click="openManualOpportunityModal"
+            >
+              + {{ viewCopy.actions.newManualOpportunity }}
+            </button>
 
 
 
@@ -423,6 +325,38 @@
 
 
             + {{ viewCopy.actions.newForm }}
+
+
+
+          </button>
+
+
+
+          <button
+
+
+
+            v-else-if="activeTab === 'contacts'"
+
+
+
+            type="button"
+
+
+
+            class="w-full rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:bg-brand-dark"
+
+
+
+            @click="openManualOpportunityModal"
+
+
+
+          >
+
+
+
+            + {{ viewCopy.actions.newManualOpportunity }}
 
 
 
@@ -1140,11 +1074,7 @@
 
                             </th>
 
-
-
-
-
-
+                            <th class="px-2 py-2 text-left">Modo</th>
 
                             <th class="relative px-2 py-2">
 
@@ -1926,167 +1856,7 @@
 
 
 
-                            <th class="relative px-2 py-2">
-
-
-
-                              <div class="flex items-center gap-1">
-
-
-
-                                <span>{{ filterCopy.columns.received }}</span>
-
-
-
-                                <button
-
-
-
-                                  type="button"
-
-
-
-                                  class="filter-button"
-
-
-
-                                  :class="{ 'text-brand': isFilterActive('received') }"
-
-
-
-                                  @click.stop="toggleFilterPopover('received')"
-
-
-
-                                >
-
-
-
-                                  <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="currentColor">
-
-
-
-                                    <path d="M3 4h18l-7 8v6l-4 2v-8Z" />
-
-
-
-                                  </svg>
-
-
-
-                                </button>
-
-
-
-                              </div>
-
-
-
-
-
-
-
-                              <div v-if="openFilterKey === 'received'" class="filter-popover w-60" @click.stop>
-
-
-
-                                <label class="text-[11px] uppercase text-slate-400">{{ filterCopy.from }}</label>
-
-
-
-                                <input
-
-
-
-                                  v-model="listFilters.receivedFrom"
-
-
-
-                                  type="date"
-
-
-
-                                  class="mb-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-white/20 dark:bg-[#0f1524]"
-
-
-
-                                />
-
-
-
-
-
-
-
-                                <label class="text-[11px] uppercase text-slate-400">{{ filterCopy.to }}</label>
-
-
-
-                                <input
-
-
-
-                                  v-model="listFilters.receivedTo"
-
-
-
-                                  type="date"
-
-
-
-                                  class="mb-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-white/20 dark:bg-[#0f1524]"
-
-
-
-                                />
-
-
-
-
-
-
-
-                                <div class="mt-2 flex gap-2 text-xs">
-
-
-
-                                  <button type="button" class="text-slate-500 hover:text-slate-700" @click="clearFilter('received')">
-
-
-
-                                    {{ filterCopy.clear }}
-
-
-
-                                  </button>
-
-
-
-                                  <button type="button" class="text-brand hover:text-brand-dark" @click="closeFilterPopover">
-
-
-
-                                    {{ filterCopy.close }}
-
-
-
-                                  </button>
-
-
-
-                                </div>
-
-
-
-                              </div>
-
-
-
-                            </th>
-
-
-
-
+                            <th class="px-2 py-2 text-left">Valor</th>
 
 
 
@@ -2278,7 +2048,8 @@
 
 
 
-                            class="text-slate-700 transition hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-white/[0.03]"
+                            class="cursor-pointer text-slate-700 transition hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-white/[0.03]"
+                            @click="openOpportunityDrawer(contact)"
 
 
 
@@ -2290,7 +2061,9 @@
 
 
 
-                            <td class="px-2 py-2 font-semibold">{{ getContactFormLabel(contact) }}</td>
+                            <td class="px-2 py-2 font-semibold">{{ getOpportunityFormColumnLabel(contact) }}</td>
+
+                            <td class="px-2 py-2 text-xs font-semibold">{{ getContactModeLabel(contact) }}</td>
 
 
 
@@ -2334,7 +2107,7 @@
 
 
 
-                                  @click="openWhatsapp(contact.phone, getContactFormLabel(contact))"
+                                  @click.stop="openWhatsapp(contact)"
 
 
 
@@ -2431,6 +2204,7 @@
 
 
                                   class="text-brand underline decoration-dotted"
+                                  @click.stop
 
 
 
@@ -2448,8 +2222,6 @@
 
                                 <span v-else>{{ contact.page_title || contact.page_slug }}</span>
 
-
-
                               </template>
 
 
@@ -2466,7 +2238,7 @@
 
 
 
-                            <td class="px-2 py-2 text-xs">{{ formatDate(contact.created_at) }}</td>
+                            <td class="px-2 py-2 text-xs font-semibold">{{ formatOpportunityValue(contact.estimated_value_cents) }}</td>
 
 
 
@@ -2917,7 +2689,7 @@
 
 
 
-            class="rounded-2xl border border-slate-100 bg-white p-3 text-xs shadow-sm transition dark:border-white/10 dark:bg-[#05070F]"
+            class="cursor-pointer rounded-2xl border border-slate-100 bg-white p-3 text-xs shadow-sm transition dark:border-white/10 dark:bg-[#05070F]"
 
 
 
@@ -2926,6 +2698,7 @@
 
 
             draggable="true"
+            @click="openOpportunityDrawer(contact)"
 
 
 
@@ -3065,7 +2838,7 @@
 
 
 
-                  @click="openWhatsapp(contact.phone, getContactFormLabel(contact))"
+                  @click.stop="openWhatsapp(contact)"
 
 
 
@@ -3110,6 +2883,10 @@
 
 
               <p v-if="contact.city" class="text-[11px]">{{ contact.city }}</p>
+
+
+
+              <p class="text-[11px] font-semibold text-slate-700 dark:text-slate-200">{{ formatOpportunityValue(contact.estimated_value_cents) }}</p>
 
 
 
@@ -3199,6 +2976,12 @@
 
 
 
+
+          <section v-else-if="activeTab === 'clients'" class="space-y-6">
+
+            <ClientsView />
+
+          </section>
 
           <section v-else class="space-y-6">
 
@@ -3340,6 +3123,107 @@
 
 
 
+  <Teleport to="body">
+    <div v-if="manualOpportunityModalOpen" class="fixed inset-0 z-[150] flex items-center justify-center bg-slate-900/45 px-4">
+      <div class="w-full max-w-3xl rounded-[28px] bg-white p-6 shadow-2xl">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Oportunidades</p>
+            <h2 class="mt-2 text-2xl font-bold text-slate-900">Nova oportunidade manual</h2>
+            <p class="mt-2 text-sm text-slate-500">Cadastre uma oportunidade sem depender de formul?rio.</p>
+          </div>
+          <button type="button" class="rounded-full border border-slate-200 p-2 text-slate-500" @click="closeManualOpportunityModal">
+            <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M6 6l12 12M6 18 18 6" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </button>
+        </div>
+        <div class="mt-5 space-y-4">
+          <div class="flex flex-wrap items-center gap-2">
+            <button type="button" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50" @click="manualOpportunityClientSearchOpen = !manualOpportunityClientSearchOpen">
+              Buscar cliente
+            </button>
+            <button v-if="selectedManualOpportunityClient" type="button" class="rounded-full border border-rose-200 px-4 py-2 text-sm font-semibold text-rose-600 transition hover:bg-rose-50" @click="clearSelectedManualOpportunityClient">
+              Remover cliente
+            </button>
+          </div>
+
+          <div v-if="manualOpportunityClientSearchOpen" class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div class="flex flex-col gap-3 md:flex-row">
+              <input v-model="manualOpportunityClientSearchQuery" type="text" placeholder="Buscar cliente por nome, CPF, telefone ou e-mail" class="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20" />
+              <button type="button" class="rounded-full bg-brand px-5 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark disabled:opacity-60" :disabled="manualOpportunityClientSearchLoading || manualOpportunityClientSearchQuery.trim().length < 2" @click="handleSearchManualOpportunityClients">
+                {{ manualOpportunityClientSearchLoading ? "Buscando..." : "Buscar" }}
+              </button>
+            </div>
+            <div v-if="manualOpportunityClientResults.length" class="mt-3 space-y-2">
+              <button v-for="client in manualOpportunityClientResults" :key="client.id" type="button" class="flex w-full items-start justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left transition hover:border-brand/40 hover:bg-brand/5" @click="selectManualOpportunityClient(client)">
+                <div>
+                  <p class="text-sm font-semibold text-slate-900">{{ client.name }}</p>
+                  <p class="mt-1 text-xs text-slate-500">{{ client.cpf || "Sem CPF" }} | {{ client.phone || "Sem telefone" }}</p>
+                  <p class="mt-1 text-xs text-slate-400">{{ client.email || "Sem e-mail" }}</p>
+                </div>
+                <span class="text-xs font-semibold text-brand">Usar cliente</span>
+              </button>
+            </div>
+          </div>
+
+          <div v-if="selectedManualOpportunityClient" class="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4">
+            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">Cliente selecionado</p>
+            <p class="mt-2 text-base font-semibold text-slate-900">{{ selectedManualOpportunityClient.name }}</p>
+            <p class="mt-1 text-sm text-slate-600">{{ selectedManualOpportunityClient.cpf || "Sem CPF" }} | {{ selectedManualOpportunityClient.phone || "Sem telefone" }}</p>
+            <p class="mt-1 text-sm text-slate-500">{{ selectedManualOpportunityClient.email || "Sem e-mail" }}</p>
+          </div>
+
+          <div class="grid gap-3 md:grid-cols-2">
+            <template v-if="!selectedManualOpportunityClient">
+              <input v-model="manualOpportunityForm.name" type="text" placeholder="Nome" class="w-full rounded-2xl border border-slate-200 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20" />
+              <input v-model="manualOpportunityForm.cpf" type="text" placeholder="CPF" class="w-full rounded-2xl border border-slate-200 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20" />
+              <input v-model="manualOpportunityForm.phone" type="text" placeholder="Telefone" class="w-full rounded-2xl border border-slate-200 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20" />
+              <input v-model="manualOpportunityForm.email" type="email" placeholder="E-mail" class="w-full rounded-2xl border border-slate-200 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20" />
+              <input v-model="manualOpportunityForm.city" type="text" placeholder="Cidade" class="w-full rounded-2xl border border-slate-200 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20" />
+              <input v-model="manualOpportunityForm.birthdate" type="date" class="w-full rounded-2xl border border-slate-200 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20" />
+            </template>
+            <input v-model="manualOpportunityForm.opportunityName" type="text" placeholder="Nome da oportunidade" class="w-full rounded-2xl border border-slate-200 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 md:col-span-2" />
+            <input v-model="manualOpportunityForm.estimatedValue" type="text" placeholder="R$ 0,00" class="w-full rounded-2xl border border-slate-200 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20" />
+            <select v-model="manualOpportunityForm.statusId" class="w-full rounded-2xl border border-slate-200 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20">
+              <option value="">Sem status</option>
+              <option v-for="status in leadStatuses" :key="status.id" :value="String(status.id)">{{ status.name }}</option>
+            </select>
+            <input v-model="manualOpportunityForm.expectedCloseDate" type="date" class="w-full rounded-2xl border border-slate-200 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 md:col-span-2" />
+          </div>
+        </div>
+        <textarea
+          v-model="manualOpportunityForm.internalNotes"
+          rows="4"
+          placeholder="Observação inicial"
+          class="mt-3 w-full rounded-2xl border border-slate-200 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
+        ></textarea>
+        <div class="mt-5 flex justify-end gap-2">
+          <button type="button" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700" @click="closeManualOpportunityModal">
+            Cancelar
+          </button>
+          <button
+            type="button"
+            class="rounded-full bg-brand px-5 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark disabled:opacity-60"
+            :disabled="manualOpportunitySaving || (!selectedManualOpportunityClient && !manualOpportunityForm.name.trim())"
+            @click="handleCreateManualOpportunity"
+          >
+            {{ manualOpportunitySaving ? "Salvando..." : "Criar oportunidade" }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
+
+
+
+  <OpportunityDrawer
+    v-model="isOpportunityDrawerOpen"
+    :contact-id="selectedOpportunityId"
+    :statuses="leadStatuses"
+    mode="modal"
+  />
+
 </template>
 
 
@@ -3360,11 +3244,13 @@ import type { CSSProperties } from "vue";
 
 
 
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 
 
 
 import LeadFormBuilderModal from "../../components/admin/leads/LeadFormBuilderModal.vue";
+import OpportunityDrawer from "../../components/admin/leads/OpportunityDrawer.vue";
+import ClientsView from "./ClientsView.vue";
 
 
 
@@ -3372,7 +3258,7 @@ import LeadStatusManagerPanel from "../../components/admin/leads/LeadStatusManag
 
 
 
-import type { LeadContact, LeadForm, LeadFormPayload, LeadStatus } from "../../types/leads";
+import type { ClientSummary, LeadContact, LeadForm, LeadFormPayload, LeadStatus } from "../../types/leads";
 
 
 
@@ -3398,7 +3284,7 @@ import { normalizeWhatsappDigits } from "../../utils/whatsapp";
 
 
 
-type TabKey = "forms" | "contacts" | "settings";
+type TabKey = "forms" | "contacts" | "clients" | "settings";
 
 
 
@@ -3419,6 +3305,7 @@ type ContactViewMode = "list" | "kanban";
 
 
 const router = useRouter();
+const route = useRoute();
 
 
 
@@ -3489,11 +3376,12 @@ const viewCopySource = {
     description: {
       pt: "Crie formulários e acompanhe contatos gerados pelas páginas.",
       es: "Crea formularios y acompaña los contactos generados por tus páginas."
-    }
+    },
   },
   tabs: {
     forms: { pt: "Formulários", es: "Formularios" },
     contacts: { pt: "Oportunidades", es: "Oportunidades" },
+    clients: { pt: "Clientes", es: "Clientes" },
     settings: { pt: "Configurações", es: "Configuraciones" }
   },
   actions: {
@@ -3507,9 +3395,9 @@ const viewCopySource = {
     whatsapp: {
       call: { pt: "Chamar", es: "Contactar" },
       suffix: { pt: "no WhatsApp", es: "por WhatsApp" },
-      message: {
-        pt: 'Olá! Recebi o formulário "{form}" e gostaria de falar com você.',
-        es: '¡Hola! Recibí el formulario "{form}" y me gustaría hablar contigo.'
+      formMessage: {
+        pt: "Olá! Recebi o seu interesse no roteiro: {page} e gostaria de falar com você.",
+        es: "¡Hola! Recibí tu interés en el itinerario: {page} y me gustaría hablar contigo."
       }
     }
   },
@@ -3541,7 +3429,7 @@ const viewCopySource = {
       email: { pt: "E-mail", es: "E-mail" },
       city: { pt: "Cidade", es: "Ciudad" },
       page: { pt: "Página", es: "Página" },
-      received: { pt: "Recebido", es: "Recibido" },
+      received: { pt: "Valor", es: "Valor" },
       status: { pt: "Status", es: "Estado" },
       actions: { pt: "Ações", es: "Acciones" }
     },
@@ -3683,6 +3571,8 @@ const activeTab = ref<TabKey>("forms");
 
 
 const contactViewMode = ref<ContactViewMode>("list");
+const isOpportunityDrawerOpen = ref(false);
+const selectedOpportunityId = ref<string | number | null>(null);
 
 
 
@@ -3695,6 +3585,26 @@ const builderOpen = ref(false);
 
 
 const builderSaving = ref(false);
+const manualOpportunityModalOpen = ref(false);
+const manualOpportunitySaving = ref(false);
+const manualOpportunityClientSearchOpen = ref(false);
+const manualOpportunityClientSearchLoading = ref(false);
+const manualOpportunityClientSearchQuery = ref("");
+const manualOpportunityClientResults = ref<ClientSummary[]>([]);
+const selectedManualOpportunityClient = ref<ClientSummary | null>(null);
+const manualOpportunityForm = reactive({
+  name: "",
+  opportunityName: "",
+  cpf: "",
+  phone: "",
+  email: "",
+  city: "",
+  birthdate: "",
+  estimatedValue: "",
+  statusId: "",
+  internalNotes: "",
+  expectedCloseDate: ""
+});
 
 
 
@@ -3955,6 +3865,17 @@ const getContactFormLabel = (contact: LeadContact | null | undefined) => {
 
 
 };
+
+const isManualOpportunity = (contact: LeadContact | null | undefined) => {
+  const source = String(contact?.source || "").trim().toLowerCase();
+  return source.includes("manual");
+};
+
+const getContactModeLabel = (contact: LeadContact | null | undefined) =>
+  isManualOpportunity(contact) ? "Manual" : "Formulário";
+
+const getOpportunityFormColumnLabel = (contact: LeadContact | null | undefined) =>
+  isManualOpportunity(contact) ? "-" : getContactFormLabel(contact);
 
 
 
@@ -4322,7 +4243,7 @@ const buildOptions = (values: (string | null | undefined)[], emptyLabel = fallba
 
 
 
-    form: buildOptions(allContacts.value.map(contact => getContactFormLabel(contact)), DEFAULT_FORM_LABEL),
+    form: buildOptions(allContacts.value.map(contact => getOpportunityFormColumnLabel(contact)), DEFAULT_FORM_LABEL),
 
 
 
@@ -4458,7 +4379,7 @@ const matchesFilter = (contact: LeadContact) => {
 
 
 
-  if (!matchArray(listFilters.form, getContactFormLabel(contact), DEFAULT_FORM_LABEL)) return false;
+  if (!matchArray(listFilters.form, getOpportunityFormColumnLabel(contact), DEFAULT_FORM_LABEL)) return false;
 
 
 
@@ -4788,6 +4709,26 @@ const formatDate = (value?: string) => {
 
 
 
+const formatOpportunityValue = (value?: number | null) => {
+
+
+
+  if (typeof value !== "number" || Number.isNaN(value) || value <= 0) return fallbackLabels.noValue;
+
+
+
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value / 100);
+
+
+
+};
+
+
+
+
+
+
+
 const showFeedback = (message: string, isError = false) => {
 
 
@@ -4828,6 +4769,97 @@ const openCreateModal = () => {
 
 
 
+};
+
+const openManualOpportunityModal = () => {
+  manualOpportunityModalOpen.value = true;
+};
+
+const selectManualOpportunityClient = (client: ClientSummary) => {
+  selectedManualOpportunityClient.value = client;
+  manualOpportunityForm.name = client.name || "";
+  manualOpportunityForm.cpf = client.cpf || "";
+  manualOpportunityForm.phone = client.phone || "";
+  manualOpportunityForm.email = client.email || "";
+  manualOpportunityForm.city = client.city || "";
+  manualOpportunityClientSearchOpen.value = false;
+};
+
+const clearSelectedManualOpportunityClient = () => {
+  selectedManualOpportunityClient.value = null;
+};
+
+const handleSearchManualOpportunityClients = async () => {
+  const query = manualOpportunityClientSearchQuery.value.trim();
+  if (query.length < 2) {
+    manualOpportunityClientResults.value = [];
+    return;
+  }
+  manualOpportunityClientSearchLoading.value = true;
+  try {
+    manualOpportunityClientResults.value = await leadStore.searchClients(query);
+  } catch (err) {
+    console.error(err);
+    manualOpportunityClientResults.value = [];
+  } finally {
+    manualOpportunityClientSearchLoading.value = false;
+  }
+};
+
+const closeManualOpportunityModal = () => {
+  manualOpportunityModalOpen.value = false;
+  manualOpportunityClientSearchOpen.value = false;
+  manualOpportunityClientSearchLoading.value = false;
+  manualOpportunityClientSearchQuery.value = "";
+  manualOpportunityClientResults.value = [];
+  selectedManualOpportunityClient.value = null;
+  manualOpportunityForm.name = "";
+  manualOpportunityForm.opportunityName = "";
+  manualOpportunityForm.cpf = "";
+  manualOpportunityForm.phone = "";
+  manualOpportunityForm.email = "";
+  manualOpportunityForm.city = "";
+  manualOpportunityForm.birthdate = "";
+  manualOpportunityForm.estimatedValue = "";
+  manualOpportunityForm.statusId = "";
+  manualOpportunityForm.internalNotes = "";
+  manualOpportunityForm.expectedCloseDate = "";
+};
+
+const currencyInputToCents = (value: string) => {
+  const digits = value.replace(/\D/g, "");
+  if (!digits) return null;
+  return Number(digits);
+};
+
+const handleCreateManualOpportunity = async () => {
+  if (!selectedManualOpportunityClient.value && !manualOpportunityForm.name?.trim()) return;
+  manualOpportunitySaving.value = true;
+  try {
+    const opportunity = await leadStore.createManualOpportunity({
+      clientId: selectedManualOpportunityClient.value?.id || null,
+      name: selectedManualOpportunityClient.value?.name || manualOpportunityForm.name.trim(),
+      opportunityName: manualOpportunityForm.opportunityName?.trim() || null,
+      cpf: selectedManualOpportunityClient.value ? null : manualOpportunityForm.cpf?.trim() || null,
+      phone: selectedManualOpportunityClient.value ? null : manualOpportunityForm.phone?.trim() || null,
+      email: selectedManualOpportunityClient.value ? null : manualOpportunityForm.email?.trim() || null,
+      city: selectedManualOpportunityClient.value ? null : manualOpportunityForm.city?.trim() || null,
+      birthdate: selectedManualOpportunityClient.value ? null : manualOpportunityForm.birthdate || null,
+      estimatedValueCents: currencyInputToCents(manualOpportunityForm.estimatedValue),
+      statusId: manualOpportunityForm.statusId ? Number(manualOpportunityForm.statusId) : null,
+      internalNotes: manualOpportunityForm.internalNotes?.trim() || null,
+      expectedCloseDate: manualOpportunityForm.expectedCloseDate || null
+    });
+    closeManualOpportunityModal();
+    selectedOpportunityId.value = opportunity.id;
+    isOpportunityDrawerOpen.value = true;
+    showFeedback("Oportunidade criada com sucesso.");
+  } catch (err) {
+    console.error(err);
+    showFeedback("Nao foi possivel criar a oportunidade.", true);
+  } finally {
+    manualOpportunitySaving.value = false;
+  }
 };
 
 
@@ -4990,11 +5022,11 @@ const handleBuilderSave = async (payload: { id: string | null; form: LeadFormPay
 
 
 
-const openWhatsapp = (phone: string | undefined, formName: string) => {
+const openWhatsapp = (contact: LeadContact | null | undefined) => {
 
 
 
-  const digits = normalizeWhatsappDigits(phone);
+  const digits = normalizeWhatsappDigits(contact?.phone);
 
 
 
@@ -5002,7 +5034,14 @@ const openWhatsapp = (phone: string | undefined, formName: string) => {
 
 
 
-  const message = whatsappCopy.message.replace("{form}", formName);
+  if (isManualOpportunity(contact)) {
+    window.open(`https://wa.me/${digits}`, "_blank", "noopener");
+    return;
+  }
+
+  const pageLabel = contact?.page_title || contact?.page_slug || fallbackLabels.noPage;
+
+  const message = whatsappCopy.formMessage.replace("{page}", pageLabel);
 
 
 
@@ -5916,6 +5955,38 @@ const handleDeleteContact = async (contact: LeadContact) => {
 
 };
 
+const openOpportunityDrawer = (contact: LeadContact) => {
+  selectedOpportunityId.value = contact.id;
+  isOpportunityDrawerOpen.value = true;
+};
+
+const syncOpportunityQuery = () => {
+  const rawOpportunityId = route.query.opportunityId;
+  if (!rawOpportunityId) return;
+  selectedOpportunityId.value = Array.isArray(rawOpportunityId) ? rawOpportunityId[0] : rawOpportunityId;
+  isOpportunityDrawerOpen.value = true;
+  const nextQuery = { ...route.query };
+  delete nextQuery.opportunityId;
+  router.replace({ query: nextQuery });
+};
+
+const syncActiveTabFromRoute = () => {
+  const routeName = typeof route.name === "string" ? route.name : "";
+  if (routeName === "leads-forms") {
+    activeTab.value = "forms";
+    return;
+  }
+  if (routeName === "leads-clients" || routeName === "client-detail") {
+    activeTab.value = "clients";
+    return;
+  }
+  if (routeName === "leads-settings") {
+    activeTab.value = "settings";
+    return;
+  }
+  activeTab.value = "contacts";
+};
+
 
 
 
@@ -6367,6 +6438,8 @@ onMounted(async () => {
 
 
   await bootstrapLeads();
+  syncActiveTabFromRoute();
+  syncOpportunityQuery();
 
 
 
@@ -6434,6 +6507,21 @@ watch(activeTab, value => {
 
 
 
+watch(
+  () => route.query.opportunityId,
+  value => {
+    if (!value) return;
+    syncOpportunityQuery();
+  }
+);
+
+watch(
+  () => route.name,
+  () => {
+    syncActiveTabFromRoute();
+  },
+  { immediate: true }
+);
 </script>
 
 
@@ -7354,6 +7442,8 @@ watch(activeTab, value => {
 
 
 </style>
+
+
 
 
 

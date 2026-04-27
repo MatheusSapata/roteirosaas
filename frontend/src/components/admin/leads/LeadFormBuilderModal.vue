@@ -266,6 +266,18 @@ const fieldPresets: FieldPreset[] = [
     label: "Cidade",
     description: "Entenda a origem do lead para ofertas.",
     placeholder: "São Paulo - SP"
+  },
+  {
+    type: "cpf",
+    label: "CPF",
+    description: "Permite sugerir ou vincular cliente automaticamente.",
+    placeholder: "000.000.000-00"
+  },
+  {
+    type: "birthdate",
+    label: "Data de nascimento",
+    description: "Ajuda a completar o cadastro do cliente.",
+    placeholder: "1990-01-31"
   }
 ];
 

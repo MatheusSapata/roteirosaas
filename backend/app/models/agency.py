@@ -37,3 +37,8 @@ class Agency(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+    clients = relationship(
+        "Client",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )

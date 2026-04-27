@@ -1,10 +1,13 @@
 import hashlib
+from datetime import date, datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import get_db
 from app.models.lead_form import LeadForm, LeadFormSubmission
 from app.schemas.lead_form import LeadFormPublicOut, LeadFormSubmissionPayload
+from app.services.client_matching import find_auto_match_client
+from app.services.contact_normalization import normalize_cpf, normalize_email, normalize_phone
 
 router = APIRouter()
 
@@ -36,6 +39,22 @@ def _build_submission_fingerprint(form_id: int, request: Request, page_identifie
     if not raw:
         return None
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def _parse_birthdate(value: str | None) -> date | None:
+    raw = (value or "").strip()
+    if not raw:
+        return None
+    for pattern in ("%Y-%m-%d", "%d/%m/%Y"):
+        try:
+            if pattern == "%Y-%m-%d":
+                return date.fromisoformat(raw)
+            from datetime import datetime
+
+            return datetime.strptime(raw, pattern).date()
+        except ValueError:
+            continue
+    return None
 
 
 @router.get("/{form_id}", response_model=LeadFormPublicOut)
@@ -78,7 +97,8 @@ def submit_public_form(
     values_map = {value.fieldId: value for value in payload.values}
 
     normalized_fields: list[dict[str, str | bool]] = []
-    name = phone = email = city = None
+    name = cpf = phone = email = city = None
+    birthdate = None
 
     for field in form.fields or []:
         field_id = field.get("id")
@@ -95,15 +115,30 @@ def submit_public_form(
         field_type = (field.get("type") or "").lower()
         if field_type == "name":
             name = value
+        elif field_type == "cpf":
+            cpf = value
         elif field_type == "phone":
             phone = value
         elif field_type == "email":
             email = value
         elif field_type == "city":
             city = value
+        elif field_type == "birthdate":
+            birthdate = _parse_birthdate(value)
 
     page_identifier = str(payload.pageId or payload.pageSlug or "").strip()
     fingerprint = _build_submission_fingerprint(form.id, request, page_identifier)
+    cpf_normalized = normalize_cpf(cpf)
+    phone_normalized = normalize_phone(phone)
+    email_normalized = normalize_email(email)
+
+    linked_client_id, auto_linked_by = find_auto_match_client(
+        db=db,
+        agency_id=form.agency_id,
+        cpf_normalized=cpf_normalized,
+        email_normalized=email_normalized,
+        phone_normalized=phone_normalized,
+    )
 
     submission = LeadFormSubmission(
         agency_id=form.agency_id,
@@ -113,12 +148,20 @@ def submit_public_form(
         page_slug=payload.pageSlug,
         page_url=payload.pageUrl,
         name=name,
+        cpf=cpf,
+        cpf_normalized=cpf_normalized,
         phone=phone,
+        phone_normalized=phone_normalized,
         email=email,
+        email_normalized=email_normalized,
         city=city,
+        birthdate=birthdate,
         payload={"values": normalized_fields, "source": payload.source},
         source=payload.source,
         status_id=form.default_status_id,
+        client_id=linked_client_id,
+        auto_linked_by=auto_linked_by,
+        auto_linked_at=datetime.utcnow() if auto_linked_by else None,
         fingerprint_hash=fingerprint,
     )
     db.add(submission)

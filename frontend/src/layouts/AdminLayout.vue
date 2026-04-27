@@ -29,28 +29,75 @@
             <img :src="sidebarLogoSrc" alt="Roteiro Online" class="max-h-[4.4rem] object-contain md:max-h-16" />
           </div>
           <nav class="flex-1 space-y-1">
-            <RouterLink
-              v-for="item in navItems"
-              :key="item.to"
-              :to="item.to"
-              class="flex items-center gap-2 rounded-lg pr-3 pl-0 py-1.5 text-sm font-semibold transition"
-              :class="isActive(item.to) ? activeClass : inactiveClass"
-            >
-              <span
-                :class="[
-                  'flex h-6 w-6 items-center justify-center rounded-full',
-                  isDarkTheme ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600 md:bg-white/15 md:text-white'
-                ]"
+            <template v-for="item in adminNavigation" :key="item.id">
+              <RouterLink
+                v-if="item.type === 'link'"
+                :to="item.to"
+                class="flex items-center gap-2 rounded-lg pr-3 pl-0 py-1.5 text-sm font-semibold transition"
+                :class="isTopLevelActive(item) ? activeClass : inactiveClass"
               >
-                <svg
-                  :viewBox="navIconViewBoxes[item.to] || navIconViewBoxes.default"
-                  :class="['h-4 w-4', navIconSizes[item.to]]"
-                  :stroke-width="navIconStrokeWidths[item.to] || null"
-                  v-html="navIcons[item.to] || navIcons.default"
-                ></svg>
-              </span>
-              <span>{{ item.label }}</span>
-            </RouterLink>
+                <span
+                  :class="[
+                    'flex h-6 w-6 items-center justify-center rounded-full',
+                    isDarkTheme ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600 md:bg-white/15 md:text-white'
+                  ]"
+                >
+                  <svg
+                    :viewBox="navIconViewBoxes[item.iconPath] || navIconViewBoxes.default"
+                    :class="['h-4 w-4', navIconSizes[item.iconPath]]"
+                    :stroke-width="navIconStrokeWidths[item.iconPath] || null"
+                    v-html="navIcons[item.iconPath] || navIcons.default"
+                  ></svg>
+                </span>
+                <span>{{ item.label }}</span>
+              </RouterLink>
+              <div v-else class="space-y-1">
+                <button
+                  type="button"
+                  class="flex w-full items-center gap-2 rounded-lg pr-3 pl-0 py-1.5 text-sm font-semibold transition"
+                  :class="isParentActive(item) ? activeClass : inactiveClass"
+                  @click="toggleNavGroup(item.id)"
+                >
+                  <span
+                    :class="[
+                      'flex h-6 w-6 items-center justify-center rounded-full',
+                      isDarkTheme ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600 md:bg-white/15 md:text-white'
+                    ]"
+                  >
+                    <svg
+                      :viewBox="navIconViewBoxes[item.iconPath] || navIconViewBoxes.default"
+                      :class="['h-4 w-4', navIconSizes[item.iconPath]]"
+                      :stroke-width="navIconStrokeWidths[item.iconPath] || null"
+                      v-html="navIcons[item.iconPath] || navIcons.default"
+                    ></svg>
+                  </span>
+                  <span class="flex-1 text-left">{{ item.label }}</span>
+                  <svg
+                    viewBox="0 0 24 24"
+                    class="h-4 w-4 transition-transform"
+                    :class="isGroupExpanded(item) ? 'rotate-180' : ''"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </button>
+                <div v-if="isGroupExpanded(item)" class="ml-8 space-y-1">
+                  <RouterLink
+                    v-for="child in item.children"
+                    :key="`${item.id}-${child.path}`"
+                    :to="child.path"
+                    class="flex items-center rounded-lg px-3 py-1.5 text-sm font-semibold transition"
+                    :class="isChildActive(child.path) ? childActiveClass : childInactiveClass"
+                  >
+                    <span>{{ child.label }}</span>
+                  </RouterLink>
+                </div>
+              </div>
+            </template>
           </nav>
         </div>
 
@@ -105,26 +152,17 @@
         </div>
       </aside>
       <main :class="['admin-main flex min-h-0 flex-1 flex-col overflow-x-hidden md:ml-64',isDarkTheme ? 'bg-[#05070f] text-slate-100' : 'bg-slate-50 text-slate-900']">
-        <header
+        <div
           :class="[
-            'admin-header sticky top-0 z-30 px-4 py-3 shadow-sm transition-colors md:static',
-            isDarkTheme ? 'bg-[#202020] text-white' : 'bg-brand text-white md:bg-white md:text-slate-900',
-            { 'md:hidden': shouldHideDesktopHeader }
+            'admin-content flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3 pt-1 pb-4 md:px-6 md:pt-2 md:pb-6',
+            isDarkTheme ? 'text-slate-100' : 'text-slate-900'
           ]"
         >
-          <div class="flex items-center justify-between md:hidden">
-            <img
-              v-if="sidebarLogoSrc"
-              :src="sidebarLogoSrc"
-              alt="Roteiro Online"
-              class="h-12 w-auto"
-            />
-          <div class="flex items-center gap-2">
-            <h1 class="text-lg font-bold">{{ currentPageTitle }}</h1>
+          <div v-if="isMobileViewport" :class="['mb-2 flex items-center justify-end gap-3', pageTitleRowPaddingClass]">
             <button
               type="button"
               class="inline-flex items-center justify-center rounded-full p-2 transition"
-              :class="isDarkTheme ? 'text-white hover:bg-white/5' : 'text-white'"
+              :class="isDarkTheme ? 'text-white hover:bg-white/5' : 'text-slate-700 hover:bg-slate-100'"
               @click="mobileMenuOpen = true"
             >
               <span class="sr-only">{{ viewCopy.sidebar.openMenu }}</span>
@@ -133,19 +171,6 @@
               </svg>
             </button>
           </div>
-        </div>
-          <div class="hidden items-center justify-between md:flex">
-            <div class="flex items-center gap-3">
-              <h1 class="text-lg font-bold">{{ currentPageTitle }}</h1>
-            </div>
-          </div>
-        </header>
-        <div
-          :class="[
-            'admin-content flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3 py-4 md:px-6 md:py-6',
-            isDarkTheme ? 'text-slate-100' : 'text-slate-900'
-          ]"
-        >
           <RouterView />
         </div>
       </main>
@@ -186,38 +211,84 @@
             </button>
           </div>
           <nav class="space-y-1">
-            <RouterLink
-              v-for="item in navItems"
-              :key="'mobile-' + item.to"
-              :to="item.to"
-              class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition"
-              :class="[
-                'text-white',
-                isActive(item.to)
-                  ? isDarkTheme
-                    ? 'bg-white/15 text-white'
-                    : 'bg-white/20'
-                  : isDarkTheme
-                    ? 'hover:bg-white/10'
+            <template v-for="item in adminNavigation" :key="'mobile-' + item.id">
+              <RouterLink
+                v-if="item.type === 'link'"
+                :to="item.to"
+                class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition"
+                :class="[
+                  'text-white',
+                  isTopLevelActive(item)
+                    ? isDarkTheme
+                      ? 'bg-white/15 text-white'
+                      : 'bg-white/20'
                     : 'hover:bg-white/10'
-              ]"
-              @click="mobileMenuOpen = false"
-            >
-              <span
-              :class="[
-                  'flex h-7 w-7 items-center justify-center rounded-full',
-                  isDarkTheme ? 'bg-white/10 text-white' : 'bg-white/20 text-white'
                 ]"
+                @click="mobileMenuOpen = false"
               >
-                <svg
-                  :viewBox="navIconViewBoxes[item.to] || navIconViewBoxes.default"
-                  :class="['h-4 w-4', navIconSizes[item.to]]"
-                  :stroke-width="navIconStrokeWidths[item.to] || null"
-                  v-html="navIcons[item.to] || navIcons.default"
-                ></svg>
-              </span>
-              <span>{{ item.label }}</span>
-            </RouterLink>
+                <span
+                  :class="[
+                    'flex h-7 w-7 items-center justify-center rounded-full',
+                    isDarkTheme ? 'bg-white/10 text-white' : 'bg-white/20 text-white'
+                  ]"
+                >
+                  <svg
+                    :viewBox="navIconViewBoxes[item.iconPath] || navIconViewBoxes.default"
+                    :class="['h-4 w-4', navIconSizes[item.iconPath]]"
+                    :stroke-width="navIconStrokeWidths[item.iconPath] || null"
+                    v-html="navIcons[item.iconPath] || navIcons.default"
+                  ></svg>
+                </span>
+                <span>{{ item.label }}</span>
+              </RouterLink>
+              <div v-else class="space-y-1">
+                <button
+                  type="button"
+                  class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition text-white"
+                  :class="isParentActive(item) ? 'bg-white/15 text-white' : 'hover:bg-white/10'"
+                  @click="toggleNavGroup(item.id)"
+                >
+                  <span
+                    :class="[
+                      'flex h-7 w-7 items-center justify-center rounded-full',
+                      isDarkTheme ? 'bg-white/10 text-white' : 'bg-white/20 text-white'
+                    ]"
+                  >
+                    <svg
+                      :viewBox="navIconViewBoxes[item.iconPath] || navIconViewBoxes.default"
+                      :class="['h-4 w-4', navIconSizes[item.iconPath]]"
+                      :stroke-width="navIconStrokeWidths[item.iconPath] || null"
+                      v-html="navIcons[item.iconPath] || navIcons.default"
+                    ></svg>
+                  </span>
+                  <span class="flex-1 text-left">{{ item.label }}</span>
+                  <svg
+                    viewBox="0 0 24 24"
+                    class="h-4 w-4 transition-transform"
+                    :class="isGroupExpanded(item) ? 'rotate-180' : ''"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </button>
+                <div v-if="isGroupExpanded(item)" class="ml-9 space-y-1">
+                  <RouterLink
+                    v-for="child in item.children"
+                    :key="'mobile-' + item.id + '-' + child.path"
+                    :to="child.path"
+                    class="flex items-center rounded-lg px-3 py-2 text-sm font-semibold transition text-white"
+                    :class="isChildActive(child.path) ? 'bg-white/20' : 'hover:bg-white/10'"
+                    @click="mobileMenuOpen = false"
+                  >
+                    <span>{{ child.label }}</span>
+                  </RouterLink>
+                </div>
+              </div>
+            </template>
           </nav>
           <div
             :class="[
@@ -626,6 +697,7 @@ const navCopy = {
   adminMaster: { pt: "Admin Master", es: "Admin Master" },
   pages: { pt: "Páginas", es: "Páginas" },
   leads: { pt: "Leads", es: "Leads" },
+  clients: { pt: "Clientes", es: "Clientes" },
   integrations: { pt: "Integrações", es: "Integraciones" },
   domains: { pt: "Domínios", es: "Dominios" },
   agency: { pt: "Minha Agência", es: "Mi Agencia" },
@@ -823,6 +895,7 @@ const navIcons: Record<string, string> = {
   "/admin/dashboard": '<path fill="none" stroke="currentColor" stroke-width="1.8" d="M4 5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1zm10 0a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1zM4 16a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1zm10-3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1z"/>' ,
   "/admin/pages": '<g fill="none" stroke="currentColor" stroke-width="2"><path d="M6.142 6.142C8.904 3.381 10.284 2 12 2s3.096 1.38 5.858 4.142S22 10.284 22 12s-1.38 3.096-4.142 5.858S13.716 22 12 22s-3.096-1.38-5.858-4.142S2 13.716 2 12s1.38-3.096 4.142-5.858Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M16 11.5L13.333 9M16 11.5L13.333 14M16 11.5h-5.333C9.777 11.5 8 12 8 14"/></g>',
   "/admin/leads": '<path fill="currentColor" d="m17 21l1.8 1.77c.5.5 1.2.1 1.2-.49V18l2.8-3.4A1 1 0 0 0 22 13h-7c-.8 0-1.3 1-.8 1.6L17 18zm-2-1H2v-3c0-2.7 5.3-4 8-4c.6 0 1.3.1 2.1.2c-.2.6-.1 1.3.1 1.9c-.7-.1-1.5-.2-2.2-.2c-3 0-6.1 1.5-6.1 2.1v1.1h10.6l.5.6zM10 4C7.8 4 6 5.8 6 8s1.8 4 4 4s4-1.8 4-4s-1.8-4-4-4m0 6c-1.1 0-2-.9-2-2s.9-2 2-2s2 .9 2 2s-.9 2-2 2"/>',
+  "/admin/clientes": '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><circle cx="9" cy="8" r="3"/><path d="M3 19c0-3 2.5-5 6-5s6 2 6 5"/><path d="M18 8h3M19.5 6.5v3"/></g>',
   "/admin/integracoes": '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M18.364 19.364a9 9 0 1 0-12.728 0"/><path d="M15.536 16.536a5 5 0 1 0-7.072 0"/><path d="M11 13a1 1 0 1 0 2 0a1 1 0 1 0-2 0"/></g>',
   "/admin/agency": '<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.3" d="M4 11.452V16.8c0 1.12 0 1.68.218 2.109c.192.376.497.682.874.873c.427.218.987.218 2.105.218h9.606c1.118 0 1.677 0 2.104-.218a2 2 0 0 0 .875-.873c.218-.428.218-.987.218-2.105v-5.352c0-.534 0-.801-.065-1.05a2 2 0 0 0-.28-.617c-.145-.213-.345-.39-.748-.741l-4.8-4.2c-.746-.653-1.12-.98-1.54-1.104c-.37-.11-.764-.11-1.135 0c-.42.124-.792.45-1.538 1.102L5.093 9.044c-.402.352-.603.528-.747.74a2 2 0 0 0-.281.618C4 10.65 4 10.918 4 11.452"/>',
   "/admin/domains": '<g transform="translate(3 3) scale(1.1)"><path fill="currentColor" d="M9 0a9 9 0 1 0 0 18A9 9 0 0 0 9 0M1.11 9.68h2.51c.04.91.167 1.814.38 2.7H1.84a7.9 7.9 0 0 1-.73-2.7m8.57-5.4V1.19a4.13 4.13 0 0 1 2.22 2q.308.521.54 1.08zm3.22 1.35c.232.883.37 1.788.41 2.7H9.68v-2.7zM8.32 1.19v3.09H5.56A8.5 8.5 0 0 1 6.1 3.2a4.13 4.13 0 0 1 2.22-2.01m0 4.44v2.7H4.7c.04-.912.178-1.817.41-2.7zm-4.7 2.69H1.11a7.9 7.9 0 0 1 .73-2.7H4a14 14 0 0 0-.38 2.7M4.7 9.68h3.62v2.7H5.11a13 13 0 0 1-.41-2.7m3.63 4v3.09a4.13 4.13 0 0 1-2.22-2a8.5 8.5 0 0 1-.54-1.08zm1.35 3.09v-3.04h2.76a8.5 8.5 0 0 1-.54 1.08a4.13 4.13 0 0 1-2.22 2zm0-4.44v-2.7h3.62a13 13 0 0 1-.41 2.7zm4.71-2.7h2.51a7.9 7.9 0 0 1-.73 2.7H14c.21-.87.337-1.757.38-2.65zm0-1.35A14 14 0 0 0 14 5.63h2.16c.403.85.65 1.764.73 2.7zm1-4H13.6a8.9 8.9 0 0 0-1.39-2.52a8 8 0 0 1 3.14 2.52zm-9.6-2.52A8.9 8.9 0 0 0 4.4 4.28H2.65a8 8 0 0 1 3.14-2.52m-3.15 12H4.4a8.9 8.9 0 0 0 1.39 2.52a8 8 0 0 1-3.14-2.55zm9.56 2.52a8.9 8.9 0 0 0 1.39-2.52h1.76a8 8 0 0 1-3.14 2.48z"/></g>',
@@ -844,10 +917,45 @@ const navIconViewBoxes: Record<string, string> = {
 
 const navIconStrokeWidths: Record<string, string> = {};
 
+type AdminNavChild = {
+  label: string;
+  path: string;
+};
+
+type AdminNavLinkItem = {
+  id: string;
+  type: "link";
+  label: string;
+  to: string;
+  iconPath: string;
+};
+
+type AdminNavGroupItem = {
+  id: string;
+  type: "group";
+  label: string;
+  basePath: string;
+  iconPath: string;
+  children: AdminNavChild[];
+};
+
+type AdminNavItem = AdminNavLinkItem | AdminNavGroupItem;
+
 const routeTitleMap: Record<string, string> = {
   dashboard: navLabel("dashboard"),
   pages: navLabel("pages"),
-  leads: t({ pt: "Captação de leads", es: "Captacion de leads" }),
+  leads: navLabel("leads"),
+  "leads-forms": t({ pt: "Formulários", es: "Formularios" }),
+  "leads-opportunities": t({ pt: "Oportunidades", es: "Oportunidades" }),
+  "leads-clients": navLabel("clients"),
+  "leads-settings": t({ pt: "Configurações", es: "Configuraciones" }),
+  "client-detail": navLabel("clients"),
+  "admin-management-dashboard": navLabel("dashboard"),
+  "admin-management-monitor": t({ pt: "Monitor", es: "Monitor" }),
+  "admin-management-users": t({ pt: "Usuários", es: "Usuarios" }),
+  "admin-management-lessons": t({ pt: "Gestão de aulas", es: "Gestión de cursos" }),
+  "admin-management-templates": t({ pt: "Templates", es: "Templates" }),
+  "admin-management-flight-apis": t({ pt: "APIs de voo", es: "APIs de vuelo" }),
   "page-edit": t({ pt: "Editar página", es: "Editar página" }),
   lessons: navLabel("lessons"),
   "agency-settings": navLabel("agency"),
@@ -857,36 +965,94 @@ const routeTitleMap: Record<string, string> = {
   profile: navLabel("profile"),
   "admin-management": navLabel("adminMaster")
 };
-const shouldHideDesktopHeader = computed(() => !isMobileViewport.value);
-
 const canAccessCustomDomains = computed(() => true);
 
-const navItems = computed(() => {
-  const items = [
-    { label: navLabel("dashboard"), to: "/admin/dashboard" },
-    { label: navLabel("pages"), to: "/admin/pages" },
-    { label: navLabel("leads"), to: "/admin/leads" },
-    { label: navLabel("integrations"), to: "/admin/integracoes" },
-    { label: navLabel("agency"), to: "/admin/agency" },
-    { label: navLabel("profile"), to: "/admin/perfil" },
-    { label: navLabel("lessons"), to: "/admin/aulas" }
+const navGroupExpandedState = ref<Record<string, boolean>>({});
+
+const adminNavigation = computed<AdminNavItem[]>(() => {
+  const items: AdminNavItem[] = [
+    { id: "dashboard", type: "link", label: navLabel("dashboard"), to: "/admin/dashboard", iconPath: "/admin/dashboard" },
+    { id: "pages", type: "link", label: navLabel("pages"), to: "/admin/pages", iconPath: "/admin/pages" },
+    {
+      id: "leads",
+      type: "group",
+      label: t({ pt: "Captação", es: "Captacion" }),
+      basePath: "/admin/leads",
+      iconPath: "/admin/leads",
+      children: [
+        { label: t({ pt: "Formulários", es: "Formularios" }), path: "/admin/leads/forms" },
+        { label: t({ pt: "Oportunidades", es: "Oportunidades" }), path: "/admin/leads/opportunities" },
+        { label: navLabel("clients"), path: "/admin/leads/clients" },
+        { label: t({ pt: "Configurações", es: "Configuraciones" }), path: "/admin/leads/settings" }
+      ]
+    },
+    { id: "integrations", type: "link", label: navLabel("integrations"), to: "/admin/integracoes", iconPath: "/admin/integracoes" },
+    { id: "agency", type: "link", label: navLabel("agency"), to: "/admin/agency", iconPath: "/admin/agency" },
+    { id: "profile", type: "link", label: navLabel("profile"), to: "/admin/perfil", iconPath: "/admin/perfil" },
+    { id: "lessons", type: "link", label: navLabel("lessons"), to: "/admin/aulas", iconPath: "/admin/aulas" }
   ];
   if (canAccessCustomDomains.value) {
-    items.splice(4, 0, { label: navLabel("domains"), to: "/admin/domains" });
+    items.splice(5, 0, { id: "domains", type: "link", label: navLabel("domains"), to: "/admin/domains", iconPath: "/admin/domains" });
   }
   if (auth.user?.is_superuser) {
-    items.splice(1, 0, { label: navLabel("adminMaster"), to: "/admin/administracao" });
+    items.splice(1, 0, {
+      id: "admin-master",
+      type: "group",
+      label: navLabel("adminMaster"),
+      basePath: "/admin/administracao",
+      iconPath: "/admin/administracao",
+      children: [
+        { label: t({ pt: "Dashboard", es: "Dashboard" }), path: "/admin/administracao/dashboard" },
+        { label: t({ pt: "Monitor", es: "Monitor" }), path: "/admin/administracao/monitor" },
+        { label: t({ pt: "Usuários", es: "Usuarios" }), path: "/admin/administracao/usuarios" },
+        { label: t({ pt: "Gestão de aulas", es: "Gestión de cursos" }), path: "/admin/administracao/aulas" },
+        { label: t({ pt: "Templates", es: "Templates" }), path: "/admin/administracao/templates" },
+        { label: t({ pt: "APIs de voo", es: "APIs de vuelo" }), path: "/admin/administracao/apis-voo" }
+      ]
+    });
   }
   return items;
 });
+
+const isPathActive = (path: string) => route.path === path || route.path.startsWith(`${path}/`);
+
+const isChildActive = (path: string) => isPathActive(path);
+
+const isTopLevelActive = (item: AdminNavLinkItem) => isPathActive(item.to);
+
+const isParentActive = (item: AdminNavGroupItem) => isPathActive(item.basePath);
+
+const isGroupExpanded = (item: AdminNavGroupItem) => isParentActive(item) || Boolean(navGroupExpandedState.value[item.id]);
+
+const toggleNavGroup = (groupId: string) => {
+  navGroupExpandedState.value[groupId] = !navGroupExpandedState.value[groupId];
+};
 
 const currentPageTitle = computed(() => {
   const routeName = typeof route.name === "string" ? route.name : null;
   if (routeName && routeTitleMap[routeName]) {
     return routeTitleMap[routeName];
   }
-  const matchedNav = navItems.value.find(item => route.path.startsWith(item.to));
-  return matchedNav?.label || navLabel("dashboard");
+  for (const item of adminNavigation.value) {
+    if (item.type === "link" && isTopLevelActive(item)) {
+      return item.label;
+    }
+    if (item.type === "group") {
+      const matchedChild = item.children.find(child => isChildActive(child.path));
+      if (matchedChild) return matchedChild.label;
+      if (isParentActive(item)) return item.label;
+    }
+  }
+  return navLabel("dashboard");
+});
+
+const pageTitleRowPaddingClass = computed(() => {
+  const path = route.path;
+  if (path.startsWith("/admin/administracao")) return "px-4 md:px-8";
+  if (path.startsWith("/admin/dashboard")) return "px-4 md:px-8";
+  if (path.startsWith("/admin/leads")) return "px-4 md:px-5";
+  if (path.startsWith("/admin/pages")) return "px-4 md:px-5";
+  return "px-4 md:px-6";
 });
 
 const activeClass = computed(() =>
@@ -899,11 +1065,19 @@ const inactiveClass = computed(() =>
     ? "text-white hover:bg-white/5"
     : "text-slate-700 hover:bg-slate-100 md:text-white/80 md:hover:bg-white/10 md:hover:text-white"
 );
+const childActiveClass = computed(() =>
+  isDarkTheme.value
+    ? "bg-white/15 text-white"
+    : "bg-slate-100 text-slate-900 md:bg-white/15 md:text-white"
+);
+const childInactiveClass = computed(() =>
+  isDarkTheme.value
+    ? "text-white/90 hover:bg-white/10"
+    : "text-slate-700 hover:bg-slate-100 md:text-white/85 md:hover:bg-white/10 md:hover:text-white"
+);
 
 const agencyName = computed(() => agencyStore.currentAgency?.name || agencyStore.agencies[0]?.name || "");
 const sidebarLogoSrc = SidebarLogo;
-
-const isActive = (to: string) => route.path.startsWith(to);
 
 const checkCookieConsent = () => {
   if (typeof window === "undefined") return;
@@ -1566,6 +1740,7 @@ body.admin-body-light {
   opacity: 0;
 }
 </style>
+
 
 
 

@@ -229,11 +229,12 @@ const handleDismiss = () => {
 const inputType = (type: string) => {
   if (type === "email") return "email";
   if (type === "phone") return "tel";
+  if (type === "birthdate") return "date";
   return "text";
 };
 
 const inputMode = (type: string) => {
-  if (type === "phone") return "tel";
+  if (type === "phone" || type === "cpf") return "tel";
   if (type === "email") return "email";
   return "text";
 };
