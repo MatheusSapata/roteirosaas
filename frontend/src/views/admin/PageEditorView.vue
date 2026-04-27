@@ -2027,9 +2027,6 @@ const applySectionBackgrounds = (list: PageSection[]): PageSection[] => {
       const primaryLower = (theme.value.ctaDefaultColor || fallbackPrimaryColor || "").toLowerCase();
       const colorALower = colorA.value.toLowerCase();
       const colorBLower = colorB.value.toLowerCase();
-      if ((normalized as any).cadasturDocumentType !== "cpf" && (normalized as any).cadasturDocumentType !== "cnpj") {
-        (normalized as any).cadasturDocumentType = "cnpj";
-      }
       if (!footerBg || footerBg === primaryLower || footerBg === colorALower || footerBg === colorBLower) {
         (normalized as any).backgroundColor = FOOTER_DEFAULT_BG;
       }
@@ -2461,7 +2458,6 @@ if (type === "flight_details") {
       type: "agency_footer",
       enabled: true,
       showCadastur: true,
-      cadasturDocumentType: "cnpj",
       displayVariant: "auto",
       fullWidth: true,
       backgroundColor: "#2d2d2d"

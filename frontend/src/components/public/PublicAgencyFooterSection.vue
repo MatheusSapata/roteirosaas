@@ -384,14 +384,21 @@ const socialLinks = computed(() => {
     .filter(link => !!link.iconPath);
 });
 
-const cadasturDocumentType = computed<"cnpj" | "cpf">(() =>
-  props.section.cadasturDocumentType === "cpf" ? "cpf" : "cnpj"
-);
+const cadasturDocumentType = computed<"cnpj" | "cpf" | null>(() => {
+  const cpfDigits = sanitizeDocumentDigits(agencyProfile.value?.cpf_digits || agencyProfile.value?.cpf);
+  if (cpfDigits) return "cpf";
+  const cnpjDigits = sanitizeDocumentDigits(agencyProfile.value?.cnpj_digits || agencyProfile.value?.cnpj);
+  if (cnpjDigits) return "cnpj";
+  return null;
+});
 const cadasturDigits = computed(() => {
   if (cadasturDocumentType.value === "cpf") {
     return sanitizeDocumentDigits(agencyProfile.value?.cpf_digits || agencyProfile.value?.cpf);
   }
-  return sanitizeDocumentDigits(agencyProfile.value?.cnpj_digits || agencyProfile.value?.cnpj);
+  if (cadasturDocumentType.value === "cnpj") {
+    return sanitizeDocumentDigits(agencyProfile.value?.cnpj_digits || agencyProfile.value?.cnpj);
+  }
+  return "";
 });
 const cadasturLink = computed(() => {
   const urls = agencyProfile.value?.cadastur_urls || {};
@@ -400,8 +407,10 @@ const cadasturLink = computed(() => {
       ? typeof urls.cpf === "string"
         ? urls.cpf
         : ""
-      : typeof urls.cnpj === "string"
-        ? urls.cnpj
+      : cadasturDocumentType.value === "cnpj"
+        ? typeof urls.cnpj === "string"
+          ? urls.cnpj
+          : ""
         : "";
   if (selected) return selected;
   return buildCadasturLink(cadasturDigits.value);

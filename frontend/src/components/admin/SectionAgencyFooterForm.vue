@@ -48,19 +48,6 @@
       <p class="mt-1 text-xs text-slate-500">
         {{ viewCopy.cadastur.helper }}
       </p>
-      <label
-        v-if="local.showCadastur"
-        class="mt-3 block space-y-1 text-sm font-semibold text-slate-600"
-      >
-        {{ viewCopy.cadastur.documentTypeLabel }}
-        <select
-          v-model="local.cadasturDocumentType"
-          class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-        >
-          <option value="cnpj">{{ viewCopy.cadastur.documentTypeCnpj }}</option>
-          <option value="cpf">{{ viewCopy.cadastur.documentTypeCpf }}</option>
-        </select>
-      </label>
     </div>
   </div>
 </template>
@@ -103,12 +90,9 @@ const viewCopy = {
   cadastur: {
     label: t({ pt: "Exibir selo Cadastur", es: "Mostrar sello Cadastur" }),
     helper: t({
-      pt: "Habilite para mostrar o selo e escolher se o link será com CPF ou CNPJ do cadastro.",
-      es: "Activa para mostrar el sello y elegir si el enlace usa CPF o CNPJ del registro."
-    }),
-    documentTypeLabel: t({ pt: "Documento para consulta", es: "Documento para consulta" }),
-    documentTypeCnpj: t({ pt: "CNPJ", es: "CNPJ" }),
-    documentTypeCpf: t({ pt: "CPF", es: "CPF" })
+      pt: "Habilite para mostrar o selo usando automaticamente o CPF/CNPJ salvo em Configurações da Agência.",
+      es: "Activa para mostrar el sello usando automáticamente el CPF/CNPJ guardado en Configuraciones de la Agencia."
+    })
   }
 };
 
@@ -121,7 +105,6 @@ const local = reactive<AgencyFooterSection>({
   fullWidth: props.modelValue.fullWidth ?? true,
   displayVariant: props.modelValue.displayVariant || "auto",
   showCadastur: props.modelValue.showCadastur !== false,
-  cadasturDocumentType: props.modelValue.cadasturDocumentType || "cnpj",
   backgroundColor: props.modelValue.backgroundColor || DEFAULT_FOOTER_BG
 });
 
@@ -132,7 +115,6 @@ const syncFromProps = (value: AgencyFooterSection) => {
   local.displayVariant = value.displayVariant || "auto";
   local.fullWidth = value.fullWidth ?? true;
   local.showCadastur = value.showCadastur !== false;
-  local.cadasturDocumentType = value.cadasturDocumentType || "cnpj";
   local.enabled = value.enabled ?? true;
   local.backgroundColor = value.backgroundColor || DEFAULT_FOOTER_BG;
   syncing = false;
