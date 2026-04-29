@@ -36,6 +36,9 @@ interface User {
   trial_warn_3days_ack?: boolean;
   trial_warn_1day_ack?: boolean;
   trial_blocked?: boolean;
+  subscription_status?: string | null;
+  subscription_valid_until?: string | null;
+  subscription_blocked?: boolean;
 }
 
 const REFRESH_KEY = "refresh_token";

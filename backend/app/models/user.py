@@ -41,3 +41,15 @@ class User(Base):
     subscription = relationship("Subscription", uselist=False, foreign_keys=[subscription_id])
     pixels = relationship("Pixel", back_populates="user", cascade="all, delete-orphan")
     tracking_entries = relationship("UserTracking", back_populates="user", cascade="all, delete-orphan")
+
+    @property
+    def subscription_status(self) -> str | None:
+        return self.subscription.status if self.subscription else None
+
+    @property
+    def subscription_valid_until(self):
+        return self.subscription.valid_until if self.subscription else None
+
+    @property
+    def subscription_blocked(self) -> bool:
+        return bool(self.subscription and (self.subscription.status or "").lower() == "past_due")

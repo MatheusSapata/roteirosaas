@@ -645,9 +645,9 @@
         class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 px-4"
       >
         <div class="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl">
-          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-rose-500">{{ viewCopy.trial.blocked.eyebrow }}</p>
-          <h2 class="mt-3 text-2xl font-bold text-slate-900">{{ viewCopy.trial.blocked.title }}</h2>
-          <p class="mt-2 text-sm text-slate-600">{{ blockedTrialDescription }}</p>
+          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-rose-500">{{ blockedAccessTitle.eyebrow }}</p>
+          <h2 class="mt-3 text-2xl font-bold text-slate-900">{{ blockedAccessTitle.title }}</h2>
+          <p class="mt-2 text-sm text-slate-600">{{ blockedAccessDescription }}</p>
           <div class="mt-6 flex flex-wrap justify-end">
             <button
               class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
@@ -842,6 +842,16 @@ const viewCopy = {
       }),
       goPlans: t({ pt: "Ir para os planos", es: "Ir a los planes" }),
       close: t({ pt: "Fechar", es: "Cerrar" })
+    }
+  },
+  subscription: {
+    blocked: {
+      eyebrow: t({ pt: "Plano expirado", es: "Plan expirado" }),
+      title: t({ pt: "Renove para voltar a editar", es: "Renueva para volver a editar" }),
+      description: t({
+        pt: "Seu período contratado terminou. Para voltar a editar e publicar roteiros, renove seu plano.",
+        es: "Tu período contratado terminó. Para volver a editar y publicar itinerarios, renueva tu plan."
+      })
     }
   },
   cookies: {
@@ -1305,6 +1315,7 @@ const trialActive = computed(() => {
   return now >= trialStartDate.value && now <= trialEndDate.value;
 });
 const trialBlocked = computed(() => Boolean(auth.user?.trial_blocked));
+const subscriptionBlocked = computed(() => Boolean(auth.user?.subscription_blocked));
 const blockedTrialEndDateLabel = computed(() => {
   if (!trialEndDate.value || Number.isNaN(trialEndDate.value.getTime())) {
     return "data indisponível";
@@ -1314,6 +1325,12 @@ const blockedTrialEndDateLabel = computed(() => {
 const blockedTrialDescription = computed(
   () =>
     `Seu trial terminou em ${blockedTrialEndDateLabel.value}. Assine um plano para desbloquear seu painel e voltar a publicar seus roteiros.`
+);
+const blockedAccessTitle = computed(() =>
+  subscriptionBlocked.value ? viewCopy.subscription.blocked : viewCopy.trial.blocked
+);
+const blockedAccessDescription = computed(() =>
+  subscriptionBlocked.value ? viewCopy.subscription.blocked.description : blockedTrialDescription.value
 );
 const trialDaysLeft = computed(() => {
   if (!trialActive.value || !trialEndDate.value) return null;
@@ -1339,9 +1356,9 @@ watch(
 );
 
 watch(
-  () => [trialBlocked.value, route.fullPath],
+  () => [trialBlocked.value, subscriptionBlocked.value, route.fullPath],
   () => {
-    if (trialBlocked.value) {
+    if (trialBlocked.value || subscriptionBlocked.value) {
       showEndDialog.value = route.path !== "/admin/planos";
     } else {
       showEndDialog.value = false;
