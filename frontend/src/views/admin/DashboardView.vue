@@ -1,1059 +1,1414 @@
-<template>
-  <div class="w-full space-y-6 px-4 py-8 md:px-8">
-    <div v-if="isBootstrappingDashboard" class="flex min-h-[60vh] items-center justify-center">
-      <div class="h-12 w-12 animate-spin rounded-full border-4 border-brand/20 border-t-brand"></div>
+﻿<template>
+  <div class="dashboard-reference" :class="{ 'is-loading': isBootstrappingDashboard }">
+    <div v-if="isBootstrappingDashboard" class="dashboard-loading">
+      <div class="spinner"></div>
     </div>
+
     <template v-else>
-    <header class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-      <div>
-        <p class="text-sm uppercase tracking-[0.25em] text-slate-500">{{ viewCopy.header.eyebrow }}</p>
-        <h1 class="text-3xl font-bold text-slate-900">{{ viewCopy.header.greetingPrefix }}, {{ auth.user?.name || viewCopy.header.fallbackName }}</h1>
-        <p class="text-sm text-slate-500">{{ viewCopy.header.description }}</p>
-      </div>
+      <header class="topbar">
+        <div>
+          <h1 class="page-title">Olá, {{ userName }} 👋</h1>
+          <p class="page-sub">Visão geral das suas páginas e performance.</p>
+        </div>
+        <div class="topbar-actions">
+          <button type="button" class="btn btn-ghost" @click="goToLessons">Aulas</button>
+          <button type="button" class="btn btn-primary" @click="goToPages">Nova Página</button>
+        </div>
+      </header>
 
-      <div class="flex flex-wrap items-center gap-3">
-        <button
-          @click="auth.logout()"
-          class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
-        >
-          {{ viewCopy.header.logout }}
-        </button>
-      </div>
-    </header>
+      <SystemBanner
+        v-if="eligibleBanner && showBanner"
+        :title="eligibleBanner.title"
+        :subtitle="eligibleBanner.subtitle || ''"
+        :has-icon="eligibleBanner.has_icon"
+        :icon-name="eligibleBanner.icon_name"
+        :background-variant="eligibleBanner.background_variant"
+        :has-cta="eligibleBanner.has_cta"
+        :cta-label="eligibleBanner.cta_label"
+        :dismissible="eligibleBanner.dismissible"
+        @cta="handleBannerCta"
+        @close="dismissEligibleBanner"
+      />
 
-    <div
-      v-if="trialInfo"
-      class="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 p-5 text-slate-800 shadow-sm md:flex-row md:items-center md:justify-between"
-    >
-      <div>
-        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-amber-600">{{ viewCopy.trial.eyebrow }}</p>
-        <p class="text-base font-semibold">
-          {{ viewCopy.trial.message(trialInfo.plan, trialInfo.endsAt) }}
-        </p>
-        <p class="text-sm text-slate-600">{{ viewCopy.trial.description }}</p>
-      </div>
+      <section class="metrics-grid">
+        <article class="metric-card">
+          <div class="metric-header">
+            <span class="metric-label">Páginas</span>
+            <span class="metric-icon">📄</span>
+          </div>
+          <p class="metric-value">{{ pagesCount }}</p>
+          <p class="metric-footer-text">publicadas</p>
+        </article>
 
-      <button
-        class="inline-flex items-center justify-center rounded-full bg-amber-600 px-5 py-2 text-sm font-semibold text-white shadow hover:bg-amber-500"
-        @click="goPlans"
-      >
-        {{ viewCopy.trial.cta }}
-      </button>
-    </div>
+        <article class="metric-card">
+          <div class="metric-header">
+            <span class="metric-label">Visitas</span>
+            <span class="metric-icon">👁</span>
+          </div>
+          <p class="metric-value">{{ totalVisits.toLocaleString(numberLocale) }}</p>
+          <div class="metric-footer">
+            <span class="metric-badge" :class="visitsTrend >= 0 ? 'up' : 'down'">{{ visitsTrendText }}</span>
+            <span class="metric-footer-text">vs. período anterior</span>
+          </div>
+        </article>
 
-    <section
-      v-if="!allOnboardingStepsCompleted"
-      class="rounded-2xl bg-white p-5 shadow ring-1 ring-slate-100"
-    >
-      <p class="text-xs font-semibold uppercase tracking-[0.4em] text-slate-500">{{ viewCopy.onboarding.eyebrow }}</p>
-      <h2 class="mt-1 text-xl font-bold text-slate-900">{{ viewCopy.onboarding.title }}</h2>
-      <div class="relative mt-6">
-        <div class="absolute left-10 right-10 top-6 h-0.5 bg-slate-200"></div>
-        <div class="relative flex flex-col gap-6 md:flex-row md:justify-between">
-          <div
-            v-for="step in onboardingSteps"
-            :key="step.id"
-            class="flex flex-col items-center gap-3 text-center transition md:w-1/3"
-          >
-            <div class="relative flex flex-col items-center gap-2">
-              <div
-                class="flex h-12 w-12 items-center justify-center rounded-full border-4 text-sm font-semibold shadow-sm"
-                :class="step.completed ? 'border-emerald-200 bg-emerald-500 text-white' : 'border-slate-200 bg-white text-slate-700'"
-              >
-                <svg
-                  v-if="step.completed"
-                  viewBox="0 0 24 24"
-                  class="h-4 w-4"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
+        <article class="metric-card">
+          <div class="metric-header">
+            <span class="metric-label">Leads</span>
+            <span class="metric-icon">👥</span>
+          </div>
+          <p class="metric-value">{{ leadsMetric }}</p>
+          <div class="metric-footer">
+            <span class="metric-badge up">{{ leadsMonthText }}</span>
+            <span class="metric-footer-text">este mês</span>
+          </div>
+        </article>
+      </section>
+
+      <section class="chart-card-wrap">
+        <article class="chart-card">
+          <header class="chart-header">
+            <div>
+              <h2 class="chart-title">Resumo das páginas</h2>
+              <p class="chart-sub">Visitas, cliques e leads por período</p>
+            </div>
+            <div class="chart-controls">
+              <select v-model="selectedPage" class="filter-select">
+                <option value="all">Todas as páginas</option>
+                <option v-for="page in pages" :key="page.id" :value="String(page.id)">{{ page.title }}</option>
+              </select>
+
+              <div class="chart-legend">
+                <button type="button" class="legend-item legend-toggle" :class="{ off: !visibleSeries.visits }" @click="toggleSeries('visits')"><i class="legend-dot visits"></i>Visitas</button>
+                <button type="button" class="legend-item legend-toggle" :class="{ off: !visibleSeries.clicks }" @click="toggleSeries('clicks')"><i class="legend-dot clicks"></i>Cliques</button>
+                <button type="button" class="legend-item legend-toggle" :class="{ off: !visibleSeries.leads }" @click="toggleSeries('leads')"><i class="legend-dot leads"></i>Leads</button>
+              </div>
+
+              <div class="period-switch">
+                <button
+                  v-for="period in periods"
+                  :key="period"
+                  type="button"
+                  class="period-btn"
+                  :class="{ active: selectedPeriod === period }"
+                  @click="selectedPeriod = period"
                 >
-                  <path d="M5 13l4 4L19 7" />
-                </svg>
-                <span v-else>{{ step.order }}</span>
-              </div>
-              <div>
-                <p class="text-sm font-semibold text-slate-900">{{ step.title }}</p>
-                <p class="text-xs text-slate-500 max-w-[180px] mx-auto">{{ step.subtitle }}</p>
+                  {{ period }}d
+                </button>
               </div>
             </div>
-            <div v-if="!step.completed">
-              <button
-                type="button"
-                class="inline-flex items-center justify-center rounded-full px-6 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-                :style="{ backgroundColor: brandGreen }"
-                :disabled="step.disabled"
-                @click="!step.disabled && step.action?.()"
-              >
-                {{ step.cta }}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
+          </header>
 
-    <div
-      v-if="isFree"
-      class="flex flex-col gap-4 rounded-2xl border bg-white p-5 shadow md:flex-row md:items-center md:justify-between"
-      :style="{ borderColor: brandBorderSoft }"
-    >
-      <div>
-        <p class="text-xs font-semibold uppercase tracking-[0.3em]" :style="{ color: brandGreen }">{{ viewCopy.planBanner.eyebrow(currentPlanLabel) }}</p>
-        <p class="mt-1 text-base font-semibold text-slate-900">{{ viewCopy.planBanner.title }}</p>
-        <p class="text-sm text-slate-600">
-          {{ viewCopy.planBanner.description }}
-        </p>
-      </div>
+          <div ref="chartStageRef" class="chart-stage">
+            <svg id="areaChart" width="100%" :height="chartHeight" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="g-visits" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#2EAD4C" stop-opacity="0.20" />
+                  <stop offset="100%" stop-color="#2EAD4C" stop-opacity="0.01" />
+                </linearGradient>
+                <linearGradient id="g-clicks" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#F97316" stop-opacity="0.20" />
+                  <stop offset="100%" stop-color="#F97316" stop-opacity="0.01" />
+                </linearGradient>
+                <linearGradient id="g-leads" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#7C5CFC" stop-opacity="0.20" />
+                  <stop offset="100%" stop-color="#7C5CFC" stop-opacity="0.01" />
+                </linearGradient>
+              </defs>
 
-      <button
-        class="self-start rounded-full px-5 py-2 text-sm font-semibold text-white shadow transition hover:opacity-90"
-        :style="{ backgroundColor: brandGreen }"
-        @click="goPlans"
-      >
-        {{ viewCopy.planBanner.cta }}
-      </button>
-    </div>
+              <path v-if="visibleSeries.visits && chartSeries.visits.area" :d="chartSeries.visits.area" fill="url(#g-visits)" />
+              <path v-if="visibleSeries.clicks && chartSeries.clicks.area" :d="chartSeries.clicks.area" fill="url(#g-clicks)" />
+              <path v-if="visibleSeries.leads && chartSeries.leads.area" :d="chartSeries.leads.area" fill="url(#g-leads)" />
 
-    <!-- Indicadores principais -->
-    <section class="grid gap-4" :class="showLeadCard ? 'md:grid-cols-4' : 'md:grid-cols-3'">
-      <div class="rounded-2xl bg-white p-5 shadow-md ring-1 ring-slate-100">
-        <p class="text-sm text-slate-500">{{ viewCopy.metrics.pagesTitle }}</p>
-        <div class="mt-2 flex items-end justify-between">
-          <p class="text-3xl font-bold text-slate-900">{{ pagesCount }}</p>
-          <span
-            v-if="trend.pages !== null"
-            class="text-xs font-semibold"
-            :class="trend.pages >= 0 ? 'text-brand' : 'text-rose-600'"
-          >
-            {{ trend.pages > 0 ? "+" : "" }}{{ trend.pages }}%
-          </span>
-          <span v-else class="text-xs text-slate-400">--</span>
-        </div>
-      </div>
+              <path v-if="visibleSeries.visits && chartSeries.visits.path" :d="chartSeries.visits.path" fill="none" stroke="#2EAD4C" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+              <path v-if="visibleSeries.clicks && chartSeries.clicks.path" :d="chartSeries.clicks.path" fill="none" stroke="#F97316" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+              <path v-if="visibleSeries.leads && chartSeries.leads.path" :d="chartSeries.leads.path" fill="none" stroke="#7C5CFC" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
 
-      <div class="rounded-2xl bg-white p-5 shadow-md ring-1 ring-slate-100">
-        <p class="text-sm text-slate-500">{{ viewCopy.metrics.visitsTitle }}</p>
-        <div class="mt-2 flex items-end justify-between">
-          <p class="text-3xl font-bold text-slate-900" :class="{ 'blurred-value': isFree }">
-            {{ cardsTotalVisits.toLocaleString(numberLocale) }}
-          </p>
-          <span
-            v-if="trend.visits !== null"
-            class="text-xs font-semibold"
-            :class="trend.visits >= 0 ? 'text-brand' : 'text-rose-600'"
-          >
-            {{ trend.visits > 0 ? "+" : "" }}{{ trend.visits }}%
-          </span>
-          <span v-else class="text-xs text-slate-400">--</span>
-        </div>
-        <div v-if="isFree" class="mt-3 text-right">
-          <button
-            class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
-            @click="goPlans"
-          >
-            {{ viewCopy.metrics.unlock }}
-          </button>
-        </div>
-      </div>
+              <circle
+                v-for="dot in visibleSeries.visits ? chartSeries.visits.dots : []"
+                :key="`visits-${dot.index}`"
+                :cx="dot.x"
+                :cy="dot.y"
+                r="3.5"
+                fill="#2EAD4C"
+                stroke="#fff"
+                stroke-width="1.5"
+              />
+              <circle
+                v-for="dot in visibleSeries.clicks ? chartSeries.clicks.dots : []"
+                :key="`clicks-${dot.index}`"
+                :cx="dot.x"
+                :cy="dot.y"
+                r="3.5"
+                fill="#F97316"
+                stroke="#fff"
+                stroke-width="1.5"
+              />
+              <circle
+                v-for="dot in visibleSeries.leads ? chartSeries.leads.dots : []"
+                :key="`leads-${dot.index}`"
+                :cx="dot.x"
+                :cy="dot.y"
+                r="3.5"
+                fill="#7C5CFC"
+                stroke="#fff"
+                stroke-width="1.5"
+              />
 
-      <div class="rounded-2xl bg-white p-5 shadow-md ring-1 ring-slate-100">
-        <p class="text-sm text-slate-500">{{ viewCopy.metrics.clicksTitle }}</p>
-        <div class="mt-2 flex items-end justify-between">
-          <p class="text-3xl font-bold text-slate-900" :class="{ 'blurred-value': isFree }">
-            {{ cardsTotalClicks.toLocaleString(numberLocale) }}
-          </p>
-          <span
-            v-if="trend.clicks !== null"
-            class="text-xs font-semibold"
-            :class="trend.clicks >= 0 ? 'text-brand' : 'text-rose-600'"
-          >
-            {{ trend.clicks > 0 ? "+" : "" }}{{ trend.clicks }}%
-          </span>
-          <span v-else class="text-xs text-slate-400">--</span>
-        </div>
-        <div v-if="isFree" class="mt-3 text-right">
-          <button
-            class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
-            @click="goPlans"
-          >
-            {{ viewCopy.metrics.unlock }}
-          </button>
-        </div>
-      </div>
-
-      <div
-        v-if="showLeadCard"
-        class="rounded-2xl bg-white p-5 shadow-md ring-1 ring-slate-100"
-      >
-        <p class="text-sm text-slate-500">{{ viewCopy.metrics.leadsTitle }}</p>
-        <div class="mt-2 flex items-end justify-between">
-          <p class="text-3xl font-bold text-slate-900" :class="{ 'text-slate-400': leadCardLoading }">
-            {{ leadCardLoading ? "--" : formattedLeadTotal }}
-          </p>
-          <span class="text-xs text-slate-400">--</span>
-        </div>
-        <div v-if="leadCardLoading" class="mt-2 text-right text-xs text-slate-400">
-          {{ viewCopy.metrics.leadLoading }}
-        </div>
-      </div>
-    </section>
-
-    <div class="mb-2 flex flex-wrap items-center gap-4 text-xs text-slate-600">
-      <div class="flex items-center gap-2">
-        <label class="font-semibold">{{ viewCopy.filters.pageLabel }}</label>
-        <select
-          v-model="selectedPage"
-          class="rounded-lg border border-slate-200 bg-white px-3 py-1 text-sm text-slate-700 transition focus:outline-none focus:ring-2 focus:ring-brand/20 dark:border-white/15 dark:bg-[#202020] dark:text-white"
-        >
-          <option value="all">{{ viewCopy.filters.allPagesOption }}</option>
-          <option v-for="page in publishedPages" :key="page.id" :value="String(page.id)">
-            {{ page.title }}
-          </option>
-        </select>
-      </div>
-      <div class="flex flex-wrap items-center gap-3">
-        <label class="font-semibold">{{ viewCopy.filters.periodLabel }}</label>
-        <select
-          v-model="selectedPeriod"
-          class="rounded-lg border border-slate-200 bg-white px-3 py-1 text-sm text-slate-700 transition focus:outline-none focus:ring-2 focus:ring-brand/20 dark:border-white/15 dark:bg-[#202020] dark:text-white"
-        >
-          <option v-for="period in statsPeriodOptions" :key="period" :value="period">
-            {{ viewCopy.filters.lastDaysOption(period) }}
-          </option>
-          <option value="custom">{{ viewCopy.filters.customOption }}</option>
-        </select>
-        <div v-if="selectedPeriod === 'custom'" class="flex flex-wrap items-center gap-2 text-xs text-slate-600">
-          <label class="font-semibold">{{ viewCopy.filters.fromLabel }}</label>
-          <input
-            type="date"
-            v-model="customStartDate"
-            class="rounded-lg border border-slate-200 px-3 py-1 text-sm text-slate-700"
-          />
-          <span class="font-semibold">{{ viewCopy.filters.toLabel }}</span>
-          <input
-            type="date"
-            v-model="customEndDate"
-            class="rounded-lg border border-slate-200 px-3 py-1 text-sm text-slate-700"
-          />
-        </div>
-      </div>
-    </div>
-
-
-    <section class="grid gap-4 lg:grid-cols-2">
-      <div class="rounded-2xl bg-white p-6 shadow-md ring-1 ring-slate-100">
-        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h2 class="text-lg font-semibold text-slate-900">{{ viewCopy.charts.visitsTitle(chartPeriodLabel) }}</h2>
-            <p class="text-sm text-slate-500">{{ viewCopy.charts.visitsDescription }}</p>
-          </div>
-          <div class="text-3xl font-bold text-slate-900" :class="{ 'blurred-value': isFree }">
-            {{ totalVisits.toLocaleString(numberLocale) }}
-          </div>
-        </div>
-        <div v-if="isFree" class="mt-2 flex justify-end">
-          <button
-            class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
-            @click="goPlans"
-          >
-            {{ viewCopy.planBanner.cta }}
-          </button>
-        </div>
-
-        <div class="mt-4 space-y-3">
-          <div v-if="visitsPoints.length" class="rounded-2xl border border-slate-100 bg-white/90 p-6 shadow-inner" :class="{ 'locked-blur': isFree }">
-            <div class="relative rounded-2xl bg-transparent p-4">
-              <div class="pointer-events-none absolute inset-4">
-                <div
-                  v-for="line in chartGridLines"
-                  :key="'grid-visits-' + line"
-                  class="absolute left-0 right-0 border-t border-dashed border-emerald-100"
-                  :style="{ top: line + 'px' }"
-                ></div>
-              </div>
-              <div class="relative" :style="{ height: chartHeight + 'px' }">
-                <svg :viewBox="`0 0 ${chartWidth} ${chartHeight}`" preserveAspectRatio="none" class="h-full w-full text-emerald-500">
-                  <defs>
-                    <linearGradient id="visits-bar-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" stop-color="#22c55e" stop-opacity="0.95"></stop>
-                      <stop offset="100%" stop-color="#16a34a" stop-opacity="0.75"></stop>
-                    </linearGradient>
-                  </defs>
-                  <template v-for="point in visitsPoints" :key="point.label + '-bar'">
-                    <rect
-                      :x="point.barX"
-                      :y="point.y"
-                      :width="point.barWidth"
-                      :height="point.barHeight"
-                      rx="8"
-                      fill="url(#visits-bar-gradient)"
-                    />
-                  </template>
-                </svg>
-
-                <div
-                  ref="visitsSurfaceRef"
-                  class="absolute inset-0 cursor-crosshair"
-                  @mousemove="visitsHandleMove"
-                  @mouseleave="visitsClearHover"
-                ></div>
-
-                <div
-                  v-if="visitsHoverPoint"
-                  class="pointer-events-none absolute -translate-x-1/2 rounded-xl border border-white bg-slate-900/90 px-4 py-2 text-xs text-white shadow-lg"
-                  :style="visitsTooltipStyle"
-                >
-                  <p class="font-semibold">{{ visitsHoverPoint.label }}</p>
-                  <p>{{ viewCopy.charts.tooltipVisits }}: {{ visitsHoverPoint.value.toLocaleString(numberLocale) }}</p>
-                </div>
-              </div>
-            </div>
-
-            <div class="mt-2 text-xs text-slate-500">
-              <template v-if="compactChartLabels && chartLabelRange">
-                <div class="flex items-center justify-between font-semibold text-slate-700">
-                  <span>{{ chartLabelRange.start }}</span>
-                  <span>{{ chartLabelRange.end }}</span>
-                </div>
-              </template>
-              <template v-else>
-                <div class="flex flex-wrap justify-between gap-2 font-semibold text-slate-700">
-                  <span v-for="point in visitsPoints" :key="point.label + '-label-visits'">{{ point.label }}</span>
-                </div>
-              </template>
+              <rect
+                v-for="hit in chartHitAreas"
+                :key="`hit-${hit.index}`"
+                :x="hit.x"
+                y="0"
+                :width="hit.width"
+                :height="chartHeight"
+                fill="transparent"
+                @mouseenter="showChartTooltip(hit.index, $event)"
+                @mousemove="moveChartTooltip(hit.index, $event)"
+                @mouseleave="hideChartTooltip"
+              />
+            </svg>
+            <div v-if="chartTooltip.visible" class="chart-tooltip" :style="chartTooltipStyle">
+              <p class="chart-tooltip-date">{{ chartTooltip.label }}</p>
+              <p>Visitas: {{ chartTooltip.visits }}</p>
+              <p>Cliques: {{ chartTooltip.clicks }}</p>
+              <p>Leads: {{ chartTooltip.leads }}</p>
             </div>
           </div>
 
-          <div v-else class="flex h-48 items-center justify-center rounded-xl bg-slate-50 text-sm text-slate-500">
-            {{ viewCopy.charts.empty }}
+          <div class="chart-dates">
+            <span>{{ chartStartLabel }}</span>
+            <span>{{ chartEndLabel }}</span>
           </div>
-        </div>
-      </div>
-      <div class="relative rounded-2xl bg-white p-6 shadow-md ring-1 ring-slate-100">
-        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h2 class="text-lg font-semibold text-slate-900">{{ viewCopy.charts.clicksTitle(chartPeriodLabel) }}</h2>
-            <p class="text-sm text-slate-500">{{ viewCopy.charts.clicksDescription }}</p>
-          </div>
-          <div class="text-3xl font-bold text-slate-900" :class="{ 'blurred-value': isFree }">
-            {{ totalClicks.toLocaleString(numberLocale) }}
-          </div>
-        </div>
-        <div v-if="isFree" class="mt-2 flex justify-end">
-          <button
-            class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
-            @click="goPlans"
-          >
-            {{ viewCopy.planBanner.cta }}
-          </button>
-        </div>
+        </article>
+      </section>
 
-        <div class="mt-4 space-y-3">
-          <div v-if="clicksPoints.length" class="rounded-2xl border border-slate-100 bg-white/90 p-6 shadow-inner" :class="{ 'locked-blur': isFree }">
-            <div class="relative rounded-2xl bg-transparent p-4">
-              <div class="pointer-events-none absolute inset-4">
-                <div
-                  v-for="line in chartGridLines"
-                  :key="'grid-clicks-' + line"
-                  class="absolute left-0 right-0 border-t border-dashed border-indigo-200"
-                  :style="{ top: line + 'px' }"
-                ></div>
+      <section class="bottom-grid">
+        <article class="list-card">
+          <header class="list-header">
+            <h3 class="list-title">Top páginas</h3>
+            <button type="button" class="list-link" @click="goToPages">Ver todas →</button>
+          </header>
+          <div class="list-body">
+            <div v-for="item in topPages" :key="item.id" class="page-item">
+              <div class="page-thumb">📄</div>
+              <div class="page-info">
+                <p class="page-name">{{ item.title }}</p>
+                <p class="page-dest">{{ item.origin }}</p>
+                <div class="page-bar"><div class="page-bar-fill" :style="{ width: `${item.progress}%` }"></div></div>
               </div>
-              <div class="relative" :style="{ height: chartHeight + 'px' }">
-                <svg :viewBox="`0 0 ${chartWidth} ${chartHeight}`" preserveAspectRatio="none" class="h-full w-full text-indigo-500">
-                  <defs>
-                    <linearGradient id="clicks-bar-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" stop-color="#a855f7" stop-opacity="0.95"></stop>
-                      <stop offset="100%" stop-color="#7c3aed" stop-opacity="0.75"></stop>
-                    </linearGradient>
-                  </defs>
-                  <template v-for="point in clicksPoints" :key="point.label + '-bar'">
-                    <rect
-                      :x="point.barX"
-                      :y="point.y"
-                      :width="point.barWidth"
-                      :height="point.barHeight"
-                      rx="8"
-                      fill="url(#clicks-bar-gradient)"
-                    />
-                  </template>
-                </svg>
-
-                <div
-                  ref="clicksSurfaceRef"
-                  class="absolute inset-0 cursor-crosshair"
-                  @mousemove="clicksHandleMove"
-                  @mouseleave="clicksClearHover"
-                ></div>
-
-                <div
-                  v-if="clicksHoverPoint"
-                  class="pointer-events-none absolute -translate-x-1/2 rounded-xl border border-white bg-slate-900/90 px-4 py-2 text-xs text-white shadow-lg"
-                  :style="clicksTooltipStyle"
-                >
-                  <p class="font-semibold">{{ clicksHoverPoint.label }}</p>
-                  <p>{{ viewCopy.charts.tooltipClicks }}: {{ clicksHoverPoint.value.toLocaleString(numberLocale) }}</p>
+              <div class="page-side">
+                <span class="page-visits">{{ item.visits }}</span>
+                <div class="page-actions">
+                  <button type="button" class="page-action-btn view" title="Ver" @click="viewPage(item)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  </button>
+                  <button type="button" class="page-action-btn edit" title="Editar" @click="editPage(item)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9Z" />
+                      <path d="M14 3v6h6" />
+                      <path d="m9 15 5.5-5.5a1.5 1.5 0 0 1 2.1 2.1L11.1 17H9v-2z" />
+                    </svg>
+                  </button>
+                  <button type="button" class="page-action-btn share" title="Copiar" @click="sharePage(item)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <rect x="9" y="9" width="11" height="11" rx="2" ry="2" />
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                    </svg>
+                  </button>
                 </div>
               </div>
             </div>
+            <p v-if="!topPages.length" class="empty-text">Sem páginas com dados ainda.</p>
+          </div>
+        </article>
 
-            <div class="mt-2 text-xs text-slate-500">
-              <template v-if="compactChartLabels && chartLabelRange">
-                <div class="flex items-center justify-between font-semibold text-slate-700">
-                  <span>{{ chartLabelRange.start }}</span>
-                  <span>{{ chartLabelRange.end }}</span>
+        <article class="list-card">
+          <header class="list-header">
+            <h3 class="list-title">Leads recentes</h3>
+            <button type="button" class="list-link" @click="goToOpportunities">Ver todos →</button>
+          </header>
+          <div class="list-body">
+            <div v-for="lead in recentLeads" :key="String(lead.id)" class="lead-item">
+              <div class="lead-avatar">{{ (lead.name || '?').charAt(0).toUpperCase() }}</div>
+              <div class="lead-info">
+                <div class="lead-copy">
+                  <p class="lead-name">{{ lead.name || 'Lead sem nome' }}</p>
+                  <p class="lead-meta">{{ lead.page_title || lead.page_slug || lead.form_name || '-' }} · {{ relativeTime(lead.created_at) }}</p>
                 </div>
-              </template>
-              <template v-else>
-                <div class="flex flex-wrap justify-between gap-2 font-semibold text-slate-700">
-                  <span v-for="point in clicksPoints" :key="point.label + '-label-clicks'">{{ point.label }}</span>
+                <div class="lead-actions">
+                  <a
+                    v-if="leadWhatsappUrl(lead)"
+                    class="lead-btn lead-btn-contact"
+                    :href="leadWhatsappUrl(lead)"
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    Contato
+                  </a>
+                  <button type="button" class="lead-btn lead-btn-details" @click="openLeadDetails(lead.id)">Detalhes</button>
                 </div>
-              </template>
+              </div>
             </div>
+            <p v-if="!recentLeads.length" class="empty-text">Sem leads recentes.</p>
           </div>
+        </article>
+      </section>
 
-          <div v-else class="flex h-48 items-center justify-center rounded-xl bg-slate-50 text-sm text-slate-500">
-            {{ viewCopy.charts.empty }}
-          </div>
-        </div>
-      </div>
-    </section>
+      <OpportunityDrawer
+        v-model="drawerOpen"
+        :contact-id="selectedLeadId"
+        :statuses="statuses"
+        mode="modal"
+      />
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import { useRouter } from "vue-router";
 import api from "../../services/api";
 import { useAgencyStore } from "../../store/useAgencyStore";
 import { useAuthStore } from "../../store/useAuthStore";
 import { useLeadCaptureStore } from "../../store/useLeadCaptureStore";
-import { useLeadFeatureGate } from "../../composables/useLeadFeatureGate";
-import { createAdminLocalizer, getAdminLanguage } from "../../utils/adminI18n";
+import type { LeadContact } from "../../types/leads";
+import OpportunityDrawer from "../../components/admin/leads/OpportunityDrawer.vue";
+import { normalizeWhatsappDigits } from "../../utils/whatsapp";
+import SystemBanner from "../../components/admin/SystemBanner.vue";
 
 interface Page {
   id: number;
   title: string;
+  slug?: string;
   status: string;
 }
 
-type SeriesPoint = {
-  label: string;
+interface PageStatsSummary {
+  page_id: number;
   visits: number;
-  clicks: number;
-  conversions: number;
-};
-
-type MetricPoint = {
-  label: string;
-  centerX: number;
-  centerPercent: number;
-  y: number;
-  value: number;
-  barX: number;
-  barWidth: number;
-  barHeight: number;
-};
-
-interface StatsTrendResponse {
-  pages: number | null;
-  integrations: number | null;
-  visits: number | null;
-  whatsapp: number | null;
-  clicks: number | null;
+  clicks_cta: number;
+  clicks_whatsapp: number;
+  leads: number;
 }
 
-interface StatsOverviewResponse {
+interface OverviewTimeseriesPoint {
+  label?: string;
+  date?: string;
+  visits?: number;
+  whatsapp?: number;
+  cta?: number;
+  clicks?: number;
+  leads?: number;
+  conversions?: number;
+}
+
+interface OverviewResponse {
   visits: number;
   whatsapp: number;
   cta: number;
-  trend: StatsTrendResponse | null;
-  timeseries: SeriesPoint[];
+  trend?: {
+    visits?: number | null;
+  } | null;
+  timeseries?: OverviewTimeseriesPoint[];
 }
 
-interface OnboardingStep {
-  id: string;
-  order: number;
+interface SystemBannerPayload {
+  id: number;
   title: string;
-  subtitle: string;
-  completed: boolean;
-  cta?: string;
-  action?: (() => void) | null;
-  disabled?: boolean;
+  subtitle?: string | null;
+  has_icon: boolean;
+  icon_name?: string | null;
+  background_variant: string;
+  dismissible: boolean;
+  dismiss_behavior?: string | null;
+  dismiss_duration_days?: number | null;
+  has_cta: boolean;
+  cta_label?: string | null;
+  cta_type?: "internal_route" | "external_url" | "none" | null;
+  cta_target?: string | null;
 }
 
+const router = useRouter();
 const auth = useAuthStore();
 const agencyStore = useAgencyStore();
-const router = useRouter();
 const leadStore = useLeadCaptureStore();
-const { totalContacts, contactsLoading, contactsLoadedAtLeastOnce } = storeToRefs(leadStore);
-const { hasLeadFeatureAccess } = useLeadFeatureGate();
-const adminLanguage = getAdminLanguage();
-const numberLocale = adminLanguage === "es" ? "es-ES" : "pt-BR";
-const dateLocale = numberLocale;
-const t = createAdminLocalizer(adminLanguage);
+const { contacts, statuses } = storeToRefs(leadStore);
 
-const viewCopy = {
-  header: {
-    eyebrow: t({ pt: "Painel", es: "Panel" }),
-    greetingPrefix: t({ pt: "Olá", es: "Hola" }),
-    fallbackName: t({ pt: "agente", es: "agente" }),
-    description: t({ pt: "Visão geral das páginas, integrações e performance.", es: "Vista general de páginas, integraciones y rendimiento." }),
-    logout: t({ pt: "Sair", es: "Salir" })
-  },
-  trial: {
-    eyebrow: t({ pt: "Trial ativo", es: "Prueba activa" }),
-    message: (plan: string, endsAt: string) =>
-      t({
-        pt: `Você está aproveitando o plano ${plan} até ${endsAt}.`,
-        es: `Estás aprovechando el plan ${plan} hasta ${endsAt}.`
-      }),
-    description: t({
-      pt: "Contrate agora para manter os recursos premium sem interrupção.",
-      es: "Contrata ahora para mantener los recursos premium sin interrupciones."
-    }),
-    cta: t({ pt: "Ativar plano", es: "Activar plan" })
-  },
-  onboarding: {
-    eyebrow: t({ pt: "Comece por aqui", es: "Empieza por aquí" }),
-    title: t({ pt: "Monte seu ambiente em 3 passos", es: "Prepara tu entorno en 3 pasos" }),
-    steps: {
-      finish: {
-        title: t({ pt: "Finalizar cadastro", es: "Finalizar registro" }),
-        subtitle: t({ pt: "Seus dados estão completos.", es: "Tus datos están completos." })
-      },
-      createAgency: {
-        title: t({ pt: "Criar agência", es: "Crear agencia" }),
-        subtitlePending: t({ pt: "Cadastre sua primeira agência.", es: "Registra tu primera agencia." }),
-        subtitleDone: t({ pt: "Agência criada com sucesso.", es: "Agencia creada con éxito." }),
-        cta: t({ pt: "Ir para Agências", es: "Ir a Agencias" })
-      },
-      publish: {
-        title: t({ pt: "Publicar primeira página", es: "Publicar primera página" }),
-        subtitlePending: t({ pt: "Publique um roteiro para compartilhar.", es: "Publica un itinerario para compartir." }),
-        subtitleDone: t({ pt: "Sua primeira página já está no ar.", es: "Tu primera página ya está publicada." }),
-        cta: t({ pt: "Publicar agora", es: "Publicar ahora" })
-      }
-    }
-  },
-  planBanner: {
-    eyebrow: (plan: string) =>
-      t({
-        pt: `Plano atual: ${plan}`,
-        es: `Plan actual: ${plan}`
-      }),
-    title: t({ pt: "Desbloqueie métricas completas e integrações.", es: "Desbloquea métricas completas e integraciones." }),
-    description: t({
-      pt: "Faça upgrade para organizar mais roteiros, liberar as seções bloqueadas e acompanhar desempenho em tempo real.",
-      es: "Haz upgrade para organizar más itinerarios, liberar secciones bloqueadas y seguir el desempeño en tiempo real."
-    }),
-    cta: t({ pt: "Ver planos", es: "Ver planes" })
-  },
-  metrics: {
-    pagesTitle: t({ pt: "Páginas", es: "Páginas" }),
-    visitsTitle: t({ pt: "Visitas (geral)", es: "Visitas (general)" }),
-    clicksTitle: t({ pt: "Cliques (geral)", es: "Clics (general)" }),
-    leadsTitle: t({ pt: "Leads", es: "Leads" }),
-    unlock: t({ pt: "Desbloquear", es: "Desbloquear" }),
-    leadLoading: t({ pt: "Atualizando...", es: "Actualizando..." })
-  },
-  filters: {
-    pageLabel: t({ pt: "Página:", es: "Página:" }),
-    allPagesOption: t({ pt: "Todas as publicadas", es: "Todas las publicadas" }),
-    periodLabel: t({ pt: "Período:", es: "Período:" }),
-    lastDaysOption: (days: number) => t({ pt: `Últimos ${days} dias`, es: `Últimos ${days} días` }),
-    customOption: t({ pt: "Personalizado", es: "Personalizado" }),
-    fromLabel: t({ pt: "De", es: "Del" }),
-    toLabel: t({ pt: "até", es: "al" }),
-    customPeriodLabel: t({ pt: "período personalizado", es: "período personalizado" }),
-    customRangeLabel: (start: string, end: string) =>
-      t({
-        pt: `${start} a ${end}`,
-        es: `${start} a ${end}`
-      })
-  },
-  charts: {
-    visitsTitle: (period: string) => t({ pt: `Visitas (${period})`, es: `Visitas (${period})` }),
-    visitsDescription: t({ pt: "Volume diário de acessos.", es: "Volumen diario de accesos." }),
-    clicksTitle: (period: string) => t({ pt: `Cliques (${period})`, es: `Clics (${period})` }),
-    clicksDescription: t({ pt: "Total somado de cliques.", es: "Total acumulado de clics." }),
-    tooltipVisits: t({ pt: "Visitas", es: "Visitas" }),
-    tooltipClicks: t({ pt: "Cliques", es: "Clics" }),
-    empty: t({ pt: "Sem dados de série temporal.", es: "Sin datos de serie temporal." })
-  },
-  planNames: {
-    free: t({ pt: "Começo", es: "Inicio" }),
-    essencial: t({ pt: "Essencial", es: "Esencial" }),
-    profissional: t({ pt: "Profissional", es: "Profesional" }),
-    growth: t({ pt: "Agência", es: "Agencia" }),
-    infinity: t({ pt: "Escala", es: "Escala" })
-  }
-};
-
-const resolvePlanLabel = (plan?: string | null) => {
-  if (!plan) return viewCopy.planNames.free;
-  const key = plan.toLowerCase() as keyof typeof viewCopy.planNames;
-  return viewCopy.planNames[key] ?? plan;
-};
-
-const currentPlanLabel = computed(() => resolvePlanLabel(auth.user?.plan || "free"));
-
-const showLeadCard = computed(() => hasLeadFeatureAccess.value);
-const leadCardLoading = computed(
-  () => contactsLoading.value && !contactsLoadedAtLeastOnce.value
-);
-const formattedLeadTotal = computed(() => totalContacts.value.toLocaleString(numberLocale));
-const ensureLeadContacts = async () => {
-  if (contactsLoadedAtLeastOnce.value || contactsLoading.value) return;
-  try {
-    await leadStore.fetchContacts();
-  } catch {
-    /* erros já são tratados no fluxo do módulo de leads */
-  }
-};
-
-const pages = ref<Page[]>([]);
-const pagesCount = ref(0);
-
+const numberLocale = "pt-BR";
+const periods = [7, 14, 30];
+const selectedPeriod = ref<number>(14);
 const selectedPage = ref<string>("all");
-const totalVisits = ref(0);
-const totalClicks = ref(0);
-const cardsTotalVisits = ref(0);
-const cardsTotalClicks = ref(0);
-const statsPeriodOptions = [7, 14, 30];
-const selectedPeriod = ref<number | "custom">(statsPeriodOptions[0]);
-const customStartDate = ref("");
-const customEndDate = ref("");
-const isMobile = ref(false);
+const pages = ref<Page[]>([]);
+const pageStatsMap = ref<Record<number, PageStatsSummary>>({});
+const overview = ref<OverviewResponse | null>(null);
 const isBootstrappingDashboard = ref(true);
-
-const isFree = computed(() => (auth.user?.plan || "free") === "free");
-
-const trialInfo = computed(() => {
-  const tPlan = auth.user?.trial_plan;
-  const endsAt = auth.user?.trial_ends_at;
-  if (!tPlan || !endsAt) return null;
-  if (auth.user?.trial_blocked) return null;
-
-  const planLabel = resolvePlanLabel(tPlan);
-  const date = new Date(endsAt);
-  if (Number.isNaN(date.getTime()) || date.getTime() < Date.now()) return null;
-
-  return {
-    plan: planLabel,
-    endsAt: date.toLocaleDateString(dateLocale)
-  };
+const showBanner = ref(true);
+const eligibleBanner = ref<SystemBannerPayload | null>(null);
+const hasTrackedBannerImpression = ref(false);
+const chartStageRef = ref<HTMLElement | null>(null);
+const chartWidth = ref(800);
+const chartHeight = 160;
+const chartPad = 12;
+let chartResizeObserver: ResizeObserver | null = null;
+const chartTooltip = reactive({
+  visible: false,
+  index: -1,
+  x: 0,
+  y: 0,
+  label: "--",
+  visits: 0,
+  clicks: 0,
+  leads: 0
+});
+const visibleSeries = reactive({
+  visits: true,
+  clicks: true,
+  leads: true
 });
 
-const trend = reactive<{
-  pages: number | null;
-  visits: number | null;
-  whatsapp: number | null;
-  clicks: number | null;
-}>({
-  pages: null,
-  visits: null,
-  whatsapp: null,
-  clicks: null
-});
+const drawerOpen = ref(false);
+const selectedLeadId = ref<string | number | null>(null);
 
-const chartDataRaw = ref<SeriesPoint[]>([]);
+const userName = computed(() => auth.user?.name || "Agente");
+const pagesCount = computed(() => pages.value.filter(page => String(page.status || "").toLowerCase() === "published").length);
+const totalVisits = computed(() => overview.value?.visits || 0);
+const visitsTrend = computed(() => Number(overview.value?.trend?.visits ?? 0));
+const visitsTrendText = computed(() => `${visitsTrend.value >= 0 ? "+" : ""}${visitsTrend.value}%`);
 
-const chartData = computed(() => {
-  if (chartDataRaw.value.length) return chartDataRaw.value;
-  return [];
-});
-
-const brandGreen = "#41ce5f";
-const brandBorderSoft = "#cdeed9";
-
-const lineChartHeight = 240;
-const lineChartWidth = 640;
-const lineChartPaddingX = 28;
-const lineChartPaddingY = 28;
-const lineChartInnerHeight = lineChartHeight - lineChartPaddingY * 2;
-const lineChartInnerWidth = lineChartWidth - lineChartPaddingX * 2;
-const chartGridLineRatios = [0.2, 0.4, 0.6, 0.8];
-
-const chartHeight = lineChartHeight;
-const chartWidth = computed(() => lineChartWidth);
-const chartGridLines = computed(() =>
-  chartGridLineRatios.map((ratio) => lineChartPaddingY + ratio * lineChartInnerHeight)
-);
-const isCustomPeriod = computed(() => selectedPeriod.value === "custom");
-const customRangeReady = computed(
-  () => isCustomPeriod.value && Boolean(customStartDate.value) && Boolean(customEndDate.value)
-);
-const orderedCustomRange = computed(() => {
-  if (!customRangeReady.value) return null;
-  const start = new Date(customStartDate.value);
-  const end = new Date(customEndDate.value);
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
-  if (start.getTime() <= end.getTime()) {
-    return { startISO: customStartDate.value, endISO: customEndDate.value, startDate: start, endDate: end };
+const leadsMetric = computed(() => {
+  if (selectedPage.value !== "all") {
+    const pageId = Number(selectedPage.value);
+    if (!Number.isNaN(pageId)) return pageStatsMap.value[pageId]?.leads || 0;
   }
-  return { startISO: customEndDate.value, endISO: customStartDate.value, startDate: end, endDate: start };
-});
-const hasValidCustomRange = computed(() => Boolean(orderedCustomRange.value));
-const formatShortDate = (iso: string) => {
-  if (!iso) return "--";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "--";
-  return d.toLocaleDateString(dateLocale);
-};
-const selectedPeriodDays = computed(() => {
-  if (orderedCustomRange.value) {
-    const diff =
-      Math.floor(
-        (orderedCustomRange.value.endDate.getTime() - orderedCustomRange.value.startDate.getTime()) /
-          (1000 * 60 * 60 * 24)
-      ) + 1;
-    return Math.max(diff, 1);
-  }
-  return typeof selectedPeriod.value === "number" ? selectedPeriod.value : statsPeriodOptions[0];
-});
-const chartPeriodLabel = computed(() => {
-  if (orderedCustomRange.value) {
-    return viewCopy.filters.customRangeLabel(
-      formatShortDate(orderedCustomRange.value.startISO),
-      formatShortDate(orderedCustomRange.value.endISO)
-    );
-  }
-  if (isCustomPeriod.value) {
-    return viewCopy.filters.customPeriodLabel;
-  }
-  return viewCopy.filters.lastDaysOption(selectedPeriodDays.value);
+  if (contacts.value.length) return contacts.value.length;
+  return Object.values(pageStatsMap.value).reduce((sum, item) => sum + (item.leads || 0), 0);
 });
 
-const maxVisits = computed(() => {
-  if (!chartData.value.length) return 1;
-  const maxValue = Math.max(...chartData.value.map((point) => point.visits ?? 0));
-  return maxValue > 0 ? maxValue : 1;
+const leadsThisMonth = computed(() => {
+  const now = new Date();
+  return contacts.value.filter(contact => {
+    if (!contact.created_at) return false;
+    const date = new Date(contact.created_at);
+    return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+  }).length;
 });
 
-const maxClicks = computed(() => {
-  if (!chartData.value.length) return 1;
-  const maxValue = Math.max(...chartData.value.map((point) => point.clicks ?? 0));
-  return maxValue > 0 ? maxValue : 1;
-});
+const leadsMonthText = computed(() => `+${leadsThisMonth.value}`);
 
-const buildMetricPoints = (metric: "visits" | "clicks", maxValue: number): MetricPoint[] => {
-  const safeMax = maxValue > 0 ? maxValue : 1;
-  if (!chartData.value.length) return [];
-  const count = chartData.value.length;
-  const step = count > 1 ? lineChartInnerWidth / (count - 1) : lineChartInnerWidth;
-  const baseBarWidth =
-    count > 1 ? Math.max(8, Math.min(32, step * 0.7)) : Math.min(96, lineChartInnerWidth * 0.35);
-
-  return chartData.value.map((point, index) => {
-    const value = point[metric] ?? 0;
-    const ratio = value / safeMax;
-    const centerX = count === 1 ? lineChartWidth / 2 : lineChartPaddingX + index * step;
-    const centerPercent = ((centerX - lineChartPaddingX) / lineChartInnerWidth) * 100;
-    const barHeight = ratio * lineChartInnerHeight;
-    const y = lineChartPaddingY + (lineChartInnerHeight - barHeight);
-    const barX = centerX - baseBarWidth / 2;
-
-    return {
-      label: point.label,
-      centerX,
-      centerPercent,
-      y,
-      value,
-      barX,
-      barWidth: baseBarWidth,
-      barHeight
-    };
-  });
-};
-
-const visitsPoints = computed(() => buildMetricPoints("visits", maxVisits.value));
-const clicksPoints = computed(() => buildMetricPoints("clicks", maxClicks.value));
-const compactChartLabels = computed(() => isMobile.value || selectedPeriodDays.value >= 14);
-const chartLabelRange = computed(() => {
-  if (!compactChartLabels.value || chartData.value.length < 2) return null;
-  const first = chartData.value[0]?.label || "";
-  const last = chartData.value[chartData.value.length - 1]?.label || "";
-  if (!first || !last) return null;
-  return { start: first, end: last };
-});
-
-const createMetricHover = (pointsGetter: () => MetricPoint[]) => {
-  const surfaceRef = ref<HTMLDivElement | null>(null);
-  const hoverPoint = ref<MetricPoint | null>(null);
-
-  const tooltipStyle = computed(() => {
-    if (!hoverPoint.value) return {};
-    const padding = 40;
-    const surfaceWidth = surfaceRef.value?.clientWidth || chartWidth.value;
-    const scaledX = (hoverPoint.value.centerX / chartWidth.value) * surfaceWidth;
-    const left = Math.min(Math.max(scaledX, padding), surfaceWidth - padding);
-    const top = Math.max(hoverPoint.value.y - 40, 24);
-    return { left: `${left}px`, top: `${top}px` };
-  });
-
-  const handleMove = (event: MouseEvent) => {
-    const points = pointsGetter();
-    if (!surfaceRef.value || !points.length) return;
-
-    const rect = surfaceRef.value.getBoundingClientRect();
-    const offsetX = event.clientX - rect.left;
-    const surfaceWidth = surfaceRef.value.clientWidth || chartWidth.value;
-    const normalizedX = (offsetX / surfaceWidth) * chartWidth.value;
-
-    let nearest = points[0];
-    let minDistance = Math.abs(nearest.centerX - normalizedX);
-
-    for (const point of points) {
-      const distance = Math.abs(point.centerX - normalizedX);
-      if (distance < minDistance) {
-        nearest = point;
-        minDistance = distance;
-      }
-    }
-
-    hoverPoint.value = nearest;
-  };
-
-  const clearHover = () => {
-    hoverPoint.value = null;
-  };
-
-  return { surfaceRef, hoverPoint, tooltipStyle, handleMove, clearHover };
-};
-
-const visitsChart = createMetricHover(() => visitsPoints.value);
-const clicksChart = createMetricHover(() => clicksPoints.value);
-
-const visitsSurfaceRef = visitsChart.surfaceRef;
-const visitsHoverPoint = visitsChart.hoverPoint;
-const visitsTooltipStyle = visitsChart.tooltipStyle;
-const visitsHandleMove = visitsChart.handleMove;
-const visitsClearHover = visitsChart.clearHover;
-
-const clicksSurfaceRef = clicksChart.surfaceRef;
-const clicksHoverPoint = clicksChart.hoverPoint;
-const clicksTooltipStyle = clicksChart.tooltipStyle;
-const clicksHandleMove = clicksChart.handleMove;
-const clicksClearHover = clicksChart.clearHover;
-
-const publishedPages = computed(() => pages.value.filter((page) => page.status?.toLowerCase() === "published"));
-const hasAgency = computed(() => agencyStore.agencies.length > 0);
-const hasPublishedPage = computed(() => publishedPages.value.length > 0);
-
-const goToAgencySettings = () => {
-  router.push("/admin/agency");
-};
-
-const goToPagesList = () => {
-  router.push("/admin/pages");
-};
-
-const onboardingSteps = computed<OnboardingStep[]>(() => [
-  {
-    id: "finish-signup",
-    order: 1,
-    title: viewCopy.onboarding.steps.finish.title,
-    subtitle: viewCopy.onboarding.steps.finish.subtitle,
-    completed: true
-  },
-  {
-    id: "create-agency",
-    order: 2,
-    title: viewCopy.onboarding.steps.createAgency.title,
-    subtitle: hasAgency.value
-      ? viewCopy.onboarding.steps.createAgency.subtitleDone
-      : viewCopy.onboarding.steps.createAgency.subtitlePending,
-    completed: hasAgency.value,
-    cta: hasAgency.value ? undefined : viewCopy.onboarding.steps.createAgency.cta,
-    action: hasAgency.value ? null : goToAgencySettings
-  },
-  {
-    id: "publish-page",
-    order: 3,
-    title: viewCopy.onboarding.steps.publish.title,
-    subtitle: hasPublishedPage.value
-      ? viewCopy.onboarding.steps.publish.subtitleDone
-      : viewCopy.onboarding.steps.publish.subtitlePending,
-    completed: hasPublishedPage.value,
-    cta: hasPublishedPage.value ? undefined : viewCopy.onboarding.steps.publish.cta,
-    action: hasPublishedPage.value ? null : goToPagesList,
-    disabled: !hasAgency.value
-  }
-]);
-
-const allOnboardingStepsCompleted = computed(() => onboardingSteps.value.every(step => step.completed));
-
-const applyCardsStats = (stats: StatsOverviewResponse | null) => {
-  trend.pages = stats?.trend?.pages ?? null;
-  trend.visits = stats?.trend?.visits ?? null;
-  trend.whatsapp = stats?.trend?.whatsapp ?? null;
-  trend.clicks = stats?.trend?.clicks ?? null;
-  cardsTotalVisits.value = stats?.visits ?? 0;
-  cardsTotalClicks.value = (stats?.whatsapp ?? 0) + (stats?.cta ?? 0);
-};
-
-const applyChartStats = (stats: StatsOverviewResponse | null) => {
-  totalVisits.value = stats?.visits ?? 0;
-  totalClicks.value = (stats?.whatsapp ?? 0) + (stats?.cta ?? 0);
-  if (stats && Array.isArray(stats.timeseries)) {
-    chartDataRaw.value = stats.timeseries as SeriesPoint[];
-  } else {
-    chartDataRaw.value = [];
-  }
-  visitsChart.clearHover();
-  clicksChart.clearHover();
-};
-
-const appendRangeParams = (params: Record<string, string | number>) => {
-  if (orderedCustomRange.value) {
-    params.start_date = orderedCustomRange.value.startISO;
-    params.end_date = orderedCustomRange.value.endISO;
-  } else {
-    params.days = selectedPeriodDays.value;
-  }
-};
-
-const fetchOverviewStats = async (agencyId: number) => {
+const fetchEligibleBanner = async (agencyId: number) => {
   try {
-    const params: Record<string, string | number> = { agency_id: agencyId };
-    appendRangeParams(params);
-    const { data } = await api.get<StatsOverviewResponse>("/stats/overview", { params });
-    applyCardsStats(data);
-    if (selectedPage.value === "all") {
-      applyChartStats(data);
-    }
+    const { data } = await api.get<{ banner: SystemBannerPayload | null }>("/system-banners/eligible", {
+      params: { placement: "dashboard", agency_id: agencyId }
+    });
+    eligibleBanner.value = data?.banner || null;
+    showBanner.value = true;
+    hasTrackedBannerImpression.value = false;
   } catch {
-    applyCardsStats(null);
-    if (selectedPage.value === "all") {
-      applyChartStats(null);
-    }
+    eligibleBanner.value = null;
   }
 };
 
-const fetchSelectedPageStats = async (agencyId: number) => {
-  if (selectedPage.value === "all") return;
+const trackBannerEvent = async (event: "impression" | "click" | "dismiss") => {
+  if (!eligibleBanner.value) return;
+  const agencyId = agencyStore.currentAgencyId;
+  if (!agencyId) return;
+  await api.post(`/system-banners/${eligibleBanner.value.id}/${event}`, { agency_id: agencyId });
+};
 
-  const pageId = Number(selectedPage.value);
-  if (Number.isNaN(pageId)) {
-    applyChartStats(null);
+const ensureBannerImpression = async () => {
+  if (!eligibleBanner.value || hasTrackedBannerImpression.value) return;
+  try {
+    await trackBannerEvent("impression");
+    hasTrackedBannerImpression.value = true;
+  } catch {
+    // noop
+  }
+};
+
+const handleBannerCta = async () => {
+  const banner = eligibleBanner.value;
+  if (!banner) return;
+  try {
+    await trackBannerEvent("click");
+  } catch {
+    // noop
+  }
+  if (!banner.has_cta || !banner.cta_type || banner.cta_type === "none" || !banner.cta_target) return;
+  if (banner.cta_type === "internal_route") {
+    router.push(banner.cta_target);
     return;
   }
-
-  try {
-    const params: Record<string, string | number> = {
-      agency_id: agencyId,
-      page_id: pageId
-    };
-    appendRangeParams(params);
-    const { data } = await api.get<StatsOverviewResponse>("/stats/overview", { params });
-    applyChartStats(data);
-  } catch {
-    applyChartStats(null);
+  if (banner.cta_type === "external_url") {
+    window.open(banner.cta_target, "_blank", "noopener");
   }
 };
 
-const fetchData = async () => {
+const dismissEligibleBanner = async () => {
+  if (!eligibleBanner.value) return;
+  try {
+    const agencyId = agencyStore.currentAgencyId;
+    await api.post(`/system-banners/${eligibleBanner.value.id}/dismiss`, {
+      agency_id: agencyId,
+      mode: eligibleBanner.value.dismiss_behavior || "hide_forever",
+      dismiss_duration_days: eligibleBanner.value.dismiss_duration_days || null
+    });
+  } catch {
+    // noop
+  } finally {
+    showBanner.value = false;
+  }
+};
+
+const chartBase = computed(() => {
+  const series = (overview.value?.timeseries || []).map((point, index) => {
+    const rawLabel = String(point.label || point.date || index + 1);
+    const label = formatDateLabel(rawLabel);
+    const visits = Number(point.visits || 0);
+    const clicks = Number(point.clicks || ((point.whatsapp || 0) + (point.cta || 0)));
+    const leads = Number(point.leads || point.conversions || 0);
+    return { label, visits, clicks, leads };
+  });
+
+  const max = Math.max(1, ...series.flatMap(item => [item.visits, item.clicks, item.leads]));
+  return { series, max };
+});
+
+const measureChartWidth = () => {
+  const width = chartStageRef.value?.clientWidth || 0;
+  chartWidth.value = width > 0 ? width : 800;
+};
+
+type ChartPoint = [number, number];
+type DotPoint = { index: number; x: number; y: number };
+type RenderedSeries = { path: string; area: string; dots: DotPoint[] };
+const baselineY = chartHeight - chartPad;
+const clampY = (value: number) => Math.min(Math.max(value, chartPad), baselineY);
+
+const makePath = (data: number[], max: number, W: number, H: number, pad: number): { path: string; pts: ChartPoint[] } => {
+  if (!data.length) return { path: "", pts: [] };
+  const n = data.length;
+  const pts: ChartPoint[] = data.map((value, index) => [
+    pad + (index / Math.max(1, n - 1)) * (W - pad * 2),
+    clampY(H - pad - (value / max) * (H - pad * 2))
+  ]);
+
+  let path = `M ${pts[0][0]} ${pts[0][1]}`;
+  for (let i = 0; i < pts.length - 1; i += 1) {
+    const x0 = i > 0 ? pts[i - 1][0] : pts[0][0];
+    const y0 = i > 0 ? pts[i - 1][1] : pts[0][1];
+    const x1 = pts[i][0];
+    const y1 = pts[i][1];
+    const x2 = pts[i + 1][0];
+    const y2 = pts[i + 1][1];
+    const x3 = i < pts.length - 2 ? pts[i + 2][0] : x2;
+    const y3 = i < pts.length - 2 ? pts[i + 2][1] : y2;
+    const t = 0.25;
+    const cy1 = clampY(y1 + (y2 - y0) * t);
+    const cy2 = clampY(y2 - (y3 - y1) * t);
+    path += ` C ${x1 + (x2 - x0) * t} ${cy1}, ${x2 - (x3 - x1) * t} ${cy2}, ${x2} ${clampY(y2)}`;
+  }
+
+  return { path, pts };
+};
+
+const buildSeries = (data: number[], max: number): RenderedSeries => {
+  const { path, pts } = makePath(data, max, chartWidth.value, chartHeight, chartPad);
+  if (!path || !pts.length) return { path: "", area: "", dots: [] };
+  const area = `${path} L ${pts[pts.length - 1][0]} ${baselineY} L ${pts[0][0]} ${baselineY} Z`;
+  const dots = pts
+    .map((point, index) => ({ index, x: point[0], y: point[1], value: data[index] || 0 }))
+    .filter(point => point.value > 0)
+    .map(({ index, x, y }) => ({ index, x, y }));
+  return { path, area, dots };
+};
+
+const chartSeries = computed(() => {
+  const visitsValues = chartBase.value.series.map(item => item.visits);
+  const clicksValues = chartBase.value.series.map(item => item.clicks);
+  const leadsValues = chartBase.value.series.map(item => item.leads);
+  const max = Math.max(1, ...visitsValues, ...clicksValues, ...leadsValues);
+
+  return {
+    visits: buildSeries(visitsValues, max),
+    clicks: buildSeries(clicksValues, max),
+    leads: buildSeries(leadsValues, max)
+  };
+});
+
+const chartStartLabel = computed(() => chartBase.value.series[0]?.label || "--");
+const chartEndLabel = computed(() => chartBase.value.series[chartBase.value.series.length - 1]?.label || "--");
+
+const chartHitAreas = computed(() => {
+  const count = chartBase.value.series.length;
+  if (!count) return [] as Array<{ index: number; x: number; width: number }>;
+  if (count === 1) return [{ index: 0, x: 0, width: chartWidth.value }];
+  const step = (chartWidth.value - chartPad * 2) / (count - 1);
+  return Array.from({ length: count }, (_, index) => {
+    const centerX = chartPad + index * step;
+    const left = index === 0 ? 0 : centerX - step / 2;
+    const right = index === count - 1 ? chartWidth.value : centerX + step / 2;
+    return { index, x: left, width: right - left };
+  });
+});
+
+const updateTooltipFromEvent = (event: MouseEvent) => {
+  const host = chartStageRef.value;
+  if (!host) return;
+  const rect = host.getBoundingClientRect();
+  const tooltipWidth = 144;
+  const tooltipHeight = 82;
+  const rawX = event.clientX - rect.left + 10;
+  const rawY = event.clientY - rect.top - tooltipHeight - 8;
+  const maxX = Math.max(0, rect.width - tooltipWidth);
+  const maxY = Math.max(0, rect.height - tooltipHeight);
+  chartTooltip.x = Math.min(Math.max(0, rawX), maxX);
+  chartTooltip.y = Math.min(Math.max(0, rawY), maxY);
+};
+
+const showChartTooltip = (index: number, event: MouseEvent) => {
+  const point = chartBase.value.series[index];
+  if (!point) return;
+  chartTooltip.visible = true;
+  chartTooltip.index = index;
+  chartTooltip.label = point.label;
+  chartTooltip.visits = point.visits;
+  chartTooltip.clicks = point.clicks;
+  chartTooltip.leads = point.leads;
+  updateTooltipFromEvent(event);
+};
+
+const moveChartTooltip = (index: number, event: MouseEvent) => {
+  if (!chartTooltip.visible || chartTooltip.index !== index) {
+    showChartTooltip(index, event);
+    return;
+  }
+  updateTooltipFromEvent(event);
+};
+
+const hideChartTooltip = () => {
+  chartTooltip.visible = false;
+};
+
+type SeriesKey = keyof typeof visibleSeries;
+const toggleSeries = (key: SeriesKey) => {
+  const currentlyVisible = Object.values(visibleSeries).filter(Boolean).length;
+  if (visibleSeries[key] && currentlyVisible === 1) return;
+  visibleSeries[key] = !visibleSeries[key];
+};
+
+const chartTooltipStyle = computed(() => ({
+  left: `${chartTooltip.x}px`,
+  top: `${chartTooltip.y}px`
+}));
+
+const topPages = computed(() => {
+  const maxVisits = Math.max(1, ...Object.values(pageStatsMap.value).map(item => item.visits || 0));
+  return pages.value
+    .map(page => {
+      const stats = pageStatsMap.value[page.id] || { page_id: page.id, visits: 0, clicks_cta: 0, clicks_whatsapp: 0, leads: 0 };
+      return {
+        id: page.id,
+        title: page.title,
+        slug: page.slug || "",
+        origin: page.slug ? `/${page.slug}` : "Origem não informada",
+        visits: stats.visits || 0,
+        progress: Math.round(((stats.visits || 0) / maxVisits) * 100)
+      };
+    })
+    .sort((a, b) => b.visits - a.visits)
+    .slice(0, 5);
+});
+
+const recentLeads = computed(() =>
+  [...contacts.value]
+    .sort((a, b) => {
+      const left = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const right = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return right - left;
+    })
+    .slice(0, 5)
+);
+
+const fetchPages = async (agencyId: number) => {
+  const { data } = await api.get<Page[]>("/pages", { params: { agency_id: agencyId } });
+  pages.value = data;
+};
+
+const fetchPageStats = async (agencyId: number) => {
+  const { data } = await api.get<PageStatsSummary[]>("/stats/pages", { params: { agency_id: agencyId } });
+  const map: Record<number, PageStatsSummary> = {};
+  data.forEach(item => {
+    map[item.page_id] = item;
+  });
+  pageStatsMap.value = map;
+};
+
+const fetchOverview = async (agencyId: number) => {
+  const params: Record<string, string | number> = { agency_id: agencyId, days: selectedPeriod.value };
+  if (selectedPage.value !== "all") {
+    const pageId = Number(selectedPage.value);
+    if (!Number.isNaN(pageId)) params.page_id = pageId;
+  }
+  const { data } = await api.get<OverviewResponse>("/stats/overview", { params });
+  overview.value = data;
+};
+
+const fetchLeads = async () => {
+  try {
+    await Promise.all([
+      leadStore.fetchContacts(undefined, true),
+      leadStore.fetchStatuses(true)
+    ]);
+  } catch {
+    // sem bloqueio do dashboard
+  }
+};
+
+const loadDashboard = async () => {
+  isBootstrappingDashboard.value = true;
   try {
     await agencyStore.loadAgencies();
-    if (!agencyStore.currentAgencyId) return;
-    if (selectedPeriod.value === "custom" && !hasValidCustomRange.value) return;
+    const agencyId = agencyStore.currentAgencyId || agencyStore.agencies[0]?.id;
+    if (!agencyId) return;
+    await agencyStore.loadPrimaryDomain(agencyId);
 
-    const agencyId = agencyStore.currentAgencyId;
-
-    const res = await api.get<Page[]>("/pages", { params: { agency_id: agencyId } });
-    pages.value = res.data;
-    pagesCount.value = res.data.length;
-
-    await fetchOverviewStats(agencyId);
-    await fetchSelectedPageStats(agencyId);
+    await Promise.all([fetchPages(agencyId), fetchPageStats(agencyId), fetchOverview(agencyId), fetchLeads(), fetchEligibleBanner(agencyId)]);
+    await ensureBannerImpression();
   } finally {
     isBootstrappingDashboard.value = false;
   }
 };
 
-watch(
-  () => publishedPages.value,
-  (pagesList) => {
-    if (selectedPage.value !== "all" && !pagesList.some((p) => String(p.id) === selectedPage.value)) {
-      selectedPage.value = "all";
-    }
-  }
-);
+const goToLessons = () => router.push("/admin/aulas");
+const goToPages = () => router.push("/admin/pages");
+const goToOpportunities = () => router.push("/admin/leads/opportunities");
+const goToIntegrations = () => router.push("/admin/integracoes");
 
-onMounted(fetchData);
-const updateIsMobile = () => {
-  if (typeof window === "undefined") return;
-  isMobile.value = window.matchMedia("(max-width: 768px)").matches;
-};
-onMounted(() => {
-  updateIsMobile();
-  window.addEventListener("resize", updateIsMobile);
+const currentAgencySlug = computed(() => {
+  const agency = agencyStore.currentAgency || agencyStore.agencies.find(a => a.id === agencyStore.currentAgencyId);
+  return agency?.slug || "";
 });
-onUnmounted(() => {
-  window.removeEventListener("resize", updateIsMobile);
-});
-watch(
-  showLeadCard,
-  (allowed) => {
-    if (allowed) {
-      ensureLeadContacts();
-    }
-  },
-  { immediate: true }
-);
-watch(
-  selectedPage,
-  async () => {
-    if (!agencyStore.currentAgencyId) return;
-    await fetchSelectedPageStats(agencyStore.currentAgencyId);
-  }
-);
 
-watch(
-  selectedPeriod,
-  async (value) => {
-    if (!agencyStore.currentAgencyId) return;
-    if (value === "custom" && !hasValidCustomRange.value) return;
-    const agencyId = agencyStore.currentAgencyId;
-    await fetchOverviewStats(agencyId);
-    await fetchSelectedPageStats(agencyId);
-  }
-);
-
-watch(
-  [customStartDate, customEndDate],
-  async () => {
-    if (selectedPeriod.value !== "custom" || !hasValidCustomRange.value) return;
-    if (!agencyStore.currentAgencyId) return;
-    const agencyId = agencyStore.currentAgencyId;
-    await fetchOverviewStats(agencyId);
-    await fetchSelectedPageStats(agencyId);
-  }
-);
-
-const goPlans = () => {
-  router.push("/admin/planos");
+const buildPublicPageUrl = (slug: string) => {
+  if (!slug) return "";
+  const domain = agencyStore.currentPrimaryDomain;
+  const protocol = typeof window !== "undefined" ? window.location.protocol : "https:";
+  if (domain) return `${protocol}//${domain}/${slug}`;
+  const agencySlug = currentAgencySlug.value;
+  if (!agencySlug) return "";
+  return `${window.location.origin}/${agencySlug}/${slug}`;
 };
+
+const viewPage = (item: { slug: string }) => {
+  if (!item.slug) return;
+  const url = buildPublicPageUrl(item.slug);
+  if (!url) return;
+  window.open(url, "_blank", "noopener");
+};
+
+const editPage = (item: { id: number }) => {
+  router.push(`/admin/pages/${item.id}/edit`);
+};
+
+const sharePage = async (item: { slug: string }) => {
+  if (!item.slug) return;
+  const url = buildPublicPageUrl(item.slug);
+  if (!url) return;
+  try {
+    await navigator.clipboard.writeText(url);
+  } catch {
+    window.prompt("Copie o link:", url);
+  }
+};
+
+const leadWhatsappUrl = (lead: LeadContact) => {
+  const digits = normalizeWhatsappDigits(lead.phone || "");
+  if (!digits) return "";
+  return `https://wa.me/${digits}`;
+};
+
+const openLeadDetails = (leadId: string | number) => {
+  selectedLeadId.value = leadId;
+  drawerOpen.value = true;
+};
+
+const relativeTime = (value?: string) => {
+  if (!value) return "agora";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "agora";
+  const diffMs = Date.now() - date.getTime();
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  if (diffHours < 1) return "agora";
+  if (diffHours < 24) return `há ${diffHours}h`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays === 1) return "ontem";
+  return `há ${diffDays} dias`;
+};
+
+const formatDateLabel = (raw: string) => {
+  const value = String(raw || "").trim();
+  const brLike = value.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/);
+  if (brLike) {
+    const day = brLike[1].padStart(2, "0");
+    const month = brLike[2].padStart(2, "0");
+    return `${day}/${month}`;
+  }
+  const date = new Date(raw);
+  if (!Number.isNaN(date.getTime())) {
+    return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+  }
+  return value;
+};
+
+watch([selectedPeriod, selectedPage], async () => {
+  const agencyId = agencyStore.currentAgencyId || agencyStore.agencies[0]?.id;
+  if (!agencyId) return;
+  hideChartTooltip();
+  await fetchOverview(agencyId);
+});
+
+watch(
+  () => [agencyStore.currentAgencyId, eligibleBanner.value?.id],
+  async () => {
+    await ensureBannerImpression();
+  }
+);
+
+onMounted(async () => {
+  await loadDashboard();
+  await nextTick();
+  measureChartWidth();
+  if (typeof ResizeObserver !== "undefined") {
+    chartResizeObserver = new ResizeObserver(() => measureChartWidth());
+    if (chartStageRef.value) chartResizeObserver.observe(chartStageRef.value);
+  }
+  window.addEventListener("resize", measureChartWidth);
+});
+
+onBeforeUnmount(() => {
+  chartResizeObserver?.disconnect();
+  chartResizeObserver = null;
+  window.removeEventListener("resize", measureChartWidth);
+});
 </script>
 
 <style scoped>
-.locked-blur {
-  filter: blur(8px);
-  opacity: 0.15;
-  pointer-events: none;
-  transition: opacity 0.2s ease, filter 0.2s ease;
+.dashboard-reference {
+  --verde: #3dcc5f;
+  --verde-light: #5be07a;
+  --verde-dim: rgba(61, 204, 95, 0.12);
+  --verde-border: rgba(61, 204, 95, 0.25);
+  --sidebar: #1a3d25;
+  --sidebar-active: #2a5c38;
+  --bg: #f5f7f5;
+  --surface: #ffffff;
+  --surface2: #f0f5f1;
+  --text: #0f1f14;
+  --text-2: #4a6455;
+  --text-3: #8aa693;
+  --border: #dde8df;
+  --shadow: 0 1px 3px rgba(15, 31, 20, 0.06), 0 4px 12px rgba(15, 31, 20, 0.04);
+  --shadow-md: 0 4px 16px rgba(15, 31, 20, 0.08), 0 1px 4px rgba(15, 31, 20, 0.04);
+  --purple: #7c5cfc;
+
+  width: 100%;
+  min-height: 100%;
+  background: var(--bg);
+  padding: 28px 32px;
+  color: var(--text);
+  font-family: "Plus Jakarta Sans", "Inter", sans-serif;
 }
-.blurred-value {
-  filter: blur(8px);
-  opacity: 0.1;
-  pointer-events: none;
-  user-select: none;
+
+.dashboard-loading {
+  min-height: 60vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.spinner {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 4px solid #d6e4da;
+  border-top-color: var(--verde);
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.page-title {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.4px;
+}
+
+.page-sub {
+  font-size: 13px;
+  color: var(--text-3);
+  margin-top: 2px;
+}
+
+.topbar-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.btn {
+  border: none;
+  border-radius: 10px;
+  padding: 9px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background: var(--verde);
+  color: #0f1f14;
+}
+
+.btn-ghost {
+  background: var(--surface);
+  color: var(--text-2);
+  border: 1px solid var(--border);
+}
+
+.banner {
+  background: linear-gradient(135deg, #1a3d25 0%, #2a5c38 50%, #1f4a2d 100%);
+  border-radius: 16px;
+  padding: 20px 24px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   position: relative;
+}
+
+.banner-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.banner-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(61, 204, 95, 0.2);
+  color: var(--verde);
+  font-weight: 800;
+}
+
+.banner-title {
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.banner-desc {
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 13px;
+  margin-top: 2px;
+}
+
+.banner-cta {
+  border: none;
+  border-radius: 10px;
+  background: var(--verde);
+  color: #0f1f14;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 9px 18px;
+  cursor: pointer;
+}
+
+.banner-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  border: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.metric-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+
+.metric-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.metric-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.metric-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: var(--verde-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.metric-value {
+  font-size: 32px;
+  line-height: 1;
+  letter-spacing: -1px;
+  margin: 12px 0 8px;
+  font-weight: 800;
+}
+
+.metric-footer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.metric-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 7px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.metric-badge.up {
+  background: var(--verde-dim);
+  color: #2a8a3e;
+}
+
+.metric-badge.down {
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+}
+
+.metric-footer-text {
+  font-size: 11px;
+  color: var(--text-3);
+}
+
+.chart-card-wrap {
+  margin-bottom: 24px;
+}
+
+.chart-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.chart-title {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.chart-sub {
+  font-size: 12px;
+  color: var(--text-3);
+  margin-top: 2px;
+}
+
+.chart-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.filter-select {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 6px 10px;
+  background: var(--surface);
+}
+
+.chart-legend {
+  display: flex;
+  gap: 12px;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-2);
+}
+
+.legend-toggle {
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+.legend-toggle.off {
+  opacity: 0.45;
+}
+
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+}
+
+.legend-dot.visits { background: #2ead4c; }
+.legend-dot.clicks { background: #f97316; }
+.legend-dot.leads { background: #7c5cfc; }
+
+.period-switch {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.period-btn {
+  border: none;
+  border-radius: 7px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-3);
+  background: transparent;
+  cursor: pointer;
+}
+
+.period-btn.active {
+  background: var(--verde);
+  color: #0f1f14;
+}
+
+.chart-stage {
+  position: relative;
+  height: 160px;
+}
+
+.chart-stage svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.chart-tooltip {
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+  min-width: 144px;
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: #0f172a;
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.28);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.chart-tooltip p {
+  margin: 0;
+}
+
+.chart-tooltip p + p {
+  margin-top: 2px;
+}
+
+.chart-tooltip-date {
+  margin-bottom: 4px !important;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.chart-dates {
+  margin-top: 8px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-3);
+}
+
+.bottom-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.list-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+
+.list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.list-title {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.list-link {
+  border: none;
+  background: transparent;
+  font-size: 12px;
+  color: var(--verde);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.page-item,
+.lead-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.page-item:last-child,
+.lead-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.page-thumb,
+.lead-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.page-thumb {
+  background: var(--verde-dim);
+  color: var(--verde);
+}
+
+.lead-avatar {
+  background: rgba(124, 92, 252, 0.12);
+  color: var(--purple);
+}
+
+.page-info,
+.lead-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.lead-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.lead-copy {
+  min-width: 0;
+}
+
+.page-name,
+.lead-name {
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+}
+
+.page-dest,
+.lead-meta {
+  font-size: 11px;
+  color: var(--text-3);
+  margin: 0;
+}
+
+.lead-meta {
+  margin-top: 2px;
+}
+
+.page-bar {
+  width: 100%;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--surface2);
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.page-bar-fill {
+  height: 100%;
+  background: var(--verde);
+}
+
+.page-side {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.page-visits {
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.page-actions,
+.lead-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.page-action-btn,
+.lead-btn {
+  border: none;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.page-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
+  width: 38px;
+  height: 38px;
+  font-size: 19px;
+}
+
+.page-action-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.page-action-btn.view { background: var(--verde-dim); color: var(--verde); }
+.page-action-btn.edit { background: var(--surface2); color: var(--text-2); border: 1px solid var(--border); }
+.page-action-btn.share { background: rgba(124, 92, 252, 0.12); color: var(--purple); }
+
+.lead-btn {
+  padding: 4px 9px;
+}
+
+.lead-btn-contact {
+  background: var(--verde);
+  color: #0f1f14;
+  text-decoration: none;
+}
+
+.lead-btn-details {
+  background: var(--surface2);
+  color: var(--text-2);
+  border: 1px solid var(--border);
+}
+
+.empty-text {
+  font-size: 12px;
+  color: var(--text-3);
+  padding-top: 4px;
+}
+
+@media (max-width: 1100px) {
+  .dashboard-reference {
+    padding: 22px 16px;
+  }
+
+  .bottom-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .topbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .metrics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-header {
+    flex-direction: column;
+  }
+
+  .chart-controls {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .banner {
+    padding-right: 56px;
+  }
 }
 </style>

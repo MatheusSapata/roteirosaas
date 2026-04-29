@@ -20,26 +20,34 @@
     <div class="flex min-h-screen md:h-screen">
       <aside
         :class="[
-          'admin-sidebar hidden w-64 flex-shrink-0 flex-col justify-between border-r px-0 py-6 shadow-md md:fixed md:inset-y-0 md:left-0 md:flex',
-          isDarkTheme ? 'border-[#2b2b2b] bg-[#202020] text-white' : 'border-transparent bg-brand text-white'
+          'admin-sidebar hidden w-[246px] flex-shrink-0 flex-col justify-between border-r px-0 py-6 shadow-md md:fixed md:inset-y-0 md:left-0 md:flex',
+          'border-[#254d32] bg-[#1A3D25] text-slate-100'
         ]"
       >
         <div class="flex flex-1 flex-col overflow-y-auto px-6">
           <div class="mb-4 flex items-center justify-center">
             <img :src="sidebarLogoSrc" alt="Roteiro Online" class="max-h-[4.4rem] object-contain md:max-h-16" />
           </div>
-          <nav class="flex-1 space-y-1">
-            <template v-for="item in adminNavigation" :key="item.id">
+          <nav class="flex-1 space-y-2">
+            <section
+              v-for="section in sidebarSections"
+              :key="`desktop-section-${section.id}`"
+              class="pt-1 first:pt-0"
+              :class="section.id !== sidebarSections[0]?.id ? 'mt-2' : ''"
+            >
+              <p class="px-2 pb-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white/35">{{ section.label }}</p>
+              <div class="space-y-1">
+                <template v-for="item in section.items" :key="item.id">
               <RouterLink
                 v-if="item.type === 'link'"
                 :to="item.to"
-                class="flex items-center gap-2 rounded-lg pr-3 pl-0 py-1.5 text-sm font-semibold transition"
+                class="flex items-center gap-2 rounded-xl px-3 py-2 text-[13px] font-medium transition"
                 :class="isTopLevelActive(item) ? activeClass : inactiveClass"
               >
                 <span
                   :class="[
                     'flex h-6 w-6 items-center justify-center rounded-full',
-                    isDarkTheme ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600 md:bg-white/15 md:text-white'
+                    'bg-white/10 text-slate-100'
                   ]"
                 >
                   <svg
@@ -49,19 +57,25 @@
                     v-html="navIcons[item.iconPath] || navIcons.default"
                   ></svg>
                 </span>
-                <span>{{ item.label }}</span>
+                <span class="flex-1">{{ item.label }}</span>
+                <span
+                  v-if="getNavBadge(item.id) !== null"
+                  class="rounded-full bg-[#3DCC5F] px-2 py-0.5 text-[10px] font-bold leading-none text-[#0F1F14]"
+                >
+                  {{ getNavBadge(item.id) }}
+                </span>
               </RouterLink>
               <div v-else class="space-y-1">
                 <button
                   type="button"
-                  class="flex w-full items-center gap-2 rounded-lg pr-3 pl-0 py-1.5 text-sm font-semibold transition"
+                  class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-[13px] font-medium transition"
                   :class="isParentActive(item) ? activeClass : inactiveClass"
                   @click="toggleNavGroup(item.id)"
                 >
                   <span
                     :class="[
                       'flex h-6 w-6 items-center justify-center rounded-full',
-                      isDarkTheme ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600 md:bg-white/15 md:text-white'
+                      'bg-white/10 text-slate-100'
                     ]"
                   >
                     <svg
@@ -74,7 +88,7 @@
                   <span class="flex-1 text-left">{{ item.label }}</span>
                   <svg
                     viewBox="0 0 24 24"
-                    class="h-4 w-4 transition-transform"
+                    class="mr-1 h-4 w-4 transition-transform"
                     :class="isGroupExpanded(item) ? 'rotate-180' : ''"
                     fill="none"
                     stroke="currentColor"
@@ -84,33 +98,41 @@
                   >
                     <path d="m6 9 6 6 6-6" />
                   </svg>
+                  <span
+                    v-if="getNavBadge(item.id) !== null"
+                    class="rounded-full bg-[#3DCC5F] px-2 py-0.5 text-[10px] font-bold leading-none text-[#0F1F14]"
+                  >
+                    {{ getNavBadge(item.id) }}
+                  </span>
                 </button>
-                <div v-if="isGroupExpanded(item)" class="ml-8 space-y-1">
+                <div v-if="isGroupExpanded(item)" class="ml-8 space-y-1 pb-1">
                   <RouterLink
                     v-for="child in item.children"
                     :key="`${item.id}-${child.path}`"
                     :to="child.path"
-                    class="flex items-center rounded-lg px-3 py-1.5 text-sm font-semibold transition"
+                    class="flex items-center rounded-lg px-3 py-1.5 text-[12px] font-medium transition"
                     :class="isChildActive(child.path) ? childActiveClass : childInactiveClass"
                   >
                     <span>{{ child.label }}</span>
                   </RouterLink>
                 </div>
               </div>
-            </template>
+                </template>
+              </div>
+            </section>
           </nav>
         </div>
 
         <div
           :class="[
             'mt-8 border-t px-6 pt-4 space-y-3',
-            isDarkTheme ? 'border-slate-800' : 'border-white/20'
+            'border-slate-800'
           ]"
         >
           <button
             type="button"
             class="flex w-full items-center justify-between rounded-xl border px-4 py-3 text-sm font-semibold transition"
-            :class="isDarkTheme ? 'border-white/20 bg-black text-white hover:bg-black/80' : 'border-white/30 bg-white/5 text-white hover:bg-white/10'"
+            :class="isDarkTheme ? 'border-white/15 bg-white/5 text-white hover:bg-white/10' : 'border-white/15 bg-white/5 text-white hover:bg-white/10'"
             @click="toggleTheme"
           >
             <div class="text-left">
@@ -120,7 +142,7 @@
             <span
               :class="[
                 'relative inline-flex h-6 w-11 items-center rounded-full transition',
-                isDarkTheme ? 'bg-[#3EBD59]' : 'bg-white/40'
+                isDarkTheme ? 'bg-[#3DCC5F]' : 'bg-white/40'
               ]"
             >
               <span
@@ -134,24 +156,27 @@
           <button
             type="button"
             @click="handleLogout"
-            class="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition"
+            class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition"
             :class="isDarkTheme ? 'text-white hover:bg-white/10' : 'text-white/90 hover:bg-white/10'"
           >
-            <span
-              :class="[
-                'flex h-9 w-9 items-center justify-center rounded-xl',
-                isDarkTheme ? 'bg-transparent text-white' : 'bg-white/20'
-              ]"
-            >
-              <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 3v9m5.657-6.657a8 8 0 1 1-11.314 0" />
+            <span class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-[#3DCC5F] text-sm font-extrabold text-[#0F1F14]">
+              {{ userInitial }}
+            </span>
+            <span class="min-w-0 flex-1">
+              <span class="block truncate text-[13px] font-semibold text-white">{{ userDisplayName }}</span>
+              <span class="block text-[11px] text-white/50">{{ userRoleLabel }}</span>
+            </span>
+            <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 text-white/80">
+              <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M15 17l5-5-5-5" />
+                <path d="M20 12H9" />
+                <path d="M12 19H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6" />
               </svg>
             </span>
-            <span class="text-base">{{ viewCopy.sidebar.logout }}</span>
           </button>
         </div>
       </aside>
-      <main :class="['admin-main flex min-h-0 flex-1 flex-col overflow-x-hidden md:ml-64',isDarkTheme ? 'bg-[#05070f] text-slate-100' : 'bg-slate-50 text-slate-900']">
+      <main :class="['admin-main flex min-h-0 flex-1 flex-col overflow-x-hidden md:ml-[246px]',isDarkTheme ? 'bg-[#05070f] text-slate-100' : 'bg-slate-50 text-slate-900']">
         <div
           :class="[
             'admin-content flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3 pt-1 pb-4 md:px-6 md:pt-2 md:pb-6',
@@ -184,12 +209,12 @@
         >
         <div
           class="flex-1"
-          :class="isDarkTheme ? 'bg-[#202020]/90' : 'bg-slate-900/60'"
+          :class="'bg-slate-900/65'"
           @click="mobileMenuOpen = false"
         ></div>
         <div
           class="w-72 max-w-full p-5 shadow-2xl transition-colors md:rounded-l-3xl"
-          :class="isDarkTheme ? 'bg-[#202020] text-white' : 'bg-brand text-white'"
+          :class="'bg-[#1A3D25] text-slate-100'"
         >
           <div class="mb-6 flex items-center justify-between">
             <div>
@@ -210,26 +235,32 @@
               </svg>
             </button>
           </div>
-          <nav class="space-y-1">
-            <template v-for="item in adminNavigation" :key="'mobile-' + item.id">
+          <nav class="space-y-2">
+            <section
+              v-for="section in sidebarSections"
+              :key="`mobile-section-${section.id}`"
+              class="pt-1 first:pt-0"
+              :class="section.id !== sidebarSections[0]?.id ? 'mt-2' : ''"
+            >
+              <p class="px-2 pb-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white/35">{{ section.label }}</p>
+              <div class="space-y-1">
+                <template v-for="item in section.items" :key="'mobile-' + item.id">
               <RouterLink
                 v-if="item.type === 'link'"
                 :to="item.to"
-                class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition"
+                class="flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-medium transition"
                 :class="[
-                  'text-white',
+                  'text-slate-100',
                   isTopLevelActive(item)
-                    ? isDarkTheme
-                      ? 'bg-white/15 text-white'
-                      : 'bg-white/20'
-                    : 'hover:bg-white/10'
+                    ? 'bg-[#2A5C38] border-l-[3px] border-l-[#3DCC5F]'
+                    : 'hover:bg-white/8'
                 ]"
                 @click="mobileMenuOpen = false"
               >
                 <span
                   :class="[
                     'flex h-7 w-7 items-center justify-center rounded-full',
-                    isDarkTheme ? 'bg-white/10 text-white' : 'bg-white/20 text-white'
+                    'bg-white/10 text-slate-100'
                   ]"
                 >
                   <svg
@@ -239,19 +270,25 @@
                     v-html="navIcons[item.iconPath] || navIcons.default"
                   ></svg>
                 </span>
-                <span>{{ item.label }}</span>
+                <span class="flex-1">{{ item.label }}</span>
+                <span
+                  v-if="getNavBadge(item.id) !== null"
+                  class="rounded-full bg-[#3DCC5F] px-2 py-0.5 text-[10px] font-bold leading-none text-[#0F1F14]"
+                >
+                  {{ getNavBadge(item.id) }}
+                </span>
               </RouterLink>
               <div v-else class="space-y-1">
                 <button
                   type="button"
-                  class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition text-white"
-                  :class="isParentActive(item) ? 'bg-white/15 text-white' : 'hover:bg-white/10'"
+                  class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-medium transition text-slate-100"
+                  :class="isParentActive(item) ? 'bg-[#2A5C38] border-l-[3px] border-l-[#3DCC5F]' : 'hover:bg-white/8'"
                   @click="toggleNavGroup(item.id)"
                 >
                   <span
                     :class="[
-                      'flex h-7 w-7 items-center justify-center rounded-full',
-                      isDarkTheme ? 'bg-white/10 text-white' : 'bg-white/20 text-white'
+                    'flex h-7 w-7 items-center justify-center rounded-full',
+                      'bg-white/10 text-slate-100'
                     ]"
                   >
                     <svg
@@ -264,7 +301,7 @@
                   <span class="flex-1 text-left">{{ item.label }}</span>
                   <svg
                     viewBox="0 0 24 24"
-                    class="h-4 w-4 transition-transform"
+                    class="mr-1 h-4 w-4 transition-transform"
                     :class="isGroupExpanded(item) ? 'rotate-180' : ''"
                     fill="none"
                     stroke="currentColor"
@@ -274,39 +311,47 @@
                   >
                     <path d="m6 9 6 6 6-6" />
                   </svg>
+                  <span
+                    v-if="getNavBadge(item.id) !== null"
+                    class="rounded-full bg-[#3DCC5F] px-2 py-0.5 text-[10px] font-bold leading-none text-[#0F1F14]"
+                  >
+                    {{ getNavBadge(item.id) }}
+                  </span>
                 </button>
                 <div v-if="isGroupExpanded(item)" class="ml-9 space-y-1">
                   <RouterLink
                     v-for="child in item.children"
                     :key="'mobile-' + item.id + '-' + child.path"
                     :to="child.path"
-                    class="flex items-center rounded-lg px-3 py-2 text-sm font-semibold transition text-white"
-                    :class="isChildActive(child.path) ? 'bg-white/20' : 'hover:bg-white/10'"
+                    class="flex items-center rounded-lg px-3 py-2 text-[12px] font-medium transition text-slate-100"
+                    :class="isChildActive(child.path) ? 'bg-[#2A5C38] border-l-[3px] border-l-[#3DCC5F]' : 'hover:bg-white/8'"
                     @click="mobileMenuOpen = false"
                   >
                     <span>{{ child.label }}</span>
                   </RouterLink>
                 </div>
               </div>
-            </template>
+                </template>
+              </div>
+            </section>
           </nav>
           <div
             :class="[
               'mt-6 border-t pt-4 space-y-3',
-              isDarkTheme ? 'border-lime-200/20' : 'border-white/20'
+              'border-slate-800'
             ]"
           >
             <button
               type="button"
               class="flex w-full items-center justify-between rounded-lg border px-3 py-2 text-sm font-semibold transition"
-              :class="isDarkTheme ? 'border-white/20 bg-black text-white hover:bg-black/80' : 'border-white/30 bg-white/5 text-white hover:bg-white/10'"
+              :class="'border-white/15 bg-white/5 text-white hover:bg-white/10'"
               @click="toggleTheme"
             >
               <span>{{ viewCopy.themeToggle.label }}</span>
               <span
                 :class="[
                   'relative inline-flex h-5 w-10 items-center rounded-full transition',
-                  isDarkTheme ? 'bg-[#3EBD59]' : 'bg-white/40'
+                  isDarkTheme ? 'bg-[#3DCC5F]' : 'bg-white/40'
                 ]"
               >
                 <span
@@ -320,20 +365,23 @@
             <button
               type="button"
               @click="handleLogout"
-              class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition"
+              class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition"
               :class="isDarkTheme ? 'text-white hover:bg-white/10' : 'text-white hover:bg-white/10'"
             >
-              <span
-                :class="[
-                  'flex h-7 w-7 items-center justify-center rounded-full',
-                  isDarkTheme ? 'bg-transparent text-white' : 'bg-white/20'
-                ]"
-              >
-                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M12 3v9m5.657-6.657a8 8 0 1 1-11.314 0" />
+              <span class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-[#3DCC5F] text-xs font-extrabold text-[#0F1F14]">
+                {{ userInitial }}
+              </span>
+              <span class="min-w-0 flex-1">
+                <span class="block truncate text-[13px] font-semibold text-white">{{ userDisplayName }}</span>
+                <span class="block text-[11px] text-white/50">{{ userRoleLabel }}</span>
+              </span>
+              <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10 text-white/80">
+                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M15 17l5-5-5-5" />
+                  <path d="M20 12H9" />
+                  <path d="M12 19H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6" />
                 </svg>
               </span>
-              <span>{{ viewCopy.sidebar.logout }}</span>
             </button>
           </div>
         </div>
@@ -672,6 +720,7 @@ import ImageUploadField from "../components/admin/inputs/ImageUploadField.vue";
 import api from "../services/api";
 import { useAgencyStore } from "../store/useAgencyStore";
 import { useAuthStore } from "../store/useAuthStore";
+import { useLeadCaptureStore } from "../store/useLeadCaptureStore";
 import { useThemeStore } from "../store/useThemeStore";
 import { getPlanLabel } from "../utils/planLabels";
 import { addTagsToContactByEmail, syncPlanTagForEmail, viajeChatTagIds } from "../services/viajeChat";
@@ -682,12 +731,28 @@ const route = useRoute();
 const router = useRouter();
 const agencyStore = useAgencyStore();
 const auth = useAuthStore();
+const leadStore = useLeadCaptureStore();
 const routeRequiresAuth = computed(() => route.matched.some(record => record.meta?.requiresAuth));
 const showAuthSplash = computed(() => {
   if (!routeRequiresAuth.value) return false;
   if (!auth.token) return false;
   return auth.isHydrating || !auth.user;
 });
+const navPageCount = ref<number | null>(null);
+const navLeadCount = ref<number | null>(null);
+const userDisplayName = computed(() => {
+  const user = auth.user as Record<string, unknown> | null;
+  if (!user) return "Usuário";
+  const name = (user.name as string) || (user.full_name as string) || (user.username as string);
+  if (name && name.trim()) return name.trim().split(/\s+/)[0];
+  const email = user.email as string | undefined;
+  return email?.trim().split("@")[0] || "Usuário";
+});
+const userInitial = computed(() => {
+  const name = userDisplayName.value.trim();
+  return name ? name.charAt(0).toUpperCase() : "U";
+});
+const userRoleLabel = computed(() => (auth.user?.is_superuser ? "Admin" : "Usuário"));
 const themeStore = useThemeStore();
 const COOKIE_KEY = "global_cookie_consent";
 const t = createAdminLocalizer();
@@ -940,6 +1005,7 @@ type AdminNavGroupItem = {
 };
 
 type AdminNavItem = AdminNavLinkItem | AdminNavGroupItem;
+type SidebarSection = { id: string; label: string; itemIds: string[]; items: AdminNavItem[] };
 
 const routeTitleMap: Record<string, string> = {
   dashboard: navLabel("dashboard"),
@@ -956,6 +1022,7 @@ const routeTitleMap: Record<string, string> = {
   "admin-management-lessons": t({ pt: "Gestão de aulas", es: "Gestión de cursos" }),
   "admin-management-templates": t({ pt: "Templates", es: "Templates" }),
   "admin-management-flight-apis": t({ pt: "APIs de voo", es: "APIs de vuelo" }),
+  "admin-management-banners": t({ pt: "Banners", es: "Banners" }),
   "page-edit": t({ pt: "Editar página", es: "Editar página" }),
   lessons: navLabel("lessons"),
   "agency-settings": navLabel("agency"),
@@ -976,7 +1043,7 @@ const adminNavigation = computed<AdminNavItem[]>(() => {
     {
       id: "leads",
       type: "group",
-      label: t({ pt: "Captação", es: "Captacion" }),
+      label: t({ pt: "Captação de leads", es: "Captacion" }),
       basePath: "/admin/leads",
       iconPath: "/admin/leads",
       children: [
@@ -1007,11 +1074,43 @@ const adminNavigation = computed<AdminNavItem[]>(() => {
         { label: t({ pt: "Usuários", es: "Usuarios" }), path: "/admin/administracao/usuarios" },
         { label: t({ pt: "Gestão de aulas", es: "Gestión de cursos" }), path: "/admin/administracao/aulas" },
         { label: t({ pt: "Templates", es: "Templates" }), path: "/admin/administracao/templates" },
-        { label: t({ pt: "APIs de voo", es: "APIs de vuelo" }), path: "/admin/administracao/apis-voo" }
+        { label: t({ pt: "APIs de voo", es: "APIs de vuelo" }), path: "/admin/administracao/apis-voo" },
+        { label: t({ pt: "Banners", es: "Banners" }), path: "/admin/administracao/banners" }
       ]
     });
   }
   return items;
+});
+
+const sidebarSections = computed<SidebarSection[]>(() => {
+  const items = adminNavigation.value;
+  const byId = new Map(items.map(item => [item.id, item]));
+  const sectionsBase: Array<Omit<SidebarSection, "items">> = [
+    {
+      id: "principal",
+      label: t({ pt: "Principal", es: "Principal" }),
+      itemIds: ["dashboard", "admin-master", "pages", "leads"]
+    },
+    {
+      id: "configurar",
+      label: t({ pt: "Configurar", es: "Configurar" }),
+      itemIds: ["integrations", "agency", "domains", "profile"]
+    },
+    {
+      id: "aprender",
+      label: t({ pt: "Aprender", es: "Aprender" }),
+      itemIds: ["lessons"]
+    }
+  ];
+
+  return sectionsBase
+    .map(section => ({
+      ...section,
+      items: section.itemIds
+        .map(id => byId.get(id))
+        .filter((item): item is AdminNavItem => Boolean(item))
+    }))
+    .filter(section => section.items.length > 0);
 });
 
 const isPathActive = (path: string) => route.path === path || route.path.startsWith(`${path}/`);
@@ -1027,6 +1126,45 @@ const isGroupExpanded = (item: AdminNavGroupItem) => isParentActive(item) || Boo
 const toggleNavGroup = (groupId: string) => {
   navGroupExpandedState.value[groupId] = !navGroupExpandedState.value[groupId];
 };
+
+const getNavBadge = (itemId: string): string | null => {
+  if (itemId === "pages" && navPageCount.value !== null) {
+    return navPageCount.value > 99 ? "99+" : String(navPageCount.value);
+  }
+  if (itemId === "leads" && navLeadCount.value !== null) {
+    return navLeadCount.value > 99 ? "99+" : String(navLeadCount.value);
+  }
+  return null;
+};
+
+const loadNavCounters = async () => {
+  const agencyId = agencyStore.currentAgencyId;
+  if (!agencyId) {
+    navPageCount.value = null;
+    navLeadCount.value = null;
+    return;
+  }
+
+  const [pagesResult, leadsResult] = await Promise.allSettled([
+    api.get<Array<unknown>>("/pages", { params: { agency_id: agencyId } }),
+    leadStore.fetchContacts(undefined, true)
+  ]);
+
+  if (pagesResult.status === "fulfilled") {
+    navPageCount.value = Array.isArray(pagesResult.value.data) ? pagesResult.value.data.length : 0;
+  }
+  if (leadsResult.status === "fulfilled") {
+    navLeadCount.value = leadStore.totalContacts ?? 0;
+  }
+};
+
+watch(
+  () => [agencyStore.currentAgencyId, auth.user?.id] as const,
+  () => {
+    void loadNavCounters();
+  },
+  { immediate: true }
+);
 
 const currentPageTitle = computed(() => {
   const routeName = typeof route.name === "string" ? route.name : null;
@@ -1055,26 +1193,10 @@ const pageTitleRowPaddingClass = computed(() => {
   return "px-4 md:px-6";
 });
 
-const activeClass = computed(() =>
-  isDarkTheme.value
-    ? "bg-white/15 text-white shadow-inner"
-    : "bg-slate-100 text-slate-900 md:bg-white/20 md:text-white md:shadow-sm"
-);
-const inactiveClass = computed(() =>
-  isDarkTheme.value
-    ? "text-white hover:bg-white/5"
-    : "text-slate-700 hover:bg-slate-100 md:text-white/80 md:hover:bg-white/10 md:hover:text-white"
-);
-const childActiveClass = computed(() =>
-  isDarkTheme.value
-    ? "bg-white/15 text-white"
-    : "bg-slate-100 text-slate-900 md:bg-white/15 md:text-white"
-);
-const childInactiveClass = computed(() =>
-  isDarkTheme.value
-    ? "text-white/90 hover:bg-white/10"
-    : "text-slate-700 hover:bg-slate-100 md:text-white/85 md:hover:bg-white/10 md:hover:text-white"
-);
+const activeClass = computed(() => "bg-[#2A5C38] text-white border-l-[3px] border-l-[#3DCC5F]");
+const inactiveClass = computed(() => "text-slate-200 hover:bg-white/8 hover:text-white");
+const childActiveClass = computed(() => "bg-[#2A5C38] text-white border-l-[3px] border-l-[#3DCC5F]");
+const childInactiveClass = computed(() => "text-slate-300 hover:bg-white/8 hover:text-white");
 
 const agencyName = computed(() => agencyStore.currentAgency?.name || agencyStore.agencies[0]?.name || "");
 const sidebarLogoSrc = SidebarLogo;
