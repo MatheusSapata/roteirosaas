@@ -41,7 +41,7 @@
               <RouterLink
                 v-if="item.type === 'link'"
                 :to="item.to"
-                class="flex items-center gap-2 rounded-xl px-3 py-2 text-[13px] font-medium transition"
+                class="flex items-center gap-2 rounded-xl px-3 py-1.5 text-[13px] font-medium transition"
                 :class="isTopLevelActive(item) ? activeClass : inactiveClass"
               >
                 <span
@@ -68,7 +68,7 @@
               <div v-else class="space-y-1">
                 <button
                   type="button"
-                  class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-[13px] font-medium transition"
+                  class="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-[13px] font-medium transition"
                   :class="isParentActive(item) ? activeClass : inactiveClass"
                   @click="toggleNavGroup(item.id)"
                 >
@@ -110,7 +110,7 @@
                     v-for="child in item.children"
                     :key="`${item.id}-${child.path}`"
                     :to="child.path"
-                    class="flex items-center rounded-lg px-3 py-1.5 text-[12px] font-medium transition"
+                    class="flex items-center rounded-lg px-3 py-1 text-[12px] font-medium transition"
                     :class="isChildActive(child.path) ? childActiveClass : childInactiveClass"
                   >
                     <span>{{ child.label }}</span>
@@ -248,7 +248,7 @@
               <RouterLink
                 v-if="item.type === 'link'"
                 :to="item.to"
-                class="flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-medium transition"
+                class="flex items-center gap-2 rounded-lg px-3 py-1.5 text-[13px] font-medium transition"
                 :class="[
                   'text-slate-100',
                   isTopLevelActive(item)
@@ -281,7 +281,7 @@
               <div v-else class="space-y-1">
                 <button
                   type="button"
-                  class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-medium transition text-slate-100"
+                  class="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-[13px] font-medium transition text-slate-100"
                   :class="isParentActive(item) ? 'bg-[#2A5C38] border-l-[3px] border-l-[#3DCC5F]' : 'hover:bg-white/8'"
                   @click="toggleNavGroup(item.id)"
                 >
@@ -323,7 +323,7 @@
                     v-for="child in item.children"
                     :key="'mobile-' + item.id + '-' + child.path"
                     :to="child.path"
-                    class="flex items-center rounded-lg px-3 py-2 text-[12px] font-medium transition text-slate-100"
+                    class="flex items-center rounded-lg px-3 py-1 text-[12px] font-medium transition text-slate-100"
                     :class="isChildActive(child.path) ? 'bg-[#2A5C38] border-l-[3px] border-l-[#3DCC5F]' : 'hover:bg-white/8'"
                     @click="mobileMenuOpen = false"
                   >

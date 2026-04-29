@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session, aliased
 from app.api.deps import get_current_superuser, get_db
 from app.api.v1.endpoints.billing import set_subscription_cancelled
 from app.models.cakto import CaktoOnboardingToken
+from app.models.cakto import CaktoEventLog
 from app.models.subscription import Subscription
 from app.models.stats import PageVisitStats
 from app.models.user import User
@@ -34,6 +35,7 @@ from app.schemas.admin import (
     AdminUserPage,
     AdminUserTracking,
     TimeseriesPoint,
+    SubscriptionTimeseriesPoint,
 )
 from app.schemas.page import PageOut
 from app.services.cakto import CaktoAPIError, CaktoIntegrationService
@@ -301,6 +303,93 @@ def get_admin_metrics(
     )
     timeseries = [TimeseriesPoint(label=str(d), value=c) for d, c in ts_rows]
 
+    # timeseries de assinaturas (novas, renovadas, canceladas) + churn diario
+    sub_created_rows = (
+        db.query(func.date(Subscription.created_at), func.count(Subscription.id))
+        .filter(Subscription.created_at >= since_dt, Subscription.created_at <= until_dt)
+        .group_by(func.date(Subscription.created_at))
+        .all()
+    )
+    new_by_day = {str(day): int(count or 0) for day, count in sub_created_rows}
+
+    cakto_event_rows = (
+        db.query(func.date(CaktoEventLog.processed_at), CaktoEventLog.event_type, func.count(CaktoEventLog.id))
+        .filter(
+            CaktoEventLog.processed_at.isnot(None),
+            CaktoEventLog.processed_at >= since_dt,
+            CaktoEventLog.processed_at <= until_dt,
+        )
+        .group_by(func.date(CaktoEventLog.processed_at), CaktoEventLog.event_type)
+        .all()
+    )
+    renewed_by_day: dict[str, int] = defaultdict(int)
+    cancelled_by_day: dict[str, int] = defaultdict(int)
+    for day, event_type, count in cakto_event_rows:
+        normalized_type = (event_type or "").strip().lower()
+        day_key = str(day)
+        if normalized_type == "subscription_renewed":
+            renewed_by_day[day_key] += int(count or 0)
+        elif normalized_type in {"subscription_canceled", "subscription_cancelled"}:
+            cancelled_by_day[day_key] += int(count or 0)
+
+    day_cursor = since_dt.date()
+    day_end = until_dt.date()
+    subscriptions_timeseries: list[SubscriptionTimeseriesPoint] = []
+    while day_cursor <= day_end:
+        day_key = day_cursor.isoformat()
+        new_count = int(new_by_day.get(day_key, 0))
+        renewed_count = int(renewed_by_day.get(day_key, 0))
+        cancelled_count = int(cancelled_by_day.get(day_key, 0))
+        base = new_count + renewed_count
+        churn_rate = (cancelled_count / base * 100.0) if base > 0 else 0.0
+        subscriptions_timeseries.append(
+            SubscriptionTimeseriesPoint(
+                label=day_key,
+                new_subscriptions=new_count,
+                renewed_subscriptions=renewed_count,
+                cancelled_subscriptions=cancelled_count,
+                churn_rate=round(churn_rate, 2),
+            )
+        )
+        day_cursor += timedelta(days=1)
+
+    # churn mensal SaaS (mês corrente): cancelamentos do mês / base ativa no início do mês
+    month_start = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    if month_start.month == 12:
+        next_month_start = month_start.replace(year=month_start.year + 1, month=1)
+    else:
+        next_month_start = month_start.replace(month=month_start.month + 1)
+
+    monthly_churn_base = (
+        db.query(func.count(Subscription.id))
+        .filter(
+            Subscription.created_at < month_start,
+            Subscription.plan.isnot(None),
+            func.lower(Subscription.plan).notin_(["free", EXCLUDED_PLAN]),
+            Subscription.status.in_(("active", "cancelled")),
+        )
+        .scalar()
+        or 0
+    )
+
+    monthly_churn_cancelled = (
+        db.query(func.count(CaktoEventLog.id))
+        .filter(
+            CaktoEventLog.processed_at.isnot(None),
+            CaktoEventLog.processed_at >= month_start,
+            CaktoEventLog.processed_at < next_month_start,
+            func.lower(CaktoEventLog.event_type).in_(["subscription_canceled", "subscription_cancelled"]),
+        )
+        .scalar()
+        or 0
+    )
+
+    monthly_churn_rate = (
+        round(float(monthly_churn_cancelled) / float(monthly_churn_base) * 100.0, 2)
+        if monthly_churn_base > 0
+        else 0.0
+    )
+
     mrr = (
         db.query(func.coalesce(func.sum(Subscription.mrr_amount), 0))
         .filter(Subscription.status == "active")
@@ -362,6 +451,10 @@ def get_admin_metrics(
         pages=pages_overview,
         new_users_last_days=new_users_count,
         new_users_timeseries=timeseries,
+        subscriptions_timeseries=subscriptions_timeseries,
+        monthly_churn_rate=monthly_churn_rate,
+        monthly_churn_cancelled=int(monthly_churn_cancelled),
+        monthly_churn_base=int(monthly_churn_base),
         mrr=mrr,
         total_revenue=total_revenue_amount,
     )

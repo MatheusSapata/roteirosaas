@@ -386,9 +386,30 @@ class CaktoIntegrationService:
                     f"Cliente já com upgrade. Assinatura {subscription_code or order_id} já migrada para outro plano; cancelamento ignorado."
                 )
 
-        subscription.status = status
+        effective_status = status.lower()
+        should_downgrade = downgrade_plan
+        if effective_status == "past_due":
+            grace_days = 5
+            now_utc = datetime.now(timezone.utc)
+            valid_until = subscription.valid_until
+            if not valid_until:
+                next_due_date = self._extract_next_due_date(payload, order)
+                valid_until = self._calculate_valid_until(subscription.billing_cycle, next_due_date)
+                subscription.valid_until = valid_until
+            if valid_until.tzinfo is None:
+                valid_until = valid_until.replace(tzinfo=timezone.utc)
+                subscription.valid_until = valid_until
+            grace_deadline = valid_until + timedelta(days=grace_days)
+            if now_utc < grace_deadline:
+                # Ainda dentro da janela de tentativa de cobranca apos vencimento.
+                effective_status = "cancelled"
+                should_downgrade = False
+            else:
+                should_downgrade = True
+
+        subscription.status = effective_status
         subscription.updated_at = datetime.utcnow()
-        if status.lower() == "active":
+        if effective_status == "active":
             mapping = None
             if offer_id or product_id:
                 mapping = self._resolve_plan(offer_id, product_id)
@@ -418,12 +439,17 @@ class CaktoIntegrationService:
             if not subscription.valid_until:
                 next_due_date = self._extract_next_due_date(payload, order)
                 subscription.valid_until = self._calculate_valid_until(subscription.billing_cycle, next_due_date)
-        if downgrade_plan and subscription.user:
+        if should_downgrade and subscription.user:
             subscription.user.plan = "free"
             subscription.user.subscription = subscription
         self.db.add(subscription)
         self.db.commit()
-        return f"Assinatura {subscription_code or order_id} marcada como {status}."
+        if status.lower() == "past_due" and effective_status == "cancelled":
+            return (
+                f"Assinatura {subscription_code or order_id} em tentativa de cobranca "
+                f"(graca de 5 dias apos vencimento)."
+            )
+        return f"Assinatura {subscription_code or order_id} marcada como {effective_status}."
 
     # ------------------------------------------------------------------ #
     # Helpers

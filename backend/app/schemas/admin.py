@@ -88,6 +88,14 @@ class PlanCount(BaseModel):
     count: int
 
 
+class SubscriptionTimeseriesPoint(BaseModel):
+    label: str
+    new_subscriptions: int = 0
+    renewed_subscriptions: int = 0
+    cancelled_subscriptions: int = 0
+    churn_rate: float = 0.0
+
+
 class AdminOnlineSession(BaseModel):
     session_id: str
     user_id: int
@@ -122,4 +130,8 @@ class AdminMetricsOut(BaseModel):
     pages: List[AdminPageOut]
     new_users_last_days: int
     new_users_timeseries: List[TimeseriesPoint]
+    subscriptions_timeseries: List[SubscriptionTimeseriesPoint] = Field(default_factory=list)
+    monthly_churn_rate: float = 0.0
+    monthly_churn_cancelled: int = 0
+    monthly_churn_base: int = 0
     mrr: float
