@@ -7,6 +7,7 @@ from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
+from app.core.request_ip import get_client_ip
 from app.db.session import SessionLocal
 from app.models.agency import Agency
 from app.models.agency_user import AgencyUser
@@ -54,8 +55,7 @@ def get_current_user(request: Request, db: Session = Depends(get_db), token: str
     if session.expires_at and session.expires_at < now:
         raise credentials_exception
     session.last_seen_at = now
-    if request.client and request.client.host:
-        session.ip_address = request.client.host
+    session.ip_address = get_client_ip(request)
     agent_header = (request.headers.get("user-agent") or "").strip()
     if agent_header:
         session.user_agent = agent_header[:500]
