@@ -4,6 +4,7 @@ import unicodedata
 from collections import defaultdict
 from copy import deepcopy
 from datetime import date, datetime, timedelta, timezone
+from decimal import Decimal, InvalidOperation
 from typing import Any, List, Optional
 from urllib.parse import quote
 
@@ -21,7 +22,6 @@ from app.models.stats import PageVisitStats
 from app.models.user import User
 from app.models.user_tracking import UserTracking
 from app.models.user_session import UserSession
-from app.models.revenue import RevenueTotal
 from app.models.agency import Agency
 from app.models.agency_user import AgencyUser
 from app.models.page import Page, PageStatus
@@ -114,6 +114,78 @@ def _slugify(value: str) -> str:
     norm = unicodedata.normalize("NFKD", value or "").encode("ascii", "ignore").decode("ascii")
     slug = re.sub(r"[^a-z0-9]+", "-", norm.lower()).strip("-")
     return slug or f"pagina-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+
+
+def _payload_nested(data: Any, *keys: str) -> Any:
+    current = data
+    for key in keys:
+        if current is None:
+            return None
+        if isinstance(current, list):
+            current = current[0] if current else None
+        if current is None:
+            return None
+        if not isinstance(current, dict):
+            return None
+        current = current.get(key)
+    return current
+
+
+def _to_decimal(value: Any) -> Decimal | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    normalized = "".join(ch for ch in text.replace(",", ".") if ch.isdigit() or ch in {".", "-"})
+    if not normalized:
+        return None
+    try:
+        return Decimal(normalized)
+    except (InvalidOperation, ValueError):
+        return None
+
+
+def _extract_cakto_amount(payload: dict[str, Any]) -> Decimal:
+    candidates: list[Any] = []
+
+    def push(value: Any) -> None:
+        if value is not None:
+            candidates.append(value)
+
+    primary = payload.get("data")
+    if isinstance(primary, list):
+        primary = primary[0] if primary else None
+
+    order = None
+    if isinstance(primary, dict):
+        if primary.get("id") and primary.get("status"):
+            order = primary
+        elif isinstance(primary.get("order"), dict):
+            order = primary.get("order")
+
+    if isinstance(order, dict):
+        push(order.get("amount"))
+        push(order.get("amount_paid"))
+        push(order.get("netAmount"))
+        push(order.get("net_amount"))
+        push(order.get("price"))
+        push(order.get("baseAmount"))
+        push(order.get("base_amount"))
+
+    push(_payload_nested(payload, "data", "order", "amount"))
+    push(_payload_nested(payload, "data", "order", "amount_paid"))
+    push(_payload_nested(payload, "data", "order", "netAmount"))
+    push(_payload_nested(payload, "data", "order", "net_amount"))
+    push(_payload_nested(payload, "data", "subscription", "amount"))
+    push(_payload_nested(payload, "data", "subscription", "currentPeriod", "amount"))
+    push(_payload_nested(payload, "data", "subscription", "current_period", "amount"))
+
+    for candidate in candidates:
+        decimal_value = _to_decimal(candidate)
+        if decimal_value is not None and decimal_value > 0:
+            return decimal_value
+    return Decimal("0")
 
 
 @router.get("/metrics", response_model=AdminMetricsOut)
@@ -399,8 +471,21 @@ def get_admin_metrics(
     )
     mrr = float(mrr)
 
-    revenue_row = db.query(RevenueTotal).order_by(RevenueTotal.id.asc()).first()
-    total_revenue_amount = float(revenue_row.total_amount or 0) if revenue_row else 0.0
+    cakto_revenue_events = (
+        db.query(CaktoEventLog.payload)
+        .filter(
+            func.lower(CaktoEventLog.event_type).in_(
+                ["purchase_approved", "subscription_renewed"]
+            ),
+            CaktoEventLog.status == "processed",
+        )
+        .all()
+    )
+    total_revenue_decimal = Decimal("0")
+    for (payload,) in cakto_revenue_events:
+        if isinstance(payload, dict):
+            total_revenue_decimal += _extract_cakto_amount(payload)
+    total_revenue_amount = float(total_revenue_decimal)
 
     recent_agencies_rows = (
         db.query(Agency, func.count(Page.id).label("pages_count"))
