@@ -6,18 +6,26 @@
 
 :root {
   --bg-gradient: radial-gradient(circle at 20% 20%, #e0f2fe, transparent 25%), radial-gradient(circle at 80% 0%, #c7d2fe, transparent 30%);
+  --app-scale: 0.9;
 }
 
 body {
   background-image: var(--bg-gradient);
   font-family: "Inter", "Montserrat", "Oswald", "General Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     Helvetica, Arial, sans-serif;
+  overflow-x: hidden;
 }
 
 body.public-shell,
 body.public-shell #app {
   background-color: #000;
   background-image: none;
+}
+
+#app {
+  zoom: var(--app-scale);
+  width: 100%;
+  min-height: 100vh;
 }
 
 .hero-cta-shimmer {

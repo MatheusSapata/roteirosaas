@@ -1,12 +1,12 @@
 <template>
   <div
     :class="[
-      'min-h-screen overflow-x-hidden text-[14px] md:h-screen md:overflow-hidden',
+      'min-h-screen overflow-x-hidden text-[14px]',
       isDarkTheme ? 'bg-[#05070f] text-slate-100' : 'bg-slate-50 text-slate-900',
       themeWrapperClass
     ]"
   >
-    <div v-if="showAuthSplash" class="flex min-h-screen items-center justify-center md:h-screen">
+    <div v-if="showAuthSplash" class="flex min-h-screen items-center justify-center">
       <div class="flex flex-col items-center gap-4">
         <div
           :class="[
@@ -17,7 +17,7 @@
       </div>
     </div>
     <template v-else>
-    <div class="flex min-h-screen md:h-screen">
+    <div class="flex min-h-screen">
       <aside
         :class="[
           'admin-sidebar hidden w-[246px] flex-shrink-0 flex-col justify-between border-r px-0 py-6 shadow-md md:fixed md:inset-y-0 md:left-0 md:flex',
@@ -131,30 +131,6 @@
         >
           <button
             type="button"
-            class="flex w-full items-center justify-between rounded-xl border px-4 py-3 text-sm font-semibold transition"
-            :class="isDarkTheme ? 'border-white/15 bg-white/5 text-white hover:bg-white/10' : 'border-white/15 bg-white/5 text-white hover:bg-white/10'"
-            @click="toggleTheme"
-          >
-            <div class="text-left">
-              <p class="text-sm font-semibold leading-tight">{{ viewCopy.themeToggle.title }}</p>
-              <p class="text-xs opacity-70">{{ isDarkTheme ? viewCopy.themeToggle.active : viewCopy.themeToggle.inactive }}</p>
-            </div>
-            <span
-              :class="[
-                'relative inline-flex h-6 w-11 items-center rounded-full transition',
-                isDarkTheme ? 'bg-[#3DCC5F]' : 'bg-white/40'
-              ]"
-            >
-              <span
-                :class="[
-                  'inline-block h-5 w-5 rounded-full bg-white shadow transition toggle-knob',
-                  isDarkTheme ? 'translate-x-5' : 'translate-x-0'
-                ]"
-              ></span>
-            </span>
-          </button>
-          <button
-            type="button"
             @click="handleLogout"
             class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition"
             :class="isDarkTheme ? 'text-white hover:bg-white/10' : 'text-white/90 hover:bg-white/10'"
@@ -183,18 +159,29 @@
             isDarkTheme ? 'text-slate-100' : 'text-slate-900'
           ]"
         >
-          <div v-if="isMobileViewport" :class="['mb-2 flex items-center justify-end gap-3', pageTitleRowPaddingClass]">
+          <div v-if="isMobileViewport" :class="['mb-4 grid min-h-[64px] grid-cols-[1fr_auto_1fr] items-center rounded-xl px-3', pageTitleRowPaddingClass]">
+            <div class="flex h-full items-center justify-self-start">
+              <img :src="mobileHeaderLogoSrc" alt="Roteiro Online" class="h-14 w-auto object-contain" />
+            </div>
+            <p
+              class="self-center truncate text-center text-[21px] font-semibold leading-none"
+              :class="isDarkTheme ? 'text-slate-100' : 'text-slate-800'"
+            >
+              {{ currentPageTitle }}
+            </p>
+            <div class="flex h-full items-center justify-self-end">
             <button
               type="button"
-              class="inline-flex items-center justify-center rounded-full p-2 transition"
+              class="inline-flex h-10 w-10 items-center justify-center rounded-full p-0 transition"
               :class="isDarkTheme ? 'text-white hover:bg-white/5' : 'text-slate-700 hover:bg-slate-100'"
               @click="mobileMenuOpen = true"
             >
               <span class="sr-only">{{ viewCopy.sidebar.openMenu }}</span>
-              <svg viewBox="0 0 24 24" class="h-7 w-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
                 <path d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
+            </div>
           </div>
           <RouterView />
         </div>
@@ -341,27 +328,6 @@
               'border-slate-800'
             ]"
           >
-            <button
-              type="button"
-              class="flex w-full items-center justify-between rounded-lg border px-3 py-2 text-sm font-semibold transition"
-              :class="'border-white/15 bg-white/5 text-white hover:bg-white/10'"
-              @click="toggleTheme"
-            >
-              <span>{{ viewCopy.themeToggle.label }}</span>
-              <span
-                :class="[
-                  'relative inline-flex h-5 w-10 items-center rounded-full transition',
-                  isDarkTheme ? 'bg-[#3DCC5F]' : 'bg-white/40'
-                ]"
-              >
-                <span
-                :class="[
-                  'inline-block h-4 w-4 rounded-full bg-white shadow transition toggle-knob',
-                  isDarkTheme ? 'translate-x-5' : 'translate-x-0'
-                ]"
-              ></span>
-              </span>
-            </button>
             <button
               type="button"
               @click="handleLogout"
@@ -716,6 +682,7 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import { RouterLink, RouterView, useRoute, useRouter } from "vue-router";
 import SidebarLogo from "../assets/Logo Branco - Roteiro Online.png";
+import ColoredLogo from "../assets/Logo Cor - Roteiro Online.png";
 import ImageUploadField from "../components/admin/inputs/ImageUploadField.vue";
 import api from "../services/api";
 import { useAgencyStore } from "../store/useAgencyStore";
@@ -1210,6 +1177,7 @@ const childInactiveClass = computed(() => "text-slate-300 hover:bg-white/8 hover
 
 const agencyName = computed(() => agencyStore.currentAgency?.name || agencyStore.agencies[0]?.name || "");
 const sidebarLogoSrc = SidebarLogo;
+const mobileHeaderLogoSrc = computed(() => (isDarkTheme.value ? sidebarLogoSrc : ColoredLogo));
 
 const checkCookieConsent = () => {
   if (typeof window === "undefined") return;
