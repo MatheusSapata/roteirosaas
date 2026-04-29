@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import get_db
+from app.core.request_ip import get_client_ip
 from app.models.lead_form import LeadForm, LeadFormSubmission
 from app.schemas.lead_form import LeadFormPublicOut, LeadFormSubmissionPayload
 from app.services.client_matching import find_auto_match_client
@@ -24,15 +25,8 @@ def _get_form(db: Session, form_id: int) -> LeadForm:
     return form
 
 
-def _get_client_ip(request: Request) -> str:
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else ""
-
-
 def _build_submission_fingerprint(form_id: int, request: Request, page_identifier: str | None = None) -> str | None:
-    ip = _get_client_ip(request)
+    ip = get_client_ip(request)
     user_agent = request.headers.get("user-agent", "")
     page_component = page_identifier or ""
     raw = f"{form_id}:{page_component}:{ip}:{user_agent}".strip(":")

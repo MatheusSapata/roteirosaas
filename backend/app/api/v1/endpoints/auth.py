@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_active_user, get_db
 from app.core.config import get_settings
 from app.core.rate_limit import InMemoryRateLimiter
+from app.core.request_ip import get_client_ip
 from app.models.user import User
 from app.models.subscription import Subscription
 from app.models.user_session import UserSession
@@ -103,17 +104,18 @@ def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
 ) -> Token:
-    client_ip = request.client.host if request.client else "unknown"
-    if login_limiter.is_blocked(client_ip):
+    client_ip = get_client_ip(request)
+    login_key = f"{client_ip}:{form_data.username.lower().strip()}"
+    if login_limiter.is_blocked(login_key):
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Muitas tentativas. Tente novamente em alguns minutos.",
         )
     user = auth_service.authenticate_user(db, form_data.username, form_data.password)
     if not user:
-        login_limiter.register_failure(client_ip)
+        login_limiter.register_failure(login_key)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Email ou senha incorretos.")
-    login_limiter.clear(client_ip)
+    login_limiter.clear(login_key)
     access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
     agent_header = (request.headers.get("user-agent") or "").strip()
     device_label, client_name = summarize_user_agent(agent_header)
@@ -166,8 +168,7 @@ def refresh_token(request: Request, payload: RefreshTokenRequest, db: Session = 
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Sessão expirada.")
     session.last_seen_at = now
     session.expires_at = now + timedelta(minutes=settings.refresh_token_expire_minutes)
-    if request.client and request.client.host:
-        session.ip_address = request.client.host
+    session.ip_address = get_client_ip(request)
     agent_header = (request.headers.get("user-agent") or "").strip()
     if agent_header:
         session.user_agent = agent_header[:500]
