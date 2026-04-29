@@ -144,6 +144,9 @@ const resolveLegacyAdminManagementRedirect = (to: any) => {
   if (tab === "flight_apis" || tab === "flight-apis") {
     return { path: "/admin/administracao/apis-voo", query: nextQuery };
   }
+  if (tab === "banners") {
+    return { path: "/admin/administracao/banners", query: nextQuery };
+  }
   return { path: "/admin/administracao/dashboard", query: nextQuery };
 };
 
@@ -229,6 +232,12 @@ const platformRoutes: RouteRecordRaw[] = [
         path: "administracao/apis-voo",
         name: "admin-management-flight-apis",
         component: () => import("../views/admin/AdminManagementView.vue"),
+        meta: { requiresSuperuser: true }
+      },
+      {
+        path: "administracao/banners",
+        name: "admin-management-banners",
+        component: () => import("../views/admin/BannerManagementView.vue"),
         meta: { requiresSuperuser: true }
       }
     ]

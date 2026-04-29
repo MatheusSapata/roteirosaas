@@ -19,6 +19,7 @@ from app.api.v1.endpoints import (
     public_lead_forms,
     public_pages,
     stats,
+    system_banners,
     templates,
 )
 
@@ -46,3 +47,5 @@ api_router.include_router(lead_crm.router, prefix="/lead-forms", tags=["lead-crm
 api_router.include_router(public_lead_forms.router, prefix="/public/lead-forms", tags=["public-lead-forms"])
 api_router.include_router(clients.router, prefix="/clients", tags=["clients"])
 api_router.include_router(documents.router, prefix="/documents", tags=["documents"])
+api_router.include_router(system_banners.router, prefix="/system-banners", tags=["system-banners"])
+api_router.include_router(system_banners.admin_router, tags=["admin-system-banners"])

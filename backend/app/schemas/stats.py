@@ -33,6 +33,7 @@ class StatsSeriesItem(BaseModel):
     visits: int
     clicks: int
     conversions: int
+    leads: int = 0
 
 
 class StatsOverviewOut(BaseModel):

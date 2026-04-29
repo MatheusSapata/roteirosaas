@@ -28,4 +28,5 @@ from app.models import (
     external_api_key,
     flight_lookup_cache,
     flight_section,
+    system_banner,
 )  # noqa: E402,F401

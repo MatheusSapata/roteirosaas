@@ -150,16 +150,37 @@ def stats_overview(
     total_clicks = totals["whatsapp"] + totals["cta"]
     prev_clicks = prev_totals["whatsapp"] + prev_totals["cta"]
 
-    series_map: dict[date, dict[str, int]] = defaultdict(lambda: {"visits": 0, "whatsapp": 0, "cta": 0})
+    series_map: dict[date, dict[str, int]] = defaultdict(lambda: {"visits": 0, "whatsapp": 0, "cta": 0, "leads": 0})
     for offset in range(days):
         day = since + timedelta(days=offset)
         _ = series_map[day]  # prime keys
     for row in current_rows:
         if row.date not in series_map:
-            series_map[row.date] = {"visits": 0, "whatsapp": 0, "cta": 0}
+            series_map[row.date] = {"visits": 0, "whatsapp": 0, "cta": 0, "leads": 0}
         series_map[row.date]["visits"] += row.visits
         series_map[row.date]["whatsapp"] += row.clicks_whatsapp
         series_map[row.date]["cta"] += row.clicks_cta
+
+    leads_query = (
+        db.query(
+            func.date(LeadFormSubmission.created_at).label("day"),
+            func.count(LeadFormSubmission.id).label("leads"),
+        )
+        .filter(
+            LeadFormSubmission.agency_id == agency_id,
+            LeadFormSubmission.created_at >= since,
+            LeadFormSubmission.created_at < (until + timedelta(days=1)),
+        )
+    )
+    if page_id is not None:
+        leads_query = leads_query.filter(LeadFormSubmission.page_id == page_id)
+
+    leads_rows = leads_query.group_by(func.date(LeadFormSubmission.created_at)).all()
+    for row in leads_rows:
+        day = row.day
+        if day not in series_map:
+            series_map[day] = {"visits": 0, "whatsapp": 0, "cta": 0, "leads": 0}
+        series_map[day]["leads"] += int(row.leads or 0)
 
     timeseries = [
         StatsSeriesItem(
@@ -167,6 +188,7 @@ def stats_overview(
             visits=data["visits"],
             clicks=data["whatsapp"] + data["cta"],
             conversions=data["cta"],
+            leads=data["leads"],
         )
         for day, data in sorted(series_map.items(), key=lambda item: item[0])
     ]
