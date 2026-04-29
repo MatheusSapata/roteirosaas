@@ -2,7 +2,7 @@
   <div v-if="isBootstrappingAdminManagement" class="flex min-h-[60vh] w-full items-center justify-center px-4 py-8 md:px-8">
     <div class="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-brand"></div>
   </div>
-  <div v-else class="w-full space-y-6 px-4 py-8 md:px-8">
+  <div v-else class="admin-master-view w-full space-y-6 px-4 py-8 md:px-8">
     <!-- HEADER -->
     
 
@@ -13,17 +13,11 @@
 
     <!-- DASHBOARD -->
     <template v-if="activeTab === 'dashboard'">
-      <header class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-      <div v-if="isMobile">
-        <p :class="['text-xs uppercase tracking-[0.25em]', premiumMode ? 'text-white/50' : 'text-slate-500']">
-          Administracao
-        </p>
-        <h1 :class="['text-3xl font-bold', premiumMode ? 'text-white' : 'text-slate-900']">
-          Visao gerencial
-        </h1>
-        <p :class="['text-sm', premiumMode ? 'text-white/60' : 'text-slate-500']">
-          Resumo de usuários, planos, validade e MRR.
-        </p>
+      <header class="topbar">
+      <div>
+        <p class="page-kicker">Administração</p>
+        <h1 class="page-title">Visão gerencial</h1>
+        <p class="page-sub">Resumo de usuários, planos, validade, assinaturas e receita.</p>
       </div>
 
       <div class="flex flex-wrap items-center gap-2">
@@ -60,65 +54,70 @@
       </div>
     </header>
     
-      <section class="grid gap-4 md:grid-cols-4">
-        <div class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-          <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Usuários</p>
-          <p class="mt-2 text-3xl font-bold text-slate-900">{{ metrics?.total_users ?? "--" }}</p>
-          <p class="text-xs text-slate-400">Contas ativas no SaaS.</p>
+      <section class="metrics-grid metrics-grid-4">
+        <div class="metric-card">
+          <p class="metric-label">Usuários</p>
+          <p class="metric-value">{{ metrics?.total_users ?? "--" }}</p>
+          <p class="metric-footer-text">Contas ativas no SaaS.</p>
         </div>
-        <div class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-          <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Agências</p>
-          <p class="mt-2 text-3xl font-bold text-slate-900">{{ metrics?.total_agencies ?? "--" }}</p>
-          <p class="text-xs text-slate-400">Times cadastrados.</p>
+        <div class="metric-card">
+          <p class="metric-label">Agências</p>
+          <p class="metric-value">{{ metrics?.total_agencies ?? "--" }}</p>
+          <p class="metric-footer-text">Times cadastrados.</p>
         </div>
-        <div class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-          <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Páginas totais</p>
-          <p class="mt-2 text-3xl font-bold text-slate-900">{{ metrics?.total_pages ?? "--" }}</p>
-          <p class="text-xs text-slate-400">Inclui rascunhos e publicadas.</p>
+        <div class="metric-card">
+          <p class="metric-label">Páginas totais</p>
+          <p class="metric-value">{{ metrics?.total_pages ?? "--" }}</p>
+          <p class="metric-footer-text">Inclui rascunhos e publicadas.</p>
         </div>
-        <div class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-          <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Paginas publicadas</p>
-          <p class="mt-2 text-3xl font-bold text-slate-900">{{ metrics?.published_pages ?? "--" }}</p>
-          <p class="text-xs text-slate-400">Visiveis ao publico.</p>
+        <div class="metric-card">
+          <p class="metric-label">Páginas publicadas</p>
+          <p class="metric-value">{{ metrics?.published_pages ?? "--" }}</p>
+          <p class="metric-footer-text">Visíveis ao público.</p>
         </div>
       </section>
 
-      <section class="grid gap-4 md:grid-cols-3">
-        <div class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-          <p class="text-xs uppercase tracking-[0.3em] text-slate-500">MRR estimado</p>
-          <p class="mt-2 text-3xl font-bold text-slate-900">R$ {{ metrics?.mrr?.toFixed(2) ?? "--" }}</p>
-          <p class="text-xs text-slate-400">Somatório dos planos ativos.</p>
+      <section class="metrics-grid metrics-grid-3">
+        <div class="metric-card">
+          <p class="metric-label">MRR estimado</p>
+          <p class="metric-value">R$ {{ metrics?.mrr?.toFixed(2) ?? "--" }}</p>
+          <p class="metric-footer-text">Somatório dos planos ativos.</p>
         </div>
-        <div class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-          <p class="text-xs uppercase tracking-[0.3em] text-slate-500">ARR estimado</p>
-          <p class="mt-2 text-3xl font-bold text-slate-900">
+        <div class="metric-card">
+          <p class="metric-label">ARR estimado</p>
+          <p class="metric-value">
             <span v-if="arrValue !== null">R$ {{ arrValue.toFixed(2) }}</span>
             <span v-else>--</span>
           </p>
-          <p class="text-xs text-slate-400">Projeção anual baseada no MRR.</p>
+          <p class="metric-footer-text">Projeção anual baseada no MRR.</p>
         </div>
-        <div class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-          <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Faturamento total</p>
-          <p class="mt-2 text-3xl font-bold text-slate-900">
+        <div class="metric-card">
+          <p class="metric-label">Faturamento total</p>
+          <p class="metric-value">
             <span v-if="lifetimeRevenue !== null">R$ {{ lifetimeRevenue.toFixed(2) }}</span>
             <span v-else>--</span>
           </p>
-          <p class="text-xs text-slate-400">Somatório de todo o faturamento.</p>
+          <p class="metric-footer-text">Somatório de todo o faturamento.</p>
         </div>
       </section>
 
-      <section class="grid gap-4 lg:grid-cols-3">
-        <div class="rounded-2xl bg-white p-6 shadow-md ring-1 ring-slate-100 lg:col-span-2">
+      <section class="bottom-grid">
+        <div class="chart-card">
           <div class="flex items-center justify-between">
             <div>
-              <h2 class="text-lg font-semibold text-slate-900">Novos usuários ({{ adminPeriodLabel }})</h2>
-              <p class="text-sm text-slate-500">Entradas diárias.</p>
+              <h2 class="text-lg font-semibold text-slate-900">Assinaturas ({{ adminPeriodLabel }})</h2>
+              <p class="text-sm text-slate-500">Novas, renovadas e canceladas por dia.</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-3 text-xs">
+              <button type="button" class="legend-toggle-sub inline-flex items-center gap-1 text-emerald-600" :class="{ off: !visibleSubscriptionSeries.new }" @click="toggleSubscriptionSeries('new')"><span class="h-2.5 w-2.5 rounded-full bg-emerald-500"></span>Novas</button>
+              <button type="button" class="legend-toggle-sub inline-flex items-center gap-1 text-sky-600" :class="{ off: !visibleSubscriptionSeries.renewed }" @click="toggleSubscriptionSeries('renewed')"><span class="h-2.5 w-2.5 rounded-full bg-sky-500"></span>Renovadas</button>
+              <button type="button" class="legend-toggle-sub inline-flex items-center gap-1 text-rose-600" :class="{ off: !visibleSubscriptionSeries.cancelled }" @click="toggleSubscriptionSeries('cancelled')"><span class="h-2.5 w-2.5 rounded-full bg-rose-500"></span>Canceladas</button>
             </div>
           </div>
 
           <div class="mt-4">
             <div
-              v-if="newUsersPoints.length"
+              v-if="subscriptionChartPoints.length"
               class="space-y-3 rounded-2xl border border-slate-100 bg-white/90 p-6 shadow-inner"
             >
               <div class="relative rounded-2xl bg-transparent p-4">
@@ -133,49 +132,62 @@
                 <div class="relative" :style="{ height: newUsersChartHeight + 'px' }">
                   <svg :viewBox="`0 0 ${newUsersChartWidth} ${newUsersChartHeight}`" preserveAspectRatio="none" class="h-full w-full">
                     <defs>
-                      <linearGradient id="new-users-bar" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stop-color="#41ce5f" stop-opacity="0.95"></stop>
-                        <stop offset="100%" stop-color="#2ca751" stop-opacity="0.75"></stop>
+                      <linearGradient id="g-sub-new" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="#2EAD4C" stop-opacity="0.20" />
+                        <stop offset="100%" stop-color="#2EAD4C" stop-opacity="0.01" />
+                      </linearGradient>
+                      <linearGradient id="g-sub-renewed" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="#0ea5e9" stop-opacity="0.16" />
+                        <stop offset="100%" stop-color="#0ea5e9" stop-opacity="0.01" />
+                      </linearGradient>
+                      <linearGradient id="g-sub-cancelled" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="#f43f5e" stop-opacity="0.16" />
+                        <stop offset="100%" stop-color="#f43f5e" stop-opacity="0.01" />
                       </linearGradient>
                     </defs>
-                    <template v-for="point in newUsersPoints" :key="point.label + '-bar'">
-                      <rect
-                        :x="point.barX"
-                        :y="point.y"
-                        :width="point.barWidth"
-                        :height="point.barHeight"
-                        rx="8"
-                        fill="url(#new-users-bar)"
-                      />
+                    <path v-if="visibleSubscriptionSeries.new && subscriptionNewAreaPath" :d="subscriptionNewAreaPath" fill="url(#g-sub-new)" />
+                    <path v-if="visibleSubscriptionSeries.renewed && subscriptionRenewedAreaPath" :d="subscriptionRenewedAreaPath" fill="url(#g-sub-renewed)" />
+                    <path v-if="visibleSubscriptionSeries.cancelled && subscriptionCancelledAreaPath" :d="subscriptionCancelledAreaPath" fill="url(#g-sub-cancelled)" />
+                    <path v-if="visibleSubscriptionSeries.new" :d="subscriptionNewPath" fill="none" stroke="#2EAD4C" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" />
+                    <path v-if="visibleSubscriptionSeries.renewed" :d="subscriptionRenewedPath" fill="none" stroke="#0ea5e9" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" />
+                    <path v-if="visibleSubscriptionSeries.cancelled" :d="subscriptionCancelledPath" fill="none" stroke="#f43f5e" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" />
+                    <template v-for="point in subscriptionChartPoints" :key="point.label + '-new'">
+                      <circle v-if="visibleSubscriptionSeries.new" :cx="point.x" :cy="point.newY" r="2" fill="#22c55e" />
+                      <circle v-if="visibleSubscriptionSeries.renewed" :cx="point.x" :cy="point.renewedY" r="2" fill="#0ea5e9" />
+                      <circle v-if="visibleSubscriptionSeries.cancelled" :cx="point.x" :cy="point.cancelledY" r="2" fill="#f43f5e" />
                     </template>
+                    <rect
+                      v-for="hit in subscriptionHitAreas"
+                      :key="`sub-hit-${hit.index}`"
+                      :x="hit.x"
+                      y="0"
+                      :width="hit.width"
+                      :height="newUsersChartHeight"
+                      fill="transparent"
+                      @mouseenter="showSubscriptionTooltip(hit.index, $event)"
+                      @mousemove="moveSubscriptionTooltip(hit.index, $event)"
+                      @mouseleave="hideSubscriptionTooltip"
+                    />
                   </svg>
-                  <div
-                    ref="newUsersSurfaceRef"
-                    class="absolute inset-0 cursor-crosshair"
-                    @mousemove="handleNewUsersMove"
-                    @mouseleave="clearNewUsersHover"
-                  ></div>
-                  <div
-                    v-if="newUsersHoverPoint"
-                    class="pointer-events-none absolute -translate-x-1/2 rounded-xl border border-white bg-slate-900/90 px-4 py-2 text-xs text-white shadow-lg"
-                    :style="newUsersTooltipStyle"
-                  >
-                    <p class="font-semibold">{{ newUsersHoverPoint.label }}</p>
-                    <p>Novos usuários: {{ newUsersHoverPoint.value }}</p>
+                  <div v-if="subscriptionTooltip.visible" class="chart-tooltip" :style="subscriptionTooltipStyle">
+                    <p class="chart-tooltip-date">{{ subscriptionTooltip.label }}</p>
+                    <p>Novas: {{ subscriptionTooltip.newValue }}</p>
+                    <p>Renovadas: {{ subscriptionTooltip.renewedValue }}</p>
+                    <p>Canceladas: {{ subscriptionTooltip.cancelledValue }}</p>
                   </div>
                 </div>
               </div>
 
               <div class="text-xs text-slate-500">
-                <template v-if="compactNewUsersLabels && newUsersLabelRange">
+                <template v-if="compactNewUsersLabels && subscriptionLabelRange">
                   <div class="flex items-center justify-between font-semibold text-slate-700">
-                    <span>{{ newUsersLabelRange.start }}</span>
-                    <span>{{ newUsersLabelRange.end }}</span>
+                    <span>{{ subscriptionLabelRange.start }}</span>
+                    <span>{{ subscriptionLabelRange.end }}</span>
                   </div>
                 </template>
                 <template v-else>
                   <div class="flex flex-wrap justify-between gap-2 font-semibold text-slate-700">
-                    <span v-for="point in newUsersPoints" :key="point.label + '-label'">{{ point.label }}</span>
+                    <span v-for="point in subscriptionChartPoints" :key="point.label + '-label'">{{ point.label }}</span>
                   </div>
                 </template>
               </div>
@@ -184,13 +196,34 @@
               class="flex h-64 items-center justify-center rounded-2xl bg-slate-50 text-sm text-slate-500"
               v-else
             >
-              Sem dados no período.
+              Sem dados de assinatura no período.
             </div>
           </div>
         </div>
 
-        <div class="rounded-2xl bg-white p-6 shadow-md ring-1 ring-slate-100">
+        <div class="list-card">
           <h3 class="text-sm font-semibold text-slate-900">Distribuição de planos</h3>
+          <div class="mt-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
+            <p class="text-[11px] uppercase tracking-[0.2em] text-slate-500">Churn mensal</p>
+            <p class="mt-1 text-2xl font-bold text-slate-900">{{ monthlyChurnRate.toFixed(2) }}%</p>
+            <p class="text-xs text-slate-500">
+              {{ metrics?.monthly_churn_cancelled ?? 0 }} cancelamentos no mês sobre base de {{ metrics?.monthly_churn_base ?? 0 }} assinaturas.
+            </p>
+          </div>
+          <div class="mt-3 grid grid-cols-3 gap-2 text-xs">
+            <div class="rounded-lg border border-slate-100 p-2">
+              <p class="text-slate-500">Novas</p>
+              <p class="font-bold text-emerald-600">{{ subscriptionsTotals.new }}</p>
+            </div>
+            <div class="rounded-lg border border-slate-100 p-2">
+              <p class="text-slate-500">Renov.</p>
+              <p class="font-bold text-sky-600">{{ subscriptionsTotals.renewed }}</p>
+            </div>
+            <div class="rounded-lg border border-slate-100 p-2">
+              <p class="text-slate-500">Cancel.</p>
+              <p class="font-bold text-rose-600">{{ subscriptionsTotals.cancelled }}</p>
+            </div>
+          </div>
           <ul class="mt-3 space-y-1 text-sm text-slate-600">
             <li v-for="p in metrics?.plans || []" :key="p.plan" class="flex justify-between">
               <span class="capitalize">{{ planLabel(p.plan) }}</span>
@@ -1818,6 +1851,16 @@ interface Metrics {
   new_users_last_days: number;
   plans: { plan: string; count: number }[];
   new_users_timeseries: { label: string; value: number }[];
+  subscriptions_timeseries: {
+    label: string;
+    new_subscriptions: number;
+    renewed_subscriptions: number;
+    cancelled_subscriptions: number;
+    churn_rate: number;
+  }[];
+  monthly_churn_rate?: number;
+  monthly_churn_cancelled?: number;
+  monthly_churn_base?: number;
   users: {
     id: number;
     name: string;
@@ -1902,6 +1945,15 @@ const lifetimeRevenue = computed(() => {
   return typeof value === "number" ? value : null;
 });
 const newUsersSeries = computed(() => metrics.value?.new_users_timeseries ?? []);
+const subscriptionsSeries = computed(() => metrics.value?.subscriptions_timeseries ?? []);
+const visibleSubscriptionSeries = reactive({
+  new: true,
+  renewed: true,
+  cancelled: true
+});
+const toggleSubscriptionSeries = (key: "new" | "renewed" | "cancelled") => {
+  visibleSubscriptionSeries[key] = !visibleSubscriptionSeries[key];
+};
 
 const onlineSessions = ref<AdminOnlineSession[]>([]);
 const onlineSessionsMeta = ref<AdminOnlineSessionsResponse | null>(null);
@@ -1917,7 +1969,7 @@ const monitorLastUpdated = computed(() => {
   if (Number.isNaN(parsed.getTime())) return "";
   return parsed.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 });
-const NEW_USERS_CHART_HEIGHT = 240;
+const NEW_USERS_CHART_HEIGHT = 180;
 const NEW_USERS_CHART_WIDTH = 640;
 const NEW_USERS_CHART_PADDING_Y = 28;
 const NEW_USERS_CHART_PADDING_X = 28;
@@ -1994,38 +2046,6 @@ const newUsersPoints = computed(() => {
     };
   });
 });
-const newUsersSurfaceRef = ref<HTMLDivElement | null>(null);
-const newUsersHoverPoint = ref<{ label: string; value: number; centerX: number; y: number } | null>(null);
-const newUsersTooltipStyle = computed(() => {
-  if (!newUsersHoverPoint.value) return { opacity: 0 };
-  const padding = 60;
-  const left = Math.min(
-    Math.max(newUsersHoverPoint.value.centerX, padding),
-    NEW_USERS_CHART_WIDTH - padding
-  );
-  const top = Math.max(newUsersHoverPoint.value.y - 60, 16);
-  return { left: `${left}px`, top: `${top}px`, opacity: 1 };
-});
-const handleNewUsersMove = (event: MouseEvent) => {
-  const surface = newUsersSurfaceRef.value;
-  const points = newUsersPoints.value;
-  if (!surface || !points.length) return;
-  const rect = surface.getBoundingClientRect();
-  const offsetX = event.clientX - rect.left;
-  let nearest = points[0];
-  let distance = Math.abs(offsetX - nearest.centerX);
-  for (const point of points) {
-    const diff = Math.abs(offsetX - point.centerX);
-    if (diff < distance) {
-      nearest = point;
-      distance = diff;
-    }
-  }
-  newUsersHoverPoint.value = nearest;
-};
-const clearNewUsersHover = () => {
-  newUsersHoverPoint.value = null;
-};
 const compactNewUsersLabels = computed(() => isMobile.value || adminPeriodDays.value >= 14);
 const newUsersLabelRange = computed(() => {
   if (!compactNewUsersLabels.value || newUsersSeries.value.length < 2) return null;
@@ -2210,6 +2230,168 @@ const syncActiveTabFromRoute = () => {
 };
 const selectedTemplateAgency = computed(() => {
   return templateAgencyOptions.value.find(agency => agency.id === templateAgencyId.value) || null;
+});
+const subscriptionLabelRange = computed(() => {
+  if (!compactNewUsersLabels.value || subscriptionsSeries.value.length < 2) return null;
+  const first = subscriptionsSeries.value[0]?.label || "";
+  const last = subscriptionsSeries.value[subscriptionsSeries.value.length - 1]?.label || "";
+  return { start: first, end: last };
+});
+const subscriptionMaxValue = computed(() => {
+  if (!subscriptionsSeries.value.length) return 1;
+  const maxValue = Math.max(
+    ...subscriptionsSeries.value.map((point) =>
+      Math.max(
+        point.new_subscriptions ?? 0,
+        point.renewed_subscriptions ?? 0,
+        point.cancelled_subscriptions ?? 0
+      )
+    )
+  );
+  return maxValue > 0 ? maxValue : 1;
+});
+const subscriptionChartPoints = computed(() => {
+  const series = subscriptionsSeries.value;
+  if (!series.length) return [];
+  const safeMax = subscriptionMaxValue.value > 0 ? subscriptionMaxValue.value : 1;
+  const count = series.length;
+  const step = count > 1 ? newUsersChartInnerWidth / (count - 1) : newUsersChartInnerWidth;
+  const toY = (value: number) =>
+    NEW_USERS_CHART_PADDING_Y + (newUsersChartInnerHeight - (Math.max(value, 0) / safeMax) * newUsersChartInnerHeight);
+  return series.map((point, index) => {
+    const x = count === 1 ? NEW_USERS_CHART_WIDTH / 2 : NEW_USERS_CHART_PADDING_X + index * step;
+    return {
+      label: point.label,
+      x,
+      newY: toY(point.new_subscriptions ?? 0),
+      renewedY: toY(point.renewed_subscriptions ?? 0),
+      cancelledY: toY(point.cancelled_subscriptions ?? 0),
+      newValue: point.new_subscriptions ?? 0,
+      renewedValue: point.renewed_subscriptions ?? 0,
+      cancelledValue: point.cancelled_subscriptions ?? 0
+    };
+  });
+});
+const buildSmoothPath = (coords: Array<{ x: number; y: number }>) => {
+  if (!coords.length) return "";
+  if (coords.length === 1) return `M${coords[0].x},${coords[0].y}`;
+  let d = `M${coords[0].x},${coords[0].y}`;
+  for (let i = 0; i < coords.length - 1; i += 1) {
+    const p0 = coords[i];
+    const p1 = coords[i + 1];
+    const cp1x = p0.x + (p1.x - p0.x) / 2;
+    const cp1y = p0.y;
+    const cp2x = p0.x + (p1.x - p0.x) / 2;
+    const cp2y = p1.y;
+    d += ` C${cp1x},${cp1y} ${cp2x},${cp2y} ${p1.x},${p1.y}`;
+  }
+  return d;
+};
+const makeLinePath = (key: "newY" | "renewedY" | "cancelledY") => {
+  const points = subscriptionChartPoints.value;
+  if (!points.length) return "";
+  return buildSmoothPath(points.map(point => ({ x: point.x, y: point[key] })));
+};
+const subscriptionNewPath = computed(() => makeLinePath("newY"));
+const subscriptionRenewedPath = computed(() => makeLinePath("renewedY"));
+const subscriptionCancelledPath = computed(() => makeLinePath("cancelledY"));
+const makeAreaPath = (key: "newY" | "renewedY" | "cancelledY") => {
+  const points = subscriptionChartPoints.value;
+  if (!points.length) return "";
+  const baseY = NEW_USERS_CHART_PADDING_Y + newUsersChartInnerHeight;
+  const line = buildSmoothPath(points.map(point => ({ x: point.x, y: point[key] })));
+  const last = points[points.length - 1];
+  const first = points[0];
+  return `${line} L${last.x},${baseY} L${first.x},${baseY} Z`;
+};
+const subscriptionNewAreaPath = computed(() => makeAreaPath("newY"));
+const subscriptionRenewedAreaPath = computed(() => makeAreaPath("renewedY"));
+const subscriptionCancelledAreaPath = computed(() => makeAreaPath("cancelledY"));
+const subscriptionHitAreas = computed(() => {
+  const points = subscriptionChartPoints.value;
+  if (!points.length) return [];
+  const width = points.length > 1 ? Math.max(14, newUsersChartInnerWidth / points.length) : 56;
+  return points.map((point, index) => ({
+    index,
+    x: point.x - width / 2,
+    width
+  }));
+});
+const subscriptionTooltip = ref<{
+  visible: boolean;
+  x: number;
+  y: number;
+  label: string;
+  newValue: number;
+  renewedValue: number;
+  cancelledValue: number;
+}>({
+  visible: false,
+  x: 0,
+  y: 0,
+  label: "",
+  newValue: 0,
+  renewedValue: 0,
+  cancelledValue: 0
+});
+const subscriptionTooltipStyle = computed(() => {
+  if (!subscriptionTooltip.value.visible) return { opacity: 0 };
+  const minX = 84;
+  const maxX = newUsersChartWidth - 84;
+  const safeX = Math.min(Math.max(subscriptionTooltip.value.x, minX), maxX);
+  const minY = 28;
+  const maxY = newUsersChartHeight - 10;
+  const safeY = Math.min(Math.max(subscriptionTooltip.value.y, minY), maxY);
+  return {
+    left: `${safeX}px`,
+    top: `${safeY}px`,
+    opacity: 1
+  };
+});
+const setSubscriptionTooltip = (index: number, event: MouseEvent) => {
+  const point = subscriptionChartPoints.value[index];
+  if (!point) return;
+  const host = event.currentTarget as SVGRectElement | null;
+  const svg = host?.ownerSVGElement;
+  if (!svg) return;
+  const rect = svg.getBoundingClientRect();
+  const scaleX = rect.width / newUsersChartWidth;
+  const scaleY = rect.height / newUsersChartHeight;
+  const pointScreenX = point.x * scaleX;
+  const pointScreenY = Math.min(point.newY, point.renewedY, point.cancelledY) * scaleY;
+  subscriptionTooltip.value = {
+    visible: true,
+    x: pointScreenX,
+    y: pointScreenY - 8,
+    label: point.label,
+    newValue: point.newValue,
+    renewedValue: point.renewedValue,
+    cancelledValue: point.cancelledValue
+  };
+};
+const showSubscriptionTooltip = (index: number, event: MouseEvent) => {
+  setSubscriptionTooltip(index, event);
+};
+const moveSubscriptionTooltip = (index: number, event: MouseEvent) => {
+  setSubscriptionTooltip(index, event);
+};
+const hideSubscriptionTooltip = () => {
+  subscriptionTooltip.value.visible = false;
+};
+const monthlyChurnRate = computed(() => {
+  const value = metrics.value?.monthly_churn_rate;
+  return typeof value === "number" ? value : 0;
+});
+const subscriptionsTotals = computed(() => {
+  return subscriptionsSeries.value.reduce(
+    (acc, item) => {
+      acc.new += item.new_subscriptions || 0;
+      acc.renewed += item.renewed_subscriptions || 0;
+      acc.cancelled += item.cancelled_subscriptions || 0;
+      return acc;
+    },
+    { new: 0, renewed: 0, cancelled: 0 }
+  );
 });
 const templatePublicUrl = (page: AdminPageSummary) => {
   const agencySlug = selectedTemplateAgency.value?.slug;
@@ -3524,6 +3706,152 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.admin-master-view {
+  --card-border: #dbe4de;
+  --ink-900: #0b1b2b;
+  --ink-500: #6e8798;
+  --surface: #ffffff;
+  --shadow: 0 1px 3px rgba(15, 31, 20, 0.06), 0 4px 12px rgba(15, 31, 20, 0.04);
+}
+
+.topbar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+@media (min-width: 768px) {
+  .topbar {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.page-kicker {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  color: var(--ink-500);
+  font-weight: 700;
+}
+
+.page-title {
+  margin-top: 4px;
+  font-size: 22px;
+  line-height: 1.1;
+  font-weight: 800;
+  color: var(--ink-900);
+}
+
+.page-sub {
+  margin-top: 4px;
+  color: var(--ink-500);
+  font-size: 14px;
+}
+
+.metrics-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.metrics-grid-4 {
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+}
+
+.metrics-grid-3 {
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+}
+
+@media (min-width: 768px) {
+  .metrics-grid-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .metrics-grid-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.metric-card {
+  border-radius: 18px;
+  border: 1px solid var(--card-border);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  padding: 16px 18px;
+}
+
+.metric-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.34em;
+  color: #5f7990;
+  font-weight: 700;
+}
+
+.metric-value {
+  margin-top: 8px;
+  font-size: 30px;
+  line-height: 1;
+  font-weight: 800;
+  color: var(--ink-900);
+}
+
+.metric-footer-text {
+  margin-top: 6px;
+  color: var(--ink-500);
+  font-size: 13px;
+}
+
+.chart-card,
+.list-card {
+  border-radius: 18px;
+  border: 1px solid var(--card-border);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  padding: 18px;
+}
+
+.bottom-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+@media (min-width: 1024px) {
+  .bottom-grid {
+    grid-template-columns: 2fr 1fr;
+  }
+}
+
+.chart-tooltip {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  background: rgba(15, 23, 42, 0.92);
+  color: #fff;
+  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 1.35;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.28);
+  pointer-events: none;
+  z-index: 20;
+}
+
+.chart-tooltip-date {
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.legend-toggle-sub {
+  transition: opacity 0.15s ease;
+}
+
+.legend-toggle-sub.off {
+  opacity: 0.35;
+}
+
 .premium-panel {
   background: radial-gradient(circle at top, #101828 0%, #05060f 60%);
   min-height: 100vh;
