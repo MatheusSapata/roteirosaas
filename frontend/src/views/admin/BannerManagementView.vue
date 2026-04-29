@@ -617,7 +617,8 @@ const planOptions = [
   { label: "Free", value: "free" },
   { label: "Essencial", value: "essencial" },
   { label: "Growth", value: "growth" },
-  { label: "Infinity", value: "infinity" }
+  { label: "Infinity", value: "infinity" },
+  { label: "Teste", value: "teste" }
 ];
 
 const roleOptions = [
