@@ -1,21 +1,46 @@
-<template>
+﻿<template>
   <div v-if="isBootstrappingPages" class="flex min-h-[60vh] w-full items-center justify-center px-4 py-8 md:px-8">
     <div class="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-brand"></div>
   </div>
-  <div v-else class="w-full space-y-6 px-4 py-8 md:px-8">
+  <div v-else class="pages-reference w-full space-y-6 px-4 py-8 md:px-8">
     <div class="flex flex-wrap items-center justify-between gap-3 dark:text-white">
       <div>
-        <p class="text-sm font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-white">
-          {{ viewCopy.header.eyebrow }}
-        </p>
+        <h1 class="text-[22px] font-extrabold tracking-[-0.4px] text-[#0F1F14] dark:text-white">{{ viewCopy.header.eyebrow }}</h1>
+        <p class="mt-1 text-[13px] text-[#8AA693]">{{ viewCopy.header.sub }}</p>
       </div>
       <button
         @click="openCreateModal"
-        class="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark disabled:cursor-not-allowed disabled:bg-slate-300"
+        class="inline-flex items-center gap-2 rounded-[10px] bg-[#3DCC5F] px-4 py-[9px] text-[13px] font-semibold text-[#0F1F14] transition hover:bg-[#5BE07A] disabled:cursor-not-allowed disabled:bg-slate-300"
         :disabled="!hasAgency"
       >
+        <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19" />
+          <line x1="5" y1="12" x2="19" y2="12" />
+        </svg>
         {{ viewCopy.header.newPage }}
       </button>
+    </div>
+
+    <div class="pages-toolbar">
+      <div class="search-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+        <input v-model="searchQuery" class="search-input" type="text" :placeholder="viewCopy.table.searchPlaceholder" />
+      </div>
+      <select v-model="statusFilter" class="filter-select">
+        <option value="">{{ viewCopy.table.filters.statusAll }}</option>
+        <option value="published">{{ viewCopy.labels.statuses.published }}</option>
+        <option value="draft">{{ viewCopy.labels.statuses.draft }}</option>
+      </select>
+      <select v-model="sortFilter" class="filter-select">
+        <option value="recent">{{ viewCopy.table.filters.sortRecent }}</option>
+        <option value="name">{{ viewCopy.table.filters.sortName }}</option>
+        <option value="visits">{{ viewCopy.table.filters.sortVisits }}</option>
+        <option value="leads">{{ viewCopy.table.filters.sortLeads }}</option>
+      </select>
+      <span class="toolbar-count">{{ filteredPages.length }} {{ viewCopy.table.countLabel }}</span>
     </div>
 
     <teleport to="body">
@@ -405,10 +430,10 @@
     </transition>
 
     <div class="overflow-x-auto">
-      <div class="overflow-hidden border-0 bg-transparent md:min-w-[880px] md:rounded-3xl md:border md:border-slate-100 md:bg-white md:shadow-md dark:md:border-[#2b2b2b] dark:md:bg-[#202020]">
+      <div class="table-card overflow-hidden border-0 bg-transparent md:min-w-[880px] md:rounded-2xl md:border md:bg-white">
         <div
           :class="[
-            'hidden gap-6 border-b border-slate-100 px-6 py-4 text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 md:grid dark:border-[#2b2b2b] dark:text-white',
+            'hidden gap-6 border-b px-4 py-3 text-[11px] font-bold uppercase tracking-[0.08em] md:grid',
             headerGridColumns
           ]"
         >
@@ -417,21 +442,36 @@
           <span class="text-center">{{ viewCopy.table.columns.ctaClicks }}</span>
           <span v-if="showLeadColumn" class="text-center">{{ viewCopy.table.columns.leads }}</span>
           <span>{{ viewCopy.table.columns.link }}</span>
-          <span>{{ viewCopy.table.columns.status }}</span>
+          <span class="text-center">{{ viewCopy.table.columns.status }}</span>
           <span class="text-right">{{ viewCopy.table.columns.actions }}</span>
         </div>
 
-        <div v-if="pages.length" class="space-y-4 md:space-y-0 md:divide-y md:divide-slate-100 dark:md:divide-[#2b2b2b]">
+        <div v-if="filteredPages.length" class="space-y-4 md:space-y-0 md:divide-y md:divide-[#DDE8DF]">
           <div
-            v-for="page in pages"
+            v-for="page in filteredPages"
             :key="page.id"
             :class="[
-              'grid grid-cols-1 gap-4 rounded-2xl border border-slate-100 bg-white px-5 py-5 shadow-sm transition hover:border-slate-200 hover:bg-slate-50/70 md:items-center md:gap-6 md:rounded-none md:border-0 md:bg-transparent md:px-6 md:py-5 md:shadow-none dark:border-[#2b2b2b] dark:bg-[#202020] dark:hover:bg-white/5',
+              'grid grid-cols-1 gap-4 rounded-2xl border border-[#DDE8DF] bg-white px-5 py-5 shadow-sm transition hover:bg-[#F0F5F1] md:items-center md:gap-6 md:rounded-none md:border-0 md:bg-transparent md:px-4 md:py-3 md:shadow-none',
               rowGridColumns
             ]"
           >
-            <div class="flex flex-wrap items-center gap-3">
-              <p class="text-base font-semibold text-slate-900">{{ page.title }}</p>
+            <div class="flex items-center gap-3">
+              <span class="page-icon">
+                <img
+                  v-if="getPageHeroThumbnail(page)"
+                  :src="getPageHeroThumbnail(page)"
+                  alt="Miniatura da página"
+                  class="h-full w-full rounded-[9px] object-cover"
+                />
+                <svg v-else viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                </svg>
+              </span>
+              <div>
+                <p class="text-base font-semibold leading-tight text-[#0F1F14] md:text-[13px]">{{ page.title }}</p>
+                <p class="text-[11px] text-[#8AA693]">{{ page.slug ? `/${page.slug}` : "-" }}</p>
+              </div>
               <span
                 v-if="page.is_default"
                 class="rounded-full bg-emerald-50 px-3 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-600 ring-1 ring-emerald-100"
@@ -452,10 +492,7 @@
                   <path d="M11.329 19.159q-.323-.14-.566-.432L3.267 9.731q-.186-.217-.28-.475t-.093-.55q0-.187.047-.366q.048-.18.134-.361l1.779-3.59q.217-.405.603-.647t.845-.242h11.396q.46 0 .845.242t.603.646l1.779 3.59q.087.182.134.362t.047.366q0 .292-.094.55t-.28.475l-7.495 8.996q-.243.292-.566.432q-.323.139-.671.139t-.671-.14M8.817 8.5h6.366l-2-4h-2.366zm2.683 9.56V9.5H4.392zm1 0l7.108-8.56H12.5zm3.792-9.56h3.766L18.23 4.846q-.077-.154-.231-.25t-.327-.096h-3.38zm-12.35 0h3.766l2-4H6.327q-.173 0-.327.096t-.23.25z" />
                 </svg>
               </button>
-              <span
-                v-else
-                class="inline-flex min-w-[3rem] justify-center rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-600 dark:bg-[#1EA751] dark:text-white"
-              >
+              <span v-else class="stat-pill stat-visits" :class="{ 'stat-zero': getPageVisits(page.id) === 0 }">
                 {{ getPageVisits(page.id) }}
               </span>
             </div>
@@ -472,10 +509,7 @@
                   <path d="M11.329 19.159q-.323-.14-.566-.432L3.267 9.731q-.186-.217-.28-.475t-.093-.55q0-.187.047-.366q.048-.18.134-.361l1.779-3.59q.217-.405.603-.647t.845-.242h11.396q.46 0 .845.242t.603.646l1.779 3.59q.087.182.134.362t.047.366q0 .292-.094.55t-.28.475l-7.495 8.996q-.243.292-.566.432q-.323.139-.671.139t-.671-.14M8.817 8.5h6.366l-2-4h-2.366zm2.683 9.56V9.5H4.392zm1 0l7.108-8.56H12.5zm3.792-9.56h3.766L18.23 4.846q-.077-.154-.231-.25t-.327-.096h-3.38zm-12.35 0h3.766l2-4H6.327q-.173 0-.327.096t-.23.25z" />
                 </svg>
               </button>
-              <span
-                v-else
-                class="inline-flex min-w-[3rem] justify-center rounded-full bg-indigo-50 px-3 py-1 text-sm font-semibold text-indigo-600 dark:bg-[#8544CE] dark:text-white"
-              >
+              <span v-else class="stat-pill stat-clicks" :class="{ 'stat-zero': getPageClicks(page.id) === 0 }">
                 {{ getPageClicks(page.id) }}
               </span>
             </div>
@@ -492,10 +526,7 @@
                   <path d="m12 2 2.09 6.26h6.58L15.29 11l2.12 6.24L12 13.77l-5.41 3.47L8.71 11 3.33 8.26h6.58Z" />
                 </svg>
               </button>
-              <span
-                v-else
-                class="inline-flex min-w-[3rem] justify-center rounded-full bg-[#0185FB] px-3 py-1 text-sm font-semibold text-white"
-              >
+              <span v-else class="stat-pill stat-leads" :class="{ 'stat-zero': getPageLeads(page.id) === 0 }">
                 {{ getPageLeads(page.id) }}
               </span>
             </div>
@@ -504,10 +535,7 @@
               <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">
                 {{ viewCopy.table.columns.status }}
               </p>
-              <span
-                class="inline-flex w-fit items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide"
-                :class="getStatusClasses(page.status)"
-              >
+              <span class="status-badge" :class="getStatusClasses(page.status)">
                 {{ getStatusLabel(page.status) }}
               </span>
             </div>
@@ -521,17 +549,10 @@
                 :class="{ 'md:justify-center md:text-center': !(page.status === 'published' && pagePublicUrl(page)) }"
               >
                 <template v-if="page.status === 'published' && pagePublicUrl(page)">
-                  <a
-                    :href="pagePublicUrl(page)"
-                    target="_blank"
-                    class="max-w-[220px] truncate text-sm font-medium text-brand hover:text-brand-dark"
-                  >
+                  <a :href="pagePublicUrl(page)" target="_blank" class="max-w-[160px] truncate text-sm font-medium text-[#3DCC5F]">
                     {{ pagePublicUrl(page) }}
                   </a>
-                  <button
-                    class="text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-600"
-                    @click="copyLink(page)"
-                  >
+                  <button class="copy-btn" @click="copyLink(page)">
                     {{ viewCopy.actions.copy.button }}
                   </button>
                 </template>
@@ -541,11 +562,8 @@
               </div>
             </div>
 
-            <div class="hidden flex-col gap-2 md:flex">
-              <span
-                class="inline-flex w-fit items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide"
-                :class="getStatusClasses(page.status)"
-              >
+            <div class="hidden md:flex md:justify-center">
+              <span class="status-badge" :class="getStatusClasses(page.status)">
                 {{ getStatusLabel(page.status) }}
               </span>
             </div>
@@ -556,7 +574,7 @@
               </p>
               <div class="flex flex-wrap items-center gap-2 md:justify-end">
                 <button
-                  class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-slate-300 hover:text-slate-900"
+                  class="act-btn dup"
                   :title="viewCopy.actions.rowMenu.duplicate"
                   @click="openDuplicateDialog(page)"
                 >
@@ -568,7 +586,7 @@
 
                 <router-link
                   :to="`/admin/pages/${page.id}/edit`"
-                  class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-slate-300 hover:text-slate-900"
+                  class="act-btn edit"
                   :title="viewCopy.actions.rowMenu.edit"
                 >
                   <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
@@ -581,7 +599,7 @@
                   v-if="pagePublicUrl(page)"
                   :href="pagePublicUrl(page)"
                   target="_blank"
-                  class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-slate-300 hover:text-slate-900"
+                  class="act-btn view"
                   :title="viewCopy.actions.rowMenu.viewPage"
                 >
                   <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
@@ -592,7 +610,7 @@
 
                 <button
                   v-if="page.status === 'published'"
-                  class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-amber-200 text-amber-500 transition hover:border-amber-300 hover:text-amber-600"
+                  class="act-btn share"
                   :title="viewCopy.actions.rowMenu.unpublish"
                   @click="unpublishPage(page)"
                 >
@@ -604,7 +622,7 @@
 
                 <button
                   v-if="page.status === 'published'"
-                  class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+                  class="act-btn fav disabled:cursor-not-allowed disabled:opacity-50"
                   :disabled="page.is_default"
                   :title="viewCopy.actions.rowMenu.setDefault"
                   @click="setDefaultPage(page)"
@@ -615,7 +633,7 @@
                 </button>
 
                 <button
-                  class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-red-200 text-red-500 transition hover:border-red-300 hover:text-red-600"
+                  class="act-btn del"
                   :title="viewCopy.actions.rowMenu.delete"
                   @click="deletePage(page)"
                 >
@@ -729,6 +747,7 @@ import { listPageTemplates } from "../../services/templates";
 import type { PageTemplate } from "../../types/templates";
 import { applyTemplateBranding } from "../../utils/pageTemplates";
 import { sanitizeDigits, buildWhatsappLink } from "../../utils/whatsapp";
+import { resolveMediaUrl } from "../../utils/media";
 
 interface Page {
   id: number;
@@ -773,6 +792,7 @@ const localizeViewCopy = (value: unknown): any => {
 const viewCopySource = {
   header: {
     eyebrow: { pt: "Páginas", es: "Páginas" },
+    sub: { pt: "Gerencie todos os seus roteiros publicados.", es: "Gestiona todos tus itinerarios publicados." },
     newPage: { pt: "Nova página", es: "Nueva página" }
   },
   actions: {
@@ -902,10 +922,19 @@ const viewCopySource = {
     }
   },
   table: {
+    searchPlaceholder: { pt: "Buscar página...", es: "Buscar página..." },
+    countLabel: { pt: "páginas", es: "páginas" },
+    filters: {
+      statusAll: { pt: "Todos os status", es: "Todos los estados" },
+      sortRecent: { pt: "Mais recentes", es: "Más recientes" },
+      sortName: { pt: "Nome", es: "Nombre" },
+      sortVisits: { pt: "Mais visitadas", es: "Más visitadas" },
+      sortLeads: { pt: "Mais leads", es: "Más leads" }
+    },
     columns: {
       name: { pt: "Nome", es: "Nombre" },
       views: { pt: "Visualizações", es: "Visualizaciones" },
-      ctaClicks: { pt: "Cliques CTA", es: "Clics CTA" },
+      ctaClicks: { pt: "Cliques", es: "Clics" },
       leads: { pt: "Leads", es: "Leads" },
       link: { pt: "Link", es: "Link" },
       status: { pt: "Status", es: "Estado" },
@@ -1017,6 +1046,9 @@ const viewCopy = localizeViewCopy(viewCopySource);
 
 const pages = ref<Page[]>([]);
 const pageStats = ref<Record<number, { visits: number; cta: number; whatsapp: number; leads: number }>>({});
+const searchQuery = ref("");
+const statusFilter = ref("");
+const sortFilter = ref<"recent" | "name" | "visits" | "leads">("recent");
 const hasAgency = ref(false);
 const errorMessage = ref("");
 const message = ref("");
@@ -1230,13 +1262,13 @@ const hasLeadStatsAccess = computed(() => ["growth", "infinity", "teste"].includ
 const isBootstrappingPages = ref(true);
 const headerGridColumns = computed(() =>
   showLeadColumn.value
-    ? "grid-cols-[1.2fr,0.9fr,0.9fr,0.8fr,1.6fr,0.8fr,1.9fr]"
-    : "grid-cols-[1.2fr,0.9fr,0.9fr,1.6fr,0.8fr,1.9fr]"
+    ? "grid-cols-[1.9fr,0.6fr,0.6fr,0.6fr,1.5fr,0.8fr,1.5fr]"
+    : "grid-cols-[1.9fr,0.6fr,0.6fr,1.5fr,0.8fr,1.5fr]"
 );
 const rowGridColumns = computed(() =>
   showLeadColumn.value
-    ? "md:grid-cols-[1.2fr,0.9fr,0.9fr,0.8fr,1.6fr,0.8fr,1.9fr]"
-    : "md:grid-cols-[1.2fr,0.9fr,0.9fr,1.6fr,0.8fr,1.9fr]"
+    ? "md:grid-cols-[1.9fr,0.6fr,0.6fr,0.6fr,1.5fr,0.8fr,1.5fr]"
+    : "md:grid-cols-[1.9fr,0.6fr,0.6fr,1.5fr,0.8fr,1.5fr]"
 );
 
 const loadPages = async () => {
@@ -1730,12 +1762,12 @@ const getStatusLabel = (status: string) => {
 };
 const getStatusClasses = (status: string) => {
   if (status === "published") {
-    return "bg-emerald-50 text-[#2F9E49] dark:bg-[#2F9E49] dark:text-emerald-50";
+    return "status-ativo";
   }
   if (status === "draft") {
-    return "bg-amber-50 text-amber-600 dark:bg-amber-600 dark:text-amber-50";
+    return "status-inativo";
   }
-  return "bg-slate-100 text-slate-600 dark:bg-slate-600 dark:text-slate-100";
+  return "status-inativo";
 };
 const getPageVisits = (pageId: number) => pageStats.value[pageId]?.visits ?? 0;
 const getPageClicks = (pageId: number) => {
@@ -1744,6 +1776,48 @@ const getPageClicks = (pageId: number) => {
   return (stats.cta ?? 0) + (stats.whatsapp ?? 0);
 };
 const getPageLeads = (pageId: number) => pageStats.value[pageId]?.leads ?? 0;
+const getPageHeroThumbnail = (page: Page) => {
+  const config = page.config_json as any;
+  const sections = Array.isArray(config?.sections) ? config.sections : [];
+  const hero = sections.find((section: any) => section?.type === "hero");
+  const raw =
+    (typeof hero?.backgroundImage === "string" && hero.backgroundImage) ||
+    (typeof hero?.image === "string" && hero.image) ||
+    (typeof hero?.bannerImage === "string" && hero.bannerImage) ||
+    "";
+  if (!raw) return "";
+  return resolveMediaUrl(raw) || raw;
+};
+
+const filteredPages = computed(() => {
+  const term = searchQuery.value.trim().toLowerCase();
+  const filtered = pages.value.filter(page => {
+    const matchesTerm = !term || page.title.toLowerCase().includes(term) || (page.slug || "").toLowerCase().includes(term);
+    const matchesStatus = !statusFilter.value || page.status === statusFilter.value;
+    return matchesTerm && matchesStatus;
+  });
+
+  const sorted = [...filtered];
+  if (sortFilter.value === "name") {
+    sorted.sort((a, b) => a.title.localeCompare(b.title, "pt-BR"));
+    return sorted;
+  }
+  if (sortFilter.value === "visits") {
+    sorted.sort((a, b) => getPageVisits(b.id) - getPageVisits(a.id));
+    return sorted;
+  }
+  if (sortFilter.value === "leads") {
+    sorted.sort((a, b) => getPageLeads(b.id) - getPageLeads(a.id));
+    return sorted;
+  }
+  sorted.sort((a, b) => {
+    const left = a.created_at ? new Date(a.created_at).getTime() : 0;
+    const right = b.created_at ? new Date(b.created_at).getTime() : 0;
+    if (right !== left) return right - left;
+    return b.id - a.id;
+  });
+  return sorted;
+});
 
 const goPlans = () => {
   router.push("/admin/planos");
@@ -1812,11 +1886,257 @@ onMounted(bootstrapPages);
   display: block;
 }
 
+.pages-reference {
+  --verde: #3dcc5f;
+  --verde-border: rgba(61, 204, 95, 0.25);
+  --surface: #ffffff;
+  --text: #0f1f14;
+  --text-2: #4a6455;
+  --text-3: #8aa693;
+  --border: #dde8df;
+}
+
+.pages-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+
+.table-card {
+  border-color: #dde8df !important;
+  box-shadow: 0 1px 3px rgba(15, 31, 20, 0.06), 0 4px 12px rgba(15, 31, 20, 0.04);
+}
+
+.table-card > div:first-child {
+  border-bottom-color: #dde8df !important;
+  background: #f0f5f1;
+  color: #8aa693;
+}
+
+.page-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  background: rgba(61, 204, 95, 0.12);
+  border: 1px solid rgba(61, 204, 95, 0.25);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.page-icon svg {
+  width: 14px;
+  height: 14px;
+  stroke: #3dcc5f;
+}
+
+.stat-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.stat-visits {
+  background: rgba(61, 204, 95, 0.12);
+  color: #1a7a35;
+}
+
+.stat-clicks {
+  background: rgba(249, 115, 22, 0.1);
+  color: #c2500a;
+}
+
+.stat-leads {
+  background: rgba(124, 92, 252, 0.1);
+  color: #7c5cfc;
+}
+
+.stat-zero {
+  background: #f0f5f1;
+  color: #8aa693;
+}
+
+.copy-btn {
+  font-size: 11px;
+  font-weight: 700;
+  color: #8aa693;
+  background: #f0f5f1;
+  border: 1px solid #dde8df;
+  border-radius: 6px;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.copy-btn:hover {
+  background: rgba(61, 204, 95, 0.12);
+  border-color: rgba(61, 204, 95, 0.25);
+  color: #3dcc5f;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 999px;
+  width: fit-content;
+  max-width: max-content;
+  align-self: center;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.status-badge::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-ativo {
+  background: rgba(61, 204, 95, 0.12);
+  color: #1a7a35;
+}
+
+.status-ativo::before {
+  background: #2ead4c;
+}
+
+.status-inativo {
+  background: rgba(245, 158, 11, 0.15);
+  color: #c2500a;
+}
+
+.status-inativo::before {
+  background: #f59e0b;
+}
+
+.act-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s;
+  flex-shrink: 0;
+  background: transparent;
+  color: #8aa693;
+}
+
+.act-btn svg {
+  width: 13px;
+  height: 13px;
+}
+
+.act-btn.dup:hover,
+.act-btn.edit:hover,
+.act-btn.view:hover {
+  background: rgba(61, 204, 95, 0.12);
+  color: #3dcc5f;
+}
+
+.act-btn.share:hover {
+  background: rgba(249, 115, 22, 0.1);
+  color: #f97316;
+}
+
+.act-btn.fav:hover {
+  background: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+}
+
+.act-btn.del:hover {
+  background: rgba(239, 68, 68, 0.08);
+  color: #dc2626;
+}
+
+.search-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 200px;
+  max-width: 320px;
+}
+
+.search-wrap svg {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 15px;
+  height: 15px;
+  stroke: var(--text-3);
+  pointer-events: none;
+}
+
+.search-input {
+  width: 100%;
+  padding: 9px 12px 9px 34px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--surface);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.search-input:focus,
+.filter-select:focus {
+  border-color: var(--verde-border);
+}
+
+.search-input::placeholder {
+  color: var(--text-3);
+}
+
+.filter-select {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-2);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 9px 12px;
+  cursor: pointer;
+  outline: none;
+}
+
+.toolbar-count {
+  font-size: 13px;
+  color: var(--text-3);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
 @media (max-width: 768px) {
   :global(input),
   :global(textarea),
   :global(select) {
     font-size: 16px;
   }
+
+  .search-wrap {
+    max-width: 100%;
+  }
 }
 </style>
+
+
+

@@ -34,7 +34,12 @@
         <article class="metric-card">
           <div class="metric-header">
             <span class="metric-label">Páginas</span>
-            <span class="metric-icon">📄</span>
+            <span class="metric-icon green" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+              </svg>
+            </span>
           </div>
           <p class="metric-value">{{ pagesCount }}</p>
           <p class="metric-footer-text">publicadas</p>
@@ -43,7 +48,12 @@
         <article class="metric-card">
           <div class="metric-header">
             <span class="metric-label">Visitas</span>
-            <span class="metric-icon">👁</span>
+            <span class="metric-icon green" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            </span>
           </div>
           <p class="metric-value">{{ totalVisits.toLocaleString(numberLocale) }}</p>
           <div class="metric-footer">
@@ -54,8 +64,29 @@
 
         <article class="metric-card">
           <div class="metric-header">
+            <span class="metric-label">Cliques</span>
+            <span class="metric-icon amber" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m4 3 7.5 17 2.4-7.1L21 10.5 4 3z" />
+                <path d="m13.9 12.9 3.6 3.6" />
+              </svg>
+            </span>
+          </div>
+          <p class="metric-value">{{ clicksMetric.toLocaleString(numberLocale) }}</p>
+          <p class="metric-footer-text">nos botões</p>
+        </article>
+
+        <article class="metric-card">
+          <div class="metric-header">
             <span class="metric-label">Leads</span>
-            <span class="metric-icon">👥</span>
+            <span class="metric-icon purple" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+              </svg>
+            </span>
           </div>
           <p class="metric-value">{{ leadsMetric }}</p>
           <div class="metric-footer">
@@ -379,6 +410,17 @@ const pagesCount = computed(() => pages.value.filter(page => String(page.status 
 const totalVisits = computed(() => overview.value?.visits || 0);
 const visitsTrend = computed(() => Number(overview.value?.trend?.visits ?? 0));
 const visitsTrendText = computed(() => `${visitsTrend.value >= 0 ? "+" : ""}${visitsTrend.value}%`);
+const clicksMetric = computed(() => {
+  if (selectedPage.value !== "all") {
+    const pageId = Number(selectedPage.value);
+    if (!Number.isNaN(pageId)) {
+      const stats = pageStatsMap.value[pageId];
+      if (stats) return (stats.clicks_cta || 0) + (stats.clicks_whatsapp || 0);
+    }
+  }
+  if (overview.value) return Number(overview.value.cta || 0) + Number(overview.value.whatsapp || 0);
+  return Object.values(pageStatsMap.value).reduce((sum, item) => sum + (item.clicks_cta || 0) + (item.clicks_whatsapp || 0), 0);
+});
 
 const leadsMetric = computed(() => {
   if (selectedPage.value !== "all") {
@@ -818,7 +860,7 @@ onBeforeUnmount(() => {
 
   width: 100%;
   min-height: 100%;
-  background: var(--bg);
+  background: transparent;
   padding: 28px 32px;
   color: var(--text);
   font-family: "Plus Jakarta Sans", "Inter", sans-serif;
@@ -958,7 +1000,7 @@ onBeforeUnmount(() => {
 
 .metrics-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
   margin-bottom: 24px;
 }
@@ -989,10 +1031,29 @@ onBeforeUnmount(() => {
   width: 32px;
   height: 32px;
   border-radius: 9px;
-  background: var(--verde-dim);
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.metric-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.metric-icon.green {
+  background: var(--verde-dim);
+  color: var(--verde);
+}
+
+.metric-icon.amber {
+  background: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+}
+
+.metric-icon.purple {
+  background: rgba(124, 92, 252, 0.1);
+  color: var(--purple);
 }
 
 .metric-value {
@@ -1409,6 +1470,60 @@ onBeforeUnmount(() => {
 
   .banner {
     padding-right: 56px;
+  }
+
+  .list-card {
+    padding: 14px;
+  }
+
+  .list-body {
+    overflow-x: hidden;
+  }
+
+  .page-item,
+  .lead-item {
+    gap: 8px;
+  }
+
+  .page-thumb,
+  .lead-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    font-size: 10px;
+  }
+
+  .page-name,
+  .lead-name {
+    font-size: 12px;
+  }
+
+  .page-dest,
+  .lead-meta,
+  .page-visits {
+    font-size: 10px;
+  }
+
+  .page-side,
+  .lead-actions {
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .page-action-btn {
+    width: 32px;
+    height: 32px;
+  }
+
+  .page-action-btn svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  .lead-btn {
+    padding: 3px 8px;
+    font-size: 10px;
+    white-space: nowrap;
   }
 }
 </style>
