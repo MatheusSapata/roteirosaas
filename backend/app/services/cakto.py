@@ -142,7 +142,7 @@ class CaktoIntegrationService:
             elif normalized == "subscription_renewed":
                 result = self._handle_subscription_status(payload, status="active")
             elif normalized == "subscription_canceled":
-                result = self._handle_subscription_status(payload, status="cancelled", downgrade_plan=True)
+                result = self._handle_subscription_status(payload, status="cancelled", downgrade_plan=False)
             elif normalized == "subscription_renewal_refused":
                 result = self._handle_subscription_status(payload, status="past_due", downgrade_plan=True)
             else:
@@ -415,6 +415,9 @@ class CaktoIntegrationService:
                 subscription.cakto_subscription_code = subscription_code
         else:
             subscription.mrr_amount = ZERO_DECIMAL
+            if not subscription.valid_until:
+                next_due_date = self._extract_next_due_date(payload, order)
+                subscription.valid_until = self._calculate_valid_until(subscription.billing_cycle, next_due_date)
         if downgrade_plan and subscription.user:
             subscription.user.plan = "free"
             subscription.user.subscription = subscription

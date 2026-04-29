@@ -5,6 +5,7 @@ from typing import Optional
 
 from app.db.session import SessionLocal
 from app.models.subscription import Subscription
+from app.services.trial import unpublish_all_user_pages
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +35,7 @@ def expire_subscriptions(now: Optional[datetime] = None) -> int:
             sub.failed_attempts = 3
             if sub.user:
                 sub.user.plan = "free"
+                unpublish_all_user_pages(sub.user, db)
             processed += 1
         if processed:
             db.commit()

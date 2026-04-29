@@ -165,6 +165,9 @@ class UserOut(UserBase):
     trial_warn_3days_ack: Optional[bool] = None
     trial_warn_1day_ack: Optional[bool] = None
     trial_blocked: Optional[bool] = None
+    subscription_status: Optional[str] = None
+    subscription_valid_until: Optional[datetime] = None
+    subscription_blocked: Optional[bool] = None
     model_config = ConfigDict(from_attributes=True)
 
 

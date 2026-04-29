@@ -262,6 +262,13 @@ def set_subscription_cancelled(subscription: Subscription) -> None:
     subscription.mrr_amount = 0
 
 
+def set_subscription_cancelled_at_period_end(subscription: Subscription) -> None:
+    subscription.status = "cancelled"
+    subscription.failed_attempts = 0
+    if not subscription.valid_until:
+        subscription.valid_until = datetime.utcnow() + _cycle_duration(subscription.billing_cycle or DEFAULT_CYCLE)
+
+
 @router.post("/webhook")
 async def webhook(request: Request, db: Session = Depends(get_db)) -> Dict[str, Any]:
     payload = await request.json()
@@ -316,9 +323,8 @@ async def webhook(request: Request, db: Session = Depends(get_db)) -> Dict[str, 
         subscription = db.query(Subscription).filter(Subscription.asaas_subscription_id == sub_id).first()
         if subscription:
             user = db.query(User).get(subscription.user_id)
-            set_subscription_cancelled(subscription)
+            set_subscription_cancelled_at_period_end(subscription)
             if user:
-                user.plan = "free"
                 db.add(user)
             db.add(subscription)
             db.commit()
@@ -359,7 +365,7 @@ def cancel_subscription(current_user: User = Depends(get_current_active_user), d
             logger.exception("Erro ao cancelar assinatura Asaas: %s", exc)
             raise HTTPException(status_code=502, detail="Erro ao cancelar assinatura") from exc
 
-    set_subscription_cancelled(sub)
+    set_subscription_cancelled_at_period_end(sub)
     db.add(sub)
     db.commit()
     db.refresh(sub)
@@ -390,10 +396,9 @@ def change_plan(
             logger.exception("Erro ao encerrar assinatura Asaas ao mudar para free: %s", exc)
             raise HTTPException(status_code=502, detail="Erro ao cancelar assinatura no Asaas") from exc
 
-        set_subscription_cancelled(sub)
+        set_subscription_cancelled_at_period_end(sub)
         db.add(sub)
 
-    current_user.plan = "free"
     db.add(current_user)
     db.commit()
     db.refresh(current_user)
