@@ -122,6 +122,8 @@ class DomainVerificationService:
         target_host = "@" if is_apex else (sub or "")
         if is_apex and not self.settings.custom_domain_apex_ip:
             raise ValueError("CUSTOM_DOMAIN_APEX_IP nao configurado para dominios raiz.")
+        if is_apex and self.settings.custom_domain_apex_ip == "0.0.0.0":
+            raise ValueError("CUSTOM_DOMAIN_APEX_IP invalido: 0.0.0.0 nao pode ser usado para dominio raiz.")
         target_value = self.settings.custom_domain_apex_ip if is_apex else self.settings.custom_domain_cname_target
         txt_record = DnsRecordInstruction(type="TXT", host=txt_host, value=token, fqdn=txt_fqdn)
         description = "Use @ para o dominio raiz" if is_apex else f"Use apenas '{target_host}' como host/subdominio."

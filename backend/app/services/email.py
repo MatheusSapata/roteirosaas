@@ -137,3 +137,44 @@ def send_cakto_onboarding_email(
     """
 
     client.send_email(to_email=user.email, subject=subject, html_body=html_body, text_body=text_body)
+
+
+def send_team_invite_email(
+    *,
+    to_email: str,
+    invitee_name: str,
+    inviter_name: str,
+    agency_name: str,
+    invite_url: str,
+    expires_days: int = 7,
+) -> None:
+    settings = get_settings()
+    client = EmailClient()
+    if not client._is_configured():
+        logger.info("SMTP nao configurado. Convite de equipe para %s nao sera enviado.", to_email)
+        return
+
+    subject = f"Convite para acessar a equipe da {agency_name}"
+    safe_invitee = invitee_name or to_email
+    safe_inviter = inviter_name or "Administrador"
+    app_name = settings.app_name or "Roteiro Online"
+    text_body = (
+        f"Ola, {safe_invitee}.\n\n"
+        f"Voce foi convidado por {safe_inviter} para fazer parte da equipe da {agency_name} no {app_name}.\n\n"
+        "Clique no link abaixo para criar sua senha e acessar sua conta:\n"
+        f"{invite_url}\n\n"
+        f"Este convite expira em {expires_days} dias.\n"
+        "Se voce nao esperava este convite, ignore este e-mail."
+    )
+    html_body = f"""
+      <p>Olá, {safe_invitee}.</p>
+      <p>Você foi convidado por <strong>{safe_inviter}</strong> para fazer parte da equipe da <strong>{agency_name}</strong> no {app_name}.</p>
+      <p style="margin:24px 0;">
+        <a href="{invite_url}" style="background-color:#41ce5f;color:#0f1f14;padding:12px 20px;border-radius:999px;font-weight:700;text-decoration:none;">
+          Aceitar convite
+        </a>
+      </p>
+      <p>Este convite expira em {expires_days} dias.</p>
+      <p>Se você não esperava este convite, ignore este e-mail.</p>
+    """
+    client.send_email(to_email=to_email, subject=subject, html_body=html_body, text_body=text_body)

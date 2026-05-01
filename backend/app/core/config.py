@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     jwt_algorithm: str = Field("HS256", alias="JWT_ALGORITHM")
     access_token_expire_minutes: int = Field(720, alias="ACCESS_TOKEN_EXPIRE_MINUTES")
     refresh_token_expire_minutes: int = Field(43200, alias="REFRESH_TOKEN_EXPIRE_MINUTES")
-    app_name: str = Field("Travel Pages SaaS", alias="APP_NAME")
+    app_name: str = Field("Roteiro Online", alias="APP_NAME")
     mp_access_token: str | None = Field(None, alias="MP_ACCESS_TOKEN")
     mp_webhook_url: str | None = Field(None, alias="MP_WEBHOOK_URL")
     mp_success_url: str | None = Field(None, alias="MP_SUCCESS_URL")

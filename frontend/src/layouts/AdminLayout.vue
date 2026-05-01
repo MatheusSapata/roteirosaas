@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div
     :class="[
       'min-h-screen overflow-x-hidden text-[14px]',
@@ -20,34 +20,33 @@
     <div class="flex min-h-screen">
       <aside
         :class="[
-          'admin-sidebar hidden w-[246px] flex-shrink-0 flex-col justify-between border-r px-0 py-6 shadow-md md:fixed md:inset-y-0 md:left-0 md:flex',
+          'admin-sidebar hidden w-[225px] flex-shrink-0 flex-col justify-between border-r px-0 py-0 shadow-md md:fixed md:inset-y-0 md:left-0 md:flex',
           'border-[#254d32] bg-[#1A3D25] text-slate-100'
         ]"
       >
-        <div class="flex flex-1 flex-col overflow-y-auto px-6">
-          <div class="mb-4 flex items-center justify-center">
-            <img :src="sidebarLogoSrc" alt="Roteiro Online" class="max-h-[4.4rem] object-contain md:max-h-16" />
+        <div class="flex flex-1 flex-col overflow-y-auto">
+          <div class="flex items-center justify-center border-b border-white/10 px-5 py-2">
+            <img :src="sidebarLogoSrc" alt="Roteiro Online" class="max-h-[4.2rem] object-contain md:max-h-14" />
           </div>
-          <nav class="flex-1 space-y-2">
+          <nav class="flex-1 space-y-0.5 px-[10px] py-2">
             <section
               v-for="section in sidebarSections"
               :key="`desktop-section-${section.id}`"
               class="pt-1 first:pt-0"
               :class="section.id !== sidebarSections[0]?.id ? 'mt-2' : ''"
             >
-              <p class="px-2 pb-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white/35">{{ section.label }}</p>
-              <div class="space-y-1">
+              <p class="px-[10px] pb-1 pt-2 text-[10px] font-bold uppercase tracking-[0.1em] text-white/30">{{ section.label }}</p>
+              <div class="space-y-0.5">
                 <template v-for="item in section.items" :key="item.id">
               <RouterLink
                 v-if="item.type === 'link'"
                 :to="item.to"
-                class="flex items-center gap-2 rounded-xl px-3 py-1.5 text-[13px] font-medium transition"
-                :class="isTopLevelActive(item) ? activeClass : inactiveClass"
+                class="desktop-nav-item flex items-center gap-[10px] rounded-[9px] px-[10px] py-[9px] text-[13px] font-medium transition"
+                :class="[isTopLevelActive(item) ? activeClass : inactiveClass, isTopLevelActive(item) ? 'is-active' : '']"
               >
                 <span
                   :class="[
-                    'flex h-6 w-6 items-center justify-center rounded-full',
-                    'bg-white/10 text-slate-100'
+                    'flex h-[18px] w-[18px] items-center justify-center text-slate-100'
                   ]"
                 >
                   <svg
@@ -60,22 +59,21 @@
                 <span class="flex-1">{{ item.label }}</span>
                 <span
                   v-if="getNavBadge(item.id) !== null"
-                  class="rounded-full bg-[#3DCC5F] px-2 py-0.5 text-[10px] font-bold leading-none text-[#0F1F14]"
+                  class="nav-pill-badge"
                 >
                   {{ getNavBadge(item.id) }}
                 </span>
               </RouterLink>
-              <div v-else class="space-y-1">
+              <div v-else class="space-y-0.5">
                 <button
                   type="button"
-                  class="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-[13px] font-medium transition"
-                  :class="isParentActive(item) ? activeClass : inactiveClass"
+                  class="desktop-nav-item flex w-full items-center gap-[10px] rounded-[9px] px-[10px] py-[9px] text-[13px] font-medium transition"
+                  :class="[isParentActive(item) ? activeClass : inactiveClass, isParentActive(item) ? 'is-active' : '']"
                   @click="toggleNavGroup(item.id)"
                 >
                   <span
                     :class="[
-                      'flex h-6 w-6 items-center justify-center rounded-full',
-                      'bg-white/10 text-slate-100'
+                      'flex h-[18px] w-[18px] items-center justify-center text-slate-100'
                     ]"
                   >
                     <svg
@@ -88,8 +86,11 @@
                   <span class="flex-1 text-left">{{ item.label }}</span>
                   <svg
                     viewBox="0 0 24 24"
-                    class="mr-1 h-4 w-4 transition-transform"
-                    :class="isGroupExpanded(item) ? 'rotate-180' : ''"
+                    :class="[
+                      'h-4 w-4 transition-transform',
+                      isGroupExpanded(item) ? 'rotate-180' : '',
+                      'ml-auto mr-1'
+                    ]"
                     fill="none"
                     stroke="currentColor"
                     stroke-width="2"
@@ -99,19 +100,19 @@
                     <path d="m6 9 6 6 6-6" />
                   </svg>
                   <span
-                    v-if="getNavBadge(item.id) !== null"
-                    class="rounded-full bg-[#3DCC5F] px-2 py-0.5 text-[10px] font-bold leading-none text-[#0F1F14]"
+                    v-if="item.id !== 'leads' && getNavBadge(item.id) !== null"
+                    class="nav-pill-badge"
                   >
                     {{ getNavBadge(item.id) }}
                   </span>
                 </button>
-                <div v-if="isGroupExpanded(item)" class="ml-8 space-y-1 pb-1">
+                <div v-if="isGroupExpanded(item)" class="ml-0 space-y-0.5 pb-1 pt-0.5">
                   <RouterLink
                     v-for="child in item.children"
                     :key="`${item.id}-${child.path}`"
                     :to="child.path"
-                    class="flex items-center rounded-lg px-3 py-1 text-[12px] font-medium transition"
-                    :class="isChildActive(child.path) ? childActiveClass : childInactiveClass"
+                    class="desktop-nav-subitem flex w-full items-center rounded-[9px] px-[20px] py-[8px] text-[12px] font-medium transition"
+                    :class="[isChildActive(child.path) ? childActiveClass : childInactiveClass, isChildActive(child.path) ? 'is-active-sub' : '']"
                   >
                     <span>{{ child.label }}</span>
                   </RouterLink>
@@ -125,55 +126,55 @@
 
         <div
           :class="[
-            'mt-8 border-t px-6 pt-4 space-y-3',
-            'border-slate-800'
+            'mt-8 border-t px-4 pt-4 space-y-3',
+            'border-white/10'
           ]"
         >
-          <button
-            type="button"
-            @click="handleLogout"
-            class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition"
-            :class="isDarkTheme ? 'text-white hover:bg-white/10' : 'text-white/90 hover:bg-white/10'"
-          >
-            <span class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-[#3DCC5F] text-sm font-extrabold text-[#0F1F14]">
-              {{ userInitial }}
-            </span>
-            <span class="min-w-0 flex-1">
-              <span class="block truncate text-[13px] font-semibold text-white">{{ userDisplayName }}</span>
-              <span class="block text-[11px] text-white/50">{{ userRoleLabel }}</span>
-            </span>
-            <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 text-white/80">
+          <div class="flex w-full items-center gap-3 rounded-xl px-1 py-2">
+            <RouterLink
+              to="/admin/perfil"
+              class="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-2 py-1.5 text-left transition hover:bg-white/10"
+            >
+              <span class="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#3DCC5F] text-sm font-extrabold text-[#0F1F14]">
+                <img v-if="userAvatarUrl" :src="userAvatarUrl" alt="Avatar" class="h-full w-full object-cover" />
+                <template v-else>{{ userInitial }}</template>
+              </span>
+              <span class="min-w-0 flex-1">
+                <span class="block text-[13px] font-semibold text-white">{{ (userDisplayName || "").split(" ")[0] || userDisplayName }}</span>
+                <span class="block text-[11px] text-white/50">{{ userRoleLabel }}</span>
+              </span>
+            </RouterLink>
+            <button
+              type="button"
+              @click="handleLogout"
+              class="ml-1 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-white/10 text-white/80 transition hover:bg-white/20"
+              aria-label="Sair"
+            >
               <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M15 17l5-5-5-5" />
                 <path d="M20 12H9" />
                 <path d="M12 19H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6" />
               </svg>
-            </span>
-          </button>
+            </button>
+          </div>
         </div>
       </aside>
-      <main :class="['admin-main flex min-h-0 flex-1 flex-col overflow-x-hidden md:ml-[246px]',isDarkTheme ? 'bg-[#05070f] text-slate-100' : 'bg-slate-50 text-slate-900']">
+      <main :class="['admin-main flex min-h-0 flex-1 flex-col overflow-x-hidden md:ml-[225px]',isDarkTheme ? 'bg-[#05070f] text-slate-100' : 'bg-slate-50 text-slate-900']">
         <div
           :class="[
-            'admin-content flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3 pt-1 pb-4 md:px-6 md:pt-2 md:pb-6',
+            'admin-content flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3 pt-0 pb-4 md:px-6 md:pt-2 md:pb-6',
             isDarkTheme ? 'text-slate-100' : 'text-slate-900'
           ]"
         >
-          <div v-if="isMobileViewport" :class="['mb-4 grid min-h-[64px] grid-cols-[1fr_auto_1fr] items-center rounded-xl px-3', pageTitleRowPaddingClass]">
-            <div class="flex h-full items-center justify-self-start">
-              <img :src="mobileHeaderLogoSrc" alt="Roteiro Online" class="h-14 w-auto object-contain" />
-            </div>
-            <p
-              class="self-center truncate text-center text-[21px] font-semibold leading-none"
-              :class="isDarkTheme ? 'text-slate-100' : 'text-slate-800'"
-            >
-              {{ currentPageTitle }}
-            </p>
-            <div class="flex h-full items-center justify-self-end">
+          <div
+            v-if="isMobileViewport"
+            class="relative -mx-3 mb-2 flex min-h-[74px] items-center justify-center border border-[#2b6b3f] bg-gradient-to-r from-[#184C2D] via-[#1A5631] to-[#1E5E35] px-3"
+          >
+            <img :src="sidebarLogoSrc" alt="Roteiro Online" class="h-14 w-auto object-contain" />
+            <div class="absolute right-2 top-1/2 -translate-y-1/2">
             <button
               type="button"
-              class="inline-flex h-10 w-10 items-center justify-center rounded-full p-0 transition"
-              :class="isDarkTheme ? 'text-white hover:bg-white/5' : 'text-slate-700 hover:bg-slate-100'"
+              class="inline-flex h-10 w-10 items-center justify-center rounded-full p-0 text-white transition hover:bg-white/10"
               @click="mobileMenuOpen = true"
             >
               <span class="sr-only">{{ viewCopy.sidebar.openMenu }}</span>
@@ -200,19 +201,14 @@
           @click="mobileMenuOpen = false"
         ></div>
         <div
-          class="w-72 max-w-full p-5 shadow-2xl transition-colors md:rounded-l-3xl"
+          class="w-72 max-w-full shadow-2xl transition-colors md:rounded-l-3xl"
           :class="'bg-[#1A3D25] text-slate-100'"
         >
-          <div class="mb-6 flex items-center justify-between">
-            <div>
-              <p class="text-xs uppercase tracking-[0.3em]" :class="isDarkTheme ? 'text-white/70' : 'text-white/70'">
-                {{ viewCopy.sidebar.menuLabel }}
-              </p>
-              <p class="text-sm font-semibold truncate">{{ agencyName || 'Agencia' }}</p>
-            </div>
+          <div class="relative flex items-center justify-center border-b border-white/10 px-5 py-2">
+            <img :src="sidebarLogoSrc" alt="Roteiro Online" class="max-h-[3.5rem] object-contain" />
             <button
               type="button"
-              class="inline-flex h-8 w-8 items-center justify-center rounded-full border"
+              class="absolute right-4 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border"
               :class="isDarkTheme ? 'border-white/40 text-white' : 'border-white/40 text-white'"
               @click="mobileMenuOpen = false"
             >
@@ -222,33 +218,25 @@
               </svg>
             </button>
           </div>
-          <nav class="space-y-2">
+          <nav class="flex-1 space-y-0.5 px-[10px] py-2">
             <section
               v-for="section in sidebarSections"
               :key="`mobile-section-${section.id}`"
               class="pt-1 first:pt-0"
               :class="section.id !== sidebarSections[0]?.id ? 'mt-2' : ''"
             >
-              <p class="px-2 pb-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white/35">{{ section.label }}</p>
-              <div class="space-y-1">
+              <p class="px-[10px] pb-1 pt-2 text-[10px] font-bold uppercase tracking-[0.1em] text-white/30">{{ section.label }}</p>
+              <div class="space-y-0.5">
                 <template v-for="item in section.items" :key="'mobile-' + item.id">
               <RouterLink
                 v-if="item.type === 'link'"
                 :to="item.to"
-                class="flex items-center gap-2 rounded-lg px-3 py-1.5 text-[13px] font-medium transition"
-                :class="[
-                  'text-slate-100',
-                  isTopLevelActive(item)
-                    ? 'bg-[#2A5C38] border-l-[3px] border-l-[#3DCC5F]'
-                    : 'hover:bg-white/8'
-                ]"
+                class="desktop-nav-item flex items-center gap-[10px] rounded-[9px] px-[10px] py-[9px] text-[13px] font-medium transition"
+                :class="[isTopLevelActive(item) ? activeClass : inactiveClass, isTopLevelActive(item) ? 'is-active' : '']"
                 @click="mobileMenuOpen = false"
               >
                 <span
-                  :class="[
-                    'flex h-7 w-7 items-center justify-center rounded-full',
-                    'bg-white/10 text-slate-100'
-                  ]"
+                  :class="['flex h-[18px] w-[18px] items-center justify-center text-slate-100']"
                 >
                   <svg
                     :viewBox="navIconViewBoxes[item.iconPath] || navIconViewBoxes.default"
@@ -260,23 +248,20 @@
                 <span class="flex-1">{{ item.label }}</span>
                 <span
                   v-if="getNavBadge(item.id) !== null"
-                  class="rounded-full bg-[#3DCC5F] px-2 py-0.5 text-[10px] font-bold leading-none text-[#0F1F14]"
+                  class="nav-pill-badge"
                 >
                   {{ getNavBadge(item.id) }}
                 </span>
               </RouterLink>
-              <div v-else class="space-y-1">
+              <div v-else class="space-y-0.5">
                 <button
                   type="button"
-                  class="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-[13px] font-medium transition text-slate-100"
-                  :class="isParentActive(item) ? 'bg-[#2A5C38] border-l-[3px] border-l-[#3DCC5F]' : 'hover:bg-white/8'"
+                  class="desktop-nav-item flex w-full items-center gap-[10px] rounded-[9px] px-[10px] py-[9px] text-[13px] font-medium transition"
+                  :class="[isParentActive(item) ? activeClass : inactiveClass, isParentActive(item) ? 'is-active' : '']"
                   @click="toggleNavGroup(item.id)"
                 >
                   <span
-                    :class="[
-                    'flex h-7 w-7 items-center justify-center rounded-full',
-                      'bg-white/10 text-slate-100'
-                    ]"
+                    :class="['flex h-[18px] w-[18px] items-center justify-center text-slate-100']"
                   >
                     <svg
                       :viewBox="navIconViewBoxes[item.iconPath] || navIconViewBoxes.default"
@@ -288,8 +273,11 @@
                   <span class="flex-1 text-left">{{ item.label }}</span>
                   <svg
                     viewBox="0 0 24 24"
-                    class="mr-1 h-4 w-4 transition-transform"
-                    :class="isGroupExpanded(item) ? 'rotate-180' : ''"
+                    :class="[
+                      'h-4 w-4 transition-transform',
+                      isGroupExpanded(item) ? 'rotate-180' : '',
+                      'ml-auto mr-1'
+                    ]"
                     fill="none"
                     stroke="currentColor"
                     stroke-width="2"
@@ -299,19 +287,19 @@
                     <path d="m6 9 6 6 6-6" />
                   </svg>
                   <span
-                    v-if="getNavBadge(item.id) !== null"
-                    class="rounded-full bg-[#3DCC5F] px-2 py-0.5 text-[10px] font-bold leading-none text-[#0F1F14]"
+                    v-if="item.id !== 'leads' && getNavBadge(item.id) !== null"
+                    class="nav-pill-badge"
                   >
                     {{ getNavBadge(item.id) }}
                   </span>
                 </button>
-                <div v-if="isGroupExpanded(item)" class="ml-9 space-y-1">
+                <div v-if="isGroupExpanded(item)" class="ml-0 space-y-0.5 pb-1 pt-0.5">
                   <RouterLink
                     v-for="child in item.children"
                     :key="'mobile-' + item.id + '-' + child.path"
                     :to="child.path"
-                    class="flex items-center rounded-lg px-3 py-1 text-[12px] font-medium transition text-slate-100"
-                    :class="isChildActive(child.path) ? 'bg-[#2A5C38] border-l-[3px] border-l-[#3DCC5F]' : 'hover:bg-white/8'"
+                    class="desktop-nav-subitem flex w-full items-center rounded-[9px] px-[20px] py-[8px] text-[12px] font-medium transition"
+                    :class="[isChildActive(child.path) ? childActiveClass : childInactiveClass, isChildActive(child.path) ? 'is-active-sub' : '']"
                     @click="mobileMenuOpen = false"
                   >
                     <span>{{ child.label }}</span>
@@ -325,30 +313,37 @@
           <div
             :class="[
               'mt-6 border-t pt-4 space-y-3',
-              'border-slate-800'
+              'border-white/10'
             ]"
           >
-            <button
-              type="button"
-              @click="handleLogout"
-              class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition"
-              :class="isDarkTheme ? 'text-white hover:bg-white/10' : 'text-white hover:bg-white/10'"
-            >
-              <span class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-[#3DCC5F] text-xs font-extrabold text-[#0F1F14]">
-                {{ userInitial }}
-              </span>
-              <span class="min-w-0 flex-1">
-                <span class="block truncate text-[13px] font-semibold text-white">{{ userDisplayName }}</span>
-                <span class="block text-[11px] text-white/50">{{ userRoleLabel }}</span>
-              </span>
-              <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10 text-white/80">
+            <div class="flex w-full items-center gap-4 rounded-lg px-2 py-1.5">
+              <RouterLink
+                to="/admin/perfil"
+                class="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-1.5 py-1.5 text-left transition hover:bg-white/10"
+                @click="mobileMenuOpen = false"
+              >
+                <span class="flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#3DCC5F] text-xs font-extrabold text-[#0F1F14]">
+                  <img v-if="userAvatarUrl" :src="userAvatarUrl" alt="Avatar" class="h-full w-full object-cover" />
+                  <template v-else>{{ userInitial }}</template>
+                </span>
+                <span class="min-w-0 flex-1">
+                  <span class="block text-[13px] font-semibold text-white">{{ (userDisplayName || "").split(" ")[0] || userDisplayName }}</span>
+                  <span class="block text-[11px] text-white/50">{{ userRoleLabel }}</span>
+                </span>
+              </RouterLink>
+              <button
+                type="button"
+                @click="handleLogout"
+                class="ml-1 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-white/10 text-white/80 transition hover:bg-white/20"
+                aria-label="Sair"
+              >
                 <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M15 17l5-5-5-5" />
                   <path d="M20 12H9" />
                   <path d="M12 19H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6" />
                 </svg>
-              </span>
-            </button>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -662,6 +657,17 @@
       </div>
     </transition>
 
+    <transition name="fade">
+      <div
+        v-if="permissionSnackbar.open"
+        class="fixed bottom-4 left-1/2 z-[1000] w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 md:bottom-6 md:w-auto md:min-w-[360px]"
+      >
+        <div class="rounded-xl bg-rose-600 px-4 py-3 text-sm font-semibold text-white shadow-2xl">
+          {{ permissionSnackbar.message }}
+        </div>
+      </div>
+    </transition>
+
     <a
       href="https://wa.me/5553991754616"
       target="_blank"
@@ -684,7 +690,7 @@ import { RouterLink, RouterView, useRoute, useRouter } from "vue-router";
 import SidebarLogo from "../assets/Logo Branco - Roteiro Online.png";
 import ColoredLogo from "../assets/Logo Cor - Roteiro Online.png";
 import ImageUploadField from "../components/admin/inputs/ImageUploadField.vue";
-import api from "../services/api";
+import api, { API_PERMISSION_DENIED_EVENT } from "../services/api";
 import { useAgencyStore } from "../store/useAgencyStore";
 import { useAuthStore } from "../store/useAuthStore";
 import { useLeadCaptureStore } from "../store/useLeadCaptureStore";
@@ -693,6 +699,7 @@ import { getPlanLabel } from "../utils/planLabels";
 import { addTagsToContactByEmail, syncPlanTagForEmail, viajeChatTagIds } from "../services/viajeChat";
 import { slugify } from "../utils/slugify";
 import { createAdminLocalizer } from "../utils/adminI18n";
+import { canAccessPermission, type PermissionKey } from "../utils/permissions";
 
 const route = useRoute();
 const router = useRouter();
@@ -707,6 +714,8 @@ const showAuthSplash = computed(() => {
 });
 const navPageCount = ref<number | null>(null);
 const navLeadCount = ref<number | null>(null);
+const permissionSnackbar = ref({ open: false, message: "" });
+let permissionSnackbarTimer: number | null = null;
 const userDisplayName = computed(() => {
   const user = auth.user as Record<string, unknown> | null;
   if (!user) return "Usuário";
@@ -719,7 +728,21 @@ const userInitial = computed(() => {
   const name = userDisplayName.value.trim();
   return name ? name.charAt(0).toUpperCase() : "U";
 });
-const userRoleLabel = computed(() => (auth.user?.is_superuser ? "Admin" : "Usuário"));
+const userAvatarUrl = computed(() => {
+  const user = auth.user as Record<string, unknown> | null;
+  const raw = (user?.avatar_url as string) || "";
+  return raw.trim() || null;
+});
+const userRoleLabel = computed(() => {
+  const role = String(auth.user?.role || "").toLowerCase();
+  if (auth.user?.is_superuser || role === "admin" || role === "owner" || auth.user?.is_owner) {
+    return "Admin";
+  }
+  if (role === "member" || role === "membro") {
+    return "Membro";
+  }
+  return "Usuário";
+});
 const themeStore = useThemeStore();
 const COOKIE_KEY = "global_cookie_consent";
 const t = createAdminLocalizer();
@@ -727,12 +750,12 @@ const t = createAdminLocalizer();
 const navCopy = {
   dashboard: { pt: "Dashboard", es: "Dashboard" },
   adminMaster: { pt: "Admin Master", es: "Admin Master" },
-  pages: { pt: "Páginas", es: "Páginas" },
+  pages: { pt: "P\u00E1ginas", es: "P\u00E1ginas" },
   leads: { pt: "Leads", es: "Leads" },
   clients: { pt: "Clientes", es: "Clientes" },
-  integrations: { pt: "Integrações", es: "Integraciones" },
-  domains: { pt: "Domínios", es: "Dominios" },
-  agency: { pt: "Minha Agência", es: "Mi Agencia" },
+  integrations: { pt: "Integra\u00E7\u00F5es", es: "Integraciones" },
+  domains: { pt: "Dom\u00EDnios", es: "Dominios" },
+  agency: { pt: "Minha Ag\u00EAncia", es: "Mi Agencia" },
   profile: { pt: "Perfil", es: "Perfil" },
   lessons: { pt: "Aulas", es: "Cursos" },
   plans: { pt: "Planos", es: "Planes" }
@@ -748,64 +771,64 @@ const viewCopy = {
   },
   sidebar: {
     logout: t({ pt: "Sair", es: "Salir" }),
-    menuLabel: t({ pt: "Menu", es: "Menú" }),
-    openMenu: t({ pt: "Abrir menu", es: "Abrir menú" }),
+    menuLabel: t({ pt: "Menu", es: "Men\u00FA" }),
+    openMenu: t({ pt: "Abrir menu", es: "Abrir men\u00FA" }),
     closeMenu: t({ pt: "Fechar", es: "Cerrar" })
   },
   support: {
-    prompt: t({ pt: "Precisa de ajuda?", es: "¿Necesita ayuda?" })
+    prompt: t({ pt: "Precisa de ajuda?", es: "\u00BFNecesita ayuda?" })
   },
   trial: {
     welcome: {
       eyebrow: t({ pt: "Bem-vindo ao trial profissional", es: "Bienvenido al trial profesional" }),
       titlePrefix: t({ pt: "Plano", es: "Plan" }),
-      titleConnector: t({ pt: "liberado até", es: "habilitado hasta" }),
+      titleConnector: t({ pt: "liberado atÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©", es: "habilitado hasta" }),
       description: t({
-        pt: "Durante estes 7 dias você pode testar tudo que usamos nos planos pagos:",
-        es: "Durante estos 7 días puedes probar todo lo que usamos en los planes pagos:"
+        pt: "Durante estes 7 dias vocÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âª pode testar tudo que usamos nos planos pagos:",
+        es: "Durante estos 7 dÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­as puedes probar todo lo que usamos en los planes pagos:"
       }),
       features: [
-        t({ pt: "Criar até 3 páginas completas, com seções ilimitadas.", es: "Crear hasta 3 páginas completas con secciones ilimitadas." }),
+        t({ pt: "Criar atÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â© 3 pÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ginas completas, com seÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âµes ilimitadas.", es: "Crear hasta 3 pÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ginas completas con secciones ilimitadas." }),
         t({
           pt: "Duplicar roteiros, personalizar blocos premium e usar pixels ilimitados.",
-          es: "Duplicar itinerarios, personalizar bloques premium y usar píxeles ilimitados."
+          es: "Duplicar itinerarios, personalizar bloques premium y usar pÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­xeles ilimitados."
         }),
         t({
-          pt: "Publicar páginas sem rodapé da versão gratuita e acompanhar métricas em tempo real.",
-          es: "Publicar páginas sin el pie de la versión gratuita y seguir métricas en tiempo real."
+          pt: "Publicar pÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ginas sem rodapÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â© da versÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£o gratuita e acompanhar mÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©tricas em tempo real.",
+          es: "Publicar pÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ginas sin el pie de la versiÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³n gratuita y seguir mÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©tricas en tiempo real."
         })
       ],
       closing: t({
-        pt: "Explore à vontade e chame nosso time se quiser montar um roteiro profissional.",
-        es: "Explora con libertad y pídenos ayuda si quieres armar un itinerario profesional."
+        pt: "Explore ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â  vontade e chame nosso time se quiser montar um roteiro profissional.",
+        es: "Explora con libertad y pÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­denos ayuda si quieres armar un itinerario profesional."
       }),
-      cta: t({ pt: "Começar agora", es: "Comenzar ahora" })
+      cta: t({ pt: "ComeÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â§ar agora", es: "Comenzar ahora" })
     },
     warn3: {
-      eyebrow: t({ pt: "Faltam 3 dias", es: "Faltan 3 días" }),
-      title: t({ pt: "Seu período trial termina em breve", es: "Tu período de prueba termina pronto" }),
+      eyebrow: t({ pt: "Faltam 3 dias", es: "Faltan 3 dÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­as" }),
+      title: t({ pt: "Seu perÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­odo trial termina em breve", es: "Tu perÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­odo de prueba termina pronto" }),
       description: t({
-        pt: "Em 3 dias o acesso ao editor será bloqueado. Escolha um plano para continuar criando roteiros ilimitados.",
-        es: "En 3 días se bloqueará el acceso al editor. Elige un plan para seguir creando itinerarios ilimitados."
+        pt: "Em 3 dias o acesso ao editor serÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ bloqueado. Escolha um plano para continuar criando roteiros ilimitados.",
+        es: "En 3 dÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­as se bloquearÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ el acceso al editor. Elige un plan para seguir creando itinerarios ilimitados."
       }),
-      dismiss: t({ pt: "Depois", es: "Después" }),
+      dismiss: t({ pt: "Depois", es: "DespuÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©s" }),
       goPlans: t({ pt: "Ver planos", es: "Ver planes" })
     },
     warn1: {
-      eyebrow: t({ pt: "Últimas horas", es: "Últimas horas" }),
-      title: t({ pt: "Seu trial termina amanhã", es: "Tu trial termina mañana" }),
+      eyebrow: t({ pt: "ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ltimas horas", es: "ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ltimas horas" }),
+      title: t({ pt: "Seu trial termina amanhÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£", es: "Tu trial termina maÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â±ana" }),
       description: t({
-        pt: "Contrate agora para manter suas páginas ativas e seguir publicando novos roteiros sem interrupção.",
-        es: "Contrata ahora para mantener tus páginas activas y seguir publicando nuevos itinerarios sin interrupción."
+        pt: "Contrate agora para manter suas pÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ginas ativas e seguir publicando novos roteiros sem interrupÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£o.",
+        es: "Contrata ahora para mantener tus pÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ginas activas y seguir publicando nuevos itinerarios sin interrupciÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³n."
       }),
       subscribe: t({ pt: "Assinar agora", es: "Suscribirme ahora" })
     },
     blocked: {
       eyebrow: t({ pt: "Trial encerrado", es: "Trial finalizado" }),
-      title: t({ pt: "Você atingiu o limite do plano trial", es: "Alcanzaste el límite del plan trial" }),
+      title: t({ pt: "VocÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âª atingiu o limite do plano trial", es: "Alcanzaste el lÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­mite del plan trial" }),
       description: t({
         pt: "Assine um plano para desbloquear seu painel e republicar seus roteiros.",
-        es: "Suscríbete para desbloquear tu panel y volver a publicar tus itinerarios."
+        es: "SuscrÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­bete para desbloquear tu panel y volver a publicar tus itinerarios."
       }),
       goPlans: t({ pt: "Ir para os planos", es: "Ir a los planes" }),
       close: t({ pt: "Fechar", es: "Cerrar" })
@@ -816,19 +839,19 @@ const viewCopy = {
       eyebrow: t({ pt: "Plano expirado", es: "Plan expirado" }),
       title: t({ pt: "Renove para voltar a editar", es: "Renueva para volver a editar" }),
       description: t({
-        pt: "Seu período contratado terminou. Para voltar a editar e publicar roteiros, renove seu plano.",
-        es: "Tu período contratado terminó. Para volver a editar y publicar itinerarios, renueva tu plan."
+        pt: "Seu perÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­odo contratado terminou. Para voltar a editar e publicar roteiros, renove seu plano.",
+        es: "Tu perÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­odo contratado terminÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³. Para volver a editar y publicar itinerarios, renueva tu plan."
       })
     }
   },
   cookies: {
     title: t({ pt: "Cookies", es: "Cookies" }),
     descriptionLine1: t({
-      pt: "Utilizamos cookies e armazenamento local para manter sua sessão segura e salvar preferências.",
-      es: "Usamos cookies y almacenamiento local para mantener tu sesión segura y guardar preferencias."
+      pt: "Utilizamos cookies e armazenamento local para manter sua sessÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£o segura e salvar preferÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âªncias.",
+      es: "Usamos cookies y almacenamiento local para mantener tu sesiÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³n segura y guardar preferencias."
     }),
     descriptionLine2: t({
-      pt: "Se optar por continuar sem aceitar, alguns recursos podem apresentar limitações.",
+      pt: "Se optar por continuar sem aceitar, alguns recursos podem apresentar limitaÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âµes.",
       es: "Si decides seguir sin aceptar, algunas funciones pueden presentar limitaciones."
     }),
     skip: t({ pt: "Continuar sem aceitar", es: "Seguir sin aceptar" }),
@@ -837,56 +860,56 @@ const viewCopy = {
   onboarding: {
     firstPageTitle: t({ pt: "Meu primeiro roteiro", es: "Mi primer itinerario" }),
     name: {
-      eyebrow: t({ pt: "Comece por aqui", es: "Empieza por aquí" }),
-      title: t({ pt: "Qual nome da sua agência?", es: "¿Cuál es el nombre de tu agencia?" }),
-      description: t({ pt: "Esse nome aparece no painel e nas páginas. Você pode alterar depois.", es: "Este nombre aparece en el panel y en las páginas. Puedes cambiarlo después." }),
-      label: t({ pt: "Nome da agência", es: "Nombre de la agencia" }),
+      eyebrow: t({ pt: "Comece por aqui", es: "Empieza por aquÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­" }),
+      title: t({ pt: "Qual nome da sua agÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âªncia?", es: "ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿CuÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡l es el nombre de tu agencia?" }),
+      description: t({ pt: "Esse nome aparece no painel e nas pÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ginas. VocÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âª pode alterar depois.", es: "Este nombre aparece en el panel y en las pÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ginas. Puedes cambiarlo despuÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©s." }),
+      label: t({ pt: "Nome da agÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âªncia", es: "Nombre de la agencia" }),
       placeholder: t({ pt: "Ex.: MariaTur", es: "Ej.: MariaTur" })
     },
     logo: {
       eyebrow: t({ pt: "Personalize", es: "Personaliza" }),
-      title: t({ pt: "Logo da sua agência", es: "Logo de tu agencia" }),
-      description: t({ pt: "Envie o arquivo da sua marca. Você pode trocar depois.", es: "Sube el archivo de tu marca. Puedes cambiarlo despues." }),
+      title: t({ pt: "Logo da sua agÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âªncia", es: "Logo de tu agencia" }),
+      description: t({ pt: "Envie o arquivo da sua marca. VocÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âª pode trocar depois.", es: "Sube el archivo de tu marca. Puedes cambiarlo despues." }),
       fieldLabel: t({ pt: "Logo", es: "Logo" }),
-      hint: t({ pt: "Formatos permitidos: JPG e PNG - Tamanho máximo: 10MB", es: "Formatos permitidos: JPG y PNG - Tamanho máximo: 10MB" }),
-      editorTitle: t({ pt: "Ajuste a logo da agência", es: "Ajusta el logo de la agencia" })
+      hint: t({ pt: "Formatos permitidos: JPG e PNG - Tamanho mÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ximo: 10MB", es: "Formatos permitidos: JPG y PNG - Tamanho mÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ximo: 10MB" }),
+      editorTitle: t({ pt: "Ajuste a logo da agÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âªncia", es: "Ajusta el logo de la agencia" })
     },
     color: {
       eyebrow: t({ pt: "Defina o estilo", es: "Define el estilo" }),
-      title: t({ pt: "Qual a cor principal da sua agência?", es: "¿Cuál es el color principal de tu agencia?" }),
-      description: t({ pt: "Usamos essa cor nos botões e destaques padrão do editor.", es: "Usamos este color en los botones y destacados predeterminados del editor." }),
-      pickerHint: t({ pt: "Clique aqui para alterar", es: "Haz clic aquí para cambiar" }),
-      hexLabel: t({ pt: "Código hexadecimal", es: "Código hexadecimal" }),
+      title: t({ pt: "Qual a cor principal da sua agÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âªncia?", es: "ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿CuÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡l es el color principal de tu agencia?" }),
+      description: t({ pt: "Usamos essa cor nos botÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âµes e destaques padrÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£o do editor.", es: "Usamos este color en los botones y destacados predeterminados del editor." }),
+      pickerHint: t({ pt: "Clique aqui para alterar", es: "Haz clic aquÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­ para cambiar" }),
+      hexLabel: t({ pt: "CÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³digo hexadecimal", es: "CÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³digo hexadecimal" }),
       placeholder: t({ pt: "#41ce5f", es: "#41ce5f" })
     },
     success: {
-      title: t({ pt: "Parabéns, sua agência foi criada!", es: "¡Felicidades, tu agencia fue creada!" }),
-      description: t({ pt: "Agora você pode criar sua primeira página personalizada.", es: "Ahora puedes crear tu primera página personalizada." })
+      title: t({ pt: "ParabÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©ns, sua agÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âªncia foi criada!", es: "ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡Felicidades, tu agencia fue creada!" }),
+      description: t({ pt: "Agora vocÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âª pode criar sua primeira pÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡gina personalizada.", es: "Ahora puedes crear tu primera pÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡gina personalizada." })
     },
     unsaved: {
-      eyebrow: t({ pt: "Atenção", es: "Atencion" }),
-      title: t({ pt: "Há alterações não salvas", es: "Hay cambios no guardados" }),
-      description: t({ pt: "Se fechar agora, você perderá o que preencheu. Deseja realmente sair?", es: "Si cierras ahora, perderás lo que completaste. ¿Deseas salir?" })
+      eyebrow: t({ pt: "AtenÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£o", es: "Atencion" }),
+      title: t({ pt: "HÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ alteraÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âµes nÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£o salvas", es: "Hay cambios no guardados" }),
+      description: t({ pt: "Se fechar agora, vocÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âª perderÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ o que preencheu. Deseja realmente sair?", es: "Si cierras ahora, perderÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡s lo que completaste. ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿Deseas salir?" })
     },
     actions: {
       close: t({ pt: "Fechar", es: "Cerrar" }),
-      next: t({ pt: "Avançar", es: "Avanzar" }),
-      advancing: t({ pt: "Avançando...", es: "Avanzando..." }),
+      next: t({ pt: "AvanÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â§ar", es: "Avanzar" }),
+      advancing: t({ pt: "AvanÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â§ando...", es: "Avanzando..." }),
       back: t({ pt: "Voltar", es: "Volver" }),
       creating: t({ pt: "Criando...", es: "Creando..." }),
-      createAgency: t({ pt: "Criar agência", es: "Crear agencia" }),
+      createAgency: t({ pt: "Criar agÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âªncia", es: "Crear agencia" }),
       creatingFirstPage: t({ pt: "Criando...", es: "Creando..." }),
-      createFirstPage: t({ pt: "Criar minha primeira página", es: "Crear mi primera página" }),
+      createFirstPage: t({ pt: "Criar minha primeira pÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡gina", es: "Crear mi primera pÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡gina" }),
       continueEditing: t({ pt: "Continuar editando", es: "Seguir editando" }),
       discardAndClose: t({ pt: "Descartar e fechar", es: "Descartar y cerrar" })
     },
     errors: {
-      missingName: t({ pt: "Informe o nome da sua agência.", es: "Informa el nombre de tu agencia." }),
-      cannotAdvance: t({ pt: "Não foi possível avançar. Tente novamente.", es: "No fue posible avanzar. Intenta nuevamente." }),
-      cannotCreateAgency: t({ pt: "Não foi possível criar a agência. Tente novamente.", es: "No fue posible crear la agencia. Intenta nuevamente." }),
-      mustCreateAgency: t({ pt: "Crie sua agência antes de adicionar páginas.", es: "Crea tu agencia antes de agregar páginas." }),
-      cannotCreatePage: t({ pt: "Não foi possível criar a página agora.", es: "No fue posible crear la página ahora." }),
-      slugUnavailable: t({ pt: "Não foi possível gerar um slug disponível para esta agência. Ajuste o nome e tente novamente.", es: "No fue posible generar un slug disponible para esta agencia. Ajusta el nombre e inténtalo nuevamente." })
+      missingName: t({ pt: "Informe o nome da sua agÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âªncia.", es: "Informa el nombre de tu agencia." }),
+      cannotAdvance: t({ pt: "NÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£o foi possÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­vel avanÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â§ar. Tente novamente.", es: "No fue posible avanzar. Intenta nuevamente." }),
+      cannotCreateAgency: t({ pt: "NÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£o foi possÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­vel criar a agÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âªncia. Tente novamente.", es: "No fue posible crear la agencia. Intenta nuevamente." }),
+      mustCreateAgency: t({ pt: "Crie sua agÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âªncia antes de adicionar pÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ginas.", es: "Crea tu agencia antes de agregar pÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ginas." }),
+      cannotCreatePage: t({ pt: "NÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£o foi possÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­vel criar a pÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡gina agora.", es: "No fue posible crear la pÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡gina ahora." }),
+      slugUnavailable: t({ pt: "NÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£o foi possÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­vel gerar um slug disponÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­vel para esta agÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âªncia. Ajuste o nome e tente novamente.", es: "No fue posible generar un slug disponible para esta agencia. Ajusta el nombre e intÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©ntalo nuevamente." })
     }
   }
 } as const;
@@ -944,7 +967,7 @@ const navIcons: Record<string, string> = {
   "/admin/perfil": '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></g>',
   "/admin/planos": '<path fill="currentColor" d="m21.41 11.58-9-9C12.05 2.22 11.55 2 11 2H4c-1.1 0-2 .9-2 2v7c0 .55.22 1.05.59 1.42l9 9c.36.36.86.58 1.41.58s1.05-.22 1.41-.59l7-7c.37-.36.59-.86.59-1.41s-.23-1.06-.59-1.42M13 20.01L4 11V4h7v-.01l9 9z"/><circle cx="6.5" cy="6.5" r="1.5" fill="currentColor"/>',
   "/admin/administracao": '<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m12 17.75l-6.172 3.245l1.179-6.873l-5-4.867l6.9-1l3.086-6.253l3.086 6.253l6.9 1l-5 4.867l1.179 6.873z"/>',
-  "/admin/aulas": '<path fill="currentColor" d="m164.44 105.34-48-32A8 8 0 0 0 104 80v64a8 8 0 0 0 12.44 6.66l48-32a8 8 0 0 0 0-13.32M120 129.05V95l25.58 17ZM216 40H40a16 16 0 0 0-16 16v112a16 16 0 0 0 16 16h176a16 16 0 0 0 16-16V56a16 16 0 0 0-16-16m0 128H40V56h176zm16 40a8 8 0 0 1-8 8H32a8 8 0 0 1 0-16h192a8 8 0 0 1 8 8"/>' ,
+  "/admin/aulas": '<g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></g>',
 
 };
 
@@ -953,8 +976,7 @@ const navIconSizes: Record<string, string> = {
 };
 
 const navIconViewBoxes: Record<string, string> = {
-  default: "0 0 24 24",
-  "/admin/aulas": "0 0 256 256"
+  default: "0 0 24 24"
 };
 
 const navIconStrokeWidths: Record<string, string> = {};
@@ -1003,6 +1025,7 @@ const routeTitleMap: Record<string, string> = {
   "page-edit": t({ pt: "Editar página", es: "Editar página" }),
   lessons: navLabel("lessons"),
   "agency-settings": navLabel("agency"),
+  "agency-team": "Equipe",
   "agency-domains": navLabel("domains"),
   plans: navLabel("plans"),
   integrations: navLabel("integrations"),
@@ -1012,6 +1035,18 @@ const routeTitleMap: Record<string, string> = {
 const canAccessCustomDomains = computed(() => true);
 
 const navGroupExpandedState = ref<Record<string, boolean>>({});
+const hasPermission = (permission: PermissionKey) =>
+  canAccessPermission(permission, {
+    isOwner: auth.user?.is_owner,
+    selected: auth.user?.permissions || [],
+    plan: auth.user?.plan,
+    effective: auth.user?.effective_permissions || []
+  });
+const canManageTeam = computed(() => {
+  const isOwner = auth.user?.is_owner ?? true;
+  const role = String(auth.user?.role || "admin").toLowerCase();
+  return isOwner && (role === "admin" || role === "owner");
+});
 
 const adminNavigation = computed<AdminNavItem[]>(() => {
   const items: AdminNavItem[] = [
@@ -1020,19 +1055,28 @@ const adminNavigation = computed<AdminNavItem[]>(() => {
     {
       id: "leads",
       type: "group",
-      label: t({ pt: "Captação de leads", es: "Captacion" }),
+      label: t({ pt: "Capta\u00E7\u00E3o de leads", es: "Captacion" }),
       basePath: "/admin/leads",
       iconPath: "/admin/leads",
       children: [
-        { label: t({ pt: "Formulários", es: "Formularios" }), path: "/admin/leads/forms" },
+        { label: t({ pt: "Formul\u00E1rios", es: "Formularios" }), path: "/admin/leads/forms" },
         { label: t({ pt: "Oportunidades", es: "Oportunidades" }), path: "/admin/leads/opportunities" },
         { label: navLabel("clients"), path: "/admin/leads/clients" },
-        { label: t({ pt: "Configurações", es: "Configuraciones" }), path: "/admin/leads/settings" }
+        { label: t({ pt: "Configura\u00E7\u00F5es", es: "Configuraciones" }), path: "/admin/leads/settings" }
       ]
     },
     { id: "integrations", type: "link", label: navLabel("integrations"), to: "/admin/integracoes", iconPath: "/admin/integracoes" },
-    { id: "agency", type: "link", label: navLabel("agency"), to: "/admin/agency", iconPath: "/admin/agency" },
-    { id: "profile", type: "link", label: navLabel("profile"), to: "/admin/perfil", iconPath: "/admin/perfil" },
+    {
+      id: "agency",
+      type: "group",
+      label: navLabel("agency"),
+      basePath: "/admin/agency",
+      iconPath: "/admin/agency",
+      children: [
+        { label: "Visão geral", path: "/admin/agency" },
+        { label: "Equipe", path: "/admin/agency/team" }
+      ]
+    },
     { id: "lessons", type: "link", label: navLabel("lessons"), to: "/admin/aulas", iconPath: "/admin/aulas" }
   ];
   if (canAccessCustomDomains.value) {
@@ -1056,7 +1100,39 @@ const adminNavigation = computed<AdminNavItem[]>(() => {
       ]
     });
   }
-  return items;
+  const filtered = items.filter(item => {
+    if (item.id === "dashboard") return hasPermission("dashboard");
+    if (item.id === "pages") return hasPermission("pages");
+    if (item.id === "leads") return hasPermission("leads");
+    if (item.id === "integrations") return hasPermission("integrations");
+    if (item.id === "agency") return hasPermission("settings") || (canManageTeam.value && hasPermission("team_management"));
+    return true;
+  });
+  return filtered
+    .map(item => {
+      if (item.type !== "group") return item;
+      if (item.id === "leads") {
+        return {
+          ...item,
+          children: item.children.filter(child => {
+            if (child.path === "/admin/leads/forms") return hasPermission("leads_forms") || hasPermission("leads_full");
+            if (child.path === "/admin/leads/opportunities") return hasPermission("leads_opportunities") || hasPermission("leads_full");
+            if (child.path === "/admin/leads/clients") return hasPermission("leads_clients") || hasPermission("leads_full");
+            if (child.path === "/admin/leads/settings") return hasPermission("leads_settings") || hasPermission("leads_full");
+            return hasPermission("leads");
+          })
+        };
+      }
+      if (item.id !== "agency") return item;
+      return {
+        ...item,
+        children: item.children.filter(child => {
+          if (child.path === "/admin/agency/team") return canManageTeam.value && hasPermission("team_management");
+          return hasPermission("settings");
+        })
+      };
+    })
+    .filter(item => item.type !== "group" || item.children.length > 0);
 });
 
 const sidebarSections = computed<SidebarSection[]>(() => {
@@ -1090,18 +1166,39 @@ const sidebarSections = computed<SidebarSection[]>(() => {
     .filter(section => section.items.length > 0);
 });
 
-const isPathActive = (path: string) => route.path === path || route.path.startsWith(`${path}/`);
+const isPathActive = (path: string) => {
+  if (path === "/admin/agency") {
+    return route.path === path;
+  }
+  return route.path === path || route.path.startsWith(`${path}/`);
+};
 
 const isChildActive = (path: string) => isPathActive(path);
 
 const isTopLevelActive = (item: AdminNavLinkItem) => isPathActive(item.to);
 
-const isParentActive = (item: AdminNavGroupItem) => isPathActive(item.basePath);
+const isParentActive = (item: AdminNavGroupItem) =>
+  route.path === item.basePath || route.path.startsWith(`${item.basePath}/`);
 
-const isGroupExpanded = (item: AdminNavGroupItem) => isParentActive(item) || Boolean(navGroupExpandedState.value[item.id]);
+const isGroupExpanded = (item: AdminNavGroupItem) => Boolean(navGroupExpandedState.value[item.id]);
 
 const toggleNavGroup = (groupId: string) => {
-  navGroupExpandedState.value[groupId] = !navGroupExpandedState.value[groupId];
+  const currentlyOpen = Boolean(navGroupExpandedState.value[groupId]);
+  const next: Record<string, boolean> = {};
+  if (!currentlyOpen) {
+    next[groupId] = true;
+  }
+  navGroupExpandedState.value = next;
+};
+
+const ensureActiveGroupDefaultOpen = () => {
+  for (const item of adminNavigation.value) {
+    if (item.type !== "group") continue;
+    if (!isParentActive(item)) continue;
+    if (item.id in navGroupExpandedState.value) return;
+    navGroupExpandedState.value = { ...navGroupExpandedState.value, [item.id]: true };
+    return;
+  }
 };
 
 const getNavBadge = (itemId: string): string | null => {
@@ -1143,6 +1240,14 @@ watch(
   { immediate: true }
 );
 
+watch(
+  () => route.path,
+  () => {
+    ensureActiveGroupDefaultOpen();
+  },
+  { immediate: true }
+);
+
 const currentPageTitle = computed(() => {
   const routeName = typeof route.name === "string" ? route.name : null;
   if (routeName && routeTitleMap[routeName]) {
@@ -1170,10 +1275,10 @@ const pageTitleRowPaddingClass = computed(() => {
   return "px-4 md:px-6";
 });
 
-const activeClass = computed(() => "bg-[#2A5C38] text-white border-l-[3px] border-l-[#3DCC5F]");
-const inactiveClass = computed(() => "text-slate-200 hover:bg-white/8 hover:text-white");
-const childActiveClass = computed(() => "bg-[#2A5C38] text-white border-l-[3px] border-l-[#3DCC5F]");
-const childInactiveClass = computed(() => "text-slate-300 hover:bg-white/8 hover:text-white");
+const activeClass = computed(() => "bg-[#2A5C38] text-white");
+const inactiveClass = computed(() => "text-white/65 hover:bg-white/7 hover:text-white");
+const childActiveClass = computed(() => "bg-white/6 text-white");
+const childInactiveClass = computed(() => "text-white/55 hover:bg-white/6 hover:text-white");
 
 const agencyName = computed(() => agencyStore.currentAgency?.name || agencyStore.agencies[0]?.name || "");
 const sidebarLogoSrc = SidebarLogo;
@@ -1197,6 +1302,16 @@ const dismissCookies = () => {
     localStorage.setItem(COOKIE_KEY, "dismissed");
   }
   showCookieConsent.value = false;
+};
+
+const handlePermissionDeniedToast = (event: Event) => {
+  const customEvent = event as CustomEvent<{ message?: string }>;
+  const message = customEvent.detail?.message || "Seu perfil não tem permissão para executar esta ação.";
+  permissionSnackbar.value = { open: true, message };
+  if (permissionSnackbarTimer) window.clearTimeout(permissionSnackbarTimer);
+  permissionSnackbarTimer = window.setTimeout(() => {
+    permissionSnackbar.value.open = false;
+  }, 3500);
 };
 
 const handleLogout = () => {
@@ -1597,6 +1712,7 @@ const scrollToTop = () => {
 };
 
 onMounted(async () => {
+  window.addEventListener(API_PERMISSION_DENIED_EVENT, handlePermissionDeniedToast as EventListener);
   setupViewportWatcher();
   if (auth.token && !auth.user) {
     await auth.ensureHydrated().catch(() => undefined);
@@ -1615,6 +1731,10 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+  window.removeEventListener(API_PERMISSION_DENIED_EVENT, handlePermissionDeniedToast as EventListener);
+  if (permissionSnackbarTimer) {
+    window.clearTimeout(permissionSnackbarTimer);
+  }
   if (removeViewportWatcher) {
     removeViewportWatcher();
   }
@@ -1846,7 +1966,63 @@ body.admin-body-light {
 .fade-leave-to {
   opacity: 0;
 }
+
+.desktop-nav-item {
+  position: relative;
+}
+
+.desktop-nav-item.router-link-active::before,
+.desktop-nav-item.is-active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 24px;
+  background: #3dcc5f;
+  border-radius: 0 3px 3px 0;
+}
+
+.desktop-nav-subitem {
+  position: relative;
+}
+
+.desktop-nav-subitem.is-active-sub {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.desktop-nav-subitem.router-link-active::before,
+.desktop-nav-subitem.is-active::before,
+.desktop-nav-subitem.is-active-sub::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2px;
+  height: 16px;
+  background: #3dcc5f;
+  border-radius: 999px;
+}
+
+.nav-pill-badge {
+  margin-left: auto;
+  background: #3dcc5f;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+  line-height: 1;
+}
 </style>
+
+
+
+
+
 
 
 

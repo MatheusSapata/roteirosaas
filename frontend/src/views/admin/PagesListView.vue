@@ -2,45 +2,46 @@
   <div v-if="isBootstrappingPages" class="flex min-h-[60vh] w-full items-center justify-center px-4 py-8 md:px-8">
     <div class="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-brand"></div>
   </div>
-  <div v-else class="pages-reference w-full space-y-6 px-4 py-8 md:px-8">
-    <div class="flex flex-wrap items-center justify-between gap-3 dark:text-white">
-      <div>
+  <div v-else class="pages-reference w-full space-y-6 px-4 py-4 md:px-8 md:py-8">
+    <div class="dark:text-white">
+      <div class="flex items-start justify-between gap-3">
         <h1 class="text-[22px] font-extrabold tracking-[-0.4px] text-[#0F1F14] dark:text-white">{{ viewCopy.header.eyebrow }}</h1>
-        <p class="mt-1 text-[13px] text-[#8AA693]">{{ viewCopy.header.sub }}</p>
+        <button
+          @click="openCreateModal"
+          class="inline-flex items-center gap-1.5 rounded-[10px] bg-[#3DCC5F] px-3 py-2 text-[12px] font-semibold text-[#0F1F14] transition hover:bg-[#5BE07A] disabled:cursor-not-allowed disabled:bg-slate-300 md:gap-2 md:px-4 md:py-[9px] md:text-[13px]"
+          :class="!canEditPages ? 'cursor-not-allowed opacity-50' : ''"
+          :disabled="!hasAgency"
+        >
+          <span class="text-[15px] leading-none font-bold">+</span>
+          {{ viewCopy.header.newPage }}
+        </button>
       </div>
-      <button
-        @click="openCreateModal"
-        class="inline-flex items-center gap-2 rounded-[10px] bg-[#3DCC5F] px-4 py-[9px] text-[13px] font-semibold text-[#0F1F14] transition hover:bg-[#5BE07A] disabled:cursor-not-allowed disabled:bg-slate-300"
-        :disabled="!hasAgency"
-      >
-        <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="12" y1="5" x2="12" y2="19" />
-          <line x1="5" y1="12" x2="19" y2="12" />
-        </svg>
-        {{ viewCopy.header.newPage }}
-      </button>
     </div>
 
     <div class="pages-toolbar">
-      <div class="search-wrap">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="11" cy="11" r="8" />
-          <line x1="21" y1="21" x2="16.65" y2="16.65" />
-        </svg>
-        <input v-model="searchQuery" class="search-input" type="text" :placeholder="viewCopy.table.searchPlaceholder" />
+      <div class="pages-toolbar-top">
+        <div class="search-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+          <input v-model="searchQuery" class="search-input" type="text" :placeholder="viewCopy.table.searchPlaceholder" />
+        </div>
+        <span class="toolbar-count">{{ filteredPages.length }} {{ viewCopy.table.countLabel }}</span>
       </div>
-      <select v-model="statusFilter" class="filter-select">
-        <option value="">{{ viewCopy.table.filters.statusAll }}</option>
-        <option value="published">{{ viewCopy.labels.statuses.published }}</option>
-        <option value="draft">{{ viewCopy.labels.statuses.draft }}</option>
-      </select>
-      <select v-model="sortFilter" class="filter-select">
-        <option value="recent">{{ viewCopy.table.filters.sortRecent }}</option>
-        <option value="name">{{ viewCopy.table.filters.sortName }}</option>
-        <option value="visits">{{ viewCopy.table.filters.sortVisits }}</option>
-        <option value="leads">{{ viewCopy.table.filters.sortLeads }}</option>
-      </select>
-      <span class="toolbar-count">{{ filteredPages.length }} {{ viewCopy.table.countLabel }}</span>
+      <div class="pages-toolbar-filters">
+        <select v-model="statusFilter" class="filter-select">
+          <option value="">{{ viewCopy.table.filters.statusAll }}</option>
+          <option value="published">{{ viewCopy.labels.statuses.published }}</option>
+          <option value="draft">{{ viewCopy.labels.statuses.draft }}</option>
+        </select>
+        <select v-model="sortFilter" class="filter-select">
+          <option value="recent">{{ viewCopy.table.filters.sortRecent }}</option>
+          <option value="name">{{ viewCopy.table.filters.sortName }}</option>
+          <option value="visits">{{ viewCopy.table.filters.sortVisits }}</option>
+          <option value="leads">{{ viewCopy.table.filters.sortLeads }}</option>
+        </select>
+      </div>
     </div>
 
     <teleport to="body">
@@ -433,17 +434,17 @@
       <div class="table-card overflow-hidden border-0 bg-transparent md:min-w-[880px] md:rounded-2xl md:border md:bg-white">
         <div
           :class="[
-            'hidden gap-6 border-b px-4 py-3 text-[11px] font-bold uppercase tracking-[0.08em] md:grid',
+            'hidden gap-4 border-b px-4 py-3 text-[11px] font-bold uppercase tracking-[0.08em] md:grid',
             headerGridColumns
           ]"
         >
-          <span>{{ viewCopy.table.columns.name }}</span>
-          <span class="text-center">{{ viewCopy.table.columns.views }}</span>
-          <span class="text-center">{{ viewCopy.table.columns.ctaClicks }}</span>
-          <span v-if="showLeadColumn" class="text-center">{{ viewCopy.table.columns.leads }}</span>
-          <span>{{ viewCopy.table.columns.link }}</span>
+          <span class="text-left">{{ viewCopy.table.columns.name }}</span>
+          <span class="block w-full justify-self-center text-center">{{ viewCopy.table.columns.views }}</span>
+          <span class="block w-full justify-self-center text-center">{{ viewCopy.table.columns.ctaClicks }}</span>
+          <span v-if="showLeadColumn" class="block w-full justify-self-center text-center">{{ viewCopy.table.columns.leads }}</span>
+          <span class="text-left">{{ viewCopy.table.columns.link }}</span>
           <span class="text-center">{{ viewCopy.table.columns.status }}</span>
-          <span class="text-right">{{ viewCopy.table.columns.actions }}</span>
+          <span class="text-right pr-1">{{ viewCopy.table.columns.actions }}</span>
         </div>
 
         <div v-if="filteredPages.length" class="space-y-4 md:space-y-0 md:divide-y md:divide-[#DDE8DF]">
@@ -451,7 +452,7 @@
             v-for="page in filteredPages"
             :key="page.id"
             :class="[
-              'grid grid-cols-1 gap-4 rounded-2xl border border-[#DDE8DF] bg-white px-5 py-5 shadow-sm transition hover:bg-[#F0F5F1] md:items-center md:gap-6 md:rounded-none md:border-0 md:bg-transparent md:px-4 md:py-3 md:shadow-none',
+              'grid grid-cols-1 gap-4 rounded-2xl border border-[#DDE8DF] bg-white px-5 py-5 shadow-sm transition hover:bg-[#F0F5F1] md:items-center md:gap-4 md:rounded-none md:border-0 md:bg-transparent md:px-4 md:py-3 md:shadow-none',
               rowGridColumns
             ]"
           >
@@ -472,49 +473,21 @@
                 <p class="text-base font-semibold leading-tight text-[#0F1F14] md:text-[13px]">{{ page.title }}</p>
                 <p class="text-[11px] text-[#8AA693]">{{ page.slug ? `/${page.slug}` : "-" }}</p>
               </div>
-              <span
-                v-if="page.is_default"
-                class="rounded-full bg-emerald-50 px-3 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-600 ring-1 ring-emerald-100"
-              >
-                {{ viewCopy.table.badges.default }}
-              </span>
             </div>
 
-            <div class="hidden md:flex md:w-full md:justify-center">
-              <button
-                v-if="isFree"
-                type="button"
-                class="inline-flex min-w-[3rem] items-center justify-center rounded-full border border-emerald-200 bg-white px-4 py-1.5 text-sm font-semibold text-emerald-600 shadow-sm transition hover:bg-emerald-50"
-                :title="viewCopy.table.premiumHints.stats"
-                @click="goPlans"
-              >
-                <svg class="h-4.5 w-4.5" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M11.329 19.159q-.323-.14-.566-.432L3.267 9.731q-.186-.217-.28-.475t-.093-.55q0-.187.047-.366q.048-.18.134-.361l1.779-3.59q.217-.405.603-.647t.845-.242h11.396q.46 0 .845.242t.603.646l1.779 3.59q.087.182.134.362t.047.366q0 .292-.094.55t-.28.475l-7.495 8.996q-.243.292-.566.432q-.323.139-.671.139t-.671-.14M8.817 8.5h6.366l-2-4h-2.366zm2.683 9.56V9.5H4.392zm1 0l7.108-8.56H12.5zm3.792-9.56h3.766L18.23 4.846q-.077-.154-.231-.25t-.327-.096h-3.38zm-12.35 0h3.766l2-4H6.327q-.173 0-.327.096t-.23.25z" />
-                </svg>
-              </button>
-              <span v-else class="stat-pill stat-visits" :class="{ 'stat-zero': getPageVisits(page.id) === 0 }">
+            <div class="hidden md:flex md:w-full md:justify-center md:justify-self-center">
+              <span class="stat-pill stat-visits" :class="{ 'stat-zero': getPageVisits(page.id) === 0 }">
                 {{ getPageVisits(page.id) }}
               </span>
             </div>
 
-            <div class="hidden md:flex md:w-full md:justify-center">
-              <button
-                v-if="isFree"
-                type="button"
-                class="inline-flex min-w-[3rem] items-center justify-center rounded-full border border-indigo-200 bg-white px-4 py-1.5 text-sm font-semibold text-indigo-600 shadow-sm transition hover:bg-indigo-50"
-                :title="viewCopy.table.premiumHints.stats"
-                @click="goPlans"
-              >
-                <svg class="h-4.5 w-4.5" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M11.329 19.159q-.323-.14-.566-.432L3.267 9.731q-.186-.217-.28-.475t-.093-.55q0-.187.047-.366q.048-.18.134-.361l1.779-3.59q.217-.405.603-.647t.845-.242h11.396q.46 0 .845.242t.603.646l1.779 3.59q.087.182.134.362t.047.366q0 .292-.094.55t-.28.475l-7.495 8.996q-.243.292-.566.432q-.323.139-.671.139t-.671-.14M8.817 8.5h6.366l-2-4h-2.366zm2.683 9.56V9.5H4.392zm1 0l7.108-8.56H12.5zm3.792-9.56h3.766L18.23 4.846q-.077-.154-.231-.25t-.327-.096h-3.38zm-12.35 0h3.766l2-4H6.327q-.173 0-.327.096t-.23.25z" />
-                </svg>
-              </button>
-              <span v-else class="stat-pill stat-clicks" :class="{ 'stat-zero': getPageClicks(page.id) === 0 }">
+            <div class="hidden md:flex md:w-full md:justify-center md:justify-self-center">
+              <span class="stat-pill stat-clicks" :class="{ 'stat-zero': getPageClicks(page.id) === 0 }">
                 {{ getPageClicks(page.id) }}
               </span>
             </div>
 
-            <div v-if="showLeadColumn" class="hidden md:flex md:w-full md:justify-center">
+            <div v-if="showLeadColumn" class="hidden md:flex md:w-full md:justify-center md:justify-self-center">
               <button
                 v-if="!hasLeadStatsAccess"
                 type="button"
@@ -531,21 +504,12 @@
               </span>
             </div>
 
-            <div class="flex flex-col gap-2 md:hidden">
-              <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                {{ viewCopy.table.columns.status }}
-              </p>
-              <span class="status-badge" :class="getStatusClasses(page.status)">
+            <div class="flex items-center justify-between gap-3 md:flex-row md:items-center md:gap-3">
+              <span class="status-badge link-status-mobile md:hidden" :class="getStatusClasses(page.status)">
                 {{ getStatusLabel(page.status) }}
               </span>
-            </div>
-
-            <div class="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
-              <p class="text-xs font-semibold uppercase tracking-wide text-slate-400 md:hidden">
-                {{ viewCopy.table.columns.link }}
-              </p>
               <div
-                class="flex flex-wrap items-center gap-3"
+                class="flex flex-wrap items-center justify-end gap-3"
                 :class="{ 'md:justify-center md:text-center': !(page.status === 'published' && pagePublicUrl(page)) }"
               >
                 <template v-if="page.status === 'published' && pagePublicUrl(page)">
@@ -568,13 +532,11 @@
               </span>
             </div>
 
-            <div class="flex flex-col gap-2">
-              <p class="text-xs font-semibold uppercase tracking-wide text-slate-400 md:hidden">
-                {{ viewCopy.table.columns.actions }}
-              </p>
-              <div class="flex flex-wrap items-center gap-2 md:justify-end">
+            <div class="flex items-center gap-3">
+              <div class="page-actions-row flex flex-wrap items-center gap-2 md:justify-end">
                 <button
                   class="act-btn dup"
+                  :class="!canEditPages ? 'cursor-not-allowed opacity-50' : ''"
                   :title="viewCopy.actions.rowMenu.duplicate"
                   @click="openDuplicateDialog(page)"
                 >
@@ -585,6 +547,7 @@
                 </button>
 
                 <router-link
+                  v-if="canEditPages"
                   :to="`/admin/pages/${page.id}/edit`"
                   class="act-btn edit"
                   :title="viewCopy.actions.rowMenu.edit"
@@ -609,8 +572,9 @@
                 </a>
 
                 <button
-                  v-if="page.status === 'published'"
                   class="act-btn share"
+                  :class="page.status !== 'published' ? 'cursor-not-allowed opacity-50' : ''"
+                  :disabled="page.status !== 'published'"
                   :title="viewCopy.actions.rowMenu.unpublish"
                   @click="unpublishPage(page)"
                 >
@@ -621,10 +585,14 @@
                 </button>
 
                 <button
-                  v-if="page.status === 'published'"
-                  class="act-btn fav disabled:cursor-not-allowed disabled:opacity-50"
-                  :disabled="page.is_default"
-                  :title="viewCopy.actions.rowMenu.setDefault"
+                  :class="[
+                    'act-btn fav',
+                    page.is_default ? 'is-active' : '',
+                    page.status !== 'published' ? 'cursor-not-allowed opacity-50' : '',
+                    'disabled:cursor-not-allowed disabled:opacity-50'
+                  ]"
+                  :disabled="page.status !== 'published' || page.is_default || !canEditPages"
+                  :title="page.is_default ? viewCopy.table.badges.default : viewCopy.actions.rowMenu.setDefault"
                   @click="setDefaultPage(page)"
                 >
                   <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
@@ -633,7 +601,9 @@
                 </button>
 
                 <button
+                  v-if="canDeletePages"
                   class="act-btn del"
+                  :class="!canDeletePages ? 'cursor-not-allowed opacity-50' : ''"
                   :title="viewCopy.actions.rowMenu.delete"
                   @click="deletePage(page)"
                 >
@@ -748,6 +718,7 @@ import type { PageTemplate } from "../../types/templates";
 import { applyTemplateBranding } from "../../utils/pageTemplates";
 import { sanitizeDigits, buildWhatsappLink } from "../../utils/whatsapp";
 import { resolveMediaUrl } from "../../utils/media";
+import { hasAnyPermission } from "../../utils/permissions";
 
 interface Page {
   id: number;
@@ -792,8 +763,7 @@ const localizeViewCopy = (value: unknown): any => {
 const viewCopySource = {
   header: {
     eyebrow: { pt: "Páginas", es: "Páginas" },
-    sub: { pt: "Gerencie todos os seus roteiros publicados.", es: "Gestiona todos tus itinerarios publicados." },
-    newPage: { pt: "Nova página", es: "Nueva página" }
+    newPage: { pt: "Nova Página", es: "Nueva página" }
   },
   actions: {
     createModal: {
@@ -933,7 +903,7 @@ const viewCopySource = {
     },
     columns: {
       name: { pt: "Nome", es: "Nombre" },
-      views: { pt: "Visualizações", es: "Visualizaciones" },
+      views: { pt: "Visual.", es: "Visualizaciones" },
       ctaClicks: { pt: "Cliques", es: "Clics" },
       leads: { pt: "Leads", es: "Leads" },
       link: { pt: "Link", es: "Link" },
@@ -1257,18 +1227,35 @@ watch(
 );
 const planKey = computed(() => (authStore.user?.plan || "free").toLowerCase());
 const isFree = computed(() => planKey.value === "free");
-const showLeadColumn = computed(() => planKey.value !== "essencial");
-const hasLeadStatsAccess = computed(() => ["growth", "infinity", "teste"].includes(planKey.value));
+const canEditPages = computed(() => {
+  const user = authStore.user;
+  if (!user) return true;
+  if (user.is_owner ?? true) return true;
+  if ((user.role || "member").toLowerCase() === "admin") return true;
+  const effective = user.effective_permissions || [];
+  return hasAnyPermission(effective, ["pages_editor"]);
+});
+const canDeletePages = computed(() => {
+  const user = authStore.user;
+  if (!user) return true;
+  const role = (user.role || "member").toLowerCase();
+  if (role === "editor") return false;
+  return canEditPages.value;
+});
+const memberPagesReadOnlyMessage = "Seu perfil é visualizador de páginas.";
+const editorDeleteBlockedMessage = "Perfil Editor não pode excluir páginas.";
+const showLeadColumn = computed(() => true);
+const hasLeadStatsAccess = computed(() => true);
 const isBootstrappingPages = ref(true);
 const headerGridColumns = computed(() =>
   showLeadColumn.value
-    ? "grid-cols-[1.9fr,0.6fr,0.6fr,0.6fr,1.5fr,0.8fr,1.5fr]"
-    : "grid-cols-[1.9fr,0.6fr,0.6fr,1.5fr,0.8fr,1.5fr]"
+    ? "grid-cols-[1.78fr,0.54fr,0.54fr,0.54fr,1.73fr,0.62fr,1.05fr]"
+    : "grid-cols-[1.78fr,0.54fr,0.54fr,1.73fr,0.62fr,1.05fr]"
 );
 const rowGridColumns = computed(() =>
   showLeadColumn.value
-    ? "md:grid-cols-[1.9fr,0.6fr,0.6fr,0.6fr,1.5fr,0.8fr,1.5fr]"
-    : "md:grid-cols-[1.9fr,0.6fr,0.6fr,1.5fr,0.8fr,1.5fr]"
+    ? "md:grid-cols-[1.78fr,0.54fr,0.54fr,0.54fr,1.73fr,0.62fr,1.05fr]"
+    : "md:grid-cols-[1.78fr,0.54fr,0.54fr,1.73fr,0.62fr,1.05fr]"
 );
 
 const loadPages = async () => {
@@ -1538,6 +1525,10 @@ const buildDefaultTitleAndSlug = () => {
 };
 
 const openCreateModal = () => {
+  if (!canEditPages.value) {
+    showSnackbar(memberPagesReadOnlyMessage, "error");
+    return;
+  }
   if (!agencyStore.currentAgencyId) {
     showSnackbar(viewCopy.messages.createAgencyRequired, "error");
     return;
@@ -1550,6 +1541,10 @@ const closeCreateModal = () => {
 };
 
 const createPageFromScratch = async () => {
+  if (!canEditPages.value) {
+    showSnackbar(memberPagesReadOnlyMessage, "error");
+    return;
+  }
   errorMessage.value = "";
   message.value = "";
   if (!agencyStore.currentAgencyId) {
@@ -1585,11 +1580,19 @@ const showSnackbar = (text: string, tone: "success" | "error" = "success") => {
 };
 
 const createPageFromTemplate = () => {
+  if (!canEditPages.value) {
+    showSnackbar(memberPagesReadOnlyMessage, "error");
+    return;
+  }
   createOptionsOpen.value = false;
   openTemplateModal();
 };
 
 const createPageWithAi = () => {
+  if (!canEditPages.value) {
+    showSnackbar(memberPagesReadOnlyMessage, "error");
+    return;
+  }
   showSnackbar(viewCopy.messages.aiWip);
 };
 
@@ -1606,6 +1609,10 @@ const buildDeleteConfirmMessage = (title: string) =>
   viewCopy.dialogs.deleteConfirm.message.replace("{title}", title);
 
 const openDuplicateDialog = (page: Page) => {
+  if (!canEditPages.value) {
+    showSnackbar(memberPagesReadOnlyMessage, "error");
+    return;
+  }
   duplicateSourcePage.value = page;
   duplicateTitle.value = `${page.title} (${viewCopy.labels.duplicateSuffix.title})`;
   const baseSlug = page.slug
@@ -1691,6 +1698,10 @@ const copyLink = async (page: Page) => {
 };
 
 const setDefaultPage = async (page: Page) => {
+  if (!canEditPages.value) {
+    showSnackbar(memberPagesReadOnlyMessage, "error");
+    return;
+  }
   if (page.status !== "published") {
     showSnackbar(viewCopy.messages.onlyPublishedDefault, "error");
     return;
@@ -1732,6 +1743,15 @@ const unpublishPage = async (page: Page) => {
 };
 
 const deletePage = async (page: Page) => {
+  if (!canDeletePages.value) {
+    const role = (authStore.user?.role || "member").toLowerCase();
+    showSnackbar(role === "editor" ? editorDeleteBlockedMessage : memberPagesReadOnlyMessage, "error");
+    return;
+  }
+  if (!canEditPages.value) {
+    showSnackbar(memberPagesReadOnlyMessage, "error");
+    return;
+  }
   if (!confirm(buildDeleteConfirmMessage(page.title))) {
     return;
   }
@@ -1904,6 +1924,14 @@ onMounted(bootstrapPages);
   flex-wrap: wrap;
 }
 
+.pages-toolbar-top {
+  display: contents;
+}
+
+.pages-toolbar-filters {
+  display: contents;
+}
+
 .table-card {
   border-color: #dde8df !important;
   box-shadow: 0 1px 3px rgba(15, 31, 20, 0.06), 0 4px 12px rgba(15, 31, 20, 0.04);
@@ -2026,8 +2054,8 @@ onMounted(bootstrapPages);
 }
 
 .act-btn {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border-radius: 7px;
   display: inline-flex;
   align-items: center;
@@ -2041,8 +2069,17 @@ onMounted(bootstrapPages);
 }
 
 .act-btn svg {
-  width: 13px;
-  height: 13px;
+  width: 16px;
+  height: 16px;
+}
+
+@media (min-width: 768px) {
+  .page-actions-row {
+    width: 100%;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+    gap: 4px;
+  }
 }
 
 .act-btn.dup:hover,
@@ -2062,16 +2099,41 @@ onMounted(bootstrapPages);
   color: #f59e0b;
 }
 
+.act-btn.fav.is-active {
+  background: rgba(245, 158, 11, 0.2);
+  color: #d97706;
+}
+
 .act-btn.del:hover {
   background: rgba(239, 68, 68, 0.08);
   color: #dc2626;
+}
+
+@media (max-width: 767px) {
+  .page-actions-row {
+    width: 100%;
+    justify-content: space-between;
+    gap: 6px;
+    flex-wrap: nowrap;
+  }
+
+  .act-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+  }
+
+  .act-btn svg {
+    width: 18px;
+    height: 18px;
+  }
 }
 
 .search-wrap {
   position: relative;
   flex: 1;
   min-width: 200px;
-  max-width: 320px;
+  max-width: 500px;
 }
 
 .search-wrap svg {
@@ -2125,6 +2187,12 @@ onMounted(bootstrapPages);
   white-space: nowrap;
 }
 
+@media (min-width: 768px) {
+  .link-status-mobile {
+    display: none !important;
+  }
+}
+
 @media (max-width: 768px) {
   :global(input),
   :global(textarea),
@@ -2132,11 +2200,38 @@ onMounted(bootstrapPages);
     font-size: 16px;
   }
 
+  .pages-toolbar {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .pages-toolbar-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
   .search-wrap {
     max-width: 100%;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .toolbar-count {
+    margin-left: 0;
+    flex: 0 0 auto;
+  }
+
+  .pages-toolbar-filters {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .pages-toolbar-filters .filter-select {
+    width: 100%;
   }
 }
 </style>
-
-
-

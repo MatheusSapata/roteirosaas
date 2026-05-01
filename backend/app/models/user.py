@@ -1,5 +1,6 @@
 from datetime import datetime
 from sqlalchemy import Boolean, Column, Integer, String, ForeignKey, DateTime
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
 from app.db.base import Base
@@ -22,6 +23,7 @@ class User(Base):
     address_city = Column(String(255), nullable=True)
     address_state = Column(String(2), nullable=True)
     address_zipcode = Column(String(10), nullable=True)
+    avatar_url = Column(String(500), nullable=True)
     is_active = Column(Boolean, default=True)
     is_superuser = Column(Boolean, default=False)
     plan = Column(String(50), nullable=False, server_default="free")
@@ -36,11 +38,19 @@ class User(Base):
     trial_warn_3days_ack = Column(Boolean, default=False)
     trial_warn_1day_ack = Column(Boolean, default=False)
     trial_blocked = Column(Boolean, default=False)
+    primary_agency_id = Column(Integer, ForeignKey("agencies.id", ondelete="SET NULL"), nullable=True)
+    invited_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    is_owner = Column(Boolean, nullable=True, default=None)
+    role = Column(String(50), nullable=True, default=None)
+    status = Column(String(50), nullable=True, default=None)
+    permissions = Column(JSONB, nullable=True)
 
     agencies = relationship("AgencyUser", back_populates="user")
     subscription = relationship("Subscription", uselist=False, foreign_keys=[subscription_id])
     pixels = relationship("Pixel", back_populates="user", cascade="all, delete-orphan")
     tracking_entries = relationship("UserTracking", back_populates="user", cascade="all, delete-orphan")
+    primary_agency = relationship("Agency", foreign_keys=[primary_agency_id])
+    invited_by = relationship("User", remote_side=[id], foreign_keys=[invited_by_user_id], post_update=True)
 
     @property
     def subscription_status(self) -> str | None:

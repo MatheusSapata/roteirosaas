@@ -2,295 +2,196 @@
   <div v-if="isBootstrappingAgencySettings" class="flex min-h-[60vh] w-full items-center justify-center px-4 py-8 md:px-8">
     <div class="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-brand"></div>
   </div>
-  <div v-else class="agency-settings w-full space-y-6 px-4 py-8 md:px-8">
-    <div>
-      <p class="text-sm uppercase tracking-wide text-slate-500">{{ viewCopy.hero.eyebrow }}</p>
-      <h1 class="text-3xl font-bold text-slate-900">{{ viewCopy.hero.title }}</h1>
+  <div v-else class="agency-settings page-wrap">
+    <div class="page-eyebrow">{{ viewCopy.hero.eyebrow }}</div>
+    <div class="page-topbar">
+      <div class="page-title">{{ viewCopy.hero.title }}</div>
+      <button type="button" class="btn btn-p" :disabled="saving" @click="save">
+        {{ saving ? viewCopy.actions.saving : (hasAgency ? viewCopy.actions.save : viewCopy.actions.create) }}
+      </button>
     </div>
+    <div class="page-sub">Dados da sua agência usados nas páginas públicas e templates.</div>
 
-    <div class="rounded-2xl bg-white p-6 shadow-md">
-      <form class="space-y-4" @submit.prevent="save">
-        <div class="grid gap-4 md:grid-cols-3">
-          <div class="md:pl-2">
-            <label class="text-sm font-semibold text-slate-600">{{ viewCopy.general.nameLabel }}</label>
-            <input v-model="form.name" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
-          </div>
-
-          <div>
-            <label class="text-sm font-semibold text-slate-600">{{ viewCopy.general.slugLabel }}</label>
-            <div class="mt-1 space-y-1">
-              <input v-model="form.slug" class="w-full rounded-lg border border-slate-200 px-3 py-2" />
-              <p class="text-xs text-slate-500">
-                {{ viewCopy.general.slugHint }}
-              </p>
+    <form @submit.prevent="save">
+      <div class="card">
+        <div class="card-head">
+          <div class="card-eye">Identidade</div>
+          <div class="card-title">Dados principais</div>
+          <div class="card-sub">Nome, slug e cor que aparecerão nos seus roteiros.</div>
+        </div>
+        <div class="card-body">
+          <div class="grid3">
+            <div class="fg">
+              <label class="fl">{{ viewCopy.general.nameLabel }}</label>
+              <input v-model="form.name" class="fi" />
             </div>
-          </div>
-
-          <div class="space-y-2 md:pl-2">
-            <label class="text-sm font-semibold text-slate-600">{{ viewCopy.theme.primaryColorLabel }}</label>
-            <div class="space-y-2">
-              <div class="flex items-center gap-3">
-                <input
-                  type="color"
-                  v-model="form.primary_color"
-                  class="h-10 w-12 cursor-pointer rounded border border-slate-200 bg-white"
-                />
-                <input
-                  v-model="form.primary_color"
-                  :placeholder="viewCopy.theme.primaryColorPlaceholder"
-                  class="flex-1 rounded-lg border border-slate-200 px-3 py-2"
-                />
+            <div class="fg">
+              <label class="fl">{{ viewCopy.general.slugLabel }}</label>
+              <div class="ig">
+                <span class="ig-pre">roteiroonline.com/</span>
+                <input v-model="form.slug" />
               </div>
-              <p class="text-xs text-slate-500">
-                {{ viewCopy.theme.primaryColorHint }}
-              </p>
+              <span class="fh">{{ viewCopy.general.slugHint }}</span>
+            </div>
+            <div class="fg">
+              <label class="fl">{{ viewCopy.theme.primaryColorLabel }}</label>
+              <div class="cp-row">
+                <div class="cp-btn"><input type="color" v-model="form.primary_color" /></div>
+                <input v-model="form.primary_color" class="fi" style="max-width:110px" />
+              </div>
+              <span class="fh">{{ viewCopy.theme.primaryColorHint }}</span>
             </div>
           </div>
         </div>
+      </div>
 
-        <div class="grid gap-4 md:grid-cols-3">
-          <label class="space-y-2 text-sm font-semibold text-slate-600 md:pl-2">
-            {{ viewCopy.company.cnpjLabel }}
-            <div class="mt-1 flex gap-2">
-              <select
-                v-model="companyForm.documentType"
-                class="w-28 rounded-lg border border-slate-200 bg-white px-3 py-3 text-sm font-semibold text-slate-700"
-              >
-                <option value="cnpj">{{ viewCopy.company.documentTypeCnpj }}</option>
-                <option value="cpf">{{ viewCopy.company.documentTypeCpf }}</option>
-              </select>
-              <input
-                v-model="companyForm.cnpj"
-                type="text"
-                :placeholder="companyDocumentPlaceholder"
-                class="w-full rounded-lg border border-slate-200 px-4 py-3 text-sm"
-              />
-            </div>
-          </label>
-          <div class="space-y-2 md:pl-2">
-            <label class="text-sm font-semibold text-slate-600">{{ viewCopy.contact.whatsappLabel }}</label>
-            <div class="space-y-2">
-              <div class="flex gap-2">
-                <div class="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2">
-                  <span class="text-sm font-semibold text-slate-700">BR</span>
-                  <span class="text-sm font-semibold text-slate-700">+55</span>
-                </div>
-                <input
-                  v-model="phoneInput"
-                  :placeholder="viewCopy.contact.whatsappPlaceholder"
-                  class="w-full rounded-lg border border-slate-200 px-3 py-2"
-                  inputmode="numeric"
-                />
-              </div>
-
-              <p class="text-xs text-slate-500">
-                {{ viewCopy.contact.whatsappHelper }}
-              </p>
-
-              <div class="flex flex-col gap-1 text-sm">
-                <span v-if="phoneMessage" class="text-emerald-600">{{ phoneMessage }}</span>
-                <span v-if="phoneError" class="text-red-500">{{ phoneError }}</span>
+      <div class="card">
+        <div class="card-head">
+          <div class="card-eye">Contato</div>
+          <div class="card-title">Informações de contato</div>
+          <div class="card-sub">Aparece no rodapé das suas páginas públicas.</div>
+        </div>
+        <div class="card-body">
+          <div class="grid3">
+            <div class="fg">
+              <label class="fl">{{ viewCopy.company.cnpjLabel }}</label>
+              <div class="ig">
+                <select v-model="companyForm.documentType">
+                  <option value="cnpj">{{ viewCopy.company.documentTypeCnpj }}</option>
+                  <option value="cpf">{{ viewCopy.company.documentTypeCpf }}</option>
+                </select>
+                <input v-model="companyForm.cnpj" :placeholder="companyDocumentPlaceholder" />
               </div>
             </div>
-          </div>
-
-          <div class="space-y-2 md:pl-2">
-            <label class="text-sm font-semibold text-slate-600">{{ viewCopy.contact.emailLabel }}</label>
-            <div class="space-y-2">
-              <input
-                v-model="form.contact_email"
-                type="email"
-                :placeholder="viewCopy.contact.emailPlaceholder"
-                class="w-full rounded-lg border border-slate-200 px-3 py-2"
-              />
-              <p class="text-xs text-slate-500">
-                {{ viewCopy.contact.emailHelper }}
-              </p>
+            <div class="fg">
+              <label class="fl">{{ viewCopy.contact.whatsappLabel }}</label>
+              <div class="ig">
+                <span class="ig-pre">BR +55</span>
+                <input v-model="phoneInput" :placeholder="viewCopy.contact.whatsappPlaceholder" inputmode="numeric" />
+              </div>
+              <span class="fh">{{ viewCopy.contact.whatsappHelper }}</span>
+              <span v-if="phoneMessage" class="ok-msg">{{ phoneMessage }}</span>
+              <span v-if="phoneError" class="err-msg">{{ phoneError }}</span>
+            </div>
+            <div class="fg">
+              <label class="fl">{{ viewCopy.contact.emailLabel }}</label>
+              <input v-model="form.contact_email" type="email" class="fi" :placeholder="viewCopy.contact.emailPlaceholder" />
+              <span class="fh">{{ viewCopy.contact.emailHelper }}</span>
             </div>
           </div>
         </div>
+      </div>
 
-        <div class="grid gap-4 md:grid-cols-2">
-          <label class="space-y-1 text-xs font-semibold text-slate-500 md:pl-2">
-            {{ viewCopy.address.cepLabel }}
-            <input
-              v-model="companyForm.address_zipcode"
-              type="text"
-              :placeholder="viewCopy.address.cepPlaceholder"
-              class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              :disabled="isFetchingCep"
-              @blur="handleCepBlur"
-            />
-            <p class="text-[11px] text-slate-500">
-              {{ viewCopy.address.cepHelper }}
-            </p>
-            <div class="text-[11px]">
-              <span v-if="isFetchingCep" class="text-slate-500">{{ viewCopy.cep.fetching }}</span>
-              <span v-else-if="cepError" class="text-red-500">{{ cepError }}</span>
-              <span v-else-if="cepMessage" class="text-emerald-600">{{ cepMessage }}</span>
+      <div class="card">
+        <div class="card-head">
+          <div class="card-eye">Localização</div>
+          <div class="card-title">Endereço</div>
+          <div class="card-sub">Informe o CEP e completaremos os demais campos automaticamente.</div>
+        </div>
+        <div class="card-body">
+          <div class="grid2" style="margin-bottom:14px">
+            <div class="fg">
+              <label class="fl">{{ viewCopy.address.cepLabel }}</label>
+              <input v-model="companyForm.address_zipcode" class="fi" :disabled="isFetchingCep" :placeholder="viewCopy.address.cepPlaceholder" @blur="handleCepBlur" />
+              <span class="fh">{{ viewCopy.address.cepHelper }}</span>
+              <span v-if="isFetchingCep" class="fh">{{ viewCopy.cep.fetching }}</span>
+              <span v-else-if="cepError" class="err-msg">{{ cepError }}</span>
+              <span v-else-if="cepMessage" class="ok-msg">{{ cepMessage }}</span>
             </div>
-          </label>
-
-          <label class="space-y-1 text-xs font-semibold text-slate-500">
-            {{ viewCopy.address.streetLabel }}
-            <input
-              v-model="companyForm.address_street"
-              type="text"
-              :placeholder="viewCopy.address.streetPlaceholder"
-              class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            />
-          </label>
-          <label class="space-y-1 text-xs font-semibold text-slate-500 md:pl-2">
-            {{ viewCopy.address.neighborhoodLabel }}
-            <input
-              v-model="companyForm.address_neighborhood"
-              type="text"
-              :placeholder="viewCopy.address.neighborhoodPlaceholder"
-              class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            />
-          </label>
-
-          <label class="space-y-1 text-xs font-semibold text-slate-500 md:pl-2">
-            {{ viewCopy.address.cityLabel }}
-            <input
-              v-model="companyForm.address_city"
-              type="text"
-              :placeholder="viewCopy.address.cityPlaceholder"
-              class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            />
-          </label>
-
-          <div class="grid gap-4 md:grid-cols-3 md:col-span-2 md:pl-2">
-            <label class="space-y-1 text-xs font-semibold text-slate-500">
-              {{ viewCopy.address.stateLabel }}
-              <input
-                v-model="companyForm.address_state"
-                type="text"
-                maxlength="2"
-                :placeholder="viewCopy.address.statePlaceholder"
-                class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm uppercase"
-              />
-            </label>
-            <label class="space-y-1 text-xs font-semibold text-slate-500">
-              {{ viewCopy.address.numberLabel }}
-              <input
-                v-model="companyForm.address_number"
-                type="text"
-                :placeholder="viewCopy.address.numberPlaceholder"
-                class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              />
-            </label>
-            <label class="space-y-1 text-xs font-semibold text-slate-500">
-              {{ viewCopy.address.complementLabel }}
-              <input
-                v-model="companyForm.address_complement"
-                type="text"
-                :placeholder="viewCopy.address.complementPlaceholder"
-                class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              />
-            </label>
+            <div class="fg">
+              <label class="fl">{{ viewCopy.address.streetLabel }}</label>
+              <input v-model="companyForm.address_street" class="fi" :placeholder="viewCopy.address.streetPlaceholder" />
+            </div>
+            <div class="fg">
+              <label class="fl">{{ viewCopy.address.neighborhoodLabel }}</label>
+              <input v-model="companyForm.address_neighborhood" class="fi" :placeholder="viewCopy.address.neighborhoodPlaceholder" />
+            </div>
+            <div class="fg">
+              <label class="fl">{{ viewCopy.address.cityLabel }}</label>
+              <input v-model="companyForm.address_city" class="fi" :placeholder="viewCopy.address.cityPlaceholder" />
+            </div>
+          </div>
+          <div class="grid3">
+            <div class="fg">
+              <label class="fl">{{ viewCopy.address.stateLabel }}</label>
+              <input v-model="companyForm.address_state" maxlength="2" class="fi" :placeholder="viewCopy.address.statePlaceholder" />
+            </div>
+            <div class="fg">
+              <label class="fl">{{ viewCopy.address.numberLabel }}</label>
+              <input v-model="companyForm.address_number" class="fi" :placeholder="viewCopy.address.numberPlaceholder" />
+            </div>
+            <div class="fg">
+              <label class="fl">{{ viewCopy.address.complementLabel }}</label>
+              <input v-model="companyForm.address_complement" class="fi" :placeholder="viewCopy.address.complementPlaceholder" />
+            </div>
           </div>
         </div>
-        <div class="grid items-stretch gap-6 lg:grid-cols-2">
-          <div class="flex h-full flex-col md:pl-2">
+      </div>
+
+      <div class="card-row">
+        <div class="card" style="margin-bottom:0">
+          <div class="card-head">
+            <div class="card-eye">Marca</div>
+            <div class="card-title">Logo da agência</div>
+            <div class="card-sub">Esta logo aparecerá automaticamente em todas as suas páginas.</div>
+          </div>
+          <div class="card-body">
             <ImageUploadField
-              class="agency-logo-upload h-full"
+              class="agency-logo-upload"
               v-model="form.logo_url"
-              :label="viewCopy.logoField.label"
-              :label-description="viewCopy.logoField.labelDescription"
+              :label="''"
               :enable-crop="true"
               :editor-title="viewCopy.logoField.editorTitle"
             />
           </div>
-          <div class="space-y-4 md:pl-2">
-            <div class="flex items-start justify-between gap-4 md:pl-0">
-              <div class="space-y-1">
-                <label class="text-sm font-semibold text-slate-600">{{ viewCopy.socialSection.label }}</label>
-                <p class="text-xs text-slate-500">
-                  {{ viewCopy.socialSection.helper }}
-                </p>
-              </div>
-              <button
-                type="button"
-                class="flex shrink-0 items-center gap-2 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark"
-                @click="addSocialLink"
-              >
-                <span class="text-lg leading-none">+</span>
-                {{ viewCopy.socialSection.addButton }}
-              </button>
+        </div>
+        <div class="card" style="margin-bottom:0">
+          <div class="card-head social-head">
+            <div>
+              <div class="card-eye">Marca</div>
+              <div class="card-title">Redes sociais</div>
+              <div class="card-sub">Links que aparecerão nas páginas públicas e templates.</div>
             </div>
-
-            <div class="space-y-4">
-              <div class="space-y-3">
-                <div
-                  v-if="!form.social_links.length"
-                  class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500 dark:border-white/20 dark:bg-transparent dark:text-white/70"
-                >
-                  {{ viewCopy.socialSection.empty }}
-                </div>
-
-                <div
-                  v-for="(social, index) in form.social_links"
-                  :key="social.id ?? `social-${index}`"
-                  class="space-y-3 rounded-2xl border border-slate-200/80 bg-slate-50/60 p-4 dark:border-white/10 dark:bg-transparent"
-                >
-                  <div class="flex flex-col gap-3 md:flex-row md:items-end">
-                    <label class="flex-1 text-xs font-semibold text-slate-500 dark:text-white/70">
-                      {{ viewCopy.socialSection.networkLabel }}
-                      <select
-                        v-model="social.network"
-                        class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-white/15 dark:bg-[#05070f] dark:text-white"
-                      >
-                        <option v-for="option in socialNetworkOptions" :key="option.value" :value="option.value">
-                          {{ option.label }}
-                        </option>
-                      </select>
-                    </label>
-
-                    <label class="flex-[2] text-xs font-semibold text-slate-500 dark:text-white/70">
-                      {{ viewCopy.socialSection.linkLabel }}
-                      <input
-                        v-model="social.url"
-                        type="url"
-                        class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-white/15 dark:bg-[#05070f] dark:text-white dark:placeholder-white/60"
-                      />
-                    </label>
-
-                    <button
-                      type="button"
-                      class="text-sm font-semibold text-slate-500 hover:text-red-500 dark:text-white/80 dark:hover:text-red-400"
-                      @click="removeSocialLink(index)"
-                    >
-                      {{ viewCopy.socialSection.removeButton }}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
+            <button type="button" class="btn btn-p btn-sm" @click="addSocialLink">+ Adicionar rede</button>
+          </div>
+          <div class="card-body">
+            <div v-if="!form.social_links.length" class="fh">{{ viewCopy.socialSection.empty }}</div>
+            <div v-for="(social, index) in form.social_links" :key="social.id ?? `social-${index}`" class="social-item">
+              <select v-model="social.network" class="fs">
+                <option v-for="option in socialNetworkOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+              </select>
+              <input v-model="social.url" class="fi" type="url" />
+              <button type="button" class="btn-danger-text" @click="removeSocialLink(index)">Remover</button>
             </div>
           </div>
         </div>
-        
+      </div>
 
-        <div class="flex items-center gap-3 pt-2 md:pl-2">
-          <button
-            type="submit"
-            class="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark disabled:cursor-not-allowed disabled:bg-slate-300"
-            :disabled="saving"
-          >
-            {{ saving ? viewCopy.actions.saving : (hasAgency ? viewCopy.actions.save : viewCopy.actions.create) }}
+      <div class="save-row">
+        <span v-if="message" class="ok-msg">{{ message }}</span>
+        <span v-if="errorMessage" class="err-msg">{{ errorMessage }}</span>
+      </div>
+    </form>
+
+    <div v-if="showUnsavedModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 px-4">
+      <div class="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl">
+        <h3 class="text-lg font-semibold text-slate-900">Você tem alterações não salvas</h3>
+        <p class="mt-2 text-sm text-slate-600">Deseja salvar antes de sair desta página?</p>
+        <div class="mt-5 flex items-center justify-end gap-2">
+          <button type="button" class="btn btn-o btn-sm" @click="cancelUnsavedNavigation">Continuar editando</button>
+          <button type="button" class="btn btn-o btn-sm" @click="discardUnsavedAndNavigate">Sair sem salvar</button>
+          <button type="button" class="btn btn-p btn-sm" :disabled="saving" @click="saveAndNavigate">
+            {{ saving ? viewCopy.actions.saving : "Salvar e sair" }}
           </button>
-
-          <span v-if="message" class="text-sm text-emerald-600">{{ message }}</span>
-          <span v-if="errorMessage" class="text-sm text-red-500">{{ errorMessage }}</span>
         </div>
-      </form>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from "vue";
+import { computed, onMounted, reactive, ref, watch, onBeforeUnmount } from "vue";
+import { onBeforeRouteLeave, useRouter } from "vue-router";
 import ImageUploadField from "../../components/admin/inputs/ImageUploadField.vue";
 import api from "../../services/api";
 import { useAgencyStore } from "../../store/useAgencyStore";
@@ -301,6 +202,7 @@ import { normalizeWhatsappDigits } from "../../utils/whatsapp";
 
 const agencyStore = useAgencyStore();
 const authStore = useAuthStore();
+const router = useRouter();
 
 const t = createAdminLocalizer();
 
@@ -498,6 +400,10 @@ const passwordForm = reactive({
 const passwordSaving = ref(false);
 const passwordMessage = ref("");
 const passwordError = ref("");
+const showUnsavedModal = ref(false);
+const pendingNavigation = ref<string | null>(null);
+const bypassUnsavedGuard = ref(false);
+const initialSnapshot = ref("");
 
 const companyForm = reactive({
   documentType: "cnpj" as "cnpj" | "cpf",
@@ -677,6 +583,41 @@ const syncFormWithCurrent = () => {
   syncCompanyData();
 };
 
+const buildFormSnapshot = () =>
+  JSON.stringify({
+    name: form.name || "",
+    slug: form.slug || "",
+    logo_url: form.logo_url || "",
+    primary_color: form.primary_color || "",
+    secondary_color: form.secondary_color || "",
+    contact_email: form.contact_email || "",
+    cta_whatsapp: phoneInput.value || "",
+    social_links: (form.social_links || []).map(item => ({
+      network: item.network || "",
+      url: item.url || ""
+    })),
+    company: {
+      documentType: companyForm.documentType,
+      cnpj: companyForm.cnpj || "",
+      address_street: companyForm.address_street || "",
+      address_number: companyForm.address_number || "",
+      address_complement: companyForm.address_complement || "",
+      address_neighborhood: companyForm.address_neighborhood || "",
+      address_city: companyForm.address_city || "",
+      address_state: companyForm.address_state || "",
+      address_zipcode: companyForm.address_zipcode || ""
+    }
+  });
+
+const hasUnsavedChanges = computed(() => {
+  if (!initialSnapshot.value) return false;
+  return buildFormSnapshot() !== initialSnapshot.value;
+});
+
+const markSnapshot = () => {
+  initialSnapshot.value = buildFormSnapshot();
+};
+
 const saveCompanyData = async () => {
   const documentDigits = sanitizeDigits(companyForm.cnpj);
   const payload = {
@@ -738,6 +679,7 @@ const load = async () => {
   hasAgency.value = !!agencyStore.currentAgencyId;
 
   if (hasAgency.value) syncFormWithCurrent();
+  markSnapshot();
 };
 
 const bootstrapAgencySettings = async () => {
@@ -811,6 +753,7 @@ const save = async () => {
 
     phoneMessage.value = phoneDigits ? viewCopy.contact.phoneSaved : viewCopy.contact.phoneRemoved;
     message.value = createdAgency ? viewCopy.feedback.agencyCreated : viewCopy.feedback.agencyUpdated;
+    markSnapshot();
   } catch (err) {
     console.error(err);
     const detail = (err as any)?.response?.data?.detail;
@@ -818,6 +761,37 @@ const save = async () => {
   } finally {
     saving.value = false;
   }
+};
+
+const cancelUnsavedNavigation = () => {
+  showUnsavedModal.value = false;
+  pendingNavigation.value = null;
+};
+
+const discardUnsavedAndNavigate = () => {
+  if (!pendingNavigation.value) {
+    showUnsavedModal.value = false;
+    return;
+  }
+  const target = pendingNavigation.value;
+  showUnsavedModal.value = false;
+  pendingNavigation.value = null;
+  bypassUnsavedGuard.value = true;
+  router.push(target).finally(() => {
+    bypassUnsavedGuard.value = false;
+  });
+};
+
+const saveAndNavigate = async () => {
+  const target = pendingNavigation.value;
+  await save();
+  if (!target || hasUnsavedChanges.value) return;
+  showUnsavedModal.value = false;
+  pendingNavigation.value = null;
+  bypassUnsavedGuard.value = true;
+  router.push(target).finally(() => {
+    bypassUnsavedGuard.value = false;
+  });
 };
 
 watch(
@@ -857,39 +831,82 @@ watch(
   }
 );
 
+onBeforeRouteLeave(to => {
+  if (bypassUnsavedGuard.value) return true;
+  if (!hasUnsavedChanges.value) return true;
+  pendingNavigation.value = to.fullPath;
+  showUnsavedModal.value = true;
+  return false;
+});
+
+const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+  if (!hasUnsavedChanges.value) return;
+  event.preventDefault();
+  event.returnValue = "";
+};
+
 onMounted(bootstrapAgencySettings);
+onMounted(() => {
+  window.addEventListener("beforeunload", handleBeforeUnload);
+});
+onBeforeUnmount(() => {
+  window.removeEventListener("beforeunload", handleBeforeUnload);
+});
 </script>
 
 <style scoped>
-:global(.dark-theme .agency-settings input:not([type='color']):not([type='checkbox']):not([type='radio']),
-.dark-theme .agency-settings textarea,
-.dark-theme .agency-settings select) {
-  background-color: #05070f;
-  border-color: rgba(255, 255, 255, 0.2);
-  color: #f8fafc;
+.agency-settings {
+  --verde:#3DCC5F;--verde-d:#2EAD4C;--verde-dim:rgba(61,204,95,.10);--verde-border:rgba(61,204,95,.22);
+  --bg:#F2F4F2;--surface:#fff;--surface2:#F5F7F5;--border:#E4E9E4;--border2:#CDD8CD;
+  --text:#111A14;--text-2:#4A5E4A;--text-3:#8A9E8A;
+  --sh-sm:0 1px 3px rgba(0,0,0,.05),0 1px 2px rgba(0,0,0,.03);
+  --radius:12px;--radius-sm:8px;
 }
-:global(.dark-theme .agency-settings input:not([type='color']):not([type='checkbox']):not([type='radio'])::placeholder,
-.dark-theme .agency-settings textarea::placeholder,
-.dark-theme .agency-settings select::placeholder) {
-  color: rgba(248, 250, 252, 0.65);
-}
-:global(.dark-theme .agency-settings input[type='file']::file-selector-button),
-:global(.dark-theme .agency-settings input[type='file']::-webkit-file-upload-button) {
-  background-color: #05070f;
-  border-color: rgba(255, 255, 255, 0.2);
-  color: #f8fafc;
-}
-:global(.dark-theme .agency-settings input[type='color']) {
-  background-color: #05070f;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  box-shadow: none;
-}
-:global(.dark-theme .agency-settings .agency-logo-upload > .rounded-xl) {
-  border-color: rgba(255, 255, 255, 0.1);
-  background-color: #05070f;
-}
-:global(.dark-theme .agency-settings .agency-logo-upload .overflow-hidden.border) {
-  border-color: rgba(255, 255, 255, 0.15);
-  background-color: #05070f;
-}
+.page-wrap{padding:28px 32px 64px;width:100%;max-width:1200px}
+.page-topbar{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+.page-eyebrow{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);margin-bottom:3px}
+.page-title{font-size:24px;font-weight:800;color:var(--text);letter-spacing:-.3px;line-height:1.2}
+.page-sub{font-size:13px;color:var(--text-3);margin-top:4px;margin-bottom:24px}
+.card{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);box-shadow:var(--sh-sm);width:100%;margin-bottom:14px}
+.card-head{padding:18px 22px 14px;border-bottom:1.5px solid var(--border)}
+.card-eye{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin-bottom:3px}
+.card-title{font-size:15px;font-weight:800;color:var(--text);letter-spacing:-.2px}
+.card-sub{font-size:12px;color:var(--text-3);margin-top:2px;line-height:1.45}
+.card-body{padding:20px 22px}
+.card-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;width:100%}
+.fg{display:flex;flex-direction:column;gap:5px;margin-bottom:14px}
+.fl{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text-3)}
+.fh{font-size:11px;color:var(--text-3);line-height:1.4;margin-top:3px}
+.fi{padding:9px 11px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:inherit;font-size:13px;color:var(--text);background:var(--surface);outline:none;transition:border-color .15s;width:100%}
+.fi:focus{border-color:var(--verde-border)}
+.fs{padding:9px 11px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:inherit;font-size:13px;color:var(--text);background:var(--surface);outline:none;cursor:pointer;width:100%}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.ig{display:flex;border:1.5px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;transition:border-color .15s}
+.ig:focus-within{border-color:var(--verde-border)}
+.ig-pre{padding:9px 11px;background:var(--surface2);font-size:12px;color:var(--text-3);border-right:1.5px solid var(--border);white-space:nowrap;display:flex;align-items:center;gap:5px}
+.ig input,.ig select{flex:1;padding:9px 11px;border:none;font-family:inherit;font-size:13px;color:var(--text);background:var(--surface);outline:none}
+.ig select{flex:0 0 auto;padding:9px 16px 9px 9px;border-right:1.5px solid var(--border);font-size:12px;background:var(--surface2);cursor:pointer}
+.cp-row{display:flex;align-items:center;gap:9px}
+.cp-btn{width:38px;height:38px;border-radius:8px;border:1.5px solid var(--border);cursor:pointer;padding:2px;overflow:hidden;flex-shrink:0}
+.cp-btn input[type=color]{width:100%;height:100%;border:none;background:transparent;cursor:pointer;padding:0;border-radius:5px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:all .15s;white-space:nowrap;line-height:1.3}
+.btn-p{background:var(--verde);color:#0F1F14}
+.btn-p:hover{background:var(--verde-d)}
+.btn-sm{padding:6px 14px;font-size:12px}
+.btn-danger-text{background:transparent;border:none;color:#C0392B;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;padding:0}
+.social-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.social-item{display:grid;grid-template-columns:160px 1fr auto;gap:9px;align-items:center;padding:10px 0;border-bottom:1.5px solid var(--border)}
+.social-item:last-child{border-bottom:none;padding-bottom:0}
+.save-row{display:flex;align-items:center;gap:10px;margin-top:6px}
+.ok-msg{font-size:12px;color:#1a7a35;font-weight:600}
+.err-msg{font-size:12px;color:#c0392b;font-weight:600}
+
+:deep(.agency-logo-upload .max-h-\[320px\]){max-height:190px !important;min-height:150px !important}
+:deep(.agency-logo-upload .min-h-\[220px\]){min-height:150px !important}
+:deep(.agency-logo-upload img){max-height:150px !important;object-fit:contain}
+
+@media(max-width:900px){.page-wrap{padding:20px 16px 40px}.page-topbar{flex-direction:column;align-items:flex-start}}
+@media(max-width:768px){.card-row{grid-template-columns:1fr}}
+@media(max-width:600px){.grid2,.grid3,.social-item{grid-template-columns:1fr}}
 </style>

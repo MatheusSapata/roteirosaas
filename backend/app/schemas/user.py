@@ -19,6 +19,7 @@ class UserBase(BaseModel):
     address_city: Optional[str] = None
     address_state: Optional[str] = None
     address_zipcode: Optional[str] = None
+    avatar_url: Optional[str] = None
 
 
 class UtmData(BaseModel):
@@ -112,6 +113,7 @@ class UserUpdate(BaseModel):
     address_city: Optional[str] = None
     address_state: Optional[str] = None
     address_zipcode: Optional[str] = None
+    avatar_url: Optional[str] = None
 
     @field_validator("whatsapp")
     @classmethod
@@ -168,6 +170,12 @@ class UserOut(UserBase):
     subscription_status: Optional[str] = None
     subscription_valid_until: Optional[datetime] = None
     subscription_blocked: Optional[bool] = None
+    primary_agency_id: Optional[int] = None
+    is_owner: Optional[bool] = None
+    role: Optional[str] = None
+    status: Optional[str] = None
+    permissions: Optional[list[str]] = None
+    effective_permissions: Optional[list[str]] = None
     model_config = ConfigDict(from_attributes=True)
 
 

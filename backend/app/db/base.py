@@ -29,4 +29,5 @@ from app.models import (
     flight_lookup_cache,
     flight_section,
     system_banner,
+    team_invite,
 )  # noqa: E402,F401

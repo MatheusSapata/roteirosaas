@@ -23,9 +23,12 @@ body.public-shell #app {
 }
 
 #app {
-  zoom: var(--app-scale);
   width: 100%;
   min-height: 100vh;
+}
+
+body.admin-shell #app {
+  zoom: var(--app-scale);
 }
 
 .hero-cta-shimmer {

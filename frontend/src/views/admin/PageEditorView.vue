@@ -1,25 +1,72 @@
 ﻿<template>
-<div class="page-editor-view w-full space-y-6 px-4 py-10 md:px-8 md:py-0">
-    <div class="flex flex-col gap-3 py-4 md:flex-row md:items-center md:justify-between">
-      <div>
-        <p class="text-sm uppercase tracking-wide text-slate-500">{{ viewCopy.header.eyebrow }}</p>
-        <h1 class="text-3xl font-bold text-slate-900">{{ page?.title || viewCopy.header.defaultTitle }}</h1>
-        <p class="text-sm text-slate-500">{{ viewCopy.header.subtitle }}</p>
+<div class="page-editor-view w-full space-y-6 px-4 py-6 md:px-8 md:py-4">
+    <div class="editor-topbar">
+      <div class="editor-topbar-left">
+        <button type="button" class="editor-back-btn" @click="goBack" :aria-label="viewCopy.actions.goBack">
+          <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m15 18-6-6 6-6" />
+          </svg>
+        </button>
+        <p class="editor-breadcrumb">{{ viewCopy.header.eyebrow }}</p>
+        <span class="editor-divider">/</span>
+        <h1 class="editor-page-title">{{ page?.title || viewCopy.header.defaultTitle }}</h1>
       </div>
 
-      <div class="flex flex-wrap items-center gap-2">
-        <button
-          @click="saveTemplate"
-          :class="toolbarSecondaryButtonClass"
-        >
-          {{ viewCopy.toolbar.saveTemplate }}
-        </button>
+      <div class="editor-topbar-actions-mobile md:hidden">
+        <div class="flex items-center gap-2">
+          <button @click="saveTemplate" :class="toolbarSecondaryButtonClass">
+            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M8 7H4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-4" />
+              <path d="M16 3h5v5" />
+              <path d="m10 14 11-11" />
+            </svg>
+            {{ viewCopy.toolbar.saveTemplate }}
+          </button>
+          <button
+            v-if="isPublished"
+            :disabled="!publicUrl"
+            @click="viewPublicPage"
+            :class="[toolbarSecondaryButtonClass, 'disabled:opacity-60']"
+          >
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+            {{ viewCopy.actions.goBack }}
+          </button>
+        </div>
+        <div class="mt-2 flex items-center gap-2">
+          <button @click="saveConfig" :disabled="!hasUnsavedChanges" :class="[toolbarPrimaryButtonClass, { 'opacity-60 cursor-not-allowed': !hasUnsavedChanges }]">
+            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+              <path d="M17 21v-8H7v8" />
+              <path d="M7 3v5h8" />
+            </svg>
+            {{ viewCopy.toolbar.save }}
+          </button>
+          <button v-if="!isPublished" @click="publishPage" :class="toolbarPrimaryButtonClass">
+            {{ viewCopy.toolbar.publish }}
+          </button>
+          <template v-else>
+            <span :class="toolbarStatusPillClass">
+              <span class="status-dot"></span>
+              {{ viewCopy.toolbar.published }}
+            </span>
+            <button type="button" @click="unpublishPage" :class="toolbarWarningButtonClass">
+              {{ viewCopy.toolbar.unpublish }}
+            </button>
+          </template>
+        </div>
+      </div>
 
-        <button
-          @click="goBack"
-          :class="toolbarSecondaryButtonClass"
-        >
-          {{ viewCopy.actions.goBack }}
+      <div class="editor-topbar-actions hidden md:flex">
+        <button @click="saveTemplate" :class="toolbarSecondaryButtonClass">
+          <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 7H4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-4" />
+            <path d="M16 3h5v5" />
+            <path d="m10 14 11-11" />
+          </svg>
+          {{ viewCopy.toolbar.saveTemplate }}
         </button>
 
         <button
@@ -28,52 +75,37 @@
           @click="viewPublicPage"
           :class="[toolbarSecondaryButtonClass, 'disabled:opacity-60']"
         >
-          <svg
-            class="h-4 w-4"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.8"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
+          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" />
             <circle cx="12" cy="12" r="3" />
           </svg>
-          {{ viewCopy.actions.viewPage }}
+          {{ viewCopy.actions.goBack }}
         </button>
 
-        <button
-          @click="saveConfig"
-          :disabled="!hasUnsavedChanges"
-          :class="[toolbarPrimaryButtonClass, { 'opacity-60 cursor-not-allowed': !hasUnsavedChanges }]"
-        >
+        <button @click="saveConfig" :disabled="!hasUnsavedChanges" :class="[toolbarPrimaryButtonClass, { 'opacity-60 cursor-not-allowed': !hasUnsavedChanges }]">
+          <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+            <path d="M17 21v-8H7v8" />
+            <path d="M7 3v5h8" />
+          </svg>
           {{ viewCopy.toolbar.save }}
         </button>
 
-        <button
-          v-if="!isPublished"
-          @click="publishPage"
-          :class="toolbarPrimaryButtonClass"
-        >
+        <button v-if="!isPublished" @click="publishPage" :class="toolbarPrimaryButtonClass">
           {{ viewCopy.toolbar.publish }}
         </button>
 
-          <div v-else class="flex flex-wrap items-center gap-2">
-            <span :class="toolbarStatusPillClass">
-              {{ viewCopy.toolbar.published }}
-            </span>
-            <button
-              type="button"
-              @click="unpublishPage"
-              :class="toolbarWarningButtonClass"
-            >
-              {{ viewCopy.toolbar.unpublish }}
-            </button>
-          </div>
+        <div v-else class="flex flex-wrap items-center gap-2">
+          <span :class="toolbarStatusPillClass">
+            <span class="status-dot"></span>
+            {{ viewCopy.toolbar.published }}
+          </span>
+          <button type="button" @click="unpublishPage" :class="toolbarWarningButtonClass">
+            {{ viewCopy.toolbar.unpublish }}
+          </button>
         </div>
       </div>
+    </div>
 
     
     <!-- Dialog de limite de plano (reutilizado tambÃ©m para "template no free") -->
@@ -239,61 +271,149 @@
     </div>
 
     <div class="space-y-4">
-      <div class="rounded-2xl bg-white p-4 shadow-md dark:bg-[#202020] dark:text-white">
-        <div class="mt-4 grid gap-6 lg:grid-cols-2">
-          <div class="space-y-4 rounded-2xl border border-slate-100 px-4 py-4 dark:border-[#2b2b2b] dark:bg-[#181818]">
-            <div class="space-y-4">
-              <div>
-                <label class="text-sm font-semibold text-slate-600">{{ viewCopy.form.titleLabel }}</label>
-                <input v-model="pageTitle" @blur="scheduleWhatsAppUpdate" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-900 dark:border-white/15 dark:bg-[#05070F] dark:text-white" />
-              </div>
-              <div>
-                <div class="flex items-center gap-2">
-                  <label class="text-sm font-semibold text-slate-600">{{ viewCopy.form.slugLabel }}</label>
-                  <span class="text-xs text-slate-500">{{ viewCopy.form.slugHint }}</span>
+      <div class="editor-settings-shell rounded-[26px] border border-slate-200 bg-white p-6 shadow-sm dark:bg-[#202020] dark:text-white">
+        <div class="mb-5 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 class="text-[30px] font-extrabold leading-[1.1] tracking-[-0.02em] text-slate-900 dark:text-white">Configurações da página</h2>
+            <p class="mt-1 text-[14px] text-slate-500">Título, link, cores, rastreamento e formulário de captação.</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2 text-xs">
+            <span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 font-semibold text-slate-600">Link: {{ pageSlug || "-" }}</span>
+            <span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 font-semibold text-slate-600">Formulário: {{ selectedLeadForm ? (selectedLeadForm.title || selectedLeadForm.name) : "nenhum" }}</span>
+            <span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 font-semibold text-slate-600">Pixel: {{ selectedPixels.meta || selectedPixels.ga || "não configurado" }}</span>
+          </div>
+        </div>
+
+        <div class="grid items-start gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
+          <aside ref="settingsSidebarRef" class="space-y-3">
+            <button type="button" class="editor-side-tab" :class="{ active: activeSettingsTab==='general' }" @click="selectSettingsTab('general')">
+              <span class="editor-side-tab-step">1</span>
+              <span>CONFIGURAÇÕES BÁSICAS</span>
+            </button>
+            <button type="button" class="editor-side-tab" :class="{ active: activeSettingsTab==='colors' }" @click="selectSettingsTab('colors')">
+              <span class="editor-side-tab-step">2</span>
+              <span>CORES DO FUNDO E DESTAQUE</span>
+            </button>
+            <button type="button" class="editor-side-tab" :class="{ active: activeSettingsTab==='pixels' }" @click="selectSettingsTab('pixels')">
+              <span class="editor-side-tab-step">3</span>
+              <span>RASTREAMENTO</span>
+            </button>
+            <button type="button" class="editor-side-tab" :class="{ active: activeSettingsTab==='capture' }" @click="selectSettingsTab('capture')">
+              <span class="editor-side-tab-step">4</span>
+              <span>CAPTAÇÃO DE LEADS</span>
+            </button>
+          </aside>
+
+          <div
+            ref="settingsPanelRef"
+            class="settings-panel rounded-2xl border border-slate-200 p-4 transition-[height] duration-200 md:p-5"
+            :style="settingsPanelStyle"
+          >
+        <div
+          class="settings-panel-content mt-0 h-full overflow-y-auto pr-1"
+          :class="activeSettingsTab==='colors' ? 'flex min-h-full w-full items-center' : 'space-y-2'"
+        >
+          <div class="w-full space-y-4 px-2 py-0">
+            <div v-if="activeSettingsTab==='general'" ref="generalSettingsRef" class="space-y-2">
+              <div class="grid gap-4 lg:grid-cols-[3fr_2fr]">
+                <div class="space-y-3">
+                  <div>
+                    <label class="text-[16px] font-bold uppercase tracking-[0.03em] text-slate-700">TÍTULO DA PÁGINA</label>
+                    <input
+                      v-model="pageTitle"
+                      @blur="scheduleWhatsAppUpdate"
+                      class="mt-1 w-full rounded-[12px] border border-slate-200 bg-white px-4 py-2 text-[17px] text-slate-900 dark:border-white/15 dark:bg-[#05070F] dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label class="text-[16px] font-bold uppercase tracking-[0.03em] text-slate-700">LINK DA PÁGINA</label>
+                    <div class="mt-1 flex w-full overflow-hidden rounded-[12px] border border-slate-200">
+                      <div class="shrink-0 border-r border-slate-200 bg-slate-50 px-4 py-2 text-[16px] font-semibold text-slate-600">
+                        {{ slugBaseLabel }}
+                      </div>
+                      <input
+                        :value="pageSlug"
+                        @input="handleSlugInput"
+                        class="w-full border-0 bg-white px-4 py-2 text-[16px] text-slate-800 focus:outline-none dark:bg-[#05070F] dark:text-white"
+                      />
+                    </div>
+                    <p class="mt-1 text-[13px] text-slate-500">
+                      Use apenas letras, números e hífens. Evite espaços e acentos.
+                    </p>
+                  </div>
                 </div>
-                <input
-                  :value="pageSlug"
-                  @input="handleSlugInput"
-                  class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-900 dark:border-white/15 dark:bg-[#05070F] dark:text-white"
-                />
-              </div>
-            </div>
-            <div class="grid gap-4 text-sm text-slate-600 md:grid-cols-2">
-              <div>
-                <div class="flex items-center gap-2">
-                  <label class="block text-sm font-semibold text-slate-600">{{ viewCopy.form.backgroundLabel }}</label>
-                  <span class="text-xs text-slate-500">{{ viewCopy.form.backgroundHint }}</span>
-                </div>
-                <div class="mt-1 flex flex-wrap items-center gap-2">
-                  <label class="flex items-center gap-2">
-                    <span>{{ viewCopy.form.colorA }}</span>
-                    <input type="color" v-model="colorA" class="h-9 w-9 cursor-pointer rounded border border-slate-200 bg-white dark:border-[#363636] dark:bg-[#050505]" />
-                  </label>
-                  <label class="flex items-center gap-2">
-                    <span>{{ viewCopy.form.colorB }}</span>
-                    <input type="color" v-model="colorB" class="h-9 w-9 cursor-pointer rounded border border-slate-200 bg-white dark:border-[#363636] dark:bg-[#050505]" />
-                  </label>
-                </div>
-              </div>
-              <div>
-                <div class="flex items-center gap-2">
-                  <label class="text-sm font-semibold text-slate-600">{{ viewCopy.form.ctaColorLabel }}</label>
-                  <span class="text-xs text-slate-500">{{ viewCopy.form.ctaColorHint }}</span>
-                </div>
-                <div class="mt-1 flex items-center gap-2">
-                  <input
-                    type="color"
-                    v-model="ctaColor"
-                    class="h-9 w-9 cursor-pointer rounded border border-slate-200 bg-white dark:border-[#363636] dark:bg-[#050505]"
+                <div>
+                  <label class="text-[16px] font-bold uppercase tracking-[0.03em] text-slate-700">DESCRIÇÃO CURTA</label>
+                  <textarea
+                    v-model="pageShortDescription"
+                    rows="5"
+                    placeholder="Ex: Pacote completo para Beto Carrero com transporte, hospedagem e ingressos inclusos."
+                    class="mt-1 w-full rounded-[12px] border border-slate-200 bg-white px-4 py-2 text-[16px] text-slate-700 placeholder:text-slate-400 dark:border-white/15 dark:bg-[#05070F] dark:text-white"
                   />
                 </div>
               </div>
             </div>
+            <div v-if="activeSettingsTab==='colors'" class="mt-0 w-full">
+              <div
+                class="settings-colors-grid grid w-full items-start gap-x-8 gap-y-4 text-sm text-slate-600"
+                style="grid-template-columns: minmax(0, 1fr);"
+              >
+                <div class="min-w-0 space-y-3 pt-0.5">
+                <p class="text-[17px] font-bold uppercase tracking-[0.03em] leading-none text-slate-700">{{ viewCopy.form.backgroundLabel }}</p>
+                <p class="text-[14px] leading-tight text-slate-500">{{ viewCopy.form.backgroundHint }}</p>
+                  <div class="space-y-4 pt-2">
+                    <label class="flex items-center gap-4">
+                    <span class="w-[70px] whitespace-nowrap text-[18px] font-semibold text-slate-700">{{ viewCopy.form.colorA }}</span>
+                    <input type="color" v-model="colorA" class="color-chip" />
+                    <input
+                      :value="colorA"
+                      @input="colorA = normalizeHexColor(($event.target as HTMLInputElement).value, colorA)"
+                      class="w-[112px] rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[17px] font-semibold uppercase tracking-wide text-slate-700"
+                    />
+                  </label>
+                    <label class="flex items-center gap-4">
+                    <span class="w-[70px] whitespace-nowrap text-[18px] font-semibold text-slate-700">{{ viewCopy.form.colorB }}</span>
+                    <input type="color" v-model="colorB" class="color-chip" />
+                    <input
+                      :value="colorB"
+                      @input="colorB = normalizeHexColor(($event.target as HTMLInputElement).value, colorB)"
+                      class="w-[112px] rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[17px] font-semibold uppercase tracking-wide text-slate-700"
+                    />
+                  </label>
+                </div>
+              </div>
+                <div class="min-w-0 space-y-3 pt-0.5">
+                <p class="text-[17px] font-bold uppercase tracking-[0.03em] leading-none text-slate-700">{{ viewCopy.form.ctaColorLabel }}</p>
+                <p class="text-[14px] leading-tight text-slate-500">{{ viewCopy.form.ctaColorHint }}</p>
+                  <label class="flex items-center gap-4 pt-2">
+                  <span class="w-[70px] whitespace-nowrap text-[18px] font-semibold text-slate-700">Cor</span>
+                  <input
+                    type="color"
+                    v-model="ctaColor"
+                    class="color-chip"
+                  />
+                  <input
+                    :value="ctaColor"
+                    @input="ctaColor = normalizeHexColor(($event.target as HTMLInputElement).value, ctaColor)"
+                    class="w-[112px] rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[17px] font-semibold uppercase tracking-wide text-slate-700"
+                  />
+                </label>
+              </div>
+              </div>
+            </div>
           </div>
-          <div class="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-4 dark:border-[#2b2b2b] dark:bg-[#1a1a1a]">
-            <div class="space-y-1">
-              <p class="text-sm font-semibold text-slate-700">{{ viewCopy.pixels.title }}</p>
+          <div class="px-2 pt-0" :class="activeSettingsTab==='pixels' ? 'space-y-1' : 'space-y-4'">
+            <div v-if="activeSettingsTab==='pixels'" class="-mt-[6px] space-y-0">
+              <div class="flex items-start justify-between gap-3">
+                <p class="text-[17px] font-bold uppercase leading-none tracking-[0.03em] text-slate-700">{{ viewCopy.pixels.title }}</p>
+                <button
+                  type="button"
+                  class="inline-flex items-center self-start rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                  @click="goIntegrations"
+                >
+                  Gerenciar pixels
+                </button>
+              </div>
               <p class="text-xs text-slate-500">
                 {{ viewCopy.pixels.helper }}
               </p>
@@ -302,18 +422,17 @@
               </p>
             </div>
 
-            <div class="mt-4 space-y-3">
+            <div v-if="activeSettingsTab==='pixels'" class="mt-0 space-y-1">
               <div
                 v-if="!canSelectPixel"
                 class="rounded-lg border border-dashed border-slate-200 bg-white/80 px-3 py-2 text-sm text-slate-500 dark:border-[#363636] dark:bg-[#0d0d0d] dark:text-slate-300"
               >
-                {{ viewCopy.pixels.lockedHint }}
               </div>
 
               <template v-else>
-                <div class="grid gap-3 sm:grid-cols-2">
+                <div class="grid gap-2 sm:grid-cols-2">
                   <div>
-                    <label class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">{{ viewCopy.pixels.metaLabel }}</label>
+                    <label class="font-semibold uppercase tracking-[0.03em] text-slate-800 dark:text-white">{{ viewCopy.pixels.metaLabel }}</label>
                     <select
                       v-model="selectedPixels.meta"
                       class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-[#363636] dark:bg-[#101010] dark:text-white"
@@ -321,13 +440,13 @@
                     >
                       <option value="">{{ viewCopy.pixels.metaPlaceholder }}</option>
                       <option v-for="p in metaPixelOptions" :key="p.name" :value="p.name">
-                        {{ p.name }} â€” Meta
+                        {{ p.name }} - Meta
                       </option>
                     </select>
                     <p v-if="!metaPixelOptions.length" class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ viewCopy.pixels.metaEmptyHint }}</p>
                   </div>
                   <div>
-                    <label class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">{{ viewCopy.pixels.googleLabel }}</label>
+                    <label class="font-semibold uppercase tracking-[0.03em] text-slate-800 dark:text-white">{{ viewCopy.pixels.googleLabel }}</label>
                     <select
                       v-model="selectedPixels.ga"
                       class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-[#363636] dark:bg-[#101010] dark:text-white"
@@ -335,15 +454,15 @@
                     >
                       <option value="">{{ viewCopy.pixels.googlePlaceholder }}</option>
                       <option v-for="p in gaPixelOptions" :key="p.name" :value="p.name">
-                        {{ p.name }} â€” GA4
+                        {{ p.name }} - GA4
                       </option>
                     </select>
                     <p v-if="!gaPixelOptions.length" class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ viewCopy.pixels.googleEmptyHint }}</p>
                   </div>
                 </div>
 
-                <div class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 dark:border-[#363636] dark:bg-[#101010] dark:text-slate-200">
-                  <p class="font-semibold text-slate-800 dark:text-white">{{ viewCopy.pixels.eventsTitle }}</p>
+                <div class="px-0 py-1 text-sm text-slate-700 dark:text-slate-200">
+                  <p class="font-semibold uppercase tracking-[0.03em] text-slate-800 dark:text-white">{{ viewCopy.pixels.eventsTitle }}</p>
 
                   <div class="mt-2 flex flex-wrap gap-4">
                     <label class="flex items-center gap-2">
@@ -360,18 +479,12 @@
               </template>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
 
-    <div
-      v-if="leadFeatureAllowed"
-      class="rounded-2xl bg-white p-4 shadow-md dark:bg-[#202020] dark:text-white"
-    >
+    <div class="space-y-4 px-2 pt-0 dark:text-white">
+      <div v-if="leadFeatureAllowed && activeSettingsTab==='capture'" class="-mt-1">
       <div class="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">{{ viewCopy.leadSection.badge }}</p>
-          <h3 class="text-xl font-semibold text-slate-900 dark:text-white">{{ viewCopy.leadSection.title }}</h3>
+          <h3 class="text-[17px] font-bold uppercase tracking-[0.03em] leading-none text-slate-700 dark:text-white">{{ viewCopy.leadSection.title }}</h3>
           <p class="text-sm text-slate-500 dark:text-slate-400">
             {{ viewCopy.leadSection.description }}
           </p>
@@ -384,7 +497,7 @@
           {{ viewCopy.leadSection.manageButton }}
         </button>
       </div>
-      <div class="mt-4 space-y-4 rounded-2xl border border-slate-100 p-4 dark:border-[#2b2b2b] dark:bg-[#181818]">
+      <div class="mt-2 space-y-3">
         <div
           v-if="leadFormsLoading"
           class="rounded-xl border border-dashed border-slate-200 px-3 py-2 text-sm text-slate-500 dark:border-white/20 dark:text-slate-300"
@@ -425,9 +538,7 @@
                   {{ viewCopy.leadSection.previewButton }}
                 </button>
               </div>
-              <div
-                class="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 md:w-auto"
-              >
+              <div class="flex items-center gap-3 px-1 py-1 text-sm text-slate-600 dark:text-slate-300 md:w-auto">
                 <input
                   type="checkbox"
                   v-model="leadCaptureOptional"
@@ -447,8 +558,8 @@
       </div>
     </div>
     <div
-      v-else
-      class="rounded-2xl border border-dashed border-slate-200 bg-white/70 p-6 text-center shadow-inner dark:border-white/10 dark:bg-[#101010]/70"
+      v-else-if="activeSettingsTab==='capture'"
+      class="mt-3 rounded-2xl border border-dashed border-slate-200 bg-white/70 p-6 text-center shadow-inner dark:border-white/10 dark:bg-[#101010]/70"
     >
       <h3 class="text-xl font-semibold text-slate-900 dark:text-white">{{ viewCopy.leadSection.blockedTitle }}</h3>
       <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">
@@ -461,6 +572,12 @@
       >
         {{ viewCopy.actions.viewPlans }}
       </button>
+    </div>
+    </div>
+        </div>
+          </div>
+        </div>
+      </div>
     </div>
 
       <div class="md:sticky md:top-6 rounded-3xl bg-white p-4 shadow-md dark:bg-[#202020] dark:text-white">
@@ -857,6 +974,7 @@ onBeforeRouteLeave((to, _from, next) => {
 const page = ref<Page | null>(null);
 const pageTitle = ref("");
 const pageSlug = ref("");
+const pageShortDescription = ref("");
 const slugAutoSyncEnabled = ref(true);
 const PAGE_SLUG_FALLBACK = "pagina";
 
@@ -864,6 +982,12 @@ const normalizeSlugInput = (value: string | undefined | null) => {
   const trimmed = (value || "").trim();
   if (!trimmed) return "";
   return slugify(trimmed, PAGE_SLUG_FALLBACK);
+};
+
+const normalizeHexColor = (value: string, fallback = "#000000") => {
+  const cleaned = (value || "").trim().replace(/[^0-9a-fA-F]/g, "");
+  const candidate = `#${cleaned}`.toUpperCase();
+  return /^#[0-9A-F]{6}$/.test(candidate) ? candidate : fallback;
 };
 
 const handleSlugInput = (event: Event) => {
@@ -881,6 +1005,7 @@ watch(
 );
 watch(pageTitle, () => markUnsavedChanges());
 watch(pageSlug, () => markUnsavedChanges());
+watch(pageShortDescription, () => markUnsavedChanges());
 
 const auth = useAuthStore();
 const agencyStore = useAgencyStore();
@@ -899,7 +1024,7 @@ const viewCopy = {
     })
   },
   toolbar: {
-    saveTemplate: t({ pt: "Salvar como template padrão", es: "Guardar como plantilla predeterminada" }),
+    saveTemplate: t({ pt: "Salvar como template", es: "Guardar como plantilla" }),
     save: t({ pt: "Salvar", es: "Guardar" }),
     publish: t({ pt: "Publicar", es: "Publicar" }),
     published: t({ pt: "Publicada", es: "Publicada" }),
@@ -972,7 +1097,7 @@ const viewCopy = {
     }),
     planHint: t({ pt: "Disponível a partir do plano Essencial.", es: "Disponible a partir del plan Esencial." }),
     lockedHint: t({
-      pt: "Adicione pixels na página Integrações (plano Essencial ou superior).",
+      pt: "Adicione pixels na página Integrações.",
       es: "Agrega píxeles en la página Integraciones (plan Esencial o superior)."
     }),
     metaLabel: t({ pt: "Pixel Meta", es: "Pixel Meta" }),
@@ -1155,6 +1280,41 @@ const markUnsavedChanges = () => {
 
 const isPublished = computed(() => page.value?.status === "published");
 const isFreePlan = computed(() => (auth.user?.plan || "free") === "free");
+const activeSettingsTab = ref<"general" | "colors" | "pixels" | "capture">("general");
+const settingsSidebarRef = ref<HTMLElement | null>(null);
+const settingsPanelRef = ref<HTMLElement | null>(null);
+const generalSettingsRef = ref<HTMLElement | null>(null);
+const settingsPanelHeight = ref<number | null>(null);
+const settingsPanelStyle = computed(() =>
+  settingsPanelHeight.value ? { height: `${settingsPanelHeight.value}px` } : {}
+);
+
+const syncSettingsPanelHeight = () => {
+  const sidebarHeight = settingsSidebarRef.value?.offsetHeight || 0;
+  const nextHeight = sidebarHeight;
+  if (nextHeight > 0) settingsPanelHeight.value = nextHeight;
+};
+
+const selectSettingsTab = (tab: "general" | "colors" | "pixels" | "capture") => {
+  activeSettingsTab.value = tab;
+  if (tab === "general") {
+    nextTick(syncSettingsPanelHeight);
+  }
+};
+selectSettingsTab("general");
+
+onMounted(() => {
+  nextTick(syncSettingsPanelHeight);
+  if (typeof window !== "undefined") {
+    window.addEventListener("resize", syncSettingsPanelHeight);
+  }
+});
+
+onBeforeUnmount(() => {
+  if (typeof window !== "undefined") {
+    window.removeEventListener("resize", syncSettingsPanelHeight);
+  }
+});
 
 const fallbackPrimaryColor = "#41ce5f";
 const heroDefaultGradient = "#0b0f19";
@@ -1210,13 +1370,13 @@ watch(
   { immediate: false }
 );
 const toolbarSecondaryButtonClass =
-  "inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-white dark:border-white/20 dark:bg-white/5 dark:text-white dark:hover:bg-white/10";
+  "inline-flex items-center gap-2 rounded-xl border border-[#DDE3DE] bg-[#F6F8F6] px-4 py-2 text-sm font-semibold text-[#4A6455] transition hover:bg-white";
 const toolbarPrimaryButtonClass =
-  "inline-flex items-center gap-2 rounded-full border border-brand bg-brand px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-dark dark:border-brand/80";
+  "inline-flex items-center gap-2 rounded-xl border border-[#35BD57] bg-[#3DCC5F] px-4 py-2 text-sm font-semibold text-[#0F1F14] shadow-sm transition hover:bg-[#5BE07A]";
 const toolbarWarningButtonClass =
-  "inline-flex items-center gap-2 rounded-full border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 transition hover:bg-amber-100 dark:border-amber-300/60 dark:bg-amber-200/10 dark:text-amber-200 dark:hover:bg-amber-200/20";
+  "inline-flex items-center gap-2 rounded-xl border border-[#EBCFD0] bg-[#F9ECEC] px-4 py-2 text-sm font-semibold text-[#BC5457] transition hover:bg-[#F7E3E4]";
 const toolbarStatusPillClass =
-  "inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 dark:border-emerald-400/30 dark:bg-emerald-500/10 dark:text-emerald-200";
+  "inline-flex items-center gap-2 rounded-xl border border-[#CFECD5] bg-[#EAF8ED] px-4 py-2 text-sm font-semibold text-[#2E9B47]";
 let skipCtaWatcher = false;
 let removeViewportWatcher: (() => void) | null = null;
 
@@ -1785,11 +1945,15 @@ const hideLeadFormPreview = () => {
   previewForm.value = null;
 };
 
-const canSelectPixel = computed(() => (auth.user?.plan || "free") !== "free" && pixels.value.length > 0);
+const canSelectPixel = computed(() => (auth.user?.plan || "free") !== "free");
 
 const currentAgency = computed(() => {
   const selected = agencyStore.agencies.find(a => a.id === agencyStore.currentAgencyId);
   return selected || agencyStore.agencies[0] || null;
+});
+const slugBaseLabel = computed(() => {
+  const agencySlug = currentAgency.value?.slug || "nomedaagencia";
+  return `roteiroonline.com/${agencySlug}/`;
 });
 
 const sanitizeDigits = (value?: string | null) => (value || "").replace(/\D/g, "");
@@ -2079,6 +2243,9 @@ watch(
 
 const buildConfig = (): PageConfig => ({
   version: 1,
+  general: {
+    shortDescription: pageShortDescription.value || ""
+  },
   theme: { ...theme.value, color1: colorA.value, color2: colorB.value },
   editor: { ...editorPrefs.value, previewEnabled: true, previewDevice: previewDevice.value },
   sections: applySectionBackgrounds(sections.value),
@@ -2093,7 +2260,7 @@ const buildConfig = (): PageConfig => ({
       events: { ...trackingEvents.value }
     };
   })()
-});
+} as any);
 
 const hydratePreviewSections = (source?: PageSection[]) => {
   const snapshot = source ? source : clone(sections.value);
@@ -2505,6 +2672,9 @@ const hydrateFromConfig = (config?: PageConfig | string | null) => {
         previewDevice.value = parsed.editor.previewDevice;
       }
     }
+
+    const general = (parsed as any).general;
+    pageShortDescription.value = typeof general?.shortDescription === "string" ? general.shortDescription : "";
 
     if (parsed.sections && Array.isArray(parsed.sections) && parsed.sections.length) {
       setSections(applySectionBackgrounds(parsed.sections as PageSection[]));
@@ -2961,6 +3131,10 @@ const goLeads = () => {
   router.push({ name: "leads" });
 };
 
+const goIntegrations = () => {
+  router.push({ name: "integrations" });
+};
+
 const viewPublicPage = () => {
   if (!publicUrl.value || !hasWindow) return;
   window.open(publicUrl.value, "_blank");
@@ -3028,6 +3202,95 @@ onMounted(async () => {
   background-color: #05070f80;
 }
 
+.editor-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 4px 0;
+}
+
+.editor-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.editor-back-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid #e5ece6;
+  background: #f4f7f4;
+  color: #748c7f;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.editor-breadcrumb {
+  font-size: 12px;
+  color: #8aa693;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.editor-divider {
+  color: #a7b8ad;
+  font-weight: 700;
+}
+
+.editor-page-title {
+  font-size: 26px;
+  line-height: 1;
+  font-weight: 800;
+  color: #1c2c22;
+  white-space: nowrap;
+}
+
+.editor-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.editor-topbar-actions-mobile {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .editor-topbar-actions {
+    display: none !important;
+  }
+
+  .editor-topbar-actions-mobile {
+    display: block;
+    width: 100%;
+  }
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #39b857;
+}
+
+.editor-accordion-trigger {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid #d9e2dc;
+  border-radius: 12px;
+  background: #fff;
+  padding: 10px 14px;
+  text-align: left;
+}
+
 .form-card {
   width: 100%;
   border-radius: 1.25rem;
@@ -3076,6 +3339,101 @@ onMounted(async () => {
   cursor: pointer;
   transition: background-color 0.15s ease, color 0.15s ease;
 }
+
+.editor-settings-shell {
+  background: #ffffff;
+}
+
+.editor-side-tab {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 13px 16px;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: #0f172a;
+  background: #eef2f5;
+  transition: all 0.2s ease;
+}
+
+.editor-side-tab-step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 9999px;
+  border: 1.5px solid #0f172a;
+  background: #0f172a;
+  color: #eef2f5;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.editor-side-tab.active {
+  background: #3dd463;
+  border-color: #3dd463;
+  color: #062710;
+  box-shadow: 0 10px 24px rgba(61, 212, 99, 0.28);
+}
+
+.editor-side-tab.active .editor-side-tab-step {
+  border-color: #062710;
+  background: #062710;
+  color: #3dd463;
+}
+
+.color-chip {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.color-chip::-webkit-color-swatch-wrapper {
+  padding: 0;
+  border-radius: 8px;
+}
+
+.color-chip::-webkit-color-swatch {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+}
+
+.color-chip::-moz-color-swatch {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+}
+
+@media (max-width: 767px) {
+  .settings-panel {
+    height: auto !important;
+  }
+
+.settings-panel-content {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    padding-right: 0 !important;
+  }
+}
+
+@media (min-width: 768px) {
+  .settings-colors-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+  }
+}
+
 .preview-pill:hover {
   background-color: #e2e8f0;
 }
@@ -3201,6 +3559,40 @@ onMounted(async () => {
 }
 
 @media (max-width: 768px) {
+  .editor-topbar {
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .editor-topbar-left {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .editor-breadcrumb {
+    display: inline;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .editor-divider {
+    display: inline;
+  }
+
+  .editor-page-title {
+    font-size: 24px;
+    line-height: 1.15;
+    flex: 1 1 auto;
+    min-width: 0;
+    white-space: normal;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow-wrap: anywhere;
+  }
+
   :global(.page-editor-view input),
   :global(.page-editor-view textarea),
   :global(.page-editor-view select) {

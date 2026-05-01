@@ -14,6 +14,8 @@ from app.models.agency_user import AgencyUser
 from app.models.user import User
 from app.models.user_session import UserSession
 from app.schemas.user import TokenData
+from app.services.permissions import permission_required_for_path
+from app.services.team import ensure_legacy_owner_context, get_user_effective_permissions
 from app.services.trial import sync_trial_status
 from app.services.session_monitor import summarize_user_agent
 
@@ -51,6 +53,7 @@ def get_current_user(request: Request, db: Session = Depends(get_db), token: str
     user = db.query(User).filter(User.id == session.user_id).first()
     if user is None:
         raise credentials_exception
+    ensure_legacy_owner_context(db, user)
     now = datetime.now(timezone.utc)
     if session.expires_at and session.expires_at < now:
         raise credentials_exception
@@ -68,6 +71,11 @@ def get_current_user(request: Request, db: Session = Depends(get_db), token: str
     db.add(session)
     db.commit()
     sync_trial_status(user, db)
+    required_permission = permission_required_for_path(request.url.path or "")
+    if required_permission and not user.is_superuser:
+        effective_permissions = set(get_user_effective_permissions(db, user, user.primary_agency_id))
+        if required_permission not in effective_permissions:
+            raise HTTPException(status_code=403, detail="Você não tem permissão para acessar esta área.")
     return user
 
 
