@@ -3559,6 +3559,15 @@ onMounted(async () => {
 }
 
 @media (max-width: 768px) {
+  .page-editor-view,
+  .editor-settings-shell,
+  .settings-panel,
+  .settings-panel-content {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
   .editor-topbar {
     align-items: flex-start;
     gap: 8px;
@@ -3597,22 +3606,70 @@ onMounted(async () => {
   :global(.page-editor-view textarea),
   :global(.page-editor-view select) {
     font-size: 16px;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   .slug-row {
     min-width: 0;
+    max-width: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 40%) minmax(0, 60%);
   }
 
   .slug-prefix {
-    max-width: 64%;
+    max-width: 100%;
+    font-size: 14px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
   .slug-input {
+    min-width: 0 !important;
+    width: 100%;
+    max-width: 100%;
+    font-size: 15px;
+  }
+
+  .settings-panel textarea {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+    font-size: 15px !important;
+    line-height: 1.4 !important;
+  }
+
+  .editor-side-tab {
     min-width: 0;
-    flex: 1 1 auto;
+    overflow: hidden;
+  }
+
+  .editor-side-tab > span:last-child {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 420px) {
+  .slug-prefix {
+    max-width: 100%;
+    padding-left: 10px;
+    padding-right: 10px;
+    font-size: 13px;
+  }
+
+  .slug-input {
+    min-width: 0 !important;
+    width: 100%;
   }
 }
 </style>
