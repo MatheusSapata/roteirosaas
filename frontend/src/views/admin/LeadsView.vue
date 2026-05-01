@@ -286,7 +286,7 @@
 
 
           <section
-            v-if="activeTab === 'contacts'"
+            v-else-if="activeTab === 'contacts'"
             ref="contactsSectionRef"
             class="flex min-h-0 flex-1 flex-col gap-6 overflow-hidden"
             :style="contactViewMode === 'kanban' ? { height: kanbanViewportHeight, maxHeight: kanbanViewportHeight } : undefined"
@@ -358,28 +358,32 @@
 
 
 
-                <div class="mb-3 flex flex-wrap items-center gap-2">
-                  <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">{{ viewCopy.filters.opportunity.stateLabel }}</span>
-                  <select
-                    v-model="opportunityStateFilter"
-                    class="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm outline-none transition focus:border-slate-300 focus:ring-0 dark:border-white/10 dark:bg-[#111319] dark:text-white"
-                  >
-                    <option value="all">{{ viewCopy.filters.opportunity.all }}</option>
-                    <option value="open">{{ viewCopy.filters.opportunity.open }}</option>
-                    <option value="closed">{{ viewCopy.filters.opportunity.closed }}</option>
-                  </select>
+                <div class="opportunity-filters mb-3">
+                  <div class="opportunity-filter-item">
+                    <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">{{ viewCopy.filters.opportunity.stateLabel }}</span>
+                    <select
+                      v-model="opportunityStateFilter"
+                      class="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm outline-none transition focus:border-slate-300 focus:ring-0 dark:border-white/10 dark:bg-[#111319] dark:text-white"
+                    >
+                      <option value="all">{{ viewCopy.filters.opportunity.all }}</option>
+                      <option value="open">{{ viewCopy.filters.opportunity.open }}</option>
+                      <option value="closed">{{ viewCopy.filters.opportunity.closed }}</option>
+                    </select>
+                  </div>
 
-                  <span class="ml-1 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">{{ viewCopy.filters.opportunity.outcomeLabel }}</span>
-                  <select
-                    v-model="opportunityOutcomeFilter"
-                    class="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm outline-none transition focus:border-slate-300 focus:ring-0 dark:border-white/10 dark:bg-[#111319] dark:text-white"
-                  >
-                    <option value="all">{{ viewCopy.filters.opportunity.all }}</option>
-                    <option value="won">{{ viewCopy.filters.opportunity.won }}</option>
-                    <option value="lost">{{ viewCopy.filters.opportunity.lost }}</option>
-                  </select>
+                  <div class="opportunity-filter-item">
+                    <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">{{ viewCopy.filters.opportunity.outcomeLabel }}</span>
+                    <select
+                      v-model="opportunityOutcomeFilter"
+                      class="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm outline-none transition focus:border-slate-300 focus:ring-0 dark:border-white/10 dark:bg-[#111319] dark:text-white"
+                    >
+                      <option value="all">{{ viewCopy.filters.opportunity.all }}</option>
+                      <option value="won">{{ viewCopy.filters.opportunity.won }}</option>
+                      <option value="lost">{{ viewCopy.filters.opportunity.lost }}</option>
+                    </select>
+                  </div>
 
-                  <div v-if="hasActiveFilters" class="ml-auto flex items-center gap-2 text-xs text-slate-500 dark:text-slate-300">
+                  <div v-if="hasActiveFilters" class="opportunity-filter-active flex items-center gap-2 text-xs text-slate-500 dark:text-slate-300">
                     <span>{{ filterCopy.active }}</span>
                     <button
                       type="button"
@@ -6774,6 +6778,24 @@ watch(
   margin-top: 0.35rem;
 }
 
+.opportunity-filters {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, max-content));
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.opportunity-filter-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.opportunity-filter-active {
+  justify-self: end;
+}
+
 @media (max-width: 920px) {
   .forms-kpi-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -6831,6 +6853,26 @@ watch(
 
   .page-actions {
     margin-left: 0;
+  }
+
+  .opportunity-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .opportunity-filter-item {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .opportunity-filter-item select {
+    width: 100%;
+  }
+
+  .opportunity-filter-active {
+    grid-column: 1 / -1;
+    justify-self: start;
   }
 }
 

@@ -25,7 +25,7 @@
               <label class="fl">{{ viewCopy.general.nameLabel }}</label>
               <input v-model="form.name" class="fi" />
             </div>
-            <div class="fg">
+            <div class="fg slug-field">
               <label class="fl">{{ viewCopy.general.slugLabel }}</label>
               <div class="ig">
                 <span class="ig-pre">roteiroonline.com/</span>
@@ -874,18 +874,18 @@ onBeforeUnmount(() => {
 .card-sub{font-size:12px;color:var(--text-3);margin-top:2px;line-height:1.45}
 .card-body{padding:20px 22px}
 .card-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;width:100%}
-.fg{display:flex;flex-direction:column;gap:5px;margin-bottom:14px}
+.fg{display:flex;flex-direction:column;gap:5px;margin-bottom:14px;min-width:0}
 .fl{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text-3)}
 .fh{font-size:11px;color:var(--text-3);line-height:1.4;margin-top:3px}
-.fi{padding:9px 11px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:inherit;font-size:13px;color:var(--text);background:var(--surface);outline:none;transition:border-color .15s;width:100%}
+.fi{padding:9px 11px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:inherit;font-size:13px;color:var(--text);background:var(--surface);outline:none;transition:border-color .15s;width:100%;min-width:0;max-width:100%}
 .fi:focus{border-color:var(--verde-border)}
 .fs{padding:9px 11px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:inherit;font-size:13px;color:var(--text);background:var(--surface);outline:none;cursor:pointer;width:100%}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
-.ig{display:flex;border:1.5px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;transition:border-color .15s}
+.ig{display:flex;border:1.5px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;transition:border-color .15s;min-width:0;max-width:100%}
 .ig:focus-within{border-color:var(--verde-border)}
 .ig-pre{padding:9px 11px;background:var(--surface2);font-size:12px;color:var(--text-3);border-right:1.5px solid var(--border);white-space:nowrap;display:flex;align-items:center;gap:5px}
-.ig input,.ig select{flex:1;padding:9px 11px;border:none;font-family:inherit;font-size:13px;color:var(--text);background:var(--surface);outline:none}
+.ig input,.ig select{flex:1;padding:9px 11px;border:none;font-family:inherit;font-size:13px;color:var(--text);background:var(--surface);outline:none;min-width:0}
 .ig select{flex:0 0 auto;padding:9px 16px 9px 9px;border-right:1.5px solid var(--border);font-size:12px;background:var(--surface2);cursor:pointer}
 .cp-row{display:flex;align-items:center;gap:9px}
 .cp-btn{width:38px;height:38px;border-radius:8px;border:1.5px solid var(--border);cursor:pointer;padding:2px;overflow:hidden;flex-shrink:0}
@@ -908,5 +908,23 @@ onBeforeUnmount(() => {
 
 @media(max-width:900px){.page-wrap{padding:20px 16px 40px}.page-topbar{flex-direction:column;align-items:flex-start}}
 @media(max-width:768px){.card-row{grid-template-columns:1fr}}
-@media(max-width:600px){.grid2,.grid3,.social-item{grid-template-columns:1fr}}
+@media(max-width:600px){
+  .grid2,.grid3,.social-item{grid-template-columns:1fr}
+  .card-head,.card-body{padding-left:14px;padding-right:14px}
+  .slug-field .ig{flex-direction:row}
+  .slug-field .ig-pre{
+    flex:0 0 58%;
+    max-width:58%;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    border-right:1.5px solid var(--border);
+    border-bottom:none;
+  }
+  .slug-field .ig input{
+    flex:0 0 42%;
+    max-width:42%;
+    min-width:0;
+  }
+}
 </style>
