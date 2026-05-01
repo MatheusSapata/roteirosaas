@@ -1,270 +1,198 @@
-<template>
+﻿<template>
   <div v-if="isBootstrappingDomains" class="flex min-h-[60vh] w-full items-center justify-center px-4 py-8">
     <div class="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-brand"></div>
   </div>
-  <div v-else class="relative w-full">
-    <div
-      class="space-y-6"
-      :class="{ 'select-none opacity-60 blur-sm': !domainsAllowed }"
-    >
-      <div class="space-y-2 md:pl-2">
-        <h1 class="text-2xl font-bold text-slate-900">{{ viewCopy.hero.title }}</h1>
-        <p class="mt-2 text-sm text-slate-600">
-          {{ viewCopy.hero.description(platformExample) }}
-        </p>
+  <div v-else class="relative w-full domains-premium">
+    <div class="page-wrap">
+      <div class="space-y-1">
+        <h1 class="page-title">{{ viewCopy.hero.title }}</h1>
+        <p class="page-sub">Conecte seu domínio para usar sua marca nas páginas.</p>
       </div>
 
-    <div v-if="!currentAgencyId" class="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-amber-900">
-      <p class="font-semibold">{{ viewCopy.noAgency.title }}</p>
-      <p class="text-sm mt-1">{{ viewCopy.noAgency.helper }}</p>
-    </div>
+      <div
+        class="space-y-6"
+        :class="{ 'select-none opacity-60 blur-sm': !domainsAllowed }"
+      >
+        <div v-if="!currentAgencyId" class="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-amber-900">
+          <p class="font-semibold">{{ viewCopy.noAgency.title }}</p>
+          <p class="mt-1 text-sm">{{ viewCopy.noAgency.helper }}</p>
+        </div>
 
-    <div v-else class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
-      <div class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
-        <h2 class="text-lg font-semibold text-slate-900">{{ viewCopy.form.title }}</h2>
-        <p class="text-sm text-slate-500">
-          {{ viewCopy.form.examplePrefix }}
-          <span class="font-mono">www.suaagencia.com</span>&nbsp;{{ viewCopy.form.exampleOr }}&nbsp;<span class="font-mono">roteiros.suaagencia.com</span>
-        </p>
-        <form class="mt-4 space-y-4" @submit.prevent="createDomain">
-          <div>
-            <label class="text-sm font-medium text-slate-700">{{ viewCopy.form.hostLabel }}</label>
-            <input
-              v-model="form.host"
-              type="text"
-              :placeholder="viewCopy.form.hostPlaceholder"
-              class="host-input mt-1 w-full rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-white focus:border-[#3EBD59] focus:outline-none focus:ring-1 focus:ring-[#3EBD59]/40"
-              :disabled="creating || loadingDomains"
-            />
-          </div>
-          <label class="flex items-center gap-2 text-sm text-slate-700">
-            <input
-              v-model="form.is_primary"
-              type="checkbox"
-              class="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-              :disabled="creating || loadingDomains"
-            />
-            {{ viewCopy.form.primaryOption }}
-          </label>
-          <div class="space-y-2 text-sm">
-<button
-              type="submit"
-              class="inline-flex w-full items-center justify-center rounded-xl bg-[#3EBD59] px-4 py-2 font-semibold text-white shadow-sm transition hover:bg-[#34a04c] disabled:cursor-not-allowed disabled:bg-[#3EBD59]/60"
-              :disabled="creating || loadingDomains"
-            >
-              <span v-if="creating" class="animate-pulse">{{ viewCopy.form.submitSaving }}</span>
-              <span v-else>{{ viewCopy.form.submitLabel }}</span>
-            </button>
-            <p v-if="formError" class="text-sm text-red-600">{{ formError }}</p>
-            <p v-if="formSuccess" class="text-sm text-emerald-600">{{ formSuccess }}</p>
-          </div>
-        </form>
-        <div class="mt-6 rounded-xl border border-slate-100 bg-slate-50 p-4 text-sm text-slate-600">
-          <p class="font-semibold text-slate-800">{{ viewCopy.tips.title }}</p>
-          <ul class="mt-2 list-disc space-y-1 pl-5">
-            <li>
-              {{ viewCopy.tips.subdomainPrefix }}
-              <span class="font-mono">roteiros.suaagencia.com</span>
-              {{ viewCopy.tips.subdomainSuffix }}
-            </li>
-            <li>
-              {{ viewCopy.tips.protocolPrefix }} <span class="font-mono">http://</span> {{ viewCopy.tips.protocolSuffix }}
-            </li>
-            <li>{{ viewCopy.tips.reserved(platformExample) }}</li>
-          </ul>
-        </div>
-      </div>
+        <div v-else class="main-grid">
+          <section class="space-y-3">
+            <div class="list-card">
+              <h2 class="card-title">{{ viewCopy.form.title }}</h2>
+              <form class="mt-4 space-y-3" @submit.prevent="createDomain">
+                <div class="space-y-1.5">
+                  <label class="field-label">{{ viewCopy.form.hostLabel }}</label>
+                  <input
+                    v-model="form.host"
+                    type="text"
+                    :placeholder="viewCopy.form.hostPlaceholder"
+                    class="fi"
+                    :disabled="creating || loadingDomains"
+                  />
+                  <p class="helper-text">Use apenas o domínio</p>
+                </div>
+                <label class="inline-check">
+                  <input
+                    v-model="form.is_primary"
+                    type="checkbox"
+                    class="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                    :disabled="creating || loadingDomains"
+                  />
+                  {{ viewCopy.form.primaryOption }}
+                </label>
+                <div class="space-y-2">
+                  <button type="submit" class="btn btn-p w-full justify-center" :disabled="creating || loadingDomains">
+                    <span v-if="creating">{{ viewCopy.form.submitSaving }}</span>
+                    <span v-else>{{ viewCopy.form.submitLabel }}</span>
+                  </button>
+                  <p v-if="formError" class="err-msg">{{ formError }}</p>
+                  <p v-if="formSuccess" class="ok-msg">{{ formSuccess }}</p>
+                </div>
+              </form>
+            </div>
 
-      <div class="space-y-4 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 dark:bg-[#202020] dark:ring-slate-800">
-        <div class="flex items-center justify-between">
-          <div>
-            <h2 class="text-lg font-semibold text-slate-900">{{ viewCopy.list.title }}</h2>
-            <p class="text-sm text-slate-500">
-              {{ viewCopy.list.currentAgencyLabel }}&nbsp;<span class="font-semibold text-slate-700">{{ currentAgencyName }}</span>
-            </p>
-          </div>
-          <button
-            type="button"
-            class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 hover:border-slate-300 dark:border-slate-600 dark:text-slate-200 dark:hover:border-slate-500"
-            @click="fetchDomains"
-            :disabled="loadingDomains"
-          >
-            {{ viewCopy.list.refresh }}
-          </button>
-        </div>
-        <div
-          v-if="listError"
-          class="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-200"
-        >
-          {{ listError }}
-        </div>
-        <div
-          v-if="loadingDomains"
-          class="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-300"
-        >
-          {{ viewCopy.list.loading }}
-        </div>
-        <div
-          v-else-if="!domains.length"
-          class="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400"
-        >
-          {{ viewCopy.list.empty }}
-        </div>
-        <div v-else class="space-y-4">
-          <div
-            v-for="domain in domains"
-            :key="domain.id"
-            class="rounded-2xl border border-slate-100 bg-slate-50/70 p-4 shadow-sm dark:border-slate-800 dark:bg-[#05070F]"
-          >
-            <div class="flex flex-wrap items-start justify-between gap-3">
+            <details class="list-card tips-card">
+              <summary class="tips-summary">{{ viewCopy.tips.title }}</summary>
+              <ul class="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600">
+                <li>{{ viewCopy.tips.subdomainPrefix }} <span class="font-mono">roteiros.suaagencia.com</span> {{ viewCopy.tips.subdomainSuffix }}</li>
+                <li>{{ viewCopy.tips.protocolPrefix }} <span class="font-mono">http://</span> {{ viewCopy.tips.protocolSuffix }}</li>
+                <li>{{ viewCopy.tips.reserved(platformExample) }}</li>
+              </ul>
+            </details>
+          </section>
+
+          <section class="list-card">
+            <div class="list-header">
               <div>
-                <p class="text-lg font-semibold text-slate-900">{{ domain.host }}</p>
-                <p class="text-xs text-slate-500">{{ viewCopy.domainInfo.createdAt }} {{ formatDate(domain.created_at) }}</p>
-              </div>
-              <div class="flex flex-wrap gap-2">
-                <span
-                  v-for="badge in buildStatusBadges(domain)"
-                  :key="badge.label"
-                  :class="[
-                    'rounded-full px-3 py-1 text-xs font-semibold',
-                    badge.variant === 'active' ? 'bg-[#3EBD59] text-white dark:bg-[#34a04c]' :
-                    badge.variant === 'success' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-100' :
-                    badge.variant === 'warning' ? 'bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-100' :
-                    badge.variant === 'info' ? 'bg-sky-100 text-sky-800 dark:bg-sky-500/20 dark:text-sky-100' :
-                    badge.variant === 'danger' ? 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-100' : 'bg-slate-200 text-slate-700 dark:bg-slate-600/30 dark:text-slate-100'
-                  ]"
-                >
-                  {{ badge.label }}
-                </span>
-              </div>
-            </div>
-
-            <div
-              v-if="domain.ssl_last_error"
-              class="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-200"
-            >
-              {{ domain.ssl_last_error }}
-            </div>
-
-            <div v-if="domainMessages[domain.id]" class="mt-2 text-xs text-emerald-700 dark:text-emerald-300">
-              {{ domainMessages[domain.id] }}
-            </div>
-
-            <div class="mt-4 grid gap-4 md:grid-cols-2">
-              <div class="rounded-xl border border-slate-200 bg-white/80 p-3 text-sm dark:border-slate-800 dark:bg-[#05070F]">
-                <p class="font-semibold text-slate-900">{{ viewCopy.domainInfo.verificationTitle }}</p>
-                <p class="text-xs text-slate-500">
-                  {{ viewCopy.domainInfo.hostLabel }}
-                  <span class="font-mono text-slate-800">{{ domain.instructions?.verification.host }}</span>
-                </p>
-                <p class="text-xs text-slate-500">
-                  {{ viewCopy.domainInfo.valueLabel }}
-                  <span class="font-mono text-slate-800">{{ domain.verification_token }}</span>
-                </p>
-                <p class="text-xs text-slate-500">{{ viewCopy.domainInfo.fqdnLabel }} {{ domain.instructions?.verification.fqdn }}</p>
-                <p v-if="domain.instructions?.verification.description" class="mt-1 text-xs text-slate-500">
-                  {{ domain.instructions?.verification.description }}
+                <h2 class="card-title">{{ viewCopy.list.title }}</h2>
+                <p class="text-sm text-slate-500">
+                  {{ viewCopy.list.currentAgencyLabel }} <span class="font-semibold text-slate-700">{{ currentAgencyName }}</span>
                 </p>
               </div>
-              <div class="rounded-xl border border-slate-200 bg-white/80 p-3 text-sm dark:border-slate-800 dark:bg-[#05070F]">
-                <p class="font-semibold text-slate-900">
-                  {{ viewCopy.domainInfo.targetTitle }} ({{ domain.instructions?.target.type }})
-                </p>
-                <p class="text-xs text-slate-500">
-                  {{ viewCopy.domainInfo.hostLabel }}
-                  <span class="font-mono text-slate-800">{{ domain.instructions?.target.host }}</span>
-                </p>
-                <p class="text-xs text-slate-500">
-                  {{ viewCopy.domainInfo.valueLabel }}
-                  <span class="font-mono text-slate-800">{{ domain.instructions?.target.value }}</span>
-                </p>
-                <p class="text-xs text-slate-500">{{ viewCopy.domainInfo.typeLabel }} {{ domain.instructions?.target.type }}</p>
-                <p v-if="domain.instructions?.target.description" class="mt-1 text-xs text-slate-500">
-                  {{ domain.instructions?.target.description }}
-                </p>
-              </div>
+              <button
+                type="button"
+                class="btn btn-o btn-sm"
+                @click="fetchDomains"
+                :disabled="loadingDomains"
+              >
+                {{ viewCopy.list.refresh }}
+              </button>
             </div>
 
-            <div class="mt-4 flex flex-wrap gap-2 text-sm">
-              <button
-                type="button"
-                class="rounded-xl border border-slate-300 px-3 py-1 font-semibold text-slate-700 hover:border-slate-400 disabled:opacity-50 dark:border-slate-600 dark:text-slate-100"
-                :disabled="isActionRunning(domain.id)"
-                @click="verifyDomain(domain)"
-              >
-                {{ isActionRunning(domain.id, 'verify') ? viewCopy.actions.verifying : viewCopy.actions.verify }}
-              </button>
-              <button
-                v-if="!domain.is_active"
-                type="button"
-                class="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1 font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-100 dark:hover:bg-emerald-500/20"
-                :disabled="isActionRunning(domain.id) || !domain.is_verified"
-                @click="activateDomain(domain)"
-              >
-                {{ isActionRunning(domain.id, 'activate') ? viewCopy.actions.activating : viewCopy.actions.activate }}
-              </button>
-              <button
-                v-else
-                type="button"
-                class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-1 font-semibold text-amber-700 hover:bg-amber-100 disabled:opacity-50 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100 dark:hover:bg-amber-500/20"
-                :disabled="isActionRunning(domain.id)"
-                @click="deactivateDomain(domain)"
-              >
-                {{ isActionRunning(domain.id, 'deactivate') ? viewCopy.actions.deactivating : viewCopy.actions.deactivate }}
-              </button>
-              <button
-                type="button"
-                class="rounded-xl border border-sky-200 bg-sky-50 px-3 py-1 font-semibold text-sky-700 hover:bg-sky-100 disabled:opacity-50 dark:border-sky-500/40 dark:bg-sky-500/10 dark:text-sky-100 dark:hover:bg-sky-500/20"
-                :disabled="isActionRunning(domain.id) || domain.is_primary"
-                @click="setPrimary(domain)"
-              >
-                {{ isActionRunning(domain.id, 'primary') ? viewCopy.actions.primarying : viewCopy.actions.setPrimary }}
-              </button>
-              <button
-                type="button"
-                class="rounded-xl border border-red-200 bg-red-50 px-3 py-1 font-semibold text-red-700 hover:bg-red-100 disabled:opacity-50 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-100 dark:hover:bg-red-500/20"
-                :disabled="isActionRunning(domain.id) || domain.is_active"
-                @click="removeDomain(domain)"
-              >
-                {{ isActionRunning(domain.id, 'delete') ? viewCopy.actions.deleting : viewCopy.actions.delete }}
-              </button>
+            <div v-if="listError" class="alert-error">
+              {{ listError }}
             </div>
-          </div>
+            <div v-if="loadingDomains" class="alert-muted">
+              {{ viewCopy.list.loading }}
+            </div>
+            <div v-else-if="!domains.length" class="alert-empty">
+              {{ viewCopy.list.empty }}
+            </div>
+
+            <div v-else class="domain-list">
+              <article v-for="domain in domains" :key="domain.id" class="domain-item">
+                <div class="domain-head">
+                  <div class="domain-ident">
+                    <p class="domain-host">🌐 {{ domain.host }}</p>
+                    <span :class="domain.is_active ? 'badge badge-green' : 'badge badge-muted'">
+                      {{ domain.is_active ? viewCopy.statuses.active : viewCopy.statuses.inactive }}
+                    </span>
+                    <span v-if="domain.is_primary" class="badge badge-info">{{ viewCopy.statuses.primary }}</span>
+                  </div>
+                  <p class="domain-meta">{{ viewCopy.domainInfo.createdAt }} {{ formatDate(domain.created_at) }}</p>
+                </div>
+
+                <div class="status-row">
+                  <span class="status-label">Status:</span>
+                  <span class="badge badge-warn">{{ domain.is_verified ? "DNS verificado" : "DNS pendente" }}</span>
+                  <span :class="domain.ssl_status === 'issued' ? 'badge badge-green' : 'badge badge-ssl'">
+                    {{ domain.ssl_status === "issued" ? "SSL pronto" : "SSL aguardando" }}
+                  </span>
+                </div>
+
+                <div class="step-title">Configuração necessária</div>
+                <div class="steps-grid">
+                  <div class="step-card">
+                    <p class="step-label">Passo 1</p>
+                    <p class="step-name">Adicionar registro TXT</p>
+                    <div class="step-meta">
+                      <p><span>Host:</span> <strong>{{ domain.instructions?.verification.host || "-" }}</strong></p>
+                      <p><span>Valor:</span> <strong>{{ domain.verification_token || "-" }}</strong></p>
+                      <p><span>FQDN:</span> <strong>{{ domain.instructions?.verification.fqdn || "-" }}</strong></p>
+                    </div>
+                    <p class="step-value">{{ domain.verification_token }}</p>
+                    <button type="button" class="step-copy-btn" @click="copyText(domain.verification_token, `txt-${domain.id}`)">Copiar</button>
+                    <p v-if="copiedState[`txt-${domain.id}`]" class="copy-ok">Copiado!</p>
+                  </div>
+                  <div class="step-card">
+                    <p class="step-label">Passo 2</p>
+                    <p class="step-name">Configurar {{ domain.instructions?.target.type || "CNAME" }}</p>
+                    <div class="step-meta">
+                      <p><span>Host:</span> <strong>{{ domain.instructions?.target.host || "-" }}</strong></p>
+                      <p><span>Valor:</span> <strong>{{ domain.instructions?.target.value || "-" }}</strong></p>
+                      <p><span>Tipo:</span> <strong>{{ domain.instructions?.target.type || "-" }}</strong></p>
+                    </div>
+                    <p class="step-value">{{ domain.instructions?.target.value || "-" }}</p>
+                    <p class="step-hint" v-if="domain.instructions?.target.type === 'CNAME'">Use apenas "www" como host/subdomínio.</p>
+                    <button type="button" class="step-copy-btn" @click="copyText(domain.instructions?.target.value || '', `target-${domain.id}`)">Copiar</button>
+                    <p v-if="copiedState[`target-${domain.id}`]" class="copy-ok">Copiado!</p>
+                  </div>
+                </div>
+
+                <div v-if="domain.ssl_last_error" class="alert-error mt-3">
+                  {{ domain.ssl_last_error }}
+                </div>
+                <div v-if="domainMessages[domain.id]" class="ok-msg mt-2">
+                  {{ domainMessages[domain.id] }}
+                </div>
+
+                <div class="domain-actions">
+                  <button type="button" class="btn btn-p btn-sm" :disabled="isActionRunning(domain.id)" @click="verifyDomain(domain)">
+                    {{ isActionRunning(domain.id, 'verify') ? viewCopy.actions.verifying : viewCopy.actions.verify }}
+                  </button>
+                  <button
+                    v-if="!domain.is_active"
+                    type="button"
+                    class="btn btn-o btn-sm"
+                    :disabled="isActionRunning(domain.id) || !domain.is_verified"
+                    @click="activateDomain(domain)"
+                  >
+                    {{ isActionRunning(domain.id, 'activate') ? viewCopy.actions.activating : viewCopy.actions.activate }}
+                  </button>
+                  <button
+                    v-else
+                    type="button"
+                    class="btn btn-o btn-sm"
+                    :disabled="isActionRunning(domain.id)"
+                    @click="deactivateDomain(domain)"
+                  >
+                    {{ isActionRunning(domain.id, 'deactivate') ? viewCopy.actions.deactivating : viewCopy.actions.deactivate }}
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-o btn-sm"
+                    :disabled="isActionRunning(domain.id) || domain.is_primary"
+                    @click="setPrimary(domain)"
+                  >
+                    {{ isActionRunning(domain.id, 'primary') ? viewCopy.actions.primarying : viewCopy.actions.setPrimary }}
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-danger btn-sm"
+                    :disabled="isActionRunning(domain.id) || domain.is_active"
+                    @click="removeDomain(domain)"
+                  >
+                    {{ isActionRunning(domain.id, 'delete') ? viewCopy.actions.deleting : viewCopy.actions.delete }}
+                  </button>
+                </div>
+              </article>
+            </div>
+          </section>
         </div>
       </div>
-    </div>
-
-    <div class="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
-      <h2 class="text-lg font-semibold text-slate-900">{{ viewCopy.dnsGuide.title }}</h2>
-      <div class="mt-3 grid gap-6 md:grid-cols-2">
-        <div class="space-y-2 text-sm text-slate-600">
-          <p class="font-semibold text-slate-800">{{ viewCopy.dnsGuide.subdomainTitle }}</p>
-          <ul class="list-disc space-y-1 pl-5">
-            <li>
-              {{ viewCopy.dnsGuide.subdomainHostPrefix }}
-              <span class="font-mono">www</span>&nbsp;{{ viewCopy.dnsGuide.subdomainHostConnector }}&nbsp;<span class="font-mono">roteiros</span>.
-            </li>
-            <li>
-              {{ viewCopy.dnsGuide.subdomainCname }} <span class="font-mono">{{ cnameTarget }}</span>.
-            </li>
-            <li>{{ viewCopy.dnsGuide.subdomainTxt }}</li>
-          </ul>
-        </div>
-        <div class="space-y-2 text-sm text-slate-600">
-          <p class="font-semibold text-slate-800">{{ viewCopy.dnsGuide.apexTitle }}</p>
-          <ul class="list-disc space-y-1 pl-5">
-            <li>{{ viewCopy.dnsGuide.apexRecord }}</li>
-            <li>
-              {{ viewCopy.dnsGuide.apexValuePrefix }}<span class="font-mono">{{ apexTarget }}</span>{{ viewCopy.dnsGuide.apexValueSuffix }}
-            </li>
-            <li>{{ viewCopy.dnsGuide.apexTxt }}</li>
-          </ul>
-        </div>
-      </div>
-      <p class="mt-4 text-sm text-slate-600">
-        {{ viewCopy.dnsGuide.footer }}
-      </p>
-    </div>
     </div>
     <div
       v-if="!domainsAllowed"
@@ -295,6 +223,7 @@ import api from "../../services/api";
 import { useAgencyStore } from "../../store/useAgencyStore";
 import { useAuthStore } from "../../store/useAuthStore";
 import { createAdminLocalizer } from "../../utils/adminI18n";
+import { canAccessPermission } from "../../utils/permissions";
 
 interface DnsRecordInstruction {
   type: string;
@@ -500,12 +429,16 @@ const formSuccess = ref("");
 const creating = ref(false);
 const actionState = ref<string | null>(null);
 const domainMessages = ref<Record<number, string>>({});
+const copiedState = ref<Record<string, boolean>>({});
 
-const allowedDomainPlans = ["teste", "infinity"];
-const currentPlan = computed(() =>
-  (auth.user?.trial_plan || auth.user?.plan || "").toLowerCase()
+const domainsAllowed = computed(() =>
+  canAccessPermission("domains", {
+    isOwner: auth.user?.is_owner,
+    selected: auth.user?.permissions || [],
+    plan: auth.user?.trial_plan || auth.user?.plan || null,
+    effective: auth.user?.effective_permissions || []
+  })
 );
-const domainsAllowed = computed(() => allowedDomainPlans.includes(currentPlan.value));
 const currentAgencyId = computed(() => agencyStore.currentAgencyId);
 const currentAgencyName = computed(() => {
   const agency = agencyStore.agencies.find(a => a.id === agencyStore.currentAgencyId);
@@ -690,6 +623,19 @@ const formatDate = (value?: string | null) => {
   }
 };
 
+const copyText = async (value: string, key: string) => {
+  if (!value) return;
+  try {
+    await navigator.clipboard.writeText(value);
+    copiedState.value = { ...copiedState.value, [key]: true };
+    setTimeout(() => {
+      copiedState.value = { ...copiedState.value, [key]: false };
+    }, 1200);
+  } catch (err) {
+    console.error(err);
+  }
+};
+
 onMounted(async () => {
   try {
     if (!agencyStore.agencies.length) {
@@ -725,10 +671,71 @@ watch(domainsAllowed, allowed => {
 </script>
 
 <style scoped>
-:global(.dark-theme .host-input) {
-  background-color: #05070f;
-  color: #f8fafc;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+.domains-premium {
+  --verde:#3DCC5F;--verde-d:#2EAD4C;--verde-dim:rgba(61,204,95,.10);--verde-border:rgba(61,204,95,.22);
+  --surface:#fff;--surface2:#F5F7F5;--border:#E4E9E4;--text:#111A14;--text-2:#4A5E4A;--text-3:#8A9E8A;
+  --sh-sm:0 1px 3px rgba(0,0,0,.05),0 1px 2px rgba(0,0,0,.03);
+  --radius:12px;--radius-sm:8px;
 }
+.page-wrap{padding:28px 32px 64px;width:100%;max-width:1200px}
+.page-title{font-size:24px;font-weight:800;color:var(--text);letter-spacing:-.3px;line-height:1.2}
+.page-sub{font-size:13px;color:var(--text-3);margin-top:4px}
+.main-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.45fr);gap:12px;align-items:start}
+.list-card{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:var(--sh-sm)}
+.card-title{font-size:16px;font-weight:800;color:var(--text);letter-spacing:-.2px}
+.field-label{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text-3)}
+.helper-text{font-size:12px;color:var(--text-3)}
+.inline-check{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-2)}
+.fi{padding:9px 11px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:inherit;font-size:13px;color:var(--text);background:var(--surface);outline:none;transition:border-color .15s;width:100%}
+.fi:focus{border-color:var(--verde-border)}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:999px;font-size:13px;font-weight:700;cursor:pointer;border:none;font-family:inherit;transition:all .15s;white-space:nowrap;line-height:1.3}
+.btn-sm{padding:6px 12px;font-size:12px}
+.btn-p{background:var(--verde);color:#0F1F14}
+.btn-p:hover{background:var(--verde-d)}
+.btn-o{background:#fff;border:1px solid var(--border);color:var(--text-2)}
+.btn-o:hover{border-color:#cbd6cb;color:var(--text)}
+.btn-danger{background:#fff6f6;border:1px solid #f3caca;color:#c0392b}
+.btn-danger:hover{background:#ffeaea}
+.ok-msg{font-size:12px;color:#1a7a35;font-weight:600}
+.err-msg{font-size:12px;color:#c0392b;font-weight:600}
+.tips-card{padding-top:12px;padding-bottom:12px}
+.tips-summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--text-2)}
+.list-header{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px}
+.alert-error{border:1px solid #fecaca;background:#fef2f2;color:#b91c1c;border-radius:10px;padding:10px;font-size:12px}
+.alert-muted{border:1px solid var(--border);background:var(--surface2);color:var(--text-2);border-radius:10px;padding:12px;font-size:13px}
+.alert-empty{border:1px dashed var(--border);background:var(--surface2);color:var(--text-3);border-radius:10px;padding:14px;font-size:13px}
+.domain-list{display:flex;flex-direction:column;gap:12px}
+.domain-item{border:1px solid var(--border);border-radius:12px;background:var(--surface2);padding:16px;transition:.15s}
+.domain-item:hover{background:#eef3ee}
+.domain-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.domain-ident{display:flex;align-items:center;flex-wrap:wrap;gap:6px}
+.domain-host{font-size:18px;font-weight:800;color:var(--text);letter-spacing:-.2px}
+.domain-meta{font-size:12px;color:var(--text-3);margin-top:4px}
+.status-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px}
+.status-label{font-size:12px;font-weight:700;color:var(--text-2)}
+.step-title{font-size:12px;font-weight:700;color:var(--text-2);margin-top:12px}
+.steps-grid{margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.step-card{border:1px solid var(--border);border-radius:10px;background:#fff;padding:12px}
+.step-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3)}
+.step-name{font-size:12px;font-weight:700;color:var(--text);margin-top:2px}
+.step-meta{margin-top:6px;display:grid;gap:2px}
+.step-meta p{font-size:12px;color:var(--text-2);line-height:1.35}
+.step-meta span{color:var(--text-3);font-weight:600}
+.step-meta strong{font-weight:700;color:var(--text)}
+.step-value{margin-top:6px;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);font-size:12px;color:var(--text);font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;word-break:break-all}
+.step-hint{margin-top:6px;font-size:11px;color:var(--text-3)}
+.step-copy-btn{margin-top:8px;display:inline-flex;align-items:center;justify-content:center;border:none;background:var(--verde);color:#0F1F14;border-radius:999px;padding:5px 10px;font-size:11px;font-weight:700;transition:.15s}
+.step-copy-btn:hover{background:var(--verde-d)}
+.copy-ok{margin-top:4px;font-size:11px;color:#1a7a35;font-weight:700}
+.domain-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:700;line-height:1.4}
+.badge-green{background:var(--verde-dim);color:#1A7A35;border:1.5px solid var(--verde-border)}
+.badge-info{background:#e8f3ff;color:#1d5d99;border:1px solid #cde4ff}
+.badge-muted{background:#e9eeea;color:#5f6f5f;border:1px solid var(--border)}
+.badge-warn{background:#fff1da;color:#ad6a00;border:1px solid #ffd9a1}
+.badge-ssl{background:#f1eefb;color:#5f4aa6;border:1px solid #ded6fb}
+@media(max-width:1000px){.main-grid{grid-template-columns:1fr}}
+@media(max-width:900px){.page-wrap{padding:20px 16px 40px}}
+@media(max-width:640px){.steps-grid{grid-template-columns:1fr}}
 </style>
 

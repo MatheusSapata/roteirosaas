@@ -1,291 +1,241 @@
-<template>
+﻿<template>
   <div v-if="isBootstrappingProfile" class="flex min-h-[60vh] w-full items-center justify-center px-4 py-8">
     <div class="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-brand"></div>
   </div>
-  <div v-else class="profile-view space-y-6">
-    <header class="flex flex-col gap-2">
-      <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">{{ viewCopy.header.eyebrow }}</p>
-      <h1 class="text-2xl font-bold text-slate-900">{{ viewCopy.header.title }}</h1>
-      <p class="text-sm text-slate-600">{{ viewCopy.header.description }}</p>
-    </header>
+  <div v-else class="profile-ref page-wrap">
+    <div class="page-eyebrow">{{ viewCopy.header.eyebrow }}</div>
+    <div class="page-title">{{ viewCopy.header.title }}</div>
+    <div class="page-sub">{{ viewCopy.header.description }}</div>
 
-    <div
-      v-if="trialInfo"
-      class="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 p-5 text-slate-800 shadow-sm md:flex-row md:items-center md:justify-between"
-    >
-      <div>
-        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-amber-600">{{ viewCopy.trial.eyebrow }}</p>
-        <h3 class="text-lg font-bold">{{ viewCopy.trial.planMessage(trialInfo.plan, trialInfo.endsAt) }}</h3>
-        <p class="text-sm text-slate-600">
-          {{ viewCopy.trial.description }}
-        </p>
+    <div class="card">
+      <div class="card-body card-body-plan">
+        <div class="subscription-top">
+          <div class="plan-left">
+            <div class="card-eye">{{ viewCopy.subscription.eyebrow }}</div>
+            <div class="card-title">{{ viewCopy.subscription.title }}</div>
+          </div>
+          <div class="plan-actions">
+            <button class="btn btn-o btn-sm" @click="goPlans">{{ viewCopy.subscription.viewPlans }}</button>
+            <button class="btn-text" :class="{ 'is-disabled': !isPaidPlan || actionLoading }" @click="cancelSubscription">
+              {{ viewCopy.subscription.cancelLink }}
+            </button>
+          </div>
+        </div>
+
+        <div class="subscription-meta">
+          <div class="meta-item">
+            <span class="meta-label">Status da assinatura</span>
+            <span class="badge badge-green"><span class="badge-dot"></span>{{ billingStatusLabel }}</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Plano atual</span>
+            <span class="badge badge-muted">{{ currentPlanLabel }}</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Tipo de ciclo</span>
+            <span class="badge badge-muted">{{ billingCycleLabel }}</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Data de renovação</span>
+            <span class="badge badge-muted">
+              {{ billing?.valid_until ? formatDate(billing?.valid_until) : "--" }}
+            </span>
+          </div>
+        </div>
       </div>
-      <button
-        class="inline-flex items-center justify-center rounded-full bg-amber-600 px-6 py-3 text-sm font-semibold text-white shadow hover:bg-amber-500"
-        @click="goPlans"
-      >
-        {{ viewCopy.trial.cta }}
-      </button>
+      <div class="card-foot notes">
+        <p v-if="message" class="ok-msg">{{ message }}</p>
+        <p v-if="error" class="err-msg">{{ error }}</p>
+      </div>
     </div>
 
-    <div class="space-y-4">
-      <div class="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm space-y-4">
-        <div class="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p class="text-xs uppercase tracking-[0.2em] text-slate-500">{{ viewCopy.subscription.eyebrow }}</p>
-            <h2 class="text-xl font-bold text-slate-900">{{ viewCopy.subscription.title }}</h2>
-            <p class="text-sm text-slate-600">{{ viewCopy.subscription.description }}</p>
-          </div>
-          <button
-            class="inline-flex items-center justify-center rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900"
-            @click="goPlans"
-          >
-            {{ viewCopy.subscription.viewPlans }}
-          </button>
+    <div class="card-row">
+      <div class="card">
+        <div class="card-head">
+          <div class="card-eye">{{ viewCopy.profileSection.eyebrow }}</div>
+          <div class="card-title">{{ viewCopy.profileSection.title }}</div>
+          <div class="card-sub">{{ viewCopy.profileSection.description }}</div>
         </div>
+        <div class="card-body">
+          <div class="profile-layout">
+            <div class="profile-top">
+              <div class="profile-photo-col">
+                <label class="fl">Foto de perfil</label>
+                <button type="button" class="profile-photo-upload" @click="openProfilePhotoEditor">
+                  <img
+                    v-if="profilePhotoPreview"
+                    :src="profilePhotoPreview"
+                    alt="Foto de perfil"
+                    class="profile-photo-img"
+                  />
+                  <div v-else class="profile-photo-empty">
+                    <span class="profile-photo-plus">+</span>
+                    <span>Enviar foto</span>
+                  </div>
+                </button>
+                <input
+                  ref="profilePhotoInputRef"
+                  type="file"
+                  accept="image/*"
+                  class="hidden"
+                  @change="onProfilePhotoSelected"
+                />
+              </div>
 
-        <div class="flex flex-wrap items-center gap-3 text-sm text-slate-600">
-          <span :class="statusBadgeClass">{{ billingStatusLabel }}</span>
-          <span class="font-semibold text-slate-900">{{ currentPlanLabel }}</span>
-          <span v-if="billing?.valid_until">{{ viewCopy.subscription.validUntilPrefix }} {{ formatDate(billing?.valid_until) }}</span>
-          <span class="text-xs uppercase tracking-[0.2em] text-slate-400">
-            {{ billingCycleLabel }}
-          </span>
-        </div>
-
-        <div class="flex flex-wrap items-center gap-3">
-          <!-- <button
-            class="inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 disabled:opacity-60"
-            style="background-color: #41ce5f"
-            :disabled="!isPaidPlan"
-            @click="toggleCardForm"
-          >
-            <span>{{ showCardForm ? "Fechar formulário" : "Atualizar cartão" }}</span>
-          </button>-->
-
-          <a
-            href="#"
-            class="text-xs font-semibold text-slate-500 underline-offset-2 hover:text-slate-700 hover:underline"
-            :class="{ 'pointer-events-none opacity-40': !isPaidPlan || actionLoading }"
-            @click.prevent="cancelSubscription"
-          >
-            {{ viewCopy.subscription.cancelLink }}
-          </a>
-        </div>
-
-        <div
-          v-if="showCardForm"
-          class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 text-sm text-slate-700"
-        >
-          <p class="mb-3 text-xs text-slate-500">
-            {{ viewCopy.cardForm.note }}
-          </p>
-
-          <div class="grid gap-4 md:grid-cols-2">
-            <label class="space-y-1 text-xs font-semibold">
-              {{ viewCopy.cardForm.fields.holderNameLabel }}
-              <input
-                v-model="cardForm.holderName"
-                type="text"
-                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none"
-                :placeholder="viewCopy.cardForm.fields.holderNamePlaceholder"
-              />
-            </label>
-
-            <label class="space-y-1 text-xs font-semibold">
-              {{ viewCopy.cardForm.fields.numberLabel }}
-              <input
-                v-model="cardForm.number"
-                type="text"
-                inputmode="numeric"
-                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none"
-                :placeholder="viewCopy.cardForm.fields.numberPlaceholder"
-              />
-            </label>
-
-            <label class="space-y-1 text-xs font-semibold">
-              {{ viewCopy.cardForm.fields.expiryMonthLabel }}
-              <input
-                v-model="cardForm.expiryMonth"
-                type="text"
-                inputmode="numeric"
-                maxlength="2"
-                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none"
-                :placeholder="viewCopy.cardForm.fields.expiryMonthPlaceholder"
-              />
-            </label>
-
-            <label class="space-y-1 text-xs font-semibold">
-              {{ viewCopy.cardForm.fields.expiryYearLabel }}
-              <input
-                v-model="cardForm.expiryYear"
-                type="text"
-                inputmode="numeric"
-                maxlength="4"
-                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none"
-                :placeholder="viewCopy.cardForm.fields.expiryYearPlaceholder"
-              />
-            </label>
-
-            <label class="space-y-1 text-xs font-semibold">
-              {{ viewCopy.cardForm.fields.ccvLabel }}
-              <input
-                v-model="cardForm.ccv"
-                type="text"
-                inputmode="numeric"
-                maxlength="4"
-                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none"
-                :placeholder="viewCopy.cardForm.fields.ccvPlaceholder"
-              />
-            </label>
-          </div>
-
-          <div class="mt-4 flex flex-wrap gap-3">
-            <button
-              class="inline-flex items-center justify-center rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500 disabled:opacity-60"
-              :disabled="cardSubmitting"
-              @click="submitCardUpdate"
-            >
-              <span v-if="cardSubmitting">{{ viewCopy.cardForm.actions.saving }}</span>
-              <span v-else>{{ viewCopy.cardForm.actions.save }}</span>
-            </button>
-
-            <button
-              type="button"
-              class="text-xs font-semibold text-slate-500 hover:text-slate-700"
-              @click="resetCardForm"
-            >
-              {{ viewCopy.cardForm.actions.reset }}
-            </button>
+              <div class="profile-identity-col">
+                <div class="fg">
+                  <label class="fl">{{ viewCopy.profileSection.fields.nameLabel }}</label>
+                  <input v-model="profileForm.name" class="fi" type="text" :placeholder="viewCopy.profileSection.fields.namePlaceholder" />
+                </div>
+                <div class="profile-cpf-phone-row">
+                  <div class="fg">
+                    <label class="fl">{{ viewCopy.profileSection.fields.cpfLabel }}</label>
+                    <input class="fi" type="text" :value="formattedCpf" readonly disabled />
+                  </div>
+                  <div class="fg">
+                    <label class="fl">{{ viewCopy.profileSection.fields.phoneLabel }}</label>
+                    <input v-model="profileForm.whatsapp" class="fi" type="text" :placeholder="viewCopy.profileSection.fields.phonePlaceholder" />
+                  </div>
+                </div>
+                <div class="fg">
+                  <label class="fl">{{ viewCopy.profileSection.fields.emailLabel }}</label>
+                  <input v-model="profileForm.email" class="fi" type="email" :placeholder="viewCopy.profileSection.fields.emailPlaceholder" />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-
-        <p class="text-xs text-slate-500">
-          {{ viewCopy.subscription.keepAccessNote }}
-        </p>
-        <p v-if="message" class="text-xs font-semibold text-emerald-600">{{ message }}</p>
-        <p v-if="error" class="text-xs font-semibold text-rose-600">{{ error }}</p>
-      </div>
-
-      <div class="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
-        <div class="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p class="text-xs uppercase tracking-[0.2em] text-slate-500">{{ viewCopy.profileSection.eyebrow }}</p>
-            <h2 class="text-xl font-bold text-slate-900">{{ viewCopy.profileSection.title }}</h2>
-            <p class="text-sm text-slate-600">{{ viewCopy.profileSection.description }}</p>
-          </div>
-        </div>
-
-        <div class="mt-6 grid gap-4 md:grid-cols-2">
-          <label class="space-y-1 text-xs font-semibold text-slate-500">
-            {{ viewCopy.profileSection.fields.nameLabel }}
-            <input
-              v-model="profileForm.name"
-              type="text"
-              class="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 bg-white"
-              :placeholder="viewCopy.profileSection.fields.namePlaceholder"
-            />
-          </label>
-
-          <label class="space-y-1 text-xs font-semibold text-slate-500">
-            {{ viewCopy.profileSection.fields.emailLabel }}
-            <input
-              v-model="profileForm.email"
-              type="email"
-              class="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 bg-white"
-              :placeholder="viewCopy.profileSection.fields.emailPlaceholder"
-            />
-          </label>
-          <label class="space-y-1 text-xs font-semibold text-slate-500">
-            {{ viewCopy.profileSection.fields.cpfLabel }}
-            <input
-              type="text"
-              :value="formattedCpf"
-              readonly
-              disabled
-              class="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 bg-white"
-            />
-          </label>
-          <label class="space-y-1 text-xs font-semibold text-slate-500">
-            {{ viewCopy.profileSection.fields.phoneLabel }}
-            <input
-              v-model="profileForm.whatsapp"
-              type="text"
-              class="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 bg-white"
-              :placeholder="viewCopy.profileSection.fields.phonePlaceholder"
-            />
-          </label>
-        </div>
-        <div class="mt-4 flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            class="rounded-full px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 disabled:opacity-60"
-            style="background-color: #41ce5f"
-            :disabled="profileSaving"
-            @click="saveProfile"
-          >
+        <div class="card-foot">
+          <button type="button" class="btn btn-p" :disabled="profileSaving" @click="saveProfile">
             {{ profileSaving ? viewCopy.profileSection.actions.saving : viewCopy.profileSection.actions.save }}
           </button>
-          <span v-if="profileMessage" class="text-xs font-semibold text-emerald-600">{{ profileMessage }}</span>
-          <span v-if="profileError" class="text-xs font-semibold text-rose-600">{{ profileError }}</span>
+          <span v-if="profileMessage" class="ok-msg">{{ profileMessage }}</span>
+          <span v-if="profileError" class="err-msg">{{ profileError }}</span>
         </div>
       </div>
 
-      <div class="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm space-y-4">
-        <div>
-          <p class="text-xs uppercase tracking-[0.2em] text-slate-500">{{ viewCopy.passwordSection.eyebrow }}</p>
-          <h2 class="text-xl font-bold text-slate-900">{{ viewCopy.passwordSection.title }}</h2>
-          <p class="text-sm text-slate-600">
-            {{ viewCopy.passwordSection.description }}
-          </p>
+      <div class="card">
+        <div class="card-head">
+          <div class="card-eye">{{ viewCopy.passwordSection.eyebrow }}</div>
+          <div class="card-title">{{ viewCopy.passwordSection.title }}</div>
+          <div class="card-sub">{{ viewCopy.passwordSection.description }}</div>
         </div>
-        <div class="grid gap-4 md:grid-cols-3">
-          <label class="space-y-1 text-xs font-semibold text-slate-500">
-            {{ viewCopy.passwordSection.fields.currentLabel }}
-            <input
-              v-model="passwordForm.current"
-              type="password"
-              class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              :placeholder="viewCopy.passwordSection.fields.currentPlaceholder"
-              autocomplete="current-password"
-            />
-          </label>
-          <label class="space-y-1 text-xs font-semibold text-slate-500">
-            {{ viewCopy.passwordSection.fields.newLabel }}
-            <input
-              v-model="passwordForm.new"
-              type="password"
-              class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              :placeholder="viewCopy.passwordSection.fields.newPlaceholder"
-              autocomplete="new-password"
-            />
-          </label>
-          <label class="space-y-1 text-xs font-semibold text-slate-500">
-            {{ viewCopy.passwordSection.fields.confirmLabel }}
-            <input
-              v-model="passwordForm.confirm"
-              type="password"
-              class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              :placeholder="viewCopy.passwordSection.fields.confirmPlaceholder"
-              autocomplete="new-password"
-            />
-          </label>
+        <div class="card-body">
+          <div class="fg">
+            <label class="fl">{{ viewCopy.passwordSection.fields.currentLabel }}</label>
+            <input v-model="passwordForm.current" class="fi" type="password" :placeholder="viewCopy.passwordSection.fields.currentPlaceholder" autocomplete="current-password" />
+          </div>
+          <div class="fg">
+            <label class="fl">{{ viewCopy.passwordSection.fields.newLabel }}</label>
+            <input v-model="passwordForm.new" class="fi" type="password" :placeholder="viewCopy.passwordSection.fields.newPlaceholder" autocomplete="new-password" />
+          </div>
+          <div class="fg">
+            <label class="fl">{{ viewCopy.passwordSection.fields.confirmLabel }}</label>
+            <input v-model="passwordForm.confirm" class="fi" type="password" :placeholder="viewCopy.passwordSection.fields.confirmPlaceholder" autocomplete="new-password" />
+          </div>
         </div>
-        <div class="flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            class="rounded-full px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 disabled:opacity-60"
-            :disabled="passwordSaving"
-            style="background-color: #41ce5f"
-            @click="changePassword"
-          >
+        <div class="card-foot">
+          <button type="button" class="btn btn-p" :disabled="passwordSaving" @click="changePassword">
             {{ passwordSaving ? viewCopy.passwordSection.actions.saving : viewCopy.passwordSection.actions.save }}
           </button>
-          <span v-if="passwordMessage" class="text-xs font-semibold text-emerald-600">{{ passwordMessage }}</span>
-          <span v-if="passwordError" class="text-xs font-semibold text-rose-600">{{ passwordError }}</span>
+          <span v-if="passwordMessage" class="ok-msg">{{ passwordMessage }}</span>
+          <span v-if="passwordError" class="err-msg">{{ passwordError }}</span>
         </div>
       </div>
     </div>
+
+    <transition name="fade">
+      <div
+        v-if="cropperModalOpen"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 px-4 py-6"
+      >
+        <div class="w-full max-w-5xl rounded-3xl bg-white p-6 shadow-2xl">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Editor de perfil</p>
+              <h3 class="text-2xl font-bold text-slate-900">Recortar foto de perfil</h3>
+              <p class="text-sm text-slate-500">Ajuste o enquadramento da sua foto antes de salvar.</p>
+            </div>
+            <button type="button" class="text-sm font-semibold text-slate-500 hover:text-slate-700" @click="closeCropperModal">
+              Fechar
+            </button>
+          </div>
+          <div class="mt-6 grid gap-6 md:grid-cols-[minmax(0,1fr)_220px]">
+            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+              <img ref="cropperImageRef" :src="cropperSource" alt="Recorte de perfil" class="cropper-target max-h-[420px] w-full rounded-xl bg-white object-contain" />
+            </div>
+            <div class="space-y-4">
+              <p class="text-xs text-slate-500">Use os controles para reposicionar a foto e aplicar o recorte final.</p>
+              <div class="space-y-2">
+                <button
+                  type="button"
+                  class="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                  @click="openProfilePhotoPicker"
+                >
+                  Substituir foto
+                </button>
+                <button
+                  type="button"
+                  class="w-full rounded-xl border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
+                  @click="removeProfilePhoto"
+                >
+                  Remover foto
+                </button>
+              </div>
+              <div class="flex items-center gap-3">
+                <button
+                  type="button"
+                  class="flex-1 rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                  @click="zoom(-0.2)"
+                >
+                  -
+                </button>
+                <button
+                  type="button"
+                  class="flex-1 rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                  @click="zoom(0.2)"
+                >
+                  +
+                </button>
+              </div>
+              <div class="flex items-center gap-3">
+                <button
+                  type="button"
+                  class="flex-1 rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                  @click="rotate(-10)"
+                >
+                  Rotacionar -
+                </button>
+                <button
+                  type="button"
+                  class="flex-1 rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                  @click="rotate(10)"
+                >
+                  Rotacionar +
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="mt-6 flex justify-end gap-3">
+            <button
+              type="button"
+              class="rounded-full border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              @click="closeCropperModal"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              class="rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+              :disabled="cropperApplying"
+              @click="applyProfileCrop"
+            >
+              {{ cropperApplying ? "Aplicando..." : "Aplicar recorte" }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </transition>
 
     <div
       v-if="showCancelModal"
@@ -325,7 +275,9 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, computed, reactive, watch } from "vue";
+import Cropper from "cropperjs";
+import "cropperjs/dist/cropper.css";
+import { onMounted, ref, computed, reactive, watch, nextTick, onBeforeUnmount } from "vue";
 import { useRouter } from "vue-router";
 import api from "../../services/api";
 import { useAuthStore } from "../../store/useAuthStore";
@@ -440,22 +392,22 @@ const viewCopy = {
       es: "La contraseña debe tener al menos 8 caracteres e incluir mayúsculas, minúsculas y al menos un número."
     }),
     fields: {
-      currentLabel: t({ pt: "Senha atual", es: "Contraseña actual" }),
+      currentLabel: t({ pt: "Senha atual", es: "ContraseÃ±a actual" }),
       currentPlaceholder: t({ pt: "••••••••", es: "••••••••" }),
-      newLabel: t({ pt: "Nova senha", es: "Nueva contraseña" }),
-      newPlaceholder: t({ pt: "Nova senha", es: "Nueva contraseña" }),
-      confirmLabel: t({ pt: "Confirmar nova senha", es: "Confirmar nueva contraseña" }),
-      confirmPlaceholder: t({ pt: "Repita a nova senha", es: "Repite la nueva contraseña" })
+      newLabel: t({ pt: "Nova senha", es: "Nueva contraseÃ±a" }),
+      newPlaceholder: t({ pt: "Nova senha", es: "Nueva contraseÃ±a" }),
+      confirmLabel: t({ pt: "Confirmar nova senha", es: "Confirmar nueva contraseÃ±a" }),
+      confirmPlaceholder: t({ pt: "Repita a nova senha", es: "Repite la nueva contraseÃ±a" })
     },
     actions: {
       saving: t({ pt: "Alterando...", es: "Actualizando..." }),
-      save: t({ pt: "Salvar nova senha", es: "Guardar nueva contraseña" })
+      save: t({ pt: "Salvar nova senha", es: "Guardar nueva contraseÃ±a" })
     },
-    success: t({ pt: "Senha atualizada com sucesso.", es: "Contraseña actualizada con éxito." }),
+    success: t({ pt: "Senha atualizada com sucesso.", es: "ContraseÃ±a actualizada con Ã©xito." }),
     errors: {
-      missing: t({ pt: "Informe a senha atual e a nova senha duas vezes.", es: "Ingresa la contraseña actual y la nueva dos veces." }),
-      mismatch: t({ pt: "As senhas novas precisam coincidir.", es: "Las contraseñas nuevas deben coincidir." }),
-      failure: t({ pt: "Não foi possível alterar a senha.", es: "No fue posible cambiar la contraseña." })
+      missing: t({ pt: "Informe a senha atual e a nova senha duas vezes.", es: "Ingresa la contraseÃ±a actual y la nueva dos veces." }),
+      mismatch: t({ pt: "As senhas novas precisam coincidir.", es: "Las contraseÃ±as nuevas deben coincidir." }),
+      failure: t({ pt: "NÃ£o foi possÃ­vel alterar a senha.", es: "No fue posible cambiar la contraseÃ±a." })
     }
   },
   billing: {
@@ -470,27 +422,27 @@ const viewCopy = {
     cycle: {
       annual: t({ pt: "Plano anual", es: "Plan anual" }),
       monthly: t({ pt: "Plano mensal", es: "Plan mensual" }),
-      default: t({ pt: "Ciclo padrão", es: "Ciclo estándar" })
+      default: t({ pt: "Ciclo padrÃ£o", es: "Ciclo estÃ¡ndar" })
     }
   },
   modal: {
-    title: t({ pt: "Deseja prosseguir com o cancelamento?", es: "¿Deseas continuar con la cancelación?" }),
+    title: t({ pt: "Deseja prosseguir com o cancelamento?", es: "Â¿Deseas continuar con la cancelaciÃ³n?" }),
     closeLabel: t({ pt: "Fechar", es: "Cerrar" }),
     description: t({
       pt: "Vamos continuar o atendimento pelo WhatsApp. Confirme para abrir a conversa com nossa equipe.",
-      es: "Seguiremos la atención por WhatsApp. Confirma para abrir la conversación con nuestro equipo."
+      es: "Seguiremos la atenciÃ³n por WhatsApp. Confirma para abrir la conversaciÃ³n con nuestro equipo."
     }),
     confirmCta: t({ pt: "Falar no WhatsApp", es: "Hablar por WhatsApp" }),
     cancelCta: t({ pt: "Voltar", es: "Volver" }),
     defaultClientName: t({ pt: "cliente", es: "cliente" }),
     whatsappMessage: (name: string) =>
       t({
-        pt: `Olá, meu nome é ${name}. Eu gostaria de fazer o cancelamento da minha assinatura.`,
-        es: `Hola, mi nombre es ${name}. Me gustaría cancelar mi suscripción.`
+        pt: `OlÃ¡, meu nome Ã© ${name}. Eu gostaria de fazer o cancelamento da minha assinatura.`,
+        es: `Hola, mi nombre es ${name}. Me gustarÃ­a cancelar mi suscripciÃ³n.`
       })
   },
   errors: {
-    loadBilling: t({ pt: "Não foi possível carregar a assinatura.", es: "No fue posible cargar la suscripción." })
+    loadBilling: t({ pt: "Não foi possível carregar a assinatura.", es: "No fue posible cargar la suscripciÃ³n." })
   }
 };
 
@@ -517,6 +469,16 @@ const profileForm = reactive({
 const profileSaving = ref(false);
 const profileMessage = ref<string | null>(null);
 const profileError = ref<string | null>(null);
+const profilePhotoInputRef = ref<HTMLInputElement | null>(null);
+const profilePhotoPreview = ref<string | null>(null);
+const profilePhotoFile = ref<File | null>(null);
+let profilePhotoObjectUrl: string | null = null;
+const profilePhotoRemoved = ref(false);
+const cropperModalOpen = ref(false);
+const cropperSource = ref("");
+const cropperImageRef = ref<HTMLImageElement | null>(null);
+const cropperInstance = ref<Cropper | null>(null);
+const cropperApplying = ref(false);
 
 const actionLoading = ref(false);
 const showCardForm = ref(false);
@@ -599,8 +561,130 @@ const syncProfileForm = () => {
   profileForm.name = user.value?.name || "";
   profileForm.email = user.value?.email || "";
   profileForm.whatsapp = formatPhone(user.value?.whatsapp || "");
+  profilePhotoPreview.value =
+    (user.value as any)?.profile_photo_url ||
+    (user.value as any)?.avatar_url ||
+    (user.value as any)?.photo_url ||
+    null;
   profileMessage.value = null;
   profileError.value = null;
+};
+
+const openProfilePhotoPicker = () => {
+  profilePhotoInputRef.value?.click();
+};
+
+const openProfilePhotoEditor = () => {
+  if (profilePhotoPreview.value) {
+    cropperSource.value = profilePhotoPreview.value;
+    cropperModalOpen.value = true;
+    return;
+  }
+  openProfilePhotoPicker();
+};
+
+const onProfilePhotoSelected = (event: Event) => {
+  const target = event.target as HTMLInputElement | null;
+  const file = target?.files?.[0];
+  if (!file) return;
+  if (profilePhotoObjectUrl) URL.revokeObjectURL(profilePhotoObjectUrl);
+  profilePhotoObjectUrl = URL.createObjectURL(file);
+  profilePhotoRemoved.value = false;
+  cropperSource.value = profilePhotoObjectUrl;
+  cropperModalOpen.value = true;
+  if (target) target.value = "";
+};
+
+const closeCropperModal = () => {
+  cropperModalOpen.value = false;
+};
+
+watch(
+  () => cropperModalOpen.value,
+  async open => {
+    if (open) {
+      await nextTick();
+      if (!cropperImageRef.value) return;
+      cropperInstance.value?.destroy();
+      cropperInstance.value = new Cropper(cropperImageRef.value, {
+        viewMode: 1,
+        dragMode: "crop",
+        autoCrop: true,
+        autoCropArea: 0.65,
+        aspectRatio: 1,
+        background: true,
+        guides: true,
+        center: true,
+        highlight: true,
+        modal: true,
+        cropBoxMovable: true,
+        cropBoxResizable: true,
+        movable: true,
+        zoomable: true,
+        zoomOnWheel: true,
+        ready() {
+          const instance = cropperInstance.value;
+          if (!instance) return;
+          const container = instance.getContainerData();
+          const side = Math.min(container.width, container.height) * 0.62;
+          instance.setCropBoxData({
+            width: side,
+            height: side,
+            left: (container.width - side) / 2,
+            top: (container.height - side) / 2
+          });
+        }
+      });
+      return;
+    }
+    cropperInstance.value?.destroy();
+    cropperInstance.value = null;
+  }
+);
+
+const applyProfileCrop = async () => {
+  if (!cropperInstance.value) return;
+  cropperApplying.value = true;
+  try {
+    const canvas = cropperInstance.value.getCroppedCanvas({
+      maxWidth: 1200,
+      maxHeight: 1200,
+      imageSmoothingEnabled: true,
+      imageSmoothingQuality: "high"
+    });
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(result => {
+        if (result) resolve(result);
+        else reject(new Error("Falha ao gerar recorte."));
+      }, "image/png", 0.95);
+    });
+    const file = new File([blob], `avatar-${Date.now()}.png`, { type: "image/png" });
+    profilePhotoFile.value = file;
+    profilePhotoRemoved.value = false;
+    if (profilePhotoObjectUrl) URL.revokeObjectURL(profilePhotoObjectUrl);
+    profilePhotoObjectUrl = URL.createObjectURL(file);
+    profilePhotoPreview.value = profilePhotoObjectUrl;
+    closeCropperModal();
+  } catch (err) {
+    console.error(err);
+  } finally {
+    cropperApplying.value = false;
+  }
+};
+
+const zoom = (value: number) => {
+  cropperInstance.value?.zoom(value);
+};
+
+const rotate = (value: number) => {
+  cropperInstance.value?.rotate(value);
+};
+
+const removeProfilePhoto = () => {
+  profilePhotoRemoved.value = true;
+  profilePhotoFile.value = null;
+  profilePhotoPreview.value = null;
+  closeCropperModal();
 };
 
 watch(
@@ -741,6 +825,26 @@ const saveProfile = async () => {
   }
   profileSaving.value = true;
   try {
+    if (profilePhotoRemoved.value) {
+      await api.delete("/auth/me/avatar");
+      profilePhotoRemoved.value = false;
+      if (profilePhotoObjectUrl) {
+        URL.revokeObjectURL(profilePhotoObjectUrl);
+        profilePhotoObjectUrl = null;
+      }
+    }
+    if (profilePhotoFile.value) {
+      const formData = new FormData();
+      formData.append("file", profilePhotoFile.value);
+      await api.post("/auth/me/avatar", formData, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+      profilePhotoFile.value = null;
+      if (profilePhotoObjectUrl) {
+        URL.revokeObjectURL(profilePhotoObjectUrl);
+        profilePhotoObjectUrl = null;
+      }
+    }
     await api.put("/auth/me", {
       name,
       email,
@@ -780,12 +884,477 @@ onMounted(async () => {
     isBootstrappingProfile.value = false;
   }
 });
+
+onBeforeUnmount(() => {
+  cropperInstance.value?.destroy();
+  if (profilePhotoObjectUrl) URL.revokeObjectURL(profilePhotoObjectUrl);
+});
+
+watch(
+  () => user.value,
+  () => {
+    if (profilePhotoObjectUrl) {
+      URL.revokeObjectURL(profilePhotoObjectUrl);
+      profilePhotoObjectUrl = null;
+    }
+  }
+);
 </script>
 
 <style scoped>
-:global(.dark-theme .profile-view input) {
-  background-color: #05070f !important;
-  color: #f8fafc;
-  border-color: rgba(255, 255, 255, 0.15);
+.profile-ref {
+  --verde: #3dcc5f;
+  --verde-d: #2ead4c;
+  --verde-dim: rgba(61, 204, 95, 0.1);
+  --verde-border: rgba(61, 204, 95, 0.22);
+  --bg: #f2f4f2;
+  --surface: #fff;
+  --surface2: #f5f7f5;
+  --border: #e4e9e4;
+  --border2: #cdd8cd;
+  --text: #111a14;
+  --text-2: #4a5e4a;
+  --text-3: #8a9e8a;
+  --sh-sm: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
+  --radius: 12px;
+  --radius-sm: 8px;
+  color: var(--text);
+}
+
+.page-wrap {
+  padding: 28px 32px 64px;
+  width: 100%;
+  max-width: none;
+}
+
+.page-eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 3px;
+}
+
+.page-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.3px;
+  line-height: 1.2;
+}
+
+.page-sub {
+  font-size: 13px;
+  color: var(--text-3);
+  margin-top: 4px;
+  margin-bottom: 24px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--sh-sm);
+  width: 100%;
+  margin-bottom: 14px;
+}
+
+.card-head {
+  padding: 18px 22px 14px;
+  border-bottom: 1.5px solid var(--border);
+}
+
+.card-eye {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 3px;
+}
+
+.card-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.2px;
+}
+
+.card-sub {
+  font-size: 12px;
+  color: var(--text-3);
+  margin-top: 2px;
+  line-height: 1.45;
+}
+
+.card-body {
+  padding: 20px 22px;
+}
+
+.card-foot {
+  padding: 14px 22px;
+  border-top: 1.5px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.card-body-plan {
+  padding: 0;
+}
+
+.plan-left {
+  flex-shrink: 0;
+}
+
+.subscription-top {
+  padding: 18px 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  border-bottom: 1.5px solid var(--border);
+}
+
+.plan-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.subscription-meta {
+  padding: 14px 22px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.meta-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.badge-muted {
+  background: var(--surface2);
+  color: var(--text-2);
+  border: 1.5px solid var(--border);
+}
+
+.notes {
+  display: block;
+}
+
+.notes p + p {
+  margin-top: 4px;
+}
+
+.ok-msg {
+  font-size: 12px;
+  color: #1a7a35;
+  font-weight: 600;
+}
+
+.err-msg {
+  font-size: 12px;
+  color: #c0392b;
+  font-weight: 600;
+}
+
+.card-row {
+  display: grid;
+  grid-template-columns: 6fr 4fr;
+  gap: 14px;
+  margin-bottom: 14px;
+  width: 100%;
+}
+
+.fg {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 14px;
+}
+
+.fl {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.fi {
+  padding: 9px 11px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--surface);
+  outline: none;
+  transition: border-color 0.15s;
+  width: 100%;
+}
+
+.fi:focus {
+  border-color: var(--verde-border);
+}
+
+.fi:disabled {
+  background: var(--surface2);
+  color: var(--text-3);
+  cursor: not-allowed;
+}
+
+.grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.profile-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.profile-top {
+  display: grid;
+  grid-template-columns: 3fr 7fr;
+  gap: 24px;
+  align-items: stretch;
+}
+
+.profile-photo-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  height: 100%;
+}
+
+.profile-photo-upload {
+  width: 100%;
+  height: 185px;
+  min-height: 185px;
+  margin: 0;
+  border: 1.5px dashed var(--border2);
+  border-radius: 12px;
+  background: var(--surface2);
+  padding: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.profile-photo-upload:hover {
+  border-color: var(--verde-border);
+}
+
+.profile-photo-img {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  object-fit: cover;
+  border-radius: 0;
+}
+
+.profile-photo-empty {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.profile-photo-plus {
+  font-size: 20px;
+  line-height: 1;
+  color: var(--verde-d);
+}
+
+.profile-identity-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.profile-cpf-phone-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+  transition: all 0.15s;
+  white-space: nowrap;
+  line-height: 1.3;
+}
+
+.btn-p {
+  background: var(--verde);
+  color: #0f1f14;
+}
+
+.btn-p:hover {
+  background: var(--verde-d);
+  box-shadow: 0 4px 14px rgba(61, 204, 95, 0.28);
+  transform: translateY(-1px);
+}
+
+.btn-o {
+  background: transparent;
+  color: var(--text-2);
+  border: 1.5px solid var(--border);
+}
+
+.btn-o:hover {
+  border-color: var(--border2);
+  color: var(--text);
+}
+
+.btn-sm {
+  padding: 6px 14px;
+  font-size: 12px;
+}
+
+.btn-text {
+  background: transparent;
+  border: none;
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 0;
+}
+
+.btn-text:hover {
+  color: #c0392b;
+}
+
+.btn-text.is-disabled {
+  pointer-events: none;
+  opacity: 0.4;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.badge-green {
+  background: var(--verde-dim);
+  color: #1a7a35;
+  border: 1.5px solid var(--verde-border);
+}
+
+.badge-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--verde-d);
+}
+
+:deep(.cropper-container) {
+  max-height: 460px;
+}
+
+:deep(.cropper-container img) {
+  max-width: none !important;
+}
+
+:deep(.cropper-view-box) {
+  outline: 2px solid rgba(61, 204, 95, 0.9);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.95);
+}
+
+:deep(.cropper-face) {
+  background-color: rgba(61, 204, 95, 0.12);
+}
+
+:deep(.cropper-line),
+:deep(.cropper-point) {
+  background-color: #3dcc5f;
+  opacity: 1;
+}
+
+@media (max-width: 900px) {
+  .page-wrap {
+    padding: 20px 16px 40px;
+  }
+}
+
+@media (max-width: 768px) {
+  .card-row {
+    grid-template-columns: 1fr;
+  }
+
+  .subscription-meta {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .grid2 {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-top {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-photo-upload {
+    min-height: 180px;
+  }
+
+  .profile-cpf-phone-row {
+    grid-template-columns: 1fr;
+  }
+
+  .subscription-top {
+    align-items: flex-start;
+  }
+
+  .plan-actions {
+    width: 100%;
+  }
+
+  .subscription-meta {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

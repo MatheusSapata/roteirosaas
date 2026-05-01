@@ -20,6 +20,7 @@ from app.schemas.agency_domain import (
 )
 from app.services.domain_ssl import DomainSslService
 from app.services.domain_verification import DomainVerificationService
+from app.services.team import get_user_effective_permissions
 
 router = APIRouter()
 
@@ -41,6 +42,19 @@ def ensure_agency_member(db: Session, agency_id: int, user_id: int) -> Agency:
     return agency
 
 
+def ensure_domain_write_access(db: Session, agency_id: int, user: User) -> None:
+    if user.is_superuser:
+        return
+    role = (user.role or "member").lower()
+    if role == "viewer":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Seu perfil permite apenas visualizar dominios.")
+    if user.is_owner is None or bool(user.is_owner) or role in {"admin", "owner"}:
+        return
+    effective = set(get_user_effective_permissions(db, user, agency_id))
+    if "domains" not in effective:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Voce nao tem permissao para alterar dominios.")
+
+
 def load_domain(db: Session, domain_id: int, user_id: int) -> AgencyDomain:
     domain = db.query(AgencyDomain).filter(AgencyDomain.id == domain_id).first()
     if not domain:
@@ -49,11 +63,18 @@ def load_domain(db: Session, domain_id: int, user_id: int) -> AgencyDomain:
     return domain
 
 
-def serialize_domain(domain: AgencyDomain) -> AgencyDomainOut:
+def serialize_domain(domain: AgencyDomain, strict_instructions: bool = True) -> AgencyDomainOut:
     payload = AgencyDomainOut.model_validate(domain)
-    payload.instructions = DomainInstructionsOut.from_service(
-        verification_service.build_instructions(domain.host, domain.verification_token)
-    )
+    try:
+        payload.instructions = DomainInstructionsOut.from_service(
+            verification_service.build_instructions(domain.host, domain.verification_token)
+        )
+    except ValueError as exc:
+        if strict_instructions:
+            raise
+        payload.instructions = None
+        if not payload.ssl_last_error:
+            payload.ssl_last_error = str(exc)
     return payload
 
 
@@ -78,7 +99,7 @@ def list_domains(
         .order_by(AgencyDomain.created_at.desc())
         .all()
     )
-    return [serialize_domain(domain) for domain in domains]
+    return [serialize_domain(domain, strict_instructions=False) for domain in domains]
 
 
 @router.post("", response_model=AgencyDomainOut, status_code=status.HTTP_201_CREATED)
@@ -88,6 +109,7 @@ def create_domain(
     db: Session = Depends(get_db),
 ) -> AgencyDomainOut:
     ensure_agency_member(db, payload.agency_id, current_user.id)
+    ensure_domain_write_access(db, payload.agency_id, current_user)
     normalized_host = payload.host.lower()
     existing = (
         db.query(AgencyDomain)
@@ -98,7 +120,10 @@ def create_domain(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Este host ja esta em uso por outra agencia.")
 
     token = verification_service.generate_token()
-    instructions = verification_service.build_instructions(payload.host, token)
+    try:
+        instructions = verification_service.build_instructions(payload.host, token)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     domain = AgencyDomain(
         agency_id=payload.agency_id,
         host=payload.host,
@@ -117,7 +142,7 @@ def create_domain(
         unset_other_primary(db, domain.agency_id, domain.id)
         db.commit()
         db.refresh(domain)
-    return serialize_domain(domain)
+    return serialize_domain(domain, strict_instructions=False)
 
 
 @router.get("/{domain_id}", response_model=AgencyDomainOut)
@@ -127,7 +152,7 @@ def get_domain(
     db: Session = Depends(get_db),
 ) -> AgencyDomainOut:
     domain = load_domain(db, domain_id, current_user.id)
-    return serialize_domain(domain)
+    return serialize_domain(domain, strict_instructions=False)
 
 
 @router.delete("/{domain_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -137,6 +162,7 @@ def delete_domain(
     db: Session = Depends(get_db),
 ) -> None:
     domain = load_domain(db, domain_id, current_user.id)
+    ensure_domain_write_access(db, domain.agency_id, current_user)
     if domain.is_active:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Desative o dominio antes de removelo.")
     db.delete(domain)
@@ -150,6 +176,7 @@ def verify_domain(
     db: Session = Depends(get_db),
 ) -> DomainVerificationResponse:
     domain = load_domain(db, domain_id, current_user.id)
+    ensure_domain_write_access(db, domain.agency_id, current_user)
     result = verification_service.verify(domain.host, domain.verification_token)
 
     if result.success:
@@ -181,6 +208,7 @@ def activate_domain(
     db: Session = Depends(get_db),
 ) -> DomainActivationResponse:
     domain = load_domain(db, domain_id, current_user.id)
+    ensure_domain_write_access(db, domain.agency_id, current_user)
     if not domain.is_verified:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -206,6 +234,7 @@ def deactivate_domain(
     db: Session = Depends(get_db),
 ) -> DomainActivationResponse:
     domain = load_domain(db, domain_id, current_user.id)
+    ensure_domain_write_access(db, domain.agency_id, current_user)
     domain.is_active = False
     db.add(domain)
     db.commit()
@@ -220,6 +249,7 @@ def set_primary_domain(
     db: Session = Depends(get_db),
 ) -> AgencyDomainOut:
     domain = load_domain(db, domain_id, current_user.id)
+    ensure_domain_write_access(db, domain.agency_id, current_user)
     domain.is_primary = True
     unset_other_primary(db, domain.agency_id, domain.id)
     db.add(domain)

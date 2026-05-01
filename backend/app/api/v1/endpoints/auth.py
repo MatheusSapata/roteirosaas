@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -24,9 +24,16 @@ from app.schemas.user import (
     UserOut,
     UserUpdate,
 )
+from app.schemas.team import AcceptInviteIn, InviteInfoOut
+from app.models.team_invite import TeamInvite
+from app.models.agency_user import AgencyUser
+from app.models.agency import Agency
 from app.services import auth as auth_service
+from app.services.permissions import final_permissions_for_member
+from app.services.team import ensure_legacy_owner_context, find_pending_invite_by_token, get_agency_plan, is_owner_user
 from app.services.session_monitor import summarize_user_agent
 from app.services.trial import start_trial
+from app.services.media_storage import media_storage
 
 router = APIRouter()
 settings = get_settings()
@@ -72,7 +79,11 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)) -> UserOut:
         address_state=user_in.address_state,
         address_zipcode=user_in.address_zipcode,
         hashed_password=hashed,
-        plan=user_in.plan or "free"
+        plan=user_in.plan or "free",
+        is_owner=True,
+        role="admin",
+        status="active",
+        permissions=[],
     )
     db.add(user)
     db.flush()
@@ -94,6 +105,7 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)) -> UserOut:
     start_trial(user, "trial", duration_days=7)
     db.commit()
     db.refresh(user)
+    ensure_legacy_owner_context(db, user)
     return user
 
 
@@ -186,8 +198,22 @@ def refresh_token(request: Request, payload: RefreshTokenRequest, db: Session = 
 
 
 @router.get("/me", response_model=UserOut)
-def read_users_me(current_user: User = Depends(get_current_active_user)) -> UserOut:
-    return current_user
+def read_users_me(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> UserOut:
+    user = db.query(User).filter(User.id == current_user.id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado.")
+    ensure_legacy_owner_context(db, user)
+    plan = get_agency_plan(db, user.primary_agency_id or 0)
+    user.effective_permissions = final_permissions_for_member(
+        user_is_owner=is_owner_user(user),
+        user_role=user.role,
+        selected_permissions=user.permissions if isinstance(user.permissions, list) else [],
+        plan=plan,
+    )
+    return user
 
 
 @router.put("/me", response_model=UserOut)
@@ -269,6 +295,42 @@ def change_my_password(
     return {"detail": "Senha atualizada com sucesso."}
 
 
+@router.post("/me/avatar", response_model=UserOut)
+async def upload_my_avatar(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> UserOut:
+    content_type = (getattr(file, "content_type", "") or "").lower()
+    if not content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Envie uma imagem válida.")
+
+    file_bytes = await file.read()
+    if not file_bytes:
+        raise HTTPException(status_code=400, detail="Arquivo vazio.")
+    if len(file_bytes) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="A imagem deve ter no máximo 5MB.")
+
+    avatar_url = media_storage.save(file_bytes, file.filename or "avatar", content_type)
+    current_user.avatar_url = avatar_url
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
+    return current_user
+
+
+@router.delete("/me/avatar", response_model=UserOut)
+def delete_my_avatar(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> UserOut:
+    current_user.avatar_url = None
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
+    return current_user
+
+
 @router.post("/password/forgot")
 def request_password_reset(payload: PasswordResetRequest, db: Session = Depends(get_db)) -> dict:
     user = db.query(User).filter(User.email == payload.email).first()
@@ -348,3 +410,100 @@ def acknowledge_trial(
     db.commit()
     db.refresh(current_user)
     return current_user
+
+
+@router.get("/invite-info", response_model=InviteInfoOut)
+def get_invite_info(token: str, db: Session = Depends(get_db)) -> InviteInfoOut:
+    invite = find_pending_invite_by_token(db, token)
+    if not invite:
+        return InviteInfoOut(valid=False, reason="invalid")
+    now = datetime.now(timezone.utc)
+    if invite.status != "pending":
+        return InviteInfoOut(valid=False, reason=invite.status)
+    if invite.expires_at < now:
+        invite.status = "expired"
+        db.add(invite)
+        db.commit()
+        return InviteInfoOut(valid=False, reason="expired")
+    agency = db.query(Agency).filter(Agency.id == invite.agency_id).first()
+    return InviteInfoOut(
+        valid=True,
+        agency_name=agency.name if agency else "Agência",
+        email=invite.email,
+        name=invite.name,
+    )
+
+
+@router.post("/accept-invite")
+def accept_invite(payload: AcceptInviteIn, db: Session = Depends(get_db)) -> dict:
+    invite = find_pending_invite_by_token(db, payload.token)
+    if not invite:
+        raise HTTPException(status_code=400, detail="Token inválido ou expirado.")
+    if invite.status != "pending":
+        raise HTTPException(status_code=400, detail="Convite não está pendente.")
+    now = datetime.now(timezone.utc)
+    if invite.expires_at < now:
+        invite.status = "expired"
+        db.add(invite)
+        db.commit()
+        raise HTTPException(status_code=400, detail="Token expirado.")
+
+    try:
+        auth_service.validate_password_strength(payload.password)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    user = db.query(User).filter(User.email == invite.email).first()
+    if not user:
+        invited_role = (invite.role_name or "member").strip().lower()
+        if invited_role not in {"admin", "member"}:
+            invited_role = "member"
+        user = User(
+            email=invite.email,
+            name=invite.name,
+            hashed_password=auth_service.get_password_hash(payload.password),
+            plan="free",
+            is_active=True,
+            is_owner=False,
+            role=invited_role,
+            status="active",
+            permissions=[] if invited_role == "admin" else list(invite.permissions or []),
+            invited_by_user_id=invite.invited_by_user_id,
+        )
+        db.add(user)
+        db.flush()
+        sub = Subscription(user_id=user.id, plan=user.plan or "free")
+        db.add(sub)
+        db.flush()
+        user.subscription_id = sub.id
+    else:
+        invited_role = (invite.role_name or "member").strip().lower()
+        if invited_role not in {"admin", "member"}:
+            invited_role = "member"
+        user.hashed_password = auth_service.get_password_hash(payload.password)
+        user.is_active = True
+        user.is_owner = False if user.is_owner is None else user.is_owner
+        user.role = invited_role
+        user.status = "active"
+        user.permissions = [] if invited_role == "admin" else list(invite.permissions or [])
+        if invite.invited_by_user_id and not user.invited_by_user_id:
+            user.invited_by_user_id = invite.invited_by_user_id
+
+    membership = (
+        db.query(AgencyUser)
+        .filter(AgencyUser.agency_id == invite.agency_id, AgencyUser.user_id == user.id)
+        .first()
+    )
+    if not membership:
+        membership = AgencyUser(agency_id=invite.agency_id, user_id=user.id, role=(invite.role_name or "member"))
+        db.add(membership)
+    if not user.primary_agency_id:
+        user.primary_agency_id = invite.agency_id
+
+    invite.status = "accepted"
+    invite.accepted_at = now
+    db.add(invite)
+    db.add(user)
+    db.commit()
+    return {"detail": "Convite aceito com sucesso."}
+

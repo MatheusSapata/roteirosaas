@@ -4,6 +4,7 @@ from app.api.v1.endpoints import (
     admin,
     agencies,
     agency_domains,
+    agency_team,
     auth,
     billing,
     clients,
@@ -31,6 +32,7 @@ api_router.include_router(
     prefix="/agencies/me/domains",
     tags=["agency-domains"],
 )
+api_router.include_router(agency_team.router, tags=["agency-team"])
 api_router.include_router(templates.router, prefix="/page-templates", tags=["page-templates"])
 api_router.include_router(pages.router, prefix="/pages", tags=["pages"])
 api_router.include_router(media.router, prefix="/media", tags=["media"])

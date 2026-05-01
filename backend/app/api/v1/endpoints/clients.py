@@ -27,11 +27,20 @@ from app.schemas.crm import (
 )
 from app.services.contact_normalization import normalize_cpf, normalize_email, normalize_phone
 from app.services.media_storage import media_storage
+from app.services.team import get_user_effective_permissions
 
 router = APIRouter()
 
 ALLOWED_DOCUMENT_EXTENSIONS = {".pdf", ".jpg", ".jpeg", ".png", ".webp", ".doc", ".docx"}
 MAX_DOCUMENT_SIZE_BYTES = 10 * 1024 * 1024
+
+
+def _ensure_leads_delete_permission(db: Session, user: User, agency_id: int) -> None:
+    if user.is_superuser:
+        return
+    effective = set(get_user_effective_permissions(db, user, agency_id))
+    if "leads_full" not in effective:
+        raise HTTPException(status_code=403, detail="Seu nível gerencial não permite excluir.")
 
 
 def _serialize_document(document: Document) -> DocumentOut:
@@ -368,6 +377,7 @@ def delete_client(
 ) -> Response:
     client = _get_client_or_404(client_id, db)
     require_agency_membership(db=db, agency_id=client.agency_id, user_id=current_user.id)
+    _ensure_leads_delete_permission(db, current_user, client.agency_id)
     client.deleted_at = datetime.utcnow()
     db.add(client)
     db.commit()

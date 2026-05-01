@@ -1,4 +1,4 @@
-<template>
+﻿<template>
 <div v-if="isBootstrappingLeads" class="flex min-h-[60vh] w-full items-center justify-center px-4 py-8">
   <div class="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-brand"></div>
 </div>
@@ -22,353 +22,94 @@
 
 
 
-      <div class="shrink-0 md:hidden">
+      <div class="shrink-0 flex w-full items-center justify-between gap-3">
+        <h1 class="text-2xl font-semibold tracking-[-0.2px] text-[#0F1F14] dark:text-white">{{ pageTitle }}</h1>
 
-
-
-        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400">
-
-
-
-          {{ viewCopy.header.eyebrow }}
-
-
-        </p>
-
-
-
-        <h1 class="text-3xl font-bold text-slate-900 dark:text-white">{{ viewCopy.header.title }}</h1>
-
-
-        <p class="text-sm text-slate-500 dark:text-slate-400">
-
-
-
-          {{ viewCopy.header.description }}
-
-
-
-        </p>
-
-
-
-      </div>
-
-
-
-
-
-
-
-      <div class="shrink-0 flex w-full flex-wrap items-center justify-end gap-3 text-sm font-semibold">
-
-
-
-        <div class="flex items-center gap-3">
-
-
-
+        <div v-if="activeTab === 'forms'" class="flex items-center gap-2">
           <button
-
-
-
-            v-if="activeTab === 'forms'"
-
-
-
             type="button"
-
-
-
-            class="hidden rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:bg-brand-dark md:inline-flex"
-
-
-
+            class="inline-flex items-center gap-2 rounded-[10px] bg-[#3DCC5F] px-4 py-[9px] text-[13px] font-semibold text-[#0F1F14] transition hover:bg-[#5BE07A]"
             @click="openCreateModal"
-
-
-
           >
-
-
-
-            + {{ viewCopy.actions.newForm }}
-
-
-
+            <span class="text-[15px] leading-none font-bold">+</span>
+            {{ viewCopy.actions.newForm }}
           </button>
-
-
-
-
-
-
-
-          <div v-if="activeTab === 'contacts' && !isMobileViewport" class="flex items-center gap-3">
-
-
-
-            <button
-              type="button"
-              class="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:bg-brand-dark"
-              @click="openManualOpportunityModal"
-            >
-              + {{ viewCopy.actions.newManualOpportunity }}
-            </button>
-
-
-
-            <div v-if="contactViewMode === 'kanban'" class="flex items-center gap-3">
-
-              <div class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">
-
-                {{ filteredContactsCount }} {{ viewCopy.contacts.summary }}
-
-              </div>
-
-
-
-              <select
-
-
-
-                v-model="kanbanPageFilter"
-
-
-
-                class="min-w-[160px] rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm outline-none transition focus:ring-2 focus:ring-brand dark:border-white/10 dark:bg-[#111319] dark:text-white"
-
-
-
-              >
-
-
-
-                <option v-for="option in kanbanPageOptions" :key="option.value" :value="option.value">
-
-
-
-                  {{ option.label }}
-
-
-
-                </option>
-
-
-
-              </select>
-
-
-
-
-
-
-
-              <select
-
-
-
-                v-model="kanbanFormFilter"
-
-
-
-                class="min-w-[180px] rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm outline-none transition focus:ring-2 focus:ring-brand dark:border-white/10 dark:bg-[#111319] dark:text-white"
-
-
-
-              >
-
-
-
-                <option v-for="option in kanbanFormOptions" :key="option.value" :value="option.value">
-
-
-
-                  {{ option.label }}
-
-
-
-                </option>
-
-
-
-              </select>
-
-
-
-            </div>
-
-
-
-
-
-
-
-            <div class="inline-flex rounded-full bg-slate-100 p-1 dark:bg-white/10">
-
-
-
-              <button
-
-
-
-                type="button"
-
-
-
-                class="rounded-full px-4 py-2 text-sm font-semibold transition"
-
-
-
-                :class="contactViewMode === 'list' ? activeTabClass : inactiveTabClass"
-
-
-
-                @click="contactViewMode = 'list'"
-
-
-
-              >
-
-
-
-                {{ viewCopy.actions.viewModes.list }}
-
-
-
-              </button>
-
-
-
-              <button
-
-
-
-                type="button"
-
-
-
-                class="rounded-full px-4 py-2 text-sm font-semibold transition"
-
-
-
-                :class="contactViewMode === 'kanban' ? activeTabClass : inactiveTabClass"
-
-
-
-                @click="contactViewMode = 'kanban'"
-
-
-
-              >
-
-
-
-                {{ viewCopy.actions.viewModes.kanban }}
-
-
-
-              </button>
-
-
-
-            </div>
-
-
-
-          </div>
-
-
-
+        </div>
+        <div v-else-if="activeTab === 'settings'" class="flex items-center gap-2">
+          <button
+            type="button"
+            class="inline-flex items-center gap-2 rounded-[10px] bg-[#3DCC5F] px-4 py-[9px] text-[13px] font-semibold text-[#0F1F14] transition hover:bg-[#5BE07A]"
+            @click="openPipelineStageModal"
+          >
+            <span class="text-[15px] leading-none font-bold">+</span>
+            Nova etapa do funil
+          </button>
+        </div>
+        <div v-else-if="activeTab === 'clients'" class="flex items-center gap-2">
+          <button
+            type="button"
+            class="inline-flex items-center gap-2 rounded-[10px] bg-[#3DCC5F] px-4 py-[9px] text-[13px] font-semibold text-[#0F1F14] transition hover:bg-[#5BE07A]"
+            @click="openClientCreateModal"
+          >
+            <span class="text-[15px] leading-none font-bold">+</span>
+            Novo cliente
+          </button>
         </div>
 
+        <div v-else-if="activeTab === 'contacts'" class="flex items-center gap-2 md:gap-4">
+  <div v-if="!isMobileViewport && contactViewMode === 'kanban'" class="flex items-center gap-3">
+    <div class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">
+      {{ filteredContactsCount }} {{ viewCopy.contacts.summary }}
+    </div>
+    <select
+      v-model="kanbanPageFilter"
+      class="min-w-[160px] rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm outline-none transition focus:ring-2 focus:ring-brand dark:border-white/10 dark:bg-[#111319] dark:text-white"
+    >
+      <option v-for="option in kanbanPageOptions" :key="option.value" :value="option.value">
+        {{ option.label }}
+      </option>
+    </select>
+    <select
+      v-model="kanbanFormFilter"
+      class="min-w-[180px] rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm outline-none transition focus:ring-2 focus:ring-brand dark:border-white/10 dark:bg-[#111319] dark:text-white"
+    >
+      <option v-for="option in kanbanFormOptions" :key="option.value" :value="option.value">
+        {{ option.label }}
+      </option>
+    </select>
+  </div>
 
+  <button
+    type="button"
+    class="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:bg-brand-dark"
+    @click="openManualOpportunityModal"
+  >
+    <span v-if="isMobileViewport">+</span>
+    <span v-else>+ {{ viewCopy.actions.newManualOpportunity }}</span>
+  </button>
 
+  <div v-if="!isMobileViewport" class="inline-flex rounded-full bg-slate-100 p-1 dark:bg-white/10">
+    <button
+      type="button"
+      class="rounded-full px-4 py-2 text-sm font-semibold transition"
+      :class="contactViewMode === 'list' ? activeTabClass : inactiveTabClass"
+      @click="contactViewMode = 'list'"
+    >
+      {{ viewCopy.actions.viewModes.list }}
+    </button>
+    <button
+      type="button"
+      class="rounded-full px-4 py-2 text-sm font-semibold transition"
+      :class="contactViewMode === 'kanban' ? activeTabClass : inactiveTabClass"
+      @click="contactViewMode = 'kanban'"
+    >
+      {{ viewCopy.actions.viewModes.kanban }}
+    </button>
+  </div>
+</div>
       </div>
-
-
-
-
-
-
 
       <div class="flex min-h-0 flex-1 flex-col">
-
-
-
-        <div class="mt-3 mb-5 w-full md:hidden">
-
-
-
-          <button
-
-
-
-            v-if="activeTab === 'forms'"
-
-
-
-            type="button"
-
-
-
-            class="w-full rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:bg-brand-dark"
-
-
-
-            @click="openCreateModal"
-
-
-
-          >
-
-
-
-            + {{ viewCopy.actions.newForm }}
-
-
-
-          </button>
-
-
-
-          <button
-
-
-
-            v-else-if="activeTab === 'contacts'"
-
-
-
-            type="button"
-
-
-
-            class="w-full rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:bg-brand-dark"
-
-
-
-            @click="openManualOpportunityModal"
-
-
-
-          >
-
-
-
-            + {{ viewCopy.actions.newManualOpportunity }}
-
-
-
-          </button>
-
-
-
-        </div>
-
-
-
-
 
 
 
@@ -376,358 +117,166 @@
 
 
 
-          <section v-if="activeTab === 'forms'" class="space-y-4">
-
-
-
-            <div
-
-
-
-              v-if="formsLoading && !forms.length"
-
-
-
-              class="rounded-2xl border border-slate-100 px-4 py-6 text-center text-sm text-slate-500 dark:border-white/10 dark:text-slate-400"
-
-
-
-            >
-
-
-
-              {{ viewCopy.forms.loading }}
-
-
-
-            </div>
-
-
-
-
-
-
-
-            <div
-
-
-
-              v-else-if="!forms.length"
-
-
-
-              class="rounded-2xl border border-dashed border-slate-200 px-4 py-10 text-center text-sm text-slate-500 dark:border-white/20 dark:text-slate-300"
-
-
-
-            >
-
-
-
-              {{ viewCopy.emptyStates.forms.prefix }}
-
-
-
-              <strong>&ldquo;{{ viewCopy.actions.newForm }}&rdquo;</strong>
-
-
-
-              {{ viewCopy.emptyStates.forms.suffix }}
-
-
-
-            </div>
-
-
-
-
-
-
-
-            <div v-else class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-
-
-
-              <article
-
-
-
-                v-for="form in forms"
-
-
-
-                :key="form.id"
-
-
-
-                class="flex flex-col rounded-3xl border border-slate-100 bg-white/80 p-5 shadow-sm transition hover:shadow-lg dark:border-white/10 dark:bg-white/5"
-
-
-
-              >
-
-
-
-                <div class="flex items-start justify-between gap-3">
-
-
-
-                  <div class="space-y-2">
-
-
-
-                    <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">
-
-
-
-                      {{ viewCopy.forms.card.eyebrow }}
-
-
-
-                    </p>
-
-
-
-
-
-
-
-                    <div>
-
-
-
-                      <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-
-
-
-                        {{ viewCopy.forms.card.nameLabel }}
-
-
-
-                      </p>
-
-
-
-                      <h3 class="text-xl font-semibold text-slate-900 dark:text-white">
-
-
-
-                        {{ form.name || fallbackLabels.noNameDefined }}
-
-
-
-                      </h3>
-
-
-
-                    </div>
-
-
-
-
-
-
-
-                    <div>
-
-
-
-                      <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-
-
-
-                        {{ viewCopy.forms.card.titleLabel }}
-
-
-
-                      </p>
-
-
-
-                      <p class="text-sm text-slate-500 dark:text-slate-400">
-
-
-
-                        {{ form.title || fallbackLabels.noTitleDefined }}
-
-
-
-                      </p>
-
-
-
-                    </div>
-
-
-
-                  </div>
-
-
-
-
-
-
-
-                  <span class="rounded-full bg-slate-900/5 px-3 py-1 text-xs font-semibold text-slate-600 dark:bg-white/10 dark:text-white">
-
-
-
-                    {{ form.total_leads ?? 0 }} {{ viewCopy.forms.card.totalLeadsSuffix }}
-
-
-
+          <section v-if="activeTab === 'forms'" class="forms-premium space-y-4">
+            <div class="forms-kpi-grid">
+              <article class="forms-kpi-card">
+                <div class="forms-kpi-top">
+                  <span class="forms-kpi-icon forms-kpi-icon--forms">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                      <polyline points="14 2 14 8 20 8" />
+                    </svg>
                   </span>
-
-
-
+                  <span class="forms-kpi-badge">{{ forms.length > 0 ? `+${forms.length}` : "0" }}</span>
                 </div>
-
-
-
-
-
-
-
-                <div class="mt-4 flex flex-wrap gap-2">
-
-
-
-                  <span
-
-
-
-                    v-for="field in form.fields"
-
-
-
-                    :key="field.id"
-
-
-
-                    class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 dark:bg-white/10 dark:text-slate-200"
-
-
-
-                  >
-
-
-
-                    {{ field.label }}
-
-
-
-                  </span>
-
-
-
-                </div>
-
-
-
-
-
-
-
-                <div class="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
-
-
-
-                  <span>
-
-
-
-                    {{ viewCopy.forms.card.updatedAt }} {{ formatDate(form.updated_at || form.created_at) }}
-
-
-
-                  </span>
-
-
-
-
-
-
-
-                  <div class="flex gap-2">
-
-
-
-                    <button
-
-
-
-                      type="button"
-
-
-
-                      class="rounded-full border border-slate-200 px-3 py-1 font-semibold text-slate-600 transition hover:bg-slate-100 dark:border-white/20 dark:text-white dark:hover:bg-white/10"
-
-
-
-                      @click="openEditModal(form)"
-
-
-
-                    >
-
-
-
-                      {{ viewCopy.actions.edit }}
-
-
-
-                    </button>
-
-
-
-
-
-
-
-                    <button
-
-
-
-                      type="button"
-
-
-
-                      class="rounded-full border border-rose-300 px-3 py-1 font-semibold text-rose-600 transition hover:bg-rose-50 dark:border-rose-500/40 dark:text-rose-200 dark:hover:bg-rose-500/10"
-
-
-
-                      @click="confirmDeleteForm(form)"
-
-
-
-                    >
-
-
-
-                      {{ viewCopy.actions.delete }}
-
-
-
-                    </button>
-
-
-
-                  </div>
-
-
-
-                </div>
-
-
-
+                <p class="forms-kpi-value">{{ forms.length }}</p>
+                <p class="forms-kpi-label">FORMULÁRIOS</p>
+                <p class="forms-kpi-foot">Total criado na conta</p>
               </article>
 
+              <article class="forms-kpi-card">
+                <div class="forms-kpi-top">
+                  <span class="forms-kpi-icon forms-kpi-icon--leads">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                      <circle cx="9" cy="7" r="4" />
+                      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                    </svg>
+                  </span>
+                  <span class="forms-kpi-badge">{{ totalFormLeads > 0 ? "Ativo" : "Sem leads" }}</span>
+                </div>
+                <p class="forms-kpi-value">{{ totalFormLeads }}</p>
+                <p class="forms-kpi-label">LEADS</p>
+                <p class="forms-kpi-foot">Capturados nos formulários</p>
+              </article>
 
+              <article class="forms-kpi-card">
+                <div class="forms-kpi-top">
+                  <span class="forms-kpi-icon forms-kpi-icon--month">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
+                      <polyline points="16 7 22 7 22 13" />
+                    </svg>
+                  </span>
+                  <span class="forms-kpi-badge">+{{ leadsThisMonth }} este mês</span>
+                </div>
+                <p class="forms-kpi-value">{{ leadsThisMonth }}</p>
+                <p class="forms-kpi-label">ESTE MÊS</p>
+                <p class="forms-kpi-foot">Novos leads capturados</p>
+              </article>
 
+              <article class="forms-kpi-card">
+                <div class="forms-kpi-top">
+                  <span class="forms-kpi-icon forms-kpi-icon--latest">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10" />
+                      <polyline points="12 6 12 12 16 14" />
+                    </svg>
+                  </span>
+                  <span class="forms-kpi-badge">Recente</span>
+                </div>
+                <p class="forms-kpi-value forms-kpi-value--date">{{ latestLeadDateLabel }}</p>
+                <p class="forms-kpi-label">ÚLTIMO LEAD</p>
+                <p class="forms-kpi-foot">Captura mais recente</p>
+              </article>
             </div>
 
+            <article class="list-card forms-list-card">
+              <header class="list-header forms-list-header">
+                <div class="list-title">Formulários</div>
+                <div class="forms-list-filters">
+                  <div class="search-wrap">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="11" cy="11" r="8" />
+                      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                    </svg>
+                    <input v-model="formSearchQuery" class="search-input" type="text" placeholder="Buscar formulário..." />
+                  </div>
+                  <select v-model="formStatusFilter" class="filter-select">
+                    <option value="all">Todos os status</option>
+                    <option value="with-leads">Com leads</option>
+                    <option value="no-leads">Sem leads</option>
+                  </select>
+                </div>
+              </header>
 
+              <div v-if="formsLoading && !forms.length" class="forms-empty">
+                {{ viewCopy.forms.loading }}
+              </div>
 
+              <div v-else-if="!filteredForms.length" class="forms-empty">
+                <svg viewBox="0 0 24 24" class="forms-empty-icon" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                </svg>
+                <p>Você ainda não criou formulários</p>
+                <button type="button" class="btn btn-primary forms-empty-cta" @click="openCreateModal">Criar primeiro formulário</button>
+              </div>
+
+              <div v-else class="forms-list-body">
+                <div
+                  v-for="form in filteredForms"
+                  :key="form.id"
+                  class="page-item form-row"
+                  :title="form.name || fallbackLabels.noNameDefined"
+                  @click="openEditModal(form)"
+                >
+                  <div class="form-row-left">
+                    <div class="page-thumb">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                      </svg>
+                    </div>
+
+                    <div class="page-info">
+                      <div class="page-name" :title="form.name || fallbackLabels.noNameDefined">{{ form.name || fallbackLabels.noNameDefined }}</div>
+                      <div class="page-dest">
+                        {{ form.fields?.length || 0 }} campos · Atualizado em {{ formatDate(form.updated_at || form.created_at) }}
+                      </div>
+                      <div class="fields-row">
+                        <span
+                          v-for="field in visibleFormFields(form)"
+                          :key="`${form.id}-${field.id}`"
+                          class="field-chip"
+                        >
+                          {{ field.label }}
+                        </span>
+                        <span v-if="hiddenFieldCount(form) > 0" class="field-chip">+{{ hiddenFieldCount(form) }}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="form-row-right" @click.stop>
+                    <div class="page-visits form-leads-badge" :class="{ 'is-zero': (form.total_leads ?? 0) === 0 }" :title="(form.total_leads ?? 0) === 0 ? 'Nenhum lead capturado ainda' : ''">
+                      {{ form.total_leads ?? 0 }} leads
+                    </div>
+                    <div class="page-actions">
+                      <button type="button" class="page-action-btn view" title="Ver leads" @click="openFormLeads(form)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                      </button>
+                      <button type="button" class="page-action-btn edit" title="Editar" @click="openEditModal(form)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                      </button>
+                      <div class="form-menu-wrap">
+                        <button type="button" class="page-action-btn menu" title="Ações" @click="toggleFormMenu(form.id)">
+                          <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
+                        </button>
+                        <div v-if="openFormMenuId === form.id" class="form-menu-dropdown">
+                          <button type="button" @click="openEditModal(form)">Editar</button>
+                          <button type="button" @click="openFormLeads(form)">Ver leads</button>
+                          <button type="button" @click="duplicateFormQuick(form)">Duplicar formulário</button>
+                          <button type="button" @click="copyFormLink(form)">Copiar link</button>
+                          <button type="button" @click="embedFormInPage(form)">Incorporar em página</button>
+                          <button v-if="canDeleteLeads" type="button" class="danger" @click="confirmDeleteForm(form)">Excluir</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </article>
           </section>
 
 
@@ -736,7 +285,12 @@
 
 
 
-          <section v-else-if="activeTab === 'contacts'" class="flex min-h-0 flex-1 flex-col gap-6 overflow-hidden">
+          <section
+            v-if="activeTab === 'contacts'"
+            ref="contactsSectionRef"
+            class="flex min-h-0 flex-1 flex-col gap-6 overflow-hidden"
+            :style="contactViewMode === 'kanban' ? { height: kanbanViewportHeight, maxHeight: kanbanViewportHeight } : undefined"
+          >
 
 
 
@@ -800,37 +354,42 @@
 
 
 
-              <div
+              <div v-if="contactViewMode === 'list'" class="flex min-h-0 flex-1 flex-col overflow-hidden">
 
 
 
-                v-if="contactViewMode === 'list' && !filteredContacts.length"
+                <div class="mb-3 flex flex-wrap items-center gap-2">
+                  <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">{{ viewCopy.filters.opportunity.stateLabel }}</span>
+                  <select
+                    v-model="opportunityStateFilter"
+                    class="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm outline-none transition focus:border-slate-300 focus:ring-0 dark:border-white/10 dark:bg-[#111319] dark:text-white"
+                  >
+                    <option value="all">{{ viewCopy.filters.opportunity.all }}</option>
+                    <option value="open">{{ viewCopy.filters.opportunity.open }}</option>
+                    <option value="closed">{{ viewCopy.filters.opportunity.closed }}</option>
+                  </select>
 
+                  <span class="ml-1 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">{{ viewCopy.filters.opportunity.outcomeLabel }}</span>
+                  <select
+                    v-model="opportunityOutcomeFilter"
+                    class="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm outline-none transition focus:border-slate-300 focus:ring-0 dark:border-white/10 dark:bg-[#111319] dark:text-white"
+                  >
+                    <option value="all">{{ viewCopy.filters.opportunity.all }}</option>
+                    <option value="won">{{ viewCopy.filters.opportunity.won }}</option>
+                    <option value="lost">{{ viewCopy.filters.opportunity.lost }}</option>
+                  </select>
 
-
-                class="rounded-2xl border border-dashed border-slate-200 px-4 py-10 text-center text-sm text-slate-500 dark:border-white/20 dark:text-slate-300"
-
-
-
-              >
-
-
-
-                {{ viewCopy.emptyStates.contacts.noFilters }}
-
-
-
-              </div>
-
-
-
-
-
-
-
-              <div v-else-if="contactViewMode === 'list'" class="flex min-h-0 flex-1 flex-col overflow-hidden">
-
-
+                  <div v-if="hasActiveFilters" class="ml-auto flex items-center gap-2 text-xs text-slate-500 dark:text-slate-300">
+                    <span>{{ filterCopy.active }}</span>
+                    <button
+                      type="button"
+                      class="rounded-full border border-slate-200 px-3 py-1 font-semibold text-slate-600 transition hover:bg-slate-100 dark:border-white/10 dark:text-white dark:hover:bg-white/10"
+                      @click.stop="clearAllFilters"
+                    >
+                      {{ filterCopy.clearAll }}
+                    </button>
+                  </div>
+                </div>
 
                 <article
 
@@ -840,7 +399,7 @@
 
 
 
-                  :style="{ minHeight: listTableMinHeight }"
+                  :style="{ height: listTableHeight, minHeight: listTableHeight, maxHeight: listTableHeight }"
 
 
 
@@ -852,67 +411,11 @@
 
 
 
-                    <div
-
-
-
-                      v-if="hasActiveFilters"
-
-
-
-                      class="mb-3 flex flex-wrap items-center gap-2 px-4 pt-4 text-xs text-slate-500 dark:text-slate-300"
-
-
-
-                    >
-
-
-
-                      <span>{{ filterCopy.active }}</span>
-
-
-
-                      <button
-
-
-
-                        type="button"
-
-
-
-                        class="rounded-full border border-slate-200 px-3 py-1 font-semibold text-slate-600 transition hover:bg-slate-100 dark:border-white/10 dark:text-white dark:hover:bg-white/10"
-
-
-
-                        @click.stop="clearAllFilters"
-
-
-
-                      >
-
-
-
-                        {{ filterCopy.clearAll }}
-
-
-
-                      </button>
-
-
-
-                    </div>
-
-
-
-
-
-
-
                     <div class="flex-1 min-h-0 overflow-auto">
 
 
 
-                      <table class="min-w-full divide-y divide-slate-200 text-sm dark:divide-white/10">
+                      <table v-if="!isMobileViewport" class="min-w-full divide-y divide-slate-200 text-sm dark:divide-white/10">
 
 
 
@@ -2034,11 +1537,13 @@
 
                         <tbody class="divide-y divide-slate-200 dark:divide-white/5">
 
-
+                          <tr v-if="!filteredContacts.length">
+                            <td colspan="10" class="px-4 py-12 text-center text-sm text-slate-500 dark:text-slate-300">
+                              {{ viewCopy.emptyStates.contacts.noFilters }}
+                            </td>
+                          </tr>
 
                           <tr
-
-
 
                             v-for="contact in filteredContacts"
 
@@ -2061,9 +1566,9 @@
 
 
 
-                            <td class="px-2 py-2 font-semibold">{{ getOpportunityFormColumnLabel(contact) }}</td>
+                            <td class="px-2 py-2 font-semibold">{{ getContactModeLabel(contact) }}</td>
 
-                            <td class="px-2 py-2 text-xs font-semibold">{{ getContactModeLabel(contact) }}</td>
+                            <td class="px-2 py-2 text-xs font-semibold">{{ getOpportunityFormColumnLabel(contact) }}</td>
 
 
 
@@ -2455,6 +1960,7 @@
 
 
                               <button
+                                v-if="canDeleteLeads"
 
 
 
@@ -2512,6 +2018,57 @@
 
                       </table>
 
+                      <div v-else class="space-y-3 p-3">
+                        <div
+                          v-if="!filteredContacts.length"
+                          class="rounded-2xl border border-dashed border-slate-200 px-4 py-10 text-center text-sm text-slate-500 dark:border-white/20 dark:text-slate-300"
+                        >
+                          {{ viewCopy.emptyStates.contacts.noFilters }}
+                        </div>
+                        <article
+                          v-for="contact in filteredContacts"
+                          :key="`m-${contact.id}`"
+                          class="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-white/10 dark:bg-[#202020]"
+                          @click="openOpportunityDrawer(contact)"
+                        >
+                          <div class="flex items-start justify-between gap-2">
+                            <div class="min-w-0">
+                              <p class="truncate text-base font-semibold text-slate-900 dark:text-white">{{ contact.name || fallbackLabels.noName }}</p>
+                              <p class="mt-0.5 text-xs font-semibold text-slate-500 dark:text-slate-300">{{ getOpportunityFormColumnLabel(contact) }}</p>
+                            </div>
+                            <p class="text-xs text-slate-500 dark:text-slate-300">{{ formatDate(contact.created_at) }}</p>
+                          </div>
+
+                          <div class="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-slate-600 dark:text-slate-300">
+                            <p class="truncate"><span class="font-semibold">{{ filterCopy.columns.phone }}:</span> {{ contact.phone || viewCopy.labels.dash }}</p>
+                            <p class="truncate"><span class="font-semibold">{{ filterCopy.columns.city }}:</span> {{ contact.city || viewCopy.labels.dash }}</p>
+                            <p class="col-span-2 truncate"><span class="font-semibold">{{ filterCopy.columns.email }}:</span> {{ contact.email || viewCopy.labels.emDash }}</p>
+                            <p><span class="font-semibold">{{ filterCopy.columns.value }}:</span> {{ formatOpportunityValue(contact.estimated_value_cents) }}</p>
+                            <p class="truncate"><span class="font-semibold">{{ filterCopy.columns.status }}:</span> {{ contact.status_name || fallbackLabels.noStatus }}</p>
+                          </div>
+
+                          <div class="mt-3 flex items-center justify-between">
+                            <button
+                              type="button"
+                              class="status-chip-button rounded-2xl border px-3 py-1 text-xs font-semibold"
+                              :style="statusChipStyle(contact)"
+                              @click.stop="toggleStatusDropdown(contact)"
+                            >
+                              {{ contact.status_name || fallbackLabels.noStatus }}
+                            </button>
+                            <button
+                              v-if="canDeleteLeads"
+                              type="button"
+                              class="rounded-xl border border-rose-200 px-2.5 py-1 text-xs font-semibold text-rose-600"
+                              :disabled="contactDeleting[idKey(contact.id)]"
+                              @click.stop="handleDeleteContact(contact)"
+                            >
+                              {{ viewCopy.actions.delete }}
+                            </button>
+                          </div>
+                        </article>
+                      </div>
+
 
 
                     </div>
@@ -2550,7 +2107,7 @@
 
 
 
-              <div
+<div
 
 
 
@@ -2559,6 +2116,8 @@
 
 
   class="kanban-scroll flex-1 min-h-0 overflow-x-auto overflow-y-hidden rounded-3xl border border-slate-100 bg-white/90 p-4 pb-6 shadow-sm dark:border-white/10 dark:bg-white/5"
+  ref="kanbanScrollRef"
+  :style="contactViewMode === 'kanban' ? { height: '100%', minHeight: '100%' } : undefined"
 
 
 
@@ -2634,6 +2193,7 @@
 
 
         class="mt-3 flex-1 min-h-0 overflow-y-auto overflow-x-hidden rounded-2xl bg-transparent pr-1"
+        :style="{ height: kanbanColumnBodyHeight, maxHeight: kanbanColumnBodyHeight }"
 
 
 
@@ -2755,6 +2315,7 @@
 
 
               <button
+                v-if="canDeleteLeads"
 
 
 
@@ -2979,7 +2540,7 @@
 
           <section v-else-if="activeTab === 'clients'" class="space-y-6">
 
-            <ClientsView />
+            <ClientsView ref="clientsPanelRef" />
 
           </section>
 
@@ -2987,7 +2548,7 @@
 
 
 
-            <LeadStatusManagerPanel />
+            <LeadStatusManagerPanel ref="statusPanelRef" :can-delete="canDeleteLeads" />
 
 
 
@@ -3236,7 +2797,7 @@
 
 
 
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from "vue";
 
 
 
@@ -3263,14 +2824,17 @@ import type { ClientSummary, LeadContact, LeadForm, LeadFormPayload, LeadStatus 
 
 
 import { useLeadCaptureStore } from "../../store/useLeadCaptureStore";
+import { API_PERMISSION_DENIED_EVENT } from "../../services/api";
 
 
 
 import { useThemeStore } from "../../store/useThemeStore";
+import { useAuthStore } from "../../store/useAuthStore";
 
 
 
 import { useLeadFeatureGate } from "../../composables/useLeadFeatureGate";
+import { hasAnyPermission } from "../../utils/permissions";
 
 
 
@@ -3310,6 +2874,7 @@ const route = useRoute();
 
 
 const leadStore = useLeadCaptureStore();
+const authStore = useAuthStore();
 
 
 
@@ -3319,6 +2884,20 @@ const isBootstrappingLeads = ref(true);
 
 
 const { hasLeadFeatureAccess } = useLeadFeatureGate();
+const canDeleteLeads = computed(() => {
+  const user = authStore.user;
+  if (!user) return true;
+  if (user.is_owner ?? true) return true;
+  if ((user.role || "member").toLowerCase() === "admin") return true;
+  return hasAnyPermission(user.effective_permissions || [], ["leads_full"]);
+});
+const canManageLeads = computed(() => {
+  const user = authStore.user;
+  if (!user) return true;
+  if (user.is_owner ?? true) return true;
+  if ((user.role || "member").toLowerCase() === "admin") return true;
+  return hasAnyPermission(user.effective_permissions || [], ["leads_manager", "leads_full"]);
+});
 
 
 
@@ -3375,7 +2954,7 @@ const viewCopySource = {
     title: { pt: "Leads", es: "Leads" },
     description: {
       pt: "Crie formulários e acompanhe contatos gerados pelas páginas.",
-      es: "Crea formularios y acompaña los contactos generados por tus páginas."
+      es: "Crea formularios y acompanha los contactos generados por tus páginas."
     },
   },
   tabs: {
@@ -3436,6 +3015,15 @@ const viewCopySource = {
     kanban: {
       allPages: { pt: "Todas as páginas", es: "Todas las páginas" },
       allForms: { pt: "Todos os formulários", es: "Todos los formularios" }
+    },
+    opportunity: {
+      stateLabel: { pt: "Situação", es: "Situación" },
+      outcomeLabel: { pt: "Resultado", es: "Resultado" },
+      all: { pt: "Todos", es: "Todos" },
+      open: { pt: "Aberta", es: "Abierta" },
+      closed: { pt: "Fechada", es: "Cerrada" },
+      won: { pt: "Ganha", es: "Ganada" },
+      lost: { pt: "Perdida", es: "Perdida" }
     }
   },
   settings: {
@@ -3477,7 +3065,7 @@ const viewCopySource = {
     contacts: {
       noLeads: {
         pt: "Nenhum lead captado ainda. Divulgue as páginas com formulário obrigatório para começar.",
-        es: "Aún no hay leads captados. Divulga las páginas con formulario obrigatório para empezar."
+        es: "Aún no hay leads captados. Divulga las páginas con formulario obligatorio para empezar."
       },
       noFilters: {
         pt: "Nenhum contato encontrado com os filtros aplicados.",
@@ -3538,7 +3126,7 @@ const isDarkTheme = computed(() => themeStore.isDark);
 
 
 
-const listTableMinHeight = computed(() => {
+const listTableHeight = computed(() => {
 
 
 
@@ -3546,11 +3134,11 @@ const listTableMinHeight = computed(() => {
 
 
 
-  const viewportHeight = window.innerHeight || 768;
+  const viewportHeight = viewportHeightPx.value || 768;
 
 
 
-  const usable = Math.max(viewportHeight - 360, 320);
+  const usable = Math.max(viewportHeight - (isMobileViewport.value ? 250 : 230), isMobileViewport.value ? 340 : 420);
 
 
 
@@ -3560,6 +3148,37 @@ const listTableMinHeight = computed(() => {
 
 });
 
+const contactsSectionRef = ref<HTMLElement | null>(null);
+const kanbanScrollRef = ref<HTMLElement | null>(null);
+const statusPanelRef = ref<{ openCreateModal?: () => void } | null>(null);
+const clientsPanelRef = ref<{ openCreateModal?: () => void } | null>(null);
+const kanbanViewportHeight = ref("calc(100dvh - 240px)");
+const kanbanColumnBodyHeight = computed(() => {
+  const raw = Number.parseInt(kanbanViewportHeight.value, 10);
+  if (Number.isNaN(raw)) return "420px";
+  return `${Math.max(220, raw - 110)}px`;
+});
+
+const recalculateKanbanHeight = () => {
+  if (typeof window === "undefined") return;
+  const el = contactsSectionRef.value || kanbanScrollRef.value;
+  if (!el) return;
+  const rect = el.getBoundingClientRect();
+  const bottomGap = isMobileViewport.value ? 12 : 16;
+  const available = Math.floor(window.innerHeight - rect.top - bottomGap);
+  kanbanViewportHeight.value = `${Math.max(300, available)}px`;
+};
+
+const scheduleKanbanHeightRecalc = () => {
+  if (typeof window === "undefined") return;
+  if (activeTab.value !== "contacts" || contactViewMode.value !== "kanban") return;
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      recalculateKanbanHeight();
+    });
+  });
+};
+
 
 
 
@@ -3567,16 +3186,25 @@ const listTableMinHeight = computed(() => {
 
 
 const activeTab = ref<TabKey>("forms");
+const pageTitle = computed(() => {
+  if (activeTab.value === "contacts") return viewCopy.tabs.contacts;
+  if (activeTab.value === "clients") return viewCopy.tabs.clients;
+  if (activeTab.value === "settings") return viewCopy.tabs.settings;
+  return viewCopy.tabs.forms;
+});
 
 
 
 const contactViewMode = ref<ContactViewMode>("list");
+const opportunityStateFilter = ref<"all" | "open" | "closed">("all");
+const opportunityOutcomeFilter = ref<"all" | "won" | "lost">("all");
 const isOpportunityDrawerOpen = ref(false);
 const selectedOpportunityId = ref<string | number | null>(null);
 
 
 
 const isMobileViewport = ref(false);
+const viewportHeightPx = ref(768);
 
 
 
@@ -3725,6 +3353,107 @@ const forms = computed(() => leadStore.forms);
 
 
 const formsLoading = computed(() => leadStore.formsLoading);
+
+const formSearchQuery = ref("");
+const formStatusFilter = ref<"all" | "with-leads" | "no-leads">("all");
+const openFormMenuId = ref<number | string | null>(null);
+
+const getFormTotalLeads = (form: LeadForm) => {
+  if (typeof form.total_leads === "number") return form.total_leads;
+  return contacts.value.filter(contact => String(contact.form_id) === String(form.id)).length;
+};
+
+const totalFormLeads = computed(() => forms.value.reduce((acc, form) => acc + getFormTotalLeads(form), 0));
+
+const leadsThisMonth = computed(() => {
+  const now = new Date();
+  const month = now.getMonth();
+  const year = now.getFullYear();
+  return contacts.value.reduce((acc, contact) => {
+    if (!contact.created_at) return acc;
+    const dt = new Date(contact.created_at);
+    if (Number.isNaN(dt.getTime())) return acc;
+    return dt.getMonth() === month && dt.getFullYear() === year ? acc + 1 : acc;
+  }, 0);
+});
+
+const latestLeadDateLabel = computed(() => {
+  let latest: Date | null = null;
+  contacts.value.forEach(contact => {
+    if (!contact.created_at) return;
+    const dt = new Date(contact.created_at);
+    if (Number.isNaN(dt.getTime())) return;
+    if (!latest || dt.getTime() > latest.getTime()) latest = dt;
+  });
+  if (!latest) return "—";
+  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short" }).format(latest);
+});
+
+const filteredForms = computed(() => {
+  const term = formSearchQuery.value.trim().toLowerCase();
+  return forms.value.filter(form => {
+    const leads = getFormTotalLeads(form);
+    const matchesStatus =
+      formStatusFilter.value === "all" ||
+      (formStatusFilter.value === "with-leads" && leads > 0) ||
+      (formStatusFilter.value === "no-leads" && leads === 0);
+    const matchesSearch =
+      !term ||
+      (form.name || "").toLowerCase().includes(term) ||
+      (form.title || "").toLowerCase().includes(term);
+    return matchesStatus && matchesSearch;
+  });
+});
+
+const visibleFormFields = (form: LeadForm) => (form.fields || []).slice(0, 4);
+const hiddenFieldCount = (form: LeadForm) => Math.max((form.fields || []).length - 4, 0);
+
+const toggleFormMenu = (formId: number | string) => {
+  openFormMenuId.value = openFormMenuId.value === formId ? null : formId;
+};
+
+const openFormLeads = (form: LeadForm) => {
+  openFormMenuId.value = null;
+  activeTab.value = "contacts";
+  contactViewMode.value = "list";
+  listFilters.form = [String(form.id)];
+};
+
+const duplicateFormQuick = async (form: LeadForm) => {
+  openFormMenuId.value = null;
+  try {
+    await leadStore.createForm({
+      name: `${form.name || "Formulário"} (cópia)`,
+      title: form.title || "",
+      subtitle: form.subtitle || "",
+      buttonLabel: form.buttonLabel || "Enviar",
+      buttonColor: form.buttonColor || "#3DCC5F",
+      showLogo: form.showLogo ?? true,
+      fields: (form.fields || []).map(field => ({ ...field })),
+      defaultStatusId: form.defaultStatusId ?? null
+    });
+    showFeedback("Formulário duplicado com sucesso.");
+  } catch (err) {
+    console.error(err);
+    showFeedback("Não foi possível duplicar o formulário.", true);
+  }
+};
+
+const copyFormLink = async (form: LeadForm) => {
+  openFormMenuId.value = null;
+  const url = `${window.location.origin}/admin/leads?form=${encodeURIComponent(String(form.id))}`;
+  try {
+    await navigator.clipboard.writeText(url);
+    showFeedback("Link copiado.");
+  } catch {
+    showFeedback("Não foi possível copiar o link.", true);
+  }
+};
+
+const embedFormInPage = (form: LeadForm) => {
+  openFormMenuId.value = null;
+  showFeedback(`Use o formulário "${form.name || "Formulário"}" na captura de leads da página.`);
+};
 
 
 
@@ -3876,6 +3605,20 @@ const getContactModeLabel = (contact: LeadContact | null | undefined) =>
 
 const getOpportunityFormColumnLabel = (contact: LeadContact | null | undefined) =>
   isManualOpportunity(contact) ? "-" : getContactFormLabel(contact);
+
+const getOpportunityOutcome = (contact: LeadContact | null | undefined): "won" | "lost" | null => {
+  const status = String(contact?.status_name || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+  if (!status) return null;
+  if (status === "ganho" || status === "won" || status.includes("ganh")) return "won";
+  if (status === "perdido" || status === "lost" || status.includes("perd")) return "lost";
+  return null;
+};
+
+const isOpportunityClosed = (contact: LeadContact | null | undefined) => getOpportunityOutcome(contact) !== null;
 
 
 
@@ -4325,6 +4068,10 @@ const hasActiveFilters = computed(() => {
 
     listFilters.status.length ||
 
+    opportunityStateFilter.value !== "all" ||
+
+    opportunityOutcomeFilter.value !== "all" ||
+
 
 
     !!listFilters.receivedFrom ||
@@ -4438,6 +4185,18 @@ const matchesFilter = (contact: LeadContact) => {
 
 
 
+
+  if (opportunityStateFilter.value !== "all") {
+    const closed = isOpportunityClosed(contact);
+    if (opportunityStateFilter.value === "open" && closed) return false;
+    if (opportunityStateFilter.value === "closed" && !closed) return false;
+  }
+
+  if (opportunityOutcomeFilter.value !== "all") {
+    const outcome = getOpportunityOutcome(contact);
+    if (opportunityOutcomeFilter.value === "won" && outcome !== "won") return false;
+    if (opportunityOutcomeFilter.value === "lost" && outcome !== "lost") return false;
+  }
 
   if (listFilters.receivedFrom) {
 
@@ -4751,6 +4510,21 @@ const showFeedback = (message: string, isError = false) => {
 
 };
 
+const getForbiddenMessage = (err: any, fallback: string) => {
+  const status = err?.response?.status;
+  if (status !== 403) return null;
+  return err?.response?.data?.detail || fallback;
+};
+
+const showReadOnlySnackbar = (message = "Seu perfil permite apenas visualização.") => {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent(API_PERMISSION_DENIED_EVENT, {
+      detail: { message, status: 403, method: "post" }
+    })
+  );
+};
+
 
 
 
@@ -4758,6 +4532,10 @@ const showFeedback = (message: string, isError = false) => {
 
 
 const openCreateModal = () => {
+  if (!canManageLeads.value) {
+    showReadOnlySnackbar();
+    return;
+  }
 
 
 
@@ -4772,7 +4550,19 @@ const openCreateModal = () => {
 };
 
 const openManualOpportunityModal = () => {
+  if (!canManageLeads.value) {
+    showReadOnlySnackbar();
+    return;
+  }
   manualOpportunityModalOpen.value = true;
+};
+
+const openPipelineStageModal = () => {
+  statusPanelRef.value?.openCreateModal?.();
+};
+
+const openClientCreateModal = () => {
+  clientsPanelRef.value?.openCreateModal?.();
 };
 
 const selectManualOpportunityClient = (client: ClientSummary) => {
@@ -4833,6 +4623,10 @@ const currencyInputToCents = (value: string) => {
 };
 
 const handleCreateManualOpportunity = async () => {
+  if (!canManageLeads.value) {
+    showReadOnlySnackbar();
+    return;
+  }
   if (!selectedManualOpportunityClient.value && !manualOpportunityForm.name?.trim()) return;
   manualOpportunitySaving.value = true;
   try {
@@ -4889,6 +4683,10 @@ const openEditModal = (form: LeadForm) => {
 
 
 const confirmDeleteForm = async (form: LeadForm) => {
+  if (!canDeleteLeads.value) {
+    showFeedback("Seu nível gerencial não permite excluir.", true);
+    return;
+  }
 
 
 
@@ -4989,10 +4787,8 @@ const handleBuilderSave = async (payload: { id: string | null; form: LeadFormPay
 
 
     console.error(err);
-
-
-
-    showFeedback(viewCopy.messages.formSaveError, true);
+    const forbiddenMessage = getForbiddenMessage(err, "Seu perfil permite apenas visualização.");
+    showFeedback(forbiddenMessage || viewCopy.messages.formSaveError, true);
 
 
 
@@ -5886,6 +5682,10 @@ const handleGlobalKeydown = (event: KeyboardEvent) => {
 
 
 const handleDeleteContact = async (contact: LeadContact) => {
+  if (!canDeleteLeads.value) {
+    showFeedback("Seu nível gerencial não permite excluir.", true);
+    return;
+  }
 
 
 
@@ -6289,6 +6089,8 @@ const clearAllFilters = () => {
 
 
 
+  opportunityStateFilter.value = "all";
+  opportunityOutcomeFilter.value = "all";
   listFilters.receivedFrom = "";
 
 
@@ -6374,6 +6176,7 @@ const updateViewportMode = () => {
 
 
   const isMobile = window.innerWidth < 768;
+  viewportHeightPx.value = window.innerHeight || 768;
 
 
 
@@ -6390,6 +6193,10 @@ const updateViewportMode = () => {
 
 
   }
+
+  nextTick(() => {
+    scheduleKanbanHeightRecalc();
+  });
 
 
 
@@ -6440,6 +6247,9 @@ onMounted(async () => {
   await bootstrapLeads();
   syncActiveTabFromRoute();
   syncOpportunityQuery();
+  nextTick(() => {
+    scheduleKanbanHeightRecalc();
+  });
 
 
 
@@ -6501,8 +6311,32 @@ watch(activeTab, value => {
 
   }
 
+  nextTick(() => {
+    scheduleKanbanHeightRecalc();
+  });
 
 
+
+});
+
+watch(contactViewMode, () => {
+  nextTick(() => {
+    scheduleKanbanHeightRecalc();
+  });
+});
+
+watch(kanbanScrollRef, el => {
+  if (!el) return;
+  scheduleKanbanHeightRecalc();
+});
+
+watch(contactsSectionRef, el => {
+  if (!el) return;
+  scheduleKanbanHeightRecalc();
+});
+
+watch(kanbanColumns, () => {
+  scheduleKanbanHeightRecalc();
 });
 
 
@@ -6531,6 +6365,480 @@ watch(
 
 
 <style scoped>
+.forms-premium {
+  --verde: #3dcc5f;
+  --verde-dim: #e9f9ee;
+  --verde-border: rgba(61, 204, 95, 0.25);
+  --surface: #ffffff;
+  --surface2: #f7faf8;
+  --text: #0f1f14;
+  --text-2: #5d7567;
+  --text-3: #8aa693;
+  --border: #dbe8df;
+}
+
+.forms-create-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: none;
+  border-radius: 10px;
+  background: var(--verde);
+  color: #0f1f14;
+  padding: 9px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  transition: background-color 0.18s ease;
+}
+
+.forms-create-btn svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+.forms-create-btn:hover {
+  background: #48d666;
+}
+
+.forms-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.forms-kpi-card {
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  padding: 18px 20px;
+  min-height: 156px;
+  box-shadow: 0 1px 2px rgba(15, 31, 20, 0.05);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.forms-kpi-card:hover {
+  transform: translateY(-2px);
+  border-color: #cde2d3;
+  box-shadow: 0 10px 20px rgba(15, 31, 20, 0.08);
+}
+
+.forms-kpi-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.forms-kpi-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.forms-kpi-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.forms-kpi-icon--forms {
+  background: var(--verde-dim);
+  color: #2f9a4e;
+}
+
+.forms-kpi-icon--leads {
+  background: #eef8f2;
+  color: #2e8a63;
+}
+
+.forms-kpi-icon--month {
+  background: #eef9f1;
+  color: #2d9a49;
+}
+
+.forms-kpi-icon--latest {
+  background: #edf4ef;
+  color: #4f6758;
+}
+
+.forms-kpi-badge {
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #f6faf7;
+  color: var(--text-2);
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 700;
+  padding: 6px 9px;
+}
+
+.forms-kpi-value {
+  margin: 0;
+  color: var(--text);
+  font-size: 32px;
+  line-height: 1.08;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.forms-kpi-value--date {
+  font-size: 28px;
+}
+
+.forms-kpi-label {
+  margin-top: 4px;
+  color: var(--text-2);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.forms-kpi-foot {
+  margin-top: 6px;
+  color: var(--text-3);
+  font-size: 11px;
+  line-height: 1.35;
+  font-weight: 500;
+}
+
+.forms-list-card {
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.forms-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface2);
+}
+
+.list-title {
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.forms-list-filters {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.search-wrap {
+  position: relative;
+  width: 320px;
+  max-width: 100%;
+}
+
+.search-wrap svg {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  width: 15px;
+  height: 15px;
+  color: var(--text-3);
+  transform: translateY(-50%);
+}
+
+.search-input,
+.filter-select {
+  width: 100%;
+  height: 38px;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  font-size: 0.91rem;
+  font-weight: 500;
+}
+
+.search-input {
+  padding: 0 12px 0 33px;
+}
+
+.filter-select {
+  width: 170px;
+  padding: 0 12px;
+}
+
+.forms-list-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.form-row:last-child {
+  border-bottom: 0;
+}
+
+.form-row:hover {
+  background: var(--surface2);
+}
+
+.form-row-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.form-row-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.page-info {
+  min-width: 0;
+}
+
+.page-name {
+  color: var(--text);
+  font-size: 1.03rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.page-dest {
+  margin-top: 4px;
+  color: var(--text-3);
+  font-size: 0.84rem;
+  line-height: 1.25;
+}
+
+.fields-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.field-chip {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface2);
+  color: #4b6355;
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 600;
+  padding: 4px 10px;
+}
+
+.form-leads-badge {
+  min-width: 72px;
+  text-align: center;
+  border-radius: 999px;
+  border: 1px solid var(--verde-border);
+  background: var(--verde-dim);
+  color: #1f7d37;
+  font-weight: 600;
+  font-size: 0.82rem;
+  padding: 4px 10px;
+}
+
+.form-leads-badge.is-zero {
+  color: var(--text-3);
+  border-color: var(--border);
+  background: #f2f6f3;
+}
+
+.page-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.page-action-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: #5f7a6b;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.18s ease;
+}
+
+.page-action-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.page-action-btn.view {
+  background: #e8f8ed;
+  border-color: #c9ebd4;
+  color: #2f9a4e;
+}
+
+.page-action-btn.view:hover {
+  background: #3dcc5f;
+  border-color: #3dcc5f;
+  color: #fff;
+}
+
+.page-action-btn.edit:hover,
+.page-action-btn.menu:hover {
+  border-color: var(--verde-border);
+  color: #2b8a46;
+  background: #f6fcf8;
+}
+
+.form-menu-wrap {
+  position: relative;
+}
+
+.form-menu-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 80;
+  min-width: 196px;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: #fff;
+  box-shadow: 0 14px 26px rgba(15, 31, 20, 0.14);
+  overflow: hidden;
+}
+
+.form-menu-dropdown button {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid #edf4ef;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  font-size: 0.84rem;
+  font-weight: 600;
+  padding: 0.6rem 0.75rem;
+}
+
+.form-menu-dropdown button:last-child {
+  border-bottom: 0;
+}
+
+.form-menu-dropdown button:hover {
+  background: #f4faf6;
+}
+
+.form-menu-dropdown button.danger {
+  color: #de3841;
+}
+
+.forms-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 2rem 1rem;
+  color: var(--text-2);
+  text-align: center;
+}
+
+.forms-empty-icon {
+  width: 28px;
+  height: 28px;
+  color: var(--text-3);
+}
+
+.forms-empty-cta {
+  margin-top: 0.35rem;
+}
+
+@media (max-width: 920px) {
+  .forms-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .forms-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .forms-kpi-card {
+    min-height: 142px;
+    padding: 16px 14px;
+  }
+
+  .forms-kpi-value {
+    font-size: 28px;
+  }
+
+  .forms-list-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .forms-list-filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search-wrap,
+  .filter-select {
+    width: 100%;
+  }
+
+  .form-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .form-row-left {
+    width: 100%;
+  }
+
+  .form-row-right {
+    width: 100%;
+    justify-content: space-between;
+    margin-left: 0;
+  }
+
+  .form-leads-badge {
+    margin-top: 2px;
+  }
+
+  .page-actions {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 520px) {
+  .forms-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+}
 
 
 
@@ -7442,6 +7750,20 @@ watch(
 
 
 </style>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -23,6 +23,7 @@ interface User {
   address_city?: string | null;
   address_state?: string | null;
   address_zipcode?: string | null;
+  avatar_url?: string | null;
   is_active: boolean;
   is_superuser: boolean;
   plan: string;
@@ -39,6 +40,12 @@ interface User {
   subscription_status?: string | null;
   subscription_valid_until?: string | null;
   subscription_blocked?: boolean;
+  primary_agency_id?: number | null;
+  is_owner?: boolean | null;
+  role?: string | null;
+  status?: string | null;
+  permissions?: string[] | null;
+  effective_permissions?: string[] | null;
 }
 
 const REFRESH_KEY = "refresh_token";

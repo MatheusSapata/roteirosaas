@@ -4,6 +4,7 @@ import RegisterView from "../views/admin/RegisterView.vue";
 import ForgotPasswordView from "../views/admin/ForgotPasswordView.vue";
 import ResetPasswordView from "../views/admin/ResetPasswordView.vue";
 import CreatePasswordView from "../views/admin/CreatePasswordView.vue";
+import AcceptInviteView from "../views/public/AcceptInviteView.vue";
 import CheckoutProcessingView from "../views/public/CheckoutProcessingView.vue";
 import DashboardView from "../views/admin/DashboardView.vue";
 import PagesListView from "../views/admin/PagesListView.vue";
@@ -15,6 +16,7 @@ import PublicPageView from "../views/public/PublicPageView.vue";
 import PlansView from "../views/public/PlansView.vue";
 import AdminLayout from "../layouts/AdminLayout.vue";
 import { useAuthStore } from "../store/useAuthStore";
+import { canAccessPermission, PermissionKey } from "../utils/permissions";
 import { resolveCurrentLanguage, setCurrentLanguage } from "../utils/i18n";
 
 const RedirectPlaceholder = {
@@ -158,6 +160,7 @@ const platformRoutes: RouteRecordRaw[] = [
   { path: "/forgot-password", name: "forgot-password", component: ForgotPasswordView, meta: { guestOnly: true } },
   { path: "/reset-password", name: "reset-password", component: ResetPasswordView, meta: { guestOnly: true } },
   { path: "/create-password", name: "create-password", component: CreatePasswordView, meta: { guestOnly: true } },
+  { path: "/accept-invite", name: "accept-invite", component: AcceptInviteView, meta: { guestOnly: true } },
   { path: "/pedido", name: "checkout-processing", component: CheckoutProcessingView, meta: { guestOnly: true } },
   { path: "/planos", redirect: "/admin/planos" },
   {
@@ -165,16 +168,16 @@ const platformRoutes: RouteRecordRaw[] = [
     component: AdminLayout,
     meta: { requiresAuth: true },
     children: [
-      { path: "dashboard", name: "dashboard", component: DashboardView },
-      { path: "pages", name: "pages", component: PagesListView },
-      { path: "pages/:id/edit", name: "page-edit", component: PageEditorView, props: true },
+      { path: "dashboard", name: "dashboard", component: DashboardView, meta: { permission: "dashboard" } },
+      { path: "pages", name: "pages", component: PagesListView, meta: { permission: "pages" } },
+      { path: "pages/:id/edit", name: "page-edit", component: PageEditorView, props: true, meta: { permission: "pages" } },
       { path: "aulas", name: "lessons", component: () => import("../views/admin/AulasView.vue") },
       { path: "leads", redirect: to => resolveLegacyLeadsRedirect(to) },
-      { path: "leads/forms", name: "leads-forms", component: LeadsView },
-      { path: "leads/opportunities", name: "leads-opportunities", component: LeadsView },
-      { path: "leads/clients", name: "leads-clients", component: LeadsView },
-      { path: "leads/clients/:id", name: "client-detail", component: ClientDetailView, props: true },
-      { path: "leads/settings", name: "leads-settings", component: LeadsView },
+      { path: "leads/forms", name: "leads-forms", component: LeadsView, meta: { permission: "leads" } },
+      { path: "leads/opportunities", name: "leads-opportunities", component: LeadsView, meta: { permission: "leads" } },
+      { path: "leads/clients", name: "leads-clients", component: LeadsView, meta: { permission: "leads" } },
+      { path: "leads/clients/:id", name: "client-detail", component: ClientDetailView, props: true, meta: { permission: "leads" } },
+      { path: "leads/settings", name: "leads-settings", component: LeadsView, meta: { permission: "leads" } },
       {
         path: "clientes",
         name: "clients",
@@ -184,14 +187,16 @@ const platformRoutes: RouteRecordRaw[] = [
         path: "clientes/:id",
         redirect: to => ({ path: `/admin/leads/clients/${to.params.id}`, query: { ...(to.query || {}) } })
       },
-      { path: "agency", name: "agency-settings", component: AgencySettingsView },
+      { path: "agency", name: "agency-settings", component: AgencySettingsView, meta: { permission: "settings" } },
+      { path: "agency/team", name: "agency-team", component: () => import("../views/admin/AgencyTeamView.vue"), meta: { permission: "team_management", ownerOnly: true } },
       {
         path: "domains",
         name: "agency-domains",
-        component: () => import("../views/admin/AgencyDomainsView.vue")
+        component: () => import("../views/admin/AgencyDomainsView.vue"),
+        meta: { permission: "domains" }
       },
       { path: "planos", name: "plans", component: PlansView },
-      { path: "integracoes", name: "integrations", component: () => import("../views/admin/IntegrationsView.vue") },
+      { path: "integracoes", name: "integrations", component: () => import("../views/admin/IntegrationsView.vue"), meta: { permission: "integrations" } },
       { path: "perfil", name: "profile", component: () => import("../views/admin/ProfileView.vue") },
       {
         path: "administracao",
@@ -275,6 +280,39 @@ const router = createRouter({
   routes
 });
 
+const resolveFirstAllowedAdminRoute = (auth: ReturnType<typeof useAuthStore>) => {
+  if (!auth.user) return { name: "dashboard" as const };
+
+  const candidates: Array<{ name: string; permission?: PermissionKey; ownerOnly?: boolean }> = [
+    { name: "dashboard", permission: "dashboard" },
+    { name: "pages", permission: "pages" },
+    { name: "leads-forms", permission: "leads" },
+    { name: "integrations", permission: "integrations" },
+    { name: "agency-domains", permission: "domains" },
+    { name: "lessons", permission: "lessons" },
+    { name: "agency-settings", permission: "settings" },
+    { name: "agency-team", permission: "team_management", ownerOnly: true },
+    { name: "profile" }
+  ];
+
+  const isOwner = auth.user.is_owner ?? true;
+  const role = (auth.user.role || "admin").toLowerCase();
+
+  for (const candidate of candidates) {
+    if (candidate.ownerOnly && (!isOwner || (role !== "admin" && role !== "owner"))) continue;
+    if (!candidate.permission) return { name: candidate.name };
+    const allowed = canAccessPermission(candidate.permission, {
+      isOwner: auth.user.is_owner,
+      selected: auth.user.permissions || [],
+      plan: auth.user.plan,
+      effective: auth.user.effective_permissions || []
+    });
+    if (allowed) return { name: candidate.name };
+  }
+
+  return { name: "profile" as const };
+};
+
 router.beforeEach(async (to, _from, next) => {
   const auth = useAuthStore();
   const requiresAuth = to.matched.some(record => record.meta?.requiresAuth);
@@ -282,6 +320,8 @@ router.beforeEach(async (to, _from, next) => {
   const requiresSuperuser = to.matched.some(record => record.meta?.requiresSuperuser);
   const targetIsPlans = to.name === "plans";
   const targetIsDashboard = to.name === "dashboard";
+  const requiredPermission = (to.meta?.permission as PermissionKey | undefined) || undefined;
+  const ownerOnly = Boolean(to.meta?.ownerOnly);
 
   if (requiresAuth) {
     if (!auth.token) {
@@ -313,9 +353,48 @@ router.beforeEach(async (to, _from, next) => {
     }
   }
 
+  if (requiresAuth && auth.user && requiredPermission) {
+    const allowed = canAccessPermission(requiredPermission, {
+      isOwner: auth.user.is_owner,
+      selected: auth.user.permissions || [],
+      plan: auth.user.plan,
+      effective: auth.user.effective_permissions || []
+    });
+    if (!allowed) {
+      const fallback = resolveFirstAllowedAdminRoute(auth);
+      if (to.name === fallback.name) {
+        next(false);
+        return;
+      }
+      next(fallback);
+      return;
+    }
+  }
+
+  if (requiresAuth && auth.user && ownerOnly) {
+    const isOwner = auth.user.is_owner ?? true;
+    const role = (auth.user.role || "admin").toLowerCase();
+    if (!isOwner || (role !== "admin" && role !== "owner")) {
+      next({ name: "dashboard" });
+      return;
+    }
+  }
+
   if (guestOnly && auth.token) {
-    const fallback = auth.user?.trial_blocked ? "plans" : "dashboard";
-    next({ name: fallback });
+    if (!auth.user) {
+      try {
+        await auth.ensureHydrated();
+      } catch {
+        auth.logout();
+        next();
+        return;
+      }
+    }
+    if (auth.user?.trial_blocked) {
+      next({ name: "plans" });
+      return;
+    }
+    next(resolveFirstAllowedAdminRoute(auth));
     return;
   }
 

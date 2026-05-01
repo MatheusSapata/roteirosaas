@@ -67,6 +67,7 @@ const cookieAcceptLabel = localize(cookieCopy.accept);
 const cookieRejectLabel = localize(cookieCopy.reject);
 const publicRouteNames = new Set(["public-page", "custom-domain-default", "custom-domain-page"]);
 const publicShellClass = "public-shell";
+const adminShellClass = "admin-shell";
 const isPublicShellRoute = computed(() => {
   const routeName = typeof route.name === "string" ? route.name : "";
   return publicRouteNames.has(routeName);
@@ -80,6 +81,7 @@ const appShellClass = computed(() =>
 const syncBodyShell = (usePublicShell: boolean) => {
   if (typeof document === "undefined") return;
   document.body.classList.toggle(publicShellClass, usePublicShell);
+  document.body.classList.toggle(adminShellClass, route.path.startsWith("/admin"));
 };
 
 const checkCookieConsent = () => {

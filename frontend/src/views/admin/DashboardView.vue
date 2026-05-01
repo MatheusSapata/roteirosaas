@@ -11,8 +11,20 @@
           <p class="page-sub">Visão geral das suas páginas e performance.</p>
         </div>
         <div class="topbar-actions">
-          <button type="button" class="btn btn-ghost" @click="goToLessons">Aulas</button>
-          <button type="button" class="btn btn-primary" @click="goToPages">Nova Página</button>
+          <button type="button" class="btn btn-ghost" @click="goToLessons">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polygon points="23 7 16 12 23 17 23 7"/>
+              <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+            </svg>
+            Aulas
+          </button>
+          <button type="button" class="btn btn-primary" @click="goToPages">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Nova Página
+          </button>
         </div>
       </header>
 
@@ -224,8 +236,8 @@
             <div v-for="item in topPages" :key="item.id" class="page-item">
               <div class="page-thumb">📄</div>
               <div class="page-info">
-                <p class="page-name">{{ item.title }}</p>
-                <p class="page-dest">{{ item.origin }}</p>
+                <p class="page-name">{{ truncateText(item.title, 30) }}</p>
+                <p class="page-dest">{{ truncateText(item.origin, 30) }}</p>
                 <div class="page-bar"><div class="page-bar-fill" :style="{ width: `${item.progress}%` }"></div></div>
               </div>
               <div class="page-side">
@@ -267,8 +279,8 @@
               <div class="lead-avatar">{{ (lead.name || '?').charAt(0).toUpperCase() }}</div>
               <div class="lead-info">
                 <div class="lead-copy">
-                  <p class="lead-name">{{ lead.name || 'Lead sem nome' }}</p>
-                  <p class="lead-meta">{{ lead.page_title || lead.page_slug || lead.form_name || '-' }} · {{ relativeTime(lead.created_at) }}</p>
+                  <p class="lead-name">{{ truncateText(lead.name || 'Lead sem nome', 40) }}</p>
+                  <p class="lead-meta">{{ truncateText(`${lead.page_title || lead.page_slug || lead.form_name || '-'} · ${relativeTime(lead.created_at)}`, 30) }}</p>
                 </div>
                 <div class="lead-actions">
                   <a
@@ -372,7 +384,7 @@ const { contacts, statuses } = storeToRefs(leadStore);
 
 const numberLocale = "pt-BR";
 const periods = [7, 14, 30];
-const selectedPeriod = ref<number>(14);
+const selectedPeriod = ref<number>(7);
 const selectedPage = ref<string>("all");
 const pages = ref<Page[]>([]);
 const pageStatsMap = ref<Record<number, PageStatsSummary>>({});
@@ -792,6 +804,12 @@ const relativeTime = (value?: string) => {
   return `há ${diffDays} dias`;
 };
 
+const truncateText = (value: string, limit = 50) => {
+  const text = String(value || "").trim();
+  if (text.length <= limit) return text;
+  return `${text.slice(0, Math.max(0, limit - 3))}...`;
+};
+
 const formatDateLabel = (raw: string) => {
   const value = String(raw || "").trim();
   const brLike = value.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/);
@@ -914,12 +932,23 @@ onBeforeUnmount(() => {
 }
 
 .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   border: none;
   border-radius: 10px;
   padding: 9px 16px;
   font-size: 13px;
   font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
   cursor: pointer;
+}
+
+.btn svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
 }
 
 .btn-primary {
@@ -1496,6 +1525,12 @@ onBeforeUnmount(() => {
   .page-name,
   .lead-name {
     font-size: 12px;
+    white-space: normal;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
   }
 
   .page-dest,

@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from typing import List
 
@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.api.deps import get_current_active_user, get_db, require_agency_membership
 from app.models.lead_form import LeadForm, LeadFormSubmission, LeadStatus
 from app.models.user import User
+from app.services.team import get_user_effective_permissions
 from app.schemas.lead_form import (
     LeadContactOut,
     LeadContactStatusUpdate,
@@ -22,6 +23,22 @@ from app.schemas.lead_form import (
 
 router = APIRouter()
 
+
+def _ensure_leads_delete_permission(db: Session, user: User, agency_id: int) -> None:
+    if user.is_superuser:
+        return
+    effective = set(get_user_effective_permissions(db, user, agency_id))
+    if "leads_full" not in effective:
+        raise HTTPException(status_code=403, detail="Seu nÃ­vel gerencial nÃ£o permite excluir.")
+
+def _ensure_leads_write_permission(db: Session, user: User, agency_id: int) -> None:
+    if user.is_superuser:
+        return
+    if (user.is_owner is None or bool(user.is_owner)) or (user.role or "").lower() in {"admin", "owner"}:
+        return
+    effective = set(get_user_effective_permissions(db, user, agency_id))
+    if not {"leads_manager", "leads_full"}.intersection(effective):
+        raise HTTPException(status_code=403, detail="Seu perfil permite apenas visualizar leads.")
 
 def _serialize_form(form: LeadForm, total_leads: int = 0) -> LeadFormOut:
     data = LeadFormOut.from_orm(form)
@@ -91,6 +108,7 @@ def create_lead_form(
     db: Session = Depends(get_db),
 ) -> LeadFormOut:
     require_agency_membership(db=db, agency_id=form_in.agency_id, user_id=current_user.id)
+    _ensure_leads_write_permission(db, current_user, form_in.agency_id)
     default_status_id, default_status = _validate_status_for_agency(form_in.default_status_id, form_in.agency_id, db)
     form = LeadForm(
         agency_id=form_in.agency_id,
@@ -114,14 +132,14 @@ def create_lead_form(
 def _get_form_or_404(form_id: int, db: Session) -> LeadForm:
     form = db.query(LeadForm).filter(LeadForm.id == form_id).first()
     if not form:
-        raise HTTPException(status_code=404, detail="Formulário não encontrado.")
+        raise HTTPException(status_code=404, detail="FormulÃ¡rio nÃ£o encontrado.")
     return form
 
 
 def _get_status_or_404(status_id: int, db: Session) -> LeadStatus:
     status = db.query(LeadStatus).filter(LeadStatus.id == status_id).first()
     if not status:
-        raise HTTPException(status_code=404, detail="Status não encontrado.")
+        raise HTTPException(status_code=404, detail="Status nÃ£o encontrado.")
     return status
 
 
@@ -132,7 +150,7 @@ def _validate_status_for_agency(
         return None, None
     status = _get_status_or_404(status_id, db)
     if status.agency_id != agency_id:
-        raise HTTPException(status_code=403, detail="Status inválido para esta agência.")
+        raise HTTPException(status_code=403, detail="Status invÃ¡lido para esta agÃªncia.")
     return status.id, status
 
 
@@ -144,7 +162,7 @@ def _get_submission_or_404(contact_id: int, db: Session) -> LeadFormSubmission:
         .first()
     )
     if not submission:
-        raise HTTPException(status_code=404, detail="Lead não encontrado.")
+        raise HTTPException(status_code=404, detail="Lead nÃ£o encontrado.")
     return submission
 
 
@@ -157,6 +175,7 @@ def update_lead_form(
 ) -> LeadFormOut:
     form = _get_form_or_404(form_id, db)
     require_agency_membership(db=db, agency_id=form.agency_id, user_id=current_user.id)
+    _ensure_leads_write_permission(db, current_user, form.agency_id)
 
     update_data = form_in.dict(exclude_unset=True)
     default_status = None
@@ -190,6 +209,8 @@ def delete_lead_form(
 ) -> Response:
     form = _get_form_or_404(form_id, db)
     require_agency_membership(db=db, agency_id=form.agency_id, user_id=current_user.id)
+    _ensure_leads_write_permission(db, current_user, form.agency_id)
+    _ensure_leads_delete_permission(db, current_user, form.agency_id)
     db.delete(form)
     db.commit()
     return Response(status_code=204)
@@ -218,6 +239,7 @@ def create_lead_status(
     db: Session = Depends(get_db),
 ) -> LeadStatusOut:
     require_agency_membership(db=db, agency_id=status_in.agency_id, user_id=current_user.id)
+    _ensure_leads_write_permission(db, current_user, status_in.agency_id)
     status = LeadStatus(
         agency_id=status_in.agency_id,
         name=status_in.name.strip(),
@@ -238,6 +260,7 @@ def update_lead_status(
 ) -> LeadStatusOut:
     status = _get_status_or_404(status_id, db)
     require_agency_membership(db=db, agency_id=status.agency_id, user_id=current_user.id)
+    _ensure_leads_write_permission(db, current_user, status.agency_id)
     if status_in.name is not None:
         status.name = status_in.name.strip()
     if status_in.color is not None:
@@ -256,6 +279,8 @@ def delete_lead_status(
 ) -> Response:
     status = _get_status_or_404(status_id, db)
     require_agency_membership(db=db, agency_id=status.agency_id, user_id=current_user.id)
+    _ensure_leads_write_permission(db, current_user, status.agency_id)
+    _ensure_leads_delete_permission(db, current_user, status.agency_id)
     db.delete(status)
     db.commit()
     return Response(status_code=204)
@@ -290,6 +315,7 @@ def update_lead_contact_status(
 ) -> LeadContactOut:
     submission = _get_submission_or_404(contact_id, db)
     require_agency_membership(db=db, agency_id=submission.agency_id, user_id=current_user.id)
+    _ensure_leads_write_permission(db, current_user, submission.agency_id)
 
     if payload.status_id is None:
         submission.status_id = None
@@ -297,7 +323,7 @@ def update_lead_contact_status(
     else:
         status = _get_status_or_404(payload.status_id, db)
         if status.agency_id != submission.agency_id:
-            raise HTTPException(status_code=403, detail="Status inválido para este lead.")
+            raise HTTPException(status_code=403, detail="Status invÃ¡lido para este lead.")
         submission.status_id = status.id
         submission.status = status
 
@@ -314,6 +340,11 @@ def delete_lead_contact(
 ) -> Response:
     submission = _get_submission_or_404(contact_id, db)
     require_agency_membership(db=db, agency_id=submission.agency_id, user_id=current_user.id)
+    _ensure_leads_write_permission(db, current_user, submission.agency_id)
+    _ensure_leads_delete_permission(db, current_user, submission.agency_id)
     db.delete(submission)
     db.commit()
     return Response(status_code=204)
+
+
+
