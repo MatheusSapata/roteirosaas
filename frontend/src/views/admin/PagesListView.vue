@@ -1351,7 +1351,7 @@ const closeTemplateModal = () => {
 const selectTemplateForModal = (template: PageTemplate) => {
   templateModal.value.selectedTemplate = template;
   templateModal.value.pageTitle = template.name;
-  const slug = slugify(template.name);
+  const slug = buildUniqueAgencySlug(template.name);
   templateModal.value.pageSlug = slug;
   templateModal.value.slugAuto = slug;
   templateModal.value.error = "";
@@ -1370,6 +1370,23 @@ const handleTemplatePreview = (template: PageTemplate) => {
 
 const handleTemplateSlugInput = () => {
   templateModal.value.slugAuto = templateModal.value.pageSlug;
+};
+
+const buildUniqueAgencySlug = (raw: string) => {
+  const base = slugify(raw);
+  const existing = new Set(
+    pages.value
+      .map(page => (page.slug || "").toLowerCase().trim())
+      .filter(Boolean)
+  );
+  if (!existing.has(base)) return base;
+  let counter = 1;
+  let candidate = `${base}-${counter}`;
+  while (existing.has(candidate)) {
+    counter += 1;
+    candidate = `${base}-${counter}`;
+  }
+  return candidate;
 };
 const closePreviewFullscreen = () => {
   previewFullscreen.value = false;
@@ -1397,11 +1414,13 @@ const submitTemplateModal = async () => {
 
 const useTemplateNow = async (template: PageTemplate) => {
   templateModal.value.selectedTemplate = template;
-  templateModal.value.pageTitle = template.name;
-  templateModal.value.pageSlug = template.slug;
-  templateModal.value.slugAuto = template.slug;
+  const selectedTitle = (templateModal.value.pageTitle || template.name || "").trim() || template.name;
+  const selectedSlug = buildUniqueAgencySlug((templateModal.value.pageSlug || template.slug || selectedTitle || "").trim());
+  templateModal.value.pageTitle = selectedTitle;
+  templateModal.value.pageSlug = selectedSlug;
+  templateModal.value.slugAuto = selectedSlug;
   try {
-    const page = await createPageFromTemplateApi(template.id, template.name, template.slug);
+    const page = await createPageFromTemplateApi(template.id, selectedTitle, selectedSlug);
     showSnackbar(viewCopy.messages.templateCreateSuccess);
     closeTemplateModal();
     createOptionsOpen.value = false;

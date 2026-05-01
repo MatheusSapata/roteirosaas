@@ -27,6 +27,47 @@ from app.services.team import get_user_effective_permissions
 router = APIRouter()
 
 
+def _slugify(value: str) -> str:
+    normalized = (value or "").strip().lower()
+    normalized = re.sub(r"[\u0300-\u036f]", "", normalized.encode("ascii", "ignore").decode("ascii"))
+    normalized = re.sub(r"[^a-z0-9]+", "-", normalized)
+    normalized = re.sub(r"-{2,}", "-", normalized).strip("-")
+    return normalized[:80] or f"pagina-{int(datetime.utcnow().timestamp())}"
+
+
+def _ensure_unique_slug(db: Session, agency_id: int, raw_slug: str) -> str:
+    base_slug = _slugify(raw_slug)
+    candidate = base_slug
+    counter = 1
+    while (
+        db.query(Page.id)
+        .filter(Page.agency_id == agency_id, Page.slug == candidate)
+        .first()
+        is not None
+    ):
+        candidate = f"{base_slug}-{counter}"
+        counter += 1
+    return candidate
+
+
+def _apply_agency_highlight_colors(config: Any, agency: Agency) -> Any:
+    parsed = normalize_config(config)
+    if not isinstance(parsed, dict):
+        return parsed
+    primary = (agency.primary_color or "").strip() or "#41ce5f"
+    theme = parsed.get("theme")
+    if not isinstance(theme, dict):
+        theme = {}
+        parsed["theme"] = theme
+    theme["ctaDefaultColor"] = primary
+    sections = parsed.get("sections")
+    if isinstance(sections, list):
+        for section in sections:
+            if isinstance(section, dict):
+                section["ctaColor"] = primary
+    return parsed
+
+
 def ensure_agency_member(db: Session, agency_id: int, user: User) -> None:
     if getattr(user, "is_superuser", False):
         return
@@ -248,6 +289,7 @@ def create_page(
     if not agency:
         raise HTTPException(status_code=404, detail="AgÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Âªncia nÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o encontrada.")
 
+    payload["slug"] = _ensure_unique_slug(db, page_in.agency_id, payload.get("slug") or payload.get("title") or "pagina")
     page = Page(**payload)
     if template:
         whatsapp_digits = resolve_agency_whatsapp(db, page.agency_id)
@@ -257,6 +299,7 @@ def create_page(
             logo_url=getattr(agency, "logo_url", None),
             whatsapp_link=whatsapp_link,
         )
+        page.config_json = _apply_agency_highlight_colors(page.config_json, agency)
 
     plan = resolve_agency_plan(db, page.agency_id)
     max_pages, _ = plan_limits(plan)

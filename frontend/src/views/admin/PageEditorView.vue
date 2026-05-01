@@ -32,7 +32,7 @@
               <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" />
               <circle cx="12" cy="12" r="3" />
             </svg>
-            {{ viewCopy.actions.goBack }}
+            {{ viewCopy.actions.viewPage }}
           </button>
         </div>
         <div class="mt-2 flex items-center gap-2">
@@ -79,7 +79,7 @@
             <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" />
             <circle cx="12" cy="12" r="3" />
           </svg>
-          {{ viewCopy.actions.goBack }}
+          {{ viewCopy.actions.viewPage }}
         </button>
 
         <button @click="saveConfig" :disabled="!hasUnsavedChanges" :class="[toolbarPrimaryButtonClass, { 'opacity-60 cursor-not-allowed': !hasUnsavedChanges }]">
@@ -327,14 +327,14 @@
                   </div>
                   <div>
                     <label class="text-[16px] font-bold uppercase tracking-[0.03em] text-slate-700">LINK DA PÁGINA</label>
-                    <div class="mt-1 flex w-full overflow-hidden rounded-[12px] border border-slate-200">
-                      <div class="shrink-0 border-r border-slate-200 bg-slate-50 px-4 py-2 text-[16px] font-semibold text-slate-600">
+                    <div class="slug-row mt-1 flex w-full overflow-hidden rounded-[12px] border border-slate-200">
+                      <div class="slug-prefix shrink-0 border-r border-slate-200 bg-slate-50 px-4 py-2 text-[16px] font-semibold text-slate-600">
                         {{ slugBaseLabel }}
                       </div>
                       <input
                         :value="pageSlug"
                         @input="handleSlugInput"
-                        class="w-full border-0 bg-white px-4 py-2 text-[16px] text-slate-800 focus:outline-none dark:bg-[#05070F] dark:text-white"
+                        class="slug-input w-full border-0 bg-white px-4 py-2 text-[16px] text-slate-800 focus:outline-none dark:bg-[#05070F] dark:text-white"
                       />
                     </div>
                     <p class="mt-1 text-[13px] text-slate-500">
@@ -3597,6 +3597,22 @@ onMounted(async () => {
   :global(.page-editor-view textarea),
   :global(.page-editor-view select) {
     font-size: 16px;
+  }
+
+  .slug-row {
+    min-width: 0;
+  }
+
+  .slug-prefix {
+    max-width: 64%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .slug-input {
+    min-width: 0;
+    flex: 1 1 auto;
   }
 }
 </style>
