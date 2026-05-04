@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div v-if="isBootstrappingLessons" class="flex min-h-[60vh] w-full items-center justify-center px-4 py-8 md:px-8">
     <div class="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-brand"></div>
   </div>
@@ -28,7 +28,7 @@
     </section>
 
     <section class="grid items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-      <div class="space-y-4 rounded-3xl bg-white shadow-xl shadow-slate-200/70 lg:p-6 dark:bg-[#202020] dark:shadow-none">
+      <div class="space-y-4 rounded-3xl bg-white p-4 shadow-xl shadow-slate-200/70 lg:p-6 dark:bg-[#202020] dark:shadow-none">
         <div class="relative overflow-hidden rounded-2xl bg-[#05070F]">
           <div class="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-slate-950/70"></div>
           <template v-if="activeLesson">
@@ -57,7 +57,7 @@
           </template>
           <div
             v-else
-            class="aspect-video w-full rounded-2xl bg-[#05070F] text-sm font-semibold text-slate-200 flex items-center justify-center text-center"
+            class="flex aspect-video w-full items-center justify-center rounded-2xl bg-[#05070F] px-6 text-center text-sm font-semibold text-slate-200"
           >
             {{ lessonsLoading ? "Carregando aulas..." : "Nenhuma aula disponível no momento." }}
           </div>
@@ -66,8 +66,10 @@
         <div v-if="activeLesson" class="space-y-4 rounded-2xl bg-slate-50/70 p-5 dark:bg-[#181818]">
           <div class="flex flex-wrap items-center gap-3 text-xs font-semibold uppercase tracking-[0.25em] text-slate-500 dark:text-slate-300">
             <span class="rounded-full bg-slate-200/60 px-3 py-1 text-[0.65rem] text-slate-700 dark:bg-white/10 dark:text-white">
-              {{ activeLesson.level || "Aula" }}
+              {{ activeLesson.moduleName || "Geral" }}
             </span>
+            <span class="text-slate-400">&bull;</span>
+            <span>{{ activeLesson.level || "Aula" }}</span>
             <span class="text-slate-400">&bull;</span>
             <span>{{ activeLesson.duration || "Tempo livre" }}</span>
           </div>
@@ -77,13 +79,13 @@
       </div>
 
       <aside class="space-y-4 rounded-3xl bg-white p-4 shadow-xl shadow-slate-200/70 dark:bg-[#202020] dark:shadow-none">
-        <div class="flex items-center justify-between">
+        <div class="flex items-center justify-between gap-3">
           <div>
-            <p class="text-xs uppercase tracking-[0.4em] text-slate-500 dark:text-white/70">Playlist</p>
+            <p class="text-xs uppercase tracking-[0.4em] text-slate-500 dark:text-white/70">Módulos</p>
             <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Selecione a aula</h3>
           </div>
           <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
-            {{ lessons.length }} aulas
+            {{ moduleGroups.length }} módulos
           </span>
         </div>
 
@@ -94,39 +96,70 @@
           {{ lessonsLoading ? "Carregando aulas..." : "Nenhuma aula cadastrada ainda." }}
         </p>
 
-        <ul v-else class="space-y-3">
-          <li v-for="lesson in lessons" :key="lesson.id">
+        <div v-else class="space-y-3">
+          <section
+            v-for="group in moduleGroups"
+            :key="group.key"
+            class="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/70 dark:border-[#363636] dark:bg-[#181818]"
+          >
             <button
               type="button"
-              class="w-full rounded-2xl border p-3 text-left transition hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:text-white"
-              :class="[
-                activeLessonId === lesson.id
-                  ? 'border-brand/40 bg-brand/5 shadow-lg shadow-brand/20 dark:bg-brand/10'
-                  : 'border-slate-200 bg-white shadow-sm dark:border-[#363636] dark:bg-[#101010]'
-              ]"
-              @click="selectLesson(lesson.id)"
+              class="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-slate-100/80 dark:hover:bg-white/5"
+              @click="toggleModule(group.key)"
             >
-              <div class="flex items-start gap-3">
-                <img
-                  :src="lesson.thumbnail"
-                  alt=""
-                  class="h-16 w-24 flex-shrink-0 rounded-xl object-cover"
-                  loading="lazy"
-                />
-                <div class="flex-1">
-                  <div class="flex items-center justify-between text-xs text-slate-500 dark:text-slate-300">
-                    <span>{{ lesson.duration || "—" }}</span>
-                    <span v-if="completedLessons.includes(lesson.id)" class="text-emerald-500">Concluída</span>
-                  </div>
-                  <p class="mt-1 text-sm font-semibold text-slate-900 dark:text-white">{{ lesson.title }}</p>
-                  <p class="mt-1 text-xs text-slate-500 line-clamp-2 dark:text-slate-300">
-                    {{ lesson.description }}
-                  </p>
-                </div>
+              <div>
+                <p class="text-sm font-semibold text-slate-900 dark:text-white">{{ group.label }}</p>
+                <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-300">{{ group.lessons.length }} aulas</p>
               </div>
+              <svg
+                viewBox="0 0 24 24"
+                class="h-4 w-4 flex-shrink-0 text-slate-500 transition-transform dark:text-slate-300"
+                :class="isModuleExpanded(group.key) ? 'rotate-180' : ''"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="m6 9 6 6 6-6" />
+              </svg>
             </button>
-          </li>
-        </ul>
+
+            <ul v-if="isModuleExpanded(group.key)" class="space-y-3 border-t border-slate-200 p-3 dark:border-[#303030]">
+              <li v-for="lesson in group.lessons" :key="lesson.id">
+                <button
+                  type="button"
+                  class="w-full rounded-2xl border p-3 text-left transition hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:text-white"
+                  :class="[
+                    activeLessonId === lesson.id
+                      ? 'border-brand/40 bg-brand/5 shadow-lg shadow-brand/20 dark:bg-brand/10'
+                      : 'border-slate-200 bg-white shadow-sm dark:border-[#363636] dark:bg-[#101010]'
+                  ]"
+                  @click="selectLesson(lesson.id)"
+                >
+                  <div class="flex items-start gap-3">
+                    <img
+                      :src="lesson.thumbnail"
+                      alt=""
+                      class="h-16 w-24 flex-shrink-0 rounded-xl object-cover"
+                      loading="lazy"
+                    />
+                    <div class="min-w-0 flex-1">
+                      <div class="flex items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-300">
+                        <span>{{ lesson.duration || "—" }}</span>
+                        <span v-if="completedLessons.includes(lesson.id)" class="text-emerald-500">Concluída</span>
+                      </div>
+                      <p class="mt-1 text-sm font-semibold text-slate-900 dark:text-white">{{ lesson.title }}</p>
+                      <p class="mt-1 text-xs text-slate-500 line-clamp-2 dark:text-slate-300">
+                        {{ lesson.description }}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              </li>
+            </ul>
+          </section>
+        </div>
       </aside>
     </section>
   </div>
@@ -143,17 +176,67 @@ const isBootstrappingLessons = ref(true);
 
 const activeLessonId = ref<number | null>(null);
 const completedLessons = ref<number[]>([]);
+const expandedModules = ref<string[]>([]);
+
+const moduleGroups = computed(() => {
+  const groups = new Map<string, { key: string; label: string; lessons: typeof lessons.value }>();
+
+  lessons.value.forEach(lesson => {
+    const label = (lesson.moduleName || "Geral").trim() || "Geral";
+    const key = label.toLowerCase();
+    if (!groups.has(key)) {
+      groups.set(key, { key, label, lessons: [] as typeof lessons.value });
+    }
+    groups.get(key)!.lessons.push(lesson);
+  });
+
+  return Array.from(groups.values());
+});
+
+const ensureExpandedModules = () => {
+  const validKeys = moduleGroups.value.map(group => group.key);
+  expandedModules.value = expandedModules.value.filter(key => validKeys.includes(key));
+
+  if (!expandedModules.value.length && moduleGroups.value.length) {
+    expandedModules.value = [moduleGroups.value[0].key];
+  }
+};
+
+const isModuleExpanded = (key: string) => expandedModules.value.includes(key);
+
+const toggleModule = (key: string) => {
+  if (isModuleExpanded(key)) {
+    expandedModules.value = expandedModules.value.filter(item => item !== key);
+    if (!expandedModules.value.length) {
+      expandedModules.value = [key];
+    }
+    return;
+  }
+  expandedModules.value = [...expandedModules.value, key];
+};
+
+const expandModuleForLesson = (lessonId: number | null) => {
+  if (!lessonId) return;
+  const group = moduleGroups.value.find(item => item.lessons.some(lesson => lesson.id === lessonId));
+  if (!group) return;
+  if (!expandedModules.value.includes(group.key)) {
+    expandedModules.value = [...expandedModules.value, group.key];
+  }
+};
 
 watch(
   lessons,
   newLessons => {
     if (!newLessons.length) {
       activeLessonId.value = null;
+      expandedModules.value = [];
       return;
     }
     if (!newLessons.some(lesson => lesson.id === activeLessonId.value)) {
       activeLessonId.value = newLessons[0].id;
     }
+    ensureExpandedModules();
+    expandModuleForLesson(activeLessonId.value);
   },
   { immediate: true }
 );
@@ -168,6 +251,7 @@ const progressPercent = computed(() => {
 
 const selectLesson = (lessonId: number) => {
   activeLessonId.value = lessonId;
+  expandModuleForLesson(lessonId);
   if (!completedLessons.value.includes(lessonId)) {
     completedLessons.value.push(lessonId);
   }
@@ -179,6 +263,8 @@ onMounted(async () => {
     if (!activeLessonId.value && lessons.value.length) {
       activeLessonId.value = lessons.value[0].id;
     }
+    ensureExpandedModules();
+    expandModuleForLesson(activeLessonId.value);
   } finally {
     isBootstrappingLessons.value = false;
   }

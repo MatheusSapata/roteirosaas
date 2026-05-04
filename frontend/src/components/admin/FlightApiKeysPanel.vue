@@ -129,7 +129,7 @@
     </div>
 
     <Teleport to="body">
-      <div v-if="createModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/65 px-4">
+      <div v-if="createModalOpen" class="app-modal-overlay fixed inset-0 z-50 flex items-center justify-center px-4">
         <div class="w-full max-w-2xl rounded-2xl bg-white p-5 shadow-2xl">
           <div class="flex items-center justify-between">
             <h3 class="text-lg font-bold text-slate-900">Nova chave de voo</h3>
@@ -195,7 +195,7 @@
     </Teleport>
 
     <Teleport to="body">
-      <div v-if="editModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/65 px-4">
+      <div v-if="editModalOpen" class="app-modal-overlay fixed inset-0 z-50 flex items-center justify-center px-4">
         <div class="w-full max-w-2xl rounded-2xl bg-white p-5 shadow-2xl">
           <div class="flex items-center justify-between">
             <h3 class="text-lg font-bold text-slate-900">Editar chave</h3>

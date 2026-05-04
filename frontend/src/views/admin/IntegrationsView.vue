@@ -12,7 +12,7 @@
 
       <button
         type="button"
-        class="inline-flex items-center gap-2 rounded-[10px] bg-[#3DCC5F] px-4 py-[9px] text-[13px] font-semibold text-[#0F1F14] transition hover:bg-[#5BE07A]"
+        class="inline-flex items-center gap-2 rounded-[10px] bg-[#3DCC5F] px-4 py-[9px] text-[13px] font-semibold text-[#0F1F14] transition hover:bg-[#5BE07A] disabled:cursor-not-allowed disabled:opacity-60"
         :disabled="isReadOnly"
         @click="prepareNewIntegration"
       >
@@ -40,9 +40,9 @@
         <article
           v-for="pixel in pixels"
           :key="pixel.id"
-          class="integration-item flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 transition hover:-translate-y-[1px] hover:shadow-md md:flex-row md:items-center md:justify-between"
+          class="integration-item flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 transition hover:-translate-y-[1px] hover:shadow-md md:flex-row md:items-center md:justify-between"
         >
-          <div class="min-w-0">
+          <div class="min-w-0 flex-1">
             <span
               class="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide"
               :class="pixel.type === 'meta' ? 'bg-blue-100 text-blue-700' : 'bg-rose-100 text-rose-700'"
@@ -51,13 +51,13 @@
             </span>
 
             <p class="mt-2 text-base font-semibold text-slate-900">{{ pixel.name }}</p>
-            <p class="mt-1 text-sm text-slate-500">{{ viewCopy.list.codePrefix }} {{ maskedCode(pixel.value) }}</p>
+            <p class="mt-1 break-all text-sm text-slate-500">{{ viewCopy.list.codePrefix }} {{ displayCode(pixel.value) }}</p>
           </div>
 
           <div class="flex items-center gap-2">
             <button
               type="button"
-              class="rounded-xl border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              class="rounded-xl border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
               :disabled="isReadOnly"
               @click="editPixel(pixel)"
             >
@@ -65,7 +65,7 @@
             </button>
             <button
               type="button"
-              class="rounded-xl border border-rose-200 px-3 py-1.5 text-sm font-semibold text-rose-600 transition hover:bg-rose-50"
+              class="rounded-xl border border-rose-200 px-3 py-1.5 text-sm font-semibold text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
               :disabled="isReadOnly"
               @click="removePixel(pixel)"
             >
@@ -77,45 +77,82 @@
     </section>
 
     <Teleport to="body">
-      <div v-if="modalOpen" class="fixed inset-0 z-[180] flex items-center justify-center bg-slate-900/45 px-4">
+      <div v-if="modalOpen" class="app-modal-overlay fixed inset-0 z-[180] flex items-center justify-center px-4">
         <div class="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl md:p-5">
-          <div class="mb-4 flex items-center justify-between">
-            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{{ viewCopy.form.eyebrow }}</p>
-            <button type="button" class="rounded-full border border-slate-200 p-2 text-slate-500 hover:bg-slate-50" @click="closeModal">
+          <div class="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{{ viewCopy.form.eyebrow }}</p>
+              <h2 class="mt-2 text-2xl font-bold text-slate-900">
+                {{ isEditing ? viewCopy.form.editTitle : viewCopy.form.createTitle }}
+              </h2>
+            </div>
+            <button type="button" class="rounded-full border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-50" @click="closeModal">
               <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M6 18 18 6" stroke-linecap="round" /></svg>
             </button>
           </div>
+
           <div class="grid gap-4 md:grid-cols-2">
             <label class="space-y-2 md:col-span-2">
               <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ viewCopy.form.nameLabel }}</span>
-              <input v-model="nameInput" type="text" :placeholder="viewCopy.form.namePlaceholder" :disabled="!canSubmit" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 disabled:cursor-not-allowed disabled:bg-slate-100" />
+              <input
+                v-model="nameInput"
+                type="text"
+                :placeholder="viewCopy.form.namePlaceholder"
+                :disabled="!canSubmit"
+                class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 disabled:cursor-not-allowed disabled:bg-slate-100"
+              />
             </label>
             <label class="space-y-2">
               <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ viewCopy.form.platformLabel }}</span>
-              <select v-model="typeInput" :disabled="!canSubmit" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 disabled:cursor-not-allowed disabled:bg-slate-100">
+              <select
+                v-model="typeInput"
+                :disabled="!canSubmit"
+                class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 disabled:cursor-not-allowed disabled:bg-slate-100"
+              >
                 <option value="meta">{{ viewCopy.form.platformOptions.meta }}</option>
                 <option value="ga">{{ viewCopy.form.platformOptions.ga }}</option>
               </select>
             </label>
             <label class="space-y-2">
               <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ viewCopy.form.codeLabel }}</span>
-              <input v-model="idInput" type="text" :placeholder="viewCopy.form.codePlaceholder" :disabled="!canSubmit" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 disabled:cursor-not-allowed disabled:bg-slate-100" />
+              <input
+                v-model="idInput"
+                type="text"
+                :placeholder="viewCopy.form.codePlaceholder"
+                :disabled="!canSubmit"
+                class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 disabled:cursor-not-allowed disabled:bg-slate-100"
+              />
             </label>
           </div>
+
           <div class="mt-4 flex flex-col-reverse gap-3 border-t border-slate-100 pt-4 md:flex-row md:items-center md:justify-between">
             <p class="text-xs font-semibold text-slate-500">{{ isEditing ? viewCopy.form.editingHint : viewCopy.form.createHint }}</p>
             <div class="flex w-full gap-2 md:w-auto">
-              <button v-if="isEditing" type="button" class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50" :disabled="saving" @click="cancelEditing">{{ viewCopy.actions.cancel }}</button>
-              <button type="button" class="w-full rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-50 md:w-auto" :disabled="!canSubmit || saving" @click="savePixel">
+              <button
+                v-if="isEditing"
+                type="button"
+                class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                :disabled="saving"
+                @click="cancelEditing"
+              >
+                {{ viewCopy.actions.cancel }}
+              </button>
+              <button
+                type="button"
+                class="w-full rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-50 md:w-auto"
+                :disabled="!canSubmit || saving"
+                @click="savePixel"
+              >
                 {{ saving ? viewCopy.actions.saving : isEditing ? viewCopy.actions.update : viewCopy.actions.save }}
               </button>
             </div>
           </div>
         </div>
       </div>
+
       <div
         v-if="toastMessage"
-        class="fixed left-1/2 top-6 z-[200] -translate-x-1/2 rounded-full border px-4 py-2 text-sm font-semibold shadow-lg"
+        class="app-snackbar-layer z-[200] rounded-full border px-4 py-2 text-sm font-semibold shadow-lg"
         :class="toastError ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-emerald-200 bg-emerald-50 text-emerald-700'"
       >
         {{ toastMessage }}
@@ -152,7 +189,9 @@ const viewCopy = {
     })
   },
   form: {
-    eyebrow: t({ pt: "Nova integração", es: "Nueva integración" }),
+    eyebrow: t({ pt: "Integração", es: "Integración" }),
+    createTitle: t({ pt: "Nova integração", es: "Nueva integración" }),
+    editTitle: t({ pt: "Editar integração", es: "Editar integración" }),
     nameLabel: t({ pt: "Nome da integração", es: "Nombre de la integración" }),
     namePlaceholder: t({ pt: "Ex.: Roteiro São Paulo", es: "Ej.: Itinerario São Paulo" }),
     platformLabel: t({ pt: "Plataforma", es: "Plataforma" }),
@@ -340,20 +379,9 @@ const removePixel = async (pixel: PixelEntry) => {
   }
 };
 
-const maskedCode = (raw: string) => {
+const displayCode = (raw: string) => {
   const value = String(raw || "").trim();
-  if (!value) return "-";
-  if (value.length <= 4) return `${value.slice(0, 1)}••`;
-
-  if (value.toUpperCase().startsWith("G-")) {
-    const tail = value.slice(2);
-    if (tail.length <= 2) return `G-${tail}••`;
-    return `G-${tail.slice(0, 2)}••••`;
-  }
-
-  const start = value.slice(0, 3);
-  const end = value.slice(-3);
-  return `${start}••••${end}`;
+  return value || "-";
 };
 
 onMounted(async () => {

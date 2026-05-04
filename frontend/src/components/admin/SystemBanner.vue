@@ -1,5 +1,5 @@
 <template>
-  <section class="system-banner" :class="backgroundClass">
+  <section class="system-banner" :class="[backgroundClass, { 'system-banner--compact': compact }]">
     <div class="system-banner-left">
       <div v-if="hasIcon" class="system-banner-icon" aria-hidden="true">
         <svg v-if="iconName === 'TrendingUp'" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -83,6 +83,7 @@ const props = withDefaults(
     hasCta?: boolean;
     ctaLabel?: string | null;
     dismissible?: boolean;
+    compact?: boolean;
   }>(),
   {
     subtitle: "",
@@ -91,7 +92,8 @@ const props = withDefaults(
     backgroundVariant: "green_gradient",
     hasCta: true,
     ctaLabel: "Conectar Pixel",
-    dismissible: true
+    dismissible: true,
+    compact: false
   }
 );
 
@@ -116,7 +118,7 @@ const backgroundClass = computed(() => {
 <style scoped>
 .system-banner {
   border-radius: 16px;
-  padding: 20px 24px;
+  padding: 20px 72px 20px 24px;
   margin-bottom: 24px;
   display: flex;
   align-items: center;
@@ -211,8 +213,8 @@ const backgroundClass = computed(() => {
 
 .system-banner-close {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: 14px;
+  right: 14px;
   border: none;
   width: 24px;
   height: 24px;
@@ -221,6 +223,68 @@ const backgroundClass = computed(() => {
   color: rgba(255, 255, 255, 0.7);
   background: rgba(255, 255, 255, 0.1);
   z-index: 2;
+}
+
+.system-banner--compact {
+  padding: 14px 48px 14px 16px;
+  margin-bottom: 0;
+  border-radius: 14px;
+  min-height: 84px;
+}
+
+.system-banner--compact::before {
+  top: -40px;
+  right: -42px;
+  width: 120px;
+  height: 120px;
+}
+
+.system-banner--compact .system-banner-left {
+  gap: 12px;
+  min-width: 0;
+}
+
+.system-banner--compact .system-banner-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+}
+
+.system-banner--compact .system-banner-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.system-banner--compact .system-banner-title {
+  font-size: 12px;
+  line-height: 1.15;
+}
+
+.system-banner--compact .system-banner-sub {
+  font-size: 10px;
+  line-height: 1.2;
+  margin-top: 3px;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.system-banner--compact .system-banner-cta {
+  border-radius: 10px;
+  font-size: 11px;
+  padding: 7px 12px;
+  min-height: 38px;
+  max-width: 128px;
+}
+
+.system-banner--compact .system-banner-close {
+  top: 10px;
+  right: 10px;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  font-size: 12px;
 }
 
 @media (max-width: 768px) {

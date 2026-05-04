@@ -8,6 +8,7 @@ class Lesson(Base):
     __tablename__ = "lessons"
 
     id = Column(Integer, primary_key=True, index=True)
+    module_name = Column(String(120), nullable=True)
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     duration = Column(String(50), nullable=True)

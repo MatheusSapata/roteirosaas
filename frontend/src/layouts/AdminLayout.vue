@@ -126,14 +126,15 @@
 
         <div
           :class="[
-            'mt-8 border-t px-4 pt-4 space-y-3',
+            'mt-6 border-t px-[10px] pt-4 pb-3',
             'border-white/10'
           ]"
         >
-          <div class="flex w-full items-center gap-3 rounded-xl px-1 py-2">
+          <div class="group relative flex w-full items-center gap-3 rounded-xl pr-2">
+            <div class="pointer-events-none absolute inset-0 rounded-xl bg-transparent transition group-hover:bg-white/10"></div>
             <RouterLink
               to="/admin/perfil"
-              class="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-2 py-1.5 text-left transition hover:bg-white/10"
+              class="relative z-10 flex min-w-0 flex-1 items-center gap-3 rounded-xl px-[10px] py-2 text-left transition"
             >
               <span class="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#3DCC5F] text-sm font-extrabold text-[#0F1F14]">
                 <img v-if="userAvatarUrl" :src="userAvatarUrl" alt="Avatar" class="h-full w-full object-cover" />
@@ -147,7 +148,7 @@
             <button
               type="button"
               @click="handleLogout"
-              class="ml-1 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-white/10 text-white/80 transition hover:bg-white/20"
+              class="relative z-20 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-white/10 text-white/80 transition hover:bg-white/20"
               aria-label="Sair"
             >
               <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
@@ -201,11 +202,11 @@
           @click="mobileMenuOpen = false"
         ></div>
         <div
-          class="w-72 max-w-full shadow-2xl transition-colors md:rounded-l-3xl"
+          class="w-[14.75rem] max-w-[78vw] shadow-2xl transition-colors md:rounded-l-3xl"
           :class="'bg-[#1A3D25] text-slate-100'"
         >
-          <div class="relative flex items-center justify-center border-b border-white/10 px-5 py-2">
-            <img :src="sidebarLogoSrc" alt="Roteiro Online" class="max-h-[3.5rem] object-contain" />
+          <div class="relative flex items-center justify-start border-b border-white/10 px-4 py-2">
+            <img :src="sidebarLogoSrc" alt="Roteiro Online" class="max-h-[3.1rem] object-contain" />
             <button
               type="button"
               class="absolute right-4 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border"
@@ -218,20 +219,20 @@
               </svg>
             </button>
           </div>
-          <nav class="flex-1 space-y-0.5 px-[10px] py-2">
+          <nav class="flex-1 space-y-0.5 px-1.5 py-2">
             <section
               v-for="section in sidebarSections"
               :key="`mobile-section-${section.id}`"
               class="pt-1 first:pt-0"
               :class="section.id !== sidebarSections[0]?.id ? 'mt-2' : ''"
             >
-              <p class="px-[10px] pb-1 pt-2 text-[10px] font-bold uppercase tracking-[0.1em] text-white/30">{{ section.label }}</p>
+              <p class="px-1.5 pb-1 pt-2 text-[10px] font-bold uppercase tracking-[0.1em] text-white/30">{{ section.label }}</p>
               <div class="space-y-0.5">
                 <template v-for="item in section.items" :key="'mobile-' + item.id">
               <RouterLink
                 v-if="item.type === 'link'"
                 :to="item.to"
-                class="desktop-nav-item flex items-center gap-[10px] rounded-[9px] px-[10px] py-[9px] text-[13px] font-medium transition"
+                class="desktop-nav-item flex items-center gap-[10px] rounded-[9px] px-2 py-[9px] text-[13px] font-medium transition"
                 :class="[isTopLevelActive(item) ? activeClass : inactiveClass, isTopLevelActive(item) ? 'is-active' : '']"
                 @click="mobileMenuOpen = false"
               >
@@ -256,7 +257,7 @@
               <div v-else class="space-y-0.5">
                 <button
                   type="button"
-                  class="desktop-nav-item flex w-full items-center gap-[10px] rounded-[9px] px-[10px] py-[9px] text-[13px] font-medium transition"
+                  class="desktop-nav-item flex w-full items-center gap-[10px] rounded-[9px] px-2 py-[9px] text-[13px] font-medium transition"
                   :class="[isParentActive(item) ? activeClass : inactiveClass, isParentActive(item) ? 'is-active' : '']"
                   @click="toggleNavGroup(item.id)"
                 >
@@ -298,7 +299,7 @@
                     v-for="child in item.children"
                     :key="'mobile-' + item.id + '-' + child.path"
                     :to="child.path"
-                    class="desktop-nav-subitem flex w-full items-center rounded-[9px] px-[20px] py-[8px] text-[12px] font-medium transition"
+                    class="desktop-nav-subitem flex w-full items-center rounded-[9px] px-3.5 py-[8px] text-[12px] font-medium transition"
                     :class="[isChildActive(child.path) ? childActiveClass : childInactiveClass, isChildActive(child.path) ? 'is-active-sub' : '']"
                     @click="mobileMenuOpen = false"
                   >
@@ -312,17 +313,18 @@
           </nav>
           <div
             :class="[
-              'mt-6 border-t pt-4 space-y-3',
+              'mt-6 border-t px-1.5 pt-4 pb-3',
               'border-white/10'
             ]"
           >
-            <div class="flex w-full items-center gap-4 rounded-lg px-2 py-1.5">
+            <div class="group relative flex w-full items-center gap-3 rounded-xl pr-2">
+              <div class="pointer-events-none absolute inset-0 rounded-xl bg-transparent transition group-hover:bg-white/10"></div>
               <RouterLink
                 to="/admin/perfil"
-                class="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-1.5 py-1.5 text-left transition hover:bg-white/10"
+                class="relative z-10 flex min-w-0 flex-1 items-center gap-3 rounded-xl px-2 py-2 text-left transition"
                 @click="mobileMenuOpen = false"
               >
-                <span class="flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#3DCC5F] text-xs font-extrabold text-[#0F1F14]">
+                <span class="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#3DCC5F] text-sm font-extrabold text-[#0F1F14]">
                   <img v-if="userAvatarUrl" :src="userAvatarUrl" alt="Avatar" class="h-full w-full object-cover" />
                   <template v-else>{{ userInitial }}</template>
                 </span>
@@ -334,7 +336,7 @@
               <button
                 type="button"
                 @click="handleLogout"
-                class="ml-1 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-white/10 text-white/80 transition hover:bg-white/20"
+                class="relative z-20 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-white/10 text-white/80 transition hover:bg-white/20"
                 aria-label="Sair"
               >
                 <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
@@ -352,7 +354,7 @@
     <transition name="fade">
       <div
         v-if="showWelcomeDialog"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 px-4"
+        class="app-modal-overlay fixed inset-0 z-50 flex items-center justify-center px-4"
       >
         <div class="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl">
           <p class="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-500">{{ viewCopy.trial.welcome.eyebrow }}</p>
@@ -381,7 +383,7 @@
     <transition name="fade">
       <div
         v-if="showAgencySetupFlow"
-        class="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/80 px-4 py-6"
+        class="app-modal-overlay fixed inset-0 z-[60] flex items-center justify-center px-4 py-6"
       >
         <div class="w-full max-w-2xl rounded-3xl bg-white p-8 shadow-2xl">
           <template v-if="agencySetupStep === 'name'">
@@ -531,7 +533,7 @@
     <transition name="fade">
       <div
         v-if="showAgencySetupUnsavedDialog"
-        class="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/70 px-4"
+        class="app-modal-overlay fixed inset-0 z-[70] flex items-center justify-center px-4"
       >
         <div class="w-full max-w-md rounded-3xl bg-white p-6 text-center shadow-2xl">
           <p class="text-xs font-semibold uppercase tracking-[0.3em] text-amber-500">{{ viewCopy.onboarding.unsaved.eyebrow }}</p>
@@ -552,7 +554,7 @@
     <transition name="fade">
       <div
         v-if="showTrialWarning3Days"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 px-4"
+        class="app-modal-overlay fixed inset-0 z-50 flex items-center justify-center px-4"
       >
         <div class="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl">
           <p class="text-xs font-semibold uppercase tracking-[0.3em] text-amber-500">{{ viewCopy.trial.warn3.eyebrow }}</p>
@@ -580,7 +582,7 @@
     <transition name="fade">
       <div
         v-if="showTrialWarning1Day"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 px-4"
+        class="app-modal-overlay fixed inset-0 z-50 flex items-center justify-center px-4"
       >
         <div class="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl">
           <p class="text-xs font-semibold uppercase tracking-[0.3em] text-rose-500">{{ viewCopy.trial.warn1.eyebrow }}</p>
@@ -603,7 +605,7 @@
     <transition name="fade">
       <div
         v-if="showEndDialog"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 px-4"
+        class="app-modal-overlay fixed inset-0 z-50 flex items-center justify-center px-4"
       >
         <div class="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl">
           <p class="text-xs font-semibold uppercase tracking-[0.3em] text-rose-500">{{ blockedAccessTitle.eyebrow }}</p>
@@ -660,7 +662,7 @@
     <transition name="fade">
       <div
         v-if="permissionSnackbar.open"
-        class="fixed bottom-4 left-1/2 z-[1000] w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 md:bottom-6 md:w-auto md:min-w-[360px]"
+        class="app-snackbar-layer fixed bottom-4 left-1/2 z-[1000] w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 md:bottom-6 md:w-auto md:min-w-[360px]"
       >
         <div class="rounded-xl bg-rose-600 px-4 py-3 text-sm font-semibold text-white shadow-2xl">
           {{ permissionSnackbar.message }}
@@ -1073,7 +1075,7 @@ const adminNavigation = computed<AdminNavItem[]>(() => {
       basePath: "/admin/agency",
       iconPath: "/admin/agency",
       children: [
-        { label: "Visão geral", path: "/admin/agency" },
+        { label: "Configurações", path: "/admin/agency" },
         { label: "Equipe", path: "/admin/agency/team" }
       ]
     },

@@ -1,5 +1,10 @@
 ﻿<template>
   <div class="dashboard-reference" :class="{ 'is-loading': isBootstrappingDashboard }">
+    <transition name="fade">
+      <div v-if="copyToast" class="copy-toast app-snackbar-layer">
+        {{ copyToast }}
+      </div>
+    </transition>
     <div v-if="isBootstrappingDashboard" class="dashboard-loading">
       <div class="spinner"></div>
     </div>
@@ -251,15 +256,14 @@
                   </button>
                   <button type="button" class="page-action-btn edit" title="Editar" @click="editPage(item)">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                      <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9Z" />
-                      <path d="M14 3v6h6" />
-                      <path d="m9 15 5.5-5.5a1.5 1.5 0 0 1 2.1 2.1L11.1 17H9v-2z" />
+                      <path d="M12 20h9" />
+                      <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z" />
                     </svg>
                   </button>
                   <button type="button" class="page-action-btn share" title="Copiar" @click="sharePage(item)">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                      <rect x="9" y="9" width="11" height="11" rx="2" ry="2" />
-                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                      <path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07L11.2 4.72" />
+                      <path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 0 0 7.07 7.07L12.8 19.28" />
                     </svg>
                   </button>
                 </div>
@@ -748,6 +752,18 @@ const currentAgencySlug = computed(() => {
   return agency?.slug || "";
 });
 
+const copyToast = ref("");
+let copyToastTimer: ReturnType<typeof setTimeout> | null = null;
+
+const showCopyToast = (message: string) => {
+  copyToast.value = message;
+  if (copyToastTimer) clearTimeout(copyToastTimer);
+  copyToastTimer = setTimeout(() => {
+    copyToast.value = "";
+    copyToastTimer = null;
+  }, 2200);
+};
+
 const buildPublicPageUrl = (slug: string) => {
   if (!slug) return "";
   const domain = agencyStore.currentPrimaryDomain;
@@ -775,8 +791,10 @@ const sharePage = async (item: { slug: string }) => {
   if (!url) return;
   try {
     await navigator.clipboard.writeText(url);
+    showCopyToast("Link copiado para a área de transferência.");
   } catch {
     window.prompt("Copie o link:", url);
+    showCopyToast("Não foi possível copiar o link.");
   }
 };
 
@@ -854,6 +872,7 @@ onBeforeUnmount(() => {
   chartResizeObserver?.disconnect();
   chartResizeObserver = null;
   window.removeEventListener("resize", measureChartWidth);
+  if (copyToastTimer) clearTimeout(copyToastTimer);
 });
 </script>
 
@@ -882,6 +901,18 @@ onBeforeUnmount(() => {
   padding: 28px 32px;
   color: var(--text);
   font-family: "Plus Jakarta Sans", "Inter", sans-serif;
+}
+
+.copy-toast {
+  border: 1px solid var(--verde-border);
+  background: rgba(15, 31, 20, 0.94);
+  color: #ffffff;
+  padding: 10px 14px;
+  border-radius: 999px;
+  box-shadow: var(--shadow-md);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
 }
 
 .dashboard-loading {
@@ -1444,7 +1475,7 @@ onBeforeUnmount(() => {
 
 .page-action-btn.view { background: var(--verde-dim); color: var(--verde); }
 .page-action-btn.edit { background: var(--surface2); color: var(--text-2); border: 1px solid var(--border); }
-.page-action-btn.share { background: rgba(124, 92, 252, 0.12); color: var(--purple); }
+.page-action-btn.share { background: var(--verde-dim); color: #1a7a35; border: 1px solid var(--verde-border); }
 
 .lead-btn {
   padding: 4px 9px;

@@ -252,26 +252,23 @@
                     <div class="page-visits form-leads-badge" :class="{ 'is-zero': (form.total_leads ?? 0) === 0 }" :title="(form.total_leads ?? 0) === 0 ? 'Nenhum lead capturado ainda' : ''">
                       {{ form.total_leads ?? 0 }} leads
                     </div>
-                    <div class="page-actions">
-                      <button type="button" class="page-action-btn view" title="Ver leads" @click="openFormLeads(form)">
+                    <div class="page-actions form-actions-inline">
+                      <button type="button" class="page-action-btn page-action-btn--label view" title="Ver leads" @click="openFormLeads(form)">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                        <span>Leads</span>
                       </button>
-                      <button type="button" class="page-action-btn edit" title="Editar" @click="openEditModal(form)">
+                      <button type="button" class="page-action-btn page-action-btn--label edit" title="Editar" @click="openEditModal(form)">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                        <span>Editar</span>
                       </button>
-                      <div class="form-menu-wrap">
-                        <button type="button" class="page-action-btn menu" title="Ações" @click="toggleFormMenu(form.id)">
-                          <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
-                        </button>
-                        <div v-if="openFormMenuId === form.id" class="form-menu-dropdown">
-                          <button type="button" @click="openEditModal(form)">Editar</button>
-                          <button type="button" @click="openFormLeads(form)">Ver leads</button>
-                          <button type="button" @click="duplicateFormQuick(form)">Duplicar formulário</button>
-                          <button type="button" @click="copyFormLink(form)">Copiar link</button>
-                          <button type="button" @click="embedFormInPage(form)">Incorporar em página</button>
-                          <button v-if="canDeleteLeads" type="button" class="danger" @click="confirmDeleteForm(form)">Excluir</button>
-                        </div>
-                      </div>
+                      <button type="button" class="page-action-btn page-action-btn--label duplicate" title="Duplicar formulário" @click="duplicateFormQuick(form)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
+                        <span>Duplicar</span>
+                      </button>
+                      <button v-if="canDeleteLeads" type="button" class="page-action-btn page-action-btn--label danger" title="Excluir" @click="confirmDeleteForm(form)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                        <span>Excluir</span>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -2689,7 +2686,7 @@
 
 
   <Teleport to="body">
-    <div v-if="manualOpportunityModalOpen" class="fixed inset-0 z-[150] flex items-center justify-center bg-slate-900/45 px-4">
+    <div v-if="manualOpportunityModalOpen" class="app-modal-overlay fixed inset-0 z-[150] flex items-center justify-center px-4">
       <div class="w-full max-w-3xl rounded-[28px] bg-white p-6 shadow-2xl">
         <div class="flex items-start justify-between gap-4">
           <div>
@@ -2958,7 +2955,7 @@ const viewCopySource = {
     title: { pt: "Leads", es: "Leads" },
     description: {
       pt: "Crie formulários e acompanhe contatos gerados pelas páginas.",
-      es: "Crea formularios y acompanha los contactos generados por tus páginas."
+      es: "Crea formularios y acompaña los contactos generados por tus páginas."
     },
   },
   tabs: {
@@ -3035,7 +3032,7 @@ const viewCopySource = {
       title: { pt: "Disponível no plano Agência", es: "Disponible en el plan Agencia" },
       description: {
         pt: "A captação de leads está liberada a partir do plano Agência ou superior. Atualize seu plano para desbloquear essa funcionalidade.",
-        es: "La captación de leads se libera a partir del plan Agencia ou superior. Actualiza tu plan para desbloquear esta funcionalidad."
+        es: "La captación de leads se libera a partir del plan Agencia o superior. Actualiza tu plan para desbloquear esta funcionalidad."
       },
       cta: { pt: "Conhecer planos", es: "Conocer planes" }
     }
@@ -6697,6 +6694,27 @@ watch(
   height: 14px;
 }
 
+.page-action-btn--label {
+  width: auto;
+  min-width: 0;
+  height: 34px;
+  gap: 6px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.page-action-btn--label svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.page-action-btn--label span {
+  line-height: 1;
+}
+
 .page-action-btn.view {
   background: #e8f8ed;
   border-color: #c9ebd4;
@@ -6710,51 +6728,27 @@ watch(
 }
 
 .page-action-btn.edit:hover,
-.page-action-btn.menu:hover {
+.page-action-btn.duplicate:hover {
   border-color: var(--verde-border);
   color: #2b8a46;
   background: #f6fcf8;
 }
 
-.form-menu-wrap {
-  position: relative;
+.page-action-btn.danger {
+  color: #d93a45;
+  border-color: #f2c7cb;
+  background: #fff7f7;
 }
 
-.form-menu-dropdown {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 6px);
-  z-index: 80;
-  min-width: 196px;
-  border: 1px solid var(--border);
-  border-radius: 0.75rem;
-  background: #fff;
-  box-shadow: 0 14px 26px rgba(15, 31, 20, 0.14);
-  overflow: hidden;
+.page-action-btn.danger:hover {
+  color: #fff;
+  border-color: #de3841;
+  background: #de3841;
 }
 
-.form-menu-dropdown button {
-  width: 100%;
-  border: 0;
-  border-bottom: 1px solid #edf4ef;
-  background: transparent;
-  color: var(--text);
-  text-align: left;
-  font-size: 0.84rem;
-  font-weight: 600;
-  padding: 0.6rem 0.75rem;
-}
-
-.form-menu-dropdown button:last-child {
-  border-bottom: 0;
-}
-
-.form-menu-dropdown button:hover {
-  background: #f4faf6;
-}
-
-.form-menu-dropdown button.danger {
-  color: #de3841;
+.form-actions-inline {
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .forms-empty {
@@ -6853,6 +6847,8 @@ watch(
 
   .page-actions {
     margin-left: 0;
+    width: 100%;
+    justify-content: flex-start;
   }
 
   .opportunity-filters {
@@ -7792,6 +7788,8 @@ watch(
 
 
 </style>
+
+
 
 
 

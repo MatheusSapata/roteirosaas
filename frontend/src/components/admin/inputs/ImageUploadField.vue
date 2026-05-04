@@ -50,7 +50,7 @@
     <transition name="fade">
       <div
         v-if="cropperModal.open"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 px-4 py-6"
+        class="app-modal-overlay fixed inset-0 z-50 flex items-center justify-center px-4 py-6"
       >
         <div class="w-full max-w-5xl rounded-3xl bg-white p-6 shadow-2xl">
           <div class="flex items-center justify-between">

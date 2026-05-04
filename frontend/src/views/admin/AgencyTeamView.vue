@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="agency-team">
     <div class="page-wrap">
       <div class="space-y-1">
@@ -9,7 +9,7 @@
       <section class="list-card top-summary">
         <div>
           <p class="summary-main">Plano atual: <strong>{{ summary?.plan_key || "-" }}</strong></p>
-          <p class="summary-sub">{{ summary?.extra_users_used || 0 }} de {{ summary?.extra_users_limit ?? "∞" }} usuários utilizados</p>
+          <p class="summary-sub">{{ summary?.extra_users_used || 0 }} de {{ summary?.extra_users_limit ?? "8" }} usuários utilizados</p>
         </div>
         <button class="btn btn-p" :disabled="inviteDisabled" @click="showInvite = true">+ Convidar</button>
       </section>
@@ -51,7 +51,7 @@
                   class="icon-btn"
                   @click="toggleMemberActions(member.id)"
                 >
-                  ⋯
+                  ...
                 </button>
               </div>
             </div>
@@ -121,7 +121,7 @@
         </div>
       </section>
 
-      <div v-if="showInvite || editingMember" class="fixed inset-0 z-40 flex items-center justify-center bg-black/40 px-4">
+      <div v-if="showInvite || editingMember" class="app-modal-overlay fixed inset-0 z-40 flex items-center justify-center px-4">
         <div class="permission-modal">
           <div class="modal-header">
             <h3 class="text-xl font-bold text-slate-900">{{ editingMember ? `Editar permissões de ${editingMember.name}` : "Convidar membro da equipe" }}</h3>
@@ -169,7 +169,7 @@
               <p class="text-sm font-semibold text-slate-700">Permissões detalhadas</p>
 
               <div class="rounded-lg border border-slate-200">
-                <button class="w-full px-3 py-2 text-left text-sm font-semibold text-slate-800" @click="accordionOpen.pages = !accordionOpen.pages">▾ Páginas</button>
+                <button class="w-full px-3 py-2 text-left text-sm font-semibold text-slate-800" @click="accordionOpen.pages = !accordionOpen.pages">{{ accordionOpen.pages ? "-" : "+" }} Páginas</button>
                 <transition name="acc">
                   <div v-show="accordionOpen.pages" class="px-3 pb-2">
                     <div class="mt-1 flex flex-wrap gap-2">
@@ -182,7 +182,7 @@
               </div>
 
               <div class="rounded-lg border border-slate-200">
-                <button class="w-full px-3 py-2 text-left text-sm font-semibold text-slate-800" @click="accordionOpen.leads = !accordionOpen.leads">▾ Captação de leads</button>
+                <button class="w-full px-3 py-2 text-left text-sm font-semibold text-slate-800" @click="accordionOpen.leads = !accordionOpen.leads">{{ accordionOpen.leads ? "-" : "+" }} Captação de leads</button>
                 <transition name="acc">
                   <div v-show="accordionOpen.leads" class="px-3 pb-2">
                     <div class="mt-1 grid gap-1.5 md:grid-cols-2">
@@ -200,7 +200,7 @@
               </div>
 
               <div class="rounded-lg border border-slate-200">
-                <button class="w-full px-3 py-2 text-left text-sm font-semibold text-slate-800" @click="accordionOpen.system = !accordionOpen.system">▾ Sistema</button>
+                <button class="w-full px-3 py-2 text-left text-sm font-semibold text-slate-800" @click="accordionOpen.system = !accordionOpen.system">{{ accordionOpen.system ? "-" : "+" }} Sistema</button>
                 <transition name="acc">
                   <div v-show="accordionOpen.system" class="px-3 pb-2">
                     <div class="mt-1 grid gap-1.5 md:grid-cols-2">

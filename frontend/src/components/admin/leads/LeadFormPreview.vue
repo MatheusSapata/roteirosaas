@@ -1,13 +1,13 @@
 <template>
   <div class="lead-form-preview rounded-2xl border border-slate-200 bg-slate-50 p-5 shadow-inner dark:border-white/10 dark:bg-white/5">
     <div class="flex flex-col items-center text-center">
-      <div v-if="agencyLogo && displayLogo" class="mb-3 flex justify-center">
-        <img :src="agencyLogo" alt="Logo da agência" class="h-16 w-16 rounded-xl object-contain" />
+      <div v-if="agencyLogo && displayLogo" class="mb-4 flex justify-center">
+        <img :src="agencyLogo" alt="Logo da agência" class="h-20 w-20 rounded-2xl object-contain" />
       </div>
       <h3 class="mt-2 text-xl font-bold text-slate-900 dark:text-white">
         {{ form.title?.trim() || "Título do formulário" }}
       </h3>
-      <p class="mt-1 max-h-24 overflow-hidden text-ellipsis text-center text-sm text-slate-500 dark:text-slate-400 break-words">
+      <p class="mt-1 max-h-24 overflow-hidden text-ellipsis break-words text-center text-sm text-slate-500 dark:text-slate-400">
         {{ form.subtitle?.trim() || "Subtítulo inspirador para convencer o visitante a deixar os dados." }}
       </p>
     </div>
@@ -24,7 +24,8 @@
             {{ field.label || presetLabels[field.type] }}
           </label>
           <input
-            :type="field.type === 'email' ? 'email' : 'text'"
+            :type="inputType(field.type)"
+            :inputmode="inputMode(field.type)"
             :placeholder="field.placeholder || presetPlaceholders[field.type]"
             disabled
             class="w-full rounded-xl border border-slate-200 bg-white/70 px-3 py-2 text-sm text-slate-500 shadow-inner dark:border-white/10 dark:bg-black/30 dark:text-slate-200"
@@ -51,7 +52,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import Sortable, { SortableEvent } from "sortablejs";
 import { useAgencyStore } from "../../../store/useAgencyStore";
-import type { LeadForm, LeadFormField } from "../../../types/leads";
+import type { LeadForm, LeadFormField, LeadFieldType } from "../../../types/leads";
 
 const props = defineProps<{
   form: Partial<LeadForm>;
@@ -85,6 +86,18 @@ const presetPlaceholders: Record<string, string> = {
   city: "São Paulo - SP",
   cpf: "000.000.000-00",
   birthdate: "1990-01-31"
+};
+
+const inputType = (type: LeadFieldType) => {
+  if (type === "email") return "email";
+  if (type === "birthdate") return "date";
+  return "text";
+};
+
+const inputMode = (type: LeadFieldType) => {
+  if (type === "phone" || type === "cpf") return "numeric";
+  if (type === "email") return "email";
+  return "text";
 };
 
 const visibleFields = computed<LeadFormField[]>(() => (props.form.fields || []).filter(Boolean));
@@ -142,6 +155,7 @@ watch(
 .preview-field-ghost {
   opacity: 0.5;
 }
+
 .preview-field-dragging {
   cursor: grabbing !important;
 }

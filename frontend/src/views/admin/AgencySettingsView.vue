@@ -173,7 +173,7 @@
       </div>
     </form>
 
-    <div v-if="showUnsavedModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 px-4">
+    <div v-if="showUnsavedModal" class="app-modal-overlay fixed inset-0 z-50 flex items-center justify-center px-4">
       <div class="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl">
         <h3 class="text-lg font-semibold text-slate-900">Você tem alterações não salvas</h3>
         <p class="mt-2 text-sm text-slate-600">Deseja salvar antes de sair desta página?</p>
@@ -862,8 +862,8 @@ onBeforeUnmount(() => {
   --sh-sm:0 1px 3px rgba(0,0,0,.05),0 1px 2px rgba(0,0,0,.03);
   --radius:12px;--radius-sm:8px;
 }
-.page-wrap{padding:28px 32px 64px;width:100%;max-width:1200px}
-.page-topbar{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+.page-wrap{padding:28px 32px 64px;width:100%;max-width:1380px}
+.page-topbar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
 .page-eyebrow{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);margin-bottom:3px}
 .page-title{font-size:24px;font-weight:800;color:var(--text);letter-spacing:-.3px;line-height:1.2}
 .page-sub{font-size:13px;color:var(--text-3);margin-top:4px;margin-bottom:24px}
@@ -906,7 +906,7 @@ onBeforeUnmount(() => {
 :deep(.agency-logo-upload .min-h-\[220px\]){min-height:150px !important}
 :deep(.agency-logo-upload img){max-height:150px !important;object-fit:contain}
 
-@media(max-width:900px){.page-wrap{padding:20px 16px 40px}.page-topbar{flex-direction:column;align-items:flex-start}}
+@media(max-width:900px){.page-wrap{padding:20px 16px 40px;max-width:none}.page-topbar{flex-direction:column;align-items:flex-start}}
 @media(max-width:768px){.card-row{grid-template-columns:1fr}}
 @media(max-width:600px){
   .grid2,.grid3,.social-item{grid-template-columns:1fr}
@@ -928,3 +928,6 @@ onBeforeUnmount(() => {
   }
 }
 </style>
+
+
+

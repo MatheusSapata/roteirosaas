@@ -108,7 +108,7 @@
     </div>
 
     
-    <!-- Dialog de limite de plano (reutilizado tambÃ©m para "template no free") -->
+    <!-- Dialog de limite de plano (reutilizado também para "template no free") -->
     <Teleport to="body" v-if="limitModal.open">
       <div class="fixed inset-0 z-50 flex items-center justify-center px-4 page-editor-overlay">
         <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-[#1f1f1f] dark:text-white">
@@ -137,7 +137,7 @@
       </div>
     </Teleport>
 
-    <!-- DiÃ¡logo de confirmaÃ§Ã£o ao sair sem salvar -->
+    <!-- Diálogo de confirmação ao sair sem salvar -->
     <Teleport to="body" v-if="unsavedNavigationModal.open">
       <div class="fixed inset-0 z-50 flex items-center justify-center px-4 page-editor-overlay">
         <div class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl dark:bg-[#1f1f1f] dark:text-white">
@@ -183,17 +183,17 @@
           <h3 class="mt-2 text-xl font-bold text-slate-900">{{ viewCopy.successModal.title }}</h3>
           <p class="mt-2 text-sm text-slate-600">{{ viewCopy.successModal.description }}</p>
 
-          <div class="mt-4 flex flex-wrap gap-2">
+          <div class="mt-5 flex flex-col gap-2 md:flex-row md:flex-nowrap md:items-center">
             <button
               @click="successModal.open = false"
-              class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+              class="w-full rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 md:w-auto md:flex-shrink-0"
             >
               {{ viewCopy.actions.close }}
             </button>
 
             <button
               @click="goPages"
-              class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+              class="w-full rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 md:w-auto md:flex-shrink-0"
             >
               {{ viewCopy.successModal.viewPages }}
             </button>
@@ -201,7 +201,7 @@
             <button
               :disabled="!publicUrl"
               @click="viewPublicPage"
-              class="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white shadow hover:bg-brand-dark disabled:opacity-50"
+              class="w-full rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white shadow hover:bg-brand-dark disabled:opacity-50 md:w-auto md:flex-shrink-0"
             >
               {{ viewCopy.actions.viewPage }}
             </button>
@@ -211,15 +211,15 @@
     </Teleport>
     <div
       v-if="sectionPicker.open"
-      class="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/60 px-4 py-8"
+      class="app-modal-overlay fixed inset-0 z-40 flex items-center justify-center px-4 py-8"
       @click.self="closeSectionPicker"
     >
       <div class="w-full max-w-5xl rounded-3xl bg-white shadow-2xl dark:bg-[#1f1f1f] dark:text-white">
         <div class="flex flex-col gap-2 border-b border-slate-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between dark:border-white/10">
           <div>
-            <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Adicionar nova seÃ§Ã£o</p>
+            <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Adicionar nova seção</p>
             <h3 class="text-lg font-semibold text-slate-900">Escolha um layout</h3>
-            <p class="text-sm text-slate-500">A nova seÃ§Ã£o serÃ¡ inserida logo abaixo do bloco selecionado.</p>
+            <p class="text-sm text-slate-500">A nova seção será inserida logo abaixo do bloco selecionado.</p>
           </div>
           <button
             type="button"
@@ -280,7 +280,7 @@
           <div class="flex flex-wrap items-center gap-2 text-xs">
             <span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 font-semibold text-slate-600">Link: {{ pageSlug || "-" }}</span>
             <span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 font-semibold text-slate-600">Formulário: {{ selectedLeadForm ? (selectedLeadForm.title || selectedLeadForm.name) : "nenhum" }}</span>
-            <span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 font-semibold text-slate-600">Pixel: {{ selectedPixels.meta || selectedPixels.ga || "não configurado" }}</span>
+            <span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 font-semibold text-slate-600">Pixels: {{ selectedPixelsSummary }}</span>
           </div>
         </div>
 
@@ -482,7 +482,7 @@
 
     <div class="space-y-4 px-2 pt-0 dark:text-white">
       <div v-if="leadFeatureAllowed && activeSettingsTab==='capture'" class="-mt-1">
-      <div class="flex flex-wrap items-start justify-between gap-3">
+      <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <h3 class="text-[17px] font-bold uppercase tracking-[0.03em] leading-none text-slate-700 dark:text-white">{{ viewCopy.leadSection.title }}</h3>
           <p class="text-sm text-slate-500 dark:text-slate-400">
@@ -491,7 +491,7 @@
         </div>
         <button
           type="button"
-          class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 dark:border-white/20 dark:text-white dark:hover:bg-white/10"
+          class="w-full rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 dark:border-white/20 dark:text-white dark:hover:bg-white/10 sm:w-auto lg:shrink-0"
           @click="goLeads"
         >
           {{ viewCopy.leadSection.manageButton }}
@@ -547,12 +547,6 @@
                 <p class="font-semibold text-slate-800 dark:text-white">{{ viewCopy.leadSection.optionalToggle }}</p>
               </div>
             </template>
-          </div>
-          <div
-            v-if="selectedLeadForm"
-            class="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 dark:border-emerald-400/40 dark:bg-emerald-500/10 dark:text-emerald-200"
-          >
-            {{ leadCaptureOptional ? viewCopy.leadSection.optionalActive : viewCopy.leadSection.requiredActive }}
           </div>
         </div>
       </div>
@@ -621,9 +615,9 @@
             ? (isMobileViewport
               ? '-mx-4 w-[calc(100%+2rem)] overflow-hidden rounded-none border-0 bg-transparent shadow-none'
               : 'mx-auto w-full max-w-[420px] overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-xl')
-            : ''"
+            : 'rounded-[28px] border border-slate-200 bg-slate-50 p-5 shadow-inner lg:p-6'"
         >
-          <div :class="previewDevice === 'mobile' ? 'max-h-none overflow-visible' : ''">
+          <div :class="previewDevice === 'mobile' ? 'max-h-none overflow-visible' : 'overflow-hidden rounded-[24px] bg-white shadow-sm'">
             <div class="space-y-6 preview-light">
               <template v-if="sections.length === 0">
                 <div class="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 px-4 py-12 text-center text-sm text-slate-500">
@@ -775,7 +769,7 @@
                         {{ viewCopy.overlay.disabledSection }}
                       </div>
                     </div>
-                    <div v-if="!isLockedFooterSection(section)" class="mt-4 flex justify-center">
+                    <div v-if="!isLockedFooterSection(section)" class="mt-4 mb-3 flex justify-center">
                       <button
                         type="button"
                         class="inline-flex items-center gap-2 rounded-full border border-emerald-400 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-100"
@@ -826,7 +820,7 @@
     <Teleport to="body">
       <div
         v-if="isSectionEditorOpen && editingSectionComponent && editingSectionDraft"
-        class="fixed inset-0 z-40 flex h-full w-full items-center justify-center bg-slate-900/80 px-4 py-10 md:py-20 backdrop-blur-sm"
+        class="app-modal-overlay fixed inset-0 z-40 flex h-full w-full items-center justify-center px-4 py-10 md:py-20"
         @click.self="closeSectionEditor"
       >
         <div
@@ -875,7 +869,7 @@
     <transition name="fade">
       <div
         v-if="snackbar.open"
-        class="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-2xl"
+        class="app-snackbar-layer z-50 rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-2xl"
       >
         {{ snackbar.text }}
       </div>
@@ -1889,6 +1883,12 @@ const selectedPixels = reactive<{ meta: string; ga: string }>({ meta: "", ga: ""
 const trackingEvents = ref({ pageView: true, ctaClicks: true });
 const metaPixelOptions = computed(() => pixels.value.filter(p => p.type === "meta"));
 const gaPixelOptions = computed(() => pixels.value.filter(p => p.type === "ga"));
+const selectedPixelsSummary = computed(() => {
+  const parts: string[] = [];
+  if (selectedPixels.meta) parts.push(`Meta: ${selectedPixels.meta}`);
+  if (selectedPixels.ga) parts.push(`Google: ${selectedPixels.ga}`);
+  return parts.length ? parts.join(" • ") : "não configurado";
+});
 const resolveSelectedPixel = (type: "meta" | "ga", name: string) =>
   name ? pixels.value.find(p => p.type === type && p.name === name) || null : null;
 const leadForms = computed(() => leadCaptureStore.forms);
@@ -2085,7 +2085,7 @@ const loadPixels = async () => {
 
 const clone = <T>(val: T): T => {
   try {
-    // structuredClone pode nÃƒÂ£o existir em browsers antigos; fallback seguro
+    // structuredClone pode não existir em browsers antigos; fallback seguro
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     return typeof structuredClone === "function" ? structuredClone(val) : JSON.parse(JSON.stringify(val));
@@ -3057,11 +3057,11 @@ const showSnackbar = (text: string) => {
 };
 
 /**
- * Ã¢Å“â€¦ BLOQUEIO: plano free NÃƒÆ’O pode salvar template.
+ * BLOQUEIO: plano free NÃO pode salvar template.
  * Deve abrir dialog com Fechar / Ver planos.
  */
 const saveTemplate = () => {
-  // se nÃƒÂ£o logou
+  // se não logou
   if (!auth.user) {
     errorMessage.value = viewCopy.feedback.templateLoginRequired;
     return;

@@ -47,7 +47,7 @@
     <teleport to="body">
       <div
         v-if="templateModal.open"
-        class="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/80 px-4 py-6"
+        class="app-modal-overlay fixed inset-0 z-[200] flex items-center justify-center px-4 py-6"
       >
         <div class="relative w-full max-w-7xl rounded-3xl bg-white shadow-2xl dark:bg-[#202020] dark:text-white">
           <div class="max-h-[90vh] overflow-y-auto p-6">
@@ -157,6 +157,9 @@
                 <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-white/60">
                   {{ viewCopy.templateModal.previewHeading }}
                 </p>
+                <p class="text-sm text-slate-500 dark:text-white/70">
+                  {{ viewCopy.templateModal.previewDescription }}
+                </p>
 
                 <div class="inline-flex items-center rounded-full border border-slate-200 bg-white p-1 text-xs font-semibold dark:border-white/10 dark:bg-[#101010]">
                   <button
@@ -234,6 +237,9 @@
                   <div>
                     <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-white/60">
                       {{ viewCopy.templateModal.previewHeading }}
+                    </p>
+                    <p class="text-sm text-slate-500 dark:text-white/70">
+                      {{ viewCopy.templateModal.previewDescription }}
                     </p>
                     <p class="text-sm font-semibold text-slate-900 dark:text-white">
                       {{ templateModal.selectedTemplate?.name }}
@@ -324,7 +330,7 @@
     <teleport to="body">
       <div
         v-if="createOptionsOpen"
-        class="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/60 px-4 py-8"
+        class="app-modal-overlay fixed inset-0 z-[200] flex items-center justify-center px-4 py-8"
       >
         <div class="w-full max-w-4xl rounded-3xl bg-white p-8 shadow-2xl dark:bg-[#202020] dark:text-white">
           <div class="relative mb-6 space-y-1">
@@ -343,7 +349,7 @@
             </button>
           </div>
 
-          <div class="grid gap-4 md:grid-cols-3">
+          <div class="grid gap-4 md:grid-cols-2">
             <button
               class="rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 dark:border-[#363636] dark:bg-[#101010] dark:text-white dark:hover:bg-white/5"
               @click="createPageFromScratch"
@@ -378,22 +384,6 @@
               </p>
             </button>
 
-            <button
-              class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5 text-left text-slate-600 transition hover:-translate-y-0.5 hover:border-slate-300 dark:border-[#363636] dark:bg-[#181818] dark:text-slate-200 dark:hover:border-white/10 dark:hover:bg-white/5"
-              @click="createPageWithAi"
-            >
-              <span
-                class="inline-flex items-center rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-indigo-700"
-              >
-                {{ viewCopy.actions.createModal.ai.badge }}
-              </span>
-              <h3 class="mt-3 text-lg font-semibold text-slate-900 dark:text-white">
-                {{ viewCopy.actions.createModal.ai.title }}
-              </h3>
-              <p class="mt-1 text-sm text-slate-600 dark:text-slate-200">
-                {{ viewCopy.actions.createModal.ai.description }}
-              </p>
-            </button>
           </div>
 
         </div>
@@ -401,7 +391,7 @@
     </teleport>
 
     <transition name="fade">
-      <div v-if="planLimitDialog.open" class="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/70 px-4">
+      <div v-if="planLimitDialog.open" class="app-modal-overlay fixed inset-0 z-40 flex items-center justify-center px-4">
         <div class="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl dark:bg-[#202020] dark:text-white">
           <p class="text-xs font-semibold uppercase tracking-[0.3em] text-rose-500">
             {{ viewCopy.actions.planLimit.badge }}
@@ -628,7 +618,7 @@
 
     <div
       v-if="duplicateDialogOpen"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4"
+      class="app-modal-overlay fixed inset-0 z-50 flex items-center justify-center px-4"
       role="dialog"
       aria-modal="true"
     >
@@ -695,7 +685,7 @@
   <transition name="fade">
     <div
       v-if="snackbar.open"
-      class="fixed bottom-6 left-1/2 z-[300] max-w-[90vw] -translate-x-1/2 rounded-3xl px-5 py-3 text-sm font-semibold text-white shadow-2xl sm:max-w-md"
+      class="app-snackbar-layer fixed bottom-6 left-1/2 z-[300] max-w-[90vw] -translate-x-1/2 rounded-3xl px-5 py-3 text-sm font-semibold text-white shadow-2xl sm:max-w-md"
       :class="snackbar.tone === 'error' ? 'bg-rose-600' : 'bg-slate-900'"
     >
       {{ snackbar.text }}
@@ -770,8 +760,8 @@ const viewCopySource = {
       eyebrow: { pt: "Novo roteiro", es: "Nuevo itinerario" },
       title: { pt: "Como deseja começar?", es: "¿Cómo deseas empezar?" },
       description: {
-        pt: "Escolha entre montar tudo do zero ou partir de um template pronto.",
-        es: "Elige entre construir todo desde cero o partir de un template listo."
+        pt: "Escolha entre montar do zero ou começar por um modelo pronto.",
+        es: "Elige entre construir desde cero o empezar con un modelo listo."
       },
       scratch: {
         badge: { pt: "Crie como quiser", es: "Plantillas" },
@@ -842,7 +832,11 @@ const viewCopySource = {
       pt: "Selecione um modelo para visualizar e criar sua pagina.",
       es: "Selecciona un modelo para visualizar y crear tu pagina."
     },
-    previewHeading: { pt: "Pre-visualizacão", es: "Previsualizacion" },
+    previewHeading: { pt: "Preview visual", es: "Vista previa visual" },
+    previewDescription: {
+      pt: "Veja como o roteiro ficará antes de usar este modelo.",
+      es: "Mira cómo quedará el itinerario antes de usar este modelo."
+    },
     previewEmpty: {
       pt: "Escolha um modelo para visualizar o design.",
       es: "Elige un modelo para visualizar el diseno."

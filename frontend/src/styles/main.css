@@ -7,6 +7,7 @@
 :root {
   --bg-gradient: radial-gradient(circle at 20% 20%, #e0f2fe, transparent 25%), radial-gradient(circle at 80% 0%, #c7d2fe, transparent 30%);
   --app-scale: 0.9;
+  --modal-overlay: rgba(0, 0, 0, 0.62);
 }
 
 body {
@@ -93,5 +94,24 @@ body.admin-shell #app {
   .hero-cta-desktop-hover:hover {
     transform: scale(1.07);
     box-shadow: 0 25px 50px -20px rgba(15, 23, 42, 0.7);
+  }
+}
+
+.app-modal-overlay {
+  background: var(--modal-overlay) !important;
+  backdrop-filter: none !important;
+}
+
+.app-snackbar-layer {
+  position: fixed !important;
+  left: 50% !important;
+  bottom: 1rem !important;
+  transform: translateX(-50%) !important;
+  z-index: 260 !important;
+}
+
+@media (min-width: 768px) {
+  .app-snackbar-layer {
+    bottom: 1.5rem !important;
   }
 }
