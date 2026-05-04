@@ -54,14 +54,14 @@
               </form>
             </div>
 
-            <details class="list-card tips-card">
-              <summary class="tips-summary">{{ viewCopy.tips.title }}</summary>
+            <section class="list-card tips-card">
+              <p class="tips-summary">{{ viewCopy.tips.title }}</p>
               <ul class="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600">
                 <li>{{ viewCopy.tips.subdomainPrefix }} <span class="font-mono">roteiros.suaagencia.com</span> {{ viewCopy.tips.subdomainSuffix }}</li>
                 <li>{{ viewCopy.tips.protocolPrefix }} <span class="font-mono">http://</span> {{ viewCopy.tips.protocolSuffix }}</li>
                 <li>{{ viewCopy.tips.reserved(platformExample) }}</li>
               </ul>
-            </details>
+            </section>
           </section>
 
           <section class="list-card">
@@ -119,26 +119,62 @@
                     <p class="step-label">Passo 1</p>
                     <p class="step-name">Adicionar registro TXT</p>
                     <div class="step-meta">
-                      <p><span>Host:</span> <strong>{{ domain.instructions?.verification.host || "-" }}</strong></p>
-                      <p><span>Valor:</span> <strong>{{ domain.verification_token || "-" }}</strong></p>
-                      <p><span>FQDN:</span> <strong>{{ domain.instructions?.verification.fqdn || "-" }}</strong></p>
+                      <div class="copy-row">
+                        <p><span>Host:</span> <strong>{{ domain.instructions?.verification.host || "-" }}</strong></p>
+                        <button type="button" class="copy-icon-btn" @click="copyText(domain.instructions?.verification.host || '', `txt-host-${domain.id}`)" aria-label="Copiar host TXT">
+                          <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="9" y="9" width="11" height="11" rx="2"></rect>
+                            <path d="M5 15V6a2 2 0 0 1 2-2h9"></path>
+                          </svg>
+                        </button>
+                      </div>
+                      <div class="copy-row">
+                        <p><span>Valor:</span> <strong>{{ domain.verification_token || "-" }}</strong></p>
+                        <button type="button" class="copy-icon-btn" @click="copyText(domain.verification_token, `txt-value-${domain.id}`)" aria-label="Copiar valor TXT">
+                          <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="9" y="9" width="11" height="11" rx="2"></rect>
+                            <path d="M5 15V6a2 2 0 0 1 2-2h9"></path>
+                          </svg>
+                        </button>
+                      </div>
+                      <div class="copy-row">
+                        <p><span>FQDN:</span> <strong>{{ domain.instructions?.verification.fqdn || "-" }}</strong></p>
+                        <button type="button" class="copy-icon-btn" @click="copyText(domain.instructions?.verification.fqdn || '', `txt-fqdn-${domain.id}`)" aria-label="Copiar FQDN TXT">
+                          <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="9" y="9" width="11" height="11" rx="2"></rect>
+                            <path d="M5 15V6a2 2 0 0 1 2-2h9"></path>
+                          </svg>
+                        </button>
+                      </div>
                     </div>
-                    <p class="step-value">{{ domain.verification_token }}</p>
-                    <button type="button" class="step-copy-btn" @click="copyText(domain.verification_token, `txt-${domain.id}`)">Copiar</button>
-                    <p v-if="copiedState[`txt-${domain.id}`]" class="copy-ok">Copiado!</p>
+                    <p v-if="copiedState[`txt-host-${domain.id}`] || copiedState[`txt-value-${domain.id}`] || copiedState[`txt-fqdn-${domain.id}`]" class="copy-ok">Copiado!</p>
                   </div>
                   <div class="step-card">
                     <p class="step-label">Passo 2</p>
                     <p class="step-name">Configurar {{ domain.instructions?.target.type || "CNAME" }}</p>
                     <div class="step-meta">
-                      <p><span>Host:</span> <strong>{{ domain.instructions?.target.host || "-" }}</strong></p>
-                      <p><span>Valor:</span> <strong>{{ domain.instructions?.target.value || "-" }}</strong></p>
+                      <div class="copy-row">
+                        <p><span>Host:</span> <strong>{{ domain.instructions?.target.host || "-" }}</strong></p>
+                        <button type="button" class="copy-icon-btn" @click="copyText(domain.instructions?.target.host || '', `target-host-${domain.id}`)" aria-label="Copiar host apontamento">
+                          <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="9" y="9" width="11" height="11" rx="2"></rect>
+                            <path d="M5 15V6a2 2 0 0 1 2-2h9"></path>
+                          </svg>
+                        </button>
+                      </div>
+                      <div class="copy-row">
+                        <p><span>Valor:</span> <strong>{{ domain.instructions?.target.value || "-" }}</strong></p>
+                        <button type="button" class="copy-icon-btn" @click="copyText(domain.instructions?.target.value || '', `target-value-${domain.id}`)" aria-label="Copiar valor apontamento">
+                          <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="9" y="9" width="11" height="11" rx="2"></rect>
+                            <path d="M5 15V6a2 2 0 0 1 2-2h9"></path>
+                          </svg>
+                        </button>
+                      </div>
                       <p><span>Tipo:</span> <strong>{{ domain.instructions?.target.type || "-" }}</strong></p>
                     </div>
-                    <p class="step-value">{{ domain.instructions?.target.value || "-" }}</p>
                     <p class="step-hint" v-if="domain.instructions?.target.type === 'CNAME'">Use apenas "www" como host/subdomínio.</p>
-                    <button type="button" class="step-copy-btn" @click="copyText(domain.instructions?.target.value || '', `target-${domain.id}`)">Copiar</button>
-                    <p v-if="copiedState[`target-${domain.id}`]" class="copy-ok">Copiado!</p>
+                    <p v-if="copiedState[`target-host-${domain.id}`] || copiedState[`target-value-${domain.id}`]" class="copy-ok">Copiado!</p>
                   </div>
                 </div>
 
@@ -192,6 +228,34 @@
             </div>
           </section>
         </div>
+
+        <section class="list-card guide-card">
+          <div class="guide-head">
+            <div>
+              <p class="guide-eyebrow">{{ viewCopy.dnsGuide.title }}</p>
+              <h2 class="card-title">{{ viewCopy.dnsGuide.subdomainTitle }}</h2>
+            </div>
+          </div>
+          <div class="guide-grid">
+            <div class="guide-block">
+              <p class="guide-block-title">{{ viewCopy.dnsGuide.subdomainTitle }}</p>
+              <ul class="guide-list">
+                <li>{{ viewCopy.dnsGuide.subdomainHostPrefix }} <span class="font-mono">www.suaagencia.com</span> {{ viewCopy.dnsGuide.subdomainHostConnector }} <span class="font-mono">roteiros.suaagencia.com</span>.</li>
+                <li>{{ viewCopy.dnsGuide.subdomainCname }} <span class="font-mono">roteiroonline.com</span>.</li>
+                <li>{{ viewCopy.dnsGuide.subdomainTxt }}</li>
+              </ul>
+            </div>
+            <div class="guide-block">
+              <p class="guide-block-title">{{ viewCopy.dnsGuide.apexTitle }}</p>
+              <ul class="guide-list">
+                <li>{{ viewCopy.dnsGuide.apexRecord }}</li>
+                <li>{{ viewCopy.dnsGuide.apexValuePrefix }}<span class="font-mono">{{ apexTargetExample }}</span>{{ viewCopy.dnsGuide.apexValueSuffix }}</li>
+                <li>{{ viewCopy.dnsGuide.apexTxt }}</li>
+              </ul>
+            </div>
+          </div>
+          <p class="guide-footer">{{ viewCopy.dnsGuide.footer }}</p>
+        </section>
       </div>
     </div>
     <div
@@ -445,6 +509,10 @@ const currentAgencyName = computed(() => {
   return agency?.name || viewCopy.list.unnamedAgency;
 });
 const platformExample = computed(() => `${platformHosts[0] || "seusite.com"}/agencia/roteiro`);
+const apexTargetExample = computed(() => {
+  const fromDomain = domains.value.find(domain => domain.instructions?.target?.value)?.instructions?.target?.value;
+  return fromDomain || "SEU_IP_AQUI";
+});
 const goToPlans = () => {
   router.push("/admin/planos");
 };
@@ -677,9 +745,17 @@ watch(domainsAllowed, allowed => {
   --sh-sm:0 1px 3px rgba(0,0,0,.05),0 1px 2px rgba(0,0,0,.03);
   --radius:12px;--radius-sm:8px;
 }
-.page-wrap{padding:28px 32px 64px;width:100%;max-width:1200px}
+.page-wrap{padding:28px 32px 64px;width:100%;max-width:1380px}
 .page-title{font-size:24px;font-weight:800;color:var(--text);letter-spacing:-.3px;line-height:1.2}
 .page-sub{font-size:13px;color:var(--text-3);margin-top:4px}
+.guide-card{padding:18px}
+.guide-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
+.guide-eyebrow{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);margin-bottom:4px}
+.guide-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.guide-block{border:1px solid var(--border);border-radius:10px;background:var(--surface2);padding:14px}
+.guide-block-title{font-size:12px;font-weight:800;color:var(--text);margin-bottom:8px}
+.guide-list{display:grid;gap:8px;font-size:13px;color:var(--text-2);line-height:1.5}
+.guide-footer{margin-top:12px;font-size:12px;color:var(--text-3);line-height:1.55}
 .main-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.45fr);gap:12px;align-items:start}
 .list-card{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:var(--sh-sm)}
 .card-title{font-size:16px;font-weight:800;color:var(--text);letter-spacing:-.2px}
@@ -698,8 +774,8 @@ watch(domainsAllowed, allowed => {
 .btn-danger:hover{background:#ffeaea}
 .ok-msg{font-size:12px;color:#1a7a35;font-weight:600}
 .err-msg{font-size:12px;color:#c0392b;font-weight:600}
-.tips-card{padding-top:12px;padding-bottom:12px}
-.tips-summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--text-2)}
+.tips-card{padding-top:14px;padding-bottom:14px}
+.tips-summary{font-size:13px;font-weight:700;color:var(--text-2)}
 .list-header{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px}
 .alert-error{border:1px solid #fecaca;background:#fef2f2;color:#b91c1c;border-radius:10px;padding:10px;font-size:12px}
 .alert-muted{border:1px solid var(--border);background:var(--surface2);color:var(--text-2);border-radius:10px;padding:12px;font-size:13px}
@@ -715,17 +791,17 @@ watch(domainsAllowed, allowed => {
 .status-label{font-size:12px;font-weight:700;color:var(--text-2)}
 .step-title{font-size:12px;font-weight:700;color:var(--text-2);margin-top:12px}
 .steps-grid{margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.step-card{border:1px solid var(--border);border-radius:10px;background:#fff;padding:12px}
+.step-card{border:1px solid var(--border);border-radius:10px;background:#fff;padding:14px}
 .step-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3)}
 .step-name{font-size:12px;font-weight:700;color:var(--text);margin-top:2px}
 .step-meta{margin-top:6px;display:grid;gap:2px}
-.step-meta p{font-size:12px;color:var(--text-2);line-height:1.35}
+.step-meta p{font-size:12px;color:var(--text-2);line-height:1.35;min-width:0}
 .step-meta span{color:var(--text-3);font-weight:600}
 .step-meta strong{font-weight:700;color:var(--text)}
-.step-value{margin-top:6px;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);font-size:12px;color:var(--text);font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;word-break:break-all}
+.copy-row{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2)}
+.copy-icon-btn{display:inline-flex;align-items:center;justify-content:center;height:30px;width:30px;border:1px solid var(--border);border-radius:999px;background:#fff;color:var(--text-2);flex-shrink:0;transition:.15s}
+.copy-icon-btn:hover{border-color:#cbd6cb;color:var(--text)}
 .step-hint{margin-top:6px;font-size:11px;color:var(--text-3)}
-.step-copy-btn{margin-top:8px;display:inline-flex;align-items:center;justify-content:center;border:none;background:var(--verde);color:#0F1F14;border-radius:999px;padding:5px 10px;font-size:11px;font-weight:700;transition:.15s}
-.step-copy-btn:hover{background:var(--verde-d)}
 .copy-ok{margin-top:4px;font-size:11px;color:#1a7a35;font-weight:700}
 .domain-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:700;line-height:1.4}
@@ -734,7 +810,7 @@ watch(domainsAllowed, allowed => {
 .badge-muted{background:#e9eeea;color:#5f6f5f;border:1px solid var(--border)}
 .badge-warn{background:#fff1da;color:#ad6a00;border:1px solid #ffd9a1}
 .badge-ssl{background:#f1eefb;color:#5f4aa6;border:1px solid #ded6fb}
-@media(max-width:1000px){.main-grid{grid-template-columns:1fr}}
+@media(max-width:1000px){.main-grid,.guide-grid{grid-template-columns:1fr}}
 @media(max-width:900px){.page-wrap{padding:20px 16px 40px}}
 @media(max-width:640px){.steps-grid{grid-template-columns:1fr}}
 </style>

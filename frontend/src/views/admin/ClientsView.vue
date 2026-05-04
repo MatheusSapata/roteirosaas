@@ -2,25 +2,25 @@
   <div class="space-y-5">
     <section class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <article class="kpi-card">
-        <span class="kpi-icon">👥</span>
+        <span class="kpi-icon" aria-hidden="true">👥</span>
         <p class="kpi-label">Total de clientes</p>
         <p class="kpi-value">{{ clients.length }}</p>
         <p class="kpi-sub">Base comercial ativa</p>
       </article>
       <article class="kpi-card">
-        <span class="kpi-icon">📈</span>
+        <span class="kpi-icon" aria-hidden="true">📈</span>
         <p class="kpi-label">Com oportunidades</p>
         <p class="kpi-value">{{ clientsWithOpportunities }}</p>
         <p class="kpi-sub">Clientes em negociação</p>
       </article>
       <article class="kpi-card">
-        <span class="kpi-icon">💰</span>
+        <span class="kpi-icon" aria-hidden="true">💰</span>
         <p class="kpi-label">Receita total</p>
         <p class="kpi-value">{{ formatCurrency(totalRevenueCents) }}</p>
         <p class="kpi-sub">Somatório estimado</p>
       </article>
       <article class="kpi-card">
-        <span class="kpi-icon">🕒</span>
+        <span class="kpi-icon" aria-hidden="true">🕒</span>
         <p class="kpi-label">Última oportunidade</p>
         <p class="kpi-value text-lg">{{ latestOpportunityDate }}</p>
         <p class="kpi-sub">Movimento mais recente</p>
@@ -30,7 +30,7 @@
     <section class="rounded-3xl border border-slate-200 bg-white p-3 shadow-sm">
       <div class="grid gap-2 md:grid-cols-[1.7fr_repeat(3,minmax(0,1fr))]">
         <div class="search-wrap">
-          <span class="search-icon">⌕</span>
+          <span class="search-icon" aria-hidden="true">🔍</span>
           <input v-model="filters.q" type="text" placeholder="Buscar cliente, CPF, telefone ou e-mail..." class="crm-input crm-input--search" />
         </div>
         <input v-model="filters.city" type="text" placeholder="Cidade" class="crm-input" />
@@ -54,7 +54,7 @@
       </div>
 
       <div v-else-if="!clients.length" class="empty-state">
-        <div class="empty-icon">◌</div>
+        <div class="empty-icon" aria-hidden="true">🗂️</div>
         <h3 class="text-lg font-semibold text-slate-900">Nenhum cliente encontrado</h3>
         <p class="text-sm text-slate-500">Crie um cliente ou ajuste os filtros</p>
         <button type="button" class="rounded-full bg-brand px-5 py-2 text-sm font-semibold text-white" @click="openCreateModal">+ Novo cliente</button>
@@ -100,7 +100,11 @@
                 <td class="px-4 py-3">
                   <div class="flex items-center justify-end" @click.stop>
                     <button type="button" class="menu-trigger" @click.stop="toggleRowMenu(client.id, $event)">
-                      •••
+                      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <circle cx="5" cy="12" r="1.8" />
+                        <circle cx="12" cy="12" r="1.8" />
+                        <circle cx="19" cy="12" r="1.8" />
+                      </svg>
                     </button>
                   </div>
                 </td>
@@ -110,11 +114,14 @@
         </div>
 
         <div class="space-y-3 p-3 lg:hidden">
-          <article v-for="client in clients" :key="`mobile-${client.id}`" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <article v-for="client in clients" :key="`mobile-${client.id}`" class="client-card rounded-2xl border border-slate-200 bg-white p-4 shadow-sm" @click="goToClient(client.id)">
             <div class="flex items-start justify-between gap-2">
-              <div>
-                <p class="font-semibold text-slate-900">{{ client.name }}</p>
-                <p class="text-xs text-slate-500">Cliente desde {{ formatDate(client.created_at) }}</p>
+              <div class="flex items-start gap-3">
+                <span class="avatar-chip">{{ clientInitials(client.name) }}</span>
+                <div>
+                  <p class="font-semibold text-slate-900">{{ client.name }}</p>
+                  <p class="text-xs text-slate-500">Cliente desde {{ formatDate(client.created_at) }}</p>
+                </div>
               </div>
               <span class="op-badge" :class="client.opportunitiesCount > 0 ? 'is-hot' : 'is-cold'">{{ client.opportunitiesCount }} oportunidades</span>
             </div>
@@ -127,8 +134,8 @@
               <p class="font-semibold text-slate-800">{{ formatCurrency(client.totalEstimatedValueCents) }}</p>
               <p class="text-xs text-slate-500">{{ formatDate(client.lastOpportunityAt) }}</p>
             </div>
-            <div class="mt-3 flex gap-2">
-              <button type="button" class="table-action" @click="goToClient(client.id)">Ver perfil</button>
+            <div class="mt-3 flex gap-2" @click.stop>
+              <button type="button" class="table-action table-action--primary" @click="goToClient(client.id)">Ver perfil</button>
               <button type="button" class="table-action" @click="openNewOpportunity(client.id)">Nova oportunidade</button>
             </div>
           </article>
@@ -151,7 +158,7 @@
     </Teleport>
 
     <Teleport to="body">
-      <div v-if="createModalOpen" class="fixed inset-0 z-[150] flex items-center justify-center bg-slate-900/45 p-3 md:px-4">
+      <div v-if="createModalOpen" class="app-modal-overlay fixed inset-0 z-[150] flex items-center justify-center p-3 md:px-4">
         <div class="flex w-full max-w-2xl flex-col overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-2xl max-h-[calc(100vh-24px)] md:max-h-[calc(100vh-48px)]">
           <div class="flex shrink-0 items-start justify-between gap-4 border-b border-slate-100 px-4 py-4 md:px-6">
             <div>
@@ -456,8 +463,9 @@ defineExpose({
   border: 1px solid rgb(226 232 240);
   background: #fff;
   border-radius: 1rem;
-  padding: 0.85rem 1rem;
+  padding: 0.95rem 1rem;
   position: relative;
+  box-shadow: 0 10px 24px -24px rgba(15, 23, 42, 0.45);
 }
 .kpi-icon {
   position: absolute;
@@ -485,7 +493,7 @@ defineExpose({
   display: inline-flex;
   align-items: center;
   border-radius: 999px;
-  padding: 0.25rem 0.6rem;
+  padding: 0.32rem 0.72rem;
   font-size: 0.73rem;
   font-weight: 700;
 }
@@ -508,31 +516,33 @@ defineExpose({
 }
 .table-action--primary:hover { background: #dcfce7; }
 .client-row {
+  position: relative;
   box-shadow: inset 0 0 0 0 rgba(15, 23, 42, 0);
 }
 .client-row:hover {
-  background: #f8fbff;
-  box-shadow: inset 0 1px 0 rgba(226, 232, 240, 0.9), inset 0 -1px 0 rgba(226, 232, 240, 0.9), 0 6px 16px -16px rgba(15, 23, 42, 0.4);
+  background: linear-gradient(180deg, #fbfdff 0%, #f8fbff 100%);
+  box-shadow: inset 0 1px 0 rgba(226, 232, 240, 0.9), inset 0 -1px 0 rgba(226, 232, 240, 0.9), 0 10px 24px -24px rgba(15, 23, 42, 0.45);
 }
 .menu-trigger {
   border: 1px solid #e2e8f0;
   border-radius: 999px;
-  width: 1.85rem;
-  height: 1.85rem;
+  width: 2rem;
+  height: 2rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.82rem;
-  line-height: 1;
-  letter-spacing: 0.02em;
-  font-weight: 600;
   color: #64748b;
   background: #fff;
+  transition: all 0.18s ease;
+}
+.menu-trigger svg {
+  width: 14px;
+  height: 14px;
 }
 .menu-trigger:hover {
-  background: #f8fafc;
-  border-color: #cbd5e1;
-  color: #475569;
+  background: #f7fbf8;
+  border-color: #cfe6d6;
+  color: #2f7f48;
 }
 .row-menu {
   position: fixed;
@@ -557,6 +567,16 @@ defineExpose({
 .row-menu button:hover { background: #f8fafc; }
 .row-menu button.danger { color: #b91c1c; }
 .row-menu--floating { min-width: 196px; }
+.client-card {
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background-color 0.18s ease;
+}
+.client-card:hover {
+  border-color: #d9e6de;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfefc 100%);
+  box-shadow: 0 16px 32px -28px rgba(15, 23, 42, 0.45);
+  transform: translateY(-1px);
+}
 .empty-state {
   min-height: 320px;
   display: flex;

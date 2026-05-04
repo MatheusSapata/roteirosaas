@@ -1,5 +1,6 @@
-DEFAULT_LESSONS = [
+﻿DEFAULT_LESSONS = [
     {
+        "module_name": "Primeiros passos",
         "title": "Boas-vindas e visão geral da plataforma",
         "description": "Aprenda onde configurar sua agência, como navegar pelo painel e onde ficam os principais recursos para montar páginas em poucos minutos.",
         "duration": "08:42",
@@ -9,6 +10,7 @@ DEFAULT_LESSONS = [
         "thumbnail_url": "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=600&q=80",
     },
     {
+        "module_name": "Construção de páginas",
         "title": "Organizando o catálogo de seções",
         "description": "Veja como escolher combinações vencedoras de seções, salvar templates e acelerar a produção de páginas com histórias diferentes.",
         "duration": "12:18",
@@ -18,6 +20,7 @@ DEFAULT_LESSONS = [
         "thumbnail_url": "https://images.unsplash.com/photo-1461749280684-dccba630e2f6?auto=format&fit=crop&w=600&q=80",
     },
     {
+        "module_name": "Construção de páginas",
         "title": "Dominando o editor de histórias",
         "description": "Construa narrativas envolventes usando o editor de histórias. Entenda os gatilhos e padrões que convertem melhor em cada etapa do funil.",
         "duration": "15:03",
@@ -27,6 +30,7 @@ DEFAULT_LESSONS = [
         "thumbnail_url": "https://images.unsplash.com/photo-1529333166437-7750a6dd5a70?auto=format&fit=crop&w=600&q=80",
     },
     {
+        "module_name": "Publicação e otimização",
         "title": "Publicando e acompanhando resultados",
         "description": "Entenda como publicar a página, habilitar pixels, acompanhar métricas e criar testes A/B para otimizar campanhas.",
         "duration": "09:56",

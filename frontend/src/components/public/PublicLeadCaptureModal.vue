@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <Teleport to="body">
     <transition name="fade">
       <div
@@ -23,7 +23,7 @@
           <div class="space-y-4">
             <div class="space-y-2 text-center">
               <div v-if="showBrandingLogo" class="flex justify-center">
-                <img :src="brandingLogo" alt="Logo da agência" class="h-16 w-16 rounded-xl object-contain" />
+                <img :src="brandingLogo" alt="Logo da agência" class="h-20 w-20 rounded-2xl object-contain" />
               </div>
               <h2 class="text-2xl font-bold">{{ modalTitle }}</h2>
               <p class="text-sm text-slate-500 dark:text-slate-300">
@@ -324,3 +324,5 @@ function parseColor(value?: string | null): { r: number; g: number; b: number } 
   border: 0;
 }
 </style>
+
+

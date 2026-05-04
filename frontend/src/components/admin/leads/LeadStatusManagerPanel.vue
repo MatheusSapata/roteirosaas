@@ -60,14 +60,10 @@
                     {{ resolveSpecialBadge(status.name) === "won" ? viewCopy.badges.won : viewCopy.badges.lost }}
                   </span>
                 </div>
-                <div class="mt-2 space-y-1 text-sm text-slate-600">
-                  <p>{{ usageCount(status.id) }} {{ usageCount(status.id) === 1 ? viewCopy.pipeline.usageSingle : viewCopy.pipeline.usagePlural }}</p>
-                  <p>{{ money(revenueByStatusId[idKey(status.id)] || 0) }} {{ viewCopy.pipeline.inNegotiation }}</p>
-                </div>
               </div>
             </div>
 
-            <div class="flex items-center gap-2 self-end md:self-start">
+            <div class="flex flex-wrap items-center gap-2 self-end md:self-start">
               <button
                 type="button"
                 class="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
@@ -77,34 +73,23 @@
                 {{ savingMap[idKey(status.id)] ? viewCopy.actions.saving : viewCopy.actions.edit }}
               </button>
 
-              <div class="relative">
-                <button
-                  type="button"
-                  class="menu-trigger"
-                  :aria-label="viewCopy.actions.more"
-                  @click.stop="toggleRowMenu(idKey(status.id))"
-                >
-                  <span></span><span></span><span></span>
-                </button>
+              <button
+                type="button"
+                class="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                @click="handleDuplicateStatus(status)"
+              >
+                {{ viewCopy.actions.duplicate }}
+              </button>
 
-                <div
-                  v-if="openMenuId === idKey(status.id)"
-                  class="menu-panel"
-                  @click.stop
-                >
-                  <button type="button" class="menu-item" @click="handleDuplicateStatus(status)">{{ viewCopy.actions.duplicate }}</button>
-                  <button type="button" class="menu-item" @click="openColorEdit(status)">{{ viewCopy.actions.changeColor }}</button>
-                  <button
-                    v-if="canDelete"
-                    type="button"
-                    class="menu-item menu-item-danger"
-                    :disabled="deletingMap[idKey(status.id)]"
-                    @click="handleDeleteStatus(status)"
-                  >
-                    {{ deletingMap[idKey(status.id)] ? viewCopy.actions.deleting : viewCopy.actions.delete }}
-                  </button>
-                </div>
-              </div>
+              <button
+                v-if="canDelete"
+                type="button"
+                class="rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-100 disabled:opacity-60"
+                :disabled="deletingMap[idKey(status.id)]"
+                @click="handleDeleteStatus(status)"
+              >
+                {{ deletingMap[idKey(status.id)] ? viewCopy.actions.deleting : viewCopy.actions.delete }}
+              </button>
             </div>
           </div>
         </li>
@@ -112,7 +97,7 @@
     </section>
 
     <Teleport to="body">
-      <div v-if="statusModalOpen" class="fixed inset-0 z-[170] flex items-center justify-center bg-slate-900/45 px-4">
+      <div v-if="statusModalOpen" class="app-modal-overlay fixed inset-0 z-[170] flex items-center justify-center px-4">
         <div class="w-full max-w-xl rounded-[28px] border border-slate-200 bg-white p-6 shadow-2xl">
           <div class="flex items-start justify-between gap-3">
             <div>
@@ -192,7 +177,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
+import { computed, onMounted, reactive, ref, watch } from "vue";
 import type { LeadStatus } from "../../../types/leads";
 import { useLeadCaptureStore } from "../../../store/useLeadCaptureStore";
 import { useAuthStore } from "../../../store/useAuthStore";
@@ -229,20 +214,15 @@ const viewCopy = {
     helper: t({ pt: "Arraste para definir a ordem das etapas", es: "Arrastra para definir el orden de las etapas" }),
     loading: t({ pt: "Carregando status...", es: "Cargando estados..." }),
     empty: t({ pt: "Nenhum status cadastrado.", es: "No hay estados registrados." }),
-    usageSingle: t({ pt: "oportunidade", es: "oportunidad" }),
-    usagePlural: t({ pt: "oportunidades", es: "oportunidades" }),
-    inNegotiation: t({ pt: "em negociação", es: "en negociación" }),
     dragAria: t({ pt: "Reordenar etapa", es: "Reordenar etapa" })
   },
   actions: {
     newStatus: t({ pt: "Nova etapa do funil", es: "Nueva etapa del embudo" }),
     edit: t({ pt: "Editar", es: "Editar" }),
     duplicate: t({ pt: "Duplicar", es: "Duplicar" }),
-    changeColor: t({ pt: "Alterar cor", es: "Cambiar color" }),
     delete: t({ pt: "Excluir", es: "Eliminar" }),
     deleting: t({ pt: "Excluindo...", es: "Eliminando..." }),
-    saving: t({ pt: "Salvando...", es: "Guardando..." }),
-    more: t({ pt: "Mais ações", es: "Más acciones" })
+    saving: t({ pt: "Salvando...", es: "Guardando..." })
   },
   badges: {
     won: t({ pt: "Ganho", es: "Ganado" }),
@@ -292,35 +272,12 @@ const deletingMap = reactive<Record<string, boolean>>({});
 
 const dragStatusId = ref<string | null>(null);
 const dragOverStatusId = ref<string | null>(null);
-const openMenuId = ref<string | null>(null);
 const statusOrder = ref<string[]>([]);
 
 const statusList = computed(() => leadStore.statuses);
 const loading = computed(() => leadStore.statusesLoading);
-const contacts = computed(() => leadStore.contacts);
 
 const idKey = (value: string | number) => String(value);
-
-const usageByStatusId = computed<Record<string, number>>(() => {
-  const map: Record<string, number> = {};
-  contacts.value.forEach(contact => {
-    if (contact.status_id === null || typeof contact.status_id === "undefined") return;
-    const key = idKey(contact.status_id);
-    map[key] = (map[key] || 0) + 1;
-  });
-  return map;
-});
-
-const revenueByStatusId = computed<Record<string, number>>(() => {
-  const map: Record<string, number> = {};
-  contacts.value.forEach(contact => {
-    if (contact.status_id === null || typeof contact.status_id === "undefined") return;
-    const key = idKey(contact.status_id);
-    const cents = Number(contact.estimated_value_cents || 0);
-    map[key] = (map[key] || 0) + (Number.isFinite(cents) ? cents : 0);
-  });
-  return map;
-});
 
 const orderedStatuses = computed(() => {
   if (!statusOrder.value.length) return statusList.value;
@@ -334,15 +291,6 @@ const orderedStatuses = computed(() => {
     return 0;
   });
 });
-
-const usageCount = (statusId: string | number) => usageByStatusId.value[idKey(statusId)] || 0;
-
-const money = (cents: number) =>
-  new Intl.NumberFormat(adminLanguage === "es" ? "es-ES" : "pt-BR", {
-    style: "currency",
-    currency: "BRL",
-    minimumFractionDigits: 2
-  }).format((cents || 0) / 100);
 
 const showReadOnlySnackbar = (message = "Seu perfil permite apenas visualização.") => {
   if (typeof window === "undefined") return;
@@ -418,11 +366,6 @@ const openEditModal = (status: LeadStatus) => {
   statusModalName.value = status.name;
   statusModalColor.value = status.color || defaultStatusColor;
   statusModalOpen.value = true;
-  openMenuId.value = null;
-};
-
-const openColorEdit = (status: LeadStatus) => {
-  openEditModal(status);
 };
 
 const closeStatusModal = () => {
@@ -479,7 +422,6 @@ const handleDuplicateStatus = async (status: LeadStatus) => {
     showReadOnlySnackbar();
     return;
   }
-  openMenuId.value = null;
   try {
     const created = await leadStore.createStatus({
       name: `${status.name} (cópia)`,
@@ -506,7 +448,6 @@ const handleDeleteStatus = async (status: LeadStatus) => {
   const confirmed = window.confirm(viewCopy.feedback.confirmDelete(status.name));
   if (!confirmed) return;
   deletingMap[key] = true;
-  openMenuId.value = null;
   try {
     await leadStore.deleteStatus(status.id);
     statusOrder.value = statusOrder.value.filter(id => id !== key);
@@ -560,25 +501,9 @@ const handleDrop = (targetStatusId: string | number) => {
   handleDragEnd();
 };
 
-const toggleRowMenu = (id: string) => {
-  openMenuId.value = openMenuId.value === id ? null : id;
-};
-
-const handleOutsideClick = (event: MouseEvent) => {
-  const target = event.target as HTMLElement | null;
-  if (!target) return;
-  if (target.closest(".menu-panel") || target.closest(".menu-trigger")) return;
-  openMenuId.value = null;
-};
-
 onMounted(async () => {
   loadStatusOrder();
-  document.addEventListener("click", handleOutsideClick);
   await ensureStatuses();
-});
-
-onBeforeUnmount(() => {
-  document.removeEventListener("click", handleOutsideClick);
 });
 
 defineExpose({
@@ -663,66 +588,5 @@ watch(
 .drag-handle:hover {
   background: rgb(248 250 252);
   color: rgb(30 41 59);
-}
-
-.menu-trigger {
-  display: inline-flex;
-  height: 2rem;
-  width: 2rem;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  border: 1px solid rgb(203 213 225);
-  background: #fff;
-  gap: 0.15rem;
-  transition: border-color 0.15s ease, background-color 0.15s ease;
-}
-
-.menu-trigger:hover {
-  border-color: rgb(148 163 184);
-  background: rgb(248 250 252);
-}
-
-.menu-trigger span {
-  width: 0.2rem;
-  height: 0.2rem;
-  border-radius: 999px;
-  background: rgb(71 85 105);
-}
-
-.menu-panel {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 0.4rem);
-  z-index: 40;
-  min-width: 11.2rem;
-  border-radius: 0.8rem;
-  border: 1px solid rgb(226 232 240);
-  background: #fff;
-  padding: 0.35rem;
-  box-shadow: 0 16px 32px -24px rgba(15, 23, 42, 0.48);
-}
-
-.menu-item {
-  width: 100%;
-  border-radius: 0.55rem;
-  padding: 0.5rem 0.65rem;
-  text-align: left;
-  font-size: 0.84rem;
-  font-weight: 600;
-  color: rgb(51 65 85);
-  transition: background-color 0.15s ease;
-}
-
-.menu-item:hover {
-  background: rgb(248 250 252);
-}
-
-.menu-item-danger {
-  color: rgb(220 38 38);
-}
-
-.menu-item-danger:hover {
-  background: rgb(254 242 242);
 }
 </style>

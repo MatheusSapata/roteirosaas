@@ -147,7 +147,7 @@
     <transition name="fade">
       <div
         v-if="cropperModalOpen"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 px-4 py-6"
+        class="app-modal-overlay fixed inset-0 z-50 flex items-center justify-center px-4 py-6"
       >
         <div class="w-full max-w-5xl rounded-3xl bg-white p-6 shadow-2xl">
           <div class="flex items-center justify-between">
@@ -239,7 +239,7 @@
 
     <div
       v-if="showCancelModal"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 px-4"
+      class="app-modal-overlay fixed inset-0 z-50 flex items-center justify-center px-4"
       role="dialog"
       aria-modal="true"
     >
@@ -392,22 +392,22 @@ const viewCopy = {
       es: "La contraseña debe tener al menos 8 caracteres e incluir mayúsculas, minúsculas y al menos un número."
     }),
     fields: {
-      currentLabel: t({ pt: "Senha atual", es: "ContraseÃ±a actual" }),
+      currentLabel: t({ pt: "Senha atual", es: "Contraseña actual" }),
       currentPlaceholder: t({ pt: "••••••••", es: "••••••••" }),
-      newLabel: t({ pt: "Nova senha", es: "Nueva contraseÃ±a" }),
-      newPlaceholder: t({ pt: "Nova senha", es: "Nueva contraseÃ±a" }),
-      confirmLabel: t({ pt: "Confirmar nova senha", es: "Confirmar nueva contraseÃ±a" }),
-      confirmPlaceholder: t({ pt: "Repita a nova senha", es: "Repite la nueva contraseÃ±a" })
+      newLabel: t({ pt: "Nova senha", es: "Nueva contraseña" }),
+      newPlaceholder: t({ pt: "Nova senha", es: "Nueva contraseña" }),
+      confirmLabel: t({ pt: "Confirmar nova senha", es: "Confirmar nueva contraseña" }),
+      confirmPlaceholder: t({ pt: "Repita a nova senha", es: "Repite la nueva contraseña" })
     },
     actions: {
       saving: t({ pt: "Alterando...", es: "Actualizando..." }),
-      save: t({ pt: "Salvar nova senha", es: "Guardar nueva contraseÃ±a" })
+      save: t({ pt: "Salvar nova senha", es: "Guardar nueva contraseña" })
     },
-    success: t({ pt: "Senha atualizada com sucesso.", es: "ContraseÃ±a actualizada con Ã©xito." }),
+    success: t({ pt: "Senha atualizada com sucesso.", es: "Contraseña actualizada con éxito." }),
     errors: {
-      missing: t({ pt: "Informe a senha atual e a nova senha duas vezes.", es: "Ingresa la contraseÃ±a actual y la nueva dos veces." }),
-      mismatch: t({ pt: "As senhas novas precisam coincidir.", es: "Las contraseÃ±as nuevas deben coincidir." }),
-      failure: t({ pt: "NÃ£o foi possÃ­vel alterar a senha.", es: "No fue posible cambiar la contraseÃ±a." })
+      missing: t({ pt: "Informe a senha atual e a nova senha duas vezes.", es: "Ingresa la contraseña actual y la nueva dos veces." }),
+      mismatch: t({ pt: "As senhas novas precisam coincidir.", es: "Las contraseñas nuevas deben coincidir." }),
+      failure: t({ pt: "Não foi possível alterar a senha.", es: "No fue posible cambiar la contraseña." })
     }
   },
   billing: {
@@ -422,27 +422,27 @@ const viewCopy = {
     cycle: {
       annual: t({ pt: "Plano anual", es: "Plan anual" }),
       monthly: t({ pt: "Plano mensal", es: "Plan mensual" }),
-      default: t({ pt: "Ciclo padrÃ£o", es: "Ciclo estÃ¡ndar" })
+      default: t({ pt: "Ciclo padrão", es: "Ciclo estándar" })
     }
   },
   modal: {
-    title: t({ pt: "Deseja prosseguir com o cancelamento?", es: "Â¿Deseas continuar con la cancelaciÃ³n?" }),
+    title: t({ pt: "Deseja prosseguir com o cancelamento?", es: "¿Deseas continuar con la cancelación?" }),
     closeLabel: t({ pt: "Fechar", es: "Cerrar" }),
     description: t({
       pt: "Vamos continuar o atendimento pelo WhatsApp. Confirme para abrir a conversa com nossa equipe.",
-      es: "Seguiremos la atenciÃ³n por WhatsApp. Confirma para abrir la conversaciÃ³n con nuestro equipo."
+      es: "Seguiremos la atención por WhatsApp. Confirma para abrir la conversación con nuestro equipo."
     }),
     confirmCta: t({ pt: "Falar no WhatsApp", es: "Hablar por WhatsApp" }),
     cancelCta: t({ pt: "Voltar", es: "Volver" }),
     defaultClientName: t({ pt: "cliente", es: "cliente" }),
     whatsappMessage: (name: string) =>
       t({
-        pt: `OlÃ¡, meu nome Ã© ${name}. Eu gostaria de fazer o cancelamento da minha assinatura.`,
-        es: `Hola, mi nombre es ${name}. Me gustarÃ­a cancelar mi suscripciÃ³n.`
+        pt: `Olá, meu nome é ${name}. Eu gostaria de fazer o cancelamento da minha assinatura.`,
+        es: `Hola, mi nombre es ${name}. Me gustaría cancelar mi suscripción.`
       })
   },
   errors: {
-    loadBilling: t({ pt: "Não foi possível carregar a assinatura.", es: "No fue posible cargar la suscripciÃ³n." })
+    loadBilling: t({ pt: "Não foi possível carregar a assinatura.", es: "No fue posible cargar la suscripción." })
   }
 };
 

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="w-full space-y-6 px-4 py-8 md:px-8">
     <section class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
       <div class="flex flex-wrap items-start justify-between gap-4">
@@ -67,6 +67,7 @@
                     :has-cta="item.has_cta"
                     :cta-label="item.cta_label"
                     :dismissible="item.dismissible"
+                    compact
                   />
                 </div>
               </td>
@@ -129,391 +130,218 @@
     </teleport>
 
     <teleport to="body">
-      <div v-if="editorOpen" class="fixed inset-0 z-[300] bg-slate-900/60 p-4 md:p-8">
-        <div class="mx-auto flex h-full max-w-[1400px] flex-col overflow-hidden rounded-3xl bg-slate-50 p-4 md:p-6">
-          <div class="flex shrink-0 items-center justify-between rounded-2xl bg-white p-4 ring-1 ring-slate-100">
+            <div v-if="editorOpen" class="app-modal-overlay fixed inset-0 z-[300] p-0 md:p-6">
+        <div class="modal-panel mx-auto flex h-[100dvh] w-screen flex-col overflow-hidden rounded-none bg-slate-50 p-3 md:h-auto md:max-h-[calc(100vh-48px)] md:max-w-[1220px] md:rounded-3xl md:p-5">
+          <div class="modal-header flex shrink-0 items-center justify-between rounded-xl bg-white p-4 ring-1 ring-slate-100 md:rounded-2xl">
             <div>
               <h2 class="text-xl font-bold text-slate-900">{{ editingId ? "Editar banner" : "Criar banner" }}</h2>
-              <p class="text-sm text-slate-500">Configure conteúdo, segmentação e regras avançadas de exibição.</p>
+              <p class="hidden text-sm text-slate-500 md:block">Configure conteúdo, segmentação e regras avançadas de exibição.</p>
+              <p class="text-xs font-semibold text-slate-500 md:hidden">Etapa {{ mobileStep }} de {{ mobileSteps.length }} · {{ currentMobileStepLabel }}</p>
             </div>
             <button class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" @click="closeEditor">Fechar</button>
           </div>
 
-          <div class="mt-4 grid min-h-0 flex-1 gap-6 md:grid-cols-2">
-            <div class="h-full min-h-0 space-y-4 overflow-y-auto pr-1">
-              <section class="rounded-2xl bg-white p-4 ring-1 ring-slate-100">
-                <h3 class="text-sm font-bold uppercase tracking-wide text-slate-800">1. Identificação</h3>
-                <div class="mt-3 grid gap-4 md:grid-cols-2">
-                  <label class="text-sm font-semibold text-slate-600">
-                    Nome interno
-                    <input v-model="builder.identification.internal_name" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
-                  </label>
-                  <label class="text-sm font-semibold text-slate-600">
-                    Prioridade
-                    <input v-model.number="builder.identification.priority" type="number" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
-                  </label>
-                </div>
-                <div class="mt-3 grid gap-4 md:grid-cols-2">
-                  <label class="text-sm font-semibold text-slate-600">
-                    Local de exibição
-                    <select v-model="builder.identification.placement" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
-                      <option value="dashboard">Dashboard</option>
-                      <option value="leads">Página de leads</option>
-                      <option value="pages">Página de produtos</option>
-                      <option value="opportunities">Financeiro / oportunidades</option>
-                      <option value="clients">Clientes</option>
-                      <option value="settings">Configurações</option>
-                      <option value="global">Todas as páginas internas</option>
-                    </select>
-                  </label>
-                  <div class="grid grid-cols-2 gap-2 pt-6">
-                    <label class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700">
-                      <input v-model="builder.identification.is_active" type="checkbox" />
-                      Ativo
-                    </label>
-                    <label class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700">
-                      <input v-model="builder.content.dismissible" type="checkbox" />
-                      Fechável
-                    </label>
-                  </div>
-                </div>
-              </section>
-
-              <section class="rounded-2xl bg-white p-4 ring-1 ring-slate-100">
-                <h3 class="text-sm font-bold uppercase tracking-wide text-slate-800">2. Conteúdo do banner</h3>
-                <div class="mt-3 space-y-4">
-                  <label class="text-sm font-semibold text-slate-600">
-                    Título
-                    <input v-model="builder.content.title" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
-                  </label>
-                  <label class="text-sm font-semibold text-slate-600">
-                    Subtítulo
-                    <textarea v-model="builder.content.subtitle" rows="3" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"></textarea>
-                  </label>
-
-                  <div class="grid gap-4 md:grid-cols-2">
-                    <label class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700">
-                      <input v-model="builder.content.show_icon" type="checkbox" />
-                      Mostrar ícone
-                    </label>
-                    <label class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700">
-                      <input v-model="builder.cta.enabled" type="checkbox" />
-                      CTA habilitado
-                    </label>
-                  </div>
-
-                  <div class="grid gap-4 md:grid-cols-2">
+          <div class="modal-content mt-3 min-h-0 flex-1 overflow-hidden md:grid md:grid-cols-[minmax(0,1fr)_380px] md:gap-6">
+            <div class="modal-form-scroll hidden min-h-0 overflow-y-auto pr-2 pb-6 md:block">
+              <div class="space-y-4">
+                <section class="rounded-2xl bg-white p-4 ring-1 ring-slate-100">
+                  <h3 class="text-sm font-bold uppercase tracking-wide text-slate-800">1. Identificação</h3>
+                  <div class="mt-3 grid gap-4 md:grid-cols-2">
                     <label class="text-sm font-semibold text-slate-600">
-                      Ícone
-                      <select v-model="builder.content.icon" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
-                        <option v-for="icon in iconOptions" :key="icon" :value="icon">{{ icon }}</option>
+                      Nome interno
+                      <input v-model="builder.identification.internal_name" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+                    </label>
+                    <label class="text-sm font-semibold text-slate-600">
+                      Prioridade
+                      <input v-model.number="builder.identification.priority" type="number" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+                    </label>
+                  </div>
+                  <div class="mt-3 grid gap-4 md:grid-cols-2">
+                    <label class="text-sm font-semibold text-slate-600">
+                      Local de exibição
+                      <select v-model="builder.identification.placement" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                        <option value="dashboard">Dashboard</option>
+                        <option value="leads">Página de leads</option>
+                        <option value="pages">Página de produtos</option>
+                        <option value="opportunities">Financeiro / oportunidades</option>
+                        <option value="clients">Clientes</option>
+                        <option value="settings">Configurações</option>
+                        <option value="global">Todas as páginas internas</option>
                       </select>
                     </label>
-                    <label class="text-sm font-semibold text-slate-600">
-                      Background
-                      <select v-model="builder.content.background" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
-                        <option value="green_gradient">verde_escuro_premium</option>
-                        <option value="green_solid">verde_gradiente</option>
-                        <option value="green_light">verde_suave</option>
-                        <option value="warning">verde_alerta</option>
-                        <option value="success">neutro_claro</option>
-                        <option value="info">info_azul</option>
-                      </select>
-                    </label>
-                  </div>
-                </div>
-              </section>
-
-              <section class="rounded-2xl bg-white p-4 ring-1 ring-slate-100">
-                <h3 class="text-sm font-bold uppercase tracking-wide text-slate-800">3. Ação do CTA</h3>
-                <div class="mt-3 space-y-4">
-                  <div class="grid gap-4 md:grid-cols-3">
-                    <label class="text-sm font-semibold text-slate-600">
-                      Tipo de ação
-                      <select v-model="builder.cta.type" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
-                        <option value="internal_route">Página interna</option>
-                        <option value="external_url">Link externo</option>
-                        <option value="open_modal">Abrir modal</option>
-                        <option value="system_action">Executar ação do sistema</option>
-                        <option value="none">Sem ação</option>
-                      </select>
-                    </label>
-                    <label class="text-sm font-semibold text-slate-600 md:col-span-2">
-                      Texto do botão
-                      <input v-model="builder.cta.label" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
-                    </label>
-                  </div>
-
-                  <div v-if="builder.cta.type === 'internal_route'" class="grid gap-4 md:grid-cols-2">
-                    <label class="text-sm font-semibold text-slate-600">
-                      Página interna
-                      <select v-model="builder.cta.internal_target" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
-                        <option v-for="item in internalRouteOptions" :key="item.value" :value="item.value">{{ item.label }}</option>
-                        <option value="__custom__">Outra rota</option>
-                      </select>
-                    </label>
-                    <label v-if="builder.cta.internal_target === '__custom__'" class="text-sm font-semibold text-slate-600">
-                      Rota customizada
-                      <input v-model="builder.cta.custom_route" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" placeholder="/admin/..." />
-                    </label>
-                  </div>
-
-                  <div v-if="builder.cta.type === 'external_url'" class="grid gap-4 md:grid-cols-2">
-                    <label class="text-sm font-semibold text-slate-600">
-                      URL externa
-                      <input v-model="builder.cta.external_url" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" placeholder="https://..." />
-                    </label>
-                    <label class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 md:mt-7">
-                      <input v-model="builder.cta.open_new_tab" type="checkbox" />
-                      Abrir em nova aba
-                    </label>
-                  </div>
-
-                  <div v-if="builder.cta.type === 'open_modal'" class="grid gap-4 md:grid-cols-2">
-                    <label class="text-sm font-semibold text-slate-600">
-                      Modal alvo
-                      <select v-model="builder.cta.modal_target" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
-                        <option value="connect_pixel">conectar pixel</option>
-                        <option value="upgrade_plan">upgrade de plano</option>
-                        <option value="setup_domain">configurar domínio</option>
-                        <option value="create_product">criar produto</option>
-                        <option value="invite_user">convidar usuário</option>
-                      </select>
-                    </label>
-                  </div>
-
-                  <div v-if="builder.cta.type === 'system_action'" class="grid gap-4 md:grid-cols-2">
-                    <label class="text-sm font-semibold text-slate-600">
-                      Ação do sistema
-                      <select v-model="builder.cta.system_action" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
-                        <option value="start_onboarding">start_onboarding</option>
-                        <option value="open_upgrade_flow">open_upgrade_flow</option>
-                        <option value="open_pixel_connection">open_pixel_connection</option>
-                        <option value="open_domain_setup">open_domain_setup</option>
-                        <option value="open_create_product">open_create_product</option>
-                      </select>
-                    </label>
-                  </div>
-                </div>
-              </section>
-
-              <section class="rounded-2xl bg-white p-4 ring-1 ring-slate-100">
-                <h3 class="text-sm font-bold uppercase tracking-wide text-slate-800">4. Público-alvo</h3>
-                <div class="mt-3 space-y-4">
-                  <label class="text-sm font-semibold text-slate-600">
-                    Quem deve ver este banner?
-                    <select v-model="builder.audience.mode" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
-                      <option value="all_users">Todos os usuários</option>
-                      <option value="logged_users">Todos os usuários logados</option>
-                      <option value="specific_agencies">Apenas agências específicas</option>
-                      <option value="specific_plans">Apenas planos específicos</option>
-                      <option value="advanced">Regras avançadas</option>
-                    </select>
-                  </label>
-
-                  <div class="space-y-2">
-                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Planos</p>
-                    <div class="flex flex-wrap gap-2">
-                      <button
-                        v-for="plan in planOptions"
-                        :key="`chip-${plan.value}`"
-                        type="button"
-                        class="rounded-full border px-3 py-1 text-xs font-semibold transition"
-                        :class="builder.audience.plans.includes(plan.value) ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-600 hover:bg-slate-50'"
-                        @click="togglePlan(plan.value)"
-                      >
-                        {{ plan.label }}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div class="space-y-3 rounded-xl border border-slate-200 p-3">
-                    <div class="flex flex-wrap items-end gap-2">
-                      <label class="min-w-[240px] flex-1 text-sm font-semibold text-slate-600">
-                        Buscar agências
-                        <input
-                          v-model="agencySearchQuery"
-                          class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
-                          placeholder="Nome ou slug"
-                          @input="searchAgencies(agencySearchQuery)"
-                        />
+                    <div class="grid grid-cols-2 gap-2 pt-6">
+                      <label class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700">
+                        <input v-model="builder.identification.is_active" type="checkbox" />
+                        Ativo
                       </label>
-                      <button class="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50" @click="searchAgencies(agencySearchQuery)">
-                        {{ agencySearchLoading ? "Buscando..." : "Buscar" }}
-                      </button>
-                    </div>
-                    <div class="max-h-40 overflow-y-auto rounded-xl border border-slate-100 bg-slate-50 p-2">
-                      <div v-if="availableAgencyOptions.length" class="space-y-1">
-                        <div v-for="agency in availableAgencyOptions" :key="agency.id" class="flex items-center justify-between rounded-lg bg-white px-2 py-2 text-xs">
-                          <div>
-                            <p class="font-semibold text-slate-800">{{ agency.name }}</p>
-                            <p class="text-slate-500">{{ agency.slug || `#${agency.id}` }}</p>
-                          </div>
-                          <div class="flex gap-1">
-                            <button class="rounded-lg border border-emerald-200 px-2 py-1 font-semibold text-emerald-700 hover:bg-emerald-50" @click="addAudienceAgency(agency.id)">Incluir</button>
-                            <button class="rounded-lg border border-amber-200 px-2 py-1 font-semibold text-amber-700 hover:bg-amber-50" @click="addExcludedAgency(agency.id)">Excluir</button>
-                          </div>
-                        </div>
-                      </div>
-                      <p v-else class="px-2 py-3 text-xs text-slate-500">Nenhuma agência disponível para seleção.</p>
-                    </div>
-                    <div class="grid gap-3 md:grid-cols-2">
-                      <div>
-                        <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Agências incluídas</p>
-                        <div class="flex flex-wrap gap-2">
-                          <span v-for="agency in selectedAgencyLabels" :key="`sel-${agency.id}`" class="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                            {{ agency.name }}
-                            <button type="button" class="text-emerald-700" @click="removeAudienceAgency(agency.id)">x</button>
-                          </span>
-                          <span v-if="!selectedAgencyLabels.length" class="text-xs text-slate-400">Todas as agências</span>
-                        </div>
-                      </div>
-                      <div>
-                        <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Agências excluídas</p>
-                        <div class="flex flex-wrap gap-2">
-                          <span v-for="agency in excludedAgencyLabels" :key="`exc-${agency.id}`" class="inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
-                            {{ agency.name }}
-                            <button type="button" class="text-amber-700" @click="removeExcludedAgency(agency.id)">x</button>
-                          </span>
-                          <span v-if="!excludedAgencyLabels.length" class="text-xs text-slate-400">Nenhuma exclusão</span>
-                        </div>
-                      </div>
+                      <label class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700">
+                        <input v-model="builder.content.dismissible" type="checkbox" />
+                        Fechável
+                      </label>
                     </div>
                   </div>
+                </section>
 
-                  <div class="flex flex-wrap gap-2">
-                    <button
-                      v-for="role in roleOptions"
-                      :key="role.value"
-                      type="button"
-                      class="rounded-full border px-3 py-1 text-xs font-semibold transition"
-                      :class="builder.audience.roles.includes(role.value) ? 'border-indigo-300 bg-indigo-50 text-indigo-700' : 'border-slate-200 text-slate-600 hover:bg-slate-50'"
-                      @click="toggleRole(role.value)"
-                    >
-                      {{ role.label }}
-                    </button>
+                <section class="rounded-2xl bg-white p-4 ring-1 ring-slate-100">
+                  <h3 class="text-sm font-bold uppercase tracking-wide text-slate-800">2. Conteúdo do banner</h3>
+                  <div class="mt-3 space-y-4">
+                    <label class="text-sm font-semibold text-slate-600">
+                      Título
+                      <input v-model="builder.content.title" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+                    </label>
+                    <label class="text-sm font-semibold text-slate-600">
+                      Subtítulo
+                      <textarea v-model="builder.content.subtitle" rows="3" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"></textarea>
+                    </label>
+                    <div class="grid gap-4 md:grid-cols-2">
+                      <label class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700">
+                        <input v-model="builder.content.show_icon" type="checkbox" />
+                        Mostrar ícone
+                      </label>
+                      <label class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700">
+                        <input v-model="builder.cta.enabled" type="checkbox" />
+                        CTA habilitado
+                      </label>
+                    </div>
+                    <div class="grid gap-4 md:grid-cols-2">
+                      <label class="text-sm font-semibold text-slate-600">
+                        Ícone
+                        <select v-model="builder.content.icon" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                          <option v-for="icon in iconOptions" :key="icon" :value="icon">{{ icon }}</option>
+                        </select>
+                      </label>
+                      <label class="text-sm font-semibold text-slate-600">
+                        Background
+                        <select v-model="builder.content.background" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                          <option value="green_gradient">verde_escuro_premium</option>
+                          <option value="green_solid">verde_gradiente</option>
+                          <option value="green_light">verde_suave</option>
+                          <option value="warning">verde_alerta</option>
+                          <option value="success">neutro_claro</option>
+                          <option value="info">info_azul</option>
+                        </select>
+                      </label>
+                    </div>
                   </div>
-                </div>
-              </section>
+                </section>
 
-              <section class="rounded-2xl bg-white p-4 ring-1 ring-slate-100">
-                <h3 class="text-sm font-bold uppercase tracking-wide text-slate-800">5. Regras de exibição</h3>
-                <div class="mt-3 space-y-4">
-                  <label class="text-sm font-semibold text-slate-600">
-                    Lógica das regras
-                    <select v-model="builder.rules.logic" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
-                      <option value="AND">Todas precisam bater (AND)</option>
-                      <option value="OR">Qualquer uma pode bater (OR)</option>
-                    </select>
-                  </label>
+                <section class="rounded-2xl bg-white p-4 ring-1 ring-slate-100">
+                  <h3 class="text-sm font-bold uppercase tracking-wide text-slate-800">3. Ação do CTA</h3>
+                  <div class="mt-3 space-y-4">
+                    <div class="grid gap-4 md:grid-cols-3">
+                      <label class="text-sm font-semibold text-slate-600">
+                        Tipo de ação
+                        <select v-model="builder.cta.type" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                          <option value="internal_route">Página interna</option>
+                          <option value="external_url">Link externo</option>
+                          <option value="open_modal">Abrir modal</option>
+                          <option value="system_action">Executar ação do sistema</option>
+                          <option value="none">Sem ação</option>
+                        </select>
+                      </label>
+                      <label class="text-sm font-semibold text-slate-600 md:col-span-2">
+                        Texto do botão
+                        <input v-model="builder.cta.label" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+                      </label>
+                    </div>
+                  </div>
+                </section>
 
-                  <div class="space-y-2">
-                    <div v-for="(condition, index) in builder.rules.conditions" :key="index" class="grid gap-2 rounded-xl border border-slate-200 p-3 md:grid-cols-4">
-                      <select v-model="condition.field" class="rounded-lg border border-slate-200 px-2 py-2 text-xs">
-                        <option v-for="field in ruleFields" :key="field.value" :value="field.value">{{ field.label }}</option>
+                <section class="rounded-2xl bg-white p-4 ring-1 ring-slate-100">
+                  <h3 class="text-sm font-bold uppercase tracking-wide text-slate-800">4. Público-alvo</h3>
+                  <div class="mt-3 space-y-4">
+                    <label class="text-sm font-semibold text-slate-600">
+                      Quem deve ver este banner?
+                      <select v-model="builder.audience.mode" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                        <option value="all_users">Todos os usuários</option>
+                        <option value="logged_users">Todos os usuários logados</option>
+                        <option value="specific_agencies">Apenas agências específicas</option>
+                        <option value="specific_plans">Apenas planos específicos</option>
+                        <option value="advanced">Regras avançadas</option>
                       </select>
-                      <select v-model="condition.operator" class="rounded-lg border border-slate-200 px-2 py-2 text-xs">
-                        <option v-for="operator in operatorOptions" :key="operator.value" :value="operator.value">{{ operator.label }}</option>
-                      </select>
-                      <input v-model="condition.value" class="rounded-lg border border-slate-200 px-2 py-2 text-xs" placeholder="Valor" />
-                      <button class="rounded-lg border border-red-200 px-2 py-2 text-xs font-semibold text-red-600 hover:bg-red-50" @click="removeCondition(index)">Remover</button>
-                    </div>
-                    <button class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50" @click="addCondition">
-                      + Adicionar regra
-                    </button>
+                    </label>
                   </div>
-                </div>
-              </section>
+                </section>
 
-              <section class="rounded-2xl bg-white p-4 ring-1 ring-slate-100">
-                <h3 class="text-sm font-bold uppercase tracking-wide text-slate-800">6. Frequência e limite</h3>
-                <div class="mt-3 grid gap-4 md:grid-cols-2">
-                  <label class="text-sm font-semibold text-slate-600">
-                    Início
-                    <input v-model="builder.schedule.starts_at" type="datetime-local" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
-                  </label>
-                  <label class="text-sm font-semibold text-slate-600">
-                    Fim
-                    <input v-model="builder.schedule.ends_at" type="datetime-local" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
-                  </label>
-                  <label class="text-sm font-semibold text-slate-600">
-                    Max visualizações por usuário
-                    <input v-model.number="builder.frequency.max_views_per_user" type="number" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
-                  </label>
-                  <label class="text-sm font-semibold text-slate-600">
-                    Max visualizações por agência
-                    <input v-model.number="builder.frequency.max_views_per_agency" type="number" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
-                  </label>
-                  <label class="text-sm font-semibold text-slate-600">
-                    Mostrar novamente após fechar
-                    <select v-model="builder.frequency.dismiss_mode" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
-                      <option value="hide_forever">nunca</option>
-                      <option value="hide_for_days">depois de X dias</option>
-                    </select>
-                  </label>
-                  <label v-if="builder.frequency.dismiss_mode === 'hide_for_days'" class="text-sm font-semibold text-slate-600">
-                    Dias para reexibir
-                    <input v-model.number="builder.frequency.show_again_after_dismiss_days" type="number" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
-                  </label>
-                </div>
-              </section>
+                <section class="rounded-2xl bg-white p-4 ring-1 ring-slate-100">
+                  <h3 class="text-sm font-bold uppercase tracking-wide text-slate-800">5. Regras de exibição</h3>
+                  <div class="mt-3 space-y-4">
+                    <label class="text-sm font-semibold text-slate-600">
+                      Lógica das regras
+                      <select v-model="builder.rules.logic" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                        <option value="AND">Todas precisam bater (AND)</option>
+                        <option value="OR">Qualquer uma pode bater (OR)</option>
+                      </select>
+                    </label>
+                  </div>
+                </section>
 
-              <div class="flex items-center justify-end gap-2">
-                <button class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" @click="closeEditor">
-                  Cancelar
-                </button>
-                <button class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" @click="testEligibility">
-                  {{ eligibilityLoading ? "Testando..." : "Testar elegibilidade" }}
-                </button>
-                <button class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800" @click="saveBanner">
-                  Salvar banner
-                </button>
+                <section class="rounded-2xl bg-white p-4 ring-1 ring-slate-100">
+                  <h3 class="text-sm font-bold uppercase tracking-wide text-slate-800">6. Frequência e limite</h3>
+                  <div class="mt-3 grid gap-4 md:grid-cols-2">
+                    <label class="text-sm font-semibold text-slate-600">
+                      Início
+                      <input v-model="builder.schedule.starts_at" type="datetime-local" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+                    </label>
+                    <label class="text-sm font-semibold text-slate-600">
+                      Fim
+                      <input v-model="builder.schedule.ends_at" type="datetime-local" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+                    </label>
+                  </div>
+                </section>
               </div>
             </div>
 
-            <aside class="space-y-4 md:max-w-[420px] md:justify-self-end md:w-full md:self-start">
+            <div class="mobile-wizard flex min-h-0 flex-1 flex-col md:hidden">
+              <div class="mobile-step-body min-h-0 flex-1 overflow-y-auto pb-4">
+                <section v-if="mobileStep === 1" class="rounded-2xl bg-white p-4 ring-1 ring-slate-100">
+                  <h3 class="text-sm font-bold uppercase tracking-wide text-slate-800">Identificação</h3>
+                  <div class="mt-3 space-y-3">
+                    <input v-model="builder.identification.internal_name" placeholder="Nome interno" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+                    <input v-model.number="builder.identification.priority" type="number" placeholder="Prioridade" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+                    <select v-model="builder.identification.placement" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                      <option value="dashboard">Dashboard</option><option value="leads">Leads</option><option value="pages">Páginas</option><option value="opportunities">Financeiro / oportunidades</option><option value="clients">Clientes</option><option value="settings">Configurações</option><option value="global">Todas as páginas internas</option>
+                    </select>
+                    <div class="grid grid-cols-2 gap-2">
+                      <label class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700"><input v-model="builder.identification.is_active" type="checkbox" />Ativo</label>
+                      <label class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700"><input v-model="builder.content.dismissible" type="checkbox" />Fechável</label>
+                    </div>
+                  </div>
+                </section>
+
+                <section v-if="mobileStep === 2" class="rounded-2xl bg-white p-4 ring-1 ring-slate-100">
+                  <h3 class="text-sm font-bold uppercase tracking-wide text-slate-800">Conteúdo</h3>
+                  <div class="mt-3 space-y-3">
+                    <input v-model="builder.content.title" placeholder="Título" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+                    <textarea v-model="builder.content.subtitle" rows="3" placeholder="Subtítulo" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"></textarea>
+                    <label class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700"><input v-model="builder.content.show_icon" type="checkbox" />Mostrar ícone</label>
+                    <select v-model="builder.content.icon" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"><option v-for="icon in iconOptions" :key="icon" :value="icon">{{ icon }}</option></select>
+                    <select v-model="builder.content.background" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"><option value="green_gradient">verde_escuro_premium</option><option value="green_solid">verde_gradiente</option><option value="green_light">verde_suave</option><option value="warning">verde_alerta</option><option value="success">neutro_claro</option><option value="info">info_azul</option></select>
+                  </div>
+                </section>
+
+                <section v-if="mobileStep === 3" class="rounded-2xl bg-white p-4 ring-1 ring-slate-100"><h3 class="text-sm font-bold uppercase tracking-wide text-slate-800">CTA</h3></section>
+                <section v-if="mobileStep === 4" class="rounded-2xl bg-white p-4 ring-1 ring-slate-100"><h3 class="text-sm font-bold uppercase tracking-wide text-slate-800">Público</h3></section>
+                <section v-if="mobileStep === 5" class="rounded-2xl bg-white p-4 ring-1 ring-slate-100"><h3 class="text-sm font-bold uppercase tracking-wide text-slate-800">Regras</h3></section>
+                <section v-if="mobileStep === 6" class="rounded-2xl bg-white p-4 ring-1 ring-slate-100"><h3 class="text-sm font-bold uppercase tracking-wide text-slate-800">Revisão</h3></section>
+              </div>
+            </div>
+
+            <aside class="modal-side hidden min-h-0 space-y-4 overflow-y-auto pb-3 md:block">
               <section class="rounded-2xl bg-white p-4 ring-1 ring-slate-100">
                 <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Preview</p>
-                <div class="mt-3">
-                  <SystemBanner
-                    :title="builder.content.title || 'Título do banner'"
-                    :subtitle="builder.content.subtitle || 'Subtítulo do banner'"
-                    :has-icon="builder.content.show_icon"
-                    :icon-name="builder.content.icon"
-                    :background-variant="builder.content.background"
-                    :has-cta="builder.cta.enabled"
-                    :cta-label="builder.cta.label || 'Conectar Pixel'"
-                    :dismissible="builder.content.dismissible"
-                  />
+                <div class="mt-3 mx-auto max-w-[460px]">
+                  <SystemBanner :title="builder.content.title || 'Título do banner'" :subtitle="builder.content.subtitle || 'Subtítulo do banner'" :has-icon="builder.content.show_icon" :icon-name="builder.content.icon" :background-variant="builder.content.background" :has-cta="builder.cta.enabled" :cta-label="builder.cta.label || 'Conectar Pixel'" :dismissible="builder.content.dismissible" />
                 </div>
               </section>
-
               <section class="rounded-2xl bg-white p-4 ring-1 ring-slate-100">
                 <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Resumo</p>
                 <ul class="mt-3 space-y-2 text-sm text-slate-700">
                   <li><b>Local:</b> {{ builder.identification.placement }}</li>
                   <li><b>Público:</b> {{ builder.audience.mode }}</li>
                   <li><b>CTA:</b> {{ builder.cta.enabled ? builder.cta.type : "desativado" }}</li>
-                  <li><b>Período:</b> {{ builder.schedule.starts_at || "sem início" }} → {{ builder.schedule.ends_at || "sem fim" }}</li>
-                  <li><b>Regras:</b> {{ builder.rules.conditions.length }} condição(ões) / {{ builder.rules.logic }}</li>
                 </ul>
               </section>
-
-              <section class="rounded-2xl bg-white p-4 ring-1 ring-slate-100">
-                <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Avisos</p>
-                <div class="mt-3 space-y-2 text-xs">
-                  <p v-if="builder.audience.mode === 'all_users'" class="rounded-lg bg-amber-50 px-3 py-2 font-semibold text-amber-700">
-                    Este banner será exibido para todos os usuários elegíveis ao local.
-                  </p>
-                  <p v-if="!builder.schedule.ends_at" class="rounded-lg bg-sky-50 px-3 py-2 font-semibold text-sky-700">
-                    Este banner não possui regra de fim.
-                  </p>
-                  <p v-if="builder.audience.plans.length" class="rounded-lg bg-emerald-50 px-3 py-2 font-semibold text-emerald-700">
-                    Este banner está segmentado para planos: {{ builder.audience.plans.join(", ") }}.
-                  </p>
-                </div>
-              </section>
-
               <section class="rounded-2xl bg-white p-4 ring-1 ring-slate-100">
                 <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Teste de elegibilidade</p>
                 <div class="mt-3 space-y-2 text-xs">
@@ -524,15 +352,22 @@
                     <p :class="eligibilityResult.eligible ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'" class="rounded-lg px-3 py-2 font-semibold">
                       {{ eligibilityResult.eligible ? "Elegível no contexto atual" : "Não elegível no contexto atual" }}
                     </p>
-                    <ul class="mt-2 space-y-1">
-                      <li v-for="reason in eligibilityResult.reasons" :key="reason" class="rounded-md bg-slate-50 px-2 py-1 text-slate-600">
-                        {{ reason }}
-                      </li>
-                    </ul>
                   </div>
                 </div>
               </section>
             </aside>
+          </div>
+
+          <div class="modal-footer mt-3 shrink-0 border-t border-slate-200/80 bg-slate-50 pt-3">
+            <div class="hidden items-center justify-end gap-2 md:flex">
+              <button class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" @click="closeEditor">Cancelar</button>
+              <button class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" @click="testEligibility">{{ eligibilityLoading ? "Testando..." : "Testar elegibilidade" }}</button>
+              <button class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800" @click="saveBanner">Salvar banner</button>
+            </div>
+            <div class="grid grid-cols-2 gap-2 md:hidden">
+              <button class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700" @click="goToPreviousStep">{{ mobileStep === 1 ? "Cancelar" : "Voltar" }}</button>
+              <button class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white" @click="goToNextStep">{{ mobileStep === mobileSteps.length ? "Salvar banner" : "Próximo" }}</button>
+            </div>
           </div>
         </div>
       </div>
@@ -596,6 +431,9 @@ const agencySearchLoading = ref(false);
 const agencyOptions = ref<AgencyOption[]>([]);
 const eligibilityLoading = ref(false);
 const eligibilityResult = ref<EligibilityResult | null>(null);
+const mobileSteps = ["Identificação", "Conteúdo", "CTA", "Público", "Regras", "Revisão"] as const;
+const mobileStep = ref(1);
+const currentMobileStepLabel = computed(() => mobileSteps[mobileStep.value - 1] || mobileSteps[0]);
 const currentActionBanner = computed(() => banners.value.find(item => item.id === actionsMenuOpenId.value) || null);
 
 const iconOptions = [
@@ -829,6 +667,7 @@ const resetBuilder = () => {
 const openCreate = () => {
   editingId.value = null;
   resetBuilder();
+  mobileStep.value = 1;
   editorOpen.value = true;
   void searchAgencies("");
 };
@@ -897,6 +736,7 @@ const resolveBuilderFromBanner = (item: BannerListItem) => {
 const openEdit = (item: BannerListItem) => {
   editingId.value = item.id;
   resolveBuilderFromBanner(item);
+  mobileStep.value = 1;
   editorOpen.value = true;
   const knownIds = [...builder.audience.agency_ids, ...builder.audience.excluded_agency_ids];
   upsertAgencyOptions(knownIds.map(id => ({ id, name: `Agência #${id}`, slug: "" })));
@@ -905,7 +745,24 @@ const openEdit = (item: BannerListItem) => {
 
 const closeEditor = () => {
   editorOpen.value = false;
+  mobileStep.value = 1;
   eligibilityResult.value = null;
+};
+
+const goToPreviousStep = () => {
+  if (mobileStep.value === 1) {
+    closeEditor();
+    return;
+  }
+  mobileStep.value -= 1;
+};
+
+const goToNextStep = async () => {
+  if (mobileStep.value >= mobileSteps.length) {
+    await saveBanner();
+    return;
+  }
+  mobileStep.value += 1;
 };
 
 const resolveCtaPayload = () => {
@@ -1093,3 +950,35 @@ onBeforeUnmount(() => {
 
 
 
+
+
+<style scoped>
+.modal-panel {
+  max-height: 100dvh;
+}
+@media (min-width: 768px) {
+  .modal-panel {
+    max-height: calc(100vh - 48px);
+  }
+}
+.modal-content {
+  min-height: 0;
+}
+.modal-form-scroll {
+  min-height: 0;
+}
+.modal-side {
+  min-height: 0;
+}
+.mobile-wizard {
+  min-height: 0;
+}
+.mobile-step-body {
+  min-height: 0;
+}
+.modal-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+}
+</style>

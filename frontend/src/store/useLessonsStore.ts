@@ -6,6 +6,7 @@ export type LessonVideoType = "file" | "youtube" | "iframe";
 
 export interface Lesson {
   id: number;
+  moduleName: string;
   title: string;
   description: string;
   duration: string;
@@ -16,6 +17,7 @@ export interface Lesson {
 }
 
 export interface LessonPayload {
+  moduleName?: string;
   title: string;
   description?: string;
   duration?: string;
@@ -28,6 +30,7 @@ export interface LessonPayload {
 
 interface ApiLesson {
   id: number;
+  module_name?: string | null;
   title: string;
   description?: string | null;
   duration?: string | null;
@@ -39,6 +42,7 @@ interface ApiLesson {
 
 const mapLesson = (data: ApiLesson): Lesson => ({
   id: data.id,
+  moduleName: data.module_name || "",
   title: data.title,
   description: data.description || "",
   duration: data.duration || "",
@@ -49,6 +53,7 @@ const mapLesson = (data: ApiLesson): Lesson => ({
 });
 
 const toApiPayload = (payload: LessonPayload) => ({
+  module_name: payload.moduleName?.trim() || undefined,
   title: payload.title.trim(),
   description: payload.description?.trim() || undefined,
   duration: payload.duration?.trim() || undefined,

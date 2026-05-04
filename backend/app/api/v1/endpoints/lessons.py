@@ -45,6 +45,8 @@ def _resolve_thumbnail(thumbnail_base64: Optional[str], thumbnail_url: Optional[
 
 
 def _apply_defaults(instance: Lesson, payload: LessonUpdate) -> Lesson:
+    if payload.module_name is not None:
+        instance.module_name = payload.module_name
     if payload.title is not None:
         instance.title = payload.title
     if payload.description is not None:
@@ -77,6 +79,7 @@ def create_lesson(
     _: User = Depends(get_current_superuser),
 ) -> Lesson:
     lesson = Lesson(
+        module_name=payload.module_name,
         title=payload.title,
         description=payload.description,
         duration=payload.duration,

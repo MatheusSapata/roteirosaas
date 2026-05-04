@@ -3,15 +3,15 @@
     <transition name="fade">
       <div
         v-if="modelValue"
-        class="fixed inset-0 z-[120] flex items-center justify-center px-4 py-6"
+        class="fixed inset-0 z-[120] flex items-center justify-center px-3 py-3 sm:px-4 sm:py-6"
       >
-        <div class="absolute inset-0 bg-slate-950/70 backdrop-blur-md"></div>
-        <div class="lead-form-builder-modal relative z-10 w-full max-w-6xl overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-[#10141f] dark:text-white">
-          <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 px-6 py-5 dark:border-white/10 dark:bg-[#0b0f1a]">
+        <div class="app-modal-overlay absolute inset-0"></div>
+        <div class="lead-form-builder-modal relative z-10 flex max-h-[calc(100vh-1.5rem)] w-full max-w-5xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl sm:max-h-[calc(100vh-3rem)] dark:bg-[#10141f] dark:text-white">
+          <div class="flex shrink-0 flex-wrap items-center justify-between gap-4 border-b border-slate-100 px-5 py-5 dark:border-white/10 dark:bg-[#0b0f1a]">
             <div>
               <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400">Leads</p>
               <h2 class="text-2xl font-bold text-slate-900 dark:text-white">{{ title }}</h2>
-              <p class="text-sm text-slate-500 dark:text-slate-400">Monte campos e aparência em minutos.</p>
+              <p class="text-sm text-slate-500 dark:text-slate-400">Monte os campos principais em poucos cliques.</p>
             </div>
             <button
               type="button"
@@ -22,8 +22,8 @@
             </button>
           </div>
 
-          <div class="grid gap-0 lg:grid-cols-[1.1fr_0.9fr]">
-            <div class="builder-left max-h-[75vh] space-y-6 overflow-y-auto px-6 py-6">
+          <div class="grid min-h-0 flex-1 gap-0 overflow-hidden lg:grid-cols-[1.08fr_0.92fr]">
+            <div class="builder-left min-h-0 space-y-5 overflow-y-auto px-5 py-5">
               <div class="builder-section space-y-4 rounded-2xl border border-slate-100 p-4 dark:border-white/10">
                 <div>
                   <label class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">Nome interno</label>
@@ -31,14 +31,15 @@
                     v-model="state.name"
                     class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-white/20 dark:bg-[#0c1221] dark:text-white"
                     placeholder="Formulário de orçamento"
-                />
+                  />
                 </div>
+
                 <div class="grid gap-4 md:grid-cols-2">
                   <div>
                     <label class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">Título exibido</label>
                     <input
                       v-model="state.title"
-                    class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-white/15 dark:bg-[#0f1628] dark:text-white"
+                      class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-white/15 dark:bg-[#0f1628] dark:text-white"
                       placeholder="Quer receber o roteiro completo?"
                     />
                   </div>
@@ -52,6 +53,7 @@
                     ></textarea>
                   </div>
                 </div>
+
                 <div class="grid gap-3 md:grid-cols-2">
                   <div>
                     <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">Texto do botão</p>
@@ -73,6 +75,7 @@
                     </span>
                   </label>
                 </div>
+
                 <div>
                   <label class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">Status inicial do lead</label>
                   <select
@@ -85,7 +88,7 @@
                     </option>
                   </select>
                   <p v-if="!statuses.length && !statusesLoading" class="mt-1 text-xs text-slate-500 dark:text-slate-300">
-                    Nenhum status configurado. Use o botão “Configurar status” em Leads &gt; Contatos.
+                    Nenhum status configurado. Use o botão "Configurações" em Oportunidades.
                   </p>
                 </div>
               </div>
@@ -100,6 +103,7 @@
                     {{ state.fields.length }} selecionado(s)
                   </p>
                 </div>
+
                 <div class="grid gap-3 sm:grid-cols-2">
                   <button
                     v-for="preset in fieldPresets"
@@ -152,20 +156,17 @@
                         </button>
                       </div>
                     </div>
+
                     <div class="mt-3 space-y-3">
-                      <div>
-                        <label class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">Label</label>
-                        <input
-                          v-model="field.label"
-                      class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-white/15 dark:bg-[#0f1628] dark:text-white"
-                        />
-                      </div>
-                      <div>
-                        <label class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">Placeholder</label>
-                        <input
-                          v-model="field.placeholder"
-                          class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-white/15 dark:bg-black/40 dark:text-white"
-                        />
+                      <div class="grid gap-3 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:bg-white/5 dark:text-slate-300 md:grid-cols-2">
+                        <div>
+                          <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Campo</p>
+                          <p class="mt-1 font-medium text-slate-700 dark:text-slate-100">{{ presetLabel(field.type) }}</p>
+                        </div>
+                        <div>
+                          <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Formato</p>
+                          <p class="mt-1 font-medium text-slate-700 dark:text-slate-100">{{ formatLabel(field.type) }}</p>
+                        </div>
                       </div>
                       <label class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">
                         <input type="checkbox" v-model="field.required" class="h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand" />
@@ -174,6 +175,7 @@
                     </div>
                   </div>
                 </div>
+
                 <div
                   v-else
                   class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500 dark:border-white/20 dark:bg-[#141b2d] dark:text-slate-300"
@@ -183,12 +185,12 @@
               </div>
             </div>
 
-            <div class="hidden border-l border-slate-100 bg-slate-50 px-6 py-6 dark:border-white/5 dark:bg-[#0b0f1a] lg:block builder-preview">
+            <div class="builder-preview hidden min-h-0 overflow-y-auto border-l border-slate-100 bg-slate-50 px-5 py-5 dark:border-white/5 dark:bg-[#0b0f1a] lg:block">
               <LeadFormPreview :form="state" interactive @reorder="reorderFieldsFromPreview" />
             </div>
           </div>
 
-          <div class="flex flex-col gap-4 border-t border-slate-100 px-6 py-4 text-sm md:flex-row md:items-center md:justify-between dark:border-white/10 dark:bg-[#05070f]">
+          <div class="flex shrink-0 flex-col gap-4 border-t border-slate-100 bg-white px-5 py-4 text-sm md:flex-row md:items-center md:justify-between dark:border-white/10 dark:bg-[#05070f]">
             <p v-if="errorMessage" class="text-sm text-rose-500">
               {{ errorMessage }}
             </p>
@@ -302,6 +304,18 @@ const errorMessage = ref("");
 const title = computed(() => (editingId.value ? "Editar formulário" : "Novo formulário"));
 const selectedTypes = computed(() => state.fields.map(field => field.type));
 
+const formatLabel = (type: LeadFieldType) => {
+  const formats: Record<LeadFieldType, string> = {
+    name: "Texto livre",
+    phone: "Telefone / WhatsApp",
+    email: "E-mail",
+    city: "Cidade",
+    cpf: "CPF",
+    birthdate: "Data"
+  };
+  return formats[type] || "Texto";
+};
+
 const presetLabel = (type: LeadFieldType) => fieldPresets.find(preset => preset.type === type)?.label || type;
 
 const createFieldFromPreset = (type: LeadFieldType, value?: Partial<LeadFormField>): LeadFormField => {
@@ -309,8 +323,8 @@ const createFieldFromPreset = (type: LeadFieldType, value?: Partial<LeadFormFiel
   return {
     id: value?.id || generateId(),
     type,
-    label: value?.label || preset?.label || type,
-    placeholder: value?.placeholder || preset?.placeholder || "",
+    label: preset?.label || value?.label || type,
+    placeholder: preset?.placeholder || value?.placeholder || "",
     required: value?.required !== undefined ? value.required : true
   };
 };
@@ -416,8 +430,8 @@ const buildPayload = (): LeadFormPayload => {
     showLogo: state.showLogo !== false,
     fields: state.fields.map(field => ({
       ...field,
-      label: field.label?.trim() || presetLabel(field.type),
-      placeholder: field.placeholder?.trim() || ""
+      label: presetLabel(field.type),
+      placeholder: fieldPresets.find(preset => preset.type === field.type)?.placeholder || ""
     })),
     defaultStatusId: resolveStatusPayload()
   };
@@ -468,30 +482,38 @@ onUnmounted(() => lockScroll(false));
 .fade-leave-active {
   transition: opacity 0.2s ease;
 }
+
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
 }
+
 :global(.dark-theme .lead-form-builder-modal) {
   background-color: #10141f;
 }
+
 :global(.dark-theme .lead-form-builder-modal .builder-left) {
   background-color: #0b0f1a;
 }
+
 :global(.dark-theme .lead-form-builder-modal .builder-section) {
   background-color: #11182b;
 }
+
 :global(.dark-theme .lead-form-builder-modal input),
-:global(.dark-theme .lead-form-builder-modal textarea) {
+:global(.dark-theme .lead-form-builder-modal textarea),
+:global(.dark-theme .lead-form-builder-modal select) {
   background-color: #0f1524;
   border-color: rgba(255, 255, 255, 0.15);
   color: #f8fafc;
 }
+
 :global(.dark-theme .lead-form-builder-modal .builder-left .text-slate-500) {
   color: #cbd5f5;
 }
+
 .builder-preview {
-  transform: scale(0.85);
+  transform: scale(0.88);
   transform-origin: top center;
 }
 </style>

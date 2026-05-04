@@ -1036,7 +1036,7 @@
                 <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                   <div>
                     <p class="text-xs uppercase tracking-[0.3em] text-slate-500 dark:text-white/60">
-                      {{ lesson.level || "Aula" }} Duração {{ lesson.duration || "Livre" }}
+                      {{ lesson.moduleName || "Sem módulo" }} • {{ lesson.level || "Aula" }} • Duração {{ lesson.duration || "Livre" }}
                     </p>
                     <h4 class="mt-2 text-lg font-semibold text-slate-900 dark:text-white">{{ lesson.title }}</h4>
                     <p class="mt-1 text-sm text-slate-600 dark:text-white/70">{{ lesson.description }}</p>
@@ -1102,6 +1102,20 @@
             </label>
 
             <div class="grid gap-3 md:grid-cols-2">
+              <label class="block text-sm font-semibold text-slate-700 dark:text-white">
+                Módulo
+                <input
+                  v-model="lessonForm.moduleName"
+                  type="text"
+                  list="lesson-module-options"
+                  class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 focus:border-brand focus:ring-brand"
+                  placeholder="Ex.: Fundamentos do painel"
+                />
+                <datalist id="lesson-module-options">
+                  <option v-for="module in lessonModuleOptions" :key="module" :value="module"></option>
+                </datalist>
+              </label>
+
               <label class="block text-sm font-semibold text-slate-700 dark:text-white">
                 Duraçao
                 <input
@@ -1467,7 +1481,7 @@
 
       <div
         v-if="templateDialog.open"
-        class="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/70 px-4 py-8"
+        class="app-modal-overlay fixed inset-0 z-40 flex items-center justify-center px-4 py-8"
         @click.self="closeTemplateDialog"
       >
         <div class="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl dark:bg-[#202020] dark:text-white">
@@ -1540,7 +1554,7 @@
 
       <div
         v-if="templatePreviewDialog.open"
-        class="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/80 px-4 py-8"
+        class="app-modal-overlay fixed inset-0 z-40 flex items-center justify-center px-4 py-8"
         @click.self="closeTemplatePreview"
       >
         <div class="h-[90vh] w-full max-w-4xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl dark:bg-[#101010] dark:text-white">
@@ -1579,7 +1593,7 @@
   <transition name="fade">
     <div
       v-if="snackbar?.open"
-      class="fixed bottom-6 right-6 z-50 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-2xl"
+      class="app-snackbar-layer z-50 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-2xl"
     >
       {{ snackbar.text }}
     </div>
@@ -1589,7 +1603,7 @@
   <transition name="fade">
     <div
       v-if="trialDialog.open && trialDialog.user"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 px-4"
+      class="app-modal-overlay fixed inset-0 z-50 flex items-center justify-center px-4"
     >
       <div class="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl">
         <p class="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-500">Upgrade exclusivo</p>
@@ -1639,7 +1653,7 @@
   <transition name="fade">
     <div
       v-if="linkPageDialog.open && linkPageDialog.user"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 px-4"
+      class="app-modal-overlay fixed inset-0 z-50 flex items-center justify-center px-4"
     >
       <div class="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl">
         <p class="text-xs font-semibold uppercase tracking-[0.3em] text-indigo-500">Vincular página</p>
@@ -1727,7 +1741,7 @@
   <transition name="fade">
     <div
       v-if="deleteDialog.open && deleteDialog.user"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 px-4"
+      class="app-modal-overlay fixed inset-0 z-50 flex items-center justify-center px-4"
     >
       <div class="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl">
         <p class="text-xs font-semibold uppercase tracking-[0.3em] text-rose-500">Excluir usuário</p>
@@ -1765,7 +1779,7 @@
   <transition name="fade">
     <div
       v-if="refundDialog.open && refundDialog.user"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 px-4"
+      class="app-modal-overlay fixed inset-0 z-50 flex items-center justify-center px-4"
     >
       <div class="w-full max-w-xl rounded-3xl bg-white p-8 shadow-2xl">
         <p class="text-xs font-semibold uppercase tracking-[0.3em] text-amber-600">Reembolsar usuário</p>
@@ -2635,11 +2649,15 @@ const expandedUser = ref<number | null>(null);
 const savingPageId = ref<number | null>(null);
 const lessonsStore = useLessonsStore();
 const adminLessons = computed(() => lessonsStore.sortedLessons);
+const lessonModuleOptions = computed(() =>
+  Array.from(new Set(adminLessons.value.map(lesson => lesson.moduleName.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b))
+);
 const lessonsLoading = computed(() => lessonsStore.loading);
 const lessonSaving = ref(false);
 const deletingLessonId = ref<number | null>(null);
 const resettingLessons = ref(false);
 const lessonForm = reactive({
+  moduleName: "",
   title: "",
   description: "",
   duration: "",
@@ -2845,6 +2863,7 @@ const clearThumbnailUpload = () => {
 
 const resetLessonForm = () => {
   editingLessonId.value = null;
+  lessonForm.moduleName = "";
   lessonForm.title = "";
   lessonForm.description = "";
   lessonForm.duration = "";
@@ -2857,6 +2876,7 @@ const resetLessonForm = () => {
 
 const startLessonEdit = (lesson: Lesson) => {
   editingLessonId.value = lesson.id;
+  lessonForm.moduleName = lesson.moduleName || "";
   lessonForm.title = lesson.title;
   lessonForm.description = lesson.description;
   lessonForm.duration = lesson.duration;
@@ -2879,6 +2899,7 @@ const saveLesson = async () => {
     return;
   }
   const payload = {
+    moduleName: lessonForm.moduleName.trim(),
     title: lessonForm.title.trim(),
     description: lessonForm.description.trim(),
     duration: lessonForm.duration.trim(),
