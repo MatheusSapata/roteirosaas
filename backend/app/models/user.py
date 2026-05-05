@@ -44,6 +44,7 @@ class User(Base):
     role = Column(String(50), nullable=True, default=None)
     status = Column(String(50), nullable=True, default=None)
     permissions = Column(JSONB, nullable=True)
+    crm_view_preferences = Column(JSONB, nullable=True)
 
     agencies = relationship("AgencyUser", back_populates="user")
     subscription = relationship("Subscription", uselist=False, foreign_keys=[subscription_id])

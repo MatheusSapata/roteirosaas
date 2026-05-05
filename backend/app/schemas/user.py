@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Optional
 from datetime import datetime
 
 from pydantic import BaseModel, EmailStr, ConfigDict, field_validator
@@ -216,3 +216,13 @@ class PasswordResetByProfile(BaseModel):
         if len(digits) != 11:
             raise ValueError("CPF invalido")
         return digits
+
+
+class CrmViewPreferencesIn(BaseModel):
+    defaultSnapshot: dict[str, Any] | None = None
+    customViews: list[dict[str, Any]] = []
+
+
+class CrmViewPreferencesOut(BaseModel):
+    defaultSnapshot: dict[str, Any] | None = None
+    customViews: list[dict[str, Any]] = []

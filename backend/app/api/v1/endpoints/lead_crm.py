@@ -143,22 +143,6 @@ def _get_manual_form_id(agency_id: int, db: Session) -> int:
     return int(form_id)
 
 
-def _ensure_closure_status(submission: LeadFormSubmission, outcome: str, db: Session) -> LeadStatus:
-    target_name = "Ganha" if outcome == "won" else "Perdida"
-    target_color = "#16A34A" if outcome == "won" else "#DC2626"
-    status = (
-        db.query(LeadStatus)
-        .filter(LeadStatus.agency_id == submission.agency_id, LeadStatus.name == target_name)
-        .first()
-    )
-    if status:
-        return status
-    status = LeadStatus(agency_id=submission.agency_id, name=target_name, color=target_color)
-    db.add(status)
-    db.flush()
-    return status
-
-
 def _get_client_suggestions(submission: LeadFormSubmission, db: Session) -> list[ClientSummaryOut]:
     filters = []
     if submission.email_normalized:
@@ -329,8 +313,6 @@ def finalize_opportunity(
     submission = _get_submission_or_404(contact_id, db)
     require_agency_membership(db=db, agency_id=submission.agency_id, user_id=current_user.id)
 
-    closure_status = _ensure_closure_status(submission, payload.outcome, db)
-    submission.status_id = closure_status.id
     submission.close_outcome = payload.outcome
     submission.closed_at = datetime.utcnow()
     db.add(submission)

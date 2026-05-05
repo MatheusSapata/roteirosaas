@@ -71,6 +71,8 @@ def _serialize_contact(submission: LeadFormSubmission) -> LeadContactOut:
         status_name=submission.status.name if submission.status else None,
         status_color=submission.status.color if submission.status else None,
         client_id=submission.client_id,
+        close_outcome=submission.close_outcome,
+        closed_at=submission.closed_at,
         created_at=submission.created_at,
     )
 

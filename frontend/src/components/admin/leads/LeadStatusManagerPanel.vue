@@ -50,16 +50,7 @@
               </button>
 
               <div class="min-w-0 flex-1">
-                <div class="flex flex-wrap items-center gap-2">
-                  <p class="truncate text-base font-semibold text-slate-900">{{ status.name }}</p>
-                  <span
-                    v-if="resolveSpecialBadge(status.name)"
-                    class="rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide"
-                    :class="resolveSpecialBadge(status.name) === 'won' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'"
-                  >
-                    {{ resolveSpecialBadge(status.name) === "won" ? viewCopy.badges.won : viewCopy.badges.lost }}
-                  </span>
-                </div>
+                <p class="truncate text-base font-semibold text-slate-900">{{ status.name }}</p>
               </div>
             </div>
 
@@ -212,8 +203,8 @@ const viewCopy = {
   pipeline: {
     title: t({ pt: "Ordem do funil", es: "Orden del embudo" }),
     helper: t({ pt: "Arraste para definir a ordem das etapas", es: "Arrastra para definir el orden de las etapas" }),
-    loading: t({ pt: "Carregando status...", es: "Cargando estados..." }),
-    empty: t({ pt: "Nenhum status cadastrado.", es: "No hay estados registrados." }),
+    loading: t({ pt: "Carregando etapas...", es: "Cargando etapas..." }),
+    empty: t({ pt: "Nenhuma etapa cadastrada.", es: "No hay etapas registradas." }),
     dragAria: t({ pt: "Reordenar etapa", es: "Reordenar etapa" })
   },
   actions: {
@@ -223,10 +214,6 @@ const viewCopy = {
     delete: t({ pt: "Excluir", es: "Eliminar" }),
     deleting: t({ pt: "Excluindo...", es: "Eliminando..." }),
     saving: t({ pt: "Salvando...", es: "Guardando..." })
-  },
-  badges: {
-    won: t({ pt: "Ganho", es: "Ganado" }),
-    lost: t({ pt: "Perdido", es: "Perdido" })
   },
   modal: {
     eyebrow: t({ pt: "Etapa", es: "Etapa" }),
@@ -246,7 +233,7 @@ const viewCopy = {
     saving: t({ pt: "Salvando...", es: "Guardando..." })
   },
   feedback: {
-    loadError: t({ pt: "Não foi possível carregar os status.", es: "No fue posible cargar los estados." }),
+    loadError: t({ pt: "Não foi possível carregar as etapas.", es: "No fue posible cargar las etapas." }),
     createSuccess: t({ pt: "Etapa criada com sucesso.", es: "Etapa creada con éxito." }),
     createError: t({ pt: "Não foi possível criar a etapa.", es: "No fue posible crear la etapa." }),
     updateSuccess: t({ pt: "Etapa atualizada.", es: "Etapa actualizada." }),
@@ -332,16 +319,6 @@ const syncStatusOrderWithList = () => {
 };
 
 const ensureStatuses = () => leadStore.fetchStatuses().catch(() => dispatchToast(viewCopy.feedback.loadError, true));
-
-const normalizeName = (value: string) =>
-  value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
-
-const resolveSpecialBadge = (name: string) => {
-  const normalized = normalizeName(name);
-  if (normalized === "ganho" || normalized === "won") return "won";
-  if (normalized === "perdido" || normalized === "lost") return "lost";
-  return null;
-};
 
 const openCreateModal = () => {
   if (!canManageLeads.value) {

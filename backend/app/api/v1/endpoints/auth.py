@@ -15,6 +15,8 @@ from app.models.subscription import Subscription
 from app.models.user_session import UserSession
 from app.models.user_tracking import UserTracking
 from app.schemas.user import (
+    CrmViewPreferencesIn,
+    CrmViewPreferencesOut,
     PasswordResetByProfile,
     PasswordResetConfirm,
     PasswordResetRequest,
@@ -274,6 +276,35 @@ def update_me(user_in: UserUpdate, db: Session = Depends(get_db), current_user: 
     db.commit()
     db.refresh(current_user)
     return current_user
+
+
+@router.get("/me/crm-view-preferences", response_model=CrmViewPreferencesOut)
+def get_my_crm_view_preferences(current_user: User = Depends(get_current_active_user)) -> CrmViewPreferencesOut:
+    raw = current_user.crm_view_preferences if isinstance(current_user.crm_view_preferences, dict) else {}
+    default_snapshot = raw.get("defaultSnapshot")
+    custom_views = raw.get("customViews")
+    if not isinstance(custom_views, list):
+        custom_views = []
+    return CrmViewPreferencesOut(defaultSnapshot=default_snapshot, customViews=custom_views)
+
+
+@router.put("/me/crm-view-preferences", response_model=CrmViewPreferencesOut)
+def update_my_crm_view_preferences(
+    payload: CrmViewPreferencesIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> CrmViewPreferencesOut:
+    current_user.crm_view_preferences = {
+        "defaultSnapshot": payload.defaultSnapshot,
+        "customViews": payload.customViews,
+    }
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
+    return CrmViewPreferencesOut(
+        defaultSnapshot=current_user.crm_view_preferences.get("defaultSnapshot"),
+        customViews=current_user.crm_view_preferences.get("customViews") or [],
+    )
 
 
 @router.post("/me/password")

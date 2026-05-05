@@ -56,6 +56,8 @@ export interface LeadContact {
   status_name?: string | null;
   status_color?: string | null;
   client_id?: string | number | null;
+  close_outcome?: "won" | "lost" | null;
+  closed_at?: string | null;
   created_at?: string;
 }
 
@@ -199,6 +201,7 @@ export interface OpportunityUpdatePayload {
   internalNotes?: string | null;
   responsibleUserId?: number | string | null;
   expectedCloseDate?: string | null;
+  closeOutcome?: "won" | "lost" | null;
 }
 
 export interface OpportunityFinalizePayload {
