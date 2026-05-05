@@ -90,6 +90,7 @@ class OpportunityUpdate(BaseModel):
     internal_notes: Optional[str] = Field(None, alias="internalNotes")
     responsible_user_id: Optional[int] = Field(None, alias="responsibleUserId")
     expected_close_date: Optional[date] = Field(None, alias="expectedCloseDate")
+    close_outcome: Optional[str] = Field(None, alias="closeOutcome")
 
     @field_validator("opportunity_name", "internal_notes")
     @classmethod
@@ -98,6 +99,16 @@ class OpportunityUpdate(BaseModel):
             return value
         cleaned = value.strip()
         return cleaned or None
+
+    @field_validator("close_outcome")
+    @classmethod
+    def validate_close_outcome(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        normalized = (value or "").strip().lower()
+        if normalized not in {"won", "lost"}:
+            raise ValueError("Outcome invalido.")
+        return normalized
 
     model_config = ConfigDict(populate_by_name=True)
 

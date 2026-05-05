@@ -198,15 +198,15 @@
         >
         <div
           class="flex-1"
-          :class="'bg-slate-900/65'"
+          :class="'bg-black/55'"
           @click="mobileMenuOpen = false"
         ></div>
         <div
           class="w-[14.75rem] max-w-[78vw] shadow-2xl transition-colors md:rounded-l-3xl"
           :class="'bg-[#1A3D25] text-slate-100'"
         >
-          <div class="relative flex items-center justify-start border-b border-white/10 px-4 py-2">
-            <img :src="sidebarLogoSrc" alt="Roteiro Online" class="max-h-[3.1rem] object-contain" />
+          <div class="relative flex items-center justify-start border-b border-white/10 px-4 py-3">
+            <span class="text-[14px] font-semibold uppercase tracking-[0.12em] text-white">MENU</span>
             <button
               type="button"
               class="absolute right-4 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border"

@@ -66,7 +66,7 @@
             <p class="mt-2 text-2xl font-bold text-rose-700">{{ formatCurrency(lostValueCents) }}</p>
           </div>
           <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Ultima interacao</p>
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Sem interacao</p>
             <p class="mt-2 text-lg font-bold text-slate-900">{{ formatDateTime(lastInteractionAt) }}</p>
           </div>
         </div>

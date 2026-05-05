@@ -24,7 +24,13 @@
                     class="rounded-full border px-2.5 py-1 text-xs font-semibold"
                     :style="statusBadgeStyle"
                   >
-                    {{ details?.statusName || "Sem status" }}
+                    Etapa: {{ details?.statusName || "Sem etapa" }}
+                  </span>
+                  <span
+                    class="rounded-full border px-2.5 py-1 text-xs font-semibold"
+                    :class="opportunityStatusBadgeClass"
+                  >
+                    {{ opportunityStatusLabel }}
                   </span>
                   <span>Valor estimado: {{ currencyLabel(details?.estimatedValueCents ?? 0) }}</span>
                   <span v-if="saveFeedback" :class="saveFeedbackClass">{{ saveFeedback }}</span>
@@ -69,12 +75,12 @@
                       />
                     </div>
                     <div>
-                      <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Status</label>
+                      <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Etapa</label>
                       <select
                         v-model="form.statusId"
                         class="mt-1 w-full rounded-2xl border border-slate-200 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
                       >
-                        <option value="">Sem status</option>
+                        <option value="">Sem etapa</option>
                         <option v-for="status in statuses" :key="status.id" :value="String(status.id)">
                           {{ status.name }}
                         </option>
@@ -511,6 +517,18 @@ const statusBadgeStyle = computed(() => {
     color: color,
     backgroundColor: `${color}14`
   };
+});
+
+const opportunityStatusLabel = computed(() => {
+  if (details.value?.closeOutcome === "won") return "Ganha";
+  if (details.value?.closeOutcome === "lost") return "Perdida";
+  return "Aberta";
+});
+
+const opportunityStatusBadgeClass = computed(() => {
+  if (details.value?.closeOutcome === "won") return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  if (details.value?.closeOutcome === "lost") return "border-rose-200 bg-rose-50 text-rose-700";
+  return "border-sky-200 bg-sky-50 text-sky-700";
 });
 
 const saveFeedbackClass = computed(() =>

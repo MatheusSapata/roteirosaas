@@ -195,6 +195,8 @@ export const useLeadCaptureStore = defineStore("leadCapture", () => {
       status_name: updated.statusName ?? null,
       status_color: updated.statusColor ?? null,
       client_id: updated.client?.id ?? null,
+      close_outcome: updated.closeOutcome ?? null,
+      closed_at: updated.closedAt ?? null,
       created_at: updated.created_at
     };
     const target = normalizeId(leadContact.id);

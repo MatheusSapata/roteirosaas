@@ -113,6 +113,8 @@ class LeadContactOut(BaseModel):
     status_name: Optional[str] = Field(None, alias="status_name")
     status_color: Optional[str] = Field(None, alias="status_color")
     client_id: Optional[int] = Field(None, alias="client_id")
+    close_outcome: Optional[str] = Field(None, alias="close_outcome")
+    closed_at: Optional[datetime] = Field(None, alias="closed_at")
     created_at: Optional[datetime] = Field(None, alias="created_at")
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)

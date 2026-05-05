@@ -56,58 +56,28 @@
           </button>
         </div>
 
-        <div v-else-if="activeTab === 'contacts'" class="flex items-center gap-2 md:gap-4">
-  <div v-if="!isMobileViewport && contactViewMode === 'kanban'" class="flex items-center gap-3">
-    <div class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">
-      {{ filteredContactsCount }} {{ viewCopy.contacts.summary }}
-    </div>
-    <select
-      v-model="kanbanPageFilter"
-      class="min-w-[160px] rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm outline-none transition focus:ring-2 focus:ring-brand dark:border-white/10 dark:bg-[#111319] dark:text-white"
-    >
-      <option v-for="option in kanbanPageOptions" :key="option.value" :value="option.value">
-        {{ option.label }}
-      </option>
-    </select>
-    <select
-      v-model="kanbanFormFilter"
-      class="min-w-[180px] rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm outline-none transition focus:ring-2 focus:ring-brand dark:border-white/10 dark:bg-[#111319] dark:text-white"
-    >
-      <option v-for="option in kanbanFormOptions" :key="option.value" :value="option.value">
-        {{ option.label }}
-      </option>
-    </select>
-  </div>
+        <div v-else-if="activeTab === 'contacts'" class="contacts-create-top flex items-center gap-2 md:gap-4">
 
   <button
     type="button"
-    class="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:bg-brand-dark"
+    class="inline-flex items-center gap-2 rounded-[10px] bg-[#3DCC5F] px-4 py-[9px] text-[13px] font-semibold text-[#0F1F14] transition hover:bg-[#5BE07A]"
     @click="openManualOpportunityModal"
   >
-    <span v-if="isMobileViewport">+</span>
-    <span v-else>+ {{ viewCopy.actions.newManualOpportunity }}</span>
+    <span class="text-[15px] leading-none font-bold">+</span>
+    <span>Nova oportunidade</span>
   </button>
+    </div>
 
-  <div v-if="!isMobileViewport" class="inline-flex rounded-full bg-slate-100 p-1 dark:bg-white/10">
-    <button
-      type="button"
-      class="rounded-full px-4 py-2 text-sm font-semibold transition"
-      :class="contactViewMode === 'list' ? activeTabClass : inactiveTabClass"
-      @click="contactViewMode = 'list'"
-    >
-      {{ viewCopy.actions.viewModes.list }}
-    </button>
-    <button
-      type="button"
-      class="rounded-full px-4 py-2 text-sm font-semibold transition"
-      :class="contactViewMode === 'kanban' ? activeTabClass : inactiveTabClass"
-      @click="contactViewMode = 'kanban'"
-    >
-      {{ viewCopy.actions.viewModes.kanban }}
-    </button>
-  </div>
-</div>
+    <transition name="fade">
+      <div
+        v-if="feedback.message"
+        class="pointer-events-none fixed bottom-6 right-6 z-[220] max-w-[360px] rounded-xl px-4 py-3 text-sm font-semibold shadow-xl"
+        :class="feedback.isError ? 'bg-rose-600 text-white' : 'bg-slate-900 text-white'"
+      >
+        {{ feedback.message }}
       </div>
+    </transition>
+</div>
 
       <div class="flex min-h-0 flex-1 flex-col">
 
@@ -194,7 +164,7 @@
                     <input v-model="formSearchQuery" class="search-input" type="text" placeholder="Buscar formulário..." />
                   </div>
                   <select v-model="formStatusFilter" class="filter-select">
-                    <option value="all">Todos os status</option>
+                    <option value="all">Todas as etapas</option>
                     <option value="with-leads">Com leads</option>
                     <option value="no-leads">Sem leads</option>
                   </select>
@@ -351,64 +321,92 @@
 
 
 
-              <div v-if="contactViewMode === 'list'" class="crm-list-view flex min-h-0 flex-1 flex-col overflow-hidden">
-  <section class="crm-toolbar rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#202020]"><div class="mt-3 flex flex-wrap items-center gap-2">
-      <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">Views salvas:</span>
-      <button v-for="chip in savedViewChips" :key="chip.id" type="button" class="rounded-full border px-3 py-1 text-xs font-semibold transition" :class="chip.id === activeSavedView ? 'border-slate-900 bg-slate-900 text-white dark:border-white dark:bg-white dark:text-slate-900' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 dark:border-white/20 dark:bg-[#202020] dark:text-slate-200'" @click="selectSavedView(chip.id)">{{ chip.label }}</button>
-      <button type="button" class="rounded-full border border-dashed border-slate-300 px-3 py-1 text-xs font-semibold text-slate-500 transition hover:text-slate-800 dark:border-white/20 dark:text-slate-300" @click="createSavedView">+ Nova view</button>
-    </div>
-    <div class="mt-3 flex flex-wrap items-center gap-2">
-      <input v-model="crmSearchQuery" type="text" placeholder="Buscar cliente..." class="h-9 min-w-[180px] rounded-full border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-slate-300 dark:border-white/10 dark:bg-[#0f1524] dark:text-white" />
-      <select v-model="opportunityStateFilter" class="h-9 rounded-full border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 outline-none dark:border-white/10 dark:bg-[#0f1524] dark:text-white"><option value="all">Status</option><option value="open">Abertas</option><option value="closed">Fechadas</option></select>
-      <select v-model="opportunityOutcomeFilter" class="h-9 rounded-full border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 outline-none dark:border-white/10 dark:bg-[#0f1524] dark:text-white"><option value="all">Resultado</option><option value="won">Ganhas</option><option value="lost">Perdidas</option></select>
-      <select v-model="crmPageFilter" class="h-9 rounded-full border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 outline-none dark:border-white/10 dark:bg-[#0f1524] dark:text-white"><option value="all">Página</option><option v-for="option in crmPageOptions" :key="option" :value="option">{{ option }}</option></select>
-      <select v-model="crmIdleFilter" class="h-9 rounded-full border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 outline-none dark:border-white/10 dark:bg-[#0f1524] dark:text-white"><option value="all">Sem interação</option><option value="lt1">&lt; 1 dia</option><option value="2to5">2 a 5 dias</option><option value="gt5">+5 dias</option></select>
-      <button type="button" class="h-9 rounded-full border border-slate-200 px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:text-slate-100" @click="columnsMenuOpen = !columnsMenuOpen">Colunas</button>
-      <button type="button" class="h-9 rounded-full border border-slate-200 px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:text-slate-100" @click="saveCurrentView">Salvar visualização</button>
-      <button v-if="hasActiveFilters" type="button" class="h-9 rounded-full border border-slate-200 px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:text-slate-100" @click="clearAllFilters">Limpar filtros</button>
+              <div v-if="contactViewMode === 'list'" class="crm-list-view flex min-h-0 flex-1 flex-col overflow-visible">
+  <section class="crm-toolbar p-4 dark:bg-[#202020]">
+    <div class="opportunities-filter-bar">
+      <div class="opportunities-filter-row opportunities-filter-row--search">
+        <div class="toolbar-search"><svg viewBox="0 0 24 24" class="toolbar-search-icon" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input v-model="crmSearchQuery" type="text" placeholder="Buscar cliente..." /></div>
+        <button type="button" class="mobile-create-btn" @click="openManualOpportunityModal">
+          <span class="mobile-create-btn-plus">+</span>
+          <span>Criar</span>
+        </button>
+      </div>
+      <div class="opportunities-filter-row opportunities-filter-row--primary">
+        <div class="toolbar-ms">
+          <button type="button" class="toolbar-ms-btn" :class="{ open: openToolbarFilter === 'stage' }" @click="toggleToolbarFilter('stage')"><svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18"/><path d="M6 12h12"/><path d="M10 19h4"/></svg>Etapa <span v-if="listFilters.status.length" class="toolbar-ms-count">{{ listFilters.status.length }}</span></button>
+          <div v-if="openToolbarFilter === 'stage'" class="toolbar-ms-dropdown">
+            <label v-for="option in stageFilterOptions" :key="option.value" class="toolbar-ms-option"><input type="checkbox" :checked="listFilters.status.includes(option.value)" @change="toggleStageFilterOption(option.value)" /><span>{{ option.label }}</span></label>
+            <div class="toolbar-ms-actions">
+              <button type="button" @click="selectAllStageFilters">Selecionar todos</button>
+              <button type="button" @click="clearStageFilters">Limpar</button>
+            </div>
+          </div>
+        </div>
+        <div class="toolbar-ms">
+          <button type="button" class="toolbar-ms-btn" :class="{ open: openToolbarFilter === 'opportunityStatus' }" @click="toggleToolbarFilter('opportunityStatus')"><svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18"/><path d="M6 12h12"/><path d="M10 19h4"/></svg>Status <span v-if="opportunityStatusSelections.length" class="toolbar-ms-count">{{ opportunityStatusSelections.length }}</span></button>
+          <div v-if="openToolbarFilter === 'opportunityStatus'" class="toolbar-ms-dropdown">
+            <label v-for="option in opportunityStatusOptions" :key="option.value" class="toolbar-ms-option"><input type="checkbox" :checked="opportunityStatusSelections.includes(option.value)" @change="toggleOpportunityStatusSelection(option.value)" /><span>{{ option.label }}</span></label>
+            <div class="toolbar-ms-actions">
+              <button type="button" @click="selectAllStatusFilters">Selecionar todos</button>
+              <button type="button" @click="clearStatusFilters">Limpar</button>
+            </div>
+          </div>
+        </div>
+        <div class="toolbar-ms">
+          <button type="button" class="toolbar-ms-btn" :class="{ open: openToolbarFilter === 'page' }" @click="toggleToolbarFilter('page')"><svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18"/><path d="M6 12h12"/><path d="M10 19h4"/></svg>Página <span v-if="listFilters.page.length" class="toolbar-ms-count">{{ listFilters.page.length }}</span></button>
+          <div v-if="openToolbarFilter === 'page'" class="toolbar-ms-dropdown">
+            <label v-for="option in crmPageOptions" :key="option" class="toolbar-ms-option"><input type="checkbox" :checked="listFilters.page.includes(option)" @change="togglePageFilterOption(option)" /><span>{{ option }}</span></label>
+            <div class="toolbar-ms-actions">
+              <button type="button" @click="selectAllPageFilters">Selecionar todos</button>
+              <button type="button" @click="clearPageFilters">Limpar</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
-  <article class="relative mt-3 flex flex-1 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#202020]" :style="{ height: listTableHeight, minHeight: listTableHeight, maxHeight: listTableHeight }">
-    <div v-if="columnsMenuOpen" class="absolute right-4 top-3 z-20 w-64 rounded-2xl border border-slate-200 bg-white p-3 shadow-xl dark:border-white/10 dark:bg-[#0f1524]"><p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Colunas</p><label v-for="col in crmColumnConfig" :key="col.key" class="mt-2 flex items-center gap-2 text-xs text-slate-600 dark:text-slate-200"><input v-model="col.visible" type="checkbox" class="h-3.5 w-3.5" /><span>{{ col.label }}</span></label></div>
-    <div class="flex-1 overflow-auto">
-      <table class="min-w-full text-sm">
-        <thead class="sticky top-0 z-10 border-b border-slate-200 bg-white dark:border-white/10 dark:bg-[#202020]"><tr class="text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300"><th v-if="isColumnVisible('cliente')" class="px-3 py-3">Nome</th><th class="px-3 py-3">Telefone</th><th v-if="isColumnVisible('status')" class="px-3 py-3">Status</th><th v-if="isColumnVisible('pagina')" class="px-3 py-3">Página/Formulário</th><th v-if="isColumnVisible('valor')" class="px-3 py-3 text-right">Valor</th><th v-if="isColumnVisible('ultima')" class="px-3 py-3">Última interação</th><th v-if="isColumnVisible('acoes')" class="px-3 py-3 text-right">Ações</th></tr></thead>
+  <article v-if="!isMobileViewport" class="opps-table-shell relative mt-2 flex flex-1 flex-col overflow-visible">
+    <div class="flex-1 overflow-visible">
+      <table class="opps-table table-fixed min-w-full text-sm">
+        <thead class="sticky top-0 z-10"><tr class="text-left text-xs font-semibold uppercase tracking-wide"><th class="w-[34px] px-2 py-3"><input class="h-4 w-4 cursor-pointer accent-emerald-500" type="checkbox" :checked="areAllVisibleOpportunitiesSelected" @change="toggleAllVisibleOpportunities" /></th><th v-if="isColumnVisible('cliente')" class="w-[180px] px-3 py-3" style="width:180px;min-width:180px;max-width:180px;">Nome</th><template v-for="col in orderedOptionalColumns" :key="`head-${col.key}`"><th v-if="col.visible && col.key === 'telefone'" class="w-[150px] px-2 py-3">Telefone</th><th v-if="col.visible && col.key === 'status'" class="w-[170px] px-2 py-3">Etapa</th><th v-if="col.visible && col.key === 'pagina'" class="w-[230px] px-2 py-3" style="width:230px;min-width:230px;max-width:230px;">Origem</th><th v-if="col.visible && col.key === 'valor'" class="w-[105px] px-2 py-3 text-center">Valor</th><th v-if="col.visible && col.key === 'chegouEm'" class="w-[100px] px-2 py-3">Chegou em</th><th v-if="col.visible && col.key === 'ultima'" class="w-[130px] px-2 py-3 text-center">Sem interação</th></template><th v-if="isColumnVisible('acoes')" class="w-[108px] px-2 py-3 text-right">Ações</th></tr></thead>
         <tbody>
           <template v-for="group in groupedContactsForCrm" :key="group.key">
-            <tr class="border-y border-slate-200/70 bg-transparent dark:border-white/10 dark:bg-transparent"><td :colspan="visibleCrmColumnsCount + 1" class="px-4 py-1.5 text-xs font-semibold dark:text-slate-200" :style="groupHeaderStyle(group.key)">&gt; {{ group.label }} ({{ group.contacts.length }}) · {{ formatOpportunityValue(group.totalValueCents) }}</td></tr>
-            <tr v-for="contact in group.contacts" :key="contact.id" class="cursor-pointer border-b border-slate-100/90 text-slate-700 transition hover:bg-slate-50 dark:border-white/5 dark:text-slate-200 dark:hover:bg-white/[0.03]" :style="contactRowStyle(contact)" @click="openOpportunityDrawer(contact)">
-              <td v-if="isColumnVisible('cliente')" class="px-4 py-3.5">
-                <div class="min-w-0">
+            <tr class="opps-group-row" @click="toggleGroupCollapse(group.key)"><td :colspan="visibleCrmColumnsCount + 2" class="px-4 py-1 text-xs font-semibold" :style="groupHeaderStyle(group.key)"><button type="button" class="opps-group-toggle-btn" :class="{ collapsed: isGroupCollapsed(group.key) }" @click.stop="toggleGroupCollapse(group.key)"><svg viewBox="0 0 20 20" class="h-3.5 w-3.5" fill="currentColor" aria-hidden="true"><path d="M5.2 7.5a.75.75 0 0 1 1.06 0L10 11.24l3.74-3.74a.75.75 0 1 1 1.06 1.06l-4.27 4.27a.75.75 0 0 1-1.06 0L5.2 8.56a.75.75 0 0 1 0-1.06Z" /></svg></button><span class="inline-flex items-center gap-2 rounded-full border px-2.5 py-1" :style="groupPillStyle(group.key)">{{ group.label }}</span> <span class="opps-group-meta">{{ group.contacts.length }} contatos · {{ formatOpportunityValue(group.totalValueCents) }}</span></td></tr>
+            <tr v-for="contact in visibleGroupContacts(group)" :key="contact.id" class="opps-data-row cursor-pointer transition" :class="opportunityRowClass(contact)" :style="contactRowStyle(contact)" @click="openOpportunityDrawer(contact)">
+              <td class="w-[40px] pl-4 pr-2 py-2.5" @click.stop><input class="h-4 w-4 cursor-pointer accent-emerald-500" type="checkbox" :checked="isOpportunitySelected(contact)" @change="toggleOpportunitySelection(contact)" /></td>
+              <td v-if="isColumnVisible('cliente')" class="w-[180px] px-4 py-2.5" style="width:180px;min-width:180px;max-width:180px;">
+                <div class="min-w-0 max-w-[180px]">
                   <div class="flex flex-wrap items-center gap-2">
-                    <p class="truncate font-semibold text-slate-900 dark:text-white">{{ contact.name || fallbackLabels.noName }}</p>
+                    <p class="truncate font-semibold text-slate-900 dark:text-white" :title="contact.name || fallbackLabels.noName">{{ truncatedContactName(contact.name) }}</p>
                   </div>
                 </div>
               </td>
-              <td class="px-4 py-3.5" @click.stop>
+              <template v-for="col in orderedOptionalColumns" :key="`cell-${contact.id}-${col.key}`">
+              <td v-if="col.visible && col.key === 'telefone'" class="w-[150px] px-2 py-2.5" @click.stop>
                 <button
                   v-if="contact.phone"
                   type="button"
-                  class="inline-flex max-w-[170px] items-center gap-1 rounded-full border border-emerald-200/70 bg-white px-2.5 py-1 text-[13px] font-medium text-emerald-700 transition hover:bg-emerald-50/60"
+                  class="phone-link inline-flex max-w-[170px] items-center gap-1 text-[12px] font-normal text-[#8A9E8A] transition hover:text-[#718771]"
                   :title="getWhatsappTitle(contact.phone)"
                   @click.stop="openWhatsapp(contact)"
                 >
-                  <span class="truncate">{{ contact.phone }}</span>
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 shrink-0 text-[#25D366]" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                     <path d="M16.75 13.96c-.25-.13-1.47-.72-1.7-.8-.23-.08-.4-.12-.57.12-.17.25-.65.8-.8.96-.14.17-.3.19-.55.06-.25-.13-1.06-.39-2.02-1.23-.74-.66-1.25-1.47-1.4-1.72-.15-.25-.02-.38.11-.5.11-.11.25-.3.37-.45.12-.14.17-.25.25-.42.08-.17.04-.31-.02-.45-.06-.14-.57-1.37-.78-1.87-.2-.49-.41-.42-.57-.43h-.48c-.17 0-.45.06-.68.31-.23.25-.88.86-.88 2.1s.9 2.43 1.02 2.6c.12.17 1.76 2.69 4.25 3.77.59.26 1.06.42 1.42.54.6.19 1.15.16 1.58.1.48-.07 1.47-.6 1.68-1.17.21-.57.21-1.06.15-1.17-.06-.11-.23-.17-.48-.3Z" />
                     <path d="M12.04 2C6.77 2 2.5 6.26 2.5 11.52c0 1.85.53 3.65 1.52 5.2L2.4 21.5l4.9-1.57c1.43.78 3.04 1.2 4.7 1.2h.04c5.26 0 9.53-4.26 9.53-9.52C21.57 6.26 17.3 2 12.04 2Zm0 17.42h-.03c-1.5 0-2.97-.4-4.25-1.16l-.3-.18-2.9.93.95-2.82-.2-.29a7.83 7.83 0 0 1-1.2-4.18c0-4.3 3.5-7.8 7.82-7.8 2.08 0 4.03.8 5.5 2.28a7.75 7.75 0 0 1 2.29 5.5c0 4.3-3.5 7.8-7.8 7.8Z" />
                   </svg>
+                  <span class="truncate">{{ contact.phone }}</span>
                 </button>
                 <span v-else class="text-xs text-slate-400">-</span>
               </td>
-              <td v-if="isColumnVisible('status')" class="px-4 py-3.5" @click.stop>
+              <td v-if="col.visible && col.key === 'status'" class="w-[170px] px-2 py-2.5" @click.stop>
                 <div class="status-chip-container relative inline-flex">
                   <button
                     type="button"
-                    class="status-chip-button inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold"
+                    class="status-chip-button inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-bold"
                     :style="statusChipStyle(contact)"
                     @click.stop="toggleStatusDropdown(contact, $event)"
                   >
-                    <span>{{ contact.status_name || fallbackLabels.noStatus }}</span>
+                    <span>{{ contact.status_name || fallbackLabels.noStage }}</span>
                     <svg viewBox="0 0 20 20" class="h-3.5 w-3.5" fill="currentColor" aria-hidden="true">
                       <path d="M5.2 7.5a.75.75 0 0 1 1.06 0L10 11.24l3.74-3.74a.75.75 0 1 1 1.06 1.06l-4.27 4.27a.75.75 0 0 1-1.06 0L5.2 8.56a.75.75 0 0 1 0-1.06Z" />
                     </svg>
@@ -424,7 +422,7 @@
                       class="block w-full border-b border-slate-100 bg-slate-100 px-3 py-2.5 text-left text-xs font-semibold text-slate-700 transition hover:bg-slate-200 dark:border-white/10"
                       @click.stop="selectStatusOption(contact, null)"
                     >
-                      {{ fallbackLabels.noStatus }}
+                      {{ fallbackLabels.noStage }}
                     </button>
                     <button
                       v-for="status in leadStatuses"
@@ -439,39 +437,216 @@
                   </div>
                 </div>
               </td>
-              <td v-if="isColumnVisible('pagina')" class="px-4 py-3.5 text-[13px] text-slate-500 dark:text-slate-300">{{ truncatedPageLabel(contact) }}</td>
-              <td v-if="isColumnVisible('valor')" class="px-4 py-3.5 text-right text-xs font-semibold text-slate-800 dark:text-slate-100">{{ formatOpportunityValue(contact.estimated_value_cents) }}</td>
-              <td v-if="isColumnVisible('ultima')" class="px-4 py-3.5">
-                <span class="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-[12px] font-medium" :class="idleChipClass(contact)">
-                  <span class="h-1.5 w-1.5 rounded-full" :class="idleDotClass(contact)"></span>
-                  <span>{{ idleChipLabel(contact) }}</span>
-                </span>
+              <td v-if="col.visible && col.key === 'pagina'" class="w-[230px] px-2 py-2.5 text-[13px]" style="width:230px;min-width:230px;max-width:230px;" @click.stop>
+                <button
+                  v-if="!isManualOpportunity(contact)"
+                  type="button"
+                  class="origin-link truncate text-[#8A9E8A] transition hover:text-[#718771]"
+                  :title="truncatedPageLabel(contact)"
+                  @click.stop="openContactOrigin(contact)"
+                >
+                  {{ truncatedPageLabel(contact) }}
+                </button>
+                <span v-else class="text-[#8A9E8A]">{{ truncatedPageLabel(contact) }}</span>
               </td>
-              <td v-if="isColumnVisible('acoes')" class="px-4 py-3.5 text-right" @click.stop>
+              <td v-if="col.visible && col.key === 'valor'" class="w-[105px] px-2 py-2.5 text-center text-xs" @click.stop>
+                <template v-if="inlineValueContactId === idKey(contact.id)">
+                  <div class="inline-flex items-center gap-1">
+                    <input v-model="inlineValueInput" type="text" placeholder="R$ 0,00" class="w-[78px] rounded-md border border-slate-200 px-2 py-1 text-[11px] text-slate-700 outline-none focus:border-brand" />
+                    <button type="button" class="inline-flex h-5 w-5 items-center justify-center rounded border border-emerald-200 bg-emerald-50 text-emerald-700" @click.stop="saveInlineValue(contact)">
+                      <svg viewBox="0 0 20 20" class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="m4 10 4 4 8-8"/></svg>
+                    </button>
+                  </div>
+                </template>
+                <button
+                  v-else-if="!contact.estimated_value_cents"
+                  type="button"
+                  class="text-[#8A9E8A] transition hover:underline"
+                  @click.stop="beginInlineValueEdit(contact)"
+                >
+                  Sem valor
+                </button>
+                <span v-else class="font-semibold text-[#111A14]">{{ formatOpportunityValue(contact.estimated_value_cents) }}</span>
+              </td>
+              <td v-if="col.visible && col.key === 'chegouEm'" class="w-[100px] px-2 py-2.5 text-xs text-[#8A9E8A]">{{ formatDateDayMonthTime(contact.created_at) }}</td>
+              <td v-if="col.visible && col.key === 'ultima'" class="w-[130px] px-2 py-2.5 text-center">
+                <div class="flex justify-center">
+                  <span class="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-medium" :class="idleChipClass(contact)">
+                    <span class="h-1.5 w-1.5 rounded-full" :class="idleDotClass(contact)"></span>
+                    <span>{{ idleChipLabel(contact) }}</span>
+                  </span>
+                </div>
+              </td>
+              </template>
+              <td v-if="isColumnVisible('acoes')" class="w-[108px] px-2 py-2.5 text-right" @click.stop>
                 <div class="inline-flex items-center gap-1">
-                  <button type="button" class="rounded-full border border-slate-200 bg-transparent p-2 text-emerald-600 transition hover:bg-emerald-50 hover:text-emerald-700" title="Ganho" @click.stop="markOpportunityOutcome(contact, 'won')">
-                    <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="currentColor"><path d="M2 10h4v12H2zM22 11c0-1.1-.9-2-2-2h-6.3l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L13 2 6.59 8.41C6.22 8.78 6 9.3 6 9.83V20c0 1.1.9 2 2 2h9c.82 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg>
+                  <button type="button" class="action-icon-btn action-muted" title="Ver oportunidade" @click.stop="openOpportunityDrawer(contact)">
+                    <svg viewBox="0 0 24 24" class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                   </button>
-                  <button type="button" class="rounded-full border border-slate-200 bg-transparent p-2 text-rose-600 transition hover:bg-rose-50 hover:text-rose-700" title="Perda" @click.stop="markOpportunityOutcome(contact, 'lost')">
-                    <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="currentColor"><path d="M22 14h-4V2h4zM2 13c0 1.1.9 2 2 2h6.3l-.95 4.57-.03.32c0 .41.17.79.44 1.06L11 22l6.41-6.41c.37-.37.59-.89.59-1.42V4c0-1.1-.9-2-2-2H7c-.82 0-1.54.5-1.84 1.22L2.14 10.27c-.09.23-.14.47-.14.73v2z"/></svg>
+                  <button type="button" class="action-icon-btn action-like" :class="getOpportunityOutcome(contact) === 'won' ? 'is-selected' : ''" title="Ganho" @click.stop="markOpportunityOutcome(contact, 'won')">
+                    <svg viewBox="0 0 24 24" class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
                   </button>
-                  <button v-if="canDeleteLeads" type="button" class="rounded-full border border-slate-200 bg-transparent p-2 text-slate-500 transition hover:bg-slate-50 hover:text-slate-900" title="Excluir" @click.stop="handleDeleteContact(contact)">
-                    <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="currentColor"><path d="M19 4h-3.5l-1-1h-5l-1 1H5v2h14M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6z"/></svg>
+                  <button type="button" class="action-icon-btn action-dislike" :class="getOpportunityOutcome(contact) === 'lost' ? 'is-selected' : ''" title="Perda" @click.stop="markOpportunityOutcome(contact, 'lost')">
+                    <svg viewBox="0 0 24 24" class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/><path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/></svg>
+                  </button>
+                  <button v-if="canDeleteLeads" type="button" class="action-icon-btn action-muted" title="Excluir" @click.stop="handleDeleteContact(contact)">
+                    <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16"/><path d="M9 4h6"/><path d="M7 7l1 13h8l1-13"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
                   </button>
                 </div>
               </td>
             </tr>
           </template>
-          <tr v-if="!groupedContactsForCrm.length"><td :colspan="visibleCrmColumnsCount + 1" class="px-4 py-10 text-center text-sm text-slate-500 dark:text-slate-300">{{ viewCopy.emptyStates.contacts.noFilters }}</td></tr>
+          <tr v-if="!groupedContactsForCrm.length"><td :colspan="visibleCrmColumnsCount + 2" class="px-4 py-10 text-center text-sm text-slate-500 dark:text-slate-300">{{ viewCopy.emptyStates.contacts.noFilters }}</td></tr>
         </tbody>
       </table>
     </div>
   </article>
+  <section v-else class="mobile-opps-list mt-1">
+    <template v-for="group in groupedContactsForCrm" :key="`m-${group.key}`">
+      <div class="mobile-group-strip" :style="{ ...groupHeaderStyle(group.key), borderRadius: '0px' }" @click="toggleGroupCollapse(group.key)">
+        <button type="button" class="opps-group-toggle-btn" :class="{ collapsed: isGroupCollapsed(group.key) }" @click.stop="toggleGroupCollapse(group.key)">
+          <svg viewBox="0 0 20 20" class="h-3.5 w-3.5" fill="currentColor" aria-hidden="true"><path d="M5.2 7.5a.75.75 0 0 1 1.06 0L10 11.24l3.74-3.74a.75.75 0 1 1 1.06 1.06l-4.27 4.27a.75.75 0 0 1-1.06 0L5.2 8.56a.75.75 0 0 1 0-1.06Z" /></svg>
+        </button>
+        <span class="mobile-group-title mobile-group-pill" :style="groupPillStyle(group.key)">{{ group.label }}</span>
+        <span class="mobile-group-meta">{{ group.contacts.length }} contatos · {{ formatOpportunityValue(group.totalValueCents) }}</span>
+      </div>
+      <article
+        v-for="contact in visibleGroupContacts(group)"
+        :key="`mc-${contact.id}`"
+        class="mobile-opps-card"
+        :class="opportunityRowClass(contact)"
+        :style="contactRowStyle(contact)"
+        @click="openOpportunityDrawer(contact)"
+      >
+        <div class="mobile-card-layout">
+          <div class="mobile-card-main">
+        <div class="mobile-card-top-row">
+          <div class="mobile-card-top">{{ formatDateDayMonthTime(contact.created_at) }}</div>
+          <div class="mobile-card-origin">{{ truncatedPageLabel(contact) }}</div>
+        </div>
+            <div class="mobile-card-name">{{ contact.name || fallbackLabels.noName }}</div>
+            <div class="mobile-card-phone" @click.stop>
+              <button
+                v-if="contact.phone"
+                type="button"
+                class="phone-link inline-flex items-center gap-1 text-[10px] font-normal text-[#8A9E8A] transition hover:text-[#718771]"
+                :title="getWhatsappTitle(contact.phone)"
+                @click.stop="openWhatsapp(contact)"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 shrink-0 text-[#25D366]" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M16.75 13.96c-.25-.13-1.47-.72-1.7-.8-.23-.08-.4-.12-.57.12-.17.25-.65.8-.8.96-.14.17-.3.19-.55.06-.25-.13-1.06-.39-2.02-1.23-.74-.66-1.25-1.47-1.4-1.72-.15-.25-.02-.38.11-.5.11-.11.25-.3.37-.45.12-.14.17-.25.25-.42.08-.17.04-.31-.02-.45-.06-.14-.57-1.37-.78-1.87-.2-.49-.41-.42-.57-.43h-.48c-.17 0-.45.06-.68.31-.23.25-.88.86-.88 2.1s.9 2.43 1.02 2.6c.12.17 1.76 2.69 4.25 3.77.59.26 1.06.42 1.42.54.6.19 1.15.16 1.58.1.48-.07 1.47-.6 1.68-1.17.21-.57.21-1.06.15-1.17-.06-.11-.23-.17-.48-.3Z" />
+                  <path d="M12.04 2C6.77 2 2.5 6.26 2.5 11.52c0 1.85.53 3.65 1.52 5.2L2.4 21.5l4.9-1.57c1.43.78 3.04 1.2 4.7 1.2h.04c5.26 0 9.53-4.26 9.53-9.52C21.57 6.26 17.3 2 12.04 2Zm0 17.42h-.03c-1.5 0-2.97-.4-4.25-1.16l-.3-.18-2.9.93.95-2.82-.2-.29a7.83 7.83 0 0 1-1.2-4.18c0-4.3 3.5-7.8 7.82-7.8 2.08 0 4.03.8 5.5 2.28a7.75 7.75 0 0 1 2.29 5.5c0 4.3-3.5 7.8-7.8 7.8Z" />
+                </svg>
+                <span>{{ contact.phone }}</span>
+              </button>
+              <span v-else class="text-[12px] text-slate-400">-</span>
+            </div>
+          </div>
+          <div class="mobile-card-actions mobile-card-actions--row" @click.stop>
+            <button type="button" class="action-icon-btn action-muted" title="Ver oportunidade" @click.stop="openOpportunityDrawer(contact)">
+              <svg viewBox="0 0 24 24" class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            </button>
+            <button type="button" class="action-icon-btn action-like" :class="getOpportunityOutcome(contact) === 'won' ? 'is-selected' : ''" title="Ganho" @click.stop="markOpportunityOutcome(contact, 'won')">
+              <svg viewBox="0 0 24 24" class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+            </button>
+            <button type="button" class="action-icon-btn action-dislike" :class="getOpportunityOutcome(contact) === 'lost' ? 'is-selected' : ''" title="Perda" @click.stop="markOpportunityOutcome(contact, 'lost')">
+              <svg viewBox="0 0 24 24" class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/><path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/></svg>
+            </button>
+            <button v-if="canDeleteLeads" type="button" class="action-icon-btn action-muted" title="Excluir" @click.stop="handleDeleteContact(contact)">
+              <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M9 4h6"/><path d="M7 7l1 13h8l1-13"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+            </button>
+          </div>
+        </div>
+      </article>
+    </template>
+    <div v-if="!groupedContactsForCrm.length" class="px-4 py-8 text-center text-sm text-slate-500">{{ viewCopy.emptyStates.contacts.noFilters }}</div>
+  </section>
+  <teleport to="body">
+    <div v-if="columnsMenuOpen" class="columns-overlay" @click="columnsMenuOpen = false"></div>
+    <aside v-if="columnsMenuOpen" class="columns-sidebar">
+      <div class="columns-sidebar-head">
+        <p class="columns-sidebar-title">Colunas visíveis</p>
+        <button type="button" class="columns-sidebar-close" @click="columnsMenuOpen = false">✕</button>
+      </div>
+      <div class="columns-sidebar-body">
+        <p class="columns-sidebar-section">Obrigatórias</p>
+        <label v-for="col in crmColumnConfig.filter(c => isMandatoryColumn(c.key))" :key="col.key" class="columns-sidebar-item">
+          <input type="checkbox" checked disabled class="h-4 w-4" />
+          <span>{{ col.label === "Cliente" ? "Nome" : col.label }}</span>
+          <span class="columns-fixed-tag">fixo</span>
+        </label>
+        <p class="columns-sidebar-section">Opcionais</p>
+        <label
+          v-for="col in draftOptionalColumns"
+          :key="col.key"
+          class="columns-sidebar-item"
+          :class="{ 'is-dragging': draggingColumnKey === col.key, 'is-drag-over': dragOverColumnKey === col.key }"
+          draggable="true"
+          @dragstart="handleColumnDragStart(col.key)"
+          @dragenter.prevent="handleColumnDragEnter(col.key)"
+          @dragover.prevent
+          @drop.prevent="handleColumnDrop(col.key)"
+          @dragend="handleColumnDragEnd"
+        >
+          <span class="columns-drag-handle" aria-hidden="true">
+            <svg viewBox="0 0 20 20" class="h-3.5 w-3.5" fill="currentColor">
+              <circle cx="6" cy="5" r="1.2" />
+              <circle cx="6" cy="10" r="1.2" />
+              <circle cx="6" cy="15" r="1.2" />
+              <circle cx="12" cy="5" r="1.2" />
+              <circle cx="12" cy="10" r="1.2" />
+              <circle cx="12" cy="15" r="1.2" />
+            </svg>
+          </span>
+          <input v-model="draftColumnVisibility[col.key]" type="checkbox" class="h-4 w-4" />
+          <span>{{ col.label === "Última interação" ? "Sem interação" : col.label }}</span>
+        </label>
+        <p class="columns-drag-tip">Arraste as colunas opcionais para reordenar.</p>
+      </div>
+      <div class="columns-sidebar-foot">
+        <button type="button" class="columns-foot-btn columns-foot-btn--ghost" @click="resetColumnsToDefault">Redefinir padrão</button>
+        <button type="button" class="columns-foot-btn columns-foot-btn--apply" @click="applyColumnsSelection">Aplicar</button>
+      </div>
+    </aside>
+  </teleport>
+  <div class="opportunity-bulk-bar" :class="{ visible: selectedOpportunityIds.length > 0 }">
+    <span class="bulk-count">{{ selectedOpportunityIds.length }} selecionadas</span>
+    <div class="bulk-spacer"></div>
+    <button type="button" class="bulk-btn bulk-won" @click="applyBulkOutcome('won')">
+      <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+      Marcar como ganhas
+    </button>
+    <button type="button" class="bulk-btn bulk-lost" @click="applyBulkOutcome('lost')">
+      <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/><path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/></svg>
+      Marcar como perdidas
+    </button>
+    <button v-if="canDeleteLeads" type="button" class="bulk-btn bulk-del" @click="deleteSelectedOpportunities">
+      <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>
+      Excluir
+    </button>
+    <div class="bulk-stage-wrap">
+      <button type="button" class="bulk-btn bulk-stage-btn" @click="bulkStageMenuOpen = !bulkStageMenuOpen">
+        <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
+        Mover para etapa
+        <svg viewBox="0 0 20 20" class="h-3.5 w-3.5 opacity-70" fill="currentColor"><path d="M5.2 7.5a.75.75 0 0 1 1.06 0L10 11.24l3.74-3.74a.75.75 0 1 1 1.06 1.06l-4.27 4.27a.75.75 0 0 1-1.06 0L5.2 8.56a.75.75 0 0 1 0-1.06Z"/></svg>
+      </button>
+      <div v-if="bulkStageMenuOpen" class="bulk-stage-menu">
+        <button type="button" class="bulk-stage-opt" @click="selectBulkStage('null')">Sem etapa</button>
+        <button v-for="status in leadStatuses" :key="status.id" type="button" class="bulk-stage-opt" @click="selectBulkStage(String(status.id))">
+          {{ status.name }}
+        </button>
+      </div>
+    </div>
+    <button type="button" class="bulk-btn bulk-cancel" @click="clearBulkSelection">
+      <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      Cancelar
+    </button>
+  </div>
 </div>
 
 <div
 
-  v-else
+  v-else-if="false"
 
 
 
@@ -843,7 +1018,7 @@
 
 
 
-                {{ contact.status_name || fallbackLabels.noStatus }}
+                {{ contact.status_name || fallbackLabels.noStage }}
 
 
 
@@ -1107,7 +1282,7 @@
             <input v-model="manualOpportunityForm.opportunityName" type="text" placeholder="Nome da oportunidade" class="w-full rounded-2xl border border-slate-200 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 md:col-span-2" />
             <input v-model="manualOpportunityForm.estimatedValue" type="text" placeholder="R$ 0,00" class="w-full rounded-2xl border border-slate-200 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20" />
             <select v-model="manualOpportunityForm.statusId" class="w-full rounded-2xl border border-slate-200 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20">
-              <option value="">Sem status</option>
+              <option value="">Sem etapa</option>
               <option v-for="status in leadStatuses" :key="status.id" :value="String(status.id)">{{ status.name }}</option>
             </select>
             <input v-model="manualOpportunityForm.expectedCloseDate" type="date" class="w-full rounded-2xl border border-slate-200 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 md:col-span-2" />
@@ -1369,7 +1544,7 @@ const viewCopySource = {
       city: { pt: "Cidade", es: "Ciudad" },
       page: { pt: "Página", es: "Página" },
       received: { pt: "Valor", es: "Valor" },
-      status: { pt: "Status", es: "Estado" },
+      status: { pt: "Etapa", es: "Etapa" },
       actions: { pt: "Ações", es: "Acciones" }
     },
     kanban: {
@@ -1377,11 +1552,8 @@ const viewCopySource = {
       allForms: { pt: "Todos os formulários", es: "Todos los formularios" }
     },
     opportunity: {
-      stateLabel: { pt: "Situação", es: "Situación" },
-      outcomeLabel: { pt: "Resultado", es: "Resultado" },
       all: { pt: "Todos", es: "Todos" },
       open: { pt: "Aberta", es: "Abierta" },
-      closed: { pt: "Fechada", es: "Cerrada" },
       won: { pt: "Ganha", es: "Ganada" },
       lost: { pt: "Perdida", es: "Perdida" }
     }
@@ -1412,8 +1584,8 @@ const viewCopySource = {
     formUpdated: { pt: "Formulário atualizado.", es: "Formulario actualizado." },
     formCreated: { pt: "Formulário criado com sucesso.", es: "Formulario creado con éxito." },
     formSaveError: { pt: "Não foi possível salvar o formulário.", es: "No se pudo guardar el formulario." },
-    statusUpdated: { pt: "Status atualizado.", es: "Estado actualizado." },
-    statusUpdateError: { pt: "Não foi possível atualizar o status.", es: "No se pudo actualizar el estado." },
+    statusUpdated: { pt: "Etapa atualizada.", es: "Etapa actualizada." },
+    statusUpdateError: { pt: "Não foi possível atualizar a etapa.", es: "No se pudo actualizar la etapa." },
     leadDeleted: { pt: "Lead excluído.", es: "Lead eliminado." },
     leadDeleteError: { pt: "Não foi possível excluir o lead.", es: "No se pudo eliminar el lead." }
   },
@@ -1442,7 +1614,7 @@ const viewCopySource = {
       noTitleDefined: { pt: "Sem título definido.", es: "Sin título definido." },
       noName: { pt: "Sem nome", es: "Sin nombre" },
       noForm: { pt: "Sem formulário", es: "Sin formulario" },
-      noStatus: { pt: "Sem status", es: "Sin estado" },
+      noStage: { pt: "Sem etapa", es: "Sin etapa" },
       noPage: { pt: "Sem página", es: "Sin página" },
       noPhone: { pt: "Sem telefone", es: "Sin teléfono" },
       noEmail: { pt: "Sem e-mail", es: "Sin e-mail" },
@@ -1556,19 +1728,28 @@ const pageTitle = computed(() => {
 
 
 const contactViewMode = ref<ContactViewMode>("list");
-const opportunityStateFilter = ref<"all" | "open" | "closed">("all");
-const opportunityOutcomeFilter = ref<"all" | "won" | "lost">("all");
+const opportunityStatusFilter = ref<"all" | "open" | "won" | "lost">("all");
 const crmSearchQuery = ref("");
 const crmPageFilter = ref("all");
-const crmIdleFilter = ref<"all" | "lt1" | "2to5" | "gt5">("all");
+const crmIdleFilter = ref<"all" | "today" | "upto7" | "8to14" | "gt15">("all");
+const opportunityStatusSelections = ref<Array<"open" | "won" | "lost">>([]);
+const crmIdleSelections = ref<Array<"today" | "upto7" | "8to14" | "gt15">>([]);
+const openToolbarFilter = ref<"stage" | "opportunityStatus" | "page" | "idle" | null>(null);
+const selectedOpportunityIds = ref<string[]>([]);
+const bulkTargetStatusId = ref<string>("");
+const bulkStageMenuOpen = ref(false);
 const activeSavedView = ref("default");
+const loadedSavedViewsKey = ref<string | null>(null);
 type CrmViewSnapshot = {
   search: string;
-  state: "all" | "open" | "closed";
-  outcome: "all" | "won" | "lost";
+  status?: "all" | "open" | "won" | "lost";
+  statusSelections?: Array<"open" | "won" | "lost">;
   page: string;
-  idle: "all" | "lt1" | "2to5" | "gt5";
+  pageSelections?: string[];
+  idle: "all" | "today" | "upto7" | "8to14" | "gt15";
+  idleSelections?: Array<"today" | "upto7" | "8to14" | "gt15">;
   columns: Record<string, boolean>;
+  columnOrder?: string[];
   filters?: {
     name: string[];
     form: string[];
@@ -1588,21 +1769,38 @@ type SavedViewChip = {
   snapshot?: CrmViewSnapshot;
 };
 const CRM_SAVED_VIEWS_STORAGE_KEY = "agencia.crm.saved_views.v1";
+const getSavedViewsStorageKey = () => {
+  const userId = authStore.user?.id || "anon";
+  return `${CRM_SAVED_VIEWS_STORAGE_KEY}.${userId}`;
+};
 const savedViewChips = ref<SavedViewChip[]>([
   { id: "default", label: "Padrão" },
-  { id: "no-status", label: "Sem status", preset: true },
+  { id: "no-status", label: "Sem etapa", preset: true },
+  { id: "open", label: "Abertas", preset: true },
   { id: "won", label: "Ganhas", preset: true },
   { id: "lost", label: "Perdidas", preset: true }
 ]);
 const columnsMenuOpen = ref(false);
-const crmColumnConfig = reactive([
+const mandatoryColumnKeys = new Set(["cliente", "acoes"]);
+const columnDefaults = [
   { key: "cliente", label: "Cliente", visible: true },
-  { key: "status", label: "Status/Etapa", visible: true },
+  { key: "telefone", label: "Telefone", visible: true },
+  { key: "status", label: "Etapa", visible: true },
   { key: "pagina", label: "Página/Formulário", visible: true },
+  { key: "chegouEm", label: "Chegou em", visible: true },
   { key: "valor", label: "Valor", visible: true },
-  { key: "ultima", label: "Última interação", visible: true },
+  { key: "ultima", label: "Sem interação", visible: true },
   { key: "acoes", label: "Ações", visible: true }
-]);
+];
+const crmColumnConfig = reactive(columnDefaults.map(col => ({ ...col })));
+const draftColumnVisibility = reactive<Record<string, boolean>>({});
+const draftColumnOrder = ref<string[]>([]);
+const draggingColumnKey = ref<string | null>(null);
+const dragOverColumnKey = ref<string | null>(null);
+const draftOptionalColumns = computed(() =>
+  draftColumnOrder.value.map(key => crmColumnConfig.find(col => col.key === key)).filter((col): col is { key: string; label: string; visible: boolean } => !!col)
+);
+const orderedOptionalColumns = computed(() => crmColumnConfig.filter(col => !mandatoryColumnKeys.has(col.key)));
 const isOpportunityDrawerOpen = ref(false);
 const selectedOpportunityId = ref<string | number | null>(null);
 
@@ -1646,6 +1844,9 @@ const currentForm = ref<LeadForm | null>(null);
 
 
 const feedback = ref<{ message: string; isError: boolean }>({ message: "", isError: false });
+const collapsedGroupKeys = ref<string[]>([]);
+const inlineValueContactId = ref<string | null>(null);
+const inlineValueInput = ref("");
 
 
 
@@ -2013,18 +2214,27 @@ const getOpportunityFormColumnLabel = (contact: LeadContact | null | undefined) 
   isManualOpportunity(contact) ? "-" : getContactFormLabel(contact);
 
 const getOpportunityOutcome = (contact: LeadContact | null | undefined): "won" | "lost" | null => {
-  const status = String(contact?.status_name || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim()
-    .toLowerCase();
-  if (!status) return null;
-  if (status === "ganho" || status === "won" || status.includes("ganh")) return "won";
-  if (status === "perdido" || status === "lost" || status.includes("perd")) return "lost";
-  return null;
+  const outcome = contact?.close_outcome;
+  return outcome === "won" || outcome === "lost" ? outcome : null;
 };
 
+const getOpportunityStatus = (contact: LeadContact | null | undefined): "open" | "won" | "lost" => getOpportunityOutcome(contact) || "open";
+
 const isOpportunityClosed = (contact: LeadContact | null | undefined) => getOpportunityOutcome(contact) !== null;
+
+const opportunityStatusLabel = (contact: LeadContact | null | undefined) => {
+  const status = getOpportunityStatus(contact);
+  if (status === "won") return viewCopy.filters.opportunity.won;
+  if (status === "lost") return viewCopy.filters.opportunity.lost;
+  return viewCopy.filters.opportunity.open;
+};
+
+const opportunityStatusChipClass = (contact: LeadContact | null | undefined) => {
+  const status = getOpportunityStatus(contact);
+  if (status === "won") return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  if (status === "lost") return "border-rose-200 bg-rose-50 text-rose-700";
+  return "border-sky-200 bg-sky-50 text-sky-700";
+};
 
 
 
@@ -2416,7 +2626,7 @@ const buildOptions = (values: (string | null | undefined)[], emptyLabel = fallba
 
 
 
-      { label: fallbackLabels.noStatus, value: "null" },
+      { label: fallbackLabels.noStage, value: "null" },
 
 
 
@@ -2473,10 +2683,8 @@ const hasActiveFilters = computed(() => {
 
 
     listFilters.status.length ||
-
-    opportunityStateFilter.value !== "all" ||
-
-    opportunityOutcomeFilter.value !== "all" ||
+    opportunityStatusSelections.value.length ||
+    crmIdleSelections.value.length ||
 
 
 
@@ -2592,16 +2800,8 @@ const matchesFilter = (contact: LeadContact) => {
 
 
 
-  if (opportunityStateFilter.value !== "all") {
-    const closed = isOpportunityClosed(contact);
-    if (opportunityStateFilter.value === "open" && closed) return false;
-    if (opportunityStateFilter.value === "closed" && !closed) return false;
-  }
-
-  if (opportunityOutcomeFilter.value !== "all") {
-    const outcome = getOpportunityOutcome(contact);
-    if (opportunityOutcomeFilter.value === "won" && outcome !== "won") return false;
-    if (opportunityOutcomeFilter.value === "lost" && outcome !== "lost") return false;
+  if (opportunityStatusFilter.value !== "all") {
+    if (getOpportunityStatus(contact) !== opportunityStatusFilter.value) return false;
   }
 
   if (listFilters.receivedFrom) {
@@ -2736,6 +2936,25 @@ const crmPageOptions = computed(() =>
   ).sort((a, b) => a.localeCompare(b))
 );
 
+const opportunityStatusOptions = [
+  { label: "Abertas", value: "open" as const },
+  { label: "Ganhas", value: "won" as const },
+  { label: "Perdidas", value: "lost" as const }
+];
+
+const idleFilterOptions = [
+  { label: "Hoje", value: "today" as const },
+  { label: "Até 7 dias", value: "upto7" as const },
+  { label: "8 a 14 dias", value: "8to14" as const },
+  { label: "+15 dias", value: "gt15" as const }
+];
+
+const stageFilterOptions = computed(() => {
+  const options = [{ label: fallbackLabels.noStage, value: "null" }];
+  leadStatuses.value.forEach(status => options.push({ label: status.name, value: String(status.id) }));
+  return options;
+});
+
 const idleDays = (contact: LeadContact) => {
   const rawDays = Number((contact as LeadContact & { sem_interacao_days?: number }).sem_interacao_days);
   if (Number.isFinite(rawDays) && rawDays >= 0) return Math.floor(rawDays);
@@ -2744,23 +2963,38 @@ const idleDays = (contact: LeadContact) => {
   return Math.floor(diff / 86400000);
 };
 
+const idleBucketForDays = (days: number): "today" | "upto7" | "8to14" | "gt15" => {
+  if (days <= 0) return "today";
+  if (days <= 7) return "upto7";
+  if (days <= 14) return "8to14";
+  return "gt15";
+};
+
 const idleChipLabel = (contact: LeadContact) => {
   const days = idleDays(contact);
-  return `${Math.max(0, days)}d`;
+  return `${Math.max(0, days)} dias`;
 };
 
 const idleChipClass = (contact: LeadContact) => {
   const days = idleDays(contact);
-  if (days <= 1) return "border-slate-200 bg-slate-50 text-slate-700";
-  if (days <= 5) return "border-amber-200 bg-amber-50 text-amber-800";
-  return "border-rose-200 bg-rose-50 text-rose-800";
+  if (days <= 7) return "border-transparent bg-[rgba(61,204,95,.10)] text-[#1A7A35]";
+  if (days <= 14) return "border-transparent bg-[rgba(245,158,11,.09)] text-[#92400E]";
+  return "border-transparent bg-[rgba(239,68,68,.09)] text-[#991B1B]";
 };
 
 const idleDotClass = (contact: LeadContact) => {
   const days = idleDays(contact);
-  if (days <= 1) return "bg-slate-500";
-  if (days <= 5) return "bg-amber-500";
-  return "bg-rose-500";
+  if (days <= 7) return "bg-[#2EAD4C]";
+  if (days <= 14) return "bg-[#F59E0B]";
+  return "bg-[#EF4444]";
+};
+
+const opportunityRowClass = (contact: LeadContact) => {
+  const outcome = getOpportunityOutcome(contact);
+  if (outcome === "won") return "is-won";
+  if (outcome === "lost") return "is-lost";
+  if (!contact.status_id) return "is-no-status";
+  return "";
 };
 
 const contactInitials = (contact: LeadContact) => {
@@ -2770,47 +3004,256 @@ const contactInitials = (contact: LeadContact) => {
   return (parts[0]?.[0] || "?").concat(parts.length > 1 ? parts[parts.length - 1][0] : "").toUpperCase();
 };
 
+const syncDraftFromColumns = () => {
+  crmColumnConfig.forEach(col => {
+    draftColumnVisibility[col.key] = !!col.visible;
+  });
+  draftColumnOrder.value = crmColumnConfig.filter(col => !mandatoryColumnKeys.has(col.key)).map(col => col.key);
+};
+
+const openColumnsSidebar = () => {
+  syncDraftFromColumns();
+  columnsMenuOpen.value = true;
+};
+
+const resetColumnsToDefault = () => {
+  columnDefaults.forEach(col => {
+    draftColumnVisibility[col.key] = mandatoryColumnKeys.has(col.key) ? true : !!col.visible;
+  });
+  draftColumnOrder.value = columnDefaults.filter(col => !mandatoryColumnKeys.has(col.key)).map(col => col.key);
+  dragOverColumnKey.value = null;
+  draggingColumnKey.value = null;
+};
+
+const reorderCrmColumns = (optionalOrder: string[]) => {
+  const keySet = new Set(optionalOrder);
+  const mergedOptionalOrder = [
+    ...optionalOrder,
+    ...crmColumnConfig.filter(col => !mandatoryColumnKeys.has(col.key) && !keySet.has(col.key)).map(col => col.key)
+  ];
+  const byKey = new Map(crmColumnConfig.map(col => [col.key, col]));
+  const next = [
+    byKey.get("cliente"),
+    ...mergedOptionalOrder.map(key => byKey.get(key)),
+    byKey.get("acoes")
+  ].filter(Boolean);
+  crmColumnConfig.splice(0, crmColumnConfig.length, ...next);
+};
+
+const applyColumnsSelection = () => {
+  reorderCrmColumns(draftColumnOrder.value);
+  crmColumnConfig.forEach(col => {
+    if (mandatoryColumnKeys.has(col.key)) {
+      col.visible = true;
+      return;
+    }
+    col.visible = !!draftColumnVisibility[col.key];
+  });
+  dragOverColumnKey.value = null;
+  draggingColumnKey.value = null;
+  columnsMenuOpen.value = false;
+};
+
+const handleColumnDragStart = (columnKey: string) => {
+  draggingColumnKey.value = columnKey;
+  dragOverColumnKey.value = columnKey;
+};
+
+const handleColumnDragEnter = (targetKey: string) => {
+  if (!draggingColumnKey.value || draggingColumnKey.value === targetKey) return;
+  dragOverColumnKey.value = targetKey;
+  const order = [...draftColumnOrder.value];
+  const from = order.indexOf(draggingColumnKey.value);
+  const to = order.indexOf(targetKey);
+  if (from < 0 || to < 0) return;
+  order.splice(from, 1);
+  order.splice(to, 0, draggingColumnKey.value);
+  draftColumnOrder.value = order;
+};
+
+const handleColumnDrop = (targetKey: string) => {
+  handleColumnDragEnter(targetKey);
+  dragOverColumnKey.value = null;
+};
+
+const handleColumnDragEnd = () => {
+  draggingColumnKey.value = null;
+  dragOverColumnKey.value = null;
+};
+
+const isMandatoryColumn = (key: string) => mandatoryColumnKeys.has(key);
+
 const isColumnVisible = (key: string) => crmColumnConfig.find(col => col.key === key)?.visible ?? true;
 const visibleCrmColumnsCount = computed(() => crmColumnConfig.filter(col => col.visible).length || 1);
 const truncatedPageLabel = (contact: LeadContact) => {
-  const raw = isManualOpportunity(contact) ? "Criado manual" : contact.page_title || contact.form_name || viewCopy.labels.dash;
+  const raw = isManualOpportunity(contact) ? "Criada manualmente" : contact.page_title || contact.form_name || viewCopy.labels.dash;
   const text = String(raw || viewCopy.labels.dash).trim();
   if (text.length <= 25) return text;
   return `${text.slice(0, 25)}...`;
 };
+
+const truncatedContactName = (name?: string | null) => {
+  const text = String(name || fallbackLabels.noName).trim();
+  if (text.length <= 25) return text;
+  return `${text.slice(0, 25)}...`;
+};
 const groupHeaderStyle = (groupKey: string) => {
-  if (groupKey === "null") return {};
+  if (groupKey === "null") {
+    return {
+      backgroundColor: "transparent",
+      color: "#334155",
+      borderLeft: "4px solid #cbd5e1",
+      borderRadius: "8px",
+      height: "28px"
+    };
+  }
   const color = statusColorMap.value[groupKey];
   if (!color) return {};
   return {
-    backgroundColor: `color-mix(in srgb, ${color} 10%, white)`,
-    borderColor: `color-mix(in srgb, ${color} 22%, white)`,
-    color,
-    borderLeft: `3px solid ${color}`,
+    backgroundColor: "transparent",
+    color: "#334155",
+    borderLeft: `4px solid ${color}`,
     borderRadius: "8px",
     height: "28px"
   };
 };
 
 const contactRowStyle = (contact: LeadContact): CSSProperties => ({
-  borderLeft: `3px solid ${getStatusColorForContact(contact) || "#e2e8f0"}`
+  borderLeft: "none"
 });
+
+const groupPillStyle = (groupKey: string): CSSProperties => {
+  if (groupKey === "null") return { backgroundColor: "#f8fafc", borderColor: "#e2e8f0", color: "#475569" };
+  const color = statusColorMap.value[groupKey];
+  if (!color) return { backgroundColor: "#f8fafc", borderColor: "#e2e8f0", color: "#475569" };
+  return {
+    backgroundColor: `color-mix(in srgb, ${color} 10%, white)`,
+    borderColor: `color-mix(in srgb, ${color} 30%, white)`,
+    color
+  };
+};
+
+const toggleToolbarFilter = (key: "stage" | "opportunityStatus" | "page" | "idle") => {
+  openToolbarFilter.value = openToolbarFilter.value === key ? null : key;
+};
+
+const toggleValueInArray = <T extends string>(list: T[], value: T) => (list.includes(value) ? list.filter(v => v !== value) : [...list, value]);
+
+const toggleStageFilterOption = (value: string) => {
+  listFilters.status = toggleValueInArray(listFilters.status, value);
+};
+
+const togglePageFilterOption = (value: string) => {
+  listFilters.page = toggleValueInArray(listFilters.page, value);
+};
+
+const toggleOpportunityStatusSelection = (value: "open" | "won" | "lost") => {
+  opportunityStatusSelections.value = toggleValueInArray(opportunityStatusSelections.value, value);
+  opportunityStatusFilter.value = opportunityStatusSelections.value.length === 1 ? opportunityStatusSelections.value[0] : "all";
+};
+
+const toggleIdleFilterSelection = (value: "today" | "upto7" | "8to14" | "gt15") => {
+  crmIdleSelections.value = toggleValueInArray(crmIdleSelections.value, value);
+  crmIdleFilter.value = crmIdleSelections.value.length === 1 ? crmIdleSelections.value[0] : "all";
+};
+
+const selectAllStageFilters = () => {
+  listFilters.status = stageFilterOptions.value.map(option => option.value);
+};
+
+const clearStageFilters = () => {
+  listFilters.status = [];
+};
+
+const selectAllStatusFilters = () => {
+  opportunityStatusSelections.value = opportunityStatusOptions.map(option => option.value);
+  opportunityStatusFilter.value = "all";
+};
+
+const clearStatusFilters = () => {
+  opportunityStatusSelections.value = [];
+  opportunityStatusFilter.value = "all";
+};
+
+const selectAllPageFilters = () => {
+  listFilters.page = [...crmPageOptions.value];
+};
+
+const clearPageFilters = () => {
+  listFilters.page = [];
+};
+
+const selectAllIdleFilters = () => {
+  crmIdleSelections.value = idleFilterOptions.map(option => option.value);
+  crmIdleFilter.value = "all";
+};
+
+const clearIdleFilters = () => {
+  crmIdleSelections.value = [];
+  crmIdleFilter.value = "all";
+};
+
+const isGroupCollapsed = (groupKey: string) => collapsedGroupKeys.value.includes(groupKey);
+
+const visibleGroupContacts = (group: { key: string; contacts: LeadContact[] }) =>
+  isGroupCollapsed(group.key) ? [] : group.contacts;
+
+const toggleGroupCollapse = (groupKey: string) => {
+  collapsedGroupKeys.value = collapsedGroupKeys.value.includes(groupKey)
+    ? collapsedGroupKeys.value.filter(key => key !== groupKey)
+    : [...collapsedGroupKeys.value, groupKey];
+};
+
+const visibleOpportunityIds = computed(() =>
+  groupedContactsForCrm.value.flatMap(group => visibleGroupContacts(group).map(contact => idKey(contact.id)))
+);
+
+const areAllVisibleOpportunitiesSelected = computed(() => {
+  const visible = visibleOpportunityIds.value;
+  if (!visible.length) return false;
+  return visible.every(id => selectedOpportunityIds.value.includes(id));
+});
+
+const isOpportunitySelected = (contact: LeadContact) => selectedOpportunityIds.value.includes(idKey(contact.id));
+
+const toggleOpportunitySelection = (contact: LeadContact) => {
+  const key = idKey(contact.id);
+  selectedOpportunityIds.value = selectedOpportunityIds.value.includes(key)
+    ? selectedOpportunityIds.value.filter(id => id !== key)
+    : [...selectedOpportunityIds.value, key];
+};
+
+const toggleAllVisibleOpportunities = () => {
+  if (areAllVisibleOpportunitiesSelected.value) {
+    const visibleSet = new Set(visibleOpportunityIds.value);
+    selectedOpportunityIds.value = selectedOpportunityIds.value.filter(id => !visibleSet.has(id));
+    return;
+  }
+  const merged = new Set([...selectedOpportunityIds.value, ...visibleOpportunityIds.value]);
+  selectedOpportunityIds.value = Array.from(merged);
+};
 
 const groupedContactsForCrm = computed(() => {
   const search = crmSearchQuery.value.trim().toLowerCase();
   const byView = filteredContacts.value.filter(contact => {
     if (activeSavedView.value === "no-status" && contact.status_id) return false;
+    if (activeSavedView.value === "open" && getOpportunityStatus(contact) !== "open") return false;
     if (activeSavedView.value === "won" && getOpportunityOutcome(contact) !== "won") return false;
     if (activeSavedView.value === "lost" && getOpportunityOutcome(contact) !== "lost") return false;
     if (search) {
       const hay = `${contact.name || ""} ${contact.email || ""} ${contact.phone || ""}`.toLowerCase();
       if (!hay.includes(search)) return false;
     }
-    if (crmPageFilter.value !== "all" && (contact.page_title || contact.form_name || "") !== crmPageFilter.value) return false;
+    if (listFilters.page.length && !listFilters.page.includes((contact.page_title || contact.form_name || "").trim())) return false;
     const days = idleDays(contact);
-    if (crmIdleFilter.value === "lt1" && days > 1) return false;
-    if (crmIdleFilter.value === "2to5" && (days < 2 || days > 5)) return false;
-    if (crmIdleFilter.value === "gt5" && days <= 5) return false;
+    if (crmIdleSelections.value.length) {
+      const idleBucket = idleBucketForDays(days);
+      if (!crmIdleSelections.value.includes(idleBucket)) return false;
+    }
+    if (opportunityStatusSelections.value.length) {
+      const status = getOpportunityStatus(contact);
+      if (!opportunityStatusSelections.value.includes(status)) return false;
+    }
     return true;
   });
 
@@ -2833,6 +3276,13 @@ const groupedContactsForCrm = computed(() => {
 
 const markOpportunityOutcome = async (contact: LeadContact, outcome: "won" | "lost") => {
   try {
+    const currentOutcome = getOpportunityOutcome(contact);
+    if (currentOutcome === outcome) {
+      await leadStore.updateOpportunity(contact.id, { closeOutcome: null });
+      await leadStore.fetchContacts(undefined, true);
+      showFeedback("Status da oportunidade removido.");
+      return;
+    }
     await leadStore.finalizeOpportunity(contact.id, { outcome });
     await leadStore.fetchContacts(undefined, true);
     showFeedback(outcome === "won" ? "Oportunidade marcada como ganha." : "Oportunidade marcada como perdida.");
@@ -2840,6 +3290,64 @@ const markOpportunityOutcome = async (contact: LeadContact, outcome: "won" | "lo
     console.error(err);
     showFeedback("Não foi possível atualizar o resultado.", true);
   }
+};
+
+const applyBulkOutcome = async (outcome: "won" | "lost") => {
+  if (!selectedOpportunityIds.value.length) return;
+  try {
+    await Promise.all(selectedOpportunityIds.value.map(id => leadStore.finalizeOpportunity(id, { outcome })));
+    await leadStore.fetchContacts(undefined, true);
+    selectedOpportunityIds.value = [];
+    showFeedback(outcome === "won" ? "Oportunidades marcadas como ganhas." : "Oportunidades marcadas como perdidas.");
+  } catch (err) {
+    console.error(err);
+    showFeedback("Não foi possível atualizar as oportunidades selecionadas.", true);
+  }
+};
+
+const deleteSelectedOpportunities = async () => {
+  if (!selectedOpportunityIds.value.length) return;
+  if (!window.confirm(`Excluir ${selectedOpportunityIds.value.length} oportunidade(s)?`)) return;
+  try {
+    await Promise.all(selectedOpportunityIds.value.map(id => leadStore.deleteContact(id)));
+    await leadStore.fetchContacts(undefined, true);
+    selectedOpportunityIds.value = [];
+    showFeedback("Oportunidades excluídas.");
+  } catch (err) {
+    console.error(err);
+    showFeedback("Não foi possível excluir as oportunidades selecionadas.", true);
+  }
+};
+
+const applyBulkMoveStage = async () => {
+  if (!selectedOpportunityIds.value.length) return;
+  if (!bulkTargetStatusId.value) {
+    showFeedback("Selecione uma etapa para mover.", true);
+    return;
+  }
+  const targetStatus = bulkTargetStatusId.value === "null" ? null : bulkTargetStatusId.value;
+  try {
+    await Promise.all(selectedOpportunityIds.value.map(id => leadStore.setContactStatus(id, targetStatus)));
+    await leadStore.fetchContacts(undefined, true);
+    selectedOpportunityIds.value = [];
+    bulkTargetStatusId.value = "";
+    showFeedback("Oportunidades movidas de etapa.");
+  } catch (err) {
+    console.error(err);
+    showFeedback("Não foi possível mover as oportunidades selecionadas.", true);
+  }
+};
+
+const selectBulkStage = async (statusId: string) => {
+  bulkTargetStatusId.value = statusId;
+  bulkStageMenuOpen.value = false;
+  await applyBulkMoveStage();
+};
+
+const clearBulkSelection = () => {
+  selectedOpportunityIds.value = [];
+  bulkTargetStatusId.value = "";
+  bulkStageMenuOpen.value = false;
 };
 
 
@@ -2880,7 +3388,7 @@ const kanbanColumns = computed(() => {
 
 
 
-    { id: "null", name: fallbackLabels.noStatus },
+    { id: "null", name: fallbackLabels.noStage },
 
     ...sortedStatuses.map(status => ({ id: String(status.id), name: status.name }))
 
@@ -3142,6 +3650,60 @@ const currencyInputToCents = (value: string) => {
   const digits = value.replace(/\D/g, "");
   if (!digits) return null;
   return Number(digits);
+};
+
+const reaisInputToCents = (value: string) => {
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+  const normalized = raw.replace(/\s+/g, "").replace(/^R\$\s?/i, "");
+  if (!normalized) return null;
+
+  // pt-BR: "." thousands, "," decimals. If separator is present, parse decimal.
+  if (normalized.includes(",") || normalized.includes(".")) {
+    const canonical = normalized.replace(/\./g, "").replace(",", ".");
+    const amount = Number(canonical);
+    if (!Number.isFinite(amount) || amount <= 0) return null;
+    return Math.round(amount * 100);
+  }
+
+  // No separator: treat as reais directly.
+  const reais = Number(normalized.replace(/\D/g, ""));
+  if (!Number.isFinite(reais) || reais <= 0) return null;
+  return Math.round(reais * 100);
+};
+
+const beginInlineValueEdit = (contact: LeadContact) => {
+  inlineValueContactId.value = idKey(contact.id);
+  inlineValueInput.value = "";
+};
+
+const saveInlineValue = async (contact: LeadContact) => {
+  const cents = reaisInputToCents(inlineValueInput.value);
+  if (!cents || cents <= 0) {
+    inlineValueContactId.value = null;
+    inlineValueInput.value = "";
+    return;
+  }
+  try {
+    await leadStore.updateOpportunity(contact.id, { estimatedValueCents: cents });
+    showFeedback("Valor atualizado.");
+  } catch (err) {
+    console.error(err);
+    showFeedback("Não foi possível atualizar o valor.", true);
+  } finally {
+    inlineValueContactId.value = null;
+    inlineValueInput.value = "";
+  }
+};
+
+const openContactOrigin = (contact: LeadContact) => {
+  if (isManualOpportunity(contact)) return;
+  const pageId = contact.page_id;
+  if (pageId !== null && typeof pageId !== "undefined" && String(pageId).trim() !== "") {
+    void router.push(`/admin/pages/${pageId}/edit`);
+    return;
+  }
+  void router.push("/admin/pages");
 };
 
 const handleCreateManualOpportunity = async () => {
@@ -4190,9 +4752,16 @@ const handleGlobalClick = (event: MouseEvent) => {
 
 
   if (target.closest(".status-chip-container")) return;
-  if (target.closest(".crm-toolbar")) return;
+  if (target.closest(".columns-sidebar")) return;
+  if (target.closest(".bulk-stage-wrap")) return;
+  if (target.closest(".crm-toolbar")) {
+    bulkStageMenuOpen.value = false;
+    return;
+  }
   closeStatusDropdown();
   columnsMenuOpen.value = false;
+  openToolbarFilter.value = null;
+  bulkStageMenuOpen.value = false;
 
 
 
@@ -4211,6 +4780,8 @@ const handleGlobalKeydown = (event: KeyboardEvent) => {
   if (event.key === "Escape") {
     closeStatusDropdown();
     columnsMenuOpen.value = false;
+    openToolbarFilter.value = null;
+    bulkStageMenuOpen.value = false;
   }
 
 
@@ -4631,12 +5202,14 @@ const clearAllFilters = () => {
 
 
 
-  opportunityStateFilter.value = "all";
-  opportunityOutcomeFilter.value = "all";
+  opportunityStatusFilter.value = "all";
+  opportunityStatusSelections.value = [];
   crmSearchQuery.value = "";
   crmPageFilter.value = "all";
   crmIdleFilter.value = "all";
+  crmIdleSelections.value = [];
   activeSavedView.value = "default";
+  selectedOpportunityIds.value = [];
   listFilters.receivedFrom = "";
 
 
@@ -4646,6 +5219,7 @@ const clearAllFilters = () => {
 
 
   closeFilterPopover();
+  openToolbarFilter.value = null;
 
 
 
@@ -4653,11 +5227,14 @@ const clearAllFilters = () => {
 
 const captureCurrentViewSnapshot = (): CrmViewSnapshot => ({
   search: crmSearchQuery.value,
-  state: opportunityStateFilter.value,
-  outcome: opportunityOutcomeFilter.value,
+  status: opportunityStatusFilter.value,
+  statusSelections: [...opportunityStatusSelections.value],
   page: crmPageFilter.value,
+  pageSelections: [...listFilters.page],
   idle: crmIdleFilter.value,
+  idleSelections: [...crmIdleSelections.value],
   columns: Object.fromEntries(crmColumnConfig.map(col => [col.key, !!col.visible])),
+  columnOrder: crmColumnConfig.filter(col => !mandatoryColumnKeys.has(col.key)).map(col => col.key),
   filters: {
     name: [...listFilters.name],
     form: [...listFilters.form],
@@ -4679,24 +5256,51 @@ const resetViewFilterState = () => {
   listFilters.city = [];
   listFilters.page = [];
   listFilters.status = [];
-  opportunityStateFilter.value = "all";
-  opportunityOutcomeFilter.value = "all";
+  opportunityStatusFilter.value = "all";
+  opportunityStatusSelections.value = [];
   crmSearchQuery.value = "";
   crmPageFilter.value = "all";
   crmIdleFilter.value = "all";
+  crmIdleSelections.value = [];
   listFilters.receivedFrom = "";
   listFilters.receivedTo = "";
   closeFilterPopover();
+  openToolbarFilter.value = null;
+};
+
+const formatDateOnly = (value?: string) => {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short" }).format(date);
+};
+
+const formatDateDayMonthTime = (value?: string) => {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  const formatted = new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(date);
+  return formatted.replace(", ", "   ");
 };
 
 const applyViewSnapshot = (snapshot?: CrmViewSnapshot) => {
   resetViewFilterState();
   if (!snapshot) return;
+  if (snapshot.columnOrder?.length) {
+    reorderCrmColumns(snapshot.columnOrder);
+  }
   crmSearchQuery.value = snapshot.search ?? "";
-  opportunityStateFilter.value = snapshot.state ?? "all";
-  opportunityOutcomeFilter.value = snapshot.outcome ?? "all";
+  opportunityStatusFilter.value = snapshot.status ?? "all";
+  opportunityStatusSelections.value = [...(snapshot.statusSelections || (snapshot.status && snapshot.status !== "all" ? [snapshot.status] : []))];
   crmPageFilter.value = snapshot.page ?? "all";
+  listFilters.page = [...(snapshot.pageSelections || (snapshot.page && snapshot.page !== "all" ? [snapshot.page] : []))];
   crmIdleFilter.value = snapshot.idle ?? "all";
+  crmIdleSelections.value = [...(snapshot.idleSelections || (snapshot.idle && snapshot.idle !== "all" ? [snapshot.idle] : []))];
   crmColumnConfig.forEach(col => {
     if (snapshot.columns && Object.prototype.hasOwnProperty.call(snapshot.columns, col.key)) {
       col.visible = !!snapshot.columns[col.key];
@@ -4708,37 +5312,89 @@ const applyViewSnapshot = (snapshot?: CrmViewSnapshot) => {
     listFilters.phone = [...(snapshot.filters.phone || [])];
     listFilters.email = [...(snapshot.filters.email || [])];
     listFilters.city = [...(snapshot.filters.city || [])];
-    listFilters.page = [...(snapshot.filters.page || [])];
+    if (!snapshot.pageSelections?.length) listFilters.page = [...(snapshot.filters.page || [])];
     listFilters.status = [...(snapshot.filters.status || [])];
     listFilters.receivedFrom = snapshot.filters.receivedFrom || "";
     listFilters.receivedTo = snapshot.filters.receivedTo || "";
   }
 };
 
-const persistSavedViews = () => {
+type RemoteCrmViewPreferences = {
+  defaultSnapshot?: CrmViewSnapshot | null;
+  customViews?: SavedViewChip[];
+};
+
+const hydrateSavedViews = (payload?: RemoteCrmViewPreferences | null) => {
+  const parsedCustom = payload?.customViews || [];
+  const defaultSnapshot = payload?.defaultSnapshot || undefined;
+  const customViews = Array.isArray(parsedCustom)
+    ? parsedCustom.filter(view => view && typeof view.id === "string" && typeof view.label === "string")
+    : [];
+  savedViewChips.value = [
+    { id: "default", label: "Padrão", snapshot: defaultSnapshot || undefined },
+    { id: "no-status", label: "Sem etapa", preset: true },
+    { id: "open", label: "Abertas", preset: true },
+    { id: "won", label: "Ganhas", preset: true },
+    { id: "lost", label: "Perdidas", preset: true },
+    ...customViews
+  ];
+  activeSavedView.value = "default";
+  if (defaultSnapshot) applyViewSnapshot(defaultSnapshot);
+};
+
+const buildSavedViewsPayload = (): RemoteCrmViewPreferences => {
+  const customViews = savedViewChips.value.filter(view => !view.preset && view.id !== "default");
+  const defaultSnapshot = savedViewChips.value.find(view => view.id === "default")?.snapshot || null;
+  return { customViews, defaultSnapshot };
+};
+
+const syncSavedViewsToServer = async () => {
   try {
-    const customViews = savedViewChips.value.filter(view => !view.preset && view.id !== "default");
-    localStorage.setItem(CRM_SAVED_VIEWS_STORAGE_KEY, JSON.stringify(customViews));
+    await api.put("/auth/me/crm-view-preferences", buildSavedViewsPayload());
   } catch (err) {
     console.error(err);
   }
 };
 
-const loadSavedViews = () => {
+const persistSavedViews = () => {
   try {
-    const raw = localStorage.getItem(CRM_SAVED_VIEWS_STORAGE_KEY);
+    localStorage.setItem(getSavedViewsStorageKey(), JSON.stringify(buildSavedViewsPayload()));
+  } catch (err) {
+    console.error(err);
+  }
+  void syncSavedViewsToServer();
+};
+
+const loadSavedViews = async () => {
+  try {
+    const { data } = await api.get<RemoteCrmViewPreferences>("/auth/me/crm-view-preferences");
+    if (data && (data.defaultSnapshot || (Array.isArray(data.customViews) && data.customViews.length))) {
+      hydrateSavedViews(data);
+      try {
+        loadedSavedViewsKey.value = getSavedViewsStorageKey();
+        localStorage.setItem(getSavedViewsStorageKey(), JSON.stringify(data));
+      } catch (err) {
+        console.error(err);
+      }
+      return;
+    }
+  } catch (err) {
+    console.error(err);
+  }
+
+  try {
+    const storageKey = getSavedViewsStorageKey();
+    loadedSavedViewsKey.value = storageKey;
+    const raw = localStorage.getItem(storageKey);
     if (!raw) return;
-    const parsed = JSON.parse(raw) as SavedViewChip[];
-    const customViews = Array.isArray(parsed)
-      ? parsed.filter(view => view && typeof view.id === "string" && typeof view.label === "string")
-      : [];
-    savedViewChips.value = [
-      { id: "default", label: "Padrão" },
-      { id: "no-status", label: "Sem status", preset: true },
-      { id: "won", label: "Ganhas", preset: true },
-      { id: "lost", label: "Perdidas", preset: true },
-      ...customViews
-    ];
+    const parsed = JSON.parse(raw) as { customViews?: SavedViewChip[]; defaultSnapshot?: CrmViewSnapshot } | SavedViewChip[];
+    if (Array.isArray(parsed)) {
+      const customViews = parsed.filter(view => view && typeof view.id === "string" && typeof view.label === "string");
+      hydrateSavedViews({ customViews, defaultSnapshot: null });
+    } else {
+      hydrateSavedViews({ customViews: parsed.customViews || [], defaultSnapshot: parsed.defaultSnapshot || null });
+    }
+    await syncSavedViewsToServer();
   } catch (err) {
     console.error(err);
   }
@@ -4773,16 +5429,12 @@ const createSavedView = () => {
 };
 
 const saveCurrentView = () => {
-  const currentId = activeSavedView.value;
-  if (!currentId || currentId === "default" || currentId === "no-status" || currentId === "won" || currentId === "lost") {
-    showFeedback("Selecione uma view personalizada ou crie uma nova para salvar.");
-    return;
-  }
-  const target = savedViewChips.value.find(view => view.id === currentId);
-  if (!target) return;
-  target.snapshot = captureCurrentViewSnapshot();
+  const snapshot = captureCurrentViewSnapshot();
+  const defaultView = savedViewChips.value.find(view => view.id === "default");
+  if (defaultView) defaultView.snapshot = snapshot;
   persistSavedViews();
-  showFeedback("Visualização salva.");
+  activeSavedView.value = "default";
+  showFeedback("Visualização padrão atualizada.");
 };
 
 
@@ -4905,8 +5557,6 @@ const goToPlans = () => {
 
 
 onMounted(async () => {
-
-  loadSavedViews();
   document.addEventListener("click", handleGlobalClick);
 
 
@@ -4924,6 +5574,10 @@ onMounted(async () => {
 
 
   await bootstrapLeads();
+  const expectedStorageKey = getSavedViewsStorageKey();
+  if (loadedSavedViewsKey.value !== expectedStorageKey) {
+    await loadSavedViews();
+  }
   syncActiveTabFromRoute();
   syncOpportunityQuery();
   nextTick(() => {
@@ -5035,6 +5689,11 @@ watch(
   },
   { immediate: true }
 );
+
+watch(visibleOpportunityIds, ids => {
+  const allowed = new Set(ids);
+  selectedOpportunityIds.value = selectedOpportunityIds.value.filter(id => allowed.has(id));
+});
 </script>
 
 
@@ -5468,6 +6127,720 @@ watch(
   justify-self: end;
 }
 
+.opportunities-filter-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.opportunities-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.opportunities-filter-row--primary {
+  flex-wrap: wrap;
+}
+
+.opportunities-filter-row--search .toolbar-search {
+  width: 100%;
+  min-width: 0;
+}
+
+.mobile-create-btn {
+  display: none;
+}
+
+.toolbar-ms {
+  position: relative;
+}
+
+.toolbar-ms-btn {
+  height: 34px;
+  border: 1px solid #e4e9e4;
+  background: #fff;
+  color: #4a5e4a;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 0 11px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.toolbar-ms-btn.open,
+.toolbar-ms-btn:hover {
+  border-color: #cdd8cd;
+}
+
+.toolbar-ms-count {
+  background: #3dcc5f;
+  color: #0f1f14;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+}
+
+.toolbar-ms-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 200px;
+  background: #fff;
+  border: 1px solid #e4e9e4;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  z-index: 80;
+  padding: 6px;
+}
+
+.toolbar-ms-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 6px 4px;
+  border-top: 1px solid #edf1ed;
+  margin-top: 4px;
+}
+
+.toolbar-ms-actions button {
+  border: none;
+  background: transparent;
+  color: #6f846f;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 2px 0;
+}
+
+.toolbar-ms-subtitle {
+  margin: 6px 8px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #8aa08a;
+}
+
+.toolbar-ms-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  font-size: 12px;
+  color: #4a5e4a;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.toolbar-ms-option:hover {
+  background: #f5f7f5;
+}
+
+.toolbar-ms-option input {
+  width: 14px;
+  height: 14px;
+  accent-color: #3dcc5f;
+}
+
+.toolbar-search {
+  border: 1px solid #e4e9e4;
+  border-radius: 9px;
+  background: #fff;
+  height: 34px;
+  min-width: 220px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  gap: 6px;
+}
+
+.toolbar-search-icon {
+  width: 14px;
+  height: 14px;
+  color: #9aa89a;
+  flex-shrink: 0;
+}
+
+.toolbar-search input {
+  border: none;
+  outline: none;
+  width: 100%;
+  font-size: 14px;
+  color: #111a14;
+  background: transparent;
+}
+
+.phone-link:hover,
+.origin-link:hover {
+  text-decoration: underline;
+  text-decoration-color: currentColor;
+  text-underline-offset: 2px;
+}
+
+.toolbar-spacer {
+  flex: 1;
+}
+
+.toolbar-right-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.opportunities-filter-row--secondary {
+  justify-content: space-between;
+}
+
+.toolbar-ghost-btn {
+  height: 34px;
+  border: 1px solid #e4e9e4;
+  background: #fff;
+  color: #1f3a27;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.toolbar-ghost-btn--square {
+  border-radius: 10px;
+}
+
+.toolbar-ghost-btn:hover {
+  border-color: #cdd8cd;
+}
+
+.columns-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.2);
+  z-index: 210;
+}
+
+.columns-sidebar {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 300px;
+  max-width: 90vw;
+  height: 100vh;
+  background: #f3f5f3;
+  border-left: 1px solid #e4e9e4;
+  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.12);
+  z-index: 211;
+  display: flex;
+  flex-direction: column;
+}
+
+.columns-sidebar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid #d7ddd7;
+  background: #f3f5f3;
+}
+
+.columns-sidebar-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: #111a14;
+}
+
+.columns-sidebar-close {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid #e4e9e4;
+  background: #e9efea;
+  color: #4a5e4a;
+  cursor: pointer;
+}
+
+.columns-sidebar-body {
+  padding: 10px 14px;
+  overflow-y: auto;
+}
+
+.columns-sidebar-section {
+  margin: 12px 4px 8px;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 800;
+  color: #8a9e8a;
+}
+
+.columns-sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 6px;
+  border-radius: 8px;
+  color: #586b58;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: grab;
+  user-select: none;
+}
+
+.columns-sidebar-item:hover {
+  background: #ebf0eb;
+}
+
+.columns-drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #90a18f;
+  margin-right: 2px;
+  flex-shrink: 0;
+}
+
+.columns-sidebar-item.is-dragging {
+  opacity: 0.65;
+}
+
+.columns-sidebar-item.is-drag-over {
+  background: #dff3e4;
+  outline: 1px solid #87d29b;
+}
+
+.columns-sidebar-item input {
+  accent-color: #3dcc5f;
+}
+
+.columns-sidebar-item input:disabled {
+  accent-color: #bfc9bf;
+}
+
+.columns-drag-tip {
+  margin: 10px 6px 0;
+  color: #7f937f;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.columns-fixed-tag {
+  margin-left: auto;
+  font-size: 12px;
+  color: #8a9e8a;
+  font-weight: 700;
+}
+
+.columns-sidebar-foot {
+  padding: 12px 14px 14px;
+  border-top: 1px solid #d7ddd7;
+  background: #f3f5f3;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.columns-foot-btn {
+  height: 40px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid #d3dbd3;
+}
+
+.columns-foot-btn--ghost {
+  background: #f3f5f3;
+  color: #1f3a27;
+}
+
+.columns-foot-btn--apply {
+  background: #43c45b;
+  color: #0f1f14;
+  border-color: #43c45b;
+}
+
+.opps-table-shell {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.opps-table thead tr {
+  background: #f5f7f5;
+  border-bottom: 1.5px solid #e4e9e4;
+}
+
+.opps-table thead th {
+  color: #8a9e8a;
+}
+
+.opps-group-row td {
+  border-top: 1.5px solid #e4e9e4;
+  background: #fff;
+}
+
+.opps-group-meta {
+  color: #8a9e8a;
+}
+
+.opps-group-toggle-btn {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 8px;
+  border: 1px solid transparent !important;
+  border-radius: 8px;
+  background-color: transparent !important;
+  color: #7b8794;
+  vertical-align: middle;
+  box-shadow: none;
+}
+
+.opps-group-toggle-btn:hover {
+  background-color: transparent !important;
+}
+
+.opps-group-toggle-btn.collapsed svg {
+  transform: rotate(-90deg);
+}
+
+.opps-data-row {
+  border-bottom: 1px solid #e4e9e4;
+  background: #fafbfa;
+  color: #111a14;
+}
+
+.opps-data-row:hover {
+  background: #eef3ee;
+}
+
+.opps-data-row.is-won {
+  background: rgba(61, 204, 95, 0.08);
+}
+
+.opps-data-row.is-won:hover {
+  background: rgba(61, 204, 95, 0.12);
+}
+
+.opps-data-row.is-lost {
+  background: rgba(239, 68, 68, 0.07);
+}
+
+.opps-data-row.is-lost:hover {
+  background: rgba(239, 68, 68, 0.11);
+}
+
+.opps-data-row.is-no-status {
+  border-left: 4px solid #cbd5e1;
+}
+
+.mobile-opps-list {
+  border: 1px solid #e4e9e4;
+  border-radius: 0;
+  overflow: hidden;
+}
+
+.mobile-group-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  min-height: 34px;
+  background: #f8faf8;
+  border-top: 1px solid #e4e9e4;
+  border-bottom: 1px solid #e4e9e4;
+}
+
+.mobile-group-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #516651;
+}
+
+.mobile-group-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  padding: 3px 9px;
+}
+
+.mobile-group-meta {
+  font-size: 11px;
+  color: #8a9e8a;
+  margin-left: auto;
+}
+
+.mobile-opps-card {
+  border-bottom: 1px solid #e4e9e4;
+  border-radius: 0;
+  padding: 3px 10px 0;
+  background: #fff;
+}
+
+.mobile-opps-card.is-won {
+  background: rgba(61, 204, 95, 0.08);
+}
+
+.mobile-opps-card.is-lost {
+  background: rgba(239, 68, 68, 0.07);
+}
+
+.mobile-card-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.mobile-card-top {
+  min-width: 58px;
+  font-size: 10px;
+  color: #8a9e8a;
+  line-height: 1.1;
+}
+
+.mobile-card-origin {
+  flex: 1;
+  min-width: 0;
+  font-size: 10px;
+  color: #8a9e8a;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mobile-card-name {
+  margin-top: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f1f14;
+  line-height: 1.1;
+}
+
+.mobile-card-header {
+  margin-top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.mobile-card-phone {
+  margin-top: 0;
+  margin-bottom: 0;
+  font-size: 10px;
+}
+
+.mobile-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 1px;
+}
+
+.mobile-card-layout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.mobile-card-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.mobile-card-actions--row {
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  gap: 6px;
+}
+
+.opportunity-bulk-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  transform: translateY(100%);
+  transition: transform 0.2s ease;
+  z-index: 120;
+  background: linear-gradient(180deg, #041a13 0%, #081e16 100%);
+  color: #fff;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.opportunity-bulk-bar.visible {
+  transform: translateY(0);
+}
+
+.bulk-count {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.bulk-spacer {
+  flex: 1;
+}
+
+.bulk-btn {
+  cursor: pointer;
+  border: none;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 9px 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  white-space: nowrap;
+}
+
+.bulk-btn svg {
+  flex-shrink: 0;
+}
+
+.bulk-stage-btn svg:last-child {
+  margin-left: 2px;
+}
+
+.bulk-won {
+  background: #3dcc5f;
+  color: #0f1f14;
+}
+
+.bulk-lost,
+.bulk-del {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ff5b5b;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+.action-icon-btn {
+  width: 24px;
+  height: 24px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: #64748b;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color .15s ease, background-color .15s ease;
+}
+
+.action-icon-btn:hover {
+  color: #334155;
+}
+
+.action-muted {
+  color: #9aa8b8;
+}
+
+.action-muted:hover {
+  color: #6b7f95;
+}
+
+.action-like {
+  color: #7fb79b;
+}
+
+.action-like.is-selected {
+  background: #dcfce7;
+  border-color: transparent;
+  color: #0f9f5c;
+}
+
+.action-dislike {
+  color: #d39ca8;
+}
+
+.action-dislike.is-selected {
+  background: #ffe4e6;
+  border-color: transparent;
+  color: #e11d48;
+}
+
+.bulk-stage-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bulk-stage-btn {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.bulk-stage-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  min-width: 220px;
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid #284138;
+  border-radius: 12px;
+  background: #0e241b;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+  padding: 6px;
+  z-index: 20;
+}
+
+.bulk-stage-opt {
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  color: #e6f0eb;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.bulk-stage-opt:hover {
+  background: rgba(61, 204, 95, 0.14);
+}
+
+.bulk-cancel {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.bulk-stage-btn:hover,
+.bulk-cancel:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+@media (min-width: 1024px) {
+  .opportunity-bulk-bar {
+    left: 210px;
+  }
+}
+
 @media (max-width: 920px) {
   .forms-kpi-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -5475,6 +6848,30 @@ watch(
 }
 
 @media (max-width: 768px) {
+  .leads-page {
+    gap: 8px !important;
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+  }
+
+  .leads-page > .shrink-0 {
+    margin-bottom: 2px;
+  }
+
+  .contacts-create-top {
+    display: none !important;
+  }
+
+  .crm-toolbar {
+    padding: 8px 0 !important;
+  }
+
+  .opportunities-filter-row--search,
+  .opportunities-filter-row--primary {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
   .forms-kpi-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
@@ -5547,6 +6944,51 @@ watch(
   .opportunity-filter-active {
     grid-column: 1 / -1;
     justify-self: start;
+  }
+
+  .opportunities-filter-row--primary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    padding-bottom: 2px;
+  }
+
+  .toolbar-search {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .toolbar-ms-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .mobile-create-btn {
+    height: 32px;
+    border: 1px solid #37be57;
+    background: #3dcc5f;
+    color: #0f1f14;
+    border-radius: 9px;
+    padding: 0 10px;
+    font-size: 12px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    flex: 0 0 auto;
+  }
+
+  .mobile-create-btn-plus {
+    font-size: 14px;
+    line-height: 1;
+    font-weight: 700;
+  }
+
+  .toolbar-ms-btn {
+    height: 32px;
+    padding: 0 10px;
+    font-size: 12px;
+    white-space: nowrap;
   }
 }
 
