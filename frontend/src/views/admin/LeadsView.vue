@@ -351,1766 +351,125 @@
 
 
 
-              <div v-if="contactViewMode === 'list'" class="flex min-h-0 flex-1 flex-col overflow-hidden">
-
-
-
-                <div class="opportunity-filters mb-3">
-                  <div class="opportunity-filter-item">
-                    <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">{{ viewCopy.filters.opportunity.stateLabel }}</span>
-                    <select
-                      v-model="opportunityStateFilter"
-                      class="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm outline-none transition focus:border-slate-300 focus:ring-0 dark:border-white/10 dark:bg-[#111319] dark:text-white"
-                    >
-                      <option value="all">{{ viewCopy.filters.opportunity.all }}</option>
-                      <option value="open">{{ viewCopy.filters.opportunity.open }}</option>
-                      <option value="closed">{{ viewCopy.filters.opportunity.closed }}</option>
-                    </select>
+              <div v-if="contactViewMode === 'list'" class="crm-list-view flex min-h-0 flex-1 flex-col overflow-hidden">
+  <section class="crm-toolbar rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#202020]"><div class="mt-3 flex flex-wrap items-center gap-2">
+      <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">Views salvas:</span>
+      <button v-for="chip in savedViewChips" :key="chip.id" type="button" class="rounded-full border px-3 py-1 text-xs font-semibold transition" :class="chip.id === activeSavedView ? 'border-slate-900 bg-slate-900 text-white dark:border-white dark:bg-white dark:text-slate-900' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 dark:border-white/20 dark:bg-[#202020] dark:text-slate-200'" @click="selectSavedView(chip.id)">{{ chip.label }}</button>
+      <button type="button" class="rounded-full border border-dashed border-slate-300 px-3 py-1 text-xs font-semibold text-slate-500 transition hover:text-slate-800 dark:border-white/20 dark:text-slate-300" @click="createSavedView">+ Nova view</button>
+    </div>
+    <div class="mt-3 flex flex-wrap items-center gap-2">
+      <input v-model="crmSearchQuery" type="text" placeholder="Buscar cliente..." class="h-9 min-w-[180px] rounded-full border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-slate-300 dark:border-white/10 dark:bg-[#0f1524] dark:text-white" />
+      <select v-model="opportunityStateFilter" class="h-9 rounded-full border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 outline-none dark:border-white/10 dark:bg-[#0f1524] dark:text-white"><option value="all">Status</option><option value="open">Abertas</option><option value="closed">Fechadas</option></select>
+      <select v-model="opportunityOutcomeFilter" class="h-9 rounded-full border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 outline-none dark:border-white/10 dark:bg-[#0f1524] dark:text-white"><option value="all">Resultado</option><option value="won">Ganhas</option><option value="lost">Perdidas</option></select>
+      <select v-model="crmPageFilter" class="h-9 rounded-full border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 outline-none dark:border-white/10 dark:bg-[#0f1524] dark:text-white"><option value="all">Página</option><option v-for="option in crmPageOptions" :key="option" :value="option">{{ option }}</option></select>
+      <select v-model="crmIdleFilter" class="h-9 rounded-full border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 outline-none dark:border-white/10 dark:bg-[#0f1524] dark:text-white"><option value="all">Sem interação</option><option value="lt1">&lt; 1 dia</option><option value="2to5">2 a 5 dias</option><option value="gt5">+5 dias</option></select>
+      <button type="button" class="h-9 rounded-full border border-slate-200 px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:text-slate-100" @click="columnsMenuOpen = !columnsMenuOpen">Colunas</button>
+      <button type="button" class="h-9 rounded-full border border-slate-200 px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:text-slate-100" @click="saveCurrentView">Salvar visualização</button>
+      <button v-if="hasActiveFilters" type="button" class="h-9 rounded-full border border-slate-200 px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:text-slate-100" @click="clearAllFilters">Limpar filtros</button>
+    </div>
+  </section>
+  <article class="relative mt-3 flex flex-1 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#202020]" :style="{ height: listTableHeight, minHeight: listTableHeight, maxHeight: listTableHeight }">
+    <div v-if="columnsMenuOpen" class="absolute right-4 top-3 z-20 w-64 rounded-2xl border border-slate-200 bg-white p-3 shadow-xl dark:border-white/10 dark:bg-[#0f1524]"><p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Colunas</p><label v-for="col in crmColumnConfig" :key="col.key" class="mt-2 flex items-center gap-2 text-xs text-slate-600 dark:text-slate-200"><input v-model="col.visible" type="checkbox" class="h-3.5 w-3.5" /><span>{{ col.label }}</span></label></div>
+    <div class="flex-1 overflow-auto">
+      <table class="min-w-full text-sm">
+        <thead class="sticky top-0 z-10 border-b border-slate-200 bg-white dark:border-white/10 dark:bg-[#202020]"><tr class="text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300"><th v-if="isColumnVisible('cliente')" class="px-3 py-3">Nome</th><th class="px-3 py-3">Telefone</th><th v-if="isColumnVisible('status')" class="px-3 py-3">Status</th><th v-if="isColumnVisible('pagina')" class="px-3 py-3">Página/Formulário</th><th v-if="isColumnVisible('valor')" class="px-3 py-3 text-right">Valor</th><th v-if="isColumnVisible('ultima')" class="px-3 py-3">Última interação</th><th v-if="isColumnVisible('acoes')" class="px-3 py-3 text-right">Ações</th></tr></thead>
+        <tbody>
+          <template v-for="group in groupedContactsForCrm" :key="group.key">
+            <tr class="border-y border-slate-200/70 bg-transparent dark:border-white/10 dark:bg-transparent"><td :colspan="visibleCrmColumnsCount + 1" class="px-4 py-1.5 text-xs font-semibold dark:text-slate-200" :style="groupHeaderStyle(group.key)">&gt; {{ group.label }} ({{ group.contacts.length }}) · {{ formatOpportunityValue(group.totalValueCents) }}</td></tr>
+            <tr v-for="contact in group.contacts" :key="contact.id" class="cursor-pointer border-b border-slate-100/90 text-slate-700 transition hover:bg-slate-50 dark:border-white/5 dark:text-slate-200 dark:hover:bg-white/[0.03]" :style="contactRowStyle(contact)" @click="openOpportunityDrawer(contact)">
+              <td v-if="isColumnVisible('cliente')" class="px-4 py-3.5">
+                <div class="min-w-0">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <p class="truncate font-semibold text-slate-900 dark:text-white">{{ contact.name || fallbackLabels.noName }}</p>
                   </div>
+                </div>
+              </td>
+              <td class="px-4 py-3.5" @click.stop>
+                <button
+                  v-if="contact.phone"
+                  type="button"
+                  class="inline-flex max-w-[170px] items-center gap-1 rounded-full border border-emerald-200/70 bg-white px-2.5 py-1 text-[13px] font-medium text-emerald-700 transition hover:bg-emerald-50/60"
+                  :title="getWhatsappTitle(contact.phone)"
+                  @click.stop="openWhatsapp(contact)"
+                >
+                  <span class="truncate">{{ contact.phone }}</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M16.75 13.96c-.25-.13-1.47-.72-1.7-.8-.23-.08-.4-.12-.57.12-.17.25-.65.8-.8.96-.14.17-.3.19-.55.06-.25-.13-1.06-.39-2.02-1.23-.74-.66-1.25-1.47-1.4-1.72-.15-.25-.02-.38.11-.5.11-.11.25-.3.37-.45.12-.14.17-.25.25-.42.08-.17.04-.31-.02-.45-.06-.14-.57-1.37-.78-1.87-.2-.49-.41-.42-.57-.43h-.48c-.17 0-.45.06-.68.31-.23.25-.88.86-.88 2.1s.9 2.43 1.02 2.6c.12.17 1.76 2.69 4.25 3.77.59.26 1.06.42 1.42.54.6.19 1.15.16 1.58.1.48-.07 1.47-.6 1.68-1.17.21-.57.21-1.06.15-1.17-.06-.11-.23-.17-.48-.3Z" />
+                    <path d="M12.04 2C6.77 2 2.5 6.26 2.5 11.52c0 1.85.53 3.65 1.52 5.2L2.4 21.5l4.9-1.57c1.43.78 3.04 1.2 4.7 1.2h.04c5.26 0 9.53-4.26 9.53-9.52C21.57 6.26 17.3 2 12.04 2Zm0 17.42h-.03c-1.5 0-2.97-.4-4.25-1.16l-.3-.18-2.9.93.95-2.82-.2-.29a7.83 7.83 0 0 1-1.2-4.18c0-4.3 3.5-7.8 7.82-7.8 2.08 0 4.03.8 5.5 2.28a7.75 7.75 0 0 1 2.29 5.5c0 4.3-3.5 7.8-7.8 7.8Z" />
+                  </svg>
+                </button>
+                <span v-else class="text-xs text-slate-400">-</span>
+              </td>
+              <td v-if="isColumnVisible('status')" class="px-4 py-3.5" @click.stop>
+                <div class="status-chip-container relative inline-flex">
+                  <button
+                    type="button"
+                    class="status-chip-button inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold"
+                    :style="statusChipStyle(contact)"
+                    @click.stop="toggleStatusDropdown(contact, $event)"
+                  >
+                    <span>{{ contact.status_name || fallbackLabels.noStatus }}</span>
+                    <svg viewBox="0 0 20 20" class="h-3.5 w-3.5" fill="currentColor" aria-hidden="true">
+                      <path d="M5.2 7.5a.75.75 0 0 1 1.06 0L10 11.24l3.74-3.74a.75.75 0 1 1 1.06 1.06l-4.27 4.27a.75.75 0 0 1-1.06 0L5.2 8.56a.75.75 0 0 1 0-1.06Z" />
+                    </svg>
+                  </button>
 
-                  <div class="opportunity-filter-item">
-                    <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">{{ viewCopy.filters.opportunity.outcomeLabel }}</span>
-                    <select
-                      v-model="opportunityOutcomeFilter"
-                      class="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm outline-none transition focus:border-slate-300 focus:ring-0 dark:border-white/10 dark:bg-[#111319] dark:text-white"
-                    >
-                      <option value="all">{{ viewCopy.filters.opportunity.all }}</option>
-                      <option value="won">{{ viewCopy.filters.opportunity.won }}</option>
-                      <option value="lost">{{ viewCopy.filters.opportunity.lost }}</option>
-                    </select>
-                  </div>
-
-                  <div v-if="hasActiveFilters" class="opportunity-filter-active flex items-center gap-2 text-xs text-slate-500 dark:text-slate-300">
-                    <span>{{ filterCopy.active }}</span>
+                  <div
+                    v-if="openStatusDropdown === idKey(contact.id)"
+                    class="status-dropdown absolute left-0 z-50 min-w-[180px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-white/10 dark:bg-[#111319]"
+                    :class="statusDropdownDirection === 'up' ? 'bottom-full mb-2' : 'top-full mt-2'"
+                  >
                     <button
                       type="button"
-                      class="rounded-full border border-slate-200 px-3 py-1 font-semibold text-slate-600 transition hover:bg-slate-100 dark:border-white/10 dark:text-white dark:hover:bg-white/10"
-                      @click.stop="clearAllFilters"
+                      class="block w-full border-b border-slate-100 bg-slate-100 px-3 py-2.5 text-left text-xs font-semibold text-slate-700 transition hover:bg-slate-200 dark:border-white/10"
+                      @click.stop="selectStatusOption(contact, null)"
                     >
-                      {{ filterCopy.clearAll }}
+                      {{ fallbackLabels.noStatus }}
+                    </button>
+                    <button
+                      v-for="status in leadStatuses"
+                      :key="status.id"
+                      type="button"
+                      class="block w-full px-3 py-2.5 text-left text-xs font-semibold transition"
+                      :style="statusOptionStyle(status)"
+                      @click.stop="selectStatusOption(contact, String(status.id))"
+                    >
+                      {{ status.name }}
                     </button>
                   </div>
                 </div>
-
-                <article
-
-
-
-                  class="flex flex-1 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-0 shadow-sm dark:border-white/10 dark:bg-[#202020]"
-
-
-
-                  :style="{ height: listTableHeight, minHeight: listTableHeight, maxHeight: listTableHeight }"
-
-
-
-                >
-
-
-
-                  <div class="flex flex-1 flex-col min-h-0" @click="closeFilterPopover">
-
-
-
-                    <div class="flex-1 min-h-0 overflow-auto">
-
-
-
-                      <table v-if="!isMobileViewport" class="min-w-full divide-y divide-slate-200 text-sm dark:divide-white/10">
-
-
-
-                        <thead class="sticky top-0 z-10 border-b border-slate-200 bg-white dark:border-white/10 dark:bg-[#202020]">
-
-
-
-                          <tr class="whitespace-nowrap text-left text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
-
-
-
-                            <th class="px-4 py-3 text-center">
-
-
-
-                              <div class="flex items-center gap-1">
-
-
-
-                                <span>{{ filterCopy.columns.name }}</span>
-
-
-
-                                <button
-
-
-
-                                  type="button"
-
-
-
-                                  class="filter-button"
-
-
-
-                                  :class="{ 'text-brand': isFilterActive('name') }"
-
-
-
-                                  @click.stop="toggleFilterPopover('name')"
-
-
-
-                                >
-
-
-
-                                  <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="currentColor">
-
-
-
-                                    <path d="M3 4h18l-7 8v6l-4 2v-8Z" />
-
-
-
-                                  </svg>
-
-
-
-                                </button>
-
-
-
-                              </div>
-
-
-
-
-
-
-
-                              <div v-if="openFilterKey === 'name'" class="filter-popover" @click.stop>
-
-
-
-                                <div class="filter-options">
-
-
-
-                                  <label v-for="option in filterOptions.name" :key="option.value" class="filter-option">
-
-
-
-                                    <input
-
-
-
-                                      type="checkbox"
-
-
-
-                                      class="filter-checkbox"
-
-
-
-                                      :checked="listFilters.name.includes(option.value)"
-
-
-
-                                      @change="toggleFilterValue('name', option.value)"
-
-
-
-                                    />
-
-
-
-                                    <span>{{ option.label }}</span>
-
-
-
-                                  </label>
-
-
-
-                                </div>
-
-
-
-
-
-
-
-                                <div class="mt-2 flex gap-2 text-xs">
-
-
-
-                                  <button type="button" class="text-slate-500 hover:text-slate-700" @click="clearFilter('name')">
-
-
-
-                                    {{ filterCopy.clear }}
-
-
-
-                                  </button>
-
-
-
-                                  <button type="button" class="text-brand hover:text-brand-dark" @click="closeFilterPopover">
-
-
-
-                                    {{ filterCopy.close }}
-
-
-
-                                  </button>
-
-
-
-                                </div>
-
-
-
-                              </div>
-
-
-
-                            </th>
-
-                            <th class="px-2 py-2 text-left">Modo</th>
-
-                            <th class="relative px-2 py-2">
-
-
-
-                              <div class="flex items-center gap-1">
-
-
-
-                                <span>{{ filterCopy.columns.form }}</span>
-
-
-
-                                <button
-
-
-
-                                  type="button"
-
-
-
-                                  class="filter-button"
-
-
-
-                                  :class="{ 'text-brand': isFilterActive('form') }"
-
-
-
-                                  @click.stop="toggleFilterPopover('form')"
-
-
-
-                                >
-
-
-
-                                  <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="currentColor">
-
-
-
-                                    <path d="M3 4h18l-7 8v6l-4 2v-8Z" />
-
-
-
-                                  </svg>
-
-
-
-                                </button>
-
-
-
-                              </div>
-
-
-
-
-
-
-
-                              <div v-if="openFilterKey === 'form'" class="filter-popover" @click.stop>
-
-
-
-                                <div class="filter-options">
-
-
-
-                                  <label v-for="option in filterOptions.form" :key="option.value" class="filter-option">
-
-
-
-                                    <input
-
-
-
-                                      type="checkbox"
-
-
-
-                                      class="filter-checkbox"
-
-
-
-                                      :checked="listFilters.form.includes(option.value)"
-
-
-
-                                      @change="toggleFilterValue('form', option.value)"
-
-
-
-                                    />
-
-
-
-                                    <span>{{ option.label }}</span>
-
-
-
-                                  </label>
-
-
-
-                                </div>
-
-
-
-
-
-
-
-                                <div class="mt-2 flex gap-2 text-xs">
-
-
-
-                                  <button type="button" class="text-slate-500 hover:text-slate-700" @click="clearFilter('form')">
-
-
-
-                                    {{ filterCopy.clear }}
-
-
-
-                                  </button>
-
-
-
-                                  <button type="button" class="text-brand hover:text-brand-dark" @click="closeFilterPopover">
-
-
-
-                                    {{ filterCopy.close }}
-
-
-
-                                  </button>
-
-
-
-                                </div>
-
-
-
-                              </div>
-
-
-
-                            </th>
-
-
-
-
-
-
-
-                            <th class="relative px-2 py-2">
-
-
-
-                              <div class="flex items-center gap-1">
-
-
-
-                                <span>{{ filterCopy.columns.phone }}</span>
-
-
-
-                                <button
-
-
-
-                                  type="button"
-
-
-
-                                  class="filter-button"
-
-
-
-                                  :class="{ 'text-brand': isFilterActive('phone') }"
-
-
-
-                                  @click.stop="toggleFilterPopover('phone')"
-
-
-
-                                >
-
-
-
-                                  <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="currentColor">
-
-
-
-                                    <path d="M3 4h18l-7 8v6l-4 2v-8Z" />
-
-
-
-                                  </svg>
-
-
-
-                                </button>
-
-
-
-                              </div>
-
-
-
-
-
-
-
-                              <div v-if="openFilterKey === 'phone'" class="filter-popover" @click.stop>
-
-
-
-                                <div class="filter-options">
-
-
-
-                                  <label v-for="option in filterOptions.phone" :key="option.value" class="filter-option">
-
-
-
-                                    <input
-
-
-
-                                      type="checkbox"
-
-
-
-                                      class="filter-checkbox"
-
-
-
-                                      :checked="listFilters.phone.includes(option.value)"
-
-
-
-                                      @change="toggleFilterValue('phone', option.value)"
-
-
-
-                                    />
-
-
-
-                                    <span>{{ option.label }}</span>
-
-
-
-                                  </label>
-
-
-
-                                </div>
-
-
-
-
-
-
-
-                                <div class="mt-2 flex gap-2 text-xs">
-
-
-
-                                  <button type="button" class="text-slate-500 hover:text-slate-700" @click="clearFilter('phone')">
-
-
-
-                                    {{ filterCopy.clear }}
-
-
-
-                                  </button>
-
-
-
-                                  <button type="button" class="text-brand hover:text-brand-dark" @click="closeFilterPopover">
-
-
-
-                                    {{ filterCopy.close }}
-
-
-
-                                  </button>
-
-
-
-                                </div>
-
-
-
-                              </div>
-
-
-
-                            </th>
-
-
-
-
-
-
-
-                            <th class="relative px-2 py-2">
-
-
-
-                              <div class="flex items-center gap-1">
-
-
-
-                                <span>{{ filterCopy.columns.email }}</span>
-
-
-
-                                <button
-
-
-
-                                  type="button"
-
-
-
-                                  class="filter-button"
-
-
-
-                                  :class="{ 'text-brand': isFilterActive('email') }"
-
-
-
-                                  @click.stop="toggleFilterPopover('email')"
-
-
-
-                                >
-
-
-
-                                  <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="currentColor">
-
-
-
-                                    <path d="M3 4h18l-7 8v6l-4 2v-8Z" />
-
-
-
-                                  </svg>
-
-
-
-                                </button>
-
-
-
-                              </div>
-
-
-
-
-
-
-
-                              <div v-if="openFilterKey === 'email'" class="filter-popover" @click.stop>
-
-
-
-                                <div class="filter-options">
-
-
-
-                                  <label v-for="option in filterOptions.email" :key="option.value" class="filter-option">
-
-
-
-                                    <input
-
-
-
-                                      type="checkbox"
-
-
-
-                                      class="filter-checkbox"
-
-
-
-                                      :checked="listFilters.email.includes(option.value)"
-
-
-
-                                      @change="toggleFilterValue('email', option.value)"
-
-
-
-                                    />
-
-
-
-                                    <span>{{ option.label }}</span>
-
-
-
-                                  </label>
-
-
-
-                                </div>
-
-
-
-
-
-
-
-                                <div class="mt-2 flex gap-2 text-xs">
-
-
-
-                                  <button type="button" class="text-slate-500 hover:text-slate-700" @click="clearFilter('email')">
-
-
-
-                                    {{ filterCopy.clear }}
-
-
-
-                                  </button>
-
-
-
-                                  <button type="button" class="text-brand hover:text-brand-dark" @click="closeFilterPopover">
-
-
-
-                                    {{ filterCopy.close }}
-
-
-
-                                  </button>
-
-
-
-                                </div>
-
-
-
-                              </div>
-
-
-
-                            </th>
-
-
-
-
-
-
-
-                            <th class="relative px-2 py-2">
-
-
-
-                              <div class="flex items-center gap-1">
-
-
-
-                                <span>{{ filterCopy.columns.city }}</span>
-
-
-
-                                <button
-
-
-
-                                  type="button"
-
-
-
-                                  class="filter-button"
-
-
-
-                                  :class="{ 'text-brand': isFilterActive('city') }"
-
-
-
-                                  @click.stop="toggleFilterPopover('city')"
-
-
-
-                                >
-
-
-
-                                  <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="currentColor">
-
-
-
-                                    <path d="M3 4h18l-7 8v6l-4 2v-8Z" />
-
-
-
-                                  </svg>
-
-
-
-                                </button>
-
-
-
-                              </div>
-
-
-
-
-
-
-
-                              <div v-if="openFilterKey === 'city'" class="filter-popover" @click.stop>
-
-
-
-                                <div class="filter-options">
-
-
-
-                                  <label v-for="option in filterOptions.city" :key="option.value" class="filter-option">
-
-
-
-                                    <input
-
-
-
-                                      type="checkbox"
-
-
-
-                                      class="filter-checkbox"
-
-
-
-                                      :checked="listFilters.city.includes(option.value)"
-
-
-
-                                      @change="toggleFilterValue('city', option.value)"
-
-
-
-                                    />
-
-
-
-                                    <span>{{ option.label }}</span>
-
-
-
-                                  </label>
-
-
-
-                                </div>
-
-
-
-
-
-
-
-                                <div class="mt-2 flex gap-2 text-xs">
-
-
-
-                                  <button type="button" class="text-slate-500 hover:text-slate-700" @click="clearFilter('city')">
-
-
-
-                                    {{ filterCopy.clear }}
-
-
-
-                                  </button>
-
-
-
-                                  <button type="button" class="text-brand hover:text-brand-dark" @click="closeFilterPopover">
-
-
-
-                                    {{ filterCopy.close }}
-
-
-
-                                  </button>
-
-
-
-                                </div>
-
-
-
-                              </div>
-
-
-
-                            </th>
-
-
-
-
-
-
-
-                            <th class="relative px-2 py-2">
-
-
-
-                              <div class="flex items-center gap-1">
-
-
-
-                                <span>{{ filterCopy.columns.page }}</span>
-
-
-
-                                <button
-
-
-
-                                  type="button"
-
-
-
-                                  class="filter-button"
-
-
-
-                                  :class="{ 'text-brand': isFilterActive('page') }"
-
-
-
-                                  @click.stop="toggleFilterPopover('page')"
-
-
-
-                                >
-
-
-
-                                  <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="currentColor">
-
-
-
-                                    <path d="M3 4h18l-7 8v6l-4 2v-8Z" />
-
-
-
-                                  </svg>
-
-
-
-                                </button>
-
-
-
-                              </div>
-
-
-
-
-
-
-
-                              <div v-if="openFilterKey === 'page'" class="filter-popover w-60" @click.stop>
-
-
-
-                                <div class="filter-options max-h-48 space-y-1 overflow-y-auto pr-1">
-
-
-
-                                  <label v-for="option in filterOptions.page" :key="option.value" class="filter-option">
-
-
-
-                                    <input
-
-
-
-                                      type="checkbox"
-
-
-
-                                      class="filter-checkbox"
-
-
-
-                                      :checked="listFilters.page.includes(option.value)"
-
-
-
-                                      @change="toggleFilterValue('page', option.value)"
-
-
-
-                                    />
-
-
-
-                                    <span>{{ option.label }}</span>
-
-
-
-                                  </label>
-
-
-
-                                </div>
-
-
-
-
-
-
-
-                                <div class="mt-2 flex gap-2 text-xs">
-
-
-
-                                  <button type="button" class="text-slate-500 hover:text-slate-700" @click="clearFilter('page')">
-
-
-
-                                    {{ filterCopy.clear }}
-
-
-
-                                  </button>
-
-
-
-                                  <button type="button" class="text-brand hover:text-brand-dark" @click="closeFilterPopover">
-
-
-
-                                    {{ filterCopy.close }}
-
-
-
-                                  </button>
-
-
-
-                                </div>
-
-
-
-                              </div>
-
-
-
-                            </th>
-
-
-
-
-
-
-
-                            <th class="px-2 py-2 text-left">Valor</th>
-
-
-
-                            <th class="relative px-2 py-2">
-
-
-
-                              <div class="flex items-center gap-1">
-
-
-
-                                <span>{{ filterCopy.columns.status }}</span>
-
-
-
-                                <button
-
-
-
-                                  type="button"
-
-
-
-                                  class="filter-button"
-
-
-
-                                  :class="{ 'text-brand': isFilterActive('status') }"
-
-
-
-                                  @click.stop="toggleFilterPopover('status')"
-
-
-
-                                >
-
-
-
-                                  <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="currentColor">
-
-
-
-                                    <path d="M3 4h18l-7 8v6l-4 2v-8Z" />
-
-
-
-                                  </svg>
-
-
-
-                                </button>
-
-
-
-                              </div>
-
-
-
-
-
-
-
-                              <div v-if="openFilterKey === 'status'" class="filter-popover" @click.stop>
-
-
-
-                                <div class="filter-options">
-
-
-
-                                  <label v-for="option in filterOptions.status" :key="option.value" class="filter-option">
-
-
-
-                                    <input
-
-
-
-                                      type="checkbox"
-
-
-
-                                      class="filter-checkbox"
-
-
-
-                                      :checked="listFilters.status.includes(option.value)"
-
-
-
-                                      @change="toggleFilterValue('status', option.value)"
-
-
-
-                                    />
-
-
-
-                                    <span>{{ option.label }}</span>
-
-
-
-                                  </label>
-
-
-
-                                </div>
-
-
-
-
-
-
-
-                                <div class="mt-2 flex gap-2 text-xs">
-
-
-
-                                  <button type="button" class="text-slate-500 hover:text-slate-700" @click="clearFilter('status')">
-
-
-
-                                    {{ filterCopy.clear }}
-
-
-
-                                  </button>
-
-
-
-                                  <button type="button" class="text-brand hover:text-brand-dark" @click="closeFilterPopover">
-
-
-
-                                    {{ filterCopy.close }}
-
-
-
-                                  </button>
-
-
-
-                                </div>
-
-
-
-                              </div>
-
-
-
-                            </th>
-
-
-
-
-
-
-
-                            <th class="px-2 py-2 text-center">{{ filterCopy.columns.actions }}</th>
-
-
-
-                          </tr>
-
-
-
-                        </thead>
-
-
-
-
-
-
-
-                        <tbody class="divide-y divide-slate-200 dark:divide-white/5">
-
-                          <tr v-if="!filteredContacts.length">
-                            <td colspan="10" class="px-4 py-12 text-center text-sm text-slate-500 dark:text-slate-300">
-                              {{ viewCopy.emptyStates.contacts.noFilters }}
-                            </td>
-                          </tr>
-
-                          <tr
-
-                            v-for="contact in filteredContacts"
-
-
-
-                            :key="contact.id"
-
-
-
-                            class="cursor-pointer text-slate-700 transition hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-white/[0.03]"
-                            @click="openOpportunityDrawer(contact)"
-
-
-
-                          >
-
-
-
-                            <td class="px-2 py-2 font-semibold">{{ contact.name || fallbackLabels.noName }}</td>
-
-
-
-                            <td class="px-2 py-2 font-semibold">{{ getContactModeLabel(contact) }}</td>
-
-                            <td class="px-2 py-2 text-xs font-semibold">{{ getOpportunityFormColumnLabel(contact) }}</td>
-
-
-
-
-
-
-
-                            <td class="px-2 py-2">
-
-
-
-                              <div class="flex items-center gap-2">
-
-
-
-                                <span class="font-mono text-sm">{{ contact.phone || viewCopy.labels.dash }}</span>
-
-
-
-                                <button
-
-
-
-                                  v-if="contact.phone"
-
-
-
-                                  type="button"
-
-
-
-                                  class="transition hover:opacity-80"
-
-
-
-                                  :style="{ color: '#29E870' }"
-
-
-
-                                  :title="getWhatsappTitle(contact.phone)"
-
-
-
-                                  @click.stop="openWhatsapp(contact)"
-
-
-
-                                >
-
-
-
-                                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-
-
-
-                                    <path
-
-
-
-                                      d="M12.001 2c5.523 0 10 4.477 10 10s-4.477 10-10 10a9.95 9.95 0 0 1-5.03-1.355L2.005 22l1.352-4.968A9.95 9.95 0 0 1 2.001 12c0-5.523 4.477-10 10-10M8.593 7.3l-.2.008a1 1 0 0 0-.372.1a1.3 1.3 0 0 0-.294.228c-.12.113-.188.211-.261.306A2.73 2.73 0 0 0 6.9 9.62c.002.49.13.967.33 1.413c.409.902 1.082 1.857 1.97 2.742c.214.213.424.427.65.626a9.45 9.45 0 0 0 3.84 2.046l.568.087c.185.01.37-.004.556-.013a2 2 0 0 0 .833-.231a5 5 0 0 0 .383-.22q.001.002.125-.09c.135-.1.218-.171.33-.288q.126-.13.21-.302c.078-.163.156-.474.188-.733c.024-.198.017-.306.014-.373c-.004-.107-.093-.218-.19-.265l-.582-.261s-.87-.379-1.402-.621a.5.5 0 0 0-.176-.041a.48.48 0 0 0-.378.127c-.005-.002-.072.055-.795.931a.35.35 0 0 1-.368.13a1.4 1.4 0 0 1-.191-.066c-.124-.052-.167-.072-.252-.108a6 6 0 0 1-1.575-1.003c-.126-.11-.243-.23-.363-.346a6.3 6.3 0 0 1-1.02-1.268l-.059-.095a1 1 0 0 1-.102-.205c-.038-.147.061-.265.061-.265s.243-.266.356-.41c.11-.14.203-.276.263-.373c.118-.19.155-.385.093-.536q-.42-1.026-.868-2.041c-.059-.134-.234-.23-.393-.249q-.081-.01-.162-.016a3 3 0 0 0-.403.004z"
-
-
-
-                                    />
-
-
-
-                                  </svg>
-
-
-
-                                </button>
-
-
-
-                              </div>
-
-
-
-                            </td>
-
-
-
-
-
-
-
-                            <td class="px-2 py-2">
-
-
-
-                              <span class="text-xs">{{ contact.email || viewCopy.labels.emDash }}</span>
-
-
-
-                            </td>
-
-
-
-
-
-
-
-                            <td class="px-2 py-2 text-xs">{{ contact.city || viewCopy.labels.dash }}</td>
-
-
-
-
-
-
-
-                            <td class="px-2 py-2 text-xs">
-
-
-
-                              <template v-if="contact.page_title || contact.page_slug">
-
-
-
-                                <a
-
-
-
-                                  v-if="contact.page_url"
-
-
-
-                                  :href="contact.page_url"
-
-
-
-                                  target="_blank"
-
-
-
-                                  rel="noopener"
-
-
-
-                                  class="text-brand underline decoration-dotted"
-                                  @click.stop
-
-
-
-                                >
-
-
-
-                                  {{ contact.page_title || contact.page_slug }}
-
-
-
-                                </a>
-
-
-
-                                <span v-else>{{ contact.page_title || contact.page_slug }}</span>
-
-                              </template>
-
-
-
-                              <span v-else>{{ viewCopy.labels.dash }}</span>
-
-
-
-                            </td>
-
-
-
-
-
-
-
-                            <td class="px-2 py-2 text-xs font-semibold">{{ formatOpportunityValue(contact.estimated_value_cents) }}</td>
-
-
-
-
-
-
-
-                            <td class="px-2 py-2 text-xs">
-
-
-
-                              <div class="relative status-chip-container">
-
-
-
-                                <button
-
-
-
-                                  type="button"
-
-
-
-                                  class="status-chip-button w-full rounded-2xl border px-3 py-1 text-left text-xs font-semibold shadow-sm transition focus:outline-none"
-
-
-
-                                  :class="{ 'opacity-60': contactStatusSaving[idKey(contact.id)] }"
-
-
-
-                                  :style="statusChipStyle(contact)"
-
-
-
-                                  :disabled="contactStatusSaving[idKey(contact.id)]"
-
-
-
-                                  @click.stop="toggleStatusDropdown(contact)"
-
-
-
-                                >
-
-
-
-                                  <span class="flex items-center justify-between gap-2">
-
-
-
-                                    <span class="truncate">{{ contact.status_name || fallbackLabels.noStatus }}</span>
-
-
-
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-
-
-
-                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-
-
-
-                                    </svg>
-
-
-
-                                  </span>
-
-
-
-                                </button>
-
-
-
-
-
-
-
-                                <transition name="fade">
-
-
-
-                                  <div
-
-
-
-                                    v-if="openStatusDropdown === idKey(contact.id)"
-
-
-
-                                    class="status-dropdown absolute right-0 z-20 mt-2 w-52 rounded-2xl border border-slate-100 bg-white/95 p-2 shadow-2xl dark:border-white/10 dark:bg-[#0f1524]"
-
-
-
-                                    @click.stop
-
-
-
-                                  >
-
-
-
-                                    <button
-
-
-
-                                      type="button"
-
-
-
-                                      class="status-option status-option--neutral"
-
-
-
-                                      :class="{ 'status-option--active': !contact.status_id }"
-
-
-
-                                      @click="selectStatusOption(contact, null)"
-
-
-
-                                    >
-
-
-
-                                      <span class="status-dot bg-slate-200 dark:bg-slate-500"></span>
-
-
-
-                                      <span>{{ fallbackLabels.noStatus }}</span>
-
-
-
-                                    </button>
-
-
-
-
-
-
-
-                                    <button
-
-
-
-                                      v-for="status in leadStatuses"
-
-
-
-                                      :key="status.id"
-
-
-
-                                      type="button"
-
-
-
-                                      class="status-option"
-
-
-
-                                      :style="statusOptionStyle(status)"
-
-
-
-                                      :class="{ 'status-option--active': String(contact.status_id ?? '') === String(status.id) }"
-
-
-
-                                      @click="selectStatusOption(contact, String(status.id))"
-
-
-
-                                    >
-
-
-
-                                      <span class="status-dot" :style="{ backgroundColor: status.color }"></span>
-
-
-
-                                      <span>{{ status.name }}</span>
-
-
-
-                                    </button>
-
-
-
-                                  </div>
-
-
-
-                                </transition>
-
-
-
-                              </div>
-
-
-
-                            </td>
-
-
-
-
-
-
-
-                            <td class="px-2 py-2 text-center">
-
-
-
-                              <button
-                                v-if="canDeleteLeads"
-
-
-
-                                type="button"
-
-
-
-                                class="text-rose-500 transition hover:text-rose-600 disabled:opacity-50"
-
-
-
-                                :disabled="contactDeleting[idKey(contact.id)]"
-
-
-
-                                @click.stop="handleDeleteContact(contact)"
-
-
-
-                                @mousedown.stop
-
-
-
-                              >
-
-
-
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-
-
-
-                                  <path d="M19 4h-3.5l-1-1h-5l-1 1H5v2h14M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6z"/>
-
-
-
-                                </svg>
-
-
-
-                              </button>
-
-
-
-                            </td>
-
-
-
-                          </tr>
-
-
-
-                        </tbody>
-
-
-
-                      </table>
-
-                      <div v-else class="space-y-3 p-3">
-                        <div
-                          v-if="!filteredContacts.length"
-                          class="rounded-2xl border border-dashed border-slate-200 px-4 py-10 text-center text-sm text-slate-500 dark:border-white/20 dark:text-slate-300"
-                        >
-                          {{ viewCopy.emptyStates.contacts.noFilters }}
-                        </div>
-                        <article
-                          v-for="contact in filteredContacts"
-                          :key="`m-${contact.id}`"
-                          class="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-white/10 dark:bg-[#202020]"
-                          @click="openOpportunityDrawer(contact)"
-                        >
-                          <div class="flex items-start justify-between gap-2">
-                            <div class="min-w-0">
-                              <p class="truncate text-base font-semibold text-slate-900 dark:text-white">{{ contact.name || fallbackLabels.noName }}</p>
-                              <p class="mt-0.5 text-xs font-semibold text-slate-500 dark:text-slate-300">{{ getOpportunityFormColumnLabel(contact) }}</p>
-                            </div>
-                            <p class="text-xs text-slate-500 dark:text-slate-300">{{ formatDate(contact.created_at) }}</p>
-                          </div>
-
-                          <div class="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-slate-600 dark:text-slate-300">
-                            <p class="truncate"><span class="font-semibold">{{ filterCopy.columns.phone }}:</span> {{ contact.phone || viewCopy.labels.dash }}</p>
-                            <p class="truncate"><span class="font-semibold">{{ filterCopy.columns.city }}:</span> {{ contact.city || viewCopy.labels.dash }}</p>
-                            <p class="col-span-2 truncate"><span class="font-semibold">{{ filterCopy.columns.email }}:</span> {{ contact.email || viewCopy.labels.emDash }}</p>
-                            <p><span class="font-semibold">{{ filterCopy.columns.value }}:</span> {{ formatOpportunityValue(contact.estimated_value_cents) }}</p>
-                            <p class="truncate"><span class="font-semibold">{{ filterCopy.columns.status }}:</span> {{ contact.status_name || fallbackLabels.noStatus }}</p>
-                          </div>
-
-                          <div class="mt-3 flex items-center justify-between">
-                            <button
-                              type="button"
-                              class="status-chip-button rounded-2xl border px-3 py-1 text-xs font-semibold"
-                              :style="statusChipStyle(contact)"
-                              @click.stop="toggleStatusDropdown(contact)"
-                            >
-                              {{ contact.status_name || fallbackLabels.noStatus }}
-                            </button>
-                            <button
-                              v-if="canDeleteLeads"
-                              type="button"
-                              class="rounded-xl border border-rose-200 px-2.5 py-1 text-xs font-semibold text-rose-600"
-                              :disabled="contactDeleting[idKey(contact.id)]"
-                              @click.stop="handleDeleteContact(contact)"
-                            >
-                              {{ viewCopy.actions.delete }}
-                            </button>
-                          </div>
-                        </article>
-                      </div>
-
-
-
-                    </div>
-
-
-
-
-
-
-
-                    <div class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">
-
-
-
-                      {{ filteredContactsCount }} {{ viewCopy.contacts.summary }}
-
-
-
-                    </div>
-
-
-
-                  </div>
-
-
-
-                </article>
-
-
-
-              </div>
-
-
-
-
-
-
+              </td>
+              <td v-if="isColumnVisible('pagina')" class="px-4 py-3.5 text-[13px] text-slate-500 dark:text-slate-300">{{ truncatedPageLabel(contact) }}</td>
+              <td v-if="isColumnVisible('valor')" class="px-4 py-3.5 text-right text-xs font-semibold text-slate-800 dark:text-slate-100">{{ formatOpportunityValue(contact.estimated_value_cents) }}</td>
+              <td v-if="isColumnVisible('ultima')" class="px-4 py-3.5">
+                <span class="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-[12px] font-medium" :class="idleChipClass(contact)">
+                  <span class="h-1.5 w-1.5 rounded-full" :class="idleDotClass(contact)"></span>
+                  <span>{{ idleChipLabel(contact) }}</span>
+                </span>
+              </td>
+              <td v-if="isColumnVisible('acoes')" class="px-4 py-3.5 text-right" @click.stop>
+                <div class="inline-flex items-center gap-1">
+                  <button type="button" class="rounded-full border border-slate-200 bg-transparent p-2 text-emerald-600 transition hover:bg-emerald-50 hover:text-emerald-700" title="Ganho" @click.stop="markOpportunityOutcome(contact, 'won')">
+                    <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="currentColor"><path d="M2 10h4v12H2zM22 11c0-1.1-.9-2-2-2h-6.3l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L13 2 6.59 8.41C6.22 8.78 6 9.3 6 9.83V20c0 1.1.9 2 2 2h9c.82 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg>
+                  </button>
+                  <button type="button" class="rounded-full border border-slate-200 bg-transparent p-2 text-rose-600 transition hover:bg-rose-50 hover:text-rose-700" title="Perda" @click.stop="markOpportunityOutcome(contact, 'lost')">
+                    <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="currentColor"><path d="M22 14h-4V2h4zM2 13c0 1.1.9 2 2 2h6.3l-.95 4.57-.03.32c0 .41.17.79.44 1.06L11 22l6.41-6.41c.37-.37.59-.89.59-1.42V4c0-1.1-.9-2-2-2H7c-.82 0-1.54.5-1.84 1.22L2.14 10.27c-.09.23-.14.47-.14.73v2z"/></svg>
+                  </button>
+                  <button v-if="canDeleteLeads" type="button" class="rounded-full border border-slate-200 bg-transparent p-2 text-slate-500 transition hover:bg-slate-50 hover:text-slate-900" title="Excluir" @click.stop="handleDeleteContact(contact)">
+                    <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="currentColor"><path d="M19 4h-3.5l-1-1h-5l-1 1H5v2h14M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6z"/></svg>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </template>
+          <tr v-if="!groupedContactsForCrm.length"><td :colspan="visibleCrmColumnsCount + 1" class="px-4 py-10 text-center text-sm text-slate-500 dark:text-slate-300">{{ viewCopy.emptyStates.contacts.noFilters }}</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </article>
+</div>
 
 <div
-
-
 
   v-else
 
@@ -2692,7 +1051,7 @@
           <div>
             <p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Oportunidades</p>
             <h2 class="mt-2 text-2xl font-bold text-slate-900">Nova oportunidade manual</h2>
-            <p class="mt-2 text-sm text-slate-500">Cadastre uma oportunidade sem depender de formul?rio.</p>
+            <p class="mt-2 text-sm text-slate-500">Cadastre uma oportunidade sem depender de formulário.</p>
           </div>
           <button type="button" class="rounded-full border border-slate-200 p-2 text-slate-500" @click="closeManualOpportunityModal">
             <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2">
@@ -3199,6 +1558,51 @@ const pageTitle = computed(() => {
 const contactViewMode = ref<ContactViewMode>("list");
 const opportunityStateFilter = ref<"all" | "open" | "closed">("all");
 const opportunityOutcomeFilter = ref<"all" | "won" | "lost">("all");
+const crmSearchQuery = ref("");
+const crmPageFilter = ref("all");
+const crmIdleFilter = ref<"all" | "lt1" | "2to5" | "gt5">("all");
+const activeSavedView = ref("default");
+type CrmViewSnapshot = {
+  search: string;
+  state: "all" | "open" | "closed";
+  outcome: "all" | "won" | "lost";
+  page: string;
+  idle: "all" | "lt1" | "2to5" | "gt5";
+  columns: Record<string, boolean>;
+  filters?: {
+    name: string[];
+    form: string[];
+    phone: string[];
+    email: string[];
+    city: string[];
+    page: string[];
+    status: string[];
+    receivedFrom: string;
+    receivedTo: string;
+  };
+};
+type SavedViewChip = {
+  id: string;
+  label: string;
+  preset?: boolean;
+  snapshot?: CrmViewSnapshot;
+};
+const CRM_SAVED_VIEWS_STORAGE_KEY = "agencia.crm.saved_views.v1";
+const savedViewChips = ref<SavedViewChip[]>([
+  { id: "default", label: "Padrão" },
+  { id: "no-status", label: "Sem status", preset: true },
+  { id: "won", label: "Ganhas", preset: true },
+  { id: "lost", label: "Perdidas", preset: true }
+]);
+const columnsMenuOpen = ref(false);
+const crmColumnConfig = reactive([
+  { key: "cliente", label: "Cliente", visible: true },
+  { key: "status", label: "Status/Etapa", visible: true },
+  { key: "pagina", label: "Página/Formulário", visible: true },
+  { key: "valor", label: "Valor", visible: true },
+  { key: "ultima", label: "Última interação", visible: true },
+  { key: "acoes", label: "Ações", visible: true }
+]);
 const isOpportunityDrawerOpen = ref(false);
 const selectedOpportunityId = ref<string | number | null>(null);
 
@@ -3270,6 +1674,7 @@ const contactDeleting = reactive<Record<string, boolean>>({});
 
 
 const openStatusDropdown = ref<string | null>(null);
+const statusDropdownDirection = ref<"up" | "down">("down");
 
 
 
@@ -4321,6 +2726,122 @@ const kanbanFilteredContacts = computed(() =>
 
 const filteredContactsCount = computed(() => filteredContacts.value.length);
 
+const crmPageOptions = computed(() =>
+  Array.from(
+    new Set(
+      filteredContacts.value
+        .map(contact => (contact.page_title || contact.form_name || "").trim())
+        .filter(Boolean)
+    )
+  ).sort((a, b) => a.localeCompare(b))
+);
+
+const idleDays = (contact: LeadContact) => {
+  const rawDays = Number((contact as LeadContact & { sem_interacao_days?: number }).sem_interacao_days);
+  if (Number.isFinite(rawDays) && rawDays >= 0) return Math.floor(rawDays);
+  const created = contact.created_at ? new Date(contact.created_at).getTime() : Date.now();
+  const diff = Math.max(0, Date.now() - created);
+  return Math.floor(diff / 86400000);
+};
+
+const idleChipLabel = (contact: LeadContact) => {
+  const days = idleDays(contact);
+  return `${Math.max(0, days)}d`;
+};
+
+const idleChipClass = (contact: LeadContact) => {
+  const days = idleDays(contact);
+  if (days <= 1) return "border-slate-200 bg-slate-50 text-slate-700";
+  if (days <= 5) return "border-amber-200 bg-amber-50 text-amber-800";
+  return "border-rose-200 bg-rose-50 text-rose-800";
+};
+
+const idleDotClass = (contact: LeadContact) => {
+  const days = idleDays(contact);
+  if (days <= 1) return "bg-slate-500";
+  if (days <= 5) return "bg-amber-500";
+  return "bg-rose-500";
+};
+
+const contactInitials = (contact: LeadContact) => {
+  const name = (contact.name || "?").trim();
+  if (!name) return "?";
+  const parts = name.split(" ").filter(Boolean);
+  return (parts[0]?.[0] || "?").concat(parts.length > 1 ? parts[parts.length - 1][0] : "").toUpperCase();
+};
+
+const isColumnVisible = (key: string) => crmColumnConfig.find(col => col.key === key)?.visible ?? true;
+const visibleCrmColumnsCount = computed(() => crmColumnConfig.filter(col => col.visible).length || 1);
+const truncatedPageLabel = (contact: LeadContact) => {
+  const raw = isManualOpportunity(contact) ? "Criado manual" : contact.page_title || contact.form_name || viewCopy.labels.dash;
+  const text = String(raw || viewCopy.labels.dash).trim();
+  if (text.length <= 25) return text;
+  return `${text.slice(0, 25)}...`;
+};
+const groupHeaderStyle = (groupKey: string) => {
+  if (groupKey === "null") return {};
+  const color = statusColorMap.value[groupKey];
+  if (!color) return {};
+  return {
+    backgroundColor: `color-mix(in srgb, ${color} 10%, white)`,
+    borderColor: `color-mix(in srgb, ${color} 22%, white)`,
+    color,
+    borderLeft: `3px solid ${color}`,
+    borderRadius: "8px",
+    height: "28px"
+  };
+};
+
+const contactRowStyle = (contact: LeadContact): CSSProperties => ({
+  borderLeft: `3px solid ${getStatusColorForContact(contact) || "#e2e8f0"}`
+});
+
+const groupedContactsForCrm = computed(() => {
+  const search = crmSearchQuery.value.trim().toLowerCase();
+  const byView = filteredContacts.value.filter(contact => {
+    if (activeSavedView.value === "no-status" && contact.status_id) return false;
+    if (activeSavedView.value === "won" && getOpportunityOutcome(contact) !== "won") return false;
+    if (activeSavedView.value === "lost" && getOpportunityOutcome(contact) !== "lost") return false;
+    if (search) {
+      const hay = `${contact.name || ""} ${contact.email || ""} ${contact.phone || ""}`.toLowerCase();
+      if (!hay.includes(search)) return false;
+    }
+    if (crmPageFilter.value !== "all" && (contact.page_title || contact.form_name || "") !== crmPageFilter.value) return false;
+    const days = idleDays(contact);
+    if (crmIdleFilter.value === "lt1" && days > 1) return false;
+    if (crmIdleFilter.value === "2to5" && (days < 2 || days > 5)) return false;
+    if (crmIdleFilter.value === "gt5" && days <= 5) return false;
+    return true;
+  });
+
+  const map = new Map<string, { key: string; label: string; contacts: LeadContact[]; totalValueCents: number }>();
+  byView.forEach(contact => {
+    const key = contact.status_id ? String(contact.status_id) : "null";
+    const label = contact.status_name || "Sem etapa";
+    if (!map.has(key)) map.set(key, { key, label, contacts: [], totalValueCents: 0 });
+    const bucket = map.get(key)!;
+    bucket.contacts.push(contact);
+    bucket.totalValueCents += contact.estimated_value_cents || 0;
+  });
+
+  return Array.from(map.values()).sort((a, b) => {
+    if (a.key === "null") return -1;
+    if (b.key === "null") return 1;
+    return a.label.localeCompare(b.label);
+  });
+});
+
+const markOpportunityOutcome = async (contact: LeadContact, outcome: "won" | "lost") => {
+  try {
+    await leadStore.finalizeOpportunity(contact.id, { outcome });
+    await leadStore.fetchContacts(undefined, true);
+    showFeedback(outcome === "won" ? "Oportunidade marcada como ganha." : "Oportunidade marcada como perdida.");
+  } catch (err) {
+    console.error(err);
+    showFeedback("Não foi possível atualizar o resultado.", true);
+  }
+};
+
 
 
 
@@ -4651,7 +3172,7 @@ const handleCreateManualOpportunity = async () => {
     showFeedback("Oportunidade criada com sucesso.");
   } catch (err) {
     console.error(err);
-    showFeedback("Nao foi possivel criar a oportunidade.", true);
+    showFeedback("Não foi possível criar a oportunidade.", true);
   } finally {
     manualOpportunitySaving.value = false;
   }
@@ -5230,7 +3751,13 @@ const statusChipStyle = (contact: LeadContact): CSSProperties => {
 
 
 
-  if (!color) return {};
+  if (!color) {
+    return {
+      backgroundColor: "#f1f5f9",
+      borderColor: "#e2e8f0",
+      color: "#334155"
+    };
+  }
 
 
 
@@ -5238,15 +3765,15 @@ const statusChipStyle = (contact: LeadContact): CSSProperties => {
 
 
 
-    backgroundColor: color,
+    backgroundColor: `color-mix(in srgb, ${color} 12%, white)`,
 
 
 
-    borderColor: color,
+    borderColor: `color-mix(in srgb, ${color} 35%, white)`,
 
 
 
-    color: getContrastingTextColor(color)
+    color
 
 
 
@@ -5446,15 +3973,15 @@ const kanbanHeaderStyle = (columnId: string): CSSProperties => {
 
 
 
-    backgroundColor: originalColor,
+    backgroundColor: `color-mix(in srgb, ${originalColor} 10%, white)`,
 
 
 
-    borderColor: originalColor,
+    borderColor: `color-mix(in srgb, ${originalColor} 24%, white)`,
 
 
 
-    color: getContrastingTextColor(originalColor)
+    color: originalColor
 
 
 
@@ -5478,7 +4005,13 @@ const statusOptionStyle = (status: LeadStatus): CSSProperties => {
 
 
 
-  if (!color) return {};
+  if (!color) {
+    return {
+      backgroundColor: "#f1f5f9",
+      borderColor: "#e2e8f0",
+      color: "#334155"
+    };
+  }
 
 
 
@@ -5486,15 +4019,15 @@ const statusOptionStyle = (status: LeadStatus): CSSProperties => {
 
 
 
-    backgroundColor: color,
+    backgroundColor: `color-mix(in srgb, ${color} 12%, white)`,
 
 
 
-    borderColor: color,
+    borderColor: `color-mix(in srgb, ${color} 35%, white)`,
 
 
 
-    color: getContrastingTextColor(color)
+    color
 
 
 
@@ -5526,15 +4059,29 @@ const closeStatusDropdown = () => {
 
 
 
-const toggleStatusDropdown = (contact: LeadContact) => {
+const toggleStatusDropdown = (contact: LeadContact, event?: MouseEvent) => {
 
 
 
   const key = idKey(contact.id);
 
 
-
-  openStatusDropdown.value = openStatusDropdown.value === key ? null : key;
+  if (openStatusDropdown.value === key) {
+    openStatusDropdown.value = null;
+    return;
+  }
+  const target = event?.currentTarget as HTMLElement | null;
+  if (target) {
+    const rect = target.getBoundingClientRect();
+    const viewportHeight = window.innerHeight;
+    const estimatedMenuHeight = Math.min(320, 44 + leadStatuses.value.length * 34);
+    const spaceBelow = viewportHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    statusDropdownDirection.value = spaceBelow < estimatedMenuHeight && spaceAbove > spaceBelow ? "up" : "down";
+  } else {
+    statusDropdownDirection.value = "down";
+  }
+  openStatusDropdown.value = key;
 
 
 
@@ -5643,10 +4190,9 @@ const handleGlobalClick = (event: MouseEvent) => {
 
 
   if (target.closest(".status-chip-container")) return;
-
-
-
+  if (target.closest(".crm-toolbar")) return;
   closeStatusDropdown();
+  columnsMenuOpen.value = false;
 
 
 
@@ -5663,13 +4209,8 @@ const handleGlobalKeydown = (event: KeyboardEvent) => {
 
 
   if (event.key === "Escape") {
-
-
-
     closeStatusDropdown();
-
-
-
+    columnsMenuOpen.value = false;
   }
 
 
@@ -6092,6 +4633,10 @@ const clearAllFilters = () => {
 
   opportunityStateFilter.value = "all";
   opportunityOutcomeFilter.value = "all";
+  crmSearchQuery.value = "";
+  crmPageFilter.value = "all";
+  crmIdleFilter.value = "all";
+  activeSavedView.value = "default";
   listFilters.receivedFrom = "";
 
 
@@ -6104,6 +4649,140 @@ const clearAllFilters = () => {
 
 
 
+};
+
+const captureCurrentViewSnapshot = (): CrmViewSnapshot => ({
+  search: crmSearchQuery.value,
+  state: opportunityStateFilter.value,
+  outcome: opportunityOutcomeFilter.value,
+  page: crmPageFilter.value,
+  idle: crmIdleFilter.value,
+  columns: Object.fromEntries(crmColumnConfig.map(col => [col.key, !!col.visible])),
+  filters: {
+    name: [...listFilters.name],
+    form: [...listFilters.form],
+    phone: [...listFilters.phone],
+    email: [...listFilters.email],
+    city: [...listFilters.city],
+    page: [...listFilters.page],
+    status: [...listFilters.status],
+    receivedFrom: listFilters.receivedFrom,
+    receivedTo: listFilters.receivedTo
+  }
+});
+
+const resetViewFilterState = () => {
+  listFilters.name = [];
+  listFilters.form = [];
+  listFilters.phone = [];
+  listFilters.email = [];
+  listFilters.city = [];
+  listFilters.page = [];
+  listFilters.status = [];
+  opportunityStateFilter.value = "all";
+  opportunityOutcomeFilter.value = "all";
+  crmSearchQuery.value = "";
+  crmPageFilter.value = "all";
+  crmIdleFilter.value = "all";
+  listFilters.receivedFrom = "";
+  listFilters.receivedTo = "";
+  closeFilterPopover();
+};
+
+const applyViewSnapshot = (snapshot?: CrmViewSnapshot) => {
+  resetViewFilterState();
+  if (!snapshot) return;
+  crmSearchQuery.value = snapshot.search ?? "";
+  opportunityStateFilter.value = snapshot.state ?? "all";
+  opportunityOutcomeFilter.value = snapshot.outcome ?? "all";
+  crmPageFilter.value = snapshot.page ?? "all";
+  crmIdleFilter.value = snapshot.idle ?? "all";
+  crmColumnConfig.forEach(col => {
+    if (snapshot.columns && Object.prototype.hasOwnProperty.call(snapshot.columns, col.key)) {
+      col.visible = !!snapshot.columns[col.key];
+    }
+  });
+  if (snapshot.filters) {
+    listFilters.name = [...(snapshot.filters.name || [])];
+    listFilters.form = [...(snapshot.filters.form || [])];
+    listFilters.phone = [...(snapshot.filters.phone || [])];
+    listFilters.email = [...(snapshot.filters.email || [])];
+    listFilters.city = [...(snapshot.filters.city || [])];
+    listFilters.page = [...(snapshot.filters.page || [])];
+    listFilters.status = [...(snapshot.filters.status || [])];
+    listFilters.receivedFrom = snapshot.filters.receivedFrom || "";
+    listFilters.receivedTo = snapshot.filters.receivedTo || "";
+  }
+};
+
+const persistSavedViews = () => {
+  try {
+    const customViews = savedViewChips.value.filter(view => !view.preset && view.id !== "default");
+    localStorage.setItem(CRM_SAVED_VIEWS_STORAGE_KEY, JSON.stringify(customViews));
+  } catch (err) {
+    console.error(err);
+  }
+};
+
+const loadSavedViews = () => {
+  try {
+    const raw = localStorage.getItem(CRM_SAVED_VIEWS_STORAGE_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw) as SavedViewChip[];
+    const customViews = Array.isArray(parsed)
+      ? parsed.filter(view => view && typeof view.id === "string" && typeof view.label === "string")
+      : [];
+    savedViewChips.value = [
+      { id: "default", label: "Padrão" },
+      { id: "no-status", label: "Sem status", preset: true },
+      { id: "won", label: "Ganhas", preset: true },
+      { id: "lost", label: "Perdidas", preset: true },
+      ...customViews
+    ];
+  } catch (err) {
+    console.error(err);
+  }
+};
+
+const selectSavedView = (viewId: string) => {
+  activeSavedView.value = viewId;
+  const selected = savedViewChips.value.find(view => view.id === viewId);
+  applyViewSnapshot(selected?.snapshot);
+};
+
+const createSavedView = () => {
+  const name = window.prompt("Nome da nova view:");
+  if (!name || !name.trim()) return;
+  const label = name.trim();
+  const baseId = `custom-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "view"}`;
+  let id = baseId;
+  let idx = 2;
+  while (savedViewChips.value.some(view => view.id === id)) {
+    id = `${baseId}-${idx}`;
+    idx += 1;
+  }
+  const newView: SavedViewChip = {
+    id,
+    label,
+    snapshot: captureCurrentViewSnapshot()
+  };
+  savedViewChips.value.push(newView);
+  activeSavedView.value = id;
+  persistSavedViews();
+  showFeedback("Nova visualização criada.");
+};
+
+const saveCurrentView = () => {
+  const currentId = activeSavedView.value;
+  if (!currentId || currentId === "default" || currentId === "no-status" || currentId === "won" || currentId === "lost") {
+    showFeedback("Selecione uma view personalizada ou crie uma nova para salvar.");
+    return;
+  }
+  const target = savedViewChips.value.find(view => view.id === currentId);
+  if (!target) return;
+  target.snapshot = captureCurrentViewSnapshot();
+  persistSavedViews();
+  showFeedback("Visualização salva.");
 };
 
 
@@ -6227,8 +4906,7 @@ const goToPlans = () => {
 
 onMounted(async () => {
 
-
-
+  loadSavedViews();
   document.addEventListener("click", handleGlobalClick);
 
 
@@ -6896,15 +5574,31 @@ watch(
 
 
 
-  border: 1px solid rgba(148, 163, 184, 0.4);
+  border: 1px solid #e2e8f0;
 
 
 
-  background-color: #f8fafc;
+  background-color: #f1f5f9;
 
 
 
-  color: #0f172a;
+  color: #334155;
+
+
+
+  transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+
+
+
+}
+
+
+
+.status-chip-button:hover {
+
+
+
+  background-color: #e2e8f0;
 
 
 
@@ -6948,6 +5642,10 @@ watch(
 
 
 
+  padding: 0.25rem;
+
+
+
 }
 
 
@@ -6972,19 +5670,19 @@ watch(
 
 
 
-  border-radius: 9999px;
+  border-radius: 0.875rem;
 
 
 
-  border: 1px solid transparent;
+  border: 1px solid #e2e8f0;
 
 
 
-  padding: 0.35rem 0.75rem;
+  padding: 0.45rem 0.75rem;
 
 
 
-  margin-top: 0.4rem;
+  margin-top: 0.25rem;
 
 
 
@@ -6996,23 +5694,15 @@ watch(
 
 
 
-  text-transform: uppercase;
-
-
-
-  letter-spacing: 0.03em;
-
-
-
   background-color: #f8fafc;
 
 
 
-  color: #0f172a;
+  color: #334155;
 
 
 
-  transition: box-shadow 0.15s ease, transform 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 
 
 
@@ -7028,7 +5718,7 @@ watch(
 
 
 
-  color: #0f172a;
+  color: #334155;
 
 
 
@@ -7040,7 +5730,7 @@ watch(
 
 
 
-  box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.15);
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.08);
 
 
 
@@ -7052,11 +5742,7 @@ watch(
 
 
 
-  transform: translateY(-1px);
-
-
-
-  box-shadow: 0 12px 18px rgba(15, 23, 42, 0.18);
+  background-color: #f1f5f9;
 
 
 
@@ -7788,6 +6474,26 @@ watch(
 
 
 </style>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

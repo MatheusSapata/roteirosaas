@@ -36,9 +36,9 @@ const PLAN_ALIAS: Record<string, string> = {
 };
 
 const PLAN_ALLOWED: Record<string, PermissionKey[]> = {
-  free: ["dashboard", "pages", "pages_viewer"],
-  professional: ["dashboard", "leads", "leads_forms", "leads_opportunities", "leads_clients", "leads_settings", "leads_manager", "leads_full", "pages", "pages_viewer", "pages_editor", "integrations", "domains", "lessons", "team_management"],
-  agency: ["dashboard", "leads", "leads_forms", "leads_opportunities", "leads_clients", "leads_settings", "leads_manager", "leads_full", "pages", "pages_viewer", "pages_editor", "integrations", "domains", "lessons", "team_management"],
+  free: ["dashboard", "pages", "pages_viewer", "settings"],
+  professional: ["dashboard", "leads", "leads_forms", "leads_opportunities", "leads_clients", "leads_settings", "leads_manager", "leads_full", "pages", "pages_viewer", "pages_editor", "settings", "integrations", "domains", "lessons", "team_management"],
+  agency: ["dashboard", "leads", "leads_forms", "leads_opportunities", "leads_clients", "leads_settings", "leads_manager", "leads_full", "pages", "pages_viewer", "pages_editor", "settings", "integrations", "domains", "lessons", "team_management"],
   scale: ["dashboard", "leads", "leads_forms", "leads_opportunities", "leads_clients", "leads_settings", "leads_manager", "leads_full", "pages", "pages_viewer", "pages_editor", "settings", "integrations", "domains", "lessons", "team_management"],
   test: [...PERMISSION_KEYS]
 };
