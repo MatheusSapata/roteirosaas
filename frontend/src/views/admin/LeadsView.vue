@@ -2,7 +2,10 @@
 <div v-if="isBootstrappingLeads" class="flex min-h-[60vh] w-full items-center justify-center px-4 py-8">
   <div class="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-brand"></div>
 </div>
-<div v-else class="leads-page-shell relative flex h-full min-h-0 w-full flex-col overflow-hidden">
+<div
+  v-else
+  class="leads-page-shell relative flex h-full min-h-0 w-full flex-col overflow-hidden"
+>
 
 
 
@@ -10,11 +13,11 @@
 
 
 
-      class="leads-page flex min-h-0 flex-1 flex-col gap-5 overflow-hidden px-4 py-4 md:px-5"
-
-
-
-      :class="{ 'pointer-events-none select-none opacity-60': !planAllowed }"
+      class="leads-page flex min-h-0 flex-1 flex-col gap-5 px-4 py-4 md:px-5"
+      :class="[
+        'overflow-hidden',
+        { 'pointer-events-none select-none opacity-60': !planAllowed }
+      ]"
 
 
 
@@ -327,45 +330,16 @@
       <div class="opportunities-filter-row opportunities-filter-row--primary">
         <span class="opportunities-filter-label">FILTRAR:</span>
         <div class="toolbar-ms">
-          <button type="button" class="toolbar-ms-btn" :class="{ open: openToolbarFilter === 'stage' }" @click="toggleToolbarFilter('stage')">Etapa <span v-if="listFilters.status.length" class="toolbar-ms-count">{{ listFilters.status.length }}</span></button>
-          <div v-if="openToolbarFilter === 'stage'" class="toolbar-ms-dropdown">
-            <label v-for="option in stageFilterOptions" :key="option.value" class="toolbar-ms-option"><input type="checkbox" :checked="listFilters.status.includes(option.value)" @change="toggleStageFilterOption(option.value)" /><span>{{ option.label }}</span></label>
-            <div class="toolbar-ms-actions">
-              <button type="button" @click="selectAllStageFilters">Selecionar todos</button>
-              <button type="button" @click="clearStageFilters">Limpar</button>
-            </div>
-          </div>
+          <button type="button" class="toolbar-ms-btn" :class="{ open: openToolbarFilter === 'stage' }" @click="toggleToolbarFilter('stage', $event)">Etapa <span v-if="listFilters.status.length" class="toolbar-ms-count">{{ listFilters.status.length }}</span></button>
         </div>
         <div class="toolbar-ms">
-          <button type="button" class="toolbar-ms-btn" :class="{ open: openToolbarFilter === 'opportunityStatus' }" @click="toggleToolbarFilter('opportunityStatus')">Status <span v-if="opportunityStatusSelections.length" class="toolbar-ms-count">{{ opportunityStatusSelections.length }}</span></button>
-          <div v-if="openToolbarFilter === 'opportunityStatus'" class="toolbar-ms-dropdown">
-            <label v-for="option in opportunityStatusOptions" :key="option.value" class="toolbar-ms-option"><input type="checkbox" :checked="opportunityStatusSelections.includes(option.value)" @change="toggleOpportunityStatusSelection(option.value)" /><span>{{ option.label }}</span></label>
-            <div class="toolbar-ms-actions">
-              <button type="button" @click="selectAllStatusFilters">Selecionar todos</button>
-              <button type="button" @click="clearStatusFilters">Limpar</button>
-            </div>
-          </div>
+          <button type="button" class="toolbar-ms-btn" :class="{ open: openToolbarFilter === 'opportunityStatus' }" @click="toggleToolbarFilter('opportunityStatus', $event)">Status <span v-if="opportunityStatusSelections.length" class="toolbar-ms-count">{{ opportunityStatusSelections.length }}</span></button>
         </div>
         <div class="toolbar-ms">
-          <button type="button" class="toolbar-ms-btn" :class="{ open: openToolbarFilter === 'page' }" @click="toggleToolbarFilter('page')">Página <span v-if="listFilters.page.length" class="toolbar-ms-count">{{ listFilters.page.length }}</span></button>
-          <div v-if="openToolbarFilter === 'page'" class="toolbar-ms-dropdown">
-            <label v-for="option in crmPageOptions" :key="option" class="toolbar-ms-option"><input type="checkbox" :checked="listFilters.page.includes(option)" @change="togglePageFilterOption(option)" /><span>{{ option }}</span></label>
-            <div class="toolbar-ms-actions">
-              <button type="button" @click="selectAllPageFilters">Selecionar todos</button>
-              <button type="button" @click="clearPageFilters">Limpar</button>
-            </div>
-          </div>
+          <button type="button" class="toolbar-ms-btn" :class="{ open: openToolbarFilter === 'page' }" @click="toggleToolbarFilter('page', $event)">Página <span v-if="listFilters.page.length" class="toolbar-ms-count">{{ listFilters.page.length }}</span></button>
         </div>
         <div class="toolbar-ms">
-          <button type="button" class="toolbar-ms-btn" :class="{ open: openToolbarFilter === 'idle' }" @click="toggleToolbarFilter('idle')">Sem interação <span v-if="crmIdleSelections.length" class="toolbar-ms-count">{{ crmIdleSelections.length }}</span></button>
-          <div v-if="openToolbarFilter === 'idle'" class="toolbar-ms-dropdown">
-            <p class="toolbar-ms-subtitle">Sem interação há</p>
-            <label v-for="option in idleFilterOptions" :key="option.value" class="toolbar-ms-option"><input type="checkbox" :checked="crmIdleSelections.includes(option.value)" @change="toggleIdleFilterSelection(option.value)" /><span>{{ option.label }}</span></label>
-            <div class="toolbar-ms-actions">
-              <button type="button" @click="selectAllIdleFilters">Selecionar todos</button>
-              <button type="button" @click="clearIdleFilters">Limpar</button>
-            </div>
-          </div>
+          <button type="button" class="toolbar-ms-btn" :class="{ open: openToolbarFilter === 'idle' }" @click="toggleToolbarFilter('idle', $event)">Sem interação <span v-if="crmIdleSelections.length" class="toolbar-ms-count">{{ crmIdleSelections.length }}</span></button>
         </div>
       </div>
       <div class="toolbar-spacer"></div>
@@ -391,34 +365,13 @@
       </div>
       <div class="opportunities-filter-row opportunities-filter-row--primary">
         <div class="toolbar-ms">
-          <button type="button" class="toolbar-ms-btn" :class="{ open: openToolbarFilter === 'stage' }" @click="toggleToolbarFilter('stage')"><svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18"/><path d="M6 12h12"/><path d="M10 19h4"/></svg>Etapa <span v-if="listFilters.status.length" class="toolbar-ms-count">{{ listFilters.status.length }}</span></button>
-          <div v-if="openToolbarFilter === 'stage'" class="toolbar-ms-dropdown">
-            <label v-for="option in stageFilterOptions" :key="option.value" class="toolbar-ms-option"><input type="checkbox" :checked="listFilters.status.includes(option.value)" @change="toggleStageFilterOption(option.value)" /><span>{{ option.label }}</span></label>
-            <div class="toolbar-ms-actions">
-              <button type="button" @click="selectAllStageFilters">Selecionar todos</button>
-              <button type="button" @click="clearStageFilters">Limpar</button>
-            </div>
-          </div>
+          <button type="button" class="toolbar-ms-btn" :class="{ open: openToolbarFilter === 'stage' }" @click="toggleToolbarFilter('stage', $event)"><svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18"/><path d="M6 12h12"/><path d="M10 19h4"/></svg>Etapa <span v-if="listFilters.status.length" class="toolbar-ms-count">{{ listFilters.status.length }}</span></button>
         </div>
         <div class="toolbar-ms">
-          <button type="button" class="toolbar-ms-btn" :class="{ open: openToolbarFilter === 'opportunityStatus' }" @click="toggleToolbarFilter('opportunityStatus')"><svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18"/><path d="M6 12h12"/><path d="M10 19h4"/></svg>Status <span v-if="opportunityStatusSelections.length" class="toolbar-ms-count">{{ opportunityStatusSelections.length }}</span></button>
-          <div v-if="openToolbarFilter === 'opportunityStatus'" class="toolbar-ms-dropdown">
-            <label v-for="option in opportunityStatusOptions" :key="option.value" class="toolbar-ms-option"><input type="checkbox" :checked="opportunityStatusSelections.includes(option.value)" @change="toggleOpportunityStatusSelection(option.value)" /><span>{{ option.label }}</span></label>
-            <div class="toolbar-ms-actions">
-              <button type="button" @click="selectAllStatusFilters">Selecionar todos</button>
-              <button type="button" @click="clearStatusFilters">Limpar</button>
-            </div>
-          </div>
+          <button type="button" class="toolbar-ms-btn" :class="{ open: openToolbarFilter === 'opportunityStatus' }" @click="toggleToolbarFilter('opportunityStatus', $event)"><svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18"/><path d="M6 12h12"/><path d="M10 19h4"/></svg>Status <span v-if="opportunityStatusSelections.length" class="toolbar-ms-count">{{ opportunityStatusSelections.length }}</span></button>
         </div>
         <div class="toolbar-ms">
-          <button type="button" class="toolbar-ms-btn" :class="{ open: openToolbarFilter === 'page' }" @click="toggleToolbarFilter('page')"><svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18"/><path d="M6 12h12"/><path d="M10 19h4"/></svg>Página <span v-if="listFilters.page.length" class="toolbar-ms-count">{{ listFilters.page.length }}</span></button>
-          <div v-if="openToolbarFilter === 'page'" class="toolbar-ms-dropdown">
-            <label v-for="option in crmPageOptions" :key="option" class="toolbar-ms-option"><input type="checkbox" :checked="listFilters.page.includes(option)" @change="togglePageFilterOption(option)" /><span>{{ option }}</span></label>
-            <div class="toolbar-ms-actions">
-              <button type="button" @click="selectAllPageFilters">Selecionar todos</button>
-              <button type="button" @click="clearPageFilters">Limpar</button>
-            </div>
-          </div>
+          <button type="button" class="toolbar-ms-btn" :class="{ open: openToolbarFilter === 'page' }" @click="toggleToolbarFilter('page', $event)"><svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18"/><path d="M6 12h12"/><path d="M10 19h4"/></svg>Página <span v-if="listFilters.page.length" class="toolbar-ms-count">{{ listFilters.page.length }}</span></button>
         </div>
       </div>
     </div>
@@ -470,30 +423,6 @@
                     </svg>
                   </button>
 
-                  <div
-                    v-if="openStatusDropdown === idKey(contact.id)"
-                    class="status-dropdown absolute left-0 z-50 min-w-[180px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-white/10 dark:bg-[#111319]"
-                    :class="statusDropdownDirection === 'up' ? 'bottom-full mb-2' : 'top-full mt-2'"
-                  >
-                    <button
-                      type="button"
-                      class="status-option-badge"
-                      :style="statusOptionDefaultStyle"
-                      @click.stop="selectStatusOption(contact, null)"
-                    >
-                      {{ fallbackLabels.noStage }}
-                    </button>
-                    <button
-                      v-for="status in leadStatuses"
-                      :key="status.id"
-                      type="button"
-                      class="status-option-badge"
-                      :style="statusOptionStyle(status)"
-                      @click.stop="selectStatusOption(contact, String(status.id))"
-                    >
-                      {{ status.name }}
-                    </button>
-                  </div>
                 </div>
               </td>
               <td v-if="col.visible && col.key === 'pagina'" class="w-[230px] px-2 py-2.5 text-[13px]" style="width:230px;min-width:230px;max-width:230px;" @click.stop>
@@ -620,6 +549,69 @@
     </template>
     <div v-if="!groupedContactsForCrm.length" class="px-4 py-8 text-center text-sm text-slate-500">{{ viewCopy.emptyStates.contacts.noFilters }}</div>
   </section>
+  <teleport to="body">
+    <div
+      v-if="openToolbarFilter"
+      class="toolbar-ms-dropdown toolbar-ms-dropdown-portal"
+      :style="toolbarDropdownFloatingStyle"
+    >
+      <template v-if="openToolbarFilter === 'stage'">
+        <label v-for="option in stageFilterOptions" :key="option.value" class="toolbar-ms-option"><input type="checkbox" :checked="listFilters.status.includes(option.value)" @change="toggleStageFilterOption(option.value)" /><span>{{ option.label }}</span></label>
+        <div class="toolbar-ms-actions">
+          <button type="button" @click="selectAllStageFilters">Selecionar todos</button>
+          <button type="button" @click="clearStageFilters">Limpar</button>
+        </div>
+      </template>
+      <template v-else-if="openToolbarFilter === 'opportunityStatus'">
+        <label v-for="option in opportunityStatusOptions" :key="option.value" class="toolbar-ms-option"><input type="checkbox" :checked="opportunityStatusSelections.includes(option.value)" @change="toggleOpportunityStatusSelection(option.value)" /><span>{{ option.label }}</span></label>
+        <div class="toolbar-ms-actions">
+          <button type="button" @click="selectAllStatusFilters">Selecionar todos</button>
+          <button type="button" @click="clearStatusFilters">Limpar</button>
+        </div>
+      </template>
+      <template v-else-if="openToolbarFilter === 'page'">
+        <label v-for="option in crmPageOptions" :key="option" class="toolbar-ms-option"><input type="checkbox" :checked="listFilters.page.includes(option)" @change="togglePageFilterOption(option)" /><span>{{ option }}</span></label>
+        <div class="toolbar-ms-actions">
+          <button type="button" @click="selectAllPageFilters">Selecionar todos</button>
+          <button type="button" @click="clearPageFilters">Limpar</button>
+        </div>
+      </template>
+      <template v-else-if="openToolbarFilter === 'idle'">
+        <p class="toolbar-ms-subtitle">Sem interação há</p>
+        <label v-for="option in idleFilterOptions" :key="option.value" class="toolbar-ms-option"><input type="checkbox" :checked="crmIdleSelections.includes(option.value)" @change="toggleIdleFilterSelection(option.value)" /><span>{{ option.label }}</span></label>
+        <div class="toolbar-ms-actions">
+          <button type="button" @click="selectAllIdleFilters">Selecionar todos</button>
+          <button type="button" @click="clearIdleFilters">Limpar</button>
+        </div>
+      </template>
+    </div>
+  </teleport>
+  <teleport to="body">
+    <div
+      v-if="openStatusDropdown && dropdownStatusContact"
+      class="status-dropdown status-dropdown-portal"
+      :style="statusDropdownFloatingStyle"
+    >
+      <button
+        type="button"
+        class="status-option-badge"
+        :style="statusOptionDefaultStyle"
+        @click.stop="selectStatusOption(dropdownStatusContact, null)"
+      >
+        {{ fallbackLabels.noStage }}
+      </button>
+      <button
+        v-for="status in leadStatuses"
+        :key="status.id"
+        type="button"
+        class="status-option-badge"
+        :style="statusOptionStyle(status)"
+        @click.stop="selectStatusOption(dropdownStatusContact, String(status.id))"
+      >
+        {{ status.name }}
+      </button>
+    </div>
+  </teleport>
   <teleport to="body">
     <div v-if="columnsMenuOpen" class="columns-overlay" @click="columnsMenuOpen = false"></div>
     <aside v-if="columnsMenuOpen" class="columns-sidebar">
@@ -1794,6 +1786,7 @@ const crmIdleFilter = ref<"all" | "today" | "upto7" | "8to14" | "gt15">("all");
 const opportunityStatusSelections = ref<Array<"open" | "won" | "lost">>([]);
 const crmIdleSelections = ref<Array<"today" | "upto7" | "8to14" | "gt15">>([]);
 const openToolbarFilter = ref<"stage" | "opportunityStatus" | "page" | "idle" | null>(null);
+const toolbarDropdownFloatingStyle = ref<CSSProperties>({});
 const selectedOpportunityIds = ref<string[]>([]);
 const bulkTargetStatusId = ref<string>("");
 const bulkStageMenuOpen = ref(false);
@@ -1845,7 +1838,7 @@ const columnDefaults = [
   { key: "cliente", label: "Cliente", visible: true },
   { key: "telefone", label: "Telefone", visible: true },
   { key: "status", label: "Etapa", visible: true },
-  { key: "pagina", label: "Página/Formulário", visible: true },
+  { key: "pagina", label: "Origem", visible: true },
   { key: "chegouEm", label: "Chegou em", visible: true },
   { key: "valor", label: "Valor", visible: true },
   { key: "ultima", label: "Sem interação", visible: true },
@@ -1935,6 +1928,7 @@ const contactDeleting = reactive<Record<string, boolean>>({});
 
 const openStatusDropdown = ref<string | null>(null);
 const statusDropdownDirection = ref<"up" | "down">("down");
+const statusDropdownFloatingStyle = ref<CSSProperties>({});
 
 
 
@@ -3192,8 +3186,34 @@ const groupPillStyle = (groupKey: string): CSSProperties => {
   };
 };
 
-const toggleToolbarFilter = (key: "stage" | "opportunityStatus" | "page" | "idle") => {
-  openToolbarFilter.value = openToolbarFilter.value === key ? null : key;
+const toggleToolbarFilter = (key: "stage" | "opportunityStatus" | "page" | "idle", event?: MouseEvent) => {
+  if (openToolbarFilter.value === key) {
+    openToolbarFilter.value = null;
+    toolbarDropdownFloatingStyle.value = {};
+    return;
+  }
+  const target = event?.currentTarget as HTMLElement | null;
+  if (target) {
+    const rect = target.getBoundingClientRect();
+    const minWidth = Math.max(200, Math.round(rect.width));
+    const estimatedHeight = key === "idle" ? 260 : 320;
+    const gap = 8;
+    const left = Math.min(
+      Math.max(gap, rect.left),
+      Math.max(gap, window.innerWidth - minWidth - gap)
+    );
+    const top = Math.min(window.innerHeight - estimatedHeight - gap, rect.bottom + 6);
+    toolbarDropdownFloatingStyle.value = {
+      position: "fixed",
+      top: `${Math.max(gap, top)}px`,
+      left: `${left}px`,
+      minWidth: `${minWidth}px`,
+      zIndex: "2550"
+    };
+  } else {
+    toolbarDropdownFloatingStyle.value = {};
+  }
+  openToolbarFilter.value = key;
 };
 
 const toggleValueInArray = <T extends string>(list: T[], value: T) => (list.includes(value) ? list.filter(v => v !== value) : [...list, value]);
@@ -3258,6 +3278,7 @@ const visibleGroupContacts = (group: { key: string; contacts: LeadContact[] }) =
   isGroupCollapsed(group.key) ? [] : group.contacts;
 
 const toggleGroupCollapse = (groupKey: string) => {
+  closeStatusDropdown();
   collapsedGroupKeys.value = collapsedGroupKeys.value.includes(groupKey)
     ? collapsedGroupKeys.value.filter(key => key !== groupKey)
     : [...collapsedGroupKeys.value, groupKey];
@@ -3316,17 +3337,38 @@ const groupedContactsForCrm = computed(() => {
     return true;
   });
 
+  const sortedStatuses = [...leadStatuses.value].sort((a, b) => {
+    const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+    const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+    return dateA - dateB;
+  });
+
+  const baseGroups = [
+    { key: "null", label: fallbackLabels.noStage },
+    ...sortedStatuses.map(status => ({ key: String(status.id), label: status.name }))
+  ];
+
   const map = new Map<string, { key: string; label: string; contacts: LeadContact[]; totalValueCents: number }>();
+  baseGroups.forEach(group => {
+    map.set(group.key, { ...group, contacts: [], totalValueCents: 0 });
+  });
+
   byView.forEach(contact => {
     const key = contact.status_id ? String(contact.status_id) : "null";
-    const label = contact.status_name || "Sem etapa";
+    const label = contact.status_name || fallbackLabels.noStage;
     if (!map.has(key)) map.set(key, { key, label, contacts: [], totalValueCents: 0 });
     const bucket = map.get(key)!;
     bucket.contacts.push(contact);
     bucket.totalValueCents += contact.estimated_value_cents || 0;
   });
 
+  const orderMap = new Map(baseGroups.map((group, index) => [group.key, index]));
   return Array.from(map.values()).sort((a, b) => {
+    const orderA = orderMap.get(a.key);
+    const orderB = orderMap.get(b.key);
+    if (orderA != null && orderB != null) return orderA - orderB;
+    if (orderA != null) return -1;
+    if (orderB != null) return 1;
     if (a.key === "null") return -1;
     if (b.key === "null") return 1;
     return a.label.localeCompare(b.label);
@@ -3705,12 +3747,6 @@ const closeManualOpportunityModal = () => {
   manualOpportunityForm.expectedCloseDate = "";
 };
 
-const currencyInputToCents = (value: string) => {
-  const digits = value.replace(/\D/g, "");
-  if (!digits) return null;
-  return Number(digits);
-};
-
 const reaisInputToCents = (value: string) => {
   const raw = String(value || "").trim();
   if (!raw) return null;
@@ -3773,7 +3809,7 @@ const handleCreateManualOpportunity = async () => {
   if (!selectedManualOpportunityClient.value && !manualOpportunityForm.name?.trim()) return;
   manualOpportunitySaving.value = true;
   try {
-    const opportunity = await leadStore.createManualOpportunity({
+    await leadStore.createManualOpportunity({
       clientId: selectedManualOpportunityClient.value?.id || null,
       name: selectedManualOpportunityClient.value?.name || manualOpportunityForm.name.trim(),
       opportunityName: manualOpportunityForm.opportunityName?.trim() || null,
@@ -3782,14 +3818,12 @@ const handleCreateManualOpportunity = async () => {
       email: selectedManualOpportunityClient.value ? null : manualOpportunityForm.email?.trim() || null,
       city: selectedManualOpportunityClient.value ? null : manualOpportunityForm.city?.trim() || null,
       birthdate: selectedManualOpportunityClient.value ? null : manualOpportunityForm.birthdate || null,
-      estimatedValueCents: currencyInputToCents(manualOpportunityForm.estimatedValue),
+      estimatedValueCents: reaisInputToCents(manualOpportunityForm.estimatedValue),
       statusId: manualOpportunityForm.statusId ? Number(manualOpportunityForm.statusId) : null,
       internalNotes: manualOpportunityForm.internalNotes?.trim() || null,
       expectedCloseDate: manualOpportunityForm.expectedCloseDate || null
     });
     closeManualOpportunityModal();
-    selectedOpportunityId.value = opportunity.id;
-    isOpportunityDrawerOpen.value = true;
     showFeedback("Oportunidade criada com sucesso.");
   } catch (err) {
     console.error(err);
@@ -4664,6 +4698,11 @@ const statusOptionDefaultStyle: CSSProperties = {
   color: "#334155"
 };
 
+const dropdownStatusContact = computed(() => {
+  if (!openStatusDropdown.value) return null;
+  return contacts.value.find(contact => idKey(contact.id) === openStatusDropdown.value) || null;
+});
+
 
 
 
@@ -4671,13 +4710,13 @@ const statusOptionDefaultStyle: CSSProperties = {
 
 
 const closeStatusDropdown = () => {
-
-
-
   openStatusDropdown.value = null;
+  statusDropdownFloatingStyle.value = {};
+};
 
-
-
+const closeToolbarDropdown = () => {
+  closeToolbarDropdown();
+  toolbarDropdownFloatingStyle.value = {};
 };
 
 
@@ -4700,10 +4739,30 @@ const toggleStatusDropdown = (contact: LeadContact, event?: MouseEvent) => {
   const target = event?.currentTarget as HTMLElement | null;
   if (target) {
     const rect = target.getBoundingClientRect();
-    const viewportMidpoint = window.innerHeight / 2;
-    statusDropdownDirection.value = rect.top >= viewportMidpoint ? "up" : "down";
+    const estimatedMenuHeight = Math.min((leadStatuses.value.length + 1) * 38 + 12, 248);
+    const menuMinWidth = Math.max(180, Math.round(rect.width));
+    const gap = 12;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    statusDropdownDirection.value =
+      spaceBelow < estimatedMenuHeight + gap && spaceAbove > spaceBelow ? "up" : "down";
+    const top = statusDropdownDirection.value === "up"
+      ? Math.max(gap, rect.top - estimatedMenuHeight - gap)
+      : Math.min(window.innerHeight - estimatedMenuHeight - gap, rect.bottom + gap);
+    const left = Math.min(
+      Math.max(gap, rect.left),
+      Math.max(gap, window.innerWidth - menuMinWidth - gap)
+    );
+    statusDropdownFloatingStyle.value = {
+      position: "fixed",
+      top: `${top}px`,
+      left: `${left}px`,
+      minWidth: `${menuMinWidth}px`,
+      zIndex: "2600"
+    };
   } else {
     statusDropdownDirection.value = "down";
+    statusDropdownFloatingStyle.value = {};
   }
   openStatusDropdown.value = key;
 
@@ -4814,6 +4873,8 @@ const handleGlobalClick = (event: MouseEvent) => {
 
 
   if (target.closest(".status-chip-container")) return;
+  if (target.closest(".status-dropdown-portal")) return;
+  if (target.closest(".toolbar-ms-dropdown-portal")) return;
   if (target.closest(".columns-sidebar")) return;
   if (target.closest(".bulk-stage-wrap")) return;
   if (target.closest(".crm-toolbar")) {
@@ -4822,7 +4883,7 @@ const handleGlobalClick = (event: MouseEvent) => {
   }
   closeStatusDropdown();
   columnsMenuOpen.value = false;
-  openToolbarFilter.value = null;
+  closeToolbarDropdown();
   bulkStageMenuOpen.value = false;
 
 
@@ -4842,12 +4903,17 @@ const handleGlobalKeydown = (event: KeyboardEvent) => {
   if (event.key === "Escape") {
     closeStatusDropdown();
     columnsMenuOpen.value = false;
-    openToolbarFilter.value = null;
+    closeToolbarDropdown();
     bulkStageMenuOpen.value = false;
   }
 
 
 
+};
+
+const handleViewportInteraction = () => {
+  if (openStatusDropdown.value) closeStatusDropdown();
+  if (openToolbarFilter.value) closeToolbarDropdown();
 };
 
 
@@ -5281,7 +5347,7 @@ const clearAllFilters = () => {
 
 
   closeFilterPopover();
-  openToolbarFilter.value = null;
+  closeToolbarDropdown();
 
 
 
@@ -5327,7 +5393,7 @@ const resetViewFilterState = () => {
   listFilters.receivedFrom = "";
   listFilters.receivedTo = "";
   closeFilterPopover();
-  openToolbarFilter.value = null;
+  closeToolbarDropdown();
 };
 
 const formatDateOnly = (value?: string) => {
@@ -5632,6 +5698,8 @@ onMounted(async () => {
 
 
   window.addEventListener("resize", updateViewportMode);
+  window.addEventListener("resize", handleViewportInteraction);
+  window.addEventListener("scroll", handleViewportInteraction, true);
 
 
 
@@ -5669,6 +5737,8 @@ onUnmounted(() => {
 
 
   window.removeEventListener("resize", updateViewportMode);
+  window.removeEventListener("resize", handleViewportInteraction);
+  window.removeEventListener("scroll", handleViewportInteraction, true);
 
 
 
@@ -6290,6 +6360,11 @@ watch(visibleOpportunityIds, ids => {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
   z-index: 80;
   padding: 6px;
+}
+
+.toolbar-ms-dropdown-portal {
+  position: fixed;
+  z-index: 2550;
 }
 
 .toolbar-ms-actions {
@@ -7209,21 +7284,18 @@ watch(visibleOpportunityIds, ids => {
 
 
 .status-dropdown {
-
-
-
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
   max-height: 13.6rem;
-
-
-
+  overflow-x: hidden;
   overflow-y: auto;
-
-
-
   padding: 0.25rem;
+}
 
-
-
+.status-dropdown-portal {
+  position: fixed;
 }
 
 .status-option-badge {
@@ -7410,6 +7482,12 @@ watch(visibleOpportunityIds, ids => {
 
 
 
+}
+
+:global(.dark-theme) .status-dropdown {
+  background: #111319;
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
 }
 
 

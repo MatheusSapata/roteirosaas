@@ -3202,6 +3202,22 @@ onMounted(async () => {
   background-color: #05070f80;
 }
 
+@media (min-width: 768px) {
+  .page-editor-view {
+    zoom: 0.8;
+  }
+}
+
+@supports not (zoom: 1) {
+  @media (min-width: 768px) {
+    .page-editor-view {
+      transform: scale(0.8);
+      transform-origin: top left;
+      width: 125%;
+    }
+  }
+}
+
 .editor-topbar {
   display: flex;
   align-items: center;
