@@ -276,7 +276,7 @@
                 </div>
 
                 <div v-if="linkMode === 'search'" class="mt-4 rounded-2xl border border-slate-200 p-4">
-                  <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Buscar cliente</label>
+                  <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Buscar Oportunidade</label>
                   <input
                     v-model="clientSearch"
                     type="text"
