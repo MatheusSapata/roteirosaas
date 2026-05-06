@@ -323,7 +323,65 @@
 
               <div v-if="contactViewMode === 'list'" class="crm-list-view flex min-h-0 flex-1 flex-col overflow-visible">
   <section class="crm-toolbar p-4 dark:bg-[#202020]">
-    <div class="opportunities-filter-bar">
+    <div v-if="!isMobileViewport" class="opportunities-filter-bar opportunities-filter-bar--desktop">
+      <div class="opportunities-filter-row opportunities-filter-row--primary">
+        <span class="opportunities-filter-label">FILTRAR:</span>
+        <div class="toolbar-ms">
+          <button type="button" class="toolbar-ms-btn" :class="{ open: openToolbarFilter === 'stage' }" @click="toggleToolbarFilter('stage')">Etapa <span v-if="listFilters.status.length" class="toolbar-ms-count">{{ listFilters.status.length }}</span></button>
+          <div v-if="openToolbarFilter === 'stage'" class="toolbar-ms-dropdown">
+            <label v-for="option in stageFilterOptions" :key="option.value" class="toolbar-ms-option"><input type="checkbox" :checked="listFilters.status.includes(option.value)" @change="toggleStageFilterOption(option.value)" /><span>{{ option.label }}</span></label>
+            <div class="toolbar-ms-actions">
+              <button type="button" @click="selectAllStageFilters">Selecionar todos</button>
+              <button type="button" @click="clearStageFilters">Limpar</button>
+            </div>
+          </div>
+        </div>
+        <div class="toolbar-ms">
+          <button type="button" class="toolbar-ms-btn" :class="{ open: openToolbarFilter === 'opportunityStatus' }" @click="toggleToolbarFilter('opportunityStatus')">Status <span v-if="opportunityStatusSelections.length" class="toolbar-ms-count">{{ opportunityStatusSelections.length }}</span></button>
+          <div v-if="openToolbarFilter === 'opportunityStatus'" class="toolbar-ms-dropdown">
+            <label v-for="option in opportunityStatusOptions" :key="option.value" class="toolbar-ms-option"><input type="checkbox" :checked="opportunityStatusSelections.includes(option.value)" @change="toggleOpportunityStatusSelection(option.value)" /><span>{{ option.label }}</span></label>
+            <div class="toolbar-ms-actions">
+              <button type="button" @click="selectAllStatusFilters">Selecionar todos</button>
+              <button type="button" @click="clearStatusFilters">Limpar</button>
+            </div>
+          </div>
+        </div>
+        <div class="toolbar-ms">
+          <button type="button" class="toolbar-ms-btn" :class="{ open: openToolbarFilter === 'page' }" @click="toggleToolbarFilter('page')">Página <span v-if="listFilters.page.length" class="toolbar-ms-count">{{ listFilters.page.length }}</span></button>
+          <div v-if="openToolbarFilter === 'page'" class="toolbar-ms-dropdown">
+            <label v-for="option in crmPageOptions" :key="option" class="toolbar-ms-option"><input type="checkbox" :checked="listFilters.page.includes(option)" @change="togglePageFilterOption(option)" /><span>{{ option }}</span></label>
+            <div class="toolbar-ms-actions">
+              <button type="button" @click="selectAllPageFilters">Selecionar todos</button>
+              <button type="button" @click="clearPageFilters">Limpar</button>
+            </div>
+          </div>
+        </div>
+        <div class="toolbar-ms">
+          <button type="button" class="toolbar-ms-btn" :class="{ open: openToolbarFilter === 'idle' }" @click="toggleToolbarFilter('idle')">Sem interação <span v-if="crmIdleSelections.length" class="toolbar-ms-count">{{ crmIdleSelections.length }}</span></button>
+          <div v-if="openToolbarFilter === 'idle'" class="toolbar-ms-dropdown">
+            <p class="toolbar-ms-subtitle">Sem interação há</p>
+            <label v-for="option in idleFilterOptions" :key="option.value" class="toolbar-ms-option"><input type="checkbox" :checked="crmIdleSelections.includes(option.value)" @change="toggleIdleFilterSelection(option.value)" /><span>{{ option.label }}</span></label>
+            <div class="toolbar-ms-actions">
+              <button type="button" @click="selectAllIdleFilters">Selecionar todos</button>
+              <button type="button" @click="clearIdleFilters">Limpar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="toolbar-spacer"></div>
+      <div class="toolbar-right-actions">
+        <div class="toolbar-search"><svg viewBox="0 0 24 24" class="toolbar-search-icon" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input v-model="crmSearchQuery" type="text" placeholder="Buscar oportunidade..." /></div>
+        <button type="button" class="toolbar-ghost-btn toolbar-ghost-btn--square" @click="openColumnsSidebar">
+          <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg>
+          Colunas
+        </button>
+        <button type="button" class="toolbar-ghost-btn toolbar-ghost-btn--square" @click="saveCurrentView">
+          <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>
+          Salvar visualização
+        </button>
+      </div>
+    </div>
+    <div v-else class="opportunities-filter-bar">
       <div class="opportunities-filter-row opportunities-filter-row--search">
         <div class="toolbar-search"><svg viewBox="0 0 24 24" class="toolbar-search-icon" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input v-model="crmSearchQuery" type="text" placeholder="Buscar cliente..." /></div>
         <button type="button" class="mobile-create-btn" @click="openManualOpportunityModal">
@@ -368,12 +426,12 @@
   <article v-if="!isMobileViewport" class="opps-table-shell relative mt-2 flex flex-1 flex-col overflow-visible">
     <div class="flex-1 overflow-visible">
       <table class="opps-table table-fixed min-w-full text-sm">
-        <thead class="sticky top-0 z-10"><tr class="text-left text-xs font-semibold uppercase tracking-wide"><th class="w-[34px] px-2 py-3"><input class="h-4 w-4 cursor-pointer accent-emerald-500" type="checkbox" :checked="areAllVisibleOpportunitiesSelected" @change="toggleAllVisibleOpportunities" /></th><th v-if="isColumnVisible('cliente')" class="w-[180px] px-3 py-3" style="width:180px;min-width:180px;max-width:180px;">Nome</th><template v-for="col in orderedOptionalColumns" :key="`head-${col.key}`"><th v-if="col.visible && col.key === 'telefone'" class="w-[150px] px-2 py-3">Telefone</th><th v-if="col.visible && col.key === 'status'" class="w-[170px] px-2 py-3">Etapa</th><th v-if="col.visible && col.key === 'pagina'" class="w-[230px] px-2 py-3" style="width:230px;min-width:230px;max-width:230px;">Origem</th><th v-if="col.visible && col.key === 'valor'" class="w-[105px] px-2 py-3 text-center">Valor</th><th v-if="col.visible && col.key === 'chegouEm'" class="w-[100px] px-2 py-3">Chegou em</th><th v-if="col.visible && col.key === 'ultima'" class="w-[130px] px-2 py-3 text-center">Sem interação</th></template><th v-if="isColumnVisible('acoes')" class="w-[108px] px-2 py-3 text-right">Ações</th></tr></thead>
+        <thead class="sticky top-0 z-10"><tr class="text-left text-xs font-semibold uppercase tracking-wide"><th class="w-[40px] px-2 py-3"><div class="flex justify-center"><input class="h-4 w-4 cursor-pointer accent-emerald-500" type="checkbox" :checked="areAllVisibleOpportunitiesSelected" @change="toggleAllVisibleOpportunities" /></div></th><th v-if="isColumnVisible('cliente')" class="w-[180px] px-3 py-3" style="width:180px;min-width:180px;max-width:180px;">Nome</th><template v-for="col in orderedOptionalColumns" :key="`head-${col.key}`"><th v-if="col.visible && col.key === 'telefone'" class="w-[150px] px-2 py-3">Telefone</th><th v-if="col.visible && col.key === 'status'" class="w-[170px] px-2 py-3">Etapa</th><th v-if="col.visible && col.key === 'pagina'" class="w-[230px] px-2 py-3" style="width:230px;min-width:230px;max-width:230px;">Origem</th><th v-if="col.visible && col.key === 'valor'" class="w-[105px] px-2 py-3 text-center">Valor</th><th v-if="col.visible && col.key === 'chegouEm'" class="w-[100px] px-2 py-3">Chegou em</th><th v-if="col.visible && col.key === 'ultima'" class="w-[130px] px-2 py-3 text-center">Sem interação</th></template><th v-if="isColumnVisible('acoes')" class="w-[108px] px-2 py-3 text-right">Ações</th></tr></thead>
         <tbody>
           <template v-for="group in groupedContactsForCrm" :key="group.key">
             <tr class="opps-group-row" @click="toggleGroupCollapse(group.key)"><td :colspan="visibleCrmColumnsCount + 2" class="px-4 py-1 text-xs font-semibold" :style="groupHeaderStyle(group.key)"><button type="button" class="opps-group-toggle-btn" :class="{ collapsed: isGroupCollapsed(group.key) }" @click.stop="toggleGroupCollapse(group.key)"><svg viewBox="0 0 20 20" class="h-3.5 w-3.5" fill="currentColor" aria-hidden="true"><path d="M5.2 7.5a.75.75 0 0 1 1.06 0L10 11.24l3.74-3.74a.75.75 0 1 1 1.06 1.06l-4.27 4.27a.75.75 0 0 1-1.06 0L5.2 8.56a.75.75 0 0 1 0-1.06Z" /></svg></button><span class="inline-flex items-center gap-2 rounded-full border px-2.5 py-1" :style="groupPillStyle(group.key)">{{ group.label }}</span> <span class="opps-group-meta">{{ group.contacts.length }} contatos · {{ formatOpportunityValue(group.totalValueCents) }}</span></td></tr>
             <tr v-for="contact in visibleGroupContacts(group)" :key="contact.id" class="opps-data-row cursor-pointer transition" :class="opportunityRowClass(contact)" :style="contactRowStyle(contact)" @click="openOpportunityDrawer(contact)">
-              <td class="w-[40px] pl-4 pr-2 py-2.5" @click.stop><input class="h-4 w-4 cursor-pointer accent-emerald-500" type="checkbox" :checked="isOpportunitySelected(contact)" @change="toggleOpportunitySelection(contact)" /></td>
+              <td class="w-[40px] px-2 py-2.5" @click.stop><div class="flex justify-center"><input class="h-4 w-4 cursor-pointer accent-emerald-500" type="checkbox" :checked="isOpportunitySelected(contact)" @change="toggleOpportunitySelection(contact)" /></div></td>
               <td v-if="isColumnVisible('cliente')" class="w-[180px] px-4 py-2.5" style="width:180px;min-width:180px;max-width:180px;">
                 <div class="min-w-0 max-w-[180px]">
                   <div class="flex flex-wrap items-center gap-2">
@@ -419,7 +477,8 @@
                   >
                     <button
                       type="button"
-                      class="block w-full border-b border-slate-100 bg-slate-100 px-3 py-2.5 text-left text-xs font-semibold text-slate-700 transition hover:bg-slate-200 dark:border-white/10"
+                      class="status-option-badge"
+                      :style="statusOptionDefaultStyle"
                       @click.stop="selectStatusOption(contact, null)"
                     >
                       {{ fallbackLabels.noStage }}
@@ -428,7 +487,7 @@
                       v-for="status in leadStatuses"
                       :key="status.id"
                       type="button"
-                      class="block w-full px-3 py-2.5 text-left text-xs font-semibold transition"
+                      class="status-option-badge"
                       :style="statusOptionStyle(status)"
                       @click.stop="selectStatusOption(contact, String(status.id))"
                     >
@@ -3102,7 +3161,7 @@ const groupHeaderStyle = (groupKey: string) => {
     return {
       backgroundColor: "transparent",
       color: "#334155",
-      borderLeft: "4px solid #cbd5e1",
+      "--group-accent": "#cbd5e1",
       borderRadius: "8px",
       height: "28px"
     };
@@ -3112,7 +3171,7 @@ const groupHeaderStyle = (groupKey: string) => {
   return {
     backgroundColor: "transparent",
     color: "#334155",
-    borderLeft: `4px solid ${color}`,
+    "--group-accent": color,
     borderRadius: "8px",
     height: "28px"
   };
@@ -3698,9 +3757,9 @@ const saveInlineValue = async (contact: LeadContact) => {
 
 const openContactOrigin = (contact: LeadContact) => {
   if (isManualOpportunity(contact)) return;
-  const pageId = contact.page_id;
-  if (pageId !== null && typeof pageId !== "undefined" && String(pageId).trim() !== "") {
-    void router.push(`/admin/pages/${pageId}/edit`);
+  const pageUrl = String(contact.page_url || "").trim();
+  if (pageUrl) {
+    window.open(pageUrl, "_blank", "noopener,noreferrer");
     return;
   }
   void router.push("/admin/pages");
@@ -4599,6 +4658,12 @@ const statusOptionStyle = (status: LeadStatus): CSSProperties => {
 
 };
 
+const statusOptionDefaultStyle: CSSProperties = {
+  backgroundColor: "#eef2f7",
+  borderColor: "#d8e0ea",
+  color: "#334155"
+};
+
 
 
 
@@ -4635,11 +4700,8 @@ const toggleStatusDropdown = (contact: LeadContact, event?: MouseEvent) => {
   const target = event?.currentTarget as HTMLElement | null;
   if (target) {
     const rect = target.getBoundingClientRect();
-    const viewportHeight = window.innerHeight;
-    const estimatedMenuHeight = Math.min(320, 44 + leadStatuses.value.length * 34);
-    const spaceBelow = viewportHeight - rect.bottom;
-    const spaceAbove = rect.top;
-    statusDropdownDirection.value = spaceBelow < estimatedMenuHeight && spaceAbove > spaceBelow ? "up" : "down";
+    const viewportMidpoint = window.innerHeight / 2;
+    statusDropdownDirection.value = rect.top >= viewportMidpoint ? "up" : "down";
   } else {
     statusDropdownDirection.value = "down";
   }
@@ -6150,6 +6212,37 @@ watch(visibleOpportunityIds, ids => {
   min-width: 0;
 }
 
+.opportunities-filter-bar--desktop {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.opportunities-filter-bar--desktop .opportunities-filter-row--primary {
+  flex-wrap: nowrap;
+}
+
+.opportunities-filter-bar--desktop .opportunities-filter-label {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #6f846f;
+  margin-right: 2px;
+}
+
+.opportunities-filter-bar--desktop .toolbar-right-actions {
+  margin-left: auto;
+}
+
+@media (min-width: 769px) {
+  .crm-toolbar {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    padding-top: 6px !important;
+  }
+}
+
 .mobile-create-btn {
   display: none;
 }
@@ -6465,15 +6558,21 @@ watch(visibleOpportunityIds, ids => {
 }
 
 .opps-table-shell {
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  box-shadow: none;
+  background: #fff;
+  border: 1px solid #e4e9e4;
+  border-radius: 14px;
+  box-shadow: 0 2px 8px rgba(15, 31, 20, 0.04);
+  overflow: hidden;
 }
 
 .opps-table thead tr {
   background: #f5f7f5;
   border-bottom: 1.5px solid #e4e9e4;
+}
+
+.opps-table {
+  border-collapse: collapse;
+  border-spacing: 0;
 }
 
 .opps-table thead th {
@@ -6483,10 +6582,22 @@ watch(visibleOpportunityIds, ids => {
 .opps-group-row td {
   border-top: 1.5px solid #e4e9e4;
   background: #fff;
+  position: relative;
+}
+
+.opps-group-row td::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--group-accent, transparent);
 }
 
 .opps-group-meta {
   color: #8a9e8a;
+  margin-left: 10px;
 }
 
 .opps-group-toggle-btn {
@@ -6539,8 +6650,12 @@ watch(visibleOpportunityIds, ids => {
 }
 
 .opps-data-row.is-no-status {
-  border-left: 4px solid #cbd5e1;
 }
+
+.opps-data-row > td {
+  background: inherit;
+}
+
 
 .mobile-opps-list {
   border: 1px solid #e4e9e4;
@@ -7076,7 +7191,7 @@ watch(visibleOpportunityIds, ids => {
 
 
 
-  max-height: 16rem;
+  max-height: 13.6rem;
 
 
 
@@ -7088,6 +7203,28 @@ watch(visibleOpportunityIds, ids => {
 
 
 
+}
+
+.status-option-badge {
+  width: 100%;
+  display: block;
+  text-align: left;
+  border: 1px solid;
+  border-radius: 10px;
+  padding: 0.4rem 0.7rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.15;
+  margin-top: 0.24rem;
+  transition: filter 0.15s ease;
+}
+
+.status-option-badge:first-child {
+  margin-top: 0;
+}
+
+.status-option-badge:hover {
+  filter: brightness(0.97);
 }
 
 
