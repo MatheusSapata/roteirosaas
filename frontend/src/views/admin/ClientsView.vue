@@ -1,39 +1,51 @@
 ﻿<template>
-  <div class="space-y-5">
+  <div class="clients-page space-y-5">
+    <p class="clients-sub">Gerencie sua base de clientes e histórico de oportunidades.</p>
     <section class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <article class="kpi-card">
-        <span class="kpi-icon" aria-hidden="true">👥</span>
-        <p class="kpi-label">Total de clientes</p>
+        <span class="kpi-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M20 8v6"/><path d="M23 11h-6"/></svg>
+        </span>
         <p class="kpi-value">{{ clients.length }}</p>
+        <p class="kpi-label">Total de clientes</p>
         <p class="kpi-sub">Base comercial ativa</p>
       </article>
       <article class="kpi-card">
-        <span class="kpi-icon" aria-hidden="true">📈</span>
-        <p class="kpi-label">Com oportunidades</p>
+        <span class="kpi-icon kpi-icon--doc" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M15 3v3h3"/></svg>
+        </span>
         <p class="kpi-value">{{ clientsWithOpportunities }}</p>
+        <p class="kpi-label">Com oportunidades</p>
         <p class="kpi-sub">Clientes em negociação</p>
       </article>
       <article class="kpi-card">
-        <span class="kpi-icon" aria-hidden="true">💰</span>
-        <p class="kpi-label">Receita total</p>
+        <span class="kpi-icon kpi-icon--money" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 2v20"/><path d="M17 6H9.5a3.5 3.5 0 0 0 0 7H14.5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        </span>
         <p class="kpi-value">{{ formatCurrency(totalRevenueCents) }}</p>
+        <p class="kpi-label">Receita total</p>
         <p class="kpi-sub">Somatório estimado</p>
       </article>
       <article class="kpi-card">
-        <span class="kpi-icon" aria-hidden="true">🕒</span>
-        <p class="kpi-label">Última oportunidade</p>
+        <span class="kpi-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        </span>
         <p class="kpi-value text-lg">{{ latestOpportunityDate }}</p>
+        <p class="kpi-label">Última oportunidade</p>
         <p class="kpi-sub">Movimento mais recente</p>
       </article>
     </section>
 
-    <section class="rounded-3xl border border-slate-200 bg-white p-3 shadow-sm">
-      <div class="grid gap-2 md:grid-cols-[1.7fr_repeat(3,minmax(0,1fr))]">
+    <section class="p-0">
+      <div class="clients-filters-row grid gap-2 md:grid-cols-[2fr_0.9fr_0.6fr_0.6fr]">
         <div class="search-wrap">
-          <span class="search-icon" aria-hidden="true">🔍</span>
+          <span class="search-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span>
           <input v-model="filters.q" type="text" placeholder="Buscar cliente, CPF, telefone ou e-mail..." class="crm-input crm-input--search" />
         </div>
-        <input v-model="filters.city" type="text" placeholder="Cidade" class="crm-input" />
+        <div class="city-wrap">
+          <span class="city-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg></span>
+          <input v-model="filters.city" type="text" placeholder="Cidade" class="crm-input crm-input--city" />
+        </div>
         <select v-model="filters.period" class="crm-input">
           <option value="all">Período</option>
           <option value="7">Últimos 7 dias</option>
@@ -78,10 +90,10 @@
               <tr v-for="client in clients" :key="client.id" class="client-row cursor-pointer text-slate-700 transition" @click="goToClient(client.id)">
                 <td class="px-4 py-3">
                   <div class="flex items-center gap-3">
-                    <span class="avatar-chip">{{ clientInitials(client.name) }}</span>
+                    <span class="avatar-chip" :style="avatarChipStyle(client)">{{ clientInitials(client.name) }}</span>
                     <div>
-                      <p class="text-[1.06rem] font-semibold leading-tight text-slate-900">{{ client.name }}</p>
-                      <p class="text-sm text-slate-500">Cliente desde {{ formatDate(client.created_at) }}</p>
+                      <p class="text-[0.98rem] font-semibold leading-tight text-slate-900">{{ client.name }}</p>
+                      <p class="text-[0.76rem] text-slate-500">Cliente desde {{ formatDate(client.created_at) }}</p>
                     </div>
                   </div>
                 </td>
@@ -117,10 +129,10 @@
           <article v-for="client in clients" :key="`mobile-${client.id}`" class="client-card rounded-2xl border border-slate-200 bg-white p-4 shadow-sm" @click="goToClient(client.id)">
             <div class="flex items-start justify-between gap-2">
               <div class="flex items-start gap-3">
-                <span class="avatar-chip">{{ clientInitials(client.name) }}</span>
+                <span class="avatar-chip" :style="avatarChipStyle(client)">{{ clientInitials(client.name) }}</span>
                 <div>
-                  <p class="font-semibold text-slate-900">{{ client.name }}</p>
-                  <p class="text-xs text-slate-500">Cliente desde {{ formatDate(client.created_at) }}</p>
+                  <p class="text-[0.95rem] font-semibold text-slate-900">{{ client.name }}</p>
+                  <p class="text-[0.72rem] text-slate-500">Cliente desde {{ formatDate(client.created_at) }}</p>
                 </div>
               </div>
               <span class="op-badge" :class="client.opportunitiesCount > 0 ? 'is-hot' : 'is-cold'">{{ client.opportunitiesCount }} oportunidades</span>
@@ -421,6 +433,24 @@ function clientInitials(name?: string | null) {
   return `${words[0][0] || ""}${words[1]?.[0] || ""}`.toUpperCase();
 }
 
+function avatarChipStyle(client: any) {
+  const palette = [
+    { bg: "#dff3e5", fg: "#0f6b35" },
+    { bg: "#e4e8ff", fg: "#3748c7" },
+    { bg: "#ffeccc", fg: "#b86a00" },
+    { bg: "#dff0ff", fg: "#006e9e" },
+    { bg: "#f3e8ff", fg: "#6f2dbd" }
+  ];
+  const seed = String(client?.id ?? client?.name ?? "");
+  let hash = 0;
+  for (let i = 0; i < seed.length; i += 1) hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
+  const picked = palette[hash % palette.length];
+  return {
+    backgroundColor: picked.bg,
+    color: picked.fg
+  };
+}
+
 function locationLabel(client: any) {
   const city = (client.city || "").trim();
   const state = (client.state || "").trim();
@@ -434,13 +464,24 @@ defineExpose({
 </script>
 
 <style scoped>
+.clients-page {
+  background: #f7f8f7;
+}
+
+.clients-sub {
+  margin-top: -6px;
+  font-size: 13px;
+  color: #8a9e8a;
+}
+
 .crm-input {
   width: 100%;
-  border-radius: 0.95rem;
-  border: 1px solid rgb(226 232 240);
-  padding: 0.65rem 0.85rem;
+  height: 44px;
+  border-radius: 0.75rem;
+  border: 1px solid #d9e2d9;
+  padding: 0.65rem 0.9rem;
   font-size: 0.875rem;
-  color: rgb(15 23 42);
+  color: #4a5e4a;
   outline: none;
   background: #fff;
 }
@@ -450,32 +491,83 @@ defineExpose({
 }
 .crm-input--search { padding-left: 2rem; }
 .search-wrap { position: relative; }
+.city-wrap { position: relative; }
 .search-icon {
   position: absolute;
   left: 0.7rem;
   top: 50%;
   transform: translateY(-50%);
   color: #94a3b8;
-  font-size: 0.82rem;
+  color: #8a9e8a;
   pointer-events: none;
+}
+.city-icon {
+  position: absolute;
+  left: 0.7rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #8a9e8a;
+  pointer-events: none;
+}
+.search-icon svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.city-icon svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.crm-input--city {
+  padding-left: 2rem;
+}
+.clients-filters-row select.crm-input {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238A9E8A' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-size: 14px;
+  background-position: right 10px center;
+  padding-right: 30px;
 }
 .kpi-card {
   border: 1px solid rgb(226 232 240);
   background: #fff;
-  border-radius: 1rem;
-  padding: 0.95rem 1rem;
+  border-radius: 14px;
+  padding: 16px 18px;
   position: relative;
   box-shadow: 0 10px 24px -24px rgba(15, 23, 42, 0.45);
 }
 .kpi-icon {
-  position: absolute;
-  right: 0.75rem;
-  top: 0.6rem;
-  opacity: 0.55;
-  font-size: 0.95rem;
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
+  color: #8a9e8a;
+  opacity: 0.9;
+}
+.kpi-icon svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.kpi-icon--doc svg,
+.kpi-icon--money svg {
+  transform: translateX(-4px);
 }
 .kpi-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: .08em; color: #64748b; font-weight: 700; }
-.kpi-value { font-size: 1.35rem; font-weight: 800; color: #0f172a; margin-top: 0.2rem; }
+.kpi-value { font-size: 1.85rem; font-weight: 800; color: #0f172a; margin-top: 0.35rem; line-height: 1.05; }
 .kpi-sub { font-size: 0.78rem; color: #64748b; margin-top: 0.2rem; }
 .avatar-chip {
   width: 2rem;
@@ -596,5 +688,13 @@ defineExpose({
   align-items: center;
   justify-content: center;
   font-weight: 800;
+}
+
+@media (max-width: 900px) {
+  .clients-sub { font-size: 12px; }
+  .kpi-value { font-size: 1.9rem; }
+  .clients-filters-row {
+    grid-template-columns: 1fr !important;
+  }
 }
 </style>

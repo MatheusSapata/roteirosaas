@@ -50,8 +50,8 @@
     </div>
 
     <transition name="fade">
-      <div v-if="dialogOpen" class="app-modal-overlay fixed inset-0 z-50 flex items-center justify-center px-4">
-        <div class="w-full max-w-3xl rounded-2xl bg-white p-6 shadow-2xl">
+      <div v-if="dialogOpen" class="app-modal-overlay fixed inset-0 z-50 flex items-center justify-center px-4 py-6">
+        <div class="flex w-full max-w-3xl max-h-[calc(100vh-3rem)] flex-col overflow-hidden rounded-2xl bg-white p-6 shadow-2xl">
           <div class="flex items-center justify-between">
             <div>
               <p class="text-xs uppercase tracking-[0.3em] text-slate-500">{{ copy.dialog.subtitle }}</p>
@@ -61,7 +61,8 @@
               {{ copy.dialog.close }}
             </button>
           </div>
-          <div class="mt-5 grid gap-3 md:grid-cols-2">
+          <div class="mt-5 min-h-0 flex-1 overflow-y-auto pr-1">
+            <div class="grid gap-3 md:grid-cols-2">
             <button
               v-for="section in availableSections"
               :key="section.anchorId"
@@ -73,6 +74,7 @@
               <p class="mt-1 text-base font-semibold text-slate-900">{{ section.title }}</p>
               <p class="text-xs text-slate-500">{{ section.description }}</p>
             </button>
+            </div>
           </div>
           <p v-if="!availableSections.length" class="mt-4 text-sm text-slate-500">
             {{ copy.dialog.noSections }}

@@ -360,9 +360,9 @@
                     <div class="inline-flex items-center gap-1.5">
                       <span
                         class="inline-flex h-6 w-6 cursor-help items-center justify-center rounded"
-                        :class="segment.included_carry_on ? 'bg-emerald-600 text-white' : 'bg-slate-300 text-slate-600'"
-                        :title="baggageTooltip('carry_on', segment.included_carry_on)"
-                        :aria-label="baggageTooltip('carry_on', segment.included_carry_on)"
+                        :class="baggageIncluded(segment, 'carry_on') ? 'bg-emerald-600 text-white' : 'bg-slate-300 text-slate-600'"
+                        :title="baggageTooltip('carry_on', baggageIncluded(segment, 'carry_on'))"
+                        :aria-label="baggageTooltip('carry_on', baggageIncluded(segment, 'carry_on'))"
                       >
                         <svg viewBox="0 0 24 24" class="h-4 w-4" fill="currentColor" aria-hidden="true">
                           <path d="M7 9a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v9H7V9Zm2-2V6a3 3 0 1 1 6 0v1h-2V6a1 1 0 1 0-2 0v1H9Z" />
@@ -370,9 +370,9 @@
                       </span>
                       <span
                         class="inline-flex h-6 w-6 cursor-help items-center justify-center rounded"
-                        :class="segment.included_personal_item ? 'bg-emerald-600 text-white' : 'bg-slate-300 text-slate-600'"
-                        :title="baggageTooltip('personal_item', segment.included_personal_item)"
-                        :aria-label="baggageTooltip('personal_item', segment.included_personal_item)"
+                        :class="baggageIncluded(segment, 'personal_item') ? 'bg-emerald-600 text-white' : 'bg-slate-300 text-slate-600'"
+                        :title="baggageTooltip('personal_item', baggageIncluded(segment, 'personal_item'))"
+                        :aria-label="baggageTooltip('personal_item', baggageIncluded(segment, 'personal_item'))"
                       >
                         <svg viewBox="0 0 24 24" class="h-4 w-4" fill="currentColor" aria-hidden="true">
                           <path d="M8 8a4 4 0 1 1 8 0v1h1a2 2 0 0 1 2 2v9H5v-9a2 2 0 0 1 2-2h1V8Zm2 1h4V8a2 2 0 1 0-4 0v1Z" />
@@ -380,16 +380,22 @@
                       </span>
                       <span
                         class="inline-flex h-6 w-6 cursor-help items-center justify-center rounded"
-                        :class="segment.included_checked_bag ? 'bg-emerald-600 text-white' : 'bg-slate-300 text-slate-600'"
-                        :title="baggageTooltip('checked_bag', segment.included_checked_bag)"
-                        :aria-label="baggageTooltip('checked_bag', segment.included_checked_bag)"
+                        :class="baggageIncluded(segment, 'checked_bag') ? 'bg-emerald-600 text-white' : 'bg-slate-300 text-slate-600'"
+                        :title="baggageTooltip('checked_bag', baggageIncluded(segment, 'checked_bag'))"
+                        :aria-label="baggageTooltip('checked_bag', baggageIncluded(segment, 'checked_bag'))"
                       >
                         <svg viewBox="0 0 24 24" class="h-4 w-4" fill="currentColor" aria-hidden="true">
                           <path d="M8 6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v1h1a2 2 0 0 1 2 2v10H5V9a2 2 0 0 1 2-2h1V6Zm2 1h4V6h-4v1Z" />
                         </svg>
                       </span>
                     </div>
-                    <div><span class="text-slate-400">Mão</span> <strong class="text-slate-700">·</strong> <span class="text-slate-400">Pessoal</span></div>
+                    <div class="inline-flex items-center">
+                      <span class="text-slate-400">Mão</span>
+                      <strong class="mx-1.5 text-slate-700">·</strong>
+                      <span class="text-slate-400">Pessoal</span>
+                      <strong class="mx-1.5 text-slate-700">·</strong>
+                      <span class="text-slate-400">Despachada</span>
+                    </div>
                     <div>Voo <strong class="font-semibold text-slate-700">{{ segmentFlightCode(segment) }}</strong></div>
                     <div>Classe <strong class="font-semibold text-slate-700">{{ segment.cabin_class || "Não informada" }}</strong></div>
                     <div>Operado por <strong class="font-semibold text-slate-700">{{ segment.airline_name || journeyAirlineName(journey) }}</strong></div>
@@ -871,6 +877,25 @@ const departureAirportLabel = (segment: FlightSectionSegment) =>
 
 const arrivalAirportLabel = (segment: FlightSectionSegment) =>
   compactAirportName(segment.arrival_city, segment.arrival_airport_name);
+
+const toBooleanFlag = (value: unknown) => {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value === 1;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    return normalized === "true" || normalized === "1" || normalized === "yes" || normalized === "sim";
+  }
+  return false;
+};
+
+const baggageIncluded = (
+  segment: FlightSectionSegment,
+  type: "carry_on" | "personal_item" | "checked_bag"
+) => {
+  if (type === "carry_on") return toBooleanFlag((segment as Record<string, unknown>).included_carry_on);
+  if (type === "personal_item") return toBooleanFlag((segment as Record<string, unknown>).included_personal_item);
+  return toBooleanFlag((segment as Record<string, unknown>).included_checked_bag);
+};
 
 const baggageTooltip = (type: "carry_on" | "personal_item" | "checked_bag", included?: boolean) => {
   const status = included ? "incluida" : "nao incluida";

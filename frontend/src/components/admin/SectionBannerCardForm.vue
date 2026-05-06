@@ -18,6 +18,9 @@
           v-model="local.backgroundImage"
           :label="viewCopy.backgroundImage.label"
           :hint="viewCopy.backgroundImage.hint"
+          :enable-crop="true"
+          :crop-aspect="16 / 9"
+          :editor-title="viewCopy.backgroundImage.editorTitle"
         />
       </div>
     </div>
@@ -174,6 +177,7 @@ const viewCopy = {
   },
   backgroundImage: {
     label: t({ pt: "Imagem de fundo", es: "Imagen de fondo" }),
+    editorTitle: t({ pt: "Ajustar imagem do banner", es: "Ajustar imagen del banner" }),
     hint: t({
       pt: "Use fotos em alta resolução. A imagem aparece desfocada com um gradiente por cima.",
       es: "Usa fotos en alta resolución. La imagen aparece difuminada con un degradado encima."
