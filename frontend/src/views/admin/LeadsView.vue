@@ -562,7 +562,7 @@
   </article>
   <section v-else class="mobile-opps-list mt-1">
     <template v-for="group in groupedContactsForCrm" :key="`m-${group.key}`">
-      <div class="mobile-group-strip" :style="{ ...groupHeaderStyle(group.key), borderRadius: '0px' }" @click="toggleGroupCollapse(group.key)">
+      <div class="mobile-group-strip" :style="groupHeaderStyle(group.key)" @click="toggleGroupCollapse(group.key)">
         <button type="button" class="opps-group-toggle-btn" :class="{ collapsed: isGroupCollapsed(group.key) }" @click.stop="toggleGroupCollapse(group.key)">
           <svg viewBox="0 0 20 20" class="h-3.5 w-3.5" fill="currentColor" aria-hidden="true"><path d="M5.2 7.5a.75.75 0 0 1 1.06 0L10 11.24l3.74-3.74a.75.75 0 1 1 1.06 1.06l-4.27 4.27a.75.75 0 0 1-1.06 0L5.2 8.56a.75.75 0 0 1 0-1.06Z" /></svg>
         </button>
@@ -6659,7 +6659,7 @@ watch(visibleOpportunityIds, ids => {
 
 .mobile-opps-list {
   border: 1px solid #e4e9e4;
-  border-radius: 0;
+  border-radius: 6px;
   overflow: hidden;
 }
 
@@ -6669,9 +6669,20 @@ watch(visibleOpportunityIds, ids => {
   gap: 8px;
   padding: 7px 10px;
   min-height: 34px;
-  background: #f8faf8;
-  border-top: 1px solid #e4e9e4;
-  border-bottom: 1px solid #e4e9e4;
+  background: #fafcfb;
+  border-top: 1px solid #edf2ed;
+  border-bottom: 1px solid #e9efea;
+  position: relative;
+}
+
+.mobile-group-strip::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--group-accent, transparent);
 }
 
 .mobile-group-title {
@@ -6700,6 +6711,16 @@ watch(visibleOpportunityIds, ids => {
   border-radius: 0;
   padding: 3px 10px 0;
   background: #fff;
+}
+
+.mobile-opps-list > .mobile-group-strip:first-child {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+.mobile-opps-list > article.mobile-opps-card:last-of-type {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
 }
 
 .mobile-opps-card.is-won {
