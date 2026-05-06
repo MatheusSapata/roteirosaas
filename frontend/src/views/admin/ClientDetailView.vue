@@ -439,6 +439,7 @@ function formatCpf(value?: string | null) {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  padding: 20px 20px 0;
 }
 
 .det-back-btn {
@@ -446,6 +447,7 @@ function formatCpf(value?: string | null) {
   align-items: center;
   gap: 6px;
   width: fit-content;
+  margin: 2px 0;
   padding: 6px 12px;
   border-radius: 9px;
   background: #f5f7f5;
@@ -826,6 +828,10 @@ function formatCpf(value?: string | null) {
 }
 
 @media (max-width: 768px) {
+  .det-page {
+    padding: 14px 10px 0;
+  }
+
   .dados-grid2 {
     grid-template-columns: 1fr;
   }
