@@ -3018,39 +3018,6 @@ const ensureProfile = async () => {
   }
 };
 
-const applySavedTemplate = (): boolean => {
-  const key = templateKey.value;
-  if (!key) return false;
-
-  const storage = getBrowserStorage();
-  if (!storage) return false;
-
-  try {
-    const saved = storage.getItem(key);
-    if (!saved) return false;
-
-    const parsed = JSON.parse(saved);
-    const oldDefaultCta = parsed.theme?.ctaDefaultColor;
-
-    if (parsed.theme) {
-      theme.value = { ...theme.value, ...parsed.theme };
-      if (parsed.theme.color1) colorA.value = parsed.theme.color1;
-      if (parsed.theme.color2) colorB.value = parsed.theme.color2;
-      if (parsed.theme.ctaDefaultColor) ctaColor.value = parsed.theme.ctaDefaultColor;
-    }
-
-    if (parsed.sections && Array.isArray(parsed.sections) && parsed.sections.length) {
-      setSections(applySectionBackgrounds(parsed.sections as PageSection[]));
-      applyPrimaryToThemeAndSections(oldDefaultCta);
-      return true;
-    }
-  } catch (err) {
-    console.error("Erro ao aplicar template salvo", err);
-  }
-
-  return false;
-};
-
 const showSnackbar = (text: string) => {
   snackbar.value = { open: true, text };
   setTimeout(() => (snackbar.value.open = false), 3000);
@@ -3179,8 +3146,6 @@ onMounted(async () => {
   applyAgencyBranding();
   loadPixels();
   leadCaptureStore.fetchForms().catch(() => undefined);
-
-  applySavedTemplate();
 
   await fetchPage();
   sectionCatalog.value = sectionTypes.map(type => ({
