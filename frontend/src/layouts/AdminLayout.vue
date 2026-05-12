@@ -1094,8 +1094,8 @@ const normalizePlanKey = (value: string | null | undefined) => {
 const hasWhatsAppPlanAccess = computed(() => {
   const trial = normalizePlanKey(auth.user?.trial_plan);
   const base = normalizePlanKey(auth.user?.plan);
-  const effective = trial && trial !== "free" ? trial : base;
-  return effective === "scale" || effective === "test";
+  const allowed = new Set(["scale", "test", "infinity"]);
+  return allowed.has(trial) || allowed.has(base);
 });
 let inboxAccessPollTimer: ReturnType<typeof setInterval> | null = null;
 let inboxFloatingPollTimer: ReturnType<typeof setInterval> | null = null;
