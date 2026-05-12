@@ -290,10 +290,29 @@ export const useLeadCaptureStore = defineStore("leadCapture", () => {
   };
 
   const setContactStatus = async (contactId: string | number, statusId: string | number | null) => {
+    const targetId = normalizeId(contactId);
+    const previousContact = contacts.value.find(contact => normalizeId(contact.id) === targetId) || null;
+    const previousStatusLabel = (previousContact?.status_name || "").trim() || "Sem etapa";
     const res = await api.put<LeadContact>(`/lead-forms/contacts/${contactId}/status`, {
       statusId: statusId ?? null
     });
     replaceContact(res.data);
+    const nextStatusLabel = (res.data.status_name || "").trim() || "Sem etapa";
+    if (previousStatusLabel !== nextStatusLabel) {
+      const content = `Etapa alterada: ${previousStatusLabel} -> ${nextStatusLabel}`;
+      try {
+        await api.post(`/lead-forms/contacts/${contactId}/notes`, { content });
+      } catch (error) {
+        console.error("Erro ao registrar historico de etapa", error);
+      }
+      if (opportunityDetails.value && normalizeId(opportunityDetails.value.id) === targetId) {
+        try {
+          await fetchOpportunityDetails(contactId);
+        } catch (error) {
+          console.error("Erro ao atualizar detalhes apos troca de etapa", error);
+        }
+      }
+    }
     return res.data;
   };
 
@@ -455,11 +474,9 @@ export const useLeadCaptureStore = defineStore("leadCapture", () => {
     contactId: string | number,
     payload: OpportunityFinalizePayload
   ) => {
-    const res = await api.post<OpportunityDetails>(`/lead-forms/contacts/${contactId}/finalize`, payload);
-    opportunityDetails.value = res.data;
-    upsertStatusFromOpportunity(res.data);
-    replaceContactFromOpportunity(res.data);
-    return res.data;
+    await api.post<OpportunityDetails>(`/lead-forms/contacts/${contactId}/finalize`, payload);
+    const fresh = await fetchOpportunityDetails(contactId);
+    return fresh;
   };
 
   const createManualOpportunity = async (payload: Omit<ManualOpportunityPayload, "agencyId">) => {

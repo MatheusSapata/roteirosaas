@@ -274,7 +274,7 @@
       <div class="editor-settings-shell rounded-[26px] border border-slate-200 bg-white p-6 shadow-sm dark:bg-[#202020] dark:text-white">
         <div class="mb-5 flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 class="text-[30px] font-extrabold leading-[1.1] tracking-[-0.02em] text-slate-900 dark:text-white">Configurações da página</h2>
+            <h2 class="editor-settings-title text-[30px] font-extrabold leading-[1.1] tracking-[-0.02em] text-slate-900 dark:text-white">Configurações da página</h2>
             <p class="mt-1 text-[14px] text-slate-500">Título, link, cores, rastreamento e formulário de captação.</p>
           </div>
           <div class="flex flex-wrap items-center gap-2 text-xs">
@@ -3540,6 +3540,20 @@ onMounted(async () => {
 }
 
 @media (max-width: 768px) {
+  .editor-settings-title {
+    font-size: 18px !important;
+    line-height: 1.15 !important;
+    white-space: nowrap;
+  }
+
+  .page-editor-view {
+    font-size: 12px;
+  }
+
+  .editor-settings-shell {
+    font-size: 12px;
+  }
+
   .page-editor-view,
   .editor-settings-shell,
   .settings-panel,
@@ -3570,7 +3584,7 @@ onMounted(async () => {
   }
 
   .editor-page-title {
-    font-size: 24px;
+    font-size: 20px;
     line-height: 1.15;
     flex: 1 1 auto;
     min-width: 0;
@@ -3628,8 +3642,15 @@ onMounted(async () => {
   }
 
   .editor-side-tab {
+    font-size: 12px;
     min-width: 0;
     overflow: hidden;
+  }
+
+  .editor-side-tab-step {
+    width: 19px;
+    height: 19px;
+    font-size: 10px;
   }
 
   .editor-side-tab > span:last-child {

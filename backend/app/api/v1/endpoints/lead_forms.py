@@ -7,6 +7,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import get_current_active_user, get_db, require_agency_membership
+from app.models.crm_note import OpportunityNote
 from app.models.lead_form import LeadForm, LeadFormSubmission, LeadStatus
 from app.models.user import User
 from app.services.team import get_user_effective_permissions
@@ -22,6 +23,27 @@ from app.schemas.lead_form import (
 )
 
 router = APIRouter()
+
+
+def _append_stage_change_note(
+    *,
+    db: Session,
+    submission: LeadFormSubmission,
+    user_id: int,
+    previous_status_name: str | None,
+    next_status_name: str | None,
+) -> None:
+    prev = (previous_status_name or "").strip() or "Sem etapa"
+    nxt = (next_status_name or "").strip() or "Sem etapa"
+    if prev == nxt:
+        return
+    note = OpportunityNote(
+        agency_id=submission.agency_id,
+        opportunity_id=submission.id,
+        user_id=user_id,
+        content=f"Etapa alterada: {prev} -> {nxt}",
+    )
+    db.add(note)
 
 
 def _ensure_leads_delete_permission(db: Session, user: User, agency_id: int) -> None:
@@ -324,16 +346,27 @@ def update_lead_contact_status(
     submission = _get_submission_or_404(contact_id, db)
     require_agency_membership(db=db, agency_id=submission.agency_id, user_id=current_user.id)
     _ensure_leads_write_permission(db, current_user, submission.agency_id)
+    previous_status_name = submission.status.name if submission.status else None
 
     if payload.status_id is None:
         submission.status_id = None
         submission.status = None
+        next_status_name = None
     else:
         status = _get_status_or_404(payload.status_id, db)
         if status.agency_id != submission.agency_id:
             raise HTTPException(status_code=403, detail="Status invÃ¡lido para este lead.")
         submission.status_id = status.id
         submission.status = status
+        next_status_name = status.name
+
+    _append_stage_change_note(
+        db=db,
+        submission=submission,
+        user_id=current_user.id,
+        previous_status_name=previous_status_name,
+        next_status_name=next_status_name,
+    )
 
     db.add(submission)
     db.commit()

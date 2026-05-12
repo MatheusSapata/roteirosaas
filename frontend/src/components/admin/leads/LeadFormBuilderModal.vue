@@ -84,6 +84,14 @@
             </div>
 
             <div v-else class="fm-pane on">
+              <div v-if="!hasWhatsAppPlanAccess" class="fmn-plan-gate">
+                <h3 class="fmn-plan-gate-title">Recurso indisponível no seu plano</h3>
+                <p class="fmn-plan-gate-text">
+                  A Notificação inteligente via WhatsApp está disponível apenas para o plano Escala.
+                </p>
+                <button type="button" class="btn btn-p" @click="goToPlans">Fazer upgrade</button>
+              </div>
+              <template v-else>
               <div class="fmn-left">
                 <div class="fm-row">
                   <label class="fm-lbl">Mensagem para envio via WhatsApp</label>
@@ -143,6 +151,7 @@
                   <div class="fmn-wapp-ibar"><div class="fmn-wapp-fake-inp">Mensagem</div></div>
                 </div>
               </div>
+              </template>
             </div>
           </div>
 
@@ -164,15 +173,23 @@
 
 <script setup lang="ts">
 import { computed, onUnmounted, reactive, ref, watch } from "vue";
+import { useRouter } from "vue-router";
 import type { LeadFieldType, LeadForm, LeadFormField, LeadFormPayload } from "../../../types/leads";
 import { useLeadCaptureStore } from "../../../store/useLeadCaptureStore";
+import { useAuthStore } from "../../../store/useAuthStore";
 import LeadFormPreview from "./LeadFormPreview.vue";
 
 const props = defineProps<{ modelValue: boolean; form?: LeadForm | null; saving?: boolean }>();
-const emit = defineEmits<{ "update:modelValue": [value: boolean]; save: [{ id: string | null; form: LeadFormPayload }] }>();
+const emit = defineEmits<{
+  "update:modelValue": [value: boolean];
+  save: [{ id: string | null; form: LeadFormPayload }];
+  invalid: [message: string];
+}>();
 
 type BuilderTab = "visual" | "notification";
 const generateId = () => `field-${Math.random().toString(36).slice(2, 9)}`;
+const router = useRouter();
+const auth = useAuthStore();
 
 interface FieldPreset { type: LeadFieldType; label: string; placeholder: string; icon: string; }
 const fieldPresets: FieldPreset[] = [
@@ -186,12 +203,28 @@ const fieldPresets: FieldPreset[] = [
 
 const messageTokens = [
   { key: "nome", label: "{{nome}}", value: "{{nome}}" },
+  { key: "first_name", label: "{{first_name}}", value: "{{first_name}}" },
   { key: "pagina", label: "{{pagina}}", value: "{{origem}}" },
   { key: "saudacao", label: "{{saudacao}}", value: "{{saudacao}}" }
 ];
 
 const leadStore = useLeadCaptureStore();
 const statuses = computed(() => leadStore.statuses);
+const normalizePlanKey = (value: string | null | undefined) => {
+  const key = String(value || "").trim().toLowerCase();
+  if (!key) return "free";
+  if (key === "escala" || key === "infinity" || key === "scale") return "scale";
+  if (key === "teste" || key === "test") return "test";
+  if (key === "growth" || key === "agency" || key === "agencia") return "agency";
+  if (key === "essencial" || key === "professional" || key === "trial") return "professional";
+  return key;
+};
+const hasWhatsAppPlanAccess = computed(() => {
+  const trial = normalizePlanKey(auth.user?.trial_plan);
+  const base = normalizePlanKey(auth.user?.plan);
+  const allowed = new Set(["scale", "test", "infinity"]);
+  return allowed.has(trial) || allowed.has(base);
+});
 const activeTab = ref<BuilderTab>("visual");
 const messageEditorRef = ref<HTMLTextAreaElement | null>(null);
 const delayValue = ref(0);
@@ -206,7 +239,7 @@ const state = reactive<LeadFormPayload>({
   showLogo: false,
   fields: [],
   defaultStatusId: null,
-  autoWhatsAppMessageTemplate: "Olá {{nome}}, recebemos seu cadastro! Em breve entraremos em contato via WhatsApp.",
+  autoWhatsAppMessageTemplate: "Olá {{first_name}}, recebemos seu cadastro! Em breve entraremos em contato via WhatsApp.",
   autoWhatsAppDelaySeconds: 0,
   autoWhatsAppSkipIfClient: false,
   autoWhatsAppSkipIfFormAlreadySubmitted: false,
@@ -226,10 +259,12 @@ const greetingByHour = computed(() => {
 });
 
 const renderedPreviewMessage = computed(() => {
-  const base = String(state.autoWhatsAppMessageTemplate || "").trim() || "Olá {{nome}}, recebemos seu cadastro!";
+  const base = String(state.autoWhatsAppMessageTemplate || "").trim() || "Olá {{first_name}}, recebemos seu cadastro!";
   return base
     .replaceAll("{{saudacao}}", greetingByHour.value)
     .replaceAll("{{nome}}", "João Silva")
+    .replaceAll("{{first_name}}", "João")
+    .replaceAll("{{primeiro_nome}}", "João")
     .replaceAll("{{telefone}}", "(11) 99999-9999")
     .replaceAll("{{email}}", "joao@email.com")
     .replaceAll("{{pagina}}", "Nome da página")
@@ -281,7 +316,7 @@ const resetState = () => {
   state.showLogo = false;
   state.fields = [];
   state.defaultStatusId = null;
-  state.autoWhatsAppMessageTemplate = "Olá {{nome}}, recebemos seu cadastro! Em breve entraremos em contato via WhatsApp.";
+  state.autoWhatsAppMessageTemplate = "Olá {{first_name}}, recebemos seu cadastro! Em breve entraremos em contato via WhatsApp.";
   state.autoWhatsAppDelaySeconds = 0;
   state.autoWhatsAppSkipIfClient = false;
   state.autoWhatsAppSkipIfFormAlreadySubmitted = false;
@@ -303,7 +338,7 @@ const hydrateFromForm = (form?: LeadForm | null) => {
   state.showLogo = form.showLogo === true;
   state.fields = (form.fields || []).map(field => createFieldFromPreset(field.type, field));
   state.defaultStatusId = form.defaultStatusId ? String(form.defaultStatusId) : null;
-  state.autoWhatsAppMessageTemplate = form.autoWhatsAppMessageTemplate || "Olá {{nome}}, recebemos seu cadastro! Em breve entraremos em contato via WhatsApp.";
+  state.autoWhatsAppMessageTemplate = form.autoWhatsAppMessageTemplate || "Olá {{first_name}}, recebemos seu cadastro! Em breve entraremos em contato via WhatsApp.";
   state.autoWhatsAppDelaySeconds = Number(form.autoWhatsAppDelaySeconds || 0);
   state.autoWhatsAppSkipIfClient = Boolean(form.autoWhatsAppSkipIfClient);
   state.autoWhatsAppSkipIfFormAlreadySubmitted = Boolean(form.autoWhatsAppSkipIfFormAlreadySubmitted);
@@ -323,6 +358,15 @@ const validate = () => {
   if (!state.name.trim()) return (errorMessage.value = "Defina um nome para o formulário."), false;
   if (!state.title.trim()) return (errorMessage.value = "Informe o título do formulário."), false;
   if (!state.fields.length) return (errorMessage.value = "Selecione pelo menos um campo."), false;
+  const hasName = state.fields.some(field => field.type === "name");
+  const hasPhone = state.fields.some(field => field.type === "phone");
+  const hasEmail = state.fields.some(field => field.type === "email");
+  if (!hasName || (!hasPhone && !hasEmail)) {
+    return (
+      errorMessage.value = "O formulário precisa ter Nome + E-mail ou Nome + Telefone.",
+      false
+    );
+  }
   errorMessage.value = "";
   return true;
 };
@@ -345,7 +389,10 @@ const buildPayload = (): LeadFormPayload => ({
 });
 
 const handleSubmit = () => {
-  if (!validate()) return;
+  if (!validate()) {
+    emit("invalid", errorMessage.value || "Dados inválidos do formulário.");
+    return;
+  }
   emit("save", { id: editingId.value, form: buildPayload() });
 };
 
@@ -360,6 +407,10 @@ const insertToken = (tokenValue: string) => {
     editor.focus();
     editor.selectionStart = editor.selectionEnd = start + tokenValue.length;
   });
+};
+
+const goToPlans = () => {
+  router.push("/admin/planos");
 };
 
 watch([delayValue, delayUnit], () => syncSecondsFromDelay());
@@ -408,6 +459,9 @@ onUnmounted(() => { document.body.style.overflow = ""; });
 .fmf-chk{width:16px;height:16px;border-radius:4px;border:1.5px solid #e4e9e4;flex-shrink:0;display:flex;align-items:center;justify-content:center}.fmf-chip.on .fmf-chk{background:#3DCC5F;border-color:#2ead4c}.fmf-chip.on .fmf-chk::after{content:'';display:block;width:7px;height:4px;border-left:2px solid #0F1F14;border-bottom:2px solid #0F1F14;transform:rotate(-45deg) translate(1px,-1px)}
 .fmf-sel-note{font-size:12px;color:#8a9e8a;margin-top:6px}
 .fmn-left{flex:1;min-width:0;display:flex;flex-direction:column;gap:16px}.fmn-right{width:250px;flex-shrink:0}
+.fmn-plan-gate{min-height:360px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:12px;padding:24px;margin:auto}
+.fmn-plan-gate-title{font-size:22px;font-weight:800;color:#111a14;letter-spacing:-.02em}
+.fmn-plan-gate-text{max-width:540px;font-size:14px;color:#64748b;line-height:1.5}
 .fmn-vars{display:flex;flex-wrap:wrap;gap:5px}.fmn-var{padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;background:rgba(99,102,241,.08);color:#4338CA;border:1.5px solid rgba(99,102,241,.18);cursor:pointer;font-family:monospace}
 .fm-ta{min-height:110px;resize:vertical;line-height:1.5}
 .fmn-delay-row{display:flex;align-items:center;gap:8px}.fmn-delay-inp{width:72px;padding:9px 10px;border:1.5px solid #e4e9e4;border-radius:8px;font-size:13px;text-align:center}.fmn-delay-sel{padding:9px 30px 9px 10px;border:1.5px solid #e4e9e4;border-radius:8px;font-size:13px}.fmn-delay-lbl{font-size:13px;color:#8a9e8a}

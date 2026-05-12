@@ -109,6 +109,54 @@ def _serialize_document(document: Document) -> DocumentOut:
     )
 
 
+def _outcome_label(value: str | None) -> str:
+    if value == "won":
+        return "Ganha"
+    if value == "lost":
+        return "Perdida"
+    return "Aberta"
+
+
+def _append_outcome_change_note(
+    *,
+    db: Session,
+    submission: LeadFormSubmission,
+    user_id: int,
+    previous_outcome: str | None,
+    next_outcome: str | None,
+) -> None:
+    if previous_outcome == next_outcome:
+        return
+    note = OpportunityNote(
+        agency_id=submission.agency_id,
+        opportunity_id=submission.id,
+        user_id=user_id,
+        content=f"Status da oportunidade alterado: {_outcome_label(previous_outcome)} -> {_outcome_label(next_outcome)}",
+    )
+    db.add(note)
+
+
+def _append_stage_change_note(
+    *,
+    db: Session,
+    submission: LeadFormSubmission,
+    user_id: int,
+    previous_status_name: str | None,
+    next_status_name: str | None,
+) -> None:
+    prev = (previous_status_name or "").strip() or "Sem etapa"
+    nxt = (next_status_name or "").strip() or "Sem etapa"
+    if prev == nxt:
+        return
+    note = OpportunityNote(
+        agency_id=submission.agency_id,
+        opportunity_id=submission.id,
+        user_id=user_id,
+        content=f"Etapa alterada: {prev} -> {nxt}",
+    )
+    db.add(note)
+
+
 def _build_opportunity_display_name(submission: LeadFormSubmission) -> str:
     if submission.opportunity_name:
         return submission.opportunity_name
@@ -173,7 +221,7 @@ def _serialize_details(submission: LeadFormSubmission, db: Session) -> LeadConta
         id=submission.id,
         agencyId=submission.agency_id,
         formId=submission.form_id,
-        formName=submission.form.title if submission.form else "",
+        formName=submission.form.name if submission.form else "",
         pageId=submission.page_id,
         pageTitle=submission.page_title,
         pageSlug=submission.page_slug,
@@ -229,12 +277,35 @@ def update_opportunity(
     require_agency_membership(db=db, agency_id=submission.agency_id, user_id=current_user.id)
 
     data = payload.model_dump(exclude_unset=True, by_alias=False)
+    previous_status_name = submission.status.name if submission.status else None
     if "status_id" in data and data["status_id"] is not None:
         status = db.query(LeadStatus).filter(LeadStatus.id == data["status_id"]).first()
         if not status or status.agency_id != submission.agency_id:
             raise HTTPException(status_code=403, detail="Status invalido para esta agencia.")
+    previous_outcome = submission.close_outcome
     for key, value in data.items():
         setattr(submission, key, value)
+    if "status_id" in data:
+        next_status_name = (
+            db.query(LeadStatus.name).filter(LeadStatus.id == submission.status_id).scalar()
+            if submission.status_id is not None
+            else None
+        )
+        _append_stage_change_note(
+            db=db,
+            submission=submission,
+            user_id=current_user.id,
+            previous_status_name=previous_status_name,
+            next_status_name=next_status_name,
+        )
+    if "close_outcome" in data:
+        _append_outcome_change_note(
+            db=db,
+            submission=submission,
+            user_id=current_user.id,
+            previous_outcome=previous_outcome,
+            next_outcome=submission.close_outcome,
+        )
     db.add(submission)
     db.commit()
     db.refresh(submission)
@@ -315,10 +386,18 @@ def finalize_opportunity(
     submission = _get_submission_or_404(contact_id, db)
     require_agency_membership(db=db, agency_id=submission.agency_id, user_id=current_user.id)
 
+    previous_outcome = submission.close_outcome
     submission.close_outcome = payload.outcome
     submission.closed_at = datetime.utcnow()
     db.add(submission)
     db.flush()
+    _append_outcome_change_note(
+        db=db,
+        submission=submission,
+        user_id=current_user.id,
+        previous_outcome=previous_outcome,
+        next_outcome=submission.close_outcome,
+    )
 
     if payload.note:
         note = OpportunityNote(
