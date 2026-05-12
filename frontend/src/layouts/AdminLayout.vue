@@ -1491,7 +1491,7 @@ const adminNavigation = computed<AdminNavItem[]>(() => {
           ...item,
           children: item.children.filter(child => {
             if (child.path === "/admin/integracoes/atendimento") {
-              return hasWhatsAppPlanAccess.value && inboxEnabled.value;
+              return hasWhatsAppPlanAccess.value;
             }
             return true;
           })
