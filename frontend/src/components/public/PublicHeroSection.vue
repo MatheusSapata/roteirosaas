@@ -104,7 +104,6 @@
 
         <div v-else class="pointer-events-none absolute inset-0">
           <div class="absolute inset-0 bg-gradient-to-br from-slate-900/12 via-white/0 to-white/0"></div>
-          <div class="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(148,163,184,0.12),transparent_32%)]"></div>
         </div>
 
         <div :class="containerClasses" :style="accentVars">

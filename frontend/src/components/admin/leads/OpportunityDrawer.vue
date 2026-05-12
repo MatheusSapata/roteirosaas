@@ -316,11 +316,11 @@ const createClientForm = reactive({
 });
 
 const statusBadgeStyle = computed(() => {
-  const color = details.value?.statusColor || "#E2E8F0";
+  const color = details.value?.statusColor || "#64748B";
   return {
     borderColor: color,
     color: color,
-    backgroundColor: `${color}14`
+    backgroundColor: `${color}22`
   };
 });
 
@@ -519,17 +519,28 @@ const handleFinalizeOpportunity = async (outcome: "won" | "lost") => {
   savingFinalize.value = true;
   try {
     const previousOutcome = details.value?.closeOutcome ?? null;
+    const toLabel = (value: "won" | "lost" | null) => {
+      if (value === "won") return "Ganha";
+      if (value === "lost") return "Perdida";
+      return "Aberta";
+    };
+
+    if (previousOutcome === outcome) {
+      await persistForm();
+      await leadStore.updateOpportunity(props.contactId, { closeOutcome: null });
+      const transitionText = `Status da oportunidade alterado: ${toLabel(previousOutcome)} -> ${toLabel(null)}`;
+      await leadStore.addOpportunityNote(props.contactId, transitionText);
+      await leadStore.fetchOpportunityDetails(props.contactId);
+      cancelFinalizeEditor();
+      return;
+    }
+
     await persistForm();
     await leadStore.finalizeOpportunity(props.contactId, {
       outcome,
       note: finalizeNote.value.trim() || null,
     });
     if (previousOutcome !== outcome) {
-      const toLabel = (value: "won" | "lost" | null) => {
-        if (value === "won") return "Ganha";
-        if (value === "lost") return "Perdida";
-        return "Aberta";
-      };
       const transitionText = `Status da oportunidade alterado: ${toLabel(previousOutcome)} -> ${toLabel(outcome)}`;
       await leadStore.addOpportunityNote(props.contactId, transitionText);
     }

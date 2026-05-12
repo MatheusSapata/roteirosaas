@@ -203,7 +203,7 @@ const fieldPresets: FieldPreset[] = [
 
 const messageTokens = [
   { key: "nome", label: "{{nome}}", value: "{{nome}}" },
-  { key: "first_name", label: "{{first_name}}", value: "{{first_name}}" },
+  { key: "first_name", label: "{{primeiro_nome}}", value: "{{primeiro_nome}}" },
   { key: "pagina", label: "{{pagina}}", value: "{{origem}}" },
   { key: "saudacao", label: "{{saudacao}}", value: "{{saudacao}}" }
 ];
