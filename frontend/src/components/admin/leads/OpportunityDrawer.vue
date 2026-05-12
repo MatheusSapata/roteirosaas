@@ -103,10 +103,21 @@
                     </div>
                     <div v-if="!details?.client" class="opp-link-actions">
                       <button type="button" class="opp-link-btn" @click="linkMode = 'search'">
-                        + Vincular cliente
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M10 12h4"/>
+                          <path d="M7 15H6a4 4 0 1 1 0-8h1"/>
+                          <path d="M17 15h1a4 4 0 1 0 0-8h-1"/>
+                        </svg>
+                        Vincular cliente
                       </button>
                       <button type="button" class="opp-link-btn" :disabled="creatingClient" @click="handleCreateClient">
-                        {{ creatingClient ? "Criando..." : "+ Criar cliente" }}
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                          <circle cx="9" cy="7" r="4"/>
+                          <path d="M19 8v6"/>
+                          <path d="M16 11h6"/>
+                        </svg>
+                        {{ creatingClient ? "Criando..." : "Criar cliente" }}
                       </button>
                     </div>
                   </div>
@@ -915,7 +926,8 @@ function historyKind(item: { title: string }) {
 .opp-line--phone .opp-phone-val{font-size:14px}
 .opp-sub{font-size:13px;color:#4a5e4a}
 .opp-val{font-size:16px;font-weight:500;color:#111a14}
-.opp-link-btn{height:34px;padding:0 14px;border-radius:999px;border:1.5px solid #d5ddd5;background:#fff;color:#2d4637;font-size:13px;font-weight:500}
+.opp-link-btn{height:34px;padding:0 14px;border-radius:10px;border:1.5px solid #d5ddd5;background:#fff;color:#2d4637;font-size:13px;font-weight:500;display:inline-flex;align-items:center;gap:6px}
+.opp-link-btn svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .opp-client-card{margin-top:10px;width:100%;display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.5px solid #d5ddd5;border-radius:8px;background:#f5f7f5;text-align:left}
 .opp-client-av{width:32px;height:32px;border-radius:8px;background:#3DCC5F;color:#0F1F14;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0}
 .opp-client-info{display:flex;flex-direction:column;min-width:0;flex:1}
