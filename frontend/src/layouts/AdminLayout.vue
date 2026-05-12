@@ -1082,6 +1082,21 @@ const canManageTeam = computed(() => {
   return isOwner && (role === "admin" || role === "owner");
 });
 const inboxEnabled = ref(false);
+const normalizePlanKey = (value: string | null | undefined) => {
+  const key = String(value || "").trim().toLowerCase();
+  if (!key) return "free";
+  if (key === "escala" || key === "infinity" || key === "scale") return "scale";
+  if (key === "teste" || key === "test") return "test";
+  if (key === "growth" || key === "agency" || key === "agencia") return "agency";
+  if (key === "essencial" || key === "professional" || key === "trial") return "professional";
+  return key;
+};
+const hasWhatsAppPlanAccess = computed(() => {
+  const trial = normalizePlanKey(auth.user?.trial_plan);
+  const base = normalizePlanKey(auth.user?.plan);
+  const effective = trial && trial !== "free" ? trial : base;
+  return effective === "scale" || effective === "test";
+});
 let inboxAccessPollTimer: ReturnType<typeof setInterval> | null = null;
 let inboxFloatingPollTimer: ReturnType<typeof setInterval> | null = null;
 let inboxFloatingHideTimer: ReturnType<typeof setTimeout> | null = null;
@@ -1451,7 +1466,7 @@ const adminNavigation = computed<AdminNavItem[]>(() => {
     if (item.id === "dashboard") return hasPermission("dashboard");
     if (item.id === "pages") return hasPermission("pages");
     if (item.id === "leads") return hasPermission("leads");
-    if (item.id === "inbox") return hasPermission("leads") && inboxEnabled.value;
+    if (item.id === "inbox") return hasPermission("leads") && inboxEnabled.value && hasWhatsAppPlanAccess.value;
     if (item.id === "integrations") return hasPermission("integrations");
     if (item.id === "agency") return hasPermission("settings") || (canManageTeam.value && hasPermission("team_management"));
     return true;
@@ -1468,6 +1483,17 @@ const adminNavigation = computed<AdminNavItem[]>(() => {
             if (child.path === "/admin/leads/clients") return hasPermission("leads_clients") || hasPermission("leads_full");
             if (child.path === "/admin/leads/settings") return hasPermission("leads_settings") || hasPermission("leads_full");
             return hasPermission("leads");
+          })
+        };
+      }
+      if (item.id === "integrations") {
+        return {
+          ...item,
+          children: item.children.filter(child => {
+            if (child.path === "/admin/integracoes/atendimento") {
+              return hasWhatsAppPlanAccess.value && inboxEnabled.value;
+            }
+            return true;
           })
         };
       }
