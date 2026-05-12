@@ -176,6 +176,13 @@ def _resolve_inbox_granted_at(db: Session, *, user_id: int, agency_id: int) -> A
     )
 
 
+def _ensure_whatsapp_access(db: Session, *, user: User, agency_id: int) -> None:
+    if bool(getattr(user, "is_superuser", False)):
+        return
+    if not has_whatsapp_inbox_access(db, user=user, agency_id=agency_id):
+        raise HTTPException(status_code=403, detail="Atendimento WhatsApp disponível apenas nos planos Escala e Teste.")
+
+
 @router.get("/health")
 def whatsapp_health(current_user: User = Depends(get_current_active_user)) -> dict[str, Any]:
     evolution = evolution_service.check_evolution_health()
@@ -258,6 +265,7 @@ def list_connections(
     db: Session = Depends(get_db),
 ) -> list[WhatsAppConnectionOut]:
     require_agency_membership(db=db, agency_id=agency_id, user_id=current_user.id)
+    _ensure_whatsapp_access(db, user=current_user, agency_id=agency_id)
     rows = (
         db.query(WhatsAppConnection)
         .filter(WhatsAppConnection.agency_id == agency_id)
@@ -274,6 +282,7 @@ def create_connection(
     db: Session = Depends(get_db),
 ) -> WhatsAppConnectionOut:
     require_agency_membership(db=db, agency_id=payload.agency_id, user_id=current_user.id)
+    _ensure_whatsapp_access(db, user=current_user, agency_id=payload.agency_id)
     created = domain_service.create_connection(
         db=db,
         agency_id=payload.agency_id,
@@ -291,6 +300,7 @@ def get_connection_qr(
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     require_agency_membership(db=db, agency_id=agency_id, user_id=current_user.id)
+    _ensure_whatsapp_access(db, user=current_user, agency_id=agency_id)
     connection = domain_service.get_connection_or_404(db=db, agency_id=agency_id, connection_id=connection_id)
     qr_data = evolution_service.get_qr_code(instance_name=connection.instance_name)
     return {
@@ -315,6 +325,7 @@ def get_connection_status(
     db: Session = Depends(get_db),
 ) -> WhatsAppConnectionStatusOut:
     require_agency_membership(db=db, agency_id=agency_id, user_id=current_user.id)
+    _ensure_whatsapp_access(db, user=current_user, agency_id=agency_id)
     connection = domain_service.get_connection_or_404(db=db, agency_id=agency_id, connection_id=connection_id)
     status, raw_state, raw = domain_service.update_connection_status_from_evolution(db=db, connection=connection)
     whatsapp_realtime.broadcast_to_agency_best_effort(
@@ -343,6 +354,7 @@ def disconnect_connection(
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     require_agency_membership(db=db, agency_id=agency_id, user_id=current_user.id)
+    _ensure_whatsapp_access(db, user=current_user, agency_id=agency_id)
     connection = domain_service.get_connection_or_404(db=db, agency_id=agency_id, connection_id=connection_id)
     response = evolution_service.disconnect_instance(instance_name=connection.instance_name)
     connection.status = "disconnected"
@@ -373,6 +385,7 @@ def reapply_connection_webhook(
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     require_agency_membership(db=db, agency_id=agency_id, user_id=current_user.id)
+    _ensure_whatsapp_access(db, user=current_user, agency_id=agency_id)
     connection = domain_service.get_connection_or_404(db=db, agency_id=agency_id, connection_id=connection_id)
     try:
         result = evolution_service.reapply_instance_webhook_events(instance_name=connection.instance_name)
@@ -394,6 +407,7 @@ def list_conversations(
     db: Session = Depends(get_db),
 ) -> list[WhatsAppConversationOut]:
     require_agency_membership(db=db, agency_id=agency_id, user_id=current_user.id)
+    _ensure_whatsapp_access(db, user=current_user, agency_id=agency_id)
     granted_at = _resolve_inbox_granted_at(db, user_id=current_user.id, agency_id=agency_id)
     query = db.query(WhatsAppConversation).filter(WhatsAppConversation.agency_id == agency_id)
     if granted_at:
@@ -440,6 +454,7 @@ def list_conversation_messages(
     db: Session = Depends(get_db),
 ) -> list[WhatsAppMessageOut]:
     require_agency_membership(db=db, agency_id=agency_id, user_id=current_user.id)
+    _ensure_whatsapp_access(db, user=current_user, agency_id=agency_id)
     granted_at = _resolve_inbox_granted_at(db, user_id=current_user.id, agency_id=agency_id)
     conversation = (
         db.query(WhatsAppConversation)
@@ -472,6 +487,7 @@ def mark_conversation_read(
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     require_agency_membership(db=db, agency_id=agency_id, user_id=current_user.id)
+    _ensure_whatsapp_access(db, user=current_user, agency_id=agency_id)
     conversation = (
         db.query(WhatsAppConversation)
         .filter(
@@ -500,6 +516,7 @@ def update_conversation(
     db: Session = Depends(get_db),
 ) -> WhatsAppConversationOut:
     require_agency_membership(db=db, agency_id=agency_id, user_id=current_user.id)
+    _ensure_whatsapp_access(db, user=current_user, agency_id=agency_id)
     conversation = (
         db.query(WhatsAppConversation)
         .filter(
@@ -569,6 +586,7 @@ def ensure_conversation(
     db: Session = Depends(get_db),
 ) -> WhatsAppConversationOut:
     require_agency_membership(db=db, agency_id=agency_id, user_id=current_user.id)
+    _ensure_whatsapp_access(db, user=current_user, agency_id=agency_id)
 
     def _digits(raw: str | None) -> str:
         return "".join(ch for ch in (raw or "") if ch.isdigit())
@@ -692,6 +710,7 @@ def send_text_message(
     db: Session = Depends(get_db),
 ) -> WhatsAppMessageOut:
     require_agency_membership(db=db, agency_id=agency_id, user_id=current_user.id)
+    _ensure_whatsapp_access(db, user=current_user, agency_id=agency_id)
     conversation = (
         db.query(WhatsAppConversation)
         .filter(
@@ -742,6 +761,7 @@ async def send_media_message(
     db: Session = Depends(get_db),
 ) -> WhatsAppMessageOut:
     require_agency_membership(db=db, agency_id=agency_id, user_id=current_user.id)
+    _ensure_whatsapp_access(db, user=current_user, agency_id=agency_id)
     conversation = (
         db.query(WhatsAppConversation)
         .filter(
@@ -821,6 +841,7 @@ def get_unread_count(
     db: Session = Depends(get_db),
 ) -> dict[str, int]:
     require_agency_membership(db=db, agency_id=agency_id, user_id=current_user.id)
+    _ensure_whatsapp_access(db, user=current_user, agency_id=agency_id)
     granted_at = _resolve_inbox_granted_at(db, user_id=current_user.id, agency_id=agency_id)
     unread_query = db.query(func.coalesce(func.sum(WhatsAppConversation.unread_count), 0)).filter(
         WhatsAppConversation.agency_id == agency_id
