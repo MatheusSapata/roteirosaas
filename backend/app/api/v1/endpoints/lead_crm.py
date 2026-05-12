@@ -27,6 +27,7 @@ from app.schemas.crm import (
 from app.services.client_matching import find_auto_match_client, find_auto_match_client_id
 from app.services.contact_normalization import normalize_cpf, normalize_email, normalize_phone
 from app.services.media_storage import media_storage
+from app.services.opportunity_whatsapp import send_opportunity_welcome_message_best_effort
 
 router = APIRouter()
 
@@ -300,6 +301,7 @@ def create_manual_opportunity(
     )
     db.add(submission)
     db.commit()
+    send_opportunity_welcome_message_best_effort(db=db, opportunity_id=submission.id)
     return _serialize_details(_get_submission_or_404(submission.id, db), db)
 
 

@@ -1,6 +1,7 @@
 import hashlib
 from datetime import date, datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import get_db
@@ -9,6 +10,7 @@ from app.models.lead_form import LeadForm, LeadFormSubmission
 from app.schemas.lead_form import LeadFormPublicOut, LeadFormSubmissionPayload
 from app.services.client_matching import find_auto_match_client
 from app.services.contact_normalization import normalize_cpf, normalize_email, normalize_phone
+from app.services.opportunity_whatsapp import dispatch_opportunity_welcome_message
 
 router = APIRouter()
 
@@ -134,6 +136,61 @@ def submit_public_form(
         phone_normalized=phone_normalized,
     )
 
+    should_send_auto_message = True
+    if form.auto_whatsapp_skip_if_client and linked_client_id:
+        should_send_auto_message = False
+
+    contact_clauses = []
+    if email_normalized:
+        contact_clauses.append(LeadFormSubmission.email_normalized == email_normalized)
+    if phone_normalized:
+        contact_clauses.append(LeadFormSubmission.phone_normalized == phone_normalized)
+
+    if should_send_auto_message and contact_clauses and form.auto_whatsapp_skip_if_form_already_submitted:
+        already_in_form = (
+            db.query(LeadFormSubmission.id)
+            .filter(
+                LeadFormSubmission.form_id == form.id,
+                or_(*contact_clauses),
+            )
+            .first()
+        )
+        if already_in_form:
+            should_send_auto_message = False
+
+    if (
+        should_send_auto_message
+        and contact_clauses
+        and form.auto_whatsapp_skip_if_page_already_submitted
+        and (payload.pageId is not None or (payload.pageSlug or "").strip())
+    ):
+        page_filters = [LeadFormSubmission.agency_id == form.agency_id]
+        if payload.pageId is not None:
+            page_filters.append(LeadFormSubmission.page_id == payload.pageId)
+        else:
+            page_filters.append(LeadFormSubmission.page_slug == (payload.pageSlug or "").strip())
+        already_in_page = (
+            db.query(LeadFormSubmission.id)
+            .filter(*page_filters)
+            .filter(or_(*contact_clauses))
+            .first()
+        )
+        if already_in_page:
+            should_send_auto_message = False
+
+    if should_send_auto_message and contact_clauses and form.auto_whatsapp_skip_if_open_opportunity:
+        has_open_opportunity = (
+            db.query(LeadFormSubmission.id)
+            .filter(
+                LeadFormSubmission.agency_id == form.agency_id,
+                LeadFormSubmission.closed_at.is_(None),
+                or_(*contact_clauses),
+            )
+            .first()
+        )
+        if has_open_opportunity:
+            should_send_auto_message = False
+
     submission = LeadFormSubmission(
         agency_id=form.agency_id,
         form_id=form.id,
@@ -160,4 +217,9 @@ def submit_public_form(
     )
     db.add(submission)
     db.commit()
+    if should_send_auto_message:
+        dispatch_opportunity_welcome_message(
+            opportunity_id=submission.id,
+            delay_seconds=form.auto_whatsapp_delay_seconds or 0,
+        )
     return {"status": "ok"}

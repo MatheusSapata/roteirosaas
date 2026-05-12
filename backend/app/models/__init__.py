@@ -26,3 +26,4 @@ from .flight_lookup_cache import FlightLookupCache
 from .flight_section import FlightSectionJourney, FlightSectionSegment
 from .system_banner import SystemBanner, BannerEvent, BannerDismissal
 from .team_invite import TeamInvite
+from .whatsapp import WhatsAppConnection, WhatsAppConversation, WhatsAppMessage, WhatsAppInboxPermission

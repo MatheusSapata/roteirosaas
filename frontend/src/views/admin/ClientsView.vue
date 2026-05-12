@@ -18,7 +18,7 @@
         <p class="kpi-label">Com oportunidades</p>
         <p class="kpi-sub">Clientes em negociação</p>
       </article>
-      <article class="kpi-card">
+      <article class="kpi-card" :class="{ 'kpi-card--revenue-positive': totalRevenueCents > 0 }">
         <span class="kpi-icon kpi-icon--money" aria-hidden="true">
           <svg viewBox="0 0 24 24"><path d="M12 2v20"/><path d="M17 6H9.5a3.5 3.5 0 0 0 0 7H14.5a3.5 3.5 0 0 1 0 7H6"/></svg>
         </span>
@@ -569,6 +569,16 @@ defineExpose({
 .kpi-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: .08em; color: #64748b; font-weight: 700; }
 .kpi-value { font-size: 1.85rem; font-weight: 800; color: #0f172a; margin-top: 0.35rem; line-height: 1.05; }
 .kpi-sub { font-size: 0.78rem; color: #64748b; margin-top: 0.2rem; }
+.kpi-card--revenue-positive {
+  border-color: rgb(226 232 240);
+  background: #fff;
+}
+.kpi-card--revenue-positive .kpi-icon,
+.kpi-card--revenue-positive .kpi-label,
+.kpi-card--revenue-positive .kpi-value,
+.kpi-card--revenue-positive .kpi-sub {
+  color: #15803d;
+}
 .avatar-chip {
   width: 2rem;
   height: 2rem;

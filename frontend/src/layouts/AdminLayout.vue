@@ -163,7 +163,9 @@
       <main :class="['admin-main flex min-h-0 flex-1 flex-col overflow-x-hidden md:ml-[225px]',isDarkTheme ? 'bg-[#05070f] text-slate-100' : 'bg-slate-50 text-slate-900']">
         <div
           :class="[
-            'admin-content flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3 pt-0 pb-4 md:px-6 md:pt-2 md:pb-6',
+            isInboxRoute
+              ? 'admin-content flex-1 min-h-0 overflow-hidden p-0'
+              : 'admin-content flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3 pt-0 pb-4 md:px-6 md:pt-2 md:pb-6',
             isDarkTheme ? 'text-slate-100' : 'text-slate-900'
           ]"
         >
@@ -669,6 +671,23 @@
         </div>
       </div>
     </transition>
+    <transition name="fade">
+      <button
+        v-if="floatingInboxNotification.open"
+        type="button"
+        class="fixed right-5 top-5 z-[1100] w-[calc(100%-2.5rem)] max-w-sm rounded-2xl border border-emerald-200 bg-white p-3 text-left shadow-2xl transition hover:-translate-y-[1px]"
+        @click="openInboxFromNotification"
+      >
+        <p class="text-[11px] font-semibold uppercase tracking-wide text-emerald-600">Nova mensagem</p>
+        <p class="mt-1 truncate text-sm font-semibold text-slate-900">{{ floatingInboxNotification.title }}</p>
+        <p class="mt-0.5 truncate text-xs text-slate-600">
+          <template v-if="floatingInboxNotification.groupSender">
+            <strong>{{ floatingInboxNotification.groupSender }}:</strong> {{ floatingInboxNotification.body }}
+          </template>
+          <template v-else>{{ floatingInboxNotification.body }}</template>
+        </p>
+      </button>
+    </transition>
 
     <a
       href="https://wa.me/5553991800903"
@@ -693,6 +712,9 @@ import SidebarLogo from "../assets/Logo Branco - Roteiro Online.png";
 import ColoredLogo from "../assets/Logo Cor - Roteiro Online.png";
 import ImageUploadField from "../components/admin/inputs/ImageUploadField.vue";
 import api, { API_PERMISSION_DENIED_EVENT } from "../services/api";
+import { getWhatsAppInboxAccess, listWhatsAppConversations } from "../services/whatsapp";
+import type { WhatsAppConversation } from "../types/whatsapp";
+import { API_ROOT_URL } from "../utils/apiBase";
 import { useAgencyStore } from "../store/useAgencyStore";
 import { useAuthStore } from "../store/useAuthStore";
 import { useLeadCaptureStore } from "../store/useLeadCaptureStore";
@@ -709,6 +731,7 @@ const agencyStore = useAgencyStore();
 const auth = useAuthStore();
 const leadStore = useLeadCaptureStore();
 const routeRequiresAuth = computed(() => route.matched.some(record => record.meta?.requiresAuth));
+const isInboxRoute = computed(() => route.path.startsWith("/admin/inbox"));
 const showAuthSplash = computed(() => {
   if (!routeRequiresAuth.value) return false;
   if (!auth.token) return false;
@@ -754,8 +777,11 @@ const navCopy = {
   adminMaster: { pt: "Admin Master", es: "Admin Master" },
   pages: { pt: "P\u00E1ginas", es: "P\u00E1ginas" },
   leads: { pt: "Leads", es: "Leads" },
+  inbox: { pt: "Inbox", es: "Inbox" },
   clients: { pt: "Clientes", es: "Clientes" },
   integrations: { pt: "Integra\u00E7\u00F5es", es: "Integraciones" },
+  tracking: { pt: "Rastreamento", es: "Rastreo" },
+  connections: { pt: "Atendimento", es: "Atención" },
   domains: { pt: "Dom\u00EDnios", es: "Dominios" },
   agency: { pt: "Minha Ag\u00EAncia", es: "Mi Agencia" },
   profile: { pt: "Perfil", es: "Perfil" },
@@ -962,8 +988,10 @@ const navIcons: Record<string, string> = {
   "/admin/dashboard": '<path fill="none" stroke="currentColor" stroke-width="1.8" d="M4 5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1zm10 0a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1zM4 16a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1zm10-3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1z"/>' ,
   "/admin/pages": '<g fill="none" stroke="currentColor" stroke-width="2"><path d="M6.142 6.142C8.904 3.381 10.284 2 12 2s3.096 1.38 5.858 4.142S22 10.284 22 12s-1.38 3.096-4.142 5.858S13.716 22 12 22s-3.096-1.38-5.858-4.142S2 13.716 2 12s1.38-3.096 4.142-5.858Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M16 11.5L13.333 9M16 11.5L13.333 14M16 11.5h-5.333C9.777 11.5 8 12 8 14"/></g>',
   "/admin/leads": '<path fill="currentColor" d="m17 21l1.8 1.77c.5.5 1.2.1 1.2-.49V18l2.8-3.4A1 1 0 0 0 22 13h-7c-.8 0-1.3 1-.8 1.6L17 18zm-2-1H2v-3c0-2.7 5.3-4 8-4c.6 0 1.3.1 2.1.2c-.2.6-.1 1.3.1 1.9c-.7-.1-1.5-.2-2.2-.2c-3 0-6.1 1.5-6.1 2.1v1.1h10.6l.5.6zM10 4C7.8 4 6 5.8 6 8s1.8 4 4 4s4-1.8 4-4s-1.8-4-4-4m0 6c-1.1 0-2-.9-2-2s.9-2 2-2s2 .9 2 2s-.9 2-2 2"/>',
+  "/admin/inbox": '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M4 6h16v12H4z"/><path d="M8 10h8"/><path d="M8 14h5"/></g>',
   "/admin/clientes": '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><circle cx="9" cy="8" r="3"/><path d="M3 19c0-3 2.5-5 6-5s6 2 6 5"/><path d="M18 8h3M19.5 6.5v3"/></g>',
   "/admin/integracoes": '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M18.364 19.364a9 9 0 1 0-12.728 0"/><path d="M15.536 16.536a5 5 0 1 0-7.072 0"/><path d="M11 13a1 1 0 1 0 2 0a1 1 0 1 0-2 0"/></g>',
+  "/admin/conexoes": '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M6.5 7.5a3.5 3.5 0 1 1 6.03 2.46L14.5 12"/><path d="M17.5 16.5a3.5 3.5 0 1 1-6.03-2.46L9.5 12"/><path d="M9.5 12h5"/></g>',
   "/admin/agency": '<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.3" d="M4 11.452V16.8c0 1.12 0 1.68.218 2.109c.192.376.497.682.874.873c.427.218.987.218 2.105.218h9.606c1.118 0 1.677 0 2.104-.218a2 2 0 0 0 .875-.873c.218-.428.218-.987.218-2.105v-5.352c0-.534 0-.801-.065-1.05a2 2 0 0 0-.28-.617c-.145-.213-.345-.39-.748-.741l-4.8-4.2c-.746-.653-1.12-.98-1.54-1.104c-.37-.11-.764-.11-1.135 0c-.42.124-.792.45-1.538 1.102L5.093 9.044c-.402.352-.603.528-.747.74a2 2 0 0 0-.281.618C4 10.65 4 10.918 4 11.452"/>',
   "/admin/domains": '<g transform="translate(3 3) scale(1.1)"><path fill="currentColor" d="M9 0a9 9 0 1 0 0 18A9 9 0 0 0 9 0M1.11 9.68h2.51c.04.91.167 1.814.38 2.7H1.84a7.9 7.9 0 0 1-.73-2.7m8.57-5.4V1.19a4.13 4.13 0 0 1 2.22 2q.308.521.54 1.08zm3.22 1.35c.232.883.37 1.788.41 2.7H9.68v-2.7zM8.32 1.19v3.09H5.56A8.5 8.5 0 0 1 6.1 3.2a4.13 4.13 0 0 1 2.22-2.01m0 4.44v2.7H4.7c.04-.912.178-1.817.41-2.7zm-4.7 2.69H1.11a7.9 7.9 0 0 1 .73-2.7H4a14 14 0 0 0-.38 2.7M4.7 9.68h3.62v2.7H5.11a13 13 0 0 1-.41-2.7m3.63 4v3.09a4.13 4.13 0 0 1-2.22-2a8.5 8.5 0 0 1-.54-1.08zm1.35 3.09v-3.04h2.76a8.5 8.5 0 0 1-.54 1.08a4.13 4.13 0 0 1-2.22 2zm0-4.44v-2.7h3.62a13 13 0 0 1-.41 2.7zm4.71-2.7h2.51a7.9 7.9 0 0 1-.73 2.7H14c.21-.87.337-1.757.38-2.65zm0-1.35A14 14 0 0 0 14 5.63h2.16c.403.85.65 1.764.73 2.7zm1-4H13.6a8.9 8.9 0 0 0-1.39-2.52a8 8 0 0 1 3.14 2.52zm-9.6-2.52A8.9 8.9 0 0 0 4.4 4.28H2.65a8 8 0 0 1 3.14-2.52m-3.15 12H4.4a8.9 8.9 0 0 0 1.39 2.52a8 8 0 0 1-3.14-2.55zm9.56 2.52a8.9 8.9 0 0 0 1.39-2.52h1.76a8 8 0 0 1-3.14 2.48z"/></g>',
   "/admin/perfil": '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></g>',
@@ -1016,6 +1044,7 @@ const routeTitleMap: Record<string, string> = {
   "leads-opportunities": t({ pt: "Oportunidades", es: "Oportunidades" }),
   "leads-clients": navLabel("clients"),
   "leads-settings": t({ pt: "Configurações", es: "Configuraciones" }),
+  inbox: navLabel("inbox"),
   "client-detail": navLabel("clients"),
   "admin-management-dashboard": navLabel("dashboard"),
   "admin-management-monitor": t({ pt: "Monitor", es: "Monitor" }),
@@ -1024,6 +1053,7 @@ const routeTitleMap: Record<string, string> = {
   "admin-management-templates": t({ pt: "Templates", es: "Templates" }),
   "admin-management-flight-apis": t({ pt: "APIs de voo", es: "APIs de vuelo" }),
   "admin-management-banners": t({ pt: "Banners", es: "Banners" }),
+  "admin-management-whatsapp": t({ pt: "Gestão WhatsApp", es: "Gestion WhatsApp" }),
   "page-edit": t({ pt: "Editar página", es: "Editar página" }),
   lessons: navLabel("lessons"),
   "agency-settings": navLabel("agency"),
@@ -1031,6 +1061,8 @@ const routeTitleMap: Record<string, string> = {
   "agency-domains": navLabel("domains"),
   plans: navLabel("plans"),
   integrations: navLabel("integrations"),
+  "integrations-tracking": navLabel("tracking"),
+  connections: navLabel("connections"),
   profile: navLabel("profile"),
   "admin-management": navLabel("adminMaster")
 };
@@ -1049,6 +1081,307 @@ const canManageTeam = computed(() => {
   const role = String(auth.user?.role || "admin").toLowerCase();
   return isOwner && (role === "admin" || role === "owner");
 });
+const inboxEnabled = ref(false);
+let inboxAccessPollTimer: ReturnType<typeof setInterval> | null = null;
+let inboxFloatingPollTimer: ReturnType<typeof setInterval> | null = null;
+let inboxFloatingHideTimer: ReturnType<typeof setTimeout> | null = null;
+let inboxWs: WebSocket | null = null;
+let inboxWsHeartbeatTimer: ReturnType<typeof setInterval> | null = null;
+let inboxWsReconnectTimer: ReturnType<typeof setTimeout> | null = null;
+let inboxWsToken = 0;
+let inboxWsIntentionalClose = false;
+const inboxNotifBootAt = ref<number>(Date.now());
+const notifiedInboundMessageIds = ref<string[]>([]);
+const lastInboxSnapshot = ref<Record<number, { unread: number; lastAt: string | null }>>({});
+const floatingInboxNotification = ref({
+  open: false,
+  conversationId: 0,
+  title: "",
+  body: "",
+  groupSender: ""
+});
+const inboxNotifStorageKey = computed(() => {
+  const userId = auth.user?.id || "anon";
+  const agencyId = agencyStore.currentAgencyId || "noagency";
+  return `inbox-floating-notif:${userId}:${agencyId}`;
+});
+const inboxNotifSoundStorageKey = computed(() => {
+  const userId = auth.user?.id || "anon";
+  const agencyId = agencyStore.currentAgencyId || "noagency";
+  return `inbox-floating-sound:${userId}:${agencyId}`;
+});
+const inboxMutedConversationsStorageKey = computed(() => {
+  const userId = auth.user?.id || "anon";
+  const agencyId = agencyStore.currentAgencyId || "noagency";
+  return `inbox-muted-conversations:${userId}:${agencyId}`;
+});
+const inboxFloatingEnabled = computed(() => {
+  try {
+    return localStorage.getItem(inboxNotifStorageKey.value) === "1";
+  } catch {
+    return false;
+  }
+});
+const inboxFloatingSoundEnabled = computed(() => {
+  try {
+    return localStorage.getItem(inboxNotifSoundStorageKey.value) === "1";
+  } catch {
+    return false;
+  }
+});
+
+const isConversationMutedForFloatingNotification = (conversationId: number) => {
+  if (!conversationId) return false;
+  try {
+    const raw = localStorage.getItem(inboxMutedConversationsStorageKey.value);
+    if (!raw) return false;
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return false;
+    return parsed.map(item => Number(item)).some(item => Number.isFinite(item) && item === conversationId);
+  } catch {
+    return false;
+  }
+};
+
+const playInboxNotificationSound = () => {
+  if (!inboxFloatingSoundEnabled.value) return;
+  try {
+    const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.value = 880;
+    gain.gain.value = 0.0001;
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    const now = ctx.currentTime;
+    gain.gain.exponentialRampToValueAtTime(0.06, now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.16);
+    osc.start(now);
+    osc.stop(now + 0.17);
+    osc.onended = () => {
+      try {
+        ctx.close();
+      } catch {
+        // noop
+      }
+    };
+  } catch {
+    // noop
+  }
+};
+const loadInboxAccess = async () => {
+  if (!auth.user) {
+    inboxEnabled.value = false;
+    return;
+  }
+  try {
+    const access = await getWhatsAppInboxAccess(agencyStore.currentAgencyId || auth.user.primary_agency_id || undefined);
+    inboxEnabled.value = Boolean(access.enabled);
+  } catch {
+    inboxEnabled.value = false;
+  }
+  if (!inboxEnabled.value && route.path.startsWith("/admin/inbox")) {
+    router.push({ name: "inbox-unavailable" }).catch(() => {});
+  }
+};
+
+const showFloatingInboxNotification = (conversation: WhatsAppConversation) => {
+  if (isConversationMutedForFloatingNotification(conversation.id)) return;
+  const parsedGroup = parseGroupSenderMessage(conversation.remotePhone, conversation.lastMessageText);
+  floatingInboxNotification.value = {
+    open: true,
+    conversationId: conversation.id,
+    title: (conversation.remoteName || conversation.remotePhone || "Inbox").trim(),
+    body: (parsedGroup?.text || conversation.lastMessageText || "Você recebeu uma nova mensagem.").trim(),
+    groupSender: parsedGroup?.sender || ""
+  };
+  playInboxNotificationSound();
+  if (inboxFloatingHideTimer) clearTimeout(inboxFloatingHideTimer);
+  inboxFloatingHideTimer = setTimeout(() => {
+    floatingInboxNotification.value.open = false;
+  }, 7000);
+};
+
+const openInboxFromNotification = () => {
+  const conversationId = floatingInboxNotification.value.conversationId;
+  floatingInboxNotification.value.open = false;
+  if (!conversationId) return;
+  router.push({ name: "inbox", query: { conversationId: String(conversationId) } }).catch(() => {});
+};
+
+const isGroupTarget = (raw: string | null | undefined) => String(raw || "").toLowerCase().endsWith("@g.us");
+const parseGroupSenderMessage = (remotePhone: string | null | undefined, text: string | null | undefined) => {
+  if (!isGroupTarget(remotePhone)) return null;
+  const body = String(text || "");
+  const match = body.match(/^\s*\[([^\]]+)\]\s*([\s\S]*)$/);
+  if (!match) return null;
+  const sender = String(match[1] || "").trim();
+  if (!sender) return null;
+  return { sender, text: String(match[2] || "").trim() };
+};
+
+const pollInboxFloatingNotifications = async () => {
+  if (!inboxEnabled.value || !inboxFloatingEnabled.value || !agencyStore.currentAgencyId) return;
+  try {
+    const rows = await listWhatsAppConversations(agencyStore.currentAgencyId);
+    const nextSnapshot: Record<number, { unread: number; lastAt: string | null }> = {};
+    const isFirstSnapshot = Object.keys(lastInboxSnapshot.value).length === 0;
+    for (const row of rows) {
+      const unread = Number(row.unreadCount || 0);
+      const lastAt = row.lastMessageAt || row.updatedAt || null;
+      nextSnapshot[row.id] = { unread, lastAt };
+      const prev = lastInboxSnapshot.value[row.id];
+      const hasUnreadIncrease = prev ? unread > prev.unread : false;
+      const lastChanged = prev ? prev.lastAt !== lastAt : Boolean(lastAt);
+      if (!isFirstSnapshot && hasUnreadIncrease && lastChanged) showFloatingInboxNotification(row);
+    }
+    lastInboxSnapshot.value = nextSnapshot;
+  } catch (err) {
+    console.error(err);
+  }
+};
+
+const resolveWsApiRoot = () => {
+  const devWsRoot = (import.meta.env.VITE_WS_API_ROOT || "").trim().replace(/\/$/, "");
+  if (devWsRoot) return devWsRoot;
+  if (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")) {
+    return "http://localhost:8000";
+  }
+  const configuredRoot = API_ROOT_URL.replace(/\/$/, "");
+  if (typeof window === "undefined") return configuredRoot;
+  try {
+    const parsed = new URL(configuredRoot);
+    if (parsed.host === window.location.host) return window.location.origin.replace(/\/$/, "");
+  } catch {
+    // noop
+  }
+  return configuredRoot;
+};
+
+const buildInboxWsUrl = () => {
+  const token = auth.token;
+  const agencyId = agencyStore.currentAgencyId;
+  if (!token || !agencyId) return null;
+  const wsBase = resolveWsApiRoot().replace(/^http/i, "ws");
+  const url = new URL(`${wsBase}/api/v1/whatsapp/ws`);
+  url.searchParams.set("token", token);
+  url.searchParams.set("agencyId", String(agencyId));
+  return url.toString();
+};
+
+const disconnectInboxWs = () => {
+  inboxWsIntentionalClose = true;
+  inboxWsToken += 1;
+  if (inboxWsReconnectTimer) {
+    clearTimeout(inboxWsReconnectTimer);
+    inboxWsReconnectTimer = null;
+  }
+  if (inboxWsHeartbeatTimer) {
+    clearInterval(inboxWsHeartbeatTimer);
+    inboxWsHeartbeatTimer = null;
+  }
+  if (inboxWs) {
+    inboxWs.onopen = null;
+    inboxWs.onmessage = null;
+    inboxWs.onerror = null;
+    inboxWs.onclose = null;
+    try {
+      inboxWs.close();
+    } catch {
+      // noop
+    }
+    inboxWs = null;
+  }
+};
+
+const connectInboxWs = () => {
+  const url = buildInboxWsUrl();
+  if (!url || !inboxEnabled.value || !inboxFloatingEnabled.value) return;
+  const myToken = ++inboxWsToken;
+  inboxWsIntentionalClose = false;
+  inboxNotifBootAt.value = Date.now();
+  if (inboxWsReconnectTimer) {
+    clearTimeout(inboxWsReconnectTimer);
+    inboxWsReconnectTimer = null;
+  }
+  if (inboxWsHeartbeatTimer) {
+    clearInterval(inboxWsHeartbeatTimer);
+    inboxWsHeartbeatTimer = null;
+  }
+  if (inboxWs) {
+    try {
+      inboxWs.close();
+    } catch {
+      // noop
+    }
+    inboxWs = null;
+  }
+  const socket = new WebSocket(url);
+  inboxWs = socket;
+  socket.onopen = () => {
+    if (myToken !== inboxWsToken) return;
+    inboxWsHeartbeatTimer = setInterval(() => {
+      if (socket.readyState === WebSocket.OPEN) {
+        try {
+          socket.send("ping");
+        } catch {
+          // noop
+        }
+      }
+    }, 20000);
+  };
+  socket.onmessage = async evt => {
+    if (myToken !== inboxWsToken) return;
+    let payload: any = null;
+    try {
+      payload = JSON.parse(evt.data);
+    } catch {
+      return;
+    }
+    if (payload?.type === "whatsapp.message.created" && payload?.message?.direction === "inbound") {
+      const messageId = String(payload?.message?.id || payload?.message?.externalMessageId || "");
+      if (messageId && notifiedInboundMessageIds.value.includes(messageId)) return;
+      const rawTs = payload?.message?.createdAt || payload?.message?.sentAt || payload?.message?.receivedAt || null;
+      const messageTs = rawTs ? new Date(rawTs).getTime() : NaN;
+      // Ignora backlog antigo que o socket pode reenviar ao conectar.
+      if (Number.isFinite(messageTs) && messageTs < inboxNotifBootAt.value - 60_000) return;
+      if (messageId) {
+        notifiedInboundMessageIds.value = [...notifiedInboundMessageIds.value.slice(-399), messageId];
+      }
+      const conversationId = Number(payload?.conversation_id || payload?.message?.conversationId || 0);
+      if (!conversationId || !agencyStore.currentAgencyId) return;
+      try {
+        const rows = await listWhatsAppConversations(agencyStore.currentAgencyId);
+        const conversation = rows.find(item => item.id === conversationId);
+        if (conversation) showFloatingInboxNotification(conversation);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  };
+  socket.onerror = () => {
+    if (myToken !== inboxWsToken) return;
+  };
+  socket.onclose = event => {
+    if (myToken !== inboxWsToken) return;
+    if (inboxWsHeartbeatTimer) {
+      clearInterval(inboxWsHeartbeatTimer);
+      inboxWsHeartbeatTimer = null;
+    }
+    inboxWs = null;
+    if (inboxWsIntentionalClose) return;
+    if (event.code === 1008 || event.code === 1011) {
+      return;
+    }
+    inboxWsReconnectTimer = setTimeout(() => {
+      if (myToken !== inboxWsToken) return;
+      connectInboxWs();
+    }, 2500);
+  };
+};
 
 const adminNavigation = computed<AdminNavItem[]>(() => {
   const items: AdminNavItem[] = [
@@ -1067,7 +1400,18 @@ const adminNavigation = computed<AdminNavItem[]>(() => {
         { label: t({ pt: "Configura\u00E7\u00F5es", es: "Configuraciones" }), path: "/admin/leads/settings" }
       ]
     },
-    { id: "integrations", type: "link", label: navLabel("integrations"), to: "/admin/integracoes", iconPath: "/admin/integracoes" },
+    { id: "inbox", type: "link", label: navLabel("inbox"), to: "/admin/inbox", iconPath: "/admin/inbox" },
+    {
+      id: "integrations",
+      type: "group",
+      label: navLabel("integrations"),
+      basePath: "/admin/integracoes",
+      iconPath: "/admin/integracoes",
+      children: [
+        { label: navLabel("tracking"), path: "/admin/integracoes/rastreamento" },
+        { label: navLabel("connections"), path: "/admin/integracoes/atendimento" }
+      ]
+    },
     {
       id: "agency",
       type: "group",
@@ -1098,7 +1442,8 @@ const adminNavigation = computed<AdminNavItem[]>(() => {
         { label: t({ pt: "Gestão de aulas", es: "Gestión de cursos" }), path: "/admin/administracao/aulas" },
         { label: t({ pt: "Templates", es: "Templates" }), path: "/admin/administracao/templates" },
         { label: t({ pt: "APIs de voo", es: "APIs de vuelo" }), path: "/admin/administracao/apis-voo" },
-        { label: t({ pt: "Banners", es: "Banners" }), path: "/admin/administracao/banners" }
+        { label: t({ pt: "Banners", es: "Banners" }), path: "/admin/administracao/banners" },
+        { label: t({ pt: "Gestão WhatsApp", es: "Gestion WhatsApp" }), path: "/admin/administracao/whatsapp" }
       ]
     });
   }
@@ -1106,6 +1451,7 @@ const adminNavigation = computed<AdminNavItem[]>(() => {
     if (item.id === "dashboard") return hasPermission("dashboard");
     if (item.id === "pages") return hasPermission("pages");
     if (item.id === "leads") return hasPermission("leads");
+    if (item.id === "inbox") return hasPermission("leads") && inboxEnabled.value;
     if (item.id === "integrations") return hasPermission("integrations");
     if (item.id === "agency") return hasPermission("settings") || (canManageTeam.value && hasPermission("team_management"));
     return true;
@@ -1144,7 +1490,7 @@ const sidebarSections = computed<SidebarSection[]>(() => {
     {
       id: "principal",
       label: t({ pt: "Principal", es: "Principal" }),
-      itemIds: ["dashboard", "admin-master", "pages", "leads"]
+      itemIds: ["dashboard", "admin-master", "pages", "leads", "inbox"]
     },
     {
       id: "configurar",
@@ -1728,6 +2074,16 @@ onMounted(async () => {
   if (!auth.user && auth.token) {
     await auth.fetchProfile();
   }
+  await loadInboxAccess();
+  void pollInboxFloatingNotifications();
+  connectInboxWs();
+  inboxAccessPollTimer = setInterval(() => {
+    void loadInboxAccess();
+  }, 10000);
+  inboxFloatingPollTimer = setInterval(() => {
+    if (!inboxWs) void pollInboxFloatingNotifications();
+  }, 8000);
+  window.addEventListener("focus", loadInboxAccess);
   checkCookieConsent();
   scrollToTop();
 });
@@ -1743,6 +2099,24 @@ onBeforeUnmount(() => {
   if (hasWindow) {
     document.body.classList.remove(bodyDarkClass, bodyLightClass);
   }
+  if (inboxAccessPollTimer) {
+    clearInterval(inboxAccessPollTimer);
+    inboxAccessPollTimer = null;
+  }
+  if (inboxFloatingPollTimer) {
+    clearInterval(inboxFloatingPollTimer);
+    inboxFloatingPollTimer = null;
+  }
+  disconnectInboxWs();
+  if (inboxWsReconnectTimer) {
+    clearTimeout(inboxWsReconnectTimer);
+    inboxWsReconnectTimer = null;
+  }
+  if (inboxFloatingHideTimer) {
+    clearTimeout(inboxFloatingHideTimer);
+    inboxFloatingHideTimer = null;
+  }
+  window.removeEventListener("focus", loadInboxAccess);
 });
 
 watch(
@@ -1751,6 +2125,31 @@ watch(
     if (!agencyStore.currentAgencyId && length > 0) {
       agencyStore.currentAgencyId = agencyStore.agencies[0].id;
     }
+  }
+);
+
+watch(
+  () => [auth.user?.id, agencyStore.currentAgencyId],
+  () => {
+    loadInboxAccess();
+    lastInboxSnapshot.value = {};
+    notifiedInboundMessageIds.value = [];
+    inboxNotifBootAt.value = Date.now();
+    void pollInboxFloatingNotifications();
+    disconnectInboxWs();
+    connectInboxWs();
+  },
+  { immediate: true }
+);
+
+watch(
+  () => [inboxEnabled.value, inboxFloatingEnabled.value],
+  () => {
+    if (!inboxEnabled.value || !inboxFloatingEnabled.value) {
+      disconnectInboxWs();
+      return;
+    }
+    connectInboxWs();
   }
 );
 

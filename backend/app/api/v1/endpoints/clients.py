@@ -27,6 +27,7 @@ from app.schemas.crm import (
 )
 from app.services.contact_normalization import normalize_cpf, normalize_email, normalize_phone
 from app.services.media_storage import media_storage
+from app.services.opportunity_whatsapp import send_opportunity_welcome_message_best_effort
 from app.services.team import get_user_effective_permissions
 
 router = APIRouter()
@@ -508,6 +509,7 @@ def create_client_opportunity(
     )
     db.add(opportunity)
     db.commit()
+    send_opportunity_welcome_message_best_effort(db=db, opportunity_id=opportunity.id)
     opportunity = (
         db.query(LeadFormSubmission)
         .options(joinedload(LeadFormSubmission.form), joinedload(LeadFormSubmission.status), joinedload(LeadFormSubmission.client))

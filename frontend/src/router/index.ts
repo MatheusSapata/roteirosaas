@@ -12,6 +12,8 @@ import PageEditorView from "../views/admin/PageEditorView.vue";
 import AgencySettingsView from "../views/admin/AgencySettingsView.vue";
 import LeadsView from "../views/admin/LeadsView.vue";
 import ClientDetailView from "../views/admin/ClientDetailView.vue";
+import ConnectionsView from "../views/admin/ConnectionsView.vue";
+import InboxView from "../views/admin/InboxView.vue";
 import PublicPageView from "../views/public/PublicPageView.vue";
 import PlansView from "../views/public/PlansView.vue";
 import AdminLayout from "../layouts/AdminLayout.vue";
@@ -149,6 +151,9 @@ const resolveLegacyAdminManagementRedirect = (to: any) => {
   if (tab === "banners") {
     return { path: "/admin/administracao/banners", query: nextQuery };
   }
+  if (tab === "whatsapp") {
+    return { path: "/admin/administracao/whatsapp", query: nextQuery };
+  }
   return { path: "/admin/administracao/dashboard", query: nextQuery };
 };
 
@@ -178,6 +183,8 @@ const platformRoutes: RouteRecordRaw[] = [
       { path: "leads/clients", name: "leads-clients", component: LeadsView, meta: { permission: "leads" } },
       { path: "leads/clients/:id", name: "client-detail", component: ClientDetailView, props: true, meta: { permission: "leads" } },
       { path: "leads/settings", name: "leads-settings", component: LeadsView, meta: { permission: "leads" } },
+      { path: "inbox", name: "inbox", component: InboxView, meta: { permission: "leads" } },
+      { path: "inbox-unavailable", name: "inbox-unavailable", component: () => import("../views/admin/InboxUnavailableView.vue"), meta: { permission: "leads" } },
       {
         path: "clientes",
         name: "clients",
@@ -196,7 +203,20 @@ const platformRoutes: RouteRecordRaw[] = [
         meta: { permission: "domains" }
       },
       { path: "planos", name: "plans", component: PlansView },
-      { path: "integracoes", name: "integrations", component: () => import("../views/admin/IntegrationsView.vue"), meta: { permission: "integrations" } },
+      { path: "integracoes", redirect: "/admin/integracoes/rastreamento", meta: { permission: "integrations" } },
+      {
+        path: "integracoes/rastreamento",
+        name: "integrations",
+        component: () => import("../views/admin/IntegrationsView.vue"),
+        meta: { permission: "integrations" }
+      },
+      {
+        path: "integracoes/atendimento",
+        name: "connections",
+        component: ConnectionsView,
+        meta: { permission: "integrations" }
+      },
+      { path: "conexoes", redirect: "/admin/integracoes/atendimento", meta: { permission: "integrations" } },
       { path: "perfil", name: "profile", component: () => import("../views/admin/ProfileView.vue") },
       {
         path: "administracao",
@@ -244,6 +264,12 @@ const platformRoutes: RouteRecordRaw[] = [
         name: "admin-management-banners",
         component: () => import("../views/admin/BannerManagementView.vue"),
         meta: { requiresSuperuser: true }
+      },
+      {
+        path: "administracao/whatsapp",
+        name: "admin-management-whatsapp",
+        component: () => import("../views/admin/AdminWhatsAppManagementView.vue"),
+        meta: { requiresSuperuser: true }
       }
     ]
   },
@@ -288,6 +314,7 @@ const resolveFirstAllowedAdminRoute = (auth: ReturnType<typeof useAuthStore>) =>
     { name: "pages", permission: "pages" },
     { name: "leads-forms", permission: "leads" },
     { name: "integrations", permission: "integrations" },
+    { name: "connections", permission: "integrations" },
     { name: "agency-domains", permission: "domains" },
     { name: "lessons", permission: "lessons" },
     { name: "agency-settings", permission: "settings" },
@@ -322,6 +349,7 @@ router.beforeEach(async (to, _from, next) => {
   const targetIsDashboard = to.name === "dashboard";
   const requiredPermission = (to.meta?.permission as PermissionKey | undefined) || undefined;
   const ownerOnly = Boolean(to.meta?.ownerOnly);
+  const requiresInboxAccess = to.name === "inbox";
 
   if (requiresAuth) {
     if (!auth.token) {
@@ -367,6 +395,20 @@ router.beforeEach(async (to, _from, next) => {
         return;
       }
       next(fallback);
+      return;
+    }
+  }
+
+  if (requiresAuth && auth.user && requiresInboxAccess) {
+    try {
+      const { getWhatsAppInboxAccess } = await import("../services/whatsapp");
+      const enabled = (await getWhatsAppInboxAccess(auth.user.primary_agency_id || undefined)).enabled;
+      if (!enabled) {
+        next({ name: "inbox-unavailable" });
+        return;
+      }
+    } catch {
+      next({ name: "inbox-unavailable" });
       return;
     }
   }
