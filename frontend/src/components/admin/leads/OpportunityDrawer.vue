@@ -13,7 +13,7 @@
                 : 'opp-drawer-shell inset-y-0 right-0 h-full w-full max-w-[660px] bg-white'
             "
           >
-            <div class="opp-hd flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-3">
+            <div class="opp-hd flex items-center justify-between gap-4 border-b border-slate-200 px-5 py-3">
               <div class="min-w-0">
                 <p class="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Oportunidade</p>
               </div>
@@ -38,18 +38,35 @@
                   {{ headerTitle }}
                 </h2>
                 <div class="opp-origin-row">
-                  <span class="opp-chip page">
-                    <svg viewBox="0 0 24 24"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5"/></svg>
-                    {{ details?.pageTitle || details?.pageSlug || "Página" }}
-                  </span>
-                  <span class="opp-chip form">
-                    <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                    {{ details?.formName || "Formulário" }}
-                  </span>
+                  <span class="opp-origin-text">{{ details?.pageTitle || details?.pageSlug || "Página" }}</span>
+                  <span class="opp-origin-sep">|</span>
+                  <span class="opp-origin-text">{{ formDisplayName }}</span>
                   <span class="opp-date">· {{ formatDateTime(details?.created_at || null) }}</span>
                 </div>
                 <div class="opp-meta-row">
-                  <span class="opp-stage" :style="statusBadgeStyle">{{ details?.statusName || "Sem etapa" }}</span>
+                  <div class="opp-stage-wrap">
+                    <button type="button" class="opp-stage" :style="statusBadgeStyle" @click="stageMenuOpen = !stageMenuOpen">
+                      {{ details?.statusName || "Sem etapa" }}
+                      <svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+                    </button>
+                    <div v-if="stageMenuOpen" class="opp-stage-menu">
+                      <button type="button" class="opp-stage-opt" :style="stageOptionStyle()" @click="selectStage(null)">
+                        <span class="opp-stage-opt-dot"></span>
+                        Sem etapa
+                      </button>
+                      <button
+                        v-for="status in props.statuses"
+                        :key="`stage-${status.id}`"
+                        type="button"
+                        class="opp-stage-opt"
+                        :style="stageOptionStyle(status.color)"
+                        @click="selectStage(status.id)"
+                      >
+                        <span class="opp-stage-opt-dot"></span>
+                        {{ status.name }}
+                      </button>
+                    </div>
+                  </div>
                   <span class="opp-status" :class="opportunityStatusBadgeClass">{{ opportunityStatusLabel }}</span>
                   <span class="opp-value">Valor: <strong>{{ currencyLabel(details?.estimatedValueCents ?? 0) }}</strong></span>
                   <div class="opp-hl-wrap">
@@ -57,7 +74,7 @@
                       type="button"
                       class="opp-hl-btn opp-hl-won"
                       :class="{ active: details?.closeOutcome === 'won' }"
-                      @click="finalizeOutcome = 'won'; handleFinalizeOpportunity()"
+                      @click="handleFinalizeOpportunity('won')"
                     >
                       <svg viewBox="0 0 24 24"><path d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3H14z"/><path d="M7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3"/></svg>
                     </button>
@@ -65,7 +82,7 @@
                       type="button"
                       class="opp-hl-btn opp-hl-lost"
                       :class="{ active: details?.closeOutcome === 'lost' }"
-                      @click="finalizeOutcome = 'lost'; handleFinalizeOpportunity()"
+                      @click="handleFinalizeOpportunity('lost')"
                     >
                       <svg viewBox="0 0 24 24"><path d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3H10z"/><path d="M17 2h2.67A2.31 2.31 0 0122 4v7a2.31 2.31 0 01-2.33 2H17"/></svg>
                     </button>
@@ -74,9 +91,9 @@
               </div>
 
               <div class="opp-info">
-                <div class="opp-line">
+                <div class="opp-line opp-line--phone">
                   <p class="opp-lbl">Telefone</p>
-                  <p class="opp-val">{{ formatPhone(details?.phone) || "Não informado" }}</p>
+                  <p class="opp-val opp-phone-val">{{ formatPhone(details?.phone) || "Não informado" }}</p>
                 </div>
                 <div class="opp-line">
                   <div class="opp-line-head">
@@ -84,9 +101,14 @@
                       <p class="opp-lbl">Cliente</p>
                       <p v-if="!details?.client" class="opp-sub">Nenhum cliente vinculado</p>
                     </div>
-                    <button v-if="!details?.client" type="button" class="opp-link-btn" @click="linkMode = 'search'">
-                      + Vincular cliente
-                    </button>
+                    <div v-if="!details?.client" class="opp-link-actions">
+                      <button type="button" class="opp-link-btn" @click="linkMode = 'search'">
+                        + Vincular cliente
+                      </button>
+                      <button type="button" class="opp-link-btn" :disabled="creatingClient" @click="handleCreateClient">
+                        {{ creatingClient ? "Criando..." : "+ Criar cliente" }}
+                      </button>
+                    </div>
                   </div>
                   <div
                     v-if="details?.client"
@@ -158,7 +180,7 @@
                   <button type="button" class="opp-add-btn" :disabled="savingNote || !newNote.trim()" @click="handleSaveNote">+ Adicionar nota</button>
                 </div>
                 <div class="opp-note-list">
-                  <article v-for="note in details?.notes || []" :key="note.id" class="opp-note">
+                  <article v-for="note in manualNotes" :key="note.id" class="opp-note">
                     <p class="opp-note-meta">{{ formatDateTime(note.created_at) }}{{ note.author?.name ? ` · ${note.author.name}` : "" }}</p>
                     <p class="opp-note-text">{{ note.content }}</p>
                   </article>
@@ -186,6 +208,10 @@
                       <div class="opp-tl-dot" :class="`opp-tl-dot--${historyKind(item)}`">
                         <svg v-if="historyKind(item) === 'visit'" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
                         <svg v-else-if="historyKind(item) === 'lead'" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                        <svg v-else-if="historyKind(item) === 'note'" viewBox="0 0 24 24"><path d="M4 3h13l3 3v15H4z"/><path d="M17 3v4h4"/><path d="M8 12h8"/><path d="M8 16h6"/></svg>
+                        <svg v-else-if="historyKind(item) === 'won'" viewBox="0 0 24 24"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+                        <svg v-else-if="historyKind(item) === 'lost'" viewBox="0 0 24 24"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/><path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/></svg>
+                        <svg v-else-if="historyKind(item) === 'stage'" viewBox="0 0 24 24"><path d="M7 7h11"/><path d="M15 4l3 3-3 3"/><path d="M17 17H6"/><path d="M9 14l-3 3 3 3"/></svg>
                         <svg v-else viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                       </div>
                       <div class="opp-tl-line"></div>
@@ -254,9 +280,9 @@ const noteEditorOpen = ref(false);
 const newNote = ref("");
 const savingNote = ref(false);
 const finalizeEditorOpen = ref(false);
-const finalizeOutcome = ref<"won" | "lost" | null>(null);
 const finalizeNote = ref("");
 const savingFinalize = ref(false);
+const stageMenuOpen = ref(false);
 const linkMode = ref<null | "search" | "create">(null);
 const clientSearch = ref("");
 const clientResults = ref<ClientSummary[]>([]);
@@ -302,6 +328,15 @@ const opportunityStatusBadgeClass = computed(() => {
 const saveFeedbackClass = computed(() =>
   saveFeedbackTone.value === "error" ? "text-rose-500" : "text-emerald-600"
 );
+const formDisplayName = computed(() => {
+  const formId = details.value?.formId;
+  const knownForm = typeof formId !== "undefined" && formId !== null
+    ? leadStore.getFormById(String(formId))
+    : null;
+  if (knownForm?.name?.trim()) return knownForm.name.trim();
+  if (details.value?.formName?.trim()) return details.value.formName.trim();
+  return "Formulário";
+});
 
 const headerTitle = computed(() => {
   if (details.value?.name?.trim()) return details.value.name.trim();
@@ -327,6 +362,11 @@ const autoLinkedLabel = computed(() => {
   if (mode === "phone") return "Vinculado automaticamente por telefone";
   return "";
 });
+const isSystemHistoryEvent = (content?: string | null) => {
+  const normalized = (content || "").trim().toLowerCase();
+  return normalized.startsWith("status da oportunidade alterado:") || normalized.startsWith("etapa alterada:");
+};
+const manualNotes = computed(() => (details.value?.notes || []).filter(note => !isSystemHistoryEvent(note.content)));
 const historyItems = computed(() => {
   const items: Array<{ key: string; title: string; detail: string; date: string }> = [];
   if (details.value?.created_at) {
@@ -337,19 +377,22 @@ const historyItems = computed(() => {
       date: details.value.created_at
     });
   }
-  if (details.value?.closedAt) {
-    items.push({
-      key: `closed-${details.value.id}-${details.value.closedAt}`,
-      title: details.value.closeOutcome === "won" ? "Oportunidade ganha" : "Oportunidade perdida",
-      detail: currencyLabel(details.value.estimatedValueCents || 0),
-      date: details.value.closedAt
-    });
-  }
   for (const note of details.value?.notes || []) {
+    const content = note.content || "Sem conteúdo";
+    const normalized = content.toLowerCase();
+    const isOutcomeEvent = normalized.startsWith("status da oportunidade alterado:");
+    const isStageEvent = normalized.startsWith("etapa alterada:");
+    let outcomeTitle = "Status alterado";
+    if (isOutcomeEvent) {
+      if (normalized.includes("-> ganha")) outcomeTitle = "Oportunidade ganha";
+      else if (normalized.includes("-> perdida")) outcomeTitle = "Oportunidade perdida";
+      else if (normalized.includes("-> aberta")) outcomeTitle = "Oportunidade reaberta";
+    }
+    const eventTitle = isOutcomeEvent ? outcomeTitle : isStageEvent ? "Etapa alterada" : "Nota adicionada";
     items.push({
       key: `note-${note.id}-${note.created_at}`,
-      title: "Nota adicionada",
-      detail: note.content || "Sem conteúdo",
+      title: eventTitle,
+      detail: content,
       date: note.created_at
     });
   }
@@ -426,8 +469,20 @@ const cancelNoteEditor = () => {
 
 const cancelFinalizeEditor = () => {
   finalizeEditorOpen.value = false;
-  finalizeOutcome.value = null;
   finalizeNote.value = "";
+};
+
+const selectStage = (statusId: string | number | null) => {
+  form.statusId = statusId === null ? "" : String(statusId);
+  stageMenuOpen.value = false;
+};
+const stageOptionStyle = (color?: string | null) => {
+  const tone = (color || "").trim() || "#94A3B8";
+  return {
+    color: tone,
+    borderColor: `${tone}33`,
+    backgroundColor: `${tone}12`
+  };
 };
 
 const handleSaveNote = async () => {
@@ -444,19 +499,30 @@ const handleSaveNote = async () => {
   }
 };
 
-const handleFinalizeOpportunity = async () => {
-  if (!props.contactId || !finalizeOutcome.value) return;
+const handleFinalizeOpportunity = async (outcome: "won" | "lost") => {
+  if (!props.contactId) return;
   if (saveTimer.value) {
     window.clearTimeout(saveTimer.value);
     saveTimer.value = null;
   }
   savingFinalize.value = true;
   try {
+    const previousOutcome = details.value?.closeOutcome ?? null;
     await persistForm();
     await leadStore.finalizeOpportunity(props.contactId, {
-      outcome: finalizeOutcome.value,
+      outcome,
       note: finalizeNote.value.trim() || null,
     });
+    if (previousOutcome !== outcome) {
+      const toLabel = (value: "won" | "lost" | null) => {
+        if (value === "won") return "Ganha";
+        if (value === "lost") return "Perdida";
+        return "Aberta";
+      };
+      const transitionText = `Status da oportunidade alterado: ${toLabel(previousOutcome)} -> ${toLabel(outcome)}`;
+      await leadStore.addOpportunityNote(props.contactId, transitionText);
+    }
+    await leadStore.fetchOpportunityDetails(props.contactId);
     cancelFinalizeEditor();
   } catch (error) {
     console.error(error);
@@ -509,11 +575,32 @@ const handleUnlinkClient = async () => {
 };
 
 const handleCreateClient = async () => {
-  if (!createClientForm.name.trim() || !props.contactId) return;
+  if (!props.contactId) return;
+  const fallbackName = (createClientForm.name || details.value?.name || "").trim() || "Lead sem nome";
   creatingClient.value = true;
   try {
-    const client = await leadStore.createClient({
-      name: createClientForm.name.trim(),
+    const normalize = (value?: string | null) => (value || "").trim().toLowerCase();
+    const normalizePhone = (value?: string | null) => (value || "").replace(/\D/g, "");
+    const targetName = normalize(fallbackName);
+    const targetEmail = normalize(createClientForm.email);
+    const targetPhone = normalizePhone(createClientForm.phone);
+
+    let existingClient: { id: number } | null = null;
+    if (targetName && (targetPhone || targetEmail)) {
+      const searchSeed = targetEmail || targetPhone || fallbackName;
+      const candidates = await leadStore.searchClients(searchSeed);
+      existingClient =
+        candidates.find(client => {
+          const sameName = normalize(client.name) === targetName;
+          if (!sameName) return false;
+          const samePhone = targetPhone && normalizePhone(client.phone) === targetPhone;
+          const sameEmail = targetEmail && normalize(client.email) === targetEmail;
+          return Boolean(samePhone || sameEmail);
+        }) || null;
+    }
+
+    const client = existingClient || await leadStore.createClient({
+      name: fallbackName,
       cpf: createClientForm.cpf.trim() || null,
       phone: createClientForm.phone.trim() || null,
       email: createClientForm.email.trim() || null,
@@ -572,6 +659,7 @@ watch(
   () => {
     hydrateForm();
     fillClientFormFromLead();
+    stageMenuOpen.value = false;
     if (details.value?.closedAt) {
       cancelFinalizeEditor();
     }
@@ -655,6 +743,10 @@ function historyKind(item: { title: string }) {
   const title = item.title.toLowerCase();
   if (title.includes("visit")) return "visit";
   if (title.includes("lead") || title.includes("criada")) return "lead";
+  if (title.includes("nota adicionada")) return "note";
+  if (title.includes("oportunidade ganha")) return "won";
+  if (title.includes("oportunidade perdida")) return "lost";
+  if (title.includes("etapa alterada")) return "stage";
   return "update";
 }
 </script>
@@ -786,14 +878,18 @@ function historyKind(item: { title: string }) {
 
 .opp-head-content{padding:0 24px 14px;background:#fff;margin-top:0}
 .opp-origin-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
-.opp-chip{display:inline-flex;align-items:center;padding:3px 10px;border-radius:8px;font-size:12px;font-weight:600;border:1.5px solid transparent}
-.opp-chip svg{width:11px;height:11px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;margin-right:4px;flex-shrink:0}
-.opp-chip.page{background:rgba(99,102,241,.08);color:#4338CA;border-color:rgba(99,102,241,.18)}
-.opp-chip.form{background:rgba(245,158,11,.08);color:#92400E;border-color:rgba(245,158,11,.18)}
+.opp-origin-text{font-size:12px;font-weight:400;color:#8a9e8a}
+.opp-origin-sep{font-size:13px;color:#94a3b8}
 .opp-date{font-size:12px;color:#8a9e8a}
 .opp-meta-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .opp-meta-row{padding-bottom:10px;border-bottom:1px solid #e4e9e4}
-.opp-stage{display:inline-flex;align-items:center;padding:4px 10px;border-radius:999px;border:1.5px solid;font-size:12px;font-weight:700}
+.opp-stage-wrap{position:relative}
+.opp-stage{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:999px;border:1.5px solid;font-size:12px;font-weight:700}
+.opp-stage svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.opp-stage-menu{position:absolute;top:calc(100% + 6px);left:0;z-index:30;min-width:180px;padding:6px;border:1px solid #e4e9e4;border-radius:10px;background:#fff;box-shadow:0 10px 24px rgba(15,23,42,.12)}
+.opp-stage-opt{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:1px solid transparent;background:transparent;padding:7px 8px;border-radius:999px;font-size:13px;font-weight:600}
+.opp-stage-opt-dot{width:8px;height:8px;border-radius:999px;background:currentColor;opacity:.9}
+.opp-stage-opt:hover{filter:brightness(.96)}
 .opp-status{display:inline-flex;align-items:center;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;border:1.5px solid transparent}
 .opp-status.border-emerald-200{background:rgba(61,204,95,.1);color:#1A7A35;border-color:rgba(61,204,95,.22)}
 .opp-status.border-rose-200{background:rgba(239,68,68,.07);color:#B91C1C;border-color:rgba(239,68,68,.2)}
@@ -805,13 +901,18 @@ function historyKind(item: { title: string }) {
 .opp-hl-btn svg{width:14px;height:14px;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .opp-hl-won svg{stroke:rgba(46,173,76,.45)}
 .opp-hl-lost svg{stroke:rgba(239,68,68,.45)}
-.opp-hl-won.active,.opp-hl-won:hover{background:rgba(61,204,95,.1);border-color:rgba(61,204,95,.22)}
-.opp-hl-lost.active,.opp-hl-lost:hover{background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.2)}
-.opp-info{padding:0 24px 10px;background:#fff;border-bottom:1.5px solid #e4e9e4}
+.opp-hl-won.active,.opp-hl-won:hover{background:rgba(34,197,94,.2);border-color:rgba(22,163,74,.5)}
+.opp-hl-lost.active,.opp-hl-lost:hover{background:rgba(239,68,68,.2);border-color:rgba(220,38,38,.5)}
+.opp-hl-won.active svg{stroke:#15803D}
+.opp-hl-lost.active svg{stroke:#B91C1C}
+.opp-info{padding:0 24px 10px;background:#fff;border-bottom:1.5px solid #e4e9e4;margin-top:-2px}
 .opp-line{padding:10px 0;border-bottom:1px solid #e4e9e4}
 .opp-line:last-child{border-bottom:none}
+.opp-line--phone{padding:2px 0 10px}
 .opp-line-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.opp-link-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 .opp-lbl{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#8a9e8a}
+.opp-line--phone .opp-phone-val{font-size:14px}
 .opp-sub{font-size:13px;color:#4a5e4a}
 .opp-val{font-size:16px;font-weight:500;color:#111a14}
 .opp-link-btn{height:34px;padding:0 14px;border-radius:999px;border:1.5px solid #d5ddd5;background:#fff;color:#2d4637;font-size:13px;font-weight:500}
@@ -859,6 +960,10 @@ function historyKind(item: { title: string }) {
 .opp-tl-dot svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .opp-tl-dot--visit{background:rgba(99,102,241,.12);color:#6366F1}
 .opp-tl-dot--lead{background:rgba(61,204,95,.12);color:#2EAD4C}
+.opp-tl-dot--note{background:rgba(59,130,246,.12);color:#2563EB}
+.opp-tl-dot--won{background:rgba(34,197,94,.12);color:#16A34A}
+.opp-tl-dot--lost{background:rgba(239,68,68,.12);color:#DC2626}
+.opp-tl-dot--stage{background:rgba(168,85,247,.12);color:#9333EA}
 .opp-tl-dot--update{background:rgba(245,158,11,.12);color:#D97706}
 .opp-tl-line{width:1.5px;background:#e4e9e4;flex:1;margin-top:4px;min-height:10px}
 .opp-tl-item:last-child .opp-tl-line{display:none}

@@ -169,7 +169,11 @@ import { useLeadCaptureStore } from "../../../store/useLeadCaptureStore";
 import LeadFormPreview from "./LeadFormPreview.vue";
 
 const props = defineProps<{ modelValue: boolean; form?: LeadForm | null; saving?: boolean }>();
-const emit = defineEmits<{ "update:modelValue": [value: boolean]; save: [{ id: string | null; form: LeadFormPayload }] }>();
+const emit = defineEmits<{
+  "update:modelValue": [value: boolean];
+  save: [{ id: string | null; form: LeadFormPayload }];
+  invalid: [message: string];
+}>();
 
 type BuilderTab = "visual" | "notification";
 const generateId = () => `field-${Math.random().toString(36).slice(2, 9)}`;
@@ -186,6 +190,7 @@ const fieldPresets: FieldPreset[] = [
 
 const messageTokens = [
   { key: "nome", label: "{{nome}}", value: "{{nome}}" },
+  { key: "first_name", label: "{{first_name}}", value: "{{first_name}}" },
   { key: "pagina", label: "{{pagina}}", value: "{{origem}}" },
   { key: "saudacao", label: "{{saudacao}}", value: "{{saudacao}}" }
 ];
@@ -206,7 +211,7 @@ const state = reactive<LeadFormPayload>({
   showLogo: false,
   fields: [],
   defaultStatusId: null,
-  autoWhatsAppMessageTemplate: "Olá {{nome}}, recebemos seu cadastro! Em breve entraremos em contato via WhatsApp.",
+  autoWhatsAppMessageTemplate: "Olá {{first_name}}, recebemos seu cadastro! Em breve entraremos em contato via WhatsApp.",
   autoWhatsAppDelaySeconds: 0,
   autoWhatsAppSkipIfClient: false,
   autoWhatsAppSkipIfFormAlreadySubmitted: false,
@@ -226,10 +231,12 @@ const greetingByHour = computed(() => {
 });
 
 const renderedPreviewMessage = computed(() => {
-  const base = String(state.autoWhatsAppMessageTemplate || "").trim() || "Olá {{nome}}, recebemos seu cadastro!";
+  const base = String(state.autoWhatsAppMessageTemplate || "").trim() || "Olá {{first_name}}, recebemos seu cadastro!";
   return base
     .replaceAll("{{saudacao}}", greetingByHour.value)
     .replaceAll("{{nome}}", "João Silva")
+    .replaceAll("{{first_name}}", "João")
+    .replaceAll("{{primeiro_nome}}", "João")
     .replaceAll("{{telefone}}", "(11) 99999-9999")
     .replaceAll("{{email}}", "joao@email.com")
     .replaceAll("{{pagina}}", "Nome da página")
@@ -281,7 +288,7 @@ const resetState = () => {
   state.showLogo = false;
   state.fields = [];
   state.defaultStatusId = null;
-  state.autoWhatsAppMessageTemplate = "Olá {{nome}}, recebemos seu cadastro! Em breve entraremos em contato via WhatsApp.";
+  state.autoWhatsAppMessageTemplate = "Olá {{first_name}}, recebemos seu cadastro! Em breve entraremos em contato via WhatsApp.";
   state.autoWhatsAppDelaySeconds = 0;
   state.autoWhatsAppSkipIfClient = false;
   state.autoWhatsAppSkipIfFormAlreadySubmitted = false;
@@ -303,7 +310,7 @@ const hydrateFromForm = (form?: LeadForm | null) => {
   state.showLogo = form.showLogo === true;
   state.fields = (form.fields || []).map(field => createFieldFromPreset(field.type, field));
   state.defaultStatusId = form.defaultStatusId ? String(form.defaultStatusId) : null;
-  state.autoWhatsAppMessageTemplate = form.autoWhatsAppMessageTemplate || "Olá {{nome}}, recebemos seu cadastro! Em breve entraremos em contato via WhatsApp.";
+  state.autoWhatsAppMessageTemplate = form.autoWhatsAppMessageTemplate || "Olá {{first_name}}, recebemos seu cadastro! Em breve entraremos em contato via WhatsApp.";
   state.autoWhatsAppDelaySeconds = Number(form.autoWhatsAppDelaySeconds || 0);
   state.autoWhatsAppSkipIfClient = Boolean(form.autoWhatsAppSkipIfClient);
   state.autoWhatsAppSkipIfFormAlreadySubmitted = Boolean(form.autoWhatsAppSkipIfFormAlreadySubmitted);
@@ -323,6 +330,15 @@ const validate = () => {
   if (!state.name.trim()) return (errorMessage.value = "Defina um nome para o formulário."), false;
   if (!state.title.trim()) return (errorMessage.value = "Informe o título do formulário."), false;
   if (!state.fields.length) return (errorMessage.value = "Selecione pelo menos um campo."), false;
+  const hasName = state.fields.some(field => field.type === "name");
+  const hasPhone = state.fields.some(field => field.type === "phone");
+  const hasEmail = state.fields.some(field => field.type === "email");
+  if (!hasName || (!hasPhone && !hasEmail)) {
+    return (
+      errorMessage.value = "O formulário precisa ter Nome + E-mail ou Nome + Telefone.",
+      false
+    );
+  }
   errorMessage.value = "";
   return true;
 };
@@ -345,7 +361,10 @@ const buildPayload = (): LeadFormPayload => ({
 });
 
 const handleSubmit = () => {
-  if (!validate()) return;
+  if (!validate()) {
+    emit("invalid", errorMessage.value || "Dados inválidos do formulário.");
+    return;
+  }
   emit("save", { id: editingId.value, form: buildPayload() });
 };
 

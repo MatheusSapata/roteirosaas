@@ -74,7 +74,7 @@
     <transition name="fade">
       <div
         v-if="feedback.message"
-        class="pointer-events-none fixed bottom-6 right-6 z-[220] max-w-[360px] rounded-xl px-4 py-3 text-sm font-semibold shadow-xl"
+        class="pointer-events-none fixed bottom-6 right-6 z-[4200] max-w-[360px] rounded-xl px-4 py-3 text-sm font-semibold shadow-xl"
         :class="feedback.isError ? 'bg-rose-600 text-white' : 'bg-slate-900 text-white'"
       >
         {{ feedback.message }}
@@ -1263,6 +1263,7 @@
 
 
     @save="handleBuilderSave"
+    @invalid="handleBuilderInvalid"
 
 
 
@@ -4059,6 +4060,10 @@ const buildWhatsAppFallbackUrl = (contact: LeadContact | null | undefined, digit
       : "Olá! Recebemos seu interesse na página {page}.";
   const message = template.replace("{page}", pageLabel);
   return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
+};
+
+const handleBuilderInvalid = (message: string) => {
+  showFeedback(message || "Não foi possível salvar o formulário.", true);
 };
 
 const closeOpportunityWhatsAppModal = () => {

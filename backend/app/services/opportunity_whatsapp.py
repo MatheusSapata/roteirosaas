@@ -67,9 +67,12 @@ def _render_message_template(
     base = (template or "").strip()
     if not base:
         return f"Ola {client_name}, recebemos seu interesse, e gostariamos de falar com voce!"
+    first_name = (client_name or "").strip().split(" ")[0] if (client_name or "").strip() else "cliente"
     return (
         base.replace("{{saudacao}}", _resolve_greeting())
         .replace("{{nome}}", client_name)
+        .replace("{{first_name}}", first_name)
+        .replace("{{primeiro_nome}}", first_name)
         .replace("{{template_nome}}", form_name or "formulario")
         .replace("{{pagina_nome}}", page_name or "pagina")
         .replace("{{pagina}}", source_name or page_name or "origem")
