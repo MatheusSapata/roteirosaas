@@ -277,7 +277,7 @@
             <h2 class="editor-settings-title text-[30px] font-extrabold leading-[1.1] tracking-[-0.02em] text-slate-900 dark:text-white">Configurações da página</h2>
             <p class="mt-1 text-[14px] text-slate-500">Título, link, cores, rastreamento e formulário de captação.</p>
           </div>
-          <div class="flex flex-wrap items-center gap-2 text-xs">
+          <div v-if="!isMobileViewport" class="flex flex-wrap items-center gap-2 text-xs">
             <span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 font-semibold text-slate-600">Link: {{ pageSlug || "-" }}</span>
             <span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 font-semibold text-slate-600">Formulário: {{ selectedLeadForm ? (selectedLeadForm.title || selectedLeadForm.name) : "nenhum" }}</span>
             <span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 font-semibold text-slate-600">Pixels: {{ selectedPixelsSummary }}</span>
@@ -287,19 +287,27 @@
         <div class="grid items-start gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
           <aside ref="settingsSidebarRef" class="space-y-3">
             <button type="button" class="editor-side-tab" :class="{ active: activeSettingsTab==='general' }" @click="selectSettingsTab('general')">
-              <span class="editor-side-tab-step">1</span>
+              <span class="editor-side-tab-step" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M12 15.5A3.5 3.5 0 1 0 12 8.5a3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a1.8 1.8 0 0 1-2.5 2.5l-.1-.1a1 1 0 0 0-1.1-.2a1 1 0 0 0-.6.9V20a1.8 1.8 0 0 1-3.6 0v-.2a1 1 0 0 0-.6-.9a1 1 0 0 0-1.1.2l-.1.1a1.8 1.8 0 1 1-2.5-2.5l.1-.1a1 1 0 0 0 .2-1.1a1 1 0 0 0-.9-.6H4a1.8 1.8 0 0 1 0-3.6h.2a1 1 0 0 0 .9-.6a1 1 0 0 0-.2-1.1l-.1-.1a1.8 1.8 0 1 1 2.5-2.5l.1.1a1 1 0 0 0 1.1.2a1 1 0 0 0 .6-.9V4a1.8 1.8 0 0 1 3.6 0v.2a1 1 0 0 0 .6.9a1 1 0 0 0 1.1-.2l.1-.1a1.8 1.8 0 0 1 2.5 2.5l-.1.1a1 1 0 0 0-.2 1.1a1 1 0 0 0 .9.6h.2a1.8 1.8 0 0 1 0 3.6h-.2a1 1 0 0 0-.9.6Z"/></svg>
+              </span>
               <span>CONFIGURAÇÕES BÁSICAS</span>
             </button>
             <button type="button" class="editor-side-tab" :class="{ active: activeSettingsTab==='colors' }" @click="selectSettingsTab('colors')">
-              <span class="editor-side-tab-step">2</span>
+              <span class="editor-side-tab-step" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M14 4l6 6"/><path d="M5 19l6-1l9-9a2.1 2.1 0 1 0-3-3l-9 9z"/><path d="M8 21h8"/></svg>
+              </span>
               <span>CORES DO FUNDO E DESTAQUE</span>
             </button>
             <button type="button" class="editor-side-tab" :class="{ active: activeSettingsTab==='pixels' }" @click="selectSettingsTab('pixels')">
-              <span class="editor-side-tab-step">3</span>
+              <span class="editor-side-tab-step" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a15 15 0 0 1 0 18"/><path d="M12 3a15 15 0 0 0 0 18"/></svg>
+              </span>
               <span>RASTREAMENTO</span>
             </button>
             <button type="button" class="editor-side-tab" :class="{ active: activeSettingsTab==='capture' }" @click="selectSettingsTab('capture')">
-              <span class="editor-side-tab-step">4</span>
+              <span class="editor-side-tab-step" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20a8 8 0 0 1 16 0"/></svg>
+              </span>
               <span>CAPTAÇÃO DE LEADS</span>
             </button>
           </aside>
@@ -614,10 +622,10 @@
           :class="previewDevice === 'mobile'
             ? (isMobileViewport
               ? '-mx-4 w-[calc(100%+2rem)] overflow-hidden rounded-none border-0 bg-transparent shadow-none'
-              : 'mx-auto w-full max-w-[420px] overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-xl')
-            : 'rounded-[28px] border border-slate-200 bg-slate-50 p-5 shadow-inner lg:p-6'"
+              : 'mx-auto w-full max-w-[420px] overflow-hidden bg-transparent shadow-none')
+            : 'bg-transparent p-0 shadow-none'"
         >
-          <div :class="previewDevice === 'mobile' ? 'max-h-none overflow-visible' : 'overflow-hidden rounded-[24px] bg-white shadow-sm'">
+          <div :class="previewDevice === 'mobile' ? 'max-h-none overflow-visible' : 'overflow-visible bg-transparent shadow-none'">
             <div class="space-y-6 preview-light">
               <template v-if="sections.length === 0">
                 <div class="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 px-4 py-12 text-center text-sm text-slate-500">
@@ -641,7 +649,7 @@
                 <template v-for="(section, idx) in sections" :key="(section as any)?.anchorId || idx">
                     <div v-if="section" class="space-y-3">
                     <div
-                      class="group relative overflow-hidden rounded-[32px] border border-transparent shadow transition hover:border-brand/30"
+                      class="group relative overflow-hidden"
                       @click.capture="handleSectionTap(idx, $event)"
                       :ref="el => registerPreviewSection(el, idx)"
                     >
@@ -3346,16 +3354,22 @@ onMounted(async () => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 9999px;
-  border: 1.5px solid #0f172a;
-  background: #0f172a;
-  color: #eef2f5;
+  width: 18px;
+  height: 18px;
+  color: #0f172a;
   font-size: 12px;
   font-weight: 800;
   line-height: 1;
   flex-shrink: 0;
+}
+.editor-side-tab-step svg{
+  width:18px;
+  height:18px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
 }
 
 .editor-side-tab.active {
@@ -3366,9 +3380,7 @@ onMounted(async () => {
 }
 
 .editor-side-tab.active .editor-side-tab-step {
-  border-color: #062710;
-  background: #062710;
-  color: #3dd463;
+  color: #062710;
 }
 
 .color-chip {
@@ -3540,6 +3552,32 @@ onMounted(async () => {
 }
 
 @media (max-width: 768px) {
+  .page-editor-view aside.space-y-3 {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .page-editor-view aside.space-y-3 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0 !important;
+  }
+
+  .page-editor-view aside.space-y-3 .editor-side-tab {
+    justify-content: center;
+    width: 100%;
+    height: 44px;
+    min-height: 44px;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  .page-editor-view aside.space-y-3 .editor-side-tab.active {
+    box-shadow: none;
+  }
+
+  .page-editor-view aside.space-y-3 .editor-side-tab > span:last-child {
+    display: none;
+  }
+
   .editor-settings-title {
     font-size: 18px !important;
     line-height: 1.15 !important;
