@@ -84,6 +84,14 @@
             </div>
 
             <div v-else class="fm-pane on">
+              <div v-if="!hasWhatsAppPlanAccess" class="fmn-plan-gate">
+                <h3 class="fmn-plan-gate-title">Recurso indisponível no seu plano</h3>
+                <p class="fmn-plan-gate-text">
+                  A Notificação inteligente via WhatsApp está disponível apenas para o plano Escala.
+                </p>
+                <button type="button" class="btn btn-p" @click="goToPlans">Fazer upgrade</button>
+              </div>
+              <template v-else>
               <div class="fmn-left">
                 <div class="fm-row">
                   <label class="fm-lbl">Mensagem para envio via WhatsApp</label>
@@ -143,6 +151,7 @@
                   <div class="fmn-wapp-ibar"><div class="fmn-wapp-fake-inp">Mensagem</div></div>
                 </div>
               </div>
+              </template>
             </div>
           </div>
 
@@ -164,8 +173,10 @@
 
 <script setup lang="ts">
 import { computed, onUnmounted, reactive, ref, watch } from "vue";
+import { useRouter } from "vue-router";
 import type { LeadFieldType, LeadForm, LeadFormField, LeadFormPayload } from "../../../types/leads";
 import { useLeadCaptureStore } from "../../../store/useLeadCaptureStore";
+import { useAuthStore } from "../../../store/useAuthStore";
 import LeadFormPreview from "./LeadFormPreview.vue";
 
 const props = defineProps<{ modelValue: boolean; form?: LeadForm | null; saving?: boolean }>();
@@ -177,6 +188,8 @@ const emit = defineEmits<{
 
 type BuilderTab = "visual" | "notification";
 const generateId = () => `field-${Math.random().toString(36).slice(2, 9)}`;
+const router = useRouter();
+const auth = useAuthStore();
 
 interface FieldPreset { type: LeadFieldType; label: string; placeholder: string; icon: string; }
 const fieldPresets: FieldPreset[] = [
@@ -197,6 +210,21 @@ const messageTokens = [
 
 const leadStore = useLeadCaptureStore();
 const statuses = computed(() => leadStore.statuses);
+const normalizePlanKey = (value: string | null | undefined) => {
+  const key = String(value || "").trim().toLowerCase();
+  if (!key) return "free";
+  if (key === "escala" || key === "infinity" || key === "scale") return "scale";
+  if (key === "teste" || key === "test") return "test";
+  if (key === "growth" || key === "agency" || key === "agencia") return "agency";
+  if (key === "essencial" || key === "professional" || key === "trial") return "professional";
+  return key;
+};
+const hasWhatsAppPlanAccess = computed(() => {
+  const trial = normalizePlanKey(auth.user?.trial_plan);
+  const base = normalizePlanKey(auth.user?.plan);
+  const allowed = new Set(["scale", "test", "infinity"]);
+  return allowed.has(trial) || allowed.has(base);
+});
 const activeTab = ref<BuilderTab>("visual");
 const messageEditorRef = ref<HTMLTextAreaElement | null>(null);
 const delayValue = ref(0);
@@ -381,6 +409,10 @@ const insertToken = (tokenValue: string) => {
   });
 };
 
+const goToPlans = () => {
+  router.push("/admin/planos");
+};
+
 watch([delayValue, delayUnit], () => syncSecondsFromDelay());
 
 watch(
@@ -427,6 +459,9 @@ onUnmounted(() => { document.body.style.overflow = ""; });
 .fmf-chk{width:16px;height:16px;border-radius:4px;border:1.5px solid #e4e9e4;flex-shrink:0;display:flex;align-items:center;justify-content:center}.fmf-chip.on .fmf-chk{background:#3DCC5F;border-color:#2ead4c}.fmf-chip.on .fmf-chk::after{content:'';display:block;width:7px;height:4px;border-left:2px solid #0F1F14;border-bottom:2px solid #0F1F14;transform:rotate(-45deg) translate(1px,-1px)}
 .fmf-sel-note{font-size:12px;color:#8a9e8a;margin-top:6px}
 .fmn-left{flex:1;min-width:0;display:flex;flex-direction:column;gap:16px}.fmn-right{width:250px;flex-shrink:0}
+.fmn-plan-gate{min-height:360px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:12px;padding:24px;margin:auto}
+.fmn-plan-gate-title{font-size:22px;font-weight:800;color:#111a14;letter-spacing:-.02em}
+.fmn-plan-gate-text{max-width:540px;font-size:14px;color:#64748b;line-height:1.5}
 .fmn-vars{display:flex;flex-wrap:wrap;gap:5px}.fmn-var{padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;background:rgba(99,102,241,.08);color:#4338CA;border:1.5px solid rgba(99,102,241,.18);cursor:pointer;font-family:monospace}
 .fm-ta{min-height:110px;resize:vertical;line-height:1.5}
 .fmn-delay-row{display:flex;align-items:center;gap:8px}.fmn-delay-inp{width:72px;padding:9px 10px;border:1.5px solid #e4e9e4;border-radius:8px;font-size:13px;text-align:center}.fmn-delay-sel{padding:9px 30px 9px 10px;border:1.5px solid #e4e9e4;border-radius:8px;font-size:13px}.fmn-delay-lbl{font-size:13px;color:#8a9e8a}
