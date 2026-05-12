@@ -284,7 +284,7 @@
               <div class="lead-info">
                 <div class="lead-copy">
                   <p class="lead-name">{{ truncateText(lead.name || 'Lead sem nome', 40) }}</p>
-                  <p class="lead-meta">{{ truncateText(`${lead.page_title || lead.page_slug || lead.form_name || '-'} · ${relativeTime(lead.created_at)}`, 30) }}</p>
+                  <p class="lead-meta">{{ truncateText(`${leadPageLabel(lead)} · ${relativeTime(lead.created_at)}`, 30) }}</p>
                 </div>
                 <div class="lead-actions">
                   <a
@@ -691,6 +691,24 @@ const recentLeads = computed(() =>
     })
     .slice(0, 5)
 );
+
+const pagesById = computed(() => {
+  const map: Record<number, Page> = {};
+  pages.value.forEach(page => {
+    map[page.id] = page;
+  });
+  return map;
+});
+
+const leadPageLabel = (lead: LeadContact) => {
+  const numericPageId = Number(lead.page_id);
+  if (!Number.isNaN(numericPageId) && pagesById.value[numericPageId]?.title) {
+    return pagesById.value[numericPageId].title;
+  }
+  if (lead.page_title && lead.page_title.trim()) return lead.page_title.trim();
+  if (lead.page_slug && lead.page_slug.trim()) return lead.page_slug.trim();
+  return "Sem página";
+};
 
 const fetchPages = async (agencyId: number) => {
   const { data } = await api.get<Page[]>("/pages", { params: { agency_id: agencyId } });

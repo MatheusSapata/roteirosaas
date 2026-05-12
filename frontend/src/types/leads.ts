@@ -19,6 +19,12 @@ export interface LeadForm {
   fields: LeadFormField[];
   defaultStatusId?: string | number | null;
   defaultStatusName?: string | null;
+  autoWhatsAppMessageTemplate?: string | null;
+  autoWhatsAppDelaySeconds?: number;
+  autoWhatsAppSkipIfClient?: boolean;
+  autoWhatsAppSkipIfFormAlreadySubmitted?: boolean;
+  autoWhatsAppSkipIfPageAlreadySubmitted?: boolean;
+  autoWhatsAppSkipIfOpenOpportunity?: boolean;
   alreadySubmitted?: boolean;
   total_leads?: number;
   created_at?: string;
@@ -34,6 +40,12 @@ export interface LeadFormPayload {
   showLogo?: boolean;
   fields: LeadFormField[];
   defaultStatusId?: string | number | null;
+  autoWhatsAppMessageTemplate?: string | null;
+  autoWhatsAppDelaySeconds?: number;
+  autoWhatsAppSkipIfClient?: boolean;
+  autoWhatsAppSkipIfFormAlreadySubmitted?: boolean;
+  autoWhatsAppSkipIfPageAlreadySubmitted?: boolean;
+  autoWhatsAppSkipIfOpenOpportunity?: boolean;
 }
 
 export interface LeadContact {

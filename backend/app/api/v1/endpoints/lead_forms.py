@@ -122,6 +122,12 @@ def create_lead_form(
         show_logo=form_in.show_logo,
         fields=[field.dict() for field in form_in.fields],
         default_status_id=default_status_id,
+        auto_whatsapp_message_template=form_in.auto_whatsapp_message_template,
+        auto_whatsapp_delay_seconds=form_in.auto_whatsapp_delay_seconds,
+        auto_whatsapp_skip_if_client=form_in.auto_whatsapp_skip_if_client,
+        auto_whatsapp_skip_if_form_already_submitted=form_in.auto_whatsapp_skip_if_form_already_submitted,
+        auto_whatsapp_skip_if_page_already_submitted=form_in.auto_whatsapp_skip_if_page_already_submitted,
+        auto_whatsapp_skip_if_open_opportunity=form_in.auto_whatsapp_skip_if_open_opportunity,
     )
     if default_status is not None:
         form.default_status = default_status

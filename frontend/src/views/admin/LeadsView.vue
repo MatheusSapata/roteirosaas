@@ -444,8 +444,8 @@
                     <button type="button" class="inline-flex h-5 w-5 items-center justify-center rounded border border-emerald-200 bg-emerald-50 text-emerald-700" @click.stop="saveInlineValue(contact)">
                       <svg viewBox="0 0 20 20" class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="m4 10 4 4 8-8"/></svg>
                     </button>
-                  </div>
-                </template>
+</div>
+</template>
                 <button
                   v-else-if="!contact.estimated_value_cents"
                   type="button"
@@ -1271,6 +1271,51 @@
 
 
   <Teleport to="body">
+    <div v-if="opportunityWhatsAppModalOpen" class="fixed inset-0 z-[3200] flex items-center justify-center bg-slate-950/55 p-4" @click="closeOpportunityWhatsAppModal">
+      <div class="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl" @click.stop>
+        <div class="mb-3 flex items-center justify-between">
+          <h3 class="text-lg font-semibold text-slate-900">Enviar WhatsApp</h3>
+          <button type="button" class="rounded-md px-2 py-1 text-sm text-slate-500 hover:bg-slate-100" @click="closeOpportunityWhatsAppModal">Fechar</button>
+        </div>
+        <p class="mb-3 text-sm text-slate-600">{{ opportunityWhatsAppTargetName || "Contato" }} · {{ opportunityWhatsAppTargetPhone || "-" }}</p>
+        <textarea
+          v-model="opportunityWhatsAppDraft"
+          rows="5"
+          class="w-full resize-y rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
+          placeholder="Digite a mensagem..."
+        />
+        <div class="mt-4 flex justify-end gap-2">
+          <button type="button" class="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700" @click="openOpportunityWhatsAppWeb">
+            Abrir conversa
+          </button>
+          <button type="button" class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" :disabled="opportunityWhatsAppSending || !opportunityWhatsAppDraft.trim()" @click="sendOpportunityWhatsAppMessage">
+            {{ opportunityWhatsAppSending ? "Enviando..." : "Enviar mensagem" }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
+
+  <Teleport to="body">
+    <div v-if="opportunityWhatsAppSuccessModalOpen" class="fixed inset-0 z-[3210] flex items-center justify-center bg-slate-950/55 p-4" @click="closeOpportunityWhatsAppSuccessModal">
+      <div class="w-full max-w-md rounded-2xl border border-emerald-100 bg-white p-5 shadow-2xl" @click.stop>
+        <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+          <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="m5 13 4 4L19 7" />
+          </svg>
+        </div>
+        <h3 class="text-center text-lg font-semibold text-slate-900">Mensagem enviada</h3>
+        <p class="mt-2 text-center text-sm text-slate-600">A mensagem foi enviada com sucesso para o contato.</p>
+        <div class="mt-5 flex justify-center">
+          <button type="button" class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700" @click="closeOpportunityWhatsAppSuccessModal">
+            Ok, entendi
+          </button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
+
+  <Teleport to="body">
     <div v-if="manualOpportunityModalOpen" class="app-modal-overlay fixed inset-0 z-[150] flex items-center justify-center px-4">
       <div class="w-full max-w-3xl rounded-[28px] bg-white p-6 shadow-2xl">
         <div class="flex items-start justify-between gap-4">
@@ -1368,7 +1413,7 @@
     v-model="isOpportunityDrawerOpen"
     :contact-id="selectedOpportunityId"
     :statuses="leadStatuses"
-    mode="modal"
+    mode="drawer"
   />
 
 </template>
@@ -1410,7 +1455,8 @@ import type { ClientSummary, LeadContact, LeadForm, LeadFormPayload, LeadStatus 
 
 
 import { useLeadCaptureStore } from "../../store/useLeadCaptureStore";
-import { API_PERMISSION_DENIED_EVENT } from "../../services/api";
+import api, { API_PERMISSION_DENIED_EVENT } from "../../services/api";
+import { ensureWhatsAppConversation, sendWhatsAppText } from "../../services/whatsapp";
 
 
 
@@ -1427,6 +1473,7 @@ import { hasAnyPermission } from "../../utils/permissions";
 import { createAdminLocalizer, getAdminLanguage } from "../../utils/adminI18n";
 import type { AdminLanguage, AdminTranslatable } from "../../utils/adminI18n";
 import { normalizeWhatsappDigits } from "../../utils/whatsapp";
+import { useAgencyStore } from "../../store/useAgencyStore";
 
 
 
@@ -1461,6 +1508,7 @@ const route = useRoute();
 
 const leadStore = useLeadCaptureStore();
 const authStore = useAuthStore();
+const agencyStore = useAgencyStore();
 
 
 
@@ -1888,6 +1936,13 @@ const manualOpportunityForm = reactive({
   internalNotes: "",
   expectedCloseDate: ""
 });
+const opportunityWhatsAppModalOpen = ref(false);
+const opportunityWhatsAppSending = ref(false);
+const opportunityWhatsAppSuccessModalOpen = ref(false);
+const opportunityWhatsAppTargetPhone = ref("");
+const opportunityWhatsAppTargetName = ref("");
+const opportunityWhatsAppTargetContact = ref<LeadContact | null>(null);
+const opportunityWhatsAppDraft = ref("");
 
 
 
@@ -3995,41 +4050,138 @@ const handleBuilderSave = async (payload: { id: string | null; form: LeadFormPay
 
 
 
-const openWhatsapp = (contact: LeadContact | null | undefined) => {
+const buildWhatsAppFallbackUrl = (contact: LeadContact | null | undefined, digits: string) => {
+  if (isManualOpportunity(contact)) return `https://wa.me/${digits}`;
+  const pageLabel = contact?.page_title || contact?.page_slug || fallbackLabels.noPage;
+  const template =
+    typeof whatsappCopy.formMessage === "string" && whatsappCopy.formMessage.includes("{page}")
+      ? whatsappCopy.formMessage
+      : "Olá! Recebemos seu interesse na página {page}.";
+  const message = template.replace("{page}", pageLabel);
+  return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
+};
 
+const closeOpportunityWhatsAppModal = () => {
+  opportunityWhatsAppModalOpen.value = false;
+  opportunityWhatsAppSending.value = false;
+  opportunityWhatsAppTargetPhone.value = "";
+  opportunityWhatsAppTargetName.value = "";
+  opportunityWhatsAppTargetContact.value = null;
+  opportunityWhatsAppDraft.value = "";
+};
 
+const closeOpportunityWhatsAppSuccessModal = () => {
+  opportunityWhatsAppSuccessModalOpen.value = false;
+};
 
+const openOpportunityWhatsAppWeb = () => {
+  const digits = String(opportunityWhatsAppTargetPhone.value || "").replace(/\D+/g, "");
+  if (!digits) {
+    showFeedback("Telefone inválido para WhatsApp.", true);
+    return;
+  }
+  const url = `https://web.whatsapp.com/send?phone=${encodeURIComponent(digits)}`;
+  openFallbackWhatsApp(url);
+};
+
+const sendOpportunityWhatsAppMessage = async () => {
+  const agencyId = Number(agencyStore.currentAgencyId || 0);
+  const contact = opportunityWhatsAppTargetContact.value;
+  const digits = opportunityWhatsAppTargetPhone.value;
+  const text = opportunityWhatsAppDraft.value.trim();
+  if (!agencyId || !contact || !digits || !text || opportunityWhatsAppSending.value) return;
+  opportunityWhatsAppSending.value = true;
+  try {
+    const conversation = await ensureWhatsAppConversation(agencyId, {
+      remotePhone: digits,
+      remoteName: opportunityWhatsAppTargetName.value || contact.name || undefined,
+      clientId: contact.client_id ? Number(contact.client_id) : undefined
+    });
+    await sendWhatsAppText(conversation.id, agencyId, text);
+    showFeedback("Mensagem enviada com sucesso.");
+    closeOpportunityWhatsAppModal();
+    opportunityWhatsAppSuccessModalOpen.value = true;
+  } catch (err) {
+    console.error(err);
+    showFeedback("Não foi possível enviar a mensagem.", true);
+  } finally {
+    opportunityWhatsAppSending.value = false;
+  }
+};
+
+const openFallbackWhatsApp = (url: string) => {
+  if (!url) return;
+  const popup = window.open(url, "_blank", "noopener,noreferrer");
+  if (!popup) {
+    showFeedback("Seu navegador bloqueou a nova aba. Permita pop-ups para este site.", true);
+  }
+};
+
+const isWhatsAppConnectedStatus = (value: unknown) => {
+  const status = String(value || "").trim().toLowerCase();
+  return ["connected", "open", "online"].includes(status);
+};
+
+const hasConnectedWhatsApp = async (agencyId: number) => {
+  try {
+    const { data } = await api.get("/whatsapp/connections", { params: { agencyId } });
+    const items = Array.isArray(data)
+      ? data
+      : Array.isArray((data as any)?.items)
+        ? (data as any).items
+        : [];
+
+    const connected = items.some((item: any) =>
+      isWhatsAppConnectedStatus(item?.status) ||
+      isWhatsAppConnectedStatus(item?.connectionStatus) ||
+      isWhatsAppConnectedStatus(item?.state) ||
+      item?.connected === true
+    );
+    console.debug("[LeadsView] whatsapp connections", { agencyId, items, connected });
+    return connected;
+  } catch {
+    return false;
+  }
+};
+
+const openWhatsapp = async (contact: LeadContact | null | undefined) => {
   const digits = normalizeWhatsappDigits(contact?.phone);
-
-
-
-  if (!digits) return;
-
-
-
-  if (isManualOpportunity(contact)) {
-    window.open(`https://wa.me/${digits}`, "_blank", "noopener");
+  if (!digits) {
+    showFeedback("Telefone inválido para WhatsApp.", true);
     return;
   }
 
-  const pageLabel = contact?.page_title || contact?.page_slug || fallbackLabels.noPage;
+  const fallbackUrl = buildWhatsAppFallbackUrl(contact, digits);
+  const agencyId = Number(agencyStore.currentAgencyId || 0);
+  if (!agencyId) {
+    openFallbackWhatsApp(fallbackUrl);
+    return;
+  }
 
-  const message = whatsappCopy.formMessage.replace("{page}", pageLabel);
+  try {
+    const pageLabel = contact?.page_title || contact?.page_slug || fallbackLabels.noPage;
+    const connected = await hasConnectedWhatsApp(agencyId);
+    if (!connected) {
+      openFallbackWhatsApp(fallbackUrl);
+      return;
+    }
 
+    const defaultTemplate =
+      typeof whatsappCopy.formMessage === "string" && whatsappCopy.formMessage.includes("{page}")
+        ? whatsappCopy.formMessage
+        : "Olá! Recebemos seu interesse na página {page}.";
 
-
-  const text = encodeURIComponent(message);
-
-
-
-  const url = `https://wa.me/${digits}?text=${text}`;
-
-
-
-  window.open(url, "_blank", "noopener");
-
-
-
+    opportunityWhatsAppTargetContact.value = contact || null;
+    opportunityWhatsAppTargetPhone.value = digits;
+    opportunityWhatsAppTargetName.value = (contact?.name || "").trim();
+    opportunityWhatsAppDraft.value = isManualOpportunity(contact)
+      ? `Olá ${opportunityWhatsAppTargetName.value || ""}, tudo bem?`
+      : defaultTemplate.replace("{page}", pageLabel);
+    opportunityWhatsAppModalOpen.value = true;
+  } catch (error) {
+    console.error(error);
+    openFallbackWhatsApp(fallbackUrl);
+  }
 };
 
 
@@ -4715,7 +4867,7 @@ const closeStatusDropdown = () => {
 };
 
 const closeToolbarDropdown = () => {
-  closeToolbarDropdown();
+  openToolbarFilter.value = null;
   toolbarDropdownFloatingStyle.value = {};
 };
 

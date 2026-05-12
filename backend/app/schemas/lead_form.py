@@ -33,6 +33,12 @@ class LeadFormBase(BaseModel):
     show_logo: bool = Field(True, alias="showLogo")
     fields: list[LeadFormFieldSchema]
     default_status_id: Optional[int] = Field(None, alias="defaultStatusId")
+    auto_whatsapp_message_template: Optional[str] = Field(None, alias="autoWhatsAppMessageTemplate")
+    auto_whatsapp_delay_seconds: int = Field(0, alias="autoWhatsAppDelaySeconds")
+    auto_whatsapp_skip_if_client: bool = Field(False, alias="autoWhatsAppSkipIfClient")
+    auto_whatsapp_skip_if_form_already_submitted: bool = Field(False, alias="autoWhatsAppSkipIfFormAlreadySubmitted")
+    auto_whatsapp_skip_if_page_already_submitted: bool = Field(False, alias="autoWhatsAppSkipIfPageAlreadySubmitted")
+    auto_whatsapp_skip_if_open_opportunity: bool = Field(False, alias="autoWhatsAppSkipIfOpenOpportunity")
 
     @validator("name", "title", "button_label")
     def validate_text(cls, value: str) -> str:
@@ -45,6 +51,21 @@ class LeadFormBase(BaseModel):
     def validate_fields(cls, value: list[LeadFormFieldSchema]) -> list[LeadFormFieldSchema]:
         if not value:
             raise ValueError("Selecione pelo menos um campo.")
+        return value
+
+    @validator("auto_whatsapp_message_template", pre=True)
+    def sanitize_message_template(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        text = value.strip()
+        return text or None
+
+    @validator("auto_whatsapp_delay_seconds")
+    def validate_delay(cls, value: int) -> int:
+        if value < 0:
+            raise ValueError("Delay invalido.")
+        if value > 86400:
+            raise ValueError("Delay maximo de 24 horas.")
         return value
 
     model_config = ConfigDict(populate_by_name=True)
@@ -63,6 +84,12 @@ class LeadFormUpdate(BaseModel):
     show_logo: Optional[bool] = Field(None, alias="showLogo")
     fields: Optional[list[LeadFormFieldSchema]] = None
     default_status_id: Optional[int] = Field(None, alias="defaultStatusId")
+    auto_whatsapp_message_template: Optional[str] = Field(None, alias="autoWhatsAppMessageTemplate")
+    auto_whatsapp_delay_seconds: Optional[int] = Field(None, alias="autoWhatsAppDelaySeconds")
+    auto_whatsapp_skip_if_client: Optional[bool] = Field(None, alias="autoWhatsAppSkipIfClient")
+    auto_whatsapp_skip_if_form_already_submitted: Optional[bool] = Field(None, alias="autoWhatsAppSkipIfFormAlreadySubmitted")
+    auto_whatsapp_skip_if_page_already_submitted: Optional[bool] = Field(None, alias="autoWhatsAppSkipIfPageAlreadySubmitted")
+    auto_whatsapp_skip_if_open_opportunity: Optional[bool] = Field(None, alias="autoWhatsAppSkipIfOpenOpportunity")
 
     @validator("name", "title", "button_label", pre=True)
     def sanitize_optional_text(cls, value: Optional[str]) -> Optional[str]:
@@ -77,6 +104,23 @@ class LeadFormUpdate(BaseModel):
     def validate_fields(cls, value: Optional[list[LeadFormFieldSchema]]) -> Optional[list[LeadFormFieldSchema]]:
         if value is not None and not value:
             raise ValueError("Selecione pelo menos um campo.")
+        return value
+
+    @validator("auto_whatsapp_message_template", pre=True)
+    def sanitize_optional_message_template(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        text = value.strip()
+        return text or None
+
+    @validator("auto_whatsapp_delay_seconds")
+    def validate_optional_delay(cls, value: Optional[int]) -> Optional[int]:
+        if value is None:
+            return None
+        if value < 0:
+            raise ValueError("Delay invalido.")
+        if value > 86400:
+            raise ValueError("Delay maximo de 24 horas.")
         return value
 
     model_config = ConfigDict(populate_by_name=True)

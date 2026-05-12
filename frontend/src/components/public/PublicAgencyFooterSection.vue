@@ -11,16 +11,166 @@
         :class="layoutClass"
       >
         <div class="flex-1 space-y-8">
-          <div class="max-w-2xl space-y-4">
-            <p
-              :class="[
-                'text-[11px] font-semibold uppercase tracking-[0.45em]',
-                isLight ? 'text-slate-500' : 'text-white/45'
-              ]"
-            >
-              {{ agencyHeadingText }}
-            </p>
+          <div v-if="scenarioNoAddressNoSocialDesktop" class="grid gap-10 text-sm md:grid-cols-2 md:items-start">
+            <div class="space-y-4">
+              <div class="space-y-3">
+                <h4 :class="['text-xl font-semibold tracking-tight sm:text-2xl', textPrimaryClass]">
+                  {{ companyName || fallbackCompanyName }}
+                </h4>
 
+                <p v-if="cnpjText" :class="['text-sm', textSecondaryClass]">
+                  <span class="font-medium">{{ cnpjLabel }}</span>
+                  <span class="ml-2">{{ cnpjText }}</span>
+                </p>
+              </div>
+
+              <a
+                v-if="shouldShowCadastur && cadasturLink"
+                :href="cadasturLink"
+                :class="[cadasturWrapperClasses, 'w-fit justify-start']"
+                target="_blank"
+                rel="noopener"
+              >
+                <img :src="cadasturLogo" alt="Cadastur" class="h-6 w-auto" />
+              </a>
+            </div>
+
+            <div :class="['space-y-2', 'md:self-start', 'md:mt-2']">
+              <p
+                :class="[
+                  'text-xs font-semibold uppercase tracking-widest',
+                  isLight ? 'text-slate-500' : 'text-white/50'
+                ]"
+              >
+                {{ contactsHeading }}
+              </p>
+
+              <template v-if="hasContactInfo">
+                <p v-if="phoneText" :class="['font-medium', textPrimaryClass]">
+                  {{ phoneLabel }}
+                  <a
+                    v-if="phoneWhatsappLink"
+                    :href="phoneWhatsappLink"
+                    :class="[textLinkClass, 'font-normal hover:underline']"
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    {{ phoneText }}
+                  </a>
+                  <span v-else :class="['font-normal', textSecondaryClass]">{{ phoneText }}</span>
+                </p>
+
+                <p v-if="contactEmail" :class="textPrimaryClass">
+                  {{ emailLabel }}
+                  <a :class="[textLinkClass, 'hover:underline']" :href="`mailto:${contactEmail}`">
+                    {{ contactEmail }}
+                  </a>
+                </p>
+              </template>
+
+              <p v-else :class="textSecondaryClass">
+                {{ contactsEmptyMessage }}
+              </p>
+            </div>
+          </div>
+
+          <div v-else-if="scenarioNoAddressWithSocialDesktop" class="grid gap-10 text-sm md:grid-cols-2 md:items-start">
+            <div class="space-y-6">
+              <div class="space-y-3">
+                <h4 :class="['text-xl font-semibold tracking-tight sm:text-2xl', textPrimaryClass]">
+                  {{ companyName || fallbackCompanyName }}
+                </h4>
+
+                <p v-if="cnpjText" :class="['text-sm', textSecondaryClass]">
+                  <span class="font-medium">{{ cnpjLabel }}</span>
+                  <span class="ml-2">{{ cnpjText }}</span>
+                </p>
+              </div>
+
+              <div class="space-y-2">
+                <p
+                  :class="[
+                    'text-xs font-semibold uppercase tracking-widest',
+                    isLight ? 'text-slate-500' : 'text-white/50'
+                  ]"
+                >
+                  {{ contactsHeading }}
+                </p>
+
+                <template v-if="hasContactInfo">
+                  <p v-if="phoneText" :class="['font-medium', textPrimaryClass]">
+                    {{ phoneLabel }}
+                    <a
+                      v-if="phoneWhatsappLink"
+                      :href="phoneWhatsappLink"
+                      :class="[textLinkClass, 'font-normal hover:underline']"
+                      target="_blank"
+                      rel="noopener"
+                    >
+                      {{ phoneText }}
+                    </a>
+                    <span v-else :class="['font-normal', textSecondaryClass]">{{ phoneText }}</span>
+                  </p>
+
+                  <p v-if="contactEmail" :class="textPrimaryClass">
+                    {{ emailLabel }}
+                    <a :class="[textLinkClass, 'hover:underline']" :href="`mailto:${contactEmail}`">
+                      {{ contactEmail }}
+                    </a>
+                  </p>
+                </template>
+
+                <p v-else :class="textSecondaryClass">
+                  {{ contactsEmptyMessage }}
+                </p>
+              </div>
+            </div>
+
+            <div class="space-y-4 md:pl-2">
+              <div class="flex items-center gap-2">
+                <p
+                  :class="[
+                    'text-xs font-semibold uppercase tracking-[0.3em]',
+                    isLight ? 'text-slate-500' : 'text-white/60'
+                  ]"
+                >
+                  {{ socialHeading }}
+                </p>
+
+                <div class="flex flex-wrap items-center gap-3">
+                  <a
+                    v-for="link in socialLinks"
+                    :key="`scenario2-${link.network}`"
+                    :class="[
+                      'inline-flex h-10 w-10 items-center justify-center rounded-full border transition',
+                      isLight
+                        ? 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100'
+                        : 'border-white/20 bg-white/5 text-white hover:bg-white/20'
+                    ]"
+                    :href="link.url"
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    <svg viewBox="0 0 24 24" class="h-5 w-5" fill="currentColor" :style="{ color: socialIconColor }">
+                      <path :d="link.iconPath" />
+                    </svg>
+                  </a>
+                </div>
+              </div>
+
+              <a
+                v-if="shouldShowCadastur && cadasturLink"
+                :href="cadasturLink"
+                :class="[cadasturWrapperClasses, 'w-fit justify-start']"
+                target="_blank"
+                rel="noopener"
+              >
+                <img :src="cadasturLogo" alt="Cadastur" class="h-6 w-auto" />
+              </a>
+            </div>
+          </div>
+
+          <div v-else class="max-w-2xl space-y-4">
             <div class="space-y-3">
               <h4 :class="['text-xl font-semibold tracking-tight sm:text-2xl', textPrimaryClass]">
                 {{ companyName || fallbackCompanyName }}
@@ -74,8 +224,8 @@
           </div>
 
           <!-- CONTATOS / ENDEREÇO -->
-          <div :class="['grid gap-6 text-sm', isMobilePreview ? 'grid-cols-1' : 'md:grid-cols-2']">
-            <div class="space-y-2">
+          <div v-if="!scenarioNoAddressNoSocialDesktop && !scenarioNoAddressWithSocialDesktop" :class="contactGridClass">
+            <div :class="['space-y-2', scenarioNoAddressNoSocialDesktop ? 'md:order-2' : '']">
               <p
                 :class="[
                   'text-xs font-semibold uppercase tracking-widest',
@@ -130,11 +280,61 @@
                 {{ addressLine2 }}
               </p>
             </div>
+
+            <div
+              v-else-if="showNoAddressRightColumn"
+              :class="[
+                'md:pl-2',
+                scenarioNoAddressNoSocialDesktop ? 'md:order-1' : 'md:order-2',
+                socialLinks.length ? 'space-y-4' : ''
+              ]"
+            >
+              <div v-if="socialLinks.length" class="space-y-3">
+                <p
+                  :class="[
+                    'text-xs font-semibold uppercase tracking-[0.3em]',
+                    isLight ? 'text-slate-500' : 'text-white/60'
+                  ]"
+                >
+                  {{ socialHeading }}
+                </p>
+
+                <div class="flex flex-wrap gap-3">
+                  <a
+                    v-for="link in socialLinks"
+                    :key="`right-${link.network}`"
+                    :class="[
+                      'inline-flex h-10 w-10 items-center justify-center rounded-full border transition',
+                      isLight
+                        ? 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100'
+                        : 'border-white/20 bg-white/5 text-white hover:bg-white/20'
+                    ]"
+                    :href="link.url"
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    <svg viewBox="0 0 24 24" class="h-5 w-5" fill="currentColor" :style="{ color: socialIconColor }">
+                      <path :d="link.iconPath" />
+                    </svg>
+                  </a>
+                </div>
+              </div>
+
+              <a
+                v-if="shouldShowCadastur && cadasturLink"
+                :href="cadasturLink"
+                :class="[cadasturWrapperClasses, 'w-fit justify-start']"
+                target="_blank"
+                rel="noopener"
+              >
+                <img :src="cadasturLogo" alt="Cadastur" class="h-6 w-auto" />
+              </a>
+            </div>
           </div>
 
           <!-- REDES SOCIAIS DESKTOP -->
           <div
-            v-if="socialLinks.length"
+            v-if="socialLinks.length && (addressText || isMobilePreview)"
             :class="[
               desktopOnlyClass,
               isLight ? 'border-slate-200 bg-white/70' : 'border-white/15 bg-white/5'
@@ -211,7 +411,7 @@
 
           <!-- CADASTUR -->
           <a
-            v-if="shouldShowCadastur && cadasturLink"
+            v-if="shouldShowCadastur && cadasturLink && (addressText || isMobilePreview)"
             :href="cadasturLink"
             :class="[cadasturWrapperClasses, 'w-full justify-center md:w-fit md:justify-start']"
             target="_blank"
@@ -416,6 +616,29 @@ const cadasturLink = computed(() => {
   return buildCadasturLink(cadasturDigits.value);
 });
 const shouldShowCadastur = computed(() => props.section.showCadastur !== false);
+const hasCadastur = computed(() => shouldShowCadastur.value && !!cadasturLink.value);
+const hasAddress = computed(() => !!addressText.value);
+const hasSocial = computed(() => socialLinks.value.length > 0);
+const isDesktopPreview = computed(() => !isMobilePreview.value);
+const scenarioNoAddressNoSocialDesktop = computed(
+  () => isDesktopPreview.value && !hasAddress.value && !hasSocial.value
+);
+const scenarioNoAddressWithSocialDesktop = computed(
+  () => isDesktopPreview.value && !hasAddress.value && hasSocial.value
+);
+const scenarioAddressWithSocialDesktop = computed(
+  () => isDesktopPreview.value && hasAddress.value && hasSocial.value
+);
+const showNoAddressRightColumn = computed(
+  () => isDesktopPreview.value && !hasAddress.value && (hasSocial.value || hasCadastur.value)
+);
+const contactGridClass = computed(() => {
+  if (isMobilePreview.value) return "grid gap-6 text-sm grid-cols-1";
+  if (scenarioNoAddressNoSocialDesktop.value) return "grid gap-6 text-sm md:grid-cols-2";
+  if (scenarioNoAddressWithSocialDesktop.value) return "grid gap-6 text-sm md:grid-cols-2";
+  if (scenarioAddressWithSocialDesktop.value) return "grid gap-6 text-sm md:grid-cols-1";
+  return "grid gap-6 text-sm md:grid-cols-2";
+});
 
 const layoutMode = computed(() => props.section.displayVariant || "auto");
 const isMobilePreview = computed(() => props.previewDevice === "mobile");

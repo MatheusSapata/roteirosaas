@@ -30,4 +30,5 @@ from app.models import (
     flight_section,
     system_banner,
     team_invite,
+    whatsapp,
 )  # noqa: E402,F401
