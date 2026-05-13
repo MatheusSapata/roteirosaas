@@ -733,6 +733,9 @@ const router = useRouter();
 const agencyStore = useAgencyStore();
 const { currentPrimaryDomain } = storeToRefs(agencyStore);
 const authStore = useAuthStore();
+const publicSiteBaseUrl = (
+  (import.meta.env.VITE_PUBLIC_SITE_URL as string | undefined)?.trim() || "https://roteiroonline.com"
+).replace(/\/+$/, "");
 const adminLanguage = getAdminLanguage();
 const t = createAdminLocalizer(adminLanguage);
 
@@ -1696,7 +1699,7 @@ const pagePublicUrl = (page: Page) => {
     return `${customHost}/${page.slug}`;
   }
   if (!currentAgencySlug.value) return "";
-  return `${window.location.origin}/${currentAgencySlug.value}/${page.slug}`;
+  return `${publicSiteBaseUrl}/${currentAgencySlug.value}/${page.slug}`;
 };
 
 const copyLink = async (page: Page) => {
