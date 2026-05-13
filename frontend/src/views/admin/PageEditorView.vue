@@ -1012,6 +1012,9 @@ watch(pageShortDescription, () => markUnsavedChanges());
 const auth = useAuthStore();
 const agencyStore = useAgencyStore();
 const leadCaptureStore = useLeadCaptureStore();
+const publicSiteBaseUrl = (
+  (import.meta.env.VITE_PUBLIC_SITE_URL as string | undefined)?.trim() || "https://roteiroonline.com"
+).replace(/\/+$/, "");
 const { hasLeadFeatureAccess } = useLeadFeatureGate();
 const leadFeatureAllowed = hasLeadFeatureAccess;
 const t = createAdminLocalizer();
@@ -3095,7 +3098,7 @@ const publicUrl = computed(() => {
   const agencySlug = agencyStore.agencies[0]?.slug;
   const slug = pageSlug.value || page.value?.slug;
   if (!agencySlug || !slug) return null;
-  return `/${agencySlug}/${slug}`;
+  return `${publicSiteBaseUrl}/${agencySlug}/${slug}`;
 });
 
 const goPages = () => {
