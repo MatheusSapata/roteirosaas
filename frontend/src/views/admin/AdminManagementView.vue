@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div v-if="isBootstrappingAdminManagement" class="flex min-h-[60vh] w-full items-center justify-center px-4 py-8 md:px-8">
     <div class="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-brand"></div>
   </div>
@@ -339,7 +339,7 @@
                   </p>
                 </div>
                 <div>
-                  <p class="text-[11px] uppercase tracking-[0.2em] text-slate-400 dark:text-white/50">Última atividade</p>
+                  <p class="text-[11px] uppercase tracking-[0.2em] text-slate-400 dark:text-white/50">ltima atividade</p>
                   <p class="font-semibold">
                     {{ formatRelativeMoment(session.last_seen_at) }} há {{ formatClock(session.last_seen_at) }}
                   </p>
@@ -733,7 +733,7 @@
                           <p class="text-xs uppercase tracking-[0.3em] text-slate-500 dark:text-white/50">Agência</p>
                           <p class="mt-1 font-semibold">{{ u.agency_name || 'Não vinculada' }}</p>
                           <p class="text-xs text-slate-500 dark:text-white/60">
-                            {{ u.active_pages ?? 0 }} páginas publicadas • Plano {{ planLabel(u.plan) }}
+                            {{ u.active_pages ?? 0 }} páginas publicadas  Plano {{ planLabel(u.plan) }}
                           </p>
                         </div>
                       </div>
@@ -1036,7 +1036,7 @@
                 <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                   <div>
                     <p class="text-xs uppercase tracking-[0.3em] text-slate-500 dark:text-white/60">
-                      {{ lesson.moduleName || "Sem módulo" }} • {{ lesson.level || "Aula" }} • Duração {{ lesson.duration || "Livre" }}
+                      {{ lesson.moduleName || "Sem módulo" }}  {{ lesson.level || "Aula" }}  Duração {{ lesson.duration || "Livre" }}
                     </p>
                     <h4 class="mt-2 text-lg font-semibold text-slate-900 dark:text-white">{{ lesson.title }}</h4>
                     <p class="mt-1 text-sm text-slate-600 dark:text-white/70">{{ lesson.description }}</p>
@@ -1295,7 +1295,7 @@
                       >
                         <span class="text-sm font-semibold text-slate-900 dark:text-white">{{ agency.name }}</span>
                         <span class="text-xs text-slate-500 dark:text-white/70">
-                          /{{ agency.slug }} • {{ agency.pages_count }} páginas
+                          /{{ agency.slug }}  {{ agency.pages_count }} páginas
                         </span>
                       </button>
                     </li>
@@ -1656,10 +1656,10 @@
           <div class="rounded-2xl border border-slate-100 p-4">
             <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Detalhes do dia</p>
             <h3 class="mt-1 text-lg font-semibold text-slate-900">
-              {{ selectedForecastDay ? new Date(selectedForecastDay.date).toLocaleDateString('pt-BR') : "--" }}
+              {{ selectedForecastDay ? parseForecastIsoDate(selectedForecastDay.date.slice(0, 10)).toLocaleDateString('pt-BR') : "--" }}
             </h3>
             <p class="text-sm text-slate-600">
-              {{ selectedForecastDay ? formatCurrencyBRL(selectedForecastDay.total_mrr) : "R$ 0,00" }} •
+              {{ selectedForecastDay ? formatCurrencyBRL(selectedForecastDay.total_mrr) : "R$ 0,00" }} 
               {{ selectedForecastDay?.subscriptions_count || 0 }} cobrança(s)
             </p>
             <div class="mt-3 max-h-[420px] space-y-2 overflow-auto pr-1">
@@ -1782,7 +1782,7 @@
                 :key="page.id"
                 :value="page.id"
               >
-                {{ page.title }} • {{ page.status === 'published' ? 'Publicada' : 'Rascunho' }}
+                {{ page.title }}  {{ page.status === 'published' ? 'Publicada' : 'Rascunho' }}
               </option>
             </select>
           </label>
@@ -2118,23 +2118,24 @@ const forecastByDate = computed(() => {
   }
   return map;
 });
+const parseForecastIsoDate = (iso: string) => new Date(`${iso}T12:00:00`);
 const forecastMonthLabel = computed(() => {
   const first = revenueForecastDays.value[0];
   if (!first) return "";
-  const date = new Date(first.date);
+  const date = parseForecastIsoDate(first.date.slice(0, 10));
   return date.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
 });
 const forecastCalendarCells = computed(() => {
   const cells: Array<{ key: string; date: Date | null; iso: string | null; day: RevenueForecastDay | null }> = [];
   if (!revenueForecastDays.value.length) return cells;
-  const start = new Date(revenueForecastDays.value[0].date);
+  const start = parseForecastIsoDate(revenueForecastDays.value[0].date.slice(0, 10));
   const firstWeekday = start.getDay();
   for (let i = 0; i < firstWeekday; i += 1) {
     cells.push({ key: `empty-start-${i}`, date: null, iso: null, day: null });
   }
   for (const day of revenueForecastDays.value) {
-    const date = new Date(day.date);
     const iso = day.date.slice(0, 10);
+    const date = parseForecastIsoDate(iso);
     cells.push({ key: iso, date, iso, day });
   }
   const remainder = cells.length % 7;
@@ -2897,13 +2898,11 @@ const loadRevenueForecast = async () => {
     const { data } = await api.get<RevenueForecastOut>("/admin/revenue-forecast", {
       params: { days: 30 }
     });
-    revenueForecast.value = data;
-    const firstWithEntries = (data.forecast_days || []).find(day => (day.subscriptions_count || 0) > 0);
+    revenueForecast.value = data;    const firstWithEntries = (data.forecast_days || []).find(day => (day.subscriptions_count || 0) > 0);
     selectedForecastDate.value = (firstWithEntries?.date || data.forecast_days?.[0]?.date || "").slice(0, 10);
   } catch (err: any) {
     console.error(err);
-    revenueForecast.value = null;
-    selectedForecastDate.value = "";
+    revenueForecast.value = null;    selectedForecastDate.value = "";
     revenueForecastError.value = err?.response?.data?.detail || "Não foi possível carregar a previsão de receita.";
   } finally {
     revenueForecastLoading.value = false;
@@ -3476,7 +3475,7 @@ const exportPdf = () => {
   doc.rect(0, 0, 210, 40, "F");
   doc.setTextColor("#ffffff");
   doc.setFontSize(18);
-  doc.text("Visão Gerencial • Relatório Premium", margin, cursor);
+  doc.text("Visão Gerencial  Relatório Premium", margin, cursor);
   cursor += lineHeight;
   doc.setFontSize(11);
   doc.text(`período: ${adminPeriodLabel.value}`, margin, cursor);
@@ -3522,7 +3521,7 @@ const exportPdf = () => {
   cursor = (doc as any).lastAutoTable.finalY + 10;
 
   doc.setFontSize(14);
-  doc.text("usuários • Trial e planos", margin, cursor);
+  doc.text("usuários  Trial e planos", margin, cursor);
   cursor += lineHeight;
   const userRows = (metrics.value.users || []).slice(0, 12).map(u => [
     u.name,
@@ -4142,3 +4141,6 @@ interface AdminPageSummary {
   slug: string;
   status: string;
 }
+
+
+

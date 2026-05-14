@@ -27,6 +27,8 @@ from app.models.agency_user import AgencyUser
 from app.models.page import Page, PageStatus
 from app.schemas.admin import (
     AdminAgencyOut,
+    AdminLtvCustomerRow,
+    AdminLtvCustomersOut,
     AdminMetricsOut,
     AdminOnlineSession,
     AdminOnlineSessionsResponse,
@@ -189,6 +191,62 @@ def _extract_cakto_amount(payload: dict[str, Any]) -> Decimal:
         if decimal_value is not None and decimal_value > 0:
             return decimal_value
     return Decimal("0")
+
+
+def _extract_customer_email(payload: dict[str, Any]) -> str | None:
+    candidates = [
+        _payload_nested(payload, "data", "order", "customer", "email"),
+        _payload_nested(payload, "data", "customer", "email"),
+        _payload_nested(payload, "customer", "email"),
+    ]
+    for value in candidates:
+        if isinstance(value, str) and value.strip():
+            return value.strip().lower()
+    return None
+
+
+def _extract_customer_name(payload: dict[str, Any]) -> str | None:
+    candidates = [
+        _payload_nested(payload, "data", "order", "customer", "name"),
+        _payload_nested(payload, "data", "customer", "name"),
+        _payload_nested(payload, "customer", "name"),
+    ]
+    for value in candidates:
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
+def _extract_next_due_datetime(payload: dict[str, Any]) -> datetime | None:
+    candidates = [
+        _payload_nested(payload, "data", "subscription", "nextDueDate"),
+        _payload_nested(payload, "data", "subscription", "next_due_date"),
+        _payload_nested(payload, "subscription", "nextDueDate"),
+        _payload_nested(payload, "subscription", "next_due_date"),
+        _payload_nested(payload, "data", "order", "nextDueDate"),
+        _payload_nested(payload, "data", "order", "next_due_date"),
+    ]
+    for value in candidates:
+        if not value:
+            continue
+        if isinstance(value, datetime):
+            return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+        if isinstance(value, str):
+            text = value.strip()
+            if not text:
+                continue
+            iso_text = text.replace("Z", "+00:00")
+            try:
+                parsed = datetime.fromisoformat(iso_text)
+                return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+            except ValueError:
+                for fmt in ("%Y-%m-%d", "%Y/%m/%d"):
+                    try:
+                        parsed_date = datetime.strptime(text, fmt)
+                        return parsed_date.replace(tzinfo=timezone.utc)
+                    except ValueError:
+                        continue
+    return None
 
 
 @router.get("/metrics", response_model=AdminMetricsOut)
@@ -592,6 +650,7 @@ def get_admin_revenue_forecast(
     db: Session = Depends(get_db),
     _: User = Depends(get_current_superuser),
 ) -> AdminRevenueForecastOut:
+
     now_utc = datetime.now(timezone.utc)
     start_day = now_utc.date()
     end_day = start_day + timedelta(days=days - 1)
@@ -613,13 +672,13 @@ def get_admin_revenue_forecast(
         valid_until = subscription.valid_until
         if not valid_until:
             continue
+        amount_decimal = subscription.mrr_amount or Decimal("0")
+        amount_float = float(amount_decimal)
         expected_on = valid_until + timedelta(days=1)
         expected_day = expected_on.date()
         if expected_day < start_day or expected_day > end_day:
             continue
 
-        amount_decimal = subscription.mrr_amount or Decimal("0")
-        amount_float = float(amount_decimal)
         entry = AdminRevenueForecastEntry(
             subscription_id=subscription.id,
             user_id=user.id,
@@ -657,6 +716,115 @@ def get_admin_revenue_forecast(
         total_mrr=float(total_mrr),
         subscriptions_count=total_count,
         forecast_days=forecast_days,
+    )
+
+
+@router.get("/ltv-customers", response_model=AdminLtvCustomersOut)
+def get_admin_ltv_customers(
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_superuser),
+) -> AdminLtvCustomersOut:
+    event_rows = (
+        db.query(CaktoEventLog)
+        .filter(CaktoEventLog.event_type.isnot(None))
+        .order_by(CaktoEventLog.created_at.asc())
+        .all()
+    )
+
+    trackable_types = {
+        "purchase_approved",
+        "subscription_created",
+        "subscription_renewed",
+        "subscription_canceled",
+        "subscription_cancelled",
+        "subscription_renewal_refused",
+    }
+    revenue_types = {"purchase_approved", "subscription_renewed"}
+    active_types = {"purchase_approved", "subscription_created", "subscription_renewed"}
+    cancelled_types = {"subscription_canceled", "subscription_cancelled", "subscription_renewal_refused"}
+
+    by_email: dict[str, dict[str, Any]] = {}
+    for row in event_rows:
+        event_type = (row.event_type or "").strip().lower()
+        if event_type not in trackable_types:
+            continue
+
+        payload = row.payload if isinstance(row.payload, dict) else {}
+        email = _extract_customer_email(payload)
+        if not email:
+            continue
+
+        occurred_at = row.processed_at or row.created_at or datetime.utcnow()
+        if occurred_at.tzinfo is None:
+            occurred_at = occurred_at.replace(tzinfo=timezone.utc)
+
+        item = by_email.setdefault(
+            email,
+            {
+                "email": email,
+                "name": _extract_customer_name(payload),
+                "entered_at": occurred_at,
+                "is_active": False,
+                "renewals_count": 0,
+                "total_revenue": Decimal("0"),
+                "cancelled_at": None,
+                "next_renewal_at": None,
+                "last_event_type": event_type,
+                "last_event_at": occurred_at,
+            },
+        )
+
+        if not item.get("name"):
+            item["name"] = _extract_customer_name(payload)
+
+        if occurred_at < item["entered_at"]:
+            item["entered_at"] = occurred_at
+
+        if occurred_at >= item["last_event_at"]:
+            item["last_event_at"] = occurred_at
+            item["last_event_type"] = event_type
+
+        if event_type in revenue_types:
+            item["total_revenue"] += _extract_cakto_amount(payload)
+        if event_type == "subscription_renewed":
+            item["renewals_count"] += 1
+        if event_type in active_types:
+            item["is_active"] = True
+        if event_type in cancelled_types:
+            item["is_active"] = False
+            item["cancelled_at"] = occurred_at
+
+        next_due = _extract_next_due_datetime(payload)
+        if next_due and (item["next_renewal_at"] is None or next_due > item["next_renewal_at"]):
+            item["next_renewal_at"] = next_due
+
+    customers = [
+        AdminLtvCustomerRow(
+            email=data["email"],
+            name=data["name"],
+            entered_at=data["entered_at"],
+            is_active=bool(data["is_active"]),
+            renewals_count=int(data["renewals_count"]),
+            total_revenue=float(data["total_revenue"]),
+            cancelled_at=data["cancelled_at"],
+            next_renewal_at=data["next_renewal_at"],
+            last_event_type=data["last_event_type"],
+            last_event_at=data["last_event_at"],
+        )
+        for data in by_email.values()
+    ]
+    customers.sort(key=lambda item: (item.total_revenue, item.renewals_count), reverse=True)
+
+    total_revenue = float(sum((Decimal(str(item.total_revenue)) for item in customers), Decimal("0")))
+    active_count = sum(1 for item in customers if item.is_active)
+    cancelled_count = sum(1 for item in customers if item.cancelled_at is not None and not item.is_active)
+
+    return AdminLtvCustomersOut(
+        total_customers=len(customers),
+        active_customers=active_count,
+        cancelled_customers=cancelled_count,
+        total_revenue=total_revenue,
+        customers=customers,
     )
 
 
@@ -900,3 +1068,4 @@ def clone_shared_page(
     db.commit()
     db.refresh(new_page)
     return new_page
+

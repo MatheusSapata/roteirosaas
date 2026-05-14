@@ -163,3 +163,24 @@ class AdminRevenueForecastOut(BaseModel):
     total_mrr: float
     subscriptions_count: int
     forecast_days: List[AdminRevenueForecastDay] = Field(default_factory=list)
+
+
+class AdminLtvCustomerRow(BaseModel):
+    email: EmailStr
+    name: Optional[str] = None
+    entered_at: Optional[datetime] = None
+    is_active: bool = False
+    renewals_count: int = 0
+    total_revenue: float = 0.0
+    cancelled_at: Optional[datetime] = None
+    next_renewal_at: Optional[datetime] = None
+    last_event_type: Optional[str] = None
+    last_event_at: Optional[datetime] = None
+
+
+class AdminLtvCustomersOut(BaseModel):
+    total_customers: int
+    active_customers: int
+    cancelled_customers: int
+    total_revenue: float
+    customers: List[AdminLtvCustomerRow] = Field(default_factory=list)
