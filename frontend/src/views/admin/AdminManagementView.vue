@@ -1587,6 +1587,101 @@
     <template v-else-if="activeTab === 'flight_apis'">
       <FlightApiKeysPanel />
     </template>
+    <template v-else-if="activeTab === 'revenue_forecast'">
+      <section class="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Previsão de receita</p>
+            <h2 class="text-2xl font-bold text-slate-900">Próximos 30 dias</h2>
+            <p class="text-sm text-slate-500">Assinaturas ativas via Cakto e Asaas. Entrada prevista em D+1 da validade.</p>
+          </div>
+          <button
+            type="button"
+            class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            :disabled="revenueForecastLoading"
+            @click="loadRevenueForecast"
+          >
+            {{ revenueForecastLoading ? "Atualizando..." : "Atualizar" }}
+          </button>
+        </div>
+
+        <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+          <div class="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+            <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Total previsto</p>
+            <p class="mt-1 text-2xl font-bold text-slate-900">{{ formatCurrencyBRL(forecastTotalMrr) }}</p>
+          </div>
+          <div class="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+            <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Cobranças previstas</p>
+            <p class="mt-1 text-2xl font-bold text-slate-900">{{ forecastTotalCount }}</p>
+          </div>
+          <div class="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+            <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Mês base</p>
+            <p class="mt-1 text-2xl font-bold capitalize text-slate-900">{{ forecastMonthLabel || "--" }}</p>
+          </div>
+        </div>
+
+        <p v-if="revenueForecastError" class="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {{ revenueForecastError }}
+        </p>
+        <div v-else-if="revenueForecastLoading" class="mt-4 rounded-xl border border-dashed border-slate-200 p-8 text-center text-sm text-slate-500">
+          Carregando previsão...
+        </div>
+        <div v-else class="mt-4 grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <div class="rounded-2xl border border-slate-100 p-4">
+            <div class="mb-3 grid grid-cols-7 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <span>Dom</span><span>Seg</span><span>Ter</span><span>Qua</span><span>Qui</span><span>Sex</span><span>Sáb</span>
+            </div>
+            <div class="grid grid-cols-7 gap-2">
+              <button
+                v-for="cell in forecastCalendarCells"
+                :key="cell.key"
+                type="button"
+                class="min-h-[88px] rounded-xl border p-2 text-left transition"
+                :class="[
+                  cell.iso ? 'border-slate-200 bg-white hover:border-slate-300' : 'border-transparent bg-transparent cursor-default',
+                  cell.iso && cell.iso === selectedForecastDate ? 'ring-2 ring-brand/30 border-brand/40' : ''
+                ]"
+                :disabled="!cell.iso"
+                @click="cell.iso && (selectedForecastDate = cell.iso)"
+              >
+                <template v-if="cell.date">
+                  <p class="text-xs font-semibold text-slate-600">{{ cell.date.getDate() }}</p>
+                  <p class="mt-1 text-[11px] font-semibold text-emerald-700">{{ formatCurrencyBRL(cell.day?.total_mrr || 0) }}</p>
+                  <p class="text-[10px] text-slate-500">{{ cell.day?.subscriptions_count || 0 }} cobrança(s)</p>
+                </template>
+              </button>
+            </div>
+          </div>
+
+          <div class="rounded-2xl border border-slate-100 p-4">
+            <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Detalhes do dia</p>
+            <h3 class="mt-1 text-lg font-semibold text-slate-900">
+              {{ selectedForecastDay ? new Date(selectedForecastDay.date).toLocaleDateString('pt-BR') : "--" }}
+            </h3>
+            <p class="text-sm text-slate-600">
+              {{ selectedForecastDay ? formatCurrencyBRL(selectedForecastDay.total_mrr) : "R$ 0,00" }} •
+              {{ selectedForecastDay?.subscriptions_count || 0 }} cobrança(s)
+            </p>
+            <div class="mt-3 max-h-[420px] space-y-2 overflow-auto pr-1">
+              <div
+                v-for="entry in selectedForecastEntries"
+                :key="`${entry.subscription_id}-${entry.user_id}`"
+                class="rounded-xl border border-slate-100 bg-slate-50 p-3"
+              >
+                <p class="text-sm font-semibold text-slate-900">{{ entry.user_name }}</p>
+                <p class="text-xs text-slate-500">{{ entry.user_email }}</p>
+                <p class="mt-1 text-xs text-slate-600">Plano: {{ planLabel(entry.plan) }}</p>
+                <p class="text-xs text-slate-600">Validade: {{ formatDate(entry.valid_until) }}</p>
+                <p class="text-sm font-semibold text-emerald-700">{{ formatCurrencyBRL(entry.mrr_amount) }}</p>
+              </div>
+              <p v-if="!selectedForecastEntries.length" class="rounded-xl border border-dashed border-slate-200 p-4 text-sm text-slate-500">
+                Sem cobrança prevista neste dia.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </template>
   </div>
 
   <!-- SNACKBAR -->
@@ -1941,7 +2036,35 @@ interface AdminOnlineSessionsResponse {
   generated_at: string;
 }
 
-type AdminTab = "dashboard" | "monitor" | "users" | "lessons" | "templates" | "flight_apis";
+interface RevenueForecastEntry {
+  subscription_id: number;
+  user_id: number;
+  user_name: string;
+  user_email: string;
+  plan: string;
+  provider: string;
+  valid_until: string;
+  expected_on: string;
+  mrr_amount: number;
+}
+
+interface RevenueForecastDay {
+  date: string;
+  total_mrr: number;
+  subscriptions_count: number;
+  entries: RevenueForecastEntry[];
+}
+
+interface RevenueForecastOut {
+  start_date: string;
+  end_date: string;
+  days: number;
+  total_mrr: number;
+  subscriptions_count: number;
+  forecast_days: RevenueForecastDay[];
+}
+
+type AdminTab = "dashboard" | "monitor" | "users" | "lessons" | "templates" | "flight_apis" | "revenue_forecast";
 type TemplateDialogMode = "create" | "edit";
 
 type AdminPeriodOption = "7" | "30" | "90" | "custom";
@@ -1975,6 +2098,10 @@ const onlineSessionsLoading = ref(false);
 const onlineSessionsError = ref("");
 const revokingUserId = ref<number | null>(null);
 let onlineSessionsInterval: number | null = null;
+const revenueForecast = ref<RevenueForecastOut | null>(null);
+const revenueForecastLoading = ref(false);
+const revenueForecastError = ref("");
+const selectedForecastDate = ref("");
 const monitorStatusLabel = computed(() => (onlineSessionsLoading.value ? "Atualizando" : "Operacional"));
 const monitorLastUpdated = computed(() => {
   const value = onlineSessionsMeta.value?.generated_at;
@@ -1983,6 +2110,50 @@ const monitorLastUpdated = computed(() => {
   if (Number.isNaN(parsed.getTime())) return "";
   return parsed.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 });
+const revenueForecastDays = computed(() => revenueForecast.value?.forecast_days || []);
+const forecastByDate = computed(() => {
+  const map = new Map<string, RevenueForecastDay>();
+  for (const day of revenueForecastDays.value) {
+    map.set(day.date.slice(0, 10), day);
+  }
+  return map;
+});
+const forecastMonthLabel = computed(() => {
+  const first = revenueForecastDays.value[0];
+  if (!first) return "";
+  const date = new Date(first.date);
+  return date.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+});
+const forecastCalendarCells = computed(() => {
+  const cells: Array<{ key: string; date: Date | null; iso: string | null; day: RevenueForecastDay | null }> = [];
+  if (!revenueForecastDays.value.length) return cells;
+  const start = new Date(revenueForecastDays.value[0].date);
+  const firstWeekday = start.getDay();
+  for (let i = 0; i < firstWeekday; i += 1) {
+    cells.push({ key: `empty-start-${i}`, date: null, iso: null, day: null });
+  }
+  for (const day of revenueForecastDays.value) {
+    const date = new Date(day.date);
+    const iso = day.date.slice(0, 10);
+    cells.push({ key: iso, date, iso, day });
+  }
+  const remainder = cells.length % 7;
+  if (remainder > 0) {
+    for (let i = 0; i < 7 - remainder; i += 1) {
+      cells.push({ key: `empty-end-${i}`, date: null, iso: null, day: null });
+    }
+  }
+  return cells;
+});
+const selectedForecastDay = computed(() => {
+  if (!selectedForecastDate.value) return null;
+  return forecastByDate.value.get(selectedForecastDate.value) || null;
+});
+const selectedForecastEntries = computed(() => selectedForecastDay.value?.entries || []);
+const forecastTotalMrr = computed(() => revenueForecast.value?.total_mrr || 0);
+const forecastTotalCount = computed(() => revenueForecast.value?.subscriptions_count || 0);
+const formatCurrencyBRL = (value: number) =>
+  Number(value || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const NEW_USERS_CHART_HEIGHT = 180;
 const NEW_USERS_CHART_WIDTH = 640;
 const NEW_USERS_CHART_PADDING_Y = 28;
@@ -2238,6 +2409,10 @@ const syncActiveTabFromRoute = () => {
   }
   if (routeName === "admin-management-flight-apis") {
     activeTab.value = "flight_apis";
+    return;
+  }
+  if (routeName === "admin-management-revenue-forecast") {
+    activeTab.value = "revenue_forecast";
     return;
   }
   activeTab.value = "dashboard";
@@ -2712,6 +2887,26 @@ const loadMetrics = async () => {
     } else {
       error.value = "Nao foi possivel carregar os dados.";
     }
+  }
+};
+
+const loadRevenueForecast = async () => {
+  revenueForecastLoading.value = true;
+  revenueForecastError.value = "";
+  try {
+    const { data } = await api.get<RevenueForecastOut>("/admin/revenue-forecast", {
+      params: { days: 30 }
+    });
+    revenueForecast.value = data;
+    const firstWithEntries = (data.forecast_days || []).find(day => (day.subscriptions_count || 0) > 0);
+    selectedForecastDate.value = (firstWithEntries?.date || data.forecast_days?.[0]?.date || "").slice(0, 10);
+  } catch (err: any) {
+    console.error(err);
+    revenueForecast.value = null;
+    selectedForecastDate.value = "";
+    revenueForecastError.value = err?.response?.data?.detail || "Não foi possível carregar a previsão de receita.";
+  } finally {
+    revenueForecastLoading.value = false;
   }
 };
 
@@ -3668,6 +3863,9 @@ onMounted(async () => {
     await lessonsStore.ensureLessons();
     await loadMetrics();
     await loadOnlineSessions();
+    if (activeTab.value === "revenue_forecast") {
+      await loadRevenueForecast();
+    }
     startOnlineSessionsPolling();
   } finally {
     isBootstrappingAdminManagement.value = false;
@@ -3710,6 +3908,9 @@ watch(activeTab, (tab) => {
     if (templateAgencyId.value) {
       loadTemplatePages();
     }
+  }
+  if (tab === "revenue_forecast" && !revenueForecast.value && !revenueForecastLoading.value) {
+    loadRevenueForecast();
   }
 });
 

@@ -135,3 +135,31 @@ class AdminMetricsOut(BaseModel):
     monthly_churn_cancelled: int = 0
     monthly_churn_base: int = 0
     mrr: float
+
+
+class AdminRevenueForecastEntry(BaseModel):
+    subscription_id: int
+    user_id: int
+    user_name: str
+    user_email: EmailStr
+    plan: str
+    provider: str
+    valid_until: datetime
+    expected_on: datetime
+    mrr_amount: float
+
+
+class AdminRevenueForecastDay(BaseModel):
+    date: datetime
+    total_mrr: float
+    subscriptions_count: int
+    entries: List[AdminRevenueForecastEntry] = Field(default_factory=list)
+
+
+class AdminRevenueForecastOut(BaseModel):
+    start_date: datetime
+    end_date: datetime
+    days: int
+    total_mrr: float
+    subscriptions_count: int
+    forecast_days: List[AdminRevenueForecastDay] = Field(default_factory=list)

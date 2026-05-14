@@ -154,6 +154,9 @@ const resolveLegacyAdminManagementRedirect = (to: any) => {
   if (tab === "whatsapp") {
     return { path: "/admin/administracao/whatsapp", query: nextQuery };
   }
+  if (tab === "receita-previsao" || tab === "revenue-forecast") {
+    return { path: "/admin/administracao/receita-previsao", query: nextQuery };
+  }
   return { path: "/admin/administracao/dashboard", query: nextQuery };
 };
 
@@ -269,6 +272,12 @@ const platformRoutes: RouteRecordRaw[] = [
         path: "administracao/whatsapp",
         name: "admin-management-whatsapp",
         component: () => import("../views/admin/AdminWhatsAppManagementView.vue"),
+        meta: { requiresSuperuser: true }
+      },
+      {
+        path: "administracao/receita-previsao",
+        name: "admin-management-revenue-forecast",
+        component: () => import("../views/admin/AdminManagementView.vue"),
         meta: { requiresSuperuser: true }
       }
     ]

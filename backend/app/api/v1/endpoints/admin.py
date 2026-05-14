@@ -31,6 +31,9 @@ from app.schemas.admin import (
     AdminOnlineSession,
     AdminOnlineSessionsResponse,
     AdminPageOut,
+    AdminRevenueForecastDay,
+    AdminRevenueForecastEntry,
+    AdminRevenueForecastOut,
     AdminUserOut,
     AdminUserPage,
     AdminUserTracking,
@@ -581,6 +584,80 @@ def search_admin_agencies(
         )
         for agency, pages_count in result_rows
     ]
+
+
+@router.get("/revenue-forecast", response_model=AdminRevenueForecastOut)
+def get_admin_revenue_forecast(
+    days: int = Query(30, ge=1, le=90),
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_superuser),
+) -> AdminRevenueForecastOut:
+    now_utc = datetime.now(timezone.utc)
+    start_day = now_utc.date()
+    end_day = start_day + timedelta(days=days - 1)
+
+    rows = (
+        db.query(Subscription, User)
+        .join(User, User.id == Subscription.user_id)
+        .filter(func.lower(Subscription.provider).in_(("cakto", "asaas")))
+        .filter(func.lower(Subscription.status) == "active")
+        .filter(Subscription.valid_until.isnot(None))
+        .filter(Subscription.mrr_amount > 0)
+        .all()
+    )
+
+    by_day: dict[date, list[AdminRevenueForecastEntry]] = defaultdict(list)
+    total_mrr = Decimal("0")
+    total_count = 0
+    for subscription, user in rows:
+        valid_until = subscription.valid_until
+        if not valid_until:
+            continue
+        expected_on = valid_until + timedelta(days=1)
+        expected_day = expected_on.date()
+        if expected_day < start_day or expected_day > end_day:
+            continue
+
+        amount_decimal = subscription.mrr_amount or Decimal("0")
+        amount_float = float(amount_decimal)
+        entry = AdminRevenueForecastEntry(
+            subscription_id=subscription.id,
+            user_id=user.id,
+            user_name=user.name,
+            user_email=user.email,
+            plan=subscription.plan or user.plan or "free",
+            provider=subscription.provider or "",
+            valid_until=valid_until,
+            expected_on=expected_on,
+            mrr_amount=amount_float,
+        )
+        by_day[expected_day].append(entry)
+        total_mrr += amount_decimal
+        total_count += 1
+
+    forecast_days: list[AdminRevenueForecastDay] = []
+    cursor = start_day
+    while cursor <= end_day:
+        entries = by_day.get(cursor, [])
+        day_total = float(sum((Decimal(str(item.mrr_amount)) for item in entries), Decimal("0")))
+        forecast_days.append(
+            AdminRevenueForecastDay(
+                date=datetime.combine(cursor, datetime.min.time(), tzinfo=timezone.utc),
+                total_mrr=day_total,
+                subscriptions_count=len(entries),
+                entries=sorted(entries, key=lambda item: item.user_name.lower()),
+            )
+        )
+        cursor += timedelta(days=1)
+
+    return AdminRevenueForecastOut(
+        start_date=datetime.combine(start_day, datetime.min.time(), tzinfo=timezone.utc),
+        end_date=datetime.combine(end_day, datetime.max.time(), tzinfo=timezone.utc),
+        days=days,
+        total_mrr=float(total_mrr),
+        subscriptions_count=total_count,
+        forecast_days=forecast_days,
+    )
 
 
 @router.get("/online-sessions", response_model=AdminOnlineSessionsResponse)
