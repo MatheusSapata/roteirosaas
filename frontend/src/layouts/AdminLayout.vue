@@ -1458,7 +1458,8 @@ const adminNavigation = computed<AdminNavItem[]>(() => {
         { label: t({ pt: "Templates", es: "Templates" }), path: "/admin/administracao/templates" },
         { label: t({ pt: "APIs de voo", es: "APIs de vuelo" }), path: "/admin/administracao/apis-voo" },
         { label: t({ pt: "Banners", es: "Banners" }), path: "/admin/administracao/banners" },
-        { label: t({ pt: "Gestão WhatsApp", es: "Gestion WhatsApp" }), path: "/admin/administracao/whatsapp" }
+        { label: t({ pt: "Gestão WhatsApp", es: "Gestion WhatsApp" }), path: "/admin/administracao/whatsapp" },
+        { label: t({ pt: "Previsão de receita", es: "Proyección de ingresos" }), path: "/admin/administracao/receita-previsao" }
       ]
     });
   }
