@@ -16,4 +16,7 @@ sudo rsync -a --delete "$FRONTEND_DIR/dist-public/" "$PUBLIC_WEB_ROOT/"
 cd "$BACKEND_DIR"
 docker compose -f docker-compose.public.yml --env-file .env.public up -d --build
 
+echo "[public] health check"
+curl -fsS http://127.0.0.1:8002/health >/dev/null
+
 echo "[public] done"
