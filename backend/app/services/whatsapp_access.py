@@ -25,9 +25,13 @@ def _effective_plan(user: User) -> str:
 
 
 def has_whatsapp_inbox_access(db: Session, *, user: User, agency_id: int | None) -> bool:
-    if not bool(getattr(user, "is_superuser", False)):
-        if _effective_plan(user) not in ALLOWED_WHATSAPP_PLANS:
-            return False
+    if bool(getattr(user, "is_superuser", False)):
+        return True
+
+    # Plano elegivel ja concede acesso ao Atendimento WhatsApp.
+    # Mantemos a leitura de permissoes explicitas como compatibilidade legada.
+    if _effective_plan(user) in ALLOWED_WHATSAPP_PLANS:
+        return True
 
     query = db.query(WhatsAppInboxPermission).filter(
         WhatsAppInboxPermission.enabled.is_(True),
