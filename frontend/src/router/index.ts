@@ -157,6 +157,9 @@ const resolveLegacyAdminManagementRedirect = (to: any) => {
   if (tab === "receita-previsao" || tab === "revenue-forecast") {
     return { path: "/admin/administracao/receita-previsao", query: nextQuery };
   }
+  if (tab === "ltv-clientes" || tab === "ltv-customers") {
+    return { path: "/admin/administracao/ltv-clientes", query: nextQuery };
+  }
   return { path: "/admin/administracao/dashboard", query: nextQuery };
 };
 
@@ -278,6 +281,12 @@ const platformRoutes: RouteRecordRaw[] = [
         path: "administracao/receita-previsao",
         name: "admin-management-revenue-forecast",
         component: () => import("../views/admin/AdminManagementView.vue"),
+        meta: { requiresSuperuser: true }
+      },
+      {
+        path: "administracao/ltv-clientes",
+        name: "admin-management-ltv-customers",
+        component: () => import("../views/admin/AdminLtvCustomersView.vue"),
         meta: { requiresSuperuser: true }
       }
     ]
