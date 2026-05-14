@@ -43,8 +43,9 @@
               <div class="favicon-wrap">
                 <div class="favicon-head">
                   <label class="fl">{{ viewCopy.theme.faviconLabel }}</label>
+                  <span v-if="!hasActiveCustomDomain" class="fh">{{ viewCopy.theme.faviconDisabledHint }}</span>
                 </div>
-                <div class="favicon-upload">
+                <div class="favicon-upload" :class="{ 'is-disabled': !hasActiveCustomDomain }">
                   <ImageUploadField
                     v-model="form.favicon_url"
                     :label="''"
@@ -608,6 +609,9 @@ const syncFormWithCurrent = () => {
 const refreshCustomDomainAvailability = async () => {
   const host = await agencyStore.loadPrimaryDomain(agencyStore.currentAgencyId);
   hasActiveCustomDomain.value = !!host;
+  if (!hasActiveCustomDomain.value) {
+    form.favicon_url = "";
+  }
 };
 
 const buildFormSnapshot = () =>
@@ -749,7 +753,7 @@ const save = async () => {
     name: normalizedName,
     slug: normalizedSlug,
     logo_url: form.logo_url,
-    favicon_url: form.favicon_url || null,
+    favicon_url: hasActiveCustomDomain.value ? form.favicon_url : null,
     primary_color: form.primary_color,
     secondary_color: form.secondary_color,
     contact_email: sanitizeText(form.contact_email),
