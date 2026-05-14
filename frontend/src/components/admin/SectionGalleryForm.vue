@@ -8,11 +8,45 @@
       </label>
     </div>
     <SectionHeadingControls v-model:label="local.headingLabel" v-model:style="local.headingLabelStyle" />
-    <MultiImageUploadField
-      v-model="local.images"
-      label="Imagens da galeria"
-      hint="Envie quantas imagens quiser; a primeira define o destaque e as demais seguem o layout escolhido."
-    />
+    <div class="space-y-3 rounded-xl border border-slate-200 p-3">
+      <div class="flex items-center justify-between">
+        <label class="text-sm font-semibold text-slate-600">Imagens da galeria</label>
+        <button
+          type="button"
+          class="text-sm font-semibold text-brand"
+          @click="addGalleryImage"
+        >
+          + Adicionar imagem
+        </button>
+      </div>
+      <p class="text-xs text-slate-500">
+        Envie quantas imagens quiser; a primeira define o destaque e as demais seguem o layout escolhido.
+      </p>
+      <div v-if="local.images.length" class="space-y-3">
+        <div
+          v-for="(_image, index) in local.images"
+          :key="`gallery-image-${index}`"
+          class="space-y-2 rounded-lg border border-slate-200 p-3"
+        >
+          <div class="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <span>Imagem {{ index + 1 }}</span>
+            <button type="button" class="text-rose-500 hover:text-rose-600" @click="removeGalleryImage(index)">
+              Remover
+            </button>
+          </div>
+          <ImageUploadField
+            v-model="local.images[index]"
+            label=""
+            hint=""
+            :enable-crop="true"
+            :crop-aspect="16 / 9"
+          />
+        </div>
+      </div>
+      <p v-else class="rounded-lg border border-dashed border-slate-200 px-3 py-2 text-xs text-slate-500">
+        Nenhuma imagem adicionada ainda.
+      </p>
+    </div>
     <div class="grid gap-3 md:grid-cols-2">
       <div>
         <label class="text-sm font-semibold text-slate-600">Layout</label>
@@ -38,12 +72,11 @@
       </div>
     </div>
   </div>
-  </div>
 </template>
 
 <script setup lang="ts">
 import { nextTick, reactive, watch } from "vue";
-import MultiImageUploadField from "./inputs/MultiImageUploadField.vue";
+import ImageUploadField from "./inputs/ImageUploadField.vue";
 import SectionHeadingControls from "./inputs/SectionHeadingControls.vue";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import type { GallerySection } from "../../types/page";
@@ -92,6 +125,14 @@ const colorOptions = [
   { label: "Cinza médio", value: "#e2e8f0" },
   { label: "Grafite", value: "#0f172a" }
 ];
+
+const addGalleryImage = () => {
+  local.images.push("");
+};
+
+const removeGalleryImage = (index: number) => {
+  local.images.splice(index, 1);
+};
 
 watch(
   () => ({ ...local, images: [...local.images] }),

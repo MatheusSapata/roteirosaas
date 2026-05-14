@@ -53,11 +53,39 @@
       {{ viewCopy.notes.animations }}
     </div>
 
-    <MultiImageUploadField
-      v-model="local.images"
-      :label="viewCopy.gallery.label"
-      :hint="viewCopy.gallery.hint"
-    />
+    <div class="space-y-3 rounded-xl border border-slate-200 p-3">
+      <div class="flex items-center justify-between">
+        <label class="text-sm font-semibold text-slate-600">{{ viewCopy.gallery.label }}</label>
+        <button type="button" class="text-sm font-semibold text-brand" @click="addStoryImage">
+          + Adicionar imagem
+        </button>
+      </div>
+      <p class="text-xs text-slate-500">{{ viewCopy.gallery.hint }}</p>
+      <div v-if="local.images.length" class="space-y-3">
+        <div
+          v-for="(_image, index) in local.images"
+          :key="`story-image-${index}`"
+          class="space-y-2 rounded-lg border border-slate-200 p-3"
+        >
+          <div class="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <span>Imagem {{ index + 1 }}</span>
+            <button type="button" class="text-rose-500 hover:text-rose-600" @click="removeStoryImage(index)">
+              {{ viewCopy.videos.removeButton }}
+            </button>
+          </div>
+          <ImageUploadField
+            v-model="local.images[index]"
+            label=""
+            hint=""
+            :enable-crop="true"
+            :crop-aspect="16 / 9"
+          />
+        </div>
+      </div>
+      <div v-else class="rounded-lg border border-dashed border-slate-200 px-3 py-2 text-xs text-slate-500">
+        Nenhuma imagem adicionada ainda.
+      </div>
+    </div>
     <div class="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
       {{ viewCopy.gallery.layoutHint }}
     </div>
@@ -100,7 +128,7 @@
 
 <script setup lang="ts">
 import { nextTick, reactive, watch } from "vue";
-import MultiImageUploadField from "./inputs/MultiImageUploadField.vue";
+import ImageUploadField from "./inputs/ImageUploadField.vue";
 import CtaActionPicker from "./inputs/CtaActionPicker.vue";
 import RichTextEditor from "./inputs/RichTextEditor.vue";
 import SectionHeadingControls from "./inputs/SectionHeadingControls.vue";
@@ -226,6 +254,18 @@ const addVideoField = () => {
     local.videoUrls = [];
   }
   local.videoUrls.push("");
+};
+
+const addStoryImage = () => {
+  if (!Array.isArray(local.images)) {
+    local.images = [];
+  }
+  local.images.push("");
+};
+
+const removeStoryImage = (index: number) => {
+  if (!Array.isArray(local.images)) return;
+  local.images = local.images.filter((_, i) => i !== index);
 };
 
 const removeVideoField = (index: number) => {

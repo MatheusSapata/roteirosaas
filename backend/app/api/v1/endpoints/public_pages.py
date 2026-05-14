@@ -94,6 +94,7 @@ def serialize_public_page(page: Page, agency_slug: str, db: Session) -> PublicPa
     branding = {
         "agency_name": page.agency.name,
         "logo_url": page.agency.logo_url,
+        "favicon_url": page.agency.favicon_url,
         "primary_color": page.agency.primary_color,
         "secondary_color": page.agency.secondary_color,
         "agency_profile": build_agency_profile(page.agency),

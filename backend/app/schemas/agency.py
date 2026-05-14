@@ -39,6 +39,7 @@ class AgencyBase(BaseModel):
     name: str
     slug: str
     logo_url: Optional[str] = None
+    favicon_url: Optional[str] = None
     primary_color: Optional[str] = None
     secondary_color: Optional[str] = None
     contact_email: Optional[str] = None
@@ -69,6 +70,7 @@ class AgencyUpdate(BaseModel):
     name: Optional[str] = None
     slug: Optional[str] = None
     logo_url: Optional[str] = None
+    favicon_url: Optional[str] = None
     primary_color: Optional[str] = None
     secondary_color: Optional[str] = None
     contact_email: Optional[str] = None

@@ -115,3 +115,20 @@ body.admin-shell #app {
     bottom: 1.5rem !important;
   }
 }
+
+/* Rich text alignment (Quill) used in public sections */
+.ql-align-left {
+  text-align: left;
+}
+
+.ql-align-center {
+  text-align: center;
+}
+
+.ql-align-right {
+  text-align: right;
+}
+
+.ql-align-justify {
+  text-align: justify;
+}

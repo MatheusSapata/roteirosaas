@@ -626,7 +626,7 @@
             : 'bg-transparent p-0 shadow-none'"
         >
           <div :class="previewDevice === 'mobile' ? 'max-h-none overflow-visible' : 'overflow-visible bg-transparent shadow-none'">
-            <div class="space-y-6 preview-light">
+            <div class="space-y-0 preview-light">
               <template v-if="sections.length === 0">
                 <div class="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 px-4 py-12 text-center text-sm text-slate-500">
                   <p>{{ viewCopy.preview.emptyState }}</p>
@@ -647,23 +647,24 @@
               </template>
               <template v-else>
                 <template v-for="(section, idx) in sections" :key="(section as any)?.anchorId || idx">
-                    <div v-if="section" class="space-y-3">
+                    <div v-if="section" class="space-y-0">
                     <div
                       class="group relative overflow-hidden"
                       @click.capture="handleSectionTap(idx, $event)"
                       :ref="el => registerPreviewSection(el, idx)"
                     >
-                      <component
-                        v-if="(section as any).enabled"
-                        :is="publicComponents[(section as any).type]"
-                        :section="previewSections[idx] || section"
-                        :previewDevice="previewDevice"
-                        v-bind="sectionRequiresBranding((section as any).type) ? { branding } : {}"
-                        :class="[
-                          'transition duration-200',
-                          desktopHoverEnabled ? 'group-hover:opacity-80 group-hover:brightness-95' : ''
-                        ]"
-                      />
+                      <div v-if="(section as any).enabled" class="preview-section-host">
+                        <component
+                          :is="publicComponents[(section as any).type]"
+                          :section="previewSections[idx] || section"
+                          :previewDevice="previewDevice"
+                          v-bind="sectionRequiresBranding((section as any).type) ? { branding } : {}"
+                          :class="[
+                            'transition duration-200',
+                            desktopHoverEnabled ? 'group-hover:opacity-80 group-hover:brightness-95' : ''
+                          ]"
+                        />
+                      </div>
                         <div
                           v-if="(section as any).enabled"
                           :class="[
@@ -777,7 +778,7 @@
                         {{ viewCopy.overlay.disabledSection }}
                       </div>
                     </div>
-                    <div v-if="!isLockedFooterSection(section)" class="mt-4 mb-3 flex justify-center">
+                    <div v-if="!isLockedFooterSection(section)" class="section-add-below-wrap">
                       <button
                         type="button"
                         class="inline-flex items-center gap-2 rounded-full border border-emerald-400 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-100"
@@ -3544,6 +3545,23 @@ onMounted(async () => {
   opacity: 0.65 !important;
   cursor: not-allowed !important;
 }
+
+.section-add-below-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0;
+  min-height: 64px;
+  padding: 14px 0;
+  border-top: 1px solid rgba(148, 163, 184, 0.22);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.22);
+}
+
+:deep(.preview-section-host > *) {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
 :deep(.overlay-action-button svg) {
   color: inherit !important;
   stroke: currentColor !important;
