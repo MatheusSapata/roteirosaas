@@ -40,6 +40,20 @@
                 <input v-model="form.primary_color" class="fi" style="max-width:110px" />
               </div>
               <span class="fh">{{ viewCopy.theme.primaryColorHint }}</span>
+              <div class="favicon-wrap">
+                <div class="favicon-head">
+                  <label class="fl">{{ viewCopy.theme.faviconLabel }}</label>
+                  <span v-if="!hasActiveCustomDomain" class="fh">{{ viewCopy.theme.faviconDisabledHint }}</span>
+                </div>
+                <div class="favicon-upload" :class="{ 'is-disabled': !hasActiveCustomDomain }">
+                  <ImageUploadField
+                    v-model="form.favicon_url"
+                    :label="''"
+                    :enable-crop="true"
+                    :editor-title="viewCopy.theme.faviconEditorTitle"
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -249,7 +263,13 @@ const viewCopy = {
     primaryColorHint: t({
       pt: "Essa cor será usada como base nos CTAs do editor. Você pode ajustar depois.",
       es: "Este color se usa como base en los CTAs del editor. Puedes ajustarlo después."
-    })
+    }),
+    faviconLabel: t({ pt: "Favicon (domínio próprio)", es: "Favicon (dominio propio)" }),
+    faviconDisabledHint: t({
+      pt: "Disponível apenas para agências com domínio customizado ativo.",
+      es: "Disponible solo para agencias con dominio personalizado activo."
+    }),
+    faviconEditorTitle: t({ pt: "Ajuste o favicon", es: "Ajusta el favicon" })
   },
   logoField: {
     label: t({ pt: "Logo da agência", es: "Logotipo de la agencia" }),
@@ -373,6 +393,7 @@ const form = reactive({
   name: "",
   slug: "",
   logo_url: "",
+  favicon_url: "",
   primary_color: colorPalette[0],
   secondary_color: "",
   contact_email: "",
@@ -404,6 +425,7 @@ const showUnsavedModal = ref(false);
 const pendingNavigation = ref<string | null>(null);
 const bypassUnsavedGuard = ref(false);
 const initialSnapshot = ref("");
+const hasActiveCustomDomain = ref(false);
 
 const companyForm = reactive({
   documentType: "cnpj" as "cnpj" | "cpf",
@@ -583,11 +605,20 @@ const syncFormWithCurrent = () => {
   syncCompanyData();
 };
 
+const refreshCustomDomainAvailability = async () => {
+  const host = await agencyStore.loadPrimaryDomain(agencyStore.currentAgencyId);
+  hasActiveCustomDomain.value = !!host;
+  if (!hasActiveCustomDomain.value) {
+    form.favicon_url = "";
+  }
+};
+
 const buildFormSnapshot = () =>
   JSON.stringify({
     name: form.name || "",
     slug: form.slug || "",
     logo_url: form.logo_url || "",
+    favicon_url: form.favicon_url || "",
     primary_color: form.primary_color || "",
     secondary_color: form.secondary_color || "",
     contact_email: form.contact_email || "",
@@ -679,6 +710,7 @@ const load = async () => {
   hasAgency.value = !!agencyStore.currentAgencyId;
 
   if (hasAgency.value) syncFormWithCurrent();
+  await refreshCustomDomainAvailability();
   markSnapshot();
 };
 
@@ -720,6 +752,7 @@ const save = async () => {
     name: normalizedName,
     slug: normalizedSlug,
     logo_url: form.logo_url,
+    favicon_url: hasActiveCustomDomain.value ? form.favicon_url : null,
     primary_color: form.primary_color,
     secondary_color: form.secondary_color,
     contact_email: sanitizeText(form.contact_email),
@@ -793,6 +826,13 @@ const saveAndNavigate = async () => {
     bypassUnsavedGuard.value = false;
   });
 };
+
+watch(
+  () => agencyStore.currentAgencyId,
+  async () => {
+    await refreshCustomDomainAvailability();
+  }
+);
 
 watch(
   () => companyForm.cnpj,
@@ -890,6 +930,14 @@ onBeforeUnmount(() => {
 .cp-row{display:flex;align-items:center;gap:9px}
 .cp-btn{width:38px;height:38px;border-radius:8px;border:1.5px solid var(--border);cursor:pointer;padding:2px;overflow:hidden;flex-shrink:0}
 .cp-btn input[type=color]{width:100%;height:100%;border:none;background:transparent;cursor:pointer;padding:0;border-radius:5px}
+.favicon-wrap{margin-top:10px}
+.favicon-head{display:flex;flex-direction:column;gap:2px;margin-bottom:6px}
+.favicon-upload{border:1.5px solid var(--border);border-radius:10px;padding:10px;background:var(--surface2)}
+.favicon-upload.is-disabled{opacity:.55;pointer-events:none}
+:deep(.favicon-upload .space-y-2){gap:6px}
+:deep(.favicon-upload .max-h-\[320px\]){max-height:120px !important;min-height:96px !important}
+:deep(.favicon-upload .min-h-\[220px\]){min-height:96px !important}
+:deep(.favicon-upload img){max-height:96px !important;object-fit:contain}
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:all .15s;white-space:nowrap;line-height:1.3}
 .btn-p{background:var(--verde);color:#0F1F14}
 .btn-p:hover{background:var(--verde-d)}

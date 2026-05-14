@@ -3,7 +3,7 @@
     <div>
       <label class="text-sm font-semibold text-slate-600">{{ viewCopy.image.label }}</label>
       <p class="text-xs text-slate-500">{{ viewCopy.image.helper }}</p>
-      <ImageUploadField v-model="local.image" class="mt-2" />
+      <ImageUploadField v-model="local.image" class="mt-2" :enable-crop="true" :crop-aspect="16 / 9" />
     </div>
 
     <div>

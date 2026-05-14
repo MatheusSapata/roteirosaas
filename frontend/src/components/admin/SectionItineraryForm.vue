@@ -95,6 +95,8 @@
               v-model="currentDay.image"
               label=""
               :hint="viewCopy.days.imageHint"
+              :enable-crop="true"
+              :crop-aspect="16 / 9"
             />
           </div>
         </div>

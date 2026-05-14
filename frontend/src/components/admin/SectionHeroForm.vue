@@ -99,6 +99,8 @@
               v-model="local.backgroundImage"
               :label="viewCopy.backgroundField.label"
               :hint="viewCopy.backgroundField.hint"
+              :enable-crop="true"
+              :crop-aspect="16 / 9"
             />
           </div>
         </div>

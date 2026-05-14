@@ -30,7 +30,7 @@
       >
         <div class="md:w-40">
           <label class="mb-1 block text-sm font-semibold text-slate-600">{{ viewCopy.items.photo }}</label>
-          <ImageUploadField v-model="item.avatar" label="" hint="" />
+          <ImageUploadField v-model="item.avatar" label="" hint="" :enable-crop="true" :crop-aspect="1" />
         </div>
 
         <div class="flex-1 space-y-3">

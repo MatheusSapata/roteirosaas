@@ -147,6 +147,10 @@ const brandingLogo = computed(() => {
   const branding = brandingInfo.value as { logo_url?: string };
   return branding?.logo_url || "";
 });
+const brandingFavicon = computed(() => {
+  const branding = brandingInfo.value as { favicon_url?: string };
+  return branding?.favicon_url || "";
+});
 
 const publicComponents: Record<SectionType, any> = {
   hero: PublicHeroSection,
@@ -286,11 +290,32 @@ const ensureMetaTag = (selector: string, attr: "property" | "name", value: strin
   tag.setAttribute("content", value);
 };
 
+const ensureLinkTag = (selector: string, rel: string, href: string, type?: string) => {
+  if (typeof document === "undefined") return;
+  let tag = document.head.querySelector<HTMLLinkElement>(`link[${selector}]`);
+  if (!tag) {
+    tag = document.createElement("link");
+    tag.setAttribute("rel", rel);
+    document.head.appendChild(tag);
+  }
+  if (type) tag.setAttribute("type", type);
+  tag.setAttribute("href", href);
+};
+
+const applyFavicon = (faviconUrl?: string | null) => {
+  if (typeof document === "undefined") return;
+  const fallback = "/favicon.ico";
+  const finalFavicon = (faviconUrl || "").trim() || fallback;
+  ensureLinkTag("rel='icon'", "icon", finalFavicon, "image/x-icon");
+  ensureLinkTag("rel='shortcut icon'", "shortcut icon", finalFavicon, "image/x-icon");
+  ensureLinkTag("rel='apple-touch-icon'", "apple-touch-icon", finalFavicon);
+};
+
 const applySeoMeta = (title?: string | null, description?: string | null, imageUrl?: string | null) => {
   if (typeof document === "undefined") return;
   const finalTitle = title ? `${title} | Roteiro Online` : "Roteiro Online";
   const finalDescription = (description && description.trim()) || localize(defaultDescription);
-  const finalImage = imageUrl || brandLogo;
+  const finalImage = imageUrl || brandingLogo.value || brandingFavicon.value || brandLogo;
   document.title = finalTitle;
   ensureMetaTag("og:title", "property", finalTitle);
   ensureMetaTag("og:description", "property", finalDescription);
@@ -442,6 +467,7 @@ watch(
   () => [pageData.value, heroBackgroundImage.value, heroSubtitleText.value],
   () => {
     applySeoMeta(pageTitleText.value, heroSubtitleText.value, heroBackgroundImage.value);
+    applyFavicon(brandingFavicon.value);
   },
   { immediate: true }
 );

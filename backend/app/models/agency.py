@@ -12,6 +12,7 @@ class Agency(Base):
     name = Column(String(255), nullable=False)
     slug = Column(String(255), unique=True, nullable=False, index=True)
     logo_url = Column(String(500), nullable=True)
+    favicon_url = Column(String(500), nullable=True)
     primary_color = Column(String(50), nullable=True)
     secondary_color = Column(String(50), nullable=True)
     contact_email = Column(String(255), nullable=True)
