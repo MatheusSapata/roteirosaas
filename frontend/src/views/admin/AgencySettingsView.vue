@@ -50,6 +50,7 @@
                     v-model="form.favicon_url"
                     :label="''"
                     :enable-crop="true"
+                    :crop-aspect="1"
                     :editor-title="viewCopy.theme.faviconEditorTitle"
                   />
                 </div>
@@ -937,7 +938,7 @@ onBeforeUnmount(() => {
 :deep(.favicon-upload .space-y-2){gap:6px}
 :deep(.favicon-upload .max-h-\[320px\]){max-height:120px !important;min-height:96px !important}
 :deep(.favicon-upload .min-h-\[220px\]){min-height:96px !important}
-:deep(.favicon-upload img){max-height:96px !important;object-fit:contain}
+:deep(.favicon-upload .image-upload-preview){max-height:96px !important;object-fit:contain}
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:all .15s;white-space:nowrap;line-height:1.3}
 .btn-p{background:var(--verde);color:#0F1F14}
 .btn-p:hover{background:var(--verde-d)}

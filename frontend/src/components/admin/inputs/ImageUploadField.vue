@@ -18,7 +18,7 @@
           v-else
           class="flex max-h-[320px] min-h-[220px] w-full items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50"
         >
-          <img :src="previewUrl" alt="Pré-visualização" class="h-full min-h-[220px] w-full object-cover" />
+          <img :src="previewUrl" alt="Pré-visualização" class="image-upload-preview h-full min-h-[220px] w-full object-cover" />
         </div>
       </div>
       <div class="flex flex-wrap items-center gap-3">
@@ -432,9 +432,9 @@ const confirmCrop = async () => {
   cropping.value = true;
   dialogError.value = "";
   try {
+    const isSquareCrop = !Number.isNaN(aspectRatio.value) && Math.abs(aspectRatio.value - 1) < 0.001;
     const canvas = cropperInstance.value.getCroppedCanvas({
-      maxWidth: 2560,
-      maxHeight: 2560,
+      ...(isSquareCrop ? { width: 512, height: 512 } : { maxWidth: 2560, maxHeight: 2560 }),
       imageSmoothingEnabled: true,
       imageSmoothingQuality: "high"
     });
