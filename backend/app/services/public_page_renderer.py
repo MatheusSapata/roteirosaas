@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 import html
+import io
+import hashlib
 from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 from urllib.parse import urlsplit, urlunsplit
+from urllib.request import Request, urlopen
+from urllib.error import URLError, HTTPError
 
 from fastapi import HTTPException
+from PIL import Image, UnidentifiedImageError
 from sqlalchemy.orm import Session
 
 from app.api.v1.endpoints import public_pages
@@ -15,8 +20,14 @@ from app.schemas.page import PublicPageOut
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 FRONTEND_DIST_DIR = PROJECT_ROOT / "frontend" / "dist"
 FRONTEND_INDEX_PATH = FRONTEND_DIST_DIR / "index.html"
+UPLOADS_DIR = PROJECT_ROOT / "uploads"
+OG_CACHE_DIR = UPLOADS_DIR / "og-cache"
 DEFAULT_META_START = "<!--default-meta-->"
 DEFAULT_META_END = "<!--/default-meta-->"
+MAX_OG_SOURCE_BYTES = 12 * 1024 * 1024
+OG_TARGET_MAX_SIDE = 1200
+OG_JPEG_QUALITY = 82
+HTTP_TIMEOUT_SECONDS = 12
 
 
 class FrontendTemplateNotReady(RuntimeError):
@@ -67,6 +78,58 @@ def _absolute_url(value: Optional[str], origin: str) -> Optional[str]:
     return f"{origin}/{value}"
 
 
+def _optimize_og_image(image_url: Optional[str], origin: str) -> Optional[str]:
+    if not image_url:
+        return None
+    parsed = urlsplit(image_url)
+    if parsed.scheme not in {"http", "https"}:
+        return image_url
+
+    try:
+        OG_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        digest = hashlib.sha256(image_url.encode("utf-8")).hexdigest()[:24]
+        target_path = OG_CACHE_DIR / f"{digest}.jpg"
+        if target_path.exists() and target_path.stat().st_size > 0:
+            return f"{origin}/uploads/og-cache/{target_path.name}"
+
+        req = Request(
+            image_url,
+            headers={
+                "User-Agent": "RoteiroOnlineBot/1.0 (+https://roteiroonline.com)",
+                "Accept": "image/*",
+            },
+        )
+        with urlopen(req, timeout=HTTP_TIMEOUT_SECONDS) as response:
+            raw = response.read(MAX_OG_SOURCE_BYTES + 1)
+        if len(raw) > MAX_OG_SOURCE_BYTES:
+            return image_url
+
+        with Image.open(io.BytesIO(raw)) as img:
+            # Normaliza para JPEG otimizado para compartilhamento social
+            if img.mode not in {"RGB", "L"}:
+                img = img.convert("RGB")
+            elif img.mode == "L":
+                img = img.convert("RGB")
+
+            width, height = img.size
+            max_side = max(width, height)
+            if max_side > OG_TARGET_MAX_SIDE:
+                scale = OG_TARGET_MAX_SIDE / float(max_side)
+                img = img.resize((max(1, int(width * scale)), max(1, int(height * scale))), Image.Resampling.LANCZOS)
+
+            img.save(
+                target_path,
+                format="JPEG",
+                quality=OG_JPEG_QUALITY,
+                optimize=True,
+                progressive=True,
+            )
+
+        return f"{origin}/uploads/og-cache/{target_path.name}"
+    except (HTTPError, URLError, TimeoutError, OSError, UnidentifiedImageError, ValueError):
+        return image_url
+
+
 def _canonicalize_url(page_url: str) -> tuple[str, str]:
     parsed = urlsplit(page_url)
     canonical = urlunsplit((parsed.scheme, parsed.netloc, parsed.path, "", ""))
@@ -107,7 +170,8 @@ def _build_meta_block(page: PublicPageOut, canonical_url: str, origin: str) -> s
         f'<meta name="twitter:title" content="{escaped_title}" />',
         f'<meta name="twitter:description" content="{escaped_description}" />',
     ]
-    image_reference = image_url or logo_url
+    image_reference = _optimize_og_image(image_url, origin) if image_url else None
+    image_reference = image_reference or _optimize_og_image(logo_url, origin) if logo_url else image_reference
     if image_reference:
         escaped_image = html.escape(image_reference)
         meta_lines.append(f'<meta property="og:image" content="{escaped_image}" />')
