@@ -43,13 +43,13 @@
               <div class="favicon-wrap">
                 <div class="favicon-head">
                   <label class="fl">{{ viewCopy.theme.faviconLabel }}</label>
-                  <span v-if="!hasActiveCustomDomain" class="fh">{{ viewCopy.theme.faviconDisabledHint }}</span>
                 </div>
-                <div class="favicon-upload" :class="{ 'is-disabled': !hasActiveCustomDomain }">
+                <div class="favicon-upload">
                   <ImageUploadField
                     v-model="form.favicon_url"
                     :label="''"
                     :enable-crop="true"
+                    :crop-aspect="1"
                     :editor-title="viewCopy.theme.faviconEditorTitle"
                   />
                 </div>
@@ -608,9 +608,6 @@ const syncFormWithCurrent = () => {
 const refreshCustomDomainAvailability = async () => {
   const host = await agencyStore.loadPrimaryDomain(agencyStore.currentAgencyId);
   hasActiveCustomDomain.value = !!host;
-  if (!hasActiveCustomDomain.value) {
-    form.favicon_url = "";
-  }
 };
 
 const buildFormSnapshot = () =>
@@ -752,7 +749,7 @@ const save = async () => {
     name: normalizedName,
     slug: normalizedSlug,
     logo_url: form.logo_url,
-    favicon_url: hasActiveCustomDomain.value ? form.favicon_url : null,
+    favicon_url: form.favicon_url || null,
     primary_color: form.primary_color,
     secondary_color: form.secondary_color,
     contact_email: sanitizeText(form.contact_email),
@@ -937,7 +934,7 @@ onBeforeUnmount(() => {
 :deep(.favicon-upload .space-y-2){gap:6px}
 :deep(.favicon-upload .max-h-\[320px\]){max-height:120px !important;min-height:96px !important}
 :deep(.favicon-upload .min-h-\[220px\]){min-height:96px !important}
-:deep(.favicon-upload img){max-height:96px !important;object-fit:contain}
+:deep(.favicon-upload .image-upload-preview){max-height:96px !important;object-fit:contain}
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:all .15s;white-space:nowrap;line-height:1.3}
 .btn-p{background:var(--verde);color:#0F1F14}
 .btn-p:hover{background:var(--verde-d)}
