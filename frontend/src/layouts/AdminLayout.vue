@@ -1097,7 +1097,6 @@ const hasWhatsAppPlanAccess = computed(() => {
   const allowed = new Set(["scale", "test", "infinity"]);
   return allowed.has(trial) || allowed.has(base);
 });
-let inboxAccessPollTimer: ReturnType<typeof setInterval> | null = null;
 let inboxFloatingPollTimer: ReturnType<typeof setInterval> | null = null;
 let inboxFloatingHideTimer: ReturnType<typeof setTimeout> | null = null;
 let inboxWs: WebSocket | null = null;
@@ -2105,13 +2104,9 @@ onMounted(async () => {
   await loadInboxAccess();
   void pollInboxFloatingNotifications();
   connectInboxWs();
-  inboxAccessPollTimer = setInterval(() => {
-    void loadInboxAccess();
-  }, 10000);
   inboxFloatingPollTimer = setInterval(() => {
     if (!inboxWs) void pollInboxFloatingNotifications();
   }, 8000);
-  window.addEventListener("focus", loadInboxAccess);
   checkCookieConsent();
   scrollToTop();
 });
@@ -2127,10 +2122,6 @@ onBeforeUnmount(() => {
   if (hasWindow) {
     document.body.classList.remove(bodyDarkClass, bodyLightClass);
   }
-  if (inboxAccessPollTimer) {
-    clearInterval(inboxAccessPollTimer);
-    inboxAccessPollTimer = null;
-  }
   if (inboxFloatingPollTimer) {
     clearInterval(inboxFloatingPollTimer);
     inboxFloatingPollTimer = null;
@@ -2144,7 +2135,6 @@ onBeforeUnmount(() => {
     clearTimeout(inboxFloatingHideTimer);
     inboxFloatingHideTimer = null;
   }
-  window.removeEventListener("focus", loadInboxAccess);
 });
 
 watch(

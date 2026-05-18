@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.models.external_api_key import ExternalApiKey
-from app.services.api_key_crypto import decrypt_api_key
+from app.services.api_key_crypto import decrypt_api_key_with_migration_hint, encrypt_api_key, extract_api_key_last4
 
 
 @dataclass(slots=True)
@@ -51,10 +51,15 @@ class FlightProviderKeyManager:
                 row.last_error = None
                 dirty_rows.append(row)
             try:
+                plain_key, needs_migration = decrypt_api_key_with_migration_hint(row.api_key_encrypted)
+                if needs_migration:
+                    row.api_key_encrypted = encrypt_api_key(plain_key)
+                    row.api_key_last4 = extract_api_key_last4(plain_key)
+                    dirty_rows.append(row)
                 keys.append(
                     ProviderKey(
                         record=row,
-                        plain_key=decrypt_api_key(row.api_key_encrypted),
+                        plain_key=plain_key,
                         provider=provider,
                         marketplace=(row.marketplace or None),
                         api_host=(row.api_host or None),
