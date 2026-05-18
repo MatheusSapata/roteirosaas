@@ -100,6 +100,9 @@ class Settings(BaseSettings):
     aerodatabox_timeout_seconds: int = Field(20, alias="AERODATABOX_TIMEOUT_SECONDS")
     flight_lookup_cache_ttl_minutes: int = Field(720, alias="FLIGHT_LOOKUP_CACHE_TTL_MINUTES")
     flight_api_keys_encryption_key: str | None = Field(None, alias="FLIGHT_API_KEYS_ENCRYPTION_KEY")
+    flight_api_keys_decryption_keys: list[str] = Field(
+        default_factory=list, alias="FLIGHT_API_KEYS_DECRYPTION_KEYS"
+    )
     redis_url: str = Field("redis://redis:6379/0", alias="REDIS_URL")
     evolution_api_url: str = Field("http://evolution-api:8080", alias="EVOLUTION_API_URL")
     evolution_api_key: str | None = Field(None, alias="EVOLUTION_API_KEY")
@@ -108,7 +111,12 @@ class Settings(BaseSettings):
     evolution_test_instance_name: str = Field("test-instance", alias="EVOLUTION_TEST_INSTANCE_NAME")
     evolution_pairing_number: str | None = Field(None, alias="EVOLUTION_PAIRING_NUMBER")
 
-    @field_validator("platform_domains", "forbidden_custom_hosts", mode="before")
+    @field_validator(
+        "platform_domains",
+        "forbidden_custom_hosts",
+        "flight_api_keys_decryption_keys",
+        mode="before",
+    )
     @classmethod
     def split_csv_list(cls, value):
         if not value:

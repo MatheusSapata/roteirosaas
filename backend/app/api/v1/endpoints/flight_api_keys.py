@@ -20,6 +20,7 @@ from app.services.airlabs_client import AirlabsClient, AirlabsClientError, Airla
 from app.services.api_key_crypto import (
     ApiKeyDecryptionError,
     decrypt_api_key,
+    decrypt_api_key_with_migration_hint,
     encrypt_api_key,
     extract_api_key_last4,
     mask_api_key,
@@ -278,13 +279,18 @@ def test_flight_api_key(
 ) -> dict[str, Any]:
     record = get_key_or_404(db, key_id)
     try:
-        plain_key = decrypt_api_key(record.api_key_encrypted)
+        plain_key, needs_migration = decrypt_api_key_with_migration_hint(record.api_key_encrypted)
     except ApiKeyDecryptionError as exc:
         record.status = "error"
         record.last_error = str(exc)
         db.add(record)
         db.commit()
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+    if needs_migration:
+        record.api_key_encrypted = encrypt_api_key(plain_key)
+        record.api_key_last4 = extract_api_key_last4(plain_key)
+        db.add(record)
+        db.commit()
 
     if record.provider == "aerodatabox":
         client = AeroDataBoxClient()
