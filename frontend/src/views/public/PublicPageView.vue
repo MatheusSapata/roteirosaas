@@ -13,19 +13,21 @@
     </p>
   </div>
   <div v-else class="public-page min-h-screen overflow-x-hidden">
-    <template v-for="(section, idx) in sections" :key="idx">
-      <PublicHeroSection
-        v-if="section?.enabled && section.type === 'hero'"
-        :section="section"
-        v-bind="sectionExtraProps(section, idx)"
-      />
-      <component
-        v-else-if="section?.enabled"
-        :is="publicComponents[section.type]"
-        :section="section"
-        v-bind="sectionExtraProps(section, idx)"
-      />
-    </template>
+    <div class="public-page-scale">
+      <template v-for="(section, idx) in sections" :key="idx">
+        <PublicHeroSection
+          v-if="section?.enabled && section.type === 'hero'"
+          :section="section"
+          v-bind="sectionExtraProps(section, idx)"
+        />
+        <component
+          v-else-if="section?.enabled"
+          :is="publicComponents[section.type]"
+          :section="section"
+          v-bind="sectionExtraProps(section, idx)"
+        />
+      </template>
+    </div>
   </div>
   <PublicLeadCaptureModal
     v-if="leadCaptureForm"
@@ -552,6 +554,13 @@ function setupCtaTracking(pixels: { type: string; value: string }[]) {
 <style scoped>
 .public-page {
   overflow-x: hidden;
+}
+
+.public-page-scale {
+  transform: scale(0.9);
+  transform-origin: top center;
+  width: 111.111111%;
+  margin-left: -5.555555%;
 }
 
 .public-page :deep(section) {

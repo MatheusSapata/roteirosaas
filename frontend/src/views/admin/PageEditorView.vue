@@ -288,25 +288,25 @@
           <aside ref="settingsSidebarRef" class="space-y-3">
             <button type="button" class="editor-side-tab" :class="{ active: activeSettingsTab==='general' }" @click="selectSettingsTab('general')">
               <span class="editor-side-tab-step" aria-hidden="true">
-                <svg viewBox="0 0 24 24"><path d="M12 15.5A3.5 3.5 0 1 0 12 8.5a3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a1.8 1.8 0 0 1-2.5 2.5l-.1-.1a1 1 0 0 0-1.1-.2a1 1 0 0 0-.6.9V20a1.8 1.8 0 0 1-3.6 0v-.2a1 1 0 0 0-.6-.9a1 1 0 0 0-1.1.2l-.1.1a1.8 1.8 0 1 1-2.5-2.5l.1-.1a1 1 0 0 0 .2-1.1a1 1 0 0 0-.9-.6H4a1.8 1.8 0 0 1 0-3.6h.2a1 1 0 0 0 .9-.6a1 1 0 0 0-.2-1.1l-.1-.1a1.8 1.8 0 1 1 2.5-2.5l.1.1a1 1 0 0 0 1.1.2a1 1 0 0 0 .6-.9V4a1.8 1.8 0 0 1 3.6 0v.2a1 1 0 0 0 .6.9a1 1 0 0 0 1.1-.2l.1-.1a1.8 1.8 0 0 1 2.5 2.5l-.1.1a1 1 0 0 0-.2 1.1a1 1 0 0 0 .9.6h.2a1.8 1.8 0 0 1 0 3.6h-.2a1 1 0 0 0-.9.6Z"/></svg>
+                <svg viewBox="0 0 24 24" class="editor-settings-gear" xmlns="http://www.w3.org/2000/svg"><path d="M0 0h24v24H0z" fill="none" /><g fill="currentColor" fill-rule="evenodd" clip-rule="evenodd"><path d="M12 8.25a3.75 3.75 0 1 0 0 7.5a3.75 3.75 0 0 0 0-7.5M9.75 12a2.25 2.25 0 1 1 4.5 0a2.25 2.25 0 0 1-4.5 0" /><path d="M11.975 1.25c-.445 0-.816 0-1.12.02a2.8 2.8 0 0 0-.907.19a2.75 2.75 0 0 0-1.489 1.488c-.145.35-.184.72-.2 1.122a.87.87 0 0 1-.415.731a.87.87 0 0 1-.841-.005c-.356-.188-.696-.339-1.072-.389a2.75 2.75 0 0 0-2.033.545a2.8 2.8 0 0 0-.617.691c-.17.254-.356.575-.578.96l-.025.044c-.223.385-.408.706-.542.98c-.14.286-.25.568-.29.88a2.75 2.75 0 0 0 .544 2.033c.231.301.532.52.872.734a.87.87 0 0 1 .426.726a.87.87 0 0 1-.426.726c-.34.214-.64.433-.872.734a2.75 2.75 0 0 0-.545 2.033c.041.312.15.594.29.88c.135.274.32.595.543.98l.025.044c.222.385.408.706.578.96c.177.263.367.5.617.69a2.75 2.75 0 0 0 2.033.546c.376-.05.716-.2 1.072-.389a.87.87 0 0 1 .84-.005a.86.86 0 0 1 .417.731c.015.402.054.772.2 1.122a2.75 2.75 0 0 0 1.488 1.489c.29.12.59.167.907.188c.304.021.675.021 1.12.021h.05c.445 0 .816 0 1.12-.02c.318-.022.617-.069.907-.19a2.75 2.75 0 0 0 1.489-1.488c.145-.35.184-.72.2-1.122a.87.87 0 0 1 .415-.732a.87.87 0 0 1 .841.006c.356.188.696.339 1.072.388a2.75 2.75 0 0 0 2.033-.544c.25-.192.44-.428.617-.691c.17-.254.356-.575.578-.96l.025-.044c.223-.385.408-.706.542-.98c.14-.286.25-.569.29-.88a2.75 2.75 0 0 0-.544-2.033c-.231-.301-.532-.52-.872-.734a.87.87 0 0 1-.426-.726c0-.278.152-.554.426-.726c.34-.214.64-.433.872-.734a2.75 2.75 0 0 0 .545-2.033a2.8 2.8 0 0 0-.29-.88a18 18 0 0 0-.543-.98l-.025-.044a18 18 0 0 0-.578-.96a2.8 2.8 0 0 0-.617-.69a2.75 2.75 0 0 0-2.033-.546c-.376.05-.716.2-1.072.389a.87.87 0 0 1-.84.005a.87.87 0 0 1-.417-.731c-.015-.402-.054-.772-.2-1.122a2.75 2.75 0 0 0-1.488-1.489c-.29-.12-.59-.167-.907-.188c-.304-.021-.675-.021-1.12-.021zm-1.453 1.595c.077-.032.194-.061.435-.078c.247-.017.567-.017 1.043-.017s.796 0 1.043.017c.241.017.358.046.435.078c.307.127.55.37.677.677c.04.096.073.247.086.604c.03.792.439 1.555 1.165 1.974s1.591.392 2.292.022c.316-.167.463-.214.567-.227a1.25 1.25 0 0 1 .924.247c.066.051.15.138.285.338c.139.206.299.483.537.895s.397.69.506.912c.107.217.14.333.15.416a1.25 1.25 0 0 1-.247.924c-.064.083-.178.187-.48.377c-.672.422-1.128 1.158-1.128 1.996s.456 1.574 1.128 1.996c.302.19.416.294.48.377c.202.263.29.595.247.924c-.01.083-.044.2-.15.416c-.109.223-.268.5-.506.912s-.399.689-.537.895c-.135.2-.219.287-.285.338a1.25 1.25 0 0 1-.924.247c-.104-.013-.25-.06-.567-.227c-.7-.37-1.566-.398-2.292.021s-1.135 1.183-1.165 1.975c-.013.357-.046.508-.086.604a1.25 1.25 0 0 1-.677.677c-.077.032-.194.061-.435.078c-.247.017-.567.017-1.043.017s-.796 0-1.043-.017c-.241-.017-.358-.046-.435-.078a1.25 1.25 0 0 1-.677-.677c-.04-.096-.073-.247-.086-.604c-.03-.792-.439-1.555-1.165-1.974s-1.591-.392-2.292-.022c-.316.167-.463.214-.567.227a1.25 1.25 0 0 1-.924-.247c-.066-.051-.15-.138-.285-.338a17 17 0 0 1-.537-.895c-.238-.412-.397-.69-.506-.912c-.107-.217-.14-.333-.15-.416a1.25 1.25 0 0 1 .247-.924c.064-.083.178-.187.48-.377c.672-.422 1.128-1.158 1.128-1.996s-.456-1.574-1.128-1.996c-.302-.19-.416-.294-.48-.377a1.25 1.25 0 0 1-.247-.924c.01-.083.044-.2.15-.416c.109-.223.268-.5.506-.912s.399-.689.537-.895c.135-.2.219-.287.285-.338a1.25 1.25 0 0 1 .924-.247c.104.013.25.06.567.227c.7.37 1.566.398 2.292-.022c.726-.419 1.135-1.182 1.165-1.974c.013-.357.046-.508.086-.604c.127-.307.37-.55.677-.677" /></g></svg>
               </span>
               <span>CONFIGURAÇÕES BÁSICAS</span>
             </button>
             <button type="button" class="editor-side-tab" :class="{ active: activeSettingsTab==='colors' }" @click="selectSettingsTab('colors')">
               <span class="editor-side-tab-step" aria-hidden="true">
-                <svg viewBox="0 0 24 24"><path d="M14 4l6 6"/><path d="M5 19l6-1l9-9a2.1 2.1 0 1 0-3-3l-9 9z"/><path d="M8 21h8"/></svg>
+                <svg viewBox="0 0 24 24" class="editor-colors-palette" xmlns="http://www.w3.org/2000/svg"><path d="M0 0h24v24H0z" fill="none" /><path fill="currentColor" d="M12 22C6.49 22 2 17.51 2 12S6.49 2 12 2s10 4.04 10 9c0 3.31-2.69 6-6 6h-1.77c-.28 0-.5.22-.5.5c0 .12.05.23.13.33c.41.47.64 1.06.64 1.67A2.5 2.5 0 0 1 12 22m0-18c-4.41 0-8 3.59-8 8s3.59 8 8 8c.28 0 .5-.22.5-.5a.54.54 0 0 0-.14-.35c-.41-.46-.63-1.05-.63-1.65a2.5 2.5 0 0 1 2.5-2.5H16c2.21 0 4-1.79 4-4c0-3.86-3.59-7-8-7" /><circle cx="6.5" cy="11.5" r="1.5" fill="currentColor" /><circle cx="9.5" cy="7.5" r="1.5" fill="currentColor" /><circle cx="14.5" cy="7.5" r="1.5" fill="currentColor" /><circle cx="17.5" cy="11.5" r="1.5" fill="currentColor" /></svg>
               </span>
               <span>CORES DO FUNDO E DESTAQUE</span>
             </button>
             <button type="button" class="editor-side-tab" :class="{ active: activeSettingsTab==='pixels' }" @click="selectSettingsTab('pixels')">
               <span class="editor-side-tab-step" aria-hidden="true">
-                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a15 15 0 0 1 0 18"/><path d="M12 3a15 15 0 0 0 0 18"/></svg>
+                <svg viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M18.364 19.364a9 9 0 1 0-12.728 0"/><path d="M15.536 16.536a5 5 0 1 0-7.072 0"/><path d="M11 13a1 1 0 1 0 2 0a1 1 0 1 0-2 0"/></g></svg>
               </span>
               <span>RASTREAMENTO</span>
             </button>
             <button type="button" class="editor-side-tab" :class="{ active: activeSettingsTab==='capture' }" @click="selectSettingsTab('capture')">
               <span class="editor-side-tab-step" aria-hidden="true">
-                <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20a8 8 0 0 1 16 0"/></svg>
+                <svg viewBox="0 0 24 24" class="editor-capture-leads"><path fill="currentColor" d="m17 21l1.8 1.77c.5.5 1.2.1 1.2-.49V18l2.8-3.4A1 1 0 0 0 22 13h-7c-.8 0-1.3 1-.8 1.6L17 18zm-2-1H2v-3c0-2.7 5.3-4 8-4c.6 0 1.3.1 2.1.2c-.2.6-.1 1.3.1 1.9c-.7-.1-1.5-.2-2.2-.2c-3 0-6.1 1.5-6.1 2.1v1.1h10.6l.5.6zM10 4C7.8 4 6 5.8 6 8s1.8 4 4 4s4-1.8 4-4s-1.8-4-4-4m0 6c-1.1 0-2-.9-2-2s.9-2 2-2s2 .9 2 2s-.9 2-2 2"/></svg>
               </span>
               <span>CAPTAÇÃO DE LEADS</span>
             </button>
@@ -605,7 +605,7 @@
             :class="previewDevice === 'desktop' ? 'bg-brand text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'"
             @click="previewDevice = 'desktop'"
           >
-            <span aria-hidden="true">🖥️</span> {{ viewCopy.preview.desktopLabel }}
+            <span aria-hidden="true">???</span> {{ viewCopy.preview.desktopLabel }}
           </button>
           <button
             type="button"
@@ -613,7 +613,7 @@
             :class="previewDevice === 'mobile' ? 'bg-brand text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'"
             @click="previewDevice = 'mobile'"
           >
-            <span aria-hidden="true">📱</span> {{ viewCopy.preview.mobileLabel }}
+            <span aria-hidden="true">??</span> {{ viewCopy.preview.mobileLabel }}
           </button>
         </div>
       </div>
@@ -2605,10 +2605,10 @@ if (type === "reasons") {
     title: "Por que escolher a nossa agência?",
     subtitle: "Benefícios claros para ajudar na conversão",
     items: [
-      { icon: "💰", title: "Economize dinheiro", description: "Aproveite negociações especiais e otimize seu orçamento." },
-      { icon: "🧭", title: "Mais liberdade", description: "Planeje quando quiser com apoio de especialistas locais." },
-      { icon: "🤝", title: "Apoio dedicado", description: "Suporte próximo antes, durante e depois da viagem." },
-      { icon: "✨", title: "Experiência única", description: "Curadoria de passeios e hospedagens memoráveis." }
+      { icon: "??", title: "Economize dinheiro", description: "Aproveite negociações especiais e otimize seu orçamento." },
+      { icon: "??", title: "Mais liberdade", description: "Planeje quando quiser com apoio de especialistas locais." },
+      { icon: "??", title: "Apoio dedicado", description: "Suporte próximo antes, durante e depois da viagem." },
+      { icon: "?", title: "Experiência única", description: "Curadoria de passeios e hospedagens memoráveis." }
     ],
     enableAnimation: true,
     animationDuration: 1000,
@@ -3375,6 +3375,28 @@ onMounted(async () => {
   stroke-linecap:round;
   stroke-linejoin:round;
 }
+.editor-side-tab-step .editor-settings-gear{
+  fill:currentColor;
+  stroke:none;
+  transform: scale(1.12);
+  transform-origin: center;
+}
+
+.editor-side-tab-step .editor-colors-palette{
+  fill:currentColor;
+  stroke:none;
+}
+.editor-side-tab-step .editor-colors-palette path,
+.editor-side-tab-step .editor-colors-palette circle{
+  stroke:none;
+}
+.editor-side-tab-step .editor-capture-leads{
+  fill:currentColor;
+  stroke:none;
+}
+.editor-side-tab-step .editor-capture-leads path{
+  stroke:none;
+}
 
 .editor-side-tab.active {
   background: #3dd463;
@@ -3765,3 +3787,12 @@ onMounted(async () => {
 .overlay-label {
   color: #ffffff !important;
 }
+
+
+
+
+
+
+
+
+

@@ -637,6 +637,9 @@ const longLayoverBadgeClass = computed(() =>
     : "rounded-full border border-amber-300/35 bg-amber-500/18 px-2 py-0.5 text-[11px] font-semibold text-amber-100"
 );
 
+const sortedJourneySegments = (journey: FlightSectionJourney): FlightSectionSegment[] =>
+  [...(journey.segments || [])].sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0));
+
 const visibleJourneys = computed(() => {
   const journeys = (props.section.journeys || []).filter(journey => journey.is_enabled !== false);
   return journeys
@@ -645,6 +648,7 @@ const visibleJourneys = computed(() => {
       if (journey.direction === "inbound") return props.section.showInbound !== false;
       return true;
     })
+    .filter(journey => sortedJourneySegments(journey).length > 0)
     .sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0));
 });
 
@@ -703,8 +707,7 @@ const segmentMiddleInnerClass = computed(() =>
     : "mx-auto flex max-w-[320px] flex-col items-center gap-2 text-center"
 );
 
-const segmentsFor = (journey: FlightSectionJourney): FlightSectionSegment[] =>
-  [...(journey.segments || [])].sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0));
+const segmentsFor = (journey: FlightSectionJourney): FlightSectionSegment[] => sortedJourneySegments(journey);
 
 const firstSegment = (journey: FlightSectionJourney) => segmentsFor(journey)[0] || null;
 

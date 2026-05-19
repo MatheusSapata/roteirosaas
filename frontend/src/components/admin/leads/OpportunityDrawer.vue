@@ -68,7 +68,28 @@
                     </div>
                   </div>
                   <span class="opp-status" :class="opportunityStatusBadgeClass">{{ opportunityStatusLabel }}</span>
-                  <span class="opp-value">Valor: <strong>{{ currencyLabel(details?.estimatedValueCents ?? 0) }}</strong></span>
+                  <span class="opp-value">
+                    Valor:
+                    <template v-if="!valueEditOpen">
+                      <strong>{{ currencyLabel(details?.estimatedValueCents ?? 0) }}</strong>
+                      <button type="button" class="opp-value-edit-btn" @click="openInlineValueEditor" title="Editar valor">
+                        <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4z"/></svg>
+                      </button>
+                    </template>
+                    <template v-else>
+                      <input
+                        v-model="valueEditDraft"
+                        type="text"
+                        class="opp-value-input"
+                        :disabled="valueSaving"
+                        @input="formatInlineValueDraft"
+                        @keydown.enter.prevent="saveInlineValue"
+                        @keydown.esc.prevent="cancelInlineValue"
+                      />
+                      <button type="button" class="opp-value-action-btn ok" :disabled="valueSaving" @click="saveInlineValue">Salvar</button>
+                      <button type="button" class="opp-value-action-btn" :disabled="valueSaving" @click="cancelInlineValue">Cancelar</button>
+                    </template>
+                  </span>
                   <div class="opp-hl-wrap">
                     <button
                       type="button"
@@ -223,6 +244,7 @@
                         <svg v-else-if="historyKind(item) === 'won'" viewBox="0 0 24 24"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
                         <svg v-else-if="historyKind(item) === 'lost'" viewBox="0 0 24 24"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/><path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/></svg>
                         <svg v-else-if="historyKind(item) === 'stage'" viewBox="0 0 24 24"><path d="M7 7h11"/><path d="M15 4l3 3-3 3"/><path d="M17 17H6"/><path d="M9 14l-3 3 3 3"/></svg>
+                        <svg v-else-if="historyKind(item) === 'value'" viewBox="0 0 24 24"><path d="M12 2v20"/><path d="M17 6H9.5a3.5 3.5 0 0 0 0 7H14.5a3.5 3.5 0 0 1 0 7H7"/></svg>
                         <svg v-else viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                       </div>
                       <div class="opp-tl-line"></div>
@@ -294,6 +316,9 @@ const finalizeEditorOpen = ref(false);
 const finalizeNote = ref("");
 const savingFinalize = ref(false);
 const stageMenuOpen = ref(false);
+const valueEditOpen = ref(false);
+const valueSaving = ref(false);
+const valueEditDraft = ref("");
 const linkMode = ref<null | "search" | "create">(null);
 const clientSearch = ref("");
 const clientResults = ref<ClientSummary[]>([]);
@@ -393,13 +418,20 @@ const historyItems = computed(() => {
     const normalized = content.toLowerCase();
     const isOutcomeEvent = normalized.startsWith("status da oportunidade alterado:");
     const isStageEvent = normalized.startsWith("etapa alterada:");
+    const isValueEvent = normalized.startsWith("valor da oportunidade alterado:");
     let outcomeTitle = "Status alterado";
     if (isOutcomeEvent) {
       if (normalized.includes("-> ganha")) outcomeTitle = "Oportunidade ganha";
       else if (normalized.includes("-> perdida")) outcomeTitle = "Oportunidade perdida";
       else if (normalized.includes("-> aberta")) outcomeTitle = "Oportunidade reaberta";
     }
-    const eventTitle = isOutcomeEvent ? outcomeTitle : isStageEvent ? "Etapa alterada" : "Nota adicionada";
+    const eventTitle = isOutcomeEvent
+      ? outcomeTitle
+      : isStageEvent
+        ? "Etapa alterada"
+        : isValueEvent
+          ? "Valor alterado"
+          : "Nota adicionada";
     items.push({
       key: `note-${note.id}-${note.created_at}`,
       title: eventTitle,
@@ -481,6 +513,47 @@ const cancelNoteEditor = () => {
 const cancelFinalizeEditor = () => {
   finalizeEditorOpen.value = false;
   finalizeNote.value = "";
+};
+
+const openInlineValueEditor = () => {
+  valueEditOpen.value = true;
+  valueEditDraft.value = centsToInput(details.value?.estimatedValueCents);
+};
+
+const cancelInlineValue = () => {
+  valueEditOpen.value = false;
+  valueSaving.value = false;
+  valueEditDraft.value = centsToInput(details.value?.estimatedValueCents);
+};
+
+const formatInlineValueDraft = () => {
+  const cents = inputToCents(valueEditDraft.value);
+  valueEditDraft.value = centsToInput(cents);
+};
+
+const saveInlineValue = async () => {
+  if (!props.contactId || valueSaving.value) return;
+  valueSaving.value = true;
+  try {
+    const previousCents = Number(details.value?.estimatedValueCents || 0);
+    const cents = inputToCents(valueEditDraft.value);
+    if (previousCents === cents) {
+      valueEditOpen.value = false;
+      return;
+    }
+    await leadStore.updateOpportunity(props.contactId, {
+      estimatedValueCents: cents
+    });
+    const transitionText = `Valor da oportunidade alterado: ${currencyLabel(previousCents)} -> ${currencyLabel(cents)}`;
+    await leadStore.addOpportunityNote(props.contactId, transitionText);
+    await leadStore.fetchOpportunityDetails(props.contactId);
+    form.estimatedValue = centsToInput(cents);
+    valueEditOpen.value = false;
+  } catch (error) {
+    console.error(error);
+  } finally {
+    valueSaving.value = false;
+  }
 };
 
 const selectStage = (statusId: string | number | null) => {
@@ -716,7 +789,7 @@ watch(clientSearch, async value => {
 
 function inputToCents(value: string) {
   const digits = value.replace(/\D/g, "");
-  if (!digits) return null;
+  if (!digits) return 0;
   return Number(digits);
 }
 
@@ -769,6 +842,7 @@ function historyKind(item: { title: string }) {
   if (title.includes("oportunidade ganha")) return "won";
   if (title.includes("oportunidade perdida")) return "lost";
   if (title.includes("etapa alterada")) return "stage";
+  if (title.includes("valor alterado")) return "value";
   return "update";
 }
 </script>
@@ -918,6 +992,15 @@ function historyKind(item: { title: string }) {
 .opp-status.border-sky-200{background:rgba(245,158,11,.07);color:#92400E;border-color:rgba(245,158,11,.2)}
 .opp-value{font-size:14px;color:#8a9e8a}
 .opp-value strong{color:#2f4c35}
+.opp-value{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
+.opp-value-edit-btn{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border:1px solid #d6e0d6;border-radius:7px;background:#fff;color:#4d6a52}
+.opp-value-edit-btn:hover{background:#f3f7f3}
+.opp-value-edit-btn svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.opp-value-input{height:28px;min-width:108px;padding:0 8px;border:1px solid #d6e0d6;border-radius:8px;background:#fff;color:#213226;font-size:12px;font-weight:600}
+.opp-value-input:focus{outline:none;border-color:rgba(61,204,95,.5);box-shadow:0 0 0 3px rgba(61,204,95,.12)}
+.opp-value-action-btn{height:28px;padding:0 9px;border:1px solid #d6e0d6;border-radius:8px;background:#fff;color:#425f48;font-size:12px;font-weight:600}
+.opp-value-action-btn.ok{background:#3dcc5f;border-color:#32b852;color:#fff}
+.opp-value-action-btn:disabled{opacity:.65;cursor:not-allowed}
 .opp-hl-wrap{display:flex;align-items:center;gap:4px}
 .opp-hl-btn{width:32px;height:32px;border-radius:8px;border:1.5px solid #e4e9e4;background:#f5f7f5;display:flex;align-items:center;justify-content:center}
 .opp-hl-btn svg{width:14px;height:14px;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}

@@ -19,9 +19,9 @@
                 <p class="det-eyebrow">Cliente</p>
                 <h1 class="det-name">{{ client.name }}</h1>
                 <div class="det-meta">
-                  <span class="det-meta-item val"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.9.33 1.77.63 2.61a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.47-1.2a2 2 0 0 1 2.11-.45c.84.3 1.71.51 2.61.63A2 2 0 0 1 22 16.92z" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>{{ formatPhone(client.phone) || "Telefone nao informado" }}</span>
-                  <span class="det-meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 4h16a2 2 0 0 1 2 2v.01L12 13 2 6.01V6a2 2 0 0 1 2-2Z" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M22 8v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>{{ client.email || "E-mail nao informado" }}</span>
-                  <span class="det-meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 1 1 18 0Z" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="10" r="3" stroke-width="1.9"/></svg>{{ client.city || "Cidade nao informada" }}</span>
+                  <span class="det-meta-item val"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.9.33 1.77.63 2.61a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.47-1.2a2 2 0 0 1 2.11-.45c.84.3 1.71.51 2.61.63A2 2 0 0 1 22 16.92z" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>{{ formatPhone(client.phone) || "Telefone não informado" }}</span>
+                  <span class="det-meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 4h16a2 2 0 0 1 2 2v.01L12 13 2 6.01V6a2 2 0 0 1 2-2Z" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M22 8v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>{{ client.email || "E-mail não informado" }}</span>
+                  <span class="det-meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 1 1 18 0Z" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="10" r="3" stroke-width="1.9"/></svg>{{ client.city || "Cidade não informada" }}</span>
                   <span class="det-meta-item">Cliente desde <strong>{{ clientSinceLabel }}</strong></span>
                 </div>
               </div>
@@ -44,9 +44,9 @@
           <div class="ds"><span class="ds-icon ds-icon--violet"><svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M15 3v3h3"/></svg></span><p class="ds-lbl">Total de oportunidades</p><p class="ds-val">{{ client.opportunitiesCount }}</p></div>
           <div class="ds"><span class="ds-icon ds-icon--amber"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg></span><p class="ds-lbl">Abertas</p><p class="ds-val">{{ openOpportunitiesCount }}</p></div>
           <div class="ds"><span class="ds-icon ds-icon--blue"><svg viewBox="0 0 24 24"><path d="M12 2v20"/><path d="M17 6H9.5a3.5 3.5 0 0 0 0 7H14.5a3.5 3.5 0 0 1 0 7H6"/></svg></span><p class="ds-lbl">Valores em aberto</p><p class="ds-val">{{ formatCurrency(futureEstimatedValueCents) }}</p></div>
-          <div class="ds"><span class="ds-icon ds-icon--green"><svg viewBox="0 0 24 24"><path d="M4 14l5-5 4 4 7-7"/><path d="M15 6h5v5"/></svg></span><p class="ds-lbl">Valor ja ganho</p><p class="ds-val g">{{ formatCurrency(wonValueCents) }}</p></div>
+          <div class="ds"><span class="ds-icon ds-icon--green"><svg viewBox="0 0 24 24"><path d="M4 14l5-5 4 4 7-7"/><path d="M15 6h5v5"/></svg></span><p class="ds-lbl">Valor já ganho</p><p class="ds-val g">{{ formatCurrency(wonValueCents) }}</p></div>
           <div class="ds"><span class="ds-icon ds-icon--red"><svg viewBox="0 0 24 24"><path d="M4 10l5 5 4-4 7 7"/><path d="M15 18h5v-5"/></svg></span><p class="ds-lbl">Valor perdido</p><p class="ds-val r">{{ formatCurrency(lostValueCents) }}</p></div>
-          <div class="ds"><span class="ds-icon ds-icon--purple"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l2 2"/></svg></span><p class="ds-lbl">Ultima interacao</p><p class="ds-val ds-time">{{ formatDateTime(lastInteractionAt) }}</p></div>
+          <div class="ds"><span class="ds-icon ds-icon--purple"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l2 2"/></svg></span><p class="ds-lbl">Última interação</p><p class="ds-val ds-time">{{ formatDateTime(lastInteractionAt) }}</p></div>
         </div>
 
         <div class="det-tabs">
@@ -70,15 +70,15 @@
               <input v-model="editForm.state" type="text" maxlength="2" placeholder="UF" class="crm-input" />
               <input v-model="editForm.zipcode" type="text" placeholder="CEP" class="crm-input" />
               <input v-model="editForm.street" type="text" placeholder="Logradouro" class="crm-input full" />
-              <input v-model="editForm.number" type="text" placeholder="Numero" class="crm-input" />
+              <input v-model="editForm.number" type="text" placeholder="Número" class="crm-input" />
               <input v-model="editForm.complement" type="text" placeholder="Complemento" class="crm-input" />
               <input v-model="editForm.neighborhood" type="text" placeholder="Bairro" class="crm-input full" />
               <input v-model="editForm.birthdate" type="date" class="crm-input" />
-              <textarea v-model="editForm.notes" rows="4" class="crm-input full" placeholder="Observacoes"></textarea>
+              <textarea v-model="editForm.notes" rows="4" class="crm-input full" placeholder="Observações"></textarea>
             </div>
             <div class="det-actions-row">
               <button type="button" class="btn btn-o" @click="resetEditForm">Cancelar</button>
-              <button type="button" class="btn btn-p" @click="handleUpdateClient">Salvar alteracoes</button>
+              <button type="button" class="btn btn-p" @click="handleUpdateClient">Salvar alterações</button>
             </div>
           </section>
 
@@ -94,7 +94,7 @@
                 <option value="">Sem status</option>
                 <option v-for="status in statuses" :key="status.id" :value="String(status.id)">{{ status.name }}</option>
               </select>
-              <textarea v-model="opportunityForm.internalNotes" rows="4" class="crm-input full" placeholder="Observacao inicial"></textarea>
+              <textarea v-model="opportunityForm.internalNotes" rows="4" class="crm-input full" placeholder="Observação inicial"></textarea>
             </div>
             <div class="det-actions-row">
               <button type="button" class="btn btn-o" @click="newOpportunityOpen = false">Cancelar</button>

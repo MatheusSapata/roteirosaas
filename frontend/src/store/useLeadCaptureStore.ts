@@ -437,8 +437,27 @@ export const useLeadCaptureStore = defineStore("leadCapture", () => {
     clientDetailLoading.value = true;
     lastError.value = null;
     try {
+      if (!forms.value.length) {
+        try {
+          await fetchForms();
+        } catch {
+          // keep original labels from API when forms can't be loaded
+        }
+      }
       const res = await api.get<ClientDetail>(`/clients/${clientId}`);
-      clientDetail.value = res.data;
+      const formsById = new Map(forms.value.map(form => [String(form.id), form]));
+      const opportunities = (res.data.opportunities || []).map(opportunity => {
+        const form = formsById.get(String(opportunity.formId));
+        if (!form?.name?.trim()) return opportunity;
+        return {
+          ...opportunity,
+          formName: form.name.trim()
+        };
+      });
+      clientDetail.value = {
+        ...res.data,
+        opportunities
+      };
       return res.data;
     } catch (err) {
       console.error("Erro ao carregar cliente", err);
