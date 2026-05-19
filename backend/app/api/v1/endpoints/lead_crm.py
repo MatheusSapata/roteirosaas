@@ -285,6 +285,7 @@ def update_opportunity(
     previous_outcome = submission.close_outcome
     for key, value in data.items():
         setattr(submission, key, value)
+    submission.updated_at = datetime.utcnow()
     if "status_id" in data:
         next_status_name = (
             db.query(LeadStatus.name).filter(LeadStatus.id == submission.status_id).scalar()
@@ -389,6 +390,7 @@ def finalize_opportunity(
     previous_outcome = submission.close_outcome
     submission.close_outcome = payload.outcome
     submission.closed_at = datetime.utcnow()
+    submission.updated_at = datetime.utcnow()
     db.add(submission)
     db.flush()
     _append_outcome_change_note(
@@ -481,6 +483,8 @@ def create_opportunity_note(
         user_id=current_user.id,
         content=payload.content,
     )
+    submission.updated_at = datetime.utcnow()
+    db.add(submission)
     db.add(note)
     db.commit()
     db.refresh(note)

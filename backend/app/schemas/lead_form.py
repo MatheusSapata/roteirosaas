@@ -160,6 +160,8 @@ class LeadContactOut(BaseModel):
     close_outcome: Optional[str] = Field(None, alias="close_outcome")
     closed_at: Optional[datetime] = Field(None, alias="closed_at")
     created_at: Optional[datetime] = Field(None, alias="created_at")
+    updated_at: Optional[datetime] = Field(None, alias="updated_at")
+    sem_interacao_days: Optional[int] = Field(None, alias="sem_interacao_days")
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 

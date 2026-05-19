@@ -197,7 +197,8 @@ export const useLeadCaptureStore = defineStore("leadCapture", () => {
       client_id: updated.client?.id ?? null,
       close_outcome: updated.closeOutcome ?? null,
       closed_at: updated.closedAt ?? null,
-      created_at: updated.created_at
+      created_at: updated.created_at,
+      updated_at: updated.updated_at ?? null
     };
     const target = normalizeId(leadContact.id);
     const exists = contacts.value.some(contact => normalizeId(contact.id) === target);
@@ -291,26 +292,15 @@ export const useLeadCaptureStore = defineStore("leadCapture", () => {
 
   const setContactStatus = async (contactId: string | number, statusId: string | number | null) => {
     const targetId = normalizeId(contactId);
-    const previousContact = contacts.value.find(contact => normalizeId(contact.id) === targetId) || null;
-    const previousStatusLabel = (previousContact?.status_name || "").trim() || "Sem etapa";
     const res = await api.put<LeadContact>(`/lead-forms/contacts/${contactId}/status`, {
       statusId: statusId ?? null
     });
     replaceContact(res.data);
-    const nextStatusLabel = (res.data.status_name || "").trim() || "Sem etapa";
-    if (previousStatusLabel !== nextStatusLabel) {
-      const content = `Etapa alterada: ${previousStatusLabel} -> ${nextStatusLabel}`;
+    if (opportunityDetails.value && normalizeId(opportunityDetails.value.id) === targetId) {
       try {
-        await api.post(`/lead-forms/contacts/${contactId}/notes`, { content });
+        await fetchOpportunityDetails(contactId);
       } catch (error) {
-        console.error("Erro ao registrar historico de etapa", error);
-      }
-      if (opportunityDetails.value && normalizeId(opportunityDetails.value.id) === targetId) {
-        try {
-          await fetchOpportunityDetails(contactId);
-        } catch (error) {
-          console.error("Erro ao atualizar detalhes apos troca de etapa", error);
-        }
+        console.error("Erro ao atualizar detalhes apos troca de etapa", error);
       }
     }
     return res.data;
