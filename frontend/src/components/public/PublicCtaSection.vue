@@ -13,9 +13,9 @@
           <a
             :href="ctaHref"
             :data-scroll-target="ctaIsScroll ? 'true' : null"
-            target="_blank"
+            :target="ctaOpenInNewTab ? '_blank' : null"
             data-track-event="cta"
-            rel="noopener"
+            :rel="ctaOpenInNewTab ? 'noopener' : null"
             :data-track-type="ctaTrackType"
             class="inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl hero-cta-shimmer hero-cta-desktop-hover"
             :style="{ background: buttonColor, color: buttonTextColor }"
@@ -55,9 +55,9 @@
             v-if="ctaHasTarget"
             :href="ctaHref"
             :data-scroll-target="ctaIsScroll ? 'true' : null"
-            target="_blank"
+            :target="ctaOpenInNewTab ? '_blank' : null"
             data-track-event="cta"
-            rel="noopener"
+            :rel="ctaOpenInNewTab ? 'noopener' : null"
             :data-track-type="ctaTrackType"
             class="inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl hero-cta-shimmer hero-cta-desktop-hover"
             :style="{ background: buttonColor, color: buttonTextColor }"
@@ -87,9 +87,9 @@
             v-if="ctaHasTarget"
             :href="ctaHref"
             :data-scroll-target="ctaIsScroll ? 'true' : null"
-            target="_blank"
+            :target="ctaOpenInNewTab ? '_blank' : null"
             data-track-event="cta"
-            rel="noopener"
+            :rel="ctaOpenInNewTab ? 'noopener' : null"
             :data-track-type="ctaTrackType"
             class="inline-flex items-center justify-center rounded-lg px-6 py-3 text-sm font-semibold shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl hero-cta-shimmer hero-cta-desktop-hover"
             :style="{ background: buttonColor, color: buttonTextColor }"
@@ -119,9 +119,9 @@
               v-if="ctaHasTarget"
               :href="ctaHref"
               :data-scroll-target="ctaIsScroll ? 'true' : null"
-              target="_blank"
+              :target="ctaOpenInNewTab ? '_blank' : null"
               data-track-event="cta"
-              rel="noopener"
+              :rel="ctaOpenInNewTab ? 'noopener' : null"
               :data-track-type="ctaTrackType"
               class="inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl hero-cta-shimmer hero-cta-desktop-hover"
               :style="{ background: buttonColor, color: buttonTextColor }"
@@ -172,6 +172,7 @@ const ctaHasTarget = computed(() =>
   ctaMode.value === "section" ? !!props.section.ctaSectionId : !!props.section.link
 );
 const ctaIsScroll = computed(() => ctaMode.value === "section" && !!props.section.ctaSectionId);
+const ctaOpenInNewTab = computed(() => !ctaIsScroll.value && props.section.ctaOpenInNewTab !== false);
 const headingLabel = computed(() =>
   resolveHeadingLabel(props.section.headingLabel, headingDefaults.label, localize)
 );

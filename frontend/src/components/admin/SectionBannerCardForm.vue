@@ -131,6 +131,10 @@
             :placeholder="viewCopy.cta.linkPlaceholder"
             class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2"
           />
+          <label class="mt-2 flex items-center gap-2 text-xs font-medium text-slate-500">
+            <input type="checkbox" v-model="local.ctaOpenInNewTab" class="h-3.5 w-3.5" />
+            {{ viewCopy.cta.newTabLabel }}
+          </label>
         </div>
       </div>
       <div class="space-y-1" :class="local.ctaMode === 'section' ? 'md:max-w-xs' : ''">
@@ -201,6 +205,7 @@ const viewCopy = {
     textLabel: t({ pt: "Texto do botão", es: "Texto del botón" }),
     textPlaceholder: t({ pt: "Quero saber mais", es: "Quiero saber más" }),
     linkLabel: t({ pt: "Link", es: "Link" }),
+    newTabLabel: t({ pt: "Abrir em nova aba", es: "Abrir en nueva pestaña" }),
     linkPlaceholder: t({ pt: "https://wa.me/", es: "https://wa.me/" }),
     colorLabel: t({ pt: "Cor do botão", es: "Color del botón" }),
     colorHint: t({ pt: "Se preferir, use a cor global definida no topo do editor.", es: "Si prefieres, usa el color global definido arriba del editor." })
@@ -234,7 +239,8 @@ const local = reactive<BannerCardSection>({
   cardBorderColor: ensureColor(props.modelValue.cardBorderColor, "rgba(255,255,255,0.25)"),
   textColor: ensureColor(props.modelValue.textColor, "rgba(255,255,255,0.85)"),
   ctaMode: props.modelValue.ctaMode || "link",
-  ctaSectionId: props.modelValue.ctaSectionId || null
+  ctaSectionId: props.modelValue.ctaSectionId || null,
+  ctaOpenInNewTab: props.modelValue.ctaOpenInNewTab !== false
 });
 
 let syncing = false;
@@ -254,6 +260,7 @@ const syncFromProps = (value: BannerCardSection) => {
   local.textColor = ensureColor(value.textColor, local.textColor || "rgba(255,255,255,0.85)");
   local.ctaMode = value.ctaMode || "link";
   local.ctaSectionId = value.ctaSectionId || null;
+  local.ctaOpenInNewTab = value.ctaOpenInNewTab !== false;
   nextTick(() => {
     syncing = false;
   });

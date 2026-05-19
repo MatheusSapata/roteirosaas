@@ -39,6 +39,10 @@
           :placeholder="viewCopy.cta.linkPlaceholder"
           class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2"
         />
+        <label class="mt-2 flex items-center gap-2 text-xs font-medium text-slate-500">
+          <input type="checkbox" v-model="local.ctaOpenInNewTab" class="h-3.5 w-3.5" />
+          {{ viewCopy.cta.newTabLabel }}
+        </label>
         <p class="mt-1 text-xs text-slate-500">{{ viewCopy.cta.linkHelper }}</p>
       </div>
       <div class="md:col-span-2">
@@ -142,6 +146,10 @@
               :placeholder="viewCopy.items.cardLinkPlaceholder"
               class="w-full rounded-lg border border-slate-200 px-3 py-2"
             />
+            <label class="mt-2 flex items-center gap-2 text-[11px] font-medium text-slate-500">
+              <input type="checkbox" v-model="item.ctaOpenInNewTab" class="h-3.5 w-3.5" />
+              {{ viewCopy.items.cardOpenInNewTabLabel }}
+            </label>
           </div>
         </div>
 
@@ -194,6 +202,7 @@ const viewCopy = {
     helper: t({ pt: "Define o texto do botao exibido em cada card.", es: "Define el texto del boton mostrado en cada tarjeta." }),
     linkLabel: t({ pt: "Link do botao", es: "Link del boton" }),
     linkPlaceholder: t({ pt: "https://wa.me/...", es: "https://wa.me/..." }),
+    newTabLabel: t({ pt: "Abrir em nova aba", es: "Abrir en nueva pestaña" }),
     linkHelper: t({
       pt: "Por padrao usamos o WhatsApp configurado na agencia com uma mensagem automatica.",
       es: "Por defecto usamos el WhatsApp configurado en la agencia con un mensaje automatico."
@@ -221,6 +230,7 @@ const viewCopy = {
     cardCtaPlaceholder: t({ pt: "Quero saber mais", es: "Quiero saber mas" }),
     cardLinkLabel: t({ pt: "Link do botao (card)", es: "Link del boton (card)" }),
     cardLinkPlaceholder: t({ pt: "https://wa.me/...", es: "https://wa.me/..." }),
+    cardOpenInNewTabLabel: t({ pt: "Abrir em nova aba", es: "Abrir en nueva pestaña" }),
     highlightLabel: t({ pt: "Destacar este plano", es: "Destacar este plan" }),
     removeButton: t({ pt: "Remover plano", es: "Eliminar plan" }),
     addButton: t({ pt: "+ Adicionar plano", es: "+ Agregar plan" })
@@ -259,6 +269,7 @@ const cloneItems = (items?: PriceItem[]): PriceItem[] =>
         badge: item.badge || "",
         ctaLabel: item.ctaLabel || "",
         ctaLink: item.ctaLink || "",
+        ctaOpenInNewTab: item.ctaOpenInNewTab !== false,
         currency: (item.currency as CurrencyCode) || "BRL",
         highlight: !!item.highlight
       }))
@@ -274,6 +285,7 @@ const local = reactive<PricesSection>({
   description: props.modelValue.description || "",
   ctaLabel: props.modelValue.ctaLabel || defaultCtaLabel,
   ctaLink: props.modelValue.ctaLink || "",
+  ctaOpenInNewTab: props.modelValue.ctaOpenInNewTab !== false,
   items: cloneItems(props.modelValue.items)
 });
 
@@ -290,6 +302,7 @@ const syncFromProps = (value: PricesSection) => {
   local.description = value.description || "";
   local.ctaLabel = value.ctaLabel || defaultCtaLabel;
   local.ctaLink = value.ctaLink || "";
+  local.ctaOpenInNewTab = value.ctaOpenInNewTab !== false;
   local.items = cloneItems(value.items);
   nextTick(() => {
     syncing = false;
@@ -315,6 +328,7 @@ const addItem = () => {
     badge: "",
     ctaLabel: "",
     ctaLink: "",
+    ctaOpenInNewTab: true,
     currency: "BRL",
     highlight: false
   });
@@ -339,6 +353,7 @@ watch(
       badge: item.badge || "",
       ctaLabel: item.ctaLabel || "",
       ctaLink: normalizeLink(item.ctaLink),
+      ctaOpenInNewTab: item.ctaOpenInNewTab !== false,
       currency: (item.currency as CurrencyCode) || "BRL",
       highlight: !!item.highlight
     }))

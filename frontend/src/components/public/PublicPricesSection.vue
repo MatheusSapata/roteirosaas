@@ -71,8 +71,8 @@
               <a
                 v-if="itemLink(item)"
                 :href="itemLink(item)"
-                target="_blank"
-                rel="noopener"
+                :target="openItemInNewTab(item) ? '_blank' : null"
+                :rel="openItemInNewTab(item) ? 'noopener' : null"
                 data-track-event="cta"
                 :data-track-type="trackType(itemLink(item))"
                 :class="[
@@ -188,6 +188,7 @@ const sectionDescription = computed(() => {
   const value = localize(props.section.description);
   return value.trim();
 });
+const sectionOpenInNewTab = computed(() => props.section.ctaOpenInNewTab !== false);
 
 const sectionCtaLabel = computed(() => localize(props.section.ctaLabel));
 const highlightShadow = computed(() => toRgba(accent.value, 0.45));
@@ -307,6 +308,7 @@ const itemLink = (item: PriceItem) => {
   const specific = sanitizeLink(item.ctaLink);
   return specific || baseCtaLink.value;
 };
+const openItemInNewTab = (item: PriceItem) => item.ctaOpenInNewTab ?? sectionOpenInNewTab.value;
 
 const trackType = (link?: string) => (link && isWhatsappLink(link) ? "whatsapp" : "cta");
 
