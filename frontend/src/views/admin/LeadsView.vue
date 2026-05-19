@@ -459,10 +459,15 @@
               <td v-if="col.visible && col.key === 'chegouEm'" class="w-[100px] px-2 py-2.5 text-xs text-[#8A9E8A]">{{ formatDateDayMonthTime(contact.created_at) }}</td>
               <td v-if="col.visible && col.key === 'ultima'" class="w-[130px] px-2 py-2.5 text-center">
                 <div class="flex justify-center">
-                  <span class="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-medium" :class="idleChipClass(contact)">
+                  <span
+                    v-if="shouldShowIdleChip(contact)"
+                    class="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-medium"
+                    :class="idleChipClass(contact)"
+                  >
                     <span class="h-1.5 w-1.5 rounded-full" :class="idleDotClass(contact)"></span>
                     <span>{{ idleChipLabel(contact) }}</span>
                   </span>
+                  <span v-else class="text-xs text-slate-400">-</span>
                 </div>
               </td>
               </template>
@@ -3061,11 +3066,15 @@ const stageFilterOptions = computed(() => {
 });
 
 const idleDays = (contact: LeadContact) => {
-  const rawDays = Number((contact as LeadContact & { sem_interacao_days?: number }).sem_interacao_days);
-  if (Number.isFinite(rawDays) && rawDays >= 0) return Math.floor(rawDays);
-  const created = contact.created_at ? new Date(contact.created_at).getTime() : Date.now();
-  const diff = Math.max(0, Date.now() - created);
-  return Math.floor(diff / 86400000);
+  const backendDays = Number(contact.sem_interacao_days);
+  if (Number.isFinite(backendDays) && backendDays >= 0) return Math.floor(backendDays);
+  const lastInteraction = contact.updated_at || contact.created_at;
+  const baseTime = lastInteraction ? new Date(lastInteraction).getTime() : Number.NaN;
+  if (Number.isFinite(baseTime) && baseTime > 0) {
+    const diff = Math.max(0, Date.now() - baseTime);
+    return Math.floor(diff / 86400000);
+  }
+  return 0;
 };
 
 const idleBucketForDays = (days: number): "today" | "upto7" | "8to14" | "gt15" => {
@@ -3092,6 +3101,11 @@ const idleDotClass = (contact: LeadContact) => {
   if (days <= 7) return "bg-[#2EAD4C]";
   if (days <= 14) return "bg-[#F59E0B]";
   return "bg-[#EF4444]";
+};
+
+const shouldShowIdleChip = (contact: LeadContact) => {
+  const outcome = getOpportunityOutcome(contact);
+  return outcome !== "won" && outcome !== "lost";
 };
 
 const opportunityRowClass = (contact: LeadContact) => {

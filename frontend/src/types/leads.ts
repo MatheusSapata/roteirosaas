@@ -71,6 +71,8 @@ export interface LeadContact {
   close_outcome?: "won" | "lost" | null;
   closed_at?: string | null;
   created_at?: string;
+  updated_at?: string | null;
+  sem_interacao_days?: number | null;
 }
 
 export interface LeadContactGroup {

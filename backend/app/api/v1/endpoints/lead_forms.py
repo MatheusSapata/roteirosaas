@@ -1,5 +1,7 @@
 ﻿from __future__ import annotations
 
+from datetime import datetime
+
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
@@ -8,6 +10,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import get_current_active_user, get_db, require_agency_membership
 from app.models.crm_note import OpportunityNote
+from app.models.document import Document
 from app.models.lead_form import LeadForm, LeadFormSubmission, LeadStatus
 from app.models.user import User
 from app.services.team import get_user_effective_permissions
@@ -23,6 +26,17 @@ from app.schemas.lead_form import (
 )
 
 router = APIRouter()
+
+def _compute_idle_days_from_base(base: datetime | None) -> int:
+    if not base:
+        return 0
+    base_naive = base.replace(tzinfo=None) if getattr(base, "tzinfo", None) else base
+    now = datetime.utcnow()
+    return max(0, (now - base_naive).days)
+
+
+def _compute_idle_days(submission: LeadFormSubmission) -> int:
+    return _compute_idle_days_from_base(submission.updated_at or submission.created_at)
 
 
 def _append_stage_change_note(
@@ -72,7 +86,7 @@ def _serialize_form(form: LeadForm, total_leads: int = 0) -> LeadFormOut:
     return data
 
 
-def _serialize_contact(submission: LeadFormSubmission) -> LeadContactOut:
+def _serialize_contact(submission: LeadFormSubmission, sem_interacao_days: int | None = None) -> LeadContactOut:
     return LeadContactOut(
         id=submission.id,
         form_id=submission.form_id,
@@ -96,6 +110,8 @@ def _serialize_contact(submission: LeadFormSubmission) -> LeadContactOut:
         close_outcome=submission.close_outcome,
         closed_at=submission.closed_at,
         created_at=submission.created_at,
+        updated_at=submission.updated_at,
+        sem_interacao_days=sem_interacao_days if sem_interacao_days is not None else _compute_idle_days(submission),
     )
 
 
@@ -333,7 +349,48 @@ def list_lead_contacts(
     if form_id is not None:
         query = query.filter(LeadFormSubmission.form_id == form_id)
     submissions = query.order_by(LeadFormSubmission.created_at.desc()).all()
-    return [_serialize_contact(submission) for submission in submissions]
+    if not submissions:
+        return []
+
+    submission_ids = [submission.id for submission in submissions]
+    latest_note_rows = (
+        db.query(
+            OpportunityNote.opportunity_id,
+            func.max(OpportunityNote.created_at),
+        )
+        .filter(OpportunityNote.opportunity_id.in_(submission_ids), OpportunityNote.agency_id == agency_id)
+        .group_by(OpportunityNote.opportunity_id)
+        .all()
+    )
+    latest_document_rows = (
+        db.query(
+            Document.opportunity_id,
+            func.max(Document.created_at),
+        )
+        .filter(
+            Document.opportunity_id.in_(submission_ids),
+            Document.agency_id == agency_id,
+            Document.deleted_at.is_(None),
+        )
+        .group_by(Document.opportunity_id)
+        .all()
+    )
+
+    note_last_by_id = {opp_id: ts for opp_id, ts in latest_note_rows}
+    document_last_by_id = {opp_id: ts for opp_id, ts in latest_document_rows}
+
+    result: list[LeadContactOut] = []
+    for submission in submissions:
+        candidates = [
+            submission.updated_at,
+            submission.created_at,
+            note_last_by_id.get(submission.id),
+            document_last_by_id.get(submission.id),
+        ]
+        latest_activity = max((c for c in candidates if c is not None), default=None)
+        idle_days = _compute_idle_days_from_base(latest_activity)
+        result.append(_serialize_contact(submission, sem_interacao_days=idle_days))
+    return result
 
 
 @router.put("/contacts/{contact_id}/status", response_model=LeadContactOut)
@@ -359,6 +416,8 @@ def update_lead_contact_status(
         submission.status_id = status.id
         submission.status = status
         next_status_name = status.name
+
+    submission.updated_at = datetime.utcnow()
 
     _append_stage_change_note(
         db=db,
@@ -386,6 +445,9 @@ def delete_lead_contact(
     db.delete(submission)
     db.commit()
     return Response(status_code=204)
+
+
+
 
 
 
