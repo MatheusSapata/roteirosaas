@@ -2301,10 +2301,6 @@ const getContactFormLabel = (contact: LeadContact | null | undefined) => {
 
 
 
-  if (found?.title?.trim()) return found.title.trim();
-
-
-
   return DEFAULT_FORM_LABEL;
 
 
