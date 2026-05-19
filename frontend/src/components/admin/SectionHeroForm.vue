@@ -144,6 +144,10 @@
           <div v-if="local.ctaMode !== 'section'">
             <label class="text-sm font-semibold text-slate-600">{{ viewCopy.cta.linkLabel }}</label>
             <input v-model="local.ctaLink" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
+            <label class="mt-2 flex items-center gap-2 text-xs font-medium text-slate-500">
+              <input type="checkbox" v-model="local.ctaOpenInNewTab" class="h-3.5 w-3.5" />
+              {{ viewCopy.cta.newTabLabel }}
+            </label>
           </div>
         </div>
         <div class="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
@@ -214,6 +218,7 @@ const viewCopy = {
   cta: {
     textLabel: t({ pt: "Texto do CTA", es: "Texto del CTA" }),
     linkLabel: t({ pt: "Link do CTA", es: "Link del CTA" }),
+    newTabLabel: t({ pt: "Abrir em nova aba", es: "Abrir en nueva pestaña" }),
     colorHelper: t({
       pt: "A cor do botão segue a opção global “Cor de botões e destaques” configurada no topo do editor.",
       es: "El color del botón sigue la opción global “Color de botones y destacados” configurada en la parte superior del editor."
@@ -232,6 +237,7 @@ const local = reactive<HeroSection>({
   chips: props.modelValue.chips ? [...props.modelValue.chips] : [],
   ctaMode: props.modelValue.ctaMode || "link",
   ctaSectionId: props.modelValue.ctaSectionId || null,
+  ctaOpenInNewTab: props.modelValue.ctaOpenInNewTab !== false,
   enableAnimation: true,
   animationDuration: HERO_ANIMATION_DURATION,
   ctaShimmer: true
@@ -250,6 +256,7 @@ const syncFromProps = (value: HeroSection) => {
   if (!local.chips.length) local.chips = [""];
   local.ctaMode = value.ctaMode || "link";
   local.ctaSectionId = value.ctaSectionId || null;
+  local.ctaOpenInNewTab = value.ctaOpenInNewTab !== false;
   local.enableAnimation = true;
   local.animationDuration = HERO_ANIMATION_DURATION;
   local.ctaShimmer = true;

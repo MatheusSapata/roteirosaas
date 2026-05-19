@@ -19,8 +19,8 @@
               v-if="ctaHasTarget"
               :href="ctaHref"
               :data-scroll-target="ctaIsScroll ? 'true' : null"
-              target="_blank"
-              rel="noopener"
+              :target="ctaOpenInNewTab ? '_blank' : null"
+              :rel="ctaOpenInNewTab ? 'noopener' : null"
               data-track-event="cta"
               :data-track-type="ctaTrackType"
               class="inline-flex min-w-[180px] items-center justify-center rounded-full px-6 py-3 text-sm font-semibold shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl hero-cta-shimmer hero-cta-desktop-hover"
@@ -142,6 +142,7 @@ const ctaHasTarget = computed(() =>
 const ctaHref = computed(() =>
   ctaIsScroll.value ? `#${props.section.ctaSectionId}` : props.section.ctaLink || "#"
 );
+const ctaOpenInNewTab = computed(() => !ctaIsScroll.value && props.section.ctaOpenInNewTab !== false);
 const ctaColor = computed(() => props.section.ctaColor || "#41ce5f");
 const buttonTextColor = computed(() => getReadableTextColor(ctaColor.value));
 const ctaTrackType = computed(() =>

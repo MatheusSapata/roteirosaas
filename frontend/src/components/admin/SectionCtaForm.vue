@@ -24,6 +24,10 @@
       <div>
         <label class="text-sm font-semibold text-slate-600">{{ viewCopy.cta.link }}</label>
         <input v-model="local.link" :placeholder="viewCopy.cta.linkPlaceholder" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
+        <label class="mt-2 flex items-center gap-2 text-xs font-medium text-slate-500">
+          <input type="checkbox" v-model="local.ctaOpenInNewTab" class="h-3.5 w-3.5" />
+          {{ viewCopy.cta.newTabLabel }}
+        </label>
       </div>
     </div>
     <div class="rounded-lg border border-slate-200 p-3">
@@ -71,7 +75,8 @@ const viewCopy = {
     text: t({ pt: "Texto do botão", es: "Texto del botón" }),
     textPlaceholder: t({ pt: "Falar com especialista", es: "Hablar con un especialista" }),
     link: t({ pt: "Link", es: "Link" }),
-    linkPlaceholder: t({ pt: "https://wa.me/", es: "https://wa.me/" })
+    linkPlaceholder: t({ pt: "https://wa.me/", es: "https://wa.me/" }),
+    newTabLabel: t({ pt: "Abrir em nova aba", es: "Abrir en nueva pestaña" })
   },
   highlight: {
     label: t({ pt: "Destacar card", es: "Destacar tarjeta" }),
@@ -93,6 +98,7 @@ const local = reactive<CtaSection>({
   link: props.modelValue.link || "https://wa.me/",
   ctaMode: "link",
   ctaSectionId: null,
+  ctaOpenInNewTab: props.modelValue.ctaOpenInNewTab !== false,
   ctaText: props.modelValue.ctaText || viewCopy.cta.textPlaceholder,
   highlight: props.modelValue.highlight ?? false,
   highlightColor: props.modelValue.highlightColor || props.modelValue.ctaColor || "#0f172a"
@@ -106,6 +112,7 @@ const syncFromProps = (value: CtaSection) => {
   local.headingLabelStyle = value.headingLabelStyle || headingDefaults.style;
   local.ctaMode = "link";
   local.ctaSectionId = null;
+  local.ctaOpenInNewTab = value.ctaOpenInNewTab !== false;
   local.link = value.link || "https://wa.me/";
   local.highlight = value.highlight ?? false;
   local.highlightColor = value.highlightColor || local.highlightColor || "#0f172a";

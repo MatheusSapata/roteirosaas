@@ -24,8 +24,8 @@
               v-if="ctaEnabled && ctaHasTarget"
               :href="ctaHref"
               :data-scroll-target="ctaIsScroll ? 'true' : null"
-              target="_blank"
-              rel="noopener"
+              :target="ctaOpenInNewTab ? '_blank' : null"
+              :rel="ctaOpenInNewTab ? 'noopener' : null"
               data-track-event="cta"
               :data-track-type="ctaTrackType"
               :class="[
@@ -97,8 +97,8 @@
               v-if="ctaEnabled && ctaHasTarget"
               :href="ctaHref"
               :data-scroll-target="ctaIsScroll ? 'true' : null"
-              target="_blank"
-              rel="noopener"
+              :target="ctaOpenInNewTab ? '_blank' : null"
+              :rel="ctaOpenInNewTab ? 'noopener' : null"
               data-track-event="cta"
               :data-track-type="ctaTrackType"
               :class="[
@@ -289,6 +289,7 @@ const ctaHref = computed(() =>
   ctaMode.value === "section" && props.section.ctaSectionId ? `#${props.section.ctaSectionId}` : props.section.ctaLink || "#"
 );
 const ctaIsScroll = computed(() => ctaMode.value === "section" && !!props.section.ctaSectionId);
+const ctaOpenInNewTab = computed(() => !ctaIsScroll.value && props.section.ctaOpenInNewTab !== false);
 const ctaTrackType = computed(() =>
   ctaMode.value === "section" ? "cta" : isWhatsappLink(props.section.ctaLink || undefined) ? "whatsapp" : "cta"
 );

@@ -63,6 +63,10 @@
             :placeholder="viewCopy.cta.linkPlaceholder"
             class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2"
           />
+          <label class="mt-2 flex items-center gap-2 text-xs font-medium text-slate-500">
+            <input type="checkbox" v-model="local.ctaOpenInNewTab" class="h-3.5 w-3.5" />
+            {{ viewCopy.cta.newTabLabel }}
+          </label>
         </div>
       </div>
 
@@ -107,6 +111,7 @@ const viewCopy = {
     textLabel: t({ pt: "Texto do botão", es: "Texto del botón" }),
     textPlaceholder: t({ pt: "Assistir agora", es: "Ver ahora" }),
     linkLabel: t({ pt: "Link do botão", es: "Link del botón" }),
+    newTabLabel: t({ pt: "Abrir em nova aba", es: "Abrir en nueva pestaña" }),
     linkPlaceholder: t({ pt: "https://wa.me/", es: "https://wa.me/" }),
     colorInfo: t({
       pt: 'A cor do botão segue a configuração global "Cor de botões e destaques".',
@@ -128,7 +133,8 @@ const local = reactive<FeaturedVideoSection>({
   ctaLabel: props.modelValue.ctaLabel || viewCopy.cta.textPlaceholder,
   ctaLink: props.modelValue.ctaLink || viewCopy.cta.linkPlaceholder,
   ctaMode: props.modelValue.ctaMode || "link",
-  ctaSectionId: props.modelValue.ctaSectionId ?? null
+  ctaSectionId: props.modelValue.ctaSectionId ?? null,
+  ctaOpenInNewTab: props.modelValue.ctaOpenInNewTab !== false
 });
 
 let syncing = false;
@@ -145,6 +151,7 @@ const syncFromProps = (value: FeaturedVideoSection) => {
   local.ctaLink = value.ctaLink || viewCopy.cta.linkPlaceholder;
   local.ctaMode = value.ctaMode || "link";
   local.ctaSectionId = value.ctaSectionId ?? null;
+  local.ctaOpenInNewTab = value.ctaOpenInNewTab !== false;
   nextTick(() => {
     syncing = false;
   });

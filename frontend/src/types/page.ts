@@ -45,6 +45,7 @@ export interface HeroSection extends SectionBase {
   ctaLink?: string;
   ctaMode?: "link" | "section";
   ctaSectionId?: string | null;
+  ctaOpenInNewTab?: boolean;
   ctaColor?: string;
   videoUrl?: string;
   layout?: "classic" | "split" | "card" | "immersive";
@@ -67,6 +68,7 @@ export interface BannerCardSection extends SectionBase {
   ctaLink?: string;
   ctaMode?: "link" | "section";
   ctaSectionId?: string | null;
+  ctaOpenInNewTab?: boolean;
   ctaColor?: string;
 }
 
@@ -108,6 +110,7 @@ export interface PriceItem {
   highlight?: boolean;
   ctaLabel?: LocalizedString;
   ctaLink?: string;
+  ctaOpenInNewTab?: boolean;
 }
 
 export interface PricesSection extends SectionBase {
@@ -118,6 +121,7 @@ export interface PricesSection extends SectionBase {
   description?: LocalizedString;
   ctaLabel?: LocalizedString;
   ctaLink?: string;
+  ctaOpenInNewTab?: boolean;
   title?: LocalizedString;
   subtitle?: LocalizedString;
 }
@@ -169,6 +173,7 @@ export interface TestimonialsSection extends SectionBase {
   ctaLink?: string;
   ctaMode?: "link" | "section";
   ctaSectionId?: string | null;
+  ctaOpenInNewTab?: boolean;
   ctaColor?: string;
   cardColor?: string;
 }
@@ -183,6 +188,7 @@ export interface FeaturedVideoSection extends SectionBase {
   ctaLink?: string;
   ctaMode?: "link" | "section";
   ctaSectionId?: string | null;
+  ctaOpenInNewTab?: boolean;
   ctaColor?: string;
 }
 
@@ -282,6 +288,7 @@ export interface StorySection extends SectionBase {
   ctaLink?: string;
   ctaMode?: "link" | "section";
   ctaSectionId?: string | null;
+  ctaOpenInNewTab?: boolean;
   ctaColor?: string;
   ctaEnabled?: boolean;
   enableAnimation?: boolean;
@@ -318,6 +325,7 @@ export interface CtaSection extends SectionBase {
   link?: string;
   ctaMode?: "link" | "section";
   ctaSectionId?: string | null;
+  ctaOpenInNewTab?: boolean;
   description?: LocalizedString;
   layout?: "bar" | "split" | "card" | "simple";
   ctaColor?: string;

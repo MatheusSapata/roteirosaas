@@ -77,8 +77,8 @@
             <a
               :href="ctaHref"
               :data-scroll-target="ctaIsScroll ? 'true' : null"
-              target="_blank"
-              rel="noopener"
+              :target="ctaOpenInNewTab ? '_blank' : null"
+              :rel="ctaOpenInNewTab ? 'noopener' : null"
               data-track-event="cta"
               :data-track-type="ctaTrackType"
               :class="['inline-flex w-full items-center justify-center rounded-full px-5 py-3 text-sm font-semibold transition hover:-translate-y-0.5 hero-cta-soft-shadow', ctaShimmerClass]"
@@ -189,8 +189,8 @@
                 <a
                   :href="ctaHref"
                   :data-scroll-target="ctaIsScroll ? 'true' : null"
-                  target="_blank"
-                  rel="noopener"
+                  :target="ctaOpenInNewTab ? '_blank' : null"
+                  :rel="ctaOpenInNewTab ? 'noopener' : null"
                   data-track-event="cta"
                   :data-track-type="ctaTrackType"
                   :class="['inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold transition hover:-translate-y-0.5 hero-cta-soft-shadow', ctaShimmerClass, desktopCtaHoverClass]"
@@ -311,6 +311,7 @@ const ctaHref = computed(() =>
   ctaMode.value === "section" && props.section.ctaSectionId ? `#${props.section.ctaSectionId}` : props.section.ctaLink || "#"
 );
 const ctaIsScroll = computed(() => ctaMode.value === "section" && !!props.section.ctaSectionId);
+const ctaOpenInNewTab = computed(() => !ctaIsScroll.value && props.section.ctaOpenInNewTab !== false);
 const ctaTrackType = computed(() => (ctaMode.value === "section" ? "cta" : trackType(props.section.ctaLink)));
 const ctaLabel = computed(() => localize(props.section.ctaLabel) || localize(heroCopy.defaultCta));
 const isMobilePreview = computed(() => props.previewDevice === "mobile");
