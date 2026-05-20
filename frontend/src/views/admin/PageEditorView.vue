@@ -605,7 +605,12 @@
             :class="previewDevice === 'desktop' ? 'bg-brand text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'"
             @click="previewDevice = 'desktop'"
           >
-            <span aria-hidden="true">???</span> {{ viewCopy.preview.desktopLabel }}
+            <svg aria-hidden="true" viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="12" rx="2"></rect>
+              <path d="M8 20h8"></path>
+              <path d="M12 16v4"></path>
+            </svg>
+            {{ viewCopy.preview.desktopLabel }}
           </button>
           <button
             type="button"
@@ -613,7 +618,11 @@
             :class="previewDevice === 'mobile' ? 'bg-brand text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'"
             @click="previewDevice = 'mobile'"
           >
-            <span aria-hidden="true">??</span> {{ viewCopy.preview.mobileLabel }}
+            <svg aria-hidden="true" viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="7" y="2.5" width="10" height="19" rx="2.5"></rect>
+              <path d="M11 18.5h2"></path>
+            </svg>
+            {{ viewCopy.preview.mobileLabel }}
           </button>
         </div>
       </div>

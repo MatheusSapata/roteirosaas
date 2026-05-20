@@ -65,26 +65,29 @@
         </button>
       </div>
       <p class="text-xs text-slate-500">{{ viewCopy.gallery.hint }}</p>
-      <div v-if="local.images.length" class="space-y-3">
-        <div
-          v-for="(_image, index) in local.images"
+      <div v-if="local.images.length" class="story-thumb-grid">
+        <button
+          v-for="(image, index) in local.images"
           :key="`story-image-${index}`"
-          class="space-y-2 rounded-lg border border-slate-200 p-3"
+          type="button"
+          class="story-thumb-card"
+          @click="openImageEditor(index)"
         >
-          <div class="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <div class="story-thumb-head">
             <span>Imagem {{ index + 1 }}</span>
-            <button type="button" class="text-rose-500 hover:text-rose-600" @click="removeStoryImage(index)">
+            <span v-if="index === 0" class="story-thumb-main">Destaque</span>
+          </div>
+          <div class="story-thumb-preview">
+            <img v-if="image" :src="image" :alt="`Imagem ${index + 1}`" />
+            <span v-else class="story-thumb-empty">Sem imagem</span>
+          </div>
+          <div class="story-thumb-actions">
+            <span class="story-thumb-edit">Editar</span>
+            <button type="button" class="story-thumb-remove" @click.stop="removeStoryImage(index)">
               {{ viewCopy.videos.removeButton }}
             </button>
           </div>
-          <ImageUploadField
-            v-model="local.images[index]"
-            label=""
-            hint=""
-            :enable-crop="true"
-            :crop-aspect="16 / 9"
-          />
-        </div>
+        </button>
       </div>
       <div v-else class="rounded-lg border border-dashed border-slate-200 px-3 py-2 text-xs text-slate-500">
         Nenhuma imagem adicionada ainda.
@@ -93,6 +96,25 @@
     <div class="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
       {{ viewCopy.gallery.layoutHint }}
     </div>
+
+    <teleport to="body">
+      <div v-if="activeImageEditorIndex !== null" class="story-modal-overlay" @click.self="closeImageEditor">
+        <div class="story-modal">
+          <div class="story-modal-head">
+            <h3 class="story-modal-title">Editar imagem {{ (activeImageEditorIndex ?? 0) + 1 }}</h3>
+            <button type="button" class="story-modal-close" @click="closeImageEditor">Fechar</button>
+          </div>
+          <ImageUploadField
+            v-if="activeImageEditorIndex !== null"
+            v-model="local.images[activeImageEditorIndex]"
+            label=""
+            hint=""
+            :enable-crop="true"
+            :crop-aspect="16 / 9"
+          />
+        </div>
+      </div>
+    </teleport>
 
     <div class="space-y-2">
       <div class="flex items-center justify-between">
@@ -131,7 +153,7 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, reactive, watch } from "vue";
+import { nextTick, reactive, ref, watch } from "vue";
 import ImageUploadField from "./inputs/ImageUploadField.vue";
 import CtaActionPicker from "./inputs/CtaActionPicker.vue";
 import RichTextEditor from "./inputs/RichTextEditor.vue";
@@ -224,6 +246,7 @@ const local = reactive<StorySection>({
   ctaSectionId: props.modelValue.ctaSectionId || null,
   ctaOpenInNewTab: props.modelValue.ctaOpenInNewTab !== false
 });
+const activeImageEditorIndex = ref<number | null>(null);
 const countValidImages = (images?: string[]) =>
   Array.isArray(images) ? images.filter(img => typeof img === "string" && img.trim().length > 0).length : 0;
 const countValidVideos = (videos?: string[]) =>
@@ -273,6 +296,19 @@ const addStoryImage = () => {
 const removeStoryImage = (index: number) => {
   if (!Array.isArray(local.images)) return;
   local.images = local.images.filter((_, i) => i !== index);
+  if (activeImageEditorIndex.value === index) {
+    activeImageEditorIndex.value = null;
+  } else if (activeImageEditorIndex.value !== null && activeImageEditorIndex.value > index) {
+    activeImageEditorIndex.value -= 1;
+  }
+};
+
+const openImageEditor = (index: number) => {
+  activeImageEditorIndex.value = index;
+};
+
+const closeImageEditor = () => {
+  activeImageEditorIndex.value = null;
 };
 
 const removeVideoField = (index: number) => {
@@ -318,3 +354,21 @@ watch(
   { deep: true }
 );
 </script>
+
+<style scoped>
+.story-thumb-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.story-thumb-card{border:1px solid #e2e8f0;border-radius:12px;padding:10px;background:#fff;text-align:left;display:flex;flex-direction:column;gap:8px}
+.story-thumb-head{display:flex;justify-content:space-between;align-items:center;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#64748b}
+.story-thumb-main{font-size:10px;padding:2px 6px;border-radius:999px;background:#dcfce7;color:#166534}
+.story-thumb-preview{height:86px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.story-thumb-preview img{width:100%;height:100%;object-fit:cover}
+.story-thumb-empty{font-size:11px;color:#94a3b8}
+.story-thumb-actions{display:flex;justify-content:space-between;align-items:center}
+.story-thumb-edit{font-size:12px;font-weight:600;color:#0f172a}
+.story-thumb-remove{font-size:12px;font-weight:600;color:#e11d48}
+.story-modal-overlay{position:fixed;inset:0;z-index:70;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;padding:16px}
+.story-modal{width:min(980px,100%);max-height:86vh;overflow:auto;background:#fff;border-radius:20px;padding:16px}
+.story-modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.story-modal-title{font-size:18px;font-weight:700;color:#0f172a}
+.story-modal-close{font-size:14px;font-weight:600;color:#64748b}
+</style>

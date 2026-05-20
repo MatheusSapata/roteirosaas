@@ -54,17 +54,37 @@
               </form>
             </div>
 
-            <section class="list-card tips-card">
-              <p class="tips-summary">{{ viewCopy.tips.title }}</p>
-              <ul class="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600">
-                <li>{{ viewCopy.tips.subdomainPrefix }} <span class="font-mono">roteiros.suaagencia.com</span> {{ viewCopy.tips.subdomainSuffix }}</li>
-                <li>{{ viewCopy.tips.protocolPrefix }} <span class="font-mono">http://</span> {{ viewCopy.tips.protocolSuffix }}</li>
-                <li>{{ viewCopy.tips.reserved(platformExample) }}</li>
-              </ul>
-            </section>
+            <div class="list-card">
+              <div class="favicon-card-layout">
+                <div class="favicon-card-copy">
+                  <h2 class="card-title">{{ viewCopy.favicon.title }}</h2>
+                  <p class="text-sm text-slate-500">{{ viewCopy.favicon.subtitle }}</p>
+                  <p v-if="!hasActiveCustomDomain" class="helper-text mt-3">{{ viewCopy.favicon.disabledHint }}</p>
+                  <div class="mt-3 flex flex-wrap items-center gap-2">
+                    <button type="button" class="btn btn-p btn-sm" :disabled="savingFavicon || !currentAgencyId || !hasActiveCustomDomain" @click="saveFavicon">
+                      {{ savingFavicon ? viewCopy.favicon.saving : viewCopy.favicon.save }}
+                    </button>
+                    <p v-if="faviconMessage" class="ok-msg">{{ faviconMessage }}</p>
+                    <p v-if="faviconError" class="err-msg">{{ faviconError }}</p>
+                  </div>
+                </div>
+                <div class="favicon-card-media">
+                  <div class="favicon-upload-compact rounded-xl border border-slate-200 p-3" :class="{ 'pointer-events-none opacity-55': !hasActiveCustomDomain }">
+                    <ImageUploadField
+                      v-model="faviconUrl"
+                      :label="''"
+                      :enable-crop="true"
+                      :crop-aspect="1"
+                      :editor-title="viewCopy.favicon.editorTitle"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
           </section>
 
-          <section class="list-card">
+          <section class="space-y-3">
+            <section class="list-card">
             <div class="list-header">
               <div>
                 <h2 class="card-title">{{ viewCopy.list.title }}</h2>
@@ -226,36 +246,47 @@
                 </div>
               </article>
             </div>
+            </section>
           </section>
         </div>
 
-        <section class="list-card guide-card">
-          <div class="guide-head">
-            <div>
-              <p class="guide-eyebrow">{{ viewCopy.dnsGuide.title }}</p>
-              <h2 class="card-title">{{ viewCopy.dnsGuide.subdomainTitle }}</h2>
+        <div class="guide-row">
+          <section class="list-card guide-card">
+            <div class="guide-head">
+              <div>
+                <p class="guide-eyebrow">{{ viewCopy.dnsGuide.title }}</p>
+                <h2 class="card-title">{{ viewCopy.dnsGuide.subdomainTitle }}</h2>
+              </div>
             </div>
-          </div>
-          <div class="guide-grid">
-            <div class="guide-block">
-              <p class="guide-block-title">{{ viewCopy.dnsGuide.subdomainTitle }}</p>
-              <ul class="guide-list">
-                <li>{{ viewCopy.dnsGuide.subdomainHostPrefix }} <span class="font-mono">www.suaagencia.com</span> {{ viewCopy.dnsGuide.subdomainHostConnector }} <span class="font-mono">roteiros.suaagencia.com</span>.</li>
-                <li>{{ viewCopy.dnsGuide.subdomainCname }} <span class="font-mono">roteiroonline.com</span>.</li>
-                <li>{{ viewCopy.dnsGuide.subdomainTxt }}</li>
-              </ul>
+            <div class="guide-grid">
+              <div class="guide-block">
+                <p class="guide-block-title">{{ viewCopy.dnsGuide.subdomainTitle }}</p>
+                <ul class="guide-list">
+                  <li>{{ viewCopy.dnsGuide.subdomainHostPrefix }} <span class="font-mono">www.suaagencia.com</span> {{ viewCopy.dnsGuide.subdomainHostConnector }} <span class="font-mono">roteiros.suaagencia.com</span>.</li>
+                  <li>{{ viewCopy.dnsGuide.subdomainCname }} <span class="font-mono">roteiroonline.com</span>.</li>
+                  <li>{{ viewCopy.dnsGuide.subdomainTxt }}</li>
+                </ul>
+              </div>
+              <div class="guide-block">
+                <p class="guide-block-title">{{ viewCopy.dnsGuide.apexTitle }}</p>
+                <ul class="guide-list">
+                  <li>{{ viewCopy.dnsGuide.apexRecord }}</li>
+                  <li>{{ viewCopy.dnsGuide.apexValuePrefix }}<span class="font-mono">{{ apexTargetExample }}</span>{{ viewCopy.dnsGuide.apexValueSuffix }}</li>
+                  <li>{{ viewCopy.dnsGuide.apexTxt }}</li>
+                </ul>
+              </div>
             </div>
-            <div class="guide-block">
-              <p class="guide-block-title">{{ viewCopy.dnsGuide.apexTitle }}</p>
-              <ul class="guide-list">
-                <li>{{ viewCopy.dnsGuide.apexRecord }}</li>
-                <li>{{ viewCopy.dnsGuide.apexValuePrefix }}<span class="font-mono">{{ apexTargetExample }}</span>{{ viewCopy.dnsGuide.apexValueSuffix }}</li>
-                <li>{{ viewCopy.dnsGuide.apexTxt }}</li>
-              </ul>
-            </div>
-          </div>
-          <p class="guide-footer">{{ viewCopy.dnsGuide.footer }}</p>
-        </section>
+            <p class="guide-footer">{{ viewCopy.dnsGuide.footer }}</p>
+          </section>
+          <section class="list-card tips-card">
+            <p class="tips-summary">{{ viewCopy.tips.title }}</p>
+            <ul class="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600">
+              <li>{{ viewCopy.tips.subdomainPrefix }} <span class="font-mono">roteiros.suaagencia.com</span> {{ viewCopy.tips.subdomainSuffix }}</li>
+              <li>{{ viewCopy.tips.protocolPrefix }} <span class="font-mono">http://</span> {{ viewCopy.tips.protocolSuffix }}</li>
+              <li>{{ viewCopy.tips.reserved(platformExample) }}</li>
+            </ul>
+          </section>
+        </div>
       </div>
     </div>
     <div
@@ -283,6 +314,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
+import ImageUploadField from "../../components/admin/inputs/ImageUploadField.vue";
 import api from "../../services/api";
 import { useAgencyStore } from "../../store/useAgencyStore";
 import { useAuthStore } from "../../store/useAuthStore";
@@ -393,6 +425,19 @@ const viewCopy = {
     }),
     unnamedAgency: t({ pt: "Agência sem nome", es: "Agencia sin nombre" })
   },
+  favicon: {
+    title: t({ pt: "Favicon da agência", es: "Favicon de la agencia" }),
+    subtitle: t({ pt: "Ícone exibido nas páginas públicas do seu domínio.", es: "Ícono mostrado en las páginas públicas de tu dominio." }),
+    disabledHint: t({
+      pt: "Ative um domínio personalizado para habilitar o favicon.",
+      es: "Activa un dominio personalizado para habilitar el favicon."
+    }),
+    editorTitle: t({ pt: "Ajuste o favicon", es: "Ajusta el favicon" }),
+    save: t({ pt: "Salvar favicon", es: "Guardar favicon" }),
+    saving: t({ pt: "Salvando...", es: "Guardando..." }),
+    success: t({ pt: "Favicon atualizado com sucesso.", es: "Favicon actualizado con éxito." }),
+    error: t({ pt: "Não foi possível salvar o favicon.", es: "No fue posible guardar el favicon." })
+  },
   domainInfo: {
     createdAt: t({ pt: "Criado em", es: "Creado el" }),
     verificationTitle: t({ pt: "Registro TXT (verificação)", es: "Registro TXT (verificación)" }),
@@ -494,6 +539,10 @@ const creating = ref(false);
 const actionState = ref<string | null>(null);
 const domainMessages = ref<Record<number, string>>({});
 const copiedState = ref<Record<string, boolean>>({});
+const faviconUrl = ref("");
+const savingFavicon = ref(false);
+const faviconMessage = ref("");
+const faviconError = ref("");
 
 const domainsAllowed = computed(() =>
   canAccessPermission("domains", {
@@ -508,6 +557,8 @@ const currentAgencyName = computed(() => {
   const agency = agencyStore.agencies.find(a => a.id === agencyStore.currentAgencyId);
   return agency?.name || viewCopy.list.unnamedAgency;
 });
+const currentAgency = computed(() => agencyStore.agencies.find(a => a.id === agencyStore.currentAgencyId) || null);
+const hasActiveCustomDomain = computed(() => domains.value.some(domain => domain.is_active));
 const platformExample = computed(() => `${platformHosts[0] || "seusite.com"}/agencia/roteiro`);
 const apexTargetExample = computed(() => {
   const fromDomain = domains.value.find(domain => domain.instructions?.target?.value)?.instructions?.target?.value;
@@ -520,6 +571,10 @@ const goToPlans = () => {
 const clearFormFeedback = () => {
   formError.value = "";
   formSuccess.value = "";
+};
+const clearFaviconFeedback = () => {
+  faviconMessage.value = "";
+  faviconError.value = "";
 };
 
 const fetchDomains = async () => {
@@ -584,6 +639,27 @@ const createDomain = async () => {
     formError.value = (err as any)?.response?.data?.detail || viewCopy.form.failure;
   } finally {
     creating.value = false;
+  }
+};
+
+const saveFavicon = async () => {
+  clearFaviconFeedback();
+  if (!currentAgencyId.value || !hasActiveCustomDomain.value) return;
+  savingFavicon.value = true;
+  try {
+    const res = await api.put(`/agencies/${currentAgencyId.value}`, {
+      favicon_url: faviconUrl.value || null
+    });
+    const idx = agencyStore.agencies.findIndex(item => item.id === currentAgencyId.value);
+    if (idx >= 0) {
+      agencyStore.agencies[idx] = { ...agencyStore.agencies[idx], ...res.data };
+    }
+    faviconMessage.value = viewCopy.favicon.success;
+  } catch (err) {
+    console.error(err);
+    faviconError.value = (err as any)?.response?.data?.detail || viewCopy.favicon.error;
+  } finally {
+    savingFavicon.value = false;
   }
 };
 
@@ -709,6 +785,7 @@ onMounted(async () => {
     if (!agencyStore.agencies.length) {
       await agencyStore.loadAgencies();
     }
+    faviconUrl.value = currentAgency.value?.favicon_url || "";
     if (domainsAllowed.value) {
       await fetchDomains();
     }
@@ -720,6 +797,8 @@ onMounted(async () => {
 watch(
   () => agencyStore.currentAgencyId,
   async newId => {
+    clearFaviconFeedback();
+    faviconUrl.value = currentAgency.value?.favicon_url || "";
     if (newId && domainsAllowed.value) {
       await fetchDomains();
     } else {
@@ -730,6 +809,7 @@ watch(
 
 watch(domainsAllowed, allowed => {
   if (allowed) {
+    faviconUrl.value = currentAgency.value?.favicon_url || "";
     fetchDomains();
   } else {
     domains.value = [];
@@ -745,10 +825,12 @@ watch(domainsAllowed, allowed => {
   --sh-sm:0 1px 3px rgba(0,0,0,.05),0 1px 2px rgba(0,0,0,.03);
   --radius:12px;--radius-sm:8px;
 }
-.page-wrap{padding:28px 32px 64px;width:100%;max-width:1380px}
+.page-wrap{padding:28px 24px 64px;width:100%;max-width:none}
 .page-title{font-size:24px;font-weight:800;color:var(--text);letter-spacing:-.3px;line-height:1.2}
 .page-sub{font-size:13px;color:var(--text-3);margin-top:4px}
 .guide-card{padding:18px}
+.guide-row{display:grid;grid-template-columns:minmax(0,9fr) minmax(0,2fr);gap:12px;align-items:stretch}
+.guide-row > .list-card{height:100%}
 .guide-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
 .guide-eyebrow{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);margin-bottom:4px}
 .guide-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -777,6 +859,30 @@ watch(domainsAllowed, allowed => {
 .tips-card{padding-top:14px;padding-bottom:14px}
 .tips-summary{font-size:13px;font-weight:700;color:var(--text-2)}
 .list-header{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px}
+.favicon-card-layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start}
+.favicon-card-copy{display:flex;flex-direction:column;min-height:100%}
+.favicon-card-copy .mt-3{margin-top:20px !important}
+.favicon-card-copy .btn{width:100%;justify-content:center}
+.favicon-upload-compact{max-width:280px}
+.favicon-upload-compact :deep(.flex.h-full.flex-col.gap-2){gap:6px}
+.favicon-upload-compact :deep(.flex.flex-1.flex-col.rounded-xl.border.border-slate-200.p-3){padding:10px}
+.favicon-upload-compact :deep(.mb-3 > .flex.max-h-\[320px\].min-h-\[220px\].w-full.items-center.justify-center.overflow-hidden.rounded-lg.border.border-slate-200.bg-slate-50){
+  width:100% !important;
+  height:88px !important;
+  min-height:88px !important;
+  max-height:88px !important;
+  border-radius:12px !important;
+}
+.favicon-upload-compact :deep(.image-upload-preview){
+  width:100% !important;
+  height:88px !important;
+  min-height:88px !important;
+  object-fit:contain !important;
+}
+@media (max-width: 768px){
+  .favicon-card-layout{grid-template-columns:1fr}
+  .favicon-upload-compact{max-width:100%}
+}
 .alert-error{border:1px solid #fecaca;background:#fef2f2;color:#b91c1c;border-radius:10px;padding:10px;font-size:12px}
 .alert-muted{border:1px solid var(--border);background:var(--surface2);color:var(--text-2);border-radius:10px;padding:12px;font-size:13px}
 .alert-empty{border:1px dashed var(--border);background:var(--surface2);color:var(--text-3);border-radius:10px;padding:14px;font-size:13px}
@@ -810,7 +916,7 @@ watch(domainsAllowed, allowed => {
 .badge-muted{background:#e9eeea;color:#5f6f5f;border:1px solid var(--border)}
 .badge-warn{background:#fff1da;color:#ad6a00;border:1px solid #ffd9a1}
 .badge-ssl{background:#f1eefb;color:#5f4aa6;border:1px solid #ded6fb}
-@media(max-width:1000px){.main-grid,.guide-grid{grid-template-columns:1fr}}
+@media(max-width:1000px){.main-grid,.guide-grid,.guide-row{grid-template-columns:1fr}}
 @media(max-width:900px){.page-wrap{padding:20px 16px 40px}}
 @media(max-width:640px){.steps-grid{grid-template-columns:1fr}}
 </style>

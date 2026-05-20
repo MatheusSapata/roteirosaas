@@ -40,21 +40,6 @@
                 <input v-model="form.primary_color" class="fi" style="max-width:110px" />
               </div>
               <span class="fh">{{ viewCopy.theme.primaryColorHint }}</span>
-              <div class="favicon-wrap">
-                <div class="favicon-head">
-                  <label class="fl">{{ viewCopy.theme.faviconLabel }}</label>
-                  <span v-if="!hasActiveCustomDomain" class="fh">{{ viewCopy.theme.faviconDisabledHint }}</span>
-                </div>
-                <div class="favicon-upload" :class="{ 'is-disabled': !hasActiveCustomDomain }">
-                  <ImageUploadField
-                    v-model="form.favicon_url"
-                    :label="''"
-                    :enable-crop="true"
-                    :crop-aspect="1"
-                    :editor-title="viewCopy.theme.faviconEditorTitle"
-                  />
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -426,7 +411,6 @@ const showUnsavedModal = ref(false);
 const pendingNavigation = ref<string | null>(null);
 const bypassUnsavedGuard = ref(false);
 const initialSnapshot = ref("");
-const hasActiveCustomDomain = ref(false);
 
 const companyForm = reactive({
   documentType: "cnpj" as "cnpj" | "cpf",
@@ -606,14 +590,6 @@ const syncFormWithCurrent = () => {
   syncCompanyData();
 };
 
-const refreshCustomDomainAvailability = async () => {
-  const host = await agencyStore.loadPrimaryDomain(agencyStore.currentAgencyId);
-  hasActiveCustomDomain.value = !!host;
-  if (!hasActiveCustomDomain.value) {
-    form.favicon_url = "";
-  }
-};
-
 const buildFormSnapshot = () =>
   JSON.stringify({
     name: form.name || "",
@@ -711,7 +687,6 @@ const load = async () => {
   hasAgency.value = !!agencyStore.currentAgencyId;
 
   if (hasAgency.value) syncFormWithCurrent();
-  await refreshCustomDomainAvailability();
   markSnapshot();
 };
 
@@ -753,7 +728,7 @@ const save = async () => {
     name: normalizedName,
     slug: normalizedSlug,
     logo_url: form.logo_url,
-    favicon_url: hasActiveCustomDomain.value ? form.favicon_url : null,
+    favicon_url: form.favicon_url || null,
     primary_color: form.primary_color,
     secondary_color: form.secondary_color,
     contact_email: sanitizeText(form.contact_email),
