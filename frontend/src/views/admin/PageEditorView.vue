@@ -175,6 +175,35 @@
       </div>
     </Teleport>
 
+    <Teleport to="body" v-if="unsavedFlightSegmentModal.open">
+      <div class="fixed inset-0 z-50 flex items-center justify-center px-4 page-editor-overlay">
+        <div class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl dark:bg-[#1f1f1f] dark:text-white">
+          <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">{{ viewCopy.unsavedModal.eyebrow }}</p>
+          <h3 class="mt-2 text-xl font-bold text-slate-900">{{ viewCopy.flightUnsavedModal.title }}</h3>
+          <p class="mt-2 text-sm text-slate-600">
+            {{ viewCopy.flightUnsavedModal.description }}
+          </p>
+
+          <div class="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+              @click="cancelUnsavedFlightSegmentModal"
+            >
+              {{ viewCopy.unsavedModal.continueEditing }}
+            </button>
+            <button
+              type="button"
+              class="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white shadow transition hover:bg-brand-dark"
+              @click="confirmSaveSectionWithUnsavedFlightSegment"
+            >
+              {{ viewCopy.flightUnsavedModal.confirm }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- Dialog de sucesso ao publicar -->
     <Teleport to="body" v-if="successModal.open">
       <div class="fixed inset-0 z-50 flex items-center justify-center px-4 page-editor-overlay">
@@ -279,7 +308,7 @@
           </div>
           <div v-if="!isMobileViewport" class="flex flex-wrap items-center gap-2 text-xs">
             <span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 font-semibold text-slate-600">Link: {{ pageSlug || "-" }}</span>
-            <span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 font-semibold text-slate-600">Formulário: {{ selectedLeadForm ? (selectedLeadForm.title || selectedLeadForm.name) : "nenhum" }}</span>
+            <span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 font-semibold text-slate-600">Formulário: {{ selectedLeadForm ? (selectedLeadForm.name || selectedLeadForm.title) : "nenhum" }}</span>
             <span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 font-semibold text-slate-600">Pixels: {{ selectedPixelsSummary }}</span>
           </div>
         </div>
@@ -863,6 +892,7 @@
           >
             <component
               :is="editingSectionComponent"
+              ref="editingSectionFormRef"
               :modelValue="editingSectionDraft"
               @update:modelValue="updateEditingDraft"
             />
@@ -1074,6 +1104,14 @@ const viewCopy = {
     discardAndExit: t({ pt: "Descartar e sair", es: "Descartar y salir" }),
     saving: t({ pt: "Salvando...", es: "Guardando..." }),
     saveAndLeave: t({ pt: "Salvar e sair", es: "Guardar y salir" })
+  },
+  flightUnsavedModal: {
+    title: t({ pt: "Há alterações de trecho não salvas", es: "Hay cambios de tramo sin guardar" }),
+    description: t({
+      pt: "Você alterou um trecho de voo, mas ainda não clicou em “Salvar trecho”. Deseja salvar a seção mesmo assim?",
+      es: "Editaste un tramo de vuelo, pero aún no hiciste clic en “Guardar tramo”. ¿Deseas guardar la sección de todos modos?"
+    }),
+    confirm: t({ pt: "Salvar seção mesmo assim", es: "Guardar sección de todos modos" })
   },
   successModal: {
     eyebrow: t({ pt: "Publicação", es: "Publicación" }),
@@ -1705,6 +1743,8 @@ const previewReady = ref(false);
 const previewLoading = ref(false);
 const editingSectionIndex = ref<number | null>(null);
 const editingSectionDraft = ref<PageSection | null>(null);
+const editingSectionFormRef = ref<any>(null);
+const unsavedFlightSegmentModal = ref({ open: false });
 const sectionCatalog = ref<SectionCatalogItem[]>([]);
 const sectionPicker = ref<{ open: boolean; index: number | null }>({ open: false, index: null });
 const editingSectionType = computed<SectionType | null>(() => {
@@ -2962,6 +3002,8 @@ const openSectionEditor = (index: number) => {
 const closeSectionEditor = () => {
   editingSectionIndex.value = null;
   editingSectionDraft.value = null;
+  editingSectionFormRef.value = null;
+  unsavedFlightSegmentModal.value.open = false;
 };
 
 const updateEditingDraft = (value: PageSection) => {
@@ -3010,7 +3052,7 @@ const refreshPreview = (immediate = false) => {
   schedulePreviewHydration(immediate);
 };
 
-const saveEditingSection = async () => {
+const persistEditingSection = async () => {
   if (editingSectionIndex.value === null || !editingSectionDraft.value) return;
   if (hasPendingImageUploads.value) {
     showSnackbar(viewCopy.feedback.imageUploading);
@@ -3027,6 +3069,26 @@ const saveEditingSection = async () => {
   closeSectionEditor();
   refreshPreview(true);
   await saveConfig();
+};
+
+const cancelUnsavedFlightSegmentModal = () => {
+  unsavedFlightSegmentModal.value.open = false;
+};
+
+const confirmSaveSectionWithUnsavedFlightSegment = async () => {
+  unsavedFlightSegmentModal.value.open = false;
+  await persistEditingSection();
+};
+
+const saveEditingSection = async () => {
+  const hasUnsavedFlightSegment =
+    typeof editingSectionFormRef.value?.hasUnsavedSegmentDraftChanges === "function" &&
+    editingSectionFormRef.value.hasUnsavedSegmentDraftChanges();
+  if (hasUnsavedFlightSegment) {
+    unsavedFlightSegmentModal.value.open = true;
+    return;
+  }
+  await persistEditingSection();
 };
 
 const ensureProfile = async () => {

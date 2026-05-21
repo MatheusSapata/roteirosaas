@@ -390,11 +390,13 @@
                       </span>
                     </div>
                     <div class="inline-flex items-center">
-                      <span class="text-slate-400">Mão</span>
-                      <strong class="mx-1.5 text-slate-700">·</strong>
-                      <span class="text-slate-400">Pessoal</span>
-                      <strong class="mx-1.5 text-slate-700">·</strong>
-                      <span class="text-slate-400">Despachada</span>
+                      <template v-if="baggageSummaryLabels(segment).length">
+                        <template v-for="(label, baggageIndex) in baggageSummaryLabels(segment)" :key="`${segment.id || segmentIndex}-${label}`">
+                          <strong v-if="baggageIndex > 0" class="mx-1.5 text-slate-700">·</strong>
+                          <span class="text-slate-400">{{ label }}</span>
+                        </template>
+                      </template>
+                      <span v-else class="text-slate-400">Sem bagagem incluída</span>
                     </div>
                     <div>Voo <strong class="font-semibold text-slate-700">{{ segmentFlightCode(segment) }}</strong></div>
                     <div>Classe <strong class="font-semibold text-slate-700">{{ segment.cabin_class || "Não informada" }}</strong></div>
@@ -905,6 +907,14 @@ const baggageTooltip = (type: "carry_on" | "personal_item" | "checked_bag", incl
   if (type === "carry_on") return `Bagagem de mao ${status}`;
   if (type === "personal_item") return `Item pessoal ${status}`;
   return `Bagagem despachada ${status}`;
+};
+
+const baggageSummaryLabels = (segment: FlightSectionSegment) => {
+  const labels: string[] = [];
+  if (baggageIncluded(segment, "carry_on")) labels.push("Mão");
+  if (baggageIncluded(segment, "personal_item")) labels.push("Pessoal");
+  if (baggageIncluded(segment, "checked_bag")) labels.push("Despachada");
+  return labels;
 };
 
 const segmentAircraftLabel = (segment: FlightSectionSegment) => {

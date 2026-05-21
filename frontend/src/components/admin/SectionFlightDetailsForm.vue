@@ -309,7 +309,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from "vue";
+import { computed, defineExpose, onMounted, reactive, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import type { FlightDetailsSection, FlightSectionJourney, FlightSectionSegment } from "../../types/page";
 import AirlineLogo from "../shared/AirlineLogo.vue";
@@ -370,6 +370,7 @@ const activeDirection = ref<"outbound" | "inbound">("outbound");
 const journeys = ref<FlightSectionJourney[]>(props.modelValue.journeys || []);
 const selectedSegmentId = ref<number | null>(null);
 const selectedSegmentDraft = ref<FlightSectionSegment | null>(null);
+const selectedSegmentBaseSnapshot = ref<string | null>(null);
 const lookupLoading = ref(false);
 const lookupMessage = ref("");
 const lookupError = ref("");
@@ -438,6 +439,7 @@ const setSelectedSegment = (segment: FlightSectionSegment | null) => {
   if (!segment) {
     selectedSegmentId.value = null;
     selectedSegmentDraft.value = null;
+    selectedSegmentBaseSnapshot.value = null;
     return;
   }
   selectedSegmentId.value = segment.id || null;
@@ -452,6 +454,7 @@ const setSelectedSegment = (segment: FlightSectionSegment | null) => {
   };
   lookupFlightNumber.value = segment.flight_number || segment.flight_iata || "";
   lookupFlightDate.value = segment.flight_date ? String(segment.flight_date).slice(0, 10) : "";
+  selectedSegmentBaseSnapshot.value = serializeSegmentSnapshot(selectedSegmentDraft.value);
 };
 
 const selectSegment = (segmentId: number | null) => {
@@ -675,6 +678,51 @@ const fromDatetimeLocal = (value?: string | null) => {
   if (!clean) return null;
   return clean.length === 16 ? `${clean}:00` : clean;
 };
+
+const serializeSegmentSnapshot = (segment: FlightSectionSegment | null) => {
+  if (!segment) return null;
+  return JSON.stringify({
+    flight_number: segment.flight_number || "",
+    flight_iata: segment.flight_iata || "",
+    flight_icao: segment.flight_icao || "",
+    flight_date: segment.flight_date || "",
+    airline_name: segment.airline_name || "",
+    airline_iata: segment.airline_iata || "",
+    airline_icao: segment.airline_icao || "",
+    airline_logo_url: segment.airline_logo_url || "",
+    departure_airport_iata: segment.departure_airport_iata || "",
+    departure_airport_name: segment.departure_airport_name || "",
+    departure_city: segment.departure_city || "",
+    departure_country: segment.departure_country || "",
+    departure_terminal: segment.departure_terminal || "",
+    departure_gate: segment.departure_gate || "",
+    departure_datetime: segment.departure_datetime || "",
+    arrival_airport_iata: segment.arrival_airport_iata || "",
+    arrival_airport_name: segment.arrival_airport_name || "",
+    arrival_city: segment.arrival_city || "",
+    arrival_country: segment.arrival_country || "",
+    arrival_terminal: segment.arrival_terminal || "",
+    arrival_gate: segment.arrival_gate || "",
+    arrival_datetime: segment.arrival_datetime || "",
+    duration_minutes: Number(segment.duration_minutes || 0),
+    cabin_class: segment.cabin_class || "",
+    status: segment.status || "",
+    included_personal_item: segment.included_personal_item !== false,
+    included_carry_on: segment.included_carry_on !== false,
+    included_checked_bag: !!segment.included_checked_bag,
+    notes: segment.notes || ""
+  });
+};
+
+const hasUnsavedSegmentDraftChanges = () => {
+  if (!selectedSegmentDraft.value || !selectedSegmentBaseSnapshot.value) return false;
+  const currentSnapshot = serializeSegmentSnapshot(selectedSegmentDraft.value);
+  return !!currentSnapshot && currentSnapshot !== selectedSegmentBaseSnapshot.value;
+};
+
+defineExpose({
+  hasUnsavedSegmentDraftChanges
+});
 
 watch(
   () => activeDirection.value,
