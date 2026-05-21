@@ -557,10 +557,16 @@ function setupCtaTracking(pixels: { type: string; value: string }[]) {
 }
 
 .public-page-scale {
-  transform: scale(0.9);
-  transform-origin: top center;
-  width: 111.111111%;
-  margin-left: -5.555555%;
+  zoom: 0.9;
+}
+
+@supports not (zoom: 1) {
+  .public-page-scale {
+    transform: scale(0.9);
+    transform-origin: top center;
+    width: 111.111111%;
+    margin-left: -5.555555%;
+  }
 }
 
 .public-page :deep(section) {

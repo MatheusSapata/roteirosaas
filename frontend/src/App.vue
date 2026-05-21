@@ -74,7 +74,7 @@ const isPublicShellRoute = computed(() => {
 });
 const appShellClass = computed(() =>
   isPublicShellRoute.value
-    ? "min-h-screen bg-black text-white"
+    ? "bg-black text-white"
     : "min-h-screen bg-slate-50 text-slate-900"
 );
 

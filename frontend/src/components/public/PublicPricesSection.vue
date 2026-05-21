@@ -2,7 +2,7 @@
   <section class="w-full" :style="{ background: section.backgroundColor || 'linear-gradient(180deg,#f8fafc,#fff)' }" :id="section.anchorId || undefined">
     <div class="mx-auto max-w-6xl px-6 py-12">
       <div class="space-y-6">
-        <div class="mx-auto max-w-3xl pb-4 text-center" :style="{ borderBottom: `1px solid ${accentBorder}` }">
+        <div class="mx-auto max-w-3xl pb-4 text-center">
           <div class="flex justify-center">
             <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="accent" />
           </div>
@@ -150,7 +150,6 @@ const toRgba = (hex: string, alpha: number) => {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
 
-const accentBorder = computed(() => toRgba(accent.value, 0.25));
 const headingLabel = computed(() =>
   resolveHeadingLabel(props.section.headingLabel, headingDefaults.label, localize)
 );
