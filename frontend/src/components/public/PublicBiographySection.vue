@@ -1,8 +1,11 @@
 <template>
 <section class="w-full" :id="section.anchorId || undefined" :style="sectionStyle">
   <div
-    class="mx-auto w-full space-y-6 pb-[30px]"
-    :class="section.fullWidth ? 'max-w-none px-0 md:px-0' : 'max-w-6xl px-4 md:px-0'"
+    class="mx-auto w-full space-y-6"
+    :class="[
+      hasBodyText ? 'pb-[30px]' : 'pb-0',
+      section.fullWidth ? 'max-w-none px-0 md:px-0' : 'max-w-6xl px-4 md:px-0'
+    ]"
   >
       <div
         v-if="hasImage"
@@ -28,6 +31,7 @@
       </div>
 
       <div
+        v-if="hasBodyText"
         class="mx-auto max-w-4xl px-6 text-base leading-relaxed md:px-6 md:text-lg"
         :style="bodyTextStyle"
         v-html="textHtml"
@@ -156,6 +160,16 @@ const titleSize = computed(() => {
   return `${limited}px`;
 });
 const textHtml = computed(() => sanitizeHtml(localize(props.section.text)));
+const hasBodyText = computed(() => {
+  const raw = localize(props.section.text);
+  if (!raw) return false;
+  const plain = raw
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return plain.length > 0;
+});
 const imageAltText = computed(() => {
   const customAlt = localize(props.section.title).trim();
   if (customAlt.length) return customAlt;

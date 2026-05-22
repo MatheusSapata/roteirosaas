@@ -48,7 +48,7 @@ PERMISSION_CATALOG: dict[str, PermissionDefinition] = {
     "pages_editor": PermissionDefinition("pages_editor", "Paginas: Editor", ("/api/v1/pages", "/api/v1/media"), "pages_editor", ("professional", "agency", "scale", "test"), "Professional"),
     "settings": PermissionDefinition("settings", "Configuracoes", ("/api/v1/admin",), "settings", ("free", "professional", "agency", "scale", "test"), "Free"),
     "integrations": PermissionDefinition("integrations", "Integracoes", ("/api/v1/pixels", "/api/v1/agencies/me/domains"), "integrations", ("professional", "agency", "scale", "test"), "Professional"),
-    "domains": PermissionDefinition("domains", "Dominios", ("/api/v1/agencies/me/domains",), "domains", ("professional", "agency", "scale", "test"), "Professional"),
+    "domains": PermissionDefinition("domains", "Dominios", ("/api/v1/agencies/me/domains",), "domains", ("scale", "test"), "Scale"),
     "lessons": PermissionDefinition("lessons", "Aulas", ("/api/v1/lessons",), "lessons", ("professional", "agency", "scale", "test"), "Professional"),
     "team_management": PermissionDefinition("team_management", "Equipe", ("/api/v1/agency/team",), "team_management", ("professional", "agency", "scale", "test"), "Professional"),
 }

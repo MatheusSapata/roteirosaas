@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+﻿from urllib.parse import urlparse
+
+import httpx
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_active_user, get_db
@@ -32,6 +35,63 @@ async def upload_media(
     db.commit()
     db.refresh(asset)
     return asset
+
+
+@router.get("/proxy")
+def proxy_media(
+    url: str = Query(..., min_length=1),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> Response:
+    raw = (url or "").strip()
+    parsed = urlparse(raw)
+    input_path = parsed.path.rstrip("/")
+
+    user_assets = (
+        db.query(MediaAsset)
+        .join(AgencyUser, AgencyUser.agency_id == MediaAsset.agency_id)
+        .filter(AgencyUser.user_id == current_user.id)
+        .all()
+    )
+
+    asset: MediaAsset | None = None
+    for candidate in user_assets:
+        stored = (candidate.url or "").strip()
+        if not stored:
+            continue
+
+        if stored == raw:
+            asset = candidate
+            break
+
+        stored_parsed = urlparse(stored)
+        stored_path = stored_parsed.path.rstrip("/")
+
+        if input_path and stored_path and input_path == stored_path:
+            asset = candidate
+            break
+
+        if input_path and stored.endswith(input_path):
+            asset = candidate
+            break
+
+    if not asset:
+        raise HTTPException(status_code=404, detail="Mídia não encontrada.")
+
+    fetch_url = raw if parsed.scheme in {"http", "https"} else (asset.url or "").strip()
+    fetch_parsed = urlparse(fetch_url)
+    if fetch_parsed.scheme not in {"http", "https"}:
+        raise HTTPException(status_code=400, detail="URL de mídia inválida.")
+
+    try:
+        with httpx.Client(timeout=20.0, follow_redirects=True) as client:
+            remote = client.get(fetch_url)
+            remote.raise_for_status()
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=502, detail="Não foi possível carregar a mídia.") from exc
+
+    content_type = remote.headers.get("content-type", "application/octet-stream")
+    return Response(content=remote.content, media_type=content_type)
 
 
 @router.get("/{media_id}", response_model=MediaAssetOut)

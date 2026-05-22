@@ -44,7 +44,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import type { CountdownSection } from "../../types/page";
 import SectionHeadingChip from "./SectionHeadingChip.vue";
 import { getSectionHeadingDefaults, resolveHeadingLabel } from "../../utils/sectionHeadings";
@@ -95,7 +95,20 @@ let timer: number | undefined;
 
 const fallbackFutureMs = () => Date.now() + 3 * 24 * 60 * 60 * 1000;
 
+const sessionTargetMs = ref<number | null>(null);
+
+const unitToMs = (unit: CountdownSection["sessionUnit"], amount: number) => {
+  if (unit === "days") return amount * 24 * 60 * 60 * 1000;
+  if (unit === "hours") return amount * 60 * 60 * 1000;
+  return amount * 60 * 1000;
+};
+
 const targetMs = computed(() => {
+  if (props.section.countdownMode === "session") {
+    if (sessionTargetMs.value) return sessionTargetMs.value;
+    const amount = Math.max(1, Math.round(props.section.sessionDuration || 15));
+    return Date.now() + unitToMs(props.section.sessionUnit || "minutes", amount);
+  }
   const raw = props.section.targetDate;
   if (!raw) return fallbackFutureMs();
   const normalized = raw.includes("T") ? raw : raw.replace(" ", "T");
@@ -141,9 +154,26 @@ const tick = () => {
 };
 
 onMounted(() => {
+  if (props.section.countdownMode === "session") {
+    const amount = Math.max(1, Math.round(props.section.sessionDuration || 15));
+    sessionTargetMs.value = Date.now() + unitToMs(props.section.sessionUnit || "minutes", amount);
+  }
   tick();
   timer = window.setInterval(tick, 1000);
 });
+
+watch(
+  () => [props.section.countdownMode, props.section.sessionDuration, props.section.sessionUnit],
+  () => {
+    if (props.section.countdownMode === "session") {
+      const amount = Math.max(1, Math.round(props.section.sessionDuration || 15));
+      sessionTargetMs.value = Date.now() + unitToMs(props.section.sessionUnit || "minutes", amount);
+    } else {
+      sessionTargetMs.value = null;
+    }
+    tick();
+  }
+);
 
 onBeforeUnmount(() => {
   if (timer) window.clearInterval(timer);

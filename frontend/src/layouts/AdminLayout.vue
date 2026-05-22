@@ -24,11 +24,11 @@
           'border-[#254d32] bg-[#1A3D25] text-slate-100'
         ]"
       >
-        <div class="flex flex-1 flex-col overflow-y-auto">
+        <div class="flex flex-1 min-h-0 flex-col">
           <div class="flex items-center justify-center border-b border-white/10 px-5 py-2">
             <img :src="sidebarLogoSrc" alt="Roteiro Online" class="max-h-[4.2rem] object-contain md:max-h-14" />
           </div>
-          <nav class="flex-1 space-y-0.5 px-[10px] py-2">
+          <nav class="sidebar-scroll flex-1 overflow-y-auto space-y-0.5 px-[10px] py-2">
             <section
               v-for="section in sidebarSections"
               :key="`desktop-section-${section.id}`"
@@ -204,7 +204,7 @@
           @click="mobileMenuOpen = false"
         ></div>
         <div
-          class="w-[14.75rem] max-w-[78vw] shadow-2xl transition-colors md:rounded-l-3xl"
+          class="flex h-full w-[14.75rem] max-w-[78vw] flex-col shadow-2xl transition-colors md:rounded-l-3xl"
           :class="'bg-[#1A3D25] text-slate-100'"
         >
           <div class="relative flex items-center justify-start border-b border-white/10 px-4 py-3">
@@ -221,7 +221,7 @@
               </svg>
             </button>
           </div>
-          <nav class="flex-1 space-y-0.5 px-1.5 py-2">
+          <nav class="sidebar-scroll flex-1 overflow-y-auto space-y-0.5 px-1.5 py-2">
             <section
               v-for="section in sidebarSections"
               :key="`mobile-section-${section.id}`"
@@ -2435,6 +2435,28 @@ body.admin-body-light {
   padding: 3px 8px;
   border-radius: 999px;
   line-height: 1;
+}
+
+.sidebar-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+}
+
+.sidebar-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.14);
 }
 </style>
 

@@ -64,6 +64,7 @@ export interface BannerCardSection extends SectionBase {
   cardBorderColor?: string;
   textColor?: string;
   bodyColor?: string;
+  ctaEnabled?: boolean;
   ctaLabel?: LocalizedString;
   ctaLink?: string;
   ctaMode?: "link" | "section";
@@ -195,6 +196,9 @@ export interface FeaturedVideoSection extends SectionBase {
 export interface CountdownSection extends SectionBase {
   type: "countdown";
   targetDate: string;
+  countdownMode?: "fixed" | "session";
+  sessionDuration?: number;
+  sessionUnit?: "minutes" | "hours" | "days";
   label?: LocalizedString;
   backgroundColor?: string;
   textColor?: string;

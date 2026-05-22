@@ -291,12 +291,12 @@
     </div>
     <div
       v-if="!domainsAllowed"
-      class="pointer-events-auto absolute inset-0 z-10 flex items-center justify-center bg-black/80 px-4 text-center text-white backdrop-blur-sm"
+      class="pointer-events-auto fixed inset-y-0 left-0 right-0 z-[120] flex items-center justify-center bg-black/60 px-4 text-center text-white backdrop-blur-[2px] md:left-[225px]"
     >
-      <div class="max-w-md rounded-3xl bg-[#202020] p-6 shadow-2xl">
-        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-300">{{ viewCopy.overlay.eyebrow }}</p>
-        <h2 class="mt-2 text-2xl font-bold text-white">{{ viewCopy.overlay.title }}</h2>
-        <p class="mt-2 text-sm text-slate-200">
+      <div class="max-w-md rounded-3xl bg-white p-6 shadow-2xl">
+        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">{{ viewCopy.overlay.eyebrow }}</p>
+        <h2 class="mt-2 text-2xl font-bold text-slate-900">{{ viewCopy.overlay.title }}</h2>
+        <p class="mt-2 text-sm text-slate-600">
           {{ viewCopy.overlay.description }}
         </p>
         <button

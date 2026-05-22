@@ -47,13 +47,11 @@ export const useAgencyStore = defineStore("agency", () => {
 
   const selectPrimaryHost = (domains: AgencyDomainSummary[]) => {
     if (!domains.length) return null;
-    const activeDomains = domains.filter(domain => domain.is_active);
-    const primaryActive = activeDomains.find(domain => domain.is_primary);
-    if (primaryActive) return primaryActive.host;
-    if (activeDomains.length) return activeDomains[0].host;
-    const verified = domains.find(domain => domain.is_verified);
-    if (verified) return verified.host;
-    return domains[0].host;
+    const readyDomains = domains.filter(domain => domain.is_active && domain.is_verified);
+    const primaryReady = readyDomains.find(domain => domain.is_primary);
+    if (primaryReady) return primaryReady.host;
+    if (readyDomains.length) return readyDomains[0].host;
+    return null;
   };
 
   const loadPrimaryDomain = async (agencyId: number | null) => {

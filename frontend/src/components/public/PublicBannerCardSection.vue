@@ -16,7 +16,7 @@
           <h2 class="banner-title text-3xl font-bold leading-tight md:text-4xl" :style="{ color: titleColor }">{{ bannerTitle }}</h2>
           <div class="mt-2">
             <a
-              v-if="ctaHasTarget"
+              v-if="ctaVisible"
               :href="ctaHref"
               :data-scroll-target="ctaIsScroll ? 'true' : null"
               :target="ctaOpenInNewTab ? '_blank' : null"
@@ -135,10 +135,12 @@ const titleColor = computed(() => (gradientLuminance.value > 0.5 ? "#0f172a" : "
 const textColor = computed(() => props.section.textColor || "rgba(255,255,255,0.85)");
 
 const ctaMode = computed(() => props.section.ctaMode || "link");
+const ctaEnabled = computed(() => props.section.ctaEnabled !== false);
 const ctaIsScroll = computed(() => ctaMode.value === "section" && !!props.section.ctaSectionId);
 const ctaHasTarget = computed(() =>
   ctaMode.value === "section" ? !!props.section.ctaSectionId : !!props.section.ctaLink
 );
+const ctaVisible = computed(() => ctaEnabled.value && ctaHasTarget.value);
 const ctaHref = computed(() =>
   ctaIsScroll.value ? `#${props.section.ctaSectionId}` : props.section.ctaLink || "#"
 );
