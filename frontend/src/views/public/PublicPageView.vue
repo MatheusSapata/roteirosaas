@@ -72,6 +72,7 @@ import type { HeroSection, PageConfig, PageSection, SectionType, ThemeConfig } f
 import type { LeadForm } from "../../types/leads";
 import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
 import BrandLogo from "../../assets/Logo Branco - Roteiro Online.png";
+import BrandFavicon from "../../assets/Favicon.png";
 import { resolveMediaUrl } from "../../utils/media";
 import { fetchPublicLeadForm } from "../../services/leadCapture";
 import { createLocalizer, getCurrentLanguage, getLocalizedValue, type LocalizedString } from "../../utils/i18n";
@@ -306,7 +307,7 @@ const ensureLinkTag = (selector: string, rel: string, href: string, type?: strin
 
 const applyFavicon = (faviconUrl?: string | null) => {
   if (typeof document === "undefined") return;
-  const fallback = "/favicon.ico";
+  const fallback = BrandFavicon;
   const finalFavicon = (faviconUrl || "").trim() || fallback;
   ensureLinkTag("rel='icon'", "icon", finalFavicon, "image/x-icon");
   ensureLinkTag("rel='shortcut icon'", "shortcut icon", finalFavicon, "image/x-icon");

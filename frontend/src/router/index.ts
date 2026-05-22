@@ -205,8 +205,7 @@ const platformRoutes: RouteRecordRaw[] = [
       {
         path: "domains",
         name: "agency-domains",
-        component: () => import("../views/admin/AgencyDomainsView.vue"),
-        meta: { permission: "domains" }
+        component: () => import("../views/admin/AgencyDomainsView.vue")
       },
       { path: "planos", name: "plans", component: PlansView },
       { path: "integracoes", redirect: "/admin/integracoes/rastreamento", meta: { permission: "integrations" } },

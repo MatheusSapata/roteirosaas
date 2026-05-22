@@ -381,9 +381,9 @@ const headerTitle = computed(() => {
 });
 
 const originLabel = computed(() => {
-  if (!details.value) return "NÃ£o informado";
+  if (!details.value) return "Não informado";
   const parts = [details.value.formName, details.value.pageTitle || details.value.pageSlug].filter(Boolean);
-  return parts.length ? parts.join(" / ") : details.value.source || "NÃ£o informado";
+  return parts.length ? parts.join(" / ") : details.value.source || "Não informado";
 });
 
 const clientWhatsappLink = computed(() => {

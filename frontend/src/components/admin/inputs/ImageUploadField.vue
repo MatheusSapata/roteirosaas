@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="flex h-full flex-col gap-2">
     <div v-if="label" class="space-y-1">
       <label class="text-sm font-semibold text-slate-600">{{ label }}</label>
@@ -33,7 +33,7 @@
             @change="onFileChange"
           />
           <span v-if="uploading">Enviando...</span>
-          <span v-else>{{ previewUrl ? "Substituir imagem" : "Enviar imagem" }}</span>
+          <span v-else>{{ previewUrl ? (props.replaceLabel || "Substituir imagem") : "Enviar imagem" }}</span>
         </label>
         <button
           v-if="modelValue"
@@ -189,6 +189,7 @@
 import Cropper from "cropperjs";
 import "cropperjs/dist/cropper.css";
 import { computed, inject, nextTick, onBeforeUnmount, ref, watch } from "vue";
+import api from "../../../services/api";
 import { useAgencyStore } from "../../../store/useAgencyStore";
 import { resolveMediaUrl, uploadImageFile } from "../../../utils/media";
 import { sectionUploadGuardKey } from "../sectionUploadGuard";
@@ -198,6 +199,7 @@ const props = defineProps<{
   label?: string;
   labelDescription?: string;
   hint?: string;
+  replaceLabel?: string;
   enableCrop?: boolean;
   cropAspect?: number;
   editorTitle?: string;
@@ -219,6 +221,7 @@ const fileInput = ref<HTMLInputElement | null>(null);
 const cropperImage = ref<HTMLImageElement | null>(null);
 const cropperInstance = ref<Cropper | null>(null);
 const pendingFile = ref<File | null>(null);
+const cropperObjectUrl = ref<string | null>(null);
 const sectionUploadGuard = inject(sectionUploadGuardKey, null);
 const uploadToken = Symbol("image-upload-field");
 
@@ -259,6 +262,7 @@ watch(uploading, value => {
 
 onBeforeUnmount(() => {
   sectionUploadGuard?.setUploading(uploadToken, false);
+  revokeCropperObjectUrl();
 });
 
 watch(roundedControl, value => {
@@ -340,7 +344,7 @@ const resetFileInput = () => {
 const uploadProcessedFile = async (file: File) => {
   const agencyId = await ensureAgency();
   if (!agencyId) {
-    error.value = "Selecione ou crie uma agência antes de enviar imagens.";
+    error.value = "Selecione ou crie uma agÃªncia antes de enviar imagens.";
     return;
   }
 
@@ -388,12 +392,63 @@ const clearImage = () => {
   pendingFile.value = null;
 };
 
+const openFileDialog = () => {
+  fileInput.value?.click();
+};
+
+const revokeCropperObjectUrl = () => {
+  if (cropperObjectUrl.value) {
+    URL.revokeObjectURL(cropperObjectUrl.value);
+    cropperObjectUrl.value = null;
+  }
+};
+
+const openCropperForCurrent = async () => {
+  if (!croppingEnabled.value || !previewUrl.value) return;
+  let src = previewUrl.value;
+  let loadedFromProxy = false;
+  const proxyCandidates = [previewUrl.value, props.modelValue || ""].filter(Boolean) as string[];
+  try {
+    revokeCropperObjectUrl();
+    for (const candidateUrl of proxyCandidates) {
+      try {
+        const response = await api.get("/media/proxy", {
+          params: { url: candidateUrl },
+          responseType: "blob"
+        });
+        if (response?.data instanceof Blob) {
+          cropperObjectUrl.value = URL.createObjectURL(response.data);
+          src = cropperObjectUrl.value;
+          loadedFromProxy = true;
+          break;
+        }
+      } catch {
+        // tenta próximo formato de URL
+      }
+    }
+  } catch {
+    // fallback para URL direta
+  }
+  if (!loadedFromProxy && /^https?:\/\//i.test(previewUrl.value)) {
+    dialogError.value = "Não foi possível carregar a imagem para recorte. Tente substituir a imagem.";
+    return;
+  }
+  cropperModal.value = {
+    open: true,
+    src,
+    originalSrc: src,
+    bgEdited: false
+  };
+  dialogError.value = "";
+};
+
 const closeCropper = () => {
   cropperModal.value.open = false;
   removingBackground.value = false;
   cropping.value = false;
   pendingFile.value = null;
   dialogError.value = "";
+  revokeCropperObjectUrl();
 };
 
 watch(
@@ -408,12 +463,38 @@ watch(
           viewMode: 1,
           background: false,
           autoCropArea: 0.85,
+          autoCrop: true,
           dragMode: "move",
           movable: true,
           cropBoxMovable: true,
           cropBoxResizable: true,
           zoomOnTouch: true,
-          zoomOnWheel: true
+          zoomOnWheel: true,
+          checkCrossOrigin: false,
+          checkOrientation: false,
+          ready() {
+            const cropper = cropperInstance.value;
+            if (!cropper) return;
+            cropper.crop();
+            const ratio = aspectRatio.value;
+            const canvas = cropper.getCanvasData();
+            const targetArea = 0.9;
+            let width = canvas.width * targetArea;
+            let height = canvas.height * targetArea;
+            if (!Number.isNaN(ratio) && ratio > 0) {
+              if (width / height > ratio) {
+                width = height * ratio;
+              } else {
+                height = width / ratio;
+              }
+            }
+            cropper.setCropBoxData({
+              left: canvas.left + (canvas.width - width) / 2,
+              top: canvas.top + (canvas.height - height) / 2,
+              width,
+              height
+            });
+          }
         };
         if (!Number.isNaN(aspectRatio.value)) {
           options.aspectRatio = aspectRatio.value;
@@ -428,7 +509,7 @@ watch(
 );
 
 const confirmCrop = async () => {
-  if (!cropperInstance.value || !pendingFile.value) return;
+  if (!cropperInstance.value) return;
   cropping.value = true;
   dialogError.value = "";
   try {
@@ -444,13 +525,18 @@ const confirmCrop = async () => {
         else reject(new Error("Falha ao gerar arquivo da logo."));
       }, "image/png", 0.95);
     });
-    const baseName = pendingFile.value.name.replace(/\.[^.]+$/, "") || "logo";
+    const baseName = pendingFile.value?.name.replace(/\.[^.]+$/, "") || "image";
     const finalFile = new File([blob], `${baseName}-edit.png`, { type: "image/png" });
     await uploadProcessedFile(finalFile);
     closeCropper();
   } catch (err) {
     console.error(err);
-    dialogError.value = "Não foi possível aplicar o recorte. Tente novamente.";
+    const message = err instanceof Error ? err.message : "";
+    if (message.includes("Tainted canvases")) {
+      dialogError.value = "Não foi possível recortar esta imagem por bloqueio CORS no servidor da mídia.";
+    } else {
+      dialogError.value = "Não foi possível aplicar o recorte. Tente novamente.";
+    }
   } finally {
     cropping.value = false;
   }
@@ -564,4 +650,10 @@ const colorDistance = (a: RGB, b: RGB) => {
   const db = a.b - b.b;
   return Math.sqrt(dr * dr + dg * dg + db * db);
 };
+
+defineExpose({
+  openFileDialog,
+  openCropperForCurrent
+});
 </script>
+

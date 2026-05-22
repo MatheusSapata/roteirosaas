@@ -1,44 +1,60 @@
-<template>
-  <div class="space-y-4">
-    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div class="grid gap-3 md:grid-cols-2">
+﻿<template>
+  <div class="flight-shell">
+    <aside class="flight-nav">
+      <button type="button" class="flight-nav-item" :class="{ active: activeTab === 'text' }" @click="activeTab = 'text'">
+        <span class="flight-nav-icon">✎</span>
+        <span><strong>Textos</strong><small>Informações gerais</small></span>
+      </button>
+      <button type="button" class="flight-nav-item" :class="{ active: activeTab === 'outbound' }" @click="activeTab = 'outbound'">
+        <span class="flight-nav-icon">🛫</span>
+        <span><strong>Ida</strong><small>Trechos de ida</small></span>
+      </button>
+      <button type="button" class="flight-nav-item" :class="{ active: activeTab === 'inbound' }" @click="activeTab = 'inbound'">
+        <span class="flight-nav-icon">🛬</span>
+        <span><strong>Volta</strong><small>Trechos de volta</small></span>
+      </button>
+    </aside>
+
+    <section class="flight-content">
+      <div v-if="activeTab === 'text'" class="p-0">
+      <h4 class="flight-title">Textos da seção</h4>
+      <p class="flight-subtitle">Configure os textos exibidos acima dos detalhes dos voos.</p>
+      <div class="grid gap-3">
         <div>
-          <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Titulo da secao</label>
+          <label class="flight-field-title">
+            Etiqueta acima do título
+            <span class="flight-optional">opcional</span>
+            <span class="flight-help">?</span>
+          </label>
+          <input
+            v-model="local.headingLabel"
+            class="flight-input mt-1 w-full rounded-lg border border-slate-200 px-3 py-2"
+            placeholder="Detalhes do voo"
+          />
+        </div>
+        <div>
+          <label class="flight-field-title">Título da seção <span class="flight-help">?</span></label>
           <input
             v-model="local.title"
-            class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2"
+            class="flight-input mt-1 w-full rounded-lg border border-slate-200 px-3 py-2"
             placeholder="Informações do voo"
           />
         </div>
         <div>
-          <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Subtitulo</label>
+          <label class="flight-field-title">Subtítulo <span class="flight-help">?</span></label>
           <input
             v-model="local.subtitle"
-            class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2"
+            class="flight-input mt-1 w-full rounded-lg border border-slate-200 px-3 py-2"
             placeholder="Confira os detalhes dos voos inclusos no pacote"
           />
         </div>
       </div>
-      <div class="mt-3 grid gap-3 md:grid-cols-3">
-        <label class="inline-flex items-center gap-2 text-sm text-slate-600">
-          <input v-model="local.enabled" type="checkbox" class="h-4 w-4 rounded border-slate-300" />
-          Secao ativa
-        </label>
-        <label class="inline-flex items-center gap-2 text-sm text-slate-600">
-          <input v-model="local.showOutbound" type="checkbox" class="h-4 w-4 rounded border-slate-300" />
-          Mostrar ida
-        </label>
-        <label class="inline-flex items-center gap-2 text-sm text-slate-600">
-          <input v-model="local.showInbound" type="checkbox" class="h-4 w-4 rounded border-slate-300" />
-          Mostrar volta
-        </label>
-      </div>
       <div class="mt-3">
-        <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Informacoes adicionais</label>
+        <label class="flight-field-title">Informações adicionais <span class="flight-help">?</span></label>
         <RichTextEditor
           v-model="local.generalInfo"
-          class="mt-1"
-          placeholder="Ex.: regras de alteracao, check-in, documentos obrigatorios."
+          class="mt-1 flight-rich"
+          placeholder="Ex: regras de alteração, documentos obrigatórios, check-in."
         />
       </div>
       <p v-if="!lookupAvailable" class="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
@@ -46,125 +62,46 @@
       </p>
     </div>
 
-    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div class="flex flex-wrap items-center justify-between gap-3">
-        <div class="inline-flex rounded-full border border-slate-200 bg-slate-50 p-1">
-          <button
-            type="button"
-            class="rounded-full px-4 py-1.5 text-sm font-semibold transition"
-            :class="activeDirection === 'outbound' ? 'bg-brand text-white' : 'text-slate-600'"
-            @click="activeDirection = 'outbound'"
-          >
-            Ida
-          </button>
-          <button
-            type="button"
-            class="rounded-full px-4 py-1.5 text-sm font-semibold transition"
-            :class="activeDirection === 'inbound' ? 'bg-brand text-white' : 'text-slate-600'"
-            @click="activeDirection = 'inbound'"
-          >
-            Volta
-          </button>
-        </div>
-        <button
-          type="button"
-          class="rounded-full border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700"
-          @click="addSegment"
-        >
-          + Adicionar trecho
-        </button>
-      </div>
-
+      <div v-if="activeTab !== 'text'" class="p-0">
+      <h4 class="flight-title">{{ activeTab === "outbound" ? "Trechos de ida" : "Trechos de volta" }}</h4>
+      <p class="flight-subtitle">
+        {{ activeTab === "outbound" ? "Adicione, selecione e reordene os trechos de ida do pacote." : "Adicione, selecione e reordene os trechos de retorno da viagem." }}
+      </p>
       <div v-if="loadingJourneys" class="mt-4 text-sm text-slate-500">Carregando trechos...</div>
-      <div v-else class="mt-4 space-y-4">
-        <div
-          v-for="(segment, index) in activeSegments"
-          :key="segment.id || index"
-          class="rounded-2xl border border-slate-200 bg-slate-50 p-3"
-        >
-          <div class="flex flex-wrap items-center justify-between gap-2">
-            <div class="flex min-w-0 items-center gap-2">
-              <AirlineLogo
-                :airline-iata="segment.airline_iata"
-                :airline-name="segment.airline_name"
-                :custom-url="segment.airline_logo_url"
-                size-class="h-7 w-7"
-              />
-              <button
-                type="button"
-                class="min-w-0 text-left text-sm font-semibold text-slate-700"
-                @click="selectSegment(segment.id || null)"
-              >
-                {{ segmentTitle(segment, index) }}
-              </button>
-            </div>
-            <div class="flex items-center gap-2">
-              <button
-                type="button"
-                class="rounded border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-600"
-                :disabled="index === 0"
-                @click="moveSegment(index, -1)"
-              >
-                Subir
-              </button>
-              <button
-                type="button"
-                class="rounded border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-600"
-                :disabled="index === activeSegments.length - 1"
-                @click="moveSegment(index, 1)"
-              >
-                Descer
-              </button>
-              <button
-                type="button"
-                class="rounded border border-rose-200 bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-600"
-                @click="removeSegment(segment)"
-              >
-                Excluir
-              </button>
-            </div>
+      <div v-else class="mt-4">
+        <div class="segment-top-row">
+          <div class="segment-tabs-wrap">
+            <button
+              v-for="(segment, index) in activeSegments"
+              :key="segment.id || index"
+              type="button"
+              class="segment-pill"
+              :class="{ active: selectedSegmentIndex === index }"
+              @click="selectSegmentByIndex(index)"
+            >
+              <span class="segment-pill-handle">⋮⋮</span>
+              <span>Trecho {{ index + 1 }}</span>
+              <span class="segment-pill-remove" @click.stop="removeSegment(segment)">×</span>
+            </button>
           </div>
-          <p v-if="index < activeSegments.length - 1 && layoverText(index)" class="mt-2 text-xs text-slate-500">
-            {{ layoverText(index) }}
-          </p>
+          <button
+            type="button"
+            class="rounded-full border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700"
+            @click="addSegment"
+          >
+            + Adicionar trecho
+          </button>
         </div>
-
-        <div v-if="!activeSegments.length" class="rounded-xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500">
+        <p v-if="!activeSegments.length" class="mt-3 rounded-xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500">
           Nenhum trecho cadastrado nesta jornada.
-        </div>
+        </p>
       </div>
     </div>
 
-    <div v-if="selectedSegmentDraft" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <h4 class="text-sm font-semibold text-slate-800">Trecho selecionado</h4>
-
-      <div class="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
-        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Buscar automatico</p>
-        <div class="mt-2 grid gap-3 md:grid-cols-3">
-          <div>
-            <label class="text-xs text-slate-500">Numero do voo</label>
-            <input
-              v-model="lookupFlightNumber"
-              class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              placeholder="AD2769"
-            />
-          </div>
-          <div>
-            <label class="text-xs text-slate-500">Data do voo</label>
-            <input v-model="lookupFlightDate" type="date" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
-          </div>
-          <div class="flex items-end">
-            <button
-              type="button"
-              class="w-full rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
-              :disabled="lookupLoading || !lookupAvailable || !lookupFlightNumber || !lookupFlightDate"
-              @click="runLookup(false)"
-            >
-              {{ lookupLoading ? "Buscando..." : "Buscar voo" }}
-            </button>
-          </div>
-        </div>
-        <div class="mt-2 flex flex-wrap items-center gap-3">
+      <div v-if="selectedSegmentDraft && activeTab !== 'text'" class="flight-selected-card p-0">
+      <div class="flight-lookup-box mt-3 p-0">
+        <div class="flight-lookup-head">
+          <p class="flight-field-title">Buscar voo automaticamente</p>
           <button
             type="button"
             class="rounded border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-600 disabled:opacity-60"
@@ -173,143 +110,105 @@
           >
             Atualizar dados pela API
           </button>
-          <span v-if="lookupState && lookupState !== 'idle'" class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-            {{ lookupStateLabel }}
-          </span>
         </div>
-        <p v-if="lookupMessage" class="mt-2 text-xs text-emerald-700">{{ lookupMessage }}</p>
-        <p v-if="lookupProviderInfo" class="mt-1 text-xs text-slate-600">{{ lookupProviderInfo }}</p>
-        <p v-if="lookupError" class="mt-2 text-xs text-rose-600">{{ lookupError }}</p>
+        <div class="mt-2 grid gap-3 md:grid-cols-2">
+          <div>
+            <input
+              v-model="lookupFlightNumber"
+              class="flight-input mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              placeholder="Numero do voo"
+            />
+          </div>
+          <div>
+            <input v-model="lookupFlightDate" type="date" class="flight-input mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="Data do voo" />
+          </div>
+        </div>
+        <button
+          type="button"
+          class="flight-search-btn mt-2 w-full rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
+          :disabled="lookupLoading || !lookupAvailable || !lookupFlightNumber || !lookupFlightDate"
+          @click="runLookup(false)"
+        >
+          {{ lookupLoading ? "Buscando..." : "Buscar voo" }}
+        </button>
       </div>
 
-      <div class="mt-4 grid gap-3 md:grid-cols-4">
-        <div class="flex items-end">
-          <div class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Logo automatica</p>
-            <div class="mt-2 flex items-center gap-2">
-              <AirlineLogo
-                :airline-iata="selectedSegmentDraft.airline_iata"
-                :airline-name="selectedSegmentDraft.airline_name"
-                :custom-url="selectedSegmentDraft.airline_logo_url"
-                size-class="h-10 w-10 sm:h-12 sm:w-12"
-              />
-              <p class="text-xs text-slate-500">
-                {{ (selectedSegmentDraft.airline_iata || "---").toUpperCase() }}
-              </p>
-            </div>
-          </div>
+      <div class="flight-grid-2 mt-4 grid gap-3 md:grid-cols-2">
+        <div>
+          <label class="flight-field-title">Companhia aerea</label>
+          <input v-model="selectedSegmentDraft.airline_name" class="flight-input mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
         </div>
         <div>
-          <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Companhia aerea</label>
-          <input v-model="selectedSegmentDraft.airline_name" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
+          <label class="flight-field-title">Numero do voo</label>
+          <input v-model="selectedSegmentDraft.flight_number" class="flight-input mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
         </div>
         <div>
-          <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Logo (URL)</label>
-          <input v-model="selectedSegmentDraft.airline_logo_url" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
+          <label class="flight-field-title">Origem</label>
+          <input v-model="selectedSegmentDraft.departure_city" class="flight-input mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
         </div>
         <div>
-          <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Numero do voo</label>
-          <input v-model="selectedSegmentDraft.flight_number" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
-        </div>
-      </div>
-
-      <div class="mt-4 grid gap-3 md:grid-cols-2">
-        <div class="rounded-xl border border-slate-200 p-3">
-          <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Origem</p>
-          <div class="mt-2 grid gap-2 md:grid-cols-2">
-            <input v-model="selectedSegmentDraft.departure_airport_iata" class="rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="Sigla (IATA)" />
-            <input v-model="selectedSegmentDraft.departure_city" class="rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="Cidade" />
-          </div>
-          <input v-model="selectedSegmentDraft.departure_airport_name" class="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="Aeroporto" />
-          <div class="mt-2 grid gap-2 md:grid-cols-2">
-            <input v-model="selectedSegmentDraft.departure_country" class="rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="Pais" />
-            <input v-model="selectedSegmentDraft.departure_datetime" type="datetime-local" class="rounded-lg border border-slate-200 px-3 py-2 text-sm" />
-          </div>
-        </div>
-        <div class="rounded-xl border border-slate-200 p-3">
-          <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Destino</p>
-          <div class="mt-2 grid gap-2 md:grid-cols-2">
-            <input v-model="selectedSegmentDraft.arrival_airport_iata" class="rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="Sigla (IATA)" />
-            <input v-model="selectedSegmentDraft.arrival_city" class="rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="Cidade" />
-          </div>
-          <input v-model="selectedSegmentDraft.arrival_airport_name" class="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="Aeroporto" />
-          <div class="mt-2 grid gap-2 md:grid-cols-2">
-            <input v-model="selectedSegmentDraft.arrival_country" class="rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="Pais" />
-            <input v-model="selectedSegmentDraft.arrival_datetime" type="datetime-local" class="rounded-lg border border-slate-200 px-3 py-2 text-sm" />
-          </div>
-        </div>
-      </div>
-
-      <div class="mt-4 grid gap-3 md:grid-cols-4">
-        <div>
-          <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Duracao (min)</label>
-          <input v-model.number="selectedSegmentDraft.duration_minutes" type="number" min="0" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
+          <label class="flight-field-title">Destino</label>
+          <input v-model="selectedSegmentDraft.arrival_city" class="flight-input mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
         </div>
         <div>
-          <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Classe</label>
-          <input v-model="selectedSegmentDraft.cabin_class" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" placeholder="Economica" />
+          <label class="flight-field-title">Data e horário de saída</label>
+          <input v-model="selectedSegmentDraft.departure_datetime" type="datetime-local" class="flight-input mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
         </div>
         <div>
-          <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Status</label>
-          <input v-model="selectedSegmentDraft.status" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
+          <label class="flight-field-title">Data e horário de chegada</label>
+          <input v-model="selectedSegmentDraft.arrival_datetime" type="datetime-local" class="flight-input mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
         </div>
         <div>
-          <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Data do voo</label>
-          <input v-model="selectedSegmentDraft.flight_date" type="date" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
+          <label class="flight-field-title">Duracao</label>
+          <input v-model.number="selectedSegmentDraft.duration_minutes" type="number" min="0" class="flight-input mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
         </div>
-      </div>
-
-      <div class="mt-4 rounded-xl border border-slate-200 p-3">
-        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Bagagens incluidas neste trecho</p>
-        <div class="mt-2 grid gap-2 md:grid-cols-3">
-          <label class="inline-flex items-center gap-2 text-sm text-slate-600">
-            <input v-model="selectedSegmentDraft.included_personal_item" type="checkbox" class="h-4 w-4 rounded border-slate-300" />
-            Item pessoal
-          </label>
-          <label class="inline-flex items-center gap-2 text-sm text-slate-600">
-            <input v-model="selectedSegmentDraft.included_carry_on" type="checkbox" class="h-4 w-4 rounded border-slate-300" />
-            Bagagem de mao
-          </label>
-          <label class="inline-flex items-center gap-2 text-sm text-slate-600">
-            <input v-model="selectedSegmentDraft.included_checked_bag" type="checkbox" class="h-4 w-4 rounded border-slate-300" />
-            Bagagem despachada
-          </label>
+        <div>
+          <label class="flight-field-title">Classe</label>
+          <select v-model="selectedSegmentDraft.cabin_class" class="flight-input mt-1 w-full rounded-lg border border-slate-200 px-3 py-2">
+            <option value="">Selecione</option>
+            <option value="Econômica">Econômica</option>
+            <option value="Premium Economy">Premium Economy</option>
+            <option value="Executiva">Executiva</option>
+            <option value="Primeira Classe">Primeira Classe</option>
+          </select>
         </div>
       </div>
 
       <div class="mt-4">
-        <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Observacoes</label>
+        <p class="flight-field-title">Bagagens inclusas <span class="flight-help">?</span></p>
+        <div class="flight-pill-row mt-2">
+          <button type="button" class="flight-pill" :class="{ active: selectedSegmentDraft.included_personal_item }" @click="selectedSegmentDraft.included_personal_item = !selectedSegmentDraft.included_personal_item">
+            Item pessoal
+          </button>
+          <button type="button" class="flight-pill" :class="{ active: selectedSegmentDraft.included_carry_on }" @click="selectedSegmentDraft.included_carry_on = !selectedSegmentDraft.included_carry_on">
+            Bagagem de mão
+          </button>
+          <button type="button" class="flight-pill" :class="{ active: selectedSegmentDraft.included_checked_bag }" @click="selectedSegmentDraft.included_checked_bag = !selectedSegmentDraft.included_checked_bag">
+            Bagagem despachada
+          </button>
+        </div>
+      </div>
+
+      <div class="mt-4">
+        <label class="flight-field-title">Observacoes</label>
         <textarea
           v-model="selectedSegmentDraft.notes"
           rows="3"
-          class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2"
+          class="flight-input mt-1 w-full rounded-lg border border-slate-200 px-3 py-2"
           placeholder="Campo opcional"
         ></textarea>
       </div>
 
-      <div class="mt-4 flex flex-wrap justify-end gap-2">
-        <button
-          type="button"
-          class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600"
-          @click="reloadJourneys"
-        >
-          Recarregar
-        </button>
-        <button
-          type="button"
-          class="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
-          :disabled="savingSegment"
-          @click="saveSegment"
-        >
-          {{ savingSegment ? "Salvando..." : "Salvar trecho" }}
-        </button>
+      <div v-if="lookupToast.visible" class="flight-snackbar" :class="lookupToast.type === 'error' ? 'error' : 'success'">
+        {{ lookupToast.message }}
       </div>
-    </div>
+      </div>
+    </section>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, defineExpose, onMounted, reactive, ref, watch } from "vue";
+import { computed, defineExpose, onMounted, onBeforeUnmount, reactive, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import type { FlightDetailsSection, FlightSectionJourney, FlightSectionSegment } from "../../types/page";
 import AirlineLogo from "../shared/AirlineLogo.vue";
@@ -367,8 +266,10 @@ const local = reactive<FlightDetailsSection>({
 const loadingJourneys = ref(false);
 const lookupAvailable = ref(Boolean(props.modelValue.lookupAvailable));
 const activeDirection = ref<"outbound" | "inbound">("outbound");
+const activeTab = ref<"text" | "outbound" | "inbound">("text");
 const journeys = ref<FlightSectionJourney[]>(props.modelValue.journeys || []);
 const selectedSegmentId = ref<number | null>(null);
+const selectedSegmentIndex = ref<number | null>(null);
 const selectedSegmentDraft = ref<FlightSectionSegment | null>(null);
 const selectedSegmentBaseSnapshot = ref<string | null>(null);
 const lookupLoading = ref(false);
@@ -376,6 +277,12 @@ const lookupMessage = ref("");
 const lookupError = ref("");
 const lookupProviderInfo = ref("");
 const lookupState = ref<"idle" | "loading" | "success" | "cache" | "fallback" | "error">("idle");
+const lookupToast = ref<{ visible: boolean; message: string; type: "success" | "error" }>({
+  visible: false,
+  message: "",
+  type: "success"
+});
+let lookupToastTimer: number | undefined;
 const lookupFlightNumber = ref("");
 const lookupFlightDate = ref("");
 const savingSegment = ref(false);
@@ -388,6 +295,15 @@ const lookupStateLabel = computed(() => {
   if (lookupState.value === "error") return "Erro";
   return "";
 });
+
+const showLookupToast = (message: string, type: "success" | "error" = "success") => {
+  if (!message) return;
+  if (lookupToastTimer) window.clearTimeout(lookupToastTimer);
+  lookupToast.value = { visible: true, message, type };
+  lookupToastTimer = window.setTimeout(() => {
+    lookupToast.value.visible = false;
+  }, 3200);
+};
 
 const emitLocal = () => {
   emit("update:modelValue", {
@@ -438,6 +354,7 @@ const sectionId = computed(() => local.sectionId || local.anchorId || "");
 const setSelectedSegment = (segment: FlightSectionSegment | null) => {
   if (!segment) {
     selectedSegmentId.value = null;
+    selectedSegmentIndex.value = null;
     selectedSegmentDraft.value = null;
     selectedSegmentBaseSnapshot.value = null;
     return;
@@ -463,6 +380,13 @@ const selectSegment = (segmentId: number | null) => {
     return;
   }
   const target = activeSegments.value.find(segment => segment.id === segmentId) || null;
+  selectedSegmentIndex.value = target ? activeSegments.value.findIndex(segment => segment.id === target.id) : null;
+  setSelectedSegment(target);
+};
+
+const selectSegmentByIndex = (index: number) => {
+  const target = activeSegments.value[index] || null;
+  selectedSegmentIndex.value = target ? index : null;
   setSelectedSegment(target);
 };
 
@@ -484,12 +408,14 @@ const applyJourneys = (nextJourneys: FlightSectionJourney[]) => {
       .flatMap(journey => journey.segments || [])
       .find(segment => segment.id === selectedSegmentId.value);
     if (selected) {
+      selectedSegmentIndex.value = activeSegments.value.findIndex(segment => segment.id === selected.id);
       setSelectedSegment(selected);
       emitLocal();
       return;
     }
   }
   const firstSegment = activeSegments.value[0] || null;
+  selectedSegmentIndex.value = firstSegment ? 0 : null;
   setSelectedSegment(firstSegment);
   emitLocal();
 };
@@ -559,7 +485,7 @@ const moveSegment = async (index: number, direction: number) => {
 };
 
 const saveSegment = async () => {
-  if (!pageId.value || !sectionId.value || !selectedSegmentDraft.value || !selectedSegmentDraft.value.id) return;
+  if (!pageId.value || !sectionId.value || !selectedSegmentDraft.value || !selectedSegmentDraft.value.id) return false;
   savingSegment.value = true;
   lookupError.value = "";
   try {
@@ -570,8 +496,10 @@ const saveSegment = async () => {
     });
     lookupAvailable.value = !!response.lookup_available;
     applyJourneys(response.journeys || []);
+    return true;
   } catch (error: any) {
     lookupError.value = error?.response?.data?.detail || "Nao foi possivel salvar o trecho.";
+    return false;
   } finally {
     savingSegment.value = false;
   }
@@ -611,6 +539,7 @@ const runLookup = async (forceRefresh = false) => {
     } else if (response.provider_message) {
       lookupProviderInfo.value = response.provider_message;
     }
+    showLookupToast([lookupMessage.value, lookupProviderInfo.value].filter(Boolean).join(" "), "success");
     await reloadJourneys();
   } catch (error: any) {
     const status = Number(error?.response?.status || 0);
@@ -618,6 +547,7 @@ const runLookup = async (forceRefresh = false) => {
     lookupError.value =
       error?.response?.data?.detail ||
       "Nao foi possivel buscar automaticamente. Voce pode preencher manualmente.";
+    showLookupToast(lookupError.value, "error");
     if (status === 503) {
       await reloadJourneys();
     }
@@ -655,7 +585,7 @@ const segmentTitle = (segment: FlightSectionSegment, index: number) => {
   const airline = segment.airline_name || "Companhia nao informada";
   const from = segment.departure_airport_iata || "---";
   const to = segment.arrival_airport_iata || "---";
-  return `${number} · ${airline} · ${from} -> ${to}`;
+  return `${number} Â· ${airline} Â· ${from} -> ${to}`;
 };
 
 const toDatetimeLocal = (value?: string | null) => {
@@ -720,13 +650,31 @@ const hasUnsavedSegmentDraftChanges = () => {
   return !!currentSnapshot && currentSnapshot !== selectedSegmentBaseSnapshot.value;
 };
 
+const savePendingSegmentDraft = async () => {
+  if (!hasUnsavedSegmentDraftChanges()) return true;
+  return await saveSegment();
+};
+
 defineExpose({
-  hasUnsavedSegmentDraftChanges
+  hasUnsavedSegmentDraftChanges,
+  savePendingSegmentDraft
 });
+
+watch(
+  () => activeTab.value,
+  value => {
+    if (value === "outbound" || value === "inbound") {
+      activeDirection.value = value;
+    }
+  }
+);
 
 watch(
   () => activeDirection.value,
   () => {
+    if (activeDirection.value === "outbound" || activeDirection.value === "inbound") {
+      activeTab.value = activeDirection.value;
+    }
     const first = activeSegments.value[0] || null;
     setSelectedSegment(first);
   }
@@ -735,4 +683,343 @@ watch(
 onMounted(async () => {
   await reloadJourneys();
 });
+
+onBeforeUnmount(() => {
+  if (lookupToastTimer) window.clearTimeout(lookupToastTimer);
+});
 </script>
+
+<style scoped>
+.flight-shell {
+  display: grid;
+  grid-template-columns: 178px 1fr;
+  height: 100%;
+  min-height: 56vh;
+}
+
+.flight-nav {
+  border-right: 1px solid #e6eee8;
+  padding: 16px 12px 16px 12px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.flight-nav-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #d8dfda;
+  border-radius: 14px;
+  padding: 7px 9px;
+  background: #eef2ef;
+  color: #0f172a;
+  text-align: left;
+}
+
+.flight-nav-item.active {
+  border-color: #34c759;
+  background: #34c759;
+}
+
+.flight-nav-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.82);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+
+.flight-nav-icon svg {
+  width: 13px;
+  height: 13px;
+}
+
+.flight-nav-item strong {
+  display: block;
+  font-size: 16px;
+  line-height: 0.95;
+  font-weight: 700;
+}
+
+.flight-nav-item small {
+  display: block;
+  font-size: 10px;
+  color: rgba(15, 23, 42, 0.55);
+  font-weight: 600;
+}
+
+.flight-nav-item.active small {
+  color: rgba(7, 82, 36, 0.78);
+}
+
+.flight-content {
+  background: #f4f7f5;
+  padding: 10px 14px;
+  overflow-y: auto;
+  display: grid;
+  gap: 10px;
+}
+
+.flight-title {
+  margin: 0 0 2px;
+  font-size: 16px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.flight-subtitle {
+  margin: 0;
+  color: #607284;
+  font-size: 12px;
+}
+
+.flight-lookup-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.flight-selected-card {
+  background: #f8faf9;
+}
+
+.flight-selected-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.15;
+}
+
+.flight-field-title {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #748379;
+  font-weight: 950;
+}
+
+.flight-optional {
+  margin-left: auto;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 12px;
+  color: #93a29a;
+  font-weight: 700;
+}
+
+.flight-help {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  border: 1px solid #d8e3dc;
+  color: #9aaaa0;
+  font-size: 9px;
+  font-weight: 900;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flight-rich :deep(.ql-toolbar.ql-snow) {
+  border: 1px solid #dfe8e2 !important;
+  border-bottom: 0 !important;
+  border-radius: 10px 10px 0 0;
+  background: #fbfdfc;
+}
+
+.flight-rich :deep(.ql-container.ql-snow) {
+  border: 1px solid #dfe8e2 !important;
+  border-radius: 0 0 10px 10px;
+}
+
+.flight-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.flight-pill {
+  border: 1px solid #dfe8e2;
+  background: #fff;
+  border-radius: 999px;
+  padding: 8px 12px;
+  color: #516358;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.flight-pill.active {
+  background: #07111f;
+  color: #fff;
+  border-color: #07111f;
+}
+
+.flight-mini-label {
+  font-size: 12px;
+  color: #607284;
+}
+
+.flight-input {
+  border-radius: 10px !important;
+  border-color: #dfe8e2 !important;
+}
+
+.flight-search-btn {
+  background: #35d467 !important;
+  border-color: #35d467 !important;
+  color: #073417 !important;
+  font-size: 16px;
+  line-height: 1;
+  font-weight: 800;
+  min-height: 40px;
+}
+
+.flight-grid-4 {
+  align-items: end;
+}
+
+.flight-snackbar {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 60;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 10px 24px rgba(7, 17, 31, 0.2);
+}
+
+.flight-snackbar.success {
+  background: #ecfdf3;
+  color: #166534;
+  border: 1px solid #86efac;
+}
+
+.flight-snackbar.error {
+  background: #fff1f1;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.segment-tabs-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.segment-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.segment-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid #dfe8e2;
+  background: #fff;
+  border-radius: 999px;
+  padding: 8px 10px;
+  color: #516358;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.segment-pill.active {
+  background: #f0fff5;
+  color: #173b25;
+  border-color: #35d467;
+}
+
+.segment-pill-handle {
+  color: #9aaaa0;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.segment-pill-remove {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #ffe8e8;
+  color: #d93a3a;
+  font-size: 12px;
+  font-weight: 900;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+@media (max-width: 900px) {
+  .flight-shell {
+    grid-template-columns: 1fr;
+    min-height: 100%;
+    height: 100%;
+    align-content: start;
+    grid-auto-rows: min-content;
+  }
+
+  .flight-nav {
+    border-right: 0;
+    border-bottom: 0;
+    padding: 8px 8px 8px 16px;
+    margin-bottom: 8px;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 8px;
+  }
+
+  .flight-nav-item {
+    min-width: 0;
+    flex: 0 0 calc((100% - 16px) / 3);
+    width: calc((100% - 16px) / 3);
+    height: 40px;
+    min-height: 40px;
+    padding: 0 10px;
+    gap: 8px;
+    border-radius: 13px;
+  }
+
+  .flight-nav-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 7px;
+    font-size: 11px;
+  }
+
+  .flight-nav-item strong {
+    font-size: 14px;
+    line-height: 1;
+  }
+
+  .flight-nav-item small {
+    display: none;
+  }
+
+  .flight-content {
+    padding: 10px;
+  }
+}
+</style>
+
+
+
+
+

@@ -37,10 +37,10 @@ const PLAN_ALIAS: Record<string, string> = {
 
 const PLAN_ALLOWED: Record<string, PermissionKey[]> = {
   free: ["dashboard", "pages", "pages_viewer", "settings"],
-  professional: ["dashboard", "leads", "leads_forms", "leads_opportunities", "leads_clients", "leads_settings", "leads_manager", "leads_full", "pages", "pages_viewer", "pages_editor", "settings", "integrations", "domains", "lessons", "team_management"],
-  agency: ["dashboard", "leads", "leads_forms", "leads_opportunities", "leads_clients", "leads_settings", "leads_manager", "leads_full", "pages", "pages_viewer", "pages_editor", "settings", "integrations", "domains", "lessons", "team_management"],
+  professional: ["dashboard", "leads", "leads_forms", "leads_opportunities", "leads_clients", "leads_settings", "leads_manager", "leads_full", "pages", "pages_viewer", "pages_editor", "settings", "integrations", "lessons", "team_management"],
+  agency: ["dashboard", "leads", "leads_forms", "leads_opportunities", "leads_clients", "leads_settings", "leads_manager", "leads_full", "pages", "pages_viewer", "pages_editor", "settings", "integrations", "lessons", "team_management"],
   scale: ["dashboard", "leads", "leads_forms", "leads_opportunities", "leads_clients", "leads_settings", "leads_manager", "leads_full", "pages", "pages_viewer", "pages_editor", "settings", "integrations", "domains", "lessons", "team_management"],
-  test: [...PERMISSION_KEYS]
+  test: ["dashboard", "leads", "leads_forms", "leads_opportunities", "leads_clients", "leads_settings", "leads_manager", "leads_full", "pages", "pages_viewer", "pages_editor", "settings", "integrations", "domains", "lessons", "team_management"]
 };
 
 export const normalizePlan = (plan?: string | null) => PLAN_ALIAS[(plan || "free").toLowerCase()] || "free";
@@ -51,9 +51,9 @@ export const canAccessPermission = (
   permission: PermissionKey,
   opts: { isOwner?: boolean | null; selected?: string[] | null; plan?: string | null; effective?: string[] | null }
 ) => {
-  if (opts.effective?.length) return opts.effective.includes(permission);
   const planAllowed = new Set(allowedByPlan(opts.plan));
   if (!planAllowed.has(permission)) return false;
+  if (opts.effective?.length) return opts.effective.includes(permission);
   if (opts.isOwner ?? true) return true;
   const selected = new Set(opts.selected || []);
   return selected.has(permission);

@@ -201,16 +201,16 @@
               <path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6l-12 12" />
             </svg>
           </button>
-          <div class="relative max-h-[90vh] w-full max-w-5xl">
+          <div class="relative flex max-h-[88vh] w-full max-w-[min(92vw,1280px)] items-center justify-center">
             <template v-if="lightboxMedia?.type === 'image'">
               <img
                 :src="lightboxMedia.url"
                 :alt="lightboxImageAlt"
-                class="h-full w-full rounded-3xl object-contain"
+                class="block max-h-[88vh] w-auto max-w-full rounded-3xl object-contain"
               />
             </template>
             <template v-else-if="lightboxMedia?.type === 'video'">
-              <div class="relative w-full rounded-3xl bg-black pt-[56.25%]">
+              <div class="relative w-full max-w-[min(92vw,1280px)] rounded-3xl bg-black pt-[56.25%]">
                 <iframe
                   class="absolute inset-0 h-full w-full rounded-3xl"
                   :src="lightboxMedia.url"
@@ -223,7 +223,7 @@
             </template>
             <button
               v-if="canNavigateLightbox"
-              class="absolute left-[-48px] top-1/2 -translate-y-1/2 rounded-full bg-white/20 p-3 text-white transition hover:bg-white/35"
+              class="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-white/20 p-3 text-white transition hover:bg-white/35 md:left-[-48px]"
               type="button"
               @click.stop="showPrevLightbox"
               :aria-label="lightboxPrevLabel"
@@ -234,7 +234,7 @@
             </button>
             <button
               v-if="canNavigateLightbox"
-              class="absolute right-[-48px] top-1/2 -translate-y-1/2 rounded-full bg-white/20 p-3 text-white transition hover:bg-white/35"
+              class="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-white/20 p-3 text-white transition hover:bg-white/35 md:right-[-48px]"
               type="button"
               @click.stop="showNextLightbox"
               :aria-label="lightboxNextLabel"

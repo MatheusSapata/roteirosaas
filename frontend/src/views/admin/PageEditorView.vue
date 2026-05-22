@@ -1,4 +1,4 @@
-﻿<template>
+<template>
 <div class="page-editor-view w-full space-y-6 px-4 py-6 md:px-8 md:py-4">
     <div class="editor-topbar">
       <div class="editor-topbar-left">
@@ -111,7 +111,7 @@
     <!-- Dialog de limite de plano (reutilizado também para "template no free") -->
     <Teleport to="body" v-if="limitModal.open">
       <div class="fixed inset-0 z-50 flex items-center justify-center px-4 page-editor-overlay">
-        <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-[#1f1f1f] dark:text-white">
+        <div class="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl dark:bg-[#1f1f1f] dark:text-white">
           <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">{{ viewCopy.limitModal.eyebrow }}</p>
           <h3 class="mt-2 text-xl font-bold text-slate-900">{{ viewCopy.limitModal.title }}</h3>
           <p class="mt-2 text-sm text-slate-600">
@@ -140,7 +140,7 @@
     <!-- Diálogo de confirmação ao sair sem salvar -->
     <Teleport to="body" v-if="unsavedNavigationModal.open">
       <div class="fixed inset-0 z-50 flex items-center justify-center px-4 page-editor-overlay">
-        <div class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl dark:bg-[#1f1f1f] dark:text-white">
+        <div class="w-full max-w-lg rounded-xl bg-white p-6 shadow-2xl dark:bg-[#1f1f1f] dark:text-white">
           <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">{{ viewCopy.unsavedModal.eyebrow }}</p>
           <h3 class="mt-2 text-xl font-bold text-slate-900">{{ viewCopy.unsavedModal.title }}</h3>
           <p class="mt-2 text-sm text-slate-600">
@@ -175,9 +175,46 @@
       </div>
     </Teleport>
 
+    <Teleport to="body" v-if="unsavedSectionModal.open">
+      <div class="fixed inset-0 z-50 flex items-center justify-center px-4 page-editor-overlay">
+        <div class="w-full max-w-lg rounded-xl bg-white p-6 shadow-2xl dark:bg-[#1f1f1f] dark:text-white">
+          <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">{{ viewCopy.unsavedModal.eyebrow }}</p>
+          <h3 class="mt-2 text-xl font-bold text-slate-900">{{ viewCopy.sectionUnsavedModal.title }}</h3>
+          <p class="mt-2 text-sm text-slate-600">
+            {{ viewCopy.sectionUnsavedModal.description }}
+          </p>
+
+          <div class="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+              @click="cancelUnsavedSectionModal"
+            >
+              {{ viewCopy.unsavedModal.continueEditing }}
+            </button>
+            <button
+              type="button"
+              class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+              @click="discardUnsavedSectionChanges"
+            >
+              {{ viewCopy.unsavedModal.discardAndExit }}
+            </button>
+            <button
+              type="button"
+              class="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white shadow transition hover:bg-brand-dark disabled:opacity-60"
+              :disabled="unsavedSectionModal.saving"
+              @click="saveUnsavedSectionChanges"
+            >
+              {{ unsavedSectionModal.saving ? viewCopy.unsavedModal.saving : viewCopy.sectionUnsavedModal.saveSection }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <Teleport to="body" v-if="unsavedFlightSegmentModal.open">
       <div class="fixed inset-0 z-50 flex items-center justify-center px-4 page-editor-overlay">
-        <div class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl dark:bg-[#1f1f1f] dark:text-white">
+        <div class="w-full max-w-lg rounded-xl bg-white p-6 shadow-2xl dark:bg-[#1f1f1f] dark:text-white">
           <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">{{ viewCopy.unsavedModal.eyebrow }}</p>
           <h3 class="mt-2 text-xl font-bold text-slate-900">{{ viewCopy.flightUnsavedModal.title }}</h3>
           <p class="mt-2 text-sm text-slate-600">
@@ -207,7 +244,7 @@
     <!-- Dialog de sucesso ao publicar -->
     <Teleport to="body" v-if="successModal.open">
       <div class="fixed inset-0 z-50 flex items-center justify-center px-4 page-editor-overlay">
-        <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-[#1f1f1f] dark:text-white">
+        <div class="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl dark:bg-[#1f1f1f] dark:text-white">
           <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">{{ viewCopy.successModal.eyebrow }}</p>
           <h3 class="mt-2 text-xl font-bold text-slate-900">{{ viewCopy.successModal.title }}</h3>
           <p class="mt-2 text-sm text-slate-600">{{ viewCopy.successModal.description }}</p>
@@ -238,12 +275,12 @@
         </div>
       </div>
     </Teleport>
-    <div
-      v-if="sectionPicker.open"
+    <Teleport to="body" v-if="sectionPicker.open">
+      <div
       class="app-modal-overlay fixed inset-0 z-40 flex items-center justify-center px-4 py-8"
       @click.self="closeSectionPicker"
-    >
-      <div class="w-full max-w-5xl rounded-3xl bg-white shadow-2xl dark:bg-[#1f1f1f] dark:text-white">
+      >
+        <div class="w-full max-w-5xl rounded-2xl bg-white shadow-2xl dark:bg-[#1f1f1f] dark:text-white">
         <div class="flex flex-col gap-2 border-b border-slate-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between dark:border-white/10">
           <div>
             <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Adicionar nova seção</p>
@@ -296,8 +333,9 @@
             </button>
           </div>
         </div>
+        </div>
       </div>
-    </div>
+    </Teleport>
 
     <div class="space-y-4">
       <div class="editor-settings-shell rounded-[26px] border border-slate-200 bg-white p-6 shadow-sm dark:bg-[#202020] dark:text-white">
@@ -868,39 +906,42 @@
       <div
         v-if="isSectionEditorOpen && editingSectionComponent && editingSectionDraft"
         class="app-modal-overlay fixed inset-0 z-40 flex h-full w-full items-center justify-center px-4 py-10 md:py-20"
-        @click.self="closeSectionEditor"
+        @click.self="requestCloseSectionEditor"
       >
         <div
-          class="w-full max-w-4xl overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-[#1f1f1f] dark:text-white"
-          :class="isMobileViewport ? 'max-h-[75vh]' : 'md:max-h-none md:rounded-[32px] md:shadow-2xl'"
+          ref="sectionModalPanelRef"
+          class="w-full max-w-4xl overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-[#1f1f1f] dark:text-white flex flex-col"
+          :class="isMobileViewport ? '' : 'md:rounded-[20px] md:shadow-2xl'"
+          :style="sectionModalPanelStyle"
         >
-          <div class="flex flex-col gap-1 border-b border-slate-100 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div ref="sectionModalHeaderRef" class="flex items-center justify-between px-6 py-4">
             <div>
-              <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">{{ viewCopy.sectionDialog.eyebrow }}</p>
-              <h3 class="text-lg font-semibold text-slate-900">{{ editingSectionLabel }}</h3>
+              <h3 class="text-[16px] font-semibold text-slate-900">Editando seção • {{ editingSectionHeaderLabel }}</h3>
             </div>
             <button
-              class="rounded-full border border-slate-200 px-4 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
-              @click="closeSectionEditor"
+              class="h-[34px] w-[34px] rounded-[10px] border border-slate-200 bg-slate-50 text-[20px] leading-none text-slate-500 hover:bg-slate-100"
+              @click="requestCloseSectionEditor"
+              aria-label="Fechar"
             >
-              {{ viewCopy.actions.close }}
+              ×
             </button>
           </div>
           <div
-            :class="isMobileViewport ? 'max-h-[calc(75vh-11rem)]' : 'max-h-[70vh]'"
-            class="overflow-y-auto px-6 py-4"
+            ref="sectionModalBodyRef"
+            class="flex-1 overflow-y-auto border-t border-slate-100 bg-[#edf1ef] pl-0 pr-0"
           >
             <component
               :is="editingSectionComponent"
               ref="editingSectionFormRef"
+              class="block h-full"
               :modelValue="editingSectionDraft"
               @update:modelValue="updateEditingDraft"
             />
           </div>
-          <div class="flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 px-6 py-4">
+          <div ref="sectionModalFooterRef" class="flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 px-6 py-4">
             <button
               class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
-              @click="closeSectionEditor"
+              @click="requestCloseSectionEditor"
             >
               {{ viewCopy.sectionDialog.cancel }}
             </button>
@@ -1003,6 +1044,12 @@ const route = useRoute();
 const router = useRouter();
 const pageId = Number(route.params.id);
 onBeforeRouteLeave((to, _from, next) => {
+  if (hasUnsavedSectionDraftChanges.value) {
+    pendingNavigationPath.value = to.fullPath || null;
+    requestLeaveWithUnsavedSectionDraft();
+    next(false);
+    return;
+  }
   if (!hasUnsavedChanges.value) {
     next();
     return;
@@ -1112,6 +1159,14 @@ const viewCopy = {
       es: "Editaste un tramo de vuelo, pero aún no hiciste clic en “Guardar tramo”. ¿Deseas guardar la sección de todos modos?"
     }),
     confirm: t({ pt: "Salvar seção mesmo assim", es: "Guardar sección de todos modos" })
+  },
+  sectionUnsavedModal: {
+    title: t({ pt: "Há alterações não salvas na seção", es: "Hay cambios sin guardar en la sección" }),
+    description: t({
+      pt: "Você fez alterações nesta seção e ainda não salvou. Deseja salvar antes de continuar?",
+      es: "Hiciste cambios en esta sección y aún no guardaste. ¿Deseas guardar antes de continuar?"
+    }),
+    saveSection: t({ pt: "Salvar seção", es: "Guardar sección" })
   },
   successModal: {
     eyebrow: t({ pt: "Publicação", es: "Publicación" }),
@@ -1405,23 +1460,10 @@ const isMobileOverlayMode = computed(() => isMobileViewport.value);
 const desktopHoverEnabled = computed(() => previewDevice.value === "desktop" && !isMobileViewport.value);
 const hasWindow = typeof window !== "undefined";
 const beforeUnloadHandler = (event: BeforeUnloadEvent) => {
-  if (!hasUnsavedChanges.value) return;
+  if (!hasUnsavedChanges.value && !hasUnsavedSectionDraftChanges.value) return;
   event.preventDefault();
   event.returnValue = "";
 };
-
-watch(
-  hasUnsavedChanges,
-  value => {
-    if (!hasWindow) return;
-    if (value) {
-      window.addEventListener("beforeunload", beforeUnloadHandler);
-    } else {
-      window.removeEventListener("beforeunload", beforeUnloadHandler);
-    }
-  },
-  { immediate: false }
-);
 const toolbarSecondaryButtonClass =
   "inline-flex items-center gap-2 rounded-xl border border-[#DDE3DE] bg-[#F6F8F6] px-4 py-2 text-sm font-semibold text-[#4A6455] transition hover:bg-white";
 const toolbarPrimaryButtonClass =
@@ -1743,8 +1785,17 @@ const previewReady = ref(false);
 const previewLoading = ref(false);
 const editingSectionIndex = ref<number | null>(null);
 const editingSectionDraft = ref<PageSection | null>(null);
+const editingSectionOriginalSnapshot = ref("");
 const editingSectionFormRef = ref<any>(null);
+const sectionModalPanelRef = ref<HTMLElement | null>(null);
+const sectionModalHeaderRef = ref<HTMLElement | null>(null);
+const sectionModalBodyRef = ref<HTMLElement | null>(null);
+const sectionModalFooterRef = ref<HTMLElement | null>(null);
+const sectionModalObservedBodyMax = ref(0);
+let sectionModalResizeObserver: ResizeObserver | null = null;
 const unsavedFlightSegmentModal = ref({ open: false });
+const unsavedSectionModal = ref({ open: false, saving: false });
+let pendingUnsavedSectionAction: null | (() => void | Promise<void>) = null;
 const sectionCatalog = ref<SectionCatalogItem[]>([]);
 const sectionPicker = ref<{ open: boolean; index: number | null }>({ open: false, index: null });
 const editingSectionType = computed<SectionType | null>(() => {
@@ -1758,12 +1809,49 @@ const editingSectionLabel = computed(() => {
   if (!type) return "";
   return sectionLabels[type] || type;
 });
+const editingSectionHeaderLabel = computed(() => {
+  const type = editingSectionType.value;
+  if (!type) return "";
+  if (type === "banner_card") return "Banner em Card";
+  if (type === "featured_video") return "Vídeo";
+  if (type === "flight_details") return "Voos";
+  return editingSectionLabel.value;
+});
 const editingSectionComponent = computed(() => {
   const type = editingSectionType.value;
   if (!type) return null;
   return formComponents[type];
 });
 const isSectionEditorOpen = computed(() => editingSectionIndex.value !== null && !!editingSectionDraft.value);
+const hasUnsavedSectionDraftChanges = computed(() => {
+  if (!isSectionEditorOpen.value || !editingSectionDraft.value || !editingSectionOriginalSnapshot.value) return false;
+  return JSON.stringify(editingSectionDraft.value) !== editingSectionOriginalSnapshot.value;
+});
+watch(
+  [hasUnsavedChanges, hasUnsavedSectionDraftChanges],
+  ([pageUnsaved, sectionUnsaved]) => {
+    if (!hasWindow) return;
+    if (pageUnsaved || sectionUnsaved) {
+      window.addEventListener("beforeunload", beforeUnloadHandler);
+    } else {
+      window.removeEventListener("beforeunload", beforeUnloadHandler);
+    }
+  },
+  { immediate: false }
+);
+const sectionModalPanelStyle = computed(() => {
+  if (!isSectionEditorOpen.value) return {};
+  const headerHeight = sectionModalHeaderRef.value?.offsetHeight || 0;
+  const footerHeight = sectionModalFooterRef.value?.offsetHeight || 0;
+  const bodyHeight = Math.max(560, sectionModalObservedBodyMax.value || 0);
+  const desiredHeight = headerHeight + footerHeight + bodyHeight;
+  const viewportCap = Math.round((hasWindow ? window.innerHeight : 900) * (isMobileViewport.value ? 0.88 : 0.9));
+  return {
+    height: `${Math.min(desiredHeight, viewportCap)}px`,
+    minHeight: `${Math.min(headerHeight + footerHeight + 520, viewportCap)}px`,
+    maxHeight: `${viewportCap}px`
+  };
+});
 const getBrowserStorage = () => {
   if (!hasWindow) return null;
   try {
@@ -1887,7 +1975,7 @@ const applyAutomaticStoryLayout = (story: StorySection) => {
 };
 
 const storyMediaErrorText = t({
-  pt: "Adicione ao menos uma imagem ou ví­deo na seção Story antes de salvar.",
+  pt: "Adicione ao menos uma imagem ou vídeo na seção Story antes de salvar.",
   es: "Agrega al menos una imagen o video en la seccion Story antes de guardar."
 });
 const hasStoryImage = (section: StorySection) => countStoryImages(section.images) > 0;
@@ -1912,8 +2000,8 @@ const validateAllSections = (): string | null => {
 const buildCatalogPreview = (type: SectionType): PageSection => {
   const base = clone(defaultSection(type));
   if (type === "hero") {
-    (base as any).title = "Tí­tulo impactante";
-    (base as any).subtitle = "Explique rapidamente o benefí­cio oferecido.";
+    (base as any).title = "Título impactante";
+    (base as any).subtitle = "Explique rapidamente o benefício oferecido.";
   }
   if (Array.isArray((base as any).items)) {
     (base as any).items = (base as any).items.slice(0, 2);
@@ -2457,6 +2545,7 @@ if (type === "banner_card") {
     cardBorderColor: "rgba(255,255,255,0.25)",
     textColor: "rgba(255,255,255,0.85)",
     bodyColor: "rgba(255,255,255,0.85)",
+    ctaEnabled: true,
     ctaLabel: "Quero saber mais",
     ctaLink: buildWhatsappLink(pageTitle.value) || "https://wa.me/",
     ctaColor: theme.value.ctaDefaultColor,
@@ -2637,6 +2726,9 @@ if (type === "countdown") {
     headingLabel: headingDefaults.label,
     headingLabelStyle: headingDefaults.style,
     label: "Garanta sua vaga agora mesmo!",
+    countdownMode: "fixed",
+    sessionDuration: 15,
+    sessionUnit: "minutes",
     targetDate: buildCountdownTargetDate(),
     backgroundColor: theme.value.ctaDefaultColor || resolvePrimaryColor(),
     textColor: "#ffffff",
@@ -2654,10 +2746,10 @@ if (type === "reasons") {
     title: "Por que escolher a nossa agência?",
     subtitle: "Benefícios claros para ajudar na conversão",
     items: [
-      { icon: "??", title: "Economize dinheiro", description: "Aproveite negociações especiais e otimize seu orçamento." },
-      { icon: "??", title: "Mais liberdade", description: "Planeje quando quiser com apoio de especialistas locais." },
-      { icon: "??", title: "Apoio dedicado", description: "Suporte próximo antes, durante e depois da viagem." },
-      { icon: "?", title: "Experiência única", description: "Curadoria de passeios e hospedagens memoráveis." }
+      { icon: "💸", title: "Economize dinheiro", description: "Aproveite negociações especiais e otimize seu orçamento." },
+      { icon: "🧭", title: "Mais liberdade", description: "Planeje quando quiser com apoio de especialistas locais." },
+      { icon: "🤝", title: "Apoio dedicado", description: "Suporte próximo antes, durante e depois da viagem." },
+      { icon: "✨", title: "Experiência única", description: "Curadoria de passeios e hospedagens memoráveis." }
     ],
     enableAnimation: true,
     animationDuration: 1000,
@@ -2997,13 +3089,41 @@ const openSectionEditor = (index: number) => {
   if (isLockedFooterSection(target)) return;
   editingSectionIndex.value = index;
   editingSectionDraft.value = clone(target);
+  editingSectionOriginalSnapshot.value = JSON.stringify(editingSectionDraft.value);
+};
+
+const forceCloseSectionEditor = () => {
+  editingSectionIndex.value = null;
+  editingSectionDraft.value = null;
+  editingSectionOriginalSnapshot.value = "";
+  editingSectionFormRef.value = null;
+  sectionModalObservedBodyMax.value = 0;
+  sectionModalResizeObserver?.disconnect();
+  sectionModalResizeObserver = null;
+  unsavedFlightSegmentModal.value.open = false;
+  unsavedSectionModal.value.open = false;
+  unsavedSectionModal.value.saving = false;
+  pendingUnsavedSectionAction = null;
+};
+
+const requestUnsavedSectionConfirmation = (action: () => void | Promise<void>) => {
+  pendingUnsavedSectionAction = action;
+  unsavedSectionModal.value.open = true;
+  unsavedSectionModal.value.saving = false;
 };
 
 const closeSectionEditor = () => {
-  editingSectionIndex.value = null;
-  editingSectionDraft.value = null;
-  editingSectionFormRef.value = null;
-  unsavedFlightSegmentModal.value.open = false;
+  if (!hasUnsavedSectionDraftChanges.value) {
+    forceCloseSectionEditor();
+    return;
+  }
+  requestUnsavedSectionConfirmation(() => {
+    forceCloseSectionEditor();
+  });
+};
+
+const requestCloseSectionEditor = () => {
+  closeSectionEditor();
 };
 
 const updateEditingDraft = (value: PageSection) => {
@@ -3047,6 +3167,32 @@ watch(previewDevice, value => {
   editorPrefs.value.previewDevice = value;
 });
 
+const measureSectionModalBody = () => {
+  const el = sectionModalBodyRef.value;
+  if (!el) return;
+  const next = Math.ceil(el.scrollHeight);
+  if (next > sectionModalObservedBodyMax.value) {
+    sectionModalObservedBodyMax.value = next;
+  }
+};
+
+watch(
+  () => isSectionEditorOpen.value,
+  async opened => {
+    if (!opened) return;
+    sectionModalObservedBodyMax.value = 0;
+    await nextTick();
+    measureSectionModalBody();
+    sectionModalResizeObserver?.disconnect();
+    if (typeof ResizeObserver !== "undefined" && sectionModalBodyRef.value) {
+      sectionModalResizeObserver = new ResizeObserver(() => {
+        measureSectionModalBody();
+      });
+      sectionModalResizeObserver.observe(sectionModalBodyRef.value);
+    }
+  }
+);
+
 const refreshPreview = (immediate = false) => {
   flushPendingSectionUpdates();
   schedulePreviewHydration(immediate);
@@ -3066,7 +3212,7 @@ const persistEditingSection = async () => {
   }
   errorMessage.value = "";
   updateSectionAt(editingSectionIndex.value, editingSectionDraft.value, true);
-  closeSectionEditor();
+  forceCloseSectionEditor();
   refreshPreview(true);
   await saveConfig();
 };
@@ -3081,14 +3227,45 @@ const confirmSaveSectionWithUnsavedFlightSegment = async () => {
 };
 
 const saveEditingSection = async () => {
-  const hasUnsavedFlightSegment =
-    typeof editingSectionFormRef.value?.hasUnsavedSegmentDraftChanges === "function" &&
-    editingSectionFormRef.value.hasUnsavedSegmentDraftChanges();
-  if (hasUnsavedFlightSegment) {
-    unsavedFlightSegmentModal.value.open = true;
-    return;
+  if (typeof editingSectionFormRef.value?.savePendingSegmentDraft === "function") {
+    const segmentSaved = await editingSectionFormRef.value.savePendingSegmentDraft();
+    if (!segmentSaved) return;
   }
   await persistEditingSection();
+};
+
+const cancelUnsavedSectionModal = () => {
+  unsavedSectionModal.value.open = false;
+  unsavedSectionModal.value.saving = false;
+  pendingUnsavedSectionAction = null;
+};
+
+const discardUnsavedSectionChanges = async () => {
+  const pendingAction = pendingUnsavedSectionAction;
+  unsavedSectionModal.value.open = false;
+  unsavedSectionModal.value.saving = false;
+  pendingUnsavedSectionAction = null;
+  if (pendingAction) await pendingAction();
+};
+
+const saveUnsavedSectionChanges = async () => {
+  if (unsavedSectionModal.value.saving) return;
+  unsavedSectionModal.value.saving = true;
+  const pendingAction = pendingUnsavedSectionAction;
+  await saveEditingSection();
+  unsavedSectionModal.value.saving = false;
+  unsavedSectionModal.value.open = false;
+  pendingUnsavedSectionAction = null;
+  if (pendingAction && !isSectionEditorOpen.value) await pendingAction();
+};
+
+const requestLeaveWithUnsavedSectionDraft = () => {
+  requestUnsavedSectionConfirmation(async () => {
+    const target = pendingNavigationPath.value;
+    if (!target) return;
+    pendingNavigationPath.value = null;
+    await router.push(target).catch(() => undefined);
+  });
 };
 
 const ensureProfile = async () => {
@@ -3858,6 +4035,7 @@ onMounted(async () => {
 .overlay-label {
   color: #ffffff !important;
 }
+
 
 
 
