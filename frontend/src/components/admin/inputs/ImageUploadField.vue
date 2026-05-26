@@ -4,7 +4,47 @@
       <label class="text-sm font-semibold text-slate-600">{{ label }}</label>
       <p v-if="labelDescription" class="text-xs text-slate-500">{{ labelDescription }}</p>
     </div>
-    <div class="flex flex-1 flex-col rounded-xl border border-slate-200 p-3">
+    <div
+      v-if="props.layout === 'row'"
+      class="flex flex-1 items-center gap-3 rounded-xl border border-slate-200 p-3"
+    >
+      <button
+        type="button"
+        class="h-16 w-24 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-slate-100"
+        @click="previewUrl && croppingEnabled ? openCropperForCurrent() : openFileDialog()"
+      >
+        <img v-if="previewUrl" :src="previewUrl" alt="Pré-visualização" class="h-full w-full object-cover" />
+        <span v-else class="inline-flex h-full w-full items-center justify-center text-xs font-semibold text-slate-500">IMG</span>
+      </button>
+      <div class="min-w-0 flex-1">
+        <p v-if="hint" class="text-xs text-slate-500">{{ hint }}</p>
+        <p v-if="error" class="mt-1 text-xs text-red-500">{{ error }}</p>
+      </div>
+      <div class="flex w-[220px] shrink-0 items-center justify-end gap-2">
+        <label
+          class="inline-flex h-10 w-[106px] cursor-pointer items-center justify-center rounded-lg border border-dashed border-slate-300 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+        >
+          <input
+            ref="fileInput"
+            type="file"
+            accept="image/*"
+            class="hidden"
+            @change="onFileChange"
+          />
+          <span v-if="uploading">Enviando...</span>
+          <span v-else>{{ previewUrl ? (props.replaceLabel || "Substituir") : "Adicionar" }}</span>
+        </label>
+        <button
+          type="button"
+          class="h-10 w-[96px] rounded-lg border px-3 text-sm font-semibold transition"
+          :class="modelValue ? 'border-red-200 text-red-500 hover:bg-red-50' : 'pointer-events-none border-slate-200 text-transparent'"
+          @click="clearImage"
+        >
+          Remover
+        </button>
+      </div>
+    </div>
+    <div v-else class="flex flex-1 flex-col rounded-xl border border-slate-200 p-3">
       <div v-if="previewUrl" class="mb-3">
         <div
           v-if="supportsRounded"
@@ -205,6 +245,7 @@ const props = defineProps<{
   editorTitle?: string;
   roundedValue?: number;
   roundedMax?: number;
+  layout?: "card" | "row";
 }>();
 const emit = defineEmits<{
   (e: "update:modelValue", value: string | null): void;

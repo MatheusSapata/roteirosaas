@@ -2,15 +2,15 @@
   <div class="flight-shell">
     <aside class="flight-nav">
       <button type="button" class="flight-nav-item" :class="{ active: activeTab === 'text' }" @click="activeTab = 'text'">
-        <span class="flight-nav-icon">✎</span>
+        <span class="flight-nav-icon" v-html="adminTabIcons.text"></span>
         <span><strong>Textos</strong><small>Informações gerais</small></span>
       </button>
       <button type="button" class="flight-nav-item" :class="{ active: activeTab === 'outbound' }" @click="activeTab = 'outbound'">
-        <span class="flight-nav-icon">🛫</span>
+        <span class="flight-nav-icon" v-html="adminTabIcons.flightOutbound"></span>
         <span><strong>Ida</strong><small>Trechos de ida</small></span>
       </button>
       <button type="button" class="flight-nav-item" :class="{ active: activeTab === 'inbound' }" @click="activeTab = 'inbound'">
-        <span class="flight-nav-icon">🛬</span>
+        <span class="flight-nav-icon" :style="mirroredIconStyle" v-html="adminTabIcons.flightOutbound"></span>
         <span><strong>Volta</strong><small>Trechos de volta</small></span>
       </button>
     </aside>
@@ -63,18 +63,30 @@
     </div>
 
       <div v-if="activeTab !== 'text'" class="p-0">
-      <h4 class="flight-title">{{ activeTab === "outbound" ? "Trechos de ida" : "Trechos de volta" }}</h4>
-      <p class="flight-subtitle">
-        {{ activeTab === "outbound" ? "Adicione, selecione e reordene os trechos de ida do pacote." : "Adicione, selecione e reordene os trechos de retorno da viagem." }}
-      </p>
+      <div class="flight-head-row">
+        <div>
+          <h4 class="flight-title">{{ activeTab === "outbound" ? "Trechos de ida" : "Trechos de volta" }}</h4>
+          <p class="flight-subtitle">
+            {{ activeTab === "outbound" ? "Adicione, selecione e reordene os trechos de ida do pacote." : "Adicione, selecione e reordene os trechos de retorno da viagem." }}
+          </p>
+        </div>
+        <button
+          type="button"
+          class="flight-add-segment"
+          @click="addSegment"
+        >
+          + Adicionar trecho
+        </button>
+      </div>
       <div v-if="loadingJourneys" class="mt-4 text-sm text-slate-500">Carregando trechos...</div>
       <div v-else class="mt-4">
         <div class="segment-top-row">
-          <div class="segment-tabs-wrap">
+          <div ref="segmentTabsRef" class="segment-tabs-wrap">
             <button
               v-for="(segment, index) in activeSegments"
               :key="segment.id || index"
               type="button"
+              data-flight-segment-chip
               class="segment-pill"
               :class="{ active: selectedSegmentIndex === index }"
               @click="selectSegmentByIndex(index)"
@@ -84,13 +96,6 @@
               <span class="segment-pill-remove" @click.stop="removeSegment(segment)">×</span>
             </button>
           </div>
-          <button
-            type="button"
-            class="rounded-full border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700"
-            @click="addSegment"
-          >
-            + Adicionar trecho
-          </button>
         </div>
         <p v-if="!activeSegments.length" class="mt-3 rounded-xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500">
           Nenhum trecho cadastrado nesta jornada.
@@ -208,8 +213,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineExpose, onMounted, onBeforeUnmount, reactive, ref, watch } from "vue";
+import { computed, defineExpose, onMounted, onBeforeUnmount, reactive, ref, watch, nextTick } from "vue";
 import { useRoute } from "vue-router";
+import Sortable, { type SortableEvent } from "sortablejs";
 import type { FlightDetailsSection, FlightSectionJourney, FlightSectionSegment } from "../../types/page";
 import AirlineLogo from "../shared/AirlineLogo.vue";
 import RichTextEditor from "./inputs/RichTextEditor.vue";
@@ -222,6 +228,7 @@ import {
   reorderFlightSegments,
   updateFlightSegment
 } from "../../services/flightDetails";
+import { adminTabIcons, mirroredIconStyle } from "../../utils/adminTabIcons";
 
 const props = defineProps<{ modelValue: FlightDetailsSection }>();
 const emit = defineEmits<{ (e: "update:modelValue", value: FlightDetailsSection): void }>();
@@ -272,6 +279,8 @@ const selectedSegmentId = ref<number | null>(null);
 const selectedSegmentIndex = ref<number | null>(null);
 const selectedSegmentDraft = ref<FlightSectionSegment | null>(null);
 const selectedSegmentBaseSnapshot = ref<string | null>(null);
+const segmentTabsRef = ref<HTMLElement | null>(null);
+let segmentsSortable: Sortable | null = null;
 const lookupLoading = ref(false);
 const lookupMessage = ref("");
 const lookupError = ref("");
@@ -314,6 +323,52 @@ const emitLocal = () => {
     lookupAvailable: lookupAvailable.value
   });
 };
+
+const reorderActiveSegments = (from: number, to: number) => {
+  const journey = activeJourney.value;
+  if (!journey?.segments || from === to) return;
+  const sorted = [...journey.segments].sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0));
+  const moved = sorted.splice(from, 1)[0];
+  if (!moved) return;
+  sorted.splice(to, 0, moved);
+  sorted.forEach((segment, index) => {
+    segment.sort_order = index;
+  });
+  journey.segments = sorted;
+  if (selectedSegmentIndex.value === from) selectedSegmentIndex.value = to;
+  else if ((selectedSegmentIndex.value ?? -1) > from && (selectedSegmentIndex.value ?? -1) <= to) selectedSegmentIndex.value = (selectedSegmentIndex.value || 0) - 1;
+  else if ((selectedSegmentIndex.value ?? -1) < from && (selectedSegmentIndex.value ?? -1) >= to) selectedSegmentIndex.value = (selectedSegmentIndex.value || 0) + 1;
+  emitLocal();
+};
+
+const handleSegmentsDragEnd = (event: SortableEvent) => {
+  const from = event.oldIndex;
+  const to = event.newIndex;
+  if (from === undefined || to === undefined) return;
+  reorderActiveSegments(from, to);
+};
+
+const destroySortable = () => {
+  if (!segmentsSortable) return;
+  segmentsSortable.destroy();
+  segmentsSortable = null;
+};
+
+const initSortable = () => {
+  if (!segmentTabsRef.value || activeSegments.value.length <= 1 || activeTab.value === "text") {
+    destroySortable();
+    return;
+  }
+  destroySortable();
+  segmentsSortable = Sortable.create(segmentTabsRef.value, {
+    animation: 160,
+    draggable: "button[data-flight-segment-chip]",
+    handle: ".segment-pill-handle",
+    onEnd: handleSegmentsDragEnd
+  });
+};
+
+const scheduleSortableRefresh = () => nextTick(initSortable);
 
 watch(
   () => props.modelValue,
@@ -677,15 +732,23 @@ watch(
     }
     const first = activeSegments.value[0] || null;
     setSelectedSegment(first);
+    scheduleSortableRefresh();
   }
+);
+
+watch(
+  () => [activeTab.value, activeSegments.value.length],
+  () => scheduleSortableRefresh()
 );
 
 onMounted(async () => {
   await reloadJourneys();
+  scheduleSortableRefresh();
 });
 
 onBeforeUnmount(() => {
   if (lookupToastTimer) window.clearTimeout(lookupToastTimer);
+  destroySortable();
 });
 </script>
 
@@ -777,6 +840,23 @@ onBeforeUnmount(() => {
   margin: 0;
   color: #607284;
   font-size: 12px;
+}
+
+.flight-head-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.flight-add-segment {
+  border: 1px solid #cad7d1;
+  border-radius: 999px;
+  background: #fff;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 7px 11px;
 }
 
 .flight-lookup-head {

@@ -110,10 +110,10 @@
           <!-- Layout imersivo -->
           <div
             v-if="layout === 'immersive'"
-            class="relative z-10 box-border flex h-[90svh] max-h-[90svh] flex-col justify-center gap-8 overflow-hidden py-8 md:flex-row md:items-center md:justify-between md:gap-14 md:py-12"
+            class="relative z-10 box-border flex min-h-[90svh] flex-col justify-center gap-8 overflow-hidden py-8 md:flex-row md:items-center md:justify-between md:gap-14 md:py-[30px]"
             :class="[
-              isMobilePreview ? '!h-[90svh] !max-h-[90svh] !flex-col !justify-center !gap-8 !py-8' : '',
-              isDesktopPreview ? '!h-[90svh] !max-h-[90svh] !flex-row !items-center !justify-between !gap-14 !py-12' : ''
+              isMobilePreview ? '!min-h-[90svh] !flex-col !justify-center !gap-8 !py-8' : '',
+              isDesktopPreview ? '!min-h-[90svh] !flex-row !items-center !justify-between !gap-14 !py-[30px]' : ''
             ]"
           >
             <div
@@ -135,7 +135,6 @@
                   {{ branding.agency_name || fallbackBrandName }}
                 </div>
               </div>
-
               <h1
                 class="text-3xl font-bold leading-tight md:text-5xl"
                 :class="[

@@ -1665,10 +1665,10 @@ const viewCopySource = {
   },
   settings: {
     planGate: {
-      title: { pt: "Disponível no plano Agência", es: "Disponible en el plan Agencia" },
+      title: { pt: "Disponível nos planos Agência e Escala", es: "Disponible en los planes Agencia y Escala" },
       description: {
-        pt: "A captação de leads está liberada a partir do plano Agência ou superior. Atualize seu plano para desbloquear essa funcionalidade.",
-        es: "La captación de leads se libera a partir del plan Agencia o superior. Actualiza tu plan para desbloquear esta funcionalidad."
+        pt: "A captação de leads está disponível apenas nos planos Agência e Escala. Atualize seu plano para desbloquear essa funcionalidade.",
+        es: "La captación de leads está disponible solo en los planes Agencia y Escala. Actualiza tu plan para desbloquear esta funcionalidad."
       },
       cta: { pt: "Conhecer planos", es: "Conocer planes" }
     }

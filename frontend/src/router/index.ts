@@ -367,6 +367,7 @@ router.beforeEach(async (to, _from, next) => {
   const requiredPermission = (to.meta?.permission as PermissionKey | undefined) || undefined;
   const ownerOnly = Boolean(to.meta?.ownerOnly);
   const requiresInboxAccess = to.name === "inbox";
+  const isLeadsModuleRoute = to.path.startsWith("/admin/leads");
 
   if (requiresAuth) {
     if (!auth.token) {
@@ -406,6 +407,15 @@ router.beforeEach(async (to, _from, next) => {
       effective: auth.user.effective_permissions || []
     });
     if (!allowed) {
+      if (requiredPermission === "leads" && isLeadsModuleRoute) {
+        const userPlan = String(auth.user.plan || "").toLowerCase();
+        const isTrialUser = Boolean(auth.user.trial_plan);
+        const leadsPlanAllowed = !isTrialUser && ["teste", "growth", "infinity"].includes(userPlan);
+        if (!leadsPlanAllowed) {
+          next();
+          return;
+        }
+      }
       const fallback = resolveFirstAllowedAdminRoute(auth);
       if (to.name === fallback.name) {
         next(false);

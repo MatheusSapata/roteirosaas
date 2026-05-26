@@ -1250,8 +1250,8 @@ const viewCopy = {
     requiredActive: t({ pt: "Formulário obrigatório ativo para esta página.", es: "Formulario obligatorio activo para esta página." }),
     blockedTitle: t({ pt: "Captação de leads bloqueada", es: "Captación de leads bloqueada" }),
     blockedDescription: t({
-      pt: "Este recurso está disponível a partir do plano Agência. Atualize seu plano para ativar o formulário obrigatório de leads.",
-      es: "Este recurso está disponible a partir del plan Agencia. Actualiza tu plan para activar el formulario obligatorio de leads."
+      pt: "Este recurso está disponível apenas nos planos Agência e Escala. Atualize seu plano para ativar o formulário obrigatório de leads.",
+      es: "Este recurso está disponible solo en los planes Agencia y Escala. Actualiza tu plan para activar el formulario obligatorio de leads."
     })
   },
   preview: {
@@ -3418,7 +3418,6 @@ onMounted(async () => {
   }));
   previewReady.value = true;
   schedulePreviewHydration(true);
-  nextTick(() => setupSectionToolbarObserver());
 });
 </script>
 

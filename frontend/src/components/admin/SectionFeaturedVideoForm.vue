@@ -2,15 +2,15 @@
   <div class="featured-video-proto-body">
     <aside class="tabs">
       <button type="button" class="tab" :class="{ active: activePanel === 'text' }" @click="activePanel = 'text'">
-        <span class="tab-icon">✎</span>
+        <span class="tab-icon" v-html="adminTabIcons.text"></span>
         <span>Textos<small>Título e descrição</small></span>
       </button>
       <button type="button" class="tab" :class="{ active: activePanel === 'video' }" @click="activePanel = 'video'">
-        <span class="tab-icon">▧</span>
+        <span class="tab-icon" v-html="adminTabIcons.media"></span>
         <span>Vídeo<small>Link principal</small></span>
       </button>
       <button type="button" class="tab" :class="{ active: activePanel === 'button' }" @click="activePanel = 'button'">
-        <span class="tab-icon">↗</span>
+        <span class="tab-icon" v-html="adminTabIcons.button"></span>
         <span>Botão<small>Ação do visitante</small></span>
       </button>
     </aside>
@@ -133,6 +133,7 @@ import type { FeaturedVideoSection, PageSection } from "../../types/page";
 import { createAdminLocalizer } from "../../utils/adminI18n";
 import { sectionsInjectionKey } from "./sectionsContext";
 import { describeSection, sectionLabels } from "../../utils/sectionLabels";
+import { adminTabIcons } from "../../utils/adminTabIcons";
 
 const props = defineProps<{ modelValue: FeaturedVideoSection }>();
 const emit = defineEmits<{ (e: "update:modelValue", value: FeaturedVideoSection): void }>();

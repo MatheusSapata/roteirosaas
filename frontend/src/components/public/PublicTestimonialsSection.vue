@@ -20,12 +20,14 @@
         {{ defaultSubtitle }}
       </p>
 
-      <div class="mt-8 grid w-full justify-items-stretch gap-6" :class="gridClass">
+      <div class="mt-8 flex w-full flex-wrap justify-center gap-6">
         <article
           v-for="(item, index) in displayedWithMedia"
           :key="index"
+          :ref="setCardRef"
           class="h-full w-full rounded-[20px] p-6 md:p-7"
-          :style="testimonialCardStyle"
+          :class="cardWidthClass"
+          :style="[testimonialCardStyle, uniformCardStyle]"
         >
           <div class="flex items-center justify-between gap-3">
             <div class="flex items-center gap-3">
@@ -69,7 +71,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { resolveMediaUrl } from "../../utils/media";
 import { isWhatsappLink } from "../../utils/links";
 import type { TestimonialsSection } from "../../types/page";
@@ -157,18 +159,55 @@ const itemName = (item: any) => {
 };
 const itemRole = (item: any) => localize(item?.role).trim();
 const itemText = (item: any) => localize(item?.text).trim();
-const displayed = computed(() => props.section.items?.slice(0, 3) || []);
+const displayed = computed(() => props.section.items || []);
 const displayedWithMedia = computed(() =>
   displayed.value.map(item => ({
     ...item,
     avatarUrl: resolveMediaUrl(item.avatar) || item.avatar || ""
   }))
 );
-const gridClass = computed(() => {
+const cardRefs = ref<HTMLElement[]>([]);
+const maxCardHeight = ref(0);
+let measureRaf: number | null = null;
+const setCardRef = (el: Element | null) => {
+  if (!(el instanceof HTMLElement)) return;
+  if (!cardRefs.value.includes(el)) cardRefs.value.push(el);
+};
+
+const measureCards = () => {
+  if (!cardRefs.value.length) {
+    maxCardHeight.value = 0;
+    return;
+  }
+  cardRefs.value.forEach(card => {
+    card.style.minHeight = "";
+  });
+  maxCardHeight.value = Math.max(...cardRefs.value.map(card => card.offsetHeight));
+};
+
+const scheduleMeasureCards = () => {
+  if (measureRaf !== null) cancelAnimationFrame(measureRaf);
+  measureRaf = requestAnimationFrame(() => {
+    measureCards();
+    measureRaf = null;
+  });
+};
+
+const uniformCardStyle = computed(() =>
+  maxCardHeight.value > 0 ? { minHeight: `${maxCardHeight.value}px` } : {}
+);
+const cardsPerRow = computed(() => {
   const count = displayedWithMedia.value.length;
-  if (count === 1) return "grid-cols-1";
-  if (count === 2) return isMobilePreview.value ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2";
-  return isMobilePreview.value ? "grid-cols-1" : "grid-cols-1 md:grid-cols-3";
+  if (count <= 1) return 1;
+  if (isMobilePreview.value) return 1;
+  if (count > 4 && count % 4 === 1) return 3;
+  return Math.min(4, count);
+});
+const cardWidthClass = computed(() => {
+  if (cardsPerRow.value === 1) return "";
+  if (cardsPerRow.value === 2) return "md:w-[calc((100%-1.5rem)/2)]";
+  if (cardsPerRow.value === 3) return "md:w-[calc((100%-3rem)/3)]";
+  return "md:w-[calc((100%-4.5rem)/4)]";
 });
 const ctaMode = computed(() => props.section.ctaMode || "link");
 const ctaHref = computed(() =>
@@ -185,5 +224,29 @@ const ctaTrackType = computed(() =>
 const ctaLabelText = computed(() => {
   const text = localize(props.section.ctaLabel).trim();
   return text.length ? text : localize(testimonialsCopy.ctaLabel);
+});
+
+watch(
+  () => displayedWithMedia.value.length,
+  async () => {
+    cardRefs.value = [];
+    await nextTick();
+    scheduleMeasureCards();
+  }
+);
+
+watch(
+  () => [props.previewDevice, props.section.title, props.section.subtitle],
+  () => nextTick(() => scheduleMeasureCards())
+);
+
+onMounted(() => {
+  window.addEventListener("resize", scheduleMeasureCards);
+  nextTick(() => scheduleMeasureCards());
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("resize", scheduleMeasureCards);
+  if (measureRaf !== null) cancelAnimationFrame(measureRaf);
 });
 </script>

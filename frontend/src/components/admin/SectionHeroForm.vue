@@ -2,7 +2,7 @@
   <div class="hero-proto-body">
     <aside class="tabs">
       <button v-for="tab in tabs" :key="tab.id" class="tab" :class="{ active: activeTab === tab.id }" type="button" @click="activeTab = tab.id">
-        <span class="tab-icon">{{ tab.icon }}</span>
+        <span class="tab-icon" v-html="tab.icon"></span>
         <span>{{ tab.label }}<small>{{ tab.desc }}</small></span>
       </button>
     </aside>
@@ -58,7 +58,7 @@
           <div class="list">
             <div class="media-item">
               <input ref="logoInput" type="file" accept="image/*" class="hidden" @change="onMediaFileChange('logo', $event)" />
-              <button type="button" class="media-thumb-button" @click="logoInput?.click()">
+              <button type="button" class="media-thumb-button" @click="handleThumbClick('logo')">
                 <img v-if="previewUrl(local.logoUrl)" :src="previewUrl(local.logoUrl) || ''" alt="Logo da agência" />
                 <div v-else class="media-preview">Logo</div>
               </button>
@@ -75,8 +75,8 @@
                   </div>
                   <small class="logo-size-inline-label">Tamanho da logo</small>
                 </div>
-                <button type="button" @click="logoInput?.click()">{{ uploadingSlot === "logo" ? "Enviando..." : "Substituir" }}</button>
-                <button type="button" class="danger" @click="clearMedia('logo')">Remover</button>
+                <button type="button" @click="logoInput?.click()">{{ uploadingSlot === "logo" ? "Enviando..." : (local.logoUrl ? "Substituir" : "Adicionar") }}</button>
+                <button v-if="local.logoUrl" type="button" class="danger" @click="clearMedia('logo')">Remover</button>
               </div>
             </div>
           </div>
@@ -84,7 +84,7 @@
           <div class="list" style="margin-top:12px;">
             <div class="media-item">
               <input ref="bgInput" type="file" accept="image/*" class="hidden" @change="onMediaFileChange('background', $event)" />
-              <button type="button" class="media-thumb-button" @click="bgInput?.click()">
+              <button type="button" class="media-thumb-button" @click="handleThumbClick('background')">
                 <img v-if="previewUrl(local.backgroundImage)" :src="previewUrl(local.backgroundImage) || ''" alt="Imagem de fundo" />
                 <div v-else class="media-preview">BG</div>
               </button>
@@ -93,8 +93,8 @@
                 <p>Versão exibida na área principal da seção.</p>
               </div>
               <div class="btn-row">
-                <button type="button" @click="bgInput?.click()">{{ uploadingSlot === "background" ? "Enviando..." : "Substituir" }}</button>
-                <button type="button" class="danger" @click="clearMedia('background')">Remover</button>
+                <button type="button" @click="bgInput?.click()">{{ uploadingSlot === "background" ? "Enviando..." : (local.backgroundImage ? "Substituir" : "Adicionar") }}</button>
+                <button v-if="local.backgroundImage" type="button" class="danger" @click="clearMedia('background')">Remover</button>
               </div>
             </div>
           </div>
@@ -175,18 +175,90 @@
         </div>
       </div>
     </section>
+
+    <transition name="fade">
+      <div
+        v-if="cropperModal.open"
+        class="app-modal-overlay fixed inset-0 z-50 flex items-center justify-center px-4 py-6"
+      >
+        <div class="w-full max-w-5xl rounded-3xl bg-white p-6 shadow-2xl">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Editor de logo</p>
+              <h3 class="text-2xl font-bold text-slate-900">
+                {{ cropperModal.slot === "logo" ? "Ajuste sua marca" : "Ajuste a imagem de fundo" }}
+              </h3>
+              <p class="text-sm text-slate-500">Corte, limpe o fundo e envie com acabamento profissional.</p>
+            </div>
+            <button type="button" class="text-sm font-semibold text-slate-500" @click="closeCropper">Fechar</button>
+          </div>
+          <div class="mt-6 grid gap-6 md:grid-cols-[minmax(0,1fr)_220px]">
+            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+              <img
+                ref="cropperImageRef"
+                :src="cropperModal.src"
+                alt="Editor"
+                class="max-h-[420px] w-full rounded-xl bg-white object-contain"
+              />
+            </div>
+            <div class="space-y-4">
+              <p class="text-xs text-slate-500">
+                Use as ações abaixo para remover fundo, aproximar ou reposicionar a logo antes de salvar.
+              </p>
+              <div class="space-y-2">
+                <button
+                  type="button"
+                  class="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  @click="handleRemoveBackground"
+                  :disabled="removingBackground"
+                >
+                  {{ removingBackground ? "Processando fundo..." : "Remover fundo" }}
+                </button>
+                <button
+                  type="button"
+                  class="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  :disabled="!cropperModal.bgEdited"
+                  @click="restoreOriginal"
+                >
+                  Restaurar imagem
+                </button>
+              </div>
+              <div class="flex items-center gap-3">
+                <button type="button" class="flex-1 rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" @click="zoom(-0.2)">-</button>
+                <button type="button" class="flex-1 rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" @click="zoom(0.2)">+</button>
+              </div>
+              <div class="flex items-center gap-3">
+                <button type="button" class="flex-1 rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" @click="rotate(-10)">Rotacionar -</button>
+                <button type="button" class="flex-1 rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" @click="rotate(10)">Rotacionar +</button>
+              </div>
+              <p v-if="cropperError" class="text-xs text-red-500">{{ cropperError }}</p>
+            </div>
+          </div>
+          <div class="mt-6 flex justify-end gap-3">
+            <button type="button" class="rounded-full border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" @click="closeCropper">Cancelar</button>
+            <button type="button" class="rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60" :disabled="cropApplying" @click="applyCrop">
+              {{ cropApplying ? "Aplicando..." : "Aplicar recorte" }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </transition>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, inject, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
+import Cropper from "cropperjs";
+import "cropperjs/dist/cropper.css";
 import type { HeroSection, PageSection } from "../../types/page";
 import { sectionsInjectionKey } from "./sectionsContext";
 import RichTextEditor from "./inputs/RichTextEditor.vue";
+import api from "../../services/api";
 import { useAgencyStore } from "../../store/useAgencyStore";
 import { resolveMediaUrl, uploadImageFile } from "../../utils/media";
 import { sectionLabels } from "../../utils/sectionLabels";
 import SectionHoverVisualPreview from "./SectionHoverVisualPreview.vue";
+import { adminTabIcons } from "../../utils/adminTabIcons";
 
 type HeroTab = "text" | "media" | "button";
 
@@ -199,9 +271,9 @@ const HERO_LAYOUT: HeroSection["layout"] = "immersive";
 const HERO_ANIMATION_DURATION = 1000;
 
 const tabs: Array<{ id: HeroTab; icon: string; label: string; desc: string }> = [
-  { id: "text", icon: "✎", label: "Textos", desc: "Conteúdo principal" },
-  { id: "media", icon: "▧", label: "Mídia", desc: "Imagem e vídeo" },
-  { id: "button", icon: "↗", label: "Botão", desc: "Ação do visitante" }
+  { id: "text", icon: adminTabIcons.text, label: "Textos", desc: "Conteúdo principal" },
+  { id: "media", icon: adminTabIcons.media, label: "Mídia", desc: "Imagem e vídeo" },
+  { id: "button", icon: adminTabIcons.button, label: "Botão", desc: "Ação do visitante" }
 ];
 
 const activeTab = ref<HeroTab>("text");
@@ -209,6 +281,19 @@ const newChip = ref("");
 const logoInput = ref<HTMLInputElement | null>(null);
 const bgInput = ref<HTMLInputElement | null>(null);
 const uploadingSlot = ref<"logo" | "background" | null>(null);
+const cropperModal = ref<{ open: boolean; slot: "logo" | "background" | null; src: string; originalSrc: string; bgEdited: boolean }>({
+  open: false,
+  slot: null,
+  src: "",
+  originalSrc: "",
+  bgEdited: false
+});
+const cropperImageRef = ref<HTMLImageElement | null>(null);
+const cropperInstance = ref<Cropper | null>(null);
+const cropperObjectUrl = ref<string | null>(null);
+const cropApplying = ref(false);
+const removingBackground = ref(false);
+const cropperError = ref("");
 type SectionOption = { value: string; label: string; preview: string; section: PageSection };
 const sectionDropdownOpen = ref(false);
 const hoveredSectionOption = ref<SectionOption | null>(null);
@@ -284,6 +369,12 @@ onMounted(() => document.addEventListener("mousedown", closeDropdownOnOutside));
 onMounted(() => document.addEventListener("keydown", closeDropdownOnEscape));
 onBeforeUnmount(() => document.removeEventListener("mousedown", closeDropdownOnOutside));
 onBeforeUnmount(() => document.removeEventListener("keydown", closeDropdownOnEscape));
+onBeforeUnmount(() => {
+  if (cropperObjectUrl.value) {
+    URL.revokeObjectURL(cropperObjectUrl.value);
+    cropperObjectUrl.value = null;
+  }
+});
 
 let syncing = false;
 const syncFromProps = (value: HeroSection) => {
@@ -340,6 +431,47 @@ const clearMedia = (slot: "logo" | "background") => {
   else local.backgroundImage = "";
 };
 
+const revokeCropperObjectUrl = () => {
+  if (cropperObjectUrl.value) {
+    URL.revokeObjectURL(cropperObjectUrl.value);
+    cropperObjectUrl.value = null;
+  }
+};
+
+const handleThumbClick = async (slot: "logo" | "background") => {
+  const current = slot === "logo" ? local.logoUrl : local.backgroundImage;
+  if (!current) {
+    if (slot === "logo") logoInput.value?.click();
+    else bgInput.value?.click();
+    return;
+  }
+  let src = previewUrl(current);
+  if (!src) return;
+  const proxyCandidates = [src, current].filter(Boolean) as string[];
+  try {
+    revokeCropperObjectUrl();
+    for (const candidateUrl of proxyCandidates) {
+      try {
+        const response = await api.get("/media/proxy", {
+          params: { url: candidateUrl },
+          responseType: "blob"
+        });
+        if (response?.data instanceof Blob) {
+          cropperObjectUrl.value = URL.createObjectURL(response.data);
+          src = cropperObjectUrl.value;
+          break;
+        }
+      } catch {
+        // tenta próximo formato
+      }
+    }
+  } catch {
+    // fallback para URL direta
+  }
+  cropperError.value = "";
+  cropperModal.value = { open: true, slot, src, originalSrc: src, bgEdited: false };
+};
+
 const onMediaFileChange = async (slot: "logo" | "background", event: Event) => {
   const target = event.target as HTMLInputElement;
   const file = target.files?.[0];
@@ -357,6 +489,180 @@ const onMediaFileChange = async (slot: "logo" | "background", event: Event) => {
     target.value = "";
     uploadingSlot.value = null;
   }
+};
+
+const initCropperModal = () => {
+  if (!cropperModal.value.open || !cropperImageRef.value) return;
+  cropperInstance.value?.destroy();
+  cropperInstance.value = new Cropper(cropperImageRef.value, {
+    aspectRatio: cropperModal.value.slot === "logo" ? NaN : 16 / 9,
+    viewMode: 1,
+    dragMode: "crop",
+    autoCropArea: 0.92,
+    background: false,
+    cropBoxMovable: true,
+    cropBoxResizable: true,
+    guides: true,
+    center: true,
+    ready() {
+      const instance = cropperInstance.value;
+      if (!instance) return;
+      instance.crop();
+      const canvas = instance.getCanvasData();
+      const width = canvas.width * 0.85;
+      const height = canvas.height * 0.78;
+      instance.setCropBoxData({
+        left: canvas.left + (canvas.width - width) / 2,
+        top: canvas.top + (canvas.height - height) / 2,
+        width,
+        height
+      });
+    }
+  });
+};
+
+watch(
+  () => cropperModal.value.open,
+  async open => {
+    if (open) {
+      await nextTick();
+      setTimeout(() => initCropperModal(), 0);
+      return;
+    }
+    cropperInstance.value?.destroy();
+    cropperInstance.value = null;
+  }
+);
+
+watch(
+  () => cropperModal.value.src,
+  async () => {
+    if (!cropperModal.value.open) return;
+    await nextTick();
+    setTimeout(() => initCropperModal(), 0);
+  }
+);
+
+const closeCropper = () => {
+  cropperModal.value.open = false;
+  cropperError.value = "";
+  cropApplying.value = false;
+  removingBackground.value = false;
+  revokeCropperObjectUrl();
+};
+
+const applyCrop = async () => {
+  if (!cropperInstance.value || !cropperModal.value.slot) return;
+  cropApplying.value = true;
+  cropperError.value = "";
+  try {
+    const canvas = cropperInstance.value.getCroppedCanvas({
+      imageSmoothingQuality: "high",
+      width: cropperModal.value.slot === "logo" ? 900 : 1920,
+      height: cropperModal.value.slot === "logo" ? 900 : 1080
+    });
+    const file = await new Promise<File>((resolve, reject) => {
+      canvas.toBlob(blob => {
+        if (!blob) return reject(new Error("Falha ao gerar recorte."));
+        resolve(new File([blob], `hero-${cropperModal.value.slot}.png`, { type: "image/png" }));
+      }, "image/png", 0.92);
+    });
+    const agencyId = await ensureAgencyId();
+    if (!agencyId) throw new Error("Agência não encontrada.");
+    const asset = await uploadImageFile(file, agencyId);
+    if (cropperModal.value.slot === "logo") local.logoUrl = asset.url;
+    else local.backgroundImage = asset.url;
+    closeCropper();
+  } catch (err) {
+    cropperError.value = "Não foi possível aplicar o recorte.";
+  } finally {
+    cropApplying.value = false;
+  }
+};
+
+const zoom = (value: number) => {
+  cropperInstance.value?.zoom(value);
+};
+
+const rotate = (value: number) => {
+  cropperInstance.value?.rotate(value);
+};
+
+const restoreOriginal = () => {
+  if (!cropperInstance.value) return;
+  cropperInstance.value.replace(cropperModal.value.originalSrc, false);
+  cropperModal.value.src = cropperModal.value.originalSrc;
+  cropperModal.value.bgEdited = false;
+};
+
+const handleRemoveBackground = async () => {
+  if (!cropperModal.value.src || removingBackground.value) return;
+  removingBackground.value = true;
+  cropperError.value = "";
+  try {
+    const result = await removeBackgroundFromDataUrl(cropperModal.value.src);
+    cropperModal.value.src = result;
+    cropperModal.value.bgEdited = true;
+    await nextTick();
+    cropperInstance.value?.replace(result, false);
+  } catch {
+    cropperError.value = "Não conseguimos remover o fundo desta imagem.";
+  } finally {
+    removingBackground.value = false;
+  }
+};
+
+type RGB = { r: number; g: number; b: number };
+
+const removeBackgroundFromDataUrl = (src: string) =>
+  new Promise<string>((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = image.naturalWidth;
+      canvas.height = image.naturalHeight;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return reject(new Error("Canvas não suportado."));
+      ctx.drawImage(image, 0, 0);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const processed = stripBackground(imageData);
+      ctx.putImageData(processed, 0, 0);
+      resolve(canvas.toDataURL("image/png"));
+    };
+    image.onerror = reject;
+    image.src = src;
+  });
+
+const stripBackground = (imageData: ImageData) => {
+  const { data, width, height } = imageData;
+  const samples: RGB[] = [
+    getColor(data, width, 0, 0),
+    getColor(data, width, width - 1, 0),
+    getColor(data, width, 0, height - 1),
+    getColor(data, width, width - 1, height - 1),
+    getColor(data, width, Math.floor(width / 2), 0),
+    getColor(data, width, Math.floor(width / 2), height - 1)
+  ];
+  const base = samples.reduce((acc, c) => ({ r: acc.r + c.r, g: acc.g + c.g, b: acc.b + c.b }), { r: 0, g: 0, b: 0 });
+  const avg = { r: base.r / samples.length, g: base.g / samples.length, b: base.b / samples.length };
+  const threshold = 48;
+  for (let i = 0; i < data.length; i += 4) {
+    const dist = colorDistance({ r: data[i], g: data[i + 1], b: data[i + 2] }, avg);
+    if (dist < threshold) data[i + 3] = 0;
+  }
+  return imageData;
+};
+
+const getColor = (data: Uint8ClampedArray, width: number, x: number, y: number): RGB => {
+  const idx = (y * width + x) * 4;
+  return { r: data[idx], g: data[idx + 1], b: data[idx + 2] };
+};
+
+const colorDistance = (a: RGB, b: RGB) => {
+  const dr = a.r - b.r;
+  const dg = a.g - b.g;
+  const db = a.b - b.b;
+  return Math.sqrt(dr * dr + dg * dg + db * db);
 };
 
 const colorOnly = (value?: string) => {
@@ -756,6 +1062,28 @@ input, select {
   object-fit: cover;
   border-radius: 8px;
   display: block;
+}
+
+:deep(.cropper-container) {
+  max-width: 100%;
+}
+
+:deep(.cropper-view-box) {
+  outline: 2px solid rgba(61, 204, 95, 0.95);
+  outline-color: rgba(61, 204, 95, 0.95);
+}
+
+:deep(.cropper-crop-box) {
+  opacity: 1 !important;
+}
+
+:deep(.cropper-face) {
+  background-color: rgba(61, 204, 95, 0.12);
+}
+
+:deep(.cropper-line),
+:deep(.cropper-point) {
+  background-color: #3dcc5f;
 }
 
 .media-preview {

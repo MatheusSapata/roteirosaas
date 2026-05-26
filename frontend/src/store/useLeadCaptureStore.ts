@@ -473,6 +473,15 @@ export const useLeadCaptureStore = defineStore("leadCapture", () => {
     return res.data;
   };
 
+  const deleteClient = async (clientId: string | number) => {
+    await api.delete(`/clients/${clientId}`);
+    const target = normalizeId(clientId);
+    clients.value = clients.value.filter(client => normalizeId(client.id) !== target);
+    if (clientDetail.value && normalizeId(clientDetail.value.id) === target) {
+      clientDetail.value = null;
+    }
+  };
+
   const createClientNote = async (clientId: string | number, content: string) => {
     const res = await api.post(`/clients/${clientId}/notes`, { content });
     await fetchClientDetail(clientId);
@@ -567,6 +576,7 @@ export const useLeadCaptureStore = defineStore("leadCapture", () => {
     fetchClients,
     fetchClientDetail,
     updateClient,
+    deleteClient,
     createClientNote,
     uploadClientDocument,
     createOpportunityFromClient

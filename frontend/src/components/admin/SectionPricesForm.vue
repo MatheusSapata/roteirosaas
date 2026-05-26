@@ -2,11 +2,11 @@
   <div class="prices-proto-body">
     <aside class="tabs">
       <button type="button" class="tab" :class="{ active: activePanel === 'texts' }" @click="activePanel = 'texts'">
-        <span class="tab-icon">✎</span>
+        <span class="tab-icon" v-html="adminTabIcons.text"></span>
         <span>Textos<small>Chamada da seção</small></span>
       </button>
       <button type="button" class="tab" :class="{ active: activePanel === 'plans' }" @click="activePanel = 'plans'">
-        <span class="tab-icon">💳</span>
+        <span class="tab-icon" v-html="adminTabIcons.prices"></span>
         <span>Preços<small>Valores e condições</small></span>
       </button>
     </aside>
@@ -49,15 +49,19 @@
             <h2 class="section-title">Planos e valores</h2>
             <p class="section-desc">Adicione, selecione e reordene os cards de preço exibidos na seção.</p>
           </div>
+          <div class="segment-actions segment-actions--head">
+            <button class="add-segment" type="button" @click="addItem">+ Adicionar plano</button>
+          </div>
         </div>
 
         <div class="content-area">
           <div class="segment-bar">
-            <div class="segment-tabs">
+            <div ref="planTabsRef" class="segment-tabs">
               <button
                 v-for="(item, index) in local.items"
                 :key="`price-tab-${index}`"
                 type="button"
+                data-plan-chip
                 class="segment-tab"
                 :class="{ active: selectedPlanIndex === index }"
                 @click="selectedPlanIndex = index"
@@ -66,9 +70,6 @@
                 <span class="segment-name">{{ item.title?.trim() || `Plano ${index + 1}` }}</span>
                 <span class="segment-remove" @click.stop="removeItem(index)">×</span>
               </button>
-            </div>
-            <div class="segment-actions">
-              <button class="add-segment" type="button" @click="addItem">+ Adicionar plano</button>
             </div>
           </div>
 
@@ -96,6 +97,10 @@
             </div>
 
             <div class="price-row-triple">
+              <div class="field">
+                <label>Etiqueta acima do preço <span class="help" data-tip="Texto curto exibido acima do valor principal, como Promoção ou Mais vendido.">?</span></label>
+                <input v-model="selectedPlan.badge" placeholder="Ex: Promoção" />
+              </div>
               <div class="field">
                 <label>Prefixo do valor <span class="help" data-tip="Texto exibido antes do preço.">?</span></label>
                 <input v-model="selectedPlan.priceLabel" placeholder="por apenas" />
@@ -138,15 +143,19 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, reactive, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
+import Sortable, { type SortableEvent } from "sortablejs";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import type { CurrencyCode, PriceItem, PricesSection } from "../../types/page";
+import { adminTabIcons } from "../../utils/adminTabIcons";
 
 const props = defineProps<{ modelValue: PricesSection }>();
 const emit = defineEmits<{ (e: "update:modelValue", value: PricesSection): void }>();
 
 const activePanel = ref<"texts" | "plans">("texts");
 const selectedPlanIndex = ref(0);
+const planTabsRef = ref<HTMLElement | null>(null);
+let plansSortable: Sortable | null = null;
 
 const headingDefaults = getSectionHeadingDefaults("prices");
 const priceDrafts = ref<string[]>([]);
@@ -207,6 +216,40 @@ const local = reactive<PricesSection>({
 const selectedPlan = computed(() => local.items[selectedPlanIndex.value] || null);
 let syncing = false;
 
+const handleDragEnd = (event: SortableEvent) => {
+  const from = event.oldIndex;
+  const to = event.newIndex;
+  if (from === undefined || to === undefined || from === to) return;
+  const moved = local.items.splice(from, 1)[0];
+  if (!moved) return;
+  local.items.splice(to, 0, moved);
+  if (selectedPlanIndex.value === from) selectedPlanIndex.value = to;
+  else if (selectedPlanIndex.value > from && selectedPlanIndex.value <= to) selectedPlanIndex.value -= 1;
+  else if (selectedPlanIndex.value < from && selectedPlanIndex.value >= to) selectedPlanIndex.value += 1;
+};
+
+const destroySortable = () => {
+  if (!plansSortable) return;
+  plansSortable.destroy();
+  plansSortable = null;
+};
+
+const initSortable = () => {
+  if (!planTabsRef.value || local.items.length <= 1) {
+    destroySortable();
+    return;
+  }
+  destroySortable();
+  plansSortable = Sortable.create(planTabsRef.value, {
+    animation: 160,
+    draggable: "button[data-plan-chip]",
+    handle: ".segment-handle",
+    onEnd: handleDragEnd
+  });
+};
+
+const scheduleSortableRefresh = () => nextTick(initSortable);
+
 const syncFromProps = (value: PricesSection) => {
   syncing = true;
   Object.assign(local, value);
@@ -234,6 +277,21 @@ watch(
     syncFromProps(value);
   },
   { deep: true, immediate: true }
+);
+
+onMounted(scheduleSortableRefresh);
+onBeforeUnmount(destroySortable);
+
+watch(
+  () => local.items.length,
+  () => scheduleSortableRefresh()
+);
+
+watch(
+  () => activePanel.value,
+  panel => {
+    if (panel === "plans") scheduleSortableRefresh();
+  }
 );
 
 const addItem = () => {
@@ -305,7 +363,7 @@ watch(
 
 .editor { padding: 0; background: #edf1ef; min-width: 0; min-height: 100%; }
 .section-card { background: transparent; border: 0; min-height: 0; }
-.section-head { padding: 14px 16px 10px; border-bottom: 1px solid #dde5e1; }
+.section-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding: 14px 16px 10px; border-bottom: 1px solid #dde5e1; }
 .section-title { margin: 0; font-size: 18px; line-height: 1.15; color: #0f172a; font-weight: 800; }
 .section-desc { margin: 6px 0 0; font-size: 13px; color: #6a7e74; }
 .content-area { padding: 12px 14px; display: grid; gap: 10px; min-width: 0; align-content: start; }
@@ -326,6 +384,7 @@ textarea { resize: vertical; }
 .segment-name { font-weight: 700; line-height: 1.1; }
 .segment-remove { width: 16px; height: 16px; border-radius: 999px; border: 1px solid #d6dde8; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; color: #64748b; }
 .segment-actions { display: flex; flex-shrink: 0; }
+.segment-actions--head { margin-left: auto; }
 .add-segment { border: 1px solid #cad7d1; border-radius: 999px; background: #fff; color: #475569; font-size: 11px; font-weight: 700; padding: 7px 11px; }
 
 .segment-panel { border: 0; border-radius: 0; padding: 0; background: transparent; display: grid; gap: 10px; }

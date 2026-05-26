@@ -9,7 +9,7 @@
         type="button"
         @click="activeTab = tab.id"
       >
-        <span class="tab-icon">{{ tab.icon }}</span>
+        <span class="tab-icon" v-html="tab.icon"></span>
         <span>{{ tab.label }}<small>{{ tab.desc }}</small></span>
       </button>
     </aside>
@@ -26,7 +26,26 @@
         <div class="content-area">
           <div class="field">
             <label>Imagem <span class="help" data-tip="Imagem principal exibida na seção.">?</span></label>
-            <ImageUploadField v-model="local.image" :enable-crop="true" :crop-aspect="16 / 9" />
+            <div class="list">
+              <div class="media-item">
+                <input ref="imageInput" type="file" accept="image/*" class="hidden" @change="onImageFileChange" />
+                <button type="button" class="media-thumb-button" @click="imageInput?.click()">
+                  <img v-if="previewUrl(local.image)" :src="previewUrl(local.image) || ''" alt="Imagem destacada" />
+                  <div v-else class="media-preview">IMG</div>
+                </button>
+                <div class="media-info">
+                  <strong>Imagem destacada <span class="help" data-tip="Imagem principal da seção foto destacada.">?</span></strong>
+                  <p>Versão exibida na área principal da seção.</p>
+                </div>
+                <div class="btn-row">
+                  <button type="button" @click="imageInput?.click()">
+                    {{ uploadingImage ? "Enviando..." : (local.image ? "Substituir" : "Adicionar") }}
+                  </button>
+                  <button v-if="local.image" type="button" class="danger" @click="clearImage">Remover</button>
+                </div>
+              </div>
+            </div>
+            <p v-if="uploadError" class="field-hint field-hint--error">{{ uploadError }}</p>
           </div>
 
           <div class="field">
@@ -99,18 +118,24 @@
 
 <script setup lang="ts">
 import { computed, nextTick, reactive, ref, watch } from "vue";
-import ImageUploadField from "./inputs/ImageUploadField.vue";
 import type { PhotoSection } from "../../types/page";
 import { createAdminLocalizer } from "../../utils/adminI18n";
+import { resolveMediaUrl, uploadImageFile } from "../../utils/media";
+import { useAgencyStore } from "../../store/useAgencyStore";
+import { adminTabIcons } from "../../utils/adminTabIcons";
 
 type PhotoTab = "media";
 
 const props = defineProps<{ modelValue: PhotoSection }>();
 const emit = defineEmits<{ (e: "update:modelValue", value: PhotoSection): void }>();
 const t = createAdminLocalizer();
+const agencyStore = useAgencyStore();
+const imageInput = ref<HTMLInputElement | null>(null);
+const uploadingImage = ref(false);
+const uploadError = ref("");
 
 const tabs: Array<{ id: PhotoTab; icon: string; label: string; desc: string }> = [
-  { id: "media", icon: "▧", label: "Mídia", desc: "Imagem e layout" }
+  { id: "media", icon: adminTabIcons.media, label: "Mídia", desc: "Imagem e layout" }
 ];
 
 const activeTab = ref<PhotoTab>("media");
@@ -157,6 +182,42 @@ const syncFromProps = (value: PhotoSection) => {
   nextTick(() => {
     syncing = false;
   });
+};
+
+const previewUrl = (value?: string | null) => resolveMediaUrl(value);
+
+const ensureAgencyId = async () => {
+  if (!agencyStore.currentAgencyId) {
+    await agencyStore.loadAgencies().catch(() => undefined);
+  }
+  return agencyStore.currentAgencyId;
+};
+
+const onImageFileChange = async (event: Event) => {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file) return;
+  const agencyId = await ensureAgencyId();
+  if (!agencyId) {
+    uploadError.value = "Selecione ou crie uma agência antes de enviar imagens.";
+    input.value = "";
+    return;
+  }
+  uploadingImage.value = true;
+  uploadError.value = "";
+  try {
+    const asset = await uploadImageFile(file, agencyId);
+    local.image = asset.url;
+  } catch {
+    uploadError.value = "Não foi possível enviar a imagem. Tente novamente.";
+  } finally {
+    uploadingImage.value = false;
+    input.value = "";
+  }
+};
+
+const clearImage = () => {
+  local.image = "";
 };
 
 watch(
@@ -369,19 +430,90 @@ input:focus {
   color: #7d9087;
 }
 
-:deep(.field .flex.flex-1.flex-col.rounded-xl.border.border-slate-200.p-3) {
-  padding: 10px;
+.field-hint--error {
+  color: #dc2626;
 }
 
-:deep(.field .mb-3 > .flex.max-h-\[320px\].min-h-\[220px\].w-full.items-center.justify-center.overflow-hidden.rounded-lg.border.border-slate-200.bg-slate-50) {
-  max-height: 140px !important;
-  min-height: 120px !important;
+.list {
+  display: grid;
+  gap: 8px;
 }
 
-:deep(.field .image-upload-preview) {
-  max-height: 140px !important;
-  min-height: 120px !important;
+.media-item {
+  display: grid;
+  grid-template-columns: 86px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid #dfe8e2;
+  background: #fff;
+  border-radius: 12px;
+  padding: 8px;
+}
+
+.media-thumb-button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.media-thumb-button img {
+  width: 86px;
+  height: 58px;
   object-fit: cover;
+  border-radius: 8px;
+  display: block;
+}
+
+.media-preview {
+  width: 86px;
+  height: 58px;
+  border-radius: 8px;
+  background: #e3ebe6;
+  display: grid;
+  place-items: center;
+  color: #7d8d83;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.media-info strong {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 3px;
+  font-size: 13px;
+}
+
+.media-info p {
+  margin: 0;
+  color: #7d8d83;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.btn-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+.btn-row button {
+  border: 1px solid #dfe8e2;
+  border-radius: 8px;
+  padding: 7px 10px;
+  min-height: 32px;
+  background: #fff;
+  color: #223228;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.btn-row button.danger {
+  background: #fff1f1;
+  color: #e13c3c;
+  border-color: #ffd4d4;
 }
 
 .layout-grid {
@@ -553,6 +685,15 @@ input:focus {
 
   .layout-grid {
     grid-template-columns: 1fr;
+  }
+
+  .media-item {
+    grid-template-columns: 70px 1fr;
+  }
+
+  .media-item .btn-row {
+    grid-column: 2 / span 1;
+    justify-content: flex-start;
   }
 }
 </style>
