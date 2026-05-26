@@ -2,11 +2,11 @@
   <div class="testimonials-proto-body">
     <aside class="tabs">
       <button type="button" class="tab" :class="{ active: activePanel === 'texts' }" @click="activePanel = 'texts'">
-        <span class="tab-icon">✎</span>
+        <span class="tab-icon" v-html="adminTabIcons.text"></span>
         <span>Textos<small>Chamada da seção</small></span>
       </button>
       <button type="button" class="tab" :class="{ active: activePanel === 'items' }" @click="activePanel = 'items'">
-        <span class="tab-icon">💬</span>
+        <span class="tab-icon" v-html="adminTabIcons.testimonials"></span>
         <span>Depoimentos<small>Clientes e feedbacks</small></span>
       </button>
     </aside>
@@ -44,15 +44,19 @@
             <h2 class="section-title">Depoimentos</h2>
             <p class="section-desc">Adicione, selecione e edite os depoimentos exibidos na seção.</p>
           </div>
+          <div class="segment-actions segment-actions--head">
+            <button type="button" class="add-segment" @click="addItem">+ Adicionar depoimento</button>
+          </div>
         </div>
 
         <div class="content-area">
           <div class="segment-bar">
-            <div class="segment-tabs">
+            <div ref="itemTabsRef" class="segment-tabs">
               <button
                 v-for="(item, index) in local.items"
                 :key="`testimonial-${index}`"
                 type="button"
+                data-testimonial-chip
                 class="segment-tab"
                 :class="{ active: selectedItemIndex === index }"
                 @click="selectedItemIndex = index"
@@ -61,9 +65,6 @@
                 <span class="segment-name">{{ item.name?.trim() || `Depoimento ${index + 1}` }}</span>
                 <span class="segment-remove" @click.stop="removeItem(index)">×</span>
               </button>
-            </div>
-            <div class="segment-actions">
-              <button type="button" class="add-segment" @click="addItem">+ Adicionar depoimento</button>
             </div>
           </div>
 
@@ -98,13 +99,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, reactive, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
+import Sortable, { type SortableEvent } from "sortablejs";
 import ImageUploadField from "./inputs/ImageUploadField.vue";
 import RichTextEditor from "./inputs/RichTextEditor.vue";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import type { TestimonialsSection } from "../../types/page";
 import defaultAvatarImage from "../../assets/avatar.jpeg";
 import { createAdminLocalizer } from "../../utils/adminI18n";
+import { adminTabIcons } from "../../utils/adminTabIcons";
 
 const props = defineProps<{ modelValue: TestimonialsSection }>();
 const emit = defineEmits<{ (e: "update:modelValue", value: TestimonialsSection): void }>();
@@ -113,6 +116,8 @@ const headingDefaults = getSectionHeadingDefaults("testimonials");
 const t = createAdminLocalizer();
 const activePanel = ref<"texts" | "items">("texts");
 const selectedItemIndex = ref(0);
+const itemTabsRef = ref<HTMLElement | null>(null);
+let itemsSortable: Sortable | null = null;
 
 const viewCopy = {
   fields: {
@@ -142,6 +147,40 @@ const local = reactive<TestimonialsSection>({
 const selectedItem = computed(() => local.items?.[selectedItemIndex.value] || null);
 let syncing = false;
 
+const handleDragEnd = (event: SortableEvent) => {
+  const from = event.oldIndex;
+  const to = event.newIndex;
+  if (from === undefined || to === undefined || from === to) return;
+  const moved = local.items.splice(from, 1)[0];
+  if (!moved) return;
+  local.items.splice(to, 0, moved);
+  if (selectedItemIndex.value === from) selectedItemIndex.value = to;
+  else if (selectedItemIndex.value > from && selectedItemIndex.value <= to) selectedItemIndex.value -= 1;
+  else if (selectedItemIndex.value < from && selectedItemIndex.value >= to) selectedItemIndex.value += 1;
+};
+
+const destroySortable = () => {
+  if (!itemsSortable) return;
+  itemsSortable.destroy();
+  itemsSortable = null;
+};
+
+const initSortable = () => {
+  if (!itemTabsRef.value || local.items.length <= 1) {
+    destroySortable();
+    return;
+  }
+  destroySortable();
+  itemsSortable = Sortable.create(itemTabsRef.value, {
+    animation: 160,
+    draggable: "button[data-testimonial-chip]",
+    handle: ".segment-handle",
+    onEnd: handleDragEnd
+  });
+};
+
+const scheduleSortableRefresh = () => nextTick(initSortable);
+
 const syncFromProps = (value: TestimonialsSection) => {
   syncing = true;
   Object.assign(local, value);
@@ -166,6 +205,21 @@ watch(
     syncFromProps(value);
   },
   { deep: true, immediate: true }
+);
+
+onMounted(scheduleSortableRefresh);
+onBeforeUnmount(destroySortable);
+
+watch(
+  () => local.items.length,
+  () => scheduleSortableRefresh()
+);
+
+watch(
+  () => activePanel.value,
+  panel => {
+    if (panel === "items") scheduleSortableRefresh();
+  }
 );
 
 const addItem = () => {
@@ -208,7 +262,7 @@ watch(
 
 .editor { padding: 0; background: #edf1ef; min-width: 0; min-height: 100%; }
 .section-card { background: transparent; border: 0; min-height: 0; }
-.section-head { padding: 14px 16px 10px; border-bottom: 1px solid #dde5e1; }
+.section-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding: 14px 16px 10px; border-bottom: 1px solid #dde5e1; }
 .section-title { margin: 0; font-size: 18px; line-height: 1.15; color: #0f172a; font-weight: 800; }
 .section-desc { margin: 6px 0 0; font-size: 13px; color: #6a7e74; }
 .content-area { padding: 12px 14px; display: grid; gap: 10px; min-width: 0; align-content: start; }
@@ -229,6 +283,7 @@ textarea { resize: vertical; min-height: 120px; }
 .segment-name { font-weight: 700; line-height: 1.1; }
 .segment-remove { width: 16px; height: 16px; border-radius: 999px; border: 1px solid #d6dde8; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; color: #64748b; }
 .segment-actions { display: flex; flex-shrink: 0; }
+.segment-actions--head { margin-left: auto; }
 .add-segment { border: 1px solid #cad7d1; border-radius: 999px; background: #fff; color: #475569; font-size: 11px; font-weight: 700; padding: 7px 11px; }
 
 .segment-panel { border: 0; border-radius: 0; padding: 0; background: transparent; display: grid; gap: 10px; }

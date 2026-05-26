@@ -1,5 +1,5 @@
 ﻿<template>
-  <div class="items-proto-body">
+  <div class="items-proto-body" v-bind="$attrs">
     <aside class="tabs">
       <button type="button" class="tab" :class="{ active: activePanel === 'texts' }" @click="activePanel = 'texts'">
         <span class="tab-icon">✎</span>
@@ -44,15 +44,19 @@
             <h2 class="section-title">Itens da seção</h2>
             <p class="section-desc">Adicione, selecione e reordene os itens exibidos nesta seção.</p>
           </div>
+          <div class="segment-actions segment-actions--head">
+            <button class="add-segment" type="button" @click="addItem" :disabled="local.items.length >= MAX_ITEMS">+ Adicionar item</button>
+          </div>
         </div>
 
         <div class="content-area">
           <div class="segment-bar">
-            <div class="segment-tabs">
+            <div ref="itemTabsRef" class="segment-tabs">
               <button
                 v-for="(item, index) in local.items"
                 :key="`item-tab-${index}`"
                 type="button"
+                data-item-chip
                 class="segment-tab"
                 :class="{ active: selectedItemIndex === index }"
                 @click="selectedItemIndex = index"
@@ -61,9 +65,6 @@
                 <span class="segment-name">{{ item.title?.trim() || `Item ${index + 1}` }}</span>
                 <span class="segment-remove" @click.stop="removeItem(index)">×</span>
               </button>
-            </div>
-            <div class="segment-actions">
-              <button class="add-segment" type="button" @click="addItem" :disabled="local.items.length >= MAX_ITEMS">+ Adicionar item</button>
             </div>
           </div>
 
@@ -119,10 +120,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, reactive, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
+import Sortable, { type SortableEvent } from "sortablejs";
 import RichTextEditor from "./inputs/RichTextEditor.vue";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import type { ReasonsSection } from "../../types/page";
+
+defineOptions({ inheritAttrs: false });
 
 const props = defineProps<{ modelValue: ReasonsSection }>();
 const emit = defineEmits<{ (e: "update:modelValue", value: ReasonsSection): void }>();
@@ -135,6 +139,8 @@ const extraIcons = ["💡", "🛡️", "🎒", "☎️", "📸", "🧳", "🌐",
 const allIcons = computed(() => Array.from(new Set([...iconOptions, ...extraIcons])));
 const iconPickerIndex = ref<number | null>(null);
 const iconPickerStyle = ref<Record<string, string>>({});
+const itemTabsRef = ref<HTMLElement | null>(null);
+let itemsSortable: Sortable | null = null;
 
 const DEFAULT_ANIMATION_DURATION = 1000;
 const DEFAULT_ANIMATION_STAGGER = 300;
@@ -185,6 +191,40 @@ const removeItem = (index: number) => {
   if (selectedItemIndex.value >= local.items.length) selectedItemIndex.value = Math.max(0, local.items.length - 1);
 };
 
+const handleDragEnd = (event: SortableEvent) => {
+  const from = event.oldIndex;
+  const to = event.newIndex;
+  if (from === undefined || to === undefined || from === to) return;
+  const moved = local.items.splice(from, 1)[0];
+  if (!moved) return;
+  local.items.splice(to, 0, moved);
+  if (selectedItemIndex.value === from) selectedItemIndex.value = to;
+  else if (selectedItemIndex.value > from && selectedItemIndex.value <= to) selectedItemIndex.value -= 1;
+  else if (selectedItemIndex.value < from && selectedItemIndex.value >= to) selectedItemIndex.value += 1;
+};
+
+const destroySortable = () => {
+  if (!itemsSortable) return;
+  itemsSortable.destroy();
+  itemsSortable = null;
+};
+
+const initSortable = () => {
+  if (!itemTabsRef.value || local.items.length <= 1) {
+    destroySortable();
+    return;
+  }
+  destroySortable();
+  itemsSortable = Sortable.create(itemTabsRef.value, {
+    animation: 160,
+    draggable: "button[data-item-chip]",
+    handle: ".segment-handle",
+    onEnd: handleDragEnd
+  });
+};
+
+const scheduleSortableRefresh = () => nextTick(initSortable);
+
 const closeIconPicker = () => {
   iconPickerIndex.value = null;
 };
@@ -217,6 +257,21 @@ watch(
     syncFromProps(value);
   },
   { deep: true, immediate: true }
+);
+
+onMounted(scheduleSortableRefresh);
+onBeforeUnmount(destroySortable);
+
+watch(
+  () => local.items.length,
+  () => scheduleSortableRefresh()
+);
+
+watch(
+  () => activePanel.value,
+  panel => {
+    if (panel === "items") scheduleSortableRefresh();
+  }
 );
 
 watch(
@@ -308,6 +363,10 @@ watch(
 }
 
 .section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
   padding: 14px 16px 10px;
   border-bottom: 1px solid #dde5e1;
 }
@@ -460,6 +519,10 @@ input:focus {
   display: flex;
   justify-content: flex-end;
   flex-shrink: 0;
+}
+
+.segment-actions--head {
+  margin-left: auto;
 }
 
 .add-segment {

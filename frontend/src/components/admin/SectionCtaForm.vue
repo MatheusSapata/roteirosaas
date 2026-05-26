@@ -2,11 +2,11 @@
   <div class="cta-proto-body">
     <aside class="tabs">
       <button type="button" class="tab" :class="{ active: activePanel === 'content' }" @click="activePanel = 'content'">
-        <span class="tab-icon">✎</span>
+        <span class="tab-icon" v-html="adminTabIcons.text"></span>
         <span>Textos<small>Chamada principal</small></span>
       </button>
       <button type="button" class="tab" :class="{ active: activePanel === 'button' }" @click="activePanel = 'button'">
-        <span class="tab-icon">↗</span>
+        <span class="tab-icon" v-html="adminTabIcons.button"></span>
         <span>Botão<small>Ação do visitante</small></span>
       </button>
     </aside>
@@ -86,6 +86,7 @@ import RichTextEditor from "./inputs/RichTextEditor.vue";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import type { CtaSection } from "../../types/page";
 import { createAdminLocalizer } from "../../utils/adminI18n";
+import { adminTabIcons } from "../../utils/adminTabIcons";
 
 const props = defineProps<{ modelValue: CtaSection }>();
 const emit = defineEmits<{ (e: "update:modelValue", value: CtaSection): void }>();

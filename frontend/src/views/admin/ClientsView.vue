@@ -111,13 +111,22 @@
                 <td class="px-4 py-3">{{ formatDate(client.lastOpportunityAt) }}</td>
                 <td class="px-4 py-3">
                   <div class="flex items-center justify-end" @click.stop>
-                    <button type="button" class="menu-trigger" @click.stop="toggleRowMenu(client.id, $event)">
-                      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                        <circle cx="5" cy="12" r="1.8" />
-                        <circle cx="12" cy="12" r="1.8" />
-                        <circle cx="19" cy="12" r="1.8" />
-                      </svg>
-                    </button>
+                    <div class="inline-flex items-center gap-2">
+                      <button type="button" class="menu-trigger" title="Ver cliente" @click.stop="goToClient(client.id)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+                          <path d="M2 12s3.6-6 10-6s10 6 10 6s-3.6 6-10 6s-10-6-10-6z" />
+                          <circle cx="12" cy="12" r="2.8" />
+                        </svg>
+                      </button>
+                      <button type="button" class="menu-trigger menu-trigger--danger" title="Excluir cliente" @click.stop="handleDeleteClient(client.id)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+                          <path d="M3 6h18" />
+                          <path d="M8 6V4h8v2" />
+                          <path d="M19 6l-1 14H6L5 6" />
+                          <path d="M10 11v6M14 11v6" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
                 </td>
               </tr>
@@ -148,26 +157,12 @@
             </div>
             <div class="mt-3 flex gap-2" @click.stop>
               <button type="button" class="table-action table-action--primary" @click="goToClient(client.id)">Ver perfil</button>
-              <button type="button" class="table-action" @click="openNewOpportunity(client.id)">Nova oportunidade</button>
+              <button type="button" class="table-action table-action--danger" @click="handleDeleteClient(client.id)">Excluir</button>
             </div>
           </article>
         </div>
       </div>
     </section>
-
-    <Teleport to="body">
-      <div
-        v-if="openRowMenuId !== null"
-        class="row-menu row-menu--floating"
-        :style="{ top: `${rowMenuPosition.top}px`, left: `${rowMenuPosition.left}px` }"
-        @click.stop
-      >
-        <button type="button" @click="goToClient(openRowMenuId)">Ver cliente</button>
-        <button type="button" @click="openNewOpportunity(openRowMenuId)">Nova oportunidade</button>
-        <button type="button" @click="goToClient(openRowMenuId)">Editar cliente</button>
-        <button type="button" class="danger" @click="handleDeleteClient(openRowMenuId)">Excluir</button>
-      </div>
-    </Teleport>
 
     <Teleport to="body">
       <div v-if="createModalOpen" class="app-modal-overlay fixed inset-0 z-[150] flex items-center justify-center p-3 md:px-4">
@@ -213,7 +208,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
+import { computed, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useLeadCaptureStore } from "../../store/useLeadCaptureStore";
 import { useAuthStore } from "../../store/useAuthStore";
@@ -246,8 +241,6 @@ const filters = reactive({
 
 const createModalOpen = ref(false);
 const creating = ref(false);
-const openRowMenuId = ref<number | null>(null);
-const rowMenuPosition = ref({ top: 0, left: 0 });
 const createForm = reactive({
   name: "",
   cpf: "",
@@ -303,29 +296,29 @@ const showReadOnlySnackbar = (message = "Seu perfil permite apenas visualizaçã
   );
 };
 
+const showSuccessSnackbar = (message: string) => {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent(API_PERMISSION_DENIED_EVENT, {
+      detail: { message, status: 200, method: "delete" }
+    })
+  );
+};
+
 const goToClient = (clientId: number) => router.push(`/admin/leads/clients/${clientId}`);
-const openNewOpportunity = (clientId: number) => router.push(`/admin/leads/opportunities?clientId=${clientId}`);
-const toggleRowMenu = (clientId: number, event: MouseEvent) => {
-  if (openRowMenuId.value === clientId) {
-    openRowMenuId.value = null;
+const handleDeleteClient = async (clientId: number) => {
+  if (!canManageLeads.value) {
+    showReadOnlySnackbar();
     return;
   }
-  const trigger = event.currentTarget as HTMLElement | null;
-  if (!trigger) return;
-  const rect = trigger.getBoundingClientRect();
-  const menuWidth = 196;
-  const viewportPadding = 8;
-  const left = Math.min(
-    window.innerWidth - menuWidth - viewportPadding,
-    Math.max(viewportPadding, rect.right - menuWidth)
-  );
-  const top = rect.bottom + 8;
-  rowMenuPosition.value = { top, left };
-  openRowMenuId.value = clientId;
-};
-const handleDeleteClient = (clientId: number) => {
-  openRowMenuId.value = null;
-  router.push(`/admin/leads/clients/${clientId}`);
+  if (!window.confirm("Excluir este cliente? Esta ação não pode ser desfeita.")) return;
+  try {
+    await leadStore.deleteClient(clientId);
+    await loadClients();
+    showSuccessSnackbar("Cliente excluído com sucesso.");
+  } catch (error) {
+    console.error("Erro ao excluir cliente", error);
+  }
 };
 
 const openCreateModal = () => {
@@ -395,18 +388,6 @@ watch(
   },
   { deep: true, immediate: true }
 );
-
-const closeRowMenu = () => {
-  openRowMenuId.value = null;
-};
-
-onMounted(() => {
-  window.addEventListener("click", closeRowMenu);
-});
-
-onUnmounted(() => {
-  window.removeEventListener("click", closeRowMenu);
-});
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format((value || 0) / 100);
@@ -617,6 +598,12 @@ defineExpose({
   background: #ecfdf3;
 }
 .table-action--primary:hover { background: #dcfce7; }
+.table-action--danger {
+  border-color: #fecaca;
+  color: #b91c1c;
+  background: #fff5f5;
+}
+.table-action--danger:hover { background: #fee2e2; }
 .client-row {
   position: relative;
   box-shadow: inset 0 0 0 0 rgba(15, 23, 42, 0);
@@ -641,34 +628,16 @@ defineExpose({
   width: 14px;
   height: 14px;
 }
+.menu-trigger--danger {
+  color: #b91c1c;
+  border-color: #fecaca;
+  background: #fff5f5;
+}
 .menu-trigger:hover {
   background: #f7fbf8;
   border-color: #cfe6d6;
   color: #2f7f48;
 }
-.row-menu {
-  position: fixed;
-  z-index: 1200;
-  min-width: 180px;
-  border: 1px solid #e2e8f0;
-  background: #fff;
-  border-radius: 0.85rem;
-  box-shadow: 0 16px 30px -20px rgba(15, 23, 42, 0.4);
-  overflow: hidden;
-}
-.row-menu button {
-  width: 100%;
-  text-align: left;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #334155;
-  padding: 0.6rem 0.8rem;
-  border: 0;
-  background: transparent;
-}
-.row-menu button:hover { background: #f8fafc; }
-.row-menu button.danger { color: #b91c1c; }
-.row-menu--floating { min-width: 196px; }
 .client-card {
   cursor: pointer;
   transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background-color 0.18s ease;

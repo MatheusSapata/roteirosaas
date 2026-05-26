@@ -48,6 +48,9 @@
             <h2 class="section-title">Dias do roteiro</h2>
             <p class="section-desc">Adicione, selecione e reordene os dias da viagem.</p>
           </div>
+          <div class="segment-actions segment-actions--head">
+            <button class="add-segment" type="button" @click="addDay">{{ viewCopy.days.addButton }}</button>
+          </div>
         </div>
 
         <div class="content-area">
@@ -68,9 +71,6 @@
               </button>
             </div>
             <div v-else class="empty-days">{{ viewCopy.days.emptyMessage }}</div>
-            <div class="segment-actions">
-              <button class="add-segment" type="button" @click="addDay">{{ viewCopy.days.addButton }}</button>
-            </div>
           </div>
 
           <div v-if="currentDay" class="segment-panel">
@@ -103,7 +103,7 @@
               </div>
               <div class="btn-row">
                 <input ref="dayImageInputRef" type="file" accept="image/*" class="hidden" @change="onDayImageFileChange($event)" />
-                <button type="button" @click="dayImageInputRef?.click()">{{ uploadingDayImage ? "Enviando..." : "Substituir" }}</button>
+                <button type="button" @click="dayImageInputRef?.click()">{{ uploadingDayImage ? "Enviando..." : (currentDay.image ? "Substituir" : "Adicionar") }}</button>
                 <button v-if="currentDay.image" type="button" class="danger" @click="removeDayImage(currentDay)">{{ viewCopy.days.removeImage }}</button>
               </div>
             </div>
@@ -350,6 +350,13 @@ watch(
 );
 
 watch(
+  () => activeTab.value,
+  tab => {
+    if (tab === "days") scheduleSortableRefresh();
+  }
+);
+
+watch(
   () => ({ ...local, days: local.days.map(day => ({ ...day })) }),
   value => {
     if (syncing) return;
@@ -584,6 +591,12 @@ input, textarea {
   font-weight: 850;
 }
 
+.segment-actions--head {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+
 .segment-panel {
   margin-top: 8px;
 }
@@ -669,6 +682,10 @@ input, textarea {
   padding: 7px 10px;
   font-size: 12px;
   font-weight: 850;
+}
+
+.danger:hover {
+  background: #ffe5e5;
 }
 
 .empty-state,
