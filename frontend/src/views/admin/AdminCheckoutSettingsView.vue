@@ -774,10 +774,15 @@ const couponOfferSummary = (offerKeys: string[]) => {
 
 const imageState = (url?: string | null) => (url ? "Com" : "Sem");
 
+const checkoutPublicBaseUrl = () => {
+  if (typeof window === "undefined") return "";
+  return import.meta.env.PROD ? "https://roteiroonline.com" : window.location.origin;
+};
+
 const buildOfferCheckoutUrl = (offerKey: string) => {
   const normalizedKey = offerKey.trim().toLowerCase();
   if (!normalizedKey) return "";
-  return `${window.location.origin}/checkout/${normalizedKey}`;
+  return `${checkoutPublicBaseUrl()}/checkout/${normalizedKey}`;
 };
 
 const copyOfferLink = async (offerKey: string) => {
