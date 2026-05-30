@@ -325,18 +325,16 @@ def _set_subscription_active(subscription: Subscription, plan_key: str, due_date
 
 
 def set_subscription_cancelled(subscription: Subscription) -> None:
-    subscription.plan = "free"
-    subscription.status = "cancelled"
+    subscription.status = "inactive"
     subscription.valid_until = None
     subscription.asaas_subscription_id = None
     subscription.asaas_payment_link_id = None
     subscription.external_reference = None
-    subscription.billing_cycle = DEFAULT_CYCLE
     subscription.mrr_amount = 0
 
 
 def set_subscription_cancelled_at_period_end(subscription: Subscription) -> None:
-    subscription.status = "cancelled"
+    subscription.status = "inactive"
     subscription.failed_attempts = 0
     if not subscription.valid_until:
         subscription.valid_until = datetime.utcnow() + _cycle_duration(subscription.billing_cycle or DEFAULT_CYCLE)
@@ -401,11 +399,10 @@ async def webhook(request: Request, db: Session = Depends(get_db)) -> Dict[str, 
                         subscription.failed_attempts = (subscription.failed_attempts or 0) + 1
                         if subscription.failed_attempts >= 3:
                             set_subscription_cancelled(subscription)
-                            user.plan = "free"
                         else:
                             subscription.status = "past_due"
                     elif event in {"PAYMENT_REFUNDED", "PAYMENT_DELETED"}:
-                        subscription.status = "cancelled"
+                        subscription.status = "inactive"
                         mark_viajechat_cancelled(
                             name=user.name or "",
                             email=user.email or "",

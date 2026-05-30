@@ -9,6 +9,7 @@ from app.api.v1.endpoints.pages import apply_free_footer, normalize_config, reso
 from app.models.agency import Agency
 from app.models.agency_user import AgencyUser
 from app.models.page import Page
+from app.models.user import User
 from app.schemas.page import PublicPageOut
 from app.services.flight_sections import inject_flight_sections_into_config
 from app.services.public_page_resolver import PublicPageResolverService
@@ -119,10 +120,27 @@ def base_page_query(db: Session):
         .options(
             selectinload(Page.agency)
             .selectinload(Agency.users)
-            .selectinload(AgencyUser.user),
+            .selectinload(AgencyUser.user)
+            .selectinload(User.subscription),
             selectinload(Page.agency).selectinload(Agency.social_links),
         )
     )
+
+
+def _is_owner_subscription_active(agency: Agency) -> bool:
+    owner_membership = next((rel for rel in agency.users or [] if (rel.role or "").lower() == "owner" and rel.user), None)
+    if owner_membership is None:
+        owner_membership = next((rel for rel in agency.users or [] if rel.user), None)
+    owner: User | None = owner_membership.user if owner_membership else None
+    if owner is None or owner.subscription is None:
+        return False
+    return str(owner.subscription.status or "").strip().lower() == "active"
+
+
+def _ensure_page_is_publicly_available(page: Page) -> None:
+    # Keep page published in admin, but expose publicly only when subscription is active.
+    if not _is_owner_subscription_active(page.agency):
+        raise HTTPException(status_code=503, detail="PAGE_TEMPORARILY_UNAVAILABLE")
 
 
 def _find_page_by_slug(db: Session, agency_slug: str, page_slug: str) -> Page:
@@ -139,6 +157,7 @@ def _find_page_by_slug(db: Session, agency_slug: str, page_slug: str) -> Page:
     )
     if not page:
         raise HTTPException(status_code=404, detail="Página não encontrada ou não publicada.")
+    _ensure_page_is_publicly_available(page)
     return page
 
 
@@ -154,6 +173,7 @@ def _find_default_page(db: Session, agency_slug: str) -> Page:
     )
     if not page:
         raise HTTPException(status_code=404, detail="Página padrão não encontrada ou não publicada.")
+    _ensure_page_is_publicly_available(page)
     return page
 
 
@@ -167,6 +187,7 @@ def get_public_page(agency_slug: str, page_slug: str, db: Session = Depends(get_
 def get_default_public_page(agency_slug: str, db: Session = Depends(get_db)) -> PublicPageOut:
     page = _find_default_page(db, agency_slug)
     return serialize_public_page(page, agency_slug, db)
+
 
 @router.get("/by-host", response_model=PublicPageOut)
 @router.get("/by-host/{page_slug}", response_model=PublicPageOut)
