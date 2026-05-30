@@ -126,6 +126,7 @@ def serve_short_public_page(
 
 
 RESERVED_PREFIXES = {"api", "assets", "uploads", "static", "admin"}
+PUBLIC_SPA_PREFIXES = {"checkout", "pedido"}
 
 
 @app.get("/{agency_slug}", response_class=HTMLResponse, include_in_schema=False)
@@ -134,6 +135,8 @@ def serve_agency_root(
     request: Request,
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
+    if agency_slug in PUBLIC_SPA_PREFIXES:
+        return _frontend_response(_safe_load_frontend())
     if agency_slug in RESERVED_PREFIXES:
         raise HTTPException(status_code=404, detail="Not Found")
     return _serve_public_page(request=request, db=db, agency_slug=agency_slug, page_slug=None)
@@ -146,6 +149,8 @@ def serve_agency_page(
     request: Request,
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
+    if agency_slug in PUBLIC_SPA_PREFIXES:
+        return _frontend_response(_safe_load_frontend())
     if agency_slug in RESERVED_PREFIXES:
         raise HTTPException(status_code=404, detail="Not Found")
     return _serve_public_page(request=request, db=db, agency_slug=agency_slug, page_slug=page_slug)
