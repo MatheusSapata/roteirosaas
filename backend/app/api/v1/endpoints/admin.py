@@ -1025,29 +1025,43 @@ def admin_cancel_asaas_immediately(
     if not settings.asaas_api_key:
         raise HTTPException(status_code=500, detail="Asaas não configurado no servidor.")
     client = AsaasClient(settings.asaas_api_key, settings.asaas_base_url)
+    sub_id = subscription.asaas_subscription_id
+    remote_status_before = ""
     try:
-        client.cancel_subscription(subscription.asaas_subscription_id)
-    except AsaasAPIError as exc:  # noqa: BLE001
-        # Alguns cenarios retornam erro vazio no DELETE; tentamos fallback via update.
+        remote_before = client.get_subscription(sub_id)
+        remote_status_before = str((remote_before or {}).get("status") or "").strip().upper()
+    except AsaasAPIError:
+        remote_status_before = ""
+
+    if remote_status_before not in {"INACTIVE", "CANCELLED", "DELETED"}:
         try:
-            client.update_subscription(subscription.asaas_subscription_id, {"status": "INACTIVE"})
-        except AsaasAPIError:
-            pass
-        try:
-            remote = client.get_subscription(subscription.asaas_subscription_id)
-        except AsaasAPIError:
-            detail = _extract_asaas_error_detail(exc)
-            raise HTTPException(
-                status_code=502,
-                detail=f"Erro ao cancelar assinatura no Asaas ({subscription.asaas_subscription_id}): {detail}",
-            ) from exc
-        remote_status = str((remote or {}).get("status") or "").strip().upper()
-        if remote_status not in {"INACTIVE", "CANCELLED", "DELETED"}:
-            detail = _extract_asaas_error_detail(exc)
-            raise HTTPException(
-                status_code=502,
-                detail=f"Erro ao cancelar assinatura no Asaas ({subscription.asaas_subscription_id}): {detail}",
-            ) from exc
+            client.cancel_subscription(sub_id)
+        except AsaasAPIError as exc:  # noqa: BLE001
+            delete_detail = _extract_asaas_error_detail(exc)
+            update_detail = ""
+            get_detail = ""
+            try:
+                client.update_subscription(sub_id, {"status": "INACTIVE"})
+            except AsaasAPIError as upd_exc:  # noqa: BLE001
+                update_detail = _extract_asaas_error_detail(upd_exc)
+
+            try:
+                remote_after = client.get_subscription(sub_id)
+                remote_status_after = str((remote_after or {}).get("status") or "").strip().upper()
+            except AsaasAPIError as get_exc:  # noqa: BLE001
+                remote_status_after = ""
+                get_detail = _extract_asaas_error_detail(get_exc)
+
+            if remote_status_after not in {"INACTIVE", "CANCELLED", "DELETED"}:
+                raise HTTPException(
+                    status_code=502,
+                    detail=(
+                        f"Erro ao cancelar assinatura no Asaas ({sub_id}). "
+                        f"delete={delete_detail}; update={update_detail or 'n/a'}; "
+                        f"get={get_detail or 'ok'}; status_before={remote_status_before or 'n/a'}; "
+                        f"status_after={remote_status_after or 'n/a'}; base_url={settings.asaas_base_url}"
+                    ),
+                ) from exc
 
     # Keep account accessible, but blocked by subscription status in UI.
     # Use a dedicated status to avoid confusion with real overdue subscriptions.
