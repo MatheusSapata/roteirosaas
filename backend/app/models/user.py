@@ -66,4 +66,4 @@ class User(Base):
         if not self.subscription:
             return False
         status = (self.subscription.status or "").lower()
-        return status in {"past_due", "cancelled_admin"}
+        return status in {"past_due", "cancelled_admin", "inactive", "cancelled"}

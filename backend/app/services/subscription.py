@@ -7,7 +7,6 @@ from app.core.config import get_settings
 from app.db.session import SessionLocal
 from app.models.subscription import Subscription
 from app.services.asaas import AsaasAPIError, AsaasClient, build_default_split_payload
-from app.services.trial import unpublish_all_user_pages
 from app.services.viajechat_checkout_flow import tag_abandoned_checkout_sessions
 
 logger = logging.getLogger(__name__)
@@ -131,7 +130,7 @@ def _apply_scheduled_cancellations(now: datetime) -> int:
 
 def expire_subscriptions(now: Optional[datetime] = None) -> int:
     """
-    Marca assinaturas vencidas como free/past_due e sincroniza user.plan.
+    Marca assinaturas vencidas como inativas sem despublicar páginas.
     Retorna quantidade processada.
     """
     now = now or datetime.utcnow()
@@ -148,13 +147,9 @@ def expire_subscriptions(now: Optional[datetime] = None) -> int:
             .all()
         )
         for sub in expired:
-            sub.status = "past_due"
-            sub.plan = "free"
+            sub.status = "inactive"
             sub.valid_until = None
             sub.failed_attempts = 3
-            if sub.user:
-                sub.user.plan = "free"
-                unpublish_all_user_pages(sub.user, db)
             processed += 1
         if processed:
             db.commit()

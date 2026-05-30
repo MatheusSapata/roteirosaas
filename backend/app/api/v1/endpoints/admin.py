@@ -1063,19 +1063,15 @@ def admin_cancel_asaas_immediately(
                     ),
                 ) from exc
 
-    # Keep account accessible, but blocked by subscription status in UI.
-    # Use a dedicated status to avoid confusion with real overdue subscriptions.
-    subscription.status = "cancelled_admin"
-    subscription.plan = "free"
+    # Keep account and published pages intact; only subscription becomes inactive.
+    subscription.status = "inactive"
     subscription.valid_until = None
     subscription.failed_attempts = 3
     subscription.asaas_subscription_id = None
     subscription.asaas_payment_link_id = None
     subscription.external_reference = None
     subscription.mrr_amount = 0
-    user.plan = "free"
     user.is_active = True
-    unpublish_all_user_pages(user, db)
     db.add_all([user, subscription])
     db.commit()
     try:

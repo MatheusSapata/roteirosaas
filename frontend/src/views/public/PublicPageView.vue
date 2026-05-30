@@ -7,9 +7,9 @@
     class="flex min-h-screen flex-col items-center justify-center bg-[#05060f] px-4 text-center text-white"
   >
     <img :src="brandLogo" alt="Roteiro Online" class="w-56 max-w-full" />
-    <p class="mt-6 text-2xl font-semibold">{{ localize(publicPageCopy.notFoundTitle) }}</p>
-    <p class="mt-2 max-w-md text-base text-white/90">
-      {{ localize(publicPageCopy.notFoundDescription) }}
+    <p class="mt-6 text-2xl font-semibold">{{ localize(notFoundTitleText) }}</p>
+    <p v-if="showNotFoundDescription" class="mt-2 max-w-md text-base text-white/90">
+      {{ localize(notFoundDescriptionText) }}
     </p>
   </div>
   <div v-else class="public-page min-h-screen overflow-x-hidden">
@@ -92,6 +92,7 @@ const pageData = ref<PublicPageResponse | null>(null);
 const sections = ref<PageSection[]>([]);
 const pageId = ref<number | null>(null);
 const pageUrl = ref<string>("");
+const notFoundMode = ref<"missing" | "temporary">("missing");
 const leadCaptureForm = ref<LeadForm | null>(null);
 const leadModalVisible = ref(false);
 const leadCaptureOptional = ref(false);
@@ -110,12 +111,24 @@ const publicPageCopy = {
     pt: "O link que você acessou não existe mais ou foi removido. Peça um novo roteiro para a agência responsável.",
     es: "El enlace que abriste ya no existe o fue removido. Solicita un nuevo itinerario a la agencia responsable."
   },
+  temporaryUnavailableTitle: { pt: "Página temporariamente fora do ar.", es: "Página temporalmente fuera de servicio." },
+  temporaryUnavailableDescription: {
+    pt: "Esta página está publicada, mas a assinatura está inativa no momento. Assim que o pagamento for reativado, ela volta automaticamente.",
+    es: "Esta página está publicada, pero la suscripción está inactiva. Cuando el pago se reactive, volverá automáticamente."
+  },
   invalidLinkDescription: {
     pt: "Link inválido ou página indisponível. Solicite um novo roteiro profissional no Roteiro Online.",
     es: "Enlace inválido o página no disponible. Solicita un nuevo itinerario profesional en Roteiro Online."
   }
 } as const;
 const defaultDescription = publicPageCopy.invalidLinkDescription;
+const notFoundTitleText = computed(() =>
+  notFoundMode.value === "temporary" ? publicPageCopy.temporaryUnavailableTitle : publicPageCopy.notFoundTitle
+);
+const notFoundDescriptionText = computed(() =>
+  notFoundMode.value === "temporary" ? publicPageCopy.temporaryUnavailableDescription : publicPageCopy.notFoundDescription
+);
+const showNotFoundDescription = computed(() => notFoundMode.value !== "temporary");
 
 const defaultPlatformHosts = ["roteiroonline.com", "www.roteiroonline.com", "localhost", "127.0.0.1"];
 const envPlatformHosts = (import.meta.env.VITE_PLATFORM_HOSTS || "")
@@ -343,6 +356,7 @@ const resolveParam = (value: string | string[] | undefined) => {
 
 const loadPage = async () => {
   loading.value = true;
+  notFoundMode.value = "missing";
   leadModalVisible.value = false;
   leadCaptureForm.value = null;
   const rawAgencyParam = resolveParam(route.params.agencySlug as string | string[] | undefined);
@@ -404,6 +418,11 @@ const loadPage = async () => {
     }
   } catch (err) {
     console.error(err);
+    const status = (err as any)?.response?.status;
+    const detail = (err as any)?.response?.data?.detail;
+    if (status === 503 && detail === "PAGE_TEMPORARILY_UNAVAILABLE") {
+      notFoundMode.value = "temporary";
+    }
     pageData.value = null;
     pageId.value = null;
     cleanupStatsTracking();
