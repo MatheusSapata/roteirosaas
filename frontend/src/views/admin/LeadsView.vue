@@ -16,7 +16,7 @@
       class="leads-page flex min-h-0 flex-1 flex-col gap-5 px-4 py-4 md:px-5"
       :class="[
         'overflow-hidden',
-        { 'pointer-events-none select-none opacity-60': !planAllowed }
+        { 'pointer-events-none select-none': !planAllowed }
       ]"
 
 
@@ -1160,81 +1160,25 @@
 
 
       <div
-
-
-
         v-if="!planAllowed"
-
-
-
-        class="pointer-events-auto absolute inset-x-0 -top-6 bottom-0 z-10 flex flex-col items-center justify-center bg-black/80 px-4 text-center text-white backdrop-blur-sm"
-
-
-
+        class="pointer-events-auto fixed inset-y-0 left-0 right-0 z-[140] flex items-center justify-center bg-black/60 px-4 text-center text-white backdrop-blur-[2px] md:left-[225px]"
       >
-
-
-
-        <div class="max-w-md rounded-3xl bg-[#202020] p-6 text-white shadow-2xl">
-
-
-
-          <h2 class="text-2xl font-bold">
-
-
-
+        <div class="max-w-md rounded-3xl bg-white p-6 shadow-2xl">
+          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Recurso premium</p>
+          <h2 class="mt-2 text-2xl font-bold text-slate-900">
             {{ viewCopy.settings.planGate.title }}
-
-
-
           </h2>
-
-
-
-          <p class="mt-2 text-sm text-slate-200">
-
-
-
+          <p class="mt-2 text-sm text-slate-600">
             {{ viewCopy.settings.planGate.description }}
-
-
-
           </p>
-
-
-
           <button
-
-
-
             type="button"
-
-
-
-            class="mt-4 w-full rounded-full bg-brand px-4 py-3 text-sm font-semibold text-white shadow transition hover:bg-brand-dark"
-
-
-
+            class="mt-4 w-full rounded-full bg-[#3EBD59] px-4 py-3 text-sm font-semibold text-white shadow transition hover:bg-[#34a04c]"
             @click="goToPlans"
-
-
-
           >
-
-
-
             {{ viewCopy.settings.planGate.cta }}
-
-
-
           </button>
-
-
-
         </div>
-
-
-
       </div>
 
 

@@ -18,6 +18,7 @@ from app.models import (
     pixel,
     lesson,
     cakto,
+    asaas,
     agency_domain,
     revenue,
     lead_form,
@@ -31,4 +32,6 @@ from app.models import (
     system_banner,
     team_invite,
     whatsapp,
+    checkout,
 )  # noqa: E402,F401
+

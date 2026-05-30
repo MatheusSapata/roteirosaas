@@ -19,10 +19,16 @@ from app.models.user import User
 from app.services import auth as auth_service
 from app.services.email import send_cakto_onboarding_email
 from app.services.trial import end_trial
+from app.services.trial import republish_all_user_pages
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
 ZERO_DECIMAL = Decimal("0.00")
+
+
+def _is_comeco_like_plan(value: str | None) -> bool:
+    raw = str(value or "").strip().lower()
+    return raw in {"comeco", "free"}
 
 
 class CaktoAPIError(Exception):
@@ -420,7 +426,10 @@ class CaktoIntegrationService:
                 subscription.billing_cycle = mapping.cycle
                 target_cycle = mapping.cycle
                 if subscription.user:
+                    previous_plan = str(subscription.user.plan or "").strip().lower()
                     subscription.user.plan = mapping.plan_key
+                    if not _is_comeco_like_plan(mapping.plan_key):
+                        republish_all_user_pages(subscription.user, self.db)
                     self.db.add(subscription.user)
             else:
                 target_cycle = subscription.billing_cycle
@@ -803,6 +812,7 @@ class CaktoIntegrationService:
             )
 
         created = False
+        previous_plan = str(user.plan or "").strip().lower() if user else ""
         if not user:
             random_password = auth_service.get_password_hash(secrets.token_urlsafe(32))
             user = User(
@@ -867,6 +877,8 @@ class CaktoIntegrationService:
             subscription.valid_until = valid_until
 
         user.plan = plan_key
+        if not _is_comeco_like_plan(plan_key):
+            republish_all_user_pages(user, self.db)
         end_trial(user, self.db, keep_plan=plan_key)
         self.db.add_all([user, subscription])
         return user, created

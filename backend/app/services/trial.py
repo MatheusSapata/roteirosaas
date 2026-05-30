@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -8,6 +9,8 @@ from app.models.agency_user import AgencyUser
 from app.models.page import Page, PageStatus
 from app.models.user import User
 from app.services.plans import plan_limits
+
+logger = logging.getLogger(__name__)
 
 
 def start_trial(user: User, plan: str, duration_days: int = 7) -> None:
@@ -93,6 +96,40 @@ def unpublish_all_user_pages(user: User, db: Session) -> None:
     Força todas as páginas publicadas das agências do usuário a virarem rascunho.
     """
     _enforce_published_limits(user, db, unpublish_all=True)
+
+
+def republish_all_user_pages(user: User, db: Session) -> None:
+    """
+    Republica todas as páginas em rascunho das agências owner do usuário.
+    Não recria páginas, então as métricas históricas permanecem intactas.
+    """
+    memberships = db.query(AgencyUser).filter(AgencyUser.user_id == user.id).all()
+    agency_ids = {m.agency_id for m in memberships if m.agency_id}
+    if user.primary_agency_id:
+        agency_ids.add(user.primary_agency_id)
+    if not agency_ids:
+        logger.info("REPUBLISH_PAGES_SKIP user_id=%s reason=no_agency", user.id)
+        return
+
+    now = datetime.now(timezone.utc)
+    draft_pages = (
+        db.query(Page)
+        .filter(Page.agency_id.in_(list(agency_ids)), Page.status == PageStatus.draft)
+        .order_by(Page.id.asc())
+        .all()
+    )
+    republished_count = 0
+    for page in draft_pages:
+        page.status = PageStatus.published
+        if not page.published_at:
+            page.published_at = now
+        republished_count += 1
+    logger.info(
+        "REPUBLISH_PAGES_DONE user_id=%s agencies=%s republished=%s",
+        user.id,
+        ",".join(str(item) for item in sorted(agency_ids)),
+        republished_count,
+    )
 
 
 def sync_trial_status(user: User, db: Session) -> None:

@@ -107,7 +107,8 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)) -> UserOut:
     start_trial(user, "trial", duration_days=7)
     db.commit()
     db.refresh(user)
-    ensure_legacy_owner_context(db, user)
+    if (user.status or "").lower() != "pending_agency_setup":
+        ensure_legacy_owner_context(db, user)
     return user
 
 
@@ -207,7 +208,8 @@ def read_users_me(
     user = db.query(User).filter(User.id == current_user.id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Usuário não encontrado.")
-    ensure_legacy_owner_context(db, user)
+    if (user.status or "").lower() != "pending_agency_setup":
+        ensure_legacy_owner_context(db, user)
     plan = get_agency_plan(db, user.primary_agency_id or 0)
     user.effective_permissions = final_permissions_for_member(
         user_is_owner=is_owner_user(user),
@@ -537,4 +539,6 @@ def accept_invite(payload: AcceptInviteIn, db: Session = Depends(get_db)) -> dic
     db.add(user)
     db.commit()
     return {"detail": "Convite aceito com sucesso."}
+
+
 

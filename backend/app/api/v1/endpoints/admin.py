@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session, aliased
 
 from app.api.deps import get_current_superuser, get_db
 from app.api.v1.endpoints.billing import set_subscription_cancelled
+from app.core.config import get_settings
 from app.models.cakto import CaktoOnboardingToken
 from app.models.cakto import CaktoEventLog
 from app.models.subscription import Subscription
@@ -44,11 +45,14 @@ from app.schemas.admin import (
 )
 from app.schemas.page import PageOut
 from app.services.cakto import CaktoAPIError, CaktoIntegrationService
+from app.services.asaas import AsaasAPIError, AsaasClient
 from app.services.trial import start_trial, unpublish_all_user_pages
+from app.services.viajechat_checkout_flow import mark_cancelled as mark_viajechat_cancelled
 
 router = APIRouter()
 EXCLUDED_PLAN = "teste"
 ONLINE_WINDOW_MINUTES = 10
+settings = get_settings()
 
 
 class TrialRequest(BaseModel):
@@ -415,6 +419,7 @@ def get_admin_metrics(
                 tracking=[AdminUserTracking.model_validate(entry) for entry in tracking_map.get(u.id, [])],
                 subscription_provider=sub.provider if sub else None,
                 subscription_status=sub.status if sub else None,
+                subscription_asaas_subscription_id=sub.asaas_subscription_id if sub else None,
                 subscription_cakto_order_id=sub.cakto_order_id if sub else None,
                 subscription_cakto_subscription_code=sub.cakto_subscription_code if sub else None,
             )
@@ -981,8 +986,116 @@ def refund_user_subscription(
     unpublish_all_user_pages(user, db)
     db.add_all([user, subscription])
     db.commit()
+    try:
+        mark_viajechat_cancelled(
+            name=user.name or "",
+            email=user.email or "",
+            phone=user.whatsapp or "",
+        )
+    except Exception:  # noqa: BLE001
+        pass
     db.refresh(user)
     return {"detail": "Reembolso solicitado e usuário bloqueado."}
+
+
+@router.post("/users/{user_id}/asaas-cancel-immediate")
+def admin_cancel_asaas_immediately(
+    user_id: int,
+    _: User = Depends(get_current_superuser),
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado.")
+    subscription = user.subscription
+    if not subscription:
+        raise HTTPException(status_code=404, detail="Assinatura não encontrada.")
+    if (subscription.provider or "").lower() != "asaas":
+        raise HTTPException(status_code=400, detail="Operação disponível apenas para assinaturas Asaas.")
+    if not subscription.asaas_subscription_id:
+        raise HTTPException(status_code=400, detail="ID de assinatura Asaas não encontrado.")
+
+    if not settings.asaas_api_key:
+        raise HTTPException(status_code=500, detail="Asaas não configurado no servidor.")
+    client = AsaasClient(settings.asaas_api_key, settings.asaas_base_url)
+    try:
+        client.cancel_subscription(subscription.asaas_subscription_id)
+    except AsaasAPIError as exc:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail=f"Erro ao cancelar assinatura no Asaas: {exc}") from exc
+
+    # Keep account accessible, but blocked by subscription status in UI.
+    # Use a dedicated status to avoid confusion with real overdue subscriptions.
+    subscription.status = "cancelled_admin"
+    subscription.plan = "free"
+    subscription.valid_until = None
+    subscription.failed_attempts = 3
+    subscription.asaas_subscription_id = None
+    subscription.asaas_payment_link_id = None
+    subscription.external_reference = None
+    subscription.mrr_amount = 0
+    user.plan = "free"
+    user.is_active = True
+    unpublish_all_user_pages(user, db)
+    db.add_all([user, subscription])
+    db.commit()
+    try:
+        mark_viajechat_cancelled(
+            name=user.name or "",
+            email=user.email or "",
+            phone=user.whatsapp or "",
+        )
+    except Exception:  # noqa: BLE001
+        pass
+    return {"detail": "Assinatura cancelada imediatamente e usuário mantido com acesso bloqueado para reativação."}
+
+
+@router.post("/users/{user_id}/asaas-cancel-at-period-end")
+def admin_schedule_asaas_cancel_at_period_end(
+    user_id: int,
+    _: User = Depends(get_current_superuser),
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado.")
+    subscription = user.subscription
+    if not subscription:
+        raise HTTPException(status_code=404, detail="Assinatura não encontrada.")
+    if (subscription.provider or "").lower() != "asaas":
+        raise HTTPException(status_code=400, detail="Operação disponível apenas para assinaturas Asaas.")
+    if not subscription.asaas_subscription_id:
+        raise HTTPException(status_code=400, detail="ID de assinatura Asaas não encontrado.")
+    if not subscription.valid_until:
+        raise HTTPException(status_code=400, detail="Não foi possível determinar a validade atual da assinatura.")
+
+    subscription.status = "cancel_at_period_end"
+    subscription.external_reference = None
+    db.add(subscription)
+    db.commit()
+    return {"detail": "Cancelamento programado para o fim da validade atual da assinatura."}
+
+
+@router.post("/users/{user_id}/asaas-cancel-scheduled-cancellation")
+def admin_cancel_scheduled_asaas_cancellation(
+    user_id: int,
+    _: User = Depends(get_current_superuser),
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado.")
+    subscription = user.subscription
+    if not subscription:
+        raise HTTPException(status_code=404, detail="Assinatura não encontrada.")
+    if (subscription.provider or "").lower() != "asaas":
+        raise HTTPException(status_code=400, detail="Operação disponível apenas para assinaturas Asaas.")
+    if (subscription.status or "").lower() != "cancel_at_period_end":
+        raise HTTPException(status_code=400, detail="Não há cancelamento programado para desfazer.")
+
+    subscription.status = "active"
+    db.add(subscription)
+    db.commit()
+    return {"detail": "Cancelamento programado removido com sucesso."}
 
 
 @router.delete("/users/{user_id}")

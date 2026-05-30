@@ -53,7 +53,8 @@ def get_current_user(request: Request, db: Session = Depends(get_db), token: str
     user = db.query(User).filter(User.id == session.user_id).first()
     if user is None:
         raise credentials_exception
-    ensure_legacy_owner_context(db, user)
+    if (user.status or "").lower() != "pending_agency_setup":
+        ensure_legacy_owner_context(db, user)
     now = datetime.now(timezone.utc)
     if session.expires_at and session.expires_at < now:
         raise credentials_exception

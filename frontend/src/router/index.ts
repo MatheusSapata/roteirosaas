@@ -6,6 +6,7 @@ import ResetPasswordView from "../views/admin/ResetPasswordView.vue";
 import CreatePasswordView from "../views/admin/CreatePasswordView.vue";
 import AcceptInviteView from "../views/public/AcceptInviteView.vue";
 import CheckoutProcessingView from "../views/public/CheckoutProcessingView.vue";
+import CustomCheckoutView from "../views/public/CustomCheckoutView.vue";
 import DashboardView from "../views/admin/DashboardView.vue";
 import PagesListView from "../views/admin/PagesListView.vue";
 import PageEditorView from "../views/admin/PageEditorView.vue";
@@ -154,6 +155,9 @@ const resolveLegacyAdminManagementRedirect = (to: any) => {
   if (tab === "whatsapp") {
     return { path: "/admin/administracao/whatsapp", query: nextQuery };
   }
+  if (tab === "checkout" || tab === "offers" || tab === "ofertas") {
+    return { path: "/admin/administracao/ofertas", query: nextQuery };
+  }
   if (tab === "receita-previsao" || tab === "revenue-forecast") {
     return { path: "/admin/administracao/receita-previsao", query: nextQuery };
   }
@@ -173,6 +177,7 @@ const platformRoutes: RouteRecordRaw[] = [
   { path: "/create-password", name: "create-password", component: CreatePasswordView, meta: { guestOnly: true } },
   { path: "/accept-invite", name: "accept-invite", component: AcceptInviteView, meta: { guestOnly: true } },
   { path: "/pedido", name: "checkout-processing", component: CheckoutProcessingView, meta: { guestOnly: true } },
+  { path: "/checkout/:offerKey", name: "custom-checkout", component: CustomCheckoutView, meta: { guestOnly: true } },
   { path: "/planos", redirect: "/admin/planos" },
   {
     path: "/admin",
@@ -274,6 +279,17 @@ const platformRoutes: RouteRecordRaw[] = [
         path: "administracao/whatsapp",
         name: "admin-management-whatsapp",
         component: () => import("../views/admin/AdminWhatsAppManagementView.vue"),
+        meta: { requiresSuperuser: true }
+      },
+      {
+        path: "administracao/checkout",
+        redirect: "/admin/administracao/ofertas",
+        meta: { requiresSuperuser: true }
+      },
+      {
+        path: "administracao/ofertas",
+        name: "admin-management-offers",
+        component: () => import("../views/admin/AdminCheckoutSettingsView.vue"),
         meta: { requiresSuperuser: true }
       },
       {
@@ -450,6 +466,10 @@ router.beforeEach(async (to, _from, next) => {
   }
 
   if (guestOnly && auth.token) {
+    if (to.name === "custom-checkout" && (String(to.query.upgrade || "") === "1" || Boolean(String(to.query.token || "").trim()))) {
+      next();
+      return;
+    }
     if (!auth.user) {
       try {
         await auth.ensureHydrated();

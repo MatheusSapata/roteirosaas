@@ -9,6 +9,7 @@ from app.api.v1.endpoints import (
     auth,
     billing,
     clients,
+    checkout,
     documents,
     flight_api_keys,
     flight_sections,
@@ -43,6 +44,7 @@ api_router.include_router(media.router, prefix="/media", tags=["media"])
 api_router.include_router(stats.router, prefix="/stats", tags=["stats"])
 api_router.include_router(public_pages.router, prefix="/public/pages", tags=["public-pages"])
 api_router.include_router(billing.router, prefix="/billing", tags=["billing"])
+api_router.include_router(checkout.router, prefix="/checkout", tags=["checkout"])
 api_router.include_router(pixels.router, prefix="/pixels", tags=["pixels"])
 api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
 api_router.include_router(admin_master_whatsapp.router, prefix="/admin-master/whatsapp", tags=["admin-master-whatsapp"])
@@ -56,6 +58,7 @@ api_router.include_router(clients.router, prefix="/clients", tags=["clients"])
 api_router.include_router(documents.router, prefix="/documents", tags=["documents"])
 api_router.include_router(system_banners.router, prefix="/system-banners", tags=["system-banners"])
 api_router.include_router(system_banners.admin_router, tags=["admin-system-banners"])
+api_router.include_router(checkout.admin_router, tags=["admin-checkout"])
 api_router.include_router(whatsapp.router, prefix="/whatsapp", tags=["whatsapp"])
 api_router.include_router(
     whatsapp_webhooks.router,

@@ -66,6 +66,7 @@ const cookieLine2 = localize(cookieCopy.line2);
 const cookieAcceptLabel = localize(cookieCopy.accept);
 const cookieRejectLabel = localize(cookieCopy.reject);
 const publicRouteNames = new Set(["public-page", "custom-domain-default", "custom-domain-page"]);
+const cookieBannerHiddenRouteNames = new Set(["custom-checkout"]);
 const publicShellClass = "public-shell";
 const adminShellClass = "admin-shell";
 const isPublicShellRoute = computed(() => {
@@ -88,7 +89,9 @@ const checkCookieConsent = () => {
   if (typeof window === "undefined") return;
   const consent = localStorage.getItem(COOKIE_KEY);
   const isAdmin = route.path.startsWith("/admin");
-  showPublicCookieBanner.value = !consent && !isAdmin;
+  const routeName = typeof route.name === "string" ? route.name : "";
+  const shouldHideCookieBanner = cookieBannerHiddenRouteNames.has(routeName);
+  showPublicCookieBanner.value = !consent && !isAdmin && !shouldHideCookieBanner;
 };
 
 const acceptCookies = () => {

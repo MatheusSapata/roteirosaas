@@ -51,6 +51,7 @@ class AdminUserOut(BaseModel):
     tracking: List[AdminUserTracking] = Field(default_factory=list)
     subscription_provider: Optional[str] = None
     subscription_status: Optional[str] = None
+    subscription_asaas_subscription_id: Optional[str] = None
     subscription_cakto_order_id: Optional[str] = None
     subscription_cakto_subscription_code: Optional[str] = None
 

@@ -14,6 +14,7 @@ from .pixel import Pixel
 from .lesson import Lesson
 from .user_tracking import UserTracking
 from .cakto import CaktoEventLog, CaktoOnboardingToken, CaktoCheckoutSession
+from .asaas import AsaasEventLog
 from .agency_domain import AgencyDomain
 from .client import Client
 from .crm_note import ClientNote, OpportunityNote
@@ -27,3 +28,5 @@ from .flight_section import FlightSectionJourney, FlightSectionSegment
 from .system_banner import SystemBanner, BannerEvent, BannerDismissal
 from .team_invite import TeamInvite
 from .whatsapp import WhatsAppConnection, WhatsAppConversation, WhatsAppMessage, WhatsAppInboxPermission
+from .checkout import CheckoutSettings, CheckoutSession
+
