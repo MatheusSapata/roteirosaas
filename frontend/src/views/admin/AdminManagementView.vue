@@ -680,7 +680,15 @@
                         </span>
                       </button>
                       <div>
-                        <p class="font-semibold text-slate-900">{{ u.name }}</p>
+                        <div class="flex items-center gap-2">
+                          <p class="font-semibold text-slate-900">{{ u.name }}</p>
+                          <span
+                            v-if="u.subscription_provider"
+                            class="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-600"
+                          >
+                            {{ u.subscription_provider }}
+                          </span>
+                        </div>
                         <p class="text-xs text-slate-500">{{ u.email }}</p>
                       </div>
                     </div>
