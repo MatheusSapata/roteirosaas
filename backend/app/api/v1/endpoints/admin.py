@@ -55,6 +55,13 @@ ONLINE_WINDOW_MINUTES = 10
 settings = get_settings()
 
 
+def _extract_asaas_error_detail(exc: AsaasAPIError) -> str:
+    raw = str(exc or "").strip()
+    if raw and raw != "{}":
+        return raw
+    return "Erro sem detalhes retornado pelo Asaas."
+
+
 class TrialRequest(BaseModel):
     plan: str = Field(default="infinity")
     days: int = Field(default=7, ge=1, le=30)
@@ -1021,7 +1028,22 @@ def admin_cancel_asaas_immediately(
     try:
         client.cancel_subscription(subscription.asaas_subscription_id)
     except AsaasAPIError as exc:  # noqa: BLE001
-        raise HTTPException(status_code=502, detail=f"Erro ao cancelar assinatura no Asaas: {exc}") from exc
+        # Alguns cenarios retornam erro vazio mesmo com assinatura ja inativa.
+        try:
+            remote = client.get_subscription(subscription.asaas_subscription_id)
+            remote_status = str((remote or {}).get("status") or "").strip().upper()
+            if remote_status not in {"INACTIVE", "CANCELLED", "DELETED"}:
+                detail = _extract_asaas_error_detail(exc)
+                raise HTTPException(
+                    status_code=502,
+                    detail=f"Erro ao cancelar assinatura no Asaas ({subscription.asaas_subscription_id}): {detail}",
+                ) from exc
+        except AsaasAPIError:
+            detail = _extract_asaas_error_detail(exc)
+            raise HTTPException(
+                status_code=502,
+                detail=f"Erro ao cancelar assinatura no Asaas ({subscription.asaas_subscription_id}): {detail}",
+            ) from exc
 
     # Keep account accessible, but blocked by subscription status in UI.
     # Use a dedicated status to avoid confusion with real overdue subscriptions.
