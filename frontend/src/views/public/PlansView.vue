@@ -272,7 +272,8 @@ const viewCopy = {
   },
   buttons: {
     currentPlan: { pt: "Plano atual", es: "Plan actual" },
-    redirecting: { pt: "Redirecionando...", es: "Redirigiendo..." }
+    redirecting: { pt: "Redirecionando...", es: "Redirigiendo..." },
+    reactivate: { pt: "Reativar plano", es: "Reactivar plan" }
   },
   checkoutError: {
     pt: "Não foi possível iniciar o checkout. Tente novamente.",
@@ -295,7 +296,8 @@ const trialActiveUntilLabel = localize(viewCopy.trial.activeUntil);
 const currentPlanBadgeLabel = localize(viewCopy.badges.currentPlan);
 const planButtonLabels = {
   current: localize(viewCopy.buttons.currentPlan),
-  redirecting: localize(viewCopy.buttons.redirecting)
+  redirecting: localize(viewCopy.buttons.redirecting),
+  reactivate: localize(viewCopy.buttons.reactivate)
 };
 const checkoutErrorMessage = localize(viewCopy.checkoutError);
 
@@ -399,6 +401,10 @@ const normalizedPlanKey = (value?: string | null) => {
 };
 
 const activePlan = computed(() => normalizedPlanKey(billingInfo.value?.plan || authStore.user?.plan || "free"));
+const isSubscriptionInactive = computed(() => {
+  const status = String(billingInfo.value?.status || "").trim().toLowerCase();
+  return new Set(["inactive", "cancelled", "cancelled_admin", "past_due"]).has(status);
+});
 
 const planNames: Record<string, string> = {
   free: `Plano ${planLabels.free}`,
@@ -561,7 +567,7 @@ const plans = computed<PlanCard[]>(() =>
     const planOrder: Record<string, number> = { free: 0, essencial: 1, growth: 2, infinity: 3 };
     const currentOrder = planOrder[activePlan.value] ?? 0;
     const thisOrder = planOrder[def.key] ?? 0;
-    const isCurrent = def.key === activePlan.value;
+    const isCurrent = !isSubscriptionInactive.value && def.key === activePlan.value;
     const isHigherThanCurrent = thisOrder > currentOrder;
     const isLowerThanCurrent = thisOrder < currentOrder;
 
@@ -589,13 +595,14 @@ const plans = computed<PlanCard[]>(() =>
       isCurrent,
       isHigherThanCurrent,
       isLowerThanCurrent,
-      isActionable: !isCurrent
+      isActionable: isSubscriptionInactive.value ? true : !isCurrent
     };
   })
 );
 
 const planCtaLabel = (plan: PlanCard) => {
   if (plan.isCurrent) return planButtonLabels.current;
+  if (isSubscriptionInactive.value && plan.key === activePlan.value) return planButtonLabels.reactivate;
   if (plan.isLowerThanCurrent) {
     return currentLanguage === "es" ? `Hacer downgrade a ${plan.name}` : `Fazer downgrade para ${plan.name}`;
   }
@@ -620,7 +627,7 @@ const goToCheckout = async (
   force = false,
   loadingKey?: string
 ) => {
-  if (!force && planKey === activePlan.value) return;
+  if (!force && !isSubscriptionInactive.value && planKey === activePlan.value) return;
 
   loadingPlan.value = loadingKey ?? planKey;
   errorMessage.value = null;
@@ -659,7 +666,7 @@ const goToCheckout = async (
 };
 
 const handlePlanClick = (planKey: string) => {
-  if (planKey === activePlan.value) return;
+  if (!isSubscriptionInactive.value && planKey === activePlan.value) return;
   const planOrder: Record<string, number> = { free: 0, essencial: 1, growth: 2, infinity: 3 };
   const currentOrder = planOrder[activePlan.value] ?? 0;
   const targetOrder = planOrder[planKey] ?? 0;
