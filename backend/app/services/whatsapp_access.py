@@ -5,23 +5,6 @@ from sqlalchemy.orm import Session
 
 from app.models.user import User
 from app.models.whatsapp import WhatsAppInboxPermission
-from app.services.permissions import normalize_plan
-
-
-ALLOWED_WHATSAPP_PLANS = {"scale", "test"}
-
-
-def _effective_plan(user: User) -> str:
-    trial_plan = getattr(user, "trial_plan", None)
-    if trial_plan:
-        return normalize_plan(trial_plan)
-
-    subscription = getattr(user, "subscription", None)
-    subscription_plan = getattr(subscription, "plan", None) if subscription else None
-    if subscription_plan:
-        return normalize_plan(subscription_plan)
-
-    return normalize_plan(getattr(user, "plan", None))
 
 
 def has_whatsapp_inbox_access(db: Session, *, user: User, agency_id: int | None) -> bool:
@@ -32,7 +15,8 @@ def has_whatsapp_inbox_access(db: Session, *, user: User, agency_id: int | None)
     # Regra de prioridade:
     # 1) Qualquer permissao explicita inativa/revogada bloqueia.
     # 2) Senao, permissao explicita ativa libera.
-    # 3) Sem permissao explicita, aplica regra de superuser/plano.
+    # 3) Sem permissao explicita, apenas superuser libera.
+    #    Demais usuarios ficam bloqueados por padrao ate liberacao no admin master.
     explicit_permissions = (
         db.query(WhatsAppInboxPermission)
         .filter(or_(*filters))
@@ -52,4 +36,4 @@ def has_whatsapp_inbox_access(db: Session, *, user: User, agency_id: int | None)
     if bool(getattr(user, "is_superuser", False)):
         return True
 
-    return _effective_plan(user) in ALLOWED_WHATSAPP_PLANS
+    return False
