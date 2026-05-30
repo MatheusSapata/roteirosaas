@@ -1028,17 +1028,21 @@ def admin_cancel_asaas_immediately(
     try:
         client.cancel_subscription(subscription.asaas_subscription_id)
     except AsaasAPIError as exc:  # noqa: BLE001
-        # Alguns cenarios retornam erro vazio mesmo com assinatura ja inativa.
+        # Alguns cenarios retornam erro vazio no DELETE; tentamos fallback via update.
+        try:
+            client.update_subscription(subscription.asaas_subscription_id, {"status": "INACTIVE"})
+        except AsaasAPIError:
+            pass
         try:
             remote = client.get_subscription(subscription.asaas_subscription_id)
-            remote_status = str((remote or {}).get("status") or "").strip().upper()
-            if remote_status not in {"INACTIVE", "CANCELLED", "DELETED"}:
-                detail = _extract_asaas_error_detail(exc)
-                raise HTTPException(
-                    status_code=502,
-                    detail=f"Erro ao cancelar assinatura no Asaas ({subscription.asaas_subscription_id}): {detail}",
-                ) from exc
         except AsaasAPIError:
+            detail = _extract_asaas_error_detail(exc)
+            raise HTTPException(
+                status_code=502,
+                detail=f"Erro ao cancelar assinatura no Asaas ({subscription.asaas_subscription_id}): {detail}",
+            ) from exc
+        remote_status = str((remote or {}).get("status") or "").strip().upper()
+        if remote_status not in {"INACTIVE", "CANCELLED", "DELETED"}:
             detail = _extract_asaas_error_detail(exc)
             raise HTTPException(
                 status_code=502,
