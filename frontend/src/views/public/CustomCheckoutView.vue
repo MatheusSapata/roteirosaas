@@ -428,6 +428,23 @@ let fastCardChecksLeft = 0;
 let stepEnteredAt = Date.now();
 let hasTrackedMethodStep = false;
 
+const adminAppOrigin = () => {
+  if (typeof window === "undefined") return "";
+  if (import.meta.env.PROD) return "https://app.roteiroonline.com";
+  return window.location.origin.replace(/\/$/, "");
+};
+
+const goToAdminDashboard = (query?: Record<string, string>) => {
+  const origin = adminAppOrigin();
+  const search = query ? new URLSearchParams(query).toString() : "";
+  const target = `${origin}/admin/dashboard${search ? `?${search}` : ""}`;
+  if (typeof window !== "undefined") {
+    window.location.assign(target);
+    return;
+  }
+  router.push({ path: "/admin/dashboard", query }).catch(() => {});
+};
+
 const form = reactive({
   customer_name: "",
   customer_email: "",
@@ -862,7 +879,7 @@ const goToPasswordStep = async () => {
     try {
       await auth.fetchProfile();
     } catch {}
-    router.push("/admin/dashboard").catch(() => {});
+    goToAdminDashboard();
     return;
   }
   if (!session.value.requires_password_setup) {
@@ -961,7 +978,7 @@ const submitPassword = async () => {
     await auth.fetchProfile();
     showAccessTransition.value = true;
     await new Promise(resolve => setTimeout(resolve, 6000));
-    router.push({ path: "/admin/dashboard", query: { onboarding: "1" } }).catch(() => {});
+    goToAdminDashboard({ onboarding: "1" });
   } catch (error: any) {
     console.error(error);
     inlineError.value = getFriendlyCheckoutError(error, "Não foi possível finalizar o cadastro.");
