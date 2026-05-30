@@ -521,6 +521,35 @@
                           </button>
                         </div>
                       </template>
+                      <template v-else-if="column.key === 'gateway'">
+                        <p class="text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-400">
+                          Gateway
+                        </p>
+                        <div class="mt-2 max-h-48 space-y-2 overflow-y-auto pr-1">
+                          <label
+                            v-for="gateway in userGatewayOptions"
+                            :key="gateway"
+                            class="flex cursor-pointer items-center gap-2 text-[11px]"
+                          >
+                            <input
+                              v-model="userFilters.gateways"
+                              type="checkbox"
+                              :value="gateway"
+                              class="rounded border-slate-300 text-emerald-500 focus:ring-emerald-500"
+                            />
+                            <span>{{ gateway === "__none" ? "Sem provider" : gateway }}</span>
+                          </label>
+                          <p v-if="!userGatewayOptions.length" class="text-[10px] text-slate-400">Sem providers.</p>
+                        </div>
+                        <div class="mt-3 flex justify-end gap-4 text-[10px] font-semibold uppercase tracking-[0.2em]">
+                          <button class="text-slate-400 hover:text-slate-600" type="button" @click="clearColumnFilter(column.key)">
+                            Limpar
+                          </button>
+                          <button class="text-emerald-600 hover:text-emerald-500" type="button" @click="toggleColumnFilter(column.key)">
+                            Fechar
+                          </button>
+                        </div>
+                      </template>
                       <template v-else-if="column.key === 'plan'">
                         <p class="text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-400">
                           Planos
@@ -680,18 +709,14 @@
                         </span>
                       </button>
                       <div>
-                        <div class="flex items-center gap-2">
-                          <p class="font-semibold text-slate-900">{{ u.name }}</p>
-                          <span
-                            v-if="u.subscription_provider"
-                            class="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-600"
-                          >
-                            {{ u.subscription_provider }}
-                          </span>
-                        </div>
+                        <p class="font-semibold text-slate-900">{{ u.name }}</p>
                         <p class="text-xs text-slate-500">{{ u.email }}</p>
                       </div>
                     </div>
+                  </td>
+
+                  <td class="px-3 py-3">
+                    <span class="text-slate-800">{{ u.subscription_provider || "--" }}</span>
                   </td>
 
                   <td class="px-3 py-3">
@@ -725,7 +750,7 @@
                 </tr>
 
                 <tr v-if="expandedUser === u.id">
-                  <td colspan="8" class="px-3 pb-4">
+                  <td colspan="9" class="px-3 pb-4">
                     <div
                       class="rounded-2xl border border-slate-100 bg-slate-50/70 p-4 text-sm text-slate-800 shadow-inner dark:border-white/10 dark:bg-[#202020] dark:text-white dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]"
                     >
@@ -976,7 +1001,7 @@
               </template>
 
               <tr v-if="!filteredUsers.length">
-                <td colspan="7" class="px-3 py-4 text-center text-slate-500">
+                <td colspan="9" class="px-3 py-4 text-center text-slate-500">
                   Nenhum usuario encontrado.
                 </td>
               </tr>
@@ -2807,7 +2832,7 @@ const templatePreviewConfig = computed(() => {
 });
 const templateStats = (template: PageTemplate) => summarizeTemplate(template);
 
-type UserColumnKey = "name" | "whatsapp" | "agency_name" | "active_pages" | "draft_pages" | "plan" | "valid_until" | "created_at";
+type UserColumnKey = "name" | "gateway" | "whatsapp" | "agency_name" | "active_pages" | "draft_pages" | "plan" | "valid_until" | "created_at";
 interface UserColumn {
   key: UserColumnKey;
   label: string;
@@ -2817,6 +2842,7 @@ interface UserColumn {
 
 const userTableColumns: UserColumn[] = [
   { key: "name", label: "Nome", sortable: true },
+  { key: "gateway", label: "Gateway", sortable: true },
   { key: "whatsapp", label: "WhatsApp", sortable: true },
   { key: "agency_name", label: "Agência", sortable: true },
   { key: "active_pages", label: "Qtd páginas ativas", align: "right", sortable: true },
@@ -2828,6 +2854,7 @@ const userTableColumns: UserColumn[] = [
 
 const userFilters = reactive({
   name: "",
+  gateways: [] as string[],
   whatsapp: "",
   agencies: [] as string[],
   plans: [] as string[],
@@ -2847,6 +2874,7 @@ const userSort = reactive<{ key: UserColumnKey; direction: "asc" | "desc" }>({
 const openFilterKey = ref<UserColumnKey | null>(null);
 const filterButtonRefs = ref<Record<UserColumnKey, HTMLElement | null>>({
   name: null,
+  gateway: null,
   whatsapp: null,
   agency_name: null,
   active_pages: null,
@@ -3235,6 +3263,16 @@ const userPlanOptions = computed(() => {
   return Array.from(plans).sort();
 });
 
+const userGatewayOptions = computed(() => {
+  const providers = new Set<string>();
+  metrics.value?.users?.forEach(user => {
+    const provider = String(user.subscription_provider || "").trim().toLowerCase();
+    if (provider) providers.add(provider);
+  });
+  providers.add("__none");
+  return Array.from(providers).sort();
+});
+
 const userAgencyOptions = computed(() => {
   const agencies = new Set<string>();
   metrics.value?.users?.forEach(user => {
@@ -3284,6 +3322,7 @@ const matchesDateRange = (target: string | null | undefined, from: string, to: s
 const baseFilteredUsers = computed(() => {
   const list = metrics.value?.users || [];
   const nameTerm = userFilters.name.trim().toLowerCase();
+  const selectedGateways = userFilters.gateways;
   const selectedAgencies = userFilters.agencies;
   const selectedPlans = userFilters.plans;
   const activeMin = coerceNumber(userFilters.activeMin);
@@ -3299,6 +3338,9 @@ const baseFilteredUsers = computed(() => {
         .some(field => field!.toLowerCase().includes(nameTerm));
     const whatsappTerm = userFilters.whatsapp.trim().toLowerCase();
     const matchesWhatsapp = !whatsappTerm || (user.whatsapp || "").toLowerCase().includes(whatsappTerm);
+
+    const gatewayKey = (user.subscription_provider || "__none").toLowerCase();
+    const matchesGateway = !selectedGateways.length || selectedGateways.includes(gatewayKey);
 
     const agencyKey = user.agency_name || "__none";
     const matchesAgency = !selectedAgencies.length || selectedAgencies.includes(agencyKey);
@@ -3321,6 +3363,7 @@ const baseFilteredUsers = computed(() => {
 
     return (
       matchesName &&
+      matchesGateway &&
       matchesWhatsapp &&
       matchesAgency &&
       matchesPlan &&
@@ -3342,6 +3385,8 @@ const sortedUsers = computed(() => {
         return user.name?.toLowerCase() || "";
       case "whatsapp":
         return user.whatsapp?.toLowerCase() || "";
+      case "gateway":
+        return (user.subscription_provider || "").toLowerCase();
       case "agency_name":
         return user.agency_name?.toLowerCase() || "";
       case "plan":
@@ -3441,6 +3486,9 @@ const clearColumnFilter = (key: UserColumnKey) => {
     case "whatsapp":
       userFilters.whatsapp = "";
       break;
+    case "gateway":
+      userFilters.gateways = [];
+      break;
     case "agency_name":
       userFilters.agencies = [];
       break;
@@ -3472,6 +3520,8 @@ const isFilterActive = (key: UserColumnKey) => {
       return Boolean(userFilters.name.trim());
     case "whatsapp":
       return Boolean(userFilters.whatsapp.trim());
+    case "gateway":
+      return userFilters.gateways.length > 0;
     case "agency_name":
       return userFilters.agencies.length > 0;
     case "plan":
