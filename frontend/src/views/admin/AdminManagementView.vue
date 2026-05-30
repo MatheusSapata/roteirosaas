@@ -721,7 +721,7 @@
                     <div
                       class="rounded-2xl border border-slate-100 bg-slate-50/70 p-4 text-sm text-slate-800 shadow-inner dark:border-white/10 dark:bg-[#202020] dark:text-white dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]"
                     >
-                      <div class="grid gap-4 md:grid-cols-2">
+                      <div class="grid gap-4 md:grid-cols-2" :class="{ 'lg:grid-cols-3': isAsaasProvider(u) }">
                         <div class="space-y-1 copyable">
                           <p class="text-xs uppercase tracking-[0.3em] text-slate-500 dark:text-white/50">Contato</p>
                           <p class="mt-1 font-semibold">{{ u.name }}</p>
@@ -735,6 +735,45 @@
                           <p class="text-xs text-slate-500 dark:text-white/60">
                             {{ u.active_pages ?? 0 }} páginas publicadas  Plano {{ planLabel(u.plan) }}
                           </p>
+                        </div>
+
+                        <div v-if="isAsaasProvider(u)" class="space-y-2">
+                          <p class="text-xs uppercase tracking-[0.3em] text-slate-500 dark:text-white/50">Assinatura Asaas</p>
+                          <p class="text-xs text-slate-500 dark:text-white/60">
+                            Status:
+                            <span class="font-semibold text-slate-800 dark:text-white">{{ formatSubscriptionStatus(u) }}</span>
+                          </p>
+                          <p class="text-xs text-slate-500 dark:text-white/60">
+                            Provider ID:
+                            <span class="font-mono">{{ u.subscription_asaas_subscription_id || "-" }}</span>
+                          </p>
+                          <p v-if="isCancelAtPeriodEnd(u)" class="text-xs font-semibold text-amber-600 dark:text-amber-300">
+                            Cancelamento programado para: {{ formatDate(u.valid_until) || "-" }}
+                          </p>
+                          <div class="flex flex-wrap gap-2 pt-1">
+                            <button
+                              class="rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-[11px] font-semibold text-red-700 transition hover:bg-red-100 disabled:opacity-60 dark:border-red-400/50 dark:bg-red-500/10 dark:text-red-100 dark:hover:bg-red-500/20"
+                              :disabled="adminAsaasActionLoadingUserId === u.id"
+                              @click.stop="adminCancelAsaasImmediate(u)"
+                            >
+                              {{ adminAsaasActionLoadingUserId === u.id ? "Processando..." : "Cancelamento imediato" }}
+                            </button>
+                            <button
+                              class="rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] font-semibold text-amber-700 transition hover:bg-amber-100 disabled:opacity-60 dark:border-amber-400/50 dark:bg-amber-500/10 dark:text-amber-100 dark:hover:bg-amber-500/20"
+                              :disabled="adminAsaasActionLoadingUserId === u.id || isCancelAtPeriodEnd(u)"
+                              @click.stop="adminScheduleAsaasCancelAtPeriodEnd(u)"
+                            >
+                              {{ isCancelAtPeriodEnd(u) ? "Cancelamento agendado" : "Cancelar no fim da validade" }}
+                            </button>
+                            <button
+                              v-if="isCancelAtPeriodEnd(u)"
+                              class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[11px] font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-60 dark:border-emerald-400/50 dark:bg-emerald-500/10 dark:text-emerald-100 dark:hover:bg-emerald-500/20"
+                              :disabled="adminAsaasActionLoadingUserId === u.id"
+                              @click.stop="adminCancelScheduledAsaasCancellation(u)"
+                            >
+                              Cancelar cancelamento programado
+                            </button>
+                          </div>
                         </div>
                       </div>
 
@@ -1992,6 +2031,7 @@ interface Metrics {
     tracking?: MetricsUserTracking[];
     subscription_provider?: string | null;
     subscription_status?: string | null;
+    subscription_asaas_subscription_id?: string | null;
     subscription_cakto_order_id?: string | null;
     subscription_cakto_subscription_code?: string | null;
   }[];
@@ -2253,6 +2293,7 @@ const agencyStore = useAgencyStore();
 const route = useRoute();
 const router = useRouter();
 const granting = ref<number | null>(null);
+const adminAsaasActionLoadingUserId = ref<number | null>(null);
 const snackbar = ref<{ open: boolean; text: string } | null>(null);
 const trialDialog = ref<{ open: boolean; user: any | null }>({ open: false, user: null });
 const deleteDialog = ref<{
@@ -3606,6 +3647,83 @@ const canRefundUser = (user: Metrics["users"][number]) => {
   const provider = (user.subscription_provider || "").toLowerCase();
   const status = (user.subscription_status || "").toLowerCase();
   return provider === "cakto" && Boolean(user.subscription_cakto_order_id) && status === "active" && user.is_active !== false;
+};
+
+const isAsaasProvider = (user: Metrics["users"][number]) => {
+  return (user.subscription_provider || "").toLowerCase() === "asaas";
+};
+
+const isCancelAtPeriodEnd = (user: Metrics["users"][number]) => {
+  return (user.subscription_status || "").toLowerCase() === "cancel_at_period_end";
+};
+
+const formatSubscriptionStatus = (user: Metrics["users"][number]) => {
+  const raw = (user.subscription_status || "").toLowerCase();
+  const provider = (user.subscription_provider || "").toLowerCase();
+  const hasAsaasSubId = Boolean((user.subscription_asaas_subscription_id || "").trim());
+
+  // Backward compatibility: before introducing `cancelled_admin`, immediate cancels were saved as `past_due`.
+  // If Asaas subscription id no longer exists, treat it as cancelled in admin view.
+  if (raw === "past_due" && provider === "asaas" && !hasAsaasSubId) return "Cancelada";
+
+  if (raw === "active") return "Ativa";
+  if (raw === "cancelled") return "Cancelada";
+  if (raw === "cancelled_admin") return "Cancelada";
+  if (raw === "cancel_at_period_end") return "Cancelamento agendado";
+  if (raw === "past_due") return "Vencida";
+  if (!raw) return "Indefinido";
+  return user.subscription_status || "Indefinido";
+};
+
+const adminCancelAsaasImmediate = async (user: Metrics["users"][number]) => {
+  if (!auth.user?.is_superuser) return;
+  adminAsaasActionLoadingUserId.value = user.id;
+  error.value = "";
+  try {
+    await api.post(`/admin/users/${user.id}/asaas-cancel-immediate`, {});
+    showSnackbar("Assinatura cancelada imediatamente.");
+    await loadMetrics();
+  } catch (err: any) {
+    console.error(err);
+    error.value = err?.response?.data?.detail || "Não foi possível cancelar a assinatura agora.";
+    showSnackbar(error.value);
+  } finally {
+    adminAsaasActionLoadingUserId.value = null;
+  }
+};
+
+const adminScheduleAsaasCancelAtPeriodEnd = async (user: Metrics["users"][number]) => {
+  if (!auth.user?.is_superuser) return;
+  adminAsaasActionLoadingUserId.value = user.id;
+  error.value = "";
+  try {
+    await api.post(`/admin/users/${user.id}/asaas-cancel-at-period-end`, {});
+    showSnackbar("Cancelamento programado para o fim da validade.");
+    await loadMetrics();
+  } catch (err: any) {
+    console.error(err);
+    error.value = err?.response?.data?.detail || "Não foi possível programar o cancelamento.";
+    showSnackbar(error.value);
+  } finally {
+    adminAsaasActionLoadingUserId.value = null;
+  }
+};
+
+const adminCancelScheduledAsaasCancellation = async (user: Metrics["users"][number]) => {
+  if (!auth.user?.is_superuser) return;
+  adminAsaasActionLoadingUserId.value = user.id;
+  error.value = "";
+  try {
+    await api.post(`/admin/users/${user.id}/asaas-cancel-scheduled-cancellation`, {});
+    showSnackbar("Cancelamento programado removido.");
+    await loadMetrics();
+  } catch (err: any) {
+    console.error(err);
+    error.value = err?.response?.data?.detail || "Não foi possível desfazer o cancelamento programado.";
+    showSnackbar(error.value);
+  } finally {
+    adminAsaasActionLoadingUserId.value = null;
+  }
 };
 
 const openRefundDialog = (user: Metrics["users"][number]) => {

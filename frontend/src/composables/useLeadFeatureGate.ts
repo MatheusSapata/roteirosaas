@@ -1,7 +1,7 @@
 import { computed } from "vue";
 import { useAuthStore } from "../store/useAuthStore";
 
-const allowedPlans = ["teste", "growth", "infinity"];
+const allowedPlans = ["teste", "growth", "infinity", "agency", "agencia", "scale", "escala"];
 
 export const useLeadFeatureGate = () => {
   const auth = useAuthStore();

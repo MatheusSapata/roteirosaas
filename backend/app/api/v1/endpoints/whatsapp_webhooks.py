@@ -25,6 +25,9 @@ def _should_log_ignored_event(event_name: str | None) -> bool:
     normalized = (event_name or "").strip().lower()
     if not normalized:
         return True
+    # qrcode updates are very frequent and noisy in logs.
+    if normalized in {"qrcode.updated", "qrcode.update", "qrcode-updated"}:
+        return False
     noisy_prefixes = (
         "presence.",
         "presence-",

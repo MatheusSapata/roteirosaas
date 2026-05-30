@@ -50,6 +50,10 @@ services:
       JWT_SECRET_KEY: change-me
       JWT_ALGORITHM: HS256
       ACCESS_TOKEN_EXPIRE_MINUTES: 60
+      ASAAS_API_KEY: ${ASAAS_API_KEY_RAW}
+      ASAAS_BASE_URL: https://sandbox.asaas.com/api/v3
+      WALLET_MATHEUS: ${WALLET_MATHEUS}
+      WALLET_AGENCIA: ${WALLET_AGENCIA}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       EVOLUTION_API_URL: ${EVOLUTION_API_URL:-http://evolution-api:8080}
       EVOLUTION_API_KEY: ${EVOLUTION_API_KEY:-change-me}
@@ -148,3 +152,6 @@ volumes:
 networks:
   appnet:
     driver: bridge
+
+
+

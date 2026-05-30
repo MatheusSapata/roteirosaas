@@ -1,13 +1,21 @@
-export const planLabels: Record<string, string> = {
+﻿export const planLabels: Record<string, string> = {
   free: "Começo",
   trial: "Trial",
   essencial: "Profissional",
   growth: "Agência",
   infinity: "Escala",
-  teste: "Teste"
+  teste: "Teste",
+  profissional: "Profissional",
+  professional: "Profissional",
+  agencia: "Agência",
+  agency: "Agência",
+  escala: "Escala",
+  scale: "Escala",
+  test: "Teste"
 };
 
 export const getPlanLabel = (plan?: string | null): string => {
   if (!plan) return "Indefinido";
-  return planLabels[plan] || plan;
+  const normalized = String(plan).trim().toLowerCase();
+  return planLabels[normalized] || plan;
 };

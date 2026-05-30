@@ -1054,6 +1054,7 @@ const routeTitleMap: Record<string, string> = {
   "admin-management-flight-apis": t({ pt: "APIs de voo", es: "APIs de vuelo" }),
   "admin-management-banners": t({ pt: "Banners", es: "Banners" }),
   "admin-management-whatsapp": t({ pt: "Gestão WhatsApp", es: "Gestion WhatsApp" }),
+  "admin-management-offers": t({ pt: "Ofertas", es: "Ofertas" }),
   "page-edit": t({ pt: "Editar página", es: "Editar página" }),
   lessons: navLabel("lessons"),
   "agency-settings": navLabel("agency"),
@@ -1458,6 +1459,7 @@ const adminNavigation = computed<AdminNavItem[]>(() => {
         { label: t({ pt: "APIs de voo", es: "APIs de vuelo" }), path: "/admin/administracao/apis-voo" },
         { label: t({ pt: "Banners", es: "Banners" }), path: "/admin/administracao/banners" },
         { label: t({ pt: "Gestão WhatsApp", es: "Gestion WhatsApp" }), path: "/admin/administracao/whatsapp" },
+        { label: t({ pt: "Ofertas", es: "Ofertas" }), path: "/admin/administracao/ofertas" },
         { label: t({ pt: "Previsão de receita", es: "Proyección de ingresos" }), path: "/admin/administracao/receita-previsao" },
         { label: t({ pt: "LTV por cliente", es: "LTV por cliente" }), path: "/admin/administracao/ltv-clientes" }
       ]
@@ -1942,6 +1944,11 @@ const startAgencySetupFlow = async () => {
   showAgencySetupFlow.value = true;
 };
 
+const openAgencySetupFlow = () => {
+  resetAgencySetupForm();
+  showAgencySetupFlow.value = true;
+};
+
 const goToNextAgencySetupStep = async () => {
   if (agencySetupStepLoading.value) return;
   agencySetupError.value = "";
@@ -2100,6 +2107,13 @@ onMounted(async () => {
   }
   if (!auth.user && auth.token) {
     await auth.fetchProfile();
+  }
+  const shouldForceOnboarding = String(route.query.onboarding || "") === "1";
+  if (shouldForceOnboarding) {
+    openAgencySetupFlow();
+    const nextQuery = { ...route.query } as Record<string, unknown>;
+    delete nextQuery.onboarding;
+    router.replace({ path: route.path, query: nextQuery }).catch(() => {});
   }
   await loadInboxAccess();
   void pollInboxFloatingNotifications();

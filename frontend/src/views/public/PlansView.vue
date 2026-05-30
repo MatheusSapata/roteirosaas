@@ -1,20 +1,12 @@
 ﻿<template>
   <div class="min-h-screen bg-white text-slate-900">
-    <div class="relative px-4 pb-16 lg:px-12">
-      <header class="relative mx-auto max-w-6xl pt-10 pb-10 text-center">
-        <div
-          class="mx-auto inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-amber-500 shadow-sm ring-1 ring-amber-100"
-        >
-          <span>{{ heroChipLabel }}</span>
-          <span class="h-1 w-1 rounded-full bg-amber-400"></span>
-          <span>{{ heroChipDetail }}</span>
-        </div>
-
-        <h1 class="mt-6 text-4xl font-black tracking-tight text-slate-900 md:text-5xl">
+    <div class="relative px-4 pb-16 lg:px-8 2xl:px-10">
+      <header class="relative mx-auto max-w-[96rem] pt-10 pb-10 text-center">
+        <h1 class="text-4xl font-black tracking-tight text-slate-900 md:text-5xl">
           {{ heroTitle }}
         </h1>
 
-        <p class="mx-auto mt-4 max-w-2xl text-base text-slate-600 md:text-lg">
+        <p class="mx-auto mt-4 max-w-none text-sm text-slate-600 md:text-base md:whitespace-nowrap">
           {{ heroDescription }}
         </p>
 
@@ -54,35 +46,31 @@
         </p>
       </div>
 
-      <section id="planos" class="relative mx-auto max-w-7xl pb-16">
-        <div class="mb-8 flex flex-col items-center gap-2">
-          <div class="inline-flex rounded-full bg-slate-100 p-1 text-sm font-semibold text-slate-500 shadow-inner">
-            <button
-              type="button"
-              class="rounded-full px-4 py-2 transition"
-              :class="billingCycle === 'monthly' ? 'bg-white text-slate-900 shadow' : ''"
-              @click="billingCycle = 'monthly'"
-            >
-              {{ billingCycleLabels.monthly }}
-            </button>
-            <button
-              type="button"
-              class="rounded-full px-4 py-2 transition"
-              :class="billingCycle === 'annual' ? 'bg-white text-slate-900 shadow' : ''"
-              @click="billingCycle = 'annual'"
-            >
-              {{ billingCycleLabels.annual }}
-            </button>
-          </div>
-          <p class="text-xs text-slate-500">{{ billingCycleDescriptions[billingCycle] }}</p>
+      <section id="planos" class="relative mx-auto max-w-[98rem] pb-16">
+        <div
+          v-if="billingInfo?.scheduled_downgrade_plan"
+          class="mx-auto mb-6 flex max-w-4xl items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3"
+        >
+          <p class="text-sm font-medium text-amber-900">
+            Downgrade para <strong>{{ planNames[billingInfo.scheduled_downgrade_plan] || billingInfo.scheduled_downgrade_plan }}</strong>
+            agendado para o fim do ciclo.
+          </p>
+          <button
+            type="button"
+            class="rounded-full bg-white px-4 py-2 text-xs font-semibold text-amber-800 ring-1 ring-amber-300 hover:bg-amber-100 disabled:opacity-60"
+            :disabled="loadingPlan === 'cancel-scheduled-downgrade'"
+            @click="cancelScheduledDowngrade"
+          >
+            {{ loadingPlan === "cancel-scheduled-downgrade" ? "Cancelando..." : "Cancelar downgrade" }}
+          </button>
         </div>
 
-        <div class="mx-auto grid max-w-6xl gap-8 md:grid-cols-2 xl:grid-cols-3 justify-items-center">
+        <div class="mx-auto grid max-w-[92rem] gap-8 md:grid-cols-2 xl:grid-cols-3 justify-items-center">
           <article
             v-for="plan in plans"
             :key="plan.key"
             class="group relative flex h-full w-full flex-col gap-6 overflow-visible rounded-3xl border bg-white p-7 pt-9 shadow-[0_16px_50px_-30px_rgba(15,23,42,0.35)] transition duration-200 hover:-translate-y-1 hover:shadow-[0_26px_80px_-40px_rgba(15,23,42,0.45)]"
-            :class="plan.isCurrent ? 'border-emerald-300 ring-2 ring-emerald-100' : 'border-slate-100'"
+            :class="plan.isCurrent ? 'border-emerald-400 bg-gradient-to-b from-emerald-50 to-white ring-1 ring-emerald-200' : 'border-slate-100'"
           >
             <div
               v-if="plan.badge || plan.isCurrent"
@@ -107,8 +95,7 @@
             </div>
 
             <div class="relative space-y-2">
-              <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{{ plan.tier }}</p>
-              <h3 class="text-2xl font-bold text-slate-900">{{ plan.name }}</h3>
+              <h3 class="text-[2rem] font-extrabold leading-tight text-slate-900">{{ plan.name }}</h3>
               <p class="text-sm text-slate-600">{{ plan.subtitle }}</p>
 
               <div v-if="plan.oldPrice" class="text-sm text-slate-500 line-through">
@@ -120,8 +107,7 @@
                 <span class="text-sm font-semibold text-amber-600">{{ plan.period }}</span>
               </div>
               <p v-if="plan.detail" class="text-xs font-semibold text-indigo-600">{{ plan.detail }}</p>
-
-              <p class="text-sm font-medium text-emerald-600">{{ plan.highlight }}</p>
+              <p class="text-base font-bold text-emerald-700">{{ plan.priceHint }}</p>
             </div>
 
             <ul class="relative space-y-3 text-sm text-slate-700">
@@ -141,18 +127,29 @@
               </li>
             </ul>
 
+            <div v-if="plan.spotlightBoxes.length" class="space-y-3">
+              <div
+                v-for="box in plan.spotlightBoxes"
+                :key="box.title"
+                class="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4"
+              >
+                <p class="text-[0.92rem] font-extrabold uppercase tracking-[0.11em] text-emerald-700">{{ box.title }}</p>
+                <p class="mt-1 text-[0.92rem] text-slate-700">{{ box.description }}</p>
+              </div>
+            </div>
+
             <div class="relative mt-auto flex flex-col gap-3">
               <button
                 type="button"
                 class="inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl disabled:opacity-60"
-                :class="plan.ctaClass"
-                :disabled="plan.isCurrent || loadingPlan === plan.key"
+                :class="plan.isCurrent ? 'bg-slate-300 text-slate-600' : (plan.isLowerThanCurrent ? 'bg-amber-500 hover:bg-amber-400' : plan.ctaClass)"
+                :disabled="!plan.isActionable || loadingPlan === plan.key"
                 @click="handlePlanClick(plan.key)"
               >
                 <span v-if="plan.isCurrent">{{ planButtonLabels.current }}</span>
                 <span v-else-if="loadingPlan === plan.key">{{ planButtonLabels.redirecting }}</span>
-                <span v-else>{{ plan.cta }}</span>
-                <span v-if="!plan.isCurrent && loadingPlan !== plan.key" aria-hidden="true">→</span>
+                <span v-else>{{ planCtaLabel(plan) }}</span>
+                <span v-if="plan.isActionable && loadingPlan !== plan.key" aria-hidden="true">→</span>
               </button>
 
               <p class="text-xs text-slate-500">{{ plan.note }}</p>
@@ -160,29 +157,11 @@
               <p v-if="errorMessage && loadingPlan === null" class="text-xs font-semibold text-rose-600">
                 {{ errorMessage }}
               </p>
+              <p v-if="successMessage && loadingPlan === null" class="text-xs font-semibold text-emerald-700">
+                {{ successMessage }}
+              </p>
             </div>
           </article>
-        </div>
-
-        <div
-          class="mt-10 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-white px-6 py-5 shadow-[0_16px_50px_-35px_rgba(15,23,42,0.45)] ring-1 ring-slate-100"
-        >
-          <div>
-            <p class="text-sm font-semibold text-amber-600">{{ transparencyTitle }}</p>
-            <p class="text-sm text-slate-600">
-              {{ transparencyDescription }}
-            </p>
-          </div>
-
-          <div class="flex items-center gap-2 text-sm text-slate-600">
-            <span class="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
-              24/7
-            </span>
-            <div>
-              <p class="font-semibold text-slate-900">{{ supportTitle }}</p>
-              <p class="text-xs text-slate-500">{{ supportDescription }}</p>
-            </div>
-          </div>
         </div>
 
         <!-- <div class="mt-10 rounded-3xl border border-emerald-100 bg-emerald-50/50 p-6 shadow-sm">
@@ -240,6 +219,7 @@
 import { computed, ref, onMounted } from "vue";
 import api from "../../services/api";
 import { CHECKOUT_SESSION_STORAGE_KEY, createCaktoCheckoutSession } from "../../services/cakto";
+import { createUpgradeCheckoutSession } from "../../services/checkout";
 import { useAuthStore } from "../../store/useAuthStore";
 import { planLabels } from "../../utils/planLabels";
 import { createLocalizer, getCurrentLanguage } from "../../utils/i18n";
@@ -257,15 +237,15 @@ const viewCopy = {
   hero: {
     chipLabel: { pt: "Planos", es: "Planes" },
     chipDetail: { pt: "Escolha o melhor para você", es: "Elige el mejor para ti" },
-    title: { pt: "Planos pensados para crescer com sua agência", es: "Planes pensados para crecer con tu agencia" },
+    title: { pt: "Evolua seu plano e acelere seus resultados", es: "Sube de plan y acelera tus resultados" },
     description: {
-      pt: "Comece grátis com uma página. Faça upgrade só quando precisar de mais páginas e recursos.",
-      es: "Empieza gratis con una página. Haz upgrade solo cuando necesites más páginas y recursos."
+      pt: "Desbloqueie mais recursos, aumente sua operação e transforme visitas em vendas com mais consistência.",
+      es: "Desbloquea más recursos, amplía tu operación y convierte visitas en ventas con más consistencia."
     },
     highlights: {
-      upgrade: { pt: "Upgrade instantâneo", es: "Upgrade instantáneo" },
-      setup: { pt: "Sem taxas de setup", es: "Sin tarifas de configuración" },
-      downgrade: { pt: "Downgrade quando quiser", es: "Baja de plan cuando quieras" }
+      upgrade: { pt: "Ativação imediata", es: "Activación inmediata" },
+      setup: { pt: "Sem burocracia", es: "Sin burocracia" },
+      downgrade: { pt: "Mais conversão por lead", es: "Más conversión por lead" }
     }
   },
   trial: {
@@ -294,26 +274,12 @@ const viewCopy = {
     currentPlan: { pt: "Plano atual", es: "Plan actual" },
     redirecting: { pt: "Redirecionando...", es: "Redirigiendo..." }
   },
-  transparency: {
-    title: { pt: "Transparência total", es: "Transparencia total" },
-    description: {
-      pt: "Sem taxas de cancelamento ou contratos longos. Troque ou cancele com 1 clique.",
-      es: "Sin tasas de cancelación ni contratos largos. Cambia o cancela con 1 clic."
-    },
-    supportTitle: { pt: "Suporte prioritário", es: "Soporte prioritario" },
-    supportDescription: {
-      pt: "Atendimento em português via chat e WhatsApp.",
-      es: "Atención en portugués por chat y WhatsApp."
-    }
-  },
   checkoutError: {
     pt: "Não foi possível iniciar o checkout. Tente novamente.",
     es: "No fue posible iniciar el checkout. Intenta nuevamente."
   }
 } as const;
 
-const heroChipLabel = localize(viewCopy.hero.chipLabel);
-const heroChipDetail = localize(viewCopy.hero.chipDetail);
 const heroTitle = localize(viewCopy.hero.title);
 const heroDescription = localize(viewCopy.hero.description);
 const heroHighlights = {
@@ -331,10 +297,6 @@ const planButtonLabels = {
   current: localize(viewCopy.buttons.currentPlan),
   redirecting: localize(viewCopy.buttons.redirecting)
 };
-const transparencyTitle = localize(viewCopy.transparency.title);
-const transparencyDescription = localize(viewCopy.transparency.description);
-const supportTitle = localize(viewCopy.transparency.supportTitle);
-const supportDescription = localize(viewCopy.transparency.supportDescription);
 const checkoutErrorMessage = localize(viewCopy.checkoutError);
 
 interface PlanCard {
@@ -346,14 +308,19 @@ interface PlanCard {
   oldPrice?: string;
   period: string;
   detail?: string;
+  priceHint?: string;
   highlight: string;
   features: string[];
+  spotlightBoxes: { title: string; description: string }[];
   badge?: string;
   badgeTone?: string;
   cta: string;
   note: string;
   ctaClass: string;
   isCurrent?: boolean;
+  isHigherThanCurrent?: boolean;
+  isLowerThanCurrent?: boolean;
+  isActionable?: boolean;
 }
 
 interface PlanDefinition {
@@ -361,8 +328,10 @@ interface PlanDefinition {
   tier: LocalizedString;
   name: LocalizedString;
   subtitle: LocalizedString;
+  priceHint: LocalizedString;
   highlight: LocalizedString;
   features: LocalizedString[];
+  spotlightBoxes?: { title: LocalizedString; description: LocalizedString }[];
   badge?: LocalizedString;
   badgeTone?: string;
   cta: LocalizedString;
@@ -381,6 +350,8 @@ interface BillingInfo {
   preapproval_id?: string;
   provider?: string;
   billing_cycle?: string;
+  scheduled_downgrade_plan?: string | null;
+  scheduled_downgrade_at?: string | null;
 }
 
 const billingCycleLabels: Record<BillingCycle, string> = {
@@ -402,14 +373,32 @@ const trialEndsAtText = computed(() => {
   return new Date(endsAt).toLocaleDateString(dateLocale);
 });
 
-const billingCycle = ref<BillingCycle>("annual");
+const billingCycle = ref<BillingCycle>("monthly");
 
 const loadingPlan = ref<string | null>(null);
 const errorMessage = ref<string | null>(null);
+const successMessage = ref<string | null>(null);
 
 const billingInfo = ref<BillingInfo | null>(null);
+const currentSubscriptionProvider = computed(() =>
+  String(billingInfo.value?.provider || "").trim().toLowerCase()
+);
 
-const activePlan = computed(() => billingInfo.value?.plan || authStore.user?.plan || "free");
+const normalizedPlanKey = (value?: string | null) => {
+  const raw = String(value || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+  if (!raw) return "free";
+  if (["growth", "agencia", "agência", "agency"].includes(raw)) return "growth";
+  if (["essencial", "profissional", "professional", "starter"].includes(raw)) return "essencial";
+  if (["infinity", "escala", "scale"].includes(raw)) return "infinity";
+  if (["free", "gratuito", "trial", "teste"].includes(raw)) return "free";
+  return raw;
+};
+
+const activePlan = computed(() => normalizedPlanKey(billingInfo.value?.plan || authStore.user?.plan || "free"));
 
 const planNames: Record<string, string> = {
   free: `Plano ${planLabels.free}`,
@@ -417,21 +406,6 @@ const planNames: Record<string, string> = {
   growth: `Plano ${planLabels.growth}`,
   infinity: `Plano ${planLabels.infinity}`,
   teste: `Plano ${planLabels.teste}`
-};
-
-const directCheckoutLinks: Record<string, Partial<Record<BillingCycle, string>>> = {
-  essencial: {
-    monthly: "https://pay.cakto.com.br/7o7zrup_800651",
-    annual: "https://pay.cakto.com.br/nxc42uz"
-  },
-  growth: {
-    monthly: "https://pay.cakto.com.br/n7vnc73_800688",
-    annual: "https://pay.cakto.com.br/32uvp8b"
-  },
-  infinity: {
-    monthly: "https://pay.cakto.com.br/iexkakw_800692",
-    annual: "https://pay.cakto.com.br/pxzgp5s"
-  }
 };
 
 const pricePeriods: Record<BillingCycle, LocalizedString> = {
@@ -442,23 +416,25 @@ const pricePeriods: Record<BillingCycle, LocalizedString> = {
 const planDefinitions: PlanDefinition[] = [
   {
     key: "essencial",
-    tier: { pt: "Profissional", es: "Profesional" },
-    name: { pt: "Plano Profissional", es: "Plan Profesional" },
+    tier: { pt: "Para começar", es: "Para comenzar" },
+    name: { pt: "Profissional", es: "Profesional" },
     subtitle: {
-      pt: "Para quem já vende excursões e quer mais presença online",
-      es: "Para quienes ya venden excursiones y quieren más presencia online"
+      pt: "Para quem quer parar de mandar textão no WhatsApp para o cliente.",
+      es: "Para quien quiere dejar de enviar textos largos por WhatsApp."
     },
-    highlight: { pt: "Para quem quer vender mais roteiros", es: "Para quien quiere vender más itinerarios" },
+    priceHint: { pt: "≈ R$16,66 por roteiro", es: "≈ R$16,66 por itinerario" },
+    highlight: { pt: "Plano base para vender com organização", es: "Plan base para vender con organización" },
     features: [
       { pt: "Até 3 roteiros online ativos", es: "Hasta 3 itinerarios online activos" },
-      { pt: "Seções ilimitadas dentro de cada roteiro", es: "Secciones ilimitadas dentro de cada itinerario" },
-      { pt: "Salvar modelo padrão para copiar em novas viagens", es: "Guardar un modelo base para copiar en nuevos viajes" },
-      { pt: "Conectar 1 pixel (Facebook ou Google)", es: "Conectar 1 píxel (Facebook o Google)" },
-      { pt: "Componentes extras (depoimentos, contagem regressiva, FAQ)", es: "Componentes extra (testimonios, cuenta regresiva, FAQ)" }
+      { pt: "Seções ilimitadas por roteiro", es: "Secciones ilimitadas por itinerario" },
+      { pt: "Modelo padrão para reutilizar", es: "Modelo base para reutilizar" },
+      { pt: "1 pixel conectado (Meta ou Google)", es: "1 píxel conectado (Meta o Google)" },
+      { pt: "Botão de WhatsApp em cada seção", es: "Botón de WhatsApp en cada sección" },
+      { pt: "Galeria de fotos com carrossel", es: "Galería de fotos con carrusel" }
     ],
-    badge: { pt: "Recomendado para crescer", es: "Recomendado para crecer" },
+    badge: { pt: "Para começar", es: "Para comenzar" },
     badgeTone: "bg-emerald-50 text-emerald-700 ring-emerald-100",
-    cta: { pt: "Quero organizar minhas viagens", es: "Quiero organizar mis viajes" },
+    cta: { pt: "Começar com o Profissional", es: "Empezar con Profesional" },
     note: { pt: "Perfeito para quem já tem grupos rodando.", es: "Perfecto para quienes ya tienen grupos en marcha." },
     ctaClass: "bg-emerald-600 hover:bg-emerald-500",
     prices: {
@@ -468,24 +444,34 @@ const planDefinitions: PlanDefinition[] = [
   },
   {
     key: "growth",
-    tier: { pt: "Agência", es: "Agencia" },
-    name: { pt: "Plano Agência", es: "Plan Agencia" },
+    tier: { pt: "Mais escolhido", es: "Más elegido" },
+    name: { pt: "Agência", es: "Agencia" },
     subtitle: {
-      pt: "Para agências que querem vender todos os meses com previsibilidade",
-      es: "Para agencias que quieren vender todos los meses con previsibilidad"
+      pt: "Para agências que usam o roteiro online como ferramenta recorrente de vendas.",
+      es: "Para agencias que usan la plataforma como herramienta recurrente de ventas."
     },
+    priceHint: { pt: "≈ R$8,99 por roteiro", es: "≈ R$8,99 por itinerario" },
     highlight: { pt: "Mais usado pelas agências", es: "El más usado por las agencias" },
     features: [
       { pt: "Até 10 roteiros online ativos", es: "Hasta 10 itinerarios online activos" },
-      { pt: "Conectar até 3 pixels", es: "Conectar hasta 3 píxeles" },
       { pt: "Duplicação rápida de páginas", es: "Duplicación rápida de páginas" },
+      { pt: "Até 3 pixels conectados", es: "Hasta 3 píxeles conectados" },
       { pt: "Todos os recursos do Profissional", es: "Todos los recursos del Profesional" }
     ],
-    badge: { pt: "Mais popular", es: "Más popular" },
-    badgeTone: "bg-amber-100 text-amber-800 ring-amber-200",
-    cta: { pt: "Quero escalar minhas vendas", es: "Quiero escalar mis ventas" },
+    spotlightBoxes: [
+      {
+        title: { pt: "Módulo Leads", es: "Módulo Leads" },
+        description: {
+          pt: "Formulário de captação dentro do roteiro. Cada passageiro pode virar oportunidade futura.",
+          es: "Formulario de captación dentro del itinerario. Cada pasajero puede convertirse en oportunidad."
+        }
+      }
+    ],
+    badge: { pt: "Mais escolhido", es: "Más elegido" },
+    badgeTone: "bg-emerald-100 text-emerald-800 ring-emerald-200",
+    cta: { pt: "Assinar o plano Agência", es: "Suscribir plan Agencia" },
     note: { pt: "Mantenha vários destinos ativos o ano todo.", es: "Mantén varios destinos activos todo el año." },
-    ctaClass: "bg-amber-500 hover:bg-amber-400",
+    ctaClass: "bg-emerald-600 hover:bg-emerald-500",
     prices: {
       monthly: { value: 89.99, period: pricePeriods.monthly },
       annual: { value: 839.88, period: pricePeriods.annual }
@@ -493,23 +479,40 @@ const planDefinitions: PlanDefinition[] = [
   },
   {
     key: "infinity",
-    tier: { pt: "Escala", es: "Escala" },
-    name: { pt: "Plano Escala", es: "Plan Escala" },
+    tier: { pt: "Operação avançada", es: "Operación avanzada" },
+    name: { pt: "Escala", es: "Escala" },
     subtitle: {
-      pt: "Para agências que operam múltiplos grupos e querem dominar sua região",
-      es: "Para agencias que operan múltiples grupos y quieren dominar su región"
+      pt: "Para agências com vários grupos, campanhas e múltiplos destinos em andamento.",
+      es: "Para agencias con múltiples grupos, campañas y destinos en paralelo."
     },
-    highlight: { pt: "Para dominar sua região", es: "Para dominar tu región" },
+    priceHint: { pt: "Roteiros ilimitados", es: "Itinerarios ilimitados" },
+    highlight: { pt: "Operação completa e ilimitada", es: "Operación completa e ilimitada" },
     features: [
       { pt: "Roteiros ilimitados", es: "Itinerarios ilimitados" },
-      { pt: "Todos os recursos dos planos anteriores", es: "Todos los recursos de los planes anteriores" },
-      { pt: "Ideal para múltiplos destinos simultâneos", es: "Ideal para múltiples destinos simultáneos" }
+      { pt: "Múltiplos destinos simultâneos", es: "Múltiples destinos simultáneos" },
+      { pt: "Todos os recursos anteriores", es: "Todos los recursos anteriores" }
+    ],
+    spotlightBoxes: [
+      {
+        title: { pt: "Módulo Leads", es: "Módulo Leads" },
+        description: {
+          pt: "Formulário de captação com gestão de oportunidades integrada.",
+          es: "Formulario de captación con gestión de oportunidades integrada."
+        }
+      },
+      {
+        title: { pt: "Domínio personalizado", es: "Dominio personalizado" },
+        description: {
+          pt: "Publique no endereço da sua própria agência. Exclusivo deste plano.",
+          es: "Publica con el dominio de tu agencia. Exclusivo de este plan."
+        }
+      }
     ],
     badge: { pt: "Para operação avançada", es: "Para operación avanzada" },
-    badgeTone: "bg-indigo-50 text-indigo-700 ring-indigo-100",
-    cta: { pt: "Quero estruturar minha escala", es: "Quiero estructurar mi escala" },
+    badgeTone: "bg-emerald-50 text-emerald-700 ring-emerald-100",
+    cta: { pt: "Começar com o Escala", es: "Empezar con Escala" },
     note: { pt: "Pensado para agências com vários grupos ativos.", es: "Pensado para agencias con varios grupos activos." },
-    ctaClass: "bg-indigo-600 hover:bg-indigo-500",
+    ctaClass: "bg-emerald-600 hover:bg-emerald-500",
     prices: {
       monthly: { value: 129.99, period: pricePeriods.monthly },
       annual: { value: 1199.88, period: pricePeriods.annual }
@@ -555,6 +558,13 @@ const plans = computed<PlanCard[]>(() =>
     const oldAnnualValue = isAnnual && monthlyPrice > 0 ? monthlyPrice * 12 : undefined;
     const badge = localize(def.badge).trim();
 
+    const planOrder: Record<string, number> = { free: 0, essencial: 1, growth: 2, infinity: 3 };
+    const currentOrder = planOrder[activePlan.value] ?? 0;
+    const thisOrder = planOrder[def.key] ?? 0;
+    const isCurrent = def.key === activePlan.value;
+    const isHigherThanCurrent = thisOrder > currentOrder;
+    const isLowerThanCurrent = thisOrder < currentOrder;
+
     return {
       key: def.key,
       tier: localize(def.tier),
@@ -570,11 +580,39 @@ const plans = computed<PlanCard[]>(() =>
       price: formatPrice(displayValue),
       period,
       detail,
+      priceHint: localize(def.priceHint),
       oldPrice: oldAnnualValue ? formatPrice(oldAnnualValue) : undefined,
-      isCurrent: def.key === activePlan.value
+      spotlightBoxes: (def.spotlightBoxes || []).map(item => ({
+        title: localize(item.title),
+        description: localize(item.description)
+      })),
+      isCurrent,
+      isHigherThanCurrent,
+      isLowerThanCurrent,
+      isActionable: !isCurrent
     };
   })
 );
+
+const planCtaLabel = (plan: PlanCard) => {
+  if (plan.isCurrent) return planButtonLabels.current;
+  if (plan.isLowerThanCurrent) {
+    return currentLanguage === "es" ? `Hacer downgrade a ${plan.name}` : `Fazer downgrade para ${plan.name}`;
+  }
+  return currentLanguage === "es" ? `Hacer upgrade a ${plan.name}` : `Fazer upgrade para ${plan.name}`;
+};
+
+const internalCheckoutPaths: Record<string, string> = {
+  essencial: "/checkout/profissional",
+  growth: "/checkout/agencia",
+  infinity: "/checkout/escala"
+};
+
+const checkoutBaseOrigin = computed(() => {
+  if (typeof window === "undefined") return "";
+  if (import.meta.env.PROD) return "https://roteiroonline.com";
+  return window.location.origin;
+});
 
 const goToCheckout = async (
   planKey: string,
@@ -589,12 +627,28 @@ const goToCheckout = async (
 
   try {
     const cycle = cycleOverride ?? billingCycle.value;
-    const { data } = await createCaktoCheckoutSession(planKey, cycle);
-    localStorage.setItem(CHECKOUT_SESSION_STORAGE_KEY, data.token);
-    const directLink = directCheckoutLinks[planKey]?.[cycle];
-    const checkoutUrl = directLink
-      ? `${directLink}${directLink.includes("?") ? "&" : "?"}sck=${data.token}`
-      : data.checkout_url;
+    const keyToOffer: Record<string, string> = {
+      essencial: "profissional",
+      growth: "agencia",
+      infinity: "escala",
+    };
+    const offerKey = keyToOffer[planKey];
+    if (!offerKey && planKey !== "teste") throw new Error("Plano inválido para checkout.");
+
+    if (currentSubscriptionProvider.value === "cakto") {
+      const { data } = await createCaktoCheckoutSession(planKey, cycle);
+      localStorage.setItem(CHECKOUT_SESSION_STORAGE_KEY, data.token);
+      const checkoutUrl = String(data.checkout_url || "").trim();
+      if (!checkoutUrl) throw new Error("Checkout Cakto indisponível.");
+      window.location.href = checkoutUrl;
+      return;
+    }
+
+    const session = await createUpgradeCheckoutSession(offerKey);
+    const internalPath = internalCheckoutPaths[planKey];
+    const checkoutUrl = internalPath
+      ? `${checkoutBaseOrigin.value}${internalPath}?upgrade=1&token=${encodeURIComponent(session.token)}`
+      : `${checkoutBaseOrigin.value}/checkout/${encodeURIComponent(offerKey)}?upgrade=1&token=${encodeURIComponent(session.token)}`;
     window.location.href = checkoutUrl;
   } catch (err) {
     console.error(err);
@@ -606,7 +660,52 @@ const goToCheckout = async (
 
 const handlePlanClick = (planKey: string) => {
   if (planKey === activePlan.value) return;
+  const planOrder: Record<string, number> = { free: 0, essencial: 1, growth: 2, infinity: 3 };
+  const currentOrder = planOrder[activePlan.value] ?? 0;
+  const targetOrder = planOrder[planKey] ?? 0;
+
+  if (targetOrder < currentOrder) {
+    loadingPlan.value = planKey;
+    errorMessage.value = null;
+    successMessage.value = null;
+    api
+      .post<BillingInfo>("/billing/schedule-downgrade", { plan: planKey })
+      .then(({ data }) => {
+        billingInfo.value = data;
+        const until = data.valid_until ? new Date(data.valid_until).toLocaleDateString(dateLocale) : "";
+        successMessage.value = until
+          ? (currentLanguage === "es"
+              ? `Downgrade programado para ${until}.`
+              : `Downgrade programado para ${until}.`)
+          : (currentLanguage === "es"
+              ? "Downgrade programado para el fin del ciclo actual."
+              : "Downgrade programado para o fim do ciclo atual.");
+      })
+      .catch(() => {
+        errorMessage.value = checkoutErrorMessage;
+      })
+      .finally(() => {
+        loadingPlan.value = null;
+      });
+    return;
+  }
+
   goToCheckout(planKey);
+};
+
+const cancelScheduledDowngrade = async () => {
+  loadingPlan.value = "cancel-scheduled-downgrade";
+  errorMessage.value = null;
+  successMessage.value = null;
+  try {
+    const { data } = await api.post<BillingInfo>("/billing/cancel-scheduled-downgrade");
+    billingInfo.value = data;
+    successMessage.value = "Downgrade agendado cancelado com sucesso.";
+  } catch {
+    errorMessage.value = checkoutErrorMessage;
+  } finally {
+    loadingPlan.value = null;
+  }
 };
 
 const startTestCheckout = (cycle: BillingCycle) => {

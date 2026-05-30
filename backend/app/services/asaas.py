@@ -3,10 +3,35 @@ from __future__ import annotations
 from typing import Any
 
 import httpx
+from app.core.config import get_settings
 
 
 class AsaasAPIError(Exception):
     """Raised when Asaas returns an error response."""
+
+
+ASAAS_DEFAULT_SPLIT_RULES: tuple[tuple[str, float], ...] = (
+    ("4f1340fa-d365-41fd-9c26-3a9299034bc2", 34),
+    ("30a351e8-4def-4a03-b4fb-78ba9d5df425", 66),
+)
+
+
+def build_default_split_payload() -> list[dict[str, Any]]:
+    settings = get_settings()
+    wallet_matheus = (settings.wallet_matheus or "").strip()
+    wallet_agencia = (settings.wallet_agencia or "").strip()
+    rules = (
+        ((wallet_matheus, 34.0), (wallet_agencia, 66.0))
+        if wallet_matheus and wallet_agencia
+        else ASAAS_DEFAULT_SPLIT_RULES
+    )
+    return [
+        {
+            "walletId": wallet_id,
+            "percentualValue": float(percentual),
+        }
+        for wallet_id, percentual in rules
+    ]
 
 
 class AsaasClient:
@@ -34,6 +59,41 @@ class AsaasClient:
 
     def create_payment_link(self, payload: dict[str, Any]) -> dict[str, Any]:
         return self._request("POST", "/paymentLinks", json=payload)
+
+    def create_customer(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return self._request("POST", "/customers", json=payload)
+
+    def list_customers(self, **params: Any) -> dict[str, Any]:
+        return self._request("GET", "/customers", params=params)
+
+    def create_payment(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return self._request("POST", "/payments", json=payload)
+
+    def create_subscription(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return self._request("POST", "/subscriptions", json=payload)
+
+    def get_subscription(self, subscription_id: str) -> dict[str, Any]:
+        return self._request("GET", f"/subscriptions/{subscription_id}")
+
+    def update_subscription(self, subscription_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        if not subscription_id:
+            raise ValueError("Subscription id is required")
+        return self._request("PUT", f"/subscriptions/{subscription_id}", json=payload)
+
+    def list_subscription_payments(self, subscription_id: str, **params: Any) -> dict[str, Any]:
+        return self._request("GET", f"/subscriptions/{subscription_id}/payments", params=params)
+
+    def create_pix_automatic_authorization(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return self._request("POST", "/pix/automatic/authorizations", json=payload)
+
+    def get_payment(self, payment_id: str) -> dict[str, Any]:
+        return self._request("GET", f"/payments/{payment_id}")
+
+    def get_payment_status(self, payment_id: str) -> dict[str, Any]:
+        return self._request("GET", f"/payments/{payment_id}/status")
+
+    def get_pix_qr_code(self, payment_id: str) -> dict[str, Any]:
+        return self._request("GET", f"/payments/{payment_id}/pixQrCode")
 
     def delete_payment_link(self, link_id: str) -> None:
         if not link_id:

@@ -63,4 +63,7 @@ class User(Base):
 
     @property
     def subscription_blocked(self) -> bool:
-        return bool(self.subscription and (self.subscription.status or "").lower() == "past_due")
+        if not self.subscription:
+            return False
+        status = (self.subscription.status or "").lower()
+        return status in {"past_due", "cancelled_admin"}

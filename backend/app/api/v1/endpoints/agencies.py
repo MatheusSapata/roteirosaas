@@ -61,6 +61,11 @@ def create_agency(agency_in: AgencyCreate, current_user: User = Depends(get_curr
     db.refresh(agency)
     membership = AgencyUser(agency_id=agency.id, user_id=current_user.id, role="owner")
     db.add(membership)
+    if not current_user.primary_agency_id:
+        current_user.primary_agency_id = agency.id
+    if (current_user.status or "").lower() == "pending_agency_setup":
+        current_user.status = "active"
+    db.add(current_user)
     db.commit()
     return agency
 
