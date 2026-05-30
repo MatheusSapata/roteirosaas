@@ -847,6 +847,7 @@ def start_pix_payment(db: Session, session: CheckoutSession) -> CheckoutSession:
     )
     immediate_qr: dict[str, Any] = {}
     authorization_id: str | None = None
+    subscription_id: str | None = None
     if _is_upgrade_session(session):
         payment = client.create_payment(
             {
@@ -891,6 +892,31 @@ def start_pix_payment(db: Session, session: CheckoutSession) -> CheckoutSession:
         if not authorization_id:
             raise HTTPException(status_code=502, detail="Asaas nao retornou autorizacao de Pix Automatico.")
         immediate_qr = authorization.get("immediateQrCode") or {}
+        # Fallback: alguns ambientes retornam autorização sem immediateQrCode.
+        # Nesse caso criamos assinatura PIX padrão e buscamos o QR no primeiro pagamento.
+        if not immediate_qr.get("payload"):
+            subscription_payload: dict[str, Any] = {
+                "customer": customer_id,
+                "billingType": "PIX",
+                "nextDueDate": _billing_today(),
+                "cycle": _resolve_asaas_cycle(session.billing_cycle),
+                "value": float(session.amount),
+                "description": session.product_name,
+                "externalReference": f"checkout:{session.token}",
+                "split": build_default_split_payload(),
+            }
+            subscription = client.create_subscription(subscription_payload)
+            subscription_id = _extract_asaas_resource_id(subscription.get("id"))
+            if subscription_id:
+                payments = client.list_subscription_payments(subscription_id)
+                first_payment = _pick_checkout_subscription_payment(payments)
+                payment_id = _extract_asaas_resource_id(first_payment.get("id"))
+                if payment_id:
+                    session.asaas_payment_id = payment_id
+                    try:
+                        immediate_qr = client.get_pix_qr_code(payment_id) or {}
+                    except AsaasAPIError:
+                        immediate_qr = {}
 
     session.asaas_customer_id = customer_id
     session.payment_method = "pix"
@@ -907,6 +933,8 @@ def start_pix_payment(db: Session, session: CheckoutSession) -> CheckoutSession:
     metadata = dict(session.metadata_json or {})
     if authorization_id:
         metadata["asaas_pix_automatic_authorization_id"] = authorization_id
+    if subscription_id:
+        metadata["asaas_subscription_id"] = subscription_id
     session.metadata_json = metadata
     db.add(session)
     db.commit()

@@ -19,12 +19,10 @@ ASAAS_DEFAULT_SPLIT_RULES: tuple[tuple[str, float], ...] = (
 def build_default_split_payload() -> list[dict[str, Any]]:
     settings = get_settings()
     wallet_matheus = (settings.wallet_matheus or "").strip()
-    wallet_agencia = (settings.wallet_agencia or "").strip()
-    rules = (
-        ((wallet_matheus, 34.0), (wallet_agencia, 66.0))
-        if wallet_matheus and wallet_agencia
-        else ASAAS_DEFAULT_SPLIT_RULES
-    )
+    if wallet_matheus:
+        rules = ((wallet_matheus, 34.0),)
+    else:
+        rules = ASAAS_DEFAULT_SPLIT_RULES
     return [
         {
             "walletId": wallet_id,
