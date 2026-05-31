@@ -990,6 +990,12 @@ def start_card_payment(db: Session, session: CheckoutSession, payload: dict[str,
     amount = Decimal(str(session.amount))
     card_last4 = _extract_card_last4(payload.get("card_number"))
     card_brand = _infer_card_brand(payload.get("card_number"))
+    metadata = dict(session.metadata_json or {})
+    if card_last4:
+        metadata["card_last4"] = card_last4
+    if card_brand:
+        metadata["card_brand"] = card_brand
+    session.metadata_json = metadata
     is_upgrade = _is_upgrade_session(session)
     upgrade_target_subscription = _resolve_target_subscription_for_upgrade(db, session) if is_upgrade else None
     can_upgrade_in_place = bool(upgrade_target_subscription and upgrade_target_subscription.asaas_subscription_id)
@@ -1080,12 +1086,6 @@ def start_card_payment(db: Session, session: CheckoutSession, payload: dict[str,
             else:
                 _upsert_paid_user_and_subscription(db, session)
     session.updated_at = _utcnow()
-    metadata = dict(session.metadata_json or {})
-    if card_last4:
-        metadata["card_last4"] = card_last4
-    if card_brand:
-        metadata["card_brand"] = card_brand
-    session.metadata_json = metadata
     db.add(session)
     db.commit()
     db.refresh(session)
