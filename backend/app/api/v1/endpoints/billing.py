@@ -1,4 +1,4 @@
-import logging
+﻿import logging
 import hashlib
 import json
 from datetime import datetime, timedelta
@@ -76,7 +76,7 @@ def _is_comeco_like_plan(value: str | None) -> bool:
 
 def _get_asaas_client() -> AsaasClient:
     if not settings.asaas_api_key:
-        raise HTTPException(status_code=500, detail="Chave da API Asaas não configurada")
+        raise HTTPException(status_code=500, detail="Chave da API Asaas nÃ£o configurada")
     return AsaasClient(settings.asaas_api_key, settings.asaas_base_url)
 
 
@@ -180,11 +180,11 @@ def create_checkout(
     plan_key = payload.plan
     cycle = (payload.cycle or DEFAULT_CYCLE).lower()
     if plan_key not in PLAN_PRICING:
-        raise HTTPException(status_code=400, detail="Plano inválido")
+        raise HTTPException(status_code=400, detail="Plano invÃ¡lido")
     plan_options = PLAN_PRICING[plan_key]
     plan_info = plan_options.get(cycle)
     if not plan_info:
-        raise HTTPException(status_code=400, detail="Ciclo de cobrança inválido")
+        raise HTTPException(status_code=400, detail="Ciclo de cobranÃ§a invÃ¡lido")
 
     external_ref = _build_external_reference(current_user.id, plan_key, cycle)
     redirect_url = settings.asaas_success_url or settings.stripe_success_url or settings.mp_success_url
@@ -232,7 +232,7 @@ def create_checkout(
 
     checkout_url = link.get("url") or link.get("shortUrl") or ""
     if not checkout_url:
-        raise HTTPException(status_code=502, detail="Asaas não retornou URL de pagamento")
+        raise HTTPException(status_code=502, detail="Asaas nÃ£o retornou URL de pagamento")
     return CheckoutResponse(init_point=checkout_url, preapproval_id=link.get("id"))
 
 
@@ -479,7 +479,7 @@ def get_billing_info(current_user: User = Depends(get_current_active_user)) -> B
 def cancel_subscription(current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)) -> BillingInfo:
     sub = current_user.subscription
     if not sub:
-        raise HTTPException(status_code=404, detail="Assinatura não encontrada")
+        raise HTTPException(status_code=404, detail="Assinatura nÃ£o encontrada")
 
     if sub.provider == "cakto":
         service = CaktoIntegrationService(db)
@@ -524,7 +524,7 @@ def change_plan(
 ) -> BillingInfo:
     plan_key = payload.plan.lower()
     if plan_key != "free":
-        raise HTTPException(status_code=400, detail="Apenas downgrade para o plano gratuito é suportado por aqui.")
+        raise HTTPException(status_code=400, detail="Apenas downgrade para o plano gratuito Ã© suportado por aqui.")
 
     sub = current_user.subscription
     client = _get_asaas_client()
@@ -556,17 +556,17 @@ def schedule_downgrade(
 ) -> BillingInfo:
     target_plan = _normalize_plan_key(payload.plan)
     if target_plan not in PLAN_PRICING:
-        raise HTTPException(status_code=400, detail="Plano de downgrade inválido.")
+        raise HTTPException(status_code=400, detail="Plano de downgrade invÃ¡lido.")
 
     current_plan = _normalize_plan_key(effective_plan(current_user) or "free")
     if _plan_rank(target_plan) >= _plan_rank(current_plan):
-        raise HTTPException(status_code=400, detail="Apenas downgrade é permitido nesta operação.")
+        raise HTTPException(status_code=400, detail="Apenas downgrade Ã© permitido nesta operaÃ§Ã£o.")
 
     sub = current_user.subscription
     if not sub:
-        raise HTTPException(status_code=404, detail="Assinatura não encontrada.")
+        raise HTTPException(status_code=404, detail="Assinatura nÃ£o encontrada.")
     if not sub.valid_until:
-        raise HTTPException(status_code=400, detail="Não foi possível determinar a validade atual para agendar downgrade.")
+        raise HTTPException(status_code=400, detail="NÃ£o foi possÃ­vel determinar a validade atual para agendar downgrade.")
 
     # Mark scheduled downgrade in local system; Asaas change will be applied by background job at D-1.
     sub.external_reference = f"scheduled_downgrade:{target_plan}"
@@ -584,7 +584,7 @@ def cancel_scheduled_downgrade(
 ) -> BillingInfo:
     sub = current_user.subscription
     if not sub or not sub.external_reference or not sub.external_reference.startswith("scheduled_downgrade:"):
-        raise HTTPException(status_code=400, detail="Não existe downgrade agendado para cancelar.")
+        raise HTTPException(status_code=400, detail="NÃ£o existe downgrade agendado para cancelar.")
 
     current_plan = _normalize_plan_key(effective_plan(current_user) or "free")
     cycle = (sub.billing_cycle or DEFAULT_CYCLE).lower()
@@ -626,12 +626,12 @@ def refresh_payment_method(
     plan_key = subscription.plan
     plan_options = PLAN_PRICING.get(plan_key)
     if not plan_options:
-        raise HTTPException(status_code=400, detail="Plano atual não suporta cobrança automática.")
+        raise HTTPException(status_code=400, detail="Plano atual nÃ£o suporta cobranÃ§a automÃ¡tica.")
 
     cycle = (payload.cycle or subscription.billing_cycle or DEFAULT_CYCLE).lower()
     plan_info = plan_options.get(cycle)
     if not plan_info:
-        raise HTTPException(status_code=400, detail="Ciclo de cobrança inválido para o plano atual.")
+        raise HTTPException(status_code=400, detail="Ciclo de cobranÃ§a invÃ¡lido para o plano atual.")
 
     client = _get_asaas_client()
     if subscription.asaas_payment_link_id:
@@ -644,7 +644,7 @@ def refresh_payment_method(
     redirect_url = settings.asaas_success_url or settings.stripe_success_url or settings.mp_success_url
     request_payload: Dict[str, Any] = {
         "name": plan_info["title"],
-        "description": f"Atualização do {plan_info['title']}",
+        "description": f"AtualizaÃ§Ã£o do {plan_info['title']}",
         "value": plan_info["price"],
         "billingType": settings.asaas_billing_type,
         "chargeType": "RECURRENT",
@@ -671,7 +671,7 @@ def refresh_payment_method(
 
     checkout_url = link.get("url") or link.get("shortUrl") or ""
     if not checkout_url:
-        raise HTTPException(status_code=502, detail="Asaas não retornou URL de pagamento")
+        raise HTTPException(status_code=502, detail="Asaas nÃ£o retornou URL de pagamento")
     return CheckoutResponse(init_point=checkout_url, preapproval_id=link.get("id"))
 
 
@@ -683,7 +683,7 @@ def update_card(
 ) -> BillingInfo:
     subscription = current_user.subscription
     if not subscription or not subscription.asaas_subscription_id:
-        raise HTTPException(status_code=400, detail="Nenhuma assinatura com cartão ativo encontrada.")
+        raise HTTPException(status_code=400, detail="Nenhuma assinatura com cartÃ£o ativo encontrada.")
 
     card_payload = {
         "holderName": payload.holder_name,
@@ -695,10 +695,11 @@ def update_card(
 
     client = _get_asaas_client()
     try:
+        client.update_subscription(subscription.asaas_subscription_id, {"billingType": "CREDIT_CARD"})
         client.update_subscription_card(subscription.asaas_subscription_id, card_payload)
     except AsaasAPIError as exc:  # noqa: BLE001
-        logger.exception("Erro ao atualizar cartão da assinatura Asaas: %s", exc)
-        raise HTTPException(status_code=502, detail="Erro ao atualizar cartão no Asaas") from exc
+        logger.exception("Erro ao atualizar cartÃ£o da assinatura Asaas: %s", exc)
+        raise HTTPException(status_code=502, detail="Erro ao atualizar cartÃ£o no Asaas") from exc
 
     digits = "".join(ch for ch in payload.number if ch.isdigit())
     subscription.payment_method_type = "card"
@@ -754,3 +755,4 @@ def update_payment_method(
     db.refresh(subscription)
     db.refresh(current_user)
     return _build_billing_info(current_user)
+
