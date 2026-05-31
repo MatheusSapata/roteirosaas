@@ -143,6 +143,9 @@ class BillingInfo(BaseModel):
     preapproval_id: Optional[str] = None
     provider: Optional[str] = None
     billing_cycle: Optional[str] = None
+    payment_method_type: Optional[str] = None
+    card_brand: Optional[str] = None
+    card_last4: Optional[str] = None
     scheduled_downgrade_plan: Optional[str] = None
     scheduled_downgrade_at: Optional[datetime] = None
 
@@ -282,6 +285,9 @@ def _build_billing_info(user: User) -> BillingInfo:
         preapproval_id=(sub.asaas_subscription_id or sub.preapproval_id) if sub else None,
         provider=sub.provider if sub else None,
         billing_cycle=sub.billing_cycle if sub else DEFAULT_CYCLE,
+        payment_method_type=sub.payment_method_type if sub else None,
+        card_brand=sub.card_brand if sub else None,
+        card_last4=sub.card_last4 if sub else None,
         scheduled_downgrade_plan=(sub.external_reference.split("scheduled_downgrade:", 1)[1] if sub and sub.external_reference and sub.external_reference.startswith("scheduled_downgrade:") else None),
         scheduled_downgrade_at=sub.valid_until if sub and sub.external_reference and sub.external_reference.startswith("scheduled_downgrade:") else None,
     )
@@ -690,6 +696,21 @@ def update_card(
         logger.exception("Erro ao atualizar cartão da assinatura Asaas: %s", exc)
         raise HTTPException(status_code=502, detail="Erro ao atualizar cartão no Asaas") from exc
 
+    digits = "".join(ch for ch in payload.number if ch.isdigit())
+    subscription.payment_method_type = "card"
+    subscription.card_last4 = digits[-4:] if len(digits) >= 4 else None
+    if digits.startswith("4"):
+        subscription.card_brand = "Visa"
+    elif (len(digits) >= 2 and 51 <= int(digits[:2]) <= 55) or (len(digits) >= 4 and 2221 <= int(digits[:4]) <= 2720):
+        subscription.card_brand = "Mastercard"
+    elif digits.startswith(("34", "37")):
+        subscription.card_brand = "Amex"
+    elif digits.startswith(("6062", "3841")):
+        subscription.card_brand = "Hipercard"
+    elif digits.startswith(("4011", "4312", "4389")):
+        subscription.card_brand = "Elo"
+    db.add(subscription)
+    db.commit()
     db.refresh(subscription)
     db.refresh(current_user)
     return _build_billing_info(current_user)

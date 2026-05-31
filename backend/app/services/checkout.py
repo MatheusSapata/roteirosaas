@@ -159,6 +159,36 @@ def _resolve_target_subscription_for_upgrade(db: Session, session: CheckoutSessi
     return user.subscription
 
 
+def _extract_card_last4(number: str | None) -> str | None:
+    digits = "".join(ch for ch in str(number or "") if ch.isdigit())
+    if len(digits) < 4:
+        return None
+    return digits[-4:]
+
+
+def _infer_card_brand(number: str | None) -> str | None:
+    digits = "".join(ch for ch in str(number or "") if ch.isdigit())
+    if not digits:
+        return None
+    if digits.startswith("4"):
+        return "Visa"
+    if len(digits) >= 2 and 51 <= int(digits[:2]) <= 55:
+        return "Mastercard"
+    if len(digits) >= 4 and 2221 <= int(digits[:4]) <= 2720:
+        return "Mastercard"
+    if digits.startswith(("34", "37")):
+        return "Amex"
+    if digits.startswith("6011") or digits.startswith("65") or (
+        len(digits) >= 3 and 644 <= int(digits[:3]) <= 649
+    ):
+        return "Discover"
+    if digits.startswith(("6062", "3841")):
+        return "Hipercard"
+    if digits.startswith(("4011", "4312", "4389")):
+        return "Elo"
+    return None
+
+
 def _apply_upgrade_after_payment(db: Session, session: CheckoutSession) -> User:
     subscription = _resolve_target_subscription_for_upgrade(db, session)
     if not subscription or not subscription.asaas_subscription_id:
@@ -189,6 +219,10 @@ def _apply_upgrade_after_payment(db: Session, session: CheckoutSession) -> User:
     subscription.plan = session.plan_key
     subscription.status = "active"
     subscription.billing_cycle = session.billing_cycle
+    subscription.payment_method_type = "card"
+    metadata = dict(session.metadata_json or {})
+    subscription.card_brand = metadata.get("card_brand") or subscription.card_brand
+    subscription.card_last4 = metadata.get("card_last4") or subscription.card_last4
     subscription.failed_attempts = 0
     subscription.valid_until = _utcnow() + _duration_from_cycle(session.billing_cycle)
     subscription.asaas_customer_id = session.asaas_customer_id or subscription.asaas_customer_id
@@ -954,6 +988,8 @@ def start_card_payment(db: Session, session: CheckoutSession, payload: dict[str,
         phone=session.customer_phone,
     )
     amount = Decimal(str(session.amount))
+    card_last4 = _extract_card_last4(payload.get("card_number"))
+    card_brand = _infer_card_brand(payload.get("card_number"))
     is_upgrade = _is_upgrade_session(session)
     upgrade_target_subscription = _resolve_target_subscription_for_upgrade(db, session) if is_upgrade else None
     can_upgrade_in_place = bool(upgrade_target_subscription and upgrade_target_subscription.asaas_subscription_id)
@@ -1044,6 +1080,12 @@ def start_card_payment(db: Session, session: CheckoutSession, payload: dict[str,
             else:
                 _upsert_paid_user_and_subscription(db, session)
     session.updated_at = _utcnow()
+    metadata = dict(session.metadata_json or {})
+    if card_last4:
+        metadata["card_last4"] = card_last4
+    if card_brand:
+        metadata["card_brand"] = card_brand
+    session.metadata_json = metadata
     db.add(session)
     db.commit()
     db.refresh(session)
@@ -1091,6 +1133,14 @@ def _upsert_paid_user_and_subscription(db: Session, session: CheckoutSession) ->
     subscription.plan = session.plan_key
     subscription.status = "active"
     subscription.billing_cycle = session.billing_cycle
+    subscription.payment_method_type = "pix" if session.payment_method == "pix" else "card"
+    metadata = dict(session.metadata_json or {})
+    if session.payment_method == "card":
+        subscription.card_brand = metadata.get("card_brand")
+        subscription.card_last4 = metadata.get("card_last4")
+    else:
+        subscription.card_brand = None
+        subscription.card_last4 = None
     subscription.failed_attempts = 0
     subscription.valid_until = _utcnow() + _duration_from_cycle(session.billing_cycle)
     subscription.asaas_customer_id = session.asaas_customer_id
