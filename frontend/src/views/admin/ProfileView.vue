@@ -54,6 +54,12 @@
                 PIX
               </template>
               <template v-else>
+                <img
+                  v-if="paymentBrandImage"
+                  :src="paymentBrandImage"
+                  :alt="billing?.card_brand || 'Cartão'"
+                  class="payment-brand-img"
+                />
                 {{ paymentMethodLabel }}
               </template>
             </span>
@@ -300,6 +306,7 @@ import api from "../../services/api";
 import { useAuthStore } from "../../store/useAuthStore";
 import { getPlanLabel } from "../../utils/planLabels";
 import { createAdminLocalizer, getAdminLanguage } from "../../utils/adminI18n";
+import cardBrands from "../../assets/card-brands.json";
 
 interface BillingInfo {
   plan: string;
@@ -553,6 +560,36 @@ const billingCycleLabel = computed(() => {
 const currentPlanLabel = computed(() => getPlanLabel(billing.value?.plan || user.value?.plan));
 
 const paymentMethodType = computed(() => String(billing.value?.payment_method_type || "").toLowerCase());
+
+const normalizeBrandName = (value?: string | null) =>
+  String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]/gi, "")
+    .toLowerCase();
+
+const paymentBrandImage = computed(() => {
+  const rawBrand = billing.value?.card_brand;
+  if (!rawBrand) return null;
+  const normalized = normalizeBrandName(rawBrand);
+  const map: Record<string, string[]> = {
+    visa: ["visa"],
+    mastercard: ["mastercard", "mastercard", "master"],
+    amex: ["americanexpress", "amex"],
+    elo: ["elo"],
+    hipercard: ["hipercard"],
+    diners: ["dinersclub", "diners"],
+    discover: ["discover"],
+    jcb: ["jcb"],
+  };
+  const candidates = map[normalized] || [normalized];
+  const entries = Object.entries(cardBrands as Record<string, { image?: string }>);
+  for (const candidate of candidates) {
+    const found = entries.find(([name]) => normalizeBrandName(name) === candidate);
+    if (found?.[1]?.image) return found[1].image;
+  }
+  return null;
+});
 
 const paymentMethodLabel = computed(() => {
   if (paymentMethodType.value === "card" || paymentMethodType.value === "credit_card") {
@@ -1103,6 +1140,12 @@ watch(
   width: 14px;
   height: 14px;
   color: #32bcad;
+}
+
+.payment-brand-img {
+  width: 28px;
+  height: 18px;
+  object-fit: contain;
 }
 
 .notes {
