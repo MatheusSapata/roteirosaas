@@ -106,5 +106,5 @@ class AsaasClient:
     def update_subscription_card(self, subscription_id: str, payload: dict[str, Any]) -> dict[str, Any]:
         if not subscription_id:
             raise ValueError("Subscription id is required to update card")
-        return self._request("POST", f"/subscriptions/{subscription_id}/updateCreditCard", json=payload)
+        return self._request("PUT", f"/subscriptions/{subscription_id}/creditCard", json=payload)
 
