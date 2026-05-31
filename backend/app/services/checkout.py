@@ -195,10 +195,8 @@ def _apply_upgrade_after_payment(db: Session, session: CheckoutSession) -> User:
         raise HTTPException(status_code=400, detail="Assinatura ativa não encontrada para upgrade.")
 
     client = _ensure_asaas_client()
-    next_due_date = (datetime.fromisoformat(_billing_today()) + _duration_from_cycle(session.billing_cycle)).date().isoformat()
     payload = {
         "value": float(_parse_decimal(session.amount)),
-        "nextDueDate": next_due_date,
         "cycle": _resolve_asaas_cycle(session.billing_cycle),
         "status": "ACTIVE",
         "updatePendingPayments": True,

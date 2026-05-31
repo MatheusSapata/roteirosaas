@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_active_user, get_db
 from app.core.config import get_settings
+from app.core.request_ip import get_client_ip
 from app.models.subscription import Subscription
 from app.models.user import User
 from app.models.revenue import RevenueTotal
@@ -168,6 +169,7 @@ class CardUpdateRequest(BaseModel):
     expiry_month: str
     expiry_year: str
     ccv: str
+    remote_ip: str | None = None
 
 
 @router.post("/checkout", response_model=CheckoutResponse)
@@ -678,6 +680,7 @@ def refresh_payment_method(
 @router.post("/update-card", response_model=BillingInfo)
 def update_card(
     payload: CardUpdateRequest,
+    request: Request,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ) -> BillingInfo:
@@ -685,12 +688,28 @@ def update_card(
     if not subscription or not subscription.asaas_subscription_id:
         raise HTTPException(status_code=400, detail="Nenhuma assinatura com cartÃ£o ativo encontrada.")
 
+    customer_document = (current_user.cnpj or current_user.cpf or "").strip()
+    postal_code = (current_user.address_zipcode or "").replace("-", "").strip()
+    resolved_ip = get_client_ip(request) or payload.remote_ip or (request.client.host if request.client else None) or "127.0.0.1"
     card_payload = {
-        "holderName": payload.holder_name,
-        "number": payload.number,
-        "expiryMonth": payload.expiry_month,
-        "expiryYear": payload.expiry_year,
-        "ccv": payload.ccv,
+        "creditCard": {
+            "holderName": payload.holder_name,
+            "number": payload.number,
+            "expiryMonth": payload.expiry_month,
+            "expiryYear": payload.expiry_year,
+            "ccv": payload.ccv,
+        },
+        "creditCardHolderInfo": {
+            "name": current_user.name,
+            "email": current_user.email,
+            "cpfCnpj": customer_document,
+            "postalCode": postal_code,
+            "addressNumber": current_user.address_number or "S/N",
+            "addressComplement": current_user.address_complement,
+            "phone": current_user.whatsapp,
+            "mobilePhone": current_user.whatsapp,
+        },
+        "remoteIp": resolved_ip,
     }
 
     client = _get_asaas_client()
