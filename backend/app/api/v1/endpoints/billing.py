@@ -81,6 +81,23 @@ def _get_asaas_client() -> AsaasClient:
     return AsaasClient(settings.asaas_api_key, settings.asaas_base_url)
 
 
+def _extract_asaas_error_detail(exc: AsaasAPIError) -> str:
+    payload = exc.args[0] if exc.args else None
+    if isinstance(payload, dict):
+        errors = payload.get("errors")
+        if isinstance(errors, list) and errors:
+            first = errors[0]
+            if isinstance(first, dict):
+                code = str(first.get("code") or "").strip()
+                desc = str(first.get("description") or "").strip()
+                if code and desc:
+                    return f"{code}: {desc}"
+                return desc or code or "Erro no Asaas"
+            return str(first)
+        return str(payload)
+    return str(exc)
+
+
 def _build_external_reference(user_id: int, plan_key: str, cycle: str) -> str:
     return f"{user_id}:{plan_key}:{cycle}"
 
@@ -690,11 +707,21 @@ def update_card(
 
     customer_document = (current_user.cnpj or current_user.cpf or "").strip()
     postal_code = (current_user.address_zipcode or "").replace("-", "").strip()
+    if len("".join(ch for ch in customer_document if ch.isdigit())) not in {11, 14}:
+        raise HTTPException(status_code=400, detail="Complete CPF/CNPJ no perfil antes de trocar para cartão.")
+    if len("".join(ch for ch in postal_code if ch.isdigit())) < 8:
+        raise HTTPException(status_code=400, detail="Complete o CEP no perfil antes de trocar para cartão.")
+    if not (current_user.name or "").strip() or not (current_user.email or "").strip():
+        raise HTTPException(status_code=400, detail="Complete nome e e-mail no perfil antes de trocar para cartão.")
+
+    card_number_digits = "".join(ch for ch in payload.number if ch.isdigit())
+    if len(card_number_digits) < 13:
+        raise HTTPException(status_code=400, detail="Número do cartão inválido.")
     resolved_ip = get_client_ip(request) or payload.remote_ip or (request.client.host if request.client else None) or "127.0.0.1"
     card_payload = {
         "creditCard": {
             "holderName": payload.holder_name,
-            "number": payload.number,
+            "number": card_number_digits,
             "expiryMonth": payload.expiry_month,
             "expiryYear": payload.expiry_year,
             "ccv": payload.ccv,
@@ -718,9 +745,9 @@ def update_card(
         client.update_subscription_card(subscription.asaas_subscription_id, card_payload)
     except AsaasAPIError as exc:  # noqa: BLE001
         logger.exception("Erro ao atualizar cartÃ£o da assinatura Asaas: %s", exc)
-        raise HTTPException(status_code=502, detail="Erro ao atualizar cartÃ£o no Asaas") from exc
+        raise HTTPException(status_code=502, detail=f"Erro ao atualizar cartão no Asaas. {_extract_asaas_error_detail(exc)}") from exc
 
-    digits = "".join(ch for ch in payload.number if ch.isdigit())
+    digits = card_number_digits
     subscription.payment_method_type = "card"
     subscription.card_last4 = digits[-4:] if len(digits) >= 4 else None
     if digits.startswith("4"):
