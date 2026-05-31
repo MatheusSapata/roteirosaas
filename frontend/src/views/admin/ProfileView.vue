@@ -42,7 +42,10 @@
             </span>
           </div>
           <div class="meta-item">
-            <span class="meta-label">Forma de pagamento</span>
+            <span class="meta-label meta-label-with-action">
+              Forma de pagamento
+              <button type="button" class="mini-link-btn" @click="openPaymentMethodModal">Alterar</button>
+            </span>
             <span class="badge badge-muted payment-badge">
               <template v-if="paymentMethodType === 'pix'">
                 <svg viewBox="0 0 24 24" class="payment-icon" aria-hidden="true">
@@ -259,6 +262,86 @@
         </div>
       </div>
     </transition>
+
+    <div
+      v-if="showPaymentMethodModal"
+      class="app-modal-overlay fixed inset-0 z-50 flex items-center justify-center px-4"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div class="w-full max-w-lg rounded-3xl bg-white p-6 text-left shadow-2xl shadow-emerald-900/20">
+        <div class="flex items-center justify-between">
+          <h3 class="text-lg font-semibold text-slate-900">Alterar forma de pagamento</h3>
+          <button class="text-slate-400 transition hover:text-slate-600" @click="closePaymentMethodModal">
+            <span class="sr-only">Fechar</span>
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+
+        <p class="mt-2 text-sm text-slate-600">
+          A alteração vale para as próximas cobranças da assinatura.
+        </p>
+
+        <div class="mt-4 flex gap-2">
+          <button
+            type="button"
+            class="rounded-full border px-4 py-2 text-sm font-semibold transition"
+            :class="paymentMethodChoice === 'pix' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-600 hover:border-slate-300'"
+            @click="paymentMethodChoice = 'pix'"
+          >
+            PIX
+          </button>
+          <button
+            type="button"
+            class="rounded-full border px-4 py-2 text-sm font-semibold transition"
+            :class="paymentMethodChoice === 'card' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-600 hover:border-slate-300'"
+            @click="paymentMethodChoice = 'card'"
+          >
+            Cartão
+          </button>
+        </div>
+
+        <div v-if="paymentMethodChoice === 'card'" class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div class="md:col-span-2">
+            <label class="fl">Nome impresso</label>
+            <input v-model="cardForm.holderName" class="fi" type="text" placeholder="Nome completo" />
+          </div>
+          <div class="md:col-span-2">
+            <label class="fl">Número do cartão</label>
+            <input v-model="cardForm.number" class="fi" type="text" placeholder="0000 0000 0000 0000" />
+          </div>
+          <div>
+            <label class="fl">Mês</label>
+            <input v-model="cardForm.expiryMonth" class="fi" type="text" placeholder="MM" />
+          </div>
+          <div>
+            <label class="fl">Ano</label>
+            <input v-model="cardForm.expiryYear" class="fi" type="text" placeholder="AAAA" />
+          </div>
+          <div class="md:col-span-2">
+            <label class="fl">CVV</label>
+            <input v-model="cardForm.ccv" class="fi" type="password" placeholder="CVV" />
+          </div>
+        </div>
+
+        <div class="mt-6 flex flex-wrap gap-3">
+          <button
+            class="inline-flex flex-1 items-center justify-center rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
+            :disabled="paymentMethodSubmitting"
+            @click="submitPaymentMethodChange"
+          >
+            {{ paymentMethodSubmitting ? "Salvando..." : "Salvar alteração" }}
+          </button>
+          <button
+            type="button"
+            class="flex-1 rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+            @click="closePaymentMethodModal"
+          >
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </div>
 
     <div
       v-if="showCancelModal"
@@ -517,6 +600,9 @@ const cropperApplying = ref(false);
 const actionLoading = ref(false);
 const showCardForm = ref(false);
 const showCancelModal = ref(false);
+const showPaymentMethodModal = ref(false);
+const paymentMethodChoice = ref<"pix" | "card">("pix");
+const paymentMethodSubmitting = ref(false);
 const cardSubmitting = ref(false);
 
 const cardForm = reactive({
@@ -856,6 +942,48 @@ const submitCardUpdate = async () => {
   }
 };
 
+const openPaymentMethodModal = () => {
+  paymentMethodChoice.value = paymentMethodType.value === "card" ? "card" : "pix";
+  showPaymentMethodModal.value = true;
+};
+
+const closePaymentMethodModal = () => {
+  showPaymentMethodModal.value = false;
+};
+
+const submitPaymentMethodChange = async () => {
+  paymentMethodSubmitting.value = true;
+  message.value = null;
+  error.value = null;
+  try {
+    if (paymentMethodChoice.value === "pix") {
+      await api.post("/billing/update-payment-method", { method: "pix" });
+    } else {
+      if (!cardForm.holderName || !cardForm.number || !cardForm.expiryMonth || !cardForm.expiryYear || !cardForm.ccv) {
+        error.value = viewCopy.cardForm.errors.required;
+        return;
+      }
+      await api.post("/billing/update-card", {
+        holder_name: cardForm.holderName,
+        number: cardForm.number.replace(/\s+/g, ""),
+        expiry_month: cardForm.expiryMonth,
+        expiry_year: cardForm.expiryYear,
+        ccv: cardForm.ccv
+      });
+    }
+    await loadBilling();
+    message.value = paymentMethodChoice.value === "pix" ? "Forma de pagamento alterada para PIX." : viewCopy.cardForm.success;
+    closePaymentMethodModal();
+    resetCardForm();
+  } catch (err) {
+    console.error(err);
+    const detail = (err as any)?.response?.data?.detail;
+    error.value = detail || "Não foi possível alterar a forma de pagamento.";
+  } finally {
+    paymentMethodSubmitting.value = false;
+  }
+};
+
 const changePassword = async () => {
   passwordError.value = "";
   passwordMessage.value = "";
@@ -1128,6 +1256,23 @@ watch(
   background: var(--surface2);
   color: var(--text-2);
   border: 1.5px solid var(--border);
+}
+
+.meta-label-with-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mini-link-btn {
+  border: none;
+  background: transparent;
+  color: #2563eb;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
 }
 
 .payment-badge {

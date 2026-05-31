@@ -3,7 +3,7 @@ import hashlib
 import json
 from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
@@ -156,6 +156,10 @@ class PlanChangeRequest(BaseModel):
 
 class PaymentMethodUpdateRequest(BaseModel):
     cycle: Optional[str] = None
+
+
+class PaymentMethodChangeRequest(BaseModel):
+    method: Literal["pix", "card"]
 
 
 class CardUpdateRequest(BaseModel):
@@ -709,6 +713,42 @@ def update_card(
         subscription.card_brand = "Hipercard"
     elif digits.startswith(("4011", "4312", "4389")):
         subscription.card_brand = "Elo"
+    db.add(subscription)
+    db.commit()
+    db.refresh(subscription)
+    db.refresh(current_user)
+    return _build_billing_info(current_user)
+
+
+@router.post("/update-payment-method", response_model=BillingInfo)
+def update_payment_method(
+    payload: PaymentMethodChangeRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> BillingInfo:
+    subscription = current_user.subscription
+    if not subscription or not subscription.asaas_subscription_id:
+        raise HTTPException(status_code=400, detail="Nenhuma assinatura ativa encontrada.")
+
+    if payload.method == "pix":
+        client = _get_asaas_client()
+        try:
+            client.update_subscription(subscription.asaas_subscription_id, {"billingType": "PIX"})
+        except AsaasAPIError as exc:  # noqa: BLE001
+            logger.exception("Erro ao alterar forma de pagamento para PIX no Asaas: %s", exc)
+            raise HTTPException(status_code=502, detail="Erro ao alterar forma de pagamento no Asaas") from exc
+
+        subscription.payment_method_type = "pix"
+        subscription.card_brand = None
+        subscription.card_last4 = None
+        db.add(subscription)
+        db.commit()
+        db.refresh(subscription)
+        db.refresh(current_user)
+        return _build_billing_info(current_user)
+
+    # For card we keep the same behavior: user must submit card data in /billing/update-card.
+    subscription.payment_method_type = "card"
     db.add(subscription)
     db.commit()
     db.refresh(subscription)
