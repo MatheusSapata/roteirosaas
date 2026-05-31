@@ -4,10 +4,10 @@
   </div>
   <div v-else class="profile-ref page-wrap">
     <div class="page-eyebrow">{{ viewCopy.header.eyebrow }}</div>
-    <div class="page-title">{{ viewCopy.header.title }}</div>
-    <div class="page-sub">{{ viewCopy.header.description }}</div>
+    <div class="page-title">{{ pageTitle }}</div>
+    <div class="page-sub">{{ pageDescription }}</div>
 
-    <div class="card">
+    <div v-if="!isInvitedTeamUser" class="card">
       <div class="card-body card-body-plan">
         <div class="subscription-top">
           <div class="plan-left">
@@ -39,6 +39,23 @@
             <span class="meta-label">Data de renovação</span>
             <span class="badge badge-muted">
               {{ billing?.valid_until ? formatDate(billing?.valid_until) : "--" }}
+            </span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Forma de pagamento</span>
+            <span class="badge badge-muted payment-badge">
+              <template v-if="paymentMethodType === 'pix'">
+                <svg viewBox="0 0 24 24" class="payment-icon" aria-hidden="true">
+                  <path
+                    fill="currentColor"
+                    d="M7.75 4.95a2.9 2.9 0 0 1 4.1 0l.15.15 1.08 1.08-1.56 1.56-1.08-1.08a.7.7 0 0 0-.98 0L6.2 9.93a.7.7 0 0 0 0 .98l1.08 1.08-1.56 1.56-1.08-1.08a2.9 2.9 0 0 1 0-4.1L7.75 4.95Zm8.5 0 3.1 3.42a2.9 2.9 0 0 1 0 4.1l-3.1 3.42a2.9 2.9 0 0 1-4.1 0L11 14.8l1.56-1.56 1.08 1.08a.7.7 0 0 0 .98 0l3.26-3.27a.7.7 0 0 0 0-.98l-3.26-3.27a.7.7 0 0 0-.98 0l-1.08 1.08L11 6.32l1.15-1.15a2.9 2.9 0 0 1 4.1 0Zm-6.2 6.21 1.74 1.74-1.74 1.74-1.74-1.74 1.74-1.74Z"
+                  />
+                </svg>
+                PIX
+              </template>
+              <template v-else>
+                {{ paymentMethodLabel }}
+              </template>
             </span>
           </div>
         </div>
@@ -291,6 +308,9 @@ interface BillingInfo {
   failed_attempts: number;
   preapproval_id?: string | null;
   billing_cycle?: string | null;
+  payment_method_type?: string | null;
+  card_brand?: string | null;
+  card_last4?: string | null;
 }
 
 const authStore = useAuthStore();
@@ -447,6 +467,13 @@ const viewCopy = {
 };
 
 const user = computed(() => authStore.user);
+const isInvitedTeamUser = computed(() => user.value?.is_owner === false);
+const pageTitle = computed(() => (isInvitedTeamUser.value ? t({ pt: "Perfil", es: "Perfil" }) : viewCopy.header.title));
+const pageDescription = computed(() =>
+  isInvitedTeamUser.value
+    ? t({ pt: "Veja seus dados principais.", es: "Consulta tus datos principales." })
+    : viewCopy.header.description
+);
 const formattedCpf = computed(() => formatCpf(user.value?.cpf || ""));
 const billing = ref<BillingInfo | null>(null);
 const isBootstrappingProfile = ref(true);
@@ -524,6 +551,18 @@ const billingCycleLabel = computed(() => {
 });
 
 const currentPlanLabel = computed(() => getPlanLabel(billing.value?.plan || user.value?.plan));
+
+const paymentMethodType = computed(() => String(billing.value?.payment_method_type || "").toLowerCase());
+
+const paymentMethodLabel = computed(() => {
+  if (paymentMethodType.value === "card" || paymentMethodType.value === "credit_card") {
+    const brand = (billing.value?.card_brand || "Cartão").trim();
+    const last4 = (billing.value?.card_last4 || "").trim();
+    return last4 ? `${brand} •••• ${last4}` : brand;
+  }
+  if (paymentMethodType.value === "pix") return "PIX";
+  return "--";
+});
 
 const isPaidPlan = computed(() => {
   const plan = billing.value?.plan || user.value?.plan;
@@ -1030,7 +1069,7 @@ watch(
 .subscription-meta {
   padding: 14px 22px;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -1052,6 +1091,18 @@ watch(
   background: var(--surface2);
   color: var(--text-2);
   border: 1.5px solid var(--border);
+}
+
+.payment-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.payment-icon {
+  width: 14px;
+  height: 14px;
+  color: #32bcad;
 }
 
 .notes {
