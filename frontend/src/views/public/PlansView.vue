@@ -1,6 +1,6 @@
 ﻿<template>
   <div class="min-h-screen bg-white text-slate-900">
-    <div class="relative px-4 pb-16 lg:px-8 2xl:px-10">
+    <div class="plans-content-scale relative px-4 pb-16 lg:px-8 2xl:px-10">
       <header class="relative mx-auto max-w-[96rem] pt-10 pb-10 text-center">
         <h1 class="text-4xl font-black tracking-tight text-slate-900 md:text-5xl">
           {{ heroTitle }}
@@ -9,23 +9,6 @@
         <p class="mx-auto mt-4 max-w-none text-sm text-slate-600 md:text-base md:whitespace-nowrap">
           {{ heroDescription }}
         </p>
-
-        <div class="mt-6 flex flex-wrap items-center justify-center gap-3 text-sm text-slate-600">
-          <div class="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 shadow-sm ring-1 ring-slate-200">
-            <span class="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">✓</span>
-            <span>{{ heroHighlights.upgrade }}</span>
-          </div>
-
-          <div class="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 shadow-sm ring-1 ring-slate-200">
-            <span class="flex h-6 w-6 items-center justify-center rounded-full bg-amber-100 text-amber-600">⚡</span>
-            <span>{{ heroHighlights.setup }}</span>
-          </div>
-
-          <div class="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 shadow-sm ring-1 ring-slate-200">
-            <span class="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">↻</span>
-            <span>{{ heroHighlights.downgrade }}</span>
-          </div>
-        </div>
       </header>
 
       <div
@@ -735,3 +718,19 @@ onMounted(() => {
   loadBilling();
 });
 </script>
+
+<style scoped>
+@media (min-width: 1024px) and (max-width: 1919px) {
+  .plans-content-scale {
+    transform: scale(0.75);
+    transform-origin: top center;
+  }
+}
+
+@media (min-width: 1920px) {
+  .plans-content-scale {
+    transform: scale(0.9);
+    transform-origin: top center;
+  }
+}
+</style>

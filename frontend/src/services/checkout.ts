@@ -88,6 +88,19 @@ export interface CheckoutSession {
   is_upgrade?: boolean;
 }
 
+export interface CheckoutCouponPreviewPayload {
+  offer_key: string;
+  coupon_code: string;
+}
+
+export interface CheckoutCouponPreview {
+  offer_key: string;
+  amount: string;
+  original_amount: string;
+  discount_amount: string;
+  applied_coupon_code: string;
+}
+
 export interface CheckoutCardPayload {
   token: string;
   holder_name: string;
@@ -193,6 +206,11 @@ export const createUpgradeCheckoutSession = async (offerKey: string, couponCode?
     offer_key: offerKey,
     coupon_code: couponCode || null,
   });
+  return response.data;
+};
+
+export const previewCheckoutCoupon = async (payload: CheckoutCouponPreviewPayload) => {
+  const response = await api.post<CheckoutCouponPreview>("/checkout/public/coupon-preview", payload);
   return response.data;
 };
 

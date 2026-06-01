@@ -139,6 +139,29 @@ class CheckoutSessionCreate(BaseModel):
         return value
 
 
+class CheckoutCouponPreviewIn(BaseModel):
+    offer_key: str = Field(..., min_length=1, max_length=120)
+    coupon_code: str = Field(..., min_length=1, max_length=80)
+
+    @field_validator("offer_key")
+    @classmethod
+    def normalize_offer_key(cls, value: str) -> str:
+        return value.strip().lower()
+
+    @field_validator("coupon_code")
+    @classmethod
+    def normalize_coupon_code(cls, value: str) -> str:
+        return value.strip().upper()
+
+
+class CheckoutCouponPreviewOut(BaseModel):
+    offer_key: str
+    amount: Decimal
+    original_amount: Decimal
+    discount_amount: Decimal
+    applied_coupon_code: str
+
+
 class CheckoutSessionOut(BaseModel):
     token: str
     offer_key: str
