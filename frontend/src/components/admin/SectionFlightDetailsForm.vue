@@ -611,12 +611,26 @@ const runLookup = async (forceRefresh = false) => {
   }
 };
 
-const parseDatetime = (value?: string | null) => {
+const parseFlightCivilDate = (value?: string | null) => {
   if (!value) return null;
-  const parsed = new Date(value);
+  const raw = String(value).trim();
+  if (!raw) return null;
+  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})(?::(\d{2}))?/);
+  if (!match) return null;
+  const [, year, month, day, hour, minute, second] = match;
+  const parsed = new Date(
+    Number(year),
+    Number(month) - 1,
+    Number(day),
+    Number(hour),
+    Number(minute),
+    Number(second || "0")
+  );
   if (Number.isNaN(parsed.getTime())) return null;
   return parsed;
 };
+
+const parseDatetime = (value?: string | null) => parseFlightCivilDate(value);
 
 const layoverText = (index: number) => {
   const current = activeSegments.value[index];
@@ -645,8 +659,8 @@ const segmentTitle = (segment: FlightSectionSegment, index: number) => {
 
 const toDatetimeLocal = (value?: string | null) => {
   if (!value) return "";
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
+  const parsed = parseFlightCivilDate(value);
+  if (!parsed || Number.isNaN(parsed.getTime())) {
     return String(value).slice(0, 16);
   }
   const year = parsed.getFullYear();

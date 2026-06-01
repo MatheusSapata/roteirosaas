@@ -173,6 +173,7 @@ class CheckoutSessionOut(BaseModel):
     applied_coupon_code: str | None = None
     status: str
     payment_method: str | None = None
+    pix_mode: Literal["automatic", "conventional"] | None = None
     customer_name: str
     customer_email: str
     customer_document: str
