@@ -781,7 +781,7 @@ const navCopy = {
   clients: { pt: "Clientes", es: "Clientes" },
   integrations: { pt: "Integra\u00E7\u00F5es", es: "Integraciones" },
   tracking: { pt: "Rastreamento", es: "Rastreo" },
-  connections: { pt: "Atendimento", es: "Atención" },
+  connections: { pt: "Notificações", es: "Atención" },
   domains: { pt: "Dom\u00EDnios", es: "Dominios" },
   agency: { pt: "Minha Ag\u00EAncia", es: "Mi Agencia" },
   profile: { pt: "Perfil", es: "Perfil" },

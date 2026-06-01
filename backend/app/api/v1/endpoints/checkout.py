@@ -9,6 +9,8 @@ from app.core.request_ip import get_client_ip
 from app.models.user import User
 from app.schemas.checkout import (
     CheckoutCardStartRequest,
+    CheckoutCouponPreviewIn,
+    CheckoutCouponPreviewOut,
     CheckoutPasswordRequest,
     CheckoutPasswordResponse,
     CheckoutPublicConfigOut,
@@ -35,6 +37,7 @@ from app.services.checkout import (
     resolve_offer_checkout,
     serialize_checkout_session,
     serialize_checkout_settings,
+    preview_coupon_amount,
     start_card_payment,
     start_pix_payment,
     track_checkout_event,
@@ -126,6 +129,13 @@ def create_public_checkout_session(payload: CheckoutSessionCreate, db: Session =
         metadata=payload.metadata,
     )
     return CheckoutSessionOut.model_validate(serialize_checkout_session(db, session))
+
+
+@router.post("/public/coupon-preview", response_model=CheckoutCouponPreviewOut)
+def preview_public_coupon(payload: CheckoutCouponPreviewIn, db: Session = Depends(get_db)) -> CheckoutCouponPreviewOut:
+    offer = resolve_offer(db, payload.offer_key)
+    preview = preview_coupon_amount(db, offer=offer, coupon_code=payload.coupon_code)
+    return CheckoutCouponPreviewOut.model_validate(preview)
 
 
 @router.post("/public/session/upgrade", response_model=CheckoutSessionOut, status_code=status.HTTP_201_CREATED)

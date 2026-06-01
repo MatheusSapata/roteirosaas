@@ -413,6 +413,26 @@ def apply_coupon_to_offer_amount(offer: CheckoutOfferOut, coupon: CheckoutCoupon
     return original_amount, final_amount, applied_discount
 
 
+def preview_coupon_amount(
+    db: Session,
+    *,
+    offer: CheckoutOfferOut,
+    coupon_code: str,
+) -> dict[str, Any]:
+    settings_record = get_checkout_settings(db)
+    coupon = resolve_coupon(settings_record, coupon_code, offer.key)
+    if not coupon:
+        raise HTTPException(status_code=400, detail="Cupom não encontrado ou inativo.")
+    original_amount, final_amount, discount_amount = apply_coupon_to_offer_amount(offer, coupon)
+    return {
+        "offer_key": offer.key,
+        "amount": final_amount,
+        "original_amount": original_amount,
+        "discount_amount": discount_amount or Decimal("0.00"),
+        "applied_coupon_code": coupon.code,
+    }
+
+
 def _ensure_asaas_client() -> AsaasClient:
     if not settings.asaas_api_key:
         raise HTTPException(status_code=500, detail="Asaas não configurado.")

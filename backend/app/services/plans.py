@@ -9,13 +9,25 @@ def plan_limits(plan: str) -> Tuple[int | None, int | None]:
     max_pages: None = ilimitado e considera todas as paginas criadas (publicadas ou rascunhos).
     max_sections: None = sem limite; rodape free nao conta para o limite.
     """
-    if plan == "trial":
+    normalized = str(plan or "").strip().lower()
+    aliases = {
+        "profissional": "essencial",
+        "professional": "essencial",
+        "agencia": "growth",
+        "agency": "growth",
+        "escala": "infinity",
+        "scale": "infinity",
+        "test": "teste",
+    }
+    normalized = aliases.get(normalized, normalized or "free")
+
+    if normalized == "trial":
         return 3, None
-    if plan == "essencial":
+    if normalized == "essencial":
         return 3, None
-    if plan == "growth":
+    if normalized == "growth":
         return 10, None
-    if plan in {"infinity", "teste"}:
+    if normalized in {"infinity", "teste"}:
         return None, None
     # free
     return 1, 4

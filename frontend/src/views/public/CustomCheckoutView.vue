@@ -51,31 +51,38 @@
               <div class="checkout-field-row">
                 <label class="checkout-field">
                   <span>CEP</span>
-                  <input v-model="form.customer_zipcode" placeholder="00000-000" />
+                  <div class="checkout-cep-wrap">
+                    <input v-model="form.customer_zipcode" placeholder="00000-000" />
+                    <a
+                      class="checkout-link-help checkout-link-help-inside"
+                      href="https://buscacepinter.correios.com.br/app/endereco/index.php"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Não sei meu CEP
+                    </a>
+                  </div>
                 </label>
-                <a
-                  class="checkout-link-help"
-                  href="https://buscacepinter.correios.com.br/app/endereco/index.php"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Não sei meu CEP
-                </a>
               </div>
               <label class="checkout-field">
                 <span>Você possui cupom de desconto?</span>
-                <input v-model="form.coupon_code" placeholder="Digite seu cupom" />
+                <div class="checkout-coupon-wrap">
+                  <input v-model="form.coupon_code" placeholder="Digite seu cupom" />
+                  <span
+                    class="checkout-coupon-apply"
+                    :class="{ 'is-disabled': submitting || !form.coupon_code.trim() }"
+                    role="button"
+                    tabindex="0"
+                    @click="(submitting || !form.coupon_code.trim()) ? null : applyCoupon()"
+                    @keydown.enter.prevent="(submitting || !form.coupon_code.trim()) ? null : applyCoupon()"
+                  >
+                    Aplicar Cupom
+                  </span>
+                </div>
               </label>
               <button class="checkout-primary" type="submit" :disabled="submitting">
                 {{ submitting ? "Prosseguindo..." : "Prosseguir" }}
               </button>
-              <div class="checkout-protected">
-                <svg viewBox="0 0 20 24" aria-hidden="true">
-                  <path d="M0 0h20v24H0z" fill="none" />
-                  <path fill="currentColor" d="M3.5 6.5V10H2a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V12a2 2 0 0 0-2-2h-1.5V6.5a6.5 6.5 0 1 0-13 0M6 10V6.5a4 4 0 0 1 8 0V10zm2 5.5a2 2 0 1 1 3.092 1.676l-.008.005s.195 1.18.415 2.57v.001a.75.75 0 0 1-.749.749H9.248a.75.75 0 0 1-.749-.749v-.001l.415-2.57a2 2 0 0 1-.916-1.68z" />
-                </svg>
-                <span>Sua compra está protegida. Pagamento processado pelo Asaas</span>
-              </div>
             </form>
           </template>
 
@@ -330,6 +337,14 @@
           <p v-if="inlineError" class="checkout-inline-error">{{ inlineError }}</p>
         </section>
 
+        <div v-if="step !== 'success' && step !== 'password'" class="checkout-protected checkout-protected-footer">
+          <svg viewBox="0 0 20 24" aria-hidden="true">
+            <path d="M0 0h20v24H0z" fill="none" />
+            <path fill="currentColor" d="M3.5 6.5V10H2a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V12a2 2 0 0 0-2-2h-1.5V6.5a6.5 6.5 0 1 0-13 0M6 10V6.5a4 4 0 0 1 8 0V10zm2 5.5a2 2 0 1 1 3.092 1.676l-.008.005s.195 1.18.415 2.57v.001a.75.75 0 0 1-.749.749H9.248a.75.75 0 0 1-.749-.749v-.001l.415-2.57a2 2 0 0 1-.916-1.68z" />
+          </svg>
+          <span>Sua compra está protegida. Pagamento processado pelo Asaas</span>
+        </div>
+
         <footer v-if="step !== 'success' && step !== 'password'" class="checkout-footer">
           <div v-if="hasAppliedCoupon" class="checkout-footer-discount-line">
             <div class="checkout-footer-discount-main">
@@ -341,7 +356,7 @@
                 />
               </svg>
               <div class="checkout-footer-discount-text">
-                <span><strong>Cupom aplicado:</strong> {{ session?.applied_coupon_code }}</span>
+                <span><strong>Cupom aplicado:</strong> {{ appliedCouponLabel.replace("Cupom ", "") }}</span>
                 <span><strong>Desconto:</strong> {{ discountPercentLabel }}</span>
                 <span><strong>Economia:</strong> {{ discountAmountLabel.replace("Economia ", "") }}</span>
               </div>
@@ -387,10 +402,12 @@ import {
   finishCheckoutPassword,
   getCheckoutConfig,
   getCheckoutSession,
+  previewCheckoutCoupon,
   trackCheckoutEvent,
   refreshCheckoutSession,
   startCardCheckout,
   startPixCheckout,
+  type CheckoutCouponPreview,
   type CheckoutPublicConfig,
   type CheckoutSession
 } from "../../services/checkout";
@@ -407,6 +424,7 @@ const offerKey = computed(() => String(route.params.offerKey || route.query.offe
 const isUpgradeFlow = computed(() => String(route.query.upgrade || "") === "1" || Boolean(session.value?.is_upgrade));
 const config = ref<CheckoutPublicConfig | null>(null);
 const session = ref<CheckoutSession | null>(null);
+const couponPreview = ref<CheckoutCouponPreview | null>(null);
 const step = ref<Step>("details");
 const loading = ref(true);
 const submitting = ref(false);
@@ -463,29 +481,33 @@ const card = reactive({
 });
 
 const themeClass = computed(() => (config.value?.theme_mode === "light" ? "checkout-theme-light" : "checkout-theme-dark"));
+const effectiveAmount = computed(() => Number(session.value?.amount ?? couponPreview.value?.amount ?? config.value?.offer.amount ?? 0));
+const effectiveOriginalAmount = computed(() => Number(session.value?.original_amount ?? couponPreview.value?.original_amount ?? config.value?.offer.amount ?? 0));
+const effectiveDiscountAmount = computed(() => Number(session.value?.discount_amount ?? couponPreview.value?.discount_amount ?? 0));
+const effectiveAppliedCouponCode = computed(() => String(session.value?.applied_coupon_code || couponPreview.value?.applied_coupon_code || "").trim());
 const formattedAmount = computed(() => {
-  const value = Number(session.value?.amount || config.value?.offer.amount || 0);
+  const value = effectiveAmount.value;
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 });
-const hasAppliedCoupon = computed(() => Boolean(session.value?.applied_coupon_code && Number(session.value?.discount_amount || 0) > 0));
+const hasAppliedCoupon = computed(() => Boolean(effectiveAppliedCouponCode.value && effectiveDiscountAmount.value > 0));
 const appliedCouponLabel = computed(() => {
-  if (!session.value?.applied_coupon_code) return "";
-  return `Cupom ${session.value.applied_coupon_code}`;
+  if (!effectiveAppliedCouponCode.value) return "";
+  return `Cupom ${effectiveAppliedCouponCode.value}`;
 });
 const discountAmountLabel = computed(() => {
-  const value = Number(session.value?.discount_amount || 0);
+  const value = effectiveDiscountAmount.value;
   if (!Number.isFinite(value) || value <= 0) return "";
   return `Economia ${value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`;
 });
 const discountPercentLabel = computed(() => {
-  const original = Number(session.value?.original_amount || 0);
-  const discount = Number(session.value?.discount_amount || 0);
+  const original = effectiveOriginalAmount.value;
+  const discount = effectiveDiscountAmount.value;
   if (!Number.isFinite(original) || !Number.isFinite(discount) || original <= 0 || discount <= 0) return "";
   return `${Math.round((discount / original) * 100)}% off`;
 });
 const originalAmountLabel = computed(() => {
-  const original = Number(session.value?.original_amount || 0);
-  const current = Number(session.value?.amount || 0);
+  const original = effectiveOriginalAmount.value;
+  const current = effectiveAmount.value;
   if (!Number.isFinite(original) || !Number.isFinite(current) || original <= current) return "";
   return original.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 });
@@ -748,6 +770,41 @@ const submitDetails = async () => {
   }
 };
 
+const applyCoupon = async () => {
+  if (!config.value) return;
+  const coupon = form.coupon_code.trim();
+  if (!coupon) return;
+  submitting.value = true;
+  inlineError.value = "";
+  try {
+    if (!session.value) {
+      couponPreview.value = await previewCheckoutCoupon({
+        offer_key: config.value.offer.key,
+        coupon_code: coupon,
+      });
+      form.coupon_code = couponPreview.value.applied_coupon_code || coupon;
+      return;
+    }
+    stopPolling();
+    session.value = await createCheckoutSession({
+      offer_key: config.value.offer.key,
+      customer_name: session.value?.customer_name || form.customer_name,
+      customer_email: session.value?.customer_email || form.customer_email,
+      customer_document: form.customer_document,
+      customer_phone: session.value?.customer_phone || form.customer_phone,
+      customer_zipcode: session.value?.customer_zipcode || form.customer_zipcode,
+      coupon_code: coupon
+    });
+    form.coupon_code = session.value.applied_coupon_code || coupon;
+    router.replace({ query: { ...route.query, token: session.value.token } }).catch(() => {});
+  } catch (error: any) {
+    console.error(error);
+    inlineError.value = getFriendlyCheckoutError(error, "Não foi possível aplicar este cupom.");
+  } finally {
+    submitting.value = false;
+  }
+};
+
 const fillFormFromSession = (data: CheckoutSession) => {
   form.customer_name = data.customer_name || "";
   form.customer_email = data.customer_email || "";
@@ -779,11 +836,19 @@ const choosePix = async () => {
 };
 
 const removeAppliedCoupon = async () => {
-  if (!config.value || !session.value || !session.value.applied_coupon_code) return;
+  if (!config.value) return;
+  if (!session.value) {
+    form.coupon_code = "";
+    couponPreview.value = null;
+    inlineError.value = "";
+    return;
+  }
+  if (!session.value.applied_coupon_code) return;
   submitting.value = true;
   inlineError.value = "";
   try {
     form.coupon_code = "";
+    couponPreview.value = null;
     stopPolling();
     session.value = await createCheckoutSession({
       offer_key: config.value.offer.key,
@@ -1277,6 +1342,44 @@ onBeforeUnmount(() => {
   font-size: 15px;
 }
 
+.checkout-coupon-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.checkout-cep-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.checkout-coupon-wrap input {
+  width: 100%;
+  padding-right: 118px;
+}
+
+.checkout-cep-wrap input {
+  width: 100%;
+  padding-right: 130px;
+}
+
+.checkout-coupon-apply {
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  transform: translateY(-50%);
+  font-size: 20px;
+  font-weight: 800;
+  color: #18c269;
+  user-select: none;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.checkout-coupon-apply.is-disabled {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
 .checkout-theme-light .checkout-field input,
 .checkout-theme-light .checkout-field select {
   border-color: #d7dde6;
@@ -1301,6 +1404,15 @@ onBeforeUnmount(() => {
   margin-top: 18px;
 }
 
+.checkout-link-help-inside {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  margin-top: 0;
+  font-size: 12px;
+}
+
 .checkout-protected {
   margin: 10px auto 0;
   display: inline-flex;
@@ -1318,6 +1430,11 @@ onBeforeUnmount(() => {
   flex: 0 0 auto;
 }
 
+.checkout-protected-footer {
+  width: 90%;
+  margin: 6px auto 10px;
+}
+
 .checkout-primary,
 .checkout-secondary,
 .checkout-method-card {
@@ -1332,6 +1449,7 @@ onBeforeUnmount(() => {
   border: 0;
   background: #18c269;
   color: #fff;
+  margin-top: 8px;
 }
 
 .checkout-secondary {
@@ -1786,6 +1904,10 @@ onBeforeUnmount(() => {
   margin-top: 10px;
   color: #ff6b6b;
   font-size: 13px;
+  width: 90%;
+  margin-left: auto;
+  margin-right: auto;
+  text-align: center;
 }
 
 .checkout-access-transition {
@@ -2070,6 +2192,20 @@ onBeforeUnmount(() => {
   }
 }
 
+@media (min-width: 981px) {
+  .checkout-stage {
+    transform: scale(0.9);
+    transform-origin: center center;
+  }
+
+  .checkout-footer {
+    position: sticky;
+    bottom: 0;
+    width: 100%;
+    z-index: 10;
+  }
+}
+
 @media (max-width: 980px) {
   .checkout-shell {
     height: auto;
@@ -2128,6 +2264,12 @@ onBeforeUnmount(() => {
     width: 100%;
   }
 
+  .checkout-protected-footer {
+    width: 100%;
+    padding: 0 16px;
+    margin-bottom: 8px;
+  }
+
   .checkout-title {
     font-size: 22px;
     line-height: 1.12;
@@ -2135,6 +2277,12 @@ onBeforeUnmount(() => {
 
   .checkout-subtitle {
     font-size: 15px;
+  }
+
+  .checkout-field input,
+  .checkout-field select,
+  .checkout-password-wrap input {
+    font-size: 16px;
   }
 
   .checkout-method-card {

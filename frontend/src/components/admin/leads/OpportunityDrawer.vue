@@ -592,17 +592,10 @@ const handleFinalizeOpportunity = async (outcome: "won" | "lost") => {
   savingFinalize.value = true;
   try {
     const previousOutcome = details.value?.closeOutcome ?? null;
-    const toLabel = (value: "won" | "lost" | null) => {
-      if (value === "won") return "Ganha";
-      if (value === "lost") return "Perdida";
-      return "Aberta";
-    };
 
     if (previousOutcome === outcome) {
       await persistForm();
       await leadStore.updateOpportunity(props.contactId, { closeOutcome: null });
-      const transitionText = `Status da oportunidade alterado: ${toLabel(previousOutcome)} -> ${toLabel(null)}`;
-      await leadStore.addOpportunityNote(props.contactId, transitionText);
       await leadStore.fetchOpportunityDetails(props.contactId);
       cancelFinalizeEditor();
       return;
@@ -613,10 +606,6 @@ const handleFinalizeOpportunity = async (outcome: "won" | "lost") => {
       outcome,
       note: finalizeNote.value.trim() || null,
     });
-    if (previousOutcome !== outcome) {
-      const transitionText = `Status da oportunidade alterado: ${toLabel(previousOutcome)} -> ${toLabel(outcome)}`;
-      await leadStore.addOpportunityNote(props.contactId, transitionText);
-    }
     await leadStore.fetchOpportunityDetails(props.contactId);
     cancelFinalizeEditor();
   } catch (error) {
