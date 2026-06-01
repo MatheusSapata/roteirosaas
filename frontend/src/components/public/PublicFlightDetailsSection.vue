@@ -720,7 +720,19 @@ const lastSegment = (journey: FlightSectionJourney) => {
 
 const parseDate = (value?: string | null) => {
   if (!value) return null;
-  const parsed = new Date(value);
+  const raw = String(value).trim();
+  if (!raw) return null;
+  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})(?::(\d{2}))?/);
+  if (!match) return null;
+  const [, year, month, day, hour, minute, second] = match;
+  const parsed = new Date(
+    Number(year),
+    Number(month) - 1,
+    Number(day),
+    Number(hour),
+    Number(minute),
+    Number(second || "0")
+  );
   if (Number.isNaN(parsed.getTime())) return null;
   return parsed;
 };

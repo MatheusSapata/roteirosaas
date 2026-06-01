@@ -33,6 +33,7 @@ from app.services.viajechat_checkout_flow import (
 )
 
 settings = get_settings()
+TEMP_DISABLE_CHECKOUT_SPLIT = False
 
 DEFAULT_CHECKOUTS = [
     {
@@ -189,20 +190,26 @@ def _infer_card_brand(number: str | None) -> str | None:
     return None
 
 
+def _with_optional_split(payload: dict[str, Any]) -> dict[str, Any]:
+    if TEMP_DISABLE_CHECKOUT_SPLIT:
+        payload.pop("split", None)
+    return payload
+
+
 def _apply_upgrade_after_payment(db: Session, session: CheckoutSession) -> User:
     subscription = _resolve_target_subscription_for_upgrade(db, session)
     if not subscription or not subscription.asaas_subscription_id:
         raise HTTPException(status_code=400, detail="Assinatura ativa não encontrada para upgrade.")
 
     client = _ensure_asaas_client()
-    payload = {
+    payload = _with_optional_split({
         "value": float(_parse_decimal(session.amount)),
         "cycle": _resolve_asaas_cycle(session.billing_cycle),
         "status": "ACTIVE",
         "updatePendingPayments": True,
         "externalReference": f"checkout_upgrade:{session.token}",
         "split": build_default_split_payload(),
-    }
+    })
     client.update_subscription(subscription.asaas_subscription_id, payload)
 
     user = db.query(User).filter(User.id == subscription.user_id).first()
@@ -858,6 +865,14 @@ def serialize_checkout_session(db: Session, session: CheckoutSession) -> dict[st
     requires_password_setup = not bool(user and user.hashed_password and session.password_defined_at)
     user_exists = bool(user)
     metadata = session.metadata_json or {}
+    pix_mode = metadata.get("pix_mode")
+    if session.payment_method == "pix" and pix_mode not in {"automatic", "conventional"}:
+        if metadata.get("asaas_pix_automatic_authorization_id"):
+            pix_mode = "automatic"
+        elif session.asaas_payment_id or metadata.get("asaas_subscription_id"):
+            pix_mode = "conventional"
+        else:
+            pix_mode = None
     return {
         "token": session.token,
         "offer_key": session.offer_key,
@@ -869,6 +884,7 @@ def serialize_checkout_session(db: Session, session: CheckoutSession) -> dict[st
         "applied_coupon_code": metadata.get("applied_coupon_code"),
         "status": session.status,
         "payment_method": session.payment_method,
+        "pix_mode": pix_mode,
         "customer_name": session.customer_name,
         "customer_email": session.customer_email,
         "customer_document": session.customer_document,
@@ -919,6 +935,7 @@ def start_pix_payment(db: Session, session: CheckoutSession) -> CheckoutSession:
             immediate_qr = client.get_pix_qr_code(payment_id) or {}
         except AsaasAPIError:
             immediate_qr = {}
+        pix_mode = "conventional"
     else:
         frequency = "ANNUALLY" if session.billing_cycle == "annual" else "MONTHLY"
         start_date = _billing_today()
@@ -944,10 +961,11 @@ def start_pix_payment(db: Session, session: CheckoutSession) -> CheckoutSession:
         if not authorization_id:
             raise HTTPException(status_code=502, detail="Asaas nao retornou autorizacao de Pix Automatico.")
         immediate_qr = authorization.get("immediateQrCode") or {}
+        pix_mode = "automatic"
         # Fallback: alguns ambientes retornam autorização sem immediateQrCode.
         # Nesse caso criamos assinatura PIX padrão e buscamos o QR no primeiro pagamento.
         if not immediate_qr.get("payload"):
-            subscription_payload: dict[str, Any] = {
+            subscription_payload: dict[str, Any] = _with_optional_split({
                 "customer": customer_id,
                 "billingType": "PIX",
                 "nextDueDate": _billing_today(),
@@ -956,7 +974,7 @@ def start_pix_payment(db: Session, session: CheckoutSession) -> CheckoutSession:
                 "description": session.product_name,
                 "externalReference": f"checkout:{session.token}",
                 "split": build_default_split_payload(),
-            }
+            })
             subscription = client.create_subscription(subscription_payload)
             subscription_id = _extract_asaas_resource_id(subscription.get("id"))
             if subscription_id:
@@ -969,6 +987,7 @@ def start_pix_payment(db: Session, session: CheckoutSession) -> CheckoutSession:
                         immediate_qr = client.get_pix_qr_code(payment_id) or {}
                     except AsaasAPIError:
                         immediate_qr = {}
+            pix_mode = "conventional"
 
     session.asaas_customer_id = customer_id
     session.payment_method = "pix"
@@ -983,6 +1002,7 @@ def start_pix_payment(db: Session, session: CheckoutSession) -> CheckoutSession:
             session.pix_expiration_date = None
     session.updated_at = _utcnow()
     metadata = dict(session.metadata_json or {})
+    metadata["pix_mode"] = pix_mode
     if authorization_id:
         metadata["asaas_pix_automatic_authorization_id"] = authorization_id
     if subscription_id:
@@ -1024,7 +1044,7 @@ def start_card_payment(db: Session, session: CheckoutSession, payload: dict[str,
     payment_id = None
     first_payment: dict[str, Any] = {}
     if is_upgrade and can_upgrade_in_place:
-        payment_payload: dict[str, Any] = {
+        payment_payload: dict[str, Any] = _with_optional_split({
             "customer": customer_id,
             "billingType": "CREDIT_CARD",
             "value": float(amount),
@@ -1049,12 +1069,12 @@ def start_card_payment(db: Session, session: CheckoutSession, payload: dict[str,
                 "mobilePhone": session.customer_phone,
             },
             "remoteIp": payload.get("remote_ip") or "127.0.0.1",
-        }
+        })
         created_payment = client.create_payment(payment_payload)
         payment_id = created_payment.get("id")
         first_payment = created_payment
     else:
-        subscription_payload: dict[str, Any] = {
+        subscription_payload: dict[str, Any] = _with_optional_split({
             "customer": customer_id,
             "billingType": "CREDIT_CARD",
             "nextDueDate": _billing_today(),
@@ -1080,7 +1100,7 @@ def start_card_payment(db: Session, session: CheckoutSession, payload: dict[str,
                 "mobilePhone": session.customer_phone,
             },
             "remoteIp": payload.get("remote_ip") or "127.0.0.1",
-        }
+        })
         subscription = client.create_subscription(subscription_payload)
         subscription_id = _extract_asaas_resource_id(subscription.get("id"))
         if not subscription_id:

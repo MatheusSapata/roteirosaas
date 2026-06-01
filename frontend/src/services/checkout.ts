@@ -73,6 +73,7 @@ export interface CheckoutSession {
   applied_coupon_code?: string | null;
   status: string;
   payment_method?: string | null;
+  pix_mode?: "automatic" | "conventional" | null;
   customer_name: string;
   customer_email: string;
   customer_document: string;
