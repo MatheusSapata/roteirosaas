@@ -636,6 +636,15 @@ const parseFlightCivilDate = (value?: string | null) => {
 
 const parseDatetime = (value?: string | null) => parseFlightCivilDate(value);
 
+const extractDatetimeLocalValue = (value?: string | null) => {
+  if (!value) return "";
+  const raw = String(value).trim();
+  if (!raw) return "";
+  const match = raw.match(/^(\d{4}-\d{2}-\d{2})[T\s](\d{2}:\d{2})/);
+  if (match) return `${match[1]}T${match[2]}`;
+  return raw.slice(0, 16);
+};
+
 const layoverText = (index: number) => {
   const current = activeSegments.value[index];
   const next = activeSegments.value[index + 1];
@@ -662,17 +671,7 @@ const segmentTitle = (segment: FlightSectionSegment, index: number) => {
 };
 
 const toDatetimeLocal = (value?: string | null) => {
-  if (!value) return "";
-  const parsed = parseFlightCivilDate(value);
-  if (!parsed || Number.isNaN(parsed.getTime())) {
-    return String(value).slice(0, 16);
-  }
-  const year = parsed.getFullYear();
-  const month = String(parsed.getMonth() + 1).padStart(2, "0");
-  const day = String(parsed.getDate()).padStart(2, "0");
-  const hour = String(parsed.getHours()).padStart(2, "0");
-  const minute = String(parsed.getMinutes()).padStart(2, "0");
-  return `${year}-${month}-${day}T${hour}:${minute}`;
+  return extractDatetimeLocalValue(value);
 };
 
 const fromDatetimeLocal = (value?: string | null) => {

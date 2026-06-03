@@ -183,7 +183,7 @@ class AeroDataBoxClient(FlightProviderInterface):
         payload = self._request(
             path,
             api_key=api_key,
-            params={"withAircraftImage": "false", "withLocation": "false"},
+            params={"withAircraftImage": "false", "withLocation": "true"},
         )
         candidates = self._response_to_list(payload)
         selected = self._match_flight(candidates, normalized_flight)

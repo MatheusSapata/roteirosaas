@@ -718,7 +718,24 @@ const lastSegment = (journey: FlightSectionJourney) => {
   return list[list.length - 1] || null;
 };
 
-const parseDate = (value?: string | null) => {
+const parseCivilDateTime = (value?: string | null) => {
+  if (!value) return null;
+  const raw = String(value).trim();
+  if (!raw) return null;
+  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s](\d{2}):(\d{2})(?::(\d{2}))?)?/);
+  if (!match) return null;
+  const [, year, month, day, hour = "00", minute = "00", second = "00"] = match;
+  return {
+    year: Number(year),
+    month: Number(month),
+    day: Number(day),
+    hour: Number(hour),
+    minute: Number(minute),
+    second: Number(second)
+  };
+};
+
+const parseInstantDate = (value?: string | null) => {
   if (!value) return null;
   const raw = String(value).trim();
   if (!raw) return null;
@@ -726,26 +743,11 @@ const parseDate = (value?: string | null) => {
     const parsed = new Date(raw);
     return Number.isNaN(parsed.getTime()) ? null : parsed;
   }
-  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})(?::(\d{2}))?/);
-  if (!match) return null;
-  const [, year, month, day, hour, minute, second] = match;
-  const parsed = new Date(
-    Number(year),
-    Number(month) - 1,
-    Number(day),
-    Number(hour),
-    Number(minute),
-    Number(second || "0")
-  );
-  if (Number.isNaN(parsed.getTime())) return null;
-  return parsed;
+  const parts = parseCivilDateTime(raw);
+  if (!parts) return null;
+  const parsed = new Date(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
 };
-
-const timeFormatter = new Intl.DateTimeFormat("pt-BR", {
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: false
-});
 
 const fullDateFormatter = new Intl.DateTimeFormat("pt-BR", {
   weekday: "short",
@@ -763,14 +765,16 @@ const shortDateFormatter = new Intl.DateTimeFormat("pt-BR", {
 const normalizePtDate = (value: string) => value.replace(/\sde\s(\d{4})$/i, " $1");
 
 const formatTime = (value?: string | null) => {
-  const date = parseDate(value);
-  if (!date) return "--:--";
-  return timeFormatter.format(date);
+  const parts = parseCivilDateTime(value);
+  if (!parts) return "--:--";
+  return `${String(parts.hour).padStart(2, "0")}:${String(parts.minute).padStart(2, "0")}`;
 };
 
 const formatDate = (value?: string | null, full = false) => {
-  const date = parseDate(value);
-  if (!date) return "--";
+  const parts = parseCivilDateTime(value);
+  if (!parts) return "--";
+  const date = new Date(parts.year, parts.month - 1, parts.day);
+  if (Number.isNaN(date.getTime())) return "--";
   const label = full ? fullDateFormatter.format(date) : shortDateFormatter.format(date);
   return normalizePtDate(label);
 };
@@ -783,8 +787,8 @@ const formatDurationFromMinutes = (minutes?: number | null) => {
 };
 
 const minutesBetween = (start?: string | null, end?: string | null) => {
-  const startDate = parseDate(start);
-  const endDate = parseDate(end);
+  const startDate = parseInstantDate(start);
+  const endDate = parseInstantDate(end);
   if (!startDate || !endDate) return 0;
   const diff = Math.round((endDate.getTime() - startDate.getTime()) / 60000);
   return diff > 0 ? diff : 0;

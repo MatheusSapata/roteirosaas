@@ -53,6 +53,91 @@ def collect_flight_section_ids(config: Any) -> set[str]:
     return ids
 
 
+def _normalize_flight_code(value: Any) -> str:
+    return "".join(str(value or "").upper().split())
+
+
+def _select_raw_flight(raw_provider_response: Any, segment: Any) -> dict[str, Any] | None:
+    if isinstance(raw_provider_response, dict):
+        return raw_provider_response
+    if not isinstance(raw_provider_response, list):
+        return None
+    candidates = [item for item in raw_provider_response if isinstance(item, dict)]
+    if not candidates:
+        return None
+    target_codes = {
+        _normalize_flight_code(getattr(segment, "flight_number", None)),
+        _normalize_flight_code(getattr(segment, "flight_iata", None)),
+        _normalize_flight_code(getattr(segment, "flight_icao", None)),
+    }
+    target_codes.discard("")
+    for item in candidates:
+        item_codes = {
+            _normalize_flight_code(item.get("number")),
+            _normalize_flight_code(item.get("flightNumber")),
+            _normalize_flight_code(item.get("flight_iata")),
+            _normalize_flight_code(item.get("flight_icao")),
+        }
+        if target_codes.intersection(item_codes):
+            return item
+    return candidates[0]
+
+
+def _extract_raw_datetime(raw_flight: dict[str, Any] | None, kind: str) -> str | None:
+    if not raw_flight:
+        return None
+    if kind == "departure":
+        direct_keys = ("dep_time", "departure_time", "scheduled_departure", "dep_time_utc")
+        nested_keys = (
+            "departure.revisedTime.local",
+            "departure.scheduledTime.local",
+            "departure.runwayTime.local",
+            "departure.revisedTime.utc",
+            "departure.scheduledTime.utc",
+        )
+        nested_root = raw_flight.get("departure")
+    else:
+        direct_keys = ("arr_time", "arrival_time", "scheduled_arrival", "arr_time_utc")
+        nested_keys = (
+            "arrival.revisedTime.local",
+            "arrival.scheduledTime.local",
+            "arrival.runwayTime.local",
+            "arrival.revisedTime.utc",
+            "arrival.scheduledTime.utc",
+        )
+        nested_root = raw_flight.get("arrival")
+
+    for key in direct_keys:
+        value = raw_flight.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+
+    if isinstance(nested_root, dict):
+        for key in ("revisedTime", "scheduledTime", "runwayTime"):
+            bucket = nested_root.get(key)
+            if not isinstance(bucket, dict):
+                continue
+            for field in ("local", "utc"):
+                value = bucket.get(field)
+                if isinstance(value, str) and value.strip():
+                    return value.strip()
+
+    for path in nested_keys:
+        current: Any = raw_flight
+        valid = True
+        for chunk in path.split("."):
+            if not isinstance(current, dict):
+                valid = False
+                break
+            current = current.get(chunk)
+        if not valid:
+            continue
+        if isinstance(current, str) and current.strip():
+            return current.strip()
+
+    return None
+
+
 def cleanup_removed_flight_sections(db: Session, page_id: int, config: Any) -> None:
     valid_section_ids = collect_flight_section_ids(config)
     query = db.query(FlightSectionJourney).filter(FlightSectionJourney.page_id == page_id)
@@ -63,6 +148,16 @@ def cleanup_removed_flight_sections(db: Session, page_id: int, config: Any) -> N
 
 
 def _serialize_segment(segment: Any) -> dict[str, Any]:
+    raw_flight = _select_raw_flight(segment.raw_provider_response, segment)
+    departure_datetime = segment.departure_datetime.isoformat() if segment.departure_datetime else None
+    arrival_datetime = segment.arrival_datetime.isoformat() if segment.arrival_datetime else None
+    raw_departure_datetime = _extract_raw_datetime(raw_flight, "departure")
+    raw_arrival_datetime = _extract_raw_datetime(raw_flight, "arrival")
+    if raw_departure_datetime:
+        departure_datetime = raw_departure_datetime
+    if raw_arrival_datetime:
+        arrival_datetime = raw_arrival_datetime
+
     return {
         "id": segment.id,
         "journey_id": segment.journey_id,
@@ -82,14 +177,14 @@ def _serialize_segment(segment: Any) -> dict[str, Any]:
         "departure_country": segment.departure_country,
         "departure_terminal": segment.departure_terminal,
         "departure_gate": segment.departure_gate,
-        "departure_datetime": segment.departure_datetime.isoformat() if segment.departure_datetime else None,
+        "departure_datetime": departure_datetime,
         "arrival_airport_iata": segment.arrival_airport_iata,
         "arrival_airport_name": segment.arrival_airport_name,
         "arrival_city": segment.arrival_city,
         "arrival_country": segment.arrival_country,
         "arrival_terminal": segment.arrival_terminal,
         "arrival_gate": segment.arrival_gate,
-        "arrival_datetime": segment.arrival_datetime.isoformat() if segment.arrival_datetime else None,
+        "arrival_datetime": arrival_datetime,
         "duration_minutes": segment.duration_minutes,
         "cabin_class": segment.cabin_class,
         "status": segment.status,
