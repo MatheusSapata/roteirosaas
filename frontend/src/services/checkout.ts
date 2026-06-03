@@ -87,6 +87,7 @@ export interface CheckoutSession {
   user_exists: boolean;
   requires_password_setup: boolean;
   is_upgrade?: boolean;
+  locked_profile_fields?: Record<string, boolean> | null;
 }
 
 export interface CheckoutCouponPreviewPayload {
@@ -182,6 +183,18 @@ export interface CheckoutTrackingDocumentDetail {
   events: CheckoutTrackingEventItem[];
 }
 
+export interface CheckoutOfferReportItem {
+  offer_key: string;
+  offer_title: string;
+  checkout_key?: string | null;
+  is_active: boolean;
+  signed_count: number;
+  upgrade_count: number;
+  direct_count: number;
+  total_count: number;
+  last_signed_at?: string | null;
+}
+
 export const getAdminCheckoutSettings = async () => {
   const response = await api.get<CheckoutSettings>("/admin/checkout-settings");
   return response.data;
@@ -207,6 +220,17 @@ export const createUpgradeCheckoutSession = async (offerKey: string, couponCode?
     offer_key: offerKey,
     coupon_code: couponCode || null,
   });
+  return response.data;
+};
+
+export const updateUpgradeCheckoutSessionDetails = async (
+  token: string,
+  payload: Pick<
+    CheckoutSessionPayload,
+    "customer_name" | "customer_email" | "customer_document" | "customer_phone" | "customer_zipcode"
+  >
+) => {
+  const response = await api.put<CheckoutSession>(`/checkout/public/session/${encodeURIComponent(token)}/upgrade-details`, payload);
   return response.data;
 };
 
@@ -257,6 +281,16 @@ export const getAdminCheckoutTracking = async (offerKey?: string, limit = 200) =
 export const getAdminCheckoutTrackingDocument = async (customerDocument: string, offerKey?: string) => {
   const response = await api.get<CheckoutTrackingDocumentDetail>(`/admin/checkout-settings/tracking/document/${encodeURIComponent(customerDocument)}`, {
     params: { offer_key: offerKey || undefined },
+  });
+  return response.data;
+};
+
+export const getAdminCheckoutOfferReports = async (params?: { startDate?: string | null; endDate?: string | null }) => {
+  const response = await api.get<CheckoutOfferReportItem[]>("/admin/checkout-settings/reports/offers", {
+    params: {
+      start_date: params?.startDate || undefined,
+      end_date: params?.endDate || undefined,
+    },
   });
   return response.data;
 };

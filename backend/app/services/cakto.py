@@ -18,6 +18,7 @@ from app.models.subscription import Subscription
 from app.models.user import User
 from app.services import auth as auth_service
 from app.services.email import send_cakto_onboarding_email
+from app.services.ntfy import SubscriptionPushScenario, publish_subscription_notification
 from app.services.trial import end_trial
 from app.services.trial import republish_all_user_pages
 
@@ -331,6 +332,19 @@ class CaktoIntegrationService:
                 onboarding_token=onboarding_token,
             )
         self.db.commit()
+        subscription = user.subscription or self._find_subscription(subscription_code=subscription_code, order_id=order_id)
+        if not subscription:
+            raise ValueError("Assinatura não encontrada após processamento do pedido.")
+        offer_name = self._extract_offer_name(order, payload) or f"{plan.plan_key.title()} ({plan.cycle})"
+        self._notify_subscription_push(
+            scenario=SubscriptionPushScenario.NEW,
+            payload=payload,
+            order=order,
+            subscription=subscription,
+            amount=order_amount,
+            plan_name=f"{plan.plan_key.title()} ({plan.cycle})",
+            offer_name=offer_name,
+        )
         if onboarding_token:
             try:
                 send_cakto_onboarding_email(
@@ -361,6 +375,7 @@ class CaktoIntegrationService:
         product_id = self._extract_product_id(order, payload)
         incoming_amount = self._extract_order_amount(order, payload)
         new_amount = self._calculate_mrr_amount(incoming_amount, subscription.billing_cycle)
+        offer_name = self._extract_offer_name(order, payload)
 
         if status.lower() == "cancelled":
             incoming_plan = None
@@ -453,6 +468,28 @@ class CaktoIntegrationService:
             subscription.user.subscription = subscription
         self.db.add(subscription)
         self.db.commit()
+        if effective_status == "active":
+            self._notify_subscription_push(
+                scenario=SubscriptionPushScenario.RENEWED,
+                payload=payload,
+                order=order,
+                subscription=subscription,
+                amount=new_amount,
+                plan_name=subscription.plan,
+                offer_name=offer_name or offer_id or subscription.cakto_offer_id,
+            )
+        elif effective_status == "cancelled":
+            cancelled_item = f"Assinatura {subscription_code or order_id or subscription.cakto_subscription_code or subscription.cakto_order_id or subscription.plan or 'desconhecida'}"
+            self._notify_subscription_push(
+                scenario=SubscriptionPushScenario.CANCELLED,
+                payload=payload,
+                order=order,
+                subscription=subscription,
+                amount=new_amount,
+                plan_name=subscription.plan,
+                offer_name=offer_name or offer_id or subscription.cakto_offer_id,
+                cancelled_item=cancelled_item,
+            )
         if status.lower() == "past_due" and effective_status == "cancelled":
             return (
                 f"Assinatura {subscription_code or order_id} em tentativa de cobranca "
@@ -551,6 +588,16 @@ class CaktoIntegrationService:
             or order_data.get("offerId")
             or self._get_nested(order_data, "offer", "id")
         )
+
+    def _extract_offer_name(self, order: Dict[str, Any] | None, payload: Dict[str, Any]) -> str | None:
+        order_data = order or {}
+        offer = order_data.get("offer") or self._get_nested(payload, "data", "offer")
+        if isinstance(offer, dict):
+            for field in ("name", "title", "label", "description"):
+                normalized = self._normalize_str(offer.get(field))
+                if normalized:
+                    return normalized
+        return None
 
     def _extract_product_id(self, order: Dict[str, Any] | None, payload: Dict[str, Any]) -> str | None:
         order_data = order or {}
@@ -697,6 +744,68 @@ class CaktoIntegrationService:
                 if mapping.product_id and mapping.product_id == normalized_product:
                     return mapping
         return None
+
+    def _extract_customer_name(self, payload: Dict[str, Any], order: Dict[str, Any] | None) -> str | None:
+        candidates = [
+            self._get_nested(order or {}, "customer", "name"),
+            self._get_nested(payload, "data", "customer", "name"),
+            self._get_nested(payload, "customer", "name"),
+            self._get_nested(order or {}, "customer", "fullName"),
+            self._get_nested(payload, "data", "customer", "fullName"),
+        ]
+        for value in candidates:
+            normalized = self._normalize_str(value)
+            if normalized:
+                return normalized
+        return None
+
+    def _extract_payment_method(self, payload: Dict[str, Any], order: Dict[str, Any] | None) -> str | None:
+        candidates = [
+            self._get_nested(order or {}, "paymentMethod"),
+            self._get_nested(order or {}, "payment_method"),
+            self._get_nested(order or {}, "paymentMethodType"),
+            self._get_nested(payload, "data", "paymentMethod"),
+            self._get_nested(payload, "data", "payment_method"),
+            self._get_nested(payload, "data", "payment", "method"),
+            self._get_nested(payload, "data", "payment", "billingType"),
+            self._get_nested(payload, "paymentMethod"),
+            self._get_nested(payload, "payment_method"),
+            payload.get("billingType"),
+        ]
+        for value in candidates:
+            normalized = self._normalize_str(value)
+            if normalized:
+                return normalized
+        return None
+
+    def _notify_subscription_push(
+        self,
+        *,
+        scenario: SubscriptionPushScenario,
+        payload: Dict[str, Any],
+        order: Dict[str, Any] | None,
+        subscription: Subscription,
+        amount: Decimal | None,
+        plan_name: str | None = None,
+        offer_name: str | None = None,
+        cancelled_item: str | None = None,
+    ) -> None:
+        user = subscription.user
+        user_name = (user.name if user and user.name else None) or self._extract_customer_name(payload, order) or "Não informado"
+        payment_method = self._extract_payment_method(payload, order) or subscription.payment_method_type or "Não informado"
+        resolved_plan = plan_name or subscription.plan or "Assinatura"
+        try:
+            publish_subscription_notification(
+                scenario=scenario,
+                user_name=user_name,
+                payment_method=payment_method,
+                amount=amount if amount is not None else subscription.mrr_amount,
+                plan_name=resolved_plan,
+                offer_name=offer_name,
+                cancelled_item=cancelled_item,
+            )
+        except Exception:  # pragma: no cover - alerta não pode bloquear webhook
+            logger.exception("Falha ao enviar notificação ntfy para evento Cakto.")
 
     def _obtain_access_token(self) -> str:
         if self._access_token and self._token_expires_at and datetime.utcnow() < self._token_expires_at:

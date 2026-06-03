@@ -1,7 +1,7 @@
 ﻿<template>
   <div class="w-full space-y-6 px-4 py-6 md:px-8">
     <header class="space-y-1">
-      <h1 class="text-3xl font-bold text-slate-900">Atendimento</h1>
+      <h1 class="text-3xl font-bold text-slate-900">Notificações</h1>
       <p class="text-sm text-slate-600">Conecte os canais de atendimento da sua agência.</p>
     </header>
 

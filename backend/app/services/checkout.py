@@ -1,17 +1,17 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import secrets
 import json
 from ipaddress import ip_address
 from urllib.request import Request, urlopen
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
 from sqlalchemy import func, or_
-from sqlalchemy.orm import Session, object_session
+from sqlalchemy.orm import Session, object_session, joinedload
 
 from app.core.config import get_settings
 from app.models.checkout import CheckoutLead, CheckoutSession, CheckoutSettings, CheckoutTrackingEvent
@@ -21,10 +21,12 @@ from app.schemas.checkout import (
     CheckoutAppearanceOut,
     CheckoutCouponOut,
     CheckoutOfferOut,
+    CheckoutOfferReportItemOut,
     CheckoutSettingsUpdate,
 )
 from app.services import auth as auth_service
 from app.services.asaas import AsaasAPIError, AsaasClient, build_default_split_payload
+from app.services.ntfy import SubscriptionPushScenario, publish_subscription_notification
 from app.services.trial import end_trial
 from app.services.trial import republish_all_user_pages
 from app.services.viajechat_checkout_flow import (
@@ -38,7 +40,7 @@ TEMP_DISABLE_CHECKOUT_SPLIT = False
 DEFAULT_CHECKOUTS = [
     {
         "key": "default",
-        "name": "Checkout padrão",
+        "name": "Checkout padrÃ£o",
         "theme_mode": "dark",
         "desktop_image_url": None,
         "mobile_banner_url": None,
@@ -55,7 +57,7 @@ DEFAULT_OFFERS = [
         "billing_cycle": "monthly",
         "amount": "49.99",
         "active": True,
-        "subtitle": "Acesso completo à plataforma",
+        "subtitle": "Acesso completo Ã  plataforma",
         "checkout_key": "default",
     }
 ]
@@ -144,6 +146,46 @@ def _is_upgrade_session(session: CheckoutSession) -> bool:
     return bool(metadata.get("upgrade_mode"))
 
 
+def _humanize_payment_method(value: str | None) -> str:
+    normalized = str(value or "").strip().lower()
+    if normalized in {"pix", "pix_automatic", "pix-automatic"}:
+        return "PIX"
+    if normalized in {"card", "credit_card", "credit-card", "creditcard", "c", "cc"}:
+        return "Cartão de crédito"
+    if normalized in {"boleto", "bank_slip"}:
+        return "Boleto"
+    if normalized:
+        return normalized.replace("_", " ").strip().title()
+    return "Não informado"
+
+
+def _notify_checkout_subscription_push(
+    *,
+    scenario: SubscriptionPushScenario,
+    session: CheckoutSession,
+    user: User,
+    previous_plan_name: str | None = None,
+    upgraded_plan_name: str | None = None,
+    cancelled_item: str | None = None,
+) -> None:
+    payment_method = _humanize_payment_method(session.payment_method)
+    plan_name = session.product_name or session.offer_key or session.plan_key or "Assinatura"
+    try:
+        publish_subscription_notification(
+            scenario=scenario,
+            user_name=user.name or session.customer_name or "Não informado",
+            payment_method=payment_method,
+            amount=session.amount,
+            plan_name=plan_name,
+            offer_name=session.product_name or session.offer_key,
+            previous_plan_name=previous_plan_name,
+            upgraded_plan_name=upgraded_plan_name,
+            cancelled_item=cancelled_item,
+        )
+    except Exception:  # pragma: no cover - alerta não pode quebrar o checkout
+        pass
+
+
 def _resolve_target_subscription_for_upgrade(db: Session, session: CheckoutSession) -> Subscription | None:
     metadata = dict(session.metadata_json or {})
     raw_user_id = metadata.get("target_user_id")
@@ -196,10 +238,10 @@ def _with_optional_split(payload: dict[str, Any]) -> dict[str, Any]:
     return payload
 
 
-def _apply_upgrade_after_payment(db: Session, session: CheckoutSession) -> User:
+def _apply_upgrade_after_payment(db: Session, session: CheckoutSession) -> tuple[User, str | None]:
     subscription = _resolve_target_subscription_for_upgrade(db, session)
     if not subscription or not subscription.asaas_subscription_id:
-        raise HTTPException(status_code=400, detail="Assinatura ativa não encontrada para upgrade.")
+        raise HTTPException(status_code=400, detail="Assinatura ativa nÃ£o encontrada para upgrade.")
 
     client = _ensure_asaas_client()
     payload = _with_optional_split({
@@ -214,7 +256,7 @@ def _apply_upgrade_after_payment(db: Session, session: CheckoutSession) -> User:
 
     user = db.query(User).filter(User.id == subscription.user_id).first()
     if not user:
-        raise HTTPException(status_code=404, detail="Usuário da assinatura não encontrado.")
+        raise HTTPException(status_code=404, detail="UsuÃ¡rio da assinatura nÃ£o encontrado.")
     previous_plan = str(user.plan or "").strip().lower()
     user.plan = session.plan_key
     user.name = session.customer_name or user.name
@@ -252,13 +294,13 @@ def _apply_upgrade_after_payment(db: Session, session: CheckoutSession) -> User:
         upgrade_mode=True,
         contact_id=str((dict(session.metadata_json or {}).get("viajechat_contact_id") or "")).strip() or None,
     )
-    return user
+    return user, previous_plan
 
 
 def _legacy_checkout_payload(record: CheckoutSettings) -> dict[str, Any]:
     return {
         "key": "default",
-        "name": "Checkout padrão",
+        "name": "Checkout padrÃ£o",
         "theme_mode": record.theme_mode or "dark",
         "desktop_image_url": record.desktop_image_url,
         "mobile_banner_url": record.mobile_banner_url,
@@ -378,7 +420,7 @@ def resolve_offer(db: Session, offer_key: str) -> CheckoutOfferOut:
         offer = CheckoutOfferOut.model_validate(raw)
         if offer.active and offer.key == normalized_key:
             return offer
-    raise HTTPException(status_code=404, detail="Oferta não encontrada.")
+    raise HTTPException(status_code=404, detail="Oferta nÃ£o encontrada.")
 
 
 def resolve_offer_checkout(record: CheckoutSettings, offer: CheckoutOfferOut) -> CheckoutAppearanceOut:
@@ -402,9 +444,9 @@ def resolve_coupon(record: CheckoutSettings, coupon_code: str | None, offer_key:
         if not coupon.active or coupon.code != normalized_code:
             continue
         if coupon.offer_keys and normalized_offer_key not in coupon.offer_keys:
-            raise HTTPException(status_code=400, detail="Cupom inválido para esta oferta.")
+            raise HTTPException(status_code=400, detail="Cupom invÃ¡lido para esta oferta.")
         return coupon
-    raise HTTPException(status_code=400, detail="Cupom não encontrado ou inativo.")
+    raise HTTPException(status_code=400, detail="Cupom nÃ£o encontrado ou inativo.")
 
 
 def apply_coupon_to_offer_amount(offer: CheckoutOfferOut, coupon: CheckoutCouponOut | None) -> tuple[Decimal, Decimal, Decimal | None]:
@@ -429,7 +471,7 @@ def preview_coupon_amount(
     settings_record = get_checkout_settings(db)
     coupon = resolve_coupon(settings_record, coupon_code, offer.key)
     if not coupon:
-        raise HTTPException(status_code=400, detail="Cupom não encontrado ou inativo.")
+        raise HTTPException(status_code=400, detail="Cupom nÃ£o encontrado ou inativo.")
     original_amount, final_amount, discount_amount = apply_coupon_to_offer_amount(offer, coupon)
     return {
         "offer_key": offer.key,
@@ -442,7 +484,7 @@ def preview_coupon_amount(
 
 def _ensure_asaas_client() -> AsaasClient:
     if not settings.asaas_api_key:
-        raise HTTPException(status_code=500, detail="Asaas não configurado.")
+        raise HTTPException(status_code=500, detail="Asaas nÃ£o configurado.")
     return AsaasClient(settings.asaas_api_key, settings.asaas_base_url)
 
 
@@ -489,7 +531,7 @@ def _find_or_create_asaas_customer(
     )
     customer_id = customer.get("id")
     if not customer_id:
-        raise HTTPException(status_code=502, detail="Asaas não retornou o cliente.")
+        raise HTTPException(status_code=502, detail="Asaas nÃ£o retornou o cliente.")
     return str(customer_id)
 
 
@@ -552,15 +594,17 @@ def create_upgrade_checkout_session(
     document = user.cnpj or user.cpf or ""
     phone = user.whatsapp or ""
     zipcode = user.address_zipcode or ""
-    if not (document and phone and zipcode):
-        raise HTTPException(
-            status_code=400,
-            detail="Complete CPF/CNPJ, celular e CEP no perfil para continuar com o upgrade.",
-        )
     metadata = {
         "upgrade_mode": True,
         "target_user_id": user.id,
         "current_plan": user.plan,
+        "locked_profile_fields": {
+            "customer_name": bool((user.name or "").strip()),
+            "customer_email": bool((user.email or "").strip()),
+            "customer_document": bool((document or "").strip()),
+            "customer_phone": bool((phone or "").strip()),
+            "customer_zipcode": bool((zipcode or "").strip()),
+        },
     }
     return create_checkout_session(
         db,
@@ -573,6 +617,54 @@ def create_upgrade_checkout_session(
         coupon_code=coupon_code,
         metadata=metadata,
     )
+
+
+def update_upgrade_checkout_session_details(
+    db: Session,
+    *,
+    session: CheckoutSession,
+    user: User,
+    customer_name: str,
+    customer_email: str,
+    customer_document: str,
+    customer_phone: str,
+    customer_zipcode: str,
+) -> CheckoutSession:
+    if not _is_upgrade_session(session):
+        raise HTTPException(status_code=400, detail="Sessao nao pertence ao fluxo de upgrade.")
+
+    metadata = dict(session.metadata_json or {})
+    target_user_id = metadata.get("target_user_id")
+    try:
+        parsed_target_user_id = int(target_user_id)
+    except (TypeError, ValueError):
+        parsed_target_user_id = None
+    if parsed_target_user_id is None or parsed_target_user_id != int(user.id):
+        raise HTTPException(status_code=403, detail="Sessao de upgrade invalida para este usuario.")
+
+    if session.status == "paid":
+        raise HTTPException(status_code=400, detail="Sessao ja concluida.")
+
+    document_digits = _normalize_digits(customer_document)
+    phone_digits = _normalize_digits(customer_phone)
+    zipcode_digits = _normalize_digits(customer_zipcode)
+    if len(document_digits) not in {11, 14}:
+        raise HTTPException(status_code=400, detail="Informe um CPF ou CNPJ valido.")
+    if len(phone_digits) < 10:
+        raise HTTPException(status_code=400, detail="Informe um telefone valido com DDD.")
+    if len(zipcode_digits) != 8:
+        raise HTTPException(status_code=400, detail="Informe um CEP valido.")
+
+    session.customer_name = customer_name.strip()
+    session.customer_email = customer_email.strip().lower()
+    session.customer_document = document_digits
+    session.customer_phone = phone_digits
+    session.customer_zipcode = zipcode_digits
+    session.updated_at = _utcnow()
+    db.add(session)
+    db.commit()
+    db.refresh(session)
+    return session
 
 
 def _extract_public_ip(raw_ip: str | None) -> str | None:
@@ -853,10 +945,84 @@ def get_checkout_tracking_document_detail(db: Session, customer_document: str, o
     }
 
 
+def get_checkout_offer_reports(
+    db: Session,
+    *,
+    start_date: date | None = None,
+    end_date: date | None = None,
+) -> list[dict[str, Any]]:
+    record = get_checkout_settings(db)
+    offers_by_key = {item["key"]: item for item in _serialize_offers(record)}
+    reports: dict[str, dict[str, Any]] = {}
+
+    for raw_offer in offers_by_key.values():
+        normalized_key = str(raw_offer.get("key") or "").strip().lower()
+        reports[normalized_key] = {
+            "offer_key": normalized_key,
+            "offer_title": str(raw_offer.get("title") or normalized_key or "Oferta"),
+            "checkout_key": raw_offer.get("checkout_key"),
+            "is_active": bool(raw_offer.get("active")),
+            "signed_count": 0,
+            "upgrade_count": 0,
+            "direct_count": 0,
+            "total_count": 0,
+            "last_signed_at": None,
+        }
+
+    leads = (
+        db.query(CheckoutLead)
+        .options(joinedload(CheckoutLead.session))
+        .order_by(CheckoutLead.updated_at.desc())
+        .all()
+    )
+    for lead in leads:
+        if lead.signed_at is None:
+            continue
+        signed_day = lead.signed_at.date()
+        if start_date and signed_day < start_date:
+            continue
+        if end_date and signed_day > end_date:
+            continue
+        normalized_key = (lead.offer_key or "").strip().lower()
+        bucket = reports.get(normalized_key)
+        if not bucket:
+            bucket = {
+                "offer_key": normalized_key,
+                "offer_title": normalized_key or "Oferta removida",
+                "checkout_key": None,
+                "is_active": False,
+                "signed_count": 0,
+                "upgrade_count": 0,
+                "direct_count": 0,
+                "total_count": 0,
+                "last_signed_at": None,
+            }
+            reports[normalized_key] = bucket
+
+        session_metadata = getattr(lead.session, "metadata_json", None) or {}
+        is_upgrade = bool(session_metadata.get("upgrade_mode"))
+
+        bucket["signed_count"] += 1
+        bucket["total_count"] += 1
+        if is_upgrade:
+            bucket["upgrade_count"] += 1
+        else:
+            bucket["direct_count"] += 1
+        if lead.signed_at and (not bucket["last_signed_at"] or lead.signed_at > bucket["last_signed_at"]):
+            bucket["last_signed_at"] = lead.signed_at
+
+    ordered = sorted(
+        reports.values(),
+        key=lambda item: (item["total_count"], item["signed_count"], item["offer_title"]),
+        reverse=True,
+    )
+    return [CheckoutOfferReportItemOut.model_validate(item).model_dump(mode="json") for item in ordered]
+
+
 def get_checkout_session_by_token(db: Session, token: str) -> CheckoutSession:
     session = db.query(CheckoutSession).filter(CheckoutSession.token == token).first()
     if not session:
-        raise HTTPException(status_code=404, detail="Sessão de checkout não encontrada.")
+        raise HTTPException(status_code=404, detail="SessÃ£o de checkout nÃ£o encontrada.")
     return session
 
 
@@ -898,6 +1064,7 @@ def serialize_checkout_session(db: Session, session: CheckoutSession) -> dict[st
         "user_exists": user_exists,
         "requires_password_setup": False if _is_upgrade_session(session) else requires_password_setup,
         "is_upgrade": _is_upgrade_session(session),
+        "locked_profile_fields": metadata.get("locked_profile_fields"),
     }
 
 
@@ -929,7 +1096,7 @@ def start_pix_payment(db: Session, session: CheckoutSession) -> CheckoutSession:
         )
         payment_id = _extract_asaas_resource_id(payment.get("id"))
         if not payment_id:
-            raise HTTPException(status_code=502, detail="Asaas não retornou cobrança PIX.")
+            raise HTTPException(status_code=502, detail="Asaas nÃ£o retornou cobranÃ§a PIX.")
         session.asaas_payment_id = payment_id
         try:
             immediate_qr = client.get_pix_qr_code(payment_id) or {}
@@ -962,8 +1129,8 @@ def start_pix_payment(db: Session, session: CheckoutSession) -> CheckoutSession:
             raise HTTPException(status_code=502, detail="Asaas nao retornou autorizacao de Pix Automatico.")
         immediate_qr = authorization.get("immediateQrCode") or {}
         pix_mode = "automatic"
-        # Fallback: alguns ambientes retornam autorização sem immediateQrCode.
-        # Nesse caso criamos assinatura PIX padrão e buscamos o QR no primeiro pagamento.
+        # Fallback: alguns ambientes retornam autorizaÃ§Ã£o sem immediateQrCode.
+        # Nesse caso criamos assinatura PIX padrÃ£o e buscamos o QR no primeiro pagamento.
         if not immediate_qr.get("payload"):
             subscription_payload: dict[str, Any] = _with_optional_split({
                 "customer": customer_id,
@@ -1405,9 +1572,21 @@ def handle_asaas_checkout_webhook(db: Session, payload: dict[str, Any]) -> bool:
             session.paid_at = _utcnow()
         session.status = "paid"
         if _is_upgrade_session(session):
-            _apply_upgrade_after_payment(db, session)
+            user, previous_plan = _apply_upgrade_after_payment(db, session)
+            _notify_checkout_subscription_push(
+                scenario=SubscriptionPushScenario.UPGRADED,
+                session=session,
+                user=user,
+                previous_plan_name=previous_plan,
+                upgraded_plan_name=session.plan_key,
+            )
         else:
-            _upsert_paid_user_and_subscription(db, session)
+            user = _upsert_paid_user_and_subscription(db, session)
+            _notify_checkout_subscription_push(
+                scenario=SubscriptionPushScenario.NEW,
+                session=session,
+                user=user,
+            )
     elif event in {"PAYMENT_OVERDUE", "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_EXPIRED", "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_REFUSED"}:
         session.status = "expired"
     elif event in {"PAYMENT_REPROVED_BY_RISK_ANALYSIS", "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_CANCELLED"}:
@@ -1421,7 +1600,7 @@ def handle_asaas_checkout_webhook(db: Session, payload: dict[str, Any]) -> bool:
 def define_password_for_paid_checkout(db: Session, token: str, password: str) -> User:
     session = get_checkout_session_by_token(db, token)
     if session.status != "paid":
-        raise HTTPException(status_code=400, detail="O pagamento ainda não foi confirmado.")
+        raise HTTPException(status_code=400, detail="O pagamento ainda nÃ£o foi confirmado.")
     try:
         auth_service.validate_password_strength(password)
     except ValueError as exc:
@@ -1441,7 +1620,7 @@ def coerce_checkout_http_error(exc: Exception) -> HTTPException:
     if isinstance(exc, HTTPException):
         return exc
     if isinstance(exc, AsaasAPIError):
-        detail = "Erro ao processar cobrança no Asaas."
+        detail = "Erro ao processar cobranÃ§a no Asaas."
         try:
             raw = str(exc)
             if raw:
@@ -1450,6 +1629,7 @@ def coerce_checkout_http_error(exc: Exception) -> HTTPException:
             pass
         return HTTPException(status_code=502, detail=detail)
     return HTTPException(status_code=500, detail="Erro interno no checkout.")
+
 
 
 

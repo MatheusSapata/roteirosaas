@@ -29,4 +29,5 @@ from .system_banner import SystemBanner, BannerEvent, BannerDismissal
 from .team_invite import TeamInvite
 from .whatsapp import WhatsAppConnection, WhatsAppConversation, WhatsAppMessage, WhatsAppInboxPermission
 from .checkout import CheckoutSettings, CheckoutSession
+from .webhook_notification import WebhookNotificationRule
 

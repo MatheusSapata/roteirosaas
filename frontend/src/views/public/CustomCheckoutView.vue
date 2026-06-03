@@ -30,29 +30,30 @@
             <form class="checkout-form" @submit.prevent="submitDetails">
               <label class="checkout-field">
                 <span>Nome completo</span>
-                <input v-model="form.customer_name" placeholder="Seu nome" />
+                <input v-model="form.customer_name" :disabled="lockedProfileFields.customer_name" placeholder="Seu nome" />
               </label>
               <label class="checkout-field">
                 <span>E-mail</span>
-                <input v-model="form.customer_email" type="email" placeholder="seu@email.com" />
+                <input v-model="form.customer_email" :disabled="lockedProfileFields.customer_email" type="email" placeholder="seu@email.com" />
               </label>
               <label class="checkout-field">
                 <span>CPF ou CNPJ</span>
                 <input
                   v-model="form.customer_document"
+                  :disabled="lockedProfileFields.customer_document"
                   :placeholder="documentPlaceholder"
                   @input="form.customer_document = formatDocument(form.customer_document)"
                 />
               </label>
               <label class="checkout-field">
                 <span>Celular</span>
-                <input v-model="form.customer_phone" placeholder="(11) 99999-9999" />
+                <input v-model="form.customer_phone" :disabled="lockedProfileFields.customer_phone" placeholder="(11) 99999-9999" />
               </label>
               <div class="checkout-field-row">
                 <label class="checkout-field">
                   <span>CEP</span>
                   <div class="checkout-cep-wrap">
-                    <input v-model="form.customer_zipcode" placeholder="00000-000" />
+                    <input v-model="form.customer_zipcode" :disabled="lockedProfileFields.customer_zipcode" placeholder="00000-000" />
                     <a
                       class="checkout-link-help checkout-link-help-inside"
                       href="https://buscacepinter.correios.com.br/app/endereco/index.php"
@@ -356,13 +357,17 @@
                 />
               </svg>
               <div class="checkout-footer-discount-text">
-                <span><strong>Cupom aplicado:</strong> {{ appliedCouponLabel.replace("Cupom ", "") }}</span>
-                <span><strong>Desconto:</strong> {{ discountPercentLabel }}</span>
-                <span><strong>Economia:</strong> {{ discountAmountLabel.replace("Economia ", "") }}</span>
+                <div class="checkout-footer-discount-text-top">
+                  <span><strong>Cupom aplicado:</strong> {{ appliedCouponLabel.replace("Cupom ", "") }}</span>
+                  <button type="button" class="checkout-footer-coupon-remove" @click="removeAppliedCoupon" :disabled="submitting">
+                    x
+                  </button>
+                </div>
+                <div class="checkout-footer-discount-text-bottom">
+                  <span><strong>Desconto:</strong> {{ discountPercentLabel }}</span>
+                  <span><strong>Economia:</strong> {{ discountAmountLabel.replace("Economia ", "") }}</span>
+                </div>
               </div>
-              <button type="button" class="checkout-footer-coupon-remove" @click="removeAppliedCoupon" :disabled="submitting">
-                x
-              </button>
             </div>
           </div>
 
@@ -407,6 +412,7 @@ import {
   refreshCheckoutSession,
   startCardCheckout,
   startPixCheckout,
+  updateUpgradeCheckoutSessionDetails,
   type CheckoutCouponPreview,
   type CheckoutPublicConfig,
   type CheckoutSession
@@ -470,6 +476,14 @@ const form = reactive({
   customer_phone: "",
   customer_zipcode: "",
   coupon_code: ""
+});
+
+const lockedProfileFields = reactive({
+  customer_name: false,
+  customer_email: false,
+  customer_document: false,
+  customer_phone: false,
+  customer_zipcode: false,
 });
 
 const card = reactive({
@@ -736,15 +750,26 @@ const submitDetails = async () => {
   submitting.value = true;
   inlineError.value = "";
   try {
-    session.value = await createCheckoutSession({
-      offer_key: config.value.offer.key,
-      customer_name: form.customer_name,
-      customer_email: form.customer_email,
-      customer_document: form.customer_document,
-      customer_phone: form.customer_phone,
-      customer_zipcode: form.customer_zipcode,
-      coupon_code: form.coupon_code
-    });
+    if (isUpgradeFlow.value) {
+      if (!session.value?.token) throw new Error("Sessao de upgrade nao encontrada.");
+      session.value = await updateUpgradeCheckoutSessionDetails(session.value.token, {
+        customer_name: form.customer_name,
+        customer_email: form.customer_email,
+        customer_document: form.customer_document,
+        customer_phone: form.customer_phone,
+        customer_zipcode: form.customer_zipcode,
+      });
+    } else {
+      session.value = await createCheckoutSession({
+        offer_key: config.value.offer.key,
+        customer_name: form.customer_name,
+        customer_email: form.customer_email,
+        customer_document: form.customer_document,
+        customer_phone: form.customer_phone,
+        customer_zipcode: form.customer_zipcode,
+        coupon_code: form.coupon_code
+      });
+    }
     router.replace({ query: { ...route.query, token: session.value.token } }).catch(() => {});
     step.value = "method";
     stepEnteredAt = Date.now();
@@ -812,6 +837,27 @@ const fillFormFromSession = (data: CheckoutSession) => {
   form.customer_phone = data.customer_phone || "";
   form.customer_zipcode = data.customer_zipcode || "";
   form.coupon_code = data.applied_coupon_code || form.coupon_code || "";
+};
+
+const lockUpgradePrefilledFields = (data: CheckoutSession) => {
+  if (!isUpgradeFlow.value) return;
+  const flags = data.locked_profile_fields || {};
+  const hasFlag = (key: string) => Object.prototype.hasOwnProperty.call(flags, key);
+  lockedProfileFields.customer_name = hasFlag("customer_name")
+    ? Boolean(flags.customer_name)
+    : Boolean((data.customer_name || "").trim());
+  lockedProfileFields.customer_email = hasFlag("customer_email")
+    ? Boolean(flags.customer_email)
+    : Boolean((data.customer_email || "").trim());
+  lockedProfileFields.customer_document = hasFlag("customer_document")
+    ? Boolean(flags.customer_document)
+    : Boolean((data.customer_document || "").trim());
+  lockedProfileFields.customer_phone = hasFlag("customer_phone")
+    ? Boolean(flags.customer_phone)
+    : Boolean((data.customer_phone || "").trim());
+  lockedProfileFields.customer_zipcode = hasFlag("customer_zipcode")
+    ? Boolean(flags.customer_zipcode)
+    : Boolean((data.customer_zipcode || "").trim());
 };
 
 const choosePix = async () => {
@@ -1059,6 +1105,7 @@ const hydrateStepFromSession = (data: CheckoutSession) => {
   const requestedStep = String(route.query.step || "").trim().toLowerCase();
   session.value = data;
   fillFormFromSession(data);
+  lockUpgradePrefilledFields(data);
   if (data.password_defined_at) {
     cardAwaitingConfirmation.value = false;
     clearCardAwaitingTimeout();
@@ -1183,24 +1230,10 @@ onMounted(async () => {
     try {
       session.value = await createUpgradeCheckoutSession(config.value.offer.key, form.coupon_code || null);
       fillFormFromSession(session.value);
+      lockUpgradePrefilledFields(session.value);
       router.replace({ query: { ...route.query, token: session.value.token, upgrade: "1" } }).catch(() => {});
-      step.value = "method";
+      step.value = "details";
       stepEnteredAt = Date.now();
-      if (!hasTrackedMethodStep) {
-        hasTrackedMethodStep = true;
-        await trackEvent("step_method_view", {
-          step: "method",
-          metadata: {
-            customer_name: session.value.customer_name,
-            customer_email: session.value.customer_email,
-            customer_phone: session.value.customer_phone,
-            customer_zipcode: session.value.customer_zipcode,
-            offer_key: session.value.offer_key,
-            upgrade_mode: true,
-          },
-        });
-      }
-      startPolling();
     } catch (error: any) {
       console.error(error);
       errorMessage.value = getFriendlyCheckoutError(error, "Não foi possível iniciar o checkout de upgrade.");
@@ -2044,6 +2077,8 @@ onBeforeUnmount(() => {
 .checkout-footer-discount-main {
   justify-content: flex-start;
   gap: 10px;
+  width: 100%;
+  min-width: 0;
 }
 
 .checkout-footer-discount-icon {
@@ -2055,19 +2090,33 @@ onBeforeUnmount(() => {
 
 .checkout-footer-discount-text {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 26px;
-  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1 1 auto;
   min-width: 0;
   font-size: 13px;
   color: #d2ffe6;
-  white-space: nowrap;
 }
 
 .checkout-footer-discount-text strong {
   color: #8bffc0;
   font-weight: 800;
+}
+
+.checkout-footer-discount-text-top,
+.checkout-footer-discount-text-bottom {
+  display: flex;
+  align-items: center;
+  gap: 10px 12px;
+  min-width: 0;
+}
+
+.checkout-footer-discount-text-top {
+  justify-content: space-between;
+}
+
+.checkout-footer-discount-text-bottom {
+  flex-wrap: wrap;
 }
 
 .checkout-footer-coupon-remove {
@@ -2080,6 +2129,11 @@ onBeforeUnmount(() => {
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
+}
+
+.checkout-footer-discount-text span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .checkout-footer-coupon-remove:disabled {
@@ -2358,6 +2412,70 @@ onBeforeUnmount(() => {
 
   .checkout-footer-discount-line {
     padding: 10px 12px;
+  }
+
+  .checkout-footer-discount-main {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "icon top x"
+      "icon discount economy";
+    align-items: center;
+    gap: 6px 8px;
+  }
+
+  .checkout-footer-discount-text {
+    display: contents;
+    font-size: 11px;
+    line-height: 1.25;
+  }
+
+  .checkout-footer-discount-text-top {
+    display: contents;
+  }
+
+  .checkout-footer-discount-text-bottom {
+    display: contents;
+  }
+
+  .checkout-footer-discount-text-bottom span {
+    min-width: 0;
+  }
+
+  .checkout-footer-discount-text-top span {
+    white-space: nowrap;
+    min-width: 0;
+  }
+
+  .checkout-footer-discount-text-top span:first-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .checkout-footer-discount-icon {
+    grid-area: icon;
+  }
+
+  .checkout-footer-discount-text-top span:first-child {
+    grid-area: top;
+  }
+
+  .checkout-footer-coupon-remove {
+    grid-area: x;
+    justify-self: end;
+    align-self: center;
+  }
+
+  .checkout-footer-discount-text-bottom span:first-child {
+    grid-area: discount;
+    justify-self: start;
+    white-space: nowrap;
+  }
+
+  .checkout-footer-discount-text-bottom span:last-child {
+    grid-area: economy;
+    justify-self: end;
+    white-space: nowrap;
   }
 
   .checkout-footer-right strong {

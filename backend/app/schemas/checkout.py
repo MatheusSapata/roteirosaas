@@ -139,6 +139,22 @@ class CheckoutSessionCreate(BaseModel):
         return value
 
 
+class CheckoutUpgradeSessionDetailsUpdate(BaseModel):
+    customer_name: str = Field(..., min_length=1, max_length=255)
+    customer_email: str = Field(..., min_length=3, max_length=255)
+    customer_document: str = Field(..., min_length=11, max_length=18)
+    customer_phone: str = Field(..., min_length=10, max_length=20)
+    customer_zipcode: str = Field(..., min_length=8, max_length=10)
+
+    @field_validator("customer_document")
+    @classmethod
+    def validate_document(cls, value: str) -> str:
+        digits = "".join(ch for ch in value if ch.isdigit())
+        if len(digits) not in {11, 14}:
+            raise ValueError("customer_document must have 11 (CPF) or 14 (CNPJ) digits")
+        return value
+
+
 class CheckoutCouponPreviewIn(BaseModel):
     offer_key: str = Field(..., min_length=1, max_length=120)
     coupon_code: str = Field(..., min_length=1, max_length=80)
@@ -187,6 +203,7 @@ class CheckoutSessionOut(BaseModel):
     user_exists: bool = False
     requires_password_setup: bool = True
     is_upgrade: bool = False
+    locked_profile_fields: dict[str, bool] | None = None
 
 
 class CheckoutPixStartRequest(BaseModel):
@@ -285,3 +302,15 @@ class CheckoutTrackingDocumentDetailOut(BaseModel):
     first_seen_at: datetime | None = None
     last_seen_at: datetime | None = None
     events: list[CheckoutTrackingEventOut] = Field(default_factory=list)
+
+
+class CheckoutOfferReportItemOut(BaseModel):
+    offer_key: str
+    offer_title: str
+    checkout_key: str | None = None
+    is_active: bool = True
+    signed_count: int = 0
+    upgrade_count: int = 0
+    direct_count: int = 0
+    total_count: int = 0
+    last_signed_at: datetime | None = None

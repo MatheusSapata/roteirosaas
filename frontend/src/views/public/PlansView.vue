@@ -202,7 +202,6 @@
 import { computed, ref, onMounted } from "vue";
 import api from "../../services/api";
 import { CHECKOUT_SESSION_STORAGE_KEY, createCaktoCheckoutSession } from "../../services/cakto";
-import { createUpgradeCheckoutSession } from "../../services/checkout";
 import { useAuthStore } from "../../store/useAuthStore";
 import { planLabels } from "../../utils/planLabels";
 import { createLocalizer, getCurrentLanguage } from "../../utils/i18n";
@@ -634,11 +633,10 @@ const goToCheckout = async (
       return;
     }
 
-    const session = await createUpgradeCheckoutSession(offerKey);
     const internalPath = internalCheckoutPaths[planKey];
     const checkoutUrl = internalPath
-      ? `${checkoutBaseOrigin.value}${internalPath}?upgrade=1&token=${encodeURIComponent(session.token)}`
-      : `${checkoutBaseOrigin.value}/checkout/${encodeURIComponent(offerKey)}?upgrade=1&token=${encodeURIComponent(session.token)}`;
+      ? `${checkoutBaseOrigin.value}${internalPath}?upgrade=1`
+      : `${checkoutBaseOrigin.value}/checkout/${encodeURIComponent(offerKey)}?upgrade=1`;
     window.location.href = checkoutUrl;
   } catch (err) {
     console.error(err);

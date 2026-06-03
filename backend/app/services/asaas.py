@@ -3,11 +3,15 @@ from __future__ import annotations
 from typing import Any
 
 import httpx
+
 from app.core.config import get_settings
 
 
 class AsaasAPIError(Exception):
     """Raised when Asaas returns an error response."""
+
+
+TEMP_DISABLE_ASAAS_SPLIT = False
 
 
 ASAAS_DEFAULT_SPLIT_RULES: tuple[tuple[str, float], ...] = (
@@ -17,6 +21,8 @@ ASAAS_DEFAULT_SPLIT_RULES: tuple[tuple[str, float], ...] = (
 
 
 def build_default_split_payload() -> list[dict[str, Any]]:
+    if TEMP_DISABLE_ASAAS_SPLIT:
+        return []
     settings = get_settings()
     wallet_matheus = (settings.wallet_matheus or "").strip()
     if wallet_matheus:
@@ -107,4 +113,3 @@ class AsaasClient:
         if not subscription_id:
             raise ValueError("Subscription id is required to update card")
         return self._request("PUT", f"/subscriptions/{subscription_id}/creditCard", json=payload)
-

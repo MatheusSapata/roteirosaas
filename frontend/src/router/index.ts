@@ -158,6 +158,9 @@ const resolveLegacyAdminManagementRedirect = (to: any) => {
   if (tab === "checkout" || tab === "offers" || tab === "ofertas") {
     return { path: "/admin/administracao/ofertas", query: nextQuery };
   }
+  if (tab === "webhooks" || tab === "notifications") {
+    return { path: "/admin/administracao/webhooks", query: nextQuery };
+  }
   if (tab === "receita-previsao" || tab === "revenue-forecast") {
     return { path: "/admin/administracao/receita-previsao", query: nextQuery };
   }
@@ -290,6 +293,12 @@ const platformRoutes: RouteRecordRaw[] = [
         path: "administracao/ofertas",
         name: "admin-management-offers",
         component: () => import("../views/admin/AdminCheckoutSettingsView.vue"),
+        meta: { requiresSuperuser: true }
+      },
+      {
+        path: "administracao/webhooks",
+        name: "admin-management-webhooks",
+        component: () => import("../views/admin/WebhookNotificationsView.vue"),
         meta: { requiresSuperuser: true }
       },
       {
