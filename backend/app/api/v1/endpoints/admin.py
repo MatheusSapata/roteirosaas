@@ -8,7 +8,8 @@ from decimal import Decimal, InvalidOperation
 from typing import Any, List, Optional
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, aliased
@@ -46,6 +47,12 @@ from app.schemas.admin import (
 from app.schemas.page import PageOut
 from app.services.cakto import CaktoAPIError, CaktoIntegrationService
 from app.services.asaas import AsaasAPIError, AsaasClient
+from app.services.ntfy import (
+    NtfyService,
+    NtfyServiceError,
+    SubscriptionPushScenario,
+    build_subscription_push_message,
+)
 from app.services.trial import start_trial, unpublish_all_user_pages
 from app.services.viajechat_checkout_flow import mark_cancelled as mark_viajechat_cancelled
 
@@ -74,6 +81,154 @@ class PageCloneRequest(BaseModel):
 
 class RefundRequest(BaseModel):
     reason: Optional[str] = None
+
+
+class PushTestResponse(BaseModel):
+    success: bool
+    message: str | None = None
+
+
+@router.post("/test-push", response_model=PushTestResponse)
+def test_push_notification(admin: User = Depends(get_current_superuser)) -> PushTestResponse:
+    service = NtfyService()
+    try:
+        service.publish(
+            topic="roteiro_online_assinaturas",
+            title="Teste Roteiro Online",
+            message="Olá mundo",
+            priority=3,
+            tags=["rocket"],
+        )
+    except NtfyServiceError as exc:
+        return JSONResponse(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            content={"success": False, "message": str(exc) or "erro"},
+        )
+    return PushTestResponse(success=True)
+
+
+class PushSubscriptionTestRequest(BaseModel):
+    scenario: SubscriptionPushScenario
+
+
+class PushSubscriptionTestPayload(BaseModel):
+    user_name: str
+    payment_method: str
+    amount: Decimal
+    plan_name: str | None = None
+    offer_name: str | None = None
+    previous_plan_name: str | None = None
+    upgraded_plan_name: str | None = None
+    cancelled_item: str | None = None
+
+
+_PUSH_SUBSCRIPTION_TEST_DATA: dict[SubscriptionPushScenario, PushSubscriptionTestPayload] = {
+    SubscriptionPushScenario.NEW: PushSubscriptionTestPayload(
+        user_name="Ana Teste",
+        payment_method="PIX",
+        amount=Decimal("197.00"),
+        plan_name="Plano Essencial",
+        offer_name="Oferta Essencial Mensal",
+    ),
+    SubscriptionPushScenario.RENEWED: PushSubscriptionTestPayload(
+        user_name="Bruno Teste",
+        payment_method="Cartão de crédito",
+        amount=Decimal("297.00"),
+        plan_name="Plano Infinity",
+        offer_name="Oferta Infinity Anual",
+    ),
+    SubscriptionPushScenario.CANCELLED: PushSubscriptionTestPayload(
+        user_name="Carla Teste",
+        payment_method="Boleto",
+        amount=Decimal("297.00"),
+        plan_name="Plano Growth",
+        offer_name="Oferta Growth Mensal",
+        cancelled_item="Assinatura mensal do Plano Growth",
+    ),
+    SubscriptionPushScenario.UPGRADED: PushSubscriptionTestPayload(
+        user_name="Daniel Teste",
+        payment_method="Cartão de crédito",
+        amount=Decimal("149.90"),
+        previous_plan_name="Plano Essencial",
+        upgraded_plan_name="Plano Growth",
+    ),
+    SubscriptionPushScenario.TEST: PushSubscriptionTestPayload(
+        user_name="Usuário de teste",
+        payment_method="PIX",
+        amount=Decimal("0.00"),
+        plan_name="Teste manual",
+        offer_name="Oferta de teste",
+    ),
+}
+
+
+def _test_push_tags_for_scenario(tags: list[str], scenario: SubscriptionPushScenario) -> list[str]:
+    if scenario == SubscriptionPushScenario.CANCELLED:
+        return ["skull", *[tag for tag in tags if tag != "rocket"]]
+    return tags
+
+
+@router.post("/test-push/subscription", response_model=PushTestResponse)
+def test_push_subscription_notification(
+    payload: PushSubscriptionTestRequest,
+    admin: User = Depends(get_current_superuser),
+) -> PushTestResponse:
+    test_data = _PUSH_SUBSCRIPTION_TEST_DATA[payload.scenario]
+    title, message, tags = build_subscription_push_message(
+        scenario=payload.scenario,
+        user_name=test_data.user_name,
+        payment_method=test_data.payment_method,
+        amount=test_data.amount,
+        plan_name=test_data.plan_name,
+        offer_name=test_data.offer_name,
+        previous_plan_name=test_data.previous_plan_name,
+        upgraded_plan_name=test_data.upgraded_plan_name,
+        cancelled_item=test_data.cancelled_item,
+    )
+    tags = _test_push_tags_for_scenario(tags, payload.scenario)
+    service = NtfyService()
+    try:
+        service.publish(
+            topic="roteiro_online_assinaturas",
+            title=title,
+            message=message,
+            priority=3,
+            tags=tags,
+        )
+    except NtfyServiceError as exc:
+        return JSONResponse(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            content={"success": False, "message": str(exc) or "erro"},
+        )
+    return PushTestResponse(success=True)
+
+
+@router.post("/test-push/subscription/all", response_model=PushTestResponse)
+def test_push_subscription_notifications_all(
+    admin: User = Depends(get_current_superuser),
+) -> PushTestResponse:
+    service = NtfyService()
+    for scenario, test_data in _PUSH_SUBSCRIPTION_TEST_DATA.items():
+        title, message, tags = build_subscription_push_message(
+            scenario=scenario,
+            user_name=test_data.user_name,
+            payment_method=test_data.payment_method,
+        amount=test_data.amount,
+        plan_name=test_data.plan_name,
+        offer_name=test_data.offer_name,
+        previous_plan_name=test_data.previous_plan_name,
+        upgraded_plan_name=test_data.upgraded_plan_name,
+        cancelled_item=test_data.cancelled_item,
+    )
+        tags = _test_push_tags_for_scenario(tags, scenario)
+        service.publish(
+            topic="roteiro_online_assinaturas",
+            title=title,
+            message=message,
+            priority=3,
+            tags=tags,
+        )
+    return PushTestResponse(success=True)
 
 
 def _normalize_config(raw: Any) -> Any:

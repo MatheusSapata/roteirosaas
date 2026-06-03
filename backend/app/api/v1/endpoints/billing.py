@@ -19,6 +19,7 @@ from app.models.asaas import AsaasEventLog
 from app.services.asaas import AsaasAPIError, AsaasClient, build_default_split_payload
 from app.services.cakto import CaktoAPIError, CaktoIntegrationService
 from app.services.checkout import handle_asaas_checkout_webhook
+from app.services.ntfy import SubscriptionPushScenario, publish_subscription_notification
 from app.services.plans import effective_plan
 from app.services.trial import end_trial
 from app.services.trial import republish_all_user_pages
@@ -369,6 +370,43 @@ def set_subscription_cancelled_at_period_end(subscription: Subscription) -> None
         subscription.valid_until = datetime.utcnow() + _cycle_duration(subscription.billing_cycle or DEFAULT_CYCLE)
 
 
+def _humanize_payment_method(value: str | None) -> str:
+    normalized = str(value or "").strip().lower()
+    if normalized in {"pix", "pix_automatic", "pix-automatic"}:
+        return "PIX"
+    if normalized in {"card", "credit_card", "credit-card", "creditcard", "c", "cc"}:
+        return "Cartão de crédito"
+    if normalized in {"boleto", "bank_slip"}:
+        return "Boleto"
+    if normalized:
+        return normalized.replace("_", " ").strip().title()
+    return "Não informado"
+
+
+def _notify_subscription_push(
+    *,
+    scenario: SubscriptionPushScenario,
+    user: User,
+    subscription: Subscription,
+    payment_method: str | None = None,
+    amount: Decimal | int | float | str | None = None,
+    offer_name: str | None = None,
+    cancelled_item: str | None = None,
+) -> None:
+    try:
+        publish_subscription_notification(
+            scenario=scenario,
+            user_name=user.name or "Não informado",
+            payment_method=_humanize_payment_method(payment_method or subscription.payment_method_type),
+            amount=amount if amount is not None else subscription.mrr_amount,
+            plan_name=subscription.plan or "Assinatura",
+            offer_name=offer_name or subscription.external_reference or subscription.asaas_payment_link_id or subscription.asaas_subscription_id,
+            cancelled_item=cancelled_item,
+        )
+    except Exception:  # pragma: no cover - alerta não pode quebrar o webhook
+        logger.exception("Falha ao enviar notificação ntfy para webhook Asaas.")
+
+
 @router.post("/webhook")
 async def webhook(request: Request, db: Session = Depends(get_db)) -> Dict[str, Any]:
     payload = await request.json()
@@ -397,7 +435,7 @@ async def webhook(request: Request, db: Session = Depends(get_db)) -> Dict[str, 
                 cycle = cycle or DEFAULT_CYCLE
                 user = db.query(User).get(user_id)
                 if user:
-                    previous_plan = str(user.plan or "").strip().lower()
+                    previous_status = str(user.subscription.status if user.subscription else "").strip().lower()
                     subscription = _ensure_subscription(user)
                     subscription.external_reference = payment.get("externalReference")
                     sub_id, sub_data = _extract_resource_info(payment.get("subscription"))
@@ -423,6 +461,14 @@ async def webhook(request: Request, db: Session = Depends(get_db)) -> Dict[str, 
                             phone=user.whatsapp or "",
                             offer_key=plan_key,
                             upgrade_mode=False,
+                        )
+                        _notify_subscription_push(
+                            scenario=SubscriptionPushScenario.RENEWED if previous_status == "active" else SubscriptionPushScenario.NEW,
+                            user=user,
+                            subscription=subscription,
+                            payment_method=payment.get("billingType") or subscription.payment_method_type,
+                            amount=payment_value,
+                            offer_name=f"{plan_key}/{cycle}",
                         )
                     elif event == "PAYMENT_OVERDUE":
                         subscription.failed_attempts = (subscription.failed_attempts or 0) + 1
@@ -458,6 +504,15 @@ async def webhook(request: Request, db: Session = Depends(get_db)) -> Dict[str, 
                             name=user.name or "",
                             email=user.email or "",
                             phone=user.whatsapp or "",
+                        )
+                        _notify_subscription_push(
+                            scenario=SubscriptionPushScenario.CANCELLED,
+                            user=user,
+                            subscription=subscription,
+                            payment_method=sub_payload.get("billingType") or subscription.payment_method_type,
+                            amount=subscription.mrr_amount,
+                            offer_name=subscription.external_reference or subscription.asaas_subscription_id,
+                            cancelled_item=f"Assinatura {subscription.plan or subscription.asaas_subscription_id or subscription.id}",
                         )
                         db.add(user)
                     db.add(subscription)

@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from datetime import date
 
 from app.api.deps import get_current_active_user, get_current_superuser, get_db
 from app.core.request_ip import get_client_ip
@@ -16,8 +17,10 @@ from app.schemas.checkout import (
     CheckoutPublicConfigOut,
     CheckoutSessionCreate,
     CheckoutSessionOut,
+    CheckoutUpgradeSessionDetailsUpdate,
     CheckoutSettingsOut,
     CheckoutSettingsUpdate,
+    CheckoutOfferReportItemOut,
     CheckoutTrackEventIn,
     CheckoutTrackEventOut,
     CheckoutTrackingDocumentDetailOut,
@@ -31,6 +34,7 @@ from app.services.checkout import (
     get_checkout_session_by_token,
     get_checkout_settings,
     list_checkout_tracking,
+    get_checkout_offer_reports,
     get_checkout_tracking_document_detail,
     refresh_session_status,
     resolve_offer,
@@ -41,6 +45,7 @@ from app.services.checkout import (
     start_card_payment,
     start_pix_payment,
     track_checkout_event,
+    update_upgrade_checkout_session_details,
     update_checkout_settings,
 )
 
@@ -101,6 +106,17 @@ def get_admin_checkout_tracking_document(
     return CheckoutTrackingDocumentDetailOut.model_validate(payload)
 
 
+@admin_router.get("/reports/offers", response_model=list[CheckoutOfferReportItemOut])
+def get_admin_checkout_offer_reports(
+    start_date: date | None = None,
+    end_date: date | None = None,
+    current_user: User = Depends(get_current_superuser),
+    db: Session = Depends(get_db),
+) -> list[CheckoutOfferReportItemOut]:
+    rows = get_checkout_offer_reports(db, start_date=start_date, end_date=end_date)
+    return [CheckoutOfferReportItemOut.model_validate(item) for item in rows]
+
+
 @router.get("/public/config/{offer_key}", response_model=CheckoutConfigResponse)
 def get_public_checkout_config(offer_key: str, db: Session = Depends(get_db)) -> CheckoutConfigResponse:
     settings = get_checkout_settings(db)
@@ -150,6 +166,27 @@ def create_public_upgrade_checkout_session(
         offer=offer,
         user=current_user,
         coupon_code=payload.coupon_code,
+    )
+    return CheckoutSessionOut.model_validate(serialize_checkout_session(db, session))
+
+
+@router.put("/public/session/{token}/upgrade-details", response_model=CheckoutSessionOut)
+def update_public_upgrade_checkout_session_details(
+    token: str,
+    payload: CheckoutUpgradeSessionDetailsUpdate,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> CheckoutSessionOut:
+    session = get_checkout_session_by_token(db, token)
+    session = update_upgrade_checkout_session_details(
+        db,
+        session=session,
+        user=current_user,
+        customer_name=payload.customer_name,
+        customer_email=payload.customer_email,
+        customer_document=payload.customer_document,
+        customer_phone=payload.customer_phone,
+        customer_zipcode=payload.customer_zipcode,
     )
     return CheckoutSessionOut.model_validate(serialize_checkout_session(db, session))
 

@@ -33,5 +33,6 @@ from app.models import (
     team_invite,
     whatsapp,
     checkout,
+    webhook_notification,
 )  # noqa: E402,F401
 

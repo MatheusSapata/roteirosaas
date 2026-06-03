@@ -117,6 +117,9 @@ class Settings(BaseSettings):
     evolution_webhook_url: str | None = Field(None, alias="EVOLUTION_WEBHOOK_URL")
     evolution_test_instance_name: str = Field("test-instance", alias="EVOLUTION_TEST_INSTANCE_NAME")
     evolution_pairing_number: str | None = Field(None, alias="EVOLUTION_PAIRING_NUMBER")
+    ntfy_base_url: str = Field("https://ntfy.sh", alias="NTFY_BASE_URL")
+    ntfy_default_topic: str = Field("roteiro_online_assinaturas", alias="NTFY_DEFAULT_TOPIC")
+    ntfy_timeout_seconds: int = Field(20, alias="NTFY_TIMEOUT_SECONDS")
 
     @field_validator(
         "platform_domains",

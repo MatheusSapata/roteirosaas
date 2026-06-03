@@ -228,6 +228,205 @@
         </div>
       </div>
 
+      <div v-else-if="activeTab === 'reports'" class="mt-6 space-y-6">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-lg font-bold text-slate-900">Relatórios</h2>
+            <p class="text-sm text-slate-500">Assinaturas e upgrades consolidados por oferta, com leitura visual rápida do volume convertido.</p>
+          </div>
+        </div>
+
+        <div class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div class="flex flex-wrap items-end gap-3">
+            <label class="space-y-2 text-sm font-semibold text-slate-700">
+              <span>Período</span>
+              <select
+                v-model="reportPeriodPreset"
+                class="min-w-[180px] rounded-2xl border border-slate-200 px-4 py-3 text-sm"
+              >
+                <option value="7">Últimos 7 dias</option>
+                <option value="30">Últimos 30 dias</option>
+                <option value="90">Últimos 90 dias</option>
+                <option value="custom">Personalizado</option>
+              </select>
+            </label>
+            <label class="space-y-2 text-sm font-semibold text-slate-700">
+              <span>De</span>
+              <input
+                v-model="reportPeriodStart"
+                type="date"
+                class="rounded-2xl border border-slate-200 px-4 py-3 text-sm"
+                :disabled="reportPeriodPreset !== 'custom'"
+              />
+            </label>
+            <label class="space-y-2 text-sm font-semibold text-slate-700">
+              <span>Até</span>
+              <input
+                v-model="reportPeriodEnd"
+                type="date"
+                class="rounded-2xl border border-slate-200 px-4 py-3 text-sm"
+                :disabled="reportPeriodPreset !== 'custom'"
+              />
+            </label>
+            <div class="flex min-w-[180px] flex-1 flex-wrap items-center justify-end gap-3">
+              <div class="text-right">
+                <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">Intervalo ativo</p>
+                <p class="mt-1 text-sm font-semibold text-slate-900">{{ reportPeriodLabel }}</p>
+              </div>
+              <button
+                type="button"
+                class="rounded-full border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                :disabled="reportsLoading"
+                @click="loadReports"
+              >
+                {{ reportsLoading ? "Atualizando..." : "Aplicar período" }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div class="rounded-3xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-5 shadow-sm">
+            <p class="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Assinaturas</p>
+            <div class="mt-2 text-3xl font-black text-slate-900">{{ reportSummary.totalSigned }}</div>
+            <p class="mt-1 text-sm text-slate-500">Conversões concluídas em todas as ofertas.</p>
+          </div>
+          <div class="rounded-3xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white p-5 shadow-sm">
+            <p class="text-xs font-semibold uppercase tracking-[0.22em] text-amber-700">Upgrades</p>
+            <div class="mt-2 text-3xl font-black text-amber-700">{{ reportSummary.totalUpgrades }}</div>
+            <p class="mt-1 text-sm text-amber-700/80">Assinaturas migradas pelo fluxo de upgrade.</p>
+          </div>
+          <div class="rounded-3xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white p-5 shadow-sm">
+            <p class="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">Ofertas com conversão</p>
+            <div class="mt-2 text-3xl font-black text-emerald-700">{{ reportSummary.offersWithSales }}</div>
+            <p class="mt-1 text-sm text-emerald-700/80">Ofertas que já geraram alguma assinatura.</p>
+          </div>
+          <div class="rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-5 shadow-sm">
+            <p class="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Taxa de upgrade</p>
+            <div class="mt-2 text-3xl font-black text-slate-900">{{ reportSummary.upgradeRate }}</div>
+            <p class="mt-1 text-sm text-slate-500">Participação de upgrades sobre as conversões.</p>
+          </div>
+        </div>
+
+        <div class="grid gap-6 xl:grid-cols-[1.7fr_0.95fr]">
+          <section class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h3 class="text-base font-bold text-slate-900">Conversões por oferta</h3>
+                <p class="text-sm text-slate-500">Barras empilhadas mostram diretas e upgrades dentro do total convertido de cada oferta.</p>
+              </div>
+              <div class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Total: {{ reportSummary.totalSigned }}
+              </div>
+            </div>
+
+            <div v-if="reportsLoading" class="mt-6 space-y-3">
+              <div v-for="index in 4" :key="index" class="animate-pulse rounded-2xl border border-slate-200 p-4">
+                <div class="h-4 w-40 rounded-full bg-slate-100"></div>
+                <div class="mt-4 h-3 rounded-full bg-slate-100"></div>
+              </div>
+            </div>
+
+            <div v-else-if="!reportRows.length" class="mt-6 rounded-2xl border border-dashed border-slate-200 p-8 text-center text-sm text-slate-500">
+              Nenhuma conversão encontrada para gerar relatório.
+            </div>
+
+            <div v-else class="mt-6 space-y-4">
+              <article
+                v-for="(row, index) in reportRows"
+                :key="row.offer_key"
+                class="report-card-animate rounded-2xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-4 shadow-sm"
+                :style="{ animationDelay: `${index * 70}ms` }"
+              >
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                  <div class="min-w-0">
+                    <div class="flex items-center gap-2">
+                      <span
+                        class="h-2.5 w-2.5 rounded-full"
+                        :class="row.is_active ? 'bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.12)]' : 'bg-slate-300'"
+                      ></span>
+                      <h4 class="truncate text-base font-bold text-slate-900">{{ row.offer_title }}</h4>
+                    </div>
+                    <p class="mt-1 truncate font-mono text-[11px] uppercase tracking-[0.22em] text-slate-400">{{ row.offer_key }}</p>
+                    <p class="mt-2 text-xs text-slate-500">
+                      Checkout: <span class="font-semibold text-slate-700">{{ checkoutNameByKey(row.checkout_key) }}</span>
+                      <span class="mx-2 text-slate-300">•</span>
+                      Última assinatura: <span class="font-semibold text-slate-700">{{ formatDateTime(row.last_signed_at) }}</span>
+                    </p>
+                  </div>
+                  <div class="rounded-full bg-white px-3 py-1.5 text-right text-xs font-semibold text-slate-600 ring-1 ring-slate-200">
+                    <div class="text-[11px] uppercase tracking-[0.2em] text-slate-400">Total</div>
+                    <div class="mt-0.5 text-sm font-black text-slate-900">{{ row.total_count }}</div>
+                  </div>
+                </div>
+
+                <div class="mt-4">
+                  <div class="flex justify-between text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                    <span>Diretas {{ row.direct_count }}</span>
+                    <span>Upgrades {{ row.upgrade_count }}</span>
+                  </div>
+                  <div class="mt-2 h-3 overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      class="flex h-full overflow-hidden rounded-full transition-all duration-1000 ease-out"
+                      :style="{ width: reportChartWidth(row.total_count), opacity: reportChartReady ? 1 : 0 }"
+                    >
+                      <div
+                        class="h-full bg-gradient-to-r from-sky-500 to-cyan-400 transition-all duration-1000 ease-out"
+                        :style="{ width: reportShareWidth(row.direct_count, row.total_count) }"
+                      ></div>
+                      <div
+                        class="h-full bg-gradient-to-r from-amber-400 to-orange-300 transition-all duration-1000 ease-out"
+                        :style="{ width: reportShareWidth(row.upgrade_count, row.total_count) }"
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                  <span class="rounded-full bg-sky-50 px-2.5 py-1 font-semibold text-sky-700">Diretas: {{ row.direct_count }}</span>
+                  <span class="rounded-full bg-amber-50 px-2.5 py-1 font-semibold text-amber-700">Upgrades: {{ row.upgrade_count }}</span>
+                  <span class="rounded-full bg-slate-100 px-2.5 py-1 font-semibold text-slate-600">Total: {{ row.total_count }}</span>
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <aside class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h3 class="text-base font-bold text-slate-900">Resumo rápido</h3>
+            <p class="mt-1 text-sm text-slate-500">Leitura compacta do desempenho por oferta.</p>
+
+            <div class="mt-5 space-y-3">
+              <div
+                v-for="(row, index) in reportRows.slice(0, 6)"
+                :key="`${row.offer_key}-summary-${index}`"
+                class="rounded-2xl border border-slate-200 bg-slate-50/80 p-4"
+              >
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0">
+                    <div class="truncate font-semibold text-slate-900">{{ row.offer_title }}</div>
+                    <div class="mt-1 text-xs text-slate-500">{{ row.offer_key }}</div>
+                  </div>
+                  <div class="text-right">
+                    <div class="text-2xl font-black text-slate-900">{{ row.total_count }}</div>
+                    <div class="text-[11px] uppercase tracking-[0.18em] text-slate-400">conversões</div>
+                  </div>
+                </div>
+                <div class="mt-3 h-2 rounded-full bg-slate-200">
+                  <div class="h-2 rounded-full bg-gradient-to-r from-emerald-500 to-lime-400 transition-all duration-1000 ease-out" :style="{ width: reportChartWidth(row.total_count) }"></div>
+                </div>
+                <div class="mt-3 flex items-center justify-between text-xs text-slate-500">
+                  <span>{{ formatPercent(row.total_count, reportSummary.totalSigned) }} do total</span>
+                  <span>{{ row.upgrade_count }} upgrades</span>
+                </div>
+              </div>
+              <div v-if="!reportRows.length && !reportsLoading" class="rounded-2xl border border-dashed border-slate-200 p-6 text-sm text-slate-500">
+                Nenhum dado disponível.
+              </div>
+            </div>
+          </aside>
+        </div>
+      </div>
+
       <div v-else-if="activeTab === 'tracking'" class="mt-6 space-y-4">
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -576,19 +775,21 @@ import axios from "axios";
 import { computed, onMounted, reactive, ref, watch } from "vue";
 import ImageUploadField from "../../components/admin/inputs/ImageUploadField.vue";
 import {
+  getAdminCheckoutOfferReports,
   getAdminCheckoutTrackingDocument,
   getAdminCheckoutTracking,
   getAdminCheckoutSettings,
   saveAdminCheckoutSettings,
   type CheckoutAppearance,
   type CheckoutCoupon,
+  type CheckoutOfferReportItem,
   type CheckoutOffer,
   type CheckoutSettings,
   type CheckoutTrackingItem,
   type CheckoutTrackingDocumentDetail,
 } from "../../services/checkout";
 
-type TabId = "offers" | "coupons" | "checkouts" | "tracking";
+type TabId = "offers" | "coupons" | "checkouts" | "reports" | "tracking";
 
 type OfferRow = CheckoutOffer & { local_id: string };
 type CouponRow = CheckoutCoupon & { local_id: string };
@@ -598,6 +799,7 @@ const tabs: Array<{ id: TabId; label: string }> = [
   { id: "offers", label: "Ofertas" },
   { id: "coupons", label: "Cupons" },
   { id: "checkouts", label: "Checkouts" },
+  { id: "reports", label: "Relatórios" },
   { id: "tracking", label: "Trackeamento" },
 ];
 
@@ -677,7 +879,13 @@ const checkoutModal = reactive<{ open: boolean; editingId: string | null; form: 
   form: blankCheckout(),
 });
 const trackingRows = ref<CheckoutTrackingItem[]>([]);
+const reportRows = ref<CheckoutOfferReportItem[]>([]);
 const trackingLoading = ref(false);
+const reportsLoading = ref(false);
+const reportChartReady = ref(false);
+const reportPeriodPreset = ref<"7" | "30" | "90" | "custom">("30");
+const reportPeriodStart = ref("");
+const reportPeriodEnd = ref("");
 const trackingFilterOffer = ref("");
 const trackingSearch = ref("");
 const trackingFilterStatus = ref<"" | "signed" | "pending">("");
@@ -686,6 +894,64 @@ const trackingOnlyErrors = ref(false);
 const trackingDetailOpen = ref(false);
 const trackingDetailLoading = ref(false);
 const trackingDetail = ref<CheckoutTrackingDocumentDetail | null>(null);
+
+const reportSummary = computed(() => {
+  const totalSigned = reportRows.value.reduce((sum, row) => sum + (row.signed_count || 0), 0);
+  const totalUpgrades = reportRows.value.reduce((sum, row) => sum + (row.upgrade_count || 0), 0);
+  const offersWithSales = reportRows.value.filter(row => (row.total_count || 0) > 0).length;
+  const upgradeRate = totalSigned > 0 ? `${Math.round((totalUpgrades / totalSigned) * 100)}%` : "0%";
+  return { totalSigned, totalUpgrades, offersWithSales, upgradeRate };
+});
+
+const reportMaxCount = computed(() => Math.max(...reportRows.value.map(row => row.total_count || 0), 1));
+
+const formatDateInputValue = (date: Date) => {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const todayDateInput = () => formatDateInputValue(new Date());
+
+const daysAgoDateInput = (daysAgo: number) => {
+  const date = new Date();
+  date.setHours(12, 0, 0, 0);
+  date.setDate(date.getDate() - daysAgo);
+  return formatDateInputValue(date);
+};
+
+const syncReportPeriodPreset = (preset: "7" | "30" | "90" | "custom") => {
+  reportPeriodPreset.value = preset;
+  const today = todayDateInput();
+  if (preset === "7") {
+    reportPeriodStart.value = daysAgoDateInput(6);
+    reportPeriodEnd.value = today;
+    return;
+  }
+  if (preset === "30") {
+    reportPeriodStart.value = daysAgoDateInput(29);
+    reportPeriodEnd.value = today;
+    return;
+  }
+  if (preset === "90") {
+    reportPeriodStart.value = daysAgoDateInput(89);
+    reportPeriodEnd.value = today;
+    return;
+  }
+  if (!reportPeriodStart.value) reportPeriodStart.value = daysAgoDateInput(29);
+  if (!reportPeriodEnd.value) reportPeriodEnd.value = today;
+};
+
+const reportPeriodLabel = computed(() => {
+  if (reportPeriodPreset.value === "7") return "Últimos 7 dias";
+  if (reportPeriodPreset.value === "30") return "Últimos 30 dias";
+  if (reportPeriodPreset.value === "90") return "Últimos 90 dias";
+  if (reportPeriodStart.value && reportPeriodEnd.value) {
+    return `${reportPeriodStart.value} a ${reportPeriodEnd.value}`;
+  }
+  return "Período personalizado";
+});
 
 const filteredTrackingRows = computed(() => {
   const search = trackingSearch.value.trim().toLowerCase();
@@ -773,6 +1039,36 @@ const couponOfferSummary = (offerKeys: string[]) => {
 };
 
 const imageState = (url?: string | null) => (url ? "Com" : "Sem");
+
+const formatPercent = (value: number, total: number) => {
+  if (!total || value <= 0) return "0%";
+  return `${Math.round((value / total) * 100)}%`;
+};
+
+const reportChartWidth = (value: number) => {
+  if (!value) return "0%";
+  const max = reportMaxCount.value || 1;
+  return `${Math.max(6, (value / max) * 100)}%`;
+};
+
+const reportShareWidth = (value: number, total: number) => {
+  if (!value || !total) return "0%";
+  return `${(value / total) * 100}%`;
+};
+
+const animateReportChart = () => {
+  reportChartReady.value = false;
+  window.requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => {
+      reportChartReady.value = true;
+    });
+  });
+};
+
+const buildReportQuery = () => ({
+  startDate: reportPeriodStart.value || undefined,
+  endDate: reportPeriodEnd.value || undefined,
+});
 
 const checkoutPublicBaseUrl = () => {
   if (typeof window === "undefined") return "";
@@ -868,6 +1164,20 @@ const loadTracking = async () => {
     showSnackbar("Nao foi possivel carregar o trackeamento.", "error");
   } finally {
     trackingLoading.value = false;
+  }
+};
+
+const loadReports = async () => {
+  reportsLoading.value = true;
+  reportChartReady.value = false;
+  try {
+    reportRows.value = await getAdminCheckoutOfferReports(buildReportQuery());
+    animateReportChart();
+  } catch (error) {
+    console.error(error);
+    showSnackbar("Nao foi possivel carregar os relatórios.", "error");
+  } finally {
+    reportsLoading.value = false;
   }
 };
 
@@ -1053,13 +1363,38 @@ const removeCheckout = async (localId: string) => {
 };
 
 onMounted(async () => {
+  syncReportPeriodPreset(reportPeriodPreset.value);
   await load();
-  await loadTracking();
+  await Promise.all([loadTracking(), loadReports()]);
 });
 
 watch(activeTab, value => {
   if (value === "tracking" && !trackingLoading.value) {
     loadTracking();
   }
+  if (value === "reports" && !reportsLoading.value) {
+    loadReports();
+  }
+});
+
+watch(reportPeriodPreset, value => {
+  syncReportPeriodPreset(value);
 });
 </script>
+
+<style scoped>
+@keyframes report-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.report-card-animate {
+  animation: report-card-in 560ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+</style>

@@ -19,6 +19,7 @@ from app.api.v1.endpoints import (
     media,
     pages,
     pixels,
+    webhook_notifications,
     public_lead_forms,
     public_pages,
     stats,
@@ -48,6 +49,8 @@ api_router.include_router(checkout.router, prefix="/checkout", tags=["checkout"]
 api_router.include_router(pixels.router, prefix="/pixels", tags=["pixels"])
 api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
 api_router.include_router(admin_master_whatsapp.router, prefix="/admin-master/whatsapp", tags=["admin-master-whatsapp"])
+api_router.include_router(webhook_notifications.admin_router, tags=["admin-master-webhook-notifications"])
+api_router.include_router(webhook_notifications.router, tags=["webhook-notifications"])
 api_router.include_router(flight_api_keys.router, prefix="/admin", tags=["flight-api-keys"])
 api_router.include_router(flight_sections.router, tags=["flight-sections"])
 api_router.include_router(lessons.router, prefix="/lessons", tags=["lessons"])
