@@ -722,6 +722,10 @@ const parseDate = (value?: string | null) => {
   if (!value) return null;
   const raw = String(value).trim();
   if (!raw) return null;
+  if (/[zZ]|[+-]\d{2}:\d{2}$/.test(raw)) {
+    const parsed = new Date(raw);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
   const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})(?::(\d{2}))?/);
   if (!match) return null;
   const [, year, month, day, hour, minute, second] = match;
