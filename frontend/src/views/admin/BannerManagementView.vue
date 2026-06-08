@@ -244,6 +244,74 @@
                         <input v-model="builder.cta.label" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
                       </label>
                     </div>
+                    <div v-if="builder.cta.type === 'internal_route'" class="grid gap-4 md:grid-cols-2">
+                      <label class="text-sm font-semibold text-slate-600">
+                        Destino interno
+                        <input
+                          v-model="builder.cta.internal_target"
+                          class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                          placeholder="/admin/integracoes"
+                        />
+                      </label>
+                      <label class="text-sm font-semibold text-slate-600">
+                        Rota personalizada
+                        <input
+                          v-model="builder.cta.custom_route"
+                          class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                          placeholder="Deixe vazio para usar o destino interno"
+                        />
+                      </label>
+                    </div>
+                    <div v-else-if="builder.cta.type === 'external_url'" class="grid gap-4 md:grid-cols-2">
+                      <label class="text-sm font-semibold text-slate-600">
+                        URL externa
+                        <input
+                          v-model="builder.cta.external_url"
+                          type="text"
+                          class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                          placeholder="/admin/integracoes ou https://exemplo.com"
+                        />
+                      </label>
+                      <label class="text-sm font-semibold text-slate-600">
+                        Abrir em nova aba
+                        <select v-model="builder.cta.open_new_tab" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                          <option :value="true">Sim</option>
+                          <option :value="false">Não</option>
+                        </select>
+                      </label>
+                      <p class="text-xs text-slate-500 md:col-span-2">
+                        Você pode usar uma URL completa ou uma rota relativa, como <span class="font-semibold">/admin/integracoes</span>.
+                      </p>
+                    </div>
+                    <div v-else-if="builder.cta.type === 'open_modal'" class="grid gap-4 md:grid-cols-2">
+                      <label class="text-sm font-semibold text-slate-600">
+                        Modal de destino
+                        <input
+                          v-model="builder.cta.modal_target"
+                          class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                          placeholder="connect_pixel"
+                        />
+                      </label>
+                      <p class="text-xs text-slate-500 md:col-span-2">
+                        Use a chave interna do modal que deve abrir ao clicar no CTA.
+                      </p>
+                    </div>
+                    <div v-else-if="builder.cta.type === 'system_action'" class="grid gap-4 md:grid-cols-2">
+                      <label class="text-sm font-semibold text-slate-600">
+                        Ação do sistema
+                        <input
+                          v-model="builder.cta.system_action"
+                          class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                          placeholder="open_pixel_connection"
+                        />
+                      </label>
+                      <p class="text-xs text-slate-500 md:col-span-2">
+                        Use a ação interna que o sistema vai executar ao clicar no CTA.
+                      </p>
+                    </div>
+                    <div v-else class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-500">
+                      Sem ação configurada para este banner.
+                    </div>
                   </div>
                 </section>
 
@@ -778,7 +846,7 @@ const resolveCtaPayload = () => {
   }
   return {
     has_cta: true,
-    cta_type: "none",
+    cta_type: builder.cta.type,
     cta_label: builder.cta.label,
     cta_target: builder.cta.type === "open_modal" ? builder.cta.modal_target : builder.cta.system_action
   };

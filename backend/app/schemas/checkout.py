@@ -28,6 +28,34 @@ class CheckoutAppearanceOut(CheckoutAppearanceIn):
     pass
 
 
+class CheckoutPixelIn(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255)
+    pixel_id: str = Field(..., min_length=1, max_length=120)
+    access_token: str = Field(..., min_length=1, max_length=500)
+    active: bool = True
+    offer_keys: list[str] = Field(default_factory=list)
+
+    @field_validator("name", "pixel_id", "access_token")
+    @classmethod
+    def strip_text(cls, value: str) -> str:
+        return value.strip()
+
+    @field_validator("offer_keys")
+    @classmethod
+    def normalize_offer_keys(cls, values: list[str]) -> list[str]:
+        return [value.strip().lower() for value in values if value and value.strip()]
+
+
+class CheckoutPixelOut(CheckoutPixelIn):
+    pass
+
+
+class CheckoutPixelPublicOut(BaseModel):
+    name: str
+    pixel_id: str
+    active: bool = True
+
+
 class CheckoutOfferIn(BaseModel):
     key: str = Field(..., min_length=1, max_length=120)
     title: str = Field(..., min_length=1, max_length=255)
@@ -84,6 +112,7 @@ class CheckoutSettingsUpdate(BaseModel):
     offers: list[CheckoutOfferIn] = Field(default_factory=list)
     coupons: list[CheckoutCouponIn] = Field(default_factory=list)
     checkouts: list[CheckoutAppearanceIn] = Field(default_factory=list)
+    pixels: list[CheckoutPixelIn] = Field(default_factory=list)
 
 
 class CheckoutSettingsOut(BaseModel):
@@ -92,6 +121,7 @@ class CheckoutSettingsOut(BaseModel):
     offers: list[CheckoutOfferOut] = Field(default_factory=list)
     coupons: list[CheckoutCouponOut] = Field(default_factory=list)
     checkouts: list[CheckoutAppearanceOut] = Field(default_factory=list)
+    pixels: list[CheckoutPixelOut] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
     model_config = ConfigDict(from_attributes=True)
@@ -102,6 +132,7 @@ class CheckoutPublicConfigOut(BaseModel):
     desktop_image_url: str | None = None
     mobile_banner_url: str | None = None
     offer: CheckoutOfferOut
+    pixels: list[CheckoutPixelPublicOut] = Field(default_factory=list)
 
 
 class CheckoutSessionCreate(BaseModel):

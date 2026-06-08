@@ -107,6 +107,64 @@
         </div>
       </div>
 
+      <div v-else-if="activeTab === 'pixels'" class="mt-6 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-lg font-bold text-slate-900">Pixels Meta</h2>
+            <p class="text-sm text-slate-500">Cadastre o ID e o access token e defina em quais ofertas cada pixel fica ativo.</p>
+          </div>
+          <button type="button" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" @click="openPixelModal()">
+            + Novo pixel
+          </button>
+        </div>
+
+        <div class="overflow-hidden rounded-3xl border border-slate-200">
+          <table class="min-w-full divide-y divide-slate-200 text-sm">
+            <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+              <tr>
+                <th class="px-4 py-3">Pixel</th>
+                <th class="px-4 py-3">ID</th>
+                <th class="px-4 py-3">Token</th>
+                <th class="px-4 py-3">Ofertas</th>
+                <th class="px-4 py-3">Status</th>
+                <th class="px-4 py-3 text-right">Ações</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 bg-white">
+              <tr v-if="!form.pixels.length">
+                <td colspan="6" class="px-4 py-8 text-center text-sm text-slate-500">Nenhum pixel cadastrado.</td>
+              </tr>
+              <tr v-for="pixel in form.pixels" :key="pixel.local_id">
+                <td class="px-4 py-4">
+                  <div class="font-semibold text-slate-900">{{ pixel.name }}</div>
+                  <div class="text-xs text-slate-500">Meta Pixel</div>
+                </td>
+                <td class="px-4 py-4 font-mono text-xs text-slate-600">{{ pixel.pixel_id }}</td>
+                <td class="px-4 py-4">
+                  <div class="max-w-[240px] truncate font-mono text-xs text-slate-500">{{ pixel.access_token || "--" }}</div>
+                </td>
+                <td class="px-4 py-4 text-slate-600">{{ pixelOfferSummary(pixel.offer_keys) }}</td>
+                <td class="px-4 py-4">
+                  <span class="rounded-full px-3 py-1 text-xs font-semibold" :class="pixel.active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'">
+                    {{ pixel.active ? "Ativo" : "Inativo" }}
+                  </span>
+                </td>
+                <td class="px-4 py-4">
+                  <div class="flex justify-end gap-2">
+                    <button type="button" class="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50" @click="openPixelModal(pixel)">
+                      Editar
+                    </button>
+                    <button type="button" class="rounded-full border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50" @click="removePixel(pixel.local_id)">
+                      Excluir
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <div v-else-if="activeTab === 'coupons'" class="mt-6 space-y-4">
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -647,6 +705,53 @@
       </div>
     </div>
 
+    <div v-if="pixelModal.open" class="fixed inset-0 z-[260] flex items-center justify-center bg-slate-950/45 px-4 py-8">
+      <div class="max-h-[90vh] w-full max-w-4xl overflow-auto rounded-3xl bg-white p-6 shadow-2xl">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <h3 class="text-xl font-bold text-slate-900">{{ pixelModal.editingId ? "Editar pixel" : "Novo pixel" }}</h3>
+            <p class="mt-1 text-sm text-slate-500">Cadastre o pixel da Meta, o token da API e as ofertas em que ele será disparado.</p>
+          </div>
+          <button type="button" class="rounded-full border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-600" @click="closePixelModal">Fechar</button>
+        </div>
+
+        <div class="mt-5 grid gap-4 md:grid-cols-2">
+          <label class="space-y-2 text-sm font-semibold text-slate-700 md:col-span-2">
+            <span>Nome</span>
+            <input v-model="pixelModal.form.name" class="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm" placeholder="Pixel principal da campanha" />
+          </label>
+          <label class="space-y-2 text-sm font-semibold text-slate-700">
+            <span>Pixel ID</span>
+            <input v-model="pixelModal.form.pixel_id" class="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-mono" />
+          </label>
+          <label class="space-y-2 text-sm font-semibold text-slate-700">
+            <span>Access Token da API</span>
+            <input v-model="pixelModal.form.access_token" class="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-mono" />
+          </label>
+          <label class="inline-flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 md:col-span-2">
+            <input v-model="pixelModal.form.active" type="checkbox" />
+            Pixel ativo
+          </label>
+        </div>
+
+        <div class="mt-5 rounded-2xl border border-slate-200 p-4">
+          <div class="text-sm font-semibold text-slate-900">Ofertas permitidas</div>
+          <p class="mt-1 text-xs text-slate-500">Se nenhuma oferta for marcada, o pixel não será usado em nenhuma oferta.</p>
+          <div class="mt-3 grid gap-3 md:grid-cols-2">
+            <label v-for="offer in form.offers" :key="offer.local_id" class="inline-flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-700">
+              <input v-model="pixelModal.form.offer_keys" type="checkbox" :value="offer.key" />
+              <span>{{ offer.title }}</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="mt-6 flex justify-end gap-3">
+          <button type="button" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700" @click="closePixelModal">Cancelar</button>
+          <button type="button" class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white" @click="submitPixelModal">Salvar pixel</button>
+        </div>
+      </div>
+    </div>
+
     <div v-if="couponModal.open" class="fixed inset-0 z-[260] flex items-center justify-center bg-slate-950/45 px-4 py-8">
       <div class="max-h-[90vh] w-full max-w-4xl overflow-auto rounded-3xl bg-white p-6 shadow-2xl">
         <div class="flex items-start justify-between gap-4">
@@ -784,19 +889,22 @@ import {
   type CheckoutCoupon,
   type CheckoutOfferReportItem,
   type CheckoutOffer,
+  type CheckoutPixel,
   type CheckoutSettings,
   type CheckoutTrackingItem,
   type CheckoutTrackingDocumentDetail,
 } from "../../services/checkout";
 
-type TabId = "offers" | "coupons" | "checkouts" | "reports" | "tracking";
+type TabId = "offers" | "pixels" | "coupons" | "checkouts" | "reports" | "tracking";
 
 type OfferRow = CheckoutOffer & { local_id: string };
+type PixelRow = CheckoutPixel & { local_id: string };
 type CouponRow = CheckoutCoupon & { local_id: string };
 type CheckoutRow = CheckoutAppearance & { local_id: string };
 
 const tabs: Array<{ id: TabId; label: string }> = [
   { id: "offers", label: "Ofertas" },
+  { id: "pixels", label: "Pixels" },
   { id: "coupons", label: "Cupons" },
   { id: "checkouts", label: "Checkouts" },
   { id: "reports", label: "Relatórios" },
@@ -829,6 +937,15 @@ const blankOffer = (): OfferRow => ({
   checkout_key: "",
 });
 
+const blankPixel = (): PixelRow => ({
+  local_id: nextLocalId("pixel"),
+  name: "",
+  pixel_id: "",
+  access_token: "",
+  active: true,
+  offer_keys: [],
+});
+
 const blankCoupon = (): CouponRow => ({
   local_id: nextLocalId("coupon"),
   code: "",
@@ -852,11 +969,13 @@ const blankCheckout = (): CheckoutRow => ({
 const form = reactive<{
   is_active: boolean;
   offers: OfferRow[];
+  pixels: PixelRow[];
   coupons: CouponRow[];
   checkouts: CheckoutRow[];
 }>({
   is_active: true,
   offers: [],
+  pixels: [],
   coupons: [],
   checkouts: [],
 });
@@ -871,6 +990,12 @@ const couponModal = reactive<{ open: boolean; editingId: string | null; form: Co
   open: false,
   editingId: null,
   form: blankCoupon(),
+});
+
+const pixelModal = reactive<{ open: boolean; editingId: string | null; form: PixelRow }>({
+  open: false,
+  editingId: null,
+  form: blankPixel(),
 });
 
 const checkoutModal = reactive<{ open: boolean; editingId: string | null; form: CheckoutRow }>({
@@ -1014,6 +1139,13 @@ const checkoutNameByKey = (key?: string | null) => {
   return row?.name || "Sem checkout";
 };
 
+const offerTitleByKey = (key: string) => form.offers.find(offer => offer.key === key)?.title || key;
+
+const pixelOfferSummary = (offerKeys: string[]) => {
+  if (!offerKeys.length) return "Nenhuma oferta";
+  return offerKeys.map(offerTitleByKey).join(", ");
+};
+
 const cycleLabel = (cycle: string) => (cycle === "annual" ? "Anual" : "Mensal");
 
 const planLabel = (plan: string) => {
@@ -1099,6 +1231,7 @@ const copyOfferLink = async (offerKey: string) => {
 const applySettings = (data: Partial<CheckoutSettings> & Record<string, any>) => {
   const rawCheckouts = Array.isArray(data.checkouts) ? data.checkouts : [];
   const rawOffers = Array.isArray(data.offers) ? data.offers : [];
+  const rawPixels = Array.isArray(data.pixels) ? data.pixels : [];
   const rawCoupons = Array.isArray(data.coupons) ? data.coupons : [];
 
   const fallbackCheckouts: CheckoutRow[] = rawCheckouts.length
@@ -1122,6 +1255,11 @@ const applySettings = (data: Partial<CheckoutSettings> & Record<string, any>) =>
     local_id: nextLocalId("offer"),
     checkout_key: item.checkout_key || fallbackCheckouts[0]?.key || "",
   }));
+  form.pixels = rawPixels.map(item => ({
+    ...item,
+    local_id: nextLocalId("pixel"),
+    offer_keys: Array.isArray(item.offer_keys) ? [...item.offer_keys] : [],
+  }));
   form.coupons = rawCoupons.map(item => ({ ...item, local_id: nextLocalId("coupon") }));
 };
 
@@ -1132,6 +1270,13 @@ const serializePayload = () => ({
     amount: normalizeMoneyInput(item.amount),
     footer_product_label: item.footer_product_label?.trim() || item.title.trim(),
     checkout_key: item.checkout_key?.trim() || null,
+  })),
+  pixels: form.pixels.map(({ local_id, ...item }) => ({
+    ...item,
+    name: item.name.trim(),
+    pixel_id: item.pixel_id.trim(),
+    access_token: item.access_token.trim(),
+    offer_keys: item.offer_keys.map(value => value.trim().toLowerCase()).filter(Boolean),
   })),
   coupons: form.coupons.map(({ local_id, ...item }) => ({
     ...item,
@@ -1272,12 +1417,66 @@ const submitOfferModal = async () => {
 };
 
 const removeOffer = async (localId: string) => {
+  const target = form.offers.find(item => item.local_id === localId);
   form.offers = form.offers.filter(item => item.local_id !== localId);
   form.coupons = form.coupons.map(item => ({
     ...item,
     offer_keys: item.offer_keys.filter(key => form.offers.some(offer => offer.key === key)),
   }));
+  if (target) {
+    form.pixels = form.pixels.map(item => ({
+      ...item,
+      offer_keys: item.offer_keys.filter(key => key !== target.key),
+    }));
+  }
   await persistSettings("Oferta excluída com sucesso.");
+};
+
+const openPixelModal = (row?: PixelRow) => {
+  pixelModal.open = true;
+  pixelModal.editingId = row?.local_id || null;
+  pixelModal.form = row ? { ...row, offer_keys: [...row.offer_keys] } : blankPixel();
+};
+
+const closePixelModal = () => {
+  pixelModal.open = false;
+  pixelModal.editingId = null;
+  pixelModal.form = blankPixel();
+};
+
+const submitPixelModal = async () => {
+  if (!pixelModal.form.name.trim() || !pixelModal.form.pixel_id.trim() || !pixelModal.form.access_token.trim()) {
+    showSnackbar("Preencha nome, ID e token do pixel.", "error");
+    return;
+  }
+  if (pixelModal.editingId) {
+    const index = form.pixels.findIndex(item => item.local_id === pixelModal.editingId);
+    if (index >= 0) {
+      form.pixels[index] = {
+        ...pixelModal.form,
+        name: pixelModal.form.name.trim(),
+        pixel_id: pixelModal.form.pixel_id.trim(),
+        access_token: pixelModal.form.access_token.trim(),
+        offer_keys: [...pixelModal.form.offer_keys],
+      };
+    }
+  } else {
+    form.pixels.push({
+      ...pixelModal.form,
+      local_id: nextLocalId("pixel"),
+      name: pixelModal.form.name.trim(),
+      pixel_id: pixelModal.form.pixel_id.trim(),
+      access_token: pixelModal.form.access_token.trim(),
+      offer_keys: [...pixelModal.form.offer_keys],
+    });
+  }
+  const saved = await persistSettings("Pixel salvo com sucesso.");
+  if (saved) closePixelModal();
+};
+
+const removePixel = async (localId: string) => {
+  form.pixels = form.pixels.filter(item => item.local_id !== localId);
+  await persistSettings("Pixel excluído com sucesso.");
 };
 
 const openCouponModal = (row?: CouponRow) => {

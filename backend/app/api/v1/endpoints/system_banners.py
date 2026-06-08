@@ -46,10 +46,6 @@ def _validate_payload(payload: SystemBannerCreate | SystemBannerUpdate) -> None:
             raise HTTPException(status_code=422, detail="CTA type é obrigatório quando o CTA está ativo.")
         if not cta_target or not str(cta_target).strip():
             raise HTTPException(status_code=422, detail="CTA target é obrigatório quando o CTA está ativo.")
-        if cta_type == "external_url" and not (
-            str(cta_target).startswith("http://") or str(cta_target).startswith("https://")
-        ):
-            raise HTTPException(status_code=422, detail="URL externa precisa começar com http:// ou https://")
     if starts_at and ends_at and starts_at > ends_at:
         raise HTTPException(status_code=422, detail="Data inicial não pode ser maior que a data final.")
 
@@ -529,3 +525,4 @@ def dismiss_banner(
         )
     )
     db.commit()
+

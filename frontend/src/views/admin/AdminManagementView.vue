@@ -382,13 +382,22 @@
         </div>
 
         <div class="mt-4 overflow-x-auto">
-          <table class="min-w-full text-sm text-slate-800 divide-y divide-slate-100 interactive-table">
+          <table class="min-w-full table-fixed text-sm text-slate-800 divide-y divide-slate-100 interactive-table">
             <thead class="bg-slate-50 text-left text-slate-600">
               <tr>
-                <th v-for="column in userTableColumns" :key="column.key" class="px-3 py-2">
+                <th
+                  v-for="column in userTableColumns"
+                  :key="column.key"
+                  class="px-3 py-2"
+                  :class="column.widthClass"
+                >
                   <div
                     class="relative flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500"
-                    :class="column.align === 'right' ? 'justify-end text-right' : 'text-left'"
+                    :class="column.key === 'active_pages' || column.key === 'draft_pages'
+                      ? 'justify-center text-center'
+                      : column.align === 'right'
+                        ? 'justify-end text-right'
+                        : 'text-left'"
                     :data-column-filter="column.key"
                   >
                     <button
@@ -693,7 +702,10 @@
             <tbody class="divide-y divide-slate-100">
               <template v-for="u in filteredUsers" :key="u.id">
                 <tr class="transition hover:bg-slate-50/70 dark:hover:bg-white/5" @click="toggleUserRow(u.id)">
-                  <td class="px-3 py-3">
+                  <td
+                    class="px-3 py-3"
+                    :class="userTableColumns[0].cellClass"
+                  >
                     <div class="flex items-start gap-3">
                       <button
                         type="button"
@@ -708,14 +720,17 @@
                           </svg>
                         </span>
                       </button>
-                      <div>
-                        <p class="font-semibold text-slate-900">{{ u.name }}</p>
-                        <p class="text-xs text-slate-500">{{ u.email }}</p>
+                      <div class="min-w-0 flex-1">
+                        <p class="truncate font-semibold text-slate-900">{{ u.name }}</p>
+                        <p class="truncate text-xs text-slate-500">{{ u.email }}</p>
                       </div>
                     </div>
                   </td>
 
-                  <td class="px-3 py-3">
+                  <td
+                    class="px-3 py-3"
+                    :class="userTableColumns[1].cellClass"
+                  >
                     <span class="text-slate-800">{{ u.subscription_provider || "--" }}</span>
                   </td>
 
@@ -727,12 +742,22 @@
                     <span class="text-slate-800">{{ u.agency_name || 'Sem agência' }}</span>
                   </td>
 
-                  <td class="px-3 py-3 font-semibold text-slate-900">
-                    {{ u.active_pages ?? 0 }}
+                  <td
+                    class="px-3 py-3 whitespace-nowrap text-center font-semibold text-slate-900"
+                    :class="userTableColumns[4].cellClass"
+                  >
+                    <div class="flex w-full justify-center">
+                      <span>{{ u.active_pages ?? 0 }}</span>
+                    </div>
                   </td>
 
-                  <td class="px-3 py-3 font-semibold text-slate-900">
-                    {{ u.draft_pages?.length ?? u.draft_pages_count ?? 0 }}
+                  <td
+                    class="px-3 py-3 whitespace-nowrap text-center font-semibold text-slate-900"
+                    :class="userTableColumns[5].cellClass"
+                  >
+                    <div class="flex w-full justify-center">
+                      <span>{{ u.draft_pages?.length ?? u.draft_pages_count ?? 0 }}</span>
+                    </div>
                   </td>
 
                   <td class="px-3 py-3 capitalize">
@@ -754,7 +779,7 @@
                     <div
                       class="rounded-2xl border border-slate-100 bg-slate-50/70 p-4 text-sm text-slate-800 shadow-inner dark:border-white/10 dark:bg-[#202020] dark:text-white dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]"
                     >
-                      <div class="grid gap-4 md:grid-cols-2" :class="{ 'lg:grid-cols-3': isAsaasProvider(u) }">
+                      <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                         <div class="space-y-1 copyable">
                           <p class="text-xs uppercase tracking-[0.3em] text-slate-500 dark:text-white/50">Contato</p>
                           <p class="mt-1 font-semibold">{{ u.name }}</p>
@@ -770,19 +795,94 @@
                           </p>
                         </div>
 
-                        <div v-if="isAsaasProvider(u)" class="space-y-2">
-                          <p class="text-xs uppercase tracking-[0.3em] text-slate-500 dark:text-white/50">Assinatura Asaas</p>
+                        <div class="space-y-2">
+                          <p class="text-xs uppercase tracking-[0.3em] text-slate-500 dark:text-white/50">
+                            Assinatura {{ subscriptionProviderLabel(u) }}
+                          </p>
                           <p class="text-xs text-slate-500 dark:text-white/60">
                             Status:
                             <span class="font-semibold text-slate-800 dark:text-white">{{ formatSubscriptionStatus(u) }}</span>
                           </p>
                           <p class="text-xs text-slate-500 dark:text-white/60">
-                            Provider ID:
-                            <span class="font-mono">{{ u.subscription_asaas_subscription_id || "-" }}</span>
+                            Provider:
+                            <span class="font-semibold text-slate-800 dark:text-white">{{ subscriptionProviderLabel(u) }}</span>
+                          </p>
+                          <p class="text-xs text-slate-500 dark:text-white/60">
+                            ID:
+                            <span class="font-mono">{{ subscriptionProviderIdentifier(u) }}</span>
                           </p>
                           <p v-if="isCancelAtPeriodEnd(u)" class="text-xs font-semibold text-amber-600 dark:text-amber-300">
                             Cancelamento programado para: {{ formatDate(u.valid_until) || "-" }}
                           </p>
+                          <div class="grid gap-3 pt-1 sm:grid-cols-3">
+                            <div class="relative" data-subscription-action-menu="true">
+                              <button
+                                type="button"
+                                class="w-full rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
+                                @click.stop="toggleSubscriptionActionMenu(u.id, 'plan')"
+                              >
+                                Alterar plano
+                              </button>
+                              <div
+                                v-if="subscriptionActionMenu.open && subscriptionActionMenu.userId === u.id && subscriptionActionMenu.kind === 'plan'"
+                                class="absolute left-0 top-full z-30 mt-2 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-white/10 dark:bg-[#101010]"
+                              >
+                                <button
+                                  v-for="option in adminPlanOptions"
+                                  :key="option.value"
+                                  type="button"
+                                  class="flex w-full items-center justify-between gap-3 px-4 py-2 text-left text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:text-white dark:hover:bg-white/10"
+                                  @click.stop="openSubscriptionActionDialog(u, 'plan', option)"
+                                >
+                                  <span>{{ option.label }}</span>
+                                  <span
+                                    v-if="option.value === u.plan"
+                                    class="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-200"
+                                  >
+                                    Atual
+                                  </span>
+                                </button>
+                              </div>
+                            </div>
+
+                            <div class="relative" data-subscription-action-menu="true">
+                              <button
+                                type="button"
+                                class="w-full rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] font-semibold text-amber-700 transition hover:bg-amber-100 dark:border-amber-400/50 dark:bg-amber-500/10 dark:text-amber-100 dark:hover:bg-amber-500/20"
+                                @click.stop="toggleSubscriptionActionMenu(u.id, 'status')"
+                              >
+                                Alterar status
+                              </button>
+                              <div
+                                v-if="subscriptionActionMenu.open && subscriptionActionMenu.userId === u.id && subscriptionActionMenu.kind === 'status'"
+                                class="absolute left-0 top-full z-30 mt-2 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-white/10 dark:bg-[#101010]"
+                              >
+                                <button
+                                  v-for="option in adminSubscriptionStatusOptions"
+                                  :key="option.value"
+                                  type="button"
+                                  class="flex w-full items-center justify-between gap-3 px-4 py-2 text-left text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:text-white dark:hover:bg-white/10"
+                                  @click.stop="openSubscriptionActionDialog(u, 'status', option)"
+                                >
+                                  <span>{{ option.label }}</span>
+                                  <span
+                                    v-if="option.value === (u.subscription_status || '').toLowerCase()"
+                                    class="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-200"
+                                  >
+                                    Atual
+                                  </span>
+                                </button>
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              class="w-full rounded-full border border-sky-200 bg-sky-50 px-3 py-1.5 text-[11px] font-semibold text-sky-700 transition hover:bg-sky-100 dark:border-sky-400/50 dark:bg-sky-500/10 dark:text-sky-100 dark:hover:bg-sky-500/20"
+                              @click.stop="openValidityDialog(u)"
+                            >
+                              Alterar validade
+                            </button>
+                          </div>
                           <div class="flex flex-wrap gap-2 pt-1">
                             <button
                               class="rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-[11px] font-semibold text-red-700 transition hover:bg-red-100 disabled:opacity-60 dark:border-red-400/50 dark:bg-red-500/10 dark:text-red-100 dark:hover:bg-red-500/20"
@@ -1980,6 +2080,92 @@
       </div>
     </div>
   </transition>
+
+  <transition name="fade">
+    <div
+      v-if="subscriptionActionDialog.open && subscriptionActionDialog.user"
+      class="app-modal-overlay fixed inset-0 z-50 flex items-center justify-center px-4"
+    >
+      <div class="w-full max-w-xl rounded-3xl bg-white p-8 shadow-2xl dark:bg-[#101010] dark:text-white">
+        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-white/60">
+          {{
+            subscriptionActionDialog.kind === "plan"
+              ? "Alterar plano"
+              : subscriptionActionDialog.kind === "status"
+                ? "Alterar status"
+                : "Alterar validade"
+          }}
+        </p>
+        <h2 class="mt-3 text-2xl font-bold text-slate-900 dark:text-white">
+          Confirmar mudança de
+          {{
+            subscriptionActionDialog.kind === "plan"
+              ? "plano"
+              : subscriptionActionDialog.kind === "status"
+                ? "status"
+                : "validade"
+          }}?
+        </h2>
+        <p class="mt-2 text-sm text-slate-600 dark:text-white/70">
+          Usuário:
+          <span class="font-semibold text-slate-900 dark:text-white">{{ subscriptionActionDialog.user.name }}</span>
+        </p>
+        <div class="mt-4 grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm dark:border-white/10 dark:bg-white/5">
+          <div class="flex items-center justify-between gap-4">
+            <span class="text-slate-500 dark:text-white/60">
+              {{ subscriptionActionDialog.kind === "validity" ? "Validade atual" : "Valor atual" }}
+            </span>
+            <span class="font-semibold text-slate-900 dark:text-white">
+              {{
+                subscriptionActionDialog.kind === "plan"
+                  ? planLabel(subscriptionActionDialog.user.plan)
+                  : subscriptionActionDialog.kind === "validity"
+                    ? (formatDate(subscriptionActionDialog.user.valid_until) || "Sem validade definida")
+                    : formatSubscriptionStatus(subscriptionActionDialog.user)
+              }}
+            </span>
+          </div>
+          <div v-if="subscriptionActionDialog.kind === 'validity'" class="space-y-2">
+            <label class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500 dark:text-white/60">Nova validade</label>
+            <input
+              v-model="subscriptionActionDialog.value"
+              type="date"
+              class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 outline-none focus:border-slate-900 dark:border-white/10 dark:bg-[#151515] dark:text-white"
+            />
+          </div>
+          <div v-else class="flex items-center justify-between gap-4">
+            <span class="text-slate-500 dark:text-white/60">Novo valor</span>
+            <span class="font-semibold text-slate-900 dark:text-white">{{ subscriptionActionDialog.label }}</span>
+          </div>
+          <p class="text-xs text-slate-500 dark:text-white/60">
+            Essa alteração será refletida no usuário e na assinatura.
+          </p>
+        </div>
+        <p
+          v-if="subscriptionActionDialog.error"
+          class="mt-4 rounded-2xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-600 dark:bg-rose-500/10 dark:text-rose-200"
+        >
+          {{ subscriptionActionDialog.error }}
+        </p>
+        <div class="mt-6 flex flex-wrap justify-end gap-3">
+          <button
+            class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60 dark:border-white/10 dark:text-white dark:hover:bg-white/10"
+            :disabled="subscriptionActionDialog.saving"
+            @click="closeSubscriptionActionDialog"
+          >
+            Cancelar
+          </button>
+          <button
+            class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-slate-800 disabled:opacity-60 dark:bg-white dark:text-slate-900 dark:hover:bg-white/90"
+            :disabled="subscriptionActionDialog.saving || (subscriptionActionDialog.kind === 'validity' && !subscriptionActionDialog.value)"
+            @click="confirmSubscriptionAction"
+          >
+            {{ subscriptionActionDialog.saving ? "Salvando..." : "Confirmar alteração" }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </transition>
 </template>
 
 <script setup lang="ts">
@@ -2139,6 +2325,42 @@ interface RevenueForecastOut {
 
 type AdminTab = "dashboard" | "monitor" | "users" | "lessons" | "templates" | "flight_apis" | "revenue_forecast";
 type TemplateDialogMode = "create" | "edit";
+type SubscriptionActionKind = "plan" | "status" | "validity";
+
+interface SubscriptionActionOption {
+  value: string;
+  label: string;
+}
+
+const adminPlanOptions: SubscriptionActionOption[] = [
+  { value: "free", label: "Começo" },
+  { value: "trial", label: "Trial" },
+  { value: "essencial", label: "Profissional" },
+  { value: "growth", label: "Agência" },
+  { value: "infinity", label: "Escala" },
+  { value: "teste", label: "Teste" }
+];
+
+const adminSubscriptionStatusOptions: SubscriptionActionOption[] = [
+  { value: "active", label: "Ativa" },
+  { value: "pending", label: "Pendente" },
+  { value: "failed", label: "Falha" },
+  { value: "past_due", label: "Em atraso" },
+  { value: "cancel_at_period_end", label: "Cancelar no fim da validade" },
+  { value: "cancelled", label: "Cancelada" },
+  { value: "cancelled_admin", label: "Cancelada pelo admin" },
+  { value: "inactive", label: "Inativa" }
+];
+
+const toDateInputValue = (value?: string | null) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 
 type AdminPeriodOption = "7" | "30" | "90" | "custom";
 const days = ref<AdminPeriodOption>("30");
@@ -2370,6 +2592,32 @@ const linkPageDialog = ref<{
   newSlug: "",
   saving: false,
   loading: false,
+  error: ""
+});
+const subscriptionActionMenu = reactive<{
+  open: boolean;
+  userId: number | null;
+  kind: SubscriptionActionKind | null;
+}>({
+  open: false,
+  userId: null,
+  kind: null
+});
+const subscriptionActionDialog = reactive<{
+  open: boolean;
+  user: Metrics["users"][number] | null;
+  kind: SubscriptionActionKind | null;
+  value: string;
+  label: string;
+  saving: boolean;
+  error: string;
+}>({
+  open: false,
+  user: null,
+  kind: null,
+  value: "",
+  label: "",
+  saving: false,
   error: ""
 });
 const templateAgencyId = ref<number | null>(null);
@@ -2838,15 +3086,43 @@ interface UserColumn {
   label: string;
   align?: "left" | "right";
   sortable?: boolean;
+  widthClass?: string;
+  cellClass?: string;
 }
 
 const userTableColumns: UserColumn[] = [
-  { key: "name", label: "Nome", sortable: true },
-  { key: "gateway", label: "Gateway", sortable: true },
+  {
+    key: "name",
+    label: "Nome",
+    sortable: true,
+    widthClass: "w-[12rem] min-w-[12rem] max-w-[12rem]",
+    cellClass: "w-[12rem] min-w-[12rem] max-w-[12rem]"
+  },
+  {
+    key: "gateway",
+    label: "Gateway",
+    sortable: true,
+    widthClass: "w-[7rem] min-w-[7rem] max-w-[7rem]",
+    cellClass: "w-[7rem] min-w-[7rem] max-w-[7rem]"
+  },
   { key: "whatsapp", label: "WhatsApp", sortable: true },
   { key: "agency_name", label: "Agência", sortable: true },
-  { key: "active_pages", label: "Qtd páginas ativas", align: "right", sortable: true },
-  { key: "draft_pages", label: "Qtd páginas rascunho", align: "right", sortable: true },
+  {
+    key: "active_pages",
+    label: "Ativas",
+    align: "right",
+    sortable: true,
+    widthClass: "w-[5.5rem] min-w-[5.5rem] max-w-[5.5rem]",
+    cellClass: "w-[5.5rem] min-w-[5.5rem] max-w-[5.5rem]"
+  },
+  {
+    key: "draft_pages",
+    label: "Rascunho",
+    align: "right",
+    sortable: true,
+    widthClass: "w-[5.5rem] min-w-[5.5rem] max-w-[5.5rem]",
+    cellClass: "w-[5.5rem] min-w-[5.5rem] max-w-[5.5rem]"
+  },
   { key: "plan", label: "Plano", sortable: true },
   { key: "valid_until", label: "Validade", sortable: true },
   { key: "created_at", label: "Entrada", sortable: true }
@@ -3557,6 +3833,14 @@ const handleFilterOutsideClick = (event: MouseEvent) => {
       templateAgencyDropdownOpen.value = false;
     }
   }
+  if (subscriptionActionMenu.open) {
+    const insideSubscriptionAction = path.some(
+      el => (el as HTMLElement)?.dataset?.subscriptionActionMenu === "true"
+    );
+    if (!insideSubscriptionAction) {
+      closeSubscriptionActionMenu();
+    }
+  }
 };
 
 const toggleUserRow = (userId: number) => {
@@ -3707,8 +3991,19 @@ const canRefundUser = (user: Metrics["users"][number]) => {
   return provider === "cakto" && Boolean(user.subscription_cakto_order_id) && status === "active" && user.is_active !== false;
 };
 
-const isAsaasProvider = (user: Metrics["users"][number]) => {
-  return (user.subscription_provider || "").toLowerCase() === "asaas";
+const subscriptionProviderLabel = (user: Metrics["users"][number]) => {
+  const provider = (user.subscription_provider || "").trim().toLowerCase();
+  if (!provider) return "Indefinido";
+  if (provider === "asaas") return "Asaas";
+  if (provider === "cakto") return "Cakto";
+  return provider.charAt(0).toUpperCase() + provider.slice(1);
+};
+
+const subscriptionProviderIdentifier = (user: Metrics["users"][number]) => {
+  const provider = (user.subscription_provider || "").trim().toLowerCase();
+  if (provider === "asaas") return user.subscription_asaas_subscription_id || "-";
+  if (provider === "cakto") return user.subscription_cakto_subscription_code || user.subscription_cakto_order_id || "-";
+  return user.subscription_asaas_subscription_id || user.subscription_cakto_subscription_code || user.subscription_cakto_order_id || "-";
 };
 
 const isCancelAtPeriodEnd = (user: Metrics["users"][number]) => {
@@ -3781,6 +4076,91 @@ const adminCancelScheduledAsaasCancellation = async (user: Metrics["users"][numb
     showSnackbar(error.value);
   } finally {
     adminAsaasActionLoadingUserId.value = null;
+  }
+};
+
+const closeSubscriptionActionMenu = () => {
+  subscriptionActionMenu.open = false;
+  subscriptionActionMenu.userId = null;
+  subscriptionActionMenu.kind = null;
+};
+
+const toggleSubscriptionActionMenu = (userId: number, kind: SubscriptionActionKind) => {
+  if (subscriptionActionMenu.open && subscriptionActionMenu.userId === userId && subscriptionActionMenu.kind === kind) {
+    closeSubscriptionActionMenu();
+    return;
+  }
+  subscriptionActionMenu.open = true;
+  subscriptionActionMenu.userId = userId;
+  subscriptionActionMenu.kind = kind;
+};
+
+const closeSubscriptionActionDialog = () => {
+  subscriptionActionDialog.open = false;
+  subscriptionActionDialog.user = null;
+  subscriptionActionDialog.kind = null;
+  subscriptionActionDialog.value = "";
+  subscriptionActionDialog.label = "";
+  subscriptionActionDialog.saving = false;
+  subscriptionActionDialog.error = "";
+};
+
+const openSubscriptionActionDialog = (
+  user: Metrics["users"][number],
+  kind: SubscriptionActionKind,
+  option: SubscriptionActionOption
+) => {
+  subscriptionActionDialog.open = true;
+  subscriptionActionDialog.user = user;
+  subscriptionActionDialog.kind = kind;
+  subscriptionActionDialog.value = option.value;
+  subscriptionActionDialog.label = option.label;
+  subscriptionActionDialog.saving = false;
+  subscriptionActionDialog.error = "";
+  closeSubscriptionActionMenu();
+};
+
+const openValidityDialog = (user: Metrics["users"][number]) => {
+  subscriptionActionDialog.open = true;
+  subscriptionActionDialog.user = user;
+  subscriptionActionDialog.kind = "validity";
+  subscriptionActionDialog.value = toDateInputValue(user.valid_until);
+  subscriptionActionDialog.label = user.valid_until ? formatDate(user.valid_until) : "Sem validade definida";
+  subscriptionActionDialog.saving = false;
+  subscriptionActionDialog.error = "";
+  closeSubscriptionActionMenu();
+};
+
+const confirmSubscriptionAction = async () => {
+  const dialog = subscriptionActionDialog;
+  if (!dialog.user || !dialog.kind) return;
+  if (dialog.kind === "validity" && !dialog.value) {
+    dialog.error = "Informe a nova validade.";
+    return;
+  }
+  if (dialog.kind !== "validity" && !dialog.value) return;
+  dialog.saving = true;
+  dialog.error = "";
+  try {
+    const payload =
+      dialog.kind === "validity"
+        ? { valid_until: dialog.value }
+        : { [dialog.kind]: dialog.value };
+    await api.patch(`/admin/users/${dialog.user.id}/subscription`, payload);
+    showSnackbar(
+      dialog.kind === "plan"
+        ? `Plano atualizado para ${dialog.label}.`
+        : dialog.kind === "status"
+          ? `Status atualizado para ${dialog.label}.`
+          : `Validade atualizada para ${formatDate(dialog.value) || dialog.value}.`
+    );
+    closeSubscriptionActionDialog();
+    expandedUser.value = null;
+    await loadMetrics();
+  } catch (err: any) {
+    console.error(err);
+    dialog.error = err?.response?.data?.detail || "Não foi possível atualizar a assinatura agora.";
+    dialog.saving = false;
   }
 };
 

@@ -211,7 +211,7 @@ def get_inbox_access(
     db: Session = Depends(get_db),
 ) -> WhatsAppInboxAccessOut:
     resolved_agency_id = agency_id or current_user.primary_agency_id
-    if resolved_agency_id and not current_user.is_superuser:
+    if resolved_agency_id:
         require_agency_membership(db=db, agency_id=resolved_agency_id, user_id=current_user.id)
     enabled = has_whatsapp_inbox_access(db, user=current_user, agency_id=resolved_agency_id)
     return WhatsAppInboxAccessOut(enabled=enabled)

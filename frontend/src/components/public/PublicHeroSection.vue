@@ -271,7 +271,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { resolveMediaUrl } from "../../utils/media";
-import { isWhatsappLink } from "../../utils/links";
+import { isWhatsappLink, normalizeExternalLink } from "../../utils/links";
 import { sanitizeHtml } from "../../utils/sanitizeHtml";
 import { normalizeYoutubeEmbedUrl } from "../../utils/video";
 import { getReadableTextColor } from "../../utils/colorContrast";
@@ -307,7 +307,9 @@ const ctaColor = computed(() => props.section.ctaColor || accent.value);
 const ctaTextColor = computed(() => getReadableTextColor(ctaColor.value));
 const ctaMode = computed(() => props.section.ctaMode || "link");
 const ctaHref = computed(() =>
-  ctaMode.value === "section" && props.section.ctaSectionId ? `#${props.section.ctaSectionId}` : props.section.ctaLink || "#"
+  ctaMode.value === "section" && props.section.ctaSectionId
+    ? `#${props.section.ctaSectionId}`
+    : normalizeExternalLink(props.section.ctaLink) || "#"
 );
 const ctaIsScroll = computed(() => ctaMode.value === "section" && !!props.section.ctaSectionId);
 const ctaOpenInNewTab = computed(() => !ctaIsScroll.value && props.section.ctaOpenInNewTab !== false);

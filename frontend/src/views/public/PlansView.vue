@@ -125,7 +125,7 @@
               <button
                 type="button"
                 class="inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl disabled:opacity-60"
-                :class="plan.isCurrent ? 'bg-slate-300 text-slate-600' : (plan.isLowerThanCurrent ? 'bg-amber-500 hover:bg-amber-400' : plan.ctaClass)"
+                :class="plan.isCurrent ? 'bg-emerald-600 hover:bg-emerald-500' : (plan.isLowerThanCurrent ? 'bg-amber-500 hover:bg-amber-400' : plan.ctaClass)"
                 :disabled="!plan.isActionable || loadingPlan === plan.key"
                 @click="handlePlanClick(plan.key)"
               >
@@ -201,7 +201,6 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from "vue";
 import api from "../../services/api";
-import { CHECKOUT_SESSION_STORAGE_KEY, createCaktoCheckoutSession } from "../../services/cakto";
 import { useAuthStore } from "../../store/useAuthStore";
 import { planLabels } from "../../utils/planLabels";
 import { createLocalizer, getCurrentLanguage } from "../../utils/i18n";
@@ -277,7 +276,7 @@ const trialActiveDescription = localize(viewCopy.trial.activeDescription);
 const trialActiveUntilLabel = localize(viewCopy.trial.activeUntil);
 const currentPlanBadgeLabel = localize(viewCopy.badges.currentPlan);
 const planButtonLabels = {
-  current: localize(viewCopy.buttons.currentPlan),
+  current: currentLanguage === "es" ? "Renovar plan" : "Renovar plano",
   redirecting: localize(viewCopy.buttons.redirecting),
   reactivate: localize(viewCopy.buttons.reactivate)
 };
@@ -364,10 +363,6 @@ const errorMessage = ref<string | null>(null);
 const successMessage = ref<string | null>(null);
 
 const billingInfo = ref<BillingInfo | null>(null);
-const currentSubscriptionProvider = computed(() =>
-  String(billingInfo.value?.provider || "").trim().toLowerCase()
-);
-
 const normalizedPlanKey = (value?: string | null) => {
   const raw = String(value || "")
     .trim()
@@ -577,14 +572,14 @@ const plans = computed<PlanCard[]>(() =>
       isCurrent,
       isHigherThanCurrent,
       isLowerThanCurrent,
-      isActionable: isSubscriptionInactive.value ? true : !isCurrent
+      isActionable: true
     };
   })
 );
 
 const planCtaLabel = (plan: PlanCard) => {
-  if (plan.isCurrent) return planButtonLabels.current;
   if (isSubscriptionInactive.value && plan.key === activePlan.value) return planButtonLabels.reactivate;
+  if (plan.isCurrent) return planButtonLabels.current;
   if (plan.isLowerThanCurrent) {
     return currentLanguage === "es" ? `Hacer downgrade a ${plan.name}` : `Fazer downgrade para ${plan.name}`;
   }
@@ -624,15 +619,6 @@ const goToCheckout = async (
     const offerKey = keyToOffer[planKey];
     if (!offerKey && planKey !== "teste") throw new Error("Plano inválido para checkout.");
 
-    if (currentSubscriptionProvider.value === "cakto") {
-      const { data } = await createCaktoCheckoutSession(planKey, cycle);
-      localStorage.setItem(CHECKOUT_SESSION_STORAGE_KEY, data.token);
-      const checkoutUrl = String(data.checkout_url || "").trim();
-      if (!checkoutUrl) throw new Error("Checkout Cakto indisponível.");
-      window.location.href = checkoutUrl;
-      return;
-    }
-
     const internalPath = internalCheckoutPaths[planKey];
     const checkoutUrl = internalPath
       ? `${checkoutBaseOrigin.value}${internalPath}?upgrade=1`
@@ -646,11 +632,15 @@ const goToCheckout = async (
   }
 };
 
-const handlePlanClick = (planKey: string) => {
-  if (!isSubscriptionInactive.value && planKey === activePlan.value) return;
+const handlePlanClick = async (planKey: string) => {
   const planOrder: Record<string, number> = { free: 0, essencial: 1, growth: 2, infinity: 3 };
   const currentOrder = planOrder[activePlan.value] ?? 0;
   const targetOrder = planOrder[planKey] ?? 0;
+
+  if (targetOrder === currentOrder) {
+    await goToCheckout(planKey, undefined, true, planKey);
+    return;
+  }
 
   if (targetOrder < currentOrder) {
     loadingPlan.value = planKey;
@@ -678,7 +668,7 @@ const handlePlanClick = (planKey: string) => {
     return;
   }
 
-  goToCheckout(planKey);
+  await goToCheckout(planKey);
 };
 
 const cancelScheduledDowngrade = async () => {

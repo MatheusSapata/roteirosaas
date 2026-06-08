@@ -12,6 +12,20 @@ export interface CheckoutAppearance {
   active: boolean;
 }
 
+export interface CheckoutPixel {
+  name: string;
+  pixel_id: string;
+  access_token: string;
+  active: boolean;
+  offer_keys: string[];
+}
+
+export interface CheckoutPublicPixel {
+  name: string;
+  pixel_id: string;
+  active: boolean;
+}
+
 export interface CheckoutOffer {
   key: string;
   title: string;
@@ -40,6 +54,7 @@ export interface CheckoutSettings {
   offers: CheckoutOffer[];
   coupons: CheckoutCoupon[];
   checkouts: CheckoutAppearance[];
+  pixels: CheckoutPixel[];
   created_at: string;
   updated_at: string;
 }
@@ -49,6 +64,7 @@ export interface CheckoutPublicConfig {
   desktop_image_url?: string | null;
   mobile_banner_url?: string | null;
   offer: CheckoutOffer;
+  pixels: CheckoutPublicPixel[];
 }
 
 export interface CheckoutSessionPayload {

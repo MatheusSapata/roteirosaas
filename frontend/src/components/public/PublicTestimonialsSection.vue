@@ -73,7 +73,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { resolveMediaUrl } from "../../utils/media";
-import { isWhatsappLink } from "../../utils/links";
+import { isWhatsappLink, normalizeExternalLink } from "../../utils/links";
 import type { TestimonialsSection } from "../../types/page";
 import SectionHeadingChip from "./SectionHeadingChip.vue";
 import { getSectionHeadingDefaults, resolveHeadingLabel } from "../../utils/sectionHeadings";
@@ -211,7 +211,9 @@ const cardWidthClass = computed(() => {
 });
 const ctaMode = computed(() => props.section.ctaMode || "link");
 const ctaHref = computed(() =>
-  ctaMode.value === "section" && props.section.ctaSectionId ? `#${props.section.ctaSectionId}` : props.section.ctaLink || "#"
+  ctaMode.value === "section" && props.section.ctaSectionId
+    ? `#${props.section.ctaSectionId}`
+    : normalizeExternalLink(props.section.ctaLink) || "#"
 );
 const ctaHasTarget = computed(() =>
   ctaMode.value === "section" ? !!props.section.ctaSectionId : !!props.section.ctaLink

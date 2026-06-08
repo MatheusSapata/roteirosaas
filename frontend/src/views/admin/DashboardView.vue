@@ -16,57 +16,6 @@
           <p class="page-sub">Visão geral das suas páginas e performance.</p>
         </div>
         <div class="topbar-actions">
-          <div v-if="isMasterAdmin" ref="pushTestMenuRef" class="push-test-wrap">
-            <button
-              type="button"
-              class="btn btn-ghost push-test-btn"
-              :disabled="isPushTestLoading"
-              :aria-busy="isPushTestLoading"
-              :aria-expanded="pushTestMenuOpen"
-              @click="togglePushTestMenu"
-            >
-              <svg
-                v-if="isPushTestLoading"
-                viewBox="0 0 24 24"
-                class="push-test-spinner"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.2"
-                stroke-linecap="round"
-              >
-                <path d="M12 2a10 10 0 1 0 10 10" />
-              </svg>
-              <svg
-                v-else
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M13 2L4 14h7l-1 8 10-13h-7z" />
-              </svg>
-              {{ isPushTestLoading ? "Enviando..." : "Push Teste" }}
-              <svg viewBox="0 0 24 24" class="push-test-caret" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="m6 9 6 6 6-6" />
-              </svg>
-            </button>
-            <div v-if="pushTestMenuOpen" class="push-test-menu">
-              <button
-                v-for="option in pushTestOptions"
-                :key="option.value"
-                type="button"
-                class="push-test-menu-item"
-                :disabled="isPushTestLoading"
-                @click="sendPushTest(option.value)"
-              >
-                <span class="push-test-menu-label">{{ option.label }}</span>
-                <span class="push-test-menu-desc">{{ option.description }}</span>
-              </button>
-            </div>
-          </div>
           <button type="button" class="btn btn-ghost" @click="goToLessons">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <polygon points="23 7 16 12 23 17 23 7"/>
@@ -376,6 +325,7 @@ import { useAuthStore } from "../../store/useAuthStore";
 import { useLeadCaptureStore } from "../../store/useLeadCaptureStore";
 import type { LeadContact } from "../../types/leads";
 import OpportunityDrawer from "../../components/admin/leads/OpportunityDrawer.vue";
+import { normalizeExternalLink } from "../../utils/links";
 import { normalizeWhatsappDigits } from "../../utils/whatsapp";
 import SystemBanner from "../../components/admin/SystemBanner.vue";
 
@@ -427,7 +377,7 @@ interface SystemBannerPayload {
   dismiss_duration_days?: number | null;
   has_cta: boolean;
   cta_label?: string | null;
-  cta_type?: "internal_route" | "external_url" | "none" | null;
+  cta_type?: "internal_route" | "external_url" | "open_modal" | "system_action" | "none" | null;
   cta_target?: string | null;
 }
 
@@ -471,53 +421,8 @@ const visibleSeries = reactive({
 
 const drawerOpen = ref(false);
 const selectedLeadId = ref<string | number | null>(null);
-const isPushTestLoading = ref(false);
-const pushTestMenuOpen = ref(false);
-const pushTestMenuRef = ref<HTMLElement | null>(null);
-
-type PushTestScenario =
-  | "nova_assinatura"
-  | "assinatura_renovada"
-  | "assinatura_cancelada"
-  | "upgrade_realizado"
-  | "assinatura_teste";
-
-const pushTestOptions: Array<{
-  value: PushTestScenario;
-  label: string;
-  description: string;
-}> = [
-  {
-    value: "nova_assinatura",
-    label: "Assinatura criada",
-    description: "Envia o teste no formato novo."
-  },
-  {
-    value: "assinatura_renovada",
-    label: "Assinatura renovada",
-    description: "Envia o teste no formato novo."
-  },
-  {
-    value: "assinatura_cancelada",
-    label: "Assinatura cancelada",
-    description: "Envia o teste no formato novo."
-  },
-  {
-    value: "upgrade_realizado",
-    label: "Upgrade realizado",
-    description: "Envia o teste de upgrade."
-  },
-  {
-    value: "assinatura_teste",
-    label: "Assinatura de teste",
-    description: "Envia o teste no formato novo."
-  }
-];
-let pushTestDocumentClickHandler: ((event: MouseEvent) => void) | null = null;
-let pushTestEscapeHandler: ((event: KeyboardEvent) => void) | null = null;
 
 const userName = computed(() => auth.user?.name || "Agente");
-const isMasterAdmin = computed(() => Boolean(auth.user?.is_superuser));
 const pagesCount = computed(() => pages.value.filter(page => String(page.status || "").toLowerCase() === "published").length);
 const totalVisits = computed(() => overview.value?.visits || 0);
 const visitsTrend = computed(() => Number(overview.value?.trend?.visits ?? 0));
@@ -598,7 +503,9 @@ const handleBannerCta = async () => {
     return;
   }
   if (banner.cta_type === "external_url") {
-    window.open(banner.cta_target, "_blank", "noopener");
+    const href = normalizeExternalLink(banner.cta_target);
+    if (!href) return;
+    window.open(href, "_blank", "noopener");
   }
 };
 
@@ -860,29 +767,6 @@ const goToLessons = () => router.push("/admin/aulas");
 const goToPages = () => router.push("/admin/pages");
 const goToOpportunities = () => router.push("/admin/leads/opportunities");
 const goToIntegrations = () => router.push("/admin/integracoes");
-const togglePushTestMenu = () => {
-  if (isPushTestLoading.value) return;
-  pushTestMenuOpen.value = !pushTestMenuOpen.value;
-};
-const sendPushTest = async (scenario: PushTestScenario) => {
-  if (isPushTestLoading.value) return;
-  pushTestMenuOpen.value = false;
-  isPushTestLoading.value = true;
-  try {
-    const { data } = await api.post<{ success?: boolean; message?: string }>("/admin/test-push/subscription", {
-      scenario
-    });
-    if (data?.success) {
-      showCopyToast("Push enviado com sucesso.");
-      return;
-    }
-    showCopyToast(data?.message || "Erro ao enviar push.");
-  } catch {
-    showCopyToast("Erro ao enviar push.");
-  } finally {
-    isPushTestLoading.value = false;
-  }
-};
 
 const currentAgencySlug = computed(() => {
   const agency = agencyStore.currentAgency || agencyStore.agencies.find(a => a.id === agencyStore.currentAgencyId);
@@ -1002,33 +886,12 @@ onMounted(async () => {
     chartResizeObserver = new ResizeObserver(() => measureChartWidth());
     if (chartStageRef.value) chartResizeObserver.observe(chartStageRef.value);
   }
-  pushTestDocumentClickHandler = (event: MouseEvent) => {
-    if (!pushTestMenuOpen.value) return;
-    const target = event.target as Node | null;
-    if (target && pushTestMenuRef.value?.contains(target)) return;
-    pushTestMenuOpen.value = false;
-  };
-  pushTestEscapeHandler = (event: KeyboardEvent) => {
-    if (event.key === "Escape") {
-      pushTestMenuOpen.value = false;
-    }
-  };
-  window.addEventListener("click", pushTestDocumentClickHandler);
-  window.addEventListener("keydown", pushTestEscapeHandler);
   window.addEventListener("resize", measureChartWidth);
 });
 
 onBeforeUnmount(() => {
   chartResizeObserver?.disconnect();
   chartResizeObserver = null;
-  if (pushTestDocumentClickHandler) {
-    window.removeEventListener("click", pushTestDocumentClickHandler);
-    pushTestDocumentClickHandler = null;
-  }
-  if (pushTestEscapeHandler) {
-    window.removeEventListener("keydown", pushTestEscapeHandler);
-    pushTestEscapeHandler = null;
-  }
   window.removeEventListener("resize", measureChartWidth);
   if (copyToastTimer) clearTimeout(copyToastTimer);
 });
@@ -1095,12 +958,6 @@ onBeforeUnmount(() => {
   }
 }
 
-@keyframes push-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 .topbar {
   display: flex;
   justify-content: space-between;
@@ -1161,78 +1018,6 @@ onBeforeUnmount(() => {
   background: var(--surface);
   color: var(--text-2);
   border: 1px solid var(--border);
-}
-
-.push-test-btn {
-  background: linear-gradient(135deg, rgba(61, 204, 95, 0.14), rgba(61, 204, 95, 0.08));
-  color: #1d6b34;
-  border-color: rgba(61, 204, 95, 0.28);
-}
-
-.push-test-wrap {
-  position: relative;
-}
-
-.push-test-caret {
-  width: 14px;
-  height: 14px;
-  margin-left: -2px;
-  opacity: 0.8;
-}
-
-.push-test-menu {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 8px);
-  z-index: 30;
-  width: min(22rem, 88vw);
-  overflow: hidden;
-  border-radius: 16px;
-  border: 1px solid rgba(61, 204, 95, 0.18);
-  background: rgba(255, 255, 255, 0.98);
-  box-shadow: 0 18px 44px rgba(15, 31, 20, 0.16);
-  backdrop-filter: blur(10px);
-}
-
-.push-test-menu-item {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  width: 100%;
-  padding: 12px 14px;
-  border: none;
-  border-bottom: 1px solid rgba(221, 232, 223, 0.8);
-  background: transparent;
-  text-align: left;
-  cursor: pointer;
-}
-
-.push-test-menu-item:last-child {
-  border-bottom: none;
-}
-
-.push-test-menu-item:hover:not(:disabled) {
-  background: rgba(61, 204, 95, 0.08);
-}
-
-.push-test-menu-item:disabled {
-  cursor: not-allowed;
-  opacity: 0.7;
-}
-
-.push-test-menu-label {
-  font-size: 13px;
-  font-weight: 700;
-  color: #12311b;
-}
-
-.push-test-menu-desc {
-  font-size: 11px;
-  color: #5f7668;
-}
-
-.push-test-spinner {
-  animation: push-spin 0.85s linear infinite;
 }
 
 .banner {

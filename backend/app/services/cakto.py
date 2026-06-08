@@ -403,6 +403,19 @@ class CaktoIntegrationService:
                     incoming_plan or "desconhecido",
                     subscription.plan,
                 )
+                self._notify_subscription_push(
+                    scenario=SubscriptionPushScenario.CANCELLED,
+                    payload=payload,
+                    order=order,
+                    subscription=subscription,
+                    amount=subscription.mrr_amount,
+                    plan_name=subscription.plan,
+                    offer_name=offer_name or offer_id or subscription.cakto_offer_id,
+                    cancelled_item=(
+                        f"Cancelamento ignorado após upgrade: "
+                        f"{offer_name or offer_id or subscription.cakto_offer_id or 'desconhecida'}"
+                    ),
+                )
                 return (
                     f"Cliente já com upgrade. Assinatura {subscription_code or order_id} já migrada para outro plano; cancelamento ignorado."
                 )

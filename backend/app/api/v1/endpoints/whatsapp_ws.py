@@ -83,15 +83,14 @@ async def whatsapp_ws(websocket: WebSocket) -> None:
                 return
 
         membership = db.query(AgencyUser).filter(AgencyUser.agency_id == agency_id, AgencyUser.user_id == user.id).first()
-        if not membership and not bool(getattr(user, "is_superuser", False)):
+        if not membership:
             await close_ws(1008, "sem acesso a agencia")
             return
 
-        if not bool(getattr(user, "is_superuser", False)):
-            has_access = has_whatsapp_inbox_access(db, user=user, agency_id=agency_id)
-            if not has_access:
-                await close_ws(1008, "sem permissao de inbox")
-                return
+        has_access = has_whatsapp_inbox_access(db, user=user, agency_id=agency_id)
+        if not has_access:
+            await close_ws(1008, "sem permissao de inbox")
+            return
 
         await whatsapp_realtime.register(websocket, user_id=user.id, agency_id=agency_id)
         await websocket.send_json({"type": "ws.ready", "agency_id": agency_id, "user_id": user.id})

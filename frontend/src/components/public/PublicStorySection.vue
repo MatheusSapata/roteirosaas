@@ -253,7 +253,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { resolveMediaUrl } from "../../utils/media";
-import { isWhatsappLink } from "../../utils/links";
+import { isWhatsappLink, normalizeExternalLink } from "../../utils/links";
 import { normalizeYoutubeEmbedUrl, extractYoutubeId } from "../../utils/video";
 import type { StorySection } from "../../types/page";
 import SectionHeadingChip from "./SectionHeadingChip.vue";
@@ -286,7 +286,9 @@ const ctaHasTarget = computed(() =>
   ctaMode.value === "section" ? !!props.section.ctaSectionId : !!props.section.ctaLink
 );
 const ctaHref = computed(() =>
-  ctaMode.value === "section" && props.section.ctaSectionId ? `#${props.section.ctaSectionId}` : props.section.ctaLink || "#"
+  ctaMode.value === "section" && props.section.ctaSectionId
+    ? `#${props.section.ctaSectionId}`
+    : normalizeExternalLink(props.section.ctaLink) || "#"
 );
 const ctaIsScroll = computed(() => ctaMode.value === "section" && !!props.section.ctaSectionId);
 const ctaOpenInNewTab = computed(() => !ctaIsScroll.value && props.section.ctaOpenInNewTab !== false);

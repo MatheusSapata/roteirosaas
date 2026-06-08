@@ -38,7 +38,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { resolveMediaUrl } from "../../utils/media";
-import { isWhatsappLink } from "../../utils/links";
+import { isWhatsappLink, normalizeExternalLink } from "../../utils/links";
 import { getReadableTextColor } from "../../utils/colorContrast";
 import type { BannerCardSection } from "../../types/page";
 import { createLocalizer, getCurrentLanguage } from "../../utils/i18n";
@@ -142,7 +142,7 @@ const ctaHasTarget = computed(() =>
 );
 const ctaVisible = computed(() => ctaEnabled.value && ctaHasTarget.value);
 const ctaHref = computed(() =>
-  ctaIsScroll.value ? `#${props.section.ctaSectionId}` : props.section.ctaLink || "#"
+  ctaIsScroll.value ? `#${props.section.ctaSectionId}` : normalizeExternalLink(props.section.ctaLink) || "#"
 );
 const ctaOpenInNewTab = computed(() => !ctaIsScroll.value && props.section.ctaOpenInNewTab !== false);
 const ctaColor = computed(() => props.section.ctaColor || "#41ce5f");
