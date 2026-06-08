@@ -6,6 +6,7 @@ from typing import Optional
 from app.core.config import get_settings
 from app.db.session import SessionLocal
 from app.models.subscription import Subscription
+from app.models.user import User
 from app.services.asaas import AsaasAPIError, AsaasClient, build_default_split_payload
 from app.services.viajechat_checkout_flow import tag_abandoned_checkout_sessions
 
@@ -138,7 +139,8 @@ def expire_subscriptions(now: Optional[datetime] = None) -> int:
     processed = 0
     try:
         expired = (
-            db.query(Subscription)
+            db.query(Subscription, User)
+            .join(User, User.id == Subscription.user_id)
             .filter(
                 Subscription.valid_until.isnot(None),
                 Subscription.valid_until < now,
@@ -146,10 +148,12 @@ def expire_subscriptions(now: Optional[datetime] = None) -> int:
             )
             .all()
         )
-        for sub in expired:
+        for sub, user in expired:
             sub.status = "inactive"
             sub.valid_until = None
             sub.failed_attempts = 3
+            user.is_active = False
+            db.add(user)
             processed += 1
         if processed:
             db.commit()

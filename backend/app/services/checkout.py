@@ -1,5 +1,6 @@
 ﻿from __future__ import annotations
 
+import hashlib
 import secrets
 import json
 from ipaddress import ip_address
@@ -22,6 +23,8 @@ from app.schemas.checkout import (
     CheckoutCouponOut,
     CheckoutOfferOut,
     CheckoutOfferReportItemOut,
+    CheckoutPixelOut,
+    CheckoutPixelPublicOut,
     CheckoutSettingsUpdate,
 )
 from app.services import auth as auth_service
@@ -29,6 +32,7 @@ from app.services.asaas import AsaasAPIError, AsaasClient, build_default_split_p
 from app.services.ntfy import SubscriptionPushScenario, publish_subscription_notification
 from app.services.trial import end_trial
 from app.services.trial import republish_all_user_pages
+from app.services.webhook_notifications import send_notification
 from app.services.viajechat_checkout_flow import (
     ensure_checkout_contact_at_payment_step,
     mark_signed as mark_viajechat_signed,
@@ -47,6 +51,8 @@ DEFAULT_CHECKOUTS = [
         "active": True,
     }
 ]
+
+DEFAULT_PIXELS: list[dict[str, Any]] = []
 
 DEFAULT_OFFERS = [
     {
@@ -146,6 +152,17 @@ def _is_upgrade_session(session: CheckoutSession) -> bool:
     return bool(metadata.get("upgrade_mode"))
 
 
+def _extract_checkout_session_token(external_reference: str) -> str | None:
+    reference = str(external_reference or "").strip()
+    if reference.startswith("checkout:"):
+        return reference.split("checkout:", 1)[1].strip() or None
+    if reference.startswith("checkout_upgrade:"):
+        return reference.split("checkout_upgrade:", 1)[1].strip() or None
+    if reference.startswith("co:"):
+        return reference.split("co:", 1)[1].strip() or None
+    return None
+
+
 def _humanize_payment_method(value: str | None) -> str:
     normalized = str(value or "").strip().lower()
     if normalized in {"pix", "pix_automatic", "pix-automatic"}:
@@ -184,6 +201,18 @@ def _notify_checkout_subscription_push(
         )
     except Exception:  # pragma: no cover - alerta não pode quebrar o checkout
         pass
+
+
+def _notify_gateway_modified_cakto_to_asaas(user: User) -> None:
+    try:
+        send_notification(
+            event_key="gateway_modified_cakto_asaas",
+            context={
+                "user_name": user.name or "Não informado",
+            },
+        )
+    except Exception:  # pragma: no cover - alerta não pode quebrar o checkout
+        logger.exception("Falha ao enviar notificação ntfy de mudança de gateway.")
 
 
 def _resolve_target_subscription_for_upgrade(db: Session, session: CheckoutSession) -> Subscription | None:
@@ -308,6 +337,44 @@ def _legacy_checkout_payload(record: CheckoutSettings) -> dict[str, Any]:
     }
 
 
+def _normalize_offer_keys(values: Any) -> list[str]:
+    if not isinstance(values, list):
+        return []
+    normalized = []
+    for value in values:
+        raw = str(value or "").strip().lower()
+        if raw:
+            normalized.append(raw)
+    return normalized
+
+
+def _serialize_pixels(record: CheckoutSettings) -> list[dict[str, Any]]:
+    raw_items = record.pixels_json or DEFAULT_PIXELS
+    pixels: list[dict[str, Any]] = []
+    for item in raw_items:
+        payload = dict(item or {})
+        payload["name"] = str(payload.get("name") or "").strip()
+        payload["pixel_id"] = str(payload.get("pixel_id") or "").strip()
+        payload["access_token"] = str(payload.get("access_token") or "").strip()
+        payload["active"] = bool(payload.get("active", True))
+        payload["offer_keys"] = _normalize_offer_keys(payload.get("offer_keys"))
+        pixels.append(CheckoutPixelOut.model_validate(payload).model_dump(mode="json"))
+    return pixels
+
+
+def _serialize_public_pixels(record: CheckoutSettings, offer_key: str) -> list[dict[str, Any]]:
+    normalized_offer_key = str(offer_key or "").strip().lower()
+    pixels = []
+    for pixel in _serialize_pixels(record):
+        offer_keys = set(pixel.get("offer_keys") or [])
+        if not pixel.get("active"):
+            continue
+        if normalized_offer_key not in offer_keys:
+            continue
+        pixels.append(CheckoutPixelPublicOut.model_validate(pixel).model_dump(mode="json"))
+    return pixels
+
+
 def _serialize_checkouts(record: CheckoutSettings) -> list[dict[str, Any]]:
     raw_items = record.checkouts_json or []
     if not raw_items:
@@ -329,6 +396,215 @@ def _serialize_offers(record: CheckoutSettings) -> list[dict[str, Any]]:
             payload["checkout_key"] = fallback_checkout_key
         offers.append(CheckoutOfferOut.model_validate(payload).model_dump(mode="json"))
     return offers
+
+
+def _active_pixels_for_offer(record: CheckoutSettings, offer_key: str) -> list[dict[str, Any]]:
+    normalized_offer_key = str(offer_key or "").strip().lower()
+    pixels = []
+    for pixel in _serialize_pixels(record):
+        if not pixel.get("active"):
+            continue
+        offer_keys = set(pixel.get("offer_keys") or [])
+        if normalized_offer_key not in offer_keys:
+            continue
+        pixels.append(pixel)
+    return pixels
+
+
+def _meta_api_version() -> str:
+    raw = getattr(settings, "meta_graph_api_version", None)
+    value = str(raw or "").strip()
+    return value or "v20.0"
+
+
+def _build_meta_event_id(
+    *,
+    session: CheckoutSession,
+    event_name: str,
+    step: str | None = None,
+    status: str | None = None,
+    payment_method: str | None = None,
+) -> str:
+    parts = [
+        session.token,
+        (event_name or "").strip().lower(),
+        (step or "").strip().lower(),
+        (status or "").strip().lower(),
+        (payment_method or "").strip().lower(),
+    ]
+    return "|".join(part or "-" for part in parts)
+
+
+def _hash_meta_value(value: str | None) -> str | None:
+    raw = str(value or "").strip().lower()
+    if not raw:
+        return None
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def _meta_user_data(session: CheckoutSession, ip_address_value: str | None, user_agent: str | None) -> dict[str, Any]:
+    email = _hash_meta_value(session.customer_email)
+    phone = _hash_meta_value(_normalize_digits(session.customer_phone))
+    user_data: dict[str, Any] = {
+        "client_ip_address": ip_address_value,
+        "client_user_agent": (user_agent or "").strip()[:2000] or None,
+        "external_id": _hash_meta_value(session.token),
+    }
+    if email:
+        user_data["em"] = [email]
+    if phone:
+        user_data["ph"] = [phone]
+    return {key: value for key, value in user_data.items() if value}
+
+
+def _meta_custom_data(
+    session: CheckoutSession,
+    *,
+    event_name: str,
+    step: str | None,
+    status: str | None,
+    payment_method: str | None,
+    metadata: dict[str, Any] | None,
+) -> dict[str, Any]:
+    custom_data: dict[str, Any] = {
+        "currency": "BRL",
+        "value": float(session.amount or 0),
+        "content_name": session.product_name,
+        "content_ids": [session.offer_key],
+        "checkout_event_name": event_name,
+        "checkout_step": step,
+        "checkout_status": status,
+        "checkout_payment_method": payment_method,
+    }
+    if metadata:
+        for key in ("coupon_code", "applied_coupon_code", "pix_mode"):
+            if metadata.get(key):
+                custom_data[key] = metadata[key]
+    return {key: value for key, value in custom_data.items() if value is not None and value != ""}
+
+
+def _meta_events_for_checkout_event(
+    *,
+    session: CheckoutSession,
+    event_name: str,
+    step: str | None,
+    status: str | None,
+    payment_method: str | None,
+) -> list[tuple[str, str]]:
+    normalized_event = (event_name or "").strip().lower()
+    normalized_status = (status or "").strip().lower()
+    normalized_step = (step or "").strip().lower()
+    normalized_payment = (payment_method or "").strip().lower()
+
+    events: list[tuple[str, str]] = [("CheckoutStatus", _build_meta_event_id(
+        session=session,
+        event_name=normalized_event or "checkout_status",
+        step=normalized_step,
+        status=normalized_status,
+        payment_method=normalized_payment,
+    ))]
+
+    if normalized_event in {"details_submit_success", "details_completed"}:
+        events.append(("Lead", _build_meta_event_id(session=session, event_name="lead", step=normalized_step, status=normalized_status, payment_method=normalized_payment)))
+    elif normalized_event in {"step_method_view"}:
+        events.append(("Lead", _build_meta_event_id(session=session, event_name="lead", step=normalized_step, status=normalized_status, payment_method=normalized_payment)))
+        events.append(("InitiateCheckout", _build_meta_event_id(session=session, event_name="initiate_checkout", step=normalized_step, status=normalized_status, payment_method=normalized_payment)))
+    elif normalized_event in {"payment_method_click", "pix_started", "card_processing"}:
+        events.append(("AddPaymentInfo", _build_meta_event_id(session=session, event_name="add_payment_info", step=normalized_step, status=normalized_status, payment_method=normalized_payment)))
+    elif normalized_event in {"payment_success"} or normalized_status == "paid":
+        events.append(("Purchase", _build_meta_event_id(session=session, event_name="purchase", step=normalized_step, status="paid", payment_method=normalized_payment)))
+
+    return events
+
+
+def _send_meta_pixel_event(
+    *,
+    pixel: dict[str, Any],
+    event_name: str,
+    event_id: str,
+    session: CheckoutSession,
+    step: str | None,
+    status: str | None,
+    payment_method: str | None,
+    metadata: dict[str, Any] | None,
+    ip_address_value: str | None,
+    user_agent: str | None,
+) -> None:
+    pixel_id = str(pixel.get("pixel_id") or "").strip()
+    access_token = str(pixel.get("access_token") or "").strip()
+    if not pixel_id or not access_token:
+        return
+
+    payload = {
+        "data": [
+            {
+                "event_name": event_name,
+                "event_time": int(datetime.now(timezone.utc).timestamp()),
+                "event_id": event_id,
+                "action_source": "website",
+                "user_data": _meta_user_data(session, ip_address_value, user_agent),
+                "custom_data": _meta_custom_data(
+                    session,
+                    event_name=event_name,
+                    step=step,
+                    status=status,
+                    payment_method=payment_method,
+                    metadata=metadata,
+                ),
+            }
+        ]
+    }
+    url = f"https://graph.facebook.com/{_meta_api_version()}/{pixel_id}/events"
+    try:
+        response = httpx.post(url, params={"access_token": access_token}, json=payload, timeout=10)
+        if response.status_code >= 400:
+            logger.error(
+                "Meta CAPI retornou erro para pixel_id=%s status=%s body=%s",
+                pixel_id,
+                response.status_code,
+                response.text[:1000],
+            )
+    except Exception:  # noqa: BLE001
+        logger.exception("Erro ao enviar evento Meta CAPI para pixel_id=%s", pixel_id)
+
+
+def _dispatch_meta_checkout_events(
+    db: Session,
+    *,
+    session: CheckoutSession,
+    event_name: str,
+    step: str | None,
+    status: str | None,
+    payment_method: str | None,
+    metadata: dict[str, Any] | None,
+    ip_address_value: str | None,
+    user_agent: str | None,
+) -> None:
+    settings_record = get_checkout_settings(db)
+    pixels = _active_pixels_for_offer(settings_record, session.offer_key)
+    if not pixels:
+        return
+
+    for meta_event_name, event_id in _meta_events_for_checkout_event(
+        session=session,
+        event_name=event_name,
+        step=step,
+        status=status,
+        payment_method=payment_method,
+    ):
+        for pixel in pixels:
+            _send_meta_pixel_event(
+                pixel=pixel,
+                event_name=meta_event_name,
+                event_id=event_id,
+                session=session,
+                step=step,
+                status=status,
+                payment_method=payment_method,
+                metadata=metadata,
+                ip_address_value=ip_address_value,
+                user_agent=user_agent,
+            )
 
 
 def _serialize_coupons(record: CheckoutSettings) -> list[dict[str, Any]]:
@@ -361,6 +637,7 @@ def get_checkout_settings(db: Session) -> CheckoutSettings:
         offers_json=DEFAULT_OFFERS,
         coupons_json=[],
         checkouts_json=DEFAULT_CHECKOUTS,
+        pixels_json=[],
     )
     db.add(record)
     db.commit()
@@ -387,6 +664,7 @@ def update_checkout_settings(db: Session, payload: CheckoutSettingsUpdate) -> Ch
     record.offers_json = offers
     record.coupons_json = [item.model_dump(mode="json") for item in payload.coupons]
     record.checkouts_json = checkouts
+    record.pixels_json = [item.model_dump(mode="json") for item in payload.pixels]
     if active_checkouts:
         primary = active_checkouts[0]
         record.theme_mode = primary["theme_mode"]
@@ -406,6 +684,7 @@ def serialize_checkout_settings(record: CheckoutSettings) -> dict[str, Any]:
         "offers": _serialize_offers(record),
         "coupons": _serialize_coupons(record),
         "checkouts": _serialize_checkouts(record),
+        "pixels": _serialize_pixels(record),
         "created_at": record.created_at,
         "updated_at": record.updated_at,
     }
@@ -432,6 +711,10 @@ def resolve_offer_checkout(record: CheckoutSettings, offer: CheckoutOfferOut) ->
             if checkout.key == offer.checkout_key:
                 return checkout
     return active_checkouts[0]
+
+
+def resolve_offer_pixels(record: CheckoutSettings, offer: CheckoutOfferOut) -> list[dict[str, Any]]:
+    return _serialize_public_pixels(record, offer.key)
 
 
 def resolve_coupon(record: CheckoutSettings, coupon_code: str | None, offer_key: str) -> CheckoutCouponOut | None:
@@ -808,6 +1091,17 @@ def track_checkout_event(
     lead.updated_at = _utcnow()
     db.add(lead)
     db.commit()
+    _dispatch_meta_checkout_events(
+        db,
+        session=session,
+        event_name=event.event_name,
+        step=event.step,
+        status=event.status,
+        payment_method=event.payment_method,
+        metadata=metadata,
+        ip_address_value=ip_address_value,
+        user_agent=user_agent,
+    )
 
 
 def list_checkout_tracking(db: Session, offer_key: str | None = None, limit: int = 200) -> list[dict[str, Any]]:
@@ -1290,6 +1584,17 @@ def start_card_payment(db: Session, session: CheckoutSession, payload: dict[str,
                 _apply_upgrade_after_payment(db, session)
             else:
                 _upsert_paid_user_and_subscription(db, session)
+            _dispatch_meta_checkout_events(
+                db,
+                session=session,
+                event_name="payment_success",
+                step="success",
+                status="paid",
+                payment_method=session.payment_method,
+                metadata=dict(session.metadata_json or {}),
+                ip_address_value=None,
+                user_agent=None,
+            )
     session.updated_at = _utcnow()
     db.add(session)
     db.commit()
@@ -1334,6 +1639,7 @@ def _upsert_paid_user_and_subscription(db: Session, session: CheckoutSession) ->
         db.flush()
         user.subscription_id = subscription.id
 
+    previous_provider = (subscription.provider or "").strip().lower()
     subscription.provider = "asaas"
     subscription.plan = session.plan_key
     subscription.status = "active"
@@ -1364,6 +1670,8 @@ def _upsert_paid_user_and_subscription(db: Session, session: CheckoutSession) ->
     end_trial(user, db, keep_plan=session.plan_key)
     if not _is_comeco_like_plan(session.plan_key):
         republish_all_user_pages(user, db)
+    if previous_provider == "cakto":
+        _notify_gateway_modified_cakto_to_asaas(user)
     db.add_all([user, subscription, session])
     db.commit()
     db.refresh(user)
@@ -1484,6 +1792,17 @@ def refresh_session_status(db: Session, session: CheckoutSession) -> CheckoutSes
                         _apply_upgrade_after_payment(db, session)
                     else:
                         _upsert_paid_user_and_subscription(db, session)
+                _dispatch_meta_checkout_events(
+                    db,
+                    session=session,
+                    event_name="payment_success",
+                    step="success",
+                    status="paid",
+                    payment_method=session.payment_method,
+                    metadata=dict(session.metadata_json or {}),
+                    ip_address_value=None,
+                    user_agent=None,
+                )
                 session.updated_at = _utcnow()
                 db.add(session)
                 db.commit()
@@ -1540,11 +1859,7 @@ def handle_asaas_checkout_webhook(db: Session, payload: dict[str, Any]) -> bool:
     authorization = payload.get("authorization") or {}
     external_reference = str(payment.get("externalReference") or authorization.get("contractId") or "")
     session = None
-    token = None
-    if external_reference.startswith("checkout:"):
-        token = external_reference.split("checkout:", 1)[1].strip()
-    elif external_reference.startswith("checkout_upgrade:"):
-        token = external_reference.split("checkout_upgrade:", 1)[1].strip()
+    token = _extract_checkout_session_token(external_reference)
     if token:
         session = db.query(CheckoutSession).filter(CheckoutSession.token == token).first()
     if not session:
@@ -1587,6 +1902,17 @@ def handle_asaas_checkout_webhook(db: Session, payload: dict[str, Any]) -> bool:
                 session=session,
                 user=user,
             )
+        _dispatch_meta_checkout_events(
+            db,
+            session=session,
+            event_name="payment_success",
+            step="success",
+            status="paid",
+            payment_method=session.payment_method,
+            metadata=dict(session.metadata_json or {}),
+            ip_address_value=None,
+            user_agent=None,
+        )
     elif event in {"PAYMENT_OVERDUE", "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_EXPIRED", "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_REFUSED"}:
         session.status = "expired"
     elif event in {"PAYMENT_REPROVED_BY_RISK_ANALYSIS", "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_CANCELLED"}:

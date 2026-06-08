@@ -3,7 +3,7 @@ import re
 import unicodedata
 from collections import defaultdict
 from copy import deepcopy
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any, List, Optional
 from urllib.parse import quote
@@ -60,6 +60,48 @@ router = APIRouter()
 EXCLUDED_PLAN = "teste"
 ONLINE_WINDOW_MINUTES = 10
 settings = get_settings()
+ADMIN_PLAN_OPTIONS = {
+    "free",
+    "trial",
+    "essencial",
+    "professional",
+    "growth",
+    "agencia",
+    "agency",
+    "infinity",
+    "escala",
+    "scale",
+    "teste",
+    "test",
+}
+ADMIN_SUBSCRIPTION_STATUS_OPTIONS = {
+    "active",
+    "inactive",
+    "pending",
+    "failed",
+    "past_due",
+    "cancelled",
+    "cancelled_admin",
+    "cancel_at_period_end",
+}
+
+
+def _subscription_status_is_active(status_value: str) -> bool:
+    return status_value in {"active", "cancel_at_period_end"}
+
+
+def _parse_admin_valid_until(value: str) -> datetime:
+    raw = str(value or "").strip()
+    if not raw:
+        raise ValueError("empty")
+    try:
+        parsed_date = date.fromisoformat(raw[:10])
+    except ValueError:
+        parsed_dt = datetime.fromisoformat(raw)
+        if parsed_dt.tzinfo is not None:
+            parsed_dt = parsed_dt.astimezone(timezone.utc).replace(tzinfo=None)
+        return parsed_dt
+    return datetime.combine(parsed_date, time(23, 59, 59, 999999))
 
 
 def _extract_asaas_error_detail(exc: AsaasAPIError) -> str:
@@ -81,6 +123,12 @@ class PageCloneRequest(BaseModel):
 
 class RefundRequest(BaseModel):
     reason: Optional[str] = None
+
+
+class AdminSubscriptionUpdateRequest(BaseModel):
+    plan: Optional[str] = None
+    status: Optional[str] = None
+    valid_until: Optional[str] = None
 
 
 class PushTestResponse(BaseModel):
@@ -1110,6 +1158,61 @@ def grant_trial(
     return user
 
 
+@router.patch("/users/{user_id}/subscription", response_model=AdminUserOut)
+def update_user_subscription_admin(
+    user_id: int,
+    payload: AdminSubscriptionUpdateRequest,
+    _: User = Depends(get_current_superuser),
+    db: Session = Depends(get_db),
+) -> AdminUserOut:
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado.")
+
+    subscription = user.subscription
+    if not subscription:
+        raise HTTPException(status_code=404, detail="Assinatura não encontrada.")
+
+    updates_applied = False
+
+    if payload.plan is not None:
+        plan = str(payload.plan).strip().lower()
+        if not plan:
+            raise HTTPException(status_code=400, detail="Plano inválido.")
+        if plan not in ADMIN_PLAN_OPTIONS:
+            raise HTTPException(status_code=400, detail="Plano inválido.")
+        user.plan = plan
+        subscription.plan = plan
+        updates_applied = True
+
+    if payload.status is not None:
+        status_value = str(payload.status).strip().lower()
+        if not status_value:
+            raise HTTPException(status_code=400, detail="Status inválido.")
+        if status_value not in ADMIN_SUBSCRIPTION_STATUS_OPTIONS:
+            raise HTTPException(status_code=400, detail="Status inválido.")
+        subscription.status = status_value
+        user.is_active = _subscription_status_is_active(status_value)
+        updates_applied = True
+
+    if payload.valid_until is not None:
+        try:
+            subscription.valid_until = _parse_admin_valid_until(payload.valid_until)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail="Validade inválida.") from exc
+        subscription.status = "active"
+        user.is_active = True
+        updates_applied = True
+
+    if not updates_applied:
+        raise HTTPException(status_code=400, detail="Nenhuma alteração informada.")
+
+    db.add_all([user, subscription])
+    db.commit()
+    db.refresh(user)
+    return user
+
+
 @router.post("/users/{user_id}/refund")
 def refund_user_subscription(
     user_id: int,
@@ -1172,61 +1275,65 @@ def admin_cancel_asaas_immediately(
     subscription = user.subscription
     if not subscription:
         raise HTTPException(status_code=404, detail="Assinatura não encontrada.")
-    if (subscription.provider or "").lower() != "asaas":
-        raise HTTPException(status_code=400, detail="Operação disponível apenas para assinaturas Asaas.")
-    if not subscription.asaas_subscription_id:
-        raise HTTPException(status_code=400, detail="ID de assinatura Asaas não encontrado.")
-
-    if not settings.asaas_api_key:
-        raise HTTPException(status_code=500, detail="Asaas não configurado no servidor.")
-    client = AsaasClient(settings.asaas_api_key, settings.asaas_base_url)
-    sub_id = subscription.asaas_subscription_id
-    remote_status_before = ""
-    try:
-        remote_before = client.get_subscription(sub_id)
-        remote_status_before = str((remote_before or {}).get("status") or "").strip().upper()
-    except AsaasAPIError:
+    provider = (subscription.provider or "").lower()
+    if provider == "asaas" and subscription.asaas_subscription_id and settings.asaas_api_key:
+        client = AsaasClient(settings.asaas_api_key, settings.asaas_base_url)
+        sub_id = subscription.asaas_subscription_id
         remote_status_before = ""
-
-    if remote_status_before not in {"INACTIVE", "CANCELLED", "DELETED"}:
         try:
-            client.cancel_subscription(sub_id)
-        except AsaasAPIError as exc:  # noqa: BLE001
-            delete_detail = _extract_asaas_error_detail(exc)
-            update_detail = ""
-            get_detail = ""
+            remote_before = client.get_subscription(sub_id)
+            remote_status_before = str((remote_before or {}).get("status") or "").strip().upper()
+        except AsaasAPIError:
+            remote_status_before = ""
+
+        if remote_status_before not in {"INACTIVE", "CANCELLED", "DELETED"}:
             try:
-                client.update_subscription(sub_id, {"status": "INACTIVE"})
-            except AsaasAPIError as upd_exc:  # noqa: BLE001
-                update_detail = _extract_asaas_error_detail(upd_exc)
+                client.cancel_subscription(sub_id)
+            except AsaasAPIError as exc:  # noqa: BLE001
+                delete_detail = _extract_asaas_error_detail(exc)
+                update_detail = ""
+                get_detail = ""
+                try:
+                    client.update_subscription(sub_id, {"status": "INACTIVE"})
+                except AsaasAPIError as upd_exc:  # noqa: BLE001
+                    update_detail = _extract_asaas_error_detail(upd_exc)
 
+                try:
+                    remote_after = client.get_subscription(sub_id)
+                    remote_status_after = str((remote_after or {}).get("status") or "").strip().upper()
+                except AsaasAPIError as get_exc:  # noqa: BLE001
+                    remote_status_after = ""
+                    get_detail = _extract_asaas_error_detail(get_exc)
+
+                if remote_status_after not in {"INACTIVE", "CANCELLED", "DELETED"}:
+                    raise HTTPException(
+                        status_code=502,
+                        detail=(
+                            f"Erro ao cancelar assinatura no Asaas ({sub_id}). "
+                            f"delete={delete_detail}; update={update_detail or 'n/a'}; "
+                            f"get={get_detail or 'ok'}; status_before={remote_status_before or 'n/a'}; "
+                            f"status_after={remote_status_after or 'n/a'}; base_url={settings.asaas_base_url}"
+                        ),
+                    ) from exc
+    elif provider == "cakto":
+        service = CaktoIntegrationService(db)
+        if service.api_base_url:
             try:
-                remote_after = client.get_subscription(sub_id)
-                remote_status_after = str((remote_after or {}).get("status") or "").strip().upper()
-            except AsaasAPIError as get_exc:  # noqa: BLE001
-                remote_status_after = ""
-                get_detail = _extract_asaas_error_detail(get_exc)
+                service.cancel_remote_subscription(
+                    subscription_code=subscription.cakto_subscription_code,
+                    order_id=subscription.cakto_order_id,
+                )
+            except CaktoAPIError as exc:  # noqa: BLE001
+                logger.exception("Erro ao cancelar assinatura Cakto: %s", exc)
+                raise HTTPException(status_code=502, detail="Erro ao cancelar assinatura") from exc
+        else:
+            logger.info("Cakto API não configurada. Cancelamento remoto ignorado para subscription_id=%s", subscription.id)
 
-            if remote_status_after not in {"INACTIVE", "CANCELLED", "DELETED"}:
-                raise HTTPException(
-                    status_code=502,
-                    detail=(
-                        f"Erro ao cancelar assinatura no Asaas ({sub_id}). "
-                        f"delete={delete_detail}; update={update_detail or 'n/a'}; "
-                        f"get={get_detail or 'ok'}; status_before={remote_status_before or 'n/a'}; "
-                        f"status_after={remote_status_after or 'n/a'}; base_url={settings.asaas_base_url}"
-                    ),
-                ) from exc
-
-    # Keep account and published pages intact; only subscription becomes inactive.
     subscription.status = "inactive"
     subscription.valid_until = None
     subscription.failed_attempts = 3
-    subscription.asaas_subscription_id = None
-    subscription.asaas_payment_link_id = None
-    subscription.external_reference = None
     subscription.mrr_amount = 0
-    user.is_active = True
+    user.is_active = False
     db.add_all([user, subscription])
     db.commit()
     try:
@@ -1237,7 +1344,7 @@ def admin_cancel_asaas_immediately(
         )
     except Exception:  # noqa: BLE001
         pass
-    return {"detail": "Assinatura cancelada imediatamente e usuário mantido com acesso bloqueado para reativação."}
+    return {"detail": "Assinatura cancelada imediatamente."}
 
 
 @router.post("/users/{user_id}/asaas-cancel-at-period-end")
@@ -1252,16 +1359,13 @@ def admin_schedule_asaas_cancel_at_period_end(
     subscription = user.subscription
     if not subscription:
         raise HTTPException(status_code=404, detail="Assinatura não encontrada.")
-    if (subscription.provider or "").lower() != "asaas":
-        raise HTTPException(status_code=400, detail="Operação disponível apenas para assinaturas Asaas.")
-    if not subscription.asaas_subscription_id:
-        raise HTTPException(status_code=400, detail="ID de assinatura Asaas não encontrado.")
     if not subscription.valid_until:
         raise HTTPException(status_code=400, detail="Não foi possível determinar a validade atual da assinatura.")
 
     subscription.status = "cancel_at_period_end"
-    subscription.external_reference = None
+    user.is_active = True
     db.add(subscription)
+    db.add(user)
     db.commit()
     return {"detail": "Cancelamento programado para o fim da validade atual da assinatura."}
 
@@ -1278,13 +1382,13 @@ def admin_cancel_scheduled_asaas_cancellation(
     subscription = user.subscription
     if not subscription:
         raise HTTPException(status_code=404, detail="Assinatura não encontrada.")
-    if (subscription.provider or "").lower() != "asaas":
-        raise HTTPException(status_code=400, detail="Operação disponível apenas para assinaturas Asaas.")
     if (subscription.status or "").lower() != "cancel_at_period_end":
         raise HTTPException(status_code=400, detail="Não há cancelamento programado para desfazer.")
 
     subscription.status = "active"
+    user.is_active = True
     db.add(subscription)
+    db.add(user)
     db.commit()
     return {"detail": "Cancelamento programado removido com sucesso."}
 

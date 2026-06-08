@@ -451,6 +451,95 @@ let pollingInFlight = false;
 let fastCardChecksLeft = 0;
 let stepEnteredAt = Date.now();
 let hasTrackedMethodStep = false;
+let metaPixelsInitialized = false;
+
+const activeMetaPixels = computed(() => (config.value?.pixels || []).filter(pixel => pixel.active && pixel.pixel_id.trim()));
+
+const metaStandardEventName = (eventName: string, status?: string | null, paymentMethod?: string | null) => {
+  const normalized = String(eventName || "").trim().toLowerCase();
+  const normalizedStatus = String(status || "").trim().toLowerCase();
+  const normalizedPayment = String(paymentMethod || "").trim().toLowerCase();
+  if (normalized === "step_method_view") return "InitiateCheckout";
+  if (normalized === "payment_method_click" || normalized === "pix_started" || normalized === "card_processing") return "AddPaymentInfo";
+  if (normalized === "payment_success" || normalizedStatus === "paid") return "Purchase";
+  if (normalized === "details_submit_success" || normalized === "step_details_view") return "Lead";
+  if (normalized === "details_submit" || normalized === "details_completed") return "Lead";
+  if (normalized === "purchase") return "Purchase";
+  if (normalizedPayment === "card" && normalizedStatus === "processing") return "AddPaymentInfo";
+  return "";
+};
+
+const buildMetaEventId = (eventName: string, step?: string | null, status?: string | null, paymentMethod?: string | null) => {
+  const token = session.value?.token || offerKey.value || "checkout";
+  return [token, eventName, step || "", status || "", paymentMethod || ""]
+    .map(value => String(value || "").trim().toLowerCase() || "-")
+    .join("|");
+};
+
+const ensureMetaPixelBase = () => {
+  if (typeof document === "undefined") return;
+  if (document.getElementById("meta-pixel-base")) return;
+  const script = document.createElement("script");
+  script.id = "meta-pixel-base";
+  script.innerHTML = `
+    !function(f,b,e,v,n,t,s)
+    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+    if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+    n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];
+    s.parentNode.insertBefore(t,s)}(window, document,'script',
+    'https://connect.facebook.net/en_US/fbevents.js');
+  `;
+  document.head.appendChild(script);
+};
+
+const initializeMetaPixels = () => {
+  if (typeof window === "undefined") return;
+  const pixels = activeMetaPixels.value;
+  if (!pixels.length) return;
+  ensureMetaPixelBase();
+  if (!(window as any).fbq) return;
+  if (!metaPixelsInitialized) {
+    pixels.forEach(pixel => {
+      (window as any).fbq("init", pixel.pixel_id);
+    });
+    (window as any).fbq("track", "PageView");
+    metaPixelsInitialized = true;
+  }
+};
+
+const sendMetaCheckoutEvent = (
+  eventName: string,
+  extra: {
+    step?: string | null;
+    status?: string | null;
+    payment_method?: string | null;
+  } = {}
+) => {
+  if (typeof window === "undefined") return;
+  const pixels = activeMetaPixels.value;
+  if (!pixels.length || !(window as any).fbq) return;
+
+  const eventId = buildMetaEventId(eventName, extra.step ?? step.value, extra.status ?? session.value?.status ?? null, extra.payment_method ?? session.value?.payment_method ?? null);
+  const payload = {
+    currency: "BRL",
+    value: Number(session.value?.amount ?? couponPreview.value?.amount ?? config.value?.offer.amount ?? 0),
+    content_name: config.value?.offer.title || config.value?.offer.key || "Checkout",
+    content_ids: [config.value?.offer.key].filter(Boolean),
+    checkout_event_name: eventName,
+    checkout_step: extra.step ?? step.value,
+    checkout_status: extra.status ?? session.value?.status ?? null,
+    checkout_payment_method: extra.payment_method ?? session.value?.payment_method ?? null,
+    offer_key: config.value?.offer.key || "",
+  };
+
+  (window as any).fbq("trackCustom", "CheckoutStatus", payload, { eventID: eventId });
+  const standardEvent = metaStandardEventName(eventName, extra.status ?? session.value?.status ?? null, extra.payment_method ?? session.value?.payment_method ?? null);
+  if (standardEvent) {
+    (window as any).fbq("track", standardEvent, payload, { eventID: eventId });
+  }
+};
 
 const adminAppOrigin = () => {
   if (typeof window === "undefined") return "";
@@ -616,6 +705,7 @@ const loadConfig = async () => {
   errorMessage.value = "";
   try {
     config.value = await getCheckoutConfig(offerKey.value);
+    initializeMetaPixels();
   } catch (error) {
     console.error(error);
     errorMessage.value = "Não foi possível carregar este checkout.";
@@ -731,6 +821,11 @@ const trackEvent = async (
   try {
     const now = Date.now();
     const duration = Math.max(0, now - stepEnteredAt);
+    sendMetaCheckoutEvent(eventName, {
+      step: extra.step ?? step.value,
+      status: extra.status ?? session.value?.status ?? null,
+      payment_method: extra.payment_method ?? session.value?.payment_method ?? null,
+    });
     await trackCheckoutEvent(session.value.token, {
       event_name: eventName,
       step: extra.step ?? step.value,
@@ -770,6 +865,17 @@ const submitDetails = async () => {
         coupon_code: form.coupon_code
       });
     }
+    await trackEvent("details_submit_success", {
+      step: "details",
+      status: session.value.status,
+      metadata: {
+        customer_name: session.value.customer_name,
+        customer_email: session.value.customer_email,
+        customer_phone: session.value.customer_phone,
+        customer_zipcode: session.value.customer_zipcode,
+        offer_key: session.value.offer_key,
+      },
+    });
     router.replace({ query: { ...route.query, token: session.value.token } }).catch(() => {});
     step.value = "method";
     stepEnteredAt = Date.now();

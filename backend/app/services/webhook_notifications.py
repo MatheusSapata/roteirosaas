@@ -93,6 +93,19 @@ DEFAULT_WEBHOOK_RULES: list[dict[str, Any]] = [
         "sort_order": 40,
         "is_builtin": True,
     },
+    {
+        "event_key": "gateway_modified_cakto_asaas",
+        "display_name": "Gateway modificado Cakto -> Asaas",
+        "description": "Dispara quando a assinatura antiga em Cakto passa a operar no fluxo Asaas.",
+        "enabled": True,
+        "title_template": "GATEWAY MODIFICADO CAKTO -> ASAAS",
+        "body_template": "{{user_name}}",
+        "icon_tag": "arrow_up",
+        "priority": 3,
+        "topic": "roteiro_online_assinaturas",
+        "sort_order": 50,
+        "is_builtin": True,
+    },
 ]
 
 

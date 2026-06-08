@@ -18,6 +18,7 @@ class CheckoutSettings(Base):
     offers_json = Column(JSONB, nullable=False, default=list)
     coupons_json = Column(JSONB, nullable=False, default=list)
     checkouts_json = Column(JSONB, nullable=False, default=list)
+    pixels_json = Column(JSONB, nullable=False, default=list)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow)
 

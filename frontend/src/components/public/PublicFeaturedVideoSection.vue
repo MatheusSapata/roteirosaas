@@ -55,7 +55,7 @@ import SectionHeadingChip from "./SectionHeadingChip.vue";
 import { getSectionHeadingDefaults, resolveHeadingLabel } from "../../utils/sectionHeadings";
 import { sanitizeHtml } from "../../utils/sanitizeHtml";
 import { deriveTextPalette, getReadableTextColor } from "../../utils/colorContrast";
-import { isWhatsappLink } from "../../utils/links";
+import { isWhatsappLink, normalizeExternalLink } from "../../utils/links";
 import { normalizeYoutubeEmbedUrl } from "../../utils/video";
 import { createLocalizer, getCurrentLanguage } from "../../utils/i18n";
 
@@ -95,7 +95,9 @@ const ctaHasTarget = computed(() =>
   ctaMode.value === "section" ? !!props.section.ctaSectionId : !!props.section.ctaLink
 );
 const ctaHref = computed(() =>
-  ctaMode.value === "section" && props.section.ctaSectionId ? `#${props.section.ctaSectionId}` : props.section.ctaLink || "#"
+  ctaMode.value === "section" && props.section.ctaSectionId
+    ? `#${props.section.ctaSectionId}`
+    : normalizeExternalLink(props.section.ctaLink) || "#"
 );
 const ctaIsScroll = computed(() => ctaMode.value === "section" && !!props.section.ctaSectionId);
 const ctaOpenInNewTab = computed(() => !ctaIsScroll.value && props.section.ctaOpenInNewTab !== false);

@@ -39,6 +39,7 @@ from app.services.checkout import (
     refresh_session_status,
     resolve_offer,
     resolve_offer_checkout,
+    resolve_offer_pixels,
     serialize_checkout_session,
     serialize_checkout_settings,
     preview_coupon_amount,
@@ -127,6 +128,7 @@ def get_public_checkout_config(offer_key: str, db: Session = Depends(get_db)) ->
         desktop_image_url=checkout.desktop_image_url,
         mobile_banner_url=checkout.mobile_banner_url,
         offer=offer,
+        pixels=resolve_offer_pixels(settings, offer),
     )
 
 

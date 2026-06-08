@@ -27,9 +27,6 @@ def has_whatsapp_connection_access(db: Session, *, user: User, agency_id: int | 
 
 
 def has_whatsapp_inbox_access(db: Session, *, user: User, agency_id: int | None) -> bool:
-    if bool(getattr(user, "is_superuser", False)):
-        return True
-
     if not has_whatsapp_connection_access(db, user=user, agency_id=agency_id):
         return False
 

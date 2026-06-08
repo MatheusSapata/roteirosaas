@@ -138,7 +138,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { resolveMediaUrl } from "../../utils/media";
-import { isWhatsappLink } from "../../utils/links";
+import { isWhatsappLink, normalizeExternalLink } from "../../utils/links";
 import type { CtaSection } from "../../types/page";
 import SectionHeadingChip from "./SectionHeadingChip.vue";
 import { getSectionHeadingDefaults, resolveHeadingLabel } from "../../utils/sectionHeadings";
@@ -166,7 +166,9 @@ const textColor = computed(() =>
 const outerStyle = computed(() => (props.section.layout === "simple" ? {} : { background: accentSoftBg.value }));
 const ctaMode = computed(() => props.section.ctaMode || "link");
 const ctaHref = computed(() =>
-  ctaMode.value === "section" && props.section.ctaSectionId ? `#${props.section.ctaSectionId}` : props.section.link || "#"
+  ctaMode.value === "section" && props.section.ctaSectionId
+    ? `#${props.section.ctaSectionId}`
+    : normalizeExternalLink(props.section.link) || "#"
 );
 const ctaHasTarget = computed(() =>
   ctaMode.value === "section" ? !!props.section.ctaSectionId : !!props.section.link

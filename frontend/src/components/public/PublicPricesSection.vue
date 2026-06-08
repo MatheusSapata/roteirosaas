@@ -112,7 +112,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import type { CurrencyCode, PriceItem, PricesSection } from "../../types/page";
-import { isWhatsappLink } from "../../utils/links";
+import { isWhatsappLink, normalizeExternalLink } from "../../utils/links";
 import SectionHeadingChip from "./SectionHeadingChip.vue";
 import { getSectionHeadingDefaults, resolveHeadingLabel } from "../../utils/sectionHeadings";
 import { deriveTextPalette, getReadableTextColor } from "../../utils/colorContrast";
@@ -155,18 +155,7 @@ const headingLabel = computed(() =>
 );
 const headingStyle = computed(() => props.section.headingLabelStyle || headingDefaults.style);
 
-const sanitizeLink = (value?: string | null) => {
-  if (!value) return "";
-
-  const trimmed = value.trim();
-  if (!trimmed) return "";
-
-  if (/^[a-z][a-z0-9+.-]*:/i.test(trimmed) || trimmed.startsWith("#")) {
-    return trimmed;
-  }
-
-  return `https://${trimmed}`;
-};
+const sanitizeLink = (value?: string | null) => normalizeExternalLink(value);
 
 const baseCtaLink = computed(() => sanitizeLink(props.section.ctaLink));
 

@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 PlacementType = Literal["dashboard", "global", "pages", "leads", "clients", "opportunities", "settings"]
-CtaType = Literal["internal_route", "external_url", "none"]
+CtaType = Literal["internal_route", "external_url", "open_modal", "system_action", "none"]
 DismissBehavior = Literal["hide_forever", "hide_for_days", "show_again_next_session", "never_hide"]
 RulesMatchMode = Literal["all", "any"]
 
