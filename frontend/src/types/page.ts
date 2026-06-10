@@ -36,6 +36,7 @@ export interface HeroSection extends SectionBase {
   title: LocalizedString;
   subtitle?: LocalizedString;
   backgroundImage?: string;
+  mobileBackgroundImage?: string;
   gradientColor?: string;
   logoUrl?: string;
   logoSize?: number;

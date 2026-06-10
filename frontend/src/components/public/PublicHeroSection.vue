@@ -1,11 +1,15 @@
 <template>
-  <section class="relative overflow-hidden bg-[#05060f]" :id="section.anchorId || undefined" :style="animationVars">
+  <section
+    class="relative overflow-hidden bg-[#05060f]"
+    :id="section.anchorId || undefined"
+    :style="[animationVars, heroScaleVars]"
+  >
     <!-- MOBILE -->
     <div :class="mobileWrapperClasses">
       <div class="overflow-hidden bg-[#05060f] shadow-2xl shadow-black/30">
         <!-- capa -->
-        <div class="relative w-full min-h-[46svh] overflow-hidden" style="aspect-ratio: 3 / 4; max-height: 50vh;">
-          <div class="absolute inset-0 bg-cover bg-center" :style="mobileBackgroundStyle"></div>
+        <div class="relative w-full min-h-[46svh] overflow-hidden" :style="mobileHeroFrameStyle">
+          <div class="absolute inset-0 bg-cover bg-top" :style="mobileBackgroundStyle"></div>
           <div class="absolute inset-0" :style="mobileGradientStyle"></div>
           <div v-if="embeddedVideoUrl" class="absolute inset-0" :style="mobileVideoOverlayStyle"></div>
 
@@ -45,7 +49,7 @@
         <!-- conteúdo -->
         <div
           class="relative flex min-h-[34svh] flex-col justify-center -mt-4 overflow-hidden px-5 pb-12 pt-2 text-center text-white md:mt-0 md:pb-8"
-          :style="{ background: mobileContentBg }"
+          :style="[mobileHeroContentStyle, { background: mobileContentBg }]"
         >
           <div class="space-y-2 md:mt-0">
             <h1 class="text-[32px] font-bold leading-tight" :class="animationClasses(2)">{{ heroTitle }}</h1>
@@ -96,8 +100,8 @@
       <div class="relative w-full">
         <!-- Fundo -->
         <div
-          class="absolute inset-0 bg-cover bg-center"
-          :style="layout === 'immersive' ? immersiveBackground : { background: softBackground }"
+          class="absolute inset-0 bg-cover"
+          :style="desktopBackgroundStyle"
         ></div>
 
         <div v-if="layout === 'immersive'" class="pointer-events-none absolute inset-0" :style="immersiveGradient"></div>
@@ -111,6 +115,7 @@
           <div
             v-if="layout === 'immersive'"
             class="relative z-10 box-border flex min-h-[90svh] flex-col justify-center gap-8 overflow-hidden py-8 md:flex-row md:items-center md:justify-between md:gap-14 md:py-[30px]"
+            :style="immersiveHeroStyle"
             :class="[
               isMobilePreview ? '!min-h-[90svh] !flex-col !justify-center !gap-8 !py-8' : '',
               isDesktopPreview ? '!min-h-[90svh] !flex-row !items-center !justify-between !gap-14 !py-[30px]' : ''
@@ -278,7 +283,12 @@ import { getReadableTextColor } from "../../utils/colorContrast";
 import type { HeroSection } from "../../types/page";
 import { createLocalizer, getCurrentLanguage } from "../../utils/i18n";
 
-const props = defineProps<{ section: HeroSection; branding: Record<string, any>; previewDevice?: "desktop" | "mobile" }>();
+const props = defineProps<{
+  section: HeroSection;
+  branding: Record<string, any>;
+  previewDevice?: "desktop" | "mobile";
+  pageScale?: number;
+}>();
 const heroCopy = {
   defaultCta: { pt: "Quero falar agora", es: "Quiero hablar ahora" },
   fallbackBrand: { pt: "Sua marca", es: "Tu marca" }
@@ -317,8 +327,15 @@ const ctaTrackType = computed(() => (ctaMode.value === "section" ? "cta" : track
 const ctaLabel = computed(() => localize(props.section.ctaLabel) || localize(heroCopy.defaultCta));
 const isMobilePreview = computed(() => props.previewDevice === "mobile");
 const isDesktopPreview = computed(() => props.previewDevice === "desktop");
+const pageScale = computed(() => {
+  const value = Number(props.pageScale ?? 1);
+  return Number.isFinite(value) && value > 0 ? value : 1;
+});
+const scaleCompensation = computed(() => 1 / pageScale.value);
+const scaledVh = (value: number) => `${value * scaleCompensation.value}vh`;
+const scaledSvh = (value: number) => `${value * scaleCompensation.value}svh`;
 const mobileWrapperClasses = computed(() => [
-  "relative block md:hidden px-0 pt-0 -mt-8",
+  "relative block md:hidden px-0 pt-0",
   isDesktopPreview.value ? "!hidden" : "",
   isMobilePreview.value ? "!block" : ""
 ]);
@@ -369,13 +386,37 @@ const ctaButtonStyle = computed(() => ({
   "--hero-cta-shadow": `0 6px 12px rgba(5, 6, 15, 0.24), 0 12px 28px ${toRgba(ctaShadowBaseColor.value, 0.34)}`,
   "--hero-cta-shadow-hover": `0 8px 16px rgba(5, 6, 15, 0.28), 0 16px 34px ${toRgba(ctaShadowBaseColor.value, 0.45)}`
 }));
+const heroScaleVars = computed(() => ({
+  "--hero-scale-compensation": scaleCompensation.value
+}));
+const mobileHeroFrameStyle = computed(() => ({
+  aspectRatio: "1 / 1",
+  minHeight: scaledSvh(46),
+  maxHeight: scaledVh(50)
+}));
+const mobileHeroContentStyle = computed(() => ({
+  minHeight: scaledSvh(34)
+}));
+const immersiveHeroStyle = computed(() => ({
+  minHeight: scaledSvh(90)
+}));
 const mobileContentBg = computed(() => mobileBaseColor.value);
 const mobileBackgroundStyle = computed(() => {
+  const mobileHeroImage = resolveMediaUrl(props.section.mobileBackgroundImage || "");
+  if (mobileHeroImage) {
+    return {
+      backgroundImage: `url(${mobileHeroImage})`,
+      backgroundSize: "100% 100%",
+      backgroundPosition: "center top",
+      backgroundRepeat: "no-repeat"
+    };
+  }
   if (heroBackgroundImage.value) {
     return {
       backgroundImage: `url(${heroBackgroundImage.value})`,
       backgroundSize: "cover",
-      backgroundPosition: "center"
+      backgroundPosition: "center center",
+      backgroundRepeat: "no-repeat"
     };
   }
   return { background: `linear-gradient(135deg, ${toRgba(accent.value, 0.2)}, rgba(5,6,15,0.8))` };
@@ -436,9 +477,26 @@ const softBackground = computed(() => {
   return `linear-gradient(135deg, ${toRgba(accent.value, 0.08)}, rgba(255,255,255,0.95))`;
 });
 
+const desktopBackgroundStyle = computed(() => {
+  if (heroBackgroundImage.value) {
+    return {
+      backgroundImage: `linear-gradient(120deg, rgba(15,23,42,0.12), rgba(8,47,73,0.15)), url(${heroBackgroundImage.value})`,
+      backgroundSize: "100% auto",
+      backgroundPosition: "center top",
+      backgroundRepeat: "no-repeat"
+    };
+  }
+  return { background: `linear-gradient(135deg, ${accentSoft.value}, rgba(255,255,255,0.85))` };
+});
+
 const immersiveBackground = computed(() => {
   if (heroBackgroundImage.value) {
-    return { backgroundImage: `url(${heroBackgroundImage.value})` };
+    return {
+      backgroundImage: `url(${heroBackgroundImage.value})`,
+      backgroundSize: "cover",
+      backgroundPosition: "center top",
+      backgroundRepeat: "no-repeat"
+    };
   }
   return { background: `linear-gradient(135deg, ${accentSoft.value}, rgba(255,255,255,0.85))` };
 });

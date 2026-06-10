@@ -18,6 +18,7 @@
         <PublicHeroSection
           v-if="section?.enabled && section.type === 'hero'"
           :section="section"
+          :page-scale="0.9"
           v-bind="sectionExtraProps(section, idx)"
         />
         <component

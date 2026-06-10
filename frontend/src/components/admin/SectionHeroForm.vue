@@ -75,7 +75,7 @@
                   </div>
                   <small class="logo-size-inline-label">Tamanho da logo</small>
                 </div>
-                <button type="button" @click="logoInput?.click()">{{ uploadingSlot === "logo" ? "Enviando..." : (local.logoUrl ? "Substituir" : "Adicionar") }}</button>
+                <button type="button" @click="logoInput?.click()">{{ local.logoUrl ? "Substituir" : "Adicionar" }}</button>
                 <button v-if="local.logoUrl" type="button" class="danger" @click="clearMedia('logo')">Remover</button>
               </div>
             </div>
@@ -93,8 +93,32 @@
                 <p>Versão exibida na área principal da seção.</p>
               </div>
               <div class="btn-row">
-                <button type="button" @click="bgInput?.click()">{{ uploadingSlot === "background" ? "Enviando..." : (local.backgroundImage ? "Substituir" : "Adicionar") }}</button>
+                <button type="button" @click="bgInput?.click()">{{ local.backgroundImage ? "Substituir" : "Adicionar" }}</button>
                 <button v-if="local.backgroundImage" type="button" class="danger" @click="clearMedia('background')">Remover</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="list" style="margin-top:12px;">
+            <div class="media-item">
+              <input ref="mobileBgInput" type="file" accept="image/*" class="hidden" @change="onMediaFileChange('mobileBackground', $event)" />
+              <button type="button" class="media-thumb-button" @click="handleThumbClick('mobileBackground')">
+                <img
+                  v-if="previewUrl(local.mobileBackgroundImage) || previewUrl(local.backgroundImage)"
+                  :src="previewUrl(local.mobileBackgroundImage) || previewUrl(local.backgroundImage) || ''"
+                  alt="Imagem de fundo mobile"
+                />
+                <div v-else class="media-preview">MB</div>
+              </button>
+              <div class="media-info">
+                <strong>Imagem mobile<span class="help" data-tip="Imagem usada somente no mobile.">?</span></strong>
+                <p>Versão otimizada para celular. Se não houver imagem mobile, usamos a imagem desktop.</p>
+              </div>
+              <div class="btn-row">
+                <button type="button" @click="mobileBgInput?.click()">
+                  {{ local.mobileBackgroundImage ? "Substituir" : "Adicionar" }}
+                </button>
+                <button v-if="local.mobileBackgroundImage" type="button" class="danger" @click="clearMedia('mobileBackground')">Remover</button>
               </div>
             </div>
           </div>
@@ -184,11 +208,23 @@
         <div class="w-full max-w-5xl rounded-3xl bg-white p-6 shadow-2xl">
           <div class="flex items-center justify-between">
             <div>
-              <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Editor de logo</p>
+              <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Editor de imagem</p>
               <h3 class="text-2xl font-bold text-slate-900">
-                {{ cropperModal.slot === "logo" ? "Ajuste sua marca" : "Ajuste a imagem de fundo" }}
+                {{
+                  cropperModal.slot === "logo"
+                    ? "Ajuste sua marca"
+                    : cropperModal.slot === "mobileBackground"
+                      ? "Ajuste a imagem mobile"
+                      : "Ajuste a imagem de fundo"
+                }}
               </h3>
-              <p class="text-sm text-slate-500">Corte, limpe o fundo e envie com acabamento profissional.</p>
+              <p class="text-sm text-slate-500">
+                {{
+                  cropperModal.slot === "logo"
+                    ? "Corte, limpe o fundo e envie com acabamento profissional."
+                    : "Corte, posicione e envie com o enquadramento ideal."
+                }}
+              </p>
             </div>
             <button type="button" class="text-sm font-semibold text-slate-500" @click="closeCropper">Fechar</button>
           </div>
@@ -199,11 +235,16 @@
                 :src="cropperModal.src"
                 alt="Editor"
                 class="max-h-[420px] w-full rounded-xl bg-white object-contain"
+                @load="handleCropperImageLoad"
               />
             </div>
             <div class="space-y-4">
               <p class="text-xs text-slate-500">
-                Use as ações abaixo para remover fundo, aproximar ou reposicionar a logo antes de salvar.
+                {{
+                  cropperModal.slot === "logo"
+                    ? "Use as ações abaixo para remover fundo, aproximar ou reposicionar a logo antes de salvar."
+                    : "Use as ações abaixo para aproximar ou reposicionar a imagem antes de salvar."
+                }}
               </p>
               <div class="space-y-2">
                 <button
@@ -280,8 +321,10 @@ const activeTab = ref<HeroTab>("text");
 const newChip = ref("");
 const logoInput = ref<HTMLInputElement | null>(null);
 const bgInput = ref<HTMLInputElement | null>(null);
-const uploadingSlot = ref<"logo" | "background" | null>(null);
-const cropperModal = ref<{ open: boolean; slot: "logo" | "background" | null; src: string; originalSrc: string; bgEdited: boolean }>({
+const mobileBgInput = ref<HTMLInputElement | null>(null);
+type CropperSlot = "logo" | "background" | "mobileBackground";
+
+const cropperModal = ref<{ open: boolean; slot: CropperSlot | null; src: string; originalSrc: string; bgEdited: boolean }>({
   open: false,
   slot: null,
   src: "",
@@ -291,6 +334,7 @@ const cropperModal = ref<{ open: boolean; slot: "logo" | "background" | null; sr
 const cropperImageRef = ref<HTMLImageElement | null>(null);
 const cropperInstance = ref<Cropper | null>(null);
 const cropperObjectUrl = ref<string | null>(null);
+const cropperImageReady = ref(false);
 const cropApplying = ref(false);
 const removingBackground = ref(false);
 const cropperError = ref("");
@@ -304,6 +348,7 @@ const local = reactive<HeroSection>({
   layout: HERO_LAYOUT,
   logoSize: props.modelValue.logoSize ?? 64,
   logoBorderRadius: props.modelValue.logoBorderRadius ?? 0,
+  mobileBackgroundImage: props.modelValue.mobileBackgroundImage || "",
   chips: props.modelValue.chips ? [...props.modelValue.chips] : [],
   ctaMode: props.modelValue.ctaMode || "link",
   ctaSectionId: props.modelValue.ctaSectionId || null,
@@ -382,6 +427,7 @@ const syncFromProps = (value: HeroSection) => {
   Object.assign(local, value);
   local.logoSize = value.logoSize ?? 64;
   local.logoBorderRadius = value.logoBorderRadius ?? 0;
+  local.mobileBackgroundImage = value.mobileBackgroundImage || "";
   local.chips = value.chips ? [...value.chips] : [];
   local.layout = HERO_LAYOUT;
   local.ctaMode = value.ctaMode || "link";
@@ -426,9 +472,10 @@ const ensureAgencyId = async () => {
   return agencyStore.currentAgencyId;
 };
 
-const clearMedia = (slot: "logo" | "background") => {
+const clearMedia = (slot: "logo" | "background" | "mobileBackground") => {
   if (slot === "logo") local.logoUrl = "";
-  else local.backgroundImage = "";
+  else if (slot === "background") local.backgroundImage = "";
+  else local.mobileBackgroundImage = "";
 };
 
 const revokeCropperObjectUrl = () => {
@@ -438,11 +485,23 @@ const revokeCropperObjectUrl = () => {
   }
 };
 
-const handleThumbClick = async (slot: "logo" | "background") => {
-  const current = slot === "logo" ? local.logoUrl : local.backgroundImage;
+const openCropperWithSource = async (slot: CropperSlot, src: string) => {
+  if (!src) return;
+  cropperError.value = "";
+  cropperModal.value = { open: true, slot, src, originalSrc: src, bgEdited: false };
+};
+
+const handleThumbClick = async (slot: CropperSlot) => {
+  const current =
+    slot === "logo"
+      ? local.logoUrl
+      : slot === "background"
+        ? local.backgroundImage
+        : local.mobileBackgroundImage;
   if (!current) {
     if (slot === "logo") logoInput.value?.click();
-    else bgInput.value?.click();
+    else if (slot === "background") bgInput.value?.click();
+    else mobileBgInput.value?.click();
     return;
   }
   let src = previewUrl(current);
@@ -468,37 +527,40 @@ const handleThumbClick = async (slot: "logo" | "background") => {
   } catch {
     // fallback para URL direta
   }
-  cropperError.value = "";
-  cropperModal.value = { open: true, slot, src, originalSrc: src, bgEdited: false };
+  await openCropperWithSource(slot, src);
 };
 
-const onMediaFileChange = async (slot: "logo" | "background", event: Event) => {
+const onMediaFileChange = async (slot: CropperSlot, event: Event) => {
   const target = event.target as HTMLInputElement;
   const file = target.files?.[0];
   if (!file) return;
-  uploadingSlot.value = slot;
   try {
-    const agencyId = await ensureAgencyId();
-    if (!agencyId) return;
-    const asset = await uploadImageFile(file, agencyId);
-    if (slot === "logo") local.logoUrl = asset.url;
-    else local.backgroundImage = asset.url;
+    revokeCropperObjectUrl();
+    const objectUrl = URL.createObjectURL(file);
+    cropperObjectUrl.value = objectUrl;
+    cropperError.value = "";
+    cropperModal.value = { open: true, slot, src: objectUrl, originalSrc: objectUrl, bgEdited: false };
   } catch {
     /* noop */
   } finally {
     target.value = "";
-    uploadingSlot.value = null;
   }
 };
 
 const initCropperModal = () => {
-  if (!cropperModal.value.open || !cropperImageRef.value) return;
+  if (!cropperModal.value.open || !cropperImageRef.value || !cropperImageReady.value) return;
   cropperInstance.value?.destroy();
+  const aspectRatio =
+    cropperModal.value.slot === "logo"
+      ? NaN
+      : cropperModal.value.slot === "mobileBackground"
+        ? 1
+        : 1600 / 735;
   cropperInstance.value = new Cropper(cropperImageRef.value, {
-    aspectRatio: cropperModal.value.slot === "logo" ? NaN : 16 / 9,
+    aspectRatio,
     viewMode: 1,
     dragMode: "crop",
-    autoCropArea: 0.92,
+    autoCropArea: cropperModal.value.slot === "mobileBackground" ? 1 : 0.92,
     background: false,
     cropBoxMovable: true,
     cropBoxResizable: true,
@@ -509,11 +571,12 @@ const initCropperModal = () => {
       if (!instance) return;
       instance.crop();
       const canvas = instance.getCanvasData();
-      const width = canvas.width * 0.85;
-      const height = canvas.height * 0.78;
+      const isMobile = cropperModal.value.slot === "mobileBackground";
+      const width = isMobile ? canvas.width : canvas.width * 0.85;
+      const height = isMobile ? canvas.height : canvas.height * 0.78;
       instance.setCropBoxData({
-        left: canvas.left + (canvas.width - width) / 2,
-        top: canvas.top + (canvas.height - height) / 2,
+        left: canvas.left,
+        top: canvas.top,
         width,
         height
       });
@@ -521,12 +584,23 @@ const initCropperModal = () => {
   });
 };
 
+const handleCropperImageLoad = async () => {
+  if (!cropperModal.value.open) return;
+  cropperImageReady.value = true;
+  await nextTick();
+  initCropperModal();
+};
+
 watch(
   () => cropperModal.value.open,
   async open => {
     if (open) {
+      cropperImageReady.value = false;
       await nextTick();
-      setTimeout(() => initCropperModal(), 0);
+      if (cropperImageRef.value?.complete && cropperImageRef.value.naturalWidth > 0) {
+        cropperImageReady.value = true;
+      }
+      initCropperModal();
       return;
     }
     cropperInstance.value?.destroy();
@@ -538,8 +612,12 @@ watch(
   () => cropperModal.value.src,
   async () => {
     if (!cropperModal.value.open) return;
+    cropperImageReady.value = false;
     await nextTick();
-    setTimeout(() => initCropperModal(), 0);
+    if (cropperImageRef.value?.complete && cropperImageRef.value.naturalWidth > 0) {
+      cropperImageReady.value = true;
+    }
+    initCropperModal();
   }
 );
 
@@ -548,6 +626,7 @@ const closeCropper = () => {
   cropperError.value = "";
   cropApplying.value = false;
   removingBackground.value = false;
+  cropperImageReady.value = false;
   revokeCropperObjectUrl();
 };
 
@@ -556,10 +635,12 @@ const applyCrop = async () => {
   cropApplying.value = true;
   cropperError.value = "";
   try {
+    const isLogo = cropperModal.value.slot === "logo";
+    const isMobile = cropperModal.value.slot === "mobileBackground";
     const canvas = cropperInstance.value.getCroppedCanvas({
       imageSmoothingQuality: "high",
-      width: cropperModal.value.slot === "logo" ? 900 : 1920,
-      height: cropperModal.value.slot === "logo" ? 900 : 1080
+      width: isLogo ? 900 : isMobile ? 1600 : 1600,
+      height: isLogo ? 900 : isMobile ? 1600 : 735
     });
     const file = await new Promise<File>((resolve, reject) => {
       canvas.toBlob(blob => {
@@ -571,7 +652,8 @@ const applyCrop = async () => {
     if (!agencyId) throw new Error("Agência não encontrada.");
     const asset = await uploadImageFile(file, agencyId);
     if (cropperModal.value.slot === "logo") local.logoUrl = asset.url;
-    else local.backgroundImage = asset.url;
+    else if (cropperModal.value.slot === "background") local.backgroundImage = asset.url;
+    else local.mobileBackgroundImage = asset.url;
     closeCropper();
   } catch (err) {
     cropperError.value = "Não foi possível aplicar o recorte.";
