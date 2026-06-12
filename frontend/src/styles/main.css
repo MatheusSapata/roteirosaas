@@ -29,6 +29,12 @@ body.plans-shell #app {
   background-image: none;
 }
 
+body.admin-shell,
+body.admin-shell #app {
+  background-color: #f8fafc;
+  background-image: none;
+}
+
 #app {
   width: 100%;
   min-height: 100vh;
