@@ -35,6 +35,20 @@ body.admin-shell #app {
   background-image: none;
 }
 
+body.admin-shell {
+  position: relative;
+  isolation: isolate;
+}
+
+body.admin-shell::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: #f8fafc;
+  pointer-events: none;
+  z-index: -1;
+}
+
 #app {
   width: 100%;
   min-height: 100vh;
