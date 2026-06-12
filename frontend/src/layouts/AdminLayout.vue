@@ -169,10 +169,12 @@
         <div
           :class="[
             isInboxRoute
-              ? 'admin-content flex-1 min-h-0 overflow-hidden p-0'
+              ? 'admin-content flex-1 min-h-0 overflow-hidden bg-inherit p-0'
               : isPlansRoute
-                ? 'admin-content flex-1 min-h-0 overflow-hidden overflow-x-hidden p-0'
-                : 'admin-content flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3 pt-0 pb-4 md:px-6 md:pt-2 md:pb-6',
+                ? 'admin-content flex-1 min-h-0 overflow-hidden overflow-x-hidden bg-white p-0'
+                : isDarkTheme
+                  ? 'admin-content flex-1 min-h-0 overflow-y-auto overflow-x-hidden bg-[#05070f] px-3 pt-0 pb-4 md:px-6 md:pt-2 md:pb-6'
+                  : 'admin-content flex-1 min-h-0 overflow-y-auto overflow-x-hidden bg-slate-50 px-3 pt-0 pb-4 md:px-6 md:pt-2 md:pb-6',
             isPlansRoute
               ? 'bg-white text-slate-900'
               : (isDarkTheme ? 'text-slate-100' : 'text-slate-900')
@@ -196,7 +198,7 @@
             </button>
             </div>
           </div>
-          <div :class="isPlansRoute ? 'flex-1 min-h-0 bg-white overflow-hidden' : 'flex-1 min-h-0'">
+          <div :class="isPlansRoute ? 'flex-1 min-h-0 bg-white overflow-hidden' : (isDarkTheme ? 'flex-1 min-h-0 bg-[#05070f]' : 'flex-1 min-h-0 bg-slate-50')">
             <RouterView />
           </div>
         </div>
