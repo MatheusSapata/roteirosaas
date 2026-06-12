@@ -2259,12 +2259,16 @@ body,
   min-height: 100%;
 }
 
-body.admin-body-dark {
+body.admin-body-dark,
+body.admin-body-dark #app {
   background-color: #05070f;
+  background-image: none;
 }
 
-body.admin-body-light {
+body.admin-body-light,
+body.admin-body-light #app {
   background-color: #f8fafc;
+  background-image: none;
 }
 
 
