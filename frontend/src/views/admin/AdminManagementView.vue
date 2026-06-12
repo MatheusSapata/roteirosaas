@@ -756,7 +756,7 @@
                     :class="userTableColumns[5].cellClass"
                   >
                     <div class="flex w-full justify-center">
-                      <span>{{ u.draft_pages?.length ?? u.draft_pages_count ?? 0 }}</span>
+                      <span>{{ u.draft_pages_count ?? 0 }}</span>
                     </div>
                   </td>
 
@@ -1158,7 +1158,7 @@
       <section class="rounded-3xl bg-white p-6 shadow-md ring-1 ring-slate-100 dark:bg-[#181818] dark:text-white dark:ring-white/10">
         <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p class="text-xs uppercase tracking-[0.4em] text-slate-500 dark:text-white/60">Conteúdoo exclusivo</p>
+            <p class="text-xs uppercase tracking-[0.4em] text-slate-500 dark:text-white/60">Conteúdo exclusivo</p>
             <h2 class="text-2xl font-bold text-slate-900 dark:text-white">Gerenciar aulas</h2>
             <p class="text-sm text-slate-500 dark:text-white/70">As aulas cadastradas aqui aparecem para todos os administradores na aba "Aulas".</p>
           </div>
@@ -1200,56 +1200,90 @@
             </p>
 
             <template v-else>
-              <article
-                v-for="lesson in adminLessons"
-                :key="lesson.id"
-                class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[#181818] dark:text-white"
+              <section
+                v-for="group in lessonGroups"
+                :key="group.key"
+                class="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#181818] dark:text-white"
               >
-                <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                <div class="mb-4 flex items-start justify-between gap-3">
                   <div>
-                    <p class="text-xs uppercase tracking-[0.3em] text-slate-500 dark:text-white/60">
-                      {{ lesson.moduleName || "Sem módulo" }}  {{ lesson.level || "Aula" }}  Duração {{ lesson.duration || "Livre" }}
-                    </p>
-                    <h4 class="mt-2 text-lg font-semibold text-slate-900 dark:text-white">{{ lesson.title }}</h4>
-                    <p class="mt-1 text-sm text-slate-600 dark:text-white/70">{{ lesson.description }}</p>
-                    <p class="mt-3 text-xs text-slate-500 dark:text-white/60">
-                      Fonte:
-                      <span class="font-semibold text-slate-700 dark:text-white">
-                        {{ lesson.videoType === "file" ? "Arquivo/URL direto" : "Embed/Youtube" }}
-                      </span>
-                    </p>
+                    <h4 class="text-lg font-semibold text-slate-900 dark:text-white">{{ group.label }}</h4>
+                    <p class="text-sm text-slate-500 dark:text-white/60">{{ group.lessons.length }} aulas</p>
                   </div>
-
-                  <img v-if="lesson.thumbnail" :src="lesson.thumbnail" alt="" class="h-20 w-32 rounded-xl object-cover shadow-sm" />
+                  <p class="text-xs uppercase tracking-[0.3em] text-slate-400 dark:text-white/40">Use subir/descer</p>
                 </div>
 
-                <div class="mt-4 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    class="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-white/15 dark:text-white dark:hover:bg-white/10"
-                    @click="startLessonEdit(lesson)"
+                <ul class="space-y-3">
+                  <li
+                    v-for="(lesson, index) in group.lessons"
+                    :key="lesson.id"
+                    class="rounded-2xl border border-slate-200 bg-slate-50 p-4 transition dark:border-white/10 dark:bg-[#101010]"
                   >
-                    Editar
-                  </button>
+                    <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                      <div class="min-w-0 flex-1">
+                        <p class="text-xs uppercase tracking-[0.3em] text-slate-500 dark:text-white/60">
+                          {{ lesson.level || "Aula" }} Duração {{ lesson.duration || "Livre" }}
+                        </p>
+                        <h5 class="mt-2 text-base font-semibold text-slate-900 dark:text-white">{{ lesson.title }}</h5>
+                        <p class="mt-1 text-sm text-slate-600 dark:text-white/70">{{ lesson.description }}</p>
+                        <p class="mt-3 text-xs text-slate-500 dark:text-white/60">
+                          Fonte:
+                          <span class="font-semibold text-slate-700 dark:text-white">
+                            {{ lesson.videoType === "file" ? "Arquivo/URL direto" : "Embed/YouTube" }}
+                          </span>
+                        </p>
+                      </div>
 
-                  <button
-                    type="button"
-                    class="inline-flex items-center gap-2 rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-red-400/50 dark:bg-red-500/15 dark:text-red-100 dark:hover:bg-red-500/25"
-                    :disabled="deletingLessonId === lesson.id"
-                    @click="deleteLesson(lesson.id)"
-                  >
-                    Excluir
-                  </button>
-                </div>
-              </article>
+                      <img v-if="lesson.thumbnail" :src="lesson.thumbnail" alt="" class="h-20 w-32 rounded-xl object-cover shadow-sm" />
+                    </div>
+
+                    <div class="mt-4 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        class="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/15 dark:text-white dark:hover:bg-white/10"
+                        :disabled="index === 0 || lessonSaving"
+                        @click="moveLessonInGroup(group, index, -1)"
+                      >
+                        Subir
+                      </button>
+
+                      <button
+                        type="button"
+                        class="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/15 dark:text-white dark:hover:bg-white/10"
+                        :disabled="index === group.lessons.length - 1 || lessonSaving"
+                        @click="moveLessonInGroup(group, index, 1)"
+                      >
+                        Descer
+                      </button>
+
+                      <button
+                        type="button"
+                        class="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-white/15 dark:text-white dark:hover:bg-white/10"
+                        @click="startLessonEdit(lesson)"
+                      >
+                        Editar
+                      </button>
+
+                      <button
+                        type="button"
+                        class="inline-flex items-center gap-2 rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-red-400/50 dark:bg-red-500/15 dark:text-red-100 dark:hover:bg-red-500/25"
+                        :disabled="deletingLessonId === lesson.id"
+                        @click="deleteLesson(lesson.id)"
+                      >
+                        Excluir
+                      </button>
+                    </div>
+                  </li>
+                </ul>
+              </section>
             </template>
           </div>
 
           <form class="lessons-form space-y-4 rounded-2xl bg-slate-50/70 p-5 dark:bg-[#181818] dark:border dark:border-white/15" @submit.prevent="saveLesson">
             <div>
               <p class="text-xs uppercase tracking-[0.3em] text-slate-500 dark:text-white/60">{{ isEditingLesson ? "Editando aula" : "Cadastrar nova aula" }}</p>
-              <h3 class="text-xl font-semibold text-slate-900 dark:text-white">{{ isEditingLesson ? "Atualizar conteudo" : "Adicionar conteudo" }}</h3>
-              <p class="text-sm text-slate-500 dark:text-white/70">Informe titulo, descricao e o link ou iframe do video.</p>
+              <h3 class="text-xl font-semibold text-slate-900 dark:text-white">{{ isEditingLesson ? "Atualizar conteúdo" : "Adicionar conteúdo" }}</h3>
+              <p class="text-sm text-slate-500 dark:text-white/70">Informe t?tulo, descri?o e o link ou iframe do v?deo.</p>
             </div>
 
             <label class="block text-sm font-semibold text-slate-700 dark:text-white">
@@ -1289,7 +1323,7 @@
               </label>
 
               <label class="block text-sm font-semibold text-slate-700 dark:text-white">
-                Duraçao
+                Duração
                 <input
                   v-model="lessonForm.duration"
                   type="text"
@@ -3178,6 +3212,29 @@ const expandedUser = ref<number | null>(null);
 const savingPageId = ref<number | null>(null);
 const lessonsStore = useLessonsStore();
 const adminLessons = computed(() => lessonsStore.sortedLessons);
+type LessonGroup = {
+  key: string;
+  label: string;
+  moduleName: string;
+  lessons: Lesson[];
+};
+const lessonGroups = computed<LessonGroup[]>(() => {
+  const groups = new Map<string, LessonGroup>();
+  for (const lesson of adminLessons.value) {
+    const moduleName = (lesson.moduleName || "").trim();
+    const key = moduleName || "__default__";
+    if (!groups.has(key)) {
+      groups.set(key, {
+        key,
+        label: moduleName || "Sem módulo",
+        moduleName,
+        lessons: []
+      });
+    }
+    groups.get(key)!.lessons.push(lesson);
+  }
+  return Array.from(groups.values());
+});
 const lessonModuleOptions = computed(() =>
   Array.from(new Set(adminLessons.value.map(lesson => lesson.moduleName.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b))
 );
@@ -3199,13 +3256,56 @@ const lessonForm = reactive({
 const editingLessonId = ref<number | null>(null);
 const isEditingLesson = computed(() => editingLessonId.value !== null);
 const lessonPreview = computed(() => normalizeVideoInput(lessonForm.videoInput || ""));
+const persistLessonGroupOrder = async (group: LessonGroup, lessonIds: number[]) => {
+  const reorderAction = (lessonsStore as any).reorderLessonsInModule;
+  if (typeof reorderAction === "function") {
+    await reorderAction.call(lessonsStore, group.moduleName, lessonIds);
+    return;
+  }
+  const { data } = await api.post("/lessons/reorder", {
+    module_name: group.moduleName.trim() || null,
+    lesson_ids: lessonIds
+  });
+  lessonsStore.lessons = data.map((lesson: any) => ({
+    id: lesson.id,
+    moduleName: (lesson.module_name || "").trim(),
+    sortOrder: lesson.sort_order ?? 0,
+    title: lesson.title,
+    description: lesson.description || "",
+    duration: lesson.duration || "",
+    level: lesson.level || "",
+    videoType: lesson.video_type,
+    videoUrl: lesson.video_url,
+    thumbnail: lesson.thumbnail_url || undefined
+  }));
+  lessonsStore.loaded = true;
+};
+
+const moveLessonInGroup = async (group: LessonGroup, index: number, delta: -1 | 1) => {
+  const targetIndex = index + delta;
+  if (targetIndex < 0 || targetIndex >= group.lessons.length) return;
+  const reordered = [...group.lessons];
+  const [moved] = reordered.splice(index, 1);
+  if (!moved) return;
+  reordered.splice(targetIndex, 0, moved);
+  lessonSaving.value = true;
+  try {
+    await persistLessonGroupOrder(group, reordered.map(lesson => lesson.id));
+    showSnackbar("Ordem atualizada.");
+  } catch (err) {
+    console.error(err);
+    showSnackbar("Não foi possível reordenar as aulas.");
+  } finally {
+    lessonSaving.value = false;
+  }
+};
 
 const utmFieldMap: { key: keyof MetricsUserTracking; label: string }[] = [
   { key: "utm_source", label: "Fonte" },
   { key: "utm_medium", label: "Mídia" },
   { key: "utm_campaign", label: "Campanha" },
   { key: "utm_term", label: "Termo" },
-  { key: "utm_content", label: "Conteúdoo" },
+  { key: "utm_content", label: "Conteúdo" },
   { key: "referrer", label: "Referrer" }
 ];
 
@@ -3239,7 +3339,7 @@ const loadMetrics = async () => {
     if (err?.response?.status === 403) {
       error.value = "Acesso restrito a administradores.";
     } else {
-      error.value = "Nao foi possivel carregar os dados.";
+    error.value = "Não foi possível carregar os dados.";
     }
   }
 };
@@ -4398,6 +4498,8 @@ watch(
   }
 );
 
+
+
 onMounted(async () => {
   updateIsMobile();
   if (typeof window !== "undefined") {
@@ -4467,6 +4569,7 @@ watch(activeTab, (tab) => {
   if (tab === "revenue_forecast" && !revenueForecast.value && !revenueForecastLoading.value) {
     loadRevenueForecast();
   }
+
 });
 
 onUnmounted(() => {
@@ -4479,6 +4582,7 @@ onUnmounted(() => {
     templateAgencySearchDebounce = null;
   }
   stopOnlineSessionsPolling();
+
 });
 </script>
 
@@ -4697,6 +4801,8 @@ interface AdminPageSummary {
   slug: string;
   status: string;
 }
+
+
 
 
 

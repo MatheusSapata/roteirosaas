@@ -4,6 +4,7 @@ from typing import Literal
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_active_user, get_db
@@ -52,7 +53,8 @@ class RefreshTokenRequest(BaseModel):
 
 @router.post("/register", response_model=UserOut)
 def register(user_in: UserCreate, db: Session = Depends(get_db)) -> UserOut:
-    existing = db.query(User).filter(User.email == user_in.email).first()
+    normalized_email = str(user_in.email).strip().lower()
+    existing = db.query(User).filter(func.lower(User.email) == normalized_email).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email já registrado.")
     existing_cpf = db.query(User).filter(User.cpf == user_in.cpf).first()
@@ -68,7 +70,7 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)) -> UserOut:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     hashed = auth_service.get_password_hash(user_in.password)
     user = User(
-        email=user_in.email,
+        email=normalized_email,
         name=user_in.name,
         cpf=user_in.cpf,
         whatsapp=user_in.whatsapp,
@@ -168,7 +170,8 @@ def refresh_token(request: Request, payload: RefreshTokenRequest, db: Session = 
     session_id = data.get("sid")
     if not email or not session_id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token inválido.")
-    user = db.query(User).filter(User.email == email).first()
+    normalized_email = str(email).strip().lower()
+    user = db.query(User).filter(func.lower(User.email) == normalized_email).first()
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuário não encontrado.")
     session = (
@@ -195,8 +198,8 @@ def refresh_token(request: Request, payload: RefreshTokenRequest, db: Session = 
         session.last_path = current_path[:255]
     db.add(session)
     db.commit()
-    access_token = auth_service.create_access_token(data={"sub": email}, session_id=session.id)
-    refresh_token = auth_service.create_refresh_token(email, session.id)
+    access_token = auth_service.create_access_token(data={"sub": user.email}, session_id=session.id)
+    refresh_token = auth_service.create_refresh_token(user.email, session.id)
     return Token(access_token=access_token, refresh_token=refresh_token, token_type="bearer")
 
 
@@ -226,7 +229,11 @@ def update_me(user_in: UserUpdate, db: Session = Depends(get_db), current_user: 
 
     if user_in.email:
         normalized_email = user_in.email.strip().lower()
-        existing_email = db.query(User).filter(User.email == normalized_email, User.id != current_user.id).first()
+        existing_email = (
+            db.query(User)
+            .filter(func.lower(User.email) == normalized_email, User.id != current_user.id)
+            .first()
+        )
         if existing_email:
             raise HTTPException(status_code=400, detail="Email jǭ registrado.")
         current_user.email = normalized_email
@@ -366,7 +373,8 @@ def delete_my_avatar(
 
 @router.post("/password/forgot")
 def request_password_reset(payload: PasswordResetRequest, db: Session = Depends(get_db)) -> dict:
-    user = db.query(User).filter(User.email == payload.email).first()
+    normalized_email = str(payload.email).strip().lower()
+    user = db.query(User).filter(func.lower(User.email) == normalized_email).first()
     # Mesmo que o email não exista, retornamos resposta genérica para evitar enumeração
     if not user:
         return {"detail": "Se o email estiver cadastrado, enviaremos instruções para redefinir a senha."}
@@ -387,7 +395,8 @@ def reset_password(payload: PasswordResetConfirm, db: Session = Depends(get_db))
     if not email:
         raise HTTPException(status_code=400, detail="Token inválido ou expirado.")
 
-    user = db.query(User).filter(User.email == email).first()
+    normalized_email = str(email).strip().lower()
+    user = db.query(User).filter(func.lower(User.email) == normalized_email).first()
     if not user:
         raise HTTPException(status_code=404, detail="Usuário não encontrado.")
 
@@ -405,7 +414,7 @@ def reset_password(payload: PasswordResetConfirm, db: Session = Depends(get_db))
 @router.post("/password/reset/by-profile")
 def reset_password_by_profile(payload: PasswordResetByProfile, db: Session = Depends(get_db)) -> dict:
     normalized_email = payload.email.strip().lower()
-    user = db.query(User).filter(User.email == normalized_email).first()
+    user = db.query(User).filter(func.lower(User.email) == normalized_email).first()
     if not user:
         raise HTTPException(status_code=404, detail="Dados nao conferem.")
 
@@ -486,13 +495,14 @@ def accept_invite(payload: AcceptInviteIn, db: Session = Depends(get_db)) -> dic
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    user = db.query(User).filter(User.email == invite.email).first()
+    invite_email = (invite.email or "").strip().lower()
+    user = db.query(User).filter(func.lower(User.email) == invite_email).first()
     if not user:
         invited_role = (invite.role_name or "member").strip().lower()
         if invited_role not in {"admin", "member"}:
             invited_role = "member"
         user = User(
-            email=invite.email,
+            email=invite_email,
             name=invite.name,
             hashed_password=auth_service.get_password_hash(payload.password),
             plan="free",

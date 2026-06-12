@@ -39,7 +39,12 @@
         :subtitle="eligibleBanner.subtitle || ''"
         :has-icon="eligibleBanner.has_icon"
         :icon-name="eligibleBanner.icon_name"
+        :icon-svg="eligibleBannerIconSvg"
+        :show-icon-background="eligibleBannerShowIconBackground"
         :background-variant="eligibleBanner.background_variant"
+        :custom-background="eligibleBannerBackground"
+        :cta-background="eligibleBannerCtaBackground"
+        :cta-text-color="eligibleBannerCtaTextColor"
         :has-cta="eligibleBanner.has_cta"
         :cta-label="eligibleBanner.cta_label"
         :dismissible="eligibleBanner.dismissible"
@@ -379,6 +384,7 @@ interface SystemBannerPayload {
   cta_label?: string | null;
   cta_type?: "internal_route" | "external_url" | "open_modal" | "system_action" | "none" | null;
   cta_target?: string | null;
+  rule_config?: Record<string, any> | null;
 }
 
 const router = useRouter();
@@ -403,6 +409,54 @@ const chartWidth = ref(800);
 const chartHeight = 160;
 const chartPad = 12;
 let chartResizeObserver: ResizeObserver | null = null;
+
+const normalizeBannerHex = (value?: string | null, fallback = "#1a3d25") => {
+  const raw = String(value || "").trim();
+  return /^#[0-9a-f]{6}$/i.test(raw) ? raw : fallback;
+};
+
+const normalizeBannerGradientIntensity = (value?: number | null) => {
+  const parsed = Number(value || 100);
+  if (Number.isNaN(parsed)) return 100;
+  return Math.min(100, Math.max(35, parsed));
+};
+
+const eligibleBannerVisual = computed(() => {
+  const config = (eligibleBanner.value?.rule_config || {}) as { visual?: Record<string, any> };
+  return config.visual || {};
+});
+
+const eligibleBannerBackground = computed(() => {
+  const visual = eligibleBannerVisual.value;
+  if (visual.background_type === "solid") {
+    return normalizeBannerHex(visual.solid_color);
+  }
+  if (visual.background_type === "gradient") {
+    const start = normalizeBannerHex(visual.gradient_start);
+    const end = normalizeBannerHex(visual.gradient_end, "#3dcc5f");
+    const intensity = normalizeBannerGradientIntensity(visual.gradient_intensity);
+    return `linear-gradient(135deg, ${start} 0%, ${end} ${intensity}%)`;
+  }
+  return null;
+});
+
+const eligibleBannerIconSvg = computed(() => {
+  const visual = eligibleBannerVisual.value;
+  return visual.icon_mode === "svg" ? String(visual.icon_svg || "") : "";
+});
+
+const eligibleBannerShowIconBackground = computed(() => {
+  const visual = eligibleBannerVisual.value;
+  return visual.icon_mode === "svg" ? Boolean(visual.show_icon_background) : true;
+});
+
+const eligibleBannerCtaBackground = computed(() =>
+  normalizeBannerHex(String(eligibleBannerVisual.value.cta_background_color || ""), "#3dcc5f")
+);
+
+const eligibleBannerCtaTextColor = computed(() =>
+  normalizeBannerHex(String(eligibleBannerVisual.value.cta_text_color || ""), "#0f1f14")
+);
 const chartTooltip = reactive({
   visible: false,
   index: -1,

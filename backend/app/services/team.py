@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import hashlib
 import secrets
+import re
+import unicodedata
 from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException
@@ -16,11 +18,12 @@ from app.services.permissions import final_permissions_for_member, plan_extra_us
 from app.services.plans import effective_plan
 
 
-def _slugify(value: str) -> str:
-    base = "".join(ch.lower() if ch.isalnum() else "-" for ch in value).strip("-")
-    while "--" in base:
-        base = base.replace("--", "-")
-    return base or "agencia"
+AGENCY_SLUG_MAX_LENGTH = 30
+
+
+def _slugify(value: str, max_length: int = AGENCY_SLUG_MAX_LENGTH) -> str:
+    normalized = unicodedata.normalize("NFD", value or "").encode("ascii", "ignore").decode("ascii").lower()
+    return re.sub(r"[^a-z0-9]+", "-", normalized).strip("-")[:max_length] or "agencia"
 
 
 def _ensure_subscription(db: Session, user: User) -> None:
@@ -46,7 +49,9 @@ def ensure_legacy_owner_context(db: Session, user: User) -> Agency:
         idx = 1
         while db.query(Agency).filter(Agency.slug == slug).first():
             idx += 1
-            slug = f"{base_slug}-{idx}"
+            suffix = f"-{idx}"
+            available_length = max(1, AGENCY_SLUG_MAX_LENGTH - len(suffix))
+            slug = f"{base_slug[:available_length]}{suffix}".strip("-")
         agency = Agency(name=(user.name or "Minha Agência").strip(), slug=slug)
         db.add(agency)
         db.flush()

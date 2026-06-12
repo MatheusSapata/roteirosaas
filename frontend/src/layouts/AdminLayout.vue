@@ -2,7 +2,7 @@
   <div
     :class="[
       'min-h-screen overflow-x-hidden text-[14px]',
-      isDarkTheme ? 'bg-[#05070f] text-slate-100' : 'bg-slate-50 text-slate-900',
+      isPlansRoute ? 'bg-white text-slate-900' : (isDarkTheme ? 'bg-[#05070f] text-slate-100' : 'bg-slate-50 text-slate-900'),
       themeWrapperClass
     ]"
   >
@@ -160,13 +160,22 @@
           </div>
         </div>
       </aside>
-      <main :class="['admin-main flex min-h-0 flex-1 flex-col overflow-x-hidden md:ml-[225px]',isDarkTheme ? 'bg-[#05070f] text-slate-100' : 'bg-slate-50 text-slate-900']">
+      <main
+        :class="[
+          'admin-main flex min-h-0 flex-1 flex-col overflow-x-hidden md:ml-[225px]',
+          isPlansRoute ? 'bg-white text-slate-900' : (isDarkTheme ? 'bg-[#05070f] text-slate-100' : 'bg-slate-50 text-slate-900')
+        ]"
+      >
         <div
           :class="[
             isInboxRoute
               ? 'admin-content flex-1 min-h-0 overflow-hidden p-0'
-              : 'admin-content flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3 pt-0 pb-4 md:px-6 md:pt-2 md:pb-6',
-            isDarkTheme ? 'text-slate-100' : 'text-slate-900'
+              : isPlansRoute
+                ? 'admin-content flex-1 min-h-0 overflow-hidden overflow-x-hidden p-0'
+                : 'admin-content flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3 pt-0 pb-4 md:px-6 md:pt-2 md:pb-6',
+            isPlansRoute
+              ? 'bg-white text-slate-900'
+              : (isDarkTheme ? 'text-slate-100' : 'text-slate-900')
           ]"
         >
           <div
@@ -187,7 +196,9 @@
             </button>
             </div>
           </div>
-          <RouterView />
+          <div :class="isPlansRoute ? 'flex-1 min-h-0 bg-white overflow-hidden' : 'flex-1 min-h-0'">
+            <RouterView />
+          </div>
         </div>
       </main>
     </div>
@@ -721,7 +732,7 @@ import { useLeadCaptureStore } from "../store/useLeadCaptureStore";
 import { useThemeStore } from "../store/useThemeStore";
 import { getPlanLabel } from "../utils/planLabels";
 import { addTagsToContactByEmail, syncPlanTagForEmail, viajeChatTagIds } from "../services/viajeChat";
-import { slugify } from "../utils/slugify";
+import { normalizeSlugInput, slugify } from "../utils/slugify";
 import { createAdminLocalizer } from "../utils/adminI18n";
 import { canAccessPermission, type PermissionKey } from "../utils/permissions";
 
@@ -732,6 +743,7 @@ const auth = useAuthStore();
 const leadStore = useLeadCaptureStore();
 const routeRequiresAuth = computed(() => route.matched.some(record => record.meta?.requiresAuth));
 const isInboxRoute = computed(() => route.path.startsWith("/admin/inbox"));
+const isPlansRoute = computed(() => route.name === "plans");
 const showAuthSplash = computed(() => {
   if (!routeRequiresAuth.value) return false;
   if (!auth.token) return false;
@@ -1896,12 +1908,21 @@ type AgencyPayload = {
   cta_whatsapp?: string | null;
 };
 
+const AGENCY_SLUG_MAX_LENGTH = 30;
+
+const buildAgencySlugCandidate = (name: string, attempt = 0) => {
+  const baseSlug = normalizeSlugInput(name, AGENCY_SLUG_MAX_LENGTH) || "agencia";
+  const suffix = attempt === 0 ? "" : `-${attempt}`;
+  const availableLength = Math.max(1, AGENCY_SLUG_MAX_LENGTH - suffix.length);
+  const trimmedBase = baseSlug.slice(0, availableLength).replace(/^-+|-+$/g, "");
+  return `${trimmedBase || "agencia"}${suffix}`.slice(0, AGENCY_SLUG_MAX_LENGTH).replace(/^-+|-+$/g, "");
+};
+
 const createAgencyWithSlugFallback = async (payload: AgencyPayload) => {
-  const baseSlug = slugify(payload.name, "agencia");
+  const baseSlug = buildAgencySlugCandidate(payload.name);
   const maxAttempts = 8;
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-    const suffix = attempt === 0 ? "" : `-${attempt}`;
-    const slugCandidate = `${baseSlug}${suffix}`;
+    const slugCandidate = buildAgencySlugCandidate(baseSlug, attempt);
     try {
       const res = await api.post("/agencies", { ...payload, slug: slugCandidate });
       return res;
@@ -1931,10 +1952,7 @@ const upsertAgencyDuringSetup = async (name: string) => {
     return createdId;
   }
   const targetId = agencySetupCreatedId.value;
-  await api.put(`/agencies/${targetId}`, {
-    ...payload,
-    slug: slugify(name, "agencia")
-  });
+  await api.put(`/agencies/${targetId}`, payload);
   await agencyStore.loadAgencies();
   ensureAgencySelection(targetId);
   return targetId;
@@ -2038,10 +2056,7 @@ const submitAgencySetup = async () => {
       agencyId = res.data?.id ?? null;
       agencySetupCreatedId.value = agencyId;
     } else {
-      await api.put(`/agencies/${agencyId}`, {
-        ...payload,
-        slug: slugify(trimmed, "agencia")
-      });
+      await api.put(`/agencies/${agencyId}`, payload);
     }
     await agencyStore.loadAgencies();
     ensureAgencySelection(agencyId ?? null);

@@ -1,9 +1,21 @@
+import re
+import unicodedata
 from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
 
 AgencySocialNetwork = Literal["instagram", "facebook", "youtube", "tiktok"]
+
+
+def _normalize_slug_input(value: str, max_length: int = 30) -> str:
+    normalized = (
+        unicodedata.normalize("NFD", value or "")
+        .encode("ascii", "ignore")
+        .decode("ascii")
+        .lower()
+    )
+    return re.sub(r"[^a-z0-9]+", "-", normalized).strip("-")[:max_length]
 
 
 class AgencySocialLinkBase(BaseModel):
@@ -52,6 +64,14 @@ class AgencyBase(BaseModel):
             return value
         cleaned = value.strip()
         return cleaned or None
+
+    @field_validator("slug")
+    @classmethod
+    def normalize_slug(cls, value: str) -> str:
+        normalized = _normalize_slug_input(value)
+        if not normalized:
+            raise ValueError("Slug obrigatorio.")
+        return normalized
 
     @field_validator("cta_whatsapp")
     @classmethod

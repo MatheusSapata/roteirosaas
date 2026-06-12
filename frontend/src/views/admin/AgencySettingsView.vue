@@ -29,9 +29,9 @@
               <label class="fl">{{ viewCopy.general.slugLabel }}</label>
               <div class="ig">
                 <span class="ig-pre">roteiroonline.com/</span>
-                <input v-model="form.slug" />
+                <input :value="form.slug" maxlength="30" @input="handleSlugInput" />
               </div>
-              <span class="fh">{{ viewCopy.general.slugHint }}</span>
+              <span class="fh">{{ viewCopy.general.slugHint }} {{ viewCopy.general.slugLimit }}</span>
             </div>
             <div class="fg">
               <label class="fl">{{ viewCopy.theme.primaryColorLabel }}</label>
@@ -199,6 +199,7 @@ import { useAuthStore } from "../../store/useAuthStore";
 import { addTagsToContactByEmail, viajeChatTagIds } from "../../services/viajeChat";
 import { createAdminLocalizer } from "../../utils/adminI18n";
 import { normalizeWhatsappDigits } from "../../utils/whatsapp";
+import { normalizeSlugInput } from "../../utils/slugify";
 
 const agencyStore = useAgencyStore();
 const authStore = useAuthStore();
@@ -217,7 +218,8 @@ const viewCopy = {
     slugHint: t({
       pt: "Slug é a parte do link depois da barra, sem espaços ou acentos. Ex.: minha-agencia-incrivel.",
       es: "Slug es la parte del enlace después de la barra, sin espacios ni acentos. Ej.: mi-agencia-increible."
-    })
+    }),
+    slugLimit: t({ pt: "Limite: 30 caracteres.", es: "Límite: 30 caracteres." })
   },
   company: {
     cnpjLabel: t({ pt: "CNPJ ou CPF do responsável", es: "CNPJ o CPF del responsable" }),
@@ -339,6 +341,7 @@ const viewCopy = {
 };
 
 const colorPalette = ["#41ce5f", "#2563eb", "#8b5cf6", "#f59e0b", "#10b981", "#ef4444", "#0f172a"];
+const AGENCY_SLUG_MAX_LENGTH = 30;
 const socialNetworkOptions = [
   { label: "Instagram", value: "instagram" },
   { label: "Facebook", value: "facebook" },
@@ -617,6 +620,13 @@ const buildFormSnapshot = () =>
     }
   });
 
+const handleSlugInput = (event: Event) => {
+  const target = event.target as HTMLInputElement;
+  const normalized = normalizeSlugInput(target.value, AGENCY_SLUG_MAX_LENGTH);
+  form.slug = normalized;
+  target.value = normalized;
+};
+
 const hasUnsavedChanges = computed(() => {
   if (!initialSnapshot.value) return false;
   return buildFormSnapshot() !== initialSnapshot.value;
@@ -710,7 +720,17 @@ const save = async () => {
   }
 
   const normalizedName = form.name.trim();
-  const normalizedSlug = form.slug.trim().toLowerCase();
+  const currentAgency = agencyStore.agencies.find(a => a.id === agencyStore.currentAgencyId) || null;
+  const slugWasEdited = !agencyStore.currentAgencyId || (form.slug || "").trim() !== (currentAgency?.slug || "");
+  const normalizedSlug = slugWasEdited
+    ? normalizeSlugInput(form.slug, AGENCY_SLUG_MAX_LENGTH)
+    : (currentAgency?.slug || form.slug || "").trim();
+
+  if (!normalizedSlug) {
+    errorMessage.value = viewCopy.validations.missingNameSlug;
+    form.slug = "";
+    return;
+  }
 
   const rawPhoneDigits = (phoneInput.value || "").replace(/\D/g, "");
   if (rawPhoneDigits && rawPhoneDigits.length < 10) {

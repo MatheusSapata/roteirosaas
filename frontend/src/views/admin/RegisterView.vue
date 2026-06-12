@@ -222,7 +222,7 @@ const isValidCpf = (value: string) => {
 };
 
 const canSubmit = computed(() => {
-  const normalizedEmail = email.value.trim();
+  const normalizedEmail = email.value.trim().toLowerCase();
   const cpfDigits = sanitizedCpf();
   const phoneDigits = sanitizedWhatsapp();
   return Boolean(
@@ -295,7 +295,7 @@ const notifyViajeChat = async (payload: { name: string; email: string; phone: st
 const onSubmit = async () => {
   try {
     error.value = "";
-    const normalizedEmail = email.value.trim();
+    const normalizedEmail = email.value.trim().toLowerCase();
     if (!emailRegex.test(normalizedEmail)) {
       error.value = viewCopy.feedback.emailInvalid;
       return;

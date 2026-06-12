@@ -774,6 +774,9 @@ const getFriendlyCheckoutError = (error: any, fallback: string) => {
   const raw = `${serialized} ${error?.message || ""}`.toLowerCase();
 
   if (!raw) return fallback;
+  if (raw.includes("cadastrado")) {
+    return serialized || "Este e-mail ou documento já está cadastrado. Faça login para acessar sua conta.";
+  }
   if (raw.includes("cpf") || raw.includes("cnpj") || raw.includes("customer_document")) {
     return "Informe um CPF ou CNPJ válido.";
   }
@@ -845,11 +848,12 @@ const submitDetails = async () => {
   submitting.value = true;
   inlineError.value = "";
   try {
+    const normalizedEmail = form.customer_email.trim().toLowerCase();
     if (isUpgradeFlow.value) {
       if (!session.value?.token) throw new Error("Sessao de upgrade nao encontrada.");
       session.value = await updateUpgradeCheckoutSessionDetails(session.value.token, {
         customer_name: form.customer_name,
-        customer_email: form.customer_email,
+        customer_email: normalizedEmail,
         customer_document: form.customer_document,
         customer_phone: form.customer_phone,
         customer_zipcode: form.customer_zipcode,
@@ -858,7 +862,7 @@ const submitDetails = async () => {
       session.value = await createCheckoutSession({
         offer_key: config.value.offer.key,
         customer_name: form.customer_name,
-        customer_email: form.customer_email,
+        customer_email: normalizedEmail,
         customer_document: form.customer_document,
         customer_phone: form.customer_phone,
         customer_zipcode: form.customer_zipcode,
@@ -920,7 +924,7 @@ const applyCoupon = async () => {
     session.value = await createCheckoutSession({
       offer_key: config.value.offer.key,
       customer_name: session.value?.customer_name || form.customer_name,
-      customer_email: session.value?.customer_email || form.customer_email,
+      customer_email: (session.value?.customer_email || form.customer_email).trim().toLowerCase(),
       customer_document: form.customer_document,
       customer_phone: session.value?.customer_phone || form.customer_phone,
       customer_zipcode: session.value?.customer_zipcode || form.customer_zipcode,
@@ -1005,7 +1009,7 @@ const removeAppliedCoupon = async () => {
     session.value = await createCheckoutSession({
       offer_key: config.value.offer.key,
       customer_name: session.value.customer_name || form.customer_name,
-      customer_email: session.value.customer_email || form.customer_email,
+      customer_email: (session.value.customer_email || form.customer_email).trim().toLowerCase(),
       customer_document: form.customer_document,
       customer_phone: session.value.customer_phone || form.customer_phone,
       customer_zipcode: session.value.customer_zipcode || form.customer_zipcode,

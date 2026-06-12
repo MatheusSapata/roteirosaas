@@ -13,6 +13,7 @@ class LessonVideoType(str, Enum):  # type: ignore[misc]
 
 class LessonBase(BaseModel):
     module_name: Optional[str] = None
+    sort_order: Optional[int] = None
     title: str
     description: Optional[str] = None
     duration: Optional[str] = None
@@ -28,6 +29,7 @@ class LessonCreate(LessonBase):
 
 class LessonUpdate(BaseModel):
     module_name: Optional[str] = None
+    sort_order: Optional[int] = None
     title: Optional[str] = None
     description: Optional[str] = None
     duration: Optional[str] = None
