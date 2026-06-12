@@ -90,6 +90,20 @@ const syncBodyShell = (usePublicShell: boolean) => {
   document.body.classList.toggle(plansShellClass, isPlansRoute.value);
 };
 
+const syncViewportBackground = () => {
+  if (typeof document === "undefined") return;
+  const backgroundColor = isPublicShellRoute.value
+    ? "#000000"
+    : isPlansRoute.value
+      ? "#ffffff"
+      : "#f8fafc";
+
+  document.documentElement.style.backgroundColor = backgroundColor;
+  document.documentElement.style.backgroundImage = "none";
+  document.body.style.backgroundColor = backgroundColor;
+  document.body.style.backgroundImage = "none";
+};
+
 const checkCookieConsent = () => {
   if (typeof window === "undefined") return;
   const consent = localStorage.getItem(COOKIE_KEY);
@@ -118,6 +132,7 @@ watch(
   () => {
     checkCookieConsent();
     syncBodyShell(isPublicShellRoute.value);
+    syncViewportBackground();
   },
   { immediate: true }
 );
@@ -128,6 +143,12 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   syncBodyShell(false);
+  if (typeof document !== "undefined") {
+    document.documentElement.style.backgroundColor = "";
+    document.documentElement.style.backgroundImage = "";
+    document.body.style.backgroundColor = "";
+    document.body.style.backgroundImage = "";
+  }
 });
 </script>
 
