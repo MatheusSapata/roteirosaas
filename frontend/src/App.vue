@@ -69,13 +69,17 @@ const publicRouteNames = new Set(["public-page", "custom-domain-default", "custo
 const cookieBannerHiddenRouteNames = new Set(["custom-checkout"]);
 const publicShellClass = "public-shell";
 const adminShellClass = "admin-shell";
+const plansShellClass = "plans-shell";
 const isPublicShellRoute = computed(() => {
   const routeName = typeof route.name === "string" ? route.name : "";
   return publicRouteNames.has(routeName);
 });
+const isPlansRoute = computed(() => typeof route.name === "string" && route.name === "plans");
 const appShellClass = computed(() =>
   isPublicShellRoute.value
     ? "bg-black text-white"
+    : isPlansRoute.value
+      ? "min-h-screen bg-white text-slate-900"
     : "min-h-screen bg-slate-50 text-slate-900"
 );
 
@@ -83,6 +87,7 @@ const syncBodyShell = (usePublicShell: boolean) => {
   if (typeof document === "undefined") return;
   document.body.classList.toggle(publicShellClass, usePublicShell);
   document.body.classList.toggle(adminShellClass, route.path.startsWith("/admin"));
+  document.body.classList.toggle(plansShellClass, isPlansRoute.value);
 };
 
 const checkCookieConsent = () => {
@@ -109,16 +114,10 @@ const dismissCookies = () => {
 };
 
 watch(
-  () => route.path,
+  [() => route.path, isPublicShellRoute, isPlansRoute],
   () => {
     checkCookieConsent();
-  }
-);
-
-watch(
-  isPublicShellRoute,
-  value => {
-    syncBodyShell(value);
+    syncBodyShell(isPublicShellRoute.value);
   },
   { immediate: true }
 );

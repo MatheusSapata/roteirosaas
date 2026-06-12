@@ -2,6 +2,7 @@
 from copy import deepcopy
 import json
 import re
+import unicodedata
 from typing import Any, Optional, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -25,28 +26,35 @@ from app.services.plans import effective_plan, plan_limits
 from app.services.team import get_user_effective_permissions
 
 router = APIRouter()
+PAGE_SLUG_MAX_LENGTH = 25
 
 
 def _slugify(value: str) -> str:
-    normalized = (value or "").strip().lower()
-    normalized = re.sub(r"[\u0300-\u036f]", "", normalized.encode("ascii", "ignore").decode("ascii"))
+    normalized = unicodedata.normalize("NFD", (value or "").strip().lower())
+    normalized = "".join(char for char in normalized if unicodedata.category(char) != "Mn")
     normalized = re.sub(r"[^a-z0-9]+", "-", normalized)
     normalized = re.sub(r"-{2,}", "-", normalized).strip("-")
-    return normalized[:80] or f"pagina-{int(datetime.utcnow().timestamp())}"
+    normalized = normalized[:PAGE_SLUG_MAX_LENGTH].strip("-")
+    return normalized or f"pagina-{int(datetime.utcnow().timestamp())}"[:PAGE_SLUG_MAX_LENGTH]
 
 
-def _ensure_unique_slug(db: Session, agency_id: int, raw_slug: str) -> str:
+def _ensure_unique_slug(db: Session, agency_id: int, raw_slug: str, page_id: Optional[int] = None) -> str:
     base_slug = _slugify(raw_slug)
     candidate = base_slug
     counter = 1
+    query = db.query(Page.id).filter(Page.agency_id == agency_id, Page.slug == candidate)
+    if page_id is not None:
+        query = query.filter(Page.id != page_id)
     while (
-        db.query(Page.id)
-        .filter(Page.agency_id == agency_id, Page.slug == candidate)
-        .first()
+        query.first()
         is not None
     ):
-        candidate = f"{base_slug}-{counter}"
+        suffix = f"-{counter}"
+        candidate = f"{base_slug[: PAGE_SLUG_MAX_LENGTH - len(suffix)].strip('-')}{suffix}"
         counter += 1
+        query = db.query(Page.id).filter(Page.agency_id == agency_id, Page.slug == candidate)
+        if page_id is not None:
+            query = query.filter(Page.id != page_id)
     return candidate
 
 
@@ -345,6 +353,8 @@ def update_page(
     ensure_pages_editor_permission(db, page.agency_id, current_user)
     plan = resolve_agency_plan(db, page.agency_id)
     updates = page_in.dict(exclude_unset=True)
+    if "slug" in updates:
+        updates["slug"] = _ensure_unique_slug(db, page.agency_id, updates.get("slug") or page.title or "pagina", page.id)
     if "config_json" in updates:
         normalized = normalize_config(updates.get("config_json"))
         updates["config_json"] = enforce_page_limits(db, page, publish=False, config=normalized, plan=plan)

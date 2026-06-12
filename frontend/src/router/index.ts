@@ -1,6 +1,5 @@
 import { createRouter, createWebHistory, RouteRecordRaw } from "vue-router";
 import LoginView from "../views/admin/LoginView.vue";
-import RegisterView from "../views/admin/RegisterView.vue";
 import ForgotPasswordView from "../views/admin/ForgotPasswordView.vue";
 import ResetPasswordView from "../views/admin/ResetPasswordView.vue";
 import CreatePasswordView from "../views/admin/CreatePasswordView.vue";
@@ -39,6 +38,15 @@ setCurrentLanguage(resolvedLanguage);
 const isCustomDomainHost = !!currentHostname && !platformHostSet.has(currentHostname);
 
 const redirectRoutes: RouteRecordRaw[] = [
+  {
+    path: "/register",
+    name: "register",
+    component: RedirectPlaceholder,
+    beforeEnter() {
+      window.location.href = "https://viajeon.com/roteiroonline1";
+    },
+    meta: { guestOnly: true }
+  },
   {
     path: "/profissionalmensal",
     component: RedirectPlaceholder,
@@ -174,7 +182,6 @@ const platformRoutes: RouteRecordRaw[] = [
   ...redirectRoutes,
   { path: "/", name: "marketing", component: LoginView, meta: { guestOnly: true } },
   { path: "/login", name: "login", component: LoginView, meta: { guestOnly: true } },
-  { path: "/register", name: "register", component: RegisterView, meta: { guestOnly: true } },
   { path: "/forgot-password", name: "forgot-password", component: ForgotPasswordView, meta: { guestOnly: true } },
   { path: "/reset-password", name: "reset-password", component: ResetPasswordView, meta: { guestOnly: true } },
   { path: "/create-password", name: "create-password", component: CreatePasswordView, meta: { guestOnly: true } },

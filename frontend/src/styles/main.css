@@ -23,6 +23,12 @@ body.public-shell #app {
   background-image: none;
 }
 
+body.plans-shell,
+body.plans-shell #app {
+  background-color: #fff;
+  background-image: none;
+}
+
 #app {
   width: 100%;
   min-height: 100vh;

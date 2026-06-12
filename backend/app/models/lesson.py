@@ -9,6 +9,7 @@ class Lesson(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     module_name = Column(String(120), nullable=True)
+    sort_order = Column(Integer, nullable=False, default=0, server_default="0")
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     duration = Column(String(50), nullable=True)

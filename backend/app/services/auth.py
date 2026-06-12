@@ -3,6 +3,7 @@ from typing import Optional
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -40,7 +41,8 @@ def create_refresh_token(subject: str, session_id: str, expires_minutes: Optiona
 
 
 def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:
-    user = db.query(User).filter(User.email == email).first()
+    normalized_email = (email or "").strip().lower()
+    user = db.query(User).filter(func.lower(User.email) == normalized_email).first()
     if not user:
         return None
     if not verify_password(password, user.hashed_password):

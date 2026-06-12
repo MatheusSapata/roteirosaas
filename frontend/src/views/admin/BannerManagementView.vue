@@ -63,7 +63,12 @@
                     :subtitle="item.subtitle || ''"
                     :has-icon="item.has_icon"
                     :icon-name="item.icon_name"
+                    :icon-svg="bannerIconSvg(item)"
+                    :show-icon-background="bannerShowIconBackground(item)"
                     :background-variant="item.background_variant"
+                    :custom-background="bannerBackground(item)"
+                    :cta-background="bannerCtaBackground(item)"
+                    :cta-text-color="bannerCtaTextColor(item)"
                     :has-cta="item.has_cta"
                     :cta-label="item.cta_label"
                     :dismissible="item.dismissible"
@@ -205,22 +210,105 @@
                     </div>
                     <div class="grid gap-4 md:grid-cols-2">
                       <label class="text-sm font-semibold text-slate-600">
+                        Tipo de ícone
+                        <select v-model="builder.content.icon_mode" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                          <option value="preset">Biblioteca</option>
+                          <option value="svg">Código SVG</option>
+                        </select>
+                      </label>
+                      <label v-if="builder.content.icon_mode === 'preset'" class="text-sm font-semibold text-slate-600">
                         Ícone
                         <select v-model="builder.content.icon" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
                           <option v-for="icon in iconOptions" :key="icon" :value="icon">{{ icon }}</option>
                         </select>
                       </label>
+                    </div>
+                    <label v-if="builder.content.icon_mode === 'svg'" class="block text-sm font-semibold text-slate-600">
+                      Código SVG
+                      <textarea
+                        v-model="builder.content.icon_svg"
+                        rows="5"
+                        class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 font-mono text-xs"
+                        placeholder='<svg viewBox="0 0 24 24" fill="none">...</svg>'
+                      ></textarea>
+                      <span class="mt-1 block text-xs font-normal text-slate-500">Cole apenas o SVG. Scripts e eventos inline são removidos na renderização.</span>
+                    </label>
+                    <div v-if="builder.content.icon_mode === 'svg'" class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                       <label class="text-sm font-semibold text-slate-600">
-                        Background
-                        <select v-model="builder.content.background" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
-                          <option value="green_gradient">verde_escuro_premium</option>
-                          <option value="green_solid">verde_gradiente</option>
-                          <option value="green_light">verde_suave</option>
-                          <option value="warning">verde_alerta</option>
-                          <option value="success">neutro_claro</option>
-                          <option value="info">info_azul</option>
-                        </select>
+                        Buscar ícone na Iconify
+                        <input
+                          v-model="iconifySearchQuery"
+                          class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                          placeholder="Digite: ônibus, avião, alerta, calendário..."
+                        />
                       </label>
+                      <p class="mt-2 text-xs text-slate-500">
+                        Clique em um resultado para usar o SVG no banner.
+                      </p>
+                      <p v-if="iconifyLoading" class="mt-3 text-xs font-semibold text-slate-500">Buscando ícones...</p>
+                      <p v-else-if="iconifyError" class="mt-3 text-xs font-semibold text-rose-600">{{ iconifyError }}</p>
+                      <div v-else-if="iconifyResults.length" class="mt-3 grid max-h-64 grid-cols-4 gap-2 overflow-y-auto sm:grid-cols-6">
+                        <button
+                          v-for="icon in iconifyResults"
+                          :key="icon"
+                          type="button"
+                          class="group flex aspect-square flex-col items-center justify-center gap-1 rounded-xl border border-slate-200 bg-white p-2 text-[10px] font-semibold text-slate-500 transition hover:border-emerald-300 hover:bg-emerald-50"
+                          :class="builder.content.iconify_icon === icon ? 'border-emerald-400 bg-emerald-50 text-emerald-700' : ''"
+                          @click="selectIconifyIcon(icon)"
+                        >
+                          <img :src="iconifySvgUrl(icon)" :alt="icon" class="h-7 w-7 object-contain" loading="lazy" />
+                          <span class="line-clamp-1 max-w-full">{{ icon }}</span>
+                        </button>
+                      </div>
+                    </div>
+                    <label
+                      v-if="builder.content.icon_mode === 'svg'"
+                      class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700"
+                    >
+                      <input v-model="builder.content.show_icon_background" type="checkbox" />
+                      Mostrar fundo atrás do SVG
+                    </label>
+                    <div class="rounded-2xl border border-slate-200 p-4">
+                      <p class="text-sm font-bold text-slate-700">Background</p>
+                      <div class="mt-3 grid gap-4 md:grid-cols-2">
+                        <label class="text-sm font-semibold text-slate-600">
+                          Tipo
+                          <select v-model="builder.content.background_type" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                            <option value="preset">Preset antigo</option>
+                            <option value="solid">Cor sólida</option>
+                            <option value="gradient">Gradiente</option>
+                          </select>
+                        </label>
+                        <label v-if="builder.content.background_type === 'preset'" class="text-sm font-semibold text-slate-600">
+                          Preset
+                          <select v-model="builder.content.background" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                            <option value="green_gradient">verde_escuro_premium</option>
+                            <option value="green_solid">verde_gradiente</option>
+                            <option value="green_light">verde_suave</option>
+                            <option value="warning">verde_alerta</option>
+                            <option value="success">neutro_claro</option>
+                            <option value="info">info_azul</option>
+                          </select>
+                        </label>
+                        <label v-if="builder.content.background_type === 'solid'" class="text-sm font-semibold text-slate-600">
+                          Cor
+                          <input v-model="builder.content.solid_color" type="color" class="mt-1 h-11 w-full rounded-xl border border-slate-200 bg-white px-2 py-1" />
+                        </label>
+                        <template v-if="builder.content.background_type === 'gradient'">
+                          <label class="text-sm font-semibold text-slate-600">
+                            Cor inicial
+                            <input v-model="builder.content.gradient_start" type="color" class="mt-1 h-11 w-full rounded-xl border border-slate-200 bg-white px-2 py-1" />
+                          </label>
+                          <label class="text-sm font-semibold text-slate-600">
+                            Cor final
+                            <input v-model="builder.content.gradient_end" type="color" class="mt-1 h-11 w-full rounded-xl border border-slate-200 bg-white px-2 py-1" />
+                          </label>
+                          <label class="text-sm font-semibold text-slate-600 md:col-span-2">
+                            Intensidade do gradiente: {{ builder.content.gradient_intensity }}%
+                            <input v-model.number="builder.content.gradient_intensity" type="range" min="35" max="100" step="1" class="mt-2 w-full accent-emerald-600" />
+                          </label>
+                        </template>
+                      </div>
                     </div>
                   </div>
                 </section>
@@ -312,6 +400,17 @@
                     <div v-else class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-500">
                       Sem ação configurada para este banner.
                     </div>
+                    <div v-if="builder.cta.enabled" class="grid gap-4 rounded-2xl border border-slate-200 p-4 md:grid-cols-2">
+                      <p class="text-sm font-bold text-slate-700 md:col-span-2">Cores do botão</p>
+                      <label class="text-sm font-semibold text-slate-600">
+                        Cor do botão
+                        <input v-model="builder.cta.background_color" type="color" class="mt-1 h-11 w-full rounded-xl border border-slate-200 bg-white px-2 py-1" />
+                      </label>
+                      <label class="text-sm font-semibold text-slate-600">
+                        Cor do texto
+                        <input v-model="builder.cta.text_color" type="color" class="mt-1 h-11 w-full rounded-xl border border-slate-200 bg-white px-2 py-1" />
+                      </label>
+                    </div>
                   </div>
                 </section>
 
@@ -383,12 +482,54 @@
                     <input v-model="builder.content.title" placeholder="Título" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
                     <textarea v-model="builder.content.subtitle" rows="3" placeholder="Subtítulo" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"></textarea>
                     <label class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700"><input v-model="builder.content.show_icon" type="checkbox" />Mostrar ícone</label>
-                    <select v-model="builder.content.icon" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"><option v-for="icon in iconOptions" :key="icon" :value="icon">{{ icon }}</option></select>
-                    <select v-model="builder.content.background" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"><option value="green_gradient">verde_escuro_premium</option><option value="green_solid">verde_gradiente</option><option value="green_light">verde_suave</option><option value="warning">verde_alerta</option><option value="success">neutro_claro</option><option value="info">info_azul</option></select>
+                    <select v-model="builder.content.icon_mode" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"><option value="preset">Ícone da biblioteca</option><option value="svg">Código SVG</option></select>
+                    <select v-if="builder.content.icon_mode === 'preset'" v-model="builder.content.icon" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"><option v-for="icon in iconOptions" :key="icon" :value="icon">{{ icon }}</option></select>
+                    <textarea v-else v-model="builder.content.icon_svg" rows="4" placeholder='<svg viewBox="0 0 24 24">...</svg>' class="w-full rounded-xl border border-slate-200 px-3 py-2 font-mono text-xs"></textarea>
+                    <div v-if="builder.content.icon_mode === 'svg'" class="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                      <input v-model="iconifySearchQuery" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" placeholder="Buscar na Iconify" />
+                      <p v-if="iconifyLoading" class="mt-2 text-xs font-semibold text-slate-500">Buscando...</p>
+                      <p v-else-if="iconifyError" class="mt-2 text-xs font-semibold text-rose-600">{{ iconifyError }}</p>
+                      <div v-else-if="iconifyResults.length" class="mt-2 grid max-h-52 grid-cols-4 gap-2 overflow-y-auto">
+                        <button
+                          v-for="icon in iconifyResults"
+                          :key="icon"
+                          type="button"
+                          class="flex aspect-square items-center justify-center rounded-xl border border-slate-200 bg-white p-2"
+                          :class="builder.content.iconify_icon === icon ? 'border-emerald-400 bg-emerald-50' : ''"
+                          @click="selectIconifyIcon(icon)"
+                        >
+                          <img :src="iconifySvgUrl(icon)" :alt="icon" class="h-7 w-7 object-contain" loading="lazy" />
+                        </button>
+                      </div>
+                    </div>
+                    <label v-if="builder.content.icon_mode === 'svg'" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700"><input v-model="builder.content.show_icon_background" type="checkbox" />Mostrar fundo atrás do SVG</label>
+                    <select v-model="builder.content.background_type" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"><option value="preset">Preset antigo</option><option value="solid">Cor sólida</option><option value="gradient">Gradiente</option></select>
+                    <select v-if="builder.content.background_type === 'preset'" v-model="builder.content.background" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"><option value="green_gradient">verde_escuro_premium</option><option value="green_solid">verde_gradiente</option><option value="green_light">verde_suave</option><option value="warning">verde_alerta</option><option value="success">neutro_claro</option><option value="info">info_azul</option></select>
+                    <input v-if="builder.content.background_type === 'solid'" v-model="builder.content.solid_color" type="color" class="h-11 w-full rounded-xl border border-slate-200 bg-white px-2 py-1" />
+                    <template v-if="builder.content.background_type === 'gradient'">
+                      <input v-model="builder.content.gradient_start" type="color" class="h-11 w-full rounded-xl border border-slate-200 bg-white px-2 py-1" />
+                      <input v-model="builder.content.gradient_end" type="color" class="h-11 w-full rounded-xl border border-slate-200 bg-white px-2 py-1" />
+                      <label class="text-sm font-semibold text-slate-600">Intensidade: {{ builder.content.gradient_intensity }}%<input v-model.number="builder.content.gradient_intensity" type="range" min="35" max="100" step="1" class="mt-2 w-full accent-emerald-600" /></label>
+                    </template>
                   </div>
                 </section>
 
-                <section v-if="mobileStep === 3" class="rounded-2xl bg-white p-4 ring-1 ring-slate-100"><h3 class="text-sm font-bold uppercase tracking-wide text-slate-800">CTA</h3></section>
+                <section v-if="mobileStep === 3" class="rounded-2xl bg-white p-4 ring-1 ring-slate-100">
+                  <h3 class="text-sm font-bold uppercase tracking-wide text-slate-800">CTA</h3>
+                  <div class="mt-3 space-y-3">
+                    <label class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700"><input v-model="builder.cta.enabled" type="checkbox" />CTA habilitado</label>
+                    <input v-model="builder.cta.label" placeholder="Texto do botão" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+                    <select v-model="builder.cta.type" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                      <option value="internal_route">Página interna</option>
+                      <option value="external_url">Link externo</option>
+                      <option value="open_modal">Abrir modal</option>
+                      <option value="system_action">Executar ação do sistema</option>
+                      <option value="none">Sem ação</option>
+                    </select>
+                    <label class="text-sm font-semibold text-slate-600">Cor do botão<input v-model="builder.cta.background_color" type="color" class="mt-1 h-11 w-full rounded-xl border border-slate-200 bg-white px-2 py-1" /></label>
+                    <label class="text-sm font-semibold text-slate-600">Cor do texto<input v-model="builder.cta.text_color" type="color" class="mt-1 h-11 w-full rounded-xl border border-slate-200 bg-white px-2 py-1" /></label>
+                  </div>
+                </section>
                 <section v-if="mobileStep === 4" class="rounded-2xl bg-white p-4 ring-1 ring-slate-100"><h3 class="text-sm font-bold uppercase tracking-wide text-slate-800">Público</h3></section>
                 <section v-if="mobileStep === 5" class="rounded-2xl bg-white p-4 ring-1 ring-slate-100"><h3 class="text-sm font-bold uppercase tracking-wide text-slate-800">Regras</h3></section>
                 <section v-if="mobileStep === 6" class="rounded-2xl bg-white p-4 ring-1 ring-slate-100"><h3 class="text-sm font-bold uppercase tracking-wide text-slate-800">Revisão</h3></section>
@@ -399,7 +540,7 @@
               <section class="rounded-2xl bg-white p-4 ring-1 ring-slate-100">
                 <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Preview</p>
                 <div class="mt-3 mx-auto max-w-[460px]">
-                  <SystemBanner :title="builder.content.title || 'Título do banner'" :subtitle="builder.content.subtitle || 'Subtítulo do banner'" :has-icon="builder.content.show_icon" :icon-name="builder.content.icon" :background-variant="builder.content.background" :has-cta="builder.cta.enabled" :cta-label="builder.cta.label || 'Conectar Pixel'" :dismissible="builder.content.dismissible" />
+                  <SystemBanner :title="builder.content.title || 'Título do banner'" :subtitle="builder.content.subtitle || 'Subtítulo do banner'" :has-icon="builder.content.show_icon" :icon-name="builder.content.icon" :icon-svg="builderIconSvg" :show-icon-background="builder.content.show_icon_background" :background-variant="builder.content.background" :custom-background="builderBackground" :cta-background="builder.cta.background_color" :cta-text-color="builder.cta.text_color" :has-cta="builder.cta.enabled" :cta-label="builder.cta.label || 'Conectar Pixel'" :dismissible="builder.content.dismissible" />
                 </div>
               </section>
               <section class="rounded-2xl bg-white p-4 ring-1 ring-slate-100">
@@ -444,7 +585,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import api from "../../services/api";
 import SystemBanner from "../../components/admin/SystemBanner.vue";
 
@@ -481,6 +622,19 @@ type BannerListItem = {
 type RuleCondition = { field: string; operator: string; value: string };
 type AgencyOption = { id: number; name: string; slug: string };
 type EligibilityResult = { eligible: boolean; reasons: string[] };
+type BannerVisualConfig = {
+  icon_mode?: "preset" | "svg";
+  icon_svg?: string;
+  iconify_icon?: string;
+  show_icon_background?: boolean;
+  background_type?: "preset" | "solid" | "gradient";
+  solid_color?: string;
+  gradient_start?: string;
+  gradient_end?: string;
+  gradient_intensity?: number;
+  cta_background_color?: string;
+  cta_text_color?: string;
+};
 
 const filters = reactive({
   q: "",
@@ -499,6 +653,12 @@ const agencySearchLoading = ref(false);
 const agencyOptions = ref<AgencyOption[]>([]);
 const eligibilityLoading = ref(false);
 const eligibilityResult = ref<EligibilityResult | null>(null);
+const iconifySearchQuery = ref("");
+const iconifyResults = ref<string[]>([]);
+const iconifyLoading = ref(false);
+const iconifyError = ref("");
+let iconifySearchTimer: ReturnType<typeof setTimeout> | null = null;
+let iconifySearchController: AbortController | null = null;
 const mobileSteps = ["Identificação", "Conteúdo", "CTA", "Público", "Regras", "Revisão"] as const;
 const mobileStep = ref(1);
 const currentMobileStepLabel = computed(() => mobileSteps[mobileStep.value - 1] || mobileSteps[0]);
@@ -589,9 +749,18 @@ const buildInitialBuilder = () => ({
     title: "",
     subtitle: "",
     show_icon: true,
+    icon_mode: "preset" as "preset" | "svg",
     icon: "TrendingUp",
+    icon_svg: "",
+    iconify_icon: "",
+    show_icon_background: false,
     dismissible: true,
-    background: "green_gradient"
+    background: "green_gradient",
+    background_type: "preset" as "preset" | "solid" | "gradient",
+    solid_color: "#1a3d25",
+    gradient_start: "#1a3d25",
+    gradient_end: "#3dcc5f",
+    gradient_intensity: 100
   },
   cta: {
     enabled: true,
@@ -602,7 +771,9 @@ const buildInitialBuilder = () => ({
     external_url: "",
     modal_target: "connect_pixel",
     system_action: "open_pixel_connection",
-    open_new_tab: false
+    open_new_tab: false,
+    background_color: "#3dcc5f",
+    text_color: "#0f1f14"
   },
   audience: {
     mode: "all_users",
@@ -638,6 +809,114 @@ const formatDate = (value?: string | null) => {
 };
 
 const normalizeDateTime = (value: string) => (value ? new Date(value).toISOString() : null);
+const normalizeHex = (value?: string | null, fallback = "#1a3d25") => {
+  const raw = String(value || "").trim();
+  return /^#[0-9a-f]{6}$/i.test(raw) ? raw : fallback;
+};
+const normalizeGradientIntensity = (value?: number | null) => {
+  const parsed = Number(value || 100);
+  if (Number.isNaN(parsed)) return 100;
+  return Math.min(100, Math.max(35, parsed));
+};
+const visualFromBanner = (item: Pick<BannerListItem, "rule_config">): BannerVisualConfig => {
+  const ruleConfig = (item.rule_config || {}) as { visual?: BannerVisualConfig };
+  return ruleConfig.visual || {};
+};
+const backgroundFromVisual = (visual: BannerVisualConfig) => {
+  if (visual.background_type === "solid") {
+    return normalizeHex(visual.solid_color);
+  }
+  if (visual.background_type === "gradient") {
+    const start = normalizeHex(visual.gradient_start);
+    const end = normalizeHex(visual.gradient_end, "#3dcc5f");
+    const intensity = normalizeGradientIntensity(visual.gradient_intensity);
+    return `linear-gradient(135deg, ${start} 0%, ${end} ${intensity}%)`;
+  }
+  return null;
+};
+const bannerBackground = (item: BannerListItem) => backgroundFromVisual(visualFromBanner(item));
+const bannerIconSvg = (item: BannerListItem) => {
+  const visual = visualFromBanner(item);
+  return visual.icon_mode === "svg" ? visual.icon_svg || "" : "";
+};
+const bannerShowIconBackground = (item: BannerListItem) => {
+  const visual = visualFromBanner(item);
+  return visual.icon_mode === "svg" ? Boolean(visual.show_icon_background) : true;
+};
+const bannerCtaBackground = (item: BannerListItem) => normalizeHex(visualFromBanner(item).cta_background_color, "#3dcc5f");
+const bannerCtaTextColor = (item: BannerListItem) => normalizeHex(visualFromBanner(item).cta_text_color, "#0f1f14");
+const builderVisual = computed<BannerVisualConfig>(() => ({
+  icon_mode: builder.content.icon_mode,
+  icon_svg: builder.content.icon_svg,
+  iconify_icon: builder.content.iconify_icon,
+  show_icon_background: builder.content.show_icon_background,
+  background_type: builder.content.background_type,
+  solid_color: builder.content.solid_color,
+  gradient_start: builder.content.gradient_start,
+  gradient_end: builder.content.gradient_end,
+  gradient_intensity: builder.content.gradient_intensity,
+  cta_background_color: builder.cta.background_color,
+  cta_text_color: builder.cta.text_color
+}));
+const builderBackground = computed(() => backgroundFromVisual(builderVisual.value));
+const builderIconSvg = computed(() => (builder.content.icon_mode === "svg" ? builder.content.icon_svg : ""));
+const iconifySvgUrl = (icon: string) => {
+  const [prefix, name] = String(icon || "").split(":");
+  if (!prefix || !name) return "";
+  return `https://api.iconify.design/${encodeURIComponent(prefix)}/${encodeURIComponent(name)}.svg?height=32`;
+};
+
+const fetchIconifyResults = async (query: string) => {
+  const trimmed = query.trim();
+  iconifyError.value = "";
+  if (trimmed.length < 2) {
+    iconifyResults.value = [];
+    iconifyLoading.value = false;
+    return;
+  }
+  iconifySearchController?.abort();
+  const controller = new AbortController();
+  iconifySearchController = controller;
+  iconifyLoading.value = true;
+  try {
+    const params = new URLSearchParams({ query: trimmed, limit: "48" });
+    const response = await fetch(`https://api.iconify.design/search?${params.toString()}`, {
+      signal: controller.signal
+    });
+    if (!response.ok) throw new Error("Falha ao buscar ícones.");
+    const payload = (await response.json()) as { icons?: string[] };
+    iconifyResults.value = payload.icons || [];
+  } catch (error: any) {
+    if (error?.name !== "AbortError") {
+      iconifyError.value = "Não foi possível buscar ícones agora.";
+    }
+  } finally {
+    if (iconifySearchController === controller) {
+      iconifyLoading.value = false;
+      iconifySearchController = null;
+    }
+  }
+};
+
+const selectIconifyIcon = async (icon: string) => {
+  const [prefix, name] = String(icon || "").split(":");
+  if (!prefix || !name) return;
+  iconifyError.value = "";
+  iconifyLoading.value = true;
+  try {
+    const response = await fetch(`https://api.iconify.design/${encodeURIComponent(prefix)}/${encodeURIComponent(name)}.svg?height=40`);
+    if (!response.ok) throw new Error("Falha ao carregar SVG.");
+    const svg = await response.text();
+    builder.content.icon_mode = "svg";
+    builder.content.icon_svg = svg;
+    builder.content.iconify_icon = icon;
+    builder.content.show_icon_background = false;
+  } catch {
+    iconifyError.value = "Não foi possível carregar o SVG selecionado.";
+  } finally {
+    iconifyLoading.value = false;
+  }
+};
 const upsertAgencyOptions = (items: AgencyOption[]) => {
   const map = new Map<number, AgencyOption>();
   for (const item of agencyOptions.value) map.set(item.id, item);
@@ -741,9 +1020,10 @@ const openCreate = () => {
 };
 
 const resolveBuilderFromBanner = (item: BannerListItem) => {
-  const rulesPayload = (item.rule_config || {}) as { logic?: string; conditions?: RuleCondition[]; audience?: any; cta?: any };
+  const rulesPayload = (item.rule_config || {}) as { logic?: string; conditions?: RuleCondition[]; audience?: any; cta?: any; visual?: BannerVisualConfig };
   const ctaFromRule = rulesPayload.cta || {};
   const audienceFromRule = rulesPayload.audience || {};
+  const visualFromRule = rulesPayload.visual || {};
   const targetPlans = item.target_plans || [];
   const targetAgencyIds = item.target_agency_ids || [];
   const ctaType = item.cta_type || "none";
@@ -761,9 +1041,18 @@ const resolveBuilderFromBanner = (item: BannerListItem) => {
       title: item.title,
       subtitle: item.subtitle || "",
       show_icon: item.has_icon,
+      icon_mode: visualFromRule.icon_mode || (visualFromRule.icon_svg ? "svg" : "preset"),
       icon: item.icon_name || "TrendingUp",
+      icon_svg: visualFromRule.icon_svg || "",
+      iconify_icon: visualFromRule.iconify_icon || "",
+      show_icon_background: Boolean(visualFromRule.show_icon_background),
       dismissible: item.dismissible,
-      background: item.background_variant
+      background: item.background_variant,
+      background_type: visualFromRule.background_type || "preset",
+      solid_color: normalizeHex(visualFromRule.solid_color),
+      gradient_start: normalizeHex(visualFromRule.gradient_start),
+      gradient_end: normalizeHex(visualFromRule.gradient_end, "#3dcc5f"),
+      gradient_intensity: normalizeGradientIntensity(visualFromRule.gradient_intensity)
     },
     cta: {
       enabled: item.has_cta,
@@ -774,7 +1063,9 @@ const resolveBuilderFromBanner = (item: BannerListItem) => {
       external_url: externalUrl,
       modal_target: ctaFromRule.modal_target || "connect_pixel",
       system_action: ctaFromRule.system_action || "open_pixel_connection",
-      open_new_tab: Boolean(ctaFromRule.open_new_tab)
+      open_new_tab: Boolean(ctaFromRule.open_new_tab),
+      background_color: normalizeHex(visualFromRule.cta_background_color, "#3dcc5f"),
+      text_color: normalizeHex(visualFromRule.cta_text_color, "#0f1f14")
     },
     audience: {
       mode: audienceFromRule.mode || (targetPlans.length ? "specific_plans" : "all_users"),
@@ -799,6 +1090,7 @@ const resolveBuilderFromBanner = (item: BannerListItem) => {
       dismiss_scope: "user"
     }
   });
+  iconifySearchQuery.value = visualFromRule.iconify_icon || "";
 };
 
 const openEdit = (item: BannerListItem) => {
@@ -890,6 +1182,7 @@ const buildBannerPayload = () => {
     rule_config: {
       logic: builder.rules.logic,
       conditions: builder.rules.conditions,
+      visual: builderVisual.value,
       audience: {
         mode: builder.audience.mode,
         plans: builder.audience.plans,
@@ -1010,7 +1303,16 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+  if (iconifySearchTimer) clearTimeout(iconifySearchTimer);
+  iconifySearchController?.abort();
   document.removeEventListener("click", onGlobalClick);
+});
+
+watch(iconifySearchQuery, query => {
+  if (iconifySearchTimer) clearTimeout(iconifySearchTimer);
+  iconifySearchTimer = setTimeout(() => {
+    void fetchIconifyResults(query);
+  }, 350);
 });
 </script>
 

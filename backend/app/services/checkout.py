@@ -231,6 +231,29 @@ def _resolve_target_subscription_for_upgrade(db: Session, session: CheckoutSessi
     return user.subscription
 
 
+def _can_upgrade_subscription_in_place(subscription: Subscription | None) -> bool:
+    if not subscription:
+        return False
+    provider = str(subscription.provider or "").strip().lower()
+    return provider == "asaas" and bool(subscription.asaas_subscription_id)
+
+
+def _should_upgrade_session_in_place(db: Session, session: CheckoutSession) -> bool:
+    if not _is_upgrade_session(session):
+        return False
+    metadata = dict(session.metadata_json or {})
+    if "upgrade_in_place" in metadata:
+        return bool(metadata.get("upgrade_in_place"))
+    return _can_upgrade_subscription_in_place(_resolve_target_subscription_for_upgrade(db, session))
+
+
+def _complete_paid_checkout_session(db: Session, session: CheckoutSession) -> User:
+    if _should_upgrade_session_in_place(db, session):
+        user, _previous_plan = _apply_upgrade_after_payment(db, session)
+        return user
+    return _upsert_paid_user_and_subscription(db, session)
+
+
 def _extract_card_last4(number: str | None) -> str | None:
     digits = "".join(ch for ch in str(number or "") if ch.isdigit())
     if len(digits) < 4:
@@ -788,6 +811,40 @@ def _find_existing_user(db: Session, email: str, document: str) -> User | None:
     )
 
 
+def _find_existing_checkout_identity(db: Session, email: str, document: str) -> tuple[str, User] | None:
+    normalized_email = (email or "").strip().lower()
+    digits = _normalize_digits(document)
+    sanitized_cpf = func.replace(func.replace(func.replace(func.coalesce(User.cpf, ""), ".", ""), "-", ""), "/", "")
+    sanitized_cnpj = func.replace(func.replace(func.replace(func.coalesce(User.cnpj, ""), ".", ""), "-", ""), "/", "")
+
+    if normalized_email:
+        user = db.query(User).filter(func.lower(User.email) == normalized_email).first()
+        if user:
+            return "email", user
+
+    if digits:
+        user = db.query(User).filter(or_(sanitized_cpf == digits, sanitized_cnpj == digits)).first()
+        if user:
+            return "document", user
+
+    return None
+
+
+def _raise_if_registered_checkout_identity(db: Session, session: CheckoutSession) -> None:
+    if _is_upgrade_session(session):
+        return
+    existing_identity = _find_existing_checkout_identity(db, session.customer_email, session.customer_document)
+    if not existing_identity:
+        return
+    field, _user = existing_identity
+    detail = (
+        "Este e-mail já está cadastrado. Faça login para acessar sua conta."
+        if field == "email"
+        else "Este CPF ou CNPJ já está cadastrado. Faça login para acessar sua conta."
+    )
+    raise HTTPException(status_code=409, detail=detail)
+
+
 def _find_or_create_asaas_customer(
     client: AsaasClient,
     *,
@@ -829,11 +886,22 @@ def create_checkout_session(
     customer_zipcode: str,
     coupon_code: str | None,
     metadata: dict[str, Any] | None,
+    allow_existing_user: bool = False,
 ) -> CheckoutSession:
     settings_record = get_checkout_settings(db)
     coupon = resolve_coupon(settings_record, coupon_code, offer.key)
     original_amount, final_amount, discount_amount = apply_coupon_to_offer_amount(offer, coupon)
-    existing = _find_existing_user(db, customer_email, customer_document)
+    existing_user = _find_existing_user(db, customer_email, customer_document) if allow_existing_user else None
+    if not allow_existing_user:
+        existing_identity = _find_existing_checkout_identity(db, customer_email, customer_document)
+        if existing_identity:
+            field, _user = existing_identity
+            detail = (
+                "Este e-mail já está cadastrado. Faça login para acessar sua conta."
+                if field == "email"
+                else "Este CPF ou CNPJ já está cadastrado. Faça login para acessar sua conta."
+            )
+            raise HTTPException(status_code=409, detail=detail)
     token = secrets.token_urlsafe(24)
     metadata_payload = dict(metadata or {})
     metadata_payload.update(
@@ -859,7 +927,7 @@ def create_checkout_session(
         coupon_code=coupon.code if coupon else None,
         metadata_json=metadata_payload,
         expires_at=_utcnow() + timedelta(hours=24),
-        user_id=existing.id if existing else None,
+        user_id=existing_user.id if existing_user else None,
     )
     db.add(session)
     db.commit()
@@ -899,6 +967,7 @@ def create_upgrade_checkout_session(
         customer_zipcode=zipcode,
         coupon_code=coupon_code,
         metadata=metadata,
+        allow_existing_user=True,
     )
 
 
@@ -1365,6 +1434,7 @@ def serialize_checkout_session(db: Session, session: CheckoutSession) -> dict[st
 def start_pix_payment(db: Session, session: CheckoutSession) -> CheckoutSession:
     if session.asaas_payment_id and session.payment_method == "pix" and session.status in {"awaiting_payment", "paid"}:
         return refresh_session_status(db, session) if session.status != "paid" else session
+    _raise_if_registered_checkout_identity(db, session)
     client = _ensure_asaas_client()
     customer_id = session.asaas_customer_id or _find_or_create_asaas_customer(
         client,
@@ -1377,7 +1447,8 @@ def start_pix_payment(db: Session, session: CheckoutSession) -> CheckoutSession:
     immediate_qr: dict[str, Any] = {}
     authorization_id: str | None = None
     subscription_id: str | None = None
-    if _is_upgrade_session(session):
+    can_upgrade_in_place = _should_upgrade_session_in_place(db, session)
+    if _is_upgrade_session(session) and can_upgrade_in_place:
         payment = client.create_payment(
             {
                 "customer": customer_id,
@@ -1464,6 +1535,8 @@ def start_pix_payment(db: Session, session: CheckoutSession) -> CheckoutSession:
     session.updated_at = _utcnow()
     metadata = dict(session.metadata_json or {})
     metadata["pix_mode"] = pix_mode
+    if _is_upgrade_session(session):
+        metadata["upgrade_in_place"] = can_upgrade_in_place
     if authorization_id:
         metadata["asaas_pix_automatic_authorization_id"] = authorization_id
     if subscription_id:
@@ -1477,6 +1550,7 @@ def start_pix_payment(db: Session, session: CheckoutSession) -> CheckoutSession:
 def start_card_payment(db: Session, session: CheckoutSession, payload: dict[str, Any]) -> CheckoutSession:
     if session.asaas_payment_id and session.payment_method == "card" and session.status in {"awaiting_payment", "processing", "paid"}:
         return refresh_session_status(db, session) if session.status != "paid" else session
+    _raise_if_registered_checkout_identity(db, session)
     client = _ensure_asaas_client()
     customer_id = session.asaas_customer_id or _find_or_create_asaas_customer(
         client,
@@ -1494,10 +1568,12 @@ def start_card_payment(db: Session, session: CheckoutSession, payload: dict[str,
         metadata["card_last4"] = card_last4
     if card_brand:
         metadata["card_brand"] = card_brand
-    session.metadata_json = metadata
     is_upgrade = _is_upgrade_session(session)
     upgrade_target_subscription = _resolve_target_subscription_for_upgrade(db, session) if is_upgrade else None
-    can_upgrade_in_place = bool(upgrade_target_subscription and upgrade_target_subscription.asaas_subscription_id)
+    can_upgrade_in_place = _can_upgrade_subscription_in_place(upgrade_target_subscription)
+    if is_upgrade:
+        metadata["upgrade_in_place"] = can_upgrade_in_place
+    session.metadata_json = metadata
     external_reference = f"checkout_upgrade:{session.token}" if is_upgrade else f"checkout:{session.token}"
     session.asaas_customer_id = customer_id
     session.payment_method = "card"
@@ -1788,10 +1864,7 @@ def refresh_session_status(db: Session, session: CheckoutSession) -> CheckoutSes
                 session.status = "paid"
                 if not session.paid_at:
                     session.paid_at = _utcnow()
-                    if _is_upgrade_session(session):
-                        _apply_upgrade_after_payment(db, session)
-                    else:
-                        _upsert_paid_user_and_subscription(db, session)
+                    _complete_paid_checkout_session(db, session)
                 _dispatch_meta_checkout_events(
                     db,
                     session=session,
@@ -1844,10 +1917,7 @@ def refresh_session_status(db: Session, session: CheckoutSession) -> CheckoutSes
         session.status = mapped
     if mapped == "paid" and not session.paid_at:
         session.paid_at = _utcnow()
-        if _is_upgrade_session(session):
-            _apply_upgrade_after_payment(db, session)
-        else:
-            _upsert_paid_user_and_subscription(db, session)
+        _complete_paid_checkout_session(db, session)
     session.updated_at = _utcnow()
     db.add(session)
     db.commit()
@@ -1887,7 +1957,11 @@ def handle_asaas_checkout_webhook(db: Session, payload: dict[str, Any]) -> bool:
             session.paid_at = _utcnow()
         session.status = "paid"
         if _is_upgrade_session(session):
-            user, previous_plan = _apply_upgrade_after_payment(db, session)
+            if _should_upgrade_session_in_place(db, session):
+                user, previous_plan = _apply_upgrade_after_payment(db, session)
+            else:
+                previous_plan = str((dict(session.metadata_json or {}).get("current_plan") or "")).strip().lower() or None
+                user = _upsert_paid_user_and_subscription(db, session)
             _notify_checkout_subscription_push(
                 scenario=SubscriptionPushScenario.UPGRADED,
                 session=session,

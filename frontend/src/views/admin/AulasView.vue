@@ -3,7 +3,7 @@
     <div class="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-brand"></div>
   </div>
   <div v-else class="space-y-8 px-4 py-6 md:px-8">
-    <section class="rounded-3xl bg-white/95 p-6 shadow-xl shadow-slate-200/70 dark:bg-[#202020] dark:text-white dark:shadow-none">
+    <section class="rounded-3xl bg-white/95 p-6 dark:bg-[#202020] dark:text-white">
       <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <p class="text-xs font-semibold uppercase tracking-[0.4em] text-slate-500 dark:text-white/70">Trilha premium</p>
@@ -12,7 +12,7 @@
             Aprofunde o uso do construtor de páginas com aulas curtas e diretas. Escolha uma lição, ative o player e pratique acompanhando o passo a passo.
           </p>
         </div>
-        <div class="rounded-2xl border border-slate-200/80 p-4 text-sm text-slate-600 shadow-sm dark:border-[#363636] dark:bg-[#101010] dark:text-white">
+        <div class="rounded-2xl border border-slate-200/80 p-4 text-sm text-slate-600 dark:border-[#363636] dark:bg-[#101010] dark:text-white">
           <p class="font-semibold text-slate-900 dark:text-white">Progresso</p>
           <div class="mt-2 flex items-center gap-3">
             <div class="h-2 flex-1 overflow-hidden rounded-full bg-slate-200/80 dark:bg-[#1f1f1f]">
@@ -28,7 +28,7 @@
     </section>
 
     <section class="grid items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-      <div class="space-y-4 rounded-3xl bg-white p-4 shadow-xl shadow-slate-200/70 lg:p-6 dark:bg-[#202020] dark:shadow-none">
+      <div class="space-y-4 rounded-3xl bg-white p-4 lg:p-6 dark:bg-[#202020]">
         <div class="relative overflow-hidden rounded-2xl bg-[#05070F]">
           <div class="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-slate-950/70"></div>
           <template v-if="activeLesson">
@@ -78,15 +78,33 @@
         </div>
       </div>
 
-      <aside class="space-y-4 rounded-3xl bg-white p-4 shadow-xl shadow-slate-200/70 dark:bg-[#202020] dark:shadow-none">
+      <aside class="space-y-4 rounded-3xl bg-white p-4 dark:bg-[#202020]">
         <div class="flex items-center justify-between gap-3">
           <div>
             <p class="text-xs uppercase tracking-[0.4em] text-slate-500 dark:text-white/70">Módulos</p>
             <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Selecione a aula</h3>
           </div>
-          <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
-            {{ moduleGroups.length }} módulos
-          </span>
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-[#363636] dark:text-slate-200 dark:hover:bg-white/5"
+              :disabled="!moduleGroups.length"
+              @click="collapseAllModules"
+            >
+              Recolher tudo
+            </button>
+            <button
+              type="button"
+              class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20"
+              :disabled="!moduleGroups.length"
+              @click="expandAllModules"
+            >
+              Abrir tudo
+            </button>
+            <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
+              {{ moduleGroups.length }} módulos
+            </span>
+          </div>
         </div>
 
         <p
@@ -127,17 +145,20 @@
 
             <ul v-if="isModuleExpanded(group.key)" class="space-y-3 border-t border-slate-200 p-3 dark:border-[#303030]">
               <li v-for="lesson in group.lessons" :key="lesson.id">
-                <button
-                  type="button"
-                  class="w-full rounded-2xl border p-3 text-left transition hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:text-white"
+                <div
+                  role="button"
+                  tabindex="0"
+                  class="relative w-full rounded-2xl border p-3 pr-14 text-left transition hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:text-white"
                   :class="[
                     activeLessonId === lesson.id
-                      ? 'border-brand/40 bg-brand/5 shadow-lg shadow-brand/20 dark:bg-brand/10'
-                      : 'border-slate-200 bg-white shadow-sm dark:border-[#363636] dark:bg-[#101010]'
+                      ? 'border-brand/40 bg-brand/5 dark:bg-brand/10'
+                      : 'border-slate-200 bg-white dark:border-[#363636] dark:bg-[#101010]'
                   ]"
                   @click="selectLesson(lesson.id)"
+                  @keydown.enter.prevent="selectLesson(lesson.id)"
+                  @keydown.space.prevent="selectLesson(lesson.id)"
                 >
-                  <div class="flex items-start gap-3">
+                  <div class="flex items-center gap-3">
                     <img
                       :src="lesson.thumbnail"
                       alt=""
@@ -145,9 +166,8 @@
                       loading="lazy"
                     />
                     <div class="min-w-0 flex-1">
-                      <div class="flex items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-300">
+                      <div class="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-300">
                         <span>{{ lesson.duration || "—" }}</span>
-                        <span v-if="completedLessons.includes(lesson.id)" class="text-emerald-500">Concluída</span>
                       </div>
                       <p class="mt-1 text-sm font-semibold text-slate-900 dark:text-white">{{ lesson.title }}</p>
                       <p class="mt-1 text-xs text-slate-500 line-clamp-2 dark:text-slate-300">
@@ -155,7 +175,33 @@
                       </p>
                     </div>
                   </div>
-                </button>
+                  <button
+                    type="button"
+                    class="absolute right-3 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border transition focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#181818]"
+                    :class="
+                      completedLessons.includes(lesson.id)
+                        ? 'border-emerald-500 bg-emerald-500 text-white hover:bg-emerald-600 dark:border-emerald-400 dark:bg-emerald-400 dark:text-white'
+                        : 'border-slate-200 bg-white text-transparent hover:border-emerald-300 hover:bg-emerald-50 dark:border-[#363636] dark:bg-[#141414] dark:hover:border-emerald-500/40 dark:hover:bg-emerald-500/10'
+                    "
+                    :aria-pressed="completedLessons.includes(lesson.id)"
+                    :aria-label="completedLessons.includes(lesson.id) ? 'Desmarcar aula concluída' : 'Marcar aula concluída'"
+                    @click.stop="toggleLessonCompleted(lesson.id, !completedLessons.includes(lesson.id))"
+                  >
+                    <svg
+                      viewBox="0 0 20 20"
+                      class="h-4.5 w-4.5 transition-transform"
+                      :class="completedLessons.includes(lesson.id) ? 'scale-100' : 'scale-75 opacity-0'"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M16.25 5.75 8.5 13.5 3.75 8.75" />
+                    </svg>
+                  </button>
+                </div>
               </li>
             </ul>
           </section>
@@ -207,12 +253,17 @@ const isModuleExpanded = (key: string) => expandedModules.value.includes(key);
 const toggleModule = (key: string) => {
   if (isModuleExpanded(key)) {
     expandedModules.value = expandedModules.value.filter(item => item !== key);
-    if (!expandedModules.value.length) {
-      expandedModules.value = [key];
-    }
     return;
   }
   expandedModules.value = [...expandedModules.value, key];
+};
+
+const collapseAllModules = () => {
+  expandedModules.value = [];
+};
+
+const expandAllModules = () => {
+  expandedModules.value = moduleGroups.value.map(group => group.key);
 };
 
 const expandModuleForLesson = (lessonId: number | null) => {
@@ -252,9 +303,16 @@ const progressPercent = computed(() => {
 const selectLesson = (lessonId: number) => {
   activeLessonId.value = lessonId;
   expandModuleForLesson(lessonId);
-  if (!completedLessons.value.includes(lessonId)) {
-    completedLessons.value.push(lessonId);
+};
+
+const toggleLessonCompleted = (lessonId: number, completed: boolean) => {
+  if (completed) {
+    if (!completedLessons.value.includes(lessonId)) {
+      completedLessons.value = [...completedLessons.value, lessonId];
+    }
+    return;
   }
+  completedLessons.value = completedLessons.value.filter(id => id !== lessonId);
 };
 
 onMounted(async () => {

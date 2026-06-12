@@ -6,7 +6,7 @@
           <div class="absolute inset-0 bg-cover bg-center" :style="backgroundImageStyle"></div>
           <div class="absolute inset-0" :style="gradientOverlayStyle"></div>
         </div>
-        <div class="banner-text relative z-10 flex min-h-full flex-col justify-center gap-4 p-8 text-left md:p-12" :style="{ color: textColor }">
+        <div class="banner-text relative z-10 flex min-h-full flex-col justify-center gap-4 px-5 py-8 text-left md:p-12" :style="{ color: textColor }">
           <p
             v-if="headingLabel"
             class="text-xs font-semibold uppercase tracking-[0.35em] text-white/80"
@@ -168,6 +168,10 @@ const ctaLabel = computed(() => {
 }
 
 @media (max-width: 767px) {
+  .banner-text {
+    max-width: 82%;
+  }
+
   .banner-title {
     font-size: 1.5rem;
     line-height: 1.25;

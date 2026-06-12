@@ -408,12 +408,13 @@
                       </div>
                       <input
                         :value="pageSlug"
+                        :maxlength="PAGE_SLUG_MAX_LENGTH"
                         @input="handleSlugInput"
                         class="slug-input w-full border-0 bg-white px-4 py-2 text-[16px] text-slate-800 focus:outline-none dark:bg-[#05070F] dark:text-white"
                       />
                     </div>
                     <p class="mt-1 text-[13px] text-slate-500">
-                      Use apenas letras, números e hífens. Evite espaços e acentos.
+                      Use apenas letras, números e hífens. Evite espaços e acentos. Limite de 30 caracteres.
                     </p>
                   </div>
                 </div>
@@ -698,7 +699,7 @@
           :class="previewDevice === 'mobile'
             ? (isMobileViewport
               ? '-mx-4 w-[calc(100%+2rem)] overflow-hidden rounded-none border-0 bg-transparent shadow-none'
-              : 'mx-auto w-full max-w-[420px] overflow-hidden bg-transparent shadow-none')
+              : 'mx-auto w-full max-w-[580px] overflow-hidden bg-transparent shadow-none')
             : 'bg-transparent p-0 shadow-none'"
         >
           <div :class="previewDevice === 'mobile' ? 'max-h-none overflow-visible' : 'overflow-visible bg-transparent shadow-none'">
@@ -1066,11 +1067,16 @@ const pageSlug = ref("");
 const pageShortDescription = ref("");
 const slugAutoSyncEnabled = ref(true);
 const PAGE_SLUG_FALLBACK = "pagina";
+const PAGE_SLUG_MAX_LENGTH = 30;
 
 const normalizeSlugInput = (value: string | undefined | null) => {
   const trimmed = (value || "").trim();
   if (!trimmed) return "";
-  return slugify(trimmed, PAGE_SLUG_FALLBACK);
+  return (
+    slugify(trimmed, PAGE_SLUG_FALLBACK)
+      .slice(0, PAGE_SLUG_MAX_LENGTH)
+      .replace(/^-+|-+$/g, "") || PAGE_SLUG_FALLBACK
+  );
 };
 
 const normalizeHexColor = (value: string, fallback = "#000000") => {
@@ -1082,7 +1088,9 @@ const normalizeHexColor = (value: string, fallback = "#000000") => {
 const handleSlugInput = (event: Event) => {
   slugAutoSyncEnabled.value = false;
   const target = event.target as HTMLInputElement;
-  pageSlug.value = normalizeSlugInput(target.value);
+  const normalized = normalizeSlugInput(target.value);
+  pageSlug.value = normalized;
+  target.value = normalized;
 };
 
 watch(
@@ -2888,11 +2896,12 @@ const fetchPage = async () => {
     page.value = res.data;
     const loadedTitle = res.data.title || "";
     const existingSlug = (res.data.slug || "").trim();
+    const normalizedExistingSlug = normalizeSlugInput(existingSlug);
     const generatedSlug = normalizeSlugInput(loadedTitle);
-    const shouldReplaceWithGenerated = !existingSlug || defaultPageSlugPattern.test(existingSlug);
-    slugAutoSyncEnabled.value = shouldReplaceWithGenerated || existingSlug === generatedSlug;
+    const shouldReplaceWithGenerated = !normalizedExistingSlug || defaultPageSlugPattern.test(existingSlug);
+    slugAutoSyncEnabled.value = shouldReplaceWithGenerated || normalizedExistingSlug === generatedSlug;
     pageTitle.value = loadedTitle;
-    pageSlug.value = shouldReplaceWithGenerated ? generatedSlug : existingSlug || generatedSlug;
+    pageSlug.value = shouldReplaceWithGenerated ? generatedSlug : normalizedExistingSlug || generatedSlug;
 
     hydrateFromConfig(res.data.config_json);
     await nextTick();

@@ -7,6 +7,7 @@ export type LessonVideoType = "file" | "youtube" | "iframe";
 export interface Lesson {
   id: number;
   moduleName: string;
+  sortOrder: number;
   title: string;
   description: string;
   duration: string;
@@ -31,6 +32,7 @@ export interface LessonPayload {
 interface ApiLesson {
   id: number;
   module_name?: string | null;
+  sort_order?: number | null;
   title: string;
   description?: string | null;
   duration?: string | null;
@@ -42,7 +44,8 @@ interface ApiLesson {
 
 const mapLesson = (data: ApiLesson): Lesson => ({
   id: data.id,
-  moduleName: data.module_name || "",
+  moduleName: (data.module_name || "").trim(),
+  sortOrder: data.sort_order ?? 0,
   title: data.title,
   description: data.description || "",
   duration: data.duration || "",
@@ -88,7 +91,15 @@ export const useLessonsStore = defineStore("lessons", () => {
   const loading = ref(false);
   const loaded = ref(false);
 
-  const sortedLessons = computed(() => [...lessons.value].sort((a, b) => b.id - a.id));
+  const sortedLessons = computed(() =>
+    [...lessons.value].sort((a, b) => {
+      const moduleCompare = (a.moduleName || "").localeCompare(b.moduleName || "", "pt-BR", { sensitivity: "base" });
+      if (moduleCompare !== 0) return moduleCompare;
+      const orderCompare = (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
+      if (orderCompare !== 0) return orderCompare;
+      return a.id - b.id;
+    })
+  );
 
   const fetchLessons = async () => {
     loading.value = true;
@@ -121,6 +132,24 @@ export const useLessonsStore = defineStore("lessons", () => {
     return updated;
   };
 
+  const reorderLessonsInModule = async (moduleName: string, lessonIds: number[]) => {
+    const payload = {
+      module_name: moduleName.trim() || null,
+      lesson_ids: lessonIds
+    };
+    let res;
+    try {
+      res = await api.post<ApiLesson[]>("/lessons/reorder", payload);
+    } catch (error: any) {
+      if (error?.response?.status !== 405) {
+        throw error;
+      }
+      res = await api.put<ApiLesson[]>("/lessons/reorder", payload);
+    }
+    lessons.value = res.data.map(mapLesson);
+    loaded.value = true;
+  };
+
   const deleteLesson = async (id: number) => {
     await api.delete(`/lessons/${id}`);
     lessons.value = lessons.value.filter(lesson => lesson.id !== id);
@@ -141,6 +170,7 @@ export const useLessonsStore = defineStore("lessons", () => {
     ensureLessons,
     addLesson,
     updateLesson,
+    reorderLessonsInModule,
     deleteLesson,
     resetLessons
   };

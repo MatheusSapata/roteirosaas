@@ -1,7 +1,7 @@
 ﻿<template>
-  <div class="min-h-screen bg-white text-slate-900">
-    <div class="plans-content-scale relative px-4 pb-16 lg:px-8 2xl:px-10">
-      <header class="relative mx-auto max-w-[96rem] pt-10 pb-10 text-center">
+  <div class="bg-white text-slate-900">
+    <div class="plans-content-scale relative px-4 pb-0 lg:px-8 2xl:px-10">
+      <header class="relative mx-auto max-w-[96rem] pt-4 pb-3 text-center">
         <h1 class="text-4xl font-black tracking-tight text-slate-900 md:text-5xl">
           {{ heroTitle }}
         </h1>
@@ -13,14 +13,14 @@
 
       <div
         v-if="trialBlocked"
-        class="mx-auto mb-8 max-w-4xl rounded-3xl border border-rose-200 bg-rose-50 p-5 text-rose-900 shadow-sm"
+        class="mx-auto mb-4 max-w-4xl rounded-3xl border border-rose-200 bg-rose-50 p-5 text-rose-900 shadow-sm"
       >
         <p class="text-xs font-semibold uppercase tracking-[0.3em] text-rose-500">{{ trialBlockedTitle }}</p>
         <p class="mt-2 text-sm">{{ trialBlockedDescription }}</p>
       </div>
       <div
         v-else-if="trialPlanActive"
-        class="mx-auto mb-8 max-w-4xl rounded-3xl border border-emerald-200 bg-emerald-50 p-5 text-emerald-900 shadow-sm"
+        class="mx-auto mb-4 max-w-4xl rounded-3xl border border-emerald-200 bg-emerald-50 p-5 text-emerald-900 shadow-sm"
       >
         <p class="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-500">{{ trialActiveTitle }}</p>
         <p class="mt-2 text-sm">
@@ -29,10 +29,10 @@
         </p>
       </div>
 
-      <section id="planos" class="relative mx-auto max-w-[98rem] pb-16">
+      <section id="planos" class="relative mx-auto max-w-[98rem] pb-5">
         <div
           v-if="billingInfo?.scheduled_downgrade_plan"
-          class="mx-auto mb-6 flex max-w-4xl items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3"
+          class="mx-auto mb-10 flex max-w-4xl items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3"
         >
           <p class="text-sm font-medium text-amber-900">
             Downgrade para <strong>{{ planNames[billingInfo.scheduled_downgrade_plan] || billingInfo.scheduled_downgrade_plan }}</strong>
@@ -710,15 +710,13 @@ onMounted(() => {
 <style scoped>
 @media (min-width: 1024px) and (max-width: 1919px) {
   .plans-content-scale {
-    transform: scale(0.75);
-    transform-origin: top center;
+    zoom: 0.85;
   }
 }
 
 @media (min-width: 1920px) {
   .plans-content-scale {
-    transform: scale(0.9);
-    transform-origin: top center;
+    zoom: 1;
   }
 }
 </style>

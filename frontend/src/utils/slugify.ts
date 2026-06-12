@@ -12,6 +12,17 @@ export const slugify = (value: string | undefined | null, fallbackPrefix = "item
   return `${fallbackPrefix}-${Date.now()}`;
 };
 
+export const normalizeSlugInput = (value: string | undefined | null, maxLength = 60): string => {
+  return (value || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, maxLength);
+};
+
 export const slugMatchesValue = (
   value: string | undefined | null,
   slug: string | undefined | null,

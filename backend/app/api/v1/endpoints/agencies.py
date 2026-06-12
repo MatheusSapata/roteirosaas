@@ -1,3 +1,6 @@
+import re
+import unicodedata
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -10,6 +13,11 @@ from app.models.user import User
 from app.schemas.agency import AgencyCreate, AgencyOut, AgencyUpdate, AgencySocialLinkCreate
 
 router = APIRouter()
+
+
+def _normalize_slug(value: str, max_length: int = 30) -> str:
+    normalized = unicodedata.normalize("NFD", value or "").encode("ascii", "ignore").decode("ascii").lower()
+    return re.sub(r"[^a-z0-9]+", "-", normalized).strip("-")[:max_length]
 
 
 def replace_social_links(agency: Agency, social_links: list[AgencySocialLinkCreate] | None) -> None:
@@ -49,7 +57,7 @@ def create_agency(agency_in: AgencyCreate, current_user: User = Depends(get_curr
 
     existing_slug = db.query(Agency).filter(func.lower(Agency.slug) == normalized_slug).first()
     if existing_slug:
-        raise HTTPException(status_code=400, detail="Slug já está em uso.")
+        raise HTTPException(status_code=400, detail="Slug jÃ¡ estÃ¡ em uso.")
 
     payload = agency_in.dict(exclude={"social_links"})
     payload["name"] = normalized_name
@@ -82,15 +90,21 @@ def update_agency(
     social_links_data = agency_in.social_links
 
     if "slug" in update_data and update_data["slug"]:
-        normalized_slug = update_data["slug"].strip().lower()
-        existing_slug = (
-            db.query(Agency)
-            .filter(func.lower(Agency.slug) == normalized_slug, Agency.id != agency.id)
-            .first()
-        )
-        if existing_slug:
-            raise HTTPException(status_code=400, detail="Slug já está em uso.")
-        update_data["slug"] = normalized_slug
+        incoming_slug = update_data["slug"].strip()
+        if incoming_slug != agency.slug:
+            normalized_slug = _normalize_slug(incoming_slug)
+            if not normalized_slug:
+                raise HTTPException(status_code=400, detail="Slug obrigatorio.")
+            existing_slug = (
+                db.query(Agency)
+                .filter(func.lower(Agency.slug) == normalized_slug, Agency.id != agency.id)
+                .first()
+            )
+            if existing_slug:
+                raise HTTPException(status_code=400, detail="Slug jÃ¡ estÃ¡ em uso.")
+            update_data["slug"] = normalized_slug
+        else:
+            update_data["slug"] = agency.slug
 
     if "name" in update_data and update_data["name"]:
         update_data["name"] = update_data["name"].strip()
