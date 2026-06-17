@@ -408,13 +408,12 @@
                       </div>
                       <input
                         :value="pageSlug"
-                        :maxlength="PAGE_SLUG_MAX_LENGTH"
                         @input="handleSlugInput"
                         class="slug-input w-full border-0 bg-white px-4 py-2 text-[16px] text-slate-800 focus:outline-none dark:bg-[#05070F] dark:text-white"
                       />
                     </div>
                     <p class="mt-1 text-[13px] text-slate-500">
-                      Use apenas letras, números e hífens. Evite espaços e acentos. Limite de 30 caracteres.
+                      Use apenas letras, números e hífens. Evite espaços e acentos.
                     </p>
                   </div>
                 </div>
@@ -974,7 +973,6 @@ import api from "../../services/api";
 import { useAuthStore } from "../../store/useAuthStore";
 import { useAgencyStore } from "../../store/useAgencyStore";
 import { useLeadCaptureStore } from "../../store/useLeadCaptureStore";
-import { slugify } from "../../utils/slugify";
 import type {
   BannerCardSection,
   BiographySection,
@@ -1067,16 +1065,17 @@ const pageSlug = ref("");
 const pageShortDescription = ref("");
 const slugAutoSyncEnabled = ref(true);
 const PAGE_SLUG_FALLBACK = "pagina";
-const PAGE_SLUG_MAX_LENGTH = 30;
 
 const normalizeSlugInput = (value: string | undefined | null) => {
   const trimmed = (value || "").trim();
   if (!trimmed) return "";
-  return (
-    slugify(trimmed, PAGE_SLUG_FALLBACK)
-      .slice(0, PAGE_SLUG_MAX_LENGTH)
-      .replace(/^-+|-+$/g, "") || PAGE_SLUG_FALLBACK
-  );
+  const normalized = trimmed
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return normalized || PAGE_SLUG_FALLBACK;
 };
 
 const normalizeHexColor = (value: string, fallback = "#000000") => {

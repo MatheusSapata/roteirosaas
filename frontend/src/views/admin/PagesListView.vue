@@ -1619,7 +1619,7 @@ const slugify = (value: string) =>
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
-    .substring(0, 80) || `pagina-${Date.now()}`;
+    || `pagina-${Date.now()}`;
 
 const buildDeleteConfirmMessage = (title: string) =>
   viewCopy.dialogs.deleteConfirm.message.replace("{title}", title);

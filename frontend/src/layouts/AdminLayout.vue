@@ -1707,8 +1707,8 @@ const handlePermissionDeniedToast = (event: Event) => {
   }, 3500);
 };
 
-const handleLogout = () => {
-  auth.logout();
+const handleLogout = async () => {
+  await auth.logout();
   router.push({ name: "login" });
 };
 
