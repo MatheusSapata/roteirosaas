@@ -141,6 +141,11 @@ export const useAuthStore = defineStore("auth", () => {
     }
   };
 
+  const clearSessionStorage = async () => {
+    if (typeof window === "undefined") return;
+    sessionStorage.clear();
+  };
+
   const refreshAccessToken = async () => {
     if (!refreshToken.value) {
       logout();
@@ -187,12 +192,13 @@ export const useAuthStore = defineStore("auth", () => {
     return hydrating;
   };
 
-  const logout = () => {
+  const logout = async () => {
     clearRefreshTimer();
     setTokens(null, null);
     user.value = null;
     isHydrating.value = false;
     hydrating = null;
+    await clearSessionStorage();
   };
 
   if (responseInterceptorId === null) {

@@ -26,7 +26,6 @@ from app.services.plans import effective_plan, plan_limits
 from app.services.team import get_user_effective_permissions
 
 router = APIRouter()
-PAGE_SLUG_MAX_LENGTH = 25
 
 
 def _slugify(value: str) -> str:
@@ -34,8 +33,7 @@ def _slugify(value: str) -> str:
     normalized = "".join(char for char in normalized if unicodedata.category(char) != "Mn")
     normalized = re.sub(r"[^a-z0-9]+", "-", normalized)
     normalized = re.sub(r"-{2,}", "-", normalized).strip("-")
-    normalized = normalized[:PAGE_SLUG_MAX_LENGTH].strip("-")
-    return normalized or f"pagina-{int(datetime.utcnow().timestamp())}"[:PAGE_SLUG_MAX_LENGTH]
+    return normalized or f"pagina-{int(datetime.utcnow().timestamp())}"
 
 
 def _ensure_unique_slug(db: Session, agency_id: int, raw_slug: str, page_id: Optional[int] = None) -> str:
@@ -50,7 +48,7 @@ def _ensure_unique_slug(db: Session, agency_id: int, raw_slug: str, page_id: Opt
         is not None
     ):
         suffix = f"-{counter}"
-        candidate = f"{base_slug[: PAGE_SLUG_MAX_LENGTH - len(suffix)].strip('-')}{suffix}"
+        candidate = f"{base_slug}{suffix}"
         counter += 1
         query = db.query(Page.id).filter(Page.agency_id == agency_id, Page.slug == candidate)
         if page_id is not None:
