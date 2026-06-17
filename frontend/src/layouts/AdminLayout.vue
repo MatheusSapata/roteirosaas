@@ -1073,6 +1073,7 @@ const routeTitleMap: Record<string, string> = {
   "page-edit": t({ pt: "Editar página", es: "Editar página" }),
   lessons: navLabel("lessons"),
   "agency-settings": navLabel("agency"),
+  "agency-invoices": t({ pt: "Faturas", es: "Facturas" }),
   "agency-team": "Equipe",
   "agency-domains": navLabel("domains"),
   plans: navLabel("plans"),
@@ -1450,6 +1451,7 @@ const adminNavigation = computed<AdminNavItem[]>(() => {
       iconPath: "/admin/agency",
       children: [
         { label: "Configurações", path: "/admin/agency" },
+        { label: "Faturas", path: "/admin/agency/invoices" },
         { label: "Equipe", path: "/admin/agency/team" }
       ]
     },

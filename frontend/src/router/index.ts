@@ -216,6 +216,7 @@ const platformRoutes: RouteRecordRaw[] = [
         redirect: to => ({ path: `/admin/leads/clients/${to.params.id}`, query: { ...(to.query || {}) } })
       },
       { path: "agency", name: "agency-settings", component: AgencySettingsView, meta: { permission: "settings" } },
+      { path: "agency/invoices", name: "agency-invoices", component: () => import("../views/admin/AgencyInvoicesView.vue"), meta: { permission: "settings" } },
       { path: "agency/team", name: "agency-team", component: () => import("../views/admin/AgencyTeamView.vue"), meta: { permission: "team_management", ownerOnly: true } },
       {
         path: "domains",

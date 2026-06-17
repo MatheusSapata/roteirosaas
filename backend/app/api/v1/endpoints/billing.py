@@ -1,7 +1,7 @@
 ﻿import logging
 import hashlib
 import json
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Any, Dict, Optional, Literal
 
@@ -169,6 +169,31 @@ class BillingInfo(BaseModel):
     scheduled_downgrade_at: Optional[datetime] = None
 
 
+class BillingInvoiceOut(BaseModel):
+    id: str
+    customer_id: Optional[str] = None
+    subscription_id: Optional[str] = None
+    status: str
+    billing_type: Optional[str] = None
+    description: Optional[str] = None
+    value: float = 0
+    due_date: Optional[str] = None
+    payment_date: Optional[str] = None
+    invoice_url: Optional[str] = None
+    bank_slip_url: Optional[str] = None
+    receipt_url: Optional[str] = None
+    pay_url: Optional[str] = None
+    download_url: Optional[str] = None
+    is_paid: bool = False
+    bucket: Literal["paid", "overdue", "upcoming"] = "upcoming"
+
+
+class BillingInvoicesResponse(BaseModel):
+    items: list[BillingInvoiceOut]
+    total: int
+    counts: dict[str, int]
+
+
 class PlanChangeRequest(BaseModel):
     plan: str
 
@@ -315,6 +340,78 @@ def _build_billing_info(user: User) -> BillingInfo:
         scheduled_downgrade_plan=(sub.external_reference.split("scheduled_downgrade:", 1)[1] if sub and sub.external_reference and sub.external_reference.startswith("scheduled_downgrade:") else None),
         scheduled_downgrade_at=sub.valid_until if sub and sub.external_reference and sub.external_reference.startswith("scheduled_downgrade:") else None,
     )
+
+
+def _parse_asaas_date(value: Any) -> Optional[date]:
+    raw = str(value or "").strip()
+    if not raw:
+        return None
+    try:
+        return datetime.fromisoformat(raw.replace("Z", "+00:00")).date()
+    except ValueError:
+        try:
+            return datetime.strptime(raw[:10], "%Y-%m-%d").date()
+        except ValueError:
+            return None
+
+
+def _extract_payment_link_url(payment_link: Any) -> Optional[str]:
+    if isinstance(payment_link, dict):
+        return str(payment_link.get("url") or payment_link.get("shortUrl") or "").strip() or None
+    return None
+
+
+def _normalize_asaas_payment(payment: dict[str, Any]) -> BillingInvoiceOut:
+    status = str(payment.get("status") or "").strip().lower()
+    due_date = str(payment.get("dueDate") or "").strip() or None
+    payment_date = str(payment.get("paymentDate") or "").strip() or None
+    invoice_url = str(payment.get("invoiceUrl") or "").strip() or None
+    bank_slip_url = str(payment.get("bankSlipUrl") or "").strip() or None
+    receipt_url = str(payment.get("transactionReceiptUrl") or payment.get("receiptUrl") or "").strip() or None
+    payment_link_url = _extract_payment_link_url(payment.get("paymentLink"))
+    current_due_date = _parse_asaas_date(due_date)
+    is_paid = status in {"received", "confirmed", "received_in_cash"}
+    bucket: Literal["paid", "overdue", "upcoming"] = "paid"
+    if not is_paid:
+        bucket = "overdue" if current_due_date and current_due_date < date.today() else "upcoming"
+    pay_url = invoice_url or payment_link_url or bank_slip_url
+    download_url = receipt_url or bank_slip_url or invoice_url or payment_link_url
+    return BillingInvoiceOut(
+        id=str(payment.get("id") or ""),
+        customer_id=str(payment.get("customer") or "").strip() or None,
+        subscription_id=str(payment.get("subscription") or "").strip() or None,
+        status=status or "pending",
+        billing_type=str(payment.get("billingType") or "").strip() or None,
+        description=str(payment.get("description") or payment.get("name") or "").strip() or None,
+        value=float(_parse_decimal_value(payment.get("value")).quantize(Decimal("0.01"))),
+        due_date=due_date,
+        payment_date=payment_date,
+        invoice_url=invoice_url,
+        bank_slip_url=bank_slip_url,
+        receipt_url=receipt_url,
+        pay_url=pay_url,
+        download_url=download_url,
+        is_paid=is_paid,
+        bucket=bucket,
+    )
+
+
+def _fetch_asaas_payments(client: AsaasClient, params: dict[str, Any]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    limit = 100
+    offset = 0
+    while True:
+        payload = client.list_payments(limit=limit, offset=offset, **params) or {}
+        batch = payload.get("data") or []
+        if not isinstance(batch, list) or not batch:
+            break
+        rows.extend([item for item in batch if isinstance(item, dict)])
+        if len(batch) < limit:
+            break
+        offset += limit
+        if offset >= 1000:
+            break
+    return rows
 
 
 def _plan_rank(plan: str) -> int:
@@ -547,6 +644,43 @@ async def webhook(request: Request, db: Session = Depends(get_db)) -> Dict[str, 
 @router.get("/me", response_model=BillingInfo)
 def get_billing_info(current_user: User = Depends(get_current_active_user)) -> BillingInfo:
     return _build_billing_info(current_user)
+
+
+@router.get("/invoices", response_model=BillingInvoicesResponse)
+def list_billing_invoices(current_user: User = Depends(get_current_active_user)) -> BillingInvoicesResponse:
+    subscription = current_user.subscription
+    if not subscription or subscription.provider != "asaas":
+        return BillingInvoicesResponse(items=[], total=0, counts={"paid": 0, "overdue": 0, "upcoming": 0})
+
+    client = _get_asaas_client()
+    query: dict[str, Any] = {}
+    if subscription.asaas_customer_id:
+        query["customer"] = subscription.asaas_customer_id
+    elif subscription.asaas_subscription_id:
+        query["subscription"] = subscription.asaas_subscription_id
+    else:
+        return BillingInvoicesResponse(items=[], total=0, counts={"paid": 0, "overdue": 0, "upcoming": 0})
+
+    try:
+        payments = _fetch_asaas_payments(client, query)
+    except AsaasAPIError as exc:  # noqa: BLE001
+        logger.exception("Erro ao listar faturas no Asaas: %s", exc)
+        raise HTTPException(status_code=502, detail="Erro ao listar faturas no Asaas") from exc
+
+    items = [_normalize_asaas_payment(payment) for payment in payments if payment.get("id")]
+    items.sort(
+        key=lambda item: (
+            0 if item.bucket == "overdue" else 1 if item.bucket == "upcoming" else 2,
+            item.due_date or "9999-12-31",
+            item.payment_date or "9999-12-31",
+        )
+    )
+    counts = {
+        "paid": sum(1 for item in items if item.bucket == "paid"),
+        "overdue": sum(1 for item in items if item.bucket == "overdue"),
+        "upcoming": sum(1 for item in items if item.bucket == "upcoming"),
+    }
+    return BillingInvoicesResponse(items=items, total=len(items), counts=counts)
 
 
 @router.post("/cancel", response_model=BillingInfo)
