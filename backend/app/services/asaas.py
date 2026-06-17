@@ -73,6 +73,9 @@ class AsaasClient:
     def create_payment(self, payload: dict[str, Any]) -> dict[str, Any]:
         return self._request("POST", "/payments", json=payload)
 
+    def list_payments(self, **params: Any) -> dict[str, Any]:
+        return self._request("GET", "/payments", params=params)
+
     def create_subscription(self, payload: dict[str, Any]) -> dict[str, Any]:
         return self._request("POST", "/subscriptions", json=payload)
 
