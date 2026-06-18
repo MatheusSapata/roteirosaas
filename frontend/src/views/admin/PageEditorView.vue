@@ -137,8 +137,18 @@
         <aside
           v-if="showAiAssistant"
           class="editor-ai-sidebar hidden md:flex"
+          :style="aiAssistantSidebarStyle"
           aria-label="Painel do assistente"
         >
+          <button
+            type="button"
+            class="editor-ai-sidebar-resize-handle"
+            @pointerdown="startAiAssistantSidebarResize"
+            aria-label="Redimensionar painel"
+            title="Arraste para ajustar a largura"
+          >
+            <span class="editor-ai-sidebar-resize-grip" aria-hidden="true"></span>
+          </button>
           <div class="editor-ai-sidebar-header">
             <div class="editor-ai-sidebar-header-copy">
               <div class="editor-ai-sidebar-title-row">
@@ -202,14 +212,13 @@
                   {{ aiAssistantAttachments.length }}
                 </span>
 
-                <input
+                <textarea
                   v-model="aiAssistantDraft"
                   class="editor-ai-sidebar-input"
-                  type="text"
+                  rows="1"
                   placeholder="Digite sua mensagem..."
                   :disabled="aiAssistantLoading || aiAssistantLimitReached"
-                  @keydown.enter.exact.prevent="sendAiAssistantMessage"
-                />
+                ></textarea>
 
                 <button
                   type="button"
@@ -218,8 +227,9 @@
                   @click="sendAiAssistantMessage"
                   :aria-label="aiAssistantSendButtonLabel"
                 >
-                  <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="m5 12 14-7-4 7 4 7-14-7Z" />
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="h-4 w-4" fill="none" aria-hidden="true">
+                    <path d="M0 0h24v24H0z" fill="none" />
+                    <path fill="currentColor" d="M20.04 2.323c1.016-.355 1.992.621 1.637 1.637l-5.925 16.93c-.385 1.098-1.915 1.16-2.387.097l-2.859-6.432l4.024-4.025a.75.75 0 0 0-1.06-1.06l-4.025 4.024l-6.432-2.859c-1.063-.473-1-2.002.097-2.387z" />
                   </svg>
                 </button>
               </div>
@@ -1552,9 +1562,17 @@ const selectSettingsTab = (tab: "general" | "colors" | "pixels" | "capture") => 
 selectSettingsTab("general");
 
 onMounted(() => {
+  if (hasWindow) {
+    const storedWidth = Number(window.localStorage.getItem(aiAssistantSidebarStorageKey));
+    if (Number.isFinite(storedWidth) && storedWidth > 0) {
+      aiAssistantSidebarWidth.value = storedWidth;
+    }
+    syncAiAssistantSidebarWidth();
+  }
   nextTick(syncSettingsPanelHeight);
   if (typeof window !== "undefined") {
     window.addEventListener("resize", syncSettingsPanelHeight);
+    window.addEventListener("resize", syncAiAssistantSidebarWidth);
   }
   void refreshAiAssistantUsage();
 });
@@ -1562,7 +1580,10 @@ onMounted(() => {
 onBeforeUnmount(() => {
   if (typeof window !== "undefined") {
     window.removeEventListener("resize", syncSettingsPanelHeight);
+    window.removeEventListener("resize", syncAiAssistantSidebarWidth);
   }
+  removeAiAssistantSidebarResizeListeners?.();
+  removeAiAssistantSidebarResizeListeners = null;
 });
 
 const fallbackPrimaryColor = "#41ce5f";
@@ -1682,6 +1703,16 @@ const aiAssistantFileInputRef = ref<HTMLInputElement | null>(null);
 const aiAssistantDraft = ref("");
 const aiAssistantAttachments = ref<File[]>([]);
 const aiAssistantUsage = ref<AiAssistantUsageResponse | null>(null);
+const aiAssistantSidebarWidth = ref(464);
+const aiAssistantSidebarMinWidth = 320;
+const aiAssistantSidebarMaxWidth = 720;
+const aiAssistantSidebarStorageKey = "page-editor-ai-assistant-sidebar-width";
+const aiAssistantSidebarResizeState = reactive({
+  active: false,
+  startX: 0,
+  startWidth: 0
+});
+let removeAiAssistantSidebarResizeListeners: (() => void) | null = null;
 let aiAssistantLoadingTimer: number | null = null;
 let aiAssistantTypingTimer: number | null = null;
 const aiAssistantPromptTemplate = `👋 Bem-vindo(a) ao Assistente de Construção de Páginas da Roteiro Online!
@@ -1712,6 +1743,62 @@ const stopAiAssistantTimers = () => {
     window.clearInterval(aiAssistantTypingTimer);
     aiAssistantTypingTimer = null;
   }
+};
+const getAiAssistantSidebarWidthBounds = () => {
+  const viewportWidth = hasWindow ? window.innerWidth : aiAssistantSidebarMaxWidth;
+  const maxWidth = Math.max(aiAssistantSidebarMinWidth, Math.min(aiAssistantSidebarMaxWidth, viewportWidth - 96));
+  return {
+    minWidth: aiAssistantSidebarMinWidth,
+    maxWidth
+  };
+};
+const clampAiAssistantSidebarWidth = (value: number) => {
+  const bounds = getAiAssistantSidebarWidthBounds();
+  return Math.max(bounds.minWidth, Math.min(bounds.maxWidth, Math.round(value)));
+};
+const applyAiAssistantSidebarWidth = (value: number) => {
+  const nextWidth = clampAiAssistantSidebarWidth(value);
+  aiAssistantSidebarWidth.value = nextWidth;
+  if (hasWindow) {
+    window.localStorage.setItem(aiAssistantSidebarStorageKey, String(nextWidth));
+  }
+};
+const syncAiAssistantSidebarWidth = () => {
+  aiAssistantSidebarWidth.value = clampAiAssistantSidebarWidth(aiAssistantSidebarWidth.value);
+};
+const startAiAssistantSidebarResize = (event: PointerEvent) => {
+  if (event.button !== 0) return;
+  event.preventDefault();
+  removeAiAssistantSidebarResizeListeners?.();
+  aiAssistantSidebarResizeState.active = true;
+  aiAssistantSidebarResizeState.startX = event.clientX;
+  aiAssistantSidebarResizeState.startWidth = aiAssistantSidebarWidth.value;
+  document.body.style.cursor = "col-resize";
+  document.body.style.userSelect = "none";
+
+  const onMove = (moveEvent: PointerEvent) => {
+    if (!aiAssistantSidebarResizeState.active) return;
+    const delta = aiAssistantSidebarResizeState.startX - moveEvent.clientX;
+    applyAiAssistantSidebarWidth(aiAssistantSidebarResizeState.startWidth + delta);
+  };
+
+  const stopResize = () => {
+    if (!aiAssistantSidebarResizeState.active) return;
+    aiAssistantSidebarResizeState.active = false;
+    document.body.style.cursor = "";
+    document.body.style.userSelect = "";
+    removeAiAssistantSidebarResizeListeners?.();
+    removeAiAssistantSidebarResizeListeners = null;
+  };
+
+  window.addEventListener("pointermove", onMove);
+  window.addEventListener("pointerup", stopResize);
+  window.addEventListener("pointercancel", stopResize);
+  removeAiAssistantSidebarResizeListeners = () => {
+    window.removeEventListener("pointermove", onMove);
+    window.removeEventListener("pointerup", stopResize);
+    window.removeEventListener("pointercancel", stopResize);
+  };
 };
 const animateAiAssistantMessage = (messageIndex: number, fullText: string) => {
   return new Promise<void>(resolve => {
@@ -1775,6 +1862,10 @@ const aiAssistantUsageLabel = computed(() => {
   const remaining = usage.remaining ?? 0;
   return `${remaining}/${limit} restantes`;
 });
+const aiAssistantSidebarStyle = computed(() => ({
+  width: `${aiAssistantSidebarWidth.value}px`,
+  maxWidth: "calc(100vw - 48px)"
+}));
 const aiAssistantLimitReached = computed(() => {
   const usage = aiAssistantUsage.value;
   return Boolean(usage && !usage.unlimited && typeof usage.limit === "number" && usage.used >= usage.limit);
@@ -3901,6 +3992,35 @@ onMounted(async () => {
   padding: 18px;
   backdrop-filter: blur(14px);
   overflow: hidden;
+  box-sizing: border-box;
+}
+
+.editor-ai-sidebar-resize-handle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 12px;
+  border: 0;
+  padding: 0;
+  background: linear-gradient(to right, rgba(61, 204, 95, 0.14), rgba(61, 204, 95, 0));
+  cursor: col-resize;
+  touch-action: none;
+  z-index: 2;
+}
+
+.editor-ai-sidebar-resize-grip {
+  position: absolute;
+  top: 50%;
+  left: 4px;
+  width: 2px;
+  height: 36px;
+  border-radius: 999px;
+  transform: translateY(-50%);
+  background: rgba(61, 204, 95, 0.34);
+  box-shadow:
+    4px 0 0 rgba(61, 204, 95, 0.2),
+    -4px 0 0 rgba(61, 204, 95, 0.2);
 }
 
 .editor-ai-sidebar-header {
@@ -4167,16 +4287,26 @@ onMounted(async () => {
 .editor-ai-sidebar-input {
   width: 100%;
   min-width: 0;
-  height: 42px;
-  border-radius: 999px;
+  min-height: 42px;
+  max-height: 220px;
+  border-radius: 0;
   border: 1px solid #d9e6dc;
   background: #ffffff;
-  padding: 0 14px;
+  padding: 11px 14px;
   font-size: 14px;
-  line-height: 1;
+  line-height: 1.35;
   color: #0f172a;
   outline: none;
+  resize: vertical;
+  overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
   flex: 1 1 auto;
+}
+
+.editor-ai-sidebar-input-shell {
+  width: 100%;
+  min-width: 0;
 }
 
 .editor-ai-sidebar-input:focus {
