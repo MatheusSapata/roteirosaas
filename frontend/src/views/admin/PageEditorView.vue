@@ -142,7 +142,7 @@
           <div class="editor-ai-sidebar-header">
             <div class="editor-ai-sidebar-header-copy">
               <div class="editor-ai-sidebar-title-row">
-                <h2 class="editor-ai-sidebar-title">Construtor Roteiro Online</h2>
+                <h2 class="editor-ai-sidebar-title">Assistente IA</h2>
                 <span class="editor-ai-sidebar-usage-pill">{{ aiAssistantUsageLabel }}</span>
               </div>
             </div>
@@ -185,30 +185,44 @@
                 @change="handleAiAssistantFileChange"
               />
 
-              <div class="editor-ai-sidebar-composer-toolbar">
-                <button type="button" class="editor-ai-sidebar-attach" @click="openAiAssistantFilePicker">
-                  Anexar arquivos
+              <div class="editor-ai-sidebar-composer-row">
+                <button
+                  type="button"
+                  class="editor-ai-sidebar-icon-button editor-ai-sidebar-attach"
+                  @click="openAiAssistantFilePicker"
+                  :disabled="aiAssistantLoading || aiAssistantLimitReached"
+                  aria-label="Anexar arquivos"
+                >
+                  <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M21.44 11.05 12 20.49a5.5 5.5 0 0 1-7.78-7.78l9.44-9.44a3.5 3.5 0 1 1 4.95 4.95l-9.5 9.5a1.5 1.5 0 0 1-2.12-2.12l8.78-8.78" />
+                  </svg>
                 </button>
+
                 <span class="editor-ai-sidebar-attach-count" v-if="aiAssistantAttachments.length">
-                  {{ aiAssistantAttachments.length }} arquivo(s)
+                  {{ aiAssistantAttachments.length }}
                 </span>
+
+                <input
+                  v-model="aiAssistantDraft"
+                  class="editor-ai-sidebar-input"
+                  type="text"
+                  placeholder="Digite sua mensagem..."
+                  :disabled="aiAssistantLoading || aiAssistantLimitReached"
+                  @keydown.enter.exact.prevent="sendAiAssistantMessage"
+                />
+
+                <button
+                  type="button"
+                  class="editor-ai-sidebar-icon-button editor-ai-sidebar-send"
+                  :disabled="aiAssistantLoading || aiAssistantLimitReached || (!aiAssistantDraft.trim() && aiAssistantAttachments.length === 0)"
+                  @click="sendAiAssistantMessage"
+                  :aria-label="aiAssistantSendButtonLabel"
+                >
+                  <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="m5 12 14-7-4 7 4 7-14-7Z" />
+                  </svg>
+                </button>
               </div>
-
-              <textarea
-                v-model="aiAssistantDraft"
-                class="editor-ai-sidebar-textarea"
-                rows="4"
-                placeholder="Digite sua mensagem..."
-              ></textarea>
-
-              <button
-                type="button"
-                class="editor-ai-sidebar-send"
-                :disabled="aiAssistantLoading || aiAssistantLimitReached || (!aiAssistantDraft.trim() && aiAssistantAttachments.length === 0)"
-                @click="sendAiAssistantMessage"
-              >
-                {{ aiAssistantSendButtonLabel }}
-              </button>
             </div>
           </div>
         </aside>
@@ -1755,10 +1769,11 @@ const prefillAiAssistantPrompt = () => {
 const aiAssistantUsageLabel = computed(() => {
   if (!canUseAiAssistant.value) return "";
   const usage = aiAssistantUsage.value;
-  if (!usage) return "-/- Restantes";
-  if (usage.unlimited) return `${usage.used}/∞ Restantes`;
+  if (!usage) return "-/- restantes";
+  if (usage.unlimited) return "∞/∞ restantes";
   const limit = usage.limit ?? 0;
-  return `${usage.used}/${limit} Restantes`;
+  const remaining = usage.remaining ?? 0;
+  return `${remaining}/${limit} restantes`;
 });
 const aiAssistantLimitReached = computed(() => {
   const usage = aiAssistantUsage.value;
@@ -3786,12 +3801,7 @@ onMounted(async () => {
 
 @media (min-width: 768px) {
   .editor-workspace.ai-assistant-open {
-    padding-right: 28rem;
-  }
-
-  .editor-body {
-    min-width: 0;
-    zoom: 0.8;
+    padding-right: 0;
   }
 }
 
@@ -3812,16 +3822,6 @@ onMounted(async () => {
 .ai-sidebar-slide-leave-from {
   opacity: 1;
   transform: scaleX(1);
-}
-
-@supports not (zoom: 1) {
-  @media (min-width: 768px) {
-    .editor-body {
-      transform: scale(0.8);
-      transform-origin: top left;
-      width: 125%;
-    }
-  }
 }
 
 .editor-topbar {
@@ -3971,6 +3971,7 @@ onMounted(async () => {
   text-transform: uppercase;
   white-space: nowrap;
   margin-left: auto;
+  transform: translateY(-5px);
 }
 
 .editor-ai-sidebar-close {
@@ -3984,6 +3985,7 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  transform: translateY(-5px);
 }
 
 .editor-ai-sidebar-cta {
@@ -4115,59 +4117,77 @@ onMounted(async () => {
   gap: 10px;
 }
 
-.editor-ai-sidebar-composer-toolbar {
+.editor-ai-sidebar-composer-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
 }
 
-.editor-ai-sidebar-attach {
+.editor-ai-sidebar-icon-button {
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
   border: 1px solid #d8e3db;
   background: #f7faf8;
   color: #45624f;
-  border-radius: 999px;
-  padding: 8px 12px;
-  font-size: 13px;
-  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  transition: background-color 0.15s ease, transform 0.15s ease, opacity 0.15s ease;
+}
+
+.editor-ai-sidebar-icon-button:hover:not(:disabled) {
+  background: #eef5ef;
+  transform: translateY(-1px);
+}
+
+.editor-ai-sidebar-icon-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .editor-ai-sidebar-attach-count {
+  min-width: 26px;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: rgba(61, 204, 95, 0.12);
+  border: 1px solid rgba(61, 204, 95, 0.2);
+  color: #2d7f44;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: 12px;
   font-weight: 700;
-  color: #7d8c82;
+  flex: 0 0 auto;
 }
 
-.editor-ai-sidebar-textarea {
+.editor-ai-sidebar-input {
   width: 100%;
-  resize: none;
-  border-radius: 18px;
+  min-width: 0;
+  height: 42px;
+  border-radius: 999px;
   border: 1px solid #d9e6dc;
   background: #ffffff;
-  padding: 12px 14px;
+  padding: 0 14px;
   font-size: 14px;
-  line-height: 1.55;
+  line-height: 1;
   color: #0f172a;
+  outline: none;
+  flex: 1 1 auto;
 }
 
-.editor-ai-sidebar-textarea:focus {
-  outline: none;
+.editor-ai-sidebar-input:focus {
   border-color: #35bd57;
   box-shadow: 0 0 0 3px rgba(61, 204, 95, 0.12);
 }
 
 .editor-ai-sidebar-send {
-  border: 1px solid #35bd57;
-  border-radius: 18px;
+  border-color: #35bd57;
   background: #3dcc5f;
   color: #ffffff;
-  padding: 12px 16px;
-  font-size: 14px;
-  font-weight: 800;
-  transition: background-color 0.15s ease, transform 0.15s ease;
-  white-space: normal;
-  text-align: center;
-  line-height: 1.25;
 }
 
 .editor-ai-sidebar-send:hover:not(:disabled) {
@@ -4175,9 +4195,8 @@ onMounted(async () => {
   transform: translateY(-1px);
 }
 
-.editor-ai-sidebar-send:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
+.editor-ai-sidebar-send svg {
+  margin-left: 1px;
 }
 
 .editor-ai-sidebar-typing {
