@@ -1070,6 +1070,7 @@ const routeTitleMap: Record<string, string> = {
   "admin-management-whatsapp": t({ pt: "Gestão WhatsApp", es: "Gestion WhatsApp" }),
   "admin-management-offers": t({ pt: "Ofertas", es: "Ofertas" }),
   "admin-management-webhooks": t({ pt: "Webhooks e Push", es: "Webhooks y Push" }),
+  "admin-prompt-constructor": t({ pt: "Prompt Construtor", es: "Prompt Constructor" }),
   "page-edit": t({ pt: "Editar página", es: "Editar página" }),
   lessons: navLabel("lessons"),
   "agency-settings": navLabel("agency"),
@@ -1479,7 +1480,8 @@ const adminNavigation = computed<AdminNavItem[]>(() => {
         { label: t({ pt: "Ofertas", es: "Ofertas" }), path: "/admin/administracao/ofertas" },
         { label: t({ pt: "Webhooks e Push", es: "Webhooks y Push" }), path: "/admin/administracao/webhooks" },
         { label: t({ pt: "Previsão de receita", es: "Proyección de ingresos" }), path: "/admin/administracao/receita-previsao" },
-        { label: t({ pt: "LTV por cliente", es: "LTV por cliente" }), path: "/admin/administracao/ltv-clientes" }
+        { label: t({ pt: "LTV por cliente", es: "LTV por cliente" }), path: "/admin/administracao/ltv-clientes" },
+        { label: t({ pt: "Prompt Construtor", es: "Prompt Constructor" }), path: "/admin/administracao/prompt-construtor" }
       ]
     });
   }

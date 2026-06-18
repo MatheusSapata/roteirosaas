@@ -3,6 +3,8 @@ from fastapi import APIRouter
 from app.api.v1.endpoints import (
     admin_master_whatsapp,
     admin,
+    ai_assistant,
+    admin_prompt_construtor,
     agencies,
     agency_domains,
     agency_team,
@@ -48,7 +50,9 @@ api_router.include_router(billing.router, prefix="/billing", tags=["billing"])
 api_router.include_router(checkout.router, prefix="/checkout", tags=["checkout"])
 api_router.include_router(pixels.router, prefix="/pixels", tags=["pixels"])
 api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
+api_router.include_router(ai_assistant.router, prefix="/ai-assistant", tags=["ai-assistant"])
 api_router.include_router(admin_master_whatsapp.router, prefix="/admin-master/whatsapp", tags=["admin-master-whatsapp"])
+api_router.include_router(admin_prompt_construtor.router, prefix="/admin-master", tags=["admin-master-prompt-construtor"])
 api_router.include_router(webhook_notifications.admin_router, tags=["admin-master-webhook-notifications"])
 api_router.include_router(webhook_notifications.router, tags=["webhook-notifications"])
 api_router.include_router(flight_api_keys.router, prefix="/admin", tags=["flight-api-keys"])
