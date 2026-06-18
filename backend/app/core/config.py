@@ -96,6 +96,8 @@ class Settings(BaseSettings):
     smtp_use_tls: bool = Field(True, alias="SMTP_USE_TLS")
     smtp_use_ssl: bool = Field(False, alias="SMTP_USE_SSL")
     webapp_base_url: str | None = Field(None, alias="WEBAPP_BASE_URL")
+    gpt_key: str | None = Field(None, alias="GPT_KEY")
+    gpt_model: str = Field("gpt-5.4", alias="GPT_MODEL")
     airlabs_base_url: str = Field("https://airlabs.co/api/v9", alias="AIRLABS_BASE_URL")
     airlabs_api_key: str | None = Field(None, alias="AIRLABS_API_KEY")
     airlabs_timeout_seconds: int = Field(20, alias="AIRLABS_TIMEOUT_SECONDS")

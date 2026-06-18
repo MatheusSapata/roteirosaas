@@ -175,6 +175,9 @@ const resolveLegacyAdminManagementRedirect = (to: any) => {
   if (tab === "ltv-clientes" || tab === "ltv-customers") {
     return { path: "/admin/administracao/ltv-clientes", query: nextQuery };
   }
+  if (tab === "prompt-construtor" || tab === "prompt-constructor") {
+    return { path: "/admin/administracao/prompt-construtor", query: nextQuery };
+  }
   return { path: "/admin/administracao/dashboard", query: nextQuery };
 };
 
@@ -319,6 +322,12 @@ const platformRoutes: RouteRecordRaw[] = [
         path: "administracao/ltv-clientes",
         name: "admin-management-ltv-customers",
         component: () => import("../views/admin/AdminLtvCustomersView.vue"),
+        meta: { requiresSuperuser: true }
+      },
+      {
+        path: "administracao/prompt-construtor",
+        name: "admin-prompt-constructor",
+        component: () => import("../views/admin/PromptConstructorView.vue"),
         meta: { requiresSuperuser: true }
       }
     ]

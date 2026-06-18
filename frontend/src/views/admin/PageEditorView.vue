@@ -1,4 +1,4 @@
-<template>
+﻿<template>
 <div class="page-editor-view w-full space-y-6 px-4 py-6 md:px-8 md:py-4">
     <div class="editor-topbar">
       <div class="editor-topbar-left">
@@ -68,7 +68,6 @@
           </svg>
           {{ viewCopy.toolbar.saveTemplate }}
         </button>
-
         <button
           v-if="isPublished"
           :disabled="!publicUrl"
@@ -107,8 +106,114 @@
       </div>
     </div>
 
-    
-    <!-- Dialog de limite de plano (reutilizado também para "template no free") -->
+      <Teleport to="body">
+        <button
+          v-if="canUseAiAssistant && !isMobileViewport && !showAiAssistant"
+          type="button"
+          @click="toggleAiAssistant"
+          :class="floatingAiButtonClass"
+        :style="floatingAiButtonStyle"
+        aria-label="Abrir ajuda IA"
+      >
+        <span class="editor-ai-fab-content" :style="floatingAiButtonContentStyle">
+          <span class="editor-ai-fab-icon" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" class="h-6 w-6">
+                <path d="M0 0h24v24H0z" fill="none" />
+                <g fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5">
+                  <path d="M4 12c0-3.771 0-5.657 1.172-6.828S8.229 4 12 4s5.657 0 6.828 1.172S20 8.229 20 12s0 5.657-1.172 6.828S15.771 20 12 20s-5.657 0-6.828-1.172S4 15.771 4 12Z" />
+                  <path stroke-linecap="round" d="m7.5 15l1.842-5.526a.694.694 0 0 1 1.316 0L12.5 15m-4-2h3m4-4v6M8 2v2m8-2v2m-4-2v2M8 20v2m4-2v2m4-2v2m6-6h-2M4 8H2m2 8H2m2-4H2m20-4h-2m2 4h-2" />
+                </g>
+              </svg>
+            </span>
+          <span class="editor-ai-fab-label" :style="floatingAiButtonLabelStyle">Assistente IA</span>
+        </span>
+      </button>
+    </Teleport>
+
+    <!-- Dialog de limite de plano (reutilizado tamb?m para "template no free") -->
+    <div :class="['editor-workspace', showAiAssistant ? 'ai-assistant-open' : '']">
+
+      <Transition name="ai-sidebar-slide">
+        <aside
+          v-if="showAiAssistant"
+          class="editor-ai-sidebar hidden md:flex"
+          aria-label="Painel do assistente"
+        >
+          <div class="editor-ai-sidebar-header">
+            <div class="editor-ai-sidebar-header-copy">
+              <div class="editor-ai-sidebar-title-row">
+                <h2 class="editor-ai-sidebar-title">Construtor Roteiro Online</h2>
+                <span class="editor-ai-sidebar-usage-pill">{{ aiAssistantUsageLabel }}</span>
+              </div>
+            </div>
+            <button type="button" class="editor-ai-sidebar-close" @click="toggleAiAssistant" aria-label="Fechar ajuda de IA">
+              <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <path d="M6 6l12 12" />
+                <path d="M18 6 6 18" />
+              </svg>
+            </button>
+          </div>
+            <div class="editor-ai-sidebar-chat">
+              <div
+                class="editor-ai-sidebar-chat-log"
+                ref="aiAssistantChatLogRef"
+              >
+                <template v-if="aiAssistantVisibleMessages.length">
+                  <div
+                    v-for="(message, index) in aiAssistantVisibleMessages"
+                    :key="`${message.role}-${index}-${message.content.slice(0, 12)}`"
+                    class="editor-ai-sidebar-bubble"
+                    :class="message.role === 'user' ? 'is-user' : 'is-assistant'"
+                  >
+                    <div class="editor-ai-sidebar-response-text">{{ message.content }}</div>
+                  </div>
+                </template>
+
+                <div v-if="aiAssistantLoading" class="editor-ai-sidebar-typing" aria-label="Carregando resposta">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+              </div>
+
+            <div class="editor-ai-sidebar-composer">
+              <input
+                ref="aiAssistantFileInputRef"
+                class="hidden"
+                type="file"
+                multiple
+                @change="handleAiAssistantFileChange"
+              />
+
+              <div class="editor-ai-sidebar-composer-toolbar">
+                <button type="button" class="editor-ai-sidebar-attach" @click="openAiAssistantFilePicker">
+                  Anexar arquivos
+                </button>
+                <span class="editor-ai-sidebar-attach-count" v-if="aiAssistantAttachments.length">
+                  {{ aiAssistantAttachments.length }} arquivo(s)
+                </span>
+              </div>
+
+              <textarea
+                v-model="aiAssistantDraft"
+                class="editor-ai-sidebar-textarea"
+                rows="4"
+                placeholder="Digite sua mensagem..."
+              ></textarea>
+
+              <button
+                type="button"
+                class="editor-ai-sidebar-send"
+                :disabled="aiAssistantLoading || aiAssistantLimitReached || (!aiAssistantDraft.trim() && aiAssistantAttachments.length === 0)"
+                @click="sendAiAssistantMessage"
+              >
+                {{ aiAssistantSendButtonLabel }}
+              </button>
+            </div>
+          </div>
+        </aside>
+      </Transition>
+
     <Teleport to="body" v-if="limitModal.open">
       <div class="fixed inset-0 z-50 flex items-center justify-center px-4 page-editor-overlay">
         <div class="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl dark:bg-[#1f1f1f] dark:text-white">
@@ -337,7 +442,7 @@
       </div>
     </Teleport>
 
-    <div class="space-y-4">
+    <div :class="['editor-body flex-1 min-w-0 space-y-4', showAiAssistant ? 'ai-assistant-open' : '']">
       <div class="editor-settings-shell rounded-[26px] border border-slate-200 bg-white p-6 shadow-sm dark:bg-[#202020] dark:text-white">
         <div class="mb-5 flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -642,14 +747,19 @@
         {{ viewCopy.actions.viewPlans }}
       </button>
     </div>
-    </div>
-        </div>
-          </div>
-        </div>
-      </div>
-    </div>
 
-      <div class="md:sticky md:top-6 rounded-3xl bg-white p-4 shadow-md dark:bg-[#202020] dark:text-white">
+    </div>
+  </div>
+  </div>
+  </div>
+  </div>
+
+      <div
+        :class="[
+          'editor-preview-shell md:sticky md:top-6 rounded-3xl bg-white p-4 shadow-md dark:bg-[#202020] dark:text-white',
+          showAiAssistant ? 'ai-assistant-open' : ''
+        ]"
+      >
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div class="flex flex-col gap-1">
           <h2 class="text-lg font-semibold text-slate-900">{{ viewCopy.preview.title }}</h2>
@@ -874,6 +984,7 @@
           </div>
         </div>
       </div>
+      </div>
     </div>
 
     <Teleport to="body">
@@ -963,6 +1074,7 @@
         {{ snackbar.text }}
       </div>
     </transition>
+    </div>
   </div>
 </template>
 
@@ -970,6 +1082,12 @@
 import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, provide, reactive, ref, shallowRef, watch } from "vue";
 import { onBeforeRouteLeave, useRoute, useRouter } from "vue-router";
 import api from "../../services/api";
+import {
+  fetchAiAssistantUsage,
+  sendAiAssistantConversation,
+  type AiAssistantChatMessage,
+  type AiAssistantUsageResponse
+} from "../../services/aiAssistant";
 import { useAuthStore } from "../../store/useAuthStore";
 import { useAgencyStore } from "../../store/useAgencyStore";
 import { useLeadCaptureStore } from "../../store/useLeadCaptureStore";
@@ -1020,7 +1138,6 @@ import storyThumb from "../../assets/story-thumb.jpg";
 import featuredVideoThumb from "../../assets/videoemdestaque.png";
 import biographyThumb from "../../assets/biografia.png";
 import flightsThumb from "../../assets/voos-thumb.png";
-
 interface Page {
   id: number;
   title: string;
@@ -1344,6 +1461,7 @@ const ensureValidPageSlug = () => {
 const limitModal = ref({ open: false, message: "" });
 const successModal = ref({ open: false });
 const snackbar = ref({ open: false, text: "" });
+const showAiAssistant = ref(false);
 const hasUnsavedChanges = ref(false);
 const initialLoadComplete = ref(false);
 const unsavedNavigationModal = ref({ open: false, saving: false });
@@ -1395,6 +1513,7 @@ const markUnsavedChanges = () => {
 
 const isPublished = computed(() => page.value?.status === "published");
 const isFreePlan = computed(() => (auth.user?.plan || "free") === "free");
+const canUseAiAssistant = computed(() => !!auth.user);
 const activeSettingsTab = ref<"general" | "colors" | "pixels" | "capture">("general");
 const settingsSidebarRef = ref<HTMLElement | null>(null);
 const settingsPanelRef = ref<HTMLElement | null>(null);
@@ -1423,6 +1542,7 @@ onMounted(() => {
   if (typeof window !== "undefined") {
     window.addEventListener("resize", syncSettingsPanelHeight);
   }
+  void refreshAiAssistantUsage();
 });
 
 onBeforeUnmount(() => {
@@ -1471,10 +1591,46 @@ const beforeUnloadHandler = (event: BeforeUnloadEvent) => {
   event.preventDefault();
   event.returnValue = "";
 };
-const toolbarSecondaryButtonClass =
-  "inline-flex items-center gap-2 rounded-xl border border-[#DDE3DE] bg-[#F6F8F6] px-4 py-2 text-sm font-semibold text-[#4A6455] transition hover:bg-white";
-const toolbarPrimaryButtonClass =
-  "inline-flex items-center gap-2 rounded-xl border border-[#35BD57] bg-[#3DCC5F] px-4 py-2 text-sm font-semibold text-[#0F1F14] shadow-sm transition hover:bg-[#5BE07A]";
+  const toolbarSecondaryButtonClass =
+    "inline-flex items-center gap-2 rounded-xl border border-[#DDE3DE] bg-[#F6F8F6] px-4 py-2 text-sm font-semibold text-[#4A6455] transition hover:bg-white";
+  const floatingAiButtonClass =
+    "editor-ai-fab hidden md:inline-flex cursor-pointer items-center justify-center rounded-l-2xl border border-[#2ECC58] bg-[#3DCC5F] text-sm font-semibold text-white transition hover:bg-[#31B954] hover:border-[#27A94C]";
+  const floatingAiButtonStyle = {
+    position: "fixed",
+    top: "50%",
+    right: "5px",
+    zIndex: "9999",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "0",
+    transform: "translateY(-50%)",
+    transformOrigin: "center center",
+    borderRadius: "16px",
+    boxShadow: "0 14px 32px rgba(15, 23, 42, 0.18)",
+    width: "52px",
+    minHeight: "156px",
+    padding: "10px 4px",
+    whiteSpace: "nowrap"
+  } as const;
+  const floatingAiButtonContentStyle = {
+        display: "flex",
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "8px",
+        transform: "rotate(90deg)",
+        transformOrigin: "center center",
+        padding: "6px 14px",
+        whiteSpace: "nowrap"
+      } as const;
+  const floatingAiButtonLabelStyle = {
+      color: "#ffffff",
+      letterSpacing: "0.12em"
+    } as const;
+  const toolbarPrimaryButtonClass =
+    "inline-flex items-center gap-2 rounded-xl border border-[#35BD57] bg-[#3DCC5F] px-4 py-2 text-sm font-semibold text-[#0F1F14] shadow-sm transition hover:bg-[#5BE07A]";
 const toolbarWarningButtonClass =
   "inline-flex items-center gap-2 rounded-xl border border-[#EBCFD0] bg-[#F9ECEC] px-4 py-2 text-sm font-semibold text-[#BC5457] transition hover:bg-[#F7E3E4]";
 const toolbarStatusPillClass =
@@ -1500,6 +1656,200 @@ const setupViewportWatcher = () => {
     window.removeEventListener("resize", handler);
   };
 };
+
+const aiAssistantUrl = "https://chatgpt.com/g/g-6a0f578cbca48191b3073e3aa3556c5d-construtor-roteiro-online";
+const aiAssistantMessages = ref<Array<{ role: "user" | "assistant"; content: string }>>([]);
+const aiAssistantVisibleMessages = computed(() =>
+  aiAssistantMessages.value.filter(message => message.role === "user" || message.content.trim().length > 0)
+);
+const aiAssistantLoading = ref(false);
+const aiAssistantChatLogRef = ref<HTMLElement | null>(null);
+const aiAssistantFileInputRef = ref<HTMLInputElement | null>(null);
+const aiAssistantDraft = ref("");
+const aiAssistantAttachments = ref<File[]>([]);
+const aiAssistantUsage = ref<AiAssistantUsageResponse | null>(null);
+let aiAssistantLoadingTimer: number | null = null;
+let aiAssistantTypingTimer: number | null = null;
+const aiAssistantPromptTemplate = `👋 Bem-vindo(a) ao Assistente de Construção de Páginas da Roteiro Online!
+
+Sou um assistente que ajuda a planejar o conteúdo da sua página de viagem.
+
+Você pode me enviar as informações da viagem em texto, PDF, prints, fotos ou até mesmo informações soltas. Com base nelas, vou sugerir uma página organizada e pronta para utilizar no Construtor Roteiro Online.`;
+const scrollAiAssistantToEnd = () => {
+  nextTick(() => {
+    aiAssistantChatLogRef.value?.scrollTo({ top: aiAssistantChatLogRef.value.scrollHeight, behavior: "smooth" });
+  });
+};
+const refreshAiAssistantUsage = async () => {
+  if (!canUseAiAssistant.value) return;
+  try {
+    aiAssistantUsage.value = await fetchAiAssistantUsage();
+  } catch (error) {
+    console.error("Erro ao carregar uso da ajuda IA", error);
+  }
+};
+const stopAiAssistantTimers = () => {
+  if (aiAssistantLoadingTimer !== null) {
+    window.clearTimeout(aiAssistantLoadingTimer);
+    aiAssistantLoadingTimer = null;
+  }
+
+  if (aiAssistantTypingTimer !== null) {
+    window.clearInterval(aiAssistantTypingTimer);
+    aiAssistantTypingTimer = null;
+  }
+};
+const animateAiAssistantMessage = (messageIndex: number, fullText: string) => {
+  return new Promise<void>(resolve => {
+  if (!fullText) {
+    aiAssistantMessages.value[messageIndex].content = "";
+    aiAssistantLoading.value = false;
+      resolve();
+      return;
+  }
+
+  let index = 0;
+  aiAssistantMessages.value[messageIndex].content = "";
+  scrollAiAssistantToEnd();
+
+  aiAssistantTypingTimer = window.setInterval(() => {
+    index += 1;
+    aiAssistantMessages.value[messageIndex].content = fullText.slice(0, index);
+    scrollAiAssistantToEnd();
+
+    if (index >= fullText.length && aiAssistantTypingTimer !== null) {
+      window.clearInterval(aiAssistantTypingTimer);
+      aiAssistantTypingTimer = null;
+      aiAssistantLoading.value = false;
+      scrollAiAssistantToEnd();
+      resolve();
+    }
+    }, 6);
+    });
+  };
+const startAiAssistantReply = () => {
+  stopAiAssistantTimers();
+  aiAssistantLoading.value = true;
+  aiAssistantMessages.value = [
+    ...aiAssistantMessages.value,
+    { role: "assistant", content: "" }
+  ];
+  const assistantIndex = aiAssistantMessages.value.length - 1;
+
+  scrollAiAssistantToEnd();
+
+  aiAssistantLoadingTimer = window.setTimeout(() => {
+    void animateAiAssistantMessage(assistantIndex, aiAssistantPromptTemplate);
+
+    aiAssistantLoadingTimer = null;
+  }, 600);
+};
+const prefillAiAssistantPrompt = () => {
+  if (aiAssistantMessages.value.length > 0) return;
+  aiAssistantMessages.value = [
+    ...aiAssistantMessages.value,
+    { role: "assistant", content: aiAssistantPromptTemplate }
+  ];
+  scrollAiAssistantToEnd();
+};
+const aiAssistantUsageLabel = computed(() => {
+  if (!canUseAiAssistant.value) return "";
+  const usage = aiAssistantUsage.value;
+  if (!usage) return "-/- Restantes";
+  if (usage.unlimited) return `${usage.used}/∞ Restantes`;
+  const limit = usage.limit ?? 0;
+  return `${usage.used}/${limit} Restantes`;
+});
+const aiAssistantLimitReached = computed(() => {
+  const usage = aiAssistantUsage.value;
+  return Boolean(usage && !usage.unlimited && typeof usage.limit === "number" && usage.used >= usage.limit);
+});
+const formatAiAssistantRenewalDate = (value?: string | null) => {
+  if (!value) return "";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return parsed.toLocaleDateString("pt-BR");
+};
+const aiAssistantSendButtonLabel = computed(() => {
+  if (!aiAssistantLimitReached.value) return "Enviar";
+  const renewal = formatAiAssistantRenewalDate(aiAssistantUsage.value?.renewal_at);
+  return renewal
+    ? `Limite de solicitações mensais atingido. Renova em ${renewal}`
+    : "Limite de solicitações mensais atingido";
+});
+const openAiAssistantFilePicker = () => {
+  aiAssistantFileInputRef.value?.click();
+};
+const handleAiAssistantFileChange = (event: Event) => {
+  const input = event.target as HTMLInputElement | null;
+  aiAssistantAttachments.value = input?.files ? Array.from(input.files) : [];
+};
+const sendAiAssistantMessage = async () => {
+  const trimmedMessage = aiAssistantDraft.value.trim();
+  if (!trimmedMessage && aiAssistantAttachments.value.length === 0) {
+    return;
+  }
+
+  stopAiAssistantTimers();
+
+  const attachmentsSnapshot = [...aiAssistantAttachments.value];
+  const conversationSnapshot: AiAssistantChatMessage[] = [
+    ...aiAssistantMessages.value.map(message => ({
+      role: message.role,
+      content: message.content
+    })),
+    {
+      role: "user",
+      content: trimmedMessage || "Mensagem com arquivos"
+    }
+  ];
+
+  aiAssistantMessages.value = [
+    ...aiAssistantMessages.value,
+    {
+      role: "user",
+      content: trimmedMessage || "Mensagem com arquivos"
+    },
+    { role: "assistant", content: "" }
+  ];
+  const assistantIndex = aiAssistantMessages.value.length - 1;
+  aiAssistantDraft.value = "";
+  aiAssistantAttachments.value = [];
+  if (aiAssistantFileInputRef.value) {
+    aiAssistantFileInputRef.value.value = "";
+  }
+
+  aiAssistantLoading.value = true;
+  scrollAiAssistantToEnd();
+
+  try {
+    const result = await sendAiAssistantConversation(conversationSnapshot, attachmentsSnapshot);
+    if (result.usage) {
+      aiAssistantUsage.value = result.usage;
+    }
+    await animateAiAssistantMessage(assistantIndex, result.reply);
+  } catch (error) {
+    console.error("Erro ao consultar a ajuda IA", error);
+    aiAssistantMessages.value[assistantIndex].content =
+      "Não consegui consultar a IA agora. Tente novamente em alguns instantes.";
+  } finally {
+    aiAssistantLoading.value = false;
+    scrollAiAssistantToEnd();
+  }
+};
+const toggleAiAssistant = () => {
+  if (!canUseAiAssistant.value) return;
+  showAiAssistant.value = !showAiAssistant.value;
+};
+
+watch(showAiAssistant, isOpen => {
+  if (isOpen && aiAssistantMessages.value.length === 0) {
+    prefillAiAssistantPrompt();
+  }
+  if (isOpen) {
+    void refreshAiAssistantUsage();
+  }
+});
 
 const buildCountdownTargetDate = () => {
   const date = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
@@ -3435,14 +3785,38 @@ onMounted(async () => {
 }
 
 @media (min-width: 768px) {
-  .page-editor-view {
+  .editor-workspace.ai-assistant-open {
+    padding-right: 28rem;
+  }
+
+  .editor-body {
+    min-width: 0;
     zoom: 0.8;
   }
 }
 
+.ai-sidebar-slide-enter-active,
+.ai-sidebar-slide-leave-active {
+  transform-origin: right center;
+  will-change: transform, opacity;
+  transition: opacity 0.26s ease, transform 0.26s ease;
+}
+
+.ai-sidebar-slide-enter-from,
+.ai-sidebar-slide-leave-to {
+  opacity: 0;
+  transform: scaleX(0.94);
+}
+
+.ai-sidebar-slide-enter-to,
+.ai-sidebar-slide-leave-from {
+  opacity: 1;
+  transform: scaleX(1);
+}
+
 @supports not (zoom: 1) {
   @media (min-width: 768px) {
-    .page-editor-view {
+    .editor-body {
       transform: scale(0.8);
       transform-origin: top left;
       width: 125%;
@@ -3507,6 +3881,339 @@ onMounted(async () => {
 
 .editor-topbar-actions-mobile {
   display: none;
+}
+
+  .editor-ai-sidebar {
+    position: fixed;
+    top: 93px;
+    right: 24px;
+    bottom: 93px;
+    width: 29rem;
+  max-width: calc(100vw - 48px);
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border: 1px solid #d9e6dc;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: none;
+  padding: 18px;
+  backdrop-filter: blur(14px);
+  overflow: hidden;
+}
+
+.editor-ai-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(217, 230, 220, 0.85);
+}
+
+.editor-ai-sidebar-header-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.editor-ai-sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.editor-ai-sidebar-logo {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+.editor-ai-sidebar-eyebrow {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #63a275;
+}
+
+.editor-ai-sidebar-title {
+  margin-top: 0;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.05;
+  color: #0f172a;
+}
+
+.editor-ai-sidebar-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.editor-ai-sidebar-usage-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid #bfe7c7;
+  background: #eaf8ee;
+  color: #24703b;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  margin-left: auto;
+}
+
+.editor-ai-sidebar-close {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1px solid #d8e3db;
+  background: #f7faf8;
+  color: #45624f;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.editor-ai-sidebar-cta {
+  border: 1px solid #35bd57;
+  border-radius: 20px;
+  background: #3dcc5f;
+  color: #ffffff;
+  font-size: 16px;
+  line-height: 1.5;
+  font-weight: 700;
+  text-align: center;
+  padding: 18px 20px;
+  width: min(100%, 280px);
+  margin: 0 auto;
+  display: block;
+  transition: transform 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.editor-ai-sidebar-cta:hover {
+  background: #5be07a;
+  border-color: #2fa84f;
+  transform: translateY(-1px);
+}
+
+.editor-ai-sidebar-cta.is-active {
+  border-color: #2fa84f;
+  background: #48d766;
+}
+
+.editor-ai-sidebar-chat {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.editor-ai-sidebar-base-action {
+  display: flex;
+  justify-content: center;
+}
+
+.editor-ai-sidebar-base-button {
+  border-radius: 999px;
+  border: 1px solid #35bd57;
+  background: #f0fff4;
+  color: #0f7a36;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 10px 16px;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+.editor-ai-sidebar-base-button:hover:not(:disabled) {
+  background: #dff8e7;
+  transform: translateY(-1px);
+}
+
+.editor-ai-sidebar-base-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.editor-ai-sidebar-chat-log {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 12px;
+}
+
+  .editor-ai-sidebar-bubble {
+  width: fit-content;
+  max-width: 88%;
+  border-radius: 18px;
+  padding: 12px 14px;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.editor-ai-sidebar-bubble.is-user {
+  margin-left: auto;
+  background: #111111;
+  color: #ffffff;
+}
+
+.editor-ai-sidebar-bubble.is-assistant {
+  margin-right: auto;
+  background: #f8fbf9;
+  border: 1px solid #d9e6dc;
+  color: #344054;
+}
+
+.editor-ai-sidebar-bubble.is-user .editor-ai-sidebar-response-text {
+  color: #ffffff;
+}
+
+.editor-ai-sidebar-bubble.is-assistant .editor-ai-sidebar-response-text {
+  color: #344054;
+}
+
+.editor-ai-sidebar-response-text {
+  white-space: pre-wrap;
+  font-size: 14px;
+  line-height: 1.65;
+  color: #344054;
+  width: 100%;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.editor-ai-sidebar-composer {
+  border-top: 1px solid rgba(217, 230, 220, 0.85);
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.editor-ai-sidebar-composer-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.editor-ai-sidebar-attach {
+  border: 1px solid #d8e3db;
+  background: #f7faf8;
+  color: #45624f;
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.editor-ai-sidebar-attach-count {
+  font-size: 12px;
+  font-weight: 700;
+  color: #7d8c82;
+}
+
+.editor-ai-sidebar-textarea {
+  width: 100%;
+  resize: none;
+  border-radius: 18px;
+  border: 1px solid #d9e6dc;
+  background: #ffffff;
+  padding: 12px 14px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: #0f172a;
+}
+
+.editor-ai-sidebar-textarea:focus {
+  outline: none;
+  border-color: #35bd57;
+  box-shadow: 0 0 0 3px rgba(61, 204, 95, 0.12);
+}
+
+.editor-ai-sidebar-send {
+  border: 1px solid #35bd57;
+  border-radius: 18px;
+  background: #3dcc5f;
+  color: #ffffff;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 800;
+  transition: background-color 0.15s ease, transform 0.15s ease;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.25;
+}
+
+.editor-ai-sidebar-send:hover:not(:disabled) {
+  background: #5be07a;
+  transform: translateY(-1px);
+}
+
+.editor-ai-sidebar-send:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.editor-ai-sidebar-typing {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+}
+
+.editor-ai-sidebar-typing span {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: #41ce5f;
+  animation: editorAiTyping 1s infinite ease-in-out;
+}
+
+.editor-ai-sidebar-typing span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.editor-ai-sidebar-typing span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes editorAiTyping {
+  0%, 80%, 100% {
+    transform: translateY(0);
+    opacity: 0.45;
+  }
+  40% {
+    transform: translateY(-5px);
+    opacity: 1;
+  }
 }
 
 @media (max-width: 767px) {
@@ -3998,6 +4705,40 @@ onMounted(async () => {
     overflow: hidden;
   }
 
+  .editor-ai-fab {
+    position: fixed;
+    top: 180px;
+    right: 0;
+    z-index: 62;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    transform: none;
+    border-radius: 16px 0 0 16px;
+    box-shadow: 0 14px 32px rgba(15, 23, 42, 0.18);
+    min-width: 52px;
+    padding: 13px 9px;
+  }
+
+  .editor-ai-fab-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+  }
+
+  .editor-ai-fab-label {
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 800;
+      line-height: 1;
+      text-transform: uppercase;
+      white-space: nowrap;
+      letter-spacing: 0.08em;
+    }
+
   .editor-side-tab-step {
     width: 19px;
     height: 19px;
@@ -4042,6 +4783,14 @@ onMounted(async () => {
 .overlay-label {
   color: #ffffff !important;
 }
+
+
+
+
+
+
+
+
 
 
 

@@ -14,7 +14,9 @@ pillow
 anyio
 httpx
 mercadopago
+openai
 pytest
 azure-storage-blob
 dnspython
 publicsuffix2
+pypdf

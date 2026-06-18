@@ -29,6 +29,8 @@ from app.models import (
     external_api_key,
     flight_lookup_cache,
     flight_section,
+    ai_prompt_config,
+    ai_assistant_usage,
     system_banner,
     team_invite,
     whatsapp,
