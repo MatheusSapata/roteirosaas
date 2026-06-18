@@ -40,6 +40,7 @@ from app.services.viajechat_checkout_flow import (
 
 settings = get_settings()
 TEMP_DISABLE_CHECKOUT_SPLIT = False
+ASAAS_CUSTOMER_GROUP_NAME = "Roteiro Online"
 
 DEFAULT_CHECKOUTS = [
     {
@@ -161,6 +162,18 @@ def _extract_checkout_session_token(external_reference: str) -> str | None:
     if reference.startswith("co:"):
         return reference.split("co:", 1)[1].strip() or None
     return None
+
+
+def _build_asaas_customer_payload(*, name: str, email: str, document: str, phone: str, session_token: str) -> dict[str, Any]:
+    return {
+        "name": name,
+        "email": email,
+        "cpfCnpj": _normalize_digits(document),
+        "mobilePhone": _normalize_digits(phone),
+        "externalReference": f"checkout:{session_token}",
+        "notificationDisabled": False,
+        "groupName": ASAAS_CUSTOMER_GROUP_NAME,
+    }
 
 
 def _humanize_payment_method(value: str | None) -> str:
@@ -860,14 +873,13 @@ def _find_or_create_asaas_customer(
         if _normalize_digits(item.get("cpfCnpj")) == digits:
             return str(item.get("id"))
     customer = client.create_customer(
-        {
-            "name": name,
-            "email": email,
-            "cpfCnpj": digits,
-            "mobilePhone": _normalize_digits(phone),
-            "externalReference": f"checkout:{session_token}",
-            "notificationDisabled": False,
-        }
+        _build_asaas_customer_payload(
+            name=name,
+            email=email,
+            document=digits,
+            phone=phone,
+            session_token=session_token,
+        )
     )
     customer_id = customer.get("id")
     if not customer_id:
