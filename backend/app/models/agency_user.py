@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from app.db.base import Base
@@ -12,6 +12,7 @@ class AgencyUser(Base):
     agency_id = Column(Integer, ForeignKey("agencies.id", ondelete="CASCADE"), nullable=False)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     role = Column(String(50), nullable=False, default="editor")
+    hidden_from_team = Column(Boolean, nullable=False, default=False)
 
     agency = relationship("Agency", back_populates="users")
     user = relationship("User", back_populates="agencies")

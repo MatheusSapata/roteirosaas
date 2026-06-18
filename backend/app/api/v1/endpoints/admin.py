@@ -29,6 +29,8 @@ from app.models.agency_user import AgencyUser
 from app.models.page import Page, PageStatus
 from app.schemas.admin import (
     AdminAgencyOut,
+    AdminGlobalAgencyAdminCreateIn,
+    AdminGlobalAgencyAdminOut,
     AdminLtvCustomerRow,
     AdminLtvCustomersOut,
     AdminMetricsOut,
@@ -47,6 +49,7 @@ from app.schemas.admin import (
 from app.schemas.page import PageOut
 from app.services.cakto import CaktoAPIError, CaktoIntegrationService
 from app.services.asaas import AsaasAPIError, AsaasClient
+from app.services import auth as auth_service
 from app.services.ntfy import (
     NtfyService,
     NtfyServiceError,
@@ -1156,6 +1159,104 @@ def grant_trial(
     db.commit()
     db.refresh(user)
     return user
+
+
+@router.post("/users/global-admin", response_model=AdminUserOut, status_code=201)
+def create_global_agency_admin(
+    payload: AdminGlobalAgencyAdminCreateIn,
+    _: User = Depends(get_current_superuser),
+    db: Session = Depends(get_db),
+) -> AdminUserOut:
+    agency = db.query(Agency).filter(Agency.id == payload.agency_id).first()
+    if not agency:
+        raise HTTPException(status_code=404, detail="Agência não encontrada.")
+
+    normalized_email = payload.email.strip().lower()
+    existing_user = db.query(User).filter(func.lower(User.email) == normalized_email).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="E-mail já cadastrado.")
+
+    try:
+        auth_service.validate_password_strength(payload.password)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    user = User(
+        name=payload.name.strip(),
+        email=normalized_email,
+        hashed_password=auth_service.get_password_hash(payload.password),
+        cpf=payload.cpf,
+        whatsapp=payload.whatsapp,
+        cnpj=payload.cnpj,
+        plan="free",
+        is_active=True,
+        is_superuser=False,
+        is_owner=False,
+        role="admin",
+        status="active",
+        permissions=[],
+        primary_agency_id=agency.id,
+    )
+    db.add(user)
+    db.flush()
+
+    if not user.primary_agency_id:
+        user.primary_agency_id = agency.id
+    if user.is_owner is None:
+        user.is_owner = False
+    user.role = "admin"
+    user.status = "active"
+    user.permissions = []
+
+    membership = (
+        db.query(AgencyUser)
+        .filter(AgencyUser.agency_id == agency.id, AgencyUser.user_id == user.id)
+        .first()
+    )
+    if not membership:
+        membership = AgencyUser(agency_id=agency.id, user_id=user.id, role="admin", hidden_from_team=True)
+        db.add(membership)
+    else:
+        membership.role = "admin"
+        membership.hidden_from_team = True
+        db.add(membership)
+
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@router.get("/users/global-admins", response_model=list[AdminGlobalAgencyAdminOut])
+def list_global_agency_admins(
+    _: User = Depends(get_current_superuser),
+    db: Session = Depends(get_db),
+) -> list[AdminGlobalAgencyAdminOut]:
+    rows = (
+        db.query(User, AgencyUser, Agency)
+        .join(AgencyUser, AgencyUser.user_id == User.id)
+        .join(Agency, Agency.id == AgencyUser.agency_id)
+        .filter(
+            AgencyUser.hidden_from_team.is_(True),
+            AgencyUser.role == "admin",
+            User.status != "disabled",
+        )
+        .order_by(User.created_at.desc().nullslast(), User.id.desc())
+        .all()
+    )
+    return [
+        AdminGlobalAgencyAdminOut(
+            id=user.id,
+            name=user.name,
+            email=user.email,
+            agency_id=agency.id,
+            agency_name=agency.name,
+            agency_slug=agency.slug,
+            role=membership.role,
+            status=user.status,
+            created_at=user.created_at,
+        )
+        for user, membership, agency in rows
+    ]
 
 
 @router.patch("/users/{user_id}/subscription", response_model=AdminUserOut)

@@ -62,7 +62,11 @@ def get_team_summary(
     members_raw = (
         db.query(User)
         .join(AgencyUser, AgencyUser.user_id == User.id)
-        .filter(AgencyUser.agency_id == agency.id, User.status != "disabled")
+        .filter(
+            AgencyUser.agency_id == agency.id,
+            AgencyUser.hidden_from_team.is_(False),
+            User.status != "disabled",
+        )
         .all()
     )
     members = [_member_from_user(db, member, agency.id) for member in members_raw]

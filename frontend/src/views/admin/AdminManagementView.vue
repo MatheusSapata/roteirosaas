@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div v-if="isBootstrappingAdminManagement" class="flex min-h-[60vh] w-full items-center justify-center px-4 py-8 md:px-8">
     <div class="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-brand"></div>
   </div>
@@ -2399,6 +2399,7 @@ const toDateInputValue = (value?: string | null) => {
 type AdminPeriodOption = "7" | "30" | "90" | "custom";
 const days = ref<AdminPeriodOption>("30");
 const metrics = ref<Metrics | null>(null);
+
 const isMobile = ref(false);
 const customStartDate = ref("");
 const customEndDate = ref("");
@@ -3421,6 +3422,7 @@ const showSnackbar = (text: string) => {
   }, 3000);
 };
 
+
 const loadOnlineSessions = async (notify = false) => {
   try {
     onlineSessionsLoading.value = true;
@@ -4426,13 +4428,6 @@ watch(userPageSize, () => {
   userPage.value = 1;
 });
 
-watch(metrics, value => {
-  expandedUser.value = null;
-  if (!templateAgencyOptions.value.length && value?.agencies?.length) {
-    templateAgencyOptions.value = value.agencies;
-  }
-});
-
 watch(
   () => templateDialog.name,
   value => {
@@ -4801,7 +4796,6 @@ interface AdminPageSummary {
   slug: string;
   status: string;
 }
-
 
 
 
