@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, EmailStr, ConfigDict, Field
+from pydantic import BaseModel, EmailStr, ConfigDict, Field, field_validator
 
 
 class AdminUserPage(BaseModel):
@@ -54,6 +54,67 @@ class AdminUserOut(BaseModel):
     subscription_asaas_subscription_id: Optional[str] = None
     subscription_cakto_order_id: Optional[str] = None
     subscription_cakto_subscription_code: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AdminGlobalAgencyAdminCreateIn(BaseModel):
+    name: str
+    email: EmailStr
+    password: str = Field(min_length=8)
+    cpf: str
+    whatsapp: str
+    cnpj: Optional[str] = None
+    agency_id: int
+
+    @field_validator("cpf")
+    @classmethod
+    def validate_cpf(cls, value: str) -> str:
+        digits = "".join(filter(str.isdigit, value or ""))
+        if not digits or len(digits) != 11:
+            raise ValueError("CPF inválido")
+
+        def check_digit(nums: list[int]) -> int:
+            total = sum(v * i for v, i in zip(nums, range(len(nums) + 1, 1, -1)))
+            digit = 11 - (total % 11)
+            return digit if digit < 10 else 0
+
+        numbers = [int(d) for d in digits]
+        if len(set(numbers)) == 1:
+            raise ValueError("CPF inválido")
+        if check_digit(numbers[:9]) != numbers[9] or check_digit(numbers[:10]) != numbers[10]:
+            raise ValueError("CPF inválido")
+        return digits
+
+    @field_validator("whatsapp")
+    @classmethod
+    def sanitize_whatsapp(cls, value: str) -> str:
+        digits = "".join(filter(str.isdigit, value or ""))
+        if not digits:
+            raise ValueError("Informe o WhatsApp")
+        return digits
+
+    @field_validator("cnpj")
+    @classmethod
+    def validate_cnpj(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        digits = "".join(filter(str.isdigit, value))
+        if digits and len(digits) != 14:
+            raise ValueError("CNPJ inválido")
+        return digits or None
+
+
+class AdminGlobalAgencyAdminOut(BaseModel):
+    id: int
+    name: str
+    email: EmailStr
+    agency_id: int
+    agency_name: str
+    agency_slug: str
+    role: str
+    status: str | None = None
+    created_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 

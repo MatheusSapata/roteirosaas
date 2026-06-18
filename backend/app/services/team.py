@@ -121,7 +121,12 @@ def enforce_extra_user_limit(db: Session, agency_id: int, plan: str) -> None:
     extra_count = (
         db.query(User)
         .join(AgencyUser, AgencyUser.user_id == User.id)
-        .filter(AgencyUser.agency_id == agency_id, User.is_owner.is_(False), User.status == "active")
+        .filter(
+            AgencyUser.agency_id == agency_id,
+            AgencyUser.hidden_from_team.is_(False),
+            User.is_owner.is_(False),
+            User.status == "active",
+        )
         .count()
     )
     pending_count = (
