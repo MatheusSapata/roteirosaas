@@ -15,9 +15,10 @@ from app.schemas.agency import AgencyCreate, AgencyOut, AgencyUpdate, AgencySoci
 router = APIRouter()
 
 
-def _normalize_slug(value: str, max_length: int = 30) -> str:
+def _normalize_slug(value: str, max_length: int = 30, *, allow_dots: bool = False) -> str:
     normalized = unicodedata.normalize("NFD", value or "").encode("ascii", "ignore").decode("ascii").lower()
-    return re.sub(r"[^a-z0-9]+", "-", normalized).strip("-")[:max_length]
+    cleaned = re.sub(r"[^a-z0-9.]+", "-", normalized) if allow_dots else re.sub(r"[^a-z0-9]+", "-", normalized)
+    return cleaned.strip("-.")[:max_length]
 
 
 def replace_social_links(agency: Agency, social_links: list[AgencySocialLinkCreate] | None) -> None:
@@ -92,7 +93,7 @@ def update_agency(
     if "slug" in update_data and update_data["slug"]:
         incoming_slug = update_data["slug"].strip()
         if incoming_slug != agency.slug:
-            normalized_slug = _normalize_slug(incoming_slug)
+            normalized_slug = _normalize_slug(incoming_slug, allow_dots=True)
             if not normalized_slug:
                 raise HTTPException(status_code=400, detail="Slug obrigatorio.")
             existing_slug = (

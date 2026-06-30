@@ -199,7 +199,7 @@ import { useAuthStore } from "../../store/useAuthStore";
 import { addTagsToContactByEmail, viajeChatTagIds } from "../../services/viajeChat";
 import { createAdminLocalizer } from "../../utils/adminI18n";
 import { normalizeWhatsappDigits } from "../../utils/whatsapp";
-import { normalizeSlugInput } from "../../utils/slugify";
+import { normalizeAgencySlugInput } from "../../utils/slugify";
 
 const agencyStore = useAgencyStore();
 const authStore = useAuthStore();
@@ -216,8 +216,8 @@ const viewCopy = {
     nameLabel: t({ pt: "Nome", es: "Nombre" }),
     slugLabel: t({ pt: "Slug", es: "Slug" }),
     slugHint: t({
-      pt: "Slug é a parte do link depois da barra, sem espaços ou acentos. Ex.: minha-agencia-incrivel.",
-      es: "Slug es la parte del enlace después de la barra, sin espacios ni acentos. Ej.: mi-agencia-increible."
+      pt: "Slug é a parte do link depois da barra, sem espaços ou acentos. Você também pode usar ponto. Ex.: minha.agencia-incrivel.",
+      es: "Slug es la parte del enlace después de la barra, sin espacios ni acentos. También puedes usar punto. Ej.: mi.agencia-increible."
     }),
     slugLimit: t({ pt: "Limite: 30 caracteres.", es: "Límite: 30 caracteres." })
   },
@@ -622,7 +622,7 @@ const buildFormSnapshot = () =>
 
 const handleSlugInput = (event: Event) => {
   const target = event.target as HTMLInputElement;
-  const normalized = normalizeSlugInput(target.value, AGENCY_SLUG_MAX_LENGTH);
+  const normalized = normalizeAgencySlugInput(target.value, AGENCY_SLUG_MAX_LENGTH);
   form.slug = normalized;
   target.value = normalized;
 };
@@ -723,7 +723,7 @@ const save = async () => {
   const currentAgency = agencyStore.agencies.find(a => a.id === agencyStore.currentAgencyId) || null;
   const slugWasEdited = !agencyStore.currentAgencyId || (form.slug || "").trim() !== (currentAgency?.slug || "");
   const normalizedSlug = slugWasEdited
-    ? normalizeSlugInput(form.slug, AGENCY_SLUG_MAX_LENGTH)
+    ? normalizeAgencySlugInput(form.slug, AGENCY_SLUG_MAX_LENGTH)
     : (currentAgency?.slug || form.slug || "").trim();
 
   if (!normalizedSlug) {
