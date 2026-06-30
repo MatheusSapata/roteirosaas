@@ -152,7 +152,6 @@ def expire_subscriptions(now: Optional[datetime] = None) -> int:
             sub.status = "inactive"
             sub.valid_until = None
             sub.failed_attempts = 3
-            user.is_active = False
             db.add(user)
             processed += 1
         if processed:

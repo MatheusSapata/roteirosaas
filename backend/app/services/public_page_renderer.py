@@ -78,6 +78,25 @@ def _absolute_url(value: Optional[str], origin: str) -> Optional[str]:
     return f"{origin}/{value}"
 
 
+def _resolve_page_share_description(page: PublicPageOut, fallback_title: str, agency_name: str) -> str:
+    config = page.config if isinstance(page.config, dict) else {}
+    general = config.get("general") if isinstance(config, dict) else None
+    if isinstance(general, dict):
+        short_description = general.get("shortDescription")
+        if isinstance(short_description, str):
+            trimmed = short_description.strip()
+            if trimmed:
+                return trimmed
+
+    seo_description = page.seo_description
+    if isinstance(seo_description, str):
+        trimmed = seo_description.strip()
+        if trimmed:
+            return trimmed
+
+    return f"{agency_name} preparou um roteiro personalizado: {fallback_title}."
+
+
 def _optimize_og_image(image_url: Optional[str], origin: str) -> Optional[str]:
     if not image_url:
         return None
@@ -143,10 +162,7 @@ def _build_meta_block(page: PublicPageOut, canonical_url: str, origin: str) -> s
     seo_title = (page.seo_title or page.title).strip()
     final_title = seo_title if agency_name.lower() in seo_title.lower() else f"{agency_name} | {seo_title}"
 
-    description = (
-        page.seo_description
-        or f"{agency_name} preparou um roteiro personalizado: {page.title}."
-    ).strip()
+    description = _resolve_page_share_description(page, page.title, agency_name)
 
     image_candidate = page.cover_image_url or branding.get("logo_url")
     image_url = _absolute_url(image_candidate, origin)

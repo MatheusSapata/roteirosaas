@@ -734,7 +734,7 @@ import { useLeadCaptureStore } from "../store/useLeadCaptureStore";
 import { useThemeStore } from "../store/useThemeStore";
 import { getPlanLabel } from "../utils/planLabels";
 import { addTagsToContactByEmail, syncPlanTagForEmail, viajeChatTagIds } from "../services/viajeChat";
-import { normalizeSlugInput, slugify } from "../utils/slugify";
+import { normalizeAgencySlugInput, slugify } from "../utils/slugify";
 import { createAdminLocalizer } from "../utils/adminI18n";
 import { canAccessPermission, type PermissionKey } from "../utils/permissions";
 
@@ -1838,9 +1838,9 @@ watch(
 );
 
 watch(
-  () => [trialBlocked.value, subscriptionBlocked.value, route.fullPath],
+  () => [trialBlocked.value, route.fullPath],
   () => {
-    if (trialBlocked.value || subscriptionBlocked.value) {
+    if (trialBlocked.value) {
       showEndDialog.value = route.path !== "/admin/planos";
     } else {
       showEndDialog.value = false;
@@ -1919,7 +1919,7 @@ type AgencyPayload = {
 const AGENCY_SLUG_MAX_LENGTH = 30;
 
 const buildAgencySlugCandidate = (name: string, attempt = 0) => {
-  const baseSlug = normalizeSlugInput(name, AGENCY_SLUG_MAX_LENGTH) || "agencia";
+  const baseSlug = normalizeAgencySlugInput(name, AGENCY_SLUG_MAX_LENGTH) || "agencia";
   const suffix = attempt === 0 ? "" : `-${attempt}`;
   const availableLength = Math.max(1, AGENCY_SLUG_MAX_LENGTH - suffix.length);
   const trimmedBase = baseSlug.slice(0, availableLength).replace(/^-+|-+$/g, "");
