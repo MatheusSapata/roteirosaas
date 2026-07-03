@@ -62,16 +62,20 @@ class AdminGlobalAgencyAdminCreateIn(BaseModel):
     name: str
     email: EmailStr
     password: str = Field(min_length=8)
-    cpf: str
-    whatsapp: str
+    cpf: Optional[str] = None
+    whatsapp: Optional[str] = None
     cnpj: Optional[str] = None
-    agency_id: int
+    agency_id: Optional[int] = None
 
     @field_validator("cpf")
     @classmethod
-    def validate_cpf(cls, value: str) -> str:
+    def validate_cpf(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
         digits = "".join(filter(str.isdigit, value or ""))
-        if not digits or len(digits) != 11:
+        if not digits:
+            return None
+        if len(digits) != 11:
             raise ValueError("CPF inválido")
 
         def check_digit(nums: list[int]) -> int:
@@ -88,10 +92,12 @@ class AdminGlobalAgencyAdminCreateIn(BaseModel):
 
     @field_validator("whatsapp")
     @classmethod
-    def sanitize_whatsapp(cls, value: str) -> str:
+    def sanitize_whatsapp(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
         digits = "".join(filter(str.isdigit, value or ""))
         if not digits:
-            raise ValueError("Informe o WhatsApp")
+            return None
         return digits
 
     @field_validator("cnpj")

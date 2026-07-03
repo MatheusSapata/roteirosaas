@@ -66,4 +66,5 @@ class User(Base):
         if not self.subscription:
             return False
         status = (self.subscription.status or "").lower()
-        return status in {"past_due", "cancelled_admin", "inactive", "cancelled"}
+        failed_attempts = int(self.subscription.failed_attempts or 0)
+        return status != "active" and failed_attempts >= 3

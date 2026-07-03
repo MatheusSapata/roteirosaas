@@ -55,7 +55,7 @@
         </label>
 
         <label class="space-y-1 text-xs font-semibold text-slate-600">
-          <span>CPF</span>
+          <span>CPF opcional</span>
           <input
             v-model="form.cpf"
             type="text"
@@ -65,7 +65,7 @@
         </label>
 
         <label class="space-y-1 text-xs font-semibold text-slate-600">
-          <span>WhatsApp</span>
+          <span>WhatsApp opcional</span>
           <input
             v-model="form.whatsapp"
             type="text"
@@ -85,12 +85,12 @@
         </label>
 
         <label class="space-y-1 text-xs font-semibold text-slate-600 md:col-span-2 xl:col-span-1">
-          <span>Agência</span>
+          <span>Agência opcional</span>
           <select
             v-model.number="form.agency_id"
             class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 focus:border-emerald-500 focus:outline-none"
           >
-            <option :value="null">Selecione uma agência</option>
+            <option :value="null">Selecionar depois</option>
             <option v-for="agency in agencyOptions" :key="agency.id" :value="agency.id">
               {{ agency.name }} ({{ agency.slug }})
             </option>
@@ -117,20 +117,20 @@
       <div class="flex items-center justify-between gap-3">
         <div>
           <h2 class="text-lg font-semibold text-slate-900">Agências disponíveis</h2>
-          <p class="text-sm text-slate-500">A lista vem do painel de métricas do admin master.</p>
+          <p class="text-sm text-slate-500">A lista vem do cadastro completo de agências do admin master.</p>
         </div>
         <button
           type="button"
           class="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
-          :disabled="metricsLoading"
-          @click="loadMetrics"
+          :disabled="agenciesLoading"
+          @click="loadAgencies"
         >
           Recarregar
         </button>
       </div>
 
-      <div v-if="metricsError" class="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-        {{ metricsError }}
+      <div v-if="agenciesError" class="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        {{ agenciesError }}
       </div>
 
       <div class="mt-4 overflow-hidden rounded-xl border border-slate-200">
@@ -243,10 +243,6 @@ interface AdminAgencySummary {
   pages_count: number;
 }
 
-interface AdminMetricsResponse {
-  agencies: AdminAgencySummary[];
-}
-
 interface AdminGlobalAgencyAdmin {
   id: number;
   name: string;
@@ -260,8 +256,8 @@ interface AdminGlobalAgencyAdmin {
 }
 
 const agencyOptions = ref<AdminAgencySummary[]>([]);
-const metricsLoading = ref(false);
-const metricsError = ref("");
+const agenciesLoading = ref(false);
+const agenciesError = ref("");
 const globalAdmins = ref<AdminGlobalAgencyAdmin[]>([]);
 const adminsLoading = ref(false);
 const adminsError = ref("");
@@ -274,7 +270,7 @@ const form = reactive({
   cpf: "",
   whatsapp: "",
   cnpj: "",
-  agency_id: null as number | null
+    agency_id: null as number | null
 });
 
 const selectedAgency = computed(() => agencyOptions.value.find(agency => agency.id === form.agency_id) || null);
@@ -300,24 +296,20 @@ const resetForm = () => {
   form.cpf = "";
   form.whatsapp = "";
   form.cnpj = "";
-  form.agency_id = agencyOptions.value[0]?.id ?? null;
-  metricsError.value = "";
+  agenciesError.value = "";
 };
 
-const loadMetrics = async () => {
-  metricsLoading.value = true;
-  metricsError.value = "";
+const loadAgencies = async () => {
+  agenciesLoading.value = true;
+  agenciesError.value = "";
   try {
-    const { data } = await api.get<AdminMetricsResponse>("/admin/metrics", { params: { days: 30 } });
-    agencyOptions.value = Array.isArray(data?.agencies) ? data.agencies : [];
-    if (!form.agency_id && agencyOptions.value.length) {
-      form.agency_id = agencyOptions.value[0].id;
-    }
+    const { data } = await api.get<AdminAgencySummary[]>("/admin/agencies");
+    agencyOptions.value = Array.isArray(data) ? data : [];
   } catch (err: any) {
     console.error(err);
-    metricsError.value = err?.response?.data?.detail || "Não foi possível carregar as agências.";
+    agenciesError.value = err?.response?.data?.detail || "Não foi possível carregar as agências.";
   } finally {
-    metricsLoading.value = false;
+    agenciesLoading.value = false;
   }
 };
 
@@ -347,20 +339,20 @@ const createGlobalAdmin = async () => {
     agency_id: form.agency_id
   };
 
-  if (!payload.name || !payload.email || !payload.password || !payload.cpf || !payload.whatsapp || !payload.agency_id) {
-    metricsError.value = "Preencha nome, e-mail, senha, CPF, WhatsApp e agência.";
+  if (!payload.name || !payload.email || !payload.password) {
+    agenciesError.value = "Preencha nome, e-mail e senha.";
     return;
   }
 
   loading.value = true;
-  metricsError.value = "";
+  agenciesError.value = "";
   try {
     await api.post("/admin/users/global-admin", payload);
     showSnackbar("Admin global criado com sucesso.");
     resetForm();
   } catch (err: any) {
     console.error(err);
-    metricsError.value = err?.response?.data?.detail || "Não foi possível criar o usuário.";
+    agenciesError.value = err?.response?.data?.detail || "Não foi possível criar o usuário.";
   } finally {
     loading.value = false;
   }
@@ -369,15 +361,15 @@ const createGlobalAdmin = async () => {
 watch(
   agencyOptions,
   options => {
-    if (!form.agency_id && options.length) {
-      form.agency_id = options[0].id;
+    if (!options.length) {
+      form.agency_id = null;
     }
   },
   { immediate: true }
 );
 
 onMounted(() => {
-  void loadMetrics();
+  void loadAgencies();
   void loadGlobalAdmins();
 });
 </script>

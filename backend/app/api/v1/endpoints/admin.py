@@ -50,6 +50,7 @@ from app.schemas.page import PageOut
 from app.services.cakto import CaktoAPIError, CaktoIntegrationService
 from app.services.asaas import AsaasAPIError, AsaasClient
 from app.services import auth as auth_service
+from app.services.team import get_agency_plan
 from app.services.ntfy import (
     NtfyService,
     NtfyServiceError,
@@ -862,6 +863,30 @@ def search_admin_agencies(
     ]
 
 
+@router.get("/agencies", response_model=list[AdminAgencyOut])
+def list_admin_agencies(
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_superuser),
+) -> list[AdminAgencyOut]:
+    rows = (
+        db.query(Agency, func.count(Page.id).label("pages_count"))
+        .outerjoin(Page, Page.agency_id == Agency.id)
+        .group_by(Agency.id)
+        .order_by(func.lower(Agency.name))
+        .all()
+    )
+    return [
+        AdminAgencyOut(
+            id=agency.id,
+            name=agency.name,
+            slug=agency.slug,
+            created_at=agency.created_at,
+            pages_count=pages_count or 0,
+        )
+        for agency, pages_count in rows
+    ]
+
+
 @router.get("/revenue-forecast", response_model=AdminRevenueForecastOut)
 def get_admin_revenue_forecast(
     days: int = Query(30, ge=1, le=90),
@@ -1169,7 +1194,10 @@ def create_global_agency_admin(
 ) -> AdminUserOut:
     agency = db.query(Agency).filter(Agency.id == payload.agency_id).first()
     if not agency:
-        raise HTTPException(status_code=404, detail="Agência não encontrada.")
+        agency = db.query(Agency).order_by(func.lower(Agency.name)).first()
+    if not agency:
+        raise HTTPException(status_code=404, detail="Ag?ncia n?o encontrada.")
+    agency_plan = get_agency_plan(db, agency.id)
 
     normalized_email = payload.email.strip().lower()
     existing_user = db.query(User).filter(func.lower(User.email) == normalized_email).first()
@@ -1187,7 +1215,7 @@ def create_global_agency_admin(
         cpf=payload.cpf,
         whatsapp=payload.whatsapp,
         cnpj=payload.cnpj,
-        plan="free",
+        plan=agency_plan,
         is_active=True,
         is_superuser=False,
         is_owner=False,
@@ -1206,6 +1234,7 @@ def create_global_agency_admin(
     user.role = "admin"
     user.status = "active"
     user.permissions = []
+    user.plan = agency_plan
 
     membership = (
         db.query(AgencyUser)
