@@ -114,8 +114,8 @@ const publicPageCopy = {
   },
   temporaryUnavailableTitle: { pt: "Página temporariamente fora do ar.", es: "Página temporalmente fuera de servicio." },
   temporaryUnavailableDescription: {
-    pt: "Esta página está publicada, mas a assinatura está inativa no momento. Assim que o pagamento for reativado, ela volta automaticamente.",
-    es: "Esta página está publicada, pero la suscripción está inactiva. Cuando el pago se reactive, volverá automáticamente."
+    pt: "Esta página está publicada, mas a conta do dono da agência ficou inativa após 3 falhas de pagamento. Assim que a conta voltar a ficar ativa, ela retorna automaticamente.",
+    es: "Esta página está publicada, pero la cuenta del dueño de la agencia quedó inactiva tras 3 fallos de pago. Cuando la cuenta vuelva a estar activa, regresará automáticamente."
   },
   invalidLinkDescription: {
     pt: "Link inválido ou página indisponível. Solicite um novo roteiro profissional no Roteiro Online.",

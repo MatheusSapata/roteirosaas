@@ -134,7 +134,9 @@ def _is_owner_subscription_active(agency: Agency) -> bool:
     owner: User | None = owner_membership.user if owner_membership else None
     if owner is None or owner.subscription is None:
         return False
-    return str(owner.subscription.status or "").strip().lower() == "active"
+    status = (owner.subscription.status or "").strip().lower()
+    failed_attempts = int(owner.subscription.failed_attempts or 0)
+    return status == "active" or failed_attempts < 3
 
 
 def _ensure_page_is_publicly_available(page: Page) -> None:

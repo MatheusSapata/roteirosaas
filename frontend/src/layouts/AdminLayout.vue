@@ -638,6 +638,27 @@
       </div>
     </transition>
 
+    <transition name="fade">
+      <div
+        v-if="showSubscriptionBlockedDialog"
+        class="app-modal-overlay fixed inset-0 z-[55] flex items-center justify-center px-4"
+      >
+        <div class="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl">
+          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-rose-500">{{ viewCopy.subscription.blocked.eyebrow }}</p>
+          <h2 class="mt-3 text-2xl font-bold text-slate-900">{{ viewCopy.subscription.blocked.title }}</h2>
+          <p class="mt-2 text-sm text-slate-600">{{ viewCopy.subscription.blocked.description }}</p>
+          <div class="mt-6 flex flex-wrap justify-end">
+            <button
+              class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+              @click="goToPlansFromSubscriptionBlock"
+            >
+              {{ viewCopy.trial.blocked.goPlans }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </transition>
+
 
     <transition name="fade">
       <div
@@ -883,7 +904,8 @@ const viewCopy = {
       description: t({
         pt: "Seu período contratado terminou. Para voltar a editar e publicar roteiros, renove seu plano.",
         es: "Tu período contratado terminó. Para volver a editar y publicar itinerarios, renueva tu plan."
-      })
+      }),
+      close: t({ pt: "Fechar", es: "Cerrar" })
     }
   },
   cookies: {
@@ -1720,6 +1742,7 @@ const handleLogout = async () => {
 
 const showWelcomeDialog = ref(false);
 const showEndDialog = ref(false);
+const showSubscriptionBlockedDialog = ref(false);
 const showTrialWarning3Days = ref(false);
 const showTrialWarning1Day = ref(false);
 const mobileMenuOpen = ref(false);
@@ -1850,6 +1873,14 @@ watch(
 );
 
 watch(
+  () => [subscriptionBlocked.value, route.path, auth.user?.id],
+  () => {
+    showSubscriptionBlockedDialog.value = Boolean(subscriptionBlocked.value && route.path !== "/admin/planos");
+  },
+  { immediate: true }
+);
+
+watch(
   () => [trialActive.value, auth.user?.trial_warn_3days_ack, trialDaysLeft.value],
   () => {
     const daysLeft = trialDaysLeft.value;
@@ -1873,6 +1904,10 @@ watch(
 
 const goToPlans = () => {
   router.push("/admin/planos");
+};
+
+const goToPlansFromSubscriptionBlock = () => {
+  goToPlans();
 };
 
 const acknowledgeTrial = async (stage: "start" | "end" | "warn3" | "warn1", redirectToPlans = false) => {
