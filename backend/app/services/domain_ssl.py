@@ -45,15 +45,30 @@ class DomainSslService:
             try:
                 domain.ssl_status = "requested"
                 domain.ssl_last_error = None
-                subprocess.check_call(
+                result = subprocess.run(
                     [str(script), domain.host],
+                    capture_output=True,
+                    text=True,
                     timeout=300,
+                    check=False,
                 )
+                if result.returncode != 0:
+                    raise subprocess.CalledProcessError(
+                        result.returncode,
+                        result.args,
+                        output=result.stdout,
+                        stderr=result.stderr,
+                    ) from None
                 domain.ssl_status = "issued"
                 domain.ssl_last_error = None
             except subprocess.CalledProcessError as exc:
                 domain.ssl_status = "error"
-                domain.ssl_last_error = f"Falha ao emitir certificado: {exc}"
+                stderr = (exc.stderr or "").strip()
+                stdout = (exc.output or "").strip()
+                details = stderr or stdout or "Sem saida adicional do script."
+                domain.ssl_last_error = (
+                    f"Falha ao emitir certificado (codigo {exc.returncode}): {details}"
+                )
                 self.logger.exception("Erro executando script SSL para %s", domain.host)
             except subprocess.TimeoutExpired:
                 domain.ssl_status = "error"
