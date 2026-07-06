@@ -45,12 +45,16 @@ class DomainVerificationResult:
 
 
 logger = logging.getLogger(__name__)
+GOOGLE_PUBLIC_DNS_NAMESERVERS = ["8.8.8.8", "8.8.4.4"]
 
 
 class DomainVerificationService:
     def __init__(self, settings: Optional[Settings] = None) -> None:
         self.settings = settings or get_settings()
         self._resolver = dns.resolver.Resolver()
+        self._resolver.nameservers = GOOGLE_PUBLIC_DNS_NAMESERVERS
+        self._resolver.timeout = 3.0
+        self._resolver.lifetime = 5.0
         self._blocked_hosts = self._load_blocked_hosts()
 
     def _load_blocked_hosts(self) -> set[str]:
