@@ -6,7 +6,7 @@ from typing import Literal, Optional
 from pydantic import BaseModel, Field, validator
 from pydantic.config import ConfigDict
 
-LeadFieldType = Literal["name", "phone", "email", "city", "cpf", "birthdate"]
+LeadFieldType = Literal["name", "phone", "email", "city", "cpf", "birthdate", "text", "textarea"]
 
 
 class LeadFormFieldSchema(BaseModel):
@@ -51,6 +51,8 @@ class LeadFormBase(BaseModel):
     def validate_fields(cls, value: list[LeadFormFieldSchema]) -> list[LeadFormFieldSchema]:
         if not value:
             raise ValueError("Selecione pelo menos um campo.")
+        if len({field.id for field in value}) != len(value):
+            raise ValueError("Os campos do formulario precisam ter identificadores unicos.")
         return value
 
     @validator("auto_whatsapp_message_template", pre=True)
@@ -104,6 +106,8 @@ class LeadFormUpdate(BaseModel):
     def validate_fields(cls, value: Optional[list[LeadFormFieldSchema]]) -> Optional[list[LeadFormFieldSchema]]:
         if value is not None and not value:
             raise ValueError("Selecione pelo menos um campo.")
+        if value is not None and len({field.id for field in value}) != len(value):
+            raise ValueError("Os campos do formulario precisam ter identificadores unicos.")
         return value
 
     @validator("auto_whatsapp_message_template", pre=True)

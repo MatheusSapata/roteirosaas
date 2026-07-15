@@ -1,4 +1,4 @@
-export type LeadFieldType = "name" | "phone" | "email" | "city" | "cpf" | "birthdate";
+export type LeadFieldType = "name" | "phone" | "email" | "city" | "cpf" | "birthdate" | "text" | "textarea";
 
 export interface LeadFormField {
   id: string;

@@ -99,7 +99,11 @@ def submit_public_form(
     for field in form.fields or []:
         field_id = field.get("id")
         submission_value = values_map.get(field_id)
-        value = submission_value.value if submission_value else ""
+        value = (submission_value.value if submission_value else "").strip()
+        if field.get("required") and not value:
+            raise HTTPException(status_code=422, detail=f"O campo {field.get('label') or field_id} e obrigatorio.")
+        if submission_value and submission_value.type != field.get("type"):
+            raise HTTPException(status_code=422, detail="Tipo de campo invalido.")
         normalized_fields.append(
             {
                 "id": field_id,

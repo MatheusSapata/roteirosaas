@@ -76,6 +76,39 @@
                     </button>
                   </div>
                   <div class="fmf-sel-note">{{ state.fields.length }} campos selecionados</div>
+                  <div class="mt-4 border-t border-slate-200 pt-4">
+                    <div class="flex items-center justify-between gap-3">
+                      <div>
+                        <div class="fmf-sec-lbl">Campos personalizados</div>
+                        <span class="fm-hint">Crie perguntas livres para este formulário.</span>
+                      </div>
+                      <button type="button" class="btn btn-o btn-sm" @click="addCustomField">+ Adicionar campo</button>
+                    </div>
+                    <div v-if="customFields.length" class="mt-3 grid gap-3">
+                      <div v-for="field in customFields" :key="field.id" class="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                        <div class="grid gap-2 md:grid-cols-2">
+                          <div>
+                            <label class="fm-lbl">Pergunta / rótulo</label>
+                            <input v-model="field.label" class="fm-inp" placeholder="Ex: Qual destino você deseja conhecer?" />
+                          </div>
+                          <div>
+                            <label class="fm-lbl">Texto de exemplo</label>
+                            <input v-model="field.placeholder" class="fm-inp" placeholder="Ex: Cancún" />
+                          </div>
+                        </div>
+                        <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
+                          <div class="flex items-center gap-4">
+                            <select v-model="field.type" class="fm-sel !w-auto">
+                              <option value="text">Resposta curta</option>
+                              <option value="textarea">Resposta longa</option>
+                            </select>
+                            <label class="fm-check-row fm-check-row-inline"><input v-model="field.required" type="checkbox" /><span class="fm-check-lbl">Obrigatório</span></label>
+                          </div>
+                          <button type="button" class="text-sm font-semibold text-rose-600" @click="removeCustomField(field.id)">Remover</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
               <div class="fm-right">
@@ -251,6 +284,7 @@ const editingId = ref<string | null>(null);
 const errorMessage = ref("");
 const title = computed(() => (editingId.value ? "Editar formulário" : "Novo formulário"));
 const selectedTypes = computed(() => state.fields.map(field => field.type));
+const customFields = computed(() => state.fields.filter(field => field.type === "text" || field.type === "textarea"));
 const greetingByHour = computed(() => {
   const hour = new Date().getHours();
   if (hour < 12) return "Bom dia";
@@ -307,6 +341,15 @@ const toggleField = (type: LeadFieldType) => {
   else state.fields.push(createFieldFromPreset(type));
 };
 
+const addCustomField = () => {
+  state.fields.push({ id: generateId(), type: "text", label: "", placeholder: "", required: false });
+};
+
+const removeCustomField = (id: string) => {
+  const index = state.fields.findIndex(field => field.id === id);
+  if (index >= 0) state.fields.splice(index, 1);
+};
+
 const resetState = () => {
   state.name = "";
   state.title = "";
@@ -358,6 +401,7 @@ const validate = () => {
   if (!state.name.trim()) return (errorMessage.value = "Defina um nome para o formulário."), false;
   if (!state.title.trim()) return (errorMessage.value = "Informe o título do formulário."), false;
   if (!state.fields.length) return (errorMessage.value = "Selecione pelo menos um campo."), false;
+  if (customFields.value.some(field => !field.label.trim())) return (errorMessage.value = "Informe a pergunta de todos os campos personalizados."), false;
   const hasName = state.fields.some(field => field.type === "name");
   const hasPhone = state.fields.some(field => field.type === "phone");
   const hasEmail = state.fields.some(field => field.type === "email");

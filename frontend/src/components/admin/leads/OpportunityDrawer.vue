@@ -189,6 +189,20 @@
                     </div>
                   </div>
                 </div>
+                <div v-if="submittedFormAnswers.length" class="opp-line">
+                  <div class="opp-line-head">
+                    <div>
+                      <p class="opp-lbl">Respostas do formulário</p>
+                      <p class="opp-sub">Dados informados pelo lead</p>
+                    </div>
+                  </div>
+                  <div class="mt-3 grid gap-3 sm:grid-cols-2">
+                    <div v-for="answer in submittedFormAnswers" :key="answer.id" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                      <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{{ answer.label }}</p>
+                      <p class="mt-1 whitespace-pre-wrap break-words text-sm font-medium text-slate-800">{{ answer.value || "Não informado" }}</p>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div class="opp-tabs">
@@ -292,6 +306,19 @@ const router = useRouter();
 const leadStore = useLeadCaptureStore();
 
 const details = computed(() => leadStore.opportunityDetails);
+const submittedFormAnswers = computed(() => {
+  const values = details.value?.payload?.values;
+  if (!Array.isArray(values)) return [];
+  return values
+    .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object")
+    .map(item => ({
+      id: String(item.id || ""),
+      label: String(item.label || "Campo"),
+      type: String(item.type || ""),
+      value: String(item.value || "")
+    }))
+    .filter(item => item.id && ["text", "textarea"].includes(item.type));
+});
 const loading = computed(() => leadStore.opportunityDetailsLoading);
 const displayMode = computed(() => props.mode ?? "drawer");
 const isModalMode = computed(() => displayMode.value === "modal");

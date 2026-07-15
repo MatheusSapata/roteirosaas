@@ -37,7 +37,15 @@
                   {{ field.label }}
                   <span v-if="field.required" class="text-rose-500">*</span>
                 </label>
+                <textarea
+                  v-if="field.type === 'textarea'"
+                  v-model="formState[field.id]"
+                  :placeholder="field.placeholder"
+                  rows="3"
+                  class="w-full resize-y rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-900 shadow-sm focus:border-brand focus:ring-2 focus:ring-brand/50 dark:border-white/10 dark:bg-slate-900 dark:text-white"
+                ></textarea>
                 <input
+                  v-else
                   v-model="formState[field.id]"
                   :placeholder="field.placeholder"
                   :type="inputType(field.type)"

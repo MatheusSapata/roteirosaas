@@ -8,7 +8,8 @@
       <div class="preview-fields">
         <div v-for="field in visibleFields" :key="field.id || field.type" class="preview-field">
           <label>{{ field.label || presetLabels[field.type] }}</label>
-          <input :placeholder="field.placeholder || presetPlaceholders[field.type]" disabled />
+          <textarea v-if="field.type === 'textarea'" :placeholder="field.placeholder || 'Digite sua resposta'" disabled></textarea>
+          <input v-else :placeholder="field.placeholder || presetPlaceholders[field.type] || 'Digite sua resposta'" disabled />
         </div>
       </div>
 
@@ -70,6 +71,7 @@ const buttonStyle = computed(() => ({
 .preview-fields { display: grid; gap: 7px; text-align: left; }
 .preview-field label { display: block; margin-bottom: 4px; font-size: 10px; font-weight: 700; color: #90a099; text-transform: uppercase; }
 .preview-field input { width: 100%; border-radius: 9px; border: 1px solid #dee7e1; padding: 7px 9px; font-size: 12px; background: #ecf1ee; color: #93a09a; }
+.preview-field textarea { width: 100%; min-height: 54px; resize: none; border-radius: 9px; border: 1px solid #dee7e1; padding: 7px 9px; font-size: 12px; background: #ecf1ee; color: #93a09a; }
 
 .preview-body button { width: 100%; margin-top: 10px; border-radius: 11px; color: #132e1c; font-size: 14px; font-weight: 800; padding: 9px 10px; }
 .preview-body small { display: block; margin-top: 8px; color: #94a29a; font-size: 11px; }
