@@ -1512,8 +1512,9 @@ def start_pix_payment(db: Session, session: CheckoutSession) -> CheckoutSession:
         "startDate": start_date,
         "value": float(session.amount),
         "description": session.product_name[:35],
+        "paymentCreationMode": "SUBSCRIPTION",
         "immediateQrCode": {
-            "paymentCreationMode": "SUBSCRIPTION",
+            "originalValue": float(session.amount),
             "expirationSeconds": 3600,
         },
     }
@@ -2035,7 +2036,7 @@ def coerce_checkout_http_error(exc: Exception) -> HTTPException:
     if isinstance(exc, HTTPException):
         return exc
     if isinstance(exc, AsaasAPIError):
-        detail = "Erro ao processar cobranÃ§a no Asaas."
+        detail = "Erro ao processar cobrança no Asaas."
         try:
             raw = str(exc)
             if raw:

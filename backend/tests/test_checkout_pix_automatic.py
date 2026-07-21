@@ -89,7 +89,10 @@ def test_pix_checkout_always_creates_automatic_authorization(
     assert result.metadata_json["asaas_pix_automatic_authorization_id"] == "auth_automatic_123"
     payload = client.authorization_payloads[0]
     assert payload["frequency"] == expected_frequency
-    assert payload["immediateQrCode"]["paymentCreationMode"] == "SUBSCRIPTION"
+    assert payload["paymentCreationMode"] == "SUBSCRIPTION"
+    assert payload["value"] == 99.90
+    assert payload["immediateQrCode"]["originalValue"] == 99.90
+    assert "paymentCreationMode" not in payload["immediateQrCode"]
 
 
 def test_pix_upgrade_also_uses_automatic_authorization(monkeypatch: pytest.MonkeyPatch) -> None:
