@@ -1,8 +1,8 @@
 ﻿<template>
   <div
     :class="[
-      'min-h-screen overflow-x-hidden text-[14px]',
-      isPlansRoute ? 'bg-white text-slate-900' : (isDarkTheme ? 'bg-[#05070f] text-slate-100' : 'bg-slate-50 text-slate-900'),
+      'admin-shell-root min-h-screen overflow-x-hidden bg-background text-[14px] text-foreground',
+      isPlansRoute ? 'plans-layout bg-white text-slate-900' : '',
       themeWrapperClass
     ]"
   >
@@ -20,33 +20,32 @@
     <div class="flex min-h-screen">
       <aside
         :class="[
-          'admin-sidebar hidden w-[225px] flex-shrink-0 flex-col justify-between border-r px-0 py-0 shadow-md md:fixed md:inset-y-0 md:left-0 md:flex',
-          'border-[#254d32] bg-[#1A3D25] text-slate-100'
+          'admin-sidebar hidden w-64 flex-shrink-0 flex-col justify-between border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:fixed md:inset-y-0 md:left-0 md:flex'
         ]"
       >
         <div class="flex flex-1 min-h-0 flex-col">
-          <div class="flex items-center justify-center border-b border-white/10 px-5 py-2">
-            <img :src="sidebarLogoSrc" alt="Roteiro Online" class="max-h-[4.2rem] object-contain md:max-h-14" />
+          <div class="flex h-[72px] items-center border-b border-sidebar-border px-5">
+            <img :src="mobileHeaderLogoSrc" alt="Roteiro Online" class="max-h-12 max-w-[180px] object-contain" />
           </div>
-          <nav class="sidebar-scroll flex-1 overflow-y-auto space-y-0.5 px-[10px] py-2">
+          <nav class="sidebar-scroll flex-1 space-y-1 overflow-y-auto px-3 py-4">
             <section
               v-for="section in sidebarSections"
               :key="`desktop-section-${section.id}`"
               class="pt-1 first:pt-0"
-              :class="section.id !== sidebarSections[0]?.id ? 'mt-2' : ''"
+              :class="section.id !== sidebarSections[0]?.id ? 'mt-4' : ''"
             >
-              <p class="px-[10px] pb-1 pt-2 text-[10px] font-bold uppercase tracking-[0.1em] text-white/30">{{ section.label }}</p>
-              <div class="space-y-0.5">
+              <p class="px-3 pb-2 pt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{{ section.label }}</p>
+              <div class="space-y-1">
                 <template v-for="item in section.items" :key="item.id">
               <RouterLink
                 v-if="item.type === 'link'"
                 :to="item.to"
-                class="desktop-nav-item flex items-center gap-[10px] rounded-[9px] px-[10px] py-[9px] text-[13px] font-medium transition"
+                class="desktop-nav-item flex min-h-10 items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors"
                 :class="[isTopLevelActive(item) ? activeClass : inactiveClass, isTopLevelActive(item) ? 'is-active' : '']"
               >
                 <span
                   :class="[
-                    'flex h-[18px] w-[18px] items-center justify-center text-slate-100'
+                    'flex h-[18px] w-[18px] items-center justify-center'
                   ]"
                 >
                   <svg
@@ -67,13 +66,13 @@
               <div v-else class="space-y-0.5">
                 <button
                   type="button"
-                  class="desktop-nav-item flex w-full items-center gap-[10px] rounded-[9px] px-[10px] py-[9px] text-[13px] font-medium transition"
+                  class="desktop-nav-item flex min-h-10 w-full items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors"
                   :class="[isParentActive(item) ? activeClass : inactiveClass, isParentActive(item) ? 'is-active' : '']"
                   @click="toggleNavGroup(item.id)"
                 >
                   <span
                     :class="[
-                      'flex h-[18px] w-[18px] items-center justify-center text-slate-100'
+                      'flex h-[18px] w-[18px] items-center justify-center'
                     ]"
                   >
                     <svg
@@ -106,12 +105,12 @@
                     {{ getNavBadge(item.id) }}
                   </span>
                 </button>
-                <div v-if="isGroupExpanded(item)" class="ml-0 space-y-0.5 pb-1 pt-0.5">
+                <div v-if="isGroupExpanded(item)" class="ml-3 space-y-1 border-l border-sidebar-border pb-1 pl-2 pt-1">
                   <RouterLink
                     v-for="child in item.children"
                     :key="`${item.id}-${child.path}`"
                     :to="child.path"
-                    class="desktop-nav-subitem flex w-full items-center rounded-[9px] px-[20px] py-[8px] text-[12px] font-medium transition"
+                    class="desktop-nav-subitem flex min-h-9 w-full items-center rounded-lg px-3 py-2 text-[12px] font-medium transition-colors"
                     :class="[isChildActive(child.path) ? childActiveClass : childInactiveClass, isChildActive(child.path) ? 'is-active-sub' : '']"
                   >
                     <span>{{ child.label }}</span>
@@ -126,30 +125,60 @@
 
         <div
           :class="[
-            'mt-6 border-t px-[10px] pt-4 pb-3',
-            'border-white/10'
+            'border-t border-sidebar-border p-3'
           ]"
         >
-          <div class="group relative flex w-full items-center gap-3 rounded-xl pr-2">
-            <div class="pointer-events-none absolute inset-0 rounded-xl bg-transparent transition group-hover:bg-white/10"></div>
+          <button
+            type="button"
+            class="sidebar-theme-toggle mb-2 flex w-full items-center gap-3 rounded-lg border border-sidebar-border bg-sidebar-accent px-3 py-2.5 text-left text-[12px] font-medium text-sidebar-foreground transition-colors hover:border-ring hover:bg-accent hover:text-accent-foreground"
+            :aria-label="viewCopy.themeToggle.label"
+            :title="viewCopy.themeToggle.label"
+            @click="toggleTheme"
+          >
+            <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-background text-muted-foreground">
+              <svg v-if="isDarkTheme" viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="4" />
+                <path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41" />
+              </svg>
+              <svg v-else viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3A7 7 0 0 0 21 12.79Z" />
+              </svg>
+            </span>
+            <span class="min-w-0 flex-1">
+              <span class="block font-semibold">{{ viewCopy.themeToggle.title }}</span>
+              <span class="block text-[10px] text-muted-foreground">{{ isDarkTheme ? viewCopy.themeToggle.active : viewCopy.themeToggle.inactive }}</span>
+            </span>
+            <span
+              class="relative h-5 w-9 flex-shrink-0 rounded-full transition-colors"
+              :class="isDarkTheme ? 'bg-primary' : 'bg-border'"
+              aria-hidden="true"
+            >
+              <span
+                class="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-soft transition-transform"
+                :class="isDarkTheme ? 'translate-x-[18px]' : 'translate-x-0.5'"
+              ></span>
+            </span>
+          </button>
+          <div class="group relative flex w-full items-center gap-2 rounded-xl border border-transparent pr-2 transition-colors hover:border-sidebar-border hover:bg-sidebar-accent">
             <RouterLink
               to="/admin/perfil"
-              class="relative z-10 flex min-w-0 flex-1 items-center gap-3 rounded-xl px-[10px] py-2 text-left transition"
+              class="relative z-10 flex min-w-0 flex-1 items-center gap-3 rounded-xl px-2 py-2 text-left"
             >
-              <span class="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#3DCC5F] text-sm font-extrabold text-[#0F1F14]">
+              <span class="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary text-sm font-extrabold text-primary-foreground">
                 <img v-if="userAvatarUrl" :src="userAvatarUrl" alt="Avatar" class="h-full w-full object-cover" />
                 <template v-else>{{ userInitial }}</template>
               </span>
               <span class="min-w-0 flex-1">
-                <span class="block text-[13px] font-semibold text-white">{{ (userDisplayName || "").split(" ")[0] || userDisplayName }}</span>
-                <span class="block text-[11px] text-white/50">{{ userRoleLabel }}</span>
+                <span class="block truncate text-[13px] font-semibold text-foreground">{{ (userDisplayName || "").split(" ")[0] || userDisplayName }}</span>
+                <span class="block text-[11px] text-muted-foreground">{{ userRoleLabel }}</span>
               </span>
             </RouterLink>
             <button
               type="button"
               @click="handleLogout"
-              class="relative z-20 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-white/10 text-white/80 transition hover:bg-white/20"
-              aria-label="Sair"
+              class="relative z-20 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
+              :aria-label="viewCopy.sidebar.logout"
+              :title="viewCopy.sidebar.logout"
             >
               <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M15 17l5-5-5-5" />
@@ -162,43 +191,71 @@
       </aside>
       <main
         :class="[
-          'admin-main flex min-h-0 flex-1 flex-col overflow-x-hidden md:ml-[225px]',
-          isPlansRoute ? 'bg-white text-slate-900' : (isDarkTheme ? 'bg-[#05070f] text-slate-100' : 'bg-slate-50 text-slate-900')
+          'admin-main flex min-h-0 flex-1 flex-col overflow-x-hidden bg-background text-foreground md:ml-64',
+          isPlansRoute ? 'bg-white text-slate-900' : ''
         ]"
       >
+        <header
+          v-if="isPlansRoute"
+          class="flex h-[64px] flex-shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 md:hidden"
+        >
+          <img :src="ColoredLogo" alt="Roteiro Online" class="h-10 w-auto max-w-[148px] object-contain" />
+          <button
+            type="button"
+            class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-soft transition-colors hover:bg-brand-dark"
+            @click="mobileMenuOpen = true"
+            :aria-label="viewCopy.sidebar.openMenu"
+            :title="viewCopy.sidebar.openMenu"
+          >
+            <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+        </header>
+        <button
+          v-if="!isPlansRoute && !isInboxRoute"
+          type="button"
+          class="fixed right-4 top-4 z-30 inline-flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-card text-foreground shadow-elegant transition-colors hover:bg-accent hover:text-accent-foreground md:hidden"
+          @click="mobileMenuOpen = true"
+          :aria-label="viewCopy.sidebar.openMenu"
+          :title="viewCopy.sidebar.openMenu"
+        >
+          <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
         <div
           :class="[
             isInboxRoute
               ? 'admin-content flex-1 min-h-0 overflow-hidden bg-inherit p-0'
               : isPlansRoute
                 ? 'admin-content flex-1 min-h-0 overflow-hidden overflow-x-hidden bg-white p-0'
-                : isDarkTheme
-                  ? 'admin-content flex-1 min-h-0 overflow-y-auto overflow-x-hidden bg-[#05070f] px-3 pt-0 pb-4 md:px-6 md:pt-2 md:pb-6'
-                  : 'admin-content flex-1 min-h-0 overflow-y-auto overflow-x-hidden bg-slate-50 px-3 pt-0 pb-4 md:px-6 md:pt-2 md:pb-6',
+                : 'admin-content flex-1 min-h-0 overflow-y-auto overflow-x-hidden bg-background px-4 pb-6 pt-16 sm:px-6 md:py-6 lg:px-8',
             isPlansRoute
               ? 'bg-white text-slate-900'
-              : (isDarkTheme ? 'text-slate-100' : 'text-slate-900')
+              : 'text-foreground'
           ]"
         >
           <div
-            v-if="isMobileViewport"
-            class="relative -mx-3 mb-2 flex min-h-[74px] items-center justify-center border border-[#2b6b3f] bg-gradient-to-r from-[#184C2D] via-[#1A5631] to-[#1E5E35] px-3"
+            v-if="isMobileViewport && isInboxRoute"
+            class="relative flex min-h-[64px] items-center justify-between border-b border-border bg-card px-4"
           >
-            <img :src="sidebarLogoSrc" alt="Roteiro Online" class="h-14 w-auto object-contain" />
-            <div class="absolute right-2 top-1/2 -translate-y-1/2">
+            <img :src="mobileHeaderLogoSrc" alt="Roteiro Online" class="h-10 w-auto max-w-[148px] object-contain" />
+            <div>
             <button
               type="button"
-              class="inline-flex h-10 w-10 items-center justify-center rounded-full p-0 text-white transition hover:bg-white/10"
+              class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-primary p-0 text-primary-foreground shadow-soft transition hover:bg-brand-dark"
               @click="mobileMenuOpen = true"
+              :aria-label="viewCopy.sidebar.openMenu"
+              :title="viewCopy.sidebar.openMenu"
             >
-              <span class="sr-only">{{ viewCopy.sidebar.openMenu }}</span>
-              <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+              <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
                 <path d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
             </div>
           </div>
-          <div :class="isPlansRoute ? 'flex-1 min-h-0 bg-white overflow-hidden' : (isDarkTheme ? 'flex-1 min-h-0 bg-[#05070f]' : 'flex-1 min-h-0 bg-slate-50')">
+          <div :class="isPlansRoute ? 'flex-1 min-h-0 bg-white overflow-hidden' : 'flex-1 min-h-0 bg-background'">
             <RouterView />
           </div>
         </div>
@@ -217,42 +274,41 @@
           @click="mobileMenuOpen = false"
         ></div>
         <div
-          class="flex h-full w-[14.75rem] max-w-[78vw] flex-col shadow-2xl transition-colors md:rounded-l-3xl"
-          :class="'bg-[#1A3D25] text-slate-100'"
+          class="flex h-full w-72 max-w-[86vw] flex-col border-l border-sidebar-border bg-sidebar text-sidebar-foreground shadow-elegant transition-colors"
         >
-          <div class="relative flex items-center justify-start border-b border-white/10 px-4 py-3">
-            <span class="text-[14px] font-semibold uppercase tracking-[0.12em] text-white">MENU</span>
+          <div class="relative flex h-[72px] items-center justify-start border-b border-sidebar-border px-4">
+            <img :src="mobileHeaderLogoSrc" alt="Roteiro Online" class="h-10 w-auto max-w-[160px] object-contain" />
             <button
               type="button"
-              class="absolute right-4 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border"
-              :class="isDarkTheme ? 'border-white/40 text-white' : 'border-white/40 text-white'"
+              class="absolute right-4 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
               @click="mobileMenuOpen = false"
+              :aria-label="viewCopy.sidebar.closeMenu"
+              :title="viewCopy.sidebar.closeMenu"
             >
-              <span class="sr-only">{{ viewCopy.sidebar.closeMenu }}</span>
               <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                 <path d="M6 6l12 12M6 18 18 6" />
               </svg>
             </button>
           </div>
-          <nav class="sidebar-scroll flex-1 overflow-y-auto space-y-0.5 px-1.5 py-2">
+          <nav class="sidebar-scroll flex-1 space-y-1 overflow-y-auto px-3 py-4">
             <section
               v-for="section in sidebarSections"
               :key="`mobile-section-${section.id}`"
               class="pt-1 first:pt-0"
-              :class="section.id !== sidebarSections[0]?.id ? 'mt-2' : ''"
+              :class="section.id !== sidebarSections[0]?.id ? 'mt-4' : ''"
             >
-              <p class="px-1.5 pb-1 pt-2 text-[10px] font-bold uppercase tracking-[0.1em] text-white/30">{{ section.label }}</p>
-              <div class="space-y-0.5">
+              <p class="px-3 pb-2 pt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{{ section.label }}</p>
+              <div class="space-y-1">
                 <template v-for="item in section.items" :key="'mobile-' + item.id">
               <RouterLink
                 v-if="item.type === 'link'"
                 :to="item.to"
-                class="desktop-nav-item flex items-center gap-[10px] rounded-[9px] px-2 py-[9px] text-[13px] font-medium transition"
+                class="desktop-nav-item flex min-h-10 items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors"
                 :class="[isTopLevelActive(item) ? activeClass : inactiveClass, isTopLevelActive(item) ? 'is-active' : '']"
                 @click="mobileMenuOpen = false"
               >
                 <span
-                  :class="['flex h-[18px] w-[18px] items-center justify-center text-slate-100']"
+                  :class="['flex h-[18px] w-[18px] items-center justify-center']"
                 >
                   <svg
                     :viewBox="navIconViewBoxes[item.iconPath] || navIconViewBoxes.default"
@@ -272,12 +328,12 @@
               <div v-else class="space-y-0.5">
                 <button
                   type="button"
-                  class="desktop-nav-item flex w-full items-center gap-[10px] rounded-[9px] px-2 py-[9px] text-[13px] font-medium transition"
+                  class="desktop-nav-item flex min-h-10 w-full items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors"
                   :class="[isParentActive(item) ? activeClass : inactiveClass, isParentActive(item) ? 'is-active' : '']"
                   @click="toggleNavGroup(item.id)"
                 >
                   <span
-                    :class="['flex h-[18px] w-[18px] items-center justify-center text-slate-100']"
+                    :class="['flex h-[18px] w-[18px] items-center justify-center']"
                   >
                     <svg
                       :viewBox="navIconViewBoxes[item.iconPath] || navIconViewBoxes.default"
@@ -309,12 +365,12 @@
                     {{ getNavBadge(item.id) }}
                   </span>
                 </button>
-                <div v-if="isGroupExpanded(item)" class="ml-0 space-y-0.5 pb-1 pt-0.5">
+                <div v-if="isGroupExpanded(item)" class="ml-3 space-y-1 border-l border-sidebar-border pb-1 pl-2 pt-1">
                   <RouterLink
                     v-for="child in item.children"
                     :key="'mobile-' + item.id + '-' + child.path"
                     :to="child.path"
-                    class="desktop-nav-subitem flex w-full items-center rounded-[9px] px-3.5 py-[8px] text-[12px] font-medium transition"
+                    class="desktop-nav-subitem flex min-h-9 w-full items-center rounded-lg px-3 py-2 text-[12px] font-medium transition-colors"
                     :class="[isChildActive(child.path) ? childActiveClass : childInactiveClass, isChildActive(child.path) ? 'is-active-sub' : '']"
                     @click="mobileMenuOpen = false"
                   >
@@ -328,31 +384,61 @@
           </nav>
           <div
             :class="[
-              'mt-6 border-t px-1.5 pt-4 pb-3',
-              'border-white/10'
+              'border-t border-sidebar-border p-3'
             ]"
           >
-            <div class="group relative flex w-full items-center gap-3 rounded-xl pr-2">
-              <div class="pointer-events-none absolute inset-0 rounded-xl bg-transparent transition group-hover:bg-white/10"></div>
+            <button
+              type="button"
+              class="sidebar-theme-toggle mb-2 flex w-full items-center gap-3 rounded-lg border border-sidebar-border bg-sidebar-accent px-3 py-2.5 text-left text-[12px] font-medium text-sidebar-foreground transition-colors hover:border-ring hover:bg-accent hover:text-accent-foreground"
+              :aria-label="viewCopy.themeToggle.label"
+              :title="viewCopy.themeToggle.label"
+              @click="toggleTheme"
+            >
+              <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-background text-muted-foreground">
+                <svg v-if="isDarkTheme" viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="4" />
+                  <path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41" />
+                </svg>
+                <svg v-else viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3A7 7 0 0 0 21 12.79Z" />
+                </svg>
+              </span>
+              <span class="min-w-0 flex-1">
+                <span class="block font-semibold">{{ viewCopy.themeToggle.title }}</span>
+                <span class="block text-[10px] text-muted-foreground">{{ isDarkTheme ? viewCopy.themeToggle.active : viewCopy.themeToggle.inactive }}</span>
+              </span>
+              <span
+                class="relative h-5 w-9 flex-shrink-0 rounded-full transition-colors"
+                :class="isDarkTheme ? 'bg-primary' : 'bg-border'"
+                aria-hidden="true"
+              >
+                <span
+                  class="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-soft transition-transform"
+                  :class="isDarkTheme ? 'translate-x-[18px]' : 'translate-x-0.5'"
+                ></span>
+              </span>
+            </button>
+            <div class="group relative flex w-full items-center gap-2 rounded-xl border border-transparent pr-2 transition-colors hover:border-sidebar-border hover:bg-sidebar-accent">
               <RouterLink
                 to="/admin/perfil"
                 class="relative z-10 flex min-w-0 flex-1 items-center gap-3 rounded-xl px-2 py-2 text-left transition"
                 @click="mobileMenuOpen = false"
               >
-                <span class="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#3DCC5F] text-sm font-extrabold text-[#0F1F14]">
+                <span class="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary text-sm font-extrabold text-primary-foreground">
                   <img v-if="userAvatarUrl" :src="userAvatarUrl" alt="Avatar" class="h-full w-full object-cover" />
                   <template v-else>{{ userInitial }}</template>
                 </span>
                 <span class="min-w-0 flex-1">
-                  <span class="block text-[13px] font-semibold text-white">{{ (userDisplayName || "").split(" ")[0] || userDisplayName }}</span>
-                  <span class="block text-[11px] text-white/50">{{ userRoleLabel }}</span>
+                  <span class="block truncate text-[13px] font-semibold text-foreground">{{ (userDisplayName || "").split(" ")[0] || userDisplayName }}</span>
+                  <span class="block text-[11px] text-muted-foreground">{{ userRoleLabel }}</span>
                 </span>
               </RouterLink>
               <button
                 type="button"
                 @click="handleLogout"
-                class="relative z-20 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-white/10 text-white/80 transition hover:bg-white/20"
-                aria-label="Sair"
+                class="relative z-20 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
+                :aria-label="viewCopy.sidebar.logout"
+                :title="viewCopy.sidebar.logout"
               >
                 <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M15 17l5-5-5-5" />
@@ -371,7 +457,7 @@
         v-if="showWelcomeDialog"
         class="app-modal-overlay fixed inset-0 z-50 flex items-center justify-center px-4"
       >
-        <div class="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl">
+        <div class="w-full max-w-lg rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-elegant sm:p-8">
           <p class="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-500">{{ viewCopy.trial.welcome.eyebrow }}</p>
           <h2 class="mt-3 text-2xl font-bold text-slate-900">
             {{ viewCopy.trial.welcome.titlePrefix }} {{ trialPlanName }} {{ viewCopy.trial.welcome.titleConnector }} {{ formattedDate }}
@@ -400,7 +486,7 @@
         v-if="showAgencySetupFlow"
         class="app-modal-overlay fixed inset-0 z-[60] flex items-center justify-center px-4 py-6"
       >
-        <div class="w-full max-w-2xl rounded-3xl bg-white p-8 shadow-2xl">
+        <div class="w-full max-w-2xl rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-elegant sm:p-8">
           <template v-if="agencySetupStep === 'name'">
             <div class="space-y-6">
               <div>
@@ -550,7 +636,7 @@
         v-if="showAgencySetupUnsavedDialog"
         class="app-modal-overlay fixed inset-0 z-[70] flex items-center justify-center px-4"
       >
-        <div class="w-full max-w-md rounded-3xl bg-white p-6 text-center shadow-2xl">
+        <div class="w-full max-w-md rounded-2xl border border-border bg-card p-6 text-center text-card-foreground shadow-elegant">
           <p class="text-xs font-semibold uppercase tracking-[0.3em] text-amber-500">{{ viewCopy.onboarding.unsaved.eyebrow }}</p>
           <h2 class="mt-3 text-2xl font-bold text-slate-900">{{ viewCopy.onboarding.unsaved.title }}</h2>
           <p class="mt-2 text-sm text-slate-600">{{ viewCopy.onboarding.unsaved.description }}</p>
@@ -571,7 +657,7 @@
         v-if="showTrialWarning3Days"
         class="app-modal-overlay fixed inset-0 z-50 flex items-center justify-center px-4"
       >
-        <div class="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl">
+        <div class="w-full max-w-lg rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-elegant sm:p-8">
           <p class="text-xs font-semibold uppercase tracking-[0.3em] text-amber-500">{{ viewCopy.trial.warn3.eyebrow }}</p>
           <h2 class="mt-3 text-2xl font-bold text-slate-900">{{ viewCopy.trial.warn3.title }}</h2>
           <p class="mt-2 text-sm text-slate-600">
@@ -599,7 +685,7 @@
         v-if="showTrialWarning1Day"
         class="app-modal-overlay fixed inset-0 z-50 flex items-center justify-center px-4"
       >
-        <div class="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl">
+        <div class="w-full max-w-lg rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-elegant sm:p-8">
           <p class="text-xs font-semibold uppercase tracking-[0.3em] text-rose-500">{{ viewCopy.trial.warn1.eyebrow }}</p>
           <h2 class="mt-3 text-2xl font-bold text-slate-900">{{ viewCopy.trial.warn1.title }}</h2>
           <p class="mt-2 text-sm text-slate-600">
@@ -622,7 +708,7 @@
         v-if="showEndDialog"
         class="app-modal-overlay fixed inset-0 z-50 flex items-center justify-center px-4"
       >
-        <div class="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl">
+        <div class="w-full max-w-lg rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-elegant sm:p-8">
           <p class="text-xs font-semibold uppercase tracking-[0.3em] text-rose-500">{{ blockedAccessTitle.eyebrow }}</p>
           <h2 class="mt-3 text-2xl font-bold text-slate-900">{{ blockedAccessTitle.title }}</h2>
           <p class="mt-2 text-sm text-slate-600">{{ blockedAccessDescription }}</p>
@@ -643,7 +729,7 @@
         v-if="showSubscriptionBlockedDialog"
         class="app-modal-overlay fixed inset-0 z-[55] flex items-center justify-center px-4"
       >
-        <div class="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl">
+        <div class="w-full max-w-lg rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-elegant sm:p-8">
           <p class="text-xs font-semibold uppercase tracking-[0.3em] text-rose-500">{{ viewCopy.subscription.blocked.eyebrow }}</p>
           <h2 class="mt-3 text-2xl font-bold text-slate-900">{{ viewCopy.subscription.blocked.title }}</h2>
           <p class="mt-2 text-sm text-slate-600">{{ viewCopy.subscription.blocked.description }}</p>
@@ -665,7 +751,7 @@
         v-if="showCookieConsent"
         class="fixed inset-x-6 bottom-4 z-50 md:left-1/2 md:top-auto md:bottom-8 md:-translate-x-1/2 md:w-3/4"
       >
-        <div class="flex flex-col gap-2 rounded-3xl border border-slate-200 bg-white/95 p-4 shadow-2xl backdrop-blur">
+        <div class="flex flex-col gap-2 rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-elegant">
           <div class="flex flex-col items-center gap-3 text-center md:flex-row md:items-center md:justify-center md:text-left">
             <div class="md:flex-1">
               <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">{{ viewCopy.cookies.title }}</p>
@@ -700,7 +786,7 @@
         v-if="permissionSnackbar.open"
         class="app-snackbar-layer fixed bottom-4 left-1/2 z-[1000] w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 md:bottom-6 md:w-auto md:min-w-[360px]"
       >
-        <div class="rounded-xl bg-rose-600 px-4 py-3 text-sm font-semibold text-white shadow-2xl">
+        <div class="rounded-xl bg-destructive px-4 py-3 text-sm font-semibold text-destructive-foreground shadow-elegant">
           {{ permissionSnackbar.message }}
         </div>
       </div>
@@ -709,7 +795,7 @@
       <button
         v-if="floatingInboxNotification.open"
         type="button"
-        class="fixed right-5 top-5 z-[1100] w-[calc(100%-2.5rem)] max-w-sm rounded-2xl border border-emerald-200 bg-white p-3 text-left shadow-2xl transition hover:-translate-y-[1px]"
+        class="fixed right-5 top-5 z-[1100] w-[calc(100%-2.5rem)] max-w-sm rounded-2xl border border-border bg-card p-3 text-left text-card-foreground shadow-elegant transition hover:-translate-y-[1px]"
         @click="openInboxFromNotification"
       >
         <p class="text-[11px] font-semibold uppercase tracking-wide text-emerald-600">Nova mensagem</p>
@@ -1687,19 +1773,10 @@ const currentPageTitle = computed(() => {
   return navLabel("dashboard");
 });
 
-const pageTitleRowPaddingClass = computed(() => {
-  const path = route.path;
-  if (path.startsWith("/admin/administracao")) return "px-4 md:px-8";
-  if (path.startsWith("/admin/dashboard")) return "px-4 md:px-8";
-  if (path.startsWith("/admin/leads")) return "px-4 md:px-5";
-  if (path.startsWith("/admin/pages")) return "px-4 md:px-5";
-  return "px-4 md:px-6";
-});
-
-const activeClass = computed(() => "bg-[#2A5C38] text-white");
-const inactiveClass = computed(() => "text-white/65 hover:bg-white/7 hover:text-white");
-const childActiveClass = computed(() => "bg-white/6 text-white");
-const childInactiveClass = computed(() => "text-white/55 hover:bg-white/6 hover:text-white");
+const activeClass = computed(() => "bg-sidebar-primary text-sidebar-primary-foreground shadow-soft");
+const inactiveClass = computed(() => "text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground");
+const childActiveClass = computed(() => "bg-sidebar-accent text-accent-foreground");
+const childInactiveClass = computed(() => "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground");
 
 const agencyName = computed(() => agencyStore.currentAgency?.name || agencyStore.agencies[0]?.name || "");
 const sidebarLogoSrc = SidebarLogo;
@@ -2154,6 +2231,7 @@ const scrollToTop = () => {
 };
 
 onMounted(async () => {
+  themeStore.activateDocumentTheme();
   window.addEventListener(API_PERMISSION_DENIED_EVENT, handlePermissionDeniedToast as EventListener);
   setupViewportWatcher();
   if (auth.token && !auth.user) {
@@ -2186,6 +2264,7 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+  themeStore.deactivateDocumentTheme();
   window.removeEventListener(API_PERMISSION_DENIED_EVENT, handlePermissionDeniedToast as EventListener);
   if (permissionSnackbarTimer) {
     window.clearTimeout(permissionSnackbarTimer);
@@ -2302,13 +2381,13 @@ body,
 
 body.admin-body-dark,
 body.admin-body-dark #app {
-  background-color: #05070f;
+  background-color: var(--background);
   background-image: none;
 }
 
 body.admin-body-light,
 body.admin-body-light #app {
-  background-color: #f8fafc;
+  background-color: var(--background);
   background-image: none;
 }
 
@@ -2318,13 +2397,13 @@ body.admin-body-light #app {
 ========================= */
 
 .light-theme {
-  background: #f8fafc;
-  color: #0f172a;
+  background: var(--background);
+  color: var(--foreground);
 }
 
 .dark-theme {
-  background: #020617;
-  color: #f1f5f9;
+  background: var(--background);
+  color: var(--foreground);
 }
 
 
@@ -2349,12 +2428,12 @@ body.admin-body-light #app {
 ========================= */
 
 .dark-theme .admin-main {
-  background: #05070f;
-  color: #f1f5f9;
+  background: var(--background);
+  color: var(--foreground);
 }
 
 .dark-theme .admin-content {
-  color: #f1f5f9;
+  color: var(--foreground);
 }
 
 .dark-theme .bg-white,
@@ -2468,46 +2547,19 @@ body.admin-body-light #app {
   position: relative;
 }
 
-.desktop-nav-item.router-link-active::before,
-.desktop-nav-item.is-active::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3px;
-  height: 24px;
-  background: #3dcc5f;
-  border-radius: 0 3px 3px 0;
-}
-
 .desktop-nav-subitem {
   position: relative;
 }
 
 .desktop-nav-subitem.is-active-sub {
-  background: rgba(255, 255, 255, 0.08);
-  color: #ffffff;
-}
-
-.desktop-nav-subitem.router-link-active::before,
-.desktop-nav-subitem.is-active::before,
-.desktop-nav-subitem.is-active-sub::before {
-  content: "";
-  position: absolute;
-  left: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 2px;
-  height: 16px;
-  background: #3dcc5f;
-  border-radius: 999px;
+  background: var(--sidebar-accent);
+  color: var(--accent-foreground);
 }
 
 .nav-pill-badge {
   margin-left: auto;
-  background: #3dcc5f;
-  color: #fff;
+  background: var(--sidebar-primary);
+  color: var(--sidebar-primary-foreground);
   font-size: 11px;
   font-weight: 700;
   padding: 3px 8px;
@@ -2517,7 +2569,7 @@ body.admin-body-light #app {
 
 .sidebar-scroll {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+  scrollbar-color: var(--sidebar-border) transparent;
 }
 
 .sidebar-scroll::-webkit-scrollbar {
@@ -2529,12 +2581,12 @@ body.admin-body-light #app {
 }
 
 .sidebar-scroll::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--sidebar-border);
   border-radius: 999px;
 }
 
 .sidebar-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.14);
+  background: var(--muted-foreground);
 }
 </style>
 

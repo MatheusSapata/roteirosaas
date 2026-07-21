@@ -151,6 +151,8 @@
                   type="button"
                   class="inline-flex items-center gap-1 whitespace-nowrap text-sm font-semibold"
                   :style="accentTextStyle"
+                  :aria-expanded="isJourneyExpanded(journey, journeyIndex) ? 'true' : 'false'"
+                  :aria-controls="`flight-journey-${journeyIndex}`"
                   @click="toggleJourney(journey, journeyIndex)"
                 >
                   {{ isJourneyExpanded(journey, journeyIndex) ? "Ler menos" : "Ler mais" }}
@@ -173,7 +175,11 @@
           </header>
 
           <transition name="flight-details-expand">
-            <div v-if="isJourneyExpanded(journey, journeyIndex)" :style="expandedAreaStyle">
+            <div
+              v-if="isJourneyExpanded(journey, journeyIndex)"
+              :id="`flight-journey-${journeyIndex}`"
+              :style="expandedAreaStyle"
+            >
               <p
                 v-if="!segmentsFor(journey).length"
                 class="px-4 py-5 text-sm text-slate-600 md:px-6"

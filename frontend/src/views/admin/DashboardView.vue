@@ -156,16 +156,16 @@
             <svg id="areaChart" width="100%" :height="chartHeight" preserveAspectRatio="none">
               <defs>
                 <linearGradient id="g-visits" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="#2EAD4C" stop-opacity="0.20" />
-                  <stop offset="100%" stop-color="#2EAD4C" stop-opacity="0.01" />
+                  <stop offset="0%" stop-color="var(--chart-1)" stop-opacity="0.20" />
+                  <stop offset="100%" stop-color="var(--chart-1)" stop-opacity="0.01" />
                 </linearGradient>
                 <linearGradient id="g-clicks" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="#F97316" stop-opacity="0.20" />
-                  <stop offset="100%" stop-color="#F97316" stop-opacity="0.01" />
+                  <stop offset="0%" stop-color="var(--chart-8)" stop-opacity="0.20" />
+                  <stop offset="100%" stop-color="var(--chart-8)" stop-opacity="0.01" />
                 </linearGradient>
                 <linearGradient id="g-leads" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="#7C5CFC" stop-opacity="0.20" />
-                  <stop offset="100%" stop-color="#7C5CFC" stop-opacity="0.01" />
+                  <stop offset="0%" stop-color="var(--chart-6)" stop-opacity="0.20" />
+                  <stop offset="100%" stop-color="var(--chart-6)" stop-opacity="0.01" />
                 </linearGradient>
               </defs>
 
@@ -173,9 +173,9 @@
               <path v-if="visibleSeries.clicks && chartSeries.clicks.area" :d="chartSeries.clicks.area" fill="url(#g-clicks)" />
               <path v-if="visibleSeries.leads && chartSeries.leads.area" :d="chartSeries.leads.area" fill="url(#g-leads)" />
 
-              <path v-if="visibleSeries.visits && chartSeries.visits.path" :d="chartSeries.visits.path" fill="none" stroke="#2EAD4C" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
-              <path v-if="visibleSeries.clicks && chartSeries.clicks.path" :d="chartSeries.clicks.path" fill="none" stroke="#F97316" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
-              <path v-if="visibleSeries.leads && chartSeries.leads.path" :d="chartSeries.leads.path" fill="none" stroke="#7C5CFC" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+              <path v-if="visibleSeries.visits && chartSeries.visits.path" :d="chartSeries.visits.path" fill="none" stroke="var(--chart-1)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+              <path v-if="visibleSeries.clicks && chartSeries.clicks.path" :d="chartSeries.clicks.path" fill="none" stroke="var(--chart-8)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+              <path v-if="visibleSeries.leads && chartSeries.leads.path" :d="chartSeries.leads.path" fill="none" stroke="var(--chart-6)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
 
               <circle
                 v-for="dot in visibleSeries.visits ? chartSeries.visits.dots : []"
@@ -183,8 +183,8 @@
                 :cx="dot.x"
                 :cy="dot.y"
                 r="3.5"
-                fill="#2EAD4C"
-                stroke="#fff"
+                fill="var(--chart-1)"
+                stroke="var(--card)"
                 stroke-width="1.5"
               />
               <circle
@@ -193,8 +193,8 @@
                 :cx="dot.x"
                 :cy="dot.y"
                 r="3.5"
-                fill="#F97316"
-                stroke="#fff"
+                fill="var(--chart-8)"
+                stroke="var(--card)"
                 stroke-width="1.5"
               />
               <circle
@@ -203,8 +203,8 @@
                 :cx="dot.x"
                 :cy="dot.y"
                 r="3.5"
-                fill="#7C5CFC"
-                stroke="#fff"
+                fill="var(--chart-6)"
+                stroke="var(--card)"
                 stroke-width="1.5"
               />
 
@@ -253,19 +253,19 @@
               <div class="page-side">
                 <span class="page-visits">{{ item.visits }}</span>
                 <div class="page-actions">
-                  <button type="button" class="page-action-btn view" title="Ver" @click="viewPage(item)">
+                  <button type="button" class="page-action-btn view" title="Ver" aria-label="Ver página publicada" @click="viewPage(item)">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                       <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                       <circle cx="12" cy="12" r="3" />
                     </svg>
                   </button>
-                  <button type="button" class="page-action-btn edit" title="Editar" @click="editPage(item)">
+                  <button type="button" class="page-action-btn edit" title="Editar" aria-label="Editar página" @click="editPage(item)">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                       <path d="M12 20h9" />
                       <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z" />
                     </svg>
                   </button>
-                  <button type="button" class="page-action-btn share" title="Copiar" @click="sharePage(item)">
+                  <button type="button" class="page-action-btn share" title="Copiar" aria-label="Copiar link da página" @click="sharePage(item)">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                       <path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07L11.2 4.72" />
                       <path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 0 0 7.07 7.07L12.8 19.28" />
@@ -953,35 +953,31 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .dashboard-reference {
-  --verde: #3dcc5f;
-  --verde-light: #5be07a;
-  --verde-dim: rgba(61, 204, 95, 0.12);
-  --verde-border: rgba(61, 204, 95, 0.25);
-  --sidebar: #1a3d25;
-  --sidebar-active: #2a5c38;
-  --bg: #f5f7f5;
-  --surface: #ffffff;
-  --surface2: #f0f5f1;
-  --text: #0f1f14;
-  --text-2: #4a6455;
-  --text-3: #8aa693;
-  --border: #dde8df;
-  --shadow: 0 1px 3px rgba(15, 31, 20, 0.06), 0 4px 12px rgba(15, 31, 20, 0.04);
-  --shadow-md: 0 4px 16px rgba(15, 31, 20, 0.08), 0 1px 4px rgba(15, 31, 20, 0.04);
-  --purple: #7c5cfc;
+  --verde: var(--primary);
+  --verde-light: var(--primary-accent);
+  --verde-dim: var(--status-success);
+  --verde-border: var(--border);
+  --surface: var(--card);
+  --surface2: var(--muted);
+  --text: var(--foreground);
+  --text-2: var(--secondary-foreground);
+  --text-3: var(--muted-foreground);
+  --shadow: var(--shadow-card);
+  --shadow-md: var(--shadow-elegant);
+  --purple: var(--chart-6);
 
   width: 100%;
   min-height: 100%;
   background: transparent;
-  padding: 28px 32px;
+  padding: 0;
   color: var(--text);
-  font-family: "Plus Jakarta Sans", "Inter", sans-serif;
+  font-family: var(--font-sans);
 }
 
 .copy-toast {
   border: 1px solid var(--verde-border);
-  background: rgba(15, 31, 20, 0.94);
-  color: #ffffff;
+  background: var(--popover);
+  color: var(--popover-foreground);
   padding: 10px 14px;
   border-radius: 999px;
   box-shadow: var(--shadow-md);
@@ -1001,7 +997,7 @@ onBeforeUnmount(() => {
   width: 44px;
   height: 44px;
   border-radius: 999px;
-  border: 4px solid #d6e4da;
+  border: 4px solid var(--border);
   border-top-color: var(--verde);
   animation: spin 0.8s linear infinite;
 }
@@ -1021,8 +1017,9 @@ onBeforeUnmount(() => {
 }
 
 .page-title {
-  font-size: 22px;
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 600;
   letter-spacing: -0.4px;
 }
 
@@ -1043,8 +1040,9 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 7px;
   border: none;
-  border-radius: 10px;
-  padding: 9px 16px;
+  min-height: 36px;
+  border-radius: var(--radius-lg);
+  padding: 8px 16px;
   font-size: 13px;
   font-weight: 700;
   line-height: 1;
@@ -1065,78 +1063,23 @@ onBeforeUnmount(() => {
 
 .btn-primary {
   background: var(--verde);
-  color: #0f1f14;
+  color: var(--primary-foreground);
+  box-shadow: var(--shadow-soft);
 }
 
 .btn-ghost {
-  background: var(--surface);
+  background: var(--background);
   color: var(--text-2);
   border: 1px solid var(--border);
 }
 
-.banner {
-  background: linear-gradient(135deg, #1a3d25 0%, #2a5c38 50%, #1f4a2d 100%);
-  border-radius: 16px;
-  padding: 20px 24px;
-  margin-bottom: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  position: relative;
+.btn-primary:hover {
+  background: var(--brand-dark);
 }
 
-.banner-left {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.banner-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(61, 204, 95, 0.2);
-  color: var(--verde);
-  font-weight: 800;
-}
-
-.banner-title {
-  color: #fff;
-  font-size: 15px;
-  font-weight: 700;
-}
-
-.banner-desc {
-  color: rgba(255, 255, 255, 0.65);
-  font-size: 13px;
-  margin-top: 2px;
-}
-
-.banner-cta {
-  border: none;
-  border-radius: 10px;
-  background: var(--verde);
-  color: #0f1f14;
-  font-weight: 700;
-  font-size: 13px;
-  padding: 9px 18px;
-  cursor: pointer;
-}
-
-.banner-close {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  border: none;
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
-  cursor: pointer;
-  color: rgba(255, 255, 255, 0.7);
-  background: rgba(255, 255, 255, 0.1);
+.btn-ghost:hover {
+  background: var(--accent);
+  color: var(--accent-foreground);
 }
 
 .metrics-grid {
@@ -1149,7 +1092,7 @@ onBeforeUnmount(() => {
 .metric-card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   padding: 20px;
   box-shadow: var(--shadow);
 }
@@ -1188,16 +1131,17 @@ onBeforeUnmount(() => {
 }
 
 .metric-icon.amber {
-  background: rgba(245, 158, 11, 0.1);
-  color: #f59e0b;
+  background: var(--status-warning);
+  color: var(--status-warning-foreground);
 }
 
 .metric-icon.purple {
-  background: rgba(124, 92, 252, 0.1);
+  background: var(--status-info);
   color: var(--purple);
 }
 
 .metric-value {
+  font-family: var(--font-display);
   font-size: 32px;
   line-height: 1;
   letter-spacing: -1px;
@@ -1222,12 +1166,12 @@ onBeforeUnmount(() => {
 
 .metric-badge.up {
   background: var(--verde-dim);
-  color: #2a8a3e;
+  color: var(--status-success-foreground);
 }
 
 .metric-badge.down {
-  background: rgba(239, 68, 68, 0.1);
-  color: #dc2626;
+  background: var(--status-danger);
+  color: var(--status-danger-foreground);
 }
 
 .metric-footer-text {
@@ -1242,7 +1186,7 @@ onBeforeUnmount(() => {
 .chart-card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   padding: 20px;
   box-shadow: var(--shadow);
 }
@@ -1256,6 +1200,7 @@ onBeforeUnmount(() => {
 }
 
 .chart-title {
+  font-family: var(--font-display);
   font-size: 15px;
   font-weight: 700;
 }
@@ -1282,6 +1227,7 @@ onBeforeUnmount(() => {
   border-radius: 9px;
   padding: 6px 10px;
   background: var(--surface);
+  min-height: 36px;
 }
 
 .chart-legend {
@@ -1315,9 +1261,9 @@ onBeforeUnmount(() => {
   border-radius: 3px;
 }
 
-.legend-dot.visits { background: #2ead4c; }
-.legend-dot.clicks { background: #f97316; }
-.legend-dot.leads { background: #7c5cfc; }
+.legend-dot.visits { background: var(--chart-1); }
+.legend-dot.clicks { background: var(--chart-8); }
+.legend-dot.leads { background: var(--chart-6); }
 
 .period-switch {
   display: inline-flex;
@@ -1337,7 +1283,7 @@ onBeforeUnmount(() => {
 
 .period-btn.active {
   background: var(--verde);
-  color: #0f1f14;
+  color: var(--primary-foreground);
 }
 
 .chart-stage {
@@ -1358,9 +1304,10 @@ onBeforeUnmount(() => {
   min-width: 144px;
   border-radius: 10px;
   padding: 8px 10px;
-  background: #0f172a;
-  color: #fff;
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.28);
+  background: var(--popover);
+  color: var(--popover-foreground);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-elegant);
   font-size: 11px;
   line-height: 1.35;
 }
@@ -1396,7 +1343,7 @@ onBeforeUnmount(() => {
 .list-card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   padding: 20px;
   box-shadow: var(--shadow);
 }
@@ -1409,6 +1356,7 @@ onBeforeUnmount(() => {
 }
 
 .list-title {
+  font-family: var(--font-display);
   font-size: 15px;
   font-weight: 700;
 }
@@ -1456,7 +1404,7 @@ onBeforeUnmount(() => {
 }
 
 .lead-avatar {
-  background: rgba(124, 92, 252, 0.12);
+  background: var(--status-info);
   color: var(--purple);
 }
 
@@ -1556,7 +1504,7 @@ onBeforeUnmount(() => {
 
 .page-action-btn.view { background: var(--verde-dim); color: var(--verde); }
 .page-action-btn.edit { background: var(--surface2); color: var(--text-2); border: 1px solid var(--border); }
-.page-action-btn.share { background: var(--verde-dim); color: #1a7a35; border: 1px solid var(--verde-border); }
+.page-action-btn.share { background: var(--verde-dim); color: var(--status-success-foreground); border: 1px solid var(--verde-border); }
 
 .lead-btn {
   padding: 4px 9px;
@@ -1564,7 +1512,7 @@ onBeforeUnmount(() => {
 
 .lead-btn-contact {
   background: var(--verde);
-  color: #0f1f14;
+  color: var(--primary-foreground);
   text-decoration: none;
 }
 
@@ -1577,12 +1525,16 @@ onBeforeUnmount(() => {
 .empty-text {
   font-size: 12px;
   color: var(--text-3);
-  padding-top: 4px;
+  padding: 28px 12px;
+  text-align: center;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--muted);
 }
 
 @media (max-width: 1100px) {
-  .dashboard-reference {
-    padding: 22px 16px;
+  .metrics-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .bottom-grid {
@@ -1596,10 +1548,13 @@ onBeforeUnmount(() => {
     align-items: flex-start;
   }
 
-  .push-test-menu {
-    left: 0;
-    right: auto;
-    width: min(20rem, 92vw);
+  .topbar-actions {
+    width: 100%;
+  }
+
+  .topbar-actions .btn {
+    flex: 1;
+    justify-content: center;
   }
 
   .metrics-grid {
@@ -1615,8 +1570,12 @@ onBeforeUnmount(() => {
     justify-content: flex-start;
   }
 
-  .banner {
-    padding-right: 56px;
+  .filter-select {
+    width: 100%;
+  }
+
+  .chart-legend {
+    flex-wrap: wrap;
   }
 
   .list-card {
@@ -1677,6 +1636,21 @@ onBeforeUnmount(() => {
     padding: 3px 8px;
     font-size: 10px;
     white-space: nowrap;
+  }
+}
+
+@media (max-width: 420px) {
+  .topbar-actions {
+    flex-direction: column;
+  }
+
+  .topbar-actions .btn {
+    width: 100%;
+  }
+
+  .lead-info {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 </style>

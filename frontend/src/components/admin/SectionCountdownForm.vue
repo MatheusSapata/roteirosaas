@@ -359,6 +359,34 @@ watch(
   gap: 10px;
 }
 
+.countdown-shell,
+.countdown-content { background: var(--background); color: var(--foreground); }
+.countdown-nav { border-color: var(--border); background: var(--card); }
+.countdown-nav-item { border-color: var(--primary); background: var(--primary); color: var(--primary-foreground); }
+.countdown-title { color: var(--foreground); }
+.countdown-subtitle,
+.countdown-nav-item small,
+.countdown-label small { color: var(--muted-foreground); }
+.countdown-input { border-color: var(--input); background: var(--card); color: var(--foreground); }
+.countdown-input:focus {
+  outline: none;
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 15%, transparent);
+}
+.countdown-color-picker { border-color: var(--input); background: var(--card); }
+.countdown-pill { border-color: var(--border); background: var(--muted); color: var(--foreground); }
+.countdown-pill:hover {
+  border-color: color-mix(in srgb, var(--primary) 38%, var(--border));
+  background: var(--accent);
+}
+.countdown-pill.active { border-color: var(--primary); background: var(--primary); color: var(--primary-foreground); }
+.countdown-help:hover::after {
+  border: 1px solid var(--border);
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: var(--shadow-elegant);
+}
+
 @media (max-width: 900px) {
   .countdown-shell {
     grid-template-columns: 1fr;

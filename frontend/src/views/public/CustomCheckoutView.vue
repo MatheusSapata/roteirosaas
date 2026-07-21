@@ -103,7 +103,7 @@
                     <path fill="currentColor" d="M17.332 16.817h-1.347a2.08 2.08 0 0 1-1.54-.697l-1.979-2.176a.63.63 0 0 0-.932 0L9.555 16.12c-.4.44-.952.697-1.54.697H6.668l2.536 2.536c.381.381.7.7.98.938c.293.249.596.455.959.573a2.78 2.78 0 0 0 1.714 0c.363-.118.666-.324.959-.573c.28-.239.599-.557.98-.938z" />
                   </svg>
                 </div>
-                <span>Pagar com PIX</span>
+                <span>Pagar com PIX Automático</span>
               </button>
               <button class="checkout-method-card" @click="chooseCard">
                 <div class="checkout-method-icon">
@@ -189,7 +189,7 @@
           <template v-else-if="step === 'pix'">
             <div class="checkout-copy">
               <p class="checkout-eyebrow">Você está quase lá!</p>
-              <h1 class="checkout-title">Boa! Você escolheu pagar no PIX!</h1>
+              <h1 class="checkout-title">Boa! Você escolheu pagar no PIX Automático!</h1>
             </div>
 
             <div class="checkout-pix-card">
@@ -198,13 +198,14 @@
                 <p v-else class="checkout-pix-empty">QR indisponível no momento. Use o código PIX abaixo.</p>
               </div>
               <div class="checkout-pix-copy">
-                <p>Escaneie o QR Code com o app do seu banco para realizar o pagamento.</p>
+                <p>Escaneie o QR Code para pagar a primeira cobrança e autorizar as próximas cobranças automáticas.</p>
                 <button class="checkout-secondary" @click="copyPixCode">Copiar código</button>
               </div>
             </div>
 
             <div class="checkout-note-box">
               <p>Após o pagamento, você será redirecionado automaticamente.</p>
+              <p>Ao confirmar no banco, você autoriza a recorrência mensal ou anual do seu plano.</p>
               <p v-if="session?.pix_expiration_date">O QR Code expira em {{ pixExpirationLabel }}.</p>
             </div>
 
@@ -614,7 +615,7 @@ const originalAmountLabel = computed(() => {
   if (!Number.isFinite(original) || !Number.isFinite(current) || original <= current) return "";
   return original.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 });
-const paymentMethodLabel = computed(() => (session.value?.payment_method === "card" ? "Cartão de crédito" : "PIX"));
+const paymentMethodLabel = computed(() => (session.value?.payment_method === "card" ? "Cartão de crédito" : "PIX Automático"));
 const paidAtLabel = computed(() => {
   if (!session.value?.paid_at) return "--";
   return new Date(session.value.paid_at).toLocaleString("pt-BR");
@@ -1368,13 +1369,20 @@ onBeforeUnmount(() => {
 }
 
 .checkout-theme-dark {
-  background: #0d0f12;
+  background: #07110e;
   color: #fff;
 }
 
 .checkout-theme-light {
-  background: #f4f5f9;
+  background: #f5f7f6;
   color: #0f172a;
+}
+
+.checkout-shell :deep(button:focus-visible),
+.checkout-shell :deep(input:focus-visible),
+.checkout-shell :deep(select:focus-visible) {
+  outline: 2px solid #1de9a0;
+  outline-offset: 2px;
 }
 
 .checkout-layout {

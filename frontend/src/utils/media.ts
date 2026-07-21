@@ -63,3 +63,32 @@ export const uploadImageFile = async (file: File, agencyId: number): Promise<Med
   });
   return response.data;
 };
+
+const blobToDataUrl = (blob: Blob): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(reader.error || new Error("Não foi possível ler a imagem processada."));
+    reader.readAsDataURL(blob);
+  });
+
+export const removeImageBackground = async (source: string, agencyId: number): Promise<string> => {
+  const sourceResponse = await fetch(source);
+  if (!sourceResponse.ok) {
+    throw new Error("Não foi possível carregar a imagem selecionada.");
+  }
+  const sourceBlob = await sourceResponse.blob();
+  if (!sourceBlob.type.startsWith("image/")) {
+    throw new Error("O arquivo selecionado não é uma imagem válida.");
+  }
+
+  const extension = sourceBlob.type.split("/")[1]?.replace("jpeg", "jpg") || "png";
+  const formData = new FormData();
+  formData.append("file", new File([sourceBlob], `background-source.${extension}`, { type: sourceBlob.type }));
+  const response = await api.post<Blob>("/media/remove-background", formData, {
+    params: { agency_id: agencyId },
+    headers: { "Content-Type": "multipart/form-data" },
+    responseType: "blob"
+  });
+  return blobToDataUrl(response.data);
+};

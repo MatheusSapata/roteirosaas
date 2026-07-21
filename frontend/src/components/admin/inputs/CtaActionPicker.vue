@@ -1,5 +1,5 @@
 ﻿<template>
-  <div class="space-y-2">
+  <div class="cta-action-picker space-y-2">
     <div class="flex items-center justify-between">
       <label class="text-sm font-semibold text-slate-600">{{ label }}</label>
       <span class="text-xs text-slate-500">{{ copy.destinationHint }}</span>
@@ -8,7 +8,7 @@
       <button
         type="button"
         class="rounded-lg border px-3 py-1.5 text-sm font-semibold transition"
-        :class="mode === 'link' ? 'border-slate-800 bg-slate-900 text-white' : 'border-slate-200 text-slate-600 hover:bg-slate-50'"
+        :class="mode === 'link' ? 'cta-mode-active' : 'cta-mode-idle'"
         @click="setMode('link')"
       >
         {{ copy.options.link }}
@@ -16,7 +16,7 @@
       <button
         type="button"
         class="rounded-lg border px-3 py-1.5 text-sm font-semibold transition"
-        :class="mode === 'section' ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-slate-200 text-slate-600 hover:bg-slate-50'"
+        :class="mode === 'section' ? 'cta-mode-active' : 'cta-mode-idle'"
         :disabled="!availableSections.length"
         @click="setMode('section')"
       >
@@ -51,7 +51,7 @@
 
     <transition name="fade">
       <div v-if="dialogOpen" class="app-modal-overlay fixed inset-0 z-50 flex items-center justify-center px-4 py-6">
-        <div class="flex w-full max-w-3xl max-h-[calc(100vh-3rem)] flex-col overflow-hidden rounded-2xl bg-white p-6 shadow-2xl">
+        <div class="cta-picker-dialog flex w-full max-w-3xl max-h-[calc(100vh-3rem)] flex-col overflow-hidden rounded-2xl p-6">
           <div class="flex items-center justify-between">
             <div>
               <p class="text-xs uppercase tracking-[0.3em] text-slate-500">{{ copy.dialog.subtitle }}</p>
@@ -163,3 +163,30 @@ const selectSection = (anchorId: string) => {
   dialogOpen.value = false;
 };
 </script>
+
+<style scoped>
+.cta-action-picker { color: var(--foreground); }
+.cta-action-picker :deep(.text-slate-900),
+.cta-action-picker :deep(.text-slate-700),
+.cta-action-picker :deep(.text-slate-600) { color: var(--foreground) !important; }
+.cta-action-picker :deep(.text-slate-500) { color: var(--muted-foreground) !important; }
+.cta-mode-active {
+  border-color: var(--primary) !important;
+  background: var(--primary) !important;
+  color: var(--primary-foreground) !important;
+}
+.cta-mode-idle {
+  border-color: var(--border) !important;
+  background: var(--muted) !important;
+  color: var(--foreground) !important;
+}
+.cta-mode-idle:hover { background: var(--accent) !important; }
+.cta-picker-dialog {
+  border: 1px solid var(--border);
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: var(--shadow-elegant);
+}
+.cta-picker-dialog :deep(.border-slate-200) { border-color: var(--border) !important; }
+.cta-picker-dialog :deep(button:hover) { background: var(--accent); }
+</style>

@@ -240,7 +240,7 @@
 
     <Teleport to="body" v-if="limitModal.open">
       <div class="fixed inset-0 z-50 flex items-center justify-center px-4 page-editor-overlay">
-        <div class="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl dark:bg-[#1f1f1f] dark:text-white">
+        <div class="editor-dialog-shell w-full max-w-md p-6">
           <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">{{ viewCopy.limitModal.eyebrow }}</p>
           <h3 class="mt-2 text-xl font-bold text-slate-900">{{ viewCopy.limitModal.title }}</h3>
           <p class="mt-2 text-sm text-slate-600">
@@ -269,7 +269,7 @@
     <!-- Diálogo de confirmação ao sair sem salvar -->
     <Teleport to="body" v-if="unsavedNavigationModal.open">
       <div class="fixed inset-0 z-50 flex items-center justify-center px-4 page-editor-overlay">
-        <div class="w-full max-w-lg rounded-xl bg-white p-6 shadow-2xl dark:bg-[#1f1f1f] dark:text-white">
+        <div class="editor-dialog-shell w-full max-w-lg p-6">
           <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">{{ viewCopy.unsavedModal.eyebrow }}</p>
           <h3 class="mt-2 text-xl font-bold text-slate-900">{{ viewCopy.unsavedModal.title }}</h3>
           <p class="mt-2 text-sm text-slate-600">
@@ -279,21 +279,21 @@
           <div class="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end">
             <button
               type="button"
-              class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+              class="editor-dialog-action editor-dialog-action--neutral"
               @click="cancelNavigationModal"
             >
               {{ viewCopy.unsavedModal.continueEditing }}
             </button>
             <button
               type="button"
-              class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+              class="editor-dialog-action editor-dialog-action--danger"
               @click="discardAndLeave"
             >
               {{ viewCopy.unsavedModal.discardAndExit }}
             </button>
             <button
               type="button"
-              class="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white shadow transition hover:bg-brand-dark disabled:opacity-60"
+              class="editor-dialog-action editor-dialog-action--primary"
               :disabled="unsavedNavigationModal.saving"
               @click="saveAndLeave"
             >
@@ -306,7 +306,7 @@
 
     <Teleport to="body" v-if="unsavedSectionModal.open">
       <div class="fixed inset-0 z-50 flex items-center justify-center px-4 page-editor-overlay">
-        <div class="w-full max-w-lg rounded-xl bg-white p-6 shadow-2xl dark:bg-[#1f1f1f] dark:text-white">
+        <div class="editor-dialog-shell w-full max-w-lg p-6">
           <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">{{ viewCopy.unsavedModal.eyebrow }}</p>
           <h3 class="mt-2 text-xl font-bold text-slate-900">{{ viewCopy.sectionUnsavedModal.title }}</h3>
           <p class="mt-2 text-sm text-slate-600">
@@ -316,21 +316,21 @@
           <div class="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end">
             <button
               type="button"
-              class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+              class="editor-dialog-action editor-dialog-action--neutral"
               @click="cancelUnsavedSectionModal"
             >
               {{ viewCopy.unsavedModal.continueEditing }}
             </button>
             <button
               type="button"
-              class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+              class="editor-dialog-action editor-dialog-action--danger"
               @click="discardUnsavedSectionChanges"
             >
               {{ viewCopy.unsavedModal.discardAndExit }}
             </button>
             <button
               type="button"
-              class="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white shadow transition hover:bg-brand-dark disabled:opacity-60"
+              class="editor-dialog-action editor-dialog-action--primary"
               :disabled="unsavedSectionModal.saving"
               @click="saveUnsavedSectionChanges"
             >
@@ -343,7 +343,7 @@
 
     <Teleport to="body" v-if="unsavedFlightSegmentModal.open">
       <div class="fixed inset-0 z-50 flex items-center justify-center px-4 page-editor-overlay">
-        <div class="w-full max-w-lg rounded-xl bg-white p-6 shadow-2xl dark:bg-[#1f1f1f] dark:text-white">
+        <div class="editor-dialog-shell w-full max-w-lg p-6">
           <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">{{ viewCopy.unsavedModal.eyebrow }}</p>
           <h3 class="mt-2 text-xl font-bold text-slate-900">{{ viewCopy.flightUnsavedModal.title }}</h3>
           <p class="mt-2 text-sm text-slate-600">
@@ -353,14 +353,14 @@
           <div class="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end">
             <button
               type="button"
-              class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+              class="editor-dialog-action editor-dialog-action--neutral"
               @click="cancelUnsavedFlightSegmentModal"
             >
               {{ viewCopy.unsavedModal.continueEditing }}
             </button>
             <button
               type="button"
-              class="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white shadow transition hover:bg-brand-dark"
+              class="editor-dialog-action editor-dialog-action--primary"
               @click="confirmSaveSectionWithUnsavedFlightSegment"
             >
               {{ viewCopy.flightUnsavedModal.confirm }}
@@ -373,7 +373,7 @@
     <!-- Dialog de sucesso ao publicar -->
     <Teleport to="body" v-if="successModal.open">
       <div class="fixed inset-0 z-50 flex items-center justify-center px-4 page-editor-overlay">
-        <div class="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl dark:bg-[#1f1f1f] dark:text-white">
+        <div class="editor-dialog-shell w-full max-w-md p-6">
           <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">{{ viewCopy.successModal.eyebrow }}</p>
           <h3 class="mt-2 text-xl font-bold text-slate-900">{{ viewCopy.successModal.title }}</h3>
           <p class="mt-2 text-sm text-slate-600">{{ viewCopy.successModal.description }}</p>
@@ -409,7 +409,7 @@
       class="app-modal-overlay fixed inset-0 z-40 flex items-center justify-center px-4 py-8"
       @click.self="closeSectionPicker"
       >
-        <div class="w-full max-w-5xl rounded-2xl bg-white shadow-2xl dark:bg-[#1f1f1f] dark:text-white">
+        <div class="editor-dialog-shell w-full max-w-5xl">
         <div class="flex flex-col gap-2 border-b border-slate-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between dark:border-white/10">
           <div>
             <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Adicionar nova seção</p>
@@ -467,7 +467,7 @@
     </Teleport>
 
     <div :class="['editor-body flex-1 min-w-0 space-y-4', showAiAssistant ? 'ai-assistant-open' : '']">
-      <div class="editor-settings-shell rounded-[26px] border border-slate-200 bg-white p-6 shadow-sm dark:bg-[#202020] dark:text-white">
+      <div class="editor-settings-shell rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-soft">
         <div class="mb-5 flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 class="editor-settings-title text-[30px] font-extrabold leading-[1.1] tracking-[-0.02em] text-slate-900 dark:text-white">Configurações da página</h2>
@@ -780,7 +780,7 @@
 
       <div
         :class="[
-          'editor-preview-shell md:sticky md:top-6 rounded-3xl bg-white p-4 shadow-md dark:bg-[#202020] dark:text-white',
+          'editor-preview-shell md:sticky md:top-6 rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-soft',
           showAiAssistant ? 'ai-assistant-open' : ''
         ]"
       >
@@ -1045,11 +1045,11 @@
       >
         <div
           ref="sectionModalPanelRef"
-          class="w-full max-w-4xl overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-[#1f1f1f] dark:text-white flex flex-col"
+          class="editor-dialog-shell w-full max-w-4xl overflow-hidden flex flex-col"
           :class="isMobileViewport ? '' : 'md:rounded-[20px] md:shadow-2xl'"
           :style="sectionModalPanelStyle"
         >
-          <div ref="sectionModalHeaderRef" class="flex items-center justify-between px-6 py-4">
+          <div ref="sectionModalHeaderRef" class="section-editor-header flex items-center justify-between px-6 py-4">
             <div>
               <h3 class="text-[16px] font-semibold text-slate-900">Editando seção • {{ editingSectionHeaderLabel }}</h3>
             </div>
@@ -1063,7 +1063,7 @@
           </div>
           <div
             ref="sectionModalBodyRef"
-            class="flex-1 overflow-y-auto border-t border-slate-100 bg-[#edf1ef] pl-0 pr-0"
+            class="section-editor-body flex-1 overflow-y-auto border-t border-border bg-background pl-0 pr-0"
           >
             <component
               :is="editingSectionComponent"
@@ -1073,7 +1073,7 @@
               @update:modelValue="updateEditingDraft"
             />
           </div>
-          <div ref="sectionModalFooterRef" class="flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 px-6 py-4">
+          <div ref="sectionModalFooterRef" class="section-editor-footer flex flex-wrap items-center justify-end gap-2 border-t border-border px-6 py-4">
             <button
               class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
               @click="requestCloseSectionEditor"
@@ -1107,6 +1107,7 @@ import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, p
 import { onBeforeRouteLeave, useRoute, useRouter } from "vue-router";
 import api from "../../services/api";
 import {
+  fetchAiAssistantHistory,
   fetchAiAssistantUsage,
   sendAiAssistantConversation,
   type AiAssistantChatMessage,
@@ -1627,9 +1628,9 @@ const beforeUnloadHandler = (event: BeforeUnloadEvent) => {
   event.returnValue = "";
 };
   const toolbarSecondaryButtonClass =
-    "inline-flex items-center gap-2 rounded-xl border border-[#DDE3DE] bg-[#F6F8F6] px-4 py-2 text-sm font-semibold text-[#4A6455] transition hover:bg-white";
+    "inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground shadow-soft transition-colors hover:bg-accent";
   const floatingAiButtonClass =
-    "editor-ai-fab hidden md:inline-flex cursor-pointer items-center justify-center rounded-l-2xl border border-[#2ECC58] bg-[#3DCC5F] text-sm font-semibold text-white transition hover:bg-[#31B954] hover:border-[#27A94C]";
+    "editor-ai-fab hidden md:inline-flex cursor-pointer items-center justify-center rounded-l-2xl border border-primary bg-primary text-sm font-semibold text-white transition hover:bg-brand-dark";
   const floatingAiButtonStyle = {
     position: "fixed",
     top: "50%",
@@ -1665,11 +1666,11 @@ const beforeUnloadHandler = (event: BeforeUnloadEvent) => {
       letterSpacing: "0.12em"
     } as const;
   const toolbarPrimaryButtonClass =
-    "inline-flex items-center gap-2 rounded-xl border border-[#35BD57] bg-[#3DCC5F] px-4 py-2 text-sm font-semibold text-[#0F1F14] shadow-sm transition hover:bg-[#5BE07A]";
+    "inline-flex items-center gap-2 rounded-lg border border-primary bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft transition hover:bg-brand-dark";
 const toolbarWarningButtonClass =
-  "inline-flex items-center gap-2 rounded-xl border border-[#EBCFD0] bg-[#F9ECEC] px-4 py-2 text-sm font-semibold text-[#BC5457] transition hover:bg-[#F7E3E4]";
+  "inline-flex items-center gap-2 rounded-lg border border-border bg-status-danger px-4 py-2 text-sm font-semibold text-status-danger-foreground transition hover:brightness-95";
 const toolbarStatusPillClass =
-  "inline-flex items-center gap-2 rounded-xl border border-[#CFECD5] bg-[#EAF8ED] px-4 py-2 text-sm font-semibold text-[#2E9B47]";
+  "inline-flex items-center gap-2 rounded-lg border border-border bg-status-success px-4 py-2 text-sm font-semibold text-status-success-foreground";
 let skipCtaWatcher = false;
 let removeViewportWatcher: (() => void) | null = null;
 
@@ -1703,6 +1704,7 @@ const aiAssistantFileInputRef = ref<HTMLInputElement | null>(null);
 const aiAssistantDraft = ref("");
 const aiAssistantAttachments = ref<File[]>([]);
 const aiAssistantUsage = ref<AiAssistantUsageResponse | null>(null);
+const aiAssistantHistoryLoaded = ref(false);
 const aiAssistantSidebarWidth = ref(464);
 const aiAssistantSidebarMinWidth = 320;
 const aiAssistantSidebarMaxWidth = 720;
@@ -1731,6 +1733,24 @@ const refreshAiAssistantUsage = async () => {
     aiAssistantUsage.value = await fetchAiAssistantUsage();
   } catch (error) {
     console.error("Erro ao carregar uso da ajuda IA", error);
+  }
+};
+const loadAiAssistantHistory = async () => {
+  if (!canUseAiAssistant.value || !Number.isFinite(pageId) || pageId <= 0) return;
+  try {
+    const history = await fetchAiAssistantHistory(pageId);
+    aiAssistantMessages.value = history.map(item => ({
+      role: item.role,
+      content: item.content
+    }));
+  } catch (error) {
+    console.error("Erro ao carregar o histórico do assistente IA", error);
+  } finally {
+    aiAssistantHistoryLoaded.value = true;
+    if (showAiAssistant.value && aiAssistantMessages.value.length === 0) {
+      prefillAiAssistantPrompt();
+    }
+    scrollAiAssistantToEnd();
   }
 };
 const stopAiAssistantTimers = () => {
@@ -1929,7 +1949,7 @@ const sendAiAssistantMessage = async () => {
   scrollAiAssistantToEnd();
 
   try {
-    const result = await sendAiAssistantConversation(conversationSnapshot, attachmentsSnapshot);
+    const result = await sendAiAssistantConversation(pageId, conversationSnapshot, attachmentsSnapshot);
     if (result.usage) {
       aiAssistantUsage.value = result.usage;
     }
@@ -1949,7 +1969,7 @@ const toggleAiAssistant = () => {
 };
 
 watch(showAiAssistant, isOpen => {
-  if (isOpen && aiAssistantMessages.value.length === 0) {
+  if (isOpen && aiAssistantHistoryLoaded.value && aiAssistantMessages.value.length === 0) {
     prefillAiAssistantPrompt();
   }
   if (isOpen) {
@@ -3872,6 +3892,7 @@ onMounted(async () => {
   leadCaptureStore.fetchForms().catch(() => undefined);
 
   await fetchPage();
+  await loadAiAssistantHistory();
   sectionCatalog.value = sectionTypes.map(type => ({
     type,
     label: sectionLabels[type] || type,
@@ -4929,9 +4950,574 @@ onMounted(async () => {
 
 
 
+<style scoped>
+.page-editor-view {
+  color: var(--foreground);
+}
+
+.editor-settings-shell,
+.editor-preview-shell {
+  border-color: var(--border) !important;
+  background: var(--card) !important;
+  color: var(--card-foreground);
+}
+
+.editor-settings-title {
+  color: var(--foreground) !important;
+}
+
+.editor-settings-shell .editor-side-tab {
+  border-color: var(--border);
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.editor-settings-shell .editor-side-tab:hover {
+  border-color: color-mix(in srgb, var(--primary) 34%, var(--border));
+  background: var(--accent);
+}
+
+.editor-settings-shell .editor-side-tab.active {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--primary-foreground);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--primary) 22%, transparent);
+}
+
+.editor-settings-shell .editor-side-tab-step,
+.editor-settings-shell .editor-side-tab.active .editor-side-tab-step {
+  color: inherit;
+}
+
+.editor-settings-shell .settings-panel {
+  border-color: color-mix(in srgb, var(--border) 58%, transparent) !important;
+  background: var(--background) !important;
+}
+
+.editor-settings-shell .slug-row {
+  border-color: var(--input) !important;
+  background: var(--background);
+}
+
+.editor-settings-shell .slug-prefix {
+  border-color: var(--input) !important;
+  background: var(--muted) !important;
+  color: var(--muted-foreground) !important;
+}
+
+.editor-preview-shell > .mt-4 {
+  overflow: hidden;
+  border-radius: var(--radius-xl);
+  background: var(--background);
+}
+
+.editor-preview-shell .preview-light {
+  background: var(--background);
+}
+
+.editor-topbar {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--card);
+  padding: 10px 12px;
+  color: var(--card-foreground);
+  box-shadow: var(--shadow-soft);
+}
+
+.editor-back-btn {
+  border-color: var(--border);
+  background: var(--muted);
+  color: var(--muted-foreground);
+}
+
+.editor-back-btn:hover {
+  background: var(--accent);
+  color: var(--foreground);
+}
+
+.editor-breadcrumb,
+.editor-divider {
+  color: var(--muted-foreground);
+}
+
+.editor-page-title {
+  color: var(--foreground);
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 650;
+}
+
+.editor-dialog-shell {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  background: var(--card);
+  color: var(--card-foreground);
+  box-shadow: var(--shadow-elegant);
+}
+
+.editor-dialog-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.2;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease, filter 0.15s ease;
+}
+
+.editor-dialog-action--neutral {
+  border-color: var(--border);
+  background: transparent;
+  color: var(--foreground);
+}
+
+.editor-dialog-action--neutral:hover {
+  border-color: color-mix(in srgb, var(--foreground) 20%, var(--border));
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.editor-dialog-action--danger {
+  border-color: color-mix(in srgb, var(--destructive) 35%, var(--border));
+  background: color-mix(in srgb, var(--destructive) 10%, var(--card));
+  color: var(--destructive);
+}
+
+.editor-dialog-action--danger:hover {
+  border-color: color-mix(in srgb, var(--destructive) 58%, var(--border));
+  background: color-mix(in srgb, var(--destructive) 18%, var(--card));
+  color: var(--destructive);
+}
+
+.editor-dialog-action--primary {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--primary-foreground);
+  box-shadow: var(--shadow-soft);
+}
+
+.editor-dialog-action--primary:hover {
+  filter: brightness(0.94);
+}
+
+.editor-dialog-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.editor-dialog-shell :deep(.text-slate-900),
+.editor-dialog-shell :deep(.text-slate-800),
+.editor-dialog-shell :deep(.text-slate-700),
+.editor-settings-shell :deep(.text-slate-900),
+.editor-settings-shell :deep(.text-slate-800),
+.editor-settings-shell :deep(.text-slate-700) {
+  color: var(--foreground) !important;
+}
+
+.editor-dialog-shell :deep(.text-slate-600),
+.editor-dialog-shell :deep(.text-slate-500),
+.editor-dialog-shell :deep(.text-slate-400),
+.editor-settings-shell :deep(.text-slate-600),
+.editor-settings-shell :deep(.text-slate-500),
+.editor-settings-shell :deep(.text-slate-400) {
+  color: var(--muted-foreground) !important;
+}
+
+.editor-dialog-shell :deep(.border-slate-100),
+.editor-dialog-shell :deep(.border-slate-200),
+.editor-dialog-shell :deep(.border-slate-300),
+.editor-settings-shell :deep(.border-slate-100),
+.editor-settings-shell :deep(.border-slate-200),
+.editor-settings-shell :deep(.border-slate-300) {
+  border-color: var(--border) !important;
+}
+
+.editor-dialog-shell :deep(.bg-white),
+.editor-settings-shell :deep(.bg-white) {
+  background-color: var(--card) !important;
+}
+
+.editor-dialog-shell :deep(.bg-slate-50),
+.editor-dialog-shell :deep(.bg-slate-100),
+.editor-settings-shell :deep(.bg-slate-50) {
+  background-color: var(--muted) !important;
+}
+
+.editor-dialog-shell :deep(input),
+.editor-dialog-shell :deep(textarea),
+.editor-dialog-shell :deep(select),
+.editor-settings-shell :deep(input),
+.editor-settings-shell :deep(textarea),
+.editor-settings-shell :deep(select) {
+  border-color: var(--input) !important;
+  background: var(--background) !important;
+  color: var(--foreground) !important;
+}
+
+.editor-settings-shell :deep(.settings-panel) {
+  border-color: color-mix(in srgb, var(--border) 58%, transparent) !important;
+  background: var(--background);
+}
+
+.editor-ai-sidebar {
+  border-color: var(--border);
+  background: color-mix(in srgb, var(--card) 96%, transparent);
+  color: var(--card-foreground);
+  box-shadow: var(--shadow-elegant);
+}
+
+.editor-ai-sidebar-header,
+.editor-ai-sidebar-composer {
+  border-color: color-mix(in srgb, var(--border) 42%, transparent);
+}
+
+.editor-ai-sidebar-title,
+.editor-ai-sidebar-response-text {
+  color: var(--foreground);
+}
+
+.editor-ai-sidebar-usage-pill {
+  border-color: color-mix(in srgb, var(--primary) 25%, var(--border));
+  background: color-mix(in srgb, var(--primary) 10%, var(--card));
+  color: var(--primary);
+}
+
+.editor-ai-sidebar-close,
+.editor-ai-sidebar-icon-button {
+  border-color: var(--border);
+  background: var(--muted);
+  color: var(--muted-foreground);
+}
+
+.editor-ai-sidebar-bubble.is-user {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.editor-ai-sidebar-bubble.is-assistant {
+  border-color: var(--border);
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.editor-ai-sidebar-bubble.is-assistant .editor-ai-sidebar-response-text {
+  color: var(--foreground);
+}
+
+.editor-ai-sidebar-input {
+  border-color: var(--input);
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.editor-ai-sidebar-send {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
 .overlay-label {
   color: #ffffff !important;
 }
+
+.editor-ai-fab,
+.editor-ai-fab-icon,
+.editor-ai-fab-label {
+  color: #ffffff !important;
+}
+
+.section-editor-header,
+.section-editor-footer {
+  border-color: color-mix(in srgb, var(--border) 62%, transparent) !important;
+  background: var(--card);
+}
+
+.section-editor-body {
+  border-color: color-mix(in srgb, var(--border) 62%, transparent) !important;
+  background: var(--background) !important;
+  color: var(--foreground);
+}
+
+.section-editor-body :deep(.hero-proto-body),
+.section-editor-body :deep(.cta-proto-body),
+.section-editor-body :deep(.faq-proto-body),
+.section-editor-body :deep(.featured-video-proto-body),
+.section-editor-body :deep(.footer-proto-body),
+.section-editor-body :deep(.photo-proto-body),
+.section-editor-body :deep(.prices-proto-body),
+.section-editor-body :deep(.items-proto-body),
+.section-editor-body :deep(.testimonials-proto-body),
+.section-editor-body :deep(.banner-form-shell),
+.section-editor-body :deep(.bio-form-shell),
+.section-editor-body :deep(.countdown-shell),
+.section-editor-body :deep(.flight-shell),
+.section-editor-body :deep(.itinerary-shell),
+.section-editor-body :deep(.story-form-shell) {
+  background: var(--background) !important;
+  color: var(--foreground);
+}
+
+.section-editor-body :deep(.tabs),
+.section-editor-body :deep(.banner-form-nav),
+.section-editor-body :deep(.bio-form-nav),
+.section-editor-body :deep(.countdown-nav),
+.section-editor-body :deep(.flight-nav),
+.section-editor-body :deep(.itinerary-nav),
+.section-editor-body :deep(.story-form-nav) {
+  border-color: color-mix(in srgb, var(--border) 62%, transparent) !important;
+  background: var(--card) !important;
+}
+
+.section-editor-body :deep(.tab),
+.section-editor-body :deep(.banner-nav-item),
+.section-editor-body :deep(.bio-nav-item),
+.section-editor-body :deep(.countdown-nav-item),
+.section-editor-body :deep(.flight-nav-item),
+.section-editor-body :deep(.itinerary-nav-item),
+.section-editor-body :deep(.story-nav-item) {
+  border-color: var(--border) !important;
+  background: var(--muted) !important;
+  color: var(--foreground) !important;
+  box-shadow: none !important;
+}
+
+.section-editor-body :deep(.tab:hover),
+.section-editor-body :deep(.banner-nav-item:hover),
+.section-editor-body :deep(.bio-nav-item:hover),
+.section-editor-body :deep(.countdown-nav-item:hover),
+.section-editor-body :deep(.flight-nav-item:hover),
+.section-editor-body :deep(.itinerary-nav-item:hover),
+.section-editor-body :deep(.story-nav-item:hover) {
+  border-color: color-mix(in srgb, var(--primary) 32%, var(--border)) !important;
+  background: var(--accent) !important;
+}
+
+.section-editor-body :deep(.tab.active),
+.section-editor-body :deep(.banner-nav-item.active),
+.section-editor-body :deep(.bio-nav-item.active),
+.section-editor-body :deep(.countdown-nav-item.active),
+.section-editor-body :deep(.flight-nav-item.active),
+.section-editor-body :deep(.itinerary-nav-item.active),
+.section-editor-body :deep(.story-nav-item.active) {
+  border-color: var(--primary) !important;
+  background: var(--primary) !important;
+  color: var(--primary-foreground) !important;
+}
+
+.section-editor-body :deep(.tab-icon),
+.section-editor-body :deep(.banner-nav-icon),
+.section-editor-body :deep(.bio-nav-icon),
+.section-editor-body :deep(.countdown-nav-icon),
+.section-editor-body :deep(.flight-nav-icon),
+.section-editor-body :deep(.itinerary-nav-icon),
+.section-editor-body :deep(.story-nav-icon) {
+  background: color-mix(in srgb, var(--card) 84%, transparent) !important;
+  color: inherit !important;
+}
+
+.section-editor-body :deep(.tab small),
+.section-editor-body :deep(.banner-nav-item small),
+.section-editor-body :deep(.bio-nav-item small),
+.section-editor-body :deep(.story-nav-item small) {
+  color: var(--muted-foreground) !important;
+}
+
+.section-editor-body :deep(.tab.active small),
+.section-editor-body :deep(.banner-nav-item.active small),
+.section-editor-body :deep(.bio-nav-item.active small),
+.section-editor-body :deep(.story-nav-item.active small) {
+  color: color-mix(in srgb, var(--primary-foreground) 72%, transparent) !important;
+}
+
+.section-editor-body :deep(.pill.active),
+.section-editor-body :deep(.flight-pill.active),
+.section-editor-body :deep(.story-pill.active) {
+  border-color: var(--primary) !important;
+  background: var(--primary) !important;
+  color: var(--primary-foreground) !important;
+}
+
+.section-editor-body :deep(.tab.active .tab-icon),
+.section-editor-body :deep(.banner-nav-item.active .banner-nav-icon),
+.section-editor-body :deep(.bio-nav-item.active .bio-nav-icon),
+.section-editor-body :deep(.countdown-nav-item.active .countdown-nav-icon),
+.section-editor-body :deep(.flight-nav-item.active .flight-nav-icon),
+.section-editor-body :deep(.itinerary-nav-item.active .itinerary-nav-icon),
+.section-editor-body :deep(.story-nav-item.active .story-nav-icon) {
+  border-color: color-mix(in srgb, var(--primary-foreground) 28%, transparent) !important;
+  background: color-mix(in srgb, var(--primary-foreground) 16%, transparent) !important;
+  color: var(--primary-foreground) !important;
+}
+
+.section-editor-body :deep(.tab.active .tab-icon svg),
+.section-editor-body :deep(.banner-nav-item.active .banner-nav-icon svg),
+.section-editor-body :deep(.bio-nav-item.active .bio-nav-icon svg),
+.section-editor-body :deep(.countdown-nav-item.active .countdown-nav-icon svg),
+.section-editor-body :deep(.flight-nav-item.active .flight-nav-icon svg),
+.section-editor-body :deep(.itinerary-nav-item.active .itinerary-nav-icon svg),
+.section-editor-body :deep(.story-nav-item.active .story-nav-icon svg) {
+  color: var(--primary-foreground) !important;
+  fill: none;
+  stroke: currentColor !important;
+}
+
+.section-editor-body :deep(.tab.active .tab-icon svg [fill]:not([fill="none"])),
+.section-editor-body :deep(.banner-nav-item.active .banner-nav-icon svg [fill]:not([fill="none"])),
+.section-editor-body :deep(.bio-nav-item.active .bio-nav-icon svg [fill]:not([fill="none"])),
+.section-editor-body :deep(.countdown-nav-item.active .countdown-nav-icon svg [fill]:not([fill="none"])),
+.section-editor-body :deep(.flight-nav-item.active .flight-nav-icon svg [fill]:not([fill="none"])),
+.section-editor-body :deep(.itinerary-nav-item.active .itinerary-nav-icon svg [fill]:not([fill="none"])),
+.section-editor-body :deep(.story-nav-item.active .story-nav-icon svg [fill]:not([fill="none"])) {
+  fill: currentColor !important;
+}
+
+.section-editor-body :deep(.tab.active .tab-icon svg [stroke]),
+.section-editor-body :deep(.banner-nav-item.active .banner-nav-icon svg [stroke]),
+.section-editor-body :deep(.bio-nav-item.active .bio-nav-icon svg [stroke]),
+.section-editor-body :deep(.countdown-nav-item.active .countdown-nav-icon svg [stroke]),
+.section-editor-body :deep(.flight-nav-item.active .flight-nav-icon svg [stroke]),
+.section-editor-body :deep(.itinerary-nav-item.active .itinerary-nav-icon svg [stroke]),
+.section-editor-body :deep(.story-nav-item.active .story-nav-icon svg [stroke]) {
+  stroke: currentColor !important;
+}
+
+.section-editor-body :deep(.editor),
+.section-editor-body :deep(.banner-form-content),
+.section-editor-body :deep(.bio-form-content),
+.section-editor-body :deep(.countdown-content),
+.section-editor-body :deep(.flight-content),
+.section-editor-body :deep(.itinerary-content),
+.section-editor-body :deep(.story-form-content),
+.section-editor-body :deep(.section-card) {
+  background: var(--background) !important;
+  color: var(--foreground);
+}
+
+.section-editor-body :deep(.section-head) {
+  border-color: color-mix(in srgb, var(--border) 58%, transparent) !important;
+}
+
+.section-editor-body :deep(.section-title),
+.section-editor-body :deep(.banner-form-title),
+.section-editor-body :deep(.bio-form-title),
+.section-editor-body :deep(.countdown-title),
+.section-editor-body :deep(.flight-title),
+.section-editor-body :deep(.story-form-title) {
+  color: var(--foreground) !important;
+  font-family: var(--font-display);
+}
+
+.section-editor-body :deep(.section-desc),
+.section-editor-body :deep(.banner-form-subtitle),
+.section-editor-body :deep(.bio-form-subtitle),
+.section-editor-body :deep(.countdown-subtitle),
+.section-editor-body :deep(.flight-subtitle),
+.section-editor-body :deep(.story-form-subtitle),
+.section-editor-body :deep(.bio-hint) {
+  color: var(--muted-foreground) !important;
+}
+
+.section-editor-body :deep(label),
+.section-editor-body :deep(.banner-label),
+.section-editor-body :deep(.bio-label),
+.section-editor-body :deep(.countdown-label),
+.section-editor-body :deep(.flight-field-title),
+.section-editor-body :deep(.story-label) {
+  color: var(--muted-foreground) !important;
+}
+
+.section-editor-body :deep(input:not([type="checkbox"]):not([type="radio"]):not([type="color"])),
+.section-editor-body :deep(textarea),
+.section-editor-body :deep(select),
+.section-editor-body :deep(.banner-input),
+.section-editor-body :deep(.bio-input),
+.section-editor-body :deep(.countdown-input),
+.section-editor-body :deep(.flight-input),
+.section-editor-body :deep(.story-input) {
+  border-color: var(--input) !important;
+  background: var(--card) !important;
+  color: var(--foreground) !important;
+  box-shadow: none;
+}
+
+.section-editor-body :deep(input::placeholder),
+.section-editor-body :deep(textarea::placeholder) {
+  color: color-mix(in srgb, var(--muted-foreground) 72%, transparent) !important;
+}
+
+.section-editor-body :deep(input:focus),
+.section-editor-body :deep(textarea:focus),
+.section-editor-body :deep(select:focus) {
+  border-color: var(--ring) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 15%, transparent) !important;
+}
+
+.section-editor-body :deep(.help),
+.section-editor-body :deep(.hint-dot),
+.section-editor-body :deep(.countdown-help),
+.section-editor-body :deep(.flight-help) {
+  border-color: var(--border) !important;
+  background: var(--muted) !important;
+  color: var(--muted-foreground) !important;
+}
+
+.section-editor-body :deep(.help:hover::after),
+.section-editor-body :deep(.hint-help:hover::after),
+.section-editor-body :deep(.countdown-help:hover::after),
+.section-editor-body :deep(.flight-help:hover::after) {
+  border: 1px solid var(--border) !important;
+  background: var(--popover) !important;
+  color: var(--popover-foreground) !important;
+  box-shadow: var(--shadow-elegant) !important;
+}
+
+.section-editor-body :deep(.list),
+.section-editor-body :deep(.media-item),
+.section-editor-body :deep(.highlight-box),
+.section-editor-body :deep(.note-box),
+.section-editor-body :deep(.info-box),
+.section-editor-body :deep(.banner-upload-card),
+.section-editor-body :deep(.bio-upload-card),
+.section-editor-body :deep(.story-upload-card),
+.section-editor-body :deep(.rich-box),
+.section-editor-body :deep(.bio-rich-shell),
+.section-editor-body :deep(.story-rich-shell) {
+  border-color: color-mix(in srgb, var(--border) 72%, transparent) !important;
+  background: var(--card) !important;
+  color: var(--foreground) !important;
+}
+
+.section-editor-body :deep(.note-box),
+.section-editor-body :deep(.info-text),
+.section-editor-body :deep(.info-list),
+.section-editor-body :deep(.media-info p) {
+  color: var(--muted-foreground) !important;
+}
+
+.section-editor-body :deep(.media-info strong),
+.section-editor-body :deep(.info-strong) {
+  color: var(--foreground) !important;
+}
+
+.section-editor-body :deep(.media-preview) {
+  border-color: var(--border) !important;
+  background: var(--muted) !important;
+  color: var(--muted-foreground) !important;
+}
+
+:global(body.admin-body-dark) .editor-ai-fab,
+:global(body.admin-body-dark) .editor-ai-fab-icon,
+:global(body.admin-body-dark) .editor-ai-fab-label,
+:global(html.dark) .editor-ai-fab,
+:global(html.dark) .editor-ai-fab-icon,
+:global(html.dark) .editor-ai-fab-label {
+  color: #000000 !important;
+}
+</style>
 
 
 

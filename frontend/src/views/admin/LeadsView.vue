@@ -1,6 +1,6 @@
 ﻿<template>
 <div v-if="isBootstrappingLeads" class="flex min-h-[60vh] w-full items-center justify-center px-4 py-8">
-  <div class="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-brand"></div>
+  <div class="h-10 w-10 animate-spin rounded-full border-4 border-border border-t-primary"></div>
 </div>
 <div
   v-else
@@ -26,12 +26,12 @@
 
 
       <div class="shrink-0 flex w-full items-center justify-between gap-3">
-        <h1 class="text-2xl font-semibold tracking-[-0.2px] text-[#0F1F14] dark:text-white">{{ pageTitle }}</h1>
+        <h1 class="font-display text-2xl font-semibold tracking-[-0.2px] text-foreground">{{ pageTitle }}</h1>
 
         <div v-if="activeTab === 'forms'" class="flex items-center gap-2">
           <button
             type="button"
-            class="inline-flex items-center gap-2 rounded-[10px] bg-[#3DCC5F] px-4 py-[9px] text-[13px] font-semibold text-[#0F1F14] transition hover:bg-[#5BE07A]"
+            class="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-[13px] font-semibold text-primary-foreground shadow-soft transition-colors hover:bg-brand-dark"
             @click="openCreateModal"
           >
             <span class="text-[15px] leading-none font-bold">+</span>
@@ -41,7 +41,7 @@
         <div v-else-if="activeTab === 'settings'" class="flex items-center gap-2">
           <button
             type="button"
-            class="inline-flex items-center gap-2 rounded-[10px] bg-[#3DCC5F] px-4 py-[9px] text-[13px] font-semibold text-[#0F1F14] transition hover:bg-[#5BE07A]"
+            class="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-[13px] font-semibold text-primary-foreground shadow-soft transition-colors hover:bg-brand-dark"
             @click="openPipelineStageModal"
           >
             <span class="text-[15px] leading-none font-bold">+</span>
@@ -63,7 +63,7 @@
 
   <button
     type="button"
-    class="inline-flex items-center gap-2 rounded-[10px] bg-[#3DCC5F] px-4 py-[9px] text-[13px] font-semibold text-[#0F1F14] transition hover:bg-[#5BE07A]"
+    class="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-[13px] font-semibold text-primary-foreground shadow-soft transition-colors hover:bg-brand-dark"
     @click="openManualOpportunityModal"
   >
     <span class="text-[15px] leading-none font-bold">+</span>
@@ -75,7 +75,7 @@
       <div
         v-if="feedback.message"
         class="pointer-events-none fixed bottom-6 right-6 z-[4200] max-w-[360px] rounded-xl px-4 py-3 text-sm font-semibold shadow-xl"
-        :class="feedback.isError ? 'bg-rose-600 text-white' : 'bg-slate-900 text-white'"
+        :class="feedback.isError ? 'bg-destructive text-destructive-foreground' : 'bg-popover text-popover-foreground border border-border'"
       >
         {{ feedback.message }}
       </div>
@@ -397,7 +397,7 @@
                 <button
                   v-if="contact.phone"
                   type="button"
-                  class="phone-link inline-flex max-w-[170px] items-center gap-1 text-[12px] font-normal text-[#8A9E8A] transition hover:text-[#718771]"
+                  class="phone-link inline-flex max-w-[170px] items-center gap-1 text-[12px] font-normal text-muted-foreground transition hover:text-foreground"
                   :title="getWhatsappTitle(contact.phone)"
                   @click.stop="openWhatsapp(contact)"
                 >
@@ -429,13 +429,13 @@
                 <button
                   v-if="!isManualOpportunity(contact)"
                   type="button"
-                  class="origin-link truncate text-[#8A9E8A] transition hover:text-[#718771]"
+                  class="origin-link truncate text-muted-foreground transition hover:text-foreground"
                   :title="truncatedPageLabel(contact)"
                   @click.stop="openContactOrigin(contact)"
                 >
                   {{ truncatedPageLabel(contact) }}
                 </button>
-                <span v-else class="text-[#8A9E8A]">{{ truncatedPageLabel(contact) }}</span>
+                <span v-else class="text-muted-foreground">{{ truncatedPageLabel(contact) }}</span>
               </td>
               <td v-if="col.visible && col.key === 'valor'" class="w-[105px] px-2 py-2.5 text-center text-xs" @click.stop>
                 <template v-if="inlineValueContactId === idKey(contact.id)">
@@ -449,14 +449,14 @@
                 <button
                   v-else-if="!contact.estimated_value_cents"
                   type="button"
-                  class="text-[#8A9E8A] transition hover:underline"
+                  class="text-muted-foreground transition hover:text-foreground hover:underline"
                   @click.stop="beginInlineValueEdit(contact)"
                 >
                   Sem valor
                 </button>
-                <span v-else class="font-semibold text-[#111A14]">{{ formatOpportunityValue(contact.estimated_value_cents) }}</span>
+                <span v-else class="font-semibold text-foreground">{{ formatOpportunityValue(contact.estimated_value_cents) }}</span>
               </td>
-              <td v-if="col.visible && col.key === 'chegouEm'" class="w-[100px] px-2 py-2.5 text-xs text-[#8A9E8A]">{{ formatDateDayMonthTime(contact.created_at) }}</td>
+              <td v-if="col.visible && col.key === 'chegouEm'" class="w-[100px] px-2 py-2.5 text-xs text-muted-foreground">{{ formatDateDayMonthTime(contact.created_at) }}</td>
               <td v-if="col.visible && col.key === 'ultima'" class="w-[130px] px-2 py-2.5 text-center">
                 <div class="flex justify-center">
                   <span
@@ -1161,19 +1161,19 @@
 
       <div
         v-if="!planAllowed"
-        class="pointer-events-auto fixed inset-y-0 left-0 right-0 z-[140] flex items-center justify-center bg-black/60 px-4 text-center text-white backdrop-blur-[2px] md:left-[225px]"
+        class="pointer-events-auto fixed inset-y-0 left-0 right-0 z-[140] flex items-center justify-center bg-black/60 px-4 text-center backdrop-blur-[2px] md:left-64"
       >
-        <div class="max-w-md rounded-3xl bg-white p-6 shadow-2xl">
-          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Recurso premium</p>
-          <h2 class="mt-2 text-2xl font-bold text-slate-900">
+        <div class="max-w-md rounded-3xl border border-border bg-card p-6 text-card-foreground shadow-xl">
+          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">Recurso premium</p>
+          <h2 class="mt-2 text-2xl font-bold text-foreground">
             {{ viewCopy.settings.planGate.title }}
           </h2>
-          <p class="mt-2 text-sm text-slate-600">
+          <p class="mt-2 text-sm text-muted-foreground">
             {{ viewCopy.settings.planGate.description }}
           </p>
           <button
             type="button"
-            class="mt-4 w-full rounded-full bg-[#3EBD59] px-4 py-3 text-sm font-semibold text-white shadow transition hover:bg-[#34a04c]"
+            class="mt-4 w-full rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-soft transition-colors hover:bg-brand-dark"
             @click="goToPlans"
           >
             {{ viewCopy.settings.planGate.cta }}
@@ -3164,7 +3164,7 @@ const groupHeaderStyle = (groupKey: string) => {
   if (groupKey === "null") {
     return {
       backgroundColor: "transparent",
-      color: "#334155",
+      color: isDarkTheme.value ? "var(--foreground)" : "#334155",
       "--group-accent": "#cbd5e1",
       borderRadius: "8px",
       height: "28px"
@@ -3174,7 +3174,7 @@ const groupHeaderStyle = (groupKey: string) => {
   if (!color) return {};
   return {
     backgroundColor: "transparent",
-    color: "#334155",
+    color: isDarkTheme.value ? "var(--foreground)" : "#334155",
     "--group-accent": color,
     borderRadius: "8px",
     height: "28px"
@@ -3186,13 +3186,16 @@ const contactRowStyle = (contact: LeadContact): CSSProperties => ({
 });
 
 const groupPillStyle = (groupKey: string): CSSProperties => {
-  if (groupKey === "null") return { backgroundColor: "#f8fafc", borderColor: "#e2e8f0", color: "#475569" };
+  const neutralBackground = isDarkTheme.value ? "var(--muted)" : "#f8fafc";
+  const neutralBorder = isDarkTheme.value ? "var(--border)" : "#e2e8f0";
+  const neutralColor = isDarkTheme.value ? "var(--foreground)" : "#475569";
+  if (groupKey === "null") return { backgroundColor: neutralBackground, borderColor: neutralBorder, color: neutralColor };
   const color = statusColorMap.value[groupKey];
-  if (!color) return { backgroundColor: "#f8fafc", borderColor: "#e2e8f0", color: "#475569" };
+  if (!color) return { backgroundColor: neutralBackground, borderColor: neutralBorder, color: neutralColor };
   return {
-    backgroundColor: `color-mix(in srgb, ${color} 10%, white)`,
-    borderColor: `color-mix(in srgb, ${color} 30%, white)`,
-    color
+    backgroundColor: `color-mix(in srgb, ${color} ${isDarkTheme.value ? 18 : 10}%, ${isDarkTheme.value ? "var(--card)" : "white"})`,
+    borderColor: `color-mix(in srgb, ${color} ${isDarkTheme.value ? 55 : 30}%, ${isDarkTheme.value ? "var(--border)" : "white"})`,
+    color: isDarkTheme.value ? "var(--foreground)" : color
   };
 };
 
@@ -6744,16 +6747,16 @@ watch(visibleOpportunityIds, ids => {
 }
 
 .opps-table-shell {
-  background: #fff;
-  border: 1px solid #e4e9e4;
+  background: var(--card);
+  border: 1px solid var(--border);
   border-radius: 14px;
-  box-shadow: 0 2px 8px rgba(15, 31, 20, 0.04);
+  box-shadow: var(--shadow-card);
   overflow: hidden;
 }
 
 .opps-table thead tr {
-  background: #f5f7f5;
-  border-bottom: 1.5px solid #e4e9e4;
+  background: var(--surface-muted);
+  border-bottom: 1.5px solid var(--border);
 }
 
 .opps-table {
@@ -6762,12 +6765,13 @@ watch(visibleOpportunityIds, ids => {
 }
 
 .opps-table thead th {
-  color: #8a9e8a;
+  color: var(--muted-foreground);
 }
 
 .opps-group-row td {
-  border-top: 1.5px solid #e4e9e4;
-  background: #fff;
+  border-top: 1.5px solid var(--border);
+  background: var(--card);
+  color: var(--card-foreground);
   position: relative;
 }
 
@@ -6782,7 +6786,7 @@ watch(visibleOpportunityIds, ids => {
 }
 
 .opps-group-meta {
-  color: #8a9e8a;
+  color: var(--muted-foreground);
   margin-left: 10px;
 }
 
@@ -6796,7 +6800,7 @@ watch(visibleOpportunityIds, ids => {
   border: 1px solid transparent !important;
   border-radius: 8px;
   background-color: transparent !important;
-  color: #7b8794;
+  color: var(--muted-foreground);
   vertical-align: middle;
   box-shadow: none;
 }
@@ -6810,29 +6814,29 @@ watch(visibleOpportunityIds, ids => {
 }
 
 .opps-data-row {
-  border-bottom: 1px solid #e4e9e4;
-  background: #fafbfa;
-  color: #111a14;
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+  color: var(--card-foreground);
 }
 
 .opps-data-row:hover {
-  background: #eef3ee;
+  background: var(--surface-muted);
 }
 
 .opps-data-row.is-won {
-  background: rgba(61, 204, 95, 0.08);
+  background: color-mix(in srgb, #3dcc5f 10%, var(--card));
 }
 
 .opps-data-row.is-won:hover {
-  background: rgba(61, 204, 95, 0.12);
+  background: color-mix(in srgb, #3dcc5f 16%, var(--card));
 }
 
 .opps-data-row.is-lost {
-  background: rgba(239, 68, 68, 0.07);
+  background: color-mix(in srgb, #ef4444 10%, var(--card));
 }
 
 .opps-data-row.is-lost:hover {
-  background: rgba(239, 68, 68, 0.11);
+  background: color-mix(in srgb, #ef4444 16%, var(--card));
 }
 
 .opps-data-row.is-no-status {
@@ -8258,6 +8262,248 @@ watch(visibleOpportunityIds, ids => {
 
 .kanban-column__header {
   flex-shrink: 0;
+}
+
+/* Design system — formulários e oportunidades */
+.forms-premium {
+  --verde: var(--primary);
+  --verde-dim: var(--status-success);
+  --verde-border: var(--border);
+  --surface: var(--card);
+  --surface2: var(--muted);
+  --text: var(--foreground);
+  --text-2: var(--secondary-foreground);
+  --text-3: var(--muted-foreground);
+  --border: var(--border);
+}
+
+.forms-kpi-card,
+.forms-list-card {
+  border-radius: var(--radius-lg);
+  background: var(--card);
+  color: var(--card-foreground);
+  box-shadow: var(--shadow-card);
+}
+
+.forms-kpi-card:hover {
+  border-color: var(--ring);
+  box-shadow: var(--shadow-elegant);
+}
+
+.forms-kpi-value,
+.list-title {
+  font-family: var(--font-display);
+}
+
+.forms-kpi-icon--forms,
+.forms-kpi-icon--leads,
+.forms-kpi-icon--month {
+  background: var(--status-success);
+  color: var(--status-success-foreground);
+}
+
+.forms-kpi-icon--latest {
+  background: var(--status-neutral);
+  color: var(--status-neutral-foreground);
+}
+
+.forms-kpi-badge,
+.field-chip,
+.form-leads-badge.is-zero {
+  border-color: var(--border);
+  background: var(--muted);
+  color: var(--muted-foreground);
+}
+
+.form-leads-badge {
+  border-color: var(--border);
+  background: var(--status-success);
+  color: var(--status-success-foreground);
+}
+
+.forms-list-header,
+.form-row:hover {
+  background: var(--muted);
+}
+
+.search-input,
+.filter-select,
+.page-action-btn {
+  border-color: var(--input);
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.search-input:focus,
+.filter-select:focus {
+  border-color: var(--ring);
+  outline: 2px solid color-mix(in srgb, var(--ring) 22%, transparent);
+  outline-offset: 1px;
+}
+
+.page-action-btn.view {
+  border-color: var(--border);
+  background: var(--status-success);
+  color: var(--status-success-foreground);
+}
+
+.page-action-btn.view:hover {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.page-action-btn.edit:hover,
+.page-action-btn.duplicate:hover {
+  border-color: var(--ring);
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.page-action-btn.danger {
+  border-color: var(--border);
+  background: var(--status-danger);
+  color: var(--status-danger-foreground);
+}
+
+.forms-empty {
+  margin: 16px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--muted);
+}
+
+.crm-toolbar {
+  background: var(--background) !important;
+  color: var(--foreground);
+}
+
+.opportunities-filter-bar--desktop .opportunities-filter-label,
+.toolbar-ms-actions button,
+.toolbar-ms-subtitle {
+  color: var(--muted-foreground);
+}
+
+.toolbar-ms-btn,
+.toolbar-search,
+.toolbar-ghost-btn,
+.toolbar-ms-dropdown,
+.columns-sidebar,
+.columns-sidebar-head {
+  border-color: var(--border);
+  background: var(--card);
+  color: var(--foreground);
+}
+
+.toolbar-ms-btn:hover,
+.toolbar-ms-btn.open,
+.toolbar-ghost-btn:hover {
+  border-color: var(--ring);
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.toolbar-ms-count {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.toolbar-ms-dropdown {
+  box-shadow: var(--shadow-elegant);
+}
+
+.toolbar-ms-actions {
+  border-color: var(--border);
+}
+
+.toolbar-ms-option,
+.toolbar-search input,
+.columns-sidebar-title {
+  color: var(--foreground);
+}
+
+.toolbar-ms-option:hover {
+  background: var(--muted);
+}
+
+.toolbar-ms-option input {
+  accent-color: var(--primary);
+}
+
+.toolbar-search-icon,
+.columns-sidebar-section {
+  color: var(--muted-foreground);
+}
+
+.columns-overlay {
+  background: var(--modal-overlay);
+}
+
+.columns-sidebar {
+  box-shadow: var(--shadow-elegant);
+}
+
+.columns-sidebar-close {
+  border-color: var(--border);
+  background: var(--muted);
+  color: var(--muted-foreground);
+}
+
+.opps-table-shell,
+.mobile-opps-card {
+  border-color: var(--border);
+  background: var(--card);
+  color: var(--card-foreground);
+  box-shadow: var(--shadow-card);
+}
+
+.opps-table thead,
+.opps-group-row,
+.mobile-group-strip {
+  background: var(--muted);
+  color: var(--muted-foreground);
+}
+
+.opps-data-row {
+  border-color: var(--border);
+}
+
+.opps-data-row:hover,
+.mobile-opps-card:hover {
+  background: var(--muted) !important;
+}
+
+.action-icon-btn {
+  border-color: var(--border);
+  background: var(--muted);
+  color: var(--muted-foreground);
+}
+
+.mobile-create-btn {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+@media (max-width: 768px) {
+  .leads-page {
+    gap: 16px;
+    padding: 16px;
+  }
+
+  .forms-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .forms-kpi-card {
+    min-height: 132px;
+    padding: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .forms-kpi-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 

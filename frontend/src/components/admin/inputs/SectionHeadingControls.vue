@@ -1,5 +1,5 @@
 ﻿<template>
-  <div>
+  <div class="section-heading-controls">
     <label class="text-sm font-semibold text-slate-600">{{ copy.label }}</label>
     <input
       v-model="headingText"
@@ -40,3 +40,19 @@ onMounted(() => {
   }
 });
 </script>
+
+<style scoped>
+.section-heading-controls { color: var(--foreground); }
+.section-heading-controls label { color: var(--muted-foreground); }
+.section-heading-controls input {
+  border-color: var(--input);
+  background: var(--card);
+  color: var(--foreground);
+}
+.section-heading-controls input:focus {
+  outline: none;
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 15%, transparent);
+}
+.section-heading-controls p { color: var(--muted-foreground); }
+</style>

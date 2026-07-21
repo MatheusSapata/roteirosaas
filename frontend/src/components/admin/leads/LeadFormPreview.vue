@@ -61,20 +61,20 @@ const buttonStyle = computed(() => ({
 </script>
 
 <style scoped>
-.preview-card { width: 100%; max-width: 305px; border: 1px solid #e3ebe5; border-radius: 16px; background: #f4f7f5; overflow: hidden; }
+.preview-card { width: 100%; max-width: 305px; border: 1px solid var(--border); border-radius: var(--radius-2xl); background: var(--muted); overflow: hidden; box-shadow: var(--shadow-card); }
 
 .preview-body { padding: 12px; text-align: center; }
 .preview-logo { width: 48px; height: 48px; object-fit: contain; margin: 0 auto 8px; border-radius: 10px; }
-.preview-body h3 { margin: 0; font-size: 16px; color: #1d2b25; line-height: 1.15; }
-.preview-body p { margin: 6px 0 10px; color: #809289; font-size: 12px; }
+.preview-body h3 { margin: 0; font-family: var(--font-display); font-size: 16px; color: var(--foreground); line-height: 1.15; }
+.preview-body p { margin: 6px 0 10px; color: var(--muted-foreground); font-size: 12px; }
 
 .preview-fields { display: grid; gap: 7px; text-align: left; }
-.preview-field label { display: block; margin-bottom: 4px; font-size: 10px; font-weight: 700; color: #90a099; text-transform: uppercase; }
-.preview-field input { width: 100%; border-radius: 9px; border: 1px solid #dee7e1; padding: 7px 9px; font-size: 12px; background: #ecf1ee; color: #93a09a; }
-.preview-field textarea { width: 100%; min-height: 54px; resize: none; border-radius: 9px; border: 1px solid #dee7e1; padding: 7px 9px; font-size: 12px; background: #ecf1ee; color: #93a09a; }
+.preview-field label { display: block; margin-bottom: 4px; font-size: 10px; font-weight: 700; color: var(--muted-foreground); text-transform: uppercase; }
+.preview-field input { width: 100%; border-radius: var(--radius-lg); border: 1px solid var(--input); padding: 7px 9px; font-size: 12px; background: var(--background); color: var(--muted-foreground); }
+.preview-field textarea { width: 100%; min-height: 54px; resize: none; border-radius: var(--radius-lg); border: 1px solid var(--input); padding: 7px 9px; font-size: 12px; background: var(--background); color: var(--muted-foreground); }
 
 .preview-body button { width: 100%; margin-top: 10px; border-radius: 11px; color: #132e1c; font-size: 14px; font-weight: 800; padding: 9px 10px; }
-.preview-body small { display: block; margin-top: 8px; color: #94a29a; font-size: 11px; }
+.preview-body small { display: block; margin-top: 8px; color: var(--muted-foreground); font-size: 11px; }
 </style>
 
 

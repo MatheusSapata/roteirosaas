@@ -1,8 +1,8 @@
 <template>
-  <div class="flex min-h-screen">
+  <div class="auth-view flex min-h-screen">
     <div
       class="relative hidden w-3/5 items-center justify-center overflow-hidden bg-slate-900 lg:flex"
-      style="background-image: linear-gradient(135deg, rgba(15,23,42,0.85), rgba(14,165,233,0.7)), url('https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=1400&q=80'); background-size: cover; background-position: center;"
+      style="background-image: linear-gradient(135deg, rgba(7,22,16,0.9), rgba(29,233,160,0.55)), url('https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=1400&q=80'); background-size: cover; background-position: center;"
     >
       <div class="relative z-10 max-w-xl space-y-6 p-16 text-white">
         <p class="inline-flex items-center rounded-full bg-white/10 px-4 py-1 text-sm font-semibold backdrop-blur">
@@ -333,3 +333,12 @@ const onSubmit = async () => {
   }
 };
 </script>
+
+<style scoped>
+.auth-view { background: var(--background); color: var(--foreground); }
+.auth-view :deep(.bg-white) { background: var(--card) !important; }
+.auth-view :deep(.border-slate-200), .auth-view :deep(.border-slate-300) { border-color: var(--border) !important; }
+.auth-view :deep(.text-slate-900), .auth-view :deep(.text-slate-700) { color: var(--foreground) !important; }
+.auth-view :deep(.text-slate-600), .auth-view :deep(.text-slate-500) { color: var(--muted-foreground) !important; }
+.auth-view :deep(input) { border-color: var(--input) !important; background: var(--background) !important; color: var(--foreground) !important; }
+</style>

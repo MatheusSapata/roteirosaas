@@ -31,6 +31,7 @@ from app.models import (
     flight_section,
     ai_prompt_config,
     ai_assistant_usage,
+    ai_assistant_message,
     system_banner,
     team_invite,
     whatsapp,

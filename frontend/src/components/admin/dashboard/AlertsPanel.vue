@@ -1,12 +1,12 @@
 ﻿<template>
-  <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_4px_18px_rgba(15,23,42,0.05)]">
-    <h3 class="mb-4 text-base font-bold text-slate-900">Alertas inteligentes</h3>
+  <section class="rounded-lg border border-border bg-card p-5 text-card-foreground shadow-card">
+    <h3 class="mb-4 font-display text-base font-semibold text-foreground">Alertas inteligentes</h3>
     <div class="grid gap-3 md:grid-cols-3">
       <article
         v-for="alert in alerts"
         :key="alert.title"
-        class="rounded-xl border px-4 py-3"
-        :class="alert.tone === 'warning' ? 'border-amber-200 bg-amber-50 text-amber-900' : alert.tone === 'danger' ? 'border-rose-200 bg-rose-50 text-rose-900' : 'border-slate-200 bg-slate-50 text-slate-900'"
+        class="rounded-lg border px-4 py-3"
+        :class="alert.tone === 'warning' ? 'border-border bg-status-warning text-status-warning-foreground' : alert.tone === 'danger' ? 'border-border bg-status-danger text-status-danger-foreground' : 'border-border bg-status-neutral text-status-neutral-foreground'"
       >
         <p class="text-xs font-semibold uppercase tracking-wide opacity-70">{{ alert.title }}</p>
         <p class="mt-1 text-xl font-bold">{{ alert.value }}</p>

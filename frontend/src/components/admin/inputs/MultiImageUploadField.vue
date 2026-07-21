@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-2">
+  <div class="multi-image-upload-field space-y-2">
     <label v-if="label" class="text-sm font-semibold text-slate-600">{{ label }}</label>
     <div class="space-y-3 rounded-xl border border-slate-200 p-3">
       <div v-if="modelValue.length" class="grid gap-3 md:grid-cols-2">
@@ -92,3 +92,14 @@ const removeImage = (index: number) => {
   emit("update:modelValue", next);
 };
 </script>
+
+<style scoped>
+.multi-image-upload-field { color: var(--foreground); }
+.multi-image-upload-field :deep(.border-slate-200),
+.multi-image-upload-field :deep(.border-slate-300) { border-color: var(--border) !important; }
+.multi-image-upload-field :deep(.bg-slate-50) { background: var(--muted) !important; }
+.multi-image-upload-field :deep(.text-slate-700),
+.multi-image-upload-field :deep(.text-slate-600) { color: var(--foreground) !important; }
+.multi-image-upload-field :deep(.text-slate-500) { color: var(--muted-foreground) !important; }
+.multi-image-upload-field label:hover { background: var(--accent); }
+</style>

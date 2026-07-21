@@ -72,7 +72,7 @@
     </div>
 
     <button v-if="hasCta && ctaLabel" type="button" class="system-banner-cta" :style="ctaButtonStyle" @click="$emit('cta')">{{ ctaLabel }}</button>
-    <button v-if="dismissible" type="button" class="system-banner-close" @click="$emit('close')" aria-label="Fechar">✕</button>
+    <button v-if="dismissible" type="button" class="system-banner-close" @click="$emit('close')" aria-label="Fechar" title="Fechar">×</button>
   </section>
 </template>
 
@@ -168,7 +168,7 @@ const sanitizedIconSvg = computed(() => {
 
 <style scoped>
 .system-banner {
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   padding: 20px 72px 20px 24px;
   margin-bottom: 24px;
   display: flex;
@@ -185,32 +185,32 @@ const sanitizedIconSvg = computed(() => {
   right: -30px;
   width: 160px;
   height: 160px;
-  background: radial-gradient(circle, rgba(61, 204, 95, 0.2) 0%, transparent 70%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--primary) 22%, transparent) 0%, transparent 70%);
   pointer-events: none;
 }
 
 .system-banner--green-gradient {
-  background: linear-gradient(135deg, #1a3d25 0%, #2a5c38 50%, #1f4a2d 100%);
+  background: var(--gradient-brand);
 }
 
 .system-banner--green-solid {
-  background: #1a3d25;
+  background: var(--brand-dark);
 }
 
 .system-banner--green-light {
-  background: linear-gradient(135deg, #2a5c38 0%, #3dcc5f 100%);
+  background: linear-gradient(135deg, var(--brand-dark), var(--primary));
 }
 
 .system-banner--success {
-  background: linear-gradient(135deg, #14532d 0%, #166534 100%);
+  background: linear-gradient(135deg, var(--brand-dark), var(--status-success-foreground));
 }
 
 .system-banner--warning {
-  background: linear-gradient(135deg, #78350f 0%, #92400e 100%);
+  background: linear-gradient(135deg, var(--status-warning-foreground), var(--chart-8));
 }
 
 .system-banner--info {
-  background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 100%);
+  background: linear-gradient(135deg, var(--status-info-foreground), var(--chart-3));
 }
 
 .system-banner-left {
@@ -226,7 +226,7 @@ const sanitizedIconSvg = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(61, 204, 95, 0.2);
+  background: color-mix(in srgb, var(--primary) 22%, transparent);
   flex-shrink: 0;
 }
 
@@ -242,7 +242,7 @@ const sanitizedIconSvg = computed(() => {
 .system-banner-icon :deep(svg) {
   width: 20px;
   height: 20px;
-  stroke: #3dcc5f;
+  stroke: var(--primary-accent);
 }
 
 .system-banner-icon-svg {
@@ -264,14 +264,14 @@ const sanitizedIconSvg = computed(() => {
 }
 
 .system-banner-title {
-  color: #fff;
+  color: var(--primary-foreground);
   font-size: 15px;
   font-weight: 700;
   margin: 0;
 }
 
 .system-banner-sub {
-  color: rgba(255, 255, 255, 0.65);
+  color: color-mix(in srgb, var(--primary-foreground) 72%, transparent);
   font-size: 13px;
   margin-top: 2px;
   margin-bottom: 0;
@@ -279,9 +279,10 @@ const sanitizedIconSvg = computed(() => {
 
 .system-banner-cta {
   border: none;
-  border-radius: 10px;
-  background: #3dcc5f;
-  color: #0f1f14;
+  min-height: 36px;
+  border-radius: var(--radius-lg);
+  background: var(--primary);
+  color: var(--primary-foreground);
   font-weight: 700;
   font-size: 13px;
   padding: 9px 18px;
@@ -298,15 +299,15 @@ const sanitizedIconSvg = computed(() => {
   height: 24px;
   border-radius: 6px;
   cursor: pointer;
-  color: rgba(255, 255, 255, 0.7);
-  background: rgba(255, 255, 255, 0.1);
+  color: var(--primary-foreground);
+  background: color-mix(in srgb, var(--primary-foreground) 14%, transparent);
   z-index: 2;
 }
 
 .system-banner--compact {
   padding: 14px 48px 14px 16px;
   margin-bottom: 0;
-  border-radius: 14px;
+  border-radius: var(--radius-lg);
   min-height: 84px;
 }
 

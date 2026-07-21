@@ -1,5 +1,5 @@
 ﻿<template>
-  <div class="bg-white text-slate-900">
+  <div class="plans-view bg-background text-foreground">
     <div class="plans-content-scale relative px-4 pb-0 lg:px-8 2xl:px-10">
       <header class="relative mx-auto max-w-[96rem] pt-4 pb-3 text-center">
         <h1 class="text-4xl font-black tracking-tight text-slate-900 md:text-5xl">
@@ -708,6 +708,17 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.plans-view { min-height: 100%; background: var(--background); color: var(--foreground); }
+.plans-view :deep(.bg-white) { background: var(--card) !important; }
+.plans-view :deep(.bg-slate-50),
+.plans-view :deep(.bg-slate-100) { background: var(--muted) !important; }
+.plans-view :deep(.border-slate-200),
+.plans-view :deep(.border-slate-300) { border-color: var(--border) !important; }
+.plans-view :deep(.text-slate-900),
+.plans-view :deep(.text-slate-800),
+.plans-view :deep(.text-slate-700) { color: var(--foreground) !important; }
+.plans-view :deep(.text-slate-600),
+.plans-view :deep(.text-slate-500) { color: var(--muted-foreground) !important; }
 @media (min-width: 1024px) and (max-width: 1919px) {
   .plans-content-scale {
     zoom: 0.85;

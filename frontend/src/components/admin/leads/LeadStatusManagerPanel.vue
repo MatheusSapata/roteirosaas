@@ -1,27 +1,31 @@
 ﻿<template>
   <section class="pipeline-settings space-y-5">
     <section class="list-card p-4 md:p-5">
-      <div class="mb-4">
-        <h3 class="text-lg font-semibold text-slate-900">{{ viewCopy.pipeline.title }}</h3>
-        <p class="text-sm text-slate-500">{{ viewCopy.pipeline.helper }}</p>
+      <div class="pipeline-card-header">
+        <div>
+          <p class="pipeline-eyebrow">FUNIL COMERCIAL</p>
+          <h3>{{ viewCopy.pipeline.title }}</h3>
+          <p>{{ viewCopy.pipeline.helper }}</p>
+        </div>
+        <span class="pipeline-summary">{{ orderedStatuses.length }} etapas</span>
       </div>
 
       <div
         v-if="loading && !orderedStatuses.length"
-        class="rounded-2xl border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-500"
+        class="pipeline-empty-state"
       >
         {{ viewCopy.pipeline.loading }}
       </div>
       <div
         v-else-if="!orderedStatuses.length"
-        class="rounded-2xl border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-500"
+        class="pipeline-empty-state"
       >
         {{ viewCopy.pipeline.empty }}
       </div>
 
-      <ul v-else class="space-y-3">
+      <ul v-else class="pipeline-list">
         <li
-          v-for="status in orderedStatuses"
+          v-for="(status, index) in orderedStatuses"
           :key="status.id"
           class="pipeline-card group"
           :class="{
@@ -50,14 +54,20 @@
               </button>
 
               <div class="min-w-0 flex-1">
-                <p class="truncate text-base font-semibold text-slate-900">{{ status.name }}</p>
+                <div class="flex items-center gap-3">
+                  <span class="pipeline-color-dot" aria-hidden="true"></span>
+                  <div class="min-w-0">
+                    <p class="pipeline-name">{{ status.name }}</p>
+                    <p class="pipeline-position">Etapa {{ index + 1 }} do funil</p>
+                  </div>
+                </div>
               </div>
             </div>
 
             <div class="flex flex-wrap items-center gap-2 self-end md:self-start">
               <button
                 type="button"
-                class="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                class="pipeline-action-btn"
                 :disabled="savingMap[idKey(status.id)]"
                 @click="openEditModal(status)"
               >
@@ -66,7 +76,7 @@
 
               <button
                 type="button"
-                class="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                class="pipeline-action-btn"
                 @click="handleDuplicateStatus(status)"
               >
                 {{ viewCopy.actions.duplicate }}
@@ -75,7 +85,7 @@
               <button
                 v-if="canDelete"
                 type="button"
-                class="rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-100 disabled:opacity-60"
+                class="pipeline-action-btn pipeline-action-btn--danger"
                 :disabled="deletingMap[idKey(status.id)]"
                 @click="handleDeleteStatus(status)"
               >
@@ -89,15 +99,15 @@
 
     <Teleport to="body">
       <div v-if="statusModalOpen" class="app-modal-overlay fixed inset-0 z-[170] flex items-center justify-center px-4">
-        <div class="w-full max-w-xl rounded-[28px] border border-slate-200 bg-white p-6 shadow-2xl">
+        <div class="pipeline-modal-shell w-full max-w-xl p-6">
           <div class="flex items-start justify-between gap-3">
             <div>
-              <p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">{{ viewCopy.modal.eyebrow }}</p>
-              <h3 class="mt-2 text-2xl font-bold text-slate-900">
+              <p class="pipeline-modal-eyebrow">{{ viewCopy.modal.eyebrow }}</p>
+              <h3 class="mt-2 text-2xl font-bold">
                 {{ statusModalMode === "create" ? viewCopy.modal.createTitle : viewCopy.modal.editTitle }}
               </h3>
             </div>
-            <button type="button" class="rounded-full border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-50" @click="closeStatusModal">
+            <button type="button" class="pipeline-modal-close" @click="closeStatusModal">
               <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M6 6l12 12M6 18 18 6" stroke-linecap="round" stroke-linejoin="round" />
               </svg>
@@ -106,31 +116,31 @@
 
           <div class="mt-5 grid gap-4">
             <label class="block">
-              <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ viewCopy.modal.nameLabel }}</span>
+              <span class="pipeline-modal-label">{{ viewCopy.modal.nameLabel }}</span>
               <input
                 v-model="statusModalName"
                 type="text"
                 :placeholder="viewCopy.modal.namePlaceholder"
-                class="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
+                class="pipeline-modal-input mt-2 w-full px-4 py-2.5 text-sm outline-none transition"
               />
             </label>
 
             <div>
-              <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ viewCopy.modal.colorLabel }}</span>
+              <span class="pipeline-modal-label">{{ viewCopy.modal.colorLabel }}</span>
               <div class="mt-2 flex items-center gap-3">
-                <label class="relative block h-10 w-10 cursor-pointer overflow-hidden rounded-xl border border-slate-200">
+                <label class="pipeline-color-picker relative block h-10 w-10 cursor-pointer overflow-hidden">
                   <input v-model="statusModalColor" type="color" :aria-label="viewCopy.modal.colorAria" class="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
                   <span class="block h-full w-full" :style="{ backgroundColor: statusModalColor }"></span>
                 </label>
-                <p class="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-600">{{ statusModalColor }}</p>
+                <p class="pipeline-color-code">{{ statusModalColor }}</p>
               </div>
             </div>
 
             <label v-if="statusModalMode === 'create'" class="block">
-              <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ viewCopy.modal.positionLabel }}</span>
+              <span class="pipeline-modal-label">{{ viewCopy.modal.positionLabel }}</span>
               <select
                 v-model="statusModalPosition"
-                class="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
+                class="pipeline-modal-input mt-2 w-full px-4 py-2.5 text-sm outline-none transition"
               >
                 <option value="end">{{ viewCopy.modal.positionEnd }}</option>
                 <option v-for="(option, index) in orderedStatuses" :key="option.id" :value="String(index)">
@@ -141,7 +151,7 @@
           </div>
 
           <div class="mt-6 flex justify-end gap-2">
-            <button type="button" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50" @click="closeStatusModal">
+            <button type="button" class="pipeline-modal-cancel" @click="closeStatusModal">
               {{ viewCopy.modal.cancel }}
             </button>
             <button
@@ -498,16 +508,75 @@ watch(
 
 <style scoped>
 .list-card {
-  border-radius: 1.25rem;
-  border: 1px solid rgb(226 232 240);
-  background: #fff;
-  box-shadow: 0 10px 24px -24px rgba(15, 23, 42, 0.45);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--card-foreground);
+  box-shadow: var(--shadow-soft);
+}
+
+.pipeline-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.pipeline-card-header h3 {
+  margin-top: 0.25rem;
+  color: var(--foreground);
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  font-weight: 650;
+}
+
+.pipeline-card-header > div > p:last-child,
+.pipeline-position {
+  color: var(--muted-foreground);
+  font-size: 0.8125rem;
+}
+
+.pipeline-eyebrow,
+.pipeline-modal-eyebrow,
+.pipeline-modal-label {
+  color: var(--muted-foreground);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.pipeline-summary {
+  flex: none;
+  border: 1px solid color-mix(in srgb, var(--primary) 25%, var(--border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primary) 10%, var(--card));
+  color: var(--primary);
+  padding: 0.35rem 0.7rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.pipeline-list {
+  display: grid;
+  gap: 0.625rem;
+}
+
+.pipeline-empty-state {
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--muted);
+  color: var(--muted-foreground);
+  padding: 2rem 1rem;
+  text-align: center;
+  font-size: 0.875rem;
 }
 
 .btn-brand {
-  background: rgb(34 197 94);
-  color: #08220f;
-  box-shadow: 0 10px 20px -16px rgba(34, 197, 94, 0.8);
+  background: var(--primary);
+  color: var(--primary-foreground);
+  box-shadow: var(--shadow-soft);
   transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
 }
 
@@ -518,17 +587,18 @@ watch(
 
 .pipeline-card {
   border-radius: 1rem;
-  border: 1px solid rgb(226 232 240);
+  border: 1px solid var(--border);
   border-left: 4px solid var(--status-color);
-  background: #fff;
+  background: var(--background);
   padding: 1rem;
-  box-shadow: 0 10px 24px -24px rgba(15, 23, 42, 0.45);
+  box-shadow: 0 10px 24px -26px rgb(0 0 0 / 45%);
   transition: box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
 }
 
 .pipeline-card:hover {
   transform: translateY(-1px);
-  box-shadow: 0 20px 30px -24px rgba(15, 23, 42, 0.45);
+  border-color: color-mix(in srgb, var(--foreground) 15%, var(--border));
+  box-shadow: var(--shadow-soft);
 }
 
 .pipeline-card.is-dragging {
@@ -540,8 +610,27 @@ watch(
 
 .pipeline-card.is-drag-over {
   border-style: dashed;
-  border-color: rgba(34, 197, 94, 0.65);
-  background: rgba(34, 197, 94, 0.03);
+  border-color: color-mix(in srgb, var(--primary) 65%, var(--border));
+  background: color-mix(in srgb, var(--primary) 5%, var(--background));
+}
+
+.pipeline-color-dot {
+  display: block;
+  flex: none;
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 999px;
+  background: var(--status-color);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--status-color) 16%, transparent);
+}
+
+.pipeline-name {
+  overflow: hidden;
+  color: var(--foreground);
+  font-size: 0.9375rem;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .drag-handle {
@@ -552,8 +641,9 @@ watch(
   align-items: center;
   justify-content: center;
   border-radius: 0.6rem;
-  border: 1px solid rgb(226 232 240);
-  color: rgb(100 116 139);
+  border: 1px solid var(--border);
+  background: var(--muted);
+  color: var(--muted-foreground);
   cursor: grab;
   transition: background-color 0.15s ease, color 0.15s ease;
 }
@@ -563,7 +653,103 @@ watch(
 }
 
 .drag-handle:hover {
-  background: rgb(248 250 252);
-  color: rgb(30 41 59);
+  background: var(--accent);
+  color: var(--foreground);
+}
+
+.pipeline-action-btn,
+.pipeline-modal-cancel {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--background);
+  color: var(--foreground);
+  padding: 0.4rem 0.8rem;
+  font-size: 0.75rem;
+  font-weight: 650;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.pipeline-action-btn:hover,
+.pipeline-modal-cancel:hover {
+  background: var(--accent);
+  border-color: color-mix(in srgb, var(--foreground) 15%, var(--border));
+}
+
+.pipeline-action-btn--danger {
+  border-color: color-mix(in srgb, var(--destructive) 30%, var(--border));
+  background: color-mix(in srgb, var(--destructive) 9%, var(--background));
+  color: var(--destructive);
+}
+
+.pipeline-action-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.pipeline-modal-shell {
+  border: 1px solid var(--border);
+  border-radius: 1.5rem;
+  background: var(--card);
+  color: var(--card-foreground);
+  box-shadow: var(--shadow-xl);
+}
+
+.pipeline-modal-shell h3 {
+  color: var(--foreground);
+  font-family: var(--font-display);
+}
+
+.pipeline-modal-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  padding: 0.5rem;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.pipeline-modal-close:hover {
+  background: var(--accent);
+  color: var(--foreground);
+}
+
+.pipeline-modal-label {
+  display: inline-block;
+  letter-spacing: 0.08em;
+}
+
+.pipeline-modal-input,
+.pipeline-color-picker,
+.pipeline-color-code {
+  border: 1px solid var(--input);
+  border-radius: 0.75rem;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.pipeline-modal-input:focus {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 18%, transparent);
+}
+
+.pipeline-modal-input option {
+  background: var(--popover);
+  color: var(--popover-foreground);
+}
+
+.pipeline-color-code {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.pipeline-modal-cancel {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
 }
 </style>

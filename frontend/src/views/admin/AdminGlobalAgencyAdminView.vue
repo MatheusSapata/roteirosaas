@@ -1,5 +1,5 @@
 <template>
-  <div class="admin-master-view w-full space-y-6 px-4 py-8 md:px-8">
+  <div class="admin-master-view admin-master-surface w-full space-y-6 px-4 py-8 md:px-8">
     <section class="rounded-2xl bg-white p-6 shadow-md ring-1 ring-slate-100">
       <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>

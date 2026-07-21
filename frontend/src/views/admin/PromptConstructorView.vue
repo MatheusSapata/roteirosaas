@@ -1,5 +1,5 @@
 ﻿<template>
-  <div class="page-wrap prompt-constructor-page">
+  <div class="admin-master-surface page-wrap prompt-constructor-page">
     <div class="page-topbar">
       <div>
         <p class="page-eyebrow">Admin Master</p>

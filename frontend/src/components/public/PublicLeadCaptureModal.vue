@@ -8,6 +8,10 @@
         <div class="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"></div>
         <div
           class="relative z-10 w-full max-w-md rounded-[24px] border border-white/10 bg-white/95 p-5 text-slate-900 shadow-2xl backdrop-blur-sm dark:bg-slate-900/95 dark:text-white"
+          role="dialog"
+          aria-modal="true"
+          :aria-labelledby="modalTitleId"
+          :aria-describedby="modalSubtitleId"
         >
           <button
             v-if="dismissible"
@@ -25,34 +29,40 @@
               <div v-if="showBrandingLogo" class="flex justify-center">
                 <img :src="brandingLogo" alt="Logo da agência" class="h-20 w-20 rounded-2xl object-contain" />
               </div>
-              <h2 class="text-2xl font-bold">{{ modalTitle }}</h2>
-              <p class="text-sm text-slate-500 dark:text-slate-300">
+              <h2 :id="modalTitleId" class="text-2xl font-bold">{{ modalTitle }}</h2>
+              <p :id="modalSubtitleId" class="text-sm text-slate-500 dark:text-slate-300">
                 {{ modalSubtitle }}
               </p>
             </div>
 
             <form class="space-y-3" @submit.prevent="handleSubmit">
               <div v-for="field in form.fields" :key="field.id" class="space-y-1">
-                <label class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                <label :for="`lead-field-${field.id}`" class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                   {{ field.label }}
                   <span v-if="field.required" class="text-rose-500">*</span>
                 </label>
                 <textarea
                   v-if="field.type === 'textarea'"
+                  :id="`lead-field-${field.id}`"
                   v-model="formState[field.id]"
                   :placeholder="field.placeholder"
+                  :aria-invalid="errors[field.id] ? 'true' : 'false'"
+                  :aria-describedby="errors[field.id] ? `lead-error-${field.id}` : undefined"
                   rows="3"
                   class="w-full resize-y rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-900 shadow-sm focus:border-brand focus:ring-2 focus:ring-brand/50 dark:border-white/10 dark:bg-slate-900 dark:text-white"
                 ></textarea>
                 <input
                   v-else
+                  :id="`lead-field-${field.id}`"
                   v-model="formState[field.id]"
                   :placeholder="field.placeholder"
                   :type="inputType(field.type)"
                   :inputmode="inputMode(field.type)"
+                  :aria-invalid="errors[field.id] ? 'true' : 'false'"
+                  :aria-describedby="errors[field.id] ? `lead-error-${field.id}` : undefined"
                   class="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-900 shadow-sm focus:border-brand focus:ring-2 focus:ring-brand/50 dark:border-white/10 dark:bg-slate-900 dark:text-white"
                 />
-                <p v-if="errors[field.id]" class="text-xs text-rose-500">{{ errors[field.id] }}</p>
+                <p v-if="errors[field.id]" :id="`lead-error-${field.id}`" class="text-xs text-rose-500" role="alert">{{ errors[field.id] }}</p>
               </div>
 
               <button
@@ -104,6 +114,8 @@ const formState = reactive<Record<string, string>>({});
 const errors = reactive<Record<string, string>>({});
 const loading = ref(false);
 const generalError = ref("");
+const modalTitleId = "public-lead-modal-title";
+const modalSubtitleId = "public-lead-modal-subtitle";
 const FALLBACK_ACCENT_COLOR = "#22c55e";
 const modalCopy = {
   close: { pt: "Fechar", es: "Cerrar" },

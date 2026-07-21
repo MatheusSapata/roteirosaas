@@ -1046,6 +1046,98 @@ watch(
   z-index: 41;
 }
 
+.story-form-shell,
+.story-form-content { background: var(--background); color: var(--foreground); }
+.story-form-nav { border-color: var(--border); background: var(--card); }
+.story-nav-item { border-color: var(--border); background: var(--muted); color: var(--foreground); }
+.story-nav-item.active { border-color: var(--primary); background: var(--primary); color: var(--primary-foreground); }
+.story-nav-item small,
+.story-form-subtitle,
+.story-position-card small,
+.story-note,
+.story-empty { color: var(--muted-foreground); }
+.story-form-title,
+.story-position-card strong,
+.story-gallery-head span,
+.story-box-head { color: var(--foreground); }
+.story-input,
+.story-button-panel .section-dropdown-trigger {
+  border-color: var(--input);
+  background: var(--card);
+  color: var(--foreground);
+}
+.story-input:focus,
+.story-button-panel .section-dropdown-trigger:focus {
+  outline: none;
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 15%, transparent);
+}
+.story-rich-shell,
+.story-rich-shell :deep(.ql-container.ql-snow),
+.story-rich-shell :deep(.ql-editor) {
+  border-color: var(--input);
+  background: var(--card);
+  color: var(--foreground);
+}
+.story-rich-shell :deep(.ql-toolbar.ql-snow) { border-color: var(--input) !important; background: var(--muted); }
+.story-position-card,
+.story-box,
+.story-media-shell,
+.story-gallery-card,
+.story-gallery-preview,
+.story-video-row,
+.story-thumb-card,
+.story-thumb-preview {
+  border-color: var(--border);
+  background: var(--card);
+  color: var(--foreground);
+}
+.story-position-card.active,
+.story-pill.active {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 16%, var(--card));
+  color: var(--foreground);
+}
+.story-pill,
+.story-link-btn,
+.story-mini-btn,
+.story-add-outline,
+.story-link-mini,
+.story-modal-close {
+  border-color: var(--border);
+  background: var(--muted);
+  color: var(--foreground);
+}
+.story-pill:hover,
+.story-link-btn:hover,
+.story-mini-btn:hover,
+.story-add-outline:hover,
+.story-link-mini:hover,
+.story-modal-close:hover { background: var(--accent); }
+.story-link-mini.danger,
+.story-mini-btn.danger {
+  border-color: color-mix(in srgb, var(--destructive) 35%, var(--border));
+  background: color-mix(in srgb, var(--destructive) 10%, var(--card));
+  color: var(--destructive);
+}
+.story-modal,
+.section-dropdown-menu,
+.section-hover-preview {
+  border: 1px solid var(--border);
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: var(--shadow-elegant);
+}
+.story-modal-title,
+.section-dropdown-item { color: var(--popover-foreground); }
+.section-dropdown-item:hover { background: var(--accent); color: var(--accent-foreground); }
+.hint-help:hover::after {
+  border: 1px solid var(--border);
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: var(--shadow-elegant);
+}
+
 @media (max-width: 900px) {
   .story-form-shell {
     grid-template-columns: 1fr;

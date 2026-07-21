@@ -60,7 +60,7 @@
       </div>
     </section>
 
-    <section class="overflow-visible rounded-3xl border border-slate-200 bg-white shadow-sm">
+    <section class="clients-table-shell overflow-visible rounded-3xl border border-slate-200 bg-white shadow-sm">
       <div v-if="loading" class="flex min-h-[260px] items-center justify-center">
         <div class="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-brand"></div>
       </div>
@@ -74,7 +74,7 @@
 
       <div v-else>
         <div class="hidden overflow-x-auto overflow-y-visible lg:block">
-          <table class="min-w-full divide-y divide-slate-200 text-sm">
+          <table class="min-w-full text-sm">
             <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
               <tr>
                 <th class="px-4 py-3">Cliente</th>
@@ -86,7 +86,7 @@
                 <th class="px-4 py-3 text-right">Ações</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-slate-200">
+            <tbody>
               <tr v-for="client in clients" :key="client.id" class="client-row cursor-pointer text-slate-700 transition" @click="goToClient(client.id)">
                 <td class="px-4 py-3">
                   <div class="flex items-center gap-3">
@@ -166,7 +166,7 @@
 
     <Teleport to="body">
       <div v-if="createModalOpen" class="app-modal-overlay fixed inset-0 z-[150] flex items-center justify-center p-3 md:px-4">
-        <div class="flex w-full max-w-2xl flex-col overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-2xl max-h-[calc(100vh-24px)] md:max-h-[calc(100vh-48px)]">
+        <div class="client-modal-shell flex w-full max-w-2xl flex-col overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-2xl max-h-[calc(100vh-24px)] md:max-h-[calc(100vh-48px)]">
           <div class="flex shrink-0 items-start justify-between gap-4 border-b border-slate-100 px-4 py-4 md:px-6">
             <div>
               <p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Clientes</p>
@@ -446,7 +446,7 @@ defineExpose({
 
 <style scoped>
 .clients-page {
-  background: #f7f8f7;
+  background: transparent;
 }
 
 .clients-sub {
@@ -674,6 +674,230 @@ defineExpose({
   .kpi-value { font-size: 1.9rem; }
   .clients-filters-row {
     grid-template-columns: 1fr !important;
+  }
+}
+
+/* Design system — clientes */
+.clients-page {
+  color: var(--foreground);
+}
+
+.clients-sub {
+  color: var(--muted-foreground);
+}
+
+.kpi-card {
+  min-height: 148px;
+  border-color: var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--card);
+  box-shadow: var(--shadow-card);
+}
+
+.kpi-card:hover {
+  border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
+  box-shadow: var(--shadow-elegant);
+}
+
+.kpi-icon {
+  width: 34px;
+  height: 34px;
+  padding: 7px;
+  border-radius: var(--radius-lg);
+  background: var(--muted);
+  color: var(--muted-foreground);
+}
+
+.kpi-icon--doc {
+  background: var(--status-info);
+  color: var(--status-info-foreground);
+}
+
+.kpi-icon--money {
+  background: var(--status-success);
+  color: var(--status-success-foreground);
+}
+
+.kpi-icon--doc svg,
+.kpi-icon--money svg {
+  transform: none;
+}
+
+.kpi-value {
+  color: var(--foreground);
+}
+
+.kpi-label,
+.kpi-sub {
+  color: var(--muted-foreground);
+}
+
+.kpi-card--revenue-positive {
+  border-color: var(--border);
+  background: var(--card);
+}
+
+.kpi-card--revenue-positive .kpi-label,
+.kpi-card--revenue-positive .kpi-sub {
+  color: var(--muted-foreground);
+}
+
+.kpi-card--revenue-positive .kpi-value {
+  color: var(--status-success-foreground);
+}
+
+.crm-input {
+  border-color: var(--input);
+  background-color: var(--card);
+  color: var(--foreground);
+}
+
+.crm-input::placeholder {
+  color: var(--muted-foreground);
+}
+
+.crm-input:focus {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 15%, transparent);
+}
+
+.search-icon,
+.city-icon {
+  color: var(--muted-foreground);
+}
+
+.clients-table-shell {
+  border-color: var(--border) !important;
+  border-radius: var(--radius-xl) !important;
+  background: var(--card) !important;
+  color: var(--card-foreground);
+  box-shadow: var(--shadow-card) !important;
+  overflow: hidden;
+}
+
+.clients-table-shell table {
+  border-color: var(--border);
+}
+
+.clients-table-shell thead {
+  background: var(--surface-muted);
+  color: var(--muted-foreground);
+}
+
+.clients-table-shell thead tr,
+.clients-table-shell thead th {
+  border-color: color-mix(in srgb, var(--border) 65%, transparent) !important;
+}
+
+.clients-table-shell tbody {
+  border-color: var(--border);
+}
+
+.clients-table-shell tbody > tr {
+  border: 0 !important;
+}
+
+.clients-table-shell tbody > tr + tr {
+  border-top: 1px solid color-mix(in srgb, var(--border) 42%, transparent) !important;
+}
+
+.client-row {
+  color: var(--card-foreground);
+}
+
+.client-row:hover {
+  background: var(--surface-muted);
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+
+.client-row p {
+  color: inherit;
+}
+
+.client-row p.text-slate-900,
+.client-row td.text-slate-900 {
+  color: var(--foreground);
+}
+
+.client-row p.text-slate-500 {
+  color: var(--muted-foreground);
+}
+
+.op-badge.is-hot {
+  background: var(--status-success);
+  color: var(--status-success-foreground);
+}
+
+.op-badge.is-cold {
+  background: var(--status-neutral);
+  color: var(--status-neutral-foreground);
+}
+
+.menu-trigger,
+.table-action {
+  border-color: var(--border);
+  background: var(--muted);
+  color: var(--muted-foreground);
+}
+
+.menu-trigger:hover,
+.table-action:hover {
+  border-color: var(--ring);
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.menu-trigger--danger,
+.table-action--danger {
+  border-color: color-mix(in srgb, var(--destructive) 35%, var(--border));
+  background: var(--status-danger);
+  color: var(--status-danger-foreground);
+}
+
+.client-card {
+  border-color: var(--border) !important;
+  background: var(--card) !important;
+  color: var(--card-foreground);
+  box-shadow: var(--shadow-card) !important;
+}
+
+.client-card:hover {
+  border-color: color-mix(in srgb, var(--primary) 35%, var(--border)) !important;
+  background: var(--surface-muted) !important;
+  box-shadow: var(--shadow-elegant) !important;
+}
+
+.empty-state {
+  color: var(--muted-foreground);
+}
+
+.empty-icon {
+  background: var(--muted);
+  color: var(--muted-foreground);
+}
+
+.client-modal-shell {
+  border-color: var(--border) !important;
+  background: var(--card) !important;
+  color: var(--card-foreground);
+  box-shadow: var(--shadow-elegant) !important;
+}
+
+.client-modal-shell > div {
+  border-color: var(--border) !important;
+}
+
+.client-modal-shell h2 {
+  color: var(--foreground) !important;
+}
+
+.client-modal-shell p {
+  color: var(--muted-foreground);
+}
+
+@media (max-width: 768px) {
+  .kpi-card {
+    min-height: 132px;
   }
 }
 </style>

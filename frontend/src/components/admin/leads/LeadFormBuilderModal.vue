@@ -10,7 +10,7 @@
                 <div class="fm-title">{{ title }}</div>
                 <div class="fm-sub-txt">{{ state.name?.trim() || "Personalize a aparência, os campos e as notificações." }}</div>
               </div>
-              <button class="fm-close" @click="close">
+              <button class="fm-close" type="button" aria-label="Fechar formulário" title="Fechar" @click="close">
                 <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
             </div>
@@ -76,7 +76,7 @@
                     </button>
                   </div>
                   <div class="fmf-sel-note">{{ state.fields.length }} campos selecionados</div>
-                  <div class="mt-4 border-t border-slate-200 pt-4">
+                  <div class="mt-4 border-t border-border pt-4">
                     <div class="flex items-center justify-between gap-3">
                       <div>
                         <div class="fmf-sec-lbl">Campos personalizados</div>
@@ -85,7 +85,7 @@
                       <button type="button" class="btn btn-o btn-sm" @click="addCustomField">+ Adicionar campo</button>
                     </div>
                     <div v-if="customFields.length" class="mt-3 grid gap-3">
-                      <div v-for="field in customFields" :key="field.id" class="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                      <div v-for="field in customFields" :key="field.id" class="rounded-lg border border-border bg-muted p-3">
                         <div class="grid gap-2 md:grid-cols-2">
                           <div>
                             <label class="fm-lbl">Pergunta / rótulo</label>
@@ -104,7 +104,7 @@
                             </select>
                             <label class="fm-check-row fm-check-row-inline"><input v-model="field.required" type="checkbox" /><span class="fm-check-lbl">Obrigatório</span></label>
                           </div>
-                          <button type="button" class="text-sm font-semibold text-rose-600" @click="removeCustomField(field.id)">Remover</button>
+                          <button type="button" class="text-sm font-semibold text-destructive" @click="removeCustomField(field.id)">Remover</button>
                         </div>
                       </div>
                     </div>
@@ -516,5 +516,33 @@ onUnmounted(() => { document.body.style.overflow = ""; });
 .fmn-wapp-name{font-size:13px;font-weight:700;color:#fff}.fmn-wapp-status{font-size:10px;color:rgba(255,255,255,.65)}.fmn-wapp-body{background:#E5DDD5;padding:12px;min-height:100px;flex:1;display:flex;align-items:flex-start}.fmn-bubble{background:#fff;border-radius:0 10px 10px 10px;padding:10px 12px;font-size:12px;color:#111;line-height:1.55;white-space:pre-wrap;width:92%}.fmn-bubble-time{font-size:10px;color:rgba(0,0,0,.38);text-align:right;margin-top:5px}.fmn-wapp-ibar{background:#f0f0f0;padding:8px 10px;border-top:1px solid rgba(0,0,0,.08)}.fmn-wapp-fake-inp{background:#fff;border-radius:20px;padding:6px 12px;font-size:11px;color:#8a9e8a}
 .fm-foot{padding:14px 26px;border-top:1.5px solid #e4e9e4;display:flex;align-items:center;justify-content:space-between;background:#fff}.fm-foot-left{font-size:12px;color:#8a9e8a}
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;border:none}.btn svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2.5}.btn-p{background:#3DCC5F;color:#0F1F14}.btn-o{background:#fff;color:#4A5E4A;border:1.5px solid #E4E9E4}.btn-sm{padding:6px 12px;font-size:12px}
+
+.fm-ov{background:var(--modal-overlay)}
+.fm-modal{background:var(--card);color:var(--card-foreground);border:1px solid var(--border);border-radius:var(--radius-2xl);box-shadow:var(--shadow-elegant)}
+.fm-title,.fm-check-lbl,.fmn-plan-gate-title,.fmn-sw-lbl{color:var(--foreground)}
+.fm-title,.fmn-plan-gate-title{font-family:var(--font-display);font-weight:600}
+.fm-ey,.fm-sub-txt,.fm-lbl,.fm-hint,.fm-check-hint,.fmf-sec-lbl,.fmf-sel-note,.fmn-delay-lbl,.fmn-sw-hint,.fm-foot-left{color:var(--muted-foreground)}
+.fm-close,.fm-inp,.fm-sel,.fm-check-row,.fmf-chip,.fmn-delay-inp,.fmn-delay-sel,.fmn-sw-block,.fm-foot,.btn-o{border-color:var(--border);background:var(--background);color:var(--foreground)}
+.fm-tabs,.fm-foot,.fmn-sw-row{border-color:var(--border)}
+.fm-tab-btn{color:var(--muted-foreground)}
+.fm-tab-btn.on{color:var(--primary);border-bottom-color:var(--primary)}
+.fm-inp:focus,.fm-sel:focus,.fmn-delay-inp:focus,.fmn-delay-sel:focus{border-color:var(--ring);box-shadow:0 0 0 3px color-mix(in srgb,var(--ring) 16%,transparent)}
+.fm-check-row input{accent-color:var(--primary)}
+.fmf-chip-ic{background:var(--muted)}
+.fmf-chip-ic svg{stroke:var(--muted-foreground)}
+.fmf-chip.on{background:var(--accent);border-color:var(--ring)}
+.fmf-chip.on .fmf-chip-ic{background:var(--status-success)}
+.fmf-chip.on .fmf-chip-ic svg,.fmf-chip.on .fmf-name{stroke:var(--status-success-foreground);color:var(--status-success-foreground)}
+.fmf-name{color:var(--foreground)}
+.fmf-chk{border-color:var(--border)}
+.fmf-chip.on .fmf-chk{background:var(--primary);border-color:var(--primary)}
+.fmf-chip.on .fmf-chk::after{border-color:var(--primary-foreground)}
+.fmn-var{background:var(--status-info);color:var(--status-info-foreground);border-color:var(--border)}
+.fmn-track{background:var(--muted-foreground)}
+.fmn-toggle input:checked+.fmn-track{background:var(--primary)}
+.btn-p{background:var(--primary);color:var(--primary-foreground);box-shadow:var(--shadow-soft)}
+.btn-p:hover{background:var(--brand-dark)}
+.btn-o:hover{background:var(--accent);color:var(--accent-foreground)}
 @media(max-width:980px){.fm-modal{max-width:98vw;max-height:95vh}.fm-pane{flex-direction:column}.fm-right,.fmn-right{width:100%}.fm-grid3{grid-template-columns:1fr}.fmf-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.fm-ov{padding:0}.fm-modal{height:100%;max-height:100vh;border-radius:0}.fm-hd{padding:18px 16px 0}.fm-pane{padding:18px 16px 24px}.fm-foot{padding:12px 16px}.fmf-grid{grid-template-columns:1fr}}
 </style>

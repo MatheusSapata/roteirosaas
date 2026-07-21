@@ -14,7 +14,8 @@ const getInitialTheme = (): ThemeMode => {
 
 export const useThemeStore = defineStore("theme", {
   state: () => ({
-    mode: getInitialTheme() as ThemeMode
+    mode: getInitialTheme() as ThemeMode,
+    domThemeActive: false
   }),
   getters: {
     isDark(state): boolean {
@@ -22,11 +23,28 @@ export const useThemeStore = defineStore("theme", {
     }
   },
   actions: {
+    syncDocumentTheme() {
+      if (typeof document === "undefined" || !this.domThemeActive) return;
+      const dark = this.mode === "dark";
+      document.documentElement.classList.toggle("dark", dark);
+      document.documentElement.dataset.theme = this.mode;
+    },
+    activateDocumentTheme() {
+      this.domThemeActive = true;
+      this.syncDocumentTheme();
+    },
+    deactivateDocumentTheme() {
+      this.domThemeActive = false;
+      if (typeof document === "undefined") return;
+      document.documentElement.classList.remove("dark");
+      delete document.documentElement.dataset.theme;
+    },
     setTheme(mode: ThemeMode) {
       this.mode = mode;
       if (typeof window !== "undefined") {
         window.localStorage.setItem(STORAGE_KEY, mode);
       }
+      this.syncDocumentTheme();
     },
     toggleTheme() {
       this.setTheme(this.mode === "dark" ? "light" : "dark");

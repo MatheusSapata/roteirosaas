@@ -1,5 +1,5 @@
 <template>
-  <div class="flex min-h-screen bg-[#41ce5f] lg:bg-transparent">
+  <div class="auth-view flex min-h-screen bg-[#41ce5f] lg:bg-transparent">
     <div
       class="relative hidden w-3/5 items-center justify-center overflow-hidden bg-[#41ce5f] lg:flex"
       style="background-color: #41ce5f;"
@@ -192,3 +192,16 @@ const onSubmit = async () => {
   }
 };
 </script>
+
+<style scoped>
+.auth-view { color: var(--foreground); }
+.auth-view :deep(.bg-white) { background: var(--card) !important; }
+.auth-view :deep(.border-slate-200),
+.auth-view :deep(.border-slate-300) { border-color: var(--border) !important; }
+.auth-view :deep(.text-slate-900),
+.auth-view :deep(.text-slate-700) { color: var(--foreground) !important; }
+.auth-view :deep(.text-slate-600),
+.auth-view :deep(.text-slate-500) { color: var(--muted-foreground) !important; }
+.auth-view :deep(input) { border-color: var(--input) !important; background: var(--background) !important; color: var(--foreground) !important; }
+.auth-view :deep(input:focus) { border-color: var(--ring) !important; box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 15%, transparent) !important; }
+</style>

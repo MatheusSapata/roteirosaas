@@ -405,6 +405,64 @@ textarea { resize: vertical; }
 .price-inline-toggle { justify-self: start; }
 .empty-state { border: 1px dashed #cad7d1; border-radius: 12px; padding: 14px; font-size: 13px; color: #64748b; background: #f8fafc; }
 
+.prices-proto-body,
+.editor {
+  background: var(--background);
+  color: var(--foreground);
+}
+.tabs { border-color: var(--border); background: var(--card); }
+.tab { border-color: var(--border); background: var(--muted); color: var(--foreground); }
+.tab.active { border-color: var(--primary); background: var(--primary); color: var(--primary-foreground); }
+.tab > span small,
+.section-desc,
+.feature-toggle span,
+.inline-check { color: var(--muted-foreground); }
+.section-head { border-color: color-mix(in srgb, var(--border) 62%, transparent); }
+.section-title,
+.feature-toggle strong { color: var(--foreground); }
+input, textarea, select {
+  border-color: var(--input);
+  background: var(--card);
+  color: var(--foreground);
+}
+input:focus, textarea:focus, select:focus {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 15%, transparent);
+}
+.segment-tab,
+.add-segment,
+.feature-toggle,
+.empty-state {
+  border-color: var(--border);
+  background: var(--muted);
+  color: var(--foreground);
+}
+.segment-tab.active {
+  border-color: color-mix(in srgb, var(--primary) 55%, var(--border));
+  background: color-mix(in srgb, var(--primary) 16%, var(--card));
+  color: var(--foreground);
+}
+.segment-handle,
+.segment-remove { color: var(--muted-foreground); }
+.segment-remove {
+  border-color: var(--border);
+  background: color-mix(in srgb, var(--card) 78%, transparent);
+}
+.add-segment:hover {
+  border-color: color-mix(in srgb, var(--primary) 38%, var(--border));
+  background: var(--accent);
+}
+.feature-toggle.highlighted {
+  border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+  background: color-mix(in srgb, var(--primary) 12%, var(--card));
+}
+.help:hover::after {
+  border: 1px solid var(--border);
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: var(--shadow-elegant);
+}
+
 @media (max-width: 900px) {
   .prices-proto-body { grid-template-columns: 1fr; min-height: 100%; height: 100%; }
   .tabs { border-right: 0; border-bottom: 0; padding: 8px 8px 8px 16px; margin-bottom: 8px; flex-direction: row; }

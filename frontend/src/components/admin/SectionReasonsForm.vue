@@ -294,23 +294,23 @@ watch(
 }
 
 .tabs {
-  border-right: 1px solid #e6eee8;
+  border-right: 1px solid var(--border);
   padding: 16px 12px 16px 12px;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  background: #fff;
+  background: var(--card);
 }
 
 .tab {
   display: flex;
   align-items: center;
   gap: 10px;
-  border: 1px solid #d8dfda;
+  border: 1px solid var(--border);
   border-radius: 14px;
   padding: 0 9px;
-  background: #eef2ef;
-  color: #0f172a;
+  background: var(--muted);
+  color: var(--foreground);
   text-align: left;
   height: 38px;
   min-height: 38px;
@@ -318,15 +318,16 @@ watch(
 }
 
 .tab.active {
-  background: #34c759;
-  border-color: #34c759;
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-foreground);
 }
 
 .tab-icon {
   width: 22px;
   height: 22px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.82);
+  background: color-mix(in srgb, var(--card) 82%, transparent);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -349,7 +350,7 @@ watch(
 
 .editor {
   padding: 0;
-  background: #edf1ef;
+  background: var(--background);
   min-width: 0;
   overflow: visible;
   min-height: 100%;
@@ -368,21 +369,21 @@ watch(
   justify-content: space-between;
   gap: 12px;
   padding: 14px 16px 10px;
-  border-bottom: 1px solid #dde5e1;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 62%, transparent);
 }
 
 .section-title {
   margin: 0;
   font-size: 18px;
   line-height: 1.15;
-  color: #0f172a;
+  color: var(--foreground);
   font-weight: 800;
 }
 
 .section-desc {
   margin: 6px 0 0;
   font-size: 13px;
-  color: #6a7e74;
+  color: var(--muted-foreground);
 }
 
 .content-area {
@@ -404,7 +405,7 @@ watch(
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-weight: 800;
-  color: #6a7e74;
+  color: var(--muted-foreground);
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -413,16 +414,16 @@ watch(
 .help {
   width: 16px;
   height: 16px;
-  border: 1px solid #cdd8d2;
+  border: 1px solid var(--border);
   border-radius: 50%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-size: 10px;
-  color: #8ca198;
+  color: var(--muted-foreground);
   position: relative;
   cursor: help;
-  background: #eef4f1;
+  background: var(--muted);
   text-transform: none;
 }
 
@@ -445,19 +446,19 @@ watch(
 
 input {
   width: 100%;
-  border: 1px solid #cad7d1;
+  border: 1px solid var(--input);
   border-radius: 12px;
-  background: #fff;
+  background: var(--card);
   font-size: 16px;
   line-height: 1.25;
   padding: 9px 12px;
-  color: #1f2937;
+  color: var(--foreground);
 }
 
 input:focus {
   outline: none;
-  border-color: #9cb5aa;
-  box-shadow: 0 0 0 2px rgba(52, 199, 89, 0.15);
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 15%, transparent);
 }
 
 .segment-bar {
@@ -476,24 +477,26 @@ input:focus {
 }
 
 .segment-tab {
-  border: 1px solid #cad7d1;
+  border: 1px solid var(--border);
   border-radius: 999px;
   padding: 5px 9px;
-  background: #fff;
-  color: #0f172a;
+  background: var(--muted);
+  color: var(--foreground);
   font-size: 11px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
 }
 
 .segment-tab.active {
-  border-color: #34c759;
-  background: #ecfdf2;
+  border-color: color-mix(in srgb, var(--primary) 55%, var(--border));
+  background: color-mix(in srgb, var(--primary) 16%, var(--card));
+  color: var(--foreground);
 }
 
 .segment-handle {
-  color: #94a3b8;
+  color: var(--muted-foreground);
   font-size: 12px;
   line-height: 1;
 }
@@ -507,12 +510,13 @@ input:focus {
   width: 16px;
   height: 16px;
   border-radius: 999px;
-  border: 1px solid #d6dde8;
+  border: 1px solid var(--border);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  color: #64748b;
+  background: color-mix(in srgb, var(--card) 78%, transparent);
+  color: var(--muted-foreground);
 }
 
 .segment-actions {
@@ -526,13 +530,24 @@ input:focus {
 }
 
 .add-segment {
-  border: 1px solid #cad7d1;
+  border: 1px solid var(--border);
   border-radius: 999px;
-  background: #fff;
-  color: #475569;
+  background: var(--muted);
+  color: var(--foreground);
   font-size: 11px;
   font-weight: 700;
   padding: 7px 11px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.add-segment:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--primary) 38%, var(--border));
+  background: var(--accent);
+}
+
+.add-segment:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .segment-panel {
@@ -577,13 +592,19 @@ input:focus {
 
 .icon-picker-row button {
   flex: 1;
-  border: 1px solid #cad7d1;
+  border: 1px solid var(--border);
   border-radius: 10px;
-  background: #fff;
+  background: var(--muted);
   padding: 9px 12px;
   font-size: 12px;
   font-weight: 700;
-  color: #475569;
+  color: var(--foreground);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.icon-picker-row button:hover {
+  border-color: color-mix(in srgb, var(--primary) 38%, var(--border));
+  background: var(--accent);
 }
 
 .icon-picker-grid {
@@ -596,9 +617,15 @@ input:focus {
 .icon-chip {
   width: 36px;
   height: 36px;
-  border: 1px solid #cad7d1;
+  border: 1px solid var(--border);
   border-radius: 10px;
-  background: #fff;
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.icon-chip:hover {
+  border-color: var(--primary);
+  background: var(--accent);
 }
 
 .icon-picker-overlay {
@@ -612,10 +639,11 @@ input:focus {
   z-index: 121;
   width: 240px;
   max-width: calc(100vw - 24px);
-  border: 1px solid #cad7d1;
+  border: 1px solid var(--border);
   border-radius: 12px;
-  background: #fff;
-  box-shadow: 0 16px 38px rgba(15, 23, 42, 0.18);
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: var(--shadow-elegant);
   padding: 10px;
 }
 
@@ -624,12 +652,12 @@ input:focus {
 }
 
 .empty-state {
-  border: 1px dashed #cad7d1;
+  border: 1px dashed var(--border);
   border-radius: 12px;
   padding: 14px;
   font-size: 13px;
-  color: #64748b;
-  background: #f8fafc;
+  color: var(--muted-foreground);
+  background: var(--muted);
 }
 
 .description-field :deep(.rich-shell),
@@ -643,7 +671,7 @@ input:focus {
 
 .description-field :deep(.ql-toolbar.ql-snow),
 .description-field :deep(.ql-container.ql-snow) {
-  border-color: #cad7d1;
+  border-color: var(--input);
 }
 
 .description-field :deep(.ql-container.ql-snow) {

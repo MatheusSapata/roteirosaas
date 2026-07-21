@@ -1253,5 +1253,315 @@ function outcomeBadgeClass(outcome: "won" | "lost") {
     white-space: nowrap;
   }
 }
+
+/* Design system — detalhe do cliente */
+.det-page {
+  color: var(--foreground);
+}
+
+.det-back-btn {
+  border: 1px solid var(--border);
+  background: var(--muted);
+  color: var(--muted-foreground);
+}
+
+.det-back-btn:hover {
+  border-color: var(--ring);
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.det-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--card);
+  color: var(--card-foreground);
+  box-shadow: var(--shadow-card);
+}
+
+.det-hd-top,
+.det-stats-inner,
+.det-tabs {
+  border-color: var(--border);
+}
+
+.det-avatar {
+  background: var(--gradient-brand);
+  color: var(--primary-foreground);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 12%, transparent);
+}
+
+.det-eyebrow,
+.det-meta,
+.det-meta-item,
+.det-meta-item.val {
+  color: var(--muted-foreground);
+}
+
+.det-name {
+  color: var(--foreground);
+}
+
+.btn {
+  border-radius: var(--radius-lg);
+}
+
+.btn-p {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.btn-p:hover {
+  border-color: var(--brand-dark);
+  background: var(--brand-dark);
+  color: var(--primary-foreground);
+}
+
+.btn-o {
+  border-color: var(--border);
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.btn-o:hover {
+  border-color: var(--ring);
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.btn-wpp {
+  border-color: #25d366;
+  background: #25d366;
+  color: #071613;
+}
+
+.ds {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+}
+
+.ds:hover {
+  border-color: color-mix(in srgb, var(--primary) 30%, var(--border));
+}
+
+.ds-lbl {
+  color: var(--muted-foreground);
+}
+
+.ds-val {
+  color: var(--foreground);
+}
+
+.ds-val.g {
+  color: var(--status-success-foreground);
+}
+
+.ds-val.r {
+  color: var(--status-danger-foreground);
+}
+
+.det-tabs {
+  gap: 6px;
+  padding-top: 8px;
+}
+
+.tab-btn {
+  margin-bottom: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  color: var(--muted-foreground);
+}
+
+.tab-btn:hover {
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.tab-btn.on {
+  border-color: var(--border);
+  border-bottom-color: var(--card);
+  background: var(--card);
+  color: var(--primary);
+}
+
+.opp-item,
+.note-add-card,
+.note-card,
+.cd-wrap,
+.dados-block {
+  border-color: var(--border);
+  background: var(--surface);
+  color: var(--foreground);
+  box-shadow: var(--shadow-soft);
+}
+
+.opp-item:hover {
+  border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
+  background: var(--surface-muted);
+}
+
+.opp-item-name,
+.note-txt,
+.dados-block-title,
+.tl-evt,
+.cd-val {
+  color: var(--foreground);
+}
+
+.opp-item-meta,
+.opp-src,
+.note-meta,
+.tl-detail,
+.tl-time,
+.docs-empty,
+.cd-lbl,
+.cd-val.empty,
+.dados-block-eye {
+  color: var(--muted-foreground);
+}
+
+.opp-meta-sep,
+.tl-line {
+  color: var(--border);
+  background: var(--border);
+}
+
+.s-sem {
+  border-color: var(--border);
+  background: var(--status-neutral);
+  color: var(--status-neutral-foreground);
+}
+
+.s-atencao,
+.s-perdida,
+.st-perdida {
+  border-color: color-mix(in srgb, var(--destructive) 35%, var(--border));
+  background: var(--status-danger);
+  color: var(--status-danger-foreground);
+}
+
+.s-contato {
+  border-color: color-mix(in srgb, var(--status-warning-foreground) 30%, var(--border));
+  background: var(--status-warning);
+  color: var(--status-warning-foreground);
+}
+
+.s-qualif,
+.s-proposta {
+  border-color: color-mix(in srgb, var(--status-info-foreground) 30%, var(--border));
+  background: var(--status-info);
+  color: var(--status-info-foreground);
+}
+
+.s-ganha,
+.st-ganha,
+.cd-tipo-pf {
+  border-color: color-mix(in srgb, var(--status-success-foreground) 30%, var(--border));
+  background: var(--status-success);
+  color: var(--status-success-foreground);
+}
+
+.note-ta,
+.crm-input,
+.cd-inp {
+  border-color: var(--input);
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.note-ta::placeholder,
+.crm-input::placeholder,
+.cd-inp::placeholder {
+  color: var(--muted-foreground);
+}
+
+.note-ta:focus,
+.crm-input:focus,
+.cd-inp:focus {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 15%, transparent);
+}
+
+.note-add-foot,
+.dados-block-head {
+  border-color: var(--border);
+}
+
+.cd-sec {
+  border-color: var(--border);
+  background: var(--surface-muted);
+  color: var(--muted-foreground);
+}
+
+.cd-sec:not(:first-child),
+.cd-cell,
+.cd-l {
+  border-color: var(--border);
+}
+
+.cd-cell:hover {
+  background: var(--surface-muted);
+}
+
+.cd-edit-btn:hover,
+.cd-cl {
+  border-color: var(--border);
+  background: var(--muted);
+}
+
+.cd-edit-btn svg,
+.cd-cl svg {
+  stroke: var(--muted-foreground);
+}
+
+.cd-ok {
+  border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
+  background: var(--status-success);
+}
+
+.cd-ok svg {
+  stroke: var(--status-success-foreground);
+}
+
+.tl-page-info {
+  color: var(--muted-foreground);
+}
+
+.tl-page-btn {
+  border-color: var(--border);
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.tl-page-btn:not(:disabled):hover {
+  border-color: var(--ring);
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+@media (max-width: 768px) {
+  .det-card {
+    border-radius: var(--radius-lg);
+  }
+
+  .det-hd-top {
+    padding: 16px;
+  }
+
+  .det-hd-actions {
+    width: 100%;
+  }
+
+  .det-hd-actions .btn {
+    flex: 1;
+  }
+
+  .det-tabs {
+    padding-top: 6px;
+  }
+}
 </style>
 

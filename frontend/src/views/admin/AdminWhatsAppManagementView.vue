@@ -1,5 +1,5 @@
 ﻿<template>
-  <section class="space-y-5 px-4 py-4 md:px-6">
+  <section class="admin-master-surface space-y-5 px-4 py-4 md:px-6">
     <header class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <h1 class="text-2xl font-semibold text-slate-900">Gestão WhatsApp</h1>
       <p class="mt-1 text-sm text-slate-600">Controle conexões, status e liberação da Inbox para usuários.</p>

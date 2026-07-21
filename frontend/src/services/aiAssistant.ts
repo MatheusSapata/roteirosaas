@@ -5,6 +5,11 @@ export interface AiAssistantChatMessage {
   content: string;
 }
 
+export interface AiAssistantHistoryMessage extends AiAssistantChatMessage {
+  id: number;
+  created_at: string;
+}
+
 interface AiAssistantChatResponse {
   reply: string;
 }
@@ -23,10 +28,12 @@ interface AiAssistantCreatePageBaseResponse {
 }
 
 export const sendAiAssistantConversation = async (
+  pageId: number,
   conversation: AiAssistantChatMessage[],
   attachments: File[] = []
 ): Promise<{ reply: string; usage?: AiAssistantUsageResponse }> => {
   const form = new FormData();
+  form.append("page_id", String(pageId));
   form.append("conversation", JSON.stringify(conversation));
 
   for (const file of attachments) {
@@ -62,6 +69,11 @@ export const sendAiAssistantConversation = async (
       unlimited: String(headers["x-ai-assistant-limit"] || "").toLowerCase() === "unlimited"
     }
   };
+};
+
+export const fetchAiAssistantHistory = async (pageId: number): Promise<AiAssistantHistoryMessage[]> => {
+  const { data } = await api.get<AiAssistantHistoryMessage[]>(`/ai-assistant/pages/${pageId}/history`);
+  return Array.isArray(data) ? data : [];
 };
 
 export const fetchAiAssistantUsage = async (): Promise<AiAssistantUsageResponse> => {

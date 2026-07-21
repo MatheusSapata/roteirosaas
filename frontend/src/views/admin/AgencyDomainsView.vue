@@ -1,10 +1,11 @@
 ﻿<template>
   <div v-if="isBootstrappingDomains" class="flex min-h-[60vh] w-full items-center justify-center px-4 py-8">
-    <div class="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-brand"></div>
+    <div class="h-10 w-10 animate-spin rounded-full border-4 border-border border-t-primary"></div>
   </div>
   <div v-else class="relative w-full domains-premium">
     <div class="page-wrap">
-      <div class="space-y-1">
+      <div>
+        <p class="page-eyebrow">Configurar</p>
         <h1 class="page-title">{{ viewCopy.hero.title }}</h1>
         <p class="page-sub">Conecte seu domínio para usar sua marca nas páginas.</p>
       </div>
@@ -13,7 +14,7 @@
         class="space-y-6"
         :class="{ 'select-none opacity-60 blur-sm': !domainsAllowed }"
       >
-        <div v-if="!currentAgencyId" class="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-amber-900">
+        <div v-if="!currentAgencyId" class="rounded-xl border border-border bg-status-warning p-6 text-status-warning-foreground">
           <p class="font-semibold">{{ viewCopy.noAgency.title }}</p>
           <p class="mt-1 text-sm">{{ viewCopy.noAgency.helper }}</p>
         </div>
@@ -38,7 +39,7 @@
                   <input
                     v-model="form.is_primary"
                     type="checkbox"
-                    class="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                    class="h-4 w-4 rounded border-input text-primary focus:ring-primary"
                     :disabled="creating || loadingDomains"
                   />
                   {{ viewCopy.form.primaryOption }}
@@ -58,7 +59,7 @@
               <div class="favicon-card-layout">
                 <div class="favicon-card-copy">
                   <h2 class="card-title">{{ viewCopy.favicon.title }}</h2>
-                  <p class="text-sm text-slate-500">{{ viewCopy.favicon.subtitle }}</p>
+                  <p class="text-sm text-muted-foreground">{{ viewCopy.favicon.subtitle }}</p>
                   <p v-if="!hasActiveCustomDomain" class="helper-text mt-3">{{ viewCopy.favicon.disabledHint }}</p>
                   <div class="mt-3 flex flex-wrap items-center gap-2">
                     <button type="button" class="btn btn-p btn-sm" :disabled="savingFavicon || !currentAgencyId || !hasActiveCustomDomain" @click="saveFavicon">
@@ -69,7 +70,7 @@
                   </div>
                 </div>
                 <div class="favicon-card-media">
-                  <div class="favicon-upload-compact rounded-xl border border-slate-200 p-3" :class="{ 'pointer-events-none opacity-55': !hasActiveCustomDomain }">
+                  <div class="favicon-upload-compact rounded-xl border border-border p-3" :class="{ 'pointer-events-none opacity-55': !hasActiveCustomDomain }">
                     <ImageUploadField
                       v-model="faviconUrl"
                       :label="''"
@@ -88,8 +89,8 @@
             <div class="list-header">
               <div>
                 <h2 class="card-title">{{ viewCopy.list.title }}</h2>
-                <p class="text-sm text-slate-500">
-                  {{ viewCopy.list.currentAgencyLabel }} <span class="font-semibold text-slate-700">{{ currentAgencyName }}</span>
+                <p class="text-sm text-muted-foreground">
+                  {{ viewCopy.list.currentAgencyLabel }} <span class="font-semibold text-foreground">{{ currentAgencyName }}</span>
                 </p>
               </div>
               <button
@@ -280,7 +281,7 @@
           </section>
           <section class="list-card tips-card">
             <p class="tips-summary">{{ viewCopy.tips.title }}</p>
-            <ul class="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600">
+            <ul class="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
               <li>{{ viewCopy.tips.subdomainPrefix }} <span class="font-mono">roteiros.suaagencia.com</span> {{ viewCopy.tips.subdomainSuffix }}</li>
               <li>{{ viewCopy.tips.protocolPrefix }} <span class="font-mono">http://</span> {{ viewCopy.tips.protocolSuffix }}</li>
               <li>{{ viewCopy.tips.reserved(platformExample) }}</li>
@@ -291,17 +292,17 @@
     </div>
     <div
       v-if="!domainsAllowed"
-      class="pointer-events-auto fixed inset-y-0 left-0 right-0 z-[120] flex items-center justify-center bg-black/60 px-4 text-center text-white backdrop-blur-[2px] md:left-[225px]"
+      class="pointer-events-auto fixed inset-y-0 left-0 right-0 z-[120] flex items-center justify-center bg-black/60 px-4 text-center backdrop-blur-[2px] md:left-64"
     >
-      <div class="max-w-md rounded-3xl bg-white p-6 shadow-2xl">
-        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">{{ viewCopy.overlay.eyebrow }}</p>
-        <h2 class="mt-2 text-2xl font-bold text-slate-900">{{ viewCopy.overlay.title }}</h2>
-        <p class="mt-2 text-sm text-slate-600">
+      <div class="max-w-md rounded-3xl border border-border bg-card p-6 text-card-foreground shadow-elegant">
+        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">{{ viewCopy.overlay.eyebrow }}</p>
+        <h2 class="mt-2 font-display text-2xl font-semibold text-foreground">{{ viewCopy.overlay.title }}</h2>
+        <p class="mt-2 text-sm text-muted-foreground">
           {{ viewCopy.overlay.description }}
         </p>
         <button
           type="button"
-          class="mt-4 w-full rounded-full bg-[#3EBD59] px-4 py-3 text-sm font-semibold text-white shadow transition hover:bg-[#34a04c]"
+          class="mt-4 w-full rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-soft transition-colors hover:bg-brand-dark"
           @click="goToPlans"
         >
           {{ viewCopy.overlay.cta }}
@@ -820,42 +821,44 @@ watch(domainsAllowed, allowed => {
 
 <style scoped>
 .domains-premium {
-  --verde:#3DCC5F;--verde-d:#2EAD4C;--verde-dim:rgba(61,204,95,.10);--verde-border:rgba(61,204,95,.22);
-  --surface:#fff;--surface2:#F5F7F5;--border:#E4E9E4;--text:#111A14;--text-2:#4A5E4A;--text-3:#8A9E8A;
-  --sh-sm:0 1px 3px rgba(0,0,0,.05),0 1px 2px rgba(0,0,0,.03);
-  --radius:12px;--radius-sm:8px;
+  --verde:var(--primary);--verde-d:var(--brand-dark);--verde-dim:color-mix(in srgb, var(--primary) 10%, transparent);--verde-border:color-mix(in srgb, var(--primary) 30%, var(--border));
+  --surface:var(--card);--surface2:var(--muted);--text:var(--foreground);--text-2:var(--card-foreground);--text-3:var(--muted-foreground);
+  --sh-sm:var(--shadow-soft);
+  --radius:var(--radius-xl);--radius-sm:var(--radius-lg);
+  color:var(--foreground);
 }
 .page-wrap{padding:28px 24px 64px;width:100%;max-width:none}
-.page-title{font-size:24px;font-weight:800;color:var(--text);letter-spacing:-.3px;line-height:1.2}
+.page-eyebrow,.guide-eyebrow{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text-3);margin-bottom:4px}
+.page-title{font-family:var(--font-display);font-size:26px;font-weight:650;color:var(--text);letter-spacing:-.3px;line-height:1.2}
 .page-sub{font-size:13px;color:var(--text-3);margin-top:4px}
 .guide-card{padding:18px}
 .guide-row{display:grid;grid-template-columns:minmax(0,9fr) minmax(0,2fr);gap:12px;align-items:stretch}
 .guide-row > .list-card{height:100%}
 .guide-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
-.guide-eyebrow{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);margin-bottom:4px}
 .guide-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.guide-block{border:1px solid var(--border);border-radius:10px;background:var(--surface2);padding:14px}
+.guide-block{border:1px solid color-mix(in srgb, var(--border) 55%, transparent);border-radius:var(--radius-sm);background:var(--surface2);padding:14px}
 .guide-block-title{font-size:12px;font-weight:800;color:var(--text);margin-bottom:8px}
 .guide-list{display:grid;gap:8px;font-size:13px;color:var(--text-2);line-height:1.5}
 .guide-footer{margin-top:12px;font-size:12px;color:var(--text-3);line-height:1.55}
 .main-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.45fr);gap:12px;align-items:start}
-.list-card{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:var(--sh-sm)}
-.card-title{font-size:16px;font-weight:800;color:var(--text);letter-spacing:-.2px}
+.list-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--sh-sm)}
+.card-title{font-family:var(--font-display);font-size:16px;font-weight:650;color:var(--text);letter-spacing:-.2px}
 .field-label{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text-3)}
 .helper-text{font-size:12px;color:var(--text-3)}
 .inline-check{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-2)}
-.fi{padding:9px 11px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:inherit;font-size:13px;color:var(--text);background:var(--surface);outline:none;transition:border-color .15s;width:100%}
-.fi:focus{border-color:var(--verde-border)}
-.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:999px;font-size:13px;font-weight:700;cursor:pointer;border:none;font-family:inherit;transition:all .15s;white-space:nowrap;line-height:1.3}
+.fi{padding:10px 11px;border:1px solid var(--input);border-radius:var(--radius-sm);font-family:inherit;font-size:13px;color:var(--text);background:var(--background);outline:none;transition:border-color .15s,box-shadow .15s;width:100%}
+.fi:focus{border-color:var(--ring);box-shadow:0 0 0 3px color-mix(in srgb, var(--ring) 18%, transparent)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 14px;border-radius:var(--radius-lg);font-size:13px;font-weight:700;cursor:pointer;border:1px solid transparent;font-family:inherit;transition:all .15s;white-space:nowrap;line-height:1.3}
 .btn-sm{padding:6px 12px;font-size:12px}
-.btn-p{background:var(--verde);color:#0F1F14}
+.btn-p{background:var(--verde);color:var(--primary-foreground);box-shadow:var(--shadow-soft)}
 .btn-p:hover{background:var(--verde-d)}
-.btn-o{background:#fff;border:1px solid var(--border);color:var(--text-2)}
-.btn-o:hover{border-color:#cbd6cb;color:var(--text)}
-.btn-danger{background:#fff6f6;border:1px solid #f3caca;color:#c0392b}
-.btn-danger:hover{background:#ffeaea}
-.ok-msg{font-size:12px;color:#1a7a35;font-weight:600}
-.err-msg{font-size:12px;color:#c0392b;font-weight:600}
+.btn-o{background:var(--background);border-color:var(--border);color:var(--text)}
+.btn-o:hover{background:var(--accent)}
+.btn-danger{background:color-mix(in srgb, var(--destructive) 8%, var(--card));border-color:color-mix(in srgb, var(--destructive) 28%, var(--border));color:var(--destructive)}
+.btn-danger:hover{background:color-mix(in srgb, var(--destructive) 13%, var(--card))}
+.btn:disabled{cursor:not-allowed;opacity:.55}
+.ok-msg{font-size:12px;color:var(--status-success-foreground);font-weight:600}
+.err-msg{font-size:12px;color:var(--destructive);font-weight:600}
 .tips-card{padding-top:14px;padding-bottom:14px}
 .tips-summary{font-size:13px;font-weight:700;color:var(--text-2)}
 .list-header{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px}
@@ -883,12 +886,13 @@ watch(domainsAllowed, allowed => {
   .favicon-card-layout{grid-template-columns:1fr}
   .favicon-upload-compact{max-width:100%}
 }
-.alert-error{border:1px solid #fecaca;background:#fef2f2;color:#b91c1c;border-radius:10px;padding:10px;font-size:12px}
+.alert-error{border:1px solid color-mix(in srgb, var(--destructive) 25%, var(--border));background:color-mix(in srgb, var(--destructive) 8%, var(--card));color:var(--destructive);border-radius:10px;padding:10px;font-size:12px}
 .alert-muted{border:1px solid var(--border);background:var(--surface2);color:var(--text-2);border-radius:10px;padding:12px;font-size:13px}
 .alert-empty{border:1px dashed var(--border);background:var(--surface2);color:var(--text-3);border-radius:10px;padding:14px;font-size:13px}
-.domain-list{display:flex;flex-direction:column;gap:12px}
-.domain-item{border:1px solid var(--border);border-radius:12px;background:var(--surface2);padding:16px;transition:.15s}
-.domain-item:hover{background:#eef3ee}
+.domain-list{display:flex;flex-direction:column;gap:0}
+.domain-item{border-top:1px solid color-mix(in srgb, var(--border) 38%, transparent);background:transparent;padding:18px 2px;transition:.15s}
+.domain-item:first-child{border-top:0}
+.domain-item:hover{background:color-mix(in srgb, var(--accent) 42%, transparent)}
 .domain-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
 .domain-ident{display:flex;align-items:center;flex-wrap:wrap;gap:6px}
 .domain-host{font-size:18px;font-weight:800;color:var(--text);letter-spacing:-.2px}
@@ -897,25 +901,26 @@ watch(domainsAllowed, allowed => {
 .status-label{font-size:12px;font-weight:700;color:var(--text-2)}
 .step-title{font-size:12px;font-weight:700;color:var(--text-2);margin-top:12px}
 .steps-grid{margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.step-card{border:1px solid var(--border);border-radius:10px;background:#fff;padding:14px}
+.step-card{border:1px solid color-mix(in srgb, var(--border) 62%, transparent);border-radius:var(--radius-sm);background:var(--background);padding:14px}
 .step-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3)}
 .step-name{font-size:12px;font-weight:700;color:var(--text);margin-top:2px}
 .step-meta{margin-top:6px;display:grid;gap:2px}
 .step-meta p{font-size:12px;color:var(--text-2);line-height:1.35;min-width:0}
 .step-meta span{color:var(--text-3);font-weight:600}
 .step-meta strong{font-weight:700;color:var(--text)}
-.copy-row{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2)}
-.copy-icon-btn{display:inline-flex;align-items:center;justify-content:center;height:30px;width:30px;border:1px solid var(--border);border-radius:999px;background:#fff;color:var(--text-2);flex-shrink:0;transition:.15s}
-.copy-icon-btn:hover{border-color:#cbd6cb;color:var(--text)}
+.copy-row{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:8px 10px;border-top:1px solid color-mix(in srgb, var(--border) 34%, transparent)}
+.copy-row:first-child{border-top:0}
+.copy-icon-btn{display:inline-flex;align-items:center;justify-content:center;height:30px;width:30px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--card);color:var(--text-2);flex-shrink:0;transition:.15s}
+.copy-icon-btn:hover{background:var(--accent);color:var(--text)}
 .step-hint{margin-top:6px;font-size:11px;color:var(--text-3)}
-.copy-ok{margin-top:4px;font-size:11px;color:#1a7a35;font-weight:700}
+.copy-ok{margin-top:4px;font-size:11px;color:var(--status-success-foreground);font-weight:700}
 .domain-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:700;line-height:1.4}
-.badge-green{background:var(--verde-dim);color:#1A7A35;border:1.5px solid var(--verde-border)}
-.badge-info{background:#e8f3ff;color:#1d5d99;border:1px solid #cde4ff}
-.badge-muted{background:#e9eeea;color:#5f6f5f;border:1px solid var(--border)}
-.badge-warn{background:#fff1da;color:#ad6a00;border:1px solid #ffd9a1}
-.badge-ssl{background:#f1eefb;color:#5f4aa6;border:1px solid #ded6fb}
+.badge-green{background:var(--status-success);color:var(--status-success-foreground);border:1px solid color-mix(in srgb, var(--status-success-foreground) 24%, var(--border))}
+.badge-info{background:var(--status-info);color:var(--status-info-foreground);border:1px solid color-mix(in srgb, var(--status-info-foreground) 22%, var(--border))}
+.badge-muted{background:var(--status-neutral);color:var(--status-neutral-foreground);border:1px solid var(--border)}
+.badge-warn{background:var(--status-warning);color:var(--status-warning-foreground);border:1px solid color-mix(in srgb, var(--status-warning-foreground) 22%, var(--border))}
+.badge-ssl{background:color-mix(in srgb, var(--chart-6) 10%, var(--card));color:var(--chart-6);border:1px solid color-mix(in srgb, var(--chart-6) 25%, var(--border))}
 @media(max-width:1000px){.main-grid,.guide-grid,.guide-row{grid-template-columns:1fr}}
 @media(max-width:900px){.page-wrap{padding:20px 16px 40px}}
 @media(max-width:640px){.steps-grid{grid-template-columns:1fr}}

@@ -527,8 +527,8 @@ watch(
   width: 220px;
   padding: 8px 10px;
   border-radius: 8px;
-  background: #07111f;
-  color: #fff;
+  background: var(--popover);
+  color: var(--popover-foreground);
   font-size: 11px;
   font-weight: 700;
   line-height: 1.35;
@@ -536,6 +536,82 @@ watch(
   text-transform: none;
   z-index: 30;
   box-shadow: 0 10px 24px rgba(7, 17, 31, 0.22);
+}
+
+.bio-form-shell,
+.bio-form-content {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.bio-form-nav {
+  border-color: var(--border);
+  background: var(--card);
+}
+
+.bio-nav-item {
+  border-color: var(--border);
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.bio-nav-item.active {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.bio-nav-item small,
+.bio-form-subtitle,
+.bio-hint {
+  color: var(--muted-foreground);
+}
+
+.bio-form-title {
+  color: var(--foreground);
+}
+
+.bio-input,
+.bio-stepper-input {
+  border-color: var(--input);
+  background: var(--card);
+  color: var(--foreground);
+}
+
+.bio-stepper-btn {
+  border-color: var(--border);
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.bio-stepper-btn:hover {
+  border-color: color-mix(in srgb, var(--primary) 38%, var(--border));
+  background: var(--accent);
+}
+
+.bio-rich-shell,
+.bio-rich-shell :deep(.ql-container.ql-snow),
+.bio-rich-shell :deep(.ql-editor) {
+  border-color: var(--input);
+  background: var(--card);
+  color: var(--foreground);
+}
+
+.bio-rich-shell :deep(.ql-toolbar.ql-snow) {
+  border-color: var(--input) !important;
+  background: var(--muted);
+}
+
+.bio-color-picker {
+  border-color: var(--input);
+  background: var(--card);
+}
+
+.hint-help:hover::after {
+  border: 1px solid var(--border);
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: var(--shadow-elegant);
 }
 
 @media (max-width: 900px) {

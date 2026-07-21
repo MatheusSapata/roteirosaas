@@ -1,15 +1,26 @@
 <template>
   <div class="agency-team">
     <div class="page-wrap">
-      <div class="space-y-1">
-        <h1 class="page-title">Minha Agência • Equipe</h1>
+      <div>
+        <p class="page-eyebrow">Minha agência</p>
+        <h1 class="page-title">Equipe</h1>
         <p class="page-sub">Gerencie usuários, convites e permissões com clareza.</p>
       </div>
 
       <section class="list-card top-summary">
-        <div>
-          <p class="summary-main">Plano atual: <strong>{{ summary?.plan_key || "-" }}</strong></p>
-          <p class="summary-sub">{{ summary?.extra_users_used || 0 }} de {{ summary?.extra_users_limit ?? "8" }} usuários utilizados</p>
+        <div class="team-summary-grid">
+          <div class="team-summary-item">
+            <span class="summary-label">Plano atual</span>
+            <strong>{{ summary?.plan_key || "-" }}</strong>
+          </div>
+          <div class="team-summary-item">
+            <span class="summary-label">Membros</span>
+            <strong>{{ (summary?.members || []).length }}</strong>
+          </div>
+          <div class="team-summary-item">
+            <span class="summary-label">Limite utilizado</span>
+            <strong>{{ summary?.extra_users_used || 0 }} / {{ summary?.extra_users_limit ?? "8" }}</strong>
+          </div>
         </div>
         <button class="btn btn-p" :disabled="inviteDisabled" @click="showInvite = true">+ Convidar</button>
       </section>
@@ -90,7 +101,7 @@
           @click="openMemberActionsId = null"
         >
           <div
-            class="absolute min-w-[190px] rounded-lg border border-slate-200 bg-white p-1 shadow-xl"
+            class="member-actions-menu absolute min-w-[190px] p-1"
             :style="{ top: `${memberActionsPosition.top}px`, left: `${memberActionsPosition.left}px` }"
             @click.stop
           >
@@ -124,7 +135,8 @@
       <div v-if="showInvite || editingMember" class="app-modal-overlay fixed inset-0 z-40 flex items-center justify-center px-4">
         <div class="permission-modal">
           <div class="modal-header">
-            <h3 class="text-xl font-bold text-slate-900">{{ editingMember ? `Editar permissões de ${editingMember.name}` : "Convidar membro da equipe" }}</h3>
+            <p class="modal-eyebrow">{{ editingMember ? "Acesso do membro" : "Novo membro" }}</p>
+            <h3 class="text-xl font-bold">{{ editingMember ? `Editar permissões de ${editingMember.name}` : "Convidar membro da equipe" }}</h3>
           </div>
 
           <div class="modal-body">
@@ -136,19 +148,19 @@
           <div class="mt-4">
             <p class="text-sm font-semibold text-slate-700">Nível de acesso</p>
             <div class="mt-2 space-y-2">
-              <label class="flex items-start gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm">
+              <label class="access-profile-option flex items-start gap-2 rounded-lg border px-3 py-2 text-sm" :class="{ 'is-selected': accessProfile === 'admin' }">
                 <input type="radio" name="access_profile" :checked="accessProfile==='admin'" @change="applyAccessProfile('admin')" />
                 <span><strong>Admin</strong><br /><small class="text-slate-500">Acesso total ao sistema</small></span>
               </label>
-              <label class="flex items-start gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm">
+              <label class="access-profile-option flex items-start gap-2 rounded-lg border px-3 py-2 text-sm" :class="{ 'is-selected': accessProfile === 'editor' }">
                 <input type="radio" name="access_profile" :checked="accessProfile==='editor'" @change="applyAccessProfile('editor')" />
                 <span><strong>Editor</strong><br /><small class="text-slate-500">Pode editar páginas e leads</small></span>
               </label>
-              <label class="flex items-start gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm">
+              <label class="access-profile-option flex items-start gap-2 rounded-lg border px-3 py-2 text-sm" :class="{ 'is-selected': accessProfile === 'viewer' }">
                 <input type="radio" name="access_profile" :checked="accessProfile==='viewer'" @change="applyAccessProfile('viewer')" />
                 <span><strong>Visualizador</strong><br /><small class="text-slate-500">Apenas visualização</small></span>
               </label>
-              <label class="flex items-start gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm">
+              <label class="access-profile-option flex items-start gap-2 rounded-lg border px-3 py-2 text-sm" :class="{ 'is-selected': accessProfile === 'custom' }">
                 <input type="radio" name="access_profile" :checked="accessProfile==='custom'" @change="applyAccessProfile('custom')" />
                 <span><strong>Personalizado</strong><br /><small class="text-slate-500">Definir acesso manualmente</small></span>
               </label>
@@ -624,56 +636,549 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.agency-team{--verde:#3DCC5F;--verde-d:#2EAD4C;--verde-dim:rgba(61,204,95,.10);--verde-border:rgba(61,204,95,.22);--surface:#fff;--surface2:#F5F7F5;--border:#E4E9E4;--text:#111A14;--text-2:#4A5E4A;--text-3:#8A9E8A;--sh-sm:0 1px 3px rgba(0,0,0,.05),0 1px 2px rgba(0,0,0,.03)}
-.page-wrap{padding:28px 32px 64px;width:100%;max-width:1200px}
-.page-title{font-size:24px;font-weight:800;color:var(--text);letter-spacing:-.3px;line-height:1.2}
-.page-sub{font-size:13px;color:var(--text-3)}
-.list-card{margin-top:12px;background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:16px;box-shadow:var(--sh-sm)}
-.top-summary{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.summary-main{font-size:14px;color:var(--text-2)}
-.summary-sub{font-size:13px;color:var(--text-3)}
-.warn-msg{margin-top:8px;font-size:12px;color:#b45309}
-.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:999px;font-size:13px;font-weight:700;cursor:pointer;border:none;transition:.15s;line-height:1.3}
-.btn-sm{padding:6px 12px;font-size:12px}
-.btn-p{background:var(--verde);color:#0F1F14}.btn-p:hover{background:var(--verde-d)}
-.btn-o{background:#fff;border:1px solid var(--border);color:var(--text-2)}.btn-o:hover{border-color:#cbd6cb;color:var(--text)}
-.btn-danger{background:#fff6f6;border:1px solid #f3caca;color:#c0392b}.btn-danger:hover{background:#ffeaea}
-.card-title{font-size:18px;font-weight:800;color:var(--text)}
-.empty-state{margin-top:10px;border:1px dashed var(--border);border-radius:10px;padding:14px;color:var(--text-3);font-size:13px;background:var(--surface2)}
-.member-list{margin-top:10px;display:flex;flex-direction:column;gap:10px}
-.member-card{border:1px solid var(--border);border-radius:12px;background:#fff;padding:12px 14px;transition:.15s;cursor:pointer}
-.member-card:hover{border-color:#d3dbd3;box-shadow:0 3px 10px rgba(17,26,20,.06)}
-.member-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
-.member-main{display:flex;align-items:center;gap:10px;min-width:0}
-.avatar{width:42px;height:42px;border-radius:999px;background:#e7efe7;color:var(--text-2);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px}
-.avatar-image{width:100%;height:100%;object-fit:cover;border-radius:999px;display:block}
-.name-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.member-name{font-size:16px;font-weight:800;color:var(--text);letter-spacing:-.2px;line-height:1.2}
-.member-email{font-size:13px;color:var(--text-2)}
-.member-meta{margin-top:8px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.meta-label{font-size:12px;font-weight:700;color:var(--text-3)}
-.perm-row{margin-top:6px;display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap}
-.perm-summary{font-size:13px;color:var(--text-2)}
-.member-actions{display:flex;gap:8px;align-items:center;flex-shrink:0}
-.icon-btn{width:34px;height:34px;border-radius:999px;border:1px solid var(--border);background:#fff;color:var(--text-2);font-size:20px;line-height:1;display:flex;align-items:center;justify-content:center}
-.icon-btn:hover{border-color:#cbd6cb;color:var(--text)}
-.menu-item{display:flex;width:100%;border:none;background:transparent;border-radius:6px;padding:8px 10px;text-align:left;font-size:13px;color:#334155}
-.menu-item:hover{background:#f8fafc}.menu-item.danger{color:#dc2626}.menu-item.danger:hover{background:#fef2f2}
-.invite-list{margin-top:10px;display:flex;flex-direction:column;gap:10px}
-.invite-card{border:1px solid var(--border);border-radius:10px;padding:12px;display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fff}
-.invite-email{font-size:14px;font-weight:700;color:var(--text)}
-.invite-status{font-size:12px;color:var(--text-3)}
-.invite-actions{display:flex;gap:8px;flex-wrap:wrap}
-.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:700;line-height:1.4}
-.badge-green{background:var(--verde-dim);color:#1A7A35;border:1.5px solid var(--verde-border)}
-.badge-info{background:#e8f3ff;color:#1d5d99;border:1px solid #cde4ff}
-.badge-muted{background:#e9eeea;color:#5f6f5f;border:1px solid var(--border)}
-.permission-modal{width:min(860px,100%);max-height:calc(100vh - 48px);display:flex;flex-direction:column;background:#fff;border-radius:16px;overflow:hidden}
-.modal-header{flex-shrink:0;padding:18px 20px 14px;border-bottom:1px solid var(--border);background:#fff}
-.modal-body{flex:1;overflow-y:auto;padding:14px 20px}
-.modal-footer{flex-shrink:0;display:flex;justify-content:flex-end;gap:8px;padding:12px 20px;border-top:1px solid var(--border);background:var(--surface)}
-.acc-enter-active,.acc-leave-active{transition:all .15s ease}
-.acc-enter-from,.acc-leave-to{opacity:0;transform:translateY(-4px)}
-@media(max-width:900px){.page-wrap{padding:20px 16px 40px}.top-summary{align-items:flex-start;flex-direction:column}.invite-card{flex-direction:column;align-items:flex-start}.member-top{flex-direction:column}.member-actions{width:100%}}
-@media(max-width:640px){.permission-modal{max-height:calc(100vh - 24px)}.modal-header{padding:14px 14px 12px}.modal-body{padding:12px 14px}.modal-footer{padding:10px 14px}}
+.agency-team {
+  color: var(--foreground);
+}
+
+.page-wrap {
+  width: 100%;
+  max-width: 1280px;
+  padding: 28px 32px 64px;
+}
+
+.page-eyebrow,
+.modal-eyebrow,
+.summary-label {
+  color: var(--muted-foreground);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.page-title {
+  color: var(--foreground);
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 650;
+  letter-spacing: -0.3px;
+  line-height: 1.2;
+}
+
+.page-sub {
+  margin-top: 5px;
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+
+.list-card {
+  margin-top: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--card);
+  padding: 18px;
+  color: var(--card-foreground);
+  box-shadow: var(--shadow-soft);
+}
+
+.top-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.team-summary-grid {
+  display: grid;
+  flex: 1;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.team-summary-item {
+  display: flex;
+  min-height: 62px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 20px;
+  border-left: 1px solid color-mix(in srgb, var(--border) 36%, transparent);
+}
+
+.team-summary-item:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.team-summary-item strong {
+  color: var(--foreground);
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 650;
+}
+
+.warn-msg {
+  margin-top: 8px;
+  color: var(--status-warning-foreground);
+  font-size: 12px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  padding: 9px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.3;
+  transition: 0.15s;
+}
+
+.btn-sm {
+  padding: 7px 12px;
+  font-size: 12px;
+}
+
+.btn-p {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  box-shadow: var(--shadow-soft);
+}
+
+.btn-p:hover:not(:disabled) {
+  background: var(--brand-dark);
+}
+
+.btn-o {
+  border-color: var(--border);
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.btn-o:hover:not(:disabled) {
+  background: var(--accent);
+}
+
+.btn-danger {
+  border-color: color-mix(in srgb, var(--destructive) 28%, var(--border));
+  background: color-mix(in srgb, var(--destructive) 8%, var(--card));
+  color: var(--destructive);
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.card-title {
+  color: var(--foreground);
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 650;
+}
+
+.empty-state {
+  margin-top: 10px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--muted);
+  padding: 18px;
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+
+.member-list,
+.invite-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-top: 10px;
+}
+
+.member-card {
+  border-top: 1px solid color-mix(in srgb, var(--border) 38%, transparent);
+  background: transparent;
+  padding: 15px 4px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.member-card:first-child {
+  border-top: 0;
+}
+
+.member-card:hover {
+  background: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.member-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.member-main {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+}
+
+.avatar {
+  display: flex;
+  width: 42px;
+  height: 42px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--muted);
+  color: var(--foreground);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.avatar-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  object-fit: cover;
+}
+
+.name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.member-name {
+  color: var(--foreground);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.member-email,
+.perm-summary {
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+
+.member-meta,
+.perm-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.meta-label {
+  color: var(--muted-foreground);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.member-actions,
+.invite-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.icon-btn {
+  display: flex;
+  width: 34px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--background);
+  color: var(--muted-foreground);
+  font-size: 19px;
+  line-height: 1;
+}
+
+.icon-btn:hover {
+  background: var(--accent);
+  color: var(--foreground);
+}
+
+.member-actions-menu {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: var(--shadow-elegant);
+}
+
+.member-actions-menu .text-slate-400 {
+  color: var(--muted-foreground);
+}
+
+.menu-item {
+  display: flex;
+  width: 100%;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  padding: 8px 10px;
+  color: var(--popover-foreground);
+  text-align: left;
+  font-size: 13px;
+}
+
+.menu-item:hover {
+  background: var(--accent);
+}
+
+.menu-item.danger {
+  color: var(--destructive);
+}
+
+.menu-item.danger:hover {
+  background: color-mix(in srgb, var(--destructive) 8%, var(--popover));
+}
+
+.invite-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 38%, transparent);
+  padding: 14px 4px;
+}
+
+.invite-card:first-child {
+  border-top: 0;
+}
+
+.invite-email {
+  color: var(--foreground);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.invite-status {
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.badge-green {
+  border: 1px solid color-mix(in srgb, var(--status-success-foreground) 24%, var(--border));
+  background: var(--status-success);
+  color: var(--status-success-foreground);
+}
+
+.badge-info {
+  border: 1px solid color-mix(in srgb, var(--status-info-foreground) 22%, var(--border));
+  background: var(--status-info);
+  color: var(--status-info-foreground);
+}
+
+.badge-muted {
+  border: 1px solid var(--border);
+  background: var(--status-neutral);
+  color: var(--status-neutral-foreground);
+}
+
+.permission-modal {
+  display: flex;
+  width: min(860px, 100%);
+  max-height: calc(100vh - 48px);
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  background: var(--card);
+  color: var(--card-foreground);
+  box-shadow: var(--shadow-elegant);
+}
+
+.modal-header,
+.modal-footer {
+  flex-shrink: 0;
+  background: var(--card);
+}
+
+.modal-header {
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 40%, transparent);
+  padding: 18px 20px 14px;
+}
+
+.modal-header h3 {
+  margin-top: 4px;
+  color: var(--foreground);
+  font-family: var(--font-display);
+  font-weight: 650;
+}
+
+.modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 20px;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 40%, transparent);
+  padding: 12px 20px;
+}
+
+.access-profile-option {
+  border-color: var(--border);
+  background: var(--background);
+  color: var(--foreground);
+  cursor: pointer;
+  transition: 0.15s;
+}
+
+.access-profile-option:hover,
+.access-profile-option.is-selected {
+  border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
+  background: color-mix(in srgb, var(--primary) 8%, var(--card));
+}
+
+.permission-modal :deep(.border-slate-200),
+.permission-modal :deep(.border-slate-100) {
+  border-color: var(--border) !important;
+}
+
+.permission-modal :deep(.bg-slate-50) {
+  background-color: var(--muted) !important;
+}
+
+.permission-modal :deep(.text-slate-900),
+.permission-modal :deep(.text-slate-800),
+.permission-modal :deep(.text-slate-700) {
+  color: var(--foreground) !important;
+}
+
+.permission-modal :deep(.text-slate-500),
+.permission-modal :deep(.text-slate-400) {
+  color: var(--muted-foreground) !important;
+}
+
+.permission-modal :deep(input),
+.permission-modal :deep(select) {
+  border-color: var(--input) !important;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.permission-modal :deep(select option) {
+  background: var(--popover);
+  color: var(--popover-foreground);
+}
+
+.permission-modal :deep(.border-emerald-500) {
+  border-color: color-mix(in srgb, var(--primary) 45%, var(--border)) !important;
+}
+
+.permission-modal :deep(.bg-emerald-50) {
+  background-color: color-mix(in srgb, var(--primary) 10%, var(--card)) !important;
+}
+
+.permission-modal :deep(.text-emerald-700) {
+  color: var(--primary) !important;
+}
+
+.modal-footer > button:first-child {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.modal-footer > button:last-child {
+  border-radius: var(--radius-lg);
+  background: var(--primary) !important;
+  color: var(--primary-foreground) !important;
+}
+
+.acc-enter-active,
+.acc-leave-active {
+  transition: all 0.15s ease;
+}
+
+.acc-enter-from,
+.acc-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+@media (max-width: 900px) {
+  .page-wrap {
+    padding: 20px 16px 40px;
+  }
+
+  .top-summary,
+  .invite-card,
+  .member-top {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .team-summary-grid {
+    width: 100%;
+    grid-template-columns: 1fr;
+  }
+
+  .team-summary-item {
+    min-height: auto;
+    border-top: 1px solid color-mix(in srgb, var(--border) 36%, transparent);
+    border-left: 0;
+    padding: 12px 0;
+  }
+
+  .team-summary-item:first-child {
+    border-top: 0;
+  }
+
+  .member-actions {
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .permission-modal {
+    max-height: calc(100vh - 24px);
+  }
+
+  .modal-header {
+    padding: 14px 14px 12px;
+  }
+
+  .modal-body {
+    padding: 12px 14px;
+  }
+
+  .modal-footer {
+    padding: 10px 14px;
+  }
+}
 </style>

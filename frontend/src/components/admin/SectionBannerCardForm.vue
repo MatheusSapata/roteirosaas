@@ -760,9 +760,9 @@ watch(
 }
 
 .banner-pill.active {
-  background: #031736;
-  border-color: #031736;
-  color: #fff;
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-foreground);
 }
 
 .banner-check {
@@ -854,6 +854,120 @@ watch(
   color: #5f7167;
 }
 
+.banner-form-shell,
+.banner-form-content {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.banner-form-nav {
+  border-color: var(--border);
+  background: var(--card);
+}
+
+.banner-nav-item {
+  border-color: var(--border);
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.banner-nav-item.active {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.banner-nav-item small,
+.banner-form-subtitle,
+.section-desc,
+.media-info p {
+  color: var(--muted-foreground);
+}
+
+.banner-form-title,
+.section-title,
+.media-info strong {
+  color: var(--foreground);
+}
+
+.section-head {
+  border-color: color-mix(in srgb, var(--border) 62%, transparent);
+}
+
+.banner-input,
+.section-dropdown-trigger {
+  border-color: var(--input);
+  background: var(--card);
+  color: var(--foreground);
+}
+
+.banner-outline-btn,
+.btn-row button,
+.banner-pill {
+  border-color: var(--border);
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.banner-outline-btn:hover,
+.btn-row button:hover,
+.banner-pill:hover {
+  border-color: color-mix(in srgb, var(--primary) 38%, var(--border));
+  background: var(--accent);
+}
+
+.banner-chip-wrap,
+.media-item {
+  border-color: var(--border);
+  background: var(--card);
+}
+
+.banner-chip,
+.media-fallback {
+  border-color: var(--border);
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.btn-row button.danger {
+  border-color: color-mix(in srgb, var(--destructive) 35%, var(--border));
+  background: color-mix(in srgb, var(--destructive) 10%, var(--card));
+  color: var(--destructive);
+}
+
+.btn-row button.danger:hover {
+  border-color: color-mix(in srgb, var(--destructive) 55%, var(--border));
+  background: color-mix(in srgb, var(--destructive) 18%, var(--card));
+}
+
+.banner-pill.active {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.section-dropdown-menu,
+.section-hover-preview {
+  border-color: var(--border);
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: var(--shadow-elegant);
+}
+
+.section-dropdown-item,
+.section-hover-preview strong {
+  color: var(--popover-foreground);
+}
+
+.section-dropdown-item:hover {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.section-hover-preview p {
+  color: var(--muted-foreground);
+}
+
 @media (max-width: 900px) {
   .banner-form-shell {
     grid-template-columns: 1fr;
@@ -861,7 +975,7 @@ watch(
     height: 100%;
     align-content: start;
     grid-auto-rows: min-content;
-    background: #fff;
+    background: var(--background);
   }
 
   .banner-form-nav {
@@ -874,7 +988,7 @@ watch(
     overflow-x: hidden;
     padding: 8px 8px 0 16px;
     margin-bottom: 12px;
-    background: #fff;
+    background: var(--card);
   }
 
   .banner-nav-item {

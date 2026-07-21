@@ -2,15 +2,15 @@
   <Teleport to="body">
     <transition name="crm-drawer-fade">
       <div v-if="modelValue" class="fixed inset-0 z-[400]">
-        <div class="absolute inset-0 bg-[rgba(17,26,20,.44)]" @click="close"></div>
+        <div class="absolute inset-0 bg-[var(--modal-overlay)]" @click="close"></div>
         <transition :name="isModalMode ? 'crm-modal-scale' : 'crm-drawer-slide'">
           <aside
             v-if="modelValue"
             class="opp-dr absolute flex flex-col overflow-hidden shadow-2xl"
             :class="
               isModalMode
-                ? 'inset-x-4 top-6 bottom-6 mx-auto w-auto max-w-[1120px] rounded-[32px] border border-slate-200 bg-white md:inset-x-8'
-                : 'opp-drawer-shell inset-y-0 right-0 h-full w-full max-w-[660px] bg-white'
+                ? 'opp-modal-shell inset-x-4 top-6 bottom-6 mx-auto w-auto max-w-[1120px] rounded-2xl border border-border bg-card md:inset-x-8'
+                : 'opp-drawer-shell inset-y-0 right-0 h-full w-full max-w-[660px] bg-card'
             "
           >
             <div class="opp-hd flex items-center justify-between gap-4 border-b border-slate-200 px-5 py-3">
@@ -21,6 +21,8 @@
                 type="button"
                 class="opp-x rounded-[8px] border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-50 hover:text-slate-900"
                 @click="close"
+                aria-label="Fechar oportunidade"
+                title="Fechar"
               >
                 <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M6 6l12 12M6 18 18 6" stroke-linecap="round" stroke-linejoin="round" />
@@ -29,10 +31,10 @@
             </div>
 
             <div v-if="loading && !details" class="flex flex-1 items-center justify-center">
-              <div class="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-brand"></div>
+              <div class="h-10 w-10 animate-spin rounded-full border-4 border-border border-t-primary"></div>
             </div>
 
-            <div v-else class="opp-body flex-1 overflow-y-auto">
+            <div v-else class="opp-body flex-1 overflow-y-auto bg-card text-card-foreground">
               <div class="opp-head-content">
                 <h2 class="opp-name truncate">
                   {{ headerTitle }}
@@ -197,9 +199,9 @@
                     </div>
                   </div>
                   <div class="mt-3 grid gap-3 sm:grid-cols-2">
-                    <div v-for="answer in submittedFormAnswers" :key="answer.id" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-                      <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{{ answer.label }}</p>
-                      <p class="mt-1 whitespace-pre-wrap break-words text-sm font-medium text-slate-800">{{ answer.value || "Não informado" }}</p>
+                    <div v-for="answer in submittedFormAnswers" :key="answer.id" class="rounded-lg border border-border bg-muted px-3 py-2.5">
+                      <p class="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{{ answer.label }}</p>
+                      <p class="mt-1 whitespace-pre-wrap break-words text-sm font-medium text-foreground">{{ answer.value || "Não informado" }}</p>
                     </div>
                   </div>
                 </div>
@@ -928,9 +930,11 @@ function historyKind(item: { title: string }) {
 }
 
 .opp-body {
-  background: #ffffff;
+  flex: 1 1 0%;
+  background: var(--card);
+  color: var(--card-foreground);
   padding: 0;
-  min-height: 100%;
+  min-height: 0;
 }
 
 .opp-body::-webkit-scrollbar {
@@ -994,7 +998,7 @@ function historyKind(item: { title: string }) {
 .opp-origin-sep{font-size:13px;color:#94a3b8}
 .opp-date{font-size:12px;color:#8a9e8a}
 .opp-meta-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.opp-meta-row{padding-bottom:10px;border-bottom:1px solid #e4e9e4}
+.opp-meta-row{padding-bottom:10px;border-bottom:1px solid var(--border)}
 .opp-stage-wrap{position:relative}
 .opp-stage{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:999px;border:1.5px solid;font-size:12px;font-weight:700}
 .opp-stage svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
@@ -1026,8 +1030,8 @@ function historyKind(item: { title: string }) {
 .opp-hl-lost.active,.opp-hl-lost:hover{background:rgba(239,68,68,.2);border-color:rgba(220,38,38,.5)}
 .opp-hl-won.active svg{stroke:#15803D}
 .opp-hl-lost.active svg{stroke:#B91C1C}
-.opp-info{padding:0 24px 10px;background:#fff;border-bottom:1.5px solid #e4e9e4;margin-top:-2px}
-.opp-line{padding:10px 0;border-bottom:1px solid #e4e9e4}
+.opp-info{padding:0 24px 10px;background:#fff;border-bottom:1px solid var(--border);margin-top:-2px}
+.opp-line{padding:10px 0;border-bottom:1px solid var(--border)}
 .opp-line:last-child{border-bottom:none}
 .opp-line--phone{padding:2px 0 10px}
 .opp-line-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
@@ -1053,7 +1057,7 @@ function historyKind(item: { title: string }) {
 .opp-link-results{margin-top:8px;display:flex;flex-direction:column;gap:6px}
 .opp-link-result{display:flex;justify-content:space-between;align-items:center;border:1px solid #e4e9e4;background:#fff;border-radius:8px;padding:8px 10px;font-size:12px;color:#3a4f3f}
 .opp-link-result span:last-child{font-weight:700;color:#1A7A35}
-.opp-tabs{display:flex;gap:8px;padding:0 24px;background:#fff;border-bottom:1.5px solid #e4e9e4}
+.opp-tabs{display:flex;gap:8px;padding:0 24px;background:#fff;border-bottom:1px solid var(--border)}
 .opp-tab-btn{padding:12px 14px;border:2px solid transparent;background:transparent;color:#6f896f;font-weight:600;font-size:13px;border-radius:4px;display:inline-flex;align-items:center;gap:6px}
 .opp-tab-btn svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;opacity:.75}
 .opp-tab-btn.on{color:#2ead4c;border-color:transparent;background:#fff}
@@ -1139,6 +1143,129 @@ function historyKind(item: { title: string }) {
 .crm-modal-scale-leave-to {
   opacity: 0;
   transform: translateY(12px) scale(0.985);
+}
+
+/* Design system — detalhe da oportunidade */
+.opp-drawer-shell,
+.opp-modal-shell {
+  border-color: var(--border) !important;
+  background: var(--card) !important;
+  color: var(--card-foreground);
+  box-shadow: var(--shadow-elegant);
+}
+
+.opp-hd,
+.opp-body,
+.opp-head-content,
+.opp-info,
+.opp-tabs,
+.opp-pane {
+  border-color: var(--border) !important;
+  background: var(--card) !important;
+}
+
+.opp-body {
+  flex: 1 1 0%;
+  min-height: 0;
+  background: var(--card) !important;
+  color: var(--card-foreground);
+}
+
+.opp-hd h2,
+.opp-name,
+.opp-val,
+.opp-note-text,
+.opp-client-name,
+.opp-tl-title {
+  color: var(--foreground) !important;
+}
+
+.opp-hd p,
+.opp-origin-text,
+.opp-origin-sep,
+.opp-date,
+.opp-lbl,
+.opp-note-meta,
+.opp-empty,
+.opp-client-email,
+.opp-tl-detail,
+.opp-tl-time {
+  color: var(--muted-foreground) !important;
+}
+
+.opp-x,
+.opp-hl-btn,
+.opp-link-btn,
+.opp-value-edit-btn,
+.opp-value-input,
+.opp-value-action-btn,
+.opp-link-search,
+.opp-link-input,
+.opp-link-result,
+.opp-note-ta,
+.opp-doc-upload,
+.opp-doc-row,
+.opp-doc-del {
+  border-color: var(--border) !important;
+  background: var(--background) !important;
+  color: var(--foreground) !important;
+}
+
+.opp-x:hover,
+.opp-link-btn:hover,
+.opp-value-edit-btn:hover,
+.opp-value-action-btn:hover,
+.opp-doc-upload:hover {
+  background: var(--accent) !important;
+  color: var(--accent-foreground) !important;
+}
+
+.opp-value-input:focus,
+.opp-link-input:focus,
+.opp-note-ta:focus,
+.crm-input:focus {
+  border-color: var(--ring) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 16%, transparent) !important;
+}
+
+.opp-stage-menu {
+  border-color: var(--border);
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: var(--shadow-elegant);
+}
+
+.opp-client-card,
+.opp-note {
+  border-color: var(--border);
+  background: var(--muted);
+}
+
+.opp-client-av,
+.opp-add-btn,
+.opp-value-action-btn.ok {
+  border-color: var(--primary);
+  background: var(--primary) !important;
+  color: var(--primary-foreground) !important;
+}
+
+.opp-tab-btn {
+  color: var(--muted-foreground);
+}
+
+.opp-tab-btn.on {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.opp-tl-line {
+  background: var(--border);
+}
+
+@media (max-width: 768px) {
+  .opp-drawer-shell {
+    max-width: 100%;
+  }
 }
 </style>
 

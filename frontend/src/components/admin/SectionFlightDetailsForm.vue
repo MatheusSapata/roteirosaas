@@ -1063,6 +1063,68 @@ onBeforeUnmount(() => {
   line-height: 1;
 }
 
+.flight-shell,
+.flight-content { background: var(--background); color: var(--foreground); }
+.flight-nav { border-color: var(--border); background: var(--card); }
+.flight-nav-item { border-color: var(--border); background: var(--muted); color: var(--foreground); }
+.flight-nav-item.active { border-color: var(--primary); background: var(--primary); color: var(--primary-foreground); }
+.flight-nav-item small,
+.flight-subtitle,
+.flight-optional,
+.flight-mini-label { color: var(--muted-foreground); }
+.flight-title,
+.flight-selected-title,
+.flight-field-title { color: var(--foreground); }
+.flight-input,
+.flight-rich :deep(.ql-container.ql-snow),
+.flight-rich :deep(.ql-editor) {
+  border-color: var(--input) !important;
+  background: var(--card) !important;
+  color: var(--foreground) !important;
+}
+.flight-input:focus {
+  outline: none;
+  border-color: var(--ring) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 15%, transparent);
+}
+.flight-rich :deep(.ql-toolbar.ql-snow) { border-color: var(--input) !important; background: var(--muted); }
+.flight-add-segment,
+.flight-search-btn,
+.flight-pill,
+.segment-pill {
+  border-color: var(--border);
+  background: var(--muted);
+  color: var(--foreground);
+}
+.flight-add-segment:hover,
+.flight-search-btn:hover,
+.flight-pill:hover,
+.segment-pill:hover { background: var(--accent); }
+.flight-pill.active,
+.segment-pill.active {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 16%, var(--card));
+  color: var(--foreground);
+}
+.flight-selected-card,
+.flight-lookup-head {
+  border-color: var(--border) !important;
+  background: var(--card) !important;
+  color: var(--foreground);
+}
+.segment-pill-handle { color: var(--muted-foreground); }
+.segment-pill-remove {
+  border: 1px solid color-mix(in srgb, var(--destructive) 30%, var(--border));
+  background: color-mix(in srgb, var(--destructive) 10%, var(--card));
+  color: var(--destructive);
+}
+.flight-help:hover::after {
+  border: 1px solid var(--border);
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: var(--shadow-elegant);
+}
+
 @media (max-width: 900px) {
   .flight-shell {
     grid-template-columns: 1fr;

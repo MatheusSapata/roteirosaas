@@ -3,7 +3,7 @@
     <div class="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-brand"></div>
   </div>
 
-  <div v-else class="w-full space-y-6 px-4 py-6 md:px-8">
+  <div v-else class="integrations-view w-full space-y-6 px-4 py-6 md:px-8">
     <header class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
       <div>
         <h1 class="text-3xl font-bold text-slate-900">{{ viewCopy.header.title }}</h1>
@@ -160,6 +160,27 @@
     </Teleport>
   </div>
 </template>
+
+<style scoped>
+.integrations-view { color: var(--foreground); }
+.integrations-view :deep(.bg-white) { background: var(--card) !important; }
+.integrations-view :deep(.bg-slate-50),
+.integrations-view :deep(.bg-slate-100) { background: var(--muted) !important; }
+.integrations-view :deep(.border-slate-200),
+.integrations-view :deep(.border-slate-300) { border-color: var(--border) !important; }
+.integrations-view :deep(.text-slate-900),
+.integrations-view :deep(.text-slate-800),
+.integrations-view :deep(.text-slate-700) { color: var(--foreground) !important; }
+.integrations-view :deep(.text-slate-600),
+.integrations-view :deep(.text-slate-500) { color: var(--muted-foreground) !important; }
+.integrations-view :deep(input),
+.integrations-view :deep(select),
+.integrations-view :deep(textarea) {
+  border-color: var(--input) !important;
+  background: var(--background) !important;
+  color: var(--foreground) !important;
+}
+</style>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";

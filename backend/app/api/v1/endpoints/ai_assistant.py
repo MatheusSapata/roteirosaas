@@ -21,6 +21,7 @@ from app.api.v1.endpoints.pages import (
     enforce_page_limits,
 )
 from app.models.page import Page
+from app.models.ai_assistant_message import AiAssistantMessage
 from app.models.user import User
 from app.schemas.page import PageOut
 from app.services.ai_assistant import (
@@ -48,6 +49,13 @@ class AiAssistantConversationMessage(BaseModel):
     content: str
 
 
+class AiAssistantHistoryMessage(BaseModel):
+    id: int
+    role: Literal["user", "assistant"]
+    content: str
+    created_at: datetime
+
+
 class AiAssistantCreatePageBaseRequest(BaseModel):
     page_id: int
     reply: str
@@ -66,8 +74,23 @@ class AiAssistantUsageResponse(BaseModel):
     renewal_at: datetime | None = None
 
 
+def _pending_history_messages(
+    existing_messages: list[AiAssistantMessage],
+    incoming_messages: list[AiAssistantConversationMessage],
+) -> list[AiAssistantConversationMessage]:
+    prefix_matches = len(existing_messages) <= len(incoming_messages) and all(
+        stored.role == incoming.role and stored.content == incoming.content
+        for stored, incoming in zip(existing_messages, incoming_messages)
+    )
+    if prefix_matches:
+        return incoming_messages[len(existing_messages):]
+    last_user_message = next((item for item in reversed(incoming_messages) if item.role == "user"), None)
+    return [last_user_message] if last_user_message else []
+
+
 @router.post("/chat", response_model=AiAssistantChatResponse)
 async def chat_with_assistant(
+    page_id: int = Form(...),
     conversation: str = Form("[]"),
     attachments: list[UploadFile] | None = File(default=None),
     response: Response = None,
@@ -87,7 +110,38 @@ async def chat_with_assistant(
     if not parsed_conversation:
         raise HTTPException(status_code=400, detail="Nenhuma mensagem enviada.")
 
+    page = db.query(Page).filter(Page.id == page_id).first()
+    if not page:
+        raise HTTPException(status_code=404, detail="Página não encontrada.")
+    ensure_agency_member(db, page.agency_id, current_user)
+    ensure_pages_editor_permission(db, page.agency_id, current_user)
+
     usage_record, usage_limit = check_ai_assistant_message_limit(db, current_user)
+
+    existing_messages = (
+        db.query(AiAssistantMessage)
+        .filter(
+            AiAssistantMessage.page_id == page.id,
+            AiAssistantMessage.user_id == current_user.id,
+        )
+        .order_by(AiAssistantMessage.id.asc())
+        .all()
+    )
+    pending_messages = _pending_history_messages(existing_messages, parsed_conversation)
+
+    for item in pending_messages:
+        content = item.content.strip()
+        if not content:
+            continue
+        db.add(
+            AiAssistantMessage(
+                page_id=page.id,
+                user_id=current_user.id,
+                role=item.role,
+                content=content,
+            )
+        )
+    db.commit()
 
     attachment_payload: list[ChatAttachment] = []
     for upload in attachments or []:
@@ -109,6 +163,14 @@ async def chat_with_assistant(
         )
     )
     usage_record = increment_ai_assistant_message_usage(db, usage_record)
+    db.add(
+        AiAssistantMessage(
+            page_id=page.id,
+            user_id=current_user.id,
+            role="assistant",
+            content=reply,
+        )
+    )
     db.commit()
 
     response.headers["X-AI-Assistant-Period"] = usage_record.period_key
@@ -121,6 +183,38 @@ async def chat_with_assistant(
         response.headers["X-AI-Assistant-Remaining"] = "unlimited"
 
     return AiAssistantChatResponse(reply=reply)
+
+
+@router.get("/pages/{page_id}/history", response_model=list[AiAssistantHistoryMessage])
+def get_page_assistant_history(
+    page_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> list[AiAssistantHistoryMessage]:
+    page = db.query(Page).filter(Page.id == page_id).first()
+    if not page:
+        raise HTTPException(status_code=404, detail="Página não encontrada.")
+    ensure_agency_member(db, page.agency_id, current_user)
+    ensure_pages_editor_permission(db, page.agency_id, current_user)
+
+    rows = (
+        db.query(AiAssistantMessage)
+        .filter(
+            AiAssistantMessage.page_id == page.id,
+            AiAssistantMessage.user_id == current_user.id,
+        )
+        .order_by(AiAssistantMessage.id.asc())
+        .all()
+    )
+    return [
+        AiAssistantHistoryMessage(
+            id=row.id,
+            role=row.role,
+            content=row.content,
+            created_at=row.created_at,
+        )
+        for row in rows
+    ]
 
 
 @router.get("/usage", response_model=AiAssistantUsageResponse)

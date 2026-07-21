@@ -82,16 +82,62 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.rich-text-editor {
+  color: var(--foreground);
+}
+
 :deep(.ql-toolbar.ql-snow) {
-  border-color: #e2e8f0;
+  border-color: var(--input);
   border-radius: 0.5rem 0.5rem 0 0;
+  background: var(--muted);
 }
+
 :deep(.ql-container.ql-snow) {
-  border-color: #e2e8f0;
+  border-color: var(--input);
   border-radius: 0 0 0.5rem 0.5rem;
-  background: #fff;
+  background: var(--card);
+  color: var(--foreground);
 }
+
 :deep(.ql-editor) {
   min-height: 140px;
+  background: var(--card);
+  color: var(--foreground);
+}
+
+:deep(.ql-editor.ql-blank::before) {
+  color: color-mix(in srgb, var(--muted-foreground) 76%, transparent);
+}
+
+:deep(.ql-snow .ql-stroke) {
+  stroke: var(--muted-foreground);
+}
+
+:deep(.ql-snow .ql-fill),
+:deep(.ql-snow .ql-stroke.ql-fill) {
+  fill: var(--muted-foreground);
+}
+
+:deep(.ql-snow .ql-picker) {
+  color: var(--muted-foreground);
+}
+
+:deep(.ql-snow button:hover .ql-stroke),
+:deep(.ql-snow button:focus .ql-stroke),
+:deep(.ql-snow button.ql-active .ql-stroke),
+:deep(.ql-snow .ql-picker-label:hover .ql-stroke),
+:deep(.ql-snow .ql-picker-label.ql-active .ql-stroke) {
+  stroke: var(--primary);
+}
+
+:deep(.ql-snow button:hover .ql-fill),
+:deep(.ql-snow button:focus .ql-fill),
+:deep(.ql-snow button.ql-active .ql-fill) {
+  fill: var(--primary);
+}
+
+:deep(.ql-toolbar.ql-snow + .ql-container.ql-snow:focus-within) {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 15%, transparent);
 }
 </style>

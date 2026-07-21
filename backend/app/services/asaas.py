@@ -39,7 +39,7 @@ def build_default_split_payload() -> list[dict[str, Any]]:
 
 
 class AsaasClient:
-    def __init__(self, api_key: str, base_url: str = "https://sandbox.asaas.com/api/v3") -> None:
+    def __init__(self, api_key: str, base_url: str = "https://api-sandbox.asaas.com/v3") -> None:
         self.api_key = api_key
         self.base_url = base_url.rstrip("/")
         self._headers = {

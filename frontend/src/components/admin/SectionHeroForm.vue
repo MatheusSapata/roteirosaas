@@ -296,7 +296,7 @@ import { sectionsInjectionKey } from "./sectionsContext";
 import RichTextEditor from "./inputs/RichTextEditor.vue";
 import api from "../../services/api";
 import { useAgencyStore } from "../../store/useAgencyStore";
-import { resolveMediaUrl, uploadImageFile } from "../../utils/media";
+import { removeImageBackground, resolveMediaUrl, uploadImageFile } from "../../utils/media";
 import { sectionLabels } from "../../utils/sectionLabels";
 import SectionHoverVisualPreview from "./SectionHoverVisualPreview.vue";
 import { adminTabIcons } from "../../utils/adminTabIcons";
@@ -682,69 +682,19 @@ const handleRemoveBackground = async () => {
   removingBackground.value = true;
   cropperError.value = "";
   try {
-    const result = await removeBackgroundFromDataUrl(cropperModal.value.src);
+    const agencyId = await ensureAgencyId();
+    if (!agencyId) throw new Error("Agência não encontrada.");
+    const result = await removeImageBackground(cropperModal.value.src, agencyId);
     cropperModal.value.src = result;
     cropperModal.value.bgEdited = true;
     await nextTick();
     cropperInstance.value?.replace(result, false);
-  } catch {
-    cropperError.value = "Não conseguimos remover o fundo desta imagem.";
+  } catch (err) {
+    console.error(err);
+    cropperError.value = "Não conseguimos remover o fundo. Verifique a imagem e tente novamente.";
   } finally {
     removingBackground.value = false;
   }
-};
-
-type RGB = { r: number; g: number; b: number };
-
-const removeBackgroundFromDataUrl = (src: string) =>
-  new Promise<string>((resolve, reject) => {
-    const image = new Image();
-    image.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = image.naturalWidth;
-      canvas.height = image.naturalHeight;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return reject(new Error("Canvas não suportado."));
-      ctx.drawImage(image, 0, 0);
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const processed = stripBackground(imageData);
-      ctx.putImageData(processed, 0, 0);
-      resolve(canvas.toDataURL("image/png"));
-    };
-    image.onerror = reject;
-    image.src = src;
-  });
-
-const stripBackground = (imageData: ImageData) => {
-  const { data, width, height } = imageData;
-  const samples: RGB[] = [
-    getColor(data, width, 0, 0),
-    getColor(data, width, width - 1, 0),
-    getColor(data, width, 0, height - 1),
-    getColor(data, width, width - 1, height - 1),
-    getColor(data, width, Math.floor(width / 2), 0),
-    getColor(data, width, Math.floor(width / 2), height - 1)
-  ];
-  const base = samples.reduce((acc, c) => ({ r: acc.r + c.r, g: acc.g + c.g, b: acc.b + c.b }), { r: 0, g: 0, b: 0 });
-  const avg = { r: base.r / samples.length, g: base.g / samples.length, b: base.b / samples.length };
-  const threshold = 48;
-  for (let i = 0; i < data.length; i += 4) {
-    const dist = colorDistance({ r: data[i], g: data[i + 1], b: data[i + 2] }, avg);
-    if (dist < threshold) data[i + 3] = 0;
-  }
-  return imageData;
-};
-
-const getColor = (data: Uint8ClampedArray, width: number, x: number, y: number): RGB => {
-  const idx = (y * width + x) * 4;
-  return { r: data[idx], g: data[idx + 1], b: data[idx + 2] };
-};
-
-const colorDistance = (a: RGB, b: RGB) => {
-  const dr = a.r - b.r;
-  const dg = a.g - b.g;
-  const db = a.b - b.b;
-  return Math.sqrt(dr * dr + dg * dg + db * db);
 };
 
 const colorOnly = (value?: string) => {
@@ -971,16 +921,16 @@ input, select {
 }
 
 .rich-box {
-  border: 1px solid #dfe8e2;
+  border: 1px solid var(--input);
   border-radius: 12px;
   overflow: hidden;
-  background: #fff;
+  background: var(--card);
 }
 
 .rich-box :deep(.ql-toolbar.ql-snow) {
   border: 0 !important;
-  border-bottom: 1px solid #e6eee8 !important;
-  background: #fbfdfc;
+  border-bottom: 1px solid var(--input) !important;
+  background: var(--muted) !important;
   padding: 4px 8px;
 }
 
@@ -996,10 +946,13 @@ input, select {
 
 .rich-box :deep(.ql-container.ql-snow) {
   border: 0 !important;
+  background: var(--card) !important;
 }
 
 .rich-box :deep(.ql-editor) {
   min-height: 88px;
+  background: var(--card) !important;
+  color: var(--foreground) !important;
 }
 
 .inline-check {
@@ -1033,13 +986,19 @@ input, select {
 .add-btn {
   height: 40px;
   padding: 0 14px;
-  background: #f8fbf9;
-  color: #173b25;
-  border: 1px dashed #dfe8e2;
+  background: var(--muted);
+  color: var(--foreground);
+  border: 1px dashed var(--border);
   border-radius: 8px;
   white-space: nowrap;
   font-size: 12px;
   font-weight: 850;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.add-btn:hover {
+  border-color: color-mix(in srgb, var(--primary) 42%, var(--border));
+  background: var(--accent);
 }
 
 .highlight-tags {
@@ -1048,9 +1007,9 @@ input, select {
   gap: 8px;
   align-items: center;
   padding: 10px;
-  border: 1px solid #dfe8e2;
+  border: 1px solid var(--border);
   border-radius: 12px;
-  background: #fff;
+  background: var(--card);
   min-height: 56px;
 }
 
@@ -1060,16 +1019,16 @@ input, select {
   gap: 7px;
   max-width: 100%;
   padding: 5px 8px;
-  border: 1px solid #dfe8e2;
-  background: #f8fbf9;
+  border: 1px solid var(--border);
+  background: var(--muted);
   border-radius: 999px;
-  color: #173b25;
+  color: var(--foreground);
   font-size: 11px;
   font-weight: 700;
 }
 
 .drag-handle {
-  color: #9aaaa0;
+  color: var(--muted-foreground);
   cursor: grab;
   font-weight: 950;
   line-height: 1;
@@ -1098,20 +1057,26 @@ input, select {
 }
 
 .pill {
-  border: 1px solid #dfe8e2;
-  background: #fff;
+  border: 1px solid var(--border);
+  background: var(--muted);
   border-radius: 12px;
   padding: 8px 11px;
-  color: #516358;
+  color: var(--foreground);
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.pill:hover {
+  border-color: color-mix(in srgb, var(--primary) 38%, var(--border));
+  background: var(--accent);
 }
 
 .pill.active {
-  background: #07111f;
-  color: #fff;
-  border-color: #07111f;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border-color: var(--primary);
 }
 
 .list {
@@ -1125,8 +1090,8 @@ input, select {
   grid-template-columns: 86px 1fr auto;
   gap: 12px;
   align-items: center;
-  border: 1px solid #dfe8e2;
-  background: #fff;
+  border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+  background: var(--card);
   border-radius: 12px;
   padding: 8px;
 }
@@ -1172,10 +1137,10 @@ input, select {
   width: 86px;
   height: 58px;
   border-radius: 8px;
-  background: #e3ebe6;
+  background: var(--muted);
   display: grid;
   place-items: center;
-  color: #7d8d83;
+  color: var(--muted-foreground);
   font-size: 12px;
   font-weight: 700;
 }
@@ -1190,7 +1155,7 @@ input, select {
 
 .media-info p {
   margin: 0;
-  color: #7d8d83;
+  color: var(--muted-foreground);
   font-size: 12px;
   line-height: 1.35;
 }
@@ -1203,20 +1168,31 @@ input, select {
 }
 
 .btn-row button {
-  border: 1px solid #dfe8e2;
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 7px 10px;
   min-height: 32px;
-  background: #fff;
-  color: #223228;
+  background: var(--muted);
+  color: var(--foreground);
   font-size: 12px;
   font-weight: 700;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.btn-row button:hover {
+  border-color: color-mix(in srgb, var(--primary) 38%, var(--border));
+  background: var(--accent);
 }
 
 .btn-row button.danger {
-  background: #fff1f1;
-  color: #e13c3c;
-  border-color: #ffd4d4;
+  background: color-mix(in srgb, var(--destructive) 10%, var(--card));
+  color: var(--destructive);
+  border-color: color-mix(in srgb, var(--destructive) 35%, var(--border));
+}
+
+.btn-row button.danger:hover {
+  background: color-mix(in srgb, var(--destructive) 18%, var(--card));
+  border-color: color-mix(in srgb, var(--destructive) 55%, var(--border));
 }
 
 .logo-size-inline-wrap {
@@ -1257,7 +1233,7 @@ input, select {
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.03em;
-  color: #74867a;
+  color: var(--muted-foreground);
   line-height: 1;
   white-space: nowrap;
 }
@@ -1372,6 +1348,50 @@ input, select {
 .section-card--dropdown-open,
 .section-card--dropdown-open .content-area {
   overflow: visible !important;
+}
+
+:global(body.admin-body-dark) .hero-proto-body .rich-box,
+:global(body.admin-body-dark) .hero-proto-body .rich-box :deep(.ql-container.ql-snow),
+:global(body.admin-body-dark) .hero-proto-body .rich-box :deep(.ql-editor),
+:global(html.dark) .hero-proto-body .rich-box,
+:global(html.dark) .hero-proto-body .rich-box :deep(.ql-container.ql-snow),
+:global(html.dark) .hero-proto-body .rich-box :deep(.ql-editor) {
+  border-color: var(--input) !important;
+  background: var(--card) !important;
+  color: var(--foreground) !important;
+}
+
+:global(body.admin-body-dark) .hero-proto-body .rich-box :deep(.ql-toolbar.ql-snow),
+:global(html.dark) .hero-proto-body .rich-box :deep(.ql-toolbar.ql-snow) {
+  border-color: var(--input) !important;
+  background: var(--muted) !important;
+}
+
+:global(body.admin-body-dark) .hero-proto-body .add-btn,
+:global(html.dark) .hero-proto-body .add-btn {
+  border-color: var(--border) !important;
+  background: var(--muted) !important;
+  color: var(--foreground) !important;
+}
+
+:global(body.admin-body-dark) .hero-proto-body .add-btn:hover,
+:global(html.dark) .hero-proto-body .add-btn:hover {
+  border-color: color-mix(in srgb, var(--primary) 42%, var(--border)) !important;
+  background: var(--accent) !important;
+  color: var(--accent-foreground) !important;
+}
+
+:global(body.admin-body-dark) .hero-proto-body .highlight-tags,
+:global(html.dark) .hero-proto-body .highlight-tags {
+  border-color: var(--border) !important;
+  background: var(--card) !important;
+}
+
+:global(body.admin-body-dark) .hero-proto-body .highlight-tag,
+:global(html.dark) .hero-proto-body .highlight-tag {
+  border-color: var(--border) !important;
+  background: var(--muted) !important;
+  color: var(--foreground) !important;
 }
 
 @media (max-width: 800px) {

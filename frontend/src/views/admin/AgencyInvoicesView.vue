@@ -11,6 +11,22 @@
       </button>
     </div>
 
+    <div class="invoice-summary-grid">
+      <article
+        v-for="item in invoiceSummaries"
+        :key="item.id"
+        class="summary-card"
+        :class="`summary-card--${item.id}`"
+      >
+        <div class="summary-top">
+          <span class="summary-label">{{ item.label }}</span>
+          <span class="summary-count">{{ item.count }}</span>
+        </div>
+        <strong class="summary-value">{{ formatCurrency(item.value) }}</strong>
+        <span class="summary-helper">{{ item.helper }}</span>
+      </article>
+    </div>
+
     <div class="tabs-row">
       <button
         v-for="tab in tabs"
@@ -173,6 +189,20 @@ const searchQuery = ref("");
 const currentPage = ref(1);
 const pageSize = ref(10);
 
+const invoiceSummaries = computed(() =>
+  ([
+    { id: "upcoming", label: viewCopy.upcoming, helper: "Cobranças programadas" },
+    { id: "overdue", label: viewCopy.overdue, helper: "Cobranças que precisam de atenção" },
+    { id: "paid", label: viewCopy.paid, helper: "Cobranças já quitadas" }
+  ] as const).map(item => ({
+    ...item,
+    count: counts.value[item.id] ?? 0,
+    value: invoices.value
+      .filter(invoice => invoice.bucket === item.id)
+      .reduce((total, invoice) => total + (Number(invoice.value) || 0), 0)
+  }))
+);
+
 const normalizeText = (value: unknown) =>
   String(value ?? "")
     .toLowerCase()
@@ -289,15 +319,16 @@ onMounted(() => {
 .page-wrap {
   padding: 28px 32px 64px;
   width: 100%;
-  max-width: 1380px;
+  max-width: 1440px;
+  color: var(--foreground);
 }
 
 .page-eyebrow {
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #8ea79d;
+  color: var(--muted-foreground);
   margin-bottom: 4px;
 }
 
@@ -310,17 +341,135 @@ onMounted(() => {
 }
 
 .page-title {
-  font-size: 34px;
-  line-height: 1.05;
-  font-weight: 900;
-  letter-spacing: -0.03em;
-  color: #0f172a;
+  font-family: var(--font-display);
+  font-size: 26px;
+  line-height: 1.2;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: var(--foreground);
 }
 
 .page-sub {
-  margin-top: 8px;
-  color: #64748b;
+  margin-top: 5px;
+  color: var(--muted-foreground);
   max-width: 760px;
+  font-size: 13px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  padding: 9px 16px;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.2;
+  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.btn-p {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  box-shadow: var(--shadow-soft);
+}
+
+.btn-p:hover:not(:disabled) {
+  background: var(--brand-dark);
+  transform: translateY(-1px);
+}
+
+.btn-o {
+  border-color: var(--border);
+  background: var(--card);
+  color: var(--foreground);
+}
+
+.btn-o:hover:not(:disabled) {
+  background: var(--accent);
+}
+
+.btn-sm {
+  padding: 7px 12px;
+  font-size: 12px;
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.invoice-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.summary-card {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  min-height: 132px;
+  flex-direction: column;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--card);
+  padding: 18px;
+  box-shadow: var(--shadow-soft);
+}
+
+.summary-card::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--summary-color);
+  content: "";
+}
+
+.summary-card--upcoming { --summary-color: var(--status-info-foreground); }
+.summary-card--overdue { --summary-color: var(--status-danger-foreground); }
+.summary-card--paid { --summary-color: var(--status-success-foreground); }
+
+.summary-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.summary-label {
+  color: var(--muted-foreground);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.summary-count {
+  border: 1px solid color-mix(in srgb, var(--summary-color) 24%, var(--border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--summary-color) 9%, var(--card));
+  color: var(--summary-color);
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.summary-value {
+  margin-top: 12px;
+  color: var(--foreground);
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 650;
+}
+
+.summary-helper {
+  margin-top: 3px;
+  color: var(--muted-foreground);
+  font-size: 12px;
 }
 
 .tabs-row {
@@ -344,7 +493,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  color: #64748b;
+  color: var(--muted-foreground);
   font-size: 12px;
   font-weight: 700;
 }
@@ -356,52 +505,61 @@ onMounted(() => {
 
 .search-field input,
 .page-size-field select {
-  height: 46px;
-  border: 1px solid #dbe4ef;
-  border-radius: 16px;
-  background: #fff;
+  height: 42px;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  background: var(--background);
   padding: 0 16px;
-  color: #0f172a;
+  color: var(--foreground);
   outline: none;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .search-field input:focus,
 .page-size-field select:focus {
-  border-color: #33c85a;
-  box-shadow: 0 0 0 4px rgba(51, 200, 90, 0.12);
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 18%, transparent);
+}
+
+.search-field input::placeholder {
+  color: var(--muted-foreground);
+}
+
+.page-size-field option {
+  background: var(--popover);
+  color: var(--popover-foreground);
 }
 
 .tab-btn {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  border: 1px solid #dbe4ef;
-  background: #fff;
-  color: #334155;
-  border-radius: 999px;
-  padding: 10px 14px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--muted-foreground);
+  border-radius: var(--radius-lg);
+  padding: 8px 12px;
   font-weight: 700;
   transition: all 0.15s ease;
 }
 
 .tab-btn.is-active {
-  border-color: #33c85a;
-  background: #ecfdf3;
-  color: #166534;
+  border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
+  background: color-mix(in srgb, var(--primary) 10%, var(--card));
+  color: var(--primary);
 }
 
 .tab-badge {
   min-width: 30px;
   padding: 3px 9px;
   border-radius: 999px;
-  background: rgba(148, 163, 184, 0.15);
+  background: var(--muted);
   font-size: 12px;
   font-weight: 800;
 }
 
 .tab-btn.is-active .tab-badge {
-  background: rgba(51, 200, 90, 0.14);
+  background: color-mix(in srgb, var(--primary) 15%, var(--card));
 }
 
 .invoice-list {
@@ -419,7 +577,7 @@ onMounted(() => {
 }
 
 .pagination-info {
-  color: #64748b;
+  color: var(--muted-foreground);
   font-size: 12px;
 }
 
@@ -431,17 +589,24 @@ onMounted(() => {
 }
 
 .pagination-page {
-  color: #64748b;
+  color: var(--muted-foreground);
   font-size: 12px;
   font-weight: 700;
 }
 
 .invoice-card {
-  border: 1px solid #e2e8f0;
-  background: #fff;
-  border-radius: 24px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--card-foreground);
+  border-radius: var(--radius-xl);
   padding: 18px 20px;
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.05);
+  box-shadow: var(--shadow-soft);
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.invoice-card:hover {
+  border-color: color-mix(in srgb, var(--foreground) 14%, var(--border));
+  transform: translateY(-1px);
 }
 
 .invoice-main {
@@ -459,10 +624,11 @@ onMounted(() => {
 }
 
 .invoice-title {
-  font-size: 18px;
-  font-weight: 900;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 650;
   letter-spacing: -0.02em;
-  color: #0f172a;
+  color: var(--foreground);
 }
 
 .status-pill {
@@ -473,18 +639,18 @@ onMounted(() => {
 }
 
 .status-paid {
-  background: #dcfce7;
-  color: #166534;
+  background: var(--status-success);
+  color: var(--status-success-foreground);
 }
 
 .status-overdue {
-  background: #fee2e2;
-  color: #b91c1c;
+  background: var(--status-danger);
+  color: var(--status-danger-foreground);
 }
 
 .status-upcoming {
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: var(--status-info);
+  color: var(--status-info-foreground);
 }
 
 .invoice-meta {
@@ -492,14 +658,15 @@ onMounted(() => {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-  color: #64748b;
+  color: var(--muted-foreground);
   font-size: 13px;
 }
 
 .invoice-value {
-  font-size: 22px;
-  font-weight: 900;
-  color: #0f172a;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 650;
+  color: var(--foreground);
   white-space: nowrap;
 }
 
@@ -510,7 +677,7 @@ onMounted(() => {
   gap: 16px;
   margin-top: 16px;
   padding-top: 16px;
-  border-top: 1px solid #eef2f7;
+  border-top: 1px solid color-mix(in srgb, var(--border) 40%, transparent);
 }
 
 .invoice-footnote {
@@ -518,7 +685,7 @@ onMounted(() => {
   flex-wrap: wrap;
   gap: 12px;
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--muted-foreground);
 }
 
 .empty-state {
@@ -528,25 +695,26 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   gap: 12px;
-  border: 1px dashed #dbe4ef;
-  border-radius: 24px;
-  background: rgba(255, 255, 255, 0.7);
-  color: #64748b;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-xl);
+  background: color-mix(in srgb, var(--card) 80%, transparent);
+  color: var(--muted-foreground);
   text-align: center;
 }
 
 .empty-state-error {
   border-style: solid;
-  background: #fff7f7;
-  color: #b91c1c;
+  border-color: color-mix(in srgb, var(--destructive) 25%, var(--border));
+  background: color-mix(in srgb, var(--destructive) 7%, var(--card));
+  color: var(--destructive);
 }
 
 .spinner {
   width: 36px;
   height: 36px;
   border-radius: 999px;
-  border: 4px solid #dbe4ef;
-  border-top-color: #33c85a;
+  border: 4px solid var(--border);
+  border-top-color: var(--primary);
   animation: spin 0.9s linear infinite;
 }
 
@@ -580,6 +748,10 @@ onMounted(() => {
 
   .invoice-value {
     white-space: normal;
+  }
+
+  .invoice-summary-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

@@ -2,6 +2,7 @@
 
 import httpx
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile
+from starlette.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_active_user, get_db
@@ -9,6 +10,12 @@ from app.models.agency_user import AgencyUser
 from app.models.media import MediaAsset
 from app.models.user import User
 from app.schemas.media import MediaAssetOut
+from app.services.background_removal import (
+    BackgroundRemovalUnavailable,
+    InvalidBackgroundRemovalImage,
+    MAX_IMAGE_BYTES,
+    remove_image_background,
+)
 from app.services.media_storage import media_storage
 
 router = APIRouter()
@@ -35,6 +42,38 @@ async def upload_media(
     db.commit()
     db.refresh(asset)
     return asset
+
+
+@router.post("/remove-background")
+async def remove_media_background(
+    agency_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> Response:
+    ensure_agency_member(db, agency_id, current_user.id)
+    content_type = (file.content_type or "").lower()
+    if not content_type.startswith("image/"):
+        raise HTTPException(status_code=415, detail="Envie um arquivo de imagem válido.")
+
+    file_bytes = await file.read(MAX_IMAGE_BYTES + 1)
+    try:
+        result = await run_in_threadpool(remove_image_background, file_bytes)
+    except InvalidBackgroundRemovalImage as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except BackgroundRemovalUnavailable as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="A remoção de fundo está temporariamente indisponível. Tente novamente em instantes.",
+        ) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=422, detail="Não foi possível remover o fundo desta imagem.") from exc
+
+    return Response(
+        content=result,
+        media_type="image/png",
+        headers={"Content-Disposition": 'inline; filename="background-removed.png"'},
+    )
 
 
 @router.get("/proxy")

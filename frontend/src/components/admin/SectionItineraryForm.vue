@@ -702,6 +702,98 @@ input, textarea {
   cursor: grabbing !important;
 }
 
+.itinerary-shell,
+.itinerary-content {
+  background: var(--background);
+  color: var(--foreground);
+}
+.itinerary-nav {
+  border-color: var(--border);
+  background: var(--card);
+}
+.itinerary-nav-item {
+  border-color: var(--border);
+  background: var(--muted);
+  color: var(--foreground);
+}
+.itinerary-nav-item.active {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+.itinerary-nav-item small,
+.section-desc,
+.optional,
+.media-info p,
+.empty-state,
+.empty-days { color: var(--muted-foreground); }
+.section-head { border-color: color-mix(in srgb, var(--border) 62%, transparent); }
+input, textarea {
+  border-color: var(--input);
+  background: var(--card);
+  color: var(--foreground);
+}
+input:focus, textarea:focus {
+  outline: none;
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 15%, transparent);
+}
+.segment-tab,
+.add-segment {
+  border-color: var(--border);
+  background: var(--muted);
+  color: var(--foreground);
+}
+.segment-tab.active {
+  border-color: color-mix(in srgb, var(--primary) 55%, var(--border));
+  background: color-mix(in srgb, var(--primary) 16%, var(--card));
+  color: var(--foreground);
+}
+.segment-handle { color: var(--muted-foreground); }
+.segment-remove {
+  border: 1px solid color-mix(in srgb, var(--destructive) 28%, var(--border));
+  background: color-mix(in srgb, var(--destructive) 10%, var(--card));
+  color: var(--destructive);
+}
+.add-segment:hover,
+.btn-row button:hover {
+  border-color: color-mix(in srgb, var(--primary) 38%, var(--border));
+  background: var(--accent);
+}
+.rich-box,
+.rich-box :deep(.ql-container.ql-snow),
+.rich-box :deep(.ql-editor) {
+  border-color: var(--input);
+  background: var(--card);
+  color: var(--foreground);
+}
+.rich-box :deep(.ql-toolbar.ql-snow) {
+  border-color: var(--input) !important;
+  background: var(--muted);
+}
+.media-item {
+  border-color: var(--border);
+  background: var(--card);
+}
+.media-empty {
+  background: var(--muted);
+  color: var(--muted-foreground);
+}
+.btn-row button {
+  border-color: var(--border);
+  background: var(--muted);
+  color: var(--foreground);
+}
+.danger {
+  border-color: color-mix(in srgb, var(--destructive) 35%, var(--border));
+  background: color-mix(in srgb, var(--destructive) 10%, var(--card));
+  color: var(--destructive);
+}
+.danger:hover {
+  border-color: color-mix(in srgb, var(--destructive) 55%, var(--border));
+  background: color-mix(in srgb, var(--destructive) 18%, var(--card));
+}
+
 @media (max-width: 900px) {
   .itinerary-shell {
     grid-template-columns: 1fr;

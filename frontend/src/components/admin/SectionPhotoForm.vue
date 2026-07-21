@@ -636,6 +636,105 @@ input:focus {
   padding: 8px 12px;
 }
 
+.photo-proto-body,
+.editor {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.tabs {
+  border-color: var(--border);
+  background: var(--card);
+}
+
+.tab {
+  border-color: var(--border);
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.tab.active {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.tab > span small,
+.section-desc,
+.field-hint,
+.media-info p,
+.layout-copy small {
+  color: var(--muted-foreground);
+}
+
+.section-head {
+  border-color: color-mix(in srgb, var(--border) 62%, transparent);
+}
+
+.section-title,
+.media-info strong,
+.layout-title-right,
+.layout-svg-preview {
+  color: var(--foreground);
+}
+
+input {
+  border-color: var(--input);
+  background: var(--card);
+  color: var(--foreground);
+}
+
+input:focus {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 15%, transparent);
+}
+
+.media-item,
+.layout-option {
+  border-color: var(--border);
+  background: var(--card);
+}
+
+.media-preview {
+  background: var(--muted);
+  color: var(--muted-foreground);
+}
+
+.btn-row button,
+.ghost-btn {
+  border-color: var(--border);
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.btn-row button:hover,
+.ghost-btn:hover {
+  border-color: color-mix(in srgb, var(--primary) 38%, var(--border));
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.btn-row button.danger {
+  border-color: color-mix(in srgb, var(--destructive) 35%, var(--border));
+  background: color-mix(in srgb, var(--destructive) 10%, var(--card));
+  color: var(--destructive);
+}
+
+.btn-row button.danger:hover {
+  border-color: color-mix(in srgb, var(--destructive) 55%, var(--border));
+  background: color-mix(in srgb, var(--destructive) 18%, var(--card));
+}
+
+.layout-option.active {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 14%, var(--card));
+}
+
+.color-picker {
+  border-color: var(--input);
+  background: var(--card);
+}
+
 @media (max-width: 900px) {
   .photo-proto-body {
     grid-template-columns: 1fr;

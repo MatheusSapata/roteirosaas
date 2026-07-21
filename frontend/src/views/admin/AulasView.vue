@@ -2,7 +2,7 @@
   <div v-if="isBootstrappingLessons" class="flex min-h-[60vh] w-full items-center justify-center px-4 py-8 md:px-8">
     <div class="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-brand"></div>
   </div>
-  <div v-else class="space-y-8 px-4 py-6 md:px-8">
+  <div v-else class="lessons-view space-y-8 px-4 py-6 md:px-8">
     <section class="rounded-3xl bg-white/95 p-6 dark:bg-[#202020] dark:text-white">
       <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
@@ -330,6 +330,20 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.lessons-view { color: var(--foreground); }
+.lessons-view :deep(.bg-white),
+.lessons-view :deep(.bg-white\/95) { background: var(--card) !important; }
+.lessons-view :deep(.bg-slate-50),
+.lessons-view :deep(.bg-slate-100),
+.lessons-view :deep(.bg-slate-200\/80) { background: var(--muted) !important; }
+.lessons-view :deep(.border-slate-200),
+.lessons-view :deep(.border-slate-200\/80) { border-color: var(--border) !important; }
+.lessons-view :deep(.text-slate-900),
+.lessons-view :deep(.text-slate-700),
+.lessons-view :deep(.text-slate-600) { color: var(--foreground) !important; }
+.lessons-view :deep(.text-slate-500),
+.lessons-view :deep(.text-slate-400) { color: var(--muted-foreground) !important; }
+.lessons-view :deep(button:hover) { border-color: color-mix(in srgb, var(--primary) 30%, var(--border)); }
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;

@@ -607,4 +607,22 @@ function setupCtaTracking(pixels: { type: string; value: string }[]) {
 .public-page :deep(section h3) {
   font-weight: 700 !important;
 }
+
+/* A identidade visual continua configurável; esta camada só garante navegação acessível. */
+.public-page :deep(a:focus-visible),
+.public-page :deep(button:focus-visible),
+.public-page :deep(input:focus-visible),
+.public-page :deep(textarea:focus-visible),
+.public-page :deep(select:focus-visible),
+.public-page :deep([tabindex]:focus-visible) {
+  outline: 3px solid color-mix(in srgb, currentColor 72%, white);
+  outline-offset: 3px;
+}
+
+.public-page :deep(button:disabled),
+.public-page :deep(input:disabled),
+.public-page :deep(textarea:disabled),
+.public-page :deep(select:disabled) {
+  cursor: not-allowed;
+}
 </style>

@@ -1,5 +1,5 @@
 ﻿<template>
-  <div class="flex h-full flex-col gap-2">
+  <div class="image-upload-field flex h-full flex-col gap-2">
     <div v-if="label" class="space-y-1">
       <label class="text-sm font-semibold text-slate-600">{{ label }}</label>
       <p v-if="labelDescription" class="text-xs text-slate-500">{{ labelDescription }}</p>
@@ -92,7 +92,7 @@
         v-if="cropperModal.open"
         class="app-modal-overlay fixed inset-0 z-50 flex items-center justify-center px-4 py-6"
       >
-        <div class="w-full max-w-5xl rounded-3xl bg-white p-6 shadow-2xl">
+        <div class="image-editor-modal w-full max-w-5xl p-6">
           <div class="flex items-center justify-between">
             <div>
               <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Editor de logo</p>
@@ -231,7 +231,7 @@ import "cropperjs/dist/cropper.css";
 import { computed, inject, nextTick, onBeforeUnmount, ref, watch } from "vue";
 import api from "../../../services/api";
 import { useAgencyStore } from "../../../store/useAgencyStore";
-import { resolveMediaUrl, uploadImageFile } from "../../../utils/media";
+import { removeImageBackground, resolveMediaUrl, uploadImageFile } from "../../../utils/media";
 import { sectionUploadGuardKey } from "../sectionUploadGuard";
 
 const props = defineProps<{
@@ -606,90 +606,18 @@ const handleRemoveBackground = async () => {
   removingBackground.value = true;
   dialogError.value = "";
   try {
-    const result = await removeBackgroundFromDataUrl(cropperModal.value.src);
+    const agencyId = await ensureAgency();
+    if (!agencyId) throw new Error("Agência não encontrada.");
+    const result = await removeImageBackground(cropperModal.value.src, agencyId);
     cropperModal.value = { ...cropperModal.value, src: result, bgEdited: true };
     await nextTick();
     cropperInstance.value?.replace(result, false);
   } catch (err) {
     console.error(err);
-    dialogError.value = "Não conseguimos remover o fundo desta imagem.";
+    dialogError.value = "Não conseguimos remover o fundo. Verifique a imagem e tente novamente.";
   } finally {
     removingBackground.value = false;
   }
-};
-
-const removeBackgroundFromDataUrl = (src: string) => {
-  return new Promise<string>((resolve, reject) => {
-    const image = new Image();
-    image.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = image.naturalWidth;
-      canvas.height = image.naturalHeight;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        reject(new Error("Canvas não suportado."));
-        return;
-      }
-      ctx.drawImage(image, 0, 0);
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const processed = stripBackground(imageData);
-      ctx.putImageData(processed, 0, 0);
-      resolve(canvas.toDataURL("image/png"));
-    };
-    image.onerror = reject;
-    image.src = src;
-  });
-};
-
-interface RGB {
-  r: number;
-  g: number;
-  b: number;
-}
-
-const stripBackground = (imageData: ImageData) => {
-  const { data, width, height } = imageData;
-  const samples: RGB[] = [
-    getColor(data, width, 0, 0),
-    getColor(data, width, width - 1, 0),
-    getColor(data, width, 0, height - 1),
-    getColor(data, width, width - 1, height - 1),
-    getColor(data, width, Math.floor(width / 2), 0),
-    getColor(data, width, Math.floor(width / 2), height - 1)
-  ].filter(Boolean) as RGB[];
-
-  const base = samples.reduce(
-    (acc, color) => ({ r: acc.r + color.r, g: acc.g + color.g, b: acc.b + color.b }),
-    { r: 0, g: 0, b: 0 }
-  );
-  const safeLength = samples.length || 1;
-  const baseColor = {
-    r: base.r / safeLength,
-    g: base.g / safeLength,
-    b: base.b / safeLength
-  };
-
-  const threshold = 48;
-  for (let i = 0; i < data.length; i += 4) {
-    const color: RGB = { r: data[i], g: data[i + 1], b: data[i + 2] };
-    const distance = colorDistance(color, baseColor);
-    if (distance < threshold) {
-      data[i + 3] = 0;
-    }
-  }
-  return imageData;
-};
-
-const getColor = (data: Uint8ClampedArray, width: number, x: number, y: number): RGB => {
-  const idx = (y * width + x) * 4;
-  return { r: data[idx], g: data[idx + 1], b: data[idx + 2] };
-};
-
-const colorDistance = (a: RGB, b: RGB) => {
-  const dr = a.r - b.r;
-  const dg = a.g - b.g;
-  const db = a.b - b.b;
-  return Math.sqrt(dr * dr + dg * dg + db * db);
 };
 
 defineExpose({
@@ -697,4 +625,78 @@ defineExpose({
   openCropperForCurrent
 });
 </script>
+
+<style scoped>
+.image-upload-field {
+  color: var(--foreground);
+}
+
+.image-upload-field :deep(.border-slate-200),
+.image-upload-field :deep(.border-slate-200\/80),
+.image-upload-field :deep(.border-slate-300) {
+  border-color: var(--border) !important;
+}
+
+.image-upload-field :deep(.bg-white) {
+  background-color: var(--card) !important;
+}
+
+.image-upload-field :deep(.bg-slate-50),
+.image-upload-field :deep(.bg-slate-50\/70),
+.image-upload-field :deep(.bg-slate-100) {
+  background-color: var(--muted) !important;
+}
+
+.image-upload-field :deep(.text-slate-900),
+.image-upload-field :deep(.text-slate-800),
+.image-upload-field :deep(.text-slate-700) {
+  color: var(--foreground) !important;
+}
+
+.image-upload-field :deep(.text-slate-600),
+.image-upload-field :deep(.text-slate-500),
+.image-upload-field :deep(.text-slate-400) {
+  color: var(--muted-foreground) !important;
+}
+
+.image-upload-field :deep(label:hover),
+.image-upload-field :deep(button:hover) {
+  background-color: var(--accent);
+}
+
+.image-editor-modal {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  background: var(--card);
+  color: var(--card-foreground);
+  box-shadow: var(--shadow-elegant);
+}
+
+.image-editor-modal :deep(.border-slate-200),
+.image-editor-modal :deep(.border-slate-200\/80) {
+  border-color: var(--border) !important;
+}
+
+.image-editor-modal :deep(.bg-white) {
+  background-color: var(--card) !important;
+}
+
+.image-editor-modal :deep(.bg-slate-50),
+.image-editor-modal :deep(.bg-slate-50\/70),
+.image-editor-modal :deep(.bg-slate-100) {
+  background-color: var(--muted) !important;
+}
+
+.image-editor-modal :deep(.text-slate-900),
+.image-editor-modal :deep(.text-slate-800),
+.image-editor-modal :deep(.text-slate-700) {
+  color: var(--foreground) !important;
+}
+
+.image-editor-modal :deep(.text-slate-600),
+.image-editor-modal :deep(.text-slate-500),
+.image-editor-modal :deep(.text-slate-400) {
+  color: var(--muted-foreground) !important;
+}
+</style>
 

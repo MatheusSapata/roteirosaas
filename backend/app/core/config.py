@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     stripe_success_url: str | None = Field(None, alias="STRIPE_SUCCESS_URL")
     stripe_cancel_url: str | None = Field(None, alias="STRIPE_CANCEL_URL")
     asaas_api_key: str | None = Field(None, alias="ASAAS_API_KEY")
-    asaas_base_url: str = Field("https://sandbox.asaas.com/api/v3", alias="ASAAS_BASE_URL")
+    asaas_base_url: str = Field("https://api-sandbox.asaas.com/v3", alias="ASAAS_BASE_URL")
     asaas_billing_type: Literal["BOLETO", "CREDIT_CARD", "PIX"] = Field(
         "CREDIT_CARD", alias="ASAAS_BILLING_TYPE"
     )
@@ -136,6 +136,17 @@ class Settings(BaseSettings):
         if isinstance(value, str):
             return [item.strip() for item in value.split(",") if item.strip()]
         return value
+
+    @field_validator("asaas_base_url", mode="before")
+    @classmethod
+    def normalize_asaas_base_url(cls, value):
+        raw = str(value or "").strip().rstrip("/")
+        legacy_urls = {
+            "https://www.asaas.com/api/v3": "https://api.asaas.com/v3",
+            "https://api.asaas.com/api/v3": "https://api.asaas.com/v3",
+            "https://sandbox.asaas.com/api/v3": "https://api-sandbox.asaas.com/v3",
+        }
+        return legacy_urls.get(raw, raw)
 
     @property
     def normalized_platform_domains(self) -> list[str]:

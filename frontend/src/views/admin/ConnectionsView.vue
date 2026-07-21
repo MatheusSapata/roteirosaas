@@ -1,5 +1,5 @@
 ﻿<template>
-  <div class="w-full space-y-6 px-4 py-6 md:px-8">
+  <div class="connections-view w-full space-y-6 px-4 py-6 md:px-8">
     <header class="space-y-1">
       <h1 class="text-3xl font-bold text-slate-900">Notificações</h1>
       <p class="text-sm text-slate-600">Conecte os canais de atendimento da sua agência.</p>
@@ -160,6 +160,29 @@
     </Teleport>
   </div>
 </template>
+
+<style scoped>
+.connections-view { color: var(--foreground); }
+.connections-view :deep(.bg-white),
+.connections-view :deep(.from-white) { background: var(--card) !important; }
+.connections-view :deep(.bg-slate-50),
+.connections-view :deep(.bg-slate-100),
+.connections-view :deep(.to-slate-50) { background: var(--muted) !important; }
+.connections-view :deep(.border-slate-200),
+.connections-view :deep(.border-slate-300) { border-color: var(--border) !important; }
+.connections-view :deep(.text-slate-900),
+.connections-view :deep(.text-slate-800),
+.connections-view :deep(.text-slate-700) { color: var(--foreground) !important; }
+.connections-view :deep(.text-slate-600),
+.connections-view :deep(.text-slate-500) { color: var(--muted-foreground) !important; }
+.connections-view :deep(input),
+.connections-view :deep(select),
+.connections-view :deep(textarea) {
+  border-color: var(--input) !important;
+  background: var(--background) !important;
+  color: var(--foreground) !important;
+}
+</style>
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";

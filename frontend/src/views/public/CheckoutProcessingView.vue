@@ -1,5 +1,5 @@
 <template>
-  <div class="flex min-h-screen items-center justify-center bg-[#41ce5f] px-4">
+  <div class="checkout-processing-view flex min-h-screen items-center justify-center bg-[#41ce5f] px-4">
     <div class="w-full max-w-md rounded-3xl bg-white/95 p-8 text-center shadow-2xl shadow-emerald-900/30">
       <img src="../../assets/Logo Cor - Roteiro Online.png" :alt="viewCopy.brand.alt" class="mx-auto mb-6 w-32" />
 
@@ -156,3 +156,11 @@ const pollStatus = async (attempt = 0) => {
   }
 };
 </script>
+
+<style scoped>
+.checkout-processing-view :deep(.bg-white\/95) { background: var(--card) !important; }
+.checkout-processing-view :deep(.text-slate-900) { color: var(--foreground) !important; }
+.checkout-processing-view :deep(.text-slate-600),
+.checkout-processing-view :deep(.text-slate-500) { color: var(--muted-foreground) !important; }
+.checkout-processing-view :deep(.border-slate-200) { border-color: var(--border) !important; }
+</style>

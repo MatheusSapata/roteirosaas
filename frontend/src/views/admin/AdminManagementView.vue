@@ -2,7 +2,7 @@
   <div v-if="isBootstrappingAdminManagement" class="flex min-h-[60vh] w-full items-center justify-center px-4 py-8 md:px-8">
     <div class="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-brand"></div>
   </div>
-  <div v-else class="admin-master-view w-full space-y-6 px-4 py-8 md:px-8">
+  <div v-else class="admin-master-view admin-master-surface w-full space-y-6 px-4 py-8 md:px-8">
     <!-- HEADER -->
     
 
@@ -4583,11 +4583,11 @@ onUnmounted(() => {
 
 <style scoped>
 .admin-master-view {
-  --card-border: #dbe4de;
-  --ink-900: #0b1b2b;
-  --ink-500: #6e8798;
-  --surface: #ffffff;
-  --shadow: 0 1px 3px rgba(15, 31, 20, 0.06), 0 4px 12px rgba(15, 31, 20, 0.04);
+  --card-border: var(--border);
+  --ink-900: var(--foreground);
+  --ink-500: var(--muted-foreground);
+  --surface: var(--card);
+  --shadow: var(--shadow-soft);
 }
 
 .topbar {

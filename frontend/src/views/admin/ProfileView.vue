@@ -1116,19 +1116,19 @@ watch(
 
 <style scoped>
 .profile-ref {
-  --verde: #3dcc5f;
-  --verde-d: #2ead4c;
-  --verde-dim: rgba(61, 204, 95, 0.1);
-  --verde-border: rgba(61, 204, 95, 0.22);
-  --bg: #f2f4f2;
-  --surface: #fff;
-  --surface2: #f5f7f5;
-  --border: #e4e9e4;
-  --border2: #cdd8cd;
-  --text: #111a14;
-  --text-2: #4a5e4a;
-  --text-3: #8a9e8a;
-  --sh-sm: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
+  --verde: var(--primary);
+  --verde-d: var(--primary);
+  --verde-dim: color-mix(in srgb, var(--primary) 10%, transparent);
+  --verde-border: color-mix(in srgb, var(--primary) 24%, transparent);
+  --bg: var(--background);
+  --surface: var(--card);
+  --surface2: var(--muted);
+  --border: color-mix(in srgb, var(--foreground) 13%, transparent);
+  --border2: color-mix(in srgb, var(--foreground) 20%, transparent);
+  --text: var(--foreground);
+  --text-2: var(--muted-foreground);
+  --text-3: var(--muted-foreground);
+  --sh-sm: var(--shadow-soft);
   --radius: 12px;
   --radius-sm: 8px;
   color: var(--text);

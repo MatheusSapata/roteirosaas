@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-4">
+  <div class="admin-master-surface space-y-4">
     <section class="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
       <div class="flex flex-wrap items-start justify-between gap-3">
         <div>

@@ -1,14 +1,18 @@
 ﻿<template>
   <div v-if="isBootstrappingPages" class="flex min-h-[60vh] w-full items-center justify-center px-4 py-8 md:px-8">
-    <div class="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-brand"></div>
+    <div class="h-10 w-10 animate-spin rounded-full border-4 border-border border-t-primary"></div>
   </div>
   <div v-else class="pages-reference w-full space-y-6 px-4 py-4 md:px-8 md:py-8">
-    <div class="dark:text-white">
+    <div>
       <div class="flex items-start justify-between gap-3">
-        <h1 class="text-[22px] font-extrabold tracking-[-0.4px] text-[#0F1F14] dark:text-white">{{ viewCopy.header.eyebrow }}</h1>
+        <div>
+          <p class="page-eyebrow">Conteúdo</p>
+          <h1 class="page-heading">{{ viewCopy.header.eyebrow }}</h1>
+          <p class="page-description">Crie, publique e acompanhe o desempenho das páginas da sua agência.</p>
+        </div>
         <button
           @click="openCreateModal"
-          class="inline-flex items-center gap-1.5 rounded-[10px] bg-[#3DCC5F] px-3 py-2 text-[12px] font-semibold text-[#0F1F14] transition hover:bg-[#5BE07A] disabled:cursor-not-allowed disabled:bg-slate-300 md:gap-2 md:px-4 md:py-[9px] md:text-[13px]"
+          class="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-[13px] font-semibold text-primary-foreground shadow-soft transition-colors hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-50"
           :class="!canEditPages ? 'cursor-not-allowed opacity-50' : ''"
           :disabled="!hasAgency"
         >
@@ -16,6 +20,29 @@
           {{ viewCopy.header.newPage }}
         </button>
       </div>
+    </div>
+
+    <div class="pages-summary-grid">
+      <article class="pages-summary-card">
+        <span class="pages-summary-label">Total de páginas</span>
+        <strong>{{ pages.length }}</strong>
+        <span class="pages-summary-helper">Páginas criadas na agência</span>
+      </article>
+      <article class="pages-summary-card pages-summary-card--published">
+        <span class="pages-summary-label">Publicadas</span>
+        <strong>{{ publishedPagesCount }}</strong>
+        <span class="pages-summary-helper">Disponíveis para seus clientes</span>
+      </article>
+      <article class="pages-summary-card pages-summary-card--visits">
+        <span class="pages-summary-label">Visualizações</span>
+        <strong>{{ totalPageVisits }}</strong>
+        <span class="pages-summary-helper">Total acumulado nas páginas</span>
+      </article>
+      <article class="pages-summary-card pages-summary-card--leads">
+        <span class="pages-summary-label">Leads captados</span>
+        <strong>{{ totalPageLeads }}</strong>
+        <span class="pages-summary-helper">Conversões geradas pelas páginas</span>
+      </article>
     </div>
 
     <div class="pages-toolbar">
@@ -49,7 +76,7 @@
         v-if="templateModal.open"
         class="app-modal-overlay fixed inset-0 z-[200] flex items-center justify-center px-4 py-6"
       >
-        <div class="relative w-full max-w-7xl rounded-3xl bg-white shadow-2xl dark:bg-[#202020] dark:text-white">
+        <div class="pages-modal-shell relative w-full max-w-7xl">
           <div class="max-h-[90vh] overflow-y-auto p-6">
             <div class="relative flex flex-col gap-2 border-b border-slate-100 pb-4 md:flex-row md:items-center md:justify-between dark:border-white/10">
               <div>
@@ -310,7 +337,7 @@
 
     <div
       v-if="!hasAgency"
-      class="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 sm:flex-row sm:items-center sm:justify-between"
+      class="flex flex-col gap-3 rounded-xl border border-border bg-status-warning px-4 py-3 text-sm text-status-warning-foreground sm:flex-row sm:items-center sm:justify-between"
     >
       <span>
         {{ viewCopy.emptyStates.noAgency.prefix }}
@@ -321,7 +348,7 @@
       </span>
       <router-link
         to="/admin/agency"
-        class="inline-flex items-center justify-center rounded-full bg-amber-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-amber-500"
+        class="inline-flex items-center justify-center rounded-lg bg-status-warning-foreground px-4 py-2 text-sm font-semibold text-white shadow-soft"
       >
         {{ viewCopy.emptyStates.noAgency.cta }}
       </router-link>
@@ -332,7 +359,7 @@
         v-if="createOptionsOpen"
         class="app-modal-overlay fixed inset-0 z-[200] flex items-center justify-center px-4 py-8"
       >
-        <div class="w-full max-w-4xl rounded-3xl bg-white p-8 shadow-2xl dark:bg-[#202020] dark:text-white">
+        <div class="pages-modal-shell w-full max-w-4xl p-8">
           <div class="relative mb-6 space-y-1">
             <h2 class="text-2xl font-bold text-slate-900">
               {{ viewCopy.actions.createModal.title }}
@@ -392,7 +419,7 @@
 
     <transition name="fade">
       <div v-if="planLimitDialog.open" class="app-modal-overlay fixed inset-0 z-40 flex items-center justify-center px-4">
-        <div class="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl dark:bg-[#202020] dark:text-white">
+        <div class="pages-modal-shell w-full max-w-lg p-8">
           <p class="text-xs font-semibold uppercase tracking-[0.3em] text-rose-500">
             {{ viewCopy.actions.planLimit.badge }}
           </p>
@@ -421,7 +448,7 @@
     </transition>
 
     <div class="overflow-x-auto">
-      <div class="table-card overflow-hidden border-0 bg-transparent md:min-w-[880px] md:rounded-2xl md:border md:bg-white">
+      <div class="table-card overflow-hidden border-0 bg-transparent md:min-w-[880px] md:rounded-xl md:border">
         <div
           :class="[
             'hidden gap-4 border-b px-4 py-3 text-[11px] font-bold uppercase tracking-[0.08em] md:grid',
@@ -437,12 +464,12 @@
           <span class="text-right pr-1">{{ viewCopy.table.columns.actions }}</span>
         </div>
 
-        <div v-if="filteredPages.length" class="space-y-4 md:space-y-0 md:divide-y md:divide-[#DDE8DF]">
+        <div v-if="filteredPages.length" class="pages-table-body space-y-4 md:space-y-0">
           <div
             v-for="page in filteredPages"
             :key="page.id"
             :class="[
-              'grid grid-cols-1 gap-4 rounded-2xl border border-[#DDE8DF] bg-white px-5 py-5 shadow-sm transition hover:bg-[#F0F5F1] md:items-center md:gap-4 md:rounded-none md:border-0 md:bg-transparent md:px-4 md:py-3 md:shadow-none',
+              'page-table-row grid grid-cols-1 gap-4 rounded-xl border px-5 py-5 shadow-sm transition md:items-center md:gap-4 md:rounded-none md:border-0 md:bg-transparent md:px-4 md:py-3 md:shadow-none',
               rowGridColumns
             ]"
           >
@@ -460,8 +487,8 @@
                 </svg>
               </span>
               <div>
-                <p class="text-base font-semibold leading-tight text-[#0F1F14] md:text-[13px]">{{ page.title }}</p>
-                <p class="text-[11px] text-[#8AA693]">{{ page.slug ? `/${page.slug}` : "-" }}</p>
+                <p class="text-base font-semibold leading-tight text-foreground md:text-[13px]">{{ page.title }}</p>
+                <p class="text-[11px] text-muted-foreground">{{ page.slug ? `/${page.slug}` : "-" }}</p>
               </div>
             </div>
 
@@ -481,7 +508,7 @@
               <button
                 v-if="!hasLeadStatsAccess"
                 type="button"
-                class="inline-flex min-w-[3rem] items-center justify-center rounded-full border border-[#0185FB] bg-white px-4 py-1.5 text-xs font-semibold text-[#0185FB] shadow-sm transition hover:bg-slate-50"
+                class="inline-flex min-w-[3rem] items-center justify-center rounded-full border border-status-info-foreground bg-card px-4 py-1.5 text-xs font-semibold text-status-info-foreground shadow-soft transition hover:bg-accent"
                 :title="viewCopy.table.premiumHints.leads"
                 @click="goPlans"
               >
@@ -503,7 +530,7 @@
                 :class="{ 'md:justify-center md:text-center': !(page.status === 'published' && pagePublicUrl(page)) }"
               >
                 <template v-if="page.status === 'published' && pagePublicUrl(page)">
-                  <a :href="pagePublicUrl(page)" target="_blank" class="max-w-[160px] truncate text-sm font-medium text-[#3DCC5F]">
+                  <a :href="pagePublicUrl(page)" target="_blank" class="max-w-[160px] truncate text-sm font-medium text-primary">
                     {{ pagePublicUrl(page) }}
                   </a>
                   <button class="copy-btn" @click="copyLink(page)">
@@ -610,7 +637,7 @@
           </div>
         </div>
 
-        <div v-else class="px-6 py-10 text-center text-sm text-slate-500">
+        <div v-else class="px-6 py-10 text-center text-sm text-muted-foreground">
           {{ viewCopy.emptyStates.noPages.title }}
         </div>
       </div>
@@ -622,7 +649,7 @@
       role="dialog"
       aria-modal="true"
     >
-      <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl ring-1 ring-slate-200">
+      <div class="pages-modal-shell duplicate-modal w-full max-w-md p-6">
         <div class="flex items-start justify-between">
           <div>
             <h3 class="text-lg font-semibold text-slate-900">
@@ -1855,6 +1882,10 @@ const filteredPages = computed(() => {
   return sorted;
 });
 
+const publishedPagesCount = computed(() => pages.value.filter(page => page.status === "published").length);
+const totalPageVisits = computed(() => pages.value.reduce((total, page) => total + getPageVisits(page.id), 0));
+const totalPageLeads = computed(() => pages.value.reduce((total, page) => total + getPageLeads(page.id), 0));
+
 const goPlans = () => {
   router.push("/admin/planos");
 };
@@ -1923,13 +1954,135 @@ onMounted(bootstrapPages);
 }
 
 .pages-reference {
-  --verde: #3dcc5f;
-  --verde-border: rgba(61, 204, 95, 0.25);
-  --surface: #ffffff;
-  --text: #0f1f14;
-  --text-2: #4a6455;
-  --text-3: #8aa693;
-  --border: #dde8df;
+  --verde: var(--primary);
+  --verde-border: color-mix(in srgb, var(--primary) 30%, var(--border));
+  --surface: var(--card);
+  --text: var(--foreground);
+  --text-2: var(--card-foreground);
+  --text-3: var(--muted-foreground);
+  color: var(--foreground);
+}
+
+.page-eyebrow,
+.pages-summary-label {
+  color: var(--muted-foreground);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.page-heading {
+  color: var(--foreground);
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 650;
+  letter-spacing: -0.4px;
+}
+
+.page-description {
+  margin-top: 5px;
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+
+.pages-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.pages-summary-card {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  min-height: 122px;
+  flex-direction: column;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--card);
+  padding: 18px;
+  box-shadow: var(--shadow-soft);
+}
+
+.pages-summary-card::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--summary-color, var(--primary));
+  content: "";
+}
+
+.pages-summary-card--published {
+  --summary-color: var(--status-success-foreground);
+}
+
+.pages-summary-card--visits {
+  --summary-color: var(--status-info-foreground);
+}
+
+.pages-summary-card--leads {
+  --summary-color: var(--chart-6);
+}
+
+.pages-summary-card strong {
+  margin-top: 10px;
+  color: var(--foreground);
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 650;
+}
+
+.pages-summary-helper {
+  margin-top: 3px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+
+.pages-modal-shell {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  background: var(--card);
+  color: var(--card-foreground);
+  box-shadow: var(--shadow-elegant);
+}
+
+.pages-modal-shell :deep(.text-slate-900),
+.pages-modal-shell :deep(.text-slate-800),
+.pages-modal-shell :deep(.text-slate-700) {
+  color: var(--foreground) !important;
+}
+
+.pages-modal-shell :deep(.text-slate-600),
+.pages-modal-shell :deep(.text-slate-500),
+.pages-modal-shell :deep(.text-slate-400) {
+  color: var(--muted-foreground) !important;
+}
+
+.pages-modal-shell :deep(.border-slate-100),
+.pages-modal-shell :deep(.border-slate-200),
+.pages-modal-shell :deep(.border-slate-300) {
+  border-color: var(--border) !important;
+}
+
+.pages-modal-shell :deep(.bg-white) {
+  background-color: var(--card) !important;
+}
+
+.pages-modal-shell :deep(.bg-slate-50) {
+  background-color: var(--muted) !important;
+}
+
+.pages-modal-shell :deep(input),
+.pages-modal-shell :deep(select) {
+  border-color: var(--input) !important;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.pages-modal-shell :deep(input::placeholder) {
+  color: var(--muted-foreground);
 }
 
 .pages-toolbar {
@@ -1949,22 +2102,38 @@ onMounted(bootstrapPages);
 }
 
 .table-card {
-  border-color: #dde8df !important;
-  box-shadow: 0 1px 3px rgba(15, 31, 20, 0.06), 0 4px 12px rgba(15, 31, 20, 0.04);
+  border-color: var(--border) !important;
+  background: var(--card);
+  color: var(--card-foreground);
+  box-shadow: var(--shadow-soft);
 }
 
 .table-card > div:first-child {
-  border-bottom-color: #dde8df !important;
-  background: #f0f5f1;
-  color: #8aa693;
+  border-bottom-color: color-mix(in srgb, var(--border) 45%, transparent) !important;
+  background: color-mix(in srgb, var(--muted) 45%, var(--card));
+  color: var(--muted-foreground);
+}
+
+.pages-table-body > .page-table-row + .page-table-row {
+  border-top: 1px solid color-mix(in srgb, var(--border) 38%, transparent) !important;
+}
+
+.page-table-row {
+  border-color: var(--border);
+  background: var(--card);
+  color: var(--card-foreground);
+}
+
+.page-table-row:hover {
+  background: color-mix(in srgb, var(--accent) 45%, var(--card));
 }
 
 .page-icon {
   width: 36px;
   height: 36px;
   border-radius: 9px;
-  background: rgba(61, 204, 95, 0.12);
-  border: 1px solid rgba(61, 204, 95, 0.25);
+  background: color-mix(in srgb, var(--primary) 10%, var(--card));
+  border: 1px solid color-mix(in srgb, var(--primary) 25%, var(--border));
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1974,7 +2143,7 @@ onMounted(bootstrapPages);
 .page-icon svg {
   width: 14px;
   height: 14px;
-  stroke: #3dcc5f;
+  stroke: var(--primary);
 }
 
 .stat-pill {
@@ -1989,31 +2158,31 @@ onMounted(bootstrapPages);
 }
 
 .stat-visits {
-  background: rgba(61, 204, 95, 0.12);
-  color: #1a7a35;
+  background: var(--status-success);
+  color: var(--status-success-foreground);
 }
 
 .stat-clicks {
-  background: rgba(249, 115, 22, 0.1);
-  color: #c2500a;
+  background: color-mix(in srgb, var(--chart-8) 10%, var(--card));
+  color: var(--chart-8);
 }
 
 .stat-leads {
-  background: rgba(124, 92, 252, 0.1);
-  color: #7c5cfc;
+  background: color-mix(in srgb, var(--chart-6) 10%, var(--card));
+  color: var(--chart-6);
 }
 
 .stat-zero {
-  background: #f0f5f1;
-  color: #8aa693;
+  background: var(--muted);
+  color: var(--muted-foreground);
 }
 
 .copy-btn {
   font-size: 11px;
   font-weight: 700;
-  color: #8aa693;
-  background: #f0f5f1;
-  border: 1px solid #dde8df;
+  color: var(--muted-foreground);
+  background: var(--muted);
+  border: 1px solid var(--border);
   border-radius: 6px;
   padding: 3px 8px;
   cursor: pointer;
@@ -2022,9 +2191,9 @@ onMounted(bootstrapPages);
 }
 
 .copy-btn:hover {
-  background: rgba(61, 204, 95, 0.12);
-  border-color: rgba(61, 204, 95, 0.25);
-  color: #3dcc5f;
+  background: color-mix(in srgb, var(--primary) 10%, var(--card));
+  border-color: color-mix(in srgb, var(--primary) 25%, var(--border));
+  color: var(--primary);
 }
 
 .status-badge {
@@ -2052,21 +2221,21 @@ onMounted(bootstrapPages);
 }
 
 .status-ativo {
-  background: rgba(61, 204, 95, 0.12);
-  color: #1a7a35;
+  background: var(--status-success);
+  color: var(--status-success-foreground);
 }
 
 .status-ativo::before {
-  background: #2ead4c;
+  background: var(--status-success-foreground);
 }
 
 .status-inativo {
-  background: rgba(245, 158, 11, 0.15);
-  color: #c2500a;
+  background: var(--status-warning);
+  color: var(--status-warning-foreground);
 }
 
 .status-inativo::before {
-  background: #f59e0b;
+  background: var(--status-warning-foreground);
 }
 
 .act-btn {
@@ -2081,7 +2250,7 @@ onMounted(bootstrapPages);
   transition: all 0.15s;
   flex-shrink: 0;
   background: transparent;
-  color: #8aa693;
+  color: var(--muted-foreground);
 }
 
 .act-btn svg {
@@ -2101,28 +2270,28 @@ onMounted(bootstrapPages);
 .act-btn.dup:hover,
 .act-btn.edit:hover,
 .act-btn.view:hover {
-  background: rgba(61, 204, 95, 0.12);
-  color: #3dcc5f;
+  background: color-mix(in srgb, var(--primary) 10%, var(--card));
+  color: var(--primary);
 }
 
 .act-btn.share:hover {
-  background: rgba(249, 115, 22, 0.1);
-  color: #f97316;
+  background: color-mix(in srgb, var(--chart-8) 10%, var(--card));
+  color: var(--chart-8);
 }
 
 .act-btn.fav:hover {
-  background: rgba(245, 158, 11, 0.1);
-  color: #f59e0b;
+  background: var(--status-warning);
+  color: var(--status-warning-foreground);
 }
 
 .act-btn.fav.is-active {
-  background: rgba(245, 158, 11, 0.2);
-  color: #d97706;
+  background: var(--status-warning);
+  color: var(--status-warning-foreground);
 }
 
 .act-btn.del:hover {
-  background: rgba(239, 68, 68, 0.08);
-  color: #dc2626;
+  background: color-mix(in srgb, var(--destructive) 8%, var(--card));
+  color: var(--destructive);
 }
 
 @media (max-width: 767px) {
@@ -2196,6 +2365,11 @@ onMounted(bootstrapPages);
   outline: none;
 }
 
+.filter-select option {
+  background: var(--popover);
+  color: var(--popover-foreground);
+}
+
 .toolbar-count {
   font-size: 13px;
   color: var(--text-3);
@@ -2248,6 +2422,16 @@ onMounted(bootstrapPages);
 
   .pages-toolbar-filters .filter-select {
     width: 100%;
+  }
+
+  .pages-summary-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .pages-summary-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

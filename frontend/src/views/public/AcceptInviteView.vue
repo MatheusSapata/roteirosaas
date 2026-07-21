@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-[#41ce5f] px-4 py-10">
+  <div class="auth-view min-h-screen bg-[#41ce5f] px-4 py-10">
     <div class="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center">
       <div class="mb-8 flex flex-col items-center text-center text-white">
         <img src="../../assets/Logo Branco - Roteiro Online.png" alt="Roteiro Online" class="mb-6 w-32 drop-shadow-lg" />
@@ -108,3 +108,11 @@ const submit = async () => {
 
 onMounted(loadInfo);
 </script>
+
+<style scoped>
+.auth-view :deep(.bg-white), .auth-view :deep(.bg-white\/95) { background: var(--card) !important; }
+.auth-view :deep(.border-slate-200), .auth-view :deep(.border-slate-300) { border-color: var(--border) !important; }
+.auth-view :deep(.text-slate-900), .auth-view :deep(.text-slate-700) { color: var(--foreground) !important; }
+.auth-view :deep(.text-slate-600), .auth-view :deep(.text-slate-500) { color: var(--muted-foreground) !important; }
+.auth-view :deep(input) { border-color: var(--input) !important; background: var(--background) !important; color: var(--foreground) !important; }
+</style>

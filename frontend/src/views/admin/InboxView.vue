@@ -1,11 +1,11 @@
 ﻿<template>
-  <div class="h-[100dvh] min-h-[680px] w-full overflow-hidden">
-    <div class="grid h-full grid-cols-1 lg:grid-cols-[360px_minmax(0,1fr)_340px]">
-      <aside v-show="!isMobileViewport || !isMobileChatOpen" class="flex h-full min-h-0 flex-col overflow-hidden border-r border-slate-200/80 bg-gradient-to-b from-white to-slate-50/70">
+  <div class="inbox-page h-full min-h-[680px] w-full overflow-hidden bg-background text-foreground">
+    <div class="grid h-full grid-cols-1 lg:grid-cols-[350px_minmax(0,1fr)_330px]">
+      <aside v-show="!isMobileViewport || !isMobileChatOpen" class="inbox-sidebar flex h-full min-h-0 flex-col overflow-hidden border-r">
         <div class="border-b border-slate-200/80 px-5 py-5">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
-              <h1 class="text-xl font-bold text-slate-900">Atendimento para notificações</h1>
+              <h1 class="font-display text-xl font-semibold text-foreground">Caixa de entrada</h1>
               <span class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">{{ totalUnread }}</span>
               <p class="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold shadow-sm" :class="wsStatusClass">
                 <span class="inline-flex h-1.5 w-1.5 rounded-full" :class="wsDotClass"></span>
@@ -101,8 +101,8 @@
             v-for="item in filteredConversations"
             :key="item.id"
             type="button"
-            class="group mx-2 my-1 w-[calc(100%-16px)] rounded-2xl px-3 py-3 text-left transition-all duration-200 hover:-translate-y-[1px] hover:bg-white hover:shadow-sm"
-            :class="selectedConversationId === item.id ? 'bg-emerald-50 shadow-sm ring-1 ring-emerald-100' : 'bg-transparent'"
+            class="inbox-conversation group mx-2 my-1 w-[calc(100%-16px)] rounded-xl px-3 py-3 text-left transition-all duration-200"
+            :class="{ 'is-selected': selectedConversationId === item.id }"
             @click="selectConversation(item.id)"
           >
             <div class="flex items-start gap-3">
@@ -168,8 +168,8 @@
         </div>
       </aside>
 
-      <section class="relative flex h-full min-h-0 flex-col overflow-hidden bg-gradient-to-b from-white to-slate-50/40">
-        <header class="flex items-center justify-between gap-3 border-b border-slate-200/80 bg-white/85 px-5 py-3.5 backdrop-blur-sm">
+      <section class="inbox-chat relative flex h-full min-h-0 flex-col overflow-hidden">
+        <header class="inbox-chat-header flex items-center justify-between gap-3 border-b px-5 py-3.5 backdrop-blur-sm">
           <button
             v-if="isMobileViewport && isMobileChatOpen"
             type="button"
@@ -270,7 +270,7 @@
               >
                 <div
                   class="message-bubble max-w-[78%] rounded-[18px] px-4 py-3 text-[14px] shadow-[0_10px_24px_-16px_rgba(15,23,42,0.45)] transition-all duration-200"
-                  :class="item.message.direction === 'outbound' ? 'bg-emerald-500 text-white' : 'border border-slate-200 bg-white text-slate-900'"
+                  :class="item.message.direction === 'outbound' ? 'message-bubble--outbound' : 'message-bubble--inbound'"
                 >
                   <template v-if="item.message.mediaUrl">
                     <img
@@ -325,8 +325,8 @@
           </div>
         </div>
 
-        <footer class="sticky bottom-0 z-10 border-t border-slate-200/80 bg-white/95 px-4 py-3 backdrop-blur-sm">
-          <form class="relative flex items-end gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm" @submit.prevent="sendMessage">
+        <footer class="inbox-composer sticky bottom-0 z-10 border-t px-4 py-3 backdrop-blur-sm">
+          <form class="inbox-composer-form relative flex items-end gap-2 rounded-2xl border p-2" @submit.prevent="sendMessage">
             <input ref="attachmentInputRef" type="file" class="hidden" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar" @change="onAttachmentPicked" />
             <input ref="cameraInputRef" type="file" class="hidden" accept="image/*" capture="environment" @change="onCameraPicked" />
             <div class="relative">
@@ -454,7 +454,7 @@
         </footer>
       </section>
 
-      <aside class="hidden h-full min-h-0 flex-col overflow-hidden border-l border-slate-200/80 bg-gradient-to-b from-white to-slate-50/70 lg:flex">
+      <aside class="inbox-context-panel hidden h-full min-h-0 flex-col overflow-hidden border-l lg:flex">
         <div class="border-b border-slate-200/80 px-5 py-4">
           <h2 class="text-sm font-semibold text-slate-900">Oportunidades</h2>
         </div>
@@ -734,7 +734,7 @@
     </Teleport>
     <Teleport to="body">
       <div v-if="showClientInfoModal" class="fixed inset-0 z-[320] flex items-center justify-center bg-slate-950/45 p-4" @click="closeClientInfoModal">
-        <div class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl" @click.stop>
+        <div class="inbox-modal w-full max-w-md p-5" @click.stop>
           <div class="flex items-center justify-between">
             <h3 class="text-base font-semibold text-slate-900">Infos do cliente</h3>
             <button type="button" class="rounded-md px-2 py-1 text-xs text-slate-500 hover:bg-slate-100" @click="closeClientInfoModal">Fechar</button>
@@ -774,7 +774,7 @@
     </Teleport>
     <Teleport to="body">
       <div v-if="showStartConversationModal" class="fixed inset-0 z-[320] flex items-center justify-center bg-slate-950/45 p-4" @click="closeStartConversationModal">
-        <div class="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl" @click.stop>
+        <div class="inbox-modal w-full max-w-lg p-5" @click.stop>
           <div class="flex items-center justify-between">
             <h3 class="text-base font-semibold text-slate-900">Iniciar nova conversa</h3>
             <button type="button" class="rounded-md px-2 py-1 text-xs text-slate-500 hover:bg-slate-100" @click="closeStartConversationModal">Fechar</button>
@@ -829,7 +829,7 @@
     </Teleport>
     <Teleport to="body">
       <div v-if="showManualLinkModal" class="fixed inset-0 z-[320] flex items-center justify-center bg-slate-950/45 p-4" @click="closeManualLinkModal">
-        <div class="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl" @click.stop>
+        <div class="inbox-modal w-full max-w-lg p-5" @click.stop>
           <div class="flex items-center justify-between">
             <h3 class="text-base font-semibold text-slate-900">Vincular cliente e oportunidade</h3>
             <button type="button" class="rounded-md px-2 py-1 text-xs text-slate-500 hover:bg-slate-100" @click="closeManualLinkModal">Fechar</button>
@@ -900,7 +900,7 @@
     </Teleport>
     <Teleport to="body">
       <div v-if="showRenameModal" class="fixed inset-0 z-[320] flex items-center justify-center bg-slate-950/45 p-4" @click="closeRenameModal">
-        <div class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl" @click.stop>
+        <div class="inbox-modal w-full max-w-md p-5" @click.stop>
           <div class="flex items-center justify-between">
             <h3 class="text-base font-semibold text-slate-900">Editar nome da conversa</h3>
             <button type="button" class="rounded-md px-2 py-1 text-xs text-slate-500 hover:bg-slate-100" @click="closeRenameModal">Fechar</button>
@@ -2859,16 +2859,166 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.inbox-page {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--background);
+  box-shadow: var(--shadow-soft);
+}
+
+.inbox-sidebar,
+.inbox-context-panel {
+  border-color: var(--border);
+  background: var(--card);
+  color: var(--card-foreground);
+}
+
+.inbox-chat {
+  background: var(--background);
+}
+
+.inbox-chat-header,
+.inbox-composer {
+  border-color: var(--border);
+  background: color-mix(in srgb, var(--card) 94%, transparent);
+}
+
+.inbox-composer-form {
+  border-color: var(--border);
+  background: var(--card);
+  box-shadow: var(--shadow-soft);
+}
+
+.inbox-conversation {
+  border: 1px solid transparent;
+  color: var(--foreground);
+}
+
+.inbox-conversation:hover {
+  border-color: color-mix(in srgb, var(--foreground) 10%, var(--border));
+  background: var(--accent);
+}
+
+.inbox-conversation.is-selected {
+  border-color: color-mix(in srgb, var(--primary) 28%, var(--border));
+  background: color-mix(in srgb, var(--primary) 10%, var(--card));
+  box-shadow: var(--shadow-soft);
+}
+
+.message-bubble--outbound {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.message-bubble--inbound {
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--card-foreground);
+}
+
+.inbox-modal {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--card);
+  color: var(--card-foreground);
+  box-shadow: var(--shadow-soft);
+}
+
+.inbox-page :deep(.border-slate-200),
+.inbox-page :deep(.border-slate-200\/80) {
+  border-color: var(--border) !important;
+}
+
+.inbox-page :deep(.bg-white),
+.inbox-page :deep(.bg-white\/80),
+.inbox-page :deep(.bg-white\/85),
+.inbox-page :deep(.bg-white\/95) {
+  background-color: var(--card) !important;
+}
+
+.inbox-page :deep(.bg-slate-50),
+.inbox-page :deep(.bg-slate-50\/60),
+.inbox-page :deep(.bg-slate-100) {
+  background-color: var(--muted) !important;
+}
+
+.inbox-page :deep(.bg-slate-300) {
+  background-color: var(--input) !important;
+}
+
+.inbox-page :deep(.text-slate-900),
+.inbox-page :deep(.text-slate-800),
+.inbox-page :deep(.text-slate-700) {
+  color: var(--foreground) !important;
+}
+
+.inbox-page :deep(.text-slate-600),
+.inbox-page :deep(.text-slate-500),
+.inbox-page :deep(.text-slate-400) {
+  color: var(--muted-foreground) !important;
+}
+
+.inbox-page :deep(input),
+.inbox-page :deep(textarea),
+.inbox-page :deep(select) {
+  border-color: var(--input) !important;
+  background-color: var(--background) !important;
+  color: var(--foreground) !important;
+}
+
+.inbox-page :deep(input::placeholder),
+.inbox-page :deep(textarea::placeholder) {
+  color: var(--muted-foreground);
+}
+
+.inbox-page :deep(select option) {
+  background: var(--popover);
+  color: var(--popover-foreground);
+}
+
+.inbox-modal :deep(.text-slate-900),
+.inbox-modal :deep(.text-slate-800),
+.inbox-modal :deep(.text-slate-700) {
+  color: var(--foreground) !important;
+}
+
+.inbox-modal :deep(.text-slate-600),
+.inbox-modal :deep(.text-slate-500) {
+  color: var(--muted-foreground) !important;
+}
+
+.inbox-modal :deep(.bg-white) {
+  background-color: var(--card) !important;
+}
+
+.inbox-modal :deep(.bg-slate-50),
+.inbox-modal :deep(.bg-slate-50\/60),
+.inbox-modal :deep(.bg-slate-100) {
+  background-color: var(--muted) !important;
+}
+
+.inbox-modal :deep(.border-slate-200),
+.inbox-modal :deep(.border-slate-200\/80) {
+  border-color: var(--border) !important;
+}
+
+.inbox-modal :deep(input),
+.inbox-modal :deep(select) {
+  border-color: var(--input) !important;
+  background: var(--background) !important;
+  color: var(--foreground) !important;
+}
+
 .chat-surface {
   background:
-    radial-gradient(1150px 260px at 50% 0%, rgba(16, 185, 129, 0.065), rgba(255, 255, 255, 0)),
-    radial-gradient(840px 220px at 0% 100%, rgba(59, 130, 246, 0.04), rgba(255, 255, 255, 0)),
-    linear-gradient(180deg, #f8fbff 0%, #ffffff 38%);
+    radial-gradient(1150px 260px at 50% 0%, color-mix(in srgb, var(--primary) 7%, transparent), transparent),
+    radial-gradient(840px 220px at 0% 100%, color-mix(in srgb, var(--primary) 3%, transparent), transparent),
+    var(--background);
   background-size: auto, auto, auto;
 }
 
 .avatar-fallback {
-  background: linear-gradient(145deg, #e2e8f0, #f1f5f9);
+  background: var(--muted);
 }
 
 .premium-scroll {
@@ -2913,7 +3063,7 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  background: #f1f5f9;
+  background: var(--muted);
   font-size: 22px;
 }
 
@@ -2921,14 +3071,14 @@ onBeforeUnmount(() => {
   margin-top: 12px;
   font-size: 14px;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--foreground);
 }
 
 .empty-state-subtitle {
   margin-top: 4px;
   max-width: 240px;
   font-size: 12px;
-  color: #64748b;
+  color: var(--muted-foreground);
 }
 
 .audio-player {
@@ -2940,10 +3090,11 @@ onBeforeUnmount(() => {
 }
 
 .status-dropdown {
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border);
   border-radius: 12px;
-  background: #fff;
-  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: var(--shadow-soft);
   max-height: 13.6rem;
   overflow-x: hidden;
   overflow-y: auto;
@@ -2983,6 +3134,12 @@ onBeforeUnmount(() => {
 @media (max-width: 480px) {
   .audio-player {
     min-width: 0;
+  }
+}
+
+@media (max-width: 1023px) {
+  .inbox-page {
+    border-radius: 0;
   }
 }
 </style>

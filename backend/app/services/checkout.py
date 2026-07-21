@@ -164,6 +164,23 @@ def _extract_checkout_session_token(external_reference: str) -> str | None:
     return None
 
 
+def _extract_pix_automatic_authorization_id(payload: dict[str, Any]) -> str | None:
+    payment = payload.get("payment") if isinstance(payload.get("payment"), dict) else {}
+    instruction = payload.get("paymentInstruction") if isinstance(payload.get("paymentInstruction"), dict) else {}
+    candidates = (
+        payload.get("authorization"),
+        payload.get("pixAutomaticAuthorization"),
+        payment.get("pixAutomaticAuthorization"),
+        payment.get("pixAutomaticAuthorizationId"),
+        instruction.get("authorization"),
+    )
+    for candidate in candidates:
+        resource_id = _extract_asaas_resource_id(candidate)
+        if resource_id:
+            return resource_id
+    return None
+
+
 def _build_asaas_customer_payload(*, name: str, email: str, document: str, phone: str, session_token: str) -> dict[str, Any]:
     return {
         "name": name,
@@ -264,6 +281,8 @@ def _complete_paid_checkout_session(db: Session, session: CheckoutSession) -> Us
     if _should_upgrade_session_in_place(db, session):
         user, _previous_plan = _apply_upgrade_after_payment(db, session)
         return user
+    if _is_upgrade_session(session) and session.payment_method == "pix":
+        _cancel_replaced_asaas_subscription_after_pix_upgrade(db, session)
     return _upsert_paid_user_and_subscription(db, session)
 
 
@@ -360,6 +379,26 @@ def _apply_upgrade_after_payment(db: Session, session: CheckoutSession) -> tuple
         contact_id=str((dict(session.metadata_json or {}).get("viajechat_contact_id") or "")).strip() or None,
     )
     return user, previous_plan
+
+
+def _cancel_replaced_asaas_subscription_after_pix_upgrade(db: Session, session: CheckoutSession) -> None:
+    metadata = dict(session.metadata_json or {})
+    previous_subscription_id = str(metadata.get("replaced_asaas_subscription_id") or "").strip()
+    current_subscription_id = str(metadata.get("asaas_subscription_id") or "").strip()
+    if not previous_subscription_id or not current_subscription_id:
+        return
+    if previous_subscription_id == current_subscription_id:
+        return
+    if metadata.get("replaced_asaas_subscription_cancelled"):
+        return
+
+    client = _ensure_asaas_client()
+    client.cancel_subscription(previous_subscription_id)
+    metadata["replaced_asaas_subscription_cancelled"] = True
+    session.metadata_json = metadata
+    db.add(session)
+    db.commit()
+    db.refresh(session)
 
 
 def _legacy_checkout_payload(record: CheckoutSettings) -> dict[str, Any]:
@@ -1444,8 +1483,13 @@ def serialize_checkout_session(db: Session, session: CheckoutSession) -> dict[st
 
 
 def start_pix_payment(db: Session, session: CheckoutSession) -> CheckoutSession:
-    if session.asaas_payment_id and session.payment_method == "pix" and session.status in {"awaiting_payment", "paid"}:
-        return refresh_session_status(db, session) if session.status != "paid" else session
+    existing_metadata = dict(session.metadata_json or {})
+    has_automatic_authorization = bool(existing_metadata.get("asaas_pix_automatic_authorization_id"))
+    if session.payment_method == "pix" and session.status in {"awaiting_payment", "paid"}:
+        if has_automatic_authorization:
+            return session
+        if session.asaas_payment_id:
+            return refresh_session_status(db, session) if session.status != "paid" else session
     _raise_if_registered_checkout_identity(db, session)
     client = _ensure_asaas_client()
     customer_id = session.asaas_customer_id or _find_or_create_asaas_customer(
@@ -1457,81 +1501,33 @@ def start_pix_payment(db: Session, session: CheckoutSession) -> CheckoutSession:
         phone=session.customer_phone,
     )
     immediate_qr: dict[str, Any] = {}
-    authorization_id: str | None = None
-    subscription_id: str | None = None
-    can_upgrade_in_place = _should_upgrade_session_in_place(db, session)
-    if _is_upgrade_session(session) and can_upgrade_in_place:
-        payment = client.create_payment(
-            {
-                "customer": customer_id,
-                "billingType": "PIX",
-                "value": float(session.amount),
-                "dueDate": _utcnow().date().isoformat(),
-                "description": f"Upgrade {session.product_name}",
-                "externalReference": f"checkout_upgrade:{session.token}",
-            }
-        )
-        payment_id = _extract_asaas_resource_id(payment.get("id"))
-        if not payment_id:
-            raise HTTPException(status_code=502, detail="Asaas nÃ£o retornou cobranÃ§a PIX.")
-        session.asaas_payment_id = payment_id
-        try:
-            immediate_qr = client.get_pix_qr_code(payment_id) or {}
-        except AsaasAPIError:
-            immediate_qr = {}
-        pix_mode = "conventional"
-    else:
-        frequency = "ANNUALLY" if session.billing_cycle == "annual" else "MONTHLY"
-        start_date = _billing_today()
-        # Asaas limita contractId a 35 chars.
-        contract_id = f"co:{session.token}"[:35]
-        auth_payload = {
-            "customerId": customer_id,
-            "frequency": frequency,
-            "contractId": contract_id,
-            "startDate": start_date,
-            "value": float(session.amount),
-            "originalValue": float(session.amount),
-            "description": session.product_name[:35],
+    frequency = "ANNUALLY" if session.billing_cycle == "annual" else "MONTHLY"
+    start_date = _billing_today()
+    # Asaas limita contractId a 35 chars.
+    contract_id = f"co:{session.token}"[:35]
+    auth_payload = {
+        "customerId": customer_id,
+        "frequency": frequency,
+        "contractId": contract_id,
+        "startDate": start_date,
+        "value": float(session.amount),
+        "description": session.product_name[:35],
+        "immediateQrCode": {
+            "paymentCreationMode": "SUBSCRIPTION",
             "expirationSeconds": 3600,
-            "immediateQrCode": {
-                "paymentCreationMode": "SUBSCRIPTION",
-                "expirationSeconds": 3600,
-                "originalValue": float(session.amount),
-            },
-        }
-        authorization = client.create_pix_automatic_authorization(auth_payload)
-        authorization_id = _extract_asaas_resource_id(authorization.get("id"))
-        if not authorization_id:
-            raise HTTPException(status_code=502, detail="Asaas nao retornou autorizacao de Pix Automatico.")
-        immediate_qr = authorization.get("immediateQrCode") or {}
-        pix_mode = "automatic"
-        # Fallback: alguns ambientes retornam autorizaÃ§Ã£o sem immediateQrCode.
-        # Nesse caso criamos assinatura PIX padrÃ£o e buscamos o QR no primeiro pagamento.
-        if not immediate_qr.get("payload"):
-            subscription_payload: dict[str, Any] = _with_optional_split({
-                "customer": customer_id,
-                "billingType": "PIX",
-                "nextDueDate": _billing_today(),
-                "cycle": _resolve_asaas_cycle(session.billing_cycle),
-                "value": float(session.amount),
-                "description": session.product_name,
-                "externalReference": f"checkout:{session.token}",
-                "split": build_default_split_payload(),
-            })
-            subscription = client.create_subscription(subscription_payload)
-            subscription_id = _extract_asaas_resource_id(subscription.get("id"))
-            if subscription_id:
-                payments = client.list_subscription_payments(subscription_id)
-                first_payment = _pick_checkout_subscription_payment(payments)
-                payment_id = _extract_asaas_resource_id(first_payment.get("id"))
-                if payment_id:
-                    session.asaas_payment_id = payment_id
-                    try:
-                        immediate_qr = client.get_pix_qr_code(payment_id) or {}
-                    except AsaasAPIError:
-                        immediate_qr = {}
-            pix_mode = "conventional"
+        },
+    }
+    authorization = client.create_pix_automatic_authorization(auth_payload)
+    authorization_id = _extract_asaas_resource_id(authorization.get("id"))
+    if not authorization_id:
+        raise HTTPException(status_code=502, detail="Asaas nao retornou autorizacao de Pix Automatico.")
+    immediate_qr = authorization.get("immediateQrCode") or {}
+    if not immediate_qr.get("payload"):
+        raise HTTPException(
+            status_code=502,
+            detail="Asaas nao retornou o QR Code do Pix Automatico. Nenhuma cobranca PIX convencional foi criada.",
+        )
+    pix_mode = "automatic"
 
     session.asaas_customer_id = customer_id
     session.payment_method = "pix"
@@ -1548,11 +1544,14 @@ def start_pix_payment(db: Session, session: CheckoutSession) -> CheckoutSession:
     metadata = dict(session.metadata_json or {})
     metadata["pix_mode"] = pix_mode
     if _is_upgrade_session(session):
-        metadata["upgrade_in_place"] = can_upgrade_in_place
+        # O upgrade via PIX precisa substituir a recorrencia anterior somente
+        # depois que a nova autorizacao automatica for paga e ativada.
+        metadata["upgrade_in_place"] = False
+        target_subscription = _resolve_target_subscription_for_upgrade(db, session)
+        if target_subscription and target_subscription.asaas_subscription_id:
+            metadata["replaced_asaas_subscription_id"] = target_subscription.asaas_subscription_id
     if authorization_id:
         metadata["asaas_pix_automatic_authorization_id"] = authorization_id
-    if subscription_id:
-        metadata["asaas_subscription_id"] = subscription_id
     session.metadata_json = metadata
     db.add(session)
     db.commit()
@@ -1939,13 +1938,15 @@ def refresh_session_status(db: Session, session: CheckoutSession) -> CheckoutSes
 def handle_asaas_checkout_webhook(db: Session, payload: dict[str, Any]) -> bool:
     payment = payload.get("payment") or {}
     authorization = payload.get("authorization") or {}
+    if not isinstance(authorization, dict):
+        authorization = {}
     external_reference = str(payment.get("externalReference") or authorization.get("contractId") or "")
     session = None
     token = _extract_checkout_session_token(external_reference)
     if token:
         session = db.query(CheckoutSession).filter(CheckoutSession.token == token).first()
     if not session:
-        authorization_id = _extract_asaas_resource_id(authorization.get("id"))
+        authorization_id = _extract_pix_automatic_authorization_id(payload)
         if authorization_id:
             rows = db.query(CheckoutSession).filter(CheckoutSession.metadata_json.isnot(None)).all()
             for row in rows:
@@ -1972,6 +1973,8 @@ def handle_asaas_checkout_webhook(db: Session, payload: dict[str, Any]) -> bool:
             if _should_upgrade_session_in_place(db, session):
                 user, previous_plan = _apply_upgrade_after_payment(db, session)
             else:
+                if session.payment_method == "pix":
+                    _cancel_replaced_asaas_subscription_after_pix_upgrade(db, session)
                 previous_plan = str((dict(session.metadata_json or {}).get("current_plan") or "")).strip().lower() or None
                 user = _upsert_paid_user_and_subscription(db, session)
             _notify_checkout_subscription_push(

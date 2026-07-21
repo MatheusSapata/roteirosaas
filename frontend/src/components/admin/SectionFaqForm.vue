@@ -267,6 +267,57 @@ textarea { resize: vertical; }
 .segment-panel { border: 0; border-radius: 0; padding: 0; background: transparent; display: grid; gap: 10px; }
 .empty-state { border: 1px dashed #cad7d1; border-radius: 12px; padding: 14px; font-size: 13px; color: #64748b; background: #f8fafc; }
 
+.faq-proto-body,
+.editor {
+  background: var(--background);
+  color: var(--foreground);
+}
+.tabs { border-color: var(--border); background: var(--card); }
+.tab { border-color: var(--border); background: var(--muted); color: var(--foreground); }
+.tab.active { border-color: var(--primary); background: var(--primary); color: var(--primary-foreground); }
+.tab > span small,
+.section-desc { color: var(--muted-foreground); }
+.section-head { border-color: color-mix(in srgb, var(--border) 62%, transparent); }
+.section-title { color: var(--foreground); }
+input, textarea {
+  border-color: var(--input);
+  background: var(--card);
+  color: var(--foreground);
+}
+input:focus, textarea:focus {
+  outline: none;
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 15%, transparent);
+}
+.segment-tab,
+.add-segment,
+.empty-state {
+  border-color: var(--border);
+  background: var(--muted);
+  color: var(--foreground);
+}
+.segment-tab.active {
+  border-color: color-mix(in srgb, var(--primary) 55%, var(--border));
+  background: color-mix(in srgb, var(--primary) 16%, var(--card));
+  color: var(--foreground);
+}
+.segment-handle { color: var(--muted-foreground); }
+.segment-remove {
+  border-color: var(--border);
+  background: color-mix(in srgb, var(--card) 78%, transparent);
+  color: var(--muted-foreground);
+}
+.add-segment:hover {
+  border-color: color-mix(in srgb, var(--primary) 38%, var(--border));
+  background: var(--accent);
+}
+.help:hover::after {
+  border: 1px solid var(--border);
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: var(--shadow-elegant);
+}
+
 @media (max-width: 900px) {
   .faq-proto-body { grid-template-columns: 1fr; min-height: 100%; height: 100%; }
   .tabs { border-right: 0; border-bottom: 0; padding: 8px 8px 8px 16px; margin-bottom: 8px; flex-direction: row; }

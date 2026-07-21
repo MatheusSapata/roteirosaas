@@ -1,16 +1,18 @@
 ﻿<template>
   <div v-if="isBootstrappingAgencySettings" class="flex min-h-[60vh] w-full items-center justify-center px-4 py-8 md:px-8">
-    <div class="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-brand"></div>
+    <div class="h-10 w-10 animate-spin rounded-full border-4 border-border border-t-primary"></div>
   </div>
   <div v-else class="agency-settings page-wrap">
-    <div class="page-eyebrow">{{ viewCopy.hero.eyebrow }}</div>
     <div class="page-topbar">
-      <div class="page-title">{{ viewCopy.hero.title }}</div>
+      <div>
+        <div class="page-eyebrow">{{ viewCopy.hero.eyebrow }}</div>
+        <div class="page-title">{{ viewCopy.hero.title }}</div>
+        <div class="page-sub">Dados da sua agência usados nas páginas públicas e templates.</div>
+      </div>
       <button type="button" class="btn btn-p" :disabled="saving" @click="save">
         {{ saving ? viewCopy.actions.saving : (hasAgency ? viewCopy.actions.save : viewCopy.actions.create) }}
       </button>
     </div>
-    <div class="page-sub">Dados da sua agência usados nas páginas públicas e templates.</div>
 
     <form @submit.prevent="save">
       <div class="card">
@@ -174,9 +176,10 @@
     </form>
 
     <div v-if="showUnsavedModal" class="app-modal-overlay fixed inset-0 z-50 flex items-center justify-center px-4">
-      <div class="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl">
-        <h3 class="text-lg font-semibold text-slate-900">Você tem alterações não salvas</h3>
-        <p class="mt-2 text-sm text-slate-600">Deseja salvar antes de sair desta página?</p>
+      <div class="unsaved-modal w-full max-w-md p-5">
+        <p class="modal-eyebrow">Alterações pendentes</p>
+        <h3 class="mt-2 text-lg font-semibold">Você tem alterações não salvas</h3>
+        <p class="mt-2 text-sm">Deseja salvar antes de sair desta página?</p>
         <div class="mt-5 flex items-center justify-end gap-2">
           <button type="button" class="btn btn-o btn-sm" @click="cancelUnsavedNavigation">Continuar editando</button>
           <button type="button" class="btn btn-o btn-sm" @click="discardUnsavedAndNavigate">Sair sem salvar</button>
@@ -892,39 +895,41 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .agency-settings {
-  --verde:#3DCC5F;--verde-d:#2EAD4C;--verde-dim:rgba(61,204,95,.10);--verde-border:rgba(61,204,95,.22);
-  --bg:#F2F4F2;--surface:#fff;--surface2:#F5F7F5;--border:#E4E9E4;--border2:#CDD8CD;
-  --text:#111A14;--text-2:#4A5E4A;--text-3:#8A9E8A;
-  --sh-sm:0 1px 3px rgba(0,0,0,.05),0 1px 2px rgba(0,0,0,.03);
-  --radius:12px;--radius-sm:8px;
+  --verde:var(--primary);--verde-d:var(--brand-dark);--verde-dim:color-mix(in srgb, var(--primary) 10%, transparent);--verde-border:color-mix(in srgb, var(--primary) 35%, var(--input));
+  --bg:var(--background);--surface:var(--card);--surface2:var(--muted);--border2:var(--input);
+  --text:var(--foreground);--text-2:var(--card-foreground);--text-3:var(--muted-foreground);
+  --sh-sm:var(--shadow-soft);
+  --radius:var(--radius-xl);--radius-sm:var(--radius-md);
+  color:var(--foreground);
 }
-.page-wrap{padding:28px 32px 64px;width:100%;max-width:1380px}
-.page-topbar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
-.page-eyebrow{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);margin-bottom:3px}
-.page-title{font-size:24px;font-weight:800;color:var(--text);letter-spacing:-.3px;line-height:1.2}
-.page-sub{font-size:13px;color:var(--text-3);margin-top:4px;margin-bottom:24px}
-.card{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);box-shadow:var(--sh-sm);width:100%;margin-bottom:14px}
-.card-head{padding:18px 22px 14px;border-bottom:1.5px solid var(--border)}
+.page-wrap{padding:28px 32px 64px;width:100%;max-width:1440px}
+.page-topbar{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:24px}
+.page-eyebrow{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text-3);margin-bottom:5px}
+.page-title{font-family:var(--font-display);font-size:26px;font-weight:650;color:var(--text);letter-spacing:-.3px;line-height:1.2}
+.page-sub{font-size:13px;color:var(--text-3);margin-top:5px}
+.card{overflow:hidden;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--sh-sm);width:100%;margin-bottom:14px}
+.card-head{padding:18px 22px 14px;border-bottom:1px solid color-mix(in srgb, var(--border) 42%, transparent);background:color-mix(in srgb, var(--muted) 22%, var(--card))}
 .card-eye{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin-bottom:3px}
-.card-title{font-size:15px;font-weight:800;color:var(--text);letter-spacing:-.2px}
+.card-title{font-family:var(--font-display);font-size:15px;font-weight:650;color:var(--text);letter-spacing:-.2px}
 .card-sub{font-size:12px;color:var(--text-3);margin-top:2px;line-height:1.45}
 .card-body{padding:20px 22px}
 .card-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;width:100%}
 .fg{display:flex;flex-direction:column;gap:5px;margin-bottom:14px;min-width:0}
 .fl{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text-3)}
 .fh{font-size:11px;color:var(--text-3);line-height:1.4;margin-top:3px}
-.fi{padding:9px 11px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:inherit;font-size:13px;color:var(--text);background:var(--surface);outline:none;transition:border-color .15s;width:100%;min-width:0;max-width:100%}
-.fi:focus{border-color:var(--verde-border)}
-.fs{padding:9px 11px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:inherit;font-size:13px;color:var(--text);background:var(--surface);outline:none;cursor:pointer;width:100%}
+.fi{padding:10px 11px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-family:inherit;font-size:13px;color:var(--text);background:var(--bg);outline:none;transition:border-color .15s,box-shadow .15s;width:100%;min-width:0;max-width:100%}
+.fi:focus{border-color:var(--verde-border);box-shadow:0 0 0 3px var(--verde-dim)}
+.fs{padding:10px 11px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-family:inherit;font-size:13px;color:var(--text);background:var(--bg);outline:none;cursor:pointer;width:100%}
+.fs option{background:var(--surface);color:var(--text)}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
-.ig{display:flex;border:1.5px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;transition:border-color .15s;min-width:0;max-width:100%}
-.ig:focus-within{border-color:var(--verde-border)}
-.ig-pre{padding:9px 11px;background:var(--surface2);font-size:12px;color:var(--text-3);border-right:1.5px solid var(--border);white-space:nowrap;display:flex;align-items:center;gap:5px}
-.ig input,.ig select{flex:1;padding:9px 11px;border:none;font-family:inherit;font-size:13px;color:var(--text);background:var(--surface);outline:none;min-width:0}
-.ig select{flex:0 0 auto;padding:9px 16px 9px 9px;border-right:1.5px solid var(--border);font-size:12px;background:var(--surface2);cursor:pointer}
+.ig{display:flex;border:1px solid var(--border2);border-radius:var(--radius-sm);overflow:hidden;transition:border-color .15s,box-shadow .15s;min-width:0;max-width:100%;background:var(--bg)}
+.ig:focus-within{border-color:var(--verde-border);box-shadow:0 0 0 3px var(--verde-dim)}
+.ig-pre{padding:9px 11px;background:var(--surface2);font-size:12px;color:var(--text-3);border-right:1px solid var(--border);white-space:nowrap;display:flex;align-items:center;gap:5px}
+.ig input,.ig select{flex:1;padding:9px 11px;border:none;font-family:inherit;font-size:13px;color:var(--text);background:var(--bg);outline:none;min-width:0}
+.ig select{flex:0 0 auto;padding:9px 16px 9px 9px;border-right:1px solid var(--border);font-size:12px;background:var(--surface2);cursor:pointer}
 .cp-row{display:flex;align-items:center;gap:9px}
-.cp-btn{width:38px;height:38px;border-radius:8px;border:1.5px solid var(--border);cursor:pointer;padding:2px;overflow:hidden;flex-shrink:0}
+.cp-btn{width:40px;height:40px;border-radius:8px;border:1px solid var(--border2);background:var(--bg);cursor:pointer;padding:3px;overflow:hidden;flex-shrink:0}
 .cp-btn input[type=color]{width:100%;height:100%;border:none;background:transparent;cursor:pointer;padding:0;border-radius:5px}
 .favicon-wrap{margin-top:10px}
 .favicon-head{display:flex;flex-direction:column;gap:2px;margin-bottom:6px}
@@ -934,17 +939,25 @@ onBeforeUnmount(() => {
 :deep(.favicon-upload .max-h-\[320px\]){max-height:120px !important;min-height:96px !important}
 :deep(.favicon-upload .min-h-\[220px\]){min-height:96px !important}
 :deep(.favicon-upload .image-upload-preview){max-height:96px !important;object-fit:contain}
-.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:all .15s;white-space:nowrap;line-height:1.3}
-.btn-p{background:var(--verde);color:#0F1F14}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 18px;border-radius:10px;font-size:13px;font-weight:650;cursor:pointer;border:none;font-family:inherit;transition:all .15s;white-space:nowrap;line-height:1.3}
+.btn-p{background:var(--verde);color:var(--primary-foreground);box-shadow:var(--shadow-soft)}
 .btn-p:hover{background:var(--verde-d)}
+.btn:disabled{cursor:not-allowed;opacity:.6}
 .btn-sm{padding:6px 14px;font-size:12px}
-.btn-danger-text{background:transparent;border:none;color:#C0392B;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;padding:0}
+.btn-o{border:1px solid var(--border);background:var(--bg);color:var(--text)}
+.btn-o:hover{background:var(--surface2)}
+.btn-danger-text{background:transparent;border:none;color:var(--destructive);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;padding:0}
 .social-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.social-item{display:grid;grid-template-columns:160px 1fr auto;gap:9px;align-items:center;padding:10px 0;border-bottom:1.5px solid var(--border)}
+.social-item{display:grid;grid-template-columns:160px 1fr auto;gap:9px;align-items:center;padding:10px 0;border-bottom:1px solid color-mix(in srgb, var(--border) 36%, transparent)}
 .social-item:last-child{border-bottom:none;padding-bottom:0}
 .save-row{display:flex;align-items:center;gap:10px;margin-top:6px}
-.ok-msg{font-size:12px;color:#1a7a35;font-weight:600}
-.err-msg{font-size:12px;color:#c0392b;font-weight:600}
+.ok-msg{font-size:12px;color:var(--status-success-foreground);font-weight:600}
+.err-msg{font-size:12px;color:var(--destructive);font-weight:600}
+
+.unsaved-modal{border:1px solid var(--border);border-radius:var(--radius-xl);background:var(--card);color:var(--card-foreground);box-shadow:var(--shadow-soft)}
+.unsaved-modal h3{font-family:var(--font-display);color:var(--foreground)}
+.unsaved-modal > p:not(.modal-eyebrow){color:var(--muted-foreground)}
+.modal-eyebrow{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-foreground)}
 
 :deep(.agency-logo-upload .max-h-\[320px\]){max-height:190px !important;min-height:150px !important}
 :deep(.agency-logo-upload .min-h-\[220px\]){min-height:150px !important}

@@ -20,7 +20,13 @@
             class="group w-full max-w-3xl rounded-2xl p-4 text-left transition hover:-translate-y-0.5"
             :style="dayCardStyle"
           >
-            <button class="flex w-full items-center gap-[14px] text-left" @click="toggleDay(index)">
+            <button
+              type="button"
+              class="flex w-full items-center gap-[14px] text-left"
+              :aria-expanded="expanded[index] ? 'true' : 'false'"
+              :aria-controls="`itinerary-day-${index}`"
+              @click="toggleDay(index)"
+            >
               <div
                 class="mx-[4px] flex h-10 w-10 items-center justify-center rounded-full border text-sm font-semibold"
                 :style="dayBadgeStyle"
@@ -39,7 +45,7 @@
               </span>
             </button>
             <transition name="itinerary-expand">
-              <div v-if="expanded[index]" class="mt-2 space-y-3 overflow-hidden">
+              <div v-if="expanded[index]" :id="`itinerary-day-${index}`" class="mt-2 space-y-3 overflow-hidden">
                 <div
                   v-if="dayDescriptionHtml(day.description)"
                   class="text-sm leading-relaxed"
@@ -65,7 +71,9 @@
               <button
                 v-for="(day, index) in days"
                 :key="'step-' + index"
+                type="button"
                 class="relative flex flex-col items-center gap-2 bg-transparent text-left"
+                :aria-pressed="activeStep === index ? 'true' : 'false'"
                 @click="toggleStep(index)"
               >
                 <div

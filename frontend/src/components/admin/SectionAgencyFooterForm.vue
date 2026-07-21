@@ -177,6 +177,36 @@ input:focus { outline: none; border-color: #9cb5aa; box-shadow: 0 0 0 2px rgba(5
 .inline-check input { width: 14px; height: 14px; }
 .check-hint { margin: 6px 0 0; font-size: 12px; color: #64748b; }
 
+.footer-proto-body,
+.editor { background: var(--background); color: var(--foreground); }
+.tabs { border-color: var(--border); background: var(--card); }
+.tab { border-color: var(--primary); background: var(--primary); color: var(--primary-foreground); }
+.section-head { border-color: color-mix(in srgb, var(--border) 62%, transparent); }
+.section-title,
+.info-strong { color: var(--foreground); }
+.section-desc,
+.info-text,
+.info-list,
+.inline-check,
+.check-hint,
+.field-hint,
+.mono { color: var(--muted-foreground); }
+.info-box,
+.check-box { border-color: var(--border); background: var(--card); }
+input { border-color: var(--input); background: var(--card); color: var(--foreground); }
+input:focus {
+  outline: none;
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 15%, transparent);
+}
+.color-picker { border-color: var(--input); background: var(--card); }
+.help:hover::after {
+  border: 1px solid var(--border);
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: var(--shadow-elegant);
+}
+
 @media (max-width: 900px) {
   .footer-proto-body { grid-template-columns: 1fr; min-height: 100%; height: 100%; }
   .tabs { border-right: 0; border-bottom: 0; padding: 8px 8px 8px 16px; margin-bottom: 8px; }
