@@ -1512,9 +1512,9 @@ def start_pix_payment(db: Session, session: CheckoutSession) -> CheckoutSession:
         "startDate": start_date,
         "value": float(session.amount),
         "description": session.product_name[:35],
-        "paymentCreationMode": "SUBSCRIPTION",
         "immediateQrCode": {
             "originalValue": float(session.amount),
+            "paymentCreationMode": "SUBSCRIPTION",
             "expirationSeconds": 3600,
         },
     }
