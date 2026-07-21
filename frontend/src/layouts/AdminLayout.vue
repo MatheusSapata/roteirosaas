@@ -902,6 +902,7 @@ const navCopy = {
   clients: { pt: "Clientes", es: "Clientes" },
   integrations: { pt: "Integra\u00E7\u00F5es", es: "Integraciones" },
   tracking: { pt: "Rastreamento", es: "Rastreo" },
+  viajeon: { pt: "Viajeon", es: "Viajeon" },
   connections: { pt: "Notificações", es: "Atención" },
   domains: { pt: "Dom\u00EDnios", es: "Dominios" },
   agency: { pt: "Minha Ag\u00EAncia", es: "Mi Agencia" },
@@ -1189,6 +1190,7 @@ const routeTitleMap: Record<string, string> = {
   plans: navLabel("plans"),
   integrations: navLabel("integrations"),
   "integrations-tracking": navLabel("tracking"),
+  "integrations-viajeon": navLabel("viajeon"),
   connections: navLabel("connections"),
   profile: navLabel("profile"),
   "admin-management": navLabel("adminMaster")
@@ -1550,6 +1552,7 @@ const adminNavigation = computed<AdminNavItem[]>(() => {
       iconPath: "/admin/integracoes",
       children: [
         { label: navLabel("tracking"), path: "/admin/integracoes/rastreamento" },
+        { label: navLabel("viajeon"), path: "/admin/integracoes/viajeon" },
         { label: navLabel("connections"), path: "/admin/integracoes/atendimento" }
       ]
     },

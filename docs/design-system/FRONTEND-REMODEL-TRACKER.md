@@ -120,7 +120,7 @@ Uma mesma `View` pode representar várias telas quando seu conteúdo muda confor
 | O14 | Equipe da agência | `/admin/agency/team` | `views/admin/AgencyTeamView.vue` | EM QA | Resumo do plano, membros, convites, menus e permissões remodelados; aguardando aprovação visual. |
 | O15 | Domínios personalizados | `/admin/domains` | `views/admin/AgencyDomainsView.vue` | EM QA | Cadastro, favicon, DNS, SSL, ações e guias remodelados; aguardando aprovação visual. |
 | O16 | Planos | `/admin/planos` | `views/public/PlansView.vue` | EM QA | Planos, ciclos, alertas e ações alinhados aos tokens semânticos. |
-| O17 | Integrações de rastreamento | `/admin/integracoes/rastreamento` | `views/admin/IntegrationsView.vue` | EM QA | Resumo, lista, formulário e estados alinhados aos dois temas. |
+| O17 | Integrações de rastreamento | `/admin/integracoes/rastreamento` | `views/admin/IntegrationsView.vue` | EM QA | Resumo, pixels e conexão segura com o Viajeon alinhados aos dois temas. |
 | O18 | Integrações de atendimento | `/admin/integracoes/atendimento` | `views/admin/ConnectionsView.vue` | EM QA | Canal, conexão, QR Code, modais e estados alinhados aos dois temas. |
 | O19 | Perfil | `/admin/perfil` | `views/admin/ProfileView.vue` | EM QA | Assinatura, dados pessoais, segurança e uploads migrados para tokens semânticos. |
 
@@ -164,6 +164,7 @@ Uma mesma `View` pode representar várias telas quando seu conteúdo muda confor
 | E13 | Contagem regressiva | `components/admin/SectionCountdownForm.vue` | EM QA | Data, tempo, cores e seletores refinados nos dois temas. |
 | E14 | Detalhes dos voos | `components/admin/SectionFlightDetailsForm.vue` | EM QA | Trechos, companhias, aeroportos, chips e busca refinados nos dois temas. |
 | E15 | Rodapé da agência | `components/admin/SectionAgencyFooterForm.vue` | EM QA | Cores, dados herdados, campos e estados informativos refinados. |
+| E16 | Pacotes Viajeon | `components/admin/SectionViajeonCheckoutForm.vue` | EM QA | Operação, textos e cores configuráveis; imagens da operação deliberadamente omitidas. |
 
 ---
 
@@ -230,6 +231,7 @@ Estas seções não devem ser visualmente uniformizadas como telas administrativ
 | P01.15 | Rodapé gratuito | `components/public/PublicFreeFooterBrandSection.vue` | EM QA |
 | P01.16 | Rodapé da agência | `components/public/PublicAgencyFooterSection.vue` | EM QA |
 | P01.17 | Formulário de captação | `components/public/PublicLeadCaptureModal.vue` | EM QA |
+| P01.18 | Pacotes Viajeon | `components/public/PublicViajeonCheckoutSection.vue` | EM QA |
 
 ### Editores de seção no construtor
 
@@ -250,6 +252,7 @@ Estas seções não devem ser visualmente uniformizadas como telas administrativ
 | E13 | Contagem regressiva | `components/admin/SectionCountdownForm.vue` | EM QA |
 | E14 | Detalhes de voo | `components/admin/SectionFlightDetailsForm.vue` | EM QA |
 | E15 | Rodapé da agência | `components/admin/SectionAgencyFooterForm.vue` | EM QA |
+| E16 | Pacotes Viajeon | `components/admin/SectionViajeonCheckoutForm.vue` | EM QA |
 
 Outras superfícies do editor:
 
@@ -372,3 +375,4 @@ Esta ordem minimiza retrabalho porque cada etapa fornece componentes para a segu
 | 21/07/2026 | P01.01–P01.17 revisadas tecnicamente sem substituir a identidade dos clientes; foco visível, expansores e formulário acessível foram implementados e todas as seções públicas compiladas. |
 | 21/07/2026 | Ciclo geral encerrado para QA: build de produção validado com 770 módulos e todas as 41 telas/experiências em QA ou já concluídas. |
 | 21/07/2026 | O03 refinado: o Assistente IA agora persiste cada conversa por página e usuário, restaura o histórico após atualização e evita duplicação de mensagens. |
+| 21/07/2026 | O17/E16/P01.18: integração Viajeon implementada com credenciais criptografadas, operações ativas, seleção de pacotes e redirecionamento por sessão; imagens da operação não são enviadas nem exibidas. |

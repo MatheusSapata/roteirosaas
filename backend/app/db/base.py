@@ -37,5 +37,6 @@ from app.models import (
     whatsapp,
     checkout,
     webhook_notification,
+    agency_integration,
 )  # noqa: E402,F401
 

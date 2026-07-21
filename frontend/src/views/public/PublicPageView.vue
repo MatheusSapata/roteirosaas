@@ -69,6 +69,7 @@ import PublicFlightDetailsSection from "../../components/public/PublicFlightDeta
 import PublicLeadCaptureModal from "../../components/public/PublicLeadCaptureModal.vue";
 import PublicPhotoSection from "../../components/public/PublicPhotoSection.vue";
 import PublicBiographySection from "../../components/public/PublicBiographySection.vue";
+import PublicViajeonCheckoutSection from "../../components/public/PublicViajeonCheckoutSection.vue";
 import type { HeroSection, PageConfig, PageSection, SectionType, ThemeConfig } from "../../types/page";
 import type { LeadForm } from "../../types/leads";
 import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
@@ -184,6 +185,7 @@ const publicComponents: Record<SectionType, any> = {
   reasons: PublicReasonsSection,
   countdown: PublicCountdownSection,
   flight_details: PublicFlightDetailsSection,
+  viajeon_checkout: PublicViajeonCheckoutSection,
   free_footer_brand: PublicFreeFooterBrandSection,
   agency_footer: PublicAgencyFooterSection
 };
@@ -215,6 +217,10 @@ const sectionExtraProps = (section: PageSection, index: number) => {
     const next = findNextEnabledSection(index);
     extra.prevIsBannerCard = prev?.type === "banner_card";
     extra.nextIsBannerCard = next?.type === "banner_card";
+  }
+  if (section.type === "viajeon_checkout") {
+    extra.pageId = pageId.value;
+    extra.platformHost = !isPlatformHost.value;
   }
   return extra;
 };

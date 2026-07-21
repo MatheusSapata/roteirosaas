@@ -37,6 +37,7 @@ import PublicAgencyFooterSection from "../public/PublicAgencyFooterSection.vue";
 import PublicFlightDetailsSection from "../public/PublicFlightDetailsSection.vue";
 import PublicPhotoSection from "../public/PublicPhotoSection.vue";
 import PublicBiographySection from "../public/PublicBiographySection.vue";
+import PublicViajeonCheckoutSection from "../public/PublicViajeonCheckoutSection.vue";
 import type { PageConfig, PageSection, SectionType } from "../../types/page";
 import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
 
@@ -56,7 +57,8 @@ const publicComponents: Record<string, unknown> = {
   free_footer_brand: PublicFreeFooterBrandSection,
   agency_footer: PublicAgencyFooterSection,
   photo: PublicPhotoSection,
-  biography: PublicBiographySection
+  biography: PublicBiographySection,
+  viajeon_checkout: PublicViajeonCheckoutSection
 };
 
 const sectionRequiresBranding = (type?: SectionType) => type === "hero" || type === "agency_footer";
@@ -87,7 +89,8 @@ const previewAwareSections: SectionType[] = [
   "prices",
   "agency_footer",
   "biography",
-  "flight_details"
+  "flight_details",
+  "viajeon_checkout"
 ];
 const sectionSupportsPreviewDevice = (type?: SectionType) => !!type && previewAwareSections.includes(type);
 const findPrevEnabledSection = (index: number) => {

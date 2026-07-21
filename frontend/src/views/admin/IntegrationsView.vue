@@ -11,6 +11,7 @@
       </div>
 
       <button
+        v-if="!isViajeonRoute"
         type="button"
         class="inline-flex items-center gap-2 rounded-[10px] bg-[#3DCC5F] px-4 py-[9px] text-[13px] font-semibold text-[#0F1F14] transition hover:bg-[#5BE07A] disabled:cursor-not-allowed disabled:opacity-60"
         :disabled="isReadOnly"
@@ -21,13 +22,68 @@
       </button>
     </header>
 
-    <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
+    <section v-if="!isViajeonRoute" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
       <p class="text-sm font-semibold text-slate-700">
         {{ viewCopy.summary.label }}: <span class="text-slate-900">{{ pixels.length }}</span>
       </p>
     </section>
 
-    <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
+    <section v-if="isViajeonRoute" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
+      <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div class="flex min-w-0 items-start gap-3">
+          <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-lg font-extrabold text-emerald-500">V</div>
+          <div class="min-w-0">
+            <div class="flex flex-wrap items-center gap-2">
+              <h2 class="text-lg font-semibold text-slate-900">Viajeon</h2>
+              <span
+                class="rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide"
+                :class="viajeonStatus.connected ? 'bg-emerald-500/15 text-emerald-500' : 'bg-slate-500/10 text-slate-500'"
+              >
+                {{ viajeonStatus.connected ? "Conectado" : "Desconectado" }}
+              </span>
+            </div>
+            <p class="mt-1 text-sm text-slate-500">Exiba os pacotes ativos do Viajeon diretamente nas páginas públicas.</p>
+            <p v-if="viajeonStatus.configured" class="mt-1 text-xs font-semibold text-slate-500">
+              Token: {{ viajeonStatus.token_masked || "configurado" }}
+            </p>
+            <p v-if="viajeonStatus.last_error" class="mt-2 text-xs font-semibold text-rose-500">
+              {{ viajeonStatus.last_error }}
+            </p>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap gap-2">
+          <button
+            v-if="viajeonStatus.connected"
+            type="button"
+            class="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+            :disabled="viajeonTesting"
+            @click="testViajeon"
+          >
+            {{ viajeonTesting ? "Testando..." : "Testar conexão" }}
+          </button>
+          <button
+            type="button"
+            class="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark disabled:opacity-50"
+            :disabled="isReadOnly"
+            @click="openViajeonModal"
+          >
+            {{ viajeonStatus.configured ? "Reconectar" : "Conectar" }}
+          </button>
+          <button
+            v-if="viajeonStatus.configured"
+            type="button"
+            class="rounded-xl border border-rose-500/30 px-3 py-2 text-sm font-semibold text-rose-500 transition hover:bg-rose-500/10 disabled:opacity-50"
+            :disabled="isReadOnly || viajeonSaving"
+            @click="disconnectViajeon"
+          >
+            Desconectar
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section v-if="!isViajeonRoute" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
       <div class="mb-4 flex items-center justify-between gap-3">
         <h2 class="text-lg font-semibold text-slate-900">{{ viewCopy.list.title }}</h2>
       </div>
@@ -77,7 +133,48 @@
     </section>
 
     <Teleport to="body">
-      <div v-if="modalOpen" class="app-modal-overlay fixed inset-0 z-[180] flex items-center justify-center px-4">
+      <div v-if="viajeonModalOpen" class="app-modal-overlay fixed inset-0 z-[185] flex items-center justify-center px-4">
+        <div class="integration-secret-modal w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-500">Integração</p>
+              <h2 class="mt-2 text-2xl font-bold text-slate-900">Conectar Viajeon</h2>
+              <p class="mt-1 text-sm text-slate-500">Cole o token e o secret gerados no painel do Viajeon.</p>
+            </div>
+            <button type="button" class="rounded-xl border border-slate-200 p-2 text-slate-500" @click="closeViajeonModal">
+              <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M6 18 18 6" /></svg>
+            </button>
+          </div>
+
+          <div class="mt-5 space-y-4">
+            <label class="block space-y-2">
+              <span class="text-xs font-bold uppercase tracking-wide text-slate-500">Token</span>
+              <input v-model="viajeonToken" autocomplete="off" placeholder="rvo_..." class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" />
+            </label>
+            <label class="block space-y-2">
+              <span class="text-xs font-bold uppercase tracking-wide text-slate-500">Secret</span>
+              <input v-model="viajeonSecret" type="password" autocomplete="new-password" placeholder="rvs_..." class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" />
+            </label>
+            <p class="rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-slate-600">
+              O secret é enviado apenas ao backend e armazenado de forma criptografada.
+            </p>
+          </div>
+
+          <div class="mt-5 flex justify-end gap-2 border-t border-slate-100 pt-4">
+            <button type="button" class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700" @click="closeViajeonModal">Cancelar</button>
+            <button
+              type="button"
+              class="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              :disabled="viajeonSaving || !viajeonToken.trim() || !viajeonSecret.trim()"
+              @click="connectViajeon"
+            >
+              {{ viajeonSaving ? "Conectando..." : "Conectar e testar" }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div v-if="modalOpen && !isViajeonRoute" class="app-modal-overlay fixed inset-0 z-[180] flex items-center justify-center px-4">
         <div class="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl md:p-5">
           <div class="mb-4 flex items-center justify-between gap-3">
             <div>
@@ -180,10 +277,25 @@
   background: var(--background) !important;
   color: var(--foreground) !important;
 }
+.integration-secret-modal {
+  background: var(--card);
+  border-color: var(--border);
+  color: var(--foreground);
+}
+.integration-secret-modal input {
+  border-color: var(--input);
+  background: var(--background);
+  color: var(--foreground);
+}
+.integration-secret-modal .text-slate-900,
+.integration-secret-modal .text-slate-700 { color: var(--foreground) !important; }
+.integration-secret-modal .text-slate-600,
+.integration-secret-modal .text-slate-500 { color: var(--muted-foreground) !important; }
 </style>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
+import { useRoute } from "vue-router";
 import { useAuthStore } from "../../store/useAuthStore";
 import api from "../../services/api";
 import { createAdminLocalizer, getAdminLanguage } from "../../utils/adminI18n";
@@ -197,17 +309,36 @@ interface PixelEntry {
   value: string;
 }
 
+interface ViajeonStatus {
+  configured: boolean;
+  connected: boolean;
+  status: string;
+  token_masked?: string;
+  last_error?: string | null;
+}
+
 const auth = useAuthStore();
+const route = useRoute();
+const isViajeonRoute = computed(() => route.name === "integrations-viajeon");
 const adminLanguage = getAdminLanguage();
 const t = createAdminLocalizer(adminLanguage);
 
 const viewCopy = {
   header: {
-    title: t({ pt: "Integrações", es: "Integraciones" }),
-    description: t({
-      pt: "Cadastre códigos Meta ou Google para utilizar nas suas páginas.",
-      es: "Registra códigos Meta o Google para usarlos en tus páginas."
-    })
+    get title() {
+      return isViajeonRoute.value ? "Viajeon" : t({ pt: "Rastreamento", es: "Rastreo" });
+    },
+    get description() {
+      return isViajeonRoute.value
+        ? t({
+          pt: "Conecte o Viajeon para exibir pacotes ativos nas suas páginas.",
+          es: "Conecta Viajeon para mostrar paquetes activos en tus páginas."
+        })
+        : t({
+          pt: "Cadastre códigos Meta ou Google para utilizar nas suas páginas.",
+          es: "Registra códigos Meta o Google para usarlos en tus páginas."
+        });
+    }
   },
   form: {
     eyebrow: t({ pt: "Integração", es: "Integración" }),
@@ -264,6 +395,12 @@ const saving = ref(false);
 const isBootstrappingIntegrations = ref(true);
 const editingId = ref<string | number | null>(null);
 const modalOpen = ref(false);
+const viajeonStatus = ref<ViajeonStatus>({ configured: false, connected: false, status: "disconnected" });
+const viajeonModalOpen = ref(false);
+const viajeonToken = ref("");
+const viajeonSecret = ref("");
+const viajeonSaving = ref(false);
+const viajeonTesting = ref(false);
 
 const toastMessage = ref("");
 const toastError = ref(false);
@@ -296,6 +433,78 @@ const fetchPixels = async () => {
   } catch (err) {
     console.error(err);
     showToast(viewCopy.messages.loadError, true);
+  }
+};
+
+const fetchViajeonStatus = async () => {
+  try {
+    const res = await api.get("/integrations/viajeon");
+    viajeonStatus.value = res.data;
+  } catch (err) {
+    console.error(err);
+    viajeonStatus.value = { configured: false, connected: false, status: "disconnected" };
+  }
+};
+
+const openViajeonModal = () => {
+  if (isReadOnly.value) return;
+  viajeonToken.value = "";
+  viajeonSecret.value = "";
+  viajeonModalOpen.value = true;
+};
+
+const closeViajeonModal = () => {
+  if (viajeonSaving.value) return;
+  viajeonModalOpen.value = false;
+  viajeonToken.value = "";
+  viajeonSecret.value = "";
+};
+
+const connectViajeon = async () => {
+  viajeonSaving.value = true;
+  try {
+    const res = await api.put("/integrations/viajeon", {
+      token: viajeonToken.value.trim(),
+      secret: viajeonSecret.value.trim()
+    });
+    viajeonStatus.value = res.data;
+    viajeonModalOpen.value = false;
+    viajeonToken.value = "";
+    viajeonSecret.value = "";
+    showToast("Viajeon conectado com sucesso.");
+  } catch (err: any) {
+    console.error(err);
+    showToast(err?.response?.data?.detail || "Não foi possível conectar ao Viajeon.", true);
+  } finally {
+    viajeonSaving.value = false;
+  }
+};
+
+const testViajeon = async () => {
+  viajeonTesting.value = true;
+  try {
+    await api.post("/integrations/viajeon/test");
+    await fetchViajeonStatus();
+    showToast("Conexão com o Viajeon validada.");
+  } catch (err: any) {
+    await fetchViajeonStatus();
+    showToast(err?.response?.data?.detail || "A conexão com o Viajeon falhou.", true);
+  } finally {
+    viajeonTesting.value = false;
+  }
+};
+
+const disconnectViajeon = async () => {
+  if (!window.confirm("Desconectar a integração Viajeon?")) return;
+  viajeonSaving.value = true;
+  try {
+    await api.delete("/integrations/viajeon");
+    await fetchViajeonStatus();
+    showToast("Viajeon desconectado.");
+  } catch (err: any) {
+    showToast(err?.response?.data?.detail || "Não foi possível desconectar o Viajeon.", true);
+  } finally {
+    viajeonSaving.value = false;
   }
 };
 
@@ -407,7 +616,7 @@ const displayCode = (raw: string) => {
 
 onMounted(async () => {
   try {
-    await fetchPixels();
+    await Promise.all([fetchPixels(), fetchViajeonStatus()]);
   } finally {
     isBootstrappingIntegrations.value = false;
   }

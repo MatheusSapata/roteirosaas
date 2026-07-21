@@ -230,7 +230,13 @@ const platformRoutes: RouteRecordRaw[] = [
       { path: "integracoes", redirect: "/admin/integracoes/rastreamento", meta: { permission: "integrations" } },
       {
         path: "integracoes/rastreamento",
-        name: "integrations",
+        name: "integrations-tracking",
+        component: () => import("../views/admin/IntegrationsView.vue"),
+        meta: { permission: "integrations" }
+      },
+      {
+        path: "integracoes/viajeon",
+        name: "integrations-viajeon",
         component: () => import("../views/admin/IntegrationsView.vue"),
         meta: { permission: "integrations" }
       },

@@ -18,6 +18,7 @@ export type SectionType =
   | "countdown"
   | "agency_footer"
   | "flight_details"
+  | "viajeon_checkout"
   | "free_footer_brand";
 
 export interface SectionBase {
@@ -276,6 +277,47 @@ export interface FlightDetailsSection extends SectionBase {
   lookupAvailable?: boolean;
 }
 
+export interface ViajeonPackage {
+  id: string;
+  name: string;
+  description?: string | null;
+  price: number;
+  min_quantity: number;
+  max_quantity: number;
+  active: boolean;
+}
+
+export interface ViajeonCheckoutSnapshot {
+  checkout_id: string;
+  slug: string;
+  name: string;
+  checkout_url?: string;
+  subtitle?: string | null;
+  description?: string | null;
+  excursion?: {
+    id?: string;
+    destination?: string;
+    departure_date?: string;
+    return_date?: string;
+  } | null;
+  packages: ViajeonPackage[];
+}
+
+export interface ViajeonCheckoutSection extends SectionBase {
+  type: "viajeon_checkout";
+  checkoutId?: string;
+  checkoutName?: string;
+  title: LocalizedString;
+  subtitle?: LocalizedString;
+  buttonLabel?: LocalizedString;
+  accentColor?: string;
+  cardBackgroundColor?: string;
+  cardTextColor?: string;
+  buttonColor?: string;
+  buttonTextColor?: string;
+  checkoutSnapshot?: ViajeonCheckoutSnapshot | null;
+}
+
 export interface FreeFooterBrandSection extends SectionBase {
   type: "free_footer_brand";
   text: LocalizedString;
@@ -358,6 +400,7 @@ export type PageSection =
   | CountdownSection
   | AgencyFooterSection
   | FlightDetailsSection
+  | ViajeonCheckoutSection
   | FreeFooterBrandSection;
 
 export interface ThemeConfig {

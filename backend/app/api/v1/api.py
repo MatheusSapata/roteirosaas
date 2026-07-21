@@ -30,6 +30,7 @@ from app.api.v1.endpoints import (
     whatsapp,
     whatsapp_ws,
     whatsapp_webhooks,
+    viajeon,
 )
 
 api_router = APIRouter(prefix="/api/v1")
@@ -49,6 +50,12 @@ api_router.include_router(public_pages.router, prefix="/public/pages", tags=["pu
 api_router.include_router(billing.router, prefix="/billing", tags=["billing"])
 api_router.include_router(checkout.router, prefix="/checkout", tags=["checkout"])
 api_router.include_router(pixels.router, prefix="/pixels", tags=["pixels"])
+api_router.include_router(viajeon.router, prefix="/integrations", tags=["integrations"])
+api_router.include_router(
+    viajeon.public_router,
+    prefix="/public/integrations/viajeon",
+    tags=["public-integrations"],
+)
 api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
 api_router.include_router(ai_assistant.router, prefix="/ai-assistant", tags=["ai-assistant"])
 api_router.include_router(admin_master_whatsapp.router, prefix="/admin-master/whatsapp", tags=["admin-master-whatsapp"])

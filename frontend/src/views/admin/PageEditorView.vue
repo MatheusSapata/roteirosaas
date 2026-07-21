@@ -426,12 +426,15 @@
         </div>
         <div class="max-h-[70vh] overflow-y-auto px-6 py-6">
           <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <button
+            <div
               v-for="catalog in sectionCatalog"
               :key="catalog.type"
-              type="button"
-            class="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white text-left shadow-sm transition hover:border-brand/40 focus:outline-none focus:ring-2 focus:ring-brand/40 dark:border-[#2b2b2b] dark:bg-[#181818]"
+              role="button"
+              :tabindex="catalog.type === 'viajeon_checkout' && !viajeonConnected ? -1 : 0"
+              class="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white text-left shadow-sm transition dark:border-[#2b2b2b] dark:bg-[#181818]"
+              :class="catalog.type === 'viajeon_checkout' && !viajeonConnected ? 'cursor-default' : 'cursor-pointer hover:border-brand/40 focus:outline-none focus:ring-2 focus:ring-brand/40'"
               @click="handleSectionPickerSelect(catalog.type)"
+              @keydown.enter="handleSectionPickerSelect(catalog.type)"
             >
               <div class="relative h-44 w-full overflow-hidden rounded-t-2xl border-b border-slate-100 bg-slate-50 dark:border-white/10 dark:bg-[#121212]">
                 <template v-if="catalog.thumbnail">
@@ -451,15 +454,35 @@
                     </div>
                   </div>
                 </template>
+                <div
+                  v-if="catalog.type === 'viajeon_checkout' && !viajeonConnected"
+                  class="absolute inset-0 flex items-center justify-center gap-2 bg-slate-900/55"
+                >
+                  <button
+                    type="button"
+                    class="rounded-full bg-emerald-500 px-4 py-2 text-xs font-bold text-white shadow-lg transition hover:bg-emerald-600"
+                    @click.stop="goViajeonIntegration"
+                  >
+                    Integrar agora
+                  </button>
+                  <button
+                    type="button"
+                    class="catalog-info-tooltip border-white/60 bg-white/20 text-white backdrop-blur"
+                    title="O Checkout ViajeOn exibe os pacotes ativos da sua operação e envia a seleção do cliente ao checkout."
+                    data-tooltip="O Checkout ViajeOn exibe os pacotes ativos da sua operação e envia a seleção do cliente ao checkout."
+                    aria-label="O Checkout ViajeOn exibe os pacotes ativos da sua operação e envia a seleção do cliente ao checkout."
+                    @click.stop
+                  >i</button>
+                </div>
               </div>
               <div class="p-4">
                 <p class="text-sm font-semibold text-slate-800">{{ catalog.label }}</p>
                 <p class="mt-1 text-xs text-slate-500">{{ catalog.description }}</p>
               </div>
-              <div class="pointer-events-none absolute inset-0 flex items-center justify-center bg-slate-900/70 opacity-0 transition group-hover:opacity-100">
+              <div v-if="catalog.type !== 'viajeon_checkout' || viajeonConnected" class="pointer-events-none absolute inset-0 flex items-center justify-center bg-slate-900/70 opacity-0 transition group-hover:opacity-100">
                 <span class="rounded-full bg-white/20 px-4 py-1 text-xs font-semibold text-white backdrop-blur">Clique para inserir</span>
               </div>
-            </button>
+            </div>
           </div>
         </div>
         </div>
@@ -1135,6 +1158,7 @@ import type {
   CountdownSection,
   AgencyFooterSection,
   FlightDetailsSection,
+  ViajeonCheckoutSection,
   SectionType,
   ThemeConfig
 } from "../../types/page";
@@ -1163,6 +1187,7 @@ import storyThumb from "../../assets/story-thumb.jpg";
 import featuredVideoThumb from "../../assets/videoemdestaque.png";
 import biographyThumb from "../../assets/biografia.png";
 import flightsThumb from "../../assets/voos-thumb.png";
+import viajeonCheckoutThumb from "../../assets/viajeon-checkout-thumb.png";
 interface Page {
   id: number;
   title: string;
@@ -1997,6 +2022,7 @@ const SectionReasonsForm = defineAsyncComponent(() => import("../../components/a
 const SectionCountdownForm = defineAsyncComponent(() => import("../../components/admin/SectionCountdownForm.vue"));
 const SectionAgencyFooterForm = defineAsyncComponent(() => import("../../components/admin/SectionAgencyFooterForm.vue"));
 const SectionFlightDetailsForm = defineAsyncComponent(() => import("../../components/admin/SectionFlightDetailsForm.vue"));
+const SectionViajeonCheckoutForm = defineAsyncComponent(() => import("../../components/admin/SectionViajeonCheckoutForm.vue"));
 const PublicHeroSection = defineAsyncComponent(() => import("../../components/public/PublicHeroSection.vue"));
 const PublicBannerCardSection = defineAsyncComponent(() => import("../../components/public/PublicBannerCardSection.vue"));
 const PublicPricesSection = defineAsyncComponent(() => import("../../components/public/PublicPricesSection.vue"));
@@ -2013,6 +2039,7 @@ const PublicCountdownSection = defineAsyncComponent(() => import("../../componen
 const PublicFreeFooterBrandSection = defineAsyncComponent(() => import("../../components/public/PublicFreeFooterBrandSection.vue"));
 const PublicAgencyFooterSection = defineAsyncComponent(() => import("../../components/public/PublicAgencyFooterSection.vue"));
 const PublicFlightDetailsSection = defineAsyncComponent(() => import("../../components/public/PublicFlightDetailsSection.vue"));
+const PublicViajeonCheckoutSection = defineAsyncComponent(() => import("../../components/public/PublicViajeonCheckoutSection.vue"));
 
 const sectionTypes: SectionType[] = [
   "hero",
@@ -2029,6 +2056,7 @@ const sectionTypes: SectionType[] = [
   "reasons",
   "countdown",
   "flight_details",
+  "viajeon_checkout",
   "agency_footer"
 ];
 const sectionLabels = defaultSectionLabels;
@@ -2089,6 +2117,10 @@ const sectionDescriptions: Partial<Record<SectionType, string>> = {
     pt: "Mostra voos de ida e volta com multiplos trechos, bagagens e visual premium.",
     es: "Muestra vuelos de ida y vuelta con multiples tramos, equipajes y visual premium."
   }),
+  viajeon_checkout: t({
+    pt: "Lista todos os pacotes ativos de um checkout Viajeon e envia a seleção para o pagamento externo.",
+    es: "Lista todos los paquetes activos de un checkout Viajeon y envía la selección al pago externo."
+  }),
   agency_footer: t({
     pt: "Cartão institucional com contatos, redes sociais e mapa da agência.",
     es: "Tarjeta institucional con contactos, redes sociales y mapa de la agencia."
@@ -2115,6 +2147,7 @@ const sectionThumbnails: Partial<Record<SectionType, string>> = {
   reasons: reasonsThumb,
   countdown: countdownThumb,
   flight_details: flightsThumb,
+  viajeon_checkout: viajeonCheckoutThumb,
   agency_footer: footerThumb
 };
 const sectionAccents: Partial<Record<SectionType, string>> = {
@@ -2132,6 +2165,7 @@ const sectionAccents: Partial<Record<SectionType, string>> = {
   reasons: "from-indigo-100/70 to-white",
   countdown: "from-orange-100/70 to-white",
   flight_details: "from-sky-100/70 to-white",
+  viajeon_checkout: "from-emerald-100/70 to-white",
   agency_footer: "from-slate-900/90 to-slate-800/70"
 };
 const formComponents: Partial<Record<SectionType, any>> = {
@@ -2149,6 +2183,7 @@ const formComponents: Partial<Record<SectionType, any>> = {
   reasons: SectionReasonsForm,
   countdown: SectionCountdownForm,
   flight_details: SectionFlightDetailsForm,
+  viajeon_checkout: SectionViajeonCheckoutForm,
   agency_footer: SectionAgencyFooterForm
 };
 
@@ -2167,6 +2202,7 @@ const publicComponents: Partial<Record<SectionType, any>> = {
   reasons: PublicReasonsSection,
   countdown: PublicCountdownSection,
   flight_details: PublicFlightDetailsSection,
+  viajeon_checkout: PublicViajeonCheckoutSection,
   free_footer_brand: PublicFreeFooterBrandSection,
   agency_footer: PublicAgencyFooterSection
 };
@@ -2470,6 +2506,10 @@ const validateSection = (section: PageSection | null): string | null => {
     applyAutomaticStoryLayout(story);
     if (!hasStoryImage(story) && !hasStoryVideo(story)) return storyMediaErrorText;
   }
+  if ((section as any).type === "viajeon_checkout" && section.enabled !== false) {
+    const viajeon = section as ViajeonCheckoutSection;
+    if (!viajeon.checkoutId) return "Selecione um checkout ativo do Viajeon antes de salvar a seção.";
+  }
   return null;
 };
 const validateAllSections = (): string | null => {
@@ -2511,6 +2551,7 @@ const buildWhatsappLink = (title: string, _planName?: string) => {
 const lastAutoWhatsAppLink = ref<string | null>(null);
 
 const pixels = ref<{ id: number; name: string; type: "meta" | "ga"; value: string }[]>([]);
+const viajeonConnected = ref(false);
 const selectedPixels = reactive<{ meta: string; ga: string }>({ meta: "", ga: "" });
 const trackingEvents = ref({ pageView: true, ctaClicks: true });
 const metaPixelOptions = computed(() => pixels.value.filter(p => p.type === "meta"));
@@ -2712,6 +2753,16 @@ const loadPixels = async () => {
     pixels.value = res.data;
   } catch (err) {
     console.error("Erro ao carregar pixels", err);
+  }
+};
+
+const loadViajeonStatus = async () => {
+  try {
+    const response = await api.get("/integrations/viajeon");
+    viajeonConnected.value = response.data?.connected === true;
+  } catch (err) {
+    console.error("Erro ao consultar integração Viajeon", err);
+    viajeonConnected.value = false;
   }
 };
 
@@ -3256,6 +3307,26 @@ if (type === "flight_details") {
   } as FlightDetailsSection);
 }
 
+if (type === "viajeon_checkout") {
+  return ensureSectionAnchor({
+    type: "viajeon_checkout",
+    enabled: true,
+    checkoutId: "",
+    checkoutName: "",
+    title: "Escolha seu pacote",
+    subtitle: "Selecione as quantidades e continue para o pagamento.",
+    buttonLabel: "Continuar para o checkout",
+    backgroundColor: colorA.value || "#F8FAFC",
+    textColor: "#0F172A",
+    accentColor: theme.value.ctaDefaultColor || "#12B981",
+    cardBackgroundColor: "#FFFFFF",
+    cardTextColor: "#0F172A",
+    buttonColor: theme.value.ctaDefaultColor || "#12B981",
+    buttonTextColor: theme.value.ctaTextColor || "#FFFFFF",
+    checkoutSnapshot: null
+  } as ViajeonCheckoutSection);
+}
+
   if (type === "agency_footer") {
     return ensureSectionAnchor({
       type: "agency_footer",
@@ -3504,6 +3575,7 @@ const closeSectionPicker = () => {
 };
 
 const handleSectionPickerSelect = (type: SectionType) => {
+  if (type === "viajeon_checkout" && !viajeonConnected.value) return;
   const afterIndex = sectionPicker.value.index;
   const insertAt = typeof afterIndex === "number" ? afterIndex + 1 : sections.value.length;
   addSection(type, insertAt);
@@ -3843,7 +3915,12 @@ const goLeads = () => {
 };
 
 const goIntegrations = () => {
-  router.push({ name: "integrations" });
+  router.push({ name: "integrations-tracking" });
+};
+
+const goViajeonIntegration = () => {
+  closeSectionPicker();
+  router.push({ name: "integrations-viajeon" });
 };
 
 const viewPublicPage = () => {
@@ -3888,19 +3965,25 @@ onMounted(async () => {
   await ensureProfile();
   await ensureAgencies();
   applyAgencyBranding();
-  loadPixels();
-  leadCaptureStore.fetchForms().catch(() => undefined);
+  await Promise.all([
+    loadPixels(),
+    loadViajeonStatus(),
+    leadCaptureStore.fetchForms().catch(() => undefined)
+  ]);
 
   await fetchPage();
   await loadAiAssistantHistory();
-  sectionCatalog.value = sectionTypes.map(type => ({
+  sectionCatalog.value = sectionTypes
+    .map(type => ({
     type,
     label: sectionLabels[type] || type,
-    description: sectionDescriptions[type] || catalogFallbackDescription,
+    description: type === "viajeon_checkout" && !viajeonConnected.value
+      ? "Conecte sua conta ViajeOn para adicionar esta seção."
+      : sectionDescriptions[type] || catalogFallbackDescription,
     accent: sectionAccents[type] || "from-slate-100 to-white",
     previewSection: buildCatalogPreview(type),
     thumbnail: sectionThumbnails[type]
-  }));
+    }));
   previewReady.value = true;
   schedulePreviewHydration(true);
 });
@@ -3909,6 +3992,47 @@ onMounted(async () => {
 <style scoped>
 .page-editor-overlay {
   background-color: #05070f80;
+}
+
+.catalog-info-tooltip {
+  position: relative;
+  display: inline-grid;
+  height: 22px;
+  width: 22px;
+  place-items: center;
+  border: 1px solid rgb(148 163 184 / 0.55);
+  border-radius: 9999px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: help;
+}
+
+.catalog-info-tooltip::after {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 220px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #0f172a;
+  color: white;
+  content: attr(data-tooltip);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+  text-align: left;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-3px);
+  transition: opacity .15s, transform .15s;
+}
+
+.catalog-info-tooltip:hover::after,
+.catalog-info-tooltip:focus::after {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 @media (min-width: 768px) {

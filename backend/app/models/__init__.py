@@ -32,4 +32,5 @@ from .team_invite import TeamInvite
 from .whatsapp import WhatsAppConnection, WhatsAppConversation, WhatsAppMessage, WhatsAppInboxPermission
 from .checkout import CheckoutSettings, CheckoutSession
 from .webhook_notification import WebhookNotificationRule
+from .agency_integration import AgencyIntegration
 
