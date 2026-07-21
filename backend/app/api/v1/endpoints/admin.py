@@ -49,6 +49,7 @@ from app.schemas.admin import (
 from app.schemas.page import PageOut
 from app.services.cakto import CaktoAPIError, CaktoIntegrationService
 from app.services.asaas import AsaasAPIError, AsaasClient
+from app.services.checkout import find_pix_automatic_authorization_id
 from app.services import auth as auth_service
 from app.services.team import get_agency_plan
 from app.services.ntfy import (
@@ -1406,45 +1407,70 @@ def admin_cancel_asaas_immediately(
     if not subscription:
         raise HTTPException(status_code=404, detail="Assinatura não encontrada.")
     provider = (subscription.provider or "").lower()
-    if provider == "asaas" and subscription.asaas_subscription_id and settings.asaas_api_key:
+    if provider == "asaas" and settings.asaas_api_key:
         client = AsaasClient(settings.asaas_api_key, settings.asaas_base_url)
-        sub_id = subscription.asaas_subscription_id
-        remote_status_before = ""
-        try:
-            remote_before = client.get_subscription(sub_id)
-            remote_status_before = str((remote_before or {}).get("status") or "").strip().upper()
-        except AsaasAPIError:
-            remote_status_before = ""
-
-        if remote_status_before not in {"INACTIVE", "CANCELLED", "DELETED"}:
+        checkout_token = None
+        external_reference = str(subscription.external_reference or "").strip()
+        if external_reference.startswith("checkout:"):
+            checkout_token = external_reference.split("checkout:", 1)[1].strip() or None
+        authorization_id = None
+        if str(subscription.payment_method_type or "").strip().lower() == "pix":
+            authorization_id = find_pix_automatic_authorization_id(
+                db,
+                user_id=subscription.user_id,
+                checkout_token=checkout_token,
+            )
+        if authorization_id:
             try:
-                client.cancel_subscription(sub_id)
+                client.cancel_pix_automatic_authorization(
+                    authorization_id,
+                    reason="Cancelamento imediato solicitado pelo administrador",
+                )
             except AsaasAPIError as exc:  # noqa: BLE001
-                delete_detail = _extract_asaas_error_detail(exc)
-                update_detail = ""
-                get_detail = ""
-                try:
-                    client.update_subscription(sub_id, {"status": "INACTIVE"})
-                except AsaasAPIError as upd_exc:  # noqa: BLE001
-                    update_detail = _extract_asaas_error_detail(upd_exc)
+                raise HTTPException(
+                    status_code=502,
+                    detail=f"Erro ao cancelar autorização Pix Automático no Asaas ({authorization_id}).",
+                ) from exc
+        elif not subscription.asaas_subscription_id:
+            logger.info("Assinatura Asaas sem cobrança remota para cancelar: subscription_id=%s", subscription.id)
+        else:
+            sub_id = subscription.asaas_subscription_id
+            remote_status_before = ""
+            try:
+                remote_before = client.get_subscription(sub_id)
+                remote_status_before = str((remote_before or {}).get("status") or "").strip().upper()
+            except AsaasAPIError:
+                remote_status_before = ""
 
+            if remote_status_before not in {"INACTIVE", "CANCELLED", "DELETED"}:
                 try:
-                    remote_after = client.get_subscription(sub_id)
-                    remote_status_after = str((remote_after or {}).get("status") or "").strip().upper()
-                except AsaasAPIError as get_exc:  # noqa: BLE001
-                    remote_status_after = ""
-                    get_detail = _extract_asaas_error_detail(get_exc)
+                    client.cancel_subscription(sub_id)
+                except AsaasAPIError as exc:  # noqa: BLE001
+                    delete_detail = _extract_asaas_error_detail(exc)
+                    update_detail = ""
+                    get_detail = ""
+                    try:
+                        client.update_subscription(sub_id, {"status": "INACTIVE"})
+                    except AsaasAPIError as upd_exc:  # noqa: BLE001
+                        update_detail = _extract_asaas_error_detail(upd_exc)
 
-                if remote_status_after not in {"INACTIVE", "CANCELLED", "DELETED"}:
-                    raise HTTPException(
-                        status_code=502,
-                        detail=(
-                            f"Erro ao cancelar assinatura no Asaas ({sub_id}). "
-                            f"delete={delete_detail}; update={update_detail or 'n/a'}; "
-                            f"get={get_detail or 'ok'}; status_before={remote_status_before or 'n/a'}; "
-                            f"status_after={remote_status_after or 'n/a'}; base_url={settings.asaas_base_url}"
-                        ),
-                    ) from exc
+                    try:
+                        remote_after = client.get_subscription(sub_id)
+                        remote_status_after = str((remote_after or {}).get("status") or "").strip().upper()
+                    except AsaasAPIError as get_exc:  # noqa: BLE001
+                        remote_status_after = ""
+                        get_detail = _extract_asaas_error_detail(get_exc)
+
+                    if remote_status_after not in {"INACTIVE", "CANCELLED", "DELETED"}:
+                        raise HTTPException(
+                            status_code=502,
+                            detail=(
+                                f"Erro ao cancelar assinatura no Asaas ({sub_id}). "
+                                f"delete={delete_detail}; update={update_detail or 'n/a'}; "
+                                f"get={get_detail or 'ok'}; status_before={remote_status_before or 'n/a'}; "
+                                f"status_after={remote_status_after or 'n/a'}; base_url={settings.asaas_base_url}"
+                            ),
+                        ) from exc
     elif provider == "cakto":
         service = CaktoIntegrationService(db)
         if service.api_base_url:

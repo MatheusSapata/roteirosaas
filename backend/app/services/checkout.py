@@ -114,6 +114,20 @@ def _duration_from_cycle(cycle: str) -> timedelta:
     return timedelta(days=365 if cycle == "annual" else 30)
 
 
+def _next_pix_automatic_due_date(base: date, cycle: str) -> date:
+    if str(cycle).strip().lower() == "annual":
+        try:
+            return base.replace(year=base.year + 1)
+        except ValueError:
+            return base.replace(year=base.year + 1, day=28)
+    next_month = 1 if base.month == 12 else base.month + 1
+    next_year = base.year + 1 if base.month == 12 else base.year
+    month_after = 1 if next_month == 12 else next_month + 1
+    year_after = next_year + 1 if next_month == 12 else next_year
+    last_day = (date(year_after, month_after, 1) - timedelta(days=1)).day
+    return date(next_year, next_month, min(base.day, last_day))
+
+
 def _parse_decimal(value: Any) -> Decimal:
     try:
         return Decimal(str(value))
@@ -148,6 +162,31 @@ def _resolve_session_subscription_id(session: CheckoutSession) -> str | None:
     return value or None
 
 
+def find_pix_automatic_authorization_id(
+    db: Session,
+    *,
+    user_id: int,
+    checkout_token: str | None = None,
+) -> str | None:
+    """Localiza o mandato Pix Automático ativo associado à assinatura do usuário."""
+    query = db.query(CheckoutSession).filter(
+        CheckoutSession.user_id == user_id,
+        CheckoutSession.payment_method == "pix",
+        CheckoutSession.metadata_json.isnot(None),
+    )
+    if checkout_token:
+        query = query.filter(CheckoutSession.token == checkout_token)
+    rows = query.order_by(CheckoutSession.created_at.desc()).all()
+    for row in rows:
+        metadata = dict(row.metadata_json or {})
+        if str(metadata.get("pix_mode") or "").strip().lower() != "automatic":
+            continue
+        authorization_id = str(metadata.get("asaas_pix_automatic_authorization_id") or "").strip()
+        if authorization_id:
+            return authorization_id
+    return None
+
+
 def _is_upgrade_session(session: CheckoutSession) -> bool:
     metadata = dict(session.metadata_json or {})
     return bool(metadata.get("upgrade_mode"))
@@ -167,18 +206,36 @@ def _extract_checkout_session_token(external_reference: str) -> str | None:
 def _extract_pix_automatic_authorization_id(payload: dict[str, Any]) -> str | None:
     payment = payload.get("payment") if isinstance(payload.get("payment"), dict) else {}
     instruction = payload.get("paymentInstruction") if isinstance(payload.get("paymentInstruction"), dict) else {}
+    automatic_instruction = (
+        payload.get("pixAutomaticPaymentInstruction")
+        if isinstance(payload.get("pixAutomaticPaymentInstruction"), dict)
+        else {}
+    )
     candidates = (
         payload.get("authorization"),
         payload.get("pixAutomaticAuthorization"),
         payment.get("pixAutomaticAuthorization"),
         payment.get("pixAutomaticAuthorizationId"),
         instruction.get("authorization"),
+        automatic_instruction.get("authorization"),
     )
     for candidate in candidates:
         resource_id = _extract_asaas_resource_id(candidate)
         if resource_id:
             return resource_id
     return None
+
+
+def _extract_pix_automatic_qr_code(authorization: dict[str, Any]) -> dict[str, Any]:
+    immediate = authorization.get("immediateQrCode")
+    immediate = immediate if isinstance(immediate, dict) else {}
+    return {
+        "payload": immediate.get("payload") or authorization.get("payload"),
+        "encodedImage": immediate.get("encodedImage") or authorization.get("encodedImage"),
+        "expirationDate": immediate.get("expirationDate") or authorization.get("expirationDate"),
+        "conciliationIdentifier": immediate.get("conciliationIdentifier")
+        or authorization.get("conciliationIdentifier"),
+    }
 
 
 def _build_asaas_customer_payload(*, name: str, email: str, document: str, phone: str, session_token: str) -> dict[str, Any]:
@@ -1514,15 +1571,15 @@ def start_pix_payment(db: Session, session: CheckoutSession) -> CheckoutSession:
         "description": session.product_name[:35],
         "immediateQrCode": {
             "originalValue": float(session.amount),
-            "paymentCreationMode": "SUBSCRIPTION",
             "expirationSeconds": 3600,
+            "description": session.product_name[:35],
         },
     }
     authorization = client.create_pix_automatic_authorization(auth_payload)
     authorization_id = _extract_asaas_resource_id(authorization.get("id"))
     if not authorization_id:
         raise HTTPException(status_code=502, detail="Asaas nao retornou autorizacao de Pix Automatico.")
-    immediate_qr = authorization.get("immediateQrCode") or {}
+    immediate_qr = _extract_pix_automatic_qr_code(authorization)
     if not immediate_qr.get("payload"):
         raise HTTPException(
             status_code=502,
@@ -1544,6 +1601,9 @@ def start_pix_payment(db: Session, session: CheckoutSession) -> CheckoutSession:
     session.updated_at = _utcnow()
     metadata = dict(session.metadata_json or {})
     metadata["pix_mode"] = pix_mode
+    metadata["asaas_pix_automatic_authorization_status"] = str(authorization.get("status") or "CREATED").upper()
+    metadata["asaas_pix_automatic_start_date"] = start_date
+    metadata["asaas_pix_automatic_conciliation_id"] = immediate_qr.get("conciliationIdentifier")
     if _is_upgrade_session(session):
         # O upgrade via PIX precisa substituir a recorrencia anterior somente
         # depois que a nova autorizacao automatica for paga e ativada.
@@ -1776,6 +1836,32 @@ def _upsert_paid_user_and_subscription(db: Session, session: CheckoutSession) ->
     return user
 
 
+def _renew_paid_pix_automatic_subscription(db: Session, session: CheckoutSession) -> User | None:
+    user = session.user or _find_existing_user(db, session.customer_email, session.customer_document)
+    if not user or not user.subscription:
+        return None
+    subscription = user.subscription
+    now = _utcnow()
+    current_valid_until = subscription.valid_until
+    if current_valid_until and current_valid_until.tzinfo is None and now.tzinfo is not None:
+        now_for_comparison = now.replace(tzinfo=None)
+    else:
+        now_for_comparison = now
+    base = current_valid_until if current_valid_until and current_valid_until > now_for_comparison else now_for_comparison
+    subscription.valid_until = base + _duration_from_cycle(session.billing_cycle)
+    subscription.status = "active"
+    subscription.failed_attempts = 0
+    user.plan = session.plan_key
+    user.is_active = True
+    db.add_all([user, subscription])
+    _notify_checkout_subscription_push(
+        scenario=SubscriptionPushScenario.RENEWED,
+        session=session,
+        user=user,
+    )
+    return user
+
+
 def _map_asaas_payment_status(status: Any) -> str:
     raw = str(status or "").upper()
     if raw in {"RECEIVED", "CONFIRMED", "AUTHORIZED"}:
@@ -1863,6 +1949,35 @@ def refresh_session_status(db: Session, session: CheckoutSession) -> CheckoutSes
     client = _ensure_asaas_client()
     payment_id = session.asaas_payment_id
     subscription_id = _resolve_session_subscription_id(session)
+    metadata = dict(session.metadata_json or {})
+    automatic_authorization_id = str(metadata.get("asaas_pix_automatic_authorization_id") or "").strip()
+
+    if session.payment_method == "pix" and automatic_authorization_id:
+        authorization = client.get_pix_automatic_authorization(automatic_authorization_id)
+        authorization_status = str(authorization.get("status") or "").upper()
+        metadata["asaas_pix_automatic_authorization_status"] = authorization_status or "CREATED"
+        immediate_qr = _extract_pix_automatic_qr_code(authorization)
+        session.pix_copy_paste = immediate_qr.get("payload") or session.pix_copy_paste
+        session.pix_qr_code_base64 = immediate_qr.get("encodedImage") or session.pix_qr_code_base64
+        session.metadata_json = metadata
+        if authorization_status == "ACTIVE" and session.status != "paid":
+            session.status = "paid"
+            session.paid_at = session.paid_at or _utcnow()
+            if not metadata.get("asaas_pix_automatic_next_due_date"):
+                metadata["asaas_pix_automatic_next_due_date"] = _next_pix_automatic_due_date(
+                    date.fromisoformat(_billing_today()), session.billing_cycle
+                ).isoformat()
+                session.metadata_json = metadata
+            _complete_paid_checkout_session(db, session)
+        elif authorization_status in {"CANCELLED", "REFUSED"}:
+            session.status = "failed"
+        elif authorization_status == "EXPIRED":
+            session.status = "expired"
+        session.updated_at = _utcnow()
+        db.add(session)
+        db.commit()
+        db.refresh(session)
+        return session
 
     if session.payment_method == "card" and subscription_id:
         payments = client.list_subscription_payments(subscription_id)
@@ -1938,7 +2053,7 @@ def refresh_session_status(db: Session, session: CheckoutSession) -> CheckoutSes
 
 def handle_asaas_checkout_webhook(db: Session, payload: dict[str, Any]) -> bool:
     payment = payload.get("payment") or {}
-    authorization = payload.get("authorization") or {}
+    authorization = payload.get("pixAutomaticAuthorization") or payload.get("authorization") or {}
     if not isinstance(authorization, dict):
         authorization = {}
     external_reference = str(payment.get("externalReference") or authorization.get("contractId") or "")
@@ -1957,16 +2072,71 @@ def handle_asaas_checkout_webhook(db: Session, payload: dict[str, Any]) -> bool:
                     break
     if not session:
         return False
+    was_already_paid = session.status == "paid" and bool(session.paid_at)
     session.asaas_payment_id = payment.get("id") or session.asaas_payment_id
-    session.asaas_customer_id = payment.get("customer") or session.asaas_customer_id
+    session.asaas_customer_id = payment.get("customer") or authorization.get("customerId") or session.asaas_customer_id
+    event = str(payload.get("event") or "").upper()
+    metadata = dict(session.metadata_json or {})
+    authorization_id = _extract_pix_automatic_authorization_id(payload)
+    if authorization_id:
+        metadata["asaas_pix_automatic_authorization_id"] = authorization_id
+    authorization_status = str(authorization.get("status") or "").upper()
+    if authorization_status:
+        metadata["asaas_pix_automatic_authorization_status"] = authorization_status
+    instruction = payload.get("pixAutomaticPaymentInstruction") or payload.get("paymentInstruction") or {}
+    instruction_status = ""
+    instruction_id = ""
+    if isinstance(instruction, dict) and instruction.get("id"):
+        instruction_id = str(instruction["id"])
+        metadata["asaas_pix_automatic_last_instruction_id"] = instruction_id
+        instruction_status = str(instruction.get("status") or "").upper()
+        metadata["asaas_pix_automatic_last_instruction_status"] = instruction_status
+    session.metadata_json = metadata
     subscription_id = _extract_asaas_resource_id(payment.get("subscription"))
     if subscription_id:
         metadata = dict(session.metadata_json or {})
         metadata["asaas_subscription_id"] = subscription_id
         session.metadata_json = metadata
-    session.status = _map_asaas_payment_status(payment.get("status") or payload.get("event"))
-    event = str(payload.get("event") or "").upper()
-    if event in {"PAYMENT_CONFIRMED", "PAYMENT_RECEIVED"} or session.status == "paid":
+    authorization_activated = event in {
+        "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_ACTIVE",
+        "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_ACTIVATED",
+    } or authorization_status == "ACTIVE"
+    if authorization_activated:
+        session.status = "paid"
+        if not metadata.get("asaas_pix_automatic_next_due_date"):
+            metadata["asaas_pix_automatic_next_due_date"] = _next_pix_automatic_due_date(
+                date.fromisoformat(_billing_today()), session.billing_cycle
+            ).isoformat()
+            session.metadata_json = metadata
+    elif payment.get("status"):
+        session.status = _map_asaas_payment_status(payment.get("status"))
+    elif not event.startswith("PIX_AUTOMATIC_RECURRING_PAYMENT_INSTRUCTION_"):
+        session.status = _map_asaas_payment_status(event)
+
+    instruction_paid = event.startswith("PIX_AUTOMATIC_RECURRING_PAYMENT_INSTRUCTION_") and (
+        instruction_status in {"PAID", "RECEIVED", "CONFIRMED"}
+        or event.endswith(("_PAID", "_RECEIVED", "_CONFIRMED"))
+    )
+    is_pix_automatic = str(metadata.get("pix_mode") or "").strip().lower() == "automatic"
+    renewal_key = instruction_id or str(metadata.get("asaas_pix_automatic_last_instruction_id") or "").strip()
+    if not renewal_key:
+        renewal_key = str(payment.get("id") or "").strip()
+    renewal_already_processed = bool(renewal_key) and (
+        str(metadata.get("asaas_pix_automatic_last_renewed_instruction_id") or "") == renewal_key
+    )
+    renewal_confirmed = was_already_paid and is_pix_automatic and (
+        instruction_paid or event in {"PAYMENT_CONFIRMED", "PAYMENT_RECEIVED"}
+    ) and not renewal_already_processed
+
+    if renewal_confirmed:
+        session.status = "paid"
+        if renewal_key:
+            metadata["asaas_pix_automatic_last_renewed_instruction_id"] = renewal_key
+            session.metadata_json = metadata
+        _renew_paid_pix_automatic_subscription(db, session)
+    elif not was_already_paid and (
+        event in {"PAYMENT_CONFIRMED", "PAYMENT_RECEIVED"} or authorization_activated or session.status == "paid"
+    ):
         if not session.paid_at:
             session.paid_at = _utcnow()
         session.status = "paid"

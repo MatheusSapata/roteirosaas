@@ -10,6 +10,25 @@ from app.services import checkout
 
 
 class FakeDb:
+    def __init__(self, rows: list[CheckoutSession] | None = None) -> None:
+        self.rows = rows or []
+
+    class _Query:
+        def __init__(self, rows: list[CheckoutSession]) -> None:
+            self.rows = rows
+
+        def filter(self, *_args):
+            return self
+
+        def first(self):
+            return self.rows[0] if self.rows else None
+
+        def all(self):
+            return self.rows
+
+    def query(self, _model):
+        return self._Query(self.rows)
+
     def add(self, _instance) -> None:
         return None
 
@@ -40,6 +59,9 @@ class FakePixAutomaticClient:
 
     def create_subscription(self, _payload: dict) -> dict:
         raise AssertionError("Fallback para assinatura PIX convencional não pode ser usado")
+
+    def get_pix_automatic_authorization(self, authorization_id: str) -> dict:
+        return {"id": authorization_id, "status": "ACTIVE"}
 
 
 def make_session(*, upgrade: bool = False, cycle: str = "monthly") -> CheckoutSession:
@@ -91,7 +113,8 @@ def test_pix_checkout_always_creates_automatic_authorization(
     assert payload["frequency"] == expected_frequency
     assert payload["value"] == 99.90
     assert payload["immediateQrCode"]["originalValue"] == 99.90
-    assert payload["immediateQrCode"]["paymentCreationMode"] == "SUBSCRIPTION"
+    assert payload["immediateQrCode"]["description"] == "Plano Growth"
+    assert "paymentCreationMode" not in payload["immediateQrCode"]
     assert "paymentCreationMode" not in payload
 
 
@@ -105,6 +128,44 @@ def test_pix_upgrade_also_uses_automatic_authorization(monkeypatch: pytest.Monke
     assert len(client.authorization_payloads) == 1
     assert result.metadata_json["pix_mode"] == "automatic"
     assert result.metadata_json["upgrade_in_place"] is False
+
+
+def test_pix_qr_code_accepts_asaas_root_fallback() -> None:
+    qr = checkout._extract_pix_automatic_qr_code(
+        {
+            "payload": "root-payload",
+            "encodedImage": "root-image",
+            "expirationDate": "2026-07-21T20:00:00Z",
+            "immediateQrCode": {"conciliationIdentifier": "conciliation-id"},
+        }
+    )
+
+    assert qr == {
+        "payload": "root-payload",
+        "encodedImage": "root-image",
+        "expirationDate": "2026-07-21T20:00:00Z",
+        "conciliationIdentifier": "conciliation-id",
+    }
+
+
+def test_pix_polling_activates_checkout_from_authorization(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = FakePixAutomaticClient()
+    configure_pix_dependencies(monkeypatch, client)
+    completed: list[CheckoutSession] = []
+    monkeypatch.setattr(checkout, "_complete_paid_checkout_session", lambda _db, item: completed.append(item))
+    session = make_session()
+    session.payment_method = "pix"
+    session.status = "awaiting_payment"
+    session.metadata_json = {
+        "pix_mode": "automatic",
+        "asaas_pix_automatic_authorization_id": "auth_existing",
+    }
+
+    result = checkout.refresh_session_status(FakeDb(), session)
+
+    assert result.status == "paid"
+    assert result.metadata_json["asaas_pix_automatic_authorization_status"] == "ACTIVE"
+    assert completed == [session]
 
 
 def test_pix_checkout_never_falls_back_to_conventional_pix(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -142,7 +203,41 @@ def test_existing_automatic_authorization_is_idempotent(monkeypatch: pytest.Monk
         {"pixAutomaticAuthorization": "auth_webhook_123"},
         {"payment": {"pixAutomaticAuthorizationId": "auth_webhook_123"}},
         {"paymentInstruction": {"authorization": {"id": "auth_webhook_123"}}},
+        {"pixAutomaticPaymentInstruction": {"authorization": {"id": "auth_webhook_123"}}},
     ],
 )
 def test_extracts_automatic_pix_authorization_from_webhook_variants(payload: dict) -> None:
     assert checkout._extract_pix_automatic_authorization_id(payload) == "auth_webhook_123"
+
+
+def test_paid_instruction_renews_subscription_only_once(monkeypatch: pytest.MonkeyPatch) -> None:
+    session = make_session()
+    session.payment_method = "pix"
+    session.status = "paid"
+    session.paid_at = checkout._utcnow()
+    session.metadata_json = {
+        "pix_mode": "automatic",
+        "asaas_pix_automatic_authorization_id": "auth_webhook_123",
+        "asaas_pix_automatic_last_instruction_id": "pai_123",
+    }
+    renewed: list[CheckoutSession] = []
+    monkeypatch.setattr(
+        checkout,
+        "_renew_paid_pix_automatic_subscription",
+        lambda _db, item: renewed.append(item),
+    )
+    payload = {
+        "event": "PIX_AUTOMATIC_RECURRING_PAYMENT_INSTRUCTION_PAID",
+        "pixAutomaticPaymentInstruction": {
+            "id": "pai_123",
+            "status": "PAID",
+            "authorization": {"id": "auth_webhook_123"},
+        },
+    }
+    db = FakeDb([session])
+
+    assert checkout.handle_asaas_checkout_webhook(db, payload) is True
+    assert checkout.handle_asaas_checkout_webhook(db, payload) is True
+
+    assert renewed == [session]
+    assert session.metadata_json["asaas_pix_automatic_last_renewed_instruction_id"] == "pai_123"

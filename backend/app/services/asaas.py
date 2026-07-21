@@ -93,6 +93,19 @@ class AsaasClient:
     def create_pix_automatic_authorization(self, payload: dict[str, Any]) -> dict[str, Any]:
         return self._request("POST", "/pix/automatic/authorizations", json=payload)
 
+    def get_pix_automatic_authorization(self, authorization_id: str) -> dict[str, Any]:
+        return self._request("GET", f"/pix/automatic/authorizations/{authorization_id}")
+
+    def create_pix_automatic_payment_instruction(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return self._request("POST", "/pix/automatic/paymentInstructions", json=payload)
+
+    def cancel_pix_automatic_authorization(self, authorization_id: str, reason: str) -> None:
+        self._request(
+            "DELETE",
+            f"/pix/automatic/authorizations/{authorization_id}",
+            json={"cancellationReason": reason[:255]},
+        )
+
     def get_payment(self, payment_id: str) -> dict[str, Any]:
         return self._request("GET", f"/payments/{payment_id}")
 

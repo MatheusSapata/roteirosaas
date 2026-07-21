@@ -18,7 +18,7 @@ from app.models.revenue import RevenueTotal
 from app.models.asaas import AsaasEventLog
 from app.services.asaas import AsaasAPIError, AsaasClient, build_default_split_payload
 from app.services.cakto import CaktoAPIError, CaktoIntegrationService
-from app.services.checkout import handle_asaas_checkout_webhook
+from app.services.checkout import find_pix_automatic_authorization_id, handle_asaas_checkout_webhook
 from app.services.ntfy import SubscriptionPushScenario, publish_subscription_notification
 from app.services.plans import effective_plan
 from app.services.trial import end_trial
@@ -80,6 +80,29 @@ def _get_asaas_client() -> AsaasClient:
     if not settings.asaas_api_key:
         raise HTTPException(status_code=500, detail="Chave da API Asaas nÃ£o configurada")
     return AsaasClient(settings.asaas_api_key, settings.asaas_base_url)
+
+
+def _cancel_asaas_subscription_billing(db: Session, client: AsaasClient, subscription: Subscription) -> None:
+    checkout_token = None
+    external_reference = str(subscription.external_reference or "").strip()
+    if external_reference.startswith("checkout:"):
+        checkout_token = external_reference.split("checkout:", 1)[1].strip() or None
+    authorization_id = None
+    if str(subscription.payment_method_type or "").strip().lower() == "pix":
+        authorization_id = find_pix_automatic_authorization_id(
+            db,
+            user_id=subscription.user_id,
+            checkout_token=checkout_token,
+        )
+    if authorization_id:
+        client.cancel_pix_automatic_authorization(
+            authorization_id,
+            reason="Cancelamento solicitado pelo cliente",
+        )
+    elif subscription.asaas_subscription_id:
+        client.cancel_subscription(subscription.asaas_subscription_id)
+    elif subscription.asaas_payment_link_id:
+        client.delete_payment_link(subscription.asaas_payment_link_id)
 
 
 def _extract_asaas_error_detail(exc: AsaasAPIError) -> str:
@@ -702,10 +725,7 @@ def cancel_subscription(current_user: User = Depends(get_current_active_user), d
     else:
         client = _get_asaas_client()
         try:
-            if sub.asaas_subscription_id:
-                client.cancel_subscription(sub.asaas_subscription_id)
-            elif sub.asaas_payment_link_id:
-                client.delete_payment_link(sub.asaas_payment_link_id)
+            _cancel_asaas_subscription_billing(db, client, sub)
         except AsaasAPIError as exc:  # noqa: BLE001
             logger.exception("Erro ao cancelar assinatura Asaas: %s", exc)
             raise HTTPException(status_code=502, detail="Erro ao cancelar assinatura") from exc
@@ -738,10 +758,7 @@ def change_plan(
     client = _get_asaas_client()
     if sub:
         try:
-            if sub.asaas_subscription_id:
-                client.cancel_subscription(sub.asaas_subscription_id)
-            elif sub.asaas_payment_link_id:
-                client.delete_payment_link(sub.asaas_payment_link_id)
+            _cancel_asaas_subscription_billing(db, client, sub)
         except AsaasAPIError as exc:  # noqa: BLE001
             logger.exception("Erro ao encerrar assinatura Asaas ao mudar para free: %s", exc)
             raise HTTPException(status_code=502, detail="Erro ao cancelar assinatura no Asaas") from exc

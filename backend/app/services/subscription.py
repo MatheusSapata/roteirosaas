@@ -1,13 +1,15 @@
 import asyncio
 import logging
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Optional
 
 from app.core.config import get_settings
 from app.db.session import SessionLocal
+from app.models.checkout import CheckoutSession
 from app.models.subscription import Subscription
 from app.models.user import User
 from app.services.asaas import AsaasAPIError, AsaasClient, build_default_split_payload
+from app.services.checkout import find_pix_automatic_authorization_id
 from app.services.viajechat_checkout_flow import tag_abandoned_checkout_sessions
 
 logger = logging.getLogger(__name__)
@@ -18,6 +20,97 @@ PLAN_PRICING = {
     "growth": {"monthly": {"price": 89.99, "asaas_cycle": "MONTHLY"}, "annual": {"price": 839.88, "asaas_cycle": "YEARLY"}},
     "infinity": {"monthly": {"price": 129.90, "asaas_cycle": "MONTHLY"}, "annual": {"price": 1199.88, "asaas_cycle": "YEARLY"}},
 }
+
+
+def _advance_pix_due_date(base: date, cycle: str) -> date:
+    if str(cycle).strip().lower() == "annual":
+        try:
+            return base.replace(year=base.year + 1)
+        except ValueError:
+            return base.replace(year=base.year + 1, day=28)
+    next_month = 1 if base.month == 12 else base.month + 1
+    next_year = base.year + 1 if base.month == 12 else base.year
+    month_after = 1 if next_month == 12 else next_month + 1
+    year_after = next_year + 1 if next_month == 12 else next_year
+    last_day = (date(year_after, month_after, 1) - timedelta(days=1)).day
+    return date(next_year, next_month, min(base.day, last_day))
+
+
+def create_due_pix_automatic_instructions(today: date | None = None) -> int:
+    if not settings.asaas_api_key:
+        return 0
+    today = today or date.today()
+    horizon = today + timedelta(days=5)
+    db = SessionLocal()
+    created = 0
+    try:
+        client = AsaasClient(settings.asaas_api_key, settings.asaas_base_url)
+        sessions = (
+            db.query(CheckoutSession)
+            .filter(
+                CheckoutSession.payment_method == "pix",
+                CheckoutSession.status == "paid",
+                CheckoutSession.metadata_json.isnot(None),
+            )
+            .all()
+        )
+        for checkout_session in sessions:
+            metadata = dict(checkout_session.metadata_json or {})
+            authorization_id = str(metadata.get("asaas_pix_automatic_authorization_id") or "").strip()
+            authorization_status = str(metadata.get("asaas_pix_automatic_authorization_status") or "").upper()
+            raw_due_date = str(metadata.get("asaas_pix_automatic_next_due_date") or "").strip()
+            if not authorization_id or authorization_status != "ACTIVE" or not raw_due_date:
+                continue
+            try:
+                due_date = date.fromisoformat(raw_due_date)
+            except ValueError:
+                logger.warning("Data de renovação PIX Automático inválida na sessão %s", checkout_session.id)
+                continue
+            if due_date > horizon:
+                continue
+            if str(metadata.get("asaas_pix_automatic_last_instruction_due_date") or "") == due_date.isoformat():
+                continue
+
+            try:
+                instruction = client.create_pix_automatic_payment_instruction(
+                    {
+                        "pixAutomaticAuthorizationId": authorization_id,
+                        "value": float(checkout_session.amount),
+                        "dueDate": due_date.isoformat(),
+                        "description": "Renovação assinatura - Roteiro Online"[:35],
+                        "externalReference": f"co:{checkout_session.token}"[:120],
+                    }
+                )
+            except AsaasAPIError:
+                db.rollback()
+                logger.exception(
+                    "Erro ao criar instrução Pix Automático para checkout_session_id=%s",
+                    checkout_session.id,
+                )
+                continue
+            instruction_id = str((instruction or {}).get("id") or "").strip()
+            if not instruction_id:
+                logger.error("Asaas não retornou ID da instrução PIX Automático para a sessão %s", checkout_session.id)
+                continue
+            metadata["asaas_pix_automatic_last_instruction_id"] = instruction_id
+            metadata["asaas_pix_automatic_last_instruction_status"] = str(
+                (instruction or {}).get("status") or "AWAITING_REQUEST"
+            ).upper()
+            metadata["asaas_pix_automatic_last_instruction_due_date"] = due_date.isoformat()
+            metadata["asaas_pix_automatic_next_due_date"] = _advance_pix_due_date(
+                due_date, checkout_session.billing_cycle
+            ).isoformat()
+            checkout_session.metadata_json = metadata
+            checkout_session.updated_at = datetime.utcnow()
+            db.add(checkout_session)
+            db.commit()
+            created += 1
+    except Exception:
+        db.rollback()
+        logger.exception("Erro ao criar instruções de renovação do PIX Automático")
+    finally:
+        db.close()
+    return created
 
 
 def _parse_scheduled_downgrade(ref: str | None) -> str | None:
@@ -101,7 +194,6 @@ def _apply_scheduled_cancellations(now: datetime) -> int:
             .filter(
                 Subscription.provider == "asaas",
                 Subscription.status == "cancel_at_period_end",
-                Subscription.asaas_subscription_id.isnot(None),
                 Subscription.valid_until.isnot(None),
             )
             .all()
@@ -113,7 +205,27 @@ def _apply_scheduled_cancellations(now: datetime) -> int:
             if sub.valid_until > (now + timedelta(days=1)):
                 continue
             try:
-                client.cancel_subscription(sub.asaas_subscription_id)
+                checkout_token = None
+                external_reference = str(sub.external_reference or "").strip()
+                if external_reference.startswith("checkout:"):
+                    checkout_token = external_reference.split("checkout:", 1)[1].strip() or None
+                authorization_id = None
+                if str(sub.payment_method_type or "").strip().lower() == "pix":
+                    authorization_id = find_pix_automatic_authorization_id(
+                        db,
+                        user_id=sub.user_id,
+                        checkout_token=checkout_token,
+                    )
+                if authorization_id:
+                    client.cancel_pix_automatic_authorization(
+                        authorization_id,
+                        reason="Cancelamento ao final do período contratado",
+                    )
+                elif sub.asaas_subscription_id:
+                    client.cancel_subscription(sub.asaas_subscription_id)
+                else:
+                    logger.warning("Assinatura %s sem identificador remoto para cancelamento", sub.id)
+                    continue
                 sub.status = "cancelled"
                 db.add(sub)
                 processed += 1
@@ -175,6 +287,7 @@ def schedule_expiration_job(interval_minutes: int = 60) -> None:
                 _apply_scheduled_downgrades(datetime.utcnow())
                 _apply_scheduled_cancellations(datetime.utcnow())
                 tag_abandoned_checkout_sessions(cutoff_minutes=30)
+                create_due_pix_automatic_instructions()
                 expire_subscriptions()
             except Exception:
                 logger.exception("Erro no job de expiracao de assinaturas")
