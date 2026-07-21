@@ -25,7 +25,7 @@ const RedirectPlaceholder = {
   template: "<div>Redirecionando...</div>"
 };
 
-const defaultPlatformHosts = ["roteiroonline.com", "www.roteiroonline.com", "localhost", "127.0.0.1"];
+const defaultPlatformHosts = ["roteiroonline.com", "www.roteiroonline.com", "app.roteiroonline.com", "localhost", "127.0.0.1"];
 const envPlatformHosts = (import.meta.env.VITE_PLATFORM_HOSTS || "")
   .split(",")
   .map(host => host.trim().toLowerCase())

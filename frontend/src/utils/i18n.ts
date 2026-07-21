@@ -4,7 +4,7 @@ export type LocalizedObject = Partial<Record<SupportedLanguage, string>> & Recor
 
 export type LocalizedString = string | LocalizedObject | null | undefined;
 
-const PT_HOSTS = new Set(["roteiroonline.com", "www.roteiroonline.com"]);
+const PT_HOSTS = new Set(["roteiroonline.com", "www.roteiroonline.com", "app.roteiroonline.com"]);
 const ES_HINTS = ["latam", "es", "intl"];
 
 let currentLanguage: SupportedLanguage = "pt";

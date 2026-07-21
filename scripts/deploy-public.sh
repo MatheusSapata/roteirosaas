@@ -9,7 +9,7 @@ NGINX_WEB_ROOT="/opt/roteirosaas/frontend/dist"
 
 cd "$FRONTEND_DIR"
 npm ci
-VITE_API_URL="/api/v1" VITE_PLATFORM_HOSTS="roteiroonline.com,www.roteiroonline.com,localhost,127.0.0.1" npx vite build --mode public --outDir dist-public
+VITE_API_URL="/api/v1" VITE_PLATFORM_HOSTS="roteiroonline.com,www.roteiroonline.com,app.roteiroonline.com,localhost,127.0.0.1" npx vite build --mode public --outDir dist-public
 
 sudo mkdir -p "$PUBLIC_WEB_ROOT"
 sudo mkdir -p "$NGINX_WEB_ROOT"
