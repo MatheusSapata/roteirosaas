@@ -229,7 +229,6 @@ def connect_viajeon(
     integration.connection_status = "connected"
     if not integration.sso_email:
         integration.sso_email = (current_user.email or "").strip() or None
-    integration.sso_user_id = current_user.id
     integration.last_error = None
     integration.last_tested_at = datetime.now(timezone.utc)
     db.add(integration)
@@ -250,7 +249,6 @@ def update_viajeon_sso_email(
     if not integration or not integration.enabled:
         raise HTTPException(status_code=409, detail="Conecte a integração Viajeon antes de configurar o email.")
     integration.sso_email = str(payload.email).strip().lower()
-    integration.sso_user_id = current_user.id
     db.add(integration)
     db.commit()
     db.refresh(integration)
@@ -305,17 +303,15 @@ def create_viajeon_sso(
 
 def _reverse_sso_integration(
     db: Session,
-    email: str,
     api_token: str,
     api_secret: str,
-) -> AgencyIntegration | None:
+) -> tuple[AgencyIntegration | None, str | None]:
+    token_last4 = api_token[-4:] if len(api_token) >= 4 else api_token
     candidates = (
         db.query(AgencyIntegration)
         .filter(
             AgencyIntegration.provider == PROVIDER,
-            AgencyIntegration.enabled.is_(True),
-            AgencyIntegration.connection_status == "connected",
-            func.lower(AgencyIntegration.sso_email) == email,
+            AgencyIntegration.token_last4 == token_last4,
         )
         .all()
     )
@@ -327,8 +323,10 @@ def _reverse_sso_integration(
         token_ok = hmac.compare_digest(stored_token.encode(), api_token.encode())
         secret_ok = hmac.compare_digest(stored_secret.encode(), api_secret.encode())
         if token_ok and secret_ok:
-            return integration
-    return None
+            if not integration.enabled or integration.connection_status != "connected":
+                return None, "integration-not-connected"
+            return integration, None
+    return None, "invalid-credentials"
 
 
 @public_router.post("/sso", response_model=None)
@@ -341,13 +339,14 @@ def create_reverse_viajeon_sso(
     if not x_api_token or not x_api_secret:
         return JSONResponse(status_code=401, content={"ok": False, "error": "missing-credentials"})
     email = str(payload.email).strip().lower()
-    integration = _reverse_sso_integration(db, email, x_api_token, x_api_secret)
+    integration, validation_error = _reverse_sso_integration(db, x_api_token.strip(), x_api_secret.strip())
     if not integration:
-        return JSONResponse(status_code=401, content={"ok": False, "error": "invalid-credentials-or-email"})
-    if not integration.sso_user_id:
-        return JSONResponse(status_code=403, content={"ok": False, "error": "sso-user-not-configured"})
-    user = db.query(User).filter(User.id == integration.sso_user_id).first()
-    if not user or not user.is_active or (user.status or "active").lower() not in {"active", "pending_agency_setup"}:
+        status_code = 409 if validation_error == "integration-not-connected" else 401
+        return JSONResponse(status_code=status_code, content={"ok": False, "error": validation_error})
+    user = db.query(User).filter(func.lower(User.email) == email).first()
+    if not user:
+        return JSONResponse(status_code=404, content={"ok": False, "error": "user-not-found"})
+    if not user.is_active or (user.status or "active").lower() not in {"active", "pending_agency_setup"}:
         return JSONResponse(status_code=403, content={"ok": False, "error": "user-inactive"})
     membership = db.query(AgencyUser).filter(
         AgencyUser.agency_id == integration.agency_id,
