@@ -24,35 +24,15 @@
         ]"
       >
         <div class="flex flex-1 min-h-0 flex-col">
-          <div class="flex h-[72px] items-center justify-between gap-3 border-b border-sidebar-border px-5">
-            <img :src="mobileHeaderLogoSrc" alt="Roteiro Online" class="max-h-12 max-w-[180px] object-contain" />
-            <button
-              v-if="viajeonConnected"
-              type="button"
-              class="group relative inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-emerald-500 text-white shadow-soft transition hover:bg-emerald-600 disabled:cursor-wait disabled:opacity-60"
-              :disabled="viajeonSsoLoading"
-              aria-label="Ir para o Viajeon"
-              @click="openViajeonPanel"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                class="h-5 w-5"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M7 7h11l-3-3" />
-                <path d="m18 7-3 3" />
-                <path d="M17 17H6l3 3" />
-                <path d="m6 17 3-3" />
-              </svg>
-              <span class="pointer-events-none absolute left-1/2 top-full z-50 mt-2 hidden -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-950 px-2.5 py-1.5 text-[11px] font-semibold text-white shadow-lg group-hover:block">
-                Ir para o Viajeon
-              </span>
-            </button>
+          <div class="flex h-[72px] items-center border-b border-sidebar-border px-5">
+            <BrandSwitcher
+              v-if="viajeonLoginReady"
+              :loading="viajeonSsoLoading"
+              @select-viajeon="openViajeonPanel"
+            />
+            <RouterLink v-else to="/admin/dashboard" aria-label="Ir para o início">
+              <img :src="mobileHeaderLogoSrc" alt="Roteiro Online" class="max-h-12 max-w-[180px] object-contain" />
+            </RouterLink>
           </div>
           <nav class="sidebar-scroll flex-1 space-y-1 overflow-y-auto px-3 py-4">
             <section
@@ -222,66 +202,36 @@
           isPlansRoute ? 'bg-white text-slate-900' : ''
         ]"
       >
-        <header
-          v-if="isPlansRoute"
-          class="flex h-[64px] flex-shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 md:hidden"
-        >
-          <img :src="ColoredLogo" alt="Roteiro Online" class="h-10 w-auto max-w-[148px] object-contain" />
-          <button
-            type="button"
-            class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-soft transition-colors hover:bg-brand-dark"
-            @click="mobileMenuOpen = true"
-            :aria-label="viewCopy.sidebar.openMenu"
-            :title="viewCopy.sidebar.openMenu"
-          >
-            <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-              <path d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
-        </header>
-        <button
-          v-if="!isPlansRoute && !isInboxRoute"
-          type="button"
-          class="fixed right-4 top-4 z-30 inline-flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-card text-foreground shadow-elegant transition-colors hover:bg-accent hover:text-accent-foreground md:hidden"
-          @click="mobileMenuOpen = true"
-          :aria-label="viewCopy.sidebar.openMenu"
-          :title="viewCopy.sidebar.openMenu"
-        >
-          <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-            <path d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        </button>
+        <div class="sticky top-0 z-40 flex-shrink-0 px-3 pt-3 md:hidden">
+          <header class="flex h-16 items-center justify-between gap-3 rounded-2xl border border-border/40 bg-background/55 px-4 shadow-lg backdrop-blur-2xl">
+            <RouterLink to="/admin/dashboard" class="flex min-w-0 items-center" aria-label="Ir para o início">
+              <img :src="mobileHeaderLogoSrc" alt="Roteiro Online" class="h-9 w-auto max-w-[170px] object-contain object-left" />
+            </RouterLink>
+            <button
+              type="button"
+              class="inline-flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl text-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              @click="mobileMenuOpen = true"
+              aria-label="Abrir menu"
+              title="Abrir menu"
+            >
+              <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+          </header>
+        </div>
         <div
           :class="[
             isInboxRoute
               ? 'admin-content flex-1 min-h-0 overflow-hidden bg-inherit p-0'
               : isPlansRoute
                 ? 'admin-content flex-1 min-h-0 overflow-hidden overflow-x-hidden bg-white p-0'
-                : 'admin-content flex-1 min-h-0 overflow-y-auto overflow-x-hidden bg-background px-4 pb-6 pt-16 sm:px-6 md:py-6 lg:px-8',
+                : 'admin-content flex-1 min-h-0 overflow-y-auto overflow-x-hidden bg-background px-4 pb-6 pt-4 sm:px-6 md:py-6 lg:px-8',
             isPlansRoute
               ? 'bg-white text-slate-900'
               : 'text-foreground'
           ]"
         >
-          <div
-            v-if="isMobileViewport && isInboxRoute"
-            class="relative flex min-h-[64px] items-center justify-between border-b border-border bg-card px-4"
-          >
-            <img :src="mobileHeaderLogoSrc" alt="Roteiro Online" class="h-10 w-auto max-w-[148px] object-contain" />
-            <div>
-            <button
-              type="button"
-              class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-primary p-0 text-primary-foreground shadow-soft transition hover:bg-brand-dark"
-              @click="mobileMenuOpen = true"
-              :aria-label="viewCopy.sidebar.openMenu"
-              :title="viewCopy.sidebar.openMenu"
-            >
-              <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
-                <path d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
-            </div>
-          </div>
           <div :class="isPlansRoute ? 'flex-1 min-h-0 bg-white overflow-hidden' : 'flex-1 min-h-0 bg-background'">
             <RouterView />
           </div>
@@ -290,30 +240,29 @@
     </div>
     </template>
 
-    <transition name="fade">
+    <transition name="mobile-sidebar">
         <div
           v-if="mobileMenuOpen"
           class="fixed inset-0 z-40 flex justify-end md:hidden"
         >
         <div
-          class="flex-1"
-          :class="'bg-black/55'"
+          class="flex-1 bg-foreground/40 backdrop-blur-[1px]"
           @click="mobileMenuOpen = false"
         ></div>
         <div
           class="flex h-full w-72 max-w-[86vw] flex-col border-l border-sidebar-border bg-sidebar text-sidebar-foreground shadow-elegant transition-colors"
         >
-          <div class="relative flex h-[72px] items-center justify-start border-b border-sidebar-border px-4">
-            <img :src="mobileHeaderLogoSrc" alt="Roteiro Online" class="h-10 w-auto max-w-[160px] object-contain" />
+          <div class="relative flex items-center justify-between border-b border-sidebar-border/60 px-3 py-3.5">
+            <h2 class="font-display text-lg font-bold tracking-tight">Menu</h2>
             <button
               type="button"
-              class="absolute right-4 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+              class="inline-flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               @click="mobileMenuOpen = false"
               :aria-label="viewCopy.sidebar.closeMenu"
               :title="viewCopy.sidebar.closeMenu"
             >
               <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                <path d="M6 6l12 12M6 18 18 6" />
+                <path d="M18 6 6 18M6 6l12 12" />
               </svg>
             </button>
           </div>
@@ -857,6 +806,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue"
 import { RouterLink, RouterView, useRoute, useRouter } from "vue-router";
 import SidebarLogo from "../assets/Logo Branco - Roteiro Online.png";
 import ColoredLogo from "../assets/Logo Cor - Roteiro Online.png";
+import BrandSwitcher from "../components/shared/BrandSwitcher.vue";
 import ImageUploadField from "../components/admin/inputs/ImageUploadField.vue";
 import api, { API_PERMISSION_DENIED_EVENT } from "../services/api";
 import { getWhatsAppInboxAccess, listWhatsAppConversations } from "../services/whatsapp";
@@ -890,7 +840,9 @@ const navLeadCount = ref<number | null>(null);
 const permissionSnackbar = ref({ open: false, message: "" });
 let permissionSnackbarTimer: number | null = null;
 const viajeonConnected = ref(false);
+const viajeonSsoEmail = ref("");
 const viajeonSsoLoading = ref(false);
+const viajeonLoginReady = computed(() => viajeonConnected.value && Boolean(viajeonSsoEmail.value.trim()));
 const userDisplayName = computed(() => {
   const user = auth.user as Record<string, unknown> | null;
   if (!user) return "Usuário";
@@ -2266,8 +2218,10 @@ const loadViajeonConnection = async () => {
   try {
     const response = await api.get("/integrations/viajeon");
     viajeonConnected.value = response.data?.connected === true;
+    viajeonSsoEmail.value = String(response.data?.sso_email || "");
   } catch {
     viajeonConnected.value = false;
+    viajeonSsoEmail.value = "";
   }
 };
 
@@ -2280,18 +2234,11 @@ watch(
 
 const openViajeonPanel = async () => {
   if (viajeonSsoLoading.value) return;
-  const target = window.open("about:blank", "_blank");
-  if (target) target.opener = null;
   viajeonSsoLoading.value = true;
   try {
     const response = await api.post<{ url: string }>("/integrations/viajeon/sso");
-    if (!target) {
-      permissionSnackbar.value = { open: true, message: "Permita pop-ups para abrir o painel Viajeon." };
-      return;
-    }
-    target.location.replace(response.data.url);
+    window.location.href = response.data.url;
   } catch (err) {
-    target?.close();
     const message = (err as any)?.response?.data?.detail || "Não foi possível gerar o login agora. Tente novamente.";
     permissionSnackbar.value = { open: true, message };
     if (permissionSnackbarTimer) window.clearTimeout(permissionSnackbarTimer);
@@ -2300,6 +2247,7 @@ const openViajeonPanel = async () => {
     }, 5000);
     if ((err as any)?.response?.status === 401 || (err as any)?.response?.status === 409) {
       viajeonConnected.value = false;
+      viajeonSsoEmail.value = "";
     }
   } finally {
     viajeonSsoLoading.value = false;
@@ -2618,6 +2566,26 @@ body.admin-body-light #app {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+.mobile-sidebar-enter-active,
+.mobile-sidebar-leave-active {
+  transition: opacity 200ms ease;
+}
+
+.mobile-sidebar-enter-active > div:last-child,
+.mobile-sidebar-leave-active > div:last-child {
+  transition: transform 200ms ease;
+}
+
+.mobile-sidebar-enter-from,
+.mobile-sidebar-leave-to {
+  opacity: 0;
+}
+
+.mobile-sidebar-enter-from > div:last-child,
+.mobile-sidebar-leave-to > div:last-child {
+  transform: translateX(100%);
 }
 
 .desktop-nav-item {
