@@ -155,6 +155,16 @@ class ViajeonClient:
             raise ViajeonAPIError(502, "invalid-viajeon-session-url", response)
         return url
 
+    def create_sso_url(self, email: str) -> str:
+        response = self._request("POST", "/sso", json={"email": email})
+        url = str(response.get("url") or "").strip()
+        parsed = urlparse(url)
+        if parsed.scheme != "https" or not parsed.hostname or not parsed.path.startswith("/auth/v1/verify"):
+            raise ViajeonAPIError(502, "invalid-viajeon-sso-url", response)
+        if parsed.hostname != "app.viajeon.com" and not parsed.hostname.endswith(".supabase.co"):
+            raise ViajeonAPIError(502, "invalid-viajeon-sso-url", response)
+        return url
+
 
 def _normalize_checkout(raw: dict[str, Any]) -> dict[str, Any]:
     raw_excursion = raw.get("excursion") if isinstance(raw.get("excursion"), dict) else None

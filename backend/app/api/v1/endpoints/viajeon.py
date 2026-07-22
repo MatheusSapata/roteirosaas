@@ -2,12 +2,18 @@ from __future__ import annotations
 
 import json
 import base64
+import hashlib
+import hmac
+import secrets
 from datetime import datetime, timezone
+from datetime import timedelta
 from typing import Any
 from urllib.parse import urlencode, urlparse
 
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field, field_validator
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi.responses import JSONResponse
+from sqlalchemy import func
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_active_user, get_db
@@ -15,6 +21,8 @@ from app.models.agency_integration import AgencyIntegration
 from app.models.agency_user import AgencyUser
 from app.models.page import Page
 from app.models.user import User
+from app.models.user_session import UserSession
+from app.models.viajeon_sso_ticket import ViajeonSsoTicket
 from app.api.v1.endpoints.public_pages import _ensure_page_is_publicly_available
 from app.services.api_key_crypto import ApiKeyDecryptionError, decrypt_api_key, encrypt_api_key, extract_api_key_last4
 from app.services.viajeon import (
@@ -23,11 +31,16 @@ from app.services.viajeon import (
     clear_viajeon_checkout_cache,
     get_cached_viajeon_checkouts,
 )
+from app.services import auth as auth_service
+from app.core.config import get_settings
+from app.core.request_ip import get_client_ip
+from app.services.session_monitor import summarize_user_agent
 
 
 router = APIRouter()
 public_router = APIRouter()
 PROVIDER = "viajeon"
+settings = get_settings()
 
 
 class ViajeonCredentialsIn(BaseModel):
@@ -42,6 +55,7 @@ class ViajeonCredentialsIn(BaseModel):
             raise ValueError("Token Viajeon inválido.")
         return clean
 
+
     @field_validator("secret")
     @classmethod
     def validate_secret(cls, value: str) -> str:
@@ -49,6 +63,18 @@ class ViajeonCredentialsIn(BaseModel):
         if not clean.startswith("rvs_"):
             raise ValueError("Secret Viajeon inválido.")
         return clean
+
+
+class ViajeonSsoEmailIn(BaseModel):
+    email: EmailStr
+
+
+class ViajeonReverseSsoIn(BaseModel):
+    email: EmailStr
+
+
+class ViajeonSsoExchangeIn(BaseModel):
+    ticket: str = Field(min_length=32, max_length=255)
 
 
 class ViajeonSessionItemIn(BaseModel):
@@ -105,9 +131,15 @@ def _get_integration(db: Session, agency_id: int) -> AgencyIntegration | None:
     )
 
 
-def _status_payload(integration: AgencyIntegration | None) -> dict[str, Any]:
+def _status_payload(integration: AgencyIntegration | None, default_email: str | None = None) -> dict[str, Any]:
     if not integration:
-        return {"provider": PROVIDER, "configured": False, "connected": False, "status": "disconnected"}
+        return {
+            "provider": PROVIDER,
+            "configured": False,
+            "connected": False,
+            "status": "disconnected",
+            "sso_email": (default_email or "").strip(),
+        }
     return {
         "provider": PROVIDER,
         "configured": True,
@@ -116,6 +148,7 @@ def _status_payload(integration: AgencyIntegration | None) -> dict[str, Any]:
         "token_masked": f"rvo_••••••••{integration.token_last4 or ''}",
         "last_error": integration.last_error,
         "last_tested_at": integration.last_tested_at,
+        "sso_email": (integration.sso_email or default_email or "").strip(),
     }
 
 
@@ -150,12 +183,27 @@ def _translate_error(exc: ViajeonAPIError) -> HTTPException:
     return HTTPException(status_code=502, detail=f"Erro ao comunicar com o Viajeon: {exc.error}")
 
 
+def _translate_sso_error(exc: ViajeonAPIError) -> HTTPException:
+    messages = {
+        "invalid-email": "Informe um email válido.",
+        "missing-credentials": "As credenciais Viajeon não foram enviadas. Reconecte a integração.",
+        "invalid-credentials": "Reconecte a integração Viajeon.",
+        "sso-disabled": "Habilite 'Permitir login via token' no Viajeon.",
+        "user-not-in-agency": "Esse email não faz parte da equipe da agência conectada.",
+        "user-not-found": "Esse email não tem cadastro no Viajeon.",
+    }
+    return HTTPException(
+        status_code=exc.status_code if 400 <= exc.status_code < 500 else 502,
+        detail=messages.get(exc.error, "Não foi possível gerar o login agora. Tente novamente."),
+    )
+
+
 @router.get("/viajeon")
 def get_viajeon_status(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> dict[str, Any]:
-    return _status_payload(_get_integration(db, _agency_id_for_user(db, current_user)))
+    return _status_payload(_get_integration(db, _agency_id_for_user(db, current_user)), current_user.email)
 
 
 @router.put("/viajeon")
@@ -179,13 +227,34 @@ def connect_viajeon(
     integration.token_last4 = extract_api_key_last4(payload.token)
     integration.enabled = True
     integration.connection_status = "connected"
+    if not integration.sso_email:
+        integration.sso_email = (current_user.email or "").strip() or None
+    integration.sso_user_id = current_user.id
     integration.last_error = None
     integration.last_tested_at = datetime.now(timezone.utc)
     db.add(integration)
     db.commit()
     db.refresh(integration)
     clear_viajeon_checkout_cache(integration.id)
-    return {**_status_payload(integration), "checkout_count": len(checkouts)}
+    return {**_status_payload(integration, current_user.email), "checkout_count": len(checkouts)}
+
+
+@router.patch("/viajeon/sso-email")
+def update_viajeon_sso_email(
+    payload: ViajeonSsoEmailIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> dict[str, Any]:
+    _ensure_write_access(current_user)
+    integration = _get_integration(db, _agency_id_for_user(db, current_user))
+    if not integration or not integration.enabled:
+        raise HTTPException(status_code=409, detail="Conecte a integração Viajeon antes de configurar o email.")
+    integration.sso_email = str(payload.email).strip().lower()
+    integration.sso_user_id = current_user.id
+    db.add(integration)
+    db.commit()
+    db.refresh(integration)
+    return _status_payload(integration, current_user.email)
 
 
 @router.post("/viajeon/test")
@@ -211,6 +280,140 @@ def test_viajeon(
     db.add(integration)
     db.commit()
     return {"ok": True, "checkout_count": len(rows)}
+
+
+@router.post("/viajeon/sso")
+def create_viajeon_sso(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> dict[str, Any]:
+    integration = _get_integration(db, _agency_id_for_user(db, current_user))
+    if not integration or not integration.enabled or integration.connection_status != "connected":
+        raise HTTPException(status_code=409, detail="Conecte a integração Viajeon para abrir o painel.")
+    email = (integration.sso_email or current_user.email or "").strip()
+    if not email:
+        raise HTTPException(status_code=400, detail="Informe um email válido.")
+    token, secret = _credentials(integration)
+    try:
+        url = ViajeonClient(token, secret).create_sso_url(email)
+    except ViajeonAPIError as exc:
+        if exc.error == "invalid-credentials":
+            _mark_disconnected(db, integration, exc.error)
+        raise _translate_sso_error(exc) from exc
+    return {"ok": True, "url": url}
+
+
+def _reverse_sso_integration(
+    db: Session,
+    email: str,
+    api_token: str,
+    api_secret: str,
+) -> AgencyIntegration | None:
+    candidates = (
+        db.query(AgencyIntegration)
+        .filter(
+            AgencyIntegration.provider == PROVIDER,
+            AgencyIntegration.enabled.is_(True),
+            AgencyIntegration.connection_status == "connected",
+            func.lower(AgencyIntegration.sso_email) == email,
+        )
+        .all()
+    )
+    for integration in candidates:
+        try:
+            stored_token, stored_secret = _credentials(integration)
+        except HTTPException:
+            continue
+        token_ok = hmac.compare_digest(stored_token.encode(), api_token.encode())
+        secret_ok = hmac.compare_digest(stored_secret.encode(), api_secret.encode())
+        if token_ok and secret_ok:
+            return integration
+    return None
+
+
+@public_router.post("/sso", response_model=None)
+def create_reverse_viajeon_sso(
+    payload: ViajeonReverseSsoIn,
+    x_api_token: str | None = Header(default=None, alias="X-Api-Token"),
+    x_api_secret: str | None = Header(default=None, alias="X-Api-Secret"),
+    db: Session = Depends(get_db),
+) -> Any:
+    if not x_api_token or not x_api_secret:
+        return JSONResponse(status_code=401, content={"ok": False, "error": "missing-credentials"})
+    email = str(payload.email).strip().lower()
+    integration = _reverse_sso_integration(db, email, x_api_token, x_api_secret)
+    if not integration:
+        return JSONResponse(status_code=401, content={"ok": False, "error": "invalid-credentials-or-email"})
+    if not integration.sso_user_id:
+        return JSONResponse(status_code=403, content={"ok": False, "error": "sso-user-not-configured"})
+    user = db.query(User).filter(User.id == integration.sso_user_id).first()
+    if not user or not user.is_active or (user.status or "active").lower() not in {"active", "pending_agency_setup"}:
+        return JSONResponse(status_code=403, content={"ok": False, "error": "user-inactive"})
+    membership = db.query(AgencyUser).filter(
+        AgencyUser.agency_id == integration.agency_id,
+        AgencyUser.user_id == user.id,
+    ).first()
+    if not membership and user.primary_agency_id != integration.agency_id:
+        return JSONResponse(status_code=403, content={"ok": False, "error": "user-not-in-agency"})
+    raw_ticket = secrets.token_urlsafe(48)
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
+    db.add(ViajeonSsoTicket(
+        token_hash=hashlib.sha256(raw_ticket.encode()).hexdigest(),
+        integration_id=integration.id,
+        user_id=user.id,
+        requested_email=email,
+        expires_at=expires_at,
+    ))
+    db.commit()
+    base_url = (settings.webapp_base_url or "https://app.roteiroonline.com").rstrip("/")
+    return {
+        "ok": True,
+        "url": f"{base_url}/sso/viajeon?ticket={raw_ticket}",
+        "expires_in": 600,
+        "mode": "full",
+    }
+
+
+@public_router.post("/sso/exchange")
+def exchange_reverse_viajeon_sso(
+    payload: ViajeonSsoExchangeIn,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    ticket_hash = hashlib.sha256(payload.ticket.encode()).hexdigest()
+    ticket = db.query(ViajeonSsoTicket).filter(ViajeonSsoTicket.token_hash == ticket_hash).with_for_update().first()
+    now = datetime.now(timezone.utc)
+    if not ticket or ticket.used_at or ticket.expires_at < now:
+        raise HTTPException(status_code=401, detail={"error": "invalid-or-expired-ticket"})
+    user = db.query(User).filter(User.id == ticket.user_id, User.is_active.is_(True)).first()
+    if not user:
+        raise HTTPException(status_code=403, detail={"error": "user-inactive"})
+    agent_header = (request.headers.get("user-agent") or "").strip()
+    device_label, client_name = summarize_user_agent(agent_header)
+    session = UserSession(
+        user_id=user.id,
+        ip_address=get_client_ip(request),
+        user_agent=agent_header[:500] or None,
+        device_label=device_label,
+        client_name=client_name,
+        created_at=now,
+        last_seen_at=now,
+        expires_at=now + timedelta(minutes=settings.refresh_token_expire_minutes),
+        last_path="/sso/viajeon",
+    )
+    ticket.used_at = now
+    db.add_all([ticket, session])
+    db.commit()
+    db.refresh(session)
+    return {
+        "access_token": auth_service.create_access_token(
+            {"sub": user.email},
+            expires_delta=timedelta(minutes=settings.access_token_expire_minutes),
+            session_id=session.id,
+        ),
+        "refresh_token": auth_service.create_refresh_token(user.email, session.id),
+        "token_type": "bearer",
+    }
 
 
 @router.delete("/viajeon")

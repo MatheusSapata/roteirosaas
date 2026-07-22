@@ -14,6 +14,8 @@ class AgencyIntegration(Base):
     token_encrypted = Column(Text, nullable=False)
     secret_encrypted = Column(Text, nullable=False)
     token_last4 = Column(String(4), nullable=True)
+    sso_email = Column(String(255), nullable=True)
+    sso_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     enabled = Column(Boolean, nullable=False, default=True)
     connection_status = Column(String(30), nullable=False, default="disconnected")
     last_error = Column(String(500), nullable=True)

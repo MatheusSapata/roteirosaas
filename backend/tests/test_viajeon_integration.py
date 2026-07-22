@@ -139,3 +139,32 @@ def test_create_session_rejects_redirect_to_untrusted_domain(monkeypatch: pytest
         ViajeonClient("rvo_token", "rvs_secret").create_session(
             {"checkout_id": "checkout-1", "items": [{"package_id": "package-1", "quantity": 1}]}
         )
+
+
+def test_create_sso_posts_email_with_server_credentials(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict = {}
+
+    def fake_request(method: str, url: str, **kwargs):
+        captured.update(method=method, url=url, **kwargs)
+        return _response(200, {"ok": True, "url": "https://project.supabase.co/auth/v1/verify?token=one-time"})
+
+    monkeypatch.setattr(httpx, "request", fake_request)
+    url = ViajeonClient("rvo_token", "rvs_secret").create_sso_url("user@example.com")
+
+    assert captured["method"] == "POST"
+    assert captured["url"] == "https://app.viajeon.com/api/public/roteiro-online/sso"
+    assert captured["headers"]["X-Api-Token"] == "rvo_token"
+    assert captured["headers"]["X-Api-Secret"] == "rvs_secret"
+    assert captured["json"] == {"email": "user@example.com"}
+    assert url.startswith("https://project.supabase.co/auth/v1/verify")
+
+
+def test_create_sso_rejects_untrusted_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        httpx,
+        "request",
+        lambda *args, **kwargs: _response(200, {"ok": True, "url": "https://evil.example/auth/v1/verify?token=x"}),
+    )
+
+    with pytest.raises(ViajeonAPIError, match="invalid-viajeon-sso-url"):
+        ViajeonClient("rvo_token", "rvs_secret").create_sso_url("user@example.com")

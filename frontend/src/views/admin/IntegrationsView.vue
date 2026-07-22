@@ -49,6 +49,31 @@
             <p v-if="viajeonStatus.last_error" class="mt-2 text-xs font-semibold text-rose-500">
               {{ viajeonStatus.last_error }}
             </p>
+            <div v-if="viajeonStatus.configured" class="mt-3 flex max-w-xl flex-col gap-2 sm:flex-row sm:items-end">
+              <label class="min-w-0 flex-1 space-y-1.5">
+                <span class="block text-[11px] font-bold uppercase tracking-wide text-slate-500">Email para login no Viajeon</span>
+                <input
+                  v-model="viajeonEmail"
+                  type="email"
+                  autocomplete="email"
+                  placeholder="usuario@empresa.com"
+                  :disabled="isReadOnly || viajeonEmailSaving"
+                  class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 disabled:bg-slate-100"
+                  @keyup.enter="saveViajeonEmail"
+                />
+              </label>
+              <button
+                type="button"
+                class="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                :disabled="isReadOnly || viajeonEmailSaving || !viajeonEmail.trim()"
+                @click="saveViajeonEmail"
+              >
+                {{ viajeonEmailSaving ? "Salvando..." : "Salvar email" }}
+              </button>
+            </div>
+            <p v-if="viajeonStatus.configured" class="mt-1 text-[11px] text-slate-500">
+              Este email será usado para abrir o painel. Ele pode ser diferente do email da conta do Roteiro Online.
+            </p>
           </div>
         </div>
 
@@ -315,6 +340,7 @@ interface ViajeonStatus {
   status: string;
   token_masked?: string;
   last_error?: string | null;
+  sso_email?: string;
 }
 
 const auth = useAuthStore();
@@ -401,6 +427,8 @@ const viajeonToken = ref("");
 const viajeonSecret = ref("");
 const viajeonSaving = ref(false);
 const viajeonTesting = ref(false);
+const viajeonEmail = ref("");
+const viajeonEmailSaving = ref(false);
 
 const toastMessage = ref("");
 const toastError = ref(false);
@@ -440,9 +468,26 @@ const fetchViajeonStatus = async () => {
   try {
     const res = await api.get("/integrations/viajeon");
     viajeonStatus.value = res.data;
+    viajeonEmail.value = res.data?.sso_email || auth.user?.email || "";
   } catch (err) {
     console.error(err);
     viajeonStatus.value = { configured: false, connected: false, status: "disconnected" };
+  }
+};
+
+const saveViajeonEmail = async () => {
+  const email = viajeonEmail.value.trim();
+  if (!email || viajeonEmailSaving.value || isReadOnly.value) return;
+  viajeonEmailSaving.value = true;
+  try {
+    const res = await api.patch("/integrations/viajeon/sso-email", { email });
+    viajeonStatus.value = res.data;
+    viajeonEmail.value = res.data?.sso_email || email;
+    showToast("Email de login do Viajeon salvo.");
+  } catch (err: any) {
+    showToast(err?.response?.data?.detail || "Não foi possível salvar o email do Viajeon.", true);
+  } finally {
+    viajeonEmailSaving.value = false;
   }
 };
 
@@ -468,6 +513,7 @@ const connectViajeon = async () => {
       secret: viajeonSecret.value.trim()
     });
     viajeonStatus.value = res.data;
+    viajeonEmail.value = res.data?.sso_email || auth.user?.email || "";
     viajeonModalOpen.value = false;
     viajeonToken.value = "";
     viajeonSecret.value = "";

@@ -3,6 +3,7 @@ import LoginView from "../views/admin/LoginView.vue";
 import ForgotPasswordView from "../views/admin/ForgotPasswordView.vue";
 import ResetPasswordView from "../views/admin/ResetPasswordView.vue";
 import CreatePasswordView from "../views/admin/CreatePasswordView.vue";
+import ViajeonSsoView from "../views/admin/ViajeonSsoView.vue";
 import AcceptInviteView from "../views/public/AcceptInviteView.vue";
 import CheckoutProcessingView from "../views/public/CheckoutProcessingView.vue";
 import CustomCheckoutView from "../views/public/CustomCheckoutView.vue";
@@ -188,6 +189,7 @@ const platformRoutes: RouteRecordRaw[] = [
   { path: "/forgot-password", name: "forgot-password", component: ForgotPasswordView, meta: { guestOnly: true } },
   { path: "/reset-password", name: "reset-password", component: ResetPasswordView, meta: { guestOnly: true } },
   { path: "/create-password", name: "create-password", component: CreatePasswordView, meta: { guestOnly: true } },
+  { path: "/sso/viajeon", name: "viajeon-sso", component: ViajeonSsoView },
   { path: "/accept-invite", name: "accept-invite", component: AcceptInviteView, meta: { guestOnly: true } },
   { path: "/pedido", name: "checkout-processing", component: CheckoutProcessingView, meta: { guestOnly: true } },
   { path: "/checkout/:offerKey", name: "custom-checkout", component: CustomCheckoutView, meta: { guestOnly: true } },

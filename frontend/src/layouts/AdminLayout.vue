@@ -24,8 +24,35 @@
         ]"
       >
         <div class="flex flex-1 min-h-0 flex-col">
-          <div class="flex h-[72px] items-center border-b border-sidebar-border px-5">
+          <div class="flex h-[72px] items-center justify-between gap-3 border-b border-sidebar-border px-5">
             <img :src="mobileHeaderLogoSrc" alt="Roteiro Online" class="max-h-12 max-w-[180px] object-contain" />
+            <button
+              v-if="viajeonConnected"
+              type="button"
+              class="group relative inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-emerald-500 text-white shadow-soft transition hover:bg-emerald-600 disabled:cursor-wait disabled:opacity-60"
+              :disabled="viajeonSsoLoading"
+              aria-label="Ir para o Viajeon"
+              @click="openViajeonPanel"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                class="h-5 w-5"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M7 7h11l-3-3" />
+                <path d="m18 7-3 3" />
+                <path d="M17 17H6l3 3" />
+                <path d="m6 17 3-3" />
+              </svg>
+              <span class="pointer-events-none absolute left-1/2 top-full z-50 mt-2 hidden -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-950 px-2.5 py-1.5 text-[11px] font-semibold text-white shadow-lg group-hover:block">
+                Ir para o Viajeon
+              </span>
+            </button>
           </div>
           <nav class="sidebar-scroll flex-1 space-y-1 overflow-y-auto px-3 py-4">
             <section
@@ -862,6 +889,8 @@ const navPageCount = ref<number | null>(null);
 const navLeadCount = ref<number | null>(null);
 const permissionSnackbar = ref({ open: false, message: "" });
 let permissionSnackbarTimer: number | null = null;
+const viajeonConnected = ref(false);
+const viajeonSsoLoading = ref(false);
 const userDisplayName = computed(() => {
   const user = auth.user as Record<string, unknown> | null;
   if (!user) return "Usuário";
@@ -2233,6 +2262,50 @@ const scrollToTop = () => {
   window.scrollTo({ top: 0, behavior: "auto" });
 };
 
+const loadViajeonConnection = async () => {
+  try {
+    const response = await api.get("/integrations/viajeon");
+    viajeonConnected.value = response.data?.connected === true;
+  } catch {
+    viajeonConnected.value = false;
+  }
+};
+
+watch(
+  () => agencyStore.currentAgencyId,
+  () => {
+    if (auth.user?.id) void loadViajeonConnection();
+  }
+);
+
+const openViajeonPanel = async () => {
+  if (viajeonSsoLoading.value) return;
+  const target = window.open("about:blank", "_blank");
+  if (target) target.opener = null;
+  viajeonSsoLoading.value = true;
+  try {
+    const response = await api.post<{ url: string }>("/integrations/viajeon/sso");
+    if (!target) {
+      permissionSnackbar.value = { open: true, message: "Permita pop-ups para abrir o painel Viajeon." };
+      return;
+    }
+    target.location.replace(response.data.url);
+  } catch (err) {
+    target?.close();
+    const message = (err as any)?.response?.data?.detail || "Não foi possível gerar o login agora. Tente novamente.";
+    permissionSnackbar.value = { open: true, message };
+    if (permissionSnackbarTimer) window.clearTimeout(permissionSnackbarTimer);
+    permissionSnackbarTimer = window.setTimeout(() => {
+      permissionSnackbar.value.open = false;
+    }, 5000);
+    if ((err as any)?.response?.status === 401 || (err as any)?.response?.status === 409) {
+      viajeonConnected.value = false;
+    }
+  } finally {
+    viajeonSsoLoading.value = false;
+  }
+};
+
 onMounted(async () => {
   themeStore.activateDocumentTheme();
   window.addEventListener(API_PERMISSION_DENIED_EVENT, handlePermissionDeniedToast as EventListener);
@@ -2249,6 +2322,7 @@ onMounted(async () => {
   if (!auth.user && auth.token) {
     await auth.fetchProfile();
   }
+  await loadViajeonConnection();
   const shouldForceOnboarding = String(route.query.onboarding || "") === "1";
   if (shouldForceOnboarding) {
     openAgencySetupFlow();
