@@ -275,7 +275,25 @@ const currencyMap: Record<CurrencyCode, { locale: string; currency: CurrencyCode
   BRL: { locale: "pt-BR", currency: "BRL" },
   USD: { locale: "en-US", currency: "USD" },
   EUR: { locale: "de-DE", currency: "EUR" },
-  ARS: { locale: "es-AR", currency: "ARS" }
+  GBP: { locale: "en-GB", currency: "GBP" },
+  JPY: { locale: "ja-JP", currency: "JPY" },
+  CNY: { locale: "zh-CN", currency: "CNY" },
+  CAD: { locale: "en-CA", currency: "CAD" },
+  AUD: { locale: "en-AU", currency: "AUD" },
+  CHF: { locale: "de-CH", currency: "CHF" },
+  INR: { locale: "en-IN", currency: "INR" },
+  MXN: { locale: "es-MX", currency: "MXN" },
+  ARS: { locale: "es-AR", currency: "ARS" },
+  CLP: { locale: "es-CL", currency: "CLP" },
+  COP: { locale: "es-CO", currency: "COP" },
+  PEN: { locale: "es-PE", currency: "PEN" },
+  UYU: { locale: "es-UY", currency: "UYU" },
+  AED: { locale: "ar-AE", currency: "AED" },
+  NZD: { locale: "en-NZ", currency: "NZD" },
+  SGD: { locale: "en-SG", currency: "SGD" },
+  HKD: { locale: "zh-HK", currency: "HKD" },
+  KRW: { locale: "ko-KR", currency: "KRW" },
+  ZAR: { locale: "en-ZA", currency: "ZAR" }
 };
 const defaultCurrency = currencyMap.BRL;
 
@@ -288,7 +306,7 @@ const formatPrice = (price: number, currency?: PriceItem["currency"]) => {
       currency: config.currency
     }).format(price);
   } catch {
-    return `R$ ${price.toLocaleString("pt-BR")}`;
+    return `${config.currency} ${price.toLocaleString(config.locale)}`;
   }
 };
 

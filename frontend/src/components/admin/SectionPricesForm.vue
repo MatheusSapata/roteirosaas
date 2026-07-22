@@ -107,11 +107,19 @@
               </div>
               <div class="field">
                 <label>Valor principal <span class="help" data-tip="Valor em destaque no card.">?</span></label>
-                <input
-                  :value="priceDrafts[selectedPlanIndex] ?? formatPriceDraft(selectedPlan.price)"
-                  @input="onPriceDraftInput(selectedPlanIndex, ($event.target as HTMLInputElement).value)"
-                  placeholder="Ex: R$ 1.499,00"
-                />
+                <div class="price-input-row">
+                  <input
+                    :value="priceDrafts[selectedPlanIndex] ?? formatPriceDraft(selectedPlan.price)"
+                    @input="onPriceDraftInput(selectedPlanIndex, ($event.target as HTMLInputElement).value)"
+                    placeholder="Ex: 1.499,00"
+                    inputmode="decimal"
+                  />
+                  <select v-model="selectedPlan.currency" aria-label="Moeda do valor">
+                    <option v-for="currency in currencyOptions" :key="currency.code" :value="currency.code">
+                      {{ currency.code }} — {{ currency.label }}
+                    </option>
+                  </select>
+                </div>
               </div>
               <div class="field">
                 <label>Condição abaixo do valor <span class="help" data-tip="Texto exibido abaixo do preço.">?</span></label>
@@ -159,6 +167,31 @@ let plansSortable: Sortable | null = null;
 
 const headingDefaults = getSectionHeadingDefaults("prices");
 const priceDrafts = ref<string[]>([]);
+
+const currencyOptions: Array<{ code: CurrencyCode; label: string }> = [
+  { code: "BRL", label: "Real brasileiro" },
+  { code: "USD", label: "Dólar americano" },
+  { code: "EUR", label: "Euro" },
+  { code: "GBP", label: "Libra esterlina" },
+  { code: "JPY", label: "Iene japonês" },
+  { code: "CNY", label: "Yuan chinês" },
+  { code: "CAD", label: "Dólar canadense" },
+  { code: "AUD", label: "Dólar australiano" },
+  { code: "CHF", label: "Franco suíço" },
+  { code: "INR", label: "Rupia indiana" },
+  { code: "MXN", label: "Peso mexicano" },
+  { code: "ARS", label: "Peso argentino" },
+  { code: "CLP", label: "Peso chileno" },
+  { code: "COP", label: "Peso colombiano" },
+  { code: "PEN", label: "Sol peruano" },
+  { code: "UYU", label: "Peso uruguaio" },
+  { code: "AED", label: "Dirham dos Emirados" },
+  { code: "NZD", label: "Dólar neozelandês" },
+  { code: "SGD", label: "Dólar de Singapura" },
+  { code: "HKD", label: "Dólar de Hong Kong" },
+  { code: "KRW", label: "Won sul-coreano" },
+  { code: "ZAR", label: "Rand sul-africano" }
+];
 
 const normalizeLink = (value?: string | null) => {
   if (!value) return "";

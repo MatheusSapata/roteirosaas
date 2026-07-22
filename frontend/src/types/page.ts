@@ -100,7 +100,29 @@ export interface BiographySection extends SectionBase {
   textFontSize?: number;
 }
 
-export type CurrencyCode = "BRL" | "USD" | "EUR" | "ARS";
+export type CurrencyCode =
+  | "BRL"
+  | "USD"
+  | "EUR"
+  | "GBP"
+  | "JPY"
+  | "CNY"
+  | "CAD"
+  | "AUD"
+  | "CHF"
+  | "INR"
+  | "MXN"
+  | "ARS"
+  | "CLP"
+  | "COP"
+  | "PEN"
+  | "UYU"
+  | "AED"
+  | "NZD"
+  | "SGD"
+  | "HKD"
+  | "KRW"
+  | "ZAR";
 
 export interface PriceItem {
   title: LocalizedString;
