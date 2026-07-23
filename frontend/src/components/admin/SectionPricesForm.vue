@@ -59,7 +59,7 @@
             <div ref="planTabsRef" class="segment-tabs">
               <button
                 v-for="(item, index) in local.items"
-                :key="`price-tab-${index}`"
+                :key="getPlanKey(item)"
                 type="button"
                 data-plan-chip
                 class="segment-tab"
@@ -164,6 +164,16 @@ const activePanel = ref<"texts" | "plans">("texts");
 const selectedPlanIndex = ref(0);
 const planTabsRef = ref<HTMLElement | null>(null);
 let plansSortable: Sortable | null = null;
+const planKeys = new WeakMap<object, number>();
+let nextPlanKey = 0;
+
+const getPlanKey = (item: PriceItem) => {
+  const existingKey = planKeys.get(item);
+  if (existingKey !== undefined) return existingKey;
+  const key = nextPlanKey++;
+  planKeys.set(item, key);
+  return key;
+};
 
 const headingDefaults = getSectionHeadingDefaults("prices");
 const priceDrafts = ref<string[]>([]);
@@ -256,6 +266,8 @@ const handleDragEnd = (event: SortableEvent) => {
   const moved = local.items.splice(from, 1)[0];
   if (!moved) return;
   local.items.splice(to, 0, moved);
+  const movedDraft = priceDrafts.value.splice(from, 1)[0];
+  priceDrafts.value.splice(to, 0, movedDraft ?? formatPriceDraft(moved.price));
   if (selectedPlanIndex.value === from) selectedPlanIndex.value = to;
   else if (selectedPlanIndex.value > from && selectedPlanIndex.value <= to) selectedPlanIndex.value -= 1;
   else if (selectedPlanIndex.value < from && selectedPlanIndex.value >= to) selectedPlanIndex.value += 1;
@@ -414,6 +426,8 @@ textarea { resize: vertical; }
 .segment-tab { border: 1px solid #cad7d1; border-radius: 999px; padding: 5px 9px; background: #fff; color: #0f172a; font-size: 11px; display: inline-flex; align-items: center; gap: 6px; }
 .segment-tab.active { border-color: #34c759; background: #ecfdf2; }
 .segment-handle { color: #94a3b8; font-size: 12px; line-height: 1; }
+.segment-handle { cursor: grab; touch-action: none; user-select: none; }
+.sortable-chosen .segment-handle { cursor: grabbing; }
 .segment-name { font-weight: 700; line-height: 1.1; }
 .segment-remove { width: 16px; height: 16px; border-radius: 999px; border: 1px solid #d6dde8; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; color: #64748b; }
 .segment-actions { display: flex; flex-shrink: 0; }
