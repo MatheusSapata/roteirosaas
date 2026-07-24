@@ -959,9 +959,15 @@ onBeforeUnmount(() => {
 .unsaved-modal > p:not(.modal-eyebrow){color:var(--muted-foreground)}
 .modal-eyebrow{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-foreground)}
 
-:deep(.agency-logo-upload .max-h-\[320px\]){max-height:190px !important;min-height:150px !important}
-:deep(.agency-logo-upload .min-h-\[220px\]){min-height:150px !important}
-:deep(.agency-logo-upload img){max-height:150px !important;object-fit:contain}
+:deep(.agency-logo-upload .max-h-\[320px\]){height:190px !important;max-height:190px !important;min-height:190px !important}
+:deep(.agency-logo-upload .image-upload-preview){
+  width:100% !important;
+  height:100% !important;
+  min-height:0 !important;
+  max-height:none !important;
+  object-fit:contain !important;
+  object-position:center !important;
+}
 
 @media(max-width:900px){.page-wrap{padding:20px 16px 40px;max-width:none}.page-topbar{flex-direction:column;align-items:flex-start}}
 @media(max-width:768px){.card-row{grid-template-columns:1fr}}

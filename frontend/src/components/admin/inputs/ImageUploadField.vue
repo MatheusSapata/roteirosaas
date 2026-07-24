@@ -106,12 +106,12 @@
             </button>
           </div>
           <div class="mt-6 grid gap-6 md:grid-cols-[minmax(0,1fr)_220px]">
-            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+            <div class="cropper-stage rounded-2xl border border-slate-200 bg-slate-50 p-3">
               <img
                 ref="cropperImage"
                 :src="cropperModal.src"
                 alt="Editor"
-                class="max-h-[420px] w-full rounded-xl bg-white object-contain"
+                class="cropper-target block max-h-[420px] w-full rounded-xl bg-white object-contain"
               />
             </div>
             <div class="space-y-4">
@@ -503,9 +503,13 @@ watch(
         const options: Cropper.Options = {
           viewMode: 1,
           background: false,
-          autoCropArea: 0.85,
+          // Start with the largest possible centered crop. The previous
+          // custom crop box removed part of the image before any interaction.
+          autoCropArea: 1,
           autoCrop: true,
           dragMode: "move",
+          responsive: true,
+          restore: false,
           movable: true,
           cropBoxMovable: true,
           cropBoxResizable: true,
@@ -514,27 +518,7 @@ watch(
           checkCrossOrigin: false,
           checkOrientation: false,
           ready() {
-            const cropper = cropperInstance.value;
-            if (!cropper) return;
-            cropper.crop();
-            const ratio = aspectRatio.value;
-            const canvas = cropper.getCanvasData();
-            const targetArea = 0.9;
-            let width = canvas.width * targetArea;
-            let height = canvas.height * targetArea;
-            if (!Number.isNaN(ratio) && ratio > 0) {
-              if (width / height > ratio) {
-                width = height * ratio;
-              } else {
-                height = width / ratio;
-              }
-            }
-            cropper.setCropBoxData({
-              left: canvas.left + (canvas.width - width) / 2,
-              top: canvas.top + (canvas.height - height) / 2,
-              width,
-              height
-            });
+            cropperInstance.value?.crop();
           }
         };
         if (!Number.isNaN(aspectRatio.value)) {
@@ -670,6 +654,18 @@ defineExpose({
   background: var(--card);
   color: var(--card-foreground);
   box-shadow: var(--shadow-elegant);
+}
+
+.cropper-stage {
+  display: flex;
+  min-height: 310px;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.cropper-stage :deep(.cropper-container) {
+  margin: auto;
 }
 
 .image-editor-modal :deep(.border-slate-200),
