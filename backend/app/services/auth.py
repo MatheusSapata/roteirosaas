@@ -15,6 +15,10 @@ settings = get_settings()
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
+    if hashed_password.startswith(("$2a$", "$2b$", "$2y$")):
+        import bcrypt
+
+        return bcrypt.checkpw(plain_password.encode(), hashed_password.encode())
     return pwd_context.verify(plain_password, hashed_password)
 
 

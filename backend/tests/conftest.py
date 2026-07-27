@@ -5,6 +5,13 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.dialects.postgresql import JSONB
+
+
+@compiles(JSONB, "sqlite")
+def compile_jsonb_as_json(_type, _compiler, **_kwargs):
+    return "JSON"
 
 # Ensure deterministic settings for the test environment
 os.environ.setdefault("ENV", "test")

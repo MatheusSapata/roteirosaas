@@ -39,5 +39,6 @@ from app.models import (
     webhook_notification,
     agency_integration,
     viajeon_sso_ticket,
+    viajeon_webhook_event,
 )  # noqa: E402,F401
 

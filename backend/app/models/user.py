@@ -43,6 +43,8 @@ class User(Base):
     is_owner = Column(Boolean, nullable=True, default=None)
     role = Column(String(50), nullable=True, default=None)
     status = Column(String(50), nullable=True, default=None)
+    source = Column(String(50), nullable=True)
+    must_change_password = Column(Boolean, nullable=False, default=False)
     permissions = Column(JSONB, nullable=True)
     crm_view_preferences = Column(JSONB, nullable=True)
 

@@ -33,4 +33,5 @@ from .whatsapp import WhatsAppConnection, WhatsAppConversation, WhatsAppMessage,
 from .checkout import CheckoutSettings, CheckoutSession
 from .webhook_notification import WebhookNotificationRule
 from .agency_integration import AgencyIntegration
+from .viajeon_webhook_event import ViajeonWebhookEvent
 
