@@ -4,13 +4,13 @@ import hashlib
 import hmac
 import json
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Literal
 
 import bcrypt
 from fastapi import APIRouter, Depends, Header, Request
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, ValidationError, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, ValidationError, field_validator, model_validator
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -76,17 +76,48 @@ class ViajeonOrder(BaseModel):
     paid_at: datetime
 
 
+class ViajeonSubscriptionPeriod(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    billing_cycle: Literal["monthly", "annual"]
+    period_days: Literal[30, 365]
+    starts_at: datetime
+    expires_at: datetime
+
+    @model_validator(mode="after")
+    def validate_period(self) -> "ViajeonSubscriptionPeriod":
+        expected_days = 30 if self.billing_cycle == "monthly" else 365
+        if self.period_days != expected_days:
+            raise ValueError(f"period_days must be {expected_days} for {self.billing_cycle}")
+        if self.starts_at.tzinfo is None or self.expires_at.tzinfo is None:
+            raise ValueError("starts_at and expires_at must include a UTC timezone")
+        if self.starts_at.utcoffset() != timedelta(0) or self.expires_at.utcoffset() != timedelta(0):
+            raise ValueError("starts_at and expires_at must be UTC")
+        if self.expires_at <= self.starts_at:
+            raise ValueError("expires_at must be after starts_at")
+        if self.expires_at - self.starts_at != timedelta(days=self.period_days):
+            raise ValueError("starts_at and expires_at must match period_days")
+        return self
+
+
 class ViajeonProvisionPayload(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     event: Literal["subscription.paid"]
     event_id: str = Field(min_length=1, max_length=255)
     sent_at: datetime
-    environment: Literal["production", "sandbox"]
+    environment: Literal["production"]
     plan: Literal["profissional", "agencia", "escala"]
     billing_cycle: Literal["monthly", "annual"]
+    subscription: ViajeonSubscriptionPeriod | None = None
     account: ViajeonAccount
     order: ViajeonOrder
+
+    @model_validator(mode="after")
+    def validate_subscription_cycle(self) -> "ViajeonProvisionPayload":
+        if self.subscription and self.subscription.billing_cycle != self.billing_cycle:
+            raise ValueError("subscription.billing_cycle must match billing_cycle")
+        return self
 
 
 def _error(status_code: int, error: str, **extra: Any) -> JSONResponse:
@@ -267,6 +298,11 @@ async def provision_viajeon_account(
     subscription.plan = internal_plan
     subscription.provider = "viajeon"
     subscription.billing_cycle = payload.billing_cycle
+    subscription.valid_until = (
+        payload.subscription.expires_at
+        if payload.subscription
+        else payload.order.paid_at + timedelta(days=30 if payload.billing_cycle == "monthly" else 365)
+    )
     subscription.status = "active"
     subscription.external_reference = payload.order.id
     subscription.mrr_amount = payload.order.amount

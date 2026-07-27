@@ -2,6 +2,7 @@ import hashlib
 import hmac
 import json
 import time
+from datetime import datetime, timezone
 
 from app.api.v1.endpoints import viajeon_provision
 from app.models.agency import Agency
@@ -21,7 +22,7 @@ def _payload(**overrides):
         "event": "subscription.paid",
         "event_id": "evt_test_1",
         "sent_at": "2026-07-27T14:32:11.412Z",
-        "environment": "sandbox",
+        "environment": "production",
         "plan": "profissional",
         "billing_cycle": "monthly",
         "account": {
@@ -107,6 +108,9 @@ def test_creates_account_agency_subscription_and_idempotency_event(client, db_se
     assert agency.name == "Agência Exemplo Viagens"
     assert subscription.plan == "essencial"
     assert subscription.provider == "viajeon"
+    assert subscription.valid_until.replace(tzinfo=timezone.utc) == datetime(
+        2026, 8, 26, 14, 31, 58, tzinfo=timezone.utc
+    )
     assert event.status == "processed"
 
     duplicate = _post(client, _payload())
@@ -134,6 +138,62 @@ def test_existing_user_is_updated_without_password_overwrite(client, db_session)
     assert user.hashed_password == original_hash
     assert user.plan == "infinity"
     assert user.subscription.plan == "infinity"
+
+
+def test_annual_subscription_uses_explicit_expiration_and_duplicate_keeps_it(client, db_session):
+    payload = _payload(
+        event_id="evt_annual",
+        billing_cycle="annual",
+        subscription={
+            "billing_cycle": "annual",
+            "period_days": 365,
+            "starts_at": "2026-07-27T14:31:58.000Z",
+            "expires_at": "2027-07-27T14:31:58.000Z",
+        },
+    )
+    response = _post(client, payload)
+    assert response.status_code == 200
+    subscription = db_session.query(Subscription).one()
+    expected = datetime(2027, 7, 27, 14, 31, 58, tzinfo=timezone.utc)
+    assert subscription.valid_until.replace(tzinfo=timezone.utc) == expected
+
+    duplicate_payload = dict(payload)
+    duplicate_payload["subscription"] = {
+        **payload["subscription"],
+        "expires_at": "2030-07-27T14:31:58.000Z",
+    }
+    duplicate = _post(client, duplicate_payload)
+    assert duplicate.status_code == 200
+    assert duplicate.json() == {"status": "duplicate"}
+    db_session.refresh(subscription)
+    assert subscription.valid_until.replace(tzinfo=timezone.utc) == expected
+
+
+def test_legacy_annual_payload_falls_back_to_365_days(client, db_session):
+    response = _post(client, _payload(event_id="evt_legacy_annual", billing_cycle="annual"))
+    assert response.status_code == 200
+    subscription = db_session.query(Subscription).one()
+    assert subscription.valid_until.replace(tzinfo=timezone.utc) == datetime(
+        2027, 7, 27, 14, 31, 58, tzinfo=timezone.utc
+    )
+
+
+def test_subscription_cycle_must_match_top_level(client):
+    response = _post(
+        client,
+        _payload(
+            event_id="evt_bad_cycle",
+            billing_cycle="monthly",
+            subscription={
+                "billing_cycle": "annual",
+                "period_days": 365,
+                "starts_at": "2026-07-27T14:31:58.000Z",
+                "expires_at": "2027-07-27T14:31:58.000Z",
+            },
+        ),
+    )
+    assert response.status_code == 422
+    assert response.json()["error"] == "invalid-payload"
 
 
 def test_invalid_plan_returns_contract_422(client):
