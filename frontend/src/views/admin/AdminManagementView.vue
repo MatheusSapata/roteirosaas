@@ -379,6 +379,14 @@
             <h2 class="text-lg font-semibold text-slate-900">Usuarios</h2>
             <p class="text-sm text-slate-500">Plano, validade e data de entrada.</p>
           </div>
+          <button
+            type="button"
+            class="inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white shadow transition hover:bg-slate-800"
+            @click="openCreateUserDialog"
+          >
+            <span class="text-lg leading-none">+</span>
+            Criar usuário
+          </button>
         </div>
 
         <div class="mt-4 overflow-x-auto">
@@ -1900,6 +1908,59 @@
     </div>
   </transition>
  
+  <!-- CREATE USER MODAL -->
+  <transition name="fade">
+    <div
+      v-if="createUserDialog.open"
+      class="app-modal-overlay fixed inset-0 z-50 flex items-center justify-center overflow-y-auto px-4 py-8"
+      @click.self="closeCreateUserDialog"
+    >
+      <form class="w-full max-w-2xl rounded-3xl bg-white p-8 shadow-2xl" @submit.prevent="submitCreateUser">
+        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-500">Novo acesso</p>
+        <h2 class="mt-3 text-2xl font-bold text-slate-900">Criar usuário</h2>
+        <p class="mt-2 text-sm text-slate-600">A conta será criada ativa, com agência própria e assinatura pronta para uso.</p>
+
+        <div class="mt-6 grid gap-4 sm:grid-cols-2">
+          <label class="text-sm font-semibold text-slate-700 sm:col-span-2">
+            Nome completo
+            <input v-model="createUserDialog.name" required minlength="2" type="text" autocomplete="off" class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2.5 font-normal outline-none focus:border-emerald-500" />
+          </label>
+          <label class="text-sm font-semibold text-slate-700">
+            E-mail
+            <input v-model="createUserDialog.email" required type="email" autocomplete="off" class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2.5 font-normal outline-none focus:border-emerald-500" />
+          </label>
+          <label class="text-sm font-semibold text-slate-700">
+            WhatsApp
+            <input v-model="createUserDialog.whatsapp" type="tel" autocomplete="off" placeholder="(00) 00000-0000" class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2.5 font-normal outline-none focus:border-emerald-500" />
+          </label>
+          <label class="text-sm font-semibold text-slate-700">
+            Plano
+            <select v-model="createUserDialog.plan" required class="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 font-normal outline-none focus:border-emerald-500">
+              <option v-for="option in adminPlanOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+            </select>
+          </label>
+          <label class="text-sm font-semibold text-slate-700">
+            Validade da assinatura
+            <input v-model="createUserDialog.validUntil" required :min="todayDateInput" type="date" class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2.5 font-normal outline-none focus:border-emerald-500" />
+          </label>
+          <label class="text-sm font-semibold text-slate-700 sm:col-span-2">
+            Senha inicial
+            <input v-model="createUserDialog.password" required minlength="8" type="password" autocomplete="new-password" class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2.5 font-normal outline-none focus:border-emerald-500" />
+            <span class="mt-1 block text-xs font-normal text-slate-500">Mínimo de 8 caracteres, com letra maiúscula, minúscula e número.</span>
+          </label>
+        </div>
+
+        <p v-if="createUserDialog.error" class="mt-4 rounded-2xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-600">{{ createUserDialog.error }}</p>
+        <div class="mt-6 flex justify-end gap-3">
+          <button type="button" class="rounded-full border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60" :disabled="createUserDialog.saving" @click="closeCreateUserDialog">Cancelar</button>
+          <button type="submit" class="rounded-full bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60" :disabled="createUserDialog.saving">
+            {{ createUserDialog.saving ? "Criando..." : "Criar usuário" }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </transition>
+
   <!-- TRIAL MODAL -->
   <transition name="fade">
     <div
@@ -2586,6 +2647,18 @@ const granting = ref<number | null>(null);
 const adminAsaasActionLoadingUserId = ref<number | null>(null);
 const snackbar = ref<{ open: boolean; text: string } | null>(null);
 const trialDialog = ref<{ open: boolean; user: any | null }>({ open: false, user: null });
+const todayDateInput = new Date().toLocaleDateString("en-CA");
+const createUserDialog = reactive({
+  open: false,
+  name: "",
+  email: "",
+  whatsapp: "",
+  password: "",
+  plan: "essencial",
+  validUntil: "",
+  saving: false,
+  error: ""
+});
 const deleteDialog = ref<{
   open: boolean;
   user: Metrics["users"][number] | null;
@@ -4025,6 +4098,49 @@ const exportPdf = () => {
   });
 
   doc.save(`relatorio-admin-${new Date().toISOString().slice(0, 10)}.pdf`);
+};
+
+const openCreateUserDialog = () => {
+  Object.assign(createUserDialog, {
+    open: true,
+    name: "",
+    email: "",
+    whatsapp: "",
+    password: "",
+    plan: "essencial",
+    validUntil: "",
+    saving: false,
+    error: ""
+  });
+};
+
+const closeCreateUserDialog = () => {
+  if (createUserDialog.saving) return;
+  createUserDialog.open = false;
+  createUserDialog.error = "";
+};
+
+const submitCreateUser = async () => {
+  createUserDialog.saving = true;
+  createUserDialog.error = "";
+  try {
+    await api.post("/admin/users", {
+      name: createUserDialog.name.trim(),
+      email: createUserDialog.email.trim().toLowerCase(),
+      whatsapp: createUserDialog.whatsapp.trim() || null,
+      password: createUserDialog.password,
+      plan: createUserDialog.plan,
+      valid_until: createUserDialog.validUntil
+    });
+    createUserDialog.open = false;
+    showSnackbar("Usuário criado com sucesso.");
+    await loadMetrics();
+  } catch (err: any) {
+    console.error(err);
+    createUserDialog.error = err?.response?.data?.detail || "Não foi possível criar o usuário.";
+  } finally {
+    createUserDialog.saving = false;
+  }
 };
 
 const openTrialDialog = (user: Metrics["users"][number]) => {

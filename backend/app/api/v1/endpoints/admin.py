@@ -10,7 +10,7 @@ from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, aliased
 
@@ -51,7 +51,7 @@ from app.services.cakto import CaktoAPIError, CaktoIntegrationService
 from app.services.asaas import AsaasAPIError, AsaasClient
 from app.services.checkout import find_pix_automatic_authorization_id
 from app.services import auth as auth_service
-from app.services.team import get_agency_plan
+from app.services.team import ensure_legacy_owner_context, get_agency_plan
 from app.services.ntfy import (
     NtfyService,
     NtfyServiceError,
@@ -134,6 +134,15 @@ class AdminSubscriptionUpdateRequest(BaseModel):
     plan: Optional[str] = None
     status: Optional[str] = None
     valid_until: Optional[str] = None
+
+
+class AdminUserCreateRequest(BaseModel):
+    name: str = Field(min_length=2, max_length=255)
+    email: EmailStr
+    whatsapp: Optional[str] = Field(default=None, max_length=20)
+    password: str = Field(min_length=8)
+    plan: str
+    valid_until: str
 
 
 class PushTestResponse(BaseModel):
@@ -1183,6 +1192,75 @@ def grant_trial(
     start_trial(user, payload.plan, payload.days)
     db.add(user)
     db.commit()
+    db.refresh(user)
+    return user
+
+
+@router.post("/users", response_model=AdminUserOut, status_code=status.HTTP_201_CREATED)
+def create_user_admin(
+    payload: AdminUserCreateRequest,
+    _: User = Depends(get_current_superuser),
+    db: Session = Depends(get_db),
+) -> AdminUserOut:
+    normalized_email = str(payload.email).strip().lower()
+    if db.query(User).filter(func.lower(User.email) == normalized_email).first():
+        raise HTTPException(status_code=400, detail="E-mail já cadastrado.")
+
+    name = payload.name.strip()
+    if len(name) < 2:
+        raise HTTPException(status_code=400, detail="Informe o nome do usuário.")
+
+    plan = payload.plan.strip().lower()
+    if plan not in ADMIN_PLAN_OPTIONS:
+        raise HTTPException(status_code=400, detail="Plano inválido.")
+
+    try:
+        valid_until = _parse_admin_valid_until(payload.valid_until)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Validade inválida.") from exc
+    if valid_until.date() < datetime.now().date():
+        raise HTTPException(status_code=400, detail="A validade não pode estar no passado.")
+
+    try:
+        auth_service.validate_password_strength(payload.password)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    whatsapp = "".join(filter(str.isdigit, payload.whatsapp or "")) or None
+    user = User(
+        name=name,
+        email=normalized_email,
+        whatsapp=whatsapp,
+        hashed_password=auth_service.get_password_hash(payload.password),
+        plan=plan,
+        is_active=True,
+        is_superuser=False,
+        is_owner=True,
+        role="admin",
+        status="active",
+        permissions=[],
+        source="admin_master",
+        must_change_password=False,
+    )
+    db.add(user)
+    db.flush()
+
+    subscription = Subscription(
+        user_id=user.id,
+        plan=plan,
+        provider="manual",
+        status="active",
+        valid_until=valid_until,
+        billing_cycle="monthly",
+    )
+    db.add(subscription)
+    db.flush()
+    user.subscription_id = subscription.id
+    db.add(user)
+
+    # Também cria a agência principal e o vínculo de proprietário necessários
+    # para que a conta esteja pronta para uso no primeiro login.
+    ensure_legacy_owner_context(db, user)
     db.refresh(user)
     return user
 
