@@ -464,17 +464,20 @@ Em seguida, cada bloco deve seguir este formato:
 
 Use somente estes nomes de seção:
 
-- BANNER INICIAL
-- BANNER DESTACADO
-- SESSÃO DESCRITIVA
-- ITINERÁRIO
+- BANNER
+- BANNER EM CARD
+- FOTO DESTACADA
+- BIOGRAFIA
 - PREÇOS
+- ITINERÁRIO
 - PERGUNTAS FREQUENTES
 - DEPOIMENTOS
-- VÍDEO
-- BIOGRAFIA
+- VÍDEO EM DESTAQUE
 - CHAMADA PARA AÇÃO
-- CONTAGEM REGRESSIVA
+- DESCRITIVO
+- ITENS
+- CONTADOR
+- DETALHES DO VOO
 
 Nunca crie nomes como:
 
@@ -487,7 +490,9 @@ Nunca crie nomes como:
 - Chamada rápida
 - Por que viajar com a agência
 
-Esses temas devem ser desenvolvidos usando SESSÃO DESCRITIVA ou a seção correta existente.
+Esses temas devem ser desenvolvidos usando DESCRITIVO, ITENS ou a seção correta existente.
+
+Nunca sugira nem gere `CHECKOUT VIAJEON`. O rodapé da agência é adicionado automaticamente pela plataforma e não deve ser gerado pela IA.
 
 Se a resposta usar qualquer nome de seção fora da lista permitida, ela está incorreta.
 

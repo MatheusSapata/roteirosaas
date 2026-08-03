@@ -5,6 +5,7 @@ from functools import lru_cache
 import base64
 from copy import deepcopy
 from datetime import datetime, timedelta
+import logging
 import re
 import unicodedata
 from pathlib import Path
@@ -17,40 +18,33 @@ from app.core.config import get_settings
 from app.services.construtor_prompt import get_active_prompt_text
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
 BASE_PROMPT_PATH = Path(__file__).resolve().parents[3] / "docs" / "construtor-prompt.md"
 EXAMPLES_DIR = BASE_PROMPT_PATH.parent / "prompts" / "examples"
-ALLOWED_SECTION_NAMES = {
-    "BANNER INICIAL",
-    "BANNER DESTACADO",
-    "SESSAO DESCRITIVA",
-    "ITINERARIO",
-    "PRECOS",
-    "PERGUNTAS FREQUENTES",
-    "DEPOIMENTOS",
-    "VIDEO",
-    "BIOGRAFIA",
-    "CHAMADA PARA ACAO",
-    "CONTAGEM REGRESSIVA",
+SECTION_COMPONENT_TYPES = {
+    "BANNER": "hero",
+    "BANNER EM CARD": "banner_card",
+    "FOTO DESTACADA": "photo",
+    "BIOGRAFIA": "biography",
+    "PRECOS": "prices",
+    "ITINERARIO": "itinerary",
+    "PERGUNTAS FREQUENTES": "faq",
+    "DEPOIMENTOS": "testimonials",
+    "VIDEO EM DESTAQUE": "featured_video",
+    "CHAMADA PARA ACAO": "cta",
+    "DESCRITIVO": "story",
+    "ITENS": "reasons",
+    "CONTADOR": "countdown",
+    "DETALHES DO VOO": "flight_details",
 }
-SECTION_NAME_OPTIONS = (
-    "BANNER INICIAL",
-    "BANNER DESTACADO",
-    "SESSAO DESCRITIVA",
-    "ITINERARIO",
-    "PRECOS",
-    "PERGUNTAS FREQUENTES",
-    "DEPOIMENTOS",
-    "VIDEO",
-    "BIOGRAFIA",
-    "CHAMADA PARA ACAO",
-    "CONTAGEM REGRESSIVA",
-)
+ALLOWED_SECTION_NAMES = frozenset(SECTION_COMPONENT_TYPES)
+FORBIDDEN_SECTION_NAMES = frozenset({"CHECKOUT VIAJEON"})
 SECTION_NAME_ALIASES = {
-    "ROTEIRO DIA A DIA": "ITINERARIO",
-    "DIA A DIA": "ITINERARIO",
-    "PROGRAMACAO DIA A DIA": "ITINERARIO",
-    "PROGRAMACAO": "ITINERARIO",
-    "ITINERARIO": "ITINERARIO",
+    "BANNER INICIAL": "BANNER",
+    "BANNER DESTACADO": "BANNER EM CARD",
+    "SESSAO DESCRITIVA": "DESCRITIVO",
+    "CONTAGEM REGRESSIVA": "CONTADOR",
+    "VIDEO": "VIDEO EM DESTAQUE",
 }
 MODEL_PRICING_USD = {
     "gpt-4": {"input": 30.0, "cached_input": 0.0, "output": 60.0},
@@ -89,6 +83,10 @@ FIELD_ALIASES = {
     "LINK": "link",
     "TEXTO": "text",
     "CARGO": "role",
+    "DESCRICAO": "description",
+    "ICONE": "icon",
+    "BOTAO CTA": "button",
+    "INFORMACOES GERAIS": "general_info",
 }
 REQUIRED_HEADER = "ESTRUTURA SUGERIDA PARA A P\u00c1GINA"
 SECTION_LINE_RE = re.compile(r"^\s*(?:.*?SE\u00c7\u00c3O:\s*)?(.+?)\s*$", re.IGNORECASE | re.MULTILINE)
@@ -107,17 +105,20 @@ REGRA CRÍTICA DE SAÍDA
 
 A resposta deve usar SOMENTE estes nomes de seção:
 
-BANNER INICIAL
-BANNER DESTACADO
-SESSÃO DESCRITIVA
+BANNER
+BANNER EM CARD
+FOTO DESTACADA
+DESCRITIVO
 ITINERÁRIO
 PREÇOS
 PERGUNTAS FREQUENTES
 DEPOIMENTOS
-VÍDEO
+VÍDEO EM DESTAQUE
 BIOGRAFIA
 CHAMADA PARA AÇÃO
-CONTAGEM REGRESSIVA
+ITENS
+CONTADOR
+DETALHES DO VOO
 
 Nunca crie nomes como:
 O que está incluso
@@ -129,14 +130,16 @@ Investimento e condições
 Chamada rápida
 Por que viajar com a agência
 
-Esses temas devem ser desenvolvidos usando SESSÃO DESCRITIVA ou a seção correta existente.
+Esses temas devem ser desenvolvidos usando DESCRITIVO, ITENS ou a seção correta existente.
+
+Nunca sugira nem gere CHECKOUT VIAJEON. O rodapé da agência é adicionado automaticamente pela plataforma.
 
 Se a resposta usar qualquer nome de seção fora da lista permitida, ela está incorreta.
 
 Regras finais de precisão:
 - Use os nomes de seção exatamente como estão escritos acima.
 - Nunca crie variações, apelidos, traduções ou complementos no nome da seção.
-- Quando o conteúdo for de roteiro dia a dia, use sempre ITINERARIO como nome da seção.
+- Quando o conteúdo for de roteiro dia a dia, use sempre ITINERÁRIO como nome da seção.
 - Nunca use títulos como ROTEIRO DIA A DIA, PROGRAMAÇÃO DIA A DIA, DIA A DIA ou qualquer variação semelhante como nome de seção.
 """
 
@@ -215,26 +218,36 @@ def _validate_ai_reply_format(reply: str) -> tuple[bool, str]:
     if not normalized_reply:
         return False, "A resposta veio vazia."
 
-    first_non_empty_line = next((line.strip() for line in normalized_reply.splitlines() if line.strip()), "")
-    if _normalize_text(_strip_markdown_emphasis(first_non_empty_line)) != _normalize_text(REQUIRED_HEADER):
-        return False, f"A resposta deve começar com '{REQUIRED_HEADER}'."
-
-    section_names = []
+    total_sections = 0
+    valid_sections = 0
     for line in normalized_reply.splitlines():
         match = SECTION_HEADER_RE.match(line)
         if not match:
             continue
-        section_name = match.group(1).strip()
-        if section_name:
-            section_names.append(section_name)
+        total_sections += 1
+        raw_name = match.group(1).strip()
+        normalized_name = _normalize_text(_strip_surrounding_markdown(raw_name))
+        canonical_name = _canonical_section_name(raw_name)
+        alias_used = normalized_name in SECTION_NAME_ALIASES
+        forbidden = normalized_name in FORBIDDEN_SECTION_NAMES
+        status = "accepted" if canonical_name else ("forbidden" if forbidden else "ignored")
+        if canonical_name:
+            valid_sections += 1
+        logger.info(
+            "ai_section_header original=%r normalized=%r alias=%s final=%r component=%r status=%s",
+            line.strip(),
+            normalized_name,
+            alias_used,
+            canonical_name,
+            SECTION_COMPONENT_TYPES.get(canonical_name or ""),
+            status,
+        )
 
-    if not section_names:
-        return False, "A resposta não trouxe blocos de seção."
-
-    for section_name in section_names:
-        canonical_name = _canonical_section_name(section_name)
-        if canonical_name is None or canonical_name not in ALLOWED_SECTION_NAMES:
-            return False, f"Seção inválida detectada: {section_name}."
+    logger.info("ai_section_summary total=%d valid=%d", total_sections, valid_sections)
+    if total_sections == 0:
+        return False, "Nenhum bloco de seção foi encontrado."
+    if valid_sections == 0:
+        return False, "Nenhuma seção válida pôde ser extraída da resposta."
 
     return True, ""
 
@@ -256,7 +269,7 @@ def _build_correction_instructions(validation_error: str) -> str:
 def _normalize_text(value: str) -> str:
     normalized = unicodedata.normalize("NFKD", value)
     stripped = "".join(char for char in normalized if not unicodedata.combining(char))
-    return stripped.upper().strip()
+    return re.sub(r"\s+", " ", stripped).upper().strip()
 
 
 def _strip_markdown_emphasis(value: str) -> str:
@@ -270,33 +283,24 @@ def _strip_markdown_emphasis(value: str) -> str:
     return text.strip()
 
 
+def _strip_surrounding_markdown(value: str) -> str:
+    text = (value or "").strip()
+    wrappers = (("**", "**"), ("__", "__"), ("*", "*"), ("_", "_"), ("`", "`"))
+    changed = True
+    while changed and text:
+        changed = False
+        for opening, closing in wrappers:
+            if text.startswith(opening) and text.endswith(closing) and len(text) >= len(opening) + len(closing):
+                text = text[len(opening):-len(closing)].strip()
+                changed = True
+                break
+    return text
+
+
 def _canonical_section_name(section_name: str) -> str | None:
-    normalized = _normalize_text(section_name)
-    for alias, canonical in SECTION_NAME_ALIASES.items():
-        if normalized == alias:
-            return canonical
-        if normalized.startswith(f"{alias} "):
-            return canonical
-        if normalized.startswith(f"{alias}-"):
-            return canonical
-        if normalized.startswith(f"{alias} -"):
-            return canonical
-        if normalized.startswith(f"{alias} â€“"):
-            return canonical
-    for candidate in SECTION_NAME_OPTIONS:
-        if normalized == candidate:
-            return candidate
-        if normalized.startswith(f"{candidate} "):
-            return candidate
-        if normalized.startswith(f"{candidate}-"):
-            return candidate
-        if normalized.startswith(f"{candidate} -"):
-            return candidate
-        if normalized.startswith(f"{candidate} -"):
-            return candidate
-        if normalized.startswith(f"{candidate} –"):
-            return candidate
-    return None
+    normalized = _normalize_text(_strip_surrounding_markdown(section_name))
+    canonical = SECTION_NAME_ALIASES.get(normalized, normalized)
+    return canonical if canonical in ALLOWED_SECTION_NAMES else None
 
 
 def _normalize_label_line(text: str) -> str:
@@ -312,7 +316,7 @@ def _extract_first_match(block: str, label: str) -> str:
 
 
 def _split_sections(reply: str) -> tuple[dict[str, str], list[tuple[str, str]]]:
-    normalized = _normalize_label_line(reply.strip())
+    normalized = (reply or "").strip().replace("\r\n", "\n").replace("\r", "\n")
     lines = normalized.splitlines()
 
     intro_lines: list[str] = []
@@ -320,18 +324,29 @@ def _split_sections(reply: str) -> tuple[dict[str, str], list[tuple[str, str]]]:
     current_name: str | None = None
     current_body: list[str] = []
     saw_section = False
+    total_sections = 0
 
     for line in lines:
-        cleaned_line = _strip_markdown_emphasis(line)
-        cleaned_line = SECTION_HEADER_PREFIX_RE.sub("", cleaned_line, count=1).strip()
-        match = SECTION_HEADER_RE.match(cleaned_line)
+        match = SECTION_HEADER_RE.match(line)
         if match:
             saw_section = True
-            if current_name and current_body:
+            total_sections += 1
+            if current_name:
                 parsed_sections.append((current_name, "\n".join(current_body).strip()))
             current_body = []
             raw_section_name = match.group(1).strip()
             current_name = _canonical_section_name(raw_section_name)
+            normalized_name = _normalize_text(_strip_surrounding_markdown(raw_section_name))
+            status = "accepted" if current_name else ("forbidden" if normalized_name in FORBIDDEN_SECTION_NAMES else "ignored")
+            logger.info(
+                "ai_section_parser original=%r normalized=%r alias=%s final=%r component=%r status=%s",
+                line.strip(),
+                normalized_name,
+                normalized_name in SECTION_NAME_ALIASES,
+                current_name,
+                SECTION_COMPONENT_TYPES.get(current_name or ""),
+                status,
+            )
             continue
 
         if not saw_section:
@@ -341,8 +356,10 @@ def _split_sections(reply: str) -> tuple[dict[str, str], list[tuple[str, str]]]:
         if current_name:
             current_body.append(line)
 
-    if current_name and current_body:
+    if current_name:
         parsed_sections.append((current_name, "\n".join(current_body).strip()))
+
+    logger.info("ai_section_parser_summary total=%d valid=%d", total_sections, len(parsed_sections))
 
     intro_text = "\n".join(intro_lines).strip()
     intro_fields = _parse_key_value_lines(intro_text)
@@ -372,6 +389,7 @@ def _parse_key_value_lines(text: str) -> dict[str, str]:
     normalized = (text or "").replace("\r\n", "\n").replace("\r", "\n")
     for raw_line in normalized.splitlines():
         line = _strip_markdown_emphasis(raw_line.strip())
+        line = re.sub(r"^[-*•‣]\s+", "", line).strip()
         if not line:
             if current_key:
                 result.setdefault(current_key, []).append("")
@@ -418,11 +436,60 @@ def _generate_anchor(section_type: str, title: str, index: int) -> str:
     return f"{base}-{index + 1}"
 
 
+def _parse_reason_items(block: str) -> list[dict[str, str]]:
+    items: list[dict[str, str]] = []
+    current: dict[str, str] = {}
+    inside_list = False
+
+    def flush() -> None:
+        nonlocal current
+        if current.get("title"):
+            item = {"title": current["title"]}
+            if current.get("description"):
+                item["description"] = current["description"]
+            if current.get("icon"):
+                item["icon"] = current["icon"]
+            items.append(item)
+        current = {}
+
+    for raw_line in (block or "").replace("\r\n", "\n").replace("\r", "\n").splitlines():
+        line = _strip_markdown_emphasis(raw_line.strip())
+        line = re.sub(r"^[-*•‣]\s+", "", line).strip()
+        normalized_line = _normalize_text(line)
+        if normalized_line.rstrip(":") in {"LISTA DE ITENS", "ITENS"}:
+            inside_list = True
+            continue
+        if re.match(r"^ITEM(?:\s+\d+)?\s*:", normalized_line):
+            flush()
+            inside_list = True
+            inline_title = line.split(":", 1)[1].strip() if ":" in line else ""
+            if inline_title:
+                current["title"] = inline_title
+            continue
+        if not inside_list:
+            continue
+        match = re.match(r"^([^:]+?):\s*(.*)$", line)
+        if not match:
+            if current.get("description") and line:
+                current["description"] = f"{current['description']}\n{line}".strip()
+            continue
+        key = FIELD_ALIASES.get(_normalize_text(match.group(1)))
+        value = match.group(2).strip()
+        if key == "title":
+            if current.get("title"):
+                flush()
+            current["title"] = value
+        elif key in {"description", "icon"}:
+            current[key] = value
+    flush()
+    return items
+
+
 def _parse_ai_section_block(section_name: str, block: str, index: int) -> dict[str, Any] | None:
     normalized_name = _normalize_text(section_name)
     fields = _parse_key_value_lines(block)
 
-    if normalized_name == _normalize_text("BANNER INICIAL"):
+    if normalized_name == _normalize_text("BANNER"):
         title = fields.get("title", "").strip()
         subtitle = fields.get("subtitle", "").strip()
         content = fields.get("content", "").strip()
@@ -453,7 +520,7 @@ def _parse_ai_section_block(section_name: str, block: str, index: int) -> dict[s
             "enableAnimation": False,
         }
 
-    if normalized_name == _normalize_text("BANNER DESTACADO"):
+    if normalized_name == _normalize_text("BANNER EM CARD"):
         title = fields.get("title", "").strip()
         subtitle = fields.get("subtitle", "").strip()
         content = fields.get("content", "").strip()
@@ -474,7 +541,18 @@ def _parse_ai_section_block(section_name: str, block: str, index: int) -> dict[s
             "ctaOpenInNewTab": False,
         }
 
-    if normalized_name == _normalize_text("SESSAO DESCRITIVA"):
+    if normalized_name == _normalize_text("FOTO DESTACADA"):
+        image = fields.get("image_suggestion", "").strip() or fields.get("link", "").strip()
+        return {
+            "type": "photo",
+            "enabled": True,
+            "anchorId": _generate_anchor("photo", fields.get("title", "") or "foto-destacada", index),
+            "image": image,
+            "layout": "card",
+            "altText": fields.get("title", "").strip() or fields.get("subtitle", "").strip(),
+        }
+
+    if normalized_name == _normalize_text("DESCRITIVO"):
 
         label = fields.get("label", "").strip()
         title = fields.get("title", "").strip()
@@ -632,7 +710,7 @@ def _parse_ai_section_block(section_name: str, block: str, index: int) -> dict[s
             "items": items,
         }
 
-    if normalized_name == _normalize_text("VIDEO"):
+    if normalized_name == _normalize_text("VIDEO EM DESTAQUE"):
 
         title = fields.get("title", "").strip() or fields.get("label", "").strip()
         subtitle = fields.get("subtitle", "").strip()
@@ -690,7 +768,23 @@ def _parse_ai_section_block(section_name: str, block: str, index: int) -> dict[s
             "ctaOpenInNewTab": False,
         }
 
-    if normalized_name == _normalize_text("CONTAGEM REGRESSIVA"):
+    if normalized_name == _normalize_text("ITENS"):
+        label = fields.get("label", "").strip()
+        title = fields.get("title", "").strip()
+        subtitle = fields.get("subtitle", "").strip()
+        items = _parse_reason_items(block)
+        return {
+            "type": "reasons",
+            "enabled": True,
+            "anchorId": _generate_anchor("reasons", title or label or "itens", index),
+            "headingLabel": label,
+            "title": title or "Itens",
+            "subtitle": subtitle,
+            "items": items,
+            "enableAnimation": False,
+        }
+
+    if normalized_name == _normalize_text("CONTADOR"):
         label = fields.get("label", "").strip()
         title = fields.get("title", "").strip()
         target_date = (datetime.utcnow() + timedelta(days=3)).replace(microsecond=0).isoformat() + "Z"
@@ -706,10 +800,30 @@ def _parse_ai_section_block(section_name: str, block: str, index: int) -> dict[s
             "layout": "cards",
         }
 
+    if normalized_name == _normalize_text("DETALHES DO VOO"):
+        title = fields.get("title", "").strip()
+        subtitle = fields.get("subtitle", "").strip()
+        return {
+            "type": "flight_details",
+            "enabled": True,
+            "anchorId": _generate_anchor("flight-details", title or "detalhes-do-voo", index),
+            "sectionId": _generate_anchor("flight", title or "detalhes-do-voo", index),
+            "title": title or "Informações do voo",
+            "subtitle": subtitle,
+            "generalInfo": fields.get("general_info", "").strip() or fields.get("content", "").strip(),
+            "visualStyle": "decolar",
+            "showOutbound": True,
+            "showInbound": True,
+            "journeys": [],
+        }
+
     return None
 
 
 def build_page_base_config_from_reply(reply: str, current_config: Any | None = None) -> tuple[Any, str | None]:
+    is_valid, validation_error = _validate_ai_reply_format(reply)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=validation_error)
     meta, blocks = _split_sections(reply)
     sections: list[dict[str, Any]] = []
     hero_title: str | None = None
