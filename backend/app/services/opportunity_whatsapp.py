@@ -11,6 +11,8 @@ from app.models.client import Client
 from app.models.lead_form import LeadFormSubmission
 from app.models.whatsapp import WhatsAppConnection, WhatsAppConversation
 from app.services.evolution import EvolutionService
+from app.services.permissions import normalize_plan
+from app.services.team import get_agency_plan
 from app.services.whatsapp_domain import WhatsAppDomainService
 
 
@@ -88,6 +90,9 @@ def send_opportunity_welcome_message_best_effort(*, db: Session, opportunity_id:
             .first()
         )
         if not submission:
+            return
+
+        if normalize_plan(get_agency_plan(db, submission.agency_id)) not in {"scale", "test"}:
             return
 
         linked_client = None

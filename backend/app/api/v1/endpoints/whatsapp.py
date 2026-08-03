@@ -594,7 +594,10 @@ def ensure_conversation(
     db: Session = Depends(get_db),
 ) -> WhatsAppConversationOut:
     require_agency_membership(db=db, agency_id=agency_id, user_id=current_user.id)
-    _ensure_whatsapp_inbox_access(db, user=current_user, agency_id=agency_id)
+    # Criar/localizar a conversa tambem e usado pelo envio rapido em
+    # Oportunidades. Esse fluxo depende do plano/conexao, nao da permissao para
+    # visualizar o Inbox completo.
+    _ensure_whatsapp_connection_access(db, user=current_user, agency_id=agency_id)
 
     def _digits(raw: str | None) -> str:
         return "".join(ch for ch in (raw or "") if ch.isdigit())
@@ -718,7 +721,9 @@ def send_text_message(
     db: Session = Depends(get_db),
 ) -> WhatsAppMessageOut:
     require_agency_membership(db=db, agency_id=agency_id, user_id=current_user.id)
-    _ensure_whatsapp_inbox_access(db, user=current_user, agency_id=agency_id)
+    # O envio rapido em Oportunidades e permitido para o plano WhatsApp mesmo
+    # quando o usuario nao possui acesso ao Inbox.
+    _ensure_whatsapp_connection_access(db, user=current_user, agency_id=agency_id)
     conversation = (
         db.query(WhatsAppConversation)
         .filter(

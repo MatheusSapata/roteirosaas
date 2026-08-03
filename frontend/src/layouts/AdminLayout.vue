@@ -1524,7 +1524,6 @@ const adminNavigation = computed<AdminNavItem[]>(() => {
         { label: t({ pt: "Configura\u00E7\u00F5es", es: "Configuraciones" }), path: "/admin/leads/settings" }
       ]
     },
-    { id: "inbox", type: "link", label: navLabel("inbox"), to: "/admin/inbox", iconPath: "/admin/inbox" },
     {
       id: "integrations",
       type: "group",

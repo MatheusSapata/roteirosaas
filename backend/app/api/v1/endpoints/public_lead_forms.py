@@ -140,7 +140,9 @@ def submit_public_form(
         phone_normalized=phone_normalized,
     )
 
-    should_send_auto_message = True
+    # O disparo inteligente e opt-in: sem template configurado o recebimento
+    # do formulario nao deve gerar uma mensagem padrao inesperada.
+    should_send_auto_message = bool((form.auto_whatsapp_message_template or "").strip())
     if form.auto_whatsapp_skip_if_client and linked_client_id:
         should_send_auto_message = False
 
