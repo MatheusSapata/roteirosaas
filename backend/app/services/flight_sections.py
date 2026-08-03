@@ -71,6 +71,7 @@ def _select_raw_flight(raw_provider_response: Any, segment: Any) -> dict[str, An
         _normalize_flight_code(getattr(segment, "flight_icao", None)),
     }
     target_codes.discard("")
+    matching_code: list[dict[str, Any]] = []
     for item in candidates:
         item_codes = {
             _normalize_flight_code(item.get("number")),
@@ -79,7 +80,21 @@ def _select_raw_flight(raw_provider_response: Any, segment: Any) -> dict[str, An
             _normalize_flight_code(item.get("flight_icao")),
         }
         if target_codes.intersection(item_codes):
-            return item
+            matching_code.append(item)
+
+    # O provider pode devolver varias ocorrencias do mesmo numero de voo. A
+    # data local da partida e necessaria para nao selecionar o trecho da
+    # vespera em voos noturnos que chegam no dia pesquisado.
+    target_date = getattr(segment, "flight_date", None)
+    if target_date:
+        target_iso = target_date.isoformat() if hasattr(target_date, "isoformat") else str(target_date)[:10]
+        for item in matching_code:
+            raw_departure = _extract_raw_datetime(item, "departure")
+            if isinstance(raw_departure, str) and raw_departure[:10] == target_iso:
+                return item
+
+    if matching_code:
+        return matching_code[0]
     return candidates[0]
 
 
