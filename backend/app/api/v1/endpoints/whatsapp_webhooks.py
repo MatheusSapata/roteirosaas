@@ -3,11 +3,12 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db
+from app.core.config import get_settings
+from app.db.session import SessionLocal
 from app.models.whatsapp import WhatsAppConnection, WhatsAppConversation
 from app.schemas.whatsapp import WebhookAckOut
 from app.services.whatsapp_domain import WhatsAppDomainService
@@ -19,6 +20,7 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 domain_service = WhatsAppDomainService()
 evolution_service = EvolutionService()
+settings = get_settings()
 
 
 def _should_log_ignored_event(event_name: str | None) -> bool:
@@ -225,18 +227,28 @@ def _process_evolution_webhook(
 @router.post("/evolution", response_model=WebhookAckOut)
 def evolution_webhook(
     payload: dict[str, Any],
-    db: Session = Depends(get_db),
 ) -> WebhookAckOut:
-    return _process_evolution_webhook(payload, db=db)
+    if not settings.whatsapp_inbox_webhooks_enabled:
+        return WebhookAckOut(accepted=True, reason="inbox_webhooks_disabled")
+    db = SessionLocal()
+    try:
+        return _process_evolution_webhook(payload, db=db)
+    finally:
+        db.close()
 
 
 @router.post("/evolution/{event_name}", response_model=WebhookAckOut)
 def evolution_webhook_by_event(
     event_name: str,
     payload: dict[str, Any],
-    db: Session = Depends(get_db),
 ) -> WebhookAckOut:
     # Evolution v2.3.6 pode enviar callbacks em /evolution/<event-slug>.
     # Ex.: /evolution/messages-upsert, /evolution/connection-update, /evolution/qrcode-updated
+    if not settings.whatsapp_inbox_webhooks_enabled:
+        return WebhookAckOut(accepted=True, reason="inbox_webhooks_disabled")
     event_hint = event_name.replace("-", ".")
-    return _process_evolution_webhook(payload, db=db, event_hint=event_hint)
+    db = SessionLocal()
+    try:
+        return _process_evolution_webhook(payload, db=db, event_hint=event_hint)
+    finally:
+        db.close()

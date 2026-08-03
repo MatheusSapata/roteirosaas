@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import threading
 import time
+import logging
 from datetime import datetime
 
 from sqlalchemy.orm import Session
@@ -14,6 +15,9 @@ from app.services.evolution import EvolutionService
 from app.services.permissions import normalize_plan
 from app.services.team import get_agency_plan
 from app.services.whatsapp_domain import WhatsAppDomainService
+
+
+logger = logging.getLogger(__name__)
 
 
 def _digits(value: str | None) -> str:
@@ -181,6 +185,10 @@ def send_opportunity_welcome_message_best_effort(*, db: Session, opportunity_id:
         db.commit()
     except Exception:
         db.rollback()
+        logger.exception(
+            "Falha ao enviar notificacao WhatsApp da oportunidade opportunity_id=%s",
+            opportunity_id,
+        )
         return
 
 

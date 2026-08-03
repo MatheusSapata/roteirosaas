@@ -90,7 +90,11 @@ class EvolutionService:
 
     def create_instance(self, instance_name: str | None = None) -> dict[str, Any]:
         name = (instance_name or self.test_instance_name).strip()
-        webhook_url = (self.settings.evolution_webhook_url or "").strip()
+        webhook_url = (
+            (self.settings.evolution_webhook_url or "").strip()
+            if self.settings.whatsapp_inbox_webhooks_enabled
+            else ""
+        )
         events = [
             "CONNECTION_UPDATE",
             "QRCODE_UPDATED",
@@ -163,6 +167,8 @@ class EvolutionService:
         ]
 
     def reapply_instance_webhook_events(self, *, instance_name: str) -> dict[str, Any]:
+        if not self.settings.whatsapp_inbox_webhooks_enabled:
+            raise RuntimeError("Webhooks do Inbox WhatsApp estao desativados neste ambiente.")
         webhook_url = (self.settings.evolution_webhook_url or "").strip()
         if not webhook_url:
             raise RuntimeError("EVOLUTION_WEBHOOK_URL não configurada.")

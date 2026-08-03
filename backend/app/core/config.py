@@ -119,6 +119,7 @@ class Settings(BaseSettings):
     evolution_api_key: str | None = Field(None, alias="EVOLUTION_API_KEY")
     evolution_server_url: str | None = Field(None, alias="EVOLUTION_SERVER_URL")
     evolution_webhook_url: str | None = Field(None, alias="EVOLUTION_WEBHOOK_URL")
+    whatsapp_inbox_webhooks_enabled: bool = Field(False, alias="WHATSAPP_INBOX_WEBHOOKS_ENABLED")
     evolution_test_instance_name: str = Field("test-instance", alias="EVOLUTION_TEST_INSTANCE_NAME")
     evolution_pairing_number: str | None = Field(None, alias="EVOLUTION_PAIRING_NUMBER")
     ntfy_base_url: str = Field("https://ntfy.sh", alias="NTFY_BASE_URL")
