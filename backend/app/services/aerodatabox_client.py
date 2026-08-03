@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime, timedelta
 import re
 import threading
 import time
@@ -150,16 +150,43 @@ class AeroDataBoxClient(FlightProviderInterface):
         raise AeroDataBoxClientError("Falha ao consultar o AeroDataBox via RapidAPI.") from last_exc
 
     @staticmethod
-    def _match_flight(candidates: list[dict[str, Any]], normalized_flight: str) -> dict[str, Any] | None:
+    def _departure_local_date(item: dict[str, Any]) -> date | None:
+        departure = item.get("departure")
+        if not isinstance(departure, dict):
+            return None
+        for time_key in ("scheduledTime", "revisedTime", "runwayTime"):
+            time_value = departure.get(time_key)
+            if not isinstance(time_value, dict):
+                continue
+            raw = time_value.get("local")
+            if not isinstance(raw, str) or not raw.strip():
+                continue
+            try:
+                return datetime.fromisoformat(raw.strip().replace("Z", "+00:00")).date()
+            except ValueError:
+                continue
+        return None
+
+    @staticmethod
+    def _match_flight(
+        candidates: list[dict[str, Any]],
+        normalized_flight: str,
+        target_departure_date: date | None = None,
+    ) -> dict[str, Any] | None:
         if not candidates:
             return None
+        matching_number: list[dict[str, Any]] = []
         for item in candidates:
             number = AeroDataBoxClient._normalize_flight_number(
                 str(item.get("number") or item.get("flightNumber") or item.get("flight_iata") or "")
             )
             if number and number == normalized_flight:
-                return item
-        return candidates[0]
+                matching_number.append(item)
+        if target_departure_date is not None:
+            for item in matching_number:
+                if AeroDataBoxClient._departure_local_date(item) == target_departure_date:
+                    return item
+        return matching_number[0] if matching_number else candidates[0]
 
     def test_connection(self, api_key: str) -> dict[str, Any]:
         payload = self._request("/airports/iata/LHR", api_key=api_key)
@@ -186,7 +213,32 @@ class AeroDataBoxClient(FlightProviderInterface):
             params={"withAircraftImage": "false", "withLocation": "true"},
         )
         candidates = self._response_to_list(payload)
-        selected = self._match_flight(candidates, normalized_flight)
+        selected = self._match_flight(candidates, normalized_flight, flight_date)
+
+        # Em voos noturnos o AeroDataBox pode indexar a ocorrencia pela data
+        # local de chegada. Nesse caso, uma consulta por 18/08 pode retornar o
+        # voo que saiu em 17/08. Consulte a data adjacente apontada pela
+        # diferenca e aceite somente a ocorrencia cuja partida local coincide
+        # com a data solicitada.
+        selected_departure_date = self._departure_local_date(selected) if selected else None
+        if selected and selected_departure_date and selected_departure_date != flight_date:
+            day_delta = (flight_date - selected_departure_date).days
+            if abs(day_delta) == 1:
+                adjacent_date = flight_date + timedelta(days=day_delta)
+                adjacent_path = f"/flights/number/{quote(normalized_flight)}/{adjacent_date.isoformat()}"
+                adjacent_payload = self._request(
+                    adjacent_path,
+                    api_key=api_key,
+                    params={"withAircraftImage": "false", "withLocation": "true"},
+                )
+                adjacent_candidates = self._response_to_list(adjacent_payload)
+                adjacent_selected = self._match_flight(adjacent_candidates, normalized_flight, flight_date)
+                if adjacent_selected and self._departure_local_date(adjacent_selected) == flight_date:
+                    payload = adjacent_payload
+                    selected = adjacent_selected
+
+        if selected and self._departure_local_date(selected) not in {None, flight_date}:
+            selected = None
         if not selected:
             raise AeroDataBoxClientError(
                 "Voo nao encontrado para os dados informados.",

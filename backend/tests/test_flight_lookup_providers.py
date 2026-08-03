@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date
 from types import SimpleNamespace
 
-from app.services.aerodatabox_client import AeroDataBoxClientError, AeroDataBoxQuotaExceededError
+from app.services.aerodatabox_client import AeroDataBoxClient, AeroDataBoxClientError, AeroDataBoxQuotaExceededError
 from app.services.flight_lookup_service import FlightLookupService, normalize_flight_number
 from app.services.flight_provider_key_manager import ProviderKey
 
@@ -52,6 +52,34 @@ def _sample_airlabs_flight():
         "duration": 70,
         "status": "scheduled",
     }
+
+
+def _aerodatabox_flight_on(departure_date: str, arrival_date: str) -> dict:
+    flight = _sample_aerodatabox_flight()
+    flight["number"] = "TP104"
+    flight["departure"]["scheduledTime"]["local"] = f"{departure_date}T17:25:00-03:00"
+    flight["arrival"]["scheduledTime"]["local"] = f"{arrival_date}T06:45:00+01:00"
+    return flight
+
+
+def test_aerodatabox_uses_local_departure_date_for_overnight_flight(monkeypatch):
+    client = AeroDataBoxClient()
+    requested_paths: list[str] = []
+
+    def fake_request(path, **_kwargs):
+        requested_paths.append(path)
+        if path.endswith("/2026-08-18"):
+            return [_aerodatabox_flight_on("2026-08-17", "2026-08-18")]
+        if path.endswith("/2026-08-19"):
+            return [_aerodatabox_flight_on("2026-08-18", "2026-08-19")]
+        raise AssertionError(path)
+
+    monkeypatch.setattr(client, "_request", fake_request)
+
+    result = client.lookup_flight_by_number("key", "TP104", date(2026, 8, 18))
+
+    assert result["selected_flight"]["departure"]["scheduledTime"]["local"].startswith("2026-08-18")
+    assert requested_paths[-1].endswith("/2026-08-19")
 
 
 def test_normalize_flight_number():
