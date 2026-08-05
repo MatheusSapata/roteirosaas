@@ -72,7 +72,100 @@ const blobToDataUrl = (blob: Blob): Promise<string> =>
     reader.readAsDataURL(blob);
   });
 
+const loadImage = (source: string): Promise<HTMLImageElement> =>
+  new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("Não foi possível abrir a imagem."));
+    image.src = source;
+  });
+
+/** Removes a flat logo background connected to the image edges in the browser. */
+const removeSolidEdgeBackground = async (source: string): Promise<string | null> => {
+  try {
+    const image = await loadImage(source);
+    const canvas = document.createElement("canvas");
+    canvas.width = image.naturalWidth;
+    canvas.height = image.naturalHeight;
+    const context = canvas.getContext("2d", { willReadFrequently: true });
+    if (!context || !canvas.width || !canvas.height) return null;
+    context.drawImage(image, 0, 0);
+    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+    const pixels = imageData.data;
+    const width = canvas.width;
+    const height = canvas.height;
+    const cornerIndexes = [0, width - 1, (height - 1) * width, height * width - 1];
+    const background = [0, 1, 2].map(channel =>
+      Math.round(cornerIndexes.reduce((sum, index) => sum + pixels[index * 4 + channel], 0) / 4)
+    );
+    const distance = (index: number) =>
+      Math.max(
+        Math.abs(pixels[index * 4] - background[0]),
+        Math.abs(pixels[index * 4 + 1] - background[1]),
+        Math.abs(pixels[index * 4 + 2] - background[2])
+      );
+
+    let borderCount = 0;
+    let matchingBorder = 0;
+    const countBorder = (index: number) => {
+      borderCount += 1;
+      if (distance(index) <= 32) matchingBorder += 1;
+    };
+    for (let x = 0; x < width; x += 1) {
+      countBorder(x);
+      countBorder((height - 1) * width + x);
+    }
+    for (let y = 1; y < height - 1; y += 1) {
+      countBorder(y * width);
+      countBorder(y * width + width - 1);
+    }
+    if (!borderCount || matchingBorder / borderCount < 0.6) return null;
+
+    const visited = new Uint8Array(width * height);
+    const queue = new Int32Array(width * height);
+    let head = 0;
+    let tail = 0;
+    const enqueue = (index: number) => {
+      if (visited[index] || distance(index) > 64) return;
+      visited[index] = 1;
+      queue[tail++] = index;
+    };
+    for (let x = 0; x < width; x += 1) {
+      enqueue(x);
+      enqueue((height - 1) * width + x);
+    }
+    for (let y = 1; y < height - 1; y += 1) {
+      enqueue(y * width);
+      enqueue(y * width + width - 1);
+    }
+    while (head < tail) {
+      const index = queue[head++];
+      const x = index % width;
+      const y = Math.floor(index / width);
+      if (x > 0) enqueue(index - 1);
+      if (x + 1 < width) enqueue(index + 1);
+      if (y > 0) enqueue(index - width);
+      if (y + 1 < height) enqueue(index + width);
+    }
+    if (tail < width + height) return null;
+
+    for (let index = 0; index < visited.length; index += 1) {
+      if (!visited[index]) continue;
+      const colorDistance = distance(index);
+      const alpha = colorDistance <= 24 ? 0 : Math.round(((colorDistance - 24) / 40) * 190);
+      pixels[index * 4 + 3] = Math.min(pixels[index * 4 + 3], alpha);
+    }
+    context.putImageData(imageData, 0, 0);
+    return canvas.toDataURL("image/png");
+  } catch {
+    return null;
+  }
+};
+
 export const removeImageBackground = async (source: string, agencyId: number): Promise<string> => {
+  const locallyProcessed = await removeSolidEdgeBackground(source);
+  if (locallyProcessed) return locallyProcessed;
+
   const sourceResponse = await fetch(source);
   if (!sourceResponse.ok) {
     throw new Error("Não foi possível carregar a imagem selecionada.");

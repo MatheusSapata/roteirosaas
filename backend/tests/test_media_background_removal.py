@@ -3,6 +3,7 @@ import io
 from PIL import Image
 
 from app.api.v1.endpoints import media as media_endpoint
+from app.services.background_removal import _connected_solid_background_alpha
 
 
 def _register_payload(email: str) -> dict[str, str]:
@@ -37,6 +38,42 @@ def _png_bytes() -> bytes:
     buffer = io.BytesIO()
     Image.new("RGB", (8, 8), "white").save(buffer, format="PNG")
     return buffer.getvalue()
+
+
+def test_solid_logo_background_is_removed_without_erasing_foreground() -> None:
+    image = Image.new("RGB", (80, 40), "black")
+    for x in range(20, 60):
+        for y in range(12, 28):
+            image.putpixel((x, y), (255, 255, 255))
+
+    alpha = _connected_solid_background_alpha(image)
+
+    assert alpha is not None
+    assert alpha.getpixel((0, 0)) == 0
+    assert alpha.getpixel((40, 20)) == 255
+
+
+def test_photo_like_edges_do_not_trigger_solid_background_removal() -> None:
+    image = Image.new("RGB", (40, 40))
+    for x in range(40):
+        for y in range(40):
+            image.putpixel((x, y), ((x * 7) % 256, (y * 9) % 256, ((x + y) * 5) % 256))
+
+    assert _connected_solid_background_alpha(image) is None
+
+
+def test_partially_transparent_logo_still_loses_opaque_solid_background() -> None:
+    image = Image.new("RGBA", (80, 40), (0, 0, 0, 255))
+    image.putpixel((0, 0), (0, 0, 0, 120))
+    for x in range(20, 60):
+        for y in range(12, 28):
+            image.putpixel((x, y), (255, 255, 255, 255))
+
+    alpha = _connected_solid_background_alpha(image)
+
+    assert alpha is not None
+    assert alpha.getpixel((10, 10)) == 0
+    assert alpha.getpixel((40, 20)) == 255
 
 
 def test_remove_background_returns_transparent_png(client, monkeypatch) -> None:

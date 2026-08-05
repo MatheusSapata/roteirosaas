@@ -11,6 +11,8 @@ passlib[bcrypt]
 python-jose[cryptography]
 python-dotenv
 pillow
+numpy
+scipy
 rembg[cpu]==2.0.76
 anyio
 httpx

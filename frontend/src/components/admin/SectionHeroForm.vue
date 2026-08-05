@@ -231,10 +231,11 @@
           <div class="mt-6 grid gap-6 md:grid-cols-[minmax(0,1fr)_220px]">
             <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3">
               <img
+                :key="cropperRenderKey"
                 ref="cropperImageRef"
                 :src="cropperModal.src"
                 alt="Editor"
-                class="max-h-[420px] w-full rounded-xl bg-white object-contain"
+                class="image-transparency-grid max-h-[420px] w-full rounded-xl object-contain"
                 @load="handleCropperImageLoad"
               />
             </div>
@@ -335,6 +336,7 @@ const cropperImageRef = ref<HTMLImageElement | null>(null);
 const cropperInstance = ref<Cropper | null>(null);
 const cropperObjectUrl = ref<string | null>(null);
 const cropperImageReady = ref(false);
+const cropperRenderKey = ref(0);
 const cropApplying = ref(false);
 const removingBackground = ref(false);
 const cropperError = ref("");
@@ -685,10 +687,13 @@ const handleRemoveBackground = async () => {
     const agencyId = await ensureAgencyId();
     if (!agencyId) throw new Error("Agência não encontrada.");
     const result = await removeImageBackground(cropperModal.value.src, agencyId);
+    cropperInstance.value?.destroy();
+    cropperInstance.value = null;
+    cropperImageReady.value = false;
     cropperModal.value.src = result;
     cropperModal.value.bgEdited = true;
+    cropperRenderKey.value += 1;
     await nextTick();
-    cropperInstance.value?.replace(result, false);
   } catch (err) {
     console.error(err);
     cropperError.value = "Não conseguimos remover o fundo. Verifique a imagem e tente novamente.";
@@ -1177,6 +1182,17 @@ input, select {
   font-size: 12px;
   font-weight: 700;
   transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.image-transparency-grid {
+  background-color: #fff;
+  background-image:
+    linear-gradient(45deg, #d9dde3 25%, transparent 25%),
+    linear-gradient(-45deg, #d9dde3 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #d9dde3 75%),
+    linear-gradient(-45deg, transparent 75%, #d9dde3 75%);
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+  background-size: 16px 16px;
 }
 
 .btn-row button:hover {
