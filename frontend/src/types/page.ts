@@ -391,6 +391,7 @@ export interface ReasonsSection extends SectionBase {
 export interface CtaSection extends SectionBase {
   type: "cta";
   label: LocalizedString;
+  ctaEnabled?: boolean;
   link?: string;
   ctaMode?: "link" | "section";
   ctaSectionId?: string | null;

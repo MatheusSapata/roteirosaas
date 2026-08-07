@@ -47,19 +47,28 @@
         </div>
 
         <div class="content-area">
-          <div class="grid-2">
+          <label class="visibility-toggle">
+            <span>
+              <strong>Exibir botão</strong>
+              <small>Desative para ocultar o botão nesta seção.</small>
+            </span>
+            <input v-model="local.ctaEnabled" type="checkbox" role="switch" />
+            <span class="toggle-track" aria-hidden="true"><span></span></span>
+          </label>
+
+          <div class="grid-2" :class="{ 'is-disabled': local.ctaEnabled === false }">
             <div class="field">
               <label>Texto do botão <span class="help" data-tip="Texto exibido no botão de ação.">?</span></label>
-              <input v-model="local.ctaText" :placeholder="viewCopy.cta.textPlaceholder" />
+              <input v-model="local.ctaText" :disabled="local.ctaEnabled === false" :placeholder="viewCopy.cta.textPlaceholder" />
             </div>
             <div class="field">
               <label>Link do botão <span class="help" data-tip="Destino aberto ao clicar no botão.">?</span></label>
-              <input v-model="local.link" :placeholder="viewCopy.cta.linkPlaceholder" />
+              <input v-model="local.link" :disabled="local.ctaEnabled === false" :placeholder="viewCopy.cta.linkPlaceholder" />
             </div>
           </div>
 
           <div class="field">
-            <label class="inline-check"><input type="checkbox" v-model="local.ctaOpenInNewTab" /> Abrir em nova aba</label>
+            <label class="inline-check" :class="{ 'is-disabled': local.ctaEnabled === false }"><input type="checkbox" v-model="local.ctaOpenInNewTab" :disabled="local.ctaEnabled === false" /> Abrir em nova aba</label>
           </div>
 
           <div class="highlight-box">
@@ -121,6 +130,7 @@ const local = reactive<CtaSection>({
   link: props.modelValue.link || "https://wa.me/",
   ctaMode: "link",
   ctaSectionId: null,
+  ctaEnabled: props.modelValue.ctaEnabled !== false,
   ctaOpenInNewTab: props.modelValue.ctaOpenInNewTab !== false,
   ctaText: props.modelValue.ctaText || viewCopy.cta.textPlaceholder,
   highlight: props.modelValue.highlight ?? false,
@@ -135,6 +145,7 @@ const syncFromProps = (value: CtaSection) => {
   local.headingLabelStyle = value.headingLabelStyle || headingDefaults.style;
   local.ctaMode = "link";
   local.ctaSectionId = null;
+  local.ctaEnabled = value.ctaEnabled !== false;
   local.ctaOpenInNewTab = value.ctaOpenInNewTab !== false;
   local.link = value.link || "https://wa.me/";
   local.highlight = value.highlight ?? false;
@@ -195,6 +206,17 @@ input { width: 100%; border: 1px solid #cad7d1; border-radius: 12px; background:
 input:focus { outline: none; border-color: #9cb5aa; box-shadow: 0 0 0 2px rgba(52,199,89,.15); }
 
 .grid-2 { display: grid; gap: 10px; grid-template-columns: 1fr 1fr; }
+.is-disabled { opacity: .55; }
+.visibility-toggle { position: relative; display: flex; align-items: center; gap: 12px; border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; background: var(--card); cursor: pointer; }
+.visibility-toggle > span:first-child { display: grid; gap: 2px; flex: 1; }
+.visibility-toggle strong { font-size: 13px; color: var(--foreground); }
+.visibility-toggle small { font-size: 12px; font-weight: 500; color: var(--muted-foreground); }
+.visibility-toggle input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.toggle-track { width: 42px; height: 24px; flex: 0 0 auto; padding: 3px; border-radius: 999px; background: var(--muted-foreground); transition: background .2s ease; }
+.toggle-track span { display: block; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(15,23,42,.3); transition: transform .2s ease; }
+.visibility-toggle input:checked + .toggle-track { background: var(--primary); }
+.visibility-toggle input:checked + .toggle-track span { transform: translateX(18px); }
+.visibility-toggle input:focus-visible + .toggle-track { outline: 3px solid color-mix(in srgb, var(--ring) 25%, transparent); outline-offset: 2px; }
 .inline-check { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: #475569; text-transform: none; letter-spacing: 0; font-weight: 700; }
 .inline-check input { width: 14px; height: 14px; }
 .highlight-box { border: 1px solid #cad7d1; border-radius: 12px; padding: 10px; background: #fff; display: grid; gap: 10px; }

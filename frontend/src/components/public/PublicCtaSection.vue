@@ -3,31 +3,43 @@
     <!-- Layout simples full width -->
     <div v-if="section.layout === 'simple'" class="relative w-full">
       <div class="absolute inset-0" :style="bgImageStyle"></div>
-      <div class="relative mx-auto flex min-h-[300px] w-full max-w-6xl flex-col items-center justify-center px-6 py-12 text-center" :style="{ color: textColor }">
-        <div class="flex justify-center">
-          <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="headingAccent" />
-        </div>
-        <h1 class="text-3xl font-bold md:text-4xl">{{ sectionLabel }}</h1>
-        <div class="mt-2 text-sm md:text-base" v-if="descriptionHtml" v-html="descriptionHtml"></div>
-        <div class="mt-5 flex justify-center" v-if="ctaHasTarget">
-          <a
-            :href="ctaHref"
-            :data-scroll-target="ctaIsScroll ? 'true' : null"
-            :target="ctaOpenInNewTab ? '_blank' : null"
-            data-track-event="cta"
-            :rel="ctaOpenInNewTab ? 'noopener' : null"
-            :data-track-type="ctaTrackType"
-            class="inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl hero-cta-shimmer hero-cta-desktop-hover"
-            :style="{ background: buttonColor, color: buttonTextColor }"
-          >
-            {{ buttonLabel }}
-          </a>
+      <div
+        class="relative mx-auto flex w-full max-w-6xl items-center justify-center px-6 py-8 text-center md:py-10"
+        :class="{ 'min-h-[300px]': ctaVisible }"
+        :style="{ color: textColor }"
+      >
+        <div
+          class="cta-content flex w-full flex-col items-center"
+          :class="{
+            'cta-content--without-button': !ctaVisible,
+            'cta-content--without-label': !headingLabel
+          }"
+        >
+          <div class="flex justify-center">
+            <SectionHeadingChip :text="headingLabel" :styleType="headingStyle" :accent="headingAccent" />
+          </div>
+          <h1 class="text-3xl font-bold md:text-4xl">{{ sectionLabel }}</h1>
+          <div class="cta-description mt-2 text-sm md:text-base" v-if="descriptionHtml" v-html="descriptionHtml"></div>
+          <div class="mt-5 flex justify-center" v-if="ctaVisible">
+            <a
+              :href="ctaHref"
+              :data-scroll-target="ctaIsScroll ? 'true' : null"
+              :target="ctaOpenInNewTab ? '_blank' : null"
+              data-track-event="cta"
+              :rel="ctaOpenInNewTab ? 'noopener' : null"
+              :data-track-type="ctaTrackType"
+              class="inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl hero-cta-shimmer hero-cta-desktop-hover"
+              :style="{ background: buttonColor, color: buttonTextColor }"
+            >
+              {{ buttonLabel }}
+            </a>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- Demais layouts dentro de container -->
-    <div v-else class="mx-auto max-w-6xl px-6 py-12">
+    <div v-else class="mx-auto max-w-6xl px-6 py-8 md:py-10">
       <div
         :class="[
           'rounded-3xl p-6 shadow-[0_16px_50px_-30px_rgba(15,23,42,0.55)]',
@@ -52,7 +64,7 @@
             <div class="text-sm" :style="{ color: textColor }" v-if="descriptionHtml" v-html="descriptionHtml"></div>
           </div>
           <a
-            v-if="ctaHasTarget"
+            v-if="ctaVisible"
             :href="ctaHref"
             :data-scroll-target="ctaIsScroll ? 'true' : null"
             :target="ctaOpenInNewTab ? '_blank' : null"
@@ -84,7 +96,7 @@
           </div>
           <div class="flex items-center justify-end">
           <a
-            v-if="ctaHasTarget"
+            v-if="ctaVisible"
             :href="ctaHref"
             :data-scroll-target="ctaIsScroll ? 'true' : null"
             :target="ctaOpenInNewTab ? '_blank' : null"
@@ -116,7 +128,7 @@
             <h1 class="text-3xl font-bold md:text-4xl" :style="{ color: textColor }">{{ sectionLabel }}</h1>
             <div class="text-sm" :style="{ color: textColor }" v-if="descriptionHtml" v-html="descriptionHtml"></div>
             <a
-              v-if="ctaHasTarget"
+              v-if="ctaVisible"
               :href="ctaHref"
               :data-scroll-target="ctaIsScroll ? 'true' : null"
               :target="ctaOpenInNewTab ? '_blank' : null"
@@ -173,6 +185,7 @@ const ctaHref = computed(() =>
 const ctaHasTarget = computed(() =>
   ctaMode.value === "section" ? !!props.section.ctaSectionId : !!props.section.link
 );
+const ctaVisible = computed(() => props.section.ctaEnabled !== false && ctaHasTarget.value);
 const ctaIsScroll = computed(() => ctaMode.value === "section" && !!props.section.ctaSectionId);
 const ctaOpenInNewTab = computed(() => !ctaIsScroll.value && props.section.ctaOpenInNewTab !== false);
 const headingLabel = computed(() =>
@@ -219,3 +232,21 @@ const bgImageStyle = computed(() =>
         }
 );
 </script>
+
+<style scoped>
+.cta-content {
+  margin-block: auto;
+}
+
+.cta-content--without-button {
+  transform: translateY(8px);
+}
+
+.cta-content--without-button.cta-content--without-label {
+  transform: translateY(12px);
+}
+
+.cta-description :deep(p) {
+  margin-block: 0;
+}
+</style>

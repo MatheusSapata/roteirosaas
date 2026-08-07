@@ -20,43 +20,20 @@
     <section class="banner-form-content">
       <template v-if="activeTab === 'text'">
         <h4 class="banner-form-title">Textos do banner</h4>
-        <p class="banner-form-subtitle">Edite o título principal, o texto de apoio e os destaques exibidos no banner.</p>
+        <p class="banner-form-subtitle">Edite o título principal exibido no banner.</p>
 
         <div class="banner-field-group">
           <label class="banner-label">Título principal <span class="hint-dot">?</span></label>
           <input v-model="local.title" class="banner-input" placeholder="Vamos para Treze Tílias em Setembro?!" />
         </div>
 
-        <div class="banner-field-group">
-          <label class="banner-label">Texto de apoio <span class="hint-dot">?</span></label>
-          <RichTextEditor v-model="local.subtitle" placeholder="Descreva rapidamente o convite do banner." />
-        </div>
-
-        <div class="banner-field-group">
-          <label class="banner-label">Destaques <span class="hint-dot">?</span></label>
-          <div class="banner-highlight-row">
-            <input
-              v-model="newHighlight"
-              class="banner-input"
-              placeholder="Ex: Últimas vagas"
-              @keydown.enter.prevent="addHighlight"
-            />
-            <button type="button" class="banner-outline-btn" @click="addHighlight">Adicionar</button>
-          </div>
-          <div class="banner-chip-wrap">
-            <span v-for="(item, index) in local.highlights" :key="`${item}-${index}`" class="banner-chip">
-              {{ item }}
-              <button type="button" @click="removeHighlight(index)">×</button>
-            </span>
-          </div>
-        </div>
       </template>
 
       <template v-else-if="activeTab === 'images'">
         <div class="section-head">
           <div>
             <h2 class="section-title">Imagens do banner</h2>
-            <p class="section-desc">Envie imagem para desktop, mobile e logo da agência, além da cor de escurecimento.</p>
+            <p class="section-desc">Envie imagens para desktop e mobile, além da cor de escurecimento.</p>
           </div>
         </div>
 
@@ -90,19 +67,6 @@
             </div>
             </div>
 
-            <div class="media-item">
-            <img v-if="previewUrl(local.logoImage)" :src="previewUrl(local.logoImage) || ''" alt="Logo da agência" />
-            <div v-else class="media-fallback">Logo</div>
-            <div class="media-info">
-              <strong>Logo da agência <span class="hint-dot">?</span></strong>
-              <p>Logo exibida sobre o banner.</p>
-            </div>
-            <div class="btn-row">
-              <input ref="logoInput" type="file" accept="image/*" class="hidden" @change="onMediaFileChange('logo', $event)" />
-              <button type="button" @click="logoInput?.click()">{{ uploadingSlot === "logo" ? "Enviando..." : "Substituir" }}</button>
-              <button type="button" class="danger" @click="clearMedia('logo')">Remover</button>
-            </div>
-            </div>
           </div>
 
           <div class="compact-grid" style="margin-top:12px;">
@@ -217,7 +181,6 @@
 import { computed, inject, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import type { BannerCardSection, PageSection } from "../../types/page";
 import { sectionsInjectionKey } from "./sectionsContext";
-import RichTextEditor from "./inputs/RichTextEditor.vue";
 import { useAgencyStore } from "../../store/useAgencyStore";
 import { resolveMediaUrl, uploadImageFile } from "../../utils/media";
 import { sectionLabels } from "../../utils/sectionLabels";
@@ -226,9 +189,7 @@ import SectionHoverVisualPreview from "./SectionHoverVisualPreview.vue";
 type BannerEditorTab = "text" | "images" | "button";
 
 type BannerCardSectionExtended = BannerCardSection & {
-  highlights?: string[];
   mobileBackgroundImage?: string;
-  logoImage?: string;
   imagePosition?: "center" | "left" | "right" | "top" | "bottom";
 };
 type SectionOption = { value: string; label: string; preview: string; section: PageSection };
@@ -237,13 +198,11 @@ const props = defineProps<{ modelValue: BannerCardSection }>();
 const emit = defineEmits<{ (e: "update:modelValue", value: BannerCardSection): void }>();
 
 const activeTab = ref<BannerEditorTab>("text");
-const newHighlight = ref("");
 const injectedSections = inject(sectionsInjectionKey, null);
 const agencyStore = useAgencyStore();
 const desktopInput = ref<HTMLInputElement | null>(null);
 const mobileInput = ref<HTMLInputElement | null>(null);
-const logoInput = ref<HTMLInputElement | null>(null);
-const uploadingSlot = ref<"desktop" | "mobile" | "logo" | null>(null);
+const uploadingSlot = ref<"desktop" | "mobile" | null>(null);
 const sectionDropdownOpen = ref(false);
 const hoveredSectionOption = ref<SectionOption | null>(null);
 const sectionDropdownRef = ref<HTMLElement | null>(null);
@@ -262,7 +221,7 @@ const local = reactive<BannerCardSectionExtended>({
   title: props.modelValue.title || "Conte com especialistas para transformar o seu roteiro.",
   subtitle: props.modelValue.subtitle || "",
   ctaLabel: props.modelValue.ctaLabel || "Quero saber mais",
-  ctaLink: props.modelValue.ctaLink || "https://wa.me/",
+  ctaLink: props.modelValue.ctaLink ?? "https://wa.me/",
   ctaColor: ensureColor(props.modelValue.ctaColor, "#41ce5f"),
   gradientColor: ensureColor(props.modelValue.gradientColor, "#0b0f19"),
   backgroundColor: ensureColor(props.modelValue.backgroundColor, "#020617"),
@@ -273,9 +232,7 @@ const local = reactive<BannerCardSectionExtended>({
   ctaMode: props.modelValue.ctaMode || "link",
   ctaSectionId: props.modelValue.ctaSectionId || null,
   ctaOpenInNewTab: props.modelValue.ctaOpenInNewTab !== false,
-  highlights: Array.isArray((props.modelValue as any).highlights) ? [...(props.modelValue as any).highlights] : [],
   mobileBackgroundImage: (props.modelValue as any).mobileBackgroundImage || "",
-  logoImage: (props.modelValue as any).logoImage || "",
   imagePosition: ((props.modelValue as any).imagePosition as BannerCardSectionExtended["imagePosition"]) || "center"
 });
 
@@ -334,19 +291,6 @@ onMounted(() => document.addEventListener("keydown", closeDropdownOnEscape));
 onBeforeUnmount(() => document.removeEventListener("mousedown", closeDropdownOnOutside));
 onBeforeUnmount(() => document.removeEventListener("keydown", closeDropdownOnEscape));
 
-const addHighlight = () => {
-  const value = newHighlight.value.trim();
-  if (!value) return;
-  if (!Array.isArray(local.highlights)) local.highlights = [];
-  local.highlights.push(value);
-  newHighlight.value = "";
-};
-
-const removeHighlight = (index: number) => {
-  if (!Array.isArray(local.highlights)) return;
-  local.highlights.splice(index, 1);
-};
-
 const previewUrl = (value?: string | null) => resolveMediaUrl(value || "") || value || "";
 
 const ensureAgencyId = async () => {
@@ -356,17 +300,16 @@ const ensureAgencyId = async () => {
   return agencyStore.currentAgencyId;
 };
 
-const assignMediaValue = (slot: "desktop" | "mobile" | "logo", value: string) => {
+const assignMediaValue = (slot: "desktop" | "mobile", value: string) => {
   if (slot === "desktop") local.backgroundImage = value;
-  else if (slot === "mobile") local.mobileBackgroundImage = value;
-  else local.logoImage = value;
+  else local.mobileBackgroundImage = value;
 };
 
-const clearMedia = (slot: "desktop" | "mobile" | "logo") => {
+const clearMedia = (slot: "desktop" | "mobile") => {
   assignMediaValue(slot, "");
 };
 
-const onMediaFileChange = async (slot: "desktop" | "mobile" | "logo", event: Event) => {
+const onMediaFileChange = async (slot: "desktop" | "mobile", event: Event) => {
   const target = event.target as HTMLInputElement;
   const file = target.files?.[0];
   if (!file) return;
@@ -393,7 +336,7 @@ const syncFromProps = (value: BannerCardSection) => {
   local.title = value.title || "Conte com especialistas para transformar o seu roteiro.";
   local.subtitle = value.subtitle || "";
   local.ctaLabel = value.ctaLabel || "Quero saber mais";
-  local.ctaLink = value.ctaLink || "https://wa.me/";
+  local.ctaLink = value.ctaLink ?? "https://wa.me/";
   local.ctaColor = ensureColor(value.ctaColor, "#41ce5f");
   local.gradientColor = ensureColor(value.gradientColor, "#0b0f19");
   local.backgroundColor = ensureColor(value.backgroundColor, "#020617");
@@ -404,9 +347,7 @@ const syncFromProps = (value: BannerCardSection) => {
   local.ctaMode = value.ctaMode || "link";
   local.ctaSectionId = value.ctaSectionId || null;
   local.ctaOpenInNewTab = value.ctaOpenInNewTab !== false;
-  local.highlights = Array.isArray((extended as any).highlights) ? [...((extended as any).highlights as string[])] : [];
   local.mobileBackgroundImage = (extended as any).mobileBackgroundImage || "";
-  local.logoImage = (extended as any).logoImage || "";
   local.imagePosition = (extended as any).imagePosition || "center";
   nextTick(() => {
     syncing = false;
