@@ -57,12 +57,24 @@ const handlePaste = (event: ClipboardEvent) => {
   if (!editor.value) return;
   if (!event.clipboardData) return;
 
+  // This listener runs in the capture phase so Quill's own clipboard handler
+  // cannot process the same paste a second time using a stale selection.
   event.preventDefault();
+  event.stopPropagation();
+  event.stopImmediatePropagation();
+
   const text = normalizeClipboardText(event);
   if (text === "") return;
 
   const selection = editor.value.getSelection(true);
-  const index = selection?.index ?? editor.value.getLength();
+  const documentEnd = Math.max(0, editor.value.getLength() - 1);
+  const index = Math.min(selection?.index ?? documentEnd, documentEnd);
+  const selectedLength = selection?.length ?? 0;
+
+  if (selectedLength > 0) {
+    editor.value.deleteText(index, selectedLength, "user");
+  }
+
   editor.value.insertText(index, text, "user");
   editor.value.setSelection(index + text.length, 0, "silent");
 };
@@ -71,11 +83,11 @@ const handleReady = (quill: Quill) => {
   editorRoot.value?.removeEventListener("paste", handlePaste);
   editor.value = quill;
   editorRoot.value = quill.root;
-  editorRoot.value.addEventListener("paste", handlePaste);
+  editorRoot.value.addEventListener("paste", handlePaste, { capture: true });
 };
 
 onBeforeUnmount(() => {
-  editorRoot.value?.removeEventListener("paste", handlePaste);
+  editorRoot.value?.removeEventListener("paste", handlePaste, { capture: true });
   editorRoot.value = null;
   editor.value = null;
 });
