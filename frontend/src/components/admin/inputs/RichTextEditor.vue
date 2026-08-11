@@ -1,21 +1,15 @@
 <template>
   <div class="rich-text-editor">
-    <QuillEditor
-      content-type="html"
-      theme="snow"
-      :placeholder="placeholder"
-      :toolbar="toolbarOptions"
-      @ready="handleReady"
-    />
+    <div ref="editorHost"></div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, ref, watch } from "vue";
-import { Delta, QuillEditor } from "@vueup/vue-quill";
-import "@vueup/vue-quill/dist/vue-quill.snow.css";
-import type Quill from "quill";
-import type { RangeStatic } from "quill";
+import { onBeforeUnmount, onMounted, ref, watch } from "vue";
+import Quill, { type EmitterSource } from "quill";
+import "quill/dist/quill.snow.css";
+
+type EditorDelta = ReturnType<Quill["getContents"]>;
 
 const props = defineProps<{
   modelValue?: string;
@@ -23,11 +17,9 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{ (e: "update:modelValue", value: string): void }>();
 
-const editor = ref<Quill | null>(null);
-const editorRoot = ref<HTMLElement | null>(null);
-const lastSelection = ref<RangeStatic | null>(null);
+const editorHost = ref<HTMLElement | null>(null);
+let editor: Quill | null = null;
 let lastEmittedValue = "";
-let selectAllRequested = false;
 
 const toolbarOptions = [
   ["bold", "italic", "underline"],
@@ -36,213 +28,128 @@ const toolbarOptions = [
   ["clean"]
 ];
 
-const normalizeClipboardText = (event: ClipboardEvent) => {
-  const clipboardData = event.clipboardData;
-  if (!clipboardData) return "";
+const serializeEditorHtml = () => {
+  if (!editor) return "";
 
-  const plainText = clipboardData.getData("text/plain");
-  if (plainText) return cleanClipboardText(plainText);
+  const lineAlignments: Array<string | undefined> = [];
+  let hasAlignedLine = false;
+  editor.getContents().eachLine((_line, attributes) => {
+    const alignment = typeof attributes.align === "string" ? attributes.align : undefined;
+    lineAlignments.push(alignment);
+    hasAlignedLine ||= !!alignment;
+  });
 
-  const htmlText = clipboardData.getData("text/html");
-  if (!htmlText) return "";
+  const html = editor.getSemanticHTML();
+  if (!hasAlignedLine) return html;
 
+  // Quill 2 omits alignment from list items in getSemanticHTML(). Restore it
+  // from the Delta so saved list formatting matches what the user sees.
   const wrapper = document.createElement("div");
-  wrapper.innerHTML = htmlText;
-  return cleanClipboardText(wrapper.textContent || "");
-};
-
-// Some editors put a BOM/zero-width space in copied text. In Quill these can
-// look like an empty character and make Backspace appear to do nothing.
-const cleanClipboardText = (value: string) =>
-  value.replace(/\r\n?/g, "\n").replace(/[\u200B\uFEFF]/g, "");
-
-const handleSelectionChange = (range: RangeStatic | null) => {
-  if (!range) return;
-  lastSelection.value = { index: range.index, length: range.length };
-};
-
-const normalizeSelectionText = (value: string) =>
-  value.normalize("NFC").replace(/[\s\u00A0\u200B\uFEFF]/g, "");
-
-const isAllBrowserTextSelected = () => {
-  if (!editor.value) return false;
-  const contentLength = Math.max(0, editor.value.getLength() - 1);
-  const editorText = normalizeSelectionText(editor.value.getText(0, contentLength));
-  const browserSelection = window.getSelection();
-  const anchorInsideEditor = !!browserSelection?.anchorNode && editor.value.root.contains(browserSelection.anchorNode);
-  const focusInsideEditor = !!browserSelection?.focusNode && editor.value.root.contains(browserSelection.focusNode);
-  const selectedText = normalizeSelectionText(browserSelection?.toString() || "");
-  return anchorInsideEditor && focusInsideEditor && editorText.length > 0 && selectedText === editorText;
-};
-
-const hasMeaningfulContent = () => {
-  if (!editor.value) return false;
-  return editor.value
-    .getText()
-    .replace(/[\s\u00A0\u200B\uFEFF]/g, "")
-    .length > 0;
-};
-
-const updateBlankState = () => {
-  editor.value?.root.classList.toggle("ql-blank", !hasMeaningfulContent());
+  wrapper.innerHTML = html;
+  const blocks = wrapper.querySelectorAll<HTMLElement>("p, li");
+  const supportedAlignments = new Set(["left", "center", "right", "justify"]);
+  blocks.forEach((block, index) => {
+    const alignment = lineAlignments[index];
+    if (alignment && supportedAlignments.has(alignment)) {
+      block.classList.add(`ql-align-${alignment}`);
+    }
+  });
+  return wrapper.innerHTML;
 };
 
 const getEditorValue = () => {
-  if (!editor.value || !hasMeaningfulContent()) return "";
-  return editor.value.root.innerHTML;
+  if (!editor || editor.getLength() <= 1) return "";
+  return serializeEditorHtml();
 };
 
-const emitEditorValue = () => {
+const ensureTerminalNewline = (delta: EditorDelta) => {
+  const lastOperation = delta.ops[delta.ops.length - 1];
+  const endsWithNewline =
+    typeof lastOperation?.insert === "string" && lastOperation.insert.endsWith("\n");
+
+  return endsWithNewline ? delta : delta.insert("\n");
+};
+
+const convertHtml = (value?: string) => {
+  if (!editor || !value) return null;
+  return ensureTerminalNewline(editor.clipboard.convert({ html: value, text: "" }));
+};
+
+const contentsEqual = (incoming: EditorDelta) => {
+  if (!editor) return true;
+  return editor.getContents().diff(incoming).ops.length === 0;
+};
+
+const syncEditorContent = (value?: string) => {
+  if (!editor) return;
+
+  const range = editor.getSelection();
+  const incoming = convertHtml(value);
+
+  if (!incoming || incoming.length() <= 1) {
+    if (editor.getLength() <= 1) return;
+    editor.setText("", "silent");
+  } else {
+    if (contentsEqual(incoming)) return;
+    editor.setContents(incoming, "silent");
+  }
+
+  lastEmittedValue = getEditorValue();
+
+  if (range && editor.hasFocus()) {
+    const maxIndex = Math.max(0, editor.getLength() - 1);
+    const index = Math.min(range.index, maxIndex);
+    const length = Math.min(range.length, maxIndex - index);
+    editor.setSelection(index, length, "silent");
+  }
+};
+
+const handleTextChange = (_delta: EditorDelta, _oldContents: EditorDelta, source: EmitterSource) => {
+  if (source === "silent") return;
   const value = getEditorValue();
   if (value === lastEmittedValue) return;
   lastEmittedValue = value;
   emit("update:modelValue", value);
 };
 
-const handleTextChange = (_delta: unknown, _oldContents: unknown, source: string) => {
-  if (source === "silent") return;
+onMounted(() => {
+  if (!editorHost.value) return;
 
-  // Quill always retains a terminal newline. Copied content may also leave
-  // spaces or invisible characters behind, so explicitly collapse a visually
-  // empty document to Quill's canonical empty state.
-  if (!hasMeaningfulContent()) {
-    editor.value?.setText("", "silent");
-  }
+  editor = new Quill(editorHost.value, {
+    theme: "snow",
+    placeholder: props.placeholder || "",
+    modules: {
+      toolbar: toolbarOptions,
+      history: { userOnly: true }
+    },
+    formats: ["bold", "italic", "underline", "list", "indent", "align"]
+  });
 
-  updateBlankState();
-  emitEditorValue();
-};
-
-const syncEditorContent = (value?: string) => {
-  const quill = editor.value;
-  if (!quill) return;
-
-  const nextValue = value || "";
-  if (nextValue === getEditorValue()) return;
-
-  if (!nextValue) {
-    quill.setText("", "silent");
-  } else {
-    quill.setContents(quill.clipboard.convert(nextValue), "silent");
-  }
-  updateBlankState();
-  lastEmittedValue = getEditorValue();
-};
-
-const handlePaste = (event: ClipboardEvent) => {
-  if (!editor.value) return;
-  if (!event.clipboardData) return;
-
-  // This listener runs in the capture phase so Quill's own clipboard handler
-  // cannot process the same paste a second time using a stale selection.
-  event.preventDefault();
-  event.stopPropagation();
-  event.stopImmediatePropagation();
-
-  const text = normalizeClipboardText(event);
-  if (text === "") return;
-
-  const browserSelectedAll = selectAllRequested || isAllBrowserTextSelected();
-  // Do not call getSelection(true) here. Refocusing the editor during a paste
-  // can collapse a selected range and make the text land at an older cursor.
-  const selection = editor.value.getSelection() || lastSelection.value;
-  const documentEnd = Math.max(0, editor.value.getLength() - 1);
-  const index = browserSelectedAll ? 0 : Math.min(selection?.index ?? documentEnd, documentEnd);
-  const selectedLength = browserSelectedAll
-    ? documentEnd
-    : Math.min(selection?.length ?? 0, documentEnd - index);
-
-  // Replace the selection in one Quill transaction. Emitting a deletion and
-  // insertion separately lets the empty intermediate value reach the parent
-  // when the whole editor is selected, which can cancel the insertion.
-  const change = new Delta().retain(index).delete(selectedLength).insert(text);
-  editor.value.updateContents(change, "user");
-  editor.value.setSelection(index + text.length, 0, "silent");
-  lastSelection.value = { index: index + text.length, length: 0 };
-  selectAllRequested = false;
-  emitEditorValue();
-};
-
-const handleKeydown = (event: KeyboardEvent) => {
-  if (!editor.value) return;
-
-  const isSelectAllShortcut =
-    (event.ctrlKey || event.metaKey) &&
-    !event.altKey &&
-    event.key.toLowerCase() === "a";
-
-  if (isSelectAllShortcut) {
-    selectAllRequested = true;
-    return;
-  }
-
-  const isBackspace = event.key === "Backspace" || event.code === "Backspace" || event.keyCode === 8;
-  if (!isBackspace) {
-    if (!['Control', 'Meta', 'Shift', 'Alt'].includes(event.key)) selectAllRequested = false;
-    return;
-  }
-
-  const contentLength = Math.max(0, editor.value.getLength() - 1);
-  const hasOneCharacter = Array.from(editor.value.getText(0, contentLength)).length === 1;
-  if (!selectAllRequested && !isAllBrowserTextSelected() && !hasOneCharacter) return;
-
-  // Quill 1.x reports this DOM selection two positions short even though the
-  // browser selected every visible character. It can also fail to delete the
-  // sole remaining character. Clear the canonical document directly.
-  event.preventDefault();
-  event.stopPropagation();
-  event.stopImmediatePropagation();
-  editor.value.setText("", "user");
-  editor.value.setSelection(0, 0, "silent");
-  lastSelection.value = { index: 0, length: 0 };
-  selectAllRequested = false;
-  updateBlankState();
-};
-
-const handlePointerdown = () => {
-  selectAllRequested = false;
-};
-
-const detachEditorListeners = () => {
-  editorRoot.value?.removeEventListener("paste", handlePaste, { capture: true });
-  editorRoot.value?.removeEventListener("keydown", handleKeydown, { capture: true });
-  editorRoot.value?.removeEventListener("pointerdown", handlePointerdown, { capture: true });
-  editor.value?.off("selection-change", handleSelectionChange);
-  editor.value?.off("text-change", handleTextChange);
-};
-
-const handleReady = (quill: Quill) => {
-  detachEditorListeners();
-  editor.value = quill;
-  editorRoot.value = quill.root;
-  quill.on("selection-change", handleSelectionChange);
-  quill.on("text-change", handleTextChange);
   syncEditorContent(props.modelValue);
-  updateBlankState();
-  editorRoot.value.addEventListener("paste", handlePaste, { capture: true });
-  editorRoot.value.addEventListener("keydown", handleKeydown, { capture: true });
-  editorRoot.value.addEventListener("pointerdown", handlePointerdown, { capture: true });
-};
+  lastEmittedValue = getEditorValue();
+  editor.on("text-change", handleTextChange);
+});
 
 watch(
   () => props.modelValue,
   value => {
-    const nextValue = value || "";
-
-    // The parent echoing the value we just emitted must not rewrite Quill's
-    // DOM, selection or blank state.
-    if (nextValue === getEditorValue()) return;
-
+    if (!editor) return;
+    if ((value || "") === lastEmittedValue) return;
     syncEditorContent(value);
   }
 );
 
+watch(
+  () => props.placeholder,
+  value => {
+    if (!editor) return;
+    editor.root.dataset.placeholder = value || "";
+  }
+);
+
 onBeforeUnmount(() => {
-  detachEditorListeners();
-  editorRoot.value = null;
-  editor.value = null;
-  lastSelection.value = null;
-  selectAllRequested = false;
+  editor?.off("text-change", handleTextChange);
+  editor = null;
 });
 </script>
 

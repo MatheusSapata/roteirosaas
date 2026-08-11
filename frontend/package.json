@@ -9,13 +9,13 @@
     "lint": "echo \"add lint tooling\""
   },
   "dependencies": {
-    "@vueup/vue-quill": "^1.2.0",
     "axios": "^1.6.0",
     "cropperjs": "^1.6.1",
     "dompurify": "^3.3.1",
     "jspdf": "^4.0.0",
     "jspdf-autotable": "^5.0.7",
     "pinia": "^2.1.7",
+    "quill": "2.0.2",
     "simple-icons": "^11.15.0",
     "sortablejs": "^1.15.7",
     "vue": "^3.4.0",
