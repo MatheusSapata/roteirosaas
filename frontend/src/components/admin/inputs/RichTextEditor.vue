@@ -27,6 +27,7 @@ const editor = ref<Quill | null>(null);
 const editorRoot = ref<HTMLElement | null>(null);
 const lastSelection = ref<RangeStatic | null>(null);
 let lastEmittedValue = "";
+let selectAllRequested = false;
 
 const toolbarOptions = [
   ["bold", "italic", "underline"],
@@ -61,7 +62,7 @@ const handleSelectionChange = (range: RangeStatic | null) => {
 };
 
 const normalizeSelectionText = (value: string) =>
-  value.replace(/\r\n?/g, "\n").replace(/\n+$/g, "");
+  value.normalize("NFC").replace(/[\s\u00A0\u200B\uFEFF]/g, "");
 
 const isAllBrowserTextSelected = () => {
   if (!editor.value) return false;
@@ -141,7 +142,7 @@ const handlePaste = (event: ClipboardEvent) => {
   const text = normalizeClipboardText(event);
   if (text === "") return;
 
-  const browserSelectedAll = isAllBrowserTextSelected();
+  const browserSelectedAll = selectAllRequested || isAllBrowserTextSelected();
   // Do not call getSelection(true) here. Refocusing the editor during a paste
   // can collapse a selected range and make the text land at an older cursor.
   const selection = editor.value.getSelection() || lastSelection.value;
@@ -158,15 +159,32 @@ const handlePaste = (event: ClipboardEvent) => {
   editor.value.updateContents(change, "user");
   editor.value.setSelection(index + text.length, 0, "silent");
   lastSelection.value = { index: index + text.length, length: 0 };
+  selectAllRequested = false;
   emitEditorValue();
 };
 
 const handleKeydown = (event: KeyboardEvent) => {
-  if (!editor.value || event.key !== "Backspace") return;
+  if (!editor.value) return;
+
+  const isSelectAllShortcut =
+    (event.ctrlKey || event.metaKey) &&
+    !event.altKey &&
+    event.key.toLowerCase() === "a";
+
+  if (isSelectAllShortcut) {
+    selectAllRequested = true;
+    return;
+  }
+
+  const isBackspace = event.key === "Backspace" || event.code === "Backspace" || event.keyCode === 8;
+  if (!isBackspace) {
+    if (!['Control', 'Meta', 'Shift', 'Alt'].includes(event.key)) selectAllRequested = false;
+    return;
+  }
 
   const contentLength = Math.max(0, editor.value.getLength() - 1);
   const hasOneCharacter = Array.from(editor.value.getText(0, contentLength)).length === 1;
-  if (!isAllBrowserTextSelected() && !hasOneCharacter) return;
+  if (!selectAllRequested && !isAllBrowserTextSelected() && !hasOneCharacter) return;
 
   // Quill 1.x reports this DOM selection two positions short even though the
   // browser selected every visible character. It can also fail to delete the
@@ -177,12 +195,18 @@ const handleKeydown = (event: KeyboardEvent) => {
   editor.value.setText("", "user");
   editor.value.setSelection(0, 0, "silent");
   lastSelection.value = { index: 0, length: 0 };
+  selectAllRequested = false;
   updateBlankState();
+};
+
+const handlePointerdown = () => {
+  selectAllRequested = false;
 };
 
 const detachEditorListeners = () => {
   editorRoot.value?.removeEventListener("paste", handlePaste, { capture: true });
   editorRoot.value?.removeEventListener("keydown", handleKeydown, { capture: true });
+  editorRoot.value?.removeEventListener("pointerdown", handlePointerdown, { capture: true });
   editor.value?.off("selection-change", handleSelectionChange);
   editor.value?.off("text-change", handleTextChange);
 };
@@ -197,6 +221,7 @@ const handleReady = (quill: Quill) => {
   updateBlankState();
   editorRoot.value.addEventListener("paste", handlePaste, { capture: true });
   editorRoot.value.addEventListener("keydown", handleKeydown, { capture: true });
+  editorRoot.value.addEventListener("pointerdown", handlePointerdown, { capture: true });
 };
 
 watch(
@@ -217,6 +242,7 @@ onBeforeUnmount(() => {
   editorRoot.value = null;
   editor.value = null;
   lastSelection.value = null;
+  selectAllRequested = false;
 });
 </script>
 
