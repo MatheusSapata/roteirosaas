@@ -429,9 +429,23 @@ async def fetch_link_metadata(
                     return _metadata_from_public_page(current_url, public_payload)
         except (httpx.HTTPError, ValueError):
             pass
-    headers = {"User-Agent": "RoteiroOnline-LinkPreview/1.0", "Accept": "text/html,application/xhtml+xml"}
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/124.0.0.0 Safari/537.36"
+        ),
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Cache-Control": "no-cache",
+        "Pragma": "no-cache",
+        "Upgrade-Insecure-Requests": "1",
+    }
     body = bytearray()
-    async with httpx.AsyncClient(timeout=httpx.Timeout(10.0), follow_redirects=False) as client:
+    async with httpx.AsyncClient(
+        timeout=httpx.Timeout(20.0, connect=10.0),
+        follow_redirects=False,
+    ) as client:
         for _ in range(6):
             try:
                 async with client.stream("GET", current_url, headers=headers) as response:

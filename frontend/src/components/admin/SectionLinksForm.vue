@@ -34,8 +34,23 @@
         <article v-for="(item, index) in local.items" :key="item.id" class="item-card" :class="{ expanded: expandedIndex === index }" data-link-card>
           <div class="item-head" role="button" tabindex="0" :aria-expanded="expandedIndex === index" @click="toggleCard(index)" @keydown.enter.prevent="toggleCard(index)" @keydown.space.prevent="toggleCard(index)"><span class="handle" title="Arraste para reordenar" @click.stop>⋮⋮</span><span class="chevron">›</span><strong>{{ cardName(item, index) }}</strong><button type="button" class="refresh" :disabled="refreshingIndex === index" @click.stop="refreshMetadata(item, index)">{{ refreshingIndex === index ? 'Atualizando…' : 'Atualizar metadados' }}</button><button type="button" class="remove" @click.stop="remove(index)">Remover</button></div>
           <div v-if="expandedIndex === index" class="fields">
-            <label>URL<input v-model="item.url" type="url" /></label>
-            <label>Imagem (URL)<input v-model="item.image" type="url" placeholder="https://…/imagem.jpg" /></label>
+            <div class="image-field">
+              <span class="field-label">Imagem do card</span>
+              <div class="image-picker">
+                <input :id="`link-image-${item.id}`" class="hidden-file" type="file" accept="image/*" @change="onCardImageFileChange(item, $event)" />
+                <button class="image-thumb" type="button" @click="openImagePicker(item.id)">
+                  <img v-if="previewImage(item.image)" :src="previewImage(item.image)" alt="Prévia da imagem do card" />
+                  <span v-else>IMG</span>
+                </button>
+                <div class="image-copy"><strong>{{ item.image ? 'Imagem selecionada' : 'Sem imagem' }}</strong><small>Imagem obtida do link ou enviada por você.</small></div>
+                <div class="image-actions">
+                  <button type="button" @click="openImagePicker(item.id)" :disabled="uploadingImageId === item.id">{{ uploadingImageId === item.id ? 'Enviando…' : (item.image ? 'Substituir' : 'Adicionar') }}</button>
+                  <button v-if="item.image" type="button" class="danger" @click="item.image = ''">Remover</button>
+                </div>
+              </div>
+              <small v-if="imageUploadErrorId === item.id" class="upload-error">Não foi possível enviar a imagem. Tente novamente.</small>
+            </div>
+            <label class="url-field">URL do link<input v-model="item.url" type="url" /></label>
             <label>Título<input v-model="item.title" /></label>
             <label>Descrição<textarea v-model="item.description" rows="3" /></label>
             <label>Texto do botão<input v-model="item.buttonLabel" placeholder="Abrir link" /></label>
@@ -57,6 +72,7 @@ import api from "../../services/api";
 import { useAgencyStore } from "../../store/useAgencyStore";
 import type { LinkCardItem, LinksSection } from "../../types/page";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
+import { resolveMediaUrl, uploadImageFile } from "../../utils/media";
 
 interface AgencyPage { id:number; title:string; slug:string; status:string; cover_image_url?:string; seo_title?:string; seo_description?:string; config_json?:Record<string,any>|string|null; }
 const props = defineProps<{ modelValue: LinksSection }>();
@@ -70,13 +86,15 @@ const externalUrl = ref("");
 const loadingMetadata = ref(false);
 const refreshingIndex = ref<number|null>(null);
 const expandedIndex = ref<number|null>(null);
+const uploadingImageId = ref<string|null>(null);
+const imageUploadErrorId = ref<string|null>(null);
 const errorMessage = ref("");
 const listRef = ref<HTMLElement|null>(null);
 let sortable: Sortable|null = null;
 let syncing = false;
-const cloneItems = (items?:LinkCardItem[]) => Array.isArray(items) ? items.map(item => ({ ...item })) : [];
-const local = reactive<LinksSection>({ type:"links", enabled:true, title:"Links recomendados", items:[], ...props.modelValue, headingLabel:props.modelValue.headingLabel ?? defaults.label, headingLabelStyle:props.modelValue.headingLabelStyle || defaults.style, items:cloneItems(props.modelValue.items) });
 const makeId = () => `link-${Date.now()}-${Math.random().toString(36).slice(2,7)}`;
+const cloneItems = (items?:LinkCardItem[]) => Array.isArray(items) ? items.map(item => ({ ...item, id:item.id || makeId() })) : [];
+const local = reactive<LinksSection>({ type:"links", enabled:true, title:"Links recomendados", items:[], ...props.modelValue, headingLabel:props.modelValue.headingLabel ?? defaults.label, headingLabelStyle:props.modelValue.headingLabelStyle || defaults.style, items:cloneItems(props.modelValue.items) });
 
 watch(() => props.modelValue, value => { syncing=true; Object.assign(local,value); local.items=cloneItems(value.items); nextTick(() => syncing=false); }, { deep:true });
 watch(local, value => { if (!syncing) emit("update:modelValue", { ...value, items:cloneItems(value.items) }); }, { deep:true });
@@ -124,11 +142,32 @@ const addExternal = async () => {
     expandedIndex.value=local.items.length-1;
     externalUrl.value="";
   } catch (error:any) {
-    errorMessage.value=error?.response?.data?.detail || "Não foi possível ler os dados desse link. Confira a URL e tente novamente.";
+    const detail=error?.response?.data?.detail || "Não foi possível carregar a prévia automaticamente. Você pode preencher os dados manualmente.";
+    local.items.push({ id:makeId(), source:"external", url, image:"", title:new URL(url).hostname.replace(/^www\./,""), description:"", buttonLabel:"Abrir link", openInNewTab:true });
+    expandedIndex.value=local.items.length-1;
+    externalUrl.value="";
+    errorMessage.value=detail;
   } finally { loadingMetadata.value=false; }
 };
 const toggleCard = (index:number) => { expandedIndex.value=expandedIndex.value === index ? null : index; };
 const cardName = (item:LinkCardItem, index:number) => typeof item.title === "string" && item.title.trim() ? item.title : `Card ${index+1}`;
+const previewImage = (value?:string) => resolveMediaUrl(value) || "";
+const openImagePicker = (itemId?:string) => {
+  if (!itemId) return;
+  document.getElementById(`link-image-${itemId}`)?.click();
+};
+const onCardImageFileChange = async (item:LinkCardItem, event:Event) => {
+  const input=event.target as HTMLInputElement;
+  const file=input.files?.[0];
+  if(!file)return;
+  if(!agencyStore.currentAgencyId) await agencyStore.loadAgencies().catch(() => undefined);
+  const agencyId=agencyStore.currentAgencyId;
+  if(!agencyId){ imageUploadErrorId.value=item.id || null; input.value=""; return; }
+  uploadingImageId.value=item.id || null; imageUploadErrorId.value=null;
+  try { item.image=(await uploadImageFile(file,agencyId)).url; }
+  catch { imageUploadErrorId.value=item.id || null; }
+  finally { uploadingImageId.value=null; input.value=""; }
+};
 const remove = (index:number) => {
   local.items.splice(index,1);
   if (expandedIndex.value === index) expandedIndex.value=null;
@@ -156,4 +195,6 @@ onBeforeUnmount(() => sortable?.destroy());
 <style scoped>
 .links-editor{display:grid;grid-template-columns:178px 1fr;height:100%;min-height:0;align-items:stretch}.tabs{display:flex;flex-direction:column;gap:8px;padding:16px 12px;background:var(--card);border-right:1px solid var(--border)}.tab{display:flex;align-items:center;gap:10px;height:50px;border:1px solid var(--border);border-radius:14px;padding:7px 9px;background:var(--muted);color:var(--foreground);text-align:left}.tab.active{background:var(--primary);border-color:var(--primary);color:var(--primary-foreground)}.tab-icon{flex:0 0 26px;width:26px;height:26px;border-radius:8px;display:grid;place-items:center;background:color-mix(in srgb,var(--card) 82%,transparent);font-size:12px}.tab>span:nth-child(2){display:flex;flex:1;min-width:0;flex-direction:column;font-size:14px;font-weight:800;line-height:1.05}.tab small{margin-top:4px;font-size:9px;font-weight:600;opacity:.7}.tab b{min-width:24px;padding:4px 7px;border-radius:99px;background:color-mix(in srgb,var(--card) 78%,transparent);text-align:center;font-size:12px}.editor{min-width:0;min-height:100%;background:var(--background)}.editor-card{min-height:100%;background:transparent}.section-head{padding:14px 16px 10px;border-bottom:1px solid color-mix(in srgb,var(--border) 62%,transparent)}.editor-card h2{margin:0;font-size:18px;line-height:1.15;font-weight:800;color:var(--foreground)}.hint{margin:6px 0 0;font-size:13px;color:var(--muted-foreground)}.content-area{display:grid;gap:12px;padding:12px 14px;align-content:start}.editor-card label{display:grid;gap:6px;margin:0;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted-foreground)}.editor-card input,.editor-card textarea,.editor-card select{width:100%;border:1px solid var(--input);border-radius:12px;padding:9px 12px;background:var(--card);color:var(--foreground);font:inherit;font-size:14px;text-transform:none;letter-spacing:normal}.editor-card input:focus,.editor-card textarea:focus,.editor-card select:focus{outline:0;border-color:var(--ring);box-shadow:0 0 0 3px color-mix(in srgb,var(--ring) 15%,transparent)}.add-grid{display:grid;grid-template-columns:1fr auto;gap:10px 12px;align-items:end}.add-grid button{height:40px;border:1px solid var(--border);border-radius:10px;padding:0 16px;font-size:12px;font-weight:800}.primary{background:var(--primary);border-color:var(--primary)!important;color:var(--primary-foreground)}.secondary{background:var(--muted);color:var(--foreground)}button:disabled{opacity:.5}.cards-list{display:grid;gap:12px}.item-card{border:1px solid var(--border);border-radius:14px;padding:14px;background:var(--card)}.item-head{display:flex;align-items:center;gap:10px;margin-bottom:13px}.item-head strong{font-size:14px;color:var(--foreground)}.handle{cursor:grab;font-size:18px;color:var(--muted-foreground)}.remove{border:0;background:none;color:#dc2626;font-size:12px;font-weight:800}.refresh{margin-left:auto;border:1px solid color-mix(in srgb,var(--primary) 35%,var(--border));background:color-mix(in srgb,var(--primary) 10%,var(--card));color:var(--primary);border-radius:9px;padding:7px 10px;font-size:11px;font-weight:800}.fields{display:grid;grid-template-columns:1fr 1fr;gap:12px 14px}.fields label:nth-child(4){grid-column:1/-1}.check{display:flex!important;grid-column:1/-1;flex-direction:row;align-items:center}.check input{width:auto}.error{margin:0;color:#b91c1c;background:#fef2f2;padding:10px;border-radius:9px;font-size:12px}.empty{text-align:center;padding:32px;border:1px dashed var(--border);border-radius:12px;color:var(--muted-foreground);font-size:13px}@media(max-width:700px){.links-editor{grid-template-columns:1fr}.tabs{flex-direction:row;border-right:0;border-bottom:1px solid var(--border)}.tab{flex:1}.tab small{display:none}.add-grid,.fields{grid-template-columns:1fr}.fields label:nth-child(4){grid-column:auto}}
 .cards-list{gap:10px}.item-card{padding:0;overflow:hidden}.item-card.expanded{border-color:color-mix(in srgb,var(--primary) 35%,var(--border))}.item-head{min-height:52px;margin:0;padding:10px 14px;cursor:pointer;outline:0}.item-head:focus-visible{box-shadow:inset 0 0 0 2px var(--ring)}.item-head strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.chevron{font-size:24px;line-height:1;color:var(--muted-foreground);transition:transform .18s ease}.expanded .chevron{transform:rotate(90deg);color:var(--primary)}.fields{padding:14px;border-top:1px solid var(--border);background:color-mix(in srgb,var(--background) 55%,var(--card))}@media(max-width:700px){.refresh{display:none}}
+.image-field{display:grid;gap:6px}.field-label{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted-foreground)}.image-picker{display:flex;align-items:center;gap:12px;min-height:78px;padding:9px;border:1px solid var(--input);border-radius:12px;background:var(--card)}.hidden-file{display:none!important}.image-thumb{flex:0 0 92px;width:92px;height:60px;padding:0;border:1px solid var(--border);border-radius:9px;overflow:hidden;background:var(--muted);color:var(--muted-foreground);font-size:11px;font-weight:800}.image-thumb img{display:block;width:100%;height:100%;object-fit:cover;object-position:center}.image-copy{display:flex;min-width:0;flex:1;flex-direction:column;gap:3px}.image-copy strong{font-size:12px;color:var(--foreground)}.image-copy small{font-size:10px;color:var(--muted-foreground)}.image-actions{display:flex;gap:6px}.image-actions button{border:1px solid var(--border);border-radius:8px;padding:7px 9px;background:var(--muted);color:var(--foreground);font-size:10px;font-weight:800}.image-actions .danger{color:#dc2626;background:#fff}.upload-error{color:#dc2626;font-size:11px}@media(max-width:700px){.image-picker{align-items:flex-start;flex-wrap:wrap}.image-copy{min-width:150px}.image-actions{width:100%}}
+.image-field,.url-field{grid-column:1/-1}
 </style>

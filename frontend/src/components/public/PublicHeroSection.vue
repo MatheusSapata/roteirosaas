@@ -406,7 +406,7 @@ const mobileBackgroundStyle = computed(() => {
   if (mobileHeroImage) {
     return {
       backgroundImage: `url(${mobileHeroImage})`,
-      backgroundSize: "100% 100%",
+      backgroundSize: "cover",
       backgroundPosition: "center top",
       backgroundRepeat: "no-repeat"
     };
@@ -415,7 +415,7 @@ const mobileBackgroundStyle = computed(() => {
     return {
       backgroundImage: `url(${heroBackgroundImage.value})`,
       backgroundSize: "cover",
-      backgroundPosition: "center center",
+      backgroundPosition: "center top",
       backgroundRepeat: "no-repeat"
     };
   }
@@ -481,7 +481,7 @@ const desktopBackgroundStyle = computed(() => {
   if (heroBackgroundImage.value) {
     return {
       backgroundImage: `linear-gradient(120deg, rgba(15,23,42,0.12), rgba(8,47,73,0.15)), url(${heroBackgroundImage.value})`,
-      backgroundSize: "100% auto",
+      backgroundSize: "cover",
       backgroundPosition: "center top",
       backgroundRepeat: "no-repeat"
     };
