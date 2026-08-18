@@ -32,7 +32,7 @@
 
       <div v-if="local.items.length" ref="listRef" class="cards-list">
         <article v-for="(item, index) in local.items" :key="item.id" class="item-card" :class="{ expanded: expandedIndex === index }" data-link-card>
-          <div class="item-head" role="button" tabindex="0" :aria-expanded="expandedIndex === index" @click="toggleCard(index)" @keydown.enter.prevent="toggleCard(index)" @keydown.space.prevent="toggleCard(index)"><span class="handle" title="Arraste para reordenar" @click.stop>⋮⋮</span><span class="chevron">›</span><strong>{{ cardName(item, index) }}</strong><button v-if="item.source === 'external'" type="button" class="refresh" :disabled="refreshingIndex === index" @click.stop="refreshMetadata(item, index)">{{ refreshingIndex === index ? 'Atualizando…' : 'Atualizar metadados' }}</button><button type="button" class="remove" @click.stop="remove(index)">Remover</button></div>
+          <div class="item-head" role="button" tabindex="0" :aria-expanded="expandedIndex === index" @click="toggleCard(index)" @keydown.enter.prevent="toggleCard(index)" @keydown.space.prevent="toggleCard(index)"><span class="handle" title="Arraste para reordenar" @click.stop>⋮⋮</span><span class="chevron">›</span><strong>{{ cardName(item, index) }}</strong><button type="button" class="refresh" :disabled="refreshingIndex === index" @click.stop="refreshMetadata(item, index)">{{ refreshingIndex === index ? 'Atualizando…' : 'Atualizar metadados' }}</button><button type="button" class="remove" @click.stop="remove(index)">Remover</button></div>
           <div v-if="expandedIndex === index" class="fields">
             <label>URL<input v-model="item.url" type="url" /></label>
             <label>Imagem (URL)<input v-model="item.image" type="url" placeholder="https://…/imagem.jpg" /></label>
@@ -58,7 +58,7 @@ import { useAgencyStore } from "../../store/useAgencyStore";
 import type { LinkCardItem, LinksSection } from "../../types/page";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 
-interface AgencyPage { id:number; title:string; slug:string; status:string; cover_image_url?:string; seo_description?:string; }
+interface AgencyPage { id:number; title:string; slug:string; status:string; cover_image_url?:string; seo_title?:string; seo_description?:string; config_json?:Record<string,any>|string|null; }
 const props = defineProps<{ modelValue: LinksSection }>();
 const emit = defineEmits<{ (e:"update:modelValue", value:LinksSection):void }>();
 const agencyStore = useAgencyStore();
@@ -86,12 +86,30 @@ const loadPages = async () => {
   try { pages.value = (await api.get<AgencyPage[]>("/pages", { params:{ agency_id:agencyId } })).data; } catch { pages.value=[]; }
 };
 const availablePages = pages;
+const plainText = (value:any):string => {
+  if (typeof value === "string") return value.replace(/<[^>]+>/g, "").trim();
+  if (value && typeof value === "object") return plainText(value.pt || value.es || Object.values(value)[0] || "");
+  return "";
+};
+const pageCardMetadata = (page:AgencyPage) => {
+  let config:Record<string,any>={};
+  try { config=typeof page.config_json === "string" ? JSON.parse(page.config_json) : (page.config_json || {}); } catch { config={}; }
+  const hero=Array.isArray(config.sections) ? config.sections.find((section:any) => section?.type === "hero") || {} : {};
+  const general=config.general && typeof config.general === "object" ? config.general : {};
+  const baseTitle=(page.seo_title || page.title || "").trim();
+  return {
+    title:/roteiro online/i.test(baseTitle) ? baseTitle : `${baseTitle} | Roteiro Online`,
+    description:plainText(hero.subtitle) || plainText(general.shortDescription) || page.seo_description || "",
+    image:hero.backgroundImage || page.cover_image_url || ""
+  };
+};
 const addPage = () => {
   const page = pages.value.find(candidate => candidate.id === Number(selectedPageId.value));
   if (!page) return;
   const agency = agencyStore.agencies.find(item => item.id === agencyStore.currentAgencyId);
   const agencySlug = agency?.slug || "";
-  local.items.push({ id:makeId(), source:"page", pageId:page.id, url:`/${agencySlug}/${page.slug}`, image:page.cover_image_url || "", title:page.title, description:page.seo_description || "", buttonLabel:"Abrir roteiro", openInNewTab:false });
+  const metadata=pageCardMetadata(page);
+  local.items.push({ id:makeId(), source:"page", pageId:page.id, url:`/${agencySlug}/${page.slug}`, image:metadata.image, title:metadata.title, description:metadata.description, buttonLabel:"Abrir roteiro", openInNewTab:false });
   expandedIndex.value=local.items.length-1;
   selectedPageId.value="";
 };
@@ -120,8 +138,9 @@ const refreshMetadata = async (item:LinkCardItem, index:number) => {
   if (!item.url || refreshingIndex.value !== null) return;
   refreshingIndex.value=index; errorMessage.value="";
   try {
-    const { data } = await api.post<{url:string;title:string;description:string;image:string}>("/pages/link-metadata", { url:item.url });
-    item.url=data.url || item.url; item.title=data.title || item.title; item.description=data.description || ""; item.image=data.image || item.image;
+    const requestUrl=/^https?:\/\//i.test(item.url) ? item.url : new URL(item.url, window.location.origin).toString();
+    const { data } = await api.post<{url:string;title:string;description:string;image:string}>("/pages/link-metadata", { url:requestUrl });
+    if(item.source === "external") item.url=data.url || item.url; item.title=data.title || item.title; item.description=data.description || ""; item.image=data.image || item.image;
   } catch (error:any) { errorMessage.value=error?.response?.data?.detail || "Não foi possível atualizar os metadados."; }
   finally { refreshingIndex.value=null; }
 };
