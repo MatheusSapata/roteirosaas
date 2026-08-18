@@ -1,12 +1,18 @@
 ﻿from datetime import datetime
 from copy import deepcopy
 import json
+import ipaddress
 import re
+import socket
 import unicodedata
+from html.parser import HTMLParser
 from typing import Any, Optional, Tuple
+from urllib.parse import quote, urljoin, urlparse
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel, HttpUrl
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_active_user, get_db
@@ -26,6 +32,143 @@ from app.services.plans import effective_plan, plan_limits
 from app.services.team import get_user_effective_permissions
 
 router = APIRouter()
+
+
+class LinkMetadataRequest(BaseModel):
+    url: HttpUrl
+
+
+class _OpenGraphParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.metadata: dict[str, str] = {}
+        self.title_parts: list[str] = []
+        self.in_title = False
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, Optional[str]]]) -> None:
+        values = {str(key).lower(): value or "" for key, value in attrs}
+        if tag.lower() == "meta":
+            key = (values.get("property") or values.get("name") or "").lower()
+            if key and values.get("content"):
+                self.metadata.setdefault(key, values["content"].strip())
+        elif tag.lower() == "title":
+            self.in_title = True
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag.lower() == "title":
+            self.in_title = False
+
+    def handle_data(self, data: str) -> None:
+        if self.in_title:
+            self.title_parts.append(data)
+
+
+def _ensure_public_http_url(raw_url: str) -> str:
+    parsed = urlparse(raw_url)
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        raise HTTPException(status_code=422, detail="Informe uma URL HTTP ou HTTPS válida.")
+    try:
+        addresses = socket.getaddrinfo(parsed.hostname, parsed.port or (443 if parsed.scheme == "https" else 80))
+    except socket.gaierror as exc:
+        raise HTTPException(status_code=422, detail="O endereço informado não pôde ser encontrado.") from exc
+    for address in addresses:
+        ip = ipaddress.ip_address(address[4][0])
+        if not ip.is_global:
+            raise HTTPException(status_code=422, detail="Endereços privados ou internos não são permitidos.")
+    return raw_url
+
+
+def _localized_text(value: Any) -> str:
+    if isinstance(value, str):
+        return re.sub(r"<[^>]+>", "", value).strip()
+    if isinstance(value, dict):
+        candidate = value.get("pt") or value.get("es") or next(iter(value.values()), "")
+        return _localized_text(candidate)
+    return ""
+
+
+def _roteiro_online_metadata(raw_url: str, db: Session) -> Optional[dict[str, str]]:
+    parsed = urlparse(raw_url)
+    host = (parsed.hostname or "").lower()
+    if host not in {"roteiroonline.com", "www.roteiroonline.com", "app.roteiroonline.com"}:
+        return None
+    parts = [part for part in parsed.path.split("/") if part]
+    if parts and parts[0].lower() == "p":
+        parts = parts[1:]
+    if len(parts) < 2:
+        return None
+    agency_slug, page_slug = parts[0], parts[1]
+    page = (
+        db.query(Page)
+        .join(Page.agency)
+        .filter(
+            Page.slug.ilike(page_slug),
+            Page.status == PageStatus.published,
+            Page.agency.has(Agency.slug.ilike(agency_slug)),
+        )
+        .first()
+    )
+    if not page:
+        return None
+
+    config = normalize_config(page.config_json) or {}
+    sections = config.get("sections") if isinstance(config, dict) else []
+    hero = next(
+        (section for section in sections or [] if isinstance(section, dict) and section.get("type") == "hero"),
+        {},
+    )
+    title = (page.seo_title or page.title or "").strip()
+    if "roteiro online" not in title.lower():
+        title = f"{title} | Roteiro Online"
+    description = _localized_text(hero.get("subtitle"))
+    if not description:
+        general = config.get("general") if isinstance(config, dict) else {}
+        description = _localized_text(general.get("shortDescription")) if isinstance(general, dict) else ""
+    if not description:
+        description = (page.seo_description or "").strip()
+    image = str(hero.get("backgroundImage") or page.cover_image_url or page.agency.logo_url or "").strip()
+    if image:
+        image = urljoin(raw_url, image)
+    return {"url": raw_url, "title": title[:300], "description": description[:1000], "image": image}
+
+
+def _roteiro_online_path(raw_url: str) -> Optional[tuple[str, str, str]]:
+    parsed = urlparse(raw_url)
+    host = (parsed.hostname or "").lower()
+    if host not in {"roteiroonline.com", "www.roteiroonline.com", "app.roteiroonline.com"}:
+        return None
+    parts = [part for part in parsed.path.split("/") if part]
+    if parts and parts[0].lower() == "p":
+        parts = parts[1:]
+    if len(parts) < 2:
+        return None
+    return f"{parsed.scheme}://{parsed.netloc}", parts[0], parts[1]
+
+
+def _metadata_from_public_page(raw_url: str, payload: dict[str, Any]) -> dict[str, str]:
+    config = payload.get("config") if isinstance(payload.get("config"), dict) else {}
+    sections = config.get("sections") if isinstance(config, dict) else []
+    hero = next(
+        (section for section in sections or [] if isinstance(section, dict) and section.get("type") == "hero"),
+        {},
+    )
+    title = str(payload.get("seo_title") or payload.get("title") or "").strip()
+    if title and "roteiro online" not in title.lower():
+        title = f"{title} | Roteiro Online"
+    description = _localized_text(hero.get("subtitle"))
+    if not description:
+        general = config.get("general") if isinstance(config, dict) else {}
+        description = _localized_text(general.get("shortDescription")) if isinstance(general, dict) else ""
+    if not description:
+        description = str(payload.get("seo_description") or "").strip()
+    branding = payload.get("branding") if isinstance(payload.get("branding"), dict) else {}
+    image = str(hero.get("backgroundImage") or payload.get("cover_image_url") or branding.get("logo_url") or "").strip()
+    return {
+        "url": raw_url,
+        "title": title[:300],
+        "description": description[:1000],
+        "image": urljoin(raw_url, image) if image else "",
+    }
 
 
 def _slugify(value: str) -> str:
@@ -257,6 +400,77 @@ def list_pages(
     for page in pages:
         setattr(page, "is_default", bool(default_id and page.id == default_id))
     return pages
+
+
+@router.post("/link-metadata")
+async def fetch_link_metadata(
+    payload: LinkMetadataRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    del current_user
+    current_url = _ensure_public_http_url(str(payload.url))
+    internal_metadata = _roteiro_online_metadata(current_url, db)
+    if internal_metadata:
+        return internal_metadata
+    public_path = _roteiro_online_path(current_url)
+    if public_path:
+        origin, agency_slug, page_slug = public_path
+        public_api_url = (
+            f"{origin}/api/v1/public/pages/by-slug/"
+            f"{quote(agency_slug, safe='')}/{quote(page_slug, safe='')}"
+        )
+        try:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(10.0)) as public_client:
+                public_response = await public_client.get(public_api_url, headers={"Accept": "application/json"})
+            if public_response.is_success:
+                public_payload = public_response.json()
+                if isinstance(public_payload, dict):
+                    return _metadata_from_public_page(current_url, public_payload)
+        except (httpx.HTTPError, ValueError):
+            pass
+    headers = {"User-Agent": "RoteiroOnline-LinkPreview/1.0", "Accept": "text/html,application/xhtml+xml"}
+    body = bytearray()
+    async with httpx.AsyncClient(timeout=httpx.Timeout(10.0), follow_redirects=False) as client:
+        for _ in range(6):
+            try:
+                async with client.stream("GET", current_url, headers=headers) as response:
+                    if response.status_code in {301, 302, 303, 307, 308}:
+                        location = response.headers.get("location")
+                        if not location:
+                            raise HTTPException(status_code=422, detail="O link retornou um redirecionamento inválido.")
+                        current_url = _ensure_public_http_url(urljoin(current_url, location))
+                        continue
+                    response.raise_for_status()
+                    content_type = response.headers.get("content-type", "").lower()
+                    if "text/html" not in content_type and "application/xhtml+xml" not in content_type:
+                        raise HTTPException(status_code=422, detail="O link não aponta para uma página HTML.")
+                    async for chunk in response.aiter_bytes():
+                        body.extend(chunk)
+                        if len(body) >= 1_000_000:
+                            break
+                    encoding = response.encoding or "utf-8"
+                    html = bytes(body).decode(encoding, errors="replace")
+                    break
+            except HTTPException:
+                raise
+            except httpx.HTTPError as exc:
+                raise HTTPException(status_code=422, detail="Não foi possível acessar esse link.") from exc
+        else:
+            raise HTTPException(status_code=422, detail="O link possui redirecionamentos demais.")
+
+    parser = _OpenGraphParser()
+    parser.feed(html)
+    metadata = parser.metadata
+    title = metadata.get("og:title") or metadata.get("twitter:title") or "".join(parser.title_parts).strip()
+    description = metadata.get("og:description") or metadata.get("twitter:description") or metadata.get("description") or ""
+    image = metadata.get("og:image") or metadata.get("twitter:image") or ""
+    return {
+        "url": current_url,
+        "title": title[:300],
+        "description": description[:1000],
+        "image": urljoin(current_url, image) if image else "",
+    }
 
 
 @router.get("/{page_id}", response_model=PageOut)

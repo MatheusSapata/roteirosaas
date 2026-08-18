@@ -15,6 +15,7 @@ export type SectionType =
   | "cta"
   | "story"
   | "reasons"
+  | "links"
   | "countdown"
   | "agency_footer"
   | "flight_details"
@@ -388,6 +389,28 @@ export interface ReasonsSection extends SectionBase {
   cardAnimationStagger?: number;
 }
 
+export interface LinkCardItem {
+  id?: string;
+  source: "page" | "external";
+  pageId?: number;
+  url: string;
+  image?: string;
+  title: LocalizedString;
+  description?: LocalizedString;
+  buttonLabel?: LocalizedString;
+  openInNewTab?: boolean;
+}
+
+export interface LinksSection extends SectionBase {
+  type: "links";
+  title: LocalizedString;
+  subtitle?: LocalizedString;
+  items: LinkCardItem[];
+  cardBackgroundColor?: string;
+  buttonColor?: string;
+  buttonTextColor?: string;
+}
+
 export interface CtaSection extends SectionBase {
   type: "cta";
   label: LocalizedString;
@@ -420,6 +443,7 @@ export type PageSection =
   | CtaSection
   | StorySection
   | ReasonsSection
+  | LinksSection
   | CountdownSection
   | AgencyFooterSection
   | FlightDetailsSection

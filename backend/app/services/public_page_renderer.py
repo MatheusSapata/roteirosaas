@@ -3,6 +3,7 @@ from __future__ import annotations
 import html
 import io
 import hashlib
+import re
 from functools import lru_cache
 from pathlib import Path
 from typing import Optional
@@ -94,6 +95,18 @@ def _resolve_page_share_description(page: PublicPageOut, fallback_title: str, ag
         if trimmed:
             return trimmed
 
+    sections = config.get("sections") if isinstance(config, dict) else None
+    if isinstance(sections, list):
+        hero = next((item for item in sections if isinstance(item, dict) and item.get("type") == "hero"), None)
+        if hero:
+            subtitle = hero.get("subtitle")
+            if isinstance(subtitle, dict):
+                subtitle = subtitle.get("pt") or subtitle.get("es") or next(iter(subtitle.values()), "")
+            if isinstance(subtitle, str):
+                trimmed = re.sub(r"<[^>]+>", "", subtitle).strip()
+                if trimmed:
+                    return trimmed
+
     return f"{agency_name} preparou um roteiro personalizado: {fallback_title}."
 
 
@@ -160,7 +173,7 @@ def _build_meta_block(page: PublicPageOut, canonical_url: str, origin: str) -> s
     branding = page.branding or {}
     agency_name = str(branding.get("agency_name") or "Roteiro Online").strip()
     seo_title = (page.seo_title or page.title).strip()
-    final_title = seo_title if agency_name.lower() in seo_title.lower() else f"{agency_name} | {seo_title}"
+    final_title = seo_title if "roteiro online" in seo_title.lower() else f"{seo_title} | Roteiro Online"
 
     description = _resolve_page_share_description(page, page.title, agency_name)
 

@@ -10,6 +10,7 @@ const HEADING_DEFAULTS: Partial<Record<SectionType, { label: string; style: Head
   faq: { label: "FAQ", style: "outline" },
   story: { label: "Sobre nós", style: "outline" },
   reasons: { label: "Por que escolher", style: "outline" },
+  links: { label: "Links", style: "outline" },
   testimonials: { label: "Depoimentos", style: "outline" },
   featured_video: { label: "Video em destaque", style: "outline" },
   cta: { label: "Convite", style: "outline" },

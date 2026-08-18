@@ -1155,6 +1155,7 @@ import type {
   TestimonialsSection,
   StorySection,
   ReasonsSection,
+  LinksSection,
   CountdownSection,
   AgencyFooterSection,
   FlightDetailsSection,
@@ -1188,6 +1189,7 @@ import featuredVideoThumb from "../../assets/videoemdestaque.png";
 import biographyThumb from "../../assets/biografia.png";
 import flightsThumb from "../../assets/voos-thumb.png";
 import viajeonCheckoutThumb from "../../assets/viajeon-checkout-thumb.png";
+import linksThumb from "../../assets/links-thumb.png";
 interface Page {
   id: number;
   title: string;
@@ -2019,6 +2021,7 @@ const SectionFeaturedVideoForm = defineAsyncComponent(() => import("../../compon
 const SectionCtaForm = defineAsyncComponent(() => import("../../components/admin/SectionCtaForm.vue"));
 const SectionStoryForm = defineAsyncComponent(() => import("../../components/admin/SectionStoryForm.vue"));
 const SectionReasonsForm = defineAsyncComponent(() => import("../../components/admin/SectionReasonsForm.vue"));
+const SectionLinksForm = defineAsyncComponent(() => import("../../components/admin/SectionLinksForm.vue"));
 const SectionCountdownForm = defineAsyncComponent(() => import("../../components/admin/SectionCountdownForm.vue"));
 const SectionAgencyFooterForm = defineAsyncComponent(() => import("../../components/admin/SectionAgencyFooterForm.vue"));
 const SectionFlightDetailsForm = defineAsyncComponent(() => import("../../components/admin/SectionFlightDetailsForm.vue"));
@@ -2035,6 +2038,7 @@ const PublicFeaturedVideoSection = defineAsyncComponent(() => import("../../comp
 const PublicCtaSection = defineAsyncComponent(() => import("../../components/public/PublicCtaSection.vue"));
 const PublicStorySection = defineAsyncComponent(() => import("../../components/public/PublicStorySection.vue"));
 const PublicReasonsSection = defineAsyncComponent(() => import("../../components/public/PublicReasonsSection.vue"));
+const PublicLinksSection = defineAsyncComponent(() => import("../../components/public/PublicLinksSection.vue"));
 const PublicCountdownSection = defineAsyncComponent(() => import("../../components/public/PublicCountdownSection.vue"));
 const PublicFreeFooterBrandSection = defineAsyncComponent(() => import("../../components/public/PublicFreeFooterBrandSection.vue"));
 const PublicAgencyFooterSection = defineAsyncComponent(() => import("../../components/public/PublicAgencyFooterSection.vue"));
@@ -2054,6 +2058,7 @@ const sectionTypes: SectionType[] = [
   "cta",
   "story",
   "reasons",
+  "links",
   "countdown",
   "flight_details",
   "viajeon_checkout",
@@ -2117,6 +2122,10 @@ const sectionDescriptions: Partial<Record<SectionType, string>> = {
     pt: "Mostra voos de ida e volta com multiplos trechos, bagagens e visual premium.",
     es: "Muestra vuelos de ida y vuelta con multiples tramos, equipajes y visual premium."
   }),
+  links: t({
+    pt: "Carrossel de páginas e links externos com imagem, título e descrição.",
+    es: "Carrusel de páginas y enlaces externos con imagen, título y descripción."
+  }),
   viajeon_checkout: t({
     pt: "Lista todos os pacotes ativos de um checkout Viajeon e envia a seleção para o pagamento externo.",
     es: "Lista todos los paquetes activos de un checkout Viajeon y envía la selección al pago externo."
@@ -2145,6 +2154,7 @@ const sectionThumbnails: Partial<Record<SectionType, string>> = {
   cta: ctaThumb,
   story: storyThumb,
   reasons: reasonsThumb,
+  links: linksThumb,
   countdown: countdownThumb,
   flight_details: flightsThumb,
   viajeon_checkout: viajeonCheckoutThumb,
@@ -2163,6 +2173,7 @@ const sectionAccents: Partial<Record<SectionType, string>> = {
   cta: "from-cyan-100/70 to-white",
   story: "from-rose-100/70 to-white",
   reasons: "from-indigo-100/70 to-white",
+  links: "from-lime-100/70 to-white",
   countdown: "from-orange-100/70 to-white",
   flight_details: "from-sky-100/70 to-white",
   viajeon_checkout: "from-emerald-100/70 to-white",
@@ -2181,6 +2192,7 @@ const formComponents: Partial<Record<SectionType, any>> = {
   cta: SectionCtaForm,
   story: SectionStoryForm,
   reasons: SectionReasonsForm,
+  links: SectionLinksForm,
   countdown: SectionCountdownForm,
   flight_details: SectionFlightDetailsForm,
   viajeon_checkout: SectionViajeonCheckoutForm,
@@ -2200,6 +2212,7 @@ const publicComponents: Partial<Record<SectionType, any>> = {
   cta: PublicCtaSection,
   story: PublicStorySection,
   reasons: PublicReasonsSection,
+  links: PublicLinksSection,
   countdown: PublicCountdownSection,
   flight_details: PublicFlightDetailsSection,
   viajeon_checkout: PublicViajeonCheckoutSection,
@@ -3305,6 +3318,24 @@ if (type === "flight_details") {
     showInbound: true,
     journeys: []
   } as FlightDetailsSection);
+}
+
+if (type === "links") {
+  const headingDefaults = getSectionHeadingDefaults("links");
+  return ensureSectionAnchor({
+    type: "links",
+    enabled: true,
+    headingLabel: headingDefaults.label,
+    headingLabelStyle: headingDefaults.style,
+    title: "Explore outros roteiros",
+    subtitle: "Conheça outras experiências selecionadas para você.",
+    items: [],
+    backgroundColor: "#f8fafc",
+    textColor: "#111827",
+    cardBackgroundColor: "#ffffff",
+    buttonColor: theme.value.ctaDefaultColor || "#6df56d",
+    buttonTextColor: theme.value.ctaTextColor || "#071107"
+  } as LinksSection);
 }
 
 if (type === "viajeon_checkout") {

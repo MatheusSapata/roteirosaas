@@ -31,6 +31,7 @@ import PublicFeaturedVideoSection from "../public/PublicFeaturedVideoSection.vue
 import PublicCtaSection from "../public/PublicCtaSection.vue";
 import PublicStorySection from "../public/PublicStorySection.vue";
 import PublicReasonsSection from "../public/PublicReasonsSection.vue";
+import PublicLinksSection from "../public/PublicLinksSection.vue";
 import PublicCountdownSection from "../public/PublicCountdownSection.vue";
 import PublicFreeFooterBrandSection from "../public/PublicFreeFooterBrandSection.vue";
 import PublicAgencyFooterSection from "../public/PublicAgencyFooterSection.vue";
@@ -52,6 +53,7 @@ const publicComponents: Record<string, unknown> = {
   cta: PublicCtaSection,
   story: PublicStorySection,
   reasons: PublicReasonsSection,
+  links: PublicLinksSection,
   countdown: PublicCountdownSection,
   flight_details: PublicFlightDetailsSection,
   free_footer_brand: PublicFreeFooterBrandSection,
