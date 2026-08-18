@@ -406,6 +406,7 @@ export interface LinksSection extends SectionBase {
   title: LocalizedString;
   subtitle?: LocalizedString;
   items: LinkCardItem[];
+  carouselEnabled?: boolean;
   cardBackgroundColor?: string;
   buttonColor?: string;
   buttonTextColor?: string;

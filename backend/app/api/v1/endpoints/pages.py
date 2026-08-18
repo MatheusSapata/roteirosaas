@@ -2,6 +2,7 @@
 from copy import deepcopy
 import json
 import ipaddress
+import os
 import re
 import socket
 import unicodedata
@@ -32,6 +33,7 @@ from app.services.plans import effective_plan, plan_limits
 from app.services.team import get_user_effective_permissions
 
 router = APIRouter()
+_LINK_METADATA_FALLBACK_CACHE: dict[str, dict[str, str]] = {}
 
 
 class LinkMetadataRequest(BaseModel):
@@ -169,6 +171,40 @@ def _metadata_from_public_page(raw_url: str, payload: dict[str, Any]) -> dict[st
         "description": description[:1000],
         "image": urljoin(raw_url, image) if image else "",
     }
+
+
+async def _fetch_metadata_fallback(raw_url: str) -> Optional[dict[str, str]]:
+    cached = _LINK_METADATA_FALLBACK_CACHE.get(raw_url)
+    if cached:
+        return cached
+    headers = {"Accept": "application/json"}
+    api_key = os.getenv("MICROLINK_API_KEY", "").strip()
+    if api_key:
+        headers["x-api-key"] = api_key
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(35.0, connect=10.0)) as client:
+            response = await client.get("https://api.microlink.io", params={"url": raw_url}, headers=headers)
+        response.raise_for_status()
+        payload = response.json()
+        data = payload.get("data") if isinstance(payload, dict) else None
+        if not isinstance(data, dict):
+            return None
+        image_data = data.get("image")
+        image = image_data.get("url", "") if isinstance(image_data, dict) else str(image_data or "")
+        result = {
+            "url": raw_url,
+            "title": str(data.get("title") or "")[:300],
+            "description": str(data.get("description") or "")[:1000],
+            "image": image,
+        }
+        if not any((result["title"], result["description"], result["image"])):
+            return None
+        if len(_LINK_METADATA_FALLBACK_CACHE) >= 256:
+            _LINK_METADATA_FALLBACK_CACHE.pop(next(iter(_LINK_METADATA_FALLBACK_CACHE)))
+        _LINK_METADATA_FALLBACK_CACHE[raw_url] = result
+        return result
+    except (httpx.HTTPError, ValueError, TypeError):
+        return None
 
 
 def _slugify(value: str) -> str:
@@ -469,6 +505,9 @@ async def fetch_link_metadata(
             except HTTPException:
                 raise
             except httpx.HTTPError as exc:
+                fallback = await _fetch_metadata_fallback(current_url)
+                if fallback:
+                    return fallback
                 raise HTTPException(status_code=422, detail="Não foi possível acessar esse link.") from exc
         else:
             raise HTTPException(status_code=422, detail="O link possui redirecionamentos demais.")

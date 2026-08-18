@@ -18,16 +18,18 @@
       <div v-else class="editor-card">
       <div class="section-head"><div><h2>Cards do carrossel</h2><p class="hint">Adicione quantos links quiser. Os dados encontrados podem ser alterados manualmente.</p></div></div>
       <div class="content-area">
+      <label class="carousel-toggle"><input type="checkbox" :checked="local.carouselEnabled === false" @change="toggleCarousel" /><span><strong>Desativar carrossel</strong><small>Exibe até 8 links em uma grade centralizada de duas linhas.</small></span></label>
       <div class="add-grid">
         <label>Página existente
           <select v-model="selectedPageId"><option value="">Selecione uma página</option><option v-for="page in availablePages" :key="page.id" :value="page.id">{{ page.title }}</option></select>
         </label>
-        <button type="button" class="secondary" :disabled="!selectedPageId" @click="addPage">Adicionar página</button>
+        <button type="button" class="secondary" :disabled="!selectedPageId || gridLimitReached" @click="addPage">Adicionar página</button>
         <label class="external">Link externo
           <input v-model="externalUrl" type="url" placeholder="https://exemplo.com/pagina" @keyup.enter="addExternal" />
         </label>
-        <button type="button" class="primary" :disabled="loadingMetadata || !externalUrl.trim()" @click="addExternal">{{ loadingMetadata ? 'Buscando dados…' : 'Adicionar link' }}</button>
+        <button type="button" class="primary" :disabled="loadingMetadata || !externalUrl.trim() || gridLimitReached" @click="addExternal">{{ loadingMetadata ? 'Buscando dados…' : 'Adicionar link' }}</button>
       </div>
+      <p v-if="gridLimitReached" class="limit-note">A grade permite no máximo 8 links.</p>
       <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
 
       <div v-if="local.items.length" ref="listRef" class="cards-list">
@@ -66,7 +68,7 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import Sortable from "sortablejs";
 import api from "../../services/api";
 import { useAgencyStore } from "../../store/useAgencyStore";
@@ -94,7 +96,7 @@ let sortable: Sortable|null = null;
 let syncing = false;
 const makeId = () => `link-${Date.now()}-${Math.random().toString(36).slice(2,7)}`;
 const cloneItems = (items?:LinkCardItem[]) => Array.isArray(items) ? items.map(item => ({ ...item, id:item.id || makeId() })) : [];
-const local = reactive<LinksSection>({ type:"links", enabled:true, title:"Links recomendados", items:[], ...props.modelValue, headingLabel:props.modelValue.headingLabel ?? defaults.label, headingLabelStyle:props.modelValue.headingLabelStyle || defaults.style, items:cloneItems(props.modelValue.items) });
+const local = reactive<LinksSection>({ type:"links", enabled:true, title:"Links recomendados", items:[], carouselEnabled:true, ...props.modelValue, headingLabel:props.modelValue.headingLabel ?? defaults.label, headingLabelStyle:props.modelValue.headingLabelStyle || defaults.style, items:cloneItems(props.modelValue.items) });
 
 watch(() => props.modelValue, value => { syncing=true; Object.assign(local,value); local.items=cloneItems(value.items); nextTick(() => syncing=false); }, { deep:true });
 watch(local, value => { if (!syncing) emit("update:modelValue", { ...value, items:cloneItems(value.items) }); }, { deep:true });
@@ -104,6 +106,12 @@ const loadPages = async () => {
   try { pages.value = (await api.get<AgencyPage[]>("/pages", { params:{ agency_id:agencyId } })).data; } catch { pages.value=[]; }
 };
 const availablePages = pages;
+const gridLimitReached = computed(() => local.carouselEnabled === false && local.items.length >= 8);
+const toggleCarousel = (event:Event) => {
+  const disabled=(event.target as HTMLInputElement).checked;
+  if(disabled && local.items.length>8){ errorMessage.value="Remova os links excedentes antes de ativar a grade. O limite é de 8 links."; (event.target as HTMLInputElement).checked=false; return; }
+  local.carouselEnabled=!disabled;
+};
 const plainText = (value:any):string => {
   if (typeof value === "string") return value.replace(/<[^>]+>/g, "").trim();
   if (value && typeof value === "object") return plainText(value.pt || value.es || Object.values(value)[0] || "");
@@ -122,6 +130,7 @@ const pageCardMetadata = (page:AgencyPage) => {
   };
 };
 const addPage = () => {
+  if(gridLimitReached.value)return;
   const page = pages.value.find(candidate => candidate.id === Number(selectedPageId.value));
   if (!page) return;
   const agency = agencyStore.agencies.find(item => item.id === agencyStore.currentAgencyId);
@@ -133,7 +142,7 @@ const addPage = () => {
 };
 const normalizeUrl = (value:string) => /^https?:\/\//i.test(value) ? value : `https://${value}`;
 const addExternal = async () => {
-  if (!externalUrl.value.trim() || loadingMetadata.value) return;
+  if (!externalUrl.value.trim() || loadingMetadata.value || gridLimitReached.value) return;
   loadingMetadata.value=true; errorMessage.value="";
   const url=normalizeUrl(externalUrl.value.trim());
   try {
@@ -197,4 +206,5 @@ onBeforeUnmount(() => sortable?.destroy());
 .cards-list{gap:10px}.item-card{padding:0;overflow:hidden}.item-card.expanded{border-color:color-mix(in srgb,var(--primary) 35%,var(--border))}.item-head{min-height:52px;margin:0;padding:10px 14px;cursor:pointer;outline:0}.item-head:focus-visible{box-shadow:inset 0 0 0 2px var(--ring)}.item-head strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.chevron{font-size:24px;line-height:1;color:var(--muted-foreground);transition:transform .18s ease}.expanded .chevron{transform:rotate(90deg);color:var(--primary)}.fields{padding:14px;border-top:1px solid var(--border);background:color-mix(in srgb,var(--background) 55%,var(--card))}@media(max-width:700px){.refresh{display:none}}
 .image-field{display:grid;gap:6px}.field-label{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted-foreground)}.image-picker{display:flex;align-items:center;gap:12px;min-height:78px;padding:9px;border:1px solid var(--input);border-radius:12px;background:var(--card)}.hidden-file{display:none!important}.image-thumb{flex:0 0 92px;width:92px;height:60px;padding:0;border:1px solid var(--border);border-radius:9px;overflow:hidden;background:var(--muted);color:var(--muted-foreground);font-size:11px;font-weight:800}.image-thumb img{display:block;width:100%;height:100%;object-fit:cover;object-position:center}.image-copy{display:flex;min-width:0;flex:1;flex-direction:column;gap:3px}.image-copy strong{font-size:12px;color:var(--foreground)}.image-copy small{font-size:10px;color:var(--muted-foreground)}.image-actions{display:flex;gap:6px}.image-actions button{border:1px solid var(--border);border-radius:8px;padding:7px 9px;background:var(--muted);color:var(--foreground);font-size:10px;font-weight:800}.image-actions .danger{color:#dc2626;background:#fff}.upload-error{color:#dc2626;font-size:11px}@media(max-width:700px){.image-picker{align-items:flex-start;flex-wrap:wrap}.image-copy{min-width:150px}.image-actions{width:100%}}
 .image-field,.url-field{grid-column:1/-1}
+.carousel-toggle{display:flex!important;align-items:center!important;gap:10px!important;padding:11px 12px;border:1px solid var(--border);border-radius:12px;background:var(--card);text-transform:none!important;letter-spacing:normal!important;cursor:pointer}.carousel-toggle>input{width:17px!important;height:17px;flex:0 0 auto}.carousel-toggle>span{display:flex;flex-direction:column;gap:2px}.carousel-toggle strong{font-size:12px;color:var(--foreground)}.carousel-toggle small{font-size:10px;font-weight:500;color:var(--muted-foreground)}.limit-note{margin:0;color:var(--muted-foreground);font-size:11px}
 </style>

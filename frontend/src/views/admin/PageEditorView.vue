@@ -3330,6 +3330,7 @@ if (type === "links") {
     title: "Explore outros roteiros",
     subtitle: "Conheça outras experiências selecionadas para você.",
     items: [],
+    carouselEnabled: true,
     backgroundColor: "#f8fafc",
     textColor: "#111827",
     cardBackgroundColor: "#ffffff",
