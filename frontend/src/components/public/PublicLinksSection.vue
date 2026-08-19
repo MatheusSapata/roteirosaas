@@ -76,11 +76,11 @@ const imageKey = (item:LinkCardItem, index:number) => item.id || `${item.url}-${
 const imageFitsEntire = (item:LinkCardItem, index:number) => entireImageFit[imageKey(item,index)] === true;
 const detectImageFit = (item:LinkCardItem, index:number, event:Event) => {
   const image=event.target as HTMLImageElement;
-  const frame=image.parentElement;
-  if(!image.naturalWidth || !image.naturalHeight || !frame)return;
+  if(!image.naturalWidth || !image.naturalHeight)return;
   const imageRatio=image.naturalWidth/image.naturalHeight;
-  const frameRatio=frame.clientWidth/frame.clientHeight;
-  entireImageFit[imageKey(item,index)]=imageRatio <= frameRatio * 1.1;
+  const targetRatio=16/9;
+  const ratioDifference=Math.abs(imageRatio-targetRatio)/targetRatio;
+  entireImageFit[imageKey(item,index)]=ratioDifference <= .02;
 };
 
 const scroll = (direction: number) => {
