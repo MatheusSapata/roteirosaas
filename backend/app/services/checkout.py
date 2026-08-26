@@ -442,16 +442,70 @@ def _cancel_replaced_asaas_subscription_after_pix_upgrade(db: Session, session: 
     metadata = dict(session.metadata_json or {})
     previous_subscription_id = str(metadata.get("replaced_asaas_subscription_id") or "").strip()
     current_subscription_id = str(metadata.get("asaas_subscription_id") or "").strip()
-    if not previous_subscription_id or not current_subscription_id:
-        return
-    if previous_subscription_id == current_subscription_id:
-        return
-    if metadata.get("replaced_asaas_subscription_cancelled"):
-        return
+    current_authorization_id = str(metadata.get("asaas_pix_automatic_authorization_id") or "").strip()
+    target_subscription = _resolve_target_subscription_for_upgrade(db, session)
+    target_user_id = target_subscription.user_id if target_subscription else session.user_id
+    client: AsaasClient | None = None
+    changed = False
 
-    client = _ensure_asaas_client()
-    client.cancel_subscription(previous_subscription_id)
-    metadata["replaced_asaas_subscription_cancelled"] = True
+    # PIX Automatico nao cria um novo /subscriptions/{id}. Portanto, exigir um
+    # current_subscription_id aqui fazia a assinatura convencional anterior
+    # permanecer ativa depois do upgrade.
+    if (
+        previous_subscription_id
+        and previous_subscription_id != current_subscription_id
+        and not metadata.get("replaced_asaas_subscription_cancelled")
+    ):
+        client = client or _ensure_asaas_client()
+        client.cancel_subscription(previous_subscription_id)
+        metadata["replaced_asaas_subscription_cancelled"] = True
+        if target_subscription and target_subscription.asaas_subscription_id == previous_subscription_id:
+            target_subscription.asaas_subscription_id = None
+            db.add(target_subscription)
+        changed = True
+
+    # Um cliente pode estar migrando de outra autorizacao PIX Automatica. As
+    # sessoes antigas precisam ser canceladas no Asaas e localmente; caso
+    # contrario o job de renovacao continua criando instrucoes na data antiga.
+    if target_user_id:
+        previous_pix_sessions = (
+            db.query(CheckoutSession)
+            .filter(
+                CheckoutSession.user_id == target_user_id,
+                CheckoutSession.payment_method == "pix",
+                CheckoutSession.status == "paid",
+            )
+            .all()
+        )
+        cancelled_authorizations: set[str] = set()
+        for previous_session in previous_pix_sessions:
+            if previous_session.id == session.id or previous_session.token == session.token:
+                continue
+            previous_metadata = dict(previous_session.metadata_json or {})
+            if str(previous_metadata.get("pix_mode") or "").strip().lower() != "automatic":
+                continue
+            authorization_id = str(
+                previous_metadata.get("asaas_pix_automatic_authorization_id") or ""
+            ).strip()
+            if not authorization_id or authorization_id == current_authorization_id:
+                continue
+            if authorization_id not in cancelled_authorizations:
+                client = client or _ensure_asaas_client()
+                client.cancel_pix_automatic_authorization(
+                    authorization_id,
+                    reason="Substituida por upgrade de plano",
+                )
+                cancelled_authorizations.add(authorization_id)
+            previous_metadata["asaas_pix_automatic_authorization_status"] = "CANCELLED"
+            previous_metadata["replaced_by_upgrade_checkout_token"] = session.token
+            previous_session.metadata_json = previous_metadata
+            previous_session.status = "cancelled"
+            previous_session.updated_at = _utcnow()
+            db.add(previous_session)
+            changed = True
+
+    if not changed:
+        return
     session.metadata_json = metadata
     db.add(session)
     db.commit()

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from types import SimpleNamespace
 
 import pytest
 from fastapi import HTTPException
@@ -241,3 +242,65 @@ def test_paid_instruction_renews_subscription_only_once(monkeypatch: pytest.Monk
 
     assert renewed == [session]
     assert session.metadata_json["asaas_pix_automatic_last_renewed_instruction_id"] == "pai_123"
+
+
+def test_pix_upgrade_cancels_previous_subscription_and_automatic_authorization(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    old_session = make_session()
+    old_session.id = 1
+    old_session.user_id = 42
+    old_session.token = "old-checkout-token"
+    old_session.payment_method = "pix"
+    old_session.status = "paid"
+    old_session.metadata_json = {
+        "pix_mode": "automatic",
+        "asaas_pix_automatic_authorization_id": "auth_old",
+        "asaas_pix_automatic_authorization_status": "ACTIVE",
+        "asaas_pix_automatic_next_due_date": "2026-08-15",
+    }
+    new_session = make_session(upgrade=True)
+    new_session.id = 2
+    new_session.user_id = 42
+    new_session.token = "new-checkout-token"
+    new_session.payment_method = "pix"
+    new_session.status = "paid"
+    new_session.metadata_json = {
+        "upgrade_mode": True,
+        "pix_mode": "automatic",
+        "asaas_pix_automatic_authorization_id": "auth_new",
+        "replaced_asaas_subscription_id": "sub_old",
+    }
+    subscription = SimpleNamespace(user_id=42, asaas_subscription_id="sub_old")
+
+    class CancellationClient:
+        def __init__(self) -> None:
+            self.subscriptions: list[str] = []
+            self.authorizations: list[tuple[str, str]] = []
+
+        def cancel_subscription(self, subscription_id: str) -> None:
+            self.subscriptions.append(subscription_id)
+
+        def cancel_pix_automatic_authorization(self, authorization_id: str, reason: str) -> None:
+            self.authorizations.append((authorization_id, reason))
+
+    client = CancellationClient()
+    monkeypatch.setattr(checkout, "_ensure_asaas_client", lambda: client)
+    monkeypatch.setattr(
+        checkout,
+        "_resolve_target_subscription_for_upgrade",
+        lambda _db, _session: subscription,
+    )
+
+    checkout._cancel_replaced_asaas_subscription_after_pix_upgrade(
+        FakeDb([old_session]),
+        new_session,
+    )
+
+    assert client.subscriptions == ["sub_old"]
+    assert client.authorizations == [("auth_old", "Substituida por upgrade de plano")]
+    assert subscription.asaas_subscription_id is None
+    assert old_session.status == "cancelled"
+    assert old_session.metadata_json["asaas_pix_automatic_authorization_status"] == "CANCELLED"
+    assert old_session.metadata_json["replaced_by_upgrade_checkout_token"] == new_session.token
+    assert new_session.metadata_json["asaas_pix_automatic_authorization_id"] == "auth_new"
