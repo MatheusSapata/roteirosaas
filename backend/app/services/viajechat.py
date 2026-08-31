@@ -60,6 +60,36 @@ class ViajeChatClient:
         contacts = data.get("data") or []
         return contacts[0] if contacts else None
 
+    def list_pipelines(self) -> list[dict[str, Any]]:
+        """Lista os kanbans (pipelines) e hidrata suas respectivas colunas."""
+        payload = self._request("GET", "/pipelines")
+        pipelines = self._extract_pipeline_rows(payload)
+
+        # A ViajeChat entrega as colunas em um recurso separado, agrupadas por
+        # pipeline. Mesclamos as respostas para manter um único contrato interno.
+        columns_payload = self._request("GET", "/columns")
+        pipelines_with_columns = self._extract_pipeline_rows(columns_payload)
+        columns_by_pipeline = {
+            str(item.get("id") or item.get("uuid") or ""): item.get("columns") or []
+            for item in pipelines_with_columns
+        }
+        for pipeline in pipelines:
+            pipeline_id = str(pipeline.get("id") or pipeline.get("uuid") or "")
+            pipeline["columns"] = columns_by_pipeline.get(pipeline_id, pipeline.get("columns") or [])
+        return pipelines
+
+    @staticmethod
+    def _extract_pipeline_rows(payload: Any) -> list[dict[str, Any]]:
+        if isinstance(payload, list):
+            return [item for item in payload if isinstance(item, dict)]
+        if not isinstance(payload, dict):
+            return []
+        for key in ("data", "pipelines", "items"):
+            rows = payload.get(key)
+            if isinstance(rows, list):
+                return [item for item in rows if isinstance(item, dict)]
+        return []
+
     def get_contact_by_phone(self, phone: str) -> dict[str, Any] | None:
         if not phone:
             return None
@@ -93,6 +123,7 @@ class ViajeChatClient:
         lead_source: str | None = None,
         value: float | None = None,
         notes: list[str] | None = None,
+        idempotency_key: str | None = None,
     ) -> dict[str, Any]:
         contact_payload: dict[str, Any] = {"phone": phone}
         if name:
@@ -125,7 +156,8 @@ class ViajeChatClient:
             payload["notes"] = [str(item) for item in notes if str(item).strip()]
         masked_payload = self._mask_deal_payload(payload)
         logger.info("VIAJECHAT_DEAL_CREATE_PAYLOAD payload=%s", masked_payload)
-        return self._request("POST", "/deals/create", json=payload) or {}
+        headers = {"Idempotency-Key": idempotency_key} if idempotency_key else None
+        return self._request("POST", "/deals/create", json=payload, headers=headers or {}) or {}
 
     @staticmethod
     def _mask_deal_payload(payload: dict[str, Any]) -> dict[str, Any]:
@@ -141,6 +173,9 @@ class ViajeChatClient:
         if phone:
             contact["phone"] = f"***{phone[-4:]}"
         copy_payload["contact"] = contact
+        notes = copy_payload.get("notes")
+        if isinstance(notes, list):
+            copy_payload["notes"] = [f"[nota protegida {index + 1}]" for index, _ in enumerate(notes)]
         return copy_payload
 
     def find_or_create_contact(

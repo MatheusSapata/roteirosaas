@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.api.deps import get_current_active_user, get_db, require_agency_membership
 from app.models.crm_note import OpportunityNote
 from app.models.document import Document
+from app.models.agency_integration import AgencyIntegration
 from app.models.lead_form import LeadForm, LeadFormSubmission, LeadStatus
 from app.models.user import User
 from app.services.team import get_user_effective_permissions
@@ -86,6 +87,25 @@ def _serialize_form(form: LeadForm, total_leads: int = 0) -> LeadFormOut:
     return data
 
 
+def _validate_viajechat_destination(
+    *, agency_id: int, enabled: bool, fields: list, pipeline_id: str | None, column_id: str | None, db: Session
+) -> None:
+    if not enabled:
+        return
+    if not any((getattr(field, "type", None) or (field.get("type") if isinstance(field, dict) else None)) == "phone" for field in fields):
+        raise HTTPException(status_code=422, detail="Ative o campo Telefone / WhatsApp para enviar leads ao ViajeChat.")
+    if not (pipeline_id or "").strip() or not (column_id or "").strip():
+        raise HTTPException(status_code=422, detail="Selecione o funil e a coluna de destino no ViajeChat.")
+    integration = db.query(AgencyIntegration).filter(
+        AgencyIntegration.agency_id == agency_id,
+        AgencyIntegration.provider == "viajechat",
+        AgencyIntegration.enabled.is_(True),
+        AgencyIntegration.connection_status == "connected",
+    ).first()
+    if not integration:
+        raise HTTPException(status_code=422, detail="Conecte o ViajeChat antes de ativar o destino do lead.")
+
+
 def _serialize_contact(submission: LeadFormSubmission, sem_interacao_days: int | None = None) -> LeadContactOut:
     return LeadContactOut(
         id=submission.id,
@@ -150,6 +170,14 @@ def create_lead_form(
     require_agency_membership(db=db, agency_id=form_in.agency_id, user_id=current_user.id)
     _ensure_leads_write_permission(db, current_user, form_in.agency_id)
     default_status_id, default_status = _validate_status_for_agency(form_in.default_status_id, form_in.agency_id, db)
+    _validate_viajechat_destination(
+        agency_id=form_in.agency_id,
+        enabled=form_in.viajechat_enabled,
+        fields=form_in.fields,
+        pipeline_id=form_in.viajechat_pipeline_id,
+        column_id=form_in.viajechat_column_id,
+        db=db,
+    )
     form = LeadForm(
         agency_id=form_in.agency_id,
         name=form_in.name.strip(),
@@ -166,6 +194,11 @@ def create_lead_form(
         auto_whatsapp_skip_if_form_already_submitted=form_in.auto_whatsapp_skip_if_form_already_submitted,
         auto_whatsapp_skip_if_page_already_submitted=form_in.auto_whatsapp_skip_if_page_already_submitted,
         auto_whatsapp_skip_if_open_opportunity=form_in.auto_whatsapp_skip_if_open_opportunity,
+        viajechat_enabled=form_in.viajechat_enabled,
+        viajechat_pipeline_id=form_in.viajechat_pipeline_id,
+        viajechat_pipeline_name=form_in.viajechat_pipeline_name,
+        viajechat_column_id=form_in.viajechat_column_id,
+        viajechat_column_name=form_in.viajechat_column_name,
     )
     if default_status is not None:
         form.default_status = default_status
@@ -234,6 +267,19 @@ def update_lead_form(
         resolved_id, resolved = _validate_status_for_agency(status_id, form.agency_id, db)
         update_data["default_status_id"] = resolved_id
         default_status = resolved
+
+    destination_enabled = update_data.get("viajechat_enabled", form.viajechat_enabled)
+    destination_fields = update_data.get("fields", form.fields or [])
+    destination_pipeline_id = update_data.get("viajechat_pipeline_id", form.viajechat_pipeline_id)
+    destination_column_id = update_data.get("viajechat_column_id", form.viajechat_column_id)
+    _validate_viajechat_destination(
+        agency_id=form.agency_id,
+        enabled=bool(destination_enabled),
+        fields=destination_fields,
+        pipeline_id=destination_pipeline_id,
+        column_id=destination_column_id,
+        db=db,
+    )
 
     for key, value in update_data.items():
         setattr(form, key, value)

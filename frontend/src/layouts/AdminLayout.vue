@@ -1171,6 +1171,7 @@ const routeTitleMap: Record<string, string> = {
   plans: navLabel("plans"),
   integrations: navLabel("integrations"),
   "integrations-tracking": navLabel("tracking"),
+  "integrations-external": "Integrações externas",
   "integrations-viajeon": navLabel("viajeon"),
   connections: navLabel("connections"),
   profile: navLabel("profile"),
@@ -1532,7 +1533,7 @@ const adminNavigation = computed<AdminNavItem[]>(() => {
       iconPath: "/admin/integracoes",
       children: [
         { label: navLabel("tracking"), path: "/admin/integracoes/rastreamento" },
-        { label: navLabel("viajeon"), path: "/admin/integracoes/viajeon" },
+        { label: "Integrações externas", path: "/admin/integracoes/externas" },
         { label: navLabel("connections"), path: "/admin/integracoes/atendimento" }
       ]
     },

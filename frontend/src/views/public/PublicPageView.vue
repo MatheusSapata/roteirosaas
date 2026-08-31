@@ -71,6 +71,7 @@ import PublicLeadCaptureModal from "../../components/public/PublicLeadCaptureMod
 import PublicPhotoSection from "../../components/public/PublicPhotoSection.vue";
 import PublicBiographySection from "../../components/public/PublicBiographySection.vue";
 import PublicViajeonCheckoutSection from "../../components/public/PublicViajeonCheckoutSection.vue";
+import PublicInternalFormSection from "../../components/public/PublicInternalFormSection.vue";
 import type { HeroSection, PageConfig, PageSection, SectionType, ThemeConfig } from "../../types/page";
 import type { LeadForm } from "../../types/leads";
 import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
@@ -188,6 +189,7 @@ const publicComponents: Record<SectionType, any> = {
   countdown: PublicCountdownSection,
   flight_details: PublicFlightDetailsSection,
   viajeon_checkout: PublicViajeonCheckoutSection,
+  internal_form: PublicInternalFormSection,
   free_footer_brand: PublicFreeFooterBrandSection,
   agency_footer: PublicAgencyFooterSection
 };
@@ -223,6 +225,12 @@ const sectionExtraProps = (section: PageSection, index: number) => {
   if (section.type === "viajeon_checkout") {
     extra.pageId = pageId.value;
     extra.platformHost = !isPlatformHost.value;
+  }
+  if (section.type === "internal_form") {
+    extra.pageId = pageId.value;
+    extra.pageSlug = currentPageSlug.value;
+    extra.pageTitle = pageTitleText.value;
+    extra.pageUrl = pageUrl.value;
   }
   return extra;
 };

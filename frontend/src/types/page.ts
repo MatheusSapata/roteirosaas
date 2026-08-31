@@ -20,6 +20,7 @@ export type SectionType =
   | "agency_footer"
   | "flight_details"
   | "viajeon_checkout"
+  | "internal_form"
   | "free_footer_brand";
 
 export interface SectionBase {
@@ -341,6 +342,24 @@ export interface ViajeonCheckoutSection extends SectionBase {
   checkoutSnapshot?: ViajeonCheckoutSnapshot | null;
 }
 
+export interface InternalFormSection extends SectionBase {
+  type: "internal_form";
+  title?: LocalizedString;
+  subtitle?: LocalizedString;
+  formId?: string;
+  backgroundType?: "image" | "solid" | "gradient";
+  backgroundImage?: string;
+  backgroundColor?: string;
+  gradientStart?: string;
+  gradientEnd?: string;
+  gradientDirection?: "to right" | "to bottom" | "to bottom right";
+  overlayOpacity?: number;
+  alignment?: "left" | "center" | "right";
+  textColor?: string;
+  successMessage?: LocalizedString;
+  successDurationSeconds?: number;
+}
+
 export interface FreeFooterBrandSection extends SectionBase {
   type: "free_footer_brand";
   text: LocalizedString;
@@ -449,6 +468,7 @@ export type PageSection =
   | AgencyFooterSection
   | FlightDetailsSection
   | ViajeonCheckoutSection
+  | InternalFormSection
   | FreeFooterBrandSection;
 
 export interface ThemeConfig {

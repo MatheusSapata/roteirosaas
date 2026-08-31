@@ -41,6 +41,7 @@ import PublicFlightDetailsSection from "../public/PublicFlightDetailsSection.vue
 import PublicPhotoSection from "../public/PublicPhotoSection.vue";
 import PublicBiographySection from "../public/PublicBiographySection.vue";
 import PublicViajeonCheckoutSection from "../public/PublicViajeonCheckoutSection.vue";
+import PublicInternalFormSection from "../public/PublicInternalFormSection.vue";
 
 const props = defineProps<{
   label: string;
@@ -65,7 +66,8 @@ const componentMap: Record<string, unknown> = {
   agency_footer: PublicAgencyFooterSection,
   photo: PublicPhotoSection,
   biography: PublicBiographySection,
-  viajeon_checkout: PublicViajeonCheckoutSection
+  viajeon_checkout: PublicViajeonCheckoutSection,
+  internal_form: PublicInternalFormSection
 };
 
 const resolvedComponent = computed(() => componentMap[props.section.type] || PublicBannerCardSection);

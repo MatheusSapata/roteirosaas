@@ -38,6 +38,11 @@ class LeadForm(Base):
   auto_whatsapp_skip_if_form_already_submitted = Column(Boolean, nullable=False, server_default=expression.false())
   auto_whatsapp_skip_if_page_already_submitted = Column(Boolean, nullable=False, server_default=expression.false())
   auto_whatsapp_skip_if_open_opportunity = Column(Boolean, nullable=False, server_default=expression.false())
+  viajechat_enabled = Column(Boolean, nullable=False, server_default=expression.false())
+  viajechat_pipeline_id = Column(String(100), nullable=True)
+  viajechat_pipeline_name = Column(String(255), nullable=True)
+  viajechat_column_id = Column(String(100), nullable=True)
+  viajechat_column_name = Column(String(255), nullable=True)
   created_at = Column(DateTime(timezone=True), server_default=func.now())
   updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now())
 
@@ -86,6 +91,10 @@ class LeadFormSubmission(Base):
   created_at = Column(DateTime(timezone=True), server_default=func.now())
   updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
   fingerprint_hash = Column(String(128), nullable=True, index=True)
+  viajechat_sync_status = Column(String(30), nullable=True, index=True)
+  viajechat_deal_id = Column(String(100), nullable=True)
+  viajechat_sync_error = Column(String(500), nullable=True)
+  viajechat_synced_at = Column(DateTime(timezone=True), nullable=True)
 
   form = relationship("LeadForm", back_populates="submissions")
   status = relationship("LeadStatus", back_populates="submissions")

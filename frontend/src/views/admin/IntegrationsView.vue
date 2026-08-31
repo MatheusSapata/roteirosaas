@@ -11,7 +11,7 @@
       </div>
 
       <button
-        v-if="!isViajeonRoute"
+        v-if="!isViajeonRoute && !isExternalRoute"
         type="button"
         class="inline-flex items-center gap-2 rounded-[10px] bg-[#3DCC5F] px-4 py-[9px] text-[13px] font-semibold text-[#0F1F14] transition hover:bg-[#5BE07A] disabled:cursor-not-allowed disabled:opacity-60"
         :disabled="isReadOnly"
@@ -22,13 +22,30 @@
       </button>
     </header>
 
-    <section v-if="!isViajeonRoute" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
+    <section v-if="isExternalRoute" class="external-integrations">
+      <div class="external-grid">
+        <article class="external-card" @click="externalDrawer = 'viajeon'">
+          <div class="external-card-top"><span class="external-icon">V</span><span class="external-badge">Integração</span></div>
+          <h2>ViajeOn</h2><p>Exiba pacotes ativos e conecte sua operação às páginas do Roteiro Online.</p>
+          <button type="button">⚙ Configurar</button>
+        </article>
+        <article class="external-card" @click="externalDrawer = 'viajechat'">
+          <div class="external-card-top"><span class="external-icon chat">◌</span><span class="external-badge">Integração</span></div>
+          <h2>ViajeChat</h2><p>Atendimento, conversas e automações integradas à sua agência.</p>
+          <button type="button">⚙ Visualizar</button>
+        </article>
+      </div>
+    </section>
+    <section v-if="!isViajeonRoute && !isExternalRoute" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
       <p class="text-sm font-semibold text-slate-700">
         {{ viewCopy.summary.label }}: <span class="text-slate-900">{{ pixels.length }}</span>
       </p>
     </section>
 
-    <section v-if="isViajeonRoute" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
+    <Teleport to="body" :disabled="!isExternalRoute">
+    <div v-if="isExternalRoute && externalDrawer" class="drawer-backdrop" @click="externalDrawer = null"></div>
+    <aside v-if="isViajeonRoute || (isExternalRoute && externalDrawer === 'viajeon')" :class="isExternalRoute ? 'external-drawer' : 'rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-5'">
+      <div v-if="isExternalRoute" class="drawer-header"><div><span>Integração externa</span><h2>ViajeOn</h2></div><button type="button" @click="externalDrawer = null">×</button></div>
       <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div class="flex min-w-0 items-start gap-3">
           <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-lg font-extrabold text-emerald-500">V</div>
@@ -106,9 +123,36 @@
           </button>
         </div>
       </div>
-    </section>
+    </aside>
 
-    <section v-if="!isViajeonRoute" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
+    <aside v-if="isExternalRoute && externalDrawer === 'viajechat'" class="external-drawer">
+      <div class="drawer-header"><div><span>Integração externa</span><h2>ViajeChat</h2></div><button type="button" @click="externalDrawer = null">×</button></div>
+      <div class="viajechat-panel">
+        <div class="integration-status-row"><div><strong>{{ viajechatStatus.connected ? 'ViajeChat conectado' : 'Conecte sua conta' }}</strong><p>{{ viajechatStatus.connected ? `API key ${viajechatStatus.api_key_masked || 'configurada'}` : 'Informe a API key gerada no painel do ViajeChat.' }}</p></div><span :class="viajechatStatus.connected ? 'connected' : ''">{{ viajechatStatus.connected ? 'Conectado' : 'Desconectado' }}</span></div>
+        <form class="api-key-form" @submit.prevent="connectViajechat"><label>API key<input v-model="viajechatApiKey" type="password" autocomplete="new-password" placeholder="Cole sua API key" :disabled="viajechatSaving || isReadOnly" /></label><button type="submit" :disabled="viajechatSaving || isReadOnly || viajechatApiKey.trim().length < 8">{{ viajechatSaving ? 'Conectando...' : (viajechatStatus.configured ? 'Atualizar API key' : 'Conectar') }}</button></form>
+        <p class="security-note">A chave é enviada diretamente ao backend e armazenada de forma criptografada.</p>
+        <div v-if="viajechatStatus.configured" class="kanban-section"><div class="kanban-head"><div><h3>Kanbans</h3><p>Funis e respectivas colunas encontrados na sua conta.</p></div><button type="button" :disabled="viajechatLoading" @click="fetchViajechatKanbans">{{ viajechatLoading ? 'Atualizando...' : 'Atualizar' }}</button></div>
+          <div v-if="viajechatLoading && !viajechatKanbans.length" class="kanban-empty">Carregando kanbans...</div><div v-else-if="!viajechatKanbans.length" class="kanban-empty">Nenhum kanban foi encontrado.</div>
+          <article v-for="kanban in viajechatKanbans" :key="kanban.id || kanban.name" class="kanban-card">
+            <div class="kanban-card-head">
+              <div><h4>{{ kanban.name }}</h4><small>{{ kanban.columns.length }} {{ kanban.columns.length === 1 ? 'coluna' : 'colunas' }}</small></div>
+              <button type="button" :aria-expanded="!isKanbanCollapsed(kanban)" @click="toggleKanbanColumns(kanban)">
+                {{ isKanbanCollapsed(kanban) ? 'Expandir' : 'Colapsar' }}
+                <svg :class="{ collapsed: isKanbanCollapsed(kanban) }" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m5 12 5-5 5 5" stroke-linecap="round" stroke-linejoin="round" /></svg>
+              </button>
+            </div>
+            <template v-if="!isKanbanCollapsed(kanban)">
+              <div v-if="kanban.columns.length" class="column-list"><span v-for="column in kanban.columns" :key="column.id || column.name">{{ column.name }}</span></div>
+              <p v-else>Nenhuma coluna retornada.</p>
+            </template>
+          </article>
+        </div>
+        <button v-if="viajechatStatus.configured" type="button" class="disconnect-chat" :disabled="viajechatSaving || isReadOnly" @click="disconnectViajechat">Desconectar ViajeChat</button>
+      </div>
+    </aside>
+    </Teleport>
+
+    <section v-if="!isViajeonRoute && !isExternalRoute" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
       <div class="mb-4 flex items-center justify-between gap-3">
         <h2 class="text-lg font-semibold text-slate-900">{{ viewCopy.list.title }}</h2>
       </div>
@@ -199,7 +243,7 @@
         </div>
       </div>
 
-      <div v-if="modalOpen && !isViajeonRoute" class="app-modal-overlay fixed inset-0 z-[180] flex items-center justify-center px-4">
+      <div v-if="modalOpen && !isViajeonRoute && !isExternalRoute" class="app-modal-overlay fixed inset-0 z-[180] flex items-center justify-center px-4">
         <div class="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl md:p-5">
           <div class="mb-4 flex items-center justify-between gap-3">
             <div>
@@ -274,7 +318,7 @@
 
       <div
         v-if="toastMessage"
-        class="app-snackbar-layer z-[200] rounded-full border px-4 py-2 text-sm font-semibold shadow-lg"
+        class="app-snackbar-layer z-[10020] rounded-full border px-4 py-2 text-sm font-semibold shadow-lg"
         :class="toastError ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-emerald-200 bg-emerald-50 text-emerald-700'"
       >
         {{ toastMessage }}
@@ -316,6 +360,8 @@
 .integration-secret-modal .text-slate-700 { color: var(--foreground) !important; }
 .integration-secret-modal .text-slate-600,
 .integration-secret-modal .text-slate-500 { color: var(--muted-foreground) !important; }
+.external-integrations{max-width:1100px}.external-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.external-card{display:flex;min-height:220px;cursor:pointer;flex-direction:column;border:1px solid var(--border);border-radius:14px;background:var(--card);padding:16px;box-shadow:0 2px 4px rgba(15,23,42,.06);transition:.2s}.external-card:hover{transform:translateY(-2px);border-color:#86efac;box-shadow:0 10px 24px rgba(15,23,42,.1)}.external-card-top{display:flex;align-items:center;justify-content:space-between}.external-icon{display:grid;width:38px;height:38px;place-items:center;border-radius:12px;background:#e2f8ef;color:#0fbd83;font-weight:900}.external-icon.chat{font-size:25px}.external-badge{border-radius:7px;background:#f1f5f9;padding:5px 11px;font-size:11px;font-weight:700}.external-card h2{margin-top:16px;font-size:16px;font-weight:800}.external-card p{margin-top:3px;flex:1;color:var(--muted-foreground);font-size:13px;line-height:1.4}.external-card>button{margin-top:14px;width:100%;border:1px solid var(--border);border-radius:8px;background:var(--background);padding:8px;font-size:13px;font-weight:700;box-shadow:0 1px 3px rgba(15,23,42,.08)}.drawer-backdrop{position:fixed;inset:0;z-index:190;background:rgba(15,23,42,.42);backdrop-filter:blur(2px)}.external-drawer{position:fixed;z-index:195;right:0;top:0;height:100vh;width:min(620px,94vw);overflow-y:auto;background:var(--card);padding:22px;box-shadow:-20px 0 50px rgba(15,23,42,.2);animation:drawer-in .22s ease-out}.drawer-header{display:flex;align-items:flex-start;justify-content:space-between;border-bottom:1px solid var(--border);padding-bottom:16px;margin-bottom:22px}.drawer-header span{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.16em;color:#10b981}.drawer-header h2{margin-top:3px;font-size:24px;font-weight:800}.drawer-header button{display:grid;width:36px;height:36px;place-items:center;border:1px solid var(--border);border-radius:10px;font-size:24px}.coming-soon{display:flex;min-height:60vh;align-items:center;justify-content:center;flex-direction:column;text-align:center}.coming-soon>div{display:grid;width:64px;height:64px;place-items:center;border-radius:20px;background:#e2f8ef;color:#10b981;font-size:36px}.coming-soon h3{margin-top:18px;font-size:24px;font-weight:800}.coming-soon p{margin-top:6px;color:var(--muted-foreground)}@keyframes drawer-in{from{transform:translateX(100%)}to{transform:translateX(0)}}@media(max-width:680px){.external-grid{grid-template-columns:1fr}}
+.drawer-backdrop{z-index:9998}.external-drawer{z-index:9999;top:0;bottom:0;height:100dvh;max-height:100dvh}.viajechat-panel{display:grid;gap:18px}.integration-status-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;border:1px solid var(--border);border-radius:14px;padding:14px}.integration-status-row strong{font-size:14px}.integration-status-row p{margin-top:3px;color:var(--muted-foreground);font-size:12px}.integration-status-row>span{border-radius:999px;background:#f1f5f9;padding:5px 9px;color:#64748b;font-size:10px;font-weight:800;text-transform:uppercase}.integration-status-row>span.connected{background:#dcfce7;color:#15803d}.api-key-form{display:grid;grid-template-columns:1fr auto;align-items:end;gap:10px}.api-key-form label{display:grid;gap:6px;font-size:11px;font-weight:800;text-transform:uppercase;color:var(--muted-foreground)}.api-key-form input{border:1px solid var(--input);border-radius:10px;background:var(--background);padding:10px 12px;color:var(--foreground);font-size:13px;text-transform:none}.api-key-form button,.kanban-head button{border-radius:10px;background:#16c784;padding:10px 14px;color:#052e1c;font-size:12px;font-weight:800}.api-key-form button:disabled,.kanban-head button:disabled{opacity:.5}.security-note{border-radius:10px;background:#f0fdf4;padding:10px 12px;color:#166534;font-size:11px}.kanban-section{display:grid;gap:12px;border-top:1px solid var(--border);padding-top:18px}.kanban-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.kanban-head h3{font-size:17px;font-weight:800}.kanban-head p{color:var(--muted-foreground);font-size:11px}.kanban-card{border:1px solid var(--border);border-radius:14px;background:var(--background);padding:14px}.kanban-card h4{font-size:14px;font-weight:800}.kanban-card>p,.kanban-empty{color:var(--muted-foreground);font-size:12px}.kanban-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.kanban-card-head small{display:block;margin-top:2px;color:var(--muted-foreground);font-size:10px}.kanban-card-head button{display:inline-flex;min-height:30px;align-items:center;justify-content:center;gap:6px;border:1px solid var(--border);border-radius:8px;padding:6px 9px;color:var(--muted-foreground);font-size:10px;font-weight:800;line-height:1}.kanban-card-head button:hover{background:var(--muted)}.kanban-card-head button svg{display:block;width:13px;height:13px;flex:0 0 13px;transition:transform .18s ease}.kanban-card-head button svg.collapsed{transform:rotate(180deg)}.column-list{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}.column-list span{border:1px solid var(--border);border-radius:999px;background:var(--muted);padding:5px 9px;font-size:11px;font-weight:700}.kanban-empty{border:1px dashed var(--border);border-radius:12px;padding:22px;text-align:center}.disconnect-chat{justify-self:start;border:1px solid #fecdd3;border-radius:10px;padding:8px 12px;color:#e11d48;font-size:12px;font-weight:700}@media(max-width:520px){.api-key-form{grid-template-columns:1fr}}
 </style>
 
 <script setup lang="ts">
@@ -342,20 +388,26 @@ interface ViajeonStatus {
   last_error?: string | null;
   sso_email?: string;
 }
+interface ViajechatStatus { configured: boolean; connected: boolean; status: string; api_key_masked?: string; last_error?: string | null }
+interface ViajechatKanban { id: string; name: string; columns: Array<{ id: string; name: string }> }
 
 const auth = useAuthStore();
 const route = useRoute();
 const isViajeonRoute = computed(() => route.name === "integrations-viajeon");
+const isExternalRoute = computed(() => route.name === "integrations-external");
+const externalDrawer = ref<"viajeon" | "viajechat" | null>(null);
 const adminLanguage = getAdminLanguage();
 const t = createAdminLocalizer(adminLanguage);
 
 const viewCopy = {
   header: {
     get title() {
-      return isViajeonRoute.value ? "Viajeon" : t({ pt: "Rastreamento", es: "Rastreo" });
+      return isExternalRoute.value ? "Integrações externas" : isViajeonRoute.value ? "Viajeon" : t({ pt: "Rastreamento", es: "Rastreo" });
     },
     get description() {
-      return isViajeonRoute.value
+      return isExternalRoute.value
+        ? "Aplicativos, módulos e serviços externos disponíveis para sua agência."
+        : isViajeonRoute.value
         ? t({
           pt: "Conecte o Viajeon para exibir pacotes ativos nas suas páginas.",
           es: "Conecta Viajeon para mostrar paquetes activos en tus páginas."
@@ -429,6 +481,12 @@ const viajeonSaving = ref(false);
 const viajeonTesting = ref(false);
 const viajeonEmail = ref("");
 const viajeonEmailSaving = ref(false);
+const viajechatStatus = ref<ViajechatStatus>({ configured: false, connected: false, status: "disconnected" });
+const viajechatApiKey = ref("");
+const viajechatKanbans = ref<ViajechatKanban[]>([]);
+const collapsedViajechatKanbans = ref<Set<string>>(new Set());
+const viajechatSaving = ref(false);
+const viajechatLoading = ref(false);
 
 const toastMessage = ref("");
 const toastError = ref(false);
@@ -474,6 +532,14 @@ const fetchViajeonStatus = async () => {
     viajeonStatus.value = { configured: false, connected: false, status: "disconnected" };
   }
 };
+const fetchViajechatStatus = async () => { try { viajechatStatus.value = (await api.get("/integrations/viajechat")).data; if (viajechatStatus.value.configured) await fetchViajechatKanbans(); } catch { viajechatStatus.value = { configured:false, connected:false, status:"disconnected" }; } };
+const kanbanCollapseKey = (kanban: ViajechatKanban) => String(kanban.id || kanban.name);
+const isKanbanCollapsed = (kanban: ViajechatKanban) => collapsedViajechatKanbans.value.has(kanbanCollapseKey(kanban));
+const toggleKanbanColumns = (kanban: ViajechatKanban) => { const next = new Set(collapsedViajechatKanbans.value); const key = kanbanCollapseKey(kanban); if (next.has(key)) next.delete(key); else next.add(key); collapsedViajechatKanbans.value = next; };
+const setViajechatKanbans = (rows: unknown) => { viajechatKanbans.value = Array.isArray(rows) ? rows : []; collapsedViajechatKanbans.value = new Set(viajechatKanbans.value.map(kanbanCollapseKey)); };
+const fetchViajechatKanbans = async () => { if (!viajechatStatus.value.configured) return; viajechatLoading.value=true; try { const res=await api.get("/integrations/viajechat/kanbans"); setViajechatKanbans(res.data?.kanbans); viajechatStatus.value.connected=true; } catch(err:any) { viajechatStatus.value.connected=false; showToast(err?.response?.data?.detail||"Não foi possível carregar os kanbans.",true); } finally { viajechatLoading.value=false; } };
+const connectViajechat = async () => { const key=viajechatApiKey.value.trim(); if(!key)return; viajechatSaving.value=true; try { const res=await api.put("/integrations/viajechat",{api_key:key}); viajechatStatus.value=res.data; setViajechatKanbans(res.data?.kanbans); viajechatApiKey.value=""; showToast("ViajeChat conectado com sucesso."); } catch(err:any) { showToast(err?.response?.data?.detail||"Não foi possível conectar o ViajeChat.",true); } finally { viajechatSaving.value=false; } };
+const disconnectViajechat = async () => { if(!window.confirm("Desconectar a integração ViajeChat?"))return; viajechatSaving.value=true; try { await api.delete("/integrations/viajechat"); viajechatStatus.value={configured:false,connected:false,status:"disconnected"}; viajechatKanbans.value=[]; showToast("ViajeChat desconectado."); } catch(err:any) { showToast(err?.response?.data?.detail||"Não foi possível desconectar o ViajeChat.",true); } finally { viajechatSaving.value=false; } };
 
 const saveViajeonEmail = async () => {
   const email = viajeonEmail.value.trim();
@@ -662,7 +728,7 @@ const displayCode = (raw: string) => {
 
 onMounted(async () => {
   try {
-    await Promise.all([fetchPixels(), fetchViajeonStatus()]);
+    await Promise.all([fetchPixels(), fetchViajeonStatus(), fetchViajechatStatus()]);
   } finally {
     isBootstrappingIntegrations.value = false;
   }

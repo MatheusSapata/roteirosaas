@@ -23,6 +23,10 @@
                 <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
                 Notificação inteligente
               </button>
+              <button v-if="viajechatAvailable" class="fm-tab-btn" :class="{ on: activeTab === 'destination' }" @click="activeTab = 'destination'">
+                <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/><circle cx="5" cy="12" r="2"/></svg>
+                Destino do Lead
+              </button>
             </div>
           </div>
 
@@ -116,7 +120,7 @@
               </div>
             </div>
 
-            <div v-else class="fm-pane on">
+            <div v-else-if="activeTab === 'notification'" class="fm-pane on">
               <div v-if="!hasWhatsAppPlanAccess" class="fmn-plan-gate">
                 <h3 class="fmn-plan-gate-title">Recurso indisponível no seu plano</h3>
                 <p class="fmn-plan-gate-text">
@@ -186,6 +190,41 @@
               </div>
               </template>
             </div>
+
+            <div v-else class="fm-pane fm-pane-col on">
+              <div class="fmd-intro">
+                <div class="fmd-icon">V</div>
+                <div><h3>Enviar leads para o ViajeChat</h3><p>Crie automaticamente um deal no funil e na coluna escolhidos após cada envio deste formulário.</p></div>
+                <label class="fmn-toggle"><input v-model="state.viajechatEnabled" type="checkbox" /><span class="fmn-track"></span></label>
+              </div>
+              <div v-if="state.viajechatEnabled" class="fmd-config">
+                <div v-if="!hasPhoneField" class="fmd-warning">
+                  <div><strong>Telefone/WhatsApp é obrigatório</strong><p>A API do ViajeChat identifica ou cria o contato usando o telefone.</p></div>
+                  <button type="button" @click="enablePhoneField">Adicionar campo</button>
+                </div>
+                <div class="fmd-grid">
+                  <div class="fm-row">
+                    <label class="fm-lbl">Funil de destino</label>
+                    <select v-model="state.viajechatPipelineId" class="fm-sel" :disabled="viajechatLoading" @change="onPipelineChange">
+                      <option value="">Selecione um funil</option>
+                      <option v-for="kanban in viajechatKanbans" :key="kanban.id" :value="kanban.id">{{ kanban.name }}</option>
+                    </select>
+                  </div>
+                  <div class="fm-row">
+                    <label class="fm-lbl">Coluna de destino</label>
+                    <select v-model="state.viajechatColumnId" class="fm-sel" :disabled="viajechatLoading || !state.viajechatPipelineId" @change="syncDestinationNames">
+                      <option value="">Selecione uma coluna</option>
+                      <option v-for="column in selectedPipelineColumns" :key="column.id" :value="column.id">{{ column.name }}</option>
+                    </select>
+                  </div>
+                </div>
+                <p v-if="viajechatLoading" class="fm-hint">Carregando funis e colunas...</p>
+                <p v-else-if="viajechatError" class="fmd-error">{{ viajechatError }}</p>
+                <div v-else-if="state.viajechatPipelineId && state.viajechatColumnId" class="fmd-summary">
+                  <span>Destino configurado</span><strong>{{ state.viajechatPipelineName }} → {{ state.viajechatColumnName }}</strong>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div class="fm-foot">
@@ -211,6 +250,8 @@ import type { LeadFieldType, LeadForm, LeadFormField, LeadFormPayload } from "..
 import { useLeadCaptureStore } from "../../../store/useLeadCaptureStore";
 import { useAuthStore } from "../../../store/useAuthStore";
 import LeadFormPreview from "./LeadFormPreview.vue";
+import api from "../../../services/api";
+import { useAgencyStore } from "../../../store/useAgencyStore";
 
 const props = defineProps<{ modelValue: boolean; form?: LeadForm | null; saving?: boolean }>();
 const emit = defineEmits<{
@@ -219,10 +260,13 @@ const emit = defineEmits<{
   invalid: [message: string];
 }>();
 
-type BuilderTab = "visual" | "notification";
+type BuilderTab = "visual" | "notification" | "destination";
 const generateId = () => `field-${Math.random().toString(36).slice(2, 9)}`;
 const router = useRouter();
 const auth = useAuthStore();
+const agencyStore = useAgencyStore();
+
+interface ViajechatKanban { id: string; name: string; columns: Array<{ id: string; name: string }> }
 
 interface FieldPreset { type: LeadFieldType; label: string; placeholder: string; icon: string; }
 const fieldPresets: FieldPreset[] = [
@@ -277,8 +321,21 @@ const state = reactive<LeadFormPayload>({
   autoWhatsAppSkipIfClient: false,
   autoWhatsAppSkipIfFormAlreadySubmitted: false,
   autoWhatsAppSkipIfPageAlreadySubmitted: false,
-  autoWhatsAppSkipIfOpenOpportunity: false
+  autoWhatsAppSkipIfOpenOpportunity: false,
+  viajechatEnabled: false,
+  viajechatPipelineId: null,
+  viajechatPipelineName: null,
+  viajechatColumnId: null,
+  viajechatColumnName: null
 });
+
+const viajechatAvailable = ref(false);
+const viajechatLoading = ref(false);
+const viajechatError = ref("");
+const viajechatKanbans = ref<ViajechatKanban[]>([]);
+const hasPhoneField = computed(() => state.fields.some(field => field.type === "phone"));
+const selectedPipeline = computed(() => viajechatKanbans.value.find(item => item.id === state.viajechatPipelineId) || null);
+const selectedPipelineColumns = computed(() => selectedPipeline.value?.columns || []);
 
 const editingId = ref<string | null>(null);
 const errorMessage = ref("");
@@ -341,6 +398,47 @@ const toggleField = (type: LeadFieldType) => {
   else state.fields.push(createFieldFromPreset(type));
 };
 
+const enablePhoneField = () => {
+  if (!hasPhoneField.value) state.fields.push(createFieldFromPreset("phone"));
+};
+
+const syncDestinationNames = () => {
+  state.viajechatPipelineName = selectedPipeline.value?.name || null;
+  const column = selectedPipelineColumns.value.find(item => item.id === state.viajechatColumnId);
+  state.viajechatColumnName = column?.name || null;
+};
+
+const onPipelineChange = () => {
+  state.viajechatColumnId = null;
+  state.viajechatColumnName = null;
+  syncDestinationNames();
+};
+
+const fetchViajechatDestinationOptions = async () => {
+  viajechatLoading.value = true;
+  viajechatError.value = "";
+  try {
+    const agencyId = Number(agencyStore.currentAgencyId || agencyStore.agencies[0]?.id || 0);
+    const params = agencyId ? { agencyId } : undefined;
+    const status = await api.get("/integrations/viajechat", { params });
+    viajechatAvailable.value = Boolean(status.data?.connected);
+    if (!viajechatAvailable.value) {
+      if (activeTab.value === "destination") activeTab.value = "visual";
+      return;
+    }
+    const response = await api.get("/integrations/viajechat/kanbans", { params });
+    viajechatKanbans.value = Array.isArray(response.data?.kanbans) ? response.data.kanbans : [];
+    syncDestinationNames();
+  } catch (error: any) {
+    viajechatAvailable.value = false;
+    viajechatKanbans.value = [];
+    viajechatError.value = error?.response?.data?.detail || "Não foi possível carregar os destinos do ViajeChat.";
+    if (activeTab.value === "destination") activeTab.value = "visual";
+  } finally {
+    viajechatLoading.value = false;
+  }
+};
+
 const addCustomField = () => {
   state.fields.push({ id: generateId(), type: "text", label: "", placeholder: "", required: false });
 };
@@ -365,6 +463,11 @@ const resetState = () => {
   state.autoWhatsAppSkipIfFormAlreadySubmitted = false;
   state.autoWhatsAppSkipIfPageAlreadySubmitted = false;
   state.autoWhatsAppSkipIfOpenOpportunity = false;
+  state.viajechatEnabled = false;
+  state.viajechatPipelineId = null;
+  state.viajechatPipelineName = null;
+  state.viajechatColumnId = null;
+  state.viajechatColumnName = null;
   syncDelayFromSeconds(0);
   activeTab.value = "visual";
   editingId.value = null;
@@ -387,6 +490,11 @@ const hydrateFromForm = (form?: LeadForm | null) => {
   state.autoWhatsAppSkipIfFormAlreadySubmitted = Boolean(form.autoWhatsAppSkipIfFormAlreadySubmitted);
   state.autoWhatsAppSkipIfPageAlreadySubmitted = Boolean(form.autoWhatsAppSkipIfPageAlreadySubmitted);
   state.autoWhatsAppSkipIfOpenOpportunity = Boolean(form.autoWhatsAppSkipIfOpenOpportunity);
+  state.viajechatEnabled = Boolean(form.viajechatEnabled);
+  state.viajechatPipelineId = form.viajechatPipelineId || null;
+  state.viajechatPipelineName = form.viajechatPipelineName || null;
+  state.viajechatColumnId = form.viajechatColumnId || null;
+  state.viajechatColumnName = form.viajechatColumnName || null;
   syncDelayFromSeconds(state.autoWhatsAppDelaySeconds || 0);
   activeTab.value = "visual";
   editingId.value = String(form.id);
@@ -411,6 +519,14 @@ const validate = () => {
       false
     );
   }
+  if (state.viajechatEnabled && !hasPhone) {
+    activeTab.value = "destination";
+    return (errorMessage.value = "Adicione o campo Telefone / WhatsApp para usar o ViajeChat."), false;
+  }
+  if (state.viajechatEnabled && (!state.viajechatPipelineId || !state.viajechatColumnId)) {
+    activeTab.value = "destination";
+    return (errorMessage.value = "Selecione o funil e a coluna de destino no ViajeChat."), false;
+  }
   errorMessage.value = "";
   return true;
 };
@@ -429,7 +545,12 @@ const buildPayload = (): LeadFormPayload => ({
   autoWhatsAppSkipIfClient: Boolean(state.autoWhatsAppSkipIfClient),
   autoWhatsAppSkipIfFormAlreadySubmitted: Boolean(state.autoWhatsAppSkipIfFormAlreadySubmitted),
   autoWhatsAppSkipIfPageAlreadySubmitted: Boolean(state.autoWhatsAppSkipIfPageAlreadySubmitted),
-  autoWhatsAppSkipIfOpenOpportunity: Boolean(state.autoWhatsAppSkipIfOpenOpportunity)
+  autoWhatsAppSkipIfOpenOpportunity: Boolean(state.autoWhatsAppSkipIfOpenOpportunity),
+  viajechatEnabled: Boolean(viajechatAvailable.value && state.viajechatEnabled),
+  viajechatPipelineId: state.viajechatPipelineId || null,
+  viajechatPipelineName: state.viajechatPipelineName || null,
+  viajechatColumnId: state.viajechatColumnId || null,
+  viajechatColumnName: state.viajechatColumnName || null
 });
 
 const handleSubmit = () => {
@@ -466,6 +587,7 @@ watch(
     if (open) {
       leadStore.fetchStatuses().catch(() => undefined);
       hydrateFromForm(props.form || null);
+      fetchViajechatDestinationOptions();
     } else {
       resetState();
     }
@@ -514,6 +636,7 @@ onUnmounted(() => { document.body.style.overflow = ""; });
 .fmn-toggle{position:relative;width:38px;height:22px;flex-shrink:0}.fmn-toggle input{opacity:0;width:0;height:0;position:absolute}.fmn-track{position:absolute;inset:0;background:#cdd8cd;border-radius:999px;transition:.2s;cursor:pointer}.fmn-toggle input:checked+.fmn-track{background:#3DCC5F}.fmn-track::after{content:'';position:absolute;width:16px;height:16px;background:#fff;border-radius:50%;left:3px;top:3px;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}.fmn-toggle input:checked+.fmn-track::after{left:19px}
 .fmn-wapp{border-radius:14px;overflow:hidden;border:1.5px solid #e4e9e4;box-shadow:0 4px 16px rgba(0,0,0,.08);display:flex;flex-direction:column;min-height:480px}.fmn-wapp-bar{background:#075E54;padding:10px 14px;display:flex;align-items:center;gap:10px}.fmn-wapp-av{width:32px;height:32px;border-radius:50%;background:#128C7E;display:flex;align-items:center;justify-content:center}.fmn-wapp-av svg{fill:#fff}
 .fmn-wapp-name{font-size:13px;font-weight:700;color:#fff}.fmn-wapp-status{font-size:10px;color:rgba(255,255,255,.65)}.fmn-wapp-body{background:#E5DDD5;padding:12px;min-height:100px;flex:1;display:flex;align-items:flex-start}.fmn-bubble{background:#fff;border-radius:0 10px 10px 10px;padding:10px 12px;font-size:12px;color:#111;line-height:1.55;white-space:pre-wrap;width:92%}.fmn-bubble-time{font-size:10px;color:rgba(0,0,0,.38);text-align:right;margin-top:5px}.fmn-wapp-ibar{background:#f0f0f0;padding:8px 10px;border-top:1px solid rgba(0,0,0,.08)}.fmn-wapp-fake-inp{background:#fff;border-radius:20px;padding:6px 12px;font-size:11px;color:#8a9e8a}
+.fmd-intro{display:flex;align-items:center;gap:14px;border:1.5px solid var(--border);border-radius:14px;background:var(--background);padding:16px}.fmd-icon{display:grid;width:42px;height:42px;flex:0 0 42px;place-items:center;border-radius:12px;background:var(--status-success);color:var(--status-success-foreground);font-size:18px;font-weight:900}.fmd-intro>div:nth-child(2){flex:1}.fmd-intro h3{font-size:15px;font-weight:800;color:var(--foreground)}.fmd-intro p{margin-top:3px;font-size:12px;line-height:1.45;color:var(--muted-foreground)}.fmd-config{display:grid;gap:16px}.fmd-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.fmd-warning{display:flex;align-items:center;justify-content:space-between;gap:14px;border:1px solid #fcd34d;border-radius:12px;background:#fffbeb;padding:13px;color:#92400e}.fmd-warning strong{font-size:12px}.fmd-warning p{margin-top:2px;font-size:11px}.fmd-warning button{flex:0 0 auto;border-radius:8px;background:#f59e0b;padding:7px 10px;color:#fff;font-size:11px;font-weight:800}.fmd-summary{display:flex;align-items:center;justify-content:space-between;gap:14px;border-radius:12px;background:var(--status-success);padding:13px 15px;color:var(--status-success-foreground);font-size:12px}.fmd-summary span{font-weight:700}.fmd-summary strong{text-align:right}.fmd-error{font-size:12px;color:var(--destructive)}
 .fm-foot{padding:14px 26px;border-top:1.5px solid #e4e9e4;display:flex;align-items:center;justify-content:space-between;background:#fff}.fm-foot-left{font-size:12px;color:#8a9e8a}
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;border:none}.btn svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2.5}.btn-p{background:#3DCC5F;color:#0F1F14}.btn-o{background:#fff;color:#4A5E4A;border:1.5px solid #E4E9E4}.btn-sm{padding:6px 12px;font-size:12px}
 
@@ -544,5 +667,5 @@ onUnmounted(() => { document.body.style.overflow = ""; });
 .btn-p:hover{background:var(--brand-dark)}
 .btn-o:hover{background:var(--accent);color:var(--accent-foreground)}
 @media(max-width:980px){.fm-modal{max-width:98vw;max-height:95vh}.fm-pane{flex-direction:column}.fm-right,.fmn-right{width:100%}.fm-grid3{grid-template-columns:1fr}.fmf-grid{grid-template-columns:1fr 1fr}}
-@media(max-width:560px){.fm-ov{padding:0}.fm-modal{height:100%;max-height:100vh;border-radius:0}.fm-hd{padding:18px 16px 0}.fm-pane{padding:18px 16px 24px}.fm-foot{padding:12px 16px}.fmf-grid{grid-template-columns:1fr}}
+@media(max-width:560px){.fm-ov{padding:0}.fm-modal{height:100%;max-height:100vh;border-radius:0}.fm-hd{padding:18px 16px 0}.fm-pane{padding:18px 16px 24px}.fm-foot{padding:12px 16px}.fmf-grid,.fmd-grid{grid-template-columns:1fr}.fm-tabs{overflow-x:auto}.fm-tab-btn{white-space:nowrap}.fmd-warning,.fmd-summary{align-items:flex-start;flex-direction:column}}
 </style>

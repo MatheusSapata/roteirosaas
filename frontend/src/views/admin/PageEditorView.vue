@@ -1160,6 +1160,7 @@ import type {
   AgencyFooterSection,
   FlightDetailsSection,
   ViajeonCheckoutSection,
+  InternalFormSection,
   SectionType,
   ThemeConfig
 } from "../../types/page";
@@ -2026,6 +2027,7 @@ const SectionCountdownForm = defineAsyncComponent(() => import("../../components
 const SectionAgencyFooterForm = defineAsyncComponent(() => import("../../components/admin/SectionAgencyFooterForm.vue"));
 const SectionFlightDetailsForm = defineAsyncComponent(() => import("../../components/admin/SectionFlightDetailsForm.vue"));
 const SectionViajeonCheckoutForm = defineAsyncComponent(() => import("../../components/admin/SectionViajeonCheckoutForm.vue"));
+const SectionInternalFormForm = defineAsyncComponent(() => import("../../components/admin/SectionInternalFormForm.vue"));
 const PublicHeroSection = defineAsyncComponent(() => import("../../components/public/PublicHeroSection.vue"));
 const PublicBannerCardSection = defineAsyncComponent(() => import("../../components/public/PublicBannerCardSection.vue"));
 const PublicPricesSection = defineAsyncComponent(() => import("../../components/public/PublicPricesSection.vue"));
@@ -2044,6 +2046,7 @@ const PublicFreeFooterBrandSection = defineAsyncComponent(() => import("../../co
 const PublicAgencyFooterSection = defineAsyncComponent(() => import("../../components/public/PublicAgencyFooterSection.vue"));
 const PublicFlightDetailsSection = defineAsyncComponent(() => import("../../components/public/PublicFlightDetailsSection.vue"));
 const PublicViajeonCheckoutSection = defineAsyncComponent(() => import("../../components/public/PublicViajeonCheckoutSection.vue"));
+const PublicInternalFormSection = defineAsyncComponent(() => import("../../components/public/PublicInternalFormSection.vue"));
 
 const sectionTypes: SectionType[] = [
   "hero",
@@ -2062,6 +2065,7 @@ const sectionTypes: SectionType[] = [
   "countdown",
   "flight_details",
   "viajeon_checkout",
+  "internal_form",
   "agency_footer"
 ];
 const sectionLabels = defaultSectionLabels;
@@ -2130,6 +2134,10 @@ const sectionDescriptions: Partial<Record<SectionType, string>> = {
     pt: "Lista todos os pacotes ativos de um checkout Viajeon e envia a seleção para o pagamento externo.",
     es: "Lista todos los paquetes activos de un checkout Viajeon y envía la selección al pago externo."
   }),
+  internal_form: t({
+    pt: "Formulário incorporado à página, com fundo personalizável e confirmação após o envio.",
+    es: "Formulario integrado en la página, con fondo personalizable y confirmación tras el envío."
+  }),
   agency_footer: t({
     pt: "Cartão institucional com contatos, redes sociais e mapa da agência.",
     es: "Tarjeta institucional con contactos, redes sociales y mapa de la agencia."
@@ -2177,6 +2185,7 @@ const sectionAccents: Partial<Record<SectionType, string>> = {
   countdown: "from-orange-100/70 to-white",
   flight_details: "from-sky-100/70 to-white",
   viajeon_checkout: "from-emerald-100/70 to-white",
+  internal_form: "from-blue-100/70 to-white",
   agency_footer: "from-slate-900/90 to-slate-800/70"
 };
 const formComponents: Partial<Record<SectionType, any>> = {
@@ -2196,6 +2205,7 @@ const formComponents: Partial<Record<SectionType, any>> = {
   countdown: SectionCountdownForm,
   flight_details: SectionFlightDetailsForm,
   viajeon_checkout: SectionViajeonCheckoutForm,
+  internal_form: SectionInternalFormForm,
   agency_footer: SectionAgencyFooterForm
 };
 
@@ -2216,6 +2226,7 @@ const publicComponents: Partial<Record<SectionType, any>> = {
   countdown: PublicCountdownSection,
   flight_details: PublicFlightDetailsSection,
   viajeon_checkout: PublicViajeonCheckoutSection,
+  internal_form: PublicInternalFormSection,
   free_footer_brand: PublicFreeFooterBrandSection,
   agency_footer: PublicAgencyFooterSection
 };
@@ -2522,6 +2533,10 @@ const validateSection = (section: PageSection | null): string | null => {
   if ((section as any).type === "viajeon_checkout" && section.enabled !== false) {
     const viajeon = section as ViajeonCheckoutSection;
     if (!viajeon.checkoutId) return "Selecione um checkout ativo do Viajeon antes de salvar a seção.";
+  }
+  if ((section as any).type === "internal_form" && section.enabled !== false) {
+    const internalForm = section as InternalFormSection;
+    if (!internalForm.formId) return "Selecione um formulário antes de salvar a seção Formulário interno.";
   }
   return null;
 };
@@ -3054,6 +3069,27 @@ onBeforeUnmount(() => {
 });
 
 function defaultSection(type: SectionType): PageSection {
+  if (type === "internal_form") {
+    return ensureSectionAnchor({
+      type: "internal_form",
+      enabled: true,
+      title: "Fale com um especialista",
+      subtitle: "Preencha seus dados e entraremos em contato.",
+      headingLabel: "Fale conosco",
+      headingLabelStyle: "outline",
+      formId: "",
+      backgroundType: "solid",
+      backgroundColor: colorA.value || "#f8fafc",
+      gradientStart: "#0f172a",
+      gradientEnd: theme.value.ctaDefaultColor || "#2563eb",
+      gradientDirection: "to bottom right",
+      overlayOpacity: 0.35,
+      alignment: "center",
+      textColor: "#0f172a",
+      successMessage: "Obrigado! Recebemos suas informações com sucesso.",
+      successDurationSeconds: 5
+    } as InternalFormSection);
+  }
   if (type === "hero") {
   return ensureSectionAnchor({
     type: "hero",

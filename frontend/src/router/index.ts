@@ -237,6 +237,12 @@ const platformRoutes: RouteRecordRaw[] = [
         meta: { permission: "integrations" }
       },
       {
+        path: "integracoes/externas",
+        name: "integrations-external",
+        component: () => import("../views/admin/IntegrationsView.vue"),
+        meta: { permission: "integrations" }
+      },
+      {
         path: "integracoes/viajeon",
         name: "integrations-viajeon",
         component: () => import("../views/admin/IntegrationsView.vue"),

@@ -1,18 +1,25 @@
 import hashlib
+import logging
+import uuid
 from datetime import date, datetime
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import get_db
 from app.core.request_ip import get_client_ip
 from app.models.lead_form import LeadForm, LeadFormSubmission
+from app.models.agency_integration import AgencyIntegration
+from app.db.session import SessionLocal
 from app.schemas.lead_form import LeadFormPublicOut, LeadFormSubmissionPayload
 from app.services.client_matching import find_auto_match_client
 from app.services.contact_normalization import normalize_cpf, normalize_email, normalize_phone
 from app.services.opportunity_whatsapp import dispatch_opportunity_welcome_message
+from app.services.api_key_crypto import ApiKeyDecryptionError, decrypt_api_key
+from app.services.viajechat import ViajeChatClient, ViajeChatClientError
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 def _get_form(db: Session, form_id: int) -> LeadForm:
@@ -53,6 +60,69 @@ def _parse_birthdate(value: str | None) -> date | None:
     return None
 
 
+def _viajechat_phone(value: str | None) -> str | None:
+    digits = normalize_phone(value)
+    if digits and len(digits) in {10, 11}:
+        return f"55{digits}"
+    return digits
+
+
+def _sync_submission_to_viajechat(submission_id: int) -> None:
+    db = SessionLocal()
+    try:
+        submission = db.query(LeadFormSubmission).filter(LeadFormSubmission.id == submission_id).first()
+        if not submission:
+            return
+        form = db.query(LeadForm).filter(LeadForm.id == submission.form_id).first()
+        if not form or not form.viajechat_enabled:
+            return
+        integration = db.query(AgencyIntegration).filter(
+            AgencyIntegration.agency_id == form.agency_id,
+            AgencyIntegration.provider == "viajechat",
+            AgencyIntegration.enabled.is_(True),
+            AgencyIntegration.connection_status == "connected",
+        ).first()
+        phone = _viajechat_phone(submission.phone)
+        if not integration or not phone:
+            submission.viajechat_sync_status = "failed"
+            submission.viajechat_sync_error = "Integração desconectada ou telefone ausente."
+            db.commit()
+            return
+
+        notes = [f"Lead recebido pelo formulário {form.name}"]
+        for item in (submission.payload or {}).get("values", []):
+            field_type = str(item.get("type") or "").strip().lower()
+            field_value = str(item.get("value") or "").strip()
+            if field_type not in {"name", "phone"} and field_value:
+                notes.append(f"{item.get('label') or 'Resposta'}: {field_value}")
+        idempotency_key = str(uuid.uuid5(uuid.NAMESPACE_URL, f"roteiroonline:lead-form-submission:{submission.id}"))
+        try:
+            api_key = decrypt_api_key(integration.token_encrypted)
+            result = ViajeChatClient(api_key).create_deal_card(
+                phone=phone,
+                name=submission.name or phone,
+                email=submission.email,
+                sector_id=form.viajechat_pipeline_id,
+                column_id=form.viajechat_column_id,
+                lead_source=f"Formulário — {form.name}",
+                notes=notes,
+                idempotency_key=idempotency_key,
+            )
+            data = result.get("data") if isinstance(result, dict) and isinstance(result.get("data"), dict) else result
+            deal_data = (data or {}).get("deal") if isinstance((data or {}).get("deal"), dict) else data
+            submission.viajechat_deal_id = str((deal_data or {}).get("id") or "") or None
+            submission.viajechat_sync_status = "synced"
+            submission.viajechat_sync_error = None
+            submission.viajechat_synced_at = datetime.utcnow()
+        except (ApiKeyDecryptionError, ViajeChatClientError, ValueError) as exc:
+            logger.exception("VIAJECHAT_FORM_SYNC_FAILED submission_id=%s", submission.id)
+            submission.viajechat_sync_status = "failed"
+            submission.viajechat_sync_error = str(exc)[:500]
+        db.commit()
+    finally:
+        db.close()
+
+
 @router.get("/{form_id}", response_model=LeadFormPublicOut)
 def read_public_form(
     form_id: int,
@@ -87,6 +157,7 @@ def submit_public_form(
     form_id: int,
     payload: LeadFormSubmissionPayload,
     request: Request,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ) -> dict[str, str]:
     form = _get_form(db, form_id)
@@ -220,9 +291,12 @@ def submit_public_form(
         auto_linked_by=auto_linked_by,
         auto_linked_at=datetime.utcnow() if auto_linked_by else None,
         fingerprint_hash=fingerprint,
+        viajechat_sync_status="pending" if form.viajechat_enabled else None,
     )
     db.add(submission)
     db.commit()
+    if form.viajechat_enabled:
+        background_tasks.add_task(_sync_submission_to_viajechat, submission.id)
     if should_send_auto_message:
         dispatch_opportunity_welcome_message(
             opportunity_id=submission.id,

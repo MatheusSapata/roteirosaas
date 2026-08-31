@@ -39,6 +39,11 @@ class LeadFormBase(BaseModel):
     auto_whatsapp_skip_if_form_already_submitted: bool = Field(False, alias="autoWhatsAppSkipIfFormAlreadySubmitted")
     auto_whatsapp_skip_if_page_already_submitted: bool = Field(False, alias="autoWhatsAppSkipIfPageAlreadySubmitted")
     auto_whatsapp_skip_if_open_opportunity: bool = Field(False, alias="autoWhatsAppSkipIfOpenOpportunity")
+    viajechat_enabled: bool = Field(False, alias="viajechatEnabled")
+    viajechat_pipeline_id: Optional[str] = Field(None, alias="viajechatPipelineId")
+    viajechat_pipeline_name: Optional[str] = Field(None, alias="viajechatPipelineName")
+    viajechat_column_id: Optional[str] = Field(None, alias="viajechatColumnId")
+    viajechat_column_name: Optional[str] = Field(None, alias="viajechatColumnName")
 
     @validator("name", "title", "button_label")
     def validate_text(cls, value: str) -> str:
@@ -92,6 +97,11 @@ class LeadFormUpdate(BaseModel):
     auto_whatsapp_skip_if_form_already_submitted: Optional[bool] = Field(None, alias="autoWhatsAppSkipIfFormAlreadySubmitted")
     auto_whatsapp_skip_if_page_already_submitted: Optional[bool] = Field(None, alias="autoWhatsAppSkipIfPageAlreadySubmitted")
     auto_whatsapp_skip_if_open_opportunity: Optional[bool] = Field(None, alias="autoWhatsAppSkipIfOpenOpportunity")
+    viajechat_enabled: Optional[bool] = Field(None, alias="viajechatEnabled")
+    viajechat_pipeline_id: Optional[str] = Field(None, alias="viajechatPipelineId")
+    viajechat_pipeline_name: Optional[str] = Field(None, alias="viajechatPipelineName")
+    viajechat_column_id: Optional[str] = Field(None, alias="viajechatColumnId")
+    viajechat_column_name: Optional[str] = Field(None, alias="viajechatColumnName")
 
     @validator("name", "title", "button_label", pre=True)
     def sanitize_optional_text(cls, value: Optional[str]) -> Optional[str]:

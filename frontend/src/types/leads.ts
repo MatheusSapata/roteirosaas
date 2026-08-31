@@ -25,6 +25,11 @@ export interface LeadForm {
   autoWhatsAppSkipIfFormAlreadySubmitted?: boolean;
   autoWhatsAppSkipIfPageAlreadySubmitted?: boolean;
   autoWhatsAppSkipIfOpenOpportunity?: boolean;
+  viajechatEnabled?: boolean;
+  viajechatPipelineId?: string | null;
+  viajechatPipelineName?: string | null;
+  viajechatColumnId?: string | null;
+  viajechatColumnName?: string | null;
   alreadySubmitted?: boolean;
   total_leads?: number;
   created_at?: string;
@@ -46,6 +51,11 @@ export interface LeadFormPayload {
   autoWhatsAppSkipIfFormAlreadySubmitted?: boolean;
   autoWhatsAppSkipIfPageAlreadySubmitted?: boolean;
   autoWhatsAppSkipIfOpenOpportunity?: boolean;
+  viajechatEnabled?: boolean;
+  viajechatPipelineId?: string | null;
+  viajechatPipelineName?: string | null;
+  viajechatColumnId?: string | null;
+  viajechatColumnName?: string | null;
 }
 
 export interface LeadContact {

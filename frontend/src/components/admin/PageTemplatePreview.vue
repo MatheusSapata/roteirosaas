@@ -39,6 +39,7 @@ import PublicFlightDetailsSection from "../public/PublicFlightDetailsSection.vue
 import PublicPhotoSection from "../public/PublicPhotoSection.vue";
 import PublicBiographySection from "../public/PublicBiographySection.vue";
 import PublicViajeonCheckoutSection from "../public/PublicViajeonCheckoutSection.vue";
+import PublicInternalFormSection from "../public/PublicInternalFormSection.vue";
 import type { PageConfig, PageSection, SectionType } from "../../types/page";
 import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
 
@@ -60,7 +61,8 @@ const publicComponents: Record<string, unknown> = {
   agency_footer: PublicAgencyFooterSection,
   photo: PublicPhotoSection,
   biography: PublicBiographySection,
-  viajeon_checkout: PublicViajeonCheckoutSection
+  viajeon_checkout: PublicViajeonCheckoutSection,
+  internal_form: PublicInternalFormSection
 };
 
 const sectionRequiresBranding = (type?: SectionType) => type === "hero" || type === "agency_footer";
