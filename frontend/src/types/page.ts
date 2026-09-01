@@ -2,6 +2,7 @@ import type { PageLeadCaptureConfig } from "./leads";
 import type { LocalizedString } from "../utils/i18n";
 
 export type SectionType =
+  | "header"
   | "hero"
   | "banner_card"
   | "gallery"
@@ -301,6 +302,44 @@ export interface FlightDetailsSection extends SectionBase {
   lookupAvailable?: boolean;
 }
 
+export interface HeaderLinkItem {
+  id: string;
+  label: LocalizedString;
+  targetType: "section" | "external" | "page";
+  target: string;
+  openInNewTab?: boolean;
+}
+
+export interface HeaderSocialLink {
+  platform: "instagram" | "facebook" | "youtube" | "tiktok" | "linkedin";
+  url: string;
+}
+
+export interface HeaderSection extends SectionBase {
+  type: "header";
+  mode: "solid" | "transparent" | "blurred";
+  backgroundColor?: string;
+  blurAmount?: number;
+  textColor?: string;
+  linkTextColor?: string;
+  linkFontSize?: number;
+  linkHoverColor?: string;
+  linkHoverAnimation?: "none" | "underline" | "lift" | "scale";
+  logoSize?: number;
+  logoActionType?: "none" | "top" | "section" | "page" | "external";
+  logoActionTarget?: string;
+  logoOpenInNewTab?: boolean;
+  stickyEnabled?: boolean;
+  links: HeaderLinkItem[];
+  actionType?: "none" | "social" | "contact";
+  socialLinks?: HeaderSocialLink[];
+  contactLabel?: LocalizedString;
+  contactType?: "whatsapp" | "link";
+  contactValue?: string;
+  whatsappMessage?: string;
+  buttonColor?: string;
+}
+
 export interface ViajeonPackage {
   id: string;
   name: string;
@@ -356,6 +395,7 @@ export interface InternalFormSection extends SectionBase {
   overlayOpacity?: number;
   alignment?: "left" | "center" | "right";
   textColor?: string;
+  buttonColor?: string;
   successMessage?: LocalizedString;
   successDurationSeconds?: number;
 }
@@ -450,6 +490,7 @@ export interface CtaSection extends SectionBase {
 }
 
 export type PageSection =
+  | HeaderSection
   | HeroSection
   | BannerCardSection
   | GallerySection

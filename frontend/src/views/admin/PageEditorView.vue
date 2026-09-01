@@ -882,7 +882,8 @@
                 <template v-for="(section, idx) in sections" :key="(section as any)?.anchorId || idx">
                     <div v-if="section" class="space-y-0">
                     <div
-                      class="group relative overflow-hidden"
+                      class="group relative"
+                      :class="(section as any).type === 'header' ? 'z-30 overflow-visible' : 'overflow-hidden'"
                       @click.capture="handleSectionTap(idx, $event)"
                       :ref="el => registerPreviewSection(el, idx)"
                     >
@@ -891,7 +892,7 @@
                           :is="publicComponents[(section as any).type]"
                           :section="previewSections[idx] || section"
                           :previewDevice="previewDevice"
-                          v-bind="sectionRequiresBranding((section as any).type) ? { branding } : {}"
+                          v-bind="previewSectionExtraProps(section)"
                           :class="[
                             'transition duration-200',
                             desktopHoverEnabled ? 'group-hover:opacity-80 group-hover:brightness-95' : ''
@@ -902,19 +903,24 @@
                           v-if="(section as any).enabled"
                           :class="[
                             'pointer-events-none absolute inset-0 z-10 flex flex-col bg-slate-900/0 opacity-0 transition duration-200 px-4 py-5',
+                            (section as any).type === 'header' ? '!z-[60]' : '',
                             !isMobileOverlayMode ? 'group-hover:opacity-100 group-hover:bg-slate-900/15 group-focus-within:opacity-100' : '',
                             isMobileOverlayMode && mobileOverlayVisible[idx] ? '!opacity-100 !bg-slate-900/20' : ''
                           ]"
                         >
-                          <div class="flex items-start justify-between gap-3 pb-3">
+                          <div v-if="(section as any).type !== 'header'" class="flex items-start justify-between gap-3 pb-3">
                             <span class="pointer-events-auto inline-flex items-center rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-slate-700 shadow">
                               {{ sectionLabels[(section as any).type] || (section as any).type }}
                               <span v-if="(section as any).enabled === false" class="ml-1 text-red-500">(desativada)</span>
                             </span>
                           </div>
-                        <div class="flex flex-1 items-center justify-center px-4 pb-8">
+                        <div
+                          class="flex flex-1 items-center px-4"
+                          :class="(section as any).type === 'header' ? 'justify-center pb-0' : 'justify-center pb-8'"
+                        >
                           <div
                             class="pointer-events-auto relative rounded-[36px] bg-[#1f2330] px-7 py-6 text-center shadow-2xl backdrop-blur-lg"
+                            :class="(section as any).type === 'header' ? '!rounded-full !px-2 !py-2' : ''"
                             @click.stop
                           >
                             <template v-if="!isLockedFooterSection(section)">
@@ -939,6 +945,7 @@
                           </button>
 
                           <button
+                            v-if="(section as any).type !== 'header'"
                             type="button"
                             class="overlay-action-button inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 text-xs font-semibold text-white !text-white transition hover:bg-white/20 dark:border-white/35 dark:bg-white/22 dark:text-white dark:hover:bg-white/35"
                             :class="overlayButtonSizingClass"
@@ -953,6 +960,7 @@
                           </button>
 
                           <button
+                            v-if="(section as any).type !== 'header'"
                             type="button"
                             class="overlay-action-button inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 text-xs font-semibold text-white !text-white transition hover:bg-white/20 dark:border-white/35 dark:bg-white/22 dark:text-white dark:hover(bg-white/35"
                             :class="overlayButtonSizingClass"
@@ -967,6 +975,7 @@
                           </button>
 
                           <button
+                            v-if="(section as any).type !== 'header'"
                             type="button"
                             class="overlay-action-button inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 text-xs font-semibold text-white !text-white shadow-sm transition hover:bg-white/20 dark:border-white/25 dark:bg-white/15 dark:text-white dark:hover(bg-white/30"
                             :class="overlayButtonSizingClass"
@@ -1093,6 +1102,7 @@
               ref="editingSectionFormRef"
               class="block h-full"
               :modelValue="editingSectionDraft"
+              v-bind="editingSectionType === 'header' ? { pageSections: sections } : {}"
               @update:modelValue="updateEditingDraft"
             />
           </div>
@@ -1161,6 +1171,7 @@ import type {
   FlightDetailsSection,
   ViajeonCheckoutSection,
   InternalFormSection,
+  HeaderSection,
   SectionType,
   ThemeConfig
 } from "../../types/page";
@@ -2028,6 +2039,8 @@ const SectionAgencyFooterForm = defineAsyncComponent(() => import("../../compone
 const SectionFlightDetailsForm = defineAsyncComponent(() => import("../../components/admin/SectionFlightDetailsForm.vue"));
 const SectionViajeonCheckoutForm = defineAsyncComponent(() => import("../../components/admin/SectionViajeonCheckoutForm.vue"));
 const SectionInternalFormForm = defineAsyncComponent(() => import("../../components/admin/SectionInternalFormForm.vue"));
+const SectionHeaderForm = defineAsyncComponent(() => import("../../components/admin/SectionHeaderForm.vue"));
+const PublicHeaderSection = defineAsyncComponent(() => import("../../components/public/PublicHeaderSection.vue"));
 const PublicHeroSection = defineAsyncComponent(() => import("../../components/public/PublicHeroSection.vue"));
 const PublicBannerCardSection = defineAsyncComponent(() => import("../../components/public/PublicBannerCardSection.vue"));
 const PublicPricesSection = defineAsyncComponent(() => import("../../components/public/PublicPricesSection.vue"));
@@ -2049,6 +2062,7 @@ const PublicViajeonCheckoutSection = defineAsyncComponent(() => import("../../co
 const PublicInternalFormSection = defineAsyncComponent(() => import("../../components/public/PublicInternalFormSection.vue"));
 
 const sectionTypes: SectionType[] = [
+  "header",
   "hero",
   "banner_card",
   "photo",
@@ -2070,6 +2084,10 @@ const sectionTypes: SectionType[] = [
 ];
 const sectionLabels = defaultSectionLabels;
 const sectionDescriptions: Partial<Record<SectionType, string>> = {
+  header: t({
+    pt: "Cabeçalho de navegação com logo, links, redes sociais ou botão de contato.",
+    es: "Encabezado de navegación con logo, enlaces, redes sociales o botón de contacto."
+  }),
   hero: t({
     pt: "Bloco inicial com destaque visual, título, subtítulo e CTA principal.",
     es: "Bloque inicial con destaque visual, título, subtítulo y CTA principal."
@@ -2169,6 +2187,7 @@ const sectionThumbnails: Partial<Record<SectionType, string>> = {
   agency_footer: footerThumb
 };
 const sectionAccents: Partial<Record<SectionType, string>> = {
+  header: "from-slate-800/90 to-slate-600/70",
   hero: "from-sky-100 to-slate-50",
   banner_card: "from-emerald-600/90 to-emerald-400/70",
   photo: "from-slate-100 to-white",
@@ -2189,6 +2208,7 @@ const sectionAccents: Partial<Record<SectionType, string>> = {
   agency_footer: "from-slate-900/90 to-slate-800/70"
 };
 const formComponents: Partial<Record<SectionType, any>> = {
+  header: SectionHeaderForm,
   hero: SectionHeroForm,
   banner_card: SectionBannerCardForm,
   photo: SectionPhotoForm,
@@ -2210,6 +2230,7 @@ const formComponents: Partial<Record<SectionType, any>> = {
 };
 
 const publicComponents: Partial<Record<SectionType, any>> = {
+  header: PublicHeaderSection,
   hero: PublicHeroSection,
   banner_card: PublicBannerCardSection,
   photo: PublicPhotoSection,
@@ -2234,6 +2255,21 @@ const publicComponents: Partial<Record<SectionType, any>> = {
 const sectionRequiresBranding = (type?: SectionType | string | null) => type === "hero" || type === "agency_footer";
 
 const sections = shallowRef<PageSection[]>([]);
+const previewSectionExtraProps = (section: PageSection) => {
+  const extra: Record<string, unknown> = {};
+  if (sectionRequiresBranding(section.type)) extra.branding = branding.value;
+  const activeHeader = sections.value.some(item => item.type === "header" && item.enabled);
+  if (section.type === "hero") extra.hideLogo = activeHeader;
+  if (section.type === "header") {
+    const hero = sections.value.find(item => item.type === "hero") as HeroSection | undefined;
+    extra.logoUrl = hero?.logoUrl || branding.value.logo_url || "";
+    extra.previewBackgroundImage = hero?.backgroundImage || "";
+    extra.previewOverlayColor = hero?.gradientColor || hero?.backgroundColor || "#05060f";
+    extra.agencyName = branding.value.agency_name || currentAgency.value?.name || "";
+    extra.agencySocialLinks = currentAgency.value?.social_links || branding.value.agency_profile?.social_links || [];
+  }
+  return extra;
+};
 const mobileOverlayVisible = reactive<Record<number, boolean>>({});
 const mobileOverlayPersistent = reactive<Record<number, boolean>>({});
 const mobileOverlayTimers: Record<number, ReturnType<typeof setTimeout> | null> = {};
@@ -2428,8 +2464,19 @@ provide(sectionUploadGuardKey, {
 const hasPendingImageUploads = computed(() => activeImageUploads.value > 0);
 
 const isFooterSection = (section?: PageSection | null) => !!section && (section as any).type === "free_footer_brand";
+const isHeaderSection = (section?: PageSection | null) => !!section && (section as any).type === "header";
 const enforceFooterConstraints = (list?: PageSection[] | null) => {
-  const normalized = (list || []).filter(Boolean);
+  const normalized = (list || []).filter(Boolean).filter((section, index, all) => !isHeaderSection(section) || index === all.findIndex(isHeaderSection));
+  const hasActiveHero = normalized.some(section => section.type === "hero" && section.enabled !== false);
+  if (!hasActiveHero) {
+    const headerIndex = normalized.findIndex(isHeaderSection);
+    if (headerIndex >= 0) {
+      const header = normalized[headerIndex] as HeaderSection;
+      if (header.mode !== "solid") normalized[headerIndex] = { ...header, mode:"solid", backgroundColor:"#ffffff", textColor:"#0f172a", linkTextColor:"#0f172a" };
+    }
+  }
+  const headerIndex = normalized.findIndex(isHeaderSection);
+  if (headerIndex > 0) normalized.unshift(normalized.splice(headerIndex, 1)[0]);
   if (!isFreePlan.value) return normalized;
   const footerIndex = normalized.findIndex(isFooterSection);
   if (footerIndex === -1) return normalized;
@@ -2537,6 +2584,9 @@ const validateSection = (section: PageSection | null): string | null => {
   if ((section as any).type === "internal_form" && section.enabled !== false) {
     const internalForm = section as InternalFormSection;
     if (!internalForm.formId) return "Selecione um formulário antes de salvar a seção Formulário interno.";
+  }
+  if ((section as any).type === "header" && ((section as HeaderSection).links || []).length > 7) {
+    return "O cabeçalho permite no máximo 7 links de navegação.";
   }
   return null;
 };
@@ -2887,6 +2937,7 @@ const applySectionBackgrounds = (list: PageSection[]): PageSection[] => {
     const type = (normalized as any).type as SectionType;
 
     if (
+      type === "header" ||
       type === "hero" ||
       type === "countdown" ||
       type === "free_footer_brand" ||
@@ -3069,6 +3120,39 @@ onBeforeUnmount(() => {
 });
 
 function defaultSection(type: SectionType): PageSection {
+  if (type === "header") {
+    return ensureSectionAnchor({
+      type: "header",
+      enabled: true,
+      mode: "solid",
+      backgroundColor: "#ffffff",
+      blurAmount: 14,
+      textColor: "#0f172a",
+      linkTextColor: "#0f172a",
+      linkFontSize: 14,
+      linkHoverColor: theme.value.ctaDefaultColor || "#22c55e",
+      linkHoverAnimation: "underline",
+      logoSize: 56,
+      logoActionType: "top",
+      logoActionTarget: "",
+      logoOpenInNewTab: false,
+      stickyEnabled: true,
+      links: [],
+      actionType: "none",
+      socialLinks: [
+        { platform: "instagram", url: "" },
+        { platform: "facebook", url: "" },
+        { platform: "youtube", url: "" },
+        { platform: "tiktok", url: "" },
+        { platform: "linkedin", url: "" }
+      ],
+      contactLabel: "Entrar em contato",
+      contactType: "whatsapp",
+      contactValue: whatsappDigits.value,
+      whatsappMessage: `Olá! Gostaria de mais informações sobre ${pageTitle.value || "este roteiro"}.`,
+      buttonColor: theme.value.ctaDefaultColor || "#22c55e"
+    } as HeaderSection);
+  }
   if (type === "internal_form") {
     return ensureSectionAnchor({
       type: "internal_form",
@@ -3086,6 +3170,7 @@ function defaultSection(type: SectionType): PageSection {
       overlayOpacity: 0.35,
       alignment: "center",
       textColor: "#0f172a",
+      buttonColor: theme.value.ctaDefaultColor || "#22c55e",
       successMessage: "Obrigado! Recebemos suas informações com sucesso.",
       successDurationSeconds: 5
     } as InternalFormSection);
@@ -3651,11 +3736,14 @@ const handleSectionPickerSelect = (type: SectionType) => {
 };
 
 const addSection = (type: SectionType, insertIndex?: number) => {
+  if (type === "header" && sections.value.some(isHeaderSection)) return;
   const next = clone(defaultSection(type));
   const current = sections.value.slice();
   const footerIndex = current.findIndex(isFooterSection);
   const maxInsertIndex = footerIndex >= 0 ? footerIndex : current.length;
-  if (typeof insertIndex === "number") {
+  if (type === "header") {
+    current.unshift(next);
+  } else if (typeof insertIndex === "number") {
     const safeIndex = Math.min(Math.max(insertIndex, 0), maxInsertIndex);
     current.splice(safeIndex, 0, next);
   } else {
@@ -3674,6 +3762,7 @@ const scheduleWhatsAppUpdate = () => {
 
 const duplicateSection = async (index: number) => {
   if (isLockedFooterSection(sections.value[index])) return;
+  if (isHeaderSection(sections.value[index])) return;
   const copy = cloneWithNewAnchor(clone(sections.value[index]));
   const next = sections.value.slice();
   next.splice(index + 1, 0, copy);

@@ -14,7 +14,7 @@
           <div v-if="embeddedVideoUrl" class="absolute inset-0" :style="mobileVideoOverlayStyle"></div>
 
           <div class="absolute inset-0 flex flex-col items-center gap-3 px-4 py-6">
-            <div class="flex w-full justify-center mt-auto mb-0" :class="animationClasses(1)">
+            <div v-if="!props.hideLogo" class="flex w-full justify-center mt-auto mb-0" :class="animationClasses(1)">
               <template v-if="logoSrc">
                 <div class="drop-shadow-xl overflow-hidden" :style="logoBoxStyle">
                   <img :src="logoSrc" alt="Logo" class="h-full w-auto object-contain" :style="logoImageStyle" />
@@ -128,7 +128,7 @@
                 isDesktopPreview ? '!w-[54%] !text-left' : ''
               ]"
             >
-              <div class="flex items-center gap-3" :class="animationClasses(1)">
+              <div v-if="!props.hideLogo" class="flex items-center gap-3" :class="animationClasses(1)">
                 <img
                   v-if="logoSrc"
                   :src="logoSrc"
@@ -288,6 +288,7 @@ const props = defineProps<{
   branding: Record<string, any>;
   previewDevice?: "desktop" | "mobile";
   pageScale?: number;
+  hideLogo?: boolean;
 }>();
 const heroCopy = {
   defaultCta: { pt: "Quero falar agora", es: "Quiero hablar ahora" },
@@ -301,7 +302,7 @@ const subtitleHtml = computed(() => sanitizeHtml(localize(props.section.subtitle
 
 const layout = computed(() => "immersive");
 const heroBackgroundImage = computed(() => resolveMediaUrl(props.section.backgroundImage));
-const logoSrc = computed(() => resolveMediaUrl(props.section.logoUrl));
+const logoSrc = computed(() => props.hideLogo ? "" : resolveMediaUrl(props.section.logoUrl));
 const logoSize = computed(() => props.section.logoSize ?? 64);
 const logoBorderRadius = computed(() => props.section.logoBorderRadius ?? 0);
 const logoBoxStyle = computed(() => ({

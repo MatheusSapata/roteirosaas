@@ -40,10 +40,12 @@ import PublicPhotoSection from "../public/PublicPhotoSection.vue";
 import PublicBiographySection from "../public/PublicBiographySection.vue";
 import PublicViajeonCheckoutSection from "../public/PublicViajeonCheckoutSection.vue";
 import PublicInternalFormSection from "../public/PublicInternalFormSection.vue";
+import PublicHeaderSection from "../public/PublicHeaderSection.vue";
 import type { PageConfig, PageSection, SectionType } from "../../types/page";
 import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
 
 const publicComponents: Record<string, unknown> = {
+  header: PublicHeaderSection,
   hero: PublicHeroSection,
   banner_card: PublicBannerCardSection,
   prices: PublicPricesSection,
@@ -84,6 +86,7 @@ provide(PUBLIC_BRANDING_KEY, computed(() => props.branding || {}));
 const sections = computed<PageSection[]>(() => props.config?.sections || []);
 const branding = computed(() => props.branding || {});
 const previewAwareSections: SectionType[] = [
+  "header",
   "hero",
   "banner_card",
   "story",
@@ -125,6 +128,16 @@ const sectionExtraProps = (section?: PageSection, index?: number) => {
     const next = findNextEnabledSection(index);
     extra.prevIsBannerCard = prev?.type === "banner_card";
     extra.nextIsBannerCard = next?.type === "banner_card";
+  }
+  const activeHeader = sections.value.some(item => item.type === "header" && item.enabled);
+  if (type === "hero") extra.hideLogo = activeHeader;
+  if (type === "header") {
+    const hero = sections.value.find(item => item.type === "hero") as any;
+    extra.logoUrl = hero?.logoUrl || (branding.value as any).logo_url || "";
+    extra.previewBackgroundImage = hero?.backgroundImage || "";
+    extra.previewOverlayColor = hero?.gradientColor || hero?.backgroundColor || "#05060f";
+    extra.agencyName = (branding.value as any).agency_name || "";
+    extra.agencySocialLinks = (branding.value as any).agency_profile?.social_links || (branding.value as any).social_links || [];
   }
   return extra;
 };

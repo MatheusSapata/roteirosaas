@@ -1,6 +1,7 @@
 import type { PageSection, SectionType } from "../types/page";
 
 export const sectionLabels: Partial<Record<SectionType, string>> = {
+  header: "Cabeçalho",
   hero: "Banner",
   banner_card: "Banner em Card",
   photo: "Foto destacada",
@@ -25,6 +26,8 @@ export const sectionLabels: Partial<Record<SectionType, string>> = {
 
 export const describeSection = (section: PageSection): string => {
   switch (section.type) {
+    case "header":
+      return "Navegação principal";
     case "hero":
     case "story":
     case "banner_card":

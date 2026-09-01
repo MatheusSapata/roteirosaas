@@ -42,6 +42,7 @@ import PublicPhotoSection from "../public/PublicPhotoSection.vue";
 import PublicBiographySection from "../public/PublicBiographySection.vue";
 import PublicViajeonCheckoutSection from "../public/PublicViajeonCheckoutSection.vue";
 import PublicInternalFormSection from "../public/PublicInternalFormSection.vue";
+import PublicHeaderSection from "../public/PublicHeaderSection.vue";
 
 const props = defineProps<{
   label: string;
@@ -49,6 +50,7 @@ const props = defineProps<{
 }>();
 
 const componentMap: Record<string, unknown> = {
+  header: PublicHeaderSection,
   hero: PublicHeroSection,
   banner_card: PublicBannerCardSection,
   prices: PublicPricesSection,

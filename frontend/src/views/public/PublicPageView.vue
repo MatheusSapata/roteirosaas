@@ -18,6 +18,7 @@
         <PublicHeroSection
           v-if="section?.enabled && section.type === 'hero'"
           :section="section"
+          :hide-logo="headerEnabled"
           :page-scale="0.9"
           v-bind="sectionExtraProps(section, idx)"
         />
@@ -53,6 +54,7 @@ import { useRoute } from "vue-router";
 import api from "../../services/api";
 import platformApi from "../../services/platformApi";
 import PublicHeroSection from "../../components/public/PublicHeroSection.vue";
+import PublicHeaderSection from "../../components/public/PublicHeaderSection.vue";
 import PublicBannerCardSection from "../../components/public/PublicBannerCardSection.vue";
 import PublicPricesSection from "../../components/public/PublicPricesSection.vue";
 import PublicItinerarySection from "../../components/public/PublicItinerarySection.vue";
@@ -173,6 +175,7 @@ const brandingFavicon = computed(() => {
 });
 
 const publicComponents: Record<SectionType, any> = {
+  header: PublicHeaderSection,
   hero: PublicHeroSection,
   banner_card: PublicBannerCardSection,
   photo: PublicPhotoSection,
@@ -195,6 +198,11 @@ const publicComponents: Record<SectionType, any> = {
 };
 
 const sectionRequiresBranding = (type?: SectionType) => type === "hero" || type === "agency_footer";
+const headerEnabled = computed(() => sections.value.some(section => section.type === "header" && section.enabled));
+const headerLogo = computed(() => {
+  const hero = sections.value.find(section => section.type === "hero") as HeroSection | undefined;
+  return hero?.logoUrl || brandingLogo.value;
+});
 const findPrevEnabledSection = (index: number) => {
   for (let i = index - 1; i >= 0; i -= 1) {
     const candidate = sections.value[i];
@@ -231,6 +239,11 @@ const sectionExtraProps = (section: PageSection, index: number) => {
     extra.pageSlug = currentPageSlug.value;
     extra.pageTitle = pageTitleText.value;
     extra.pageUrl = pageUrl.value;
+  }
+  if (section.type === "header") {
+    extra.logoUrl = headerLogo.value;
+    extra.agencyName = (brandingInfo.value as Record<string, any>)?.agency_name || "";
+    extra.agencySocialLinks = (brandingInfo.value as Record<string, any>)?.agency_profile?.social_links || (brandingInfo.value as Record<string, any>)?.social_links || [];
   }
   return extra;
 };
@@ -517,12 +530,20 @@ onUnmounted(() => {
 
 function applyBackgrounds(list: PageSection[]): PageSection[] {
   let altIndex = 0;
-  return (list || []).map(section => {
+  const normalized = [...(list || [])];
+  const hasActiveHero = normalized.some(section => section?.type === "hero" && section.enabled !== false);
+  if (!hasActiveHero) {
+    const headerIndex = normalized.findIndex(section => section?.type === "header");
+    if (headerIndex >= 0 && (normalized[headerIndex] as any).mode !== "solid") normalized[headerIndex] = { ...(normalized[headerIndex] as any), mode:"solid", backgroundColor:"#ffffff", textColor:"#0f172a", linkTextColor:"#0f172a" };
+  }
+  const headerIndex = normalized.findIndex(section => section?.type === "header");
+  if (headerIndex > 0) normalized.unshift(normalized.splice(headerIndex, 1)[0]);
+  return normalized.map(section => {
     if (!section) return section;
     if (!section.anchorId) {
       section = { ...section, anchorId: `section-${Math.random().toString(36).slice(2, 9)}` };
     }
-    if (section.type === "hero" || section.type === "countdown" || section.type === "free_footer_brand") return section;
+    if (section.type === "header" || section.type === "hero" || section.type === "countdown" || section.type === "free_footer_brand") return section;
     const backgroundColor = section.backgroundColor || (altIndex % 2 === 0 ? theme.value.color1 : theme.value.color2);
     altIndex += 1;
     return { ...section, backgroundColor };
@@ -594,6 +615,7 @@ function setupCtaTracking(pixels: { type: string; value: string }[]) {
 }
 
 .public-page-scale {
+  position: relative;
   zoom: 0.9;
 }
 
