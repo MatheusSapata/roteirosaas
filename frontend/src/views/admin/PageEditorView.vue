@@ -1186,6 +1186,8 @@ import { useLeadFeatureGate } from "../../composables/useLeadFeatureGate";
 import { createAdminLocalizer } from "../../utils/adminI18n";
 import { normalizeWhatsappDigits } from "../../utils/whatsapp";
 import heroThumb from "../../assets/hero-thumb.jpg";
+import headerThumb from "../../assets/header-thumb.png";
+import internalFormThumb from "../../assets/internal-form-thumb.png";
 import bannerCardThumb from "../../assets/banner-card-thumb.jpg";
 import photoThumb from "../../assets/photo-thumb.jpg";
 import pricesThumb from "../../assets/prices-thumb.jpg";
@@ -2168,6 +2170,7 @@ const catalogFallbackDescription = t({
 });
 
 const sectionThumbnails: Partial<Record<SectionType, string>> = {
+  header: headerThumb,
   hero: heroThumb,
   banner_card: bannerCardThumb,
   photo: photoThumb,
@@ -2184,6 +2187,7 @@ const sectionThumbnails: Partial<Record<SectionType, string>> = {
   countdown: countdownThumb,
   flight_details: flightsThumb,
   viajeon_checkout: viajeonCheckoutThumb,
+  internal_form: internalFormThumb,
   agency_footer: footerThumb
 };
 const sectionAccents: Partial<Record<SectionType, string>> = {
