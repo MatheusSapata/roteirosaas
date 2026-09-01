@@ -73,6 +73,7 @@
                 :href="itemLink(item)"
                 :target="openItemInNewTab(item) ? '_blank' : null"
                 :rel="openItemInNewTab(item) ? 'noopener' : null"
+                :data-scroll-target="itemIsScroll(item) ? 'true' : null"
                 data-track-event="cta"
                 :data-track-type="trackType(itemLink(item))"
                 :class="[
@@ -311,10 +312,15 @@ const formatPrice = (price: number, currency?: PriceItem["currency"]) => {
 };
 
 const itemLink = (item: PriceItem) => {
+  if (item.ctaMode === "section") {
+    return item.ctaSectionId ? `#${item.ctaSectionId}` : "";
+  }
   const specific = sanitizeLink(item.ctaLink);
   return specific || baseCtaLink.value;
 };
-const openItemInNewTab = (item: PriceItem) => item.ctaOpenInNewTab ?? sectionOpenInNewTab.value;
+const itemIsScroll = (item: PriceItem) => item.ctaMode === "section" && !!item.ctaSectionId;
+const openItemInNewTab = (item: PriceItem) =>
+  itemIsScroll(item) ? false : item.ctaOpenInNewTab ?? sectionOpenInNewTab.value;
 
 const trackType = (link?: string) => (link && isWhatsappLink(link) ? "whatsapp" : "cta");
 

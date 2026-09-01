@@ -2893,6 +2893,27 @@ const applyWhatsAppDefaults = (sectionsList: PageSection[]): PageSection[] => {
       return section;
     }
 
+    if (type === "prices") {
+      const priceSection = section as PricesSection;
+      if ((priceSection as any).ctaMode !== "section") {
+        const current = priceSection.ctaLink;
+        if (!current || isAutoLink(current, autoLink)) {
+          priceSection.ctaLink = autoLink;
+        }
+      }
+      priceSection.items = (priceSection.items || []).map(item => {
+        if (item.ctaMode === "section") return item;
+        const itemAutoLink = buildWhatsappLink(pageTitle.value, String(item.title || "")) || autoLink;
+        if (!item.ctaLink || isAutoLink(item.ctaLink, itemAutoLink)) {
+          item.ctaLink = itemAutoLink;
+        }
+        item.ctaMode = item.ctaMode || "link";
+        item.ctaSectionId = null;
+        return item;
+      });
+      return priceSection;
+    }
+
     if ((section as any).ctaMode === "section") return section;
     const current = (section as any).ctaLink as string | undefined;
     if (!current || isAutoLink(current, autoLink)) {
@@ -3278,7 +3299,11 @@ if (type === "prices") {
         priceLabel: "Por pessoa",
         currency: "BRL",
         badge: "",
-        highlight: false
+        highlight: false,
+        ctaLink: buildWhatsappLink(pageTitle.value, "Apartamento duplo") || "",
+        ctaMode: "link",
+        ctaSectionId: null,
+        ctaOpenInNewTab: true
       }
     ],
     ctaColor: theme.value.ctaDefaultColor,

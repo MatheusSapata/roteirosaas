@@ -138,6 +138,8 @@ export interface PriceItem {
   highlight?: boolean;
   ctaLabel?: LocalizedString;
   ctaLink?: string;
+  ctaMode?: "link" | "section";
+  ctaSectionId?: string | null;
   ctaOpenInNewTab?: boolean;
 }
 

@@ -132,9 +132,19 @@
                 <label>Texto do botão <span class="help" data-tip="Frase exibida no botão deste plano.">?</span></label>
                 <input v-model="selectedPlan.ctaLabel" />
               </div>
+            </div>
+
+            <CtaActionPicker
+              v-model:mode="selectedPlan.ctaMode"
+              v-model:section-id="selectedPlan.ctaSectionId"
+              :current-anchor="local.anchorId"
+              label="Destino do botão"
+            />
+
+            <div v-if="selectedPlan.ctaMode !== 'section'" class="button-link-grid">
               <div class="field">
-                <label>Link do botão <span class="help" data-tip="Link aberto no clique deste plano.">?</span></label>
-                <input v-model="selectedPlan.ctaLink" />
+                <label>WhatsApp ou link externo <span class="help" data-tip="Endereço aberto no clique deste plano.">?</span></label>
+                <input v-model="selectedPlan.ctaLink" placeholder="https://..." />
               </div>
               <div class="field price-inline-toggle">
                 <label class="inline-check"><input type="checkbox" v-model="selectedPlan.ctaOpenInNewTab" /> Abrir em nova aba</label>
@@ -156,6 +166,7 @@ import Sortable, { type SortableEvent } from "sortablejs";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import type { CurrencyCode, PriceItem, PricesSection } from "../../types/page";
 import { adminTabIcons } from "../../utils/adminTabIcons";
+import CtaActionPicker from "./inputs/CtaActionPicker.vue";
 
 const props = defineProps<{ modelValue: PricesSection }>();
 const emit = defineEmits<{ (e: "update:modelValue", value: PricesSection): void }>();
@@ -223,6 +234,8 @@ const cloneItems = (items?: PriceItem[]): PriceItem[] =>
         badge: item.badge || "",
         ctaLabel: item.ctaLabel || "",
         ctaLink: item.ctaLink || "",
+        ctaMode: item.ctaMode || "link",
+        ctaSectionId: item.ctaSectionId || null,
         ctaOpenInNewTab: item.ctaOpenInNewTab !== false,
         currency: (item.currency as CurrencyCode) || "BRL",
         highlight: !!item.highlight
@@ -349,6 +362,8 @@ const addItem = () => {
     badge: "",
     ctaLabel: "",
     ctaLink: "",
+    ctaMode: "link",
+    ctaSectionId: null,
     ctaOpenInNewTab: true,
     currency: "BRL",
     highlight: false
@@ -383,7 +398,9 @@ watch(
       priceLabel: item.priceLabel || "",
       badge: item.badge || "",
       ctaLabel: item.ctaLabel || "",
-      ctaLink: normalizeLink(item.ctaLink),
+      ctaLink: item.ctaMode === "section" ? item.ctaLink || "" : normalizeLink(item.ctaLink),
+      ctaMode: item.ctaMode || "link",
+      ctaSectionId: item.ctaMode === "section" ? item.ctaSectionId || null : null,
       ctaOpenInNewTab: item.ctaOpenInNewTab !== false,
       currency: (item.currency as CurrencyCode) || "BRL",
       highlight: !!item.highlight
