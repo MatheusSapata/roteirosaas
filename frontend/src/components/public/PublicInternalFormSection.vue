@@ -1,5 +1,9 @@
 <template>
-  <section class="internal-form-section" :style="sectionStyle">
+  <section
+    class="internal-form-section"
+    :id="section.anchorId || undefined"
+    :style="sectionStyle"
+  >
     <div v-if="section.backgroundType === 'image'" class="overlay" :style="{ opacity: section.overlayOpacity ?? .35 }"></div>
     <div class="content" :class="`align-${section.alignment || 'center'}`">
       <div v-if="headingLabel" class="section-heading"><SectionHeadingChip :text="headingLabel" :style-type="section.headingLabelStyle" :accent="headingAccent" /></div>
