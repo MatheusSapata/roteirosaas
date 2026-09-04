@@ -88,7 +88,8 @@ def _serialize_form(form: LeadForm, total_leads: int = 0) -> LeadFormOut:
 
 
 def _validate_viajechat_destination(
-    *, agency_id: int, enabled: bool, fields: list, pipeline_id: str | None, column_id: str | None, db: Session
+    *, agency_id: int, enabled: bool, fields: list, pipeline_id: str | None, column_id: str | None,
+    db: Session, tag_enabled: bool = False, tag_name: str | None = None
 ) -> None:
     if not enabled:
         return
@@ -96,6 +97,12 @@ def _validate_viajechat_destination(
         raise HTTPException(status_code=422, detail="Ative o campo Telefone / WhatsApp para enviar leads ao ViajeChat.")
     if not (pipeline_id or "").strip() or not (column_id or "").strip():
         raise HTTPException(status_code=422, detail="Selecione o funil e a coluna de destino no ViajeChat.")
+    if tag_enabled:
+        clean_tag = (tag_name or "").strip()
+        if not clean_tag:
+            raise HTTPException(status_code=422, detail="Informe o texto da etiqueta do ViajeChat.")
+        if "[" in clean_tag or "]" in clean_tag:
+            raise HTTPException(status_code=422, detail="O texto da etiqueta não pode conter [ ou ].")
     integration = db.query(AgencyIntegration).filter(
         AgencyIntegration.agency_id == agency_id,
         AgencyIntegration.provider == "viajechat",
@@ -176,6 +183,8 @@ def create_lead_form(
         fields=form_in.fields,
         pipeline_id=form_in.viajechat_pipeline_id,
         column_id=form_in.viajechat_column_id,
+        tag_enabled=form_in.viajechat_tag_enabled,
+        tag_name=form_in.viajechat_tag_name,
         db=db,
     )
     form = LeadForm(
@@ -188,6 +197,7 @@ def create_lead_form(
         show_logo=form_in.show_logo,
         fields=[field.dict() for field in form_in.fields],
         default_status_id=default_status_id,
+        auto_whatsapp_enabled=form_in.auto_whatsapp_enabled,
         auto_whatsapp_message_template=form_in.auto_whatsapp_message_template,
         auto_whatsapp_delay_seconds=form_in.auto_whatsapp_delay_seconds,
         auto_whatsapp_skip_if_client=form_in.auto_whatsapp_skip_if_client,
@@ -199,6 +209,9 @@ def create_lead_form(
         viajechat_pipeline_name=form_in.viajechat_pipeline_name,
         viajechat_column_id=form_in.viajechat_column_id,
         viajechat_column_name=form_in.viajechat_column_name,
+        viajechat_tag_enabled=form_in.viajechat_tag_enabled,
+        viajechat_tag_name=form_in.viajechat_tag_name,
+        viajechat_tag_color=form_in.viajechat_tag_color,
     )
     if default_status is not None:
         form.default_status = default_status
@@ -272,12 +285,16 @@ def update_lead_form(
     destination_fields = update_data.get("fields", form.fields or [])
     destination_pipeline_id = update_data.get("viajechat_pipeline_id", form.viajechat_pipeline_id)
     destination_column_id = update_data.get("viajechat_column_id", form.viajechat_column_id)
+    destination_tag_enabled = update_data.get("viajechat_tag_enabled", form.viajechat_tag_enabled)
+    destination_tag_name = update_data.get("viajechat_tag_name", form.viajechat_tag_name)
     _validate_viajechat_destination(
         agency_id=form.agency_id,
         enabled=bool(destination_enabled),
         fields=destination_fields,
         pipeline_id=destination_pipeline_id,
         column_id=destination_column_id,
+        tag_enabled=bool(destination_tag_enabled),
+        tag_name=destination_tag_name,
         db=db,
     )
 

@@ -110,6 +110,33 @@ class ViajeChatClient:
         payload = {key: value for key, value in payload.items() if value}
         return self._request("POST", "/contacts", json=payload) or {}
 
+    def list_tags(self) -> list[dict[str, Any]]:
+        payload = self._request("GET", "/tags")
+        if isinstance(payload, list):
+            return [item for item in payload if isinstance(item, dict)]
+        if not isinstance(payload, dict):
+            return []
+        for key in ("data", "tags", "items"):
+            rows = payload.get(key)
+            if isinstance(rows, list):
+                return [item for item in rows if isinstance(item, dict)]
+        return []
+
+    def find_or_create_tag(self, *, name: str, color: str = "#3b82f6", idempotency_key: str | None = None) -> dict[str, Any]:
+        clean_name = (name or "").strip()
+        if not clean_name:
+            raise ValueError("ViajeChat tag name is required")
+        existing = next((item for item in self.list_tags() if str(item.get("name") or "").strip().casefold() == clean_name.casefold()), None)
+        if existing:
+            return existing
+        headers = {"Idempotency-Key": idempotency_key} if idempotency_key else {}
+        result = self._request("POST", "/tags", json={"name": clean_name, "color": color or "#3b82f6"}, headers=headers) or {}
+        if isinstance(result, dict):
+            tag = result.get("tag") or result.get("data") or result
+            if isinstance(tag, dict):
+                return tag
+        return {}
+
     def create_deal_card(
         self,
         *,

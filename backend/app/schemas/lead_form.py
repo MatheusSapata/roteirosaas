@@ -33,6 +33,7 @@ class LeadFormBase(BaseModel):
     show_logo: bool = Field(True, alias="showLogo")
     fields: list[LeadFormFieldSchema]
     default_status_id: Optional[int] = Field(None, alias="defaultStatusId")
+    auto_whatsapp_enabled: bool = Field(True, alias="autoWhatsAppEnabled")
     auto_whatsapp_message_template: Optional[str] = Field(None, alias="autoWhatsAppMessageTemplate")
     auto_whatsapp_delay_seconds: int = Field(0, alias="autoWhatsAppDelaySeconds")
     auto_whatsapp_skip_if_client: bool = Field(False, alias="autoWhatsAppSkipIfClient")
@@ -44,6 +45,9 @@ class LeadFormBase(BaseModel):
     viajechat_pipeline_name: Optional[str] = Field(None, alias="viajechatPipelineName")
     viajechat_column_id: Optional[str] = Field(None, alias="viajechatColumnId")
     viajechat_column_name: Optional[str] = Field(None, alias="viajechatColumnName")
+    viajechat_tag_enabled: bool = Field(False, alias="viajechatTagEnabled")
+    viajechat_tag_name: Optional[str] = Field(None, alias="viajechatTagName")
+    viajechat_tag_color: Optional[str] = Field("#3b82f6", alias="viajechatTagColor")
 
     @validator("name", "title", "button_label")
     def validate_text(cls, value: str) -> str:
@@ -91,6 +95,7 @@ class LeadFormUpdate(BaseModel):
     show_logo: Optional[bool] = Field(None, alias="showLogo")
     fields: Optional[list[LeadFormFieldSchema]] = None
     default_status_id: Optional[int] = Field(None, alias="defaultStatusId")
+    auto_whatsapp_enabled: Optional[bool] = Field(None, alias="autoWhatsAppEnabled")
     auto_whatsapp_message_template: Optional[str] = Field(None, alias="autoWhatsAppMessageTemplate")
     auto_whatsapp_delay_seconds: Optional[int] = Field(None, alias="autoWhatsAppDelaySeconds")
     auto_whatsapp_skip_if_client: Optional[bool] = Field(None, alias="autoWhatsAppSkipIfClient")
@@ -102,6 +107,9 @@ class LeadFormUpdate(BaseModel):
     viajechat_pipeline_name: Optional[str] = Field(None, alias="viajechatPipelineName")
     viajechat_column_id: Optional[str] = Field(None, alias="viajechatColumnId")
     viajechat_column_name: Optional[str] = Field(None, alias="viajechatColumnName")
+    viajechat_tag_enabled: Optional[bool] = Field(None, alias="viajechatTagEnabled")
+    viajechat_tag_name: Optional[str] = Field(None, alias="viajechatTagName")
+    viajechat_tag_color: Optional[str] = Field(None, alias="viajechatTagColor")
 
     @validator("name", "title", "button_label", pre=True)
     def sanitize_optional_text(cls, value: Optional[str]) -> Optional[str]:

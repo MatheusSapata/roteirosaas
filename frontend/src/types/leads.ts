@@ -19,6 +19,7 @@ export interface LeadForm {
   fields: LeadFormField[];
   defaultStatusId?: string | number | null;
   defaultStatusName?: string | null;
+  autoWhatsAppEnabled?: boolean;
   autoWhatsAppMessageTemplate?: string | null;
   autoWhatsAppDelaySeconds?: number;
   autoWhatsAppSkipIfClient?: boolean;
@@ -30,6 +31,9 @@ export interface LeadForm {
   viajechatPipelineName?: string | null;
   viajechatColumnId?: string | null;
   viajechatColumnName?: string | null;
+  viajechatTagEnabled?: boolean;
+  viajechatTagName?: string | null;
+  viajechatTagColor?: string | null;
   alreadySubmitted?: boolean;
   total_leads?: number;
   created_at?: string;
@@ -45,6 +49,7 @@ export interface LeadFormPayload {
   showLogo?: boolean;
   fields: LeadFormField[];
   defaultStatusId?: string | number | null;
+  autoWhatsAppEnabled?: boolean;
   autoWhatsAppMessageTemplate?: string | null;
   autoWhatsAppDelaySeconds?: number;
   autoWhatsAppSkipIfClient?: boolean;
@@ -56,6 +61,9 @@ export interface LeadFormPayload {
   viajechatPipelineName?: string | null;
   viajechatColumnId?: string | null;
   viajechatColumnName?: string | null;
+  viajechatTagEnabled?: boolean;
+  viajechatTagName?: string | null;
+  viajechatTagColor?: string | null;
 }
 
 export interface LeadContact {

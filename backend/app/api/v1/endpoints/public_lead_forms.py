@@ -111,6 +111,25 @@ def _sync_submission_to_viajechat(submission_id: int) -> None:
             data = result.get("data") if isinstance(result, dict) and isinstance(result.get("data"), dict) else result
             deal_data = (data or {}).get("deal") if isinstance((data or {}).get("deal"), dict) else data
             submission.viajechat_deal_id = str((deal_data or {}).get("id") or "") or None
+            if form.viajechat_tag_enabled:
+                contact_data = (data or {}).get("contact") if isinstance((data or {}).get("contact"), dict) else None
+                if not contact_data and isinstance((deal_data or {}).get("contact"), dict):
+                    contact_data = deal_data.get("contact")
+                if not contact_data or not contact_data.get("id"):
+                    contact_data = ViajeChatClient(api_key).get_contact_by_phone(phone)
+                contact_id = str((contact_data or {}).get("id") or "")
+                if not contact_id:
+                    raise ViajeChatClientError("Contato criado, mas o ViajeChat não retornou seu identificador.")
+                tag_key = str(uuid.uuid5(uuid.NAMESPACE_URL, f"roteiroonline:lead-form-tag:{form.id}:{form.viajechat_tag_name}"))
+                tag = ViajeChatClient(api_key).find_or_create_tag(
+                    name=form.viajechat_tag_name or "",
+                    color=form.viajechat_tag_color or "#3b82f6",
+                    idempotency_key=tag_key,
+                )
+                tag_id = str(tag.get("id") or "")
+                if not tag_id:
+                    raise ViajeChatClientError("O ViajeChat não retornou o identificador da etiqueta.")
+                ViajeChatClient(api_key).add_tags_to_contact(contact_id, [tag_id])
             submission.viajechat_sync_status = "synced"
             submission.viajechat_sync_error = None
             submission.viajechat_synced_at = datetime.utcnow()
@@ -213,7 +232,7 @@ def submit_public_form(
 
     # O disparo inteligente e opt-in: sem template configurado o recebimento
     # do formulario nao deve gerar uma mensagem padrao inesperada.
-    should_send_auto_message = bool((form.auto_whatsapp_message_template or "").strip())
+    should_send_auto_message = bool(form.auto_whatsapp_enabled and (form.auto_whatsapp_message_template or "").strip())
     if form.auto_whatsapp_skip_if_client and linked_client_id:
         should_send_auto_message = False
 

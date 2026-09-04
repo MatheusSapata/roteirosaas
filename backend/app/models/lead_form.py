@@ -32,6 +32,7 @@ class LeadForm(Base):
   show_logo = Column(Boolean, nullable=False, server_default=expression.true())
   fields = Column(JSONB, nullable=False)
   default_status_id = Column(Integer, ForeignKey("lead_statuses.id", ondelete="SET NULL"), nullable=True, index=True)
+  auto_whatsapp_enabled = Column(Boolean, nullable=False, server_default=expression.true())
   auto_whatsapp_message_template = Column(Text, nullable=True)
   auto_whatsapp_delay_seconds = Column(Integer, nullable=False, server_default="0")
   auto_whatsapp_skip_if_client = Column(Boolean, nullable=False, server_default=expression.false())
@@ -43,6 +44,9 @@ class LeadForm(Base):
   viajechat_pipeline_name = Column(String(255), nullable=True)
   viajechat_column_id = Column(String(100), nullable=True)
   viajechat_column_name = Column(String(255), nullable=True)
+  viajechat_tag_enabled = Column(Boolean, nullable=False, server_default=expression.false())
+  viajechat_tag_name = Column(String(120), nullable=True)
+  viajechat_tag_color = Column(String(20), nullable=True)
   created_at = Column(DateTime(timezone=True), server_default=func.now())
   updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now())
 

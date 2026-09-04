@@ -120,7 +120,7 @@
               </div>
             </div>
 
-            <div v-else-if="activeTab === 'notification'" class="fm-pane on">
+            <div v-else-if="activeTab === 'notification'" class="fm-pane fm-pane-col on">
               <div v-if="!hasWhatsAppPlanAccess" class="fmn-plan-gate">
                 <h3 class="fmn-plan-gate-title">Recurso indisponível no seu plano</h3>
                 <p class="fmn-plan-gate-text">
@@ -129,6 +129,11 @@
                 <button type="button" class="btn btn-p" @click="goToPlans">Fazer upgrade</button>
               </div>
               <template v-else>
+              <div class="fmn-master-switch">
+                <div><strong>Notificação inteligente</strong><p>{{ state.autoWhatsAppEnabled ? 'Ativa para este formulário' : 'Desativada para este formulário' }}</p></div>
+                <label class="fmn-toggle"><input v-model="state.autoWhatsAppEnabled" type="checkbox" /><span class="fmn-track"></span></label>
+              </div>
+              <fieldset class="fmn-settings" :disabled="!state.autoWhatsAppEnabled">
               <div class="fmn-left">
                 <div class="fm-row">
                   <label class="fm-lbl">Mensagem para envio via WhatsApp</label>
@@ -188,6 +193,7 @@
                   <div class="fmn-wapp-ibar"><div class="fmn-wapp-fake-inp">Mensagem</div></div>
                 </div>
               </div>
+              </fieldset>
               </template>
             </div>
 
@@ -222,6 +228,23 @@
                 <p v-else-if="viajechatError" class="fmd-error">{{ viajechatError }}</p>
                 <div v-else-if="state.viajechatPipelineId && state.viajechatColumnId" class="fmd-summary">
                   <span>Destino configurado</span><strong>{{ state.viajechatPipelineName }} → {{ state.viajechatColumnName }}</strong>
+                </div>
+                <div class="fmd-tag-card">
+                  <div class="fmd-tag-head">
+                    <div><strong>Criar etiqueta</strong><p>Adiciona esta etiqueta ao contato que recebeu o novo deal.</p></div>
+                    <label class="fmn-toggle"><input v-model="state.viajechatTagEnabled" type="checkbox" /><span class="fmn-track"></span></label>
+                  </div>
+                  <div v-if="state.viajechatTagEnabled" class="fmd-tag-fields">
+                    <div class="fm-row">
+                      <label class="fm-lbl">Texto da etiqueta</label>
+                      <input v-model="state.viajechatTagName" class="fm-inp" maxlength="120" placeholder="Ex: Lead formulário" />
+                      <span class="fm-hint">Se já existir uma etiqueta com esse nome, ela será reutilizada.</span>
+                    </div>
+                    <div class="fm-row fmd-color-row">
+                      <label class="fm-lbl">Cor</label>
+                      <input v-model="state.viajechatTagColor" type="color" class="fmd-color" />
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -316,6 +339,7 @@ const state = reactive<LeadFormPayload>({
   showLogo: false,
   fields: [],
   defaultStatusId: null,
+  autoWhatsAppEnabled: true,
   autoWhatsAppMessageTemplate: "Olá {{first_name}}, recebemos seu cadastro! Em breve entraremos em contato via WhatsApp.",
   autoWhatsAppDelaySeconds: 0,
   autoWhatsAppSkipIfClient: false,
@@ -326,7 +350,10 @@ const state = reactive<LeadFormPayload>({
   viajechatPipelineId: null,
   viajechatPipelineName: null,
   viajechatColumnId: null,
-  viajechatColumnName: null
+  viajechatColumnName: null,
+  viajechatTagEnabled: false,
+  viajechatTagName: null,
+  viajechatTagColor: "#3b82f6"
 });
 
 const viajechatAvailable = ref(false);
@@ -411,6 +438,9 @@ const syncDestinationNames = () => {
 const onPipelineChange = () => {
   state.viajechatColumnId = null;
   state.viajechatColumnName = null;
+  state.viajechatTagEnabled = false;
+  state.viajechatTagName = null;
+  state.viajechatTagColor = "#3b82f6";
   syncDestinationNames();
 };
 
@@ -457,6 +487,7 @@ const resetState = () => {
   state.showLogo = false;
   state.fields = [];
   state.defaultStatusId = null;
+  state.autoWhatsAppEnabled = true;
   state.autoWhatsAppMessageTemplate = "Olá {{first_name}}, recebemos seu cadastro! Em breve entraremos em contato via WhatsApp.";
   state.autoWhatsAppDelaySeconds = 0;
   state.autoWhatsAppSkipIfClient = false;
@@ -484,6 +515,7 @@ const hydrateFromForm = (form?: LeadForm | null) => {
   state.showLogo = form.showLogo === true;
   state.fields = (form.fields || []).map(field => createFieldFromPreset(field.type, field));
   state.defaultStatusId = form.defaultStatusId ? String(form.defaultStatusId) : null;
+  state.autoWhatsAppEnabled = form.autoWhatsAppEnabled !== false;
   state.autoWhatsAppMessageTemplate = form.autoWhatsAppMessageTemplate || "Olá {{first_name}}, recebemos seu cadastro! Em breve entraremos em contato via WhatsApp.";
   state.autoWhatsAppDelaySeconds = Number(form.autoWhatsAppDelaySeconds || 0);
   state.autoWhatsAppSkipIfClient = Boolean(form.autoWhatsAppSkipIfClient);
@@ -495,6 +527,9 @@ const hydrateFromForm = (form?: LeadForm | null) => {
   state.viajechatPipelineName = form.viajechatPipelineName || null;
   state.viajechatColumnId = form.viajechatColumnId || null;
   state.viajechatColumnName = form.viajechatColumnName || null;
+  state.viajechatTagEnabled = Boolean(form.viajechatTagEnabled);
+  state.viajechatTagName = form.viajechatTagName || null;
+  state.viajechatTagColor = form.viajechatTagColor || "#3b82f6";
   syncDelayFromSeconds(state.autoWhatsAppDelaySeconds || 0);
   activeTab.value = "visual";
   editingId.value = String(form.id);
@@ -527,6 +562,15 @@ const validate = () => {
     activeTab.value = "destination";
     return (errorMessage.value = "Selecione o funil e a coluna de destino no ViajeChat."), false;
   }
+  const tagName = String(state.viajechatTagName || "").trim();
+  if (state.viajechatEnabled && state.viajechatTagEnabled && !tagName) {
+    activeTab.value = "destination";
+    return (errorMessage.value = "Informe o texto da etiqueta do ViajeChat."), false;
+  }
+  if (state.viajechatEnabled && state.viajechatTagEnabled && (tagName.includes("[") || tagName.includes("]"))) {
+    activeTab.value = "destination";
+    return (errorMessage.value = "A etiqueta não pode conter os caracteres [ ou ]."), false;
+  }
   errorMessage.value = "";
   return true;
 };
@@ -540,6 +584,7 @@ const buildPayload = (): LeadFormPayload => ({
   showLogo: state.showLogo === true,
   fields: state.fields.map(field => ({ ...field })),
   defaultStatusId: state.defaultStatusId || null,
+  autoWhatsAppEnabled: Boolean(state.autoWhatsAppEnabled),
   autoWhatsAppMessageTemplate: state.autoWhatsAppMessageTemplate?.trim() || null,
   autoWhatsAppDelaySeconds: Number(state.autoWhatsAppDelaySeconds || 0),
   autoWhatsAppSkipIfClient: Boolean(state.autoWhatsAppSkipIfClient),
@@ -550,7 +595,10 @@ const buildPayload = (): LeadFormPayload => ({
   viajechatPipelineId: state.viajechatPipelineId || null,
   viajechatPipelineName: state.viajechatPipelineName || null,
   viajechatColumnId: state.viajechatColumnId || null,
-  viajechatColumnName: state.viajechatColumnName || null
+  viajechatColumnName: state.viajechatColumnName || null,
+  viajechatTagEnabled: Boolean(state.viajechatEnabled && state.viajechatTagEnabled),
+  viajechatTagName: state.viajechatTagName?.trim() || null,
+  viajechatTagColor: state.viajechatTagColor || "#3b82f6"
 });
 
 const handleSubmit = () => {
@@ -625,6 +673,7 @@ onUnmounted(() => { document.body.style.overflow = ""; });
 .fmf-chk{width:16px;height:16px;border-radius:4px;border:1.5px solid #e4e9e4;flex-shrink:0;display:flex;align-items:center;justify-content:center}.fmf-chip.on .fmf-chk{background:#3DCC5F;border-color:#2ead4c}.fmf-chip.on .fmf-chk::after{content:'';display:block;width:7px;height:4px;border-left:2px solid #0F1F14;border-bottom:2px solid #0F1F14;transform:rotate(-45deg) translate(1px,-1px)}
 .fmf-sel-note{font-size:12px;color:#8a9e8a;margin-top:6px}
 .fmn-left{flex:1;min-width:0;display:flex;flex-direction:column;gap:16px}.fmn-right{width:250px;flex-shrink:0}
+.fmn-master-switch{display:flex;align-items:center;justify-content:space-between;gap:16px;border:1.5px solid var(--border);border-radius:12px;background:var(--background);padding:14px 16px}.fmn-master-switch strong{font-size:14px;color:var(--foreground)}.fmn-master-switch p{margin-top:2px;font-size:11px;color:var(--muted-foreground)}.fmn-settings{display:flex;gap:24px;min-width:0;border:0;padding:0;margin:0}.fmn-settings:disabled,.fmn-settings[disabled]{opacity:.48}.fmn-settings[disabled] *{cursor:not-allowed!important}
 .fmn-plan-gate{min-height:360px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:12px;padding:24px;margin:auto}
 .fmn-plan-gate-title{font-size:22px;font-weight:800;color:#111a14;letter-spacing:-.02em}
 .fmn-plan-gate-text{max-width:540px;font-size:14px;color:#64748b;line-height:1.5}
@@ -637,6 +686,7 @@ onUnmounted(() => { document.body.style.overflow = ""; });
 .fmn-wapp{border-radius:14px;overflow:hidden;border:1.5px solid #e4e9e4;box-shadow:0 4px 16px rgba(0,0,0,.08);display:flex;flex-direction:column;min-height:480px}.fmn-wapp-bar{background:#075E54;padding:10px 14px;display:flex;align-items:center;gap:10px}.fmn-wapp-av{width:32px;height:32px;border-radius:50%;background:#128C7E;display:flex;align-items:center;justify-content:center}.fmn-wapp-av svg{fill:#fff}
 .fmn-wapp-name{font-size:13px;font-weight:700;color:#fff}.fmn-wapp-status{font-size:10px;color:rgba(255,255,255,.65)}.fmn-wapp-body{background:#E5DDD5;padding:12px;min-height:100px;flex:1;display:flex;align-items:flex-start}.fmn-bubble{background:#fff;border-radius:0 10px 10px 10px;padding:10px 12px;font-size:12px;color:#111;line-height:1.55;white-space:pre-wrap;width:92%}.fmn-bubble-time{font-size:10px;color:rgba(0,0,0,.38);text-align:right;margin-top:5px}.fmn-wapp-ibar{background:#f0f0f0;padding:8px 10px;border-top:1px solid rgba(0,0,0,.08)}.fmn-wapp-fake-inp{background:#fff;border-radius:20px;padding:6px 12px;font-size:11px;color:#8a9e8a}
 .fmd-intro{display:flex;align-items:center;gap:14px;border:1.5px solid var(--border);border-radius:14px;background:var(--background);padding:16px}.fmd-icon{display:grid;width:42px;height:42px;flex:0 0 42px;place-items:center;border-radius:12px;background:var(--status-success);color:var(--status-success-foreground);font-size:18px;font-weight:900}.fmd-intro>div:nth-child(2){flex:1}.fmd-intro h3{font-size:15px;font-weight:800;color:var(--foreground)}.fmd-intro p{margin-top:3px;font-size:12px;line-height:1.45;color:var(--muted-foreground)}.fmd-config{display:grid;gap:16px}.fmd-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.fmd-warning{display:flex;align-items:center;justify-content:space-between;gap:14px;border:1px solid #fcd34d;border-radius:12px;background:#fffbeb;padding:13px;color:#92400e}.fmd-warning strong{font-size:12px}.fmd-warning p{margin-top:2px;font-size:11px}.fmd-warning button{flex:0 0 auto;border-radius:8px;background:#f59e0b;padding:7px 10px;color:#fff;font-size:11px;font-weight:800}.fmd-summary{display:flex;align-items:center;justify-content:space-between;gap:14px;border-radius:12px;background:var(--status-success);padding:13px 15px;color:var(--status-success-foreground);font-size:12px}.fmd-summary span{font-weight:700}.fmd-summary strong{text-align:right}.fmd-error{font-size:12px;color:var(--destructive)}
+.fmd-tag-card{border:1.5px solid var(--border);border-radius:12px;background:var(--background);padding:14px}.fmd-tag-head{display:flex;align-items:center;justify-content:space-between;gap:16px}.fmd-tag-head strong{font-size:13px;color:var(--foreground)}.fmd-tag-head p{margin-top:2px;font-size:11px;color:var(--muted-foreground)}.fmd-tag-fields{display:grid;grid-template-columns:minmax(0,1fr) 80px;gap:14px;margin-top:14px;border-top:1px solid var(--border);padding-top:14px}.fmd-color-row{align-content:start}.fmd-color{width:48px;height:39px;cursor:pointer;border:1.5px solid var(--border);border-radius:8px;background:var(--background);padding:3px}
 .fm-foot{padding:14px 26px;border-top:1.5px solid #e4e9e4;display:flex;align-items:center;justify-content:space-between;background:#fff}.fm-foot-left{font-size:12px;color:#8a9e8a}
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;border:none}.btn svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2.5}.btn-p{background:#3DCC5F;color:#0F1F14}.btn-o{background:#fff;color:#4A5E4A;border:1.5px solid #E4E9E4}.btn-sm{padding:6px 12px;font-size:12px}
 
@@ -666,6 +716,6 @@ onUnmounted(() => { document.body.style.overflow = ""; });
 .btn-p{background:var(--primary);color:var(--primary-foreground);box-shadow:var(--shadow-soft)}
 .btn-p:hover{background:var(--brand-dark)}
 .btn-o:hover{background:var(--accent);color:var(--accent-foreground)}
-@media(max-width:980px){.fm-modal{max-width:98vw;max-height:95vh}.fm-pane{flex-direction:column}.fm-right,.fmn-right{width:100%}.fm-grid3{grid-template-columns:1fr}.fmf-grid{grid-template-columns:1fr 1fr}}
-@media(max-width:560px){.fm-ov{padding:0}.fm-modal{height:100%;max-height:100vh;border-radius:0}.fm-hd{padding:18px 16px 0}.fm-pane{padding:18px 16px 24px}.fm-foot{padding:12px 16px}.fmf-grid,.fmd-grid{grid-template-columns:1fr}.fm-tabs{overflow-x:auto}.fm-tab-btn{white-space:nowrap}.fmd-warning,.fmd-summary{align-items:flex-start;flex-direction:column}}
+@media(max-width:980px){.fm-modal{max-width:98vw;max-height:95vh}.fm-pane,.fmn-settings{flex-direction:column}.fm-right,.fmn-right{width:100%}.fm-grid3{grid-template-columns:1fr}.fmf-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.fm-ov{padding:0}.fm-modal{height:100%;max-height:100vh;border-radius:0}.fm-hd{padding:18px 16px 0}.fm-pane{padding:18px 16px 24px}.fm-foot{padding:12px 16px}.fmf-grid,.fmd-grid,.fmd-tag-fields{grid-template-columns:1fr}.fm-tabs{overflow-x:auto}.fm-tab-btn{white-space:nowrap}.fmd-warning,.fmd-summary{align-items:flex-start;flex-direction:column}}
 </style>
