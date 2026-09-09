@@ -8,12 +8,12 @@
       <h2 class="text-3xl font-bold leading-tight md:text-4xl" :style="{ color: primaryText }">{{ title }}</h2>
       <div v-if="subtitleHtml" class="mt-2 text-base leading-relaxed md:text-lg" :style="{ color: mutedText }" v-html="subtitleHtml"></div>
 
-      <div v-if="playerUrl" class="group mx-auto mt-8 w-full overflow-hidden rounded-[28px] shadow-2xl ring-1 ring-slate-200" :class="videoContainerClass">
+      <div v-if="playerUrl" class="group mx-auto mt-8 w-full overflow-hidden rounded-[28px] shadow-2xl ring-1 ring-slate-200" :class="[videoContainerClass, { 'control-auto-hidden': controlAutoHidden }]" @mouseenter="showPlayerControl" @mouseleave="hidePlayerControl" @click="handlePlayerAreaClick">
         <div class="relative" :style="{ aspectRatio: videoAspectRatioCss }">
           <iframe ref="iframeRef" class="pointer-events-none absolute inset-0 h-full w-full" :src="playerUrl" :title="title" frameborder="0" tabindex="-1"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
           <img v-if="!hasStarted && thumbnailUrl" :src="thumbnailUrl" alt="" class="pointer-events-none absolute inset-0 z-[1] h-full w-full object-cover" />
-          <button type="button" class="vsl-play-button" :style="{ background: progressColor }" :aria-label="isPlaying ? 'Pausar vídeo' : 'Reproduzir vídeo'" @click="togglePlayback">
+          <button type="button" class="vsl-play-button" :class="{ 'is-visible': controlVisible }" :style="{ background: progressColor }" :aria-label="isPlaying ? 'Pausar vídeo' : 'Reproduzir vídeo'" @click.stop="togglePlayback">
             <svg v-if="isPlaying" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zm6 0h4v14h-4z" /></svg>
             <svg v-else viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 11 7-11 7z" /></svg>
           </button>
@@ -72,7 +72,10 @@ const currentTime = ref(0);
 const videoDuration = ref(0);
 const hasEnded = ref(false);
 const hasStarted = ref(false);
+const controlVisible = ref(true);
+const controlAutoHidden = ref(false);
 let pollTimer: number | null = null;
+let controlTimer: number | null = null;
 
 const title = computed(() => localize(props.section.title).trim() || "Assista antes de continuar");
 const subtitleHtml = computed(() => sanitizeHtml(localize(props.section.subtitle)));
@@ -118,8 +121,34 @@ const unlock = () => {
 };
 const postPlayerCommand = (func: string) => iframeRef.value?.contentWindow?.postMessage(JSON.stringify({ event: "command", func, args: [] }), "https://www.youtube.com");
 const connectPlayer = () => iframeRef.value?.contentWindow?.postMessage(JSON.stringify({ event: "listening", id: "video-vsl" }), "https://www.youtube.com");
+const clearControlTimer = () => {
+  if (controlTimer !== null) window.clearTimeout(controlTimer);
+  controlTimer = null;
+};
+const scheduleControlHide = () => {
+  clearControlTimer();
+  controlTimer = window.setTimeout(() => {
+    controlVisible.value = false;
+    controlAutoHidden.value = true;
+  }, 3000);
+};
+const showPlayerControl = () => {
+  controlAutoHidden.value = false;
+  controlVisible.value = true;
+};
+const hidePlayerControl = () => {
+  if (hasStarted.value) controlVisible.value = false;
+  controlAutoHidden.value = false;
+};
+const handlePlayerAreaClick = () => {
+  if (controlVisible.value) return;
+  showPlayerControl();
+  scheduleControlHide();
+};
 const togglePlayback = () => {
   hasStarted.value = true;
+  controlVisible.value = true;
+  scheduleControlHide();
   connectPlayer();
   postPlayerCommand(isPlaying.value ? "pauseVideo" : "playVideo");
 };
@@ -149,11 +178,12 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.removeEventListener("message", handleMessage);
   if (pollTimer !== null) window.clearInterval(pollTimer);
+  clearControlTimer();
 });
 </script>
 
 <style scoped>
-.vsl-play-button{position:absolute;left:50%;top:50%;z-index:2;display:flex;width:68px;height:68px;transform:translate(-50%,-50%);align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.55);border-radius:9999px;background:rgba(0,0,0,.72);color:#fff;box-shadow:0 12px 30px rgba(0,0,0,.3);opacity:0;pointer-events:none;transition:opacity 1000ms ease,transform .2s ease,background .2s ease}.group:hover .vsl-play-button,.vsl-play-button:focus-visible{opacity:1;pointer-events:auto}.vsl-play-button:hover{transform:translate(-50%,-50%) scale(1.06);background:rgba(0,0,0,.88)}.vsl-play-button:focus-visible{outline:3px solid rgba(255,255,255,.9);outline-offset:3px}.vsl-play-button svg{width:30px;height:30px;fill:currentColor}@media(hover:none){.vsl-play-button{opacity:1;pointer-events:auto}}
+.vsl-play-button{position:absolute;left:50%;top:50%;z-index:2;display:flex;width:68px;height:68px;transform:translate(-50%,-50%);align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.55);border-radius:9999px;color:#fff;box-shadow:0 12px 30px rgba(0,0,0,.3);opacity:0;pointer-events:none;transition:opacity 600ms ease,transform .2s ease,filter .2s ease}.group:not(.control-auto-hidden):hover .vsl-play-button,.vsl-play-button.is-visible,.vsl-play-button:focus-visible{opacity:1;pointer-events:auto}.vsl-play-button:hover{transform:translate(-50%,-50%) scale(1.06);filter:brightness(.9)}.vsl-play-button:focus-visible{outline:3px solid rgba(255,255,255,.9);outline-offset:3px}.vsl-play-button svg{width:30px;height:30px;fill:currentColor}
 .vsl-cta-fade-enter-active,.vsl-cta-fade-leave-active{transition:opacity 1000ms ease}.vsl-cta-fade-enter-from,.vsl-cta-fade-leave-to{opacity:0}.vsl-cta-fade-enter-to,.vsl-cta-fade-leave-from{opacity:1}
 .vsl-progress-track{position:absolute;right:0;bottom:0;left:0;z-index:3;height:14px;background:rgba(255,255,255,.22);pointer-events:none}.vsl-progress-fill{height:100%;width:0;border-radius:0 9999px 9999px 0;box-shadow:0 0 10px rgba(0,0,0,.18);transition:width 500ms linear}
 .vsl-cta-button{animation:vsl-cta-pulse 2.4s ease-in-out infinite;will-change:transform,box-shadow}.vsl-cta-button:hover{animation-play-state:paused;transform:translateY(-2px)}@keyframes vsl-cta-pulse{0%,100%{transform:scale(1);box-shadow:0 10px 22px rgba(0,0,0,.16)}50%{transform:scale(1.025);box-shadow:0 13px 30px rgba(0,0,0,.24)}}@media(prefers-reduced-motion:reduce){.vsl-cta-button{animation:none}}
