@@ -880,7 +880,7 @@
               </template>
               <template v-else>
                 <template v-for="(section, idx) in sections" :key="(section as any)?.anchorId || idx">
-                    <div v-if="section && isEditorPreviewSectionVisible(idx)" class="space-y-0">
+                    <div v-if="section" class="space-y-0">
                     <div
                       class="group relative"
                       :class="(section as any).type === 'header' ? 'z-30 overflow-visible' : 'overflow-hidden'"
@@ -2273,10 +2273,6 @@ const publicComponents: Partial<Record<SectionType, any>> = {
 const sectionRequiresBranding = (type?: SectionType | string | null) => type === "hero" || type === "agency_footer";
 
 const sections = shallowRef<PageSection[]>([]);
-const isEditorPreviewSectionVisible = (index: number) => {
-  const firstActiveVsl = sections.value.findIndex(section => section?.enabled && section.type === "video_vsl");
-  return firstActiveVsl === -1 || index <= firstActiveVsl;
-};
 const previewSectionExtraProps = (section: PageSection) => {
   const extra: Record<string, unknown> = {};
   if (sectionRequiresBranding(section.type)) extra.branding = branding.value;
@@ -3510,6 +3506,9 @@ if (type === "video_vsl") {
     subtitle: "Descubra todos os detalhes desta oferta especial.",
     videoUrl: "https://www.youtube.com/watch?v=ysz5S6PUM-U",
     videoAspectRatio: "horizontal",
+    logoEnabled: true,
+    logoSize: 88,
+    backgroundImageOpacity: 70,
     progressBarEnabled: true,
     unlockAfterSeconds: 60,
     unlockAction: "reveal_page",

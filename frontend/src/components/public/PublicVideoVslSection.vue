@@ -1,9 +1,9 @@
 <template>
   <section class="w-full" :style="sectionStyle" :id="section.anchorId || undefined" data-video-vsl>
-    <div class="mx-auto w-full max-w-5xl px-6 text-center" :class="previewDevice ? 'py-16' : 'pb-16 pt-8'">
-      <div class="mb-4 flex justify-center">
-        <img v-if="replaceHeadingWithLogo && resolvedLogo" :src="resolvedLogo" :alt="title" class="vsl-brand-logo" />
-        <SectionHeadingChip v-else :text="headingLabel" :styleType="headingStyle" :accent="ctaColor" />
+    <div v-if="backgroundImage" class="vsl-background" :style="backgroundStyle"></div>
+    <div class="relative z-[1] mx-auto w-full max-w-5xl px-6 text-center" :class="previewDevice ? 'py-16' : 'pb-16 pt-8'">
+      <div v-if="section.logoEnabled !== false && resolvedLogo" class="mb-4 flex justify-center">
+        <img :src="resolvedLogo" :alt="title" class="vsl-brand-logo" :style="logoStyle" />
       </div>
       <h2 class="text-3xl font-bold leading-tight md:text-4xl" :style="{ color: primaryText }">{{ title }}</h2>
       <div v-if="subtitleHtml" class="mt-2 text-base leading-relaxed md:text-lg" :style="{ color: mutedText }" v-html="subtitleHtml"></div>
@@ -12,7 +12,8 @@
         <div class="relative" :style="{ aspectRatio: videoAspectRatioCss }">
           <iframe ref="iframeRef" class="pointer-events-none absolute inset-0 h-full w-full" :src="playerUrl" :title="title" frameborder="0" tabindex="-1"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-          <button type="button" class="vsl-play-button" :aria-label="isPlaying ? 'Pausar vídeo' : 'Reproduzir vídeo'" @click="togglePlayback">
+          <img v-if="!hasStarted && thumbnailUrl" :src="thumbnailUrl" alt="" class="pointer-events-none absolute inset-0 z-[1] h-full w-full object-cover" />
+          <button type="button" class="vsl-play-button" :style="{ background: progressColor }" :aria-label="isPlaying ? 'Pausar vídeo' : 'Reproduzir vídeo'" @click="togglePlayback">
             <svg v-if="isPlaying" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zm6 0h4v14h-4z" /></svg>
             <svg v-else viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 11 7-11 7z" /></svg>
           </button>
@@ -40,22 +41,24 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import type { VideoVslSection } from "../../types/page";
-import SectionHeadingChip from "./SectionHeadingChip.vue";
-import { getSectionHeadingDefaults, resolveHeadingLabel } from "../../utils/sectionHeadings";
 import { sanitizeHtml } from "../../utils/sanitizeHtml";
 import { deriveTextPalette, getReadableTextColor } from "../../utils/colorContrast";
 import { createLocalizer, getCurrentLanguage } from "../../utils/i18n";
 import { normalizeExternalLink } from "../../utils/links";
-import { normalizeYoutubePlayerUrl } from "../../utils/video";
+import { extractYoutubeId, normalizeYoutubePlayerUrl } from "../../utils/video";
 import { resolveMediaUrl } from "../../utils/media";
 
 const props = withDefaults(defineProps<{ section: VideoVslSection; previewDevice?: "desktop" | "mobile"; highlightColor?: string; logoUrl?: string; replaceHeadingWithLogo?: boolean }>(), { replaceHeadingWithLogo: true });
 const emit = defineEmits<{ (event: "unlocked"): void }>();
 const localize = createLocalizer(getCurrentLanguage());
-const defaults = getSectionHeadingDefaults("video_vsl");
-const resolvedLogo = computed(() => resolveMediaUrl(props.logoUrl));
+const resolvedLogo = computed(() => resolveMediaUrl(props.section.logoUrl || props.logoUrl));
+const logoStyle = computed(() => ({ maxHeight: `${Math.max(32, Math.min(180, Number(props.section.logoSize) || 88))}px` }));
+const backgroundImage = computed(() => resolveMediaUrl(props.section.backgroundImage));
+const backgroundStyle = computed(() => ({ backgroundImage: backgroundImage.value ? `url("${backgroundImage.value}")` : undefined, opacity: 1 - Math.max(0, Math.min(100, props.section.backgroundImageOpacity ?? 70)) / 100 }));
 const sectionStyle = computed(() => ({
   background: props.section.backgroundColor || "#f5f7fb",
+  position: "relative" as const,
+  overflow: "hidden",
   minHeight: props.previewDevice ? undefined : "111.112vh",
   display: props.previewDevice ? undefined : "grid",
   alignItems: props.previewDevice ? undefined : "start",
@@ -68,12 +71,11 @@ const isPlaying = ref(false);
 const currentTime = ref(0);
 const videoDuration = ref(0);
 const hasEnded = ref(false);
+const hasStarted = ref(false);
 let pollTimer: number | null = null;
 
 const title = computed(() => localize(props.section.title).trim() || "Assista antes de continuar");
 const subtitleHtml = computed(() => sanitizeHtml(localize(props.section.subtitle)));
-const headingLabel = computed(() => resolveHeadingLabel(props.section.headingLabel, defaults.label, localize));
-const headingStyle = computed(() => props.section.headingLabelStyle || defaults.style);
 const palette = computed(() => deriveTextPalette(props.section.textColor));
 const primaryText = computed(() => palette.value.primary);
 const mutedText = computed(() => palette.value.muted);
@@ -81,6 +83,11 @@ const ctaColor = computed(() => props.section.ctaColor || "#41ce5f");
 const progressColor = computed(() => props.highlightColor || props.section.ctaColor || "#41ce5f");
 const ctaTextColor = computed(() => getReadableTextColor(ctaColor.value));
 const playerUrl = computed(() => normalizeYoutubePlayerUrl(props.section.videoUrl));
+const thumbnailUrl = computed(() => {
+  const custom = resolveMediaUrl(props.section.thumbnailUrl);
+  const id = extractYoutubeId(props.section.videoUrl);
+  return custom || (id ? `https://i.ytimg.com/vi/${id}/maxresdefault.jpg` : "");
+});
 const resolvedVideoFormat = computed(() => {
   return props.section.videoAspectRatio === "vertical" || props.section.videoAspectRatio === "square"
     ? props.section.videoAspectRatio
@@ -108,11 +115,11 @@ const unlock = () => {
   if (unlocked.value) return;
   unlocked.value = true;
   emit("unlocked");
-  if (pollTimer !== null) window.clearInterval(pollTimer);
 };
 const postPlayerCommand = (func: string) => iframeRef.value?.contentWindow?.postMessage(JSON.stringify({ event: "command", func, args: [] }), "https://www.youtube.com");
 const connectPlayer = () => iframeRef.value?.contentWindow?.postMessage(JSON.stringify({ event: "listening", id: "video-vsl" }), "https://www.youtube.com");
 const togglePlayback = () => {
+  hasStarted.value = true;
   connectPlayer();
   postPlayerCommand(isPlaying.value ? "pauseVideo" : "playVideo");
 };
@@ -151,5 +158,6 @@ onBeforeUnmount(() => {
 .vsl-progress-track{position:absolute;right:0;bottom:0;left:0;z-index:3;height:14px;background:rgba(255,255,255,.22);pointer-events:none}.vsl-progress-fill{height:100%;width:0;border-radius:0 9999px 9999px 0;box-shadow:0 0 10px rgba(0,0,0,.18);transition:width 500ms linear}
 .vsl-cta-button{animation:vsl-cta-pulse 2.4s ease-in-out infinite;will-change:transform,box-shadow}.vsl-cta-button:hover{animation-play-state:paused;transform:translateY(-2px)}@keyframes vsl-cta-pulse{0%,100%{transform:scale(1);box-shadow:0 10px 22px rgba(0,0,0,.16)}50%{transform:scale(1.025);box-shadow:0 13px 30px rgba(0,0,0,.24)}}@media(prefers-reduced-motion:reduce){.vsl-cta-button{animation:none}}
 .vsl-brand-logo{display:block;width:auto;max-width:min(260px,70vw);max-height:88px;object-fit:contain}
+.vsl-background{position:absolute;inset:0;z-index:0;background-position:center;background-size:cover;background-repeat:no-repeat;pointer-events:none}
 :global(:root){--vsl-header-clearance:96px}@media(max-width:860px){:global(:root){--vsl-header-clearance:84px}}
 </style>

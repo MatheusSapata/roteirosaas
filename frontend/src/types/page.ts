@@ -311,6 +311,12 @@ export interface VideoVslSection extends SectionBase {
   subtitle?: LocalizedString;
   videoUrl?: string;
   videoAspectRatio?: "horizontal" | "vertical" | "square";
+  logoEnabled?: boolean;
+  logoUrl?: string;
+  logoSize?: number;
+  thumbnailUrl?: string;
+  backgroundImage?: string;
+  backgroundImageOpacity?: number;
   progressBarEnabled?: boolean;
   unlockAfterSeconds?: number;
   unlockAction?: "reveal_page" | "show_button" | "both";
