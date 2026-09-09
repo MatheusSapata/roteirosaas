@@ -880,7 +880,7 @@
               </template>
               <template v-else>
                 <template v-for="(section, idx) in sections" :key="(section as any)?.anchorId || idx">
-                    <div v-if="section" class="space-y-0">
+                    <div v-if="section && isEditorPreviewSectionVisible(idx)" class="space-y-0">
                     <div
                       class="group relative"
                       :class="(section as any).type === 'header' ? 'z-30 overflow-visible' : 'overflow-hidden'"
@@ -1162,6 +1162,7 @@ import type {
   PhotoSection,
   PricesSection,
   FeaturedVideoSection,
+  VideoVslSection,
   TestimonialsSection,
   StorySection,
   ReasonsSection,
@@ -1200,6 +1201,7 @@ import footerThumb from "../../assets/footer-thumb.jpg";
 import countdownThumb from "../../assets/countdown-thumb.jpg";
 import storyThumb from "../../assets/story-thumb.jpg";
 import featuredVideoThumb from "../../assets/videoemdestaque.png";
+import videoVslThumb from "../../assets/video-vsl-thumb-optimized.jpg";
 import biographyThumb from "../../assets/biografia.png";
 import flightsThumb from "../../assets/voos-thumb.png";
 import viajeonCheckoutThumb from "../../assets/viajeon-checkout-thumb.png";
@@ -1211,6 +1213,7 @@ interface Page {
   status: string;
   config_json?: PageConfig | string | null;
   cover_image_url?: string;
+  seo_title?: string | null;
 }
 
 interface SectionCatalogItem {
@@ -2032,6 +2035,7 @@ const SectionItineraryForm = defineAsyncComponent(() => import("../../components
 const SectionFaqForm = defineAsyncComponent(() => import("../../components/admin/SectionFaqForm.vue"));
 const SectionTestimonialsForm = defineAsyncComponent(() => import("../../components/admin/SectionTestimonialsForm.vue"));
 const SectionFeaturedVideoForm = defineAsyncComponent(() => import("../../components/admin/SectionFeaturedVideoForm.vue"));
+const SectionVideoVslForm = defineAsyncComponent(() => import("../../components/admin/SectionVideoVslForm.vue"));
 const SectionCtaForm = defineAsyncComponent(() => import("../../components/admin/SectionCtaForm.vue"));
 const SectionStoryForm = defineAsyncComponent(() => import("../../components/admin/SectionStoryForm.vue"));
 const SectionReasonsForm = defineAsyncComponent(() => import("../../components/admin/SectionReasonsForm.vue"));
@@ -2052,6 +2056,7 @@ const PublicItinerarySection = defineAsyncComponent(() => import("../../componen
 const PublicFaqSection = defineAsyncComponent(() => import("../../components/public/PublicFaqSection.vue"));
 const PublicTestimonialsSection = defineAsyncComponent(() => import("../../components/public/PublicTestimonialsSection.vue"));
 const PublicFeaturedVideoSection = defineAsyncComponent(() => import("../../components/public/PublicFeaturedVideoSection.vue"));
+const PublicVideoVslSection = defineAsyncComponent(() => import("../../components/public/PublicVideoVslSection.vue"));
 const PublicCtaSection = defineAsyncComponent(() => import("../../components/public/PublicCtaSection.vue"));
 const PublicStorySection = defineAsyncComponent(() => import("../../components/public/PublicStorySection.vue"));
 const PublicReasonsSection = defineAsyncComponent(() => import("../../components/public/PublicReasonsSection.vue"));
@@ -2074,6 +2079,7 @@ const sectionTypes: SectionType[] = [
   "faq",
   "testimonials",
   "featured_video",
+  "video_vsl",
   "cta",
   "story",
   "reasons",
@@ -2146,6 +2152,10 @@ const sectionDescriptions: Partial<Record<SectionType, string>> = {
     pt: "Mostra voos de ida e volta com multiplos trechos, bagagens e visual premium.",
     es: "Muestra vuelos de ida y vuelta con multiples tramos, equipajes y visual premium."
   }),
+  video_vsl: t({
+    pt: "Vídeo de vendas com liberação programada de botão e conteúdo da página.",
+    es: "Video de ventas con liberación programada de botón y contenido de la página."
+  }),
   links: t({
     pt: "Carrossel de páginas e links externos com imagem, título e descrição.",
     es: "Carrusel de páginas y enlaces externos con imagen, título y descripción."
@@ -2180,6 +2190,7 @@ const sectionThumbnails: Partial<Record<SectionType, string>> = {
   faq: faqThumb,
   testimonials: testimonialsThumb,
   featured_video: featuredVideoThumb,
+  video_vsl: videoVslThumb,
   cta: ctaThumb,
   story: storyThumb,
   reasons: reasonsThumb,
@@ -2201,6 +2212,7 @@ const sectionAccents: Partial<Record<SectionType, string>> = {
   faq: "from-slate-100 to-white",
   testimonials: "from-purple-100/70 to-white",
   featured_video: "from-indigo-100/70 to-white",
+  video_vsl: "from-violet-100/70 to-white",
   cta: "from-cyan-100/70 to-white",
   story: "from-rose-100/70 to-white",
   reasons: "from-indigo-100/70 to-white",
@@ -2222,6 +2234,7 @@ const formComponents: Partial<Record<SectionType, any>> = {
   faq: SectionFaqForm,
   testimonials: SectionTestimonialsForm,
   featured_video: SectionFeaturedVideoForm,
+  video_vsl: SectionVideoVslForm,
   cta: SectionCtaForm,
   story: SectionStoryForm,
   reasons: SectionReasonsForm,
@@ -2244,6 +2257,7 @@ const publicComponents: Partial<Record<SectionType, any>> = {
   faq: PublicFaqSection,
   testimonials: PublicTestimonialsSection,
   featured_video: PublicFeaturedVideoSection,
+  video_vsl: PublicVideoVslSection,
   cta: PublicCtaSection,
   story: PublicStorySection,
   reasons: PublicReasonsSection,
@@ -2259,9 +2273,18 @@ const publicComponents: Partial<Record<SectionType, any>> = {
 const sectionRequiresBranding = (type?: SectionType | string | null) => type === "hero" || type === "agency_footer";
 
 const sections = shallowRef<PageSection[]>([]);
+const isEditorPreviewSectionVisible = (index: number) => {
+  const firstActiveVsl = sections.value.findIndex(section => section?.enabled && section.type === "video_vsl");
+  return firstActiveVsl === -1 || index <= firstActiveVsl;
+};
 const previewSectionExtraProps = (section: PageSection) => {
   const extra: Record<string, unknown> = {};
   if (sectionRequiresBranding(section.type)) extra.branding = branding.value;
+  if (section.type === "video_vsl") {
+    extra.highlightColor = theme.value.ctaDefaultColor || section.ctaColor;
+    const hero = sections.value.find(item => item.type === "hero") as HeroSection | undefined;
+    extra.logoUrl = hero?.logoUrl || branding.value.logo_url || currentAgency.value?.logo_url || "";
+  }
   const activeHeader = sections.value.some(item => item.type === "header" && item.enabled);
   if (section.type === "hero") extra.hideLogo = activeHeader;
   if (section.type === "header") {
@@ -2397,6 +2420,7 @@ const editingSectionHeaderLabel = computed(() => {
   if (!type) return "";
   if (type === "banner_card") return "Banner em Card";
   if (type === "featured_video") return "Vídeo";
+  if (type === "video_vsl") return "Video VSL";
   if (type === "flight_details") return "Voos";
   return editingSectionLabel.value;
 });
@@ -2469,6 +2493,7 @@ const hasPendingImageUploads = computed(() => activeImageUploads.value > 0);
 
 const isFooterSection = (section?: PageSection | null) => !!section && (section as any).type === "free_footer_brand";
 const isHeaderSection = (section?: PageSection | null) => !!section && (section as any).type === "header";
+const isVideoVslSection = (section?: PageSection | null) => !!section && (section as any).type === "video_vsl";
 const enforceFooterConstraints = (list?: PageSection[] | null) => {
   const normalized = (list || []).filter(Boolean).filter((section, index, all) => !isHeaderSection(section) || index === all.findIndex(isHeaderSection));
   const hasActiveHero = normalized.some(section => section.type === "hero" && section.enabled !== false);
@@ -2481,6 +2506,10 @@ const enforceFooterConstraints = (list?: PageSection[] | null) => {
   }
   const headerIndex = normalized.findIndex(isHeaderSection);
   if (headerIndex > 0) normalized.unshift(normalized.splice(headerIndex, 1)[0]);
+  const videoVslSections = normalized.filter(isVideoVslSection);
+  if (videoVslSections.length) {
+    normalized.splice(0, normalized.length, ...videoVslSections, ...normalized.filter(section => !isVideoVslSection(section)));
+  }
   if (!isFreePlan.value) return normalized;
   const footerIndex = normalized.findIndex(isFooterSection);
   if (footerIndex === -1) return normalized;
@@ -3470,6 +3499,27 @@ if (type === "flight_details") {
   } as FlightDetailsSection);
 }
 
+if (type === "video_vsl") {
+  const headingDefaults = getSectionHeadingDefaults("video_vsl");
+  return ensureSectionAnchor({
+    type: "video_vsl",
+    enabled: true,
+    headingLabel: headingDefaults.label,
+    headingLabelStyle: headingDefaults.style,
+    title: "Assista ao vídeo antes de continuar",
+    subtitle: "Descubra todos os detalhes desta oferta especial.",
+    videoUrl: "https://www.youtube.com/watch?v=ysz5S6PUM-U",
+    videoAspectRatio: "horizontal",
+    progressBarEnabled: true,
+    unlockAfterSeconds: 60,
+    unlockAction: "reveal_page",
+    ctaLabel: "Quero aproveitar esta oferta",
+    ctaLink: "https://wa.me/",
+    ctaOpenInNewTab: true,
+    ctaColor: theme.value.ctaDefaultColor
+  } as VideoVslSection);
+}
+
 if (type === "links") {
   const headingDefaults = getSectionHeadingDefaults("links");
   return ensureSectionAnchor({
@@ -3662,7 +3712,7 @@ const saveConfig = async (): Promise<boolean> => {
       showSnackbar(validationError);
       return false;
     }
-    await api.put(`/pages/${pageId}`, { title: pageTitle.value, slug: pageSlug.value });
+    await api.put(`/pages/${pageId}`, { title: pageTitle.value, slug: pageSlug.value, seo_title: null });
 
     const configPayload = buildConfig();
     await api.put(`/pages/${pageId}/config`, { config: configPayload });
@@ -5550,6 +5600,76 @@ onMounted(async () => {
   border-color: color-mix(in srgb, var(--border) 62%, transparent) !important;
   background: var(--background) !important;
   color: var(--foreground);
+}
+
+/* Mantém o formulário VSL íntegro dentro do modal, inclusive após carregamento assíncrono. */
+.section-editor-body :deep(.video-vsl-form) {
+  display: grid !important;
+  grid-template-columns: 178px minmax(0, 1fr) !important;
+  min-height: 100% !important;
+  align-items: stretch !important;
+}
+
+.section-editor-body :deep(.video-vsl-form > .tabs) {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  padding: 16px 12px !important;
+  border-right: 1px solid var(--border) !important;
+}
+
+.section-editor-body :deep(.video-vsl-form .tab) {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 8px 10px !important;
+  border-radius: 14px !important;
+}
+
+.section-editor-body :deep(.video-vsl-form .content-area) {
+  display: grid !important;
+  align-content: start !important;
+  gap: 12px !important;
+  padding: 14px 16px !important;
+}
+
+.section-editor-body :deep(.video-vsl-form .field) {
+  display: grid !important;
+  gap: 6px !important;
+}
+
+.section-editor-body :deep(.video-vsl-form .field > label) {
+  display: flex !important;
+}
+
+.section-editor-body :deep(.video-vsl-form .field > input),
+.section-editor-body :deep(.video-vsl-form .field > select) {
+  display: block !important;
+  width: 100% !important;
+  min-height: 40px !important;
+  padding: 9px 12px !important;
+  border: 1px solid var(--input) !important;
+  border-radius: 12px !important;
+}
+
+.section-editor-body :deep(.video-vsl-form .grid-2) {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+.section-editor-body :deep(.video-vsl-form .choice-grid) {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+}
+
+@media (max-width: 900px) {
+  .section-editor-body :deep(.video-vsl-form) { grid-template-columns: 1fr !important; }
+  .section-editor-body :deep(.video-vsl-form > .tabs) { flex-direction: row !important; border-right: 0 !important; border-bottom: 1px solid var(--border) !important; }
+  .section-editor-body :deep(.video-vsl-form .tab) { flex: 1 !important; }
+  .section-editor-body :deep(.video-vsl-form .grid-2),
+  .section-editor-body :deep(.video-vsl-form .choice-grid) { grid-template-columns: 1fr !important; }
 }
 
 .section-editor-body :deep(.hero-proto-body),

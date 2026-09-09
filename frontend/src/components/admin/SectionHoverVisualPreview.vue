@@ -30,6 +30,7 @@ import PublicItinerarySection from "../public/PublicItinerarySection.vue";
 import PublicFaqSection from "../public/PublicFaqSection.vue";
 import PublicTestimonialsSection from "../public/PublicTestimonialsSection.vue";
 import PublicFeaturedVideoSection from "../public/PublicFeaturedVideoSection.vue";
+import PublicVideoVslSection from "../public/PublicVideoVslSection.vue";
 import PublicCtaSection from "../public/PublicCtaSection.vue";
 import PublicStorySection from "../public/PublicStorySection.vue";
 import PublicReasonsSection from "../public/PublicReasonsSection.vue";
@@ -58,6 +59,7 @@ const componentMap: Record<string, unknown> = {
   faq: PublicFaqSection,
   testimonials: PublicTestimonialsSection,
   featured_video: PublicFeaturedVideoSection,
+  video_vsl: PublicVideoVslSection,
   cta: PublicCtaSection,
   story: PublicStorySection,
   reasons: PublicReasonsSection,

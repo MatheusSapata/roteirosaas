@@ -35,3 +35,10 @@ export const normalizeYoutubeEmbedUrl = (raw?: string | null): string => {
   }
   return ensureHttps(stripIframeWrapper(raw.trim()));
 };
+
+export const normalizeYoutubePlayerUrl = (raw?: string | null): string => {
+  const id = extractYoutubeId(raw);
+  if (!id) return "";
+  const origin = typeof window !== "undefined" ? `&origin=${encodeURIComponent(window.location.origin)}` : "";
+  return `https://www.youtube.com/embed/${id}?enablejsapi=1&playsinline=1&controls=0&disablekb=1&fs=0&iv_load_policy=3&cc_load_policy=0&rel=0${origin}`;
+};

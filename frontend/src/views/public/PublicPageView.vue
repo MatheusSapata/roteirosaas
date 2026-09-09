@@ -16,17 +16,18 @@
     <div class="public-page-scale">
       <template v-for="(section, idx) in sections" :key="idx">
         <PublicHeroSection
-          v-if="section?.enabled && section.type === 'hero'"
+          v-if="section?.enabled && isSectionVisible(section, idx) && section.type === 'hero'"
           :section="section"
           :hide-logo="headerEnabled"
           :page-scale="0.9"
           v-bind="sectionExtraProps(section, idx)"
         />
         <component
-          v-else-if="section?.enabled"
+          v-else-if="section?.enabled && isSectionVisible(section, idx)"
           :is="publicComponents[section.type]"
           :section="section"
           v-bind="sectionExtraProps(section, idx)"
+          @unlocked="handleVslUnlocked(idx)"
         />
       </template>
     </div>
@@ -61,6 +62,7 @@ import PublicItinerarySection from "../../components/public/PublicItinerarySecti
 import PublicFaqSection from "../../components/public/PublicFaqSection.vue";
 import PublicTestimonialsSection from "../../components/public/PublicTestimonialsSection.vue";
 import PublicFeaturedVideoSection from "../../components/public/PublicFeaturedVideoSection.vue";
+import PublicVideoVslSection from "../../components/public/PublicVideoVslSection.vue";
 import PublicCtaSection from "../../components/public/PublicCtaSection.vue";
 import PublicStorySection from "../../components/public/PublicStorySection.vue";
 import PublicReasonsSection from "../../components/public/PublicReasonsSection.vue";
@@ -90,6 +92,7 @@ interface PublicPageResponse {
   branding: Record<string, unknown>;
   config: string | PageConfig;
   cover_image_url?: string;
+  seo_title?: string | null;
 }
 
 const route = useRoute();
@@ -185,6 +188,7 @@ const publicComponents: Record<SectionType, any> = {
   faq: PublicFaqSection,
   testimonials: PublicTestimonialsSection,
   featured_video: PublicFeaturedVideoSection,
+  video_vsl: PublicVideoVslSection,
   cta: PublicCtaSection,
   story: PublicStorySection,
   reasons: PublicReasonsSection,
@@ -199,6 +203,28 @@ const publicComponents: Record<SectionType, any> = {
 
 const sectionRequiresBranding = (type?: SectionType) => type === "hero" || type === "agency_footer";
 const headerEnabled = computed(() => sections.value.some(section => section.type === "header" && section.enabled));
+const unlockedVslIndexes = ref(new Set<number>());
+const vslNavigationActivated = ref(false);
+let vslUnlockScrollPosition = 0;
+const isSectionVisible = (section: PageSection, index: number) => {
+  if (section.type === "header" && sections.value.some(candidate => candidate.enabled && candidate.type === "video_vsl") && !vslNavigationActivated.value) return false;
+  const blockingIndex = sections.value.findIndex((candidate, candidateIndex) =>
+    candidateIndex < index && candidate.enabled && candidate.type === "video_vsl" && (
+      (candidate.unlockAction || "reveal_page") === "show_button" || !unlockedVslIndexes.value.has(candidateIndex)
+    )
+  );
+  return blockingIndex === -1;
+};
+const handleVslUnlocked = (index: number) => {
+  const updated = new Set(unlockedVslIndexes.value);
+  updated.add(index);
+  unlockedVslIndexes.value = updated;
+  vslUnlockScrollPosition = typeof window !== "undefined" ? window.scrollY : 0;
+};
+const handleVslPostUnlockScroll = () => {
+  if (unlockedVslIndexes.value.size === 0) return;
+  vslNavigationActivated.value = window.scrollY > vslUnlockScrollPosition + 4;
+};
 const headerLogo = computed(() => {
   const hero = sections.value.find(section => section.type === "hero") as HeroSection | undefined;
   return hero?.logoUrl || brandingLogo.value;
@@ -239,6 +265,11 @@ const sectionExtraProps = (section: PageSection, index: number) => {
     extra.pageSlug = currentPageSlug.value;
     extra.pageTitle = pageTitleText.value;
     extra.pageUrl = pageUrl.value;
+  }
+  if (section.type === "video_vsl") {
+    extra.highlightColor = theme.value.ctaDefaultColor || section.ctaColor;
+    extra.logoUrl = headerLogo.value;
+    extra.replaceHeadingWithLogo = !vslNavigationActivated.value;
   }
   if (section.type === "header") {
     extra.logoUrl = headerLogo.value;
@@ -357,9 +388,9 @@ const applyFavicon = (faviconUrl?: string | null) => {
   ensureLinkTag("rel='apple-touch-icon'", "apple-touch-icon", finalFavicon);
 };
 
-const applySeoMeta = (title?: string | null, description?: string | null, imageUrl?: string | null) => {
+const applySeoMeta = (title?: string | null, description?: string | null, imageUrl?: string | null, useExactTitle = false) => {
   if (typeof document === "undefined") return;
-  const finalTitle = title ? `${title} | Roteiro Online` : "Roteiro Online";
+  const finalTitle = title ? (useExactTitle ? title : `${title} | Roteiro Online`) : "Roteiro Online";
   const finalDescription = (description && description.trim()) || localize(defaultDescription);
   const finalImage = imageUrl || brandingLogo.value || brandingFavicon.value || brandLogo;
   document.title = finalTitle;
@@ -385,6 +416,9 @@ const resolveParam = (value: string | string[] | undefined) => {
 };
 
 const loadPage = async () => {
+  unlockedVslIndexes.value = new Set<number>();
+  vslNavigationActivated.value = false;
+  vslUnlockScrollPosition = 0;
   loading.value = true;
   notFoundMode.value = "missing";
   leadModalVisible.value = false;
@@ -509,6 +543,7 @@ const handleLeadModalDismissed = () => {
 };
 
 onMounted(loadPage);
+onMounted(() => window.addEventListener("scroll", handleVslPostUnlockScroll, { passive: true }));
 watch(
   () => [route.params.agencySlug, route.params.pageSlug],
   () => {
@@ -518,12 +553,13 @@ watch(
 watch(
   () => [pageData.value, heroBackgroundImage.value, heroSubtitleText.value],
   () => {
-    applySeoMeta(pageTitleText.value, heroSubtitleText.value, heroBackgroundImage.value);
+    applySeoMeta(pageTitleText.value, heroSubtitleText.value, heroBackgroundImage.value, true);
     applyFavicon(brandingFavicon.value);
   },
   { immediate: true }
 );
 onUnmounted(() => {
+  window.removeEventListener("scroll", handleVslPostUnlockScroll);
   cleanupStatsTracking();
   cleanupScrollAnchors();
 });
@@ -538,6 +574,10 @@ function applyBackgrounds(list: PageSection[]): PageSection[] {
   }
   const headerIndex = normalized.findIndex(section => section?.type === "header");
   if (headerIndex > 0) normalized.unshift(normalized.splice(headerIndex, 1)[0]);
+  const videoVslSections = normalized.filter(section => section?.type === "video_vsl");
+  if (videoVslSections.length) {
+    normalized.splice(0, normalized.length, ...videoVslSections, ...normalized.filter(section => section?.type !== "video_vsl"));
+  }
   return normalized.map(section => {
     if (!section) return section;
     if (!section.anchorId) {

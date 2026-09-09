@@ -172,8 +172,7 @@ def _canonicalize_url(page_url: str) -> tuple[str, str]:
 def _build_meta_block(page: PublicPageOut, canonical_url: str, origin: str) -> str:
     branding = page.branding or {}
     agency_name = str(branding.get("agency_name") or "Roteiro Online").strip()
-    seo_title = (page.seo_title or page.title).strip()
-    final_title = seo_title if "roteiro online" in seo_title.lower() else f"{seo_title} | Roteiro Online"
+    final_title = (page.title or "").strip() or "Roteiro Online"
 
     description = _resolve_page_share_description(page, page.title, agency_name)
 

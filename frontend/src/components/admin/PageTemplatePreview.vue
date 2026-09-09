@@ -5,12 +5,12 @@
     </div>
     <template v-else v-for="(section, idx) in sections" :key="idx">
       <PublicHeroSection
-        v-if="section?.enabled && section.type === 'hero'"
+        v-if="section?.enabled && isPreviewSectionVisible(idx) && section.type === 'hero'"
         :section="section"
         v-bind="sectionExtraProps(section, idx)"
       />
       <component
-        v-else-if="section?.enabled"
+        v-else-if="section?.enabled && isPreviewSectionVisible(idx)"
         :is="publicComponents[section.type]"
         :section="section"
         v-bind="sectionExtraProps(section, idx)"
@@ -28,6 +28,7 @@ import PublicItinerarySection from "../public/PublicItinerarySection.vue";
 import PublicFaqSection from "../public/PublicFaqSection.vue";
 import PublicTestimonialsSection from "../public/PublicTestimonialsSection.vue";
 import PublicFeaturedVideoSection from "../public/PublicFeaturedVideoSection.vue";
+import PublicVideoVslSection from "../public/PublicVideoVslSection.vue";
 import PublicCtaSection from "../public/PublicCtaSection.vue";
 import PublicStorySection from "../public/PublicStorySection.vue";
 import PublicReasonsSection from "../public/PublicReasonsSection.vue";
@@ -53,6 +54,7 @@ const publicComponents: Record<string, unknown> = {
   faq: PublicFaqSection,
   testimonials: PublicTestimonialsSection,
   featured_video: PublicFeaturedVideoSection,
+  video_vsl: PublicVideoVslSection,
   cta: PublicCtaSection,
   story: PublicStorySection,
   reasons: PublicReasonsSection,
@@ -84,6 +86,10 @@ const props = withDefaults(defineProps<Props>(), {
 provide(PUBLIC_BRANDING_KEY, computed(() => props.branding || {}));
 
 const sections = computed<PageSection[]>(() => props.config?.sections || []);
+const isPreviewSectionVisible = (index: number) => {
+  const firstActiveVsl = sections.value.findIndex(section => section?.enabled && section.type === "video_vsl");
+  return firstActiveVsl === -1 || index <= firstActiveVsl;
+};
 const branding = computed(() => props.branding || {});
 const previewAwareSections: SectionType[] = [
   "header",
@@ -91,6 +97,7 @@ const previewAwareSections: SectionType[] = [
   "banner_card",
   "story",
   "featured_video",
+  "video_vsl",
   "reasons",
   "testimonials",
   "prices",
@@ -128,6 +135,11 @@ const sectionExtraProps = (section?: PageSection, index?: number) => {
     const next = findNextEnabledSection(index);
     extra.prevIsBannerCard = prev?.type === "banner_card";
     extra.nextIsBannerCard = next?.type === "banner_card";
+  }
+  if (type === "video_vsl") {
+    extra.highlightColor = props.config?.theme?.ctaDefaultColor || (section as any)?.ctaColor;
+    const hero = sections.value.find(item => item.type === "hero") as any;
+    extra.logoUrl = hero?.logoUrl || (branding.value as any).logo_url || "";
   }
   const activeHeader = sections.value.some(item => item.type === "header" && item.enabled);
   if (type === "hero") extra.hideLogo = activeHeader;

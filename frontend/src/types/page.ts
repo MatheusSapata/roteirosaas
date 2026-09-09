@@ -13,6 +13,7 @@ export type SectionType =
   | "faq"
   | "testimonials"
   | "featured_video"
+  | "video_vsl"
   | "cta"
   | "story"
   | "reasons"
@@ -304,6 +305,23 @@ export interface FlightDetailsSection extends SectionBase {
   lookupAvailable?: boolean;
 }
 
+export interface VideoVslSection extends SectionBase {
+  type: "video_vsl";
+  title: LocalizedString;
+  subtitle?: LocalizedString;
+  videoUrl?: string;
+  videoAspectRatio?: "horizontal" | "vertical" | "square";
+  progressBarEnabled?: boolean;
+  unlockAfterSeconds?: number;
+  unlockAction?: "reveal_page" | "show_button" | "both";
+  ctaDestinationMode?: "external" | "page";
+  ctaPageId?: number | null;
+  ctaLabel?: LocalizedString;
+  ctaLink?: string;
+  ctaOpenInNewTab?: boolean;
+  ctaColor?: string;
+}
+
 export interface HeaderLinkItem {
   id: string;
   label: LocalizedString;
@@ -503,6 +521,7 @@ export type PageSection =
   | FaqSection
   | TestimonialsSection
   | FeaturedVideoSection
+  | VideoVslSection
   | CtaSection
   | StorySection
   | ReasonsSection
