@@ -55,6 +55,21 @@
             <label class="url-field">URL do link<input v-model="item.url" type="url" /></label>
             <label>Título<input v-model="item.title" /></label>
             <label>Descrição<textarea v-model="item.description" rows="3" /></label>
+            <div class="optional-field-card">
+              <label class="check optional-toggle"><input v-model="item.showDates" type="checkbox" /> Exibir data da viagem</label>
+              <div v-if="item.showDates" class="optional-fields date-fields">
+                <label>Data de saída<input v-model="item.departureDate" type="date" /></label>
+                <label>Data de retorno<input v-model="item.returnDate" type="date" /></label>
+              </div>
+            </div>
+            <div class="optional-field-card">
+              <label class="check optional-toggle"><input v-model="item.showPrice" type="checkbox" /> Exibir preço</label>
+              <div v-if="item.showPrice" class="optional-fields price-fields">
+                <label>Prefixo<input v-model="item.pricePrefix" placeholder="A partir de" /></label>
+                <label>Valor<input v-model="item.priceValue" placeholder="R$ 1.990,00" /></label>
+                <label>Sufixo<input v-model="item.priceSuffix" placeholder="por pessoa" /></label>
+              </div>
+            </div>
             <label>Texto do botão<input v-model="item.buttonLabel" placeholder="Abrir link" /></label>
             <label class="check"><input v-model="item.openInNewTab" type="checkbox" /> Abrir em nova aba</label>
           </div>
@@ -96,7 +111,7 @@ let sortable: Sortable|null = null;
 let syncing = false;
 const makeId = () => `link-${Date.now()}-${Math.random().toString(36).slice(2,7)}`;
 const cloneItems = (items?:LinkCardItem[]) => Array.isArray(items) ? items.map(item => ({ ...item, id:item.id || makeId() })) : [];
-const local = reactive<LinksSection>({ type:"links", enabled:true, title:"Links recomendados", items:[], carouselEnabled:true, ...props.modelValue, headingLabel:props.modelValue.headingLabel ?? defaults.label, headingLabelStyle:props.modelValue.headingLabelStyle || defaults.style, items:cloneItems(props.modelValue.items) });
+const local = reactive<LinksSection>({ type:"links", enabled:true, title:"Links recomendados", carouselEnabled:true, ...props.modelValue, headingLabel:props.modelValue.headingLabel ?? defaults.label, headingLabelStyle:props.modelValue.headingLabelStyle || defaults.style, items:cloneItems(props.modelValue.items) });
 
 watch(() => props.modelValue, value => { syncing=true; Object.assign(local,value); local.items=cloneItems(value.items); nextTick(() => syncing=false); }, { deep:true });
 watch(local, value => { if (!syncing) emit("update:modelValue", { ...value, items:cloneItems(value.items) }); }, { deep:true });
@@ -136,7 +151,7 @@ const addPage = () => {
   const agency = agencyStore.agencies.find(item => item.id === agencyStore.currentAgencyId);
   const agencySlug = agency?.slug || "";
   const metadata=pageCardMetadata(page);
-  local.items.push({ id:makeId(), source:"page", pageId:page.id, url:`/${agencySlug}/${page.slug}`, image:metadata.image, title:metadata.title, description:metadata.description, buttonLabel:"Abrir roteiro", openInNewTab:false });
+  local.items.push({ id:makeId(), source:"page", pageId:page.id, url:`/${agencySlug}/${page.slug}`, image:metadata.image, title:metadata.title, description:metadata.description, buttonLabel:"Abrir roteiro", openInNewTab:false, showDates:false, showPrice:false });
   expandedIndex.value=local.items.length-1;
   selectedPageId.value="";
 };
@@ -147,12 +162,12 @@ const addExternal = async () => {
   const url=normalizeUrl(externalUrl.value.trim());
   try {
     const { data } = await api.post<{url:string;title:string;description:string;image:string}>("/pages/link-metadata", { url });
-    local.items.push({ id:makeId(), source:"external", url:data.url || url, image:data.image || "", title:data.title || "Novo link", description:data.description || "", buttonLabel:"Abrir link", openInNewTab:true });
+    local.items.push({ id:makeId(), source:"external", url:data.url || url, image:data.image || "", title:data.title || "Novo link", description:data.description || "", buttonLabel:"Abrir link", openInNewTab:true, showDates:false, showPrice:false });
     expandedIndex.value=local.items.length-1;
     externalUrl.value="";
   } catch (error:any) {
     const detail=error?.response?.data?.detail || "Não foi possível carregar a prévia automaticamente. Você pode preencher os dados manualmente.";
-    local.items.push({ id:makeId(), source:"external", url, image:"", title:new URL(url).hostname.replace(/^www\./,""), description:"", buttonLabel:"Abrir link", openInNewTab:true });
+    local.items.push({ id:makeId(), source:"external", url, image:"", title:new URL(url).hostname.replace(/^www\./,""), description:"", buttonLabel:"Abrir link", openInNewTab:true, showDates:false, showPrice:false });
     expandedIndex.value=local.items.length-1;
     externalUrl.value="";
     errorMessage.value=detail;
@@ -207,4 +222,5 @@ onBeforeUnmount(() => sortable?.destroy());
 .image-field{display:grid;gap:6px}.field-label{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted-foreground)}.image-picker{display:flex;align-items:center;gap:12px;min-height:78px;padding:9px;border:1px solid var(--input);border-radius:12px;background:var(--card)}.hidden-file{display:none!important}.image-thumb{flex:0 0 92px;width:92px;height:60px;padding:0;border:1px solid var(--border);border-radius:9px;overflow:hidden;background:var(--muted);color:var(--muted-foreground);font-size:11px;font-weight:800}.image-thumb img{display:block;width:100%;height:100%;object-fit:cover;object-position:center}.image-copy{display:flex;min-width:0;flex:1;flex-direction:column;gap:3px}.image-copy strong{font-size:12px;color:var(--foreground)}.image-copy small{font-size:10px;color:var(--muted-foreground)}.image-actions{display:flex;gap:6px}.image-actions button{border:1px solid var(--border);border-radius:8px;padding:7px 9px;background:var(--muted);color:var(--foreground);font-size:10px;font-weight:800}.image-actions .danger{color:#dc2626;background:#fff}.upload-error{color:#dc2626;font-size:11px}@media(max-width:700px){.image-picker{align-items:flex-start;flex-wrap:wrap}.image-copy{min-width:150px}.image-actions{width:100%}}
 .image-field,.url-field{grid-column:1/-1}
 .carousel-toggle{display:flex!important;align-items:center!important;gap:10px!important;padding:11px 12px;border:1px solid var(--border);border-radius:12px;background:var(--card);text-transform:none!important;letter-spacing:normal!important;cursor:pointer}.carousel-toggle>input{width:17px!important;height:17px;flex:0 0 auto}.carousel-toggle>span{display:flex;flex-direction:column;gap:2px}.carousel-toggle strong{font-size:12px;color:var(--foreground)}.carousel-toggle small{font-size:10px;font-weight:500;color:var(--muted-foreground)}.limit-note{margin:0;color:var(--muted-foreground);font-size:11px}
+.optional-field-card{grid-column:1/-1;padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--card)}.optional-toggle{margin:0!important;color:var(--foreground)!important;text-transform:none!important;letter-spacing:normal!important}.optional-fields{display:grid;gap:10px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}.date-fields{grid-template-columns:1fr 1fr}.price-fields{grid-template-columns:1fr 1.15fr 1fr}@media(max-width:700px){.date-fields,.price-fields{grid-template-columns:1fr}}
 </style>

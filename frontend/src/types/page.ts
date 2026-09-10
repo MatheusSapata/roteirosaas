@@ -484,6 +484,13 @@ export interface LinkCardItem {
   description?: LocalizedString;
   buttonLabel?: LocalizedString;
   openInNewTab?: boolean;
+  showDates?: boolean;
+  departureDate?: string;
+  returnDate?: string;
+  showPrice?: boolean;
+  pricePrefix?: LocalizedString;
+  priceValue?: string;
+  priceSuffix?: LocalizedString;
 }
 
 export interface LinksSection extends SectionBase {
