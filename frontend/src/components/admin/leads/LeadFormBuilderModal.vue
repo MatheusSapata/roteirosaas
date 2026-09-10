@@ -42,6 +42,14 @@
                   <label class="fm-lbl">Título exibido</label>
                   <input v-model="state.title" class="fm-inp" placeholder="ex: Quero receber mais informações" />
                 </div>
+                <div class="fm-row">
+                  <label class="fm-lbl">Descrição exibida</label>
+                  <input
+                    v-model="state.subtitle"
+                    class="fm-inp"
+                    placeholder="ex: Preencha seus dados e entraremos em contato."
+                  />
+                </div>
                 <div class="fm-grid3">
                   <div class="fm-row">
                     <label class="fm-lbl">Texto do botão</label>

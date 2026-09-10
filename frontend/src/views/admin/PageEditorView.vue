@@ -748,7 +748,7 @@
               >
                 <option value="">{{ viewCopy.leadSection.selectPlaceholder }}</option>
                 <option v-for="form in leadForms" :key="form.id" :value="String(form.id)">
-                  {{ form.title || form.name }} ({{ form.total_leads ?? 0 }} leads)
+                  {{ form.name || form.title }} ({{ form.total_leads ?? 0 }} leads)
                 </option>
               </select>
               <p class="text-xs text-slate-500 dark:text-slate-400">
