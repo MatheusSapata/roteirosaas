@@ -36,12 +36,18 @@
           "/agencia",
           "/escala"
         ]);
-        var isCustomDomain = hostname && !platformHosts.has(hostname);
+        var isAdminRoute = path === "/admin" || path.startsWith("/admin/");
+        var isCustomDomain = hostname && !platformHosts.has(hostname) && !isAdminRoute;
         var isPublicPlatformRoute = path.startsWith("/p/") || (!knownPlatformPaths.has(path) && !path.startsWith("/admin"));
         if (isCustomDomain || isPublicPlatformRoute) {
           document.documentElement.style.backgroundColor = "#000";
-          document.body.classList.add("public-shell");
-          document.body.style.backgroundColor = "#000";
+          var applyPublicShell = function () {
+            if (!document.body) return;
+            document.body.classList.add("public-shell");
+            document.body.style.backgroundColor = "#000";
+          };
+          if (document.body) applyPublicShell();
+          else document.addEventListener("DOMContentLoaded", applyPublicShell, { once: true });
         }
       })();
     </script>

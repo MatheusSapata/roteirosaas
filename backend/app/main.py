@@ -5,6 +5,7 @@ from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.api.v1.api import api_router
@@ -28,6 +29,20 @@ settings = get_settings()
 page_resolver = PublicPageResolverService(settings)
 
 Base.metadata.create_all(bind=engine)
+
+# O deploy atual inicializa o schema com create_all, que nao adiciona colunas
+# novas em tabelas existentes. Mantemos esta alteracao idempotente para que uma
+# atualizacao do backend nao interrompa a listagem de formularios/oportunidades.
+if engine.dialect.name == "postgresql":
+    with engine.begin() as connection:
+        connection.execute(text(
+            "ALTER TABLE lead_forms ADD COLUMN IF NOT EXISTS "
+            "viajechat_custom_fields_enabled BOOLEAN NOT NULL DEFAULT FALSE"
+        ))
+        connection.execute(text(
+            "ALTER TABLE lead_forms ADD COLUMN IF NOT EXISTS "
+            "viajechat_custom_field_mappings JSONB NOT NULL DEFAULT '[]'::jsonb"
+        ))
 
 logging.basicConfig(level=logging.INFO)
 
