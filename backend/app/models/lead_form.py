@@ -44,6 +44,8 @@ class LeadForm(Base):
   viajechat_pipeline_name = Column(String(255), nullable=True)
   viajechat_column_id = Column(String(100), nullable=True)
   viajechat_column_name = Column(String(255), nullable=True)
+  viajechat_custom_fields_enabled = Column(Boolean, nullable=False, server_default=expression.false())
+  viajechat_custom_field_mappings = Column(JSONB, nullable=False, server_default="[]")
   viajechat_tag_enabled = Column(Boolean, nullable=False, server_default=expression.false())
   viajechat_tag_name = Column(String(120), nullable=True)
   viajechat_tag_color = Column(String(20), nullable=True)

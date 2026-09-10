@@ -100,15 +100,57 @@ class ViajeChatClient:
         contacts = data.get("data") or []
         return contacts[0] if contacts else None
 
-    def create_contact(self, *, name: str, email: str | None = None, phone: str | None = None) -> dict[str, Any]:
+    def create_contact(
+        self,
+        *,
+        name: str,
+        email: str | None = None,
+        phone: str | None = None,
+        cpf_cnpj: str | None = None,
+        city: str | None = None,
+        birth_date: str | None = None,
+        custom_fields: dict[str, Any] | None = None,
+        idempotency_key: str | None = None,
+    ) -> dict[str, Any]:
         payload = {
             "name": name or "",
             "email": email or None,
             "phone": phone or None,
+            "cpf_cnpj": cpf_cnpj or None,
+            "city": city or None,
+            "birth_date": birth_date or None,
+            "custom_fields": custom_fields or None,
         }
         # Remove nulos para evitar validação de payload em alguns painéis.
         payload = {key: value for key, value in payload.items() if value}
-        return self._request("POST", "/contacts", json=payload) or {}
+        headers = {"Idempotency-Key": idempotency_key} if idempotency_key else {}
+        return self._request("POST", "/contacts", json=payload, headers=headers) or {}
+
+    def update_contact(
+        self,
+        contact_id: str,
+        *,
+        name: str | None = None,
+        email: str | None = None,
+        cpf_cnpj: str | None = None,
+        city: str | None = None,
+        birth_date: str | None = None,
+        custom_fields: dict[str, Any] | None = None,
+        idempotency_key: str | None = None,
+    ) -> dict[str, Any]:
+        if not contact_id:
+            raise ValueError("ViajeChat contact id is required")
+        payload = {
+            "name": name or None,
+            "email": email or None,
+            "cpf_cnpj": cpf_cnpj or None,
+            "city": city or None,
+            "birth_date": birth_date or None,
+            "custom_fields": custom_fields or None,
+        }
+        payload = {key: value for key, value in payload.items() if value}
+        headers = {"Idempotency-Key": idempotency_key} if idempotency_key else {}
+        return self._request("PUT", f"/contacts/{contact_id}", json=payload, headers=headers) or {}
 
     def list_tags(self) -> list[dict[str, Any]]:
         payload = self._request("GET", "/tags")
@@ -121,6 +163,17 @@ class ViajeChatClient:
             if isinstance(rows, list):
                 return [item for item in rows if isinstance(item, dict)]
         return []
+
+    def list_contact_fields(self) -> list[dict[str, Any]]:
+        payload = self._request("GET", "/contact-fields")
+        if isinstance(payload, list):
+            return [item for item in payload if isinstance(item, dict)]
+        if not isinstance(payload, dict):
+            return []
+        rows = payload.get("data") or payload.get("fields") or payload.get("items") or []
+        if isinstance(rows, dict):
+            rows = rows.get("fields") or rows.get("data") or rows.get("items") or []
+        return [item for item in rows if isinstance(item, dict)] if isinstance(rows, list) else []
 
     def find_or_create_tag(self, *, name: str, color: str = "#3b82f6", idempotency_key: str | None = None) -> dict[str, Any]:
         clean_name = (name or "").strip()

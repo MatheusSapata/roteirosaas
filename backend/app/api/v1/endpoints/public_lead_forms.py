@@ -67,6 +67,31 @@ def _viajechat_phone(value: str | None) -> str | None:
     return digits
 
 
+def _build_viajechat_custom_fields(form: LeadForm, submission: LeadFormSubmission) -> dict[str, str]:
+    if not form.viajechat_custom_fields_enabled:
+        return {}
+    custom_values = [
+        item
+        for item in (submission.payload or {}).get("values", [])
+        if str(item.get("type") or "").strip().lower() in {"text", "textarea"}
+        and str(item.get("value") or "").strip()
+    ]
+    values_by_id = {str(item.get("id") or ""): str(item.get("value") or "").strip() for item in custom_values}
+    grouped_value = "\n".join(
+        f"{item.get('label') or 'Resposta'}: {str(item.get('value') or '').strip()}"
+        for item in custom_values
+    )
+    result: dict[str, str] = {}
+    for mapping in form.viajechat_custom_field_mappings or []:
+        source = str(mapping.get("sourceFieldId") or mapping.get("source_field_id") or "").strip()
+        target = str(mapping.get("targetKey") or mapping.get("target_key") or "").strip()
+        value = grouped_value if source == "__all_custom__" else values_by_id.get(source, "")
+        if not target or not value:
+            continue
+        result[target] = f"{result[target]}\n{value}" if result.get(target) else value
+    return result
+
+
 def _sync_submission_to_viajechat(submission_id: int) -> None:
     db = SessionLocal()
     try:
@@ -93,12 +118,39 @@ def _sync_submission_to_viajechat(submission_id: int) -> None:
         for item in (submission.payload or {}).get("values", []):
             field_type = str(item.get("type") or "").strip().lower()
             field_value = str(item.get("value") or "").strip()
-            if field_type not in {"name", "phone"} and field_value:
+            if field_type in {"text", "textarea"} and field_value:
                 notes.append(f"{item.get('label') or 'Resposta'}: {field_value}")
         idempotency_key = str(uuid.uuid5(uuid.NAMESPACE_URL, f"roteiroonline:lead-form-submission:{submission.id}"))
         try:
             api_key = decrypt_api_key(integration.token_encrypted)
-            result = ViajeChatClient(api_key).create_deal_card(
+            client = ViajeChatClient(api_key)
+            contact = client.get_contact_by_phone(phone)
+            contact_id = str((contact or {}).get("id") or "")
+            contact_fields = {
+                "name": submission.name or phone,
+                "email": submission.email,
+                "cpf_cnpj": submission.cpf_normalized,
+                "city": submission.city,
+                "birth_date": submission.birthdate.isoformat() if submission.birthdate else None,
+                "custom_fields": _build_viajechat_custom_fields(form, submission),
+            }
+            contact_key = str(uuid.uuid5(uuid.NAMESPACE_URL, f"roteiroonline:lead-form-contact:{submission.id}"))
+            if contact_id:
+                client.update_contact(contact_id, **contact_fields, idempotency_key=contact_key)
+            else:
+                created_contact = client.create_contact(
+                    phone=phone,
+                    **contact_fields,
+                    idempotency_key=contact_key,
+                )
+                created_data = (
+                    created_contact.get("data")
+                    if isinstance(created_contact, dict) and isinstance(created_contact.get("data"), dict)
+                    else created_contact
+                )
+                contact_id = str((created_data or {}).get("id") or "")
+
+            result = client.create_deal_card(
                 phone=phone,
                 name=submission.name or phone,
                 email=submission.email,
@@ -116,12 +168,12 @@ def _sync_submission_to_viajechat(submission_id: int) -> None:
                 if not contact_data and isinstance((deal_data or {}).get("contact"), dict):
                     contact_data = deal_data.get("contact")
                 if not contact_data or not contact_data.get("id"):
-                    contact_data = ViajeChatClient(api_key).get_contact_by_phone(phone)
-                contact_id = str((contact_data or {}).get("id") or "")
-                if not contact_id:
+                    contact_data = client.get_contact_by_phone(phone)
+                tag_contact_id = str((contact_data or {}).get("id") or contact_id)
+                if not tag_contact_id:
                     raise ViajeChatClientError("Contato criado, mas o ViajeChat não retornou seu identificador.")
                 tag_key = str(uuid.uuid5(uuid.NAMESPACE_URL, f"roteiroonline:lead-form-tag:{form.id}:{form.viajechat_tag_name}"))
-                tag = ViajeChatClient(api_key).find_or_create_tag(
+                tag = client.find_or_create_tag(
                     name=form.viajechat_tag_name or "",
                     color=form.viajechat_tag_color or "#3b82f6",
                     idempotency_key=tag_key,
@@ -129,7 +181,7 @@ def _sync_submission_to_viajechat(submission_id: int) -> None:
                 tag_id = str(tag.get("id") or "")
                 if not tag_id:
                     raise ViajeChatClientError("O ViajeChat não retornou o identificador da etiqueta.")
-                ViajeChatClient(api_key).add_tags_to_contact(contact_id, [tag_id])
+                client.add_tags_to_contact(tag_contact_id, [tag_id])
             submission.viajechat_sync_status = "synced"
             submission.viajechat_sync_error = None
             submission.viajechat_synced_at = datetime.utcnow()

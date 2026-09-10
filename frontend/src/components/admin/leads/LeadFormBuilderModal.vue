@@ -239,6 +239,34 @@
                 </div>
                 <div class="fmd-tag-card">
                   <div class="fmd-tag-head">
+                    <div><strong>Mapear campos personalizados</strong><p>Associe as perguntas do formulário aos campos personalizados do ViajeChat.</p></div>
+                    <label class="fmn-toggle"><input v-model="state.viajechatCustomFieldsEnabled" type="checkbox" /><span class="fmn-track"></span></label>
+                  </div>
+                  <div v-if="state.viajechatCustomFieldsEnabled" class="fmd-mapping-body">
+                    <p v-if="viajechatFieldsLoading" class="fm-hint">Carregando campos personalizados...</p>
+                    <p v-else-if="viajechatFieldsError" class="fmd-error">{{ viajechatFieldsError }}</p>
+                    <div v-for="(mapping, index) in state.viajechatCustomFieldMappings" :key="index" class="fmd-mapping-row">
+                      <select v-model="mapping.sourceFieldId" class="fm-sel">
+                        <option value="">Selecione uma pergunta</option>
+                        <option value="__all_custom__">Todos os campos personalizados</option>
+                        <option v-for="field in customFields" :key="field.id" :value="field.id">{{ field.label || "Pergunta sem nome" }}</option>
+                      </select>
+                      <select v-model="mapping.targetKey" class="fm-sel" @change="syncMappingTargetLabel(mapping)">
+                        <option value="">Selecione o campo do ViajeChat</option>
+                        <option
+                          v-if="mapping.targetKey && !viajechatCustomFields.some(field => field.key === mapping.targetKey)"
+                          :value="mapping.targetKey"
+                        >{{ mapping.targetLabel || mapping.targetKey }} (indisponível)</option>
+                        <option v-for="field in viajechatCustomFields" :key="field.key" :value="field.key">{{ field.label }}</option>
+                      </select>
+                      <button type="button" class="fmd-remove-mapping" aria-label="Remover mapeamento" title="Remover" @click="removeCustomFieldMapping(index)">×</button>
+                    </div>
+                    <button type="button" class="fmd-add-mapping" @click="addCustomFieldMapping">+ Adicionar mapeamento</button>
+                    <span class="fm-hint">“Todos os campos” concatena cada pergunta e resposta no campo escolhido.</span>
+                  </div>
+                </div>
+                <div class="fmd-tag-card">
+                  <div class="fmd-tag-head">
                     <div><strong>Criar etiqueta</strong><p>Adiciona esta etiqueta ao contato que recebeu o novo deal.</p></div>
                     <label class="fmn-toggle"><input v-model="state.viajechatTagEnabled" type="checkbox" /><span class="fmn-track"></span></label>
                   </div>
@@ -277,7 +305,7 @@
 <script setup lang="ts">
 import { computed, onUnmounted, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
-import type { LeadFieldType, LeadForm, LeadFormField, LeadFormPayload } from "../../../types/leads";
+import type { LeadFieldType, LeadForm, LeadFormField, LeadFormPayload, ViajeChatCustomFieldMapping } from "../../../types/leads";
 import { useLeadCaptureStore } from "../../../store/useLeadCaptureStore";
 import { useAuthStore } from "../../../store/useAuthStore";
 import LeadFormPreview from "./LeadFormPreview.vue";
@@ -298,6 +326,7 @@ const auth = useAuthStore();
 const agencyStore = useAgencyStore();
 
 interface ViajechatKanban { id: string; name: string; columns: Array<{ id: string; name: string }> }
+interface ViajechatContactField { key: string; label: string; type: string }
 
 interface FieldPreset { type: LeadFieldType; label: string; placeholder: string; icon: string; }
 const fieldPresets: FieldPreset[] = [
@@ -359,6 +388,8 @@ const state = reactive<LeadFormPayload>({
   viajechatPipelineName: null,
   viajechatColumnId: null,
   viajechatColumnName: null,
+  viajechatCustomFieldsEnabled: false,
+  viajechatCustomFieldMappings: [],
   viajechatTagEnabled: false,
   viajechatTagName: null,
   viajechatTagColor: "#3b82f6"
@@ -368,6 +399,9 @@ const viajechatAvailable = ref(false);
 const viajechatLoading = ref(false);
 const viajechatError = ref("");
 const viajechatKanbans = ref<ViajechatKanban[]>([]);
+const viajechatCustomFields = ref<ViajechatContactField[]>([]);
+const viajechatFieldsLoading = ref(false);
+const viajechatFieldsError = ref("");
 const hasPhoneField = computed(() => state.fields.some(field => field.type === "phone"));
 const selectedPipeline = computed(() => viajechatKanbans.value.find(item => item.id === state.viajechatPipelineId) || null);
 const selectedPipelineColumns = computed(() => selectedPipeline.value?.columns || []);
@@ -377,6 +411,14 @@ const errorMessage = ref("");
 const title = computed(() => (editingId.value ? "Editar formulário" : "Novo formulário"));
 const selectedTypes = computed(() => state.fields.map(field => field.type));
 const customFields = computed(() => state.fields.filter(field => field.type === "text" || field.type === "textarea"));
+const addCustomFieldMapping = () => {
+  if (!state.viajechatCustomFieldMappings) state.viajechatCustomFieldMappings = [];
+  state.viajechatCustomFieldMappings.push({ sourceFieldId: "", targetKey: "", targetLabel: "" });
+};
+const removeCustomFieldMapping = (index: number) => state.viajechatCustomFieldMappings?.splice(index, 1);
+const syncMappingTargetLabel = (mapping: ViajeChatCustomFieldMapping) => {
+  mapping.targetLabel = viajechatCustomFields.value.find(field => field.key === mapping.targetKey)?.label || mapping.targetLabel || "";
+};
 const greetingByHour = computed(() => {
   const hour = new Date().getHours();
   if (hour < 12) return "Bom dia";
@@ -455,6 +497,8 @@ const onPipelineChange = () => {
 const fetchViajechatDestinationOptions = async () => {
   viajechatLoading.value = true;
   viajechatError.value = "";
+  viajechatCustomFields.value = [];
+  viajechatFieldsError.value = "";
   try {
     const agencyId = Number(agencyStore.currentAgencyId || agencyStore.agencies[0]?.id || 0);
     const params = agencyId ? { agencyId } : undefined;
@@ -467,6 +511,7 @@ const fetchViajechatDestinationOptions = async () => {
     const response = await api.get("/integrations/viajechat/kanbans", { params });
     viajechatKanbans.value = Array.isArray(response.data?.kanbans) ? response.data.kanbans : [];
     syncDestinationNames();
+    fetchViajechatContactFields(params);
   } catch (error: any) {
     viajechatAvailable.value = false;
     viajechatKanbans.value = [];
@@ -474,6 +519,20 @@ const fetchViajechatDestinationOptions = async () => {
     if (activeTab.value === "destination") activeTab.value = "visual";
   } finally {
     viajechatLoading.value = false;
+  }
+};
+
+const fetchViajechatContactFields = async (params?: { agencyId: number }) => {
+  viajechatFieldsLoading.value = true;
+  viajechatFieldsError.value = "";
+  try {
+    const response = await api.get("/integrations/viajechat/contact-fields", { params });
+    viajechatCustomFields.value = Array.isArray(response.data?.fields) ? response.data.fields : [];
+  } catch (error: any) {
+    viajechatCustomFields.value = [];
+    viajechatFieldsError.value = error?.response?.data?.detail || "Não foi possível carregar os campos personalizados do ViajeChat.";
+  } finally {
+    viajechatFieldsLoading.value = false;
   }
 };
 
@@ -507,6 +566,11 @@ const resetState = () => {
   state.viajechatPipelineName = null;
   state.viajechatColumnId = null;
   state.viajechatColumnName = null;
+  state.viajechatCustomFieldsEnabled = false;
+  state.viajechatCustomFieldMappings = [];
+  state.viajechatTagEnabled = false;
+  state.viajechatTagName = null;
+  state.viajechatTagColor = "#3b82f6";
   syncDelayFromSeconds(0);
   activeTab.value = "visual";
   editingId.value = null;
@@ -535,6 +599,8 @@ const hydrateFromForm = (form?: LeadForm | null) => {
   state.viajechatPipelineName = form.viajechatPipelineName || null;
   state.viajechatColumnId = form.viajechatColumnId || null;
   state.viajechatColumnName = form.viajechatColumnName || null;
+  state.viajechatCustomFieldsEnabled = Boolean(form.viajechatCustomFieldsEnabled);
+  state.viajechatCustomFieldMappings = (form.viajechatCustomFieldMappings || []).map(mapping => ({ ...mapping }));
   state.viajechatTagEnabled = Boolean(form.viajechatTagEnabled);
   state.viajechatTagName = form.viajechatTagName || null;
   state.viajechatTagColor = form.viajechatTagColor || "#3b82f6";
@@ -570,6 +636,26 @@ const validate = () => {
     activeTab.value = "destination";
     return (errorMessage.value = "Selecione o funil e a coluna de destino no ViajeChat."), false;
   }
+  if (state.viajechatEnabled && state.viajechatCustomFieldsEnabled) {
+    const mappings = state.viajechatCustomFieldMappings || [];
+    if (!mappings.length || mappings.some(mapping => !mapping.sourceFieldId || !mapping.targetKey)) {
+      activeTab.value = "destination";
+      return (errorMessage.value = "Complete todos os mapeamentos de campos personalizados."), false;
+    }
+    const pairs = mappings.map(mapping => `${mapping.sourceFieldId}::${mapping.targetKey}`);
+    if (new Set(pairs).size !== pairs.length) {
+      activeTab.value = "destination";
+      return (errorMessage.value = "Remova os mapeamentos duplicados."), false;
+    }
+    if (mappings.some(mapping => mapping.sourceFieldId !== "__all_custom__" && !customFields.value.some(field => field.id === mapping.sourceFieldId))) {
+      activeTab.value = "destination";
+      return (errorMessage.value = "Um campo mapeado não existe mais neste formulário."), false;
+    }
+    if (mappings.some(mapping => !viajechatCustomFields.value.some(field => field.key === mapping.targetKey))) {
+      activeTab.value = "destination";
+      return (errorMessage.value = "Um campo personalizado não está mais disponível no ViajeChat."), false;
+    }
+  }
   const tagName = String(state.viajechatTagName || "").trim();
   if (state.viajechatEnabled && state.viajechatTagEnabled && !tagName) {
     activeTab.value = "destination";
@@ -604,6 +690,10 @@ const buildPayload = (): LeadFormPayload => ({
   viajechatPipelineName: state.viajechatPipelineName || null,
   viajechatColumnId: state.viajechatColumnId || null,
   viajechatColumnName: state.viajechatColumnName || null,
+  viajechatCustomFieldsEnabled: Boolean(state.viajechatEnabled && state.viajechatCustomFieldsEnabled),
+  viajechatCustomFieldMappings: state.viajechatCustomFieldsEnabled
+    ? (state.viajechatCustomFieldMappings || []).map(mapping => ({ ...mapping }))
+    : [],
   viajechatTagEnabled: Boolean(state.viajechatEnabled && state.viajechatTagEnabled),
   viajechatTagName: state.viajechatTagName?.trim() || null,
   viajechatTagColor: state.viajechatTagColor || "#3b82f6"
@@ -635,6 +725,12 @@ const goToPlans = () => {
 };
 
 watch([delayValue, delayUnit], () => syncSecondsFromDelay());
+watch(
+  () => state.viajechatCustomFieldsEnabled,
+  enabled => {
+    if (enabled && !state.viajechatCustomFieldMappings?.length) addCustomFieldMapping();
+  }
+);
 
 watch(
   () => props.modelValue,
@@ -695,6 +791,7 @@ onUnmounted(() => { document.body.style.overflow = ""; });
 .fmn-wapp-name{font-size:13px;font-weight:700;color:#fff}.fmn-wapp-status{font-size:10px;color:rgba(255,255,255,.65)}.fmn-wapp-body{background:#E5DDD5;padding:12px;min-height:100px;flex:1;display:flex;align-items:flex-start}.fmn-bubble{background:#fff;border-radius:0 10px 10px 10px;padding:10px 12px;font-size:12px;color:#111;line-height:1.55;white-space:pre-wrap;width:92%}.fmn-bubble-time{font-size:10px;color:rgba(0,0,0,.38);text-align:right;margin-top:5px}.fmn-wapp-ibar{background:#f0f0f0;padding:8px 10px;border-top:1px solid rgba(0,0,0,.08)}.fmn-wapp-fake-inp{background:#fff;border-radius:20px;padding:6px 12px;font-size:11px;color:#8a9e8a}
 .fmd-intro{display:flex;align-items:center;gap:14px;border:1.5px solid var(--border);border-radius:14px;background:var(--background);padding:16px}.fmd-icon{display:grid;width:42px;height:42px;flex:0 0 42px;place-items:center;border-radius:12px;background:var(--status-success);color:var(--status-success-foreground);font-size:18px;font-weight:900}.fmd-intro>div:nth-child(2){flex:1}.fmd-intro h3{font-size:15px;font-weight:800;color:var(--foreground)}.fmd-intro p{margin-top:3px;font-size:12px;line-height:1.45;color:var(--muted-foreground)}.fmd-config{display:grid;gap:16px}.fmd-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.fmd-warning{display:flex;align-items:center;justify-content:space-between;gap:14px;border:1px solid #fcd34d;border-radius:12px;background:#fffbeb;padding:13px;color:#92400e}.fmd-warning strong{font-size:12px}.fmd-warning p{margin-top:2px;font-size:11px}.fmd-warning button{flex:0 0 auto;border-radius:8px;background:#f59e0b;padding:7px 10px;color:#fff;font-size:11px;font-weight:800}.fmd-summary{display:flex;align-items:center;justify-content:space-between;gap:14px;border-radius:12px;background:var(--status-success);padding:13px 15px;color:var(--status-success-foreground);font-size:12px}.fmd-summary span{font-weight:700}.fmd-summary strong{text-align:right}.fmd-error{font-size:12px;color:var(--destructive)}
 .fmd-tag-card{border:1.5px solid var(--border);border-radius:12px;background:var(--background);padding:14px}.fmd-tag-head{display:flex;align-items:center;justify-content:space-between;gap:16px}.fmd-tag-head strong{font-size:13px;color:var(--foreground)}.fmd-tag-head p{margin-top:2px;font-size:11px;color:var(--muted-foreground)}.fmd-tag-fields{display:grid;grid-template-columns:minmax(0,1fr) 80px;gap:14px;margin-top:14px;border-top:1px solid var(--border);padding-top:14px}.fmd-color-row{align-content:start}.fmd-color{width:48px;height:39px;cursor:pointer;border:1.5px solid var(--border);border-radius:8px;background:var(--background);padding:3px}
+.fmd-mapping-body{display:grid;gap:10px;margin-top:14px;border-top:1px solid var(--border);padding-top:14px}.fmd-mapping-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 34px;gap:9px;align-items:center}.fmd-remove-mapping{display:grid;width:34px;height:38px;place-items:center;border:1.5px solid var(--border);border-radius:8px;background:var(--background);color:var(--destructive);font-size:20px;line-height:1;cursor:pointer}.fmd-remove-mapping:hover{background:var(--destructive);color:var(--destructive-foreground)}.fmd-add-mapping{justify-self:start;border:1.5px solid var(--border);border-radius:8px;background:var(--background);padding:8px 11px;color:var(--foreground);font-size:11px;font-weight:700;cursor:pointer}.fmd-add-mapping:hover{background:var(--accent)}
 .fm-foot{padding:14px 26px;border-top:1.5px solid #e4e9e4;display:flex;align-items:center;justify-content:space-between;background:#fff}.fm-foot-left{font-size:12px;color:#8a9e8a}
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;border:none}.btn svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2.5}.btn-p{background:#3DCC5F;color:#0F1F14}.btn-o{background:#fff;color:#4A5E4A;border:1.5px solid #E4E9E4}.btn-sm{padding:6px 12px;font-size:12px}
 
@@ -725,5 +822,5 @@ onUnmounted(() => { document.body.style.overflow = ""; });
 .btn-p:hover{background:var(--brand-dark)}
 .btn-o:hover{background:var(--accent);color:var(--accent-foreground)}
 @media(max-width:980px){.fm-modal{max-width:98vw;max-height:95vh}.fm-pane,.fmn-settings{flex-direction:column}.fm-right,.fmn-right{width:100%}.fm-grid3{grid-template-columns:1fr}.fmf-grid{grid-template-columns:1fr 1fr}}
-@media(max-width:560px){.fm-ov{padding:0}.fm-modal{height:100%;max-height:100vh;border-radius:0}.fm-hd{padding:18px 16px 0}.fm-pane{padding:18px 16px 24px}.fm-foot{padding:12px 16px}.fmf-grid,.fmd-grid,.fmd-tag-fields{grid-template-columns:1fr}.fm-tabs{overflow-x:auto}.fm-tab-btn{white-space:nowrap}.fmd-warning,.fmd-summary{align-items:flex-start;flex-direction:column}}
+@media(max-width:560px){.fm-ov{padding:0}.fm-modal{height:100%;max-height:100vh;border-radius:0}.fm-hd{padding:18px 16px 0}.fm-pane{padding:18px 16px 24px}.fm-foot{padding:12px 16px}.fmf-grid,.fmd-grid,.fmd-tag-fields,.fmd-mapping-row{grid-template-columns:1fr}.fmd-remove-mapping{justify-self:end}.fm-tabs{overflow-x:auto}.fm-tab-btn{white-space:nowrap}.fmd-warning,.fmd-summary{align-items:flex-start;flex-direction:column}}
 </style>

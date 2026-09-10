@@ -8,6 +8,12 @@ export interface LeadFormField {
   required: boolean;
 }
 
+export interface ViajeChatCustomFieldMapping {
+  sourceFieldId: string;
+  targetKey: string;
+  targetLabel?: string | null;
+}
+
 export interface LeadForm {
   id: number | string;
   name: string;
@@ -31,6 +37,8 @@ export interface LeadForm {
   viajechatPipelineName?: string | null;
   viajechatColumnId?: string | null;
   viajechatColumnName?: string | null;
+  viajechatCustomFieldsEnabled?: boolean;
+  viajechatCustomFieldMappings?: ViajeChatCustomFieldMapping[];
   viajechatTagEnabled?: boolean;
   viajechatTagName?: string | null;
   viajechatTagColor?: string | null;
@@ -61,6 +69,8 @@ export interface LeadFormPayload {
   viajechatPipelineName?: string | null;
   viajechatColumnId?: string | null;
   viajechatColumnName?: string | null;
+  viajechatCustomFieldsEnabled?: boolean;
+  viajechatCustomFieldMappings?: ViajeChatCustomFieldMapping[];
   viajechatTagEnabled?: boolean;
   viajechatTagName?: string | null;
   viajechatTagColor?: string | null;

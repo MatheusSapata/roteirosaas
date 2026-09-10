@@ -24,6 +24,21 @@ class LeadFormFieldSchema(BaseModel):
         return value
 
 
+class ViajeChatCustomFieldMappingSchema(BaseModel):
+    source_field_id: str = Field(..., alias="sourceFieldId")
+    target_key: str = Field(..., alias="targetKey")
+    target_label: Optional[str] = Field(None, alias="targetLabel")
+
+    @validator("source_field_id", "target_key")
+    def sanitize_mapping_key(cls, value: str) -> str:
+        value = (value or "").strip()
+        if not value:
+            raise ValueError("Mapeamento incompleto")
+        return value
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
 class LeadFormBase(BaseModel):
     name: str
     title: str
@@ -45,6 +60,8 @@ class LeadFormBase(BaseModel):
     viajechat_pipeline_name: Optional[str] = Field(None, alias="viajechatPipelineName")
     viajechat_column_id: Optional[str] = Field(None, alias="viajechatColumnId")
     viajechat_column_name: Optional[str] = Field(None, alias="viajechatColumnName")
+    viajechat_custom_fields_enabled: bool = Field(False, alias="viajechatCustomFieldsEnabled")
+    viajechat_custom_field_mappings: list[ViajeChatCustomFieldMappingSchema] = Field(default_factory=list, alias="viajechatCustomFieldMappings")
     viajechat_tag_enabled: bool = Field(False, alias="viajechatTagEnabled")
     viajechat_tag_name: Optional[str] = Field(None, alias="viajechatTagName")
     viajechat_tag_color: Optional[str] = Field("#3b82f6", alias="viajechatTagColor")
@@ -107,6 +124,8 @@ class LeadFormUpdate(BaseModel):
     viajechat_pipeline_name: Optional[str] = Field(None, alias="viajechatPipelineName")
     viajechat_column_id: Optional[str] = Field(None, alias="viajechatColumnId")
     viajechat_column_name: Optional[str] = Field(None, alias="viajechatColumnName")
+    viajechat_custom_fields_enabled: Optional[bool] = Field(None, alias="viajechatCustomFieldsEnabled")
+    viajechat_custom_field_mappings: Optional[list[ViajeChatCustomFieldMappingSchema]] = Field(None, alias="viajechatCustomFieldMappings")
     viajechat_tag_enabled: Optional[bool] = Field(None, alias="viajechatTagEnabled")
     viajechat_tag_name: Optional[str] = Field(None, alias="viajechatTagName")
     viajechat_tag_color: Optional[str] = Field(None, alias="viajechatTagColor")

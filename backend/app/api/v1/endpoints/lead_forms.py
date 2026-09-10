@@ -89,7 +89,8 @@ def _serialize_form(form: LeadForm, total_leads: int = 0) -> LeadFormOut:
 
 def _validate_viajechat_destination(
     *, agency_id: int, enabled: bool, fields: list, pipeline_id: str | None, column_id: str | None,
-    db: Session, tag_enabled: bool = False, tag_name: str | None = None
+    db: Session, tag_enabled: bool = False, tag_name: str | None = None,
+    custom_fields_enabled: bool = False, custom_field_mappings: list | None = None,
 ) -> None:
     if not enabled:
         return
@@ -103,6 +104,26 @@ def _validate_viajechat_destination(
             raise HTTPException(status_code=422, detail="Informe o texto da etiqueta do ViajeChat.")
         if "[" in clean_tag or "]" in clean_tag:
             raise HTTPException(status_code=422, detail="O texto da etiqueta não pode conter [ ou ].")
+    if custom_fields_enabled:
+        mappings = custom_field_mappings or []
+        if not mappings:
+            raise HTTPException(status_code=422, detail="Adicione pelo menos um mapeamento de campo personalizado.")
+        custom_ids = {
+            str(getattr(field, "id", None) or (field.get("id") if isinstance(field, dict) else ""))
+            for field in fields
+            if (getattr(field, "type", None) or (field.get("type") if isinstance(field, dict) else None)) in {"text", "textarea"}
+        }
+        pairs: set[tuple[str, str]] = set()
+        for mapping in mappings:
+            source = str(getattr(mapping, "source_field_id", None) or (mapping.get("sourceFieldId") or mapping.get("source_field_id") if isinstance(mapping, dict) else "") or "").strip()
+            target = str(getattr(mapping, "target_key", None) or (mapping.get("targetKey") or mapping.get("target_key") if isinstance(mapping, dict) else "") or "").strip()
+            if not source or not target:
+                raise HTTPException(status_code=422, detail="Complete todos os mapeamentos de campos personalizados.")
+            if source != "__all_custom__" and source not in custom_ids:
+                raise HTTPException(status_code=422, detail="Um campo mapeado não existe mais neste formulário.")
+            if (source, target) in pairs:
+                raise HTTPException(status_code=422, detail="Remova os mapeamentos duplicados.")
+            pairs.add((source, target))
     integration = db.query(AgencyIntegration).filter(
         AgencyIntegration.agency_id == agency_id,
         AgencyIntegration.provider == "viajechat",
@@ -185,6 +206,8 @@ def create_lead_form(
         column_id=form_in.viajechat_column_id,
         tag_enabled=form_in.viajechat_tag_enabled,
         tag_name=form_in.viajechat_tag_name,
+        custom_fields_enabled=form_in.viajechat_custom_fields_enabled,
+        custom_field_mappings=form_in.viajechat_custom_field_mappings,
         db=db,
     )
     form = LeadForm(
@@ -209,6 +232,8 @@ def create_lead_form(
         viajechat_pipeline_name=form_in.viajechat_pipeline_name,
         viajechat_column_id=form_in.viajechat_column_id,
         viajechat_column_name=form_in.viajechat_column_name,
+        viajechat_custom_fields_enabled=form_in.viajechat_custom_fields_enabled,
+        viajechat_custom_field_mappings=[mapping.dict(by_alias=True) for mapping in form_in.viajechat_custom_field_mappings],
         viajechat_tag_enabled=form_in.viajechat_tag_enabled,
         viajechat_tag_name=form_in.viajechat_tag_name,
         viajechat_tag_color=form_in.viajechat_tag_color,
@@ -275,6 +300,8 @@ def update_lead_form(
         update_data["subtitle"] = update_data["subtitle"].strip()
     if "fields" in update_data and update_data["fields"] is not None:
         update_data["fields"] = [field.dict() for field in form_in.fields or []]
+    if "viajechat_custom_field_mappings" in update_data and update_data["viajechat_custom_field_mappings"] is not None:
+        update_data["viajechat_custom_field_mappings"] = [mapping.dict(by_alias=True) for mapping in form_in.viajechat_custom_field_mappings or []]
     if "default_status_id" in update_data:
         status_id = update_data["default_status_id"]
         resolved_id, resolved = _validate_status_for_agency(status_id, form.agency_id, db)
@@ -287,6 +314,8 @@ def update_lead_form(
     destination_column_id = update_data.get("viajechat_column_id", form.viajechat_column_id)
     destination_tag_enabled = update_data.get("viajechat_tag_enabled", form.viajechat_tag_enabled)
     destination_tag_name = update_data.get("viajechat_tag_name", form.viajechat_tag_name)
+    destination_custom_fields_enabled = update_data.get("viajechat_custom_fields_enabled", form.viajechat_custom_fields_enabled)
+    destination_custom_field_mappings = update_data.get("viajechat_custom_field_mappings", form.viajechat_custom_field_mappings or [])
     _validate_viajechat_destination(
         agency_id=form.agency_id,
         enabled=bool(destination_enabled),
@@ -295,6 +324,8 @@ def update_lead_form(
         column_id=destination_column_id,
         tag_enabled=bool(destination_tag_enabled),
         tag_name=destination_tag_name,
+        custom_fields_enabled=bool(destination_custom_fields_enabled),
+        custom_field_mappings=destination_custom_field_mappings,
         db=db,
     )
 

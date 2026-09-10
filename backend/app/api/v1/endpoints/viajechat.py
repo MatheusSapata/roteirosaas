@@ -80,6 +80,20 @@ def _load_key(row: AgencyIntegration) -> str:
         raise HTTPException(status_code=503, detail="Não foi possível ler a API key. Reconecte o ViajeChat.") from exc
 
 
+VIAJECHAT_STANDARD_CONTACT_FIELDS = {
+    "name", "phone", "email", "address", "birth_date", "city", "company",
+    "cpf_cnpj", "employee_count", "important_info", "note", "notes", "note_user_id",
+}
+
+
+def _is_custom_contact_field(item: dict[str, Any]) -> bool:
+    marker = item.get("custom", item.get("is_custom", item.get("isCustom")))
+    if marker is not None:
+        return marker is True or marker == 1 or str(marker).strip().lower() in {"true", "1", "yes", "sim"}
+    key = str(item.get("key") or "").strip().lower()
+    return bool(key and key not in VIAJECHAT_STANDARD_CONTACT_FIELDS)
+
+
 @router.get("/viajechat")
 def status(agency_id: int | None = Query(None, alias="agencyId"), db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)) -> dict[str, Any]:
     return _status(_integration(db, _agency_id(db, current_user, agency_id)))
@@ -121,3 +135,25 @@ def disconnect(db: Session = Depends(get_db), current_user: User = Depends(get_c
     row = _integration(db, _agency_id(db, current_user))
     if row:
         db.delete(row); db.commit()
+
+
+@router.get("/viajechat/contact-fields")
+def contact_fields(agency_id: int | None = Query(None, alias="agencyId"), db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)) -> dict[str, Any]:
+    row = _integration(db, _agency_id(db, current_user, agency_id))
+    if not row or not row.enabled:
+        raise HTTPException(status_code=404, detail="Integração ViajeChat não configurada.")
+    try:
+        fields = ViajeChatClient(_load_key(row)).list_contact_fields()
+    except ViajeChatClientError as exc:
+        raise HTTPException(status_code=502, detail="Não foi possível consultar os campos de contato do ViajeChat.") from exc
+    return {
+        "fields": [
+            {
+                "key": str(item.get("key") or ""),
+                "label": str(item.get("label") or item.get("name") or item.get("key") or "Campo"),
+                "type": str(item.get("type") or "text"),
+            }
+            for item in fields
+            if _is_custom_contact_field(item) and str(item.get("key") or "").strip()
+        ]
+    }
