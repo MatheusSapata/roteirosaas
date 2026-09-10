@@ -2731,9 +2731,19 @@ const currentAgency = computed(() => {
   const selected = agencyStore.agencies.find(a => a.id === agencyStore.currentAgencyId);
   return selected || agencyStore.agencies[0] || null;
 });
+const normalizeHostUrl = (host: string | null | undefined) => {
+  const trimmed = (host || "").trim();
+  if (!trimmed) return "";
+  const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  return withProtocol.replace(/\/+$/, "");
+};
+const activeCustomDomainUrl = computed(() => normalizeHostUrl(agencyStore.currentPrimaryDomain));
 const slugBaseLabel = computed(() => {
+  if (activeCustomDomainUrl.value) {
+    return `${activeCustomDomainUrl.value.replace(/^https?:\/\//i, "")}/`;
+  }
   const agencySlug = currentAgency.value?.slug || "nomedaagencia";
-  return `roteiroonline.com/${agencySlug}/`;
+  return `${publicSiteBaseUrl.replace(/^https?:\/\//i, "")}/${agencySlug}/`;
 });
 
 const sanitizeDigits = (value?: string | null) => (value || "").replace(/\D/g, "");
@@ -3034,7 +3044,12 @@ const applySectionBackgrounds = (list: PageSection[]): PageSection[] => {
   });
 };
 
-watch(currentAgency, () => applyAgencyBranding(), { immediate: true });
+watch(currentAgency, agency => {
+  applyAgencyBranding();
+  if (agency && !(agency.id in agencyStore.primaryDomains)) {
+    agencyStore.loadPrimaryDomain(agency.id);
+  }
+}, { immediate: true });
 watch(
   () => ({
     cpf: auth.user?.cpf,
@@ -4135,9 +4150,11 @@ const ensureAgencies = async () => {
 };
 
 const publicUrl = computed(() => {
-  const agencySlug = agencyStore.agencies[0]?.slug;
+  const agencySlug = currentAgency.value?.slug;
   const slug = pageSlug.value || page.value?.slug;
-  if (!agencySlug || !slug) return null;
+  if (!slug) return null;
+  if (activeCustomDomainUrl.value) return `${activeCustomDomainUrl.value}/${slug}`;
+  if (!agencySlug) return null;
   return `${publicSiteBaseUrl}/${agencySlug}/${slug}`;
 });
 
@@ -4199,6 +4216,7 @@ onMounted(async () => {
   setupViewportWatcher();
   await ensureProfile();
   await ensureAgencies();
+  await agencyStore.loadPrimaryDomain(currentAgency.value?.id ?? null);
   applyAgencyBranding();
   await Promise.all([
     loadPixels(),
