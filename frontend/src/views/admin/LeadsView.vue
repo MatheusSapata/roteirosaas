@@ -5478,15 +5478,15 @@ const captureCurrentViewSnapshot = (): CrmViewSnapshot => ({
   columns: Object.fromEntries(crmColumnConfig.map(col => [col.key, !!col.visible])),
   columnOrder: crmColumnConfig.filter(col => !mandatoryColumnKeys.has(col.key)).map(col => col.key),
   filters: {
-    name: [...listFilters.name],
-    form: [...listFilters.form],
-    phone: [...listFilters.phone],
-    email: [...listFilters.email],
-    city: [...listFilters.city],
+    name: [],
+    form: [],
+    phone: [],
+    email: [],
+    city: [],
     page: [...listFilters.page],
     status: [...listFilters.status],
-    receivedFrom: listFilters.receivedFrom,
-    receivedTo: listFilters.receivedTo
+    receivedFrom: "",
+    receivedTo: ""
   }
 });
 
@@ -5549,15 +5549,17 @@ const applyViewSnapshot = (snapshot?: CrmViewSnapshot) => {
     }
   });
   if (snapshot.filters) {
-    listFilters.name = [...(snapshot.filters.name || [])];
-    listFilters.form = [...(snapshot.filters.form || [])];
-    listFilters.phone = [...(snapshot.filters.phone || [])];
-    listFilters.email = [...(snapshot.filters.email || [])];
-    listFilters.city = [...(snapshot.filters.city || [])];
+    // These filters belonged to the previous table layout. Restoring them here
+    // made leads disappear without leaving any visible control to clear them.
+    listFilters.name = [];
+    listFilters.form = [];
+    listFilters.phone = [];
+    listFilters.email = [];
+    listFilters.city = [];
     if (!snapshot.pageSelections?.length) listFilters.page = [...(snapshot.filters.page || [])];
     listFilters.status = [...(snapshot.filters.status || [])];
-    listFilters.receivedFrom = snapshot.filters.receivedFrom || "";
-    listFilters.receivedTo = snapshot.filters.receivedTo || "";
+    listFilters.receivedFrom = "";
+    listFilters.receivedTo = "";
   }
 };
 
