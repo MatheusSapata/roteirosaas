@@ -38,6 +38,7 @@ import { sanitizeHtml } from "../../utils/sanitizeHtml";
 import { deriveTextPalette, getReadableTextColor } from "../../utils/colorContrast";
 
 const props = defineProps<{ section: InternalFormSection; pageId?: number | null; pageSlug?: string | null; pageTitle?: string | null; pageUrl?: string | null }>();
+const emit = defineEmits<{ (event: "submitted"): void }>();
 const localize = createLocalizer(getCurrentLanguage());
 const form = ref<LeadForm | null>(null); const loading = ref(false); const submitting = ref(false); const generalError = ref(""); const successVisible = ref(false);
 const values = reactive<Record<string,string>>({}); const errors = reactive<Record<string,string>>({}); let successTimer: ReturnType<typeof setTimeout> | null = null;
@@ -71,7 +72,7 @@ const validate = () => {
 };
 const submit = async () => {
   if (!form.value || !validate()) return; submitting.value = true; generalError.value = "";
-  try { await submitLeadForm(form.value.id, { formId: form.value.id, values: form.value.fields.map(field => ({ fieldId: field.id, type: field.type, value: values[field.id] || "" })), source: "Formulário interno", pageId: props.pageId, pageSlug: props.pageSlug, pageTitle: props.pageTitle, pageUrl: props.pageUrl || (typeof window !== "undefined" ? window.location.href : undefined) }); successVisible.value = true; const seconds = Math.min(30, Math.max(1, props.section.successDurationSeconds || 5)); successTimer = setTimeout(closeSuccess, seconds * 1000); }
+  try { await submitLeadForm(form.value.id, { formId: form.value.id, values: form.value.fields.map(field => ({ fieldId: field.id, type: field.type, value: values[field.id] || "" })), source: "Formulário interno", pageId: props.pageId, pageSlug: props.pageSlug, pageTitle: props.pageTitle, pageUrl: props.pageUrl || (typeof window !== "undefined" ? window.location.href : undefined) }); emit("submitted"); successVisible.value = true; const seconds = Math.min(30, Math.max(1, props.section.successDurationSeconds || 5)); successTimer = setTimeout(closeSuccess, seconds * 1000); }
   catch { generalError.value = "Não foi possível enviar. Tente novamente."; } finally { submitting.value = false; }
 };
 const closeSuccess = () => { successVisible.value = false; if (successTimer) clearTimeout(successTimer); successTimer = null; };

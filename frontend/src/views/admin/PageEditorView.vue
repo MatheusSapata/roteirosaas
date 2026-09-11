@@ -701,6 +701,11 @@
                       <input type="checkbox" v-model="trackingEvents.ctaClicks" class="h-4 w-4" />
                       {{ viewCopy.pixels.eventCtaClicks }}
                     </label>
+
+                    <label class="flex items-center gap-2">
+                      <input type="checkbox" v-model="trackingEvents.leads" class="h-4 w-4" />
+                      {{ viewCopy.pixels.eventLeads }}
+                    </label>
                   </div>
                 </div>
               </template>
@@ -1077,7 +1082,7 @@
       >
         <div
           ref="sectionModalPanelRef"
-          class="editor-dialog-shell w-full max-w-4xl overflow-hidden flex flex-col"
+          class="editor-dialog-shell section-editor-dialog w-full overflow-hidden flex flex-col"
           :class="isMobileViewport ? '' : 'md:rounded-[20px] md:shadow-2xl'"
           :style="sectionModalPanelStyle"
         >
@@ -1415,7 +1420,8 @@ const viewCopy = {
     }),
     eventsTitle: t({ pt: "Eventos a enviar", es: "Eventos a enviar" }),
     eventPageView: t({ pt: "Page view (carregamento da página)", es: "Page view (carga de la página)" }),
-    eventCtaClicks: t({ pt: "Cliques em CTAs", es: "Clics en CTAs" })
+    eventCtaClicks: t({ pt: "Cliques em CTAs", es: "Clics en CTAs" }),
+    eventLeads: t({ pt: "Leads (envios de formulários)", es: "Leads (envíos de formularios)" })
   },
   validation: {
     slugRequired: t({ pt: "Defina um slug válido para a página.", es: "Define un slug válido para la página." })
@@ -2660,7 +2666,7 @@ const lastAutoWhatsAppLink = ref<string | null>(null);
 const pixels = ref<{ id: number; name: string; type: "meta" | "ga"; value: string }[]>([]);
 const viajeonConnected = ref(false);
 const selectedPixels = reactive<{ meta: string; ga: string }>({ meta: "", ga: "" });
-const trackingEvents = ref({ pageView: true, ctaClicks: true });
+const trackingEvents = ref({ pageView: true, ctaClicks: true, leads: true });
 const metaPixelOptions = computed(() => pixels.value.filter(p => p.type === "meta"));
 const gaPixelOptions = computed(() => pixels.value.filter(p => p.type === "ga"));
 const selectedPixelsSummary = computed(() => {
@@ -3648,7 +3654,8 @@ const hydrateFromConfig = (config?: PageConfig | string | null) => {
     if (tracking?.events) {
       trackingEvents.value = {
         pageView: tracking.events.pageView !== false,
-        ctaClicks: tracking.events.ctaClicks !== false
+        ctaClicks: tracking.events.ctaClicks !== false,
+        leads: tracking.events.leads !== false
       };
     }
 
@@ -5619,10 +5626,39 @@ onMounted(async () => {
   color: var(--foreground);
 }
 
+.section-editor-dialog {
+  width: min(72.8rem, calc(100vw - 2rem));
+  max-width: min(72.8rem, calc(100vw - 2rem));
+}
+
+@media (min-width: 901px) {
+  .section-editor-body :deep(.hero-proto-body),
+  .section-editor-body :deep(.cta-proto-body),
+  .section-editor-body :deep(.faq-proto-body),
+  .section-editor-body :deep(.featured-video-proto-body),
+  .section-editor-body :deep(.footer-proto-body),
+  .section-editor-body :deep(.photo-proto-body),
+  .section-editor-body :deep(.prices-proto-body),
+  .section-editor-body :deep(.items-proto-body),
+  .section-editor-body :deep(.testimonials-proto-body),
+  .section-editor-body :deep(.banner-form-shell),
+  .section-editor-body :deep(.bio-form-shell),
+  .section-editor-body :deep(.countdown-shell),
+  .section-editor-body :deep(.flight-shell),
+  .section-editor-body :deep(.itinerary-shell),
+  .section-editor-body :deep(.story-form-shell),
+  .section-editor-body :deep(.links-editor),
+  .section-editor-body :deep(.header-editor),
+  .section-editor-body :deep(.section-editor),
+  .section-editor-body :deep(.viajeon-form-shell) {
+    grid-template-columns: 267px minmax(0, 1fr) !important;
+  }
+}
+
 /* Mantém o formulário VSL íntegro dentro do modal, inclusive após carregamento assíncrono. */
 .section-editor-body :deep(.video-vsl-form) {
   display: grid !important;
-  grid-template-columns: 178px minmax(0, 1fr) !important;
+  grid-template-columns: 267px minmax(0, 1fr) !important;
   min-height: 100% !important;
   align-items: stretch !important;
 }

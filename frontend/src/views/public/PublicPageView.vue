@@ -28,6 +28,7 @@
           :section="section"
           v-bind="sectionExtraProps(section, idx)"
           @unlocked="handleVslUnlocked(idx)"
+          @submitted="handleLeadSubmitted"
         />
       </template>
     </div>
@@ -105,6 +106,8 @@ const notFoundMode = ref<"missing" | "temporary">("missing");
 const leadCaptureForm = ref<LeadForm | null>(null);
 const leadModalVisible = ref(false);
 const leadCaptureOptional = ref(false);
+const leadTrackingEnabled = ref(true);
+const trackingPixels = ref<{ type: string; value: string }[]>([]);
 const theme = ref<ThemeConfig>({
   color1: "#f8fafc",
   color2: "#ffffff",
@@ -471,6 +474,8 @@ const loadPage = async () => {
     const metaPixel = tracking.metaPixel || (legacyPixel?.type === "meta" ? legacyPixel : null);
     const gaPixel = tracking.gaPixel || (legacyPixel?.type === "ga" ? legacyPixel : null);
     const activePixels = [metaPixel, gaPixel].filter(p => p && p.value);
+    leadTrackingEnabled.value = events.leads !== false;
+    trackingPixels.value = activePixels as { type: string; value: string }[];
     if (metaPixel?.value) {
       injectMetaPixel(metaPixel.value, sendPageView);
     }
@@ -493,6 +498,7 @@ const loadPage = async () => {
     cleanupScrollAnchors();
     leadCaptureForm.value = null;
     leadModalVisible.value = false;
+    trackingPixels.value = [];
   } finally {
     loading.value = false;
   }
@@ -535,7 +541,19 @@ const sectionEnabled = (type: SectionType) => {
 };
 
 const handleLeadModalSubmitted = () => {
-  /* hook for future analytics */
+  handleLeadSubmitted();
+};
+
+const handleLeadSubmitted = () => {
+  if (!leadTrackingEnabled.value) return;
+  trackingPixels.value.forEach(pixel => {
+    if (pixel.type === "meta" && (window as any).fbq) {
+      (window as any).fbq("track", "Lead");
+    }
+    if (pixel.type === "ga" && (window as any).gtag) {
+      (window as any).gtag("event", "generate_lead");
+    }
+  });
 };
 
 const handleLeadModalDismissed = () => {
