@@ -76,6 +76,7 @@ import { useAgencyStore } from "../../store/useAgencyStore";
 import type { HeaderLinkItem, HeaderSection, HeaderSocialLink, PageSection } from "../../types/page";
 import { sectionLabels } from "../../utils/sectionLabels";
 import { getReadableTextColor } from "../../utils/colorContrast";
+import { buildPublicPagePath } from "../../utils/publicPagePath";
 
 interface AgencyPage { id:number; title:string; slug:string; status:string }
 const props = defineProps<{ modelValue: HeaderSection; pageSections?: PageSection[] }>();
@@ -98,14 +99,14 @@ const makeId = () => `header-link-${Date.now()}-${Math.random().toString(36).sli
 const addLink = () => { if(local.links.length<7){local.links.push({id:makeId(),label:"Novo link",targetType:"section",target:""});expandedLinkIndex.value=local.links.length-1;} };
 const toggleLink = (index:number) => { expandedLinkIndex.value=expandedLinkIndex.value===index?null:index; };
 const removeLink = (index:number) => {local.links.splice(index,1);if(expandedLinkIndex.value===index)expandedLinkIndex.value=null;else if(expandedLinkIndex.value!==null&&expandedLinkIndex.value>index)expandedLinkIndex.value-=1;};
-const pageUrl = (page:AgencyPage) => { const agency=agencyStore.agencies.find(item=>item.id===agencyStore.currentAgencyId); return `/${agency?.slug || ""}/${page.slug}`; };
+const pageUrl = (page:AgencyPage) => { const agency=agencyStore.agencies.find(item=>item.id===agencyStore.currentAgencyId); return buildPublicPagePath(page.slug, agency?.slug, agencyStore.currentPrimaryDomain); };
 const socialName = (platform:string) => ({instagram:"Instagram",facebook:"Facebook",youtube:"YouTube",tiktok:"TikTok",linkedin:"LinkedIn"}[platform] || platform);
-const loadPages = async () => { if(!agencyStore.currentAgencyId)await agencyStore.loadAgencies().catch(()=>undefined);if(!agencyStore.currentAgencyId)return;try{pages.value=(await api.get<AgencyPage[]>("/pages",{params:{agency_id:agencyStore.currentAgencyId}})).data.filter(page=>page.status==="published"||page.status==="draft");}catch{pages.value=[];} };
+const loadPages = async () => { if(!agencyStore.currentAgencyId)await agencyStore.loadAgencies().catch(()=>undefined);if(!agencyStore.currentAgencyId)return;try{pages.value=(await api.get<AgencyPage[]>("/pages",{params:{agency_id:agencyStore.currentAgencyId}})).data.filter(page=>page.status==="published"||page.status==="draft");local.links.forEach(item=>{if(item.targetType!=="page")return;const page=pages.value.find(candidate=>item.target?.split("/").filter(Boolean).at(-1)===candidate.slug);if(page)item.target=pageUrl(page)});if(local.logoActionType==="page"){const page=pages.value.find(candidate=>local.logoActionTarget?.split("/").filter(Boolean).at(-1)===candidate.slug);if(page)local.logoActionTarget=pageUrl(page)}}catch{pages.value=[];} };
 watch(()=>props.modelValue,value=>{syncing=true;Object.assign(local,value);local.links=cloneLinks(value.links);local.socialLinks=cloneSocials(value.socialLinks);queueMicrotask(()=>syncing=false);},{deep:true});
 watch(local,value=>{if(!syncing)emit("update:modelValue",{...value,links:cloneLinks(value.links),socialLinks:cloneSocials(value.socialLinks)});},{deep:true});
 watch(()=>local.mode,(mode,previous)=>{if((mode==="transparent"||mode==="blurred")&&previous==="solid"&&(local.linkTextColor||"").toLowerCase()==="#0f172a")local.linkTextColor="#ffffff";if(mode==="solid"&&(previous==="transparent"||previous==="blurred")&&(local.linkTextColor||"").toLowerCase()==="#ffffff")local.linkTextColor=getReadableTextColor(local.backgroundColor||"#ffffff");});
 watch(hasBanner,available=>{if(!available&&local.mode!=="solid"){local.mode="solid";local.backgroundColor="#ffffff";local.textColor="#0f172a";local.linkTextColor="#0f172a";}},{immediate:true});
-onMounted(loadPages);
+onMounted(async () => { if(agencyStore.currentAgencyId && !(agencyStore.currentAgencyId in agencyStore.primaryDomains))await agencyStore.loadPrimaryDomain(agencyStore.currentAgencyId);await loadPages(); });
 </script>
 
 <style scoped>

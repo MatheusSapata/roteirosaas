@@ -90,6 +90,7 @@ import { useAgencyStore } from "../../store/useAgencyStore";
 import type { LinkCardItem, LinksSection } from "../../types/page";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import { resolveMediaUrl, uploadImageFile } from "../../utils/media";
+import { buildPublicPagePath } from "../../utils/publicPagePath";
 
 interface AgencyPage { id:number; title:string; slug:string; status:string; cover_image_url?:string; seo_title?:string; seo_description?:string; config_json?:Record<string,any>|string|null; }
 const props = defineProps<{ modelValue: LinksSection }>();
@@ -118,7 +119,15 @@ watch(local, value => { if (!syncing) emit("update:modelValue", { ...value, item
 const loadPages = async () => {
   const agencyId = agencyStore.currentAgencyId;
   if (!agencyId) return;
-  try { pages.value = (await api.get<AgencyPage[]>("/pages", { params:{ agency_id:agencyId } })).data; } catch { pages.value=[]; }
+  try {
+    pages.value = (await api.get<AgencyPage[]>("/pages", { params:{ agency_id:agencyId } })).data;
+    const agency = agencyStore.agencies.find(item => item.id === agencyId);
+    local.items.forEach(item => {
+      if (item.source !== "page" || !item.pageId) return;
+      const page = pages.value.find(candidate => candidate.id === Number(item.pageId));
+      if (page) item.url = buildPublicPagePath(page.slug, agency?.slug, agencyStore.currentPrimaryDomain);
+    });
+  } catch { pages.value=[]; }
 };
 const availablePages = pages;
 const gridLimitReached = computed(() => local.carouselEnabled === false && local.items.length >= 8);
@@ -151,7 +160,8 @@ const addPage = () => {
   const agency = agencyStore.agencies.find(item => item.id === agencyStore.currentAgencyId);
   const agencySlug = agency?.slug || "";
   const metadata=pageCardMetadata(page);
-  local.items.push({ id:makeId(), source:"page", pageId:page.id, url:`/${agencySlug}/${page.slug}`, image:metadata.image, title:metadata.title, description:metadata.description, buttonLabel:"Abrir roteiro", openInNewTab:false, showDates:false, showPrice:false });
+  const url = buildPublicPagePath(page.slug, agencySlug, agencyStore.currentPrimaryDomain);
+  local.items.push({ id:makeId(), source:"page", pageId:page.id, url, image:metadata.image, title:metadata.title, description:metadata.description, buttonLabel:"Abrir roteiro", openInNewTab:false, showDates:false, showPrice:false });
   expandedIndex.value=local.items.length-1;
   selectedPageId.value="";
 };
@@ -212,7 +222,13 @@ const setupSortable = () => {
   sortable=Sortable.create(listRef.value,{ animation:180, handle:".handle", draggable:"[data-link-card]", onEnd:event => { const from=event.oldIndex, to=event.newIndex; if(from===undefined||to===undefined||from===to)return; const [moved]=local.items.splice(from,1); local.items.splice(to,0,moved); if(expandedIndex.value===from)expandedIndex.value=to; else if(expandedIndex.value!==null&&expandedIndex.value>from&&expandedIndex.value<=to)expandedIndex.value-=1; else if(expandedIndex.value!==null&&expandedIndex.value<from&&expandedIndex.value>=to)expandedIndex.value+=1; } });
 };
 watch([listRef, () => local.items.length], () => nextTick(setupSortable));
-onMounted(() => { loadPages(); setupSortable(); });
+onMounted(async () => {
+  if (agencyStore.currentAgencyId && !(agencyStore.currentAgencyId in agencyStore.primaryDomains)) {
+    await agencyStore.loadPrimaryDomain(agencyStore.currentAgencyId);
+  }
+  await loadPages();
+  setupSortable();
+});
 onBeforeUnmount(() => sortable?.destroy());
 </script>
 
