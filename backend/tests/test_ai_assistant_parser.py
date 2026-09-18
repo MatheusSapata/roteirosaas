@@ -248,6 +248,26 @@ def test_itinerary_keeps_explicit_short_heading() -> None:
     assert day["description"] == "Traslado ao hotel e tempo livre."
 
 
+@pytest.mark.parametrize("body_label", ["Texto descritivo", "Texto", "Descrição", "Subtítulo", "Conteúdo"])
+def test_biography_keeps_body_out_of_image_heading(body_label: str) -> None:
+    body = (
+        "Somos apaixonados por criar experiências inesquecíveis e cuidar de cada detalhe da sua viagem.\n"
+        "Com atendimento próximo e personalizado, garantimos segurança, tranquilidade e suporte do início ao fim."
+    )
+    config, _ = build_page_base_config_from_reply(reply_with(
+        "🟩 SEÇÃO: BIOGRAFIA\n"
+        "- Função da seção: apresentar a agência e transmitir confiança.\n"
+        "- Conteúdo:\n- Etiqueta: Sobre nós\n- Título: Sua viagem, nosso cuidado\n"
+        f"- {body_label}: {body}\n"
+        "- Sugestão de imagem: Foto da equipe da agência."
+    ))
+    section = config["sections"][0]
+    assert section["title"] == "Sua viagem, nosso cuidado"
+    assert section["text"] == body
+    assert section["titleFontSize"] == 36
+    assert section["textFontSize"] == 18
+
+
 def test_chat_endpoint_reply_passes_through_parser(client, db_session, monkeypatch) -> None:
     from app.api.deps import get_current_active_user
     from app.api.v1.endpoints import ai_assistant as endpoint

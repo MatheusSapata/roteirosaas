@@ -82,6 +82,7 @@ FIELD_ALIASES = {
     "DIA": "day",
     "LINK": "link",
     "TEXTO": "text",
+    "TEXTO DESCRITIVO": "text",
     "CARGO": "role",
     "DESCRICAO": "description",
     "ICONE": "icon",
@@ -796,13 +797,15 @@ def _parse_ai_section_block(section_name: str, block: str, index: int) -> dict[s
         title = fields.get("title", "").strip()
         subtitle = fields.get("subtitle", "").strip()
         content = fields.get("content", "").strip()
-        text = subtitle or content
+        text = fields.get("text", "").strip() or fields.get("description", "").strip() or subtitle or content
         return {
             "type": "biography",
             "enabled": True,
             "anchorId": _generate_anchor("biography", title or label or "biografia", index),
             "title": title or "Biografia",
             "text": text or "",
+            "titleFontSize": 36,
+            "textFontSize": 18,
             "image": "",
             "mobileImage": "",
             "overlayOpacity": 0.45,
