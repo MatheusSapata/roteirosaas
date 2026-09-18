@@ -918,7 +918,7 @@
                       <div v-if="(section as any).enabled" class="preview-section-host">
                         <component
                           :is="publicComponents[(section as any).type]"
-                          :section="previewSections[idx] || section"
+                          :section="previewSections[idx]?.type === section.type && previewSections[idx]?.anchorId === section.anchorId ? previewSections[idx] : section"
                           :previewDevice="previewDevice"
                           v-bind="previewSectionExtraProps(section)"
                           :class="[
@@ -1831,6 +1831,7 @@ const applyAiStructure = async (reply: string, mode: "insert" | "replace") => {
     }
     aiStructurePreviousSections.value = JSON.parse(JSON.stringify(sections.value));
     setSections(nextSections);
+    refreshPreview(true);
     showSnackbar(mode === "insert"
       ? "Seções adicionadas ao final. Revise e salve quando terminar."
       : "Estrutura substituída. Revise e salve quando terminar.");
@@ -1845,6 +1846,7 @@ const undoAiStructure = () => {
   if (!aiStructurePreviousSections.value || aiStructureApplying.value || isSectionEditorOpen.value) return;
   flushPendingSectionUpdates();
   setSections(aiStructurePreviousSections.value);
+  refreshPreview(true);
   aiStructurePreviousSections.value = null;
   aiStructureError.value = "";
   showSnackbar("Seções anteriores restauradas no editor.");
@@ -3244,8 +3246,8 @@ const clearTitleDebounce = () => {
 };
 
 const schedulePreviewHydration = (immediate = false) => {
+  clearPreviewScheduler();
   if (!previewReady.value) {
-    clearPreviewScheduler();
     return;
   }
 
@@ -3261,7 +3263,6 @@ const schedulePreviewHydration = (immediate = false) => {
     return;
   }
 
-  clearPreviewScheduler();
   previewLoading.value = true;
 
   if (hasWindow) {
