@@ -176,9 +176,32 @@
                     :class="message.role === 'user' ? 'is-user' : 'is-assistant'"
                   >
                     <div class="editor-ai-sidebar-response-text">{{ message.content }}</div>
+                    <div v-if="message.role === 'assistant' && hasAiStructure(message.content)" class="mt-3 flex items-center gap-1">
+                        <button type="button" class="min-h-11 min-w-0 flex-1 rounded-lg border border-indigo-200 bg-white px-3 py-2.5 text-sm font-semibold text-indigo-700 hover:bg-indigo-50 focus-visible:outline-indigo-600 disabled:opacity-50"
+                          title="Adiciona todas as seções da sugestão ao final do conteúdo já existente."
+                          aria-label="Inserir estrutura: adiciona todas as seções da sugestão ao final do conteúdo já existente."
+                          :disabled="aiStructureApplying || aiAssistantLoading || isSectionEditorOpen"
+                          @click="applyAiStructure(message.content, 'insert')">
+                          Inserir estrutura
+                        </button>
+                        <button type="button" class="min-h-11 min-w-0 flex-1 rounded-lg border border-indigo-200 bg-white px-3 py-2.5 text-sm font-semibold text-indigo-700 hover:bg-indigo-50 focus-visible:outline-indigo-600 disabled:opacity-50"
+                          title="Substitui todas as seções da página pelas seções da sugestão."
+                          aria-label="Substituir estrutura: substitui todas as seções da página pelas seções da sugestão."
+                          :disabled="aiStructureApplying || aiAssistantLoading || isSectionEditorOpen"
+                          @click="applyAiStructure(message.content, 'replace')">
+                          Substituir estrutura
+                        </button>
+                    </div>
+                    <p v-if="aiStructureApplying && message.role === 'assistant' && hasAiStructure(message.content)" role="status" class="mt-1 text-xs text-slate-500">Aplicando estrutura...</p>
                   </div>
                 </template>
 
+                <button v-if="aiStructurePreviousSections" type="button"
+                  class="my-2 text-sm font-semibold text-indigo-600 underline"
+                  :disabled="aiStructureApplying || isSectionEditorOpen" @click="undoAiStructure">
+                  Desfazer estrutura aplicada
+                </button>
+                <p v-if="aiStructureError" role="alert" class="my-2 text-sm text-red-600">{{ aiStructureError }}</p>
                 <div v-if="aiAssistantLoading" class="editor-ai-sidebar-typing" aria-label="Carregando resposta">
                   <span></span>
                   <span></span>
@@ -1145,6 +1168,7 @@ import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, p
 import { onBeforeRouteLeave, useRoute, useRouter } from "vue-router";
 import api from "../../services/api";
 import {
+  previewAiAssistantPageBase,
   fetchAiAssistantHistory,
   fetchAiAssistantUsage,
   sendAiAssistantConversation,
@@ -1748,6 +1772,83 @@ const aiAssistantMessages = ref<Array<{ role: "user" | "assistant"; content: str
 const aiAssistantVisibleMessages = computed(() =>
   aiAssistantMessages.value.filter(message => message.role === "user" || message.content.trim().length > 0)
 );
+const aiStructureApplying = ref(false);
+const aiStructureError = ref("");
+const aiStructurePreviousSections = shallowRef<PageSection[] | null>(null);
+const hasAiStructure = (content: string) => /^\s*(?:🟩\s*)?(?:SECAO|SEÇÃO)\s*:\s*.+$/im.test(content);
+const applyAiStructure = async (reply: string, mode: "insert" | "replace") => {
+  if (aiStructureApplying.value || aiAssistantLoading.value || isSectionEditorOpen.value) return;
+  aiStructureApplying.value = true;
+  aiStructureError.value = "";
+  try {
+    const generated = await previewAiAssistantPageBase(pageId, reply);
+    if (isSectionEditorOpen.value) {
+      aiStructureError.value = "Feche a edição da seção e tente inserir ou substituir a estrutura novamente.";
+      return;
+    }
+    flushPendingSectionUpdates();
+    const agencyLogo = currentAgency.value?.logo_url;
+    const additions = applySectionBackgrounds(generated.map(section =>
+      section.type === "hero" && !section.logoUrl && agencyLogo
+        ? { ...section, logoUrl: agencyLogo }
+        : section
+    ));
+    let nextSections = additions;
+    if (mode === "insert") {
+      const existing = sections.value;
+      const usedIds = new Set(existing.flatMap(section => [section.anchorId, (section as any).sectionId]).filter(Boolean));
+      const renamedIds = new Map<string, string>();
+      for (const section of additions) {
+        for (const key of ["anchorId", "sectionId"] as const) {
+          const oldId = (section as any)[key] as string | undefined;
+          if (!oldId) continue;
+          let newId = oldId;
+          let suffix = 2;
+          while (usedIds.has(newId)) newId = `${oldId}-${suffix++}`;
+          usedIds.add(newId);
+          renamedIds.set(oldId, newId);
+          (section as any)[key] = newId;
+        }
+      }
+      for (const section of additions) {
+        const remapTarget = (item: any) => {
+          if (item.ctaSectionId && renamedIds.has(item.ctaSectionId)) {
+            item.ctaSectionId = renamedIds.get(item.ctaSectionId);
+          }
+        };
+        remapTarget(section);
+        if ("items" in section) section.items.forEach(remapTarget);
+      }
+      // The mandatory plan footer is returned by the backend as well.
+      // Keep a single copy at the bottom when appending content.
+      const content = existing.filter(section => section.type !== "free_footer_brand");
+      const footer = existing.filter(section => section.type === "free_footer_brand");
+      nextSections = [
+        ...content,
+        ...additions.filter(section => section.type !== "free_footer_brand"),
+        ...(footer.length ? footer : additions.filter(section => section.type === "free_footer_brand"))
+      ];
+    }
+    aiStructurePreviousSections.value = JSON.parse(JSON.stringify(sections.value));
+    setSections(nextSections);
+    showSnackbar(mode === "insert"
+      ? "Seções adicionadas ao final. Revise e salve quando terminar."
+      : "Estrutura substituída. Revise e salve quando terminar.");
+  } catch (err: any) {
+    const detail = err?.response?.data?.detail;
+    aiStructureError.value = typeof detail === "string" ? detail : "Não foi possível aplicar a estrutura. Tente novamente.";
+  } finally {
+    aiStructureApplying.value = false;
+  }
+};
+const undoAiStructure = () => {
+  if (!aiStructurePreviousSections.value || aiStructureApplying.value || isSectionEditorOpen.value) return;
+  flushPendingSectionUpdates();
+  setSections(aiStructurePreviousSections.value);
+  aiStructurePreviousSections.value = null;
+  aiStructureError.value = "";
+  showSnackbar("Seções anteriores restauradas no editor.");
+};
 const aiAssistantLoading = ref(false);
 const aiAssistantChatLogRef = ref<HTMLElement | null>(null);
 const aiAssistantFileInputRef = ref<HTMLInputElement | null>(null);
@@ -2006,8 +2107,19 @@ const sendAiAssistantMessage = async () => {
     await animateAiAssistantMessage(assistantIndex, result.reply);
   } catch (error) {
     console.error("Erro ao consultar a ajuda IA", error);
-    aiAssistantMessages.value[assistantIndex].content =
-      "Não consegui consultar a IA agora. Tente novamente em alguns instantes.";
+    const status = (error as any)?.response?.status;
+    const detail = (error as any)?.response?.data?.detail;
+    let errorText = "Não consegui consultar a IA agora. Tente novamente em alguns instantes.";
+    if (status === 503 && detail === "GPT_KEY não configurada no backend.") {
+      errorText = "A IA não está configurada neste ambiente. Configure GPT_KEY no backend e reinicie o serviço para usar o assistente.";
+    } else if (status === 503 && detail === "Dependência openai não instalada.") {
+      errorText = "O serviço de IA está sem uma dependência necessária. Instale as dependências do backend e reinicie o serviço.";
+    } else if (status === 401) {
+      errorText = "Sua sessão expirou. Entre novamente para consultar a IA.";
+    } else if ([403, 429].includes(status) && typeof detail === "string") {
+      errorText = detail;
+    }
+    aiAssistantMessages.value[assistantIndex].content = errorText;
   } finally {
     aiAssistantLoading.value = false;
     scrollAiAssistantToEnd();

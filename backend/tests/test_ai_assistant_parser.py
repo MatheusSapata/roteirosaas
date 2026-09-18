@@ -104,6 +104,150 @@ def test_response_without_section_header_returns_controlled_error() -> None:
     assert exc_info.value.detail == error
 
 
+def test_generated_structure_replaces_sections_preserves_config_and_fills_images() -> None:
+    from copy import deepcopy
+    from app.services.ai_assistant import AI_IMAGE_PLACEHOLDER
+
+    original = {"theme": {"color1": "#123456"}, "sections": [{"type": "gallery", "images": ["old.jpg"]}]}
+    snapshot = deepcopy(original)
+    config, _ = build_page_base_config_from_reply(reply_with(
+        "🟩 SEÇÃO: BANNER\nTítulo: Chapada\nSubtítulo: Viva essa experiência",
+        "🟩 SEÇÃO: DESCRITIVO\nTítulo: A viagem\nSubtítulo: Natureza e descanso",
+        "🟩 SEÇÃO: FOTO DESTACADA\nSugestão de imagem: Uma cachoeira",
+        "🟩 SEÇÃO: BIOGRAFIA\nTítulo: Sua agência\nConteúdo: Viaje com quem conhece",
+        "🟩 SEÇÃO: ITINERÁRIO\nDia 1: Chegada\nPasseio no centro",
+        "🟩 SEÇÃO: DEPOIMENTOS\nNome: Ana\nTexto: Adorei a viagem",
+    ), original)
+    assert original == snapshot
+    assert config["theme"] == original["theme"]
+    assert [s["type"] for s in config["sections"]] == ["hero", "story", "photo", "biography", "itinerary", "testimonials"]
+    hero, story, photo, biography, itinerary, testimonials = config["sections"]
+    assert hero["title"] == "Chapada"
+    assert hero["subtitle"] == "Viva essa experiência"
+    assert story["subtitle"] == "Natureza e descanso"
+    assert biography["text"] == "Viaje com quem conhece"
+    assert hero["backgroundImage"] == hero["mobileBackgroundImage"] == AI_IMAGE_PLACEHOLDER
+    assert story["images"] == [AI_IMAGE_PLACEHOLDER]
+    assert photo["image"] == biography["image"] == AI_IMAGE_PLACEHOLDER
+    assert itinerary["days"][0]["image"] == AI_IMAGE_PLACEHOLDER
+    assert testimonials["items"][0]["avatar"] == AI_IMAGE_PLACEHOLDER
+    anchors = [s["anchorId"] for s in config["sections"]]
+    assert len(set(anchors)) == len(anchors)
+
+
+def test_apply_structure_rejects_partial_conversion() -> None:
+    text = reply_with("🟩 SEÇÃO: BANNER\nTítulo: Viagem", "🟩 SEÇÃO: INVENTADA\nTítulo: Não suportada")
+    with pytest.raises(HTTPException) as exc_info:
+        build_page_base_config_from_reply(text, strict=True)
+    assert exc_info.value.status_code == 400
+
+
+def test_apply_structure_keeps_cta_title_and_button_text() -> None:
+    config, _ = build_page_base_config_from_reply(reply_with(
+        "🟩 SEÇÃO: CHAMADA PARA AÇÃO\nEtiqueta: Vagas abertas\nTítulo: Viva essa viagem\nBotão: Reservar agora",
+        "🟩 SEÇÃO: BANNER EM CARD\nTítulo: Aproveite\nBotão: Quero viajar",
+    ), strict=True)
+    cta, banner = config["sections"]
+    assert cta["label"] == "Viva essa viagem"
+    assert cta["ctaText"] == "Reservar agora"
+    assert banner["ctaEnabled"] is True
+    assert banner["ctaLabel"] == "Quero viajar"
+
+
+@pytest.mark.parametrize("prefix", ["", "- ", "* ", "• ", "1. "])
+def test_faq_keeps_each_question_and_answer_separate(prefix: str) -> None:
+    pairs = [
+        ("O ingresso do parque está incluso?", "Sim, o ingresso para um dia inteiro no Beto Carrero World já está incluso no pacote."),
+        ("O transporte é feito em ônibus de turismo?", "Sim, utilizamos ônibus de turismo confortável, com acompanhamento durante todo o trajeto."),
+        ("Posso parcelar o valor da viagem?", "Sim, oferecemos opções de parcelamento. Consulte as condições no momento da reserva."),
+        ("Crianças pagam o mesmo valor?", "Consulte condições especiais para crianças no momento da reserva."),
+        ("Como faço para reservar minha vaga?", "Basta clicar no botão de WhatsApp e falar com nossa equipe para garantir sua vaga."),
+    ]
+    block = "🟩 SEÇÃO: PERGUNTAS FREQUENTES\n- Função da seção: Reduzir dúvidas\n- Conteúdo:\n"
+    block += "\n".join(f"{prefix}Pergunta: {q}\n  Resposta: {a}" for q, a in pairs)
+    block += "\n\n---"
+    config, _ = build_page_base_config_from_reply(reply_with(block))
+    assert config["sections"][0]["items"] == [{"question": q, "answer": a} for q, a in pairs]
+
+
+def test_faq_markdown_labels_and_multiline_answers() -> None:
+    config, _ = build_page_base_config_from_reply(reply_with(
+        "🟩 SEÇÃO: PERGUNTAS FREQUENTES\n"
+        "- **Pergunta:** O transporte é feito em ônibus de\nturismo?\n"
+        "  - **Resposta:**\nSim, com acompanhamento.\nDurante todo o trajeto.\n"
+        "- **Pergunta:** O que está incluso?\n"
+        "**Resposta:** Confira:\n- Transporte\n- Ingresso\n---"
+    ))
+    assert config["sections"][0]["items"] == [
+        {"question": "O transporte é feito em ônibus de turismo?", "answer": "Sim, com acompanhamento.\nDurante todo o trajeto."},
+        {"question": "O que está incluso?", "answer": "Confira:\n- Transporte\n- Ingresso"},
+    ]
+
+
+@pytest.mark.parametrize("prefix", ["", "- ", "* ", "• ", "1. "])
+def test_prices_create_one_card_per_package(prefix: str) -> None:
+    packages = [
+        ("Pacote Econômico", "R$ 1.890,00 por pessoa", 1890, "Parcelamento disponível."),
+        ("Pacote Conforto", "R$ 2.490,00 por pessoa", 2490, "Consulte as formas de pagamento."),
+        ("Pacote Premium", "R$ 3.290,00 por pessoa", 3290, "Consulte disponibilidade e condições vigentes."),
+    ]
+    block = "🟩 SEÇÃO: PREÇOS\n- Função da seção: Apresentar valores\n- Conteúdo:\n"
+    block += "\n".join(
+        f"{prefix}**Nome do plano:** {name}\n  Valor: {value}\n  Observação: {note}"
+        for name, value, _, note in packages
+    ) + "\n\n---"
+    config, _ = build_page_base_config_from_reply(reply_with(block))
+    section = config["sections"][0]
+    assert section["layout"] == "cards"
+    assert section["items"] == [
+        {"title": name, "price": price, "description": f"{value}\n{note}", "currency": "BRL"}
+        for name, value, price, note in packages
+    ]
+
+
+def test_single_price_preserves_multiline_terms_without_merging_numbers() -> None:
+    config, _ = build_page_base_config_from_reply(reply_with(
+        "🟩 SEÇÃO: PREÇOS\nNome do plano: Econômico\n"
+        "Valor: R$ 1.890,00 por pessoa em 10 parcelas\n"
+        "Observação: Consulte disponibilidade.\nPagamento sujeito a condições.\n---"
+    ))
+    section = config["sections"][0]
+    assert section["layout"] == "highlight"
+    assert len(section["items"]) == 1
+    assert section["items"][0]["price"] == 1890
+    assert section["items"][0]["description"].endswith("Consulte disponibilidade.\nPagamento sujeito a condições.")
+
+
+def test_itinerary_summarizes_headings_and_preserves_full_details() -> None:
+    descriptions = [
+        "Embarque com destino a Recife e traslado para Porto de Galinhas. Check-in e tempo livre para começar a explorar a praia.",
+        "Dia livre para aproveitar as piscinas naturais, caminhar pelo centrinho e curtir o clima local.",
+        "Sugestão de passeio opcional para Praia dos Carneiros ou Maragogi.",
+        "Dia livre para relaxar, aproveitar a estrutura do hotel ou fazer passeios de jangada.",
+        "Mais um dia para curtir as belezas de Porto de Galinhas, com tempo para compras e experiências gastronômicas.",
+        "Check-out e traslado para o aeroporto de Recife. Retorno para casa com lembranças inesquecíveis.",
+    ]
+    block = "🟩 SEÇÃO: ITINERÁRIO\n" + "\n\n".join(
+        f"- **Dia {index}:**\n{description}" for index, description in enumerate(descriptions, 1)
+    ) + "\n---"
+    config, _ = build_page_base_config_from_reply(reply_with(block))
+    days = config["sections"][0]["days"]
+    assert [day["description"] for day in days] == descriptions
+    assert [day["title"] for day in days] == [
+        "Embarque e traslado", "Dia livre e piscinas naturais", "Passeio opcional",
+        "Dia livre para aproveitar", "Compras e gastronomia", "Check-out e retorno",
+    ]
+
+
+def test_itinerary_keeps_explicit_short_heading() -> None:
+    config, _ = build_page_base_config_from_reply(reply_with(
+        "🟩 SEÇÃO: ITINERÁRIO\nDia 1: Chegada a Recife\nTraslado ao hotel e tempo livre."
+    ))
+    day = config["sections"][0]["days"][0]
+    assert day["title"] == "Chegada a Recife"
+    assert day["description"] == "Traslado ao hotel e tempo livre."
+
+
 def test_chat_endpoint_reply_passes_through_parser(client, db_session, monkeypatch) -> None:
     from app.api.deps import get_current_active_user
     from app.api.v1.endpoints import ai_assistant as endpoint

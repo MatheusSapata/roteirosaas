@@ -1,3 +1,4 @@
+import type { PageSection } from "../types/page";
 import api from "./api";
 
 export interface AiAssistantChatMessage {
@@ -91,4 +92,18 @@ export const createAiAssistantPageBase = async (
   });
 
   return data.page;
+};
+
+export const previewAiAssistantPageBase = async (
+  pageId: number,
+  reply: string
+): Promise<PageSection[]> => {
+  const { data } = await api.post<{ sections: PageSection[] }>("/ai-assistant/preview-page-base", {
+    page_id: pageId,
+    reply
+  });
+  if (!Array.isArray(data.sections) || !data.sections.length) {
+    throw new Error("A sugestão não contém seções válidas.");
+  }
+  return data.sections;
 };

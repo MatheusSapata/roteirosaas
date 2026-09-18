@@ -414,14 +414,56 @@ def _parse_key_value_lines(text: str) -> dict[str, str]:
 
 
 def _parse_price_value(value: str) -> float:
-    digits = re.sub(r"[^0-9,\.]", "", value or "")
-    if not digits:
+    # Read one amount, without joining installment counts or other numbers.
+    amount_text = (value or "").split("R$", 1)[-1]
+    match = re.search(r"\d+(?:\.\d{3})*(?:,\d{1,2})?", amount_text)
+    if not match:
         return 0.0
+    digits = match.group(0)
     digits = digits.replace(".", "").replace(",", ".")
     try:
         return float(digits)
     except ValueError:
         return 0.0
+
+
+def _itinerary_day_content(body: str) -> tuple[str, str]:
+    lines = [
+        _strip_markdown_emphasis(line.strip())
+        for line in body.splitlines()
+        if line.strip() and not re.fullmatch(r"\s*(?:[-*_]\s*){3,}", line)
+    ]
+    if not lines:
+        return "Programação do dia", ""
+    first = re.sub(r"^(?:[-*•]\s*)?(?:Título|Titulo)\s*:\s*", "", lines[0], flags=re.I)
+    # Keep a supplied short heading; otherwise summarize without dropping details.
+    if len(lines) > 1 and len(first) <= 65 and len(first.split()) <= 9:
+        description = "\n".join(lines[1:])
+        description = re.sub(r"^(?:Descrição|Descricao)\s*:\s*", "", description, flags=re.I)
+        return first, description
+    description = "\n".join(lines)
+    normalized = _normalize_text(description)
+    if "CHECK-OUT" in normalized or "RETORNO PARA CASA" in normalized:
+        title = "Check-out e retorno" if "CHECK-OUT" in normalized else "Retorno para casa"
+    elif "EMBARQUE" in normalized:
+        title = "Embarque e traslado" if "TRASLADO" in normalized else "Embarque e início da viagem"
+    elif "PASSEIO OPCIONAL" in normalized:
+        title = "Passeio opcional"
+    elif "DIA LIVRE" in normalized:
+        title = "Dia livre e piscinas naturais" if "PISCINAS NATURAIS" in normalized else "Dia livre para aproveitar"
+    elif "COMPRAS" in normalized and "GASTRONOM" in normalized:
+        title = "Compras e gastronomia"
+    else:
+        sentence = re.split(r"[.!?;]\s*", first, maxsplit=1)[0]
+        words = sentence.split()
+        title = " ".join(words[:7])
+        if len(title) > 60:
+            title = title[:60].rsplit(" ", 1)[0]
+        if title != sentence:
+            title = title.rstrip(",:;") + "…"
+        elif title.strip() == description.strip():
+            title = "Programação do dia"
+    return title, description
 
 
 def _slug_from_text(value: str) -> str:
@@ -568,7 +610,7 @@ def _parse_ai_section_block(section_name: str, block: str, index: int) -> dict[s
             "layout": "single",
             "imagePosition": "right",
             "badge": label or "",
-            "title": title or "Sess?o descritiva",
+            "title": title or "Seção descritiva",
             "subtitle": body or "",
             "ctaEnabled": False,
             "ctaMode": "link",
@@ -593,81 +635,102 @@ def _parse_ai_section_block(section_name: str, block: str, index: int) -> dict[s
         days: list[dict[str, Any]] = []
         day_matches = re.finditer(
             r"(?ims)^\s*Dia\s*(\d+)\s*:\s*(.*?)(?=^\s*Dia\s*\d+\s*:|\Z)",
-            block,
+            "\n".join(re.sub(r"^\s*[-*•]\s+", "", _strip_markdown_emphasis(line)) for line in block.splitlines()),
             flags=re.IGNORECASE | re.MULTILINE | re.DOTALL,
         )
         for day_match in day_matches:
             day_number = day_match.group(1)
             day_body = day_match.group(2).strip()
-            day_lines = [line.strip() for line in day_body.splitlines() if line.strip()]
-            day_title = day_lines[0] if day_lines else ""
-            day_description = "\n".join(day_lines[1:]).strip()
+            day_title, day_description = _itinerary_day_content(day_body)
             days.append(
                 {
                     "day": f"Dia {day_number}",
                     "title": day_title or f"Dia {day_number}",
-                    "description": day_description or day_body,
+                    "description": day_description,
                 }
             )
         if not days:
             day_text = content or block.strip()
             if day_text:
-                day_lines = [line.strip() for line in day_text.splitlines() if line.strip()]
-                day_title = day_lines[0] if day_lines else "Roteiro"
-                day_description = "\n".join(day_lines[1:]).strip()
-                days.append({"day": "Dia 1", "title": day_title, "description": day_description or day_text})
+                day_title, day_description = _itinerary_day_content(day_text)
+                days.append({"day": "Dia 1", "title": day_title, "description": day_description})
         return {
             "type": "itinerary",
             "enabled": True,
             "anchorId": _generate_anchor("itinerary", title or "itinerario", index),
             "layout": "timeline",
-            "title": title or "Itiner?rio",
+            "title": title or "Itinerário",
             "subtitle": subtitle or "",
             "days": days,
         }
 
     if normalized_name == _normalize_text("PRECOS"):
-
-        plan_name = fields.get("plan_name", "").strip()
-        raw_value = fields.get("value", "").strip()
-        note = fields.get("note", "").strip()
-        price_item = {
-            "title": plan_name or "Pacote",
-            "price": _parse_price_value(raw_value),
-            "description": raw_value.replace("R$", "").strip() if raw_value else "",
-            "currency": "BRL",
-        }
+        plan_blocks: list[list[str]] = []
+        current_plan: list[str] = []
+        for raw_line in block.splitlines():
+            line = _strip_markdown_emphasis(raw_line.strip())
+            if re.fullmatch(r"(?:[-*_]\s*){3,}", line):
+                continue
+            line = re.sub(r"^(?:[-*+•‣]|\d+[.)])\s+", "", line)
+            label = line.split(":", 1)[0]
+            if ":" in line and FIELD_ALIASES.get(_normalize_text(label)) == "plan_name":
+                if current_plan:
+                    plan_blocks.append(current_plan)
+                current_plan = [line]
+            elif current_plan:
+                current_plan.append(line)
+        if current_plan:
+            plan_blocks.append(current_plan)
+        plans = [_parse_key_value_lines("\n".join(lines)) for lines in plan_blocks] or [fields]
+        price_items = []
+        for plan in plans:
+            raw_value = plan.get("value", "").strip()
+            note = plan.get("note", "").strip()
+            price_items.append({
+                "title": plan.get("plan_name", "").strip() or "Pacote",
+                "price": _parse_price_value(raw_value),
+                "description": "\n".join(part for part in (raw_value, note) if part),
+                "currency": "BRL",
+            })
         return {
             "type": "prices",
             "enabled": True,
-            "anchorId": _generate_anchor("prices", plan_name or "precos", index),
-            "layout": "highlight",
-            "title": "Pre?os",
+            "anchorId": _generate_anchor("prices", price_items[0]["title"], index),
+            "layout": "cards" if len(price_items) > 1 else "highlight",
+            "title": "Preços",
             "subtitle": "",
-            "description": note or "",
-            "items": [price_item],
+            "description": "",
+            "items": price_items,
         }
 
     if normalized_name == _normalize_text("PERGUNTAS FREQUENTES"):
         questions: list[dict[str, Any]] = []
         current_question = ""
         current_answer_lines: list[str] = []
-        for line in block.splitlines():
-            question_match = re.match(r"^\s*Pergunta\s*:\s*(.+)$", line, flags=re.IGNORECASE)
-            answer_match = re.match(r"^\s*Resposta\s*:\s*(.+)$", line, flags=re.IGNORECASE)
+        reading_answer = False
+        for raw_line in block.splitlines():
+            line = _strip_markdown_emphasis(raw_line.strip())
+            if re.fullmatch(r"(?:[-*_]\s*){3,}", line):
+                continue
+            label_line = re.sub(r"^(?:[-*+•‣]|\d+[.)])\s+", "", line)
+            question_match = re.match(r"^Pergunta\s*:\s*(.*)$", label_line, flags=re.IGNORECASE)
+            answer_match = re.match(r"^Resposta\s*:\s*(.*)$", label_line, flags=re.IGNORECASE)
             if question_match:
                 if current_question and current_answer_lines:
                     questions.append({"question": current_question, "answer": "\n".join(current_answer_lines).strip()})
                 current_question = question_match.group(1).strip()
                 current_answer_lines = []
+                reading_answer = False
             elif answer_match and current_question:
                 current_answer_lines = [answer_match.group(1).strip()]
-            elif current_question and current_answer_lines:
-                current_answer_lines.append(line.strip())
+                reading_answer = True
+            elif current_question and line:
+                if reading_answer:
+                    current_answer_lines.append(line)
+                else:
+                    current_question = f"{current_question} {line}"
         if current_question and current_answer_lines:
             questions.append({"question": current_question, "answer": "\n".join(current_answer_lines).strip()})
-        elif fields.get("question") and fields.get("answer"):
-            questions.append({"question": fields["question"].strip(), "answer": fields["answer"].strip()})
         return {
             "type": "faq",
             "enabled": True,
@@ -719,7 +782,7 @@ def _parse_ai_section_block(section_name: str, block: str, index: int) -> dict[s
             "type": "featured_video",
             "enabled": True,
             "anchorId": _generate_anchor("featured-video", title or "video", index),
-            "title": title or "V?deo",
+            "title": title or "Vídeo",
             "subtitle": subtitle or "",
             "videoUrl": video_url or "",
             "ctaEnabled": False,
@@ -756,8 +819,8 @@ def _parse_ai_section_block(section_name: str, block: str, index: int) -> dict[s
             "enabled": True,
             "anchorId": _generate_anchor("cta", title or label or "cta", index),
             "layout": "simple",
-            "label": label or "Chamada para a??o",
-            "description": description or "",
+            "label": title or label or "Chamada para ação",
+            "description": fields.get("subtitle", "").strip() or description or "",
             "ctaText": button or "",
             "ctaColor": "",
             "textColor": "",
@@ -797,7 +860,7 @@ def _parse_ai_section_block(section_name: str, block: str, index: int) -> dict[s
             "sessionDuration": 15,
             "sessionUnit": "minutes",
             "targetDate": target_date,
-            "layout": "cards",
+            "layout": "flip",
         }
 
     if normalized_name == _normalize_text("DETALHES DO VOO"):
@@ -820,10 +883,48 @@ def _parse_ai_section_block(section_name: str, block: str, index: int) -> dict[s
     return None
 
 
-def build_page_base_config_from_reply(reply: str, current_config: Any | None = None) -> tuple[Any, str | None]:
+AI_IMAGE_PLACEHOLDER = "data:image/svg+xml;base64," + base64.b64encode(
+    b'<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">'
+    b'<rect width="1200" height="800" fill="#e2e8f0"/>'
+    b'<path d="M420 460l120-140 90 100 60-70 110 110z" fill="#94a3b8"/>'
+    b'<circle cx="720" cy="270" r="35" fill="#94a3b8"/>'
+    b'<text x="600" y="550" text-anchor="middle" font-family="sans-serif" font-size="32" fill="#475569">Substitua pela sua imagem</text></svg>'
+).decode("ascii")
+
+
+def _fill_ai_image_placeholders(section: dict[str, Any]) -> None:
+    image_fields = {
+        "hero": ("backgroundImage", "mobileBackgroundImage"),
+        "banner_card": ("backgroundImage",),
+        "photo": ("image",),
+        "biography": ("image", "mobileImage"),
+    }
+    for field in image_fields.get(section["type"], ()):
+        section[field] = AI_IMAGE_PLACEHOLDER
+    if section["type"] == "story":
+        section["images"] = [AI_IMAGE_PLACEHOLDER]
+    if section["type"] == "itinerary":
+        for day in section["days"]:
+            day["image"] = AI_IMAGE_PLACEHOLDER
+    if section["type"] == "testimonials":
+        for item in section["items"]:
+            item["avatar"] = AI_IMAGE_PLACEHOLDER
+
+
+def build_page_base_config_from_reply(
+    reply: str, current_config: Any | None = None, *, strict: bool = False
+) -> tuple[Any, str | None]:
     is_valid, validation_error = _validate_ai_reply_format(reply)
     if not is_valid:
         raise HTTPException(status_code=400, detail=validation_error)
+    if strict:
+        for line in reply.splitlines():
+            match = SECTION_HEADER_RE.match(line)
+            if match and not _canonical_section_name(match.group(1)):
+                raise HTTPException(
+                    status_code=400,
+                    detail="A sugestão contém uma seção não suportada. Peça à IA uma nova estrutura com as seções disponíveis.",
+                )
     meta, blocks = _split_sections(reply)
     sections: list[dict[str, Any]] = []
     hero_title: str | None = None
@@ -832,6 +933,11 @@ def build_page_base_config_from_reply(reply: str, current_config: Any | None = N
         parsed_section = _parse_ai_section_block(section_name, block, index)
         if not parsed_section:
             continue
+        fields = _parse_key_value_lines(block)
+        if parsed_section["type"] in {"story", "banner_card", "featured_video"} and fields.get("button"):
+            parsed_section["ctaEnabled"] = True
+            parsed_section["ctaLabel"] = fields["button"].strip()
+        _fill_ai_image_placeholders(parsed_section)
         sections.append(parsed_section)
         if not hero_title and parsed_section.get("type") == "hero":
             hero_title = str(parsed_section.get("title") or "").strip() or None

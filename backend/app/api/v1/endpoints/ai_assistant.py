@@ -259,3 +259,21 @@ def create_page_base(
     db.refresh(page)
     setattr(page, "is_default", bool(page.agency and page.agency.default_page_id == page.id))
     return AiAssistantCreatePageBaseResponse(page=page)
+
+
+@router.post("/preview-page-base")
+def preview_page_base(
+    payload: AiAssistantCreatePageBaseRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Build an editable structure without changing the saved/published page."""
+    page = db.query(Page).filter(Page.id == payload.page_id).first()
+    if not page:
+        raise HTTPException(status_code=404, detail="Página não encontrada.")
+    ensure_agency_member(db, page.agency_id, current_user)
+    ensure_pages_editor_permission(db, page.agency_id, current_user)
+    config, _ = build_page_base_config_from_reply(payload.reply, normalize_config(page.config_json), strict=True)
+    plan = resolve_agency_plan(db, page.agency_id)
+    config = enforce_page_limits(db, page, publish=False, config=config, plan=plan)
+    return {"sections": config["sections"]}
