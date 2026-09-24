@@ -3862,6 +3862,7 @@ const saveConfig = async (): Promise<boolean> => {
       limitModal.value = { open: true, message: String(detail) };
     } else {
       errorMessage.value = viewCopy.feedback.configSaveError;
+      showSnackbar(viewCopy.feedback.configSaveError);
     }
     return false;
   }
@@ -3892,6 +3893,7 @@ const publishPage = async () => {
       limitModal.value = { open: true, message: String(detail) };
     } else {
       errorMessage.value = viewCopy.feedback.publishError;
+      showSnackbar(viewCopy.feedback.publishError);
     }
   }
   };

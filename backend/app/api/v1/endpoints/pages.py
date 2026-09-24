@@ -323,7 +323,9 @@ def derive_cover_image_from_config(raw: Any) -> Optional[str]:
         image = section.get("backgroundImage") or section.get("background_image")
         if isinstance(image, str):
             trimmed = image.strip()
-            if trimmed:
+            # Inline editor placeholders belong in config_json, not in the
+            # VARCHAR(500) cover URL column (or public sharing metadata).
+            if trimmed and len(trimmed) <= 500 and not trimmed.lower().startswith(("data:", "blob:")):
                 return trimmed
     return None
 
