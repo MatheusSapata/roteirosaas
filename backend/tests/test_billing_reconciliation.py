@@ -158,6 +158,22 @@ def test_customer_authorization_alone_does_not_prove_automatic_charge():
     assert row["customer_authorizations"][0]["status"] == "ACTIVE"
 
 
+def test_refused_authorization_does_not_hide_other_active_customer_authorization():
+    data = snapshot([payment(pixAutomaticAuthorizationId="old"), payment("pay_2", pixAutomaticAuthorizationId="old")],
+                    authorizations=[{"id": "old", "customerId": "cus_1", "status": "REFUSED"},
+                                    {"id": "new", "customerId": "cus_1", "status": "ACTIVE"}])
+    result = report(data)
+    assert result["authorization_inventory"]["total"] == 2
+    assert result["authorization_inventory"]["by_status"]["ACTIVE"] == 1
+    assert result["authorization_inventory"]["by_status"]["REFUSED"] == 1
+    for row in result["rows"]:
+        assert row["authorization_status"] == "REFUSED"
+        assert row["authorization_id"] == "old"
+        assert row["authorization_source"] == "payment"
+        assert row["customer_authorizations"][0]["id"] == "new"
+        assert any("outra autorização ativa" in f for f in row["findings"])
+
+
 def test_other_gateway_pix_is_not_claimed_to_have_missing_asaas_authorization():
     row = report(snapshot(), [local(provider="cakto", asaas_subscription_id=None)])["rows"][0]
     assert row["authorization_status"] == "UNKNOWN"

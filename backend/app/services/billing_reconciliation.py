@@ -144,6 +144,7 @@ def reconcile(remote: dict, local: list[dict], checkouts: list[dict], *, today: 
         subscription = subs.get(sid, {})
         instructions = instructions_by_payment.get(pid, [])
         aid = authorization_id(payment) or next((authorization_id(i) for i in instructions if authorization_id(i)), "") or authorization_id(subscription)
+        authorization_source = "payment" if authorization_id(payment) else "instruction" if any(authorization_id(i) for i in instructions) else "subscription" if authorization_id(subscription) else "none"
         remote_linked = bool(aid)
         ref = str(payment.get("externalReference") or subscription.get("externalReference") or "")
         token = ref.split(":", 1)[1] if ref.startswith(("co:", "checkout:", "checkout_upgrade:")) else ""
@@ -155,16 +156,20 @@ def reconcile(remote: dict, local: list[dict], checkouts: list[dict], *, today: 
             session = sessions_by_token.get(local_token) or latest_by_user.get(local_sub.get("user_id"), {})
         metadata = session.get("metadata", {})
         aid = aid or metadata.get("asaas_pix_automatic_authorization_id", "")
+        if aid and authorization_source == "none":
+            authorization_source = "checkout"
         method, state = payment_method(payment.get("billingType")), str(payment.get("status") or "UNKNOWN").upper()
         overdue = state in OPEN and due < today
         findings = []
         pix = pix_info(aid, method, metadata, instructions, remote_linked)
-        candidates = auths_by_customer.get(resource_id(payment.get("customer")), []) if method == "PIX" and not aid else []
-        if candidates:
+        candidates = [a for a in auths_by_customer.get(resource_id(payment.get("customer")), []) if a["id"] != aid] if method == "PIX" else []
+        if candidates and not aid:
             # Same customer is not proof of linkage to this particular contract or charge.
             pix["pix_kind"] = "unverified"
             pix["authorization_status"] = "UNKNOWN"
             findings.append("Cliente possui autorização Pix, mas o vínculo com esta cobrança não foi confirmado")
+        elif any(a["status"] == "ACTIVE" for a in candidates):
+            findings.append("Cliente possui outra autorização ativa; confira se substitui a autorização deste registro")
         if method == "PIX":
             if pix["authorization_status"] != "ACTIVE":
                 findings.append("Autorização Pix ausente, inativa ou não verificada")
@@ -194,7 +199,7 @@ def reconcile(remote: dict, local: list[dict], checkouts: list[dict], *, today: 
             "payment_status": state, "paid_date": payment.get("paymentDate") or payment.get("clientPaymentDate"),
             "classification": "overdue" if overdue else "paid" if state in PAID else "other",
             "evidence": "asaas", "invoice_url": payment.get("invoiceUrl"), "findings": findings,
-            "customer_authorizations": candidates, **pix,
+            "customer_authorizations": candidates, "authorization_source": authorization_source, **pix,
         })
 
     rows_by_local, rows_by_remote = {}, {}
@@ -260,6 +265,11 @@ def reconcile(remote: dict, local: list[dict], checkouts: list[dict], *, today: 
                      **pix_info(aid, payment_method(sub.get("billingType")), {}, [], bool(aid))})
     return {"rows": sorted(rows, key=lambda r: (r["classification"] != "overdue", -r["days_overdue"], r["id"])),
             "subscriptions": audits,
+            "authorization_inventory": {
+                "total": len(auths), "complete": remote["authorizations"]["complete"],
+                "by_status": {status: sum(str(a.get("status") or "UNKNOWN").upper() == status for a in auths.values())
+                              for status in {"ACTIVE", "CREATED", "REFUSED", "CANCELLED", "EXPIRED", "UNKNOWN"}},
+            },
             "coverage": {name: {"complete": value["complete"], "count": len(value["data"]), "error": value["error"]}
                          for name, value in remote.items()},
             "complete": all(value["complete"] for value in remote.values()),
