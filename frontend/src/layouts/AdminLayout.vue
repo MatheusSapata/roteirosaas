@@ -1574,6 +1574,7 @@ const adminNavigation = computed<AdminNavItem[]>(() => {
         { label: t({ pt: "Ofertas", es: "Ofertas" }), path: "/admin/administracao/ofertas" },
         { label: t({ pt: "Webhooks e Push", es: "Webhooks y Push" }), path: "/admin/administracao/webhooks" },
         { label: t({ pt: "Previsão de receita", es: "Proyección de ingresos" }), path: "/admin/administracao/receita-previsao" },
+        { label: t({ pt: "Conciliação financeira", es: "Conciliación financiera" }), path: "/admin/administracao/conciliacao" },
         { label: t({ pt: "LTV por cliente", es: "LTV por cliente" }), path: "/admin/administracao/ltv-clientes" },
         { label: t({ pt: "Prompt Construtor", es: "Prompt Constructor" }), path: "/admin/administracao/prompt-construtor" }
       ]

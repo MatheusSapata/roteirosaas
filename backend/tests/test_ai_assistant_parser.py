@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from pathlib import Path
 
 import pytest
 from fastapi import HTTPException
@@ -12,6 +13,52 @@ from app.services.ai_assistant import (
 
 def reply_with(*blocks: str) -> str:
     return "ESTRUTURA SUGERIDA PARA A PÁGINA\n\n" + "\n\n".join(blocks)
+
+
+def test_campos_do_jordao_structure_preserves_fields_items_and_all_days():
+    text = (Path(__file__).parent / "fixtures" / "ai_campos_do_jordao.txt").read_text(encoding="utf-8")
+    config, _ = build_page_base_config_from_reply(text, strict=True)
+    hero, story, reasons, itinerary, faq, biography, cta = config["sections"]
+    assert story["title"] == "Viva Campos do Jordão com todo conforto e diversão"
+    assert story["subtitle"].startswith("Imagine-se respirando o ar puro da serra")
+    assert "Sugestão de imagem" not in story["subtitle"]
+    assert reasons["title"] == "Seu pacote inclui"
+    assert reasons["subtitle"] == "Aproveite cada momento com tranquilidade"
+    assert reasons["items"] == [
+        {"title": "Transporte ida e volta", "description": "Ônibus confortável com paradas programadas"},
+        {"title": "Hospedagem", "description": "Hotel selecionado em Campos do Jordão"},
+        {"title": "Refeições", "description": "Café da manhã, almoços e jantares inclusos conforme roteiro"},
+        {"title": "City tours", "description": "Passeios panorâmicos pelos principais pontos turísticos"},
+        {"title": "Degustações", "description": "Chocolates, queijos, vinhos e licores artesanais"},
+        {"title": "Equipe acompanhante", "description": "Apoio durante toda a viagem"},
+    ]
+    assert itinerary["title"] == "Roteiro detalhado da viagem"
+    assert [day["day"] for day in itinerary["days"]] == [
+        "Dia 1 (sexta-feira)", "Dia 2 (sábado)", "Dia 3 (domingo)",
+    ]
+    for number, day in enumerate(itinerary["days"], 1):
+        original = text.split(f"Dia {number} (", 1)[1].split(":", 1)[1]
+        original = original.split(f"Dia {number + 1} (", 1)[0].split("🟩 SEÇÃO:", 1)[0].strip()
+        assert day["description"] == original
+        assert len(day["title"]) <= 65
+    assert len(faq["items"]) == 4
+
+
+@pytest.mark.parametrize("prefix", ["", "- ", "* ", "• ", "1. "])
+def test_nested_items_and_weekday_headers_with_markdown(prefix):
+    config, _ = build_page_base_config_from_reply(reply_with(
+        "🟩 SEÇÃO: ITENS\nTítulo: Pacote\nSubtítulo: Benefícios\nItens:\n"
+        f"{prefix}**Hotel:** Duas noites\n{prefix}**Transporte:** Ida e volta",
+        "🟩 SEÇÃO: ITINERÁRIO\nTítulo da seção: Roteiro\n"
+        f"{prefix}**Dia 1 (sexta-feira):**\nChegada ao hotel.\n"
+        f"{prefix}**Dia 2 (sábado):**\nPasseio pela cidade.",
+    ))
+    reasons, itinerary = config["sections"]
+    assert reasons["title"] == "Pacote"
+    assert reasons["subtitle"] == "Benefícios"
+    assert len(reasons["items"]) == 2
+    assert itinerary["title"] == "Roteiro"
+    assert [day["description"] for day in itinerary["days"]] == ["Chegada ao hotel.", "Passeio pela cidade."]
 
 
 @pytest.mark.parametrize(

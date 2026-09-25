@@ -823,7 +823,7 @@ const viewCopySource = {
       badge: { pt: "Limite atingido", es: "Límite alcanzado" },
       heading: { pt: "Você atingiu o limite", es: "Alcanzaste el límite" },
       limitIntro: { pt: "de", es: "de" },
-      limitUnit: { pt: "páginas", es: "páginas" },
+      limitUnit: { pt: "páginas publicadas", es: "páginas publicadas" },
       planPrefix: { pt: "do plano", es: "del plan" },
       description: {
         pt: "Atualize seu plano para continuar publicando roteiros profissionais para sua agência.",

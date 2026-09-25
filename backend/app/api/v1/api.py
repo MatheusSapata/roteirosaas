@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.api.v1.endpoints import (
     admin_master_whatsapp,
     admin,
+    admin_reconciliation,
     ai_assistant,
     admin_prompt_construtor,
     agencies,
@@ -65,6 +66,7 @@ api_router.include_router(
     tags=["public-integrations"],
 )
 api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
+api_router.include_router(admin_reconciliation.router, prefix="/admin", tags=["admin-reconciliation"])
 api_router.include_router(ai_assistant.router, prefix="/ai-assistant", tags=["ai-assistant"])
 api_router.include_router(admin_master_whatsapp.router, prefix="/admin-master/whatsapp", tags=["admin-master-whatsapp"])
 api_router.include_router(admin_prompt_construtor.router, prefix="/admin-master", tags=["admin-master-prompt-construtor"])

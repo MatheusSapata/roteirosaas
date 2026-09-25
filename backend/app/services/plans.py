@@ -6,7 +6,7 @@ from app.models.user import User
 def plan_limits(plan: str) -> Tuple[int | None, int | None]:
     """
     Retorna (max_pages, max_sections) para o plano.
-    max_pages: None = ilimitado e considera todas as paginas criadas (publicadas ou rascunhos).
+    max_pages: None = ilimitado e considera somente paginas publicadas; rascunhos nao contam.
     max_sections: None = sem limite; rodape free nao conta para o limite.
     """
     normalized = str(plan or "").strip().lower()

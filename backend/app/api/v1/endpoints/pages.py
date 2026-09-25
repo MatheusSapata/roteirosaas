@@ -401,12 +401,17 @@ def enforce_page_limits(db: Session, page: Page, publish: bool, config: Any, pla
     max_pages, max_sections = plan_limits(plan)
 
     # Limite de paginas publicadas (apenas ao publicar e se a pagina estava draft)
-    if publish and page.status != "published" and max_pages is not None:
+    if publish and (page.id is None or page.status != "published") and max_pages is not None:
         published_count = db.query(Page).filter(Page.agency_id == page.agency_id, Page.status == "published").count()
         if published_count >= max_pages:
             raise HTTPException(
                 status_code=403,
-                detail=f"Limite de {max_pages} paginas permitido no plano {plan}. Ajuste suas paginas antes de publicar.",
+                detail=f"Limite de {max_pages} páginas publicadas permitido no plano {plan}. Despublique uma página ou altere seu plano para publicar outra.",
+                headers={
+                    "X-Error-Code": "trial_page_limit" if plan == "trial" else "plan_page_limit",
+                    "X-Plan-Key": plan,
+                    "X-Plan-Max-Pages": str(max_pages),
+                },
             )
 
     # Limite de seções e rodapé obrigatório no free
@@ -577,27 +582,9 @@ def create_page(
         page.config_json = _apply_agency_highlight_colors(page.config_json, agency)
 
     plan = resolve_agency_plan(db, page.agency_id)
-    max_pages, _ = plan_limits(plan)
-    if max_pages is not None:
-        total_pages = db.query(Page).filter(Page.agency_id == page.agency_id).count()
-        if total_pages >= max_pages:
-            limit_headers = {
-                "X-Error-Code": "trial_page_limit" if plan == "trial" else "plan_page_limit",
-                "X-Plan-Key": plan or "",
-                "X-Plan-Max-Pages": str(max_pages),
-            }
-            if plan == "trial":
-                raise HTTPException(
-                    status_code=403,
-                    detail="Você atingiu o limite de 3 páginas do plano trial. Escolha um plano pago para continuar criando roteiros.",
-                    headers=limit_headers,
-                )
-            raise HTTPException(
-                status_code=403,
-                detail=f"Limite de {max_pages} paginas permitido no plano {plan}. Exclua uma pagina antes de criar outra.",
-                headers=limit_headers,
-            )
-    page.config_json = enforce_page_limits(db, page, publish=False, config=page.config_json, plan=plan)
+    page.config_json = enforce_page_limits(
+        db, page, publish=page.status == "published", config=page.config_json, plan=plan
+    )
     page.cover_image_url = derive_cover_image_from_config(page.config_json)
     db.add(page)
     db.commit()
@@ -620,6 +607,10 @@ def update_page(
     ensure_pages_editor_permission(db, page.agency_id, current_user)
     plan = resolve_agency_plan(db, page.agency_id)
     updates = page_in.dict(exclude_unset=True)
+    if updates.get("status") == "published":
+        page.config_json = enforce_page_limits(
+            db, page, publish=True, config=updates.get("config_json", page.config_json), plan=plan
+        )
     if "slug" in updates:
         updates["slug"] = _ensure_unique_slug(db, page.agency_id, updates.get("slug") or page.title or "pagina", page.id)
     if "config_json" in updates:

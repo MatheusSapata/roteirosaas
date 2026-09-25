@@ -69,7 +69,9 @@ FIELD_ALIASES = {
     "CONTEUDO": "content",
     "ETIQUETA": "label",
     "TITULO": "title",
+    "TITULO DA SECAO": "title",
     "SUBTITULO": "subtitle",
+    "SUBTITULO OU TEXTO DESCRITIVO": "subtitle",
     "DESTAQUES": "highlights",
     "BOTAO": "button",
     "SUGESTAO DE IMAGEM OU VIDEO": "media_suggestion",
@@ -479,6 +481,13 @@ def _generate_anchor(section_type: str, title: str, index: int) -> str:
     return f"{base}-{index + 1}"
 
 
+def _structure_line(raw_line: str) -> str:
+    return re.sub(r"^(?:[-*+•‣]|\d+[.)])\s+", "", _strip_markdown_emphasis(raw_line.strip())).strip()
+
+
+ITINERARY_DAY_RE = re.compile(r"^Dia\s*(\d+)\s*(?:\(([^)]+)\)\s*)?:\s*(.*)$", re.I)
+
+
 def _parse_reason_items(block: str) -> list[dict[str, str]]:
     items: list[dict[str, str]] = []
     current: dict[str, str] = {}
@@ -496,8 +505,7 @@ def _parse_reason_items(block: str) -> list[dict[str, str]]:
         current = {}
 
     for raw_line in (block or "").replace("\r\n", "\n").replace("\r", "\n").splitlines():
-        line = _strip_markdown_emphasis(raw_line.strip())
-        line = re.sub(r"^[-*•‣]\s+", "", line).strip()
+        line = _structure_line(raw_line)
         normalized_line = _normalize_text(line)
         if normalized_line.rstrip(":") in {"LISTA DE ITENS", "ITENS"}:
             inside_list = True
@@ -513,8 +521,11 @@ def _parse_reason_items(block: str) -> list[dict[str, str]]:
             continue
         match = re.match(r"^([^:]+?):\s*(.*)$", line)
         if not match:
-            if current.get("description") and line:
-                current["description"] = f"{current['description']}\n{line}".strip()
+            if line and re.match(r"^\s*(?:[-*+•‣]|\d+[.)])\s+", raw_line):
+                flush()
+                current["title"] = line
+            elif current.get("title") and line:
+                current["description"] = f"{current.get('description', '')}\n{line}".strip()
             continue
         key = FIELD_ALIASES.get(_normalize_text(match.group(1)))
         value = match.group(2).strip()
@@ -524,13 +535,30 @@ def _parse_reason_items(block: str) -> list[dict[str, str]]:
             current["title"] = value
         elif key in {"description", "icon"}:
             current[key] = value
+        elif key:
+            flush()
+            inside_list = False
+        else:
+            flush()
+            current = {"title": match.group(1).strip(), "description": value}
     flush()
     return items
 
 
 def _parse_ai_section_block(section_name: str, block: str, index: int) -> dict[str, Any] | None:
     normalized_name = _normalize_text(section_name)
-    fields = _parse_key_value_lines(block)
+    header_lines = []
+    for raw_line in block.splitlines():
+        line = _structure_line(raw_line)
+        if normalized_name == "ITINERARIO" and ITINERARY_DAY_RE.match(line):
+            break
+        if normalized_name == "ITENS" and (
+            _normalize_text(line).rstrip(":") in {"LISTA DE ITENS", "ITENS"}
+            or re.match(r"^ITEM(?:\s+\d+)?\s*:", line, re.I)
+        ):
+            break
+        header_lines.append(raw_line)
+    fields = _parse_key_value_lines("\n".join(header_lines))
 
     if normalized_name == _normalize_text("BANNER"):
         title = fields.get("title", "").strip()
@@ -634,24 +662,26 @@ def _parse_ai_section_block(section_name: str, block: str, index: int) -> dict[s
         subtitle = fields.get("subtitle", "").strip()
         content = fields.get("content", "").strip()
         days: list[dict[str, Any]] = []
-        day_matches = re.finditer(
-            r"(?ims)^\s*Dia\s*(\d+)\s*:\s*(.*?)(?=^\s*Dia\s*\d+\s*:|\Z)",
-            "\n".join(re.sub(r"^\s*[-*•]\s+", "", _strip_markdown_emphasis(line)) for line in block.splitlines()),
-            flags=re.IGNORECASE | re.MULTILINE | re.DOTALL,
-        )
-        for day_match in day_matches:
-            day_number = day_match.group(1)
-            day_body = day_match.group(2).strip()
+        day_blocks: list[tuple[str, str, list[str]]] = []
+        for raw_line in block.splitlines():
+            line = _structure_line(raw_line)
+            match = ITINERARY_DAY_RE.match(line)
+            if match:
+                day_blocks.append((match.group(1), match.group(2) or "", [match.group(3)]))
+            elif day_blocks:
+                day_blocks[-1][2].append(line)
+        for day_number, weekday, body_lines in day_blocks:
+            day_body = "\n".join(body_lines).strip()
             day_title, day_description = _itinerary_day_content(day_body)
             days.append(
                 {
-                    "day": f"Dia {day_number}",
+                    "day": f"Dia {day_number}" + (f" ({weekday})" if weekday else ""),
                     "title": day_title or f"Dia {day_number}",
                     "description": day_description,
                 }
             )
         if not days:
-            day_text = content or block.strip()
+            day_text = content
             if day_text:
                 day_title, day_description = _itinerary_day_content(day_text)
                 days.append({"day": "Dia 1", "title": day_title, "description": day_description})

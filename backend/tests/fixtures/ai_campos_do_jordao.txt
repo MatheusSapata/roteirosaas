@@ -1,0 +1,93 @@
+ESTRUTURA SUGERIDA PARA A PÁGINA
+
+Tipo de página: Excursão rodoviária para Campos do Jordão
+Objetivo da página: Despertar desejo pela experiência, transmitir segurança e organização, incentivar reservas via WhatsApp
+Público predominante: Adultos e famílias, perfil de grupo, interessados em turismo cultural e de lazer
+
+🟩 SEÇÃO: BANNER
+
+- Função da seção: gerar impacto imediato e incentivar o primeiro clique.
+- Conteúdo:
+  - Título: Campos do Jordão: Encantos na Serra da Mantiqueira
+  - Subtítulo: Uma viagem inesquecível com passeios, sabores e paisagens de tirar o fôlego
+  - Destaques:
+    - Saída do Rio de Janeiro
+    - City tours panorâmicos inclusos
+    - Degustação de chocolates, queijos e vinhos
+    - Hospedagem confortável e refeições inclusas
+  - Botão CTA: Quero reservar minha vaga!
+  - Sugestão de imagem: Foto panorâmica de Campos do Jordão, com montanhas e arquitetura típica
+
+🟩 SEÇÃO: DESCRITIVO
+
+- Função da seção: apresentar a experiência, benefícios e diferenciais de forma envolvente.
+- Conteúdo:
+  - Etiqueta: Experiência Completa
+  - Título: Viva Campos do Jordão com todo conforto e diversão
+  - Subtítulo ou texto descritivo: 
+    Imagine-se respirando o ar puro da serra, explorando paisagens encantadoras e aproveitando cada momento em uma das cidades mais charmosas do Brasil. Nesta viagem, você terá a tranquilidade de sair do Rio de Janeiro com transporte confortável, hospedagem selecionada e refeições inclusas. Os city tours panorâmicos levam você aos principais pontos turísticos, desde o charme do Alto Capivari até a energia do Pico do Itapeva. Prepare-se para degustar chocolates, queijos, vinhos e licores artesanais, além de conhecer o famoso Mosteiro Beneditino e as tradicionais fábricas de malhas e chocolates. Tudo isso com acompanhamento de equipe experiente, para que você só se preocupe em curtir cada detalhe.
+  - Sugestão de imagem: Pessoas sorrindo em frente à Ducha de Prata ou degustando chocolates típicos
+
+🟩 SEÇÃO: ITENS
+
+- Função da seção: apresentar os principais benefícios e inclusos de forma rápida e visual.
+- Conteúdo:
+  - Etiqueta: O que está incluso
+  - Título: Seu pacote inclui
+  - Subtítulo: Aproveite cada momento com tranquilidade
+  - Itens:
+    - Transporte ida e volta: Ônibus confortável com paradas programadas
+    - Hospedagem: Hotel selecionado em Campos do Jordão
+    - Refeições: Café da manhã, almoços e jantares inclusos conforme roteiro
+    - City tours: Passeios panorâmicos pelos principais pontos turísticos
+    - Degustações: Chocolates, queijos, vinhos e licores artesanais
+    - Equipe acompanhante: Apoio durante toda a viagem
+
+🟩 SEÇÃO: ITINERÁRIO
+
+- Função da seção: organizar o roteiro dia a dia, facilitando o entendimento da experiência.
+- Conteúdo:
+  - Título da seção: Roteiro detalhado da viagem
+
+Dia 1 (sexta-feira):
+Saída do Rio de Janeiro a partir das 06:30h, com embarques em pontos pré-determinados. Parada técnica em Resende para descanso. Chegada prevista em Campos do Jordão às 13:40h e check-in no hotel. À tarde, city tour panorâmico pelo lado norte da cidade a bordo do trenzinho turístico, visitando Ducha de Prata, Alto Capivari, Pico do Itapeva e Empório Supinasse para degustações. Retorno ao hotel e jantar incluso. Noite livre.
+
+Dia 2 (sábado):
+Café da manhã no hotel. Saída às 09:00h para city tour panorâmico pelo lado sul, incluindo Mosteiro Beneditinos de São João, vista externa do Palácio Boa Vista, visita à fábrica de malhas e à Cacau Show. Retorno ao hotel para almoço. Tarde livre para explorar Campos do Jordão no seu ritmo. Jantar incluso no hotel. Noite livre.
+
+Dia 3 (domingo):
+Café da manhã no hotel e manhã livre para aproveitar os últimos momentos na cidade. Check-out a partir das 12:00h. Almoço no hotel com quartos liberados. Saída de Campos do Jordão às 13:30h e chegada prevista ao Rio de Janeiro às 20:30h.
+
+🟩 SEÇÃO: PERGUNTAS FREQUENTES
+
+- Função da seção: antecipar dúvidas e reduzir objeções.
+- Conteúdo:
+  - Pergunta: Os ingressos dos atrativos estão inclusos?
+    Resposta: Alguns locais visitados cobram ingressos à parte, que não estão inclusos no pacote. A visita é opcional e o pagamento é feito diretamente no local.
+  - Pergunta: O que está incluso nas refeições?
+    Resposta: O pacote inclui café da manhã, almoços e jantares conforme o roteiro. Bebidas e consumos extras são pagos à parte.
+  - Pergunta: Como são feitos os embarques no Rio de Janeiro?
+    Resposta: Os embarques acontecem em pontos pré-determinados, informados antes da viagem, para maior comodidade do grupo.
+  - Pergunta: O passeio pode sofrer alterações?
+    Resposta: Sim, os horários e a ordem dos passeios podem ser ajustados para melhor atender ao grupo ou devido a condições climáticas.
+
+🟩 SEÇÃO: BIOGRAFIA
+
+- Função da seção: apresentar a agência de forma humanizada e transmitir confiança.
+- Conteúdo:
+  - Etiqueta: Quem leva você
+  - Título: Uma equipe apaixonada por viagens
+  - Texto descritivo: Nossa missão é proporcionar experiências inesquecíveis, cuidando de cada detalhe para que você viaje com tranquilidade e segurança. Valorizamos o atendimento próximo e personalizado, sempre prontos para ajudar em cada etapa da sua jornada.
+  - Sugestão de imagem: Foto da equipe da agência ou imagem acolhedora de atendimento ao cliente
+
+🟩 SEÇÃO: CHAMADA PARA AÇÃO
+
+- Função da seção: incentivar o contato e a reserva.
+- Conteúdo:
+  - Etiqueta: Reserve agora
+  - Título: Garanta sua vaga para Campos do Jordão!
+  - Descrição: Clique no botão abaixo, fale com nossa equipe e viva dias incríveis na serra. Lugares limitados para garantir conforto e exclusividade.
+  - Botão: Quero viajar!
+Inserir estrutura
+Substituir estrutura
+Desfazer estrutura aplicada

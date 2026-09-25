@@ -82,6 +82,15 @@ class AsaasClient:
     def get_subscription(self, subscription_id: str) -> dict[str, Any]:
         return self._request("GET", f"/subscriptions/{subscription_id}")
 
+    def list_subscriptions(self, **params: Any) -> dict[str, Any]:
+        return self._request("GET", "/subscriptions", params=params)
+
+    def list_pix_automatic_authorizations(self, **params: Any) -> dict[str, Any]:
+        return self._request("GET", "/pix/automatic/authorizations", params=params)
+
+    def list_pix_automatic_payment_instructions(self, **params: Any) -> dict[str, Any]:
+        return self._request("GET", "/pix/automatic/paymentInstructions", params=params)
+
     def update_subscription(self, subscription_id: str, payload: dict[str, Any]) -> dict[str, Any]:
         if not subscription_id:
             raise ValueError("Subscription id is required")
