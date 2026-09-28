@@ -88,6 +88,56 @@ def fetch_remote(client: AsaasClient, start: date | None, end: date) -> dict:
         return {key: job.result() for key, job in jobs.items()}
 
 
+def audit_pix_renewals(remote: dict, checkouts: list[dict], today: date) -> list[dict]:
+    """Explain the existing job's local gates; never repair or issue a payment."""
+    by_auth: dict[str, list] = {}
+    for session in checkouts:
+        aid = session.get("metadata", {}).get("asaas_pix_automatic_authorization_id")
+        if aid:
+            by_auth.setdefault(aid, []).append(session)
+    result = []
+    for auth in remote["authorizations"]["data"]:
+        aid = resource_id(auth)
+        sessions = by_auth.get(aid, [])
+        session = sessions[0] if sessions else {}
+        meta = session.get("metadata", {})
+        due = as_date(meta.get("asaas_pix_automatic_next_due_date"))
+        instructions = [i for i in remote["instructions"]["data"] if resource_id(i.get("authorization")) == aid]
+        reasons = []
+        if auth.get("status") != "ACTIVE":
+            reasons.append("Autorização não está ativa no Asaas")
+        if not sessions:
+            reasons.append("Nenhum checkout local vinculado por ID da autorização")
+        else:
+            if len(sessions) > 1:
+                reasons.append("Mais de um checkout vinculado; revisar duplicidade")
+            if session.get("status") != "paid":
+                reasons.append("Checkout local não está pago: a rotina ignora este registro")
+            if str(meta.get("asaas_pix_automatic_authorization_status") or "").upper() != "ACTIVE":
+                reasons.append("Status local da autorização não é ACTIVE: verificar webhook")
+            if not due:
+                reasons.append("Próximo vencimento ausente ou inválido: a rotina ignora este registro")
+            elif due < today:
+                reasons.append("Próximo vencimento já passou: revisar falhas de agendamento; não emitir retroativamente")
+            elif due > today + timedelta(days=5):
+                reasons.append("Fora da janela atual da rotina (cinco dias corridos)")
+            elif meta.get("asaas_pix_automatic_last_instruction_due_date") == due.isoformat():
+                reasons.append("Data já marcada como instrução emitida localmente")
+            else:
+                reasons.append("Dentro da janela: conferir execução e logs da rotina")
+        if auth.get("paymentCreationMode") == "SUBSCRIPTION":
+            reasons.append("Modo SUBSCRIPTION: não gerar manualmente outro ciclo")
+        if not instructions:
+            reasons.append("Nenhuma instrução localizada" if remote["instructions"]["complete"] else "Consulta de instruções incompleta")
+        result.append({"authorization_id": aid, "customer_id": resource_id(auth.get("customerId")),
+                       "name": session.get("name") or resource_id(auth.get("customerId")),
+                       "remote_status": auth.get("status"), "local_status": meta.get("asaas_pix_automatic_authorization_status"),
+                       "checkout_status": session.get("status"), "creation_mode": auth.get("paymentCreationMode") or "UNKNOWN",
+                       "next_due_date": due.isoformat() if due else None, "instruction_count": len(instructions),
+                       "findings": reasons})
+    return sorted(result, key=lambda r: (r["remote_status"] != "ACTIVE", r["name"] or ""))
+
+
 def reconcile(remote: dict, local: list[dict], checkouts: list[dict], *, today: date,
               start: date | None, end: date) -> dict:
     subs = {resource_id(s): s for s in remote["subscriptions"]["data"]}
@@ -265,6 +315,7 @@ def reconcile(remote: dict, local: list[dict], checkouts: list[dict], *, today: 
                      **pix_info(aid, payment_method(sub.get("billingType")), {}, [], bool(aid))})
     return {"rows": sorted(rows, key=lambda r: (r["classification"] != "overdue", -r["days_overdue"], r["id"])),
             "subscriptions": audits,
+            "renewal_audit": audit_pix_renewals(remote, checkouts, today),
             "authorization_inventory": {
                 "total": len(auths), "complete": remote["authorizations"]["complete"],
                 "by_status": {status: sum(str(a.get("status") or "UNKNOWN").upper() == status for a in auths.values())

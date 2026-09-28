@@ -211,6 +211,39 @@ def test_extracts_automatic_pix_authorization_from_webhook_variants(payload: dic
     assert checkout._extract_pix_automatic_authorization_id(payload) == "auth_webhook_123"
 
 
+@pytest.mark.parametrize("status", ["REFUSED", "CANCELLED", "EXPIRED"])
+def test_authorization_webhook_preserves_confirmed_initial_payment(monkeypatch, status):
+    session = make_session()
+    session.payment_method = "pix"
+    session.status = "paid"
+    session.paid_at = checkout._utcnow()
+    session.metadata_json = {"asaas_pix_automatic_authorization_id": "auth_webhook_123"}
+    def unexpected(*args, **kwargs):
+        raise AssertionError("Consent event must not renew or complete payment")
+    monkeypatch.setattr(checkout, "_renew_paid_pix_automatic_subscription", unexpected)
+    monkeypatch.setattr(checkout, "_upsert_paid_user_and_subscription", unexpected)
+    assert checkout.handle_asaas_checkout_webhook(FakeDb([session]), {
+        "event": f"PIX_AUTOMATIC_RECURRING_AUTHORIZATION_{status}",
+        "authorization": {"id": "auth_webhook_123", "status": status},
+    })
+    assert session.status == "paid"
+    assert session.metadata_json["asaas_pix_automatic_authorization_status"] == status
+
+
+@pytest.mark.parametrize("status", ["REFUSED", "CANCELLED", "EXPIRED"])
+def test_refresh_does_not_erase_paid_status_when_consent_ends(monkeypatch, status):
+    session = make_session()
+    session.payment_method = "pix"
+    session.status = "paid"
+    session.paid_at = checkout._utcnow()
+    session.metadata_json = {"asaas_pix_automatic_authorization_id": "auth_webhook_123"}
+    monkeypatch.setattr(checkout, "_ensure_asaas_client", lambda: SimpleNamespace(
+        get_pix_automatic_authorization=lambda _: {"id": "auth_webhook_123", "status": status}))
+    checkout.refresh_session_status(FakeDb([session]), session)
+    assert session.status == "paid"
+    assert session.metadata_json["asaas_pix_automatic_authorization_status"] == status
+
+
 def test_paid_instruction_renews_subscription_only_once(monkeypatch: pytest.MonkeyPatch) -> None:
     session = make_session()
     session.payment_method = "pix"

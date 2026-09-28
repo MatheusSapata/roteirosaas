@@ -2023,9 +2023,9 @@ def refresh_session_status(db: Session, session: CheckoutSession) -> CheckoutSes
                 ).isoformat()
                 session.metadata_json = metadata
             _complete_paid_checkout_session(db, session)
-        elif authorization_status in {"CANCELLED", "REFUSED"}:
+        elif authorization_status in {"CANCELLED", "REFUSED"} and session.status != "paid":
             session.status = "failed"
-        elif authorization_status == "EXPIRED":
+        elif authorization_status == "EXPIRED" and session.status != "paid":
             session.status = "expired"
         session.updated_at = _utcnow()
         db.add(session)
@@ -2151,6 +2151,21 @@ def handle_asaas_checkout_webhook(db: Session, payload: dict[str, Any]) -> bool:
         metadata = dict(session.metadata_json or {})
         metadata["asaas_subscription_id"] = subscription_id
         session.metadata_json = metadata
+    # Consent lifecycle is independent of the already confirmed initial payment.
+    # Do not revoke payment, renew access, or replay checkout completion on these events.
+    if was_already_paid and event.startswith("PIX_AUTOMATIC_RECURRING_AUTHORIZATION_") and not payment.get("status"):
+        if not authorization_status:
+            suffix = event.removeprefix("PIX_AUTOMATIC_RECURRING_AUTHORIZATION_")
+            metadata["asaas_pix_automatic_authorization_status"] = "ACTIVE" if suffix == "ACTIVATED" else suffix
+        if metadata.get("asaas_pix_automatic_authorization_status") == "ACTIVE" and not metadata.get("asaas_pix_automatic_next_due_date"):
+            metadata["asaas_pix_automatic_next_due_date"] = _next_pix_automatic_due_date(
+                session.paid_at.date(), session.billing_cycle
+            ).isoformat()
+        session.metadata_json = metadata
+        session.updated_at = _utcnow()
+        db.add(session)
+        db.commit()
+        return True
     authorization_activated = event in {
         "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_ACTIVE",
         "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_ACTIVATED",

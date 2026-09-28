@@ -180,6 +180,20 @@ def test_other_gateway_pix_is_not_claimed_to_have_missing_asaas_authorization():
     assert row["pix_kind"] == "unknown"
 
 
+def test_renewal_audit_includes_active_authorizations_without_payments():
+    data = snapshot(authorizations=[{"id": "active", "status": "ACTIVE", "customerId": "cus_1", "paymentCreationMode": "MANUAL"}])
+    result = report(data)
+    audit = result["renewal_audit"][0]
+    assert audit["remote_status"] == "ACTIVE"
+    assert any("Nenhum checkout" in f for f in audit["findings"])
+    session = {"token": "token", "user_id": 2, "status": "failed", "asaas_payment_id": None,
+               "metadata": {"asaas_pix_automatic_authorization_id": "active", "asaas_pix_automatic_authorization_status": "CREATED"}}
+    audit = report(data, sessions=[session])["renewal_audit"][0]
+    assert any("não está pago" in f for f in audit["findings"])
+    assert any("verificar webhook" in f for f in audit["findings"])
+    assert any("vencimento ausente" in f for f in audit["findings"])
+
+
 def test_latest_unpaid_checkout_does_not_replace_current_paid_mandate():
     sessions = [{"token": token, "user_id": 2, "status": status, "asaas_payment_id": None,
                  "metadata": {"asaas_pix_automatic_authorization_id": aid}}
