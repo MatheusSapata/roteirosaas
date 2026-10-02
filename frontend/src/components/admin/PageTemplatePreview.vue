@@ -1,5 +1,5 @@
 <template>
-  <div :class="['template-preview', { 'template-preview--mobile': props.previewDevice === 'mobile' }]">
+  <div :class="['template-preview public-tokens', { 'template-preview--mobile': props.previewDevice === 'mobile' }]">
     <div v-if="!sections.length" class="rounded-lg border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500">
       Nenhuma seção disponível neste template.
     </div>

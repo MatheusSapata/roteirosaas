@@ -520,37 +520,37 @@
             <p class="mt-1 text-[14px] text-slate-500">Título, link, cores, rastreamento e formulário de captação.</p>
           </div>
           <div v-if="!isMobileViewport" class="flex flex-wrap items-center gap-2 text-xs">
-            <span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 font-semibold text-slate-600">Link: {{ pageSlug || "-" }}</span>
-            <span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 font-semibold text-slate-600">Formulário: {{ selectedLeadForm ? (selectedLeadForm.name || selectedLeadForm.title) : "nenhum" }}</span>
-            <span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 font-semibold text-slate-600">Pixels: {{ selectedPixelsSummary }}</span>
+            <span class="rounded-full bg-muted px-3 py-1.5 font-semibold text-muted-foreground">Link: {{ pageSlug || "-" }}</span>
+            <span class="rounded-full bg-muted px-3 py-1.5 font-semibold text-muted-foreground">Formulário: {{ selectedLeadForm ? (selectedLeadForm.name || selectedLeadForm.title) : "nenhum" }}</span>
+            <span class="rounded-full bg-muted px-3 py-1.5 font-semibold text-muted-foreground">Pixels: {{ selectedPixelsSummary }}</span>
           </div>
         </div>
 
-        <div class="grid items-start gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
-          <aside ref="settingsSidebarRef" class="space-y-3">
+        <div class="editor-settings-grid">
+          <aside ref="settingsSidebarRef" class="editor-settings-tabs" role="tablist">
             <button type="button" class="editor-side-tab" :class="{ active: activeSettingsTab==='general' }" @click="selectSettingsTab('general')">
               <span class="editor-side-tab-step" aria-hidden="true">
                 <svg viewBox="0 0 24 24" class="editor-settings-gear" xmlns="http://www.w3.org/2000/svg"><path d="M0 0h24v24H0z" fill="none" /><g fill="currentColor" fill-rule="evenodd" clip-rule="evenodd"><path d="M12 8.25a3.75 3.75 0 1 0 0 7.5a3.75 3.75 0 0 0 0-7.5M9.75 12a2.25 2.25 0 1 1 4.5 0a2.25 2.25 0 0 1-4.5 0" /><path d="M11.975 1.25c-.445 0-.816 0-1.12.02a2.8 2.8 0 0 0-.907.19a2.75 2.75 0 0 0-1.489 1.488c-.145.35-.184.72-.2 1.122a.87.87 0 0 1-.415.731a.87.87 0 0 1-.841-.005c-.356-.188-.696-.339-1.072-.389a2.75 2.75 0 0 0-2.033.545a2.8 2.8 0 0 0-.617.691c-.17.254-.356.575-.578.96l-.025.044c-.223.385-.408.706-.542.98c-.14.286-.25.568-.29.88a2.75 2.75 0 0 0 .544 2.033c.231.301.532.52.872.734a.87.87 0 0 1 .426.726a.87.87 0 0 1-.426.726c-.34.214-.64.433-.872.734a2.75 2.75 0 0 0-.545 2.033c.041.312.15.594.29.88c.135.274.32.595.543.98l.025.044c.222.385.408.706.578.96c.177.263.367.5.617.69a2.75 2.75 0 0 0 2.033.546c.376-.05.716-.2 1.072-.389a.87.87 0 0 1 .84-.005a.86.86 0 0 1 .417.731c.015.402.054.772.2 1.122a2.75 2.75 0 0 0 1.488 1.489c.29.12.59.167.907.188c.304.021.675.021 1.12.021h.05c.445 0 .816 0 1.12-.02c.318-.022.617-.069.907-.19a2.75 2.75 0 0 0 1.489-1.488c.145-.35.184-.72.2-1.122a.87.87 0 0 1 .415-.732a.87.87 0 0 1 .841.006c.356.188.696.339 1.072.388a2.75 2.75 0 0 0 2.033-.544c.25-.192.44-.428.617-.691c.17-.254.356-.575.578-.96l.025-.044c.223-.385.408-.706.542-.98c.14-.286.25-.569.29-.88a2.75 2.75 0 0 0-.544-2.033c-.231-.301-.532-.52-.872-.734a.87.87 0 0 1-.426-.726c0-.278.152-.554.426-.726c.34-.214.64-.433.872-.734a2.75 2.75 0 0 0 .545-2.033a2.8 2.8 0 0 0-.29-.88a18 18 0 0 0-.543-.98l-.025-.044a18 18 0 0 0-.578-.96a2.8 2.8 0 0 0-.617-.69a2.75 2.75 0 0 0-2.033-.546c-.376.05-.716.2-1.072.389a.87.87 0 0 1-.84.005a.87.87 0 0 1-.417-.731c-.015-.402-.054-.772-.2-1.122a2.75 2.75 0 0 0-1.488-1.489c-.29-.12-.59-.167-.907-.188c-.304-.021-.675-.021-1.12-.021zm-1.453 1.595c.077-.032.194-.061.435-.078c.247-.017.567-.017 1.043-.017s.796 0 1.043.017c.241.017.358.046.435.078c.307.127.55.37.677.677c.04.096.073.247.086.604c.03.792.439 1.555 1.165 1.974s1.591.392 2.292.022c.316-.167.463-.214.567-.227a1.25 1.25 0 0 1 .924.247c.066.051.15.138.285.338c.139.206.299.483.537.895s.397.69.506.912c.107.217.14.333.15.416a1.25 1.25 0 0 1-.247.924c-.064.083-.178.187-.48.377c-.672.422-1.128 1.158-1.128 1.996s.456 1.574 1.128 1.996c.302.19.416.294.48.377c.202.263.29.595.247.924c-.01.083-.044.2-.15.416c-.109.223-.268.5-.506.912s-.399.689-.537.895c-.135.2-.219.287-.285.338a1.25 1.25 0 0 1-.924.247c-.104-.013-.25-.06-.567-.227c-.7-.37-1.566-.398-2.292.021s-1.135 1.183-1.165 1.975c-.013.357-.046.508-.086.604a1.25 1.25 0 0 1-.677.677c-.077.032-.194.061-.435.078c-.247.017-.567.017-1.043.017s-.796 0-1.043-.017c-.241-.017-.358-.046-.435-.078a1.25 1.25 0 0 1-.677-.677c-.04-.096-.073-.247-.086-.604c-.03-.792-.439-1.555-1.165-1.974s-1.591-.392-2.292-.022c-.316.167-.463.214-.567.227a1.25 1.25 0 0 1-.924-.247c-.066-.051-.15-.138-.285-.338a17 17 0 0 1-.537-.895c-.238-.412-.397-.69-.506-.912c-.107-.217-.14-.333-.15-.416a1.25 1.25 0 0 1 .247-.924c.064-.083.178-.187.48-.377c.672-.422 1.128-1.158 1.128-1.996s-.456-1.574-1.128-1.996c-.302-.19-.416-.294-.48-.377a1.25 1.25 0 0 1-.247-.924c.01-.083.044-.2.15-.416c.109-.223.268-.5.506-.912s.399-.689.537-.895c.135-.2.219-.287.285-.338a1.25 1.25 0 0 1 .924-.247c.104.013.25.06.567.227c.7.37 1.566.398 2.292-.022c.726-.419 1.135-1.182 1.165-1.974c.013-.357.046-.508.086-.604c.127-.307.37-.55.677-.677" /></g></svg>
               </span>
-              <span>CONFIGURAÇÕES BÁSICAS</span>
+              <span>Título e link</span>
             </button>
             <button type="button" class="editor-side-tab" :class="{ active: activeSettingsTab==='colors' }" @click="selectSettingsTab('colors')">
               <span class="editor-side-tab-step" aria-hidden="true">
                 <svg viewBox="0 0 24 24" class="editor-colors-palette" xmlns="http://www.w3.org/2000/svg"><path d="M0 0h24v24H0z" fill="none" /><path fill="currentColor" d="M12 22C6.49 22 2 17.51 2 12S6.49 2 12 2s10 4.04 10 9c0 3.31-2.69 6-6 6h-1.77c-.28 0-.5.22-.5.5c0 .12.05.23.13.33c.41.47.64 1.06.64 1.67A2.5 2.5 0 0 1 12 22m0-18c-4.41 0-8 3.59-8 8s3.59 8 8 8c.28 0 .5-.22.5-.5a.54.54 0 0 0-.14-.35c-.41-.46-.63-1.05-.63-1.65a2.5 2.5 0 0 1 2.5-2.5H16c2.21 0 4-1.79 4-4c0-3.86-3.59-7-8-7" /><circle cx="6.5" cy="11.5" r="1.5" fill="currentColor" /><circle cx="9.5" cy="7.5" r="1.5" fill="currentColor" /><circle cx="14.5" cy="7.5" r="1.5" fill="currentColor" /><circle cx="17.5" cy="11.5" r="1.5" fill="currentColor" /></svg>
               </span>
-              <span>CORES DO FUNDO E DESTAQUE</span>
+              <span>Cores</span>
             </button>
             <button type="button" class="editor-side-tab" :class="{ active: activeSettingsTab==='pixels' }" @click="selectSettingsTab('pixels')">
               <span class="editor-side-tab-step" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M18.364 19.364a9 9 0 1 0-12.728 0"/><path d="M15.536 16.536a5 5 0 1 0-7.072 0"/><path d="M11 13a1 1 0 1 0 2 0a1 1 0 1 0-2 0"/></g></svg>
               </span>
-              <span>RASTREAMENTO</span>
+              <span>Rastreamento</span>
             </button>
             <button type="button" class="editor-side-tab" :class="{ active: activeSettingsTab==='capture' }" @click="selectSettingsTab('capture')">
               <span class="editor-side-tab-step" aria-hidden="true">
                 <svg viewBox="0 0 24 24" class="editor-capture-leads"><path fill="currentColor" d="m17 21l1.8 1.77c.5.5 1.2.1 1.2-.49V18l2.8-3.4A1 1 0 0 0 22 13h-7c-.8 0-1.3 1-.8 1.6L17 18zm-2-1H2v-3c0-2.7 5.3-4 8-4c.6 0 1.3.1 2.1.2c-.2.6-.1 1.3.1 1.9c-.7-.1-1.5-.2-2.2-.2c-3 0-6.1 1.5-6.1 2.1v1.1h10.6l.5.6zM10 4C7.8 4 6 5.8 6 8s1.8 4 4 4s4-1.8 4-4s-1.8-4-4-4m0 6c-1.1 0-2-.9-2-2s.9-2 2-2s2 .9 2 2s-.9 2-2 2"/></svg>
               </span>
-              <span>CAPTAÇÃO DE LEADS</span>
+              <span>Captação de leads</span>
             </button>
           </aside>
 
@@ -568,7 +568,7 @@
               <div class="grid gap-4 lg:grid-cols-[3fr_2fr]">
                 <div class="space-y-3">
                   <div>
-                    <label class="text-[16px] font-bold uppercase tracking-[0.03em] text-slate-700">TÍTULO DA PÁGINA</label>
+                    <label class="text-[13px] font-semibold uppercase tracking-[0.04em] text-slate-500">TÍTULO DA PÁGINA</label>
                     <input
                       v-model="pageTitle"
                       @blur="scheduleWhatsAppUpdate"
@@ -576,7 +576,7 @@
                     />
                   </div>
                   <div>
-                    <label class="text-[16px] font-bold uppercase tracking-[0.03em] text-slate-700">LINK DA PÁGINA</label>
+                    <label class="text-[13px] font-semibold uppercase tracking-[0.04em] text-slate-500">LINK DA PÁGINA</label>
                     <div class="slug-row mt-1 flex w-full overflow-hidden rounded-[12px] border border-slate-200">
                       <div class="slug-prefix shrink-0 border-r border-slate-200 bg-slate-50 px-4 py-2 text-[16px] font-semibold text-slate-600">
                         {{ slugBaseLabel }}
@@ -593,7 +593,7 @@
                   </div>
                 </div>
                 <div>
-                  <label class="text-[16px] font-bold uppercase tracking-[0.03em] text-slate-700">DESCRIÇÃO CURTA</label>
+                  <label class="text-[13px] font-semibold uppercase tracking-[0.04em] text-slate-500">DESCRIÇÃO CURTA</label>
                   <textarea
                     v-model="pageShortDescription"
                     rows="5"
@@ -848,13 +848,13 @@
         </div>
         <div
           v-if="!isMobileViewport"
-          class="inline-flex select-none items-center rounded-full border border-slate-200 bg-slate-50 p-1 text-sm font-semibold text-slate-600 dark:border-[#2b2b2b] dark:bg-[#181818] dark:text-slate-200"
+          class="inline-flex select-none items-center rounded-full bg-muted p-1 text-sm font-semibold text-muted-foreground"
         >
           <button
             v-if="!isMobileViewport"
             type="button"
-            class="inline-flex select-none items-center gap-1 rounded-full px-3 py-1 transition"
-            :class="previewDevice === 'desktop' ? 'bg-brand text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'"
+            class="inline-flex select-none items-center gap-1.5 rounded-full px-3.5 py-1.5 transition"
+            :class="previewDevice === 'desktop' ? 'bg-card text-accent-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
             @click="previewDevice = 'desktop'"
           >
             <svg aria-hidden="true" viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -866,8 +866,8 @@
           </button>
           <button
             type="button"
-            class="inline-flex select-none items-center gap-1 rounded-full px-3 py-1 transition"
-            :class="previewDevice === 'mobile' ? 'bg-brand text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'"
+            class="inline-flex select-none items-center gap-1.5 rounded-full px-3.5 py-1.5 transition"
+            :class="previewDevice === 'mobile' ? 'bg-card text-accent-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
             @click="previewDevice = 'mobile'"
           >
             <svg aria-hidden="true" viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -878,8 +878,10 @@
           </button>
         </div>
       </div>
-      <div class="mt-4">
+      <p v-if="desktopPreviewZoom < 1" class="editor-preview-scale">Largura de computador (1280 px) · {{ Math.round(desktopPreviewZoom * 100) }}%</p>
+      <div ref="previewCanvasRef" class="mt-4">
         <div
+          :style="desktopPreviewStyle"
           :class="previewDevice === 'mobile'
             ? (isMobileViewport
               ? '-mx-4 w-[calc(100%+2rem)] overflow-hidden rounded-none border-0 bg-transparent shadow-none'
@@ -1111,10 +1113,11 @@
         >
           <div ref="sectionModalHeaderRef" class="section-editor-header flex items-center justify-between px-6 py-4">
             <div>
-              <h3 class="text-[16px] font-semibold text-slate-900">Editando seção • {{ editingSectionHeaderLabel }}</h3>
+              <p class="section-editor-eyebrow">Editando seção</p>
+              <h3 class="section-editor-title">{{ editingSectionHeaderLabel }}</h3>
             </div>
             <button
-              class="h-[34px] w-[34px] rounded-[10px] border border-slate-200 bg-slate-50 text-[20px] leading-none text-slate-500 hover:bg-slate-100"
+              class="section-editor-close"
               @click="requestCloseSectionEditor"
               aria-label="Fechar"
             >
@@ -1136,13 +1139,13 @@
           </div>
           <div ref="sectionModalFooterRef" class="section-editor-footer flex flex-wrap items-center justify-end gap-2 border-t border-border px-6 py-4">
             <button
-              class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+              class="h-10 rounded-full bg-muted px-5 text-sm font-semibold text-foreground hover:bg-accent"
               @click="requestCloseSectionEditor"
             >
               {{ viewCopy.sectionDialog.cancel }}
             </button>
             <button
-              class="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white shadow hover:bg-brand-dark"
+              class="h-10 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground hover:bg-brand-dark"
               @click="saveEditingSection"
             >
               {{ viewCopy.sectionDialog.save }}
@@ -1478,14 +1481,14 @@ const viewCopy = {
     })
   },
   preview: {
-    title: t({ pt: "Preview visual", es: "Vista previa visual" }),
+    title: t({ pt: "Prévia ao vivo", es: "Vista previa en vivo" }),
     helper: t({
       pt: "Clique no botão do topo para aplicar as alterações do formulário.",
       es: "Haz clic en el botón superior para aplicar los cambios del formulario."
     }),
     mobileHint: t({ pt: "Toque sobre as seções para editar.", es: "Toca las secciones para editarlas." }),
-    desktopLabel: t({ pt: "Desktop", es: "Desktop" }),
-    mobileLabel: t({ pt: "Mobile", es: "Mobile" }),
+    desktopLabel: t({ pt: "Computador", es: "Computadora" }),
+    mobileLabel: t({ pt: "Celular", es: "Celular" }),
     emptyState: t({
       pt: "Nenhuma seção adicionada ainda. Use o botão abaixo para criar o conteúdo.",
       es: "Aún no hay secciones añadidas. Usa el botón de abajo para crear el contenido."
@@ -1623,8 +1626,9 @@ const settingsPanelStyle = computed(() =>
 );
 
 const syncSettingsPanelHeight = () => {
-  const sidebarHeight = settingsSidebarRef.value?.offsetHeight || 0;
-  const nextHeight = sidebarHeight;
+  // Com as abas na horizontal, a altura fixa do painel vem do conteúdo de "Título e link".
+  const generalHeight = generalSettingsRef.value?.offsetHeight || 0;
+  const nextHeight = generalHeight ? Math.max(generalHeight + 40, 220) : 0;
   if (nextHeight > 0) settingsPanelHeight.value = nextHeight;
 };
 
@@ -1694,6 +1698,27 @@ const ctaColor = ref(theme.value.ctaDefaultColor || fallbackPrimaryColor);
 const previewDevice = ref<"desktop" | "mobile">(editorPrefs.value.previewDevice || "desktop");
 const isMobileViewport = ref(false);
 const isMobileOverlayMode = computed(() => isMobileViewport.value);
+// No computador, a prévia é desenhada em 1280 px e reduzida para caber, sem espremer as seções.
+const DESKTOP_PREVIEW_WIDTH = 1280;
+const previewCanvasRef = ref<HTMLElement | null>(null);
+const previewCanvasWidth = ref(0);
+let previewCanvasObserver: ResizeObserver | null = null;
+const desktopPreviewZoom = computed(() => {
+  if (previewDevice.value !== "desktop" || isMobileViewport.value || !previewCanvasWidth.value) return 1;
+  return Math.min(1, previewCanvasWidth.value / DESKTOP_PREVIEW_WIDTH);
+});
+const desktopPreviewStyle = computed(() =>
+  desktopPreviewZoom.value < 1 ? { width: `${DESKTOP_PREVIEW_WIDTH}px`, zoom: String(desktopPreviewZoom.value) } : {}
+);
+watch(previewCanvasRef, (el, prev) => {
+  if (typeof ResizeObserver === "undefined") return;
+  previewCanvasObserver ??= new ResizeObserver(entries => {
+    previewCanvasWidth.value = Math.floor(entries[0]?.contentRect.width || 0);
+  });
+  if (prev) previewCanvasObserver.unobserve(prev);
+  if (el) previewCanvasObserver.observe(el);
+}, { flush: "post" });
+onBeforeUnmount(() => previewCanvasObserver?.disconnect());
 const desktopHoverEnabled = computed(() => previewDevice.value === "desktop" && !isMobileViewport.value);
 const hasWindow = typeof window !== "undefined";
 const beforeUnloadHandler = (event: BeforeUnloadEvent) => {
@@ -1702,7 +1727,7 @@ const beforeUnloadHandler = (event: BeforeUnloadEvent) => {
   event.returnValue = "";
 };
   const toolbarSecondaryButtonClass =
-    "inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground shadow-soft transition-colors hover:bg-accent";
+    "inline-flex h-10 items-center gap-2 rounded-full border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent";
   const floatingAiButtonClass =
     "editor-ai-fab hidden md:inline-flex cursor-pointer items-center justify-center rounded-l-2xl border border-primary bg-primary text-sm font-semibold text-white transition hover:bg-brand-dark";
   const floatingAiButtonStyle = {
@@ -1740,11 +1765,11 @@ const beforeUnloadHandler = (event: BeforeUnloadEvent) => {
       letterSpacing: "0.12em"
     } as const;
   const toolbarPrimaryButtonClass =
-    "inline-flex items-center gap-2 rounded-lg border border-primary bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft transition hover:bg-brand-dark";
+    "inline-flex h-10 items-center gap-2 rounded-full border border-primary bg-primary px-5 text-sm font-semibold text-primary-foreground transition hover:bg-brand-dark";
 const toolbarWarningButtonClass =
-  "inline-flex items-center gap-2 rounded-lg border border-border bg-status-danger px-4 py-2 text-sm font-semibold text-status-danger-foreground transition hover:brightness-95";
+  "inline-flex h-10 items-center gap-2 rounded-full border border-transparent bg-status-danger px-4 text-sm font-semibold text-status-danger-foreground transition hover:brightness-95";
 const toolbarStatusPillClass =
-  "inline-flex items-center gap-2 rounded-lg border border-border bg-status-success px-4 py-2 text-sm font-semibold text-status-success-foreground";
+  "inline-flex h-10 items-center gap-2 rounded-full border border-transparent bg-status-success px-4 text-sm font-semibold text-status-success-foreground";
 let skipCtaWatcher = false;
 let removeViewportWatcher: (() => void) | null = null;
 
@@ -6114,6 +6139,38 @@ onMounted(async () => {
 :global(html.dark) .editor-ai-fab-icon,
 :global(html.dark) .editor-ai-fab-label {
   color: #000000 !important;
+}
+
+/* Redesign: editor de páginas */
+.editor-topbar { border-radius: 20px; padding: 10px 12px 10px 10px; box-shadow: var(--shadow-card); }
+.editor-back-btn { width: 40px; height: 40px; border-radius: 999px; border: 0; }
+.editor-breadcrumb { font-size: 12.5px; font-weight: 500; }
+.editor-page-title { font-size: 20px; font-weight: 600; }
+.editor-settings-shell { border-radius: 20px !important; box-shadow: var(--shadow-card) !important; border: 0 !important; }
+.editor-preview-shell { border-radius: 20px !important; box-shadow: var(--shadow-card) !important; border: 0 !important; }
+.editor-settings-title { font-family: var(--font-display); font-size: 22px !important; font-weight: 600 !important; letter-spacing: 0 !important; }
+.editor-settings-grid { display: flex; flex-direction: column; gap: 16px; }
+.editor-settings-tabs { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid var(--border); }
+.editor-settings-shell .editor-settings-tabs .editor-side-tab {
+  width: auto; margin-bottom: -1px; border: 0; border-bottom: 2px solid transparent; border-radius: 0;
+  padding: 10px 14px; background: transparent; box-shadow: none;
+  font-size: 13.5px; font-weight: 600; letter-spacing: 0; color: var(--muted-foreground);
+}
+.editor-settings-shell .editor-settings-tabs .editor-side-tab:hover { background: transparent; color: var(--foreground); }
+.editor-settings-shell .editor-settings-tabs .editor-side-tab.active {
+  border-bottom-color: var(--primary); background: transparent; box-shadow: none; color: var(--foreground);
+}
+.editor-settings-shell .editor-settings-tabs .editor-side-tab.active .editor-side-tab-step { color: var(--primary); }
+.editor-settings-tabs .editor-side-tab-step, .editor-settings-tabs .editor-side-tab-step svg { width: 16px; height: 16px; }
+.editor-settings-shell .settings-panel { border: 0 !important; border-radius: 16px; }
+.editor-preview-scale { margin-top: 8px; text-align: right; font-size: 12px; color: var(--muted-foreground); }
+.section-editor-eyebrow { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted-foreground); }
+.section-editor-title { margin-top: 2px; font-family: var(--font-display); font-size: 18px; font-weight: 600; color: var(--foreground); }
+.section-editor-close { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 999px; background: var(--muted); font-size: 20px; line-height: 1; color: var(--muted-foreground); }
+.section-editor-close:hover { background: var(--accent); color: var(--foreground); }
+@media (max-width: 640px) {
+  .editor-settings-tabs { flex-wrap: nowrap; overflow-x: auto; }
+  .editor-settings-shell .editor-settings-tabs .editor-side-tab { flex-shrink: 0; white-space: nowrap; }
 }
 </style>
 
