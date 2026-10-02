@@ -3,141 +3,153 @@
     <div class="h-10 w-10 animate-spin rounded-full border-4 border-border border-t-primary"></div>
   </div>
   <div v-else class="agency-settings page-wrap">
-    <div class="page-topbar">
-      <div>
-        <div class="page-eyebrow">{{ viewCopy.hero.eyebrow }}</div>
-        <div class="page-title">{{ viewCopy.hero.title }}</div>
-        <div class="page-sub">Dados da sua agência usados nas páginas públicas e templates.</div>
-      </div>
-      <button type="button" class="btn btn-p" :disabled="saving" @click="save">
-        {{ saving ? viewCopy.actions.saving : (hasAgency ? viewCopy.actions.save : viewCopy.actions.create) }}
-      </button>
-    </div>
+    <AgencyHeader />
 
-    <form @submit.prevent="save">
-      <div class="card">
-        <div class="card-head">
-          <div class="card-eye">Identidade</div>
-          <div class="card-title">Dados principais</div>
-          <div class="card-sub">Nome, slug e cor que aparecerão nos seus roteiros.</div>
-        </div>
-        <div class="card-body">
-          <div class="grid3">
-            <div class="fg">
-              <label class="fl">{{ viewCopy.general.nameLabel }}</label>
-              <input v-model="form.name" class="fi" />
-            </div>
-            <div class="fg slug-field">
-              <label class="fl">{{ viewCopy.general.slugLabel }}</label>
-              <div class="ig">
-                <span class="ig-pre">roteiroonline.com/</span>
-                <input :value="form.slug" maxlength="30" @input="handleSlugInput" />
-              </div>
-              <span class="fh">{{ viewCopy.general.slugHint }} {{ viewCopy.general.slugLimit }}</span>
-            </div>
-            <div class="fg">
-              <label class="fl">{{ viewCopy.theme.primaryColorLabel }}</label>
-              <div class="cp-row">
-                <div class="cp-btn"><input type="color" v-model="form.primary_color" /></div>
-                <input v-model="form.primary_color" class="fi" style="max-width:110px" />
-              </div>
-              <span class="fh">{{ viewCopy.theme.primaryColorHint }}</span>
-            </div>
+    <form ref="formRef" class="as-form" @submit.prevent="save">
+      <section class="as-card">
+        <header class="as-card-head">
+          <p class="as-eyebrow">Identidade</p>
+          <h2>Dados principais</h2>
+          <p>Nome, link e cor que aparecem nas suas páginas.</p>
+        </header>
+        <div class="as-row">
+          <div class="as-row-label">
+            <p>Nome da agência</p>
+            <span>Aparece no topo e no rodapé das páginas.</span>
+          </div>
+          <div class="as-row-field">
+            <input v-model="form.name" class="as-input" />
           </div>
         </div>
-      </div>
+        <div class="as-row">
+          <div class="as-row-label">
+            <p>Link da agência</p>
+            <span>Sem espaços nem acentos, até 30 caracteres.</span>
+          </div>
+          <div class="as-row-field as-col">
+            <div class="as-input as-group">
+              <span class="as-prefix">roteiroonline.com/</span>
+              <input :value="form.slug" maxlength="30" @input="handleSlugInput" />
+            </div>
+            <span class="as-hint">Suas páginas ficam em roteiroonline.com/{{ form.slug || "sua-agencia" }}/nome-da-pagina</span>
+          </div>
+        </div>
+        <div class="as-row">
+          <div class="as-row-label">
+            <p>Cor principal</p>
+            <span>Base dos botões das páginas. Dá para ajustar em cada página.</span>
+          </div>
+          <div class="as-row-field">
+            <label class="as-input as-color">
+              <span class="as-swatch" :style="{ background: form.primary_color }">
+                <input v-model="form.primary_color" type="color" aria-label="Escolher cor" />
+              </span>
+              <input v-model="form.primary_color" class="as-color-text" />
+            </label>
+            <span class="as-preview-btn" :style="{ background: form.primary_color }">Quero reservar</span>
+            <span class="as-hint">Prévia do botão</span>
+          </div>
+        </div>
+      </section>
 
-      <div class="card">
-        <div class="card-head">
-          <div class="card-eye">Contato</div>
-          <div class="card-title">Informações de contato</div>
-          <div class="card-sub">Aparece no rodapé das suas páginas públicas.</div>
-        </div>
-        <div class="card-body">
-          <div class="grid3">
-            <div class="fg">
-              <label class="fl">{{ viewCopy.company.cnpjLabel }}</label>
-              <div class="ig">
-                <select v-model="companyForm.documentType">
-                  <option value="cnpj">{{ viewCopy.company.documentTypeCnpj }}</option>
-                  <option value="cpf">{{ viewCopy.company.documentTypeCpf }}</option>
-                </select>
-                <input v-model="companyForm.cnpj" :placeholder="companyDocumentPlaceholder" />
-              </div>
-            </div>
-            <div class="fg">
-              <label class="fl">{{ viewCopy.contact.whatsappLabel }}</label>
-              <div class="ig">
-                <span class="ig-pre">BR +55</span>
-                <input v-model="phoneInput" :placeholder="viewCopy.contact.whatsappPlaceholder" inputmode="numeric" />
-              </div>
-              <span class="fh">{{ viewCopy.contact.whatsappHelper }}</span>
-              <span v-if="phoneMessage" class="ok-msg">{{ phoneMessage }}</span>
-              <span v-if="phoneError" class="err-msg">{{ phoneError }}</span>
-            </div>
-            <div class="fg">
-              <label class="fl">{{ viewCopy.contact.emailLabel }}</label>
-              <input v-model="form.contact_email" type="email" class="fi" :placeholder="viewCopy.contact.emailPlaceholder" />
-              <span class="fh">{{ viewCopy.contact.emailHelper }}</span>
-            </div>
+      <section class="as-card">
+        <header class="as-card-head">
+          <p class="as-eyebrow">Contato</p>
+          <h2>Informações de contato</h2>
+          <p>Aparecem no rodapé das páginas e nos botões de WhatsApp.</p>
+        </header>
+        <div class="as-row">
+          <div class="as-row-label">
+            <p>CNPJ ou CPF</p>
+            <span>Do responsável pela agência.</span>
+          </div>
+          <div class="as-row-field">
+            <select v-model="companyForm.documentType" class="as-input as-select">
+              <option value="cnpj">{{ viewCopy.company.documentTypeCnpj }}</option>
+              <option value="cpf">{{ viewCopy.company.documentTypeCpf }}</option>
+            </select>
+            <input v-model="companyForm.cnpj" class="as-input" :placeholder="companyDocumentPlaceholder" />
           </div>
         </div>
-      </div>
+        <div class="as-row">
+          <div class="as-row-label">
+            <p>WhatsApp</p>
+            <span>Número padrão dos botões de WhatsApp.</span>
+          </div>
+          <div class="as-row-field as-col">
+            <div class="as-input as-group">
+              <span class="as-prefix">BR +55</span>
+              <input v-model="phoneInput" :placeholder="viewCopy.contact.whatsappPlaceholder" inputmode="numeric" />
+            </div>
+            <span v-if="phoneMessage" class="as-ok">{{ phoneMessage }}</span>
+            <span v-if="phoneError" class="as-err">{{ phoneError }}</span>
+          </div>
+        </div>
+        <div class="as-row">
+          <div class="as-row-label">
+            <p>E-mail</p>
+            <span>Aparece no rodapé das páginas.</span>
+          </div>
+          <div class="as-row-field">
+            <input v-model="form.contact_email" type="email" class="as-input" :placeholder="viewCopy.contact.emailPlaceholder" />
+          </div>
+        </div>
+      </section>
 
-      <div class="card">
-        <div class="card-head">
-          <div class="card-eye">Localização</div>
-          <div class="card-title">Endereço</div>
-          <div class="card-sub">Informe o CEP e completaremos os demais campos automaticamente.</div>
-        </div>
-        <div class="card-body">
-          <div class="grid2" style="margin-bottom:14px">
-            <div class="fg">
-              <label class="fl">{{ viewCopy.address.cepLabel }}</label>
-              <input v-model="companyForm.address_zipcode" class="fi" :disabled="isFetchingCep" :placeholder="viewCopy.address.cepPlaceholder" @blur="handleCepBlur" />
-              <span class="fh">{{ viewCopy.address.cepHelper }}</span>
-              <span v-if="isFetchingCep" class="fh">{{ viewCopy.cep.fetching }}</span>
-              <span v-else-if="cepError" class="err-msg">{{ cepError }}</span>
-              <span v-else-if="cepMessage" class="ok-msg">{{ cepMessage }}</span>
-            </div>
-            <div class="fg">
-              <label class="fl">{{ viewCopy.address.streetLabel }}</label>
-              <input v-model="companyForm.address_street" class="fi" :placeholder="viewCopy.address.streetPlaceholder" />
-            </div>
-            <div class="fg">
-              <label class="fl">{{ viewCopy.address.neighborhoodLabel }}</label>
-              <input v-model="companyForm.address_neighborhood" class="fi" :placeholder="viewCopy.address.neighborhoodPlaceholder" />
-            </div>
-            <div class="fg">
-              <label class="fl">{{ viewCopy.address.cityLabel }}</label>
-              <input v-model="companyForm.address_city" class="fi" :placeholder="viewCopy.address.cityPlaceholder" />
-            </div>
+      <section class="as-card">
+        <header class="as-card-head">
+          <p class="as-eyebrow">Localização</p>
+          <h2>Endereço</h2>
+          <p>Informe o CEP e completamos o resto.</p>
+        </header>
+        <div class="as-row">
+          <div class="as-row-label">
+            <p>CEP</p>
+            <span>Preenche rua, bairro, cidade e UF.</span>
           </div>
-          <div class="grid3">
-            <div class="fg">
-              <label class="fl">{{ viewCopy.address.stateLabel }}</label>
-              <input v-model="companyForm.address_state" maxlength="2" class="fi" :placeholder="viewCopy.address.statePlaceholder" />
-            </div>
-            <div class="fg">
-              <label class="fl">{{ viewCopy.address.numberLabel }}</label>
-              <input v-model="companyForm.address_number" class="fi" :placeholder="viewCopy.address.numberPlaceholder" />
-            </div>
-            <div class="fg">
-              <label class="fl">{{ viewCopy.address.complementLabel }}</label>
-              <input v-model="companyForm.address_complement" class="fi" :placeholder="viewCopy.address.complementPlaceholder" />
-            </div>
+          <div class="as-row-field as-col">
+            <input v-model="companyForm.address_zipcode" class="as-input as-short" :disabled="isFetchingCep" :placeholder="viewCopy.address.cepPlaceholder" @blur="handleCepBlur" />
+            <span v-if="isFetchingCep" class="as-hint">{{ viewCopy.cep.fetching }}</span>
+            <span v-else-if="cepError" class="as-err">{{ cepError }}</span>
+            <span v-else-if="cepMessage" class="as-ok">{{ cepMessage }}</span>
           </div>
         </div>
-      </div>
+        <div class="as-row">
+          <div class="as-row-label">
+            <p>Rua</p>
+            <span>Com número e complemento.</span>
+          </div>
+          <div class="as-row-field">
+            <input v-model="companyForm.address_street" class="as-input" :placeholder="viewCopy.address.streetPlaceholder" />
+            <input v-model="companyForm.address_number" class="as-input as-xs" :placeholder="viewCopy.address.numberPlaceholder" />
+            <input v-model="companyForm.address_complement" class="as-input as-short" :placeholder="viewCopy.address.complementPlaceholder" />
+          </div>
+        </div>
+        <div class="as-row">
+          <div class="as-row-label">
+            <p>Bairro e cidade</p>
+            <span>Com a UF.</span>
+          </div>
+          <div class="as-row-field">
+            <input v-model="companyForm.address_neighborhood" class="as-input" :placeholder="viewCopy.address.neighborhoodPlaceholder" />
+            <input v-model="companyForm.address_city" class="as-input" :placeholder="viewCopy.address.cityPlaceholder" />
+            <input v-model="companyForm.address_state" maxlength="2" class="as-input as-xs" :placeholder="viewCopy.address.statePlaceholder" />
+          </div>
+        </div>
+      </section>
 
-      <div class="card-row">
-        <div class="card" style="margin-bottom:0">
-          <div class="card-head">
-            <div class="card-eye">Marca</div>
-            <div class="card-title">Logo da agência</div>
-            <div class="card-sub">Esta logo aparecerá automaticamente em todas as suas páginas.</div>
+      <section class="as-card">
+        <header class="as-card-head">
+          <p class="as-eyebrow">Marca</p>
+          <h2>Logo e redes sociais</h2>
+          <p>Aparecem automaticamente em todas as suas páginas.</p>
+        </header>
+        <div class="as-row as-row-top">
+          <div class="as-row-label">
+            <p>Logo da agência</p>
+            <span>Use fundo transparente para ficar bem em qualquer cor.</span>
           </div>
-          <div class="card-body">
+          <div class="as-row-field">
             <ImageUploadField
               class="agency-logo-upload"
               v-model="form.logo_url"
@@ -147,31 +159,39 @@
             />
           </div>
         </div>
-        <div class="card" style="margin-bottom:0">
-          <div class="card-head social-head">
-            <div>
-              <div class="card-eye">Marca</div>
-              <div class="card-title">Redes sociais</div>
-              <div class="card-sub">Links que aparecerão nas páginas públicas e templates.</div>
-            </div>
-            <button type="button" class="btn btn-p btn-sm" @click="addSocialLink">+ Adicionar rede</button>
+        <div class="as-row as-row-top">
+          <div class="as-row-label">
+            <p>Redes sociais</p>
+            <span>Links que aparecem nas páginas.</span>
           </div>
-          <div class="card-body">
-            <div v-if="!form.social_links.length" class="fh">{{ viewCopy.socialSection.empty }}</div>
-            <div v-for="(social, index) in form.social_links" :key="social.id ?? `social-${index}`" class="social-item">
-              <select v-model="social.network" class="fs">
+          <div class="as-row-field as-col">
+            <p v-if="!form.social_links.length" class="as-hint">{{ viewCopy.socialSection.empty }}</p>
+            <div v-for="(social, index) in form.social_links" :key="social.id ?? `social-${index}`" class="as-social">
+              <select v-model="social.network" class="as-input as-select">
                 <option v-for="option in socialNetworkOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
               </select>
-              <input v-model="social.url" class="fi" type="url" />
-              <button type="button" class="btn-danger-text" @click="removeSocialLink(index)">Remover</button>
+              <input v-model="social.url" class="as-input" type="url" placeholder="https://" />
+              <button type="button" class="as-remove" aria-label="Remover rede" title="Remover" @click="removeSocialLink(index)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M6 18 18 6" /></svg>
+              </button>
             </div>
+            <button type="button" class="as-add" @click="addSocialLink">+ Adicionar rede</button>
           </div>
         </div>
-      </div>
+      </section>
 
-      <div class="save-row">
-        <span v-if="message" class="ok-msg">{{ message }}</span>
-        <span v-if="errorMessage" class="err-msg">{{ errorMessage }}</span>
+      <p v-if="message && !hasUnsavedChanges" class="as-ok as-feedback">{{ message }}</p>
+      <p v-if="errorMessage" class="as-err as-feedback">{{ errorMessage }}</p>
+
+      <div v-if="hasUnsavedChanges || !hasAgency" class="as-savebar" :style="saveBarStyle">
+        <span class="as-savebar-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z" /></svg>
+        </span>
+        <p class="as-savebar-text">{{ hasAgency ? changedSummary : "Preencha os dados para criar a sua agência." }}</p>
+        <button v-if="hasAgency" type="button" class="as-btn-ghost" :disabled="saving" @click="discardChanges">Descartar</button>
+        <button type="submit" class="as-btn-primary" :disabled="saving">
+          {{ saving ? viewCopy.actions.saving : (hasAgency ? "Salvar alterações" : viewCopy.actions.create) }}
+        </button>
       </div>
     </form>
 
@@ -196,6 +216,7 @@
 import { computed, onMounted, reactive, ref, watch, onBeforeUnmount } from "vue";
 import { onBeforeRouteLeave, useRouter } from "vue-router";
 import ImageUploadField from "../../components/admin/inputs/ImageUploadField.vue";
+import AgencyHeader from "../../components/admin/agency/AgencyHeader.vue";
 import api from "../../services/api";
 import { useAgencyStore } from "../../store/useAgencyStore";
 import { useAuthStore } from "../../store/useAuthStore";
@@ -639,6 +660,76 @@ const markSnapshot = () => {
   initialSnapshot.value = buildFormSnapshot();
 };
 
+// Barra de salvar fixa no rodapé, com a mesma largura do formulário.
+const formRef = ref<HTMLElement | null>(null);
+const formBox = ref({ left: 0, width: 0 });
+let formObserver: ResizeObserver | null = null;
+const measureForm = () => {
+  const el = formRef.value;
+  if (!el) return;
+  const rect = el.getBoundingClientRect();
+  // O painel pode ter "zoom" aplicado; as medidas da tela precisam ser convertidas.
+  const zoom = el.offsetWidth ? rect.width / el.offsetWidth : 1;
+  formBox.value = { left: rect.left / zoom, width: rect.width / zoom };
+};
+const saveBarStyle = computed(() =>
+  formBox.value.width ? { left: `${formBox.value.left}px`, width: `${formBox.value.width}px` } : {}
+);
+watch(formRef, el => {
+  formObserver?.disconnect();
+  if (!el || typeof ResizeObserver === "undefined") return;
+  formObserver = new ResizeObserver(measureForm);
+  formObserver.observe(el);
+  measureForm();
+});
+onMounted(() => window.addEventListener("resize", measureForm));
+watch(() => hasUnsavedChanges.value, visible => { if (visible) measureForm(); });
+onBeforeUnmount(() => {
+  window.removeEventListener("resize", measureForm);
+  formObserver?.disconnect();
+});
+
+// Barra de salvar: diz o que mudou e permite descartar.
+const changedSummary = computed(() => {
+  if (!initialSnapshot.value) return "";
+  const before = JSON.parse(initialSnapshot.value);
+  const now = JSON.parse(buildFormSnapshot());
+  const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+  const changes: string[] = [];
+  if (!same(before.name, now.name)) changes.push("o nome");
+  if (!same(before.slug, now.slug)) changes.push("o link");
+  if (!same(before.primary_color, now.primary_color)) changes.push("a cor principal");
+  if (!same(before.company.cnpj, now.company.cnpj) || !same(before.company.documentType, now.company.documentType)) changes.push("o CNPJ ou CPF");
+  if (!same(before.cta_whatsapp, now.cta_whatsapp)) changes.push("o WhatsApp");
+  if (!same(before.contact_email, now.contact_email)) changes.push("o e-mail");
+  const addressKeys = ["address_zipcode", "address_street", "address_number", "address_complement", "address_neighborhood", "address_city", "address_state"];
+  if (addressKeys.some(key => !same(before.company[key], now.company[key]))) changes.push("o endereço");
+  if (!same(before.logo_url, now.logo_url) || !same(before.favicon_url, now.favicon_url)) changes.push("a logo");
+  if (!same(before.social_links, now.social_links)) changes.push("as redes sociais");
+  if (!changes.length) return "Você tem alterações não salvas.";
+  if (changes.length === 1) return `Você alterou ${changes[0]}.`;
+  if (changes.length === 2) return `Você alterou ${changes[0]} e ${changes[1]}.`;
+  return `Você alterou ${changes.length} informações.`;
+});
+
+const discardChanges = () => {
+  if (!initialSnapshot.value) return;
+  const before = JSON.parse(initialSnapshot.value);
+  form.name = before.name;
+  form.slug = before.slug;
+  form.logo_url = before.logo_url;
+  form.favicon_url = before.favicon_url;
+  form.primary_color = before.primary_color;
+  form.secondary_color = before.secondary_color;
+  form.contact_email = before.contact_email;
+  phoneInput.value = before.cta_whatsapp;
+  setFormSocialLinks(before.social_links);
+  Object.assign(companyForm, before.company);
+  errorMessage.value = "";
+  phoneError.value = "";
+  markSnapshot();
+};
+
 const saveCompanyData = async () => {
   const documentDigits = sanitizeDigits(companyForm.cnpj);
   const payload = {
@@ -827,13 +918,6 @@ const saveAndNavigate = async () => {
 };
 
 watch(
-  () => agencyStore.currentAgencyId,
-  async () => {
-    await refreshCustomDomainAvailability();
-  }
-);
-
-watch(
   () => companyForm.cnpj,
   value => {
     const masked = formatCompanyDocument(value || "", companyForm.documentType);
@@ -989,6 +1073,60 @@ onBeforeUnmount(() => {
     max-width:42%;
     min-width:0;
   }
+}
+
+/* Redesign: dados da agência */
+.agency-settings { display: flex; flex-direction: column; gap: 16px; }
+.as-form { display: flex; flex-direction: column; gap: 16px; padding-bottom: 88px; }
+.as-card { border-radius: 20px; background: var(--card); padding: 20px 22px 8px; box-shadow: var(--shadow-card); }
+.as-card-head { border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+.as-eyebrow { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted-foreground); }
+.as-card-head h2 { margin-top: 2px; font-family: var(--font-display); font-size: 17px; font-weight: 600; color: var(--foreground); }
+.as-card-head p:last-child { margin-top: 1px; font-size: 13px; color: var(--muted-foreground); }
+.as-row { display: grid; grid-template-columns: minmax(0, 220px) minmax(0, 1fr); align-items: center; gap: 20px; border-bottom: 1px solid var(--border); padding: 14px 0; }
+.as-row:last-child { border-bottom: 0; }
+.as-row-top { align-items: start; }
+.as-row-label p { font-size: 14px; font-weight: 600; color: var(--foreground); }
+.as-row-label span { display: block; margin-top: 2px; font-size: 12.5px; line-height: 1.45; color: var(--muted-foreground); }
+.as-row-field { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; min-width: 0; }
+.as-col { flex-direction: column; align-items: stretch; gap: 6px; }
+.as-col > .as-input { flex: none; }
+.as-col > .as-short { align-self: flex-start; width: 180px; }
+.as-input { flex: 1; min-width: 0; height: 40px; border: 0 !important; border-radius: 12px; background: var(--muted) !important; padding: 0 12px; font-size: 13.5px; color: var(--foreground); outline: none; }
+.as-input:focus, .as-input:focus-within { box-shadow: 0 0 0 2px var(--ring); }
+.as-group { display: flex; align-items: center; padding: 0; overflow: hidden; }
+.as-group input { flex: 1; min-width: 0; height: 100%; border: 0; background: transparent; padding: 0 12px; font-size: 13.5px; color: var(--foreground); outline: none; }
+.as-prefix { flex-shrink: 0; border-right: 1px solid var(--border); padding: 0 10px 0 12px; font-size: 13px; color: var(--muted-foreground); }
+.as-select { flex: 0 0 120px; padding-right: 28px; }
+.as-short { flex: 0 1 180px; }
+.as-xs { flex: 0 0 90px; }
+.as-color { display: flex; flex: 0 0 170px; align-items: center; gap: 10px; padding: 0 12px 0 8px; }
+.as-swatch { position: relative; width: 24px; height: 24px; flex-shrink: 0; overflow: hidden; border-radius: 8px; }
+.as-swatch input { position: absolute; inset: -6px; width: 40px; height: 40px; cursor: pointer; opacity: 0; }
+.as-color-text { flex: 1; min-width: 0; border: 0; background: transparent; font-size: 13.5px; color: var(--foreground); outline: none; }
+.as-preview-btn { display: inline-flex; align-items: center; height: 34px; padding: 0 16px; border-radius: 999px; font-size: 13px; font-weight: 600; color: #fff; }
+.as-hint { font-size: 12px; color: var(--muted-foreground); }
+.as-ok { font-size: 12.5px; color: var(--status-success-foreground); }
+.as-err { font-size: 12.5px; color: var(--status-danger-foreground); }
+.as-feedback { border-radius: 14px; background: var(--card); padding: 10px 14px; box-shadow: var(--shadow-card); }
+.as-social { display: flex; align-items: center; gap: 8px; }
+.as-remove { display: grid; place-items: center; width: 34px; height: 34px; flex-shrink: 0; border-radius: 999px; background: var(--muted); color: var(--muted-foreground); }
+.as-remove:hover { background: var(--status-danger); color: var(--status-danger-foreground); }
+.as-remove svg { width: 14px; height: 14px; }
+.as-add { align-self: flex-start; height: 34px; padding: 0 14px; border-radius: 999px; background: var(--accent); font-size: 13px; font-weight: 600; color: var(--accent-foreground); }
+.as-savebar { position: fixed; bottom: 16px; left: 16px; right: 16px; z-index: 60; display: flex; align-items: center; gap: 12px; border-radius: 20px; background: var(--card); padding: 10px 12px 10px 16px; box-shadow: var(--shadow-elegant); }
+.as-savebar-icon { display: grid; place-items: center; width: 32px; height: 32px; flex-shrink: 0; border-radius: 999px; background: var(--status-warning); color: var(--status-warning-foreground); }
+.as-savebar-icon svg { width: 15px; height: 15px; }
+.as-savebar-text { flex: 1; min-width: 0; font-size: 13.5px; color: var(--foreground); }
+.as-btn-ghost, .as-btn-primary { height: 40px; padding: 0 18px; border-radius: 999px; font-size: 13.5px; font-weight: 600; }
+.as-btn-ghost { background: var(--muted); color: var(--foreground); }
+.as-btn-primary { background: var(--primary); color: var(--primary-foreground); }
+.as-btn-primary:hover:not(:disabled) { background: color-mix(in srgb, var(--primary) 88%, black); }
+.as-btn-ghost:disabled, .as-btn-primary:disabled { opacity: 0.6; }
+@media (max-width: 760px) {
+  .as-row { grid-template-columns: 1fr; gap: 8px; }
+  .as-select, .as-short, .as-xs, .as-color { flex-basis: 100%; }
+  .as-savebar { flex-wrap: wrap; }
 }
 </style>
 

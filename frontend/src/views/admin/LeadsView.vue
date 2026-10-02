@@ -8529,9 +8529,9 @@ watch(visibleOpportunityIds, ids => {
 .lv-btn-primary { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 18px; border-radius: 999px; background: var(--primary); font-size: 13.5px; font-weight: 600; color: var(--primary-foreground); transition: background 0.15s; }
 .lv-btn-primary:hover { background: color-mix(in srgb, var(--primary) 88%, black); }
 .lv-tabs { display: flex; gap: 4px; overflow-x: auto; border-bottom: 1px solid var(--border); }
-.lv-tab { display: inline-flex; flex-shrink: 0; align-items: center; gap: 8px; margin-bottom: -1px; border-bottom: 2px solid transparent; padding: 10px 14px; font-size: 13.5px; font-weight: 600; white-space: nowrap; color: var(--muted-foreground); }
+.lv-tab { display: inline-flex; flex-shrink: 0; align-items: center; gap: 8px; padding: 10px 14px; font-size: 13.5px; font-weight: 600; white-space: nowrap; color: var(--muted-foreground); }
 .lv-tab:hover { color: var(--foreground); }
-.lv-tab.on { border-bottom-color: var(--primary); color: var(--foreground); }
+.lv-tab.on { box-shadow: inset 0 -2px 0 var(--primary); color: var(--foreground); }
 .lv-tab-count { border-radius: 999px; background: var(--muted); padding: 0 7px; font-size: 11px; color: var(--muted-foreground); }
 .lv-tab.on .lv-tab-count { background: var(--accent); color: var(--accent-foreground); }
 

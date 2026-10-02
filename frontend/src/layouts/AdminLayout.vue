@@ -1547,7 +1547,7 @@ const adminNavigation = computed<AdminNavItem[]>(() => {
       basePath: "/admin/agency",
       iconPath: "/admin/agency",
       children: [
-        { label: "Configurações", path: "/admin/agency" },
+        { label: "Dados da agência", path: "/admin/agency" },
         { label: "Faturas", path: "/admin/agency/invoices" },
         { label: "Equipe", path: "/admin/agency/team" }
       ]

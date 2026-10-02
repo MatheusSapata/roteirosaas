@@ -6219,10 +6219,10 @@ onMounted(async () => {
 .ed-menu button.danger { color: var(--status-danger-foreground); }
 
 .ed-tabs { display: flex; gap: 4px; overflow-x: auto; border-bottom: 1px solid var(--border); }
-.ed-tab { display: inline-flex; flex-shrink: 0; align-items: center; gap: 8px; margin-bottom: -1px; border-bottom: 2px solid transparent; padding: 10px 14px; font-size: 13.5px; font-weight: 600; white-space: nowrap; color: var(--muted-foreground); }
+.ed-tab { display: inline-flex; flex-shrink: 0; align-items: center; gap: 8px; padding: 10px 14px; font-size: 13.5px; font-weight: 600; white-space: nowrap; color: var(--muted-foreground); }
 .ed-tab svg { width: 15px; height: 15px; }
 .ed-tab:hover { color: var(--foreground); }
-.ed-tab.on { border-bottom-color: var(--primary); color: var(--foreground); }
+.ed-tab.on { box-shadow: inset 0 -2px 0 var(--primary); color: var(--foreground); }
 .ed-tab-badge { border-radius: 999px; background: var(--status-warning); padding: 1px 8px; font-size: 10.5px; color: var(--status-warning-foreground); }
 
 .ed-grid { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 16px; height: calc(100dvh - 172px); min-height: 560px; }
