@@ -2,212 +2,144 @@
   <div v-if="isBootstrappingLessons" class="flex min-h-[60vh] w-full items-center justify-center px-4 py-8 md:px-8">
     <div class="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-brand"></div>
   </div>
-  <div v-else class="lessons-view space-y-8 px-4 py-6 md:px-8">
-    <section class="rounded-3xl bg-white/95 p-6 dark:bg-[#202020] dark:text-white">
-      <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <p class="text-xs font-semibold uppercase tracking-[0.4em] text-slate-500 dark:text-white/70">Trilha premium</p>
-          <h1 class="mt-2 text-3xl font-bold text-slate-900 dark:text-white">Aulas</h1>
-          <p class="mt-1 max-w-3xl text-sm text-slate-500 dark:text-slate-200">
-            Aprofunde o uso do construtor de páginas com aulas curtas e diretas. Escolha uma lição, ative o player e pratique acompanhando o passo a passo.
-          </p>
-        </div>
-        <div class="rounded-2xl border border-slate-200/80 p-4 text-sm text-slate-600 dark:border-[#363636] dark:bg-[#101010] dark:text-white">
-          <p class="font-semibold text-slate-900 dark:text-white">Progresso</p>
-          <div class="mt-2 flex items-center gap-3">
-            <div class="h-2 flex-1 overflow-hidden rounded-full bg-slate-200/80 dark:bg-[#1f1f1f]">
-              <div class="h-full rounded-full bg-emerald-500 transition-all duration-500" :style="{ width: `${progressPercent}%` }"></div>
-            </div>
-            <span class="font-semibold text-slate-900 dark:text-white">{{ progressPercent }}%</span>
-          </div>
-          <p class="mt-1 text-xs text-slate-500 dark:text-slate-300">
-            {{ completedLessons.length }} de {{ lessons.length }} aulas concluídas
-          </p>
-        </div>
+  <div v-else class="lessons-view">
+    <div class="lv-head">
+      <div class="min-w-0">
+        <p class="lv-eyebrow">Aprender</p>
+        <h1 class="lv-title">Aulas</h1>
+        <p class="lv-sub">Vídeos curtos para montar páginas que vendem e organizar seus leads.</p>
       </div>
-    </section>
+      <div v-if="lessons.length" class="lv-progress">
+        <div>
+          <p class="lv-progress-k">Seu progresso</p>
+          <p class="lv-progress-v">{{ completedCount }} de {{ lessons.length }} aulas</p>
+        </div>
+        <div class="lv-bar"><i :style="{ width: `${progressPercent}%` }"></i></div>
+        <span class="lv-progress-pill">{{ progressPercent }}%</span>
+      </div>
+    </div>
 
-    <section class="grid items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-      <div class="space-y-4 rounded-3xl bg-white p-4 lg:p-6 dark:bg-[#202020]">
-        <div class="relative overflow-hidden rounded-2xl bg-[#05070F]">
-          <div class="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-slate-950/70"></div>
+    <div class="lv-grid">
+      <section class="lv-card lv-player-card">
+        <div class="lv-player">
           <template v-if="activeLesson">
-            <iframe
-              v-if="activeLesson.videoType !== 'file'"
-              :key="`embed-${activeLesson.id}`"
-              class="aspect-video w-full rounded-2xl border-0"
-              :src="activeLesson.videoUrl"
-              frameborder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowfullscreen
-            ></iframe>
-            <video
+            <template v-if="playing">
+              <iframe
+                v-if="activeLesson.videoType !== 'file'"
+                :key="`embed-${activeLesson.id}`"
+                class="lv-media"
+                :src="embedUrl(activeLesson.videoUrl)"
+                frameborder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowfullscreen
+              ></iframe>
+              <video
+                v-else
+                :key="`file-${activeLesson.id}`"
+                controls
+                autoplay
+                controlslist="nodownload"
+                playsinline
+                preload="metadata"
+                class="lv-media"
+                :poster="activeLesson.thumbnail"
+              >
+                <source :src="activeLesson.videoUrl" type="video/mp4" />
+                Seu navegador não suporta o player de vídeo.
+              </video>
+            </template>
+            <button
               v-else
-              :key="`file-${activeLesson.id}`"
-              controls
-              controlslist="nodownload"
-              playsinline
-              preload="metadata"
-              class="aspect-video w-full rounded-2xl bg-black object-cover"
-              :poster="activeLesson.thumbnail"
+              type="button"
+              class="lv-poster"
+              :style="activeLesson.thumbnail ? { backgroundImage: `url(${activeLesson.thumbnail})` } : undefined"
+              :aria-label="`Assistir ${activeLesson.title}`"
+              @click="playing = true"
             >
-              <source :src="activeLesson.videoUrl" type="video/mp4" />
-              Seu navegador não suporta o player de vídeo.
-            </video>
+              <span class="lv-play" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z" /></svg>
+              </span>
+              <span class="lv-poster-text">
+                <small>{{ activeModuleLabel }} · aula {{ activeLessonNumber }}</small>
+                <b>{{ activeLesson.title }}</b>
+              </span>
+            </button>
           </template>
-          <div
-            v-else
-            class="flex aspect-video w-full items-center justify-center rounded-2xl bg-[#05070F] px-6 text-center text-sm font-semibold text-slate-200"
-          >
+          <div v-else class="lv-player-empty">
             {{ lessonsLoading ? "Carregando aulas..." : "Nenhuma aula disponível no momento." }}
           </div>
         </div>
 
-        <div v-if="activeLesson" class="space-y-4 rounded-2xl bg-slate-50/70 p-5 dark:bg-[#181818]">
-          <div class="flex flex-wrap items-center gap-3 text-xs font-semibold uppercase tracking-[0.25em] text-slate-500 dark:text-slate-300">
-            <span class="rounded-full bg-slate-200/60 px-3 py-1 text-[0.65rem] text-slate-700 dark:bg-white/10 dark:text-white">
-              {{ activeLesson.moduleName || "Geral" }}
-            </span>
-            <span class="text-slate-400">&bull;</span>
-            <span>{{ activeLesson.level || "Aula" }}</span>
-            <span class="text-slate-400">&bull;</span>
-            <span>{{ activeLesson.duration || "Tempo livre" }}</span>
+        <div v-if="activeLesson" class="lv-info">
+          <div class="min-w-0 flex-1">
+            <div class="lv-tags">
+              <span class="lv-tag is-info">{{ activeModuleLabel }}</span>
+              <span v-if="activeLesson.level" class="lv-tag">{{ activeLesson.level }}</span>
+              <span v-if="activeLesson.duration" class="lv-tag">{{ activeLesson.duration }}</span>
+            </div>
+            <h2 class="lv-lesson-title">{{ activeLesson.title }}</h2>
+            <p class="lv-lesson-text">{{ activeLesson.description }}</p>
           </div>
-          <h2 class="text-2xl font-bold text-slate-900 dark:text-white">{{ activeLesson.title }}</h2>
-          <p class="text-sm text-slate-600 dark:text-slate-300">{{ activeLesson.description }}</p>
-        </div>
-      </div>
-
-      <aside class="space-y-4 rounded-3xl bg-white p-4 dark:bg-[#202020]">
-        <div class="flex items-center justify-between gap-3">
-          <div>
-            <p class="text-xs uppercase tracking-[0.4em] text-slate-500 dark:text-white/70">Módulos</p>
-            <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Selecione a aula</h3>
-          </div>
-          <div class="flex items-center gap-2">
+          <div class="lv-actions">
             <button
               type="button"
-              class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-[#363636] dark:text-slate-200 dark:hover:bg-white/5"
-              :disabled="!moduleGroups.length"
-              @click="collapseAllModules"
+              :class="isCompleted(activeLesson.id) ? 'lv-btn-ghost' : 'lv-btn-primary'"
+              :aria-pressed="isCompleted(activeLesson.id)"
+              @click="toggleLessonCompleted(activeLesson.id, !isCompleted(activeLesson.id))"
             >
-              Recolher tudo
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+              {{ isCompleted(activeLesson.id) ? "Concluída" : "Marcar como concluída" }}
             </button>
-            <button
-              type="button"
-              class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20"
-              :disabled="!moduleGroups.length"
-              @click="expandAllModules"
-            >
-              Abrir tudo
-            </button>
-            <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
-              {{ moduleGroups.length }} módulos
-            </span>
+            <button v-if="nextLesson" type="button" class="lv-btn-ghost" @click="selectLesson(nextLesson.id)">Próxima aula</button>
           </div>
         </div>
+      </section>
 
-        <p
-          v-if="!lessons.length"
-          class="rounded-2xl border border-dashed border-slate-200 px-3 py-6 text-center text-sm text-slate-500 dark:border-[#363636] dark:text-slate-300"
-        >
+      <aside class="lv-card lv-modules">
+        <header>
+          <h2>Módulos</h2>
+          <p>{{ moduleGroups.length }} {{ moduleGroups.length === 1 ? "módulo" : "módulos" }} · {{ lessons.length }} {{ lessons.length === 1 ? "aula" : "aulas" }}</p>
+        </header>
+
+        <p v-if="!lessons.length" class="lv-empty">
           {{ lessonsLoading ? "Carregando aulas..." : "Nenhuma aula cadastrada ainda." }}
         </p>
 
-        <div v-else class="space-y-3">
-          <section
-            v-for="group in moduleGroups"
-            :key="group.key"
-            class="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/70 dark:border-[#363636] dark:bg-[#181818]"
-          >
-            <button
-              type="button"
-              class="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-slate-100/80 dark:hover:bg-white/5"
-              @click="toggleModule(group.key)"
-            >
-              <div>
-                <p class="text-sm font-semibold text-slate-900 dark:text-white">{{ group.label }}</p>
-                <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-300">{{ group.lessons.length }} aulas</p>
-              </div>
-              <svg
-                viewBox="0 0 24 24"
-                class="h-4 w-4 flex-shrink-0 text-slate-500 transition-transform dark:text-slate-300"
-                :class="isModuleExpanded(group.key) ? 'rotate-180' : ''"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="m6 9 6 6 6-6" />
-              </svg>
-            </button>
+        <section v-for="(group, groupIndex) in moduleGroups" :key="group.key" class="lv-module">
+          <button type="button" class="lv-module-head" :aria-expanded="isModuleExpanded(group.key)" @click="toggleModule(group.key)">
+            <span class="lv-num" :class="moduleTone(groupIndex)">{{ groupIndex + 1 }}</span>
+            <span class="min-w-0 flex-1">
+              <b>{{ group.label }}</b>
+              <small>{{ completedIn(group) }} de {{ group.lessons.length }} {{ group.lessons.length === 1 ? "concluída" : "concluídas" }}</small>
+            </span>
+            <svg class="lv-chev" :class="{ open: isModuleExpanded(group.key) }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+          </button>
 
-            <ul v-if="isModuleExpanded(group.key)" class="space-y-3 border-t border-slate-200 p-3 dark:border-[#303030]">
-              <li v-for="lesson in group.lessons" :key="lesson.id">
-                <div
-                  role="button"
-                  tabindex="0"
-                  class="relative w-full rounded-2xl border p-3 pr-14 text-left transition hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:text-white"
-                  :class="[
-                    activeLessonId === lesson.id
-                      ? 'border-brand/40 bg-brand/5 dark:bg-brand/10'
-                      : 'border-slate-200 bg-white dark:border-[#363636] dark:bg-[#101010]'
-                  ]"
-                  @click="selectLesson(lesson.id)"
-                  @keydown.enter.prevent="selectLesson(lesson.id)"
-                  @keydown.space.prevent="selectLesson(lesson.id)"
+          <ul v-if="isModuleExpanded(group.key)" class="lv-lessons">
+            <li v-for="lesson in group.lessons" :key="lesson.id">
+              <button
+                type="button"
+                class="lv-lesson"
+                :class="{ on: activeLessonId === lesson.id }"
+                @click="selectLesson(lesson.id)"
+              >
+                <span
+                  class="lv-mark"
+                  :class="activeLessonId === lesson.id ? 'is-playing' : isCompleted(lesson.id) ? 'is-done' : ''"
+                  aria-hidden="true"
                 >
-                  <div class="flex items-center gap-3">
-                    <img
-                      :src="lesson.thumbnail"
-                      alt=""
-                      class="h-16 w-24 flex-shrink-0 rounded-xl object-cover"
-                      loading="lazy"
-                    />
-                    <div class="min-w-0 flex-1">
-                      <div class="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-300">
-                        <span>{{ lesson.duration || "—" }}</span>
-                      </div>
-                      <p class="mt-1 text-sm font-semibold text-slate-900 dark:text-white">{{ lesson.title }}</p>
-                      <p class="mt-1 text-xs text-slate-500 line-clamp-2 dark:text-slate-300">
-                        {{ lesson.description }}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    class="absolute right-3 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border transition focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#181818]"
-                    :class="
-                      completedLessons.includes(lesson.id)
-                        ? 'border-emerald-500 bg-emerald-500 text-white hover:bg-emerald-600 dark:border-emerald-400 dark:bg-emerald-400 dark:text-white'
-                        : 'border-slate-200 bg-white text-transparent hover:border-emerald-300 hover:bg-emerald-50 dark:border-[#363636] dark:bg-[#141414] dark:hover:border-emerald-500/40 dark:hover:bg-emerald-500/10'
-                    "
-                    :aria-pressed="completedLessons.includes(lesson.id)"
-                    :aria-label="completedLessons.includes(lesson.id) ? 'Desmarcar aula concluída' : 'Marcar aula concluída'"
-                    @click.stop="toggleLessonCompleted(lesson.id, !completedLessons.includes(lesson.id))"
-                  >
-                    <svg
-                      viewBox="0 0 20 20"
-                      class="h-4.5 w-4.5 transition-transform"
-                      :class="completedLessons.includes(lesson.id) ? 'scale-100' : 'scale-75 opacity-0'"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2.5"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      aria-hidden="true"
-                    >
-                      <path d="M16.25 5.75 8.5 13.5 3.75 8.75" />
-                    </svg>
-                  </button>
-                </div>
-              </li>
-            </ul>
-          </section>
-        </div>
+                  <svg v-if="activeLessonId === lesson.id" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z" /></svg>
+                  <svg v-else-if="isCompleted(lesson.id)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+                  <template v-else>{{ lessonNumber(lesson.id) }}</template>
+                </span>
+                <span class="lv-lesson-name">{{ lesson.title }}</span>
+                <span v-if="lesson.duration" class="lv-lesson-time">{{ lesson.duration }}</span>
+              </button>
+            </li>
+          </ul>
+        </section>
       </aside>
-    </section>
+    </div>
   </div>
 </template>
 
@@ -284,7 +216,7 @@ watch(
       return;
     }
     if (!newLessons.some(lesson => lesson.id === activeLessonId.value)) {
-      activeLessonId.value = newLessons[0].id;
+      activeLessonId.value = newLessons.find(lesson => !completedLessons.value.includes(lesson.id))?.id ?? newLessons[0].id;
     }
     ensureExpandedModules();
     expandModuleForLesson(activeLessonId.value);
@@ -294,10 +226,55 @@ watch(
 
 const activeLesson = computed(() => lessons.value.find(lesson => lesson.id === activeLessonId.value) || null);
 
+const completedCount = computed(() => lessons.value.filter(lesson => completedLessons.value.includes(lesson.id)).length);
 const progressPercent = computed(() => {
   if (!lessons.value.length) return 0;
-  const completed = Math.min(completedLessons.value.length, lessons.value.length);
-  return Math.round((completed / lessons.value.length) * 100);
+  return Math.round((completedCount.value / lessons.value.length) * 100);
+});
+
+// ===== Visual da proposta =====
+const playing = ref(false);
+watch(activeLessonId, () => {
+  playing.value = false;
+});
+const isCompleted = (lessonId: number) => completedLessons.value.includes(lessonId);
+const completedIn = (group: { lessons: typeof lessons.value }) => group.lessons.filter(lesson => isCompleted(lesson.id)).length;
+const orderedLessons = computed(() => moduleGroups.value.flatMap(group => group.lessons));
+const lessonNumber = (lessonId: number) => orderedLessons.value.findIndex(lesson => lesson.id === lessonId) + 1;
+const activeLessonNumber = computed(() => (activeLessonId.value ? lessonNumber(activeLessonId.value) : 0));
+const activeModuleLabel = computed(() => (activeLesson.value?.moduleName || "Geral").trim() || "Geral");
+const nextLesson = computed(() => {
+  const index = orderedLessons.value.findIndex(lesson => lesson.id === activeLessonId.value);
+  return index >= 0 ? orderedLessons.value[index + 1] || null : null;
+});
+const moduleTones = ["tone-success", "tone-info", "tone-violet", "tone-warning"];
+const moduleTone = (index: number) => moduleTones[index % moduleTones.length];
+// Ao clicar no play, o vídeo já começa tocando.
+const embedUrl = (url?: string | null) => {
+  if (!url) return "";
+  try {
+    const parsed = new URL(url);
+    parsed.searchParams.set("autoplay", "1");
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+};
+
+// O progresso fica guardado neste navegador.
+const progressKey = "roteiro-aulas-concluidas";
+try {
+  const stored = JSON.parse(window.localStorage.getItem(progressKey) || "[]");
+  if (Array.isArray(stored)) completedLessons.value = stored.filter((id: unknown) => typeof id === "number");
+} catch {
+  // Sem acesso ao armazenamento: o progresso vale só nesta visita.
+}
+watch(completedLessons, value => {
+  try {
+    window.localStorage.setItem(progressKey, JSON.stringify(value));
+  } catch {
+    // ignora
+  }
 });
 
 const selectLesson = (lessonId: number) => {
@@ -349,5 +326,79 @@ onMounted(async () => {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* Redesign: aulas */
+.lessons-view { display: flex; flex-direction: column; gap: 16px; padding: 24px 16px; }
+@media (min-width: 768px) { .lessons-view { padding: 32px; } }
+.lv-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+.lv-eyebrow { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: color-mix(in srgb, var(--muted-foreground) 80%, transparent); }
+.lv-title { margin-top: 4px; font-family: var(--font-display); font-size: 30px; line-height: 38px; font-weight: 600; color: var(--foreground); }
+.lv-sub { margin-top: 4px; font-size: 14px; color: var(--muted-foreground); }
+.lv-progress { display: flex; align-items: center; gap: 14px; border-radius: 20px; background: var(--card); padding: 12px 16px; box-shadow: var(--shadow-card); }
+.lv-progress-k { font-size: 12.5px; color: var(--muted-foreground); }
+.lv-progress-v { font-family: var(--font-display); font-size: 18px; font-weight: 600; color: var(--foreground); white-space: nowrap; }
+.lv-bar { width: 160px; height: 6px; overflow: hidden; border-radius: 999px; background: var(--muted); }
+.lv-bar i { display: block; height: 100%; border-radius: 999px; background: var(--primary); transition: width 0.4s; }
+.lv-progress-pill { border-radius: 999px; background: var(--status-success); padding: 1px 8px; font-size: 11.5px; font-weight: 600; color: var(--status-success-foreground); }
+.lv-grid { display: grid; grid-template-columns: minmax(0, 1fr) 412px; align-items: start; gap: 16px; }
+.lv-card { border-radius: 20px; background: var(--card); box-shadow: var(--shadow-card); }
+.lv-player-card { padding: 16px; }
+.lv-player { overflow: hidden; border-radius: 16px; background: #0b1512; }
+.lv-media { display: block; width: 100%; aspect-ratio: 16 / 9; border: 0; background: #000; }
+.lv-poster { position: relative; display: grid; width: 100%; aspect-ratio: 16 / 9; place-items: center; background: linear-gradient(135deg, #0f1f1a, #0b1512 55%, #102a22); background-position: center; background-size: cover; }
+.lv-poster::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.15) 55%, rgba(0, 0, 0, 0.25)); }
+.lv-play { position: relative; z-index: 1; display: grid; place-items: center; width: 72px; height: 72px; border-radius: 999px; background: #1fe3a0; color: #062016; box-shadow: 0 0 0 10px rgba(31, 227, 160, 0.16); transition: transform 0.15s; }
+.lv-poster:hover .lv-play { transform: scale(1.05); }
+.lv-play svg { width: 26px; height: 26px; margin-left: 3px; }
+.lv-poster-text { position: absolute; right: 20px; bottom: 16px; left: 20px; z-index: 1; text-align: left; color: #fff; }
+.lv-poster-text small { display: block; font-size: 13px; opacity: 0.85; }
+.lv-poster-text b { display: block; font-family: var(--font-display); font-size: 20px; font-weight: 600; }
+.lv-player-empty { display: grid; aspect-ratio: 16 / 9; place-items: center; padding: 24px; font-size: 14px; font-weight: 600; color: rgba(255, 255, 255, 0.8); }
+.lv-info { display: flex; align-items: flex-start; gap: 16px; padding: 16px 4px 4px; }
+.lv-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.lv-tag { border-radius: 999px; background: var(--muted); padding: 1px 9px; font-size: 11.5px; font-weight: 600; color: var(--foreground); }
+.lv-tag.is-info { background: var(--status-info); color: var(--status-info-foreground); }
+.lv-lesson-title { margin-top: 8px; font-family: var(--font-display); font-size: 22px; font-weight: 600; color: var(--foreground); }
+.lv-lesson-text { margin-top: 2px; font-size: 14px; color: var(--muted-foreground); }
+.lv-actions { display: flex; flex-shrink: 0; flex-direction: column; align-items: flex-end; gap: 8px; }
+.lv-btn-primary, .lv-btn-ghost { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 18px; border-radius: 999px; font-size: 13.5px; font-weight: 600; white-space: nowrap; }
+.lv-btn-primary { background: var(--primary); color: var(--primary-foreground); }
+.lv-btn-primary:hover { background: color-mix(in srgb, var(--primary) 88%, black); }
+.lv-btn-ghost { background: var(--muted); color: var(--foreground); }
+.lv-btn-ghost:hover { background: var(--accent); color: var(--accent-foreground); }
+.lv-btn-primary svg, .lv-btn-ghost svg { width: 15px; height: 15px; }
+.lv-modules { padding: 18px 14px 14px; }
+.lv-modules header { padding: 0 6px 6px; }
+.lv-modules header h2 { font-family: var(--font-display); font-size: 17px; font-weight: 600; color: var(--foreground); }
+.lv-modules header p { font-size: 13px; color: var(--muted-foreground); }
+.lv-empty { padding: 16px 6px; font-size: 13.5px; color: var(--muted-foreground); }
+.lv-module-head { display: flex; width: 100%; align-items: center; gap: 12px; border-radius: 14px; padding: 8px 6px; text-align: left; }
+.lv-module-head:hover { background: color-mix(in srgb, var(--muted) 60%, transparent); }
+.lv-module-head b { display: block; font-size: 14.5px; font-weight: 600; color: var(--foreground); }
+.lv-module-head small { display: block; font-size: 12.5px; color: var(--muted-foreground); }
+.lv-num { display: grid; place-items: center; width: 32px; height: 32px; flex-shrink: 0; border-radius: 999px; font-size: 13px; font-weight: 600; }
+.tone-success { background: var(--status-success); color: var(--status-success-foreground); }
+.tone-info { background: var(--status-info); color: var(--status-info-foreground); }
+.tone-violet { background: var(--status-violet); color: var(--status-violet-foreground); }
+.tone-warning { background: var(--status-warning); color: var(--status-warning-foreground); }
+.lv-chev { width: 16px; height: 16px; flex-shrink: 0; color: var(--muted-foreground); transition: transform 0.18s; }
+.lv-chev.open { transform: rotate(180deg); }
+.lv-lessons { display: flex; flex-direction: column; gap: 2px; padding: 2px 0 6px; }
+.lv-lesson { display: flex; width: 100%; align-items: center; gap: 12px; border-radius: 14px; padding: 9px 10px; text-align: left; }
+.lv-lesson:hover { background: color-mix(in srgb, var(--muted) 60%, transparent); }
+.lv-lesson.on { background: var(--accent); }
+.lv-mark { display: grid; place-items: center; width: 26px; height: 26px; flex-shrink: 0; border-radius: 999px; background: var(--muted); font-size: 12px; font-weight: 600; color: var(--muted-foreground); }
+.lv-mark svg { width: 12px; height: 12px; }
+.lv-mark.is-done { background: var(--status-success); color: var(--status-success-foreground); }
+.lv-mark.is-playing { background: var(--primary); color: var(--primary-foreground); }
+.lv-mark.is-playing svg { margin-left: 2px; }
+.lv-lesson-name { min-width: 0; flex: 1; font-size: 13.5px; font-weight: 600; color: var(--foreground); }
+.lv-lesson-time { flex-shrink: 0; font-size: 12px; color: var(--muted-foreground); }
+@media (max-width: 1100px) { .lv-grid { grid-template-columns: 1fr; } }
+@media (max-width: 640px) {
+  .lv-head, .lv-info { flex-direction: column; align-items: stretch; }
+  .lv-bar { flex: 1; width: auto; }
+  .lv-actions { align-items: stretch; }
 }
 </style>
