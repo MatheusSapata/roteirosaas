@@ -997,25 +997,6 @@
                           </div>
                         </div>
                       </div>
-                      <div
-                        v-else
-                        class="bg-white/80 px-6 py-12 text-center text-sm font-semibold text-slate-500 dark:bg-white/4 dark:text-white/80"
-                      >
-                        {{ viewCopy.overlay.disabledSection }}
-                      </div>
-                    </div>
-                    <div v-if="!isLockedFooterSection(section)" class="section-add-below-wrap">
-                      <button
-                        type="button"
-                        class="inline-flex items-center gap-2 rounded-full border border-emerald-400 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-100"
-                        @click="openSectionPicker(idx)"
-                      >
-                        <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                          <path d="M12 5v14" />
-                          <path d="M5 12h14" />
-                        </svg>
-                        {{ viewCopy.overlay.addBelow }}
-                      </button>
                     </div>
                   </div>
                 </template>
@@ -5279,31 +5260,6 @@ onMounted(async () => {
   cursor: not-allowed !important;
 }
 
-.section-add-below-wrap {
-  position: relative;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin: 0;
-  min-height: 64px;
-  padding: 14px 0;
-}
-
-.section-add-below-wrap::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  height: 1px;
-  background: rgba(148, 163, 184, 0.22);
-}
-
-.section-add-below-wrap > button {
-  position: relative;
-  z-index: 1;
-}
 
 :deep(.preview-section-host > *) {
   margin-top: 0 !important;
