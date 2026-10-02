@@ -1,134 +1,43 @@
 ﻿<template>
 <div class="page-editor-view w-full space-y-6 px-4 py-6 md:px-8 md:py-4">
-    <div class="editor-topbar">
-      <div class="editor-topbar-left">
-        <button type="button" class="editor-back-btn" @click="goBack" :aria-label="viewCopy.actions.goBack">
-          <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="m15 18-6-6 6-6" />
-          </svg>
-        </button>
-        <p class="editor-breadcrumb">{{ viewCopy.header.eyebrow }}</p>
-        <span class="editor-divider">/</span>
-        <h1 class="editor-page-title">{{ page?.title || viewCopy.header.defaultTitle }}</h1>
-      </div>
-
-      <div class="editor-topbar-actions-mobile md:hidden">
-        <div class="flex items-center gap-2">
-          <button @click="saveTemplate" :class="toolbarSecondaryButtonClass">
-            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M8 7H4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-4" />
-              <path d="M16 3h5v5" />
-              <path d="m10 14 11-11" />
-            </svg>
-            {{ viewCopy.toolbar.saveTemplate }}
-          </button>
-          <button
-            v-if="isPublished"
-            :disabled="!publicUrl"
-            @click="viewPublicPage"
-            :class="[toolbarSecondaryButtonClass, 'disabled:opacity-60']"
-          >
-            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" />
-              <circle cx="12" cy="12" r="3" />
-            </svg>
-            {{ viewCopy.actions.viewPage }}
-          </button>
-        </div>
-        <div class="mt-2 flex items-center gap-2">
-          <button @click="saveConfig" :disabled="!hasUnsavedChanges" :class="[toolbarPrimaryButtonClass, { 'opacity-60 cursor-not-allowed': !hasUnsavedChanges }]">
-            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-              <path d="M17 21v-8H7v8" />
-              <path d="M7 3v5h8" />
-            </svg>
-            {{ viewCopy.toolbar.save }}
-          </button>
-          <button v-if="!isPublished" @click="publishPage" :class="toolbarPrimaryButtonClass">
-            {{ viewCopy.toolbar.publish }}
-          </button>
-          <template v-else>
-            <span :class="toolbarStatusPillClass">
-              <span class="status-dot"></span>
-              {{ viewCopy.toolbar.published }}
-            </span>
-            <button type="button" @click="unpublishPage" :class="toolbarWarningButtonClass">
-              {{ viewCopy.toolbar.unpublish }}
-            </button>
-          </template>
+    <div class="ed-topbar">
+      <button type="button" class="ed-back" @click="goBack" :aria-label="viewCopy.actions.goBack">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+      </button>
+      <div class="ed-title-block">
+        <p class="ed-crumb">Páginas</p>
+        <div class="ed-title-row">
+          <h1 class="ed-title">{{ page?.title || viewCopy.header.defaultTitle }}</h1>
+          <span class="ed-pill" :class="isPublished ? 'is-on' : 'is-off'"><i></i>{{ isPublished ? "Publicada" : "Rascunho" }}</span>
+          <span class="ed-saved" :class="{ 'is-dirty': hasUnsavedChanges }">
+            <svg v-if="!hasUnsavedChanges" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+            <i v-else></i>
+            {{ hasUnsavedChanges ? "Alterações não salvas" : "Tudo salvo" }}
+          </span>
         </div>
       </div>
-
-      <div class="editor-topbar-actions hidden md:flex">
-        <button @click="saveTemplate" :class="toolbarSecondaryButtonClass">
-          <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M8 7H4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-4" />
-            <path d="M16 3h5v5" />
-            <path d="m10 14 11-11" />
-          </svg>
-          {{ viewCopy.toolbar.saveTemplate }}
+      <div class="ed-actions">
+        <button v-if="canUseAiAssistant && !isMobileViewport" type="button" class="ed-btn ed-btn-ai" @click="toggleAiAssistant">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.8L20 10.7l-6.1 1.9L12 18.5l-1.9-5.9L4 10.7l6.1-1.9z" /></svg>
+          Assistente IA
         </button>
-        <button
-          v-if="isPublished"
-          :disabled="!publicUrl"
-          @click="viewPublicPage"
-          :class="[toolbarSecondaryButtonClass, 'disabled:opacity-60']"
-        >
-          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" />
-            <circle cx="12" cy="12" r="3" />
-          </svg>
+        <button v-if="isPublished" type="button" class="ed-btn ed-btn-ghost" :disabled="!publicUrl" @click="viewPublicPage">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><path d="M15 3h6v6" /><path d="M10 14 21 3" /></svg>
           {{ viewCopy.actions.viewPage }}
         </button>
-
-        <button @click="saveConfig" :disabled="!hasUnsavedChanges" :class="[toolbarPrimaryButtonClass, { 'opacity-60 cursor-not-allowed': !hasUnsavedChanges }]">
-          <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-            <path d="M17 21v-8H7v8" />
-            <path d="M7 3v5h8" />
-          </svg>
-          {{ viewCopy.toolbar.save }}
-        </button>
-
-        <button v-if="!isPublished" @click="publishPage" :class="toolbarPrimaryButtonClass">
-          {{ viewCopy.toolbar.publish }}
-        </button>
-
-        <div v-else class="flex flex-wrap items-center gap-2">
-          <span :class="toolbarStatusPillClass">
-            <span class="status-dot"></span>
-            {{ viewCopy.toolbar.published }}
-          </span>
-          <button type="button" @click="unpublishPage" :class="toolbarWarningButtonClass">
-            {{ viewCopy.toolbar.unpublish }}
+        <div class="ed-menu-wrap">
+          <button type="button" class="ed-icon-btn" aria-label="Mais ações" title="Mais ações" @click.stop="topbarMenuOpen = !topbarMenuOpen">
+            <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="12" cy="19" r="1.6" /></svg>
           </button>
+          <div v-if="topbarMenuOpen" class="ed-menu" @click="topbarMenuOpen = false">
+            <button type="button" @click="saveTemplate">{{ viewCopy.toolbar.saveTemplate }}</button>
+            <button v-if="isPublished" type="button" class="danger" @click="unpublishPage">{{ viewCopy.toolbar.unpublish }}</button>
+          </div>
         </div>
+        <button v-if="!isPublished" type="button" class="ed-btn ed-btn-ghost" @click="publishPage">{{ viewCopy.toolbar.publish }}</button>
+        <button type="button" class="ed-btn ed-btn-primary" :disabled="!hasUnsavedChanges" @click="saveConfig">{{ viewCopy.toolbar.save }}</button>
       </div>
     </div>
-
-      <Teleport to="body">
-        <button
-          v-if="canUseAiAssistant && !isMobileViewport && !showAiAssistant"
-          type="button"
-          @click="toggleAiAssistant"
-          :class="floatingAiButtonClass"
-        :style="floatingAiButtonStyle"
-        aria-label="Abrir ajuda IA"
-      >
-        <span class="editor-ai-fab-content" :style="floatingAiButtonContentStyle">
-          <span class="editor-ai-fab-icon" aria-hidden="true">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" class="h-6 w-6">
-                <path d="M0 0h24v24H0z" fill="none" />
-                <g fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5">
-                  <path d="M4 12c0-3.771 0-5.657 1.172-6.828S8.229 4 12 4s5.657 0 6.828 1.172S20 8.229 20 12s0 5.657-1.172 6.828S15.771 20 12 20s-5.657 0-6.828-1.172S4 15.771 4 12Z" />
-                  <path stroke-linecap="round" d="m7.5 15l1.842-5.526a.694.694 0 0 1 1.316 0L12.5 15m-4-2h3m4-4v6M8 2v2m8-2v2m-4-2v2M8 20v2m4-2v2m4-2v2m6-6h-2M4 8H2m2 8H2m2-4H2m20-4h-2m2 4h-2" />
-                </g>
-              </svg>
-            </span>
-          <span class="editor-ai-fab-label" :style="floatingAiButtonLabelStyle">Assistente IA</span>
-        </span>
-      </button>
-    </Teleport>
 
     <!-- Dialog de limite de plano (reutilizado tamb?m para "template no free") -->
     <div :class="['editor-workspace', showAiAssistant ? 'ai-assistant-open' : '']">
@@ -512,52 +421,93 @@
       </div>
     </Teleport>
 
-    <div :class="['editor-body flex-1 min-w-0 space-y-4', showAiAssistant ? 'ai-assistant-open' : '']">
-      <div class="editor-settings-shell rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-soft">
-        <div class="mb-5 flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 class="editor-settings-title text-[30px] font-extrabold leading-[1.1] tracking-[-0.02em] text-slate-900 dark:text-white">Configurações da página</h2>
-            <p class="mt-1 text-[14px] text-slate-500">Título, link, cores, rastreamento e formulário de captação.</p>
-          </div>
-          <div v-if="!isMobileViewport" class="flex flex-wrap items-center gap-2 text-xs">
-            <span class="rounded-full bg-muted px-3 py-1.5 font-semibold text-muted-foreground">Link: {{ pageSlug || "-" }}</span>
-            <span class="rounded-full bg-muted px-3 py-1.5 font-semibold text-muted-foreground">Formulário: {{ selectedLeadForm ? (selectedLeadForm.name || selectedLeadForm.title) : "nenhum" }}</span>
-            <span class="rounded-full bg-muted px-3 py-1.5 font-semibold text-muted-foreground">Pixels: {{ selectedPixelsSummary }}</span>
-          </div>
+    <div
+      :class="['editor-body flex-1 min-w-0 space-y-4', showAiAssistant ? 'ai-assistant-open' : '']"
+      :style="showAiAssistant && !isMobileViewport ? { paddingRight: `${aiAssistantSidebarWidth + 8}px` } : undefined"
+    >
+      <nav class="ed-tabs" role="tablist">
+        <button type="button" class="ed-tab" :class="{ on: activeSettingsTab === 'content' }" @click="selectSettingsTab('content')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M9 21V9" /></svg>
+          Conteúdo
+        </button>
+        <button type="button" class="ed-tab" :class="{ on: activeSettingsTab === 'general' }" @click="selectSettingsTab('general')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+          Título e link
+        </button>
+        <button type="button" class="ed-tab" :class="{ on: activeSettingsTab === 'colors' }" @click="selectSettingsTab('colors')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="1.5" /><circle cx="17.5" cy="10.5" r="1.5" /><circle cx="8.5" cy="7.5" r="1.5" /><circle cx="6.5" cy="12.5" r="1.5" /><path d="M12 2a10 10 0 0 0 0 20c1 0 2-1 2-2 0-.5-.2-1-.5-1.3-.3-.4-.5-.8-.5-1.3 0-1 1-2 2-2h2.3A5 5 0 0 0 22 10c0-4.4-4.5-8-10-8Z" /></svg>
+          Cores
+        </button>
+        <button type="button" class="ed-tab" :class="{ on: activeSettingsTab === 'pixels' }" @click="selectSettingsTab('pixels')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
+          Rastreamento
+          <span v-if="!selectedPixels.meta && !selectedPixels.ga" class="ed-tab-badge">Não configurado</span>
+        </button>
+        <button type="button" class="ed-tab" :class="{ on: activeSettingsTab === 'capture' }" @click="selectSettingsTab('capture')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M19 8v6M22 11h-6" /></svg>
+          Captação de leads
+        </button>
+      </nav>
+
+      <div class="ed-grid" :class="{ 'is-wide': activeSettingsTab !== 'content' }">
+      <aside class="ed-side">
+      <section v-if="activeSettingsTab === 'content'" class="ed-sections">
+        <div class="ed-sections-head">
+          <h2>Seções da página</h2>
+          <span>{{ visibleSectionsCount }} {{ visibleSectionsCount === 1 ? "visível" : "visíveis" }}</span>
         </div>
-
+        <ul class="ed-section-list">
+          <li
+            v-for="(section, idx) in sections"
+            :key="(section as any)?.anchorId || idx"
+            class="ed-section-row"
+            :class="{
+              'is-off': !(section as any).enabled,
+              'is-drag-over': sectionDragOver === idx && sectionDragFrom !== idx,
+              'is-dragging': sectionDragFrom === idx
+            }"
+            :draggable="canDragSection(idx)"
+            @dragstart="handleSectionDragStart(idx, $event)"
+            @dragover.prevent="sectionDragOver = idx"
+            @dragleave="sectionDragOver = sectionDragOver === idx ? null : sectionDragOver"
+            @drop.prevent="handleSectionDrop(idx)"
+            @dragend="resetSectionDrag"
+          >
+            <span class="ed-grip" :class="{ 'is-locked': !canDragSection(idx) }" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.4" /><circle cx="15" cy="6" r="1.4" /><circle cx="9" cy="12" r="1.4" /><circle cx="15" cy="12" r="1.4" /><circle cx="9" cy="18" r="1.4" /><circle cx="15" cy="18" r="1.4" /></svg>
+            </span>
+            <button type="button" class="ed-section-main" :disabled="isLockedFooterSection(section)" @click="openSectionEditor(idx)">
+              <span class="ed-section-icon" :class="sectionTone(section)" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path :d="sectionIconPath(section)" /></svg>
+              </span>
+              <span class="min-w-0">
+                <span class="ed-section-name">{{ sectionLabels[(section as any).type] || (section as any).type }}</span>
+                <span class="ed-section-sub">{{ (section as any).enabled ? sectionSummary(section) : "Oculta" }}</span>
+              </span>
+            </button>
+            <button
+              type="button"
+              role="switch"
+              class="ed-switch"
+              :class="{ on: (section as any).enabled }"
+              :aria-checked="!!(section as any).enabled"
+              :disabled="isLockedFooterSection(section)"
+              :title="(section as any).enabled ? 'Esconder seção' : 'Mostrar seção'"
+              @click="toggleSectionEnabled(idx)"
+            ><i></i></button>
+          </li>
+        </ul>
+        <button type="button" class="ed-add-section" @click="openSectionPicker(null)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg>
+          Adicionar seção
+        </button>
+        <p class="ed-sections-hint">Clique numa seção (aqui ou na prévia) para editar. Arraste para mudar a ordem; o interruptor esconde a seção sem apagar.</p>
+      </section>
+      <div v-else class="editor-settings-shell ed-settings-card">
         <div class="editor-settings-grid">
-          <aside ref="settingsSidebarRef" class="editor-settings-tabs" role="tablist">
-            <button type="button" class="editor-side-tab" :class="{ active: activeSettingsTab==='general' }" @click="selectSettingsTab('general')">
-              <span class="editor-side-tab-step" aria-hidden="true">
-                <svg viewBox="0 0 24 24" class="editor-settings-gear" xmlns="http://www.w3.org/2000/svg"><path d="M0 0h24v24H0z" fill="none" /><g fill="currentColor" fill-rule="evenodd" clip-rule="evenodd"><path d="M12 8.25a3.75 3.75 0 1 0 0 7.5a3.75 3.75 0 0 0 0-7.5M9.75 12a2.25 2.25 0 1 1 4.5 0a2.25 2.25 0 0 1-4.5 0" /><path d="M11.975 1.25c-.445 0-.816 0-1.12.02a2.8 2.8 0 0 0-.907.19a2.75 2.75 0 0 0-1.489 1.488c-.145.35-.184.72-.2 1.122a.87.87 0 0 1-.415.731a.87.87 0 0 1-.841-.005c-.356-.188-.696-.339-1.072-.389a2.75 2.75 0 0 0-2.033.545a2.8 2.8 0 0 0-.617.691c-.17.254-.356.575-.578.96l-.025.044c-.223.385-.408.706-.542.98c-.14.286-.25.568-.29.88a2.75 2.75 0 0 0 .544 2.033c.231.301.532.52.872.734a.87.87 0 0 1 .426.726a.87.87 0 0 1-.426.726c-.34.214-.64.433-.872.734a2.75 2.75 0 0 0-.545 2.033c.041.312.15.594.29.88c.135.274.32.595.543.98l.025.044c.222.385.408.706.578.96c.177.263.367.5.617.69a2.75 2.75 0 0 0 2.033.546c.376-.05.716-.2 1.072-.389a.87.87 0 0 1 .84-.005a.86.86 0 0 1 .417.731c.015.402.054.772.2 1.122a2.75 2.75 0 0 0 1.488 1.489c.29.12.59.167.907.188c.304.021.675.021 1.12.021h.05c.445 0 .816 0 1.12-.02c.318-.022.617-.069.907-.19a2.75 2.75 0 0 0 1.489-1.488c.145-.35.184-.72.2-1.122a.87.87 0 0 1 .415-.732a.87.87 0 0 1 .841.006c.356.188.696.339 1.072.388a2.75 2.75 0 0 0 2.033-.544c.25-.192.44-.428.617-.691c.17-.254.356-.575.578-.96l.025-.044c.223-.385.408-.706.542-.98c.14-.286.25-.569.29-.88a2.75 2.75 0 0 0-.544-2.033c-.231-.301-.532-.52-.872-.734a.87.87 0 0 1-.426-.726c0-.278.152-.554.426-.726c.34-.214.64-.433.872-.734a2.75 2.75 0 0 0 .545-2.033a2.8 2.8 0 0 0-.29-.88a18 18 0 0 0-.543-.98l-.025-.044a18 18 0 0 0-.578-.96a2.8 2.8 0 0 0-.617-.69a2.75 2.75 0 0 0-2.033-.546c-.376.05-.716.2-1.072.389a.87.87 0 0 1-.84.005a.87.87 0 0 1-.417-.731c-.015-.402-.054-.772-.2-1.122a2.75 2.75 0 0 0-1.488-1.489c-.29-.12-.59-.167-.907-.188c-.304-.021-.675-.021-1.12-.021zm-1.453 1.595c.077-.032.194-.061.435-.078c.247-.017.567-.017 1.043-.017s.796 0 1.043.017c.241.017.358.046.435.078c.307.127.55.37.677.677c.04.096.073.247.086.604c.03.792.439 1.555 1.165 1.974s1.591.392 2.292.022c.316-.167.463-.214.567-.227a1.25 1.25 0 0 1 .924.247c.066.051.15.138.285.338c.139.206.299.483.537.895s.397.69.506.912c.107.217.14.333.15.416a1.25 1.25 0 0 1-.247.924c-.064.083-.178.187-.48.377c-.672.422-1.128 1.158-1.128 1.996s.456 1.574 1.128 1.996c.302.19.416.294.48.377c.202.263.29.595.247.924c-.01.083-.044.2-.15.416c-.109.223-.268.5-.506.912s-.399.689-.537.895c-.135.2-.219.287-.285.338a1.25 1.25 0 0 1-.924.247c-.104-.013-.25-.06-.567-.227c-.7-.37-1.566-.398-2.292.021s-1.135 1.183-1.165 1.975c-.013.357-.046.508-.086.604a1.25 1.25 0 0 1-.677.677c-.077.032-.194.061-.435.078c-.247.017-.567.017-1.043.017s-.796 0-1.043-.017c-.241-.017-.358-.046-.435-.078a1.25 1.25 0 0 1-.677-.677c-.04-.096-.073-.247-.086-.604c-.03-.792-.439-1.555-1.165-1.974s-1.591-.392-2.292-.022c-.316.167-.463.214-.567.227a1.25 1.25 0 0 1-.924-.247c-.066-.051-.15-.138-.285-.338a17 17 0 0 1-.537-.895c-.238-.412-.397-.69-.506-.912c-.107-.217-.14-.333-.15-.416a1.25 1.25 0 0 1 .247-.924c.064-.083.178-.187.48-.377c.672-.422 1.128-1.158 1.128-1.996s-.456-1.574-1.128-1.996c-.302-.19-.416-.294-.48-.377a1.25 1.25 0 0 1-.247-.924c.01-.083.044-.2.15-.416c.109-.223.268-.5.506-.912s.399-.689.537-.895c.135-.2.219-.287.285-.338a1.25 1.25 0 0 1 .924-.247c.104.013.25.06.567.227c.7.37 1.566.398 2.292-.022c.726-.419 1.135-1.182 1.165-1.974c.013-.357.046-.508.086-.604c.127-.307.37-.55.677-.677" /></g></svg>
-              </span>
-              <span>Título e link</span>
-            </button>
-            <button type="button" class="editor-side-tab" :class="{ active: activeSettingsTab==='colors' }" @click="selectSettingsTab('colors')">
-              <span class="editor-side-tab-step" aria-hidden="true">
-                <svg viewBox="0 0 24 24" class="editor-colors-palette" xmlns="http://www.w3.org/2000/svg"><path d="M0 0h24v24H0z" fill="none" /><path fill="currentColor" d="M12 22C6.49 22 2 17.51 2 12S6.49 2 12 2s10 4.04 10 9c0 3.31-2.69 6-6 6h-1.77c-.28 0-.5.22-.5.5c0 .12.05.23.13.33c.41.47.64 1.06.64 1.67A2.5 2.5 0 0 1 12 22m0-18c-4.41 0-8 3.59-8 8s3.59 8 8 8c.28 0 .5-.22.5-.5a.54.54 0 0 0-.14-.35c-.41-.46-.63-1.05-.63-1.65a2.5 2.5 0 0 1 2.5-2.5H16c2.21 0 4-1.79 4-4c0-3.86-3.59-7-8-7" /><circle cx="6.5" cy="11.5" r="1.5" fill="currentColor" /><circle cx="9.5" cy="7.5" r="1.5" fill="currentColor" /><circle cx="14.5" cy="7.5" r="1.5" fill="currentColor" /><circle cx="17.5" cy="11.5" r="1.5" fill="currentColor" /></svg>
-              </span>
-              <span>Cores</span>
-            </button>
-            <button type="button" class="editor-side-tab" :class="{ active: activeSettingsTab==='pixels' }" @click="selectSettingsTab('pixels')">
-              <span class="editor-side-tab-step" aria-hidden="true">
-                <svg viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M18.364 19.364a9 9 0 1 0-12.728 0"/><path d="M15.536 16.536a5 5 0 1 0-7.072 0"/><path d="M11 13a1 1 0 1 0 2 0a1 1 0 1 0-2 0"/></g></svg>
-              </span>
-              <span>Rastreamento</span>
-            </button>
-            <button type="button" class="editor-side-tab" :class="{ active: activeSettingsTab==='capture' }" @click="selectSettingsTab('capture')">
-              <span class="editor-side-tab-step" aria-hidden="true">
-                <svg viewBox="0 0 24 24" class="editor-capture-leads"><path fill="currentColor" d="m17 21l1.8 1.77c.5.5 1.2.1 1.2-.49V18l2.8-3.4A1 1 0 0 0 22 13h-7c-.8 0-1.3 1-.8 1.6L17 18zm-2-1H2v-3c0-2.7 5.3-4 8-4c.6 0 1.3.1 2.1.2c-.2.6-.1 1.3.1 1.9c-.7-.1-1.5-.2-2.2-.2c-3 0-6.1 1.5-6.1 2.1v1.1h10.6l.5.6zM10 4C7.8 4 6 5.8 6 8s1.8 4 4 4s4-1.8 4-4s-1.8-4-4-4m0 6c-1.1 0-2-.9-2-2s.9-2 2-2s2 .9 2 2s-.9 2-2 2"/></svg>
-              </span>
-              <span>Captação de leads</span>
-            </button>
-          </aside>
-
           <div
             ref="settingsPanelRef"
-            class="settings-panel rounded-2xl border border-slate-200 p-4 transition-[height] duration-200 md:p-5"
-            :style="settingsPanelStyle"
+            class="settings-panel rounded-2xl p-4 md:p-5"
           >
         <div
           class="settings-panel-content mt-0 h-full overflow-y-auto pr-1"
@@ -828,6 +778,7 @@
   </div>
   </div>
   </div>
+  </aside>
 
       <div
         :class="[
@@ -835,10 +786,9 @@
           showAiAssistant ? 'ai-assistant-open' : ''
         ]"
       >
-      <div class="flex flex-wrap items-center justify-between gap-3">
+      <div class="ed-preview-head">
         <div class="flex flex-col gap-1">
-          <h2 class="text-lg font-semibold text-slate-900">{{ viewCopy.preview.title }}</h2>
-          <p class="text-xs text-slate-500">{{ viewCopy.preview.helper }}</p>
+          <p class="ed-preview-eyebrow">{{ viewCopy.preview.title }}</p>
           <p
             v-if="isMobileViewport && previewDevice === 'mobile'"
             class="rounded-2xl bg-amber-100 px-3 py-2 text-center text-sm font-semibold text-amber-700"
@@ -877,18 +827,22 @@
             {{ viewCopy.preview.mobileLabel }}
           </button>
         </div>
+        <span v-if="!isMobileViewport" class="editor-preview-scale">
+          {{ previewDevice === 'mobile' ? "Largura de celular (390 px)" : `Largura de computador (1280 px) · ${Math.round(desktopPreviewZoom * 100)}%` }}
+        </span>
       </div>
-      <p v-if="desktopPreviewZoom < 1" class="editor-preview-scale">Largura de computador (1280 px) · {{ Math.round(desktopPreviewZoom * 100) }}%</p>
-      <div ref="previewCanvasRef" class="mt-4">
+      <div class="ed-stage" :class="{ 'is-framed': !isMobileViewport }">
         <div
-          :style="desktopPreviewStyle"
-          :class="previewDevice === 'mobile'
-            ? (isMobileViewport
-              ? '-mx-4 w-[calc(100%+2rem)] overflow-hidden rounded-none border-0 bg-transparent shadow-none'
-              : 'mx-auto w-full max-w-[580px] overflow-hidden bg-transparent shadow-none')
-            : 'bg-transparent p-0 shadow-none'"
+          :class="isMobileViewport
+            ? (previewDevice === 'mobile' ? '-mx-4 w-[calc(100%+2rem)] overflow-hidden' : '')
+            : (previewDevice === 'mobile' ? 'ed-phone' : 'ed-browser')"
         >
-          <div :class="previewDevice === 'mobile' ? 'max-h-none overflow-visible' : 'overflow-visible bg-transparent shadow-none'">
+          <div v-if="!isMobileViewport && previewDevice === 'desktop'" class="ed-browser-bar">
+            <i></i><i></i><i></i>
+            <span>{{ previewAddressLabel }}</span>
+          </div>
+          <div ref="previewCanvasRef" class="ed-screen">
+          <div :style="desktopPreviewStyle">
             <div class="space-y-0 preview-light">
               <template v-if="sections.length === 0">
                 <div class="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 px-4 py-12 text-center text-sm text-slate-500">
@@ -1068,7 +1022,9 @@
               </template>
             </div>
           </div>
+          </div>
         </div>
+      </div>
       </div>
       </div>
     </div>
@@ -1212,7 +1168,7 @@ import LeadFormPreview from "../../components/admin/leads/LeadFormPreview.vue";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import { sectionsInjectionKey } from "../../components/admin/sectionsContext";
 import { sectionUploadGuardKey } from "../../components/admin/sectionUploadGuard";
-import { sectionLabels as defaultSectionLabels } from "../../utils/sectionLabels";
+import { describeSection, sectionLabels as defaultSectionLabels } from "../../utils/sectionLabels";
 import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
 import { getReadableTextColor } from "../../utils/colorContrast";
 import { useLeadFeatureGate } from "../../composables/useLeadFeatureGate";
@@ -1616,7 +1572,8 @@ const markUnsavedChanges = () => {
 const isPublished = computed(() => page.value?.status === "published");
 const isFreePlan = computed(() => (auth.user?.plan || "free") === "free");
 const canUseAiAssistant = computed(() => !!auth.user);
-const activeSettingsTab = ref<"general" | "colors" | "pixels" | "capture">("general");
+const activeSettingsTab = ref<"content" | "general" | "colors" | "pixels" | "capture">("content");
+const topbarMenuOpen = ref(false);
 const settingsSidebarRef = ref<HTMLElement | null>(null);
 const settingsPanelRef = ref<HTMLElement | null>(null);
 const generalSettingsRef = ref<HTMLElement | null>(null);
@@ -1632,13 +1589,12 @@ const syncSettingsPanelHeight = () => {
   if (nextHeight > 0) settingsPanelHeight.value = nextHeight;
 };
 
-const selectSettingsTab = (tab: "general" | "colors" | "pixels" | "capture") => {
+const selectSettingsTab = (tab: "content" | "general" | "colors" | "pixels" | "capture") => {
   activeSettingsTab.value = tab;
   if (tab === "general") {
     nextTick(syncSettingsPanelHeight);
   }
 };
-selectSettingsTab("general");
 
 onMounted(() => {
   if (hasWindow) {
@@ -4036,6 +3992,105 @@ const moveSection = async (index: number, direction: number) => {
   await saveConfig();
 };
 
+// Lista "Seções da página" (aba Conteúdo): ligar/desligar e arrastar para mudar a ordem.
+const visibleSectionsCount = computed(() => sections.value.filter(section => (section as any)?.enabled).length);
+const sectionDragFrom = ref<number | null>(null);
+const sectionDragOver = ref<number | null>(null);
+const canDragSection = (index: number) => {
+  const section = sections.value[index];
+  return !!section && !isHeaderSection(section) && !isLockedFooterSection(section) && !isFooterSection(section);
+};
+const handleSectionDragStart = (index: number, event: DragEvent) => {
+  if (!canDragSection(index)) {
+    event.preventDefault();
+    return;
+  }
+  sectionDragFrom.value = index;
+  event.dataTransfer?.setData("text/plain", String(index));
+};
+const resetSectionDrag = () => {
+  sectionDragFrom.value = null;
+  sectionDragOver.value = null;
+};
+const handleSectionDrop = async (target: number) => {
+  const from = sectionDragFrom.value;
+  resetSectionDrag();
+  if (from === null || from === target || !canDragSection(target)) return;
+  setSections(current => {
+    const next = [...current];
+    const [moved] = next.splice(from, 1);
+    next.splice(target, 0, moved);
+    return next;
+  });
+  refreshPreview(true);
+  await saveConfig();
+};
+const toggleSectionEnabled = async (index: number) => {
+  const target = sections.value[index];
+  if (!target || isLockedFooterSection(target)) return;
+  setSections(current => current.map((section, idx) => (idx === index ? ({ ...section, enabled: !(section as any).enabled } as PageSection) : section)));
+  refreshPreview(true);
+  await saveConfig();
+};
+const countLabel = (count: number, singular: string, plural: string) => `${count} ${count === 1 ? singular : plural}`;
+const sectionSummary = (section: PageSection) => {
+  const data = section as any;
+  switch (data.type) {
+    case "prices":
+      return countLabel(data.items?.length || 0, "pacote", "pacotes");
+    case "itinerary":
+      return countLabel(data.days?.length || 0, "dia", "dias");
+    case "faq":
+      return countLabel(data.items?.length || 0, "pergunta", "perguntas");
+    case "testimonials":
+      return countLabel(data.items?.length || 0, "depoimento", "depoimentos");
+    case "reasons":
+    case "links":
+      return countLabel(data.items?.length || 0, "item", "itens");
+  }
+  const text = describeSection(section);
+  return typeof text === "string" ? text.replace(/<[^>]+>/g, "") : "";
+};
+const sectionTones = ["tone-success", "tone-warning", "tone-info", "tone-violet"];
+const sectionTone = (section: PageSection) => {
+  const type = String((section as any)?.type || "");
+  let hash = 0;
+  for (const char of type) hash = (hash + char.charCodeAt(0)) % sectionTones.length;
+  return sectionTones[hash];
+};
+const sectionIconPaths: Record<string, string> = {
+  image: "M4 5h16v14H4zM4 15l4-4 4 4 3-3 5 5",
+  money: "M12 3v18M16 7h-6a3 3 0 0 0 0 6h4a3 3 0 0 1 0 6H8",
+  list: "M4 6h16M4 12h16M4 18h10",
+  question: "M12 2a10 10 0 1 0 0 20a10 10 0 1 0 0-20M9.1 9a3 3 0 1 1 4.2 2.7c-.8.4-1.3 1.1-1.3 2v.3M12 17h.01",
+  chat: "M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z",
+  video: "M3 6h13v12H3zM16 10l5-3v10l-5-3",
+  user: "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 3a4 4 0 1 0 0 8a4 4 0 1 0 0-8",
+  link: "M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1",
+  clock: "M12 2a10 10 0 1 0 0 20a10 10 0 1 0 0-20M12 6v6l4 2",
+  plane: "M2 16l20-8-6 12-3-5-5-2z",
+  layout: "M4 4h16v16H4zM4 10h16"
+};
+const sectionIconByType: Record<string, keyof typeof sectionIconPaths> = {
+  hero: "image", banner_card: "image", photo: "image", gallery: "image",
+  prices: "money", viajeon_checkout: "money",
+  itinerary: "list", reasons: "list", story: "list",
+  faq: "question", testimonials: "chat", internal_form: "chat",
+  featured_video: "video", video_vsl: "video",
+  biography: "user", agency_footer: "user", links: "link", cta: "link",
+  countdown: "clock", flight_details: "plane"
+};
+const sectionIconPath = (section: PageSection) => sectionIconPaths[sectionIconByType[String((section as any)?.type)] || "layout"];
+const previewAddressLabel = computed(() => {
+  const url = publicUrl.value || "";
+  return url ? url.replace(/^https?:\/\//, "") : pageSlug.value || "";
+});
+const closeTopbarMenu = (event: MouseEvent) => {
+  if (!(event.target as HTMLElement | null)?.closest(".ed-menu-wrap")) topbarMenuOpen.value = false;
+};
+onMounted(() => document.addEventListener("click", closeTopbarMenu));
+onBeforeUnmount(() => document.removeEventListener("click", closeTopbarMenu));
+
 const openSectionEditor = (index: number) => {
   const target = sections.value[index];
   if (!target) return;
@@ -6171,6 +6226,120 @@ onMounted(async () => {
 @media (max-width: 640px) {
   .editor-settings-tabs { flex-wrap: nowrap; overflow-x: auto; }
   .editor-settings-shell .editor-settings-tabs .editor-side-tab { flex-shrink: 0; white-space: nowrap; }
+}
+
+/* Redesign v2: editor com lista de seções + prévia em moldura */
+.ed-topbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.ed-back { display: grid; place-items: center; width: 40px; height: 40px; flex-shrink: 0; border-radius: 999px; background: var(--card); color: var(--muted-foreground); box-shadow: var(--shadow-card); }
+.ed-back:hover { color: var(--foreground); }
+.ed-back svg { width: 16px; height: 16px; }
+.ed-title-block { min-width: 0; flex: 1; }
+.ed-crumb { font-size: 12.5px; color: var(--muted-foreground); }
+.ed-title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ed-title { overflow: hidden; font-family: var(--font-display); font-size: 21px; line-height: 28px; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; color: var(--foreground); }
+.ed-pill { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 2px 10px; font-size: 12px; font-weight: 600; }
+.ed-pill i { width: 6px; height: 6px; border-radius: 999px; background: currentColor; }
+.ed-pill.is-on { background: var(--status-success); color: var(--status-success-foreground); }
+.ed-pill.is-off { background: var(--status-warning); color: var(--status-warning-foreground); }
+.ed-saved { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted-foreground); }
+.ed-saved svg { width: 14px; height: 14px; }
+.ed-saved i { width: 7px; height: 7px; border-radius: 999px; background: var(--status-warning-foreground); }
+.ed-saved.is-dirty { color: var(--status-warning-foreground); }
+.ed-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ed-btn { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 18px; border-radius: 999px; font-size: 13.5px; font-weight: 600; transition: background 0.15s, opacity 0.15s; }
+.ed-btn svg { width: 16px; height: 16px; }
+.ed-btn:disabled { cursor: not-allowed; opacity: 0.55; }
+.ed-btn-ai { background: var(--status-violet); color: var(--status-violet-foreground); }
+.ed-btn-ghost { background: var(--card); color: var(--foreground); box-shadow: var(--shadow-card); }
+.ed-btn-ghost:hover:not(:disabled) { background: var(--accent); }
+.ed-btn-primary { background: var(--primary); color: var(--primary-foreground); }
+.ed-btn-primary:hover:not(:disabled) { background: color-mix(in srgb, var(--primary) 88%, black); }
+.ed-icon-btn { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 999px; background: var(--card); color: var(--muted-foreground); box-shadow: var(--shadow-card); }
+.ed-icon-btn svg { width: 16px; height: 16px; }
+.ed-menu-wrap { position: relative; }
+.ed-menu { position: absolute; top: calc(100% + 6px); right: 0; z-index: 60; display: flex; min-width: 200px; flex-direction: column; border-radius: 14px; background: var(--popover); padding: 6px; box-shadow: var(--shadow-elegant); }
+.ed-menu button { border-radius: 10px; padding: 8px 10px; text-align: left; font-size: 13px; color: var(--popover-foreground); }
+.ed-menu button:hover { background: var(--muted); }
+.ed-menu button.danger { color: var(--status-danger-foreground); }
+
+.ed-tabs { display: flex; gap: 4px; overflow-x: auto; border-bottom: 1px solid var(--border); }
+.ed-tab { display: inline-flex; flex-shrink: 0; align-items: center; gap: 8px; margin-bottom: -1px; border-bottom: 2px solid transparent; padding: 10px 14px; font-size: 13.5px; font-weight: 600; white-space: nowrap; color: var(--muted-foreground); }
+.ed-tab svg { width: 15px; height: 15px; }
+.ed-tab:hover { color: var(--foreground); }
+.ed-tab.on { border-bottom-color: var(--primary); color: var(--foreground); }
+.ed-tab-badge { border-radius: 999px; background: var(--status-warning); padding: 1px 8px; font-size: 10.5px; color: var(--status-warning-foreground); }
+
+.ed-grid { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 16px; height: calc(100dvh - 172px); min-height: 560px; }
+.ed-grid.is-wide { grid-template-columns: minmax(380px, 440px) minmax(0, 1fr); }
+.ed-side { min-height: 0; overflow-y: auto; }
+.ed-sections { display: flex; min-height: 100%; flex-direction: column; border-radius: 20px; background: var(--card); padding: 16px; box-shadow: var(--shadow-card); }
+.ed-sections-head { display: flex; align-items: center; justify-content: space-between; padding: 0 4px 8px; }
+.ed-sections-head h2 { font-size: 15px; font-weight: 600; color: var(--foreground); }
+.ed-sections-head span { font-size: 12px; color: var(--muted-foreground); }
+.ed-section-list { display: flex; flex-direction: column; gap: 2px; }
+.ed-section-row { display: flex; align-items: center; gap: 6px; border-radius: 14px; padding: 6px 6px 6px 2px; transition: background 0.15s; }
+.ed-section-row:hover { background: var(--muted); }
+.ed-section-row.is-drag-over { box-shadow: inset 0 2px 0 var(--primary); }
+.ed-section-row.is-dragging { opacity: 0.5; }
+.ed-section-row.is-off .ed-section-name, .ed-section-row.is-off .ed-section-icon { opacity: 0.5; }
+.ed-grip { display: grid; place-items: center; width: 18px; color: var(--muted-foreground); cursor: grab; }
+.ed-grip svg { width: 14px; height: 14px; }
+.ed-grip.is-locked { visibility: hidden; }
+.ed-section-main { display: flex; min-width: 0; flex: 1; align-items: center; gap: 10px; text-align: left; }
+.ed-section-icon { display: grid; place-items: center; width: 34px; height: 34px; flex-shrink: 0; border-radius: 999px; }
+.ed-section-icon svg { width: 16px; height: 16px; }
+.ed-section-name { display: block; overflow: hidden; font-size: 14px; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; color: var(--foreground); }
+.ed-section-sub { display: block; overflow: hidden; font-size: 12px; white-space: nowrap; text-overflow: ellipsis; color: var(--muted-foreground); }
+.tone-success { background: var(--status-success); color: var(--status-success-foreground); }
+.tone-warning { background: var(--status-warning); color: var(--status-warning-foreground); }
+.tone-info { background: var(--status-info); color: var(--status-info-foreground); }
+.tone-violet { background: var(--status-violet); color: var(--status-violet-foreground); }
+.ed-switch { position: relative; width: 36px; height: 20px; flex-shrink: 0; border-radius: 999px; background: var(--muted); box-shadow: inset 0 0 0 1px var(--border); transition: background 0.15s; }
+.ed-switch i { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 999px; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25); transition: transform 0.15s; }
+.ed-switch.on { background: var(--primary); box-shadow: none; }
+.ed-switch.on i { transform: translateX(16px); }
+.ed-switch:disabled { cursor: not-allowed; opacity: 0.5; }
+.ed-add-section { display: inline-flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; border: 1px dashed var(--border); border-radius: 14px; padding: 10px; font-size: 13.5px; font-weight: 600; color: var(--primary); }
+.ed-add-section:hover { background: var(--accent); }
+.ed-add-section svg { width: 15px; height: 15px; }
+.ed-sections-hint { margin-top: auto; padding: 16px 4px 0; font-size: 12px; line-height: 1.45; color: var(--muted-foreground); }
+.ed-settings-card { min-height: 100%; padding: 16px !important; }
+.ed-settings-card .editor-settings-grid { gap: 0; }
+.ed-settings-card .settings-panel { height: auto !important; padding: 4px !important; background: transparent !important; }
+.ed-settings-card .settings-panel-content { height: auto !important; overflow: visible !important; }
+.ed-settings-card :deep(.grid) { grid-template-columns: minmax(0, 1fr) !important; }
+.ed-settings-card :deep(.text-\[17px\]), .ed-settings-card :deep(.text-\[18px\]) { font-size: 14px !important; }
+.ed-settings-card :deep(p.text-\[17px\].uppercase) { font-size: 13px !important; color: var(--muted-foreground) !important; }
+.ed-settings-card :deep(.slug-prefix) { font-size: 13px !important; }
+
+.editor-preview-shell { display: flex; min-height: 0; flex-direction: column; padding: 14px 16px 16px !important; }
+.ed-preview-head { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; }
+.ed-preview-eyebrow { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted-foreground); }
+.ed-preview-head .editor-preview-scale { margin: 0; text-align: right; }
+.ed-preview-eyebrow, .ed-preview-head .editor-preview-scale { white-space: nowrap; }
+.editor-body.ai-assistant-open .ed-preview-head { grid-template-columns: auto; justify-content: center; }
+.editor-body.ai-assistant-open .ed-preview-eyebrow,
+.editor-body.ai-assistant-open .ed-preview-head .editor-preview-scale { display: none; }
+.ed-stage { margin-top: 12px; min-height: 0; flex: 1; }
+.ed-stage.is-framed { display: flex; justify-content: center; }
+.ed-browser { display: flex; width: 100%; min-height: 0; flex-direction: column; overflow: hidden; border-radius: 14px; background: #fff; box-shadow: var(--shadow-elegant); }
+.ed-browser-bar { display: flex; height: 30px; flex-shrink: 0; align-items: center; gap: 6px; background: #e9eeea; padding: 0 12px; }
+.ed-browser-bar i { width: 9px; height: 9px; border-radius: 999px; background: #cfd6d1; }
+.ed-browser-bar span { overflow: hidden; margin-left: 10px; border-radius: 999px; background: #fff; padding: 2px 12px; font-size: 11px; white-space: nowrap; text-overflow: ellipsis; color: #66706b; }
+.ed-phone { display: flex; width: 410px; max-width: 100%; min-height: 0; flex-direction: column; border-radius: 40px; background: #0b100e; padding: 10px; box-shadow: var(--shadow-elegant); }
+.ed-phone .ed-screen { border-radius: 30px; background: #fff; scrollbar-width: none; }
+.ed-phone .ed-screen::-webkit-scrollbar { display: none; }
+.ed-stage.is-framed .ed-screen { min-height: 0; flex: 1; overflow-x: hidden; overflow-y: auto; }
+
+@media (max-width: 1023px) {
+  .ed-grid, .ed-grid.is-wide { grid-template-columns: minmax(0, 1fr); height: auto; min-height: 0; }
+  .ed-side { overflow: visible; }
+  .ed-sections-hint { margin-top: 12px; }
+  .ed-stage.is-framed .ed-screen { max-height: 80vh; }
+}
+@media (max-width: 640px) {
+  .ed-actions { width: 100%; }
+  .ed-btn-primary { flex: 1; justify-content: center; }
 }
 </style>
 
