@@ -77,9 +77,9 @@ watch(
 .ih-actions { display: flex; flex-shrink: 0; gap: 8px; }
 .ih-actions:empty { display: none; }
 .ih-tabs { display: flex; gap: 4px; overflow-x: auto; border-bottom: 1px solid var(--border); }
-.ih-tab { display: inline-flex; flex-shrink: 0; align-items: center; gap: 8px; margin-bottom: -1px; border-bottom: 2px solid transparent; padding: 10px 14px; font-size: 13.5px; font-weight: 600; white-space: nowrap; color: var(--muted-foreground); }
+.ih-tab { display: inline-flex; flex-shrink: 0; align-items: center; gap: 8px; padding: 10px 14px; font-size: 13.5px; font-weight: 600; white-space: nowrap; color: var(--muted-foreground); }
 .ih-tab:hover { color: var(--foreground); }
-.ih-tab.on { border-bottom-color: var(--primary); color: var(--foreground); }
+.ih-tab.on { box-shadow: inset 0 -2px 0 var(--primary); color: var(--foreground); }
 .ih-dot { width: 7px; height: 7px; border-radius: 999px; background: color-mix(in srgb, var(--muted-foreground) 70%, transparent); }
 .ih-dot.is-on { background: var(--primary); }
 @media (max-width: 640px) {

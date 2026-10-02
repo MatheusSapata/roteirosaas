@@ -1,97 +1,145 @@
 <template>
   <div class="agency-team">
     <div class="page-wrap">
-      <div>
-        <p class="page-eyebrow">Minha agência</p>
-        <h1 class="page-title">Equipe</h1>
-        <p class="page-sub">Gerencie usuários, convites e permissões com clareza.</p>
+      <AgencyHeader>
+        <template #actions>
+          <button class="at-btn-primary" :disabled="inviteDisabled" @click="showInvite = true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg>
+            Convidar pessoa
+          </button>
+        </template>
+      </AgencyHeader>
+
+      <div class="at-stats">
+        <article class="at-stat">
+          <span class="at-stat-icon tone-success" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z" /></svg>
+          </span>
+          <div>
+            <p class="at-stat-k">Plano atual</p>
+            <p class="at-stat-v">{{ planLabel }}</p>
+          </div>
+        </article>
+        <article class="at-stat">
+          <span class="at-stat-icon tone-info" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8" /></svg>
+          </span>
+          <div>
+            <p class="at-stat-k">Pessoas na equipe</p>
+            <p class="at-stat-v">
+              {{ members.length }}
+              <small v-if="pendingInvites.length">+{{ pendingInvites.length }} {{ pendingInvites.length === 1 ? "convite pendente" : "convites pendentes" }}</small>
+            </p>
+          </div>
+        </article>
+        <article class="at-stat">
+          <span class="at-stat-icon tone-warning" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M19 8v6M22 11h-6" /></svg>
+          </span>
+          <div class="min-w-0 flex-1">
+            <p class="at-stat-k">Usuários extras</p>
+            <p class="at-stat-v">{{ summary?.extra_users_used || 0 }} de {{ summary?.extra_users_limit ?? "∞" }}</p>
+            <div v-if="summary?.extra_users_limit" class="at-meter"><i :style="{ width: `${extraUsage}%` }"></i></div>
+          </div>
+        </article>
       </div>
+      <p v-if="inviteDisabled && summary" class="at-warn">Seu plano atingiu o limite de usuários extras.</p>
 
-      <section class="list-card top-summary">
-        <div class="team-summary-grid">
-          <div class="team-summary-item">
-            <span class="summary-label">Plano atual</span>
-            <strong>{{ summary?.plan_key || "-" }}</strong>
-          </div>
-          <div class="team-summary-item">
-            <span class="summary-label">Membros</span>
-            <strong>{{ (summary?.members || []).length }}</strong>
-          </div>
-          <div class="team-summary-item">
-            <span class="summary-label">Limite utilizado</span>
-            <strong>{{ summary?.extra_users_used || 0 }} / {{ summary?.extra_users_limit ?? "8" }}</strong>
-          </div>
-        </div>
-        <button class="btn btn-p" :disabled="inviteDisabled" @click="showInvite = true">+ Convidar</button>
-      </section>
-      <p v-if="inviteDisabled" class="warn-msg">Seu plano atingiu o limite de usuários extras.</p>
-
-      <section class="list-card">
-        <h2 class="card-title">Equipe</h2>
-        <div v-if="!(summary?.members || []).length" class="empty-state">Nenhum usuário na equipe.</div>
-        <div v-else class="member-list">
-          <article
-            v-for="member in summary?.members || []"
-            :key="member.id"
-            class="member-card"
-            @click="openEdit(member)"
-          >
-            <div class="member-top">
-              <div class="member-main">
-              <div class="avatar">
-                <img
-                  v-if="member.avatar_url"
-                  :src="member.avatar_url"
-                  :alt="`Avatar de ${member.name}`"
-                  class="avatar-image"
-                />
-                <span v-else>{{ getInitials(member.name || member.email) }}</span>
-              </div>
-              <div class="member-copy">
-                <div class="name-row">
-                  <p class="member-name">{{ member.name }}</p>
-                  <span v-if="member.is_owner" class="badge badge-green">Admin principal</span>
+      <section class="at-card">
+        <h2 class="at-card-title">Equipe</h2>
+        <div v-if="!members.length" class="at-empty">Nenhuma pessoa na equipe.</div>
+        <table v-else class="at-table">
+          <thead>
+            <tr>
+              <th>Pessoa</th>
+              <th>Acesso</th>
+              <th>Pode usar</th>
+              <th>Situação</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="member in members" :key="member.id">
+              <td>
+                <div class="at-person">
+                  <span class="at-avatar" :class="member.is_owner ? 'tone-success' : avatarTone(member.id)">
+                    <img v-if="member.avatar_url" :src="member.avatar_url" :alt="`Avatar de ${member.name}`" />
+                    <template v-else>{{ getInitials(member.name || member.email) }}</template>
+                  </span>
+                  <span class="min-w-0">
+                    <b>{{ member.name }}</b>
+                    <small>{{ member.email }}</small>
+                  </span>
                 </div>
-                <p class="member-email">{{ member.email }}</p>
-              </div>
-            </div>
-              <div class="member-actions" @click.stop>
-                <button class="btn btn-p btn-sm" @click="openEdit(member)">Editar permissões</button>
-                <button
-                  :ref="el => setMemberActionAnchor(member.id, el as HTMLElement | null)"
-                  class="icon-btn"
-                  @click="toggleMemberActions(member.id)"
-                >
-                  ...
-                </button>
-              </div>
-            </div>
+              </td>
+              <td><span class="at-pill" :class="accessTone(member)">{{ accessLabel(member) }}</span></td>
+              <td>
+                <div class="at-chips">
+                  <span v-for="chip in chipsForMember(member)" :key="chip" class="at-chip">{{ chip }}</span>
+                </div>
+              </td>
+              <td><span class="at-pill" :class="member.status === 'active' ? 'is-success' : 'is-muted'">{{ member.status === "active" ? "Ativo" : "Inativo" }}</span></td>
+              <td>
+                <div class="at-actions">
+                  <button v-if="!member.is_owner" type="button" class="at-btn-ghost" @click="openEdit(member)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+                    Permissões
+                  </button>
+                  <button
+                    :ref="el => setMemberActionAnchor(member.id, el as HTMLElement | null)"
+                    type="button"
+                    class="at-icon-btn"
+                    aria-label="Mais ações"
+                    title="Mais ações"
+                    @click="toggleMemberActions(member.id)"
+                  >
+                    <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="12" cy="19" r="1.6" /></svg>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
 
-            <div class="member-meta">
-              <span class="meta-label">Tipo:</span>
-              <span class="badge badge-info">
-                {{
-                  member.role === "admin"
-                    ? "Admin"
-                    : member.role === "editor"
-                      ? "Editor"
-                      : member.role === "viewer"
-                        ? "Visualizador"
-                        : "Personalizado"
-                }}
-              </span>
-              <span class="meta-label">Status:</span>
-              <span :class="member.status === 'active' ? 'badge badge-green' : 'badge badge-muted'">
-                {{ member.status === "active" ? "Ativo" : "Inativo" }}
-              </span>
-            </div>
-
-            <div class="perm-row">
-              <span class="meta-label">Permissões:</span>
-              <p class="perm-summary">{{ formatPermissionSummary(member.permissions || []) }}</p>
-            </div>
-          </article>
-        </div>
+        <template v-if="pendingInvites.length">
+          <h2 class="at-card-title at-card-title-sub">Convites pendentes</h2>
+          <table class="at-table at-table-invites">
+            <tbody>
+              <tr v-for="invite in pendingInvites" :key="invite.id">
+                <td>
+                  <div class="at-person">
+                    <span class="at-avatar is-mail" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 7 9 6 9-6" /></svg>
+                    </span>
+                    <span class="min-w-0">
+                      <b>{{ invite.email }}</b>
+                      <small v-if="invite.created_at">Enviado em {{ formatDate(invite.created_at) }}</small>
+                    </span>
+                  </div>
+                </td>
+                <td>
+                  <div class="at-chips">
+                    <span v-for="chip in chipsForMember(invite)" :key="chip" class="at-chip">{{ chip }}</span>
+                  </div>
+                </td>
+                <td><span class="at-pill is-warning">Aguardando</span></td>
+                <td>
+                  <div class="at-actions">
+                    <button type="button" class="at-btn-ghost" @click="resendInvite(invite.id)">Reenviar</button>
+                    <div class="at-menu-wrap">
+                      <button type="button" class="at-icon-btn" aria-label="Mais ações" title="Mais ações" @click.stop="openInviteMenuId = openInviteMenuId === invite.id ? null : invite.id">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="12" cy="19" r="1.6" /></svg>
+                      </button>
+                      <div v-if="openInviteMenuId === invite.id" class="at-menu" @click="openInviteMenuId = null">
+                        <button type="button" class="danger" @click="cancelInvite(invite.id)">Cancelar convite</button>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </template>
       </section>
 
       <teleport to="body">
@@ -101,144 +149,103 @@
           @click="openMemberActionsId = null"
         >
           <div
-            class="member-actions-menu absolute min-w-[190px] p-1"
+            class="at-menu at-menu-floating"
             :style="{ top: `${memberActionsPosition.top}px`, left: `${memberActionsPosition.left}px` }"
             @click.stop
           >
             <template v-if="!openMemberActions.is_owner">
-              <button class="menu-item" @click="handleEditFromMenu(openMemberActions)">Editar permissões</button>
-              <button class="menu-item" @click="handleMakeAdminFromMenu(openMemberActions.id)">Tornar admin</button>
-              <button class="menu-item" @click="handleResetAccessFromMenu(openMemberActions.id)">Resetar acesso</button>
-              <button class="menu-item danger" @click="handleDisableFromMenu(openMemberActions.id)">Remover usuário</button>
+              <button @click="handleEditFromMenu(openMemberActions)">Editar permissões</button>
+              <button @click="handleMakeAdminFromMenu(openMemberActions.id)">Tornar admin</button>
+              <button @click="handleResetAccessFromMenu(openMemberActions.id)">Resetar acesso</button>
+              <button class="danger" @click="handleDisableFromMenu(openMemberActions.id)">Remover usuário</button>
             </template>
-            <span v-else class="block px-3 py-2 text-sm text-slate-400">Admin principal</span>
+            <span v-else class="at-menu-note">Dono da conta: o acesso não pode ser alterado.</span>
           </div>
         </div>
       </teleport>
 
-      <section class="list-card" v-if="(summary?.pending_invites || []).length">
-        <h2 class="card-title">Convites pendentes</h2>
-        <div class="invite-list">
-          <article v-for="invite in summary?.pending_invites || []" :key="invite.id" class="invite-card">
-            <div>
-              <p class="invite-email">{{ invite.email }}</p>
-              <p class="invite-status">Aguardando aceitação</p>
-            </div>
-            <div class="invite-actions">
-              <button class="btn btn-o btn-sm" @click="resendInvite(invite.id)">Reenviar</button>
-              <button class="btn btn-danger btn-sm" @click="cancelInvite(invite.id)">Cancelar</button>
-            </div>
-          </article>
-        </div>
-      </section>
-
-      <div v-if="showInvite || editingMember" class="app-modal-overlay fixed inset-0 z-40 flex items-center justify-center px-4">
-        <div class="permission-modal">
-          <div class="modal-header">
-            <p class="modal-eyebrow">{{ editingMember ? "Acesso do membro" : "Novo membro" }}</p>
-            <h3 class="text-xl font-bold">{{ editingMember ? `Editar permissões de ${editingMember.name}` : "Convidar membro da equipe" }}</h3>
-          </div>
-
-          <div class="modal-body">
-          <div v-if="!editingMember" class="mt-1 grid gap-3 md:grid-cols-2">
-            <input v-model="form.name" class="rounded-lg border border-slate-200 px-3 py-2" placeholder="Nome" />
-            <input v-model="form.email" class="rounded-lg border border-slate-200 px-3 py-2" placeholder="E-mail" />
-          </div>
-
-          <div class="mt-4">
-            <p class="text-sm font-semibold text-slate-700">Nível de acesso</p>
-            <div class="mt-2 space-y-2">
-              <label class="access-profile-option flex items-start gap-2 rounded-lg border px-3 py-2 text-sm" :class="{ 'is-selected': accessProfile === 'admin' }">
-                <input type="radio" name="access_profile" :checked="accessProfile==='admin'" @change="applyAccessProfile('admin')" />
-                <span><strong>Admin</strong><br /><small class="text-slate-500">Acesso total ao sistema</small></span>
-              </label>
-              <label class="access-profile-option flex items-start gap-2 rounded-lg border px-3 py-2 text-sm" :class="{ 'is-selected': accessProfile === 'editor' }">
-                <input type="radio" name="access_profile" :checked="accessProfile==='editor'" @change="applyAccessProfile('editor')" />
-                <span><strong>Editor</strong><br /><small class="text-slate-500">Pode editar páginas e leads</small></span>
-              </label>
-              <label class="access-profile-option flex items-start gap-2 rounded-lg border px-3 py-2 text-sm" :class="{ 'is-selected': accessProfile === 'viewer' }">
-                <input type="radio" name="access_profile" :checked="accessProfile==='viewer'" @change="applyAccessProfile('viewer')" />
-                <span><strong>Visualizador</strong><br /><small class="text-slate-500">Apenas visualização</small></span>
-              </label>
-              <label class="access-profile-option flex items-start gap-2 rounded-lg border px-3 py-2 text-sm" :class="{ 'is-selected': accessProfile === 'custom' }">
-                <input type="radio" name="access_profile" :checked="accessProfile==='custom'" @change="applyAccessProfile('custom')" />
-                <span><strong>Personalizado</strong><br /><small class="text-slate-500">Definir acesso manualmente</small></span>
-              </label>
-            </div>
-          </div>
-
-          <div v-if="accessProfile === 'custom'" class="mt-4">
-            <div class="my-4 h-px bg-slate-200"></div>
-            <div class="mt-2 flex flex-wrap gap-2">
-              <button class="rounded-md border border-slate-200 px-3 py-1.5 text-sm" @click="resetToDefaultAccess">Resetar para padrão</button>
-              <select class="rounded-md border border-slate-200 px-3 py-1.5 text-sm" @change="copyPermissionsFromUser(Number(($event.target as HTMLSelectElement).value))">
-                <option value="">Copiar permissões de outro usuário</option>
-                <option v-for="member in availableMembersForCopy" :key="`copy-${member.id}`" :value="member.id">{{ member.name }}</option>
-              </select>
-            </div>
-
-            <div class="mt-4 space-y-3">
-              <p class="text-sm font-semibold text-slate-700">Permissões detalhadas</p>
-
-              <div class="rounded-lg border border-slate-200">
-                <button class="w-full px-3 py-2 text-left text-sm font-semibold text-slate-800" @click="accordionOpen.pages = !accordionOpen.pages">{{ accordionOpen.pages ? "-" : "+" }} Páginas</button>
-                <transition name="acc">
-                  <div v-show="accordionOpen.pages" class="px-3 pb-2">
-                    <div class="mt-1 flex flex-wrap gap-2">
-                      <button class="rounded-md border px-3 py-1.5 text-sm" :class="!form.permissions.includes('pages_viewer') && !form.permissions.includes('pages_editor') ? 'border-emerald-500 bg-emerald-50 text-emerald-700':'border-slate-200'" :disabled="!canUsePages" @click="form.permissions = form.permissions.filter(p => p !== 'pages_viewer' && p !== 'pages_editor')">Nenhum</button>
-                      <button class="rounded-md border px-3 py-1.5 text-sm" :class="form.pages_level==='viewer' ? 'border-emerald-500 bg-emerald-50 text-emerald-700':'border-slate-200'" :disabled="!canUsePages" @click="setPagesLevel('viewer')">Visualizador</button>
-                      <button class="rounded-md border px-3 py-1.5 text-sm" :class="form.pages_level==='editor' ? 'border-emerald-500 bg-emerald-50 text-emerald-700':'border-slate-200'" :disabled="!canUsePages" @click="setPagesLevel('editor')">Editor</button>
-                    </div>
-                  </div>
-                </transition>
+      <teleport to="body">
+        <div v-if="showInvite || editingMember" class="app-modal-overlay at-overlay" @click.self="closeModal">
+          <div class="at-modal" role="dialog" aria-modal="true">
+            <header class="at-modal-head">
+              <span v-if="editingMember" class="at-avatar" :class="avatarTone(editingMember.id)">{{ getInitials(editingMember.name || editingMember.email) }}</span>
+              <span v-else class="at-avatar tone-success" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M19 8v6M22 11h-6" /></svg>
+              </span>
+              <div class="min-w-0 flex-1">
+                <h3>{{ editingMember ? `Permissões de ${editingMember.name}` : "Convidar para a equipe" }}</h3>
+                <p>{{ editingMember ? editingMember.email : "A pessoa recebe um e-mail para criar a senha e entrar." }}</p>
               </div>
+              <button type="button" class="at-close" aria-label="Fechar" @click="closeModal">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M6 18 18 6" /></svg>
+              </button>
+            </header>
 
-              <div class="rounded-lg border border-slate-200">
-                <button class="w-full px-3 py-2 text-left text-sm font-semibold text-slate-800" @click="accordionOpen.leads = !accordionOpen.leads">{{ accordionOpen.leads ? "-" : "+" }} Captação de leads</button>
-                <transition name="acc">
-                  <div v-show="accordionOpen.leads" class="px-3 pb-2">
-                    <div class="mt-1 grid gap-1.5 md:grid-cols-2">
-                      <label v-for="k in leadsSubKeys" :key="k.key" class="flex items-center justify-between gap-2 rounded border px-2 py-1" :class="canUseLeads ? 'border-slate-200':'border-slate-100 bg-slate-50 text-slate-400'">
-                        <span class="text-sm">{{ k.label }}</span>
-                        <input type="checkbox" :disabled="!canUseLeads" :checked="form.permissions.includes(k.key)" @change="togglePerm(k.key)" />
-                      </label>
-                    </div>
-                    <div class="mt-2 flex flex-wrap gap-2">
-                      <button class="rounded-md border px-3 py-1.5 text-sm" :class="form.leads_level==='manager' ? 'border-emerald-500 bg-emerald-50 text-emerald-700':'border-slate-200'" :disabled="!canUseLeads" @click="setLeadsLevel('manager')">Gerencial</button>
-                      <button class="rounded-md border px-3 py-1.5 text-sm" :class="form.leads_level==='full' ? 'border-emerald-500 bg-emerald-50 text-emerald-700':'border-slate-200'" :disabled="!canUseLeads" @click="setLeadsLevel('full')">Total</button>
-                    </div>
-                  </div>
-                </transition>
-              </div>
-
-              <div class="rounded-lg border border-slate-200">
-                <button class="w-full px-3 py-2 text-left text-sm font-semibold text-slate-800" @click="accordionOpen.system = !accordionOpen.system">{{ accordionOpen.system ? "-" : "+" }} Sistema</button>
-                <transition name="acc">
-                  <div v-show="accordionOpen.system" class="px-3 pb-2">
-                    <div class="mt-1 grid gap-1.5 md:grid-cols-2">
-                      <label v-for="item in extraPermissionOptions" :key="item.key" class="flex items-center justify-between gap-2 rounded-lg border px-3 py-1.5 text-sm" :class="item.allowed ? 'border-slate-200' : 'border-slate-100 bg-slate-50 text-slate-400'">
-                        <span>{{ item.label }}</span>
-                        <input type="checkbox" :value="item.key" :disabled="!item.allowed" :checked="form.permissions.includes(item.key)" @change="togglePerm(item.key)" />
-                      </label>
-                    </div>
-                  </div>
-                </transition>
-              </div>
+            <div v-if="!editingMember" class="at-fields">
+              <label>
+                <span>Nome</span>
+                <input v-model="form.name" class="at-input" placeholder="Nome" />
+              </label>
+              <label>
+                <span>E-mail</span>
+                <input v-model="form.email" type="email" class="at-input" placeholder="E-mail" />
+              </label>
             </div>
-          </div>
 
-          <p v-else class="mt-4 text-sm text-slate-500">As permissões detalhadas ficam ocultas para simplificar a configuração.</p>
+            <p class="at-label">Nível de acesso</p>
+            <div class="at-levels">
+              <button
+                v-for="level in accessLevels"
+                :key="level.id"
+                type="button"
+                class="at-level"
+                :class="{ on: accessProfile === level.id }"
+                @click="applyAccessProfile(level.id)"
+              >
+                <span class="at-level-icon" :class="level.tone" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path :d="level.icon" /></svg>
+                </span>
+                <span class="min-w-0 flex-1">
+                  <b>{{ level.label }}</b>
+                  <small>{{ level.description }}</small>
+                </span>
+                <i class="at-radio" aria-hidden="true"></i>
+              </button>
+            </div>
 
-          <p v-if="error" class="mt-3 text-sm text-red-600">{{ error }}</p>
-          </div>
-          <div class="modal-footer">
-            <button class="rounded border border-slate-200 px-4 py-2" @click="closeModal">Cancelar</button>
-            <button class="rounded bg-[#41ce5f] px-4 py-2 font-semibold text-[#0f1f14] disabled:opacity-60" :disabled="savingPermissions" @click="saveModal">
-              {{ savingPermissions ? "Salvando..." : (editingMember ? "Salvar permissões" : "Enviar convite") }}
-            </button>
+            <template v-if="accessProfile === 'custom'">
+              <p class="at-label">{{ editingMember ? `O que ${firstName(editingMember.name)} pode usar` : "O que a pessoa pode usar" }}</p>
+              <div class="at-areas">
+                <label v-for="area in areaOptions" :key="area.key" class="at-area" :class="{ 'is-disabled': !area.allowed }">
+                  <span>{{ area.label }}</span>
+                  <button
+                    type="button"
+                    role="switch"
+                    class="at-switch"
+                    :class="{ on: isAreaOn(area.key, form.permissions) }"
+                    :aria-checked="isAreaOn(area.key, form.permissions)"
+                    :disabled="!area.allowed"
+                    @click="toggleArea(area.key)"
+                  ><i></i></button>
+                </label>
+              </div>
+            </template>
+            <p v-else class="at-preview">
+              <span>Vai poder usar:</span>
+              <span v-for="chip in previewChips" :key="chip" class="at-chip">{{ chip }}</span>
+            </p>
+
+            <p v-if="error" class="at-error">{{ error }}</p>
+
+            <footer class="at-modal-foot">
+              <button type="button" class="at-btn-ghost at-btn-lg" @click="closeModal">Cancelar</button>
+              <button type="button" class="at-btn-primary" :disabled="savingPermissions" @click="saveModal">
+                {{ savingPermissions ? "Salvando..." : (editingMember ? "Salvar permissões" : "Enviar convite") }}
+              </button>
+            </footer>
           </div>
         </div>
-      </div>
+      </teleport>
     </div>
   </div>
 </template>
@@ -246,6 +253,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import api from "../../services/api";
+import AgencyHeader from "../../components/admin/agency/AgencyHeader.vue";
+import { agencyCounts } from "../../composables/useAgencyCounts";
 
 const summary = ref<any>(null);
 const showInvite = ref(false);
@@ -317,7 +326,115 @@ const systemPermissionKeys = ["dashboard", "integrations", "domains", "lessons",
 const load = async () => {
   const { data } = await api.get("/agency/team");
   summary.value = data;
+  agencyCounts.team = Array.isArray(data?.members) ? data.members.length : 0;
 };
+
+// ===== Visual da proposta: tabela, níveis de acesso e áreas =====
+const members = computed<any[]>(() => summary.value?.members || []);
+const pendingInvites = computed<any[]>(() => summary.value?.pending_invites || []);
+const openInviteMenuId = ref<number | null>(null);
+const closeInviteMenu = (event: MouseEvent) => {
+  if (!(event.target as HTMLElement | null)?.closest(".at-menu-wrap")) openInviteMenuId.value = null;
+};
+onMounted(() => document.addEventListener("click", closeInviteMenu));
+onBeforeUnmount(() => document.removeEventListener("click", closeInviteMenu));
+
+const planNames: Record<string, string> = {
+  free: "Gratuito",
+  professional: "Essencial",
+  essencial: "Essencial",
+  trial: "Teste grátis",
+  agency: "Agência",
+  agencia: "Agência",
+  growth: "Agência",
+  scale: "Escala",
+  escala: "Escala",
+  infinity: "Escala",
+  test: "Teste",
+  teste: "Teste"
+};
+const planLabel = computed(() => {
+  const key = String(summary.value?.plan_key || "").trim().toLowerCase();
+  if (!key) return "-";
+  return planNames[key] || key.charAt(0).toUpperCase() + key.slice(1);
+});
+const extraUsage = computed(() => {
+  const limit = Number(summary.value?.extra_users_limit || 0);
+  if (!limit) return 0;
+  return Math.min(100, Math.round(((summary.value?.extra_users_used || 0) / limit) * 100));
+});
+
+const formatDate = (value?: string) => {
+  if (!value) return "";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "" : date.toLocaleDateString("pt-BR");
+};
+const firstName = (value?: string) => String(value || "").trim().split(/\s+/)[0] || "a pessoa";
+const avatarTones = ["tone-success", "tone-info", "tone-violet", "tone-warning"];
+const avatarTone = (id: number) => avatarTones[Math.abs(Number(id) || 0) % avatarTones.length];
+
+const accessLabel = (member: any) => {
+  if (member.is_owner) return "Dono";
+  if (member.role === "admin") return "Admin";
+  if (member.role === "editor") return "Editor";
+  if (member.role === "viewer") return "Visualizador";
+  return "Personalizado";
+};
+const accessTone = (member: any) => {
+  if (member.is_owner || member.role === "admin") return "is-success";
+  if (member.role === "editor" || member.role === "viewer") return "is-muted";
+  return "is-info";
+};
+
+// Cada área da proposta aponta para as permissões que já existem.
+const leadsAreaKeys = ["leads", "leads_forms", "leads_opportunities", "leads_clients", "leads_settings", "leads_manager", "leads_full"];
+const areaDefs = [
+  { key: "dashboard", label: "Dashboard" },
+  { key: "pages", label: "Páginas" },
+  { key: "leads", label: "Leads" },
+  { key: "integrations", label: "Integrações" },
+  { key: "domains", label: "Domínios" },
+  { key: "settings", label: "Minha agência e faturas", chip: "Minha agência" },
+  { key: "lessons", label: "Aulas" }
+];
+const isAreaOn = (area: string, permissions: string[]) => {
+  if (area === "pages") return permissions.some(p => p === "pages" || p === "pages_viewer" || p === "pages_editor");
+  if (area === "leads") return permissions.some(p => leadsAreaKeys.includes(p));
+  return permissions.includes(area);
+};
+const areaOptions = computed(() =>
+  areaDefs.map(area => ({
+    ...area,
+    allowed: area.key === "pages" ? canUsePages.value : area.key === "leads" ? canUseLeads.value : allowedSet.value.has(area.key)
+  }))
+);
+const toggleArea = (area: string) => {
+  const on = !isAreaOn(area, form.permissions);
+  if (area === "pages") {
+    if (on && !form.permissions.includes("pages_viewer")) form.pages_level = "editor";
+    togglePagesModule(on);
+    return;
+  }
+  if (area === "leads") {
+    toggleLeadsModule(on);
+    return;
+  }
+  togglePerm(area);
+};
+const chipsFor = (permissions: string[]) => areaDefs.filter(area => isAreaOn(area.key, permissions)).map(area => area.chip || area.label);
+const chipsForMember = (member: any) => {
+  if (member.is_owner || member.role === "admin") return ["Tudo"];
+  const chips = chipsFor(member.permissions || []);
+  return chips.length ? chips : ["Nada ainda"];
+};
+const previewChips = computed(() => (accessProfile.value === "admin" ? ["Tudo"] : chipsFor(buildPayloadPermissions())));
+
+const accessLevels = [
+  { id: "admin" as const, label: "Admin", description: "Acesso a tudo, inclusive equipe e faturas", tone: "tone-success", icon: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" },
+  { id: "editor" as const, label: "Editor", description: "Edita páginas e cuida dos leads", tone: "tone-info", icon: "M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" },
+  { id: "viewer" as const, label: "Visualizador", description: "Só consulta, sem alterar nada", tone: "tone-muted", icon: "M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7zM12 9a3 3 0 1 0 0 6a3 3 0 1 0 0-6" },
+  { id: "custom" as const, label: "Personalizado", description: "Você escolhe cada área", tone: "tone-violet", icon: "M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6" }
+];
 
 const getInitials = (value?: string) => {
   const text = (value || "").trim();
@@ -1180,5 +1297,104 @@ onBeforeUnmount(() => {
   .modal-footer {
     padding: 10px 14px;
   }
+}
+
+/* Redesign: equipe */
+.agency-team .page-wrap { display: flex; flex-direction: column; gap: 16px; }
+.at-btn-primary, .at-btn-ghost { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 999px; font-weight: 600; }
+.at-btn-primary { height: 40px; padding: 0 18px; background: var(--primary); font-size: 13.5px; color: var(--primary-foreground); }
+.at-btn-primary:hover:not(:disabled) { background: color-mix(in srgb, var(--primary) 88%, black); }
+.at-btn-primary:disabled { cursor: not-allowed; opacity: 0.55; }
+.at-btn-primary svg { width: 16px; height: 16px; }
+.at-btn-ghost { height: 32px; padding: 0 12px; background: var(--muted); font-size: 12.5px; color: var(--foreground); }
+.at-btn-ghost:hover { background: var(--accent); color: var(--accent-foreground); }
+.at-btn-ghost svg { width: 14px; height: 14px; }
+.at-btn-lg { height: 40px; padding: 0 18px; font-size: 13.5px; }
+.at-icon-btn { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 999px; background: var(--muted); color: var(--muted-foreground); }
+.at-icon-btn svg { width: 16px; height: 16px; }
+.tone-success { background: var(--status-success); color: var(--status-success-foreground); }
+.tone-info { background: var(--status-info); color: var(--status-info-foreground); }
+.tone-warning { background: var(--status-warning); color: var(--status-warning-foreground); }
+.tone-violet { background: var(--status-violet); color: var(--status-violet-foreground); }
+.tone-muted { background: var(--muted); color: var(--muted-foreground); }
+.at-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.at-stat { display: flex; align-items: center; gap: 12px; border-radius: 20px; background: var(--card); padding: 16px; box-shadow: var(--shadow-card); }
+.at-stat-icon { display: grid; place-items: center; width: 40px; height: 40px; flex-shrink: 0; border-radius: 999px; }
+.at-stat-icon svg { width: 18px; height: 18px; }
+.at-stat-k { font-size: 12.5px; color: var(--muted-foreground); }
+.at-stat-v { font-family: var(--font-display); font-size: 20px; line-height: 26px; font-weight: 600; color: var(--foreground); }
+.at-stat-v small { margin-left: 4px; font-family: var(--font-sans); font-size: 12px; font-weight: 500; color: var(--muted-foreground); }
+.at-meter { width: 160px; max-width: 100%; height: 4px; margin-top: 6px; overflow: hidden; border-radius: 999px; background: var(--muted); }
+.at-meter i { display: block; height: 100%; border-radius: 999px; background: var(--primary); }
+.at-warn { border-radius: 14px; background: var(--status-warning); padding: 10px 14px; font-size: 13px; color: var(--status-warning-foreground); }
+.at-card { overflow-x: auto; border-radius: 20px; background: var(--card); padding-bottom: 4px; box-shadow: var(--shadow-card); }
+.at-card-title { padding: 16px 18px 8px; font-size: 15px; font-weight: 600; color: var(--foreground); }
+.at-card-title-sub { padding-top: 18px; }
+.at-empty { padding: 24px 18px; font-size: 13.5px; color: var(--muted-foreground); }
+.at-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.at-table th { border-bottom: 1px solid var(--border); padding: 10px 16px; text-align: left; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted-foreground); }
+.at-table td { border-top: 1px solid var(--border); padding: 10px 16px; vertical-align: middle; color: var(--foreground); }
+.at-table tbody tr:first-child td { border-top: 0; }
+.at-table-invites tbody tr:first-child td { border-top: 1px solid var(--border); }
+.at-person { display: flex; align-items: center; gap: 10px; min-width: 200px; }
+.at-person b { display: block; font-size: 14px; font-weight: 600; }
+.at-person small { display: block; font-size: 12.5px; color: var(--muted-foreground); }
+.at-avatar { display: grid; place-items: center; width: 34px; height: 34px; flex-shrink: 0; overflow: hidden; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.at-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.at-avatar svg { width: 16px; height: 16px; }
+.at-avatar.is-mail { background: var(--muted); color: var(--muted-foreground); }
+.at-pill { display: inline-block; border-radius: 999px; padding: 2px 9px; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+.at-pill.is-success { background: var(--status-success); color: var(--status-success-foreground); }
+.at-pill.is-info { background: var(--status-info); color: var(--status-info-foreground); }
+.at-pill.is-warning { background: var(--status-warning); color: var(--status-warning-foreground); }
+.at-pill.is-muted { background: var(--muted); color: var(--muted-foreground); }
+.at-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.at-chip { border-radius: 999px; background: var(--muted); padding: 2px 9px; font-size: 12px; color: var(--foreground); white-space: nowrap; }
+.at-actions { display: flex; justify-content: flex-end; gap: 6px; }
+.at-menu-wrap { position: relative; }
+.at-menu { display: flex; min-width: 190px; flex-direction: column; border-radius: 14px; background: var(--popover); padding: 6px; box-shadow: var(--shadow-elegant); }
+.at-menu-wrap .at-menu { position: absolute; top: calc(100% + 6px); right: 0; z-index: 30; }
+.at-menu-floating { position: absolute; }
+.at-menu button { border-radius: 10px; padding: 8px 10px; text-align: left; font-size: 13px; color: var(--popover-foreground); }
+.at-menu button:hover { background: var(--muted); }
+.at-menu button.danger { color: var(--status-danger-foreground); }
+.at-menu-note { padding: 8px 10px; font-size: 12.5px; color: var(--muted-foreground); }
+.at-overlay { position: fixed; inset: 0; z-index: 240; display: flex; align-items: center; justify-content: center; padding: 16px; }
+.at-modal { display: flex; width: 100%; max-width: 620px; max-height: calc(100vh - 32px); flex-direction: column; gap: 14px; overflow-y: auto; border-radius: 24px; background: var(--card); padding: 22px 24px; color: var(--foreground); box-shadow: var(--shadow-elegant); }
+.at-modal-head { display: flex; align-items: flex-start; gap: 12px; }
+.at-modal-head .at-avatar { width: 40px; height: 40px; }
+.at-modal-head h3 { font-family: var(--font-display); font-size: 21px; font-weight: 600; }
+.at-modal-head p { margin-top: 2px; font-size: 13px; color: var(--muted-foreground); }
+.at-close { display: grid; place-items: center; width: 34px; height: 34px; flex-shrink: 0; border-radius: 999px; background: var(--muted); color: var(--muted-foreground); }
+.at-close svg { width: 16px; height: 16px; }
+.at-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.at-fields label span, .at-label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600; color: var(--foreground); }
+.at-label { margin-bottom: -6px; }
+.at-input { width: 100%; height: 40px; border: 0; border-radius: 12px; background: var(--muted); padding: 0 12px; font-size: 13.5px; color: var(--foreground); outline: none; }
+.at-input:focus { box-shadow: 0 0 0 2px var(--ring); }
+.at-levels { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.at-level { display: flex; align-items: flex-start; gap: 10px; border: 1px solid var(--border); border-radius: 16px; padding: 12px; text-align: left; }
+.at-level:hover { background: color-mix(in srgb, var(--muted) 60%, transparent); }
+.at-level.on { border: 2px solid var(--primary); background: var(--accent); padding: 11px; }
+.at-level b { display: block; font-size: 14px; font-weight: 600; color: var(--foreground); }
+.at-level small { display: block; margin-top: 2px; font-size: 12.5px; line-height: 1.35; color: var(--muted-foreground); }
+.at-level-icon { display: grid; place-items: center; width: 32px; height: 32px; flex-shrink: 0; border-radius: 999px; }
+.at-level-icon svg { width: 15px; height: 15px; }
+.at-radio { width: 18px; height: 18px; flex-shrink: 0; border: 2px solid var(--border); border-radius: 999px; }
+.at-level.on .at-radio { border: 5px solid var(--primary); background: var(--card); }
+.at-areas { display: grid; grid-template-columns: 1fr 1fr; gap: 0 24px; border-radius: 16px; background: var(--muted); padding: 6px 14px; }
+.at-area { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 0; font-size: 13.5px; color: var(--foreground); }
+.at-area.is-disabled { opacity: 0.5; }
+.at-switch { position: relative; width: 36px; height: 20px; flex-shrink: 0; border-radius: 999px; background: var(--card); box-shadow: inset 0 0 0 1px var(--border); transition: background 0.15s; }
+.at-switch i { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 999px; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25); transition: transform 0.15s; }
+.at-switch.on { background: var(--primary); box-shadow: none; }
+.at-switch.on i { transform: translateX(16px); }
+.at-switch:disabled { cursor: not-allowed; }
+.at-preview { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted-foreground); }
+.at-error { border-radius: 12px; background: var(--status-danger); padding: 8px 12px; font-size: 13px; color: var(--status-danger-foreground); }
+.at-modal-foot { display: flex; justify-content: flex-end; gap: 8px; padding-top: 4px; }
+@media (max-width: 900px) { .at-stats { grid-template-columns: 1fr; } }
+@media (max-width: 640px) {
+  .at-fields, .at-levels, .at-areas { grid-template-columns: 1fr; }
 }
 </style>

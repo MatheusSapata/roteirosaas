@@ -1,134 +1,108 @@
 <template>
   <div class="page-wrap agency-invoices">
-    <div class="page-eyebrow">Agência</div>
-    <div class="page-topbar">
-      <div>
-        <h1 class="page-title">Faturas</h1>
-        <p class="page-sub">Veja as cobranças pagas, vencidas e a vencer. Você pode abrir as pendentes ou baixar as já quitadas.</p>
-      </div>
-      <button type="button" class="btn btn-p" :disabled="loading" @click="loadInvoices">
-        {{ loading ? "Atualizando..." : "Atualizar" }}
-      </button>
-    </div>
+    <AgencyHeader>
+      <template #actions>
+        <button type="button" class="ai-btn-ghost" :disabled="loading" @click="loadInvoices">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8" /><path d="M21 3v5h-5" /></svg>
+          {{ loading ? "Atualizando..." : "Atualizar" }}
+        </button>
+      </template>
+    </AgencyHeader>
 
-    <div class="invoice-summary-grid">
-      <article
-        v-for="item in invoiceSummaries"
-        :key="item.id"
-        class="summary-card"
-        :class="`summary-card--${item.id}`"
-      >
-        <div class="summary-top">
-          <span class="summary-label">{{ item.label }}</span>
-          <span class="summary-count">{{ item.count }}</span>
+    <div class="ai-stats">
+      <article v-for="item in invoiceSummaries" :key="item.id" class="ai-stat">
+        <span class="ai-stat-icon" :class="`is-${item.id}`" aria-hidden="true">
+          <svg v-if="item.id === 'upcoming'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+          <svg v-else-if="item.id === 'overdue'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" /><path d="M12 9v4M12 17h.01" /></svg>
+          <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+        </span>
+        <div>
+          <p class="ai-stat-k">{{ item.label }} · {{ item.count }}</p>
+          <p class="ai-stat-v">{{ formatCurrency(item.value) }}</p>
         </div>
-        <strong class="summary-value">{{ formatCurrency(item.value) }}</strong>
-        <span class="summary-helper">{{ item.helper }}</span>
       </article>
     </div>
 
-    <div class="tabs-row">
+    <div class="ai-filters">
       <button
         v-for="tab in tabs"
         :key="tab.id"
         type="button"
-        class="tab-btn"
-        :class="activeTab === tab.id ? 'is-active' : ''"
+        class="ai-filter"
+        :class="{ on: activeTab === tab.id }"
         @click="activeTab = tab.id"
       >
         {{ tab.label }}
-        <span class="tab-badge">{{ counts[tab.id] ?? 0 }}</span>
+        <span>{{ tab.id === "all" ? invoices.length : counts[tab.id] ?? 0 }}</span>
       </button>
     </div>
 
-    <div class="toolbar-row">
-      <label class="search-field">
-        <span>Buscar</span>
-        <input
-          v-model="searchQuery"
-          type="search"
-          placeholder="Buscar por título, ID ou valor"
-        />
-      </label>
-
-      <div class="page-size-field">
-        <span>Por página</span>
-        <select v-model.number="pageSize">
-          <option :value="5">5</option>
-          <option :value="10">10</option>
-          <option :value="20">20</option>
-        </select>
-      </div>
-    </div>
-
-    <div v-if="loading" class="empty-state">
+    <div v-if="loading" class="ai-empty">
       <div class="spinner"></div>
       <p>Carregando faturas...</p>
     </div>
 
-    <div v-else-if="errorMessage" class="empty-state empty-state-error">
+    <div v-else-if="errorMessage" class="ai-empty">
       <p>{{ errorMessage }}</p>
-      <button type="button" class="btn btn-o btn-sm" @click="loadInvoices">Tentar novamente</button>
+      <button type="button" class="ai-btn-ghost" @click="loadInvoices">Tentar novamente</button>
     </div>
 
-    <div v-else-if="pagedInvoices.length" class="invoice-list">
-      <article v-for="invoice in pagedInvoices" :key="invoice.id" class="invoice-card">
-        <div class="invoice-main">
-          <div class="invoice-text">
-            <div class="invoice-title-row">
-              <h2 class="invoice-title">{{ invoice.description || "Cobrança sem título" }}</h2>
-              <span class="status-pill" :class="statusClass(invoice.bucket)">{{ statusLabel(invoice.bucket) }}</span>
-            </div>
-            <div class="invoice-meta">
-              <span>{{ billingTypeLabel(invoice.billing_type) }}</span>
-              <span>•</span>
-              <span>Vencimento: {{ formatDate(invoice.due_date) }}</span>
-              <span v-if="invoice.payment_date">•</span>
-              <span v-if="invoice.payment_date">Pago em: {{ formatDate(invoice.payment_date) }}</span>
-            </div>
-          </div>
-          <div class="invoice-value">
-            {{ formatCurrency(invoice.value) }}
-          </div>
-        </div>
+    <section v-else-if="pagedInvoices.length" class="ai-table-card">
+      <table class="ai-table">
+        <thead>
+          <tr>
+            <th>Fatura</th>
+            <th>Forma</th>
+            <th>Vencimento</th>
+            <th>Pago em</th>
+            <th class="text-right">Valor</th>
+            <th>Situação</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="invoice in pagedInvoices" :key="invoice.id">
+            <td>
+              <div class="ai-name">
+                <span class="ai-doc" :class="`is-${invoice.bucket}`" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2z" /><path d="M9 8h6M9 12h6M9 16h4" /></svg>
+                </span>
+                <span>{{ invoice.description || "Cobrança sem título" }}</span>
+              </div>
+            </td>
+            <td>{{ billingTypeLabel(invoice.billing_type) }}</td>
+            <td>{{ formatDate(invoice.due_date) }}</td>
+            <td class="ai-muted">{{ invoice.payment_date ? formatDate(invoice.payment_date) : "—" }}</td>
+            <td class="ai-value">{{ formatCurrency(invoice.value) }}</td>
+            <td><span class="ai-pill" :class="statusClass(invoice.bucket)">{{ statusLabel(invoice.bucket) }}</span></td>
+            <td class="text-right">
+              <a
+                v-if="actionUrl(invoice)"
+                :href="actionUrl(invoice)"
+                target="_blank"
+                rel="noopener"
+                :class="invoice.is_paid ? 'ai-btn-ghost ai-btn-sm' : 'ai-btn-primary ai-btn-sm'"
+              >
+                <svg v-if="invoice.is_paid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12M6 10l6 6 6-6M5 20h14" /></svg>
+                {{ invoice.is_paid ? "Recibo" : "Pagar" }}
+              </a>
+              <span v-else class="ai-muted">Sem link</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
 
-        <div class="invoice-footer">
-          <div class="invoice-footnote">
-            <span>ID Asaas: {{ invoice.id }}</span>
-            <span v-if="invoice.is_paid && invoice.receipt_url">Recibo disponível</span>
-          </div>
-          <a
-            v-if="actionUrl(invoice)"
-            :href="actionUrl(invoice)"
-            target="_blank"
-            rel="noopener"
-            class="btn btn-p btn-sm"
-          >
-            {{ invoice.is_paid ? "Baixar" : "Abrir / pagar" }}
-          </a>
-          <button v-else type="button" class="btn btn-o btn-sm" disabled>
-            Sem link disponível
-          </button>
-        </div>
-      </article>
-
-      <div class="pagination-row">
-        <span class="pagination-info">
-          Mostrando {{ paginationStart }}-{{ paginationEnd }} de {{ filteredInvoices.length }} faturas
-        </span>
-        <div class="pagination-actions">
-          <button type="button" class="btn btn-o btn-sm" :disabled="currentPage === 1" @click="currentPage -= 1">
-            Anterior
-          </button>
-          <span class="pagination-page">Página {{ currentPage }} de {{ totalPages }}</span>
-          <button type="button" class="btn btn-o btn-sm" :disabled="currentPage === totalPages" @click="currentPage += 1">
-            Próxima
-          </button>
+      <div v-if="totalPages > 1" class="ai-pagination">
+        <span>Mostrando {{ paginationStart }}-{{ paginationEnd }} de {{ filteredInvoices.length }} faturas</span>
+        <div>
+          <button type="button" class="ai-btn-ghost ai-btn-sm" :disabled="currentPage === 1" @click="currentPage -= 1">Anterior</button>
+          <span>Página {{ currentPage }} de {{ totalPages }}</span>
+          <button type="button" class="ai-btn-ghost ai-btn-sm" :disabled="currentPage === totalPages" @click="currentPage += 1">Próxima</button>
         </div>
       </div>
-    </div>
+    </section>
 
-    <div v-else class="empty-state">
+    <div v-else class="ai-empty">
       <p>Nenhuma fatura encontrada nesta categoria.</p>
     </div>
   </div>
@@ -137,6 +111,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import api from "../../services/api";
+import AgencyHeader from "../../components/admin/agency/AgencyHeader.vue";
+import { agencyCounts } from "../../composables/useAgencyCounts";
 import { createAdminLocalizer } from "../../utils/adminI18n";
 
 type InvoiceBucket = "paid" | "overdue" | "upcoming";
@@ -174,7 +150,8 @@ const viewCopy = {
   paid: t({ pt: "Pagas", es: "Pagadas" })
 };
 
-const tabs: Array<{ id: InvoiceBucket; label: string }> = [
+const tabs: Array<{ id: InvoiceBucket | "all"; label: string }> = [
+  { id: "all", label: t({ pt: "Todas", es: "Todas" }) },
   { id: "upcoming", label: viewCopy.upcoming },
   { id: "overdue", label: viewCopy.overdue },
   { id: "paid", label: viewCopy.paid }
@@ -184,10 +161,10 @@ const loading = ref(false);
 const errorMessage = ref("");
 const invoices = ref<BillingInvoice[]>([]);
 const counts = ref<Record<InvoiceBucket, number>>({ paid: 0, overdue: 0, upcoming: 0 });
-const activeTab = ref<InvoiceBucket>("upcoming");
+const activeTab = ref<InvoiceBucket | "all">("all");
 const searchQuery = ref("");
 const currentPage = ref(1);
-const pageSize = ref(10);
+const pageSize = ref(20);
 
 const invoiceSummaries = computed(() =>
   ([
@@ -212,7 +189,7 @@ const normalizeText = (value: unknown) =>
 const filteredInvoices = computed(() => {
   const query = normalizeText(searchQuery.value);
   return invoices.value.filter(item => {
-    if (item.bucket !== activeTab.value) return false;
+    if (activeTab.value !== "all" && item.bucket !== activeTab.value) return false;
     if (!query) return true;
     const haystack = [
       item.id,
@@ -286,9 +263,7 @@ const loadInvoices = async () => {
       overdue: data.counts?.overdue ?? 0,
       upcoming: data.counts?.upcoming ?? 0
     };
-    if (!filteredInvoices.value.length && invoices.value.length) {
-      activeTab.value = invoices.value[0].bucket;
-    }
+    agencyCounts.invoices = (counts.value.upcoming || 0) + (counts.value.overdue || 0);
     currentPage.value = 1;
   } catch (err) {
     console.error("Erro ao carregar faturas", err);
@@ -754,4 +729,51 @@ onMounted(() => {
     grid-template-columns: 1fr;
   }
 }
+
+/* Redesign: faturas */
+.agency-invoices { display: flex; flex-direction: column; gap: 16px; }
+.ai-btn-ghost, .ai-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 18px; border-radius: 999px; font-size: 13.5px; font-weight: 600; }
+.ai-btn-ghost { background: var(--card); color: var(--foreground); box-shadow: var(--shadow-card); }
+.ai-btn-ghost:hover:not(:disabled) { background: var(--accent); }
+.ai-btn-primary { background: var(--primary); color: var(--primary-foreground); }
+.ai-btn-primary:hover { background: color-mix(in srgb, var(--primary) 88%, black); }
+.ai-btn-ghost svg, .ai-btn-primary svg { width: 15px; height: 15px; }
+.ai-btn-ghost:disabled { opacity: 0.55; }
+.ai-btn-sm { height: 32px; padding: 0 14px; font-size: 12.5px; }
+.ai-table .ai-btn-ghost { background: var(--muted); box-shadow: none; }
+.ai-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.ai-stat { display: flex; align-items: center; gap: 12px; border-radius: 20px; background: var(--card); padding: 14px 16px; box-shadow: var(--shadow-card); }
+.ai-stat-icon { display: grid; place-items: center; width: 40px; height: 40px; flex-shrink: 0; border-radius: 999px; }
+.ai-stat-icon svg { width: 18px; height: 18px; }
+.ai-stat-icon.is-upcoming { background: var(--status-info); color: var(--status-info-foreground); }
+.ai-stat-icon.is-overdue { background: var(--muted); color: var(--muted-foreground); }
+.ai-stat-icon.is-paid { background: var(--status-success); color: var(--status-success-foreground); }
+.ai-stat-k { font-size: 12.5px; color: var(--muted-foreground); }
+.ai-stat-v { font-family: var(--font-display); font-size: 20px; line-height: 26px; font-weight: 600; color: var(--foreground); font-variant-numeric: tabular-nums; }
+.ai-filters { display: flex; flex-wrap: wrap; gap: 4px; }
+.ai-filter { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--muted-foreground); }
+.ai-filter span { border-radius: 999px; background: var(--muted); padding: 0 7px; font-size: 11px; }
+.ai-filter.on { background: var(--card); color: var(--foreground); box-shadow: var(--shadow-card); }
+.ai-filter.on span { background: var(--accent); color: var(--accent-foreground); }
+.ai-table-card { overflow-x: auto; border-radius: 20px; background: var(--card); box-shadow: var(--shadow-card); }
+.ai-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.ai-table th { border-bottom: 1px solid var(--border); padding: 12px 16px; text-align: left; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted-foreground); }
+.ai-table th.text-right, .ai-table td.text-right { text-align: right; }
+.ai-table td { border-bottom: 1px solid var(--border); padding: 12px 16px; color: var(--foreground); white-space: nowrap; }
+.ai-table tbody tr:last-child td { border-bottom: 0; }
+.ai-name { display: flex; align-items: center; gap: 12px; font-weight: 600; }
+.ai-doc { display: grid; place-items: center; width: 34px; height: 34px; flex-shrink: 0; border-radius: 999px; background: var(--status-success); color: var(--status-success-foreground); }
+.ai-doc svg { width: 16px; height: 16px; }
+.ai-doc.is-upcoming { background: var(--status-info); color: var(--status-info-foreground); }
+.ai-doc.is-overdue { background: var(--status-danger); color: var(--status-danger-foreground); }
+.ai-muted { color: var(--muted-foreground) !important; }
+.ai-value { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+.ai-pill { border-radius: 999px; padding: 2px 9px; font-size: 11.5px; font-weight: 600; }
+.ai-pill.status-paid { background: var(--status-success); color: var(--status-success-foreground); }
+.ai-pill.status-upcoming { background: var(--status-info); color: var(--status-info-foreground); }
+.ai-pill.status-overdue { background: var(--status-danger); color: var(--status-danger-foreground); }
+.ai-pagination { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid var(--border); padding: 12px 16px; font-size: 12.5px; color: var(--muted-foreground); }
+.ai-pagination > div { display: flex; align-items: center; gap: 8px; }
+.ai-empty { display: flex; flex-direction: column; align-items: center; gap: 10px; border-radius: 20px; background: var(--card); padding: 40px 16px; text-align: center; font-size: 14px; color: var(--muted-foreground); box-shadow: var(--shadow-card); }
+@media (max-width: 900px) { .ai-stats { grid-template-columns: 1fr; } }
 </style>
