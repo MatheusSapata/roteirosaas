@@ -3,180 +3,148 @@
     <div class="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-brand"></div>
   </div>
   <div v-else class="profile-ref page-wrap">
-    <div class="page-eyebrow">{{ viewCopy.header.eyebrow }}</div>
-    <div class="page-title">{{ pageTitle }}</div>
-    <div class="page-sub">{{ pageDescription }}</div>
-
-    <div v-if="!isInvitedTeamUser" class="card">
-      <div class="card-body card-body-plan">
-        <div class="subscription-top">
-          <div class="plan-left">
-            <div class="card-eye">{{ viewCopy.subscription.eyebrow }}</div>
-            <div class="card-title">{{ viewCopy.subscription.title }}</div>
-          </div>
-          <div class="plan-actions">
-            <button class="btn btn-o btn-sm" @click="goPlans">{{ viewCopy.subscription.viewPlans }}</button>
-            <button class="btn-text" :class="{ 'is-disabled': !isPaidPlan || actionLoading }" @click="cancelSubscription">
-              {{ viewCopy.subscription.cancelLink }}
-            </button>
-          </div>
-        </div>
-
-        <div class="subscription-meta">
-          <div class="meta-item">
-            <span class="meta-label">Status da assinatura</span>
-            <span class="badge badge-green"><span class="badge-dot"></span>{{ billingStatusLabel }}</span>
-          </div>
-          <div class="meta-item">
-            <span class="meta-label">Plano atual</span>
-            <span class="badge badge-muted">{{ currentPlanLabel }}</span>
-          </div>
-          <div class="meta-item">
-            <span class="meta-label">Tipo de ciclo</span>
-            <span class="badge badge-muted">{{ billingCycleLabel }}</span>
-          </div>
-          <div class="meta-item">
-            <span class="meta-label">Data de renovação</span>
-            <span class="badge badge-muted">
-              {{ billing?.valid_until ? formatDate(billing?.valid_until) : "--" }}
-            </span>
-          </div>
-          <div class="meta-item">
-            <span class="meta-label meta-label-with-action">
-              Forma de pagamento
-              <button type="button" class="mini-link-btn" @click="openPaymentMethodModal">Alterar</button>
-            </span>
-            <span class="badge badge-muted payment-badge">
-              <template v-if="paymentMethodType === 'pix'">
-                <svg viewBox="0 0 24 24" class="payment-icon" aria-hidden="true">
-                  <path d="M0 0h24v24H0z" fill="none" />
-                  <path
-                    fill="currentColor"
-                    d="M11.143 3.136a2.77 2.77 0 0 1 1.714 0c.363.118.666.324.959.573c.28.239.599.557.98.938l2.536 2.536h-1.347a2.08 2.08 0 0 0-1.54.697l-1.979 2.176a.63.63 0 0 1-.932 0L9.555 7.88a2.08 2.08 0 0 0-1.54-.697H6.668l2.536-2.536c.381-.381.7-.7.98-.938c.293-.249.596-.455.959-.573"
-                  />
-                  <path
-                    fill="currentColor"
-                    d="M5.659 8.192L4.647 9.204c-.381.381-.7.7-.938.98c-.249.293-.455.596-.573.959a2.77 2.77 0 0 0 0 1.714c.118.364.324.666.573.959c.239.28.557.599.938.98l1.012 1.012h2.356c.287 0 .574-.125.794-.367l1.978-2.176a1.64 1.64 0 0 1 2.426 0l1.978 2.176c.22.242.507.367.794.367h2.356l1.012-1.012c.381-.381.7-.7.938-.98c.249-.293.455-.596.573-.959a2.77 2.77 0 0 0 0-1.714c-.118-.363-.324-.666-.573-.959a19 19 0 0 0-.938-.98l-1.012-1.012h-2.356c-.287 0-.574.125-.794.367l-1.978 2.176a1.64 1.64 0 0 1-2.426 0L8.809 8.559a1.07 1.07 0 0 0-.794-.367z"
-                  />
-                  <path
-                    fill="currentColor"
-                    d="M17.332 16.817h-1.347a2.08 2.08 0 0 1-1.54-.697l-1.979-2.176a.63.63 0 0 0-.932 0L9.555 16.12c-.4.44-.952.697-1.54.697H6.668l2.536 2.536c.381.381.7.7.98.938c.293.249.596.455.959.573a2.78 2.78 0 0 0 1.714 0c.363-.118.666-.324.959-.573c.28-.239.599-.557.98-.938z"
-                  />
-                </svg>
-                PIX
-              </template>
-              <template v-else>
-                <img
-                  v-if="paymentBrandImage"
-                  :src="paymentBrandImage"
-                  :alt="billing?.card_brand || 'Cartão'"
-                  class="payment-brand-img"
-                />
-                {{ paymentMethodLabel }}
-              </template>
-            </span>
-          </div>
-        </div>
-      </div>
-      <div class="card-foot notes">
-        <p v-if="message" class="ok-msg">{{ message }}</p>
-        <p v-if="error" class="err-msg">{{ error }}</p>
-      </div>
+    <div class="pf-head">
+      <p class="pf-eyebrow">Conta</p>
+      <h1 class="pf-title">{{ isInvitedTeamUser ? "Perfil" : "Perfil e assinatura" }}</h1>
+      <p class="pf-sub">{{ isInvitedTeamUser ? "Seus dados e sua senha." : "Seu plano, seus dados e sua senha." }}</p>
     </div>
 
-    <div class="card-row">
-      <div class="card">
-        <div class="card-head">
-          <div class="card-eye">{{ viewCopy.profileSection.eyebrow }}</div>
-          <div class="card-title">{{ viewCopy.profileSection.title }}</div>
-          <div class="card-sub">{{ viewCopy.profileSection.description }}</div>
+    <section v-if="!isInvitedTeamUser" class="pf-card pf-plan-card">
+      <div class="pf-plan">
+        <span class="pf-plan-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z" /></svg>
+        </span>
+        <div class="min-w-0 flex-1">
+          <p class="pf-plan-k">Seu plano</p>
+          <p class="pf-plan-v">{{ currentPlanLabel }}</p>
         </div>
-        <div class="card-body">
-          <div class="profile-layout">
-            <div class="profile-top">
-              <div class="profile-photo-col">
-                <label class="fl">Foto de perfil</label>
-                <button type="button" class="profile-photo-upload" @click="openProfilePhotoEditor">
-                  <img
-                    v-if="profilePhotoPreview"
-                    :src="profilePhotoPreview"
-                    alt="Foto de perfil"
-                    class="profile-photo-img"
-                  />
-                  <div v-else class="profile-photo-empty">
-                    <span class="profile-photo-plus">+</span>
-                    <span>Enviar foto</span>
-                  </div>
-                </button>
-                <input
-                  ref="profilePhotoInputRef"
-                  type="file"
-                  accept="image/*"
-                  class="hidden"
-                  @change="onProfilePhotoSelected"
-                />
-              </div>
+        <span class="pf-plan-status" :class="planStatusTone">{{ billingStatusLabel }}</span>
+        <button type="button" class="pf-plan-btn" @click="goPlans">Ver planos</button>
+      </div>
 
-              <div class="profile-identity-col">
-                <div class="fg">
-                  <label class="fl">{{ viewCopy.profileSection.fields.nameLabel }}</label>
-                  <input v-model="profileForm.name" class="fi" type="text" :placeholder="viewCopy.profileSection.fields.namePlaceholder" />
-                </div>
-                <div class="profile-cpf-phone-row">
-                  <div class="fg">
-                    <label class="fl">{{ viewCopy.profileSection.fields.cpfLabel }}</label>
-                    <input class="fi" type="text" :value="formattedCpf" readonly disabled />
-                  </div>
-                  <div class="fg">
-                    <label class="fl">{{ viewCopy.profileSection.fields.phoneLabel }}</label>
-                    <input v-model="profileForm.whatsapp" class="fi" type="text" :placeholder="viewCopy.profileSection.fields.phonePlaceholder" />
-                  </div>
-                </div>
-                <div class="fg">
-                  <label class="fl">{{ viewCopy.profileSection.fields.emailLabel }}</label>
-                  <input v-model="profileForm.email" class="fi" type="email" :placeholder="viewCopy.profileSection.fields.emailPlaceholder" />
-                </div>
-              </div>
-            </div>
-          </div>
+      <div class="pf-facts">
+        <div>
+          <p>Ciclo</p>
+          <b>{{ cycleShort }}</b>
         </div>
-        <div class="card-foot">
-          <button type="button" class="btn btn-p" :disabled="profileSaving" @click="saveProfile">
-            {{ profileSaving ? viewCopy.profileSection.actions.saving : viewCopy.profileSection.actions.save }}
-          </button>
-          <span v-if="profileMessage" class="ok-msg">{{ profileMessage }}</span>
-          <span v-if="profileError" class="err-msg">{{ profileError }}</span>
+        <div>
+          <p>Próxima renovação</p>
+          <b>{{ billing?.valid_until ? formatDate(billing?.valid_until) : "—" }}</b>
+        </div>
+        <div class="pf-fact-pay">
+          <div class="min-w-0">
+            <p>Forma de pagamento</p>
+            <b>
+              <svg v-if="paymentMethodType !== 'pix'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" /></svg>
+              {{ paymentSummary }}
+            </b>
+          </div>
+          <button type="button" class="pf-link" @click="openPaymentMethodModal">Alterar</button>
         </div>
       </div>
 
-      <div class="card">
-        <div class="card-head">
-          <div class="card-eye">{{ viewCopy.passwordSection.eyebrow }}</div>
-          <div class="card-title">{{ viewCopy.passwordSection.title }}</div>
-          <div class="card-sub">{{ viewCopy.passwordSection.description }}</div>
-        </div>
-        <div class="card-body">
-          <div class="fg">
-            <label class="fl">{{ viewCopy.passwordSection.fields.currentLabel }}</label>
-            <input v-model="passwordForm.current" class="fi" type="password" :placeholder="viewCopy.passwordSection.fields.currentPlaceholder" autocomplete="current-password" />
+      <p v-if="isPaidPlan" class="pf-note">
+        Quer parar a renovação?
+        <button type="button" class="pf-link is-danger" :disabled="actionLoading" @click="cancelSubscription">Cancelar renovação</button>.
+        O plano segue ativo até o fim do período pago.
+      </p>
+      <p v-if="message" class="pf-msg is-ok">{{ message }}</p>
+      <p v-if="error" class="pf-msg is-error">{{ error }}</p>
+    </section>
+
+    <div class="pf-row">
+      <section class="pf-card">
+        <header class="pf-card-head">
+          <div>
+            <p class="pf-card-eyebrow">Dados</p>
+            <h2>Informações pessoais</h2>
+            <p>Aparecem no painel e para a sua equipe.</p>
           </div>
-          <div class="fg">
-            <label class="fl">{{ viewCopy.passwordSection.fields.newLabel }}</label>
-            <input v-model="passwordForm.new" class="fi" type="password" :placeholder="viewCopy.passwordSection.fields.newPlaceholder" autocomplete="new-password" />
-          </div>
-          <div class="fg">
-            <label class="fl">{{ viewCopy.passwordSection.fields.confirmLabel }}</label>
-            <input v-model="passwordForm.confirm" class="fi" type="password" :placeholder="viewCopy.passwordSection.fields.confirmPlaceholder" autocomplete="new-password" />
-          </div>
-        </div>
-        <div class="card-foot">
-          <button type="button" class="btn btn-p" :disabled="passwordSaving" @click="changePassword">
-            {{ passwordSaving ? viewCopy.passwordSection.actions.saving : viewCopy.passwordSection.actions.save }}
+        </header>
+
+        <div class="pf-photo">
+          <button type="button" class="pf-avatar" aria-label="Trocar foto de perfil" @click="openProfilePhotoEditor">
+            <img v-if="profilePhotoPreview" :src="profilePhotoPreview" alt="Foto de perfil" />
+            <template v-else>{{ profileInitial }}</template>
           </button>
-          <span v-if="passwordMessage" class="ok-msg">{{ passwordMessage }}</span>
-          <span v-if="passwordError" class="err-msg">{{ passwordError }}</span>
+          <div>
+            <button type="button" class="pf-btn-ghost" @click="openProfilePhotoEditor">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" /></svg>
+              {{ profilePhotoPreview ? "Trocar foto" : "Enviar foto" }}
+            </button>
+            <p class="pf-hint">JPG ou PNG, quadrada</p>
+          </div>
+          <input ref="profilePhotoInputRef" type="file" accept="image/*" class="hidden" @change="onProfilePhotoSelected" />
         </div>
-      </div>
+
+        <label class="pf-field">
+          <span>Nome completo</span>
+          <input v-model="profileForm.name" class="pf-input" type="text" :placeholder="viewCopy.profileSection.fields.namePlaceholder" />
+        </label>
+        <div class="pf-two">
+          <label class="pf-field">
+            <span>CPF</span>
+            <input class="pf-input" type="text" :value="formattedCpf" readonly disabled />
+            <small>Não pode ser alterado.</small>
+          </label>
+          <label class="pf-field">
+            <span>Telefone</span>
+            <input v-model="profileForm.whatsapp" class="pf-input" type="text" :placeholder="viewCopy.profileSection.fields.phonePlaceholder" />
+          </label>
+        </div>
+        <label class="pf-field">
+          <span>E-mail</span>
+          <input v-model="profileForm.email" class="pf-input" type="email" :placeholder="viewCopy.profileSection.fields.emailPlaceholder" />
+        </label>
+
+        <footer class="pf-foot">
+          <p v-if="profileMessage" class="pf-msg is-ok">{{ profileMessage }}</p>
+          <p v-if="profileError" class="pf-msg is-error">{{ profileError }}</p>
+          <button type="button" class="pf-btn-primary" :disabled="profileSaving" @click="saveProfile">
+            {{ profileSaving ? viewCopy.profileSection.actions.saving : "Salvar dados" }}
+          </button>
+        </footer>
+      </section>
+
+      <section class="pf-card">
+        <header class="pf-card-head">
+          <div>
+            <p class="pf-card-eyebrow">Segurança</p>
+            <h2>Alterar senha</h2>
+          </div>
+          <span class="pf-lock" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
+          </span>
+        </header>
+
+        <label class="pf-field">
+          <span>Senha atual</span>
+          <input v-model="passwordForm.current" class="pf-input" type="password" :placeholder="viewCopy.passwordSection.fields.currentPlaceholder" autocomplete="current-password" />
+        </label>
+        <label class="pf-field">
+          <span>Nova senha</span>
+          <input v-model="passwordForm.new" class="pf-input" type="password" :placeholder="viewCopy.passwordSection.fields.newPlaceholder" autocomplete="new-password" />
+        </label>
+        <ul class="pf-rules">
+          <li v-for="rule in passwordRules" :key="rule.label" :class="{ ok: rule.ok }">
+            <svg v-if="rule.ok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+            <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M6 18 18 6" /></svg>
+            {{ rule.label }}
+          </li>
+        </ul>
+        <label class="pf-field">
+          <span>Confirmar nova senha</span>
+          <input v-model="passwordForm.confirm" class="pf-input" type="password" :placeholder="viewCopy.passwordSection.fields.confirmPlaceholder" autocomplete="new-password" />
+        </label>
+
+        <footer class="pf-foot">
+          <p v-if="passwordMessage" class="pf-msg is-ok">{{ passwordMessage }}</p>
+          <p v-if="passwordError" class="pf-msg is-error">{{ passwordError }}</p>
+          <button type="button" class="pf-btn-primary" :disabled="passwordSaving" @click="changePassword">
+            {{ passwordSaving ? viewCopy.passwordSection.actions.saving : "Salvar nova senha" }}
+          </button>
+        </footer>
+      </section>
     </div>
 
     <transition name="fade">
@@ -694,6 +662,37 @@ const paymentMethodLabel = computed(() => {
   }
   if (paymentMethodType.value === "pix") return "PIX";
   return "--";
+});
+
+// ===== Visual da proposta =====
+const planStatusTone = computed(() => {
+  const status = billing.value?.status || "inactive";
+  if (status === "active") return "is-ok";
+  if (status === "past_due" || status === "pending" || status === "cancel_at_period_end") return "is-warn";
+  return "is-off";
+});
+const paymentSummary = computed(() => {
+  if (paymentMethodType.value === "pix") return "PIX";
+  if (paymentMethodType.value === "card" || paymentMethodType.value === "credit_card") {
+    const last4 = (billing.value?.card_last4 || "").trim();
+    return last4 ? `Cartão final ${last4}` : (billing.value?.card_brand || "Cartão");
+  }
+  return "Não informada";
+});
+const cycleShort = computed(() => {
+  const cycle = billing.value?.billing_cycle;
+  if (cycle === "monthly") return "Mensal";
+  if (cycle === "annual") return "Anual";
+  return billingCycleLabel.value;
+});
+const profileInitial = computed(() => (profileForm.name || user.value?.name || user.value?.email || "?").trim().charAt(0).toUpperCase());
+const passwordRules = computed(() => {
+  const value = passwordForm.new || "";
+  return [
+    { label: "Pelo menos 8 caracteres", ok: value.length >= 8 },
+    { label: "Letras maiúsculas e minúsculas", ok: /[a-z]/.test(value) && /[A-Z]/.test(value) },
+    { label: "Pelo menos um número", ok: /\d/.test(value) }
+  ];
 });
 
 const isPaidPlan = computed(() => {
@@ -1604,5 +1603,72 @@ watch(
   .subscription-meta {
     grid-template-columns: 1fr;
   }
+}
+
+/* Redesign: perfil e assinatura */
+.profile-ref { display: flex; flex-direction: column; gap: 16px; }
+.pf-eyebrow { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: color-mix(in srgb, var(--muted-foreground) 80%, transparent); }
+.pf-title { margin-top: 4px; font-family: var(--font-display); font-size: 30px; line-height: 38px; font-weight: 600; color: var(--foreground); }
+.pf-sub { margin-top: 4px; font-size: 14px; color: var(--muted-foreground); }
+.pf-card { border-radius: 20px; background: var(--card); padding: 20px 22px; box-shadow: var(--shadow-card); }
+.pf-plan { display: flex; align-items: center; gap: 14px; border-radius: 16px; background: linear-gradient(120deg, #0d1f19, #0b1512 60%, #10291f); padding: 18px 20px; color: #fff; }
+.pf-plan-icon { display: grid; place-items: center; width: 40px; height: 40px; flex-shrink: 0; border-radius: 999px; background: rgba(31, 227, 160, 0.14); color: #34d399; }
+.pf-plan-icon svg { width: 18px; height: 18px; }
+.pf-plan-k { font-size: 12.5px; color: rgba(255, 255, 255, 0.72); }
+.pf-plan-v { font-family: var(--font-display); font-size: 24px; line-height: 30px; font-weight: 600; }
+.pf-plan-status { border-radius: 999px; padding: 2px 10px; font-size: 11.5px; font-weight: 600; }
+.pf-plan-status.is-ok { background: rgba(52, 211, 153, 0.16); color: #34d399; }
+.pf-plan-status.is-warn { background: rgba(251, 191, 36, 0.16); color: #fbbf24; }
+.pf-plan-status.is-off { background: rgba(255, 255, 255, 0.12); color: rgba(255, 255, 255, 0.8); }
+.pf-plan-btn { height: 40px; padding: 0 18px; border-radius: 999px; background: #1fe3a0; font-size: 13.5px; font-weight: 600; color: #062016; }
+.pf-plan-btn:hover { background: #3eeab0; }
+.pf-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+.pf-facts > div { border-radius: 14px; background: var(--muted); padding: 10px 14px; }
+.pf-facts p { font-size: 12px; color: var(--muted-foreground); }
+.pf-facts b { display: flex; align-items: center; gap: 6px; margin-top: 2px; font-size: 14.5px; font-weight: 600; color: var(--foreground); }
+.pf-facts b svg { width: 15px; height: 15px; flex-shrink: 0; }
+.pf-fact-pay { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.pf-link { font-size: 13px; font-weight: 600; color: var(--primary); }
+.pf-link.is-danger { color: var(--status-danger-foreground); }
+.pf-link:disabled { opacity: 0.6; }
+.pf-note { margin-top: 12px; font-size: 12.5px; color: var(--muted-foreground); }
+.pf-msg { margin-top: 10px; border-radius: 12px; padding: 8px 12px; font-size: 12.5px; }
+.pf-msg.is-ok { background: var(--status-success); color: var(--status-success-foreground); }
+.pf-msg.is-error { background: var(--status-danger); color: var(--status-danger-foreground); }
+.pf-row { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); align-items: start; gap: 16px; }
+.pf-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.pf-card-eyebrow { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted-foreground); }
+.pf-card-head h2 { margin-top: 2px; font-family: var(--font-display); font-size: 17px; font-weight: 600; color: var(--foreground); }
+.pf-card-head p:last-child { font-size: 13px; color: var(--muted-foreground); }
+.pf-lock { display: grid; place-items: center; width: 40px; height: 40px; flex-shrink: 0; border-radius: 999px; background: var(--status-success); color: var(--status-success-foreground); }
+.pf-lock svg { width: 18px; height: 18px; }
+.pf-photo { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+.pf-avatar { display: grid; place-items: center; width: 64px; height: 64px; flex-shrink: 0; overflow: hidden; border-radius: 999px; background: var(--accent); font-family: var(--font-display); font-size: 22px; font-weight: 600; color: var(--accent-foreground); }
+.pf-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.pf-hint { margin-top: 6px; font-size: 12px; color: var(--muted-foreground); }
+.pf-btn-ghost, .pf-btn-primary { display: inline-flex; align-items: center; gap: 8px; border-radius: 999px; font-weight: 600; }
+.pf-btn-ghost { height: 34px; padding: 0 14px; background: var(--muted); font-size: 13px; color: var(--foreground); }
+.pf-btn-ghost:hover { background: var(--accent); color: var(--accent-foreground); }
+.pf-btn-ghost svg { width: 14px; height: 14px; }
+.pf-btn-primary { height: 40px; padding: 0 20px; background: var(--primary); font-size: 13.5px; color: var(--primary-foreground); }
+.pf-btn-primary:hover:not(:disabled) { background: color-mix(in srgb, var(--primary) 88%, black); }
+.pf-btn-primary:disabled { opacity: 0.6; }
+.pf-field { display: block; margin-bottom: 12px; }
+.pf-field > span { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600; color: var(--foreground); }
+.pf-field small { display: block; margin-top: 4px; font-size: 12px; color: var(--muted-foreground); }
+.pf-input { width: 100%; height: 42px; border: 0 !important; border-radius: 12px; background: var(--muted) !important; padding: 0 12px; font-size: 13.5px; color: var(--foreground); outline: none; }
+.pf-input:focus { box-shadow: 0 0 0 2px var(--ring); }
+.pf-input:disabled { color: var(--muted-foreground); }
+.pf-two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.pf-rules { display: flex; flex-direction: column; gap: 4px; margin: -2px 0 12px; }
+.pf-rules li { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted-foreground); }
+.pf-rules li.ok { color: var(--status-success-foreground); }
+.pf-rules svg { width: 13px; height: 13px; }
+.pf-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 4px; border-top: 1px solid var(--border); padding-top: 14px; }
+.pf-foot .pf-msg { margin: 0 auto 0 0; }
+@media (max-width: 1000px) { .pf-row { grid-template-columns: 1fr; } }
+@media (max-width: 640px) {
+  .pf-plan { flex-wrap: wrap; }
+  .pf-facts, .pf-two { grid-template-columns: 1fr; }
 }
 </style>
