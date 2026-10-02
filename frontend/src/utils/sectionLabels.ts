@@ -6,22 +6,22 @@ export const sectionLabels: Partial<Record<SectionType, string>> = {
   banner_card: "Banner em Card",
   photo: "Foto destacada",
   biography: "Biografia",
-  prices: "Precos",
-  itinerary: "Itinerario",
-  faq: "Perguntas Frequentes",
+  prices: "Preços",
+  itinerary: "Roteiro",
+  faq: "Perguntas frequentes",
   testimonials: "Depoimentos",
-  featured_video: "Video em destaque",
-  video_vsl: "Video VSL",
-  cta: "Chamada para acao",
+  featured_video: "Vídeo em destaque",
+  video_vsl: "Vídeo VSL",
+  cta: "Chamada para ação",
   story: "Descritivo",
   reasons: "Itens",
   links: "Links",
   countdown: "Contador",
-  agency_footer: "Rodape da agencia",
+  agency_footer: "Rodapé da agência",
   flight_details: "Detalhes do voo",
   viajeon_checkout: "Checkout ViajeOn",
   internal_form: "Formulário interno",
-  free_footer_brand: "Rodape obrigatorio",
+  free_footer_brand: "Rodapé obrigatório",
   gallery: "Galeria"
 };
 
@@ -32,7 +32,7 @@ export const describeSection = (section: PageSection): string => {
     case "hero":
     case "story":
     case "banner_card":
-      return section.title || section.subtitle || "Sem titulo";
+      return section.title || section.subtitle || "Sem título";
     case "testimonials":
       return section.title || "Depoimentos dos clientes";
     case "cta":
@@ -50,9 +50,9 @@ export const describeSection = (section: PageSection): string => {
     case "countdown":
       return section.label || "Contagem regressiva";
     case "featured_video":
-      return section.title || "Video em destaque";
+      return section.title || "Vídeo em destaque";
     case "video_vsl":
-      return section.title || "Video VSL";
+      return section.title || "Vídeo VSL";
     case "gallery":
       return "Galeria de imagens";
     case "photo":
@@ -60,16 +60,16 @@ export const describeSection = (section: PageSection): string => {
     case "biography":
       return section.title || "Biografia";
     case "agency_footer":
-      return "Rodape institucional";
+      return "Rodapé institucional";
     case "flight_details":
-      return section.title || "Informacões de voo";
+      return section.title || "Informações de voo";
     case "viajeon_checkout":
       return section.title || section.checkoutName || "Checkout ViajeOn";
     case "internal_form":
       return section.title || "Formulário interno";
     case "free_footer_brand":
-      return "Rodape obrigatorio";
+      return "Rodapé obrigatório";
     default:
-      return "Secao";
+      return "Seção";
   }
 };
