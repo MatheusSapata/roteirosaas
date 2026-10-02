@@ -4559,7 +4559,7 @@ onMounted(async () => {
     position: fixed;
     top: 93px;
     right: 24px;
-    bottom: 93px;
+    bottom: 16px;
     width: 29rem;
   max-width: calc(100vw - 48px);
   z-index: 60;
@@ -4584,7 +4584,7 @@ onMounted(async () => {
   width: 12px;
   border: 0;
   padding: 0;
-  background: linear-gradient(to right, rgba(61, 204, 95, 0.14), rgba(61, 204, 95, 0));
+  background: transparent;
   cursor: col-resize;
   touch-action: none;
   z-index: 2;
@@ -5702,7 +5702,7 @@ onMounted(async () => {
   border-color: var(--border);
   background: color-mix(in srgb, var(--card) 96%, transparent);
   color: var(--card-foreground);
-  box-shadow: var(--shadow-elegant);
+  box-shadow: none;
 }
 
 .editor-ai-sidebar-header,
@@ -6225,7 +6225,7 @@ onMounted(async () => {
 .ed-tab.on { box-shadow: inset 0 -2px 0 var(--primary); color: var(--foreground); }
 .ed-tab-badge { border-radius: 999px; background: var(--status-warning); padding: 1px 8px; font-size: 10.5px; color: var(--status-warning-foreground); }
 
-.ed-grid { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 16px; height: calc(100dvh - 172px); min-height: 560px; }
+.ed-grid { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 16px; height: calc(100dvh / var(--app-scale, 1) - 184px); min-height: 560px; }
 .ed-grid.is-wide { grid-template-columns: minmax(380px, 440px) minmax(0, 1fr); }
 .ed-side { min-height: 0; overflow-y: auto; }
 .ed-sections { display: flex; min-height: 100%; flex-direction: column; border-radius: 20px; background: var(--card); padding: 16px; box-shadow: var(--shadow-card); }
@@ -6282,6 +6282,10 @@ onMounted(async () => {
 .ed-browser-bar { display: flex; height: 30px; flex-shrink: 0; align-items: center; gap: 6px; background: #e9eeea; padding: 0 12px; }
 .ed-browser-bar i { width: 9px; height: 9px; border-radius: 999px; background: #cfd6d1; }
 .ed-browser-bar span { overflow: hidden; margin-left: 10px; border-radius: 999px; background: #fff; padding: 2px 12px; font-size: 11px; white-space: nowrap; text-overflow: ellipsis; color: #66706b; }
+:global(.dark .ed-browser) { background: #0f1513; }
+:global(.dark .ed-browser-bar) { background: #1a2320; }
+:global(.dark .ed-browser-bar i) { background: #34403b; }
+:global(.dark .ed-browser-bar span) { background: #0f1513; color: #9aa7a1; }
 .ed-phone { display: flex; width: 410px; max-width: 100%; min-height: 0; flex-direction: column; border-radius: 40px; background: #0b100e; padding: 10px; box-shadow: var(--shadow-elegant); }
 .ed-phone .ed-screen { border-radius: 30px; background: #fff; scrollbar-width: none; }
 .ed-phone .ed-screen::-webkit-scrollbar { display: none; }

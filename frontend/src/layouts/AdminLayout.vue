@@ -786,6 +786,7 @@
     </transition>
 
     <a
+      v-if="!isEditorRoute"
       href="https://wa.me/5553991800903"
       target="_blank"
       rel="noopener"
@@ -830,6 +831,8 @@ const leadStore = useLeadCaptureStore();
 const routeRequiresAuth = computed(() => route.matched.some(record => record.meta?.requiresAuth));
 const isInboxRoute = computed(() => route.path.startsWith("/admin/inbox"));
 const isPlansRoute = computed(() => route.name === "plans");
+// No editor de página a tela é toda do editor: sem o botão de ajuda do WhatsApp.
+const isEditorRoute = computed(() => route.name === "page-edit");
 const showAuthSplash = computed(() => {
   if (!routeRequiresAuth.value) return false;
   if (!auth.token) return false;
