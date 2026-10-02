@@ -100,6 +100,7 @@
                       @click="handleFinalizeOpportunity('won')"
                     >
                       <svg viewBox="0 0 24 24"><path d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3H14z"/><path d="M7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3"/></svg>
+                      <span>Ganha</span>
                     </button>
                     <button
                       type="button"
@@ -108,6 +109,7 @@
                       @click="handleFinalizeOpportunity('lost')"
                     >
                       <svg viewBox="0 0 24 24"><path d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3H10z"/><path d="M17 2h2.67A2.31 2.31 0 0122 4v7a2.31 2.31 0 01-2.33 2H17"/></svg>
+                      <span>Perdida</span>
                     </button>
                   </div>
                 </div>
@@ -1267,6 +1269,25 @@ function historyKind(item: { title: string }) {
     max-width: 100%;
   }
 }
+
+/* Redesign: gaveta da oportunidade */
+.opp-hd { border-bottom: 0 !important; padding-top: 18px !important; }
+.opp-x { border: 0 !important; border-radius: 999px !important; background: var(--muted) !important; }
+.opp-stage, .opp-status { border-radius: 999px !important; }
+.opp-hl-btn { display: inline-flex !important; align-items: center; gap: 6px; width: auto !important; height: 34px !important; padding: 0 14px !important; border: 0 !important; border-radius: 999px !important; font-size: 13px; font-weight: 600; }
+.opp-hl-won { background: var(--status-success) !important; color: var(--status-success-foreground) !important; }
+.opp-hl-lost { background: var(--status-danger) !important; color: var(--status-danger-foreground) !important; }
+.opp-hl-btn.active { box-shadow: inset 0 0 0 2px currentColor; }
+.opp-hl-btn svg { stroke: currentColor !important; }
+.opp-info { display: flex; flex-direction: column; gap: 10px; padding: 16px 24px !important; border-bottom: 0 !important; }
+.opp-line { border: 0 !important; border-radius: 20px; background: var(--muted) !important; padding: 14px 16px !important; }
+.opp-link-btn { border: 0 !important; border-radius: 999px !important; background: var(--card) !important; box-shadow: var(--shadow-card); }
+.opp-tabs { gap: 4px !important; margin: 0 24px; padding: 0 !important; }
+.opp-tab-btn { margin-bottom: -1px; border: 0 !important; border-bottom: 2px solid transparent !important; border-radius: 0 !important; background: transparent !important; }
+.opp-tab-btn.on { border-bottom-color: var(--primary) !important; background: transparent !important; color: var(--foreground) !important; }
+.opp-note-ta { border-color: transparent !important; border-radius: 16px !important; background: var(--muted) !important; }
+.opp-add-btn { border-radius: 999px !important; }
+.opp-note { border: 0 !important; border-radius: 16px !important; }
 </style>
 
 

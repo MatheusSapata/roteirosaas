@@ -7,7 +7,7 @@
     <template v-else-if="client">
       <button type="button" class="det-back-btn" @click="goBack">
         <svg class="det-back-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m15 18-6-6 6-6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
-        Clientes
+        Leads › Clientes
       </button>
 
       <section class="det-card">
@@ -16,13 +16,12 @@
             <div class="det-hd-left">
               <div class="det-avatar">{{ clientInitial }}</div>
               <div class="det-name-block">
-                <p class="det-eyebrow">Cliente</p>
+                <p class="det-eyebrow">Cliente desde {{ clientSinceLabel }}</p>
                 <h1 class="det-name">{{ client.name }}</h1>
                 <div class="det-meta">
                   <span class="det-meta-item val"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.9.33 1.77.63 2.61a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.47-1.2a2 2 0 0 1 2.11-.45c.84.3 1.71.51 2.61.63A2 2 0 0 1 22 16.92z" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>{{ formatPhone(client.phone) || "Telefone não informado" }}</span>
                   <span class="det-meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 4h16a2 2 0 0 1 2 2v.01L12 13 2 6.01V6a2 2 0 0 1 2-2Z" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M22 8v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>{{ client.email || "E-mail não informado" }}</span>
                   <span class="det-meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 1 1 18 0Z" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="10" r="3" stroke-width="1.9"/></svg>{{ client.city || "Cidade não informada" }}</span>
-                  <span class="det-meta-item">Cliente desde <strong>{{ clientSinceLabel }}</strong></span>
                 </div>
               </div>
             </div>
@@ -41,11 +40,11 @@
         </div>
 
         <div class="det-stats-inner">
-          <div class="ds"><span class="ds-icon ds-icon--violet"><svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M15 3v3h3"/></svg></span><p class="ds-lbl">Total de oportunidades</p><p class="ds-val">{{ client.opportunitiesCount }}</p></div>
+          <div class="ds"><span class="ds-icon ds-icon--violet"><svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M15 3v3h3"/></svg></span><p class="ds-lbl">Oportunidades</p><p class="ds-val">{{ client.opportunitiesCount }}</p></div>
           <div class="ds"><span class="ds-icon ds-icon--amber"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg></span><p class="ds-lbl">Abertas</p><p class="ds-val">{{ openOpportunitiesCount }}</p></div>
-          <div class="ds"><span class="ds-icon ds-icon--blue"><svg viewBox="0 0 24 24"><path d="M12 2v20"/><path d="M17 6H9.5a3.5 3.5 0 0 0 0 7H14.5a3.5 3.5 0 0 1 0 7H6"/></svg></span><p class="ds-lbl">Valores em aberto</p><p class="ds-val">{{ formatCurrency(futureEstimatedValueCents) }}</p></div>
-          <div class="ds"><span class="ds-icon ds-icon--green"><svg viewBox="0 0 24 24"><path d="M4 14l5-5 4 4 7-7"/><path d="M15 6h5v5"/></svg></span><p class="ds-lbl">Valor já ganho</p><p class="ds-val g">{{ formatCurrency(wonValueCents) }}</p></div>
-          <div class="ds"><span class="ds-icon ds-icon--red"><svg viewBox="0 0 24 24"><path d="M4 10l5 5 4-4 7 7"/><path d="M15 18h5v-5"/></svg></span><p class="ds-lbl">Valor perdido</p><p class="ds-val r">{{ formatCurrency(lostValueCents) }}</p></div>
+          <div class="ds"><span class="ds-icon ds-icon--blue"><svg viewBox="0 0 24 24"><path d="M12 2v20"/><path d="M17 6H9.5a3.5 3.5 0 0 0 0 7H14.5a3.5 3.5 0 0 1 0 7H6"/></svg></span><p class="ds-lbl">Em aberto</p><p class="ds-val">{{ formatCurrency(futureEstimatedValueCents) }}</p></div>
+          <div class="ds"><span class="ds-icon ds-icon--green"><svg viewBox="0 0 24 24"><path d="M4 14l5-5 4 4 7-7"/><path d="M15 6h5v5"/></svg></span><p class="ds-lbl">Ganho</p><p class="ds-val g">{{ formatCurrency(wonValueCents) }}</p></div>
+          <div class="ds"><span class="ds-icon ds-icon--red"><svg viewBox="0 0 24 24"><path d="M4 10l5 5 4-4 7 7"/><path d="M15 18h5v-5"/></svg></span><p class="ds-lbl">Perdido</p><p class="ds-val r">{{ formatCurrency(lostValueCents) }}</p></div>
           <div class="ds"><span class="ds-icon ds-icon--purple"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l2 2"/></svg></span><p class="ds-lbl">Última interação</p><p class="ds-val ds-time">{{ formatDateTime(lastInteractionAt) }}</p></div>
         </div>
 
@@ -1563,5 +1562,28 @@ function outcomeBadgeClass(outcome: "won" | "lost") {
     padding-top: 6px;
   }
 }
+
+/* Redesign: página do cliente */
+.det-back-btn { border: 0 !important; background: transparent !important; box-shadow: none !important; padding-left: 0 !important; font-weight: 500; color: var(--muted-foreground) !important; }
+.det-back-btn:hover { color: var(--foreground) !important; }
+.det-card { border: 0 !important; background: transparent !important; box-shadow: none !important; overflow: visible !important; }
+.det-hd-top { border: 0 !important; border-radius: 20px; background: var(--card) !important; box-shadow: var(--shadow-card); }
+.det-avatar { border-radius: 999px !important; background: var(--accent) !important; color: var(--accent-foreground) !important; box-shadow: none !important; }
+.det-name { font-family: var(--font-display); }
+.det-stats-inner { display: grid !important; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; margin-top: 16px; padding: 0 !important; border: 0 !important; background: transparent !important; }
+.det-stats-inner .ds { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 10px; align-items: center; border: 0 !important; border-radius: 20px !important; background: var(--card) !important; padding: 12px 14px !important; box-shadow: var(--shadow-card); }
+.det-stats-inner .ds-icon { grid-row: span 2; width: 36px !important; height: 36px !important; border-radius: 999px !important; }
+.det-stats-inner .ds-lbl { margin: 0 !important; text-transform: none !important; letter-spacing: 0 !important; font-size: 12px !important; font-weight: 500 !important; }
+.det-stats-inner .ds-val { margin: 0 !important; font-family: var(--font-display); font-size: 17px !important; }
+.det-tabs { margin-top: 16px; gap: 4px; border: 0 !important; border-bottom: 1px solid var(--border) !important; background: transparent !important; padding: 0 !important; }
+.det-tabs .tab-btn { margin-bottom: -1px; border: 0 !important; border-bottom: 2px solid transparent !important; border-radius: 0 !important; background: transparent !important; color: var(--muted-foreground) !important; }
+.det-tabs .tab-btn.on { border-bottom-color: var(--primary) !important; color: var(--foreground) !important; }
+.det-body { margin-top: 16px; border: 0 !important; border-radius: 20px; background: var(--card) !important; box-shadow: var(--shadow-card); }
+.btn { border-radius: 999px !important; }
+.det-stats-inner .ds-icon svg { width: 16px !important; height: 16px !important; }
+.btn-wpp { border-color: transparent !important; background: var(--accent) !important; color: var(--accent-foreground) !important; }
+.opp-item { border: 0 !important; border-radius: 16px !important; background: var(--muted) !important; }
+@media (max-width: 1100px) { .det-stats-inner { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .det-stats-inner { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 </style>
 

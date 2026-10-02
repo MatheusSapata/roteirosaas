@@ -1,38 +1,41 @@
 ﻿<template>
   <div class="clients-page space-y-5">
-    <p class="clients-sub">Gerencie sua base de clientes e histórico de oportunidades.</p>
-    <section class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      <article class="kpi-card">
-        <span class="kpi-icon" aria-hidden="true">
+    <section class="cv-stats">
+      <article class="cv-stat">
+        <span class="cv-icon tone-success" aria-hidden="true">
           <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M20 8v6"/><path d="M23 11h-6"/></svg>
         </span>
-        <p class="kpi-value">{{ clients.length }}</p>
-        <p class="kpi-label">Total de clientes</p>
-        <p class="kpi-sub">Base comercial ativa</p>
+        <div>
+          <p class="cv-k">Clientes</p>
+          <p class="cv-v">{{ clients.length }}</p>
+        </div>
       </article>
-      <article class="kpi-card">
-        <span class="kpi-icon kpi-icon--doc" aria-hidden="true">
-          <svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M15 3v3h3"/></svg>
+      <article class="cv-stat">
+        <span class="cv-icon tone-info" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
         </span>
-        <p class="kpi-value">{{ clientsWithOpportunities }}</p>
-        <p class="kpi-label">Com oportunidades</p>
-        <p class="kpi-sub">Clientes em negociação</p>
+        <div>
+          <p class="cv-k">Em negociação</p>
+          <p class="cv-v">{{ clientsWithOpportunities }}<small>com oportunidade</small></p>
+        </div>
       </article>
-      <article class="kpi-card" :class="{ 'kpi-card--revenue-positive': totalRevenueCents > 0 }">
-        <span class="kpi-icon kpi-icon--money" aria-hidden="true">
+      <article class="cv-stat">
+        <span class="cv-icon tone-warning" aria-hidden="true">
           <svg viewBox="0 0 24 24"><path d="M12 2v20"/><path d="M17 6H9.5a3.5 3.5 0 0 0 0 7H14.5a3.5 3.5 0 0 1 0 7H6"/></svg>
         </span>
-        <p class="kpi-value">{{ formatCurrency(totalRevenueCents) }}</p>
-        <p class="kpi-label">Receita total</p>
-        <p class="kpi-sub">Somatório estimado</p>
+        <div>
+          <p class="cv-k">Valor total</p>
+          <p class="cv-v">{{ formatCurrency(totalRevenueCents) }}</p>
+        </div>
       </article>
-      <article class="kpi-card">
-        <span class="kpi-icon" aria-hidden="true">
+      <article class="cv-stat">
+        <span class="cv-icon tone-violet" aria-hidden="true">
           <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
         </span>
-        <p class="kpi-value text-lg">{{ latestOpportunityDate }}</p>
-        <p class="kpi-label">Última oportunidade</p>
-        <p class="kpi-sub">Movimento mais recente</p>
+        <div>
+          <p class="cv-k">Última oportunidade</p>
+          <p class="cv-v">{{ latestOpportunityDate }}</p>
+        </div>
       </article>
     </section>
 
@@ -104,7 +107,7 @@
                 <td class="px-4 py-3">{{ locationLabel(client) }}</td>
                 <td class="px-4 py-3">
                   <span class="op-badge" :class="client.opportunitiesCount > 0 ? 'is-hot' : 'is-cold'">
-                    {{ client.opportunitiesCount }} oportunidades
+                    {{ client.opportunitiesCount }} {{ client.opportunitiesCount === 1 ? 'oportunidade' : 'oportunidades' }}
                   </span>
                 </td>
                 <td class="px-4 py-3 text-[1.05rem] font-semibold text-slate-900">{{ formatCurrency(client.totalEstimatedValueCents) }}</td>
@@ -144,7 +147,7 @@
                   <p class="text-[0.72rem] text-slate-500">Cliente desde {{ formatDate(client.created_at) }}</p>
                 </div>
               </div>
-              <span class="op-badge" :class="client.opportunitiesCount > 0 ? 'is-hot' : 'is-cold'">{{ client.opportunitiesCount }} oportunidades</span>
+              <span class="op-badge" :class="client.opportunitiesCount > 0 ? 'is-hot' : 'is-cold'">{{ client.opportunitiesCount }} {{ client.opportunitiesCount === 1 ? 'oportunidade' : 'oportunidades' }}</span>
             </div>
             <div class="mt-2 text-sm text-slate-700">
               <p>{{ client.email || '-' }}</p>
@@ -900,4 +903,24 @@ defineExpose({
     min-height: 132px;
   }
 }
+
+/* Redesign: clientes dentro de Leads */
+.cv-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.cv-stat { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 20px; background: var(--card); box-shadow: var(--shadow-card); }
+.cv-icon { display: grid; place-items: center; width: 40px; height: 40px; flex-shrink: 0; border-radius: 999px; }
+.cv-icon svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.tone-success { background: var(--status-success); color: var(--status-success-foreground); }
+.tone-info { background: var(--status-info); color: var(--status-info-foreground); }
+.tone-warning { background: var(--status-warning); color: var(--status-warning-foreground); }
+.tone-violet { background: var(--status-violet); color: var(--status-violet-foreground); }
+.cv-k { font-size: 12.5px; color: var(--muted-foreground); }
+.cv-v { font-family: var(--font-display); font-size: 20px; line-height: 26px; font-weight: 600; color: var(--foreground); font-variant-numeric: tabular-nums; }
+.cv-v small { margin-left: 6px; font-family: var(--font-sans); font-size: 12px; font-weight: 500; color: var(--muted-foreground); }
+.clients-filters-row .crm-input { border-color: transparent !important; border-radius: 999px !important; background: var(--card) !important; box-shadow: var(--shadow-card); }
+.clients-table-shell { border: 0 !important; border-radius: 20px !important; background: var(--card) !important; box-shadow: var(--shadow-card) !important; overflow: hidden; }
+.clients-table-shell thead { background: var(--card) !important; border-bottom: 1px solid var(--border); font-size: 11px; letter-spacing: 0.06em; }
+.clients-table-shell .op-badge { border: 0; background: transparent; padding: 0; font-weight: 500; color: var(--foreground); }
+.clients-table-shell .menu-trigger { border-color: transparent !important; border-radius: 999px !important; background: var(--muted) !important; }
+@media (max-width: 1100px) { .cv-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .cv-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } .cv-stat { padding: 12px; } .cv-icon { display: none; } }
 </style>

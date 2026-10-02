@@ -1,9 +1,9 @@
 ﻿<template>
-  <section class="pipeline-settings space-y-5">
+  <section class="pipeline-settings pipeline-layout">
     <section class="list-card p-4 md:p-5">
       <div class="pipeline-card-header">
         <div>
-          <p class="pipeline-eyebrow">FUNIL COMERCIAL</p>
+          <p class="pipeline-eyebrow">Funil comercial</p>
           <h3>{{ viewCopy.pipeline.title }}</h3>
           <p>{{ viewCopy.pipeline.helper }}</p>
         </div>
@@ -55,6 +55,7 @@
 
               <div class="min-w-0 flex-1">
                 <div class="flex items-center gap-3">
+                  <span class="pipeline-step">{{ index + 1 }}</span>
                   <span class="pipeline-color-dot" aria-hidden="true"></span>
                   <div class="min-w-0">
                     <p class="pipeline-name">{{ status.name }}</p>
@@ -95,7 +96,18 @@
           </div>
         </li>
       </ul>
+      <button type="button" class="pipeline-add" @click="openCreateModal">+ Adicionar etapa</button>
     </section>
+
+    <aside class="pipeline-info">
+      <span class="pipeline-info-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg>
+      </span>
+      <div>
+        <p class="pipeline-info-title">Como as etapas funcionam</p>
+        <p class="pipeline-info-text">Todo lead novo entra na etapa padrão do formulário que ele preencheu. Depois, mude a etapa direto na lista de oportunidades. Arraste as etapas para mudar a ordem.</p>
+      </div>
+    </aside>
 
     <Teleport to="body">
       <div v-if="statusModalOpen" class="app-modal-overlay fixed inset-0 z-[170] flex items-center justify-center px-4">
@@ -752,4 +764,27 @@ watch(
   padding: 0.5rem 1rem;
   font-size: 0.875rem;
 }
+
+/* Redesign: etapas do funil */
+.pipeline-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; align-items: start; gap: 16px; }
+.pipeline-layout > .list-card { border: 0 !important; border-radius: 20px !important; background: var(--card) !important; box-shadow: var(--shadow-card) !important; }
+.pipeline-eyebrow { text-transform: uppercase; }
+.pipeline-card { border: 0 !important; border-bottom: 1px solid var(--border) !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important; padding: 12px 4px !important; }
+.pipeline-card::before { display: none !important; }
+.pipeline-card:hover { background: color-mix(in srgb, var(--muted) 55%, transparent) !important; }
+.pipeline-step { display: grid; place-items: center; width: 24px; height: 24px; flex-shrink: 0; border-radius: 999px; background: var(--muted); font-size: 11.5px; font-weight: 600; color: var(--muted-foreground); }
+.pipeline-color-dot { width: 14px !important; height: 14px !important; }
+.pipeline-action-btn { border-color: transparent !important; border-radius: 999px !important; background: var(--muted) !important; }
+.pipeline-action-btn:hover { background: var(--accent) !important; color: var(--accent-foreground) !important; }
+.pipeline-action-btn--danger { background: var(--status-danger) !important; color: var(--status-danger-foreground) !important; }
+.pipeline-card.is-drag-over { background: var(--accent) !important; box-shadow: inset 0 0 0 1px var(--primary) !important; border-radius: 12px !important; }
+.pipeline-card.is-dragging { opacity: 0.6; }
+.pipeline-add { display: block; width: 100%; margin-top: 12px; border: 1px dashed var(--border); border-radius: 14px; padding: 10px; font-size: 13px; font-weight: 600; color: var(--primary); }
+.pipeline-add:hover { background: var(--accent); }
+.pipeline-info { display: flex; gap: 12px; border-radius: 20px; background: var(--card); padding: 16px; box-shadow: var(--shadow-card); }
+.pipeline-info-icon { display: grid; place-items: center; width: 36px; height: 36px; flex-shrink: 0; border-radius: 999px; background: var(--status-info); color: var(--status-info-foreground); }
+.pipeline-info-icon svg { width: 18px; height: 18px; }
+.pipeline-info-title { font-size: 14px; font-weight: 600; color: var(--foreground); }
+.pipeline-info-text { margin-top: 4px; font-size: 12.5px; line-height: 1.5; color: var(--muted-foreground); }
+@media (max-width: 1024px) { .pipeline-layout { grid-template-columns: 1fr; } }
 </style>

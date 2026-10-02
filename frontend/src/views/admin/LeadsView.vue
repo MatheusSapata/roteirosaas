@@ -25,13 +25,17 @@
 
 
 
-      <div class="shrink-0 flex w-full items-center justify-between gap-3">
-        <h1 class="font-display text-2xl font-semibold tracking-[-0.2px] text-foreground">{{ pageTitle }}</h1>
+      <div class="lv-head shrink-0">
+        <div class="min-w-0">
+          <p class="lv-eyebrow">Captação de leads</p>
+          <h1 class="lv-title">Leads</h1>
+          <p class="lv-sub">Formulários das suas páginas, oportunidades em andamento e a base de clientes.</p>
+        </div>
 
         <div v-if="activeTab === 'forms'" class="flex items-center gap-2">
           <button
             type="button"
-            class="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-[13px] font-semibold text-primary-foreground shadow-soft transition-colors hover:bg-brand-dark"
+            class="lv-btn-primary"
             @click="openCreateModal"
           >
             <span class="text-[15px] leading-none font-bold">+</span>
@@ -41,7 +45,7 @@
         <div v-else-if="activeTab === 'settings'" class="flex items-center gap-2">
           <button
             type="button"
-            class="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-[13px] font-semibold text-primary-foreground shadow-soft transition-colors hover:bg-brand-dark"
+            class="lv-btn-primary"
             @click="openPipelineStageModal"
           >
             <span class="text-[15px] leading-none font-bold">+</span>
@@ -51,7 +55,7 @@
         <div v-else-if="activeTab === 'clients'" class="flex items-center gap-2">
           <button
             type="button"
-            class="inline-flex items-center gap-2 rounded-[10px] bg-[#3DCC5F] px-4 py-[9px] text-[13px] font-semibold text-[#0F1F14] transition hover:bg-[#5BE07A]"
+            class="lv-btn-primary"
             @click="openClientCreateModal"
           >
             <span class="text-[15px] leading-none font-bold">+</span>
@@ -63,7 +67,7 @@
 
   <button
     type="button"
-    class="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-[13px] font-semibold text-primary-foreground shadow-soft transition-colors hover:bg-brand-dark"
+    class="lv-btn-primary"
     @click="openManualOpportunityModal"
   >
     <span class="text-[15px] leading-none font-bold">+</span>
@@ -82,6 +86,19 @@
     </transition>
 </div>
 
+      <nav v-if="leadTabs.length > 1" class="lv-tabs shrink-0" aria-label="Seções de leads">
+        <router-link
+          v-for="tab in leadTabs"
+          :key="tab.key"
+          :to="tab.path"
+          class="lv-tab"
+          :class="{ on: activeTab === tab.key }"
+        >
+          {{ tab.label }}
+          <span v-if="tab.count !== null" class="lv-tab-count">{{ tab.count }}</span>
+        </router-link>
+      </nav>
+
       <div class="flex min-h-0 flex-1 flex-col">
 
 
@@ -91,162 +108,123 @@
 
 
           <section v-if="activeTab === 'forms'" class="forms-premium space-y-4">
-            <div class="forms-kpi-grid">
-              <article class="forms-kpi-card">
-                <div class="forms-kpi-top">
-                  <span class="forms-kpi-icon forms-kpi-icon--forms">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                      <polyline points="14 2 14 8 20 8" />
-                    </svg>
-                  </span>
-                  <span class="forms-kpi-badge">{{ forms.length > 0 ? `+${forms.length}` : "0" }}</span>
+            <div class="lv-stats">
+              <article class="lv-stat">
+                <span class="lv-stat-icon tone-success">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
+                </span>
+                <div>
+                  <p class="lv-stat-k">Formulários</p>
+                  <p class="lv-stat-v">{{ forms.length }}</p>
                 </div>
-                <p class="forms-kpi-value">{{ forms.length }}</p>
-                <p class="forms-kpi-label">FORMULÁRIOS</p>
-                <p class="forms-kpi-foot">Total criado na conta</p>
               </article>
-
-              <article class="forms-kpi-card">
-                <div class="forms-kpi-top">
-                  <span class="forms-kpi-icon forms-kpi-icon--leads">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                      <circle cx="9" cy="7" r="4" />
-                      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-                      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                    </svg>
-                  </span>
-                  <span class="forms-kpi-badge">{{ totalFormLeads > 0 ? "Ativo" : "Sem leads" }}</span>
+              <article class="lv-stat">
+                <span class="lv-stat-icon tone-violet">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+                </span>
+                <div>
+                  <p class="lv-stat-k">Leads capturados</p>
+                  <p class="lv-stat-v">{{ totalFormLeads }}</p>
                 </div>
-                <p class="forms-kpi-value">{{ totalFormLeads }}</p>
-                <p class="forms-kpi-label">LEADS</p>
-                <p class="forms-kpi-foot">Capturados nos formulários</p>
               </article>
-
-              <article class="forms-kpi-card">
-                <div class="forms-kpi-top">
-                  <span class="forms-kpi-icon forms-kpi-icon--month">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
-                      <polyline points="16 7 22 7 22 13" />
-                    </svg>
-                  </span>
-                  <span class="forms-kpi-badge">+{{ leadsThisMonth }} este mês</span>
+              <article class="lv-stat">
+                <span class="lv-stat-icon tone-info">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17" /><polyline points="16 7 22 7 22 13" /></svg>
+                </span>
+                <div>
+                  <p class="lv-stat-k">Este mês</p>
+                  <p class="lv-stat-v">{{ leadsThisMonth }}<small>novos leads</small></p>
                 </div>
-                <p class="forms-kpi-value">{{ leadsThisMonth }}</p>
-                <p class="forms-kpi-label">ESTE MÊS</p>
-                <p class="forms-kpi-foot">Novos leads capturados</p>
               </article>
-
-              <article class="forms-kpi-card">
-                <div class="forms-kpi-top">
-                  <span class="forms-kpi-icon forms-kpi-icon--latest">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <circle cx="12" cy="12" r="10" />
-                      <polyline points="12 6 12 12 16 14" />
-                    </svg>
-                  </span>
-                  <span class="forms-kpi-badge">Recente</span>
+              <article class="lv-stat">
+                <span class="lv-stat-icon tone-warning">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+                </span>
+                <div>
+                  <p class="lv-stat-k">Último lead</p>
+                  <p class="lv-stat-v">{{ latestLeadDateLabel }}</p>
                 </div>
-                <p class="forms-kpi-value forms-kpi-value--date">{{ latestLeadDateLabel }}</p>
-                <p class="forms-kpi-label">ÚLTIMO LEAD</p>
-                <p class="forms-kpi-foot">Captura mais recente</p>
               </article>
             </div>
 
-            <article class="list-card forms-list-card">
-              <header class="list-header forms-list-header">
-                <div class="list-title">Formulários</div>
-                <div class="forms-list-filters">
-                  <div class="search-wrap">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <circle cx="11" cy="11" r="8" />
-                      <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                    </svg>
-                    <input v-model="formSearchQuery" class="search-input" type="text" placeholder="Buscar formulário..." />
+            <div class="lv-toolbar">
+              <div class="lv-search">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+                <input v-model="formSearchQuery" type="text" placeholder="Buscar formulário..." />
+              </div>
+              <div class="lv-grow"></div>
+              <select v-model="formStatusFilter" class="lv-select">
+                <option value="all">Todos os formulários</option>
+                <option value="with-leads">Com leads</option>
+                <option value="no-leads">Sem leads</option>
+              </select>
+            </div>
+
+            <div v-if="formsLoading && !forms.length" class="lv-empty">
+              {{ viewCopy.forms.loading }}
+            </div>
+
+            <div v-else-if="!filteredForms.length" class="lv-empty">
+              <svg viewBox="0 0 24 24" class="forms-empty-icon" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+              </svg>
+              <p>Você ainda não criou formulários</p>
+              <button type="button" class="lv-btn-primary mt-3" @click="openCreateModal">Criar primeiro formulário</button>
+            </div>
+
+            <div v-else class="lv-form-grid">
+              <article
+                v-for="form in filteredForms"
+                :key="form.id"
+                class="lv-form-card"
+                :title="form.name || fallbackLabels.noNameDefined"
+              >
+                <header class="lv-form-head">
+                  <span class="lv-stat-icon tone-success">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
+                  </span>
+                  <div class="min-w-0 flex-1">
+                    <p class="lv-form-name">{{ form.name || fallbackLabels.noNameDefined }}</p>
+                    <p class="lv-form-meta">{{ form.fields?.length || 0 }} campos · Atualizado em {{ formatDate(form.updated_at || form.created_at) }}</p>
                   </div>
-                  <select v-model="formStatusFilter" class="filter-select">
-                    <option value="all">Todas as etapas</option>
-                    <option value="with-leads">Com leads</option>
-                    <option value="no-leads">Sem leads</option>
-                  </select>
+                  <div class="lv-menu-wrap" @click.stop>
+                    <button type="button" class="lv-icon-btn" title="Mais ações" aria-label="Mais ações" @click="toggleFormMenu(form.id)">
+                      <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="12" cy="19" r="1.6" /></svg>
+                    </button>
+                    <div v-if="openFormMenuId === form.id" class="lv-menu">
+                      <button type="button" @click="duplicateFormQuick(form)">Duplicar</button>
+                      <button v-if="canDeleteLeads" type="button" class="danger" @click="confirmDeleteForm(form)">Excluir</button>
+                    </div>
+                  </div>
+                </header>
+
+                <button type="button" class="lv-form-mock" @click="openEditModal(form)">
+                  <span v-for="field in visibleFormFields(form)" :key="`${form.id}-${field.id}`" class="lv-form-field">
+                    <span>{{ field.label }}</span>
+                    <small>{{ field.required ? "*" : "opcional" }}</small>
+                  </span>
+                  <span v-if="hiddenFieldCount(form) > 0" class="lv-form-more">+{{ hiddenFieldCount(form) }} campos</span>
+                  <span class="lv-form-submit">{{ form.buttonLabel || "Enviar" }}</span>
+                </button>
+
+                <div class="lv-form-numbers">
+                  <p><span>Leads</span><b>{{ form.total_leads ?? 0 }}</b></p>
+                  <p><span>Este mês</span><b>{{ formLeadsThisMonth(form) }}</b></p>
                 </div>
-              </header>
 
-              <div v-if="formsLoading && !forms.length" class="forms-empty">
-                {{ viewCopy.forms.loading }}
-              </div>
-
-              <div v-else-if="!filteredForms.length" class="forms-empty">
-                <svg viewBox="0 0 24 24" class="forms-empty-icon" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                  <polyline points="14 2 14 8 20 8" />
-                </svg>
-                <p>Você ainda não criou formulários</p>
-                <button type="button" class="btn btn-primary forms-empty-cta" @click="openCreateModal">Criar primeiro formulário</button>
-              </div>
-
-              <div v-else class="forms-list-body">
-                <div
-                  v-for="form in filteredForms"
-                  :key="form.id"
-                  class="page-item form-row"
-                  :title="form.name || fallbackLabels.noNameDefined"
-                  @click="openEditModal(form)"
-                >
-                  <div class="form-row-left">
-                    <div class="page-thumb">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                        <polyline points="14 2 14 8 20 8" />
-                      </svg>
-                    </div>
-
-                    <div class="page-info">
-                      <div class="page-name" :title="form.name || fallbackLabels.noNameDefined">{{ form.name || fallbackLabels.noNameDefined }}</div>
-                      <div class="page-dest">
-                        {{ form.fields?.length || 0 }} campos · Atualizado em {{ formatDate(form.updated_at || form.created_at) }}
-                      </div>
-                      <div class="fields-row">
-                        <span
-                          v-for="field in visibleFormFields(form)"
-                          :key="`${form.id}-${field.id}`"
-                          class="field-chip"
-                        >
-                          {{ field.label }}
-                        </span>
-                        <span v-if="hiddenFieldCount(form) > 0" class="field-chip">+{{ hiddenFieldCount(form) }}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="form-row-right" @click.stop>
-                    <div class="page-visits form-leads-badge" :class="{ 'is-zero': (form.total_leads ?? 0) === 0 }" :title="(form.total_leads ?? 0) === 0 ? 'Nenhum lead capturado ainda' : ''">
-                      {{ form.total_leads ?? 0 }} leads
-                    </div>
-                    <div class="page-actions form-actions-inline">
-                      <button type="button" class="page-action-btn page-action-btn--label view" title="Ver leads" @click="openFormLeads(form)">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
-                        <span>Leads</span>
-                      </button>
-                      <button type="button" class="page-action-btn page-action-btn--label edit" title="Editar" @click="openEditModal(form)">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg>
-                        <span>Editar</span>
-                      </button>
-                      <button type="button" class="page-action-btn page-action-btn--label duplicate" title="Duplicar formulário" @click="duplicateFormQuick(form)">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
-                        <span>Duplicar</span>
-                      </button>
-                      <button v-if="canDeleteLeads" type="button" class="page-action-btn page-action-btn--label danger" title="Excluir" @click="confirmDeleteForm(form)">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
-                        <span>Excluir</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </article>
+                <footer class="lv-form-foot">
+                  <button type="button" class="lv-ghost" @click="openFormLeads(form)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /></svg>
+                    Ver leads
+                  </button>
+                  <button type="button" class="lv-soft" @click="openEditModal(form)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                    Editar
+                  </button>
+                </footer>
+              </article>
+            </div>
           </section>
 
 
@@ -325,7 +303,17 @@
 
 
               <div v-if="contactViewMode === 'list'" class="crm-list-view flex min-h-0 flex-1 flex-col overflow-visible">
-  <section class="crm-toolbar p-4 dark:bg-[#202020]">
+  <div v-if="!isMobileViewport && stageSummaries.length" class="lv-stage-grid">
+    <article v-for="stage in stageSummaries" :key="stage.key" class="lv-stage">
+      <div class="lv-stage-top">
+        <span class="lv-stage-pill" :style="groupPillStyle(stage.key)">{{ stage.label }}</span>
+        <span class="lv-stage-count">{{ stage.count }} {{ stage.count === 1 ? "contato" : "contatos" }}</span>
+      </div>
+      <p class="lv-stage-value">{{ formatOpportunityValue(stage.totalValueCents) }}</p>
+      <div class="lv-stage-bar"><i :style="{ width: `${stage.share}%`, background: stage.color }"></i></div>
+    </article>
+  </div>
+  <section class="crm-toolbar p-4">
     <div v-if="!isMobileViewport" class="opportunities-filter-bar opportunities-filter-bar--desktop">
       <div class="opportunities-filter-row opportunities-filter-row--primary">
         <span class="opportunities-filter-label">FILTRAR:</span>
@@ -1416,7 +1404,7 @@ import { useAuthStore } from "../../store/useAuthStore";
 
 
 import { useLeadFeatureGate } from "../../composables/useLeadFeatureGate";
-import { hasAnyPermission } from "../../utils/permissions";
+import { canAccessPermission, hasAnyPermission } from "../../utils/permissions";
 
 
 
@@ -1767,6 +1755,26 @@ const scheduleKanbanHeightRecalc = () => {
 
 
 const activeTab = ref<TabKey>("forms");
+// Abas do topo: mesma regra de permissão do menu lateral.
+const canSeeLeadTab = (permission: "leads_forms" | "leads_opportunities" | "leads_clients" | "leads_settings") => {
+  const user = authStore.user;
+  if (!user) return true;
+  const opts = {
+    isOwner: user.is_owner,
+    selected: user.permissions || [],
+    plan: user.plan,
+    effective: user.effective_permissions || []
+  };
+  return canAccessPermission(permission, opts) || canAccessPermission("leads_full", opts);
+};
+const leadTabs = computed(() =>
+  [
+    { key: "contacts", label: "Oportunidades", path: "/admin/leads/opportunities", permission: "leads_opportunities" as const, count: contacts.value.length as number | null },
+    { key: "forms", label: "Formulários", path: "/admin/leads/forms", permission: "leads_forms" as const, count: forms.value.length as number | null },
+    { key: "clients", label: "Clientes", path: "/admin/leads/clients", permission: "leads_clients" as const, count: null },
+    { key: "settings", label: "Configurações", path: "/admin/leads/settings", permission: "leads_settings" as const, count: null }
+  ].filter(tab => canSeeLeadTab(tab.permission))
+);
 const pageTitle = computed(() => {
   if (activeTab.value === "contacts") return viewCopy.tabs.contacts;
   if (activeTab.value === "clients") return viewCopy.tabs.clients;
@@ -2070,6 +2078,14 @@ const filteredForms = computed(() => {
   });
 });
 
+const formLeadsThisMonth = (form: LeadForm) => {
+  const now = new Date();
+  return contacts.value.filter(contact => {
+    if (String(contact.form_id) !== String(form.id) || !contact.created_at) return false;
+    const dt = new Date(contact.created_at);
+    return dt.getMonth() === now.getMonth() && dt.getFullYear() === now.getFullYear();
+  }).length;
+};
 const visibleFormFields = (form: LeadForm) => (form.fields || []).slice(0, 4);
 const hiddenFieldCount = (form: LeadForm) => Math.max((form.fields || []).length - 4, 0);
 
@@ -3035,9 +3051,9 @@ const idleChipLabel = (contact: LeadContact) => {
 
 const idleChipClass = (contact: LeadContact) => {
   const days = idleDays(contact);
-  if (days <= 7) return "border-transparent bg-[rgba(61,204,95,.10)] text-[#1A7A35]";
-  if (days <= 14) return "border-transparent bg-[rgba(245,158,11,.09)] text-[#92400E]";
-  return "border-transparent bg-[rgba(239,68,68,.09)] text-[#991B1B]";
+  if (days <= 7) return "border-transparent bg-status-success text-status-success-foreground";
+  if (days <= 14) return "border-transparent bg-status-warning text-status-warning-foreground";
+  return "border-transparent bg-status-danger text-status-danger-foreground";
 };
 
 const idleDotClass = (contact: LeadContact) => {
@@ -3185,6 +3201,19 @@ const contactRowStyle = (contact: LeadContact): CSSProperties => ({
   borderLeft: "none"
 });
 
+// Resumo por etapa (cartões acima da tabela), com os mesmos filtros da lista.
+const stageSummaries = computed(() => {
+  const groups = groupedContactsForCrm.value.filter(group => group.key !== "null" || group.contacts.length > 0);
+  const total = groups.reduce((acc, group) => acc + group.contacts.length, 0);
+  return groups.slice(0, 6).map(group => ({
+    key: group.key,
+    label: group.label,
+    count: group.contacts.length,
+    totalValueCents: group.totalValueCents,
+    share: total ? Math.max(4, Math.round((group.contacts.length / total) * 100)) : 0,
+    color: statusColorMap.value[group.key] || "var(--muted-foreground)"
+  }));
+});
 const groupPillStyle = (groupKey: string): CSSProperties => {
   const neutralBackground = isDarkTheme.value ? "var(--muted)" : "#f8fafc";
   const neutralBorder = isDarkTheme.value ? "var(--border)" : "#e2e8f0";
@@ -4513,43 +4542,24 @@ const getStatusColorForContact = (contact: LeadContact) => {
 
 
 const statusChipStyle = (contact: LeadContact): CSSProperties => {
-
-
-
   const color = getStatusColorForContact(contact);
-
-
-
   if (!color) {
+    return isDarkTheme.value
+      ? { backgroundColor: "var(--muted)", borderColor: "var(--border)", color: "var(--foreground)" }
+      : { backgroundColor: "#f1f5f9", borderColor: "#e2e8f0", color: "#334155" };
+  }
+  if (isDarkTheme.value) {
     return {
-      backgroundColor: "#f1f5f9",
-      borderColor: "#e2e8f0",
-      color: "#334155"
+      backgroundColor: `color-mix(in srgb, ${color} 18%, var(--card))`,
+      borderColor: `color-mix(in srgb, ${color} 45%, var(--border))`,
+      color: `color-mix(in srgb, ${color} 70%, white)`
     };
   }
-
-
-
   return {
-
-
-
     backgroundColor: `color-mix(in srgb, ${color} 12%, white)`,
-
-
-
     borderColor: `color-mix(in srgb, ${color} 35%, white)`,
-
-
-
     color
-
-
-
   };
-
-
-
 };
 
 
@@ -4984,7 +4994,7 @@ const handleGlobalClick = (event: MouseEvent) => {
 
   if (!target) return;
 
-
+  if (!target.closest(".lv-menu-wrap")) openFormMenuId.value = null;
 
   if (target.closest(".status-chip-container")) return;
   if (target.closest(".status-dropdown-portal")) return;
@@ -8510,6 +8520,94 @@ watch(visibleOpportunityIds, ids => {
 
 
 
+
+/* Redesign: módulo Leads */
+.lv-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; width: 100%; }
+.lv-eyebrow { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: color-mix(in srgb, var(--muted-foreground) 80%, transparent); }
+.lv-title { margin-top: 4px; font-family: var(--font-display); font-size: 30px; line-height: 38px; font-weight: 600; color: var(--foreground); }
+.lv-sub { margin-top: 4px; font-size: 14px; color: var(--muted-foreground); }
+.lv-btn-primary { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 18px; border-radius: 999px; background: var(--primary); font-size: 13.5px; font-weight: 600; color: var(--primary-foreground); transition: background 0.15s; }
+.lv-btn-primary:hover { background: color-mix(in srgb, var(--primary) 88%, black); }
+.lv-tabs { display: flex; gap: 4px; overflow-x: auto; border-bottom: 1px solid var(--border); }
+.lv-tab { display: inline-flex; flex-shrink: 0; align-items: center; gap: 8px; margin-bottom: -1px; border-bottom: 2px solid transparent; padding: 10px 14px; font-size: 13.5px; font-weight: 600; white-space: nowrap; color: var(--muted-foreground); }
+.lv-tab:hover { color: var(--foreground); }
+.lv-tab.on { border-bottom-color: var(--primary); color: var(--foreground); }
+.lv-tab-count { border-radius: 999px; background: var(--muted); padding: 0 7px; font-size: 11px; color: var(--muted-foreground); }
+.lv-tab.on .lv-tab-count { background: var(--accent); color: var(--accent-foreground); }
+
+.lv-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.lv-stat { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 20px; background: var(--card); box-shadow: var(--shadow-card); }
+.lv-stat-icon { display: grid; place-items: center; width: 40px; height: 40px; flex-shrink: 0; border-radius: 999px; }
+.lv-stat-icon svg { width: 18px; height: 18px; }
+.tone-success { background: var(--status-success); color: var(--status-success-foreground); }
+.tone-info { background: var(--status-info); color: var(--status-info-foreground); }
+.tone-warning { background: var(--status-warning); color: var(--status-warning-foreground); }
+.tone-violet { background: var(--status-violet); color: var(--status-violet-foreground); }
+.lv-stat-k { font-size: 12.5px; color: var(--muted-foreground); }
+.lv-stat-v { font-family: var(--font-display); font-size: 20px; line-height: 26px; font-weight: 600; color: var(--foreground); font-variant-numeric: tabular-nums; }
+.lv-stat-v small { margin-left: 6px; font-family: var(--font-sans); font-size: 12px; font-weight: 500; color: var(--muted-foreground); }
+
+.lv-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.lv-search { display: flex; align-items: center; gap: 8px; flex: 0 1 340px; height: 40px; padding: 0 16px; border-radius: 999px; background: var(--card); box-shadow: var(--shadow-card); color: var(--muted-foreground); }
+.lv-search svg { width: 16px; height: 16px; flex-shrink: 0; }
+.lv-search input { flex: 1; min-width: 0; border: 0; background: transparent; outline: none; font-size: 13.5px; color: var(--foreground); }
+.lv-grow { flex: 1; }
+.lv-select { height: 36px; border: 0; border-radius: 999px; background: var(--card); box-shadow: var(--shadow-card); padding: 0 32px 0 14px; font-size: 13px; font-weight: 600; color: var(--foreground); }
+.lv-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; border-radius: 20px; background: var(--card); padding: 40px 24px; text-align: center; font-size: 14px; color: var(--muted-foreground); box-shadow: var(--shadow-card); }
+
+.lv-form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 16px; }
+.lv-form-card { display: flex; flex-direction: column; gap: 14px; border-radius: 20px; background: var(--card); padding: 16px; box-shadow: var(--shadow-card); }
+.lv-form-head { display: flex; align-items: flex-start; gap: 12px; }
+.lv-form-name { overflow: hidden; font-size: 15px; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; color: var(--foreground); }
+.lv-form-meta { margin-top: 2px; font-size: 12px; color: var(--muted-foreground); }
+.lv-form-mock { display: flex; flex-direction: column; gap: 6px; border-radius: 14px; background: var(--muted); padding: 10px; text-align: left; }
+.lv-form-field { display: flex; justify-content: space-between; border: 1px solid var(--border); border-radius: 8px; background: var(--card); padding: 6px 10px; font-size: 11.5px; color: var(--muted-foreground); }
+.lv-form-field small { font-size: 11px; }
+.lv-form-more { padding-left: 4px; font-size: 11.5px; color: var(--muted-foreground); }
+.lv-form-submit { border-radius: 999px; background: var(--primary); padding: 6px; text-align: center; font-size: 11.5px; font-weight: 600; color: var(--primary-foreground); }
+.lv-form-numbers { display: flex; gap: 24px; }
+.lv-form-numbers span { display: block; font-size: 11.5px; color: var(--muted-foreground); }
+.lv-form-numbers b { font-family: var(--font-display); font-size: 17px; font-weight: 600; color: var(--foreground); font-variant-numeric: tabular-nums; }
+.lv-form-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: auto; border-top: 1px solid var(--border); padding-top: 12px; }
+.lv-ghost, .lv-soft { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 14px; border-radius: 999px; font-size: 13px; font-weight: 600; }
+.lv-ghost svg, .lv-soft svg { width: 14px; height: 14px; }
+.lv-ghost { color: var(--foreground); }
+.lv-ghost:hover { background: var(--muted); }
+.lv-soft { background: var(--accent); color: var(--accent-foreground); }
+.lv-icon-btn { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 999px; color: var(--muted-foreground); }
+.lv-icon-btn:hover { background: var(--muted); color: var(--foreground); }
+.lv-icon-btn svg { width: 16px; height: 16px; }
+.lv-menu-wrap { position: relative; }
+.lv-menu { position: absolute; top: calc(100% + 6px); right: 0; z-index: 30; display: flex; min-width: 160px; flex-direction: column; border-radius: 14px; background: var(--popover); padding: 6px; box-shadow: var(--shadow-elegant); }
+.lv-menu button { border-radius: 10px; padding: 8px 10px; text-align: left; font-size: 13px; color: var(--popover-foreground); }
+.lv-menu button:hover { background: var(--muted); }
+.lv-menu button.danger { color: var(--status-danger-foreground); }
+
+.lv-stage-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 12px; }
+.lv-stage { border-radius: 20px; background: var(--card); padding: 12px 14px; box-shadow: var(--shadow-card); }
+.lv-stage-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.lv-stage-pill { border: 1px solid; border-radius: 999px; padding: 1px 8px; font-size: 11px; font-weight: 600; }
+.lv-stage-count { font-size: 11.5px; color: var(--muted-foreground); }
+.lv-stage-value { margin-top: 6px; font-family: var(--font-display); font-size: 19px; font-weight: 600; color: var(--foreground); font-variant-numeric: tabular-nums; }
+.lv-stage-bar { margin-top: 8px; height: 4px; overflow: hidden; border-radius: 999px; background: var(--muted); }
+.lv-stage-bar i { display: block; height: 100%; border-radius: 999px; }
+
+.crm-toolbar { padding: 0 0 12px !important; background: transparent !important; }
+.toolbar-ms-btn, .toolbar-search, .toolbar-ghost-btn { border-color: transparent !important; border-radius: 999px !important; box-shadow: var(--shadow-card); }
+.opps-table-shell { border: 0 !important; border-radius: 20px !important; }
+.opps-table thead tr { background: var(--card) !important; border-bottom: 1px solid var(--border) !important; }
+.opps-table thead th { font-size: 11px; letter-spacing: 0.06em; }
+.opps-group-row td { border-top: 1px solid var(--border) !important; background: color-mix(in srgb, var(--muted) 55%, var(--card)) !important; }
+.action-icon-btn { border-color: transparent !important; border-radius: 999px !important; }
+
+@media (max-width: 1100px) { .lv-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) {
+  .lv-head { flex-direction: column; align-items: flex-start; }
+  .lv-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .lv-stat { padding: 12px; }
+  .lv-stat-icon { display: none; }
+  .lv-search { flex-basis: 100%; }
+}
 </style>
 
 
