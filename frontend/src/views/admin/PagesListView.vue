@@ -3,72 +3,59 @@
     <div class="h-10 w-10 animate-spin rounded-full border-4 border-border border-t-primary"></div>
   </div>
   <div v-else class="pages-reference w-full space-y-6 px-4 py-4 md:px-8 md:py-8">
-    <div>
-      <div class="flex items-start justify-between gap-3">
-        <div>
-          <p class="page-eyebrow">Conteúdo</p>
-          <h1 class="page-heading">{{ viewCopy.header.eyebrow }}</h1>
-          <p class="page-description">Crie, publique e acompanhe o desempenho das páginas da sua agência.</p>
-        </div>
-        <button
-          @click="openCreateModal"
-          class="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-[13px] font-semibold text-primary-foreground shadow-soft transition-colors hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-50"
-          :class="!canEditPages ? 'cursor-not-allowed opacity-50' : ''"
-          :disabled="!hasAgency"
-        >
-          <span class="text-[15px] leading-none font-bold">+</span>
-          {{ viewCopy.header.newPage }}
-        </button>
+    <div class="pl-head">
+      <div>
+        <p class="pl-eyebrow">Conteúdo</p>
+        <h1 class="pl-title">{{ viewCopy.header.eyebrow }}</h1>
+        <p class="pl-sub">Crie, publique e acompanhe as páginas de venda da sua agência.</p>
       </div>
+      <button
+        @click="openCreateModal"
+        class="pl-btn pl-btn-primary"
+        :class="!canEditPages ? 'cursor-not-allowed opacity-50' : ''"
+        :disabled="!hasAgency"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg>
+        {{ viewCopy.header.newPage }}
+      </button>
     </div>
 
-    <div class="pages-summary-grid">
-      <article class="pages-summary-card">
-        <span class="pages-summary-label">Total de páginas</span>
-        <strong>{{ pages.length }}</strong>
-        <span class="pages-summary-helper">Páginas criadas na agência</span>
+    <div class="pl-stats">
+      <article class="pl-stat">
+        <span class="pl-icon tone-success"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg></span>
+        <div><p class="pl-stat-k">Páginas no ar</p><p class="pl-stat-v">{{ publishedPagesCount }}<small>de {{ pages.length }}</small></p></div>
       </article>
-      <article class="pages-summary-card pages-summary-card--published">
-        <span class="pages-summary-label">Publicadas</span>
-        <strong>{{ publishedPagesCount }}</strong>
-        <span class="pages-summary-helper">Disponíveis para seus clientes</span>
+      <article class="pl-stat">
+        <span class="pl-icon tone-info"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg></span>
+        <div><p class="pl-stat-k">Visitas</p><p class="pl-stat-v">{{ totalPageVisits.toLocaleString("pt-BR") }}</p></div>
       </article>
-      <article class="pages-summary-card pages-summary-card--visits">
-        <span class="pages-summary-label">Visualizações</span>
-        <strong>{{ totalPageVisits }}</strong>
-        <span class="pages-summary-helper">Total acumulado nas páginas</span>
+      <article class="pl-stat">
+        <span class="pl-icon tone-warning"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 3 7.5 17 2.4-7.1L21 10.5 4 3z" /></svg></span>
+        <div><p class="pl-stat-k">Cliques</p><p class="pl-stat-v">{{ totalPageClicks.toLocaleString("pt-BR") }}<small>{{ formatRate(totalPageClicks, totalPageVisits) }}</small></p></div>
       </article>
-      <article class="pages-summary-card pages-summary-card--leads">
-        <span class="pages-summary-label">Leads captados</span>
-        <strong>{{ totalPageLeads }}</strong>
-        <span class="pages-summary-helper">Conversões geradas pelas páginas</span>
+      <article class="pl-stat">
+        <span class="pl-icon tone-violet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M19 8v6M22 11h-6" /></svg></span>
+        <div><p class="pl-stat-k">Leads</p><p class="pl-stat-v">{{ totalPageLeads.toLocaleString("pt-BR") }}<small>{{ formatRate(totalPageLeads, totalPageVisits) }} das visitas</small></p></div>
       </article>
     </div>
 
-    <div class="pages-toolbar">
-      <div class="pages-toolbar-top">
-        <div class="search-wrap">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
-          <input v-model="searchQuery" class="search-input" type="text" :placeholder="viewCopy.table.searchPlaceholder" />
-        </div>
-        <span class="toolbar-count">{{ filteredPages.length }} {{ viewCopy.table.countLabel }}</span>
+    <div class="pl-toolbar">
+      <label class="pl-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+        <input v-model="searchQuery" type="text" :placeholder="viewCopy.table.searchPlaceholder" />
+      </label>
+      <div class="pl-filters" role="group" aria-label="Situação">
+        <button type="button" class="pl-filter" :class="{ on: statusFilter === '' }" @click="statusFilter = ''">Todas <span>{{ pages.length }}</span></button>
+        <button type="button" class="pl-filter" :class="{ on: statusFilter === 'published' }" @click="statusFilter = 'published'">Publicadas <span>{{ publishedPagesCount }}</span></button>
+        <button type="button" class="pl-filter" :class="{ on: statusFilter === 'draft' }" @click="statusFilter = 'draft'">Rascunhos <span>{{ pages.length - publishedPagesCount }}</span></button>
       </div>
-      <div class="pages-toolbar-filters">
-        <select v-model="statusFilter" class="filter-select">
-          <option value="">{{ viewCopy.table.filters.statusAll }}</option>
-          <option value="published">{{ viewCopy.labels.statuses.published }}</option>
-          <option value="draft">{{ viewCopy.labels.statuses.draft }}</option>
-        </select>
-        <select v-model="sortFilter" class="filter-select">
-          <option value="recent">{{ viewCopy.table.filters.sortRecent }}</option>
-          <option value="name">{{ viewCopy.table.filters.sortName }}</option>
-          <option value="visits">{{ viewCopy.table.filters.sortVisits }}</option>
-          <option value="leads">{{ viewCopy.table.filters.sortLeads }}</option>
-        </select>
-      </div>
+      <span class="pl-grow"></span>
+      <select v-model="sortFilter" class="pl-select" aria-label="Ordenar">
+        <option value="recent">{{ viewCopy.table.filters.sortRecent }}</option>
+        <option value="name">{{ viewCopy.table.filters.sortName }}</option>
+        <option value="visits">{{ viewCopy.table.filters.sortVisits }}</option>
+        <option value="leads">{{ viewCopy.table.filters.sortLeads }}</option>
+      </select>
     </div>
 
     <teleport to="body">
@@ -447,200 +434,80 @@
       </div>
     </transition>
 
-    <div class="overflow-x-auto">
-      <div class="table-card overflow-hidden border-0 bg-transparent md:min-w-[880px] md:rounded-xl md:border">
-        <div
-          :class="[
-            'hidden gap-4 border-b px-4 py-3 text-[11px] font-bold uppercase tracking-[0.08em] md:grid',
-            headerGridColumns
-          ]"
-        >
-          <span class="text-left">{{ viewCopy.table.columns.name }}</span>
-          <span class="block w-full justify-self-center text-center">{{ viewCopy.table.columns.views }}</span>
-          <span class="block w-full justify-self-center text-center">{{ viewCopy.table.columns.ctaClicks }}</span>
-          <span v-if="showLeadColumn" class="block w-full justify-self-center text-center">{{ viewCopy.table.columns.leads }}</span>
-          <span class="text-left">{{ viewCopy.table.columns.link }}</span>
-          <span class="text-center">{{ viewCopy.table.columns.status }}</span>
-          <span class="text-right pr-1">{{ viewCopy.table.columns.actions }}</span>
-        </div>
-
-        <div v-if="filteredPages.length" class="pages-table-body space-y-4 md:space-y-0">
-          <div
-            v-for="page in filteredPages"
-            :key="page.id"
-            :class="[
-              'page-table-row grid grid-cols-1 gap-4 rounded-xl border px-5 py-5 shadow-sm transition md:items-center md:gap-4 md:rounded-none md:border-0 md:bg-transparent md:px-4 md:py-3 md:shadow-none',
-              rowGridColumns
-            ]"
-          >
-            <div class="flex items-center gap-3">
-              <span class="page-icon">
-                <img
-                  v-if="getPageHeroThumbnail(page)"
-                  :src="getPageHeroThumbnail(page)"
-                  alt="Miniatura da página"
-                  class="h-full w-full rounded-[9px] object-cover"
-                />
-                <svg v-else viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                  <polyline points="14 2 14 8 20 8" />
-                </svg>
-              </span>
-              <div>
-                <p class="text-base font-semibold leading-tight text-foreground md:text-[13px]">{{ page.title }}</p>
-                <p class="text-[11px] text-muted-foreground">{{ page.slug ? `/${page.slug}` : "-" }}</p>
-              </div>
-            </div>
-
-            <div class="hidden md:flex md:w-full md:justify-center md:justify-self-center">
-              <span class="stat-pill stat-visits" :class="{ 'stat-zero': getPageVisits(page.id) === 0 }">
-                {{ getPageVisits(page.id) }}
-              </span>
-            </div>
-
-            <div class="hidden md:flex md:w-full md:justify-center md:justify-self-center">
-              <span class="stat-pill stat-clicks" :class="{ 'stat-zero': getPageClicks(page.id) === 0 }">
-                {{ getPageClicks(page.id) }}
-              </span>
-            </div>
-
-            <div v-if="showLeadColumn" class="hidden md:flex md:w-full md:justify-center md:justify-self-center">
-              <button
-                v-if="!hasLeadStatsAccess"
-                type="button"
-                class="inline-flex min-w-[3rem] items-center justify-center rounded-full border border-status-info-foreground bg-card px-4 py-1.5 text-xs font-semibold text-status-info-foreground shadow-soft transition hover:bg-accent"
-                :title="viewCopy.table.premiumHints.leads"
-                @click="goPlans"
-              >
-                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                  <path d="m12 2 2.09 6.26h6.58L15.29 11l2.12 6.24L12 13.77l-5.41 3.47L8.71 11 3.33 8.26h6.58Z" />
-                </svg>
-              </button>
-              <span v-else class="stat-pill stat-leads" :class="{ 'stat-zero': getPageLeads(page.id) === 0 }">
-                {{ getPageLeads(page.id) }}
-              </span>
-            </div>
-
-            <div class="flex items-center justify-between gap-3 md:flex-row md:items-center md:gap-3">
-              <span class="status-badge link-status-mobile md:hidden" :class="getStatusClasses(page.status)">
-                {{ getStatusLabel(page.status) }}
-              </span>
-              <div
-                class="flex flex-wrap items-center justify-end gap-3"
-                :class="{ 'md:justify-center md:text-center': !(page.status === 'published' && pagePublicUrl(page)) }"
-              >
-                <template v-if="page.status === 'published' && pagePublicUrl(page)">
-                  <a :href="pagePublicUrl(page)" target="_blank" class="max-w-[160px] truncate text-sm font-medium text-primary">
-                    {{ pagePublicUrl(page) }}
-                  </a>
-                  <button class="copy-btn" @click="copyLink(page)">
-                    {{ viewCopy.actions.copy.button }}
-                  </button>
-                </template>
-                <span v-else class="text-xs uppercase tracking-wide text-slate-400">
-                  {{ viewCopy.table.linkUnavailable }}
-                </span>
-              </div>
-            </div>
-
-            <div class="hidden md:flex md:justify-center">
-              <span class="status-badge" :class="getStatusClasses(page.status)">
-                {{ getStatusLabel(page.status) }}
-              </span>
-            </div>
-
-            <div class="flex items-center gap-3">
-              <div class="page-actions-row flex flex-wrap items-center gap-2 md:justify-end">
-                <button
-                  class="act-btn dup"
-                  :class="!canEditPages ? 'cursor-not-allowed opacity-50' : ''"
-                  :title="viewCopy.actions.rowMenu.duplicate"
-                  @click="openDuplicateDialog(page)"
-                >
-                  <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
-                    <rect x="9" y="9" width="11" height="11" rx="2" />
-                    <rect x="4" y="4" width="11" height="11" rx="2" />
-                  </svg>
-                </button>
-
-                <router-link
-                  v-if="canEditPages"
-                  :to="`/admin/pages/${page.id}/edit`"
-                  class="act-btn edit"
-                  :title="viewCopy.actions.rowMenu.edit"
-                >
-                  <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
-                    <path d="M12 20h9" />
-                    <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z" />
-                  </svg>
-                </router-link>
-
-                <a
-                  v-if="pagePublicUrl(page)"
-                  :href="pagePublicUrl(page)"
-                  target="_blank"
-                  class="act-btn view"
-                  :title="viewCopy.actions.rowMenu.viewPage"
-                >
-                  <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
-                    <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z" />
-                    <circle cx="12" cy="12" r="3" />
-                  </svg>
-                </a>
-
-                <button
-                  class="act-btn share"
-                  :class="page.status !== 'published' ? 'cursor-not-allowed opacity-50' : ''"
-                  :disabled="page.status !== 'published'"
-                  :title="viewCopy.actions.rowMenu.unpublish"
-                  @click="unpublishPage(page)"
-                >
-                  <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
-                    <path d="m7 10 5 5 5-5" />
-                    <path d="M12 4v10" />
-                  </svg>
-                </button>
-
-                <button
-                  :class="[
-                    'act-btn fav',
-                    page.is_default ? 'is-active' : '',
-                    page.status !== 'published' ? 'cursor-not-allowed opacity-50' : '',
-                    'disabled:cursor-not-allowed disabled:opacity-50'
-                  ]"
-                  :disabled="page.status !== 'published' || page.is_default || !canEditPages"
-                  :title="page.is_default ? viewCopy.table.badges.default : viewCopy.actions.rowMenu.setDefault"
-                  @click="setDefaultPage(page)"
-                >
-                  <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
-                    <path d="m12 3 2.09 6.26h6.58L15.29 13l2.12 6.24L12 15.77l-5.41 3.47L8.71 13 3.33 9.26h6.58Z" />
-                  </svg>
-                </button>
-
-                <button
-                  v-if="canDeletePages"
-                  class="act-btn del"
-                  :class="!canDeletePages ? 'cursor-not-allowed opacity-50' : ''"
-                  :title="viewCopy.actions.rowMenu.delete"
-                  @click="deletePage(page)"
-                >
-                  <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
-                    <path d="M3 6h18" />
-                    <path d="M8 6V4h8v2" />
-                    <path d="m9 10 1 8" />
-                    <path d="m15 10-1 8" />
-                    <path d="M5 6l1 14h12l1-14" />
-                  </svg>
-                </button>
-              </div>
-            </div>
+    <div v-if="filteredPages.length" class="pl-cards">
+      <article v-for="(page, index) in filteredPages" :key="page.id" class="pl-card">
+        <div class="pl-cover" :style="coverStyle(page, index)">
+          <div class="pl-cover-badges">
+            <span class="pl-pill"><i :class="page.status === 'published' ? 'dot-on' : 'dot-off'"></i>{{ getStatusLabel(page.status) }}</span>
+            <span v-if="page.is_default" class="pl-pill">
+              <svg viewBox="0 0 24 24" class="pl-star"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1Z" /></svg>
+              {{ viewCopy.table.badges.default }}
+            </span>
+          </div>
+          <div class="pl-cover-title">
+            <b>{{ page.title }}</b>
+            <small>{{ page.slug ? `/${page.slug}` : "-" }}</small>
           </div>
         </div>
-
-        <div v-else class="px-6 py-10 text-center text-sm text-muted-foreground">
-          {{ viewCopy.emptyStates.noPages.title }}
+        <div class="pl-body">
+          <div class="pl-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10" /><path d="M2 12h20" /></svg>
+            <template v-if="page.status === 'published' && pagePublicUrl(page)">
+              <a :href="pagePublicUrl(page)" target="_blank" rel="noopener">{{ pagePublicUrl(page) }}</a>
+              <button type="button" class="pl-copy" @click="copyLink(page)">{{ viewCopy.actions.copy.button }}</button>
+            </template>
+            <span v-else>{{ viewCopy.table.linkUnavailable }}</span>
+          </div>
+          <div class="pl-metrics">
+            <div><p>Visitas</p><b>{{ getPageVisits(page.id).toLocaleString("pt-BR") }}</b></div>
+            <div><p>Cliques</p><b>{{ getPageClicks(page.id).toLocaleString("pt-BR") }}</b></div>
+            <div v-if="showLeadColumn"><p>Leads</p><b>{{ getPageLeads(page.id).toLocaleString("pt-BR") }}</b></div>
+          </div>
+          <div class="pl-foot">
+            <span class="pl-grow pl-conv">
+              <template v-if="getPageVisits(page.id) > 0">
+                <span class="pl-badge">{{ formatRate(getPageLeads(page.id), getPageVisits(page.id)) }}</span> viram lead
+              </template>
+              <template v-else>Sem visitas ainda</template>
+            </span>
+            <a
+              v-if="pagePublicUrl(page)"
+              :href="pagePublicUrl(page)"
+              target="_blank"
+              rel="noopener"
+              class="pl-icon-btn"
+              :title="viewCopy.actions.rowMenu.viewPage"
+              :aria-label="viewCopy.actions.rowMenu.viewPage"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" /></svg>
+            </a>
+            <div class="pl-menu-wrap">
+              <button type="button" class="pl-icon-btn" aria-label="Mais ações" :aria-expanded="openMenuId === page.id" @click.stop="toggleMenu(page.id)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="5" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="12" cy="19" r="1" /></svg>
+              </button>
+              <div v-if="openMenuId === page.id" class="pl-menu" @click.stop>
+                <button type="button" :disabled="!canEditPages" @click="runMenu(() => openDuplicateDialog(page))">{{ viewCopy.actions.rowMenu.duplicate }}</button>
+                <button
+                  type="button"
+                  :disabled="page.status !== 'published' || page.is_default || !canEditPages"
+                  @click="runMenu(() => setDefaultPage(page))"
+                >
+                  {{ viewCopy.actions.rowMenu.setDefault }}
+                </button>
+                <button type="button" :disabled="page.status !== 'published'" @click="runMenu(() => unpublishPage(page))">{{ viewCopy.actions.rowMenu.unpublish }}</button>
+                <button v-if="canDeletePages" type="button" class="danger" @click="runMenu(() => deletePage(page))">{{ viewCopy.actions.rowMenu.delete }}</button>
+              </div>
+            </div>
+            <router-link v-if="canEditPages" :to="`/admin/pages/${page.id}/edit`" class="pl-edit">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z" /></svg>
+              {{ viewCopy.actions.rowMenu.edit }}
+            </router-link>
+          </div>
         </div>
-      </div>
+      </article>
+    </div>
+    <div v-else class="pl-empty">
+      {{ viewCopy.emptyStates.noPages.title }}
     </div>
 
     <div
@@ -957,7 +824,7 @@ const viewCopySource = {
       slug: { pt: "copia", es: "copia" }
     },
     statuses: {
-      published: { pt: "Ativo", es: "Activo" },
+      published: { pt: "Publicada", es: "Publicada" },
       draft: { pt: "Rascunho", es: "Borrador" }
     }
   },
@@ -1883,6 +1750,33 @@ const filteredPages = computed(() => {
 });
 
 const publishedPagesCount = computed(() => pages.value.filter(page => page.status === "published").length);
+const totalPageClicks = computed(() => pages.value.reduce((total, page) => total + getPageClicks(page.id), 0));
+const formatRate = (part: number, total: number) => {
+  if (!total) return "0%";
+  return `${((part / total) * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`;
+};
+const coverGradients = [
+  "linear-gradient(135deg,#1e3a5f,#3b6e8f 55%,#d9a066)",
+  "linear-gradient(135deg,#0f4c5c,#1f8a8a 55%,#f2c14e)",
+  "linear-gradient(135deg,#2b5876,#4e9fbf 55%,#f6d365)",
+  "linear-gradient(135deg,#0c1f18,#12302a 55%,#1de9a0)"
+];
+const coverStyle = (page: Page, index: number) => {
+  const thumb = getPageHeroThumbnail(page);
+  if (thumb) return { backgroundImage: `url("${thumb}")` };
+  return { backgroundImage: coverGradients[index % coverGradients.length] };
+};
+const openMenuId = ref<number | null>(null);
+const toggleMenu = (id: number) => {
+  openMenuId.value = openMenuId.value === id ? null : id;
+};
+const runMenu = (action: () => unknown) => {
+  openMenuId.value = null;
+  action();
+};
+const closeMenuOnOutside = () => {
+  openMenuId.value = null;
+};
 const totalPageVisits = computed(() => pages.value.reduce((total, page) => total + getPageVisits(page.id), 0));
 const totalPageLeads = computed(() => pages.value.reduce((total, page) => total + getPageLeads(page.id), 0));
 
@@ -1899,12 +1793,14 @@ onMounted(() => {
     previewResizeObserver.observe(templatePreviewContainer.value);
   }
   window.addEventListener("resize", handleWindowResize);
+  document.addEventListener("click", closeMenuOnOutside);
 });
 onBeforeUnmount(() => {
   teardownPreviewViewportListener();
   previewResizeObserver?.disconnect();
   previewContentObserver?.disconnect();
   window.removeEventListener("resize", handleWindowResize);
+  document.removeEventListener("click", closeMenuOnOutside);
 });
 
 watch(
@@ -2433,5 +2329,80 @@ onMounted(bootstrapPages);
   .pages-summary-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* Redesign: lista de páginas em cartões */
+.pl-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+.pl-eyebrow { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: color-mix(in srgb, var(--muted-foreground) 80%, transparent); }
+.pl-title { margin-top: 4px; font-family: var(--font-display); font-size: 30px; line-height: 38px; font-weight: 600; color: var(--foreground); }
+.pl-sub { margin-top: 4px; font-size: 14px; color: var(--muted-foreground); }
+.pl-btn { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 18px; border-radius: 999px; font-size: 13.5px; font-weight: 600; }
+.pl-btn svg { width: 16px; height: 16px; }
+.pl-btn-primary { background: var(--primary); color: var(--primary-foreground); }
+.pl-btn-primary:hover { background: color-mix(in srgb, var(--primary) 88%, black); }
+.pl-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.pl-stat { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 20px; background: var(--card); box-shadow: var(--shadow-card); }
+.pl-icon { display: grid; place-items: center; width: 40px; height: 40px; flex-shrink: 0; border-radius: 999px; }
+.pl-icon svg { width: 18px; height: 18px; }
+.tone-success { background: var(--status-success); color: var(--status-success-foreground); }
+.tone-info { background: var(--status-info); color: var(--status-info-foreground); }
+.tone-warning { background: var(--status-warning); color: var(--status-warning-foreground); }
+.tone-violet { background: var(--status-violet); color: var(--status-violet-foreground); }
+.pl-stat-k { font-size: 12.5px; color: var(--muted-foreground); }
+.pl-stat-v { font-family: var(--font-display); font-size: 20px; line-height: 26px; font-weight: 600; color: var(--foreground); font-variant-numeric: tabular-nums; }
+.pl-stat-v small { margin-left: 6px; font-family: var(--font-sans); font-size: 12px; font-weight: 500; color: var(--muted-foreground); }
+.pl-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pl-search { display: flex; align-items: center; gap: 8px; flex: 0 1 340px; height: 40px; padding: 0 16px; border-radius: 999px; background: var(--card); box-shadow: var(--shadow-card); color: var(--muted-foreground); }
+.pl-search svg { width: 16px; height: 16px; flex-shrink: 0; }
+.pl-search input { flex: 1; min-width: 0; border: 0; background: transparent; outline: none; font-size: 13.5px; color: var(--foreground); }
+.pl-filters { display: flex; gap: 4px; }
+.pl-filter { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--muted-foreground); }
+.pl-filter span { border-radius: 999px; background: var(--muted); padding: 0 7px; font-size: 11px; }
+.pl-filter.on { background: var(--card); color: var(--foreground); box-shadow: var(--shadow-card); }
+.pl-filter.on span { background: var(--accent); color: var(--accent-foreground); }
+.pl-grow { flex: 1; }
+.pl-select { height: 36px; border: 0; border-radius: 999px; background: var(--card); box-shadow: var(--shadow-card); padding: 0 32px 0 14px; font-size: 13px; font-weight: 600; color: var(--foreground); }
+.pl-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+.pl-card { display: flex; flex-direction: column; overflow: visible; border-radius: 20px; background: var(--card); box-shadow: var(--shadow-card); }
+.pl-cover { position: relative; height: 132px; overflow: hidden; border-radius: 20px 20px 0 0; background-size: cover; background-position: center; }
+.pl-cover::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0) 65%); }
+.pl-cover-badges { position: absolute; top: 12px; left: 12px; right: 12px; z-index: 1; display: flex; justify-content: space-between; gap: 8px; }
+.pl-pill { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; background: rgba(255, 255, 255, 0.92); padding: 3px 10px; font-size: 11.5px; font-weight: 600; color: #111814; }
+.pl-pill i { width: 7px; height: 7px; border-radius: 999px; }
+.dot-on { background: #12b981; }
+.dot-off { background: #f59e0b; }
+.pl-star { width: 13px; height: 13px; fill: #a35d06; }
+.pl-cover-title { position: absolute; right: 16px; bottom: 12px; left: 16px; z-index: 1; color: #fff; }
+.pl-cover-title b { display: block; overflow: hidden; font-family: var(--font-display); font-size: 18px; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; }
+.pl-cover-title small { font-size: 12px; opacity: 0.85; }
+.pl-body { display: flex; flex: 1; flex-direction: column; gap: 14px; padding: 14px 16px 16px; }
+.pl-link { display: flex; align-items: center; gap: 8px; min-height: 36px; border-radius: 12px; background: var(--muted); padding: 6px 8px 6px 12px; font-size: 12.5px; color: var(--muted-foreground); }
+.pl-link svg { width: 14px; height: 14px; flex-shrink: 0; }
+.pl-link a, .pl-link > span { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.pl-link a { color: var(--foreground); }
+.pl-copy { border-radius: 999px; background: var(--card); padding: 4px 10px; font-size: 12px; font-weight: 600; color: var(--foreground); box-shadow: var(--shadow-card); }
+.pl-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.pl-metrics p { font-size: 11.5px; color: var(--muted-foreground); }
+.pl-metrics b { font-family: var(--font-display); font-size: 17px; font-weight: 600; color: var(--foreground); font-variant-numeric: tabular-nums; }
+.pl-foot { display: flex; align-items: center; gap: 8px; margin-top: auto; border-top: 1px solid var(--border); padding-top: 12px; }
+.pl-conv { font-size: 12px; color: var(--muted-foreground); }
+.pl-badge { margin-right: 4px; border-radius: 999px; background: var(--status-success); padding: 2px 8px; font-size: 11.5px; font-weight: 600; color: var(--status-success-foreground); }
+.pl-icon-btn { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 999px; background: var(--muted); color: var(--muted-foreground); }
+.pl-icon-btn:hover { background: var(--accent); color: var(--accent-foreground); }
+.pl-icon-btn svg { width: 16px; height: 16px; }
+.pl-edit { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 14px; border-radius: 999px; background: var(--accent); font-size: 13px; font-weight: 600; color: var(--accent-foreground); }
+.pl-edit svg { width: 14px; height: 14px; }
+.pl-menu-wrap { position: relative; }
+.pl-menu { position: absolute; right: 0; bottom: calc(100% + 6px); z-index: 30; display: flex; min-width: 190px; flex-direction: column; border-radius: 14px; background: var(--popover); padding: 6px; box-shadow: var(--shadow-elegant); }
+.pl-menu button { border-radius: 10px; padding: 8px 10px; text-align: left; font-size: 13px; color: var(--popover-foreground); }
+.pl-menu button:hover:not(:disabled) { background: var(--muted); }
+.pl-menu button:disabled { cursor: not-allowed; opacity: 0.45; }
+.pl-menu button.danger { color: var(--status-danger-foreground); }
+.pl-empty { border-radius: 20px; background: var(--card); padding: 40px 24px; text-align: center; font-size: 14px; color: var(--muted-foreground); box-shadow: var(--shadow-card); }
+@media (max-width: 1100px) { .pl-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) {
+  .pl-head { flex-direction: column; align-items: flex-start; }
+  .pl-stats { grid-template-columns: 1fr; }
+  .pl-search { flex-basis: 100%; }
 }
 </style>
