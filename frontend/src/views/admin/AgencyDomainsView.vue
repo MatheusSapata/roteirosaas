@@ -177,12 +177,14 @@
               <div class="dm-favicon" :class="{ 'is-disabled': !hasActiveCustomDomain }">
                 <ImageUploadField
                   v-model="faviconUrl"
+                  layout="row"
+                  replace-label="Trocar"
+                  hint="PNG quadrado, 64 × 64 px ou maior"
                   :label="''"
                   :enable-crop="true"
                   :crop-aspect="1"
                   :editor-title="viewCopy.favicon.editorTitle"
                 />
-                <p class="dm-favicon-hint">PNG quadrado, 64 × 64 px ou maior</p>
               </div>
               <p v-if="!hasActiveCustomDomain" class="dm-hint">{{ viewCopy.favicon.disabledHint }}</p>
               <button
@@ -959,9 +961,19 @@ watch(domainsAllowed, allowed => {
 .dm-switch i { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 999px; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25); transition: transform 0.15s; }
 .dm-switch.on { background: var(--primary); box-shadow: none; }
 .dm-switch.on i { transform: translateX(16px); }
-.dm-favicon { margin: 14px 0 10px; border: 1px dashed var(--border); border-radius: 16px; padding: 14px; }
+.dm-favicon { margin: 14px 0 10px; border: 1px dashed var(--border); border-radius: 16px; padding: 12px 14px; }
+/* Campo de imagem em linha, no formato da proposta: ícone pequeno, texto e botões redondos */
+.dm-favicon :deep(.image-upload-field > div:first-of-type) { gap: 12px; border: 0; padding: 0; }
+.dm-favicon :deep(.image-upload-field button.h-16) { width: 44px; height: 44px; border: 0; border-radius: 12px; background: #0b1512; }
+.dm-favicon :deep(.image-upload-field button.h-16 img) { object-fit: contain; padding: 6px; }
+.dm-favicon :deep(.image-upload-field button.h-16 span) { color: rgba(255, 255, 255, 0.7); }
+.dm-favicon :deep(.image-upload-field .w-\[220px\]) { width: auto; gap: 6px; }
+.dm-favicon :deep(.image-upload-field label.h-10) { width: auto; height: 34px; border: 0; border-radius: 999px; background: var(--muted); padding: 0 14px; font-size: 13px; color: var(--foreground); }
+.dm-favicon :deep(.image-upload-field label.h-10:hover) { background: var(--accent); color: var(--accent-foreground); }
+.dm-favicon :deep(.image-upload-field button.w-\[96px\]) { width: auto; height: 34px; border: 0; border-radius: 999px; padding: 0 12px; font-size: 13px; }
+.dm-favicon :deep(.image-upload-field button.w-\[96px\].text-transparent) { display: none; }
+.dm-favicon :deep(.image-upload-field p.text-xs) { font-size: 12.5px; color: var(--muted-foreground); }
 .dm-favicon.is-disabled { pointer-events: none; opacity: 0.55; }
-.dm-favicon-hint { margin-top: 8px; font-size: 12px; color: var(--muted-foreground); }
 .dm-hint { margin-bottom: 10px; font-size: 12.5px; color: var(--muted-foreground); }
 @media (max-width: 1100px) { .dm-grid { grid-template-columns: 1fr; } }
 @media (max-width: 640px) {
