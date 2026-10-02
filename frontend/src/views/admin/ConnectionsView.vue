@@ -1,85 +1,88 @@
 ﻿<template>
   <div class="connections-view w-full space-y-6 px-4 py-6 md:px-8">
-    <header class="space-y-1">
-      <h1 class="text-3xl font-bold text-slate-900">Notificações</h1>
-      <p class="text-sm text-slate-600">Conecte os canais de atendimento da sua agência.</p>
-    </header>
+    <IntegrationsHeader />
 
     <section
       v-if="!agencyId"
-      class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-800"
+      class="cv-alert"
     >
       Selecione uma agência no topo para gerenciar conexões do WhatsApp.
     </section>
 
-    <section v-else class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm md:p-6">
-      <div class="mb-5 flex items-center justify-between gap-3">
-        <h2 class="text-lg font-semibold text-slate-900">Canal de atendimento</h2>
-        <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">MVP: 1 conexão</span>
-      </div>
+    <div v-else class="cv-split">
+      <section class="cv-panel">
+        <div v-if="loading" class="space-y-3">
+          <div class="h-16 animate-pulse rounded-2xl bg-muted"></div>
+          <div class="h-20 animate-pulse rounded-2xl bg-muted"></div>
+        </div>
 
-      <div v-if="loading" class="space-y-3">
-        <div class="h-28 animate-pulse rounded-2xl bg-slate-100"></div>
-        <div class="h-28 animate-pulse rounded-2xl bg-slate-100"></div>
-      </div>
-
-      <article v-else class="rounded-2xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-4 shadow-sm md:p-5">
-        <div class="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-          <div class="min-w-0 flex-1">
-            <div class="flex flex-wrap items-center gap-3">
-              <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#dcfce7] text-[#16a34a]">
-                <img :src="whatsAppLogo" alt="WhatsApp" class="h-5 w-5 object-contain" />
-              </span>
-              <div class="min-w-0">
-                <p class="truncate text-base font-semibold text-slate-900">{{ connectionName }}</p>
-                <p class="text-xs text-slate-500">WhatsApp oficial via QR Code</p>
-              </div>
-              <span class="inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold" :class="statusBadgeClass">
-                {{ statusLabel }}
-              </span>
+        <template v-else>
+          <header class="cv-head">
+            <span class="cv-logo">
+              <img :src="whatsAppLogo" alt="WhatsApp" class="h-5 w-5 object-contain" />
+            </span>
+            <div class="min-w-0 flex-1">
+              <h2>WhatsApp da agência</h2>
+              <p>{{ connectionName }} · conectado por QR Code. Usado no atendimento e nas mensagens automáticas.</p>
             </div>
+            <span class="cv-pill" :class="statusBadgeClass">{{ statusLabel }}</span>
+          </header>
 
-            <dl class="mt-4 grid grid-cols-1 gap-3 text-sm text-slate-700 md:grid-cols-3">
-              <div>
-                <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Status</dt>
-                <dd class="mt-1 font-medium text-slate-900">{{ statusLongLabel }}</dd>
-              </div>
-              <div>
-                <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Número</dt>
-                <dd class="mt-1 font-medium text-slate-900">{{ formattedPhone }}</dd>
-              </div>
-              <div>
-                <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Última atualização</dt>
-                <dd class="mt-1 font-medium text-slate-900">{{ lastUpdateLabel }}</dd>
-              </div>
-            </dl>
-          </div>
+          <dl class="cv-facts">
+            <div>
+              <dt>Situação</dt>
+              <dd>{{ statusLongLabel }}</dd>
+            </div>
+            <div>
+              <dt>Número</dt>
+              <dd>{{ formattedPhone }}</dd>
+            </div>
+            <div>
+              <dt>Última atualização</dt>
+              <dd>{{ lastUpdateLabel }}</dd>
+            </div>
+          </dl>
 
-          <div class="grid grid-cols-1 gap-2 sm:grid-cols-3 lg:w-[430px]">
+          <div v-if="statusNormalized !== 'connected'" class="cv-line">
+            <div>
+              <p class="cv-line-title">Conectar</p>
+              <p class="cv-line-text">Leia o QR Code com o WhatsApp do celular da agência.</p>
+            </div>
             <button
-              v-if="statusNormalized !== 'connected'"
               type="button"
-              class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              class="cv-btn cv-btn-primary"
               :disabled="working || loading || refreshing"
               @click="openQrModal"
             >
               <span v-if="working && qrModalOpen">Carregando...</span>
               <span v-else>{{ qrActionLabel }}</span>
             </button>
+          </div>
 
+          <div class="cv-line">
+            <div>
+              <p class="cv-line-title">Status</p>
+              <p class="cv-line-text">Confira se a conexão continua ativa no celular.</p>
+            </div>
             <button
               type="button"
-              class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              class="cv-btn"
               :disabled="working || loading || refreshing"
               @click="reload"
             >
               <span v-if="refreshing">Atualizando...</span>
-              <span v-else>Atualizar</span>
+              <span v-else>Atualizar status</span>
             </button>
+          </div>
 
+          <div class="cv-line">
+            <div>
+              <p class="cv-line-title">Desconectar</p>
+              <p class="cv-line-text">As mensagens automáticas param até conectar de novo.</p>
+            </div>
             <button
               type="button"
-              class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+              class="cv-btn cv-btn-danger"
               :disabled="working || !connection || statusNormalized === 'disconnected'"
               @click="handleDisconnect"
             >
@@ -87,11 +90,21 @@
               <span v-else>Desconectar</span>
             </button>
           </div>
-        </div>
-      </article>
 
-      <p class="mt-4 text-sm text-slate-500">Nesta versão existe limite de 1 conexão WhatsApp por agência.</p>
-    </section>
+          <p class="cv-note">Cada agência pode ter 1 conexão de WhatsApp.</p>
+        </template>
+      </section>
+
+      <aside class="cv-info">
+        <span class="cv-info-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg>
+        </span>
+        <div>
+          <p class="cv-info-title">Onde o WhatsApp é usado</p>
+          <p class="cv-info-text">Nas mensagens automáticas dos formulários (Captação de leads › Formulários) e na caixa de entrada de atendimento.</p>
+        </div>
+      </aside>
+    </div>
 
     <Teleport to="body">
       <div v-if="qrModalOpen" class="app-modal-overlay fixed inset-0 z-[180] flex items-center justify-center px-3 md:px-4">
@@ -182,9 +195,44 @@
   background: var(--background) !important;
   color: var(--foreground) !important;
 }
+
+/* Redesign: notificações (WhatsApp) */
+.cv-alert { border-radius: 16px; background: var(--status-warning); padding: 14px 16px; font-size: 14px; color: var(--status-warning-foreground); }
+.cv-split { display: grid; grid-template-columns: minmax(0, 1fr) 360px; align-items: start; gap: 16px; }
+.cv-panel { border-radius: 20px; background: var(--card); padding: 20px; box-shadow: var(--shadow-card); }
+.cv-head { display: flex; align-items: flex-start; gap: 12px; }
+.cv-head h2 { font-family: var(--font-display); font-size: 18px; font-weight: 600; color: var(--foreground); }
+.cv-head p { margin-top: 2px; font-size: 13px; color: var(--muted-foreground); }
+.cv-logo { display: grid; place-items: center; width: 44px; height: 44px; flex-shrink: 0; border-radius: 14px; background: var(--status-success); }
+.cv-pill { flex-shrink: 0; border: 0 !important; border-radius: 999px; padding: 2px 10px; font-size: 12px; font-weight: 600; }
+.cv-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 16px 0 4px; }
+.cv-facts > div { border-radius: 14px; background: var(--muted); padding: 10px 14px; }
+.cv-facts dt { font-size: 12px; color: var(--muted-foreground); }
+.cv-facts dd { margin-top: 2px; font-size: 14.5px; font-weight: 600; color: var(--foreground); }
+.cv-line { display: flex; align-items: center; justify-content: space-between; gap: 16px; border-top: 1px solid var(--border); padding: 14px 0; }
+.cv-line-title { font-size: 14px; font-weight: 600; color: var(--foreground); }
+.cv-line-text { margin-top: 2px; font-size: 12.5px; color: var(--muted-foreground); }
+.cv-btn { flex-shrink: 0; height: 36px; padding: 0 16px; border-radius: 999px; background: var(--muted); font-size: 13px; font-weight: 600; color: var(--foreground); }
+.cv-btn:hover:not(:disabled) { background: var(--accent); color: var(--accent-foreground); }
+.cv-btn:disabled { cursor: not-allowed; opacity: 0.55; }
+.cv-btn-primary { background: var(--primary); color: var(--primary-foreground); }
+.cv-btn-primary:hover:not(:disabled) { background: color-mix(in srgb, var(--primary) 88%, black); color: var(--primary-foreground); }
+.cv-btn-danger { background: var(--status-danger); color: var(--status-danger-foreground); }
+.cv-note { border-radius: 14px; background: var(--status-info); padding: 10px 14px; font-size: 12.5px; color: var(--status-info-foreground); }
+.cv-info { display: flex; gap: 12px; border-radius: 20px; background: var(--card); padding: 18px; box-shadow: var(--shadow-card); }
+.cv-info-icon { display: grid; place-items: center; width: 36px; height: 36px; flex-shrink: 0; border-radius: 999px; background: var(--status-success); color: var(--status-success-foreground); }
+.cv-info-icon svg { width: 18px; height: 18px; }
+.cv-info-title { font-size: 14px; font-weight: 600; color: var(--foreground); }
+.cv-info-text { margin-top: 4px; font-size: 12.5px; line-height: 1.55; color: var(--muted-foreground); }
+@media (max-width: 1024px) { .cv-split { grid-template-columns: 1fr; } }
+@media (max-width: 640px) {
+  .cv-facts { grid-template-columns: 1fr; }
+  .cv-line { flex-direction: column; align-items: flex-start; }
+}
 </style>
 
 <script setup lang="ts">
+import IntegrationsHeader from "../../components/admin/integrations/IntegrationsHeader.vue";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useAgencyStore } from "../../store/useAgencyStore";
 import {
@@ -258,9 +306,9 @@ const statusLongLabel = computed(() => {
 });
 
 const statusBadgeClass = computed(() => {
-  if (statusNormalized.value === "connected") return "border-emerald-200 bg-emerald-100 text-emerald-700";
-  if (statusNormalized.value === "connecting" || statusNormalized.value === "qr_needed") return "border-amber-200 bg-amber-100 text-amber-700";
-  return "border-rose-200 bg-rose-100 text-rose-700";
+  if (statusNormalized.value === "connected") return "bg-status-success text-status-success-foreground";
+  if (statusNormalized.value === "connecting" || statusNormalized.value === "qr_needed") return "bg-status-warning text-status-warning-foreground";
+  return "bg-status-danger text-status-danger-foreground";
 });
 
 const statusTextClass = computed(() => {

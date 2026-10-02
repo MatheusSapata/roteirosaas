@@ -4,47 +4,60 @@
   </div>
 
   <div v-else class="integrations-view w-full space-y-6 px-4 py-6 md:px-8">
-    <header class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-      <div>
-        <h1 class="text-3xl font-bold text-slate-900">{{ viewCopy.header.title }}</h1>
-        <p class="mt-1 text-sm text-slate-600">{{ viewCopy.header.description }}</p>
-      </div>
+    <IntegrationsHeader>
+      <template #actions>
+        <button
+          v-if="!isViajeonRoute && !isExternalRoute"
+          type="button"
+          class="iv-btn-primary"
+          :disabled="isReadOnly"
+          @click="prepareNewIntegration"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg>
+          Novo código
+        </button>
+      </template>
+    </IntegrationsHeader>
 
-      <button
-        v-if="!isViajeonRoute && !isExternalRoute"
-        type="button"
-        class="inline-flex items-center gap-2 rounded-[10px] bg-[#3DCC5F] px-4 py-[9px] text-[13px] font-semibold text-[#0F1F14] transition hover:bg-[#5BE07A] disabled:cursor-not-allowed disabled:opacity-60"
-        :disabled="isReadOnly"
-        @click="prepareNewIntegration"
-      >
-        <span class="text-[15px] leading-none font-bold">+</span>
-        {{ viewCopy.actions.new }}
-      </button>
-    </header>
-
-    <section v-if="isExternalRoute" class="external-integrations">
-      <div class="external-grid">
-        <article class="external-card" @click="externalDrawer = 'viajeon'">
-          <div class="external-card-top"><span class="external-icon">V</span><span class="external-badge">Integração</span></div>
-          <h2>ViajeOn</h2><p>Exiba pacotes ativos e conecte sua operação às páginas do Roteiro Online.</p>
-          <button type="button">⚙ Configurar</button>
-        </article>
-        <article class="external-card" @click="externalDrawer = 'viajechat'">
-          <div class="external-card-top"><span class="external-icon chat">◌</span><span class="external-badge">Integração</span></div>
-          <h2>ViajeChat</h2><p>Atendimento, conversas e automações integradas à sua agência.</p>
-          <button type="button">⚙ Visualizar</button>
-        </article>
-      </div>
+    <section v-if="isExternalRoute" class="iv-cards">
+      <article class="iv-card">
+        <header class="iv-card-head">
+          <span class="iv-logo iv-logo-vo">VO</span>
+          <div class="min-w-0">
+            <h2>Viaje On</h2>
+            <span class="iv-pill" :class="viajeonStatus.connected ? 'is-on' : 'is-off'">{{ viajeonStatus.connected ? "Conectado" : "Não configurado" }}</span>
+          </div>
+        </header>
+        <p class="iv-card-text">Mostra os pacotes ativos do Viaje On direto nas suas páginas.</p>
+        <p v-if="viajeonStatus.sso_email" class="iv-card-meta">Entra com {{ viajeonStatus.sso_email }}</p>
+        <footer class="iv-card-foot">
+          <button type="button" :class="viajeonStatus.configured ? 'iv-soft' : 'iv-btn-primary'" @click="externalDrawer = 'viajeon'">
+            {{ viajeonStatus.configured ? "Gerenciar" : "Conectar" }}
+          </button>
+        </footer>
+      </article>
+      <article class="iv-card">
+        <header class="iv-card-head">
+          <span class="iv-logo tone-violet">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+          </span>
+          <div class="min-w-0">
+            <h2>ViajeChat</h2>
+            <span class="iv-pill" :class="viajechatStatus.connected ? 'is-on' : 'is-off'">{{ viajechatStatus.connected ? "Conectado" : "Não configurado" }}</span>
+          </div>
+        </header>
+        <p class="iv-card-text">Envia os leads para o funil do ViajeChat, com atendimento, conversas e automações.</p>
+        <p v-if="viajechatStatus.connected && viajechatStatus.api_key_masked" class="iv-card-meta">API key {{ viajechatStatus.api_key_masked }}</p>
+        <footer class="iv-card-foot">
+          <button type="button" :class="viajechatStatus.configured ? 'iv-soft' : 'iv-btn-primary'" @click="externalDrawer = 'viajechat'">
+            {{ viajechatStatus.configured ? "Gerenciar" : "Conectar" }}
+          </button>
+        </footer>
+      </article>
     </section>
-    <section v-if="!isViajeonRoute && !isExternalRoute" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
-      <p class="text-sm font-semibold text-slate-700">
-        {{ viewCopy.summary.label }}: <span class="text-slate-900">{{ pixels.length }}</span>
-      </p>
-    </section>
-
     <Teleport to="body" :disabled="!isExternalRoute">
     <div v-if="isExternalRoute && externalDrawer" class="drawer-backdrop" @click="externalDrawer = null"></div>
-    <aside v-if="isViajeonRoute || (isExternalRoute && externalDrawer === 'viajeon')" :class="isExternalRoute ? 'external-drawer' : 'rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-5'">
+    <aside v-if="isViajeonRoute || (isExternalRoute && externalDrawer === 'viajeon')" :class="isExternalRoute ? 'external-drawer' : 'iv-panel'">
       <div v-if="isExternalRoute" class="drawer-header"><div><span>Integração externa</span><h2>ViajeOn</h2></div><button type="button" @click="externalDrawer = null">×</button></div>
       <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div class="flex min-w-0 items-start gap-3">
@@ -152,54 +165,53 @@
     </aside>
     </Teleport>
 
-    <section v-if="!isViajeonRoute && !isExternalRoute" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
-      <div class="mb-4 flex items-center justify-between gap-3">
-        <h2 class="text-lg font-semibold text-slate-900">{{ viewCopy.list.title }}</h2>
-      </div>
+    <div v-if="!isViajeonRoute && !isExternalRoute" class="iv-split">
+      <section class="iv-panel">
+        <div class="iv-panel-head">
+          <p class="iv-eyebrow">Rastreamento</p>
+          <h2>Códigos cadastrados</h2>
+          <p>Cadastre aqui e escolha em cada página quais códigos ela usa.</p>
+        </div>
 
-      <div v-if="!pixels.length" class="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-500">
-        {{ viewCopy.list.empty }}
-      </div>
+        <div v-if="!pixels.length" class="iv-empty">{{ viewCopy.list.empty }}</div>
 
-      <div v-else class="space-y-3">
-        <article
-          v-for="pixel in pixels"
-          :key="pixel.id"
-          class="integration-item flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 transition hover:-translate-y-[1px] hover:shadow-md md:flex-row md:items-center md:justify-between"
-        >
-          <div class="min-w-0 flex-1">
-            <span
-              class="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide"
-              :class="pixel.type === 'meta' ? 'bg-blue-100 text-blue-700' : 'bg-rose-100 text-rose-700'"
-            >
-              {{ pixel.type === "meta" ? viewCopy.list.typeMeta : viewCopy.list.typeGa }}
+        <ul v-else class="iv-list">
+          <li v-for="pixel in pixels" :key="pixel.id" class="iv-row">
+            <span class="iv-logo" :class="pixel.type === 'meta' ? 'tone-info' : 'tone-warning'">
+              <template v-if="pixel.type === 'meta'">M</template>
+              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18" /><path d="m7 15 4-4 3 3 5-6" /></svg>
             </span>
+            <div class="min-w-0 flex-1">
+              <p class="iv-row-name">{{ pixel.name }}</p>
+              <p class="iv-row-code">
+                <span class="iv-tag" :class="pixel.type === 'meta' ? 'tone-info' : 'tone-warning'">{{ pixel.type === "meta" ? "Meta" : "Google" }}</span>
+                <code>{{ displayCode(pixel.value) }}</code>
+              </p>
+            </div>
+            <div class="iv-row-actions">
+              <button type="button" class="iv-ghost" @click="copyPixelCode(pixel)">Copiar</button>
+              <button type="button" class="iv-ghost" :disabled="isReadOnly" @click="editPixel(pixel)">{{ viewCopy.actions.edit }}</button>
+              <button type="button" class="iv-ghost danger" :disabled="isReadOnly" @click="removePixel(pixel)">{{ viewCopy.actions.remove }}</button>
+            </div>
+          </li>
+        </ul>
+        <button type="button" class="iv-add" :disabled="isReadOnly" @click="prepareNewIntegration">+ Adicionar código</button>
+      </section>
 
-            <p class="mt-2 text-base font-semibold text-slate-900">{{ pixel.name }}</p>
-            <p class="mt-1 break-all text-sm text-slate-500">{{ viewCopy.list.codePrefix }} {{ displayCode(pixel.value) }}</p>
-          </div>
-
-          <div class="flex items-center gap-2">
-            <button
-              type="button"
-              class="rounded-xl border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-              :disabled="isReadOnly"
-              @click="editPixel(pixel)"
-            >
-              {{ viewCopy.actions.edit }}
-            </button>
-            <button
-              type="button"
-              class="rounded-xl border border-rose-200 px-3 py-1.5 text-sm font-semibold text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
-              :disabled="isReadOnly"
-              @click="removePixel(pixel)"
-            >
-              {{ viewCopy.actions.remove }}
-            </button>
-          </div>
-        </article>
-      </div>
-    </section>
+      <aside class="iv-info">
+        <span class="iv-info-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg>
+        </span>
+        <div>
+          <p class="iv-info-title">Como usar nas páginas</p>
+          <ol class="iv-info-text">
+            <li>Cadastre o código do Meta ou do Google aqui.</li>
+            <li>Abra a página no editor, aba Rastreamento.</li>
+            <li>Escolha o código e os eventos que quer enviar.</li>
+          </ol>
+        </div>
+      </aside>
+    </div>
 
     <Teleport to="body">
       <div v-if="viajeonModalOpen" class="app-modal-overlay fixed inset-0 z-[185] flex items-center justify-center px-4">
@@ -362,12 +374,89 @@
 .integration-secret-modal .text-slate-500 { color: var(--muted-foreground) !important; }
 .external-integrations{max-width:1100px}.external-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.external-card{display:flex;min-height:220px;cursor:pointer;flex-direction:column;border:1px solid var(--border);border-radius:14px;background:var(--card);padding:16px;box-shadow:0 2px 4px rgba(15,23,42,.06);transition:.2s}.external-card:hover{transform:translateY(-2px);border-color:#86efac;box-shadow:0 10px 24px rgba(15,23,42,.1)}.external-card-top{display:flex;align-items:center;justify-content:space-between}.external-icon{display:grid;width:38px;height:38px;place-items:center;border-radius:12px;background:#e2f8ef;color:#0fbd83;font-weight:900}.external-icon.chat{font-size:25px}.external-badge{border-radius:7px;background:#f1f5f9;padding:5px 11px;font-size:11px;font-weight:700}.external-card h2{margin-top:16px;font-size:16px;font-weight:800}.external-card p{margin-top:3px;flex:1;color:var(--muted-foreground);font-size:13px;line-height:1.4}.external-card>button{margin-top:14px;width:100%;border:1px solid var(--border);border-radius:8px;background:var(--background);padding:8px;font-size:13px;font-weight:700;box-shadow:0 1px 3px rgba(15,23,42,.08)}.drawer-backdrop{position:fixed;inset:0;z-index:190;background:rgba(15,23,42,.42);backdrop-filter:blur(2px)}.external-drawer{position:fixed;z-index:195;right:0;top:0;height:100vh;width:min(620px,94vw);overflow-y:auto;background:var(--card);padding:22px;box-shadow:-20px 0 50px rgba(15,23,42,.2);animation:drawer-in .22s ease-out}.drawer-header{display:flex;align-items:flex-start;justify-content:space-between;border-bottom:1px solid var(--border);padding-bottom:16px;margin-bottom:22px}.drawer-header span{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.16em;color:#10b981}.drawer-header h2{margin-top:3px;font-size:24px;font-weight:800}.drawer-header button{display:grid;width:36px;height:36px;place-items:center;border:1px solid var(--border);border-radius:10px;font-size:24px}.coming-soon{display:flex;min-height:60vh;align-items:center;justify-content:center;flex-direction:column;text-align:center}.coming-soon>div{display:grid;width:64px;height:64px;place-items:center;border-radius:20px;background:#e2f8ef;color:#10b981;font-size:36px}.coming-soon h3{margin-top:18px;font-size:24px;font-weight:800}.coming-soon p{margin-top:6px;color:var(--muted-foreground)}@keyframes drawer-in{from{transform:translateX(100%)}to{transform:translateX(0)}}@media(max-width:680px){.external-grid{grid-template-columns:1fr}}
 .drawer-backdrop{z-index:9998}.external-drawer{z-index:9999;top:0;bottom:0;height:100dvh;max-height:100dvh}.viajechat-panel{display:grid;gap:18px}.integration-status-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;border:1px solid var(--border);border-radius:14px;padding:14px}.integration-status-row strong{font-size:14px}.integration-status-row p{margin-top:3px;color:var(--muted-foreground);font-size:12px}.integration-status-row>span{border-radius:999px;background:#f1f5f9;padding:5px 9px;color:#64748b;font-size:10px;font-weight:800;text-transform:uppercase}.integration-status-row>span.connected{background:#dcfce7;color:#15803d}.api-key-form{display:grid;grid-template-columns:1fr auto;align-items:end;gap:10px}.api-key-form label{display:grid;gap:6px;font-size:11px;font-weight:800;text-transform:uppercase;color:var(--muted-foreground)}.api-key-form input{border:1px solid var(--input);border-radius:10px;background:var(--background);padding:10px 12px;color:var(--foreground);font-size:13px;text-transform:none}.api-key-form button,.kanban-head button{border-radius:10px;background:#16c784;padding:10px 14px;color:#052e1c;font-size:12px;font-weight:800}.api-key-form button:disabled,.kanban-head button:disabled{opacity:.5}.security-note{border-radius:10px;background:#f0fdf4;padding:10px 12px;color:#166534;font-size:11px}.kanban-section{display:grid;gap:12px;border-top:1px solid var(--border);padding-top:18px}.kanban-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.kanban-head h3{font-size:17px;font-weight:800}.kanban-head p{color:var(--muted-foreground);font-size:11px}.kanban-card{border:1px solid var(--border);border-radius:14px;background:var(--background);padding:14px}.kanban-card h4{font-size:14px;font-weight:800}.kanban-card>p,.kanban-empty{color:var(--muted-foreground);font-size:12px}.kanban-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.kanban-card-head small{display:block;margin-top:2px;color:var(--muted-foreground);font-size:10px}.kanban-card-head button{display:inline-flex;min-height:30px;align-items:center;justify-content:center;gap:6px;border:1px solid var(--border);border-radius:8px;padding:6px 9px;color:var(--muted-foreground);font-size:10px;font-weight:800;line-height:1}.kanban-card-head button:hover{background:var(--muted)}.kanban-card-head button svg{display:block;width:13px;height:13px;flex:0 0 13px;transition:transform .18s ease}.kanban-card-head button svg.collapsed{transform:rotate(180deg)}.column-list{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}.column-list span{border:1px solid var(--border);border-radius:999px;background:var(--muted);padding:5px 9px;font-size:11px;font-weight:700}.kanban-empty{border:1px dashed var(--border);border-radius:12px;padding:22px;text-align:center}.disconnect-chat{justify-self:start;border:1px solid #fecdd3;border-radius:10px;padding:8px 12px;color:#e11d48;font-size:12px;font-weight:700}@media(max-width:520px){.api-key-form{grid-template-columns:1fr}}
+
+/* Redesign: integrações */
+.iv-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 18px; border-radius: 999px; background: var(--primary); font-size: 13.5px; font-weight: 600; color: var(--primary-foreground); }
+.iv-btn-primary:hover:not(:disabled) { background: color-mix(in srgb, var(--primary) 88%, black); }
+.iv-btn-primary:disabled { cursor: not-allowed; opacity: 0.55; }
+.iv-btn-primary svg { width: 16px; height: 16px; }
+.iv-soft { display: inline-flex; align-items: center; height: 36px; padding: 0 16px; border-radius: 999px; background: var(--accent); font-size: 13px; font-weight: 600; color: var(--accent-foreground); }
+.iv-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+.iv-card { display: flex; flex-direction: column; gap: 10px; border-radius: 20px; background: var(--card); padding: 18px; box-shadow: var(--shadow-card); }
+.iv-card-head { display: flex; align-items: center; gap: 12px; }
+.iv-card-head h2 { font-size: 16px; font-weight: 600; color: var(--foreground); }
+.iv-card-text { font-size: 13px; line-height: 1.5; color: var(--muted-foreground); }
+.iv-card-meta { font-size: 12.5px; color: var(--foreground); }
+.iv-card-foot { display: flex; justify-content: flex-end; margin-top: auto; border-top: 1px solid var(--border); padding-top: 12px; }
+.iv-card-foot .iv-btn-primary { height: 36px; font-size: 13px; }
+.iv-logo { display: grid; place-items: center; width: 44px; height: 44px; flex-shrink: 0; border-radius: 14px; font-size: 16px; font-weight: 700; }
+.iv-logo svg { width: 20px; height: 20px; }
+.iv-logo-vo { background: #0b1f17; color: #34d399; }
+.iv-pill { display: inline-block; margin-top: 2px; border-radius: 999px; padding: 1px 8px; font-size: 11.5px; font-weight: 600; }
+.iv-pill.is-on { background: var(--status-success); color: var(--status-success-foreground); }
+.iv-pill.is-off { background: var(--muted); color: var(--muted-foreground); }
+.tone-info { background: var(--status-info); color: var(--status-info-foreground); }
+.tone-warning { background: var(--status-warning); color: var(--status-warning-foreground); }
+.tone-violet { background: var(--status-violet); color: var(--status-violet-foreground); }
+.iv-split { display: grid; grid-template-columns: minmax(0, 1fr) 360px; align-items: start; gap: 16px; }
+.iv-panel { border-radius: 20px; background: var(--card); padding: 20px; box-shadow: var(--shadow-card); }
+.iv-panel-head { border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+.iv-eyebrow { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted-foreground); }
+.iv-panel-head h2 { margin-top: 2px; font-family: var(--font-display); font-size: 18px; font-weight: 600; color: var(--foreground); }
+.iv-panel-head p:last-child { margin-top: 2px; font-size: 13px; color: var(--muted-foreground); }
+.iv-empty { margin-top: 12px; border-radius: 14px; background: var(--muted); padding: 28px 16px; text-align: center; font-size: 13.5px; color: var(--muted-foreground); }
+.iv-list { display: flex; flex-direction: column; }
+.iv-row { display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--border); padding: 12px 0; }
+.iv-row-name { font-size: 14.5px; font-weight: 600; color: var(--foreground); }
+.iv-row-code { display: flex; align-items: center; gap: 8px; margin-top: 2px; min-width: 0; font-size: 12.5px; color: var(--muted-foreground); }
+.iv-row-code code { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.iv-tag { flex-shrink: 0; border-radius: 999px; padding: 0 8px; font-size: 11px; font-weight: 600; }
+.iv-row-actions { display: flex; flex-shrink: 0; gap: 6px; }
+.iv-ghost { height: 32px; padding: 0 12px; border-radius: 999px; background: var(--muted); font-size: 12.5px; font-weight: 600; color: var(--foreground); }
+.iv-ghost:hover:not(:disabled) { background: var(--accent); color: var(--accent-foreground); }
+.iv-ghost.danger { background: var(--status-danger); color: var(--status-danger-foreground); }
+.iv-ghost:disabled { cursor: not-allowed; opacity: 0.55; }
+.iv-add { display: block; width: 100%; margin-top: 12px; border: 1px dashed var(--border); border-radius: 14px; padding: 10px; font-size: 13px; font-weight: 600; color: var(--primary); }
+.iv-add:hover:not(:disabled) { background: var(--accent); }
+.iv-add:disabled { cursor: not-allowed; opacity: 0.55; }
+.iv-info { display: flex; gap: 12px; border-radius: 20px; background: var(--card); padding: 18px; box-shadow: var(--shadow-card); }
+.iv-info-icon { display: grid; place-items: center; width: 36px; height: 36px; flex-shrink: 0; border-radius: 999px; background: var(--status-info); color: var(--status-info-foreground); }
+.iv-info-icon svg { width: 18px; height: 18px; }
+.iv-info-title { font-size: 14px; font-weight: 600; color: var(--foreground); }
+.iv-info-text { margin-top: 4px; padding-left: 16px; list-style: decimal; font-size: 12.5px; line-height: 1.6; color: var(--muted-foreground); }
+@media (max-width: 1024px) { .iv-split { grid-template-columns: 1fr; } }
+@media (max-width: 640px) {
+  .iv-row { flex-wrap: wrap; }
+  .iv-row-actions { width: 100%; justify-content: flex-end; }
+}
+
+/* Redesign: gavetas do Viaje On e do ViajeChat */
+.external-drawer { color: var(--foreground); border-radius: 24px 0 0 24px; padding: 24px !important; }
+.drawer-header span { color: var(--primary) !important; letter-spacing: 0.06em !important; }
+.drawer-header h2 { font-family: var(--font-display); font-weight: 600 !important; color: var(--foreground); }
+.drawer-header button { border: 0 !important; border-radius: 999px !important; background: var(--muted); font-size: 20px !important; color: var(--muted-foreground); }
+.external-drawer > .md\:flex-row { flex-direction: column !important; align-items: stretch !important; }
+.external-drawer button.rounded-xl, .iv-panel button.rounded-xl { border-radius: 999px !important; }
+.integration-status-row { border: 0 !important; border-radius: 16px !important; background: var(--muted); }
+.integration-status-row strong { color: var(--foreground); }
+.integration-status-row > span { background: var(--card) !important; color: var(--muted-foreground) !important; text-transform: none !important; font-size: 11.5px !important; }
+.integration-status-row > span.connected { background: var(--status-success) !important; color: var(--status-success-foreground) !important; }
+.api-key-form button, .kanban-head button { border-radius: 999px !important; background: var(--primary) !important; color: var(--primary-foreground) !important; }
+.security-note { background: var(--status-success) !important; color: var(--status-success-foreground) !important; border-radius: 12px !important; }
+.kanban-card { border: 0 !important; border-radius: 16px !important; background: var(--muted) !important; }
+.disconnect-chat { border: 0 !important; border-radius: 999px !important; background: var(--status-danger); color: var(--status-danger-foreground) !important; }
+.external-drawer .text-slate-900, .iv-panel .text-slate-900, .external-drawer .text-slate-700, .iv-panel .text-slate-700 { color: var(--foreground) !important; }
+.external-drawer .text-slate-500, .iv-panel .text-slate-500 { color: var(--muted-foreground) !important; }
+.external-drawer input, .iv-panel input { border-color: var(--input) !important; background: var(--background) !important; color: var(--foreground) !important; }
+.external-drawer .border-slate-200, .iv-panel .border-slate-200 { border-color: var(--border) !important; }
+.external-drawer button.border-slate-200:hover, .iv-panel button.border-slate-200:hover { background: var(--muted) !important; }
 </style>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
 import { useAuthStore } from "../../store/useAuthStore";
+import IntegrationsHeader from "../../components/admin/integrations/IntegrationsHeader.vue";
 import api from "../../services/api";
 import { createAdminLocalizer, getAdminLanguage } from "../../utils/adminI18n";
 
@@ -502,6 +591,14 @@ const isReadOnly = computed(() => {
 const canSubmit = computed(() => !isReadOnly.value);
 const isEditing = computed(() => editingId.value !== null);
 
+const copyPixelCode = async (pixel: { value?: string | null }) => {
+  try {
+    await navigator.clipboard.writeText(String(pixel.value || ""));
+    showToast("Código copiado.");
+  } catch {
+    showToast("Não foi possível copiar o código.", true);
+  }
+};
 const showToast = (message: string, error = false) => {
   toastMessage.value = message;
   toastError.value = error;
