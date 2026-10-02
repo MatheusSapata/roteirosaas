@@ -446,7 +446,6 @@
           </div>
           <div class="pl-cover-title">
             <b>{{ page.title }}</b>
-            <small>{{ page.slug ? `/${page.slug}` : "-" }}</small>
           </div>
         </div>
         <div class="pl-body">
@@ -2374,7 +2373,6 @@ onMounted(bootstrapPages);
 .pl-star { width: 13px; height: 13px; fill: #a35d06; }
 .pl-cover-title { position: absolute; right: 16px; bottom: 12px; left: 16px; z-index: 1; color: #fff; }
 .pl-cover-title b { display: block; overflow: hidden; font-family: var(--font-display); font-size: 18px; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; }
-.pl-cover-title small { font-size: 12px; opacity: 0.85; }
 .pl-body { display: flex; flex: 1; flex-direction: column; gap: 14px; padding: 14px 16px 16px; }
 .pl-link { display: flex; align-items: center; gap: 8px; min-height: 36px; border-radius: 12px; background: var(--muted); padding: 6px 8px 6px 12px; font-size: 12.5px; color: var(--muted-foreground); }
 .pl-link svg { width: 14px; height: 14px; flex-shrink: 0; }
