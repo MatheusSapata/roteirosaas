@@ -11,11 +11,23 @@
 
     <template v-else>
       <header class="topbar">
-        <div>
-          <h1 class="page-title">Olá, {{ userName }} 👋</h1>
-          <p class="page-sub">Visão geral das suas páginas e performance.</p>
+        <div class="min-w-0">
+          <p class="page-date">{{ todayLabel }}</p>
+          <h1 class="page-title">{{ greeting }}, <span class="page-title-name">{{ firstName }}</span></h1>
         </div>
         <div class="topbar-actions">
+          <div class="period-switch" role="group" aria-label="Período">
+            <button
+              v-for="period in periods"
+              :key="period"
+              type="button"
+              class="period-btn"
+              :class="{ active: selectedPeriod === period }"
+              @click="selectedPeriod = period"
+            >
+              {{ period }} dias
+            </button>
+          </div>
           <button type="button" class="btn btn-ghost" @click="goToLessons">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <polygon points="23 7 16 12 23 17 23 7"/>
@@ -28,7 +40,7 @@
               <line x1="12" y1="5" x2="12" y2="19"/>
               <line x1="5" y1="12" x2="19" y2="12"/>
             </svg>
-            Nova Página
+            Nova página
           </button>
         </div>
       </header>
@@ -53,102 +65,102 @@
       />
 
       <section class="metrics-grid">
-        <article class="metric-card">
+        <article class="metric-card metric-hero">
           <div class="metric-header">
-            <span class="metric-label">Páginas</span>
-            <span class="metric-icon green" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                <polyline points="14 2 14 8 20 8" />
-              </svg>
-            </span>
-          </div>
-          <p class="metric-value">{{ pagesCount }}</p>
-          <p class="metric-footer-text">publicadas</p>
-        </article>
-
-        <article class="metric-card">
-          <div class="metric-header">
-            <span class="metric-label">Visitas</span>
-            <span class="metric-icon green" aria-hidden="true">
+            <span class="metric-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                 <circle cx="12" cy="12" r="3" />
               </svg>
             </span>
+            <span class="metric-label">Visitas no período</span>
           </div>
           <p class="metric-value">{{ totalVisits.toLocaleString(numberLocale) }}</p>
           <div class="metric-footer">
             <span class="metric-badge" :class="visitsTrend >= 0 ? 'up' : 'down'">{{ visitsTrendText }}</span>
-            <span class="metric-footer-text">vs. período anterior</span>
+            <span class="metric-footer-text">vs. {{ selectedPeriod }} dias anteriores</span>
           </div>
+          <svg v-if="sparkline.line" class="metric-spark" viewBox="0 0 300 64" preserveAspectRatio="none" aria-hidden="true">
+            <defs>
+              <linearGradient id="g-spark" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="var(--deep-accent)" stop-opacity="0.35" />
+                <stop offset="100%" stop-color="var(--deep-accent)" stop-opacity="0" />
+              </linearGradient>
+            </defs>
+            <path :d="sparkline.area" fill="url(#g-spark)" />
+            <path :d="sparkline.line" fill="none" stroke="var(--deep-accent)" stroke-width="2" />
+          </svg>
         </article>
 
         <article class="metric-card">
           <div class="metric-header">
-            <span class="metric-label">Cliques</span>
-            <span class="metric-icon amber" aria-hidden="true">
+            <span class="metric-icon tone-warning" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="m4 3 7.5 17 2.4-7.1L21 10.5 4 3z" />
                 <path d="m13.9 12.9 3.6 3.6" />
               </svg>
             </span>
+            <span class="metric-label">Cliques nos botões</span>
           </div>
           <p class="metric-value">{{ clicksMetric.toLocaleString(numberLocale) }}</p>
-          <p class="metric-footer-text">nos botões</p>
+          <div class="metric-footer">
+            <span class="metric-badge up">{{ formatPercent(clickRate) }}</span>
+            <span class="metric-footer-text">das visitas clicaram</span>
+          </div>
         </article>
 
         <article class="metric-card">
           <div class="metric-header">
-            <span class="metric-label">Leads</span>
-            <span class="metric-icon purple" aria-hidden="true">
+            <span class="metric-icon tone-violet" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
                 <circle cx="9" cy="7" r="4" />
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                <path d="M19 8v6M22 11h-6" />
               </svg>
             </span>
+            <span class="metric-label">Leads</span>
           </div>
-          <p class="metric-value">{{ leadsMetric }}</p>
+          <p class="metric-value">{{ leadsMetric.toLocaleString(numberLocale) }}</p>
           <div class="metric-footer">
             <span class="metric-badge up">{{ leadsMonthText }}</span>
             <span class="metric-footer-text">este mês</span>
           </div>
         </article>
+
+        <article class="metric-card">
+          <div class="metric-header">
+            <span class="metric-icon tone-info" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+              </svg>
+            </span>
+            <span class="metric-label">Páginas no ar</span>
+          </div>
+          <p class="metric-value">{{ pagesCount }} <small>de {{ pages.length }}</small></p>
+          <div class="metric-footer">
+            <span class="metric-badge neutral">{{ draftsCount }} {{ draftsCount === 1 ? "rascunho" : "rascunhos" }}</span>
+          </div>
+        </article>
       </section>
 
-      <section class="chart-card-wrap">
+      <section class="mid-grid">
         <article class="chart-card">
           <header class="chart-header">
             <div>
+              <p class="card-eyebrow">Desempenho</p>
               <h2 class="chart-title">Resumo das páginas</h2>
-              <p class="chart-sub">Visitas, cliques e leads por período</p>
             </div>
             <div class="chart-controls">
-              <select v-model="selectedPage" class="filter-select">
-                <option value="all">Todas as páginas</option>
-                <option v-for="page in pages" :key="page.id" :value="String(page.id)">{{ page.title }}</option>
-              </select>
-
               <div class="chart-legend">
                 <button type="button" class="legend-item legend-toggle" :class="{ off: !visibleSeries.visits }" @click="toggleSeries('visits')"><i class="legend-dot visits"></i>Visitas</button>
                 <button type="button" class="legend-item legend-toggle" :class="{ off: !visibleSeries.clicks }" @click="toggleSeries('clicks')"><i class="legend-dot clicks"></i>Cliques</button>
                 <button type="button" class="legend-item legend-toggle" :class="{ off: !visibleSeries.leads }" @click="toggleSeries('leads')"><i class="legend-dot leads"></i>Leads</button>
               </div>
-
-              <div class="period-switch">
-                <button
-                  v-for="period in periods"
-                  :key="period"
-                  type="button"
-                  class="period-btn"
-                  :class="{ active: selectedPeriod === period }"
-                  @click="selectedPeriod = period"
-                >
-                  {{ period }}d
-                </button>
-              </div>
+              <select v-model="selectedPage" class="filter-select" aria-label="Página">
+                <option value="all">Todas as páginas</option>
+                <option v-for="page in pages" :key="page.id" :value="String(page.id)">{{ page.title }}</option>
+              </select>
             </div>
           </header>
 
@@ -156,57 +168,16 @@
             <svg id="areaChart" width="100%" :height="chartHeight" preserveAspectRatio="none">
               <defs>
                 <linearGradient id="g-visits" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="var(--chart-1)" stop-opacity="0.20" />
+                  <stop offset="0%" stop-color="var(--chart-1)" stop-opacity="0.22" />
                   <stop offset="100%" stop-color="var(--chart-1)" stop-opacity="0.01" />
-                </linearGradient>
-                <linearGradient id="g-clicks" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="var(--chart-8)" stop-opacity="0.20" />
-                  <stop offset="100%" stop-color="var(--chart-8)" stop-opacity="0.01" />
-                </linearGradient>
-                <linearGradient id="g-leads" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="var(--chart-6)" stop-opacity="0.20" />
-                  <stop offset="100%" stop-color="var(--chart-6)" stop-opacity="0.01" />
                 </linearGradient>
               </defs>
 
               <path v-if="visibleSeries.visits && chartSeries.visits.area" :d="chartSeries.visits.area" fill="url(#g-visits)" />
-              <path v-if="visibleSeries.clicks && chartSeries.clicks.area" :d="chartSeries.clicks.area" fill="url(#g-clicks)" />
-              <path v-if="visibleSeries.leads && chartSeries.leads.area" :d="chartSeries.leads.area" fill="url(#g-leads)" />
 
-              <path v-if="visibleSeries.visits && chartSeries.visits.path" :d="chartSeries.visits.path" fill="none" stroke="var(--chart-1)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
-              <path v-if="visibleSeries.clicks && chartSeries.clicks.path" :d="chartSeries.clicks.path" fill="none" stroke="var(--chart-8)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
-              <path v-if="visibleSeries.leads && chartSeries.leads.path" :d="chartSeries.leads.path" fill="none" stroke="var(--chart-6)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
-
-              <circle
-                v-for="dot in visibleSeries.visits ? chartSeries.visits.dots : []"
-                :key="`visits-${dot.index}`"
-                :cx="dot.x"
-                :cy="dot.y"
-                r="3.5"
-                fill="var(--chart-1)"
-                stroke="var(--card)"
-                stroke-width="1.5"
-              />
-              <circle
-                v-for="dot in visibleSeries.clicks ? chartSeries.clicks.dots : []"
-                :key="`clicks-${dot.index}`"
-                :cx="dot.x"
-                :cy="dot.y"
-                r="3.5"
-                fill="var(--chart-8)"
-                stroke="var(--card)"
-                stroke-width="1.5"
-              />
-              <circle
-                v-for="dot in visibleSeries.leads ? chartSeries.leads.dots : []"
-                :key="`leads-${dot.index}`"
-                :cx="dot.x"
-                :cy="dot.y"
-                r="3.5"
-                fill="var(--chart-6)"
-                stroke="var(--card)"
-                stroke-width="1.5"
-              />
+              <path v-if="visibleSeries.visits && chartSeries.visits.path" :d="chartSeries.visits.path" fill="none" stroke="var(--chart-1)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+              <path v-if="visibleSeries.clicks && chartSeries.clicks.path" :d="chartSeries.clicks.path" fill="none" stroke="var(--chart-4)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+              <path v-if="visibleSeries.leads && chartSeries.leads.path" :d="chartSeries.leads.path" fill="none" stroke="var(--chart-6)" stroke-width="2.5" stroke-dasharray="5 5" stroke-linecap="round" stroke-linejoin="round" />
 
               <rect
                 v-for="hit in chartHitAreas"
@@ -231,7 +202,32 @@
 
           <div class="chart-dates">
             <span>{{ chartStartLabel }}</span>
+            <span class="chart-note">Leads em linha tracejada, na própria escala</span>
             <span>{{ chartEndLabel }}</span>
+          </div>
+        </article>
+
+        <article class="chart-card funnel-card">
+          <header class="chart-header">
+            <div>
+              <p class="card-eyebrow">Conversão</p>
+              <h2 class="chart-title">Do clique ao lead</h2>
+            </div>
+          </header>
+          <div class="funnel">
+            <div v-for="step in funnelSteps" :key="step.key" class="funnel-step">
+              <div class="funnel-row"><span>{{ step.label }}</span><b>{{ step.value.toLocaleString(numberLocale) }}</b></div>
+              <div class="funnel-bar"><span :class="`fill-${step.key}`" :style="{ width: `${step.width}%` }"></span></div>
+            </div>
+          </div>
+          <div class="funnel-total">
+            <span class="metric-icon tone-success" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 7 13.5 15.5 8.5 10.5 2 17" /><path d="M16 7h6v6" /></svg>
+            </span>
+            <div>
+              <b>{{ formatPercent(leadRate) }}</b>
+              <span>das visitas viraram lead</span>
+            </div>
           </div>
         </article>
       </section>
@@ -239,33 +235,38 @@
       <section class="bottom-grid">
         <article class="list-card">
           <header class="list-header">
-            <h3 class="list-title">Top páginas</h3>
+            <div>
+              <p class="card-eyebrow">Páginas</p>
+              <h3 class="list-title">Mais visitadas</h3>
+            </div>
             <button type="button" class="list-link" @click="goToPages">Ver todas →</button>
           </header>
           <div class="list-body">
             <div v-for="item in topPages" :key="item.id" class="page-item">
-              <div class="page-thumb">📄</div>
+              <div class="page-thumb" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
+              </div>
               <div class="page-info">
                 <p class="page-name">{{ truncateText(item.title, 30) }}</p>
                 <p class="page-dest">{{ truncateText(item.origin, 30) }}</p>
                 <div class="page-bar"><div class="page-bar-fill" :style="{ width: `${item.progress}%` }"></div></div>
               </div>
               <div class="page-side">
-                <span class="page-visits">{{ item.visits }}</span>
+                <span class="page-visits">{{ item.visits.toLocaleString(numberLocale) }}<small>visitas</small></span>
                 <div class="page-actions">
-                  <button type="button" class="page-action-btn view" title="Ver" aria-label="Ver página publicada" @click="viewPage(item)">
+                  <button type="button" class="page-action-btn" title="Ver" aria-label="Ver página publicada" @click="viewPage(item)">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                       <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                       <circle cx="12" cy="12" r="3" />
                     </svg>
                   </button>
-                  <button type="button" class="page-action-btn edit" title="Editar" aria-label="Editar página" @click="editPage(item)">
+                  <button type="button" class="page-action-btn" title="Editar" aria-label="Editar página" @click="editPage(item)">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                       <path d="M12 20h9" />
                       <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z" />
                     </svg>
                   </button>
-                  <button type="button" class="page-action-btn share" title="Copiar" aria-label="Copiar link da página" @click="sharePage(item)">
+                  <button type="button" class="page-action-btn" title="Copiar link" aria-label="Copiar link da página" @click="sharePage(item)">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                       <path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07L11.2 4.72" />
                       <path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 0 0 7.07 7.07L12.8 19.28" />
@@ -280,18 +281,22 @@
 
         <article class="list-card">
           <header class="list-header">
-            <h3 class="list-title">Leads recentes</h3>
+            <div>
+              <p class="card-eyebrow">Leads</p>
+              <h3 class="list-title">Chegaram agora</h3>
+            </div>
             <button type="button" class="list-link" @click="goToOpportunities">Ver todos →</button>
           </header>
           <div class="list-body">
-            <div v-for="lead in recentLeads" :key="String(lead.id)" class="lead-item">
-              <div class="lead-avatar">{{ (lead.name || '?').charAt(0).toUpperCase() }}</div>
+            <div v-for="(lead, index) in recentLeads" :key="String(lead.id)" class="lead-item">
+              <div class="lead-avatar" :class="`tone-${avatarTones[index % avatarTones.length]}`">{{ initials(lead.name) }}</div>
               <div class="lead-info">
                 <div class="lead-copy">
                   <p class="lead-name">{{ truncateText(lead.name || 'Lead sem nome', 40) }}</p>
-                  <p class="lead-meta">{{ truncateText(`${leadPageLabel(lead)} · ${relativeTime(lead.created_at)}`, 30) }}</p>
+                  <p class="lead-meta">{{ truncateText(`${leadPageLabel(lead)} · ${relativeTime(lead.created_at)}`, 34) }}</p>
                 </div>
                 <div class="lead-actions">
+                  <span v-if="lead.status_name" class="lead-stage" :style="stageStyle(lead.status_color)">{{ lead.status_name }}</span>
                   <a
                     v-if="leadWhatsappUrl(lead)"
                     class="lead-btn lead-btn-contact"
@@ -299,7 +304,8 @@
                     target="_blank"
                     rel="noopener"
                   >
-                    Contato
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" /></svg>
+                    WhatsApp
                   </a>
                   <button type="button" class="lead-btn lead-btn-details" @click="openLeadDetails(lead.id)">Detalhes</button>
                 </div>
@@ -406,7 +412,7 @@ const eligibleBanner = ref<SystemBannerPayload | null>(null);
 const hasTrackedBannerImpression = ref(false);
 const chartStageRef = ref<HTMLElement | null>(null);
 const chartWidth = ref(800);
-const chartHeight = 160;
+const chartHeight = 230;
 const chartPad = 12;
 let chartResizeObserver: ResizeObserver | null = null;
 
@@ -512,6 +518,64 @@ const leadsThisMonth = computed(() => {
 });
 
 const leadsMonthText = computed(() => `+${leadsThisMonth.value}`);
+
+const firstName = computed(() => (userName.value || "").trim().split(/\s+/)[0] || userName.value);
+const greeting = computed(() => {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Bom dia";
+  if (hour < 18) return "Boa tarde";
+  return "Boa noite";
+});
+const todayLabel = computed(() => {
+  const label = new Date().toLocaleDateString(numberLocale, { weekday: "long", day: "numeric", month: "long" });
+  return label.charAt(0).toUpperCase() + label.slice(1);
+});
+const draftsCount = computed(() => Math.max(pages.value.length - pagesCount.value, 0));
+const clickRate = computed(() => (totalVisits.value > 0 ? clicksMetric.value / totalVisits.value : 0));
+const leadRate = computed(() => (totalVisits.value > 0 ? leadsMetric.value / totalVisits.value : 0));
+const formatPercent = (value: number) =>
+  `${(value * 100).toLocaleString(numberLocale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
+
+const funnelSteps = computed(() => {
+  const visits = totalVisits.value;
+  const whatsapp = Number(overview.value?.whatsapp || 0);
+  const cta = Number(overview.value?.cta || 0);
+  const leads = leadsMetric.value;
+  const base = Math.max(1, visits, whatsapp, cta, leads);
+  return [
+    { key: "visits", label: "Visitas", value: visits },
+    { key: "whatsapp", label: "Cliques no WhatsApp", value: whatsapp },
+    { key: "cta", label: "Cliques no botão", value: cta },
+    { key: "leads", label: "Leads", value: leads }
+  ].map(step => ({ ...step, width: Math.max(step.value > 0 ? 2 : 0, Math.round((step.value / base) * 100)) }));
+});
+
+const sparkline = computed(() => {
+  const values = (overview.value?.timeseries || []).map(point => Number(point.visits || 0));
+  if (values.length < 2) return { line: "", area: "" };
+  const max = Math.max(1, ...values);
+  const pts = values.map((value, index) => [
+    (index / (values.length - 1)) * 300,
+    58 - (value / max) * 50
+  ]);
+  const line = pts.map(([x, y], index) => `${index ? "L" : "M"} ${x.toFixed(1)} ${y.toFixed(1)}`).join(" ");
+  return { line, area: `${line} L 300 64 L 0 64 Z` };
+});
+
+const avatarTones = ["violet", "info", "warning", "success"];
+const initials = (name?: string | null) => {
+  const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "?";
+  return `${parts[0][0] || ""}${parts.length > 1 ? parts[parts.length - 1][0] : ""}`.toUpperCase();
+};
+// Cor da etapa vem da agência (Configurações do funil).
+const stageStyle = (color?: string | null) => {
+  const value = color || "var(--muted-foreground)";
+  return {
+    color: value,
+    background: `color-mix(in srgb, ${value} 14%, transparent)`
+  };
+};
 
 const fetchEligibleBanner = async (agencyId: number) => {
   try {
@@ -646,12 +710,15 @@ const chartSeries = computed(() => {
   const visitsValues = chartBase.value.series.map(item => item.visits);
   const clicksValues = chartBase.value.series.map(item => item.clicks);
   const leadsValues = chartBase.value.series.map(item => item.leads);
-  const max = Math.max(1, ...visitsValues, ...clicksValues, ...leadsValues);
+  const max = Math.max(1, ...visitsValues, ...clicksValues);
+  // Leads usam a própria escala (linha tracejada): na escala das visitas
+  // ficariam achatados no chão.
+  const leadsMax = Math.max(1, ...leadsValues) * 1.6;
 
   return {
     visits: buildSeries(visitsValues, max),
     clicks: buildSeries(clicksValues, max),
-    leads: buildSeries(leadsValues, max)
+    leads: buildSeries(leadsValues, leadsMax)
   };
 });
 
@@ -953,37 +1020,23 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .dashboard-reference {
-  --verde: var(--primary);
-  --verde-light: var(--primary-accent);
-  --verde-dim: var(--status-success);
-  --verde-border: var(--border);
-  --surface: var(--card);
-  --surface2: var(--muted);
-  --text: var(--foreground);
-  --text-2: var(--secondary-foreground);
-  --text-3: var(--muted-foreground);
-  --shadow: var(--shadow-card);
-  --shadow-md: var(--shadow-elegant);
-  --purple: var(--chart-6);
-
   width: 100%;
   min-height: 100%;
   background: transparent;
   padding: 0;
-  color: var(--text);
+  color: var(--foreground);
   font-family: var(--font-sans);
 }
 
 .copy-toast {
-  border: 1px solid var(--verde-border);
+  border: 1px solid var(--border);
   background: var(--popover);
   color: var(--popover-foreground);
   padding: 10px 14px;
   border-radius: 999px;
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-elegant);
   font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.01em;
+  font-weight: 600;
 }
 
 .dashboard-loading {
@@ -998,7 +1051,7 @@ onBeforeUnmount(() => {
   height: 44px;
   border-radius: 999px;
   border: 4px solid var(--border);
-  border-top-color: var(--verde);
+  border-top-color: var(--primary);
   animation: spin 0.8s linear infinite;
 }
 
@@ -1008,207 +1061,258 @@ onBeforeUnmount(() => {
   }
 }
 
+/* Topo */
 .topbar {
   display: flex;
   justify-content: space-between;
   gap: 16px;
-  align-items: center;
-  margin-bottom: 24px;
+  align-items: flex-end;
+  margin-bottom: 20px;
+}
+
+.page-date {
+  font-size: 13px;
+  color: var(--muted-foreground);
 }
 
 .page-title {
+  margin-top: 2px;
   font-family: var(--font-display);
-  font-size: 24px;
+  font-size: 34px;
+  line-height: 42px;
   font-weight: 600;
-  letter-spacing: -0.4px;
+  letter-spacing: -0.02em;
 }
 
-.page-sub {
-  font-size: 13px;
-  color: var(--text-3);
-  margin-top: 2px;
+.page-title-name {
+  color: var(--primary);
 }
 
 .topbar-actions {
   display: flex;
-  gap: 10px;
+  align-items: center;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
 .btn {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  border: none;
-  min-height: 36px;
-  border-radius: var(--radius-lg);
-  padding: 8px 16px;
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1;
-  white-space: nowrap;
-  cursor: pointer;
+  gap: 8px;
+  height: 40px;
+  padding: 0 18px;
+  border-radius: 999px;
+  font-size: 13.5px;
+  font-weight: 600;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
 }
 
 .btn svg {
-  width: 15px;
-  height: 15px;
-  flex-shrink: 0;
-}
-
-.btn:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
+  width: 16px;
+  height: 16px;
 }
 
 .btn-primary {
-  background: var(--verde);
+  background: var(--primary);
   color: var(--primary-foreground);
-  box-shadow: var(--shadow-soft);
-}
-
-.btn-ghost {
-  background: var(--background);
-  color: var(--text-2);
-  border: 1px solid var(--border);
 }
 
 .btn-primary:hover {
-  background: var(--brand-dark);
+  background: color-mix(in srgb, var(--primary) 88%, black);
+}
+
+.btn-ghost {
+  background: var(--card);
+  color: var(--foreground);
+  box-shadow: var(--shadow-card);
 }
 
 .btn-ghost:hover {
+  background: var(--muted);
+}
+
+.period-switch {
+  display: inline-flex;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--card);
+  box-shadow: var(--shadow-card);
+}
+
+.period-btn {
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+
+.period-btn.active {
   background: var(--accent);
   color: var(--accent-foreground);
 }
 
+/* Cartões e números */
 .metrics-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: 1.25fr 1fr 1fr 1fr;
   gap: 16px;
-  margin-bottom: 24px;
+  margin: 20px 0;
+}
+
+.metric-card,
+.chart-card,
+.list-card {
+  position: relative;
+  min-width: 0;
+  border-radius: 20px;
+  background: var(--card);
+  box-shadow: var(--shadow-card);
 }
 
 .metric-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 20px;
-  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 22px;
+  overflow: hidden;
 }
 
 .metric-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 12px;
 }
 
 .metric-label {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-3);
+  font-size: 12.5px;
+  color: var(--muted-foreground);
 }
 
 .metric-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 9px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 999px;
 }
 
 .metric-icon svg {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
 }
 
-.metric-icon.green {
-  background: var(--verde-dim);
-  color: var(--verde);
-}
-
-.metric-icon.amber {
-  background: var(--status-warning);
-  color: var(--status-warning-foreground);
-}
-
-.metric-icon.purple {
-  background: var(--status-info);
-  color: var(--purple);
-}
+.tone-success { background: var(--status-success); color: var(--status-success-foreground); }
+.tone-warning { background: var(--status-warning); color: var(--status-warning-foreground); }
+.tone-info { background: var(--status-info); color: var(--status-info-foreground); }
+.tone-violet { background: var(--status-violet); color: var(--status-violet-foreground); }
 
 .metric-value {
   font-family: var(--font-display);
-  font-size: 32px;
-  line-height: 1;
-  letter-spacing: -1px;
-  margin: 12px 0 8px;
-  font-weight: 800;
+  font-size: 28px;
+  line-height: 34px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.metric-value small {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--muted-foreground);
 }
 
 .metric-footer {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted-foreground);
 }
 
 .metric-badge {
   display: inline-flex;
   align-items: center;
-  padding: 3px 7px;
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 700;
+  border-radius: 999px;
+  padding: 2px 9px;
+  font-size: 11.5px;
+  font-weight: 600;
 }
 
-.metric-badge.up {
-  background: var(--verde-dim);
-  color: var(--status-success-foreground);
-}
-
-.metric-badge.down {
-  background: var(--status-danger);
-  color: var(--status-danger-foreground);
-}
+.metric-badge.up { background: var(--status-success); color: var(--status-success-foreground); }
+.metric-badge.down { background: var(--status-danger); color: var(--status-danger-foreground); }
+.metric-badge.neutral { background: var(--status-neutral); color: var(--status-neutral-foreground); }
 
 .metric-footer-text {
-  font-size: 11px;
-  color: var(--text-3);
+  font-size: 12px;
+  color: var(--muted-foreground);
 }
 
-.chart-card-wrap {
-  margin-bottom: 24px;
+/* Destaque: visitas no fundo escuro da marca */
+.metric-hero {
+  background: radial-gradient(120% 140% at 100% 0%, var(--deep-2) 0%, var(--deep) 60%);
+  color: var(--on-deep);
+  box-shadow: none;
+}
+
+.metric-hero .metric-label,
+.metric-hero .metric-footer-text {
+  color: var(--on-deep-muted);
+}
+
+.metric-hero .metric-icon,
+.metric-hero .metric-badge {
+  background: color-mix(in srgb, var(--deep-accent) 16%, transparent);
+  color: var(--deep-accent);
+}
+
+.metric-spark {
+  position: absolute;
+  top: 18px;
+  right: 0;
+  width: 42%;
+  height: 70px;
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+/* Gráfico e conversão */
+.mid-grid {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
 }
 
 .chart-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 20px;
-  box-shadow: var(--shadow);
+  padding: 22px;
 }
 
 .chart-header {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 14px;
+  gap: 12px;
   margin-bottom: 18px;
 }
 
-.chart-title {
-  font-family: var(--font-display);
-  font-size: 15px;
-  font-weight: 700;
+.card-eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: color-mix(in srgb, var(--muted-foreground) 80%, transparent);
 }
 
-.chart-sub {
-  font-size: 12px;
-  color: var(--text-3);
+.chart-title,
+.list-title {
   margin-top: 2px;
+  font-family: var(--font-sans);
+  font-size: 17px;
+  line-height: 24px;
+  font-weight: 600;
+  letter-spacing: 0;
 }
 
 .chart-controls {
@@ -1216,18 +1320,17 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
-  justify-content: flex-end;
 }
 
 .filter-select {
-  font-size: 12px;
+  height: 34px;
+  border-radius: 999px;
+  border: 0;
+  background: var(--muted);
+  color: var(--foreground);
+  padding: 0 32px 0 14px;
+  font-size: 12.5px;
   font-weight: 600;
-  color: var(--text-2);
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  padding: 6px 10px;
-  background: var(--surface);
-  min-height: 36px;
 }
 
 .chart-legend {
@@ -1238,63 +1341,36 @@ onBeforeUnmount(() => {
 .legend-item {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--text-2);
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--muted-foreground);
 }
 
 .legend-toggle {
-  border: none;
-  background: transparent;
-  padding: 0;
-  cursor: pointer;
+  transition: opacity 0.15s ease;
 }
 
 .legend-toggle.off {
-  opacity: 0.45;
+  opacity: 0.4;
 }
 
 .legend-dot {
   width: 8px;
   height: 8px;
-  border-radius: 3px;
+  border-radius: 999px;
 }
 
 .legend-dot.visits { background: var(--chart-1); }
-.legend-dot.clicks { background: var(--chart-8); }
+.legend-dot.clicks { background: var(--chart-4); }
 .legend-dot.leads { background: var(--chart-6); }
-
-.period-switch {
-  display: inline-flex;
-  gap: 4px;
-}
-
-.period-btn {
-  border: none;
-  border-radius: 7px;
-  padding: 4px 10px;
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--text-3);
-  background: transparent;
-  cursor: pointer;
-}
-
-.period-btn.active {
-  background: var(--verde);
-  color: var(--primary-foreground);
-}
 
 .chart-stage {
   position: relative;
-  height: 160px;
 }
 
 .chart-stage svg {
-  width: 100%;
-  height: 100%;
   display: block;
+  overflow: visible;
 }
 
 .chart-tooltip {
@@ -1302,7 +1378,7 @@ onBeforeUnmount(() => {
   z-index: 2;
   pointer-events: none;
   min-width: 144px;
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 8px 10px;
   background: var(--popover);
   color: var(--popover-foreground);
@@ -1323,17 +1399,81 @@ onBeforeUnmount(() => {
 .chart-tooltip-date {
   margin-bottom: 4px !important;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .chart-dates {
-  margin-top: 8px;
   display: flex;
   justify-content: space-between;
-  font-size: 11px;
-  color: var(--text-3);
+  gap: 12px;
+  margin-top: 8px;
+  font-size: 11.5px;
+  color: var(--muted-foreground);
 }
 
+.chart-note {
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+.funnel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.funnel-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+
+.funnel-row b {
+  font-variant-numeric: tabular-nums;
+}
+
+.funnel-bar {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--muted);
+}
+
+.funnel-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+}
+
+.fill-visits { background: var(--chart-1); }
+.fill-whatsapp { background: var(--status-success-foreground); }
+.fill-cta { background: var(--chart-4); }
+.fill-leads { background: var(--chart-6); }
+
+.funnel-total {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 18px;
+  padding: 14px;
+  border-radius: 16px;
+  background: var(--muted);
+}
+
+.funnel-total b {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.funnel-total span {
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+
+/* Listas */
 .bottom-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1341,33 +1481,21 @@ onBeforeUnmount(() => {
 }
 
 .list-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 20px;
-  box-shadow: var(--shadow);
+  padding: 22px;
 }
 
 .list-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 14px;
-}
-
-.list-title {
-  font-family: var(--font-display);
-  font-size: 15px;
-  font-weight: 700;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
 }
 
 .list-link {
-  border: none;
-  background: transparent;
-  font-size: 12px;
-  color: var(--verde);
-  font-weight: 700;
-  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent-foreground);
 }
 
 .page-item,
@@ -1375,37 +1503,35 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border);
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
 }
 
-.page-item:last-child,
-.lead-item:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
+.page-item:first-child,
+.lead-item:first-child {
+  border-top: 0;
 }
 
 .page-thumb,
 .lead-avatar {
-  width: 34px;
-  height: 34px;
-  border-radius: 9px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
   flex-shrink: 0;
-  font-size: 12px;
-  font-weight: 800;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .page-thumb {
-  background: var(--verde-dim);
-  color: var(--verde);
+  background: var(--status-success);
+  color: var(--status-success-foreground);
 }
 
-.lead-avatar {
-  background: var(--status-info);
-  color: var(--purple);
+.page-thumb svg {
+  width: 18px;
+  height: 18px;
 }
 
 .page-info,
@@ -1417,126 +1543,144 @@ onBeforeUnmount(() => {
 .lead-info {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
 }
 
 .lead-copy {
+  flex: 1;
   min-width: 0;
 }
 
 .page-name,
 .lead-name {
-  font-size: 13px;
-  font-weight: 700;
-  white-space: nowrap;
   overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
   text-overflow: ellipsis;
-  margin: 0;
 }
 
 .page-dest,
 .lead-meta {
-  font-size: 11px;
-  color: var(--text-3);
-  margin: 0;
-}
-
-.lead-meta {
-  margin-top: 2px;
+  overflow: hidden;
+  font-size: 12px;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .page-bar {
-  width: 100%;
-  height: 3px;
-  border-radius: 999px;
-  background: var(--surface2);
+  height: 4px;
+  max-width: 240px;
+  margin-top: 7px;
   overflow: hidden;
-  margin-top: 4px;
+  border-radius: 999px;
+  background: var(--muted);
 }
 
 .page-bar-fill {
   height: 100%;
-  background: var(--verde);
+  border-radius: 999px;
+  background: var(--chart-1);
 }
 
 .page-side {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .page-visits {
-  font-size: 13px;
-  font-weight: 800;
+  min-width: 64px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.page-visits small {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: 11.5px;
+  font-weight: 400;
+  color: var(--muted-foreground);
 }
 
 .page-actions,
 .lead-actions {
   display: flex;
-  gap: 5px;
-}
-
-.page-action-btn,
-.lead-btn {
-  border: none;
-  border-radius: 7px;
-  cursor: pointer;
-  font-size: 11px;
-  font-weight: 700;
+  align-items: center;
+  gap: 6px;
 }
 
 .page-action-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  line-height: 1;
-  width: 38px;
-  height: 38px;
-  font-size: 19px;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.page-action-btn:hover {
+  background: var(--accent);
+  color: var(--accent-foreground);
 }
 
 .page-action-btn svg {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
 }
 
-.page-action-btn.view { background: var(--verde-dim); color: var(--verde); }
-.page-action-btn.edit { background: var(--surface2); color: var(--text-2); border: 1px solid var(--border); }
-.page-action-btn.share { background: var(--verde-dim); color: var(--status-success-foreground); border: 1px solid var(--verde-border); }
+.lead-stage {
+  border-radius: 999px;
+  padding: 2px 9px;
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
 
 .lead-btn {
-  padding: 4px 9px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.lead-btn svg {
+  width: 14px;
+  height: 14px;
 }
 
 .lead-btn-contact {
-  background: var(--verde);
-  color: var(--primary-foreground);
-  text-decoration: none;
+  background: var(--status-success);
+  color: var(--status-success-foreground);
 }
 
 .lead-btn-details {
-  background: var(--surface2);
-  color: var(--text-2);
-  border: 1px solid var(--border);
+  background: var(--muted);
+  color: var(--foreground);
 }
 
 .empty-text {
-  font-size: 12px;
-  color: var(--text-3);
-  padding: 28px 12px;
-  text-align: center;
-  border: 1px dashed var(--border);
-  border-radius: var(--radius-lg);
-  background: var(--muted);
+  padding: 16px 0;
+  font-size: 13px;
+  color: var(--muted-foreground);
 }
 
 @media (max-width: 1100px) {
   .metrics-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr 1fr;
   }
 
+  .mid-grid,
   .bottom-grid {
     grid-template-columns: 1fr;
   }
@@ -1548,109 +1692,33 @@ onBeforeUnmount(() => {
     align-items: flex-start;
   }
 
-  .topbar-actions {
-    width: 100%;
-  }
-
-  .topbar-actions .btn {
-    flex: 1;
-    justify-content: center;
-  }
-
-  .metrics-grid {
-    grid-template-columns: 1fr;
+  .page-title {
+    font-size: 26px;
+    line-height: 32px;
   }
 
   .chart-header {
     flex-direction: column;
+    align-items: flex-start;
   }
 
-  .chart-controls {
-    width: 100%;
-    justify-content: flex-start;
+  .lead-info {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
-  .filter-select {
-    width: 100%;
-  }
-
-  .chart-legend {
-    flex-wrap: wrap;
-  }
-
-  .list-card {
-    padding: 14px;
-  }
-
-  .list-body {
-    overflow-x: hidden;
-  }
-
-  .page-item,
-  .lead-item {
-    gap: 8px;
-  }
-
-  .page-thumb,
-  .lead-avatar {
-    width: 28px;
-    height: 28px;
-    border-radius: 8px;
-    font-size: 10px;
-  }
-
-  .page-name,
-  .lead-name {
-    font-size: 12px;
-    white-space: normal;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-  }
-
-  .page-dest,
-  .lead-meta,
-  .page-visits {
-    font-size: 10px;
-  }
-
-  .page-side,
-  .lead-actions {
-    gap: 6px;
-    flex-shrink: 0;
-  }
-
-  .page-action-btn {
-    width: 32px;
-    height: 32px;
-  }
-
-  .page-action-btn svg {
-    width: 15px;
-    height: 15px;
-  }
-
-  .lead-btn {
-    padding: 3px 8px;
-    font-size: 10px;
-    white-space: nowrap;
+  .chart-note {
+    display: none;
   }
 }
 
 @media (max-width: 420px) {
-  .topbar-actions {
-    flex-direction: column;
+  .metrics-grid {
+    grid-template-columns: 1fr;
   }
 
-  .topbar-actions .btn {
-    width: 100%;
-  }
-
-  .lead-info {
-    align-items: flex-start;
-    flex-direction: column;
+  .page-actions {
+    display: none;
   }
 }
 </style>

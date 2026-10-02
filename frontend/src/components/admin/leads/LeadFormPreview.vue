@@ -1,5 +1,5 @@
 ﻿<template>
-  <div class="preview-card">
+  <div class="preview-card public-tokens">
     <div class="preview-body">
       <img v-if="agencyLogo && displayLogo" :src="agencyLogo" alt="Logo da agência" class="preview-logo" />
       <h3>{{ form.title?.trim() || "Quero receber mais informações" }}</h3>

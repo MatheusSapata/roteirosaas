@@ -467,7 +467,7 @@
                 <template v-else>
                   <div class="absolute inset-0 bg-gradient-to-br" :class="catalog.accent"></div>
                   <div class="relative flex h-full w-full items-center justify-center overflow-hidden p-3">
-                    <div class="pointer-events-none origin-center scale-[0.55] transform rounded-[30px] border border-white/50 bg-white shadow">
+                    <div class="public-tokens pointer-events-none origin-center scale-[0.55] transform rounded-[30px] border border-white/50 bg-white shadow">
                       <component
                         :is="publicComponents[catalog.type]"
                         :section="catalog.previewSection"
@@ -915,7 +915,7 @@
                       @click.capture="handleSectionTap(idx, $event)"
                       :ref="el => registerPreviewSection(el, idx)"
                     >
-                      <div v-if="(section as any).enabled" class="preview-section-host">
+                      <div v-if="(section as any).enabled" class="preview-section-host public-tokens">
                         <component
                           :is="publicComponents[(section as any).type]"
                           :section="previewSections[idx]?.type === section.type && previewSections[idx]?.anchorId === section.anchorId ? previewSections[idx] : section"
