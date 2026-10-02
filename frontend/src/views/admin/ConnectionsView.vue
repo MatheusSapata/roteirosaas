@@ -233,6 +233,7 @@
 
 <script setup lang="ts">
 import IntegrationsHeader from "../../components/admin/integrations/IntegrationsHeader.vue";
+import { integrationStatus } from "../../composables/useIntegrationStatus";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useAgencyStore } from "../../store/useAgencyStore";
 import {
@@ -310,6 +311,8 @@ const statusBadgeClass = computed(() => {
   if (statusNormalized.value === "connecting" || statusNormalized.value === "qr_needed") return "bg-status-warning text-status-warning-foreground";
   return "bg-status-danger text-status-danger-foreground";
 });
+
+watch(statusNormalized, value => { integrationStatus.whatsapp = value === "connected"; }, { immediate: true });
 
 const statusTextClass = computed(() => {
   if (statusNormalized.value === "connected") return "text-emerald-700";

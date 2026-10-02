@@ -14,8 +14,9 @@
         :key="tab.path"
         :to="tab.path"
         class="ih-tab"
-        :class="{ on: route.path === tab.path || (tab.alsoActive || []).includes(route.path) }"
+        :class="{ on: route.path === tab.path }"
       >
+        <i v-if="tab.on !== undefined" class="ih-dot" :class="{ 'is-on': tab.on }" :title="tab.on ? 'Configurado' : 'Não configurado'"></i>
         {{ tab.label }}
       </router-link>
     </nav>
@@ -23,14 +24,17 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, onMounted, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useAuthStore } from "../../../store/useAuthStore";
+import { useAgencyStore } from "../../../store/useAgencyStore";
+import { integrationStatus, loadIntegrationStatus, loadWhatsAppStatus } from "../../../composables/useIntegrationStatus";
 
 const route = useRoute();
 const auth = useAuthStore();
+const agencyStore = useAgencyStore();
 
-// Mesma regra do menu lateral: "Notificações" (WhatsApp) só nos planos Escala e Teste.
+// Mesma regra do menu lateral: WhatsApp só nos planos Escala e Teste.
 const normalizePlanKey = (value: string | null | undefined) => {
   const key = String(value || "").trim().toLowerCase();
   if (key === "escala" || key === "infinity" || key === "scale") return "scale";
@@ -44,10 +48,23 @@ const hasWhatsAppPlanAccess = computed(() => {
 
 const tabs = computed(() =>
   [
-    { label: "Rastreamento", path: "/admin/integracoes/rastreamento" },
-    { label: "Integrações externas", path: "/admin/integracoes/externas", alsoActive: ["/admin/integracoes/viajeon"] },
-    { label: "Notificações", path: "/admin/integracoes/atendimento", whatsapp: true }
+    { label: "Visão geral", path: "/admin/integracoes", on: undefined as boolean | undefined },
+    { label: "Rastreamento", path: "/admin/integracoes/rastreamento", on: (integrationStatus.pixels || 0) > 0 },
+    { label: "Viaje On", path: "/admin/integracoes/viajeon", on: !!integrationStatus.viajeon },
+    { label: "ViajeChat", path: "/admin/integracoes/viajechat", on: !!integrationStatus.viajechat },
+    { label: "WhatsApp", path: "/admin/integracoes/atendimento", on: !!integrationStatus.whatsapp, whatsapp: true }
   ].filter(tab => !tab.whatsapp || hasWhatsAppPlanAccess.value)
+);
+
+onMounted(() => {
+  loadIntegrationStatus({ agencyId: agencyStore.currentAgencyId, whatsapp: hasWhatsAppPlanAccess.value });
+});
+// A agência pode chegar depois da tela; aí busca só a situação do WhatsApp.
+watch(
+  () => agencyStore.currentAgencyId,
+  (agencyId, previous) => {
+    if (agencyId && !previous && hasWhatsAppPlanAccess.value) loadWhatsAppStatus(agencyId);
+  }
 );
 </script>
 
@@ -58,10 +75,13 @@ const tabs = computed(() =>
 .ih-title { margin-top: 4px; font-family: var(--font-display); font-size: 30px; line-height: 38px; font-weight: 600; color: var(--foreground); }
 .ih-sub { margin-top: 4px; font-size: 14px; color: var(--muted-foreground); }
 .ih-actions { display: flex; flex-shrink: 0; gap: 8px; }
+.ih-actions:empty { display: none; }
 .ih-tabs { display: flex; gap: 4px; overflow-x: auto; border-bottom: 1px solid var(--border); }
-.ih-tab { flex-shrink: 0; margin-bottom: -1px; border-bottom: 2px solid transparent; padding: 10px 14px; font-size: 13.5px; font-weight: 600; white-space: nowrap; color: var(--muted-foreground); }
+.ih-tab { display: inline-flex; flex-shrink: 0; align-items: center; gap: 8px; margin-bottom: -1px; border-bottom: 2px solid transparent; padding: 10px 14px; font-size: 13.5px; font-weight: 600; white-space: nowrap; color: var(--muted-foreground); }
 .ih-tab:hover { color: var(--foreground); }
 .ih-tab.on { border-bottom-color: var(--primary); color: var(--foreground); }
+.ih-dot { width: 7px; height: 7px; border-radius: 999px; background: color-mix(in srgb, var(--muted-foreground) 70%, transparent); }
+.ih-dot.is-on { background: var(--primary); }
 @media (max-width: 640px) {
   .ih-head { flex-direction: column; align-items: flex-start; }
 }

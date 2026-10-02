@@ -1171,9 +1171,10 @@ const routeTitleMap: Record<string, string> = {
   plans: navLabel("plans"),
   integrations: navLabel("integrations"),
   "integrations-tracking": navLabel("tracking"),
-  "integrations-external": "Integrações externas",
+  "integrations-overview": navLabel("integrations"),
   "integrations-viajeon": navLabel("viajeon"),
-  connections: navLabel("connections"),
+  "integrations-viajechat": "ViajeChat",
+  connections: "WhatsApp",
   profile: navLabel("profile"),
   "admin-management": navLabel("adminMaster")
 };
@@ -1532,9 +1533,11 @@ const adminNavigation = computed<AdminNavItem[]>(() => {
       basePath: "/admin/integracoes",
       iconPath: "/admin/integracoes",
       children: [
+        { label: t({ pt: "Visão geral", es: "Visión general" }), path: "/admin/integracoes" },
         { label: navLabel("tracking"), path: "/admin/integracoes/rastreamento" },
-        { label: "Integrações externas", path: "/admin/integracoes/externas" },
-        { label: navLabel("connections"), path: "/admin/integracoes/atendimento" }
+        { label: "Viaje On", path: "/admin/integracoes/viajeon" },
+        { label: "ViajeChat", path: "/admin/integracoes/viajechat" },
+        { label: "WhatsApp", path: "/admin/integracoes/atendimento" }
       ]
     },
     {
@@ -1659,7 +1662,7 @@ const sidebarSections = computed<SidebarSection[]>(() => {
 });
 
 const isPathActive = (path: string) => {
-  if (path === "/admin/agency") {
+  if (path === "/admin/agency" || path === "/admin/integracoes") {
     return route.path === path;
   }
   return route.path === path || route.path.startsWith(`${path}/`);

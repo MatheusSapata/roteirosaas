@@ -4,173 +4,270 @@
   </div>
 
   <div v-else class="integrations-view w-full space-y-6 px-4 py-6 md:px-8">
-    <IntegrationsHeader>
-      <template #actions>
-        <button
-          v-if="!isViajeonRoute && !isExternalRoute"
-          type="button"
-          class="iv-btn-primary"
-          :disabled="isReadOnly"
-          @click="prepareNewIntegration"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg>
-          Novo código
-        </button>
-      </template>
-    </IntegrationsHeader>
+    <IntegrationsHeader />
 
-    <section v-if="isExternalRoute" class="iv-cards">
-      <article class="iv-card">
-        <header class="iv-card-head">
+    <!-- Visão geral -->
+    <template v-if="isOverviewRoute">
+      <section class="iv-group">
+        <h2 class="iv-group-title">Rastreamento <span>Medir visitas e conversões das suas páginas</span></h2>
+        <div class="iv-cards">
+          <article v-for="kind in trackingKinds" :key="kind.type" class="iv-card">
+            <header class="iv-card-head">
+              <span class="iv-logo" :class="kind.tone">
+                <template v-if="kind.type === 'meta'">M</template>
+                <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18" /><path d="m7 15 4-4 3 3 5-6" /></svg>
+              </span>
+              <div class="min-w-0">
+                <h3>{{ kind.label }}</h3>
+                <span class="iv-pill" :class="kind.count ? 'is-on' : 'is-off'">{{ kind.count ? `${kind.count} ${kind.count === 1 ? "código" : "códigos"}` : "Não configurado" }}</span>
+              </div>
+            </header>
+            <p class="iv-card-text">{{ kind.description }}</p>
+            <p v-if="kind.first" class="iv-card-meta">{{ kind.first }}</p>
+            <footer class="iv-card-foot">
+              <router-link to="/admin/integracoes/rastreamento" :class="kind.count ? 'iv-soft' : 'iv-btn-primary iv-btn-sm'">{{ kind.count ? "Gerenciar" : "Conectar" }}</router-link>
+            </footer>
+          </article>
+        </div>
+      </section>
+
+      <section class="iv-group">
+        <h2 class="iv-group-title">Sistemas e atendimento <span>Pacotes, conversas e WhatsApp</span></h2>
+        <div class="iv-cards">
+          <article class="iv-card">
+            <header class="iv-card-head">
+              <span class="iv-logo iv-logo-vo">VO</span>
+              <div class="min-w-0">
+                <h3>Viaje On</h3>
+                <span class="iv-pill" :class="viajeonStatus.connected ? 'is-on' : 'is-off'">{{ viajeonStatus.connected ? "Conectado" : viajeonStatus.configured ? "Com problema" : "Não configurado" }}</span>
+              </div>
+            </header>
+            <p class="iv-card-text">Mostra os pacotes ativos do Viaje On direto nas suas páginas.</p>
+            <p v-if="viajeonStatus.sso_email" class="iv-card-meta">Entra com {{ viajeonStatus.sso_email }}</p>
+            <footer class="iv-card-foot">
+              <router-link to="/admin/integracoes/viajeon" :class="viajeonStatus.configured ? 'iv-soft' : 'iv-btn-primary iv-btn-sm'">{{ viajeonStatus.configured ? "Gerenciar" : "Conectar" }}</router-link>
+            </footer>
+          </article>
+          <article class="iv-card">
+            <header class="iv-card-head">
+              <span class="iv-logo tone-violet">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+              </span>
+              <div class="min-w-0">
+                <h3>ViajeChat</h3>
+                <span class="iv-pill" :class="viajechatStatus.configured ? 'is-on' : 'is-off'">{{ viajechatStatus.configured ? "Conectado" : "Não configurado" }}</span>
+              </div>
+            </header>
+            <p class="iv-card-text">Envia os leads para o funil do ViajeChat, com etiquetas e campos.</p>
+            <p v-if="viajechatStatus.api_key_masked" class="iv-card-meta">Chave {{ viajechatStatus.api_key_masked }}</p>
+            <footer class="iv-card-foot">
+              <router-link to="/admin/integracoes/viajechat" :class="viajechatStatus.configured ? 'iv-soft' : 'iv-btn-primary iv-btn-sm'">{{ viajechatStatus.configured ? "Gerenciar" : "Conectar" }}</router-link>
+            </footer>
+          </article>
+          <article v-if="hasWhatsAppPlanAccess" class="iv-card">
+            <header class="iv-card-head">
+              <span class="iv-logo tone-success">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-12.4 7.4L3 21l2.1-5.4A8.5 8.5 0 1 1 21 11.5z" /></svg>
+              </span>
+              <div class="min-w-0">
+                <h3>WhatsApp</h3>
+                <span class="iv-pill" :class="integrationStatus.whatsapp ? 'is-on' : 'is-off'">{{ integrationStatus.whatsapp ? "Conectado" : "Não conectado" }}</span>
+              </div>
+            </header>
+            <p class="iv-card-text">Número da agência usado no atendimento e nas mensagens automáticas.</p>
+            <footer class="iv-card-foot">
+              <router-link to="/admin/integracoes/atendimento" :class="integrationStatus.whatsapp ? 'iv-soft' : 'iv-btn-primary iv-btn-sm'">{{ integrationStatus.whatsapp ? "Gerenciar" : "Conectar" }}</router-link>
+            </footer>
+          </article>
+        </div>
+      </section>
+    </template>
+
+    <!-- Viaje On -->
+    <div v-else-if="isViajeonRoute" class="iv-split">
+      <section class="iv-panel">
+        <header class="iv-panel-top">
           <span class="iv-logo iv-logo-vo">VO</span>
-          <div class="min-w-0">
+          <div class="min-w-0 flex-1">
             <h2>Viaje On</h2>
-            <span class="iv-pill" :class="viajeonStatus.connected ? 'is-on' : 'is-off'">{{ viajeonStatus.connected ? "Conectado" : "Não configurado" }}</span>
+            <p>Mostra os pacotes ativos do Viaje On direto nas suas páginas.</p>
           </div>
+          <span class="iv-pill" :class="viajeonStatus.connected ? 'is-on' : 'is-off'">{{ viajeonStatus.connected ? "Conectado" : viajeonStatus.configured ? "Com problema" : "Não configurado" }}</span>
         </header>
-        <p class="iv-card-text">Mostra os pacotes ativos do Viaje On direto nas suas páginas.</p>
-        <p v-if="viajeonStatus.sso_email" class="iv-card-meta">Entra com {{ viajeonStatus.sso_email }}</p>
-        <footer class="iv-card-foot">
-          <button type="button" :class="viajeonStatus.configured ? 'iv-soft' : 'iv-btn-primary'" @click="externalDrawer = 'viajeon'">
-            {{ viajeonStatus.configured ? "Gerenciar" : "Conectar" }}
+
+        <div v-if="viajeonStatus.configured" class="iv-band" :class="viajeonStatus.connected ? 'is-ok' : 'is-bad'">
+          <span class="iv-band-icon" aria-hidden="true">
+            <svg v-if="viajeonStatus.connected" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+            <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 8v5M12 16.5h.01" /></svg>
+          </span>
+          <div class="min-w-0 flex-1">
+            <p class="iv-band-title">{{ viajeonStatus.connected ? "Conexão funcionando" : "Conexão com problema" }}</p>
+            <p class="iv-band-text">{{ viajeonStatus.connected ? "As páginas já mostram os pacotes ativos do Viaje On." : (viajeonStatus.last_error || "Teste a conexão ou reconecte com um token novo.") }}</p>
+          </div>
+          <button type="button" class="iv-band-btn" :disabled="viajeonTesting" @click="testViajeon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8" /><path d="M21 3v5h-5" /></svg>
+            {{ viajeonTesting ? "Testando..." : "Testar conexão" }}
           </button>
-        </footer>
-      </article>
-      <article class="iv-card">
-        <header class="iv-card-head">
+        </div>
+
+        <div v-if="!viajeonStatus.configured" class="iv-line">
+          <div class="iv-line-label">
+            <p>Conectar</p>
+            <span>Cole o token e o secret gerados no painel do Viaje On.</span>
+          </div>
+          <div class="iv-line-field">
+            <button type="button" class="iv-btn-primary iv-btn-sm" :disabled="isReadOnly" @click="openViajeonModal">Conectar Viaje On</button>
+          </div>
+        </div>
+
+        <template v-else>
+          <div class="iv-line">
+            <div class="iv-line-label">
+              <p>Token de acesso</p>
+              <span>Gerado no Viaje On. Reconecte se ele mudar.</span>
+            </div>
+            <div class="iv-line-field">
+              <code class="iv-input iv-input-static">{{ viajeonStatus.token_masked || "configurado" }}</code>
+              <button type="button" class="iv-ghost" :disabled="isReadOnly" @click="openViajeonModal">Reconectar</button>
+            </div>
+          </div>
+          <div class="iv-line">
+            <div class="iv-line-label">
+              <p>E-mail para entrar no Viaje On</p>
+              <span>Usado para abrir o painel do Viaje On. Pode ser diferente do e-mail desta conta.</span>
+            </div>
+            <div class="iv-line-field">
+              <input
+                v-model="viajeonEmail"
+                type="email"
+                autocomplete="email"
+                placeholder="usuario@empresa.com"
+                class="iv-input"
+                :disabled="isReadOnly || viajeonEmailSaving"
+                @keyup.enter="saveViajeonEmail"
+              />
+              <button type="button" class="iv-btn-primary iv-btn-sm" :disabled="isReadOnly || viajeonEmailSaving || !viajeonEmail.trim()" @click="saveViajeonEmail">
+                {{ viajeonEmailSaving ? "Salvando..." : "Salvar" }}
+              </button>
+            </div>
+          </div>
+          <div class="iv-line">
+            <div class="iv-line-label">
+              <p>Desconectar</p>
+              <span>As páginas param de mostrar os pacotes do Viaje On.</span>
+            </div>
+            <div class="iv-line-field">
+              <button type="button" class="iv-ghost danger" :disabled="isReadOnly || viajeonSaving" @click="disconnectViajeon">Desconectar</button>
+            </div>
+          </div>
+        </template>
+      </section>
+
+      <aside class="iv-info">
+        <span class="iv-info-icon is-success" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg>
+        </span>
+        <div>
+          <p class="iv-info-title">Onde os pacotes aparecem</p>
+          <p class="iv-info-text">No editor de página, adicione a seção de checkout do Viaje On. Ela mostra os pacotes ativos e leva o cliente para o checkout do Viaje On.</p>
+        </div>
+      </aside>
+    </div>
+
+    <!-- ViajeChat -->
+    <div v-else-if="isViajechatRoute" class="iv-split">
+      <section class="iv-panel">
+        <header class="iv-panel-top">
           <span class="iv-logo tone-violet">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
           </span>
-          <div class="min-w-0">
+          <div class="min-w-0 flex-1">
             <h2>ViajeChat</h2>
-            <span class="iv-pill" :class="viajechatStatus.connected ? 'is-on' : 'is-off'">{{ viajechatStatus.connected ? "Conectado" : "Não configurado" }}</span>
+            <p>Envia os leads dos formulários para o funil do ViajeChat.</p>
           </div>
+          <span class="iv-pill" :class="viajechatStatus.configured ? 'is-on' : 'is-off'">{{ viajechatStatus.configured ? "Conectado" : "Não configurado" }}</span>
         </header>
-        <p class="iv-card-text">Envia os leads para o funil do ViajeChat, com atendimento, conversas e automações.</p>
-        <p v-if="viajechatStatus.connected && viajechatStatus.api_key_masked" class="iv-card-meta">API key {{ viajechatStatus.api_key_masked }}</p>
-        <footer class="iv-card-foot">
-          <button type="button" :class="viajechatStatus.configured ? 'iv-soft' : 'iv-btn-primary'" @click="externalDrawer = 'viajechat'">
-            {{ viajechatStatus.configured ? "Gerenciar" : "Conectar" }}
-          </button>
-        </footer>
-      </article>
-    </section>
-    <Teleport to="body" :disabled="!isExternalRoute">
-    <div v-if="isExternalRoute && externalDrawer" class="drawer-backdrop" @click="externalDrawer = null"></div>
-    <aside v-if="isViajeonRoute || (isExternalRoute && externalDrawer === 'viajeon')" :class="isExternalRoute ? 'external-drawer' : 'iv-panel'">
-      <div v-if="isExternalRoute" class="drawer-header"><div><span>Integração externa</span><h2>ViajeOn</h2></div><button type="button" @click="externalDrawer = null">×</button></div>
-      <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div class="flex min-w-0 items-start gap-3">
-          <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-lg font-extrabold text-emerald-500">V</div>
-          <div class="min-w-0">
-            <div class="flex flex-wrap items-center gap-2">
-              <h2 class="text-lg font-semibold text-slate-900">Viajeon</h2>
-              <span
-                class="rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide"
-                :class="viajeonStatus.connected ? 'bg-emerald-500/15 text-emerald-500' : 'bg-slate-500/10 text-slate-500'"
-              >
-                {{ viajeonStatus.connected ? "Conectado" : "Desconectado" }}
-              </span>
-            </div>
-            <p class="mt-1 text-sm text-slate-500">Exiba os pacotes ativos do Viajeon diretamente nas páginas públicas.</p>
-            <p v-if="viajeonStatus.configured" class="mt-1 text-xs font-semibold text-slate-500">
-              Token: {{ viajeonStatus.token_masked || "configurado" }}
-            </p>
-            <p v-if="viajeonStatus.last_error" class="mt-2 text-xs font-semibold text-rose-500">
-              {{ viajeonStatus.last_error }}
-            </p>
-            <div v-if="viajeonStatus.configured" class="mt-3 flex max-w-xl flex-col gap-2 sm:flex-row sm:items-end">
-              <label class="min-w-0 flex-1 space-y-1.5">
-                <span class="block text-[11px] font-bold uppercase tracking-wide text-slate-500">Email para login no Viajeon</span>
-                <input
-                  v-model="viajeonEmail"
-                  type="email"
-                  autocomplete="email"
-                  placeholder="usuario@empresa.com"
-                  :disabled="isReadOnly || viajeonEmailSaving"
-                  class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 disabled:bg-slate-100"
-                  @keyup.enter="saveViajeonEmail"
-                />
-              </label>
-              <button
-                type="button"
-                class="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                :disabled="isReadOnly || viajeonEmailSaving || !viajeonEmail.trim()"
-                @click="saveViajeonEmail"
-              >
-                {{ viajeonEmailSaving ? "Salvando..." : "Salvar email" }}
-              </button>
-            </div>
-            <p v-if="viajeonStatus.configured" class="mt-1 text-[11px] text-slate-500">
-              Este email será usado para abrir o painel. Ele pode ser diferente do email da conta do Roteiro Online.
-            </p>
+
+        <form class="iv-line" @submit.prevent="connectViajechat">
+          <div class="iv-line-label">
+            <p>Chave da API</p>
+            <span>{{ viajechatStatus.configured ? `Chave atual: ${viajechatStatus.api_key_masked || "configurada"}. Cole outra para trocar.` : "Gerada nas configurações do ViajeChat." }}</span>
+          </div>
+          <div class="iv-line-field">
+            <input v-model="viajechatApiKey" type="password" autocomplete="new-password" class="iv-input" placeholder="Cole a chave aqui" :disabled="viajechatSaving || isReadOnly" />
+            <button type="submit" class="iv-btn-primary iv-btn-sm" :disabled="viajechatSaving || isReadOnly || viajechatApiKey.trim().length < 8">
+              {{ viajechatSaving ? "Conectando..." : viajechatStatus.configured ? "Trocar chave" : "Conectar" }}
+            </button>
+          </div>
+        </form>
+
+        <div class="iv-line">
+          <div class="iv-line-label">
+            <p>Depois de conectar</p>
+            <span>Cada formulário escolhe o funil, a coluna, a etiqueta e os campos que vão para o ViajeChat.</span>
+          </div>
+          <div class="iv-line-field">
+            <p class="iv-note">Configure isso em Captação de leads › Formulários, ao editar o formulário.</p>
           </div>
         </div>
 
-        <div class="flex flex-wrap gap-2">
-          <button
-            v-if="viajeonStatus.connected"
-            type="button"
-            class="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
-            :disabled="viajeonTesting"
-            @click="testViajeon"
-          >
-            {{ viajeonTesting ? "Testando..." : "Testar conexão" }}
-          </button>
-          <button
-            type="button"
-            class="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark disabled:opacity-50"
-            :disabled="isReadOnly"
-            @click="openViajeonModal"
-          >
-            {{ viajeonStatus.configured ? "Reconectar" : "Conectar" }}
-          </button>
-          <button
-            v-if="viajeonStatus.configured"
-            type="button"
-            class="rounded-xl border border-rose-500/30 px-3 py-2 text-sm font-semibold text-rose-500 transition hover:bg-rose-500/10 disabled:opacity-50"
-            :disabled="isReadOnly || viajeonSaving"
-            @click="disconnectViajeon"
-          >
-            Desconectar
-          </button>
-        </div>
-      </div>
-    </aside>
-
-    <aside v-if="isExternalRoute && externalDrawer === 'viajechat'" class="external-drawer">
-      <div class="drawer-header"><div><span>Integração externa</span><h2>ViajeChat</h2></div><button type="button" @click="externalDrawer = null">×</button></div>
-      <div class="viajechat-panel">
-        <div class="integration-status-row"><div><strong>{{ viajechatStatus.connected ? 'ViajeChat conectado' : 'Conecte sua conta' }}</strong><p>{{ viajechatStatus.connected ? `API key ${viajechatStatus.api_key_masked || 'configurada'}` : 'Informe a API key gerada no painel do ViajeChat.' }}</p></div><span :class="viajechatStatus.connected ? 'connected' : ''">{{ viajechatStatus.connected ? 'Conectado' : 'Desconectado' }}</span></div>
-        <form class="api-key-form" @submit.prevent="connectViajechat"><label>API key<input v-model="viajechatApiKey" type="password" autocomplete="new-password" placeholder="Cole sua API key" :disabled="viajechatSaving || isReadOnly" /></label><button type="submit" :disabled="viajechatSaving || isReadOnly || viajechatApiKey.trim().length < 8">{{ viajechatSaving ? 'Conectando...' : (viajechatStatus.configured ? 'Atualizar API key' : 'Conectar') }}</button></form>
-        <p class="security-note">A chave é enviada diretamente ao backend e armazenada de forma criptografada.</p>
-        <div v-if="viajechatStatus.configured" class="kanban-section"><div class="kanban-head"><div><h3>Kanbans</h3><p>Funis e respectivas colunas encontrados na sua conta.</p></div><button type="button" :disabled="viajechatLoading" @click="fetchViajechatKanbans">{{ viajechatLoading ? 'Atualizando...' : 'Atualizar' }}</button></div>
-          <div v-if="viajechatLoading && !viajechatKanbans.length" class="kanban-empty">Carregando kanbans...</div><div v-else-if="!viajechatKanbans.length" class="kanban-empty">Nenhum kanban foi encontrado.</div>
-          <article v-for="kanban in viajechatKanbans" :key="kanban.id || kanban.name" class="kanban-card">
-            <div class="kanban-card-head">
-              <div><h4>{{ kanban.name }}</h4><small>{{ kanban.columns.length }} {{ kanban.columns.length === 1 ? 'coluna' : 'colunas' }}</small></div>
-              <button type="button" :aria-expanded="!isKanbanCollapsed(kanban)" @click="toggleKanbanColumns(kanban)">
-                {{ isKanbanCollapsed(kanban) ? 'Expandir' : 'Colapsar' }}
-                <svg :class="{ collapsed: isKanbanCollapsed(kanban) }" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m5 12 5-5 5 5" stroke-linecap="round" stroke-linejoin="round" /></svg>
-              </button>
+        <div v-if="viajechatStatus.configured" class="iv-kanbans">
+          <div class="iv-kanbans-head">
+            <div>
+              <p class="iv-line-title">Funis encontrados</p>
+              <span class="iv-line-sub">Funis e colunas da sua conta no ViajeChat.</span>
             </div>
-            <template v-if="!isKanbanCollapsed(kanban)">
-              <div v-if="kanban.columns.length" class="column-list"><span v-for="column in kanban.columns" :key="column.id || column.name">{{ column.name }}</span></div>
-              <p v-else>Nenhuma coluna retornada.</p>
-            </template>
+            <button type="button" class="iv-ghost" :disabled="viajechatLoading" @click="fetchViajechatKanbans">{{ viajechatLoading ? "Atualizando..." : "Atualizar" }}</button>
+          </div>
+          <div v-if="viajechatLoading && !viajechatKanbans.length" class="iv-empty">Carregando funis...</div>
+          <div v-else-if="!viajechatKanbans.length" class="iv-empty">Nenhum funil encontrado.</div>
+          <article v-for="kanban in viajechatKanbans" :key="kanban.id || kanban.name" class="iv-kanban">
+            <button type="button" class="iv-kanban-head" :aria-expanded="!isKanbanCollapsed(kanban)" @click="toggleKanbanColumns(kanban)">
+              <span><b>{{ kanban.name }}</b><small>{{ kanban.columns.length }} {{ kanban.columns.length === 1 ? "coluna" : "colunas" }}</small></span>
+              <svg :class="{ collapsed: isKanbanCollapsed(kanban) }" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m5 12 5-5 5 5" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            </button>
+            <div v-if="!isKanbanCollapsed(kanban)" class="iv-columns">
+              <span v-for="column in kanban.columns" :key="column.id || column.name">{{ column.name }}</span>
+              <p v-if="!kanban.columns.length">Nenhuma coluna retornada.</p>
+            </div>
           </article>
         </div>
-        <button v-if="viajechatStatus.configured" type="button" class="disconnect-chat" :disabled="viajechatSaving || isReadOnly" @click="disconnectViajechat">Desconectar ViajeChat</button>
-      </div>
-    </aside>
-    </Teleport>
 
-    <div v-if="!isViajeonRoute && !isExternalRoute" class="iv-split">
+        <div v-if="viajechatStatus.configured" class="iv-line">
+          <div class="iv-line-label">
+            <p>Desconectar</p>
+            <span>Os leads param de ir para o ViajeChat.</span>
+          </div>
+          <div class="iv-line-field">
+            <button type="button" class="iv-ghost danger" :disabled="viajechatSaving || isReadOnly" @click="disconnectViajechat">Desconectar</button>
+          </div>
+        </div>
+      </section>
+
+      <aside class="iv-info">
+        <span class="iv-info-icon is-violet" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg>
+        </span>
+        <div>
+          <p class="iv-info-title">O que é enviado</p>
+          <p class="iv-info-text">Nome, WhatsApp e os campos do formulário que você escolher, além da página de origem. A chave fica guardada de forma criptografada.</p>
+        </div>
+      </aside>
+    </div>
+
+    <!-- Rastreamento -->
+    <div v-else class="iv-split">
       <section class="iv-panel">
         <div class="iv-panel-head">
-          <p class="iv-eyebrow">Rastreamento</p>
-          <h2>Códigos cadastrados</h2>
-          <p>Cadastre aqui e escolha em cada página quais códigos ela usa.</p>
+          <div class="min-w-0">
+            <p class="iv-eyebrow">Rastreamento</p>
+            <h2>Códigos cadastrados</h2>
+            <p>Cadastre aqui e escolha em cada página quais códigos ela usa.</p>
+          </div>
+          <button type="button" class="iv-btn-primary" :disabled="isReadOnly" @click="prepareNewIntegration">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg>
+            Novo código
+          </button>
         </div>
 
         <div v-if="!pixels.length" class="iv-empty">{{ viewCopy.list.empty }}</div>
@@ -189,9 +286,22 @@
               </p>
             </div>
             <div class="iv-row-actions">
-              <button type="button" class="iv-ghost" @click="copyPixelCode(pixel)">Copiar</button>
-              <button type="button" class="iv-ghost" :disabled="isReadOnly" @click="editPixel(pixel)">{{ viewCopy.actions.edit }}</button>
-              <button type="button" class="iv-ghost danger" :disabled="isReadOnly" @click="removePixel(pixel)">{{ viewCopy.actions.remove }}</button>
+              <button type="button" class="iv-ghost" @click="copyPixelCode(pixel)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V6a2 2 0 0 1 2-2h9" /></svg>
+                Copiar
+              </button>
+              <button type="button" class="iv-ghost" :disabled="isReadOnly" @click="editPixel(pixel)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z" /></svg>
+                {{ viewCopy.actions.edit }}
+              </button>
+              <div class="iv-menu-wrap">
+                <button type="button" class="iv-icon-btn" aria-label="Mais ações" title="Mais ações" @click.stop="openPixelMenuId = openPixelMenuId === pixel.id ? null : pixel.id">
+                  <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="12" cy="19" r="1.6" /></svg>
+                </button>
+                <div v-if="openPixelMenuId === pixel.id" class="iv-menu" @click="openPixelMenuId = null">
+                  <button type="button" class="danger" :disabled="isReadOnly" @click="removePixel(pixel)">{{ viewCopy.actions.remove }}</button>
+                </div>
+              </div>
             </div>
           </li>
         </ul>
@@ -255,7 +365,7 @@
         </div>
       </div>
 
-      <div v-if="modalOpen && !isViajeonRoute && !isExternalRoute" class="app-modal-overlay fixed inset-0 z-[180] flex items-center justify-center px-4">
+      <div v-if="modalOpen && isTrackingRoute" class="app-modal-overlay fixed inset-0 z-[180] flex items-center justify-center px-4">
         <div class="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl md:p-5">
           <div class="mb-4 flex items-center justify-between gap-3">
             <div>
@@ -450,13 +560,73 @@
 .external-drawer input, .iv-panel input { border-color: var(--input) !important; background: var(--background) !important; color: var(--foreground) !important; }
 .external-drawer .border-slate-200, .iv-panel .border-slate-200 { border-color: var(--border) !important; }
 .external-drawer button.border-slate-200:hover, .iv-panel button.border-slate-200:hover { background: var(--muted) !important; }
+
+/* Redesign v2: visão geral, Viaje On e ViajeChat como abas */
+.iv-group { display: flex; flex-direction: column; gap: 12px; }
+.iv-group-title { font-size: 15px; font-weight: 600; color: var(--foreground); }
+.iv-group-title span { margin-left: 8px; font-size: 13px; font-weight: 400; color: var(--muted-foreground); }
+.iv-card-head h3 { font-size: 16px; font-weight: 600; color: var(--foreground); }
+.iv-btn-sm { height: 36px !important; padding: 0 16px !important; font-size: 13px !important; }
+.tone-success { background: var(--status-success); color: var(--status-success-foreground); }
+.iv-panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.iv-panel-top { display: flex; align-items: flex-start; gap: 12px; border-bottom: 1px solid var(--border); padding-bottom: 14px; }
+.iv-panel-top h2 { font-family: var(--font-display); font-size: 18px; font-weight: 600; color: var(--foreground); }
+.iv-panel-top p { margin-top: 2px; font-size: 13px; color: var(--muted-foreground); }
+.iv-panel-top .iv-pill { flex-shrink: 0; margin-top: 4px; }
+.iv-band { display: flex; align-items: center; gap: 12px; margin-top: 14px; border-radius: 16px; padding: 12px 14px; }
+.iv-band.is-ok { background: var(--status-success); color: var(--status-success-foreground); }
+.iv-band.is-bad { background: var(--status-danger); color: var(--status-danger-foreground); }
+.iv-band-icon { display: grid; place-items: center; width: 36px; height: 36px; flex-shrink: 0; border-radius: 999px; background: color-mix(in srgb, currentColor 14%, transparent); }
+.iv-band-icon svg { width: 18px; height: 18px; }
+.iv-band-title { font-size: 14px; font-weight: 600; }
+.iv-band-text { margin-top: 1px; font-size: 12.5px; opacity: 0.9; }
+.iv-band-btn { display: inline-flex; flex-shrink: 0; align-items: center; gap: 6px; height: 34px; padding: 0 14px; border-radius: 999px; background: var(--card); font-size: 12.5px; font-weight: 600; color: var(--foreground); }
+.iv-band-btn svg { width: 14px; height: 14px; }
+.iv-band-btn:disabled { opacity: 0.6; }
+.iv-line { display: grid; grid-template-columns: minmax(0, 200px) minmax(0, 1fr); align-items: center; gap: 16px; border-bottom: 1px solid var(--border); padding: 14px 0; }
+.iv-line:last-child { border-bottom: 0; padding-bottom: 0; }
+.iv-line-label p, .iv-line-title { font-size: 14px; font-weight: 600; color: var(--foreground); }
+.iv-line-label span, .iv-line-sub { display: block; margin-top: 2px; font-size: 12.5px; line-height: 1.45; color: var(--muted-foreground); }
+.iv-line-field { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.iv-input { flex: 1; min-width: 0; height: 40px; border: 0; border-radius: 999px; background: var(--muted); padding: 0 16px; font-size: 13.5px; color: var(--foreground); outline: none; }
+.iv-input:focus { box-shadow: 0 0 0 2px var(--ring); }
+.iv-input-static { display: flex; align-items: center; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 13px; }
+.iv-note { border-radius: 14px; background: var(--status-info); padding: 10px 14px; font-size: 12.5px; color: var(--status-info-foreground); }
+.iv-kanbans { display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid var(--border); padding: 14px 0; }
+.iv-kanbans-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.iv-kanban { border-radius: 14px; background: var(--muted); }
+.iv-kanban-head { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; text-align: left; }
+.iv-kanban-head b { display: block; font-size: 13.5px; color: var(--foreground); }
+.iv-kanban-head small { font-size: 12px; color: var(--muted-foreground); }
+.iv-kanban-head svg { width: 14px; height: 14px; flex-shrink: 0; color: var(--muted-foreground); transition: transform 0.18s; }
+.iv-kanban-head svg.collapsed { transform: rotate(180deg); }
+.iv-columns { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 14px 12px; }
+.iv-columns span { border-radius: 999px; background: var(--card); padding: 3px 10px; font-size: 12px; color: var(--foreground); }
+.iv-columns p { font-size: 12px; color: var(--muted-foreground); }
+.iv-ghost { display: inline-flex; flex-shrink: 0; align-items: center; gap: 6px; }
+.iv-ghost svg { width: 14px; height: 14px; }
+.iv-icon-btn { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 999px; background: var(--muted); color: var(--muted-foreground); }
+.iv-icon-btn svg { width: 16px; height: 16px; }
+.iv-menu-wrap { position: relative; }
+.iv-menu { position: absolute; top: calc(100% + 6px); right: 0; z-index: 30; display: flex; min-width: 160px; flex-direction: column; border-radius: 14px; background: var(--popover); padding: 6px; box-shadow: var(--shadow-elegant); }
+.iv-menu button { border-radius: 10px; padding: 8px 10px; text-align: left; font-size: 13px; color: var(--popover-foreground); }
+.iv-menu button:hover { background: var(--muted); }
+.iv-menu button.danger { color: var(--status-danger-foreground); }
+.iv-info-icon.is-success { background: var(--status-success); color: var(--status-success-foreground); }
+.iv-info-icon.is-violet { background: var(--status-violet); color: var(--status-violet-foreground); }
+@media (max-width: 640px) {
+  .iv-line { grid-template-columns: 1fr; gap: 8px; }
+  .iv-band { flex-wrap: wrap; }
+  .iv-panel-head { flex-direction: column; }
+}
 </style>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useAuthStore } from "../../store/useAuthStore";
 import IntegrationsHeader from "../../components/admin/integrations/IntegrationsHeader.vue";
+import { integrationStatus } from "../../composables/useIntegrationStatus";
 import api from "../../services/api";
 import { createAdminLocalizer, getAdminLanguage } from "../../utils/adminI18n";
 
@@ -483,8 +653,30 @@ interface ViajechatKanban { id: string; name: string; columns: Array<{ id: strin
 const auth = useAuthStore();
 const route = useRoute();
 const isViajeonRoute = computed(() => route.name === "integrations-viajeon");
-const isExternalRoute = computed(() => route.name === "integrations-external");
-const externalDrawer = ref<"viajeon" | "viajechat" | null>(null);
+const isExternalRoute = computed(() => false);
+const isOverviewRoute = computed(() => route.name === "integrations-overview");
+const isViajechatRoute = computed(() => route.name === "integrations-viajechat");
+const isTrackingRoute = computed(() => !isOverviewRoute.value && !isViajeonRoute.value && !isViajechatRoute.value);
+const openPixelMenuId = ref<number | string | null>(null);
+const closePixelMenu = (event: MouseEvent) => {
+  if (!(event.target as HTMLElement | null)?.closest(".iv-menu-wrap")) openPixelMenuId.value = null;
+};
+onMounted(() => document.addEventListener("click", closePixelMenu));
+onBeforeUnmount(() => document.removeEventListener("click", closePixelMenu));
+// WhatsApp na visão geral: mesma regra de plano do menu lateral.
+const hasWhatsAppPlanAccess = computed(() => {
+  const plan = (value: unknown) => String(value || "").trim().toLowerCase();
+  const allowed = new Set(["escala", "infinity", "scale", "teste", "test"]);
+  return allowed.has(plan((auth.user as any)?.trial_plan)) || allowed.has(plan(auth.user?.plan));
+});
+const trackingKinds = computed(() => {
+  const meta = pixels.value.filter((pixel: any) => pixel.type === "meta");
+  const ga = pixels.value.filter((pixel: any) => pixel.type !== "meta");
+  return [
+    { type: "meta", label: "Meta Pixel", tone: "tone-info", count: meta.length, first: meta[0]?.name || "", description: "Conta visitas e cliques das páginas para os anúncios do Facebook e Instagram." },
+    { type: "ga", label: "Google Analytics", tone: "tone-warning", count: ga.length, first: ga[0]?.name || "", description: "Envia as visitas das páginas para o Google Analytics da agência." }
+  ];
+});
 const adminLanguage = getAdminLanguage();
 const t = createAdminLocalizer(adminLanguage);
 
@@ -822,6 +1014,11 @@ const displayCode = (raw: string) => {
   const value = String(raw || "").trim();
   return value || "-";
 };
+
+// Mantém os pontos das abas em dia quando algo é conectado ou desconectado aqui.
+watch(() => pixels.value.length, count => { integrationStatus.pixels = count; });
+watch(() => viajeonStatus.value.connected, value => { integrationStatus.viajeon = !!value; });
+watch(() => viajechatStatus.value.configured, value => { integrationStatus.viajechat = !!value; });
 
 onMounted(async () => {
   try {

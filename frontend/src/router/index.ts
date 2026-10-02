@@ -229,22 +229,28 @@ const platformRoutes: RouteRecordRaw[] = [
         component: () => import("../views/admin/AgencyDomainsView.vue")
       },
       { path: "planos", name: "plans", component: PlansView },
-      { path: "integracoes", redirect: "/admin/integracoes/rastreamento", meta: { permission: "integrations" } },
+      {
+        path: "integracoes",
+        name: "integrations-overview",
+        component: () => import("../views/admin/IntegrationsView.vue"),
+        meta: { permission: "integrations" }
+      },
       {
         path: "integracoes/rastreamento",
         name: "integrations-tracking",
         component: () => import("../views/admin/IntegrationsView.vue"),
         meta: { permission: "integrations" }
       },
+      { path: "integracoes/externas", redirect: "/admin/integracoes", meta: { permission: "integrations" } },
       {
-        path: "integracoes/externas",
-        name: "integrations-external",
+        path: "integracoes/viajeon",
+        name: "integrations-viajeon",
         component: () => import("../views/admin/IntegrationsView.vue"),
         meta: { permission: "integrations" }
       },
       {
-        path: "integracoes/viajeon",
-        name: "integrations-viajeon",
+        path: "integracoes/viajechat",
+        name: "integrations-viajechat",
         component: () => import("../views/admin/IntegrationsView.vue"),
         meta: { permission: "integrations" }
       },
