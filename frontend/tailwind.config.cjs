@@ -55,6 +55,16 @@ module.exports = {
           DEFAULT: "var(--destructive)",
           foreground: "var(--destructive-foreground)"
         },
+        deep: {
+          DEFAULT: "var(--deep)",
+          2: "var(--deep-2)",
+          accent: "var(--deep-accent)",
+          "accent-foreground": "var(--deep-accent-foreground)"
+        },
+        "on-deep": {
+          DEFAULT: "var(--on-deep)",
+          muted: "var(--on-deep-muted)"
+        },
         border: "var(--border)",
         input: "var(--input)",
         ring: "var(--ring)",
@@ -68,7 +78,9 @@ module.exports = {
           danger: "var(--status-danger)",
           "danger-foreground": "var(--status-danger-foreground)",
           neutral: "var(--status-neutral)",
-          "neutral-foreground": "var(--status-neutral-foreground)"
+          "neutral-foreground": "var(--status-neutral-foreground)",
+          violet: "var(--status-violet)",
+          "violet-foreground": "var(--status-violet-foreground)"
         },
         sidebar: {
           DEFAULT: "var(--sidebar)",

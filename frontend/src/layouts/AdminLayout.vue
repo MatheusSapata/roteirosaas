@@ -41,7 +41,7 @@
               class="pt-1 first:pt-0"
               :class="section.id !== sidebarSections[0]?.id ? 'mt-4' : ''"
             >
-              <p class="px-3 pb-2 pt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{{ section.label }}</p>
+              <p class="px-3 pb-2 pt-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground/80">{{ section.label }}</p>
               <div class="space-y-1">
                 <template v-for="item in section.items" :key="item.id">
               <RouterLink
@@ -171,7 +171,7 @@
               to="/admin/perfil"
               class="relative z-10 flex min-w-0 flex-1 items-center gap-3 rounded-xl px-2 py-2 text-left"
             >
-              <span class="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary text-sm font-extrabold text-primary-foreground">
+              <span class="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-accent text-sm font-semibold text-accent-foreground">
                 <img v-if="userAvatarUrl" :src="userAvatarUrl" alt="Avatar" class="h-full w-full object-cover" />
                 <template v-else>{{ userInitial }}</template>
               </span>
@@ -273,7 +273,7 @@
               class="pt-1 first:pt-0"
               :class="section.id !== sidebarSections[0]?.id ? 'mt-4' : ''"
             >
-              <p class="px-3 pb-2 pt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{{ section.label }}</p>
+              <p class="px-3 pb-2 pt-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground/80">{{ section.label }}</p>
               <div class="space-y-1">
                 <template v-for="item in section.items" :key="'mobile-' + item.id">
               <RouterLink
@@ -400,7 +400,7 @@
                 class="relative z-10 flex min-w-0 flex-1 items-center gap-3 rounded-xl px-2 py-2 text-left transition"
                 @click="mobileMenuOpen = false"
               >
-                <span class="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary text-sm font-extrabold text-primary-foreground">
+                <span class="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-accent text-sm font-semibold text-accent-foreground">
                   <img v-if="userAvatarUrl" :src="userAvatarUrl" alt="Avatar" class="h-full w-full object-cover" />
                   <template v-else>{{ userInitial }}</template>
                 </span>
@@ -1758,9 +1758,9 @@ const currentPageTitle = computed(() => {
   return navLabel("dashboard");
 });
 
-const activeClass = computed(() => "bg-sidebar-primary text-sidebar-primary-foreground shadow-soft");
+const activeClass = computed(() => "bg-accent font-semibold text-accent-foreground");
 const inactiveClass = computed(() => "text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground");
-const childActiveClass = computed(() => "bg-sidebar-accent text-accent-foreground");
+const childActiveClass = computed(() => "bg-accent font-semibold text-accent-foreground");
 const childInactiveClass = computed(() => "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground");
 
 const agencyName = computed(() => agencyStore.currentAgency?.name || agencyStore.agencies[0]?.name || "");
@@ -2598,19 +2598,24 @@ body.admin-body-light #app {
 }
 
 .desktop-nav-subitem.is-active-sub {
-  background: var(--sidebar-accent);
+  background: var(--accent);
   color: var(--accent-foreground);
 }
 
 .nav-pill-badge {
   margin-left: auto;
-  background: var(--sidebar-primary);
-  color: var(--sidebar-primary-foreground);
+  background: var(--muted);
+  color: var(--foreground);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   padding: 3px 8px;
   border-radius: 999px;
   line-height: 1;
+}
+
+.is-active .nav-pill-badge {
+  background: var(--card);
+  color: var(--accent-foreground);
 }
 
 .sidebar-scroll {
