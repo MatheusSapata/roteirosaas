@@ -4,202 +4,324 @@
   </div>
 
   <div v-else class="integrations-view w-full space-y-6 px-4 py-6 md:px-8">
-    <header class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-      <div>
-        <h1 class="text-3xl font-bold text-slate-900">{{ viewCopy.header.title }}</h1>
-        <p class="mt-1 text-sm text-slate-600">{{ viewCopy.header.description }}</p>
-      </div>
+    <IntegrationsHeader />
 
-      <button
-        v-if="!isViajeonRoute && !isExternalRoute"
-        type="button"
-        class="inline-flex items-center gap-2 rounded-[10px] bg-[#3DCC5F] px-4 py-[9px] text-[13px] font-semibold text-[#0F1F14] transition hover:bg-[#5BE07A] disabled:cursor-not-allowed disabled:opacity-60"
-        :disabled="isReadOnly"
-        @click="prepareNewIntegration"
-      >
-        <span class="text-[15px] leading-none font-bold">+</span>
-        {{ viewCopy.actions.new }}
-      </button>
-    </header>
-
-    <section v-if="isExternalRoute" class="external-integrations">
-      <div class="external-grid">
-        <article class="external-card" @click="externalDrawer = 'viajeon'">
-          <div class="external-card-top"><span class="external-icon">V</span><span class="external-badge">Integração</span></div>
-          <h2>ViajeOn</h2><p>Exiba pacotes ativos e conecte sua operação às páginas do Roteiro Online.</p>
-          <button type="button">⚙ Configurar</button>
-        </article>
-        <article class="external-card" @click="externalDrawer = 'viajechat'">
-          <div class="external-card-top"><span class="external-icon chat">◌</span><span class="external-badge">Integração</span></div>
-          <h2>ViajeChat</h2><p>Atendimento, conversas e automações integradas à sua agência.</p>
-          <button type="button">⚙ Visualizar</button>
-        </article>
-      </div>
-    </section>
-    <section v-if="!isViajeonRoute && !isExternalRoute" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
-      <p class="text-sm font-semibold text-slate-700">
-        {{ viewCopy.summary.label }}: <span class="text-slate-900">{{ pixels.length }}</span>
-      </p>
-    </section>
-
-    <Teleport to="body" :disabled="!isExternalRoute">
-    <div v-if="isExternalRoute && externalDrawer" class="drawer-backdrop" @click="externalDrawer = null"></div>
-    <aside v-if="isViajeonRoute || (isExternalRoute && externalDrawer === 'viajeon')" :class="isExternalRoute ? 'external-drawer' : 'rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-5'">
-      <div v-if="isExternalRoute" class="drawer-header"><div><span>Integração externa</span><h2>ViajeOn</h2></div><button type="button" @click="externalDrawer = null">×</button></div>
-      <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div class="flex min-w-0 items-start gap-3">
-          <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-lg font-extrabold text-emerald-500">V</div>
-          <div class="min-w-0">
-            <div class="flex flex-wrap items-center gap-2">
-              <h2 class="text-lg font-semibold text-slate-900">Viajeon</h2>
-              <span
-                class="rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide"
-                :class="viajeonStatus.connected ? 'bg-emerald-500/15 text-emerald-500' : 'bg-slate-500/10 text-slate-500'"
-              >
-                {{ viajeonStatus.connected ? "Conectado" : "Desconectado" }}
+    <!-- Visão geral -->
+    <template v-if="isOverviewRoute">
+      <section class="iv-group">
+        <h2 class="iv-group-title">Rastreamento <span>Medir visitas e conversões das suas páginas</span></h2>
+        <div class="iv-cards">
+          <article v-for="kind in trackingKinds" :key="kind.type" class="iv-card">
+            <header class="iv-card-head">
+              <span class="iv-logo" :class="kind.tone">
+                <template v-if="kind.type === 'meta'">M</template>
+                <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18" /><path d="m7 15 4-4 3 3 5-6" /></svg>
               </span>
-            </div>
-            <p class="mt-1 text-sm text-slate-500">Exiba os pacotes ativos do Viajeon diretamente nas páginas públicas.</p>
-            <p v-if="viajeonStatus.configured" class="mt-1 text-xs font-semibold text-slate-500">
-              Token: {{ viajeonStatus.token_masked || "configurado" }}
-            </p>
-            <p v-if="viajeonStatus.last_error" class="mt-2 text-xs font-semibold text-rose-500">
-              {{ viajeonStatus.last_error }}
-            </p>
-            <div v-if="viajeonStatus.configured" class="mt-3 flex max-w-xl flex-col gap-2 sm:flex-row sm:items-end">
-              <label class="min-w-0 flex-1 space-y-1.5">
-                <span class="block text-[11px] font-bold uppercase tracking-wide text-slate-500">Email para login no Viajeon</span>
-                <input
-                  v-model="viajeonEmail"
-                  type="email"
-                  autocomplete="email"
-                  placeholder="usuario@empresa.com"
-                  :disabled="isReadOnly || viajeonEmailSaving"
-                  class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 disabled:bg-slate-100"
-                  @keyup.enter="saveViajeonEmail"
-                />
-              </label>
-              <button
-                type="button"
-                class="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                :disabled="isReadOnly || viajeonEmailSaving || !viajeonEmail.trim()"
-                @click="saveViajeonEmail"
-              >
-                {{ viajeonEmailSaving ? "Salvando..." : "Salvar email" }}
-              </button>
-            </div>
-            <p v-if="viajeonStatus.configured" class="mt-1 text-[11px] text-slate-500">
-              Este email será usado para abrir o painel. Ele pode ser diferente do email da conta do Roteiro Online.
-            </p>
-          </div>
-        </div>
-
-        <div class="flex flex-wrap gap-2">
-          <button
-            v-if="viajeonStatus.connected"
-            type="button"
-            class="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
-            :disabled="viajeonTesting"
-            @click="testViajeon"
-          >
-            {{ viajeonTesting ? "Testando..." : "Testar conexão" }}
-          </button>
-          <button
-            type="button"
-            class="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark disabled:opacity-50"
-            :disabled="isReadOnly"
-            @click="openViajeonModal"
-          >
-            {{ viajeonStatus.configured ? "Reconectar" : "Conectar" }}
-          </button>
-          <button
-            v-if="viajeonStatus.configured"
-            type="button"
-            class="rounded-xl border border-rose-500/30 px-3 py-2 text-sm font-semibold text-rose-500 transition hover:bg-rose-500/10 disabled:opacity-50"
-            :disabled="isReadOnly || viajeonSaving"
-            @click="disconnectViajeon"
-          >
-            Desconectar
-          </button>
-        </div>
-      </div>
-    </aside>
-
-    <aside v-if="isExternalRoute && externalDrawer === 'viajechat'" class="external-drawer">
-      <div class="drawer-header"><div><span>Integração externa</span><h2>ViajeChat</h2></div><button type="button" @click="externalDrawer = null">×</button></div>
-      <div class="viajechat-panel">
-        <div class="integration-status-row"><div><strong>{{ viajechatStatus.connected ? 'ViajeChat conectado' : 'Conecte sua conta' }}</strong><p>{{ viajechatStatus.connected ? `API key ${viajechatStatus.api_key_masked || 'configurada'}` : 'Informe a API key gerada no painel do ViajeChat.' }}</p></div><span :class="viajechatStatus.connected ? 'connected' : ''">{{ viajechatStatus.connected ? 'Conectado' : 'Desconectado' }}</span></div>
-        <form class="api-key-form" @submit.prevent="connectViajechat"><label>API key<input v-model="viajechatApiKey" type="password" autocomplete="new-password" placeholder="Cole sua API key" :disabled="viajechatSaving || isReadOnly" /></label><button type="submit" :disabled="viajechatSaving || isReadOnly || viajechatApiKey.trim().length < 8">{{ viajechatSaving ? 'Conectando...' : (viajechatStatus.configured ? 'Atualizar API key' : 'Conectar') }}</button></form>
-        <p class="security-note">A chave é enviada diretamente ao backend e armazenada de forma criptografada.</p>
-        <div v-if="viajechatStatus.configured" class="kanban-section"><div class="kanban-head"><div><h3>Kanbans</h3><p>Funis e respectivas colunas encontrados na sua conta.</p></div><button type="button" :disabled="viajechatLoading" @click="fetchViajechatKanbans">{{ viajechatLoading ? 'Atualizando...' : 'Atualizar' }}</button></div>
-          <div v-if="viajechatLoading && !viajechatKanbans.length" class="kanban-empty">Carregando kanbans...</div><div v-else-if="!viajechatKanbans.length" class="kanban-empty">Nenhum kanban foi encontrado.</div>
-          <article v-for="kanban in viajechatKanbans" :key="kanban.id || kanban.name" class="kanban-card">
-            <div class="kanban-card-head">
-              <div><h4>{{ kanban.name }}</h4><small>{{ kanban.columns.length }} {{ kanban.columns.length === 1 ? 'coluna' : 'colunas' }}</small></div>
-              <button type="button" :aria-expanded="!isKanbanCollapsed(kanban)" @click="toggleKanbanColumns(kanban)">
-                {{ isKanbanCollapsed(kanban) ? 'Expandir' : 'Colapsar' }}
-                <svg :class="{ collapsed: isKanbanCollapsed(kanban) }" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m5 12 5-5 5 5" stroke-linecap="round" stroke-linejoin="round" /></svg>
-              </button>
-            </div>
-            <template v-if="!isKanbanCollapsed(kanban)">
-              <div v-if="kanban.columns.length" class="column-list"><span v-for="column in kanban.columns" :key="column.id || column.name">{{ column.name }}</span></div>
-              <p v-else>Nenhuma coluna retornada.</p>
-            </template>
+              <div class="min-w-0">
+                <h3>{{ kind.label }}</h3>
+                <span class="iv-pill" :class="kind.count ? 'is-on' : 'is-off'">{{ kind.count ? `${kind.count} ${kind.count === 1 ? "código" : "códigos"}` : "Não configurado" }}</span>
+              </div>
+            </header>
+            <p class="iv-card-text">{{ kind.description }}</p>
+            <p v-if="kind.first" class="iv-card-meta">{{ kind.first }}</p>
+            <footer class="iv-card-foot">
+              <router-link to="/admin/integracoes/rastreamento" :class="kind.count ? 'iv-soft' : 'iv-btn-primary iv-btn-sm'">{{ kind.count ? "Gerenciar" : "Conectar" }}</router-link>
+            </footer>
           </article>
         </div>
-        <button v-if="viajechatStatus.configured" type="button" class="disconnect-chat" :disabled="viajechatSaving || isReadOnly" @click="disconnectViajechat">Desconectar ViajeChat</button>
-      </div>
-    </aside>
-    </Teleport>
+      </section>
 
-    <section v-if="!isViajeonRoute && !isExternalRoute" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
-      <div class="mb-4 flex items-center justify-between gap-3">
-        <h2 class="text-lg font-semibold text-slate-900">{{ viewCopy.list.title }}</h2>
-      </div>
+      <section class="iv-group">
+        <h2 class="iv-group-title">Sistemas e atendimento <span>Pacotes, conversas e WhatsApp</span></h2>
+        <div class="iv-cards">
+          <article class="iv-card">
+            <header class="iv-card-head">
+              <span class="iv-logo iv-logo-vo">VO</span>
+              <div class="min-w-0">
+                <h3>Viaje On</h3>
+                <span class="iv-pill" :class="viajeonStatus.connected ? 'is-on' : 'is-off'">{{ viajeonStatus.connected ? "Conectado" : viajeonStatus.configured ? "Com problema" : "Não configurado" }}</span>
+              </div>
+            </header>
+            <p class="iv-card-text">Mostra os pacotes ativos do Viaje On direto nas suas páginas.</p>
+            <p v-if="viajeonStatus.sso_email" class="iv-card-meta">Entra com {{ viajeonStatus.sso_email }}</p>
+            <footer class="iv-card-foot">
+              <router-link to="/admin/integracoes/viajeon" :class="viajeonStatus.configured ? 'iv-soft' : 'iv-btn-primary iv-btn-sm'">{{ viajeonStatus.configured ? "Gerenciar" : "Conectar" }}</router-link>
+            </footer>
+          </article>
+          <article class="iv-card">
+            <header class="iv-card-head">
+              <span class="iv-logo tone-violet">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+              </span>
+              <div class="min-w-0">
+                <h3>ViajeChat</h3>
+                <span class="iv-pill" :class="viajechatStatus.configured ? 'is-on' : 'is-off'">{{ viajechatStatus.configured ? "Conectado" : "Não configurado" }}</span>
+              </div>
+            </header>
+            <p class="iv-card-text">Envia os leads para o funil do ViajeChat, com etiquetas e campos.</p>
+            <p v-if="viajechatStatus.api_key_masked" class="iv-card-meta">Chave {{ viajechatStatus.api_key_masked }}</p>
+            <footer class="iv-card-foot">
+              <router-link to="/admin/integracoes/viajechat" :class="viajechatStatus.configured ? 'iv-soft' : 'iv-btn-primary iv-btn-sm'">{{ viajechatStatus.configured ? "Gerenciar" : "Conectar" }}</router-link>
+            </footer>
+          </article>
+          <article v-if="hasWhatsAppPlanAccess" class="iv-card">
+            <header class="iv-card-head">
+              <span class="iv-logo tone-success">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-12.4 7.4L3 21l2.1-5.4A8.5 8.5 0 1 1 21 11.5z" /></svg>
+              </span>
+              <div class="min-w-0">
+                <h3>WhatsApp</h3>
+                <span class="iv-pill" :class="integrationStatus.whatsapp ? 'is-on' : 'is-off'">{{ integrationStatus.whatsapp ? "Conectado" : "Não conectado" }}</span>
+              </div>
+            </header>
+            <p class="iv-card-text">Número da agência usado no atendimento e nas mensagens automáticas.</p>
+            <footer class="iv-card-foot">
+              <router-link to="/admin/integracoes/atendimento" :class="integrationStatus.whatsapp ? 'iv-soft' : 'iv-btn-primary iv-btn-sm'">{{ integrationStatus.whatsapp ? "Gerenciar" : "Conectar" }}</router-link>
+            </footer>
+          </article>
+        </div>
+      </section>
+    </template>
 
-      <div v-if="!pixels.length" class="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-500">
-        {{ viewCopy.list.empty }}
-      </div>
-
-      <div v-else class="space-y-3">
-        <article
-          v-for="pixel in pixels"
-          :key="pixel.id"
-          class="integration-item flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 transition hover:-translate-y-[1px] hover:shadow-md md:flex-row md:items-center md:justify-between"
-        >
+    <!-- Viaje On -->
+    <div v-else-if="isViajeonRoute" class="iv-split">
+      <section class="iv-panel">
+        <header class="iv-panel-top">
+          <span class="iv-logo iv-logo-vo">VO</span>
           <div class="min-w-0 flex-1">
-            <span
-              class="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide"
-              :class="pixel.type === 'meta' ? 'bg-blue-100 text-blue-700' : 'bg-rose-100 text-rose-700'"
-            >
-              {{ pixel.type === "meta" ? viewCopy.list.typeMeta : viewCopy.list.typeGa }}
+            <h2>Viaje On</h2>
+            <p>Mostra os pacotes ativos do Viaje On direto nas suas páginas.</p>
+          </div>
+          <span class="iv-pill" :class="viajeonStatus.connected ? 'is-on' : 'is-off'">{{ viajeonStatus.connected ? "Conectado" : viajeonStatus.configured ? "Com problema" : "Não configurado" }}</span>
+        </header>
+
+        <div v-if="viajeonStatus.configured" class="iv-band" :class="viajeonStatus.connected ? 'is-ok' : 'is-bad'">
+          <span class="iv-band-icon" aria-hidden="true">
+            <svg v-if="viajeonStatus.connected" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+            <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 8v5M12 16.5h.01" /></svg>
+          </span>
+          <div class="min-w-0 flex-1">
+            <p class="iv-band-title">{{ viajeonStatus.connected ? "Conexão funcionando" : "Conexão com problema" }}</p>
+            <p class="iv-band-text">{{ viajeonStatus.connected ? "As páginas já mostram os pacotes ativos do Viaje On." : (viajeonStatus.last_error || "Teste a conexão ou reconecte com um token novo.") }}</p>
+          </div>
+          <button type="button" class="iv-band-btn" :disabled="viajeonTesting" @click="testViajeon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8" /><path d="M21 3v5h-5" /></svg>
+            {{ viajeonTesting ? "Testando..." : "Testar conexão" }}
+          </button>
+        </div>
+
+        <div v-if="!viajeonStatus.configured" class="iv-line">
+          <div class="iv-line-label">
+            <p>Conectar</p>
+            <span>Cole o token e o secret gerados no painel do Viaje On.</span>
+          </div>
+          <div class="iv-line-field">
+            <button type="button" class="iv-btn-primary iv-btn-sm" :disabled="isReadOnly" @click="openViajeonModal">Conectar Viaje On</button>
+          </div>
+        </div>
+
+        <template v-else>
+          <div class="iv-line">
+            <div class="iv-line-label">
+              <p>Token de acesso</p>
+              <span>Gerado no Viaje On. Reconecte se ele mudar.</span>
+            </div>
+            <div class="iv-line-field">
+              <code class="iv-input iv-input-static">{{ viajeonStatus.token_masked || "configurado" }}</code>
+              <button type="button" class="iv-ghost" :disabled="isReadOnly" @click="openViajeonModal">Reconectar</button>
+            </div>
+          </div>
+          <div class="iv-line">
+            <div class="iv-line-label">
+              <p>E-mail para entrar no Viaje On</p>
+              <span>Usado para abrir o painel do Viaje On. Pode ser diferente do e-mail desta conta.</span>
+            </div>
+            <div class="iv-line-field">
+              <input
+                v-model="viajeonEmail"
+                type="email"
+                autocomplete="email"
+                placeholder="usuario@empresa.com"
+                class="iv-input"
+                :disabled="isReadOnly || viajeonEmailSaving"
+                @keyup.enter="saveViajeonEmail"
+              />
+              <button type="button" class="iv-btn-primary iv-btn-sm" :disabled="isReadOnly || viajeonEmailSaving || !viajeonEmail.trim()" @click="saveViajeonEmail">
+                {{ viajeonEmailSaving ? "Salvando..." : "Salvar" }}
+              </button>
+            </div>
+          </div>
+          <div class="iv-line">
+            <div class="iv-line-label">
+              <p>Desconectar</p>
+              <span>As páginas param de mostrar os pacotes do Viaje On.</span>
+            </div>
+            <div class="iv-line-field">
+              <button type="button" class="iv-ghost danger" :disabled="isReadOnly || viajeonSaving" @click="disconnectViajeon">Desconectar</button>
+            </div>
+          </div>
+        </template>
+      </section>
+
+      <aside class="iv-info">
+        <span class="iv-info-icon is-success" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg>
+        </span>
+        <div>
+          <p class="iv-info-title">Onde os pacotes aparecem</p>
+          <p class="iv-info-text">No editor de página, adicione a seção de checkout do Viaje On. Ela mostra os pacotes ativos e leva o cliente para o checkout do Viaje On.</p>
+        </div>
+      </aside>
+    </div>
+
+    <!-- ViajeChat -->
+    <div v-else-if="isViajechatRoute" class="iv-split">
+      <section class="iv-panel">
+        <header class="iv-panel-top">
+          <span class="iv-logo tone-violet">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+          </span>
+          <div class="min-w-0 flex-1">
+            <h2>ViajeChat</h2>
+            <p>Envia os leads dos formulários para o funil do ViajeChat.</p>
+          </div>
+          <span class="iv-pill" :class="viajechatStatus.configured ? 'is-on' : 'is-off'">{{ viajechatStatus.configured ? "Conectado" : "Não configurado" }}</span>
+        </header>
+
+        <form class="iv-line" @submit.prevent="connectViajechat">
+          <div class="iv-line-label">
+            <p>Chave da API</p>
+            <span>{{ viajechatStatus.configured ? `Chave atual: ${viajechatStatus.api_key_masked || "configurada"}. Cole outra para trocar.` : "Gerada nas configurações do ViajeChat." }}</span>
+          </div>
+          <div class="iv-line-field">
+            <input v-model="viajechatApiKey" type="password" autocomplete="new-password" class="iv-input" placeholder="Cole a chave aqui" :disabled="viajechatSaving || isReadOnly" />
+            <button type="submit" class="iv-btn-primary iv-btn-sm" :disabled="viajechatSaving || isReadOnly || viajechatApiKey.trim().length < 8">
+              {{ viajechatSaving ? "Conectando..." : viajechatStatus.configured ? "Trocar chave" : "Conectar" }}
+            </button>
+          </div>
+        </form>
+
+        <div class="iv-line">
+          <div class="iv-line-label">
+            <p>Depois de conectar</p>
+            <span>Cada formulário escolhe o funil, a coluna, a etiqueta e os campos que vão para o ViajeChat.</span>
+          </div>
+          <div class="iv-line-field">
+            <p class="iv-note">Configure isso em Captação de leads › Formulários, ao editar o formulário.</p>
+          </div>
+        </div>
+
+        <div v-if="viajechatStatus.configured" class="iv-kanbans">
+          <div class="iv-kanbans-head">
+            <div>
+              <p class="iv-line-title">Funis encontrados</p>
+              <span class="iv-line-sub">Funis e colunas da sua conta no ViajeChat.</span>
+            </div>
+            <button type="button" class="iv-ghost" :disabled="viajechatLoading" @click="fetchViajechatKanbans">{{ viajechatLoading ? "Atualizando..." : "Atualizar" }}</button>
+          </div>
+          <div v-if="viajechatLoading && !viajechatKanbans.length" class="iv-empty">Carregando funis...</div>
+          <div v-else-if="!viajechatKanbans.length" class="iv-empty">Nenhum funil encontrado.</div>
+          <article v-for="kanban in viajechatKanbans" :key="kanban.id || kanban.name" class="iv-kanban">
+            <button type="button" class="iv-kanban-head" :aria-expanded="!isKanbanCollapsed(kanban)" @click="toggleKanbanColumns(kanban)">
+              <span><b>{{ kanban.name }}</b><small>{{ kanban.columns.length }} {{ kanban.columns.length === 1 ? "coluna" : "colunas" }}</small></span>
+              <svg :class="{ collapsed: isKanbanCollapsed(kanban) }" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m5 12 5-5 5 5" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            </button>
+            <div v-if="!isKanbanCollapsed(kanban)" class="iv-columns">
+              <span v-for="column in kanban.columns" :key="column.id || column.name">{{ column.name }}</span>
+              <p v-if="!kanban.columns.length">Nenhuma coluna retornada.</p>
+            </div>
+          </article>
+        </div>
+
+        <div v-if="viajechatStatus.configured" class="iv-line">
+          <div class="iv-line-label">
+            <p>Desconectar</p>
+            <span>Os leads param de ir para o ViajeChat.</span>
+          </div>
+          <div class="iv-line-field">
+            <button type="button" class="iv-ghost danger" :disabled="viajechatSaving || isReadOnly" @click="disconnectViajechat">Desconectar</button>
+          </div>
+        </div>
+      </section>
+
+      <aside class="iv-info">
+        <span class="iv-info-icon is-violet" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg>
+        </span>
+        <div>
+          <p class="iv-info-title">O que é enviado</p>
+          <p class="iv-info-text">Nome, WhatsApp e os campos do formulário que você escolher, além da página de origem. A chave fica guardada de forma criptografada.</p>
+        </div>
+      </aside>
+    </div>
+
+    <!-- Rastreamento -->
+    <div v-else class="iv-split">
+      <section class="iv-panel">
+        <div class="iv-panel-head">
+          <div class="min-w-0">
+            <p class="iv-eyebrow">Rastreamento</p>
+            <h2>Códigos cadastrados</h2>
+            <p>Cadastre aqui e escolha em cada página quais códigos ela usa.</p>
+          </div>
+          <button type="button" class="iv-btn-primary" :disabled="isReadOnly" @click="prepareNewIntegration">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg>
+            Novo código
+          </button>
+        </div>
+
+        <div v-if="!pixels.length" class="iv-empty">{{ viewCopy.list.empty }}</div>
+
+        <ul v-else class="iv-list">
+          <li v-for="pixel in pixels" :key="pixel.id" class="iv-row">
+            <span class="iv-logo" :class="pixel.type === 'meta' ? 'tone-info' : 'tone-warning'">
+              <template v-if="pixel.type === 'meta'">M</template>
+              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18" /><path d="m7 15 4-4 3 3 5-6" /></svg>
             </span>
+            <div class="min-w-0 flex-1">
+              <p class="iv-row-name">{{ pixel.name }}</p>
+              <p class="iv-row-code">
+                <span class="iv-tag" :class="pixel.type === 'meta' ? 'tone-info' : 'tone-warning'">{{ pixel.type === "meta" ? "Meta" : "Google" }}</span>
+                <code>{{ displayCode(pixel.value) }}</code>
+              </p>
+            </div>
+            <div class="iv-row-actions">
+              <button type="button" class="iv-ghost" @click="copyPixelCode(pixel)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V6a2 2 0 0 1 2-2h9" /></svg>
+                Copiar
+              </button>
+              <button type="button" class="iv-ghost" :disabled="isReadOnly" @click="editPixel(pixel)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z" /></svg>
+                {{ viewCopy.actions.edit }}
+              </button>
+              <div class="iv-menu-wrap">
+                <button type="button" class="iv-icon-btn" aria-label="Mais ações" title="Mais ações" @click.stop="openPixelMenuId = openPixelMenuId === pixel.id ? null : pixel.id">
+                  <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="12" cy="19" r="1.6" /></svg>
+                </button>
+                <div v-if="openPixelMenuId === pixel.id" class="iv-menu" @click="openPixelMenuId = null">
+                  <button type="button" class="danger" :disabled="isReadOnly" @click="removePixel(pixel)">{{ viewCopy.actions.remove }}</button>
+                </div>
+              </div>
+            </div>
+          </li>
+        </ul>
+        <button type="button" class="iv-add" :disabled="isReadOnly" @click="prepareNewIntegration">+ Adicionar código</button>
+      </section>
 
-            <p class="mt-2 text-base font-semibold text-slate-900">{{ pixel.name }}</p>
-            <p class="mt-1 break-all text-sm text-slate-500">{{ viewCopy.list.codePrefix }} {{ displayCode(pixel.value) }}</p>
-          </div>
-
-          <div class="flex items-center gap-2">
-            <button
-              type="button"
-              class="rounded-xl border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-              :disabled="isReadOnly"
-              @click="editPixel(pixel)"
-            >
-              {{ viewCopy.actions.edit }}
-            </button>
-            <button
-              type="button"
-              class="rounded-xl border border-rose-200 px-3 py-1.5 text-sm font-semibold text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
-              :disabled="isReadOnly"
-              @click="removePixel(pixel)"
-            >
-              {{ viewCopy.actions.remove }}
-            </button>
-          </div>
-        </article>
-      </div>
-    </section>
+      <aside class="iv-info">
+        <span class="iv-info-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg>
+        </span>
+        <div>
+          <p class="iv-info-title">Como usar nas páginas</p>
+          <ol class="iv-info-text">
+            <li>Cadastre o código do Meta ou do Google aqui.</li>
+            <li>Abra a página no editor, aba Rastreamento.</li>
+            <li>Escolha o código e os eventos que quer enviar.</li>
+          </ol>
+        </div>
+      </aside>
+    </div>
 
     <Teleport to="body">
       <div v-if="viajeonModalOpen" class="app-modal-overlay fixed inset-0 z-[185] flex items-center justify-center px-4">
@@ -243,7 +365,7 @@
         </div>
       </div>
 
-      <div v-if="modalOpen && !isViajeonRoute && !isExternalRoute" class="app-modal-overlay fixed inset-0 z-[180] flex items-center justify-center px-4">
+      <div v-if="modalOpen && isTrackingRoute" class="app-modal-overlay fixed inset-0 z-[180] flex items-center justify-center px-4">
         <div class="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl md:p-5">
           <div class="mb-4 flex items-center justify-between gap-3">
             <div>
@@ -362,12 +484,149 @@
 .integration-secret-modal .text-slate-500 { color: var(--muted-foreground) !important; }
 .external-integrations{max-width:1100px}.external-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.external-card{display:flex;min-height:220px;cursor:pointer;flex-direction:column;border:1px solid var(--border);border-radius:14px;background:var(--card);padding:16px;box-shadow:0 2px 4px rgba(15,23,42,.06);transition:.2s}.external-card:hover{transform:translateY(-2px);border-color:#86efac;box-shadow:0 10px 24px rgba(15,23,42,.1)}.external-card-top{display:flex;align-items:center;justify-content:space-between}.external-icon{display:grid;width:38px;height:38px;place-items:center;border-radius:12px;background:#e2f8ef;color:#0fbd83;font-weight:900}.external-icon.chat{font-size:25px}.external-badge{border-radius:7px;background:#f1f5f9;padding:5px 11px;font-size:11px;font-weight:700}.external-card h2{margin-top:16px;font-size:16px;font-weight:800}.external-card p{margin-top:3px;flex:1;color:var(--muted-foreground);font-size:13px;line-height:1.4}.external-card>button{margin-top:14px;width:100%;border:1px solid var(--border);border-radius:8px;background:var(--background);padding:8px;font-size:13px;font-weight:700;box-shadow:0 1px 3px rgba(15,23,42,.08)}.drawer-backdrop{position:fixed;inset:0;z-index:190;background:rgba(15,23,42,.42);backdrop-filter:blur(2px)}.external-drawer{position:fixed;z-index:195;right:0;top:0;height:100vh;width:min(620px,94vw);overflow-y:auto;background:var(--card);padding:22px;box-shadow:-20px 0 50px rgba(15,23,42,.2);animation:drawer-in .22s ease-out}.drawer-header{display:flex;align-items:flex-start;justify-content:space-between;border-bottom:1px solid var(--border);padding-bottom:16px;margin-bottom:22px}.drawer-header span{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.16em;color:#10b981}.drawer-header h2{margin-top:3px;font-size:24px;font-weight:800}.drawer-header button{display:grid;width:36px;height:36px;place-items:center;border:1px solid var(--border);border-radius:10px;font-size:24px}.coming-soon{display:flex;min-height:60vh;align-items:center;justify-content:center;flex-direction:column;text-align:center}.coming-soon>div{display:grid;width:64px;height:64px;place-items:center;border-radius:20px;background:#e2f8ef;color:#10b981;font-size:36px}.coming-soon h3{margin-top:18px;font-size:24px;font-weight:800}.coming-soon p{margin-top:6px;color:var(--muted-foreground)}@keyframes drawer-in{from{transform:translateX(100%)}to{transform:translateX(0)}}@media(max-width:680px){.external-grid{grid-template-columns:1fr}}
 .drawer-backdrop{z-index:9998}.external-drawer{z-index:9999;top:0;bottom:0;height:100dvh;max-height:100dvh}.viajechat-panel{display:grid;gap:18px}.integration-status-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;border:1px solid var(--border);border-radius:14px;padding:14px}.integration-status-row strong{font-size:14px}.integration-status-row p{margin-top:3px;color:var(--muted-foreground);font-size:12px}.integration-status-row>span{border-radius:999px;background:#f1f5f9;padding:5px 9px;color:#64748b;font-size:10px;font-weight:800;text-transform:uppercase}.integration-status-row>span.connected{background:#dcfce7;color:#15803d}.api-key-form{display:grid;grid-template-columns:1fr auto;align-items:end;gap:10px}.api-key-form label{display:grid;gap:6px;font-size:11px;font-weight:800;text-transform:uppercase;color:var(--muted-foreground)}.api-key-form input{border:1px solid var(--input);border-radius:10px;background:var(--background);padding:10px 12px;color:var(--foreground);font-size:13px;text-transform:none}.api-key-form button,.kanban-head button{border-radius:10px;background:#16c784;padding:10px 14px;color:#052e1c;font-size:12px;font-weight:800}.api-key-form button:disabled,.kanban-head button:disabled{opacity:.5}.security-note{border-radius:10px;background:#f0fdf4;padding:10px 12px;color:#166534;font-size:11px}.kanban-section{display:grid;gap:12px;border-top:1px solid var(--border);padding-top:18px}.kanban-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.kanban-head h3{font-size:17px;font-weight:800}.kanban-head p{color:var(--muted-foreground);font-size:11px}.kanban-card{border:1px solid var(--border);border-radius:14px;background:var(--background);padding:14px}.kanban-card h4{font-size:14px;font-weight:800}.kanban-card>p,.kanban-empty{color:var(--muted-foreground);font-size:12px}.kanban-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.kanban-card-head small{display:block;margin-top:2px;color:var(--muted-foreground);font-size:10px}.kanban-card-head button{display:inline-flex;min-height:30px;align-items:center;justify-content:center;gap:6px;border:1px solid var(--border);border-radius:8px;padding:6px 9px;color:var(--muted-foreground);font-size:10px;font-weight:800;line-height:1}.kanban-card-head button:hover{background:var(--muted)}.kanban-card-head button svg{display:block;width:13px;height:13px;flex:0 0 13px;transition:transform .18s ease}.kanban-card-head button svg.collapsed{transform:rotate(180deg)}.column-list{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}.column-list span{border:1px solid var(--border);border-radius:999px;background:var(--muted);padding:5px 9px;font-size:11px;font-weight:700}.kanban-empty{border:1px dashed var(--border);border-radius:12px;padding:22px;text-align:center}.disconnect-chat{justify-self:start;border:1px solid #fecdd3;border-radius:10px;padding:8px 12px;color:#e11d48;font-size:12px;font-weight:700}@media(max-width:520px){.api-key-form{grid-template-columns:1fr}}
+
+/* Redesign: integrações */
+.iv-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 18px; border-radius: 999px; background: var(--primary); font-size: 13.5px; font-weight: 600; color: var(--primary-foreground); }
+.iv-btn-primary:hover:not(:disabled) { background: color-mix(in srgb, var(--primary) 88%, black); }
+.iv-btn-primary:disabled { cursor: not-allowed; opacity: 0.55; }
+.iv-btn-primary svg { width: 16px; height: 16px; }
+.iv-soft { display: inline-flex; align-items: center; height: 36px; padding: 0 16px; border-radius: 999px; background: var(--accent); font-size: 13px; font-weight: 600; color: var(--accent-foreground); }
+.iv-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+.iv-card { display: flex; flex-direction: column; gap: 10px; border-radius: 20px; background: var(--card); padding: 18px; box-shadow: var(--shadow-card); }
+.iv-card-head { display: flex; align-items: center; gap: 12px; }
+.iv-card-head h2 { font-size: 16px; font-weight: 600; color: var(--foreground); }
+.iv-card-text { font-size: 13px; line-height: 1.5; color: var(--muted-foreground); }
+.iv-card-meta { font-size: 12.5px; color: var(--foreground); }
+.iv-card-foot { display: flex; justify-content: flex-end; margin-top: auto; border-top: 1px solid var(--border); padding-top: 12px; }
+.iv-card-foot .iv-btn-primary { height: 36px; font-size: 13px; }
+.iv-logo { display: grid; place-items: center; width: 44px; height: 44px; flex-shrink: 0; border-radius: 14px; font-size: 16px; font-weight: 700; }
+.iv-logo svg { width: 20px; height: 20px; }
+.iv-logo-vo { background: #0b1f17; color: #34d399; }
+.iv-pill { display: inline-block; margin-top: 2px; border-radius: 999px; padding: 1px 8px; font-size: 11.5px; font-weight: 600; }
+.iv-pill.is-on { background: var(--status-success); color: var(--status-success-foreground); }
+.iv-pill.is-off { background: var(--muted); color: var(--muted-foreground); }
+.tone-info { background: var(--status-info); color: var(--status-info-foreground); }
+.tone-warning { background: var(--status-warning); color: var(--status-warning-foreground); }
+.tone-violet { background: var(--status-violet); color: var(--status-violet-foreground); }
+.iv-split { display: grid; grid-template-columns: minmax(0, 1fr) 360px; align-items: start; gap: 16px; }
+.iv-panel { border-radius: 20px; background: var(--card); padding: 20px; box-shadow: var(--shadow-card); }
+.iv-panel-head { border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+.iv-eyebrow { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted-foreground); }
+.iv-panel-head h2 { margin-top: 2px; font-family: var(--font-display); font-size: 18px; font-weight: 600; color: var(--foreground); }
+.iv-panel-head p:last-child { margin-top: 2px; font-size: 13px; color: var(--muted-foreground); }
+.iv-empty { margin-top: 12px; border-radius: 14px; background: var(--muted); padding: 28px 16px; text-align: center; font-size: 13.5px; color: var(--muted-foreground); }
+.iv-list { display: flex; flex-direction: column; }
+.iv-row { display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--border); padding: 12px 0; }
+.iv-row-name { font-size: 14.5px; font-weight: 600; color: var(--foreground); }
+.iv-row-code { display: flex; align-items: center; gap: 8px; margin-top: 2px; min-width: 0; font-size: 12.5px; color: var(--muted-foreground); }
+.iv-row-code code { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.iv-tag { flex-shrink: 0; border-radius: 999px; padding: 0 8px; font-size: 11px; font-weight: 600; }
+.iv-row-actions { display: flex; flex-shrink: 0; gap: 6px; }
+.iv-ghost { height: 32px; padding: 0 12px; border-radius: 999px; background: var(--muted); font-size: 12.5px; font-weight: 600; color: var(--foreground); }
+.iv-ghost:hover:not(:disabled) { background: var(--accent); color: var(--accent-foreground); }
+.iv-ghost.danger { background: var(--status-danger); color: var(--status-danger-foreground); }
+.iv-ghost:disabled { cursor: not-allowed; opacity: 0.55; }
+.iv-add { display: block; width: 100%; margin-top: 12px; border: 1px dashed var(--border); border-radius: 14px; padding: 10px; font-size: 13px; font-weight: 600; color: var(--primary); }
+.iv-add:hover:not(:disabled) { background: var(--accent); }
+.iv-add:disabled { cursor: not-allowed; opacity: 0.55; }
+.iv-info { display: flex; gap: 12px; border-radius: 20px; background: var(--card); padding: 18px; box-shadow: var(--shadow-card); }
+.iv-info-icon { display: grid; place-items: center; width: 36px; height: 36px; flex-shrink: 0; border-radius: 999px; background: var(--status-info); color: var(--status-info-foreground); }
+.iv-info-icon svg { width: 18px; height: 18px; }
+.iv-info-title { font-size: 14px; font-weight: 600; color: var(--foreground); }
+.iv-info-text { margin-top: 4px; padding-left: 16px; list-style: decimal; font-size: 12.5px; line-height: 1.6; color: var(--muted-foreground); }
+@media (max-width: 1024px) { .iv-split { grid-template-columns: 1fr; } }
+@media (max-width: 640px) {
+  .iv-row { flex-wrap: wrap; }
+  .iv-row-actions { width: 100%; justify-content: flex-end; }
+}
+
+/* Redesign: gavetas do Viaje On e do ViajeChat */
+.external-drawer { color: var(--foreground); border-radius: 24px 0 0 24px; padding: 24px !important; }
+.drawer-header span { color: var(--primary) !important; letter-spacing: 0.06em !important; }
+.drawer-header h2 { font-family: var(--font-display); font-weight: 600 !important; color: var(--foreground); }
+.drawer-header button { border: 0 !important; border-radius: 999px !important; background: var(--muted); font-size: 20px !important; color: var(--muted-foreground); }
+.external-drawer > .md\:flex-row { flex-direction: column !important; align-items: stretch !important; }
+.external-drawer button.rounded-xl, .iv-panel button.rounded-xl { border-radius: 999px !important; }
+.integration-status-row { border: 0 !important; border-radius: 16px !important; background: var(--muted); }
+.integration-status-row strong { color: var(--foreground); }
+.integration-status-row > span { background: var(--card) !important; color: var(--muted-foreground) !important; text-transform: none !important; font-size: 11.5px !important; }
+.integration-status-row > span.connected { background: var(--status-success) !important; color: var(--status-success-foreground) !important; }
+.api-key-form button, .kanban-head button { border-radius: 999px !important; background: var(--primary) !important; color: var(--primary-foreground) !important; }
+.security-note { background: var(--status-success) !important; color: var(--status-success-foreground) !important; border-radius: 12px !important; }
+.kanban-card { border: 0 !important; border-radius: 16px !important; background: var(--muted) !important; }
+.disconnect-chat { border: 0 !important; border-radius: 999px !important; background: var(--status-danger); color: var(--status-danger-foreground) !important; }
+.external-drawer .text-slate-900, .iv-panel .text-slate-900, .external-drawer .text-slate-700, .iv-panel .text-slate-700 { color: var(--foreground) !important; }
+.external-drawer .text-slate-500, .iv-panel .text-slate-500 { color: var(--muted-foreground) !important; }
+.external-drawer input, .iv-panel input { border-color: var(--input) !important; background: var(--background) !important; color: var(--foreground) !important; }
+.external-drawer .border-slate-200, .iv-panel .border-slate-200 { border-color: var(--border) !important; }
+.external-drawer button.border-slate-200:hover, .iv-panel button.border-slate-200:hover { background: var(--muted) !important; }
+
+/* Redesign v2: visão geral, Viaje On e ViajeChat como abas */
+.iv-group { display: flex; flex-direction: column; gap: 12px; }
+.iv-group-title { font-size: 15px; font-weight: 600; color: var(--foreground); }
+.iv-group-title span { margin-left: 8px; font-size: 13px; font-weight: 400; color: var(--muted-foreground); }
+.iv-card-head h3 { font-size: 16px; font-weight: 600; color: var(--foreground); }
+.iv-btn-sm { height: 36px !important; padding: 0 16px !important; font-size: 13px !important; }
+.tone-success { background: var(--status-success); color: var(--status-success-foreground); }
+.iv-panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.iv-panel-top { display: flex; align-items: flex-start; gap: 12px; border-bottom: 1px solid var(--border); padding-bottom: 14px; }
+.iv-panel-top h2 { font-family: var(--font-display); font-size: 18px; font-weight: 600; color: var(--foreground); }
+.iv-panel-top p { margin-top: 2px; font-size: 13px; color: var(--muted-foreground); }
+.iv-panel-top .iv-pill { flex-shrink: 0; margin-top: 4px; }
+.iv-band { display: flex; align-items: center; gap: 12px; margin-top: 14px; border-radius: 16px; padding: 12px 14px; }
+.iv-band.is-ok { background: var(--status-success); color: var(--status-success-foreground); }
+.iv-band.is-bad { background: var(--status-danger); color: var(--status-danger-foreground); }
+.iv-band-icon { display: grid; place-items: center; width: 36px; height: 36px; flex-shrink: 0; border-radius: 999px; background: color-mix(in srgb, currentColor 14%, transparent); }
+.iv-band-icon svg { width: 18px; height: 18px; }
+.iv-band-title { font-size: 14px; font-weight: 600; }
+.iv-band-text { margin-top: 1px; font-size: 12.5px; opacity: 0.9; }
+.iv-band-btn { display: inline-flex; flex-shrink: 0; align-items: center; gap: 6px; height: 34px; padding: 0 14px; border-radius: 999px; background: var(--card); font-size: 12.5px; font-weight: 600; color: var(--foreground); }
+.iv-band-btn svg { width: 14px; height: 14px; }
+.iv-band-btn:disabled { opacity: 0.6; }
+.iv-line { display: grid; grid-template-columns: minmax(0, 200px) minmax(0, 1fr); align-items: center; gap: 16px; border-bottom: 1px solid var(--border); padding: 14px 0; }
+.iv-line:last-child { border-bottom: 0; padding-bottom: 0; }
+.iv-line-label p, .iv-line-title { font-size: 14px; font-weight: 600; color: var(--foreground); }
+.iv-line-label span, .iv-line-sub { display: block; margin-top: 2px; font-size: 12.5px; line-height: 1.45; color: var(--muted-foreground); }
+.iv-line-field { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.iv-input { flex: 1; min-width: 0; height: 40px; border: 0; border-radius: 999px; background: var(--muted); padding: 0 16px; font-size: 13.5px; color: var(--foreground); outline: none; }
+.iv-input:focus { box-shadow: 0 0 0 2px var(--ring); }
+.iv-input-static { display: flex; align-items: center; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 13px; }
+.iv-note { border-radius: 14px; background: var(--status-info); padding: 10px 14px; font-size: 12.5px; color: var(--status-info-foreground); }
+.iv-kanbans { display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid var(--border); padding: 14px 0; }
+.iv-kanbans-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.iv-kanban { border-radius: 14px; background: var(--muted); }
+.iv-kanban-head { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; text-align: left; }
+.iv-kanban-head b { display: block; font-size: 13.5px; color: var(--foreground); }
+.iv-kanban-head small { font-size: 12px; color: var(--muted-foreground); }
+.iv-kanban-head svg { width: 14px; height: 14px; flex-shrink: 0; color: var(--muted-foreground); transition: transform 0.18s; }
+.iv-kanban-head svg.collapsed { transform: rotate(180deg); }
+.iv-columns { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 14px 12px; }
+.iv-columns span { border-radius: 999px; background: var(--card); padding: 3px 10px; font-size: 12px; color: var(--foreground); }
+.iv-columns p { font-size: 12px; color: var(--muted-foreground); }
+.iv-ghost { display: inline-flex; flex-shrink: 0; align-items: center; gap: 6px; }
+.iv-ghost svg { width: 14px; height: 14px; }
+.iv-icon-btn { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 999px; background: var(--muted); color: var(--muted-foreground); }
+.iv-icon-btn svg { width: 16px; height: 16px; }
+.iv-menu-wrap { position: relative; }
+.iv-menu { position: absolute; top: calc(100% + 6px); right: 0; z-index: 30; display: flex; min-width: 160px; flex-direction: column; border-radius: 14px; background: var(--popover); padding: 6px; box-shadow: var(--shadow-elegant); }
+.iv-menu button { border-radius: 10px; padding: 8px 10px; text-align: left; font-size: 13px; color: var(--popover-foreground); }
+.iv-menu button:hover { background: var(--muted); }
+.iv-menu button.danger { color: var(--status-danger-foreground); }
+.iv-info-icon.is-success { background: var(--status-success); color: var(--status-success-foreground); }
+.iv-info-icon.is-violet { background: var(--status-violet); color: var(--status-violet-foreground); }
+@media (max-width: 640px) {
+  .iv-line { grid-template-columns: 1fr; gap: 8px; }
+  .iv-band { flex-wrap: wrap; }
+  .iv-panel-head { flex-direction: column; }
+}
 </style>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useAuthStore } from "../../store/useAuthStore";
+import IntegrationsHeader from "../../components/admin/integrations/IntegrationsHeader.vue";
+import { integrationStatus } from "../../composables/useIntegrationStatus";
 import api from "../../services/api";
 import { createAdminLocalizer, getAdminLanguage } from "../../utils/adminI18n";
 
@@ -394,8 +653,30 @@ interface ViajechatKanban { id: string; name: string; columns: Array<{ id: strin
 const auth = useAuthStore();
 const route = useRoute();
 const isViajeonRoute = computed(() => route.name === "integrations-viajeon");
-const isExternalRoute = computed(() => route.name === "integrations-external");
-const externalDrawer = ref<"viajeon" | "viajechat" | null>(null);
+const isExternalRoute = computed(() => false);
+const isOverviewRoute = computed(() => route.name === "integrations-overview");
+const isViajechatRoute = computed(() => route.name === "integrations-viajechat");
+const isTrackingRoute = computed(() => !isOverviewRoute.value && !isViajeonRoute.value && !isViajechatRoute.value);
+const openPixelMenuId = ref<number | string | null>(null);
+const closePixelMenu = (event: MouseEvent) => {
+  if (!(event.target as HTMLElement | null)?.closest(".iv-menu-wrap")) openPixelMenuId.value = null;
+};
+onMounted(() => document.addEventListener("click", closePixelMenu));
+onBeforeUnmount(() => document.removeEventListener("click", closePixelMenu));
+// WhatsApp na visão geral: mesma regra de plano do menu lateral.
+const hasWhatsAppPlanAccess = computed(() => {
+  const plan = (value: unknown) => String(value || "").trim().toLowerCase();
+  const allowed = new Set(["escala", "infinity", "scale", "teste", "test"]);
+  return allowed.has(plan((auth.user as any)?.trial_plan)) || allowed.has(plan(auth.user?.plan));
+});
+const trackingKinds = computed(() => {
+  const meta = pixels.value.filter((pixel: any) => pixel.type === "meta");
+  const ga = pixels.value.filter((pixel: any) => pixel.type !== "meta");
+  return [
+    { type: "meta", label: "Meta Pixel", tone: "tone-info", count: meta.length, first: meta[0]?.name || "", description: "Conta visitas e cliques das páginas para os anúncios do Facebook e Instagram." },
+    { type: "ga", label: "Google Analytics", tone: "tone-warning", count: ga.length, first: ga[0]?.name || "", description: "Envia as visitas das páginas para o Google Analytics da agência." }
+  ];
+});
 const adminLanguage = getAdminLanguage();
 const t = createAdminLocalizer(adminLanguage);
 
@@ -502,6 +783,14 @@ const isReadOnly = computed(() => {
 const canSubmit = computed(() => !isReadOnly.value);
 const isEditing = computed(() => editingId.value !== null);
 
+const copyPixelCode = async (pixel: { value?: string | null }) => {
+  try {
+    await navigator.clipboard.writeText(String(pixel.value || ""));
+    showToast("Código copiado.");
+  } catch {
+    showToast("Não foi possível copiar o código.", true);
+  }
+};
 const showToast = (message: string, error = false) => {
   toastMessage.value = message;
   toastError.value = error;
@@ -725,6 +1014,11 @@ const displayCode = (raw: string) => {
   const value = String(raw || "").trim();
   return value || "-";
 };
+
+// Mantém os pontos das abas em dia quando algo é conectado ou desconectado aqui.
+watch(() => pixels.value.length, count => { integrationStatus.pixels = count; });
+watch(() => viajeonStatus.value.connected, value => { integrationStatus.viajeon = !!value; });
+watch(() => viajechatStatus.value.configured, value => { integrationStatus.viajechat = !!value; });
 
 onMounted(async () => {
   try {
