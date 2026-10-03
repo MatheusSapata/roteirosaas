@@ -128,6 +128,21 @@ def _next_pix_automatic_due_date(base: date, cycle: str) -> date:
     return date(next_year, next_month, min(base.day, last_day))
 
 
+RENEWAL_GRACE = timedelta(days=2)
+
+
+def _cycle_valid_until(start: datetime, cycle: str) -> datetime:
+    """Validade de um ciclo: o maior entre o período fixo e o dia da próxima
+    cobrança (mesmo dia do mês/ano seguinte) mais 2 dias de folga, para o
+    cliente não ficar sem acesso antes de ser cobrado."""
+    fixed = start + _duration_from_cycle(cycle)
+    next_charge = _next_pix_automatic_due_date(start.date(), cycle)
+    with_grace = datetime.combine(next_charge, start.timetz()) + RENEWAL_GRACE
+    if with_grace.tzinfo is None and start.tzinfo is not None:
+        with_grace = with_grace.replace(tzinfo=start.tzinfo)
+    return max(fixed, with_grace)
+
+
 def _parse_decimal(value: Any) -> Decimal:
     try:
         return Decimal(str(value))
@@ -412,7 +427,7 @@ def _apply_upgrade_after_payment(db: Session, session: CheckoutSession) -> tuple
     subscription.card_brand = metadata.get("card_brand") or subscription.card_brand
     subscription.card_last4 = metadata.get("card_last4") or subscription.card_last4
     subscription.failed_attempts = 0
-    subscription.valid_until = _utcnow() + _duration_from_cycle(session.billing_cycle)
+    subscription.valid_until = _cycle_valid_until(_utcnow(), session.billing_cycle)
     subscription.asaas_customer_id = session.asaas_customer_id or subscription.asaas_customer_id
     subscription.external_reference = f"checkout_upgrade:{session.token}"
     subscription.mrr_amount = (
@@ -1855,7 +1870,7 @@ def _upsert_paid_user_and_subscription(db: Session, session: CheckoutSession) ->
         subscription.card_brand = None
         subscription.card_last4 = None
     subscription.failed_attempts = 0
-    subscription.valid_until = _utcnow() + _duration_from_cycle(session.billing_cycle)
+    subscription.valid_until = _cycle_valid_until(_utcnow(), session.billing_cycle)
     subscription.asaas_customer_id = session.asaas_customer_id
     metadata = dict(session.metadata_json or {})
     if metadata.get("asaas_subscription_id"):
@@ -1890,22 +1905,38 @@ def _upsert_paid_user_and_subscription(db: Session, session: CheckoutSession) ->
     return user
 
 
-def _renew_paid_pix_automatic_subscription(db: Session, session: CheckoutSession) -> User | None:
+def _renew_paid_pix_automatic_subscription(
+    db: Session,
+    session: CheckoutSession,
+    payment: dict[str, Any] | None = None,
+) -> User | None:
+    """Estende a assinatura depois do pagamento de um novo ciclo (Pix Automático
+    ou cartão)."""
     user = session.user or _find_existing_user(db, session.customer_email, session.customer_document)
     if not user or not user.subscription:
         return None
     subscription = user.subscription
     now = _utcnow()
     current_valid_until = subscription.valid_until
-    if current_valid_until and current_valid_until.tzinfo is None and now.tzinfo is not None:
-        now_for_comparison = now.replace(tzinfo=None)
-    else:
-        now_for_comparison = now
-    base = current_valid_until if current_valid_until and current_valid_until > now_for_comparison else now_for_comparison
-    subscription.valid_until = base + _duration_from_cycle(session.billing_cycle)
+    if current_valid_until and current_valid_until.tzinfo is None:
+        current_valid_until = current_valid_until.replace(tzinfo=timezone.utc)
+    base = current_valid_until if current_valid_until and current_valid_until > now else now
+    new_valid_until = base + _duration_from_cycle(session.billing_cycle)
+    raw_due = str((payment or {}).get("dueDate") or "").strip()[:10]
+    if raw_due:
+        try:
+            due_start = datetime.combine(date.fromisoformat(raw_due), now.timetz())
+            new_valid_until = max(new_valid_until, _cycle_valid_until(due_start, session.billing_cycle))
+        except ValueError:
+            pass
+    subscription.valid_until = new_valid_until
     subscription.status = "active"
     subscription.failed_attempts = 0
-    user.plan = session.plan_key
+    # Só ajusta o plano se esta sessão ainda é a assinatura atual do cliente.
+    current_reference = str(subscription.external_reference or "").strip()
+    if current_reference in {f"checkout:{session.token}", f"checkout_upgrade:{session.token}"}:
+        user.plan = session.plan_key
+        subscription.plan = session.plan_key
     user.is_active = True
     db.add_all([user, subscription])
     _notify_checkout_subscription_push(
@@ -1914,6 +1945,72 @@ def _renew_paid_pix_automatic_subscription(db: Session, session: CheckoutSession
         user=user,
     )
     return user
+
+
+def _is_new_cycle_payment(session: CheckoutSession, metadata: dict[str, Any], payment: dict[str, Any]) -> bool:
+    """Diz se o pagamento é de um ciclo novo (renovação), e não o primeiro."""
+    payment_id = str(payment.get("id") or "").strip()
+    if not payment_id:
+        return False
+    if payment_id in (metadata.get("asaas_pix_automatic_renewal_payment_ids") or []):
+        return True
+    if payment_id == str(metadata.get("asaas_first_payment_id") or ""):
+        return False
+    raw_due = str(payment.get("dueDate") or "").strip()[:10]
+    if not raw_due or not session.paid_at:
+        return False
+    try:
+        due = date.fromisoformat(raw_due)
+    except ValueError:
+        return False
+    # O primeiro pagamento (cartão, QR do Pix ou cobrança do upgrade) vence no
+    # próprio dia da compra; cobranças de ciclos seguintes vencem depois.
+    return due >= session.paid_at.date() + timedelta(days=2)
+
+
+def _handle_event_for_paid_session(
+    db: Session,
+    session: CheckoutSession,
+    *,
+    event: str,
+    payment: dict[str, Any],
+    metadata: dict[str, Any],
+    instruction: dict[str, Any] | None = None,
+) -> bool:
+    """Eventos de uma venda já paga: renovação, estorno ou só registro.
+    Cobranças de ciclos seguintes não mudam o status da venda original."""
+    if not payment.get("id") and instruction:
+        # Instrução do Pix Automático paga: usa a cobrança ligada a ela.
+        instruction_status = str(instruction.get("status") or "").upper()
+        instruction_paid = instruction_status in {"PAID", "RECEIVED", "CONFIRMED", "DONE"} or event.endswith(
+            ("_PAID", "_RECEIVED", "_CONFIRMED")
+        )
+        linked_payment_id = _extract_asaas_resource_id(instruction.get("payment"))
+        if instruction_paid and linked_payment_id:
+            payment = {"id": linked_payment_id, "status": "RECEIVED", "dueDate": instruction.get("dueDate")}
+            event = "PAYMENT_RECEIVED"
+    payment_status = str(payment.get("status") or "").upper()
+    is_new_cycle = _is_new_cycle_payment(session, metadata, payment)
+    if is_new_cycle:
+        metadata["asaas_last_renewal_payment_id"] = str(payment.get("id") or "")
+        metadata["asaas_last_renewal_payment_status"] = payment_status or event
+    if is_new_cycle and event in {"PAYMENT_CONFIRMED", "PAYMENT_RECEIVED"}:
+        payment_id = str(payment.get("id") or "")
+        renewed = list(metadata.get("asaas_renewed_payment_ids") or [])
+        if payment_id not in renewed and payment_id != str(
+            metadata.get("asaas_pix_automatic_last_renewed_instruction_id") or ""
+        ):
+            renewed.append(payment_id)
+            metadata["asaas_renewed_payment_ids"] = renewed[-24:]
+            session.metadata_json = metadata
+            _renew_paid_pix_automatic_subscription(db, session, payment)
+    elif payment_status and _map_asaas_payment_status(payment_status) == "refunded":
+        session.status = "refunded"
+    session.metadata_json = metadata
+    session.updated_at = _utcnow()
+    db.add(session)
+    db.commit()
+    return True
 
 
 def _map_asaas_payment_status(status: Any) -> str:
@@ -2127,7 +2224,8 @@ def handle_asaas_checkout_webhook(db: Session, payload: dict[str, Any]) -> bool:
     if not session:
         return False
     was_already_paid = session.status == "paid" and bool(session.paid_at)
-    session.asaas_payment_id = payment.get("id") or session.asaas_payment_id
+    if not was_already_paid:
+        session.asaas_payment_id = payment.get("id") or session.asaas_payment_id
     session.asaas_customer_id = payment.get("customer") or authorization.get("customerId") or session.asaas_customer_id
     event = str(payload.get("event") or "").upper()
     metadata = dict(session.metadata_json or {})
@@ -2166,6 +2264,15 @@ def handle_asaas_checkout_webhook(db: Session, payload: dict[str, Any]) -> bool:
         db.add(session)
         db.commit()
         return True
+    if was_already_paid:
+        return _handle_event_for_paid_session(
+            db,
+            session,
+            event=event,
+            payment=payment,
+            metadata=metadata,
+            instruction=instruction if isinstance(instruction, dict) else None,
+        )
     authorization_activated = event in {
         "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_ACTIVE",
         "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_ACTIVATED",
@@ -2182,33 +2289,17 @@ def handle_asaas_checkout_webhook(db: Session, payload: dict[str, Any]) -> bool:
     elif not event.startswith("PIX_AUTOMATIC_RECURRING_PAYMENT_INSTRUCTION_"):
         session.status = _map_asaas_payment_status(event)
 
-    instruction_paid = event.startswith("PIX_AUTOMATIC_RECURRING_PAYMENT_INSTRUCTION_") and (
-        instruction_status in {"PAID", "RECEIVED", "CONFIRMED"}
-        or event.endswith(("_PAID", "_RECEIVED", "_CONFIRMED"))
-    )
-    is_pix_automatic = str(metadata.get("pix_mode") or "").strip().lower() == "automatic"
-    renewal_key = instruction_id or str(metadata.get("asaas_pix_automatic_last_instruction_id") or "").strip()
-    if not renewal_key:
-        renewal_key = str(payment.get("id") or "").strip()
-    renewal_already_processed = bool(renewal_key) and (
-        str(metadata.get("asaas_pix_automatic_last_renewed_instruction_id") or "") == renewal_key
-    )
-    renewal_confirmed = was_already_paid and is_pix_automatic and (
-        instruction_paid or event in {"PAYMENT_CONFIRMED", "PAYMENT_RECEIVED"}
-    ) and not renewal_already_processed
-
-    if renewal_confirmed:
-        session.status = "paid"
-        if renewal_key:
-            metadata["asaas_pix_automatic_last_renewed_instruction_id"] = renewal_key
-            session.metadata_json = metadata
-        _renew_paid_pix_automatic_subscription(db, session)
-    elif not was_already_paid and (
+    # Vendas já pagas saem antes (_handle_event_for_paid_session); aqui só o
+    # primeiro pagamento ou a ativação da autorização.
+    if (
         event in {"PAYMENT_CONFIRMED", "PAYMENT_RECEIVED"} or authorization_activated or session.status == "paid"
     ):
         if not session.paid_at:
             session.paid_at = _utcnow()
         session.status = "paid"
+        if payment.get("id") and not metadata.get("asaas_first_payment_id"):
+            metadata["asaas_first_payment_id"] = str(payment.get("id"))
+            session.metadata_json = metadata
         if _is_upgrade_session(session):
             if _should_upgrade_session_in_place(db, session):
                 user, previous_plan = _apply_upgrade_after_payment(db, session)

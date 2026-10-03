@@ -31,6 +31,9 @@ class Settings(BaseSettings):
         "CREDIT_CARD", alias="ASAAS_BILLING_TYPE"
     )
     asaas_success_url: str | None = Field(None, alias="ASAAS_SUCCESS_URL")
+    # Token de autenticação do webhook (configurado no painel do Asaas). Quando
+    # preenchido, o webhook recusa chamadas sem o cabeçalho asaas-access-token.
+    asaas_webhook_token: str | None = Field(None, alias="ASAAS_WEBHOOK_TOKEN")
     wallet_matheus: str | None = Field(None, alias="WALLET_MATHEUS")
     wallet_agencia: str | None = Field(None, alias="WALLET_AGENCIA")
     password_reset_token_minutes: int = Field(60, alias="PASSWORD_RESET_TOKEN_MINUTES")

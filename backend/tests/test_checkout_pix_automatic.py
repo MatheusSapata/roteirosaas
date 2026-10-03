@@ -244,7 +244,7 @@ def test_refresh_does_not_erase_paid_status_when_consent_ends(monkeypatch, statu
     assert session.metadata_json["asaas_pix_automatic_authorization_status"] == status
 
 
-def test_paid_instruction_renews_subscription_only_once(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_paid_renewal_charge_renews_subscription_only_once(monkeypatch: pytest.MonkeyPatch) -> None:
     session = make_session()
     session.payment_method = "pix"
     session.status = "paid"
@@ -252,29 +252,36 @@ def test_paid_instruction_renews_subscription_only_once(monkeypatch: pytest.Monk
     session.metadata_json = {
         "pix_mode": "automatic",
         "asaas_pix_automatic_authorization_id": "auth_webhook_123",
-        "asaas_pix_automatic_last_instruction_id": "pai_123",
+        "asaas_pix_automatic_renewal_payment_ids": ["pay_renovacao_1"],
     }
     renewed: list[CheckoutSession] = []
     monkeypatch.setattr(
         checkout,
         "_renew_paid_pix_automatic_subscription",
-        lambda _db, item: renewed.append(item),
+        lambda _db, item, _payment=None: renewed.append(item),
     )
-    payload = {
+    instruction_paid = {
         "event": "PIX_AUTOMATIC_RECURRING_PAYMENT_INSTRUCTION_PAID",
         "pixAutomaticPaymentInstruction": {
             "id": "pai_123",
             "status": "PAID",
+            "payment": "pay_renovacao_1",
             "authorization": {"id": "auth_webhook_123"},
         },
     }
+    payment_received = {
+        "event": "PAYMENT_RECEIVED",
+        "payment": {"id": "pay_renovacao_1", "status": "RECEIVED", "pixAutomaticAuthorizationId": "auth_webhook_123"},
+    }
     db = FakeDb([session])
 
-    assert checkout.handle_asaas_checkout_webhook(db, payload) is True
-    assert checkout.handle_asaas_checkout_webhook(db, payload) is True
+    assert checkout.handle_asaas_checkout_webhook(db, instruction_paid) is True
+    assert checkout.handle_asaas_checkout_webhook(db, payment_received) is True
+    assert checkout.handle_asaas_checkout_webhook(db, payment_received) is True
 
     assert renewed == [session]
-    assert session.metadata_json["asaas_pix_automatic_last_renewed_instruction_id"] == "pai_123"
+    assert session.status == "paid"
+    assert session.metadata_json["asaas_renewed_payment_ids"] == ["pay_renovacao_1"]
 
 
 def test_pix_upgrade_cancels_previous_subscription_and_automatic_authorization(

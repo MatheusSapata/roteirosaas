@@ -1,5 +1,6 @@
 ﻿import logging
 import hashlib
+import hmac
 import json
 from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
@@ -527,8 +528,19 @@ def _notify_subscription_push(
         logger.exception("Falha ao enviar notificação ntfy para webhook Asaas.")
 
 
+def _check_asaas_webhook_token(request: Request) -> None:
+    expected = (settings.asaas_webhook_token or "").strip()
+    if not expected:
+        logger.warning("ASAAS_WEBHOOK_TOKEN não configurado: webhook do Asaas aceito sem autenticação.")
+        return
+    received = (request.headers.get("asaas-access-token") or "").strip()
+    if not received or not hmac.compare_digest(received, expected):
+        raise HTTPException(status_code=401, detail="Token do webhook inválido.")
+
+
 @router.post("/webhook")
 async def webhook(request: Request, db: Session = Depends(get_db)) -> Dict[str, Any]:
+    _check_asaas_webhook_token(request)
     payload = await request.json()
     event = payload.get("event")
     if not event:
