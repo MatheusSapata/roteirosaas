@@ -1,1107 +1,622 @@
-﻿<template>
-  <div v-if="isBootstrappingAdminManagement" class="flex min-h-[60vh] w-full items-center justify-center px-4 py-8 md:px-8">
-    <div class="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-brand"></div>
+<template>
+  <div v-if="isBootstrappingAdminManagement" class="am-empty min-h-[60vh]">
+    <div class="am-spinner"></div>
   </div>
-  <div v-else class="admin-master-view admin-master-surface w-full space-y-6 px-4 py-8 md:px-8">
-    <!-- HEADER -->
-    
-
-    <!-- ERROR -->
-    <div v-if="error" class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-      {{ error }}
+  <div v-else class="admin-master-view admin-master-surface am-page w-full">
+    <div v-if="error" class="am-notice am-tone-danger">
+      <AmIcon name="alert" />
+      <span>{{ error }}</span>
     </div>
 
-    <!-- DASHBOARD -->
+    <!-- PAINEL -->
     <template v-if="activeTab === 'dashboard'">
-      <header class="topbar">
-      <div>
-        <p class="page-kicker">Administração</p>
-        <h1 class="page-title">Visão gerencial</h1>
-        <p class="page-sub">Resumo de usuários, planos, validade, assinaturas e receita.</p>
-      </div>
-
-      <div class="flex flex-wrap items-center gap-2">
-        <select
-          v-model="days"
-          class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 transition focus:outline-none focus:ring-2 focus:ring-brand/20 dark:border-white/15 dark:bg-[#202020] dark:text-white"
-        >
-          <option value="7">Ultimos 7 dias</option>
-          <option value="30">Ultimos 30 dias</option>
-          <option value="90">Ultimos 90 dias</option>
-          <option value="custom">Personalizado</option>
-        </select>
-        <div v-if="days === 'custom'" class="flex flex-wrap items-center gap-2 text-xs text-slate-600">
-          <label class="font-semibold">De</label>
-          <input
-            type="date"
-            v-model="customStartDate"
-            class="rounded-lg border border-slate-200 px-3 py-1 text-sm text-slate-700"
-          />
-          <span class="font-semibold">até</span>
-          <input
-            type="date"
-            v-model="customEndDate"
-            class="rounded-lg border border-slate-200 px-3 py-1 text-sm text-slate-700"
-          />
+      <AdminMasterHeader title="Painel da plataforma" subtitle="Assinaturas, receita e uso do Roteiro Online.">
+        <div class="am-seg" role="group" aria-label="Período">
+          <button
+            v-for="option in periodOptions"
+            :key="option.value"
+            type="button"
+            :class="{ on: days === option.value }"
+            @click="days = option.value"
+          >
+            {{ option.label }}
+          </button>
         </div>
-
-        <button
-          @click="exportPdf"
-          class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-white/15 dark:bg-[#202020] dark:text-white dark:hover:bg-[#1a1a1a]"
-        >
+        <button type="button" class="am-btn" @click="exportPdf">
+          <AmIcon name="dl" />
           Exportar PDF
         </button>
+      </AdminMasterHeader>
+
+      <div v-if="days === 'custom'" class="am-card flex flex-wrap items-center gap-3 !py-3">
+        <label class="am-label !mb-0" for="am-period-from">De</label>
+        <input id="am-period-from" v-model="customStartDate" type="date" class="am-input !w-auto" />
+        <label class="am-label !mb-0" for="am-period-to">até</label>
+        <input id="am-period-to" v-model="customEndDate" type="date" class="am-input !w-auto" />
       </div>
-    </header>
-    
-      <section class="metrics-grid metrics-grid-4">
-        <div class="metric-card">
-          <p class="metric-label">Usuários</p>
-          <p class="metric-value">{{ metrics?.total_users ?? "--" }}</p>
-          <p class="metric-footer-text">Contas ativas no SaaS.</p>
-        </div>
-        <div class="metric-card">
-          <p class="metric-label">Agências</p>
-          <p class="metric-value">{{ metrics?.total_agencies ?? "--" }}</p>
-          <p class="metric-footer-text">Times cadastrados.</p>
-        </div>
-        <div class="metric-card">
-          <p class="metric-label">Páginas totais</p>
-          <p class="metric-value">{{ metrics?.total_pages ?? "--" }}</p>
-          <p class="metric-footer-text">Inclui rascunhos e publicadas.</p>
-        </div>
-        <div class="metric-card">
-          <p class="metric-label">Páginas publicadas</p>
-          <p class="metric-value">{{ metrics?.published_pages ?? "--" }}</p>
-          <p class="metric-footer-text">Visíveis ao público.</p>
-        </div>
+
+      <section class="am-grid-4">
+        <AdminMasterKpi icon="wallet" tone="success" label="MRR" :value="formatMoney(metrics?.mrr)" hint="Soma dos planos ativos" />
+        <AdminMasterKpi icon="trend" tone="info" label="ARR estimado" :value="formatMoney(arrValue)" hint="MRR × 12" />
+        <AdminMasterKpi icon="card" tone="violet" label="Faturamento total" :value="formatMoney(lifetimeRevenue)" hint="Desde o início" />
+        <AdminMasterKpi
+          icon="alert"
+          tone="warning"
+          label="Churn do mês"
+          :value="formatPercent(monthlyChurnRate)"
+          :hint="`${formatInt(metrics?.monthly_churn_cancelled ?? 0)} cancelamentos de ${formatInt(metrics?.monthly_churn_base ?? 0)}`"
+        />
       </section>
 
-      <section class="metrics-grid metrics-grid-3">
-        <div class="metric-card">
-          <p class="metric-label">MRR estimado</p>
-          <p class="metric-value">R$ {{ metrics?.mrr?.toFixed(2) ?? "--" }}</p>
-          <p class="metric-footer-text">Somatório dos planos ativos.</p>
-        </div>
-        <div class="metric-card">
-          <p class="metric-label">ARR estimado</p>
-          <p class="metric-value">
-            <span v-if="arrValue !== null">R$ {{ arrValue.toFixed(2) }}</span>
-            <span v-else>--</span>
-          </p>
-          <p class="metric-footer-text">Projeção anual baseada no MRR.</p>
-        </div>
-        <div class="metric-card">
-          <p class="metric-label">Faturamento total</p>
-          <p class="metric-value">
-            <span v-if="lifetimeRevenue !== null">R$ {{ lifetimeRevenue.toFixed(2) }}</span>
-            <span v-else>--</span>
-          </p>
-          <p class="metric-footer-text">Somatório de todo o faturamento.</p>
-        </div>
+      <section class="am-grid-3">
+        <article v-for="item in platformTotals" :key="item.label" class="am-kpi flex items-center gap-3.5">
+          <span class="am-tile am-tone-neutral !h-10 !w-10"><AmIcon :name="item.icon" /></span>
+          <div class="min-w-0">
+            <p class="am-kpi-label">{{ item.label }}</p>
+            <p class="am-kpi-value !mt-0 !text-xl">{{ item.value }}</p>
+          </div>
+          <p class="am-kpi-hint ml-auto text-right">{{ item.hint }}</p>
+        </article>
       </section>
 
-      <section class="bottom-grid">
-        <div class="chart-card">
-          <div class="flex items-center justify-between">
+      <section class="grid gap-3.5 xl:grid-cols-[1.6fr_1fr]">
+        <div class="am-card">
+          <div class="am-card-head flex-wrap">
             <div>
-              <h2 class="text-lg font-semibold text-slate-900">Assinaturas ({{ adminPeriodLabel }})</h2>
-              <p class="text-sm text-slate-500">Novas, renovadas e canceladas por dia.</p>
+              <h2 class="am-card-title">Assinaturas por dia</h2>
+              <p class="am-card-sub">{{ adminPeriodLabel }} · clique na legenda para esconder uma linha</p>
             </div>
-            <div class="flex flex-wrap items-center gap-3 text-xs">
-              <button type="button" class="legend-toggle-sub inline-flex items-center gap-1 text-emerald-600" :class="{ off: !visibleSubscriptionSeries.new }" @click="toggleSubscriptionSeries('new')"><span class="h-2.5 w-2.5 rounded-full bg-emerald-500"></span>Novas</button>
-              <button type="button" class="legend-toggle-sub inline-flex items-center gap-1 text-sky-600" :class="{ off: !visibleSubscriptionSeries.renewed }" @click="toggleSubscriptionSeries('renewed')"><span class="h-2.5 w-2.5 rounded-full bg-sky-500"></span>Renovadas</button>
-              <button type="button" class="legend-toggle-sub inline-flex items-center gap-1 text-rose-600" :class="{ off: !visibleSubscriptionSeries.cancelled }" @click="toggleSubscriptionSeries('cancelled')"><span class="h-2.5 w-2.5 rounded-full bg-rose-500"></span>Canceladas</button>
+            <div class="flex flex-wrap items-center gap-3.5 text-xs font-semibold">
+              <button type="button" class="legend-toggle-sub inline-flex items-center gap-1.5 text-[color:var(--chart-1)]" :class="{ off: !visibleSubscriptionSeries.new }" @click="toggleSubscriptionSeries('new')"><span class="h-2 w-2 rounded-full bg-chart-1"></span>Novas {{ formatInt(subscriptionsTotals.new) }}</button>
+              <button type="button" class="legend-toggle-sub inline-flex items-center gap-1.5 text-[color:var(--chart-3)]" :class="{ off: !visibleSubscriptionSeries.renewed }" @click="toggleSubscriptionSeries('renewed')"><span class="h-2 w-2 rounded-full bg-chart-3"></span>Renovadas {{ formatInt(subscriptionsTotals.renewed) }}</button>
+              <button type="button" class="legend-toggle-sub inline-flex items-center gap-1.5 text-[color:var(--chart-5)]" :class="{ off: !visibleSubscriptionSeries.cancelled }" @click="toggleSubscriptionSeries('cancelled')"><span class="h-2 w-2 rounded-full bg-chart-5"></span>Canceladas {{ formatInt(subscriptionsTotals.cancelled) }}</button>
             </div>
           </div>
 
-          <div class="mt-4">
-            <div
-              v-if="subscriptionChartPoints.length"
-              class="space-y-3 rounded-2xl border border-slate-100 bg-white/90 p-6 shadow-inner"
-            >
-              <div class="relative rounded-2xl bg-transparent p-4">
-                <div class="pointer-events-none absolute inset-4">
-                  <div
-                    v-for="line in newUsersGridLines"
-                    :key="'grid-' + line"
-                    class="absolute left-0 right-0 border-t border-dashed border-emerald-100"
-                    :style="{ top: line + 'px' }"
-                  ></div>
-                </div>
-                <div class="relative" :style="{ height: newUsersChartHeight + 'px' }">
-                  <svg :viewBox="`0 0 ${newUsersChartWidth} ${newUsersChartHeight}`" preserveAspectRatio="none" class="h-full w-full">
-                    <defs>
-                      <linearGradient id="g-sub-new" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stop-color="#2EAD4C" stop-opacity="0.20" />
-                        <stop offset="100%" stop-color="#2EAD4C" stop-opacity="0.01" />
-                      </linearGradient>
-                      <linearGradient id="g-sub-renewed" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stop-color="#0ea5e9" stop-opacity="0.16" />
-                        <stop offset="100%" stop-color="#0ea5e9" stop-opacity="0.01" />
-                      </linearGradient>
-                      <linearGradient id="g-sub-cancelled" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stop-color="#f43f5e" stop-opacity="0.16" />
-                        <stop offset="100%" stop-color="#f43f5e" stop-opacity="0.01" />
-                      </linearGradient>
-                    </defs>
-                    <path v-if="visibleSubscriptionSeries.new && subscriptionNewAreaPath" :d="subscriptionNewAreaPath" fill="url(#g-sub-new)" />
-                    <path v-if="visibleSubscriptionSeries.renewed && subscriptionRenewedAreaPath" :d="subscriptionRenewedAreaPath" fill="url(#g-sub-renewed)" />
-                    <path v-if="visibleSubscriptionSeries.cancelled && subscriptionCancelledAreaPath" :d="subscriptionCancelledAreaPath" fill="url(#g-sub-cancelled)" />
-                    <path v-if="visibleSubscriptionSeries.new" :d="subscriptionNewPath" fill="none" stroke="#2EAD4C" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" />
-                    <path v-if="visibleSubscriptionSeries.renewed" :d="subscriptionRenewedPath" fill="none" stroke="#0ea5e9" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" />
-                    <path v-if="visibleSubscriptionSeries.cancelled" :d="subscriptionCancelledPath" fill="none" stroke="#f43f5e" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" />
-                    <template v-for="point in subscriptionChartPoints" :key="point.label + '-new'">
-                      <circle v-if="visibleSubscriptionSeries.new" :cx="point.x" :cy="point.newY" r="2" fill="#22c55e" />
-                      <circle v-if="visibleSubscriptionSeries.renewed" :cx="point.x" :cy="point.renewedY" r="2" fill="#0ea5e9" />
-                      <circle v-if="visibleSubscriptionSeries.cancelled" :cx="point.x" :cy="point.cancelledY" r="2" fill="#f43f5e" />
-                    </template>
-                    <rect
-                      v-for="hit in subscriptionHitAreas"
-                      :key="`sub-hit-${hit.index}`"
-                      :x="hit.x"
-                      y="0"
-                      :width="hit.width"
-                      :height="newUsersChartHeight"
-                      fill="transparent"
-                      @mouseenter="showSubscriptionTooltip(hit.index, $event)"
-                      @mousemove="moveSubscriptionTooltip(hit.index, $event)"
-                      @mouseleave="hideSubscriptionTooltip"
-                    />
-                  </svg>
-                  <div v-if="subscriptionTooltip.visible" class="chart-tooltip" :style="subscriptionTooltipStyle">
-                    <p class="chart-tooltip-date">{{ subscriptionTooltip.label }}</p>
-                    <p>Novas: {{ subscriptionTooltip.newValue }}</p>
-                    <p>Renovadas: {{ subscriptionTooltip.renewedValue }}</p>
-                    <p>Canceladas: {{ subscriptionTooltip.cancelledValue }}</p>
-                  </div>
-                </div>
+          <div v-if="subscriptionChartPoints.length">
+            <div class="relative">
+              <div class="pointer-events-none absolute inset-0">
+                <div
+                  v-for="line in newUsersGridLines"
+                  :key="'grid-' + line"
+                  class="absolute left-0 right-0 border-t border-dashed border-border"
+                  :style="{ top: line + 'px' }"
+                ></div>
               </div>
-
-              <div class="text-xs text-slate-500">
-                <template v-if="compactNewUsersLabels && subscriptionLabelRange">
-                  <div class="flex items-center justify-between font-semibold text-slate-700">
-                    <span>{{ subscriptionLabelRange.start }}</span>
-                    <span>{{ subscriptionLabelRange.end }}</span>
-                  </div>
-                </template>
-                <template v-else>
-                  <div class="flex flex-wrap justify-between gap-2 font-semibold text-slate-700">
-                    <span v-for="point in subscriptionChartPoints" :key="point.label + '-label'">{{ point.label }}</span>
-                  </div>
-                </template>
+              <div class="relative" :style="{ height: newUsersChartHeight + 'px' }">
+                <svg :viewBox="`0 0 ${newUsersChartWidth} ${newUsersChartHeight}`" preserveAspectRatio="none" class="h-full w-full">
+                  <defs>
+                    <linearGradient id="g-sub-new" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="var(--chart-1)" stop-opacity="0.22" />
+                      <stop offset="100%" stop-color="var(--chart-1)" stop-opacity="0.01" />
+                    </linearGradient>
+                    <linearGradient id="g-sub-renewed" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="var(--chart-3)" stop-opacity="0.18" />
+                      <stop offset="100%" stop-color="var(--chart-3)" stop-opacity="0.01" />
+                    </linearGradient>
+                    <linearGradient id="g-sub-cancelled" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="var(--chart-5)" stop-opacity="0.16" />
+                      <stop offset="100%" stop-color="var(--chart-5)" stop-opacity="0.01" />
+                    </linearGradient>
+                  </defs>
+                  <path v-if="visibleSubscriptionSeries.renewed && subscriptionRenewedAreaPath" :d="subscriptionRenewedAreaPath" fill="url(#g-sub-renewed)" />
+                  <path v-if="visibleSubscriptionSeries.new && subscriptionNewAreaPath" :d="subscriptionNewAreaPath" fill="url(#g-sub-new)" />
+                  <path v-if="visibleSubscriptionSeries.cancelled && subscriptionCancelledAreaPath" :d="subscriptionCancelledAreaPath" fill="url(#g-sub-cancelled)" />
+                  <path v-if="visibleSubscriptionSeries.renewed" :d="subscriptionRenewedPath" fill="none" stroke="var(--chart-3)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
+                  <path v-if="visibleSubscriptionSeries.new" :d="subscriptionNewPath" fill="none" stroke="var(--chart-1)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
+                  <path v-if="visibleSubscriptionSeries.cancelled" :d="subscriptionCancelledPath" fill="none" stroke="var(--chart-5)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
+                  <rect
+                    v-for="hit in subscriptionHitAreas"
+                    :key="`sub-hit-${hit.index}`"
+                    :x="hit.x"
+                    y="0"
+                    :width="hit.width"
+                    :height="newUsersChartHeight"
+                    fill="transparent"
+                    @mouseenter="showSubscriptionTooltip(hit.index, $event)"
+                    @mousemove="moveSubscriptionTooltip(hit.index, $event)"
+                    @mouseleave="hideSubscriptionTooltip"
+                  />
+                </svg>
+                <div v-if="subscriptionTooltip.visible" class="chart-tooltip" :style="subscriptionTooltipStyle">
+                  <p class="chart-tooltip-date">{{ subscriptionTooltip.label }}</p>
+                  <p class="text-[color:var(--chart-1)]">Novas: {{ subscriptionTooltip.newValue }}</p>
+                  <p class="text-[color:var(--chart-3)]">Renovadas: {{ subscriptionTooltip.renewedValue }}</p>
+                  <p class="text-[color:var(--chart-5)]">Canceladas: {{ subscriptionTooltip.cancelledValue }}</p>
+                </div>
               </div>
             </div>
-            <div
-              class="flex h-64 items-center justify-center rounded-2xl bg-slate-50 text-sm text-slate-500"
-              v-else
-            >
-              Sem dados de assinatura no período.
+            <div class="mt-2 text-[11px] text-muted-foreground">
+              <div v-if="compactNewUsersLabels && subscriptionLabelRange" class="flex items-center justify-between">
+                <span>{{ subscriptionLabelRange.start }}</span>
+                <span>{{ subscriptionLabelRange.end }}</span>
+              </div>
+              <div v-else class="flex flex-wrap justify-between gap-2">
+                <span v-for="point in subscriptionChartPoints" :key="point.label + '-label'">{{ point.label }}</span>
+              </div>
             </div>
           </div>
+          <div v-else class="am-empty h-56">Sem dados de assinatura no período.</div>
         </div>
 
-        <div class="list-card">
-          <h3 class="text-sm font-semibold text-slate-900">Distribuição de planos</h3>
-          <div class="mt-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
-            <p class="text-[11px] uppercase tracking-[0.2em] text-slate-500">Churn mensal</p>
-            <p class="mt-1 text-2xl font-bold text-slate-900">{{ monthlyChurnRate.toFixed(2) }}%</p>
-            <p class="text-xs text-slate-500">
-              {{ metrics?.monthly_churn_cancelled ?? 0 }} cancelamentos no mês sobre base de {{ metrics?.monthly_churn_base ?? 0 }} assinaturas.
-            </p>
-          </div>
-          <div class="mt-3 grid grid-cols-3 gap-2 text-xs">
-            <div class="rounded-lg border border-slate-100 p-2">
-              <p class="text-slate-500">Novas</p>
-              <p class="font-bold text-emerald-600">{{ subscriptionsTotals.new }}</p>
-            </div>
-            <div class="rounded-lg border border-slate-100 p-2">
-              <p class="text-slate-500">Renov.</p>
-              <p class="font-bold text-sky-600">{{ subscriptionsTotals.renewed }}</p>
-            </div>
-            <div class="rounded-lg border border-slate-100 p-2">
-              <p class="text-slate-500">Cancel.</p>
-              <p class="font-bold text-rose-600">{{ subscriptionsTotals.cancelled }}</p>
+        <div class="am-card">
+          <div class="am-card-head">
+            <div>
+              <h2 class="am-card-title">Planos ativos</h2>
+              <p class="am-card-sub">{{ formatInt(planDistributionTotal) }} contas</p>
             </div>
           </div>
-          <ul class="mt-3 space-y-1 text-sm text-slate-600">
-            <li v-for="p in metrics?.plans || []" :key="p.plan" class="flex justify-between">
-              <span class="capitalize">{{ planLabel(p.plan) }}</span>
-              <span class="font-semibold">{{ p.count }}</span>
-            </li>
-            <li v-if="!(metrics?.plans?.length)" class="text-xs text-slate-400">Sem dados ainda.</li>
-          </ul>
+          <div v-if="planDistribution.length" class="space-y-3">
+            <div v-for="item in planDistribution" :key="item.plan">
+              <div class="mb-1.5 flex items-center justify-between text-[13px]">
+                <span class="flex items-center gap-2">
+                  <i class="h-2 w-2 rounded-[3px]" :style="{ background: item.color }"></i>
+                  {{ item.label }}
+                </span>
+                <b class="am-num">{{ formatInt(item.count) }} <span class="font-medium text-muted-foreground">· {{ item.percent }}%</span></b>
+              </div>
+              <div class="am-bar"><i :style="{ width: item.bar + '%', background: item.color }"></i></div>
+            </div>
+          </div>
+          <p v-else class="am-empty">Sem dados ainda.</p>
+        </div>
+      </section>
+
+      <section class="am-card">
+        <div class="am-card-head">
+          <div>
+            <h2 class="am-card-title">Precisa de atenção</h2>
+            <p class="am-card-sub">Atalhos para o que pede ação hoje</p>
+          </div>
+        </div>
+        <div class="am-grid-4">
+          <RouterLink
+            v-for="item in attentionItems"
+            :key="item.id"
+            :to="item.to"
+            class="flex items-start gap-3 rounded-[14px] bg-muted p-3 transition hover:ring-1 hover:ring-border"
+          >
+            <span class="am-tile !h-8 !w-8" :class="`am-tone-${item.count ? item.tone : 'neutral'}`"><AmIcon :name="item.icon" /></span>
+            <div class="min-w-0">
+              <b class="text-[13.5px]">{{ item.title }}</b>
+              <p class="am-card-sub !mt-0">{{ item.description }}</p>
+              <p class="mt-1.5 text-xs font-semibold text-primary">Abrir {{ item.target }} →</p>
+            </div>
+          </RouterLink>
         </div>
       </section>
     </template>
 
+    <!-- AO VIVO -->
     <template v-else-if="activeTab === 'monitor'">
-      <section class="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100 dark:bg-[#0f1118] dark:ring-white/10">
-        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p class="text-xs font-semibold uppercase tracking-[0.35em] text-slate-500 dark:text-white/60">
-              Monitoramento em tempo real
-            </p>
-            <h2 class="text-2xl font-bold text-slate-900 dark:text-white">Usuários online agora</h2>
-            <p class="text-sm text-slate-500 dark:text-white/60">Sessões autenticadas nos últimos 10 minutos.</p>
-            <p class="text-xs text-slate-400 dark:text-white/50">
-              {{ onlineSessionsMeta?.total_online ?? 0 }} sessões acompanhadas em tempo real.
-            </p>
-          </div>
-          <div class="flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-white/70">
-            <p v-if="monitorLastUpdated">Atualizado ás {{ monitorLastUpdated }}</p>
-            <button
-              type="button"
-              class="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 font-semibold text-white transition hover:bg-slate-800 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
-              :disabled="onlineSessionsLoading"
-              @click="loadOnlineSessions(true)"
-            >
-              <svg
-                v-if="onlineSessionsLoading"
-                class="h-4 w-4 animate-spin text-white"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-              </svg>
-              <span>{{ onlineSessionsLoading ? "Atualizando..." : "Atualizar monitor" }}</span>
-            </button>
-          </div>
-        </div>
+      <AdminMasterHeader title="Ao vivo" subtitle="Quem está usando o sistema agora (sessões ativas nos últimos 10 minutos).">
+        <span v-if="monitorLastUpdated" class="am-sub !mt-0">Atualizado às {{ monitorLastUpdated }}</span>
+        <button type="button" class="am-btn" :disabled="onlineSessionsLoading" @click="loadOnlineSessions(true)">
+          <AmIcon name="refresh" :class="onlineSessionsLoading ? 'animate-spin' : ''" />
+          {{ onlineSessionsLoading ? "Atualizando..." : "Atualizar" }}
+        </button>
+      </AdminMasterHeader>
 
-        <div class="mt-4">
-          <div
-            class="rounded-2xl border border-slate-100 bg-slate-50 p-4 text-slate-800 shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-white flex flex-wrap gap-6"
-          >
-            <div class="min-w-[180px] flex-1">
-              <p class="text-xs uppercase tracking-[0.3em] text-slate-500 dark:text-white/60">Usuários únicos</p>
-              <p class="mt-2 text-3xl font-bold">{{ onlineSessionsMeta?.unique_users ?? 0 }}</p>
-            </div>
-            <div class="min-w-[180px] flex-1">
-              <p class="text-xs uppercase tracking-[0.3em] text-slate-500 dark:text-white/60">Status do monitor</p>
-              <p class="mt-2 text-3xl font-bold">{{ monitorStatusLabel }}</p>
-            </div>
-          </div>
-        </div>
+      <section class="am-grid-4">
+        <AdminMasterKpi icon="pulse" tone="success" label="Online agora" :value="formatInt(onlineSessionsMeta?.unique_users ?? 0)" :hint="`${formatInt(onlineSessionsMeta?.total_online ?? 0)} sessões abertas`" />
+        <AdminMasterKpi icon="monitor" tone="info" label="No computador" :value="formatInt(monitorDeviceSplit.desktop)" :hint="`${formatInt(monitorDeviceSplit.mobile)} no celular`" />
+        <AdminMasterKpi icon="pages" tone="violet" label="No editor de página" :value="formatInt(monitorInEditor)" hint="Editando uma página agora" />
+        <AdminMasterKpi icon="history" tone="neutral" label="Monitor" :value="monitorStatusLabel" hint="Atualiza sozinho a cada 20 segundos" />
+      </section>
 
-        <div class="mt-6 space-y-4">
-          <div
-            v-if="onlineSessionsLoading && !onlineSessions.length"
-            class="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500 dark:border-white/15 dark:text-white/70"
-          >
-            Carregando sessões ativas...
-          </div>
-          <div
-            v-else-if="onlineSessionsError"
-            class="rounded-2xl border border-red-200 bg-red-50 p-6 text-center text-sm font-semibold text-red-600 dark:border-red-400/40 dark:bg-red-500/10 dark:text-red-200"
-          >
-            {{ onlineSessionsError }}
-          </div>
-          <div
-            v-else-if="!onlineSessions.length"
-            class="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500 dark:border-white/15 dark:text-white/70"
-          >
-            Nenhum usuário está online neste momento.
-          </div>
-          <div v-else class="grid gap-4 lg:grid-cols-2">
-            <article
-              v-for="session in onlineSessions"
-              :key="session.session_id"
-              class="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#05070f]"
-            >
-              <div class="flex flex-wrap items-center justify-between gap-3">
-                <div class="flex items-center gap-3">
-                  <div
-                    class="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-base font-semibold text-slate-700 dark:bg-white/10 dark:text-white"
+      <section class="am-card am-card-flush">
+        <div v-if="onlineSessionsLoading && !onlineSessions.length" class="am-empty">
+          <div class="am-spinner"></div>
+          Carregando sessões ativas...
+        </div>
+        <div v-else-if="onlineSessionsError" class="am-empty !text-status-danger-foreground">{{ onlineSessionsError }}</div>
+        <div v-else-if="!onlineSessions.length" class="am-empty">Ninguém está online neste momento.</div>
+        <div v-else class="am-table-wrap">
+          <table class="am-table">
+            <thead>
+              <tr>
+                <th>Pessoa</th>
+                <th>Plano</th>
+                <th>Onde está</th>
+                <th>Dispositivo</th>
+                <th>Última ação</th>
+                <th>Na sessão</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="session in onlineSessions" :key="session.session_id">
+                <td>
+                  <div class="am-who">
+                    <span class="am-avatar relative">
+                      {{ initials(session.user_name) }}
+                      <i class="absolute -bottom-px -right-px h-2.5 w-2.5 rounded-full border-2 border-card bg-status-success-foreground"></i>
+                    </span>
+                    <div class="min-w-0">
+                      <b class="truncate">{{ session.user_name }}</b>
+                      <small class="truncate">{{ session.user_email }}</small>
+                    </div>
+                  </div>
+                </td>
+                <td><span class="am-badge" :class="planToneClass(session.user_plan)">{{ planLabel(session.user_plan) }}</span></td>
+                <td>
+                  <b class="font-semibold">{{ pathLabel(session.last_path) }}</b>
+                  <div v-if="session.last_path" class="am-mono am-muted max-w-[260px] truncate">{{ session.last_path }}</div>
+                </td>
+                <td>
+                  {{ session.device_label || "Desconhecido" }}<span v-if="session.client_name"> · {{ session.client_name }}</span>
+                  <span v-if="session.active_sessions > 1" class="am-badge am-tone-neutral ml-1">{{ session.active_sessions }} sessões</span>
+                  <div v-if="session.ip_address" class="am-mono am-muted">{{ session.ip_address }}</div>
+                </td>
+                <td class="am-num">{{ formatRelativeMoment(session.last_seen_at) }}</td>
+                <td class="am-num">{{ formatDurationSince(session.created_at) }}</td>
+                <td class="am-right">
+                  <button
+                    type="button"
+                    class="am-btn am-btn-sm"
+                    :disabled="revokingUserId === session.user_id"
+                    @click="revokeUserSessions(session)"
                   >
-                    {{ (session.user_name || "U").slice(0, 1).toUpperCase() }}
-                  </div>
-                  <div>
-                    <p class="text-base font-semibold text-slate-900 dark:text-white">{{ session.user_name }}</p>
-                    <p class="text-xs text-slate-500 dark:text-white/60">{{ session.user_email }}</p>
-                  </div>
-                </div>
-                <span
-                  class="inline-flex items-center rounded-full border border-slate-200 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-slate-600 dark:border-white/20 dark:text-white/80"
-                >
-                  {{ planLabel(session.user_plan) }}
-                </span>
-              </div>
-              <div class="mt-3 grid gap-3 text-sm text-slate-700 dark:text-white/80 md:grid-cols-2">
-                <div>
-                  <p class="text-[11px] uppercase tracking-[0.2em] text-slate-400 dark:text-white/50">Dispositivo</p>
-                  <p class="font-semibold">
-                    {{ session.device_label || "Desconhecido" }} | {{ session.client_name || "Navegador" }}
-                  </p>
-                </div>
-                <div>
-                  <p class="text-[11px] uppercase tracking-[0.2em] text-slate-400 dark:text-white/50">ltima atividade</p>
-                  <p class="font-semibold">
-                    {{ formatRelativeMoment(session.last_seen_at) }} há {{ formatClock(session.last_seen_at) }}
-                  </p>
-                </div>
-                <div>
-                  <p class="text-[11px] uppercase tracking-[0.2em] text-slate-400 dark:text-white/50">Origem</p>
-                  <p class="font-semibold">{{ session.ip_address || "IP não identificado" }}</p>
-                </div>
-                <div v-if="session.last_path">
-                  <p class="text-[11px] uppercase tracking-[0.2em] text-slate-400 dark:text-white/50">página atual</p>
-                  <p class="font-semibold break-all">{{ session.last_path }}</p>
-                </div>
-              </div>
-              <div class="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500 dark:text-white/70">
-                <span>{{ formatDurationSince(session.created_at) }}</span>
-                <span>{{ session.active_sessions }} {{ session.active_sessions === 1 ? "sessão" : "sessões" }}</span>
-                <button
-                  type="button"
-                  class="rounded-full border border-slate-200 px-4 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-white/30 dark:text-white dark:hover:bg-white/10"
-                  :disabled="revokingUserId === session.user_id"
-                  @click="revokeUserSessions(session)"
-                >
-                  {{ revokingUserId === session.user_id ? "Deslogando..." : "Deslogar usuário" }}
-                </button>
-              </div>
-            </article>
-          </div>
+                    <AmIcon name="logout" />
+                    {{ revokingUserId === session.user_id ? "Deslogando..." : "Deslogar" }}
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </section>
     </template>
 
     <!-- USERS -->
     <template v-else-if="activeTab === 'users'">
-      <section class="rounded-2xl bg-white p-6 shadow-md ring-1 ring-slate-100">
-        <div class="flex items-center justify-between">
-          <div>
-            <h2 class="text-lg font-semibold text-slate-900">Usuarios</h2>
-            <p class="text-sm text-slate-500">Plano, validade e data de entrada.</p>
-          </div>
+      <AdminMasterHeader title="Usuários" subtitle="Contas do Roteiro Online: plano, cobrança, validade e uso.">
+        <button type="button" class="am-btn am-btn-primary" @click="openCreateUserDialog">
+          <AmIcon name="plus" />
+          Criar usuário
+        </button>
+      </AdminMasterHeader>
+
+      <section class="am-card am-card-flush">
+        <div class="am-toolbar">
           <button
+            v-for="option in userQuickFilterOptions"
+            :key="option.id"
             type="button"
-            class="inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white shadow transition hover:bg-slate-800"
-            @click="openCreateUserDialog"
+            class="am-chip"
+            :class="{ on: userQuickFilter === option.id }"
+            @click="userQuickFilter = option.id"
           >
-            <span class="text-lg leading-none">+</span>
-            Criar usuário
+            {{ option.label }}
+            <span class="am-count am-num">{{ formatInt(userQuickFilterCounts[option.id]) }}</span>
           </button>
         </div>
+        <div class="am-toolbar">
+          <label class="am-search">
+            <AmIcon name="search" />
+            <input v-model="userFilters.name" type="search" placeholder="Buscar por nome ou e-mail" aria-label="Buscar usuário" />
+          </label>
+          <select v-model="userPlanSelect" class="am-select" aria-label="Filtrar por plano">
+            <option value="">Plano: todos</option>
+            <option v-for="plan in userPlanOptions" :key="plan" :value="plan">{{ planLabel(plan) }}</option>
+          </select>
+          <select v-model="userGatewaySelect" class="am-select" aria-label="Filtrar por cobrança">
+            <option value="">Cobrança: todas</option>
+            <option v-for="gateway in userGatewayOptions" :key="gateway" :value="gateway">
+              {{ gateway === "__none" ? "Sem cobrança" : gatewayLabel(gateway) }}
+            </option>
+          </select>
+          <button type="button" class="am-chip" :class="{ on: showMoreUserFilters || moreUserFiltersActive }" @click="showMoreUserFilters = !showMoreUserFilters">
+            Mais filtros
+            <span v-if="moreUserFiltersActive" class="am-count">ativos</span>
+          </button>
+        </div>
+        <div v-if="showMoreUserFilters" class="am-toolbar grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div class="am-field">
+            <label for="am-f-whats">WhatsApp</label>
+            <input id="am-f-whats" v-model="userFilters.whatsapp" type="text" class="am-input" placeholder="Telefone" />
+          </div>
+          <div class="am-field">
+            <label for="am-f-agency">Agência</label>
+            <select id="am-f-agency" v-model="userAgencySelect" class="am-input">
+              <option value="">Todas</option>
+              <option v-for="option in agencyFilterOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+            </select>
+          </div>
+          <div class="am-field">
+            <label>Páginas publicadas</label>
+            <div class="flex gap-2">
+              <input v-model="userFilters.activeMin" type="number" min="0" class="am-input" placeholder="Mín." aria-label="Mínimo de páginas publicadas" />
+              <input v-model="userFilters.activeMax" type="number" min="0" class="am-input" placeholder="Máx." aria-label="Máximo de páginas publicadas" />
+            </div>
+          </div>
+          <div class="am-field">
+            <label>Rascunhos</label>
+            <div class="flex gap-2">
+              <input v-model="userFilters.draftMin" type="number" min="0" class="am-input" placeholder="Mín." aria-label="Mínimo de rascunhos" />
+              <input v-model="userFilters.draftMax" type="number" min="0" class="am-input" placeholder="Máx." aria-label="Máximo de rascunhos" />
+            </div>
+          </div>
+          <div class="am-field">
+            <label>Validade entre</label>
+            <div class="flex gap-2">
+              <input v-model="userFilters.validFrom" type="date" class="am-input" aria-label="Validade a partir de" />
+              <input v-model="userFilters.validTo" type="date" class="am-input" aria-label="Validade até" />
+            </div>
+          </div>
+          <div class="am-field">
+            <label>Entrou entre</label>
+            <div class="flex gap-2">
+              <input v-model="userFilters.createdFrom" type="date" class="am-input" aria-label="Entrou a partir de" />
+              <input v-model="userFilters.createdTo" type="date" class="am-input" aria-label="Entrou até" />
+            </div>
+          </div>
+          <div class="flex items-end">
+            <button type="button" class="am-btn am-btn-sm" @click="clearAllUserFilters">Limpar filtros</button>
+          </div>
+        </div>
 
-        <div class="mt-4 overflow-x-auto">
-          <table class="min-w-full table-fixed text-sm text-slate-800 divide-y divide-slate-100 interactive-table">
-            <thead class="bg-slate-50 text-left text-slate-600">
+        <div class="am-table-wrap">
+          <table class="am-table interactive-table">
+            <thead>
               <tr>
-                <th
-                  v-for="column in userTableColumns"
-                  :key="column.key"
-                  class="px-3 py-2"
-                  :class="column.widthClass"
-                >
-                  <div
-                    class="relative flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500"
-                    :class="column.key === 'active_pages' || column.key === 'draft_pages'
-                      ? 'justify-center text-center'
-                      : column.align === 'right'
-                        ? 'justify-end text-right'
-                        : 'text-left'"
-                    :data-column-filter="column.key"
+                <th v-for="column in userListColumns" :key="column.key" :class="column.class">
+                  <button
+                    v-if="column.sort"
+                    type="button"
+                    class="inline-flex items-center gap-1 uppercase"
+                    @click="toggleColumnSort(column.sort)"
                   >
-                    <button
-                      class="flex items-center gap-1 text-left"
-                      :class="column.sortable ? 'cursor-pointer select-none' : ''"
-                      type="button"
-                      @click.stop="column.sortable && toggleColumnSort(column.key)"
-                    >
-                      <span>{{ column.label }}</span>
-                      <span v-if="column.sortable" class="flex flex-col text-[10px] leading-3 text-slate-400">
-                        <svg
-                          class="h-3 w-3"
-                          :class="userSort.key === column.key && userSort.direction === 'desc' ? 'text-slate-900' : ''"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="2"
-                        >
-                          <path d="m6 9 6-6 6 6" stroke-linecap="round" stroke-linejoin="round" />
-                        </svg>
-                        <svg
-                          class="h-3 w-3 -mt-0.5"
-                          :class="userSort.key === column.key && userSort.direction === 'asc' ? 'text-slate-900' : ''"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="2"
-                        >
-                          <path d="m6 15 6 6 6-6" stroke-linecap="round" stroke-linejoin="round" />
-                        </svg>
-                      </span>
-                    </button>
-                    <button
-                      :ref="el => setFilterButtonRef(column.key, el as HTMLElement | null)"
-                      class="ml-auto inline-flex items-center justify-center rounded-full border px-2 py-1 text-[10px] font-semibold uppercase tracking-widest transition"
-                      :class="isFilterActive(column.key) ? 'border-emerald-400 bg-emerald-50 text-emerald-600' : 'border-slate-200 text-slate-400 hover:text-slate-600'"
-                      type="button"
-                      :data-column-filter="column.key"
-                      @click.stop="toggleColumnFilter(column.key, $event)"
-                    >
-                      <svg
-                        class="h-3.5 w-3.5"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                      >
-                        <path d="M4 5h16M7 12h10M10 19h4" stroke-linecap="round" />
-                      </svg>
-                    </button>
-                    <Teleport to="body" v-if="openFilterKey === column.key">
-                      <div
-                        class="fixed z-50 rounded-2xl border border-slate-200 bg-white/95 px-4 py-3 text-[11px] text-slate-600 shadow-[0_20px_45px_-25px_rgba(15,23,42,0.4)] backdrop-blur-sm"
-                        :data-column-filter="column.key"
-                        :style="filterPopoverStyle"
-                        @click.stop
-                      >
-                      <template v-if="column.key === 'name'">
-                        <p class="text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-400">
-                          Filtrar nome
-                        </p>
-                        <input
-                          v-model="userFilters.name"
-                          type="text"
-                          placeholder="Nome ou email"
-                          class="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-emerald-500 focus:outline-none"
-                        />
-                        <div class="mt-3 flex justify-end gap-4 text-[10px] font-semibold uppercase tracking-[0.2em]">
-                          <button class="text-slate-400 hover:text-slate-600" type="button" @click="clearColumnFilter(column.key)">
-                            Limpar
-                          </button>
-                          <button class="text-emerald-600 hover:text-emerald-500" type="button" @click="toggleColumnFilter(column.key)">
-                            Fechar
-                          </button>
-                        </div>
-                      </template>
-                      <template v-else-if="column.key === 'whatsapp'">
-                        <p class="text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-400">
-                          Filtrar WhatsApp
-                        </p>
-                        <input
-                          v-model="userFilters.whatsapp"
-                          type="text"
-                          placeholder="Telefone"
-                          class="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-emerald-500 focus:outline-none"
-                        />
-                        <div class="mt-3 flex justify-end gap-4 text-[10px] font-semibold uppercase tracking-[0.2em]">
-                          <button class="text-slate-400 hover:text-slate-600" type="button" @click="clearColumnFilter(column.key)">
-                            Limpar
-                          </button>
-                          <button class="text-emerald-600 hover:text-emerald-500" type="button" @click="toggleColumnFilter(column.key)">
-                            Fechar
-                          </button>
-                        </div>
-                      </template>
-                      <template v-else-if="column.key === 'agency_name'">
-                        <p class="text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-400">
-                          Agências
-                        </p>
-                        <input
-                          v-model="agencyFilterSearch"
-                          type="text"
-                          placeholder="Buscar agência"
-                          class="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:border-emerald-500 focus:outline-none"
-                        />
-                        <div class="mt-2 max-h-48 space-y-2 overflow-y-auto pr-1">
-                          <label
-                            v-for="option in filteredAgencyFilterOptions"
-                            :key="option.value"
-                            class="flex cursor-pointer items-center gap-2 text-[11px]"
-                          >
-                            <input
-                              v-model="userFilters.agencies"
-                              type="checkbox"
-                              :value="option.value"
-                              class="rounded border-slate-300 text-emerald-500 focus:ring-emerald-500"
-                            />
-                            <span>{{ option.label }}</span>
-                          </label>
-                          <p v-if="!filteredAgencyFilterOptions.length" class="text-[10px] text-slate-400">
-                            Nenhuma agência encontrada.
-                          </p>
-                        </div>
-                        <div class="mt-3 flex justify-end gap-4 text-[10px] font-semibold uppercase tracking-[0.2em]">
-                          <button class="text-slate-400 hover:text-slate-600" type="button" @click="clearColumnFilter(column.key)">
-                            Limpar
-                          </button>
-                          <button class="text-emerald-600 hover:text-emerald-500" type="button" @click="toggleColumnFilter(column.key)">
-                            Fechar
-                          </button>
-                        </div>
-                      </template>
-                      <template v-else-if="column.key === 'gateway'">
-                        <p class="text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-400">
-                          Gateway
-                        </p>
-                        <div class="mt-2 max-h-48 space-y-2 overflow-y-auto pr-1">
-                          <label
-                            v-for="gateway in userGatewayOptions"
-                            :key="gateway"
-                            class="flex cursor-pointer items-center gap-2 text-[11px]"
-                          >
-                            <input
-                              v-model="userFilters.gateways"
-                              type="checkbox"
-                              :value="gateway"
-                              class="rounded border-slate-300 text-emerald-500 focus:ring-emerald-500"
-                            />
-                            <span>{{ gateway === "__none" ? "Sem provider" : gateway }}</span>
-                          </label>
-                          <p v-if="!userGatewayOptions.length" class="text-[10px] text-slate-400">Sem providers.</p>
-                        </div>
-                        <div class="mt-3 flex justify-end gap-4 text-[10px] font-semibold uppercase tracking-[0.2em]">
-                          <button class="text-slate-400 hover:text-slate-600" type="button" @click="clearColumnFilter(column.key)">
-                            Limpar
-                          </button>
-                          <button class="text-emerald-600 hover:text-emerald-500" type="button" @click="toggleColumnFilter(column.key)">
-                            Fechar
-                          </button>
-                        </div>
-                      </template>
-                      <template v-else-if="column.key === 'plan'">
-                        <p class="text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-400">
-                          Planos
-                        </p>
-                        <div class="mt-2 max-h-48 space-y-2 overflow-y-auto pr-1">
-                          <label
-                            v-for="plan in userPlanOptions"
-                            :key="plan"
-                            class="flex cursor-pointer items-center gap-2 text-[11px]"
-                          >
-                            <input
-                              v-model="userFilters.plans"
-                              type="checkbox"
-                              :value="plan"
-                              class="rounded border-slate-300 text-emerald-500 focus:ring-emerald-500"
-                            />
-                            <span>{{ planLabel(plan) }}</span>
-                          </label>
-                          <p v-if="!userPlanOptions.length" class="text-[10px] text-slate-400">Sem planos.</p>
-                        </div>
-                        <div class="mt-3 flex justify-end gap-4 text-[10px] font-semibold uppercase tracking-[0.2em]">
-                          <button class="text-slate-400 hover:text-slate-600" type="button" @click="clearColumnFilter(column.key)">
-                            Limpar
-                          </button>
-                          <button class="text-emerald-600 hover:text-emerald-500" type="button" @click="toggleColumnFilter(column.key)">
-                            Fechar
-                          </button>
-                        </div>
-                      </template>
-                      <template v-else-if="column.key === 'active_pages'">
-                        <p class="text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-400">
-                          Qtde. páginas ativas
-                        </p>
-                        <div class="mt-2 flex gap-2">
-                          <input
-                            v-model="userFilters.activeMin"
-                            type="number"
-                            placeholder="Min"
-                            class="w-1/2 rounded-xl border border-slate-200 px-2 py-1 focus:border-emerald-500 focus:outline-none"
-                          />
-                          <input
-                            v-model="userFilters.activeMax"
-                            type="number"
-                            placeholder="Máx"
-                            class="w-1/2 rounded-xl border border-slate-200 px-2 py-1 focus:border-emerald-500 focus:outline-none"
-                          />
-                        </div>
-                        <div class="mt-3 flex justify-end gap-4 text-[10px] font-semibold uppercase tracking-[0.2em]">
-                          <button class="text-slate-400 hover:text-slate-600" type="button" @click="clearColumnFilter(column.key)">
-                            Limpar
-                          </button>
-                          <button class="text-emerald-600 hover:text-emerald-500" type="button" @click="toggleColumnFilter(column.key)">
-                            Fechar
-                          </button>
-                        </div>
-                      </template>
-                      <template v-else-if="column.key === 'draft_pages'">
-                        <p class="text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-400">
-                          Qtde. páginas rascunho
-                        </p>
-                        <div class="mt-2 flex gap-2">
-                          <input
-                            v-model="userFilters.draftMin"
-                            type="number"
-                            placeholder="Min"
-                            class="w-1/2 rounded-xl border border-slate-200 px-2 py-1 focus:border-emerald-500 focus:outline-none"
-                          />
-                          <input
-                            v-model="userFilters.draftMax"
-                            type="number"
-                            placeholder="Máx"
-                            class="w-1/2 rounded-xl border border-slate-200 px-2 py-1 focus:border-emerald-500 focus:outline-none"
-                          />
-                        </div>
-                        <div class="mt-3 flex justify-end gap-4 text-[10px] font-semibold uppercase tracking-[0.2em]">
-                          <button class="text-slate-400 hover:text-slate-600" type="button" @click="clearColumnFilter(column.key)">
-                            Limpar
-                          </button>
-                          <button class="text-emerald-600 hover:text-emerald-500" type="button" @click="toggleColumnFilter(column.key)">
-                            Fechar
-                          </button>
-                        </div>
-                      </template>
-                      <template v-else-if="column.key === 'valid_until'">
-                        <p class="text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-400">
-                          Validade (intervalo)
-                        </p>
-                        <div class="mt-2 space-y-2">
-                          <input
-                            v-model="userFilters.validFrom"
-                            type="date"
-                            class="w-full rounded-xl border border-slate-200 px-2 py-1 focus:border-emerald-500 focus:outline-none"
-                          />
-                          <input
-                            v-model="userFilters.validTo"
-                            type="date"
-                            class="w-full rounded-xl border border-slate-200 px-2 py-1 focus:border-emerald-500 focus:outline-none"
-                          />
-                        </div>
-                        <div class="mt-3 flex justify-end gap-4 text-[10px] font-semibold uppercase tracking-[0.2em]">
-                          <button class="text-slate-400 hover:text-slate-600" type="button" @click="clearColumnFilter(column.key)">
-                            Limpar
-                          </button>
-                          <button class="text-emerald-600 hover:text-emerald-500" type="button" @click="toggleColumnFilter(column.key)">
-                            Fechar
-                          </button>
-                        </div>
-                      </template>
-                      <template v-else-if="column.key === 'created_at'">
-                        <p class="text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-400">
-                          Entrada (intervalo)
-                        </p>
-                        <div class="mt-2 space-y-2">
-                          <input
-                            v-model="userFilters.createdFrom"
-                            type="date"
-                            class="w-full rounded-xl border border-slate-200 px-2 py-1 focus:border-emerald-500 focus:outline-none"
-                          />
-                          <input
-                            v-model="userFilters.createdTo"
-                            type="date"
-                            class="w-full rounded-xl border border-slate-200 px-2 py-1 focus:border-emerald-500 focus:outline-none"
-                          />
-                        </div>
-                        <div class="mt-3 flex justify-end gap-4 text-[10px] font-semibold uppercase tracking-[0.2em]">
-                          <button class="text-slate-400 hover:text-slate-600" type="button" @click="clearColumnFilter(column.key)">
-                            Limpar
-                          </button>
-                          <button class="text-emerald-600 hover:text-emerald-500" type="button" @click="toggleColumnFilter(column.key)">
-                            Fechar
-                          </button>
-                        </div>
-                      </template>
-                      </div>
-                    </Teleport>
-                  </div>
+                    {{ column.label }}
+                    <span v-if="userSort.key === column.sort" aria-hidden="true">{{ userSort.direction === "asc" ? "↑" : "↓" }}</span>
+                  </button>
+                  <span v-else>{{ column.label }}</span>
                 </th>
               </tr>
             </thead>
-
-            <tbody class="divide-y divide-slate-100">
+            <tbody>
               <template v-for="u in filteredUsers" :key="u.id">
-                <tr class="transition hover:bg-slate-50/70 dark:hover:bg-white/5" @click="toggleUserRow(u.id)">
-                  <td
-                    class="px-3 py-3"
-                    :class="userTableColumns[0].cellClass"
-                  >
-                    <div class="flex items-start gap-3">
-                      <button
-                        type="button"
-                        class="mt-1 rounded-full border border-slate-300 p-1 text-xs transition hover:bg-slate-100"
-                        @click.stop="toggleUserRow(u.id)"
-                      >
-                        <span
-                          :class="expandedUser === u.id ? 'rotate-90 inline-block transition' : 'inline-block transition'"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                          </svg>
-                        </span>
-                      </button>
-                      <div class="min-w-0 flex-1">
-                        <p class="truncate font-semibold text-slate-900">{{ u.name }}</p>
-                        <p class="truncate text-xs text-slate-500">{{ u.email }}</p>
+                <tr class="cursor-pointer" @click="toggleUserRow(u.id)">
+                  <td>
+                    <div class="am-who">
+                      <span class="am-avatar">{{ initials(u.name) }}</span>
+                      <div class="min-w-0">
+                        <b class="max-w-[220px] truncate">{{ u.name }}</b>
+                        <small class="max-w-[220px] truncate">{{ u.email }}</small>
                       </div>
                     </div>
                   </td>
-
-                  <td
-                    class="px-3 py-3"
-                    :class="userTableColumns[1].cellClass"
-                  >
-                    <span class="text-slate-800">{{ u.subscription_provider || "--" }}</span>
+                  <td>
+                    <span class="block max-w-[180px] truncate">{{ u.agency_name || "Sem agência" }}</span>
+                    <small v-if="u.whatsapp" class="am-muted block text-xs">{{ u.whatsapp }}</small>
                   </td>
-
-                  <td class="px-3 py-3">
-                    <span class="text-slate-800">{{ u.whatsapp || '--' }}</span>
+                  <td>
+                    <span class="am-badge" :class="planToneClass(u.plan)">{{ planLabel(u.plan) }}</span>
+                    <span v-if="u.trial_plan" class="am-badge am-tone-warning ml-1">Teste até {{ formatDate(u.trial_ends_at || undefined) }}</span>
                   </td>
-
-                  <td class="px-3 py-3">
-                    <span class="text-slate-800">{{ u.agency_name || 'Sem agência' }}</span>
+                  <td>{{ u.subscription_provider ? gatewayLabel(u.subscription_provider) : "—" }}</td>
+                  <td class="am-num">
+                    {{ formatInt(u.active_pages ?? 0) }} {{ (u.active_pages ?? 0) === 1 ? "publicada" : "publicadas" }}
+                    <span v-if="draftCount(u)" class="am-muted"> · {{ formatInt(draftCount(u)) }} {{ draftCount(u) === 1 ? "rascunho" : "rascunhos" }}</span>
                   </td>
-
-                  <td
-                    class="px-3 py-3 whitespace-nowrap text-center font-semibold text-slate-900"
-                    :class="userTableColumns[4].cellClass"
-                  >
-                    <div class="flex w-full justify-center">
-                      <span>{{ u.active_pages ?? 0 }}</span>
+                  <td class="am-num">
+                    <span v-if="validityState(u) === 'expired'" class="am-badge am-tone-danger">Vencido · {{ formatDate(u.valid_until) }}</span>
+                    <span v-else-if="validityState(u) === 'soon'" class="am-badge am-tone-warning">{{ formatDate(u.valid_until) }} · {{ daysLeftLabel(u.valid_until) }}</span>
+                    <span v-else>{{ u.valid_until ? formatDate(u.valid_until) : "—" }}</span>
+                  </td>
+                  <td class="am-num">{{ formatDate(u.created_at) }}</td>
+                  <td class="am-right" @click.stop>
+                    <div class="relative inline-block" data-row-menu="true">
+                      <button
+                        type="button"
+                        class="am-icon-btn"
+                        :aria-label="`Ações de ${u.name}`"
+                        :aria-expanded="rowMenuUserId === u.id"
+                        @click="rowMenuUserId = rowMenuUserId === u.id ? null : u.id"
+                      >
+                        <AmIcon name="dots" />
+                      </button>
+                      <div v-if="rowMenuUserId === u.id" class="am-menu right-0 top-full mt-1">
+                        <button type="button" @click="runUserMenu(() => (expandedUser = u.id))"><AmIcon name="eye" />Ver detalhes</button>
+                        <button type="button" @click="runUserMenu(() => openValidityDialog(u))"><AmIcon name="cal" />Alterar validade</button>
+                        <button v-if="!u.is_superuser" type="button" :disabled="granting === u.id || Boolean(u.trial_plan)" @click="runUserMenu(() => openTrialDialog(u))">
+                          <AmIcon name="history" />{{ u.trial_plan ? "Teste já ativo" : "Liberar 7 dias de teste" }}
+                        </button>
+                        <button type="button" :disabled="!u.agency_id || !agencyStore.currentAgencyId" @click="runUserMenu(() => openLinkPageDialog(u))"><AmIcon name="link" />Vincular página</button>
+                        <button v-if="canRefundUser(u)" type="button" :disabled="refundDialog.loading" @click="runUserMenu(() => openRefundDialog(u))"><AmIcon name="wallet" />Reembolsar</button>
+                        <button v-if="!u.is_superuser" type="button" class="is-danger" @click="runUserMenu(() => openDeleteDialog(u))"><AmIcon name="trash" />Excluir usuário</button>
+                      </div>
                     </div>
                   </td>
-
-                  <td
-                    class="px-3 py-3 whitespace-nowrap text-center font-semibold text-slate-900"
-                    :class="userTableColumns[5].cellClass"
-                  >
-                    <div class="flex w-full justify-center">
-                      <span>{{ u.draft_pages_count ?? 0 }}</span>
-                    </div>
-                  </td>
-
-                  <td class="px-3 py-3 capitalize">
-                    <span class="text-slate-800">{{ planLabel(u.plan) }}</span>
-                    <span
-                      v-if="u.trial_plan"
-                      class="ml-2 inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-700"
-                    >
-                      Trial até {{ formatDate(u.trial_ends_at) }}
-                    </span>
-                  </td>
-
-                  <td class="px-3 py-3">{{ formatDate(u.valid_until) }}</td>
-                  <td class="px-3 py-3 whitespace-nowrap">{{ formatDateTime(u.created_at) }}</td>
                 </tr>
 
-                <tr v-if="expandedUser === u.id">
-                  <td colspan="9" class="px-3 pb-4">
-                    <div
-                      class="rounded-2xl border border-slate-100 bg-slate-50/70 p-4 text-sm text-slate-800 shadow-inner dark:border-white/10 dark:bg-[#202020] dark:text-white dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]"
-                    >
-                      <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                        <div class="space-y-1 copyable">
-                          <p class="text-xs uppercase tracking-[0.3em] text-slate-500 dark:text-white/50">Contato</p>
+                <tr v-if="expandedUser === u.id" class="am-detail-row">
+                  <td colspan="8" class="!bg-transparent">
+                    <div class="am-user-detail">
+                      <div class="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                        <div class="copyable">
+                          <p class="am-eyebrow">Contato</p>
                           <p class="mt-1 font-semibold">{{ u.name }}</p>
-                          <p class="text-xs text-slate-500 dark:text-white/60">{{ u.email }}</p>
-                          <p class="text-xs text-slate-500 dark:text-white/60">{{ u.whatsapp || 'Sem telefone' }}</p>
+                          <p class="am-muted text-xs">{{ u.email }}</p>
+                          <p class="am-muted text-xs">{{ u.whatsapp || "Sem telefone" }}</p>
+                          <span v-if="u.is_superuser" class="am-badge am-tone-violet mt-2">Superusuário</span>
                         </div>
 
                         <div>
-                          <p class="text-xs uppercase tracking-[0.3em] text-slate-500 dark:text-white/50">Agência</p>
-                          <p class="mt-1 font-semibold">{{ u.agency_name || 'Não vinculada' }}</p>
-                          <p class="text-xs text-slate-500 dark:text-white/60">
-                            {{ u.active_pages ?? 0 }} páginas publicadas  Plano {{ planLabel(u.plan) }}
-                          </p>
+                          <p class="am-eyebrow">Agência</p>
+                          <p class="mt-1 font-semibold">{{ u.agency_name || "Não vinculada" }}</p>
+                          <p class="am-muted text-xs">{{ formatInt(u.active_pages ?? 0) }} páginas publicadas · Plano {{ planLabel(u.plan) }}</p>
                         </div>
 
-                        <div class="space-y-2">
-                          <p class="text-xs uppercase tracking-[0.3em] text-slate-500 dark:text-white/50">
-                            Assinatura {{ subscriptionProviderLabel(u) }}
+                        <div class="space-y-1.5">
+                          <p class="am-eyebrow">Assinatura</p>
+                          <p class="text-xs">
+                            <span class="am-muted">Situação:</span>
+                            <span class="font-semibold"> {{ formatSubscriptionStatus(u) }}</span>
                           </p>
-                          <p class="text-xs text-slate-500 dark:text-white/60">
-                            Status:
-                            <span class="font-semibold text-slate-800 dark:text-white">{{ formatSubscriptionStatus(u) }}</span>
+                          <p class="text-xs">
+                            <span class="am-muted">Cobrança:</span>
+                            <span class="font-semibold"> {{ subscriptionProviderLabel(u) }}</span>
                           </p>
-                          <p class="text-xs text-slate-500 dark:text-white/60">
-                            Provider:
-                            <span class="font-semibold text-slate-800 dark:text-white">{{ subscriptionProviderLabel(u) }}</span>
+                          <p class="text-xs">
+                            <span class="am-muted">ID:</span>
+                            <span class="am-mono"> {{ subscriptionProviderIdentifier(u) }}</span>
                           </p>
-                          <p class="text-xs text-slate-500 dark:text-white/60">
-                            ID:
-                            <span class="font-mono">{{ subscriptionProviderIdentifier(u) }}</span>
+                          <p v-if="isCancelAtPeriodEnd(u)" class="text-xs font-semibold text-status-warning-foreground">
+                            Cancelamento programado para {{ formatDate(u.valid_until) || "—" }}
                           </p>
-                          <p v-if="isCancelAtPeriodEnd(u)" class="text-xs font-semibold text-amber-600 dark:text-amber-300">
-                            Cancelamento programado para: {{ formatDate(u.valid_until) || "-" }}
-                          </p>
-                          <div class="grid gap-3 pt-1 sm:grid-cols-3">
-                            <div class="relative" data-subscription-action-menu="true">
-                              <button
-                                type="button"
-                                class="w-full rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
-                                @click.stop="toggleSubscriptionActionMenu(u.id, 'plan')"
-                              >
-                                Alterar plano
-                              </button>
-                              <div
-                                v-if="subscriptionActionMenu.open && subscriptionActionMenu.userId === u.id && subscriptionActionMenu.kind === 'plan'"
-                                class="absolute left-0 top-full z-30 mt-2 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-white/10 dark:bg-[#101010]"
-                              >
-                                <button
-                                  v-for="option in adminPlanOptions"
-                                  :key="option.value"
-                                  type="button"
-                                  class="flex w-full items-center justify-between gap-3 px-4 py-2 text-left text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:text-white dark:hover:bg-white/10"
-                                  @click.stop="openSubscriptionActionDialog(u, 'plan', option)"
-                                >
-                                  <span>{{ option.label }}</span>
-                                  <span
-                                    v-if="option.value === u.plan"
-                                    class="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-200"
-                                  >
-                                    Atual
-                                  </span>
-                                </button>
-                              </div>
-                            </div>
-
-                            <div class="relative" data-subscription-action-menu="true">
-                              <button
-                                type="button"
-                                class="w-full rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] font-semibold text-amber-700 transition hover:bg-amber-100 dark:border-amber-400/50 dark:bg-amber-500/10 dark:text-amber-100 dark:hover:bg-amber-500/20"
-                                @click.stop="toggleSubscriptionActionMenu(u.id, 'status')"
-                              >
-                                Alterar status
-                              </button>
-                              <div
-                                v-if="subscriptionActionMenu.open && subscriptionActionMenu.userId === u.id && subscriptionActionMenu.kind === 'status'"
-                                class="absolute left-0 top-full z-30 mt-2 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-white/10 dark:bg-[#101010]"
-                              >
-                                <button
-                                  v-for="option in adminSubscriptionStatusOptions"
-                                  :key="option.value"
-                                  type="button"
-                                  class="flex w-full items-center justify-between gap-3 px-4 py-2 text-left text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:text-white dark:hover:bg-white/10"
-                                  @click.stop="openSubscriptionActionDialog(u, 'status', option)"
-                                >
-                                  <span>{{ option.label }}</span>
-                                  <span
-                                    v-if="option.value === (u.subscription_status || '').toLowerCase()"
-                                    class="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-200"
-                                  >
-                                    Atual
-                                  </span>
-                                </button>
-                              </div>
-                            </div>
-
-                            <button
-                              type="button"
-                              class="w-full rounded-full border border-sky-200 bg-sky-50 px-3 py-1.5 text-[11px] font-semibold text-sky-700 transition hover:bg-sky-100 dark:border-sky-400/50 dark:bg-sky-500/10 dark:text-sky-100 dark:hover:bg-sky-500/20"
-                              @click.stop="openValidityDialog(u)"
-                            >
-                              Alterar validade
-                            </button>
-                          </div>
-                          <div class="flex flex-wrap gap-2 pt-1">
-                            <button
-                              class="rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-[11px] font-semibold text-red-700 transition hover:bg-red-100 disabled:opacity-60 dark:border-red-400/50 dark:bg-red-500/10 dark:text-red-100 dark:hover:bg-red-500/20"
-                              :disabled="adminAsaasActionLoadingUserId === u.id"
-                              @click.stop="adminCancelAsaasImmediate(u)"
-                            >
-                              {{ adminAsaasActionLoadingUserId === u.id ? "Processando..." : "Cancelamento imediato" }}
-                            </button>
-                            <button
-                              class="rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] font-semibold text-amber-700 transition hover:bg-amber-100 disabled:opacity-60 dark:border-amber-400/50 dark:bg-amber-500/10 dark:text-amber-100 dark:hover:bg-amber-500/20"
-                              :disabled="adminAsaasActionLoadingUserId === u.id || isCancelAtPeriodEnd(u)"
-                              @click.stop="adminScheduleAsaasCancelAtPeriodEnd(u)"
-                            >
-                              {{ isCancelAtPeriodEnd(u) ? "Cancelamento agendado" : "Cancelar no fim da validade" }}
-                            </button>
-                            <button
-                              v-if="isCancelAtPeriodEnd(u)"
-                              class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[11px] font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-60 dark:border-emerald-400/50 dark:bg-emerald-500/10 dark:text-emerald-100 dark:hover:bg-emerald-500/20"
-                              :disabled="adminAsaasActionLoadingUserId === u.id"
-                              @click.stop="adminCancelScheduledAsaasCancellation(u)"
-                            >
-                              Cancelar cancelamento programado
-                            </button>
-                          </div>
                         </div>
                       </div>
 
-                      <div class="mt-4">
-                        <p class="text-xs uppercase tracking-[0.3em] text-slate-500 dark:text-white/50">Origem / UTMs</p>
-                        <div
-                          v-if="u.tracking?.length"
-                          class="mt-2 space-y-3 rounded-2xl border border-white/40 bg-white/80 p-4 shadow-inner dark:border-white/5 dark:bg-[#05070F] dark:shadow-none"
-                        >
+                      <div class="mt-4 flex flex-wrap gap-2">
+                        <div class="relative" data-subscription-action-menu="true">
+                          <button type="button" class="am-btn am-btn-sm" @click.stop="toggleSubscriptionActionMenu(u.id, 'plan')">
+                            Alterar plano
+                            <AmIcon name="chevron" />
+                          </button>
                           <div
-                            v-for="entry in u.tracking"
-                            :key="entry.id"
-                            class="rounded-2xl border border-slate-200 bg-white/90 p-3 shadow-sm dark:border-white/10 dark:bg-[#05070F]"
+                            v-if="subscriptionActionMenu.open && subscriptionActionMenu.userId === u.id && subscriptionActionMenu.kind === 'plan'"
+                            class="am-menu left-0 top-full mt-1"
                           >
-                            <div class="flex flex-wrap gap-2">
-                              <span
-                                v-for="chip in buildUtmChips(entry)"
-                                :key="chip.label + chip.value"
-                                class="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold text-slate-600 dark:border-white/10 dark:bg-white/10 dark:text-white/80"
-                              >
-                                <span class="text-slate-400 dark:text-white/60">{{ chip.label }}:</span>
-                                <span class="text-slate-900 dark:text-white">{{ chip.value }}</span>
+                            <button
+                              v-for="option in adminPlanOptions"
+                              :key="option.value"
+                              type="button"
+                              class="justify-between"
+                              @click.stop="openSubscriptionActionDialog(u, 'plan', option)"
+                            >
+                              <span>{{ option.label }}</span>
+                              <span v-if="option.value === u.plan" class="am-badge am-tone-success">Atual</span>
+                            </button>
+                          </div>
+                        </div>
+                        <div class="relative" data-subscription-action-menu="true">
+                          <button type="button" class="am-btn am-btn-sm" @click.stop="toggleSubscriptionActionMenu(u.id, 'status')">
+                            Alterar situação
+                            <AmIcon name="chevron" />
+                          </button>
+                          <div
+                            v-if="subscriptionActionMenu.open && subscriptionActionMenu.userId === u.id && subscriptionActionMenu.kind === 'status'"
+                            class="am-menu left-0 top-full mt-1"
+                          >
+                            <button
+                              v-for="option in adminSubscriptionStatusOptions"
+                              :key="option.value"
+                              type="button"
+                              class="justify-between"
+                              @click.stop="openSubscriptionActionDialog(u, 'status', option)"
+                            >
+                              <span>{{ option.label }}</span>
+                              <span v-if="option.value === (u.subscription_status || '').toLowerCase()" class="am-badge am-tone-success">Atual</span>
+                            </button>
+                          </div>
+                        </div>
+                        <button type="button" class="am-btn am-btn-sm" @click.stop="openValidityDialog(u)">Alterar validade</button>
+                        <button
+                          type="button"
+                          class="am-btn am-btn-sm"
+                          :disabled="adminAsaasActionLoadingUserId === u.id || isCancelAtPeriodEnd(u)"
+                          @click.stop="adminScheduleAsaasCancelAtPeriodEnd(u)"
+                        >
+                          {{ isCancelAtPeriodEnd(u) ? "Cancelamento agendado" : "Cancelar no fim da validade" }}
+                        </button>
+                        <button
+                          v-if="isCancelAtPeriodEnd(u)"
+                          type="button"
+                          class="am-btn am-btn-sm"
+                          :disabled="adminAsaasActionLoadingUserId === u.id"
+                          @click.stop="adminCancelScheduledAsaasCancellation(u)"
+                        >
+                          Desfazer cancelamento programado
+                        </button>
+                        <button
+                          type="button"
+                          class="am-btn am-btn-sm am-btn-danger"
+                          :disabled="adminAsaasActionLoadingUserId === u.id"
+                          @click.stop="adminCancelAsaasImmediate(u)"
+                        >
+                          {{ adminAsaasActionLoadingUserId === u.id ? "Processando..." : "Cancelar agora" }}
+                        </button>
+                      </div>
+
+                      <div class="mt-5">
+                        <p class="am-eyebrow">Origem e UTMs</p>
+                        <div v-if="u.tracking?.length" class="mt-2 space-y-2">
+                          <div v-for="entry in u.tracking" :key="entry.id" class="rounded-xl border border-border p-3">
+                            <div class="flex flex-wrap gap-1.5">
+                              <span v-for="chip in buildUtmChips(entry)" :key="chip.label + chip.value" class="am-badge am-tone-neutral">
+                                <span class="am-muted">{{ chip.label }}:</span>{{ chip.value }}
                               </span>
                             </div>
-                            <p class="mt-2 text-[11px] text-slate-500 dark:text-white/60">
-                              Capturado em {{ formatDateTime(entry.created_at) || 'data desconhecida' }}
-                            </p>
+                            <p class="am-muted mt-2 text-[11px]">Capturado em {{ formatDateTime(entry.created_at) || "data desconhecida" }}</p>
                           </div>
                         </div>
-                        <p
-                          v-else
-                          class="mt-2 rounded-2xl border border-dashed border-slate-200 px-3 py-3 text-center text-xs text-slate-500 dark:border-white/10 dark:text-white/60"
-                        >
-                          Nenhuma informação de UTM registrada.
-                        </p>
+                        <p v-else class="am-muted mt-2 text-xs">Nenhuma UTM registrada.</p>
                       </div>
 
-                      <div class="mt-4 flex flex-wrap items-center gap-3">
-                        <button
-                          v-if="!u.is_superuser"
-                          :class="[
-                            'rounded-full border px-4 py-2 text-xs font-semibold text-slate-700 transition disabled:opacity-60',
-                            'border-slate-200 hover:bg-emerald-50 hover:text-emerald-700 dark:border-emerald-400/60 dark:text-emerald-100 dark:hover:bg-emerald-500/20'
-                          ]"
-                          :disabled="granting === u.id || Boolean(u.trial_plan)"
-                          @click.stop="openTrialDialog(u)"
-                        >
-                          {{ u.trial_plan ? 'Trial ativo' : 'Liberar 7 dias' }}
-                        </button>
-
-                        <button
-                          v-if="auth.user?.is_superuser"
-                          class="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 dark:border-white/10 dark:text-white dark:hover:bg-white/10"
-                          :disabled="!u.agency_id || !agencyStore.currentAgencyId"
-                          @click.stop="openLinkPageDialog(u)"
-                          :title="
-                            !agencyStore.currentAgencyId
-                              ? 'Selecione uma Agência de origem no painel'
-                              : !u.agency_id
-                                ? 'usuário sem Agência vinculada'
-                                : 'Vincular página pronta'
-                          "
-                        >
-                          Vincular página
-                        </button>
-
-                        <button
-                          v-if="canRefundUser(u)"
-                          class="rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-xs font-semibold text-amber-700 transition hover:bg-amber-100 disabled:opacity-60 dark:border-amber-400/60 dark:bg-amber-500/10 dark:text-amber-100 dark:hover:bg-amber-500/20"
-                          :disabled="refundDialog.loading"
-                          @click.stop="openRefundDialog(u)"
-                        >
-                          Reembolsar usuário
-                        </button>
-
-                        <button
-                          v-if="!u.is_superuser"
-                          class="rounded-full border border-red-200 bg-red-50 px-4 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-100 dark:border-red-500/60 dark:bg-red-500/10 dark:text-red-100 dark:hover:bg-red-500/20"
-                          @click.stop="openDeleteDialog(u)"
-                        >
-                          Excluir usuário
-                        </button>
-
-                        <span
-                          v-if="u.is_superuser"
-                          class="rounded-full bg-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 dark:bg-white/10 dark:text-white"
-                        >
-                          Superuser
-                        </span>
-                      </div>
-
-                      <div class="mt-6">
-                        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-white/50">páginas publicadas</p>
-
-                        <div
-                          v-if="u.published_pages?.length"
-                          class="mt-3 overflow-x-auto rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-[#05070F]"
-                        >
-                          <table class="min-w-full divide-y divide-slate-100 text-xs text-slate-700 interactive-table dark:divide-white/5 dark:text-white/80">
-                            <thead class="bg-slate-50 text-left text-slate-500 dark:bg-[#05070F] dark:text-white/60">
-                              <tr>
-                                <th class="px-3 py-2">Título</th>
-                                <th class="px-3 py-2">Slug</th>
-                                <th class="px-3 py-2 text-right">Visualizações</th>
-                                <th class="px-3 py-2 text-right">Cliques CTA</th>
-                                <th class="px-3 py-2 text-right">Ações</th>
-                              </tr>
-                            </thead>
-
-                            <tbody class="divide-y divide-slate-100 dark:divide-white/5">
-                              <tr v-for="page in u.published_pages" :key="page.id">
-                                <td class="px-3 py-2 font-semibold text-slate-900 dark:text-white">{{ page.title }}</td>
-                                <td class="px-3 py-2 text-[11px] text-slate-500 dark:text-white/60">/{{ page.slug }}</td>
-                                <td class="px-3 py-2 text-right font-semibold text-slate-900 dark:text-white">{{ page.total_visits ?? 0 }}</td>
-                                <td class="px-3 py-2 text-right font-semibold text-slate-900 dark:text-white">{{ page.total_cta_clicks ?? 0 }}</td>
-                                <td class="px-3 py-2">
-                                  <div class="flex justify-end gap-2">
+                      <div class="mt-5 grid gap-4 xl:grid-cols-2">
+                        <div>
+                          <p class="am-eyebrow">Páginas publicadas</p>
+                          <div v-if="u.published_pages?.length" class="mt-2 overflow-x-auto rounded-xl border border-border">
+                            <table class="am-table">
+                              <thead>
+                                <tr>
+                                  <th>Título</th>
+                                  <th class="am-right">Visitas</th>
+                                  <th class="am-right">Cliques</th>
+                                  <th></th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <tr v-for="page in u.published_pages" :key="page.id">
+                                  <td>
+                                    <b class="font-semibold">{{ page.title }}</b>
+                                    <div class="am-mono am-muted">/{{ page.slug }}</div>
+                                  </td>
+                                  <td class="am-right am-num">{{ formatInt(page.total_visits ?? 0) }}</td>
+                                  <td class="am-right am-num">{{ formatInt(page.total_cta_clicks ?? 0) }}</td>
+                                  <td class="am-right whitespace-nowrap">
+                                    <button type="button" class="am-btn am-btn-sm" @click.stop="viewPublishedPage(page)">Ver</button>
                                     <button
-                                      class="inline-flex items-center gap-1 rounded-full border border-slate-200 px-3 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-white/10 dark:text-white dark:hover:bg-white/10"
-                                      @click.stop="viewPublishedPage(page)"
-                                    >
-                                      Visualizar
-                                    </button>
-
-                                    <button
-                                      class="inline-flex items-center gap-1 rounded-full border border-slate-900/20 bg-slate-900/90 px-3 py-1 text-[11px] font-semibold text-white transition hover:bg-slate-900 disabled:opacity-60 dark:border-white/10 dark:bg-white/15 dark:text-white dark:hover:bg-white/25"
+                                      type="button"
+                                      class="am-btn am-btn-sm am-btn-primary ml-1"
                                       :disabled="savingPageId === page.id || !agencyStore.currentAgencyId"
                                       @click.stop="clonePublishedPage(u, page)"
                                     >
-                                      {{ savingPageId === page.id ? 'Salvando...' : 'Salvar' }}
+                                      {{ savingPageId === page.id ? "Copiando..." : "Copiar para mim" }}
                                     </button>
-                                  </div>
-                                </td>
-                              </tr>
-                            </tbody>
-                          </table>
+                                  </td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+                          <p v-else class="am-muted mt-2 text-xs">Nenhuma página publicada ainda.</p>
                         </div>
-
-                        <p
-                          v-else
-                          class="mt-3 rounded-xl border border-dashed border-slate-200 px-3 py-4 text-center text-xs text-slate-500 dark:border-white/10 dark:text-white/60"
-                        >
-                          Nenhuma página publicada ainda.
-                        </p>
-                      </div>
-
-                      <div class="mt-6">
-                        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-white/50">páginas em rascunho</p>
-
-                        <div
-                          v-if="u.draft_pages?.length"
-                          class="mt-3 overflow-x-auto rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-[#05070F]"
-                        >
-                          <table class="min-w-full divide-y divide-slate-100 text-xs text-slate-700 interactive-table dark:divide-white/5 dark:text-white/80">
-                            <thead class="bg-slate-50 text-left text-slate-500 dark:bg-[#05070F] dark:text-white/60">
-                              <tr>
-                                <th class="px-3 py-2">Título</th>
-                                <th class="px-3 py-2">Slug</th>
-                                <th class="px-3 py-2 text-right">Ações</th>
-                              </tr>
-                            </thead>
-
-                            <tbody class="divide-y divide-slate-100 dark:divide-white/5">
-                              <tr v-for="page in u.draft_pages" :key="page.id">
-                                <td class="px-3 py-2 font-semibold text-slate-900 dark:text-white">{{ page.title }}</td>
-                                <td class="px-3 py-2 text-[11px] text-slate-500 dark:text-white/60">/{{ page.slug }}</td>
-                                <td class="px-3 py-2">
-                                  <div class="flex justify-end">
-                                    <button
-                                      class="inline-flex items-center gap-1 rounded-full border border-slate-200 px-3 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-white/10 dark:text-white dark:hover:bg-white/10"
-                                      @click.stop="goToPageEditor(page)"
-                                    >
-                                      Editar
-                                    </button>
-                                  </div>
-                                </td>
-                              </tr>
-                            </tbody>
-                          </table>
+                        <div>
+                          <p class="am-eyebrow">Rascunhos</p>
+                          <div v-if="u.draft_pages?.length" class="mt-2 overflow-x-auto rounded-xl border border-border">
+                            <table class="am-table">
+                              <thead>
+                                <tr>
+                                  <th>Título</th>
+                                  <th></th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <tr v-for="page in u.draft_pages" :key="page.id">
+                                  <td>
+                                    <b class="font-semibold">{{ page.title }}</b>
+                                    <div class="am-mono am-muted">/{{ page.slug }}</div>
+                                  </td>
+                                  <td class="am-right">
+                                    <button type="button" class="am-btn am-btn-sm" @click.stop="goToPageEditor(page)">Editar</button>
+                                  </td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+                          <p v-else class="am-muted mt-2 text-xs">Nenhum rascunho.</p>
                         </div>
-
-                        <p
-                          v-else
-                          class="mt-3 rounded-xl border border-dashed border-slate-200 px-3 py-4 text-center text-xs text-slate-500 dark:border-white/10 dark:text-white/60"
-                        >
-                          Nenhum rascunho registrado.
-                        </p>
                       </div>
                     </div>
                   </td>
@@ -1109,53 +624,26 @@
               </template>
 
               <tr v-if="!filteredUsers.length">
-                <td colspan="9" class="px-3 py-4 text-center text-slate-500">
-                  Nenhum usuario encontrado.
-                </td>
+                <td colspan="8"><div class="am-empty">Nenhum usuário encontrado.</div></td>
               </tr>
             </tbody>
           </table>
+        </div>
 
-          <div class="mt-4 flex flex-wrap items-center justify-between gap-4 text-xs text-slate-500">
-            <p>
-              Mostrando
-              <span class="font-semibold text-slate-700">{{ userPageRange.start }}-{{ userPageRange.end }}</span>
-              de
-              <span class="font-semibold text-slate-700">{{ filteredUsersTotal }}</span>
-              usuários
-            </p>
-            <div class="flex flex-wrap items-center gap-3">
-              <label class="flex items-center gap-2">
-                Linhas
-                <select
-                  v-model.number="userPageSize"
-                  class="rounded-full border border-slate-200 px-3 py-1 text-xs focus:border-emerald-500 focus:outline-none"
-                >
-                  <option v-for="option in userPageSizeOptions" :key="option" :value="option">
-                    {{ option }}
-                  </option>
-                </select>
-              </label>
-              <div class="flex items-center gap-2">
-                <button
-                  class="rounded-full border border-slate-200 px-3 py-1 font-semibold text-slate-600 disabled:opacity-40"
-                  type="button"
-                  :disabled="userPage === 1"
-                  @click="userPage = Math.max(1, userPage - 1)"
-                >
-                  Anterior
-                </button>
-                <span>página {{ userPage }} de {{ totalUserPages }}</span>
-                <button
-                  class="rounded-full border border-slate-200 px-3 py-1 font-semibold text-slate-600 disabled:opacity-40"
-                  type="button"
-                  :disabled="userPage >= totalUserPages"
-                  @click="userPage = Math.min(totalUserPages, userPage + 1)"
-                >
-                  Próxima
-                </button>
-              </div>
-            </div>
+        <div class="am-foot">
+          <span>
+            Mostrando {{ formatInt(userPageRange.start) }}–{{ formatInt(userPageRange.end) }} de {{ formatInt(filteredUsersTotal) }}
+          </span>
+          <div class="flex flex-wrap items-center gap-2">
+            <label class="flex items-center gap-2">
+              Linhas
+              <select v-model.number="userPageSize" class="am-select">
+                <option v-for="option in userPageSizeOptions" :key="option" :value="option">{{ option }}</option>
+              </select>
+            </label>
+            <button type="button" class="am-chip" :disabled="userPage === 1" @click="userPage = Math.max(1, userPage - 1)">Anterior</button>
+            <span>Página {{ userPage }} de {{ totalUserPages }}</span>
+            <button type="button" class="am-chip" :disabled="userPage >= totalUserPages" @click="userPage = Math.min(totalUserPages, userPage + 1)">Próxima</button>
           </div>
         </div>
       </section>
@@ -1163,638 +651,303 @@
 
     <!-- LESSONS -->
     <template v-else-if="activeTab === 'lessons'">
-      <section class="rounded-3xl bg-white p-6 shadow-md ring-1 ring-slate-100 dark:bg-[#181818] dark:text-white dark:ring-white/10">
-        <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <p class="text-xs uppercase tracking-[0.4em] text-slate-500 dark:text-white/60">Conteúdo exclusivo</p>
-            <h2 class="text-2xl font-bold text-slate-900 dark:text-white">Gerenciar aulas</h2>
-            <p class="text-sm text-slate-500 dark:text-white/70">As aulas cadastradas aqui aparecem para todos os administradores na aba "Aulas".</p>
-          </div>
+      <AdminMasterHeader title="Aulas" subtitle="As aulas aparecem para todas as agências em Aprender › Aulas.">
+        <button type="button" class="am-btn" :disabled="resettingLessons" @click="handleResetLessons"><AmIcon name="undo" />Restaurar padrão</button>
+        <button type="button" class="am-btn am-btn-primary" @click="openNewLesson()"><AmIcon name="plus" />Nova aula</button>
+      </AdminMasterHeader>
 
-          <div class="flex flex-wrap gap-2">
-            <button
-              type="button"
-              class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-white/20 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
-              @click="resetLessonForm"
-            >
-              Nova aula
-            </button>
+      <section class="am-grid-3">
+        <AdminMasterKpi icon="video" tone="success" label="Aulas publicadas" :value="formatInt(adminLessons.length)" :hint="`em ${formatInt(lessonGroups.length)} ${lessonGroups.length === 1 ? 'módulo' : 'módulos'}`" />
+        <AdminMasterKpi icon="layout" tone="info" label="Com capa" :value="formatInt(adminLessons.filter(lesson => lesson.thumbnail).length)" hint="As outras usam a capa do vídeo" />
+        <AdminMasterKpi icon="play" tone="violet" label="Vídeos do YouTube" :value="formatInt(adminLessons.filter(lesson => lesson.videoType !== 'file').length)" :hint="`${formatInt(adminLessons.filter(lesson => lesson.videoType === 'file').length)} por arquivo ou link direto`" />
+      </section>
 
-            <button
-              type="button"
-              class="rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-70 dark:border-amber-400/60 dark:bg-amber-500/15 dark:text-amber-50 dark:hover:bg-amber-500/25"
-              :disabled="resettingLessons"
-              @click="handleResetLessons"
-            >
-              Restaurar padrão
-            </button>
-          </div>
-        </div>
-
-        <div class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
-          <div class="space-y-4">
-            <p
-              v-if="lessonsLoading"
-              class="rounded-2xl border border-dashed border-slate-200 p-5 text-center text-sm text-slate-500 dark:border-white/15 dark:text-white/60"
-            >
-              Carregando aulas...
-            </p>
-
-            <p
-              v-else-if="!adminLessons.length"
-              class="rounded-2xl border border-dashed border-slate-200 p-5 text-center text-sm text-slate-500 dark:border-white/15 dark:text-white/60"
-            >
-              Nenhuma aula cadastrada ainda.
-            </p>
-
-            <template v-else>
-              <section
-                v-for="group in lessonGroups"
-                :key="group.key"
-                class="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#181818] dark:text-white"
-              >
-                <div class="mb-4 flex items-start justify-between gap-3">
-                  <div>
-                    <h4 class="text-lg font-semibold text-slate-900 dark:text-white">{{ group.label }}</h4>
-                    <p class="text-sm text-slate-500 dark:text-white/60">{{ group.lessons.length }} aulas</p>
-                  </div>
-                  <p class="text-xs uppercase tracking-[0.3em] text-slate-400 dark:text-white/40">Use subir/descer</p>
-                </div>
-
-                <ul class="space-y-3">
-                  <li
-                    v-for="(lesson, index) in group.lessons"
-                    :key="lesson.id"
-                    class="rounded-2xl border border-slate-200 bg-slate-50 p-4 transition dark:border-white/10 dark:bg-[#101010]"
-                  >
-                    <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                      <div class="min-w-0 flex-1">
-                        <p class="text-xs uppercase tracking-[0.3em] text-slate-500 dark:text-white/60">
-                          {{ lesson.level || "Aula" }} Duração {{ lesson.duration || "Livre" }}
-                        </p>
-                        <h5 class="mt-2 text-base font-semibold text-slate-900 dark:text-white">{{ lesson.title }}</h5>
-                        <p class="mt-1 text-sm text-slate-600 dark:text-white/70">{{ lesson.description }}</p>
-                        <p class="mt-3 text-xs text-slate-500 dark:text-white/60">
-                          Fonte:
-                          <span class="font-semibold text-slate-700 dark:text-white">
-                            {{ lesson.videoType === "file" ? "Arquivo/URL direto" : "Embed/YouTube" }}
-                          </span>
-                        </p>
-                      </div>
-
-                      <img v-if="lesson.thumbnail" :src="lesson.thumbnail" alt="" class="h-20 w-32 rounded-xl object-cover shadow-sm" />
-                    </div>
-
-                    <div class="mt-4 flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        class="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/15 dark:text-white dark:hover:bg-white/10"
-                        :disabled="index === 0 || lessonSaving"
-                        @click="moveLessonInGroup(group, index, -1)"
-                      >
-                        Subir
-                      </button>
-
-                      <button
-                        type="button"
-                        class="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/15 dark:text-white dark:hover:bg-white/10"
-                        :disabled="index === group.lessons.length - 1 || lessonSaving"
-                        @click="moveLessonInGroup(group, index, 1)"
-                      >
-                        Descer
-                      </button>
-
-                      <button
-                        type="button"
-                        class="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-white/15 dark:text-white dark:hover:bg-white/10"
-                        @click="startLessonEdit(lesson)"
-                      >
-                        Editar
-                      </button>
-
-                      <button
-                        type="button"
-                        class="inline-flex items-center gap-2 rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-red-400/50 dark:bg-red-500/15 dark:text-red-100 dark:hover:bg-red-500/25"
-                        :disabled="deletingLessonId === lesson.id"
-                        @click="deleteLesson(lesson.id)"
-                      >
-                        Excluir
-                      </button>
-                    </div>
-                  </li>
-                </ul>
-              </section>
-            </template>
-          </div>
-
-          <form class="lessons-form space-y-4 rounded-2xl bg-slate-50/70 p-5 dark:bg-[#181818] dark:border dark:border-white/15" @submit.prevent="saveLesson">
+      <div v-if="lessonsLoading" class="am-card am-empty"><div class="am-spinner"></div>Carregando aulas...</div>
+      <div v-else-if="!adminLessons.length" class="am-card am-empty">
+        Nenhuma aula cadastrada ainda.
+        <button type="button" class="am-btn am-btn-primary" @click="openNewLesson()"><AmIcon name="plus" />Nova aula</button>
+      </div>
+      <template v-else>
+        <section v-for="group in lessonGroups" :key="group.key" class="am-card am-card-flush">
+          <div class="am-toolbar justify-between">
             <div>
-              <p class="text-xs uppercase tracking-[0.3em] text-slate-500 dark:text-white/60">{{ isEditingLesson ? "Editando aula" : "Cadastrar nova aula" }}</p>
-              <h3 class="text-xl font-semibold text-slate-900 dark:text-white">{{ isEditingLesson ? "Atualizar conteúdo" : "Adicionar conteúdo" }}</h3>
-              <p class="text-sm text-slate-500 dark:text-white/70">Informe t?tulo, descri?o e o link ou iframe do v?deo.</p>
+              <h2 class="am-card-title">{{ group.label }}</h2>
+              <p class="am-card-sub">{{ group.lessons.length }} {{ group.lessons.length === 1 ? "aula" : "aulas" }} · use as setas para ordenar</p>
             </div>
-
-            <label class="block text-sm font-semibold text-slate-700 dark:text-white">
-              Título
-              <input
-                v-model="lessonForm.title"
-                type="text"
-                class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 focus:border-brand focus:ring-brand"
-                placeholder="Ex.: Dominando o editor"
-                required
-              />
-            </label>
-
-            <label class="block text-sm font-semibold text-slate-700 dark:text-white">
-              Descrição / legenda
-              <textarea
-                v-model="lessonForm.description"
-                rows="3"
-                class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 focus:border-brand focus:ring-brand dark:border-white/20 dark:bg-[#181818] dark:text-white dark:placeholder-white/70"
-                placeholder="Explique o que o usuário aprende nessa aula."
-              ></textarea>
-            </label>
-
-            <div class="grid gap-3 md:grid-cols-2">
-              <label class="block text-sm font-semibold text-slate-700 dark:text-white">
-                Módulo
-                <input
-                  v-model="lessonForm.moduleName"
-                  type="text"
-                  list="lesson-module-options"
-                  class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 focus:border-brand focus:ring-brand"
-                  placeholder="Ex.: Fundamentos do painel"
-                />
-                <datalist id="lesson-module-options">
-                  <option v-for="module in lessonModuleOptions" :key="module" :value="module"></option>
-                </datalist>
-              </label>
-
-              <label class="block text-sm font-semibold text-slate-700 dark:text-white">
-                Duração
-                <input
-                  v-model="lessonForm.duration"
-                  type="text"
-                  class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 focus:border-brand focus:ring-brand"
-                  placeholder="Ex.: 10:45"
-                />
-              </label>
-
-              <label class="block text-sm font-semibold text-slate-700 dark:text-white">
-                Nível
-                <input
-                  v-model="lessonForm.level"
-                  type="text"
-                  class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 focus:border-brand focus:ring-brand"
-                  placeholder="Fundamentos, Estratégia..."
-                />
-              </label>
-            </div>
-
-            <label class="block text-sm font-semibold text-slate-700 dark:text-white">
-              Thumbnail por link (opcional)
-              <input
-                v-model="lessonForm.thumbnailUrl"
-                type="url"
-                :disabled="Boolean(lessonForm.thumbnailData)"
-                class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 focus:border-brand focus:ring-brand disabled:cursor-not-allowed disabled:bg-slate-100"
-                placeholder="https://..."
-              />
-              <span v-if="lessonForm.thumbnailData" class="mt-1 block text-xs text-slate-500 dark:text-white/60">
-                Limpe a imagem enviada para editar o link.
-              </span>
-            </label>
-
-            <div class="upload-zone rounded-2xl border border-dashed border-slate-300 bg-white/70 p-4 dark:border-white/15">
-              <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-white/60">Upload opcional</p>
-
-              <div class="mt-2 flex flex-wrap items-center gap-3">
-                <input
-                  type="file"
-                  accept="image/*"
-                  @change="handleThumbnailUpload"
-                  class="text-sm text-slate-600 file:mr-3 file:rounded-full file:border file:border-slate-300 file:bg-slate-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-slate-700 hover:file:bg-slate-100 dark:text-white dark:file:border-white/30 dark:file:bg-white/10 dark:file:text-white dark:hover:file:bg-white/20"
-                />
-
-                <button
-                  v-if="lessonForm.thumbnailData"
-                  type="button"
-                  class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-white/15 dark:text-white dark:hover:bg-white/10"
-                  @click="clearThumbnailUpload"
-                >
-                  Remover imagem
+            <button type="button" class="am-btn am-btn-sm" @click="openNewLesson(group.key === '__default__' ? '' : group.label)"><AmIcon name="plus" />Aula neste módulo</button>
+          </div>
+          <div class="am-list">
+            <div v-for="(lesson, index) in group.lessons" :key="lesson.id" class="flex flex-wrap items-center gap-3 px-3.5 py-2.5">
+              <div class="flex flex-col">
+                <button type="button" class="am-icon-btn !h-6 !w-6" :disabled="index === 0 || lessonSaving" :aria-label="`Subir ${lesson.title}`" @click="moveLessonInGroup(group, index, -1)">
+                  <AmIcon name="chevron" class="rotate-180" />
+                </button>
+                <button type="button" class="am-icon-btn !h-6 !w-6" :disabled="index === group.lessons.length - 1 || lessonSaving" :aria-label="`Descer ${lesson.title}`" @click="moveLessonInGroup(group, index, 1)">
+                  <AmIcon name="chevron" />
                 </button>
               </div>
-
-              <p v-if="lessonForm.thumbnailUploadName" class="mt-2 text-xs text-slate-500 dark:text-white/60">
-                Selecionado: {{ lessonForm.thumbnailUploadName }}
-              </p>
-            </div>
-
-            <label class="block text-sm font-semibold text-slate-700 dark:text-white">
-              Link ou iframe do vídeo
-              <textarea
-                v-model="lessonForm.videoInput"
-                rows="3"
-                class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 focus:border-brand focus:ring-brand dark:border-white/20 dark:bg-[#181818] dark:text-white dark:placeholder-white/70"
-                placeholder="Cole o link do YouTube ou o iframe completo."
-                required
-              ></textarea>
-            </label>
-
-            <div v-if="lessonPreview.videoUrl" class="rounded-2xl border border-slate-200 bg-white p-3 dark:border-white/15 dark:bg-[#181818]">
-              <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Prévia</p>
-              <div class="mt-2 overflow-hidden rounded-xl">
-                <iframe
-                  v-if="lessonPreview.videoType !== 'file'"
-                  :src="lessonPreview.videoUrl"
-                  class="aspect-video w-full border-0"
-                  allowfullscreen
-                ></iframe>
-
-                <video v-else class="aspect-video w-full rounded-xl bg-black object-cover" controls>
-                  <source :src="lessonPreview.videoUrl" type="video/mp4" />
-                </video>
+              <div class="lesson-thumb">
+                <img v-if="lesson.thumbnail" :src="lesson.thumbnail" alt="" class="h-full w-full object-cover" />
+                <AmIcon v-else name="play" />
               </div>
-            </div>
-
-            <div class="flex flex-wrap gap-2">
-              <button
-                type="submit"
-                class="rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-                :disabled="lessonSaving"
-              >
-                {{
-                  lessonSaving
-                    ? isEditingLesson
-                      ? "Salvando..."
-                      : "Adicionando..."
-                    : isEditingLesson
-                      ? "Atualizar aula"
-                      : "Adicionar aula"
-                }}
-              </button>
-
-              <button
-                v-if="isEditingLesson"
-                type="button"
-                class="rounded-full border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                @click="resetLessonForm"
-              >
-                Cancelar edição
+              <div class="min-w-[180px] flex-1">
+                <b class="block font-semibold">{{ lesson.title }}</b>
+                <p class="am-card-sub !mt-0">
+                  {{ lesson.videoType === "file" ? "Arquivo ou link direto" : "YouTube" }}<template v-if="lesson.level"> · {{ lesson.level }}</template><template v-if="lesson.duration"> · {{ lesson.duration }}</template>
+                </p>
+              </div>
+              <button type="button" class="am-btn am-btn-sm" @click="openLessonEdit(lesson)"><AmIcon name="edit" />Editar</button>
+              <button type="button" class="am-icon-btn" :disabled="deletingLessonId === lesson.id" :aria-label="`Excluir ${lesson.title}`" @click="deleteLesson(lesson.id)">
+                <AmIcon name="trash" />
               </button>
             </div>
-          </form>
-        </div>
-      </section>
+          </div>
+        </section>
+      </template>
+
+      <AdminMasterDrawer
+        :open="lessonDrawerOpen"
+        :title="isEditingLesson ? 'Editar aula' : 'Nova aula'"
+        subtitle="Título, descrição e o link ou iframe do vídeo."
+        icon="video"
+        :width="600"
+        @close="closeLessonDrawer"
+      >
+        <form id="lesson-form" class="space-y-3.5" @submit.prevent="saveLesson">
+          <div class="am-field">
+            <label for="ls-title">Título</label>
+            <input id="ls-title" v-model="lessonForm.title" type="text" class="am-input" placeholder="Ex.: Dominando o editor" required />
+          </div>
+          <div class="am-field">
+            <label for="ls-desc">Descrição</label>
+            <textarea id="ls-desc" v-model="lessonForm.description" rows="3" class="am-input" placeholder="O que a pessoa aprende nessa aula"></textarea>
+          </div>
+          <div class="grid gap-3.5 sm:grid-cols-3">
+            <div class="am-field">
+              <label for="ls-module">Módulo</label>
+              <input id="ls-module" v-model="lessonForm.moduleName" type="text" list="lesson-module-options" class="am-input" placeholder="Ex.: Primeiros passos" />
+              <datalist id="lesson-module-options">
+                <option v-for="module in lessonModuleOptions" :key="module" :value="module"></option>
+              </datalist>
+            </div>
+            <div class="am-field">
+              <label for="ls-duration">Duração</label>
+              <input id="ls-duration" v-model="lessonForm.duration" type="text" class="am-input" placeholder="Ex.: 10:45" />
+            </div>
+            <div class="am-field">
+              <label for="ls-level">Nível</label>
+              <input id="ls-level" v-model="lessonForm.level" type="text" class="am-input" placeholder="Ex.: Iniciante" />
+            </div>
+          </div>
+          <div class="am-field">
+            <label for="ls-video">Link ou iframe do vídeo</label>
+            <textarea id="ls-video" v-model="lessonForm.videoInput" rows="2" class="am-input am-mono" placeholder="Cole o link do YouTube ou o iframe completo" required></textarea>
+          </div>
+          <div class="am-field">
+            <label for="ls-thumb">Capa por link <span class="font-normal text-muted-foreground">(opcional)</span></label>
+            <input id="ls-thumb" v-model="lessonForm.thumbnailUrl" type="url" :disabled="Boolean(lessonForm.thumbnailData)" class="am-input" placeholder="https://..." />
+            <p v-if="lessonForm.thumbnailData" class="am-card-sub">Remova a imagem enviada para usar um link.</p>
+          </div>
+          <div class="rounded-[14px] border border-dashed border-border p-3.5">
+            <p class="am-eyebrow">Ou envie uma imagem de capa</p>
+            <div class="mt-2 flex flex-wrap items-center gap-3">
+              <input type="file" accept="image/*" aria-label="Enviar capa da aula" @change="handleThumbnailUpload" />
+              <button v-if="lessonForm.thumbnailData" type="button" class="am-btn am-btn-sm" @click="clearThumbnailUpload">Remover imagem</button>
+            </div>
+            <p v-if="lessonForm.thumbnailUploadName" class="am-card-sub">Selecionada: {{ lessonForm.thumbnailUploadName }}</p>
+          </div>
+          <div v-if="lessonPreview.videoUrl">
+            <p class="am-eyebrow mb-2">Prévia</p>
+            <div class="overflow-hidden rounded-xl border border-border">
+              <iframe v-if="lessonPreview.videoType !== 'file'" :src="lessonPreview.videoUrl" class="aspect-video w-full border-0" allowfullscreen></iframe>
+              <video v-else class="aspect-video w-full bg-black object-cover" controls>
+                <source :src="lessonPreview.videoUrl" type="video/mp4" />
+              </video>
+            </div>
+          </div>
+        </form>
+        <template #footer>
+          <button type="button" class="am-btn" @click="closeLessonDrawer">Cancelar</button>
+          <button type="submit" form="lesson-form" class="am-btn am-btn-primary" :disabled="lessonSaving">
+            {{ lessonSaving ? "Salvando..." : isEditingLesson ? "Salvar aula" : "Adicionar aula" }}
+          </button>
+        </template>
+      </AdminMasterDrawer>
     </template>
 
     <!-- TEMPLATES -->
     <template v-else-if="activeTab === 'templates'">
-      <section class="rounded-3xl bg-white p-6 shadow-md ring-1 ring-slate-100 dark:bg-[#181818] dark:text-white dark:ring-white/10">
-        <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div class="flex-1">
-            <p class="text-xs uppercase tracking-[0.4em] text-slate-500 dark:text-white/60">Curadoria</p>
-            <h2 class="text-2xl font-bold text-slate-900 dark:text-white">Biblioteca de modelos</h2>
-            <p class="text-sm text-slate-500 dark:text-white/70">
-              Selecione uma Agência de origem para transformar páginas em modelos oficiais.
-            </p>
-          </div>
-          <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
-            <div data-template-agency-selector="true">
-              <label class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-white/60">Agência</label>
-              <div class="relative mt-1 w-64">
-                <input
-                  ref="templateAgencySearchInput"
-                  v-model="templateAgencySearch"
-                  type="text"
-                  placeholder="Buscar agência"
-                  class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 pr-10 text-sm text-slate-900 focus:border-brand focus:outline-none dark:border-white/15 dark:bg-[#101010] dark:text-white"
-                  @focus="handleTemplateAgencyInputFocus"
-                />
-                <button
-                  type="button"
-                  class="absolute inset-y-0 right-3 flex items-center text-slate-400 transition hover:text-slate-600 dark:hover:text-white"
-                  @click="toggleTemplateAgencyDropdown"
-                >
-                  <svg
-                    class="h-4 w-4 transition"
-                    :class="templateAgencyDropdownOpen ? 'rotate-180' : ''"
-                    viewBox="0 0 20 20"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.5"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <path d="M5 8l5 5 5-5" />
-                  </svg>
+      <AdminMasterHeader title="Modelos de página" subtitle="Modelos que as agências escolhem ao criar uma página nova.">
+        <button type="button" class="am-btn" :disabled="pageTemplatesLoading" @click="loadTemplates"><AmIcon name="refresh" />Atualizar</button>
+        <button type="button" class="am-btn am-btn-primary" @click="templatesTab = 'create'"><AmIcon name="plus" />Novo modelo</button>
+      </AdminMasterHeader>
+
+      <nav class="am-tabs" aria-label="Seções de modelos">
+        <button type="button" class="am-tab" :class="{ on: templatesTab === 'published' }" @click="templatesTab = 'published'">
+          Publicados <span class="am-count">{{ pageTemplates.length }}</span>
+        </button>
+        <button type="button" class="am-tab" :class="{ on: templatesTab === 'create' }" @click="templatesTab = 'create'">Criar a partir de uma página</button>
+      </nav>
+
+      <template v-if="templatesTab === 'published'">
+        <div v-if="pageTemplatesLoading" class="am-card am-empty"><div class="am-spinner"></div>Carregando modelos...</div>
+        <div v-else-if="pageTemplatesError" class="am-notice am-tone-danger"><AmIcon name="alert" /><span>{{ pageTemplatesError }}</span></div>
+        <div v-else-if="!pageTemplates.length" class="am-card am-empty">
+          Nenhum modelo publicado ainda.
+          <button type="button" class="am-btn am-btn-primary" @click="templatesTab = 'create'">Criar a partir de uma página</button>
+        </div>
+        <div v-else class="am-grid-3">
+          <article v-for="template in pageTemplates" :key="template.id" class="tpl-card">
+            <div class="tpl-cover" :style="templateCoverStyle(template)">
+              <span v-if="template.is_default" class="am-badge am-tone-success absolute left-2.5 top-2.5">Padrão</span>
+            </div>
+            <div class="p-3.5">
+              <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                  <b class="block truncate font-semibold">{{ template.name }}</b>
+                  <small class="am-mono am-muted block truncate">/{{ template.slug }}</small>
+                </div>
+                <div class="relative" data-template-menu="true">
+                  <button type="button" class="am-icon-btn" :aria-label="`Ações de ${template.name}`" @click="templateMenuId = templateMenuId === template.id ? null : template.id">
+                    <AmIcon name="dots" />
+                  </button>
+                  <div v-if="templateMenuId === template.id" class="am-menu right-0 top-full mt-1">
+                    <button type="button" @click="runTemplateMenu(() => openTemplatePreview(template))"><AmIcon name="eye" />Pré-visualizar</button>
+                    <button type="button" @click="runTemplateMenu(() => openTemplateEditDialog(template))"><AmIcon name="edit" />Editar nome e descrição</button>
+                    <button type="button" class="is-danger" :disabled="deletingTemplateId === template.id" @click="runTemplateMenu(() => handleDeleteTemplate(template))">
+                      <AmIcon name="trash" />{{ deletingTemplateId === template.id ? "Excluindo..." : "Excluir" }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <p class="am-card-sub line-clamp-2 min-h-[36px]">{{ template.description || "Sem descrição" }}</p>
+              <div class="mt-2.5 flex items-center justify-between">
+                <span class="am-card-sub !mt-0">{{ templateStats(template).enabledSections }} de {{ templateStats(template).totalSections }} seções ativas</span>
+                <button type="button" class="text-xs font-semibold text-primary" @click="openTemplatePreview(template)">Pré-visualizar</button>
+              </div>
+            </div>
+          </article>
+        </div>
+      </template>
+
+      <section v-else class="am-card am-card-flush">
+        <div class="am-toolbar">
+          <div class="relative w-full max-w-[320px]" data-template-agency-selector="true">
+            <label class="am-search">
+              <AmIcon name="search" />
+              <input
+                ref="templateAgencySearchInput"
+                v-model="templateAgencySearch"
+                type="search"
+                placeholder="Buscar a agência de origem"
+                aria-label="Buscar agência de origem"
+                @focus="handleTemplateAgencyInputFocus"
+              />
+              <button type="button" class="am-icon-btn !h-6 !w-6" aria-label="Abrir lista de agências" @click="toggleTemplateAgencyDropdown">
+                <AmIcon name="chevron" :class="templateAgencyDropdownOpen ? 'rotate-180' : ''" />
+              </button>
+            </label>
+            <div v-if="templateAgencyDropdownOpen" class="am-menu left-0 right-0 top-full mt-1 max-h-64 overflow-y-auto">
+              <p v-if="templateAgencyLoading" class="am-card-sub px-2.5 py-2">Buscando agências...</p>
+              <p v-else-if="templateAgencyError" class="px-2.5 py-2 text-sm text-status-danger-foreground">{{ templateAgencyError }}</p>
+              <template v-else-if="templateAgencyOptions.length">
+                <button v-for="agency in templateAgencyOptions" :key="agency.id" type="button" class="!items-start" @click="selectTemplateAgency(agency)">
+                  <span class="min-w-0">
+                    <b class="block truncate font-semibold">{{ agency.name }}</b>
+                    <small class="am-muted block text-xs">/{{ agency.slug }} · {{ agency.pages_count }} páginas</small>
+                  </span>
                 </button>
-                <div
-                  v-if="templateAgencyDropdownOpen"
-                  class="absolute left-0 right-0 z-30 mt-2 w-full rounded-2xl border border-slate-200 bg-white shadow-xl dark:border-white/15 dark:bg-[#101010]"
-                >
-                  <p v-if="templateAgencyLoading" class="px-4 py-3 text-sm text-slate-500 dark:text-white/70">Buscando Agências...</p>
-                  <p v-else-if="templateAgencyError" class="px-4 py-3 text-sm text-red-600 dark:text-red-200">{{ templateAgencyError }}</p>
-                  <ul
-                    v-else-if="templateAgencyOptions.length"
-                    class="max-h-60 divide-y divide-slate-100 overflow-y-auto py-1 dark:divide-white/5"
-                  >
-                    <li v-for="agency in templateAgencyOptions" :key="agency.id">
-                      <button
-                        type="button"
-                        class="flex w-full flex-col gap-0.5 px-4 py-2 text-left transition hover:bg-slate-50 dark:hover:bg-white/10"
-                        :class="agency.id === templateAgencyId ? 'bg-slate-50 dark:bg-white/5' : ''"
-                        @click="selectTemplateAgency(agency)"
-                      >
-                        <span class="text-sm font-semibold text-slate-900 dark:text-white">{{ agency.name }}</span>
-                        <span class="text-xs text-slate-500 dark:text-white/70">
-                          /{{ agency.slug }}  {{ agency.pages_count }} páginas
-                        </span>
-                      </button>
-                    </li>
-                  </ul>
-                  <p v-else class="px-4 py-3 text-sm text-slate-500 dark:text-white/70">Nenhuma Agência encontrada.</p>
-                </div>
-              </div>
+              </template>
+              <p v-else class="am-card-sub px-2.5 py-2">Nenhuma agência encontrada.</p>
             </div>
-            <button
-              type="button"
-              class="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-white/15 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
-              :disabled="templatePagesLoading || !templateAgencyId"
-              @click="loadTemplatePages"
-            >
-              Recarregar páginas
-            </button>
-            <button
-              type="button"
-              class="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-white/15 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
-              :disabled="pageTemplatesLoading"
-              @click="loadTemplates"
-            >
-              Atualizar modelos
-            </button>
           </div>
+          <span v-if="selectedTemplateAgency" class="am-chip on">{{ selectedTemplateAgency.name }}</span>
+          <button type="button" class="am-btn am-btn-sm ml-auto" :disabled="templatePagesLoading || !templateAgencyId" @click="loadTemplatePages">
+            <AmIcon name="refresh" />Recarregar páginas
+          </button>
         </div>
+
+        <div v-if="!templateAgencyId" class="am-empty">Escolha a agência de origem para listar as páginas dela.</div>
+        <div v-else-if="templatePagesLoading" class="am-empty"><div class="am-spinner"></div>Carregando páginas...</div>
+        <div v-else-if="templatePagesError" class="am-empty !text-status-danger-foreground">{{ templatePagesError }}</div>
+        <div v-else-if="!templatePages.length" class="am-empty">Essa agência não tem páginas.</div>
+        <div v-else class="am-table-wrap">
+          <table class="am-table">
+            <thead>
+              <tr>
+                <th>Página</th>
+                <th>Situação</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="page in templatePages" :key="page.id">
+                <td>
+                  <b class="font-semibold">{{ page.title }}</b>
+                  <small class="am-mono am-muted block">/{{ page.slug }}</small>
+                </td>
+                <td>
+                  <span class="am-badge" :class="page.status === 'published' ? 'am-tone-success' : 'am-tone-warning'">
+                    {{ page.status === "published" ? "Publicada" : "Rascunho" }}
+                  </span>
+                </td>
+                <td class="am-right whitespace-nowrap">
+                  <a v-if="templatePublicUrl(page)" :href="templatePublicUrl(page)" class="am-btn am-btn-sm" target="_blank" rel="noopener noreferrer">Ver página</a>
+                  <button type="button" class="am-btn am-btn-sm am-btn-primary ml-1.5" @click="openTemplateDialog(page)">Usar como modelo</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="am-foot"><span>Prefira páginas publicadas: elas já foram revisadas pela agência.</span></div>
       </section>
 
-      <section class="rounded-3xl bg-white p-6 shadow-md ring-1 ring-slate-100 dark:bg-[#181818] dark:text-white dark:ring-white/10">
-        <header class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p class="text-xs uppercase tracking-[0.4em] text-slate-500 dark:text-white/60">Origem</p>
-            <h3 class="text-xl font-semibold text-slate-900 dark:text-white">Roteiros disponíveis</h3>
-            <p class="text-sm text-slate-500 dark:text-white/70">
-              Escolha um roteiro pronto para salvar como modelo. Apenas páginas publicadas são recomendadas.
-            </p>
-          </div>
-          <span class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400 dark:text-white/60">
-            {{ templatePages.length }} páginas
-          </span>
-        </header>
-        <div class="mt-6">
-          <p v-if="!templateAgencyId" class="rounded-2xl border border-dashed border-slate-200 p-5 text-center text-sm text-slate-500 dark:border-white/15 dark:text-white/70">
-            Selecione uma Agência para listar as páginas disponíveis.
-          </p>
-          <p v-else-if="templatePagesLoading" class="rounded-2xl border border-dashed border-slate-200 p-5 text-center text-sm text-slate-500 dark:border-white/15 dark:text-white/70">
-            Carregando páginas...
-          </p>
-          <p v-else-if="templatePagesError" class="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-700 dark:border-red-400/40 dark:bg-red-500/10 dark:text-red-200">
-            {{ templatePagesError }}
-          </p>
-          <p v-else-if="!templatePages.length" class="rounded-2xl border border-dashed border-slate-200 p-5 text-center text-sm text-slate-500 dark:border-white/15 dark:text-white/70">
-            Nenhum roteiro encontrado para a Agência selecionada.
-          </p>
-          <div v-else class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-slate-100 text-sm dark:divide-white/5">
-              <thead>
-                <tr class="text-left text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-white/60">
-                  <th class="px-3 py-2">Título</th>
-                  <th class="px-3 py-2">Status</th>
-                  <th class="px-3 py-2">Slug</th>
-                  <th class="px-3 py-2 text-right">Ações</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-slate-100 dark:divide-white/5">
-                <tr v-for="page in templatePages" :key="page.id" class="text-slate-700 dark:text-white/80">
-                  <td class="px-3 py-3 font-semibold">{{ page.title }}</td>
-                  <td class="px-3 py-3">
-                    <span
-                      class="rounded-full px-3 py-1 text-xs font-semibold"
-                      :class="page.status === 'published' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-200' : 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-100'"
-                    >
-                      {{ page.status === 'published' ? 'Publicado' : 'Rascunho' }}
-                    </span>
-                  </td>
-                  <td class="px-3 py-3 text-sm text-slate-500 dark:text-white/60">/{{ page.slug }}</td>
-                  <td class="px-3 py-3">
-                    <div class="flex flex-wrap justify-end gap-2">
-                      <a
-                        v-if="templatePublicUrl(page)"
-                        :href="templatePublicUrl(page)"
-                        class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-white/15 dark:text-white"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        Visualizar
-                      </a>
-                      <button
-                        type="button"
-                        class="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-900"
-                        @click="openTemplateDialog(page)"
-                      >
-                        Adicionar como modelo
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
-      <section class="rounded-3xl bg-white p-6 shadow-md ring-1 ring-slate-100 dark:bg-[#181818] dark:text-white dark:ring-white/10">
-        <header class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p class="text-xs uppercase tracking-[0.4em] text-slate-500 dark:text-white/60">Coleção</p>
-            <h3 class="text-xl font-semibold text-slate-900 dark:text-white">Modelos publicados</h3>
-            <p class="text-sm text-slate-500 dark:text-white/70">
-              Utilize os modelos para acelerar a criação de novas páginas com identidade consistente.
-            </p>
-          </div>
-          <span class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400 dark:text-white/60">
-            {{ pageTemplates.length }} modelos
-          </span>
-        </header>
-        <div class="mt-6">
-          <p v-if="pageTemplatesLoading" class="rounded-2xl border border-dashed border-slate-200 p-5 text-center text-sm text-slate-500 dark:border-white/15 dark:text-white/70">
-            Carregando modelos...
-          </p>
-          <p v-else-if="pageTemplatesError" class="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-700 dark:border-red-400/40 dark:bg-red-500/10 dark:text-red-200">
-            {{ pageTemplatesError }}
-          </p>
-          <p v-else-if="!pageTemplates.length" class="rounded-2xl border border-dashed border-slate-200 p-5 text-center text-sm text-slate-500 dark:border-white/15 dark:text-white/70">
-            Nenhum modelo cadastrado ainda. Crie um usando os roteiros da sua rede.
-          </p>
-          <div v-else class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <article
-              v-for="template in pageTemplates"
-              :key="template.id"
-              class="flex flex-col rounded-2xl border border-slate-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg dark:border-white/10 dark:bg-[#1a1a1a]"
-            >
-              <div class="flex flex-1 flex-col p-4">
-                <div class="flex items-center gap-2">
-                  <h4 class="flex-1 text-lg font-semibold text-slate-900 dark:text-white">{{ template.name }}</h4>
-                  <span
-                    v-if="template.is_default"
-                    class="rounded-full bg-emerald-100 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-200"
-                  >
-                    Padrão
-                  </span>
-                </div>
-                <p class="mt-1 text-sm text-slate-500 dark:text-white/60">
-                  {{ template.description || "Sem descrição" }}
-                </p>
-                <div class="mt-3 flex flex-wrap gap-2 text-xs text-slate-500 dark:text-white/60">
-                  <span class="rounded-full bg-slate-100 px-3 py-1 dark:bg-white/10">
-                    {{ templateStats(template).enabledSections }} sessões ativas
-                  </span>
-                  <span class="rounded-full bg-slate-100 px-3 py-1 dark:bg-white/10">
-                    Total: {{ templateStats(template).totalSections }}
-                  </span>
-                </div>
-                <div class="mt-4 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-white/15 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
-                    @click="openTemplatePreview(template)"
-                  >
-                    Visualizar
-                  </button>
-                  <button
-                    type="button"
-                    class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-900"
-                    @click="openTemplateEditDialog(template)"
-                  >
-                    Editar
-                  </button>
-                  <button
-                    type="button"
-                    class="rounded-full border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50 dark:border-red-400/40 dark:bg-red-500/10 dark:text-red-200"
-                    :disabled="deletingTemplateId === template.id"
-                    @click="handleDeleteTemplate(template)"
-                  >
-                    {{ deletingTemplateId === template.id ? "Excluindo..." : "Excluir" }}
-                  </button>
-                </div>
-              </div>
-            </article>
-          </div>
-        </div>
-      </section>
-
-      <div
-        v-if="templateDialog.open"
-        class="app-modal-overlay fixed inset-0 z-40 flex items-center justify-center px-4 py-8"
-        @click.self="closeTemplateDialog"
+      <AdminMasterDrawer
+        :open="templateDialog.open"
+        :title="templateDialog.mode === 'edit' ? 'Editar modelo' : 'Novo modelo'"
+        :subtitle="templateDialog.mode === 'edit' ? 'Nome, identificador e descrição do modelo.' : 'Como o modelo aparece para as agências.'"
+        icon="layout"
+        tone="info"
+        @close="closeTemplateDialog"
       >
-        <div class="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl dark:bg-[#202020] dark:text-white">
-          <h3 class="text-xl font-semibold text-slate-900 dark:text-white">
-            {{ templateDialog.mode === "edit" ? "Editar modelo" : "Adicionar modelo" }}
-          </h3>
-          <p class="mt-1 text-sm text-slate-500 dark:text-white/70">
-            {{
-              templateDialog.mode === "edit"
-                ? "Atualize o nome, slug e descrição do modelo."
-                : "Defina o nome e o identificador público para este template."
-            }}
-          </p>
-          <div class="mt-4 space-y-3">
-            <div>
-              <label class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-white/60">Nome</label>
-              <input
-                v-model="templateDialog.name"
-                type="text"
-                class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm focus:border-brand focus:outline-none dark:border-white/15 dark:bg-[#101010] dark:text-white"
-              />
-            </div>
-            <div>
-              <label class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-white/60">Slug</label>
-              <input
-                v-model="templateDialog.slug"
-                type="text"
-                class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm focus:border-brand focus:outline-none dark:border-white/15 dark:bg-[#101010] dark:text-white"
-                @input="handleTemplateSlugInput"
-              />
-            </div>
-            <div>
-              <label class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-white/60">Descrição</label>
-              <textarea
-                v-model="templateDialog.description"
-                rows="3"
-                class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm focus:border-brand focus:outline-none dark:border-white/15 dark:bg-[#101010] dark:text-white"
-                placeholder="Resumo do que este modelo entrega"
-              ></textarea>
-            </div>
-            <p v-if="templateDialog.error" class="text-sm text-red-600 dark:text-red-300">
-              {{ templateDialog.error }}
-            </p>
+        <div class="space-y-3.5">
+          <div class="am-field">
+            <label for="tp-name">Nome</label>
+            <input id="tp-name" v-model="templateDialog.name" type="text" class="am-input" />
           </div>
-          <div class="mt-6 flex justify-end gap-2">
-            <button
-              type="button"
-              class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-white/15 dark:text-white"
-              @click="closeTemplateDialog"
-            >
-              Cancelar
-            </button>
-            <button
-              type="button"
-              class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-900"
-              :disabled="templateDialog.saving"
-              @click="submitTemplateDialog"
-            >
-              {{
-                templateDialog.saving
-                  ? "Salvando..."
-                  : templateDialog.mode === "edit"
-                    ? "Salvar alterações"
-                    : "Salvar modelo"
-              }}
-            </button>
+          <div class="am-field">
+            <label for="tp-slug">Identificador</label>
+            <input id="tp-slug" v-model="templateDialog.slug" type="text" class="am-input am-mono" @input="handleTemplateSlugInput" />
           </div>
+          <div class="am-field">
+            <label for="tp-desc">Descrição</label>
+            <textarea id="tp-desc" v-model="templateDialog.description" rows="3" class="am-input" placeholder="Resumo do que este modelo entrega"></textarea>
+          </div>
+          <div v-if="templateDialog.error" class="am-notice am-tone-danger"><AmIcon name="alert" /><span>{{ templateDialog.error }}</span></div>
         </div>
-      </div>
+        <template #footer>
+          <button type="button" class="am-btn" @click="closeTemplateDialog">Cancelar</button>
+          <button type="button" class="am-btn am-btn-primary" :disabled="templateDialog.saving" @click="submitTemplateDialog">
+            {{ templateDialog.saving ? "Salvando..." : templateDialog.mode === "edit" ? "Salvar alterações" : "Criar modelo" }}
+          </button>
+        </template>
+      </AdminMasterDrawer>
 
       <div
         v-if="templatePreviewDialog.open"
-        class="app-modal-overlay fixed inset-0 z-40 flex items-center justify-center px-4 py-8"
+        class="app-modal-overlay admin-master-surface fixed inset-0 z-40 flex items-center justify-center px-4 py-8"
         @click.self="closeTemplatePreview"
       >
-        <div class="h-[90vh] w-full max-w-4xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl dark:bg-[#101010] dark:text-white">
-          <div class="mb-4 flex items-center justify-between">
+        <div class="h-[90vh] w-full max-w-4xl overflow-y-auto rounded-[22px] border border-border bg-card p-5 shadow-elegant">
+          <div class="mb-4 flex items-center justify-between gap-3">
             <div>
-              <p class="text-xs uppercase tracking-[0.4em] text-slate-500 dark:text-white/60">Pré-visualização</p>
-              <h3 class="text-lg font-semibold text-slate-900 dark:text-white">
-                {{ templatePreviewDialog.template?.name }}
-              </h3>
+              <p class="am-eyebrow">Pré-visualização</p>
+              <h3 class="am-card-title">{{ templatePreviewDialog.template?.name }}</h3>
             </div>
-            <button
-              type="button"
-              class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-white/20 dark:text-white"
-              @click="closeTemplatePreview"
-            >
-              Fechar
-            </button>
+            <button type="button" class="am-icon-btn" aria-label="Fechar" @click="closeTemplatePreview"><AmIcon name="x" /></button>
           </div>
-          <PageTemplatePreview
-            v-if="templatePreviewConfig"
-            :config="templatePreviewConfig"
-            :branding="templatePreviewBranding"
-          />
-          <p v-else class="rounded-2xl border border-dashed border-slate-200 p-5 text-center text-sm text-slate-500 dark:border-white/15 dark:text-white/70">
-            Não conseguimos renderizar este modelo.
-          </p>
+          <PageTemplatePreview v-if="templatePreviewConfig" :config="templatePreviewConfig" :branding="templatePreviewBranding" />
+          <p v-else class="am-empty">Não foi possível mostrar este modelo.</p>
         </div>
       </div>
     </template>
@@ -1802,96 +955,84 @@
       <FlightApiKeysPanel />
     </template>
     <template v-else-if="activeTab === 'revenue_forecast'">
-      <section class="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
-        <div class="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Previsão de receita</p>
-            <h2 class="text-2xl font-bold text-slate-900">Próximos 30 dias</h2>
-            <p class="text-sm text-slate-500">Assinaturas ativas via Cakto e Asaas. Entrada prevista em D+1 da validade.</p>
-          </div>
-          <button
-            type="button"
-            class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-            :disabled="revenueForecastLoading"
-            @click="loadRevenueForecast"
-          >
-            {{ revenueForecastLoading ? "Atualizando..." : "Atualizar" }}
-          </button>
-        </div>
+      <AdminMasterHeader
+        title="Previsão de receita"
+        subtitle="Assinaturas ativas no Asaas e na Cakto nos próximos 30 dias. A entrada prevista é no dia seguinte à validade."
+      >
+        <button type="button" class="am-btn" :disabled="revenueForecastLoading" @click="loadRevenueForecast">
+          <AmIcon name="refresh" :class="revenueForecastLoading ? 'animate-spin' : ''" />
+          {{ revenueForecastLoading ? "Atualizando..." : "Atualizar" }}
+        </button>
+      </AdminMasterHeader>
 
-        <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
-          <div class="rounded-2xl border border-slate-100 bg-slate-50 p-4">
-            <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Total previsto</p>
-            <p class="mt-1 text-2xl font-bold text-slate-900">{{ formatCurrencyBRL(forecastTotalMrr) }}</p>
-          </div>
-          <div class="rounded-2xl border border-slate-100 bg-slate-50 p-4">
-            <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Cobranças previstas</p>
-            <p class="mt-1 text-2xl font-bold text-slate-900">{{ forecastTotalCount }}</p>
-          </div>
-          <div class="rounded-2xl border border-slate-100 bg-slate-50 p-4">
-            <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Mês base</p>
-            <p class="mt-1 text-2xl font-bold capitalize text-slate-900">{{ forecastMonthLabel || "--" }}</p>
-          </div>
-        </div>
+      <section class="am-grid-4">
+        <AdminMasterKpi icon="wallet" tone="success" label="Previsto em 30 dias" :value="formatCurrencyBRL(forecastTotalMrr)" :hint="forecastMonthLabel ? `A partir de ${forecastMonthLabel}` : ''" />
+        <AdminMasterKpi icon="cal" tone="info" label="Cobranças previstas" :value="formatInt(forecastTotalCount)" :hint="`${formatInt(forecastBusyDays)} dias com entrada`" />
+        <AdminMasterKpi icon="card" tone="violet" label="Ticket médio" :value="formatCurrencyBRL(forecastTotalCount ? forecastTotalMrr / forecastTotalCount : 0)" hint="Por cobrança" />
+        <AdminMasterKpi icon="trend" tone="neutral" label="Por forma de cobrança" :value="forecastProviderSplit.label" :hint="forecastProviderSplit.hint" />
+      </section>
 
-        <p v-if="revenueForecastError" class="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          {{ revenueForecastError }}
-        </p>
-        <div v-else-if="revenueForecastLoading" class="mt-4 rounded-xl border border-dashed border-slate-200 p-8 text-center text-sm text-slate-500">
-          Carregando previsão...
-        </div>
-        <div v-else class="mt-4 grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
-          <div class="rounded-2xl border border-slate-100 p-4">
-            <div class="mb-3 grid grid-cols-7 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">
-              <span>Dom</span><span>Seg</span><span>Ter</span><span>Qua</span><span>Qui</span><span>Sex</span><span>Sáb</span>
-            </div>
-            <div class="grid grid-cols-7 gap-2">
-              <button
-                v-for="cell in forecastCalendarCells"
-                :key="cell.key"
-                type="button"
-                class="min-h-[88px] rounded-xl border p-2 text-left transition"
-                :class="[
-                  cell.iso ? 'border-slate-200 bg-white hover:border-slate-300' : 'border-transparent bg-transparent cursor-default',
-                  cell.iso && cell.iso === selectedForecastDate ? 'ring-2 ring-brand/30 border-brand/40' : ''
-                ]"
-                :disabled="!cell.iso"
-                @click="cell.iso && (selectedForecastDate = cell.iso)"
-              >
-                <template v-if="cell.date">
-                  <p class="text-xs font-semibold text-slate-600">{{ cell.date.getDate() }}</p>
-                  <p class="mt-1 text-[11px] font-semibold text-emerald-700">{{ formatCurrencyBRL(cell.day?.total_mrr || 0) }}</p>
-                  <p class="text-[10px] text-slate-500">{{ cell.day?.subscriptions_count || 0 }} cobrança(s)</p>
-                </template>
-              </button>
+      <div v-if="revenueForecastError" class="am-notice am-tone-danger">
+        <AmIcon name="alert" />
+        <span>{{ revenueForecastError }}</span>
+      </div>
+      <div v-else-if="revenueForecastLoading && !revenueForecastDays.length" class="am-card am-empty">
+        <div class="am-spinner"></div>
+        Carregando previsão...
+      </div>
+      <section v-else class="grid gap-3.5 xl:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
+        <div class="am-card">
+          <div class="am-card-head">
+            <div>
+              <h2 class="am-card-title">Calendário</h2>
+              <p class="am-card-sub">Quanto mais forte o verde, mais entra no dia. Clique num dia para ver as cobranças.</p>
             </div>
           </div>
+          <div class="grid grid-cols-7 gap-1.5">
+            <span v-for="weekday in ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']" :key="weekday" class="pb-0.5 text-center text-[11px] font-semibold uppercase text-muted-foreground">
+              {{ weekday }}
+            </span>
+            <button
+              v-for="cell in forecastCalendarCells"
+              :key="cell.key"
+              type="button"
+              class="am-cal-day"
+              :class="[
+                cell.iso ? forecastHeatClass(cell.day?.total_mrr || 0) : 'is-off',
+                cell.iso && cell.iso === selectedForecastDate ? 'is-selected' : ''
+              ]"
+              :disabled="!cell.iso"
+              @click="cell.iso && (selectedForecastDate = cell.iso)"
+            >
+              <template v-if="cell.date">
+                <span class="text-[11.5px]">{{ cell.date.getDate() }}</span>
+                <b v-if="cell.day?.total_mrr" class="am-num">{{ formatCompactMoney(cell.day.total_mrr) }}</b>
+              </template>
+            </button>
+          </div>
+        </div>
 
-          <div class="rounded-2xl border border-slate-100 p-4">
-            <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Detalhes do dia</p>
-            <h3 class="mt-1 text-lg font-semibold text-slate-900">
-              {{ selectedForecastDay ? parseForecastIsoDate(selectedForecastDay.date.slice(0, 10)).toLocaleDateString('pt-BR') : "--" }}
-            </h3>
-            <p class="text-sm text-slate-600">
-              {{ selectedForecastDay ? formatCurrencyBRL(selectedForecastDay.total_mrr) : "R$ 0,00" }} 
-              {{ selectedForecastDay?.subscriptions_count || 0 }} cobrança(s)
-            </p>
-            <div class="mt-3 max-h-[420px] space-y-2 overflow-auto pr-1">
-              <div
-                v-for="entry in selectedForecastEntries"
-                :key="`${entry.subscription_id}-${entry.user_id}`"
-                class="rounded-xl border border-slate-100 bg-slate-50 p-3"
-              >
-                <p class="text-sm font-semibold text-slate-900">{{ entry.user_name }}</p>
-                <p class="text-xs text-slate-500">{{ entry.user_email }}</p>
-                <p class="mt-1 text-xs text-slate-600">Plano: {{ planLabel(entry.plan) }}</p>
-                <p class="text-xs text-slate-600">Validade: {{ formatDate(entry.valid_until) }}</p>
-                <p class="text-sm font-semibold text-emerald-700">{{ formatCurrencyBRL(entry.mrr_amount) }}</p>
+        <div class="am-card">
+          <p class="am-eyebrow">{{ selectedForecastDay ? formatForecastWeekday(selectedForecastDay.date) : "Escolha um dia" }}</p>
+          <p class="am-kpi-value">{{ formatCurrencyBRL(selectedForecastDay?.total_mrr || 0) }}</p>
+          <p class="am-card-sub">
+            {{ formatInt(selectedForecastDay?.subscriptions_count || 0) }}
+            {{ (selectedForecastDay?.subscriptions_count || 0) === 1 ? "cobrança" : "cobranças" }}
+          </p>
+          <div class="am-list mt-3 max-h-[440px] overflow-auto pr-1">
+            <div
+              v-for="entry in selectedForecastEntries"
+              :key="`${entry.subscription_id}-${entry.user_id}`"
+              class="flex items-center gap-3 py-2.5"
+            >
+              <span class="am-avatar">{{ initials(entry.user_name) }}</span>
+              <div class="min-w-0 flex-1">
+                <b class="block truncate font-semibold">{{ entry.user_name }}</b>
+                <p class="am-card-sub !mt-0 truncate">{{ planLabel(entry.plan) }} · {{ gatewayLabel(entry.provider) }} · validade {{ formatDate(entry.valid_until) }}</p>
               </div>
-              <p v-if="!selectedForecastEntries.length" class="rounded-xl border border-dashed border-slate-200 p-4 text-sm text-slate-500">
-                Sem cobrança prevista neste dia.
-              </p>
+              <b class="am-num">{{ formatCurrencyBRL(entry.mrr_amount) }}</b>
             </div>
+            <p v-if="!selectedForecastEntries.length" class="am-empty">Sem cobrança prevista neste dia.</p>
           </div>
         </div>
       </section>
@@ -1912,7 +1053,7 @@
   <transition name="fade">
     <div
       v-if="createUserDialog.open"
-      class="app-modal-overlay fixed inset-0 z-50 flex items-center justify-center overflow-y-auto px-4 py-8"
+      class="app-modal-overlay admin-master-surface fixed inset-0 z-50 flex items-center justify-center overflow-y-auto px-4 py-8"
       @click.self="closeCreateUserDialog"
     >
       <form class="w-full max-w-2xl rounded-3xl bg-white p-8 shadow-2xl" @submit.prevent="submitCreateUser">
@@ -1965,7 +1106,7 @@
   <transition name="fade">
     <div
       v-if="trialDialog.open && trialDialog.user"
-      class="app-modal-overlay fixed inset-0 z-50 flex items-center justify-center px-4"
+      class="app-modal-overlay admin-master-surface fixed inset-0 z-50 flex items-center justify-center px-4"
     >
       <div class="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl">
         <p class="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-500">Upgrade exclusivo</p>
@@ -2015,7 +1156,7 @@
   <transition name="fade">
     <div
       v-if="linkPageDialog.open && linkPageDialog.user"
-      class="app-modal-overlay fixed inset-0 z-50 flex items-center justify-center px-4"
+      class="app-modal-overlay admin-master-surface fixed inset-0 z-50 flex items-center justify-center px-4"
     >
       <div class="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl">
         <p class="text-xs font-semibold uppercase tracking-[0.3em] text-indigo-500">Vincular página</p>
@@ -2103,7 +1244,7 @@
   <transition name="fade">
     <div
       v-if="deleteDialog.open && deleteDialog.user"
-      class="app-modal-overlay fixed inset-0 z-50 flex items-center justify-center px-4"
+      class="app-modal-overlay admin-master-surface fixed inset-0 z-50 flex items-center justify-center px-4"
     >
       <div class="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl">
         <p class="text-xs font-semibold uppercase tracking-[0.3em] text-rose-500">Excluir usuário</p>
@@ -2141,7 +1282,7 @@
   <transition name="fade">
     <div
       v-if="refundDialog.open && refundDialog.user"
-      class="app-modal-overlay fixed inset-0 z-50 flex items-center justify-center px-4"
+      class="app-modal-overlay admin-master-surface fixed inset-0 z-50 flex items-center justify-center px-4"
     >
       <div class="w-full max-w-xl rounded-3xl bg-white p-8 shadow-2xl">
         <p class="text-xs font-semibold uppercase tracking-[0.3em] text-amber-600">Reembolsar usuário</p>
@@ -2179,7 +1320,7 @@
   <transition name="fade">
     <div
       v-if="subscriptionActionDialog.open && subscriptionActionDialog.user"
-      class="app-modal-overlay fixed inset-0 z-50 flex items-center justify-center px-4"
+      class="app-modal-overlay admin-master-surface fixed inset-0 z-50 flex items-center justify-center px-4"
     >
       <div class="w-full max-w-xl rounded-3xl bg-white p-8 shadow-2xl dark:bg-[#101010] dark:text-white">
         <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-white/60">
@@ -2280,6 +1421,11 @@ import { listPageTemplates, createTemplateFromPage, deleteTemplate, updateTempla
 import type { PageTemplate } from "../../types/templates";
 import { applyTemplateBranding, summarizeTemplate } from "../../utils/pageTemplates";
 import { sanitizeDigits, buildWhatsappLink } from "../../utils/whatsapp";
+import AmIcon from "../../components/admin/master/AmIcon.vue";
+import AdminMasterHeader from "../../components/admin/master/AdminMasterHeader.vue";
+import AdminMasterKpi from "../../components/admin/master/AdminMasterKpi.vue";
+import AdminMasterDrawer from "../../components/admin/master/AdminMasterDrawer.vue";
+import { adminMasterCounts } from "../../composables/useAdminMasterCounts";
 
 interface MetricsUserPage {
   id: number;
@@ -2590,7 +1736,7 @@ const adminPeriodLabel = computed(() => {
   if (isCustomAdminPeriod.value) {
     return "período personalizado";
   }
-  return `Ultimos ${adminPeriodDays.value} dias`;
+  return `Últimos ${adminPeriodDays.value} dias`;
 });
 const newUsersMaxValue = computed(() => {
   if (!newUsersSeries.value.length) return 1;
@@ -3641,6 +2787,7 @@ const saveLesson = async () => {
       showSnackbar("Aula adicionada.");
     }
     resetLessonForm();
+    lessonDrawerOpen.value = false;
   } catch (err) {
     console.error(err);
     showSnackbar("Não foi possível salvar a aula.");
@@ -3813,6 +2960,7 @@ const baseFilteredUsers = computed(() => {
     );
 
     return (
+      matchesUserQuickFilter(user, userQuickFilter.value) &&
       matchesName &&
       matchesGateway &&
       matchesWhatsapp &&
@@ -4007,6 +3155,14 @@ const handleFilterOutsideClick = (event: MouseEvent) => {
     if (!insideAgencySelector) {
       templateAgencyDropdownOpen.value = false;
     }
+  }
+  if (templateMenuId.value !== null) {
+    const insideTemplateMenu = path.some(el => (el as HTMLElement)?.dataset?.templateMenu === "true");
+    if (!insideTemplateMenu) templateMenuId.value = null;
+  }
+  if (rowMenuUserId.value !== null) {
+    const insideRowMenu = path.some(el => (el as HTMLElement)?.dataset?.rowMenu === "true");
+    if (!insideRowMenu) rowMenuUserId.value = null;
   }
   if (subscriptionActionMenu.open) {
     const insideSubscriptionAction = path.some(
@@ -4506,6 +3662,385 @@ const confirmLinkPage = async () => {
     dialog.saving = false;
   }
 };
+// ---------- Visual do admin master ----------
+const intFormatter = new Intl.NumberFormat("pt-BR");
+const formatInt = (value?: number | null) => intFormatter.format(Number(value || 0));
+const formatMoney = (value?: number | null) =>
+  value === null || value === undefined || !Number.isFinite(Number(value))
+    ? "—"
+    : new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(value));
+const formatPercent = (value?: number | null) =>
+  `${new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(value || 0))}%`;
+const initials = (name?: string | null) =>
+  String(name || "?")
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map(part => part[0]?.toUpperCase() || "")
+    .join("") || "?";
+
+const periodOptions: Array<{ value: AdminPeriodOption; label: string }> = [
+  { value: "7", label: "7 dias" },
+  { value: "30", label: "30 dias" },
+  { value: "90", label: "90 dias" },
+  { value: "custom", label: "Personalizado" }
+];
+
+const normalizedPlan = (plan?: string | null) => String(plan || "").trim().toLowerCase();
+const isTrialUser = (user: Metrics["users"][number]) =>
+  Boolean(user.trial_plan) || ["trial", "teste", "test"].includes(normalizedPlan(user.plan));
+const isCancelledUser = (user: Metrics["users"][number]) => {
+  const status = String(user.subscription_status || "").toLowerCase();
+  return status.startsWith("cancelled") || status === "inactive";
+};
+const daysUntil = (value?: string | null) => {
+  if (!value) return null;
+  const time = new Date(value).getTime();
+  if (Number.isNaN(time)) return null;
+  return Math.ceil((time - Date.now()) / 86_400_000);
+};
+
+const planToneClass = (plan?: string | null) => {
+  const label = getPlanLabel(plan);
+  if (label === "Escala") return "am-tone-success";
+  if (label === "Agência") return "am-tone-info";
+  if (label === "Teste" || label === "Trial") return "am-tone-warning";
+  return "am-tone-neutral";
+};
+
+const platformTotals = computed(() => [
+  {
+    label: "Usuários",
+    icon: "users",
+    value: formatInt(metrics.value?.total_users ?? 0),
+    hint: `+${formatInt(metrics.value?.new_users_last_days ?? 0)} no período`
+  },
+  {
+    label: "Agências",
+    icon: "home",
+    value: formatInt(metrics.value?.total_agencies ?? 0),
+    hint: "Times cadastrados"
+  },
+  {
+    label: "Páginas",
+    icon: "pages",
+    value: formatInt(metrics.value?.total_pages ?? 0),
+    hint: `${formatInt(metrics.value?.published_pages ?? 0)} publicadas`
+  }
+]);
+
+const planColors = ["var(--chart-1)", "var(--chart-3)", "var(--chart-4)", "var(--chart-6)", "var(--chart-7)", "var(--muted-foreground)"];
+const planDistributionTotal = computed(() =>
+  (metrics.value?.plans || []).reduce((sum, item) => sum + Number(item.count || 0), 0)
+);
+const planDistribution = computed(() => {
+  const items = [...(metrics.value?.plans || [])].sort((a, b) => b.count - a.count);
+  const total = planDistributionTotal.value || 1;
+  const max = Math.max(1, ...items.map(item => item.count));
+  return items.map((item, index) => ({
+    plan: item.plan,
+    label: planLabel(item.plan),
+    count: item.count,
+    percent: Math.round((item.count / total) * 100),
+    bar: (item.count / max) * 100,
+    color: planColors[index % planColors.length]
+  }));
+});
+
+const attentionItems = computed(() => {
+  const users = metrics.value?.users || [];
+  const paymentIssues = users.filter(user =>
+    ["failed", "past_due", "pending"].includes(String(user.subscription_status || "").toLowerCase())
+  ).length;
+  const expiring = users.filter(user => {
+    if (isCancelledUser(user) || isTrialUser(user)) return false;
+    const left = daysUntil(user.valid_until);
+    return left !== null && left >= 0 && left <= 7;
+  }).length;
+  const trialsEnding = users.filter(user => {
+    if (!isTrialUser(user)) return false;
+    const left = daysUntil(user.trial_ends_at || user.valid_until);
+    return left !== null && left >= 0 && left <= 3;
+  }).length;
+  const whatsapp = adminMasterCounts.whatsappIssues ?? 0;
+  return [
+    {
+      id: "payments",
+      icon: "alert",
+      tone: "danger",
+      title: `${formatInt(paymentIssues)} ${paymentIssues === 1 ? "pagamento" : "pagamentos"} com problema`,
+      description: "Assinaturas pendentes, em atraso ou com falha",
+      target: "Conciliação",
+      to: "/admin/administracao/conciliacao"
+    },
+    {
+      id: "expiring",
+      icon: "cal",
+      tone: "warning",
+      title: `${formatInt(expiring)} ${expiring === 1 ? "vencimento" : "vencimentos"}`,
+      description: "Nos próximos 7 dias",
+      target: "Usuários",
+      to: { path: "/admin/administracao/usuarios", query: { filtro: "vencem" } }
+    },
+    {
+      id: "whatsapp",
+      icon: "wa",
+      tone: "warning",
+      title: `${formatInt(whatsapp)} WhatsApp ${whatsapp === 1 ? "desconectado" : "desconectados"}`,
+      description: "Conexões das agências fora do ar",
+      target: "WhatsApp",
+      to: "/admin/administracao/whatsapp"
+    },
+    {
+      id: "trials",
+      icon: "user",
+      tone: "info",
+      title: `${formatInt(trialsEnding)} ${trialsEnding === 1 ? "teste termina" : "testes terminam"}`,
+      description: "Em até 3 dias",
+      target: "Usuários",
+      to: { path: "/admin/administracao/usuarios", query: { filtro: "teste" } }
+    }
+  ];
+});
+
+const isMobileDevice = (label?: string | null) => /android|iphone|ipad|ios|mobile|celular/i.test(String(label || ""));
+const monitorDeviceSplit = computed(() => {
+  const mobile = onlineSessions.value.filter(session => isMobileDevice(`${session.device_label} ${session.client_name}`)).length;
+  return { mobile, desktop: onlineSessions.value.length - mobile };
+});
+const monitorInEditor = computed(
+  () => onlineSessions.value.filter(session => /\/admin\/pages\/[^/]+\/edit/.test(String(session.last_path || ""))).length
+);
+
+const pathLabels: Array<[RegExp, string]> = [
+  [/^\/admin\/pages\/[^/]+\/edit/, "Editor de página"],
+  [/^\/admin\/pages/, "Páginas"],
+  [/^\/admin\/dashboard/, "Dashboard"],
+  [/^\/admin\/leads\/forms/, "Leads › Formulários"],
+  [/^\/admin\/leads\/opportunities/, "Leads › Oportunidades"],
+  [/^\/admin\/leads\/clients/, "Leads › Clientes"],
+  [/^\/admin\/leads\/settings/, "Leads › Configurações"],
+  [/^\/admin\/inbox/, "Caixa de entrada"],
+  [/^\/admin\/integracoes/, "Integrações"],
+  [/^\/admin\/agency\/team/, "Minha agência › Equipe"],
+  [/^\/admin\/agency\/invoices/, "Minha agência › Faturas"],
+  [/^\/admin\/agency/, "Minha agência"],
+  [/^\/admin\/domains/, "Domínios"],
+  [/^\/admin\/aulas/, "Aulas"],
+  [/^\/admin\/perfil/, "Perfil"],
+  [/^\/admin\/planos/, "Planos"],
+  [/^\/admin\/administracao/, "Admin master"]
+];
+const pathLabel = (path?: string | null) => {
+  if (!path) return "Não identificado";
+  const clean = path.split("?")[0];
+  return pathLabels.find(([pattern]) => pattern.test(clean))?.[1] || "Outra tela";
+};
+
+type UserQuickFilter = "all" | "paying" | "trial" | "soon" | "expired" | "cancelled";
+const userQuickFilterOptions: Array<{ id: UserQuickFilter; label: string }> = [
+  { id: "all", label: "Todos" },
+  { id: "paying", label: "Pagantes" },
+  { id: "trial", label: "Em teste" },
+  { id: "soon", label: "Vencem em 7 dias" },
+  { id: "expired", label: "Vencidos" },
+  { id: "cancelled", label: "Cancelados" }
+];
+const quickFilterFromQuery = (value: unknown): UserQuickFilter => {
+  const raw = String(Array.isArray(value) ? value[0] : value || "");
+  if (raw === "vencem") return "soon";
+  if (raw === "teste") return "trial";
+  if (raw === "vencidos") return "expired";
+  if (raw === "pagantes") return "paying";
+  if (raw === "cancelados") return "cancelled";
+  return "all";
+};
+const userQuickFilter = ref<UserQuickFilter>(quickFilterFromQuery(route.query.filtro));
+const validityState = (user: Metrics["users"][number]) => {
+  const left = daysUntil(user.valid_until);
+  if (left === null) return "none";
+  if (left < 0) return "expired";
+  if (left <= 7) return "soon";
+  return "ok";
+};
+const daysLeftLabel = (value?: string | null) => {
+  const left = daysUntil(value);
+  if (left === null) return "";
+  if (left <= 0) return "hoje";
+  return left === 1 ? "1 dia" : `${left} dias`;
+};
+const matchesUserQuickFilter = (user: Metrics["users"][number], filter: UserQuickFilter) => {
+  if (filter === "all") return true;
+  const cancelled = isCancelledUser(user);
+  const trial = isTrialUser(user);
+  const validity = validityState(user);
+  if (filter === "cancelled") return cancelled;
+  if (filter === "trial") return trial && !cancelled;
+  if (filter === "soon") return !cancelled && validity === "soon";
+  if (filter === "expired") return !cancelled && validity === "expired";
+  const status = String(user.subscription_status || "").toLowerCase();
+  return !trial && !cancelled && normalizedPlan(user.plan) !== "free" && ["active", "cancel_at_period_end"].includes(status);
+};
+const userQuickFilterCounts = computed(() => {
+  const users = metrics.value?.users || [];
+  return userQuickFilterOptions.reduce(
+    (acc, option) => {
+      acc[option.id] = users.filter(user => matchesUserQuickFilter(user, option.id)).length;
+      return acc;
+    },
+    {} as Record<UserQuickFilter, number>
+  );
+});
+watch(userQuickFilter, () => {
+  expandedUser.value = null;
+  userPage.value = 1;
+});
+watch(
+  () => route.query.filtro,
+  value => {
+    if (value !== undefined) userQuickFilter.value = quickFilterFromQuery(value);
+  }
+);
+
+const singleSelect = (key: "plans" | "gateways" | "agencies") =>
+  computed<string>({
+    get: () => userFilters[key][0] || "",
+    set: value => {
+      userFilters[key] = value ? [value] : [];
+    }
+  });
+const userPlanSelect = singleSelect("plans");
+const userGatewaySelect = singleSelect("gateways");
+const userAgencySelect = singleSelect("agencies");
+const showMoreUserFilters = ref(false);
+const moreUserFiltersActive = computed(() =>
+  Boolean(
+    userFilters.whatsapp ||
+      userFilters.agencies.length ||
+      userFilters.activeMin ||
+      userFilters.activeMax ||
+      userFilters.draftMin ||
+      userFilters.draftMax ||
+      userFilters.validFrom ||
+      userFilters.validTo ||
+      userFilters.createdFrom ||
+      userFilters.createdTo
+  )
+);
+const clearAllUserFilters = () => {
+  userFilters.name = "";
+  userFilters.whatsapp = "";
+  userFilters.gateways = [];
+  userFilters.agencies = [];
+  userFilters.plans = [];
+  userFilters.activeMin = "";
+  userFilters.activeMax = "";
+  userFilters.draftMin = "";
+  userFilters.draftMax = "";
+  userFilters.validFrom = "";
+  userFilters.validTo = "";
+  userFilters.createdFrom = "";
+  userFilters.createdTo = "";
+};
+const userListColumns: Array<{ key: string; label: string; sort?: UserColumnKey; class?: string }> = [
+  { key: "name", label: "Pessoa", sort: "name" },
+  { key: "agency", label: "Agência", sort: "agency_name" },
+  { key: "plan", label: "Plano", sort: "plan" },
+  { key: "gateway", label: "Cobrança", sort: "gateway" },
+  { key: "pages", label: "Páginas", sort: "active_pages" },
+  { key: "valid", label: "Validade", sort: "valid_until" },
+  { key: "created", label: "Entrou em", sort: "created_at" },
+  { key: "actions", label: "", class: "w-12" }
+];
+const draftCount = (user: Metrics["users"][number]) =>
+  typeof user.draft_pages_count === "number" ? user.draft_pages_count : user.draft_pages?.length ?? 0;
+const gatewayLabel = (value?: string | null) => {
+  const provider = String(value || "").trim().toLowerCase();
+  if (!provider) return "—";
+  if (provider === "asaas") return "Asaas";
+  if (provider === "cakto") return "Cakto";
+  return provider.charAt(0).toUpperCase() + provider.slice(1);
+};
+const rowMenuUserId = ref<number | null>(null);
+const runUserMenu = (action: () => unknown) => {
+  rowMenuUserId.value = null;
+  action();
+};
+
+const forecastBusyDays = computed(() => revenueForecastDays.value.filter(day => day.subscriptions_count > 0).length);
+const forecastProviderSplit = computed(() => {
+  const totals = new Map<string, number>();
+  let sum = 0;
+  revenueForecastDays.value.forEach(day =>
+    day.entries.forEach(entry => {
+      const key = gatewayLabel(entry.provider);
+      totals.set(key, (totals.get(key) || 0) + Number(entry.mrr_amount || 0));
+      sum += Number(entry.mrr_amount || 0);
+    })
+  );
+  const parts = [...totals.entries()].sort((a, b) => b[1] - a[1]);
+  if (!parts.length || !sum) return { label: "—", hint: "Sem cobranças no período" };
+  const [first] = parts;
+  return {
+    label: `${first[0]} ${Math.round((first[1] / sum) * 100)}%`,
+    hint: parts
+      .slice(1)
+      .map(([name, value]) => `${name} ${Math.round((value / sum) * 100)}%`)
+      .join(" · ") || "Única forma de cobrança"
+  };
+});
+const forecastMaxDay = computed(() => Math.max(1, ...revenueForecastDays.value.map(day => Number(day.total_mrr || 0))));
+const forecastHeatClass = (value: number) => {
+  if (!value) return "";
+  const ratio = value / forecastMaxDay.value;
+  if (ratio > 0.66) return "heat-3";
+  if (ratio > 0.33) return "heat-2";
+  return "heat-1";
+};
+const formatCompactMoney = (value: number) =>
+  `R$ ${new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 }).format(Math.round(Number(value || 0)))}`;
+const formatForecastWeekday = (value: string) => {
+  const date = parseForecastIsoDate(value.slice(0, 10));
+  return date.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "2-digit" });
+};
+
+const lessonDrawerOpen = ref(false);
+const openNewLesson = (moduleName = "") => {
+  resetLessonForm();
+  lessonForm.moduleName = moduleName;
+  lessonDrawerOpen.value = true;
+};
+const openLessonEdit = (lesson: Lesson) => {
+  startLessonEdit(lesson);
+  lessonDrawerOpen.value = true;
+};
+const closeLessonDrawer = () => {
+  lessonDrawerOpen.value = false;
+  resetLessonForm();
+};
+
+const templatesTab = ref<"published" | "create">("published");
+const templateMenuId = ref<number | null>(null);
+const runTemplateMenu = (action: () => unknown) => {
+  templateMenuId.value = null;
+  void action();
+};
+const coverGradients = [
+  "linear-gradient(135deg, #1e3a5f, #3b6e8f 55%, #d9a066)",
+  "linear-gradient(135deg, #0e4d64, #1fa2b8 60%, #f3d28b)",
+  "linear-gradient(135deg, #4a1d6b, #a23d8f 55%, #f6b73c)",
+  "linear-gradient(135deg, #1a1a2e, #3e2a5e 60%, #e94560)",
+  "linear-gradient(135deg, #3b2f1e, #8a6a3a 55%, #e8d5a8)",
+  "linear-gradient(135deg, #0b3d2e, #1a7f5a 55%, #b6e3c9)"
+];
+const templateCoverStyle = (template: PageTemplate) => {
+  const match = JSON.stringify(template.config_json || {}).match(/https?:[^"\s]+?\.(?:jpe?g|png|webp|avif)(?:\?[^"\s]*)?/i);
+  const gradient = coverGradients[template.id % coverGradients.length];
+  return match
+    ? { backgroundImage: `linear-gradient(180deg, transparent 40%, rgba(0,0,0,.35)), url("${match[0].replace(/\\\//g, "/")}")`, backgroundSize: "cover", backgroundPosition: "center" }
+    : { backgroundImage: gradient };
+};
+
 const planLabel = (plan: string) => {
   if (!plan) return "Indefinido";
   const lower = plan.toLowerCase();
@@ -4820,13 +4355,13 @@ onUnmounted(() => {
   position: absolute;
   transform: translate(-50%, -100%);
   border-radius: 10px;
-  border: 1px solid rgba(15, 23, 42, 0.14);
-  background: rgba(15, 23, 42, 0.92);
-  color: #fff;
+  border: 1px solid var(--border);
+  background: var(--popover);
+  color: var(--popover-foreground);
   padding: 8px 10px;
   font-size: 12px;
-  line-height: 1.35;
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.28);
+  line-height: 1.4;
+  box-shadow: var(--shadow-elegant);
   pointer-events: none;
   z-index: 20;
 }
@@ -4834,6 +4369,92 @@ onUnmounted(() => {
 .chart-tooltip-date {
   font-weight: 700;
   margin-bottom: 4px;
+}
+
+.am-cal-day {
+  display: flex;
+  min-height: 62px;
+  flex-direction: column;
+  justify-content: space-between;
+  border-radius: 12px;
+  background: var(--muted);
+  padding: 7px 8px;
+  text-align: left;
+  color: var(--muted-foreground);
+  transition: box-shadow 0.15s ease;
+}
+.am-cal-day b {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--foreground);
+}
+.am-cal-day:not(:disabled):hover {
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+.am-cal-day.is-off {
+  border: 1px dashed var(--border);
+  background: transparent;
+}
+.am-cal-day.heat-1 {
+  background: color-mix(in srgb, var(--primary) 10%, var(--muted));
+}
+.am-cal-day.heat-2 {
+  background: color-mix(in srgb, var(--primary) 22%, var(--muted));
+}
+.am-cal-day.heat-3 {
+  background: color-mix(in srgb, var(--primary) 36%, var(--muted));
+}
+.am-cal-day.is-selected {
+  box-shadow: inset 0 0 0 2px var(--primary);
+  color: var(--foreground);
+}
+@media (max-width: 640px) {
+  .am-cal-day {
+    min-height: 48px;
+    padding: 5px;
+  }
+  .am-cal-day b {
+    font-size: 10px;
+  }
+}
+
+.tpl-card {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: var(--shadow-card);
+}
+.tpl-cover {
+  position: relative;
+  height: 128px;
+  background-color: var(--muted);
+}
+
+.lesson-thumb {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 72px;
+  height: 42px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--chart-3) 55%, var(--muted)), color-mix(in srgb, var(--chart-1) 45%, var(--muted)));
+  color: #fff;
+}
+.lesson-thumb svg {
+  width: 16px;
+  height: 16px;
+}
+
+.am-user-detail {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--muted) 55%, var(--card));
+  padding: 16px;
+}
+.am-detail-row:hover td {
+  background: transparent !important;
 }
 
 .legend-toggle-sub {
@@ -4872,38 +4493,6 @@ onUnmounted(() => {
   caret-color: auto !important;
 }
 
-:global(.dark-theme .lessons-form input:not([type='file']),
-.dark-theme .lessons-form textarea,
-.dark-theme .lessons-form select) {
-  background-color: #181818 !important;
-  border-color: rgba(255, 255, 255, 0.2) !important;
-  color: #f8fafc !important;
-}
-:global(.dark-theme .lessons-form input:not([type='file'])::placeholder,
-.dark-theme .lessons-form textarea::placeholder,
-.dark-theme .lessons-form select::placeholder) {
-  color: rgba(255, 255, 255, 0.55) !important;
-}
-:global(.dark-theme .lessons-form input[type='file']) {
-  color: #f8fafc !important;
-}
-:global(.dark-theme .lessons-form input[type='file']::file-selector-button) {
-  background-color: #181818 !important;
-  color: #f8fafc !important;
-  border-color: rgba(255, 255, 255, 0.2) !important;
-}
-:global(.dark-theme .lessons-form input[type='file']::-webkit-file-upload-button) {
-  background-color: #181818 !important;
-  color: #f8fafc !important;
-  border-color: rgba(255, 255, 255, 0.2) !important;
-}
-:global(.dark-theme .lessons-form .upload-zone) {
-  background-color: #181818;
-  border-color: rgba(255, 255, 255, 0.2);
-}
-:global(.dark-theme .lessons-form .upload-zone input[type='file']) {
-  color: #e2e8f0;
-}
 </style>
 
 interface AdminPageSummary {

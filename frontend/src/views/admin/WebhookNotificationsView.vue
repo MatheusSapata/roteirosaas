@@ -1,295 +1,160 @@
 <template>
-  <div class="admin-master-surface w-full space-y-6 px-4 py-8 md:px-8">
-    <section class="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
-      <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div class="max-w-3xl">
-          <p class="text-xs font-semibold uppercase tracking-[0.35em] text-slate-400">Admin master</p>
-          <h1 class="mt-2 text-2xl font-bold text-slate-900 md:text-3xl">Gestão de webhooks e push</h1>
-          <p class="mt-2 text-sm leading-6 text-slate-500">
-            Configure quais eventos disparam push, edite o título, corpo e ícone permitido, e teste tudo antes de ativar em produção.
-          </p>
-        </div>
-        <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <div class="rounded-2xl bg-slate-50 px-4 py-3">
-            <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Eventos</p>
-            <p class="mt-1 text-xl font-bold text-slate-900">{{ rules.length }}</p>
-          </div>
-          <div class="rounded-2xl bg-emerald-50 px-4 py-3">
-            <p class="text-[11px] font-semibold uppercase tracking-wide text-emerald-500">Ativos</p>
-            <p class="mt-1 text-xl font-bold text-emerald-700">{{ activeRulesCount }}</p>
-          </div>
-          <div class="rounded-2xl bg-sky-50 px-4 py-3">
-            <p class="text-[11px] font-semibold uppercase tracking-wide text-sky-500">Padrão</p>
-            <p class="mt-1 text-xl font-bold text-sky-700">{{ builtinCount }}</p>
-          </div>
-          <div class="rounded-2xl bg-violet-50 px-4 py-3">
-            <p class="text-[11px] font-semibold uppercase tracking-wide text-violet-500">Custom</p>
-            <p class="mt-1 text-xl font-bold text-violet-700">{{ customCount }}</p>
-          </div>
-        </div>
-      </div>
-    </section>
+  <div class="admin-master-surface am-page w-full">
+    <AdminMasterHeader title="Webhooks e push" subtitle="Quais eventos mandam aviso no celular (ntfy), com o texto e o ícone de cada um.">
+      <button type="button" class="am-btn am-btn-primary" @click="createNewRule"><AmIcon name="plus" />Novo evento</button>
+    </AdminMasterHeader>
 
-    <section class="grid gap-6 lg:grid-cols-[340px_1fr]">
-      <aside class="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-100 md:p-5">
-        <div class="flex items-center justify-between gap-3">
-          <div>
-            <h2 class="text-base font-bold text-slate-900">Eventos</h2>
-            <p class="text-sm text-slate-500">Ative, desative e selecione um evento para editar.</p>
-          </div>
-          <button
-            type="button"
-            class="rounded-full border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-            @click="createNewRule"
-          >
-            + Novo
-          </button>
+    <section class="grid gap-3.5 lg:grid-cols-[300px_minmax(0,1fr)]">
+      <aside class="am-card !p-2.5">
+        <div class="flex items-center justify-between px-2 pb-2.5 pt-1.5">
+          <b class="text-[13.5px]">Eventos</b>
+          <span class="am-card-sub !mt-0">{{ activeRulesCount }} de {{ rules.length }} ligados</span>
         </div>
-
-        <div class="mt-4 space-y-3">
-          <button
-            v-for="rule in rules"
-            :key="rule.id"
-            type="button"
-            class="w-full rounded-2xl border p-4 text-left transition"
-            :class="selectedRuleId === rule.id ? 'border-slate-900 bg-slate-50' : 'border-slate-200 bg-white hover:bg-slate-50'"
-            @click="selectRule(rule)"
-          >
-            <div class="flex items-start justify-between gap-3">
-              <div class="min-w-0">
-                <div class="flex items-center gap-2">
-                  <span class="text-lg leading-none">{{ iconEmoji(rule.icon_tag) }}</span>
-                  <p class="truncate text-sm font-semibold text-slate-900">{{ rule.display_name }}</p>
-                </div>
-                <p class="mt-1 truncate text-xs text-slate-500">{{ rule.event_key }}</p>
-              </div>
-              <span class="rounded-full px-2.5 py-1 text-[11px] font-semibold" :class="rule.enabled ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'">
-                {{ rule.enabled ? "Ativo" : "Inativo" }}
-              </span>
-            </div>
-            <p class="mt-3 line-clamp-2 text-xs leading-5 text-slate-500">{{ rule.description || "Sem descrição." }}</p>
-          </button>
-        </div>
+        <button
+          v-for="rule in rules"
+          :key="rule.id"
+          type="button"
+          class="wh-event"
+          :class="{ on: selectedRuleId === rule.id }"
+          @click="selectRule(rule)"
+        >
+          <span class="text-lg leading-none">{{ iconEmoji(rule.icon_tag) }}</span>
+          <span class="min-w-0 flex-1 text-left">
+            <b class="block truncate text-[13px]">{{ rule.display_name }}</b>
+            <small class="am-mono am-muted block truncate">{{ rule.event_key }}</small>
+          </span>
+          <span class="am-badge am-dot" :class="rule.enabled ? 'am-tone-success' : 'am-tone-neutral'">{{ rule.enabled ? "Ligado" : "Desligado" }}</span>
+        </button>
+        <p v-if="!rules.length" class="am-empty">Nenhum evento cadastrado.</p>
       </aside>
 
-      <div class="space-y-6">
-        <section class="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100 md:p-6">
-          <div class="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-            <div>
-              <h2 class="text-lg font-bold text-slate-900">{{ formTitle }}</h2>
-              <p class="text-sm text-slate-500">Use variáveis prontas para montar o texto e testar antes de salvar.</p>
-            </div>
-            <div class="flex flex-wrap gap-2">
-              <button
-                type="button"
-                class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
-                :disabled="!selectedRule || testing"
-                @click="testSelectedRule"
-              >
-                {{ testing ? "Testando..." : "Testar" }}
-              </button>
-              <button
-                type="button"
-                class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
-                :disabled="saving"
-                @click="saveRule"
-              >
-                {{ saving ? "Salvando..." : "Salvar" }}
-              </button>
-            </div>
+      <section class="am-card">
+        <div class="am-card-head flex-wrap">
+          <div>
+            <h2 class="am-card-title">{{ formTitle }}</h2>
+            <p class="am-card-sub">
+              {{ selectedRule?.is_builtin ? "Evento padrão do sistema" : selectedRule ? "Evento personalizado" : "Novo evento personalizado" }}
+            </p>
           </div>
+          <div class="flex flex-wrap gap-2">
+            <button type="button" class="am-btn am-btn-sm" :disabled="!selectedRule || testing" @click="testSelectedRule">
+              <AmIcon name="play" />{{ testing ? "Enviando..." : "Enviar teste" }}
+            </button>
+            <button type="button" class="am-btn am-btn-sm am-btn-primary" :disabled="saving" @click="saveRule">
+              {{ saving ? "Salvando..." : "Salvar" }}
+            </button>
+          </div>
+        </div>
 
-          <div class="mt-5 grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
-            <div class="space-y-4">
-              <div class="grid gap-4 md:grid-cols-2">
-                <label class="space-y-2">
-                  <span class="text-sm font-semibold text-slate-700">Evento</span>
-                  <input
-                    v-model="form.event_key"
-                    :disabled="isBuiltinSelected"
-                    class="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-slate-900 disabled:bg-slate-50"
-                    placeholder="subscription_created"
-                  />
-                </label>
-                <label class="space-y-2">
-                  <span class="text-sm font-semibold text-slate-700">Nome</span>
-                  <input
-                    v-model="form.display_name"
-                    class="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-slate-900"
-                    placeholder="Nova assinatura"
-                  />
-                </label>
+        <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_280px]">
+          <div class="space-y-4">
+            <div class="grid gap-3.5 md:grid-cols-2">
+              <div class="am-field">
+                <label for="wh-key">Evento</label>
+                <input id="wh-key" v-model="form.event_key" :disabled="isBuiltinSelected" class="am-input am-mono" placeholder="subscription_created" />
               </div>
-
-              <label class="block space-y-2">
-                <span class="text-sm font-semibold text-slate-700">Descrição</span>
-                <textarea
-                  v-model="form.description"
-                  rows="3"
-                  class="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-slate-900"
-                  placeholder="Explique quando este webhook é disparado"
-                />
-              </label>
-
-              <div class="grid gap-4 md:grid-cols-2">
-                <label class="space-y-2">
-                  <span class="text-sm font-semibold text-slate-700">Título</span>
-                  <input
-                    v-model="form.title_template"
-                    class="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-mono outline-none transition focus:border-slate-900"
-                    placeholder="Assinatura criada - {{plan_name}}"
-                  />
-                </label>
-                <label class="space-y-2">
-                  <span class="text-sm font-semibold text-slate-700">Corpo</span>
-                  <input
-                    v-model="form.body_template"
-                    class="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-mono outline-none transition focus:border-slate-900"
-                    placeholder="{{amount}} | {{user_name}} | {{payment_method}}"
-                  />
-                </label>
+              <div class="am-field">
+                <label for="wh-name">Nome</label>
+                <input id="wh-name" v-model="form.display_name" class="am-input" placeholder="Nova assinatura" />
               </div>
-
-              <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                <label class="space-y-2">
-                  <span class="text-sm font-semibold text-slate-700">Topic</span>
-                  <input
-                    v-model="form.topic"
-                    class="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-slate-900"
-                    placeholder="roteiro_online_assinaturas"
-                  />
-                </label>
-                <label class="space-y-2">
-                  <span class="text-sm font-semibold text-slate-700">Prioridade</span>
-                  <select
-                    v-model.number="form.priority"
-                    class="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-slate-900"
-                  >
-                    <option v-for="n in [1,2,3,4,5]" :key="n" :value="n">{{ n }}</option>
-                  </select>
-                </label>
-                <label class="space-y-2">
-                  <span class="text-sm font-semibold text-slate-700">Ordem</span>
-                  <input
-                    v-model.number="form.sort_order"
-                    type="number"
-                    class="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-slate-900"
-                  />
-                </label>
-                <label class="flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3">
-                  <input v-model="form.enabled" type="checkbox" class="h-4 w-4" />
-                  <span class="text-sm font-semibold text-slate-700">Ativo</span>
-                </label>
+            </div>
+            <div class="am-field">
+              <label for="wh-desc">Quando dispara</label>
+              <textarea id="wh-desc" v-model="form.description" rows="2" class="am-input !min-h-[64px]" placeholder="Explique quando este aviso é enviado"></textarea>
+            </div>
+            <div class="am-field">
+              <label for="wh-title">Título</label>
+              <input id="wh-title" v-model="form.title_template" class="am-input am-mono" placeholder="Assinatura criada - {{plan_name}}" />
+            </div>
+            <div class="am-field">
+              <label for="wh-body">Texto</label>
+              <input id="wh-body" v-model="form.body_template" class="am-input am-mono" placeholder="{{amount}} | {{user_name}} | {{payment_method}}" />
+            </div>
+            <div class="grid gap-3.5 sm:grid-cols-3">
+              <div class="am-field">
+                <label for="wh-topic">Tópico</label>
+                <input id="wh-topic" v-model="form.topic" class="am-input am-mono" placeholder="roteiro_online_assinaturas" />
               </div>
-
+              <div class="am-field">
+                <label for="wh-priority">Prioridade</label>
+                <select id="wh-priority" v-model.number="form.priority" class="am-input">
+                  <option v-for="option in priorityOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+                </select>
+              </div>
+              <div class="am-field">
+                <label for="wh-order">Ordem na lista</label>
+                <input id="wh-order" v-model.number="form.sort_order" type="number" class="am-input" />
+              </div>
+            </div>
+            <div class="flex items-center justify-between gap-3 rounded-[14px] border border-border px-4 py-3">
               <div>
-                <div class="mb-3 flex items-center justify-between gap-3">
-                  <div>
-                    <h3 class="text-sm font-bold text-slate-900">Campos disponíveis</h3>
-                    <p class="text-xs text-slate-500">Clique para copiar a variável.</p>
-                  </div>
-                </div>
-                <div class="flex flex-wrap gap-2">
-                  <button
-                    v-for="field in meta?.available_fields || defaultAvailableFields"
-                    :key="field"
-                    type="button"
-                    class="rounded-full border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                    @click="copyField(field)"
-                  >
-                    {{ tokenForField(field) }}
-                  </button>
-                </div>
+                <b class="block text-[13px]">Evento ligado</b>
+                <small class="am-muted text-xs">Desligado, o evento não manda aviso.</small>
               </div>
+              <button type="button" class="am-switch" :class="{ on: form.enabled }" role="switch" :aria-checked="form.enabled" aria-label="Evento ligado" @click="form.enabled = !form.enabled"></button>
             </div>
 
-            <div class="space-y-4">
-              <div class="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-                <div class="flex items-center justify-between gap-3">
-                  <div>
-                    <h3 class="text-sm font-bold text-slate-900">Ícone permitido</h3>
-                    <p class="text-xs text-slate-500">A tag precisa existir no ntfy para virar emoji.</p>
-                  </div>
-                  <div class="flex items-center gap-2 rounded-full bg-white px-3 py-2 text-sm font-semibold text-slate-700">
-                    <span>{{ iconEmoji(form.icon_tag) }}</span>
-                    <span>{{ form.icon_tag || "sem ícone" }}</span>
-                  </div>
-                </div>
-                <div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
-                  <button
-                    v-for="icon in meta?.icons || defaultIcons"
-                    :key="icon.tag"
-                    type="button"
-                    class="rounded-2xl border p-3 text-left transition"
-                    :class="form.icon_tag === icon.tag ? 'border-slate-900 bg-white' : 'border-slate-200 bg-white hover:bg-slate-50'"
-                    @click="form.icon_tag = icon.tag"
-                  >
-                    <div class="text-lg">{{ icon.emoji }}</div>
-                    <div class="mt-2 text-sm font-semibold text-slate-900">{{ icon.label }}</div>
-                    <div class="text-xs text-slate-500">{{ icon.tag }}</div>
-                  </button>
-                </div>
-              </div>
-
-              <div class="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-                <h3 class="text-sm font-bold text-slate-900">Pré-visualização</h3>
-                <div class="mt-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-                  <div class="flex items-start gap-3">
-                    <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-xl">
-                      {{ iconEmoji(form.icon_tag) }}
-                    </div>
-                    <div class="min-w-0 flex-1">
-                      <p class="truncate text-sm font-bold text-slate-900">{{ previewTitle }}</p>
-                      <p class="mt-2 whitespace-pre-line text-sm leading-6 text-slate-600">{{ previewBody }}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div v-if="selectedRule && !selectedRule.is_builtin" class="rounded-3xl border border-slate-200 bg-white p-4">
-                <button
-                  type="button"
-                  class="rounded-full border border-rose-200 px-4 py-2 text-sm font-semibold text-rose-600 hover:bg-rose-50 disabled:opacity-50"
-                  :disabled="deleting"
-                  @click="removeRule"
-                >
-                  {{ deleting ? "Excluindo..." : "Excluir custom" }}
-                </button>
-                <p class="mt-2 text-xs text-slate-500">Regras padrão não podem ser excluídas.</p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section class="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100 md:p-6">
-          <div class="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
             <div>
-              <h2 class="text-lg font-bold text-slate-900">Regras customizadas</h2>
-              <p class="text-sm text-slate-500">Você pode adicionar webhooks novos sem mexer no código.</p>
-            </div>
-            <p class="text-sm text-slate-500">{{ customCount }} regras criadas</p>
-          </div>
-          <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            <article
-              v-for="rule in customRules"
-              :key="rule.id"
-              class="rounded-2xl border border-slate-200 bg-slate-50 p-4"
-            >
-              <div class="flex items-start justify-between gap-3">
-                <div>
-                  <p class="text-sm font-bold text-slate-900">{{ rule.display_name }}</p>
-                  <p class="text-xs text-slate-500">{{ rule.event_key }}</p>
-                </div>
-                <span class="text-lg">{{ iconEmoji(rule.icon_tag) }}</span>
+              <p class="am-eyebrow mb-2">Variáveis · clique para copiar</p>
+              <div class="flex flex-wrap gap-1.5">
+                <button
+                  v-for="field in meta?.available_fields || defaultAvailableFields"
+                  :key="field"
+                  type="button"
+                  class="wh-var"
+                  @click="copyField(field)"
+                >
+                  {{ tokenForField(field) }}
+                </button>
               </div>
-              <p class="mt-3 line-clamp-2 text-xs text-slate-500">{{ rule.description || "Sem descrição." }}</p>
-            </article>
-            <div v-if="!customRules.length" class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm text-slate-500">
-              Nenhuma regra customizada ainda.
+            </div>
+
+            <div>
+              <p class="am-eyebrow mb-2">Ícone · a tag precisa existir no ntfy</p>
+              <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 2xl:grid-cols-5">
+                <button
+                  v-for="icon in meta?.icons || defaultIcons"
+                  :key="icon.tag"
+                  type="button"
+                  class="wh-icon"
+                  :class="{ on: form.icon_tag === icon.tag }"
+                  @click="form.icon_tag = icon.tag"
+                >
+                  <span class="text-lg">{{ icon.emoji }}</span>
+                  <span class="min-w-0">
+                    <b class="block truncate text-[12.5px]">{{ icon.label }}</b>
+                    <small class="am-mono am-muted block truncate">{{ icon.tag }}</small>
+                  </span>
+                </button>
+              </div>
             </div>
           </div>
-        </section>
-      </div>
+
+          <div class="space-y-4">
+            <div>
+              <p class="am-eyebrow mb-2">Como chega no celular</p>
+              <div class="wh-phone">
+                <div class="wh-push">
+                  <div class="wh-push-icon">{{ iconEmoji(form.icon_tag) }}</div>
+                  <div class="min-w-0">
+                    <b class="block truncate text-[12.5px]">{{ previewTitle }}</b>
+                    <p class="am-muted whitespace-pre-line text-xs leading-5">{{ previewBody }}</p>
+                  </div>
+                </div>
+                <p class="am-card-sub mt-2.5 text-center">ntfy · {{ form.topic || "sem tópico" }} · agora</p>
+              </div>
+            </div>
+
+            <div v-if="selectedRule && !selectedRule.is_builtin" class="rounded-[14px] border border-border p-4">
+              <button type="button" class="am-btn am-btn-sm am-btn-danger" :disabled="deleting" @click="removeRule">
+                <AmIcon name="trash" />{{ deleting ? "Excluindo..." : "Excluir evento" }}
+              </button>
+              <p class="am-card-sub">Só eventos personalizados podem ser excluídos.</p>
+            </div>
+            <p v-else-if="selectedRule" class="am-card-sub">Eventos padrão do sistema não podem ser excluídos, só desligados.</p>
+          </div>
+        </div>
+      </section>
     </section>
   </div>
 </template>
@@ -297,6 +162,16 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from "vue";
 import api from "../../services/api";
+import AmIcon from "../../components/admin/master/AmIcon.vue";
+import AdminMasterHeader from "../../components/admin/master/AdminMasterHeader.vue";
+
+const priorityOptions = [
+  { value: 1, label: "Mínima (1)" },
+  { value: 2, label: "Baixa (2)" },
+  { value: 3, label: "Normal (3)" },
+  { value: 4, label: "Alta (4)" },
+  { value: 5, label: "Urgente (5)" }
+];
 
 type Rule = {
   id: number;
@@ -357,11 +232,8 @@ const form = reactive<Rule>(emptyForm());
 
 const isBuiltinSelected = computed(() => Boolean(selectedRule.value?.is_builtin));
 const activeRulesCount = computed(() => rules.value.filter(rule => rule.enabled).length);
-const builtinCount = computed(() => rules.value.filter(rule => rule.is_builtin).length);
-const customCount = computed(() => rules.value.filter(rule => !rule.is_builtin).length);
-const customRules = computed(() => rules.value.filter(rule => !rule.is_builtin));
 
-const formTitle = computed(() => (form.id ? `Editando: ${form.display_name || form.event_key || "regra"}` : "Nova regra"));
+const formTitle = computed(() => (form.id ? form.display_name || form.event_key || "Evento" : "Novo evento"));
 
 const iconEmoji = (tag?: string | null) => meta.value?.icons.find(icon => icon.tag === tag)?.emoji || defaultIcons.find(icon => icon.tag === tag)?.emoji || "🔔";
 const tokenForField = (field: string) => `{{${field}}}`;
@@ -547,3 +419,76 @@ onMounted(async () => {
   await loadData();
 });
 </script>
+
+<style scoped>
+.wh-event {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 10px;
+  border-radius: 12px;
+  padding: 10px 12px;
+  transition: background-color 0.15s ease;
+}
+.wh-event:hover {
+  background: var(--muted);
+}
+.wh-event.on {
+  background: var(--muted);
+  box-shadow: inset 2px 0 0 var(--primary);
+}
+.wh-var {
+  display: inline-flex;
+  height: 26px;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--muted);
+  padding: 0 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px;
+  color: var(--accent-foreground);
+}
+.wh-var:hover {
+  border-color: var(--primary);
+}
+.wh-icon {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 8px 10px;
+  text-align: left;
+}
+.wh-icon:hover {
+  background: var(--muted);
+}
+.wh-icon.on {
+  border-color: var(--primary);
+  background: var(--accent);
+}
+.wh-phone {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--background);
+  padding: 12px;
+}
+.wh-push {
+  display: flex;
+  gap: 10px;
+  border-radius: 14px;
+  background: var(--muted);
+  padding: 10px 12px;
+}
+.wh-push-icon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: var(--accent);
+  font-size: 18px;
+}
+</style>
