@@ -1,44 +1,35 @@
 <template>
-  <div class="admin-master-surface w-full space-y-6 px-4 py-8 md:px-8">
-    <section class="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
-      <div class="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p class="text-xs font-semibold uppercase tracking-[0.35em] text-slate-400">Admin master</p>
-          <h1 class="mt-2 text-2xl font-bold text-slate-900">Ofertas</h1>
-          <p class="mt-2 text-sm text-slate-500">
-            Gerencie ofertas, cupons e layouts de checkout usados no checkout transparente.
-          </p>
-        </div>
-        <div class="flex flex-wrap items-center gap-3">
-          <label class="inline-flex items-center gap-3 rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700">
-            <input v-model="form.is_active" type="checkbox" />
-            Módulo ativo
-          </label>
-          <button
-            type="button"
-            class="rounded-full bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white shadow hover:bg-slate-800 disabled:opacity-60"
-            :disabled="saving"
-            @click="save"
-          >
-            {{ saving ? "Salvando..." : "Salvar alterações" }}
-          </button>
-        </div>
-      </div>
-    </section>
+  <div class="admin-master-surface am-page w-full">
+    <AdminMasterHeader title="Ofertas e checkout" subtitle="Ofertas, cupons, pixels e checkouts usados na venda do Roteiro Online.">
+      <button
+        type="button"
+        class="am-btn"
+        role="switch"
+        :aria-checked="form.is_active"
+        @click="form.is_active = !form.is_active"
+      >
+        <span class="am-switch" :class="{ on: form.is_active }" aria-hidden="true"></span>
+        {{ form.is_active ? "Checkout próprio ativo" : "Checkout próprio desligado" }}
+      </button>
+      <button type="button" class="am-btn am-btn-primary" :disabled="saving" @click="save">
+        {{ saving ? "Salvando..." : "Salvar alterações" }}
+      </button>
+    </AdminMasterHeader>
 
-    <section class="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
-      <div class="flex flex-wrap gap-8 border-b border-slate-200">
+    <section>
+      <nav class="am-tabs" aria-label="Seções de Ofertas e checkout">
         <button
           v-for="tab in tabs"
           :key="tab.id"
           type="button"
-          class="-mb-px border-b-2 pb-3 text-sm font-semibold transition"
-          :class="activeTab === tab.id ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-800'"
+          class="am-tab"
+          :class="{ on: activeTab === tab.id }"
           @click="activeTab = tab.id"
         >
           {{ tab.label }}
+          <span v-if="tabCount(tab.id) !== null" class="am-count">{{ tabCount(tab.id) }}</span>
         </button>
-      </div>
+      </nav>
 
       <div v-if="activeTab === 'offers'" class="mt-6 space-y-4">
         <div class="flex flex-wrap items-center justify-between gap-3">
@@ -51,59 +42,51 @@
           </button>
         </div>
 
-        <div class="overflow-hidden rounded-3xl border border-slate-200">
-          <table class="min-w-full divide-y divide-slate-200 text-sm">
-            <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-              <tr>
-                <th class="px-4 py-3">Oferta</th>
-                <th class="px-4 py-3">Key</th>
-                <th class="px-4 py-3">Link</th>
-                <th class="px-4 py-3">Checkout</th>
-                <th class="px-4 py-3">Plano</th>
-                <th class="px-4 py-3">Ciclo</th>
-                <th class="px-4 py-3">Valor</th>
-                <th class="px-4 py-3">Status</th>
-                <th class="px-4 py-3 text-right">Ações</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100 bg-white">
-              <tr v-if="!form.offers.length">
-                <td colspan="9" class="px-4 py-8 text-center text-sm text-slate-500">Nenhuma oferta cadastrada.</td>
-              </tr>
-              <tr v-for="offer in form.offers" :key="offer.local_id">
-                <td class="px-4 py-4">
-                  <div class="font-semibold text-slate-900">{{ offer.title }}</div>
-                  <div class="text-xs text-slate-500">{{ offer.footer_product_label }}</div>
-                </td>
-                <td class="px-4 py-4 font-mono text-xs text-slate-600">{{ offer.key }}</td>
-                <td class="px-4 py-4">
-                  <div class="max-w-[280px] truncate font-mono text-xs text-slate-500">{{ buildOfferCheckoutUrl(offer.key) || "--" }}</div>
-                </td>
-                <td class="px-4 py-4 text-slate-600">{{ checkoutNameByKey(offer.checkout_key) }}</td>
-                <td class="px-4 py-4 text-slate-600">{{ planLabel(offer.plan_key) }}</td>
-                <td class="px-4 py-4 text-slate-600">{{ cycleLabel(offer.billing_cycle) }}</td>
-                <td class="px-4 py-4 font-semibold text-slate-900">{{ formatCurrency(offer.amount) }}</td>
-                <td class="px-4 py-4">
-                  <span class="rounded-full px-3 py-1 text-xs font-semibold" :class="offer.active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'">
-                    {{ offer.active ? "Ativa" : "Inativa" }}
-                  </span>
-                </td>
-                <td class="px-4 py-4">
-                  <div class="flex justify-end gap-2">
-                    <button type="button" class="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50" @click="copyOfferLink(offer.key)">
-                      Copiar link
+        <div class="am-card am-card-flush">
+          <div class="am-table-wrap">
+            <table class="am-table">
+              <thead>
+                <tr>
+                  <th>Oferta</th>
+                  <th>Plano · ciclo</th>
+                  <th>Checkout</th>
+                  <th class="am-right">Valor</th>
+                  <th>Situação</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-if="!form.offers.length">
+                  <td colspan="6"><div class="am-empty">Nenhuma oferta cadastrada.</div></td>
+                </tr>
+                <tr v-for="offer in form.offers" :key="offer.local_id">
+                  <td>
+                    <b class="block font-semibold">{{ offer.title }}</b>
+                    <button
+                      type="button"
+                      class="am-mono am-muted flex max-w-[320px] items-center gap-1.5 truncate text-left hover:text-foreground"
+                      :title="buildOfferCheckoutUrl(offer.key) || offer.key"
+                      @click="copyOfferLink(offer.key)"
+                    >
+                      <span class="truncate">/checkout/{{ offer.key }}</span>
+                      <AmIcon name="copy" class="h-3.5 w-3.5 shrink-0" />
                     </button>
-                    <button type="button" class="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50" @click="openOfferModal(offer)">
-                      Editar
-                    </button>
-                    <button type="button" class="rounded-full border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50" @click="removeOffer(offer.local_id)">
-                      Excluir
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                  </td>
+                  <td>{{ planLabel(offer.plan_key) }} · {{ cycleLabel(offer.billing_cycle) }}</td>
+                  <td>{{ checkoutNameByKey(offer.checkout_key) }}</td>
+                  <td class="am-right am-num"><b>{{ formatCurrency(offer.amount) }}</b></td>
+                  <td>
+                    <span class="am-badge am-dot" :class="offer.active ? 'am-tone-success' : 'am-tone-neutral'">{{ offer.active ? "Ativa" : "Inativa" }}</span>
+                  </td>
+                  <td class="am-right whitespace-nowrap">
+                    <button type="button" class="am-icon-btn" :aria-label="`Copiar link de ${offer.title}`" @click="copyOfferLink(offer.key)"><AmIcon name="link" /></button>
+                    <button type="button" class="am-icon-btn" :aria-label="`Editar ${offer.title}`" @click="openOfferModal(offer)"><AmIcon name="edit" /></button>
+                    <button type="button" class="am-icon-btn hover:!text-status-danger-foreground" :aria-label="`Excluir ${offer.title}`" @click="removeOffer(offer.local_id)"><AmIcon name="trash" /></button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -488,7 +471,7 @@
       <div v-else-if="activeTab === 'tracking'" class="mt-6 space-y-4">
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 class="text-lg font-bold text-slate-900">Trackeamento</h2>
+            <h2 class="text-lg font-bold text-slate-900">Rastreamento</h2>
             <p class="text-sm text-slate-500">Leads criados na etapa 2 e eventos do funil do checkout.</p>
           </div>
           <div class="flex items-center gap-2">
@@ -576,7 +559,7 @@
     <Teleport to="body">
       <div
         v-if="trackingDetailOpen"
-        class="fixed left-0 top-0 z-[9999] h-screen w-screen bg-slate-950/60 backdrop-blur-sm"
+        class="admin-master-surface fixed left-0 top-0 z-[9999] h-screen w-screen bg-slate-950/60 backdrop-blur-sm"
         @click="closeTrackingDetail"
       >
         <div class="flex h-full w-full items-center justify-center p-4">
@@ -876,6 +859,8 @@
 </template>
 
 <script setup lang="ts">
+import AdminMasterHeader from "../../components/admin/master/AdminMasterHeader.vue";
+import AmIcon from "../../components/admin/master/AmIcon.vue";
 import axios from "axios";
 import { computed, onMounted, reactive, ref, watch } from "vue";
 import ImageUploadField from "../../components/admin/inputs/ImageUploadField.vue";
@@ -908,8 +893,15 @@ const tabs: Array<{ id: TabId; label: string }> = [
   { id: "coupons", label: "Cupons" },
   { id: "checkouts", label: "Checkouts" },
   { id: "reports", label: "Relatórios" },
-  { id: "tracking", label: "Trackeamento" },
+  { id: "tracking", label: "Rastreamento" },
 ];
+const tabCount = (id: TabId): number | null => {
+  if (id === "offers") return form.offers.length;
+  if (id === "pixels") return form.pixels.length;
+  if (id === "coupons") return form.coupons.length;
+  if (id === "checkouts") return form.checkouts.length;
+  return null;
+};
 
 const activeTab = ref<TabId>("offers");
 const loading = ref(true);
@@ -1306,7 +1298,7 @@ const loadTracking = async () => {
     trackingRows.value = await getAdminCheckoutTracking(trackingFilterOffer.value || undefined, 300);
   } catch (error) {
     console.error(error);
-    showSnackbar("Nao foi possivel carregar o trackeamento.", "error");
+    showSnackbar("Não foi possível carregar o rastreamento.", "error");
   } finally {
     trackingLoading.value = false;
   }
@@ -1320,7 +1312,7 @@ const loadReports = async () => {
     animateReportChart();
   } catch (error) {
     console.error(error);
-    showSnackbar("Nao foi possivel carregar os relatórios.", "error");
+    showSnackbar("Não foi possível carregar os relatórios.", "error");
   } finally {
     reportsLoading.value = false;
   }
@@ -1328,7 +1320,7 @@ const loadReports = async () => {
 
 const openTrackingDetail = async (row: CheckoutTrackingItem) => {
   if (!row.customer_document) {
-    showSnackbar("Documento nao encontrado para este lead.", "error");
+    showSnackbar("Documento não encontrado para este lead.", "error");
     return;
   }
   trackingDetailOpen.value = true;
@@ -1338,7 +1330,7 @@ const openTrackingDetail = async (row: CheckoutTrackingItem) => {
     trackingDetail.value = await getAdminCheckoutTrackingDocument(row.customer_document, trackingFilterOffer.value || undefined);
   } catch (error) {
     console.error(error);
-    showSnackbar("Nao foi possivel carregar os detalhes do tracking.", "error");
+    showSnackbar("Não foi possível carregar os detalhes do rastreamento.", "error");
     trackingDetailOpen.value = false;
   } finally {
     trackingDetailLoading.value = false;
