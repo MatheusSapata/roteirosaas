@@ -1,159 +1,123 @@
-﻿<template>
-  <div class="admin-master-surface page-wrap prompt-constructor-page">
-    <div class="page-topbar">
-      <div>
-        <p class="page-eyebrow">Admin Master</p>
-        <h1 class="page-title">Configuração do Prompt Construtor</h1>
-        <p class="page-sub">
-          Edite o prompt ativo do Construtor Roteiro Online, teste com dados de viagem e volte a versões anteriores quando precisar.
-        </p>
-      </div>
+<template>
+  <div class="admin-master-surface am-page w-full">
+    <AdminMasterHeader
+      title="Prompt do construtor"
+      subtitle="O texto que orienta a IA do construtor de páginas. Teste com uma viagem antes de salvar."
+    >
+      <button type="button" class="am-btn" :disabled="saving || loading || restoringDefault" @click="restoreDefaultPrompt">
+        <AmIcon name="undo" />{{ restoringDefault ? "Restaurando..." : "Restaurar padrão" }}
+      </button>
+      <button type="button" class="am-btn am-btn-primary" :disabled="saving || loading || restoringDefault || !promptText.trim()" @click="savePrompt">
+        {{ saving ? "Salvando..." : "Salvar prompt" }}
+      </button>
+    </AdminMasterHeader>
 
-      <div class="top-actions">
-        <button type="button" class="btn btn-o" :disabled="saving || loading || restoringDefault" @click="restoreDefaultPrompt">
-          {{ restoringDefault ? "Restaurando..." : "Restaurar Prompt Padrão" }}
-        </button>
-        <button type="button" class="btn btn-p" :disabled="saving || loading || restoringDefault" @click="savePrompt">
-          {{ saving ? "Salvando..." : "Salvar Prompt" }}
-        </button>
-      </div>
+    <div v-if="errorMessage" class="am-notice am-tone-danger"><AmIcon name="alert" /><span>{{ errorMessage }}</span></div>
+    <div v-if="successMessage" class="am-notice am-tone-success"><AmIcon name="check" /><span>{{ successMessage }}</span></div>
+    <div v-if="hasUnsavedChanges" class="am-notice am-tone-warning">
+      <AmIcon name="info" />
+      <span><b>Alterações não salvas.</b> O construtor continua usando o prompt salvo em {{ formatDateTime(config?.updated_at) }}.</span>
     </div>
 
-    <div v-if="errorMessage" class="alert alert-error">
-      {{ errorMessage }}
-    </div>
-    <div v-if="successMessage" class="alert alert-success">
-      {{ successMessage }}
-    </div>
-
-    <section class="summary-row">
-      <article class="summary-card">
-        <p class="summary-label">Última atualização</p>
-        <p class="summary-value">{{ formatDateTime(config?.updated_at) }}</p>
-      </article>
-      <article class="summary-card">
-        <p class="summary-label">Alterado por</p>
-        <p class="summary-value">{{ config?.updated_by_name || "-" }}</p>
-      </article>
-      <article class="summary-card">
-        <p class="summary-label">Versões salvas</p>
-        <p class="summary-value">{{ config?.versions?.length || 0 }}</p>
-      </article>
+    <section class="am-grid-4">
+      <AdminMasterKpi icon="history" tone="info" label="Última atualização" :value="formatDateTime(config?.updated_at)" />
+      <AdminMasterKpi icon="user" tone="neutral" label="Alterado por" :value="config?.updated_by_name || '—'" />
+      <AdminMasterKpi icon="layout" tone="violet" label="Versões salvas" :value="String(config?.versions?.length || 0)" />
+      <AdminMasterKpi icon="spark" tone="success" label="Tamanho do prompt" :value="`${formatInt(promptLength)} caracteres`" :hint="`~${formatInt(Math.round(promptLength / 4))} tokens`" />
     </section>
 
-    <section class="content-grid">
-      <article class="panel panel-main">
-        <div class="panel-header">
+    <section class="grid gap-3.5 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+      <article class="am-card flex flex-col">
+        <div class="am-card-head flex-wrap">
           <div>
-            <p class="panel-kicker">Prompt ativo</p>
-            <h2 class="panel-title">Texto principal do construtor</h2>
+            <h2 class="am-card-title">Prompt</h2>
+            <p class="am-card-sub">Texto principal que a IA recebe em toda conversa do construtor</p>
           </div>
-          <span class="panel-badge">{{ promptLength }} caracteres</span>
+          <div class="am-field flex items-center gap-2">
+            <label for="prompt-model" class="!mb-0 whitespace-nowrap">Modelo</label>
+            <select id="prompt-model" v-model="selectedModel" class="am-input !h-8 !w-auto !py-0">
+              <option v-for="option in modelOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+            </select>
+          </div>
         </div>
-
         <textarea
           v-model="promptText"
-          class="prompt-textarea"
-          placeholder="Cole aqui o prompt completo do Construtor Roteiro Online"
-        />
-
-        <div class="panel-footer">
-          <button type="button" class="btn btn-o" :disabled="loading || saving" @click="reloadPrompt">
-            Recarregar
-          </button>
-          <button type="button" class="btn btn-p" :disabled="loading || saving || restoringDefault || !promptText.trim()" @click="savePrompt">
-            Salvar Prompt
-          </button>
+          class="pc-code min-h-[420px] flex-1"
+          placeholder="Cole aqui o prompt completo do construtor"
+          aria-label="Prompt do construtor"
+        ></textarea>
+        <div class="mt-3 flex flex-wrap items-center justify-between gap-2">
+          <p class="am-card-sub !mt-0">O modelo salvo é o usado no chat do editor de página.</p>
+          <button type="button" class="am-btn am-btn-sm" :disabled="loading || saving" @click="reloadPrompt"><AmIcon name="refresh" />Desfazer alterações</button>
         </div>
       </article>
 
-      <article class="panel panel-side">
-        <div class="model-box">
-          <label class="model-label" for="prompt-model">Modelo oficial do chat</label>
-          <select id="prompt-model" v-model="selectedModel" class="model-select">
-            <option v-for="option in modelOptions" :key="option.value" :value="option.value">
-              {{ option.label }}
-            </option>
-          </select>
-          <p class="model-note">
-            O modelo salvo aqui será o usado no chat da página de edição. O teste usa o modelo selecionado e retorna os tokens consumidos e o custo estimado.
-          </p>
-        </div>
-      </article>
-    </section>
-
-    <section class="content-grid content-grid-test">
-      <article class="panel">
-        <div class="panel-header">
+      <article class="am-card flex flex-col">
+        <div class="am-card-head">
           <div>
-            <p class="panel-kicker">Teste de viagem</p>
-            <h2 class="panel-title">Dados de entrada</h2>
+            <h2 class="am-card-title">Testar com uma viagem</h2>
+            <p class="am-card-sub">Usa o texto acima, sem salvar e sem afetar as agências</p>
           </div>
-          <button type="button" class="btn btn-p" :disabled="testing || loading || saving || restoringDefault || !testInput.trim()" @click="testPrompt">
-            {{ testing ? "Testando..." : "Testar Prompt" }}
+          <button type="button" class="am-btn am-btn-sm am-btn-primary" :disabled="testing || loading || saving || restoringDefault || !testInput.trim()" @click="testPrompt">
+            <AmIcon name="play" />{{ testing ? "Testando..." : "Testar" }}
           </button>
         </div>
-
         <textarea
           v-model="testInput"
-          class="prompt-textarea prompt-textarea-test"
+          class="am-input !min-h-[130px]"
           placeholder="Ex.: Destino Gramado e Canela, 12 a 15 de julho, ônibus leito, hotel 4 estrelas..."
-        />
-      </article>
+          aria-label="Dados da viagem para testar"
+        ></textarea>
 
-      <article class="panel">
-        <div class="panel-header">
-          <div>
-            <p class="panel-kicker">Resultado do teste</p>
-            <h2 class="panel-title">Resposta gerada</h2>
-          </div>
-          <button type="button" class="btn btn-o" :disabled="!testResult.trim()" @click="copyResult">
-            Copiar
-          </button>
+        <div class="mb-1.5 mt-4 flex items-center justify-between">
+          <p class="am-eyebrow">Resposta</p>
+          <button type="button" class="am-btn am-btn-sm" :disabled="!testResult.trim()" @click="copyResult"><AmIcon name="copy" />Copiar</button>
         </div>
-
-        <div v-if="testDebugInfo" class="test-debug">
-          {{ testDebugInfo }}
+        <div v-if="testValidationError" class="am-notice am-tone-warning mb-2"><AmIcon name="alert" /><span>{{ testValidationError }}</span></div>
+        <pre class="pc-code pc-result flex-1">{{ testResult || "O resultado do teste aparece aqui." }}</pre>
+        <div v-if="testUsageInfo || testDebugInfo" class="am-card-sub mt-2 space-y-0.5">
+          <p v-if="testUsageInfo">{{ testUsageInfo }}</p>
+          <p v-if="testDebugInfo">{{ testDebugInfo }}</p>
         </div>
-        <div v-if="testUsageInfo" class="test-usage">
-          {{ testUsageInfo }}
-        </div>
-        <div v-if="testValidationError" class="alert alert-error test-warning">
-          {{ testValidationError }}
-        </div>
-
-        <pre class="result-box">{{ testResult || "O resultado do teste aparece aqui." }}</pre>
       </article>
     </section>
 
-    <section class="panel">
-      <div class="panel-header">
+    <section class="am-card am-card-flush">
+      <div class="am-toolbar justify-between">
         <div>
-          <p class="panel-kicker">Histórico</p>
-          <h2 class="panel-title">Versões do prompt</h2>
+          <h2 class="am-card-title">Versões</h2>
+          <p class="am-card-sub">Cada vez que o prompt é salvo, a versão anterior fica guardada aqui</p>
         </div>
       </div>
-
-      <div v-if="!(config?.versions || []).length" class="empty-state">
-        Nenhuma versão salva ainda.
-      </div>
-      <div v-else class="version-list">
-        <article v-for="version in config?.versions || []" :key="version.id" class="version-card">
-          <div class="version-copy">
-            <div class="version-meta">
-              <span>#{{
-                version.id
-              }}</span>
-              <span>{{ version.source }}</span>
-              <span>{{ formatDateTime(version.created_at) }}</span>
-            </div>
-            <p class="version-user">{{ version.created_by_name || "Sistema" }}</p>
-            <p class="version-snippet">{{ snippet(version.prompt_text) }}</p>
-          </div>
-          <button type="button" class="btn btn-o btn-sm" :disabled="savingVersionId === version.id" @click="restoreVersion(version.id)">
-            {{ savingVersionId === version.id ? "Restaurando..." : "Restaurar" }}
-          </button>
-        </article>
+      <div v-if="!(config?.versions || []).length" class="am-empty">Nenhuma versão salva ainda.</div>
+      <div v-else class="am-table-wrap">
+        <table class="am-table">
+          <thead>
+            <tr>
+              <th>Versão</th>
+              <th>Salva por</th>
+              <th>Quando</th>
+              <th>Início do texto</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="version in config?.versions || []" :key="version.id">
+              <td>
+                <b class="am-num">#{{ version.id }}</b>
+                <small class="am-muted block text-xs">{{ sourceLabel(version.source) }}</small>
+              </td>
+              <td>{{ version.created_by_name || "Sistema" }}</td>
+              <td class="am-num">{{ formatDateTime(version.created_at) }}</td>
+              <td><span class="am-muted line-clamp-2 max-w-[520px] text-xs">{{ snippet(version.prompt_text) }}</span></td>
+              <td class="am-right">
+                <button type="button" class="am-btn am-btn-sm" :disabled="savingVersionId === version.id" @click="restoreVersion(version.id)">
+                  {{ savingVersionId === version.id ? "Restaurando..." : "Restaurar" }}
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </section>
   </div>
@@ -169,6 +133,9 @@ import {
   testPromptConstructorConfig,
   type PromptConstructorConfig
 } from "../../services/promptConstructor";
+import AmIcon from "../../components/admin/master/AmIcon.vue";
+import AdminMasterHeader from "../../components/admin/master/AdminMasterHeader.vue";
+import AdminMasterKpi from "../../components/admin/master/AdminMasterKpi.vue";
 
 const modelOptions = [
   { value: "gpt-4.1", label: "GPT-4.1" },
@@ -201,6 +168,18 @@ const successMessage = ref("");
 const defaultPrompt = ref("");
 
 const promptLength = computed(() => promptText.value.trim().length);
+const formatInt = (value: number) => new Intl.NumberFormat("pt-BR").format(Number(value || 0));
+const hasUnsavedChanges = computed(
+  () => Boolean(config.value) && !loading.value && promptText.value.trim() !== String(config.value?.active_prompt || "").trim()
+);
+const sourceLabel = (value?: string | null) => {
+  if (!value) return "—";
+  if (value === "manual") return "Salva na tela";
+  if (value === "seed") return "Versão inicial";
+  if (value === "restore-default") return "Padrão restaurado";
+  if (value.startsWith("restore-version:")) return `Restaurada da #${value.split(":")[1]}`;
+  return value;
+};
 
 const clearMessages = () => {
   errorMessage.value = "";
@@ -352,396 +331,28 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.page-wrap {
-  padding: 28px 32px 64px;
-  width: 100%;
-  max-width: 1380px;
-}
-
-.page-topbar {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  align-items: flex-start;
-  justify-content: space-between;
-  flex-wrap: wrap;
-}
-
-@media (min-width: 768px) {
-  .page-topbar {
-    flex-direction: row;
-    align-items: center;
-  }
-}
-
-.page-title {
-  margin-top: 4px;
-  font-size: 24px;
-  line-height: 1.15;
-  font-weight: 800;
-  color: #0b1b2b;
-}
-
-.page-sub {
-  margin-top: 6px;
-  color: #5f7990;
-  font-size: 14px;
-  line-height: 1.55;
-  max-width: 920px;
-}
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border-radius: 999px;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  border: 1px solid transparent;
-  font-family: inherit;
-  transition: all 0.15s ease;
-  white-space: nowrap;
-  line-height: 1.3;
-}
-
-.btn:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-.btn-sm {
-  padding: 6px 12px;
-  font-size: 12px;
-}
-
-.btn-p {
-  background: #3dcc5f;
-  color: #0f1f14;
-}
-
-.btn-p:hover:not(:disabled) {
-  background: #32b453;
-}
-
-.btn-o {
-  background: #fff;
-  color: #203647;
-  border-color: #dbe4de;
-}
-
-.btn-o:hover:not(:disabled) {
-  border-color: #cbd6cb;
-  background: #f8fafc;
-}
-
-.btn-o:focus-visible,
-.btn-p:focus-visible,
-.prompt-textarea:focus-visible {
-  outline: 2px solid rgba(61, 204, 95, 0.28);
-  outline-offset: 2px;
-}
-
-.prompt-constructor-page {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.page-eyebrow,
-.panel-kicker,
-.summary-label {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.24em;
-  text-transform: uppercase;
-  color: #5f7990;
-}
-
-.top-actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.alert {
-  border-radius: 16px;
-  padding: 14px 16px;
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.alert-error {
-  background: #fef2f2;
-  color: #b91c1c;
-  border: 1px solid #fecaca;
-}
-
-.alert-success {
-  background: #ecfdf5;
-  color: #047857;
-  border: 1px solid #a7f3d0;
-}
-
-.summary-row,
-.content-grid {
-  display: grid;
-  gap: 14px;
-}
-
-.summary-row {
-  grid-template-columns: repeat(1, minmax(0, 1fr));
-}
-
-.content-grid {
-  grid-template-columns: repeat(1, minmax(0, 1fr));
-}
-
-@media (min-width: 1024px) {
-  .summary-row {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .content-grid {
-    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-  }
-
-  .content-grid-test {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  }
-}
-
-.summary-card,
-.panel {
-  border-radius: 20px;
-  border: 1px solid #dbe4de;
-  background: #fff;
-  box-shadow: 0 1px 3px rgba(15, 31, 20, 0.06), 0 4px 12px rgba(15, 31, 20, 0.04);
-  padding: 18px;
-}
-
-.summary-value {
-  margin-top: 8px;
-  font-size: 20px;
-  font-weight: 800;
-  color: #0b1b2b;
-  word-break: break-word;
-}
-
-.panel {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.panel-main {
-  min-width: 0;
-}
-
-.panel-side {
-  min-width: 0;
-}
-
-.panel-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.panel-title {
-  margin-top: 4px;
-  font-size: 18px;
-  font-weight: 800;
-  color: #0b1b2b;
-}
-
-.panel-badge {
-  border-radius: 999px;
-  border: 1px solid #d6e3db;
-  background: #f8fafc;
-  padding: 6px 10px;
-  font-size: 12px;
-  font-weight: 700;
-  color: #4b6476;
-  white-space: nowrap;
-}
-
-.prompt-textarea {
-  min-height: 360px;
+.pc-code {
   width: 100%;
   resize: vertical;
-  border-radius: 16px;
-  border: 1px solid #d6e3db;
-  background: #fbfcfd;
-  color: #0b1b2b;
-  padding: 14px 16px;
-  font-size: 14px;
-  line-height: 1.6;
-}
-
-.prompt-textarea-readonly {
-  min-height: 360px;
-  background: #f8fafc;
-}
-
-.model-box {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: 8px;
-}
-
-.model-label {
-  font-size: 13px;
-  font-weight: 700;
-  color: #24364a;
-}
-
-.model-select {
-  width: 100%;
+  border: 1px solid var(--border) !important;
   border-radius: 14px;
-  border: 1px solid #d6e3db;
-  background: #fbfcfd;
-  color: #0b1b2b;
-  padding: 12px 14px;
-  font-size: 14px;
-  line-height: 1.4;
-}
-
-.model-note {
-  margin: 0;
-  color: #64748b;
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.prompt-textarea-test {
-  min-height: 220px;
-}
-
-.panel-footer {
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-}
-
-.result-box {
-  min-height: 300px;
-  max-height: 520px;
-  overflow: auto;
+  background: color-mix(in srgb, var(--background) 70%, var(--muted)) !important;
+  padding: 14px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12.5px;
+  line-height: 20px;
+  color: var(--foreground) !important;
   white-space: pre-wrap;
-  word-break: break-word;
-  border-radius: 16px;
-  border: 1px solid #d6e3db;
-  background: #0b1220;
-  color: #f8fafc;
-  padding: 16px;
-  font-size: 13px;
-  line-height: 1.7;
 }
-
-.test-debug {
-  border-radius: 12px;
-  border: 1px solid #dbe4de;
-  background: #f8fafc;
-  color: #64748b;
-  padding: 10px 12px;
-  font-size: 12px;
-  line-height: 1.4;
+.pc-code:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
 }
-
-.test-usage {
-  border-radius: 12px;
-  border: 1px solid #d6e3db;
-  background: #effdf3;
-  color: #166534;
-  padding: 10px 12px;
-  font-size: 12px;
-  line-height: 1.4;
-}
-
-.test-warning {
-  margin-top: 0;
-  margin-bottom: 0;
-}
-
-.empty-state {
-  border-radius: 16px;
-  border: 1px dashed #d6e3db;
-  padding: 18px;
-  text-align: center;
-  color: #64748b;
-}
-
-.version-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.version-card {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 14px;
-  border-radius: 16px;
-  border: 1px solid #dbe4de;
-  background: #fff;
-  padding: 14px 16px;
-}
-
-.version-copy {
-  min-width: 0;
-}
-
-.version-meta {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  font-size: 12px;
-  color: #5f7990;
-  font-weight: 700;
-}
-
-.version-user {
-  margin-top: 4px;
-  font-weight: 700;
-  color: #0b1b2b;
-}
-
-.version-snippet {
-  margin-top: 6px;
-  color: #64748b;
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-@media (max-width: 900px) {
-  .page-wrap {
-    padding: 20px 16px 40px;
-  }
-
-  .panel-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .panel-footer {
-    justify-content: stretch;
-  }
-
-  .panel-footer .btn,
-  .top-actions .btn {
-    width: 100%;
-  }
-
-  .version-card {
-    flex-direction: column;
-  }
+.pc-result {
+  min-height: 180px;
+  max-height: 420px;
+  overflow: auto;
+  margin: 0;
+  color: var(--muted-foreground) !important;
 }
 </style>
-

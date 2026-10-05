@@ -33,9 +33,9 @@ Uma mesma `View` pode representar várias telas quando seu conteúdo muda confor
 | Fundação e shell | 2 | 2 | 0 |
 | Acesso, convite e compra | 7 | 7 | 0 |
 | Operação da agência | 19 | 18 | 1 |
-| Admin Master | 14 | 14 | 0 |
+| Admin Master | 15 | 15 | 0 |
 | Página pública | 1 | 1 | 0 |
-| **Total de telas/experiências** | **41** | **40** | **1** |
+| **Total de telas/experiências** | **42** | **41** | **1** |
 
 > Fundação e shell são acompanhados à parte e não entram no total de 41 telas.
 
@@ -172,20 +172,23 @@ Uma mesma `View` pode representar várias telas quando seu conteúdo muda confor
 
 | ID | Tela | Rota | View | Status | Prioridade |
 |---|---|---|---|---|---|
-| M01 | Dashboard administrativo | `/admin/administracao/dashboard` | `views/admin/AdminManagementView.vue` | EM QA | KPIs, painéis e superfícies migrados para tokens semânticos. |
-| M02 | Monitor de sessões | `/admin/administracao/monitor` | `views/admin/AdminManagementView.vue` | EM QA | Monitor, estados e tabelas alinhados aos temas claro e escuro. |
-| M03 | Usuários | `/admin/administracao/usuarios` | `views/admin/AdminManagementView.vue` | EM QA | Busca, tabela, ações e modais receberam a camada visual compartilhada. |
-| M04 | Admin global | `/admin/administracao/admin-global` | `views/admin/AdminGlobalAgencyAdminView.vue` | EM QA | Gestão global, formulários e estados migrados para superfícies semânticas. |
-| M05 | Gestão de aulas | `/admin/administracao/aulas` | `views/admin/AdminManagementView.vue` | EM QA | Listas, formulários e ações alinhados ao design system. |
-| M06 | Templates | `/admin/administracao/templates` | `views/admin/AdminManagementView.vue` | EM QA | Tabela, filtros e formulários alinhados aos dois temas. |
-| M07 | APIs de voo | `/admin/administracao/apis-voo` | `views/admin/AdminManagementView.vue` | EM QA | Configuração, estados e campos migrados para tokens semânticos. |
-| M08 | Banners | `/admin/administracao/banners` | `views/admin/BannerManagementView.vue` | EM QA | Cards, campos, ações e modais alinhados aos dois temas. |
-| M09 | Gestão do WhatsApp | `/admin/administracao/whatsapp` | `views/admin/AdminWhatsAppManagementView.vue` | EM QA | Conexões, status, tabela e ações alinhados aos dois temas. |
-| M10 | Ofertas e checkout | `/admin/administracao/ofertas` | `views/admin/AdminCheckoutSettingsView.vue` | EM QA | Ofertas, checkout, formulários e estados alinhados ao design system. |
-| M11 | Notificações de webhook | `/admin/administracao/webhooks` | `views/admin/WebhookNotificationsView.vue` | EM QA | Logs, filtros, detalhes e estados receberam superfícies semânticas. |
-| M12 | Previsão de receita | `/admin/administracao/receita-previsao` | `views/admin/AdminManagementView.vue` | EM QA | Calendário, resumo e projeções alinhados aos temas. |
-| M13 | Clientes por LTV | `/admin/administracao/ltv-clientes` | `views/admin/AdminLtvCustomersView.vue` | EM QA | Resumo, filtros e tabela migrados para tokens semânticos. |
-| M14 | Prompt do construtor | `/admin/administracao/prompt-construtor` | `views/admin/PromptConstructorView.vue` | EM QA | Editor, campos, ações e feedbacks alinhados aos dois temas. |
+| M01 | Painel | `/admin/administracao/dashboard` | `views/admin/AdminManagementView.vue` | EM QA | Redesign 10/2026: período em pílulas, números com formato brasileiro, gráfico com tokens de gráfico, planos ativos em barras e "Precisa de atenção". |
+| M02 | Ao vivo | `/admin/administracao/monitor` | `views/admin/AdminManagementView.vue` | EM QA | Redesign 10/2026: números (online, computador/celular, no editor) e tabela com "onde está" em português. |
+| M03 | Usuários | `/admin/administracao/usuarios` | `views/admin/AdminManagementView.vue` | EM QA | Redesign 10/2026: filtros rápidos (pagantes, em teste, vencem em 7 dias, vencidos, cancelados), "Mais filtros", menu "⋯" e detalhes na própria linha. |
+| M04 | Admins globais | `/admin/administracao/admin-global` | `views/admin/AdminGlobalAgencyAdminView.vue` | EM QA | Redesign 10/2026: lista com busca e formulário em painel lateral. |
+| M05 | Aulas | `/admin/administracao/aulas` | `views/admin/AdminManagementView.vue` | EM QA | Redesign 10/2026: módulos em cartões, ordenação por setas e formulário em painel lateral. |
+| M06 | Modelos de página | `/admin/administracao/templates` | `views/admin/AdminManagementView.vue` | EM QA | Redesign 10/2026: abas Publicados / Criar a partir de uma página, cartões com capa e painel lateral. |
+| M07 | APIs de voo | `/admin/administracao/apis-voo` | `components/admin/FlightApiKeysPanel.vue` | EM QA | Redesign 10/2026: números, barra de uso por chave, menu "⋯" e formulários em painel lateral. |
+| M08 | Banners | `/admin/administracao/banners` | `views/admin/BannerManagementView.vue` | EM QA | Redesign 10/2026: números (no ar, vistas, cliques, taxa), filtros em pílulas, resultado por banner e interruptor "No ar". |
+| M09 | WhatsApp | `/admin/administracao/whatsapp` | `views/admin/AdminWhatsAppManagementView.vue` | EM QA | Redesign 10/2026: números, abas, filtro "Com problema" e situação em português. |
+| M10 | Ofertas e checkout | `/admin/administracao/ofertas` | `views/admin/AdminCheckoutSettingsView.vue` | EM QA | Redesign 10/2026: topo, abas com contadores, interruptor do checkout e tabela de ofertas; formulários internos pela camada de compatibilidade. |
+| M11 | Webhooks e push | `/admin/administracao/webhooks` | `views/admin/WebhookNotificationsView.vue` | EM QA | Redesign 10/2026: lista de eventos, editor com interruptor e prévia "como chega no celular". |
+| M12 | Previsão de receita | `/admin/administracao/receita-previsao` | `views/admin/AdminManagementView.vue` | EM QA | Redesign 10/2026: calendário com intensidade por valor e detalhe do dia. |
+| M13 | LTV por cliente | `/admin/administracao/ltv-clientes` | `views/admin/AdminLtvCustomersView.vue` | EM QA | Redesign 10/2026: busca, filtros, ordenação, barra de valor e exportação CSV. |
+| M14 | Prompt do construtor | `/admin/administracao/prompt-construtor` | `views/admin/PromptConstructorView.vue` | EM QA | Redesign 10/2026: prompt e teste lado a lado, aviso de alterações não salvas e tabela de versões. |
+| M15 | Conciliação | `/admin/administracao/conciliacao` | `views/admin/AdminReconciliationView.vue` | EM QA | Redesign 10/2026: segue os tokens do tema (antes ficava clara no modo escuro), topo e botões no padrão. |
+
+Peças comuns: menu interno agrupado (`components/admin/master/AdminMasterNav.vue`, lista em `nav.ts`), topo (`AdminMasterHeader.vue`), número (`AdminMasterKpi.vue`), painel lateral (`AdminMasterDrawer.vue`) e classes `am-*` em `styles/admin-master.css`. A mesma folha tem a camada de compatibilidade que converte as cores fixas antigas dentro de `.admin-master-surface`.
 
 ### Estados críticos do Admin Master
 

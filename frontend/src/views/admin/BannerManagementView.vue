@@ -1,110 +1,115 @@
 ﻿<template>
-  <div class="admin-master-surface w-full space-y-6 px-4 py-8 md:px-8">
-    <section class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
-      <div class="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 class="text-2xl font-bold text-slate-900">Banners do sistema</h1>
-          <p class="mt-1 text-sm text-slate-500">Gerencie mensagens internas exibidas para usuários/agências.</p>
-        </div>
-        <button class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800" @click="openCreate">
-          + Novo banner
-        </button>
-      </div>
+  <div class="admin-master-surface am-page w-full">
+    <AdminMasterHeader title="Banners" subtitle="Avisos que aparecem dentro do sistema para as agências.">
+      <button type="button" class="am-btn" @click="loadBanners"><AmIcon name="refresh" />Atualizar</button>
+      <button type="button" class="am-btn am-btn-primary" @click="openCreate"><AmIcon name="plus" />Novo banner</button>
+    </AdminMasterHeader>
 
-      <div class="mt-5 grid gap-3 md:grid-cols-5">
-        <input v-model="filters.q" type="text" placeholder="Buscar por título" class="rounded-xl border border-slate-200 px-3 py-2 text-sm" />
-        <select v-model="filters.status" class="rounded-xl border border-slate-200 px-3 py-2 text-sm">
-          <option value="all">Todos</option>
-          <option value="active">Ativos</option>
-          <option value="inactive">Inativos</option>
-        </select>
-        <select v-model="filters.placement" class="rounded-xl border border-slate-200 px-3 py-2 text-sm">
-          <option value="">Todos locais</option>
-          <option value="dashboard">Dashboard</option>
-          <option value="leads">Leads</option>
-          <option value="pages">Páginas</option>
-          <option value="clients">Clientes</option>
-          <option value="opportunities">Oportunidades</option>
-          <option value="settings">Configurações</option>
-          <option value="global">Global</option>
-        </select>
-        <select v-model="filters.plan" class="rounded-xl border border-slate-200 px-3 py-2 text-sm">
-          <option value="">Todos planos</option>
-          <option v-for="plan in planOptions" :key="plan.value" :value="plan.value">{{ plan.label }}</option>
-        </select>
-        <button class="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" @click="loadBanners">
-          Atualizar
-        </button>
-      </div>
+    <section class="am-grid-4">
+      <AdminMasterKpi icon="flag" tone="success" label="No ar" :value="String(bannerStats.active)" :hint="`de ${bannerStats.total} banners`" />
+      <AdminMasterKpi icon="eye" tone="info" label="Vistas" :value="formatInt(bannerStats.impressions)" hint="Soma dos banners da lista" />
+      <AdminMasterKpi icon="arrow" tone="violet" label="Cliques" :value="formatInt(bannerStats.clicks)" hint="No botão do banner" />
+      <AdminMasterKpi icon="trend" tone="neutral" label="Taxa de cliques" :value="formatRate(bannerStats.impressions ? bannerStats.clicks / bannerStats.impressions : 0)" hint="Cliques ÷ vistas" />
     </section>
 
-    <section class="overflow-visible rounded-2xl bg-white shadow-sm ring-1 ring-slate-100">
-      <div class="overflow-x-auto overflow-y-visible">
-        <table class="min-w-full divide-y divide-slate-100 text-sm">
-          <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+    <section class="am-card am-card-flush">
+      <div class="am-toolbar">
+        <label class="am-search">
+          <AmIcon name="search" />
+          <input v-model="filters.q" type="search" placeholder="Buscar por título" aria-label="Buscar banner" />
+        </label>
+        <button
+          v-for="option in statusFilterOptions"
+          :key="option.value"
+          type="button"
+          class="am-chip"
+          :class="{ on: filters.status === option.value }"
+          @click="filters.status = option.value"
+        >
+          {{ option.label }}
+        </button>
+        <select v-model="filters.placement" class="am-select" aria-label="Filtrar por local">
+          <option value="">Local: todos</option>
+          <option v-for="(label, value) in placementLabels" :key="value" :value="value">{{ label }}</option>
+        </select>
+        <select v-model="filters.plan" class="am-select" aria-label="Filtrar por plano">
+          <option value="">Plano: todos</option>
+          <option v-for="plan in planOptions" :key="plan.value" :value="plan.value">{{ plan.label }}</option>
+        </select>
+      </div>
+
+      <div class="am-table-wrap overflow-y-visible">
+        <table class="am-table">
+          <thead>
             <tr>
-              <th class="px-3 py-3 text-left">Preview</th>
-              <th class="px-3 py-3 text-left">Título</th>
-              <th class="px-3 py-3 text-left">Status</th>
-              <th class="px-3 py-3 text-left">Local</th>
-              <th class="px-3 py-3 text-left">Planos</th>
-              <th class="px-3 py-3 text-right">Prioridade</th>
-              <th class="px-3 py-3 text-right">Início</th>
-              <th class="px-3 py-3 text-right">Fim</th>
-              <th class="px-3 py-3 text-right">Ações</th>
+              <th>Banner</th>
+              <th>Onde aparece</th>
+              <th>Para quem</th>
+              <th>Período</th>
+              <th class="am-right">Resultado</th>
+              <th>No ar</th>
+              <th></th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-slate-100 text-slate-700">
+          <tbody>
             <tr v-for="item in banners" :key="item.id">
-              <td class="px-3 py-3">
-                <div class="w-[320px] origin-left">
-                  <SystemBanner
-                    :title="item.title"
-                    :subtitle="item.subtitle || ''"
-                    :has-icon="item.has_icon"
-                    :icon-name="item.icon_name"
-                    :icon-svg="bannerIconSvg(item)"
-                    :show-icon-background="bannerShowIconBackground(item)"
-                    :background-variant="item.background_variant"
-                    :custom-background="bannerBackground(item)"
-                    :cta-background="bannerCtaBackground(item)"
-                    :cta-text-color="bannerCtaTextColor(item)"
-                    :has-cta="item.has_cta"
-                    :cta-label="item.cta_label"
-                    :dismissible="item.dismissible"
-                    compact
-                  />
+              <td>
+                <div class="flex items-center gap-3">
+                  <div class="w-[210px] shrink-0">
+                    <SystemBanner
+                      :title="item.title"
+                      :subtitle="item.subtitle || ''"
+                      :has-icon="item.has_icon"
+                      :icon-name="item.icon_name"
+                      :icon-svg="bannerIconSvg(item)"
+                      :show-icon-background="bannerShowIconBackground(item)"
+                      :background-variant="item.background_variant"
+                      :custom-background="bannerBackground(item)"
+                      :cta-background="bannerCtaBackground(item)"
+                      :cta-text-color="bannerCtaTextColor(item)"
+                      :has-cta="item.has_cta"
+                      :cta-label="item.cta_label"
+                      :dismissible="item.dismissible"
+                      compact
+                    />
+                  </div>
+                  <div class="min-w-[140px]">
+                    <b class="block font-semibold">{{ item.title }}</b>
+                    <small class="am-muted block text-xs">Prioridade {{ item.priority }}</small>
+                  </div>
                 </div>
               </td>
-              <td class="px-3 py-3 font-semibold text-slate-900">{{ item.title }}</td>
-              <td class="px-3 py-3">
-                <span :class="item.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'" class="rounded-full px-2 py-1 text-xs font-semibold">
-                  {{ item.is_active ? "Ativo" : "Inativo" }}
-                </span>
+              <td>{{ placementLabels[item.placement] || item.placement }}</td>
+              <td>{{ item.target_plans?.length ? item.target_plans.map(plan => getPlanLabel(plan)).join(", ") : "Todos os planos" }}</td>
+              <td class="am-num">
+                {{ periodLabel(item) }}
+                <span v-if="isScheduled(item)" class="am-badge am-tone-info ml-1">Agendado</span>
               </td>
-              <td class="px-3 py-3">{{ item.placement }}</td>
-              <td class="px-3 py-3">{{ item.target_plans?.length ? item.target_plans.join(", ") : "Todos" }}</td>
-              <td class="px-3 py-3 text-right font-semibold">{{ item.priority }}</td>
-              <td class="px-3 py-3 text-right">{{ formatDate(item.starts_at) }}</td>
-              <td class="px-3 py-3 text-right">{{ formatDate(item.ends_at) }}</td>
-              <td class="px-3 py-3">
-                <div class="flex justify-end" @click.stop>
-                  <button
-                    type="button"
-                    class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-600 hover:bg-slate-50"
-                    @click="toggleActionsMenu(item.id, $event)"
-                  >
-                    <svg viewBox="0 0 24 24" class="h-5 w-5" fill="currentColor" aria-hidden="true">
-                      <circle cx="6" cy="12" r="1.8" />
-                      <circle cx="12" cy="12" r="1.8" />
-                      <circle cx="18" cy="12" r="1.8" />
-                    </svg>
-                  </button>
-                </div>
+              <td class="am-num am-right">
+                <template v-if="item.impressions">
+                  {{ formatInt(item.impressions) }} vistas · <b>{{ formatRate(item.impressions ? item.clicks / item.impressions : 0) }}</b> cliques
+                </template>
+                <span v-else class="am-muted">—</span>
+              </td>
+              <td>
+                <button
+                  type="button"
+                  class="am-switch"
+                  :class="{ on: item.is_active }"
+                  role="switch"
+                  :aria-checked="item.is_active"
+                  :aria-label="item.is_active ? `Tirar do ar: ${item.title}` : `Colocar no ar: ${item.title}`"
+                  @click="handleToggleActive(item.id)"
+                ></button>
+              </td>
+              <td class="am-right" @click.stop>
+                <button type="button" class="am-icon-btn" :aria-label="`Ações de ${item.title}`" @click="toggleActionsMenu(item.id, $event)">
+                  <AmIcon name="dots" />
+                </button>
               </td>
             </tr>
             <tr v-if="!banners.length">
-              <td colspan="9" class="px-3 py-8 text-center text-sm text-slate-500">Nenhum banner encontrado.</td>
+              <td colspan="7"><div class="am-empty">Nenhum banner encontrado.</div></td>
             </tr>
           </tbody>
         </table>
@@ -113,29 +118,23 @@
     <teleport to="body">
       <div
         v-if="actionsMenuOpenId !== null"
-        class="fixed z-[400] min-w-[150px] rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg"
+        class="am-menu fixed z-[400] !min-w-[180px]"
         :style="{ top: `${actionsMenuPosition.top}px`, left: `${actionsMenuPosition.left}px` }"
         @click.stop
       >
         <template v-if="currentActionBanner">
-          <button class="block w-full rounded-lg px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50" @click="handleEdit(currentActionBanner)">
-            Editar
+          <button type="button" @click="handleEdit(currentActionBanner)"><AmIcon name="edit" />Editar</button>
+          <button type="button" @click="handleDuplicate(currentActionBanner.id)"><AmIcon name="copy" />Duplicar</button>
+          <button type="button" @click="handleToggleActive(currentActionBanner.id)">
+            <AmIcon :name="currentActionBanner.is_active ? 'pause' : 'play'" />{{ currentActionBanner.is_active ? "Tirar do ar" : "Colocar no ar" }}
           </button>
-          <button class="block w-full rounded-lg px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50" @click="handleDuplicate(currentActionBanner.id)">
-            Duplicar
-          </button>
-          <button class="block w-full rounded-lg px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50" @click="handleToggleActive(currentActionBanner.id)">
-            {{ currentActionBanner.is_active ? "Inativar" : "Ativar" }}
-          </button>
-          <button class="block w-full rounded-lg px-3 py-2 text-left text-xs font-semibold text-red-600 hover:bg-red-50" @click="handleRemove(currentActionBanner.id)">
-            Excluir
-          </button>
+          <button type="button" class="is-danger" @click="handleRemove(currentActionBanner.id)"><AmIcon name="trash" />Excluir</button>
         </template>
       </div>
     </teleport>
 
     <teleport to="body">
-            <div v-if="editorOpen" class="app-modal-overlay fixed inset-0 z-[300] p-0 md:p-6">
+            <div v-if="editorOpen" class="app-modal-overlay admin-master-surface fixed inset-0 z-[300] p-0 md:p-6">
         <div class="modal-panel mx-auto flex h-[100dvh] w-screen flex-col overflow-hidden rounded-none bg-slate-50 p-3 md:h-auto md:max-h-[calc(100vh-48px)] md:max-w-[1220px] md:rounded-3xl md:p-5">
           <div class="modal-header flex shrink-0 items-center justify-between rounded-xl bg-white p-4 ring-1 ring-slate-100 md:rounded-2xl">
             <div>
@@ -588,6 +587,10 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import api from "../../services/api";
 import SystemBanner from "../../components/admin/SystemBanner.vue";
+import AmIcon from "../../components/admin/master/AmIcon.vue";
+import AdminMasterHeader from "../../components/admin/master/AdminMasterHeader.vue";
+import AdminMasterKpi from "../../components/admin/master/AdminMasterKpi.vue";
+import { getPlanLabel } from "../../utils/planLabels";
 
 type BannerListItem = {
   id: number;
@@ -679,13 +682,48 @@ const iconOptions = [
   "CheckCircle"
 ];
 
-const planOptions = [
-  { label: "Free", value: "free" },
-  { label: "Essencial", value: "essencial" },
-  { label: "Growth", value: "growth" },
-  { label: "Infinity", value: "infinity" },
-  { label: "Teste", value: "teste" }
+const planOptions = ["free", "essencial", "growth", "infinity", "teste"].map(value => ({ label: getPlanLabel(value), value }));
+const placementLabels: Record<string, string> = {
+  dashboard: "Dashboard",
+  leads: "Leads",
+  pages: "Páginas",
+  clients: "Clientes",
+  opportunities: "Oportunidades",
+  settings: "Configurações",
+  global: "Todas as telas"
+};
+const statusFilterOptions = [
+  { value: "all", label: "Todos" },
+  { value: "active", label: "No ar" },
+  { value: "inactive", label: "Desligados" }
 ];
+const formatInt = (value: number) => new Intl.NumberFormat("pt-BR").format(Number(value || 0));
+const formatRate = (value: number) =>
+  `${new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(Number(value || 0) * 100)}%`;
+const bannerStats = computed(() => {
+  const list = banners.value;
+  return {
+    total: list.length,
+    active: list.filter(item => item.is_active).length,
+    impressions: list.reduce((sum, item) => sum + Number(item.impressions || 0), 0),
+    clicks: list.reduce((sum, item) => sum + Number(item.clicks || 0), 0)
+  };
+});
+const shortDate = (value?: string | null) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+};
+const periodLabel = (item: { starts_at: string | null; ends_at: string | null }) => {
+  const start = shortDate(item.starts_at);
+  const end = shortDate(item.ends_at);
+  if (start && end) return `${start} a ${end}`;
+  if (start) return `A partir de ${start}`;
+  if (end) return `Até ${end}`;
+  return "Sempre";
+};
+const isScheduled = (item: { starts_at: string | null }) => Boolean(item.starts_at && new Date(item.starts_at).getTime() > Date.now());
 
 const roleOptions = [
   { label: "Admin da agência", value: "agency_admin" },
@@ -1005,6 +1043,15 @@ const loadBanners = async () => {
   const { data } = await api.get<{ items: BannerListItem[] }>("/admin/system-banners", { params });
   banners.value = data.items || [];
 };
+
+let filtersTimer: ReturnType<typeof setTimeout> | null = null;
+watch(
+  () => [filters.q, filters.status, filters.placement, filters.plan],
+  () => {
+    if (filtersTimer) clearTimeout(filtersTimer);
+    filtersTimer = setTimeout(() => void loadBanners(), 300);
+  }
+);
 
 const resetBuilder = () => {
   Object.assign(builder, buildInitialBuilder());
