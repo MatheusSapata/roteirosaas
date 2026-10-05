@@ -63,7 +63,7 @@ import { normalizeYoutubeEmbedUrl } from "../../../utils/video";
 import V2Section from "./V2Section.vue";
 import { useCta } from "./useCta";
 import { html, localize, text } from "./useHeading";
-import { contrast } from "./useSectionTone";
+import { contrast, WHITE_TEXT_MIN_CONTRAST } from "./useSectionTone";
 
 const props = defineProps<{
   section: HeroSection;
@@ -95,7 +95,7 @@ const logoStyle = computed(() => ({
 }));
 const cta = useCta(toRef(props, "section"));
 const ctaLabel = computed(() => text(props.section.ctaLabel) || localize({ pt: "Quero falar agora", es: "Quiero hablar ahora" }));
-const darkText = computed(() => contrast("#FFFFFF", textBg.value) < contrast("#0F1713", textBg.value));
+const darkText = computed(() => contrast("#FFFFFF", textBg.value) < WHITE_TEXT_MIN_CONTRAST);
 
 const contentProps = computed(() => ({
   title: title.value,

@@ -3,6 +3,13 @@ import { usePageDesignContext } from "./designContext";
 
 const INK_DARK = "#0F1713";
 const INK_LIGHT = "#FFFFFF";
+/**
+ * Contraste mínimo para manter texto branco. Abaixo da regra "maior contraste
+ * vence" de propósito: tons médios de marca (verde #12B981, laranja, azul)
+ * ficam com texto branco, como as agências esperam; só fundos claros (amarelo,
+ * pastéis, branco) passam para texto escuro.
+ */
+export const WHITE_TEXT_MIN_CONTRAST = 2.4;
 
 const toHex = (value?: string | null): string | null => {
   if (!value) return null;
@@ -50,11 +57,11 @@ export interface SectionTone {
 export const computeSectionTone = (background: string | null | undefined, accentInput: string | null | undefined, fallbackBg = "#FFFFFF"): SectionTone => {
   const bg = toHex(background) || fallbackBg;
   const rawAccent = toHex(accentInput) || "#12B981";
-  const dark = contrast(INK_LIGHT, bg) >= contrast(INK_DARK, bg);
+  const dark = contrast(INK_LIGHT, bg) >= WHITE_TEXT_MIN_CONTRAST;
   const ink = dark ? INK_LIGHT : INK_DARK;
   const nearWhite = luminance(bg) > 0.95;
   const accent = contrast(rawAccent, bg) >= 1.9 ? rawAccent : ink;
-  const onAccent = contrast(INK_LIGHT, accent) >= contrast(INK_DARK, accent) ? INK_LIGHT : INK_DARK;
+  const onAccent = contrast(INK_LIGHT, accent) >= WHITE_TEXT_MIN_CONTRAST ? INK_LIGHT : INK_DARK;
   return {
     bg,
     ink,
