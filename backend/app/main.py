@@ -43,6 +43,7 @@ if engine.dialect.name == "postgresql":
             "ALTER TABLE lead_forms ADD COLUMN IF NOT EXISTS "
             "viajechat_custom_field_mappings JSONB NOT NULL DEFAULT '[]'::jsonb"
         ))
+        connection.execute(text("ALTER TABLE agencies ADD COLUMN IF NOT EXISTS description TEXT"))
 
 logging.basicConfig(level=logging.INFO)
 
