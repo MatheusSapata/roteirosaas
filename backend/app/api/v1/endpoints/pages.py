@@ -16,6 +16,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, HttpUrl
 from sqlalchemy.orm import Session
 
+from app.services.page_design import design_v2_enabled_for_agency
 from app.api.deps import get_current_active_user, get_db
 from app.models.agency import Agency
 from app.models.agency_user import AgencyUser
@@ -546,6 +547,7 @@ def get_page(
     page.config_json = inject_flight_sections_into_config(db, page.id, page.config_json, include_lookup_status=True)
     default_id = page.agency.default_page_id if page.agency else None
     setattr(page, "is_default", bool(default_id and page.id == default_id))
+    setattr(page, "design_v2_enabled", design_v2_enabled_for_agency(page.agency))
     return page
 
 
@@ -762,6 +764,7 @@ def get_public_page(agency_slug: str, page_slug: str, db: Session = Depends(get_
         seo_description=page.seo_description,
         config=config,
         branding=branding,
+        design_v2_enabled=design_v2_enabled_for_agency(page.agency),
     )
 
 

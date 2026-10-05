@@ -63,6 +63,7 @@ class PageOut(PageBase):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     is_default: bool = False
+    design_v2_enabled: bool = False
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -76,3 +77,4 @@ class PublicPageOut(BaseModel):
     seo_description: Optional[str] = None
     config: Any
     branding: dict[str, Any]
+    design_v2_enabled: bool = False

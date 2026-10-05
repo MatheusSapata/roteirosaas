@@ -16,7 +16,7 @@
     <div class="public-page-scale">
       <template v-for="(section, idx) in sections" :key="idx">
         <PublicHeroSection
-          v-if="section?.enabled && isSectionVisible(section, idx) && section.type === 'hero'"
+          v-if="section?.enabled && isSectionVisible(section, idx) && section.type === 'hero' && !hasV2(section.type)"
           :section="section"
           :hide-logo="headerEnabled"
           :page-scale="0.9"
@@ -24,7 +24,7 @@
         />
         <component
           v-else-if="section?.enabled && isSectionVisible(section, idx)"
-          :is="publicComponents[section.type]"
+          :is="pickSectionComponent(section.type, pageDesign, publicComponents)"
           :section="section"
           v-bind="sectionExtraProps(section, idx)"
           @unlocked="handleVslUnlocked(idx)"
@@ -78,6 +78,9 @@ import PublicBiographySection from "../../components/public/PublicBiographySecti
 import PublicViajeonCheckoutSection from "../../components/public/PublicViajeonCheckoutSection.vue";
 import PublicInternalFormSection from "../../components/public/PublicInternalFormSection.vue";
 import type { HeroSection, PageConfig, PageSection, SectionType, ThemeConfig } from "../../types/page";
+import { resolvePageDesign } from "../../utils/pageDesign";
+import { pickSectionComponent, v2Components } from "../../components/public/v2/registry";
+import { DEFAULT_ACCENT, PAGE_DESIGN_KEY } from "../../components/public/v2/designContext";
 import type { LeadForm } from "../../types/leads";
 import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
 import BrandLogo from "../../assets/Logo Branco - Roteiro Online.png";
@@ -94,6 +97,7 @@ interface PublicPageResponse {
   config: string | PageConfig;
   cover_image_url?: string;
   seo_title?: string | null;
+  design_v2_enabled?: boolean;
 }
 
 const route = useRoute();
@@ -158,6 +162,18 @@ const isPlatformHost = computed(() => {
 const brandingInfo = computed(() => pageData.value?.branding || {});
 const statsApi = computed(() => (isPlatformHost.value ? api : platformApi));
 provide(PUBLIC_BRANDING_KEY, brandingInfo);
+const pageConfigDesign = ref<PageConfig["design"]>(undefined);
+const pageDesign = computed(() => resolvePageDesign(pageData.value?.design_v2_enabled, { design: pageConfigDesign.value }));
+const hasV2 = (type: SectionType) => pageDesign.value === "v2" && Boolean(v2Components[type]);
+provide(
+  PAGE_DESIGN_KEY,
+  computed(() => ({
+    accent:
+      (theme.value?.ctaDefaultColor || "").trim() ||
+      String((brandingInfo.value as Record<string, unknown>)?.primary_color || "").trim() ||
+      DEFAULT_ACCENT
+  }))
+);
 const leadAccentColor = computed(() => {
   const primary = (theme.value?.ctaDefaultColor || "").trim();
   if (primary) return primary;
@@ -252,6 +268,9 @@ const sectionExtraProps = (section: PageSection, index: number) => {
   const extra: Record<string, unknown> = {};
   if (sectionRequiresBranding(section.type)) {
     extra.branding = pageData.value?.branding;
+  }
+  if (section.type === "hero" && hasV2("hero")) {
+    extra.hideLogo = headerEnabled.value;
   }
   if (section.type === "banner_card") {
     const prev = findPrevEnabledSection(index);
@@ -453,6 +472,7 @@ const loadPage = async () => {
     const configJson = typeof res.data.config === "string" ? res.data.config : JSON.stringify(res.data.config);
     const parsed = JSON.parse(configJson) as PageConfig;
     theme.value = { ...theme.value, ...(parsed.theme || {}) };
+    pageConfigDesign.value = parsed.design;
     sections.value = applyBackgrounds(parsed.sections || []);
     await hydrateLeadCapture(parsed);
     if (typeof window !== "undefined") {

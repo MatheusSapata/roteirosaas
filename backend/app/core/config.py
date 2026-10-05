@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     azure_storage_container: str | None = Field(None, alias="AZURE_STORAGE_CONTAINER")
     azure_storage_base_url: str | None = Field(None, alias="AZURE_STORAGE_BASE_URL")
     viajechat_api_base_url: str = Field("https://painel.viajechat.com.br/api/v1", alias="VIAJECHAT_API_BASE_URL")
+    # Quem vê o visual novo das seções: "superusers" (agências com um superusuário),
+    # "all" (todo mundo) ou "off". Cada página ainda pode voltar ao visual antigo.
+    page_design_v2_rollout: Literal["superusers", "all", "off"] = Field("superusers", alias="PAGE_DESIGN_V2_ROLLOUT")
     viajechat_api_key: str | None = Field(None, alias="VIAJECHAT_API_KEY")
     viajechat_checkout_sector_id: str | None = Field(None, alias="VIAJECHAT_CHECKOUT_SECTOR_ID")
     viajechat_checkout_sector_name: str | None = Field(None, alias="VIAJECHAT_CHECKOUT_SECTOR_NAME")
