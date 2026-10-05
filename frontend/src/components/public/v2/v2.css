@@ -240,3 +240,23 @@
     transition: none !important;
   }
 }
+
+/* Cartões de lista: sombra suave ao passar o mouse (só onde há mouse). */
+.v2-reason.v2-card,
+.v2-links-card.v2-card,
+.v2-tm-small.v2-card,
+.v2-tm-card.v2-card,
+.v2-it-tile.v2-card,
+.v2-price:not(.is-hl) {
+  transition: box-shadow 0.28s ease;
+}
+@media (hover: hover) {
+  .v2-reason.v2-card:hover,
+  .v2-links-card.v2-card:hover,
+  .v2-tm-small.v2-card:hover,
+  .v2-tm-card.v2-card:hover,
+  .v2-it-tile.v2-card:hover,
+  .v2-price:not(.is-hl):hover {
+    box-shadow: 0 20px 44px -26px rgba(6, 12, 9, 0.38), 0 4px 14px -8px rgba(6, 12, 9, 0.14);
+  }
+}
