@@ -21,6 +21,7 @@ export interface Agency {
   contact_email?: string | null;
   default_page_id?: number | null;
   cta_whatsapp?: string | null;
+  description?: string | null;
   social_links?: AgencySocialLink[];
 }
 

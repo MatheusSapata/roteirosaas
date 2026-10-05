@@ -8,16 +8,17 @@
       <ol class="v2-it-list">
         <li v-for="(day, idx) in days" :key="idx" class="v2-it-day v2-in" :class="`v2-d${Math.min(idx + 3, 7)}`">
           <div class="v2-it-rail">
-            <span class="v2-it-date" :class="{ 'is-open': open[idx] }">
-              <span class="v2-it-date-band">{{ copy.day }}</span>
-              <b>{{ day.number }}</b>
+            <span class="v2-it-date" :class="{ 'is-open': open[idx], 'has-date': !!day.date }">
+              <span class="v2-it-date-band">{{ copy.day }} {{ day.date ? day.number : "" }}</span>
+              <b>{{ day.date ? day.date.day : day.number }}</b>
+              <span v-if="day.date" class="v2-it-date-month">{{ day.date.month }}</span>
             </span>
             <span v-if="idx < days.length - 1" class="v2-it-line" aria-hidden="true"></span>
           </div>
           <article class="v2-it-card" :class="{ 'is-open': open[idx] }">
             <button type="button" class="v2-it-head" :aria-expanded="!!open[idx]" @click="toggle(idx)">
               <span class="v2-it-titles">
-                <span class="v2-it-label">{{ day.label }}</span>
+                <span class="v2-it-label">{{ day.date ? `${day.label} · ${day.date.weekday}` : day.label }}</span>
                 <span class="v2-it-title">{{ day.title }}</span>
               </span>
               <img v-if="day.image && !open[idx]" :src="day.image" alt="" class="v2-it-thumb" loading="lazy" />
@@ -37,7 +38,7 @@
       <article v-for="(day, idx) in days" :key="idx" class="v2-card v2-it-tile v2-in" :class="`v2-d${Math.min(idx + 3, 7)}`">
         <img v-if="day.image" :src="day.image" :alt="day.title" loading="lazy" />
         <div class="v2-it-tile-body">
-          <span class="v2-it-chip">{{ day.label }}</span>
+          <span class="v2-it-chip">{{ day.date ? `${day.label} · ${day.date.short}` : day.label }}</span>
           <h3>{{ day.title }}</h3>
           <div v-if="day.descriptionHtml" class="v2-rich" v-html="day.descriptionHtml"></div>
         </div>
@@ -53,8 +54,9 @@ import { resolveMediaUrl } from "../../../utils/media";
 import V2Section from "./V2Section.vue";
 import V2Head from "./V2Head.vue";
 import { html, localize, text, useHeading } from "./useHeading";
+import { addDays, formatDayMonth, formatMonthShort, formatWeekday, parseTripDate } from "../../../utils/tripDates";
 
-const props = defineProps<{ section: ItinerarySection; previewDevice?: "desktop" | "mobile" }>();
+const props = defineProps<{ section: ItinerarySection; previewDevice?: "desktop" | "mobile"; tripStartDate?: string }>();
 const { label, title, subtitleHtml } = useHeading(toRef(props, "section"), "itinerary", { pt: "Roteiro dia a dia", es: "Itinerario día a día" });
 const copy = {
   day: localize({ pt: "DIA", es: "DÍA" }),
@@ -64,8 +66,11 @@ const copy = {
 };
 // "minimal" e "steps" entram na linha do tempo e nos cartões, respectivamente.
 const isCards = computed(() => props.section.layout === "cards" || props.section.layout === "steps");
+// Data de cada dia: início do roteiro, ou a saída da Capa quando ele fica vazio.
+const start = computed(() => parseTripDate(props.section.startDate) || parseTripDate(props.tripStartDate));
 const days = computed(() =>
   (props.section.days || []).map((day, idx) => {
+    const date = start.value ? addDays(start.value, idx) : null;
     const labelText = text(day.day) || `${copy.dayPrefix} ${idx + 1}`;
     const match = labelText.match(/\d+/);
     return {
@@ -73,7 +78,10 @@ const days = computed(() =>
       number: match ? match[0] : String(idx + 1),
       title: text(day.title) || `${copy.dayPrefix} ${idx + 1}`,
       descriptionHtml: text(day.description) ? html(day.description) : "",
-      image: resolveMediaUrl(day.image) || ""
+      image: resolveMediaUrl(day.image) || "",
+      date: date
+        ? { day: String(date.getDate()), month: formatMonthShort(date), weekday: formatWeekday(date), short: formatDayMonth(date) }
+        : null
     };
   })
 );
@@ -160,6 +168,17 @@ watch(
   font-size: clamp(24px, 2.6cqi, 28px);
   line-height: 1;
   font-variant-numeric: tabular-nums;
+}
+.v2-it-date.has-date b {
+  padding: 5px 0 0;
+}
+.v2-it-date-month {
+  padding: 1px 0 7px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.75;
 }
 .v2-it-date.is-open {
   background: var(--v2-accent);

@@ -58,6 +58,15 @@ class AgencyBase(BaseModel):
     secondary_color: Optional[str] = None
     contact_email: Optional[str] = None
     cta_whatsapp: Optional[str] = None
+    description: Optional[str] = None
+
+    @field_validator("description")
+    @classmethod
+    def sanitize_description(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        cleaned = value.strip()[:600]
+        return cleaned or None
 
     @field_validator("contact_email")
     @classmethod
@@ -98,7 +107,16 @@ class AgencyUpdate(BaseModel):
     contact_email: Optional[str] = None
     default_page_id: Optional[int] = None
     cta_whatsapp: Optional[str] = None
+    description: Optional[str] = None
     social_links: Optional[list[AgencySocialLinkCreate]] = None
+
+    @field_validator("description")
+    @classmethod
+    def sanitize_description(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        cleaned = value.strip()[:600]
+        return cleaned or None
 
     @field_validator("contact_email")
     @classmethod

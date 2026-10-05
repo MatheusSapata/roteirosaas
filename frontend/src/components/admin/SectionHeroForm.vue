@@ -38,9 +38,25 @@
             <div class="highlight-tags">
               <span v-for="(chip, index) in normalizedChips" :key="`${chip}-${index}`" class="highlight-tag">
                 <span class="drag-handle">⋮⋮</span>
+                <TravelIconPicker :model-value="chipIconAt(index)" @update:model-value="setChipIcon(index, $event)" />
                 {{ chip }}
                 <button class="tag-remove" type="button" @click="removeChip(index)">×</button>
               </span>
+            </div>
+            <p class="field-hint">O ícone aparece no visual novo das seções.</p>
+          </div>
+
+          <div class="field">
+            <label>Datas da viagem <span class="help" data-tip="Mostradas no card de datas da capa (visual novo). O roteiro dia a dia usa a saída como primeiro dia.">?</span></label>
+            <div class="hero-dates">
+              <label class="hero-date">
+                <span>Saída</span>
+                <input v-model="local.departureDate" type="date" />
+              </label>
+              <label class="hero-date">
+                <span>Volta</span>
+                <input v-model="local.returnDate" type="date" :min="local.departureDate || undefined" />
+              </label>
             </div>
           </div>
         </div>
@@ -289,6 +305,7 @@
 </template>
 
 <script setup lang="ts">
+import TravelIconPicker from "./inputs/TravelIconPicker.vue";
 import { computed, inject, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import Cropper from "cropperjs";
 import "cropperjs/dist/cropper.css";
@@ -352,6 +369,7 @@ const local = reactive<HeroSection>({
   logoBorderRadius: props.modelValue.logoBorderRadius ?? 0,
   mobileBackgroundImage: props.modelValue.mobileBackgroundImage || "",
   chips: props.modelValue.chips ? [...props.modelValue.chips] : [],
+  chipIcons: props.modelValue.chipIcons ? [...props.modelValue.chipIcons] : [],
   ctaMode: props.modelValue.ctaMode || "link",
   ctaSectionId: props.modelValue.ctaSectionId || null,
   ctaOpenInNewTab: props.modelValue.ctaOpenInNewTab !== false,
@@ -431,6 +449,7 @@ const syncFromProps = (value: HeroSection) => {
   local.logoBorderRadius = value.logoBorderRadius ?? 0;
   local.mobileBackgroundImage = value.mobileBackgroundImage || "";
   local.chips = value.chips ? [...value.chips] : [];
+  local.chipIcons = value.chipIcons ? [...value.chipIcons] : [];
   local.layout = HERO_LAYOUT;
   local.ctaMode = value.ctaMode || "link";
   local.ctaSectionId = value.ctaSectionId || null;
@@ -463,6 +482,16 @@ const addChip = () => {
 const removeChip = (index: number) => {
   if (!Array.isArray(local.chips)) return;
   local.chips.splice(index, 1);
+  if (Array.isArray(local.chipIcons)) local.chipIcons.splice(index, 1);
+};
+
+// chipIcons acompanha chips pela posição; destaque sem ícone fica com "".
+const chipIconAt = (index: number) => (local.chipIcons || [])[index] || "";
+const setChipIcon = (index: number, value: string) => {
+  const next = [...(local.chipIcons || [])];
+  while (next.length < (local.chips || []).length) next.push("");
+  next[index] = value;
+  local.chipIcons = next;
 };
 
 const previewUrl = (value?: string | null) => resolveMediaUrl(value || "") || value || "";
@@ -1456,5 +1485,22 @@ input, select {
     height: 28px;
     min-height: 28px;
   }
+}
+.hero-dates {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.hero-date {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.field-hint {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--muted-foreground);
 }
 </style>
