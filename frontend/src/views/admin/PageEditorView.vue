@@ -531,7 +531,7 @@
           </span>
         </div>
         <div class="esp-body">
-          <component :is="editingSectionComponent" :modelValue="editingSectionDraft" @update:modelValue="updateEditingDraft" />
+          <component :is="editingSectionComponent" ref="editingSectionFormRef" :modelValue="editingSectionDraft" @update:modelValue="updateEditingDraft" />
         </div>
         <footer class="esp-foot">
           <span v-if="hasUnsavedSectionDraftChanges" class="section-editor-dirty"><i aria-hidden="true"></i>Alterações não salvas</span>
@@ -2914,8 +2914,7 @@ const editingSectionHeaderLabel = computed(() => {
   if (type === "flight_details") return "Voos";
   return editingSectionLabel.value;
 });
-// No editor novo, as seções com formulário no padrão novo (Conteúdo / Aparência) usam ele;
-// Menu do topo, Outros roteiros, Voos, Compra online e Formulário seguem com o formulário atual.
+// No editor novo, todas as seções usam o formulário no padrão novo (Conteúdo / Aparência).
 const v2FormComponents: Partial<Record<SectionType, any>> = {
   hero: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormHero.vue")),
   banner_card: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormBannerCard.vue")),
@@ -2931,7 +2930,12 @@ const v2FormComponents: Partial<Record<SectionType, any>> = {
   cta: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormCta.vue")),
   testimonials: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormTestimonials.vue")),
   faq: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormFaq.vue")),
-  agency_footer: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormAgencyFooter.vue"))
+  agency_footer: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormAgencyFooter.vue")),
+  header: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormHeader.vue")),
+  links: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormLinks.vue")),
+  flight_details: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormFlightDetails.vue")),
+  viajeon_checkout: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormViajeonCheckout.vue")),
+  internal_form: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormInternalForm.vue"))
 };
 const usesV2Form = computed(() => newEditor.value && !!editingSectionType.value && !!v2FormComponents[editingSectionType.value]);
 const editingSectionComponent = computed(() => {
@@ -2980,9 +2984,26 @@ const runPanelAction = (action: "up" | "down" | "duplicate" | "delete") => {
   if (hasUnsavedSectionDraftChanges.value) requestUnsavedSectionConfirmation(run);
   else run();
 };
+// Voos: os trechos são salvos à parte (um a um) e o editor de trechos completa a seção ao abrir,
+// então a comparação olha só os campos que a pessoa edita no painel.
+const sectionDraftSnapshot = (section: PageSection | null) => {
+  if (!section) return "";
+  if (section.type !== "flight_details") return JSON.stringify(section);
+  const flight = section as any;
+  return JSON.stringify({
+    enabled: flight.enabled !== false,
+    headingLabel: flight.headingLabel ?? null,
+    title: flight.title ?? "",
+    subtitle: flight.subtitle ?? "",
+    generalInfo: flight.generalInfo ?? "",
+    showOutbound: flight.showOutbound !== false,
+    showInbound: flight.showInbound !== false,
+    backgroundColor: flight.customBackground ? flight.backgroundColor : null
+  });
+};
 const hasUnsavedSectionDraftChanges = computed(() => {
   if (!isSectionEditorOpen.value || !editingSectionDraft.value || !editingSectionOriginalSnapshot.value) return false;
-  return JSON.stringify(editingSectionDraft.value) !== editingSectionOriginalSnapshot.value;
+  return sectionDraftSnapshot(editingSectionDraft.value) !== editingSectionOriginalSnapshot.value;
 });
 watch(
   [hasUnsavedChanges, hasUnsavedSectionDraftChanges],
@@ -4604,7 +4625,7 @@ const openSectionEditor = (index: number) => {
   if (isLockedFooterSection(target)) return;
   editingSectionIndex.value = index;
   editingSectionDraft.value = clone(target);
-  editingSectionOriginalSnapshot.value = JSON.stringify(editingSectionDraft.value);
+  editingSectionOriginalSnapshot.value = sectionDraftSnapshot(editingSectionDraft.value);
 };
 
 const forceCloseSectionEditor = () => {
