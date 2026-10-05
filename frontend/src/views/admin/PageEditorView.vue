@@ -328,7 +328,25 @@
         </div>
       </div>
     </Teleport>
-    <Teleport to="body" v-if="sectionPicker.open">
+    <SectionPickerV2
+      v-if="sectionPicker.open && newEditor"
+      :after-label="sectionPickerAfterLabel"
+      :types="sectionTypes"
+      :unavailable="sections.some(isHeaderSection) ? ['header'] : []"
+      :viajeon-connected="viajeonConnected"
+      :accent="ctaColor"
+      @select="handleSectionPickerSelect"
+      @close="closeSectionPicker"
+      @integrate="goViajeonIntegration"
+    />
+    <Transition name="fade">
+      <div v-if="insertedToast" class="v2ed-toast" role="status">
+        <span class="v2ed-toast-ico" aria-hidden="true"><CheckIcon /></span>
+        <span><b>{{ insertedToast.label }}</b> entrou na página</span>
+        <button type="button" @click="undoInsertedSection">Desfazer</button>
+      </div>
+    </Transition>
+    <Teleport to="body" v-if="sectionPicker.open && !newEditor">
       <div
       class="app-modal-overlay fixed inset-0 z-40 flex items-center justify-center px-4 py-8"
       @click.self="closeSectionPicker"
@@ -810,7 +828,7 @@
                 <component :is="sectionIcon(section)" aria-hidden="true" />
               </span>
               <span class="min-w-0">
-                <span class="ed-section-name">{{ sectionLabels[(section as any).type] || (section as any).type }}</span>
+                <span class="ed-section-name">{{ sectionLabelOf(section) }}</span>
                 <span class="ed-section-sub">{{ (section as any).enabled ? sectionSummary(section) : "Oculta" }}</span>
               </span>
             </button>
@@ -1295,6 +1313,8 @@ import { sectionUploadGuardKey } from "../../components/admin/sectionUploadGuard
 import { describeSection, sectionLabels as defaultSectionLabels } from "../../utils/sectionLabels";
 import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
 import { resolvePageDesign } from "../../utils/pageDesign";
+import { sectionNameV2 } from "../../utils/sectionCatalogV2";
+import SectionPickerV2 from "../../components/admin/SectionPickerV2.vue";
 import { pickSectionComponent } from "../../components/public/v2/registry";
 import { DEFAULT_ACCENT, PAGE_DESIGN_KEY } from "../../components/public/v2/designContext";
 import { getReadableTextColor } from "../../utils/colorContrast";
@@ -2378,7 +2398,9 @@ const sectionTypes: SectionType[] = [
   "agency_footer"
 ];
 const sectionLabels = defaultSectionLabels;
-const sectionLabelOf = (section: PageSection) => sectionLabels[section.type as SectionType] || section.type;
+// No editor novo as seções usam os nomes novos ("Capa da viagem", "Menu do topo"...).
+const sectionLabelOf = (section: PageSection) =>
+  (newEditor.value && sectionNameV2(section.type)) || sectionLabels[section.type as SectionType] || section.type;
 const sectionDescriptions: Partial<Record<SectionType, string>> = {
   header: t({
     pt: "Cabeçalho de navegação com logo, links, redes sociais ou botão de contato.",
@@ -2706,6 +2728,7 @@ const editingSectionLabel = computed(() => {
 const editingSectionHeaderLabel = computed(() => {
   const type = editingSectionType.value;
   if (!type) return "";
+  if (newEditor.value && sectionNameV2(type)) return sectionNameV2(type)!;
   if (type === "banner_card") return "Banner em Card";
   if (type === "featured_video") return "Vídeo";
   if (type === "video_vsl") return "Video VSL";
@@ -4124,12 +4147,47 @@ const closeSectionPicker = () => {
   sectionPicker.value = { open: false, index: null };
 };
 
+const sectionPickerAfterLabel = computed(() => {
+  const index = sectionPicker.value.index;
+  const section = typeof index === "number" ? sections.value[index] : null;
+  return section ? `${index! + 1}. ${sectionLabelOf(section)}` : "";
+});
+const insertedToast = ref<{ index: number; type: string; anchorId?: string; label: string } | null>(null);
+let insertedToastTimer: ReturnType<typeof setTimeout> | null = null;
+const undoInsertedSection = () => {
+  const added = insertedToast.value;
+  insertedToast.value = null;
+  if (!added) return;
+  // Os objetos das seções são recriados ao salvar no estado, então procuramos pela âncora ou pela posição.
+  const index = added.anchorId
+    ? sections.value.findIndex(section => (section as any).anchorId === added.anchorId)
+    : sections.value[added.index]?.type === added.type
+      ? added.index
+      : -1;
+  if (index < 0) return;
+  setSections(current => current.filter((_, idx) => idx !== index));
+  refreshPreview(true);
+};
+onBeforeUnmount(() => {
+  if (insertedToastTimer) clearTimeout(insertedToastTimer);
+});
+
 const handleSectionPickerSelect = (type: SectionType) => {
   if (type === "viajeon_checkout" && !viajeonConnected.value) return;
   const afterIndex = sectionPicker.value.index;
   const insertAt = typeof afterIndex === "number" ? afterIndex + 1 : sections.value.length;
+  const before = new Set(sections.value);
   addSection(type, insertAt);
   closeSectionPicker();
+  const addedIndex = sections.value.findIndex(section => !before.has(section));
+  const added = sections.value[addedIndex];
+  if (newEditor.value && added) {
+    insertedToast.value = { index: addedIndex, type: added.type, anchorId: (added as any).anchorId || undefined, label: sectionLabelOf(added) };
+    if (insertedToastTimer) clearTimeout(insertedToastTimer);
+    insertedToastTimer = setTimeout(() => {
+      insertedToast.value = null;
+    }, 6000);
+  }
 };
 
 const addSection = (type: SectionType, insertIndex?: number) => {
@@ -6535,6 +6593,11 @@ onMounted(async () => {
 .ed-grid.is-v2 .slug-row { flex-direction: column; }
 .ed-grid.is-v2 .slug-prefix { overflow: hidden; border-right: 0; border-bottom: 1px solid #e2e8f0; padding-top: 6px; padding-bottom: 6px; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
 .editor-workspace.is-v2 .editor-ai-sidebar { top: 100px; bottom: 8px; border-radius: 20px; }
+.v2ed-toast { position: fixed; bottom: 24px; left: 50%; z-index: 90; display: flex; align-items: center; gap: 12px; transform: translateX(-50%); padding: 10px 10px 10px 12px; border-radius: 16px; background: #0f1713; color: #fff; font-size: 14px; box-shadow: 0 20px 50px -20px rgba(6, 12, 9, 0.7); }
+.v2ed-toast-ico { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 999px; background: #12b981; }
+.v2ed-toast-ico svg { width: 15px; height: 15px; }
+.v2ed-toast button { height: 34px; padding: 0 14px; border-radius: 10px; background: rgba(255, 255, 255, 0.14); color: #fff; font-weight: 700; }
+.v2ed-toast button:hover { background: rgba(255, 255, 255, 0.24); }
 .ed-panel-eyebrow { margin: 0 0 2px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted-foreground); }
 .ed-panel-title { margin: 0 0 16px; font-size: 18px; font-weight: 700; color: var(--foreground); }
 .ed-rail { display: flex; flex: 0 0 64px; flex-direction: column; align-items: center; gap: 4px; padding: 12px 0; border-right: 1px solid var(--border); }
