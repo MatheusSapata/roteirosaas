@@ -1167,8 +1167,8 @@
         <div
           ref="sectionModalPanelRef"
           class="editor-dialog-shell section-editor-dialog w-full overflow-hidden flex flex-col"
-          :class="isMobileViewport ? '' : 'md:rounded-[20px] md:shadow-2xl'"
-          :style="sectionModalPanelStyle"
+          :class="[isMobileViewport ? '' : 'md:rounded-[20px] md:shadow-2xl', { 'is-v2-form': usesV2Form }]"
+          :style="usesV2Form ? undefined : sectionModalPanelStyle"
         >
           <div ref="sectionModalHeaderRef" class="section-editor-header flex items-center justify-between px-6 py-4">
             <div>
@@ -1186,6 +1186,7 @@
           <div
             ref="sectionModalBodyRef"
             class="section-editor-body flex-1 overflow-y-auto border-t border-border bg-background pl-0 pr-0"
+            :class="{ 'is-v2-form': usesV2Form }"
           >
             <component
               :is="editingSectionComponent"
@@ -1197,11 +1198,12 @@
             />
           </div>
           <div ref="sectionModalFooterRef" class="section-editor-footer flex flex-wrap items-center justify-end gap-2 border-t border-border px-6 py-4">
+            <span v-if="usesV2Form && hasUnsavedSectionDraftChanges" class="section-editor-dirty"><i aria-hidden="true"></i>Alterações não salvas</span>
             <button
               class="h-10 rounded-full bg-muted px-5 text-sm font-semibold text-foreground hover:bg-accent"
               @click="requestCloseSectionEditor"
             >
-              {{ viewCopy.sectionDialog.cancel }}
+              {{ usesV2Form ? "Descartar" : viewCopy.sectionDialog.cancel }}
             </button>
             <button
               class="h-10 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground hover:bg-brand-dark"
@@ -2735,10 +2737,30 @@ const editingSectionHeaderLabel = computed(() => {
   if (type === "flight_details") return "Voos";
   return editingSectionLabel.value;
 });
+// No editor novo, as seções com formulário no padrão novo (Conteúdo / Aparência) usam ele;
+// Menu do topo, Outros roteiros, Voos, Compra online e Formulário seguem com o formulário atual.
+const v2FormComponents: Partial<Record<SectionType, any>> = {
+  hero: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormHero.vue")),
+  banner_card: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormBannerCard.vue")),
+  video_vsl: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormVideoVsl.vue")),
+  story: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormStory.vue")),
+  reasons: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormReasons.vue")),
+  photo: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormPhoto.vue")),
+  featured_video: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormFeaturedVideo.vue")),
+  biography: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormBiography.vue")),
+  itinerary: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormItinerary.vue")),
+  prices: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormPrices.vue")),
+  countdown: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormCountdown.vue")),
+  cta: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormCta.vue")),
+  testimonials: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormTestimonials.vue")),
+  faq: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormFaq.vue")),
+  agency_footer: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormAgencyFooter.vue"))
+};
+const usesV2Form = computed(() => newEditor.value && !!editingSectionType.value && !!v2FormComponents[editingSectionType.value]);
 const editingSectionComponent = computed(() => {
   const type = editingSectionType.value;
   if (!type) return null;
-  return formComponents[type];
+  return (usesV2Form.value && v2FormComponents[type]) || formComponents[type];
 });
 const isSectionEditorOpen = computed(() => editingSectionIndex.value !== null && !!editingSectionDraft.value);
 const hasUnsavedSectionDraftChanges = computed(() => {
@@ -3319,6 +3341,15 @@ const applySectionBackgrounds = (list: PageSection[]): PageSection[] => {
     const normalized = ensureButtonColor(normalizeHeroGradient(ensureSectionAnchor(section)));
     const type = (normalized as any).type as SectionType;
 
+    // Fundo escolhido na seção (editor novo): fica como está, só ajusta a cor do texto.
+    if ((normalized as any).customBackground && (normalized as any).backgroundColor) {
+      const readable = getReadableTextColor((normalized as any).backgroundColor);
+      if (readable) (normalized as any).textColor = readable;
+      if (type !== "header" && type !== "hero" && type !== "countdown" && type !== "free_footer_brand" && type !== "banner_card" && type !== "agency_footer") {
+        altIndex += 1;
+      }
+      return normalized;
+    }
     if (
       type === "header" ||
       type === "hero" ||
@@ -3326,7 +3357,7 @@ const applySectionBackgrounds = (list: PageSection[]): PageSection[] => {
       type === "free_footer_brand" ||
       type === "banner_card"
     ) {
-      if ((normalized as any).type === "banner_card" && !(normalized as any).backgroundColor) {
+      if ((normalized as any).type === "banner_card" && (!(normalized as any).backgroundColor || newEditor.value)) {
         (normalized as any).backgroundColor = colorA.value;
       }
       return normalized;
@@ -3345,7 +3376,7 @@ const applySectionBackgrounds = (list: PageSection[]): PageSection[] => {
       const layout = (normalized as any).layout || "card";
       if (layout === "card") {
         const nextColor = altIndex % 2 === 0 ? colorA.value : colorB.value;
-        if (!(normalized as any).backgroundColor) {
+        if (!(normalized as any).backgroundColor || newEditor.value) {
           (normalized as any).backgroundColor = nextColor;
         }
         altIndex += 1;
@@ -6333,7 +6364,7 @@ onMounted(async () => {
   color: var(--muted-foreground) !important;
 }
 
-.section-editor-body :deep(label),
+.section-editor-body:not(.is-v2-form) :deep(label),
 .section-editor-body :deep(.banner-label),
 .section-editor-body :deep(.bio-label),
 .section-editor-body :deep(.countdown-label),
@@ -6342,9 +6373,9 @@ onMounted(async () => {
   color: var(--muted-foreground) !important;
 }
 
-.section-editor-body :deep(input:not([type="checkbox"]):not([type="radio"]):not([type="color"])),
-.section-editor-body :deep(textarea),
-.section-editor-body :deep(select),
+.section-editor-body:not(.is-v2-form) :deep(input:not([type="checkbox"]):not([type="radio"]):not([type="color"])),
+.section-editor-body:not(.is-v2-form) :deep(textarea),
+.section-editor-body:not(.is-v2-form) :deep(select),
 .section-editor-body :deep(.banner-input),
 .section-editor-body :deep(.bio-input),
 .section-editor-body :deep(.countdown-input),
@@ -6598,6 +6629,10 @@ onMounted(async () => {
 .v2ed-toast-ico svg { width: 15px; height: 15px; }
 .v2ed-toast button { height: 34px; padding: 0 14px; border-radius: 10px; background: rgba(255, 255, 255, 0.14); color: #fff; font-weight: 700; }
 .v2ed-toast button:hover { background: rgba(255, 255, 255, 0.24); }
+.section-editor-dialog.is-v2-form { width: min(46rem, calc(100vw - 2rem)); max-width: min(46rem, calc(100vw - 2rem)); height: min(90vh, 920px); }
+.section-editor-body.is-v2-form { padding: 16px 20px 0 !important; background: var(--muted); }
+.section-editor-dirty { display: inline-flex; align-items: center; gap: 8px; margin-right: auto; font-size: 13px; font-weight: 600; color: #b4530b; }
+.section-editor-dirty i { width: 8px; height: 8px; border-radius: 999px; background: #e8590c; }
 .ed-panel-eyebrow { margin: 0 0 2px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted-foreground); }
 .ed-panel-title { margin: 0 0 16px; font-size: 18px; font-weight: 700; color: var(--foreground); }
 .ed-rail { display: flex; flex: 0 0 64px; flex-direction: column; align-items: center; gap: 4px; padding: 12px 0; border-right: 1px solid var(--border); }
