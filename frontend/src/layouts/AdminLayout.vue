@@ -3174,20 +3174,26 @@ body.admin-body-light #app {
   border-radius: 14px;
 }
 
-/* O botão de expandir entra na coluna, logo acima do rodapé, em vez de sobrar na borda. */
+/* O botão de expandir entra na coluna, logo abaixo do logo, com moldura para ser fácil de achar. */
+.admin-sidebar.is-collapsed .as-brand {
+  order: -2;
+}
+
 .admin-sidebar.is-collapsed .as-collapse {
   position: static;
-  order: 1;
-  width: 40px;
-  height: 40px;
-  margin: 8px 0 0;
-  border: 0;
-  border-radius: 12px;
-  background: transparent;
+  order: -1;
+  width: 44px;
+  height: 32px;
+  margin: 0 0 10px;
+  border: 1px solid var(--sidebar-border);
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--foreground);
   box-shadow: none;
 }
 
 .admin-sidebar.is-collapsed .as-collapse:hover {
+  border-color: var(--ring);
   background: var(--sidebar-accent);
 }
 
