@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 
 
 class OnboardingSessionResponse(BaseModel):
@@ -12,20 +12,6 @@ class OnboardingSessionResponse(BaseModel):
 
 class OnboardingPasswordPayload(BaseModel):
     password: str
-
-
-class ManualPasswordPayload(BaseModel):
-    email: EmailStr
-    password: str
-
-
-class ManualPasswordEmailPayload(BaseModel):
-    email: EmailStr
-
-
-class ManualPasswordValidationResponse(BaseModel):
-    email: EmailStr
-    name: str | None = None
 
 
 class CheckoutSessionRequest(BaseModel):

@@ -3,11 +3,12 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
+from app.core.webhook_auth import require_webhook_token
 from app.db.session import SessionLocal
 from app.models.whatsapp import WhatsAppConnection, WhatsAppConversation
 from app.schemas.whatsapp import WebhookAckOut
@@ -224,31 +225,65 @@ def _process_evolution_webhook(
     return WebhookAckOut(accepted=True, reason="processed")
 
 
+def _require_evolution_token(request: Request, path_token: str | None = None) -> None:
+    # O token vai no caminho registrado na Evolution (/evolution/t/<token>), que
+    # sobrevive ao sufixo /<evento> do webhook global. Header e ?token= também valem.
+    require_webhook_token(
+        path_token or request.query_params.get("token") or request.headers.get("x-webhook-token"),
+        settings.evolution_webhook_token,
+        env=settings.env,
+        setting_name="EVOLUTION_WEBHOOK_TOKEN",
+    )
+
+
+def _handle_evolution_webhook(payload: dict[str, Any], *, event_name: str | None = None) -> WebhookAckOut:
+    if not settings.whatsapp_inbox_webhooks_enabled:
+        return WebhookAckOut(accepted=True, reason="inbox_webhooks_disabled")
+    # Evolution v2.3.6 pode enviar callbacks em .../<event-slug>.
+    # Ex.: messages-upsert, connection-update, qrcode-updated
+    event_hint = event_name.replace("-", ".") if event_name else None
+    db = SessionLocal()
+    try:
+        return _process_evolution_webhook(payload, db=db, event_hint=event_hint)
+    finally:
+        db.close()
+
+
 @router.post("/evolution", response_model=WebhookAckOut)
 def evolution_webhook(
     payload: dict[str, Any],
+    request: Request,
 ) -> WebhookAckOut:
-    if not settings.whatsapp_inbox_webhooks_enabled:
-        return WebhookAckOut(accepted=True, reason="inbox_webhooks_disabled")
-    db = SessionLocal()
-    try:
-        return _process_evolution_webhook(payload, db=db)
-    finally:
-        db.close()
+    _require_evolution_token(request)
+    return _handle_evolution_webhook(payload)
+
+
+@router.post("/evolution/t/{token}", response_model=WebhookAckOut)
+def evolution_webhook_with_token(
+    token: str,
+    payload: dict[str, Any],
+    request: Request,
+) -> WebhookAckOut:
+    _require_evolution_token(request, token)
+    return _handle_evolution_webhook(payload)
+
+
+@router.post("/evolution/t/{token}/{event_name}", response_model=WebhookAckOut)
+def evolution_webhook_with_token_by_event(
+    token: str,
+    event_name: str,
+    payload: dict[str, Any],
+    request: Request,
+) -> WebhookAckOut:
+    _require_evolution_token(request, token)
+    return _handle_evolution_webhook(payload, event_name=event_name)
 
 
 @router.post("/evolution/{event_name}", response_model=WebhookAckOut)
 def evolution_webhook_by_event(
     event_name: str,
     payload: dict[str, Any],
+    request: Request,
 ) -> WebhookAckOut:
-    # Evolution v2.3.6 pode enviar callbacks em /evolution/<event-slug>.
-    # Ex.: /evolution/messages-upsert, /evolution/connection-update, /evolution/qrcode-updated
-    if not settings.whatsapp_inbox_webhooks_enabled:
-        return WebhookAckOut(accepted=True, reason="inbox_webhooks_disabled")
-    event_hint = event_name.replace("-", ".")
-    db = SessionLocal()
-    try:
-        return _process_evolution_webhook(payload, db=db, event_hint=event_hint)
-    finally:
-        db.close()
+    _require_evolution_token(request)
+    return _handle_evolution_webhook(payload, event_name=event_name)

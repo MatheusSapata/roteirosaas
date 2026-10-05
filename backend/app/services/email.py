@@ -108,7 +108,7 @@ def send_cakto_onboarding_email(
         logger.info("SMTP nao configurado. Onboarding para %s nao sera enviado.", user.email)
         return
 
-    password_url = f"{settings.resolved_webapp_base_url}/create-password"
+    password_url = f"{settings.resolved_webapp_base_url}/create-password?token={onboarding_token.token}"
     plan_label = _plan_label(plan_key)
     cycle_label = _cycle_label(cycle)
     greeting_name = user.name or user.email

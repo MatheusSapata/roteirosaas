@@ -203,7 +203,11 @@ class CaktoIntegrationService:
         record = query.first()
         if not record:
             return None
-        if record.expires_at and datetime.utcnow() > record.expires_at:
+        expires_at = record.expires_at
+        if expires_at and expires_at.tzinfo is None:
+            # SQLite devolve a coluna sem fuso; o Postgres devolve com fuso.
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        if expires_at and datetime.now(timezone.utc) > expires_at:
             return None
         return record
 
@@ -214,17 +218,6 @@ class CaktoIntegrationService:
         if not normalized:
             raise ValueError("Informe um email válido.")
         return normalized
-
-    def _get_user_by_email(self, email: str) -> User:
-        normalized = self._normalize_email(email)
-        user = (
-            self.db.query(User)
-            .filter(func.lower(User.email) == normalized)
-            .first()
-        )
-        if not user:
-            raise LookupError("Não encontramos nenhum cadastro com este email.")
-        return user
 
     def set_password_for_onboarding(
         self,
@@ -253,24 +246,6 @@ class CaktoIntegrationService:
         end_trial(user, self.db, keep_plan=record.plan_key)
         self.db.add_all([user, record])
         self.db.commit()
-
-    def lookup_manual_user(self, email: str) -> User:
-        return self._get_user_by_email(email)
-
-    def set_password_by_email(self, *, email: str, password: str) -> User:
-        user = self._get_user_by_email(email)
-
-        auth_service.validate_password_strength(password)
-        user.hashed_password = auth_service.get_password_hash(password)
-        user.is_active = True
-        keep_plan = user.plan
-        if not keep_plan and getattr(user, "subscription", None):
-            keep_plan = user.subscription.plan
-        end_trial(user, self.db, keep_plan=keep_plan)
-        self.db.add(user)
-        self.db.commit()
-        self.db.refresh(user)
-        return user
 
     # ------------------------------------------------------------------ #
     # Event handlers

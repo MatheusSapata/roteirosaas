@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 import socket
 import logging
 import time
@@ -88,9 +88,16 @@ class EvolutionService:
         detail = " | ".join(errors) if errors else "unknown error"
         raise RuntimeError(f"Evolution request failed for all candidates: {detail}")
 
+    def _authenticated_webhook_url(self, webhook_url: str) -> str:
+        """Acrescenta o EVOLUTION_WEBHOOK_TOKEN no caminho da URL que a Evolution vai chamar."""
+        token = (self.settings.evolution_webhook_token or "").strip()
+        if not webhook_url or not token:
+            return webhook_url
+        return f"{webhook_url.rstrip('/')}/t/{quote(token, safe='')}"
+
     def create_instance(self, instance_name: str | None = None) -> dict[str, Any]:
         name = (instance_name or self.test_instance_name).strip()
-        webhook_url = (
+        webhook_url = self._authenticated_webhook_url(
             (self.settings.evolution_webhook_url or "").strip()
             if self.settings.whatsapp_inbox_webhooks_enabled
             else ""
@@ -173,9 +180,14 @@ class EvolutionService:
         if not webhook_url:
             raise RuntimeError("EVOLUTION_WEBHOOK_URL não configurada.")
         events = self.default_webhook_events()
-        self._configure_instance_webhook(name=instance_name, webhook_url=webhook_url, events=events)
+        self._configure_instance_webhook(
+            name=instance_name,
+            webhook_url=self._authenticated_webhook_url(webhook_url),
+            events=events,
+        )
         return {
             "instance_name": instance_name,
+            # URL sem o token: esta resposta chega ao painel da agência.
             "webhook_url": webhook_url,
             "events": events,
             "status": "reapplied",
@@ -668,7 +680,7 @@ class EvolutionService:
             logger.warning(
                 "Could not configure Evolution webhook for instance=%s url=%s error=%s",
                 name,
-                webhook_url,
+                webhook_url.split("/t/", 1)[0],
                 last_error,
             )
 

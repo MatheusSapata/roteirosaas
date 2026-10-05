@@ -17,14 +17,6 @@ export const submitOnboardingPassword = (params: Record<string, string>, payload
   return client.post("/onboarding/session/password", payload, { params });
 };
 
-export const submitManualOnboardingPassword = (payload: { email: string; password: string }) => {
-  return client.post("/onboarding/manual-password", payload);
-};
-
-export const validateManualOnboardingEmail = (payload: { email: string }) => {
-  return client.post("/onboarding/manual-password/validate", payload);
-};
-
 export const createCaktoCheckoutSession = (plan: string, cycle?: string) => {
   return client.post("/checkout-session", { plan, cycle });
 };

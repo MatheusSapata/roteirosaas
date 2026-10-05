@@ -8,7 +8,7 @@ from pydantic import BaseModel, field_validator
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_active_user, get_db, require_agency_membership
+from app.api.deps import get_current_active_user, get_current_superuser, get_db, require_agency_membership
 from app.models.client import Client
 from app.models.lead_form import LeadFormSubmission
 from app.models.user import User
@@ -218,7 +218,8 @@ def get_inbox_access(
 
 
 @router.post("/test-instance")
-def create_test_instance(current_user: User = Depends(get_current_active_user)) -> dict[str, Any]:
+def create_test_instance(current_user: User = Depends(get_current_superuser)) -> dict[str, Any]:
+    # Só o admin master: a resposta crua da Evolution traz a URL do webhook com o token.
     try:
         created = evolution_service.create_instance()
     except Exception as exc:
