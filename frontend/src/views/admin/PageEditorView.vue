@@ -1,5 +1,5 @@
 ﻿<template>
-<div class="page-editor-view w-full" :class="newEditor ? 'is-v2 space-y-2 px-1 py-1' : 'space-y-6 px-4 py-6 md:px-8 md:py-4'">
+<div class="page-editor-view w-full" :class="[newEditor ? 'is-v2 space-y-2 px-1 py-1' : 'space-y-6 px-4 py-6 md:px-8 md:py-4', { 'is-phone': phoneEditor }]">
     <div class="ed-topbar">
       <button type="button" class="ed-back" @click="goBack" :aria-label="viewCopy.actions.goBack">
         <ChevronLeftIcon aria-hidden="true" />
@@ -21,7 +21,7 @@
           <SparkleIcon aria-hidden="true" />
           Assistente IA
         </button>
-        <button v-if="isPublished" type="button" class="ed-btn ed-btn-ghost" :disabled="!publicUrl" @click="viewPublicPage">
+        <button v-if="isPublished && !phoneEditor" type="button" class="ed-btn ed-btn-ghost" :disabled="!publicUrl" @click="viewPublicPage">
           <ExternalLinkIcon aria-hidden="true" />
           {{ viewCopy.actions.viewPage }}
         </button>
@@ -30,22 +30,25 @@
             <EllipsisVerticalIcon aria-hidden="true" />
           </button>
           <div v-if="topbarMenuOpen" class="ed-menu" @click="topbarMenuOpen = false">
+            <button v-if="phoneEditor && isPublished" type="button" :disabled="!publicUrl" @click="viewPublicPage">{{ viewCopy.actions.viewPage }}</button>
+            <button v-if="phoneEditor && !isPublished" type="button" @click="publishPage">{{ viewCopy.toolbar.publish }}</button>
             <button type="button" @click="saveTemplate">{{ viewCopy.toolbar.saveTemplate }}</button>
             <button v-if="isPublished" type="button" class="danger" @click="unpublishPage">{{ viewCopy.toolbar.unpublish }}</button>
           </div>
         </div>
-        <button v-if="!isPublished" type="button" class="ed-btn ed-btn-ghost" @click="publishPage">{{ viewCopy.toolbar.publish }}</button>
+        <button v-if="!isPublished && !phoneEditor" type="button" class="ed-btn ed-btn-ghost" @click="publishPage">{{ viewCopy.toolbar.publish }}</button>
         <button type="button" class="ed-btn ed-btn-primary" :disabled="!hasUnsavedChanges" @click="saveConfig">{{ viewCopy.toolbar.save }}</button>
       </div>
     </div>
 
     <!-- Dialog de limite de plano (reutilizado tamb?m para "template no free") -->
-    <div :class="['editor-workspace', showAiAssistant ? 'ai-assistant-open' : '', { 'is-v2': newEditor }]">
+    <div :class="['editor-workspace', showAiAssistant ? 'ai-assistant-open' : '', { 'is-v2': newEditor, 'is-phone': phoneEditor }]">
 
       <Transition name="ai-sidebar-slide">
         <aside
           v-if="showAiAssistant"
-          class="editor-ai-sidebar hidden md:flex"
+          class="editor-ai-sidebar"
+          :class="phoneEditor ? 'flex' : 'hidden md:flex'"
           :style="aiAssistantSidebarStyle"
           aria-label="Painel do assistente"
         >
@@ -365,6 +368,23 @@
       @close="closeSectionPicker"
       @integrate="goViajeonIntegration"
     />
+    <nav v-if="phoneEditor && !sectionPanelOpen && !showAiAssistant" class="ed-phone-nav" aria-label="Editor">
+      <button type="button" :class="{ on: layersOpen }" @click="layersOpen ? closePhonePanels() : openPhonePanel('layers')">
+        <LayersIcon aria-hidden="true" />
+        <span>Seções</span>
+      </button>
+      <button type="button" class="is-add" aria-label="Adicionar seção" @click="closePhonePanels(); openSectionPicker(null)">
+        <PlusIcon aria-hidden="true" />
+      </button>
+      <button type="button" :class="{ on: leftPanelOpen }" @click="leftPanelOpen ? closePhonePanels() : openPhonePanel('settings')">
+        <Settings2Icon aria-hidden="true" />
+        <span>Página</span>
+      </button>
+      <button v-if="canUseAiAssistant" type="button" :class="{ on: showAiAssistant }" @click="showAiAssistant ? closePhonePanels() : openPhonePanel('ai')">
+        <SparkleIcon aria-hidden="true" />
+        <span>IA</span>
+      </button>
+    </nav>
     <Transition name="fade">
       <div v-if="insertedToast" class="v2ed-toast" role="status">
         <span class="v2ed-toast-ico" aria-hidden="true"><CheckIcon /></span>
@@ -493,11 +513,12 @@
           'is-v2': newEditor,
           'left-closed': newEditor && !leftPanelOpen,
           'right-closed': newEditor && (!layersOpen || showAiAssistant),
-          'is-resizing': resizingPanel
+          'is-resizing': resizingPanel,
+          'is-phone': phoneEditor
         }"
         :style="editorGridStyle"
       >
-      <template v-if="newEditor">
+      <template v-if="newEditor && !phoneEditor">
         <div
           v-if="leftContentKey"
           class="ed-resize is-left"
@@ -525,7 +546,7 @@
           @keydown.right.prevent="nudgePanel('layers', -24)"
         ></div>
       </template>
-      <aside v-if="newEditor || activeSettingsTab !== 'content'" class="ed-side">
+      <aside v-if="newEditor || activeSettingsTab !== 'content'" class="ed-side" :class="{ 'is-open': !!leftContentKey, 'is-section': sectionPanelOpen }">
       <nav v-if="newEditor" class="ed-rail" aria-label="Configurações da página">
         <button
           type="button"
@@ -535,7 +556,8 @@
           :title="leftPanelOpen ? 'Recolher configurações' : 'Abrir configurações'"
           @click="leftPanelOpen = !leftPanelOpen"
         >
-          <PanelLeftCloseIcon v-if="leftPanelOpen" aria-hidden="true" />
+          <XIcon v-if="phoneEditor" aria-hidden="true" />
+          <PanelLeftCloseIcon v-else-if="leftPanelOpen" aria-hidden="true" />
           <PanelLeftOpenIcon v-else aria-hidden="true" />
         </button>
         <button
@@ -556,7 +578,7 @@
         <header class="esp-top">
           <button type="button" class="esp-back" @click="requestCloseSectionEditor">
             <ChevronLeftIcon aria-hidden="true" />
-            Configurações
+            {{ phoneEditor ? "Voltar" : "Configurações" }}
           </button>
           <button
             type="button"
@@ -1003,11 +1025,12 @@
             v-if="newEditor"
             type="button"
             class="ed-rail-btn is-small"
-            aria-label="Recolher camadas"
-            title="Recolher camadas"
+            :aria-label="phoneEditor ? 'Fechar camadas' : 'Recolher camadas'"
+            :title="phoneEditor ? 'Fechar camadas' : 'Recolher camadas'"
             @click="layersOpen = false"
           >
-            <PanelRightCloseIcon aria-hidden="true" />
+            <XIcon v-if="phoneEditor" aria-hidden="true" />
+            <PanelRightCloseIcon v-else aria-hidden="true" />
           </button>
           <div class="ed-sections-titles">
             <h2>{{ newEditor ? "Camadas" : "Seções da página" }}</h2>
@@ -1063,9 +1086,9 @@
           <PlusIcon aria-hidden="true" />
           Adicionar seção
         </button>
-        <p class="ed-sections-hint">{{ newEditor ? "Arraste para reordenar. O interruptor esconde a seção sem apagar." : "Clique numa seção (aqui ou na prévia) para editar. Arraste para mudar a ordem; o interruptor esconde a seção sem apagar." }}</p>
+        <p class="ed-sections-hint">{{ phoneEditor ? "Toque numa seção para editar. Para mudar a ordem, use as setas na prévia." : newEditor ? "Arraste para reordenar. O interruptor esconde a seção sem apagar." : "Clique numa seção (aqui ou na prévia) para editar. Arraste para mudar a ordem; o interruptor esconde a seção sem apagar." }}</p>
       </section>
-      <aside v-if="newEditor && !layersOpen && !showAiAssistant" class="ed-layers-mini" aria-label="Camadas">
+      <aside v-if="newEditor && !phoneEditor && !layersOpen && !showAiAssistant" class="ed-layers-mini" aria-label="Camadas">
         <button type="button" class="ed-rail-btn" aria-label="Abrir camadas" title="Abrir camadas" @click="layersOpen = true">
           <PanelRightOpenIcon aria-hidden="true" />
         </button>
@@ -1135,7 +1158,9 @@
       </div>
       <div class="ed-stage" :class="{ 'is-framed': !isMobileViewport, 'is-mobile-preview': previewDevice === 'mobile' }">
         <div
-          :class="isMobileViewport
+          :class="phoneEditor
+            ? 'ed-phone-screen'
+            : isMobileViewport
             ? (previewDevice === 'mobile' ? '-mx-4 w-[calc(100%+2rem)] overflow-hidden' : '')
             : (previewDevice === 'mobile' ? 'ed-phone' : 'ed-browser')"
         >
@@ -1175,7 +1200,11 @@
                       class="group relative"
                       :class="[
                         (section as any).type === 'header' ? 'z-30 overflow-visible' : 'overflow-hidden',
-                        { 'v2ed-sec': newEditor && (section as any).enabled, 'is-editing': sectionPanelOpen && editingSectionIndex === idx }
+                        {
+                          'v2ed-sec': newEditor && (section as any).enabled,
+                          'is-editing': sectionPanelOpen && editingSectionIndex === idx,
+                          'is-tapped': phoneEditor && mobileOverlayVisible[idx]
+                        }
                       ]"
                       :data-preview-index="idx"
                       @click.capture="handleSectionTap(idx, $event)"
@@ -1471,6 +1500,8 @@ import {
   PanelRightOpenIcon,
   PanelsTopLeftIcon,
   PaperclipIcon,
+  LayersIcon,
+  Settings2Icon,
   PencilIcon,
   PlaneIcon,
   PlusIcon,
@@ -2039,7 +2070,9 @@ const previewDevice = ref<"desktop" | "mobile">(editorPrefs.value.previewDevice 
 const isMobileViewport = ref(false);
 const isMobileOverlayMode = computed(() => isMobileViewport.value);
 // Editor novo (painel à esquerda, camadas à direita): por enquanto só para quem já tem o visual novo.
-const newEditor = computed(() => designV2Enabled.value && !isMobileViewport.value);
+const newEditor = computed(() => designV2Enabled.value);
+// No celular o editor novo vira prévia em tela cheia com barra embaixo; painéis abrem por cima.
+const phoneEditor = computed(() => newEditor.value && isMobileViewport.value);
 const EDITOR_PANELS_KEY = "editor_v2_panels";
 type PanelWidthKey = "settings" | "section" | "layers";
 type PanelPrefs = { left?: boolean; layers?: boolean; widths?: Partial<Record<PanelWidthKey, number>> };
@@ -2075,7 +2108,7 @@ const panelWidth = (key: PanelWidthKey) => {
 const leftContentKey = computed<PanelWidthKey | null>(() => (sectionPanelOpen.value ? "section" : leftPanelOpen.value ? "settings" : null));
 const layersPanelShown = computed(() => newEditor.value && layersOpen.value && !showAiAssistant.value);
 const editorGridStyle = computed(() => {
-  if (!newEditor.value) return {};
+  if (!newEditor.value || phoneEditor.value) return {};
   const left = PANEL_RAIL + (leftContentKey.value ? panelWidth(leftContentKey.value) : 0);
   const right = layersPanelShown.value ? panelWidth("layers") : showAiAssistant.value ? 0 : PANEL_RAIL;
   return {
@@ -2089,6 +2122,8 @@ const editorGridStyle = computed(() => {
 const editorGridRef = ref<HTMLElement | null>(null);
 const resizingPanel = ref<PanelWidthKey | null>(null);
 const savePanelPrefs = () => {
+  // No celular os painéis abrem e fecham o tempo todo; isso não muda o que fica lembrado no computador.
+  if (isMobileViewport.value) return;
   try {
     window.localStorage.setItem(
       EDITOR_PANELS_KEY,
@@ -2151,6 +2186,28 @@ const resetPanelWidth = (key: PanelWidthKey) => {
   savePanelPrefs();
 };
 watch([leftPanelOpen, layersOpen], savePanelPrefs);
+const closePhonePanels = () => {
+  leftPanelOpen.value = false;
+  layersOpen.value = false;
+  showAiAssistant.value = false;
+};
+watch(phoneEditor, isPhone => {
+  if (isPhone) {
+    leftPanelOpen.value = false;
+    layersOpen.value = false;
+    return;
+  }
+  const prefs = readPanelPrefs();
+  leftPanelOpen.value = prefs.left ?? window.innerWidth >= 1600;
+  layersOpen.value = prefs.layers ?? true;
+}, { immediate: true });
+// Um painel por vez no celular.
+const openPhonePanel = (panel: "layers" | "settings" | "ai") => {
+  closePhonePanels();
+  if (panel === "layers") layersOpen.value = true;
+  else if (panel === "settings") leftPanelOpen.value = true;
+  else toggleAiAssistant();
+};
 type RailTab = "general" | "colors" | "pixels" | "capture";
 const railTabs: { id: RailTab; label: string; icon: Component }[] = [
   { id: "general", label: "Título e link", icon: PencilIcon },
@@ -3136,6 +3193,9 @@ const isSectionEditorOpen = computed(() => editingSectionIndex.value !== null &&
 // Editor novo: a seção abre no painel da esquerda, no lugar das configurações da página,
 // e a prévia mostra o rascunho enquanto a pessoa digita. Seções sem formulário novo seguem no modal.
 const sectionPanelOpen = computed(() => isSectionEditorOpen.value && usesV2Form.value);
+watch(sectionPanelOpen, isOpen => {
+  if (isOpen && phoneEditor.value) layersOpen.value = false;
+});
 const sectionPanelMenuOpen = ref(false);
 const livePreviewDraft = computed(() => {
   const draft = editingSectionDraft.value;
@@ -7229,6 +7289,45 @@ onMounted(async () => {
   .ed-grid.is-v2 .ed-settings-card { width: 320px; }
   .ed-section-panel { width: 360px; }
   .ed-settings-v2 { width: 320px; }
+}
+/* Celular: prévia em tela cheia, painéis abrem por cima e a barra de baixo troca entre eles. */
+.page-editor-view.is-phone { padding: 0 !important; }
+.ed-grid.is-v2.is-phone { display: block; height: auto; min-height: 0; }
+.ed-grid.is-phone > .editor-preview-shell { margin-bottom: 92px; padding: 0 !important; overflow: hidden; border: 0 !important; border-radius: 18px !important; box-shadow: none !important; }
+.ed-grid.is-phone .ed-preview-head { display: none; }
+.ed-grid.is-v2.is-phone .ed-stage { margin-top: 0; }
+.ed-phone-screen { overflow: hidden; }
+.ed-grid.is-phone > .ed-side { display: none; }
+.ed-grid.is-phone > .ed-side.is-open,
+.ed-grid.is-phone > .ed-sections { position: fixed; inset: 0; z-index: 80; display: flex; width: auto !important; flex-direction: column; border-radius: 0 !important; transition: none; animation: ed-sheet-up 0.32s var(--ed-ease); }
+.ed-grid.is-phone > .ed-sections { padding: 16px 12px 96px; }
+.ed-grid.is-phone > .ed-side.is-open:not(.is-section) { padding-bottom: 84px; }
+.ed-grid.is-phone .ed-rail { flex: 0 0 auto; flex-direction: row; gap: 6px; padding: 10px 12px; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--border); }
+.ed-grid.is-phone .ed-rail-btn:first-child { margin: 0 6px 0 0; }
+.ed-grid.is-phone > .ed-side.is-section .ed-rail { display: none; }
+.ed-grid.is-phone .ed-section-panel,
+.ed-grid.is-phone .ed-settings-v2 { flex: 1; width: 100% !important; min-height: 0; animation: none; }
+.ed-grid.is-phone .ed-section-row .ed-grip { display: none; }
+.editor-workspace.is-phone .editor-ai-sidebar { inset: 0 !important; z-index: 80; width: auto !important; max-width: none !important; border-radius: 0 !important; }
+.editor-workspace.is-phone .editor-ai-sidebar-resize-handle { display: none; }
+@keyframes ed-sheet-up { from { opacity: 0; transform: translateY(28px); } }
+.ed-phone-nav { position: fixed; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); left: 12px; z-index: 85; display: flex; align-items: center; gap: 4px; padding: 6px; border-radius: 22px; background: var(--card); box-shadow: inset 0 0 0 1px var(--border), 0 16px 36px -14px rgba(6, 12, 9, 0.5); font-family: Figtree, sans-serif; }
+.ed-phone-nav button { display: flex; flex: 1; flex-direction: column; align-items: center; gap: 2px; padding: 7px 0 6px; border-radius: 16px; color: var(--muted-foreground); font-size: 11px; font-weight: 700; transition: background-color 0.15s ease, color 0.15s ease; }
+.ed-phone-nav button.on { background: var(--muted); color: var(--foreground); }
+.ed-phone-nav svg { width: 20px; height: 20px; }
+.ed-phone-nav button.is-add { display: grid; flex: 0 0 48px; height: 48px; place-items: center; padding: 0; border-radius: 999px; background: var(--foreground); color: var(--background); }
+.page-editor-view.is-phone ~ .v2ed-toast, .page-editor-view.is-phone .v2ed-toast { bottom: 96px; }
+.page-editor-view.is-phone .ed-topbar { flex-wrap: nowrap; gap: 8px; min-height: 48px; padding: 0 2px; }
+.page-editor-view.is-phone .ed-title-block { flex: 1; min-width: 0; }
+.page-editor-view.is-phone .ed-title-row { flex-wrap: nowrap; gap: 6px; }
+.page-editor-view.is-phone .ed-title { max-width: none; font-size: 16px; }
+.page-editor-view.is-phone .ed-pill, .page-editor-view.is-phone .ed-saved { display: none; }
+.page-editor-view.is-phone .ed-actions { width: auto; flex: 0 0 auto; flex-wrap: nowrap; gap: 6px; margin-left: 0; }
+.page-editor-view.is-phone .ed-actions .ed-btn-primary { flex: 0 0 auto; width: auto; padding: 0 16px; }
+.v2ed-sec.is-tapped { z-index: 5; }
+.v2ed-sec.is-tapped .v2ed-ring, .v2ed-sec.is-tapped .v2ed-tag, .v2ed-sec.is-tapped .v2ed-bar { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  .ed-grid.is-phone > .ed-side.is-open, .ed-grid.is-phone > .ed-sections { animation: none; }
 }
 </style>
 
