@@ -539,9 +539,123 @@
           <button type="button" class="esp-btn is-primary" @click="saveEditingSection">Salvar seção</button>
         </footer>
       </section>
-      <div v-show="(!newEditor || leftPanelOpen) && !sectionPanelOpen" class="editor-settings-shell ed-settings-card">
-        <p v-if="newEditor" class="ed-panel-eyebrow">Configurações da página</p>
-        <h2 v-if="newEditor" class="ed-panel-title">{{ railTabs.find(tab => tab.id === activeSettingsTab)?.label }}</h2>
+      <div v-if="newEditor && leftPanelOpen && !sectionPanelOpen" class="ed-settings-v2">
+        <div class="esv-head">
+          <p class="ed-panel-eyebrow">Configurações da página</p>
+          <h2 class="ed-panel-title">{{ railTabs.find(tab => tab.id === activeSettingsTab)?.label }}</h2>
+        </div>
+        <div class="esv-body ved">
+          <template v-if="activeSettingsTab === 'general'">
+            <EdGroup title="Página">
+              <EdText :model-value="pageTitle" label="Título da página" @update:model-value="pageTitle = $event; scheduleWhatsAppUpdate()" />
+              <label class="ved-field">
+                <span class="ved-label">Link da página</span>
+                <span class="esv-slug">
+                  <span class="esv-slug-base" :title="slugBaseLabel">{{ slugBaseLabel }}</span>
+                  <input class="ved-input" :value="pageSlug" @input="handleSlugInput" />
+                </span>
+                <span class="ved-hint">Use apenas letras, números e hífens, sem espaços nem acentos.</span>
+              </label>
+              <EdText
+                :model-value="pageShortDescription"
+                label="Descrição curta"
+                multiline
+                hint="Aparece no Google e ao compartilhar no WhatsApp."
+                placeholder="Ex.: Pacote completo com transporte, hospedagem e ingressos."
+                @update:model-value="pageShortDescription = $event"
+              />
+            </EdGroup>
+          </template>
+
+          <template v-else-if="activeSettingsTab === 'colors'">
+            <EdGroup title="Cor de destaque">
+              <p class="ved-hint">Botões, selos e ícones de todas as seções.</p>
+              <label class="esv-color">
+                <input v-model="ctaColor" type="color" aria-label="Cor de destaque" />
+                <input class="ved-input" :value="ctaColor" @input="ctaColor = normalizeHexColor(($event.target as HTMLInputElement).value, ctaColor)" />
+              </label>
+            </EdGroup>
+            <EdGroup title="Fundo das seções">
+              <p class="ved-hint">As seções alternam entre as duas cores, menos a capa. Cada seção pode ter o próprio fundo em Aparência.</p>
+              <label class="esv-color">
+                <span class="ved-label">Cor 1</span>
+                <input v-model="colorA" type="color" aria-label="Cor de fundo 1" />
+                <input class="ved-input" :value="colorA" @input="colorA = normalizeHexColor(($event.target as HTMLInputElement).value, colorA)" />
+              </label>
+              <label class="esv-color">
+                <span class="ved-label">Cor 2</span>
+                <input v-model="colorB" type="color" aria-label="Cor de fundo 2" />
+                <input class="ved-input" :value="colorB" @input="colorB = normalizeHexColor(($event.target as HTMLInputElement).value, colorB)" />
+              </label>
+            </EdGroup>
+            <EdGroup v-if="designV2Enabled" title="Visual das seções">
+              <EdToggle v-model="useLegacyDesign" :label="viewCopy.form.legacyDesignLabel" :hint="viewCopy.form.legacyDesignHint" />
+            </EdGroup>
+          </template>
+
+          <template v-else-if="activeSettingsTab === 'pixels'">
+            <div v-if="!selectedPixels.meta && !selectedPixels.ga" class="esv-warn">
+              <b>Nenhum pixel nesta página</b>
+              <span>Sem pixel, as visitas e os cliques não chegam no Meta Ads nem no Google Analytics.</span>
+            </div>
+            <EdGroup title="Pixels">
+              <p v-if="!canSelectPixel" class="ved-info">{{ viewCopy.pixels.planHint }}</p>
+              <template v-else>
+                <label class="ved-field">
+                  <span class="ved-label">{{ viewCopy.pixels.metaLabel }}</span>
+                  <select v-model="selectedPixels.meta" class="ved-select" :disabled="!metaPixelOptions.length">
+                    <option value="">{{ viewCopy.pixels.metaPlaceholder }}</option>
+                    <option v-for="p in metaPixelOptions" :key="p.name" :value="p.name">{{ p.name }}</option>
+                  </select>
+                  <span v-if="!metaPixelOptions.length" class="ved-hint">{{ viewCopy.pixels.metaEmptyHint }}</span>
+                </label>
+                <label class="ved-field">
+                  <span class="ved-label">{{ viewCopy.pixels.googleLabel }}</span>
+                  <select v-model="selectedPixels.ga" class="ved-select" :disabled="!gaPixelOptions.length">
+                    <option value="">{{ viewCopy.pixels.googlePlaceholder }}</option>
+                    <option v-for="p in gaPixelOptions" :key="p.name" :value="p.name">{{ p.name }}</option>
+                  </select>
+                  <span v-if="!gaPixelOptions.length" class="ved-hint">{{ viewCopy.pixels.googleEmptyHint }}</span>
+                </label>
+              </template>
+              <button type="button" class="esv-link" @click="goIntegrations">Gerenciar pixels em Integrações</button>
+            </EdGroup>
+            <EdGroup v-if="canSelectPixel" title="Eventos enviados">
+              <EdToggle v-model="trackingEvents.pageView" :label="viewCopy.pixels.eventPageView" />
+              <EdToggle v-model="trackingEvents.ctaClicks" :label="viewCopy.pixels.eventCtaClicks" />
+              <EdToggle v-model="trackingEvents.leads" :label="viewCopy.pixels.eventLeads" />
+            </EdGroup>
+          </template>
+
+          <template v-else-if="activeSettingsTab === 'capture'">
+            <EdGroup v-if="leadFeatureAllowed" title="Formulário">
+              <p class="ved-hint">{{ viewCopy.leadSection.description }}</p>
+              <p v-if="leadFormsLoading" class="ved-info">{{ viewCopy.leadSection.loading }}</p>
+              <p v-else-if="!leadForms.length" class="ved-info">{{ viewCopy.leadSection.empty }} <b>{{ viewCopy.leadSection.emptyAction }}</b></p>
+              <template v-else>
+                <label class="ved-field">
+                  <span class="ved-label">{{ viewCopy.leadSection.selectLabel }}</span>
+                  <select v-model="selectedLeadFormId" class="ved-select">
+                    <option value="">{{ viewCopy.leadSection.selectPlaceholder }}</option>
+                    <option v-for="form in leadForms" :key="form.id" :value="String(form.id)">{{ form.name || form.title }} ({{ form.total_leads ?? 0 }} leads)</option>
+                  </select>
+                  <span class="ved-hint">{{ viewCopy.leadSection.selectHint }}</span>
+                </label>
+                <template v-if="selectedLeadForm">
+                  <EdToggle v-model="leadCaptureOptional" :label="viewCopy.leadSection.optionalToggle" />
+                  <button type="button" class="esv-btn" @click="openLeadFormPreview(selectedLeadForm)">{{ viewCopy.leadSection.previewButton }}</button>
+                </template>
+              </template>
+              <button type="button" class="esv-link" @click="goLeads">{{ viewCopy.leadSection.manageButton }}</button>
+            </EdGroup>
+            <EdGroup v-else :title="viewCopy.leadSection.blockedTitle">
+              <p class="ved-hint">{{ viewCopy.leadSection.blockedDescription }}</p>
+              <button type="button" class="esv-btn is-primary" @click="goPlans">{{ viewCopy.actions.viewPlans }}</button>
+            </EdGroup>
+          </template>
+        </div>
+      </div>
+      <div v-show="!newEditor" class="editor-settings-shell ed-settings-card">
         <div class="editor-settings-grid">
           <div
             ref="settingsPanelRef"
@@ -962,7 +1076,7 @@
           }}
         </span>
       </div>
-      <div class="ed-stage" :class="{ 'is-framed': !isMobileViewport }">
+      <div class="ed-stage" :class="{ 'is-framed': !isMobileViewport, 'is-mobile-preview': previewDevice === 'mobile' }">
         <div
           :class="isMobileViewport
             ? (previewDevice === 'mobile' ? '-mx-4 w-[calc(100%+2rem)] overflow-hidden' : '')
@@ -1364,6 +1478,10 @@ import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
 import { resolvePageDesign } from "../../utils/pageDesign";
 import { sectionNameV2 } from "../../utils/sectionCatalogV2";
 import SectionPickerV2 from "../../components/admin/SectionPickerV2.vue";
+import EdGroup from "../../components/admin/v2edit/EdGroup.vue";
+import EdText from "../../components/admin/v2edit/EdText.vue";
+import EdToggle from "../../components/admin/v2edit/EdToggle.vue";
+import "../../components/admin/v2edit/v2edit.css";
 import { pickSectionComponent } from "../../components/public/v2/registry";
 import { DEFAULT_ACCENT, PAGE_DESIGN_KEY } from "../../components/public/v2/designContext";
 import { getReadableTextColor } from "../../utils/colorContrast";
@@ -6769,6 +6887,27 @@ onMounted(async () => {
 .esp-btn.is-primary { background: var(--primary); color: var(--primary-foreground); }
 .v2ed-sec.is-editing { z-index: 4; }
 .v2ed-sec.is-editing .v2ed-ring { opacity: 1; box-shadow: inset 0 0 0 2px #12b981; }
+.ed-settings-v2 { display: flex; width: 360px; min-height: 0; flex-direction: column; }
+.esv-head { padding: 14px 16px 12px; }
+.esv-head .ed-panel-title { margin-bottom: 0; }
+.esv-body { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding: 12px; border-top: 1px solid var(--border); background: var(--muted); }
+.esv-slug { display: flex; flex-direction: column; overflow: hidden; border-radius: 12px; background: var(--muted); }
+.esv-slug-base { overflow: hidden; padding: 8px 12px 0; font-size: 12px; font-weight: 600; color: var(--muted-foreground); white-space: nowrap; text-overflow: ellipsis; }
+.esv-slug .ved-input { height: 38px; }
+.esv-color { display: flex; align-items: center; gap: 10px; }
+.esv-color .ved-label { width: 48px; flex-shrink: 0; }
+.esv-color input[type="color"] { width: 44px; height: 44px; flex-shrink: 0; padding: 0; border: 0; border-radius: 12px; background: none; cursor: pointer; }
+.esv-color input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+.esv-color input[type="color"]::-webkit-color-swatch { border: 1px solid var(--border); border-radius: 12px; }
+.esv-color .ved-input { flex: 1; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; }
+.esv-warn { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: 14px; background: #fff4ec; color: #8a3c08; font-size: 13px; line-height: 1.45; }
+.esv-warn b { font-size: 14px; }
+.esv-link { align-self: flex-start; padding: 2px 0; font-size: 13px; font-weight: 700; color: var(--primary); text-decoration: underline; text-underline-offset: 3px; }
+.esv-btn { height: 40px; padding: 0 16px; border-radius: 999px; background: var(--muted); font-size: 13px; font-weight: 700; color: var(--foreground); }
+.esv-btn.is-primary { background: var(--primary); color: var(--primary-foreground); }
+.ed-stage.is-mobile-preview .v2ed-bar { top: 50px; }
+.ed-stage.is-mobile-preview .v2ed-edit span { display: none; }
+.ed-stage.is-mobile-preview .v2ed-edit { padding: 0 10px; }
 .ed-panel-eyebrow { margin: 0 0 2px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted-foreground); }
 .ed-panel-title { margin: 0 0 16px; font-size: 18px; font-weight: 700; color: var(--foreground); }
 .ed-rail { display: flex; flex: 0 0 64px; flex-direction: column; align-items: center; gap: 4px; padding: 12px 0; border-right: 1px solid var(--border); }
@@ -6830,6 +6969,7 @@ onMounted(async () => {
 @media (max-width: 1279px) {
   .ed-grid.is-v2 .ed-settings-card { width: 320px; }
   .ed-section-panel { width: 360px; }
+  .ed-settings-v2 { width: 320px; }
   .ed-grid.is-v2 > .ed-sections { width: 248px; }
 }
 </style>

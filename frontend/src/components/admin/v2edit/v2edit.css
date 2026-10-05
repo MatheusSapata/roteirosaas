@@ -142,6 +142,8 @@ textarea.ved-input {
   color: var(--muted-foreground, #5b6761);
 }
 .ved-toggle {
+  width: 100%;
+  text-align: left;
   display: flex;
   align-items: center;
   justify-content: space-between;

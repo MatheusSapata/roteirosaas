@@ -34,7 +34,7 @@
       <div class="v2-hero-split">
         <div class="v2-hero-split-copy">
           <img v-if="logo" :src="logo" :alt="agencyName" :style="logoStyle" class="v2-hero-logo-inline" />
-          <HeroContent v-bind="contentProps" on-light />
+          <HeroContent v-bind="contentProps" light />
         </div>
         <div class="v2-hero-split-media">
           <img v-if="image" :src="image" :alt="title" />
@@ -48,7 +48,7 @@
       <div class="v2-hero-inner">
         <div class="v2-hero-card">
           <img v-if="logo" :src="logo" :alt="agencyName" :style="logoStyle" class="v2-hero-logo-inline" />
-          <HeroContent v-bind="contentProps" on-light />
+          <HeroContent v-bind="contentProps" light />
         </div>
       </div>
     </div>
@@ -149,7 +149,8 @@ const HeroContent = defineComponent({
     ctaLabel: { type: String, default: "" },
     darkText: Boolean,
     centered: Boolean,
-    onLight: Boolean
+    // "light" e não "onLight": nomes "on" + maiúscula viram evento no Vue e a opção se perdia.
+    light: Boolean
   },
   setup(p) {
     const check = () =>
@@ -176,7 +177,7 @@ const HeroContent = defineComponent({
         d.tag ? h("span", { class: "v2-hero-dates-tag" }, d.tag) : null
       ]);
     return () =>
-      h("div", { class: ["v2-hero-content", { "is-center": p.centered, "on-light": p.onLight, "dark-text": p.darkText && !p.onLight }] }, [
+      h("div", { class: ["v2-hero-content", { "is-center": p.centered, "on-light": p.light, "dark-text": p.darkText && !p.light }] }, [
         p.chips.length
           ? h(
               "ul",
