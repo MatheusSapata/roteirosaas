@@ -12,12 +12,12 @@
           @update:model-value="setMediaMode"
         />
         <template v-if="mediaMode === 'photo'">
-          <ImageUploadField :model-value="modelValue.backgroundImage || ''" label="Foto do computador" hint="Ideal 2400 × 1350 px." @update:model-value="patch({ backgroundImage: $event || '' })" />
+          <ImageUploadField :model-value="modelValue.backgroundImage || ''" label="Foto do computador" hint="Ideal 2400 × 1350 px." layout="compact" @update:model-value="patch({ backgroundImage: $event || '' })" />
           <ImageUploadField
             :model-value="modelValue.mobileBackgroundImage || ''"
             label="Foto do celular"
             hint="Opcional. Melhor quase quadrada; sem ela, usa a do computador."
-            layout="row"
+            layout="compact"
             @update:model-value="patch({ mobileBackgroundImage: $event || '' })"
           />
         </template>

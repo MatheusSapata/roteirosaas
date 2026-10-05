@@ -2,7 +2,7 @@
   <V2EditShell>
     <template #content>
       <EdGroup title="Foto">
-        <ImageUploadField :model-value="modelValue.image || ''" label="Foto" hint="Ideal 2400 × 1350 px." @update:model-value="patch({ image: $event || '' })" />
+        <ImageUploadField :model-value="modelValue.image || ''" label="Foto" hint="Ideal 2400 × 1350 px." layout="compact" @update:model-value="patch({ image: $event || '' })" />
         <EdText :model-value="altText" label="Legenda" hint="Também é lida por leitores de tela." @update:model-value="altText = $event" />
       </EdGroup>
     </template>

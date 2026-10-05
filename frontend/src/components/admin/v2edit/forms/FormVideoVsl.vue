@@ -7,7 +7,7 @@
       </EdGroup>
       <EdGroup title="Vídeo">
         <EdText :model-value="modelValue.videoUrl || ''" label="Link do vídeo" type="url" hint="YouTube, Vimeo ou Panda." @update:model-value="patch({ videoUrl: $event })" />
-        <ImageUploadField :model-value="modelValue.thumbnailUrl || ''" label="Capa do vídeo" hint="Opcional." layout="row" @update:model-value="patch({ thumbnailUrl: $event || '' })" />
+        <ImageUploadField :model-value="modelValue.thumbnailUrl || ''" label="Capa do vídeo" hint="Opcional." layout="compact" @update:model-value="patch({ thumbnailUrl: $event || '' })" />
       </EdGroup>
       <EdButton
         :value="modelValue"

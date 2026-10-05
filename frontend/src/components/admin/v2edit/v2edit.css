@@ -397,3 +397,19 @@ textarea.ved-input {
 .ved .ved-rich .ql-container.ql-snow {
   border-radius: 0 0 12px 12px;
 }
+
+/* O tema escuro do painel pinta todo input de azul-marinho (.dark-theme input);
+   aqui os campos seguem o fundo do próprio painel. */
+.dark-theme .ved-input,
+.dark-theme .ved-select,
+.dark-theme .ved .ved-input {
+  background: var(--muted, #1a2320);
+  color: var(--foreground);
+}
+
+/* Rótulo dos campos de imagem no mesmo padrão dos outros campos. */
+.ved .image-upload-field > div:first-child label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--foreground) !important;
+}
