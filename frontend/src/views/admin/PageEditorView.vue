@@ -1,5 +1,5 @@
 ﻿<template>
-<div class="page-editor-view w-full space-y-6 px-4 py-6 md:px-8 md:py-4">
+<div class="page-editor-view w-full" :class="newEditor ? 'is-v2 space-y-2 px-1 py-1' : 'space-y-6 px-4 py-6 md:px-8 md:py-4'">
     <div class="ed-topbar">
       <button type="button" class="ed-back" @click="goBack" :aria-label="viewCopy.actions.goBack">
         <ChevronLeftIcon aria-hidden="true" />
@@ -1860,8 +1860,14 @@ watch(
 );
 // No computador, a prévia é desenhada em 1280 px e reduzida para caber, sem espremer as seções.
 const DESKTOP_PREVIEW_WIDTH = 1280;
-// O editor novo simula uma tela maior, mostrando as margens laterais da página.
-const desktopPreviewWidth = computed(() => (newEditor.value ? 1440 : DESKTOP_PREVIEW_WIDTH));
+// O editor novo simula uma tela de até 1440 px, mostrando as margens laterais da página.
+// Com pouco espaço (os dois painéis abertos), simula uma tela menor, de até 1100 px,
+// para a prévia não ficar pequena demais; abaixo disso só o zoom diminui.
+const desktopPreviewWidth = computed(() => {
+  if (!newEditor.value) return DESKTOP_PREVIEW_WIDTH;
+  if (!previewCanvasWidth.value) return 1440;
+  return Math.min(1440, Math.max(1100, Math.round(previewCanvasWidth.value / 0.62)));
+});
 const previewCanvasRef = ref<HTMLElement | null>(null);
 const previewCanvasWidth = ref(0);
 let previewCanvasObserver: ResizeObserver | null = null;
@@ -6614,7 +6620,17 @@ onMounted(async () => {
 /* Editor novo: configurações recolhíveis à esquerda, prévia no meio, camadas (ou IA) à direita. */
 .ed-sections-titles { display: flex; flex: 1; min-width: 0; align-items: center; justify-content: space-between; gap: 8px; }
 .ed-grid > .ed-sections { min-height: 0; overflow-y: auto; }
-.ed-grid.is-v2 { grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; height: calc(100dvh / var(--app-scale, 1) - 120px); }
+.ed-grid.is-v2 { grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; height: calc(100dvh / var(--app-scale, 1) - 92px); min-height: 520px; }
+.page-editor-view.is-v2 .ed-topbar { gap: 10px; min-height: 52px; }
+.page-editor-view.is-v2 .ed-back { width: 36px; height: 36px; }
+.page-editor-view.is-v2 .ed-crumb { display: none; }
+.page-editor-view.is-v2 .ed-title { overflow: hidden; max-width: 46vw; font-size: 18px; line-height: 1.25; white-space: nowrap; text-overflow: ellipsis; }
+.page-editor-view.is-v2 .editor-body { padding-top: 0; }
+.ed-grid.is-v2 > .editor-preview-shell { padding: 8px 10px 10px !important; border-radius: 18px !important; }
+.ed-grid.is-v2 .ed-preview-head { min-height: 40px; }
+.ed-grid.is-v2 .ed-preview-eyebrow { display: none; }
+.ed-grid.is-v2 .ed-stage { margin-top: 8px; }
+.ed-grid.is-v2 > .ed-side, .ed-grid.is-v2 > .ed-sections, .ed-grid.is-v2 > .ed-layers-mini { border-radius: 18px; }
 .ed-grid.is-v2 > .ed-side { grid-column: 1; grid-row: 1; }
 .ed-grid.is-v2 > .editor-preview-shell { grid-column: 2; grid-row: 1; }
 .ed-grid.is-v2 > .ed-sections, .ed-grid.is-v2 > .ed-layers-mini { grid-column: 3; grid-row: 1; }

@@ -222,6 +222,8 @@
           :class="[
             isInboxRoute
               ? 'admin-content flex-1 min-h-0 overflow-hidden bg-inherit p-0'
+              : isPageEditorRoute
+                ? 'admin-content flex-1 min-h-0 overflow-y-auto overflow-x-hidden bg-background p-2'
               : isPlansRoute
                 ? 'admin-content flex-1 min-h-0 overflow-hidden overflow-x-hidden bg-white p-0'
                 : 'admin-content flex-1 min-h-0 overflow-y-auto overflow-x-hidden bg-background px-4 pb-6 pt-4 sm:px-6 md:py-6 lg:px-8',
@@ -824,6 +826,8 @@ const auth = useAuthStore();
 const leadStore = useLeadCaptureStore();
 const routeRequiresAuth = computed(() => route.matched.some(record => record.meta?.requiresAuth));
 const isInboxRoute = computed(() => route.path.startsWith("/admin/inbox"));
+// O editor de páginas usa a tela quase inteira: só uma borda fina em volta.
+const isPageEditorRoute = computed(() => route.name === "page-edit");
 const isPlansRoute = computed(() => route.name === "plans");
 const isAdminMasterRoute = computed(() => route.path.startsWith("/admin/administracao"));
 // No editor de página a tela é toda do editor: sem o botão de ajuda do WhatsApp.
@@ -1114,6 +1118,8 @@ type AdminNavLinkItem = {
   label: string;
   to: string;
   iconPath: string;
+  /** Marca o item como ativo em qualquer página que comece com este caminho. */
+  activeBase?: string;
 };
 
 type AdminNavGroupItem = {
@@ -1508,8 +1514,8 @@ const adminNavigation = computed<AdminNavItem[]>(() => {
       basePath: "/admin/leads",
       iconPath: "/admin/leads",
       children: [
-        { label: t({ pt: "Formul\u00E1rios", es: "Formularios" }), path: "/admin/leads/forms" },
         { label: t({ pt: "Oportunidades", es: "Oportunidades" }), path: "/admin/leads/opportunities" },
+        { label: t({ pt: "Formul\u00E1rios", es: "Formularios" }), path: "/admin/leads/forms" },
         { label: navLabel("clients"), path: "/admin/leads/clients" },
         { label: t({ pt: "Configura\u00E7\u00F5es", es: "Configuraciones" }), path: "/admin/leads/settings" }
       ]
@@ -1598,7 +1604,13 @@ const adminNavigation = computed<AdminNavItem[]>(() => {
         })
       };
     })
-    .filter(item => item.type !== "group" || item.children.length > 0);
+    .filter(item => item.type !== "group" || item.children.length > 0)
+    // Sem submenus: cada área abre na primeira aba permitida e troca de aba dentro da própria página.
+    .map(item =>
+      item.type === "group"
+        ? ({ id: item.id, type: "link", label: item.label, to: item.children[0].path, iconPath: item.iconPath, activeBase: item.basePath } as AdminNavLinkItem)
+        : item
+    );
 });
 
 const sidebarSections = computed<SidebarSection[]>(() => {
@@ -1646,8 +1658,11 @@ const isPathActive = (path: string) => {
 
 const isChildActive = (path: string) => isPathActive(path);
 
-const isTopLevelActive = (item: AdminNavLinkItem) =>
-  item.id === "admin-master" ? isPathActive("/admin/administracao") : isPathActive(item.to);
+const isTopLevelActive = (item: AdminNavLinkItem) => {
+  if (item.id === "admin-master") return isPathActive("/admin/administracao");
+  if (item.activeBase) return route.path === item.activeBase || route.path.startsWith(`${item.activeBase}/`);
+  return isPathActive(item.to);
+};
 
 const isParentActive = (item: AdminNavGroupItem) =>
   route.path === item.basePath || route.path.startsWith(`${item.basePath}/`);
@@ -1803,7 +1818,7 @@ const sidebarCollapsed = ref(readSidebarCollapsed());
 const flyoutGroupId = ref<string | null>(null);
 const brandMarkSrc = BrandMark;
 const canCreatePageShortcut = computed(() => hasPermission("pages"));
-const sidebarOffset = computed(() => (sidebarCollapsed.value ? "100px" : "272px"));
+const sidebarOffset = computed(() => (sidebarCollapsed.value ? "76px" : "272px"));
 
 const toggleSidebarCollapsed = () => {
   sidebarCollapsed.value = !sidebarCollapsed.value;
@@ -3135,15 +3150,57 @@ body.admin-body-light #app {
   height: 18px;
 }
 
-/* Recolhida: só os ícones, centralizados. */
+/* Recolhida: só os ícones, centralizados, numa coluna estreita. */
+.admin-sidebar.is-collapsed {
+  padding: 8px 0 8px 8px;
+}
+
 .admin-sidebar.is-collapsed .as-panel {
   align-items: center;
-  padding: 16px 8px 12px;
+  padding: 12px 6px 10px;
+  border-radius: 22px;
 }
 
 .admin-sidebar.is-collapsed .as-brand {
   justify-content: center;
+  min-height: 44px;
+  margin-bottom: 10px;
   padding: 0;
+}
+
+.admin-sidebar.is-collapsed .as-brand-tile {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+}
+
+/* O botão de expandir entra na coluna, logo acima do rodapé, em vez de sobrar na borda. */
+.admin-sidebar.is-collapsed .as-collapse {
+  position: static;
+  order: 1;
+  width: 40px;
+  height: 40px;
+  margin: 8px 0 0;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.admin-sidebar.is-collapsed .as-collapse:hover {
+  background: var(--sidebar-accent);
+}
+
+.admin-sidebar.is-collapsed .as-collapse svg {
+  width: 18px;
+  height: 18px;
+}
+
+.admin-sidebar.is-collapsed .as-footer {
+  order: 2;
+  gap: 2px;
+  margin-top: 6px;
+  padding-top: 8px;
 }
 
 .admin-sidebar.is-collapsed .as-label,
@@ -3153,8 +3210,14 @@ body.admin-body-light #app {
 
 .admin-sidebar.is-collapsed .as-cta {
   justify-content: center;
-  width: 48px;
+  width: 44px;
+  height: 44px;
+  margin-bottom: 10px;
   padding: 0;
+}
+
+.admin-sidebar.is-collapsed .as-nav {
+  gap: 6px;
 }
 
 .admin-sidebar.is-collapsed .as-nav {
@@ -3173,7 +3236,7 @@ body.admin-body-light #app {
   display: block;
   width: 24px;
   height: 1px;
-  margin: 0 auto 12px;
+  margin: 0 auto 6px;
   background: var(--sidebar-border);
 }
 
@@ -3195,6 +3258,7 @@ body.admin-body-light #app {
 .admin-sidebar.is-collapsed .as-footer {
   align-items: center;
   width: 100%;
+  order: 2;
 }
 
 .admin-sidebar.is-collapsed .as-user-link {
