@@ -81,6 +81,7 @@
                 >
                   <span class="as-icon"><component :is="navIconFor(item.iconPath)" aria-hidden="true" /></span>
                   <span class="as-label">{{ item.label }}</span>
+                  <span v-if="!sidebarCollapsed && item.id === 'admin-master'" class="nav-master-badge">MASTER</span>
                   <span v-if="!sidebarCollapsed && getNavBadge(item.id) !== null" class="nav-pill-badge">{{ getNavBadge(item.id) }}</span>
                 </RouterLink>
                 <div v-else class="as-group">
@@ -214,7 +215,11 @@
           ]"
         >
           <div :class="isPlansRoute ? 'flex-1 min-h-0 bg-white overflow-hidden' : 'flex-1 min-h-0 bg-background'">
-            <RouterView />
+            <div v-if="isAdminMasterRoute" class="admin-master-shell">
+              <AdminMasterNav class="admin-master-rail" />
+              <div class="admin-master-main"><RouterView /></div>
+            </div>
+            <RouterView v-else />
           </div>
         </div>
       </main>
@@ -268,6 +273,7 @@
                   <component :is="navIconFor(item.iconPath)" class="h-[18px] w-[18px]" aria-hidden="true" />
                 </span>
                 <span class="flex-1">{{ item.label }}</span>
+                <span v-if="item.id === 'admin-master'" class="nav-master-badge">MASTER</span>
                 <span
                   v-if="getNavBadge(item.id) !== null"
                   class="nav-pill-badge"
@@ -776,6 +782,7 @@ import {
   XIcon
 } from "lucide-vue-next";
 import BrandMark from "../assets/Favicon.png";
+import AdminMasterNav from "../components/admin/master/AdminMasterNav.vue";
 import SidebarLogo from "../assets/Logo Branco - Roteiro Online.png";
 import ColoredLogo from "../assets/Logo Cor - Roteiro Online.png";
 import BrandSwitcher from "../components/shared/BrandSwitcher.vue";
@@ -802,6 +809,7 @@ const leadStore = useLeadCaptureStore();
 const routeRequiresAuth = computed(() => route.matched.some(record => record.meta?.requiresAuth));
 const isInboxRoute = computed(() => route.path.startsWith("/admin/inbox"));
 const isPlansRoute = computed(() => route.name === "plans");
+const isAdminMasterRoute = computed(() => route.path.startsWith("/admin/administracao"));
 // No editor de página a tela é toda do editor: sem o botão de ajuda do WhatsApp.
 const isEditorRoute = computed(() => route.name === "page-edit");
 const showAuthSplash = computed(() => {
@@ -850,7 +858,7 @@ const t = createAdminLocalizer();
 
 const navCopy = {
   dashboard: { pt: "Dashboard", es: "Dashboard" },
-  adminMaster: { pt: "Admin Master", es: "Admin Master" },
+  adminMaster: { pt: "Admin master", es: "Admin master" },
   pages: { pt: "P\u00E1ginas", es: "P\u00E1ginas" },
   leads: { pt: "Leads", es: "Leads" },
   inbox: { pt: "Inbox", es: "Inbox" },
@@ -1522,29 +1530,12 @@ const adminNavigation = computed<AdminNavItem[]>(() => {
     items.splice(5, 0, { id: "domains", type: "link", label: navLabel("domains"), to: "/admin/domains", iconPath: "/admin/domains" });
   }
   if (auth.user?.is_superuser) {
-    items.splice(1, 0, {
+    items.push({
       id: "admin-master",
-      type: "group",
+      type: "link",
       label: navLabel("adminMaster"),
-      basePath: "/admin/administracao",
-      iconPath: "/admin/administracao",
-      children: [
-        { label: t({ pt: "Dashboard", es: "Dashboard" }), path: "/admin/administracao/dashboard" },
-        { label: t({ pt: "Monitor", es: "Monitor" }), path: "/admin/administracao/monitor" },
-        { label: t({ pt: "Usuários", es: "Usuarios" }), path: "/admin/administracao/usuarios" },
-        { label: t({ pt: "Admin global", es: "Admin global" }), path: "/admin/administracao/admin-global" },
-        { label: t({ pt: "Gestão de aulas", es: "Gestión de cursos" }), path: "/admin/administracao/aulas" },
-        { label: t({ pt: "Templates", es: "Templates" }), path: "/admin/administracao/templates" },
-        { label: t({ pt: "APIs de voo", es: "APIs de vuelo" }), path: "/admin/administracao/apis-voo" },
-        { label: t({ pt: "Banners", es: "Banners" }), path: "/admin/administracao/banners" },
-        { label: t({ pt: "Gestão WhatsApp", es: "Gestion WhatsApp" }), path: "/admin/administracao/whatsapp" },
-        { label: t({ pt: "Ofertas", es: "Ofertas" }), path: "/admin/administracao/ofertas" },
-        { label: t({ pt: "Webhooks e Push", es: "Webhooks y Push" }), path: "/admin/administracao/webhooks" },
-        { label: t({ pt: "Previsão de receita", es: "Proyección de ingresos" }), path: "/admin/administracao/receita-previsao" },
-        { label: t({ pt: "Conciliação financeira", es: "Conciliación financiera" }), path: "/admin/administracao/conciliacao" },
-        { label: t({ pt: "LTV por cliente", es: "LTV por cliente" }), path: "/admin/administracao/ltv-clientes" },
-        { label: t({ pt: "Prompt Construtor", es: "Prompt Constructor" }), path: "/admin/administracao/prompt-construtor" }
-      ]
+      to: "/admin/administracao/dashboard",
+      iconPath: "/admin/administracao"
     });
   }
   const filtered = items.filter(item => {
@@ -1601,7 +1592,7 @@ const sidebarSections = computed<SidebarSection[]>(() => {
     {
       id: "principal",
       label: t({ pt: "Principal", es: "Principal" }),
-      itemIds: ["dashboard", "admin-master", "pages", "leads", "inbox"]
+      itemIds: ["dashboard", "pages", "leads", "inbox"]
     },
     {
       id: "configurar",
@@ -1612,6 +1603,11 @@ const sidebarSections = computed<SidebarSection[]>(() => {
       id: "aprender",
       label: t({ pt: "Aprender", es: "Aprender" }),
       itemIds: ["lessons"]
+    },
+    {
+      id: "plataforma",
+      label: t({ pt: "Plataforma", es: "Plataforma" }),
+      itemIds: ["admin-master"]
     }
   ];
 
@@ -1634,7 +1630,8 @@ const isPathActive = (path: string) => {
 
 const isChildActive = (path: string) => isPathActive(path);
 
-const isTopLevelActive = (item: AdminNavLinkItem) => isPathActive(item.to);
+const isTopLevelActive = (item: AdminNavLinkItem) =>
+  item.id === "admin-master" ? isPathActive("/admin/administracao") : isPathActive(item.to);
 
 const isParentActive = (item: AdminNavGroupItem) =>
   route.path === item.basePath || route.path.startsWith(`${item.basePath}/`);
@@ -2471,6 +2468,26 @@ body.admin-body-light #app {
   min-height: 0;
 }
 
+/* Admin master: menu interno fixo ao lado do menu principal. */
+@media (min-width: 1180px) {
+  .admin-master-rail {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: var(--admin-sidebar-offset, 272px);
+    z-index: 20;
+    width: 228px;
+  }
+  .admin-master-main {
+    margin-left: 228px;
+  }
+}
+@media (max-width: 1179px) {
+  .admin-master-rail {
+    margin-bottom: 16px;
+  }
+}
+
 
 /* =========================
    DARK MODE OVERRIDES
@@ -2633,6 +2650,18 @@ body.admin-body-light #app {
   font-weight: 600;
   padding: 3px 8px;
   border-radius: 999px;
+  line-height: 1;
+}
+
+.nav-master-badge {
+  margin-left: auto;
+  border-radius: 999px;
+  background: var(--status-warning);
+  color: var(--status-warning-foreground);
+  padding: 3px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
   line-height: 1;
 }
 
