@@ -568,5 +568,7 @@ export interface PageConfig {
   version?: number;
   leadCapture?: PageLeadCaptureConfig | null;
   tracking?: any;
+  /** "legacy" = a agência pediu o visual antigo das seções para esta página. */
+  design?: "legacy" | "v2";
 }
 

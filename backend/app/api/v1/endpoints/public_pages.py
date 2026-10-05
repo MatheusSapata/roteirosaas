@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import func
 from sqlalchemy.orm import Session, selectinload
 
+from app.services.page_design import design_v2_enabled_for_agency
 from app.api.deps import get_db
 from app.api.v1.endpoints.pages import apply_free_footer, normalize_config, resolve_agency_plan
 from app.models.agency import Agency
@@ -110,6 +111,7 @@ def serialize_public_page(page: Page, agency_slug: str, db: Session) -> PublicPa
         seo_description=page.seo_description,
         config=config,
         branding=branding,
+        design_v2_enabled=design_v2_enabled_for_agency(page.agency),
     )
 
 

@@ -22,7 +22,7 @@
         :class="['admin-sidebar hidden md:flex', sidebarCollapsed ? 'is-collapsed' : '']"
         :aria-label="t({ pt: 'Menu principal', es: 'Menú principal' })"
       >
-        <div class="as-panel">
+        <div class="as-panel" @mouseover="showSidebarTip" @mouseleave="hideSidebarTip" @focusin="showSidebarTip" @focusout="hideSidebarTip">
           <button
             type="button"
             class="as-collapse"
@@ -63,7 +63,7 @@
             <span class="as-label">{{ t({ pt: "Nova página", es: "Nueva página" }) }}</span>
           </RouterLink>
 
-          <nav class="as-nav sidebar-scroll">
+          <nav class="as-nav sidebar-scroll" @scroll.passive="closeSidebarFlyout">
             <section
               v-for="section in sidebarSections"
               :key="`desktop-section-${section.id}`"
@@ -92,7 +92,7 @@
                     :aria-label="item.label"
                     :aria-expanded="sidebarCollapsed ? flyoutGroupId === item.id : isGroupExpanded(item)"
                     :data-tip="sidebarCollapsed && flyoutGroupId !== item.id ? item.label : null"
-                    @click.stop="handleGroupClick(item.id)"
+                    @click.stop="handleGroupClick(item.id, $event)"
                   >
                     <span class="as-icon"><component :is="navIconFor(item.iconPath)" aria-hidden="true" /></span>
                     <span class="as-label">{{ item.label }}</span>
@@ -114,8 +114,15 @@
                       {{ child.label }}
                     </RouterLink>
                   </div>
+                  <Teleport to="body">
                   <transition name="as-flyout">
-                    <div v-if="sidebarCollapsed && flyoutGroupId === item.id" class="as-flyout" role="menu" @click.stop>
+                    <div
+                      v-if="sidebarCollapsed && flyoutGroupId === item.id"
+                      class="as-flyout"
+                      role="menu"
+                      :style="{ top: `${flyoutTop}px`, left: `${flyoutLeft}px` }"
+                      @click.stop
+                    >
                       <p class="as-flyout-title">{{ item.label }}</p>
                       <RouterLink
                         v-for="child in item.children"
@@ -130,6 +137,7 @@
                       </RouterLink>
                     </div>
                   </transition>
+                  </Teleport>
                 </div>
               </template>
             </section>
@@ -180,6 +188,14 @@
           </div>
         </div>
       </aside>
+      <Teleport to="body">
+        <div
+          v-if="sidebarCollapsed && sidebarTip.text"
+          class="as-tip"
+          role="tooltip"
+          :style="{ top: `${sidebarTip.top}px`, left: `${sidebarTip.left}px` }"
+        >{{ sidebarTip.text }}</div>
+      </Teleport>
       <main
         :class="[
           'admin-main flex min-h-0 flex-1 flex-col overflow-x-hidden bg-background text-foreground',
@@ -753,7 +769,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import { RouterLink, RouterView, useRoute, useRouter } from "vue-router";
 import type { Component } from "vue";
 import {
@@ -1647,12 +1663,13 @@ const toggleNavGroup = (groupId: string) => {
   navGroupExpandedState.value = next;
 };
 
+// Ao navegar, abre o grupo da página atual e fecha os outros (mesmo se o grupo
+// tinha sido fechado antes), para o item ativo nunca ficar escondido.
 const ensureActiveGroupDefaultOpen = () => {
   for (const item of adminNavigation.value) {
     if (item.type !== "group") continue;
     if (!isParentActive(item)) continue;
-    if (item.id in navGroupExpandedState.value) return;
-    navGroupExpandedState.value = { ...navGroupExpandedState.value, [item.id]: true };
+    navGroupExpandedState.value = { [item.id]: true };
     return;
   }
 };
@@ -1798,9 +1815,35 @@ const toggleSidebarCollapsed = () => {
   }
 };
 
-const handleGroupClick = (groupId: string) => {
+// Submenu e dicas da barra recolhida ficam fora da área com rolagem (Teleport),
+// presos à posição do ícone; dentro dela eram cortados ou invadiam o rodapé.
+const flyoutTop = ref(0);
+const flyoutLeft = ref(0);
+const sidebarTip = ref<{ text: string; top: number; left: number }>({ text: "", top: 0, left: 0 });
+const SIDEBAR_POPOVER_GAP = 14;
+
+const sidebarEdge = () => {
+  const panel = document.querySelector(".admin-sidebar .as-panel");
+  return panel ? panel.getBoundingClientRect().right : 0;
+};
+
+const placeFlyout = (anchor: HTMLElement) => {
+  const rect = anchor.getBoundingClientRect();
+  flyoutLeft.value = sidebarEdge() + SIDEBAR_POPOVER_GAP;
+  flyoutTop.value = rect.top - 6;
+  void nextTick(() => {
+    const height = document.querySelector(".as-flyout")?.getBoundingClientRect().height ?? 0;
+    const maxTop = window.innerHeight - height - 12;
+    flyoutTop.value = Math.max(12, Math.min(flyoutTop.value, maxTop));
+  });
+};
+
+const handleGroupClick = (groupId: string, event?: MouseEvent) => {
   if (sidebarCollapsed.value) {
-    flyoutGroupId.value = flyoutGroupId.value === groupId ? null : groupId;
+    const opening = flyoutGroupId.value !== groupId;
+    flyoutGroupId.value = opening ? groupId : null;
+    sidebarTip.value = { text: "", top: 0, left: 0 };
+    if (opening && event?.currentTarget instanceof HTMLElement) placeFlyout(event.currentTarget);
     return;
   }
   toggleNavGroup(groupId);
@@ -1808,6 +1851,26 @@ const handleGroupClick = (groupId: string) => {
 
 const closeSidebarFlyout = () => {
   flyoutGroupId.value = null;
+};
+
+const showSidebarTip = (event: Event) => {
+  if (!sidebarCollapsed.value) return;
+  const target = (event.target as HTMLElement | null)?.closest<HTMLElement>("[data-tip]");
+  const text = target?.dataset.tip;
+  if (!target || !text) {
+    sidebarTip.value = { text: "", top: 0, left: 0 };
+    return;
+  }
+  const rect = target.getBoundingClientRect();
+  sidebarTip.value = { text, top: rect.top + rect.height / 2, left: sidebarEdge() + SIDEBAR_POPOVER_GAP };
+};
+
+const hideSidebarTip = () => {
+  sidebarTip.value = { text: "", top: 0, left: 0 };
+};
+
+const handleSidebarKeydown = (event: KeyboardEvent) => {
+  if (event.key === "Escape") closeSidebarFlyout();
 };
 
 watch(
@@ -1823,11 +1886,20 @@ watch(
   () => route.fullPath,
   () => {
     flyoutGroupId.value = null;
+    hideSidebarTip();
   }
 );
 
-onMounted(() => document.addEventListener("click", closeSidebarFlyout));
-onBeforeUnmount(() => document.removeEventListener("click", closeSidebarFlyout));
+onMounted(() => {
+  document.addEventListener("click", closeSidebarFlyout);
+  document.addEventListener("keydown", handleSidebarKeydown);
+  window.addEventListener("resize", closeSidebarFlyout);
+});
+onBeforeUnmount(() => {
+  document.removeEventListener("click", closeSidebarFlyout);
+  document.removeEventListener("keydown", handleSidebarKeydown);
+  window.removeEventListener("resize", closeSidebarFlyout);
+});
 const trialPlanName = computed(() => getPlanLabel(auth.user?.trial_plan));
 const planTagMap: Record<string, string> = {
   essencial: viajeChatTagIds.PLANO_PROFISSIONAL,
@@ -2936,9 +3008,7 @@ body.admin-body-light #app {
 }
 
 .as-flyout {
-  position: absolute;
-  top: -6px;
-  left: calc(100% + 18px);
+  position: fixed;
   z-index: 70;
   min-width: 224px;
   padding: 8px;
@@ -3089,7 +3159,13 @@ body.admin-body-light #app {
 
 .admin-sidebar.is-collapsed .as-nav {
   align-items: center;
-  overflow: visible;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.admin-sidebar.is-collapsed .as-nav::-webkit-scrollbar {
+  display: none;
 }
 
 .admin-sidebar.is-collapsed .as-section + .as-section::before {
@@ -3125,12 +3201,9 @@ body.admin-body-light #app {
   flex: none;
 }
 
-.admin-sidebar.is-collapsed [data-tip]:hover::after {
-  content: attr(data-tip);
-  position: absolute;
-  top: 50%;
-  left: calc(100% + 14px);
-  z-index: 60;
+.as-tip {
+  position: fixed;
+  z-index: 80;
   padding: 6px 10px;
   border-radius: 8px;
   background: var(--foreground);

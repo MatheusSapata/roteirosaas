@@ -591,6 +591,15 @@
                   />
                 </label>
               </div>
+                <div v-if="designV2Enabled" class="min-w-0 space-y-3 border-t border-slate-200 pt-4">
+                  <label class="flex cursor-pointer items-start justify-between gap-4">
+                    <span class="space-y-1">
+                      <span class="block text-[17px] font-bold uppercase tracking-[0.03em] leading-none text-slate-700">{{ viewCopy.form.legacyDesignLabel }}</span>
+                      <span class="block text-[14px] leading-tight text-slate-500">{{ viewCopy.form.legacyDesignHint }}</span>
+                    </span>
+                    <input v-model="useLegacyDesign" type="checkbox" class="mt-1 h-5 w-5 flex-shrink-0 accent-[var(--primary)]" />
+                  </label>
+                </div>
               </div>
             </div>
           </div>
@@ -855,7 +864,7 @@
                     >
                       <div v-if="(section as any).enabled" class="preview-section-host public-tokens">
                         <component
-                          :is="publicComponents[(section as any).type]"
+                          :is="pickSectionComponent((section as any).type, previewDesign, publicComponents)"
                           :section="previewSections[idx]?.type === section.type && previewSections[idx]?.anchorId === section.anchorId ? previewSections[idx] : section"
                           :previewDevice="previewDevice"
                           v-bind="previewSectionExtraProps(section)"
@@ -1147,6 +1156,9 @@ import { sectionsInjectionKey } from "../../components/admin/sectionsContext";
 import { sectionUploadGuardKey } from "../../components/admin/sectionUploadGuard";
 import { describeSection, sectionLabels as defaultSectionLabels } from "../../utils/sectionLabels";
 import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
+import { resolvePageDesign } from "../../utils/pageDesign";
+import { pickSectionComponent } from "../../components/public/v2/registry";
+import { DEFAULT_ACCENT, PAGE_DESIGN_KEY } from "../../components/public/v2/designContext";
 import { getReadableTextColor } from "../../utils/colorContrast";
 import { useLeadFeatureGate } from "../../composables/useLeadFeatureGate";
 import { createAdminLocalizer } from "../../utils/adminI18n";
@@ -1179,6 +1191,7 @@ interface Page {
   config_json?: PageConfig | string | null;
   cover_image_url?: string;
   seo_title?: string | null;
+  design_v2_enabled?: boolean;
 }
 
 interface SectionCatalogItem {
@@ -1349,6 +1362,11 @@ const viewCopy = {
     }),
     colorA: t({ pt: "Cor 1", es: "Color 1" }),
     colorB: t({ pt: "Cor 2", es: "Color 2" }),
+    legacyDesignLabel: t({ pt: "Usar visual antigo", es: "Usar diseño anterior" }),
+    legacyDesignHint: t({
+      pt: "As seções da página voltam ao visual anterior. O conteúdo não muda e dá para desligar quando quiser.",
+      es: "Las secciones vuelven al diseño anterior. El contenido no cambia y puedes desactivarlo cuando quieras."
+    }),
     ctaColorLabel: t({ pt: "Cor de botões e destaques", es: "Color de botones y destacados" }),
     ctaColorHint: t({
       pt: "Afeta CTAs, chips e elementos em destaque.",
@@ -1521,6 +1539,7 @@ const computeStateSnapshot = () => {
     slug: pageSlug.value,
     theme: themeSnapshot,
     editor: editorSnapshot,
+    design: useLegacyDesign.value ? "legacy" : "default",
     sections: sections.value,
     leadCapture: selectedLeadFormId.value ? { formId: selectedLeadFormId.value, optional: leadCaptureOptional.value } : null,
     tracking: {
@@ -1625,6 +1644,11 @@ const editorPrefs = ref<EditorPreferences>({
   previewDevice: "desktop"
 });
 
+const useLegacyDesign = ref(false);
+const designV2Enabled = computed(() => Boolean(page.value?.design_v2_enabled));
+const previewDesign = computed(() =>
+  resolvePageDesign(designV2Enabled.value, { design: useLegacyDesign.value ? "legacy" : undefined })
+);
 const colorA = ref(theme.value.color1);
 const colorB = ref(theme.value.color2);
 const ctaColor = ref(theme.value.ctaDefaultColor || fallbackPrimaryColor);
@@ -2543,6 +2567,11 @@ const getBrowserStorage = () => {
 };
 provide(sectionsInjectionKey, sections);
 provide(
+  PAGE_DESIGN_KEY,
+  computed(() => ({ accent: ctaColor.value || DEFAULT_ACCENT }))
+);
+watch(useLegacyDesign, () => markUnsavedChanges());
+provide(
   PUBLIC_BRANDING_KEY,
   computed(() => ({
     ...branding.value,
@@ -3148,6 +3177,7 @@ watch(
 
 const buildConfig = (): PageConfig => ({
   version: 1,
+  ...(useLegacyDesign.value ? { design: "legacy" as const } : {}),
   general: {
     shortDescription: pageShortDescription.value || ""
   },
@@ -3688,6 +3718,7 @@ const hydrateFromConfig = (config?: PageConfig | string | null) => {
   try {
     const parsed = (typeof config === "string" ? JSON.parse(config) : config) as PageConfig;
     const oldDefaultCta = parsed.theme?.ctaDefaultColor;
+    useLegacyDesign.value = parsed.design === "legacy";
 
     if (parsed.theme) {
       theme.value = { ...theme.value, ...parsed.theme };
