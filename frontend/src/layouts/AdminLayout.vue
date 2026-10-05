@@ -19,186 +19,169 @@
     <template v-else>
     <div class="flex min-h-screen">
       <aside
-        :class="[
-          'admin-sidebar hidden w-64 flex-shrink-0 flex-col justify-between border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:fixed md:inset-y-0 md:left-0 md:flex'
-        ]"
+        :class="['admin-sidebar hidden md:flex', sidebarCollapsed ? 'is-collapsed' : '']"
+        :aria-label="t({ pt: 'Menu principal', es: 'Menú principal' })"
       >
-        <div class="flex flex-1 min-h-0 flex-col">
-          <div class="flex h-[72px] items-center border-b border-sidebar-border px-5">
+        <div class="as-panel">
+          <button
+            type="button"
+            class="as-collapse"
+            :aria-label="sidebarCollapsed ? t({ pt: 'Expandir menu', es: 'Expandir menú' }) : t({ pt: 'Recolher menu', es: 'Contraer menú' })"
+            :title="sidebarCollapsed ? t({ pt: 'Expandir menu', es: 'Expandir menú' }) : t({ pt: 'Recolher menu', es: 'Contraer menú' })"
+            @click="toggleSidebarCollapsed"
+          >
+            <ChevronsRightIcon v-if="sidebarCollapsed" aria-hidden="true" />
+            <ChevronsLeftIcon v-else aria-hidden="true" />
+          </button>
+
+          <div class="as-brand">
             <BrandSwitcher
               v-if="viajeonLoginReady"
+              :compact="sidebarCollapsed"
               :loading="viajeonSsoLoading"
               @select-viajeon="openViajeonPanel"
             />
-            <RouterLink v-else to="/admin/dashboard" aria-label="Ir para o início">
-              <img :src="mobileHeaderLogoSrc" alt="Roteiro Online" class="max-h-12 max-w-[180px] object-contain" />
+            <RouterLink
+              v-else
+              to="/admin/dashboard"
+              :class="sidebarCollapsed ? 'as-brand-tile' : 'as-brand-logo'"
+              aria-label="Ir para o início"
+            >
+              <img v-if="sidebarCollapsed" :src="brandMarkSrc" alt="Roteiro Online" class="h-7 w-7 object-contain" />
+              <img v-else :src="mobileHeaderLogoSrc" alt="Roteiro Online" class="max-h-11 max-w-[168px] object-contain" />
             </RouterLink>
           </div>
-          <nav class="sidebar-scroll flex-1 space-y-1 overflow-y-auto px-3 py-4">
+
+          <RouterLink
+            v-if="canCreatePageShortcut"
+            :to="{ path: '/admin/pages', query: { nova: '1' } }"
+            class="as-cta"
+            :aria-label="t({ pt: 'Nova página', es: 'Nueva página' })"
+            :data-tip="sidebarCollapsed ? t({ pt: 'Nova página', es: 'Nueva página' }) : null"
+          >
+            <span class="as-cta-icon"><PlusIcon aria-hidden="true" /></span>
+            <span class="as-label">{{ t({ pt: "Nova página", es: "Nueva página" }) }}</span>
+          </RouterLink>
+
+          <nav class="as-nav sidebar-scroll">
             <section
               v-for="section in sidebarSections"
               :key="`desktop-section-${section.id}`"
-              class="pt-1 first:pt-0"
-              :class="section.id !== sidebarSections[0]?.id ? 'mt-4' : ''"
+              class="as-section"
             >
-              <p class="px-3 pb-2 pt-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground/80">{{ section.label }}</p>
-              <div class="space-y-1">
-                <template v-for="item in section.items" :key="item.id">
-              <RouterLink
-                v-if="item.type === 'link'"
-                :to="item.to"
-                class="desktop-nav-item flex min-h-10 items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors"
-                :class="[isTopLevelActive(item) ? activeClass : inactiveClass, isTopLevelActive(item) ? 'is-active' : '']"
-              >
-                <span
-                  :class="[
-                    'flex h-[18px] w-[18px] items-center justify-center'
-                  ]"
+              <p class="as-section-title">{{ section.label }}</p>
+              <template v-for="item in section.items" :key="item.id">
+                <RouterLink
+                  v-if="item.type === 'link'"
+                  :to="item.to"
+                  class="as-item"
+                  :class="{ 'is-active': isTopLevelActive(item) }"
+                  :aria-label="item.label"
+                  :data-tip="sidebarCollapsed ? item.label : null"
                 >
-                  <svg
-                    :viewBox="navIconViewBoxes[item.iconPath] || navIconViewBoxes.default"
-                    :class="['h-4 w-4', navIconSizes[item.iconPath]]"
-                    :stroke-width="navIconStrokeWidths[item.iconPath] || null"
-                    v-html="navIcons[item.iconPath] || navIcons.default"
-                  ></svg>
-                </span>
-                <span class="flex-1">{{ item.label }}</span>
-                <span
-                  v-if="getNavBadge(item.id) !== null"
-                  class="nav-pill-badge"
-                >
-                  {{ getNavBadge(item.id) }}
-                </span>
-              </RouterLink>
-              <div v-else class="space-y-0.5">
-                <button
-                  type="button"
-                  class="desktop-nav-item flex min-h-10 w-full items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors"
-                  :class="[isParentActive(item) ? activeClass : inactiveClass, isParentActive(item) ? 'is-active' : '']"
-                  @click="toggleNavGroup(item.id)"
-                >
-                  <span
-                    :class="[
-                      'flex h-[18px] w-[18px] items-center justify-center'
-                    ]"
+                  <span class="as-icon"><component :is="navIconFor(item.iconPath)" aria-hidden="true" /></span>
+                  <span class="as-label">{{ item.label }}</span>
+                  <span v-if="!sidebarCollapsed && getNavBadge(item.id) !== null" class="nav-pill-badge">{{ getNavBadge(item.id) }}</span>
+                </RouterLink>
+                <div v-else class="as-group">
+                  <button
+                    type="button"
+                    class="as-item"
+                    :class="{ 'is-active': isParentActive(item), 'is-open': sidebarCollapsed && flyoutGroupId === item.id }"
+                    :aria-label="item.label"
+                    :aria-expanded="sidebarCollapsed ? flyoutGroupId === item.id : isGroupExpanded(item)"
+                    :data-tip="sidebarCollapsed && flyoutGroupId !== item.id ? item.label : null"
+                    @click.stop="handleGroupClick(item.id)"
                   >
-                    <svg
-                      :viewBox="navIconViewBoxes[item.iconPath] || navIconViewBoxes.default"
-                      :class="['h-4 w-4', navIconSizes[item.iconPath]]"
-                      :stroke-width="navIconStrokeWidths[item.iconPath] || null"
-                      v-html="navIcons[item.iconPath] || navIcons.default"
-                    ></svg>
-                  </span>
-                  <span class="flex-1 text-left">{{ item.label }}</span>
-                  <svg
-                    viewBox="0 0 24 24"
-                    :class="[
-                      'h-4 w-4 transition-transform',
-                      isGroupExpanded(item) ? 'rotate-180' : '',
-                      'ml-auto mr-1'
-                    ]"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <path d="m6 9 6 6 6-6" />
-                  </svg>
-                  <span
-                    v-if="item.id !== 'leads' && getNavBadge(item.id) !== null"
-                    class="nav-pill-badge"
-                  >
-                    {{ getNavBadge(item.id) }}
-                  </span>
-                </button>
-                <div v-if="isGroupExpanded(item)" class="ml-3 space-y-1 border-l border-sidebar-border pb-1 pl-2 pt-1">
-                  <RouterLink
-                    v-for="child in item.children"
-                    :key="`${item.id}-${child.path}`"
-                    :to="child.path"
-                    class="desktop-nav-subitem flex min-h-9 w-full items-center rounded-lg px-3 py-2 text-[12px] font-medium transition-colors"
-                    :class="[isChildActive(child.path) ? childActiveClass : childInactiveClass, isChildActive(child.path) ? 'is-active-sub' : '']"
-                  >
-                    <span>{{ child.label }}</span>
-                  </RouterLink>
+                    <span class="as-icon"><component :is="navIconFor(item.iconPath)" aria-hidden="true" /></span>
+                    <span class="as-label">{{ item.label }}</span>
+                    <ChevronDownIcon
+                      v-if="!sidebarCollapsed"
+                      class="as-chevron"
+                      :class="{ 'rotate-180': isGroupExpanded(item) }"
+                      aria-hidden="true"
+                    />
+                  </button>
+                  <div v-if="!sidebarCollapsed && isGroupExpanded(item)" class="as-children">
+                    <RouterLink
+                      v-for="child in item.children"
+                      :key="`${item.id}-${child.path}`"
+                      :to="child.path"
+                      class="as-child"
+                      :class="{ 'is-active': isChildActive(child.path) }"
+                    >
+                      {{ child.label }}
+                    </RouterLink>
+                  </div>
+                  <transition name="as-flyout">
+                    <div v-if="sidebarCollapsed && flyoutGroupId === item.id" class="as-flyout" role="menu" @click.stop>
+                      <p class="as-flyout-title">{{ item.label }}</p>
+                      <RouterLink
+                        v-for="child in item.children"
+                        :key="`flyout-${item.id}-${child.path}`"
+                        :to="child.path"
+                        class="as-child"
+                        :class="{ 'is-active': isChildActive(child.path) }"
+                        role="menuitem"
+                        @click="flyoutGroupId = null"
+                      >
+                        {{ child.label }}
+                      </RouterLink>
+                    </div>
+                  </transition>
                 </div>
-              </div>
-                </template>
-              </div>
+              </template>
             </section>
           </nav>
-        </div>
 
-        <div
-          :class="[
-            'border-t border-sidebar-border p-3'
-          ]"
-        >
-          <button
-            type="button"
-            class="sidebar-theme-toggle mb-2 flex w-full items-center gap-3 rounded-lg border border-sidebar-border bg-sidebar-accent px-3 py-2.5 text-left text-[12px] font-medium text-sidebar-foreground transition-colors hover:border-ring hover:bg-accent hover:text-accent-foreground"
-            :aria-label="viewCopy.themeToggle.label"
-            :title="viewCopy.themeToggle.label"
-            @click="toggleTheme"
-          >
-            <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-background text-muted-foreground">
-              <svg v-if="isDarkTheme" viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="4" />
-                <path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41" />
-              </svg>
-              <svg v-else viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 12.79A9 9 0 1 1 11.21 3A7 7 0 0 0 21 12.79Z" />
-              </svg>
-            </span>
-            <span class="min-w-0 flex-1">
-              <span class="block font-semibold">{{ viewCopy.themeToggle.title }}</span>
-              <span class="block text-[10px] text-muted-foreground">{{ isDarkTheme ? viewCopy.themeToggle.active : viewCopy.themeToggle.inactive }}</span>
-            </span>
-            <span
-              class="relative h-5 w-9 flex-shrink-0 rounded-full transition-colors"
-              :class="isDarkTheme ? 'bg-primary' : 'bg-border'"
-              aria-hidden="true"
-            >
-              <span
-                class="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-soft transition-transform"
-                :class="isDarkTheme ? 'translate-x-[18px]' : 'translate-x-0.5'"
-              ></span>
-            </span>
-          </button>
-          <div class="group relative flex w-full items-center gap-2 rounded-xl border border-transparent pr-2 transition-colors hover:border-sidebar-border hover:bg-sidebar-accent">
-            <RouterLink
-              to="/admin/perfil"
-              class="relative z-10 flex min-w-0 flex-1 items-center gap-3 rounded-xl px-2 py-2 text-left"
-            >
-              <span class="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-accent text-sm font-semibold text-accent-foreground">
-                <img v-if="userAvatarUrl" :src="userAvatarUrl" alt="Avatar" class="h-full w-full object-cover" />
-                <template v-else>{{ userInitial }}</template>
-              </span>
-              <span class="min-w-0 flex-1">
-                <span class="block truncate text-[13px] font-semibold text-foreground">{{ (userDisplayName || "").split(" ")[0] || userDisplayName }}</span>
-                <span class="block text-[11px] text-muted-foreground">{{ userRoleLabel }}</span>
-              </span>
-            </RouterLink>
+          <div class="as-footer">
             <button
               type="button"
-              @click="handleLogout"
-              class="relative z-20 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
-              :aria-label="viewCopy.sidebar.logout"
-              :title="viewCopy.sidebar.logout"
+              class="as-item"
+              :aria-label="viewCopy.themeToggle.label"
+              :data-tip="sidebarCollapsed ? (isDarkTheme ? viewCopy.themeToggle.title + ': ' + viewCopy.themeToggle.active : viewCopy.themeToggle.title) : null"
+              @click="toggleTheme"
             >
-              <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M15 17l5-5-5-5" />
-                <path d="M20 12H9" />
-                <path d="M12 19H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6" />
-              </svg>
+              <span class="as-icon">
+                <SunIcon v-if="isDarkTheme" aria-hidden="true" />
+                <MoonIcon v-else aria-hidden="true" />
+              </span>
+              <span class="as-label">{{ viewCopy.themeToggle.title }}</span>
+              <span v-if="!sidebarCollapsed" class="as-switch" :class="{ on: isDarkTheme }" aria-hidden="true"><span></span></span>
             </button>
+            <div class="as-user">
+              <RouterLink
+                to="/admin/perfil"
+                class="as-user-link"
+                :aria-label="userDisplayName || 'Perfil'"
+                :data-tip="sidebarCollapsed ? (userDisplayName || 'Perfil') : null"
+              >
+                <span class="as-avatar">
+                  <img v-if="userAvatarUrl" :src="userAvatarUrl" alt="" class="h-full w-full object-cover" />
+                  <template v-else>{{ userInitial }}</template>
+                </span>
+                <span class="as-label as-user-text">
+                  <span class="block truncate text-[13px] font-semibold text-foreground">{{ (userDisplayName || "").split(" ")[0] || userDisplayName }}</span>
+                  <span class="block text-[11px] text-muted-foreground">{{ userRoleLabel }}</span>
+                </span>
+              </RouterLink>
+              <button
+                v-if="!sidebarCollapsed"
+                type="button"
+                class="as-logout"
+                :aria-label="viewCopy.sidebar.logout"
+                :title="viewCopy.sidebar.logout"
+                @click="handleLogout"
+              >
+                <LogOutIcon aria-hidden="true" />
+              </button>
+            </div>
           </div>
         </div>
       </aside>
       <main
         :class="[
-          'admin-main flex min-h-0 flex-1 flex-col overflow-x-hidden bg-background text-foreground md:ml-64',
+          'admin-main flex min-h-0 flex-1 flex-col overflow-x-hidden bg-background text-foreground',
           isPlansRoute ? 'bg-white text-slate-900' : ''
         ]"
       >
@@ -214,9 +197,7 @@
               aria-label="Abrir menu"
               title="Abrir menu"
             >
-              <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
+              <MenuIcon class="h-6 w-6" aria-hidden="true" />
             </button>
           </header>
         </div>
@@ -261,9 +242,7 @@
               :aria-label="viewCopy.sidebar.closeMenu"
               :title="viewCopy.sidebar.closeMenu"
             >
-              <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                <path d="M18 6 6 18M6 6l12 12" />
-              </svg>
+              <XIcon class="h-4 w-4" aria-hidden="true" />
             </button>
           </div>
           <nav class="sidebar-scroll flex-1 space-y-1 overflow-y-auto px-3 py-4">
@@ -286,12 +265,7 @@
                 <span
                   :class="['flex h-[18px] w-[18px] items-center justify-center']"
                 >
-                  <svg
-                    :viewBox="navIconViewBoxes[item.iconPath] || navIconViewBoxes.default"
-                    :class="['h-4 w-4', navIconSizes[item.iconPath]]"
-                    :stroke-width="navIconStrokeWidths[item.iconPath] || null"
-                    v-html="navIcons[item.iconPath] || navIcons.default"
-                  ></svg>
+                  <component :is="navIconFor(item.iconPath)" class="h-[18px] w-[18px]" aria-hidden="true" />
                 </span>
                 <span class="flex-1">{{ item.label }}</span>
                 <span
@@ -311,29 +285,10 @@
                   <span
                     :class="['flex h-[18px] w-[18px] items-center justify-center']"
                   >
-                    <svg
-                      :viewBox="navIconViewBoxes[item.iconPath] || navIconViewBoxes.default"
-                      :class="['h-4 w-4', navIconSizes[item.iconPath]]"
-                      :stroke-width="navIconStrokeWidths[item.iconPath] || null"
-                      v-html="navIcons[item.iconPath] || navIcons.default"
-                    ></svg>
+                    <component :is="navIconFor(item.iconPath)" class="h-[18px] w-[18px]" aria-hidden="true" />
                   </span>
                   <span class="flex-1 text-left">{{ item.label }}</span>
-                  <svg
-                    viewBox="0 0 24 24"
-                    :class="[
-                      'h-4 w-4 transition-transform',
-                      isGroupExpanded(item) ? 'rotate-180' : '',
-                      'ml-auto mr-1'
-                    ]"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <path d="m6 9 6 6 6-6" />
-                  </svg>
+                  <ChevronDownIcon :class="['ml-auto mr-1 h-4 w-4 transition-transform', isGroupExpanded(item) ? 'rotate-180' : '']" aria-hidden="true" />
                   <span
                     v-if="item.id !== 'leads' && getNavBadge(item.id) !== null"
                     class="nav-pill-badge"
@@ -371,13 +326,8 @@
               @click="toggleTheme"
             >
               <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-background text-muted-foreground">
-                <svg v-if="isDarkTheme" viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="4" />
-                  <path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41" />
-                </svg>
-                <svg v-else viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M21 12.79A9 9 0 1 1 11.21 3A7 7 0 0 0 21 12.79Z" />
-                </svg>
+                <SunIcon v-if="isDarkTheme" class="h-4 w-4" aria-hidden="true" />
+                <MoonIcon v-else class="h-4 w-4" aria-hidden="true" />
               </span>
               <span class="min-w-0 flex-1">
                 <span class="block font-semibold">{{ viewCopy.themeToggle.title }}</span>
@@ -416,11 +366,7 @@
                 :aria-label="viewCopy.sidebar.logout"
                 :title="viewCopy.sidebar.logout"
               >
-                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M15 17l5-5-5-5" />
-                  <path d="M20 12H9" />
-                  <path d="M12 19H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6" />
-                </svg>
+                <LogOutIcon class="h-4 w-4" aria-hidden="true" />
               </button>
             </div>
           </div>
@@ -578,9 +524,7 @@
           <template v-else>
             <div class="space-y-6 text-center">
               <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
-                <svg viewBox="0 0 24 24" class="h-8 w-8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M5 13l4 4L19 7" />
-                </svg>
+                <CheckIcon class="h-8 w-8" aria-hidden="true" />
               </div>
               <div>
                 <h2 class="text-3xl font-bold text-slate-900">{{ viewCopy.onboarding.success.title }}</h2>
@@ -805,6 +749,33 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import { RouterLink, RouterView, useRoute, useRouter } from "vue-router";
+import type { Component } from "vue";
+import {
+  BadgePercentIcon,
+  Building2Icon,
+  CheckIcon,
+  ChevronDownIcon,
+  ChevronsLeftIcon,
+  ChevronsRightIcon,
+  CircleIcon,
+  FileTextIcon,
+  GlobeIcon,
+  GraduationCapIcon,
+  LayoutDashboardIcon,
+  Link2Icon,
+  LogOutIcon,
+  MenuIcon,
+  MessagesSquareIcon,
+  MoonIcon,
+  PlugIcon,
+  PlusIcon,
+  ShieldCheckIcon,
+  SunIcon,
+  UserRoundIcon,
+  UsersIcon,
+  XIcon
+} from "lucide-vue-next";
+import BrandMark from "../assets/Favicon.png";
 import SidebarLogo from "../assets/Logo Branco - Roteiro Online.png";
 import ColoredLogo from "../assets/Logo Cor - Roteiro Online.png";
 import BrandSwitcher from "../components/shared/BrandSwitcher.vue";
@@ -1090,33 +1061,23 @@ const setupViewportWatcher = () => {
   };
 };
 
-const navIcons: Record<string, string> = {
-  default: '<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2a8 8 0 1 1-8 8 8 8 0 0 1 8-8zm0 3v6l4 2" />',
-  "/admin/dashboard": '<path fill="none" stroke="currentColor" stroke-width="1.8" d="M4 5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1zm10 0a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1zM4 16a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1zm10-3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1z"/>' ,
-  "/admin/pages": '<g fill="none" stroke="currentColor" stroke-width="2"><path d="M6.142 6.142C8.904 3.381 10.284 2 12 2s3.096 1.38 5.858 4.142S22 10.284 22 12s-1.38 3.096-4.142 5.858S13.716 22 12 22s-3.096-1.38-5.858-4.142S2 13.716 2 12s1.38-3.096 4.142-5.858Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M16 11.5L13.333 9M16 11.5L13.333 14M16 11.5h-5.333C9.777 11.5 8 12 8 14"/></g>',
-  "/admin/leads": '<path fill="currentColor" d="m17 21l1.8 1.77c.5.5 1.2.1 1.2-.49V18l2.8-3.4A1 1 0 0 0 22 13h-7c-.8 0-1.3 1-.8 1.6L17 18zm-2-1H2v-3c0-2.7 5.3-4 8-4c.6 0 1.3.1 2.1.2c-.2.6-.1 1.3.1 1.9c-.7-.1-1.5-.2-2.2-.2c-3 0-6.1 1.5-6.1 2.1v1.1h10.6l.5.6zM10 4C7.8 4 6 5.8 6 8s1.8 4 4 4s4-1.8 4-4s-1.8-4-4-4m0 6c-1.1 0-2-.9-2-2s.9-2 2-2s2 .9 2 2s-.9 2-2 2"/>',
-  "/admin/inbox": '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M4 6h16v12H4z"/><path d="M8 10h8"/><path d="M8 14h5"/></g>',
-  "/admin/clientes": '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><circle cx="9" cy="8" r="3"/><path d="M3 19c0-3 2.5-5 6-5s6 2 6 5"/><path d="M18 8h3M19.5 6.5v3"/></g>',
-  "/admin/integracoes": '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M18.364 19.364a9 9 0 1 0-12.728 0"/><path d="M15.536 16.536a5 5 0 1 0-7.072 0"/><path d="M11 13a1 1 0 1 0 2 0a1 1 0 1 0-2 0"/></g>',
-  "/admin/conexoes": '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M6.5 7.5a3.5 3.5 0 1 1 6.03 2.46L14.5 12"/><path d="M17.5 16.5a3.5 3.5 0 1 1-6.03-2.46L9.5 12"/><path d="M9.5 12h5"/></g>',
-  "/admin/agency": '<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.3" d="M4 11.452V16.8c0 1.12 0 1.68.218 2.109c.192.376.497.682.874.873c.427.218.987.218 2.105.218h9.606c1.118 0 1.677 0 2.104-.218a2 2 0 0 0 .875-.873c.218-.428.218-.987.218-2.105v-5.352c0-.534 0-.801-.065-1.05a2 2 0 0 0-.28-.617c-.145-.213-.345-.39-.748-.741l-4.8-4.2c-.746-.653-1.12-.98-1.54-1.104c-.37-.11-.764-.11-1.135 0c-.42.124-.792.45-1.538 1.102L5.093 9.044c-.402.352-.603.528-.747.74a2 2 0 0 0-.281.618C4 10.65 4 10.918 4 11.452"/>',
-  "/admin/domains": '<g transform="translate(3 3) scale(1.1)"><path fill="currentColor" d="M9 0a9 9 0 1 0 0 18A9 9 0 0 0 9 0M1.11 9.68h2.51c.04.91.167 1.814.38 2.7H1.84a7.9 7.9 0 0 1-.73-2.7m8.57-5.4V1.19a4.13 4.13 0 0 1 2.22 2q.308.521.54 1.08zm3.22 1.35c.232.883.37 1.788.41 2.7H9.68v-2.7zM8.32 1.19v3.09H5.56A8.5 8.5 0 0 1 6.1 3.2a4.13 4.13 0 0 1 2.22-2.01m0 4.44v2.7H4.7c.04-.912.178-1.817.41-2.7zm-4.7 2.69H1.11a7.9 7.9 0 0 1 .73-2.7H4a14 14 0 0 0-.38 2.7M4.7 9.68h3.62v2.7H5.11a13 13 0 0 1-.41-2.7m3.63 4v3.09a4.13 4.13 0 0 1-2.22-2a8.5 8.5 0 0 1-.54-1.08zm1.35 3.09v-3.04h2.76a8.5 8.5 0 0 1-.54 1.08a4.13 4.13 0 0 1-2.22 2zm0-4.44v-2.7h3.62a13 13 0 0 1-.41 2.7zm4.71-2.7h2.51a7.9 7.9 0 0 1-.73 2.7H14c.21-.87.337-1.757.38-2.65zm0-1.35A14 14 0 0 0 14 5.63h2.16c.403.85.65 1.764.73 2.7zm1-4H13.6a8.9 8.9 0 0 0-1.39-2.52a8 8 0 0 1 3.14 2.52zm-9.6-2.52A8.9 8.9 0 0 0 4.4 4.28H2.65a8 8 0 0 1 3.14-2.52m-3.15 12H4.4a8.9 8.9 0 0 0 1.39 2.52a8 8 0 0 1-3.14-2.55zm9.56 2.52a8.9 8.9 0 0 0 1.39-2.52h1.76a8 8 0 0 1-3.14 2.48z"/></g>',
-  "/admin/perfil": '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></g>',
-  "/admin/planos": '<path fill="currentColor" d="m21.41 11.58-9-9C12.05 2.22 11.55 2 11 2H4c-1.1 0-2 .9-2 2v7c0 .55.22 1.05.59 1.42l9 9c.36.36.86.58 1.41.58s1.05-.22 1.41-.59l7-7c.37-.36.59-.86.59-1.41s-.23-1.06-.59-1.42M13 20.01L4 11V4h7v-.01l9 9z"/><circle cx="6.5" cy="6.5" r="1.5" fill="currentColor"/>',
-  "/admin/administracao": '<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m12 17.75l-6.172 3.245l1.179-6.873l-5-4.867l6.9-1l3.086-6.253l3.086 6.253l6.9 1l-5 4.867l1.179 6.873z"/>',
-  "/admin/aulas": '<g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></g>',
-
+// Ícones do menu: Lucide, mesma família e espessura em todo o painel.
+const navIconComponents: Record<string, Component> = {
+  "/admin/dashboard": LayoutDashboardIcon,
+  "/admin/pages": FileTextIcon,
+  "/admin/leads": UsersIcon,
+  "/admin/inbox": MessagesSquareIcon,
+  "/admin/clientes": UsersIcon,
+  "/admin/integracoes": PlugIcon,
+  "/admin/conexoes": Link2Icon,
+  "/admin/agency": Building2Icon,
+  "/admin/domains": GlobeIcon,
+  "/admin/perfil": UserRoundIcon,
+  "/admin/planos": BadgePercentIcon,
+  "/admin/administracao": ShieldCheckIcon,
+  "/admin/aulas": GraduationCapIcon
 };
-
-const navIconSizes: Record<string, string> = {
-  "/admin/agency": "h-4 w-4"
-};
-
-const navIconViewBoxes: Record<string, string> = {
-  default: "0 0 24 24"
-};
-
-const navIconStrokeWidths: Record<string, string> = {};
+const navIconFor = (iconPath: string): Component => navIconComponents[iconPath] || CircleIcon;
 
 type AdminNavChild = {
   label: string;
@@ -1814,6 +1775,62 @@ const showSubscriptionBlockedDialog = ref(false);
 const showTrialWarning3Days = ref(false);
 const showTrialWarning1Day = ref(false);
 const mobileMenuOpen = ref(false);
+
+// Sidebar recolhível (só ícones), como no Viaje On. A preferência fica no navegador.
+const SIDEBAR_COLLAPSED_KEY = "admin_sidebar_collapsed";
+const readSidebarCollapsed = () => {
+  try {
+    return typeof window !== "undefined" && window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1";
+  } catch {
+    return false;
+  }
+};
+const sidebarCollapsed = ref(readSidebarCollapsed());
+const flyoutGroupId = ref<string | null>(null);
+const brandMarkSrc = BrandMark;
+const canCreatePageShortcut = computed(() => hasPermission("pages"));
+const sidebarOffset = computed(() => (sidebarCollapsed.value ? "100px" : "272px"));
+
+const toggleSidebarCollapsed = () => {
+  sidebarCollapsed.value = !sidebarCollapsed.value;
+  flyoutGroupId.value = null;
+  try {
+    window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, sidebarCollapsed.value ? "1" : "0");
+  } catch {
+    // Sem acesso ao armazenamento: a escolha vale só nesta aba.
+  }
+};
+
+const handleGroupClick = (groupId: string) => {
+  if (sidebarCollapsed.value) {
+    flyoutGroupId.value = flyoutGroupId.value === groupId ? null : groupId;
+    return;
+  }
+  toggleNavGroup(groupId);
+};
+
+const closeSidebarFlyout = () => {
+  flyoutGroupId.value = null;
+};
+
+watch(
+  sidebarOffset,
+  value => {
+    if (typeof document === "undefined") return;
+    document.documentElement.style.setProperty("--admin-sidebar-offset", value);
+  },
+  { immediate: true }
+);
+
+watch(
+  () => route.fullPath,
+  () => {
+    flyoutGroupId.value = null;
+  }
+);
+
+onMounted(() => document.addEventListener("click", closeSidebarFlyout));
+onBeforeUnmount(() => document.removeEventListener("click", closeSidebarFlyout));
 const trialPlanName = computed(() => getPlanLabel(auth.user?.trial_plan));
 const planTagMap: Record<string, string> = {
   essencial: viajeChatTagIds.PLANO_PROFISSIONAL,
@@ -2644,6 +2661,456 @@ body.admin-body-light #app {
 
 .sidebar-scroll::-webkit-scrollbar-thumb:hover {
   background: var(--muted-foreground);
+}
+
+/* =========================
+   SIDEBAR (estilo Viaje On)
+========================= */
+
+@media (min-width: 768px) {
+  .admin-main {
+    margin-left: var(--admin-sidebar-offset, 272px);
+    transition: margin-left 0.2s ease;
+  }
+}
+
+.admin-sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 30;
+  width: var(--admin-sidebar-offset, 272px);
+  padding: 12px 0 12px 12px;
+  transition: width 0.2s ease;
+}
+
+.as-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  padding: 16px 12px 12px;
+  border: 1px solid var(--sidebar-border);
+  border-radius: 28px;
+  background: var(--card);
+  color: var(--sidebar-foreground);
+  box-shadow: var(--shadow-card);
+}
+
+.as-collapse {
+  position: absolute;
+  top: 32px;
+  right: -12px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--sidebar-border);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--muted-foreground);
+  box-shadow: var(--shadow-soft);
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.as-collapse:hover {
+  border-color: var(--ring);
+  color: var(--foreground);
+}
+
+.as-collapse svg {
+  width: 14px;
+  height: 14px;
+}
+
+.as-brand {
+  display: flex;
+  align-items: center;
+  min-height: 52px;
+  margin-bottom: 14px;
+  padding: 0 4px;
+}
+
+.as-brand-logo {
+  display: flex;
+  align-items: center;
+}
+
+.as-brand-tile {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 1px solid var(--sidebar-border);
+  border-radius: 16px;
+  background: var(--card);
+}
+
+.as-cta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 48px;
+  margin: 0 0 18px;
+  padding: 0 18px 0 4px;
+  border-radius: 999px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-size: 13.5px;
+  font-weight: 600;
+  transition: filter 0.15s ease, transform 0.15s ease;
+}
+
+.as-cta:hover {
+  filter: brightness(1.05);
+}
+
+.as-cta-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+}
+
+.as-cta-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.as-nav {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.as-section {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.as-section-title {
+  padding: 0 12px 6px;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.as-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px 0 2px;
+  border-radius: 999px;
+  color: var(--sidebar-foreground);
+  font-size: 13.5px;
+  font-weight: 500;
+  text-align: left;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.as-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.as-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.as-item:hover {
+  color: var(--foreground);
+}
+
+.admin-sidebar:not(.is-collapsed) .as-item:hover {
+  background: var(--sidebar-accent);
+}
+
+.as-item.is-active {
+  color: var(--accent-foreground);
+  font-weight: 600;
+}
+
+.as-item.is-active .as-icon {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.admin-sidebar:not(.is-collapsed) .as-item.is-active {
+  background: var(--accent);
+}
+
+.as-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.as-chevron {
+  width: 16px;
+  height: 16px;
+  margin-left: auto;
+  color: var(--muted-foreground);
+  transition: transform 0.2s ease;
+}
+
+.as-group {
+  position: relative;
+}
+
+.as-children {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 2px 0 6px 22px;
+  padding-left: 12px;
+  border-left: 1px solid var(--sidebar-border);
+}
+
+.as-child {
+  display: block;
+  padding: 8px 12px;
+  border-radius: 10px;
+  color: var(--muted-foreground);
+  font-size: 13px;
+  font-weight: 500;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.as-child:hover {
+  background: var(--sidebar-accent);
+  color: var(--foreground);
+}
+
+.as-child.is-active {
+  background: var(--accent);
+  color: var(--accent-foreground);
+  font-weight: 600;
+}
+
+.as-flyout {
+  position: absolute;
+  top: -6px;
+  left: calc(100% + 18px);
+  z-index: 70;
+  min-width: 224px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: var(--shadow-elegant);
+}
+
+.as-flyout-title {
+  padding: 6px 12px 8px;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.as-flyout-enter-active,
+.as-flyout-leave-active {
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.as-flyout-enter-from,
+.as-flyout-leave-to {
+  opacity: 0;
+  transform: translateX(-4px);
+}
+
+.as-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--sidebar-border);
+}
+
+.as-switch {
+  position: relative;
+  width: 34px;
+  height: 20px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: var(--border);
+  transition: background-color 0.15s ease;
+}
+
+.as-switch span {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: var(--shadow-soft);
+  transition: transform 0.15s ease;
+}
+
+.as-switch.on {
+  background: var(--primary);
+}
+
+.as-switch.on span {
+  transform: translateX(14px);
+}
+
+.as-user {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.as-user-link {
+  position: relative;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 2px;
+  border-radius: 999px;
+  transition: background-color 0.15s ease;
+}
+
+.as-user-link:hover {
+  background: var(--sidebar-accent);
+}
+
+.as-avatar {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-foreground);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.as-logout {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  color: var(--muted-foreground);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.as-logout:hover {
+  background: var(--sidebar-accent);
+  color: var(--foreground);
+}
+
+.as-logout svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Recolhida: só os ícones, centralizados. */
+.admin-sidebar.is-collapsed .as-panel {
+  align-items: center;
+  padding: 16px 8px 12px;
+}
+
+.admin-sidebar.is-collapsed .as-brand {
+  justify-content: center;
+  padding: 0;
+}
+
+.admin-sidebar.is-collapsed .as-label,
+.admin-sidebar.is-collapsed .as-section-title {
+  display: none;
+}
+
+.admin-sidebar.is-collapsed .as-cta {
+  justify-content: center;
+  width: 48px;
+  padding: 0;
+}
+
+.admin-sidebar.is-collapsed .as-nav {
+  align-items: center;
+  overflow: visible;
+}
+
+.admin-sidebar.is-collapsed .as-section + .as-section::before {
+  content: "";
+  display: block;
+  width: 24px;
+  height: 1px;
+  margin: 0 auto 12px;
+  background: var(--sidebar-border);
+}
+
+.admin-sidebar.is-collapsed .as-item {
+  justify-content: center;
+  width: 44px;
+  padding: 0;
+}
+
+.admin-sidebar.is-collapsed .as-item:hover .as-icon,
+.admin-sidebar.is-collapsed .as-item.is-open .as-icon {
+  background: var(--sidebar-accent);
+}
+
+.admin-sidebar.is-collapsed .as-item.is-active .as-icon {
+  background: var(--accent);
+}
+
+.admin-sidebar.is-collapsed .as-footer {
+  align-items: center;
+  width: 100%;
+}
+
+.admin-sidebar.is-collapsed .as-user-link {
+  flex: none;
+}
+
+.admin-sidebar.is-collapsed [data-tip]:hover::after {
+  content: attr(data-tip);
+  position: absolute;
+  top: 50%;
+  left: calc(100% + 14px);
+  z-index: 60;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--foreground);
+  color: var(--background);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translateY(-50%);
 }
 </style>
 

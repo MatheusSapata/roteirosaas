@@ -126,11 +126,7 @@
                       class="inline-flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500"
                       title="Notificações silenciadas"
                     >
-                      <svg viewBox="0 0 24 24" class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M10 5a2 2 0 0 1 4 0v1.4a6 6 0 0 0 1.7 4.2l1.1 1.2a1 1 0 0 1-.7 1.7H7.9a1 1 0 0 1-.7-1.7l1.1-1.2A6 6 0 0 0 10 6.4V5" />
-                        <path d="M9 18a3 3 0 0 0 6 0" />
-                        <path d="m4 4 16 16" />
-                      </svg>
+                      <BellOffIcon class="h-3 w-3" aria-hidden="true" />
                     </span>
                   </p>
                   <p class="text-[11px] text-slate-500">{{ formatTime(item.lastMessageAt || item.updatedAt) }}</p>
@@ -558,18 +554,7 @@
                       @click="toggleStageDropdown"
                     >
                       <span class="truncate">{{ selectedStageOption?.name || "Sem etapa" }}</span>
-                      <svg
-                        viewBox="0 0 24 24"
-                        class="ml-2 h-4 w-4 flex-shrink-0 transition-transform duration-150"
-                        :class="stageDropdownOpen ? 'rotate-180' : 'rotate-0'"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      >
-                        <path d="m6 9 6 6 6-6" />
-                      </svg>
+                      <ChevronDownIcon class="ml-2 h-4 w-4 flex-shrink-0 transition-transform duration-150" :class="stageDropdownOpen ? 'rotate-180' : 'rotate-0'" aria-hidden="true" />
                     </button>
                   </div>
                 </div>
@@ -586,18 +571,7 @@
                       @click="toggleOutcomeDropdown"
                     >
                       <span class="truncate">{{ selectedOutcomeLabel }}</span>
-                      <svg
-                        viewBox="0 0 24 24"
-                        class="ml-2 h-4 w-4 flex-shrink-0 transition-transform duration-150"
-                        :class="outcomeDropdownOpen ? 'rotate-180' : 'rotate-0'"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      >
-                        <path d="m6 9 6 6 6-6" />
-                      </svg>
+                      <ChevronDownIcon class="ml-2 h-4 w-4 flex-shrink-0 transition-transform duration-150" :class="outcomeDropdownOpen ? 'rotate-180' : 'rotate-0'" aria-hidden="true" />
                     </button>
                   </div>
                 </div>
@@ -930,6 +904,7 @@
 </template>
 
 <script setup lang="ts">
+import { BellOffIcon, ChevronDownIcon } from "lucide-vue-next";
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAgencyStore } from "../../store/useAgencyStore";

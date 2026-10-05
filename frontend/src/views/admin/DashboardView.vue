@@ -28,18 +28,8 @@
               {{ period }} dias
             </button>
           </div>
-          <button type="button" class="btn btn-ghost" @click="goToLessons">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <polygon points="23 7 16 12 23 17 23 7"/>
-              <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
-            </svg>
-            Aulas
-          </button>
-          <button type="button" class="btn btn-primary" @click="goToPages">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <line x1="12" y1="5" x2="12" y2="19"/>
-              <line x1="5" y1="12" x2="19" y2="12"/>
-            </svg>
+          <button type="button" class="btn btn-primary" @click="openNewPage">
+            <PlusIcon aria-hidden="true" />
             Nova página
           </button>
         </div>
@@ -68,10 +58,7 @@
         <article class="metric-card metric-hero">
           <div class="metric-header">
             <span class="metric-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                <circle cx="12" cy="12" r="3" />
-              </svg>
+              <EyeIcon aria-hidden="true" />
             </span>
             <span class="metric-label">Visitas no período</span>
           </div>
@@ -80,25 +67,12 @@
             <span class="metric-badge" :class="visitsTrend >= 0 ? 'up' : 'down'">{{ visitsTrendText }}</span>
             <span class="metric-footer-text">vs. {{ selectedPeriod }} dias anteriores</span>
           </div>
-          <svg v-if="sparkline.line" class="metric-spark" viewBox="0 0 300 64" preserveAspectRatio="none" aria-hidden="true">
-            <defs>
-              <linearGradient id="g-spark" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="var(--deep-accent)" stop-opacity="0.35" />
-                <stop offset="100%" stop-color="var(--deep-accent)" stop-opacity="0" />
-              </linearGradient>
-            </defs>
-            <path :d="sparkline.area" fill="url(#g-spark)" />
-            <path :d="sparkline.line" fill="none" stroke="var(--deep-accent)" stroke-width="2" />
-          </svg>
         </article>
 
         <article class="metric-card">
           <div class="metric-header">
             <span class="metric-icon tone-warning" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="m4 3 7.5 17 2.4-7.1L21 10.5 4 3z" />
-                <path d="m13.9 12.9 3.6 3.6" />
-              </svg>
+              <MousePointerClickIcon aria-hidden="true" />
             </span>
             <span class="metric-label">Cliques nos botões</span>
           </div>
@@ -112,11 +86,7 @@
         <article class="metric-card">
           <div class="metric-header">
             <span class="metric-icon tone-violet" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <path d="M19 8v6M22 11h-6" />
-              </svg>
+              <UserPlusIcon aria-hidden="true" />
             </span>
             <span class="metric-label">Leads</span>
           </div>
@@ -130,10 +100,7 @@
         <article class="metric-card">
           <div class="metric-header">
             <span class="metric-icon tone-info" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                <polyline points="14 2 14 8 20 8" />
-              </svg>
+              <FileTextIcon aria-hidden="true" />
             </span>
             <span class="metric-label">Páginas no ar</span>
           </div>
@@ -222,7 +189,7 @@
           </div>
           <div class="funnel-total">
             <span class="metric-icon tone-success" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 7 13.5 15.5 8.5 10.5 2 17" /><path d="M16 7h6v6" /></svg>
+              <TrendingUpIcon aria-hidden="true" />
             </span>
             <div>
               <b>{{ formatPercent(leadRate) }}</b>
@@ -244,7 +211,7 @@
           <div class="list-body">
             <div v-for="item in topPages" :key="item.id" class="page-item">
               <div class="page-thumb" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
+                <FileTextIcon aria-hidden="true" />
               </div>
               <div class="page-info">
                 <p class="page-name">{{ truncateText(item.title, 30) }}</p>
@@ -255,22 +222,13 @@
                 <span class="page-visits">{{ item.visits.toLocaleString(numberLocale) }}<small>visitas</small></span>
                 <div class="page-actions">
                   <button type="button" class="page-action-btn" title="Ver" aria-label="Ver página publicada" @click="viewPage(item)">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                      <circle cx="12" cy="12" r="3" />
-                    </svg>
+                    <EyeIcon aria-hidden="true" />
                   </button>
                   <button type="button" class="page-action-btn" title="Editar" aria-label="Editar página" @click="editPage(item)">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                      <path d="M12 20h9" />
-                      <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z" />
-                    </svg>
+                    <PencilIcon aria-hidden="true" />
                   </button>
                   <button type="button" class="page-action-btn" title="Copiar link" aria-label="Copiar link da página" @click="sharePage(item)">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                      <path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07L11.2 4.72" />
-                      <path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 0 0 7.07 7.07L12.8 19.28" />
-                    </svg>
+                    <LinkIcon aria-hidden="true" />
                   </button>
                 </div>
               </div>
@@ -304,7 +262,7 @@
                     target="_blank"
                     rel="noopener"
                   >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" /></svg>
+                    <MessageCircleIcon aria-hidden="true" />
                     WhatsApp
                   </a>
                   <button type="button" class="lead-btn lead-btn-details" @click="openLeadDetails(lead.id)">Detalhes</button>
@@ -327,6 +285,17 @@
 </template>
 
 <script setup lang="ts">
+import {
+  EyeIcon,
+  FileTextIcon,
+  LinkIcon,
+  MessageCircleIcon,
+  MousePointerClickIcon,
+  PencilIcon,
+  PlusIcon,
+  TrendingUpIcon,
+  UserPlusIcon
+} from "lucide-vue-next";
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import { useRouter } from "vue-router";
@@ -548,18 +517,6 @@ const funnelSteps = computed(() => {
     { key: "cta", label: "Cliques no botão", value: cta },
     { key: "leads", label: "Leads", value: leads }
   ].map(step => ({ ...step, width: Math.max(step.value > 0 ? 2 : 0, Math.round((step.value / base) * 100)) }));
-});
-
-const sparkline = computed(() => {
-  const values = (overview.value?.timeseries || []).map(point => Number(point.visits || 0));
-  if (values.length < 2) return { line: "", area: "" };
-  const max = Math.max(1, ...values);
-  const pts = values.map((value, index) => [
-    (index / (values.length - 1)) * 300,
-    58 - (value / max) * 50
-  ]);
-  const line = pts.map(([x, y], index) => `${index ? "L" : "M"} ${x.toFixed(1)} ${y.toFixed(1)}`).join(" ");
-  return { line, area: `${line} L 300 64 L 0 64 Z` };
 });
 
 const avatarTones = ["violet", "info", "warning", "success"];
@@ -884,8 +841,8 @@ const loadDashboard = async () => {
   }
 };
 
-const goToLessons = () => router.push("/admin/aulas");
 const goToPages = () => router.push("/admin/pages");
+const openNewPage = () => router.push({ path: "/admin/pages", query: { nova: "1" } });
 const goToOpportunities = () => router.push("/admin/leads/opportunities");
 const goToIntegrations = () => router.push("/admin/integracoes");
 
@@ -1249,32 +1206,16 @@ onBeforeUnmount(() => {
   color: var(--muted-foreground);
 }
 
-/* Destaque: visitas no fundo escuro da marca */
+/* Destaque: visitas em verde claro, como os cards de destaque do Viaje On */
 .metric-hero {
-  background: radial-gradient(120% 140% at 100% 0%, var(--deep-2) 0%, var(--deep) 60%);
-  color: var(--on-deep);
-  box-shadow: none;
+  border-color: color-mix(in srgb, var(--primary) 22%, var(--border));
+  background: linear-gradient(135deg, var(--accent) 0%, var(--card) 100%);
+  box-shadow: inset 4px 0 0 var(--primary), var(--shadow-card);
 }
 
-.metric-hero .metric-label,
-.metric-hero .metric-footer-text {
-  color: var(--on-deep-muted);
-}
-
-.metric-hero .metric-icon,
-.metric-hero .metric-badge {
-  background: color-mix(in srgb, var(--deep-accent) 16%, transparent);
-  color: var(--deep-accent);
-}
-
-.metric-spark {
-  position: absolute;
-  top: 18px;
-  right: 0;
-  width: 42%;
-  height: 70px;
-  opacity: 0.85;
-  pointer-events: none;
+.metric-hero .metric-icon {
+  background: var(--card);
+  color: var(--accent-foreground);
 }
 
 /* Gráfico e conversão */

@@ -24,9 +24,7 @@
                 aria-label="Fechar oportunidade"
                 title="Fechar"
               >
-                <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M6 6l12 12M6 18 18 6" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
+                <XIcon class="h-5 w-5" aria-hidden="true" />
               </button>
             </div>
 
@@ -49,7 +47,7 @@
                   <div class="opp-stage-wrap">
                     <button type="button" class="opp-stage" :style="statusBadgeStyle" @click="stageMenuOpen = !stageMenuOpen">
                       {{ details?.statusName || "Sem etapa" }}
-                      <svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+                      <ChevronDownIcon aria-hidden="true" />
                     </button>
                     <div v-if="stageMenuOpen" class="opp-stage-menu">
                       <button type="button" class="opp-stage-opt" :style="stageOptionStyle()" @click="selectStage(null)">
@@ -75,7 +73,7 @@
                     <template v-if="!valueEditOpen">
                       <strong>{{ currencyLabel(details?.estimatedValueCents ?? 0) }}</strong>
                       <button type="button" class="opp-value-edit-btn" @click="openInlineValueEditor" title="Editar valor">
-                        <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4z"/></svg>
+                        <PencilIcon aria-hidden="true" />
                       </button>
                     </template>
                     <template v-else>
@@ -99,7 +97,7 @@
                       :class="{ active: details?.closeOutcome === 'won' }"
                       @click="handleFinalizeOpportunity('won')"
                     >
-                      <svg viewBox="0 0 24 24"><path d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3H14z"/><path d="M7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3"/></svg>
+                      <ThumbsUpIcon aria-hidden="true" />
                       <span>Ganha</span>
                     </button>
                     <button
@@ -108,7 +106,7 @@
                       :class="{ active: details?.closeOutcome === 'lost' }"
                       @click="handleFinalizeOpportunity('lost')"
                     >
-                      <svg viewBox="0 0 24 24"><path d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3H10z"/><path d="M17 2h2.67A2.31 2.31 0 0122 4v7a2.31 2.31 0 01-2.33 2H17"/></svg>
+                      <ThumbsDownIcon aria-hidden="true" />
                       <span>Perdida</span>
                     </button>
                   </div>
@@ -128,20 +126,11 @@
                     </div>
                     <div v-if="!details?.client" class="opp-link-actions">
                       <button type="button" class="opp-link-btn" @click="linkMode = 'search'">
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                          <path d="M10 12h4"/>
-                          <path d="M7 15H6a4 4 0 1 1 0-8h1"/>
-                          <path d="M17 15h1a4 4 0 1 0 0-8h-1"/>
-                        </svg>
+                        <Link2Icon aria-hidden="true" />
                         Vincular cliente
                       </button>
                       <button type="button" class="opp-link-btn" :disabled="creatingClient" @click="handleCreateClient">
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                          <circle cx="9" cy="7" r="4"/>
-                          <path d="M19 8v6"/>
-                          <path d="M16 11h6"/>
-                        </svg>
+                        <UserPlusIcon aria-hidden="true" />
                         {{ creatingClient ? "Criando..." : "Criar cliente" }}
                       </button>
                     </div>
@@ -165,9 +154,9 @@
                       title="Remover vínculo"
                       @click.stop="handleUnlinkClient"
                     >
-                      <svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                      <Trash2Icon aria-hidden="true" />
                     </button>
-                    <svg class="opp-client-open" viewBox="0 0 24 24"><path d="M14 3h7v7"/><path d="M10 14L21 3"/><path d="M21 14v7h-7"/><path d="M3 10v11h11"/></svg>
+                    <Maximize2Icon class="opp-client-open" aria-hidden="true" />
                   </div>
                   <div v-if="linkMode === 'search'" class="opp-link-search">
                     <input
@@ -211,15 +200,15 @@
 
               <div class="opp-tabs">
                 <button type="button" class="opp-tab-btn" :class="{ on: activeTab === 'notes' }" @click="activeTab = 'notes'">
-                  <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  <SquarePenIcon aria-hidden="true" />
                   Notas
                 </button>
                 <button type="button" class="opp-tab-btn" :class="{ on: activeTab === 'documents' }" @click="activeTab = 'documents'">
-                  <svg viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                  <PaperclipIcon aria-hidden="true" />
                   Documentos
                 </button>
                 <button type="button" class="opp-tab-btn" :class="{ on: activeTab === 'history' }" @click="activeTab = 'history'">
-                  <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  <ClockIcon aria-hidden="true" />
                   Histórico
                 </button>
               </div>
@@ -256,14 +245,14 @@
                   <article v-for="item in historyItems" :key="item.key" class="opp-tl-item">
                     <div class="opp-tl-left">
                       <div class="opp-tl-dot" :class="`opp-tl-dot--${historyKind(item)}`">
-                        <svg v-if="historyKind(item) === 'visit'" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-                        <svg v-else-if="historyKind(item) === 'lead'" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-                        <svg v-else-if="historyKind(item) === 'note'" viewBox="0 0 24 24"><path d="M4 3h13l3 3v15H4z"/><path d="M17 3v4h4"/><path d="M8 12h8"/><path d="M8 16h6"/></svg>
-                        <svg v-else-if="historyKind(item) === 'won'" viewBox="0 0 24 24"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
-                        <svg v-else-if="historyKind(item) === 'lost'" viewBox="0 0 24 24"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/><path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/></svg>
-                        <svg v-else-if="historyKind(item) === 'stage'" viewBox="0 0 24 24"><path d="M7 7h11"/><path d="M15 4l3 3-3 3"/><path d="M17 17H6"/><path d="M9 14l-3 3 3 3"/></svg>
-                        <svg v-else-if="historyKind(item) === 'value'" viewBox="0 0 24 24"><path d="M12 2v20"/><path d="M17 6H9.5a3.5 3.5 0 0 0 0 7H14.5a3.5 3.5 0 0 1 0 7H7"/></svg>
-                        <svg v-else viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        <GlobeIcon v-if="historyKind(item) === 'visit'" aria-hidden="true" />
+                        <UserIcon v-else-if="historyKind(item) === 'lead'" aria-hidden="true" />
+                        <FileTextIcon v-else-if="historyKind(item) === 'note'" aria-hidden="true" />
+                        <ThumbsUpIcon v-else-if="historyKind(item) === 'won'" aria-hidden="true" />
+                        <ThumbsDownIcon v-else-if="historyKind(item) === 'lost'" aria-hidden="true" />
+                        <ArrowLeftRightIcon v-else-if="historyKind(item) === 'stage'" aria-hidden="true" />
+                        <DollarSignIcon v-else-if="historyKind(item) === 'value'" aria-hidden="true" />
+                        <ClockIcon v-else aria-hidden="true" />
                       </div>
                       <div class="opp-tl-line"></div>
                     </div>
@@ -271,7 +260,7 @@
                       <p class="opp-tl-title">{{ item.title }}</p>
                       <p class="opp-tl-detail">{{ item.detail }}</p>
                       <p class="opp-tl-time">
-                        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        <ClockIcon aria-hidden="true" />
                         {{ formatDateTime(item.date) }}
                       </p>
                     </div>
@@ -288,6 +277,25 @@
 </template>
 
 <script setup lang="ts">
+import {
+  ArrowLeftRightIcon,
+  ChevronDownIcon,
+  ClockIcon,
+  DollarSignIcon,
+  FileTextIcon,
+  GlobeIcon,
+  Link2Icon,
+  Maximize2Icon,
+  PaperclipIcon,
+  PencilIcon,
+  SquarePenIcon,
+  ThumbsDownIcon,
+  ThumbsUpIcon,
+  Trash2Icon,
+  UserIcon,
+  UserPlusIcon,
+  XIcon
+} from "lucide-vue-next";
 import { computed, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 

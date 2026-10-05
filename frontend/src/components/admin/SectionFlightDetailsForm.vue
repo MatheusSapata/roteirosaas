@@ -10,7 +10,7 @@
         <span><strong>Ida</strong><small>Trechos de ida</small></span>
       </button>
       <button type="button" class="flight-nav-item" :class="{ active: activeTab === 'inbound' }" @click="activeTab = 'inbound'">
-        <span class="flight-nav-icon" :style="mirroredIconStyle" v-html="adminTabIcons.flightOutbound"></span>
+        <span class="flight-nav-icon" v-html="adminTabIcons.flightInbound"></span>
         <span><strong>Volta</strong><small>Trechos de volta</small></span>
       </button>
     </aside>
@@ -228,7 +228,7 @@ import {
   reorderFlightSegments,
   updateFlightSegment
 } from "../../services/flightDetails";
-import { adminTabIcons, mirroredIconStyle } from "../../utils/adminTabIcons";
+import { adminTabIcons } from "../../utils/adminTabIcons";
 
 const props = defineProps<{ modelValue: FlightDetailsSection }>();
 const emit = defineEmits<{ (e: "update:modelValue", value: FlightDetailsSection): void }>();

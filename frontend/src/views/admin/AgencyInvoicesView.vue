@@ -3,7 +3,7 @@
     <AgencyHeader>
       <template #actions>
         <button type="button" class="ai-btn-ghost" :disabled="loading" @click="loadInvoices">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8" /><path d="M21 3v5h-5" /></svg>
+          <RotateCwIcon aria-hidden="true" />
           {{ loading ? "Atualizando..." : "Atualizar" }}
         </button>
       </template>
@@ -12,9 +12,9 @@
     <div class="ai-stats">
       <article v-for="item in invoiceSummaries" :key="item.id" class="ai-stat">
         <span class="ai-stat-icon" :class="`is-${item.id}`" aria-hidden="true">
-          <svg v-if="item.id === 'upcoming'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
-          <svg v-else-if="item.id === 'overdue'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" /><path d="M12 9v4M12 17h.01" /></svg>
-          <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+          <ClockIcon v-if="item.id === 'upcoming'" aria-hidden="true" />
+          <TriangleAlertIcon v-else-if="item.id === 'overdue'" aria-hidden="true" />
+          <CheckIcon v-else aria-hidden="true" />
         </span>
         <div>
           <p class="ai-stat-k">{{ item.label }} · {{ item.count }}</p>
@@ -65,7 +65,7 @@
             <td>
               <div class="ai-name">
                 <span class="ai-doc" :class="`is-${invoice.bucket}`" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2z" /><path d="M9 8h6M9 12h6M9 16h4" /></svg>
+                  <ReceiptIcon aria-hidden="true" />
                 </span>
                 <span>{{ invoice.description || "Cobrança sem título" }}</span>
               </div>
@@ -83,7 +83,7 @@
                 rel="noopener"
                 :class="invoice.is_paid ? 'ai-btn-ghost ai-btn-sm' : 'ai-btn-primary ai-btn-sm'"
               >
-                <svg v-if="invoice.is_paid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12M6 10l6 6 6-6M5 20h14" /></svg>
+                <DownloadIcon v-if="invoice.is_paid" aria-hidden="true" />
                 {{ invoice.is_paid ? "Recibo" : "Pagar" }}
               </a>
               <span v-else class="ai-muted">Sem link</span>
@@ -109,6 +109,14 @@
 </template>
 
 <script setup lang="ts">
+import {
+  CheckIcon,
+  ClockIcon,
+  DownloadIcon,
+  ReceiptIcon,
+  RotateCwIcon,
+  TriangleAlertIcon
+} from "lucide-vue-next";
 import { computed, onMounted, ref, watch } from "vue";
 import api from "../../services/api";
 import AgencyHeader from "../../components/admin/agency/AgencyHeader.vue";

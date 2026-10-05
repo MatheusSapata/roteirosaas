@@ -3,7 +3,7 @@
     <section class="cv-stats">
       <article class="cv-stat">
         <span class="cv-icon tone-success" aria-hidden="true">
-          <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M20 8v6"/><path d="M23 11h-6"/></svg>
+          <UserPlusIcon aria-hidden="true" />
         </span>
         <div>
           <p class="cv-k">Clientes</p>
@@ -12,7 +12,7 @@
       </article>
       <article class="cv-stat">
         <span class="cv-icon tone-info" aria-hidden="true">
-          <svg viewBox="0 0 24 24"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+          <TrendingUpIcon aria-hidden="true" />
         </span>
         <div>
           <p class="cv-k">Em negociação</p>
@@ -21,7 +21,7 @@
       </article>
       <article class="cv-stat">
         <span class="cv-icon tone-warning" aria-hidden="true">
-          <svg viewBox="0 0 24 24"><path d="M12 2v20"/><path d="M17 6H9.5a3.5 3.5 0 0 0 0 7H14.5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          <DollarSignIcon aria-hidden="true" />
         </span>
         <div>
           <p class="cv-k">Valor total</p>
@@ -30,7 +30,7 @@
       </article>
       <article class="cv-stat">
         <span class="cv-icon tone-violet" aria-hidden="true">
-          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          <ClockIcon aria-hidden="true" />
         </span>
         <div>
           <p class="cv-k">Última oportunidade</p>
@@ -42,11 +42,11 @@
     <section class="p-0">
       <div class="clients-filters-row grid gap-2 md:grid-cols-[2fr_0.9fr_0.6fr_0.6fr]">
         <div class="search-wrap">
-          <span class="search-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span>
+          <span class="search-icon" aria-hidden="true"><SearchIcon aria-hidden="true" /></span>
           <input v-model="filters.q" type="text" placeholder="Buscar cliente, CPF, telefone ou e-mail..." class="crm-input crm-input--search" />
         </div>
         <div class="city-wrap">
-          <span class="city-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg></span>
+          <span class="city-icon" aria-hidden="true"><MapPinIcon aria-hidden="true" /></span>
           <input v-model="filters.city" type="text" placeholder="Cidade" class="crm-input crm-input--city" />
         </div>
         <select v-model="filters.period" class="crm-input">
@@ -116,18 +116,10 @@
                   <div class="flex items-center justify-end" @click.stop>
                     <div class="inline-flex items-center gap-2">
                       <button type="button" class="menu-trigger" title="Ver cliente" @click.stop="goToClient(client.id)">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
-                          <path d="M2 12s3.6-6 10-6s10 6 10 6s-3.6 6-10 6s-10-6-10-6z" />
-                          <circle cx="12" cy="12" r="2.8" />
-                        </svg>
+                        <EyeIcon aria-hidden="true" />
                       </button>
                       <button type="button" class="menu-trigger menu-trigger--danger" title="Excluir cliente" @click.stop="handleDeleteClient(client.id)">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
-                          <path d="M3 6h18" />
-                          <path d="M8 6V4h8v2" />
-                          <path d="M19 6l-1 14H6L5 6" />
-                          <path d="M10 11v6M14 11v6" />
-                        </svg>
+                        <Trash2Icon aria-hidden="true" />
                       </button>
                     </div>
                   </div>
@@ -176,9 +168,7 @@
               <h2 class="mt-2 text-2xl font-bold text-slate-900">Novo cliente</h2>
             </div>
             <button type="button" class="rounded-full border border-slate-200 p-2 text-slate-500" @click="closeCreateModal">
-              <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M6 6l12 12M6 18 18 6" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
+              <XIcon class="h-5 w-5" aria-hidden="true" />
             </button>
           </div>
           <div class="flex-1 overflow-y-auto px-4 py-4 md:px-6">
@@ -211,6 +201,17 @@
 </template>
 
 <script setup lang="ts">
+import {
+  ClockIcon,
+  DollarSignIcon,
+  EyeIcon,
+  MapPinIcon,
+  SearchIcon,
+  Trash2Icon,
+  TrendingUpIcon,
+  UserPlusIcon,
+  XIcon
+} from "lucide-vue-next";
 import { computed, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useLeadCaptureStore } from "../../store/useLeadCaptureStore";

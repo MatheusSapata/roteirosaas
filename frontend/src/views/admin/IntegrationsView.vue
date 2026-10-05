@@ -15,7 +15,7 @@
             <header class="iv-card-head">
               <span class="iv-logo" :class="kind.tone">
                 <template v-if="kind.type === 'meta'">M</template>
-                <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18" /><path d="m7 15 4-4 3 3 5-6" /></svg>
+                <ChartLineIcon v-else aria-hidden="true" />
               </span>
               <div class="min-w-0">
                 <h3>{{ kind.label }}</h3>
@@ -51,7 +51,7 @@
           <article class="iv-card">
             <header class="iv-card-head">
               <span class="iv-logo tone-violet">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+                <MessageSquareIcon aria-hidden="true" />
               </span>
               <div class="min-w-0">
                 <h3>ViajeChat</h3>
@@ -67,7 +67,7 @@
           <article v-if="hasWhatsAppPlanAccess" class="iv-card">
             <header class="iv-card-head">
               <span class="iv-logo tone-success">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-12.4 7.4L3 21l2.1-5.4A8.5 8.5 0 1 1 21 11.5z" /></svg>
+                <MessageCircleIcon aria-hidden="true" />
               </span>
               <div class="min-w-0">
                 <h3>WhatsApp</h3>
@@ -97,15 +97,15 @@
 
         <div v-if="viajeonStatus.configured" class="iv-band" :class="viajeonStatus.connected ? 'is-ok' : 'is-bad'">
           <span class="iv-band-icon" aria-hidden="true">
-            <svg v-if="viajeonStatus.connected" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
-            <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 8v5M12 16.5h.01" /></svg>
+            <CheckIcon v-if="viajeonStatus.connected" aria-hidden="true" />
+            <CircleAlertIcon v-else aria-hidden="true" />
           </span>
           <div class="min-w-0 flex-1">
             <p class="iv-band-title">{{ viajeonStatus.connected ? "Conexão funcionando" : "Conexão com problema" }}</p>
             <p class="iv-band-text">{{ viajeonStatus.connected ? "As páginas já mostram os pacotes ativos do Viaje On." : (viajeonStatus.last_error || "Teste a conexão ou reconecte com um token novo.") }}</p>
           </div>
           <button type="button" class="iv-band-btn" :disabled="viajeonTesting" @click="testViajeon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8" /><path d="M21 3v5h-5" /></svg>
+            <RotateCwIcon aria-hidden="true" />
             {{ viajeonTesting ? "Testando..." : "Testar conexão" }}
           </button>
         </div>
@@ -165,7 +165,7 @@
 
       <aside class="iv-info">
         <span class="iv-info-icon is-success" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg>
+          <InfoIcon aria-hidden="true" />
         </span>
         <div>
           <p class="iv-info-title">Onde os pacotes aparecem</p>
@@ -179,7 +179,7 @@
       <section class="iv-panel">
         <header class="iv-panel-top">
           <span class="iv-logo tone-violet">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+            <MessageSquareIcon aria-hidden="true" />
           </span>
           <div class="min-w-0 flex-1">
             <h2>ViajeChat</h2>
@@ -224,7 +224,7 @@
           <article v-for="kanban in viajechatKanbans" :key="kanban.id || kanban.name" class="iv-kanban">
             <button type="button" class="iv-kanban-head" :aria-expanded="!isKanbanCollapsed(kanban)" @click="toggleKanbanColumns(kanban)">
               <span><b>{{ kanban.name }}</b><small>{{ kanban.columns.length }} {{ kanban.columns.length === 1 ? "coluna" : "colunas" }}</small></span>
-              <svg :class="{ collapsed: isKanbanCollapsed(kanban) }" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m5 12 5-5 5 5" stroke-linecap="round" stroke-linejoin="round" /></svg>
+              <ChevronUpIcon :class="{ collapsed: isKanbanCollapsed(kanban) }" aria-hidden="true" />
             </button>
             <div v-if="!isKanbanCollapsed(kanban)" class="iv-columns">
               <span v-for="column in kanban.columns" :key="column.id || column.name">{{ column.name }}</span>
@@ -246,7 +246,7 @@
 
       <aside class="iv-info">
         <span class="iv-info-icon is-violet" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg>
+          <InfoIcon aria-hidden="true" />
         </span>
         <div>
           <p class="iv-info-title">O que é enviado</p>
@@ -265,7 +265,7 @@
             <p>Cadastre aqui e escolha em cada página quais códigos ela usa.</p>
           </div>
           <button type="button" class="iv-btn-primary" :disabled="isReadOnly" @click="prepareNewIntegration">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg>
+            <PlusIcon aria-hidden="true" />
             Novo código
           </button>
         </div>
@@ -276,7 +276,7 @@
           <li v-for="pixel in pixels" :key="pixel.id" class="iv-row">
             <span class="iv-logo" :class="pixel.type === 'meta' ? 'tone-info' : 'tone-warning'">
               <template v-if="pixel.type === 'meta'">M</template>
-              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18" /><path d="m7 15 4-4 3 3 5-6" /></svg>
+              <ChartLineIcon v-else aria-hidden="true" />
             </span>
             <div class="min-w-0 flex-1">
               <p class="iv-row-name">{{ pixel.name }}</p>
@@ -287,16 +287,16 @@
             </div>
             <div class="iv-row-actions">
               <button type="button" class="iv-ghost" @click="copyPixelCode(pixel)">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V6a2 2 0 0 1 2-2h9" /></svg>
+                <CopyIcon aria-hidden="true" />
                 Copiar
               </button>
               <button type="button" class="iv-ghost" :disabled="isReadOnly" @click="editPixel(pixel)">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z" /></svg>
+                <PencilIcon aria-hidden="true" />
                 {{ viewCopy.actions.edit }}
               </button>
               <div class="iv-menu-wrap">
                 <button type="button" class="iv-icon-btn" aria-label="Mais ações" title="Mais ações" @click.stop="openPixelMenuId = openPixelMenuId === pixel.id ? null : pixel.id">
-                  <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="12" cy="19" r="1.6" /></svg>
+                  <EllipsisVerticalIcon aria-hidden="true" />
                 </button>
                 <div v-if="openPixelMenuId === pixel.id" class="iv-menu" @click="openPixelMenuId = null">
                   <button type="button" class="danger" :disabled="isReadOnly" @click="removePixel(pixel)">{{ viewCopy.actions.remove }}</button>
@@ -310,7 +310,7 @@
 
       <aside class="iv-info">
         <span class="iv-info-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg>
+          <InfoIcon aria-hidden="true" />
         </span>
         <div>
           <p class="iv-info-title">Como usar nas páginas</p>
@@ -333,7 +333,7 @@
               <p class="mt-1 text-sm text-slate-500">Cole o token e o secret gerados no painel do Viajeon.</p>
             </div>
             <button type="button" class="rounded-xl border border-slate-200 p-2 text-slate-500" @click="closeViajeonModal">
-              <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M6 18 18 6" /></svg>
+              <XIcon class="h-4 w-4" aria-hidden="true" />
             </button>
           </div>
 
@@ -375,7 +375,7 @@
               </h2>
             </div>
             <button type="button" class="rounded-full border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-50" @click="closeModal">
-              <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M6 18 18 6" stroke-linecap="round" /></svg>
+              <XIcon class="h-4 w-4" aria-hidden="true" />
             </button>
           </div>
 
@@ -622,6 +622,21 @@
 </style>
 
 <script setup lang="ts">
+import {
+  ChartLineIcon,
+  CheckIcon,
+  ChevronUpIcon,
+  CircleAlertIcon,
+  CopyIcon,
+  EllipsisVerticalIcon,
+  InfoIcon,
+  MessageCircleIcon,
+  MessageSquareIcon,
+  PencilIcon,
+  PlusIcon,
+  RotateCwIcon,
+  XIcon
+} from "lucide-vue-next";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useAuthStore } from "../../store/useAuthStore";

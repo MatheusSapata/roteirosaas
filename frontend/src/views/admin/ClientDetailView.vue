@@ -6,7 +6,7 @@
 
     <template v-else-if="client">
       <button type="button" class="det-back-btn" @click="goBack">
-        <svg class="det-back-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m15 18-6-6 6-6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
+        <ChevronLeftIcon class="det-back-ic" aria-hidden="true" />
         Leads › Clientes
       </button>
 
@@ -19,9 +19,9 @@
                 <p class="det-eyebrow">Cliente desde {{ clientSinceLabel }}</p>
                 <h1 class="det-name">{{ client.name }}</h1>
                 <div class="det-meta">
-                  <span class="det-meta-item val"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.9.33 1.77.63 2.61a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.47-1.2a2 2 0 0 1 2.11-.45c.84.3 1.71.51 2.61.63A2 2 0 0 1 22 16.92z" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>{{ formatPhone(client.phone) || "Telefone não informado" }}</span>
-                  <span class="det-meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 4h16a2 2 0 0 1 2 2v.01L12 13 2 6.01V6a2 2 0 0 1 2-2Z" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M22 8v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>{{ client.email || "E-mail não informado" }}</span>
-                  <span class="det-meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 1 1 18 0Z" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="10" r="3" stroke-width="1.9"/></svg>{{ client.city || "Cidade não informada" }}</span>
+                  <span class="det-meta-item val"><PhoneIcon aria-hidden="true" />{{ formatPhone(client.phone) || "Telefone não informado" }}</span>
+                  <span class="det-meta-item"><MailIcon aria-hidden="true" />{{ client.email || "E-mail não informado" }}</span>
+                  <span class="det-meta-item"><MapPinIcon aria-hidden="true" />{{ client.city || "Cidade não informada" }}</span>
                 </div>
               </div>
             </div>
@@ -40,12 +40,12 @@
         </div>
 
         <div class="det-stats-inner">
-          <div class="ds"><span class="ds-icon ds-icon--violet"><svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M15 3v3h3"/></svg></span><p class="ds-lbl">Oportunidades</p><p class="ds-val">{{ client.opportunitiesCount }}</p></div>
-          <div class="ds"><span class="ds-icon ds-icon--amber"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg></span><p class="ds-lbl">Abertas</p><p class="ds-val">{{ openOpportunitiesCount }}</p></div>
-          <div class="ds"><span class="ds-icon ds-icon--blue"><svg viewBox="0 0 24 24"><path d="M12 2v20"/><path d="M17 6H9.5a3.5 3.5 0 0 0 0 7H14.5a3.5 3.5 0 0 1 0 7H6"/></svg></span><p class="ds-lbl">Em aberto</p><p class="ds-val">{{ formatCurrency(futureEstimatedValueCents) }}</p></div>
-          <div class="ds"><span class="ds-icon ds-icon--green"><svg viewBox="0 0 24 24"><path d="M4 14l5-5 4 4 7-7"/><path d="M15 6h5v5"/></svg></span><p class="ds-lbl">Ganho</p><p class="ds-val g">{{ formatCurrency(wonValueCents) }}</p></div>
-          <div class="ds"><span class="ds-icon ds-icon--red"><svg viewBox="0 0 24 24"><path d="M4 10l5 5 4-4 7 7"/><path d="M15 18h5v-5"/></svg></span><p class="ds-lbl">Perdido</p><p class="ds-val r">{{ formatCurrency(lostValueCents) }}</p></div>
-          <div class="ds"><span class="ds-icon ds-icon--purple"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l2 2"/></svg></span><p class="ds-lbl">Última interação</p><p class="ds-val ds-time">{{ formatDateTime(lastInteractionAt) }}</p></div>
+          <div class="ds"><span class="ds-icon ds-icon--violet"><FileIcon aria-hidden="true" /></span><p class="ds-lbl">Oportunidades</p><p class="ds-val">{{ client.opportunitiesCount }}</p></div>
+          <div class="ds"><span class="ds-icon ds-icon--amber"><CircleAlertIcon aria-hidden="true" /></span><p class="ds-lbl">Abertas</p><p class="ds-val">{{ openOpportunitiesCount }}</p></div>
+          <div class="ds"><span class="ds-icon ds-icon--blue"><DollarSignIcon aria-hidden="true" /></span><p class="ds-lbl">Em aberto</p><p class="ds-val">{{ formatCurrency(futureEstimatedValueCents) }}</p></div>
+          <div class="ds"><span class="ds-icon ds-icon--green"><TrendingUpIcon aria-hidden="true" /></span><p class="ds-lbl">Ganho</p><p class="ds-val g">{{ formatCurrency(wonValueCents) }}</p></div>
+          <div class="ds"><span class="ds-icon ds-icon--red"><TrendingDownIcon aria-hidden="true" /></span><p class="ds-lbl">Perdido</p><p class="ds-val r">{{ formatCurrency(lostValueCents) }}</p></div>
+          <div class="ds"><span class="ds-icon ds-icon--purple"><ClockIcon aria-hidden="true" /></span><p class="ds-lbl">Última interação</p><p class="ds-val ds-time">{{ formatDateTime(lastInteractionAt) }}</p></div>
         </div>
 
         <div class="det-tabs">
@@ -113,7 +113,7 @@
                 </div>
                 <p class="opp-item-meta">
                   <span class="opp-src">
-                    <svg viewBox="0 0 24 24"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 2v5h5" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <FileIcon aria-hidden="true" />
                     {{ opportunity.formName || "Formulário" }}
                   </span>
                   <span class="opp-meta-sep">·</span>
@@ -143,7 +143,7 @@
 
           <div v-else-if="activeTab === 'documents'" class="docs-tab-wrap">
             <div v-if="!client.documents.length" class="docs-empty">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 2v5h5" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <FileIcon aria-hidden="true" />
               <p>Nenhum documento anexado ainda.</p>
               <label class="btn btn-o btn-sm">
                 + Adicionar documento
@@ -163,16 +163,16 @@
 
           <div v-else-if="activeTab === 'history'" class="tl-wrap">
             <div v-if="!historyItems.length" class="docs-empty">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/></svg>
+              <ClockIcon aria-hidden="true" />
               <p>Nenhum evento no histórico.</p>
             </div>
             <article v-for="item in paginatedHistoryItems" :key="item.key" class="tl-item">
               <div class="tl-left">
                 <div class="tl-dot" :class="`tl-dot--${item.kind}`">
-                  <svg v-if="item.kind === 'opportunity'" viewBox="0 0 24 24"><path d="M12 2v20"/><path d="M17 6H9.5a3.5 3.5 0 0 0 0 7H14.5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                  <svg v-else-if="item.kind === 'note'" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                  <svg v-else-if="item.kind === 'document'" viewBox="0 0 24 24"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5"/></svg>
-                  <svg v-else viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg>
+                  <DollarSignIcon v-if="item.kind === 'opportunity'" aria-hidden="true" />
+                  <MessageSquareIcon v-else-if="item.kind === 'note'" aria-hidden="true" />
+                  <FileIcon v-else-if="item.kind === 'document'" aria-hidden="true" />
+                  <ClockIcon v-else aria-hidden="true" />
                 </div>
                 <div class="tl-line"></div>
               </div>
@@ -200,31 +200,31 @@
                 <div class="cd-cell">
                   <div class="cd-lbl">Nome</div>
                   <div class="cd-val" :class="{ empty: !displayFieldValue('name') }">{{ displayFieldValue("name") || "—" }}</div>
-                  <button type="button" class="cd-edit-btn" @click="startInlineEdit('name')"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+                  <button type="button" class="cd-edit-btn" @click="startInlineEdit('name')"><PencilIcon aria-hidden="true" /></button>
                   <div class="cd-inp-wrap" v-if="isInlineEditing('name')">
                     <input v-model="inlineEditDraft" type="text" class="cd-inp" />
                     <div class="cd-act">
-                      <button type="button" class="cd-ok" :disabled="inlineEditSaving" @click="saveInlineEdit('name')"><svg viewBox="0 0 24 24"><path d="m5 13 4 4L19 7"/></svg></button>
-                      <button type="button" class="cd-cl" :disabled="inlineEditSaving" @click="cancelInlineEdit"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M6 18 18 6"/></svg></button>
+                      <button type="button" class="cd-ok" :disabled="inlineEditSaving" @click="saveInlineEdit('name')"><CheckIcon aria-hidden="true" /></button>
+                      <button type="button" class="cd-cl" :disabled="inlineEditSaving" @click="cancelInlineEdit"><XIcon aria-hidden="true" /></button>
                     </div>
                   </div>
                 </div>
                 <div class="cd-cell cd-l">
                   <div class="cd-lbl">CPF</div>
                   <div class="cd-val" :class="{ empty: !displayFieldValue('cpf') }">{{ displayFieldValue("cpf") || "—" }}</div>
-                  <button type="button" class="cd-edit-btn" @click="startInlineEdit('cpf')"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+                  <button type="button" class="cd-edit-btn" @click="startInlineEdit('cpf')"><PencilIcon aria-hidden="true" /></button>
                   <div class="cd-inp-wrap" v-if="isInlineEditing('cpf')">
                     <input v-model="inlineEditDraft" type="text" class="cd-inp" />
-                    <div class="cd-act"><button type="button" class="cd-ok" :disabled="inlineEditSaving" @click="saveInlineEdit('cpf')"><svg viewBox="0 0 24 24"><path d="m5 13 4 4L19 7"/></svg></button><button type="button" class="cd-cl" :disabled="inlineEditSaving" @click="cancelInlineEdit"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M6 18 18 6"/></svg></button></div>
+                    <div class="cd-act"><button type="button" class="cd-ok" :disabled="inlineEditSaving" @click="saveInlineEdit('cpf')"><CheckIcon aria-hidden="true" /></button><button type="button" class="cd-cl" :disabled="inlineEditSaving" @click="cancelInlineEdit"><XIcon aria-hidden="true" /></button></div>
                   </div>
                 </div>
                 <div class="cd-cell">
                   <div class="cd-lbl">Nascimento</div>
                   <div class="cd-val" :class="{ empty: !displayFieldValue('birthdate') }">{{ displayFieldValue("birthdate") || "—" }}</div>
-                  <button type="button" class="cd-edit-btn" @click="startInlineEdit('birthdate')"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+                  <button type="button" class="cd-edit-btn" @click="startInlineEdit('birthdate')"><PencilIcon aria-hidden="true" /></button>
                   <div class="cd-inp-wrap" v-if="isInlineEditing('birthdate')">
                     <input v-model="inlineEditDraft" type="date" class="cd-inp" />
-                    <div class="cd-act"><button type="button" class="cd-ok" :disabled="inlineEditSaving" @click="saveInlineEdit('birthdate')"><svg viewBox="0 0 24 24"><path d="m5 13 4 4L19 7"/></svg></button><button type="button" class="cd-cl" :disabled="inlineEditSaving" @click="cancelInlineEdit"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M6 18 18 6"/></svg></button></div>
+                    <div class="cd-act"><button type="button" class="cd-ok" :disabled="inlineEditSaving" @click="saveInlineEdit('birthdate')"><CheckIcon aria-hidden="true" /></button><button type="button" class="cd-cl" :disabled="inlineEditSaving" @click="cancelInlineEdit"><XIcon aria-hidden="true" /></button></div>
                   </div>
                 </div>
               </div>
@@ -234,32 +234,32 @@
                 <div class="cd-cell cd-l">
                   <div class="cd-lbl">Telefone</div>
                   <div class="cd-val" :class="{ empty: !displayFieldValue('phone') }">{{ displayFieldValue("phone") || "—" }}</div>
-                  <button type="button" class="cd-edit-btn" @click="startInlineEdit('phone')"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+                  <button type="button" class="cd-edit-btn" @click="startInlineEdit('phone')"><PencilIcon aria-hidden="true" /></button>
                   <div class="cd-inp-wrap" v-if="isInlineEditing('phone')">
                     <input v-model="inlineEditDraft" type="text" class="cd-inp" />
-                    <div class="cd-act"><button type="button" class="cd-ok" :disabled="inlineEditSaving" @click="saveInlineEdit('phone')"><svg viewBox="0 0 24 24"><path d="m5 13 4 4L19 7"/></svg></button><button type="button" class="cd-cl" :disabled="inlineEditSaving" @click="cancelInlineEdit"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M6 18 18 6"/></svg></button></div>
+                    <div class="cd-act"><button type="button" class="cd-ok" :disabled="inlineEditSaving" @click="saveInlineEdit('phone')"><CheckIcon aria-hidden="true" /></button><button type="button" class="cd-cl" :disabled="inlineEditSaving" @click="cancelInlineEdit"><XIcon aria-hidden="true" /></button></div>
                   </div>
                 </div>
                 <div class="cd-cell">
                   <div class="cd-lbl">E-mail</div>
                   <div class="cd-val" :class="{ empty: !displayFieldValue('email') }">{{ displayFieldValue("email") || "—" }}</div>
-                  <button type="button" class="cd-edit-btn" @click="startInlineEdit('email')"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+                  <button type="button" class="cd-edit-btn" @click="startInlineEdit('email')"><PencilIcon aria-hidden="true" /></button>
                   <div class="cd-inp-wrap" v-if="isInlineEditing('email')">
                     <input v-model="inlineEditDraft" type="email" class="cd-inp" />
-                    <div class="cd-act"><button type="button" class="cd-ok" :disabled="inlineEditSaving" @click="saveInlineEdit('email')"><svg viewBox="0 0 24 24"><path d="m5 13 4 4L19 7"/></svg></button><button type="button" class="cd-cl" :disabled="inlineEditSaving" @click="cancelInlineEdit"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M6 18 18 6"/></svg></button></div>
+                    <div class="cd-act"><button type="button" class="cd-ok" :disabled="inlineEditSaving" @click="saveInlineEdit('email')"><CheckIcon aria-hidden="true" /></button><button type="button" class="cd-cl" :disabled="inlineEditSaving" @click="cancelInlineEdit"><XIcon aria-hidden="true" /></button></div>
                   </div>
                 </div>
               </div>
 
               <div class="cd-sec">Endereço</div>
               <div class="cd-grid">
-                <div class="cd-cell cd-l"><div class="cd-lbl">CEP</div><div class="cd-val" :class="{ empty: !displayFieldValue('zipcode') }">{{ displayFieldValue("zipcode") || "—" }}</div><button type="button" class="cd-edit-btn" @click="startInlineEdit('zipcode')"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg></button><div class="cd-inp-wrap" v-if="isInlineEditing('zipcode')"><input v-model="inlineEditDraft" type="text" class="cd-inp" /><div class="cd-act"><button type="button" class="cd-ok" :disabled="inlineEditSaving" @click="saveInlineEdit('zipcode')"><svg viewBox="0 0 24 24"><path d="m5 13 4 4L19 7"/></svg></button><button type="button" class="cd-cl" :disabled="inlineEditSaving" @click="cancelInlineEdit"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M6 18 18 6"/></svg></button></div></div></div>
-                <div class="cd-cell"><div class="cd-lbl">UF</div><div class="cd-val" :class="{ empty: !displayFieldValue('state') }">{{ displayFieldValue("state") || "—" }}</div><button type="button" class="cd-edit-btn" @click="startInlineEdit('state')"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg></button><div class="cd-inp-wrap" v-if="isInlineEditing('state')"><input v-model="inlineEditDraft" type="text" maxlength="2" class="cd-inp" /><div class="cd-act"><button type="button" class="cd-ok" :disabled="inlineEditSaving" @click="saveInlineEdit('state')"><svg viewBox="0 0 24 24"><path d="m5 13 4 4L19 7"/></svg></button><button type="button" class="cd-cl" :disabled="inlineEditSaving" @click="cancelInlineEdit"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M6 18 18 6"/></svg></button></div></div></div>
-                <div class="cd-cell cd-cell-full"><div class="cd-lbl">Logradouro</div><div class="cd-val" :class="{ empty: !displayFieldValue('street') }">{{ displayFieldValue("street") || "—" }}</div><button type="button" class="cd-edit-btn" @click="startInlineEdit('street')"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg></button><div class="cd-inp-wrap" v-if="isInlineEditing('street')"><input v-model="inlineEditDraft" type="text" class="cd-inp" /><div class="cd-act"><button type="button" class="cd-ok" :disabled="inlineEditSaving" @click="saveInlineEdit('street')"><svg viewBox="0 0 24 24"><path d="m5 13 4 4L19 7"/></svg></button><button type="button" class="cd-cl" :disabled="inlineEditSaving" @click="cancelInlineEdit"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M6 18 18 6"/></svg></button></div></div></div>
-                <div class="cd-cell cd-l"><div class="cd-lbl">Número</div><div class="cd-val" :class="{ empty: !displayFieldValue('number') }">{{ displayFieldValue("number") || "—" }}</div><button type="button" class="cd-edit-btn" @click="startInlineEdit('number')"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg></button><div class="cd-inp-wrap" v-if="isInlineEditing('number')"><input v-model="inlineEditDraft" type="text" class="cd-inp" /><div class="cd-act"><button type="button" class="cd-ok" :disabled="inlineEditSaving" @click="saveInlineEdit('number')"><svg viewBox="0 0 24 24"><path d="m5 13 4 4L19 7"/></svg></button><button type="button" class="cd-cl" :disabled="inlineEditSaving" @click="cancelInlineEdit"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M6 18 18 6"/></svg></button></div></div></div>
-                <div class="cd-cell"><div class="cd-lbl">Complemento</div><div class="cd-val" :class="{ empty: !displayFieldValue('complement') }">{{ displayFieldValue("complement") || "—" }}</div><button type="button" class="cd-edit-btn" @click="startInlineEdit('complement')"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg></button><div class="cd-inp-wrap" v-if="isInlineEditing('complement')"><input v-model="inlineEditDraft" type="text" class="cd-inp" /><div class="cd-act"><button type="button" class="cd-ok" :disabled="inlineEditSaving" @click="saveInlineEdit('complement')"><svg viewBox="0 0 24 24"><path d="m5 13 4 4L19 7"/></svg></button><button type="button" class="cd-cl" :disabled="inlineEditSaving" @click="cancelInlineEdit"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M6 18 18 6"/></svg></button></div></div></div>
-                <div class="cd-cell cd-l"><div class="cd-lbl">Bairro</div><div class="cd-val" :class="{ empty: !displayFieldValue('neighborhood') }">{{ displayFieldValue("neighborhood") || "—" }}</div><button type="button" class="cd-edit-btn" @click="startInlineEdit('neighborhood')"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg></button><div class="cd-inp-wrap" v-if="isInlineEditing('neighborhood')"><input v-model="inlineEditDraft" type="text" class="cd-inp" /><div class="cd-act"><button type="button" class="cd-ok" :disabled="inlineEditSaving" @click="saveInlineEdit('neighborhood')"><svg viewBox="0 0 24 24"><path d="m5 13 4 4L19 7"/></svg></button><button type="button" class="cd-cl" :disabled="inlineEditSaving" @click="cancelInlineEdit"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M6 18 18 6"/></svg></button></div></div></div>
-                <div class="cd-cell"><div class="cd-lbl">Cidade</div><div class="cd-val" :class="{ empty: !displayFieldValue('city') }">{{ displayFieldValue("city") || "—" }}</div><button type="button" class="cd-edit-btn" @click="startInlineEdit('city')"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg></button><div class="cd-inp-wrap" v-if="isInlineEditing('city')"><input v-model="inlineEditDraft" type="text" class="cd-inp" /><div class="cd-act"><button type="button" class="cd-ok" :disabled="inlineEditSaving" @click="saveInlineEdit('city')"><svg viewBox="0 0 24 24"><path d="m5 13 4 4L19 7"/></svg></button><button type="button" class="cd-cl" :disabled="inlineEditSaving" @click="cancelInlineEdit"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M6 18 18 6"/></svg></button></div></div></div>
+                <div class="cd-cell cd-l"><div class="cd-lbl">CEP</div><div class="cd-val" :class="{ empty: !displayFieldValue('zipcode') }">{{ displayFieldValue("zipcode") || "—" }}</div><button type="button" class="cd-edit-btn" @click="startInlineEdit('zipcode')"><PencilIcon aria-hidden="true" /></button><div class="cd-inp-wrap" v-if="isInlineEditing('zipcode')"><input v-model="inlineEditDraft" type="text" class="cd-inp" /><div class="cd-act"><button type="button" class="cd-ok" :disabled="inlineEditSaving" @click="saveInlineEdit('zipcode')"><CheckIcon aria-hidden="true" /></button><button type="button" class="cd-cl" :disabled="inlineEditSaving" @click="cancelInlineEdit"><XIcon aria-hidden="true" /></button></div></div></div>
+                <div class="cd-cell"><div class="cd-lbl">UF</div><div class="cd-val" :class="{ empty: !displayFieldValue('state') }">{{ displayFieldValue("state") || "—" }}</div><button type="button" class="cd-edit-btn" @click="startInlineEdit('state')"><PencilIcon aria-hidden="true" /></button><div class="cd-inp-wrap" v-if="isInlineEditing('state')"><input v-model="inlineEditDraft" type="text" maxlength="2" class="cd-inp" /><div class="cd-act"><button type="button" class="cd-ok" :disabled="inlineEditSaving" @click="saveInlineEdit('state')"><CheckIcon aria-hidden="true" /></button><button type="button" class="cd-cl" :disabled="inlineEditSaving" @click="cancelInlineEdit"><XIcon aria-hidden="true" /></button></div></div></div>
+                <div class="cd-cell cd-cell-full"><div class="cd-lbl">Logradouro</div><div class="cd-val" :class="{ empty: !displayFieldValue('street') }">{{ displayFieldValue("street") || "—" }}</div><button type="button" class="cd-edit-btn" @click="startInlineEdit('street')"><PencilIcon aria-hidden="true" /></button><div class="cd-inp-wrap" v-if="isInlineEditing('street')"><input v-model="inlineEditDraft" type="text" class="cd-inp" /><div class="cd-act"><button type="button" class="cd-ok" :disabled="inlineEditSaving" @click="saveInlineEdit('street')"><CheckIcon aria-hidden="true" /></button><button type="button" class="cd-cl" :disabled="inlineEditSaving" @click="cancelInlineEdit"><XIcon aria-hidden="true" /></button></div></div></div>
+                <div class="cd-cell cd-l"><div class="cd-lbl">Número</div><div class="cd-val" :class="{ empty: !displayFieldValue('number') }">{{ displayFieldValue("number") || "—" }}</div><button type="button" class="cd-edit-btn" @click="startInlineEdit('number')"><PencilIcon aria-hidden="true" /></button><div class="cd-inp-wrap" v-if="isInlineEditing('number')"><input v-model="inlineEditDraft" type="text" class="cd-inp" /><div class="cd-act"><button type="button" class="cd-ok" :disabled="inlineEditSaving" @click="saveInlineEdit('number')"><CheckIcon aria-hidden="true" /></button><button type="button" class="cd-cl" :disabled="inlineEditSaving" @click="cancelInlineEdit"><XIcon aria-hidden="true" /></button></div></div></div>
+                <div class="cd-cell"><div class="cd-lbl">Complemento</div><div class="cd-val" :class="{ empty: !displayFieldValue('complement') }">{{ displayFieldValue("complement") || "—" }}</div><button type="button" class="cd-edit-btn" @click="startInlineEdit('complement')"><PencilIcon aria-hidden="true" /></button><div class="cd-inp-wrap" v-if="isInlineEditing('complement')"><input v-model="inlineEditDraft" type="text" class="cd-inp" /><div class="cd-act"><button type="button" class="cd-ok" :disabled="inlineEditSaving" @click="saveInlineEdit('complement')"><CheckIcon aria-hidden="true" /></button><button type="button" class="cd-cl" :disabled="inlineEditSaving" @click="cancelInlineEdit"><XIcon aria-hidden="true" /></button></div></div></div>
+                <div class="cd-cell cd-l"><div class="cd-lbl">Bairro</div><div class="cd-val" :class="{ empty: !displayFieldValue('neighborhood') }">{{ displayFieldValue("neighborhood") || "—" }}</div><button type="button" class="cd-edit-btn" @click="startInlineEdit('neighborhood')"><PencilIcon aria-hidden="true" /></button><div class="cd-inp-wrap" v-if="isInlineEditing('neighborhood')"><input v-model="inlineEditDraft" type="text" class="cd-inp" /><div class="cd-act"><button type="button" class="cd-ok" :disabled="inlineEditSaving" @click="saveInlineEdit('neighborhood')"><CheckIcon aria-hidden="true" /></button><button type="button" class="cd-cl" :disabled="inlineEditSaving" @click="cancelInlineEdit"><XIcon aria-hidden="true" /></button></div></div></div>
+                <div class="cd-cell"><div class="cd-lbl">Cidade</div><div class="cd-val" :class="{ empty: !displayFieldValue('city') }">{{ displayFieldValue("city") || "—" }}</div><button type="button" class="cd-edit-btn" @click="startInlineEdit('city')"><PencilIcon aria-hidden="true" /></button><div class="cd-inp-wrap" v-if="isInlineEditing('city')"><input v-model="inlineEditDraft" type="text" class="cd-inp" /><div class="cd-act"><button type="button" class="cd-ok" :disabled="inlineEditSaving" @click="saveInlineEdit('city')"><CheckIcon aria-hidden="true" /></button><button type="button" class="cd-cl" :disabled="inlineEditSaving" @click="cancelInlineEdit"><XIcon aria-hidden="true" /></button></div></div></div>
               </div>
 
               <div class="cd-sec">Observações</div>
@@ -267,10 +267,10 @@
                 <div class="cd-cell cd-cell-full cd-cell-ta">
                   <div class="cd-lbl">Observações</div>
                   <div class="cd-val" :class="{ empty: !displayFieldValue('notes') }">{{ displayFieldValue("notes") || "—" }}</div>
-                  <button type="button" class="cd-edit-btn" @click="startInlineEdit('notes')"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+                  <button type="button" class="cd-edit-btn" @click="startInlineEdit('notes')"><PencilIcon aria-hidden="true" /></button>
                   <div class="cd-inp-wrap" v-if="isInlineEditing('notes')">
                     <textarea v-model="inlineEditDraft" rows="3" class="cd-inp cd-ta"></textarea>
-                    <div class="cd-act"><button type="button" class="cd-ok" :disabled="inlineEditSaving" @click="saveInlineEdit('notes')"><svg viewBox="0 0 24 24"><path d="m5 13 4 4L19 7"/></svg></button><button type="button" class="cd-cl" :disabled="inlineEditSaving" @click="cancelInlineEdit"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M6 18 18 6"/></svg></button></div>
+                    <div class="cd-act"><button type="button" class="cd-ok" :disabled="inlineEditSaving" @click="saveInlineEdit('notes')"><CheckIcon aria-hidden="true" /></button><button type="button" class="cd-cl" :disabled="inlineEditSaving" @click="cancelInlineEdit"><XIcon aria-hidden="true" /></button></div>
                   </div>
                 </div>
               </div>
@@ -285,6 +285,22 @@
 </template>
 
 <script setup lang="ts">
+import {
+  CheckIcon,
+  ChevronLeftIcon,
+  CircleAlertIcon,
+  ClockIcon,
+  DollarSignIcon,
+  FileIcon,
+  MailIcon,
+  MapPinIcon,
+  MessageSquareIcon,
+  PencilIcon,
+  PhoneIcon,
+  TrendingDownIcon,
+  TrendingUpIcon,
+  XIcon
+} from "lucide-vue-next";
 import { computed, reactive, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 

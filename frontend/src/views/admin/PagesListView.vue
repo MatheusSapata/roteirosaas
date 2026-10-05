@@ -15,33 +15,33 @@
         :class="!canEditPages ? 'cursor-not-allowed opacity-50' : ''"
         :disabled="!hasAgency"
       >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg>
+        <PlusIcon aria-hidden="true" />
         {{ viewCopy.header.newPage }}
       </button>
     </div>
 
     <div class="pl-stats">
       <article class="pl-stat">
-        <span class="pl-icon tone-success"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg></span>
+        <span class="pl-icon tone-success"><FileTextIcon aria-hidden="true" /></span>
         <div><p class="pl-stat-k">Páginas no ar</p><p class="pl-stat-v">{{ publishedPagesCount }}<small>de {{ pages.length }}</small></p></div>
       </article>
       <article class="pl-stat">
-        <span class="pl-icon tone-info"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg></span>
+        <span class="pl-icon tone-info"><EyeIcon aria-hidden="true" /></span>
         <div><p class="pl-stat-k">Visitas</p><p class="pl-stat-v">{{ totalPageVisits.toLocaleString("pt-BR") }}</p></div>
       </article>
       <article class="pl-stat">
-        <span class="pl-icon tone-warning"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 3 7.5 17 2.4-7.1L21 10.5 4 3z" /></svg></span>
+        <span class="pl-icon tone-warning"><MousePointer2Icon aria-hidden="true" /></span>
         <div><p class="pl-stat-k">Cliques</p><p class="pl-stat-v">{{ totalPageClicks.toLocaleString("pt-BR") }}<small>{{ formatRate(totalPageClicks, totalPageVisits) }}</small></p></div>
       </article>
       <article class="pl-stat">
-        <span class="pl-icon tone-violet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M19 8v6M22 11h-6" /></svg></span>
+        <span class="pl-icon tone-violet"><UserPlusIcon aria-hidden="true" /></span>
         <div><p class="pl-stat-k">Leads</p><p class="pl-stat-v">{{ totalPageLeads.toLocaleString("pt-BR") }}<small>{{ formatRate(totalPageLeads, totalPageVisits) }} das visitas</small></p></div>
       </article>
     </div>
 
     <div class="pl-toolbar">
       <label class="pl-search">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+        <SearchIcon aria-hidden="true" />
         <input v-model="searchQuery" type="text" :placeholder="viewCopy.table.searchPlaceholder" />
       </label>
       <div class="pl-filters" role="group" aria-label="Situação">
@@ -59,267 +59,188 @@
     </div>
 
     <teleport to="body">
-      <div
-        v-if="templateModal.open"
-        class="app-modal-overlay fixed inset-0 z-[200] flex items-center justify-center px-4 py-6"
-      >
-        <div class="pages-modal-shell relative w-full max-w-7xl">
-          <div class="max-h-[90vh] overflow-y-auto p-6">
-            <div class="relative flex flex-col gap-2 border-b border-slate-100 pb-4 md:flex-row md:items-center md:justify-between dark:border-white/10">
-              <div>
-                <p class="text-xs uppercase tracking-[0.4em] text-slate-500 dark:text-white/60">
-                  {{ viewCopy.templateModal.title }}
-                </p>
-                <h2 class="text-2xl font-semibold text-slate-900 dark:text-white">
-                  {{ viewCopy.templateModal.listTitle }}
-                </h2>
-                <p class="text-sm text-slate-500 dark:text-white/70">
-                  {{ viewCopy.templateModal.subtitle }}
-                </p>
+      <transition name="np-fade">
+        <div
+          v-if="templateModal.open"
+          class="app-modal-overlay np-overlay"
+          @click.self="closeTemplateModal"
+        >
+          <div class="np-shell np-shell-wide" role="dialog" aria-modal="true" aria-labelledby="tpl-modal-title">
+            <header class="np-header">
+              <span class="np-header-icon"><LayoutTemplateIcon aria-hidden="true" /></span>
+              <div class="min-w-0 flex-1">
+                <h2 id="tpl-modal-title" class="np-title">{{ viewCopy.templateModal.listTitle }}</h2>
+                <p class="np-subtitle">{{ viewCopy.templateModal.subtitle }}</p>
               </div>
-              <button
-                type="button"
-                class="absolute -right-2 -top-2 inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-50 dark:border-white/15 dark:bg-[#202020] dark:text-white dark:hover:bg-white/10"
-                @click="closeTemplateModal"
-                aria-label="Fechar"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4.5 w-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M6 6l12 12M6 18L18 6" />
-                </svg>
+              <button type="button" class="np-close" aria-label="Fechar" @click="closeTemplateModal">
+                <XIcon aria-hidden="true" />
               </button>
-            </div>
+            </header>
 
-            <div class="mt-6 grid gap-6 overflow-hidden lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
-              <div class="space-y-4">
-                <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-white/60">
-                  {{ viewCopy.templateModal.listTitle }}
+            <div class="tpl-body">
+              <aside class="tpl-list">
+                <p class="tpl-list-head">
+                  {{ templateModal.templates.length }}
+                  {{ templateModal.templates.length === 1 ? "modelo" : "modelos" }}
                 </p>
 
-              <p
-                v-if="templateModal.loading"
-                class="rounded-2xl border border-dashed border-slate-200 p-4 text-center text-sm text-slate-500 dark:border-white/10 dark:text-white/70"
-              >
-                {{ viewCopy.templateModal.listLoading }}
-              </p>
+                <div v-if="templateModal.loading" class="tpl-state">
+                  <span class="tpl-spinner" aria-hidden="true"></span>
+                  {{ viewCopy.templateModal.listLoading }}
+                </div>
+                <div v-else-if="templateModal.error && !templateModal.templates.length" class="tpl-state tpl-state-error">
+                  <CircleAlertIcon aria-hidden="true" />
+                  {{ templateModal.error }}
+                </div>
+                <div v-else-if="!templateModal.templates.length" class="tpl-state">
+                  <LayoutTemplateIcon aria-hidden="true" />
+                  {{ viewCopy.templateModal.listEmpty }}
+                </div>
 
-              <p
-                v-else-if="templateModal.error && !templateModal.templates.length"
-                class="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-400/40 dark:bg-red-500/10 dark:text-red-200"
-              >
-                {{ templateModal.error }}
-              </p>
-
-              <p
-                v-else-if="!templateModal.templates.length"
-                class="rounded-2xl border border-dashed border-slate-200 p-4 text-center text-sm text-slate-500 dark:border-white/10 dark:text-white/70"
-              >
-                {{ viewCopy.templateModal.listEmpty }}
-              </p>
-
-              <div v-else class="h-[55vh] space-y-3 overflow-y-auto pr-2">
-                <p class="text-xs text-slate-500 dark:text-white/60">
-                  {{ viewCopy.templateModal.selectHint }}
-                </p>
-
-                <div
-                  v-for="template in templateModal.templates"
-                  :key="template.id"
-                  class="flex flex-col gap-3 rounded-2xl border px-4 py-3 transition sm:flex-row sm:items-center"
-                  :class="
-                    templateModal.selectedTemplate && templateModal.selectedTemplate.id === template.id
-                      ? 'border-slate-900 bg-slate-900/5 text-slate-900 dark:border-white dark:bg-white/10 dark:text-white'
-                      : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50 dark:border-white/15 dark:hover:bg-white/5'
-                  "
-                >
-                  <button
-                    type="button"
-                    class="flex flex-1 items-center gap-3 text-left"
-                    :class="isMobileViewport ? 'cursor-default opacity-80' : ''"
-                    @click="handleTemplateCardClick(template)"
-                    :disabled="isMobileViewport"
+                <div v-else class="tpl-cards">
+                  <article
+                    v-for="template in templateModal.templates"
+                    :key="template.id"
+                    class="tpl-card"
+                    :class="{ on: templateModal.selectedTemplate?.id === template.id }"
                   >
-                    <div>
-                      <p class="text-sm font-semibold">{{ template.name }}</p>
-                      <p class="text-xs text-slate-500 dark:text-white/60">
-                        {{ template.description || "Sem descrição" }}
-                      </p>
-                    </div>
-                  </button>
-
-                  <div class="flex flex-wrap gap-2">
                     <button
                       type="button"
-                      class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-white/15 dark:text-white"
-                      @click="handleTemplatePreview(template)"
+                      class="tpl-card-main"
+                      :aria-pressed="templateModal.selectedTemplate?.id === template.id"
+                      @click="isMobileViewport ? handleTemplatePreview(template) : handleTemplateCardClick(template)"
                     >
-                      Visualizar
+                      <span class="tpl-thumb" :style="templateThumbStyle(template)">
+                        <span v-if="!templateThumbnail(template)" class="tpl-thumb-mock" aria-hidden="true">
+                          <i></i><i></i><i></i>
+                        </span>
+                      </span>
+                      <span class="tpl-card-text">
+                        <span class="tpl-card-name">
+                          {{ template.name }}
+                          <span v-if="template.is_default" class="tpl-badge">Padrão</span>
+                        </span>
+                        <span class="tpl-card-desc">{{ template.description || "Sem descrição" }}</span>
+                        <span class="tpl-card-meta">
+                          <LayersIcon aria-hidden="true" />
+                          {{ templateSectionCount(template) }} {{ templateSectionCount(template) === 1 ? "seção" : "seções" }}
+                        </span>
+                      </span>
                     </button>
                     <button
+                      v-if="isMobileViewport"
                       type="button"
-                      class="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-900"
+                      class="np-btn np-btn-primary tpl-card-use"
                       @click="useTemplateNow(template)"
                     >
-                      Usar esse
+                      Usar este modelo
+                    </button>
+                  </article>
+                </div>
+              </aside>
+
+              <section v-if="!isMobileViewport" class="tpl-preview">
+                <div class="tpl-preview-bar">
+                  <div class="min-w-0 flex-1">
+                    <p class="tpl-preview-kicker">{{ viewCopy.templateModal.previewHeading }}</p>
+                    <p class="tpl-preview-name">{{ templateModal.selectedTemplate?.name || viewCopy.templateModal.selectHint }}</p>
+                  </div>
+                  <div class="np-seg" role="group" aria-label="Dispositivo da prévia">
+                    <button
+                      type="button"
+                      :class="{ on: templatePreviewDevice === 'desktop' }"
+                      :aria-pressed="templatePreviewDevice === 'desktop'"
+                      @click="setTemplatePreviewDevice('desktop', true)"
+                    >
+                      <MonitorIcon aria-hidden="true" /> Computador
+                    </button>
+                    <button
+                      type="button"
+                      :class="{ on: templatePreviewDevice === 'mobile' }"
+                      :aria-pressed="templatePreviewDevice === 'mobile'"
+                      @click="setTemplatePreviewDevice('mobile', true)"
+                    >
+                      <SmartphoneIcon aria-hidden="true" /> Celular
                     </button>
                   </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="space-y-4" v-if="!isMobileViewport">
-              <div class="flex flex-wrap items-center justify-between gap-3">
-                <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-white/60">
-                  {{ viewCopy.templateModal.previewHeading }}
-                </p>
-                <p class="text-sm text-slate-500 dark:text-white/70">
-                  {{ viewCopy.templateModal.previewDescription }}
-                </p>
-
-                <div class="inline-flex items-center rounded-full border border-slate-200 bg-white p-1 text-xs font-semibold dark:border-white/10 dark:bg-[#101010]">
                   <button
                     type="button"
-                    class="rounded-full px-3 py-1 transition"
-                    :class="templatePreviewDevice === 'desktop' ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'text-slate-500 dark:text-white/70'"
-                    @click="setTemplatePreviewDevice('desktop', true)"
+                    class="np-btn np-btn-primary"
+                    :disabled="!templateModal.selectedTemplate"
+                    @click="templateModal.selectedTemplate && useTemplateNow(templateModal.selectedTemplate)"
                   >
-                    Desktop
-                  </button>
-                  <button
-                    type="button"
-                    class="rounded-full px-3 py-1 transition"
-                    :class="templatePreviewDevice === 'mobile' ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'text-slate-500 dark:text-white/70'"
-                    @click="setTemplatePreviewDevice('mobile', true)"
-                  >
-                    Mobile
+                    Usar este modelo
+                    <ArrowRightIcon aria-hidden="true" />
                   </button>
                 </div>
-              </div>
 
-              <div class="rounded-2xl border border-slate-100 bg-slate-50 p-4 dark:border-white/10 dark:bg-[#111111]">
-                <div
-                  v-if="!isMobileViewport || !previewFullscreen"
-                  ref="templatePreviewContainer"
-                  class="preview-scroll max-h-[55vh] overflow-y-auto rounded-xl bg-white pb-4 dark:bg-[#181818] dark:text-white"
-                >
-                  <template v-if="templateModal.selectedTemplate && templatePreviewConfig">
-                    <div
-                      class="preview-scale-wrapper"
-                      :class="{ 'preview-mobile-center': templatePreviewDevice === 'mobile' }"
-                      :style="templatePreviewWrapperStyle"
-                    >
-                      <div class="preview-scale" :style="templatePreviewStyle">
-                        <div ref="templatePreviewContent">
-                          <PageTemplatePreview
-                            :config="templatePreviewConfig"
-                            :preview-device="templatePreviewDevice"
-                            :branding="{
-                              agency_name: currentAgency?.name || authStore.user?.name || '',
-                              logo_url: currentAgency?.logo_url || '',
-                              primary_color: currentAgency?.primary_color || '#0f172a',
-                              secondary_color: currentAgency?.secondary_color || '#1f2937'
-                            }"
-                          />
+                <div class="tpl-frame" :class="{ 'is-mobile': templatePreviewDevice === 'mobile' }">
+                  <div class="tpl-frame-chrome" aria-hidden="true"><i></i><i></i><i></i><span></span></div>
+                  <div
+                    ref="templatePreviewContainer"
+                    class="preview-scroll tpl-frame-body"
+                  >
+                    <template v-if="templateModal.selectedTemplate && templatePreviewConfig">
+                      <div
+                        class="preview-scale-wrapper"
+                        :class="{ 'preview-mobile-center': templatePreviewDevice === 'mobile' }"
+                        :style="templatePreviewWrapperStyle"
+                      >
+                        <div class="preview-scale" :style="templatePreviewStyle">
+                          <div ref="templatePreviewContent">
+                            <PageTemplatePreview
+                              :config="templatePreviewConfig"
+                              :preview-device="templatePreviewDevice"
+                              :branding="templatePreviewBranding"
+                            />
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </template>
-
-                  <template v-else>
-                    <p class="py-10 text-center text-sm text-slate-500 dark:text-white/70">
+                    </template>
+                    <div v-else class="tpl-state tpl-state-preview">
+                      <MousePointerClickIcon aria-hidden="true" />
                       {{ viewCopy.templateModal.previewEmpty }}
-                    </p>
-                  </template>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            <transition name="np-fade">
+              <div
+                v-if="isMobileViewport && previewFullscreen && templateModal.selectedTemplate && templatePreviewConfig"
+                class="tpl-mobile-preview"
+              >
+                <div class="tpl-preview-bar">
+                  <button type="button" class="np-close" :aria-label="viewCopy.templateModal.back" @click="closePreviewFullscreen">
+                    <ArrowLeftIcon aria-hidden="true" />
+                  </button>
+                  <p class="tpl-preview-name min-w-0 flex-1 truncate">{{ templateModal.selectedTemplate?.name }}</p>
+                  <button type="button" class="np-btn np-btn-primary" @click="useTemplateNow(templateModal.selectedTemplate)">
+                    Usar
+                  </button>
+                </div>
+                <div ref="templatePreviewContainer" class="preview-scroll tpl-frame-body tpl-mobile-body">
+                  <div
+                    class="preview-scale-wrapper preview-mobile-center"
+                    :style="templatePreviewWrapperStyle"
+                  >
+                    <div class="preview-scale" :style="templatePreviewStyle">
+                      <div ref="templatePreviewContent">
+                        <PageTemplatePreview
+                          :config="templatePreviewConfig"
+                          :preview-device="templatePreviewDevice"
+                          :branding="templatePreviewBranding"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
+            </transition>
           </div>
         </div>
-          <transition name="fade">
-            <div
-              v-if="isMobileViewport && previewFullscreen && templateModal.selectedTemplate && templatePreviewConfig"
-              class="absolute inset-0 z-20 m-3 flex flex-col rounded-3xl bg-white px-4 pb-6 pt-5 shadow-2xl dark:bg-[#202020]"
-            >
-              <div class="relative mb-4 border-b border-slate-100 pb-3 dark:border-white/10">
-                <button
-                  type="button"
-                  class="absolute right-0 top-0 rounded-full border border-slate-200 px-4 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600 transition hover:bg-slate-50 dark:border-white/15 dark:text-white dark:hover:bg-white/10"
-                  @click="closePreviewFullscreen"
-                >
-                  {{ viewCopy.templateModal.back }}
-                </button>
-                <div class="flex flex-wrap items-center justify-between gap-3 pr-24">
-                  <div>
-                    <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-white/60">
-                      {{ viewCopy.templateModal.previewHeading }}
-                    </p>
-                    <p class="text-sm text-slate-500 dark:text-white/70">
-                      {{ viewCopy.templateModal.previewDescription }}
-                    </p>
-                    <p class="text-sm font-semibold text-slate-900 dark:text-white">
-                      {{ templateModal.selectedTemplate?.name }}
-                    </p>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <div class="inline-flex items-center rounded-full border border-slate-200 bg-white p-1 text-xs font-semibold dark:border-white/10 dark:bg-[#101010]">
-                      <button
-                        type="button"
-                        class="rounded-full px-3 py-1 transition"
-                        :class="templatePreviewDevice === 'desktop' ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'text-slate-500 dark:text-white/70'"
-                        @click="setTemplatePreviewDevice('desktop', true)"
-                      >
-                        Desktop
-                      </button>
-                      <button
-                        type="button"
-                        class="rounded-full px-3 py-1 transition"
-                        :class="templatePreviewDevice === 'mobile' ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'text-slate-500 dark:text-white/70'"
-                        @click="setTemplatePreviewDevice('mobile', true)"
-                      >
-                        Mobile
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="flex-1 overflow-hidden">
-                <div
-                  ref="templatePreviewContainer"
-                  class="preview-scroll h-full overflow-y-auto rounded-xl bg-white pb-4 dark:bg-[#181818] dark:text-white"
-                >
-                  <template v-if="templateModal.selectedTemplate && templatePreviewConfig">
-                    <div
-                      class="preview-scale-wrapper"
-                      :class="{ 'preview-mobile-center': templatePreviewDevice === 'mobile' }"
-                      :style="templatePreviewWrapperStyle"
-                    >
-                      <div class="preview-scale" :style="templatePreviewStyle">
-                        <div ref="templatePreviewContent">
-                          <PageTemplatePreview
-                            :config="templatePreviewConfig"
-                            :preview-device="templatePreviewDevice"
-                            :branding="{
-                              agency_name: currentAgency?.name || authStore.user?.name || '',
-                              logo_url: currentAgency?.logo_url || '',
-                              primary_color: currentAgency?.primary_color || '#0f172a',
-                              secondary_color: currentAgency?.secondary_color || '#1f2937'
-                            }"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </template>
-
-                  <template v-else>
-                    <p class="py-10 text-center text-sm text-slate-500 dark:text-white/70">
-                      {{ viewCopy.templateModal.previewEmpty }}
-                    </p>
-                  </template>
-                </div>
-              </div>
-            </div>
-          </transition>
-        </div>
-      </div>
+      </transition>
     </teleport>
 
     <div
@@ -342,66 +263,63 @@
     </div>
 
     <teleport to="body">
-      <div
-        v-if="createOptionsOpen"
-        class="app-modal-overlay fixed inset-0 z-[200] flex items-center justify-center px-4 py-8"
-      >
-        <div class="pages-modal-shell w-full max-w-4xl p-8">
-          <div class="relative mb-6 space-y-1">
-            <h2 class="text-2xl font-bold text-slate-900">
-              {{ viewCopy.actions.createModal.title }}
-            </h2>
-            <button
-              type="button"
-              class="absolute -right-2 -top-2 inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-50 dark:border-[#363636] dark:bg-[#202020] dark:text-white dark:hover:bg-white/10"
-              @click="closeCreateModal"
-              aria-label="Fechar"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M6 6l12 12M6 18L18 6" />
-              </svg>
-            </button>
+      <transition name="np-fade">
+        <div
+          v-if="createOptionsOpen"
+          class="app-modal-overlay np-overlay"
+          @click.self="closeCreateModal"
+        >
+          <div class="np-shell" role="dialog" aria-modal="true" aria-labelledby="np-modal-title">
+            <header class="np-header">
+              <span class="np-header-icon"><FilePlus2Icon aria-hidden="true" /></span>
+              <div class="min-w-0 flex-1">
+                <h2 id="np-modal-title" class="np-title">{{ viewCopy.header.newPage }}</h2>
+                <p class="np-subtitle">{{ viewCopy.actions.createModal.title }}</p>
+              </div>
+              <button type="button" class="np-close" aria-label="Fechar" @click="closeCreateModal">
+                <XIcon aria-hidden="true" />
+              </button>
+            </header>
+
+            <div class="np-options">
+              <button type="button" class="np-option is-featured" @click="createPageFromTemplate">
+                <span class="np-option-art np-art-template" aria-hidden="true">
+                  <span class="np-art-card"><i class="np-art-hero"></i><i></i><i class="short"></i></span>
+                  <span class="np-art-card np-art-card-back"><i class="np-art-hero"></i><i></i><i class="short"></i></span>
+                </span>
+                <span class="np-option-body">
+                  <span class="np-option-top">
+                    <span class="np-option-icon"><LayoutTemplateIcon aria-hidden="true" /></span>
+                    <span class="np-badge">{{ viewCopy.actions.createModal.template.badge }}</span>
+                  </span>
+                  <span class="np-option-title">{{ viewCopy.actions.createModal.template.title }}</span>
+                  <span class="np-option-desc">{{ viewCopy.actions.createModal.template.description }}</span>
+                  <span class="np-option-link">Ver modelos <ArrowRightIcon aria-hidden="true" /></span>
+                </span>
+              </button>
+
+              <button type="button" class="np-option" @click="createPageFromScratch">
+                <span class="np-option-art np-art-blank" aria-hidden="true">
+                  <span class="np-art-card np-art-dashed"><PlusIcon /></span>
+                </span>
+                <span class="np-option-body">
+                  <span class="np-option-top">
+                    <span class="np-option-icon"><PencilRulerIcon aria-hidden="true" /></span>
+                  </span>
+                  <span class="np-option-title">{{ viewCopy.actions.createModal.scratch.title }}</span>
+                  <span class="np-option-desc">{{ viewCopy.actions.createModal.scratch.description }}</span>
+                  <span class="np-option-link">Abrir editor <ArrowRightIcon aria-hidden="true" /></span>
+                </span>
+              </button>
+            </div>
+
+            <p class="np-foot">
+              <InfoIcon aria-hidden="true" />
+              A página nasce como rascunho. Você publica quando quiser.
+            </p>
           </div>
-
-          <div class="grid gap-4 md:grid-cols-2">
-            <button
-              class="rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 dark:border-[#363636] dark:bg-[#101010] dark:text-white dark:hover:bg-white/5"
-              @click="createPageFromScratch"
-            >
-              <span
-                class="inline-flex items-center rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-indigo-700"
-              >
-                {{ viewCopy.actions.createModal.scratch.badge }}
-              </span>
-              <h3 class="mt-3 text-lg font-semibold text-slate-900 dark:text-white">
-                {{ viewCopy.actions.createModal.scratch.title }}
-              </h3>
-              <p class="mt-1 text-sm text-slate-600 dark:text-slate-200">
-                {{ viewCopy.actions.createModal.scratch.description }}
-              </p>
-            </button>
-
-            <button
-              class="rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 dark:border-[#363636] dark:bg-[#101010] dark:text-white dark:hover:bg-white/5"
-              @click="createPageFromTemplate"
-            >
-              <span
-                class="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-700"
-              >
-                {{ viewCopy.actions.createModal.template.badge }}
-              </span>
-              <h3 class="mt-3 text-lg font-semibold text-slate-900 dark:text-white">
-                {{ viewCopy.actions.createModal.template.title }}
-              </h3>
-              <p class="mt-1 text-sm text-slate-600 dark:text-slate-200">
-                {{ viewCopy.actions.createModal.template.description }}
-              </p>
-            </button>
-
-          </div>
-
         </div>
-      </div>
+      </transition>
     </teleport>
 
     <transition name="fade">
@@ -440,7 +358,7 @@
           <div class="pl-cover-badges">
             <span class="pl-pill"><i :class="page.status === 'published' ? 'dot-on' : 'dot-off'"></i>{{ getStatusLabel(page.status) }}</span>
             <span v-if="page.is_default" class="pl-pill">
-              <svg viewBox="0 0 24 24" class="pl-star"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1Z" /></svg>
+              <StarIcon class="pl-star" aria-hidden="true" />
               {{ viewCopy.table.badges.default }}
             </span>
           </div>
@@ -450,7 +368,7 @@
         </div>
         <div class="pl-body">
           <div class="pl-link">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10" /><path d="M2 12h20" /></svg>
+            <GlobeIcon aria-hidden="true" />
             <template v-if="page.status === 'published' && pagePublicUrl(page)">
               <a :href="pagePublicUrl(page)" target="_blank" rel="noopener">{{ pagePublicUrl(page) }}</a>
               <button type="button" class="pl-copy" @click="copyLink(page)">{{ viewCopy.actions.copy.button }}</button>
@@ -478,11 +396,11 @@
               :title="viewCopy.actions.rowMenu.viewPage"
               :aria-label="viewCopy.actions.rowMenu.viewPage"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" /></svg>
+              <EyeIcon aria-hidden="true" />
             </a>
             <div class="pl-menu-wrap">
               <button type="button" class="pl-icon-btn" aria-label="Mais ações" :aria-expanded="openMenuId === page.id" @click.stop="toggleMenu(page.id)">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="5" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="12" cy="19" r="1" /></svg>
+                <EllipsisVerticalIcon aria-hidden="true" />
               </button>
               <div v-if="openMenuId === page.id" class="pl-menu" @click.stop>
                 <button type="button" :disabled="!canEditPages" @click="runMenu(() => openDuplicateDialog(page))">{{ viewCopy.actions.rowMenu.duplicate }}</button>
@@ -498,7 +416,7 @@
               </div>
             </div>
             <router-link v-if="canEditPages" :to="`/admin/pages/${page.id}/edit`" class="pl-edit">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z" /></svg>
+              <PencilIcon aria-hidden="true" />
               {{ viewCopy.actions.rowMenu.edit }}
             </router-link>
           </div>
@@ -588,7 +506,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { storeToRefs } from "pinia";
 import api from "../../services/api";
 import { useAgencyStore } from "../../store/useAgencyStore";
@@ -602,6 +520,30 @@ import { applyTemplateBranding } from "../../utils/pageTemplates";
 import { sanitizeDigits, buildWhatsappLink } from "../../utils/whatsapp";
 import { resolveMediaUrl } from "../../utils/media";
 import { hasAnyPermission } from "../../utils/permissions";
+import {
+  ArrowLeftIcon,
+  ArrowRightIcon,
+  CircleAlertIcon,
+  EllipsisVerticalIcon,
+  EyeIcon,
+  FilePlus2Icon,
+  FileTextIcon,
+  GlobeIcon,
+  InfoIcon,
+  LayersIcon,
+  LayoutTemplateIcon,
+  MonitorIcon,
+  MousePointer2Icon,
+  MousePointerClickIcon,
+  PencilIcon,
+  PencilRulerIcon,
+  PlusIcon,
+  SearchIcon,
+  SmartphoneIcon,
+  StarIcon,
+  UserPlusIcon,
+  XIcon
+} from "lucide-vue-next";
 
 interface Page {
   id: number;
@@ -623,6 +565,7 @@ interface PageStatsSummary {
 }
 
 const router = useRouter();
+const route = useRoute();
 const agencyStore = useAgencyStore();
 const { currentPrimaryDomain } = storeToRefs(agencyStore);
 const authStore = useAuthStore();
@@ -711,31 +654,31 @@ const viewCopySource = {
   templateModal: {
     title: { pt: "Escolha um modelo", es: "Elige un modelo" },
     subtitle: {
-      pt: "Use modelos oficiais para acelerar a criacao e foque apenas nos detalhes do roteiro.",
-      es: "Usa plantillas oficiales para acelerar la creacion y enfocate en los detalles."
+      pt: "Comece por um layout pronto e ajuste só o conteúdo do seu roteiro.",
+      es: "Empieza con un diseño listo y ajusta solo el contenido de tu itinerario."
     },
-    listTitle: { pt: "Modelos disponiveis", es: "Modelos disponibles" },
+    listTitle: { pt: "Modelos disponíveis", es: "Modelos disponibles" },
     listLoading: { pt: "Carregando modelos...", es: "Cargando modelos..." },
     listEmpty: {
-      pt: "Nenhum modelo disponivel no momento.",
+      pt: "Nenhum modelo disponível no momento.",
       es: "No hay modelos disponibles en este momento."
     },
     listError: {
-      pt: "Nao foi possivel carregar os modelos.",
+      pt: "Não foi possível carregar os modelos.",
       es: "No fue posible cargar los modelos."
     },
     selectHint: {
-      pt: "Selecione um modelo para visualizar e criar sua pagina.",
-      es: "Selecciona un modelo para visualizar y crear tu pagina."
+      pt: "Selecione um modelo para ver a prévia.",
+      es: "Selecciona un modelo para ver la vista previa."
     },
-    previewHeading: { pt: "Preview visual", es: "Vista previa visual" },
+    previewHeading: { pt: "Prévia", es: "Vista previa" },
     previewDescription: {
       pt: "Veja como o roteiro ficará antes de usar este modelo.",
       es: "Mira cómo quedará el itinerario antes de usar este modelo."
     },
     previewEmpty: {
       pt: "Escolha um modelo para visualizar o design.",
-      es: "Elige un modelo para visualizar el diseno."
+      es: "Elige un modelo para visualizar el diseño."
     },
     formTitle: { pt: "Detalhes da nova pagina", es: "Detalles de la nueva pagina" },
     nameLabel: { pt: "Titulo da pagina", es: "Titulo de la pagina" },
@@ -990,6 +933,30 @@ const templatePreviewConfig = computed(() => {
     enforcePrimaryColor: !!primaryColor
   });
 });
+const templatePreviewBranding = computed(() => ({
+  agency_name: currentAgency.value?.name || authStore.user?.name || "",
+  logo_url: currentAgency.value?.logo_url || "",
+  primary_color: currentAgency.value?.primary_color || "#0f172a",
+  secondary_color: currentAgency.value?.secondary_color || "#1f2937"
+}));
+const templateSections = (template: PageTemplate) => {
+  const sections = (template.config_json as any)?.sections;
+  return Array.isArray(sections) ? sections : [];
+};
+const templateSectionCount = (template: PageTemplate) => templateSections(template).length;
+const templateThumbnail = (template: PageTemplate) => {
+  const hero = templateSections(template).find((section: any) => section?.type === "hero");
+  const raw =
+    (typeof hero?.backgroundImage === "string" && hero.backgroundImage) ||
+    (typeof hero?.image === "string" && hero.image) ||
+    (typeof hero?.bannerImage === "string" && hero.bannerImage) ||
+    "";
+  return raw ? resolveMediaUrl(raw) || raw : "";
+};
+const templateThumbStyle = (template: PageTemplate) => {
+  const url = templateThumbnail(template);
+  return url ? { "--tpl-thumb": `url("${url}")` } : {};
+};
 const templatePreviewDevice = ref<"desktop" | "mobile">("desktop");
 const templatePreviewDeviceLocked = ref(false);
 const setTemplatePreviewDevice = (device: "desktop" | "mobile", lock = false) => {
@@ -1223,6 +1190,11 @@ const openTemplateModal = async () => {
   resetTemplatePreviewDevice();
   if (!templateModal.value.templates.length) {
     await loadTemplateOptions();
+  }
+  // No computador a prévia já abre com o primeiro modelo, sem tela vazia.
+  const [firstTemplate] = templateModal.value.templates;
+  if (!isMobileViewport.value && firstTemplate && !templateModal.value.selectedTemplate) {
+    selectTemplateForModal(firstTemplate);
   }
 };
 
@@ -1814,7 +1786,20 @@ watch(
   }
 );
 
-onMounted(bootstrapPages);
+// Atalhos "Nova página" (Dashboard e menu) chegam com ?nova=1 e abrem o modal.
+const openCreateModalFromQuery = () => {
+  if (route.query.nova !== "1" || isBootstrappingPages.value) return;
+  const { nova: _nova, ...rest } = route.query;
+  router.replace({ query: rest });
+  openCreateModal();
+};
+
+watch(() => [route.query.nova, isBootstrappingPages.value], openCreateModalFromQuery);
+
+onMounted(async () => {
+  await bootstrapPages();
+  openCreateModalFromQuery();
+});
 </script>
 
 <style scoped>
@@ -2402,5 +2387,701 @@ onMounted(bootstrapPages);
   .pl-head { flex-direction: column; align-items: flex-start; }
   .pl-stats { grid-template-columns: 1fr; }
   .pl-search { flex-basis: 100%; }
+}
+
+/* ===== Modais: nova página e modelos ===== */
+.np-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+}
+
+.np-shell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 760px;
+  max-height: calc(100dvh - 48px);
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  background: var(--card);
+  color: var(--card-foreground);
+  box-shadow: 0 24px 64px -24px rgba(15, 23, 42, 0.35);
+}
+
+.np-shell-wide {
+  max-width: 1240px;
+  height: calc(100dvh - 48px);
+  max-height: 880px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.np-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.np-shell-wide .np-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.np-header-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: 14px;
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.np-header-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.np-title {
+  color: var(--foreground);
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.np-subtitle {
+  margin-top: 2px;
+  color: var(--muted-foreground);
+  font-size: 13.5px;
+}
+
+.np-close {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  color: var(--muted-foreground);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.np-close:hover {
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.np-close svg {
+  width: 18px;
+  height: 18px;
+}
+
+.np-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 22px;
+}
+
+.np-option {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--card);
+  text-align: left;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.np-option:hover {
+  border-color: color-mix(in srgb, var(--primary) 55%, var(--border));
+  box-shadow: var(--shadow-elegant);
+  transform: translateY(-2px);
+}
+
+.np-option:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.np-option-art {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  height: 132px;
+  overflow: hidden;
+  background: var(--muted);
+}
+
+.np-option.is-featured .np-option-art {
+  background: linear-gradient(160deg, var(--accent), color-mix(in srgb, var(--primary) 22%, var(--accent)));
+}
+
+.np-art-card {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 136px;
+  height: 104px;
+  padding: 8px;
+  border-radius: 12px 12px 0 0;
+  background: var(--card);
+  box-shadow: 0 8px 24px -12px rgba(15, 23, 42, 0.35);
+}
+
+.np-art-card i {
+  display: block;
+  height: 6px;
+  border-radius: 4px;
+  background: var(--border);
+}
+
+.np-art-card i.short {
+  width: 60%;
+}
+
+.np-art-card i.np-art-hero {
+  height: 40px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, var(--primary), color-mix(in srgb, var(--primary) 40%, #0f172a));
+}
+
+.np-art-card-back {
+  position: absolute;
+  bottom: -14px;
+  left: calc(50% + 4px);
+  z-index: 0;
+  opacity: 0.55;
+  transform: rotate(8deg);
+}
+
+.np-art-dashed {
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed var(--border);
+  background: var(--card);
+  box-shadow: none;
+  color: var(--muted-foreground);
+}
+
+.np-art-dashed svg {
+  width: 26px;
+  height: 26px;
+}
+
+.np-option-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  padding: 18px;
+}
+
+.np-option-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.np-option-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.np-option-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.np-badge,
+.tpl-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--status-success);
+  color: var(--status-success-foreground);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.np-option-title {
+  color: var(--foreground);
+  font-size: 15.5px;
+  font-weight: 600;
+}
+
+.np-option-desc {
+  color: var(--muted-foreground);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.np-option-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 10px;
+  color: var(--accent-foreground);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.np-option-link svg {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.15s ease;
+}
+
+.np-option:hover .np-option-link svg {
+  transform: translateX(3px);
+}
+
+.np-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 18px;
+  color: var(--muted-foreground);
+  font-size: 12.5px;
+}
+
+.np-foot svg {
+  width: 16px;
+  height: 16px;
+}
+
+.np-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 18px;
+  border-radius: 999px;
+  font-size: 13.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: filter 0.15s ease, opacity 0.15s ease;
+}
+
+.np-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.np-btn-primary {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.np-btn-primary:hover {
+  filter: brightness(1.05);
+}
+
+.np-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.np-seg {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--muted);
+}
+
+.np-seg button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  color: var(--muted-foreground);
+  font-size: 12.5px;
+  font-weight: 600;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.np-seg button svg {
+  width: 15px;
+  height: 15px;
+}
+
+.np-seg button.on {
+  background: var(--card);
+  color: var(--foreground);
+  box-shadow: var(--shadow-soft);
+}
+
+.tpl-body {
+  display: grid;
+  flex: 1;
+  grid-template-columns: 340px minmax(0, 1fr);
+  min-height: 0;
+}
+
+.tpl-list {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 18px 16px 18px 24px;
+  border-right: 1px solid var(--border);
+}
+
+.tpl-list-head {
+  margin-bottom: 12px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.tpl-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  margin-right: -8px;
+  padding-right: 8px;
+  overflow-y: auto;
+}
+
+.tpl-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--card);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.tpl-card:hover {
+  border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
+}
+
+.tpl-card.on {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--accent) 55%, var(--card));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent);
+}
+
+.tpl-card-main {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  padding: 10px;
+  border-radius: 18px;
+  text-align: left;
+}
+
+.tpl-thumb {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  width: 92px;
+  height: 72px;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 12px;
+  background-color: #0f172a;
+  background-image: var(--tpl-thumb, none), linear-gradient(135deg, color-mix(in srgb, var(--primary) 80%, #0f172a), #0f172a);
+  background-position: center;
+  background-size: cover;
+}
+
+.tpl-thumb-mock {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 8px;
+}
+
+.tpl-thumb-mock i {
+  display: block;
+  height: 4px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.tpl-thumb-mock i:first-child {
+  width: 70%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.tpl-thumb-mock i:last-child {
+  width: 40%;
+}
+
+.tpl-card-text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+  padding-top: 2px;
+}
+
+.tpl-card-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  color: var(--foreground);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.tpl-card-desc {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--muted-foreground);
+  font-size: 12.5px;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.tpl-card-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 2px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+
+.tpl-card-meta svg {
+  width: 13px;
+  height: 13px;
+}
+
+.tpl-card-use {
+  margin: 0 10px 10px;
+}
+
+.tpl-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 32px 16px;
+  border: 1px dashed var(--border);
+  border-radius: 18px;
+  color: var(--muted-foreground);
+  font-size: 13px;
+  text-align: center;
+}
+
+.tpl-state svg {
+  width: 22px;
+  height: 22px;
+}
+
+.tpl-state-error {
+  border-color: color-mix(in srgb, var(--destructive) 40%, var(--border));
+  background: var(--status-danger);
+  color: var(--status-danger-foreground);
+}
+
+.tpl-state-preview {
+  height: 100%;
+  border: 0;
+}
+
+.tpl-spinner {
+  width: 22px;
+  height: 22px;
+  border: 3px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 999px;
+  animation: tpl-spin 0.8s linear infinite;
+}
+
+@keyframes tpl-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.tpl-preview {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 24px 24px;
+  background: var(--muted);
+}
+
+.tpl-preview-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tpl-preview-kicker {
+  color: var(--muted-foreground);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.tpl-preview-name {
+  overflow: hidden;
+  color: var(--foreground);
+  font-size: 15px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tpl-frame {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  width: 100%;
+  margin: 0 auto;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: var(--shadow-card);
+  transition: max-width 0.2s ease;
+}
+
+.tpl-frame.is-mobile {
+  max-width: 400px;
+  border-radius: 28px;
+}
+
+.tpl-frame-chrome {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+}
+
+.tpl-frame-chrome i {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: var(--border);
+}
+
+.tpl-frame-chrome span {
+  flex: 1;
+  max-width: 280px;
+  height: 18px;
+  margin-left: 10px;
+  border-radius: 999px;
+  background: var(--muted);
+}
+
+.tpl-frame.is-mobile .tpl-frame-chrome {
+  justify-content: center;
+}
+
+.tpl-frame.is-mobile .tpl-frame-chrome i {
+  display: none;
+}
+
+.tpl-frame.is-mobile .tpl-frame-chrome span {
+  flex: none;
+  width: 72px;
+  margin: 0;
+}
+
+.tpl-frame-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  background: #fff;
+}
+
+.tpl-mobile-preview {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 28px;
+  background: var(--card);
+}
+
+.tpl-mobile-body {
+  border: 1px solid var(--border);
+  border-radius: 18px;
+}
+
+.np-fade-enter-active,
+.np-fade-leave-active {
+  transition: opacity 0.15s ease;
+}
+
+.np-fade-enter-from,
+.np-fade-leave-to {
+  opacity: 0;
+}
+
+@media (max-width: 768px) {
+  .np-shell {
+    padding: 18px;
+    border-radius: 24px;
+  }
+
+  .np-shell-wide {
+    padding: 0;
+  }
+
+  .np-options {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .np-option-art {
+    height: 96px;
+  }
+
+  .tpl-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .tpl-list {
+    padding: 16px;
+    border-right: 0;
+  }
 }
 </style>

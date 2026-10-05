@@ -111,7 +111,7 @@
             <div class="lv-stats">
               <article class="lv-stat">
                 <span class="lv-stat-icon tone-success">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
+                  <FileTextIcon aria-hidden="true" />
                 </span>
                 <div>
                   <p class="lv-stat-k">Formulários</p>
@@ -120,7 +120,7 @@
               </article>
               <article class="lv-stat">
                 <span class="lv-stat-icon tone-violet">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+                  <UsersIcon aria-hidden="true" />
                 </span>
                 <div>
                   <p class="lv-stat-k">Leads capturados</p>
@@ -129,7 +129,7 @@
               </article>
               <article class="lv-stat">
                 <span class="lv-stat-icon tone-info">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17" /><polyline points="16 7 22 7 22 13" /></svg>
+                  <TrendingUpIcon aria-hidden="true" />
                 </span>
                 <div>
                   <p class="lv-stat-k">Este mês</p>
@@ -138,7 +138,7 @@
               </article>
               <article class="lv-stat">
                 <span class="lv-stat-icon tone-warning">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+                  <ClockIcon aria-hidden="true" />
                 </span>
                 <div>
                   <p class="lv-stat-k">Último lead</p>
@@ -149,7 +149,7 @@
 
             <div class="lv-toolbar">
               <div class="lv-search">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+                <SearchIcon aria-hidden="true" />
                 <input v-model="formSearchQuery" type="text" placeholder="Buscar formulário..." />
               </div>
               <div class="lv-grow"></div>
@@ -165,10 +165,7 @@
             </div>
 
             <div v-else-if="!filteredForms.length" class="lv-empty">
-              <svg viewBox="0 0 24 24" class="forms-empty-icon" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                <polyline points="14 2 14 8 20 8" />
-              </svg>
+              <FileTextIcon class="forms-empty-icon" aria-hidden="true" />
               <p>Você ainda não criou formulários</p>
               <button type="button" class="lv-btn-primary mt-3" @click="openCreateModal">Criar primeiro formulário</button>
             </div>
@@ -182,7 +179,7 @@
               >
                 <header class="lv-form-head">
                   <span class="lv-stat-icon tone-success">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
+                    <FileTextIcon aria-hidden="true" />
                   </span>
                   <div class="min-w-0 flex-1">
                     <p class="lv-form-name">{{ form.name || fallbackLabels.noNameDefined }}</p>
@@ -190,7 +187,7 @@
                   </div>
                   <div class="lv-menu-wrap" @click.stop>
                     <button type="button" class="lv-icon-btn" title="Mais ações" aria-label="Mais ações" @click="toggleFormMenu(form.id)">
-                      <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="12" cy="19" r="1.6" /></svg>
+                      <EllipsisVerticalIcon aria-hidden="true" />
                     </button>
                     <div v-if="openFormMenuId === form.id" class="lv-menu">
                       <button type="button" @click="duplicateFormQuick(form)">Duplicar</button>
@@ -215,11 +212,11 @@
 
                 <footer class="lv-form-foot">
                   <button type="button" class="lv-ghost" @click="openFormLeads(form)">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /></svg>
+                    <UserIcon aria-hidden="true" />
                     Ver leads
                   </button>
                   <button type="button" class="lv-soft" @click="openEditModal(form)">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                    <PencilIcon aria-hidden="true" />
                     Editar
                   </button>
                 </footer>
@@ -332,20 +329,20 @@
       </div>
       <div class="toolbar-spacer"></div>
       <div class="toolbar-right-actions">
-        <div class="toolbar-search"><svg viewBox="0 0 24 24" class="toolbar-search-icon" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input v-model="crmSearchQuery" type="text" placeholder="Buscar oportunidade..." /></div>
+        <div class="toolbar-search"><SearchIcon class="toolbar-search-icon" aria-hidden="true" /><input v-model="crmSearchQuery" type="text" placeholder="Buscar oportunidade..." /></div>
         <button type="button" class="toolbar-ghost-btn toolbar-ghost-btn--square" @click="openColumnsSidebar">
-          <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg>
+          <MenuIcon class="h-4 w-4" aria-hidden="true" />
           Colunas
         </button>
         <button type="button" class="toolbar-ghost-btn toolbar-ghost-btn--square" @click="saveCurrentView">
-          <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>
+          <SaveIcon class="h-4 w-4" aria-hidden="true" />
           Salvar visualização
         </button>
       </div>
     </div>
     <div v-else class="opportunities-filter-bar">
       <div class="opportunities-filter-row opportunities-filter-row--search">
-        <div class="toolbar-search"><svg viewBox="0 0 24 24" class="toolbar-search-icon" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input v-model="crmSearchQuery" type="text" placeholder="Buscar cliente..." /></div>
+        <div class="toolbar-search"><SearchIcon class="toolbar-search-icon" aria-hidden="true" /><input v-model="crmSearchQuery" type="text" placeholder="Buscar cliente..." /></div>
         <button type="button" class="mobile-create-btn" @click="openManualOpportunityModal">
           <span class="mobile-create-btn-plus">+</span>
           <span>Criar</span>
@@ -353,13 +350,13 @@
       </div>
       <div class="opportunities-filter-row opportunities-filter-row--primary">
         <div class="toolbar-ms">
-          <button type="button" class="toolbar-ms-btn" :class="{ open: openToolbarFilter === 'stage' }" @click="toggleToolbarFilter('stage', $event)"><svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18"/><path d="M6 12h12"/><path d="M10 19h4"/></svg>Etapa <span v-if="listFilters.status.length" class="toolbar-ms-count">{{ listFilters.status.length }}</span></button>
+          <button type="button" class="toolbar-ms-btn" :class="{ open: openToolbarFilter === 'stage' }" @click="toggleToolbarFilter('stage', $event)"><ListFilterIcon class="h-3.5 w-3.5" aria-hidden="true" />Etapa <span v-if="listFilters.status.length" class="toolbar-ms-count">{{ listFilters.status.length }}</span></button>
         </div>
         <div class="toolbar-ms">
-          <button type="button" class="toolbar-ms-btn" :class="{ open: openToolbarFilter === 'opportunityStatus' }" @click="toggleToolbarFilter('opportunityStatus', $event)"><svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18"/><path d="M6 12h12"/><path d="M10 19h4"/></svg>Status <span v-if="opportunityStatusSelections.length" class="toolbar-ms-count">{{ opportunityStatusSelections.length }}</span></button>
+          <button type="button" class="toolbar-ms-btn" :class="{ open: openToolbarFilter === 'opportunityStatus' }" @click="toggleToolbarFilter('opportunityStatus', $event)"><ListFilterIcon class="h-3.5 w-3.5" aria-hidden="true" />Status <span v-if="opportunityStatusSelections.length" class="toolbar-ms-count">{{ opportunityStatusSelections.length }}</span></button>
         </div>
         <div class="toolbar-ms">
-          <button type="button" class="toolbar-ms-btn" :class="{ open: openToolbarFilter === 'page' }" @click="toggleToolbarFilter('page', $event)"><svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18"/><path d="M6 12h12"/><path d="M10 19h4"/></svg>Página <span v-if="listFilters.page.length" class="toolbar-ms-count">{{ listFilters.page.length }}</span></button>
+          <button type="button" class="toolbar-ms-btn" :class="{ open: openToolbarFilter === 'page' }" @click="toggleToolbarFilter('page', $event)"><ListFilterIcon class="h-3.5 w-3.5" aria-hidden="true" />Página <span v-if="listFilters.page.length" class="toolbar-ms-count">{{ listFilters.page.length }}</span></button>
         </div>
       </div>
     </div>
@@ -370,7 +367,7 @@
         <thead class="sticky top-0 z-10"><tr class="text-left text-xs font-semibold uppercase tracking-wide"><th class="w-[40px] px-2 py-3"><div class="flex justify-center"><input class="h-4 w-4 cursor-pointer accent-emerald-500" type="checkbox" :checked="areAllVisibleOpportunitiesSelected" @change="toggleAllVisibleOpportunities" /></div></th><th v-if="isColumnVisible('cliente')" class="w-[180px] px-3 py-3" style="width:180px;min-width:180px;max-width:180px;">Nome</th><template v-for="col in orderedOptionalColumns" :key="`head-${col.key}`"><th v-if="col.visible && col.key === 'telefone'" class="w-[150px] px-2 py-3">Telefone</th><th v-if="col.visible && col.key === 'status'" class="w-[170px] px-2 py-3">Etapa</th><th v-if="col.visible && col.key === 'pagina'" class="w-[230px] px-2 py-3" style="width:230px;min-width:230px;max-width:230px;">Origem</th><th v-if="col.visible && col.key === 'valor'" class="w-[105px] px-2 py-3 text-center">Valor</th><th v-if="col.visible && col.key === 'chegouEm'" class="w-[100px] px-2 py-3">Chegou em</th><th v-if="col.visible && col.key === 'ultima'" class="w-[130px] px-2 py-3 text-center">Sem interação</th></template><th v-if="isColumnVisible('acoes')" class="w-[108px] px-2 py-3 text-right">Ações</th></tr></thead>
         <tbody>
           <template v-for="group in groupedContactsForCrm" :key="group.key">
-            <tr class="opps-group-row" @click="toggleGroupCollapse(group.key)"><td :colspan="visibleCrmColumnsCount + 2" class="px-4 py-1 text-xs font-semibold" :style="groupHeaderStyle(group.key)"><button type="button" class="opps-group-toggle-btn" :class="{ collapsed: isGroupCollapsed(group.key) }" @click.stop="toggleGroupCollapse(group.key)"><svg viewBox="0 0 20 20" class="h-3.5 w-3.5" fill="currentColor" aria-hidden="true"><path d="M5.2 7.5a.75.75 0 0 1 1.06 0L10 11.24l3.74-3.74a.75.75 0 1 1 1.06 1.06l-4.27 4.27a.75.75 0 0 1-1.06 0L5.2 8.56a.75.75 0 0 1 0-1.06Z" /></svg></button><span class="inline-flex items-center gap-2 rounded-full border px-2.5 py-1" :style="groupPillStyle(group.key)">{{ group.label }}</span> <span class="opps-group-meta">{{ group.contacts.length }} contatos · {{ formatOpportunityValue(group.totalValueCents) }}</span></td></tr>
+            <tr class="opps-group-row" @click="toggleGroupCollapse(group.key)"><td :colspan="visibleCrmColumnsCount + 2" class="px-4 py-1 text-xs font-semibold" :style="groupHeaderStyle(group.key)"><button type="button" class="opps-group-toggle-btn" :class="{ collapsed: isGroupCollapsed(group.key) }" @click.stop="toggleGroupCollapse(group.key)"><ChevronDownIcon class="h-3.5 w-3.5" aria-hidden="true" /></button><span class="inline-flex items-center gap-2 rounded-full border px-2.5 py-1" :style="groupPillStyle(group.key)">{{ group.label }}</span> <span class="opps-group-meta">{{ group.contacts.length }} contatos · {{ formatOpportunityValue(group.totalValueCents) }}</span></td></tr>
             <tr v-for="contact in visibleGroupContacts(group)" :key="contact.id" class="opps-data-row cursor-pointer transition" :class="opportunityRowClass(contact)" :style="contactRowStyle(contact)" @click="openOpportunityDrawer(contact)">
               <td class="w-[40px] px-2 py-2.5" @click.stop><div class="flex justify-center"><input class="h-4 w-4 cursor-pointer accent-emerald-500" type="checkbox" :checked="isOpportunitySelected(contact)" @change="toggleOpportunitySelection(contact)" /></div></td>
               <td v-if="isColumnVisible('cliente')" class="w-[180px] px-4 py-2.5" style="width:180px;min-width:180px;max-width:180px;">
@@ -406,9 +403,7 @@
                     @click.stop="toggleStatusDropdown(contact, $event)"
                   >
                     <span>{{ contact.status_name || fallbackLabels.noStage }}</span>
-                    <svg viewBox="0 0 20 20" class="h-3.5 w-3.5" fill="currentColor" aria-hidden="true">
-                      <path d="M5.2 7.5a.75.75 0 0 1 1.06 0L10 11.24l3.74-3.74a.75.75 0 1 1 1.06 1.06l-4.27 4.27a.75.75 0 0 1-1.06 0L5.2 8.56a.75.75 0 0 1 0-1.06Z" />
-                    </svg>
+                    <ChevronDownIcon class="h-3.5 w-3.5" aria-hidden="true" />
                   </button>
 
                 </div>
@@ -430,7 +425,7 @@
                   <div class="inline-flex items-center gap-1">
                     <input v-model="inlineValueInput" type="text" placeholder="R$ 0,00" class="w-[78px] rounded-md border border-slate-200 px-2 py-1 text-[11px] text-slate-700 outline-none focus:border-brand" />
                     <button type="button" class="inline-flex h-5 w-5 items-center justify-center rounded border border-emerald-200 bg-emerald-50 text-emerald-700" @click.stop="saveInlineValue(contact)">
-                      <svg viewBox="0 0 20 20" class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="m4 10 4 4 8-8"/></svg>
+                      <CheckIcon class="h-3 w-3" aria-hidden="true" />
                     </button>
 </div>
 </template>
@@ -462,16 +457,16 @@
               <td v-if="isColumnVisible('acoes')" class="w-[108px] px-2 py-2.5 text-right" @click.stop>
                 <div class="inline-flex items-center gap-1">
                   <button type="button" class="action-icon-btn action-muted" title="Ver oportunidade" @click.stop="openOpportunityDrawer(contact)">
-                    <svg viewBox="0 0 24 24" class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                    <ExternalLinkIcon class="h-3 w-3" aria-hidden="true" />
                   </button>
                   <button type="button" class="action-icon-btn action-like" :class="getOpportunityOutcome(contact) === 'won' ? 'is-selected' : ''" title="Ganho" @click.stop="markOpportunityOutcome(contact, 'won')">
-                    <svg viewBox="0 0 24 24" class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+                    <ThumbsUpIcon class="h-3 w-3" aria-hidden="true" />
                   </button>
                   <button type="button" class="action-icon-btn action-dislike" :class="getOpportunityOutcome(contact) === 'lost' ? 'is-selected' : ''" title="Perda" @click.stop="markOpportunityOutcome(contact, 'lost')">
-                    <svg viewBox="0 0 24 24" class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/><path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/></svg>
+                    <ThumbsDownIcon class="h-3 w-3" aria-hidden="true" />
                   </button>
                   <button v-if="canDeleteLeads" type="button" class="action-icon-btn action-muted" title="Excluir" @click.stop="handleDeleteContact(contact)">
-                    <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16"/><path d="M9 4h6"/><path d="M7 7l1 13h8l1-13"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                    <Trash2Icon class="h-4 w-4" aria-hidden="true" />
                   </button>
                 </div>
               </td>
@@ -486,7 +481,7 @@
     <template v-for="group in groupedContactsForCrm" :key="`m-${group.key}`">
       <div class="mobile-group-strip" :style="groupHeaderStyle(group.key)" @click="toggleGroupCollapse(group.key)">
         <button type="button" class="opps-group-toggle-btn" :class="{ collapsed: isGroupCollapsed(group.key) }" @click.stop="toggleGroupCollapse(group.key)">
-          <svg viewBox="0 0 20 20" class="h-3.5 w-3.5" fill="currentColor" aria-hidden="true"><path d="M5.2 7.5a.75.75 0 0 1 1.06 0L10 11.24l3.74-3.74a.75.75 0 1 1 1.06 1.06l-4.27 4.27a.75.75 0 0 1-1.06 0L5.2 8.56a.75.75 0 0 1 0-1.06Z" /></svg>
+          <ChevronDownIcon class="h-3.5 w-3.5" aria-hidden="true" />
         </button>
         <span class="mobile-group-title mobile-group-pill" :style="groupPillStyle(group.key)">{{ group.label }}</span>
         <span class="mobile-group-meta">{{ group.contacts.length }} contatos · {{ formatOpportunityValue(group.totalValueCents) }}</span>
@@ -525,16 +520,16 @@
           </div>
           <div class="mobile-card-actions mobile-card-actions--row" @click.stop>
             <button type="button" class="action-icon-btn action-muted" title="Ver oportunidade" @click.stop="openOpportunityDrawer(contact)">
-              <svg viewBox="0 0 24 24" class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              <ExternalLinkIcon class="h-3 w-3" aria-hidden="true" />
             </button>
             <button type="button" class="action-icon-btn action-like" :class="getOpportunityOutcome(contact) === 'won' ? 'is-selected' : ''" title="Ganho" @click.stop="markOpportunityOutcome(contact, 'won')">
-              <svg viewBox="0 0 24 24" class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+              <ThumbsUpIcon class="h-3 w-3" aria-hidden="true" />
             </button>
             <button type="button" class="action-icon-btn action-dislike" :class="getOpportunityOutcome(contact) === 'lost' ? 'is-selected' : ''" title="Perda" @click.stop="markOpportunityOutcome(contact, 'lost')">
-              <svg viewBox="0 0 24 24" class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/><path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/></svg>
+              <ThumbsDownIcon class="h-3 w-3" aria-hidden="true" />
             </button>
             <button v-if="canDeleteLeads" type="button" class="action-icon-btn action-muted" title="Excluir" @click.stop="handleDeleteContact(contact)">
-              <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M9 4h6"/><path d="M7 7l1 13h8l1-13"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+              <Trash2Icon class="h-4 w-4" aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -633,14 +628,7 @@
           @dragend="handleColumnDragEnd"
         >
           <span class="columns-drag-handle" aria-hidden="true">
-            <svg viewBox="0 0 20 20" class="h-3.5 w-3.5" fill="currentColor">
-              <circle cx="6" cy="5" r="1.2" />
-              <circle cx="6" cy="10" r="1.2" />
-              <circle cx="6" cy="15" r="1.2" />
-              <circle cx="12" cy="5" r="1.2" />
-              <circle cx="12" cy="10" r="1.2" />
-              <circle cx="12" cy="15" r="1.2" />
-            </svg>
+            <EllipsisVerticalIcon class="h-3.5 w-3.5" aria-hidden="true" />
           </span>
           <input v-model="draftColumnVisibility[col.key]" type="checkbox" class="h-4 w-4" />
           <span>{{ col.label === "Última interação" ? "Sem interação" : col.label }}</span>
@@ -657,22 +645,22 @@
     <span class="bulk-count">{{ selectedOpportunityIds.length }} selecionadas</span>
     <div class="bulk-spacer"></div>
     <button type="button" class="bulk-btn bulk-won" @click="applyBulkOutcome('won')">
-      <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+      <ThumbsUpIcon class="h-4 w-4" aria-hidden="true" />
       Marcar como ganhas
     </button>
     <button type="button" class="bulk-btn bulk-lost" @click="applyBulkOutcome('lost')">
-      <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/><path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/></svg>
+      <ThumbsDownIcon class="h-4 w-4" aria-hidden="true" />
       Marcar como perdidas
     </button>
     <button v-if="canDeleteLeads" type="button" class="bulk-btn bulk-del" @click="deleteSelectedOpportunities">
-      <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>
+      <Trash2Icon class="h-4 w-4" aria-hidden="true" />
       Excluir
     </button>
     <div class="bulk-stage-wrap">
       <button type="button" class="bulk-btn bulk-stage-btn" @click="bulkStageMenuOpen = !bulkStageMenuOpen">
-        <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
+        <ArrowRightIcon class="h-4 w-4" aria-hidden="true" />
         Mover para etapa
-        <svg viewBox="0 0 20 20" class="h-3.5 w-3.5 opacity-70" fill="currentColor"><path d="M5.2 7.5a.75.75 0 0 1 1.06 0L10 11.24l3.74-3.74a.75.75 0 1 1 1.06 1.06l-4.27 4.27a.75.75 0 0 1-1.06 0L5.2 8.56a.75.75 0 0 1 0-1.06Z"/></svg>
+        <ChevronDownIcon class="h-3.5 w-3.5 opacity-70" aria-hidden="true" />
       </button>
       <div v-if="bulkStageMenuOpen" class="bulk-stage-menu">
         <button type="button" class="bulk-stage-opt" @click="selectBulkStage('null')">Sem etapa</button>
@@ -682,7 +670,7 @@
       </div>
     </div>
     <button type="button" class="bulk-btn bulk-cancel" @click="clearBulkSelection">
-      <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      <XIcon class="h-4 w-4" aria-hidden="true" />
       Cancelar
     </button>
   </div>
@@ -922,15 +910,7 @@
 
 
 
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-
-
-
-                  <path d="M19 4h-3.5l-1-1h-5l-1 1H5v2h14M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6z"/>
-
-
-
-                </svg>
+                <Trash2Icon class="h-4 w-4" aria-hidden="true" />
 
 
 
@@ -1149,7 +1129,7 @@
 
       <div
         v-if="!planAllowed"
-        class="pointer-events-auto fixed inset-y-0 left-0 right-0 z-[140] flex items-center justify-center bg-black/60 px-4 text-center backdrop-blur-[2px] md:left-64"
+        class="pointer-events-auto fixed inset-y-0 left-0 right-0 z-[140] flex items-center justify-center bg-black/60 px-4 text-center backdrop-blur-[2px] md:left-[var(--admin-sidebar-offset)]"
       >
         <div class="max-w-md rounded-3xl border border-border bg-card p-6 text-card-foreground shadow-xl">
           <p class="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">Recurso premium</p>
@@ -1238,9 +1218,7 @@
     <div v-if="opportunityWhatsAppSuccessModalOpen" class="fixed inset-0 z-[3210] flex items-center justify-center bg-slate-950/55 p-4" @click="closeOpportunityWhatsAppSuccessModal">
       <div class="w-full max-w-md rounded-2xl border border-emerald-100 bg-white p-5 shadow-2xl" @click.stop>
         <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
-          <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="m5 13 4 4L19 7" />
-          </svg>
+          <CheckIcon class="h-6 w-6" aria-hidden="true" />
         </div>
         <h3 class="text-center text-lg font-semibold text-slate-900">Mensagem enviada</h3>
         <p class="mt-2 text-center text-sm text-slate-600">A mensagem foi enviada com sucesso para o contato.</p>
@@ -1263,9 +1241,7 @@
             <p class="mt-2 text-sm text-slate-500">Cadastre uma oportunidade sem depender de formulário.</p>
           </div>
           <button type="button" class="rounded-full border border-slate-200 p-2 text-slate-500" @click="closeManualOpportunityModal">
-            <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M6 6l12 12M6 18 18 6" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
+            <XIcon class="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
         <div class="mt-5 space-y-4">
@@ -1363,6 +1339,27 @@
 
 
 <script setup lang="ts">
+import {
+  ArrowRightIcon,
+  CheckIcon,
+  ChevronDownIcon,
+  ClockIcon,
+  EllipsisVerticalIcon,
+  ExternalLinkIcon,
+  FileTextIcon,
+  ListFilterIcon,
+  MenuIcon,
+  PencilIcon,
+  SaveIcon,
+  SearchIcon,
+  ThumbsDownIcon,
+  ThumbsUpIcon,
+  Trash2Icon,
+  TrendingUpIcon,
+  UserIcon,
+  UsersIcon,
+  XIcon
+} from "lucide-vue-next";
 
 
 

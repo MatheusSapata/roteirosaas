@@ -12,7 +12,7 @@
     <section v-if="!isInvitedTeamUser" class="pf-card pf-plan-card">
       <div class="pf-plan">
         <span class="pf-plan-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z" /></svg>
+          <StarIcon aria-hidden="true" />
         </span>
         <div class="min-w-0 flex-1">
           <p class="pf-plan-k">Seu plano</p>
@@ -35,7 +35,7 @@
           <div class="min-w-0">
             <p>Forma de pagamento</p>
             <b>
-              <svg v-if="paymentMethodType !== 'pix'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" /></svg>
+              <CreditCardIcon v-if="paymentMethodType !== 'pix'" aria-hidden="true" />
               {{ paymentSummary }}
             </b>
           </div>
@@ -69,7 +69,7 @@
           </button>
           <div>
             <button type="button" class="pf-btn-ghost" @click="openProfilePhotoEditor">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" /></svg>
+              <CameraIcon aria-hidden="true" />
               {{ profilePhotoPreview ? "Trocar foto" : "Enviar foto" }}
             </button>
             <p class="pf-hint">JPG ou PNG, quadrada</p>
@@ -113,7 +113,7 @@
             <h2>Alterar senha</h2>
           </div>
           <span class="pf-lock" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
+            <LockIcon aria-hidden="true" />
           </span>
         </header>
 
@@ -127,8 +127,8 @@
         </label>
         <ul class="pf-rules">
           <li v-for="rule in passwordRules" :key="rule.label" :class="{ ok: rule.ok }">
-            <svg v-if="rule.ok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
-            <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M6 18 18 6" /></svg>
+            <CheckIcon v-if="rule.ok" aria-hidden="true" />
+            <XIcon v-else aria-hidden="true" />
             {{ rule.label }}
           </li>
         </ul>
@@ -358,6 +358,14 @@
 </template>
 
 <script setup lang="ts">
+import {
+  CameraIcon,
+  CheckIcon,
+  CreditCardIcon,
+  LockIcon,
+  StarIcon,
+  XIcon
+} from "lucide-vue-next";
 import Cropper from "cropperjs";
 import "cropperjs/dist/cropper.css";
 import { onMounted, ref, computed, reactive, watch, nextTick, onBeforeUnmount } from "vue";

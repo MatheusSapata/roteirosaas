@@ -94,11 +94,7 @@
                     class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-600 hover:bg-slate-50"
                     @click="toggleActionsMenu(item.id, $event)"
                   >
-                    <svg viewBox="0 0 24 24" class="h-5 w-5" fill="currentColor" aria-hidden="true">
-                      <circle cx="6" cy="12" r="1.8" />
-                      <circle cx="12" cy="12" r="1.8" />
-                      <circle cx="18" cy="12" r="1.8" />
-                    </svg>
+                    <EllipsisIcon class="h-5 w-5" aria-hidden="true" />
                   </button>
                 </div>
               </td>
@@ -585,6 +581,7 @@
 </template>
 
 <script setup lang="ts">
+import { EllipsisIcon } from "lucide-vue-next";
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import api from "../../services/api";
 import SystemBanner from "../../components/admin/SystemBanner.vue";

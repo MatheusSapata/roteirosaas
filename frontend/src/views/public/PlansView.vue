@@ -98,13 +98,7 @@
                 <span
                   class="mt-0.5 flex h-6 w-6 flex-none items-center justify-center rounded-full bg-emerald-100 text-emerald-600 shadow-inner"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4">
-                    <path
-                      fill-rule="evenodd"
-                      d="M16.707 5.293a1 1 0 010 1.414l-7.25 7.25a1 1 0 01-1.414 0l-3.25-3.25a1 1 0 111.414-1.414l2.543 2.543 6.543-6.543a1 1 0 011.414 0z"
-                      clip-rule="evenodd"
-                    />
-                  </svg>
+                  <CheckIcon class="h-4 w-4" aria-hidden="true" />
                 </span>
                 <span>{{ feature }}</span>
               </li>
@@ -199,6 +193,7 @@
 </template>
 
 <script setup lang="ts">
+import { CheckIcon } from "lucide-vue-next";
 import { computed, ref, onMounted } from "vue";
 import api from "../../services/api";
 import { useAuthStore } from "../../store/useAuthStore";

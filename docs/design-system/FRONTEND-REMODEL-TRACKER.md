@@ -68,7 +68,7 @@ Uma mesma `View` pode representar várias telas quando seu conteúdo muda confor
 - [ ] `AppToast`
 - [x] Utilitário central de status semânticos
 - [x] Formatadores brasileiros centralizados
-- [ ] Integração de `lucide-vue-next`
+- [x] Integração de `lucide-vue-next` (ícones padronizados no painel, traço único em `styles/main.css`)
 - [ ] Rota interna de catálogo do design system
 
 ---

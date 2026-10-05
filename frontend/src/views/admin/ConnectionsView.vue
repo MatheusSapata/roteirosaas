@@ -97,7 +97,7 @@
 
       <aside class="cv-info">
         <span class="cv-info-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg>
+          <InfoIcon aria-hidden="true" />
         </span>
         <div>
           <p class="cv-info-title">Onde o WhatsApp é usado</p>
@@ -124,9 +124,7 @@
               class="rounded-full border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-50"
               @click="closeQrModal"
             >
-              <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M6 6l12 12M6 18 18 6" stroke-linecap="round" />
-              </svg>
+              <XIcon class="h-4 w-4" aria-hidden="true" />
             </button>
           </div>
 
@@ -232,6 +230,7 @@
 </style>
 
 <script setup lang="ts">
+import { InfoIcon, XIcon } from "lucide-vue-next";
 import IntegrationsHeader from "../../components/admin/integrations/IntegrationsHeader.vue";
 import { integrationStatus } from "../../composables/useIntegrationStatus";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";

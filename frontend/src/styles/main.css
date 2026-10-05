@@ -408,6 +408,25 @@ body {
   overflow-x: hidden;
 }
 
+/* Ícones (Lucide): mesma família e o mesmo traço em toda a plataforma.
+   O traço é medido em pixels de tela, então um ícone de 12px e um de 24px
+   têm o mesmo peso. O !important vence regras antigas das telas que ainda
+   definem stroke-width ou fill para "svg". */
+svg.lucide {
+  flex-shrink: 0;
+  stroke-width: 1.6 !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+}
+
+svg.lucide[fill="none"] {
+  fill: none !important;
+}
+
+svg.lucide > * {
+  vector-effect: non-scaling-stroke;
+}
+
 h1,
 h2,
 h3,

@@ -256,18 +256,7 @@
               :disabled="onlineSessionsLoading"
               @click="loadOnlineSessions(true)"
             >
-              <svg
-                v-if="onlineSessionsLoading"
-                class="h-4 w-4 animate-spin text-white"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-              </svg>
+              <LoaderCircleIcon v-if="onlineSessionsLoading" class="h-4 w-4 animate-spin text-white" aria-hidden="true" />
               <span>{{ onlineSessionsLoading ? "Atualizando..." : "Atualizar monitor" }}</span>
             </button>
           </div>
@@ -416,26 +405,8 @@
                     >
                       <span>{{ column.label }}</span>
                       <span v-if="column.sortable" class="flex flex-col text-[10px] leading-3 text-slate-400">
-                        <svg
-                          class="h-3 w-3"
-                          :class="userSort.key === column.key && userSort.direction === 'desc' ? 'text-slate-900' : ''"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="2"
-                        >
-                          <path d="m6 9 6-6 6 6" stroke-linecap="round" stroke-linejoin="round" />
-                        </svg>
-                        <svg
-                          class="h-3 w-3 -mt-0.5"
-                          :class="userSort.key === column.key && userSort.direction === 'asc' ? 'text-slate-900' : ''"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="2"
-                        >
-                          <path d="m6 15 6 6 6-6" stroke-linecap="round" stroke-linejoin="round" />
-                        </svg>
+                        <ChevronUpIcon class="h-3 w-3" :class="userSort.key === column.key && userSort.direction === 'desc' ? 'text-slate-900' : ''" aria-hidden="true" />
+                        <ChevronDownIcon class="h-3 w-3 -mt-0.5" :class="userSort.key === column.key && userSort.direction === 'asc' ? 'text-slate-900' : ''" aria-hidden="true" />
                       </span>
                     </button>
                     <button
@@ -446,15 +417,7 @@
                       :data-column-filter="column.key"
                       @click.stop="toggleColumnFilter(column.key, $event)"
                     >
-                      <svg
-                        class="h-3.5 w-3.5"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                      >
-                        <path d="M4 5h16M7 12h10M10 19h4" stroke-linecap="round" />
-                      </svg>
+                      <ListFilterIcon class="h-3.5 w-3.5" aria-hidden="true" />
                     </button>
                     <Teleport to="body" v-if="openFilterKey === column.key">
                       <div
@@ -723,9 +686,7 @@
                         <span
                           :class="expandedUser === u.id ? 'rotate-90 inline-block transition' : 'inline-block transition'"
                         >
-                          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                          </svg>
+                          <ChevronRightIcon class="w-4 h-4" aria-hidden="true" />
                         </span>
                       </button>
                       <div class="min-w-0 flex-1">
@@ -1477,18 +1438,7 @@
                   class="absolute inset-y-0 right-3 flex items-center text-slate-400 transition hover:text-slate-600 dark:hover:text-white"
                   @click="toggleTemplateAgencyDropdown"
                 >
-                  <svg
-                    class="h-4 w-4 transition"
-                    :class="templateAgencyDropdownOpen ? 'rotate-180' : ''"
-                    viewBox="0 0 20 20"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.5"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <path d="M5 8l5 5 5-5" />
-                  </svg>
+                  <ChevronDownIcon class="h-4 w-4 transition" :class="templateAgencyDropdownOpen ? 'rotate-180' : ''" aria-hidden="true" />
                 </button>
                 <div
                   v-if="templateAgencyDropdownOpen"
@@ -2264,6 +2214,13 @@
 </template>
 
 <script setup lang="ts">
+import {
+  ChevronDownIcon,
+  ChevronRightIcon,
+  ChevronUpIcon,
+  ListFilterIcon,
+  LoaderCircleIcon
+} from "lucide-vue-next";
 import { onMounted, onUnmounted, reactive, ref, watch, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import api from "../../services/api";
