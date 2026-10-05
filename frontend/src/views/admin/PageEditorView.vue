@@ -59,11 +59,13 @@
             <span class="editor-ai-sidebar-resize-grip" aria-hidden="true"></span>
           </button>
           <div class="editor-ai-sidebar-header">
+            <span v-if="newEditor" class="ai-v2-mark" aria-hidden="true"><SparkleIcon /></span>
             <div class="editor-ai-sidebar-header-copy">
               <div class="editor-ai-sidebar-title-row">
                 <h2 class="editor-ai-sidebar-title">Assistente IA</h2>
-                <span class="editor-ai-sidebar-usage-pill">{{ aiAssistantUsageLabel }}</span>
+                <span v-if="!newEditor" class="editor-ai-sidebar-usage-pill">{{ aiAssistantUsageLabel }}</span>
               </div>
+              <span v-if="newEditor && aiAssistantUsageText" class="ai-v2-usage">{{ aiAssistantUsageText }}</span>
             </div>
             <button type="button" class="editor-ai-sidebar-close" @click="toggleAiAssistant" aria-label="Fechar ajuda de IA">
               <XIcon class="h-4 w-4" aria-hidden="true" />
@@ -81,8 +83,29 @@
                     class="editor-ai-sidebar-bubble"
                     :class="message.role === 'user' ? 'is-user' : 'is-assistant'"
                   >
-                    <div class="editor-ai-sidebar-response-text">{{ message.content }}</div>
-                    <div v-if="message.role === 'assistant' && hasAiStructure(message.content)" class="mt-3 flex items-center gap-1">
+                    <template v-if="newEditor && message.role === 'assistant' && hasAiStructure(message.content)">
+                      <div v-if="aiIntroText(message.content)" class="editor-ai-sidebar-response-text">{{ aiIntroText(message.content) }}</div>
+                      <div class="ai-v2-structure">
+                        <p class="ai-v2-structure-title">Sugiro esta estrutura, com {{ aiStructureNames(message.content).length }} {{ aiStructureNames(message.content).length === 1 ? "seção" : "seções" }}:</p>
+                        <ol>
+                          <li v-for="(name, nameIndex) in aiStructureNames(message.content).slice(0, aiExpanded.has(index) ? undefined : 5)" :key="nameIndex">
+                            <b>{{ nameIndex + 1 }}</b><span>{{ name }}</span>
+                          </li>
+                          <li v-if="!aiExpanded.has(index) && aiStructureNames(message.content).length > 5" class="is-more">
+                            <button type="button" @click="toggleAiExpanded(index)">+{{ aiStructureNames(message.content).length - 5 }} seções</button>
+                          </li>
+                        </ol>
+                        <div class="ai-v2-actions">
+                          <button type="button" class="is-primary" :disabled="aiStructureApplying || aiAssistantLoading || isSectionEditorOpen" @click="applyAiStructure(message.content, 'insert')">Inserir no fim</button>
+                          <button type="button" :disabled="aiStructureApplying || aiAssistantLoading || isSectionEditorOpen" @click="applyAiStructure(message.content, 'replace')">Substituir tudo</button>
+                        </div>
+                        <span class="ai-v2-hint">{{ isSectionEditorOpen ? "Feche a edição da seção para aplicar." : "Dá para desfazer depois de aplicar." }}</span>
+                        <button type="button" class="ai-v2-details" @click="toggleAiDetails(index)">{{ aiDetails.has(index) ? "Esconder resposta completa" : "Ver resposta completa" }}</button>
+                        <div v-if="aiDetails.has(index)" class="editor-ai-sidebar-response-text ai-v2-full">{{ message.content }}</div>
+                      </div>
+                    </template>
+                    <div v-else class="editor-ai-sidebar-response-text">{{ message.content }}</div>
+                    <div v-if="!newEditor && message.role === 'assistant' && hasAiStructure(message.content)" class="mt-3 flex items-center gap-1">
                         <button type="button" class="min-h-11 min-w-0 flex-1 rounded-lg border border-indigo-200 bg-white px-3 py-2.5 text-sm font-semibold text-indigo-700 hover:bg-indigo-50 focus-visible:outline-indigo-600 disabled:opacity-50"
                           title="Adiciona todas as seções da sugestão ao final do conteúdo já existente."
                           aria-label="Inserir estrutura: adiciona todas as seções da sugestão ao final do conteúdo já existente."
@@ -102,6 +125,9 @@
                   </div>
                 </template>
 
+                <div v-if="newEditor && !aiAssistantLoading && !aiAssistantMessages.some(message => message.role === 'user')" class="ai-v2-chips">
+                  <button v-for="suggestion in aiSuggestions" :key="suggestion.label" type="button" @click="useAiSuggestion(suggestion)">{{ suggestion.label }}</button>
+                </div>
                 <button v-if="aiStructurePreviousSections" type="button"
                   class="my-2 text-sm font-semibold text-indigo-600 underline"
                   :disabled="aiStructureApplying || isSectionEditorOpen" @click="undoAiStructure">
@@ -1477,6 +1503,7 @@ import { describeSection, sectionLabels as defaultSectionLabels } from "../../ut
 import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
 import { resolvePageDesign } from "../../utils/pageDesign";
 import { sectionNameV2 } from "../../utils/sectionCatalogV2";
+import { getLocalizedValue } from "../../utils/i18n";
 import SectionPickerV2 from "../../components/admin/SectionPickerV2.vue";
 import EdGroup from "../../components/admin/v2edit/EdGroup.vue";
 import EdText from "../../components/admin/v2edit/EdText.vue";
@@ -2142,6 +2169,18 @@ const aiStructureApplying = ref(false);
 const aiStructureError = ref("");
 const aiStructurePreviousSections = shallowRef<PageSection[] | null>(null);
 const hasAiStructure = (content: string) => /^\s*(?:🟩\s*)?(?:SECAO|SEÇÃO)\s*:\s*.+$/im.test(content);
+// Editor novo: a resposta com estrutura vira uma lista de seções, com o texto completo sob demanda.
+const AI_SECTION_LINE = /^\s*(?:🟩\s*)?(?:SECAO|SEÇÃO)\s*:\s*(.+)$/gim;
+const aiStructureNames = (content: string) =>
+  [...content.matchAll(AI_SECTION_LINE)].map(match => match[1].replace(/[*_`#]/g, "").trim()).filter(Boolean);
+const aiIntroText = (content: string) => {
+  const first = content.search(/^\s*(?:🟩\s*)?(?:SECAO|SEÇÃO)\s*:/im);
+  return (first > 0 ? content.slice(0, first) : "").trim();
+};
+const aiExpanded = reactive(new Set<number>());
+const aiDetails = reactive(new Set<number>());
+const toggleAiExpanded = (index: number) => (aiExpanded.has(index) ? aiExpanded.delete(index) : aiExpanded.add(index));
+const toggleAiDetails = (index: number) => (aiDetails.has(index) ? aiDetails.delete(index) : aiDetails.add(index));
 const applyAiStructure = async (reply: string, mode: "insert" | "replace") => {
   if (aiStructureApplying.value || aiAssistantLoading.value || isSectionEditorOpen.value) return;
   aiStructureApplying.value = true;
@@ -2401,6 +2440,32 @@ const aiAssistantUsageLabel = computed(() => {
   const remaining = usage.remaining ?? 0;
   return `${remaining}/${limit} restantes`;
 });
+const aiAssistantUsageText = computed(() => {
+  const usage = aiAssistantUsage.value;
+  if (!usage) return "";
+  if (usage.unlimited) return "Mensagens ilimitadas";
+  return `${usage.used ?? 0} de ${usage.limit ?? 0} mensagens no mês`;
+});
+// Sugestões prontas na primeira conversa (editor novo).
+const aiSuggestions = computed(() => {
+  const hero = sections.value.find(section => section.type === "hero") as HeroSection | undefined;
+  const heroTitle = hero ? getLocalizedValue(hero.title) : "";
+  const heroText = hero ? getLocalizedValue(hero.subtitle).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() : "";
+  const pageName = (pageTitle.value || page.value?.title || "").trim();
+  return [
+    { label: "Montar estrutura da página", text: "Monte a estrutura completa desta página com as informações da viagem que vou enviar (texto, PDF ou prints).", send: false },
+    {
+      label: "Melhorar texto da capa",
+      text: `Melhore o título e o texto da capa, mantendo as informações.\nTítulo atual: ${heroTitle || "(vazio)"}\nTexto atual: ${heroText || "(vazio)"}`,
+      send: true
+    },
+    { label: "Criar perguntas frequentes", text: `Crie uma seção de perguntas frequentes para a página "${pageName || "desta viagem"}".`, send: true }
+  ];
+});
+const useAiSuggestion = (suggestion: { text: string; send: boolean }) => {
+  aiAssistantDraft.value = suggestion.text;
+  if (suggestion.send) sendAiAssistantMessage();
+};
 const aiAssistantSidebarStyle = computed(() => ({
   width: `${aiAssistantSidebarWidth.value}px`,
   maxWidth: "calc(100vw - 48px)"
@@ -6929,6 +6994,30 @@ onMounted(async () => {
 .ed-stage.is-mobile-preview .v2ed-bar { top: 50px; }
 .ed-stage.is-mobile-preview .v2ed-edit span { display: none; }
 .ed-stage.is-mobile-preview .v2ed-edit { padding: 0 10px; }
+.editor-workspace.is-v2 .editor-ai-sidebar-header { display: flex; align-items: center; gap: 10px; }
+.ai-v2-mark { display: grid; flex-shrink: 0; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: #e7f6ee; color: #0b7a55; }
+.ai-v2-mark svg { width: 18px; height: 18px; }
+.editor-workspace.is-v2 .editor-ai-sidebar-header-copy { flex: 1; min-width: 0; }
+.ai-v2-usage { display: block; font-size: 12px; color: var(--muted-foreground); }
+.editor-workspace.is-v2 .editor-ai-sidebar-bubble.is-user { background: var(--foreground); color: var(--background); }
+.editor-workspace.is-v2 .editor-ai-sidebar-bubble.is-assistant { background: var(--muted); color: var(--foreground); border-color: transparent; }
+.ai-v2-structure { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.ai-v2-structure-title { margin: 0; font-size: 13px; font-weight: 700; }
+.ai-v2-structure ol { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 6px; list-style: none; border-radius: 12px; background: var(--card); box-shadow: inset 0 0 0 1px var(--border); }
+.ai-v2-structure li { display: flex; align-items: center; gap: 10px; padding: 6px 8px; font-size: 13px; }
+.ai-v2-structure li b { width: 16px; flex-shrink: 0; text-align: right; color: var(--muted-foreground); font-size: 12px; }
+.ai-v2-structure li.is-more button { padding-left: 26px; font-size: 13px; font-weight: 700; color: var(--primary); }
+.ai-v2-actions { display: flex; gap: 8px; }
+.ai-v2-actions button { flex: 1; height: 38px; border-radius: 999px; background: var(--card); box-shadow: inset 0 0 0 1px var(--border); font-size: 13px; font-weight: 700; color: var(--foreground); }
+.ai-v2-actions button.is-primary { background: #12b981; box-shadow: none; color: #fff; }
+.ai-v2-actions button:disabled { opacity: 0.5; }
+.ai-v2-hint { font-size: 12px; color: var(--muted-foreground); }
+.ai-v2-details { align-self: flex-start; font-size: 12px; font-weight: 700; color: var(--muted-foreground); text-decoration: underline; text-underline-offset: 3px; }
+.ai-v2-full { padding: 10px; border-radius: 10px; background: var(--card); font-size: 12px; }
+.ai-v2-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
+.ai-v2-chips button { padding: 7px 12px; border-radius: 999px; background: var(--card); box-shadow: inset 0 0 0 1px var(--border); font-size: 13px; font-weight: 600; color: var(--foreground); }
+.ai-v2-chips button:hover { box-shadow: inset 0 0 0 1.5px #12b981; }
+.editor-workspace.is-v2 .editor-ai-sidebar-send:not(:disabled) { background: var(--foreground); color: var(--background); }
 .ed-panel-eyebrow { margin: 0 0 2px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted-foreground); }
 .ed-panel-title { margin: 0 0 16px; font-size: 18px; font-weight: 700; color: var(--foreground); }
 .ed-rail { display: flex; flex: 0 0 64px; flex-direction: column; align-items: center; gap: 4px; padding: 12px 0; border-right: 1px solid var(--border); }
