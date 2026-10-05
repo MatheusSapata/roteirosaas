@@ -48,9 +48,7 @@
                 :aria-label="viewCopy.pipeline.dragAria"
                 @mousedown.prevent
               >
-                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="currentColor">
-                  <path d="M9 5a1.5 1.5 0 1 1-3 0a1.5 1.5 0 0 1 3 0m0 7a1.5 1.5 0 1 1-3 0a1.5 1.5 0 0 1 3 0m0 7a1.5 1.5 0 1 1-3 0a1.5 1.5 0 0 1 3 0m9-14a1.5 1.5 0 1 1-3 0a1.5 1.5 0 0 1 3 0m0 7a1.5 1.5 0 1 1-3 0a1.5 1.5 0 0 1 3 0m0 7a1.5 1.5 0 1 1-3 0a1.5 1.5 0 0 1 3 0" />
-                </svg>
+                <GripVerticalIcon class="h-4 w-4" aria-hidden="true" />
               </button>
 
               <div class="min-w-0 flex-1">
@@ -101,7 +99,7 @@
 
     <aside class="pipeline-info">
       <span class="pipeline-info-icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg>
+        <InfoIcon aria-hidden="true" />
       </span>
       <div>
         <p class="pipeline-info-title">Como as etapas funcionam</p>
@@ -120,9 +118,7 @@
               </h3>
             </div>
             <button type="button" class="pipeline-modal-close" @click="closeStatusModal">
-              <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M6 6l12 12M6 18 18 6" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
+              <XIcon class="h-5 w-5" aria-hidden="true" />
             </button>
           </div>
 
@@ -190,6 +186,7 @@
 </template>
 
 <script setup lang="ts">
+import { GripVerticalIcon, InfoIcon, XIcon } from "lucide-vue-next";
 import { computed, onMounted, reactive, ref, watch } from "vue";
 import type { LeadStatus } from "../../../types/leads";
 import { useLeadCaptureStore } from "../../../store/useLeadCaptureStore";

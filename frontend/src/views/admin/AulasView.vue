@@ -57,7 +57,7 @@
               @click="playing = true"
             >
               <span class="lv-play" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z" /></svg>
+                <PlayIcon fill="currentColor" aria-hidden="true" />
               </span>
               <span class="lv-poster-text">
                 <small>{{ activeModuleLabel }} · aula {{ activeLessonNumber }}</small>
@@ -87,7 +87,7 @@
               :aria-pressed="isCompleted(activeLesson.id)"
               @click="toggleLessonCompleted(activeLesson.id, !isCompleted(activeLesson.id))"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+              <CheckIcon aria-hidden="true" />
               {{ isCompleted(activeLesson.id) ? "Concluída" : "Marcar como concluída" }}
             </button>
             <button v-if="nextLesson" type="button" class="lv-btn-ghost" @click="selectLesson(nextLesson.id)">Próxima aula</button>
@@ -112,7 +112,7 @@
               <b>{{ group.label }}</b>
               <small>{{ completedIn(group) }} de {{ group.lessons.length }} {{ group.lessons.length === 1 ? "concluída" : "concluídas" }}</small>
             </span>
-            <svg class="lv-chev" :class="{ open: isModuleExpanded(group.key) }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+            <ChevronDownIcon class="lv-chev" :class="{ open: isModuleExpanded(group.key) }" aria-hidden="true" />
           </button>
 
           <ul v-if="isModuleExpanded(group.key)" class="lv-lessons">
@@ -128,8 +128,8 @@
                   :class="activeLessonId === lesson.id ? 'is-playing' : isCompleted(lesson.id) ? 'is-done' : ''"
                   aria-hidden="true"
                 >
-                  <svg v-if="activeLessonId === lesson.id" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z" /></svg>
-                  <svg v-else-if="isCompleted(lesson.id)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+                  <PlayIcon v-if="activeLessonId === lesson.id" fill="currentColor" aria-hidden="true" />
+                  <CheckIcon v-else-if="isCompleted(lesson.id)" aria-hidden="true" />
                   <template v-else>{{ lessonNumber(lesson.id) }}</template>
                 </span>
                 <span class="lv-lesson-name">{{ lesson.title }}</span>
@@ -144,6 +144,7 @@
 </template>
 
 <script setup lang="ts">
+import { CheckIcon, ChevronDownIcon, PlayIcon } from "lucide-vue-next";
 import { computed, onMounted, ref, watch } from "vue";
 import { useLessonsStore } from "../../store/useLessonsStore";
 

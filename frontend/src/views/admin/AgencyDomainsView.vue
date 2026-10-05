@@ -27,7 +27,7 @@
                 <p>{{ domains.length }} {{ domains.length === 1 ? "domínio" : "domínios" }} · {{ activeCount }} no ar</p>
               </div>
               <button type="button" class="dm-btn-ghost" :disabled="loadingDomains" @click="fetchDomains">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8" /><path d="M21 3v5h-5" /></svg>
+                <RotateCwIcon aria-hidden="true" />
                 Atualizar
               </button>
             </header>
@@ -39,7 +39,7 @@
             <article v-for="domain in loadingDomains ? [] : domains" :key="domain.id" class="dm-domain">
               <div class="dm-domain-top">
                 <span class="dm-globe" :class="domain.is_active ? 'is-on' : 'is-pending'" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" /></svg>
+                  <GlobeIcon aria-hidden="true" />
                 </span>
                 <div class="dm-domain-main">
                   <div class="dm-domain-title">
@@ -62,7 +62,7 @@
                 </button>
                 <div class="dm-menu-wrap">
                   <button type="button" class="dm-icon-btn" aria-label="Mais ações" title="Mais ações" @click.stop="openMenuId = openMenuId === domain.id ? null : domain.id">
-                    <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="12" cy="19" r="1.6" /></svg>
+                    <EllipsisVerticalIcon aria-hidden="true" />
                   </button>
                   <div v-if="openMenuId === domain.id" class="dm-menu" @click="openMenuId = null">
                     <button v-if="domain.is_verified" type="button" :disabled="isActionRunning(domain.id)" @click="verifyDomain(domain)">Verificar DNS de novo</button>
@@ -75,16 +75,16 @@
 
               <div class="dm-chips">
                 <span class="dm-chip" :class="domain.is_verified ? 'is-ok' : 'is-wait'">
-                  <svg v-if="domain.is_verified" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
-                  <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+                  <CheckIcon v-if="domain.is_verified" aria-hidden="true" />
+                  <ClockIcon v-else aria-hidden="true" />
                   {{ domain.is_verified ? "DNS verificado" : "DNS pendente" }}
                 </span>
                 <span class="dm-chip" :class="sslReady(domain) ? 'is-ok' : 'is-neutral'">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
+                  <LockIcon aria-hidden="true" />
                   {{ sslReady(domain) ? "Cadeado (SSL) ativo" : "Cadeado (SSL) aguardando" }}
                 </span>
                 <span v-if="domain.is_active" class="dm-chip is-ok">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+                  <CheckIcon aria-hidden="true" />
                   Ativo
                 </span>
                 <button
@@ -112,7 +112,7 @@
                       <td><code>{{ record.value }}</code></td>
                       <td class="text-right">
                         <button type="button" class="dm-copy" :disabled="!record.value || record.value === '-'" @click="copyText(record.value, `${record.key}-${domain.id}`)">
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V6a2 2 0 0 1 2-2h9" /></svg>
+                          <CopyIcon aria-hidden="true" />
                           {{ copiedState[`${record.key}-${domain.id}`] ? "Copiado" : "Copiar" }}
                         </button>
                       </td>
@@ -159,7 +159,7 @@
                   ><i></i></button>
                 </label>
                 <button type="submit" class="dm-btn-primary dm-btn-block" :disabled="creating || loadingDomains">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg>
+                  <PlusIcon aria-hidden="true" />
                   {{ creating ? viewCopy.form.submitSaving : "Adicionar domínio" }}
                 </button>
                 <p v-if="formError" class="dm-msg is-error">{{ formError }}</p>
@@ -205,7 +205,7 @@
     </div>
     <div
       v-if="!domainsAllowed"
-      class="pointer-events-auto fixed inset-y-0 left-0 right-0 z-[120] flex items-center justify-center bg-black/60 px-4 text-center backdrop-blur-[2px] md:left-64"
+      class="pointer-events-auto fixed inset-y-0 left-0 right-0 z-[120] flex items-center justify-center bg-black/60 px-4 text-center backdrop-blur-[2px] md:left-[var(--admin-sidebar-offset)]"
     >
       <div class="max-w-md rounded-3xl border border-border bg-card p-6 text-card-foreground shadow-elegant">
         <p class="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">{{ viewCopy.overlay.eyebrow }}</p>
@@ -226,6 +226,16 @@
 </template>
 
 <script setup lang="ts">
+import {
+  CheckIcon,
+  ClockIcon,
+  CopyIcon,
+  EllipsisVerticalIcon,
+  GlobeIcon,
+  LockIcon,
+  PlusIcon,
+  RotateCwIcon
+} from "lucide-vue-next";
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import ImageUploadField from "../../components/admin/inputs/ImageUploadField.vue";

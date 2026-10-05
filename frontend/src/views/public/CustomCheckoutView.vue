@@ -107,10 +107,7 @@
               </button>
               <button class="checkout-method-card" @click="chooseCard">
                 <div class="checkout-method-icon">
-                  <svg viewBox="0 0 64 64" fill="none">
-                    <rect x="10" y="16" width="44" height="32" rx="4" stroke="currentColor" stroke-width="4"/>
-                    <path d="M10 26h44" stroke="currentColor" stroke-width="4"/>
-                  </svg>
+                  <CreditCardIcon aria-hidden="true" />
                 </div>
                 <span>Pagar com Cartão de Crédito</span>
               </button>
@@ -129,10 +126,7 @@
             <form class="checkout-form" @submit.prevent="submitCard">
               <div class="checkout-card-info">
                 <div class="checkout-card-info-icon">
-                  <svg viewBox="0 0 64 64" fill="none" aria-hidden="true">
-                    <rect x="10" y="16" width="44" height="32" rx="4" stroke="currentColor" stroke-width="4"/>
-                    <path d="M10 26h44" stroke="currentColor" stroke-width="4"/>
-                  </svg>
+                  <CreditCardIcon aria-hidden="true" />
                 </div>
                 <p>Preencha os dados do seu cartão de crédito e conclua o pagamento</p>
               </div>
@@ -256,26 +250,8 @@
                     :aria-label="showPassword ? 'Ocultar senha' : 'Mostrar senha'"
                     @click="showPassword = !showPassword"
                   >
-                    <svg v-if="showPassword" viewBox="0 0 24 24" aria-hidden="true">
-                      <path
-                        d="M3 3l18 18M10.58 10.58A2 2 0 0012 14a2 2 0 001.42-.58M9.88 5.09A10.94 10.94 0 0112 5c5 0 9.27 3.11 11 7M6.1 6.1C4.27 7.36 2.84 9.07 2 11c.56 1.27 1.39 2.43 2.44 3.4C6.39 16.33 9.06 17.5 12 17.5c1.74 0 3.38-.4 4.84-1.12"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.8"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                    </svg>
-                    <svg v-else viewBox="0 0 24 24" aria-hidden="true">
-                      <path
-                        d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7zm10 3a3 3 0 100-6 3 3 0 000 6z"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.8"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                    </svg>
+                    <EyeOffIcon v-if="showPassword" aria-hidden="true" />
+                    <EyeIcon v-else aria-hidden="true" />
                   </button>
                 </div>
               </label>
@@ -289,26 +265,8 @@
                     :aria-label="showConfirmPassword ? 'Ocultar senha' : 'Mostrar senha'"
                     @click="showConfirmPassword = !showConfirmPassword"
                   >
-                    <svg v-if="showConfirmPassword" viewBox="0 0 24 24" aria-hidden="true">
-                      <path
-                        d="M3 3l18 18M10.58 10.58A2 2 0 0012 14a2 2 0 001.42-.58M9.88 5.09A10.94 10.94 0 0112 5c5 0 9.27 3.11 11 7M6.1 6.1C4.27 7.36 2.84 9.07 2 11c.56 1.27 1.39 2.43 2.44 3.4C6.39 16.33 9.06 17.5 12 17.5c1.74 0 3.38-.4 4.84-1.12"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.8"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                    </svg>
-                    <svg v-else viewBox="0 0 24 24" aria-hidden="true">
-                      <path
-                        d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7zm10 3a3 3 0 100-6 3 3 0 000 6z"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.8"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                    </svg>
+                    <EyeOffIcon v-if="showConfirmPassword" aria-hidden="true" />
+                    <EyeIcon v-else aria-hidden="true" />
                   </button>
                 </div>
               </label>
@@ -340,23 +298,14 @@
         </section>
 
         <div v-if="step !== 'success' && step !== 'password'" class="checkout-protected checkout-protected-footer">
-          <svg viewBox="0 0 20 24" aria-hidden="true">
-            <path d="M0 0h20v24H0z" fill="none" />
-            <path fill="currentColor" d="M3.5 6.5V10H2a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V12a2 2 0 0 0-2-2h-1.5V6.5a6.5 6.5 0 1 0-13 0M6 10V6.5a4 4 0 0 1 8 0V10zm2 5.5a2 2 0 1 1 3.092 1.676l-.008.005s.195 1.18.415 2.57v.001a.75.75 0 0 1-.749.749H9.248a.75.75 0 0 1-.749-.749v-.001l.415-2.57a2 2 0 0 1-.916-1.68z" />
-          </svg>
+          <LockIcon aria-hidden="true" />
           <span>Sua compra está protegida. Pagamento processado pelo Asaas</span>
         </div>
 
         <footer v-if="step !== 'success' && step !== 'password'" class="checkout-footer">
           <div v-if="hasAppliedCoupon" class="checkout-footer-discount-line">
             <div class="checkout-footer-discount-main">
-              <svg class="checkout-footer-discount-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2048 2048" aria-hidden="true">
-                <path d="M0 0h2048v2048H0z" fill="none" />
-                <path
-                  fill="currentColor"
-                  d="M624 832q0 36-14 68t-38 56t-56 38t-68 14t-68-14t-56-38t-38-56t-14-68t14-68t38-56t56-38t68-14t68 14t56 38t38 56t14 68m-176 80q33 0 56-23t24-57q0-33-23-56t-57-24q-33 0-56 23t-24 57q0 33 23 56t57 24m512 128q36 0 68 14t56 38t38 56t14 68t-14 68t-38 56t-56 38t-68 14t-68-14t-56-38t-38-56t-14-68t14-68t38-56t56-38t68-14m0 256q33 0 56-23t24-57q0-33-23-56t-57-24q-33 0-56 23t-24 57q0 33 23 56t57 24M842 640h108l-384 768H458zm566-256l640 640l-640 640H0V384zm-53 1152l512-512l-512-512H128v1024zm181-576q26 0 45 19t19 45t-19 45t-45 19t-45-19t-19-45t19-45t45-19"
-                />
-              </svg>
+              <TicketPercentIcon class="checkout-footer-discount-icon" aria-hidden="true" />
               <div class="checkout-footer-discount-text">
                 <div class="checkout-footer-discount-text-top">
                   <span><strong>Cupom aplicado:</strong> {{ appliedCouponLabel.replace("Cupom ", "") }}</span>
@@ -399,6 +348,13 @@
 </template>
 
 <script setup lang="ts">
+import {
+  CreditCardIcon,
+  EyeIcon,
+  EyeOffIcon,
+  LockIcon,
+  TicketPercentIcon
+} from "lucide-vue-next";
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import api from "../../services/api";

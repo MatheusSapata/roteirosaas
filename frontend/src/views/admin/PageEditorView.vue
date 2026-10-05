@@ -2,7 +2,7 @@
 <div class="page-editor-view w-full space-y-6 px-4 py-6 md:px-8 md:py-4">
     <div class="ed-topbar">
       <button type="button" class="ed-back" @click="goBack" :aria-label="viewCopy.actions.goBack">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+        <ChevronLeftIcon aria-hidden="true" />
       </button>
       <div class="ed-title-block">
         <p class="ed-crumb">Páginas</p>
@@ -10,7 +10,7 @@
           <h1 class="ed-title">{{ page?.title || viewCopy.header.defaultTitle }}</h1>
           <span class="ed-pill" :class="isPublished ? 'is-on' : 'is-off'"><i></i>{{ isPublished ? "Publicada" : "Rascunho" }}</span>
           <span class="ed-saved" :class="{ 'is-dirty': hasUnsavedChanges }">
-            <svg v-if="!hasUnsavedChanges" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+            <CheckIcon v-if="!hasUnsavedChanges" aria-hidden="true" />
             <i v-else></i>
             {{ hasUnsavedChanges ? "Alterações não salvas" : "Tudo salvo" }}
           </span>
@@ -18,16 +18,16 @@
       </div>
       <div class="ed-actions">
         <button v-if="canUseAiAssistant && !isMobileViewport" type="button" class="ed-btn ed-btn-ai" @click="toggleAiAssistant">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.8L20 10.7l-6.1 1.9L12 18.5l-1.9-5.9L4 10.7l6.1-1.9z" /></svg>
+          <SparkleIcon aria-hidden="true" />
           Assistente IA
         </button>
         <button v-if="isPublished" type="button" class="ed-btn ed-btn-ghost" :disabled="!publicUrl" @click="viewPublicPage">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><path d="M15 3h6v6" /><path d="M10 14 21 3" /></svg>
+          <ExternalLinkIcon aria-hidden="true" />
           {{ viewCopy.actions.viewPage }}
         </button>
         <div class="ed-menu-wrap">
           <button type="button" class="ed-icon-btn" aria-label="Mais ações" title="Mais ações" @click.stop="topbarMenuOpen = !topbarMenuOpen">
-            <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="12" cy="19" r="1.6" /></svg>
+            <EllipsisVerticalIcon aria-hidden="true" />
           </button>
           <div v-if="topbarMenuOpen" class="ed-menu" @click="topbarMenuOpen = false">
             <button type="button" @click="saveTemplate">{{ viewCopy.toolbar.saveTemplate }}</button>
@@ -66,10 +66,7 @@
               </div>
             </div>
             <button type="button" class="editor-ai-sidebar-close" @click="toggleAiAssistant" aria-label="Fechar ajuda de IA">
-              <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                <path d="M6 6l12 12" />
-                <path d="M18 6 6 18" />
-              </svg>
+              <XIcon class="h-4 w-4" aria-hidden="true" />
             </button>
           </div>
             <div class="editor-ai-sidebar-chat">
@@ -135,9 +132,7 @@
                   :disabled="aiAssistantLoading || aiAssistantLimitReached"
                   aria-label="Anexar arquivos"
                 >
-                  <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M21.44 11.05 12 20.49a5.5 5.5 0 0 1-7.78-7.78l9.44-9.44a3.5 3.5 0 1 1 4.95 4.95l-9.5 9.5a1.5 1.5 0 0 1-2.12-2.12l8.78-8.78" />
-                  </svg>
+                  <PaperclipIcon class="h-4 w-4" aria-hidden="true" />
                 </button>
 
                 <span class="editor-ai-sidebar-attach-count" v-if="aiAssistantAttachments.length">
@@ -159,10 +154,7 @@
                   @click="sendAiAssistantMessage"
                   :aria-label="aiAssistantSendButtonLabel"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="h-4 w-4" fill="none" aria-hidden="true">
-                    <path d="M0 0h24v24H0z" fill="none" />
-                    <path fill="currentColor" d="M20.04 2.323c1.016-.355 1.992.621 1.637 1.637l-5.925 16.93c-.385 1.098-1.915 1.16-2.387.097l-2.859-6.432l4.024-4.025a.75.75 0 0 0-1.06-1.06l-4.025 4.024l-6.432-2.859c-1.063-.473-1-2.002.097-2.387z" />
-                  </svg>
+                  <SendIcon class="h-4 w-4" aria-hidden="true" />
                 </button>
               </div>
             </div>
@@ -427,24 +419,24 @@
     >
       <nav class="ed-tabs" role="tablist">
         <button type="button" class="ed-tab" :class="{ on: activeSettingsTab === 'content' }" @click="selectSettingsTab('content')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M9 21V9" /></svg>
+          <PanelsTopLeftIcon aria-hidden="true" />
           Conteúdo
         </button>
         <button type="button" class="ed-tab" :class="{ on: activeSettingsTab === 'general' }" @click="selectSettingsTab('general')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+          <PencilIcon aria-hidden="true" />
           Título e link
         </button>
         <button type="button" class="ed-tab" :class="{ on: activeSettingsTab === 'colors' }" @click="selectSettingsTab('colors')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="1.5" /><circle cx="17.5" cy="10.5" r="1.5" /><circle cx="8.5" cy="7.5" r="1.5" /><circle cx="6.5" cy="12.5" r="1.5" /><path d="M12 2a10 10 0 0 0 0 20c1 0 2-1 2-2 0-.5-.2-1-.5-1.3-.3-.4-.5-.8-.5-1.3 0-1 1-2 2-2h2.3A5 5 0 0 0 22 10c0-4.4-4.5-8-10-8Z" /></svg>
+          <PaletteIcon aria-hidden="true" />
           Cores
         </button>
         <button type="button" class="ed-tab" :class="{ on: activeSettingsTab === 'pixels' }" @click="selectSettingsTab('pixels')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
+          <ActivityIcon aria-hidden="true" />
           Rastreamento
           <span v-if="!selectedPixels.meta && !selectedPixels.ga" class="ed-tab-badge">Não configurado</span>
         </button>
         <button type="button" class="ed-tab" :class="{ on: activeSettingsTab === 'capture' }" @click="selectSettingsTab('capture')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M19 8v6M22 11h-6" /></svg>
+          <UserPlusIcon aria-hidden="true" />
           Captação de leads
         </button>
       </nav>
@@ -474,11 +466,11 @@
             @dragend="resetSectionDrag"
           >
             <span class="ed-grip" :class="{ 'is-locked': !canDragSection(idx) }" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.4" /><circle cx="15" cy="6" r="1.4" /><circle cx="9" cy="12" r="1.4" /><circle cx="15" cy="12" r="1.4" /><circle cx="9" cy="18" r="1.4" /><circle cx="15" cy="18" r="1.4" /></svg>
+              <GripVerticalIcon aria-hidden="true" />
             </span>
             <button type="button" class="ed-section-main" :disabled="isLockedFooterSection(section)" @click="openSectionEditor(idx)">
               <span class="ed-section-icon" :class="sectionTone(section)" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path :d="sectionIconPath(section)" /></svg>
+                <component :is="sectionIcon(section)" aria-hidden="true" />
               </span>
               <span class="min-w-0">
                 <span class="ed-section-name">{{ sectionLabels[(section as any).type] || (section as any).type }}</span>
@@ -498,7 +490,7 @@
           </li>
         </ul>
         <button type="button" class="ed-add-section" @click="openSectionPicker(null)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg>
+          <PlusIcon aria-hidden="true" />
           Adicionar seção
         </button>
         <p class="ed-sections-hint">Clique numa seção (aqui ou na prévia) para editar. Arraste para mudar a ordem; o interruptor esconde a seção sem apagar.</p>
@@ -807,11 +799,7 @@
             :class="previewDevice === 'desktop' ? 'bg-card text-accent-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
             @click="previewDevice = 'desktop'"
           >
-            <svg aria-hidden="true" viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="4" width="18" height="12" rx="2"></rect>
-              <path d="M8 20h8"></path>
-              <path d="M12 16v4"></path>
-            </svg>
+            <MonitorIcon aria-hidden="true" class="h-3.5 w-3.5" />
             {{ viewCopy.preview.desktopLabel }}
           </button>
           <button
@@ -820,10 +808,7 @@
             :class="previewDevice === 'mobile' ? 'bg-card text-accent-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
             @click="previewDevice = 'mobile'"
           >
-            <svg aria-hidden="true" viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="7" y="2.5" width="10" height="19" rx="2.5"></rect>
-              <path d="M11 18.5h2"></path>
-            </svg>
+            <SmartphoneIcon aria-hidden="true" class="h-3.5 w-3.5" />
             {{ viewCopy.preview.mobileLabel }}
           </button>
         </div>
@@ -853,10 +838,7 @@
                       class="inline-flex items-center gap-2 rounded-full border border-emerald-400 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-100"
                       @click="openSectionPicker(null)"
                     >
-                      <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M12 5v14" />
-                        <path d="M5 12h14" />
-                      </svg>
+                      <PlusIcon class="h-3.5 w-3.5" aria-hidden="true" />
                       {{ viewCopy.preview.emptyAction }}
                     </button>
                   </div>
@@ -921,10 +903,7 @@
                                 :class="[overlayButtonSizingClass, isMobileOverlayMode ? 'col-span-2' : '']"
                                 @click.stop="openSectionEditor(idx)"
                               >
-                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                              <path d="M12 20h9" />
-                              <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z" />
-                            </svg>
+                            <PencilIcon class="h-4 w-4" aria-hidden="true" />
                             <span class="overlay-label text-white">{{ viewCopy.overlay.edit }}</span>
                           </button>
 
@@ -936,10 +915,7 @@
                             :disabled="idx === 0"
                             @click.stop="moveSection(idx, -1)"
                           >
-                            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-                              <path d="m5 12 7-7 7 7" />
-                              <path d="M12 5v14" />
-                            </svg>
+                            <ArrowUpIcon class="h-4 w-4" aria-hidden="true" />
                             <span class="overlay-label text-white">{{ viewCopy.overlay.moveUp }}</span>
                           </button>
 
@@ -951,10 +927,7 @@
                             :disabled="idx === sections.length - 1"
                             @click.stop="moveSection(idx, 1)"
                           >
-                            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-                              <path d="m19 12-7 7-7-7" />
-                              <path d="M12 19V5" />
-                            </svg>
+                            <ArrowDownIcon class="h-4 w-4" aria-hidden="true" />
                             <span class="overlay-label text-white">{{ viewCopy.overlay.moveDown }}</span>
                           </button>
 
@@ -965,10 +938,7 @@
                             :class="overlayButtonSizingClass"
                             @click.stop="duplicateSection(idx)"
                           >
-                            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
-                              <rect x="9" y="9" width="11" height="11" rx="2" />
-                              <rect x="4" y="4" width="11" height="11" rx="2" />
-                            </svg>
+                            <CopyIcon class="h-4 w-4" aria-hidden="true" />
                             <span class="overlay-label text-white">{{ viewCopy.overlay.duplicate }}</span>
                           </button>
 
@@ -978,13 +948,7 @@
                             :class="overlayButtonSizingClass"
                             @click.stop="removeSection(idx)"
                           >
-                            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-                              <path d="M3 6h18" />
-                              <path d="M8 6V4h8v2" />
-                              <path d="m9 10 1 8" />
-                              <path d="m15 10-1 8" />
-                              <path d="M5 6l1 14h12l1-14" />
-                            </svg>
+                            <Trash2Icon class="h-4 w-4" aria-hidden="true" />
                             <span class="overlay-label text-white">{{ viewCopy.overlay.delete }}</span>
                           </button>
                         </div>
@@ -1026,9 +990,7 @@
               class="absolute right-3 top-3 rounded-full bg-black/70 p-2 text-white shadow-lg"
               @click="hideLeadFormPreview"
             >
-              <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M6 6l12 12M6 18 18 6" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
+              <XIcon class="h-4 w-4" aria-hidden="true" />
             </button>
             <LeadFormPreview v-if="previewForm" :form="previewForm" />
           </div>
@@ -1104,7 +1066,41 @@
 </template>
 
 <script setup lang="ts">
+import {
+  ActivityIcon,
+  ArrowDownIcon,
+  ArrowUpIcon,
+  BadgeDollarSignIcon,
+  CheckIcon,
+  ChevronLeftIcon,
+  CircleQuestionMarkIcon,
+  CopyIcon,
+  EllipsisVerticalIcon,
+  ExternalLinkIcon,
+  GripVerticalIcon,
+  ImageIcon,
+  LinkIcon,
+  ListIcon,
+  MessageCircleIcon,
+  MonitorIcon,
+  PaletteIcon,
+  PanelsTopLeftIcon,
+  PaperclipIcon,
+  PencilIcon,
+  PlaneIcon,
+  PlusIcon,
+  SendIcon,
+  SmartphoneIcon,
+  SparkleIcon,
+  TimerIcon,
+  Trash2Icon,
+  UserIcon,
+  UserPlusIcon,
+  VideoIcon,
+  XIcon
+} from "lucide-vue-next";
 import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, provide, reactive, ref, shallowRef, watch } from "vue";
+import type { Component } from "vue";
 import { onBeforeRouteLeave, useRoute, useRouter } from "vue-router";
 import api from "../../services/api";
 import {
@@ -4039,20 +4035,20 @@ const sectionTone = (section: PageSection) => {
   for (const char of type) hash = (hash + char.charCodeAt(0)) % sectionTones.length;
   return sectionTones[hash];
 };
-const sectionIconPaths: Record<string, string> = {
-  image: "M4 5h16v14H4zM4 15l4-4 4 4 3-3 5 5",
-  money: "M12 3v18M16 7h-6a3 3 0 0 0 0 6h4a3 3 0 0 1 0 6H8",
-  list: "M4 6h16M4 12h16M4 18h10",
-  question: "M12 2a10 10 0 1 0 0 20a10 10 0 1 0 0-20M9.1 9a3 3 0 1 1 4.2 2.7c-.8.4-1.3 1.1-1.3 2v.3M12 17h.01",
-  chat: "M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z",
-  video: "M3 6h13v12H3zM16 10l5-3v10l-5-3",
-  user: "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 3a4 4 0 1 0 0 8a4 4 0 1 0 0-8",
-  link: "M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1",
-  clock: "M12 2a10 10 0 1 0 0 20a10 10 0 1 0 0-20M12 6v6l4 2",
-  plane: "M2 16l20-8-6 12-3-5-5-2z",
-  layout: "M4 4h16v16H4zM4 10h16"
+const sectionIconComponents: Record<string, Component> = {
+  image: ImageIcon,
+  money: BadgeDollarSignIcon,
+  list: ListIcon,
+  question: CircleQuestionMarkIcon,
+  chat: MessageCircleIcon,
+  video: VideoIcon,
+  user: UserIcon,
+  link: LinkIcon,
+  clock: TimerIcon,
+  plane: PlaneIcon,
+  layout: PanelsTopLeftIcon
 };
-const sectionIconByType: Record<string, keyof typeof sectionIconPaths> = {
+const sectionIconByType: Record<string, keyof typeof sectionIconComponents> = {
   hero: "image", banner_card: "image", photo: "image", gallery: "image",
   prices: "money", viajeon_checkout: "money",
   itinerary: "list", reasons: "list", story: "list",
@@ -4061,7 +4057,7 @@ const sectionIconByType: Record<string, keyof typeof sectionIconPaths> = {
   biography: "user", agency_footer: "user", links: "link", cta: "link",
   countdown: "clock", flight_details: "plane"
 };
-const sectionIconPath = (section: PageSection) => sectionIconPaths[sectionIconByType[String((section as any)?.type)] || "layout"];
+const sectionIcon = (section: PageSection): Component => sectionIconComponents[sectionIconByType[String((section as any)?.type)] || "layout"];
 const previewAddressLabel = computed(() => {
   const url = publicUrl.value || "";
   return url ? url.replace(/^https?:\/\//, "") : pageSlug.value || "";

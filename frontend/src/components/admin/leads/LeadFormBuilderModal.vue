@@ -11,20 +11,20 @@
                 <div class="fm-sub-txt">{{ state.name?.trim() || "Personalize a aparência, os campos e as notificações." }}</div>
               </div>
               <button class="fm-close" type="button" aria-label="Fechar formulário" title="Fechar" @click="close">
-                <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                <XIcon aria-hidden="true" />
               </button>
             </div>
             <div class="fm-tabs">
               <button class="fm-tab-btn" :class="{ on: activeTab === 'visual' }" @click="activeTab = 'visual'">
-                <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+                <PanelsTopLeftIcon aria-hidden="true" />
                 Visual
               </button>
               <button class="fm-tab-btn" :class="{ on: activeTab === 'notification' }" @click="activeTab = 'notification'">
-                <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+                <MessageSquareIcon aria-hidden="true" />
                 Notificação inteligente
               </button>
               <button v-if="viajechatAvailable" class="fm-tab-btn" :class="{ on: activeTab === 'destination' }" @click="activeTab = 'destination'">
-                <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/><circle cx="5" cy="12" r="2"/></svg>
+                <ArrowRightFromLineIcon aria-hidden="true" />
                 Destino do Lead
               </button>
             </div>
@@ -82,7 +82,7 @@
                       :class="{ on: selectedTypes.includes(preset.type) }"
                       @click="toggleField(preset.type)"
                     >
-                      <span class="fmf-chip-ic"><svg viewBox="0 0 24 24" v-html="preset.icon"></svg></span>
+                      <span class="fmf-chip-ic"><component :is="preset.icon" aria-hidden="true" /></span>
                       <span class="fmf-name">{{ preset.label }}</span>
                       <span class="fmf-chk"></span>
                     </button>
@@ -291,7 +291,7 @@
             <div style="display:flex;gap:10px">
               <button class="btn btn-o btn-sm" @click="close">Cancelar</button>
               <button class="btn btn-p btn-sm" :disabled="saving" @click="handleSubmit">
-                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                <CheckIcon aria-hidden="true" />
                 {{ saving ? "Salvando..." : "Salvar alterações" }}
               </button>
             </div>
@@ -303,6 +303,20 @@
 </template>
 
 <script setup lang="ts">
+import {
+  ArrowRightFromLineIcon,
+  CalendarIcon,
+  CheckIcon,
+  IdCardIcon,
+  MailIcon,
+  MapPinIcon,
+  MessageSquareIcon,
+  PanelsTopLeftIcon,
+  PhoneIcon,
+  UserIcon,
+  XIcon
+} from "lucide-vue-next";
+import type { Component } from "vue";
 import { computed, onUnmounted, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import type { LeadFieldType, LeadForm, LeadFormField, LeadFormPayload, ViajeChatCustomFieldMapping } from "../../../types/leads";
@@ -328,14 +342,14 @@ const agencyStore = useAgencyStore();
 interface ViajechatKanban { id: string; name: string; columns: Array<{ id: string; name: string }> }
 interface ViajechatContactField { key: string; label: string; type: string }
 
-interface FieldPreset { type: LeadFieldType; label: string; placeholder: string; icon: string; }
+interface FieldPreset { type: LeadFieldType; label: string; placeholder: string; icon: Component; }
 const fieldPresets: FieldPreset[] = [
-  { type: "name", label: "Nome completo", placeholder: "Seu nome", icon: '<path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>' },
-  { type: "phone", label: "Telefone / WhatsApp", placeholder: "(00) 00000-0000", icon: '<path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.4 10.87a19.79 19.79 0 01-3.07-8.67A2 2 0 012.31 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.91a16 16 0 006.5 6.5l.72-.73a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/>' },
-  { type: "email", label: "E-mail", placeholder: "email@exemplo.com", icon: '<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>' },
-  { type: "cpf", label: "CPF", placeholder: "000.000.000-00", icon: '<rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>' },
-  { type: "city", label: "Cidade", placeholder: "Sua cidade", icon: '<path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>' },
-  { type: "birthdate", label: "Data de nascimento", placeholder: "1990-01-31", icon: '<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>' }
+  { type: "name", label: "Nome completo", placeholder: "Seu nome", icon: UserIcon },
+  { type: "phone", label: "Telefone / WhatsApp", placeholder: "(00) 00000-0000", icon: PhoneIcon },
+  { type: "email", label: "E-mail", placeholder: "email@exemplo.com", icon: MailIcon },
+  { type: "cpf", label: "CPF", placeholder: "000.000.000-00", icon: IdCardIcon },
+  { type: "city", label: "Cidade", placeholder: "Sua cidade", icon: MapPinIcon },
+  { type: "birthdate", label: "Data de nascimento", placeholder: "1990-01-31", icon: CalendarIcon }
 ];
 
 const messageTokens = [

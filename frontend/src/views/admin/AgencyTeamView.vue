@@ -4,7 +4,7 @@
       <AgencyHeader>
         <template #actions>
           <button class="at-btn-primary" :disabled="inviteDisabled" @click="showInvite = true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg>
+            <PlusIcon aria-hidden="true" />
             Convidar pessoa
           </button>
         </template>
@@ -13,7 +13,7 @@
       <div class="at-stats">
         <article class="at-stat">
           <span class="at-stat-icon tone-success" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z" /></svg>
+            <StarIcon aria-hidden="true" />
           </span>
           <div>
             <p class="at-stat-k">Plano atual</p>
@@ -22,7 +22,7 @@
         </article>
         <article class="at-stat">
           <span class="at-stat-icon tone-info" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8" /></svg>
+            <UsersIcon aria-hidden="true" />
           </span>
           <div>
             <p class="at-stat-k">Pessoas na equipe</p>
@@ -34,7 +34,7 @@
         </article>
         <article class="at-stat">
           <span class="at-stat-icon tone-warning" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M19 8v6M22 11h-6" /></svg>
+            <UserPlusIcon aria-hidden="true" />
           </span>
           <div class="min-w-0 flex-1">
             <p class="at-stat-k">Usuários extras</p>
@@ -82,7 +82,7 @@
               <td>
                 <div class="at-actions">
                   <button v-if="!member.is_owner" type="button" class="at-btn-ghost" @click="openEdit(member)">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+                    <ShieldIcon aria-hidden="true" />
                     Permissões
                   </button>
                   <button
@@ -93,7 +93,7 @@
                     title="Mais ações"
                     @click="toggleMemberActions(member.id)"
                   >
-                    <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="12" cy="19" r="1.6" /></svg>
+                    <EllipsisVerticalIcon aria-hidden="true" />
                   </button>
                 </div>
               </td>
@@ -109,7 +109,7 @@
                 <td>
                   <div class="at-person">
                     <span class="at-avatar is-mail" aria-hidden="true">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 7 9 6 9-6" /></svg>
+                      <MailIcon aria-hidden="true" />
                     </span>
                     <span class="min-w-0">
                       <b>{{ invite.email }}</b>
@@ -128,7 +128,7 @@
                     <button type="button" class="at-btn-ghost" @click="resendInvite(invite.id)">Reenviar</button>
                     <div class="at-menu-wrap">
                       <button type="button" class="at-icon-btn" aria-label="Mais ações" title="Mais ações" @click.stop="openInviteMenuId = openInviteMenuId === invite.id ? null : invite.id">
-                        <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="12" cy="19" r="1.6" /></svg>
+                        <EllipsisVerticalIcon aria-hidden="true" />
                       </button>
                       <div v-if="openInviteMenuId === invite.id" class="at-menu" @click="openInviteMenuId = null">
                         <button type="button" class="danger" @click="cancelInvite(invite.id)">Cancelar convite</button>
@@ -170,14 +170,14 @@
             <header class="at-modal-head">
               <span v-if="editingMember" class="at-avatar" :class="avatarTone(editingMember.id)">{{ getInitials(editingMember.name || editingMember.email) }}</span>
               <span v-else class="at-avatar tone-success" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M19 8v6M22 11h-6" /></svg>
+                <UserPlusIcon aria-hidden="true" />
               </span>
               <div class="min-w-0 flex-1">
                 <h3>{{ editingMember ? `Permissões de ${editingMember.name}` : "Convidar para a equipe" }}</h3>
                 <p>{{ editingMember ? editingMember.email : "A pessoa recebe um e-mail para criar a senha e entrar." }}</p>
               </div>
               <button type="button" class="at-close" aria-label="Fechar" @click="closeModal">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M6 18 18 6" /></svg>
+                <XIcon aria-hidden="true" />
               </button>
             </header>
 
@@ -203,7 +203,7 @@
                 @click="applyAccessProfile(level.id)"
               >
                 <span class="at-level-icon" :class="level.tone" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path :d="level.icon" /></svg>
+                  <component :is="level.icon" />
                 </span>
                 <span class="min-w-0 flex-1">
                   <b>{{ level.label }}</b>
@@ -251,6 +251,19 @@
 </template>
 
 <script setup lang="ts">
+import {
+  EllipsisVerticalIcon,
+  EyeIcon,
+  MailIcon,
+  PencilIcon,
+  PlusIcon,
+  ShieldIcon,
+  SlidersVerticalIcon,
+  StarIcon,
+  UserPlusIcon,
+  UsersIcon,
+  XIcon
+} from "lucide-vue-next";
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import api from "../../services/api";
 import AgencyHeader from "../../components/admin/agency/AgencyHeader.vue";
@@ -430,10 +443,10 @@ const chipsForMember = (member: any) => {
 const previewChips = computed(() => (accessProfile.value === "admin" ? ["Tudo"] : chipsFor(buildPayloadPermissions())));
 
 const accessLevels = [
-  { id: "admin" as const, label: "Admin", description: "Acesso a tudo, inclusive equipe e faturas", tone: "tone-success", icon: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" },
-  { id: "editor" as const, label: "Editor", description: "Edita páginas e cuida dos leads", tone: "tone-info", icon: "M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" },
-  { id: "viewer" as const, label: "Visualizador", description: "Só consulta, sem alterar nada", tone: "tone-muted", icon: "M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7zM12 9a3 3 0 1 0 0 6a3 3 0 1 0 0-6" },
-  { id: "custom" as const, label: "Personalizado", description: "Você escolhe cada área", tone: "tone-violet", icon: "M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6" }
+  { id: "admin" as const, label: "Admin", description: "Acesso a tudo, inclusive equipe e faturas", tone: "tone-success", icon: ShieldIcon },
+  { id: "editor" as const, label: "Editor", description: "Edita páginas e cuida dos leads", tone: "tone-info", icon: PencilIcon },
+  { id: "viewer" as const, label: "Visualizador", description: "Só consulta, sem alterar nada", tone: "tone-muted", icon: EyeIcon },
+  { id: "custom" as const, label: "Personalizado", description: "Você escolhe cada área", tone: "tone-violet", icon: SlidersVerticalIcon }
 ];
 
 const getInitials = (value?: string) => {

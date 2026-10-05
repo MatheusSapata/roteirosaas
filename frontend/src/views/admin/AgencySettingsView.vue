@@ -172,7 +172,7 @@
               </select>
               <input v-model="social.url" class="as-input" type="url" placeholder="https://" />
               <button type="button" class="as-remove" aria-label="Remover rede" title="Remover" @click="removeSocialLink(index)">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M6 18 18 6" /></svg>
+                <XIcon aria-hidden="true" />
               </button>
             </div>
             <button type="button" class="as-add" @click="addSocialLink">+ Adicionar rede</button>
@@ -185,7 +185,7 @@
 
       <div v-if="hasUnsavedChanges || !hasAgency" class="as-savebar" :style="saveBarStyle">
         <span class="as-savebar-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z" /></svg>
+          <PencilIcon aria-hidden="true" />
         </span>
         <p class="as-savebar-text">{{ hasAgency ? changedSummary : "Preencha os dados para criar a sua agência." }}</p>
         <button v-if="hasAgency" type="button" class="as-btn-ghost" :disabled="saving" @click="discardChanges">Descartar</button>
@@ -213,6 +213,7 @@
 </template>
 
 <script setup lang="ts">
+import { PencilIcon, XIcon } from "lucide-vue-next";
 import { computed, onMounted, reactive, ref, watch, onBeforeUnmount } from "vue";
 import { onBeforeRouteLeave, useRouter } from "vue-router";
 import ImageUploadField from "../../components/admin/inputs/ImageUploadField.vue";
