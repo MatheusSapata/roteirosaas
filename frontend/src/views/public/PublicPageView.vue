@@ -272,6 +272,10 @@ const sectionExtraProps = (section: PageSection, index: number) => {
   if (section.type === "hero" && hasV2("hero")) {
     extra.hideLogo = headerEnabled.value;
   }
+  if (section.type === "itinerary" && hasV2("itinerary")) {
+    const hero = sections.value.find(item => item.type === "hero") as HeroSection | undefined;
+    extra.tripStartDate = hero?.departureDate || "";
+  }
   if (section.type === "banner_card") {
     const prev = findPrevEnabledSection(index);
     const next = findNextEnabledSection(index);

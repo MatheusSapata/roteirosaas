@@ -70,6 +70,7 @@ def build_agency_profile(agency: Agency) -> dict[str, object]:
 
     return {
         "name": agency.name,
+        "description": (agency.description or "").strip() or None,
         "cpf": owner.cpf if owner else None,
         "cpf_digits": cpf_digits or None,
         "cnpj": owner.cnpj if owner else None,

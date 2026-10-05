@@ -39,6 +39,16 @@
             <label>Subtítulo <span class="help" data-tip="Texto complementar para orientar o visitante.">?</span></label>
             <input v-model="local.subtitle" :placeholder="viewCopy.fields.subtitlePlaceholder" />
           </div>
+
+          <div class="field">
+            <label>
+              Data do primeiro dia
+              <span class="optional">opcional</span>
+              <span class="help" data-tip="Cada dia ganha a sua data no visual novo das seções.">?</span>
+            </label>
+            <input v-model="local.startDate" type="date" />
+            <p class="field-hint">Vazio: usa a data de saída da Capa.</p>
+          </div>
         </div>
       </div>
 
@@ -221,6 +231,7 @@ const syncFromProps = (value: ItinerarySection) => {
   local.days = normalizeDays(value.days);
   local.title = value.title ?? viewCopy.fields.titlePlaceholder;
   local.subtitle = value.subtitle ?? viewCopy.fields.subtitlePlaceholder;
+  local.startDate = value.startDate ?? "";
   ensureSelectedDay();
   scheduleSortableRefresh();
   nextTick(() => {
@@ -367,6 +378,11 @@ watch(
 </script>
 
 <style scoped>
+.field-hint {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
 .itinerary-shell {
   display: grid;
   grid-template-columns: 178px 1fr;

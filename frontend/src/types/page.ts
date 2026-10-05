@@ -47,6 +47,11 @@ export interface HeroSection extends SectionBase {
   logoSize?: number;
   logoBorderRadius?: number;
   chips?: LocalizedString[];
+  /** Ícone de cada destaque ("icon:plane"), na mesma ordem de `chips`. */
+  chipIcons?: string[];
+  /** Datas da viagem (AAAA-MM-DD), mostradas no card de datas da capa v2. */
+  departureDate?: string;
+  returnDate?: string;
   ctaLabel?: LocalizedString;
   ctaLink?: string;
   ctaMode?: "link" | "section";
@@ -168,6 +173,8 @@ export interface ItineraryDay {
 export interface ItinerarySection extends SectionBase {
   type: "itinerary";
   days: ItineraryDay[];
+  /** Data do primeiro dia (AAAA-MM-DD). Vazio: usa a saída da Capa. */
+  startDate?: string;
   layout?: "timeline" | "cards" | "minimal" | "steps";
   ctaColor?: string;
   title?: LocalizedString;
@@ -457,6 +464,7 @@ export interface StorySection extends SectionBase {
 }
 
 export interface ReasonItem {
+  /** Emoji ou ícone da biblioteca ("icon:plane"). */
   icon?: string;
   title: LocalizedString;
   description?: LocalizedString;

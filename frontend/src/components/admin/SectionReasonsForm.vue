@@ -73,6 +73,7 @@
               <div class="field">
                 <label>Ícone <span class="help" data-tip="Escolha um ícone visual para representar este item.">?</span></label>
                 <div class="icon-picker-row">
+                  <span v-if="isTravelIcon(selectedItem.icon)" class="icon-preview"><TravelIcon :name="selectedItem.icon" :size="18" /></span>
                   <input v-model="selectedItem.icon" />
                   <button type="button" @click="toggleItemPicker(selectedItemIndex, $event)">Escolher ícone</button>
                 </div>
@@ -103,6 +104,20 @@
       @click="closeIconPicker"
     >
       <div class="icon-picker-popover" :style="iconPickerStyle" @click.stop>
+        <p class="icon-picker-heading">Ícones de linha (na cor da agência)</p>
+        <div class="icon-picker-grid">
+          <button
+            v-for="key in travelIconKeys"
+            :key="key"
+            type="button"
+            class="icon-chip"
+            :title="travelIcons[key].label"
+            @click="applyIcon(iconPickerIndex, `icon:${key}`)"
+          >
+            <TravelIcon :name="key" :size="18" />
+          </button>
+        </div>
+        <p class="icon-picker-heading">Emojis</p>
         <div class="icon-picker-grid">
           <button
             v-for="icon in allIcons"
@@ -123,6 +138,8 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import Sortable, { type SortableEvent } from "sortablejs";
 import RichTextEditor from "./inputs/RichTextEditor.vue";
+import TravelIcon from "../shared/TravelIcon.vue";
+import { TRAVEL_ICONS, TRAVEL_ICON_KEYS, travelIconKey } from "../../utils/travelIcons";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import type { ReasonsSection } from "../../types/page";
 
@@ -137,6 +154,9 @@ const selectedItemIndex = ref(0);
 const iconOptions = ["✨", "🚀", "🌍", "❤️", "⭐", "⚡", "🏆", "📍", "✅", "🎯"];
 const extraIcons = ["💡", "🛡️", "🎒", "☎️", "📸", "🧳", "🌐", "🏖️", "⛰️", "💎"];
 const allIcons = computed(() => Array.from(new Set([...iconOptions, ...extraIcons])));
+const travelIcons = TRAVEL_ICONS;
+const travelIconKeys = TRAVEL_ICON_KEYS;
+const isTravelIcon = (value?: string) => !!travelIconKey(value);
 const iconPickerIndex = ref<number | null>(null);
 const iconPickerStyle = ref<Record<string, string>>({});
 const itemTabsRef = ref<HTMLElement | null>(null);
@@ -748,6 +768,21 @@ input:focus {
   .content-area {
     padding-top: 6px;
   }
+}
+.icon-picker-heading {
+  margin: 4px 2px 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+.icon-preview {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  flex: 0 0 auto;
+  color: var(--primary);
 }
 </style>
 

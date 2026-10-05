@@ -23,6 +23,22 @@
         </div>
         <div class="as-row">
           <div class="as-row-label">
+            <p>Sobre a agência</p>
+            <span>Um resumo curto que aparece no rodapé das páginas.</span>
+          </div>
+          <div class="as-row-field as-col">
+            <textarea
+              v-model="form.description"
+              class="as-input as-textarea"
+              rows="3"
+              maxlength="600"
+              placeholder="Ex.: Viagens em grupo pela Europa desde 2015, com guia brasileiro do embarque à volta."
+            ></textarea>
+            <span class="as-hint">{{ (form.description || "").length }}/600</span>
+          </div>
+        </div>
+        <div class="as-row">
+          <div class="as-row-label">
             <p>Link da agência</p>
             <span>Sem espaços nem acentos, até 30 caracteres.</span>
           </div>
@@ -412,6 +428,7 @@ const form = reactive({
   secondary_color: "",
   contact_email: "",
   cta_whatsapp: "",
+  description: "" as string | null,
   social_links: createDefaultSocialLinks()
 });
 
@@ -610,6 +627,7 @@ const syncFormWithCurrent = () => {
 
   if (!form.primary_color) form.primary_color = colorPalette[0];
   if (!form.contact_email) form.contact_email = "";
+  if (!form.description) form.description = "";
 
   const fallbackPhone = form.cta_whatsapp || authStore.user?.whatsapp || "";
   const fallbackDigits = fallbackPhone.replace(/\D/g, "");
@@ -627,6 +645,7 @@ const buildFormSnapshot = () =>
     primary_color: form.primary_color || "",
     secondary_color: form.secondary_color || "",
     contact_email: form.contact_email || "",
+    description: form.description || "",
     cta_whatsapp: phoneInput.value || "",
     social_links: (form.social_links || []).map(item => ({
       network: item.network || "",
@@ -703,6 +722,7 @@ const changedSummary = computed(() => {
   if (!same(before.company.cnpj, now.company.cnpj) || !same(before.company.documentType, now.company.documentType)) changes.push("o CNPJ ou CPF");
   if (!same(before.cta_whatsapp, now.cta_whatsapp)) changes.push("o WhatsApp");
   if (!same(before.contact_email, now.contact_email)) changes.push("o e-mail");
+  if (!same(before.description, now.description)) changes.push("a descrição");
   const addressKeys = ["address_zipcode", "address_street", "address_number", "address_complement", "address_neighborhood", "address_city", "address_state"];
   if (addressKeys.some(key => !same(before.company[key], now.company[key]))) changes.push("o endereço");
   if (!same(before.logo_url, now.logo_url) || !same(before.favicon_url, now.favicon_url)) changes.push("a logo");
@@ -723,6 +743,7 @@ const discardChanges = () => {
   form.primary_color = before.primary_color;
   form.secondary_color = before.secondary_color;
   form.contact_email = before.contact_email;
+  form.description = before.description;
   phoneInput.value = before.cta_whatsapp;
   setFormSocialLinks(before.social_links);
   Object.assign(companyForm, before.company);
@@ -847,6 +868,7 @@ const save = async () => {
     primary_color: form.primary_color,
     secondary_color: form.secondary_color,
     contact_email: sanitizeText(form.contact_email),
+    description: (form.description || "").trim(),
     cta_whatsapp: phoneDigits,
     social_links: buildSocialLinksPayload()
   };
@@ -1106,6 +1128,7 @@ onBeforeUnmount(() => {
 .as-swatch input { position: absolute; inset: -6px; width: 40px; height: 40px; cursor: pointer; opacity: 0; }
 .as-color-text { flex: 1; min-width: 0; border: 0; background: transparent; font-size: 13.5px; color: var(--foreground); outline: none; }
 .as-preview-btn { display: inline-flex; align-items: center; height: 34px; padding: 0 16px; border-radius: 999px; font-size: 13px; font-weight: 600; color: #fff; }
+.as-textarea { height: auto; min-height: 84px; padding: 10px 12px; line-height: 1.5; resize: vertical; font-family: inherit; }
 .as-hint { font-size: 12px; color: var(--muted-foreground); }
 .as-ok { font-size: 12.5px; color: var(--status-success-foreground); }
 .as-err { font-size: 12.5px; color: var(--status-danger-foreground); }

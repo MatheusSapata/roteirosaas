@@ -2385,6 +2385,10 @@ const previewSectionExtraProps = (section: PageSection) => {
   }
   const activeHeader = sections.value.some(item => item.type === "header" && item.enabled);
   if (section.type === "hero") extra.hideLogo = activeHeader;
+  if (section.type === "itinerary" && previewDesign.value === "v2") {
+    const hero = sections.value.find(item => item.type === "hero") as HeroSection | undefined;
+    extra.tripStartDate = hero?.departureDate || "";
+  }
   if (section.type === "header") {
     const hero = sections.value.find(item => item.type === "hero") as HeroSection | undefined;
     extra.logoUrl = hero?.logoUrl || branding.value.logo_url || "";
@@ -2886,6 +2890,7 @@ const buildAgencyProfile = () => {
 
   return {
     name: agency?.name || user?.name || "",
+    description: (agency?.description || "").trim(),
     cpf: user?.cpf || "",
     cpf_digits: cpfDigits || undefined,
     cnpj: user?.cnpj || "",

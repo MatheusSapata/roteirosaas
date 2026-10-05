@@ -3,7 +3,7 @@
     <V2Head :label="label" :title="title" :subtitle-html="subtitleHtml" />
     <div class="v2-reasons">
       <article v-for="(item, idx) in items" :key="idx" class="v2-card v2-reason v2-in" :class="`v2-d${Math.min(idx + 3, 7)}`">
-        <span class="v2-reason-icon" aria-hidden="true">{{ item.icon || "★" }}</span>
+        <span class="v2-reason-icon" aria-hidden="true"><TravelIcon v-if="item.isIcon" :name="item.icon" :size="24" stroke-width="1.8" /><template v-else>{{ item.icon || "★" }}</template></span>
         <h3>{{ item.title }}</h3>
         <div v-if="item.descriptionHtml" class="v2-rich" v-html="item.descriptionHtml"></div>
       </article>
@@ -16,6 +16,8 @@ import { computed, toRef } from "vue";
 import type { ReasonsSection } from "../../../types/page";
 import V2Section from "./V2Section.vue";
 import V2Head from "./V2Head.vue";
+import TravelIcon from "../../shared/TravelIcon.vue";
+import { travelIconKey } from "../../../utils/travelIcons";
 import { html, text, useHeading } from "./useHeading";
 
 const props = defineProps<{ section: ReasonsSection; previewDevice?: "desktop" | "mobile" }>();
@@ -23,6 +25,7 @@ const { label, title, subtitleHtml } = useHeading(toRef(props, "section"), "reas
 const items = computed(() =>
   (props.section.items || []).map(item => ({
     icon: (item.icon || "").trim(),
+    isIcon: !!travelIconKey((item.icon || "").trim()),
     title: text(item.title),
     descriptionHtml: text(item.description) ? html(item.description) : ""
   }))

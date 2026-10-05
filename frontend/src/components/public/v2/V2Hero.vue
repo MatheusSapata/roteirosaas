@@ -64,6 +64,18 @@ import V2Section from "./V2Section.vue";
 import { useCta } from "./useCta";
 import { html, localize, text } from "./useHeading";
 import { contrast, WHITE_TEXT_MIN_CONTRAST } from "./useSectionTone";
+import TravelIcon from "../../shared/TravelIcon.vue";
+import { formatDayMonth, parseTripDate, tripLengthInDays } from "../../../utils/tripDates";
+
+interface HeroChip {
+  label: string;
+  icon: string;
+}
+interface HeroDates {
+  departure: string;
+  back: string;
+  tag: string;
+}
 
 const props = defineProps<{
   section: HeroSection;
@@ -76,7 +88,24 @@ const layout = computed(() => props.section.layout || "immersive");
 const textBg = computed(() => (props.section.gradientColor || "").trim() || "#0B1410");
 const title = computed(() => text(props.section.title));
 const subtitleHtml = computed(() => (text(props.section.subtitle) ? html(props.section.subtitle) : ""));
-const chips = computed(() => (props.section.chips || []).map(chip => text(chip)).filter(Boolean));
+const chips = computed<HeroChip[]>(() =>
+  (props.section.chips || [])
+    .map((chip, index) => ({ label: text(chip), icon: props.section.chipIcons?.[index] || "" }))
+    .filter(chip => chip.label)
+);
+const dates = computed<HeroDates | null>(() => {
+  const start = parseTripDate(props.section.departureDate);
+  if (!start) return null;
+  const end = parseTripDate(props.section.returnDate);
+  const valid = end && end >= start ? end : null;
+  const days = valid ? tripLengthInDays(start, valid) : 0;
+  const daysLabel = days ? localize({ pt: `${days} ${days === 1 ? "dia" : "dias"}`, es: `${days} ${days === 1 ? "día" : "días"}` }) : "";
+  return {
+    departure: formatDayMonth(start),
+    back: valid ? formatDayMonth(valid) : "",
+    tag: [daysLabel, String(start.getFullYear())].filter(Boolean).join(" · ")
+  };
+});
 const image = computed(() => resolveMediaUrl(props.section.backgroundImage) || "");
 const mobileImage = computed(() => resolveMediaUrl(props.section.mobileBackgroundImage) || "");
 const video = computed(() => {
@@ -101,6 +130,7 @@ const contentProps = computed(() => ({
   title: title.value,
   subtitleHtml: subtitleHtml.value,
   chips: chips.value,
+  dates: dates.value,
   ctaEnabled: cta.enabled.value,
   ctaAttrs: cta.attrs.value,
   ctaLabel: ctaLabel.value,
@@ -112,7 +142,8 @@ const HeroContent = defineComponent({
   props: {
     title: { type: String, default: "" },
     subtitleHtml: { type: String, default: "" },
-    chips: { type: Array as () => string[], default: () => [] },
+    chips: { type: Array as () => HeroChip[], default: () => [] },
+    dates: { type: Object as () => HeroDates | null, default: null },
     ctaEnabled: Boolean,
     ctaAttrs: { type: Object, default: () => ({}) },
     ctaLabel: { type: String, default: "" },
@@ -125,18 +156,44 @@ const HeroContent = defineComponent({
       h("svg", { width: 14, height: 14, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": 2.6, "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true" }, [h("path", { d: "m5 12 5 5 9-10" })]);
     const arrow = () =>
       h("svg", { width: 18, height: 18, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": 2.2, "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true" }, [h("path", { d: "M5 12h14M13 6l6 6-6 6" })]);
+    const calendar = () =>
+      h("svg", { width: 22, height: 22, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": 2, "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true" }, [
+        h("rect", { x: 3, y: 4, width: 18, height: 18, rx: 3 }),
+        h("path", { d: "M16 2v4M8 2v4M3 10h18" })
+      ]);
+    const dateCol = (label: string, value: string) => h("span", { class: "v2-hero-date-col" }, [h("span", label), h("b", value)]);
+    const dateCard = (d: HeroDates) =>
+      h("div", { class: "v2-hero-dates v2-in v2-d3" }, [
+        h("span", { class: "v2-hero-dates-ico" }, [calendar()]),
+        dateCol(localize({ pt: "SAÍDA", es: "SALIDA" }), d.departure),
+        d.back
+          ? h("span", { class: "v2-hero-dates-arrow", "aria-hidden": "true" }, [
+              h("span"),
+              h("svg", { width: 14, height: 14, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": 2.6, "stroke-linecap": "round", "stroke-linejoin": "round" }, [h("path", { d: "m9 6 6 6-6 6" })])
+            ])
+          : null,
+        d.back ? dateCol(localize({ pt: "VOLTA", es: "REGRESO" }), d.back) : null,
+        d.tag ? h("span", { class: "v2-hero-dates-tag" }, d.tag) : null
+      ]);
     return () =>
       h("div", { class: ["v2-hero-content", { "is-center": p.centered, "on-light": p.onLight, "dark-text": p.darkText && !p.onLight }] }, [
         p.chips.length
           ? h(
               "ul",
               { class: "v2-hero-chips v2-in", "aria-label": localize({ pt: "Destaques da viagem", es: "Destacados del viaje" }) },
-              p.chips.map(chip => h("li", [h("span", { class: "v2-hero-chip-ico" }, [check()]), chip]))
+              p.chips.map(chip =>
+                h("li", [h("span", { class: "v2-hero-chip-ico" }, [chip.icon ? h(TravelIcon, { name: chip.icon, size: 14, strokeWidth: 2.2 }) : check()]), chip.label])
+              )
             )
           : null,
         p.title ? h("h1", { class: "v2-hero-title v2-in v2-d1" }, p.title) : null,
         p.subtitleHtml ? h("div", { class: "v2-hero-sub v2-in v2-d2", innerHTML: p.subtitleHtml }) : null,
-        p.ctaEnabled ? h("div", { class: "v2-in v2-d3" }, [h("a", { class: "v2-btn v2-hero-btn", ...p.ctaAttrs }, [h("span", p.ctaLabel), arrow()])]) : null
+        p.dates || p.ctaEnabled
+          ? h("div", { class: "v2-hero-actions" }, [
+              p.dates ? dateCard(p.dates) : null,
+              p.ctaEnabled ? h("div", { class: "v2-in v2-d3" }, [h("a", { class: "v2-btn v2-hero-btn", ...p.ctaAttrs }, [h("span", p.ctaLabel), arrow()])]) : null
+            ])
+          : null
       ]);
   }
 });
@@ -296,6 +353,84 @@ const HeroContent = defineComponent({
 }
 .v2-hero-sub p {
   margin: 0;
+}
+.v2-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px 16px;
+  margin-top: 4px;
+}
+.is-center .v2-hero-actions {
+  justify-content: center;
+}
+.v2-hero-dates {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+  padding: 10px 18px 10px 10px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow: 0 18px 40px -22px rgba(6, 12, 9, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+}
+.dark-text .v2-hero-dates,
+.on-light .v2-hero-dates {
+  background: rgba(255, 255, 255, 0.55);
+  border-color: rgba(255, 255, 255, 0.8);
+  box-shadow: 0 18px 40px -26px rgba(6, 12, 9, 0.35);
+}
+.v2-hero-dates-ico {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: var(--v2-accent);
+  color: var(--v2-on-accent);
+}
+.v2-hero-date-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.v2-hero-date-col span {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  opacity: 0.78;
+}
+.v2-hero-date-col b {
+  font-family: "Bricolage Grotesque", Figtree, sans-serif;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+.v2-hero-dates-arrow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.v2-hero-dates-arrow span {
+  width: 22px;
+  height: 2px;
+  border-radius: 2px;
+  background: currentColor;
+}
+.v2-hero-dates-tag {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--v2-accent);
+  color: var(--v2-on-accent);
+  font-size: 14px;
+  font-weight: 700;
+}
+.on-light .v2-hero-dates-tag {
+  background: var(--v2-accent-soft);
+  color: var(--v2-accent-text);
 }
 .v2-hero-btn {
   min-height: 56px;

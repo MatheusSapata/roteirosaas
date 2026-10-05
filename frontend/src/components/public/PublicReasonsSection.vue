@@ -59,6 +59,8 @@ import { sanitizeHtml } from "../../utils/sanitizeHtml";
 import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
 import { deriveTextPalette, getRelativeLuminance, normalizeHexColor } from "../../utils/colorContrast";
 import { createLocalizer, getCurrentLanguage } from "../../utils/i18n";
+import TravelIcon from "../shared/TravelIcon.vue";
+import { travelIconKey } from "../../utils/travelIcons";
 
 const props = defineProps<{ section: ReasonsSection; previewDevice?: "desktop" | "mobile" }>();
 const localize = createLocalizer(getCurrentLanguage());
@@ -183,12 +185,14 @@ const ReasonCard = defineComponent({
             color: accentColor.value
           }
         }, [
-          h("span", {
-            style: {
-              fontSize: sectionBackgroundIsLight.value ? "2.25rem" : "2.25rem",
-              lineHeight: "1"
-            }
-          }, componentProps.item.icon || "*")
+          travelIconKey(componentProps.item.icon)
+            ? h(TravelIcon, { name: componentProps.item.icon, size: 36 })
+            : h("span", {
+                style: {
+                  fontSize: sectionBackgroundIsLight.value ? "2.25rem" : "2.25rem",
+                  lineHeight: "1"
+                }
+              }, componentProps.item.icon || "*")
         ]),
         h("h3", {
           class: "mt-1 text-[20px] font-bold leading-tight",

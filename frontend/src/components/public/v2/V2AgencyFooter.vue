@@ -5,6 +5,7 @@
         <div class="v2-ft-col v2-ft-brand">
           <img v-if="logo" :src="logo" :alt="companyName" class="v2-ft-logo" loading="lazy" />
           <b class="v2-ft-name">{{ companyName || copy.fallbackName }}</b>
+          <p v-if="description" class="v2-ft-about">{{ description }}</p>
           <span v-if="cnpjText" class="v2-ft-muted">CNPJ {{ cnpjText }}</span>
           <div v-if="socialLinks.length" class="v2-ft-social" :aria-label="copy.social">
             <a v-for="link in socialLinks" :key="link.network" :href="link.url" target="_blank" rel="noopener noreferrer" :aria-label="link.label" :title="link.label">
@@ -62,6 +63,7 @@ const provided = inject(PUBLIC_BRANDING_KEY, null) as any;
 const branding = computed<Record<string, any>>(() => props.branding || (provided && "value" in provided ? provided.value : provided) || {});
 const profile = computed<Record<string, any>>(() => branding.value?.agency_profile || {});
 const companyName = computed(() => profile.value?.name || branding.value?.agency_name || "");
+const description = computed(() => String(profile.value?.description || "").trim());
 const logo = computed(() => resolveMediaUrl(branding.value?.logo_url) || "");
 const digitsOf = (value?: string | null) => (value || "").replace(/\D/g, "");
 const cnpjText = computed(() => {
@@ -158,6 +160,14 @@ const year = new Date().getFullYear();
 .v2-ft-name {
   font-family: "Bricolage Grotesque", Figtree, sans-serif;
   font-size: 20px;
+}
+.v2-ft-about {
+  max-width: 340px;
+  margin: 0;
+  color: var(--v2-muted);
+  font-size: 15px;
+  line-height: 1.55;
+  white-space: pre-line;
 }
 .v2-ft-h {
   font-size: 12px;
