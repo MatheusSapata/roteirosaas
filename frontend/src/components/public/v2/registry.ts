@@ -18,7 +18,16 @@ export const v2Components: Partial<Record<SectionType, Component>> = {
   testimonials: defineAsyncComponent(() => import("./V2Testimonials.vue")),
   faq: defineAsyncComponent(() => import("./V2Faq.vue")),
   links: defineAsyncComponent(() => import("./V2Links.vue")),
-  cta: defineAsyncComponent(() => import("./V2Cta.vue"))
+  cta: defineAsyncComponent(() => import("./V2Cta.vue")),
+  header: defineAsyncComponent(() => import("./V2Header.vue")),
+  banner_card: defineAsyncComponent(() => import("./V2BannerCard.vue")),
+  featured_video: defineAsyncComponent(() => import("./V2FeaturedVideo.vue")),
+  video_vsl: defineAsyncComponent(() => import("./V2VideoVsl.vue")),
+  biography: defineAsyncComponent(() => import("./V2Biography.vue")),
+  flight_details: defineAsyncComponent(() => import("./V2FlightDetails.vue")),
+  viajeon_checkout: defineAsyncComponent(() => import("./V2ViajeonCheckout.vue")),
+  internal_form: defineAsyncComponent(() => import("./V2InternalForm.vue")),
+  agency_footer: defineAsyncComponent(() => import("./V2AgencyFooter.vue"))
 };
 
 export const pickSectionComponent = (
