@@ -22,7 +22,7 @@
           ]"
           @update:model-value="patch({ layout: $event })"
         />
-        <ImageUploadField v-if="isCard" :model-value="modelValue.backgroundImage || ''" label="Foto do cartão" @update:model-value="patch({ backgroundImage: $event || '' })" />
+        <ImageUploadField layout="compact" v-if="isCard" :model-value="modelValue.backgroundImage || ''" label="Foto do cartão" @update:model-value="patch({ backgroundImage: $event || '' })" />
       </EdGroup>
       <EdGroup title="Fundo">
         <EdBackground :value="modelValue" auto @change="patch" />

@@ -15,7 +15,7 @@
             <EdText :model-value="readText(item.name)" label="Nome" @update:model-value="update({ name: writeText(item.name, $event) })" />
             <EdText :model-value="readText(item.role)" label="Saída ou detalhe" placeholder="Saída de junho de 2025" @update:model-value="update({ role: writeText(item.role, $event) })" />
             <EdText :model-value="readText(item.text)" label="Depoimento" multiline @update:model-value="update({ text: writeText(item.text, $event) })" />
-            <ImageUploadField :model-value="item.avatar || ''" label="Foto" hint="Opcional. Sem foto, aparecem as iniciais do nome." layout="row" @update:model-value="update({ avatar: $event || '' })" />
+            <ImageUploadField :model-value="item.avatar || ''" label="Foto" hint="Opcional. Sem foto, aparecem as iniciais do nome." layout="compact" @update:model-value="update({ avatar: $event || '' })" />
           </template>
         </EdList>
       </EdGroup>

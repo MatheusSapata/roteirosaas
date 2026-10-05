@@ -1,5 +1,5 @@
 ﻿<template>
-<div class="page-editor-view w-full" :class="newEditor ? 'is-v2 space-y-2 px-1 py-1' : 'space-y-6 px-4 py-6 md:px-8 md:py-4'">
+<div class="page-editor-view w-full" :class="[newEditor ? 'is-v2 space-y-2 px-1 py-1' : 'space-y-6 px-4 py-6 md:px-8 md:py-4', { 'is-phone': phoneEditor }]">
     <div class="ed-topbar">
       <button type="button" class="ed-back" @click="goBack" :aria-label="viewCopy.actions.goBack">
         <ChevronLeftIcon aria-hidden="true" />
@@ -21,7 +21,7 @@
           <SparkleIcon aria-hidden="true" />
           Assistente IA
         </button>
-        <button v-if="isPublished" type="button" class="ed-btn ed-btn-ghost" :disabled="!publicUrl" @click="viewPublicPage">
+        <button v-if="isPublished && !phoneEditor" type="button" class="ed-btn ed-btn-ghost" :disabled="!publicUrl" @click="viewPublicPage">
           <ExternalLinkIcon aria-hidden="true" />
           {{ viewCopy.actions.viewPage }}
         </button>
@@ -30,22 +30,25 @@
             <EllipsisVerticalIcon aria-hidden="true" />
           </button>
           <div v-if="topbarMenuOpen" class="ed-menu" @click="topbarMenuOpen = false">
+            <button v-if="phoneEditor && isPublished" type="button" :disabled="!publicUrl" @click="viewPublicPage">{{ viewCopy.actions.viewPage }}</button>
+            <button v-if="phoneEditor && !isPublished" type="button" @click="publishPage">{{ viewCopy.toolbar.publish }}</button>
             <button type="button" @click="saveTemplate">{{ viewCopy.toolbar.saveTemplate }}</button>
             <button v-if="isPublished" type="button" class="danger" @click="unpublishPage">{{ viewCopy.toolbar.unpublish }}</button>
           </div>
         </div>
-        <button v-if="!isPublished" type="button" class="ed-btn ed-btn-ghost" @click="publishPage">{{ viewCopy.toolbar.publish }}</button>
+        <button v-if="!isPublished && !phoneEditor" type="button" class="ed-btn ed-btn-ghost" @click="publishPage">{{ viewCopy.toolbar.publish }}</button>
         <button type="button" class="ed-btn ed-btn-primary" :disabled="!hasUnsavedChanges" @click="saveConfig">{{ viewCopy.toolbar.save }}</button>
       </div>
     </div>
 
     <!-- Dialog de limite de plano (reutilizado tamb?m para "template no free") -->
-    <div :class="['editor-workspace', showAiAssistant ? 'ai-assistant-open' : '', { 'is-v2': newEditor }]">
+    <div :class="['editor-workspace', showAiAssistant ? 'ai-assistant-open' : '', { 'is-v2': newEditor, 'is-phone': phoneEditor }]">
 
       <Transition name="ai-sidebar-slide">
         <aside
           v-if="showAiAssistant"
-          class="editor-ai-sidebar hidden md:flex"
+          class="editor-ai-sidebar"
+          :class="phoneEditor ? 'flex' : 'hidden md:flex'"
           :style="aiAssistantSidebarStyle"
           aria-label="Painel do assistente"
         >
@@ -59,11 +62,13 @@
             <span class="editor-ai-sidebar-resize-grip" aria-hidden="true"></span>
           </button>
           <div class="editor-ai-sidebar-header">
+            <span v-if="newEditor" class="ai-v2-mark" aria-hidden="true"><SparkleIcon /></span>
             <div class="editor-ai-sidebar-header-copy">
               <div class="editor-ai-sidebar-title-row">
                 <h2 class="editor-ai-sidebar-title">Assistente IA</h2>
-                <span class="editor-ai-sidebar-usage-pill">{{ aiAssistantUsageLabel }}</span>
+                <span v-if="!newEditor" class="editor-ai-sidebar-usage-pill">{{ aiAssistantUsageLabel }}</span>
               </div>
+              <span v-if="newEditor && aiAssistantUsageText" class="ai-v2-usage">{{ aiAssistantUsageText }}</span>
             </div>
             <button type="button" class="editor-ai-sidebar-close" @click="toggleAiAssistant" aria-label="Fechar ajuda de IA">
               <XIcon class="h-4 w-4" aria-hidden="true" />
@@ -81,8 +86,29 @@
                     class="editor-ai-sidebar-bubble"
                     :class="message.role === 'user' ? 'is-user' : 'is-assistant'"
                   >
-                    <div class="editor-ai-sidebar-response-text">{{ message.content }}</div>
-                    <div v-if="message.role === 'assistant' && hasAiStructure(message.content)" class="mt-3 flex items-center gap-1">
+                    <template v-if="newEditor && message.role === 'assistant' && hasAiStructure(message.content)">
+                      <div v-if="aiIntroText(message.content)" class="editor-ai-sidebar-response-text">{{ aiIntroText(message.content) }}</div>
+                      <div class="ai-v2-structure">
+                        <p class="ai-v2-structure-title">Sugiro esta estrutura, com {{ aiStructureNames(message.content).length }} {{ aiStructureNames(message.content).length === 1 ? "seção" : "seções" }}:</p>
+                        <ol>
+                          <li v-for="(name, nameIndex) in aiStructureNames(message.content).slice(0, aiExpanded.has(index) ? undefined : 5)" :key="nameIndex">
+                            <b>{{ nameIndex + 1 }}</b><span>{{ name }}</span>
+                          </li>
+                          <li v-if="!aiExpanded.has(index) && aiStructureNames(message.content).length > 5" class="is-more">
+                            <button type="button" @click="toggleAiExpanded(index)">+{{ aiStructureNames(message.content).length - 5 }} seções</button>
+                          </li>
+                        </ol>
+                        <div class="ai-v2-actions">
+                          <button type="button" class="is-primary" :disabled="aiStructureApplying || aiAssistantLoading || isSectionEditorOpen" @click="applyAiStructure(message.content, 'insert')">Inserir no fim</button>
+                          <button type="button" :disabled="aiStructureApplying || aiAssistantLoading || isSectionEditorOpen" @click="applyAiStructure(message.content, 'replace')">Substituir tudo</button>
+                        </div>
+                        <span class="ai-v2-hint">{{ isSectionEditorOpen ? "Feche a edição da seção para aplicar." : "Dá para desfazer depois de aplicar." }}</span>
+                        <button type="button" class="ai-v2-details" @click="toggleAiDetails(index)">{{ aiDetails.has(index) ? "Esconder resposta completa" : "Ver resposta completa" }}</button>
+                        <div v-if="aiDetails.has(index)" class="editor-ai-sidebar-response-text ai-v2-full">{{ message.content }}</div>
+                      </div>
+                    </template>
+                    <div v-else class="editor-ai-sidebar-response-text">{{ message.content }}</div>
+                    <div v-if="!newEditor && message.role === 'assistant' && hasAiStructure(message.content)" class="mt-3 flex items-center gap-1">
                         <button type="button" class="min-h-11 min-w-0 flex-1 rounded-lg border border-indigo-200 bg-white px-3 py-2.5 text-sm font-semibold text-indigo-700 hover:bg-indigo-50 focus-visible:outline-indigo-600 disabled:opacity-50"
                           title="Adiciona todas as seções da sugestão ao final do conteúdo já existente."
                           aria-label="Inserir estrutura: adiciona todas as seções da sugestão ao final do conteúdo já existente."
@@ -102,6 +128,9 @@
                   </div>
                 </template>
 
+                <div v-if="newEditor && !aiAssistantLoading && !aiAssistantMessages.some(message => message.role === 'user')" class="ai-v2-chips">
+                  <button v-for="suggestion in aiSuggestions" :key="suggestion.label" type="button" @click="useAiSuggestion(suggestion)">{{ suggestion.label }}</button>
+                </div>
                 <button v-if="aiStructurePreviousSections" type="button"
                   class="my-2 text-sm font-semibold text-indigo-600 underline"
                   :disabled="aiStructureApplying || isSectionEditorOpen" @click="undoAiStructure">
@@ -339,6 +368,23 @@
       @close="closeSectionPicker"
       @integrate="goViajeonIntegration"
     />
+    <nav v-if="phoneEditor && !sectionPanelOpen && !showAiAssistant" class="ed-phone-nav" aria-label="Editor">
+      <button type="button" :class="{ on: layersOpen }" @click="layersOpen ? closePhonePanels() : openPhonePanel('layers')">
+        <LayersIcon aria-hidden="true" />
+        <span>Seções</span>
+      </button>
+      <button type="button" class="is-add" aria-label="Adicionar seção" @click="closePhonePanels(); openSectionPicker(null)">
+        <PlusIcon aria-hidden="true" />
+      </button>
+      <button type="button" :class="{ on: leftPanelOpen }" @click="leftPanelOpen ? closePhonePanels() : openPhonePanel('settings')">
+        <Settings2Icon aria-hidden="true" />
+        <span>Página</span>
+      </button>
+      <button v-if="canUseAiAssistant" type="button" :class="{ on: showAiAssistant }" @click="showAiAssistant ? closePhonePanels() : openPhonePanel('ai')">
+        <SparkleIcon aria-hidden="true" />
+        <span>IA</span>
+      </button>
+    </nav>
     <Transition name="fade">
       <div v-if="insertedToast" class="v2ed-toast" role="status">
         <span class="v2ed-toast-ico" aria-hidden="true"><CheckIcon /></span>
@@ -460,15 +506,47 @@
       </nav>
 
       <div
+        ref="editorGridRef"
         class="ed-grid"
         :class="{
           'is-wide': activeSettingsTab !== 'content',
           'is-v2': newEditor,
           'left-closed': newEditor && !leftPanelOpen,
-          'right-closed': newEditor && (!layersOpen || showAiAssistant)
+          'right-closed': newEditor && (!layersOpen || showAiAssistant),
+          'is-resizing': resizingPanel,
+          'is-phone': phoneEditor
         }"
+        :style="editorGridStyle"
       >
-      <aside v-if="newEditor || activeSettingsTab !== 'content'" class="ed-side">
+      <template v-if="newEditor && !phoneEditor">
+        <div
+          v-if="leftContentKey"
+          class="ed-resize is-left"
+          role="separator"
+          aria-orientation="vertical"
+          :aria-label="leftContentKey === 'section' ? 'Largura do editor da seção' : 'Largura das configurações'"
+          title="Arraste para ajustar a largura. Dois cliques voltam ao padrão."
+          tabindex="0"
+          @pointerdown="startPanelResize(leftContentKey, $event)"
+          @dblclick="resetPanelWidth(leftContentKey)"
+          @keydown.left.prevent="nudgePanel(leftContentKey, -24)"
+          @keydown.right.prevent="nudgePanel(leftContentKey, 24)"
+        ></div>
+        <div
+          v-if="layersPanelShown"
+          class="ed-resize is-right"
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Largura das camadas"
+          title="Arraste para ajustar a largura. Dois cliques voltam ao padrão."
+          tabindex="0"
+          @pointerdown="startPanelResize('layers', $event)"
+          @dblclick="resetPanelWidth('layers')"
+          @keydown.left.prevent="nudgePanel('layers', 24)"
+          @keydown.right.prevent="nudgePanel('layers', -24)"
+        ></div>
+      </template>
+      <aside v-if="newEditor || activeSettingsTab !== 'content'" class="ed-side" :class="{ 'is-open': !!leftContentKey, 'is-section': sectionPanelOpen }">
       <nav v-if="newEditor" class="ed-rail" aria-label="Configurações da página">
         <button
           type="button"
@@ -478,7 +556,8 @@
           :title="leftPanelOpen ? 'Recolher configurações' : 'Abrir configurações'"
           @click="leftPanelOpen = !leftPanelOpen"
         >
-          <PanelLeftCloseIcon v-if="leftPanelOpen" aria-hidden="true" />
+          <XIcon v-if="phoneEditor" aria-hidden="true" />
+          <PanelLeftCloseIcon v-else-if="leftPanelOpen" aria-hidden="true" />
           <PanelLeftOpenIcon v-else aria-hidden="true" />
         </button>
         <button
@@ -499,7 +578,7 @@
         <header class="esp-top">
           <button type="button" class="esp-back" @click="requestCloseSectionEditor">
             <ChevronLeftIcon aria-hidden="true" />
-            Configurações
+            {{ phoneEditor ? "Voltar" : "Configurações" }}
           </button>
           <button
             type="button"
@@ -531,7 +610,7 @@
           </span>
         </div>
         <div class="esp-body">
-          <component :is="editingSectionComponent" :modelValue="editingSectionDraft" @update:modelValue="updateEditingDraft" />
+          <component :is="editingSectionComponent" ref="editingSectionFormRef" :modelValue="editingSectionDraft" @update:modelValue="updateEditingDraft" />
         </div>
         <footer class="esp-foot">
           <span v-if="hasUnsavedSectionDraftChanges" class="section-editor-dirty"><i aria-hidden="true"></i>Alterações não salvas</span>
@@ -946,11 +1025,12 @@
             v-if="newEditor"
             type="button"
             class="ed-rail-btn is-small"
-            aria-label="Recolher camadas"
-            title="Recolher camadas"
+            :aria-label="phoneEditor ? 'Fechar camadas' : 'Recolher camadas'"
+            :title="phoneEditor ? 'Fechar camadas' : 'Recolher camadas'"
             @click="layersOpen = false"
           >
-            <PanelRightCloseIcon aria-hidden="true" />
+            <XIcon v-if="phoneEditor" aria-hidden="true" />
+            <PanelRightCloseIcon v-else aria-hidden="true" />
           </button>
           <div class="ed-sections-titles">
             <h2>{{ newEditor ? "Camadas" : "Seções da página" }}</h2>
@@ -1006,9 +1086,9 @@
           <PlusIcon aria-hidden="true" />
           Adicionar seção
         </button>
-        <p class="ed-sections-hint">{{ newEditor ? "Arraste para reordenar. O interruptor esconde a seção sem apagar." : "Clique numa seção (aqui ou na prévia) para editar. Arraste para mudar a ordem; o interruptor esconde a seção sem apagar." }}</p>
+        <p class="ed-sections-hint">{{ phoneEditor ? "Toque numa seção para editar. Para mudar a ordem, use as setas na prévia." : newEditor ? "Arraste para reordenar. O interruptor esconde a seção sem apagar." : "Clique numa seção (aqui ou na prévia) para editar. Arraste para mudar a ordem; o interruptor esconde a seção sem apagar." }}</p>
       </section>
-      <aside v-if="newEditor && !layersOpen && !showAiAssistant" class="ed-layers-mini" aria-label="Camadas">
+      <aside v-if="newEditor && !phoneEditor && !layersOpen && !showAiAssistant" class="ed-layers-mini" aria-label="Camadas">
         <button type="button" class="ed-rail-btn" aria-label="Abrir camadas" title="Abrir camadas" @click="layersOpen = true">
           <PanelRightOpenIcon aria-hidden="true" />
         </button>
@@ -1078,7 +1158,9 @@
       </div>
       <div class="ed-stage" :class="{ 'is-framed': !isMobileViewport, 'is-mobile-preview': previewDevice === 'mobile' }">
         <div
-          :class="isMobileViewport
+          :class="phoneEditor
+            ? 'ed-phone-screen'
+            : isMobileViewport
             ? (previewDevice === 'mobile' ? '-mx-4 w-[calc(100%+2rem)] overflow-hidden' : '')
             : (previewDevice === 'mobile' ? 'ed-phone' : 'ed-browser')"
         >
@@ -1118,7 +1200,11 @@
                       class="group relative"
                       :class="[
                         (section as any).type === 'header' ? 'z-30 overflow-visible' : 'overflow-hidden',
-                        { 'v2ed-sec': newEditor && (section as any).enabled, 'is-editing': sectionPanelOpen && editingSectionIndex === idx }
+                        {
+                          'v2ed-sec': newEditor && (section as any).enabled,
+                          'is-editing': sectionPanelOpen && editingSectionIndex === idx,
+                          'is-tapped': phoneEditor && mobileOverlayVisible[idx]
+                        }
                       ]"
                       :data-preview-index="idx"
                       @click.capture="handleSectionTap(idx, $event)"
@@ -1414,6 +1500,8 @@ import {
   PanelRightOpenIcon,
   PanelsTopLeftIcon,
   PaperclipIcon,
+  LayersIcon,
+  Settings2Icon,
   PencilIcon,
   PlaneIcon,
   PlusIcon,
@@ -1477,6 +1565,7 @@ import { describeSection, sectionLabels as defaultSectionLabels } from "../../ut
 import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
 import { resolvePageDesign } from "../../utils/pageDesign";
 import { sectionNameV2 } from "../../utils/sectionCatalogV2";
+import { getLocalizedValue } from "../../utils/i18n";
 import SectionPickerV2 from "../../components/admin/SectionPickerV2.vue";
 import EdGroup from "../../components/admin/v2edit/EdGroup.vue";
 import EdText from "../../components/admin/v2edit/EdText.vue";
@@ -1981,11 +2070,15 @@ const previewDevice = ref<"desktop" | "mobile">(editorPrefs.value.previewDevice 
 const isMobileViewport = ref(false);
 const isMobileOverlayMode = computed(() => isMobileViewport.value);
 // Editor novo (painel à esquerda, camadas à direita): por enquanto só para quem já tem o visual novo.
-const newEditor = computed(() => designV2Enabled.value && !isMobileViewport.value);
+const newEditor = computed(() => designV2Enabled.value);
+// No celular o editor novo vira prévia em tela cheia com barra embaixo; painéis abrem por cima.
+const phoneEditor = computed(() => newEditor.value && isMobileViewport.value);
 const EDITOR_PANELS_KEY = "editor_v2_panels";
+type PanelWidthKey = "settings" | "section" | "layers";
+type PanelPrefs = { left?: boolean; layers?: boolean; widths?: Partial<Record<PanelWidthKey, number>> };
 const readPanelPrefs = () => {
   try {
-    return JSON.parse(window.localStorage.getItem(EDITOR_PANELS_KEY) || "{}") as { left?: boolean; layers?: boolean };
+    return JSON.parse(window.localStorage.getItem(EDITOR_PANELS_KEY) || "{}") as PanelPrefs;
   } catch {
     return {};
   }
@@ -1994,13 +2087,127 @@ const panelPrefs = typeof window !== "undefined" ? readPanelPrefs() : {};
 // Em telas menores a prévia precisa do espaço: o painel começa recolhido, só com os ícones.
 const leftPanelOpen = ref(panelPrefs.left ?? (typeof window === "undefined" || window.innerWidth >= 1600));
 const layersOpen = ref(panelPrefs.layers ?? true);
-watch([leftPanelOpen, layersOpen], ([left, layers]) => {
+// Larguras ajustáveis arrastando a borda dos painéis; 0 = largura padrão da tela.
+const PANEL_LIMITS: Record<PanelWidthKey, { min: number; max: number; wide: number; narrow: number }> = {
+  settings: { min: 280, max: 560, wide: 360, narrow: 320 },
+  section: { min: 340, max: 640, wide: 420, narrow: 360 },
+  layers: { min: 208, max: 420, wide: 272, narrow: 248 }
+};
+const PANEL_RAIL = 64;
+const PREVIEW_MIN = 480;
+const panelWidths = reactive<Record<PanelWidthKey, number>>({
+  settings: panelPrefs.widths?.settings || 0,
+  section: panelPrefs.widths?.section || 0,
+  layers: panelPrefs.widths?.layers || 0
+});
+const editorViewportWidth = ref(typeof window === "undefined" ? 1440 : window.innerWidth);
+const panelWidth = (key: PanelWidthKey) => {
+  const limits = PANEL_LIMITS[key];
+  return panelWidths[key] || (editorViewportWidth.value < 1280 ? limits.narrow : limits.wide);
+};
+const leftContentKey = computed<PanelWidthKey | null>(() => (sectionPanelOpen.value ? "section" : leftPanelOpen.value ? "settings" : null));
+const layersPanelShown = computed(() => newEditor.value && layersOpen.value && !showAiAssistant.value);
+const editorGridStyle = computed(() => {
+  if (!newEditor.value || phoneEditor.value) return {};
+  const left = PANEL_RAIL + (leftContentKey.value ? panelWidth(leftContentKey.value) : 0);
+  const right = layersPanelShown.value ? panelWidth("layers") : showAiAssistant.value ? 0 : PANEL_RAIL;
+  return {
+    "--ed-settings-w": `${panelWidth("settings")}px`,
+    "--ed-section-w": `${panelWidth("section")}px`,
+    "--ed-layers-w": `${panelWidth("layers")}px`,
+    "--ed-left-total": `${left}px`,
+    "--ed-right-total": `${right}px`
+  };
+});
+const editorGridRef = ref<HTMLElement | null>(null);
+const resizingPanel = ref<PanelWidthKey | null>(null);
+const savePanelPrefs = () => {
+  // No celular os painéis abrem e fecham o tempo todo; isso não muda o que fica lembrado no computador.
+  if (isMobileViewport.value) return;
   try {
-    window.localStorage.setItem(EDITOR_PANELS_KEY, JSON.stringify({ left, layers }));
+    window.localStorage.setItem(
+      EDITOR_PANELS_KEY,
+      JSON.stringify({ left: leftPanelOpen.value, layers: layersOpen.value, widths: { ...panelWidths } })
+    );
   } catch {
     /* sem armazenamento local: os painéis só não ficam lembrados */
   }
-});
+};
+// A prévia nunca fica mais estreita que PREVIEW_MIN por causa de um painel.
+const clampPanelWidth = (key: PanelWidthKey, width: number) => {
+  const limits = PANEL_LIMITS[key];
+  const grid = editorGridRef.value;
+  let max = limits.max;
+  if (grid) {
+    const gaps = 16;
+    const other =
+      key === "layers"
+        ? PANEL_RAIL + (leftContentKey.value ? panelWidth(leftContentKey.value) : 0)
+        : layersPanelShown.value
+          ? panelWidth("layers")
+          : PANEL_RAIL;
+    const ownExtra = key === "layers" ? 0 : PANEL_RAIL;
+    max = Math.min(max, grid.offsetWidth - gaps - other - ownExtra - PREVIEW_MIN);
+  }
+  return Math.round(Math.max(limits.min, Math.min(Math.max(limits.min, max), width)));
+};
+const startPanelResize = (key: PanelWidthKey, event: PointerEvent) => {
+  const handle = event.currentTarget as HTMLElement;
+  const grid = editorGridRef.value;
+  if (!grid || event.button !== 0) return;
+  event.preventDefault();
+  // O app inteiro tem zoom; o arraste é medido na tela e convertido para a largura do painel.
+  const scale = grid.getBoundingClientRect().width / (grid.offsetWidth || 1) || 1;
+  const startX = event.clientX;
+  const startWidth = panelWidth(key);
+  const direction = key === "layers" ? -1 : 1;
+  resizingPanel.value = key;
+  handle.setPointerCapture(event.pointerId);
+  const move = (moveEvent: PointerEvent) => {
+    panelWidths[key] = clampPanelWidth(key, startWidth + (direction * (moveEvent.clientX - startX)) / scale);
+  };
+  const stop = () => {
+    resizingPanel.value = null;
+    handle.removeEventListener("pointermove", move);
+    handle.removeEventListener("pointerup", stop);
+    handle.removeEventListener("pointercancel", stop);
+    savePanelPrefs();
+  };
+  handle.addEventListener("pointermove", move);
+  handle.addEventListener("pointerup", stop);
+  handle.addEventListener("pointercancel", stop);
+};
+const nudgePanel = (key: PanelWidthKey, delta: number) => {
+  panelWidths[key] = clampPanelWidth(key, panelWidth(key) + delta);
+  savePanelPrefs();
+};
+const resetPanelWidth = (key: PanelWidthKey) => {
+  panelWidths[key] = 0;
+  savePanelPrefs();
+};
+watch([leftPanelOpen, layersOpen], savePanelPrefs);
+const closePhonePanels = () => {
+  leftPanelOpen.value = false;
+  layersOpen.value = false;
+  showAiAssistant.value = false;
+};
+watch(phoneEditor, isPhone => {
+  if (isPhone) {
+    leftPanelOpen.value = false;
+    layersOpen.value = false;
+    return;
+  }
+  const prefs = readPanelPrefs();
+  leftPanelOpen.value = prefs.left ?? window.innerWidth >= 1600;
+  layersOpen.value = prefs.layers ?? true;
+}, { immediate: true });
+// Um painel por vez no celular.
+const openPhonePanel = (panel: "layers" | "settings" | "ai") => {
+  closePhonePanels();
+  if (panel === "layers") layersOpen.value = true;
+  else if (panel === "settings") leftPanelOpen.value = true;
+  else toggleAiAssistant();
+};
 type RailTab = "general" | "colors" | "pixels" | "capture";
 const railTabs: { id: RailTab; label: string; icon: Component }[] = [
   { id: "general", label: "Título e link", icon: PencilIcon },
@@ -2118,6 +2325,7 @@ const syncMobileViewport = () => {
   if (!hasWindow) return;
   const matches = window.innerWidth < 768;
   isMobileViewport.value = matches;
+  editorViewportWidth.value = window.innerWidth;
   if (matches && previewDevice.value !== "mobile") {
     previewDevice.value = "mobile";
   }
@@ -2142,6 +2350,18 @@ const aiStructureApplying = ref(false);
 const aiStructureError = ref("");
 const aiStructurePreviousSections = shallowRef<PageSection[] | null>(null);
 const hasAiStructure = (content: string) => /^\s*(?:🟩\s*)?(?:SECAO|SEÇÃO)\s*:\s*.+$/im.test(content);
+// Editor novo: a resposta com estrutura vira uma lista de seções, com o texto completo sob demanda.
+const AI_SECTION_LINE = /^\s*(?:🟩\s*)?(?:SECAO|SEÇÃO)\s*:\s*(.+)$/gim;
+const aiStructureNames = (content: string) =>
+  [...content.matchAll(AI_SECTION_LINE)].map(match => match[1].replace(/[*_`#]/g, "").trim()).filter(Boolean);
+const aiIntroText = (content: string) => {
+  const first = content.search(/^\s*(?:🟩\s*)?(?:SECAO|SEÇÃO)\s*:/im);
+  return (first > 0 ? content.slice(0, first) : "").trim();
+};
+const aiExpanded = reactive(new Set<number>());
+const aiDetails = reactive(new Set<number>());
+const toggleAiExpanded = (index: number) => (aiExpanded.has(index) ? aiExpanded.delete(index) : aiExpanded.add(index));
+const toggleAiDetails = (index: number) => (aiDetails.has(index) ? aiDetails.delete(index) : aiDetails.add(index));
 const applyAiStructure = async (reply: string, mode: "insert" | "replace") => {
   if (aiStructureApplying.value || aiAssistantLoading.value || isSectionEditorOpen.value) return;
   aiStructureApplying.value = true;
@@ -2401,6 +2621,32 @@ const aiAssistantUsageLabel = computed(() => {
   const remaining = usage.remaining ?? 0;
   return `${remaining}/${limit} restantes`;
 });
+const aiAssistantUsageText = computed(() => {
+  const usage = aiAssistantUsage.value;
+  if (!usage) return "";
+  if (usage.unlimited) return "Mensagens ilimitadas";
+  return `${usage.used ?? 0} de ${usage.limit ?? 0} mensagens no mês`;
+});
+// Sugestões prontas na primeira conversa (editor novo).
+const aiSuggestions = computed(() => {
+  const hero = sections.value.find(section => section.type === "hero") as HeroSection | undefined;
+  const heroTitle = hero ? getLocalizedValue(hero.title) : "";
+  const heroText = hero ? getLocalizedValue(hero.subtitle).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() : "";
+  const pageName = (pageTitle.value || page.value?.title || "").trim();
+  return [
+    { label: "Montar estrutura da página", text: "Monte a estrutura completa desta página com as informações da viagem que vou enviar (texto, PDF ou prints).", send: false },
+    {
+      label: "Melhorar texto da capa",
+      text: `Melhore o título e o texto da capa, mantendo as informações.\nTítulo atual: ${heroTitle || "(vazio)"}\nTexto atual: ${heroText || "(vazio)"}`,
+      send: true
+    },
+    { label: "Criar perguntas frequentes", text: `Crie uma seção de perguntas frequentes para a página "${pageName || "desta viagem"}".`, send: true }
+  ];
+});
+const useAiSuggestion = (suggestion: { text: string; send: boolean }) => {
+  aiAssistantDraft.value = suggestion.text;
+  if (suggestion.send) sendAiAssistantMessage();
+};
 const aiAssistantSidebarStyle = computed(() => ({
   width: `${aiAssistantSidebarWidth.value}px`,
   maxWidth: "calc(100vw - 48px)"
@@ -2914,8 +3160,7 @@ const editingSectionHeaderLabel = computed(() => {
   if (type === "flight_details") return "Voos";
   return editingSectionLabel.value;
 });
-// No editor novo, as seções com formulário no padrão novo (Conteúdo / Aparência) usam ele;
-// Menu do topo, Outros roteiros, Voos, Compra online e Formulário seguem com o formulário atual.
+// No editor novo, todas as seções usam o formulário no padrão novo (Conteúdo / Aparência).
 const v2FormComponents: Partial<Record<SectionType, any>> = {
   hero: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormHero.vue")),
   banner_card: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormBannerCard.vue")),
@@ -2931,7 +3176,12 @@ const v2FormComponents: Partial<Record<SectionType, any>> = {
   cta: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormCta.vue")),
   testimonials: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormTestimonials.vue")),
   faq: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormFaq.vue")),
-  agency_footer: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormAgencyFooter.vue"))
+  agency_footer: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormAgencyFooter.vue")),
+  header: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormHeader.vue")),
+  links: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormLinks.vue")),
+  flight_details: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormFlightDetails.vue")),
+  viajeon_checkout: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormViajeonCheckout.vue")),
+  internal_form: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormInternalForm.vue"))
 };
 const usesV2Form = computed(() => newEditor.value && !!editingSectionType.value && !!v2FormComponents[editingSectionType.value]);
 const editingSectionComponent = computed(() => {
@@ -2943,6 +3193,9 @@ const isSectionEditorOpen = computed(() => editingSectionIndex.value !== null &&
 // Editor novo: a seção abre no painel da esquerda, no lugar das configurações da página,
 // e a prévia mostra o rascunho enquanto a pessoa digita. Seções sem formulário novo seguem no modal.
 const sectionPanelOpen = computed(() => isSectionEditorOpen.value && usesV2Form.value);
+watch(sectionPanelOpen, isOpen => {
+  if (isOpen && phoneEditor.value) layersOpen.value = false;
+});
 const sectionPanelMenuOpen = ref(false);
 const livePreviewDraft = computed(() => {
   const draft = editingSectionDraft.value;
@@ -2980,9 +3233,26 @@ const runPanelAction = (action: "up" | "down" | "duplicate" | "delete") => {
   if (hasUnsavedSectionDraftChanges.value) requestUnsavedSectionConfirmation(run);
   else run();
 };
+// Voos: os trechos são salvos à parte (um a um) e o editor de trechos completa a seção ao abrir,
+// então a comparação olha só os campos que a pessoa edita no painel.
+const sectionDraftSnapshot = (section: PageSection | null) => {
+  if (!section) return "";
+  if (section.type !== "flight_details") return JSON.stringify(section);
+  const flight = section as any;
+  return JSON.stringify({
+    enabled: flight.enabled !== false,
+    headingLabel: flight.headingLabel ?? null,
+    title: flight.title ?? "",
+    subtitle: flight.subtitle ?? "",
+    generalInfo: flight.generalInfo ?? "",
+    showOutbound: flight.showOutbound !== false,
+    showInbound: flight.showInbound !== false,
+    backgroundColor: flight.customBackground ? flight.backgroundColor : null
+  });
+};
 const hasUnsavedSectionDraftChanges = computed(() => {
   if (!isSectionEditorOpen.value || !editingSectionDraft.value || !editingSectionOriginalSnapshot.value) return false;
-  return JSON.stringify(editingSectionDraft.value) !== editingSectionOriginalSnapshot.value;
+  return sectionDraftSnapshot(editingSectionDraft.value) !== editingSectionOriginalSnapshot.value;
 });
 watch(
   [hasUnsavedChanges, hasUnsavedSectionDraftChanges],
@@ -4604,7 +4874,7 @@ const openSectionEditor = (index: number) => {
   if (isLockedFooterSection(target)) return;
   editingSectionIndex.value = index;
   editingSectionDraft.value = clone(target);
-  editingSectionOriginalSnapshot.value = JSON.stringify(editingSectionDraft.value);
+  editingSectionOriginalSnapshot.value = sectionDraftSnapshot(editingSectionDraft.value);
 };
 
 const forceCloseSectionEditor = () => {
@@ -6861,6 +7131,7 @@ onMounted(async () => {
 .section-editor-dirty { display: inline-flex; align-items: center; gap: 8px; margin-right: auto; font-size: 13px; font-weight: 600; color: #b4530b; }
 .section-editor-dirty i { width: 8px; height: 8px; border-radius: 999px; background: #e8590c; }
 .ed-section-panel { display: flex; width: 420px; min-height: 0; flex-direction: column; }
+.ed-grid.is-v2 .ed-section-panel { flex: 0 0 auto; width: var(--ed-section-w, 420px); }
 .esp-top { display: flex; align-items: center; gap: 4px; padding: 10px 10px 6px 6px; }
 .esp-back { display: inline-flex; flex: 1; align-items: center; gap: 4px; height: 34px; padding: 0 8px 0 4px; border-radius: 9px; color: var(--muted-foreground); font-size: 13px; font-weight: 600; }
 .esp-back:hover { color: var(--foreground); }
@@ -6888,6 +7159,7 @@ onMounted(async () => {
 .v2ed-sec.is-editing { z-index: 4; }
 .v2ed-sec.is-editing .v2ed-ring { opacity: 1; box-shadow: inset 0 0 0 2px #12b981; }
 .ed-settings-v2 { display: flex; width: 360px; min-height: 0; flex-direction: column; }
+.ed-grid.is-v2 .ed-settings-v2 { flex: 0 0 auto; width: var(--ed-settings-w, 360px); }
 .esv-head { padding: 14px 16px 12px; }
 .esv-head .ed-panel-title { margin-bottom: 0; }
 .esv-body { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding: 12px; border-top: 1px solid var(--border); background: var(--muted); }
@@ -6908,6 +7180,30 @@ onMounted(async () => {
 .ed-stage.is-mobile-preview .v2ed-bar { top: 50px; }
 .ed-stage.is-mobile-preview .v2ed-edit span { display: none; }
 .ed-stage.is-mobile-preview .v2ed-edit { padding: 0 10px; }
+.editor-workspace.is-v2 .editor-ai-sidebar-header { display: flex; align-items: center; gap: 10px; }
+.ai-v2-mark { display: grid; flex-shrink: 0; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: #e7f6ee; color: #0b7a55; }
+.ai-v2-mark svg { width: 18px; height: 18px; }
+.editor-workspace.is-v2 .editor-ai-sidebar-header-copy { flex: 1; min-width: 0; }
+.ai-v2-usage { display: block; font-size: 12px; color: var(--muted-foreground); }
+.editor-workspace.is-v2 .editor-ai-sidebar-bubble.is-user { background: var(--foreground); color: var(--background); }
+.editor-workspace.is-v2 .editor-ai-sidebar-bubble.is-assistant { background: var(--muted); color: var(--foreground); border-color: transparent; }
+.ai-v2-structure { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.ai-v2-structure-title { margin: 0; font-size: 13px; font-weight: 700; }
+.ai-v2-structure ol { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 6px; list-style: none; border-radius: 12px; background: var(--card); box-shadow: inset 0 0 0 1px var(--border); }
+.ai-v2-structure li { display: flex; align-items: center; gap: 10px; padding: 6px 8px; font-size: 13px; }
+.ai-v2-structure li b { width: 16px; flex-shrink: 0; text-align: right; color: var(--muted-foreground); font-size: 12px; }
+.ai-v2-structure li.is-more button { padding-left: 26px; font-size: 13px; font-weight: 700; color: var(--primary); }
+.ai-v2-actions { display: flex; gap: 8px; }
+.ai-v2-actions button { flex: 1; height: 38px; border-radius: 999px; background: var(--card); box-shadow: inset 0 0 0 1px var(--border); font-size: 13px; font-weight: 700; color: var(--foreground); }
+.ai-v2-actions button.is-primary { background: #12b981; box-shadow: none; color: #fff; }
+.ai-v2-actions button:disabled { opacity: 0.5; }
+.ai-v2-hint { font-size: 12px; color: var(--muted-foreground); }
+.ai-v2-details { align-self: flex-start; font-size: 12px; font-weight: 700; color: var(--muted-foreground); text-decoration: underline; text-underline-offset: 3px; }
+.ai-v2-full { padding: 10px; border-radius: 10px; background: var(--card); font-size: 12px; }
+.ai-v2-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
+.ai-v2-chips button { padding: 7px 12px; border-radius: 999px; background: var(--card); box-shadow: inset 0 0 0 1px var(--border); font-size: 13px; font-weight: 600; color: var(--foreground); }
+.ai-v2-chips button:hover { box-shadow: inset 0 0 0 1.5px #12b981; }
+.editor-workspace.is-v2 .editor-ai-sidebar-send:not(:disabled) { background: var(--foreground); color: var(--background); }
 .ed-panel-eyebrow { margin: 0 0 2px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted-foreground); }
 .ed-panel-title { margin: 0 0 16px; font-size: 18px; font-weight: 700; color: var(--foreground); }
 .ed-rail { display: flex; flex: 0 0 64px; flex-direction: column; align-items: center; gap: 4px; padding: 12px 0; border-right: 1px solid var(--border); }
@@ -6920,7 +7216,30 @@ onMounted(async () => {
 .ed-rail-btn.is-small { width: 34px; height: 34px; margin: 0; }
 .ed-rail-btn.is-small svg { width: 18px; height: 18px; }
 .ed-rail-dot { position: absolute; top: 9px; right: 9px; width: 8px; height: 8px; border-radius: 999px; background: #e8590c; box-shadow: 0 0 0 2px var(--card); }
-.ed-grid.is-v2 > .ed-sections { width: 272px; padding: 12px 8px; }
+.ed-grid.is-v2 > .ed-sections { width: var(--ed-layers-w, 272px); padding: 12px 8px; }
+/* Os painéis crescem e encolhem com animação (abrir uma seção, recolher, arrastar a borda). */
+.ed-grid.is-v2 { position: relative; --ed-ease: cubic-bezier(0.22, 0.8, 0.24, 1); }
+.ed-grid.is-v2 > .ed-side { width: var(--ed-left-total); transition: width 0.32s var(--ed-ease); }
+.ed-grid.is-v2 > .ed-sections { animation: ed-layers-in 0.32s var(--ed-ease); }
+.ed-grid.is-v2 > .ed-layers-mini { animation: ed-layers-mini-in 0.32s var(--ed-ease); }
+.ed-grid.is-v2 .ed-section-panel, .ed-grid.is-v2 .ed-settings-v2 { animation: ed-panel-fade 0.24s ease; }
+@keyframes ed-layers-in { from { width: 64px; opacity: 0.4; } }
+@keyframes ed-layers-mini-in { from { width: var(--ed-layers-w, 272px); opacity: 0.4; } }
+@keyframes ed-panel-fade { from { opacity: 0; } }
+.ed-grid.is-resizing { cursor: col-resize; user-select: none; }
+.ed-grid.is-resizing > *, .ed-grid.is-resizing .ed-section-panel, .ed-grid.is-resizing .ed-settings-v2 { transition: none !important; animation: none !important; }
+.ed-grid.is-resizing .editor-preview-shell { pointer-events: none; }
+.ed-resize { position: absolute; top: 12px; bottom: 12px; z-index: 6; width: 8px; cursor: col-resize; touch-action: none; transition: left 0.32s var(--ed-ease), right 0.32s var(--ed-ease); }
+.ed-resize.is-left { left: var(--ed-left-total); }
+.ed-resize.is-right { right: var(--ed-right-total); }
+.ed-resize::after { content: ""; position: absolute; top: 50%; left: 2px; width: 4px; height: 40px; border-radius: 999px; background: var(--border); opacity: 0; transform: translateY(-50%); transition: opacity 0.15s ease, background-color 0.15s ease, height 0.2s ease; }
+.ed-resize:hover::after, .ed-resize:focus-visible::after { opacity: 1; }
+.ed-resize:focus-visible { outline: none; }
+.ed-grid.is-resizing .ed-resize::after { height: 72px; background: var(--primary); opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .ed-grid.is-v2 > .ed-side, .ed-resize { transition: none; }
+  .ed-grid.is-v2 > .ed-sections, .ed-grid.is-v2 > .ed-layers-mini, .ed-grid.is-v2 .ed-section-panel, .ed-grid.is-v2 .ed-settings-v2 { animation: none; }
+}
 .ed-grid.is-v2 .ed-sections-head { gap: 8px; padding: 0 4px 10px; }
 .ed-grid.is-v2 .ed-sections-titles { flex-direction: column; align-items: flex-start; gap: 0; }
 .ed-layers-add { display: inline-flex; flex-shrink: 0; align-items: center; gap: 4px; height: 32px; padding: 0 12px 0 9px; border-radius: 999px; background: var(--foreground); color: var(--background); font-size: 13px; font-weight: 700; }
@@ -6970,7 +7289,45 @@ onMounted(async () => {
   .ed-grid.is-v2 .ed-settings-card { width: 320px; }
   .ed-section-panel { width: 360px; }
   .ed-settings-v2 { width: 320px; }
-  .ed-grid.is-v2 > .ed-sections { width: 248px; }
+}
+/* Celular: prévia em tela cheia, painéis abrem por cima e a barra de baixo troca entre eles. */
+.page-editor-view.is-phone { padding: 0 !important; }
+.ed-grid.is-v2.is-phone { display: block; height: auto; min-height: 0; }
+.ed-grid.is-phone > .editor-preview-shell { margin-bottom: 92px; padding: 0 !important; overflow: hidden; border: 0 !important; border-radius: 18px !important; box-shadow: none !important; }
+.ed-grid.is-phone .ed-preview-head { display: none; }
+.ed-grid.is-v2.is-phone .ed-stage { margin-top: 0; }
+.ed-phone-screen { overflow: hidden; }
+.ed-grid.is-phone > .ed-side { display: none; }
+.ed-grid.is-phone > .ed-side.is-open,
+.ed-grid.is-phone > .ed-sections { position: fixed; inset: 0; z-index: 80; display: flex; width: auto !important; flex-direction: column; border-radius: 0 !important; transition: none; animation: ed-sheet-up 0.32s var(--ed-ease); }
+.ed-grid.is-phone > .ed-sections { padding: 16px 12px 96px; }
+.ed-grid.is-phone > .ed-side.is-open:not(.is-section) { padding-bottom: 84px; }
+.ed-grid.is-phone .ed-rail { flex: 0 0 auto; flex-direction: row; gap: 6px; padding: 10px 12px; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--border); }
+.ed-grid.is-phone .ed-rail-btn:first-child { margin: 0 6px 0 0; }
+.ed-grid.is-phone > .ed-side.is-section .ed-rail { display: none; }
+.ed-grid.is-phone .ed-section-panel,
+.ed-grid.is-phone .ed-settings-v2 { flex: 1; width: 100% !important; min-height: 0; animation: none; }
+.ed-grid.is-phone .ed-section-row .ed-grip { display: none; }
+.editor-workspace.is-phone .editor-ai-sidebar { inset: 0 !important; z-index: 80; width: auto !important; max-width: none !important; border-radius: 0 !important; }
+.editor-workspace.is-phone .editor-ai-sidebar-resize-handle { display: none; }
+@keyframes ed-sheet-up { from { opacity: 0; transform: translateY(28px); } }
+.ed-phone-nav { position: fixed; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); left: 12px; z-index: 85; display: flex; align-items: center; gap: 4px; padding: 6px; border-radius: 22px; background: var(--card); box-shadow: inset 0 0 0 1px var(--border), 0 16px 36px -14px rgba(6, 12, 9, 0.5); font-family: Figtree, sans-serif; }
+.ed-phone-nav button { display: flex; flex: 1; flex-direction: column; align-items: center; gap: 2px; padding: 7px 0 6px; border-radius: 16px; color: var(--muted-foreground); font-size: 11px; font-weight: 700; transition: background-color 0.15s ease, color 0.15s ease; }
+.ed-phone-nav button.on { background: var(--muted); color: var(--foreground); }
+.ed-phone-nav svg { width: 20px; height: 20px; }
+.ed-phone-nav button.is-add { display: grid; flex: 0 0 48px; height: 48px; place-items: center; padding: 0; border-radius: 999px; background: var(--foreground); color: var(--background); }
+.page-editor-view.is-phone ~ .v2ed-toast, .page-editor-view.is-phone .v2ed-toast { bottom: 96px; }
+.page-editor-view.is-phone .ed-topbar { flex-wrap: nowrap; gap: 8px; min-height: 48px; padding: 0 2px; }
+.page-editor-view.is-phone .ed-title-block { flex: 1; min-width: 0; }
+.page-editor-view.is-phone .ed-title-row { flex-wrap: nowrap; gap: 6px; }
+.page-editor-view.is-phone .ed-title { max-width: none; font-size: 16px; }
+.page-editor-view.is-phone .ed-pill, .page-editor-view.is-phone .ed-saved { display: none; }
+.page-editor-view.is-phone .ed-actions { width: auto; flex: 0 0 auto; flex-wrap: nowrap; gap: 6px; margin-left: 0; }
+.page-editor-view.is-phone .ed-actions .ed-btn-primary { flex: 0 0 auto; width: auto; padding: 0 16px; }
+.v2ed-sec.is-tapped { z-index: 5; }
+.v2ed-sec.is-tapped .v2ed-ring, .v2ed-sec.is-tapped .v2ed-tag, .v2ed-sec.is-tapped .v2ed-bar { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  .ed-grid.is-phone > .ed-side.is-open, .ed-grid.is-phone > .ed-sections { animation: none; }
 }
 </style>
 

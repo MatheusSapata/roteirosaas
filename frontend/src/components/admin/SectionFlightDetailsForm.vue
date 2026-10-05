@@ -1,6 +1,11 @@
 ﻿<template>
-  <div class="flight-shell">
-    <aside class="flight-nav">
+  <div class="flight-shell" :class="{ 'is-compact': compact }">
+    <!-- Compacto (painel do editor novo): os textos ficam no cabeçalho da seção; aqui só Ida e Volta. -->
+    <div v-if="compact" class="flight-compact-tabs" role="tablist">
+      <button type="button" role="tab" :class="{ on: activeTab === 'outbound' }" :aria-selected="activeTab === 'outbound'" @click="activeTab = 'outbound'">Ida</button>
+      <button type="button" role="tab" :class="{ on: activeTab === 'inbound' }" :aria-selected="activeTab === 'inbound'" @click="activeTab = 'inbound'">Volta</button>
+    </div>
+    <aside v-if="!compact" class="flight-nav">
       <button type="button" class="flight-nav-item" :class="{ active: activeTab === 'text' }" @click="activeTab = 'text'">
         <span class="flight-nav-icon" v-html="adminTabIcons.text"></span>
         <span><strong>Textos</strong><small>Informações gerais</small></span>
@@ -230,7 +235,7 @@ import {
 } from "../../services/flightDetails";
 import { adminTabIcons } from "../../utils/adminTabIcons";
 
-const props = defineProps<{ modelValue: FlightDetailsSection }>();
+const props = defineProps<{ modelValue: FlightDetailsSection; compact?: boolean }>();
 const emit = defineEmits<{ (e: "update:modelValue", value: FlightDetailsSection): void }>();
 
 const route = useRoute();
@@ -273,7 +278,7 @@ const local = reactive<FlightDetailsSection>({
 const loadingJourneys = ref(false);
 const lookupAvailable = ref(Boolean(props.modelValue.lookupAvailable));
 const activeDirection = ref<"outbound" | "inbound">("outbound");
-const activeTab = ref<"text" | "outbound" | "inbound">("text");
+const activeTab = ref<"text" | "outbound" | "inbound">(props.compact ? "outbound" : "text");
 const journeys = ref<FlightSectionJourney[]>(props.modelValue.journeys || []);
 const selectedSegmentId = ref<number | null>(null);
 const selectedSegmentIndex = ref<number | null>(null);
@@ -1175,6 +1180,39 @@ onBeforeUnmount(() => {
   .flight-content {
     padding: 10px;
   }
+}
+
+.flight-shell.is-compact {
+  height: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  grid-template-columns: none;
+  background: transparent;
+}
+.flight-shell.is-compact .flight-content {
+  padding: 0;
+}
+.flight-compact-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--muted);
+}
+.flight-compact-tabs button {
+  flex: 1;
+  height: 36px;
+  border-radius: 9px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+.flight-compact-tabs button.on {
+  background: var(--card);
+  color: var(--foreground);
+  box-shadow: 0 1px 3px rgba(15, 23, 19, 0.15);
 }
 </style>
 

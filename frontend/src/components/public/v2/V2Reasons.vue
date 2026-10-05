@@ -17,7 +17,7 @@ import type { ReasonsSection } from "../../../types/page";
 import V2Section from "./V2Section.vue";
 import V2Head from "./V2Head.vue";
 import TravelIcon from "../../shared/TravelIcon.vue";
-import { travelIconKey } from "../../../utils/travelIcons";
+import { iconValueName } from "../../../utils/travelIcons";
 import { html, text, useHeading } from "./useHeading";
 
 const props = defineProps<{ section: ReasonsSection; previewDevice?: "desktop" | "mobile" }>();
@@ -25,7 +25,7 @@ const { label, title, subtitleHtml } = useHeading(toRef(props, "section"), "reas
 const items = computed(() =>
   (props.section.items || []).map(item => ({
     icon: (item.icon || "").trim(),
-    isIcon: !!travelIconKey((item.icon || "").trim()),
+    isIcon: !!iconValueName((item.icon || "").trim()),
     title: text(item.title),
     descriptionHtml: text(item.description) ? html(item.description) : ""
   }))

@@ -23,7 +23,7 @@
           <template #default="{ item, update }">
             <EdText :model-value="readText(item.title)" label="Título" placeholder="Chegada e traslado ao hotel" @update:model-value="update({ title: writeText(item.title, $event) })" />
             <EdRich :model-value="readText(item.description)" label="Texto" @update:model-value="update({ description: writeText(item.description, $event) })" />
-            <ImageUploadField :model-value="item.image || ''" label="Foto do dia" hint="Opcional." layout="row" @update:model-value="update({ image: $event || '' })" />
+            <ImageUploadField :model-value="item.image || ''" label="Foto do dia" hint="Opcional." layout="compact" @update:model-value="update({ image: $event || '' })" />
           </template>
         </EdList>
       </EdGroup>

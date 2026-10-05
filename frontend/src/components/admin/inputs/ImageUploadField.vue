@@ -4,8 +4,27 @@
       <label class="text-sm font-semibold text-slate-600">{{ label }}</label>
       <p v-if="labelDescription" class="text-xs text-slate-500">{{ labelDescription }}</p>
     </div>
+    <!-- Compacto: para painéis estreitos, como o editor novo. -->
+    <div v-if="props.layout === 'compact'" class="iuf-compact">
+      <button type="button" class="iuf-thumb" :aria-label="previewUrl ? 'Trocar imagem' : 'Adicionar imagem'" @click="previewUrl && croppingEnabled ? openCropperForCurrent() : openFileDialog()">
+        <img v-if="previewUrl" :src="previewUrl" alt="" />
+        <span v-else aria-hidden="true">+</span>
+      </button>
+      <div class="iuf-side">
+        <div class="iuf-actions">
+          <label class="iuf-btn">
+            <input ref="fileInput" type="file" accept="image/*" class="hidden" @change="onFileChange" />
+            <span v-if="uploading">Enviando...</span>
+            <span v-else>{{ previewUrl ? "Trocar" : "Adicionar" }}</span>
+          </label>
+          <button v-if="modelValue" type="button" class="iuf-remove" @click="clearImage">Remover</button>
+        </div>
+        <p v-if="hint" class="iuf-hint">{{ hint }}</p>
+        <p v-if="error" class="iuf-error">{{ error }}</p>
+      </div>
+    </div>
     <div
-      v-if="props.layout === 'row'"
+      v-else-if="props.layout === 'row'"
       class="flex flex-1 items-center gap-3 rounded-xl border border-slate-200 p-3"
     >
       <button
@@ -245,7 +264,7 @@ const props = defineProps<{
   editorTitle?: string;
   roundedValue?: number;
   roundedMax?: number;
-  layout?: "card" | "row";
+  layout?: "card" | "row" | "compact";
 }>();
 const emit = defineEmits<{
   (e: "update:modelValue", value: string | null): void;
@@ -693,6 +712,75 @@ defineExpose({
 .image-editor-modal :deep(.text-slate-500),
 .image-editor-modal :deep(.text-slate-400) {
   color: var(--muted-foreground) !important;
+}
+
+.iuf-compact {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.iuf-thumb {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 104px;
+  height: 66px;
+  overflow: hidden;
+  border-radius: 10px;
+  background: var(--muted);
+  box-shadow: inset 0 0 0 1px var(--border);
+  color: var(--muted-foreground);
+  font-size: 22px;
+  font-weight: 600;
+}
+.iuf-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.iuf-side {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+}
+.iuf-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+}
+.iuf-btn {
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: var(--muted);
+  box-shadow: inset 0 0 0 1px var(--border);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--foreground);
+  cursor: pointer;
+}
+.iuf-btn:hover {
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+.iuf-remove {
+  font-size: 13px;
+  font-weight: 600;
+  color: #dc2626;
+}
+.iuf-hint,
+.iuf-error {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--muted-foreground);
+}
+.iuf-error {
+  color: #dc2626;
 }
 </style>
 

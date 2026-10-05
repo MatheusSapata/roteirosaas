@@ -40,3 +40,7 @@ export const travelIconKey = (value?: string | null): TravelIconKey | null => {
   const key = value.slice(ICON_PREFIX.length) as TravelIconKey;
   return key in TRAVEL_ICONS ? key : null;
 };
+
+/** Nome de qualquer ícone salvo ("icon:plane-takeoff" → "plane-takeoff"), básico ou da biblioteca completa. */
+export const iconValueName = (value?: string | null): string | null =>
+  value && value.startsWith(ICON_PREFIX) && value.length > ICON_PREFIX.length ? value.slice(ICON_PREFIX.length) : null;

@@ -12,12 +12,12 @@
           @update:model-value="setMediaMode"
         />
         <template v-if="mediaMode === 'photo'">
-          <ImageUploadField :model-value="modelValue.backgroundImage || ''" label="Foto do computador" hint="Ideal 2400 × 1350 px." @update:model-value="patch({ backgroundImage: $event || '' })" />
+          <ImageUploadField :model-value="modelValue.backgroundImage || ''" label="Foto do computador" hint="Ideal 2400 × 1350 px." layout="compact" @update:model-value="patch({ backgroundImage: $event || '' })" />
           <ImageUploadField
             :model-value="modelValue.mobileBackgroundImage || ''"
             label="Foto do celular"
             hint="Opcional. Melhor quase quadrada; sem ela, usa a do computador."
-            layout="row"
+            layout="compact"
             @update:model-value="patch({ mobileBackgroundImage: $event || '' })"
           />
         </template>
@@ -30,7 +30,7 @@
             <template #default="{ item, update }">
               <div class="ved-field">
                 <span class="ved-label">Ícone</span>
-                <TravelIconPicker :model-value="item.icon" @update:model-value="update({ icon: $event })" />
+                <IconEmojiPicker :model-value="item.icon" mode="icon" @update:model-value="update({ icon: $event })" />
               </div>
               <EdText :model-value="item.text" label="Texto" placeholder="Aéreo incluso" @update:model-value="update({ text: $event })" />
             </template>
@@ -73,7 +73,7 @@
 import { computed, ref } from "vue";
 import type { HeroSection } from "../../../../types/page";
 import ImageUploadField from "../../inputs/ImageUploadField.vue";
-import TravelIconPicker from "../../inputs/TravelIconPicker.vue";
+import IconEmojiPicker from "../../inputs/IconEmojiPicker.vue";
 import EdBackground from "../EdBackground.vue";
 import EdButton from "../EdButton.vue";
 import EdGroup from "../EdGroup.vue";
