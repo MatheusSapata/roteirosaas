@@ -699,6 +699,8 @@ function setupCtaTracking(pixels: { type: string; value: string }[]) {
 .public-page-scale {
   position: relative;
   zoom: 0.9;
+  /* As seções do visual novo usam para compensar alturas em vh, como a capa antiga fazia. */
+  --page-zoom: 0.9;
 }
 
 @supports not (zoom: 1) {

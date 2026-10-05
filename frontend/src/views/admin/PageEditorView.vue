@@ -495,9 +495,167 @@
           <span v-if="tab.id === 'pixels' && !selectedPixels.meta && !selectedPixels.ga" class="ed-rail-dot" aria-hidden="true"></span>
         </button>
       </nav>
-      <div v-show="!newEditor || leftPanelOpen" class="editor-settings-shell ed-settings-card">
-        <p v-if="newEditor" class="ed-panel-eyebrow">Configurações da página</p>
-        <h2 v-if="newEditor" class="ed-panel-title">{{ railTabs.find(tab => tab.id === activeSettingsTab)?.label }}</h2>
+      <section v-if="sectionPanelOpen && editingSectionDraft" class="ed-section-panel" aria-label="Editar seção">
+        <header class="esp-top">
+          <button type="button" class="esp-back" @click="requestCloseSectionEditor">
+            <ChevronLeftIcon aria-hidden="true" />
+            Configurações
+          </button>
+          <button
+            type="button"
+            class="esp-icon-btn"
+            :title="(editingSectionDraft as any).enabled === false ? 'Mostrar seção' : 'Esconder seção'"
+            :aria-label="(editingSectionDraft as any).enabled === false ? 'Mostrar seção' : 'Esconder seção'"
+            @click="toggleEditingSectionVisibility"
+          >
+            <EyeOffIcon v-if="(editingSectionDraft as any).enabled !== false" aria-hidden="true" />
+            <EyeIcon v-else aria-hidden="true" />
+          </button>
+          <div class="esp-menu-wrap">
+            <button type="button" class="esp-icon-btn" aria-label="Mais ações" title="Duplicar, mover, excluir" @click.stop="sectionPanelMenuOpen = !sectionPanelMenuOpen">
+              <EllipsisIcon aria-hidden="true" />
+            </button>
+            <div v-if="sectionPanelMenuOpen" class="esp-menu" @click="sectionPanelMenuOpen = false">
+              <button v-if="editingSectionType !== 'header'" type="button" :disabled="editingSectionIndex === 0" @click="runPanelAction('up')"><ArrowUpIcon aria-hidden="true" />Subir</button>
+              <button v-if="editingSectionType !== 'header'" type="button" :disabled="editingSectionIndex === sections.length - 1" @click="runPanelAction('down')"><ArrowDownIcon aria-hidden="true" />Descer</button>
+              <button v-if="editingSectionType !== 'header'" type="button" @click="runPanelAction('duplicate')"><CopyIcon aria-hidden="true" />Duplicar</button>
+              <button type="button" class="danger" @click="runPanelAction('delete')"><Trash2Icon aria-hidden="true" />Excluir</button>
+            </div>
+          </div>
+        </header>
+        <div class="esp-title">
+          <span class="esp-ico" :class="sectionTone(editingSectionDraft)" aria-hidden="true"><component :is="sectionIcon(editingSectionDraft)" /></span>
+          <span class="min-w-0">
+            <h2>{{ editingSectionHeaderLabel }}</h2>
+            <span>Seção {{ (editingSectionIndex ?? 0) + 1 }} de {{ sections.length }}</span>
+          </span>
+        </div>
+        <div class="esp-body">
+          <component :is="editingSectionComponent" :modelValue="editingSectionDraft" @update:modelValue="updateEditingDraft" />
+        </div>
+        <footer class="esp-foot">
+          <span v-if="hasUnsavedSectionDraftChanges" class="section-editor-dirty"><i aria-hidden="true"></i>Alterações não salvas</span>
+          <button type="button" class="esp-btn" @click="requestCloseSectionEditor">Descartar</button>
+          <button type="button" class="esp-btn is-primary" @click="saveEditingSection">Salvar seção</button>
+        </footer>
+      </section>
+      <div v-if="newEditor && leftPanelOpen && !sectionPanelOpen" class="ed-settings-v2">
+        <div class="esv-head">
+          <p class="ed-panel-eyebrow">Configurações da página</p>
+          <h2 class="ed-panel-title">{{ railTabs.find(tab => tab.id === activeSettingsTab)?.label }}</h2>
+        </div>
+        <div class="esv-body ved">
+          <template v-if="activeSettingsTab === 'general'">
+            <EdGroup title="Página">
+              <EdText :model-value="pageTitle" label="Título da página" @update:model-value="pageTitle = $event; scheduleWhatsAppUpdate()" />
+              <label class="ved-field">
+                <span class="ved-label">Link da página</span>
+                <span class="esv-slug">
+                  <span class="esv-slug-base" :title="slugBaseLabel">{{ slugBaseLabel }}</span>
+                  <input class="ved-input" :value="pageSlug" @input="handleSlugInput" />
+                </span>
+                <span class="ved-hint">Use apenas letras, números e hífens, sem espaços nem acentos.</span>
+              </label>
+              <EdText
+                :model-value="pageShortDescription"
+                label="Descrição curta"
+                multiline
+                hint="Aparece no Google e ao compartilhar no WhatsApp."
+                placeholder="Ex.: Pacote completo com transporte, hospedagem e ingressos."
+                @update:model-value="pageShortDescription = $event"
+              />
+            </EdGroup>
+          </template>
+
+          <template v-else-if="activeSettingsTab === 'colors'">
+            <EdGroup title="Cor de destaque">
+              <p class="ved-hint">Botões, selos e ícones de todas as seções.</p>
+              <label class="esv-color">
+                <input v-model="ctaColor" type="color" aria-label="Cor de destaque" />
+                <input class="ved-input" :value="ctaColor" @input="ctaColor = normalizeHexColor(($event.target as HTMLInputElement).value, ctaColor)" />
+              </label>
+            </EdGroup>
+            <EdGroup title="Fundo das seções">
+              <p class="ved-hint">As seções alternam entre as duas cores, menos a capa. Cada seção pode ter o próprio fundo em Aparência.</p>
+              <label class="esv-color">
+                <span class="ved-label">Cor 1</span>
+                <input v-model="colorA" type="color" aria-label="Cor de fundo 1" />
+                <input class="ved-input" :value="colorA" @input="colorA = normalizeHexColor(($event.target as HTMLInputElement).value, colorA)" />
+              </label>
+              <label class="esv-color">
+                <span class="ved-label">Cor 2</span>
+                <input v-model="colorB" type="color" aria-label="Cor de fundo 2" />
+                <input class="ved-input" :value="colorB" @input="colorB = normalizeHexColor(($event.target as HTMLInputElement).value, colorB)" />
+              </label>
+            </EdGroup>
+            <EdGroup v-if="designV2Enabled" title="Visual das seções">
+              <EdToggle v-model="useLegacyDesign" :label="viewCopy.form.legacyDesignLabel" :hint="viewCopy.form.legacyDesignHint" />
+            </EdGroup>
+          </template>
+
+          <template v-else-if="activeSettingsTab === 'pixels'">
+            <div v-if="!selectedPixels.meta && !selectedPixels.ga" class="esv-warn">
+              <b>Nenhum pixel nesta página</b>
+              <span>Sem pixel, as visitas e os cliques não chegam no Meta Ads nem no Google Analytics.</span>
+            </div>
+            <EdGroup title="Pixels">
+              <p v-if="!canSelectPixel" class="ved-info">{{ viewCopy.pixels.planHint }}</p>
+              <template v-else>
+                <label class="ved-field">
+                  <span class="ved-label">{{ viewCopy.pixels.metaLabel }}</span>
+                  <select v-model="selectedPixels.meta" class="ved-select" :disabled="!metaPixelOptions.length">
+                    <option value="">{{ viewCopy.pixels.metaPlaceholder }}</option>
+                    <option v-for="p in metaPixelOptions" :key="p.name" :value="p.name">{{ p.name }}</option>
+                  </select>
+                  <span v-if="!metaPixelOptions.length" class="ved-hint">{{ viewCopy.pixels.metaEmptyHint }}</span>
+                </label>
+                <label class="ved-field">
+                  <span class="ved-label">{{ viewCopy.pixels.googleLabel }}</span>
+                  <select v-model="selectedPixels.ga" class="ved-select" :disabled="!gaPixelOptions.length">
+                    <option value="">{{ viewCopy.pixels.googlePlaceholder }}</option>
+                    <option v-for="p in gaPixelOptions" :key="p.name" :value="p.name">{{ p.name }}</option>
+                  </select>
+                  <span v-if="!gaPixelOptions.length" class="ved-hint">{{ viewCopy.pixels.googleEmptyHint }}</span>
+                </label>
+              </template>
+              <button type="button" class="esv-link" @click="goIntegrations">Gerenciar pixels em Integrações</button>
+            </EdGroup>
+            <EdGroup v-if="canSelectPixel" title="Eventos enviados">
+              <EdToggle v-model="trackingEvents.pageView" :label="viewCopy.pixels.eventPageView" />
+              <EdToggle v-model="trackingEvents.ctaClicks" :label="viewCopy.pixels.eventCtaClicks" />
+              <EdToggle v-model="trackingEvents.leads" :label="viewCopy.pixels.eventLeads" />
+            </EdGroup>
+          </template>
+
+          <template v-else-if="activeSettingsTab === 'capture'">
+            <EdGroup v-if="leadFeatureAllowed" title="Formulário">
+              <p class="ved-hint">{{ viewCopy.leadSection.description }}</p>
+              <p v-if="leadFormsLoading" class="ved-info">{{ viewCopy.leadSection.loading }}</p>
+              <p v-else-if="!leadForms.length" class="ved-info">{{ viewCopy.leadSection.empty }} <b>{{ viewCopy.leadSection.emptyAction }}</b></p>
+              <template v-else>
+                <label class="ved-field">
+                  <span class="ved-label">{{ viewCopy.leadSection.selectLabel }}</span>
+                  <select v-model="selectedLeadFormId" class="ved-select">
+                    <option value="">{{ viewCopy.leadSection.selectPlaceholder }}</option>
+                    <option v-for="form in leadForms" :key="form.id" :value="String(form.id)">{{ form.name || form.title }} ({{ form.total_leads ?? 0 }} leads)</option>
+                  </select>
+                  <span class="ved-hint">{{ viewCopy.leadSection.selectHint }}</span>
+                </label>
+                <template v-if="selectedLeadForm">
+                  <EdToggle v-model="leadCaptureOptional" :label="viewCopy.leadSection.optionalToggle" />
+                  <button type="button" class="esv-btn" @click="openLeadFormPreview(selectedLeadForm)">{{ viewCopy.leadSection.previewButton }}</button>
+                </template>
+              </template>
+              <button type="button" class="esv-link" @click="goLeads">{{ viewCopy.leadSection.manageButton }}</button>
+            </EdGroup>
+            <EdGroup v-else :title="viewCopy.leadSection.blockedTitle">
+              <p class="ved-hint">{{ viewCopy.leadSection.blockedDescription }}</p>
+              <button type="button" class="esv-btn is-primary" @click="goPlans">{{ viewCopy.actions.viewPlans }}</button>
+            </EdGroup>
+          </template>
+        </div>
+      </div>
+      <div v-show="!newEditor" class="editor-settings-shell ed-settings-card">
         <div class="editor-settings-grid">
           <div
             ref="settingsPanelRef"
@@ -918,7 +1076,7 @@
           }}
         </span>
       </div>
-      <div class="ed-stage" :class="{ 'is-framed': !isMobileViewport }">
+      <div class="ed-stage" :class="{ 'is-framed': !isMobileViewport, 'is-mobile-preview': previewDevice === 'mobile' }">
         <div
           :class="isMobileViewport
             ? (previewDevice === 'mobile' ? '-mx-4 w-[calc(100%+2rem)] overflow-hidden' : '')
@@ -960,15 +1118,16 @@
                       class="group relative"
                       :class="[
                         (section as any).type === 'header' ? 'z-30 overflow-visible' : 'overflow-hidden',
-                        { 'v2ed-sec': newEditor && (section as any).enabled }
+                        { 'v2ed-sec': newEditor && (section as any).enabled, 'is-editing': sectionPanelOpen && editingSectionIndex === idx }
                       ]"
+                      :data-preview-index="idx"
                       @click.capture="handleSectionTap(idx, $event)"
                       :ref="el => registerPreviewSection(el, idx)"
                     >
                       <div v-if="(section as any).enabled" class="preview-section-host public-tokens">
                         <component
                           :is="pickSectionComponent((section as any).type, previewDesign, publicComponents)"
-                          :section="previewSections[idx]?.type === section.type && previewSections[idx]?.anchorId === section.anchorId ? previewSections[idx] : section"
+                          :section="sectionPanelOpen && editingSectionIndex === idx && editingSectionDraft ? livePreviewDraft : previewSections[idx]?.type === section.type && previewSections[idx]?.anchorId === section.anchorId ? previewSections[idx] : section"
                           :previewDevice="previewDevice"
                           v-bind="previewSectionExtraProps(section)"
                           :class="[
@@ -1160,7 +1319,7 @@
 
     <Teleport to="body">
       <div
-        v-if="isSectionEditorOpen && editingSectionComponent && editingSectionDraft"
+        v-if="isSectionEditorOpen && editingSectionComponent && editingSectionDraft && !sectionPanelOpen"
         class="app-modal-overlay fixed inset-0 z-40 flex h-full w-full items-center justify-center px-4 py-10 md:py-20"
         @click.self="requestCloseSectionEditor"
       >
@@ -1246,6 +1405,8 @@ import {
   MessageCircleIcon,
   MonitorIcon,
   PaletteIcon,
+  EllipsisIcon,
+  EyeIcon,
   EyeOffIcon,
   PanelLeftCloseIcon,
   PanelLeftOpenIcon,
@@ -1317,6 +1478,10 @@ import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
 import { resolvePageDesign } from "../../utils/pageDesign";
 import { sectionNameV2 } from "../../utils/sectionCatalogV2";
 import SectionPickerV2 from "../../components/admin/SectionPickerV2.vue";
+import EdGroup from "../../components/admin/v2edit/EdGroup.vue";
+import EdText from "../../components/admin/v2edit/EdText.vue";
+import EdToggle from "../../components/admin/v2edit/EdToggle.vue";
+import "../../components/admin/v2edit/v2edit.css";
 import { pickSectionComponent } from "../../components/public/v2/registry";
 import { DEFAULT_ACCENT, PAGE_DESIGN_KEY } from "../../components/public/v2/designContext";
 import { getReadableTextColor } from "../../utils/colorContrast";
@@ -1844,6 +2009,12 @@ const railTabs: { id: RailTab; label: string; icon: Component }[] = [
   { id: "capture", label: "Captação de leads", icon: UserPlusIcon }
 ];
 const openRailTab = (tab: RailTab) => {
+  if (sectionPanelOpen.value) {
+    requestCloseSectionEditor();
+    leftPanelOpen.value = true;
+    selectSettingsTab(tab);
+    return;
+  }
   if (leftPanelOpen.value && activeSettingsTab.value === tab) {
     leftPanelOpen.value = false;
     return;
@@ -2769,6 +2940,46 @@ const editingSectionComponent = computed(() => {
   return (usesV2Form.value && v2FormComponents[type]) || formComponents[type];
 });
 const isSectionEditorOpen = computed(() => editingSectionIndex.value !== null && !!editingSectionDraft.value);
+// Editor novo: a seção abre no painel da esquerda, no lugar das configurações da página,
+// e a prévia mostra o rascunho enquanto a pessoa digita. Seções sem formulário novo seguem no modal.
+const sectionPanelOpen = computed(() => isSectionEditorOpen.value && usesV2Form.value);
+const sectionPanelMenuOpen = ref(false);
+const livePreviewDraft = computed(() => {
+  const draft = editingSectionDraft.value;
+  const index = editingSectionIndex.value;
+  if (!draft || index === null) return null;
+  const base = previewSections.value[index];
+  // Mantém o fundo calculado da página até a pessoa escolher outro na própria seção.
+  return base && !(draft as any).customBackground ? ({ ...draft, backgroundColor: (base as any).backgroundColor } as PageSection) : draft;
+});
+watch(sectionPanelOpen, open => {
+  sectionPanelMenuOpen.value = false;
+  if (!open) return;
+  // Espera a prévia se ajustar à largura do painel antes de rolar até a seção.
+  setTimeout(() => {
+    const el = previewCanvasRef.value?.querySelector(`[data-preview-index="${editingSectionIndex.value}"]`);
+    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, 350);
+});
+const toggleEditingSectionVisibility = () => {
+  const draft = editingSectionDraft.value as any;
+  if (!draft) return;
+  updateEditingDraft({ ...draft, enabled: draft.enabled === false });
+};
+// Ações do menu "⋯": fecham o painel (pedindo para salvar, se houver mudança) e agem na seção.
+const runPanelAction = (action: "up" | "down" | "duplicate" | "delete") => {
+  const index = editingSectionIndex.value;
+  if (index === null) return;
+  const run = () => {
+    forceCloseSectionEditor();
+    if (action === "up") return moveSection(index, -1);
+    if (action === "down") return moveSection(index, 1);
+    if (action === "duplicate") return duplicateSection(index);
+    return removeSection(index);
+  };
+  if (hasUnsavedSectionDraftChanges.value) requestUnsavedSectionConfirmation(run);
+  else run();
+};
 const hasUnsavedSectionDraftChanges = computed(() => {
   if (!isSectionEditorOpen.value || !editingSectionDraft.value || !editingSectionOriginalSnapshot.value) return false;
   return JSON.stringify(editingSectionDraft.value) !== editingSectionOriginalSnapshot.value;
@@ -6636,7 +6847,7 @@ onMounted(async () => {
 .ed-grid.is-v2 > .ed-sections, .ed-grid.is-v2 > .ed-layers-mini { grid-column: 3; grid-row: 1; }
 .v2ed-tag, .v2ed-bar, .v2ed-ins { zoom: var(--ed-unzoom, 1); }
 .ed-grid.is-v2 > .ed-side { display: flex; min-height: 0; overflow: hidden; border-radius: 20px; background: var(--card); box-shadow: var(--shadow-card); }
-.ed-grid.is-v2 .ed-settings-card { width: 320px; min-height: 0; overflow-y: auto; border-radius: 0 !important; box-shadow: none !important; padding: 18px 18px 24px; }
+.ed-grid.is-v2 .ed-settings-card { width: 360px; min-height: 0; overflow-y: auto; border-radius: 0 !important; box-shadow: none !important; padding: 18px 18px 24px; }
 .ed-grid.is-v2 .slug-row { flex-direction: column; }
 .ed-grid.is-v2 .slug-prefix { overflow: hidden; border-right: 0; border-bottom: 1px solid #e2e8f0; padding-top: 6px; padding-bottom: 6px; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
 .editor-workspace.is-v2 .editor-ai-sidebar { top: 100px; bottom: 8px; border-radius: 20px; }
@@ -6649,6 +6860,54 @@ onMounted(async () => {
 .section-editor-body.is-v2-form { padding: 16px 20px 0 !important; background: var(--muted); }
 .section-editor-dirty { display: inline-flex; align-items: center; gap: 8px; margin-right: auto; font-size: 13px; font-weight: 600; color: #b4530b; }
 .section-editor-dirty i { width: 8px; height: 8px; border-radius: 999px; background: #e8590c; }
+.ed-section-panel { display: flex; width: 420px; min-height: 0; flex-direction: column; }
+.esp-top { display: flex; align-items: center; gap: 4px; padding: 10px 10px 6px 6px; }
+.esp-back { display: inline-flex; flex: 1; align-items: center; gap: 4px; height: 34px; padding: 0 8px 0 4px; border-radius: 9px; color: var(--muted-foreground); font-size: 13px; font-weight: 600; }
+.esp-back:hover { color: var(--foreground); }
+.esp-back svg { width: 16px; height: 16px; }
+.esp-icon-btn { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 9px; color: var(--muted-foreground); }
+.esp-icon-btn:hover { background: var(--muted); color: var(--foreground); }
+.esp-icon-btn svg { width: 17px; height: 17px; }
+.esp-menu-wrap { position: relative; }
+.esp-menu { position: absolute; top: 38px; right: 0; z-index: 20; display: flex; min-width: 160px; flex-direction: column; padding: 6px; border-radius: 14px; background: var(--card); box-shadow: 0 18px 40px -16px rgba(6, 12, 9, 0.45), 0 0 0 1px var(--border); }
+.esp-menu button { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 10px; border-radius: 9px; font-size: 13px; font-weight: 600; text-align: left; }
+.esp-menu button:hover:not(:disabled) { background: var(--muted); }
+.esp-menu button:disabled { opacity: 0.4; }
+.esp-menu button.danger { color: #c2261c; }
+.esp-menu svg { width: 15px; height: 15px; }
+.esp-title { display: flex; align-items: center; gap: 12px; padding: 4px 16px 12px; }
+.esp-ico { display: grid; flex-shrink: 0; place-items: center; width: 40px; height: 40px; border-radius: 12px; }
+.esp-ico svg { width: 19px; height: 19px; }
+.esp-title h2 { margin: 0; overflow: hidden; font-size: 17px; font-weight: 700; white-space: nowrap; text-overflow: ellipsis; color: var(--foreground); }
+.esp-title span span, .esp-title > span > span { font-size: 12px; color: var(--muted-foreground); }
+.esp-body { flex: 1; min-height: 0; overflow-y: auto; padding: 0 12px; background: var(--muted); border-top: 1px solid var(--border); }
+.esp-body .ved-tabs { margin-top: 10px; }
+.esp-foot { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--border); }
+.esp-btn { height: 38px; padding: 0 16px; border-radius: 999px; background: var(--muted); font-size: 13px; font-weight: 700; color: var(--foreground); }
+.esp-btn.is-primary { background: var(--primary); color: var(--primary-foreground); }
+.v2ed-sec.is-editing { z-index: 4; }
+.v2ed-sec.is-editing .v2ed-ring { opacity: 1; box-shadow: inset 0 0 0 2px #12b981; }
+.ed-settings-v2 { display: flex; width: 360px; min-height: 0; flex-direction: column; }
+.esv-head { padding: 14px 16px 12px; }
+.esv-head .ed-panel-title { margin-bottom: 0; }
+.esv-body { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding: 12px; border-top: 1px solid var(--border); background: var(--muted); }
+.esv-slug { display: flex; flex-direction: column; overflow: hidden; border-radius: 12px; background: var(--muted); }
+.esv-slug-base { overflow: hidden; padding: 8px 12px 0; font-size: 12px; font-weight: 600; color: var(--muted-foreground); white-space: nowrap; text-overflow: ellipsis; }
+.esv-slug .ved-input { height: 38px; }
+.esv-color { display: flex; align-items: center; gap: 10px; }
+.esv-color .ved-label { width: 48px; flex-shrink: 0; }
+.esv-color input[type="color"] { width: 44px; height: 44px; flex-shrink: 0; padding: 0; border: 0; border-radius: 12px; background: none; cursor: pointer; }
+.esv-color input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+.esv-color input[type="color"]::-webkit-color-swatch { border: 1px solid var(--border); border-radius: 12px; }
+.esv-color .ved-input { flex: 1; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; }
+.esv-warn { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: 14px; background: #fff4ec; color: #8a3c08; font-size: 13px; line-height: 1.45; }
+.esv-warn b { font-size: 14px; }
+.esv-link { align-self: flex-start; padding: 2px 0; font-size: 13px; font-weight: 700; color: var(--primary); text-decoration: underline; text-underline-offset: 3px; }
+.esv-btn { height: 40px; padding: 0 16px; border-radius: 999px; background: var(--muted); font-size: 13px; font-weight: 700; color: var(--foreground); }
+.esv-btn.is-primary { background: var(--primary); color: var(--primary-foreground); }
+.ed-stage.is-mobile-preview .v2ed-bar { top: 50px; }
+.ed-stage.is-mobile-preview .v2ed-edit span { display: none; }
+.ed-stage.is-mobile-preview .v2ed-edit { padding: 0 10px; }
 .ed-panel-eyebrow { margin: 0 0 2px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted-foreground); }
 .ed-panel-title { margin: 0 0 16px; font-size: 18px; font-weight: 700; color: var(--foreground); }
 .ed-rail { display: flex; flex: 0 0 64px; flex-direction: column; align-items: center; gap: 4px; padding: 12px 0; border-right: 1px solid var(--border); }
@@ -6708,7 +6967,9 @@ onMounted(async () => {
   .v2ed-ring, .v2ed-tag, .v2ed-bar, .v2ed-ins-line, .v2ed-ins-btn, .v2ed-sec { transition: none; }
 }
 @media (max-width: 1279px) {
-  .ed-grid.is-v2 .ed-settings-card { width: 288px; }
+  .ed-grid.is-v2 .ed-settings-card { width: 320px; }
+  .ed-section-panel { width: 360px; }
+  .ed-settings-v2 { width: 320px; }
   .ed-grid.is-v2 > .ed-sections { width: 248px; }
 }
 </style>

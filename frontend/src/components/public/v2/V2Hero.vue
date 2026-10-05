@@ -34,7 +34,7 @@
       <div class="v2-hero-split">
         <div class="v2-hero-split-copy">
           <img v-if="logo" :src="logo" :alt="agencyName" :style="logoStyle" class="v2-hero-logo-inline" />
-          <HeroContent v-bind="contentProps" on-light />
+          <HeroContent v-bind="contentProps" light />
         </div>
         <div class="v2-hero-split-media">
           <img v-if="image" :src="image" :alt="title" />
@@ -48,7 +48,7 @@
       <div class="v2-hero-inner">
         <div class="v2-hero-card">
           <img v-if="logo" :src="logo" :alt="agencyName" :style="logoStyle" class="v2-hero-logo-inline" />
-          <HeroContent v-bind="contentProps" on-light />
+          <HeroContent v-bind="contentProps" light />
         </div>
       </div>
     </div>
@@ -149,7 +149,8 @@ const HeroContent = defineComponent({
     ctaLabel: { type: String, default: "" },
     darkText: Boolean,
     centered: Boolean,
-    onLight: Boolean
+    // "light" e não "onLight": nomes "on" + maiúscula viram evento no Vue e a opção se perdia.
+    light: Boolean
   },
   setup(p) {
     const check = () =>
@@ -176,7 +177,7 @@ const HeroContent = defineComponent({
         d.tag ? h("span", { class: "v2-hero-dates-tag" }, d.tag) : null
       ]);
     return () =>
-      h("div", { class: ["v2-hero-content", { "is-center": p.centered, "on-light": p.onLight, "dark-text": p.darkText && !p.onLight }] }, [
+      h("div", { class: ["v2-hero-content", { "is-center": p.centered, "on-light": p.light, "dark-text": p.darkText && !p.light }] }, [
         p.chips.length
           ? h(
               "ul",
@@ -217,6 +218,8 @@ const HeroContent = defineComponent({
   height: 100%;
   border: 0;
   object-fit: cover;
+  /* Mesmo enquadramento da capa antiga: foto alinhada pelo topo. */
+  object-position: center top;
 }
 .v2-hero-media iframe {
   pointer-events: none;
@@ -229,11 +232,13 @@ const HeroContent = defineComponent({
   margin: 0 auto;
   padding: 0 clamp(20px, 5cqi, 40px) clamp(32px, 6cqi, 72px);
 }
+/* Como na capa antiga: 90% da altura da tela, compensando o zoom da página pública (--page-zoom),
+   com o conteúdo inteiro visível; no celular a foto fica quase quadrada em cima. */
 .v2-hero--imm {
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  min-height: min(92vh, 860px);
+  min-height: calc(90svh / var(--page-zoom, 1));
 }
 .v2-hero--imm .v2-hero-media,
 .v2-hero--imm .v2-hero-fade {
@@ -254,7 +259,11 @@ const HeroContent = defineComponent({
 }
 .v2-hero-spacer {
   position: relative;
+  display: none;
   height: min(calc(112cqi - 150px), 340px);
+}
+.v2-hero--imm .v2-hero-inner {
+  padding-top: clamp(96px, 10cqi, 140px);
 }
 .v2-hero-logo {
   position: absolute;
@@ -340,7 +349,8 @@ const HeroContent = defineComponent({
   margin: 0;
   font-family: "Bricolage Grotesque", Figtree, sans-serif;
   font-weight: 700;
-  font-size: clamp(36px, 6cqi, 76px);
+  /* Acompanha a largura e também a altura da tela, para caber em monitores largos e baixos. */
+  font-size: clamp(32px, min(5.2cqi, calc(7.5svh / var(--page-zoom, 1))), 68px);
   line-height: 0.98;
   letter-spacing: -0.035em;
   text-wrap: balance;
@@ -484,6 +494,15 @@ const HeroContent = defineComponent({
 @container (max-width: 640px) {
   .v2-hero--imm {
     min-height: 0;
+  }
+  .v2-hero-spacer {
+    display: block;
+  }
+  .v2-hero--imm .v2-hero-inner {
+    padding-top: 0;
+  }
+  .v2-hero-title {
+    font-size: clamp(30px, 9cqi, 40px);
   }
 }
 .v2-hero-split-media img {
