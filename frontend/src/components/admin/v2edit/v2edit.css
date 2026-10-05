@@ -1,0 +1,397 @@
+/* Janela de edição das seções no editor novo: um padrão para todas. */
+.ved {
+  display: flex;
+  min-height: 100%;
+  flex-direction: column;
+  font-family: Figtree, sans-serif;
+  color: var(--foreground, #0f1713);
+}
+.ved-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  gap: 4px;
+  margin: 0 0 4px;
+  padding: 4px;
+  border-radius: 14px;
+  background: var(--muted, #f1f4f0);
+}
+.ved-tab {
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 40px;
+  border-radius: 10px;
+  color: var(--muted-foreground, #5b6761);
+  font-size: 14px;
+  font-weight: 700;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.ved-tab svg {
+  width: 16px;
+  height: 16px;
+}
+.ved-tab.on {
+  background: var(--card, #fff);
+  color: var(--foreground, #0f1713);
+  box-shadow: 0 1px 3px rgba(15, 23, 19, 0.15);
+}
+.ved-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 10px 0 24px;
+}
+.ved-group {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--card, #fff);
+  box-shadow: inset 0 0 0 1px var(--border, #e3e8e2);
+}
+.ved-group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ved-group-head h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+.ved-group-count {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--muted, #f1f4f0);
+  color: var(--muted-foreground, #5b6761);
+  font-size: 12px;
+  font-weight: 700;
+}
+.ved-group-extra {
+  margin-left: auto;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #fff4ec;
+  color: #b4530b;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.ved-field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+}
+.ved-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--foreground, #0f1713);
+}
+.ved-hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--muted-foreground, #7a857f);
+}
+.ved-input,
+.ved-select {
+  width: 100%;
+  min-width: 0;
+  height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--muted, #f4f6f3);
+  color: var(--foreground, #0f1713);
+  font: inherit;
+  font-size: 15px;
+  outline: none;
+  box-shadow: inset 0 0 0 1px transparent;
+  transition: box-shadow 0.15s ease;
+}
+.ved-input:focus,
+.ved-select:focus {
+  box-shadow: inset 0 0 0 1.5px var(--primary, #12b981);
+}
+textarea.ved-input {
+  height: auto;
+  min-height: 88px;
+  padding: 10px 12px;
+  line-height: 1.5;
+  resize: vertical;
+}
+.ved-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.ved-info {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--muted, #f4f6f3);
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--muted-foreground, #5b6761);
+}
+.ved-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+}
+.ved-toggle-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ved-switch {
+  position: relative;
+  flex: 0 0 auto;
+  width: 42px;
+  height: 24px;
+  border-radius: 999px;
+  background: #cbd3cd;
+  transition: background-color 0.18s ease;
+}
+.ved-switch::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(15, 23, 19, 0.25);
+  transition: transform 0.18s ease;
+}
+.ved-switch.on {
+  background: var(--primary, #12b981);
+}
+.ved-switch.on::after {
+  transform: translateX(18px);
+}
+.ved-seg {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--muted, #f1f4f0);
+}
+.ved-seg button {
+  flex: 1;
+  min-height: 36px;
+  padding: 0 10px;
+  border-radius: 9px;
+  color: var(--muted-foreground, #5b6761);
+  font-size: 14px;
+  font-weight: 600;
+}
+.ved-seg button.on {
+  background: var(--card, #fff);
+  color: var(--foreground, #0f1713);
+  box-shadow: 0 1px 3px rgba(15, 23, 19, 0.15);
+}
+.ved-layouts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+}
+.ved-layouts button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 12px;
+  border-radius: 12px;
+  text-align: left;
+  box-shadow: inset 0 0 0 1px var(--border, #e3e8e2);
+}
+.ved-layouts button b {
+  font-size: 14px;
+}
+.ved-layouts button span {
+  font-size: 12px;
+  color: var(--muted-foreground, #7a857f);
+}
+.ved-layouts button.on {
+  color: #0b7a55;
+  box-shadow: inset 0 0 0 2px var(--primary, #12b981);
+}
+.ved-bg {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.ved-bg-opt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted-foreground, #5b6761);
+}
+.ved-bg-swatch {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  overflow: hidden;
+  border-radius: 12px;
+  box-shadow: inset 0 0 0 1px #dce1da;
+}
+.ved-bg-opt.on .ved-bg-swatch {
+  box-shadow: 0 0 0 2px var(--card, #fff), 0 0 0 4px var(--foreground, #0f1713);
+}
+.ved-bg-opt.on {
+  color: var(--foreground, #0f1713);
+}
+.ved-bg-swatch input {
+  position: absolute;
+  inset: -8px;
+  width: 60px;
+  height: 60px;
+  opacity: 0;
+  cursor: pointer;
+}
+.ved-bg-swatch svg {
+  width: 18px;
+  height: 18px;
+}
+.ved-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ved-item {
+  overflow: hidden;
+  border-radius: 14px;
+  background: var(--card, #fff);
+  box-shadow: inset 0 0 0 1px #e8ece7;
+}
+.ved-item.open {
+  box-shadow: inset 0 0 0 1.5px #9adfc2;
+}
+.ved-item.drag-over {
+  box-shadow: inset 0 3px 0 var(--primary, #12b981), inset 0 0 0 1px #e8ece7;
+}
+.ved-item-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px 4px 2px;
+}
+.ved-item-grip {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 36px;
+  color: #b4bdb7;
+  cursor: grab;
+}
+.ved-item-grip svg,
+.ved-item-actions svg,
+.ved-item-chev svg {
+  width: 16px;
+  height: 16px;
+}
+.ved-item-toggle {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 4px;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 600;
+}
+.ved-item-toggle span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.ved-item-chev {
+  margin-left: auto;
+  display: grid;
+  place-items: center;
+  transition: transform 0.2s ease;
+}
+.ved-item.open .ved-item-chev {
+  transform: rotate(180deg);
+}
+.ved-item-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 6px 14px 14px;
+}
+.ved-item-actions {
+  display: flex;
+  gap: 6px;
+  padding-top: 4px;
+}
+.ved-item-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 10px;
+  background: var(--muted, #f1f4f0);
+  font-size: 13px;
+  font-weight: 600;
+}
+.ved-item-actions button.danger:hover {
+  background: #fdecec;
+  color: #c2261c;
+}
+.ved-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 42px;
+  border-radius: 12px;
+  border: 1.5px dashed #c9d2cb;
+  color: var(--foreground, #0f1713);
+  font-size: 14px;
+  font-weight: 700;
+}
+.ved-add:hover {
+  border-color: var(--primary, #12b981);
+  background: #f0faf5;
+}
+.ved-add svg {
+  width: 16px;
+  height: 16px;
+}
+.ved-add:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+.ved .ved-rich .ql-editor {
+  min-height: 96px;
+  font-size: 15px;
+}
+.ved .ved-rich .ql-toolbar.ql-snow {
+  border-radius: 12px 12px 0 0;
+}
+.ved .ved-rich .ql-container.ql-snow {
+  border-radius: 0 0 12px 12px;
+}

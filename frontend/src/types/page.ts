@@ -34,6 +34,8 @@ export interface SectionBase {
   anchorId?: string;
   headingLabel?: LocalizedString;
   headingLabelStyle?: "filled" | "outline";
+  /** Fundo escolhido na própria seção (editor novo); sem ele, segue as cores da página. */
+  customBackground?: boolean;
 }
 
 export interface HeroSection extends SectionBase {

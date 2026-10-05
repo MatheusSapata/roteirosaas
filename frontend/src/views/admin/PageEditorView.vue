@@ -40,7 +40,7 @@
     </div>
 
     <!-- Dialog de limite de plano (reutilizado tamb?m para "template no free") -->
-    <div :class="['editor-workspace', showAiAssistant ? 'ai-assistant-open' : '']">
+    <div :class="['editor-workspace', showAiAssistant ? 'ai-assistant-open' : '', { 'is-v2': newEditor }]">
 
       <Transition name="ai-sidebar-slide">
         <aside
@@ -328,7 +328,25 @@
         </div>
       </div>
     </Teleport>
-    <Teleport to="body" v-if="sectionPicker.open">
+    <SectionPickerV2
+      v-if="sectionPicker.open && newEditor"
+      :after-label="sectionPickerAfterLabel"
+      :types="sectionTypes"
+      :unavailable="sections.some(isHeaderSection) ? ['header'] : []"
+      :viajeon-connected="viajeonConnected"
+      :accent="ctaColor"
+      @select="handleSectionPickerSelect"
+      @close="closeSectionPicker"
+      @integrate="goViajeonIntegration"
+    />
+    <Transition name="fade">
+      <div v-if="insertedToast" class="v2ed-toast" role="status">
+        <span class="v2ed-toast-ico" aria-hidden="true"><CheckIcon /></span>
+        <span><b>{{ insertedToast.label }}</b> entrou na página</span>
+        <button type="button" @click="undoInsertedSection">Desfazer</button>
+      </div>
+    </Transition>
+    <Teleport to="body" v-if="sectionPicker.open && !newEditor">
       <div
       class="app-modal-overlay fixed inset-0 z-40 flex items-center justify-center px-4 py-8"
       @click.self="closeSectionPicker"
@@ -417,7 +435,7 @@
       :class="['editor-body flex-1 min-w-0 space-y-4', showAiAssistant ? 'ai-assistant-open' : '']"
       :style="showAiAssistant && !isMobileViewport ? { paddingRight: `${aiAssistantSidebarWidth + 8}px` } : undefined"
     >
-      <nav class="ed-tabs" role="tablist">
+      <nav v-if="!newEditor" class="ed-tabs" role="tablist">
         <button type="button" class="ed-tab" :class="{ on: activeSettingsTab === 'content' }" @click="selectSettingsTab('content')">
           <PanelsTopLeftIcon aria-hidden="true" />
           Conteúdo
@@ -441,61 +459,45 @@
         </button>
       </nav>
 
-      <div class="ed-grid" :class="{ 'is-wide': activeSettingsTab !== 'content' }">
-      <aside class="ed-side">
-      <section v-if="activeSettingsTab === 'content'" class="ed-sections">
-        <div class="ed-sections-head">
-          <h2>Seções da página</h2>
-          <span>{{ visibleSectionsCount }} {{ visibleSectionsCount === 1 ? "visível" : "visíveis" }}</span>
-        </div>
-        <ul class="ed-section-list">
-          <li
-            v-for="(section, idx) in sections"
-            :key="(section as any)?.anchorId || idx"
-            class="ed-section-row"
-            :class="{
-              'is-off': !(section as any).enabled,
-              'is-drag-over': sectionDragOver === idx && sectionDragFrom !== idx,
-              'is-dragging': sectionDragFrom === idx
-            }"
-            :draggable="canDragSection(idx)"
-            @dragstart="handleSectionDragStart(idx, $event)"
-            @dragover.prevent="sectionDragOver = idx"
-            @dragleave="sectionDragOver = sectionDragOver === idx ? null : sectionDragOver"
-            @drop.prevent="handleSectionDrop(idx)"
-            @dragend="resetSectionDrag"
-          >
-            <span class="ed-grip" :class="{ 'is-locked': !canDragSection(idx) }" aria-hidden="true">
-              <GripVerticalIcon aria-hidden="true" />
-            </span>
-            <button type="button" class="ed-section-main" :disabled="isLockedFooterSection(section)" @click="openSectionEditor(idx)">
-              <span class="ed-section-icon" :class="sectionTone(section)" aria-hidden="true">
-                <component :is="sectionIcon(section)" aria-hidden="true" />
-              </span>
-              <span class="min-w-0">
-                <span class="ed-section-name">{{ sectionLabels[(section as any).type] || (section as any).type }}</span>
-                <span class="ed-section-sub">{{ (section as any).enabled ? sectionSummary(section) : "Oculta" }}</span>
-              </span>
-            </button>
-            <button
-              type="button"
-              role="switch"
-              class="ed-switch"
-              :class="{ on: (section as any).enabled }"
-              :aria-checked="!!(section as any).enabled"
-              :disabled="isLockedFooterSection(section)"
-              :title="(section as any).enabled ? 'Esconder seção' : 'Mostrar seção'"
-              @click="toggleSectionEnabled(idx)"
-            ><i></i></button>
-          </li>
-        </ul>
-        <button type="button" class="ed-add-section" @click="openSectionPicker(null)">
-          <PlusIcon aria-hidden="true" />
-          Adicionar seção
+      <div
+        class="ed-grid"
+        :class="{
+          'is-wide': activeSettingsTab !== 'content',
+          'is-v2': newEditor,
+          'left-closed': newEditor && !leftPanelOpen,
+          'right-closed': newEditor && (!layersOpen || showAiAssistant)
+        }"
+      >
+      <aside v-if="newEditor || activeSettingsTab !== 'content'" class="ed-side">
+      <nav v-if="newEditor" class="ed-rail" aria-label="Configurações da página">
+        <button
+          type="button"
+          class="ed-rail-btn"
+          :aria-expanded="leftPanelOpen"
+          :aria-label="leftPanelOpen ? 'Recolher configurações' : 'Abrir configurações'"
+          :title="leftPanelOpen ? 'Recolher configurações' : 'Abrir configurações'"
+          @click="leftPanelOpen = !leftPanelOpen"
+        >
+          <PanelLeftCloseIcon v-if="leftPanelOpen" aria-hidden="true" />
+          <PanelLeftOpenIcon v-else aria-hidden="true" />
         </button>
-        <p class="ed-sections-hint">Clique numa seção (aqui ou na prévia) para editar. Arraste para mudar a ordem; o interruptor esconde a seção sem apagar.</p>
-      </section>
-      <div v-else class="editor-settings-shell ed-settings-card">
+        <button
+          v-for="tab in railTabs"
+          :key="tab.id"
+          type="button"
+          class="ed-rail-btn"
+          :class="{ on: leftPanelOpen && activeSettingsTab === tab.id }"
+          :aria-label="tab.label"
+          :title="tab.label"
+          @click="openRailTab(tab.id)"
+        >
+          <component :is="tab.icon" aria-hidden="true" />
+          <span v-if="tab.id === 'pixels' && !selectedPixels.meta && !selectedPixels.ga" class="ed-rail-dot" aria-hidden="true"></span>
+        </button>
+      </nav>
+      <div v-show="!newEditor || leftPanelOpen" class="editor-settings-shell ed-settings-card">
+        <p v-if="newEditor" class="ed-panel-eyebrow">Configurações da página</p>
+        <h2 v-if="newEditor" class="ed-panel-title">{{ railTabs.find(tab => tab.id === activeSettingsTab)?.label }}</h2>
         <div class="editor-settings-grid">
           <div
             ref="settingsPanelRef"
@@ -780,6 +782,93 @@
   </div>
   </div>
   </aside>
+      <section v-if="newEditor ? layersOpen && !showAiAssistant : activeSettingsTab === 'content'" class="ed-sections">
+        <div class="ed-sections-head">
+          <button
+            v-if="newEditor"
+            type="button"
+            class="ed-rail-btn is-small"
+            aria-label="Recolher camadas"
+            title="Recolher camadas"
+            @click="layersOpen = false"
+          >
+            <PanelRightCloseIcon aria-hidden="true" />
+          </button>
+          <div class="ed-sections-titles">
+            <h2>{{ newEditor ? "Camadas" : "Seções da página" }}</h2>
+            <span>{{ newEditor ? `${visibleSectionsCount} de ${sections.length} visíveis` : `${visibleSectionsCount} ${visibleSectionsCount === 1 ? "visível" : "visíveis"}` }}</span>
+          </div>
+          <button v-if="newEditor" type="button" class="ed-layers-add" @click="openSectionPicker(null)">
+            <PlusIcon aria-hidden="true" />
+            Seção
+          </button>
+        </div>
+        <ul class="ed-section-list">
+          <li
+            v-for="(section, idx) in sections"
+            :key="(section as any)?.anchorId || idx"
+            class="ed-section-row"
+            :class="{
+              'is-off': !(section as any).enabled,
+              'is-drag-over': sectionDragOver === idx && sectionDragFrom !== idx,
+              'is-dragging': sectionDragFrom === idx
+            }"
+            :draggable="canDragSection(idx)"
+            @dragstart="handleSectionDragStart(idx, $event)"
+            @dragover.prevent="sectionDragOver = idx"
+            @dragleave="sectionDragOver = sectionDragOver === idx ? null : sectionDragOver"
+            @drop.prevent="handleSectionDrop(idx)"
+            @dragend="resetSectionDrag"
+          >
+            <span class="ed-grip" :class="{ 'is-locked': !canDragSection(idx) }" aria-hidden="true">
+              <GripVerticalIcon aria-hidden="true" />
+            </span>
+            <button type="button" class="ed-section-main" :disabled="isLockedFooterSection(section)" @click="openSectionEditor(idx)">
+              <span class="ed-section-icon" :class="sectionTone(section)" aria-hidden="true">
+                <component :is="sectionIcon(section)" aria-hidden="true" />
+              </span>
+              <span class="min-w-0">
+                <span class="ed-section-name">{{ sectionLabelOf(section) }}</span>
+                <span class="ed-section-sub">{{ (section as any).enabled ? sectionSummary(section) : "Oculta" }}</span>
+              </span>
+            </button>
+            <button
+              type="button"
+              role="switch"
+              class="ed-switch"
+              :class="{ on: (section as any).enabled }"
+              :aria-checked="!!(section as any).enabled"
+              :disabled="isLockedFooterSection(section)"
+              :title="(section as any).enabled ? 'Esconder seção' : 'Mostrar seção'"
+              @click="toggleSectionEnabled(idx)"
+            ><i></i></button>
+          </li>
+        </ul>
+        <button v-if="!newEditor" type="button" class="ed-add-section" @click="openSectionPicker(null)">
+          <PlusIcon aria-hidden="true" />
+          Adicionar seção
+        </button>
+        <p class="ed-sections-hint">{{ newEditor ? "Arraste para reordenar. O interruptor esconde a seção sem apagar." : "Clique numa seção (aqui ou na prévia) para editar. Arraste para mudar a ordem; o interruptor esconde a seção sem apagar." }}</p>
+      </section>
+      <aside v-if="newEditor && !layersOpen && !showAiAssistant" class="ed-layers-mini" aria-label="Camadas">
+        <button type="button" class="ed-rail-btn" aria-label="Abrir camadas" title="Abrir camadas" @click="layersOpen = true">
+          <PanelRightOpenIcon aria-hidden="true" />
+        </button>
+        <span class="ed-layers-mini-sep" aria-hidden="true"></span>
+        <button
+          v-for="(section, idx) in sections"
+          :key="(section as any)?.anchorId || idx"
+          type="button"
+          class="ed-layers-mini-item"
+          :class="[sectionTone(section), { 'is-off': !(section as any).enabled }]"
+          :title="sectionLabelOf(section)"
+          :disabled="isLockedFooterSection(section)"
+          @click="openSectionEditor(idx)"
+        >{{ idx + 1 }}</button>
+        <button type="button" class="ed-layers-mini-add" aria-label="Adicionar seção" title="Adicionar seção" @click="openSectionPicker(null)">
+          <PlusIcon aria-hidden="true" />
+        </button>
+      </aside>
 
       <div
         :class="[
@@ -822,7 +911,11 @@
           </button>
         </div>
         <span v-if="!isMobileViewport" class="editor-preview-scale">
-          {{ previewDevice === 'mobile' ? "Largura de celular (390 px)" : `Largura de computador (1280 px) · ${Math.round(desktopPreviewZoom * 100)}%` }}
+          {{
+            newEditor
+              ? (previewDevice === 'mobile' ? "390 px" : `${desktopPreviewWidth} px · ${Math.round(desktopPreviewZoom * 100)}%`)
+              : (previewDevice === 'mobile' ? "Largura de celular (390 px)" : `Largura de computador (${desktopPreviewWidth} px) · ${Math.round(desktopPreviewZoom * 100)}%`)
+          }}
         </span>
       </div>
       <div class="ed-stage" :class="{ 'is-framed': !isMobileViewport }">
@@ -855,10 +948,20 @@
               </template>
               <template v-else>
                 <template v-for="(section, idx) in sections" :key="(section as any)?.anchorId || idx">
-                    <div v-if="section" class="space-y-0">
+                    <div v-if="section" class="space-y-0" :class="{ 'v2ed-slot': newEditor }">
+                    <div v-if="newEditor && idx > 0 && canInsertBefore(idx)" class="v2ed-ins">
+                      <span class="v2ed-ins-line" aria-hidden="true"></span>
+                      <button type="button" class="v2ed-ins-btn" @click.stop="openSectionPicker(idx - 1)">
+                        <PlusIcon aria-hidden="true" />
+                        <span>Adicionar seção</span>
+                      </button>
+                    </div>
                     <div
                       class="group relative"
-                      :class="(section as any).type === 'header' ? 'z-30 overflow-visible' : 'overflow-hidden'"
+                      :class="[
+                        (section as any).type === 'header' ? 'z-30 overflow-visible' : 'overflow-hidden',
+                        { 'v2ed-sec': newEditor && (section as any).enabled }
+                      ]"
                       @click.capture="handleSectionTap(idx, $event)"
                       :ref="el => registerPreviewSection(el, idx)"
                     >
@@ -870,12 +973,50 @@
                           v-bind="previewSectionExtraProps(section)"
                           :class="[
                             'transition duration-200',
-                            desktopHoverEnabled ? 'group-hover:opacity-80 group-hover:brightness-95' : ''
+                            desktopHoverEnabled && !newEditor ? 'group-hover:opacity-80 group-hover:brightness-95' : ''
                           ]"
                         />
                       </div>
+                      <template v-if="newEditor && (section as any).enabled">
+                        <span class="v2ed-ring" aria-hidden="true"></span>
+                        <span class="v2ed-tag">{{ sectionLabelOf(section) }}</span>
                         <div
-                          v-if="(section as any).enabled"
+                          class="v2ed-bar"
+                          role="toolbar"
+                          :aria-label="`Ações da seção ${sectionLabelOf(section)}`"
+                          data-overlay-control="true"
+                          @click.stop
+                        >
+                          <span v-if="isLockedFooterSection(section)" class="v2ed-locked">{{ viewCopy.overlay.footerLocked }}</span>
+                          <template v-else>
+                            <button type="button" class="v2ed-edit" @click.stop="openSectionEditor(idx)">
+                              <PencilIcon aria-hidden="true" />
+                              <span>{{ viewCopy.overlay.edit }}</span>
+                            </button>
+                            <template v-if="(section as any).type !== 'header'">
+                              <i class="v2ed-sep" aria-hidden="true"></i>
+                              <button type="button" class="v2ed-btn" :disabled="idx === 0" :title="viewCopy.overlay.moveUp" :aria-label="viewCopy.overlay.moveUp" @click.stop="moveSection(idx, -1)">
+                                <ArrowUpIcon aria-hidden="true" />
+                              </button>
+                              <button type="button" class="v2ed-btn" :disabled="idx === sections.length - 1" :title="viewCopy.overlay.moveDown" :aria-label="viewCopy.overlay.moveDown" @click.stop="moveSection(idx, 1)">
+                                <ArrowDownIcon aria-hidden="true" />
+                              </button>
+                              <button type="button" class="v2ed-btn" :title="viewCopy.overlay.duplicate" :aria-label="viewCopy.overlay.duplicate" @click.stop="duplicateSection(idx)">
+                                <CopyIcon aria-hidden="true" />
+                              </button>
+                            </template>
+                            <button type="button" class="v2ed-btn" title="Esconder seção" aria-label="Esconder seção" @click.stop="toggleSectionEnabled(idx)">
+                              <EyeOffIcon aria-hidden="true" />
+                            </button>
+                            <i class="v2ed-sep" aria-hidden="true"></i>
+                            <button type="button" class="v2ed-btn is-danger" :title="viewCopy.overlay.delete" :aria-label="viewCopy.overlay.delete" @click.stop="removeSection(idx)">
+                              <Trash2Icon aria-hidden="true" />
+                            </button>
+                          </template>
+                        </div>
+                      </template>
+                        <div
+                          v-if="(section as any).enabled && !newEditor"
                           :class="[
                             'pointer-events-none absolute inset-0 z-10 flex flex-col bg-slate-900/0 opacity-0 transition duration-200 px-4 py-5',
                             (section as any).type === 'header' ? '!z-[60]' : '',
@@ -973,6 +1114,16 @@
                     </div>
                   </div>
                 </template>
+                <div v-if="newEditor" class="v2ed-end">
+                  <div class="v2ed-ins is-end">
+                    <span class="v2ed-ins-line" aria-hidden="true"></span>
+                    <button type="button" class="v2ed-ins-btn" @click.stop="openSectionPicker(null)">
+                      <PlusIcon aria-hidden="true" />
+                      <span>Adicionar seção</span>
+                    </button>
+                  </div>
+                  <span class="v2ed-end-label">Fim da página</span>
+                </div>
               </template>
             </div>
           </div>
@@ -1016,8 +1167,8 @@
         <div
           ref="sectionModalPanelRef"
           class="editor-dialog-shell section-editor-dialog w-full overflow-hidden flex flex-col"
-          :class="isMobileViewport ? '' : 'md:rounded-[20px] md:shadow-2xl'"
-          :style="sectionModalPanelStyle"
+          :class="[isMobileViewport ? '' : 'md:rounded-[20px] md:shadow-2xl', { 'is-v2-form': usesV2Form }]"
+          :style="usesV2Form ? undefined : sectionModalPanelStyle"
         >
           <div ref="sectionModalHeaderRef" class="section-editor-header flex items-center justify-between px-6 py-4">
             <div>
@@ -1035,6 +1186,7 @@
           <div
             ref="sectionModalBodyRef"
             class="section-editor-body flex-1 overflow-y-auto border-t border-border bg-background pl-0 pr-0"
+            :class="{ 'is-v2-form': usesV2Form }"
           >
             <component
               :is="editingSectionComponent"
@@ -1046,11 +1198,12 @@
             />
           </div>
           <div ref="sectionModalFooterRef" class="section-editor-footer flex flex-wrap items-center justify-end gap-2 border-t border-border px-6 py-4">
+            <span v-if="usesV2Form && hasUnsavedSectionDraftChanges" class="section-editor-dirty"><i aria-hidden="true"></i>Alterações não salvas</span>
             <button
               class="h-10 rounded-full bg-muted px-5 text-sm font-semibold text-foreground hover:bg-accent"
               @click="requestCloseSectionEditor"
             >
-              {{ viewCopy.sectionDialog.cancel }}
+              {{ usesV2Form ? "Descartar" : viewCopy.sectionDialog.cancel }}
             </button>
             <button
               class="h-10 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground hover:bg-brand-dark"
@@ -1093,6 +1246,11 @@ import {
   MessageCircleIcon,
   MonitorIcon,
   PaletteIcon,
+  EyeOffIcon,
+  PanelLeftCloseIcon,
+  PanelLeftOpenIcon,
+  PanelRightCloseIcon,
+  PanelRightOpenIcon,
   PanelsTopLeftIcon,
   PaperclipIcon,
   PencilIcon,
@@ -1157,6 +1315,8 @@ import { sectionUploadGuardKey } from "../../components/admin/sectionUploadGuard
 import { describeSection, sectionLabels as defaultSectionLabels } from "../../utils/sectionLabels";
 import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
 import { resolvePageDesign } from "../../utils/pageDesign";
+import { sectionNameV2 } from "../../utils/sectionCatalogV2";
+import SectionPickerV2 from "../../components/admin/SectionPickerV2.vue";
 import { pickSectionComponent } from "../../components/public/v2/registry";
 import { DEFAULT_ACCENT, PAGE_DESIGN_KEY } from "../../components/public/v2/designContext";
 import { getReadableTextColor } from "../../utils/colorContrast";
@@ -1655,17 +1815,64 @@ const ctaColor = ref(theme.value.ctaDefaultColor || fallbackPrimaryColor);
 const previewDevice = ref<"desktop" | "mobile">(editorPrefs.value.previewDevice || "desktop");
 const isMobileViewport = ref(false);
 const isMobileOverlayMode = computed(() => isMobileViewport.value);
+// Editor novo (painel à esquerda, camadas à direita): por enquanto só para quem já tem o visual novo.
+const newEditor = computed(() => designV2Enabled.value && !isMobileViewport.value);
+const EDITOR_PANELS_KEY = "editor_v2_panels";
+const readPanelPrefs = () => {
+  try {
+    return JSON.parse(window.localStorage.getItem(EDITOR_PANELS_KEY) || "{}") as { left?: boolean; layers?: boolean };
+  } catch {
+    return {};
+  }
+};
+const panelPrefs = typeof window !== "undefined" ? readPanelPrefs() : {};
+// Em telas menores a prévia precisa do espaço: o painel começa recolhido, só com os ícones.
+const leftPanelOpen = ref(panelPrefs.left ?? (typeof window === "undefined" || window.innerWidth >= 1600));
+const layersOpen = ref(panelPrefs.layers ?? true);
+watch([leftPanelOpen, layersOpen], ([left, layers]) => {
+  try {
+    window.localStorage.setItem(EDITOR_PANELS_KEY, JSON.stringify({ left, layers }));
+  } catch {
+    /* sem armazenamento local: os painéis só não ficam lembrados */
+  }
+});
+type RailTab = "general" | "colors" | "pixels" | "capture";
+const railTabs: { id: RailTab; label: string; icon: Component }[] = [
+  { id: "general", label: "Título e link", icon: PencilIcon },
+  { id: "colors", label: "Cores", icon: PaletteIcon },
+  { id: "pixels", label: "Rastreamento", icon: ActivityIcon },
+  { id: "capture", label: "Captação de leads", icon: UserPlusIcon }
+];
+const openRailTab = (tab: RailTab) => {
+  if (leftPanelOpen.value && activeSettingsTab.value === tab) {
+    leftPanelOpen.value = false;
+    return;
+  }
+  leftPanelOpen.value = true;
+  selectSettingsTab(tab);
+};
+watch(
+  newEditor,
+  enabled => {
+    if (enabled && activeSettingsTab.value === "content") selectSettingsTab("general");
+  },
+  { immediate: true }
+);
 // No computador, a prévia é desenhada em 1280 px e reduzida para caber, sem espremer as seções.
 const DESKTOP_PREVIEW_WIDTH = 1280;
+// O editor novo simula uma tela maior, mostrando as margens laterais da página.
+const desktopPreviewWidth = computed(() => (newEditor.value ? 1440 : DESKTOP_PREVIEW_WIDTH));
 const previewCanvasRef = ref<HTMLElement | null>(null);
 const previewCanvasWidth = ref(0);
 let previewCanvasObserver: ResizeObserver | null = null;
 const desktopPreviewZoom = computed(() => {
   if (previewDevice.value !== "desktop" || isMobileViewport.value || !previewCanvasWidth.value) return 1;
-  return Math.min(1, previewCanvasWidth.value / DESKTOP_PREVIEW_WIDTH);
+  return Math.min(1, previewCanvasWidth.value / desktopPreviewWidth.value);
 });
 const desktopPreviewStyle = computed(() =>
-  desktopPreviewZoom.value < 1 ? { width: `${DESKTOP_PREVIEW_WIDTH}px`, zoom: String(desktopPreviewZoom.value) } : {}
+  desktopPreviewZoom.value < 1
+    ? { width: `${desktopPreviewWidth.value}px`, zoom: String(desktopPreviewZoom.value), "--ed-unzoom": String(1 / desktopPreviewZoom.value) }
+    : {}
 );
 watch(previewCanvasRef, (el, prev) => {
   if (typeof ResizeObserver === "undefined") return;
@@ -2193,6 +2400,9 @@ const sectionTypes: SectionType[] = [
   "agency_footer"
 ];
 const sectionLabels = defaultSectionLabels;
+// No editor novo as seções usam os nomes novos ("Capa da viagem", "Menu do topo"...).
+const sectionLabelOf = (section: PageSection) =>
+  (newEditor.value && sectionNameV2(section.type)) || sectionLabels[section.type as SectionType] || section.type;
 const sectionDescriptions: Partial<Record<SectionType, string>> = {
   header: t({
     pt: "Cabeçalho de navegação com logo, links, redes sociais ou botão de contato.",
@@ -2520,16 +2730,37 @@ const editingSectionLabel = computed(() => {
 const editingSectionHeaderLabel = computed(() => {
   const type = editingSectionType.value;
   if (!type) return "";
+  if (newEditor.value && sectionNameV2(type)) return sectionNameV2(type)!;
   if (type === "banner_card") return "Banner em Card";
   if (type === "featured_video") return "Vídeo";
   if (type === "video_vsl") return "Video VSL";
   if (type === "flight_details") return "Voos";
   return editingSectionLabel.value;
 });
+// No editor novo, as seções com formulário no padrão novo (Conteúdo / Aparência) usam ele;
+// Menu do topo, Outros roteiros, Voos, Compra online e Formulário seguem com o formulário atual.
+const v2FormComponents: Partial<Record<SectionType, any>> = {
+  hero: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormHero.vue")),
+  banner_card: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormBannerCard.vue")),
+  video_vsl: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormVideoVsl.vue")),
+  story: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormStory.vue")),
+  reasons: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormReasons.vue")),
+  photo: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormPhoto.vue")),
+  featured_video: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormFeaturedVideo.vue")),
+  biography: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormBiography.vue")),
+  itinerary: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormItinerary.vue")),
+  prices: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormPrices.vue")),
+  countdown: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormCountdown.vue")),
+  cta: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormCta.vue")),
+  testimonials: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormTestimonials.vue")),
+  faq: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormFaq.vue")),
+  agency_footer: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormAgencyFooter.vue"))
+};
+const usesV2Form = computed(() => newEditor.value && !!editingSectionType.value && !!v2FormComponents[editingSectionType.value]);
 const editingSectionComponent = computed(() => {
   const type = editingSectionType.value;
   if (!type) return null;
-  return formComponents[type];
+  return (usesV2Form.value && v2FormComponents[type]) || formComponents[type];
 });
 const isSectionEditorOpen = computed(() => editingSectionIndex.value !== null && !!editingSectionDraft.value);
 const hasUnsavedSectionDraftChanges = computed(() => {
@@ -2599,6 +2830,8 @@ provide(sectionUploadGuardKey, {
 const hasPendingImageUploads = computed(() => activeImageUploads.value > 0);
 
 const isFooterSection = (section?: PageSection | null) => !!section && (section as any).type === "free_footer_brand";
+// Linha de inserir entre seções: nunca acima do Menu do topo.
+const canInsertBefore = (index: number) => !isHeaderSection(sections.value[index]);
 const isHeaderSection = (section?: PageSection | null) => !!section && (section as any).type === "header";
 const isVideoVslSection = (section?: PageSection | null) => !!section && (section as any).type === "video_vsl";
 const enforceFooterConstraints = (list?: PageSection[] | null) => {
@@ -3108,6 +3341,15 @@ const applySectionBackgrounds = (list: PageSection[]): PageSection[] => {
     const normalized = ensureButtonColor(normalizeHeroGradient(ensureSectionAnchor(section)));
     const type = (normalized as any).type as SectionType;
 
+    // Fundo escolhido na seção (editor novo): fica como está, só ajusta a cor do texto.
+    if ((normalized as any).customBackground && (normalized as any).backgroundColor) {
+      const readable = getReadableTextColor((normalized as any).backgroundColor);
+      if (readable) (normalized as any).textColor = readable;
+      if (type !== "header" && type !== "hero" && type !== "countdown" && type !== "free_footer_brand" && type !== "banner_card" && type !== "agency_footer") {
+        altIndex += 1;
+      }
+      return normalized;
+    }
     if (
       type === "header" ||
       type === "hero" ||
@@ -3115,7 +3357,7 @@ const applySectionBackgrounds = (list: PageSection[]): PageSection[] => {
       type === "free_footer_brand" ||
       type === "banner_card"
     ) {
-      if ((normalized as any).type === "banner_card" && !(normalized as any).backgroundColor) {
+      if ((normalized as any).type === "banner_card" && (!(normalized as any).backgroundColor || newEditor.value)) {
         (normalized as any).backgroundColor = colorA.value;
       }
       return normalized;
@@ -3134,7 +3376,7 @@ const applySectionBackgrounds = (list: PageSection[]): PageSection[] => {
       const layout = (normalized as any).layout || "card";
       if (layout === "card") {
         const nextColor = altIndex % 2 === 0 ? colorA.value : colorB.value;
-        if (!(normalized as any).backgroundColor) {
+        if (!(normalized as any).backgroundColor || newEditor.value) {
           (normalized as any).backgroundColor = nextColor;
         }
         altIndex += 1;
@@ -3936,12 +4178,47 @@ const closeSectionPicker = () => {
   sectionPicker.value = { open: false, index: null };
 };
 
+const sectionPickerAfterLabel = computed(() => {
+  const index = sectionPicker.value.index;
+  const section = typeof index === "number" ? sections.value[index] : null;
+  return section ? `${index! + 1}. ${sectionLabelOf(section)}` : "";
+});
+const insertedToast = ref<{ index: number; type: string; anchorId?: string; label: string } | null>(null);
+let insertedToastTimer: ReturnType<typeof setTimeout> | null = null;
+const undoInsertedSection = () => {
+  const added = insertedToast.value;
+  insertedToast.value = null;
+  if (!added) return;
+  // Os objetos das seções são recriados ao salvar no estado, então procuramos pela âncora ou pela posição.
+  const index = added.anchorId
+    ? sections.value.findIndex(section => (section as any).anchorId === added.anchorId)
+    : sections.value[added.index]?.type === added.type
+      ? added.index
+      : -1;
+  if (index < 0) return;
+  setSections(current => current.filter((_, idx) => idx !== index));
+  refreshPreview(true);
+};
+onBeforeUnmount(() => {
+  if (insertedToastTimer) clearTimeout(insertedToastTimer);
+});
+
 const handleSectionPickerSelect = (type: SectionType) => {
   if (type === "viajeon_checkout" && !viajeonConnected.value) return;
   const afterIndex = sectionPicker.value.index;
   const insertAt = typeof afterIndex === "number" ? afterIndex + 1 : sections.value.length;
+  const before = new Set(sections.value);
   addSection(type, insertAt);
   closeSectionPicker();
+  const addedIndex = sections.value.findIndex(section => !before.has(section));
+  const added = sections.value[addedIndex];
+  if (newEditor.value && added) {
+    insertedToast.value = { index: addedIndex, type: added.type, anchorId: (added as any).anchorId || undefined, label: sectionLabelOf(added) };
+    if (insertedToastTimer) clearTimeout(insertedToastTimer);
+    insertedToastTimer = setTimeout(() => {
+      insertedToast.value = null;
+    }, 6000);
+  }
 };
 
 const addSection = (type: SectionType, insertIndex?: number) => {
@@ -6087,7 +6364,7 @@ onMounted(async () => {
   color: var(--muted-foreground) !important;
 }
 
-.section-editor-body :deep(label),
+.section-editor-body:not(.is-v2-form) :deep(label),
 .section-editor-body :deep(.banner-label),
 .section-editor-body :deep(.bio-label),
 .section-editor-body :deep(.countdown-label),
@@ -6096,9 +6373,9 @@ onMounted(async () => {
   color: var(--muted-foreground) !important;
 }
 
-.section-editor-body :deep(input:not([type="checkbox"]):not([type="radio"]):not([type="color"])),
-.section-editor-body :deep(textarea),
-.section-editor-body :deep(select),
+.section-editor-body:not(.is-v2-form) :deep(input:not([type="checkbox"]):not([type="radio"]):not([type="color"])),
+.section-editor-body:not(.is-v2-form) :deep(textarea),
+.section-editor-body:not(.is-v2-form) :deep(select),
 .section-editor-body :deep(.banner-input),
 .section-editor-body :deep(.bio-input),
 .section-editor-body :deep(.countdown-input),
@@ -6332,6 +6609,91 @@ onMounted(async () => {
 @media (max-width: 640px) {
   .ed-actions { width: 100%; }
   .ed-btn-primary { flex: 1; justify-content: center; }
+}
+
+/* Editor novo: configurações recolhíveis à esquerda, prévia no meio, camadas (ou IA) à direita. */
+.ed-sections-titles { display: flex; flex: 1; min-width: 0; align-items: center; justify-content: space-between; gap: 8px; }
+.ed-grid > .ed-sections { min-height: 0; overflow-y: auto; }
+.ed-grid.is-v2 { grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; height: calc(100dvh / var(--app-scale, 1) - 120px); }
+.ed-grid.is-v2 > .ed-side { grid-column: 1; grid-row: 1; }
+.ed-grid.is-v2 > .editor-preview-shell { grid-column: 2; grid-row: 1; }
+.ed-grid.is-v2 > .ed-sections, .ed-grid.is-v2 > .ed-layers-mini { grid-column: 3; grid-row: 1; }
+.v2ed-tag, .v2ed-bar, .v2ed-ins { zoom: var(--ed-unzoom, 1); }
+.ed-grid.is-v2 > .ed-side { display: flex; min-height: 0; overflow: hidden; border-radius: 20px; background: var(--card); box-shadow: var(--shadow-card); }
+.ed-grid.is-v2 .ed-settings-card { width: 320px; min-height: 0; overflow-y: auto; border-radius: 0 !important; box-shadow: none !important; padding: 18px 18px 24px; }
+.ed-grid.is-v2 .slug-row { flex-direction: column; }
+.ed-grid.is-v2 .slug-prefix { overflow: hidden; border-right: 0; border-bottom: 1px solid #e2e8f0; padding-top: 6px; padding-bottom: 6px; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.editor-workspace.is-v2 .editor-ai-sidebar { top: 100px; bottom: 8px; border-radius: 20px; }
+.v2ed-toast { position: fixed; bottom: 24px; left: 50%; z-index: 90; display: flex; align-items: center; gap: 12px; transform: translateX(-50%); padding: 10px 10px 10px 12px; border-radius: 16px; background: #0f1713; color: #fff; font-size: 14px; box-shadow: 0 20px 50px -20px rgba(6, 12, 9, 0.7); }
+.v2ed-toast-ico { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 999px; background: #12b981; }
+.v2ed-toast-ico svg { width: 15px; height: 15px; }
+.v2ed-toast button { height: 34px; padding: 0 14px; border-radius: 10px; background: rgba(255, 255, 255, 0.14); color: #fff; font-weight: 700; }
+.v2ed-toast button:hover { background: rgba(255, 255, 255, 0.24); }
+.section-editor-dialog.is-v2-form { width: min(46rem, calc(100vw - 2rem)); max-width: min(46rem, calc(100vw - 2rem)); height: min(90vh, 920px); }
+.section-editor-body.is-v2-form { padding: 16px 20px 0 !important; background: var(--muted); }
+.section-editor-dirty { display: inline-flex; align-items: center; gap: 8px; margin-right: auto; font-size: 13px; font-weight: 600; color: #b4530b; }
+.section-editor-dirty i { width: 8px; height: 8px; border-radius: 999px; background: #e8590c; }
+.ed-panel-eyebrow { margin: 0 0 2px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted-foreground); }
+.ed-panel-title { margin: 0 0 16px; font-size: 18px; font-weight: 700; color: var(--foreground); }
+.ed-rail { display: flex; flex: 0 0 64px; flex-direction: column; align-items: center; gap: 4px; padding: 12px 0; border-right: 1px solid var(--border); }
+.ed-grid.left-closed .ed-rail { border-right: 0; }
+.ed-rail-btn { position: relative; display: grid; flex-shrink: 0; place-items: center; width: 44px; height: 44px; border-radius: 12px; color: var(--muted-foreground); transition: background-color 0.15s ease, color 0.15s ease; }
+.ed-rail-btn:first-child { margin-bottom: 8px; }
+.ed-rail-btn:hover { background: var(--muted); color: var(--foreground); }
+.ed-rail-btn.on { background: var(--status-success); color: var(--status-success-foreground); }
+.ed-rail-btn svg { width: 20px; height: 20px; }
+.ed-rail-btn.is-small { width: 34px; height: 34px; margin: 0; }
+.ed-rail-btn.is-small svg { width: 18px; height: 18px; }
+.ed-rail-dot { position: absolute; top: 9px; right: 9px; width: 8px; height: 8px; border-radius: 999px; background: #e8590c; box-shadow: 0 0 0 2px var(--card); }
+.ed-grid.is-v2 > .ed-sections { width: 272px; padding: 12px 8px; }
+.ed-grid.is-v2 .ed-sections-head { gap: 8px; padding: 0 4px 10px; }
+.ed-grid.is-v2 .ed-sections-titles { flex-direction: column; align-items: flex-start; gap: 0; }
+.ed-layers-add { display: inline-flex; flex-shrink: 0; align-items: center; gap: 4px; height: 32px; padding: 0 12px 0 9px; border-radius: 999px; background: var(--foreground); color: var(--background); font-size: 13px; font-weight: 700; }
+.ed-layers-add svg { width: 15px; height: 15px; }
+.ed-layers-mini { display: flex; width: 64px; min-height: 0; flex-direction: column; align-items: center; gap: 6px; overflow-y: auto; padding: 12px 0; border-radius: 20px; background: var(--card); box-shadow: var(--shadow-card); }
+.ed-layers-mini .ed-rail-btn { margin-bottom: 0; }
+.ed-layers-mini-sep { width: 28px; height: 1px; flex-shrink: 0; background: var(--border); }
+.ed-layers-mini-item { display: grid; flex-shrink: 0; place-items: center; width: 36px; height: 32px; border-radius: 8px; font-size: 12px; font-weight: 800; }
+.ed-layers-mini-item.is-off { opacity: 0.45; }
+.ed-layers-mini-add { display: grid; flex-shrink: 0; place-items: center; width: 36px; height: 36px; margin-top: 4px; border-radius: 999px; background: var(--foreground); color: var(--background); }
+.ed-layers-mini-add svg { width: 16px; height: 16px; }
+
+/* Prévia do editor novo: sombra ao passar o mouse, ações no topo e linha para inserir seção. */
+.v2ed-slot { position: relative; }
+.v2ed-sec { transition: box-shadow 0.2s ease; }
+.v2ed-sec:hover, .v2ed-sec:focus-within { z-index: 5; box-shadow: 0 24px 60px -18px rgba(6, 12, 9, 0.55), 0 4px 14px -6px rgba(6, 12, 9, 0.3); }
+.v2ed-ring, .v2ed-tag, .v2ed-bar { opacity: 0; transition: opacity 0.18s ease, transform 0.24s cubic-bezier(0.22, 0.8, 0.24, 1); }
+.v2ed-tag, .v2ed-bar { transform: translateY(-4px); }
+.v2ed-sec:hover .v2ed-ring, .v2ed-sec:hover .v2ed-tag, .v2ed-sec:hover .v2ed-bar,
+.v2ed-sec:focus-within .v2ed-ring, .v2ed-sec:focus-within .v2ed-tag, .v2ed-sec:focus-within .v2ed-bar { opacity: 1; transform: none; }
+.v2ed-ring { position: absolute; inset: 0; z-index: 70; pointer-events: none; box-shadow: inset 0 0 0 1px rgba(18, 185, 129, 0.55), inset 0 0 60px -10px rgba(6, 12, 9, 0.28); }
+.v2ed-tag { position: absolute; top: 12px; left: 12px; z-index: 71; display: inline-flex; align-items: center; padding: 6px 12px; border-radius: 999px; background: #12b981; color: #fff; font: 700 13px Figtree, sans-serif; box-shadow: 0 6px 16px -6px rgba(6, 12, 9, 0.5); pointer-events: none; }
+.v2ed-bar { position: absolute; top: 12px; right: 12px; z-index: 71; display: flex; align-items: center; gap: 2px; padding: 4px; border-radius: 14px; background: #fff; color: #0f1713; box-shadow: 0 2px 6px rgba(6, 12, 9, 0.18), 0 14px 32px -12px rgba(6, 12, 9, 0.45); font-family: Figtree, sans-serif; }
+.v2ed-edit { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border-radius: 10px; background: #0f1713; color: #fff; font-size: 13px; font-weight: 700; }
+.v2ed-edit:hover { background: #000; }
+.v2ed-edit svg, .v2ed-btn svg { width: 16px; height: 16px; }
+.v2ed-btn { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; color: #0f1713; transition: background-color 0.15s ease, color 0.15s ease; }
+.v2ed-btn:hover { background: #eef1ec; }
+.v2ed-btn:disabled { opacity: 0.3; pointer-events: none; }
+.v2ed-btn.is-danger:hover { background: #fdecec; color: #c2261c; }
+.v2ed-sep { width: 1px; height: 22px; margin: 0 4px; background: #e3e8e2; }
+.v2ed-locked { padding: 6px 10px; font-size: 12px; font-weight: 600; color: #4f5c55; }
+.v2ed-ins { position: absolute; top: -24px; left: 0; right: 0; z-index: 80; display: flex; height: 48px; align-items: center; justify-content: center; }
+.v2ed-ins-line { position: absolute; top: 50%; left: 0; right: 0; height: 3px; margin-top: -1.5px; background: #12b981; box-shadow: 0 1px 3px rgba(6, 12, 9, 0.55), 0 6px 18px rgba(6, 12, 9, 0.35); opacity: 0; transform: scaleX(0.6); transition: opacity 0.18s ease, transform 0.28s cubic-bezier(0.22, 0.8, 0.24, 1); }
+.v2ed-ins-btn { position: relative; display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px 0 10px; border-radius: 999px; background: #12b981; color: #fff; font: 700 13px Figtree, sans-serif; box-shadow: 0 2px 4px rgba(6, 12, 9, 0.35), 0 10px 24px -6px rgba(6, 12, 9, 0.5); opacity: 0; transform: scale(0.85); transition: opacity 0.18s ease, transform 0.24s cubic-bezier(0.22, 0.8, 0.24, 1), background-color 0.18s ease; }
+.v2ed-ins-btn svg { width: 16px; height: 16px; }
+.v2ed-ins-btn:hover { background: #0e9f6e; }
+.v2ed-ins:hover .v2ed-ins-line, .v2ed-ins:focus-within .v2ed-ins-line { opacity: 1; transform: none; }
+.v2ed-ins:hover .v2ed-ins-btn, .v2ed-ins:focus-within .v2ed-ins-btn { opacity: 1; transform: none; }
+.v2ed-end { position: relative; display: grid; height: 72px; place-items: center; border-top: 1px dashed #dce1da; background: #f4f6f3; }
+.v2ed-ins.is-end { top: -24px; }
+.v2ed-end-label { padding-top: 18px; font: 600 12px Figtree, sans-serif; color: #9aa59f; }
+@media (prefers-reduced-motion: reduce) {
+  .v2ed-ring, .v2ed-tag, .v2ed-bar, .v2ed-ins-line, .v2ed-ins-btn, .v2ed-sec { transition: none; }
+}
+@media (max-width: 1279px) {
+  .ed-grid.is-v2 .ed-settings-card { width: 288px; }
+  .ed-grid.is-v2 > .ed-sections { width: 248px; }
 }
 </style>
 
