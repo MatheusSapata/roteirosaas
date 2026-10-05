@@ -474,6 +474,8 @@ export interface ReasonItem {
 
 export interface ReasonsSection extends SectionBase {
   type: "reasons";
+  /** Todos os itens usam ícone ("icon") ou todos usam emoji ("emoji"). */
+  iconMode?: "icon" | "emoji";
   title: LocalizedString;
   subtitle?: LocalizedString;
   items: ReasonItem[];

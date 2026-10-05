@@ -245,17 +245,25 @@ const HeroContent = defineComponent({
   bottom: auto;
   height: min(100%, 112cqi);
 }
+/* Computador: a sombra fica do lado do texto (esquerda e base), e a direita da foto fica limpa. */
 .v2-hero-fade {
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--v2-bg) 18%, transparent) 0%,
-    transparent 22%,
-    transparent 40%,
-    color-mix(in srgb, var(--v2-bg) 78%, transparent) 70%,
-    var(--v2-bg) 94%
-  );
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--v2-bg) 82%, transparent) 0%,
+      color-mix(in srgb, var(--v2-bg) 62%, transparent) 30%,
+      color-mix(in srgb, var(--v2-bg) 22%, transparent) 55%,
+      transparent 72%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--v2-bg) 22%, transparent) 0%,
+      transparent 18%,
+      transparent 62%,
+      color-mix(in srgb, var(--v2-bg) 45%, transparent) 100%
+    );
 }
 .v2-hero-spacer {
   position: relative;
@@ -323,8 +331,9 @@ const HeroContent = defineComponent({
   gap: 8px;
   padding: 5px 14px 5px 5px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  /* Fundo escuro translúcido: o destaque continua legível mesmo sobre céu claro. */
+  background: rgba(6, 12, 9, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   backdrop-filter: blur(10px);
   font-size: 14px;
   font-weight: 650;
@@ -494,6 +503,16 @@ const HeroContent = defineComponent({
 @container (max-width: 640px) {
   .v2-hero--imm {
     min-height: 0;
+  }
+  .v2-hero-fade {
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--v2-bg) 18%, transparent) 0%,
+      transparent 22%,
+      transparent 40%,
+      color-mix(in srgb, var(--v2-bg) 78%, transparent) 70%,
+      var(--v2-bg) 94%
+    );
   }
   .v2-hero-spacer {
     display: block;

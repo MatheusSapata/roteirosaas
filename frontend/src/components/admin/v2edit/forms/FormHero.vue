@@ -30,7 +30,7 @@
             <template #default="{ item, update }">
               <div class="ved-field">
                 <span class="ved-label">Ícone</span>
-                <TravelIconPicker :model-value="item.icon" @update:model-value="update({ icon: $event })" />
+                <IconEmojiPicker :model-value="item.icon" mode="icon" @update:model-value="update({ icon: $event })" />
               </div>
               <EdText :model-value="item.text" label="Texto" placeholder="Aéreo incluso" @update:model-value="update({ text: $event })" />
             </template>
@@ -73,7 +73,7 @@
 import { computed, ref } from "vue";
 import type { HeroSection } from "../../../../types/page";
 import ImageUploadField from "../../inputs/ImageUploadField.vue";
-import TravelIconPicker from "../../inputs/TravelIconPicker.vue";
+import IconEmojiPicker from "../../inputs/IconEmojiPicker.vue";
 import EdBackground from "../EdBackground.vue";
 import EdButton from "../EdButton.vue";
 import EdGroup from "../EdGroup.vue";
