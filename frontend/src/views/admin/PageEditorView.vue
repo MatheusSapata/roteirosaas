@@ -486,14 +486,45 @@
       </nav>
 
       <div
+        ref="editorGridRef"
         class="ed-grid"
         :class="{
           'is-wide': activeSettingsTab !== 'content',
           'is-v2': newEditor,
           'left-closed': newEditor && !leftPanelOpen,
-          'right-closed': newEditor && (!layersOpen || showAiAssistant)
+          'right-closed': newEditor && (!layersOpen || showAiAssistant),
+          'is-resizing': resizingPanel
         }"
+        :style="editorGridStyle"
       >
+      <template v-if="newEditor">
+        <div
+          v-if="leftContentKey"
+          class="ed-resize is-left"
+          role="separator"
+          aria-orientation="vertical"
+          :aria-label="leftContentKey === 'section' ? 'Largura do editor da seção' : 'Largura das configurações'"
+          title="Arraste para ajustar a largura. Dois cliques voltam ao padrão."
+          tabindex="0"
+          @pointerdown="startPanelResize(leftContentKey, $event)"
+          @dblclick="resetPanelWidth(leftContentKey)"
+          @keydown.left.prevent="nudgePanel(leftContentKey, -24)"
+          @keydown.right.prevent="nudgePanel(leftContentKey, 24)"
+        ></div>
+        <div
+          v-if="layersPanelShown"
+          class="ed-resize is-right"
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Largura das camadas"
+          title="Arraste para ajustar a largura. Dois cliques voltam ao padrão."
+          tabindex="0"
+          @pointerdown="startPanelResize('layers', $event)"
+          @dblclick="resetPanelWidth('layers')"
+          @keydown.left.prevent="nudgePanel('layers', 24)"
+          @keydown.right.prevent="nudgePanel('layers', -24)"
+        ></div>
+      </template>
       <aside v-if="newEditor || activeSettingsTab !== 'content'" class="ed-side">
       <nav v-if="newEditor" class="ed-rail" aria-label="Configurações da página">
         <button
@@ -2010,9 +2041,11 @@ const isMobileOverlayMode = computed(() => isMobileViewport.value);
 // Editor novo (painel à esquerda, camadas à direita): por enquanto só para quem já tem o visual novo.
 const newEditor = computed(() => designV2Enabled.value && !isMobileViewport.value);
 const EDITOR_PANELS_KEY = "editor_v2_panels";
+type PanelWidthKey = "settings" | "section" | "layers";
+type PanelPrefs = { left?: boolean; layers?: boolean; widths?: Partial<Record<PanelWidthKey, number>> };
 const readPanelPrefs = () => {
   try {
-    return JSON.parse(window.localStorage.getItem(EDITOR_PANELS_KEY) || "{}") as { left?: boolean; layers?: boolean };
+    return JSON.parse(window.localStorage.getItem(EDITOR_PANELS_KEY) || "{}") as PanelPrefs;
   } catch {
     return {};
   }
@@ -2021,13 +2054,103 @@ const panelPrefs = typeof window !== "undefined" ? readPanelPrefs() : {};
 // Em telas menores a prévia precisa do espaço: o painel começa recolhido, só com os ícones.
 const leftPanelOpen = ref(panelPrefs.left ?? (typeof window === "undefined" || window.innerWidth >= 1600));
 const layersOpen = ref(panelPrefs.layers ?? true);
-watch([leftPanelOpen, layersOpen], ([left, layers]) => {
+// Larguras ajustáveis arrastando a borda dos painéis; 0 = largura padrão da tela.
+const PANEL_LIMITS: Record<PanelWidthKey, { min: number; max: number; wide: number; narrow: number }> = {
+  settings: { min: 280, max: 560, wide: 360, narrow: 320 },
+  section: { min: 340, max: 640, wide: 420, narrow: 360 },
+  layers: { min: 208, max: 420, wide: 272, narrow: 248 }
+};
+const PANEL_RAIL = 64;
+const PREVIEW_MIN = 480;
+const panelWidths = reactive<Record<PanelWidthKey, number>>({
+  settings: panelPrefs.widths?.settings || 0,
+  section: panelPrefs.widths?.section || 0,
+  layers: panelPrefs.widths?.layers || 0
+});
+const editorViewportWidth = ref(typeof window === "undefined" ? 1440 : window.innerWidth);
+const panelWidth = (key: PanelWidthKey) => {
+  const limits = PANEL_LIMITS[key];
+  return panelWidths[key] || (editorViewportWidth.value < 1280 ? limits.narrow : limits.wide);
+};
+const leftContentKey = computed<PanelWidthKey | null>(() => (sectionPanelOpen.value ? "section" : leftPanelOpen.value ? "settings" : null));
+const layersPanelShown = computed(() => newEditor.value && layersOpen.value && !showAiAssistant.value);
+const editorGridStyle = computed(() => {
+  if (!newEditor.value) return {};
+  const left = PANEL_RAIL + (leftContentKey.value ? panelWidth(leftContentKey.value) : 0);
+  const right = layersPanelShown.value ? panelWidth("layers") : showAiAssistant.value ? 0 : PANEL_RAIL;
+  return {
+    "--ed-settings-w": `${panelWidth("settings")}px`,
+    "--ed-section-w": `${panelWidth("section")}px`,
+    "--ed-layers-w": `${panelWidth("layers")}px`,
+    "--ed-left-total": `${left}px`,
+    "--ed-right-total": `${right}px`
+  };
+});
+const editorGridRef = ref<HTMLElement | null>(null);
+const resizingPanel = ref<PanelWidthKey | null>(null);
+const savePanelPrefs = () => {
   try {
-    window.localStorage.setItem(EDITOR_PANELS_KEY, JSON.stringify({ left, layers }));
+    window.localStorage.setItem(
+      EDITOR_PANELS_KEY,
+      JSON.stringify({ left: leftPanelOpen.value, layers: layersOpen.value, widths: { ...panelWidths } })
+    );
   } catch {
     /* sem armazenamento local: os painéis só não ficam lembrados */
   }
-});
+};
+// A prévia nunca fica mais estreita que PREVIEW_MIN por causa de um painel.
+const clampPanelWidth = (key: PanelWidthKey, width: number) => {
+  const limits = PANEL_LIMITS[key];
+  const grid = editorGridRef.value;
+  let max = limits.max;
+  if (grid) {
+    const gaps = 16;
+    const other =
+      key === "layers"
+        ? PANEL_RAIL + (leftContentKey.value ? panelWidth(leftContentKey.value) : 0)
+        : layersPanelShown.value
+          ? panelWidth("layers")
+          : PANEL_RAIL;
+    const ownExtra = key === "layers" ? 0 : PANEL_RAIL;
+    max = Math.min(max, grid.offsetWidth - gaps - other - ownExtra - PREVIEW_MIN);
+  }
+  return Math.round(Math.max(limits.min, Math.min(Math.max(limits.min, max), width)));
+};
+const startPanelResize = (key: PanelWidthKey, event: PointerEvent) => {
+  const handle = event.currentTarget as HTMLElement;
+  const grid = editorGridRef.value;
+  if (!grid || event.button !== 0) return;
+  event.preventDefault();
+  // O app inteiro tem zoom; o arraste é medido na tela e convertido para a largura do painel.
+  const scale = grid.getBoundingClientRect().width / (grid.offsetWidth || 1) || 1;
+  const startX = event.clientX;
+  const startWidth = panelWidth(key);
+  const direction = key === "layers" ? -1 : 1;
+  resizingPanel.value = key;
+  handle.setPointerCapture(event.pointerId);
+  const move = (moveEvent: PointerEvent) => {
+    panelWidths[key] = clampPanelWidth(key, startWidth + (direction * (moveEvent.clientX - startX)) / scale);
+  };
+  const stop = () => {
+    resizingPanel.value = null;
+    handle.removeEventListener("pointermove", move);
+    handle.removeEventListener("pointerup", stop);
+    handle.removeEventListener("pointercancel", stop);
+    savePanelPrefs();
+  };
+  handle.addEventListener("pointermove", move);
+  handle.addEventListener("pointerup", stop);
+  handle.addEventListener("pointercancel", stop);
+};
+const nudgePanel = (key: PanelWidthKey, delta: number) => {
+  panelWidths[key] = clampPanelWidth(key, panelWidth(key) + delta);
+  savePanelPrefs();
+};
+const resetPanelWidth = (key: PanelWidthKey) => {
+  panelWidths[key] = 0;
+  savePanelPrefs();
+};
+watch([leftPanelOpen, layersOpen], savePanelPrefs);
 type RailTab = "general" | "colors" | "pixels" | "capture";
 const railTabs: { id: RailTab; label: string; icon: Component }[] = [
   { id: "general", label: "Título e link", icon: PencilIcon },
@@ -2145,6 +2268,7 @@ const syncMobileViewport = () => {
   if (!hasWindow) return;
   const matches = window.innerWidth < 768;
   isMobileViewport.value = matches;
+  editorViewportWidth.value = window.innerWidth;
   if (matches && previewDevice.value !== "mobile") {
     previewDevice.value = "mobile";
   }
@@ -6947,6 +7071,7 @@ onMounted(async () => {
 .section-editor-dirty { display: inline-flex; align-items: center; gap: 8px; margin-right: auto; font-size: 13px; font-weight: 600; color: #b4530b; }
 .section-editor-dirty i { width: 8px; height: 8px; border-radius: 999px; background: #e8590c; }
 .ed-section-panel { display: flex; width: 420px; min-height: 0; flex-direction: column; }
+.ed-grid.is-v2 .ed-section-panel { flex: 0 0 auto; width: var(--ed-section-w, 420px); }
 .esp-top { display: flex; align-items: center; gap: 4px; padding: 10px 10px 6px 6px; }
 .esp-back { display: inline-flex; flex: 1; align-items: center; gap: 4px; height: 34px; padding: 0 8px 0 4px; border-radius: 9px; color: var(--muted-foreground); font-size: 13px; font-weight: 600; }
 .esp-back:hover { color: var(--foreground); }
@@ -6974,6 +7099,7 @@ onMounted(async () => {
 .v2ed-sec.is-editing { z-index: 4; }
 .v2ed-sec.is-editing .v2ed-ring { opacity: 1; box-shadow: inset 0 0 0 2px #12b981; }
 .ed-settings-v2 { display: flex; width: 360px; min-height: 0; flex-direction: column; }
+.ed-grid.is-v2 .ed-settings-v2 { flex: 0 0 auto; width: var(--ed-settings-w, 360px); }
 .esv-head { padding: 14px 16px 12px; }
 .esv-head .ed-panel-title { margin-bottom: 0; }
 .esv-body { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding: 12px; border-top: 1px solid var(--border); background: var(--muted); }
@@ -7030,7 +7156,30 @@ onMounted(async () => {
 .ed-rail-btn.is-small { width: 34px; height: 34px; margin: 0; }
 .ed-rail-btn.is-small svg { width: 18px; height: 18px; }
 .ed-rail-dot { position: absolute; top: 9px; right: 9px; width: 8px; height: 8px; border-radius: 999px; background: #e8590c; box-shadow: 0 0 0 2px var(--card); }
-.ed-grid.is-v2 > .ed-sections { width: 272px; padding: 12px 8px; }
+.ed-grid.is-v2 > .ed-sections { width: var(--ed-layers-w, 272px); padding: 12px 8px; }
+/* Os painéis crescem e encolhem com animação (abrir uma seção, recolher, arrastar a borda). */
+.ed-grid.is-v2 { position: relative; --ed-ease: cubic-bezier(0.22, 0.8, 0.24, 1); }
+.ed-grid.is-v2 > .ed-side { width: var(--ed-left-total); transition: width 0.32s var(--ed-ease); }
+.ed-grid.is-v2 > .ed-sections { animation: ed-layers-in 0.32s var(--ed-ease); }
+.ed-grid.is-v2 > .ed-layers-mini { animation: ed-layers-mini-in 0.32s var(--ed-ease); }
+.ed-grid.is-v2 .ed-section-panel, .ed-grid.is-v2 .ed-settings-v2 { animation: ed-panel-fade 0.24s ease; }
+@keyframes ed-layers-in { from { width: 64px; opacity: 0.4; } }
+@keyframes ed-layers-mini-in { from { width: var(--ed-layers-w, 272px); opacity: 0.4; } }
+@keyframes ed-panel-fade { from { opacity: 0; } }
+.ed-grid.is-resizing { cursor: col-resize; user-select: none; }
+.ed-grid.is-resizing > *, .ed-grid.is-resizing .ed-section-panel, .ed-grid.is-resizing .ed-settings-v2 { transition: none !important; animation: none !important; }
+.ed-grid.is-resizing .editor-preview-shell { pointer-events: none; }
+.ed-resize { position: absolute; top: 12px; bottom: 12px; z-index: 6; width: 8px; cursor: col-resize; touch-action: none; transition: left 0.32s var(--ed-ease), right 0.32s var(--ed-ease); }
+.ed-resize.is-left { left: var(--ed-left-total); }
+.ed-resize.is-right { right: var(--ed-right-total); }
+.ed-resize::after { content: ""; position: absolute; top: 50%; left: 2px; width: 4px; height: 40px; border-radius: 999px; background: var(--border); opacity: 0; transform: translateY(-50%); transition: opacity 0.15s ease, background-color 0.15s ease, height 0.2s ease; }
+.ed-resize:hover::after, .ed-resize:focus-visible::after { opacity: 1; }
+.ed-resize:focus-visible { outline: none; }
+.ed-grid.is-resizing .ed-resize::after { height: 72px; background: var(--primary); opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .ed-grid.is-v2 > .ed-side, .ed-resize { transition: none; }
+  .ed-grid.is-v2 > .ed-sections, .ed-grid.is-v2 > .ed-layers-mini, .ed-grid.is-v2 .ed-section-panel, .ed-grid.is-v2 .ed-settings-v2 { animation: none; }
+}
 .ed-grid.is-v2 .ed-sections-head { gap: 8px; padding: 0 4px 10px; }
 .ed-grid.is-v2 .ed-sections-titles { flex-direction: column; align-items: flex-start; gap: 0; }
 .ed-layers-add { display: inline-flex; flex-shrink: 0; align-items: center; gap: 4px; height: 32px; padding: 0 12px 0 9px; border-radius: 999px; background: var(--foreground); color: var(--background); font-size: 13px; font-weight: 700; }
@@ -7080,7 +7229,6 @@ onMounted(async () => {
   .ed-grid.is-v2 .ed-settings-card { width: 320px; }
   .ed-section-panel { width: 360px; }
   .ed-settings-v2 { width: 320px; }
-  .ed-grid.is-v2 > .ed-sections { width: 248px; }
 }
 </style>
 
