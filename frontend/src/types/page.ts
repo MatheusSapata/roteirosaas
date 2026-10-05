@@ -170,6 +170,8 @@ export interface ItineraryDay {
   title: LocalizedString;
   description: LocalizedString;
   image?: string;
+  /** Data deste dia (AAAA-MM-DD). Vazio: segue a sequência do roteiro. */
+  date?: string;
 }
 
 export interface ItinerarySection extends SectionBase {

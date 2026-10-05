@@ -19,35 +19,40 @@
     <template v-else>
     <div class="flex min-h-screen">
       <aside
-        :class="['admin-sidebar hidden md:flex', sidebarCollapsed ? 'is-collapsed' : '']"
+        :class="['admin-sidebar hidden md:flex', { 'is-collapsed': sidebarCompact, 'is-unpinned': sidebarCollapsed, 'is-peek': sidebarCollapsed && sidebarPeek }]"
         :aria-label="t({ pt: 'Menu principal', es: 'Menú principal' })"
+        @mouseenter="peekSidebar(true)"
+        @mouseleave="peekSidebar(false)"
+        @focusin="peekSidebar(true)"
+        @focusout="handleSidebarFocusOut"
       >
         <div class="as-panel" @mouseover="showSidebarTip" @mouseleave="hideSidebarTip" @focusin="showSidebarTip" @focusout="hideSidebarTip">
           <button
             type="button"
             class="as-collapse"
-            :aria-label="sidebarCollapsed ? t({ pt: 'Expandir menu', es: 'Expandir menú' }) : t({ pt: 'Recolher menu', es: 'Contraer menú' })"
-            :title="sidebarCollapsed ? t({ pt: 'Expandir menu', es: 'Expandir menú' }) : t({ pt: 'Recolher menu', es: 'Contraer menú' })"
+            :aria-label="sidebarCollapsed ? t({ pt: 'Fixar menu aberto', es: 'Fijar menú abierto' }) : t({ pt: 'Soltar menu (abre ao passar o mouse)', es: 'Soltar menú (se abre al pasar el mouse)' })"
+            :title="sidebarCollapsed ? t({ pt: 'Fixar menu aberto', es: 'Fijar menú abierto' }) : t({ pt: 'Soltar menu (abre ao passar o mouse)', es: 'Soltar menú (se abre al pasar el mouse)' })"
+            :aria-pressed="!sidebarCollapsed"
             @click="toggleSidebarCollapsed"
           >
-            <ChevronsRightIcon v-if="sidebarCollapsed" aria-hidden="true" />
-            <ChevronsLeftIcon v-else aria-hidden="true" />
+            <PinIcon v-if="sidebarCollapsed" aria-hidden="true" />
+            <PinOffIcon v-else aria-hidden="true" />
           </button>
 
           <div class="as-brand">
             <BrandSwitcher
               v-if="viajeonLoginReady"
-              :compact="sidebarCollapsed"
+              :compact="sidebarCompact"
               :loading="viajeonSsoLoading"
               @select-viajeon="openViajeonPanel"
             />
             <RouterLink
               v-else
               to="/admin/dashboard"
-              :class="sidebarCollapsed ? 'as-brand-tile' : 'as-brand-logo'"
+              :class="sidebarCompact ? 'as-brand-tile' : 'as-brand-logo'"
               aria-label="Ir para o início"
             >
-              <img v-if="sidebarCollapsed" :src="brandMarkSrc" alt="Roteiro Online" class="h-7 w-7 object-contain" />
+              <img v-if="sidebarCompact" :src="brandMarkSrc" alt="Roteiro Online" class="h-7 w-7 object-contain" />
               <img v-else :src="mobileHeaderLogoSrc" alt="Roteiro Online" class="max-h-11 max-w-[168px] object-contain" />
             </RouterLink>
           </div>
@@ -57,7 +62,7 @@
             :to="{ path: '/admin/pages', query: { nova: '1' } }"
             class="as-cta"
             :aria-label="t({ pt: 'Nova página', es: 'Nueva página' })"
-            :data-tip="sidebarCollapsed ? t({ pt: 'Nova página', es: 'Nueva página' }) : null"
+            :data-tip="sidebarCompact ? t({ pt: 'Nova página', es: 'Nueva página' }) : null"
           >
             <span class="as-cta-icon"><PlusIcon aria-hidden="true" /></span>
             <span class="as-label">{{ t({ pt: "Nova página", es: "Nueva página" }) }}</span>
@@ -77,33 +82,33 @@
                   class="as-item"
                   :class="{ 'is-active': isTopLevelActive(item) }"
                   :aria-label="item.label"
-                  :data-tip="sidebarCollapsed ? item.label : null"
+                  :data-tip="sidebarCompact ? item.label : null"
                 >
                   <span class="as-icon"><component :is="navIconFor(item.iconPath)" aria-hidden="true" /></span>
                   <span class="as-label">{{ item.label }}</span>
-                  <span v-if="!sidebarCollapsed && item.id === 'admin-master'" class="nav-master-badge">MASTER</span>
-                  <span v-if="!sidebarCollapsed && getNavBadge(item.id) !== null" class="nav-pill-badge">{{ getNavBadge(item.id) }}</span>
+                  <span v-if="!sidebarCompact && item.id === 'admin-master'" class="nav-master-badge">MASTER</span>
+                  <span v-if="!sidebarCompact && getNavBadge(item.id) !== null" class="nav-pill-badge">{{ getNavBadge(item.id) }}</span>
                 </RouterLink>
                 <div v-else class="as-group">
                   <button
                     type="button"
                     class="as-item"
-                    :class="{ 'is-active': isParentActive(item), 'is-open': sidebarCollapsed && flyoutGroupId === item.id }"
+                    :class="{ 'is-active': isParentActive(item), 'is-open': sidebarCompact && flyoutGroupId === item.id }"
                     :aria-label="item.label"
-                    :aria-expanded="sidebarCollapsed ? flyoutGroupId === item.id : isGroupExpanded(item)"
-                    :data-tip="sidebarCollapsed && flyoutGroupId !== item.id ? item.label : null"
+                    :aria-expanded="sidebarCompact ? flyoutGroupId === item.id : isGroupExpanded(item)"
+                    :data-tip="sidebarCompact && flyoutGroupId !== item.id ? item.label : null"
                     @click.stop="handleGroupClick(item.id, $event)"
                   >
                     <span class="as-icon"><component :is="navIconFor(item.iconPath)" aria-hidden="true" /></span>
                     <span class="as-label">{{ item.label }}</span>
                     <ChevronDownIcon
-                      v-if="!sidebarCollapsed"
+                      v-if="!sidebarCompact"
                       class="as-chevron"
                       :class="{ 'rotate-180': isGroupExpanded(item) }"
                       aria-hidden="true"
                     />
                   </button>
-                  <div v-if="!sidebarCollapsed && isGroupExpanded(item)" class="as-children">
+                  <div v-if="!sidebarCompact && isGroupExpanded(item)" class="as-children">
                     <RouterLink
                       v-for="child in item.children"
                       :key="`${item.id}-${child.path}`"
@@ -117,7 +122,7 @@
                   <Teleport to="body">
                   <transition name="as-flyout">
                     <div
-                      v-if="sidebarCollapsed && flyoutGroupId === item.id"
+                      v-if="sidebarCompact && flyoutGroupId === item.id"
                       class="as-flyout"
                       role="menu"
                       :style="{ top: `${flyoutTop}px`, left: `${flyoutLeft}px` }"
@@ -148,7 +153,7 @@
               type="button"
               class="as-item"
               :aria-label="viewCopy.themeToggle.label"
-              :data-tip="sidebarCollapsed ? (isDarkTheme ? viewCopy.themeToggle.title + ': ' + viewCopy.themeToggle.active : viewCopy.themeToggle.title) : null"
+              :data-tip="sidebarCompact ? (isDarkTheme ? viewCopy.themeToggle.title + ': ' + viewCopy.themeToggle.active : viewCopy.themeToggle.title) : null"
               @click="toggleTheme"
             >
               <span class="as-icon">
@@ -156,14 +161,14 @@
                 <MoonIcon v-else aria-hidden="true" />
               </span>
               <span class="as-label">{{ viewCopy.themeToggle.title }}</span>
-              <span v-if="!sidebarCollapsed" class="as-switch" :class="{ on: isDarkTheme }" aria-hidden="true"><span></span></span>
+              <span v-if="!sidebarCompact" class="as-switch" :class="{ on: isDarkTheme }" aria-hidden="true"><span></span></span>
             </button>
             <div class="as-user">
               <RouterLink
                 to="/admin/perfil"
                 class="as-user-link"
                 :aria-label="userDisplayName || 'Perfil'"
-                :data-tip="sidebarCollapsed ? (userDisplayName || 'Perfil') : null"
+                :data-tip="sidebarCompact ? (userDisplayName || 'Perfil') : null"
               >
                 <span class="as-avatar">
                   <img v-if="userAvatarUrl" :src="userAvatarUrl" alt="" class="h-full w-full object-cover" />
@@ -175,7 +180,7 @@
                 </span>
               </RouterLink>
               <button
-                v-if="!sidebarCollapsed"
+                v-if="!sidebarCompact"
                 type="button"
                 class="as-logout"
                 :aria-label="viewCopy.sidebar.logout"
@@ -190,7 +195,7 @@
       </aside>
       <Teleport to="body">
         <div
-          v-if="sidebarCollapsed && sidebarTip.text"
+          v-if="sidebarCompact && sidebarTip.text"
           class="as-tip"
           role="tooltip"
           :style="{ top: `${sidebarTip.top}px`, left: `${sidebarTip.left}px` }"
@@ -779,8 +784,8 @@ import {
   Building2Icon,
   CheckIcon,
   ChevronDownIcon,
-  ChevronsLeftIcon,
-  ChevronsRightIcon,
+  PinIcon,
+  PinOffIcon,
   CircleIcon,
   FileTextIcon,
   GlobeIcon,
@@ -1819,6 +1824,24 @@ const flyoutGroupId = ref<string | null>(null);
 const brandMarkSrc = BrandMark;
 const canCreatePageShortcut = computed(() => hasPermission("pages"));
 const sidebarOffset = computed(() => (sidebarCollapsed.value ? "76px" : "272px"));
+// Solto (não fixado), o menu fica só com ícones e abre por cima do conteúdo ao passar o mouse.
+const sidebarPeek = ref(false);
+const sidebarCompact = computed(() => sidebarCollapsed.value && !sidebarPeek.value);
+let sidebarPeekTimer: ReturnType<typeof setTimeout> | null = null;
+const peekSidebar = (open: boolean) => {
+  if (sidebarPeekTimer) clearTimeout(sidebarPeekTimer);
+  sidebarPeekTimer = setTimeout(() => {
+    sidebarPeek.value = open;
+    if (open) {
+      flyoutGroupId.value = null;
+      hideSidebarTip();
+    }
+  }, open ? 120 : 220);
+};
+const handleSidebarFocusOut = (event: FocusEvent) => {
+  const next = event.relatedTarget as Node | null;
+  if (!next || !(event.currentTarget as HTMLElement).contains(next)) peekSidebar(false);
+};
 
 const toggleSidebarCollapsed = () => {
   sidebarCollapsed.value = !sidebarCollapsed.value;
@@ -1854,7 +1877,7 @@ const placeFlyout = (anchor: HTMLElement) => {
 };
 
 const handleGroupClick = (groupId: string, event?: MouseEvent) => {
-  if (sidebarCollapsed.value) {
+  if (sidebarCompact.value) {
     const opening = flyoutGroupId.value !== groupId;
     flyoutGroupId.value = opening ? groupId : null;
     sidebarTip.value = { text: "", top: 0, left: 0 };
@@ -1869,7 +1892,7 @@ const closeSidebarFlyout = () => {
 };
 
 const showSidebarTip = (event: Event) => {
-  if (!sidebarCollapsed.value) return;
+  if (!sidebarCompact.value) return;
   const target = (event.target as HTMLElement | null)?.closest<HTMLElement>("[data-tip]");
   const text = target?.dataset.tip;
   if (!target || !text) {
@@ -3148,6 +3171,38 @@ body.admin-body-light #app {
 .as-logout svg {
   width: 18px;
   height: 18px;
+}
+
+/* Solto: abre por cima do conteúdo ao passar o mouse, sem empurrar a página. */
+.admin-sidebar {
+  transition: width 0.26s cubic-bezier(0.22, 0.8, 0.24, 1), padding 0.26s cubic-bezier(0.22, 0.8, 0.24, 1);
+}
+.admin-sidebar .as-panel {
+  transition: box-shadow 0.26s ease, border-radius 0.26s ease;
+}
+.admin-sidebar.is-peek {
+  z-index: 60;
+  width: 272px;
+}
+.admin-sidebar.is-peek .as-panel {
+  box-shadow: 0 28px 70px -24px rgba(6, 12, 9, 0.45), 0 6px 18px -8px rgba(6, 12, 9, 0.2);
+}
+.admin-sidebar.is-peek .as-label,
+.admin-sidebar.is-peek .as-section-title {
+  white-space: nowrap;
+  animation: as-label-in 0.22s ease both;
+}
+@keyframes as-label-in {
+  from { opacity: 0; transform: translateX(-4px); }
+}
+@media (hover: hover) {
+  .admin-sidebar.is-collapsed .as-collapse {
+    display: none !important;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-sidebar, .admin-sidebar .as-panel { transition: none; }
+  .admin-sidebar.is-peek .as-label, .admin-sidebar.is-peek .as-section-title { animation: none; }
 }
 
 /* Recolhida: só os ícones, centralizados, numa coluna estreita. */

@@ -68,9 +68,19 @@ const copy = {
 const isCards = computed(() => props.section.layout === "cards" || props.section.layout === "steps");
 // Data de cada dia: início do roteiro, ou a saída da Capa quando ele fica vazio.
 const start = computed(() => parseTripDate(props.section.startDate) || parseTripDate(props.tripStartDate));
+// Um dia com data própria muda a sequência: os seguintes continuam a partir dela.
+const dayDates = computed(() => {
+  let previous: Date | null = null;
+  return (props.section.days || []).map((day, idx) => {
+    const own = parseTripDate(day.date);
+    const date = own || (previous ? addDays(previous, 1) : start.value ? addDays(start.value, idx) : null);
+    previous = date;
+    return date;
+  });
+});
 const days = computed(() =>
   (props.section.days || []).map((day, idx) => {
-    const date = start.value ? addDays(start.value, idx) : null;
+    const date = dayDates.value[idx];
     const labelText = text(day.day) || `${copy.dayPrefix} ${idx + 1}`;
     const match = labelText.match(/\d+/);
     return {
@@ -149,7 +159,7 @@ watch(
   width: clamp(58px, 7cqi, 68px);
   overflow: hidden;
   border-radius: 16px;
-  box-shadow: 0 8px 18px -14px rgba(6, 12, 9, 0.35), inset 0 0 0 1.5px var(--v2-line);
+  box-shadow: 0 8px 18px -14px rgba(6, 12, 9, 0.35);
   background: var(--v2-card);
 }
 .v2-it-date-band {
@@ -201,12 +211,18 @@ watch(
   min-width: 0;
   margin-bottom: 12px;
   overflow: hidden;
-  border-radius: 20px;
+  border-radius: 22px;
   background: var(--v2-card);
-  box-shadow: inset 0 0 0 1px var(--v2-line);
+  transition: box-shadow 0.28s ease;
 }
+/* Mesmo cartão das outras seções: sem contorno; o dia aberto ganha só profundidade. */
 .v2-it-card.is-open {
-  box-shadow: inset 0 0 0 1.5px var(--v2-accent), 0 18px 40px -28px rgba(6, 12, 9, 0.45);
+  box-shadow: 0 18px 40px -28px rgba(6, 12, 9, 0.4);
+}
+@media (hover: hover) {
+  .v2-it-card:hover {
+    box-shadow: 0 20px 44px -26px rgba(6, 12, 9, 0.38), 0 4px 14px -8px rgba(6, 12, 9, 0.14);
+  }
 }
 .v2-it-head {
   display: flex;

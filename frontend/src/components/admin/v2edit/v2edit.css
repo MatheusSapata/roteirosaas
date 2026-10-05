@@ -6,10 +6,8 @@
   font-family: Figtree, sans-serif;
   color: var(--foreground, #0f1713);
 }
+/* Rola junto com o conteúdo: some ao descer e deixa mais área para editar. */
 .ved-tabs {
-  position: sticky;
-  top: 0;
-  z-index: 5;
   display: flex;
   gap: 4px;
   margin: 0 0 4px;
@@ -53,6 +51,7 @@
   border-radius: 16px;
   background: var(--card, #fff);
   box-shadow: inset 0 0 0 1px var(--border, #e3e8e2);
+  transition: box-shadow 0.25s ease;
 }
 .ved-group-head {
   display: flex;
@@ -251,7 +250,7 @@ textarea.ved-input {
   height: 44px;
   overflow: hidden;
   border-radius: 12px;
-  box-shadow: inset 0 0 0 1px #dce1da;
+  box-shadow: inset 0 0 0 1px var(--border, #dce1da);
 }
 .ved-bg-opt.on .ved-bg-swatch {
   box-shadow: 0 0 0 2px var(--card, #fff), 0 0 0 4px var(--foreground, #0f1713);
@@ -280,16 +279,17 @@ textarea.ved-input {
   list-style: none;
 }
 .ved-item {
+  transition: box-shadow 0.25s ease;
   overflow: hidden;
   border-radius: 14px;
   background: var(--card, #fff);
-  box-shadow: inset 0 0 0 1px #e8ece7;
+  box-shadow: inset 0 0 0 1px var(--border, #e8ece7);
 }
 .ved-item.open {
   box-shadow: inset 0 0 0 1.5px #9adfc2;
 }
 .ved-item.drag-over {
-  box-shadow: inset 0 3px 0 var(--primary, #12b981), inset 0 0 0 1px #e8ece7;
+  box-shadow: inset 0 3px 0 var(--primary, #12b981), inset 0 0 0 1px var(--border, #e8ece7);
 }
 .ved-item-head {
   display: flex;
@@ -370,7 +370,7 @@ textarea.ved-input {
   gap: 6px;
   height: 42px;
   border-radius: 12px;
-  border: 1.5px dashed #c9d2cb;
+  border: 1.5px dashed var(--border, #c9d2cb);
   color: var(--foreground, #0f1713);
   font-size: 14px;
   font-weight: 700;
@@ -387,15 +387,38 @@ textarea.ved-input {
   opacity: 0.5;
   pointer-events: none;
 }
-.ved .ved-rich .ql-editor {
-  min-height: 96px;
-  font-size: 15px;
+/* Texto com formatação no mesmo visual dos outros campos: bloco único, sem contorno. */
+.ved .ved-rich .rich-text-editor {
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--muted, #f4f6f3);
+  box-shadow: inset 0 0 0 1px transparent;
+  transition: box-shadow 0.15s ease;
+}
+.ved .ved-rich .rich-text-editor:focus-within {
+  box-shadow: inset 0 0 0 1.5px var(--primary, #12b981);
 }
 .ved .ved-rich .ql-toolbar.ql-snow {
-  border-radius: 12px 12px 0 0;
+  padding: 6px 8px;
+  border: 0;
+  border-bottom: 1px solid var(--border, #e3e8e2);
+  border-radius: 0;
+  background: transparent;
 }
-.ved .ved-rich .ql-container.ql-snow {
-  border-radius: 0 0 12px 12px;
+.ved .ved-rich .ql-container.ql-snow,
+.ved .ved-rich .ql-toolbar.ql-snow + .ql-container.ql-snow:focus-within {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  font-family: inherit;
+}
+.ved .ved-rich .ql-editor {
+  min-height: 96px;
+  padding: 10px 12px;
+  background: transparent;
+  font-size: 15px;
+  line-height: 1.5;
 }
 
 /* O tema escuro do painel pinta todo input de azul-marinho (.dark-theme input);
@@ -435,4 +458,23 @@ textarea.ved-input {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+/* Sombra suave ao passar o mouse nos cartões do painel. */
+@media (hover: hover) {
+  .ved-group:hover {
+    box-shadow: inset 0 0 0 1px var(--border, #e3e8e2), 0 14px 32px -22px rgba(6, 12, 9, 0.35);
+  }
+  .ved-item:hover {
+    box-shadow: inset 0 0 0 1px var(--border, #e8ece7), 0 10px 24px -16px rgba(6, 12, 9, 0.35);
+  }
+  .ved-item.open:hover {
+    box-shadow: inset 0 0 0 1.5px #9adfc2, 0 10px 24px -16px rgba(6, 12, 9, 0.35);
+  }
+  .ved-layouts button {
+    transition: box-shadow 0.25s ease;
+  }
+  .ved-layouts button:not(.on):hover {
+    box-shadow: inset 0 0 0 1px var(--border, #e3e8e2), 0 10px 22px -16px rgba(6, 12, 9, 0.35);
+  }
 }
