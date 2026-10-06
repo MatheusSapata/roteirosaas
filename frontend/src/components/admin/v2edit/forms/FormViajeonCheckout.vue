@@ -2,7 +2,14 @@
   <V2EditShell>
     <template #content>
       <EdGroup title="Checkout">
-        <label class="ved-field">
+        <div v-if="connected === false" class="ved-info ved-warn">
+          <b>A ViajeOn está desconectada.</b>
+          {{ modelValue.checkoutSnapshot?.packages?.length
+            ? "A página segue mostrando a última cópia dos pacotes. Para trocar o checkout ou atualizar os preços, conecte de novo."
+            : "Conecte sua conta para escolher um checkout e mostrar os pacotes nesta seção." }}
+          <button type="button" class="ved-inline-btn" @click="goIntegration">Conectar ViajeOn</button>
+        </div>
+        <label v-if="connected !== false" class="ved-field">
           <span class="ved-label">Checkout da ViajeOn</span>
           <select class="ved-select" :value="modelValue.checkoutId || ''" :disabled="loading" @change="selectCheckout(($event.target as HTMLSelectElement).value)">
             <option value="">{{ loading ? "Carregando…" : "Escolher checkout…" }}</option>
@@ -11,8 +18,8 @@
           <span class="ved-hint">Os pacotes e os preços vêm da ViajeOn.</span>
         </label>
         <p v-if="selected" class="ved-info">{{ selected.packages?.length || 0 }} {{ selected.packages?.length === 1 ? "pacote ativo" : "pacotes ativos" }} neste checkout.</p>
-        <p v-if="errorMessage" class="ved-hint">{{ errorMessage }}</p>
-        <button type="button" class="ved-inline-btn" :disabled="loading" @click="loadCheckouts(true)">Atualizar lista da ViajeOn</button>
+        <p v-if="errorMessage && connected !== false" class="ved-hint">{{ errorMessage }}</p>
+        <button v-if="connected !== false" type="button" class="ved-inline-btn" :disabled="loading" @click="loadCheckouts(true)">Atualizar lista da ViajeOn</button>
       </EdGroup>
       <EdHeading :value="modelValue" type="viajeon_checkout" title-placeholder="Monte sua reserva" @patch="patch" />
       <EdGroup title="Botão">
@@ -29,6 +36,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
+import { useRouter } from "vue-router";
 import api from "../../../../services/api";
 import type { ViajeonCheckoutSection, ViajeonCheckoutSnapshot } from "../../../../types/page";
 import EdBackground from "../EdBackground.vue";
@@ -42,7 +50,11 @@ const props = defineProps<{ modelValue: ViajeonCheckoutSection }>();
 const emit = defineEmits<{ (e: "update:modelValue", value: ViajeonCheckoutSection): void }>();
 const { patch } = useDraft(props, emit);
 
+const router = useRouter();
 const loading = ref(false);
+// null enquanto consulta; false quando a integração não está conectada.
+const connected = ref<boolean | null>(null);
+const goIntegration = () => router.push({ name: "integrations-viajeon" });
 const errorMessage = ref("");
 const checkouts = ref<ViajeonCheckoutSnapshot[]>([]);
 const selected = computed(() => checkouts.value.find(item => item.checkout_id === props.modelValue.checkoutId) || props.modelValue.checkoutSnapshot || null);
@@ -71,5 +83,13 @@ const loadCheckouts = async (force = false) => {
     loading.value = false;
   }
 };
-onMounted(() => loadCheckouts());
+onMounted(async () => {
+  try {
+    const response = await api.get("/integrations/viajeon");
+    connected.value = response.data?.connected === true;
+  } catch {
+    connected.value = null;
+  }
+  if (connected.value !== false) await loadCheckouts();
+});
 </script>
