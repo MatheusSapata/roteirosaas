@@ -1,7 +1,35 @@
 <template>
   <V2Section type="itinerary" :background="section.backgroundColor" :anchor-id="section.anchorId">
     <V2Head :label="label" :title="title" :subtitle-html="subtitleHtml" />
-    <div v-if="!isCards" class="v2-it">
+    <!-- Jornada: linha do tempo destacada com os dias sempre abertos, em cartões completos,
+         e um mapa opcional que acompanha o lugar de cada dia. -->
+    <div v-if="isJourney" class="v2-jr" :class="{ 'has-map': !!mapSrc }">
+      <div v-if="mapSrc" class="v2-jr-map v2-in v2-d3">
+        <iframe :key="mapSrc" :src="mapSrc" :title="copy.mapTitle" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+        <span v-if="mapPlace" class="v2-jr-map-chip">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" /><circle cx="12" cy="10" r="3" /></svg>
+          {{ mapPlace }}
+        </span>
+      </div>
+      <ol class="v2-jr-list">
+        <li v-for="(day, idx) in days" :key="idx" class="v2-jr-day v2-in" :class="[`v2-d${Math.min(idx + 3, 7)}`, { 'is-active': mapSrc && activeDay === idx }]">
+          <span class="v2-jr-node" aria-hidden="true">{{ idx + 1 }}</span>
+          <article class="v2-jr-card">
+            <div class="v2-jr-text">
+              <span class="v2-jr-label">{{ day.date ? `${day.label} · ${day.date.weekday}, ${day.date.short}` : day.label }}</span>
+              <h3 class="v2-jr-title">{{ day.title }}</h3>
+              <div v-if="day.descriptionHtml" class="v2-rich v2-jr-desc" v-html="day.descriptionHtml"></div>
+              <button v-if="mapSrc && day.location" type="button" class="v2-jr-place" :aria-pressed="activeDay === idx" @click="activeDay = idx">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" /><circle cx="12" cy="10" r="3" /></svg>
+                {{ day.location }}
+              </button>
+            </div>
+            <img v-if="day.image" :src="day.image" :alt="day.title" class="v2-jr-photo" loading="lazy" />
+          </article>
+        </li>
+      </ol>
+    </div>
+    <div v-else-if="!isCards" class="v2-it">
       <div v-if="days.length > 1" class="v2-it-tools">
         <button type="button" class="v2-it-all" @click="toggleAll">{{ allOpen ? copy.closeAll : copy.openAll }}</button>
       </div>
@@ -62,10 +90,12 @@ const copy = {
   day: localize({ pt: "DIA", es: "DÍA" }),
   dayPrefix: localize({ pt: "Dia", es: "Día" }),
   openAll: localize({ pt: "Abrir todos os dias", es: "Abrir todos los días" }),
-  closeAll: localize({ pt: "Fechar todos os dias", es: "Cerrar todos los días" })
+  closeAll: localize({ pt: "Fechar todos os dias", es: "Cerrar todos los días" }),
+  mapTitle: localize({ pt: "Mapa do roteiro", es: "Mapa del itinerario" })
 };
 // "minimal" e "steps" entram na linha do tempo e nos cartões, respectivamente.
 const isCards = computed(() => props.section.layout === "cards" || props.section.layout === "steps");
+const isJourney = computed(() => props.section.layout === "journey");
 // Data de cada dia: início do roteiro, ou a saída da Capa quando ele fica vazio.
 const start = computed(() => parseTripDate(props.section.startDate) || parseTripDate(props.tripStartDate));
 // Um dia com data própria muda a sequência: os seguintes continuam a partir dela.
@@ -89,11 +119,22 @@ const days = computed(() =>
       title: text(day.title) || `${copy.dayPrefix} ${idx + 1}`,
       descriptionHtml: text(day.description) ? html(day.description) : "",
       image: resolveMediaUrl(day.image) || "",
+      location: (day.location || "").trim(),
       date: date
         ? { day: String(date.getDate()), month: formatMonthShort(date), weekday: formatWeekday(date), short: formatDayMonth(date) }
         : null
     };
   })
+);
+// Mapa: o lugar do dia escolhido; sem ele, o lugar geral do roteiro.
+const activeDay = ref<number | null>(null);
+const mapPlace = computed(() => {
+  if (!props.section.mapEnabled) return "";
+  const chosen = activeDay.value !== null ? days.value[activeDay.value]?.location : "";
+  return chosen || (props.section.mapQuery || "").trim() || days.value.find(day => day.location)?.location || "";
+});
+const mapSrc = computed(() =>
+  mapPlace.value ? `https://maps.google.com/maps?q=${encodeURIComponent(mapPlace.value)}&z=${activeDay.value !== null ? 12 : 9}&output=embed` : ""
 );
 const open = ref<Record<number, boolean>>({ 0: true });
 const allOpen = computed(() => days.value.length > 0 && days.value.every((_, idx) => open.value[idx]));
@@ -329,5 +370,212 @@ watch(
 }
 .v2-it-tile .v2-rich {
   color: var(--v2-muted);
+}
+/* Jornada */
+.v2-jr {
+  max-width: 860px;
+  margin: 0 auto;
+}
+.v2-jr.has-map {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 0.8fr);
+  align-items: start;
+  gap: clamp(24px, 4cqi, 48px);
+  max-width: 1180px;
+}
+.v2-jr-map {
+  position: sticky;
+  top: 96px;
+  grid-column: 2;
+  grid-row: 1;
+  height: min(72vh, 560px);
+  overflow: hidden;
+  border-radius: 24px;
+  background: var(--v2-card);
+  box-shadow: 0 24px 50px -32px rgba(6, 12, 9, 0.45);
+}
+.v2-jr-map iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+.v2-jr-map-chip {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: calc(100% - 28px);
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.95);
+  color: #0f1713;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: 0 6px 18px -8px rgba(6, 12, 9, 0.4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+.v2-jr-list {
+  position: relative;
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+/* A linha destacada passa pelo centro dos marcadores, do primeiro ao último dia. */
+.v2-jr-list::before {
+  content: "";
+  position: absolute;
+  top: 28px;
+  bottom: 28px;
+  left: 19px;
+  width: 2px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, var(--v2-accent), color-mix(in srgb, var(--v2-accent) 35%, transparent));
+}
+.v2-jr-day {
+  position: relative;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: clamp(12px, 2cqi, 20px);
+}
+.v2-jr-node {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin-top: 18px;
+  border-radius: 999px;
+  background: var(--v2-accent);
+  color: var(--v2-on-accent);
+  font-size: 15px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 0 0 6px var(--v2-bg);
+}
+.v2-jr-card {
+  display: flex;
+  align-items: flex-start;
+  gap: clamp(16px, 2.4cqi, 24px);
+  padding: clamp(18px, 2.4cqi, 24px);
+  border-radius: 22px;
+  background: var(--v2-card);
+  box-shadow: 0 1px 2px rgba(6, 12, 9, 0.04), 0 14px 32px -26px rgba(6, 12, 9, 0.35);
+  transition: box-shadow 0.28s ease;
+}
+@media (hover: hover) {
+  .v2-jr-card:hover {
+    box-shadow: 0 20px 44px -26px rgba(6, 12, 9, 0.38), 0 4px 14px -8px rgba(6, 12, 9, 0.14);
+  }
+}
+.v2-jr-day.is-active .v2-jr-card {
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--v2-accent) 60%, transparent), 0 14px 32px -26px rgba(6, 12, 9, 0.35);
+}
+.v2-jr-text {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+}
+.v2-jr-label {
+  color: var(--v2-accent-text);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.v2-jr-title {
+  margin: 0;
+  font-size: clamp(18px, 2cqi, 21px);
+  font-weight: 700;
+  line-height: 1.3;
+}
+.v2-jr-desc {
+  margin-top: 2px;
+  color: var(--v2-muted);
+}
+.v2-jr-place {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  margin-top: 6px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--v2-accent-soft);
+  color: var(--v2-accent-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.v2-jr-place[aria-pressed="true"] {
+  background: var(--v2-accent);
+  color: var(--v2-on-accent);
+}
+.v2-jr-photo {
+  flex: 0 0 auto;
+  width: clamp(140px, 30%, 220px);
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 16px;
+}
+/* Com mapa em telas médias, ou em qualquer celular: uma coluna, mapa no topo. */
+@container (max-width: 900px) {
+  .v2-jr.has-map {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .v2-jr-map {
+    position: relative;
+    top: 0;
+    grid-column: 1;
+    height: auto;
+    aspect-ratio: 16 / 10;
+  }
+  .v2-jr.has-map .v2-jr-list {
+    grid-row: 2;
+  }
+}
+@container (max-width: 640px) {
+  .v2-jr-list::before {
+    left: 15px;
+  }
+  .v2-jr-day {
+    grid-template-columns: 32px minmax(0, 1fr);
+    gap: 10px;
+  }
+  .v2-jr-node {
+    width: 32px;
+    height: 32px;
+    margin-top: 16px;
+    font-size: 13px;
+    box-shadow: 0 0 0 4px var(--v2-bg);
+  }
+  .v2-jr-card {
+    flex-direction: column-reverse;
+    padding: 16px;
+    border-radius: 18px;
+  }
+  .v2-jr-photo {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+  }
+  .v2-jr-map {
+    aspect-ratio: 4 / 3;
+    border-radius: 18px;
+  }
 }
 </style>

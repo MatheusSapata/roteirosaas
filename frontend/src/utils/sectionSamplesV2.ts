@@ -144,14 +144,14 @@ const SAMPLES: Partial<Record<SectionType, () => Record<string, any>>> = {
     images: [SAMPLE_PHOTOS.lago, SAMPLE_PHOTOS.baloes, SAMPLE_PHOTOS.vale, SAMPLE_PHOTOS.praia, SAMPLE_PHOTOS.estrada]
   }),
   itinerary: () => ({
-    layout: "timeline",
+    layout: "journey",
     title: t({ pt: "Roteiro dia a dia", es: "Itinerario día a día" }),
     subtitle: t({ pt: "Tudo o que acontece em cada dia.", es: "Todo lo que pasa cada día." }),
     startDate: daysFromNow(40),
     days: [
-      { day: "Dia 1", title: t({ pt: "Chegada e boas-vindas", es: "Llegada y bienvenida" }), description: t({ pt: "Recepção no aeroporto e traslado ao hotel.", es: "Recepción en el aeropuerto y traslado al hotel." }) },
-      { day: "Dia 2", title: t({ pt: "Passeio principal", es: "Paseo principal" }), description: "" },
-      { day: "Dia 3", title: t({ pt: "Dia livre", es: "Día libre" }), description: "" }
+      { day: "Dia 1", title: t({ pt: "Chegada e boas-vindas", es: "Llegada y bienvenida" }), description: t({ pt: "Recepção no aeroporto, traslado ao hotel e jantar de boas-vindas.", es: "Recepción en el aeropuerto, traslado al hotel y cena de bienvenida." }), image: SAMPLE_PHOTOS.barco.replace("w=1600", "w=600") },
+      { day: "Dia 2", title: t({ pt: "Passeio principal", es: "Paseo principal" }), description: t({ pt: "Dia inteiro conhecendo o destino com guia local.", es: "Día entero conociendo el destino con guía local." }) },
+      { day: "Dia 3", title: t({ pt: "Dia livre e retorno", es: "Día libre y regreso" }), description: "" }
     ]
   }),
   flight_details: () => ({

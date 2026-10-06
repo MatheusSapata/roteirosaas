@@ -172,6 +172,8 @@ export interface ItineraryDay {
   image?: string;
   /** Data deste dia (AAAA-MM-DD). Vazio: segue a sequência do roteiro. */
   date?: string;
+  /** Lugar do dia para o mapa (ex.: "Bonito, MS"). */
+  location?: string;
 }
 
 export interface ItinerarySection extends SectionBase {
@@ -179,7 +181,11 @@ export interface ItinerarySection extends SectionBase {
   days: ItineraryDay[];
   /** Data do primeiro dia (AAAA-MM-DD). Vazio: usa a saída da Capa. */
   startDate?: string;
-  layout?: "timeline" | "cards" | "minimal" | "steps";
+  layout?: "timeline" | "cards" | "minimal" | "steps" | "journey";
+  /** Mapa ao lado dos dias (layout Jornada). */
+  mapEnabled?: boolean;
+  /** Lugar geral do mapa quando nenhum dia foi escolhido (ex.: "Chapada Diamantina, BA"). */
+  mapQuery?: string;
   ctaColor?: string;
   title?: LocalizedString;
   subtitle?: LocalizedString;

@@ -4197,7 +4197,7 @@ if (type === "itinerary") {
   return ensureSectionAnchor({
     type: "itinerary",
     enabled: true,
-    layout: "timeline",
+    layout: newEditor.value ? "journey" : "timeline",
     headingLabel: headingDefaults.label,
     headingLabelStyle: headingDefaults.style,
     ctaColor: theme.value.ctaDefaultColor,

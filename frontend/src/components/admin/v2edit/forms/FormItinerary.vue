@@ -30,6 +30,14 @@
               @update:model-value="update({ date: $event || undefined })"
             />
             <EdRich :model-value="readText(item.description)" label="Texto" @update:model-value="update({ description: writeText(item.description, $event) })" />
+            <EdText
+              v-if="modelValue.layout === 'journey' && modelValue.mapEnabled"
+              :model-value="item.location || ''"
+              label="Lugar no mapa"
+              placeholder="Ex.: Lençóis, BA"
+              hint="Opcional. Na página, um toque leva o mapa para este lugar."
+              @update:model-value="update({ location: $event })"
+            />
             <ImageUploadField :model-value="item.image || ''" label="Foto do dia" hint="Opcional." layout="compact" @update:model-value="update({ image: $event || '' })" />
           </template>
         </EdList>
@@ -38,12 +46,24 @@
     <template #look>
       <EdGroup title="Layout">
         <EdLayouts
-          :model-value="modelValue.layout === 'cards' || modelValue.layout === 'steps' ? 'cards' : 'timeline'"
+          :model-value="modelValue.layout === 'cards' || modelValue.layout === 'steps' ? 'cards' : modelValue.layout === 'journey' ? 'journey' : 'timeline'"
           :options="[
+            { value: 'journey', label: 'Jornada', desc: 'Linha com os dias sempre abertos' },
             { value: 'timeline', label: 'Linha do tempo', desc: 'Dias que abrem e fecham' },
             { value: 'cards', label: 'Cartões', desc: 'Um cartão com foto por dia' }
           ]"
           @update:model-value="patch({ layout: $event })"
+        />
+      </EdGroup>
+      <EdGroup v-if="modelValue.layout === 'journey'" title="Mapa">
+        <EdToggle :model-value="!!modelValue.mapEnabled" label="Mostrar mapa ao lado dos dias" @update:model-value="patch({ mapEnabled: $event })" />
+        <EdText
+          v-if="modelValue.mapEnabled"
+          :model-value="modelValue.mapQuery || ''"
+          label="Lugar do mapa"
+          placeholder="Ex.: Chapada Diamantina, BA"
+          hint="O mapa abre aqui. Cada dia pode ter o próprio lugar, na aba Conteúdo."
+          @update:model-value="patch({ mapQuery: $event })"
         />
       </EdGroup>
       <EdGroup title="Fundo">
@@ -64,6 +84,7 @@ import EdLayouts from "../EdLayouts.vue";
 import EdList from "../EdList.vue";
 import EdRich from "../EdRich.vue";
 import EdText from "../EdText.vue";
+import EdToggle from "../EdToggle.vue";
 import V2EditShell from "../V2EditShell.vue";
 import { readText, useDraft, writeText } from "../useDraft";
 import { addDays, formatDayMonth, parseTripDate } from "../../../../utils/tripDates";
