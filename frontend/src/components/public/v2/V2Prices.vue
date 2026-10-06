@@ -2,18 +2,17 @@
   <V2Section type="prices" :background="section.backgroundColor" fallback-background="#F2F4F1" :anchor-id="section.anchorId">
     <V2Head :label="label" :title="title" :subtitle-html="subtitleHtml" />
     <ul class="v2-prices">
-      <li v-for="(item, idx) in items" :key="idx" class="v2-price v2-in" :class="[`v2-d${Math.min(idx + 3, 7)}`, { 'is-hl': item.highlight }]">
+      <li v-for="(item, idx) in items" :key="idx" class="v2-price v2-in" :class="[`v2-d${Math.min(idx + 3, 7)}`, { 'is-hl': item.highlight, 'has-badge': item.badge }]">
+        <!-- Mesma ordem de leitura do legado: o que é o pacote → quanto custa → como pagar → botão. -->
+        <span v-if="item.badge" class="v2-price-badge">{{ item.badge }}</span>
         <div class="v2-price-info">
-          <div v-if="item.badge || item.titleLabel" class="v2-price-tags">
-            <span v-if="item.badge" class="v2-price-badge">{{ item.badge }}</span>
-            <span v-if="item.titleLabel" class="v2-price-kicker">{{ item.titleLabel }}</span>
-          </div>
+          <span v-if="item.titleLabel" class="v2-price-kicker">{{ item.titleLabel }}</span>
           <h3>{{ item.title }}</h3>
-          <p v-if="item.description" class="v2-price-desc">{{ item.description }}</p>
         </div>
         <div class="v2-price-value">
+          <span v-if="item.priceLabel" class="v2-price-from">{{ item.priceLabel }}</span>
           <b>{{ item.price }}</b>
-          <span v-if="item.priceLabel">{{ item.priceLabel }}</span>
+          <span v-if="item.description" class="v2-price-terms">{{ item.description }}</span>
         </div>
         <a v-if="item.href" class="v2-btn v2-price-btn" v-bind="item.attrs">
           <span>{{ item.ctaLabel }}</span>
@@ -95,68 +94,71 @@ const items = computed(() =>
 .v2-prices {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
   max-width: 960px;
   margin: 0 auto;
   padding: 0;
   list-style: none;
 }
 .v2-price {
-  display: flex;
-  flex-wrap: wrap;
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: 14px 28px;
-  padding: clamp(18px, 2.6cqi, 26px) clamp(18px, 3cqi, 30px);
+  gap: 16px clamp(20px, 3.4cqi, 36px);
+  padding: clamp(20px, 2.8cqi, 28px) clamp(20px, 3.2cqi, 32px);
   border-radius: 22px;
   background: var(--v2-card);
+}
+.v2-price.has-badge {
+  margin-top: 10px;
 }
 .v2-price.is-hl {
   background: var(--v2-accent);
   color: var(--v2-on-accent);
   box-shadow: 0 24px 50px -30px color-mix(in srgb, var(--v2-accent) 70%, transparent);
 }
-.v2-price-info {
-  flex: 1 1 260px;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.v2-price-tags {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
+/* Selo preso à borda de cima, como no legado: chama atenção sem disputar com o título. */
 .v2-price-badge {
-  padding: 4px 10px;
+  position: absolute;
+  top: 0;
+  left: clamp(20px, 3.2cqi, 32px);
+  max-width: calc(100% - 40px);
+  padding: 4px 12px;
   border-radius: 999px;
   background: var(--v2-accent);
   color: var(--v2-on-accent);
   font-size: 12px;
   font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transform: translateY(-50%);
+  box-shadow: 0 6px 16px -8px rgba(6, 12, 9, 0.45);
 }
 .is-hl .v2-price-badge {
   background: var(--v2-on-accent);
   color: var(--v2-accent);
 }
+.v2-price-info {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
 .v2-price-kicker {
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  opacity: 0.75;
+  opacity: 0.7;
 }
 .v2-price h3 {
   margin: 0;
-  font-size: clamp(18px, 2cqi, 21px);
+  font-size: clamp(19px, 2.2cqi, 23px);
   font-weight: 700;
-}
-.v2-price-desc {
-  margin: 0;
-  font-size: 15px;
-  line-height: 1.5;
-  opacity: 0.78;
+  line-height: 1.25;
 }
 .v2-price-value {
   display: flex;
@@ -165,15 +167,34 @@ const items = computed(() =>
   gap: 2px;
   text-align: right;
 }
+.v2-price-from {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
 .v2-price-value b {
   font-family: "Bricolage Grotesque", Figtree, sans-serif;
-  font-size: clamp(24px, 3cqi, 32px);
+  font-size: clamp(26px, 3.4cqi, 34px);
+  line-height: 1.1;
   letter-spacing: -0.02em;
   white-space: nowrap;
 }
-.v2-price-value span {
-  font-size: 13px;
+.v2-price-terms {
+  font-size: 14px;
   opacity: 0.75;
+}
+.v2-price-btn {
+  max-width: 260px;
+  min-height: 48px;
+  padding: 10px 22px;
+  font-size: 15px;
+  line-height: 1.25;
+  text-align: center;
+}
+.v2-price-btn span {
+  overflow-wrap: anywhere;
 }
 .is-hl .v2-price-btn {
   background: var(--v2-on-accent);
@@ -186,12 +207,31 @@ const items = computed(() =>
   text-align: center;
   color: var(--v2-muted);
 }
-@container (max-width: 560px) {
+/* Telas médias: preço e botão descem para uma linha própria. */
+@container (max-width: 760px) {
+  .v2-price {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .v2-price-info {
+    grid-column: 1 / -1;
+  }
   .v2-price-value {
     align-items: flex-start;
     text-align: left;
   }
   .v2-price-btn {
+    justify-self: end;
+  }
+}
+/* Celular: tudo empilhado e botão na largura do cartão. */
+@container (max-width: 480px) {
+  .v2-price {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+  .v2-price-btn {
+    justify-self: stretch;
+    max-width: none;
     width: 100%;
   }
 }
