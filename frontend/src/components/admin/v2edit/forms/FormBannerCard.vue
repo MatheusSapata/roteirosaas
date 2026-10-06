@@ -8,6 +8,16 @@
       <EdButton :value="modelValue" placeholder="Falar com especialista" @patch="patch" />
     </template>
     <template #look>
+      <EdGroup title="Layout">
+        <EdLayouts
+          :model-value="modelValue.layout === 'card' ? 'card' : 'shade'"
+          :options="[
+            { value: 'shade', label: 'Com sombra', desc: 'Texto direto na foto' },
+            { value: 'card', label: 'Cartão', desc: 'Texto num cartão sobre a foto' }
+          ]"
+          @update:model-value="patch({ layout: $event })"
+        />
+      </EdGroup>
       <EdGroup title="Fundo">
         <EdBackground :value="modelValue" auto @change="patch" />
       </EdGroup>
@@ -22,6 +32,7 @@ import EdBackground from "../EdBackground.vue";
 import EdButton from "../EdButton.vue";
 import EdGroup from "../EdGroup.vue";
 import EdHeading from "../EdHeading.vue";
+import EdLayouts from "../EdLayouts.vue";
 import V2EditShell from "../V2EditShell.vue";
 import { useDraft } from "../useDraft";
 

@@ -72,6 +72,8 @@ export interface BannerCardSection extends SectionBase {
   title: LocalizedString;
   subtitle?: LocalizedString;
   backgroundImage?: string;
+  /** "shade": texto direto na foto com sombra (padrão); "card": texto num cartão sobre a foto. */
+  layout?: "shade" | "card";
   gradientColor?: string;
   cardBackground?: string;
   cardBorderColor?: string;
