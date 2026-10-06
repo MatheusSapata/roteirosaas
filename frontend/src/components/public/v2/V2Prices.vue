@@ -9,7 +9,8 @@
           <span v-if="item.titleLabel" class="v2-price-kicker">{{ item.titleLabel }}</span>
           <h3>{{ item.title }}</h3>
         </div>
-        <!-- Preço e botão numa coluna de largura fixa: o botão tem sempre o mesmo tamanho, com o texto numa linha. -->
+        <!-- Preço ao lado do botão. As colunas são da lista inteira (subgrid): todos os botões
+             ficam com a largura do maior, e os preços alinhados entre si. -->
         <div class="v2-price-side">
           <div class="v2-price-value">
             <span v-if="item.priceLabel" class="v2-price-from">{{ item.priceLabel }}</span>
@@ -97,9 +98,9 @@ const items = computed(() =>
 
 <style scoped>
 .v2-prices {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content max-content;
+  gap: 16px clamp(20px, 3.4cqi, 36px);
   max-width: 960px;
   margin: 0 auto;
   padding: 0;
@@ -108,7 +109,8 @@ const items = computed(() =>
 .v2-price {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) clamp(230px, 30cqi, 300px);
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
   align-items: center;
   gap: 16px clamp(20px, 3.4cqi, 36px);
   padding: clamp(20px, 2.8cqi, 28px) clamp(20px, 3.2cqi, 32px);
@@ -166,11 +168,7 @@ const items = computed(() =>
   line-height: 1.25;
 }
 .v2-price-side {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 14px;
-  min-width: 0;
+  display: contents;
 }
 .v2-price-value {
   display: flex;
@@ -199,8 +197,10 @@ const items = computed(() =>
 }
 .v2-price-btn {
   width: 100%;
+  max-width: 380px;
   min-height: 48px;
-  padding: 10px 18px;
+  padding: 10px 20px;
+  white-space: nowrap;
   font-size: 15px;
   line-height: 1.2;
 }
@@ -225,15 +225,24 @@ const items = computed(() =>
   color: var(--v2-muted);
 }
 /* Telas médias: preço e botão descem para uma linha própria. */
+/* Telas menores: cada cartão volta a ter o próprio layout; preço e botão dividem uma linha. */
 @container (max-width: 760px) {
+  .v2-price-btn {
+    white-space: normal;
+  }
+  .v2-prices {
+    display: flex;
+    flex-direction: column;
+  }
   .v2-price {
     grid-template-columns: minmax(0, 1fr);
   }
   .v2-price-side {
-    flex-direction: row;
+    display: flex;
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
+    gap: 14px 20px;
   }
   .v2-price-value {
     align-items: flex-start;
@@ -247,7 +256,6 @@ const items = computed(() =>
 /* Celular: tudo empilhado e botão na largura do cartão. */
 @container (max-width: 480px) {
   .v2-price {
-    grid-template-columns: minmax(0, 1fr);
     gap: 14px;
   }
   .v2-price-side {
