@@ -3,7 +3,7 @@
     <span class="v2-pay-title">{{ copy.title }}</span>
     <ul v-if="methods.length" class="v2-pay-methods">
       <li v-for="item in methods" :key="item.id" class="v2-pay-method">
-        <svg v-if="item.id === 'pix'" viewBox="0 0 24 24" aria-hidden="true"><path :d="pixPath" fill="currentColor" /></svg>
+        <svg v-if="item.id === 'pix'" class="is-pix" viewBox="0 0 24 24" aria-hidden="true"><path :d="pixPath" fill="currentColor" /></svg>
         <svg v-else-if="item.id === 'boleto'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6v12M7 6v12M10 6v12M14 6v12M17 6v12M20 6v12" /></svg>
         <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" /></svg>
         {{ item.label }}
@@ -85,6 +85,10 @@ const brands = computed(() => options.value.filter(item => item.kind === "brand"
   width: 16px;
   height: 16px;
   color: var(--v2-accent-text, currentColor);
+}
+/* Pix na cor oficial da marca, para ser reconhecido na hora. */
+.v2-pay-method .is-pix {
+  color: #32bcad;
 }
 .v2-pay-brand {
   display: grid;
