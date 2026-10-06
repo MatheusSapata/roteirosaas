@@ -1,30 +1,39 @@
 <template>
   <V2Section type="itinerary" :background="section.backgroundColor" :anchor-id="section.anchorId">
     <V2Head :label="label" :title="title" :subtitle-html="subtitleHtml" />
-    <!-- Jornada: linha do tempo destacada com os dias sempre abertos, em cartões completos,
-         e um mapa opcional que acompanha o lugar de cada dia. -->
-    <div v-if="isJourney" class="v2-jr" :class="{ 'has-map': !!mapSrc }">
-      <div v-if="mapSrc" class="v2-jr-map v2-in v2-d3">
-        <iframe :key="mapSrc" :src="mapSrc" :title="copy.mapTitle" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
-        <span v-if="mapPlace" class="v2-jr-map-chip">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" /><circle cx="12" cy="10" r="3" /></svg>
-          {{ mapPlace }}
-        </span>
+    <!-- Jornada: cada dia é um cartão inteiro que abre e fecha, com o calendário à esquerda,
+         a linha passando por trás dos cartões e o texto antes da foto. -->
+    <div v-if="isJourney" class="v2-jr">
+      <div v-if="days.length > 1" class="v2-it-tools">
+        <button type="button" class="v2-it-all" @click="toggleAll">{{ allOpen ? copy.closeAll : copy.openAll }}</button>
       </div>
       <ol class="v2-jr-list">
-        <li v-for="(day, idx) in days" :key="idx" class="v2-jr-day v2-in" :class="[`v2-d${Math.min(idx + 3, 7)}`, { 'is-active': mapSrc && activeDay === idx }]">
-          <span class="v2-jr-node" aria-hidden="true">{{ idx + 1 }}</span>
+        <li v-if="days.length > 1" class="v2-jr-line" aria-hidden="true"></li>
+        <li v-for="(day, idx) in days" :key="idx" class="v2-jr-day v2-in" :class="[`v2-d${Math.min(idx + 3, 7)}`, { 'is-open': open[idx] }]">
           <article class="v2-jr-card">
-            <div class="v2-jr-text">
-              <span class="v2-jr-label">{{ day.date ? `${day.label} · ${day.date.weekday}, ${day.date.short}` : day.label }}</span>
-              <h3 class="v2-jr-title">{{ day.title }}</h3>
-              <div v-if="day.descriptionHtml" class="v2-rich v2-jr-desc" v-html="day.descriptionHtml"></div>
-              <button v-if="mapSrc && day.location" type="button" class="v2-jr-place" :aria-pressed="activeDay === idx" @click="activeDay = idx">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" /><circle cx="12" cy="10" r="3" /></svg>
-                {{ day.location }}
-              </button>
+            <button type="button" class="v2-jr-head" :aria-expanded="!!open[idx]" @click="toggle(idx)">
+              <span class="v2-jr-cal" :style="{ animationDelay: `${0.3 + idx * 0.08}s` }">
+                <span class="v2-jr-cal-band">{{ copy.day }} {{ day.number }}</span>
+                <b>{{ day.date ? day.date.day : day.number }}</b>
+                <span v-if="day.date" class="v2-jr-cal-month">{{ day.date.month }}</span>
+              </span>
+              <span class="v2-jr-titles">
+                <span class="v2-jr-label">{{ day.date ? day.date.weekday : day.label }}</span>
+                <span class="v2-jr-title">{{ day.title }}</span>
+              </span>
+              <img v-if="day.image" :src="day.image" alt="" class="v2-jr-thumb" loading="lazy" />
+              <span class="v2-jr-chev" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+              </span>
+            </button>
+            <div class="v2-jr-body" :aria-hidden="!open[idx]">
+              <div>
+                <div class="v2-jr-inner">
+                  <div v-if="day.descriptionHtml" class="v2-rich v2-jr-desc" v-html="day.descriptionHtml"></div>
+                  <img v-if="day.image" :src="day.image" :alt="day.title" class="v2-jr-photo" loading="lazy" />
+                </div>
+              </div>
             </div>
-            <img v-if="day.image" :src="day.image" :alt="day.title" class="v2-jr-photo" loading="lazy" />
           </article>
         </li>
       </ol>
@@ -90,8 +99,7 @@ const copy = {
   day: localize({ pt: "DIA", es: "DÍA" }),
   dayPrefix: localize({ pt: "Dia", es: "Día" }),
   openAll: localize({ pt: "Abrir todos os dias", es: "Abrir todos los días" }),
-  closeAll: localize({ pt: "Fechar todos os dias", es: "Cerrar todos los días" }),
-  mapTitle: localize({ pt: "Mapa do roteiro", es: "Mapa del itinerario" })
+  closeAll: localize({ pt: "Fechar todos os dias", es: "Cerrar todos los días" })
 };
 // "minimal" e "steps" entram na linha do tempo e nos cartões, respectivamente.
 const isCards = computed(() => props.section.layout === "cards" || props.section.layout === "steps");
@@ -119,22 +127,11 @@ const days = computed(() =>
       title: text(day.title) || `${copy.dayPrefix} ${idx + 1}`,
       descriptionHtml: text(day.description) ? html(day.description) : "",
       image: resolveMediaUrl(day.image) || "",
-      location: (day.location || "").trim(),
       date: date
         ? { day: String(date.getDate()), month: formatMonthShort(date), weekday: formatWeekday(date), short: formatDayMonth(date) }
         : null
     };
   })
-);
-// Mapa: o lugar do dia escolhido; sem ele, o lugar geral do roteiro.
-const activeDay = ref<number | null>(null);
-const mapPlace = computed(() => {
-  if (!props.section.mapEnabled) return "";
-  const chosen = activeDay.value !== null ? days.value[activeDay.value]?.location : "";
-  return chosen || (props.section.mapQuery || "").trim() || days.value.find(day => day.location)?.location || "";
-});
-const mapSrc = computed(() =>
-  mapPlace.value ? `https://maps.google.com/maps?q=${encodeURIComponent(mapPlace.value)}&z=${activeDay.value !== null ? 12 : 9}&output=embed` : ""
 );
 const open = ref<Record<number, boolean>>({ 0: true });
 const allOpen = computed(() => days.value.length > 0 && days.value.every((_, idx) => open.value[idx]));
@@ -376,206 +373,230 @@ watch(
   max-width: 860px;
   margin: 0 auto;
 }
-.v2-jr.has-map {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(300px, 0.8fr);
-  align-items: start;
-  gap: clamp(24px, 4cqi, 48px);
-  max-width: 1180px;
-}
-.v2-jr-map {
-  position: sticky;
-  top: 96px;
-  grid-column: 2;
-  grid-row: 1;
-  height: min(72vh, 560px);
-  overflow: hidden;
-  border-radius: 24px;
-  background: var(--v2-card);
-  box-shadow: 0 24px 50px -32px rgba(6, 12, 9, 0.45);
-}
-.v2-jr-map iframe {
-  display: block;
-  width: 100%;
-  height: 100%;
-  border: 0;
-}
-.v2-jr-map-chip {
-  position: absolute;
-  top: 14px;
-  left: 14px;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  max-width: calc(100% - 28px);
-  padding: 7px 12px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.95);
-  color: #0f1713;
-  font-size: 13px;
-  font-weight: 700;
-  box-shadow: 0 6px 18px -8px rgba(6, 12, 9, 0.4);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  pointer-events: none;
-}
 .v2-jr-list {
+  --jr-pad: clamp(14px, 2cqi, 18px);
+  --jr-cal: clamp(54px, 6.5cqi, 64px);
   position: relative;
-  grid-column: 1;
-  grid-row: 1;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
-/* A linha destacada passa pelo centro dos marcadores, do primeiro ao último dia. */
-.v2-jr-list::before {
-  content: "";
+/* A linha passa por trás dos cartões, alinhada ao centro dos calendários; aparece nos espaços entre eles. */
+.v2-jr-line {
   position: absolute;
-  top: 28px;
-  bottom: 28px;
-  left: 19px;
+  top: 40px;
+  bottom: 40px;
+  left: calc(var(--jr-pad) + var(--jr-cal) / 2 - 1px);
   width: 2px;
   border-radius: 2px;
-  background: linear-gradient(180deg, var(--v2-accent), color-mix(in srgb, var(--v2-accent) 35%, transparent));
+  background: linear-gradient(180deg, var(--v2-accent), color-mix(in srgb, var(--v2-accent) 25%, transparent));
+  transform-origin: top;
+}
+.v2-armed.v2-on .v2-jr-line {
+  animation: v2-jr-line 1.4s cubic-bezier(0.22, 0.8, 0.24, 1) 0.2s both;
+}
+.v2-armed .v2-jr-line {
+  transform: scaleY(0);
 }
 .v2-jr-day {
   position: relative;
-  display: grid;
-  grid-template-columns: 40px minmax(0, 1fr);
-  gap: clamp(12px, 2cqi, 20px);
-}
-.v2-jr-node {
-  position: relative;
   z-index: 1;
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  margin-top: 18px;
-  border-radius: 999px;
-  background: var(--v2-accent);
-  color: var(--v2-on-accent);
-  font-size: 15px;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  box-shadow: 0 0 0 6px var(--v2-bg);
 }
 .v2-jr-card {
-  display: flex;
-  align-items: flex-start;
-  gap: clamp(16px, 2.4cqi, 24px);
-  padding: clamp(18px, 2.4cqi, 24px);
+  overflow: hidden;
   border-radius: 22px;
-  background: var(--v2-card);
-  box-shadow: 0 1px 2px rgba(6, 12, 9, 0.04), 0 14px 32px -26px rgba(6, 12, 9, 0.35);
-  transition: box-shadow 0.28s ease;
+  /* Fundo opaco: a linha só aparece nos espaços entre os cartões. */
+  background: color-mix(in srgb, var(--v2-ink) 4%, var(--v2-bg));
+  box-shadow: 0 1px 2px rgba(6, 12, 9, 0.04);
+  transition: box-shadow 0.35s ease;
+}
+.v2-jr-day.is-open .v2-jr-card {
+  box-shadow: 0 20px 44px -26px rgba(6, 12, 9, 0.38), 0 4px 14px -8px rgba(6, 12, 9, 0.12);
 }
 @media (hover: hover) {
   .v2-jr-card:hover {
     box-shadow: 0 20px 44px -26px rgba(6, 12, 9, 0.38), 0 4px 14px -8px rgba(6, 12, 9, 0.14);
   }
 }
-.v2-jr-day.is-active .v2-jr-card {
-  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--v2-accent) 60%, transparent), 0 14px 32px -26px rgba(6, 12, 9, 0.35);
+.v2-jr-head {
+  display: flex;
+  align-items: center;
+  gap: clamp(12px, 2cqi, 18px);
+  width: 100%;
+  padding: clamp(12px, 1.6cqi, 14px) var(--jr-pad);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
-.v2-jr-text {
+/* Calendário sem contorno: fechado, só a faixa de cima na cor de destaque; aberto, o calendário inteiro. */
+.v2-jr-cal {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: center;
+  width: var(--jr-cal);
+  overflow: hidden;
+  border-radius: 14px;
+  background: var(--v2-bg);
+  color: var(--v2-ink);
+  transition: background-color 0.35s ease, color 0.35s ease;
+}
+.v2-armed.v2-on .v2-jr-cal {
+  animation: v2-jr-pop 0.6s cubic-bezier(0.22, 0.8, 0.24, 1) both;
+}
+.v2-jr-cal-band {
+  align-self: stretch;
+  padding: 4px 0 3px;
+  background: var(--v2-accent);
+  color: var(--v2-on-accent);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-align: center;
+  text-transform: uppercase;
+  transition: background-color 0.35s ease;
+}
+.v2-jr-cal b {
+  padding: 5px 0 7px;
+  font-family: "Bricolage Grotesque", Figtree, sans-serif;
+  font-size: clamp(22px, 2.4cqi, 26px);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.v2-jr-cal-month {
+  margin-top: -5px;
+  padding: 0 0 7px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+.is-open .v2-jr-cal {
+  background: var(--v2-accent);
+  color: var(--v2-on-accent);
+}
+.is-open .v2-jr-cal-band {
+  background: rgba(0, 0, 0, 0.16);
+}
+.v2-jr-titles {
   display: flex;
   flex: 1;
   min-width: 0;
   flex-direction: column;
-  gap: 6px;
+  gap: 3px;
 }
 .v2-jr-label {
   color: var(--v2-accent-text);
   font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.02em;
+}
+.v2-jr-label::first-letter {
+  text-transform: uppercase;
 }
 .v2-jr-title {
-  margin: 0;
-  font-size: clamp(18px, 2cqi, 21px);
+  font-size: clamp(17px, 1.9cqi, 20px);
   font-weight: 700;
   line-height: 1.3;
 }
-.v2-jr-desc {
-  margin-top: 2px;
-  color: var(--v2-muted);
+.v2-jr-thumb {
+  flex: 0 0 auto;
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  object-fit: cover;
+  transition: opacity 0.25s ease, width 0.35s cubic-bezier(0.22, 0.8, 0.24, 1), margin 0.35s ease;
 }
-.v2-jr-place {
-  display: inline-flex;
-  align-self: flex-start;
-  align-items: center;
-  gap: 6px;
-  min-height: 34px;
-  margin-top: 6px;
-  padding: 0 12px;
-  border: 0;
+.is-open .v2-jr-thumb {
+  width: 0;
+  margin-right: -12px;
+  opacity: 0;
+}
+.v2-jr-chev {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 36px;
+  height: 36px;
   border-radius: 999px;
   background: var(--v2-accent-soft);
   color: var(--v2-accent-text);
-  font: inherit;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
+  transition: transform 0.35s cubic-bezier(0.22, 0.8, 0.24, 1), background-color 0.35s ease, color 0.35s ease;
 }
-.v2-jr-place[aria-pressed="true"] {
+.is-open .v2-jr-chev {
+  transform: rotate(180deg);
   background: var(--v2-accent);
   color: var(--v2-on-accent);
 }
+/* Abrir e fechar sem salto: a altura vai de 0 ao conteúdo, com o texto deslizando de leve. */
+.v2-jr-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.45s cubic-bezier(0.22, 0.8, 0.24, 1);
+}
+.is-open .v2-jr-body {
+  grid-template-rows: 1fr;
+}
+.v2-jr-body > div {
+  min-height: 0;
+  overflow: hidden;
+}
+.v2-jr-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 0 var(--jr-pad) clamp(16px, 2cqi, 20px);
+  opacity: 0;
+  transform: translateY(-8px);
+  transition: opacity 0.35s ease, transform 0.45s cubic-bezier(0.22, 0.8, 0.24, 1);
+}
+.is-open .v2-jr-inner {
+  opacity: 1;
+  transform: none;
+}
+.v2-jr-desc {
+  padding: 0 4px;
+  color: var(--v2-muted);
+}
 .v2-jr-photo {
-  flex: 0 0 auto;
-  width: clamp(140px, 30%, 220px);
-  aspect-ratio: 4 / 3;
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
   object-fit: cover;
   border-radius: 16px;
 }
-/* Com mapa em telas médias, ou em qualquer celular: uma coluna, mapa no topo. */
-@container (max-width: 900px) {
-  .v2-jr.has-map {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .v2-jr-map {
-    position: relative;
-    top: 0;
-    grid-column: 1;
-    height: auto;
-    aspect-ratio: 16 / 10;
-  }
-  .v2-jr.has-map .v2-jr-list {
-    grid-row: 2;
+@keyframes v2-jr-line {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+@keyframes v2-jr-pop {
+  0% { opacity: 0; transform: scale(0.6); }
+  70% { transform: scale(1.06); }
+  100% { opacity: 1; transform: none; }
+}
+@container (max-width: 480px) {
+  .v2-jr-thumb {
+    display: none;
   }
 }
-@container (max-width: 640px) {
-  .v2-jr-list::before {
-    left: 15px;
+@media (prefers-reduced-motion: reduce) {
+  .v2-jr-line,
+  .v2-jr-cal {
+    animation: none !important;
+    transform: none !important;
   }
-  .v2-jr-day {
-    grid-template-columns: 32px minmax(0, 1fr);
-    gap: 10px;
-  }
-  .v2-jr-node {
-    width: 32px;
-    height: 32px;
-    margin-top: 16px;
-    font-size: 13px;
-    box-shadow: 0 0 0 4px var(--v2-bg);
-  }
-  .v2-jr-card {
-    flex-direction: column-reverse;
-    padding: 16px;
-    border-radius: 18px;
-  }
-  .v2-jr-photo {
-    width: 100%;
-    aspect-ratio: 16 / 9;
-  }
-  .v2-jr-map {
-    aspect-ratio: 4 / 3;
-    border-radius: 18px;
+  .v2-jr-body,
+  .v2-jr-inner,
+  .v2-jr-thumb,
+  .v2-jr-cal,
+  .v2-jr-chev {
+    transition: none;
   }
 }
 </style>
