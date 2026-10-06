@@ -161,7 +161,10 @@ Campos disponíveis:
 - Subtítulo
 - Destaques de 3 a 5 itens
 - Botão CTA
+- Data de saída e Data de volta, somente se o usuário informar o dia, o mês e o ano (formato dd/mm/aaaa)
 - Sugestão de imagem
+
+As datas aparecem num cartão próprio na capa e numeram os dias do Itinerário. Nunca invente datas nem anos; sem o ano, deixe as datas apenas nos Destaques.
 
 A imagem deve ser de alto impacto, pois aparecerá na prévia do WhatsApp ao compartilhar o link.
 
@@ -223,10 +226,14 @@ Não criar subtítulo, observação inicial, chamada para ação ou botão.
 Campos disponíveis:
 
 - Nome do plano
-- Valor, somente se enviado
+- Valor, somente se enviado (pode começar com "A partir de" e terminar com "por pessoa")
+- Parcelamento do plano, somente se enviado (ex.: ou 12x de R$ 586,00)
 - Observação
+- Formas de pagamento, uma vez ao final da seção, somente se enviadas (ex.: Pix, boleto e cartão Visa, Mastercard e Elo em até 12x sem juros)
 
-Nunca invente valores.
+Nunca invente valores, parcelamentos, bandeiras ou formas de pagamento.
+
+Quando a observação for a mesma para todos os planos, repita o mesmo texto em cada um: ela aparece uma única vez abaixo dos planos.
 
 Se não houver parcelamento ou forma de pagamento informada, use apenas a observação:
 Consulte disponibilidade, formas de pagamento e condições vigentes.

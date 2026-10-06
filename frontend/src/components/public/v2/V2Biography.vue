@@ -19,7 +19,7 @@ import { computed } from "vue";
 import type { BiographySection } from "../../../types/page";
 import { resolveMediaUrl } from "../../../utils/media";
 import V2Section from "./V2Section.vue";
-import { sanitizeHtml } from "../../../utils/sanitizeHtml";
+import { plainTextToHtml, sanitizeHtml } from "../../../utils/sanitizeHtml";
 import { localize, text } from "./useHeading";
 
 const props = defineProps<{ section: BiographySection; previewDevice?: "desktop" | "mobile" }>();
@@ -31,7 +31,7 @@ const title = computed(() => text(props.section.title));
 const bodyHtml = computed(() => {
   const raw = text(props.section.text);
   if (!raw) return "";
-  const safe = sanitizeHtml(raw, { embeds: true });
+  const safe = sanitizeHtml(plainTextToHtml(raw), { embeds: true });
   if (typeof document === "undefined") return safe;
   const box = document.createElement("div");
   box.innerHTML = safe;

@@ -194,6 +194,7 @@ const items = computed(() =>
 .v2-price-terms {
   font-size: 14px;
   opacity: 0.75;
+  white-space: pre-line;
 }
 .v2-price-btn {
   width: 100%;
@@ -218,6 +219,7 @@ const items = computed(() =>
   color: var(--v2-accent);
 }
 .v2-prices-note {
+  white-space: pre-line;
   max-width: 960px;
   margin: 20px auto 0;
   font-size: 14px;

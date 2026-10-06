@@ -34,3 +34,19 @@ export const sanitizeHtml = (value?: string | null, options: { embeds?: boolean 
 
   return container.innerHTML;
 };
+
+/**
+ * Texto sem marcação (da IA ou de páginas antigas) vira parágrafos: linha em branco separa
+ * parágrafos e quebra simples vira <br>. Texto que já tem HTML passa como está.
+ */
+export const plainTextToHtml = (value?: string | null) => {
+  const text = value || "";
+  if (!text.trim() || /<\/?[a-z][\s\S]*?>/i.test(text)) return text;
+  const escape = (part: string) => part.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return text
+    .replace(/\r\n?/g, "\n")
+    .trim()
+    .split(/\n{2,}/)
+    .map(paragraph => `<p>${escape(paragraph).replace(/\n/g, "<br>")}</p>`)
+    .join("");
+};
