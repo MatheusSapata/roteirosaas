@@ -17,7 +17,7 @@
         </div>
       </div>
       <div class="ed-actions">
-        <button v-if="canUseAiAssistant && !isMobileViewport" type="button" class="ed-btn ed-btn-ai" :class="{ 'is-on': showAiAssistant }" :aria-pressed="showAiAssistant" @click="toggleAiAssistant">
+        <button v-if="canUseAiAssistant && !isMobileViewport" type="button" class="ed-btn ed-btn-ai" :aria-pressed="showAiAssistant" @click="toggleAiAssistant">
           <SparkleIcon aria-hidden="true" />
           Assistente IA
         </button>
@@ -7010,14 +7010,7 @@ onMounted(async () => {
 .ed-btn { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 18px; border-radius: 999px; font-size: 13.5px; font-weight: 600; transition: background 0.15s, opacity 0.15s; }
 .ed-btn svg { width: 16px; height: 16px; }
 .ed-btn:disabled { cursor: not-allowed; opacity: 0.55; }
-/* Assistente IA em destaque: degradê violeta, brilho suave e ícone que pulsa de leve. */
-.ed-btn-ai { position: relative; height: 42px; padding: 0 20px; background: linear-gradient(120deg, #7c3aed 0%, #a855f7 55%, #6366f1 100%); color: #fff; font-weight: 700; box-shadow: 0 8px 22px -10px rgba(124, 58, 237, 0.75), inset 0 0 0 1px rgba(255, 255, 255, 0.18); transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease; }
-.ed-btn-ai:hover { transform: translateY(-1px); filter: brightness(1.06); box-shadow: 0 12px 28px -10px rgba(124, 58, 237, 0.85), inset 0 0 0 1px rgba(255, 255, 255, 0.25); }
-.ed-btn-ai svg { width: 17px; height: 17px; animation: ed-ai-spark 2.8s ease-in-out infinite; }
-.ed-btn-ai.is-on { background: #0f1713; box-shadow: inset 0 0 0 1.5px #a855f7; }
-.dark-theme .ed-btn-ai.is-on { background: var(--card); color: var(--foreground); }
-@keyframes ed-ai-spark { 0%, 100% { transform: scale(1) rotate(0); } 50% { transform: scale(1.15) rotate(12deg); } }
-@media (prefers-reduced-motion: reduce) { .ed-btn-ai svg { animation: none; } }
+.ed-btn-ai { background: var(--status-violet); color: var(--status-violet-foreground); }
 .ed-btn-ghost { background: var(--card); color: var(--foreground); box-shadow: var(--shadow-card); }
 .ed-btn-ghost:hover:not(:disabled) { background: var(--accent); }
 .ed-btn-primary { background: var(--primary); color: var(--primary-foreground); }
@@ -7200,7 +7193,7 @@ onMounted(async () => {
 .ed-stage.is-mobile-preview .v2ed-edit span { display: none; }
 .ed-stage.is-mobile-preview .v2ed-edit { padding: 0 10px; }
 .editor-workspace.is-v2 .editor-ai-sidebar-header { display: flex; align-items: center; gap: 10px; }
-.ai-v2-mark { display: grid; flex-shrink: 0; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: linear-gradient(120deg, #7c3aed 0%, #a855f7 55%, #6366f1 100%); color: #fff; }
+.ai-v2-mark { display: grid; flex-shrink: 0; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: #e7f6ee; color: #0b7a55; }
 .ai-v2-mark svg { width: 18px; height: 18px; }
 .editor-workspace.is-v2 .editor-ai-sidebar-header-copy { flex: 1; min-width: 0; }
 .ai-v2-usage { display: block; font-size: 12px; color: var(--muted-foreground); }
