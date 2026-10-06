@@ -35,6 +35,7 @@
           </template>
         </EdList>
       </EdGroup>
+      <EdPayments :value="modelValue" @patch="patch" />
     </template>
     <template #look>
       <EdGroup title="Fundo">
@@ -50,6 +51,7 @@ import type { PriceItem, PricesSection } from "../../../../types/page";
 import EdBackground from "../EdBackground.vue";
 import EdButton from "../EdButton.vue";
 import EdGroup from "../EdGroup.vue";
+import EdPayments from "../EdPayments.vue";
 import EdHeading from "../EdHeading.vue";
 import EdList from "../EdList.vue";
 import EdText from "../EdText.vue";

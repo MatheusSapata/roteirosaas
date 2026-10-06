@@ -25,6 +25,7 @@
       <EdGroup title="Botão">
         <EdText :model-value="readText(modelValue.buttonLabel)" label="Texto do botão" placeholder="Ir para o pagamento" @update:model-value="patch({ buttonLabel: writeText(modelValue.buttonLabel, $event) })" />
       </EdGroup>
+      <EdPayments :value="modelValue" @patch="patch" />
     </template>
     <template #look>
       <EdGroup title="Fundo">
@@ -41,6 +42,7 @@ import api from "../../../../services/api";
 import type { ViajeonCheckoutSection, ViajeonCheckoutSnapshot } from "../../../../types/page";
 import EdBackground from "../EdBackground.vue";
 import EdGroup from "../EdGroup.vue";
+import EdPayments from "../EdPayments.vue";
 import EdHeading from "../EdHeading.vue";
 import EdText from "../EdText.vue";
 import V2EditShell from "../V2EditShell.vue";

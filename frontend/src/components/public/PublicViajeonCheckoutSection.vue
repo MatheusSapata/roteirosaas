@@ -50,6 +50,7 @@
           >
             {{ submitting ? "Preparando checkout..." : localized(section.buttonLabel) || "Continuar para o checkout" }}
           </button>
+          <V2Payments v-if="section.showPayments" :ids="section.paymentMethods" :note="section.paymentNote" align="left" />
         </aside>
       </div>
     </div>
@@ -63,6 +64,7 @@ import api from "../../services/api";
 import platformApi from "../../services/platformApi";
 import type { ViajeonCheckoutSection, ViajeonCheckoutSnapshot, ViajeonPackage } from "../../types/page";
 import { getCurrentLanguage, getLocalizedValue } from "../../utils/i18n";
+import V2Payments from "./v2/V2Payments.vue";
 
 const props = defineProps<{
   section: ViajeonCheckoutSection;

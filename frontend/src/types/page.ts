@@ -164,6 +164,10 @@ export interface PricesSection extends SectionBase {
   ctaOpenInNewTab?: boolean;
   title?: LocalizedString;
   subtitle?: LocalizedString;
+  /** Faixa com formas de pagamento e bandeiras aceitas. */
+  showPayments?: boolean;
+  paymentMethods?: string[];
+  paymentNote?: string;
 }
 
 export interface ItineraryDay {
@@ -424,6 +428,10 @@ export interface ViajeonCheckoutSection extends SectionBase {
   buttonColor?: string;
   buttonTextColor?: string;
   checkoutSnapshot?: ViajeonCheckoutSnapshot | null;
+  /** Faixa com formas de pagamento e bandeiras aceitas. */
+  showPayments?: boolean;
+  paymentMethods?: string[];
+  paymentNote?: string;
 }
 
 export interface InternalFormSection extends SectionBase {

@@ -9,17 +9,21 @@
           <span v-if="item.titleLabel" class="v2-price-kicker">{{ item.titleLabel }}</span>
           <h3>{{ item.title }}</h3>
         </div>
-        <div class="v2-price-value">
-          <span v-if="item.priceLabel" class="v2-price-from">{{ item.priceLabel }}</span>
-          <b>{{ item.price }}</b>
-          <span v-if="item.description" class="v2-price-terms">{{ item.description }}</span>
+        <!-- Preço e botão numa coluna de largura fixa: o botão tem sempre o mesmo tamanho, com o texto numa linha. -->
+        <div class="v2-price-side">
+          <div class="v2-price-value">
+            <span v-if="item.priceLabel" class="v2-price-from">{{ item.priceLabel }}</span>
+            <b>{{ item.price }}</b>
+            <span v-if="item.description" class="v2-price-terms">{{ item.description }}</span>
+          </div>
+          <a v-if="item.href" class="v2-btn v2-price-btn" :title="item.ctaLabel" v-bind="item.attrs">
+            <span>{{ item.ctaLabel }}</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+          </a>
         </div>
-        <a v-if="item.href" class="v2-btn v2-price-btn" v-bind="item.attrs">
-          <span>{{ item.ctaLabel }}</span>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-        </a>
       </li>
     </ul>
+    <V2Payments v-if="section.showPayments" :ids="section.paymentMethods" :note="section.paymentNote" />
     <p v-if="description" class="v2-prices-note">{{ description }}</p>
   </V2Section>
 </template>
@@ -30,6 +34,7 @@ import type { CurrencyCode, PriceItem, PricesSection } from "../../../types/page
 import { isWhatsappLink, normalizeExternalLink } from "../../../utils/links";
 import V2Section from "./V2Section.vue";
 import V2Head from "./V2Head.vue";
+import V2Payments from "./V2Payments.vue";
 import { localize, text, useHeading } from "./useHeading";
 
 const props = defineProps<{ section: PricesSection; previewDevice?: "desktop" | "mobile" }>();
@@ -103,7 +108,7 @@ const items = computed(() =>
 .v2-price {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) clamp(230px, 30cqi, 300px);
   align-items: center;
   gap: 16px clamp(20px, 3.4cqi, 36px);
   padding: clamp(20px, 2.8cqi, 28px) clamp(20px, 3.2cqi, 32px);
@@ -160,6 +165,13 @@ const items = computed(() =>
   font-weight: 700;
   line-height: 1.25;
 }
+.v2-price-side {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 14px;
+  min-width: 0;
+}
 .v2-price-value {
   display: flex;
   flex-direction: column;
@@ -186,15 +198,20 @@ const items = computed(() =>
   opacity: 0.75;
 }
 .v2-price-btn {
-  max-width: 260px;
+  width: 100%;
   min-height: 48px;
-  padding: 10px 22px;
+  padding: 10px 18px;
   font-size: 15px;
-  line-height: 1.25;
-  text-align: center;
+  line-height: 1.2;
 }
+/* Mesma largura em todos os cartões; texto longo quebra em duas linhas em vez de sumir. */
 .v2-price-btn span {
+  min-width: 0;
+  text-align: center;
   overflow-wrap: anywhere;
+}
+.v2-price-btn svg {
+  flex: 0 0 auto;
 }
 .is-hl .v2-price-btn {
   background: var(--v2-on-accent);
@@ -210,17 +227,21 @@ const items = computed(() =>
 /* Telas médias: preço e botão descem para uma linha própria. */
 @container (max-width: 760px) {
   .v2-price {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr);
   }
-  .v2-price-info {
-    grid-column: 1 / -1;
+  .v2-price-side {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
   }
   .v2-price-value {
     align-items: flex-start;
     text-align: left;
   }
   .v2-price-btn {
-    justify-self: end;
+    width: auto;
+    max-width: 100%;
   }
 }
 /* Celular: tudo empilhado e botão na largura do cartão. */
@@ -229,9 +250,11 @@ const items = computed(() =>
     grid-template-columns: minmax(0, 1fr);
     gap: 14px;
   }
+  .v2-price-side {
+    flex-direction: column;
+    align-items: stretch;
+  }
   .v2-price-btn {
-    justify-self: stretch;
-    max-width: none;
     width: 100%;
   }
 }
