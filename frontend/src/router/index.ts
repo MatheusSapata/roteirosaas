@@ -42,11 +42,7 @@ const redirectRoutes: RouteRecordRaw[] = [
   {
     path: "/register",
     name: "register",
-    component: RedirectPlaceholder,
-    beforeEnter() {
-      window.location.href = "https://viajeon.com/roteiroonline1";
-    },
-    meta: { guestOnly: true }
+    redirect: "/lp"
   },
   {
     path: "/profissionalmensal",
@@ -194,6 +190,7 @@ const platformRoutes: RouteRecordRaw[] = [
   { path: "/pedido", name: "checkout-processing", component: CheckoutProcessingView, meta: { guestOnly: true } },
   { path: "/checkout/:offerKey", name: "custom-checkout", component: CustomCheckoutView, meta: { guestOnly: true } },
   { path: "/planos", redirect: "/admin/planos" },
+  { path: "/lp", name: "sales-landing", component: () => import("../views/public/SalesLandingView.vue") },
   {
     path: "/admin",
     component: AdminLayout,
