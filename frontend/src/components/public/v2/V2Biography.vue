@@ -19,14 +19,33 @@ import { computed } from "vue";
 import type { BiographySection } from "../../../types/page";
 import { resolveMediaUrl } from "../../../utils/media";
 import V2Section from "./V2Section.vue";
-import { html, localize, text } from "./useHeading";
+import { sanitizeHtml } from "../../../utils/sanitizeHtml";
+import { localize, text } from "./useHeading";
 
 const props = defineProps<{ section: BiographySection; previewDevice?: "desktop" | "mobile" }>();
 const copy = { alt: localize({ pt: "Biografia", es: "Biografía" }) };
 const image = computed(() => resolveMediaUrl(props.section.image) || resolveMediaUrl(props.section.mobileImage) || "");
 const mobileImage = computed(() => resolveMediaUrl(props.section.mobileImage) || "");
 const title = computed(() => text(props.section.title));
-const bodyHtml = computed(() => (text(props.section.text) ? html(props.section.text) : ""));
+// O artigo aceita imagens e vídeos (YouTube/Vimeo) no meio do texto.
+const bodyHtml = computed(() => {
+  const raw = text(props.section.text);
+  if (!raw) return "";
+  const safe = sanitizeHtml(raw, { embeds: true });
+  if (typeof document === "undefined") return safe;
+  const box = document.createElement("div");
+  box.innerHTML = safe;
+  box.querySelectorAll("img").forEach(img => {
+    img.setAttribute("src", resolveMediaUrl(img.getAttribute("src")) || "");
+    img.setAttribute("loading", "lazy");
+  });
+  box.querySelectorAll("iframe").forEach(frame => {
+    frame.setAttribute("loading", "lazy");
+    frame.setAttribute("allow", "accelerometer; encrypted-media; gyroscope; picture-in-picture");
+    frame.setAttribute("allowfullscreen", "true");
+  });
+  return box.innerHTML;
+});
 // Mesmo campo de hoje (overlayOpacity, padrão 0,45), limitado para o título continuar legível.
 const veil = computed(() => {
   const value = typeof props.section.overlayOpacity === "number" ? props.section.overlayOpacity : 0.45;
@@ -100,6 +119,29 @@ const veil = computed(() => {
 }
 .v2-art-text :deep(li::marker) {
   color: var(--v2-accent-text);
+}
+.v2-art-text :deep(img) {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 1.6em 0;
+  border-radius: 18px;
+}
+.v2-art-text :deep(iframe) {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  margin: 1.6em 0;
+  border: 0;
+  border-radius: 18px;
+  background: #0f1713;
+}
+.v2-art-text :deep(h3) {
+  font-size: clamp(19px, 2cqi, 23px);
+}
+.v2-art-text :deep(s) {
+  opacity: 0.7;
 }
 .v2-art-text :deep(a) {
   color: var(--v2-accent-text);

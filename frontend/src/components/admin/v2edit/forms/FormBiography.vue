@@ -7,7 +7,14 @@
         <EdText :model-value="title" label="Título" placeholder="Como montamos um roteiro" @update:model-value="title = $event" />
       </EdGroup>
       <EdGroup title="Texto">
-        <EdRich :model-value="body" label="Texto formatado" hint="Negrito, itálico, listas e links. Alguns clientes usam como um post de blog." @update:model-value="body = $event" />
+        <EdRich
+          :model-value="body"
+          label="Texto do artigo"
+          variant="article"
+          placeholder="Escreva o artigo aqui…"
+          hint="Use Título e Subtítulo para dividir o texto. Os botões de imagem e vídeo inserem no ponto do cursor; vídeos aceitam links do YouTube e do Vimeo."
+          @update:model-value="body = $event"
+        />
       </EdGroup>
     </template>
     <template #look>

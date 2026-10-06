@@ -42,3 +42,17 @@ export const normalizeYoutubePlayerUrl = (raw?: string | null): string => {
   const origin = typeof window !== "undefined" ? `&origin=${encodeURIComponent(window.location.origin)}` : "";
   return `https://www.youtube.com/embed/${id}?enablejsapi=1&playsinline=1&controls=0&disablekb=1&fs=0&iv_load_policy=3&cc_load_policy=0&rel=0${origin}`;
 };
+
+/** Link de vídeo (YouTube ou Vimeo, em qualquer formato) → endereço para incorporar no texto. */
+export const toVideoEmbedUrl = (raw?: string | null): string => {
+  if (!raw) return "";
+  const youtube = extractYoutubeId(raw);
+  if (youtube) return `https://www.youtube.com/embed/${youtube}`;
+  const vimeo = String(raw).match(/vimeo\.com\/(?:video\/)?(\d+)/i);
+  if (vimeo?.[1]) return `https://player.vimeo.com/video/${vimeo[1]}`;
+  return "";
+};
+
+/** Só estes endereços podem virar vídeo dentro de um texto publicado. */
+export const isAllowedVideoEmbed = (src?: string | null) =>
+  /^https:\/\/(www\.youtube\.com\/embed\/|www\.youtube-nocookie\.com\/embed\/|player\.vimeo\.com\/video\/)/i.test(String(src || ""));
