@@ -1,12 +1,8 @@
 <template>
   <V2EditShell>
     <template #content>
-      <EdGroup title="Capa">
-        <ImageUploadField :model-value="modelValue.image || ''" label="Foto do computador" hint="Ideal 2400 × 1000 px." layout="compact" @update:model-value="patch({ image: $event || '' })" />
-        <ImageUploadField :model-value="modelValue.mobileImage || ''" label="Foto do celular" hint="Opcional. Sem ela, usa a do computador." layout="compact" @update:model-value="patch({ mobileImage: $event || '' })" />
-        <EdText :model-value="title" label="Título" placeholder="Como montamos um roteiro" @update:model-value="title = $event" />
-      </EdGroup>
       <EdGroup title="Texto">
+        <EdText :model-value="title" label="Título" placeholder="Como montamos um roteiro" @update:model-value="title = $event" />
         <EdRich
           :model-value="body"
           label="Texto do artigo"
@@ -15,6 +11,10 @@
           hint="Use Título e Subtítulo para dividir o texto. Os botões de imagem e vídeo inserem no ponto do cursor; vídeos aceitam links do YouTube e do Vimeo."
           @update:model-value="body = $event"
         />
+      </EdGroup>
+      <EdGroup title="Foto de capa">
+        <ImageUploadField :model-value="modelValue.image || ''" label="Foto do computador" hint="Ideal 2400 × 1000 px." layout="compact" @update:model-value="patch({ image: $event || '' })" />
+        <ImageUploadField :model-value="modelValue.mobileImage || ''" label="Foto do celular" hint="Opcional. Sem ela, usa a do computador." layout="compact" @update:model-value="patch({ mobileImage: $event || '' })" />
       </EdGroup>
     </template>
     <template #look>

@@ -56,7 +56,67 @@
 .ved-group-head {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  width: 100%;
+  margin: -4px -4px 0;
+  padding: 4px;
+  border-radius: 10px;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ved-group-head:focus-visible {
+  outline: 2px solid var(--ved-kind);
+  outline-offset: 2px;
+}
+.ved-group-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+/* Cada tipo de parte tem ícone e cor próprios; o fundo do ícone é a cor bem clara. */
+.ved-group {
+  --ved-kind: #2f6fdb;
+}
+.ved-group.is-media { --ved-kind: #8b5cf6; }
+.ved-group.is-items { --ved-kind: #d97706; }
+.ved-group.is-dates { --ved-kind: #0d9488; }
+.ved-group.is-action { --ved-kind: #12b981; }
+.ved-group.is-layout { --ved-kind: #64748b; }
+.ved-group.is-background { --ved-kind: #db2777; }
+.ved-group.is-info { --ved-kind: #0284c7; }
+.ved-group-icon {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--ved-kind) 14%, transparent);
+  color: var(--ved-kind);
+}
+.ved-group-icon svg {
+  width: 16px;
+  height: 16px;
+}
+.ved-group-chev {
+  width: 18px;
+  height: 18px;
+  margin-left: auto;
+  color: var(--muted-foreground, #7a857f);
+  transition: transform 0.2s ease;
+}
+.ved-group.is-collapsed .ved-group-chev {
+  transform: rotate(-90deg);
+}
+.ved-group.is-collapsed {
+  padding-bottom: 12px;
+}
+.ved-group:has(> .ved-group-head) {
+  gap: 14px;
+}
+.ved-group.is-collapsed {
+  gap: 0;
 }
 .ved-group-head h3 {
   margin: 0;
@@ -72,7 +132,6 @@
   font-weight: 700;
 }
 .ved-group-extra {
-  margin-left: auto;
   padding: 2px 8px;
   border-radius: 999px;
   background: #fff4ec;

@@ -1,6 +1,7 @@
 <template>
   <V2EditShell>
     <template #content>
+      <EdHeading :value="modelValue" type="viajeon_checkout" title-placeholder="Monte sua reserva" @patch="patch" />
       <EdGroup title="Checkout">
         <div v-if="connected === false" class="ved-info ved-warn">
           <b>A ViajeOn está desconectada.</b>
@@ -21,7 +22,6 @@
         <p v-if="errorMessage && connected !== false" class="ved-hint">{{ errorMessage }}</p>
         <button v-if="connected !== false" type="button" class="ved-inline-btn" :disabled="loading" @click="loadCheckouts(true)">Atualizar lista da ViajeOn</button>
       </EdGroup>
-      <EdHeading :value="modelValue" type="viajeon_checkout" title-placeholder="Monte sua reserva" @patch="patch" />
       <EdGroup title="Botão">
         <EdText :model-value="readText(modelValue.buttonLabel)" label="Texto do botão" placeholder="Ir para o pagamento" @update:model-value="patch({ buttonLabel: writeText(modelValue.buttonLabel, $event) })" />
       </EdGroup>

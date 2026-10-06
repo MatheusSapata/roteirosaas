@@ -1,10 +1,10 @@
 <template>
   <V2EditShell>
     <template #content>
+      <EdHeading :value="modelValue" type="banner_card" title-placeholder="Conte com especialistas para montar o seu roteiro" @patch="patch" />
       <EdGroup title="Mídia">
         <ImageUploadField :model-value="modelValue.backgroundImage || ''" label="Foto de fundo" hint="Ideal 2400 × 1350 px." layout="compact" @update:model-value="patch({ backgroundImage: $event || '' })" />
       </EdGroup>
-      <EdHeading :value="modelValue" type="banner_card" title-placeholder="Conte com especialistas para montar o seu roteiro" @patch="patch" />
       <EdButton :value="modelValue" placeholder="Falar com especialista" @patch="patch" />
     </template>
     <template #look>
