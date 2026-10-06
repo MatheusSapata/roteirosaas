@@ -2070,7 +2070,8 @@ const previewDevice = ref<"desktop" | "mobile">(editorPrefs.value.previewDevice 
 const isMobileViewport = ref(false);
 const isMobileOverlayMode = computed(() => isMobileViewport.value);
 // Editor novo (painel à esquerda, camadas à direita): por enquanto só para quem já tem o visual novo.
-const newEditor = computed(() => designV2Enabled.value);
+// Página que voltou para o visual antigo usa o editor antigo, com todos os campos das seções antigas.
+const newEditor = computed(() => designV2Enabled.value && !useLegacyDesign.value);
 // No celular o editor novo vira prévia em tela cheia com barra embaixo; painéis abrem por cima.
 const phoneEditor = computed(() => newEditor.value && isMobileViewport.value);
 const EDITOR_PANELS_KEY = "editor_v2_panels";

@@ -32,7 +32,7 @@
 
       <div
         v-if="hasBodyText"
-        class="mx-auto max-w-4xl px-6 text-base leading-relaxed md:px-6 md:text-lg"
+        class="bio-text mx-auto max-w-4xl px-6 text-base leading-relaxed md:px-6 md:text-lg"
         :style="bodyTextStyle"
         v-html="textHtml"
       ></div>
@@ -159,7 +159,8 @@ const titleSize = computed(() => {
   const limited = isMobileView.value ? Math.min(base, 40) : base;
   return `${limited}px`;
 });
-const textHtml = computed(() => sanitizeHtml(localize(props.section.text)));
+// Vídeos do YouTube/Vimeo inseridos no editor novo continuam aparecendo no visual antigo.
+const textHtml = computed(() => sanitizeHtml(localize(props.section.text), { embeds: true }));
 const hasBodyText = computed(() => {
   const raw = localize(props.section.text);
   if (!raw) return false;
@@ -176,3 +177,22 @@ const imageAltText = computed(() => {
   return localize(biographyCopy.defaultAlt);
 });
 </script>
+
+<style scoped>
+/* Imagens e vídeos inseridos no texto pelo editor novo. */
+.bio-text :deep(img),
+.bio-text :deep(iframe) {
+  display: block;
+  width: 100%;
+  margin: 1.4em 0;
+  border: 0;
+  border-radius: 16px;
+}
+.bio-text :deep(img) {
+  height: auto;
+}
+.bio-text :deep(iframe) {
+  height: auto;
+  aspect-ratio: 16 / 9;
+}
+</style>
