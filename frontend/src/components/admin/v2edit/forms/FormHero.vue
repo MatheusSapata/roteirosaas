@@ -1,6 +1,21 @@
 <template>
   <V2EditShell>
     <template #content>
+      <EdGroup title="Texto">
+        <EdText :model-value="title" label="Título" placeholder="Dolomitas e Lago di Braies em 7 dias" @update:model-value="title = $event" />
+        <EdRich :model-value="subtitle" label="Texto" @update:model-value="subtitle = $event" />
+      </EdGroup>
+      <EdGroup title="Destaques" kind="items" :count="`${chips.length} de 6`">
+        <EdList :items="chips" :item-title="chip => chip.text" :new-item="() => ({ text: '', icon: '' })" add-label="Adicionar destaque" item-label="Destaque" :max="6" @update:items="setChips">
+          <template #default="{ item, update }">
+            <div class="ved-field">
+              <span class="ved-label">Ícone</span>
+              <IconEmojiPicker :model-value="item.icon" mode="icon" @update:model-value="update({ icon: $event })" />
+            </div>
+            <EdText :model-value="item.text" label="Texto" placeholder="Aéreo incluso" @update:model-value="update({ text: $event })" />
+          </template>
+        </EdList>
+      </EdGroup>
       <EdGroup title="Mídia">
         <EdSeg
           :model-value="mediaMode"
@@ -22,22 +37,6 @@
           />
         </template>
         <EdText v-else :model-value="modelValue.videoUrl || ''" label="Link do vídeo" type="url" hint="YouTube. Toca sem som, em repetição." @update:model-value="patch({ videoUrl: $event })" />
-      </EdGroup>
-      <EdGroup title="Texto">
-        <div class="ved-field">
-          <span class="ved-label">Destaques</span>
-          <EdList :items="chips" :item-title="chip => chip.text" :new-item="() => ({ text: '', icon: '' })" add-label="Adicionar destaque" item-label="Destaque" :max="6" @update:items="setChips">
-            <template #default="{ item, update }">
-              <div class="ved-field">
-                <span class="ved-label">Ícone</span>
-                <IconEmojiPicker :model-value="item.icon" mode="icon" @update:model-value="update({ icon: $event })" />
-              </div>
-              <EdText :model-value="item.text" label="Texto" placeholder="Aéreo incluso" @update:model-value="update({ text: $event })" />
-            </template>
-          </EdList>
-        </div>
-        <EdText :model-value="title" label="Título" placeholder="Dolomitas e Lago di Braies em 7 dias" @update:model-value="title = $event" />
-        <EdRich :model-value="subtitle" label="Texto" @update:model-value="subtitle = $event" />
       </EdGroup>
       <EdGroup title="Datas">
         <div class="ved-pair">

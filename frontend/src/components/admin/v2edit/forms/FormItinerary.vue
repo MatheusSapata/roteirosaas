@@ -38,8 +38,9 @@
     <template #look>
       <EdGroup title="Layout">
         <EdLayouts
-          :model-value="modelValue.layout === 'cards' || modelValue.layout === 'steps' ? 'cards' : 'timeline'"
+          :model-value="modelValue.layout === 'cards' || modelValue.layout === 'steps' ? 'cards' : modelValue.layout === 'journey' ? 'journey' : 'timeline'"
           :options="[
+            { value: 'journey', label: 'Jornada', desc: 'Cartões com calendário que abrem e fecham' },
             { value: 'timeline', label: 'Linha do tempo', desc: 'Dias que abrem e fecham' },
             { value: 'cards', label: 'Cartões', desc: 'Um cartão com foto por dia' }
           ]"

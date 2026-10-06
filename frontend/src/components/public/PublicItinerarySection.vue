@@ -13,7 +13,7 @@
         </div>
 
         <!-- Timeline layout -->
-        <div v-if="section.layout === 'timeline' || !section.layout" class="mt-8 flex flex-col items-center gap-4">
+        <div v-if="section.layout === 'timeline' || section.layout === 'journey' || !section.layout" class="mt-8 flex flex-col items-center gap-4">
           <div
             v-for="(day, index) in days"
             :key="index"

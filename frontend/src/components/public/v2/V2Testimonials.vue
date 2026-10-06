@@ -92,6 +92,7 @@ const ctaLabel = computed(() => text(props.section.ctaLabel) || localize({ pt: "
 }
 blockquote {
   margin: 0;
+  white-space: pre-line;
   font-size: 17px;
   line-height: 1.6;
 }

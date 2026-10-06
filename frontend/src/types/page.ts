@@ -72,6 +72,8 @@ export interface BannerCardSection extends SectionBase {
   title: LocalizedString;
   subtitle?: LocalizedString;
   backgroundImage?: string;
+  /** "shade": texto direto na foto com sombra (padrão); "card": texto num cartão sobre a foto. */
+  layout?: "shade" | "card";
   gradientColor?: string;
   cardBackground?: string;
   cardBorderColor?: string;
@@ -162,6 +164,10 @@ export interface PricesSection extends SectionBase {
   ctaOpenInNewTab?: boolean;
   title?: LocalizedString;
   subtitle?: LocalizedString;
+  /** Faixa com formas de pagamento e bandeiras aceitas. */
+  showPayments?: boolean;
+  paymentMethods?: string[];
+  paymentNote?: string;
 }
 
 export interface ItineraryDay {
@@ -179,7 +185,7 @@ export interface ItinerarySection extends SectionBase {
   days: ItineraryDay[];
   /** Data do primeiro dia (AAAA-MM-DD). Vazio: usa a saída da Capa. */
   startDate?: string;
-  layout?: "timeline" | "cards" | "minimal" | "steps";
+  layout?: "timeline" | "cards" | "minimal" | "steps" | "journey";
   ctaColor?: string;
   title?: LocalizedString;
   subtitle?: LocalizedString;
@@ -416,6 +422,10 @@ export interface ViajeonCheckoutSection extends SectionBase {
   buttonColor?: string;
   buttonTextColor?: string;
   checkoutSnapshot?: ViajeonCheckoutSnapshot | null;
+  /** Faixa com formas de pagamento e bandeiras aceitas. */
+  showPayments?: boolean;
+  paymentMethods?: string[];
+  paymentNote?: string;
 }
 
 export interface InternalFormSection extends SectionBase {

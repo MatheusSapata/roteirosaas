@@ -2,12 +2,12 @@ import { computed, type Ref } from "vue";
 import type { SectionType } from "../../../types/page";
 import { createLocalizer, getCurrentLanguage, type LocalizedString } from "../../../utils/i18n";
 import { getSectionHeadingDefaults, resolveHeadingLabel } from "../../../utils/sectionHeadings";
-import { sanitizeHtml } from "../../../utils/sanitizeHtml";
+import { plainTextToHtml, sanitizeHtml } from "../../../utils/sanitizeHtml";
 
 export const localize = createLocalizer(getCurrentLanguage());
 
 export const text = (value: LocalizedString) => localize(value).trim();
-export const html = (value: LocalizedString) => sanitizeHtml(localize(value)) || "";
+export const html = (value: LocalizedString) => sanitizeHtml(plainTextToHtml(localize(value))) || "";
 
 interface HeadingFields {
   headingLabel?: LocalizedString;

@@ -1,6 +1,7 @@
 <template>
-  <div class="rich-text-editor">
+  <div class="rich-text-editor" :class="{ 'is-article': variant === 'article' }">
     <div ref="editorHost"></div>
+    <p v-if="uploadMessage" class="rte-status" :class="{ 'is-error': uploadFailed }">{{ uploadMessage }}</p>
   </div>
 </template>
 
@@ -8,12 +9,26 @@
 import { onBeforeUnmount, onMounted, ref, watch } from "vue";
 import Quill, { type EmitterSource } from "quill";
 import "quill/dist/quill.snow.css";
+import { useAgencyStore } from "../../../store/useAgencyStore";
+import { resolveMediaUrl, uploadImageFile } from "../../../utils/media";
+import { toVideoEmbedUrl } from "../../../utils/video";
+
+// Vídeo colado como link comum (YouTube, Vimeo) vira o endereço de incorporação.
+const BaseVideo = Quill.import("formats/video") as any;
+class EmbedVideo extends BaseVideo {
+  static sanitize(url: string) {
+    return toVideoEmbedUrl(url) || "about:blank";
+  }
+}
+Quill.register(EmbedVideo as any, true);
 
 type EditorDelta = ReturnType<Quill["getContents"]>;
 
 const props = defineProps<{
   modelValue?: string;
   placeholder?: string;
+  /** "article": texto longo, com títulos, citações, links, imagens e vídeos. */
+  variant?: "basic" | "article";
 }>();
 const emit = defineEmits<{ (e: "update:modelValue", value: string): void }>();
 
@@ -21,12 +36,53 @@ const editorHost = ref<HTMLElement | null>(null);
 let editor: Quill | null = null;
 let lastEmittedValue = "";
 
-const toolbarOptions = [
+const basicToolbar = [
   ["bold", "italic", "underline"],
   [{ list: "ordered" }, { list: "bullet" }],
   [{ align: [] }],
   ["clean"]
 ];
+const articleToolbar = [
+  [{ header: [2, 3, false] }],
+  ["bold", "italic", "underline", "strike"],
+  ["link", "blockquote"],
+  [{ list: "ordered" }, { list: "bullet" }],
+  [{ align: [] }],
+  ["image", "video"],
+  ["clean"]
+];
+const basicFormats = ["bold", "italic", "underline", "list", "indent", "align"];
+const articleFormats = [...basicFormats, "header", "strike", "link", "blockquote", "image", "video"];
+
+const agencyStore = useAgencyStore();
+const uploadMessage = ref("");
+const uploadFailed = ref(false);
+// Imagem do computador: envia para a biblioteca da agência e entra onde o cursor está.
+const insertImage = () => {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "image/*";
+  input.onchange = async () => {
+    const file = input.files?.[0];
+    if (!file || !editor) return;
+    const index = editor.getSelection(true)?.index ?? editor.getLength();
+    uploadFailed.value = false;
+    uploadMessage.value = "Enviando imagem…";
+    try {
+      if (!agencyStore.currentAgencyId) await agencyStore.loadAgencies().catch(() => undefined);
+      const agencyId = agencyStore.currentAgencyId;
+      if (!agencyId) throw new Error("no-agency");
+      const asset = await uploadImageFile(file, agencyId);
+      editor?.insertEmbed(index, "image", resolveMediaUrl(asset.url) || asset.url, "user");
+      editor?.setSelection(index + 1, 0, "silent");
+      uploadMessage.value = "";
+    } catch {
+      uploadFailed.value = true;
+      uploadMessage.value = "Não foi possível enviar a imagem. Tente de novo.";
+    }
+  };
+  input.click();
+};
 
 const serializeEditorHtml = () => {
   if (!editor) return "";
@@ -119,11 +175,21 @@ onMounted(() => {
     theme: "snow",
     placeholder: props.placeholder || "",
     modules: {
-      toolbar: toolbarOptions,
+      toolbar:
+        props.variant === "article"
+          ? { container: articleToolbar, handlers: { image: insertImage } }
+          : basicToolbar,
       history: { userOnly: true }
     },
-    formats: ["bold", "italic", "underline", "list", "indent", "align"]
+    formats: props.variant === "article" ? articleFormats : basicFormats,
+    // A caixa de link/vídeo fica dentro do campo, sem sair pela lateral do painel.
+    bounds: editorHost.value.parentElement || editorHost.value
   });
+  const textbox = (editor.theme as any)?.tooltip?.textbox as HTMLInputElement | undefined;
+  if (textbox) {
+    textbox.dataset.link = "https://";
+    textbox.dataset.video = "youtube.com/watch?v=… ou vimeo.com/…";
+  }
 
   syncEditorContent(props.modelValue);
   lastEmittedValue = getEditorValue();
@@ -211,5 +277,99 @@ onBeforeUnmount(() => {
 :deep(.ql-toolbar.ql-snow + .ql-container.ql-snow:focus-within) {
   border-color: var(--ring);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 15%, transparent);
+}
+.rte-status {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+.rte-status.is-error {
+  color: #c2261c;
+}
+
+/* Artigo: área maior e mídia dentro do texto no mesmo jeito da página. */
+.is-article :deep(.ql-editor) {
+  min-height: 260px;
+}
+.is-article :deep(.ql-editor h2) {
+  font-size: 1.45em;
+  font-weight: 700;
+  margin: 0.8em 0 0.3em;
+}
+.is-article :deep(.ql-editor h3) {
+  font-size: 1.2em;
+  font-weight: 700;
+  margin: 0.7em 0 0.3em;
+}
+.is-article :deep(.ql-editor blockquote) {
+  margin: 0.6em 0;
+  padding-left: 12px;
+  border-left: 3px solid var(--primary, #12b981);
+  font-style: italic;
+}
+.is-article :deep(.ql-editor img) {
+  display: block;
+  max-width: 100%;
+  margin: 8px 0;
+  border-radius: 10px;
+}
+.is-article :deep(.ql-editor .ql-video) {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  height: auto;
+  margin: 8px 0;
+  border-radius: 10px;
+}
+
+/* Textos da barra e das caixas de link/vídeo em português. */
+:deep(.ql-snow .ql-picker.ql-header .ql-picker-label::before),
+:deep(.ql-snow .ql-picker.ql-header .ql-picker-item::before) {
+  content: "Texto";
+}
+:deep(.ql-snow .ql-picker.ql-header .ql-picker-label[data-value="2"]::before),
+:deep(.ql-snow .ql-picker.ql-header .ql-picker-item[data-value="2"]::before) {
+  content: "Título";
+}
+:deep(.ql-snow .ql-picker.ql-header .ql-picker-label[data-value="3"]::before),
+:deep(.ql-snow .ql-picker.ql-header .ql-picker-item[data-value="3"]::before) {
+  content: "Subtítulo";
+}
+:deep(.ql-snow .ql-tooltip) {
+  z-index: 20;
+  border-radius: 10px;
+}
+/* No painel estreito a caixa ocupa a largura do campo e quebra a linha se precisar. */
+:deep(.ql-snow .ql-tooltip.ql-editing) {
+  left: 8px !important;
+  right: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  white-space: normal;
+}
+:deep(.ql-snow .ql-tooltip.ql-editing input[type="text"]) {
+  flex: 1 1 160px;
+  width: auto;
+  min-width: 0;
+}
+:deep(.ql-snow .ql-tooltip::before) {
+  content: "Abrir link:";
+}
+:deep(.ql-snow .ql-tooltip[data-mode="link"]::before) {
+  content: "Link:";
+}
+:deep(.ql-snow .ql-tooltip[data-mode="video"]::before) {
+  content: "Link do YouTube ou Vimeo:";
+}
+:deep(.ql-snow .ql-tooltip a.ql-action::after) {
+  content: "Editar";
+}
+:deep(.ql-snow .ql-tooltip a.ql-remove::before) {
+  content: "Remover";
+}
+:deep(.ql-snow .ql-tooltip.ql-editing a.ql-action::after) {
+  content: "Salvar";
 }
 </style>

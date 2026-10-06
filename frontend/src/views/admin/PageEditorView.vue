@@ -17,7 +17,7 @@
         </div>
       </div>
       <div class="ed-actions">
-        <button v-if="canUseAiAssistant && !isMobileViewport" type="button" class="ed-btn ed-btn-ai" @click="toggleAiAssistant">
+        <button v-if="canUseAiAssistant && !isMobileViewport" type="button" class="ed-btn ed-btn-ai" :class="{ 'is-on': showAiAssistant }" :aria-pressed="showAiAssistant" @click="toggleAiAssistant">
           <SparkleIcon aria-hidden="true" />
           Assistente IA
         </button>
@@ -44,152 +44,6 @@
     <!-- Dialog de limite de plano (reutilizado tamb?m para "template no free") -->
     <div :class="['editor-workspace', showAiAssistant ? 'ai-assistant-open' : '', { 'is-v2': newEditor, 'is-phone': phoneEditor }]">
 
-      <Transition name="ai-sidebar-slide">
-        <aside
-          v-if="showAiAssistant"
-          class="editor-ai-sidebar"
-          :class="phoneEditor ? 'flex' : 'hidden md:flex'"
-          :style="aiAssistantSidebarStyle"
-          aria-label="Painel do assistente"
-        >
-          <button
-            type="button"
-            class="editor-ai-sidebar-resize-handle"
-            @pointerdown="startAiAssistantSidebarResize"
-            aria-label="Redimensionar painel"
-            title="Arraste para ajustar a largura"
-          >
-            <span class="editor-ai-sidebar-resize-grip" aria-hidden="true"></span>
-          </button>
-          <div class="editor-ai-sidebar-header">
-            <span v-if="newEditor" class="ai-v2-mark" aria-hidden="true"><SparkleIcon /></span>
-            <div class="editor-ai-sidebar-header-copy">
-              <div class="editor-ai-sidebar-title-row">
-                <h2 class="editor-ai-sidebar-title">Assistente IA</h2>
-                <span v-if="!newEditor" class="editor-ai-sidebar-usage-pill">{{ aiAssistantUsageLabel }}</span>
-              </div>
-              <span v-if="newEditor && aiAssistantUsageText" class="ai-v2-usage">{{ aiAssistantUsageText }}</span>
-            </div>
-            <button type="button" class="editor-ai-sidebar-close" @click="toggleAiAssistant" aria-label="Fechar ajuda de IA">
-              <XIcon class="h-4 w-4" aria-hidden="true" />
-            </button>
-          </div>
-            <div class="editor-ai-sidebar-chat">
-              <div
-                class="editor-ai-sidebar-chat-log"
-                ref="aiAssistantChatLogRef"
-              >
-                <template v-if="aiAssistantVisibleMessages.length">
-                  <div
-                    v-for="(message, index) in aiAssistantVisibleMessages"
-                    :key="`${message.role}-${index}-${message.content.slice(0, 12)}`"
-                    class="editor-ai-sidebar-bubble"
-                    :class="message.role === 'user' ? 'is-user' : 'is-assistant'"
-                  >
-                    <template v-if="newEditor && message.role === 'assistant' && hasAiStructure(message.content)">
-                      <div v-if="aiIntroText(message.content)" class="editor-ai-sidebar-response-text">{{ aiIntroText(message.content) }}</div>
-                      <div class="ai-v2-structure">
-                        <p class="ai-v2-structure-title">Sugiro esta estrutura, com {{ aiStructureNames(message.content).length }} {{ aiStructureNames(message.content).length === 1 ? "seção" : "seções" }}:</p>
-                        <ol>
-                          <li v-for="(name, nameIndex) in aiStructureNames(message.content).slice(0, aiExpanded.has(index) ? undefined : 5)" :key="nameIndex">
-                            <b>{{ nameIndex + 1 }}</b><span>{{ name }}</span>
-                          </li>
-                          <li v-if="!aiExpanded.has(index) && aiStructureNames(message.content).length > 5" class="is-more">
-                            <button type="button" @click="toggleAiExpanded(index)">+{{ aiStructureNames(message.content).length - 5 }} seções</button>
-                          </li>
-                        </ol>
-                        <div class="ai-v2-actions">
-                          <button type="button" class="is-primary" :disabled="aiStructureApplying || aiAssistantLoading || isSectionEditorOpen" @click="applyAiStructure(message.content, 'insert')">Inserir no fim</button>
-                          <button type="button" :disabled="aiStructureApplying || aiAssistantLoading || isSectionEditorOpen" @click="applyAiStructure(message.content, 'replace')">Substituir tudo</button>
-                        </div>
-                        <span class="ai-v2-hint">{{ isSectionEditorOpen ? "Feche a edição da seção para aplicar." : "Dá para desfazer depois de aplicar." }}</span>
-                        <button type="button" class="ai-v2-details" @click="toggleAiDetails(index)">{{ aiDetails.has(index) ? "Esconder resposta completa" : "Ver resposta completa" }}</button>
-                        <div v-if="aiDetails.has(index)" class="editor-ai-sidebar-response-text ai-v2-full">{{ message.content }}</div>
-                      </div>
-                    </template>
-                    <div v-else class="editor-ai-sidebar-response-text">{{ message.content }}</div>
-                    <div v-if="!newEditor && message.role === 'assistant' && hasAiStructure(message.content)" class="mt-3 flex items-center gap-1">
-                        <button type="button" class="min-h-11 min-w-0 flex-1 rounded-lg border border-indigo-200 bg-white px-3 py-2.5 text-sm font-semibold text-indigo-700 hover:bg-indigo-50 focus-visible:outline-indigo-600 disabled:opacity-50"
-                          title="Adiciona todas as seções da sugestão ao final do conteúdo já existente."
-                          aria-label="Inserir estrutura: adiciona todas as seções da sugestão ao final do conteúdo já existente."
-                          :disabled="aiStructureApplying || aiAssistantLoading || isSectionEditorOpen"
-                          @click="applyAiStructure(message.content, 'insert')">
-                          Inserir estrutura
-                        </button>
-                        <button type="button" class="min-h-11 min-w-0 flex-1 rounded-lg border border-indigo-200 bg-white px-3 py-2.5 text-sm font-semibold text-indigo-700 hover:bg-indigo-50 focus-visible:outline-indigo-600 disabled:opacity-50"
-                          title="Substitui todas as seções da página pelas seções da sugestão."
-                          aria-label="Substituir estrutura: substitui todas as seções da página pelas seções da sugestão."
-                          :disabled="aiStructureApplying || aiAssistantLoading || isSectionEditorOpen"
-                          @click="applyAiStructure(message.content, 'replace')">
-                          Substituir estrutura
-                        </button>
-                    </div>
-                    <p v-if="aiStructureApplying && message.role === 'assistant' && hasAiStructure(message.content)" role="status" class="mt-1 text-xs text-slate-500">Aplicando estrutura...</p>
-                  </div>
-                </template>
-
-                <div v-if="newEditor && !aiAssistantLoading && !aiAssistantMessages.some(message => message.role === 'user')" class="ai-v2-chips">
-                  <button v-for="suggestion in aiSuggestions" :key="suggestion.label" type="button" @click="useAiSuggestion(suggestion)">{{ suggestion.label }}</button>
-                </div>
-                <button v-if="aiStructurePreviousSections" type="button"
-                  class="my-2 text-sm font-semibold text-indigo-600 underline"
-                  :disabled="aiStructureApplying || isSectionEditorOpen" @click="undoAiStructure">
-                  Desfazer estrutura aplicada
-                </button>
-                <p v-if="aiStructureError" role="alert" class="my-2 text-sm text-red-600">{{ aiStructureError }}</p>
-                <div v-if="aiAssistantLoading" class="editor-ai-sidebar-typing" aria-label="Carregando resposta">
-                  <span></span>
-                  <span></span>
-                  <span></span>
-                </div>
-              </div>
-
-            <div class="editor-ai-sidebar-composer">
-              <input
-                ref="aiAssistantFileInputRef"
-                class="hidden"
-                type="file"
-                multiple
-                @change="handleAiAssistantFileChange"
-              />
-
-              <div class="editor-ai-sidebar-composer-row">
-                <button
-                  type="button"
-                  class="editor-ai-sidebar-icon-button editor-ai-sidebar-attach"
-                  @click="openAiAssistantFilePicker"
-                  :disabled="aiAssistantLoading || aiAssistantLimitReached"
-                  aria-label="Anexar arquivos"
-                >
-                  <PaperclipIcon class="h-4 w-4" aria-hidden="true" />
-                </button>
-
-                <span class="editor-ai-sidebar-attach-count" v-if="aiAssistantAttachments.length">
-                  {{ aiAssistantAttachments.length }}
-                </span>
-
-                <textarea
-                  v-model="aiAssistantDraft"
-                  class="editor-ai-sidebar-input"
-                  rows="1"
-                  placeholder="Digite sua mensagem..."
-                  :disabled="aiAssistantLoading || aiAssistantLimitReached"
-                ></textarea>
-
-                <button
-                  type="button"
-                  class="editor-ai-sidebar-icon-button editor-ai-sidebar-send"
-                  :disabled="aiAssistantLoading || aiAssistantLimitReached || (!aiAssistantDraft.trim() && aiAssistantAttachments.length === 0)"
-                  @click="sendAiAssistantMessage"
-                  :aria-label="aiAssistantSendButtonLabel"
-                >
-                  <SendIcon class="h-4 w-4" aria-hidden="true" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </aside>
-      </Transition>
 
     <Teleport to="body" v-if="limitModal.open">
       <div class="fixed inset-0 z-50 flex items-center justify-center px-4 page-editor-overlay">
@@ -479,7 +333,7 @@
 
     <div
       :class="['editor-body flex-1 min-w-0 space-y-4', showAiAssistant ? 'ai-assistant-open' : '']"
-      :style="showAiAssistant && !isMobileViewport ? { paddingRight: `${aiAssistantSidebarWidth + 8}px` } : undefined"
+      :style="showAiAssistant && !isMobileViewport && !newEditor ? { paddingRight: `${aiAssistantSidebarWidth + 8}px` } : undefined"
     >
       <nav v-if="!newEditor" class="ed-tabs" role="tablist">
         <button type="button" class="ed-tab" :class="{ on: activeSettingsTab === 'content' }" @click="selectSettingsTab('content')">
@@ -533,17 +387,17 @@
           @keydown.right.prevent="nudgePanel(leftContentKey, 24)"
         ></div>
         <div
-          v-if="layersPanelShown"
+          v-if="rightPanelKey"
           class="ed-resize is-right"
           role="separator"
           aria-orientation="vertical"
-          aria-label="Largura das camadas"
+          :aria-label="rightPanelKey === 'ai' ? 'Largura do assistente' : 'Largura das camadas'"
           title="Arraste para ajustar a largura. Dois cliques voltam ao padrão."
           tabindex="0"
-          @pointerdown="startPanelResize('layers', $event)"
-          @dblclick="resetPanelWidth('layers')"
-          @keydown.left.prevent="nudgePanel('layers', 24)"
-          @keydown.right.prevent="nudgePanel('layers', -24)"
+          @pointerdown="startPanelResize(rightPanelKey, $event)"
+          @dblclick="resetPanelWidth(rightPanelKey)"
+          @keydown.left.prevent="nudgePanel(rightPanelKey, 24)"
+          @keydown.right.prevent="nudgePanel(rightPanelKey, -24)"
         ></div>
       </template>
       <aside v-if="newEditor || activeSettingsTab !== 'content'" class="ed-side" :class="{ 'is-open': !!leftContentKey, 'is-section': sectionPanelOpen }">
@@ -1376,6 +1230,153 @@
         </div>
       </div>
       </div>
+      <!-- Assistente IA: no editor novo é uma coluna do grid, com a mesma altura e o mesmo ajuste de largura das outras. -->
+      <Transition name="ai-sidebar-slide">
+        <aside
+          v-if="showAiAssistant"
+          class="editor-ai-sidebar"
+          :class="phoneEditor ? 'flex' : 'hidden md:flex'"
+          :style="newEditor && !phoneEditor ? undefined : aiAssistantSidebarStyle"
+          aria-label="Painel do assistente"
+        >
+          <button
+            type="button"
+            class="editor-ai-sidebar-resize-handle"
+            @pointerdown="startAiAssistantSidebarResize"
+            aria-label="Redimensionar painel"
+            title="Arraste para ajustar a largura"
+          >
+            <span class="editor-ai-sidebar-resize-grip" aria-hidden="true"></span>
+          </button>
+          <div class="editor-ai-sidebar-header">
+            <span v-if="newEditor" class="ai-v2-mark" aria-hidden="true"><SparkleIcon /></span>
+            <div class="editor-ai-sidebar-header-copy">
+              <div class="editor-ai-sidebar-title-row">
+                <h2 class="editor-ai-sidebar-title">Assistente IA</h2>
+                <span v-if="!newEditor" class="editor-ai-sidebar-usage-pill">{{ aiAssistantUsageLabel }}</span>
+              </div>
+              <span v-if="newEditor && aiAssistantUsageText" class="ai-v2-usage">{{ aiAssistantUsageText }}</span>
+            </div>
+            <button type="button" class="editor-ai-sidebar-close" @click="toggleAiAssistant" aria-label="Fechar ajuda de IA">
+              <XIcon class="h-4 w-4" aria-hidden="true" />
+            </button>
+          </div>
+            <div class="editor-ai-sidebar-chat">
+              <div
+                class="editor-ai-sidebar-chat-log"
+                ref="aiAssistantChatLogRef"
+              >
+                <template v-if="aiAssistantVisibleMessages.length">
+                  <div
+                    v-for="(message, index) in aiAssistantVisibleMessages"
+                    :key="`${message.role}-${index}-${message.content.slice(0, 12)}`"
+                    class="editor-ai-sidebar-bubble"
+                    :class="message.role === 'user' ? 'is-user' : 'is-assistant'"
+                  >
+                    <template v-if="newEditor && message.role === 'assistant' && hasAiStructure(message.content)">
+                      <div v-if="aiIntroText(message.content)" class="editor-ai-sidebar-response-text">{{ aiIntroText(message.content) }}</div>
+                      <div class="ai-v2-structure">
+                        <p class="ai-v2-structure-title">Sugiro esta estrutura, com {{ aiStructureNames(message.content).length }} {{ aiStructureNames(message.content).length === 1 ? "seção" : "seções" }}:</p>
+                        <ol>
+                          <li v-for="(name, nameIndex) in aiStructureNames(message.content).slice(0, aiExpanded.has(index) ? undefined : 5)" :key="nameIndex">
+                            <b>{{ nameIndex + 1 }}</b><span>{{ name }}</span>
+                          </li>
+                          <li v-if="!aiExpanded.has(index) && aiStructureNames(message.content).length > 5" class="is-more">
+                            <button type="button" @click="toggleAiExpanded(index)">+{{ aiStructureNames(message.content).length - 5 }} seções</button>
+                          </li>
+                        </ol>
+                        <div class="ai-v2-actions">
+                          <button type="button" class="is-primary" :disabled="aiStructureApplying || aiAssistantLoading || isSectionEditorOpen" @click="applyAiStructure(message.content, 'insert')">Inserir no fim</button>
+                          <button type="button" :disabled="aiStructureApplying || aiAssistantLoading || isSectionEditorOpen" @click="applyAiStructure(message.content, 'replace')">Substituir tudo</button>
+                        </div>
+                        <span class="ai-v2-hint">{{ isSectionEditorOpen ? "Feche a edição da seção para aplicar." : "Dá para desfazer depois de aplicar." }}</span>
+                        <button type="button" class="ai-v2-details" @click="toggleAiDetails(index)">{{ aiDetails.has(index) ? "Esconder resposta completa" : "Ver resposta completa" }}</button>
+                        <div v-if="aiDetails.has(index)" class="editor-ai-sidebar-response-text ai-v2-full">{{ message.content }}</div>
+                      </div>
+                    </template>
+                    <div v-else class="editor-ai-sidebar-response-text">{{ message.content }}</div>
+                    <div v-if="!newEditor && message.role === 'assistant' && hasAiStructure(message.content)" class="mt-3 flex items-center gap-1">
+                        <button type="button" class="min-h-11 min-w-0 flex-1 rounded-lg border border-indigo-200 bg-white px-3 py-2.5 text-sm font-semibold text-indigo-700 hover:bg-indigo-50 focus-visible:outline-indigo-600 disabled:opacity-50"
+                          title="Adiciona todas as seções da sugestão ao final do conteúdo já existente."
+                          aria-label="Inserir estrutura: adiciona todas as seções da sugestão ao final do conteúdo já existente."
+                          :disabled="aiStructureApplying || aiAssistantLoading || isSectionEditorOpen"
+                          @click="applyAiStructure(message.content, 'insert')">
+                          Inserir estrutura
+                        </button>
+                        <button type="button" class="min-h-11 min-w-0 flex-1 rounded-lg border border-indigo-200 bg-white px-3 py-2.5 text-sm font-semibold text-indigo-700 hover:bg-indigo-50 focus-visible:outline-indigo-600 disabled:opacity-50"
+                          title="Substitui todas as seções da página pelas seções da sugestão."
+                          aria-label="Substituir estrutura: substitui todas as seções da página pelas seções da sugestão."
+                          :disabled="aiStructureApplying || aiAssistantLoading || isSectionEditorOpen"
+                          @click="applyAiStructure(message.content, 'replace')">
+                          Substituir estrutura
+                        </button>
+                    </div>
+                    <p v-if="aiStructureApplying && message.role === 'assistant' && hasAiStructure(message.content)" role="status" class="mt-1 text-xs text-slate-500">Aplicando estrutura...</p>
+                  </div>
+                </template>
+
+                <div v-if="newEditor && !aiAssistantLoading && !aiAssistantMessages.some(message => message.role === 'user')" class="ai-v2-chips">
+                  <button v-for="suggestion in aiSuggestions" :key="suggestion.label" type="button" @click="useAiSuggestion(suggestion)">{{ suggestion.label }}</button>
+                </div>
+                <button v-if="aiStructurePreviousSections" type="button"
+                  class="my-2 text-sm font-semibold text-indigo-600 underline"
+                  :disabled="aiStructureApplying || isSectionEditorOpen" @click="undoAiStructure">
+                  Desfazer estrutura aplicada
+                </button>
+                <p v-if="aiStructureError" role="alert" class="my-2 text-sm text-red-600">{{ aiStructureError }}</p>
+                <div v-if="aiAssistantLoading" class="editor-ai-sidebar-typing" aria-label="Carregando resposta">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+              </div>
+
+            <div class="editor-ai-sidebar-composer">
+              <input
+                ref="aiAssistantFileInputRef"
+                class="hidden"
+                type="file"
+                multiple
+                @change="handleAiAssistantFileChange"
+              />
+
+              <div class="editor-ai-sidebar-composer-row">
+                <button
+                  type="button"
+                  class="editor-ai-sidebar-icon-button editor-ai-sidebar-attach"
+                  @click="openAiAssistantFilePicker"
+                  :disabled="aiAssistantLoading || aiAssistantLimitReached"
+                  aria-label="Anexar arquivos"
+                >
+                  <PaperclipIcon class="h-4 w-4" aria-hidden="true" />
+                </button>
+
+                <span class="editor-ai-sidebar-attach-count" v-if="aiAssistantAttachments.length">
+                  {{ aiAssistantAttachments.length }}
+                </span>
+
+                <textarea
+                  v-model="aiAssistantDraft"
+                  class="editor-ai-sidebar-input"
+                  rows="1"
+                  placeholder="Digite sua mensagem..."
+                  :disabled="aiAssistantLoading || aiAssistantLimitReached"
+                ></textarea>
+
+                <button
+                  type="button"
+                  class="editor-ai-sidebar-icon-button editor-ai-sidebar-send"
+                  :disabled="aiAssistantLoading || aiAssistantLimitReached || (!aiAssistantDraft.trim() && aiAssistantAttachments.length === 0)"
+                  @click="sendAiAssistantMessage"
+                  :aria-label="aiAssistantSendButtonLabel"
+                >
+                  <SendIcon class="h-4 w-4" aria-hidden="true" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </Transition>
       </div>
     </div>
 
@@ -2070,11 +2071,12 @@ const previewDevice = ref<"desktop" | "mobile">(editorPrefs.value.previewDevice 
 const isMobileViewport = ref(false);
 const isMobileOverlayMode = computed(() => isMobileViewport.value);
 // Editor novo (painel à esquerda, camadas à direita): por enquanto só para quem já tem o visual novo.
-const newEditor = computed(() => designV2Enabled.value);
+// Página que voltou para o visual antigo usa o editor antigo, com todos os campos das seções antigas.
+const newEditor = computed(() => designV2Enabled.value && !useLegacyDesign.value);
 // No celular o editor novo vira prévia em tela cheia com barra embaixo; painéis abrem por cima.
 const phoneEditor = computed(() => newEditor.value && isMobileViewport.value);
 const EDITOR_PANELS_KEY = "editor_v2_panels";
-type PanelWidthKey = "settings" | "section" | "layers";
+type PanelWidthKey = "settings" | "section" | "layers" | "ai";
 type PanelPrefs = { left?: boolean; layers?: boolean; widths?: Partial<Record<PanelWidthKey, number>> };
 const readPanelPrefs = () => {
   try {
@@ -2091,14 +2093,16 @@ const layersOpen = ref(panelPrefs.layers ?? true);
 const PANEL_LIMITS: Record<PanelWidthKey, { min: number; max: number; wide: number; narrow: number }> = {
   settings: { min: 280, max: 560, wide: 360, narrow: 320 },
   section: { min: 340, max: 640, wide: 420, narrow: 360 },
-  layers: { min: 208, max: 420, wide: 272, narrow: 248 }
+  layers: { min: 208, max: 420, wide: 272, narrow: 248 },
+  ai: { min: 340, max: 640, wide: 420, narrow: 360 }
 };
 const PANEL_RAIL = 64;
 const PREVIEW_MIN = 480;
 const panelWidths = reactive<Record<PanelWidthKey, number>>({
   settings: panelPrefs.widths?.settings || 0,
   section: panelPrefs.widths?.section || 0,
-  layers: panelPrefs.widths?.layers || 0
+  layers: panelPrefs.widths?.layers || 0,
+  ai: panelPrefs.widths?.ai || 0
 });
 const editorViewportWidth = ref(typeof window === "undefined" ? 1440 : window.innerWidth);
 const panelWidth = (key: PanelWidthKey) => {
@@ -2107,14 +2111,20 @@ const panelWidth = (key: PanelWidthKey) => {
 };
 const leftContentKey = computed<PanelWidthKey | null>(() => (sectionPanelOpen.value ? "section" : leftPanelOpen.value ? "settings" : null));
 const layersPanelShown = computed(() => newEditor.value && layersOpen.value && !showAiAssistant.value);
+// Coluna da direita: camadas ou, com o assistente aberto, o assistente.
+const rightPanelKey = computed<PanelWidthKey | null>(() =>
+  !newEditor.value ? null : showAiAssistant.value ? "ai" : layersPanelShown.value ? "layers" : null
+);
+const isRightPanel = (key: PanelWidthKey) => key === "layers" || key === "ai";
 const editorGridStyle = computed(() => {
   if (!newEditor.value || phoneEditor.value) return {};
   const left = PANEL_RAIL + (leftContentKey.value ? panelWidth(leftContentKey.value) : 0);
-  const right = layersPanelShown.value ? panelWidth("layers") : showAiAssistant.value ? 0 : PANEL_RAIL;
+  const right = rightPanelKey.value ? panelWidth(rightPanelKey.value) : PANEL_RAIL;
   return {
     "--ed-settings-w": `${panelWidth("settings")}px`,
     "--ed-section-w": `${panelWidth("section")}px`,
     "--ed-layers-w": `${panelWidth("layers")}px`,
+    "--ed-ai-w": `${panelWidth("ai")}px`,
     "--ed-left-total": `${left}px`,
     "--ed-right-total": `${right}px`
   };
@@ -2140,13 +2150,12 @@ const clampPanelWidth = (key: PanelWidthKey, width: number) => {
   let max = limits.max;
   if (grid) {
     const gaps = 16;
-    const other =
-      key === "layers"
-        ? PANEL_RAIL + (leftContentKey.value ? panelWidth(leftContentKey.value) : 0)
-        : layersPanelShown.value
-          ? panelWidth("layers")
-          : PANEL_RAIL;
-    const ownExtra = key === "layers" ? 0 : PANEL_RAIL;
+    const other = isRightPanel(key)
+      ? PANEL_RAIL + (leftContentKey.value ? panelWidth(leftContentKey.value) : 0)
+      : rightPanelKey.value
+        ? panelWidth(rightPanelKey.value)
+        : PANEL_RAIL;
+    const ownExtra = isRightPanel(key) ? 0 : PANEL_RAIL;
     max = Math.min(max, grid.offsetWidth - gaps - other - ownExtra - PREVIEW_MIN);
   }
   return Math.round(Math.max(limits.min, Math.min(Math.max(limits.min, max), width)));
@@ -2160,7 +2169,7 @@ const startPanelResize = (key: PanelWidthKey, event: PointerEvent) => {
   const scale = grid.getBoundingClientRect().width / (grid.offsetWidth || 1) || 1;
   const startX = event.clientX;
   const startWidth = panelWidth(key);
-  const direction = key === "layers" ? -1 : 1;
+  const direction = isRightPanel(key) ? -1 : 1;
   resizingPanel.value = key;
   handle.setPointerCapture(event.pointerId);
   const move = (moveEvent: PointerEvent) => {
@@ -4086,13 +4095,13 @@ function defaultSection(type: SectionType): PageSection {
     type: "hero",
     enabled: true,
     layout: "immersive",
-    title: "Viajar com conforto e segurança nunca foi tão fácil.",
-    subtitle: "Conectamos você aos melhores destinos do Brasil com frota premium e atendimento próximo.",
+    title: "Nome do destino: uma viagem para lembrar",
+    subtitle: "Uma frase curta sobre o que torna esta viagem especial.",
     backgroundImage: "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=1600&q=80",
     gradientColor: heroDefaultGradient,
     logoUrl: currentAgency.value?.logo_url || "",
     logoBorderRadius: 0,
-    chips: ["Leito-cama 180º", "Wi-Fi a bordo", "Tomadas individuais", "Massagem a bordo"],
+    chips: ["Hospedagem inclusa", "Guia local", "Café da manhã", "Grupos pequenos"],
     ctaLabel: "Quero falar no WhatsApp",
     ctaLink: buildWhatsappLink(pageTitle.value) || "https://wa.me/",
     ctaColor: theme.value.ctaDefaultColor,
@@ -4197,7 +4206,7 @@ if (type === "itinerary") {
   return ensureSectionAnchor({
     type: "itinerary",
     enabled: true,
-    layout: "timeline",
+    layout: newEditor.value ? "journey" : "timeline",
     headingLabel: headingDefaults.label,
     headingLabelStyle: headingDefaults.style,
     ctaColor: theme.value.ctaDefaultColor,
@@ -7001,7 +7010,19 @@ onMounted(async () => {
 .ed-btn { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 18px; border-radius: 999px; font-size: 13.5px; font-weight: 600; transition: background 0.15s, opacity 0.15s; }
 .ed-btn svg { width: 16px; height: 16px; }
 .ed-btn:disabled { cursor: not-allowed; opacity: 0.55; }
-.ed-btn-ai { background: var(--status-violet); color: var(--status-violet-foreground); }
+/* Assistente IA em destaque: degradê violeta, brilho, reflexo que passa e ícone que pulsa de leve. */
+.ed-btn-ai { position: relative; overflow: hidden; isolation: isolate; height: 42px; padding: 0 20px; background: linear-gradient(120deg, #7c3aed 0%, #a855f7 55%, #6366f1 100%); color: #fff; font-weight: 700; box-shadow: 0 8px 22px -10px rgba(124, 58, 237, 0.75), inset 0 0 0 1px rgba(255, 255, 255, 0.18); transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease; }
+.ed-btn-ai::after { content: ""; position: absolute; top: 0; bottom: 0; left: -60%; width: 40%; background: linear-gradient(100deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.35) 50%, rgba(255, 255, 255, 0) 100%); transform: skewX(-18deg); animation: ed-ai-shine 4.5s ease-in-out 1s infinite; pointer-events: none; }
+.ed-btn-ai:hover { transform: translateY(-1px); filter: brightness(1.06); box-shadow: 0 12px 28px -10px rgba(124, 58, 237, 0.85), inset 0 0 0 1px rgba(255, 255, 255, 0.25); }
+.ed-btn-ai svg { width: 17px; height: 17px; animation: ed-ai-spark 2.8s ease-in-out infinite; }
+/* Assistente aberto: botão neutro com contorno violeta. */
+.ed-btn-ai.is-on { background: #0f1713; box-shadow: inset 0 0 0 1.5px #a855f7; }
+.ed-btn-ai.is-on::after { display: none; }
+.ed-btn-ai.is-on svg { color: #a855f7; animation: none; }
+.dark-theme .ed-btn-ai.is-on { background: var(--card); color: var(--foreground); }
+@keyframes ed-ai-spark { 0%, 100% { transform: scale(1) rotate(0); } 50% { transform: scale(1.15) rotate(12deg); } }
+@keyframes ed-ai-shine { 0% { left: -60%; } 38%, 100% { left: 130%; } }
+@media (prefers-reduced-motion: reduce) { .ed-btn-ai svg, .ed-btn-ai::after { animation: none; } .ed-btn-ai { transition: none; } }
 .ed-btn-ghost { background: var(--card); color: var(--foreground); box-shadow: var(--shadow-card); }
 .ed-btn-ghost:hover:not(:disabled) { background: var(--accent); }
 .ed-btn-primary { background: var(--primary); color: var(--primary-foreground); }
@@ -7121,6 +7142,9 @@ onMounted(async () => {
 .ed-grid.is-v2 .slug-row { flex-direction: column; }
 .ed-grid.is-v2 .slug-prefix { overflow: hidden; border-right: 0; border-bottom: 1px solid #e2e8f0; padding-top: 6px; padding-bottom: 6px; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
 .editor-workspace.is-v2 .editor-ai-sidebar { top: 100px; bottom: 8px; border-radius: 20px; }
+/* No editor novo o assistente é a coluna da direita: altura toda, cartão padrão, largura ajustável. */
+.ed-grid.is-v2:not(.is-phone) > .editor-ai-sidebar { position: relative; inset: auto; z-index: auto; grid-column: 3; grid-row: 1; width: var(--ed-ai-w, 420px); max-width: none; height: auto; min-height: 0; border: 0; border-radius: 18px; background: var(--card); box-shadow: var(--shadow-card); backdrop-filter: none; animation: ed-layers-in 0.32s var(--ed-ease); }
+.ed-grid.is-v2:not(.is-phone) > .editor-ai-sidebar .editor-ai-sidebar-resize-handle { display: none; }
 .v2ed-toast { position: fixed; bottom: 24px; left: 50%; z-index: 90; display: flex; align-items: center; gap: 12px; transform: translateX(-50%); padding: 10px 10px 10px 12px; border-radius: 16px; background: #0f1713; color: #fff; font-size: 14px; box-shadow: 0 20px 50px -20px rgba(6, 12, 9, 0.7); }
 .v2ed-toast-ico { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 999px; background: #12b981; }
 .v2ed-toast-ico svg { width: 15px; height: 15px; }
@@ -7181,7 +7205,7 @@ onMounted(async () => {
 .ed-stage.is-mobile-preview .v2ed-edit span { display: none; }
 .ed-stage.is-mobile-preview .v2ed-edit { padding: 0 10px; }
 .editor-workspace.is-v2 .editor-ai-sidebar-header { display: flex; align-items: center; gap: 10px; }
-.ai-v2-mark { display: grid; flex-shrink: 0; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: #e7f6ee; color: #0b7a55; }
+.ai-v2-mark { display: grid; flex-shrink: 0; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: linear-gradient(120deg, #7c3aed 0%, #a855f7 55%, #6366f1 100%); color: #fff; }
 .ai-v2-mark svg { width: 18px; height: 18px; }
 .editor-workspace.is-v2 .editor-ai-sidebar-header-copy { flex: 1; min-width: 0; }
 .ai-v2-usage { display: block; font-size: 12px; color: var(--muted-foreground); }

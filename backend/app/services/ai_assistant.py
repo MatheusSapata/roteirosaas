@@ -90,6 +90,13 @@ FIELD_ALIASES = {
     "ICONE": "icon",
     "BOTAO CTA": "button",
     "INFORMACOES GERAIS": "general_info",
+    "DATA DE SAIDA": "departure_date",
+    "DATA DE IDA": "departure_date",
+    "DATA DE VOLTA": "return_date",
+    "DATA DE RETORNO": "return_date",
+    "FORMAS DE PAGAMENTO": "payment_methods",
+    "FORMA DE PAGAMENTO": "payment_methods",
+    "PARCELAMENTO": "installments",
 }
 REQUIRED_HEADER = "ESTRUTURA SUGERIDA PARA A P\u00c1GINA"
 SECTION_LINE_RE = re.compile(r"^\s*(?:.*?SE\u00c7\u00c3O:\s*)?(.+?)\s*$", re.IGNORECASE | re.MULTILINE)
@@ -430,6 +437,74 @@ def _parse_price_value(value: str) -> float:
         return 0.0
 
 
+MONTHS_PT = {
+    "JANEIRO": 1, "FEVEREIRO": 2, "MARCO": 3, "ABRIL": 4, "MAIO": 5, "JUNHO": 6,
+    "JULHO": 7, "AGOSTO": 8, "SETEMBRO": 9, "OUTUBRO": 10, "NOVEMBRO": 11, "DEZEMBRO": 12,
+}
+
+
+def _parse_trip_date(value: str) -> str:
+    """Data da viagem no formato da página (AAAA-MM-DD). Só aceita datas com ano."""
+    text = _normalize_text(value or "")
+    match = re.search(r"\b(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})\b", text)
+    if match:
+        day, month, year = int(match.group(1)), int(match.group(2)), int(match.group(3))
+    else:
+        match = re.search(r"\b(\d{1,2})\s+DE\s+([A-Z]+)\s+DE\s+(\d{4})\b", text)
+        if not match or match.group(2) not in MONTHS_PT:
+            return ""
+        day, month, year = int(match.group(1)), MONTHS_PT[match.group(2)], int(match.group(3))
+    if year < 100:
+        year += 2000
+    try:
+        return datetime(year, month, day).strftime("%Y-%m-%d")
+    except ValueError:
+        return ""
+
+
+PAYMENT_KEYWORDS = (
+    ("pix", r"\bPIX\b"),
+    ("boleto", r"\bBOLETO"),
+    ("cartao", r"\bCARTAO|\bCREDITO\b"),
+    ("visa", r"\bVISA\b"),
+    ("mastercard", r"\bMASTER"),
+    ("elo", r"\bELO\b"),
+    ("amex", r"\bAMEX\b|AMERICAN EXPRESS"),
+    ("hipercard", r"\bHIPER"),
+    ("diners", r"\bDINERS\b"),
+)
+
+
+def _parse_payment_methods(value: str) -> tuple[list[str], str]:
+    """Formas de pagamento citadas no texto e a condição de parcelamento, se houver."""
+    text = _normalize_text(value or "")
+    methods = [method for method, pattern in PAYMENT_KEYWORDS if re.search(pattern, text)]
+    if any(brand in methods for brand in ("visa", "mastercard", "elo", "amex", "hipercard", "diners")) and "cartao" not in methods:
+        methods.append("cartao")
+    order = [method for method, _ in PAYMENT_KEYWORDS]
+    methods.sort(key=order.index)
+    installment = re.search(r"(?:em\s+ate\s+|ate\s+)?\d{1,2}\s*x[^.;,\n]*", text, re.I)
+    note = ""
+    if installment:
+        original = value or ""
+        raw = re.search(r"(?:em\s+at[eé]\s+|at[eé]\s+)?\d{1,2}\s*x[^.;,\n]*", original, re.I)
+        note = (raw.group(0) if raw else installment.group(0)).strip()
+        note = note[:1].upper() + note[1:]
+    return methods, note
+
+
+def _split_price_text(value: str) -> tuple[str, str]:
+    """Separa o que vem antes do valor ("a partir de") e depois ("por pessoa")."""
+    text = (value or "").strip()
+    match = re.search(r"R\$\s*\d+(?:\.\d{3})*(?:,\d{1,2})?|\d+(?:\.\d{3})*,\d{2}", text)
+    if not match:
+        return "", ""
+    before = text[: match.start()].strip(" :-–")
+    after = text[match.end():].strip(" :-–")
+    label = before[:1].upper() + before[1:] if before else ""
+    return label, after
+
+
 def _itinerary_day_content(body: str) -> tuple[str, str]:
     lines = [
         _strip_markdown_emphasis(line.strip())
@@ -573,7 +648,14 @@ def _parse_ai_section_block(section_name: str, block: str, index: int) -> dict[s
         highlights = _split_bullets(highlights_source)
         if not highlights and content:
             highlights = _split_bullets(content)
+        # Datas da viagem alimentam o cartão de datas da capa e o calendário do roteiro dia a dia.
+        departure_date = _parse_trip_date(fields.get("departure_date", ""))
+        return_date = _parse_trip_date(fields.get("return_date", ""))
+        trip_dates = {"departureDate": departure_date} if departure_date else {}
+        if departure_date and return_date and return_date >= departure_date:
+            trip_dates["returnDate"] = return_date
         return {
+            **trip_dates,
             "type": "hero",
             "enabled": True,
             "anchorId": _generate_anchor("hero", title or "banner-inicial", index),
@@ -713,26 +795,40 @@ def _parse_ai_section_block(section_name: str, block: str, index: int) -> dict[s
         if current_plan:
             plan_blocks.append(current_plan)
         plans = [_parse_key_value_lines("\n".join(lines)) for lines in plan_blocks] or [fields]
+        # Mesma ordem do cartão de preço: "a partir de" acima do valor, condições abaixo dele.
+        notes = [plan.get("note", "").strip() for plan in plans]
+        # A mesma observação em todos os planos vira a nota única abaixo da lista.
+        shared_note = notes[0] if len(notes) > 1 and notes[0] and all(note == notes[0] for note in notes) else ""
+        # Formas de pagamento valem para a seção; o parcelamento de cada plano fica no próprio plano.
+        payment_text = " ".join(plan.get("payment_methods", "") for plan in plans if plan.get("payment_methods")) or fields.get("payment_methods", "")
+        payment_methods, payment_note = _parse_payment_methods(payment_text)
         price_items = []
         for plan in plans:
             raw_value = plan.get("value", "").strip()
             note = plan.get("note", "").strip()
+            price_label, terms = _split_price_text(raw_value)
+            installments = plan.get("installments", "").strip()
+            details = [terms, installments, "" if note == shared_note else note]
             price_items.append({
                 "title": plan.get("plan_name", "").strip() or "Pacote",
                 "price": _parse_price_value(raw_value),
-                "description": "\n".join(part for part in (raw_value, note) if part),
+                "priceLabel": price_label,
+                "description": "\n".join(part for part in details if part),
                 "currency": "BRL",
             })
-        return {
+        prices_section: dict[str, Any] = {
             "type": "prices",
             "enabled": True,
             "anchorId": _generate_anchor("prices", price_items[0]["title"], index),
             "layout": "cards" if len(price_items) > 1 else "highlight",
             "title": "Preços",
             "subtitle": "",
-            "description": "",
+            "description": shared_note,
             "items": price_items,
         }
+        if payment_methods:
+            prices_section.update({"showPayments": True, "paymentMethods": payment_methods, "paymentNote": payment_note})
+        return prices_section
 
     if normalized_name == _normalize_text("PERGUNTAS FREQUENTES"):
         questions: list[dict[str, Any]] = []

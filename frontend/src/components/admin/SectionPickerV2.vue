@@ -61,20 +61,8 @@
                 :title="item.unavailable ? 'A página já tem esta seção' : undefined"
                 @click="pick(item)"
               >
-                <span class="spk-thumb" :style="{ background: item.page }" aria-hidden="true">
-                  <span
-                    v-for="(block, index) in item.blocks"
-                    :key="index"
-                    class="spk-block"
-                    :style="{
-                      left: `${block.x}%`,
-                      top: `${block.y}%`,
-                      width: `${block.w}%`,
-                      height: `${block.h}%`,
-                      background: block.photo ? THUMB_PHOTOS[block.photo] : block.c,
-                      borderRadius: `${block.r ?? 3}px`
-                    }"
-                  ></span>
+                <span class="spk-thumb" aria-hidden="true">
+                  <SectionThumbV2 :type="item.type" />
                   <span v-if="item.locked" class="spk-lock"><span>Conecte o ViajeOn</span></span>
                   <span class="spk-go">{{ item.unavailable ? "Já na página" : item.locked ? "Integrar" : "Inserir" }}</span>
                 </span>
@@ -95,7 +83,8 @@
 import { SearchIcon, XIcon } from "lucide-vue-next";
 import { computed, nextTick, onMounted, ref } from "vue";
 import type { SectionType } from "../../types/page";
-import { SECTION_CATALOG_V2, SECTION_CATEGORIES_V2, THUMB_PHOTOS, type SectionCatalogItemV2 } from "../../utils/sectionCatalogV2";
+import { SECTION_CATALOG_V2, SECTION_CATEGORIES_V2, type SectionCatalogItemV2 } from "../../utils/sectionCatalogV2";
+import SectionThumbV2 from "./SectionThumbV2.vue";
 
 const props = defineProps<{
   afterLabel?: string;
@@ -393,9 +382,6 @@ onMounted(() => {
   aspect-ratio: 16 / 10;
   overflow: hidden;
   border-bottom: 1px solid #eef1ec;
-}
-.spk-block {
-  position: absolute;
 }
 .spk-lock {
   position: absolute;

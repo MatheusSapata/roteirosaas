@@ -246,8 +246,9 @@ def test_prices_create_one_card_per_package(prefix: str) -> None:
     config, _ = build_page_base_config_from_reply(reply_with(block))
     section = config["sections"][0]
     assert section["layout"] == "cards"
+    # O valor não se repete nas condições: o cartão mostra o preço uma vez, com o resto abaixo dele.
     assert section["items"] == [
-        {"title": name, "price": price, "description": f"{value}\n{note}", "currency": "BRL"}
+        {"title": name, "price": price, "priceLabel": "", "description": f"por pessoa\n{note}", "currency": "BRL"}
         for name, value, price, note in packages
     ]
 
@@ -352,3 +353,49 @@ def test_chat_endpoint_reply_passes_through_parser(client, db_session, monkeypat
     assert response.status_code == 200, response.text
     config, _ = build_page_base_config_from_reply(response.json()["reply"])
     assert [section["type"] for section in config["sections"]] == ["hero", "reasons"]
+
+
+def test_prices_keep_price_label_installments_and_shared_note() -> None:
+    config, _ = build_page_base_config_from_reply(reply_with(
+        "🟩 SEÇÃO: PREÇOS\nNome do plano: Pacote Adulto\nValor: A partir de R$ 5.859,00 por pessoa\n"
+        "Parcelamento: ou 12x de R$ 586,00\nObservação: Consulte disponibilidade.\n"
+        "Nome do plano: Pacote Criança\nValor: R$ 4.988,00\nObservação: Consulte disponibilidade.\n---"
+    ))
+    section = config["sections"][0]
+    adult, child = section["items"]
+    assert adult["priceLabel"] == "A partir de"
+    assert adult["price"] == 5859
+    assert adult["description"] == "por pessoa\nou 12x de R$ 586,00"
+    assert child["description"] == ""
+    assert section["description"] == "Consulte disponibilidade."
+
+
+def test_prices_detect_payment_methods_and_condition() -> None:
+    config, _ = build_page_base_config_from_reply(reply_with(
+        "🟩 SEÇÃO: PREÇOS\nNome do plano: Pacote\nValor: R$ 3.000\n"
+        "Formas de pagamento: Pix, boleto e cartão Visa, Mastercard e Elo em até 12x sem juros\n---"
+    ))
+    section = config["sections"][0]
+    assert section["showPayments"] is True
+    assert section["paymentMethods"] == ["pix", "boleto", "cartao", "visa", "mastercard", "elo"]
+    assert section["paymentNote"] == "Em até 12x sem juros"
+
+
+def test_prices_without_payment_methods_keep_strip_off() -> None:
+    config, _ = build_page_base_config_from_reply(reply_with(
+        "🟩 SEÇÃO: PREÇOS\nNome do plano: Pacote\nValor: R$ 3.000\n---"
+    ))
+    assert "showPayments" not in config["sections"][0]
+
+
+def test_banner_reads_trip_dates_only_with_year() -> None:
+    config, _ = build_page_base_config_from_reply(reply_with(
+        "🟩 SEÇÃO: BANNER\nTítulo: Santiago\nData de saída: 31/10/2026\nData de volta: 5 de novembro de 2026\n---"
+    ))
+    hero = config["sections"][0]
+    assert hero["departureDate"] == "2026-10-31"
+    assert hero["returnDate"] == "2026-11-05"
+    config, _ = build_page_base_config_from_reply(reply_with(
+        "🟩 SEÇÃO: BANNER\nTítulo: Santiago\nData de saída: 31/10\n---"
+    ))
+    assert "departureDate" not in config["sections"][0]

@@ -50,6 +50,7 @@
           >
             {{ submitting ? "Preparando checkout..." : localized(section.buttonLabel) || "Continuar para o checkout" }}
           </button>
+          <V2Payments v-if="section.showPayments" :ids="section.paymentMethods" :note="section.paymentNote" align="left" />
         </aside>
       </div>
     </div>
@@ -63,6 +64,7 @@ import api from "../../services/api";
 import platformApi from "../../services/platformApi";
 import type { ViajeonCheckoutSection, ViajeonCheckoutSnapshot, ViajeonPackage } from "../../types/page";
 import { getCurrentLanguage, getLocalizedValue } from "../../utils/i18n";
+import V2Payments from "./v2/V2Payments.vue";
 
 const props = defineProps<{
   section: ViajeonCheckoutSection;
@@ -120,10 +122,26 @@ const decrement = (item: ViajeonPackage) => {
   quantities[item.id] = next > 0 && next < (item.min_quantity || 1) ? 0 : next;
 };
 
+// A cópia salva aparece na hora; na página publicada, os pacotes e preços são
+// atualizados com a ViajeOn em seguida. Se a consulta falhar, a cópia continua valendo.
+const refreshFromViajeon = async () => {
+  if (!props.pageId || !props.section.anchorId) return;
+  try {
+    const response = await client.value.get(
+      `/public/integrations/viajeon/pages/${props.pageId}/sections/${encodeURIComponent(props.section.anchorId)}`
+    );
+    const live = response.data?.checkout as ViajeonCheckoutSnapshot | undefined;
+    if (live?.packages?.length) checkout.value = live;
+  } catch {
+    /* sem integração ou ViajeOn fora do ar: segue com a cópia salva */
+  }
+};
+
 const loadCheckout = async () => {
   if (props.section.checkoutSnapshot?.packages?.length) {
     checkout.value = props.section.checkoutSnapshot;
     errorMessage.value = "";
+    void refreshFromViajeon();
     return;
   }
   if (!props.pageId || !props.section.anchorId) {

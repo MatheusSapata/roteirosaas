@@ -1823,10 +1823,10 @@ const sidebarCollapsed = ref(readSidebarCollapsed());
 const flyoutGroupId = ref<string | null>(null);
 const brandMarkSrc = BrandMark;
 const canCreatePageShortcut = computed(() => hasPermission("pages"));
-const sidebarOffset = computed(() => (sidebarCollapsed.value ? "76px" : "272px"));
-// Solto (não fixado), o menu fica só com ícones e abre por cima do conteúdo ao passar o mouse.
+// Solto (não fixado), o menu fica só com ícones e abre ao passar o mouse, empurrando a página.
 const sidebarPeek = ref(false);
 const sidebarCompact = computed(() => sidebarCollapsed.value && !sidebarPeek.value);
+const sidebarOffset = computed(() => (sidebarCompact.value ? "80px" : "272px"));
 let sidebarPeekTimer: ReturnType<typeof setTimeout> | null = null;
 const peekSidebar = (open: boolean) => {
   if (sidebarPeekTimer) clearTimeout(sidebarPeekTimer);
@@ -2586,6 +2586,7 @@ body.admin-body-light #app {
     bottom: 0;
     left: var(--admin-sidebar-offset, 272px);
     z-index: 20;
+    transition: left 0.26s cubic-bezier(0.22, 0.8, 0.24, 1);
     width: 228px;
   }
   .admin-master-main {
@@ -2809,7 +2810,7 @@ body.admin-body-light #app {
 @media (min-width: 768px) {
   .admin-main {
     margin-left: var(--admin-sidebar-offset, 272px);
-    transition: margin-left 0.2s ease;
+    transition: margin-left 0.26s cubic-bezier(0.22, 0.8, 0.24, 1);
   }
 }
 
@@ -2892,7 +2893,7 @@ body.admin-body-light #app {
   gap: 10px;
   height: 48px;
   margin: 0 0 18px;
-  padding: 0 18px 0 4px;
+  padding: 0 18px 0 1px;
   border-radius: 999px;
   background: var(--primary);
   color: var(--primary-foreground);
@@ -2949,7 +2950,7 @@ body.admin-body-light #app {
   gap: 10px;
   width: 100%;
   min-height: 44px;
-  padding: 0 12px 0 2px;
+  padding: 0 12px 0 1px;
   border-radius: 999px;
   color: var(--sidebar-foreground);
   font-size: 13.5px;
@@ -3129,7 +3130,7 @@ body.admin-body-light #app {
   align-items: center;
   gap: 10px;
   min-width: 0;
-  padding: 2px;
+  padding: 2px 2px 2px 1px;
   border-radius: 999px;
   transition: background-color 0.15s ease;
 }
@@ -3173,19 +3174,12 @@ body.admin-body-light #app {
   height: 18px;
 }
 
-/* Solto: abre por cima do conteúdo ao passar o mouse, sem empurrar a página. */
+/* Solto: abre ao passar o mouse e empurra a página junto, na mesma animação. */
 .admin-sidebar {
   transition: width 0.26s cubic-bezier(0.22, 0.8, 0.24, 1), padding 0.26s cubic-bezier(0.22, 0.8, 0.24, 1);
 }
 .admin-sidebar .as-panel {
   transition: box-shadow 0.26s ease, border-radius 0.26s ease;
-}
-.admin-sidebar.is-peek {
-  z-index: 60;
-  width: 272px;
-}
-.admin-sidebar.is-peek .as-panel {
-  box-shadow: 0 28px 70px -24px rgba(6, 12, 9, 0.45), 0 6px 18px -8px rgba(6, 12, 9, 0.2);
 }
 .admin-sidebar.is-peek .as-label,
 .admin-sidebar.is-peek .as-section-title {
@@ -3205,86 +3199,53 @@ body.admin-body-light #app {
   .admin-sidebar.is-peek .as-label, .admin-sidebar.is-peek .as-section-title { animation: none; }
 }
 
-/* Recolhida: só os ícones, centralizados, numa coluna estreita. */
-.admin-sidebar.is-collapsed {
-  padding: 8px 0 8px 8px;
-}
-
+/* Recolhida: a mesma coluna da aberta, só cortada na largura dos ícones.
+   Logo, botão, ícones, títulos e rodapé ficam exatamente no mesmo lugar nos dois estados. */
 .admin-sidebar.is-collapsed .as-panel {
-  align-items: center;
-  padding: 12px 6px 10px;
-  border-radius: 22px;
-}
-
-.admin-sidebar.is-collapsed .as-brand {
-  justify-content: center;
-  min-height: 44px;
-  margin-bottom: 10px;
-  padding: 0;
-}
-
-.admin-sidebar.is-collapsed .as-brand-tile {
-  width: 44px;
-  height: 44px;
-  border-radius: 14px;
-}
-
-/* O botão de expandir entra na coluna, logo abaixo do logo, com moldura para ser fácil de achar. */
-.admin-sidebar.is-collapsed .as-brand {
-  order: -2;
+  overflow: hidden;
 }
 
 .admin-sidebar.is-collapsed .as-collapse {
-  position: static;
-  order: -1;
-  width: 44px;
-  height: 32px;
-  margin: 0 0 10px;
-  border: 1px solid var(--sidebar-border);
-  border-radius: 10px;
-  background: var(--card);
-  color: var(--foreground);
-  box-shadow: none;
+  right: 4px;
 }
 
-.admin-sidebar.is-collapsed .as-collapse:hover {
-  border-color: var(--ring);
-  background: var(--sidebar-accent);
+.admin-sidebar.is-collapsed .as-brand-tile {
+  width: auto;
+  height: auto;
+  border: 0;
+  border-radius: 0;
+  background: none;
 }
 
-.admin-sidebar.is-collapsed .as-collapse svg {
-  width: 18px;
-  height: 18px;
-}
-
-.admin-sidebar.is-collapsed .as-footer {
-  order: 2;
-  gap: 2px;
-  margin-top: 6px;
-  padding-top: 8px;
-}
-
-.admin-sidebar.is-collapsed .as-label,
-.admin-sidebar.is-collapsed .as-section-title {
+.admin-sidebar.is-collapsed .as-label {
   display: none;
 }
 
+/* O título da seção vira um traço curto com a mesma altura do texto. */
+.admin-sidebar.is-collapsed .as-section-title {
+  position: relative;
+  overflow: hidden;
+  color: transparent;
+  white-space: nowrap;
+}
+
+.admin-sidebar.is-collapsed .as-section-title::after {
+  content: "";
+  position: absolute;
+  top: calc(50% - 3px);
+  left: 9px;
+  width: 24px;
+  height: 1px;
+  background: var(--sidebar-border);
+}
+
 .admin-sidebar.is-collapsed .as-cta {
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  margin-bottom: 10px;
-  padding: 0;
+  width: 42px;
+  padding: 0 0 0 1px;
 }
 
 .admin-sidebar.is-collapsed .as-nav {
-  gap: 6px;
-}
-
-.admin-sidebar.is-collapsed .as-nav {
-  align-items: center;
   overflow-x: hidden;
-  overflow-y: auto;
   scrollbar-width: none;
 }
 
@@ -3292,19 +3253,9 @@ body.admin-body-light #app {
   display: none;
 }
 
-.admin-sidebar.is-collapsed .as-section + .as-section::before {
-  content: "";
-  display: block;
-  width: 24px;
-  height: 1px;
-  margin: 0 auto 6px;
-  background: var(--sidebar-border);
-}
-
 .admin-sidebar.is-collapsed .as-item {
-  justify-content: center;
-  width: 44px;
-  padding: 0;
+  width: 42px;
+  padding: 0 0 0 1px;
 }
 
 .admin-sidebar.is-collapsed .as-item:hover .as-icon,
@@ -3314,12 +3265,6 @@ body.admin-body-light #app {
 
 .admin-sidebar.is-collapsed .as-item.is-active .as-icon {
   background: var(--accent);
-}
-
-.admin-sidebar.is-collapsed .as-footer {
-  align-items: center;
-  width: 100%;
-  order: 2;
 }
 
 .admin-sidebar.is-collapsed .as-user-link {
