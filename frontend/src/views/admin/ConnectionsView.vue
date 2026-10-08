@@ -1,5 +1,5 @@
 ﻿<template>
-  <div class="connections-view w-full space-y-6 px-4 py-6 md:px-8">
+  <div class="connections-view w-full space-y-6 pb-8">
     <IntegrationsHeader />
 
     <section

@@ -772,8 +772,7 @@ onBeforeUnmount(() => {
 
 .page-wrap {
   width: 100%;
-  max-width: 1280px;
-  padding: 28px 32px 64px;
+  padding: 0 0 48px;
 }
 
 .page-eyebrow,
@@ -1263,7 +1262,7 @@ onBeforeUnmount(() => {
 
 @media (max-width: 900px) {
   .page-wrap {
-    padding: 20px 16px 40px;
+    padding: 0 0 32px;
   }
 
   .top-summary,

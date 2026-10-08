@@ -24,6 +24,10 @@
         </RouterLink>
       </section>
     </nav>
+    <RouterLink to="/admin/dashboard" class="amn-back">
+      <AmIcon name="chevron-left" />
+      <span>Voltar ao painel</span>
+    </RouterLink>
   </aside>
 </template>
 
@@ -58,40 +62,47 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+/* Cartão âmbar ao lado do menu principal recolhido (mesmo desenho do Viaje On). */
 .amn {
   display: flex;
   flex-direction: column;
-  border-right: 1px solid var(--sidebar-border);
-  background: color-mix(in srgb, var(--sidebar) 70%, var(--background));
-  color: var(--sidebar-foreground);
+  overflow: hidden;
+  border-radius: 20px;
+  background: var(--admin-surface);
+  color: var(--admin-ink);
+  box-shadow: var(--shadow-card);
 }
 .amn-head {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin: 0 12px 6px;
-  padding: 20px 8px 14px;
-  border-bottom: 1px solid var(--sidebar-border);
+  margin: 0 12px 4px;
+  padding: 16px 4px 12px;
+  border-bottom: 1px solid var(--admin-border);
 }
 .amn-head b {
   display: block;
-  font-size: 13.5px;
+  font-family: var(--font-display);
+  font-size: 15px;
   font-weight: 600;
-  color: var(--foreground);
+  letter-spacing: -0.01em;
+  color: var(--admin-ink);
 }
 .amn-head small {
   display: block;
-  font-size: 11.5px;
-  color: var(--muted-foreground);
+  font-size: 12px;
+  color: var(--admin-muted);
 }
 .amn-tile {
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
-  background: var(--status-warning);
-  color: var(--status-warning-foreground);
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #f59e0b, #ea580c);
+  color: #ffffff;
+  box-shadow: 0 8px 18px -10px rgba(234, 88, 12, 0.8);
 }
 .amn-tile svg {
   width: 16px;
@@ -101,45 +112,53 @@ onBeforeUnmount(() => {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 0 12px 16px;
+  padding: 0 12px 12px;
   scrollbar-width: thin;
 }
 .amn-group-label {
-  padding: 12px 10px 4px;
+  display: flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 12px;
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: color-mix(in srgb, var(--muted-foreground) 80%, transparent);
+  color: var(--admin-muted);
 }
 .amn-item {
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 7px 10px;
-  border-radius: 10px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--muted-foreground);
-  transition: background-color 0.15s ease, color 0.15s ease;
+  gap: 12px;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--admin-ink);
+  transition: background-color 200ms ease-out, color 200ms ease-out;
 }
 .amn-item svg {
-  width: 15px;
-  height: 15px;
+  width: 16px;
+  height: 16px;
   flex-shrink: 0;
+  color: var(--admin-accent);
 }
 .amn-item:hover {
-  background: var(--sidebar-accent);
-  color: var(--foreground);
+  background: var(--admin-soft);
 }
 .amn-item.on {
-  background: var(--accent);
-  color: var(--accent-foreground);
+  background: linear-gradient(135deg, #f59e0b, #ea580c);
+  color: #ffffff;
   font-weight: 600;
-  box-shadow: inset 2px 0 0 var(--primary);
+  box-shadow: 0 8px 18px -10px rgba(234, 88, 12, 0.8);
 }
-.amn-item:focus-visible {
-  outline: 2px solid var(--ring);
+.amn-item.on svg {
+  color: #ffffff;
+}
+.amn-item:focus-visible,
+.amn-back:focus-visible {
+  outline: 2px solid var(--admin-accent);
   outline-offset: 1px;
 }
 .amn-label {
@@ -162,6 +181,9 @@ onBeforeUnmount(() => {
   background: currentColor;
   box-shadow: 0 0 0 3px var(--status-success);
 }
+.amn-item.on .amn-live {
+  color: #ffffff;
+}
 .amn-warn {
   border-radius: 999px;
   background: var(--status-warning);
@@ -170,15 +192,36 @@ onBeforeUnmount(() => {
   font-weight: 700;
   color: var(--status-warning-foreground);
 }
+.amn-back {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 12px 12px;
+  padding: 12px 12px 0;
+  border-top: 1px solid var(--admin-border);
+  font-size: 14px;
+  color: var(--admin-muted);
+  transition: color 200ms ease-out;
+}
+.amn-back:hover {
+  color: var(--admin-ink);
+}
+.amn-back svg {
+  width: 16px;
+  height: 16px;
+}
 
 /* Telas menores: o menu vira uma faixa rolável no topo do conteúdo. */
 @media (max-width: 1179px) {
   .amn {
-    border-right: 0;
+    overflow: visible;
+    border-radius: 0;
     border-bottom: 1px solid var(--border);
     background: transparent;
+    box-shadow: none;
   }
-  .amn-head {
+  .amn-head,
+  .amn-back {
     display: none;
   }
   .amn-scroll {
@@ -197,12 +240,11 @@ onBeforeUnmount(() => {
   .amn-item {
     flex-shrink: 0;
     border: 1px solid var(--border);
-    border-radius: 999px;
+    background: var(--card);
     white-space: nowrap;
   }
   .amn-item.on {
     border-color: transparent;
-    box-shadow: none;
   }
 }
 </style>

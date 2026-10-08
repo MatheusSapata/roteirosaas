@@ -13,6 +13,7 @@ import {
   CalendarIcon,
   CheckIcon,
   ChevronDownIcon,
+  ChevronLeftIcon,
   CircleIcon,
   CopyIcon,
   CreditCardIcon,
@@ -106,6 +107,7 @@ const icons: Record<string, Component> = {
   link: LinkIcon,
   upload: UploadIcon,
   arrow: ArrowRightIcon,
-  chevron: ChevronDownIcon
+  chevron: ChevronDownIcon,
+  "chevron-left": ChevronLeftIcon
 };
 </script>

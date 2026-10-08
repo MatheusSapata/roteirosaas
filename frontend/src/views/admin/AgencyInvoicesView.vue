@@ -300,9 +300,8 @@ onMounted(() => {
 
 <style scoped>
 .page-wrap {
-  padding: 28px 32px 64px;
+  padding: 0 0 48px;
   width: 100%;
-  max-width: 1440px;
   color: var(--foreground);
 }
 
@@ -709,7 +708,7 @@ onMounted(() => {
 
 @media (max-width: 900px) {
   .page-wrap {
-    padding: 20px 16px 40px;
+    padding: 0 0 32px;
   }
 
   .page-topbar,

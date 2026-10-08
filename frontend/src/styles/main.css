@@ -73,7 +73,6 @@
   --shadow-elegant: 0 10px 30px -12px rgba(24, 32, 40, 0.18);
 
   --bg-gradient: radial-gradient(circle at 20% 20%, #e0f2fe, transparent 25%), radial-gradient(circle at 80% 0%, #c7d2fe, transparent 30%);
-  --app-scale: 0.9;
   --modal-overlay: rgba(0, 0, 0, 0.62);
 }
 
@@ -206,7 +205,6 @@ html.dark {
   --shadow-elegant: 0 10px 30px -12px rgba(24, 32, 40, 0.18);
 
   --bg-gradient: radial-gradient(circle at 20% 20%, #e0f2fe, transparent 25%), radial-gradient(circle at 80% 0%, #c7d2fe, transparent 30%);
-  --app-scale: 0.9;
   --modal-overlay: rgba(0, 0, 0, 0.62);
 }
 
@@ -333,6 +331,14 @@ body.admin-shell {
   --on-deep-muted: #9fc2b3;
   --deep-accent: #1de9a0;
   --deep-accent-foreground: #06140e;
+  /* Admin Master: identidade âmbar, a mesma do Viaje On. */
+  --admin-surface: #fcebc8;
+  --admin-border: #f3d499;
+  --admin-ink: #5c4a33;
+  --admin-muted: #8a6a3f;
+  --admin-accent: #b45309;
+  --admin-soft: #fde7c2;
+  --admin-glow: #fbe6bf;
 }
 
 html.dark body.admin-shell {
@@ -391,6 +397,13 @@ html.dark body.admin-shell {
   --shadow-elegant: 0 16px 40px -10px rgba(0, 0, 0, 0.7);
   --deep: #0c1f18;
   --deep-2: #12302a;
+  --admin-surface: #2a2012;
+  --admin-border: #4a3718;
+  --admin-ink: #ecd9b8;
+  --admin-muted: #c9a978;
+  --admin-accent: #f5b04a;
+  --admin-soft: #3d2c12;
+  --admin-glow: #2b1f0c;
 }
 
 html {
@@ -474,13 +487,43 @@ body.admin-shell::before {
   z-index: -1;
 }
 
+/* Admin Master: fundo em degradê que sai do âmbar (como no Viaje On). Aparece e some com fade. */
+body.admin-shell::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0;
+  background:
+    radial-gradient(120% 60% at 70% 0%, var(--admin-glow) 0%, transparent 70%),
+    linear-gradient(
+      180deg,
+      var(--admin-glow) 0%,
+      color-mix(in oklab, var(--admin-glow) 45%, var(--background)) 28%,
+      var(--background) 62%
+    );
+  transition: opacity 700ms ease-out;
+}
+
+body.admin-shell.admin-master-active::after {
+  opacity: 1;
+}
+
+body.admin-shell.admin-master-active #app,
+body.admin-shell.admin-master-active #app > div {
+  background-color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.admin-shell::after {
+    transition: none;
+  }
+}
+
 #app {
   width: 100%;
   min-height: 100vh;
-}
-
-body.admin-shell #app {
-  zoom: var(--app-scale);
 }
 
 .hero-cta-shimmer {

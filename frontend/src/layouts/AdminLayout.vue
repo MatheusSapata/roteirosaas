@@ -3,6 +3,7 @@
     :class="[
       'admin-shell-root min-h-screen overflow-x-hidden bg-background text-[14px] text-foreground',
       isPlansRoute ? 'plans-layout bg-white text-slate-900' : '',
+      isAdminMasterRoute ? 'is-admin-master' : '',
       themeWrapperClass
     ]"
   >
@@ -19,7 +20,7 @@
     <template v-else>
     <div class="flex min-h-screen">
       <aside
-        :class="['admin-sidebar hidden md:flex', { 'is-collapsed': sidebarCompact, 'is-unpinned': sidebarCollapsed, 'is-peek': sidebarCollapsed && sidebarPeek }]"
+        :class="['admin-sidebar hidden md:flex', { 'is-collapsed': sidebarCompact, 'is-unpinned': sidebarCollapsed, 'is-peek': sidebarCollapsed && sidebarPeek && !isAdminMasterRoute, 'is-master': isAdminMasterRoute }]"
         :aria-label="t({ pt: 'Menu principal', es: 'Menú principal' })"
         @mouseenter="peekSidebar(true)"
         @mouseleave="peekSidebar(false)"
@@ -27,18 +28,6 @@
         @focusout="handleSidebarFocusOut"
       >
         <div class="as-panel" @mouseover="showSidebarTip" @mouseleave="hideSidebarTip" @focusin="showSidebarTip" @focusout="hideSidebarTip">
-          <button
-            type="button"
-            class="as-collapse"
-            :aria-label="sidebarCollapsed ? t({ pt: 'Fixar menu aberto', es: 'Fijar menú abierto' }) : t({ pt: 'Soltar menu (abre ao passar o mouse)', es: 'Soltar menú (se abre al pasar el mouse)' })"
-            :title="sidebarCollapsed ? t({ pt: 'Fixar menu aberto', es: 'Fijar menú abierto' }) : t({ pt: 'Soltar menu (abre ao passar o mouse)', es: 'Soltar menú (se abre al pasar el mouse)' })"
-            :aria-pressed="!sidebarCollapsed"
-            @click="toggleSidebarCollapsed"
-          >
-            <PinIcon v-if="sidebarCollapsed" aria-hidden="true" />
-            <PinOffIcon v-else aria-hidden="true" />
-          </button>
-
           <div class="as-brand">
             <BrandSwitcher
               v-if="viajeonLoginReady"
@@ -53,8 +42,21 @@
               aria-label="Ir para o início"
             >
               <img v-if="sidebarCompact" :src="brandMarkSrc" alt="Roteiro Online" class="h-7 w-7 object-contain" />
-              <img v-else :src="mobileHeaderLogoSrc" alt="Roteiro Online" class="max-h-11 max-w-[168px] object-contain" />
+              <img v-else :src="mobileHeaderLogoSrc" alt="Roteiro Online" class="as-logo-img" />
             </RouterLink>
+            <button
+              v-if="!isAdminMasterRoute"
+              type="button"
+              class="as-pin"
+              :class="{ 'is-pinned': !sidebarCollapsed }"
+              :aria-label="sidebarCollapsed ? t({ pt: 'Fixar menu', es: 'Fijar menú' }) : t({ pt: 'Desafixar menu', es: 'Soltar menú' })"
+              :title="sidebarCollapsed ? t({ pt: 'Fixar menu', es: 'Fijar menú' }) : t({ pt: 'Desafixar menu (abre ao passar o mouse)', es: 'Soltar menú (se abre al pasar el mouse)' })"
+              :aria-pressed="!sidebarCollapsed"
+              @click="toggleSidebarCollapsed"
+            >
+              <PinIcon v-if="!sidebarCollapsed" aria-hidden="true" />
+              <PinOffIcon v-else aria-hidden="true" />
+            </button>
           </div>
 
           <RouterLink
@@ -208,9 +210,9 @@
         ]"
       >
         <div class="sticky top-0 z-40 flex-shrink-0 px-3 pt-3 md:hidden">
-          <header class="flex h-16 items-center justify-between gap-3 rounded-2xl border border-border/40 bg-background/55 px-4 shadow-lg backdrop-blur-2xl">
+          <header class="flex h-16 items-center justify-between gap-2 rounded-[20px] bg-card/90 px-3 pl-4 shadow-card backdrop-blur-xl">
             <RouterLink to="/admin/dashboard" class="flex min-w-0 items-center" aria-label="Ir para o início">
-              <img :src="mobileHeaderLogoSrc" alt="Roteiro Online" class="h-9 w-auto max-w-[170px] object-contain object-left" />
+              <img :src="mobileHeaderLogoSrc" alt="Roteiro Online" class="as-logo-img" />
             </RouterLink>
             <button
               type="button"
@@ -237,7 +239,12 @@
               : 'text-foreground'
           ]"
         >
-          <div :class="isPlansRoute ? 'flex-1 min-h-0 bg-white overflow-hidden' : 'flex-1 min-h-0 bg-background'">
+          <div
+            :class="[
+              isPlansRoute ? 'flex-1 min-h-0 bg-white overflow-hidden' : 'flex-1 min-h-0 bg-background',
+              isFramedRoute ? 'admin-page-frame mx-auto w-full max-w-[1400px]' : ''
+            ]"
+          >
             <div v-if="isAdminMasterRoute" class="admin-master-shell">
               <AdminMasterNav class="admin-master-rail" />
               <div class="admin-master-main"><RouterView /></div>
@@ -250,152 +257,119 @@
     </template>
 
     <transition name="mobile-sidebar">
-        <div
-          v-if="mobileMenuOpen"
-          class="fixed inset-0 z-40 flex justify-end md:hidden"
-        >
-        <div
-          class="flex-1 bg-foreground/40 backdrop-blur-[1px]"
-          @click="mobileMenuOpen = false"
-        ></div>
-        <div
-          class="flex h-full w-72 max-w-[86vw] flex-col border-l border-sidebar-border bg-sidebar text-sidebar-foreground shadow-elegant transition-colors"
-        >
-          <div class="relative flex items-center justify-between border-b border-sidebar-border/60 px-3 py-3.5">
-            <h2 class="font-display text-lg font-bold tracking-tight">Menu</h2>
+      <div
+        v-if="mobileMenuOpen"
+        class="mobile-menu fixed inset-0 z-50 flex justify-end md:hidden"
+      >
+        <div class="mobile-menu-overlay flex-1" @click="mobileMenuOpen = false"></div>
+        <div class="mobile-menu-panel" role="dialog" aria-modal="true" :aria-label="t({ pt: 'Menu', es: 'Menú' })">
+          <div class="mobile-menu-head">
+            <h2 class="font-display text-lg font-bold tracking-tight text-foreground">Menu</h2>
             <button
               type="button"
-              class="inline-flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              class="mobile-menu-close"
               @click="mobileMenuOpen = false"
               :aria-label="viewCopy.sidebar.closeMenu"
               :title="viewCopy.sidebar.closeMenu"
             >
-              <XIcon class="h-4 w-4" aria-hidden="true" />
+              <XIcon aria-hidden="true" />
             </button>
           </div>
-          <nav class="sidebar-scroll flex-1 space-y-1 overflow-y-auto px-3 py-4">
+          <RouterLink
+            v-if="canCreatePageShortcut"
+            :to="{ path: '/admin/pages', query: { nova: '1' } }"
+            class="as-cta"
+            @click="mobileMenuOpen = false"
+          >
+            <span class="as-cta-icon"><PlusIcon aria-hidden="true" /></span>
+            <span class="as-label">{{ t({ pt: "Nova página", es: "Nueva página" }) }}</span>
+          </RouterLink>
+          <nav class="as-nav sidebar-scroll">
             <section
               v-for="section in sidebarSections"
               :key="`mobile-section-${section.id}`"
-              class="pt-1 first:pt-0"
-              :class="section.id !== sidebarSections[0]?.id ? 'mt-4' : ''"
+              class="as-section"
             >
-              <p class="px-3 pb-2 pt-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground/80">{{ section.label }}</p>
-              <div class="space-y-1">
-                <template v-for="item in section.items" :key="'mobile-' + item.id">
-              <RouterLink
-                v-if="item.type === 'link'"
-                :to="item.to"
-                class="desktop-nav-item flex min-h-10 items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors"
-                :class="[isTopLevelActive(item) ? activeClass : inactiveClass, isTopLevelActive(item) ? 'is-active' : '']"
-                @click="mobileMenuOpen = false"
-              >
-                <span
-                  :class="['flex h-[18px] w-[18px] items-center justify-center']"
+              <p class="as-section-title">{{ section.label }}</p>
+              <template v-for="item in section.items" :key="'mobile-' + item.id">
+                <RouterLink
+                  v-if="item.type === 'link'"
+                  :to="item.to"
+                  class="as-item"
+                  :class="{ 'is-active': isTopLevelActive(item) }"
+                  @click="mobileMenuOpen = false"
                 >
-                  <component :is="navIconFor(item.iconPath)" class="h-[18px] w-[18px]" aria-hidden="true" />
-                </span>
-                <span class="flex-1">{{ item.label }}</span>
-                <span v-if="item.id === 'admin-master'" class="nav-master-badge">MASTER</span>
-                <span
-                  v-if="getNavBadge(item.id) !== null"
-                  class="nav-pill-badge"
-                >
-                  {{ getNavBadge(item.id) }}
-                </span>
-              </RouterLink>
-              <div v-else class="space-y-0.5">
-                <button
-                  type="button"
-                  class="desktop-nav-item flex min-h-10 w-full items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors"
-                  :class="[isParentActive(item) ? activeClass : inactiveClass, isParentActive(item) ? 'is-active' : '']"
-                  @click="toggleNavGroup(item.id)"
-                >
-                  <span
-                    :class="['flex h-[18px] w-[18px] items-center justify-center']"
+                  <span class="as-icon"><component :is="navIconFor(item.iconPath)" aria-hidden="true" /></span>
+                  <span class="as-label">{{ item.label }}</span>
+                  <span v-if="item.id === 'admin-master'" class="nav-master-badge">MASTER</span>
+                  <span v-if="getNavBadge(item.id) !== null" class="nav-pill-badge">{{ getNavBadge(item.id) }}</span>
+                </RouterLink>
+                <div v-else class="as-group">
+                  <button
+                    type="button"
+                    class="as-item"
+                    :class="{ 'is-active': isParentActive(item) }"
+                    :aria-expanded="isGroupExpanded(item)"
+                    @click="toggleNavGroup(item.id)"
                   >
-                    <component :is="navIconFor(item.iconPath)" class="h-[18px] w-[18px]" aria-hidden="true" />
-                  </span>
-                  <span class="flex-1 text-left">{{ item.label }}</span>
-                  <ChevronDownIcon :class="['ml-auto mr-1 h-4 w-4 transition-transform', isGroupExpanded(item) ? 'rotate-180' : '']" aria-hidden="true" />
-                  <span
-                    v-if="item.id !== 'leads' && getNavBadge(item.id) !== null"
-                    class="nav-pill-badge"
-                  >
-                    {{ getNavBadge(item.id) }}
-                  </span>
-                </button>
-                <div v-if="isGroupExpanded(item)" class="ml-3 space-y-1 border-l border-sidebar-border pb-1 pl-2 pt-1">
-                  <RouterLink
-                    v-for="child in item.children"
-                    :key="'mobile-' + item.id + '-' + child.path"
-                    :to="child.path"
-                    class="desktop-nav-subitem flex min-h-9 w-full items-center rounded-lg px-3 py-2 text-[12px] font-medium transition-colors"
-                    :class="[isChildActive(child.path) ? childActiveClass : childInactiveClass, isChildActive(child.path) ? 'is-active-sub' : '']"
-                    @click="mobileMenuOpen = false"
-                  >
-                    <span>{{ child.label }}</span>
-                  </RouterLink>
+                    <span class="as-icon"><component :is="navIconFor(item.iconPath)" aria-hidden="true" /></span>
+                    <span class="as-label">{{ item.label }}</span>
+                    <ChevronDownIcon class="as-chevron" :class="{ 'rotate-180': isGroupExpanded(item) }" aria-hidden="true" />
+                  </button>
+                  <div v-if="isGroupExpanded(item)" class="as-children">
+                    <RouterLink
+                      v-for="child in item.children"
+                      :key="'mobile-' + item.id + '-' + child.path"
+                      :to="child.path"
+                      class="as-child"
+                      :class="{ 'is-active': isChildActive(child.path) }"
+                      @click="mobileMenuOpen = false"
+                    >
+                      {{ child.label }}
+                    </RouterLink>
+                  </div>
                 </div>
-              </div>
-                </template>
-              </div>
+              </template>
             </section>
           </nav>
-          <div
-            :class="[
-              'border-t border-sidebar-border p-3'
-            ]"
-          >
+          <div class="as-footer">
             <button
               type="button"
-              class="sidebar-theme-toggle mb-2 flex w-full items-center gap-3 rounded-lg border border-sidebar-border bg-sidebar-accent px-3 py-2.5 text-left text-[12px] font-medium text-sidebar-foreground transition-colors hover:border-ring hover:bg-accent hover:text-accent-foreground"
+              class="as-item"
               :aria-label="viewCopy.themeToggle.label"
-              :title="viewCopy.themeToggle.label"
               @click="toggleTheme"
             >
-              <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-background text-muted-foreground">
-                <SunIcon v-if="isDarkTheme" class="h-4 w-4" aria-hidden="true" />
-                <MoonIcon v-else class="h-4 w-4" aria-hidden="true" />
+              <span class="as-icon">
+                <SunIcon v-if="isDarkTheme" aria-hidden="true" />
+                <MoonIcon v-else aria-hidden="true" />
               </span>
-              <span class="min-w-0 flex-1">
-                <span class="block font-semibold">{{ viewCopy.themeToggle.title }}</span>
-                <span class="block text-[10px] text-muted-foreground">{{ isDarkTheme ? viewCopy.themeToggle.active : viewCopy.themeToggle.inactive }}</span>
-              </span>
-              <span
-                class="relative h-5 w-9 flex-shrink-0 rounded-full transition-colors"
-                :class="isDarkTheme ? 'bg-primary' : 'bg-border'"
-                aria-hidden="true"
-              >
-                <span
-                  class="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-soft transition-transform"
-                  :class="isDarkTheme ? 'translate-x-[18px]' : 'translate-x-0.5'"
-                ></span>
-              </span>
+              <span class="as-label">{{ viewCopy.themeToggle.title }}</span>
+              <span class="as-switch" :class="{ on: isDarkTheme }" aria-hidden="true"><span></span></span>
             </button>
-            <div class="group relative flex w-full items-center gap-2 rounded-xl border border-transparent pr-2 transition-colors hover:border-sidebar-border hover:bg-sidebar-accent">
+            <div class="as-user">
               <RouterLink
                 to="/admin/perfil"
-                class="relative z-10 flex min-w-0 flex-1 items-center gap-3 rounded-xl px-2 py-2 text-left transition"
+                class="as-user-link"
+                :aria-label="userDisplayName || 'Perfil'"
                 @click="mobileMenuOpen = false"
               >
-                <span class="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-accent text-sm font-semibold text-accent-foreground">
-                  <img v-if="userAvatarUrl" :src="userAvatarUrl" alt="Avatar" class="h-full w-full object-cover" />
+                <span class="as-avatar">
+                  <img v-if="userAvatarUrl" :src="userAvatarUrl" alt="" class="h-full w-full object-cover" />
                   <template v-else>{{ userInitial }}</template>
                 </span>
-                <span class="min-w-0 flex-1">
+                <span class="as-label as-user-text">
                   <span class="block truncate text-[13px] font-semibold text-foreground">{{ (userDisplayName || "").split(" ")[0] || userDisplayName }}</span>
                   <span class="block text-[11px] text-muted-foreground">{{ userRoleLabel }}</span>
                 </span>
               </RouterLink>
               <button
                 type="button"
-                @click="handleLogout"
-                class="relative z-20 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
+                class="as-logout"
                 :aria-label="viewCopy.sidebar.logout"
                 :title="viewCopy.sidebar.logout"
+                @click="handleLogout"
               >
-                <LogOutIcon class="h-4 w-4" aria-hidden="true" />
+                <LogOutIcon aria-hidden="true" />
               </button>
             </div>
           </div>
@@ -759,7 +733,7 @@
     </transition>
 
     <a
-      v-if="!isEditorRoute"
+      v-if="!isEditorRoute && !mobileMenuOpen"
       href="https://wa.me/5553991800903"
       target="_blank"
       rel="noopener"
@@ -837,6 +811,11 @@ const isPlansRoute = computed(() => route.name === "plans");
 const isAdminMasterRoute = computed(() => route.path.startsWith("/admin/administracao"));
 // No editor de página a tela é toda do editor: sem o botão de ajuda do WhatsApp.
 const isEditorRoute = computed(() => route.name === "page-edit");
+// Telas comuns ficam num contêiner único (largura máxima de 1400px, como no Viaje On).
+// Editor, Inbox, Planos e Admin Master têm molduras próprias.
+const isFramedRoute = computed(
+  () => !isInboxRoute.value && !isPageEditorRoute.value && !isPlansRoute.value && !isAdminMasterRoute.value
+);
 const showAuthSplash = computed(() => {
   if (!routeRequiresAuth.value) return false;
   if (!auth.token) return false;
@@ -1759,10 +1738,6 @@ const currentPageTitle = computed(() => {
   return navLabel("dashboard");
 });
 
-const activeClass = computed(() => "bg-accent font-semibold text-accent-foreground");
-const inactiveClass = computed(() => "text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground");
-const childActiveClass = computed(() => "bg-accent font-semibold text-accent-foreground");
-const childInactiveClass = computed(() => "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground");
 
 const agencyName = computed(() => agencyStore.currentAgency?.name || agencyStore.agencies[0]?.name || "");
 const sidebarLogoSrc = SidebarLogo;
@@ -1824,19 +1799,26 @@ const flyoutGroupId = ref<string | null>(null);
 const brandMarkSrc = BrandMark;
 const canCreatePageShortcut = computed(() => hasPermission("pages"));
 // Solto (não fixado), o menu fica só com ícones e abre ao passar o mouse, empurrando a página.
+// No Admin Master o menu principal fica sempre recolhido, para caber o menu do Admin (como no Viaje On).
 const sidebarPeek = ref(false);
-const sidebarCompact = computed(() => sidebarCollapsed.value && !sidebarPeek.value);
-const sidebarOffset = computed(() => (sidebarCompact.value ? "80px" : "272px"));
+const sidebarCompact = computed(() => isAdminMasterRoute.value || (sidebarCollapsed.value && !sidebarPeek.value));
+// Mesmas medidas do Viaje On: cartão de 244px (64px recolhido), solto 12px da borda.
+const sidebarOffset = computed(() => (sidebarCompact.value ? "88px" : "256px"));
 let sidebarPeekTimer: ReturnType<typeof setTimeout> | null = null;
 const peekSidebar = (open: boolean) => {
   if (sidebarPeekTimer) clearTimeout(sidebarPeekTimer);
+  if (isAdminMasterRoute.value) {
+    sidebarPeek.value = false;
+    return;
+  }
+  // Abre depois de uma pausa curta e fecha com um pequeno atraso, para não piscar ao passar de relance.
   sidebarPeekTimer = setTimeout(() => {
     sidebarPeek.value = open;
     if (open) {
       flyoutGroupId.value = null;
       hideSidebarTip();
     }
-  }, open ? 120 : 220);
+  }, open ? 120 : 180);
 };
 const handleSidebarFocusOut = (event: FocusEvent) => {
   const next = event.relatedTarget as Node | null;
@@ -1933,10 +1915,21 @@ onMounted(() => {
   document.addEventListener("keydown", handleSidebarKeydown);
   window.addEventListener("resize", closeSidebarFlyout);
 });
+// Liga o fundo âmbar do Admin Master (fica no body, atrás de todo o painel).
+watch(
+  isAdminMasterRoute,
+  active => {
+    if (typeof document === "undefined") return;
+    document.body.classList.toggle("admin-master-active", active);
+  },
+  { immediate: true }
+);
+
 onBeforeUnmount(() => {
   document.removeEventListener("click", closeSidebarFlyout);
   document.removeEventListener("keydown", handleSidebarKeydown);
   window.removeEventListener("resize", closeSidebarFlyout);
+  document.body.classList.remove("admin-master-active");
 });
 const trialPlanName = computed(() => getPlanLabel(auth.user?.trial_plan));
 const planTagMap: Record<string, string> = {
@@ -2512,20 +2505,6 @@ watch(
 </script>
 <style>
 /* =========================
-   SCALE GLOBAL CORRIGIDO
-========================= */
-
-.admin-scale-85 {
-  zoom: 0.85;
-  min-height: 100vh;
-}
-
-  .admin-scale-85 {
-  min-height: 100vh;
-}
-
-
-/* =========================
    ROOT / FUNDO GLOBAL
 ========================= */
 
@@ -2578,20 +2557,29 @@ body.admin-body-light #app {
   min-height: 0;
 }
 
-/* Admin master: menu interno fixo ao lado do menu principal. */
+/* Admin master: o menu principal fica recolhido e o menu do Admin entra ao lado,
+   como um cartão solto da borda (mesmo desenho do Viaje On). */
 @media (min-width: 1180px) {
   .admin-master-rail {
     position: fixed;
-    top: 0;
-    bottom: 0;
-    left: var(--admin-sidebar-offset, 272px);
+    top: 12px;
+    bottom: 12px;
+    left: var(--admin-sidebar-offset, 88px);
     z-index: 20;
-    transition: left 0.26s cubic-bezier(0.22, 0.8, 0.24, 1);
-    width: 228px;
+    width: 232px;
+    transition: left 200ms ease-out;
   }
   .admin-master-main {
-    margin-left: 228px;
+    margin-left: 244px;
   }
+}
+
+/* O fundo âmbar do Admin Master fica no body (main.css); as camadas do painel ficam transparentes. */
+.admin-shell-root.is-admin-master,
+.is-admin-master .admin-main,
+.is-admin-master .admin-content,
+.is-admin-master .admin-content > div {
+  background: transparent !important;
 }
 @media (max-width: 1179px) {
   .admin-master-rail {
@@ -2712,7 +2700,7 @@ body.admin-body-light #app {
 
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.3s ease;
+  transition: opacity 200ms ease-out;
 }
 
 .fade-enter-from,
@@ -2720,14 +2708,20 @@ body.admin-body-light #app {
   opacity: 0;
 }
 
-.mobile-sidebar-enter-active,
-.mobile-sidebar-leave-active {
-  transition: opacity 200ms ease;
+.mobile-sidebar-enter-active {
+  transition: opacity 300ms ease-out;
 }
 
-.mobile-sidebar-enter-active > div:last-child,
-.mobile-sidebar-leave-active > div:last-child {
-  transition: transform 200ms ease;
+.mobile-sidebar-leave-active {
+  transition: opacity 200ms ease-out;
+}
+
+.mobile-sidebar-enter-active .mobile-menu-panel {
+  transition: transform 300ms ease-out;
+}
+
+.mobile-sidebar-leave-active .mobile-menu-panel {
+  transition: transform 200ms ease-out;
 }
 
 .mobile-sidebar-enter-from,
@@ -2735,22 +2729,68 @@ body.admin-body-light #app {
   opacity: 0;
 }
 
-.mobile-sidebar-enter-from > div:last-child,
-.mobile-sidebar-leave-to > div:last-child {
-  transform: translateX(100%);
+.mobile-sidebar-enter-from .mobile-menu-panel,
+.mobile-sidebar-leave-to .mobile-menu-panel {
+  transform: translateX(calc(100% + 12px));
 }
 
-.desktop-nav-item {
-  position: relative;
+/* Menu do celular: cartão solto da borda, com o mesmo conteúdo do menu do computador. */
+.mobile-menu-overlay {
+  background: rgba(9, 17, 13, 0.42);
+  backdrop-filter: blur(2px);
 }
 
-.desktop-nav-subitem {
-  position: relative;
+.mobile-menu-panel {
+  display: flex;
+  flex-direction: column;
+  width: 18rem;
+  max-width: calc(100vw - 24px);
+  height: calc(100% - 24px);
+  height: calc(100dvh - 24px);
+  margin: 12px;
+  padding: 16px 12px 12px;
+  border-radius: 20px;
+  background: var(--sidebar);
+  color: var(--sidebar-foreground);
+  box-shadow: var(--shadow-elegant);
 }
 
-.desktop-nav-subitem.is-active-sub {
-  background: var(--accent);
-  color: var(--accent-foreground);
+.mobile-menu-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding-left: 4px;
+}
+
+.mobile-menu-close {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--muted) 80%, transparent);
+  color: var(--muted-foreground);
+  transition: background-color 200ms ease-out, color 200ms ease-out;
+}
+
+.mobile-menu-close:hover {
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.mobile-menu-close svg {
+  width: 16px;
+  height: 16px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-sidebar-enter-active,
+  .mobile-sidebar-leave-active,
+  .mobile-sidebar-enter-active .mobile-menu-panel,
+  .mobile-sidebar-leave-active .mobile-menu-panel {
+    transition: none;
+  }
 }
 
 .nav-pill-badge {
@@ -2804,13 +2844,15 @@ body.admin-body-light #app {
 }
 
 /* =========================
-   SIDEBAR (estilo Viaje On)
+   SIDEBAR (mesmo desenho do Viaje On)
+   Cartão de 244px solto 12px da borda (64px recolhido), cantos de 20px,
+   itens de 40px com texto de 14px e ícones de 16px. Abre e fecha em 200ms.
 ========================= */
 
 @media (min-width: 768px) {
   .admin-main {
-    margin-left: var(--admin-sidebar-offset, 272px);
-    transition: margin-left 0.26s cubic-bezier(0.22, 0.8, 0.24, 1);
+    margin-left: var(--admin-sidebar-offset, 256px);
+    transition: margin-left 200ms ease-out;
   }
 }
 
@@ -2818,9 +2860,13 @@ body.admin-body-light #app {
   position: fixed;
   inset: 0 auto 0 0;
   z-index: 30;
-  width: var(--admin-sidebar-offset, 272px);
+  width: 256px;
   padding: 12px 0 12px 12px;
-  transition: width 0.2s ease;
+  transition: width 200ms ease-out;
+}
+
+.admin-sidebar.is-collapsed {
+  width: 76px;
 }
 
 .as-panel {
@@ -2830,102 +2876,111 @@ body.admin-body-light #app {
   width: 100%;
   height: 100%;
   padding: 16px 12px 12px;
-  border: 1px solid var(--sidebar-border);
-  border-radius: 28px;
-  background: var(--card);
+  border-radius: 20px;
+  background: var(--sidebar);
   color: var(--sidebar-foreground);
   box-shadow: var(--shadow-card);
-}
-
-.as-collapse {
-  position: absolute;
-  top: 32px;
-  right: -12px;
-  z-index: 2;
-  display: grid;
-  place-items: center;
-  width: 24px;
-  height: 24px;
-  border: 1px solid var(--sidebar-border);
-  border-radius: 999px;
-  background: var(--card);
-  color: var(--muted-foreground);
-  box-shadow: var(--shadow-soft);
-  transition: color 0.15s ease, border-color 0.15s ease;
-}
-
-.as-collapse:hover {
-  border-color: var(--ring);
-  color: var(--foreground);
-}
-
-.as-collapse svg {
-  width: 14px;
-  height: 14px;
 }
 
 .as-brand {
   display: flex;
   align-items: center;
-  min-height: 52px;
-  margin-bottom: 14px;
-  padding: 0 4px;
+  gap: 8px;
+  min-height: 44px;
+  margin-bottom: 12px;
 }
 
 .as-brand-logo {
   display: flex;
+  min-width: 0;
   align-items: center;
+  padding: 0 4px;
+}
+
+/* O PNG do logo tem faixas vazias em cima e embaixo: o recorte mostra só o desenho. */
+.as-logo-img {
+  width: 120px;
+  height: 36px;
+  object-fit: cover;
 }
 
 .as-brand-tile {
   display: grid;
   place-items: center;
-  width: 48px;
-  height: 48px;
-  border: 1px solid var(--sidebar-border);
-  border-radius: 16px;
-  background: var(--card);
+  width: 40px;
+  height: 40px;
+}
+
+.as-pin {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin-left: auto;
+  flex-shrink: 0;
+  border-radius: 999px;
+  color: var(--muted-foreground);
+  transition: background-color 200ms ease-out, color 200ms ease-out;
+}
+
+.as-pin:hover {
+  background: var(--sidebar-accent);
+  color: var(--foreground);
+}
+
+.as-pin svg {
+  width: 16px;
+  height: 16px;
+}
+
+.as-pin.is-pinned {
+  color: var(--primary);
+}
+
+.as-pin.is-pinned svg {
+  fill: currentColor !important;
 }
 
 .as-cta {
   display: flex;
   align-items: center;
-  gap: 10px;
-  height: 48px;
-  margin: 0 0 18px;
-  padding: 0 18px 0 1px;
+  gap: 12px;
+  height: 40px;
+  margin: 0 0 12px;
+  padding: 0 12px;
   border-radius: 999px;
   background: var(--primary);
   color: var(--primary-foreground);
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 600;
-  transition: filter 0.15s ease, transform 0.15s ease;
+  transition: background-color 200ms ease-out, filter 200ms ease-out;
 }
 
 .as-cta:hover {
-  filter: brightness(1.05);
+  filter: brightness(1.08);
 }
 
 .as-cta-icon {
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  width: 16px;
+  height: 16px;
   flex-shrink: 0;
 }
 
 .as-cta-icon svg {
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
 }
 
 .as-nav {
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 14px;
+  gap: 8px;
   min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .as-section {
@@ -2935,65 +2990,57 @@ body.admin-body-light #app {
 }
 
 .as-section-title {
-  padding: 0 12px 6px;
-  color: var(--muted-foreground);
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 12px;
+  color: color-mix(in srgb, var(--sidebar-foreground) 60%, transparent);
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .as-item {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   width: 100%;
-  min-height: 44px;
-  padding: 0 12px 0 1px;
+  min-height: 40px;
+  padding: 0 12px;
   border-radius: 999px;
   color: var(--sidebar-foreground);
-  font-size: 13.5px;
-  font-weight: 500;
+  font-size: 14px;
+  font-weight: 400;
   text-align: left;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition: background-color 200ms ease-out, color 200ms ease-out;
 }
 
 .as-icon {
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  width: 16px;
+  height: 16px;
   flex-shrink: 0;
-  border-radius: 999px;
-  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .as-icon svg {
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
 }
 
 .as-item:hover {
+  background: var(--sidebar-accent);
   color: var(--foreground);
 }
 
-.admin-sidebar:not(.is-collapsed) .as-item:hover {
-  background: var(--sidebar-accent);
-}
-
-.as-item.is-active {
+.as-item.is-active,
+.as-item.is-active:hover {
+  background: var(--accent);
   color: var(--accent-foreground);
   font-weight: 600;
-}
-
-.as-item.is-active .as-icon {
-  background: var(--accent);
-  color: var(--accent-foreground);
-}
-
-.admin-sidebar:not(.is-collapsed) .as-item.is-active {
-  background: var(--accent);
 }
 
 .as-label {
@@ -3009,7 +3056,7 @@ body.admin-body-light #app {
   height: 16px;
   margin-left: auto;
   color: var(--muted-foreground);
-  transition: transform 0.2s ease;
+  transition: transform 200ms ease-out;
 }
 
 .as-group {
@@ -3020,7 +3067,7 @@ body.admin-body-light #app {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  margin: 2px 0 6px 22px;
+  margin: 2px 0 6px 19px;
   padding-left: 12px;
   border-left: 1px solid var(--sidebar-border);
 }
@@ -3028,11 +3075,11 @@ body.admin-body-light #app {
 .as-child {
   display: block;
   padding: 8px 12px;
-  border-radius: 10px;
+  border-radius: 999px;
   color: var(--muted-foreground);
   font-size: 13px;
   font-weight: 500;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition: background-color 200ms ease-out, color 200ms ease-out;
 }
 
 .as-child:hover {
@@ -3052,7 +3099,7 @@ body.admin-body-light #app {
   min-width: 224px;
   padding: 8px;
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: 18px;
   background: var(--popover);
   color: var(--popover-foreground);
   box-shadow: var(--shadow-elegant);
@@ -3063,13 +3110,13 @@ body.admin-body-light #app {
   color: var(--muted-foreground);
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 
 .as-flyout-enter-active,
 .as-flyout-leave-active {
-  transition: opacity 0.12s ease, transform 0.12s ease;
+  transition: opacity 200ms ease-out, transform 200ms ease-out;
 }
 
 .as-flyout-enter-from,
@@ -3081,20 +3128,18 @@ body.admin-body-light #app {
 .as-footer {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid var(--sidebar-border);
+  gap: 2px;
+  margin-top: 8px;
 }
 
 .as-switch {
   position: relative;
-  width: 34px;
+  width: 36px;
   height: 20px;
   flex-shrink: 0;
   border-radius: 999px;
-  background: var(--border);
-  transition: background-color 0.15s ease;
+  background: var(--input);
+  transition: background-color 200ms ease-out;
 }
 
 .as-switch span {
@@ -3106,7 +3151,7 @@ body.admin-body-light #app {
   border-radius: 999px;
   background: #fff;
   box-shadow: var(--shadow-soft);
-  transition: transform 0.15s ease;
+  transition: transform 200ms ease-out;
 }
 
 .as-switch.on {
@@ -3114,7 +3159,7 @@ body.admin-body-light #app {
 }
 
 .as-switch.on span {
-  transform: translateX(14px);
+  transform: translateX(16px);
 }
 
 .as-user {
@@ -3130,9 +3175,10 @@ body.admin-body-light #app {
   align-items: center;
   gap: 10px;
   min-width: 0;
-  padding: 2px 2px 2px 1px;
+  min-height: 44px;
+  padding: 0 4px;
   border-radius: 999px;
-  transition: background-color 0.15s ease;
+  transition: background-color 200ms ease-out;
 }
 
 .as-user-link:hover {
@@ -3142,26 +3188,26 @@ body.admin-body-light #app {
 .as-avatar {
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   flex-shrink: 0;
   overflow: hidden;
   border-radius: 999px;
   background: var(--accent);
   color: var(--accent-foreground);
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 600;
 }
 
 .as-logout {
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   flex-shrink: 0;
   border-radius: 999px;
   color: var(--muted-foreground);
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition: background-color 200ms ease-out, color 200ms ease-out;
 }
 
 .as-logout:hover {
@@ -3170,82 +3216,82 @@ body.admin-body-light #app {
 }
 
 .as-logout svg {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
 }
 
-/* Solto: abre ao passar o mouse e empurra a página junto, na mesma animação. */
-.admin-sidebar {
-  transition: width 0.26s cubic-bezier(0.22, 0.8, 0.24, 1), padding 0.26s cubic-bezier(0.22, 0.8, 0.24, 1);
-}
-.admin-sidebar .as-panel {
-  transition: box-shadow 0.26s ease, border-radius 0.26s ease;
-}
+/* Solto: os textos aparecem junto com a abertura do menu. */
 .admin-sidebar.is-peek .as-label,
 .admin-sidebar.is-peek .as-section-title {
-  white-space: nowrap;
-  animation: as-label-in 0.22s ease both;
+  animation: as-label-in 200ms ease-out both;
 }
 @keyframes as-label-in {
-  from { opacity: 0; transform: translateX(-4px); }
-}
-@media (hover: hover) {
-  .admin-sidebar.is-collapsed .as-collapse {
-    display: none !important;
-  }
+  from { opacity: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .admin-sidebar, .admin-sidebar .as-panel { transition: none; }
-  .admin-sidebar.is-peek .as-label, .admin-sidebar.is-peek .as-section-title { animation: none; }
+  .admin-sidebar,
+  .admin-main { transition: none; }
+  .admin-sidebar.is-peek .as-label,
+  .admin-sidebar.is-peek .as-section-title { animation: none; }
 }
 
-/* Recolhida: a mesma coluna da aberta, só cortada na largura dos ícones.
-   Logo, botão, ícones, títulos e rodapé ficam exatamente no mesmo lugar nos dois estados. */
+/* Recolhido: botões redondos de 40px, centralizados na coluna. */
 .admin-sidebar.is-collapsed .as-panel {
   overflow: hidden;
 }
 
-.admin-sidebar.is-collapsed .as-collapse {
-  right: 4px;
+.admin-sidebar.is-collapsed .as-brand {
+  flex-direction: column;
+  justify-content: center;
 }
 
 .admin-sidebar.is-collapsed .as-brand-tile {
-  width: auto;
-  height: auto;
-  border: 0;
-  border-radius: 0;
-  background: none;
+  width: 40px;
+  height: 40px;
 }
 
-.admin-sidebar.is-collapsed .as-label {
+/* Com mouse, o menu recolhido abre ao passar por cima; o alfinete aparece aberto.
+   Na tela de toque ele fica embaixo do logo. */
+@media (hover: hover) {
+  .admin-sidebar.is-collapsed .as-pin {
+    display: none;
+  }
+}
+.admin-sidebar.is-collapsed .as-pin {
+  margin-left: 0;
+}
+
+.admin-sidebar.is-collapsed .as-label,
+.admin-sidebar.is-collapsed .as-chevron,
+.admin-sidebar.is-collapsed .as-switch {
   display: none;
 }
 
-/* O título da seção vira um traço curto com a mesma altura do texto. */
+/* O título da seção vira um traço curto. */
 .admin-sidebar.is-collapsed .as-section-title {
   position: relative;
+  justify-content: center;
+  height: 16px;
+  padding: 0;
   overflow: hidden;
   color: transparent;
-  white-space: nowrap;
 }
 
 .admin-sidebar.is-collapsed .as-section-title::after {
   content: "";
-  position: absolute;
-  top: calc(50% - 3px);
-  left: 9px;
-  width: 24px;
+  width: 20px;
   height: 1px;
   background: var(--sidebar-border);
 }
 
-.admin-sidebar.is-collapsed .as-cta {
-  width: 42px;
-  padding: 0 0 0 1px;
+.admin-sidebar.is-collapsed .as-cta,
+.admin-sidebar.is-collapsed .as-item {
+  justify-content: center;
+  width: 40px;
+  padding: 0;
 }
 
 .admin-sidebar.is-collapsed .as-nav {
-  overflow-x: hidden;
   scrollbar-width: none;
 }
 
@@ -3253,29 +3299,69 @@ body.admin-body-light #app {
   display: none;
 }
 
-.admin-sidebar.is-collapsed .as-item {
-  width: 42px;
-  padding: 0 0 0 1px;
-}
-
-.admin-sidebar.is-collapsed .as-item:hover .as-icon,
-.admin-sidebar.is-collapsed .as-item.is-open .as-icon {
+.admin-sidebar.is-collapsed .as-item.is-open {
   background: var(--sidebar-accent);
-}
-
-.admin-sidebar.is-collapsed .as-item.is-active .as-icon {
-  background: var(--accent);
 }
 
 .admin-sidebar.is-collapsed .as-user-link {
   flex: none;
+  justify-content: center;
+  width: 40px;
+  padding: 0;
+}
+
+/* Telas baixas: itens mais compactos para caber sem rolar (mesmas faixas do Viaje On). */
+@media (max-height: 820px) {
+  .as-item,
+  .as-cta,
+  .as-user-link {
+    min-height: 36px;
+    height: auto;
+  }
+  .as-cta {
+    height: 36px;
+  }
+  .as-brand {
+    margin-bottom: 8px;
+  }
+  .as-section-title {
+    height: 28px;
+  }
+  .admin-sidebar.is-collapsed .as-cta,
+  .admin-sidebar.is-collapsed .as-item {
+    width: 36px;
+    height: 36px;
+    min-height: 36px;
+  }
+}
+@media (max-height: 680px) {
+  .as-item,
+  .as-cta,
+  .as-user-link {
+    min-height: 32px;
+  }
+  .as-cta {
+    height: 32px;
+  }
+  .as-section-title {
+    height: 24px;
+  }
+  .as-nav {
+    gap: 4px;
+  }
+  .admin-sidebar.is-collapsed .as-cta,
+  .admin-sidebar.is-collapsed .as-item {
+    width: 32px;
+    height: 32px;
+    min-height: 32px;
+  }
 }
 
 .as-tip {
   position: fixed;
   z-index: 80;
   padding: 6px 10px;
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--foreground);
   color: var(--background);
   font-size: 12px;

@@ -1,6 +1,6 @@
 # Roteiro Online — Inventário e acompanhamento da remodelação
 
-Atualizado em: 16/07/2026  
+Atualizado em: 08/10/2026  
 Fonte de verdade das rotas: `frontend/src/router/index.ts`
 
 Este documento acompanha a adoção do design system Viajeon no frontend do Roteiro Online.
@@ -45,8 +45,8 @@ Uma mesma `View` pode representar várias telas quando seu conteúdo muda confor
 
 | ID | Superfície | Arquivo principal | Status | Observações |
 |---|---|---|---|---|
-| F01 | Tokens globais, tipografia, temas, radius e sombras | `frontend/src/styles/main.css` | EM QA | Fundação Vue + Tailwind v3 validada no build; conferência visual claro/escuro pendente junto da F02. |
-| F02 | Shell administrativo, sidebar desktop/mobile e modais globais | `frontend/src/layouts/AdminLayout.vue` | EM QA | Shell semântico implementado em desktop/mobile; build validado e conferência visual claro/escuro pendente. |
+| F01 | Tokens globais, tipografia, temas, radius e sombras | `frontend/src/styles/main.css` | EM QA | Tokens do Viaje On; painel sem zoom (100%), tokens âmbar do Admin Master. Conferido claro/escuro em 08/10/2026. |
+| F02 | Shell administrativo, sidebar desktop/mobile e modais globais | `frontend/src/layouts/AdminLayout.vue` | EM QA | Menu com as medidas e tempos do Viaje On, contêiner único das telas, Admin Master com menu âmbar e menu do celular em cartão. Conferido em 1440, 1280, 1024 e 390 px, claro e escuro, em 08/10/2026. |
 
 ### Componentes canônicos a criar
 
@@ -381,3 +381,7 @@ Esta ordem minimiza retrabalho porque cada etapa fornece componentes para a segu
 | 21/07/2026 | O17/E16/P01.18: integração Viajeon implementada com credenciais criptografadas, operações ativas, seleção de pacotes e redirecionamento por sessão; imagens da operação não são enviadas nem exibidas. |
 | 05/10/2026 | Visual novo das seções (v2), lote 1: Capa, Contagem, Sobre a viagem, Diferenciais, Roteiro, Galeria, Foto, Preços, Depoimentos, Dúvidas, Outros roteiros e Faixa de chamada em `components/public/v2`. Liberado só para agências com superusuário (`PAGE_DESIGN_V2_ROLLOUT=superusers`; `all` libera para todos, `off` desliga). Cada página pode voltar com "Usar visual antigo" (Cores), salvo em `config.design = "legacy"`. As demais seções seguem no visual antigo até serem portadas. |
 | 05/10/2026 | Visual novo (v2), lote 2: Menu do topo, Capa com card, Vídeo, Vídeo de vendas (mesma lógica de liberação), Artigo e Rodapé reescritos; Voos, Compra online e Formulário mantêm o componente atual com as cores do v2 (destaque da página e texto pelo fundo). Com isso todas as seções têm versão v2; só o Selo da plataforma segue igual. |
+| 08/10/2026 | F01/F02, fase 1 do alinhamento com o Viaje On: o painel deixou o zoom de 90% e passou a 100%. Menu lateral com cartão de 244px (64px recolhido) solto 12px da borda, cantos de 20px sem borda, itens de 40px com texto de 14px e ícones de 16px, logo maior e botão de fixar no topo mostrando o estado (alfinete verde = fixado). Abre ao passar o mouse em 120ms, fecha em 180ms e anima em 200ms; compacta abaixo de 820px e 680px de altura. |
+| 08/10/2026 | F02: as telas comuns ficam num contêiner único (largura máxima de 1400px; o espaçamento externo vem só do layout), então o título começa no mesmo ponto em todas. Páginas, Leads, Cliente, Minha agência, Faturas, Equipe, Domínios, Integrações, Atendimento, Aulas e Perfil deixaram o espaçamento próprio. |
+| 08/10/2026 | M01–M14: no Admin Master o menu principal fica recolhido e o menu do Admin vira um cartão âmbar com "Voltar ao painel"; o fundo ganha o degradê âmbar do Viaje On. |
+| 08/10/2026 | F02 no celular: menu em cartão solto da borda, com "Nova página" no topo e os mesmos itens do computador; o botão do WhatsApp some com o menu aberto. Fade global dos modais passou a 200ms. |
