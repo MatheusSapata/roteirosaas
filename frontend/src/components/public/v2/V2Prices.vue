@@ -1,6 +1,6 @@
 <template>
   <V2Section type="prices" :background="section.backgroundColor" fallback-background="#F2F4F1" :anchor-id="section.anchorId">
-    <V2Head :label="label" :title="title" :subtitle-html="subtitleHtml" />
+    <V2Head :label="label" :title="title" :subtitle-html="subtitleHtml" :align="heading.align.value" frame="960px" />
     <ul class="v2-prices">
       <li v-for="(item, idx) in items" :key="idx" class="v2-price v2-in" :class="[`v2-d${Math.min(idx + 3, 7)}`, { 'is-hl': item.highlight, 'has-badge': item.badge }]">
         <!-- Mesma ordem de leitura do legado: o que é o pacote → quanto custa → como pagar → botão. -->

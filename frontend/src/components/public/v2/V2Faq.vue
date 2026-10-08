@@ -1,6 +1,6 @@
 <template>
   <V2Section type="faq" :background="section.backgroundColor" :anchor-id="section.anchorId">
-    <V2Head :label="label" :title="title" :subtitle-html="subtitleHtml" />
+    <V2Head :label="label" :title="title" :subtitle-html="subtitleHtml" :align="align" :frame="isSplit ? '' : '820px'" />
     <div class="v2-faq" :class="{ 'v2-faq--split': isSplit }">
       <div v-for="(item, idx) in items" :key="idx" class="v2-faq-item v2-card v2-in" :class="[`v2-d${Math.min(idx + 3, 7)}`, { 'is-open': openIndex === idx }]">
         <button type="button" class="v2-faq-q" :aria-expanded="openIndex === idx" @click="toggle(idx)">
@@ -21,7 +21,7 @@ import V2Head from "./V2Head.vue";
 import { html, text, useHeading } from "./useHeading";
 
 const props = defineProps<{ section: FaqSection; previewDevice?: "desktop" | "mobile" }>();
-const { label, title, subtitleHtml } = useHeading(toRef(props, "section"), "faq", { pt: "Perguntas frequentes", es: "Preguntas frecuentes" });
+const { label, title, subtitleHtml, align } = useHeading(toRef(props, "section"), "faq", { pt: "Perguntas frequentes", es: "Preguntas frecuentes" });
 const isSplit = computed(() => props.section.layout === "split");
 const items = computed(() => (props.section.items || []).map(item => ({ question: text(item.question), answerHtml: html(item.answer) })));
 const openIndex = ref<number | null>(0);

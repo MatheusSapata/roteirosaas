@@ -20,6 +20,25 @@ const HEADING_DEFAULTS: Partial<Record<SectionType, { label: string; style: Head
   internal_form: { label: "Fale conosco", style: "outline" }
 };
 
+export type HeadingAlign = "left" | "center";
+
+/** Seções do visual novo em que dá para escolher o alinhamento do título e do texto, com o padrão de cada uma. */
+const HEADING_ALIGN_DEFAULTS: Partial<Record<SectionType, HeadingAlign>> = {
+  faq: "center",
+  featured_video: "center",
+  gallery: "center",
+  itinerary: "center",
+  links: "left",
+  prices: "center",
+  reasons: "center",
+  testimonials: "center"
+};
+
+export const supportsHeadingAlign = (type?: SectionType) => !!type && type in HEADING_ALIGN_DEFAULTS;
+
+export const resolveHeadingAlign = (type: SectionType, saved?: string | null): HeadingAlign =>
+  saved === "left" || saved === "center" ? saved : HEADING_ALIGN_DEFAULTS[type] || "center";
+
 export const getSectionHeadingDefaults = (type: SectionType) => {
   return HEADING_DEFAULTS[type] || { label: "", style: "outline" };
 };

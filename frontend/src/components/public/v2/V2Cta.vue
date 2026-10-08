@@ -3,7 +3,7 @@
     <div class="v2-cta-band v2-in">
       <div class="v2-cta-copy">
         <span v-if="eyebrow" class="v2-cta-eyebrow">{{ eyebrow }}</span>
-        <h2 class="v2-title">{{ title }}</h2>
+        <h2 class="v2-title" :style="titleScaleStyle(title)">{{ title }}</h2>
         <div v-if="descriptionHtml" class="v2-lead" v-html="descriptionHtml"></div>
       </div>
       <a v-if="cta.enabled.value" class="v2-btn v2-cta-btn" v-bind="cta.attrs.value">
@@ -17,7 +17,7 @@
       <img v-if="image" :src="image" alt="" class="v2-cta-img v2-reveal" />
       <div class="v2-cta-card-copy">
         <span v-if="eyebrow" class="v2-eyebrow"><span aria-hidden="true"></span>{{ eyebrow }}</span>
-        <h2 class="v2-title">{{ title }}</h2>
+        <h2 class="v2-title" :style="titleScaleStyle(title)">{{ title }}</h2>
         <div v-if="descriptionHtml" class="v2-lead" v-html="descriptionHtml"></div>
         <div v-if="cta.enabled.value"><V2Button :attrs="cta.attrs.value">{{ buttonLabel }}</V2Button></div>
       </div>
@@ -35,6 +35,7 @@ import V2Button from "./V2Button.vue";
 import { useCta } from "./useCta";
 import { usePageDesignContext } from "./designContext";
 import { html, localize, text } from "./useHeading";
+import { titleScaleStyle } from "./useCopyFit";
 
 const props = defineProps<{ section: CtaSection; previewDevice?: "desktop" | "mobile" }>();
 const design = usePageDesignContext();
@@ -77,7 +78,7 @@ const cta = useCta(
   gap: 10px;
 }
 .v2-cta-copy .v2-title {
-  font-size: clamp(26px, 3.4cqi, 40px);
+  font-size: max(22px, calc(clamp(26px, 3.4cqi, 40px) * var(--v2-title-scale, 1)));
 }
 .v2-cta-copy .v2-lead {
   color: var(--v2-muted);

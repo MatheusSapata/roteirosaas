@@ -5,7 +5,7 @@
       <div v-if="section.logoEnabled !== false && resolvedLogo" class="mb-4 flex justify-center">
         <img :src="resolvedLogo" :alt="title" class="vsl-brand-logo" :style="logoStyle" />
       </div>
-      <h2 class="v2-title" :style="{ color: primaryText }">{{ title }}</h2>
+      <h2 class="v2-title" :style="[{ color: primaryText }, titleScaleStyle(title)]">{{ title }}</h2>
       <div v-if="subtitleHtml" class="v2-lead mt-3" :style="{ color: mutedText }" v-html="subtitleHtml"></div>
 
       <div v-if="playerUrl" class="group mx-auto mt-8 w-full overflow-hidden rounded-[24px] shadow-2xl" :class="[videoContainerClass, { 'control-auto-hidden': controlAutoHidden }]" @mouseenter="showPlayerControl" @mouseleave="hidePlayerControl" @click="handlePlayerAreaClick">
@@ -38,6 +38,7 @@
 </template>
 
 <script setup lang="ts">
+import { titleScaleStyle } from "./useCopyFit";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import type { VideoVslSection } from "../../../types/page";
 import { sanitizeHtml } from "../../../utils/sanitizeHtml";

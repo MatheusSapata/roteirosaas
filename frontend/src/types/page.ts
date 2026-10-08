@@ -34,6 +34,8 @@ export interface SectionBase {
   anchorId?: string;
   headingLabel?: LocalizedString;
   headingLabelStyle?: "filled" | "outline";
+  /** Alinhamento do selo, título e texto da seção (visual novo). Sem valor, usa o padrão da seção. */
+  headingAlign?: "left" | "center";
   /** Fundo escolhido na própria seção (editor novo); sem ele, segue as cores da página. */
   customBackground?: boolean;
 }

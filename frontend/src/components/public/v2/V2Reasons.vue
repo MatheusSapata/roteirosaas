@@ -1,7 +1,7 @@
 <template>
   <V2Section type="reasons" :background="section.backgroundColor" fallback-background="#F2F4F1" :anchor-id="section.anchorId">
-    <V2Head :label="label" :title="title" :subtitle-html="subtitleHtml" />
-    <div class="v2-reasons">
+    <V2Head :label="label" :title="title" :subtitle-html="subtitleHtml" :align="align" />
+    <div class="v2-reasons v2-flow" :style="{ '--v2-cols': columns }">
       <article v-for="(item, idx) in items" :key="idx" class="v2-card v2-reason v2-in" :class="`v2-d${Math.min(idx + 3, 7)}`">
         <span class="v2-reason-icon" aria-hidden="true"><TravelIcon v-if="item.isIcon" :name="item.icon" :size="24" stroke-width="1.8" /><template v-else>{{ item.icon || "★" }}</template></span>
         <h3>{{ item.title }}</h3>
@@ -19,9 +19,10 @@ import V2Head from "./V2Head.vue";
 import TravelIcon from "../../shared/TravelIcon.vue";
 import { iconValueName } from "../../../utils/travelIcons";
 import { html, text, useHeading } from "./useHeading";
+import { balancedColumns } from "./balancedColumns";
 
 const props = defineProps<{ section: ReasonsSection; previewDevice?: "desktop" | "mobile" }>();
-const { label, title, subtitleHtml } = useHeading(toRef(props, "section"), "reasons", { pt: "Motivos para escolher", es: "Motivos para elegir" });
+const { label, title, subtitleHtml, align } = useHeading(toRef(props, "section"), "reasons", { pt: "Motivos para escolher", es: "Motivos para elegir" });
 const items = computed(() =>
   (props.section.items || []).map(item => ({
     icon: (item.icon || "").trim(),
@@ -30,14 +31,10 @@ const items = computed(() =>
     descriptionHtml: text(item.description) ? html(item.description) : ""
   }))
 );
+const columns = computed(() => balancedColumns(items.value.length));
 </script>
 
 <style scoped>
-.v2-reasons {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
-  gap: 16px;
-}
 .v2-reason {
   display: flex;
   flex-direction: column;

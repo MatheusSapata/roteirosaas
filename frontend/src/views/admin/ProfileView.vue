@@ -1664,7 +1664,7 @@ watch(
 .pf-field { display: block; margin-bottom: 12px; }
 .pf-field > span { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600; color: var(--foreground); }
 .pf-field small { display: block; margin-top: 4px; font-size: 12px; color: var(--muted-foreground); }
-.pf-input { width: 100%; height: 42px; border: 0 !important; border-radius: 12px; background: var(--muted) !important; padding: 0 12px; font-size: 13.5px; color: var(--foreground); outline: none; }
+.pf-input { width: 100%; height: 42px; border: 0 !important; border-radius: 12px; background-color: var(--muted) !important; padding: 0 12px; font-size: 13.5px; color: var(--foreground); outline: none; }
 .pf-input:focus { box-shadow: 0 0 0 2px var(--ring); }
 .pf-input:disabled { color: var(--muted-foreground); }
 .pf-two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
