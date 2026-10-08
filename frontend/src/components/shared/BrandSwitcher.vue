@@ -1,12 +1,12 @@
 <template>
-  <div ref="root" class="relative w-full">
+  <div ref="root" class="relative min-w-0 flex-1">
     <button
       type="button"
       :class="[
         'flex cursor-pointer items-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         compact
-          ? 'brand-switcher-tile h-12 w-12 justify-center rounded-2xl border border-sidebar-border bg-card hover:bg-sidebar-accent'
-          : 'w-full justify-between gap-3 rounded-lg border border-sidebar-border px-3 py-2 text-sidebar-foreground hover:bg-sidebar-accent/40'
+          ? 'brand-switcher-tile h-10 w-10 justify-center rounded-xl border border-sidebar-border bg-card hover:bg-sidebar-accent'
+          : 'h-11 w-full justify-between gap-2 rounded-xl border border-sidebar-border px-2 text-sidebar-foreground hover:bg-sidebar-accent/40'
       ]"
       aria-label="Trocar de sistema"
       aria-haspopup="menu"
@@ -16,7 +16,7 @@
     >
       <img v-if="compact" :src="roteiroMark" alt="Roteiro Online" class="h-7 w-7 object-contain" />
       <template v-else>
-        <img :src="roteiroLogo" alt="Roteiro Online" class="h-10 w-auto object-contain" />
+        <img :src="roteiroLogo" alt="Roteiro Online" class="brand-switcher-logo" />
         <ChevronsUpDownIcon class="h-4 w-4 text-muted-foreground" aria-hidden="true" />
       </template>
     </button>
@@ -95,6 +95,13 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+/* O PNG do logo tem faixas vazias em cima e embaixo: o recorte mostra só o desenho. */
+.brand-switcher-logo {
+  width: 104px;
+  height: 31px;
+  object-fit: cover;
+}
+
 .brand-switcher-fade-enter-active,
 .brand-switcher-fade-leave-active {
   transition: opacity 100ms ease;

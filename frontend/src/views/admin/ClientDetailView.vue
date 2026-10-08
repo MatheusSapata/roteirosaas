@@ -771,7 +771,7 @@ function outcomeBadgeClass(outcome: "won" | "lost") {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  padding: 20px 20px 0;
+  padding: 0;
 }
 
 .det-back-btn {
@@ -1244,7 +1244,7 @@ function outcomeBadgeClass(outcome: "won" | "lost") {
 
 @media (max-width: 768px) {
   .det-page {
-    padding: 14px 10px 0;
+    padding: 0;
   }
 
   .dados-grid2 {

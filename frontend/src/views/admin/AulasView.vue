@@ -330,8 +330,7 @@ onMounted(async () => {
 }
 
 /* Redesign: aulas */
-.lessons-view { display: flex; flex-direction: column; gap: 16px; padding: 24px 16px; }
-@media (min-width: 768px) { .lessons-view { padding: 32px; } }
+.lessons-view { display: flex; flex-direction: column; gap: 16px; padding: 0 0 32px; }
 .lv-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
 .lv-eyebrow { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: color-mix(in srgb, var(--muted-foreground) 80%, transparent); }
 .lv-title { margin-top: 4px; font-family: var(--font-display); font-size: 30px; line-height: 38px; font-weight: 600; color: var(--foreground); }

@@ -790,7 +790,7 @@ watch(domainsAllowed, allowed => {
   --radius:var(--radius-xl);--radius-sm:var(--radius-lg);
   color:var(--foreground);
 }
-.page-wrap{padding:28px 24px 64px;width:100%;max-width:none}
+.page-wrap{padding:0 0 48px;width:100%;max-width:none}
 .page-eyebrow,.guide-eyebrow{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text-3);margin-bottom:4px}
 .page-title{font-family:var(--font-display);font-size:26px;font-weight:650;color:var(--text);letter-spacing:-.3px;line-height:1.2}
 .page-sub{font-size:13px;color:var(--text-3);margin-top:4px}
@@ -885,7 +885,7 @@ watch(domainsAllowed, allowed => {
 .badge-warn{background:var(--status-warning);color:var(--status-warning-foreground);border:1px solid color-mix(in srgb, var(--status-warning-foreground) 22%, var(--border))}
 .badge-ssl{background:color-mix(in srgb, var(--chart-6) 10%, var(--card));color:var(--chart-6);border:1px solid color-mix(in srgb, var(--chart-6) 25%, var(--border))}
 @media(max-width:1000px){.main-grid,.guide-grid,.guide-row{grid-template-columns:1fr}}
-@media(max-width:900px){.page-wrap{padding:20px 16px 40px}}
+@media(max-width:900px){.page-wrap{padding:0 0 32px}}
 @media(max-width:640px){.steps-grid{grid-template-columns:1fr}}
 
 /* Redesign: domínios */

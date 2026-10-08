@@ -13,7 +13,7 @@
 
 
 
-      class="leads-page flex min-h-0 flex-1 flex-col gap-5 px-4 py-4 md:px-5"
+      class="leads-page flex min-h-0 flex-1 flex-col gap-5 pb-4"
       :class="[
         'overflow-hidden',
         { 'pointer-events-none select-none': !planAllowed }

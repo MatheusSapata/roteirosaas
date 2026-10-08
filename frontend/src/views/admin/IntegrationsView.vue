@@ -3,7 +3,7 @@
     <div class="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-brand"></div>
   </div>
 
-  <div v-else class="integrations-view w-full space-y-6 px-4 py-6 md:px-8">
+  <div v-else class="integrations-view w-full space-y-6 pb-8">
     <IntegrationsHeader />
 
     <!-- Visão geral -->

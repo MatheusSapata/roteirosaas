@@ -7042,7 +7042,7 @@ onMounted(async () => {
 .ed-tab.on { box-shadow: inset 0 -2px 0 var(--primary); color: var(--foreground); }
 .ed-tab-badge { border-radius: 999px; background: var(--status-warning); padding: 1px 8px; font-size: 10.5px; color: var(--status-warning-foreground); }
 
-.ed-grid { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 16px; height: calc(100dvh / var(--app-scale, 1) - 184px); min-height: 560px; }
+.ed-grid { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 16px; height: calc(100dvh - 184px); min-height: 560px; }
 .ed-grid.is-wide { grid-template-columns: minmax(380px, 440px) minmax(0, 1fr); }
 .ed-side { min-height: 0; overflow-y: auto; }
 .ed-sections { display: flex; min-height: 100%; flex-direction: column; border-radius: 20px; background: var(--card); padding: 16px; box-shadow: var(--shadow-card); }
@@ -7122,7 +7122,7 @@ onMounted(async () => {
 /* Editor novo: configurações recolhíveis à esquerda, prévia no meio, camadas (ou IA) à direita. */
 .ed-sections-titles { display: flex; flex: 1; min-width: 0; align-items: center; justify-content: space-between; gap: 8px; }
 .ed-grid > .ed-sections { min-height: 0; overflow-y: auto; }
-.ed-grid.is-v2 { grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; height: calc(100dvh / var(--app-scale, 1) - 92px); min-height: 520px; }
+.ed-grid.is-v2 { grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; height: calc(100dvh - 92px); min-height: 520px; }
 .page-editor-view.is-v2 .ed-topbar { gap: 10px; min-height: 52px; }
 .page-editor-view.is-v2 .ed-back { width: 36px; height: 36px; }
 .page-editor-view.is-v2 .ed-crumb { display: none; }

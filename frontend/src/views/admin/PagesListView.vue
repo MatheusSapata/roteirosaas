@@ -2,7 +2,7 @@
   <div v-if="isBootstrappingPages" class="flex min-h-[60vh] w-full items-center justify-center px-4 py-8 md:px-8">
     <div class="h-10 w-10 animate-spin rounded-full border-4 border-border border-t-primary"></div>
   </div>
-  <div v-else class="pages-reference w-full space-y-6 px-4 py-4 md:px-8 md:py-8">
+  <div v-else class="pages-reference w-full space-y-6 pb-8">
     <div class="pl-head">
       <div>
         <p class="pl-eyebrow">Conteúdo</p>
