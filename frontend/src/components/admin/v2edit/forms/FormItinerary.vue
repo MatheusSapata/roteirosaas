@@ -46,6 +46,7 @@
           ]"
           @update:model-value="patch({ layout: $event })"
         />
+        <EdAlign :value="modelValue" type="itinerary" @patch="patch" />
       </EdGroup>
       <EdGroup title="Fundo">
         <EdBackground :value="modelValue" auto @change="patch" />
@@ -58,6 +59,7 @@
 import { computed } from "vue";
 import type { ItineraryDay, ItinerarySection } from "../../../../types/page";
 import ImageUploadField from "../../inputs/ImageUploadField.vue";
+import EdAlign from "../EdAlign.vue";
 import EdBackground from "../EdBackground.vue";
 import EdGroup from "../EdGroup.vue";
 import EdHeading from "../EdHeading.vue";

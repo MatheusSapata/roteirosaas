@@ -225,7 +225,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       { titulo: "Abra a seção", texto: "Clique na camada ou, na prévia, em **Editar seção**.", tela: 1 },
       { titulo: "Abra o grupo que quer mudar", texto: "**Conteúdo** tem textos, fotos, datas e botões. Os grupos vêm fechados para a lista ficar curta.", tela: 2 },
       { titulo: "Edite: a prévia muda na hora", tela: 3 },
-      { titulo: "Ajuste o visual em Aparência", texto: "Layout, fundo, alinhamento do título e outras opções de cada seção.", tela: 4 },
+      { titulo: "Ajuste o visual em Aparência", texto: "Layout, **Alinhamento** (esquerda ou centro), fundo e outras opções de cada seção. O alinhamento vale para o computador e o celular; em Diferenciais, os ícones e textos dos itens acompanham.", tela: 4 },
       { titulo: "Salve a seção", texto: "**Salvar seção** guarda; **Descartar** volta ao que estava. Se trocar de seção com mudanças pendentes, o editor pergunta se quer salvar.", tela: 6 }
     ],
     relacionados: ["adicionar-secao", "organizar-secoes", "cores-da-pagina"]

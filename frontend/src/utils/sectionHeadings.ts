@@ -36,6 +36,14 @@ const HEADING_ALIGN_DEFAULTS: Partial<Record<SectionType, HeadingAlign>> = {
 
 export const supportsHeadingAlign = (type?: SectionType) => !!type && type in HEADING_ALIGN_DEFAULTS;
 
+/**
+ * Seções em que os itens (ícone, título e texto de cada card) seguem o mesmo
+ * alinhamento do cabeçalho. Um controle só por seção, igual no computador e no celular.
+ */
+const ITEMS_FOLLOW_ALIGN: Partial<Record<SectionType, true>> = { reasons: true };
+
+export const alignAppliesToItems = (type?: SectionType) => !!type && !!ITEMS_FOLLOW_ALIGN[type];
+
 export const resolveHeadingAlign = (type: SectionType, saved?: string | null): HeadingAlign =>
   saved === "left" || saved === "center" ? saved : HEADING_ALIGN_DEFAULTS[type] || "center";
 

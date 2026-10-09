@@ -45,6 +45,12 @@
   text-align: left;
   margin-left: max(0px, calc((100% - var(--v2-head-frame, 100%)) / 2));
 }
+/* O alinhamento é da seção (Aparência › Layout), não do texto: alinhamentos que
+   ficaram salvos nos textos curtos seguem a seção, no computador e no celular.
+   O artigo da Biografia mantém o alinhamento de cada parágrafo. */
+.v2-sec :is(.ql-align-left, .ql-align-center, .ql-align-right, .ql-align-justify):not(.v2-art-text *) {
+  text-align: inherit;
+}
 .v2-eyebrow {
   display: inline-flex;
   align-items: center;
