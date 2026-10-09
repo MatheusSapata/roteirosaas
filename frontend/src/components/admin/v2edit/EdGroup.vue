@@ -1,5 +1,5 @@
 <template>
-  <section class="ved-group" :class="[`is-${kindName}`, { 'is-collapsed': collapsed }]">
+  <section ref="root" class="ved-group" :class="[`is-${kindName}`, { 'is-collapsed': collapsed }]">
     <button v-if="title" type="button" class="ved-group-head" :aria-expanded="!collapsed" @click="collapsed = !collapsed">
       <span class="ved-group-icon" aria-hidden="true"><component :is="KIND_ICONS[kindName]" /></span>
       <h3>{{ title }}</h3>
@@ -25,13 +25,13 @@ import {
   StoreIcon,
   TypeIcon
 } from "lucide-vue-next";
-import { computed, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import type { Component } from "vue";
 
 /** Tipo de parte da seção: define o ícone e a cor do grupo no painel. */
 export type EdGroupKind = "text" | "media" | "items" | "dates" | "action" | "layout" | "background" | "info";
 
-const props = defineProps<{ title?: string; count?: string; extra?: boolean; kind?: EdGroupKind; startCollapsed?: boolean }>();
+const props = defineProps<{ title?: string; count?: string; extra?: boolean; kind?: EdGroupKind; startOpen?: boolean }>();
 
 const KIND_ICONS: Record<EdGroupKind, Component> = {
   text: TypeIcon,
@@ -56,5 +56,15 @@ const BY_TITLE: Array<[RegExp, EdGroupKind]> = [
 ];
 const kindName = computed<EdGroupKind>(() => props.kind || BY_TITLE.find(([pattern]) => pattern.test(props.title || ""))?.[1] || "text");
 
-const collapsed = ref(!!props.startCollapsed);
+// No editor de seção os grupos de Conteúdo vêm todos recolhidos (a pessoa abre o
+// que vai mexer); em Aparência só o primeiro vem aberto.
+const root = ref<HTMLElement | null>(null);
+const collapsed = ref(!props.startOpen);
+onMounted(() => {
+  if (!collapsed.value || !root.value) return;
+  const panel = root.value.closest(".ved-panel") || root.value.parentElement;
+  if (panel?.id === "ved-panel-content") return;
+  const first = Array.from(panel?.querySelectorAll<HTMLElement>(".ved-group") || []).find(group => group.querySelector(":scope > .ved-group-head"));
+  if (first === root.value) collapsed.value = false;
+});
 </script>

@@ -316,9 +316,10 @@ const slide = (direction: number) => {
   color: var(--v2-muted);
   line-height: 1.5;
 }
+/* Ida e volta lado a lado; sem espaço para as duas, uma desce para baixo da outra. */
 .v2-links-meta {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
   gap: 12px;
   padding: 10px 12px;
   border-radius: 14px;

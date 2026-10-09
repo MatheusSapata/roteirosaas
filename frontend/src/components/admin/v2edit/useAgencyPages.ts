@@ -14,7 +14,7 @@ export interface AgencyPage {
   config_json?: Record<string, any> | string | null;
 }
 
-/** Páginas da agência, para links do Menu do topo e cards de Outros roteiros. */
+/** Páginas da agência, para links do Menu do topo e cards de Links/roteiros. */
 export const useAgencyPages = () => {
   const agencyStore = useAgencyStore();
   const pages = ref<AgencyPage[]>([]);
