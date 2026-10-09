@@ -2840,7 +2840,7 @@ const sectionTypes: SectionType[] = [
   "agency_footer"
 ];
 const sectionLabels = defaultSectionLabels;
-// No editor novo as seções usam os nomes novos ("Capa da viagem", "Menu do topo"...).
+// No editor novo as seções usam os nomes novos ("Banner Inicial", "Menu do topo"...).
 const sectionLabelOf = (section: PageSection) =>
   (newEditor.value && sectionNameV2(section.type)) || sectionLabels[section.type as SectionType] || section.type;
 const sectionDescriptions: Partial<Record<SectionType, string>> = {

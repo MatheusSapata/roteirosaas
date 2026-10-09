@@ -1,6 +1,6 @@
 <template>
   <V2Section type="banner_card" :background="section.backgroundColor" :anchor-id="section.anchorId" :class="{ 'v2-bc-tight-top': prevIsBannerCard, 'v2-bc-tight-bottom': nextIsBannerCard }">
-    <div class="v2-bc v2-in" :class="isCard ? 'is-card' : 'is-shade'" :style="copyFit.vars.value">
+    <div class="v2-bc v2-in" :class="[isCard ? 'is-card' : 'is-shade', { 'has-sub': subtitleHtml }]" :style="copyFit.vars.value">
       <img v-if="image" :src="image" alt="" class="v2-bc-img v2-reveal" loading="lazy" />
       <div v-if="!isCard" class="v2-bc-shade" aria-hidden="true"></div>
       <div class="v2-bc-card">
@@ -106,10 +106,22 @@ const ctaLabel = computed(() => text(props.section.ctaLabel) || localize({ pt: "
     margin: 0 12px 12px;
   }
 }
-/* Com sombra: o texto fica direto na foto, sobre um degradê escuro que vem da esquerda. */
+/* Com sombra (sem o card): como no banner antigo, o texto fica centralizado na altura
+   do banner, alinhado à esquerda, com título grande sobre um degradê escuro que vem
+   da esquerda. Com descrição, o título diminui um pouco para os dois caberem. */
 .v2-bc.is-shade {
-  align-items: flex-end;
+  align-items: center;
   color: #fff;
+}
+.is-shade .v2-bc-title {
+  font-size: max(26px, calc(clamp(30px, 4.6cqi, 58px) * var(--v2-title-scale, 1)));
+  line-height: 1.08;
+}
+.is-shade.has-sub .v2-bc-title {
+  font-size: max(24px, calc(clamp(28px, 3.8cqi, 48px) * var(--v2-title-scale, 1)));
+}
+.is-shade .v2-bc-sub {
+  font-size: max(15px, calc(clamp(16px, 1.5cqi, 18px) * var(--v2-sub-scale, 1)));
 }
 .v2-bc-shade {
   position: absolute;
@@ -117,7 +129,8 @@ const ctaLabel = computed(() => text(props.section.ctaLabel) || localize({ pt: "
   background: linear-gradient(90deg, rgba(6, 12, 9, 0.82) 0%, rgba(6, 12, 9, 0.45) 45%, rgba(6, 12, 9, 0) 75%);
 }
 .is-shade .v2-bc-card {
-  max-width: calc(560px + var(--v2-card-grow, 0px));
+  /* Área de texto larga como no banner antigo (~60% do banner): o título grande cabe em menos linhas. */
+  max-width: min(100%, max(calc(620px + var(--v2-card-grow, 0px)), 62%));
   margin: 0;
   padding: clamp(24px, 5cqi, 56px);
   border-radius: 0;
@@ -137,6 +150,7 @@ const ctaLabel = computed(() => text(props.section.ctaLabel) || localize({ pt: "
   /* A foto aparece limpa no topo e o texto fica sempre sobre a parte escura,
      mesmo quando é longo e sobe pela foto. */
   .v2-bc.is-shade {
+    align-items: stretch;
     min-height: 460px;
     padding-top: 150px;
   }

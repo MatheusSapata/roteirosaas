@@ -2,7 +2,7 @@
   <V2EditShell>
     <template #content>
       <EdGroup title="Logo">
-        <p class="ved-info">Usa o logo da Capa da viagem ou, sem ele, o logo da agência (Minha Agência).</p>
+        <p class="ved-info">Usa o logo do Banner Inicial ou, sem ele, o logo da agência (Minha Agência).</p>
       </EdGroup>
       <EdGroup title="Links" :count="`${links.length} de 7`">
         <EdList
@@ -104,7 +104,7 @@
           @update:model-value="setMode"
         />
         <p class="ved-hint">
-          {{ hasHero ? "Transparente e desfoque ficam sobre a capa e ganham fundo ao rolar a página." : "Transparente e desfoque precisam de uma Capa da viagem ativa." }}
+          {{ hasHero ? "Transparente e desfoque ficam sobre a capa e ganham fundo ao rolar a página." : "Transparente e desfoque precisam de um Banner Inicial ativo." }}
         </p>
         <EdBackground
           v-if="(modelValue.mode || 'solid') === 'solid'"
