@@ -146,7 +146,9 @@ const pick = (item: PickerItem) => {
   emit("select", item.type);
 };
 
+// Só no computador a busca já abre com o cursor: no celular o teclado subiria por cima da lista.
 onMounted(() => {
+  if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
   nextTick(() => searchRef.value?.focus());
 });
 </script>
