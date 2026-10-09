@@ -1042,8 +1042,8 @@
               </template>
               <template v-else>
                 <template v-for="(section, idx) in sections" :key="(section as any)?.anchorId || idx">
-                    <div v-if="section" class="space-y-0" :class="{ 'v2ed-slot': newEditor }">
-                    <div v-if="newEditor && idx > 0 && canInsertBefore(idx)" class="v2ed-ins">
+                    <div v-if="section" class="space-y-0" :class="{ 'v2ed-slot': newEditor, 'is-overlay-header': idx === overlayHeader.header }">
+                    <div v-if="newEditor && idx > 0 && canInsertBefore(idx) && idx !== overlayHeader.under" class="v2ed-ins">
                       <span class="v2ed-ins-line" aria-hidden="true"></span>
                       <button type="button" class="v2ed-ins-btn" @click.stop="openSectionPicker(idx - 1)">
                         <PlusIcon aria-hidden="true" />
@@ -1056,6 +1056,8 @@
                         (section as any).type === 'header' ? 'z-30 overflow-visible' : 'overflow-hidden',
                         {
                           'v2ed-sec': newEditor && (section as any).enabled,
+                          'is-header': newEditor && (section as any).type === 'header',
+                          'is-under-header': idx === overlayHeader.under,
                           'is-editing': sectionPanelOpen && editingSectionIndex === idx,
                           'is-tapped': phoneEditor && mobileOverlayVisible[idx]
                         }
@@ -3040,7 +3042,8 @@ const previewSectionExtraProps = (section: PageSection) => {
   if (section.type === "header") {
     const hero = sections.value.find(item => item.type === "hero") as HeroSection | undefined;
     extra.logoUrl = hero?.logoUrl || branding.value.logo_url || "";
-    extra.previewBackgroundImage = hero?.backgroundImage || "";
+    // Sobreposto à capa (editor novo), o próprio banner aparece atrás do menu.
+    extra.previewBackgroundImage = overlayHeader.value.header >= 0 ? "" : hero?.backgroundImage || "";
     extra.previewOverlayColor = hero?.gradientColor || hero?.backgroundColor || "#05060f";
     extra.agencyName = branding.value.agency_name || currentAgency.value?.name || "";
     extra.agencySocialLinks = currentAgency.value?.social_links || branding.value.agency_profile?.social_links || [];
@@ -3335,6 +3338,20 @@ const hasPendingImageUploads = computed(() => activeImageUploads.value > 0);
 const isFooterSection = (section?: PageSection | null) => !!section && (section as any).type === "free_footer_brand";
 // Linha de inserir entre seções: nunca acima do Menu do topo.
 const canInsertBefore = (index: number) => !isHeaderSection(sections.value[index]);
+// Editor novo: o Menu do topo transparente fica por cima da seção seguinte, como na
+// página publicada (lá ele é absoluto sobre a capa). Assim a prévia mostra a foto,
+// a sombra e o degradê da capa atrás do menu. header/under = índices do menu e da
+// seção que fica embaixo dele (-1 quando não há sobreposição).
+const overlayHeader = computed(() => {
+  const none = { header: -1, under: -1 };
+  if (!newEditor.value) return none;
+  const header = sections.value.findIndex(section => isHeaderSection(section) && section.enabled !== false);
+  if (header < 0) return none;
+  const mode = (sections.value[header] as HeaderSection).mode;
+  if (mode !== "transparent" && mode !== "blurred") return none;
+  const under = sections.value.findIndex((section, index) => index > header && section?.enabled !== false);
+  return under < 0 ? none : { header, under };
+});
 const isHeaderSection = (section?: PageSection | null) => !!section && (section as any).type === "header";
 const isVideoVslSection = (section?: PageSection | null) => !!section && (section as any).type === "video_vsl";
 const enforceFooterConstraints = (list?: PageSection[] | null) => {
@@ -7300,6 +7317,25 @@ onMounted(async () => {
 
 /* Prévia do editor novo: sombra ao passar o mouse, ações no topo e linha para inserir seção. */
 .v2ed-slot { position: relative; }
+/* Menu do topo transparente: ocupa altura zero e fica por cima da seção seguinte. */
+.v2ed-slot.is-overlay-header { z-index: 30; height: 0; }
+.v2ed-slot.is-overlay-header > .v2ed-sec { position: absolute; top: 0; left: 0; right: 0; }
+/* Seção embaixo do menu: selo e ações descem para logo abaixo dele (o menu tem 76px,
+   em escala na prévia de computador). */
+.v2ed-sec.is-under-header { --ed-hd-h: calc(76px / var(--ed-unzoom, 1)); }
+.v2ed-sec.is-under-header .v2ed-tag, .v2ed-sec.is-under-header .v2ed-bar { top: calc(var(--ed-hd-h) + 12px); }
+.ed-stage.is-mobile-preview .v2ed-sec.is-under-header .v2ed-bar { top: calc(var(--ed-hd-h) + 50px); }
+/* Menu do topo: selo e ações centralizados na altura do menu e mais compactos, para
+   caberem dentro dele. */
+.v2ed-sec.is-header .v2ed-tag, .v2ed-sec.is-header .v2ed-bar { top: 50%; transform: translateY(-50%); }
+.v2ed-sec.is-header:hover .v2ed-tag, .v2ed-sec.is-header:hover .v2ed-bar,
+.v2ed-sec.is-header:focus-within .v2ed-tag, .v2ed-sec.is-header:focus-within .v2ed-bar { transform: translateY(-50%); }
+.v2ed-sec.is-header .v2ed-tag { padding: 4px 10px; font-size: 12px; }
+.v2ed-sec.is-header .v2ed-bar { padding: 3px; border-radius: 12px; }
+.v2ed-sec.is-header .v2ed-edit, .v2ed-sec.is-header .v2ed-btn { height: 30px; border-radius: 9px; }
+.v2ed-sec.is-header .v2ed-btn { width: 30px; }
+.ed-stage.is-mobile-preview .v2ed-sec.is-header .v2ed-tag { display: none; }
+.ed-stage.is-mobile-preview .v2ed-sec.is-header .v2ed-bar { top: 50%; }
 .v2ed-sec { transition: box-shadow 0.2s ease; }
 .v2ed-sec:hover, .v2ed-sec:focus-within { z-index: 5; box-shadow: 0 24px 60px -18px rgba(6, 12, 9, 0.55), 0 4px 14px -6px rgba(6, 12, 9, 0.3); }
 .v2ed-ring, .v2ed-tag, .v2ed-bar { opacity: 0; transition: opacity 0.18s ease, transform 0.24s cubic-bezier(0.22, 0.8, 0.24, 1); }
