@@ -2,7 +2,7 @@
   <V2Section type="hero" :background="textBg" :anchor-id="section.anchorId" full>
     <!-- Imersivo (padrão): foto inteira atrás do texto; no celular a foto fica quase
          quadrada no topo e o texto assenta na cor de fundo, que sobe em degradê. -->
-    <div v-if="layout === 'immersive'" class="v2-hero v2-hero--imm" :class="{ 'has-logo': logo }" :style="heroVars">
+    <div v-if="layout === 'immersive'" class="v2-hero v2-hero--imm" :class="{ 'has-logo': topLogo }" :style="heroVars">
       <div class="v2-hero-media" aria-hidden="true">
         <iframe v-if="video" :src="video" title="" tabindex="-1" allow="autoplay; encrypted-media"></iframe>
         <picture v-else-if="image">
@@ -15,10 +15,10 @@
       <div class="v2-hero-inner">
         <HeroContent v-bind="contentProps" />
       </div>
-      <div v-if="logo" class="v2-hero-logo"><img :src="logo" :alt="agencyName" :style="logoStyle" /></div>
+      <div v-if="topLogo" class="v2-hero-logo"><img :src="logo" :alt="agencyName" :style="logoStyle" /></div>
     </div>
 
-    <div v-else-if="layout === 'classic'" class="v2-hero v2-hero--classic" :class="{ 'has-logo': logo }" :style="heroVars">
+    <div v-else-if="layout === 'classic'" class="v2-hero v2-hero--classic" :class="{ 'has-logo': topLogo }" :style="heroVars">
       <div class="v2-hero-media" aria-hidden="true">
         <iframe v-if="video" :src="video" title="" tabindex="-1" allow="autoplay; encrypted-media"></iframe>
         <img v-else-if="image" :src="image" alt="" />
@@ -27,11 +27,11 @@
       <div class="v2-hero-inner is-center">
         <HeroContent v-bind="contentProps" centered />
       </div>
-      <div v-if="logo" class="v2-hero-logo"><img :src="logo" :alt="agencyName" :style="logoStyle" /></div>
+      <div v-if="topLogo" class="v2-hero-logo"><img :src="logo" :alt="agencyName" :style="logoStyle" /></div>
     </div>
 
-    <div v-else-if="layout === 'split'" class="v2-hero v2-hero--split" :class="{ 'has-logo': logo }" :style="heroVars">
-      <div v-if="logo" class="v2-hero-split-top"><img :src="logo" :alt="agencyName" :style="logoStyle" class="v2-hero-logo-inline" /></div>
+    <div v-else-if="layout === 'split'" class="v2-hero v2-hero--split" :class="{ 'has-logo': topLogo }" :style="heroVars">
+      <div v-if="topLogo" class="v2-hero-split-top"><img :src="logo" :alt="agencyName" :style="logoStyle" class="v2-hero-logo-inline" /></div>
       <div class="v2-hero-split">
         <div class="v2-hero-split-copy">
           <HeroContent v-bind="contentProps" light />
@@ -42,7 +42,7 @@
       </div>
     </div>
 
-    <div v-else class="v2-hero v2-hero--card" :class="{ 'has-logo': logo }" :style="heroVars">
+    <div v-else class="v2-hero v2-hero--card" :class="{ 'has-logo': topLogo }" :style="heroVars">
       <div class="v2-hero-media" aria-hidden="true"><img v-if="image" :src="image" alt="" /></div>
       <div class="v2-hero-card-spacer" aria-hidden="true"></div>
       <div class="v2-hero-inner">
@@ -50,7 +50,7 @@
           <HeroContent v-bind="contentProps" light />
         </div>
       </div>
-      <div v-if="logo" class="v2-hero-logo"><img :src="logo" :alt="agencyName" :style="logoStyle" /></div>
+      <div v-if="topLogo" class="v2-hero-logo"><img :src="logo" :alt="agencyName" :style="logoStyle" /></div>
     </div>
   </V2Section>
 </template>
@@ -119,7 +119,7 @@ const video = computed(() => {
 const agencyName = computed(() => String(props.branding?.agency_name || ""));
 // Logo só quando a página não tem Menu do topo (o PublicPageView avisa com hideLogo).
 const logo = computed(() => (props.hideLogo ? "" : resolveMediaUrl(props.section.logoUrl) || resolveMediaUrl(props.branding?.logo_url) || ""));
-const logoHeight = computed(() => Math.max(32, Math.min(props.section.logoSize ?? 56, 160)));
+const logoHeight = computed(() => Math.max(32, Math.min(props.section.logoSize ?? 64, 160)));
 // Altura do logo para as capas reservarem o espaço do "cabeçalho" no topo.
 const logoVars = computed(() => ({ "--v2-logo-h": `${logoHeight.value}px` }));
 const copyFit = useCopyFit(title, computed(() => localize(props.section.subtitle)));
@@ -132,7 +132,12 @@ const cta = useCta(toRef(props, "section"));
 const ctaLabel = computed(() => text(props.section.ctaLabel) || localize({ pt: "Quero falar agora", es: "Quiero hablar ahora" }));
 const darkText = computed(() => contrast("#FFFFFF", textBg.value) < WHITE_TEXT_MIN_CONTRAST);
 
+// Com destaques, o logo fica no topo da capa; sem eles, entra no lugar dos destaques, logo acima do título.
+const topLogo = computed(() => !!logo.value && chips.value.length > 0);
 const contentProps = computed(() => ({
+  logo: topLogo.value ? "" : logo.value,
+  logoAlt: agencyName.value,
+  logoStyle: logoStyle.value,
   title: title.value,
   subtitleHtml: subtitleHtml.value,
   chips: chips.value,
@@ -146,6 +151,9 @@ const contentProps = computed(() => ({
 const HeroContent = defineComponent({
   name: "V2HeroContent",
   props: {
+    logo: { type: String, default: "" },
+    logoAlt: { type: String, default: "" },
+    logoStyle: { type: Object, default: () => ({}) },
     title: { type: String, default: "" },
     subtitleHtml: { type: String, default: "" },
     chips: { type: Array as () => HeroChip[], default: () => [] },
@@ -192,7 +200,9 @@ const HeroContent = defineComponent({
                 h("li", [h("span", { class: "v2-hero-chip-ico" }, [chip.icon ? h(TravelIcon, { name: chip.icon, size: 14, strokeWidth: 2.2 }) : check()]), chip.label])
               )
             )
-          : null,
+          : p.logo
+            ? h("img", { class: "v2-hero-logo-inline v2-hero-logo-lead v2-in", src: p.logo, alt: p.logoAlt, style: p.logoStyle })
+            : null,
         p.title ? h("h1", { class: "v2-hero-title v2-in v2-d1" }, p.title) : null,
         p.subtitleHtml ? h("div", { class: "v2-hero-sub v2-in v2-d2", innerHTML: p.subtitleHtml }) : null,
         p.dates || p.ctaEnabled
@@ -294,10 +304,22 @@ const HeroContent = defineComponent({
   display: block;
   flex-shrink: 0;
   width: auto;
-  max-width: min(100%, calc(var(--v2-logo-h, 56px) * 4));
+  max-width: min(100%, calc(var(--v2-logo-h, 64px) * 4));
   object-fit: contain;
 }
 .v2-hero-logo img {
+  filter: drop-shadow(0 1px 10px rgba(0, 0, 0, 0.35));
+}
+/* Sem destaques: o logo vem acima do título, no fluxo do texto (centralizado no Clássico). */
+.v2-hero-logo-lead {
+  align-self: flex-start;
+  margin-bottom: 2px;
+}
+.v2-hero-content.is-center .v2-hero-logo-lead {
+  align-self: center;
+}
+.v2-hero--imm .v2-hero-logo-lead,
+.v2-hero--classic .v2-hero-logo-lead {
   filter: drop-shadow(0 1px 10px rgba(0, 0, 0, 0.35));
 }
 .v2-hero-content {

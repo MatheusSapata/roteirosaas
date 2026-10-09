@@ -52,7 +52,7 @@
           :hint="logoHint"
           @update:model-value="patch({ logoUrl: $event || '' })"
         />
-        <EdRange v-if="!hasHeader" :model-value="modelValue.logoSize ?? 56" label="Tamanho" :min="32" :max="160" :step="4" unit="px" @update:model-value="patch({ logoSize: $event })" />
+        <EdRange v-if="!hasHeader" :model-value="modelValue.logoSize ?? 64" label="Tamanho" :min="32" :max="160" :step="4" unit="px" @update:model-value="patch({ logoSize: $event })" />
         <EdSeg
           :model-value="logoCorners"
           label="Cantos"
