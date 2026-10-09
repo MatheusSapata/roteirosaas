@@ -22,15 +22,13 @@
               </span>
             </span>
             <span class="v2-links-foot">
+              <!-- Ícones da seção antiga: calendário em cada data e etiqueta no preço. -->
               <span v-if="item.dates" class="v2-links-meta">
-                <span class="v2-links-ico" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="3" /><path d="M16 2v4M8 2v4M3 10h18" /></svg></span>
-                <span class="v2-links-dates">
-                  <span v-if="item.departure" class="v2-links-dt"><small>{{ copy.departure }}</small><b>{{ item.departure }}</b></span>
-                  <span v-if="item.return" class="v2-links-dt"><small>{{ copy.return }}</small><b>{{ item.return }}</b></span>
-                </span>
+                <span v-if="item.departure" class="v2-links-dt"><small><svg class="v2-links-ico" width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M16 3v4M8 3v4M3 10h18" /></svg>{{ copy.departure }}</small><b>{{ item.departure }}</b></span>
+                <span v-if="item.return" class="v2-links-dt"><small><svg class="v2-links-ico" width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M16 3v4M8 3v4M3 10h18" /></svg>{{ copy.return }}</small><b>{{ item.return }}</b></span>
               </span>
               <span v-if="item.price" class="v2-links-price">
-                <span class="v2-links-ico" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4z" /><circle cx="7.5" cy="7.5" r=".5" fill="currentColor" /></svg></span>
+                <svg class="v2-links-ico v2-links-ico--tag" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.6 13.6 12 22l-9-9V4h9l8.6 8.6a.7.7 0 0 1 0 1Z" /><circle cx="8" cy="9" r="1.5" /></svg>
                 <span class="v2-links-price-copy">
                   <small v-if="item.pricePrefix" class="v2-links-price-pre">{{ item.pricePrefix }}</small>
                   <span class="v2-links-price-line">
@@ -319,40 +317,43 @@ const slide = (direction: number) => {
   line-height: 1.5;
 }
 .v2-links-meta {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
   padding: 10px 12px;
   border-radius: 14px;
   background: var(--v2-soft);
 }
-/* Card estreito: a data de volta desce para a linha de baixo em vez de ser cortada. */
-.v2-links-dates {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 12px;
-  min-width: 0;
-}
-.v2-links-dt b {
-  font-size: 15px;
-}
 .v2-links-dt {
   display: flex;
   flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.v2-links-dt:only-child {
+  grid-column: 1 / -1;
 }
 .v2-links-dt small {
+  display: flex;
+  align-items: center;
+  gap: 5px;
   font-size: 12px;
   color: var(--v2-muted);
 }
+.v2-links-dt b {
+  font-size: 15px;
+  white-space: nowrap;
+}
+/* Mesmos ícones e traço da seção antiga: contorno fino, sem fundo. */
 .v2-links-ico {
-  display: grid;
-  place-items: center;
   flex: 0 0 auto;
-  width: 28px;
-  height: 28px;
-  border-radius: 999px;
-  background: var(--v2-accent-soft);
-  color: var(--v2-accent-text);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  color: var(--v2-ink);
+  opacity: 0.8;
 }
 /* Preço no mesmo desenho das datas: "a partir de" pequeno em cima e, embaixo, o
    valor com "por pessoa" ao lado. "Por pessoa" desce inteiro quando não cabe,
@@ -389,12 +390,14 @@ const slide = (direction: number) => {
   font-size: 14px;
   color: var(--v2-muted);
 }
-/* Card estreito (computador pequeno com 4 por linha): sem os ícones, sobra espaço
-   para as duas datas e para o valor com "por pessoa" na mesma linha. */
+/* Card estreito (computador pequeno com 4 por linha): o valor diminui um pouco
+   para caber com "por pessoa" na mesma linha, sem tirar o ícone. */
 @container v2-link-card (max-width: 220px) {
-  .v2-links-price > .v2-links-ico,
-  .v2-links-meta > .v2-links-ico {
-    display: none;
+  .v2-links-price-line b {
+    font-size: 19px;
+  }
+  .v2-links-price-line small {
+    font-size: 13px;
   }
 }
 .v2-links-btn {
