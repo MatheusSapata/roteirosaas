@@ -29,7 +29,7 @@
               <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" :d="s.path" /></svg>
             </a>
           </template>
-          <a v-else class="v2-btn v2-hd-contact" :href="contactHref" :target="section.contactType === 'link' ? '_blank' : undefined" data-track-event="cta" :data-track-type="section.contactType === 'whatsapp' ? 'whatsapp' : 'cta'">{{ contactLabel }}</a>
+          <a v-else class="v2-btn v2-hd-contact" :href="contactHref" :target="section.contactType === 'link' ? '_blank' : undefined" data-track-event="cta" :data-track-type="section.contactType === 'whatsapp' ? 'whatsapp' : 'cta'"><span>{{ contactLabel }}</span></a>
         </div>
       </nav>
       <div class="v2-hd-actions">
@@ -39,7 +39,7 @@
               <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" :d="s.path" /></svg>
             </a>
           </template>
-          <a v-else class="v2-btn v2-hd-contact" :href="contactHref" :target="section.contactType === 'link' ? '_blank' : undefined" data-track-event="cta" :data-track-type="section.contactType === 'whatsapp' ? 'whatsapp' : 'cta'">{{ contactLabel }}</a>
+          <a v-else class="v2-btn v2-hd-contact" :href="contactHref" :target="section.contactType === 'link' ? '_blank' : undefined" data-track-event="cta" :data-track-type="section.contactType === 'whatsapp' ? 'whatsapp' : 'cta'"><span>{{ contactLabel }}</span></a>
         </template>
         <button v-if="links.length || hasActions" class="v2-hd-toggle" type="button" :aria-expanded="menuOpen" :aria-label="copy.menu" @click="menuOpen = !menuOpen">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
@@ -269,10 +269,18 @@ onUnmounted(() => window.removeEventListener("scroll", updateStuck));
   gap: 8px;
   margin-left: auto;
 }
+/* Na barra do menu o texto fica numa linha só (com "…" se for muito longo); no menu aberto
+   do celular ele quebra como os outros botões. */
 .v2-hd-contact {
-  min-height: 44px;
-  padding: 0 20px;
+  --v2-btn-h: 44px;
+  max-width: 280px;
+  padding: 8px 20px;
   font-size: 15px;
+}
+.v2-hd-contact > span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 .v2-hd-social {
   display: grid;
@@ -346,6 +354,10 @@ onUnmounted(() => window.removeEventListener("scroll", updateStuck));
   }
   .v2-hd-mobile-actions .v2-hd-contact {
     width: 100%;
+    max-width: 100%;
+  }
+  .v2-hd-mobile-actions .v2-hd-contact > span {
+    white-space: normal;
   }
   .v2-hd-mobile-actions .v2-hd-social {
     background: #f1f4f0;

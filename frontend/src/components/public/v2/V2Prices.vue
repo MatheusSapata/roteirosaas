@@ -192,9 +192,9 @@ const items = computed(() =>
   white-space: pre-line;
 }
 .v2-price-btn {
+  --v2-btn-h: 48px;
   width: 100%;
   max-width: 380px;
-  min-height: 48px;
   padding: 10px 20px;
   white-space: nowrap;
   font-size: 15px;

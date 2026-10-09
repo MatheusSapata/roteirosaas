@@ -423,7 +423,8 @@ const slide = (direction: number) => {
   }
 }
 .v2-links-btn {
-  min-height: 48px;
+  --v2-btn-h: 48px;
+  padding: 10px 20px;
 }
 .v2-links-meta + .v2-links-btn,
 .v2-links-price + .v2-links-btn {

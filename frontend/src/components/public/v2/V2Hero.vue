@@ -483,8 +483,8 @@ const HeroContent = defineComponent({
   color: var(--v2-accent-text);
 }
 .v2-hero-btn {
-  min-height: 56px;
-  padding: 0 28px;
+  --v2-btn-h: 56px;
+  padding: 14px 28px;
   font-size: 17px;
 }
 .v2-hero--classic {
