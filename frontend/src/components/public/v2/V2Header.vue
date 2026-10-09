@@ -29,7 +29,7 @@
               <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" :d="s.path" /></svg>
             </a>
           </template>
-          <a v-else class="v2-btn v2-hd-contact" :href="contactHref" :target="section.contactType === 'link' ? '_blank' : undefined" data-track-event="cta" :data-track-type="section.contactType === 'whatsapp' ? 'whatsapp' : 'cta'">{{ contactLabel }}</a>
+          <a v-else class="v2-btn v2-hd-contact" :href="contactHref" :target="section.contactType === 'link' ? '_blank' : undefined" data-track-event="cta" :data-track-type="section.contactType === 'whatsapp' ? 'whatsapp' : 'cta'"><span>{{ contactLabel }}</span></a>
         </div>
       </nav>
       <div class="v2-hd-actions">
@@ -39,7 +39,7 @@
               <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" :d="s.path" /></svg>
             </a>
           </template>
-          <a v-else class="v2-btn v2-hd-contact" :href="contactHref" :target="section.contactType === 'link' ? '_blank' : undefined" data-track-event="cta" :data-track-type="section.contactType === 'whatsapp' ? 'whatsapp' : 'cta'">{{ contactLabel }}</a>
+          <a v-else class="v2-btn v2-hd-contact" :href="contactHref" :target="section.contactType === 'link' ? '_blank' : undefined" data-track-event="cta" :data-track-type="section.contactType === 'whatsapp' ? 'whatsapp' : 'cta'"><span>{{ contactLabel }}</span></a>
         </template>
         <button v-if="links.length || hasActions" class="v2-hd-toggle" type="button" :aria-expanded="menuOpen" :aria-label="copy.menu" @click="menuOpen = !menuOpen">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
@@ -62,6 +62,7 @@ import "./v2.css";
 const props = defineProps<{
   section: HeaderSection;
   logoUrl?: string;
+  logoRadius?: number;
   agencyName?: string;
   agencySocialLinks?: Array<{ network?: string; platform?: string; url?: string }>;
   previewBackgroundImage?: string;
@@ -81,7 +82,11 @@ const isStuck = ref(false);
 const mode = computed(() => (props.section.mode === "transparent" || props.section.mode === "blurred" ? "transparent" : "solid"));
 const showSpacer = computed(() => isStuck.value && mode.value === "solid" && !props.previewDevice);
 const logo = computed(() => resolveMediaUrl(props.logoUrl) || "");
-const logoStyle = computed(() => ({ maxHeight: `${Math.min(96, Math.max(36, props.section.logoSize || 52))}px` }));
+// Os cantos vêm do logo do Banner Inicial (é a mesma imagem); o tamanho é o do menu.
+const logoStyle = computed(() => ({
+  maxHeight: `${Math.min(96, Math.max(36, props.section.logoSize || 52))}px`,
+  borderRadius: `${Math.max(0, props.logoRadius || 0)}px`
+}));
 const previewBannerImage = computed(() => (props.previewDevice ? resolveMediaUrl(props.previewBackgroundImage) || "" : ""));
 const surface = computed(() => (mode.value === "transparent" && !isStuck.value ? "#0B1410" : isStuck.value ? "#FFFFFF" : props.section.backgroundColor || "#FFFFFF"));
 const vars = computed(() => toneVars(computeSectionTone(surface.value, design.value.accent)));
@@ -264,10 +269,18 @@ onUnmounted(() => window.removeEventListener("scroll", updateStuck));
   gap: 8px;
   margin-left: auto;
 }
+/* Na barra do menu o texto fica numa linha só (com "…" se for muito longo); no menu aberto
+   do celular ele quebra como os outros botões. */
 .v2-hd-contact {
-  min-height: 44px;
-  padding: 0 20px;
+  --v2-btn-h: 44px;
+  max-width: 280px;
+  padding: 8px 20px;
   font-size: 15px;
+}
+.v2-hd-contact > span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 .v2-hd-social {
   display: grid;
@@ -341,6 +354,10 @@ onUnmounted(() => window.removeEventListener("scroll", updateStuck));
   }
   .v2-hd-mobile-actions .v2-hd-contact {
     width: 100%;
+    max-width: 100%;
+  }
+  .v2-hd-mobile-actions .v2-hd-contact > span {
+    white-space: normal;
   }
   .v2-hd-mobile-actions .v2-hd-social {
     background: #f1f4f0;

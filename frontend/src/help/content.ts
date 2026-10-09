@@ -41,7 +41,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     rotaRotulo: "Abrir o Dashboard",
     busca: "dashboard inicio menu lateral navegar painel metricas visitas cliques resumo periodo tema escuro",
     passos: [
-      { titulo: "Use o menu para navegar", texto: "**Principal** tem Dashboard, Páginas e Captação de leads. **Configurar** tem Integrações, Minha Agência e Domínios. **Aprender** tem esta Central e as Aulas. O alfinete no topo deixa o menu sempre aberto.", tela: 1 },
+      { titulo: "Use o menu para navegar", texto: "**Principal** tem Dashboard, Páginas e Captação de leads. **Configurar** tem Integrações, Minha Agência e Domínios. **Aprender** tem esta Central de Ajuda. O alfinete no topo deixa o menu sempre aberto.", tela: 1 },
       { titulo: "Crie páginas de qualquer tela", texto: "O botão **Nova página** fica no topo do menu.", tela: 2 },
       { titulo: "Escolha o período", texto: "**7 dias**, **14 dias** ou **30 dias** mudam todos os números do Dashboard.", tela: 3 },
       { titulo: "Acompanhe os números", texto: "**Visitas**, **Cliques nos botões**, **Leads** e **Páginas no ar**, com a comparação com o período anterior.", tela: 4 },
@@ -373,7 +373,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       { titulo: "Transparente fica sobre a capa", texto: "Transparente e desfoque ficam sobre a foto do Banner Inicial e ganham fundo quando o visitante rola a página.", tela: 4 },
       { titulo: "Salve a seção", tela: 5 }
     ],
-    blocos: [{ tipo: "texto", texto: "O logo vem do Banner Inicial ou, sem ele, de Minha Agência." }],
+    blocos: [{ tipo: "texto", texto: "A imagem e os cantos do logo vêm de **Banner Inicial › Logo** (ou, sem Banner, de Minha Agência). O tamanho do logo no menu fica no grupo **Logo** do próprio Menu do topo." }],
     relacionados: ["editar-secao", "configurar-agencia"]
   },
   {
@@ -635,7 +635,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       { titulo: "Confira o link da agência", texto: "É o começo do endereço de todas as páginas: roteiroonline.com/link-da-agencia/nome-da-pagina.", tela: 3 },
       { titulo: "Escolha a cor principal", texto: "A base dos botões. Dá para ajustar em cada página.", tela: 4 },
       { titulo: "Informe o WhatsApp", texto: "O número padrão dos botões de WhatsApp das páginas.", tela: 5 },
-      { titulo: "Envie o logo e as redes sociais", texto: "Logo com fundo transparente fica bem em qualquer cor.", tela: 6 },
+      { titulo: "Envie o logo e as redes sociais", texto: "Logo com fundo transparente fica bem em qualquer cor. Ele é o padrão das páginas; em cada página dá para trocar, aumentar, arredondar ou tirar o fundo em **Banner Inicial › Logo**.", tela: 6 },
       { titulo: "Salve", texto: "A barra de salvar aparece embaixo quando há mudanças.", tela: 7 }
     ],
     blocos: [{ tipo: "atencao", texto: "Trocar o link da agência muda o endereço de todas as páginas. Os links antigos param de funcionar." }],

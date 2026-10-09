@@ -248,6 +248,7 @@ const headerLogo = computed(() => {
   const hero = sections.value.find(section => section.type === "hero") as HeroSection | undefined;
   return hero?.logoUrl || brandingLogo.value;
 });
+const headerLogoRadius = computed(() => (sections.value.find(section => section.type === "hero") as HeroSection | undefined)?.logoBorderRadius ?? 0);
 const findPrevEnabledSection = (index: number) => {
   for (let i = index - 1; i >= 0; i -= 1) {
     const candidate = sections.value[i];
@@ -299,6 +300,7 @@ const sectionExtraProps = (section: PageSection, index: number) => {
   }
   if (section.type === "header") {
     extra.logoUrl = headerLogo.value;
+    if (hasV2("header")) extra.logoRadius = headerLogoRadius.value;
     extra.agencyName = (brandingInfo.value as Record<string, any>)?.agency_name || "";
     extra.agencySocialLinks = (brandingInfo.value as Record<string, any>)?.agency_profile?.social_links || (brandingInfo.value as Record<string, any>)?.social_links || [];
   }

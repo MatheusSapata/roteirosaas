@@ -100,7 +100,10 @@ export interface PhotoSection extends SectionBase {
   type: "photo";
   image?: string;
   layout?: "card" | "full";
+  /** Texto alternativo (leitores de tela); não aparece na página. */
   altText?: LocalizedString;
+  /** Legenda visível embaixo da foto (visual novo). */
+  caption?: LocalizedString;
 }
 
 export interface BiographySection extends SectionBase {

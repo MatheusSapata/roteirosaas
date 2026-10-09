@@ -5,7 +5,7 @@
       <div v-if="section.logoEnabled !== false && resolvedLogo" class="mb-4 flex justify-center">
         <img :src="resolvedLogo" :alt="title" class="vsl-brand-logo" :style="logoStyle" />
       </div>
-      <h2 class="v2-title" :style="[{ color: primaryText }, titleScaleStyle(title)]">{{ title }}</h2>
+      <h2 v-if="title" class="v2-title" :style="[{ color: primaryText }, titleScaleStyle(title)]">{{ title }}</h2>
       <div v-if="subtitleHtml" class="v2-lead mt-3" :style="{ color: mutedText }" v-html="subtitleHtml"></div>
 
       <div v-if="playerUrl" class="group mx-auto mt-8 w-full overflow-hidden rounded-[24px] shadow-2xl" :class="[videoContainerClass, { 'control-auto-hidden': controlAutoHidden }]" @mouseenter="showPlayerControl" @mouseleave="hidePlayerControl" @click="handlePlayerAreaClick">
@@ -84,7 +84,7 @@ const controlAutoHidden = ref(false);
 let pollTimer: number | null = null;
 let controlTimer: number | null = null;
 
-const title = computed(() => localize(props.section.title).trim() || "Assista antes de continuar");
+const title = computed(() => localize(props.section.title).trim());
 const subtitleHtml = computed(() => sanitizeHtml(localize(props.section.subtitle)));
 const primaryText = computed(() => tone.value.ink);
 const mutedText = computed(() => tone.value.muted);

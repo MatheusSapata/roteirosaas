@@ -89,9 +89,9 @@ const cta = useCta(
   opacity: 0.85;
 }
 .v2-cta-btn {
+  --v2-btn-h: 56px;
   background: #0f1713;
   color: #fff;
-  min-height: 56px;
   font-size: 17px;
 }
 .v2-cta-card {

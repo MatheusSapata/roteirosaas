@@ -1554,6 +1554,8 @@ const adminNavigation = computed<AdminNavItem[]>(() => {
     if (item.id === "inbox") return hasPermission("leads") && inboxEnabled.value && hasWhatsAppPlanAccess.value;
     if (item.id === "integrations") return hasPermission("integrations");
     if (item.id === "agency") return hasPermission("settings") || (canManageTeam.value && hasPermission("team_management"));
+    // Aulas desativadas para as agências (fica a Central de Ajuda); o superadmin continua vendo.
+    if (item.id === "lessons") return !!auth.user?.is_superuser;
     return true;
   });
   return filtered

@@ -1,7 +1,7 @@
 <template>
   <V2Section type="featured_video" :background="section.backgroundColor" :anchor-id="section.anchorId">
     <V2Head :label="label" :title="title" :subtitle-html="subtitleHtml" :align="align" frame="960px" />
-    <div class="v2-fv v2-in v2-d3">
+    <div v-if="video || previewDevice" class="v2-fv v2-in v2-d3">
       <iframe
         v-if="video"
         :src="video"
@@ -29,7 +29,7 @@ import { useCta } from "./useCta";
 import { localize, text, useHeading } from "./useHeading";
 
 const props = defineProps<{ section: FeaturedVideoSection; previewDevice?: "desktop" | "mobile" }>();
-const { label, title, subtitleHtml, align } = useHeading(toRef(props, "section"), "featured_video", { pt: "Vídeo em destaque", es: "Video destacado" });
+const { label, title, subtitleHtml, align } = useHeading(toRef(props, "section"), "featured_video");
 const copy = { empty: localize({ pt: "Adicione um link de vídeo para aparecer aqui.", es: "Agrega un enlace de video para mostrar aquí." }) };
 const video = computed(() => normalizeYoutubeEmbedUrl(props.section.videoUrl));
 const cta = useCta(toRef(props, "section"));

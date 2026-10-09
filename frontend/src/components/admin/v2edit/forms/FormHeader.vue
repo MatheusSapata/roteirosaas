@@ -2,7 +2,8 @@
   <V2EditShell>
     <template #content>
       <EdGroup title="Logo">
-        <p class="ved-info">Usa o logo do Banner Inicial ou, sem ele, o logo da agência (Minha Agência).</p>
+        <EdRange :model-value="modelValue.logoSize || 52" label="Tamanho" :min="36" :max="96" :step="2" unit="px" @update:model-value="patch({ logoSize: $event })" />
+        <p class="ved-info">A imagem e os cantos são os do Banner Inicial › Logo; sem Banner, usa o logo da agência (Minha Agência).</p>
       </EdGroup>
       <EdGroup title="Links" :count="`${links.length} de 7`">
         <EdList
@@ -129,6 +130,7 @@ import { sectionsInjectionKey } from "../../sectionsContext";
 import EdBackground from "../EdBackground.vue";
 import EdGroup from "../EdGroup.vue";
 import EdList from "../EdList.vue";
+import EdRange from "../EdRange.vue";
 import EdSeg from "../EdSeg.vue";
 import EdText from "../EdText.vue";
 import EdToggle from "../EdToggle.vue";

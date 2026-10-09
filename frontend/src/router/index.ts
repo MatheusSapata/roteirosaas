@@ -199,7 +199,13 @@ const platformRoutes: RouteRecordRaw[] = [
       { path: "dashboard", name: "dashboard", component: DashboardView, meta: { permission: "dashboard" } },
       { path: "pages", name: "pages", component: PagesListView, meta: { permission: "pages" } },
       { path: "pages/:id/edit", name: "page-edit", component: PageEditorView, props: true, meta: { permission: "pages" } },
-      { path: "aulas", name: "lessons", component: () => import("../views/admin/AulasView.vue") },
+      // Aulas desativadas para as agências: quem não é superadmin vai para a Central de Ajuda.
+      {
+        path: "aulas",
+        name: "lessons",
+        component: () => import("../views/admin/AulasView.vue"),
+        beforeEnter: () => (useAuthStore().user?.is_superuser ? true : { name: "help-center" })
+      },
       { path: "ajuda", name: "help-center", component: () => import("../views/admin/HelpCenterView.vue") },
       { path: "ajuda/:id", name: "help-article", component: () => import("../views/admin/HelpArticleView.vue"), props: true },
       { path: "leads", redirect: to => resolveLegacyLeadsRedirect(to) },
@@ -406,7 +412,7 @@ const resolveFirstAllowedAdminRoute = (auth: ReturnType<typeof useAuthStore>) =>
     { name: "integrations", permission: "integrations" },
     { name: "connections", permission: "integrations" },
     { name: "agency-domains", permission: "domains" },
-    { name: "lessons", permission: "lessons" },
+    { name: "help-center" },
     { name: "agency-settings", permission: "settings" },
     { name: "agency-team", permission: "team_management", ownerOnly: true },
     { name: "profile" }

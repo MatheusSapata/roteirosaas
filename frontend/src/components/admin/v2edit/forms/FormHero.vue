@@ -38,6 +38,34 @@
         </template>
         <EdText v-else :model-value="modelValue.videoUrl || ''" label="Link do vídeo" type="url" hint="YouTube. Toca sem som, em repetição." @update:model-value="patch({ videoUrl: $event })" />
       </EdGroup>
+      <EdGroup title="Logo">
+        <ImageUploadField
+          layout="compact"
+          label="Imagem"
+          contain
+          enable-crop
+          editor-title="Logo desta página"
+          edit-label="Editar"
+          remove-label="Usar o da agência"
+          :model-value="customLogo"
+          :fallback-url="agencyLogo"
+          :hint="logoHint"
+          @update:model-value="patch({ logoUrl: $event || '' })"
+        />
+        <EdRange v-if="!hasHeader" :model-value="modelValue.logoSize ?? 64" label="Tamanho" :min="32" :max="160" :step="4" unit="px" @update:model-value="patch({ logoSize: $event })" />
+        <EdSeg
+          :model-value="logoCorners"
+          label="Cantos"
+          :options="[
+            { value: 0, label: 'Retos' },
+            { value: 12, label: 'Arredondados' },
+            { value: 999, label: 'Redondo' }
+          ]"
+          hint="Faz diferença em logos com fundo."
+          @update:model-value="patch({ logoBorderRadius: $event })"
+        />
+        <p v-if="hasHeader" class="ved-info">Esta página tem Menu do topo: o logo aparece nele, com esta imagem e estes cantos. O tamanho fica em Menu do topo › Logo.</p>
+      </EdGroup>
       <EdGroup title="Datas">
         <div class="ved-pair">
           <EdText :model-value="modelValue.departureDate || ''" label="Saída" type="date" @update:model-value="patch({ departureDate: $event })" />
@@ -62,15 +90,18 @@
       </EdGroup>
       <EdGroup title="Fundo do texto no celular">
         <EdBackground :value="modelValue" field="gradientColor" @change="patch" fallback="#0B1410" />
-        <p class="ved-info">O logo da agência aparece sozinho quando a página não tem Menu do topo.</p>
       </EdGroup>
     </template>
   </V2EditShell>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
-import type { HeroSection } from "../../../../types/page";
+import { computed, inject, ref } from "vue";
+import type { Ref } from "vue";
+import type { HeroSection, PageSection } from "../../../../types/page";
+import { PUBLIC_BRANDING_KEY } from "../../../../utils/brandingKeys";
+import { resolveMediaUrl } from "../../../../utils/media";
+import { sectionsInjectionKey } from "../../sectionsContext";
 import ImageUploadField from "../../inputs/ImageUploadField.vue";
 import IconEmojiPicker from "../../inputs/IconEmojiPicker.vue";
 import EdBackground from "../EdBackground.vue";
@@ -78,6 +109,7 @@ import EdButton from "../EdButton.vue";
 import EdGroup from "../EdGroup.vue";
 import EdLayouts from "../EdLayouts.vue";
 import EdList from "../EdList.vue";
+import EdRange from "../EdRange.vue";
 import EdRich from "../EdRich.vue";
 import EdSeg from "../EdSeg.vue";
 import EdText from "../EdText.vue";
@@ -96,6 +128,28 @@ const setMediaMode = (mode: "photo" | "video") => {
   mediaMode.value = mode;
   if (mode === "photo" && props.modelValue.videoUrl) patch({ videoUrl: "" });
 };
+
+// Logo: por padrão o da agência (Minha Agência); trocar aqui vale só para esta página.
+// O editor copia o logo da agência para o Banner quando ele está vazio, então "é o da agência"
+// é comparar as duas imagens.
+const brandingRef = inject<Ref<Record<string, any>> | null>(PUBLIC_BRANDING_KEY, null);
+const agencyLogo = computed(() => String(brandingRef?.value?.logo_url || ""));
+const customLogo = computed(() => {
+  const own = props.modelValue.logoUrl || "";
+  return own && resolveMediaUrl(own) !== resolveMediaUrl(agencyLogo.value) ? own : "";
+});
+const logoHint = computed(() => {
+  if (customLogo.value) return "Só nesta página. Editar corta a imagem e remove o fundo.";
+  if (agencyLogo.value) return "Logo da agência (Minha Agência). Trocar vale só para esta página; Editar corta e remove o fundo.";
+  return "A agência ainda não tem logo em Minha Agência. Envie um para esta página.";
+});
+const logoCorners = computed(() => {
+  const radius = Number(props.modelValue.logoBorderRadius ?? 0);
+  return radius <= 0 ? 0 : radius >= 100 ? 999 : 12;
+});
+// Com Menu do topo, o logo aparece nele (o Banner esconde o dele) e o tamanho é o do menu.
+const sections = inject(sectionsInjectionKey, ref<PageSection[]>([]));
+const hasHeader = computed(() => sections.value.some(section => section.type === "header" && section.enabled !== false));
 
 // Destaques ficam em duas listas paralelas: textos (chips) e ícones (chipIcons).
 const chips = computed(() => (props.modelValue.chips || []).map((chip, index) => ({ text: readText(chip), icon: props.modelValue.chipIcons?.[index] || "" })));

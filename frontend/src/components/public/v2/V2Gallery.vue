@@ -3,7 +3,7 @@
     <V2Head :label="label" :title="title" :align="align" />
     <div v-if="isCarousel" class="v2-gal-car v2-in v2-d2">
       <div class="v2-gal-track" :style="{ transform: `translateX(calc(-1 * ${index} * (var(--slide) + 12px)))` }">
-        <figure v-for="(src, idx) in images" :key="idx" class="v2-gal-slide">
+        <figure v-for="(src, idx) in images" :key="idx" class="v2-gal-slide" :class="{ 'is-zoomable': canZoom }" @click="openViewer(idx)">
           <img :src="src" :alt="`${copy.photo} ${idx + 1}`" loading="lazy" />
         </figure>
       </div>
@@ -30,15 +30,16 @@
       </div>
     </div>
     <div v-else-if="isMosaic" class="v2-gal-mosaic">
-      <figure v-for="(src, idx) in images" :key="idx" class="v2-gal-cell v2-in" :class="[`v2-d${Math.min(idx + 2, 7)}`, mosaicCell(idx)]">
+      <figure v-for="(src, idx) in images" :key="idx" class="v2-gal-cell v2-in" :class="[`v2-d${Math.min(idx + 2, 7)}`, mosaicCell(idx), { 'is-zoomable': canZoom }]" @click="openViewer(idx)">
         <img :src="src" :alt="`${copy.photo} ${idx + 1}`" loading="lazy" />
       </figure>
     </div>
     <div v-else class="v2-gal-grid v2-flow" :style="{ '--v2-cols': columns }">
-      <figure v-for="(src, idx) in images" :key="idx" class="v2-gal-cell v2-in" :class="`v2-d${Math.min(idx + 2, 7)}`">
+      <figure v-for="(src, idx) in images" :key="idx" class="v2-gal-cell v2-in" :class="[`v2-d${Math.min(idx + 2, 7)}`, { 'is-zoomable': canZoom }]" @click="openViewer(idx)">
         <img :src="src" :alt="`${copy.photo} ${idx + 1}`" loading="lazy" />
       </figure>
     </div>
+    <V2Lightbox :items="viewerItems" :start="viewerStart" @close="viewerStart = null" />
   </V2Section>
 </template>
 
@@ -48,11 +49,12 @@ import type { GallerySection } from "../../../types/page";
 import { resolveMediaUrl } from "../../../utils/media";
 import V2Section from "./V2Section.vue";
 import V2Head from "./V2Head.vue";
+import V2Lightbox from "./V2Lightbox.vue";
 import { localize, useHeading } from "./useHeading";
 import { balancedColumns } from "./balancedColumns";
 
 const props = defineProps<{ section: GallerySection; previewDevice?: "desktop" | "mobile" }>();
-const { label, title, align } = useHeading(toRef(props, "section") as never, "gallery", "");
+const { label, title, align } = useHeading(toRef(props, "section") as never, "gallery");
 const copy = {
   photo: localize({ pt: "Foto", es: "Foto" }),
   goTo: localize({ pt: "Ir para a foto", es: "Ir a la foto" }),
@@ -85,9 +87,19 @@ const go = (step: number) => {
 watch(() => images.value.length, total => {
   if (index.value >= total) index.value = Math.max(0, total - 1);
 });
+// Tocar numa foto abre em tela cheia, passando por todas; na prévia do editor o clique é da edição.
+const canZoom = computed(() => !props.previewDevice);
+const viewerItems = computed(() => images.value.map(url => ({ type: "image" as const, url })));
+const viewerStart = ref<number | null>(null);
+const openViewer = (idx: number) => {
+  if (canZoom.value) viewerStart.value = idx;
+};
 </script>
 
 <style scoped>
+.is-zoomable {
+  cursor: zoom-in;
+}
 .v2-gal-car {
   --slide: min(100%, max(280px, calc((100% - 24px) / 3)));
   overflow: hidden;

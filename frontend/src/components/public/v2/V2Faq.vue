@@ -21,7 +21,7 @@ import V2Head from "./V2Head.vue";
 import { html, text, useHeading } from "./useHeading";
 
 const props = defineProps<{ section: FaqSection; previewDevice?: "desktop" | "mobile" }>();
-const { label, title, subtitleHtml, align } = useHeading(toRef(props, "section"), "faq", { pt: "Perguntas frequentes", es: "Preguntas frecuentes" });
+const { label, title, subtitleHtml, align } = useHeading(toRef(props, "section"), "faq");
 const isSplit = computed(() => props.section.layout === "split");
 const items = computed(() => (props.section.items || []).map(item => ({ question: text(item.question), answerHtml: html(item.answer) })));
 const openIndex = ref<number | null>(0);

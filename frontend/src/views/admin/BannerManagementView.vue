@@ -745,7 +745,7 @@ const internalRouteOptions = [
   { label: "Checkout", value: "/admin/planos" },
   { label: "Assinatura / Plano", value: "/admin/planos" },
   { label: "Equipe / Usuários", value: "/admin/administracao/usuarios" },
-  { label: "Central de ajuda", value: "/admin/aulas" }
+  { label: "Central de ajuda", value: "/admin/ajuda" }
 ];
 
 const ruleFields = [

@@ -9,7 +9,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import type { SectionType } from "../../../types/page";
-import { getSectionHeadingDefaults } from "../../../utils/sectionHeadings";
 import EdGroup from "./EdGroup.vue";
 import EdRich from "./EdRich.vue";
 import EdText from "./EdText.vue";
@@ -29,11 +28,7 @@ const props = withDefaults(
 );
 const emit = defineEmits<{ (e: "patch", value: Record<string, any>): void }>();
 const read = (key: string) => readText(props.value[key]);
-// Sem selo salvo, a página mostra o selo padrão da seção: o campo mostra o mesmo.
-const labelValue = computed(() => {
-  const saved = props.value[props.keys.label];
-  if (saved !== null && saved !== undefined) return readText(saved);
-  return props.type ? readText(getSectionHeadingDefaults(props.type).label) : "";
-});
+// Só o que está salvo: sem selo, a página não mostra selo e o campo fica vazio.
+const labelValue = computed(() => readText(props.value[props.keys.label]));
 const write = (key: string, next: string) => emit("patch", { [key]: writeText(props.value[key], next) });
 </script>
