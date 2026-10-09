@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_active_user, get_db
 from app.core.config import get_settings
 from app.core.request_ip import get_client_ip
+from app.core.webhook_auth import require_webhook_token
 from app.models.subscription import Subscription
 from app.models.user import User
 from app.models.revenue import RevenueTotal
@@ -529,6 +530,13 @@ def _notify_subscription_push(
 
 @router.post("/webhook")
 async def webhook(request: Request, db: Session = Depends(get_db)) -> Dict[str, Any]:
+    # O Asaas envia o token cadastrado no painel em todo webhook.
+    require_webhook_token(
+        request.headers.get("asaas-access-token"),
+        settings.asaas_webhook_token,
+        env=settings.env,
+        setting_name="ASAAS_WEBHOOK_TOKEN",
+    )
     payload = await request.json()
     event = payload.get("event")
     if not event:

@@ -1,17 +1,13 @@
-import secrets
-
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
 from app.core.config import get_settings
+from app.core.webhook_auth import require_webhook_token
 from app.schemas.cakto import (
     CheckoutSessionRequest,
     CheckoutSessionResponse,
     CheckoutSessionStatusResponse,
-    ManualPasswordEmailPayload,
-    ManualPasswordPayload,
-    ManualPasswordValidationResponse,
     OnboardingPasswordPayload,
     OnboardingSessionResponse,
 )
@@ -54,11 +50,12 @@ def get_checkout_session_status(token: str, db: Session = Depends(get_db)) -> Ch
 
 @router.post("/webhook")
 async def receive_cakto_webhook(request: Request, db: Session = Depends(get_db)) -> dict:
-    secret = settings.cakto_webhook_secret
-    if secret:
-        provided = request.query_params.get("token") or request.headers.get("x-cakto-token")
-        if not provided or not secrets.compare_digest(provided, secret):
-            raise HTTPException(status_code=401, detail="Assinatura do webhook inválida.")
+    require_webhook_token(
+        request.query_params.get("token") or request.headers.get("x-cakto-token"),
+        settings.cakto_webhook_secret,
+        env=settings.env,
+        setting_name="CAKTO_WEBHOOK_SECRET",
+    )
     try:
         payload = await request.json()
     except ValueError as exc:
@@ -114,30 +111,3 @@ def finish_onboarding_session(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {"detail": "Senha definida com sucesso. Faça login para acessar o painel."}
-
-
-@router.post("/onboarding/manual-password")
-def finish_onboarding_by_email(payload: ManualPasswordPayload, db: Session = Depends(get_db)) -> dict:
-    service = CaktoIntegrationService(db)
-    try:
-        service.set_password_by_email(email=payload.email, password=payload.password)
-    except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return {"detail": "Senha definida com sucesso. Faça login para acessar o painel."}
-
-
-@router.post(
-    "/onboarding/manual-password/validate",
-    response_model=ManualPasswordValidationResponse,
-)
-def validate_manual_onboarding_email(payload: ManualPasswordEmailPayload, db: Session = Depends(get_db)) -> ManualPasswordValidationResponse:
-    service = CaktoIntegrationService(db)
-    try:
-        user = service.lookup_manual_user(payload.email)
-    except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return ManualPasswordValidationResponse(email=user.email, name=user.name)

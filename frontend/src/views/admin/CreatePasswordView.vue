@@ -13,40 +13,24 @@
 
       <div class="w-full rounded-3xl bg-white p-6 shadow-[0_30px_80px_rgba(0,0,0,0.18)] md:p-8">
         <transition name="step" mode="out-in">
-          <div v-if="!canSetPassword" key="email-step">
-            <p class="text-sm font-semibold uppercase tracking-[0.35em] text-slate-500">
-              {{ viewCopy.emailStep.badge }}
-            </p>
-            <h2 class="mt-1 text-2xl font-bold text-slate-900">{{ viewCopy.emailStep.title }}</h2>
+          <div v-if="isLoadingSession" key="loading-step" class="py-6 text-center text-sm text-slate-500">
+            {{ viewCopy.loading }}
+          </div>
+
+          <div v-else-if="!canSetPassword" key="invalid-step">
+            <h2 class="text-2xl font-bold text-slate-900">{{ viewCopy.invalidLink.title }}</h2>
             <p class="mt-2 text-sm text-slate-500">
-              {{ viewCopy.emailStep.description }}
+              {{ viewCopy.invalidLink.description }}
             </p>
-
-            <form class="mt-6 space-y-4" @submit.prevent="onEmailSubmit">
-              <div>
-                <label class="text-sm font-semibold text-slate-600">{{ viewCopy.emailStep.label }}</label>
-                <input
-                  v-model.trim="email"
-                  type="email"
-                  required
-                  :disabled="isValidatingEmail"
-                  class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3 text-base focus:border-[#41ce5f] focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100"
-                  :placeholder="viewCopy.emailStep.placeholder"
-                />
-              </div>
-
-              <button
-                type="submit"
-                class="flex w-full items-center justify-center rounded-xl bg-[#41ce5f] px-4 py-3 text-base font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
-                :disabled="isValidatingEmail"
-              >
-                {{ isValidatingEmail ? viewCopy.emailStep.buttonLoading : viewCopy.emailStep.buttonSubmit }}
-              </button>
-            </form>
-
-            <p v-if="manualValidationError" class="mt-3 text-sm text-red-500">
-              {{ manualValidationError }}
+            <p v-if="sessionError" class="mt-3 text-sm text-red-500">
+              {{ sessionError }}
             </p>
+            <RouterLink
+              :to="{ name: 'forgot-password' }"
+              class="mt-6 flex w-full items-center justify-center rounded-xl bg-[#41ce5f] px-4 py-3 text-base font-semibold text-white transition hover:brightness-110"
+            >
+              {{ viewCopy.invalidLink.button }}
+            </RouterLink>
           </div>
 
           <div v-else key="password-step" class="space-y-5">
@@ -133,15 +117,10 @@
 
 <script setup lang="ts">
 import { EyeIcon, EyeOffIcon } from "lucide-vue-next";
-import { computed, onMounted, ref, watch } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { computed, onMounted, ref } from "vue";
+import { RouterLink, useRoute, useRouter } from "vue-router";
 import api from "../../services/api";
-import {
-  fetchOnboardingSession,
-  submitManualOnboardingPassword,
-  submitOnboardingPassword,
-  validateManualOnboardingEmail
-} from "../../services/cakto";
+import { fetchOnboardingSession, submitOnboardingPassword } from "../../services/cakto";
 import { useAuthStore } from "../../store/useAuthStore";
 import { createAdminLocalizer } from "../../utils/adminI18n";
 
@@ -150,11 +129,6 @@ interface OnboardingSession {
   name?: string | null;
   plan: string;
   cycle: string;
-}
-
-interface ManualValidation {
-  email: string;
-  name?: string | null;
 }
 
 const route = useRoute();
@@ -170,20 +144,17 @@ const viewCopy = {
     title: t({ pt: "Seja bem-vindo!", es: "¡Bienvenido!" }),
     description: t({ pt: "Vamos finalizar seu cadastro agora mesmo.", es: "Terminemos tu registro ahora mismo." })
   },
-  emailStep: {
-    badge: t({ pt: "Passo 1", es: "Paso 1" }),
-    title: t({ pt: "Valide seu e-mail", es: "Verifica tu correo" }),
+  loading: t({ pt: "Carregando seu pedido...", es: "Cargando tu pedido..." }),
+  invalidLink: {
+    title: t({ pt: "Link inválido ou expirado", es: "Enlace inválido o vencido" }),
     description: t({
-      pt: "Digite o e-mail usado na compra e clique em avançar.",
-      es: "Ingresa el correo usado en la compra y haz clic en avanzar."
+      pt: "Este link de criação de senha não é mais válido. Para acessar o painel, defina uma nova senha pela opção Esqueci minha senha.",
+      es: "Este enlace para crear la contraseña ya no es válido. Para acceder al panel, define una nueva contraseña con la opción Olvidé mi contraseña."
     }),
-    label: t({ pt: "E-mail usado na compra", es: "Correo usado en la compra" }),
-    placeholder: t({ pt: "voce@agencia.com", es: "tu@agencia.com" }),
-    buttonLoading: t({ pt: "Validando...", es: "Validando..." }),
-    buttonSubmit: t({ pt: "Avançar", es: "Avanzar" })
+    button: t({ pt: "Ir para Esqueci minha senha", es: "Ir a Olvidé mi contraseña" })
   },
   passwordStep: {
-    badge: t({ pt: "Passo 2", es: "Paso 2" }),
+    badge: t({ pt: "Último passo", es: "Último paso" }),
     greeting: (name: string) => t({ pt: `Olá, ${name}`, es: `Hola, ${name}` }),
     description: t({
       pt: "Defina uma senha segura para acessar o painel. Assim que concluir, faremos o login automaticamente.",
@@ -209,12 +180,6 @@ const viewCopy = {
     submitLabel: t({ pt: "Finalizar e acessar", es: "Finalizar y acceder" })
   },
   feedback: {
-    sessionNotFound: t({
-      pt: "Não encontramos o pedido automaticamente. Valide o e-mail usado na compra para continuar.",
-      es: "No encontramos el pedido automáticamente. Valida el correo usado en la compra para continuar."
-    }),
-    emailRequired: t({ pt: "Informe o e-mail utilizado na compra.", es: "Ingresa el correo utilizado en la compra." }),
-    emailNotFound: t({ pt: "Não encontramos o cadastro para este e-mail.", es: "No encontramos un registro para este correo." }),
     passwordRequirements: t({
       pt: "A senha deve ter pelo menos 8 caracteres, com letra maiúscula, minúscula e número.",
       es: "La contraseña debe tener al menos 8 caracteres, con mayúsculas, minúsculas y números."
@@ -222,10 +187,6 @@ const viewCopy = {
     passwordMismatch: t({
       pt: "As senhas não coincidem. Verifique e tente novamente.",
       es: "Las contraseñas no coinciden. Verifica e intenta de nuevo."
-    }),
-    userNotIdentified: t({
-      pt: "Não conseguimos identificar o usuário. Valide seu e-mail novamente.",
-      es: "No pudimos identificar al usuario. Valida tu correo nuevamente."
     }),
     success: t({
       pt: "Senha definida com sucesso! Acessando seu painel...",
@@ -244,7 +205,6 @@ const viewCopy = {
 
 const password = ref("");
 const confirmPassword = ref("");
-const email = ref("");
 const showPassword = ref(false);
 const showConfirmPassword = ref(false);
 const formError = ref("");
@@ -253,10 +213,7 @@ const isSubmitting = ref(false);
 
 const session = ref<OnboardingSession | null>(null);
 const isLoadingSession = ref(true);
-const manualValidatedUser = ref<ManualValidation | null>(null);
-const manualValidatedEmail = ref("");
-const manualValidationError = ref("");
-const isValidatingEmail = ref(false);
+const sessionError = ref("");
 
 const extractOrderFromReferrer = (): string | null => {
   if (typeof document === "undefined") return null;
@@ -293,11 +250,11 @@ const identifierParams = () => {
   return params;
 };
 
-const canSetPassword = computed(() => !!session.value || !!manualValidatedUser.value);
+const canSetPassword = computed(() => !!session.value);
 
-const identityEmail = computed(() => session.value?.email ?? manualValidatedUser.value?.email ?? "");
+const identityEmail = computed(() => session.value?.email ?? "");
 
-const identityName = computed(() => session.value?.name ?? manualValidatedUser.value?.name ?? identityEmail.value);
+const identityName = computed(() => session.value?.name || identityEmail.value);
 
 const loadSession = async () => {
   const params = identifierParams();
@@ -310,63 +267,17 @@ const loadSession = async () => {
   try {
     const { data } = await fetchOnboardingSession(params);
     session.value = data;
-    email.value = data.email;
-    manualValidationError.value = "";
+    sessionError.value = "";
   } catch (err: any) {
-    const detail = err?.response?.data?.detail;
-    manualValidationError.value = detail || viewCopy.feedback.sessionNotFound;
+    sessionError.value = err?.response?.data?.detail || "";
   } finally {
     isLoadingSession.value = false;
   }
 };
 
-const resetManualValidation = () => {
-  manualValidatedEmail.value = "";
-  manualValidatedUser.value = null;
-  manualValidationError.value = "";
-};
-
-watch(email, newValue => {
-  if (session.value) return;
-
-  if (!newValue) {
-    manualValidationError.value = "";
-  }
-
-  if (!manualValidatedEmail.value) return;
-
-  if (newValue.trim().toLowerCase() !== manualValidatedEmail.value) {
-    resetManualValidation();
-  }
-});
-
 onMounted(() => {
   loadSession();
 });
-
-const onEmailSubmit = async () => {
-  manualValidationError.value = "";
-
-  if (!email.value.trim()) {
-    manualValidationError.value = viewCopy.feedback.emailRequired;
-    return;
-  }
-
-  isValidatingEmail.value = true;
-
-  try {
-    const normalized = email.value.trim().toLowerCase();
-    const { data } = await validateManualOnboardingEmail({ email: normalized });
-    manualValidatedEmail.value = data.email.trim().toLowerCase();
-    manualValidatedUser.value = data;
-    email.value = data.email;
-  } catch (err: any) {
-    const detail = err?.response?.data?.detail;
-    manualValidationError.value = detail || viewCopy.feedback.emailNotFound;
-  } finally {
-    isValidatingEmail.value = false;
-  }
-};
 
 const redirectToLogin = () => {
   setTimeout(() => {
@@ -414,24 +325,12 @@ const onSubmit = async () => {
     return;
   }
 
-  const loginEmail = identityEmail.value || email.value.trim().toLowerCase();
-
-  if (!loginEmail) {
-    formError.value = viewCopy.feedback.userNotIdentified;
-    return;
-  }
+  const loginEmail = identityEmail.value;
 
   isSubmitting.value = true;
 
   try {
-    if (session.value) {
-      await submitOnboardingPassword(identifierParams(), { password: password.value });
-    } else {
-      await submitManualOnboardingPassword({
-        email: manualValidatedUser.value?.email || loginEmail,
-        password: password.value
-      });
-    }
+    await submitOnboardingPassword(identifierParams(), { password: password.value });
 
     success.value = viewCopy.feedback.success;
     await autoLogin(loginEmail);
