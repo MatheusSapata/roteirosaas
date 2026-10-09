@@ -408,7 +408,6 @@ const areaDefs = [
   { key: "integrations", label: "Integrações" },
   { key: "domains", label: "Domínios" },
   { key: "settings", label: "Minha agência e faturas", chip: "Minha agência" },
-  { key: "lessons", label: "Aulas" }
 ];
 const isAreaOn = (area: string, permissions: string[]) => {
   if (area === "pages") return permissions.some(p => p === "pages" || p === "pages_viewer" || p === "pages_editor");

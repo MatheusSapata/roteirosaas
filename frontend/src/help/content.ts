@@ -41,7 +41,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     rotaRotulo: "Abrir o Dashboard",
     busca: "dashboard inicio menu lateral navegar painel metricas visitas cliques resumo periodo tema escuro",
     passos: [
-      { titulo: "Use o menu para navegar", texto: "**Principal** tem Dashboard, Páginas e Captação de leads. **Configurar** tem Integrações, Minha Agência e Domínios. **Aprender** tem esta Central e as Aulas. O alfinete no topo deixa o menu sempre aberto.", tela: 1 },
+      { titulo: "Use o menu para navegar", texto: "**Principal** tem Dashboard, Páginas e Captação de leads. **Configurar** tem Integrações, Minha Agência e Domínios. **Aprender** tem esta Central de Ajuda. O alfinete no topo deixa o menu sempre aberto.", tela: 1 },
       { titulo: "Crie páginas de qualquer tela", texto: "O botão **Nova página** fica no topo do menu.", tela: 2 },
       { titulo: "Escolha o período", texto: "**7 dias**, **14 dias** ou **30 dias** mudam todos os números do Dashboard.", tela: 3 },
       { titulo: "Acompanhe os números", texto: "**Visitas**, **Cliques nos botões**, **Leads** e **Páginas no ar**, com a comparação com o período anterior.", tela: 4 },
