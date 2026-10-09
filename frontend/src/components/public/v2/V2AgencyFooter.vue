@@ -2,11 +2,8 @@
   <V2Section type="agency_footer" :background="section.backgroundColor" fallback-background="#0E1A15" :anchor-id="section.anchorId" flush>
     <div class="v2-ft">
       <div class="v2-ft-cols">
-        <div class="v2-ft-col v2-ft-brand">
-          <img v-if="logo" :src="logo" :alt="companyName" class="v2-ft-logo" loading="lazy" />
-          <b class="v2-ft-name">{{ companyName || copy.fallbackName }}</b>
+        <div v-if="description || socialLinks.length" class="v2-ft-col v2-ft-brand">
           <p v-if="description" class="v2-ft-about">{{ description }}</p>
-          <span v-if="cnpjText" class="v2-ft-muted">CNPJ {{ cnpjText }}</span>
           <div v-if="socialLinks.length" class="v2-ft-social" :aria-label="copy.social">
             <a v-for="link in socialLinks" :key="link.network" :href="link.url" target="_blank" rel="noopener noreferrer" :aria-label="link.label" :title="link.label">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path :d="link.iconPath" /></svg>
@@ -24,7 +21,7 @@
           <a v-if="mapLink" :href="mapLink" target="_blank" rel="noopener" class="v2-ft-map-btn">{{ copy.map }}</a>
         </div>
         <div v-if="mapEmbedUrl" class="v2-ft-col v2-ft-mapcol">
-          <iframe :src="mapEmbedUrl" :title="copy.mapTitle" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+          <iframe :src="mapEmbedUrl" :title="copy.mapTitle" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
         </div>
       </div>
       <div class="v2-ft-bottom">
@@ -32,7 +29,7 @@
           <img :src="cadasturLogo" alt="Cadastur" />
           <span>{{ copy.cadastur }}</span>
         </a>
-        <span class="v2-ft-muted">© {{ year }} {{ companyName }}</span>
+        <p class="v2-ft-legal">{{ legalText }}</p>
       </div>
     </div>
   </V2Section>
@@ -44,14 +41,13 @@ import { siFacebook, siInstagram, siTiktok, siYoutube } from "simple-icons";
 import type { AgencyFooterSection } from "../../../types/page";
 import cadasturLogo from "../../../assets/cadastur-logo.png";
 import { PUBLIC_BRANDING_KEY } from "../../../utils/brandingKeys";
-import { resolveMediaUrl } from "../../../utils/media";
+import { getCurrentLanguage } from "../../../utils/i18n";
 import { normalizeWhatsappDigits } from "../../../utils/whatsapp";
 import V2Section from "./V2Section.vue";
 import { localize } from "./useHeading";
 
 const props = defineProps<{ section: AgencyFooterSection; branding?: Record<string, any>; previewDevice?: "desktop" | "mobile" }>();
 const copy = {
-  fallbackName: localize({ pt: "Sua agência cadastrada", es: "Tu agencia registrada" }),
   social: localize({ pt: "Redes sociais", es: "Redes sociales" }),
   contacts: localize({ pt: "Contatos", es: "Contactos" }),
   address: localize({ pt: "Endereço", es: "Dirección" }),
@@ -59,12 +55,13 @@ const copy = {
   mapTitle: localize({ pt: "Localização da agência", es: "Ubicación de la agencia" }),
   cadastur: localize({ pt: "Agência cadastrada no Cadastur", es: "Agencia registrada en Cadastur" })
 };
+
+const year = new Date().getFullYear();
 const provided = inject(PUBLIC_BRANDING_KEY, null) as any;
 const branding = computed<Record<string, any>>(() => props.branding || (provided && "value" in provided ? provided.value : provided) || {});
 const profile = computed<Record<string, any>>(() => branding.value?.agency_profile || {});
 const companyName = computed(() => profile.value?.name || branding.value?.agency_name || "");
 const description = computed(() => String(profile.value?.description || "").trim());
-const logo = computed(() => resolveMediaUrl(branding.value?.logo_url) || "");
 const digitsOf = (value?: string | null) => (value || "").replace(/\D/g, "");
 const cnpjText = computed(() => {
   const d = digitsOf(profile.value?.cnpj).slice(0, 14);
@@ -90,13 +87,17 @@ const addressText = computed(() => {
   const line2 = [a.neighborhood, a.city, a.state, a.zipcode].filter(Boolean).join(", ");
   return profile.value?.address_text || [line1, line2].filter(Boolean).join(" · ");
 });
-const mapEmbedUrl = computed(
-  () => profile.value?.map_embed_url || (addressText.value ? `https://www.google.com/maps?q=${encodeURIComponent(addressText.value)}&output=embed` : "")
-);
-const mapLink = computed(() => {
-  const query = profile.value?.map_query || addressText.value;
-  return query ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}` : "";
+// Busca do mapa sem o complemento ("Sala 1204", "Bloco B"), que atrapalha o Google a achar o
+// endereço; com rua, número, bairro, cidade, UF e CEP o pino cai no lugar e o zoom fica de rua.
+const mapQuery = computed(() => {
+  const a = profile.value?.address || {};
+  const parts = [a.street, a.number, a.neighborhood, a.city, a.state, a.zipcode].map(part => String(part || "").trim()).filter(Boolean);
+  return parts.length ? parts.join(", ") : profile.value?.map_query || addressText.value;
 });
+const mapEmbedUrl = computed(() =>
+  mapQuery.value ? `https://www.google.com/maps?q=${encodeURIComponent(mapQuery.value)}&z=16&hl=${getCurrentLanguage() === "es" ? "es" : "pt-BR"}&output=embed` : ""
+);
+const mapLink = computed(() => (mapQuery.value ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery.value)}` : ""));
 const icons: Record<string, { path: string; label: string }> = {
   instagram: { path: siInstagram.path, label: "Instagram" },
   facebook: { path: siFacebook.path, label: "Facebook" },
@@ -108,18 +109,42 @@ const socialLinks = computed(() =>
     .filter((link: any) => typeof link?.url === "string" && link.url.trim() && icons[link.network])
     .map((link: any) => ({ network: link.network, url: link.url.trim(), iconPath: icons[link.network].path, label: icons[link.network].label }))
 );
-// Mesma regra do rodapé atual: CPF tem prioridade; usa a URL salva ou monta a do QR code público.
+// Usa o documento escolhido em "Documento do Cadastur" quando a agência tem esse documento;
+// senão, o que existir. A URL salva tem prioridade; sem ela, monta a do QR code público.
 const cadasturLink = computed(() => {
   const cpf = digitsOf(profile.value?.cpf_digits || profile.value?.cpf);
   const cnpj = digitsOf(profile.value?.cnpj_digits || profile.value?.cnpj);
-  const type = cpf ? "cpf" : cnpj ? "cnpj" : null;
+  const chosen = props.section.cadasturDocumentType;
+  const type = chosen === "cpf" && cpf ? "cpf" : chosen === "cnpj" && cnpj ? "cnpj" : cnpj ? "cnpj" : cpf ? "cpf" : null;
   if (!type) return "";
   const saved = profile.value?.cadastur_urls?.[type];
   if (typeof saved === "string" && saved) return saved;
   return `https://cadastur.turismo.gov.br/cadastur/#!/public/qrcode/${type === "cpf" ? cpf : cnpj}`;
 });
 const hasCadastur = computed(() => props.section.showCadastur !== false && !!cadasturLink.value);
-const year = new Date().getFullYear();
+// Aviso de responsabilidade: quem publica a página (a agência) responde pelo conteúdo, inclusive
+// pelo direito de uso das imagens; a plataforma só fornece a ferramenta.
+const legalText = computed(() => {
+  const name = companyName.value;
+  const doc = cnpjText.value ? ` · CNPJ ${cnpjText.value}` : "";
+  const hasContacts = !!(phoneText.value || email.value);
+  if (getCurrentLanguage() === "es") {
+    const who = name ? name : "la agencia";
+    return [
+      `© ${year} ${name || "Agencia"}${doc}.`,
+      `Los textos, imágenes, precios y ofertas de esta página son publicados por ${who}, que responde por ellos con exclusividad, incluso por el derecho de uso de las imágenes.`,
+      `Las dudas o reclamos deben enviarse a la agencia${hasContacts ? " por los contactos indicados" : ""}.`,
+      "Roteiro Online solo ofrece la herramienta de creación de la página y no responde por el contenido publicado."
+    ].join(" ");
+  }
+  const by = name ? `por ${name}` : "pela agência";
+  return [
+    `© ${year} ${name || "Agência"}${doc}.`,
+    `Textos, imagens, preços e ofertas desta página são publicados ${by}, que responde por eles com exclusividade, inclusive pelo direito de uso das imagens.`,
+    `Dúvidas ou contestações devem ser enviadas à agência${hasContacts ? " pelos contatos acima" : ""}.`,
+    "O Roteiro Online apenas fornece a ferramenta de criação da página e não responde pelo conteúdo publicado."
+  ].join(" ");
+});
 </script>
 
 <style scoped>
@@ -151,15 +176,6 @@ const year = new Date().getFullYear();
 }
 .v2-ft-col a:hover {
   text-decoration: underline;
-}
-.v2-ft-logo {
-  max-height: 48px;
-  max-width: 180px;
-  object-fit: contain;
-}
-.v2-ft-name {
-  font-family: "Bricolage Grotesque", Figtree, sans-serif;
-  font-size: 20px;
 }
 .v2-ft-about {
   max-width: 340px;
@@ -206,11 +222,17 @@ const year = new Date().getFullYear();
   font-size: 14px;
   font-weight: 600;
 }
+/* Mapa mais largo e mais alto que as colunas de texto, para o pino e as ruas em volta caberem;
+   o fundo aparece enquanto o mapa carrega. */
+.v2-ft-mapcol {
+  flex: 1.6 1 280px;
+}
 .v2-ft-mapcol iframe {
   width: 100%;
-  height: 160px;
+  height: 200px;
   border: 0;
   border-radius: 16px;
+  background: var(--v2-card);
 }
 .v2-ft-bottom {
   display: flex;
@@ -223,18 +245,27 @@ const year = new Date().getFullYear();
   font-size: 13px;
 }
 .v2-ft-cadastur {
+  flex: none;
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  padding: 6px 12px 6px 6px;
-  border-radius: 12px;
+  gap: 12px;
+  padding: 10px 16px 10px 12px;
+  border-radius: 14px;
   background: #fff;
   color: #0f1713;
   font-weight: 600;
   text-decoration: none;
 }
 .v2-ft-cadastur img {
-  height: 24px;
+  height: 26px;
   width: auto;
+}
+.v2-ft-legal {
+  flex: 1 1 320px;
+  max-width: 760px;
+  margin: 0;
+  color: var(--v2-muted);
+  font-size: 12px;
+  line-height: 1.6;
 }
 </style>
