@@ -117,7 +117,7 @@
           <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">{{ viewCopy.unsavedModal.eyebrow }}</p>
           <h3 class="mt-2 text-xl font-bold text-slate-900">{{ viewCopy.sectionUnsavedModal.title }}</h3>
           <p class="mt-2 text-sm text-slate-600">
-            {{ viewCopy.sectionUnsavedModal.description }}
+            {{ unsavedSectionModal.switching ? viewCopy.sectionUnsavedModal.switchDescription : viewCopy.sectionUnsavedModal.description }}
           </p>
 
           <div class="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end">
@@ -133,7 +133,7 @@
               class="editor-dialog-action editor-dialog-action--danger"
               @click="discardUnsavedSectionChanges"
             >
-              {{ viewCopy.unsavedModal.discardAndExit }}
+              {{ unsavedSectionModal.switching ? viewCopy.sectionUnsavedModal.switchDiscard : viewCopy.unsavedModal.discardAndExit }}
             </button>
             <button
               type="button"
@@ -141,7 +141,7 @@
               :disabled="unsavedSectionModal.saving"
               @click="saveUnsavedSectionChanges"
             >
-              {{ unsavedSectionModal.saving ? viewCopy.unsavedModal.saving : viewCopy.sectionUnsavedModal.saveSection }}
+              {{ unsavedSectionModal.saving ? viewCopy.unsavedModal.saving : unsavedSectionModal.switching ? viewCopy.sectionUnsavedModal.switchSave : viewCopy.sectionUnsavedModal.saveSection }}
             </button>
           </div>
         </div>
@@ -1042,8 +1042,8 @@
               </template>
               <template v-else>
                 <template v-for="(section, idx) in sections" :key="(section as any)?.anchorId || idx">
-                    <div v-if="section" class="space-y-0" :class="{ 'v2ed-slot': newEditor }">
-                    <div v-if="newEditor && idx > 0 && canInsertBefore(idx)" class="v2ed-ins">
+                    <div v-if="section" class="space-y-0" :class="{ 'v2ed-slot': newEditor, 'is-overlay-header': idx === overlayHeader.header }">
+                    <div v-if="newEditor && idx > 0 && canInsertBefore(idx) && idx !== overlayHeader.under" class="v2ed-ins">
                       <span class="v2ed-ins-line" aria-hidden="true"></span>
                       <button type="button" class="v2ed-ins-btn" @click.stop="openSectionPicker(idx - 1)">
                         <PlusIcon aria-hidden="true" />
@@ -1056,6 +1056,8 @@
                         (section as any).type === 'header' ? 'z-30 overflow-visible' : 'overflow-hidden',
                         {
                           'v2ed-sec': newEditor && (section as any).enabled,
+                          'is-header': newEditor && (section as any).type === 'header',
+                          'is-under-header': idx === overlayHeader.under,
                           'is-editing': sectionPanelOpen && editingSectionIndex === idx,
                           'is-tapped': phoneEditor && mobileOverlayVisible[idx]
                         }
@@ -1752,7 +1754,13 @@ const viewCopy = {
       pt: "Você fez alterações nesta seção e ainda não salvou. Deseja salvar antes de continuar?",
       es: "Hiciste cambios en esta sección y aún no guardaste. ¿Deseas guardar antes de continuar?"
     }),
-    saveSection: t({ pt: "Salvar seção", es: "Guardar sección" })
+    saveSection: t({ pt: "Salvar seção", es: "Guardar sección" }),
+    switchDescription: t({
+      pt: "Você fez alterações nesta seção e ainda não salvou. Deseja salvar antes de abrir a outra seção?",
+      es: "Hiciste cambios en esta sección y aún no guardaste. ¿Deseas guardar antes de abrir la otra sección?"
+    }),
+    switchDiscard: t({ pt: "Descartar e abrir a outra", es: "Descartar y abrir la otra" }),
+    switchSave: t({ pt: "Salvar e abrir a outra", es: "Guardar y abrir la otra" })
   },
   successModal: {
     eyebrow: t({ pt: "Publicação", es: "Publicación" }),
@@ -2832,7 +2840,7 @@ const sectionTypes: SectionType[] = [
   "agency_footer"
 ];
 const sectionLabels = defaultSectionLabels;
-// No editor novo as seções usam os nomes novos ("Capa da viagem", "Menu do topo"...).
+// No editor novo as seções usam os nomes novos ("Banner Inicial", "Menu do topo"...).
 const sectionLabelOf = (section: PageSection) =>
   (newEditor.value && sectionNameV2(section.type)) || sectionLabels[section.type as SectionType] || section.type;
 const sectionDescriptions: Partial<Record<SectionType, string>> = {
@@ -3034,7 +3042,8 @@ const previewSectionExtraProps = (section: PageSection) => {
   if (section.type === "header") {
     const hero = sections.value.find(item => item.type === "hero") as HeroSection | undefined;
     extra.logoUrl = hero?.logoUrl || branding.value.logo_url || "";
-    extra.previewBackgroundImage = hero?.backgroundImage || "";
+    // Sobreposto à capa (editor novo), o próprio banner aparece atrás do menu.
+    extra.previewBackgroundImage = overlayHeader.value.header >= 0 ? "" : hero?.backgroundImage || "";
     extra.previewOverlayColor = hero?.gradientColor || hero?.backgroundColor || "#05060f";
     extra.agencyName = branding.value.agency_name || currentAgency.value?.name || "";
     extra.agencySocialLinks = currentAgency.value?.social_links || branding.value.agency_profile?.social_links || [];
@@ -3144,7 +3153,8 @@ const sectionModalFooterRef = ref<HTMLElement | null>(null);
 const sectionModalObservedBodyMax = ref(0);
 let sectionModalResizeObserver: ResizeObserver | null = null;
 const unsavedFlightSegmentModal = ref({ open: false });
-const unsavedSectionModal = ref({ open: false, saving: false });
+// switching: a pessoa clicou em outra seção (os botões falam em abrir a outra, não em sair).
+const unsavedSectionModal = ref({ open: false, saving: false, switching: false });
 let pendingUnsavedSectionAction: null | (() => void | Promise<void>) = null;
 const sectionCatalog = ref<SectionCatalogItem[]>([]);
 const sectionPicker = ref<{ open: boolean; index: number | null }>({ open: false, index: null });
@@ -3328,6 +3338,20 @@ const hasPendingImageUploads = computed(() => activeImageUploads.value > 0);
 const isFooterSection = (section?: PageSection | null) => !!section && (section as any).type === "free_footer_brand";
 // Linha de inserir entre seções: nunca acima do Menu do topo.
 const canInsertBefore = (index: number) => !isHeaderSection(sections.value[index]);
+// Editor novo: o Menu do topo transparente fica por cima da seção seguinte, como na
+// página publicada (lá ele é absoluto sobre a capa). Assim a prévia mostra a foto,
+// a sombra e o degradê da capa atrás do menu. header/under = índices do menu e da
+// seção que fica embaixo dele (-1 quando não há sobreposição).
+const overlayHeader = computed(() => {
+  const none = { header: -1, under: -1 };
+  if (!newEditor.value) return none;
+  const header = sections.value.findIndex(section => isHeaderSection(section) && section.enabled !== false);
+  if (header < 0) return none;
+  const mode = (sections.value[header] as HeaderSection).mode;
+  if (mode !== "transparent" && mode !== "blurred") return none;
+  const under = sections.value.findIndex((section, index) => index > header && section?.enabled !== false);
+  return under < 0 ? none : { header, under };
+});
 const isHeaderSection = (section?: PageSection | null) => !!section && (section as any).type === "header";
 const isVideoVslSection = (section?: PageSection | null) => !!section && (section as any).type === "video_vsl";
 const enforceFooterConstraints = (list?: PageSection[] | null) => {
@@ -4877,13 +4901,27 @@ const closeTopbarMenu = (event: MouseEvent) => {
 onMounted(() => document.addEventListener("click", closeTopbarMenu));
 onBeforeUnmount(() => document.removeEventListener("click", closeTopbarMenu));
 
-const openSectionEditor = (index: number) => {
+const openSectionEditorNow = (index: number) => {
   const target = sections.value[index];
   if (!target) return;
   if (isLockedFooterSection(target)) return;
   editingSectionIndex.value = index;
   editingSectionDraft.value = clone(target);
   editingSectionOriginalSnapshot.value = sectionDraftSnapshot(editingSectionDraft.value);
+};
+
+// Trocar de seção com alterações pendentes pergunta antes: salvar e abrir a outra,
+// descartar e abrir a outra, ou continuar editando. Clicar na seção já aberta não
+// recarrega o rascunho.
+const openSectionEditor = (index: number) => {
+  const target = sections.value[index];
+  if (!target || isLockedFooterSection(target)) return;
+  if (isSectionEditorOpen.value && editingSectionIndex.value === index) return;
+  if (hasUnsavedSectionDraftChanges.value) {
+    requestUnsavedSectionConfirmation(() => openSectionEditorNow(index), true);
+    return;
+  }
+  openSectionEditorNow(index);
 };
 
 const forceCloseSectionEditor = () => {
@@ -4900,10 +4938,11 @@ const forceCloseSectionEditor = () => {
   pendingUnsavedSectionAction = null;
 };
 
-const requestUnsavedSectionConfirmation = (action: () => void | Promise<void>) => {
+const requestUnsavedSectionConfirmation = (action: () => void | Promise<void>, switching = false) => {
   pendingUnsavedSectionAction = action;
   unsavedSectionModal.value.open = true;
   unsavedSectionModal.value.saving = false;
+  unsavedSectionModal.value.switching = switching;
 };
 
 const closeSectionEditor = () => {
@@ -7278,6 +7317,25 @@ onMounted(async () => {
 
 /* Prévia do editor novo: sombra ao passar o mouse, ações no topo e linha para inserir seção. */
 .v2ed-slot { position: relative; }
+/* Menu do topo transparente: ocupa altura zero e fica por cima da seção seguinte. */
+.v2ed-slot.is-overlay-header { z-index: 30; height: 0; }
+.v2ed-slot.is-overlay-header > .v2ed-sec { position: absolute; top: 0; left: 0; right: 0; }
+/* Seção embaixo do menu: selo e ações descem para logo abaixo dele (o menu tem 76px,
+   em escala na prévia de computador). */
+.v2ed-sec.is-under-header { --ed-hd-h: calc(76px / var(--ed-unzoom, 1)); }
+.v2ed-sec.is-under-header .v2ed-tag, .v2ed-sec.is-under-header .v2ed-bar { top: calc(var(--ed-hd-h) + 12px); }
+.ed-stage.is-mobile-preview .v2ed-sec.is-under-header .v2ed-bar { top: calc(var(--ed-hd-h) + 50px); }
+/* Menu do topo: selo e ações centralizados na altura do menu e mais compactos, para
+   caberem dentro dele. */
+.v2ed-sec.is-header .v2ed-tag, .v2ed-sec.is-header .v2ed-bar { top: 50%; transform: translateY(-50%); }
+.v2ed-sec.is-header:hover .v2ed-tag, .v2ed-sec.is-header:hover .v2ed-bar,
+.v2ed-sec.is-header:focus-within .v2ed-tag, .v2ed-sec.is-header:focus-within .v2ed-bar { transform: translateY(-50%); }
+.v2ed-sec.is-header .v2ed-tag { padding: 4px 10px; font-size: 12px; }
+.v2ed-sec.is-header .v2ed-bar { padding: 3px; border-radius: 12px; }
+.v2ed-sec.is-header .v2ed-edit, .v2ed-sec.is-header .v2ed-btn { height: 30px; border-radius: 9px; }
+.v2ed-sec.is-header .v2ed-btn { width: 30px; }
+.ed-stage.is-mobile-preview .v2ed-sec.is-header .v2ed-tag { display: none; }
+.ed-stage.is-mobile-preview .v2ed-sec.is-header .v2ed-bar { top: 50%; }
 .v2ed-sec { transition: box-shadow 0.2s ease; }
 .v2ed-sec:hover, .v2ed-sec:focus-within { z-index: 5; box-shadow: 0 24px 60px -18px rgba(6, 12, 9, 0.55), 0 4px 14px -6px rgba(6, 12, 9, 0.3); }
 .v2ed-ring, .v2ed-tag, .v2ed-bar { opacity: 0; transition: opacity 0.18s ease, transform 0.24s cubic-bezier(0.22, 0.8, 0.24, 1); }

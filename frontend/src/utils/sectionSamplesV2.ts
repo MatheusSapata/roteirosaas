@@ -245,7 +245,7 @@ const SAMPLES: Partial<Record<SectionType, () => Record<string, any>>> = {
     alignment: "center"
   }),
   links: () => ({
-    title: t({ pt: "Links/roteiros", es: "Links/itinerarios" }),
+    title: t({ pt: "Links/Roteiros", es: "Links/Itinerarios" }),
     subtitle: t({ pt: "Mais viagens que você vai gostar.", es: "Más viajes que te van a gustar." }),
     carouselEnabled: false,
     items: [

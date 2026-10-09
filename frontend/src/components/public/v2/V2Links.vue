@@ -190,13 +190,17 @@ const slide = (direction: number) => {
 }
 /* Carrossel: rola de lado sem barra; com poucos cards, o grupo fica centralizado
    (margens automáticas não atrapalham quando a lista transborda). */
+/* A rolagem lateral recorta o que passa da lista: a folga em cima e embaixo
+   (compensada pela margem negativa) deixa caber a subida do card e a sombra do
+   hover, que desce ~42px. Nas laterais não há folga, para não aparecer uma tira
+   dos cards vizinhos. Os cards continuam no mesmo lugar. */
 .is-carousel .v2-links-track {
   overflow-x: auto;
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
-  padding: 4px 2px 8px;
-  margin: -4px -2px -8px;
+  padding: 8px 0 48px;
+  margin: -8px 0 -48px;
 }
 .is-carousel .v2-links-track::-webkit-scrollbar {
   display: none;

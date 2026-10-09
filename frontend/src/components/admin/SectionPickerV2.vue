@@ -63,7 +63,7 @@
               >
                 <span class="spk-thumb" aria-hidden="true">
                   <SectionThumbV2 :type="item.type" />
-                  <span v-if="item.locked" class="spk-lock"><span>Conecte o ViajeOn</span></span>
+                  <span v-if="item.locked" class="spk-lock"><span>Conecte o Viaje On</span></span>
                   <span class="spk-go">{{ item.unavailable ? "Já na página" : item.locked ? "Integrar" : "Inserir" }}</span>
                 </span>
                 <span class="spk-card-text">

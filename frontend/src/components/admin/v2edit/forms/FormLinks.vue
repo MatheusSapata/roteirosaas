@@ -2,7 +2,7 @@
   <V2EditShell>
     <template #content>
       <EdHeading :value="modelValue" type="links" title-placeholder="Outras viagens que você vai gostar" @patch="patch" />
-      <EdGroup title="Links/roteiros" :count="`${items.length} ${items.length === 1 ? 'item' : 'itens'}`">
+      <EdGroup title="Links/Roteiros" :count="`${items.length} ${items.length === 1 ? 'item' : 'itens'}`">
         <EdList
           :items="items"
           :item-title="item => readText(item.title)"

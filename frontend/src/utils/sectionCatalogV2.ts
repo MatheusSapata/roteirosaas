@@ -5,13 +5,13 @@ const t = createLocalizer(getCurrentLanguage());
 
 /** Categorias do seletor de seções do editor novo, na ordem em que aparecem. */
 export const SECTION_CATEGORIES_V2 = [
+  { id: "navegacao", label: t({ pt: "Menu e rodapé", es: "Menú y pie" }), hint: t({ pt: "Navegação e dados da agência", es: "Navegación y datos de la agencia" }) },
   { id: "capa", label: t({ pt: "Capa", es: "Portada" }), hint: t({ pt: "A primeira coisa que o cliente vê", es: "Lo primero que ve el cliente" }) },
-  { id: "viagem", label: t({ pt: "Sobre a viagem", es: "Sobre el viaje" }), hint: t({ pt: "Destino, dias, voos e o que está incluso", es: "Destino, días, vuelos y lo que está incluido" }) },
+  { id: "viagem", label: t({ pt: "Detalhamento", es: "Detalles" }), hint: t({ pt: "Destino, dias, voos, o que está incluso e outros roteiros", es: "Destino, días, vuelos, lo que está incluido y otros itinerarios" }) },
   { id: "midia", label: t({ pt: "Fotos e vídeos", es: "Fotos y videos" }), hint: t({ pt: "Mostre o destino", es: "Muestra el destino" }) },
   { id: "venda", label: t({ pt: "Venda", es: "Venta" }), hint: t({ pt: "Preço, compra e prazo da oferta", es: "Precio, compra y plazo de la oferta" }) },
   { id: "confianca", label: t({ pt: "Confiança", es: "Confianza" }), hint: t({ pt: "Depoimentos e respostas", es: "Testimonios y respuestas" }) },
-  { id: "contato", label: t({ pt: "Contato", es: "Contacto" }), hint: t({ pt: "Capte quem tem interesse", es: "Capta a quien tiene interés" }) },
-  { id: "navegacao", label: t({ pt: "Menu e rodapé", es: "Menú y pie" }), hint: t({ pt: "Navegação e dados da agência", es: "Navegación y datos de la agencia" }) }
+  { id: "contato", label: t({ pt: "Contato", es: "Contacto" }), hint: t({ pt: "Capte quem tem interesse", es: "Capta a quien tiene interés" }) }
 ] as const;
 
 export type SectionCategoryV2 = (typeof SECTION_CATEGORIES_V2)[number]["id"];
@@ -31,19 +31,22 @@ export const SECTION_CATALOG_V2: SectionCatalogItemV2[] = [
     desc: t({ pt: "Logo, links para as seções e botão de contato.", es: "Logo, enlaces a las secciones y botón de contacto." })
   },
   {
-    type: "hero", cat: "capa", label: t({ pt: "Capa da viagem", es: "Portada del viaje" }), keywords: "banner hero capa",
+    type: "hero", cat: "capa", label: t({ pt: "Banner Inicial", es: "Banner inicial" }), keywords: "banner hero capa da viagem",
     desc: t({ pt: "Foto grande, título, datas e o botão principal.", es: "Foto grande, título, fechas y el botón principal." })
   },
   {
-    type: "banner_card", cat: "capa", label: t({ pt: "Capa com card", es: "Portada con tarjeta" }), keywords: "banner em card",
-    desc: t({ pt: "Foto de fundo com um card de texto por cima.", es: "Foto de fondo con una tarjeta de texto encima." })
+    type: "banner_card", cat: "capa", label: t({ pt: "Banner em Card", es: "Banner en tarjeta" }), keywords: "banner em card capa com card",
+    desc: t({ pt: "Foto de fundo com texto e botão por cima, com ou sem card.", es: "Foto de fondo con texto y botón encima, con o sin tarjeta." })
   },
   {
-    type: "video_vsl", cat: "capa", label: t({ pt: "Vídeo de vendas", es: "Video de ventas" }), keywords: "vsl video",
-    desc: t({ pt: "Vídeo com chamada e botão logo abaixo.", es: "Video con llamada y botón debajo." })
+    type: "video_vsl", cat: "capa", label: t({ pt: "Vídeo de Vendas (VSL)", es: "Video de Ventas (VSL)" }), keywords: "vsl video de vendas liberar",
+    desc: t({
+      pt: "Vídeo com botão abaixo. Pode esconder o resto da página e o botão até um momento do vídeo que você escolhe.",
+      es: "Video con botón debajo. Puede ocultar el resto de la página y el botón hasta un momento del video que tú eliges."
+    })
   },
   {
-    type: "story", cat: "viagem", label: t({ pt: "Sobre a viagem", es: "Sobre el viaje" }), keywords: "descritivo historia texto",
+    type: "story", cat: "viagem", label: t({ pt: "Texto e Imagens", es: "Texto e Imágenes" }), keywords: "sobre a viagem descritivo historia texto imagens",
     desc: t({ pt: "Texto com carrossel de até 10 fotos.", es: "Texto con carrusel de hasta 10 fotos." })
   },
   {
@@ -79,8 +82,11 @@ export const SECTION_CATALOG_V2: SectionCatalogItemV2[] = [
     desc: t({ pt: "Lista de ofertas, de uma até várias.", es: "Lista de ofertas, de una a varias." })
   },
   {
-    type: "viajeon_checkout", cat: "venda", label: t({ pt: "Compra online", es: "Compra en línea" }), keywords: "checkout viajeon pagamento",
-    desc: t({ pt: "Pacotes da sua operação com compra direta.", es: "Paquetes de tu operación con compra directa." })
+    type: "viajeon_checkout", cat: "venda", label: t({ pt: "Compra Online (Viaje On)", es: "Compra en Línea (Viaje On)" }), keywords: "compra online checkout viajeon viaje on pagamento",
+    desc: t({
+      pt: "Pacotes da sua operação no Viaje On com compra direta. Precisa da integração com o Viaje On ativa.",
+      es: "Paquetes de tu operación en Viaje On con compra directa. Requiere la integración con Viaje On activa."
+    })
   },
   {
     type: "countdown", cat: "venda", label: t({ pt: "Contagem regressiva", es: "Cuenta regresiva" }), keywords: "contador prazo timer",
@@ -103,7 +109,7 @@ export const SECTION_CATALOG_V2: SectionCatalogItemV2[] = [
     desc: t({ pt: "Capta nome, WhatsApp e e-mail do interessado.", es: "Capta nombre, WhatsApp y correo del interesado." })
   },
   {
-    type: "links", cat: "navegacao", label: t({ pt: "Links/roteiros", es: "Links/itinerarios" }), keywords: "links roteiros outros paginas",
+    type: "links", cat: "viagem", label: t({ pt: "Links/Roteiros", es: "Links/Itinerarios" }), keywords: "links roteiros outros roteiros paginas",
     desc: t({ pt: "Cards que levam para suas outras páginas.", es: "Tarjetas que llevan a tus otras páginas." })
   },
   {
