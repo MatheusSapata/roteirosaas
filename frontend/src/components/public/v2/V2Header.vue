@@ -62,6 +62,7 @@ import "./v2.css";
 const props = defineProps<{
   section: HeaderSection;
   logoUrl?: string;
+  logoRadius?: number;
   agencyName?: string;
   agencySocialLinks?: Array<{ network?: string; platform?: string; url?: string }>;
   previewBackgroundImage?: string;
@@ -81,7 +82,11 @@ const isStuck = ref(false);
 const mode = computed(() => (props.section.mode === "transparent" || props.section.mode === "blurred" ? "transparent" : "solid"));
 const showSpacer = computed(() => isStuck.value && mode.value === "solid" && !props.previewDevice);
 const logo = computed(() => resolveMediaUrl(props.logoUrl) || "");
-const logoStyle = computed(() => ({ maxHeight: `${Math.min(96, Math.max(36, props.section.logoSize || 52))}px` }));
+// Os cantos vêm do logo do Banner Inicial (é a mesma imagem); o tamanho é o do menu.
+const logoStyle = computed(() => ({
+  maxHeight: `${Math.min(96, Math.max(36, props.section.logoSize || 52))}px`,
+  borderRadius: `${Math.max(0, props.logoRadius || 0)}px`
+}));
 const previewBannerImage = computed(() => (props.previewDevice ? resolveMediaUrl(props.previewBackgroundImage) || "" : ""));
 const surface = computed(() => (mode.value === "transparent" && !isStuck.value ? "#0B1410" : isStuck.value ? "#FFFFFF" : props.section.backgroundColor || "#FFFFFF"));
 const vars = computed(() => toneVars(computeSectionTone(surface.value, design.value.accent)));

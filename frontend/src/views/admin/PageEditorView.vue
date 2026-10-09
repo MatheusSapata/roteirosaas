@@ -3080,8 +3080,11 @@ const previewSectionExtraProps = (section: PageSection) => {
     extra.tripStartDate = hero?.departureDate || "";
   }
   if (section.type === "header") {
-    const hero = sections.value.find(item => item.type === "hero") as HeroSection | undefined;
+    // Com o Banner aberto no painel, o menu já mostra o logo (imagem e cantos) do rascunho.
+    const editingHero = sectionPanelOpen.value && (livePreviewDraft.value as PageSection | null)?.type === "hero";
+    const hero = (editingHero ? livePreviewDraft.value : sections.value.find(item => item.type === "hero")) as HeroSection | undefined;
     extra.logoUrl = hero?.logoUrl || branding.value.logo_url || "";
+    if (previewDesign.value === "v2") extra.logoRadius = hero?.logoBorderRadius ?? 0;
     // Sobreposto à capa (editor novo), o próprio banner aparece atrás do menu.
     extra.previewBackgroundImage = overlayHeader.value.header >= 0 ? "" : hero?.backgroundImage || "";
     extra.previewOverlayColor = hero?.gradientColor || hero?.backgroundColor || "#05060f";

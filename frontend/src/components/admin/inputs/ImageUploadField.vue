@@ -6,7 +6,7 @@
     </div>
     <!-- Compacto: para painéis estreitos, como o editor novo. -->
     <div v-if="props.layout === 'compact'" class="iuf-compact">
-      <button type="button" class="iuf-thumb" :aria-label="previewUrl ? 'Trocar imagem' : 'Adicionar imagem'" @click="previewUrl && croppingEnabled ? openCropperForCurrent() : openFileDialog()">
+      <button type="button" class="iuf-thumb" :class="{ 'is-contain': props.contain }" :aria-label="previewUrl ? 'Trocar imagem' : 'Adicionar imagem'" @click="previewUrl && croppingEnabled ? openCropperForCurrent() : openFileDialog()">
         <img v-if="previewUrl" :src="previewUrl" alt="" />
         <span v-else aria-hidden="true">+</span>
       </button>
@@ -17,7 +17,8 @@
             <span v-if="uploading">Enviando...</span>
             <span v-else>{{ previewUrl ? "Trocar" : "Adicionar" }}</span>
           </label>
-          <button v-if="modelValue" type="button" class="iuf-remove" @click="clearImage">Remover</button>
+          <button v-if="props.editLabel && croppingEnabled && previewUrl" type="button" class="iuf-btn" @click="openCropperForCurrent">{{ props.editLabel }}</button>
+          <button v-if="modelValue" type="button" class="iuf-remove" @click="clearImage">{{ props.removeLabel || "Remover" }}</button>
         </div>
         <p v-if="hint" class="iuf-hint">{{ hint }}</p>
         <p v-if="error" class="iuf-error">{{ error }}</p>
@@ -106,10 +107,13 @@
       <p v-if="hint" class="text-xs text-slate-500">{{ hint }}</p>
       <p v-if="error" class="text-xs text-red-500">{{ error }}</p>
     </div>
+    <!-- No body e acima de tudo: dentro do painel da seção (z-index 80 no celular) ou de um
+         contêiner com transform, o editor ficaria preso ou escondido atrás dele. -->
+    <Teleport to="body">
     <transition name="fade">
       <div
         v-if="cropperModal.open"
-        class="app-modal-overlay fixed inset-0 z-50 flex items-center justify-center px-4 py-6"
+        class="app-modal-overlay fixed inset-0 z-[130] flex items-center justify-center px-4 py-6"
       >
         <div class="image-editor-modal w-full max-w-5xl p-6">
           <div class="flex items-center justify-between">
@@ -241,6 +245,7 @@
         </div>
       </div>
     </transition>
+    </Teleport>
   </div>
 </template>
 
@@ -265,6 +270,14 @@ const props = defineProps<{
   roundedValue?: number;
   roundedMax?: number;
   layout?: "card" | "row" | "compact";
+  /** Imagem mostrada quando não há uma própria (ex.: o logo da agência); "Editar" parte dela. */
+  fallbackUrl?: string | null;
+  /** Texto do botão que limpa a imagem própria (compacto). */
+  removeLabel?: string;
+  /** Mostra um botão que abre o editor (cortar, remover fundo) na imagem atual (compacto). */
+  editLabel?: string;
+  /** Miniatura inteira, sem cortar (logos). */
+  contain?: boolean;
 }>();
 const emit = defineEmits<{
   (e: "update:modelValue", value: string | null): void;
@@ -352,7 +365,7 @@ const cropperModal = ref({
   bgEdited: false
 });
 
-const previewUrl = computed(() => resolveMediaUrl(props.modelValue));
+const previewUrl = computed(() => resolveMediaUrl(props.modelValue) || resolveMediaUrl(props.fallbackUrl || ""));
 const roundedPreviewSrc = computed(() => {
   if (cropperModal.value.open && cropperModal.value.src) {
     return cropperModal.value.src;
@@ -737,6 +750,14 @@ defineExpose({
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+/* Logo: inteiro na miniatura, sobre um xadrez que mostra onde o fundo é transparente. */
+.iuf-thumb.is-contain {
+  background: repeating-conic-gradient(#e7ebe6 0% 25%, #fff 0% 50%) 50% / 12px 12px;
+}
+.iuf-thumb.is-contain img {
+  padding: 6px;
+  object-fit: contain;
 }
 .iuf-side {
   display: flex;

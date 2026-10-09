@@ -119,13 +119,13 @@ const video = computed(() => {
 const agencyName = computed(() => String(props.branding?.agency_name || ""));
 // Logo só quando a página não tem Menu do topo (o PublicPageView avisa com hideLogo).
 const logo = computed(() => (props.hideLogo ? "" : resolveMediaUrl(props.section.logoUrl) || resolveMediaUrl(props.branding?.logo_url) || ""));
-const logoHeight = computed(() => Math.max(32, Math.min(props.section.logoSize ?? 56, 120)));
+const logoHeight = computed(() => Math.max(32, Math.min(props.section.logoSize ?? 56, 160)));
 // Altura do logo para as capas reservarem o espaço do "cabeçalho" no topo.
 const logoVars = computed(() => ({ "--v2-logo-h": `${logoHeight.value}px` }));
 const copyFit = useCopyFit(title, computed(() => localize(props.section.subtitle)));
 const heroVars = computed(() => ({ ...logoVars.value, ...copyFit.vars.value }));
 const logoStyle = computed(() => ({
-  height: `${Math.max(32, Math.min(props.section.logoSize ?? 56, 120))}px`,
+  height: `${logoHeight.value}px`,
   borderRadius: `${props.section.logoBorderRadius ?? 0}px`
 }));
 const cta = useCta(toRef(props, "section"));
@@ -288,12 +288,13 @@ const HeroContent = defineComponent({
   margin: 0 auto;
   padding: 0 clamp(20px, 5cqi, 40px);
 }
+/* A largura máxima acompanha o tamanho escolhido, para logos largos também crescerem. */
 .v2-hero-logo img,
 .v2-hero-logo-inline {
   display: block;
   flex-shrink: 0;
   width: auto;
-  max-width: 220px;
+  max-width: min(100%, calc(var(--v2-logo-h, 56px) * 4));
   object-fit: contain;
 }
 .v2-hero-logo img {
