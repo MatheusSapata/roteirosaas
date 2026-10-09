@@ -92,7 +92,7 @@
           <button type="button" class="am-btn am-btn-sm am-btn-primary" @click="searchUsers"><AmIcon name="search" />Buscar para liberar</button>
         </div>
 
-        <div v-if="usersFound.length" class="border-b border-border bg-accent/40 px-3.5 py-3">
+        <div v-if="usersFound.length" class="border-b border-border bg-[color-mix(in_srgb,var(--accent)_40%,transparent)] px-3.5 py-3">
           <p class="am-eyebrow mb-2">Encontrados · clique em Liberar para dar acesso</p>
           <div class="am-table-wrap rounded-xl border border-border bg-card">
             <table class="am-table">

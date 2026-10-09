@@ -27,6 +27,21 @@ const LIMPEZA = `
   html::-webkit-scrollbar { display: none; }
 `;
 
+/** Fontes locais e bloqueio de serviços de fora num contexto do navegador. */
+export async function prepararContexto(ctx) {
+  if (fs.existsSync(new URL('@fontsource/inter/', FONTES))) {
+    await ctx.route(/fonts\.googleapis\.com/, r => r.fulfill({ status: 200, contentType: 'text/css', headers: { 'access-control-allow-origin': '*' }, body: FONTCSS }));
+    await ctx.route(/fonts\.local\//, r => {
+      const arquivo = new URL(new URL(r.request().url()).pathname.slice(1), FONTES);
+      return fs.existsSync(arquivo)
+        ? r.fulfill({ status: 200, contentType: 'font/woff2', headers: { 'access-control-allow-origin': '*' }, body: fs.readFileSync(arquivo) })
+        : r.fulfill({ status: 404, body: '' });
+    });
+  }
+  // Serviços de fora (chat, analytics) não carregam nas capturas.
+  await ctx.route(/^https?:\/\/[^/]*(viajechat|googletagmanager|google-analytics|facebook\.net|doubleclick)/, r => r.fulfill({ status: 204, body: '' }));
+}
+
 export const abrirNavegador = () => chromium.launch({ executablePath: chromiumPath(), args: ['--lang=pt-BR'] });
 
 /**
@@ -41,17 +56,7 @@ export async function abrirPainel(browser, { tema = 'light', video } = {}) {
     timezoneId: 'America/Sao_Paulo',
     ...(video ? { recordVideo: { dir: video, size: { width: TELA.largura, height: TELA.altura } } } : {}),
   });
-  if (fs.existsSync(new URL('@fontsource/inter/', FONTES))) {
-    await ctx.route(/fonts\.googleapis\.com/, r => r.fulfill({ status: 200, contentType: 'text/css', headers: { 'access-control-allow-origin': '*' }, body: FONTCSS }));
-    await ctx.route(/fonts\.local\//, r => {
-      const arquivo = new URL(new URL(r.request().url()).pathname.slice(1), FONTES);
-      return fs.existsSync(arquivo)
-        ? r.fulfill({ status: 200, contentType: 'font/woff2', headers: { 'access-control-allow-origin': '*' }, body: fs.readFileSync(arquivo) })
-        : r.fulfill({ status: 404, body: '' });
-    });
-  }
-  // Serviços de fora (chat, analytics) não carregam nas capturas.
-  await ctx.route(/^https?:\/\/[^/]*(viajechat|googletagmanager|google-analytics|facebook\.net|doubleclick)/, r => r.fulfill({ status: 204, body: '' }));
+  await prepararContexto(ctx);
   await ctx.addInitScript(([t, css]) => {
     localStorage.setItem('global_cookie_consent', 'accepted');
     localStorage.setItem('admin-theme', t);

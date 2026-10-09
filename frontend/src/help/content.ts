@@ -189,7 +189,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       { titulo: "Assistente IA", texto: "Monta a estrutura, melhora textos e cria seções com você.", tela: 5 },
       { titulo: "Salvar e Publicar", texto: "**Salvar** guarda as mudanças. **Publicar** coloca a página no ar.", tela: 6 }
     ],
-    blocos: [{ tipo: "dica", texto: "No celular, o editor mostra uma barra embaixo com **Seções**, **Página** e **+** para adicionar seção." }],
+    blocos: [{ tipo: "dica", texto: "No celular e no tablet, o editor mostra uma barra embaixo com **Seções**, **Página** e **+** para adicionar seção. Toque numa seção da prévia para ver as ações dela." }],
     relacionados: ["adicionar-secao", "editar-secao", "organizar-secoes"],
     substituiAulas: ["editor de historias"]
   },
@@ -203,7 +203,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     rotaRotulo: "Abrir uma página",
     busca: "nova secao adicionar inserir bloco catalogo categoria",
     passos: [
-      { titulo: "Clique em + Seção", texto: "Fica no topo das Camadas. Na prévia, a linha **+** entre duas seções insere naquele ponto.", tela: 1 },
+      { titulo: "Clique em + Seção", texto: "Fica no topo das Camadas. Na prévia, o **+** entre duas seções insere a nova seção naquele ponto.", tela: 1 },
       { titulo: "Escolha a categoria ou busque", texto: "As seções ficam em Menu e rodapé, Capa, Detalhamento, Fotos e vídeos, Venda, Confiança e Contato.", tela: 2 },
       { titulo: "Clique na seção", texto: "O cartão mostra a seção de verdade, com textos de exemplo.", tela: 3 },
       { titulo: "Troque o conteúdo de exemplo", texto: "A seção entra no fim da página, antes do rodapé. Clique nela para editar.", tela: 4 },
@@ -242,7 +242,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     passos: [
       { titulo: "Arraste pela alça", texto: "Os pontinhos à esquerda de cada camada.", tela: 1 },
       { titulo: "Esconda sem apagar", texto: "O interruptor tira a seção da página publicada. Ligue de novo para voltar.", tela: 2 },
-      { titulo: "Use as ações da prévia", texto: "Passe o mouse sobre a seção: subir, descer, duplicar, esconder e excluir.", tela: 4 }
+      { titulo: "Use as ações da prévia", texto: "Passe o mouse sobre a seção (no celular, toque nela): subir, descer, duplicar, esconder e excluir. A barra acompanha a rolagem em seções longas.", tela: 4 }
     ],
     blocos: [{ tipo: "texto", texto: "O **Menu do topo** e o **Vídeo de Vendas (VSL)** ficam sempre no começo da página." }],
     relacionados: ["editar-secao", "adicionar-secao"]

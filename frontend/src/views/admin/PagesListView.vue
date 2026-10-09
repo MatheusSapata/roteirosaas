@@ -2342,6 +2342,7 @@ onMounted(async () => {
 .pl-filters { display: flex; gap: 4px; }
 .pl-filter { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--muted-foreground); }
 .pl-filter span { border-radius: 999px; background: var(--muted); padding: 0 7px; font-size: 11px; }
+@media (max-width: 400px) { .pl-filter { padding: 0 10px; } }
 .pl-filter.on { background: var(--card); color: var(--foreground); box-shadow: var(--shadow-card); }
 .pl-filter.on span { background: var(--accent); color: var(--accent-foreground); }
 .pl-grow { flex: 1; }
@@ -2385,7 +2386,13 @@ onMounted(async () => {
 @media (max-width: 1100px) { .pl-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 640px) {
   .pl-head { flex-direction: column; align-items: flex-start; }
-  .pl-stats { grid-template-columns: 1fr; }
+  /* Celular: números em 2 x 2, compactos, sem os ícones. */
+  .pl-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .pl-stat { padding: 12px; }
+  .pl-stat > div { min-width: 0; }
+  .pl-icon { display: none; }
+  .pl-stat-v { font-size: 18px; line-height: 24px; }
+  .pl-stat-v small { display: block; margin-left: 0; }
   .pl-search { flex-basis: 100%; }
 }
 

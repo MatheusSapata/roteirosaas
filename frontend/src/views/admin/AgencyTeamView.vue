@@ -1408,5 +1408,14 @@ onBeforeUnmount(() => {
 @media (max-width: 900px) { .at-stats { grid-template-columns: 1fr; } }
 @media (max-width: 640px) {
   .at-fields, .at-levels, .at-areas { grid-template-columns: 1fr; }
+  /* Celular: cada pessoa vira um cartão (nome em cima, acesso e situação, áreas e ações). */
+  .at-table thead { display: none; }
+  .at-table, .at-table tbody { display: block; }
+  .at-table tr { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--border); }
+  .at-table tbody tr:first-child { border-top: 0; }
+  .at-table-invites tbody tr:first-child { border-top: 1px solid var(--border); }
+  .at-table td { display: block; border: 0 !important; padding: 0; }
+  .at-table td:first-child { flex: 1 1 100%; min-width: 0; }
+  .at-table td:last-child { margin-left: auto; }
 }
 </style>

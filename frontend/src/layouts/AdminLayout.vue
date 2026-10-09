@@ -1,7 +1,7 @@
 ﻿<template>
   <div
     :class="[
-      'admin-shell-root min-h-screen overflow-x-hidden bg-background text-[14px] text-foreground',
+      'admin-shell-root min-h-screen overflow-x-clip bg-background text-[14px] text-foreground',
       isPlansRoute ? 'plans-layout bg-white text-slate-900' : '',
       isAdminMasterRoute ? 'is-admin-master' : '',
       themeWrapperClass
@@ -205,12 +205,12 @@
       </Teleport>
       <main
         :class="[
-          'admin-main flex min-h-0 flex-1 flex-col overflow-x-hidden bg-background text-foreground',
+          'admin-main flex min-h-0 min-w-0 flex-1 flex-col overflow-x-clip bg-background text-foreground',
           isPlansRoute ? 'bg-white text-slate-900' : ''
         ]"
       >
-        <div class="sticky top-0 z-40 flex-shrink-0 px-3 pt-3 md:hidden">
-          <header class="flex h-16 items-center justify-between gap-2 rounded-[20px] bg-card/90 px-3 pl-4 shadow-card backdrop-blur-xl">
+        <div v-if="!isPageEditorRoute" class="mobile-topbar md:hidden">
+          <header class="mobile-topbar-card">
             <RouterLink to="/admin/dashboard" class="flex min-w-0 items-center" aria-label="Ir para o início">
               <img :src="mobileHeaderLogoSrc" alt="Roteiro Online" class="as-logo-img" />
             </RouterLink>
@@ -230,10 +230,10 @@
             isInboxRoute
               ? 'admin-content flex-1 min-h-0 overflow-hidden bg-inherit p-0'
               : isPageEditorRoute
-                ? 'admin-content flex-1 min-h-0 overflow-y-auto overflow-x-hidden bg-background p-2'
+                ? 'admin-content flex-1 min-h-0 overflow-x-clip bg-background p-2 lg:overflow-y-auto'
               : isPlansRoute
                 ? 'admin-content flex-1 min-h-0 overflow-hidden overflow-x-hidden bg-white p-0'
-                : 'admin-content flex-1 min-h-0 overflow-y-auto overflow-x-hidden bg-background px-4 pb-6 pt-4 sm:px-6 md:py-6 lg:px-8',
+                : 'admin-content flex-1 min-h-0 overflow-y-auto overflow-x-hidden bg-background px-4 pb-6 pt-2.5 sm:px-6 md:py-6 lg:px-8',
             isPlansRoute
               ? 'bg-white text-slate-900'
               : 'text-foreground'
@@ -261,7 +261,7 @@
         v-if="mobileMenuOpen"
         class="mobile-menu fixed inset-0 z-50 flex justify-end md:hidden"
       >
-        <div class="mobile-menu-overlay flex-1" @click="mobileMenuOpen = false"></div>
+        <div class="mobile-menu-overlay" @click="mobileMenuOpen = false"></div>
         <div class="mobile-menu-panel" role="dialog" aria-modal="true" :aria-label="t({ pt: 'Menu', es: 'Menú' })">
           <div class="mobile-menu-head">
             <h2 class="font-display text-lg font-bold tracking-tight text-foreground">Menu</h2>
@@ -2737,13 +2737,40 @@ body.admin-body-light #app {
   transform: translateX(calc(100% + 12px));
 }
 
-/* Menu do celular: cartão solto da borda, com o mesmo conteúdo do menu do computador. */
+/* Celular: cabeçalho em cartão preso no topo. A faixa atrás dele tem o fundo da página,
+   para o conteúdo que rola não aparecer em volta do cartão. */
+.mobile-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  flex-shrink: 0;
+  padding: 12px 12px 6px;
+  background: linear-gradient(to bottom, var(--background) calc(100% - 6px), transparent);
+}
+
+.mobile-topbar-card {
+  display: flex;
+  height: 64px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 12px 0 16px;
+  border-radius: 20px;
+  background: var(--card);
+  box-shadow: var(--shadow-card);
+}
+
+/* Menu do celular: cartão solto da borda, com o mesmo conteúdo do menu do computador.
+   O escurecido cobre a tela toda, inclusive em volta do cartão. */
 .mobile-menu-overlay {
+  position: absolute;
+  inset: 0;
   background: rgba(9, 17, 13, 0.42);
   backdrop-filter: blur(2px);
 }
 
 .mobile-menu-panel {
+  position: relative;
   display: flex;
   flex-direction: column;
   width: 18rem;
