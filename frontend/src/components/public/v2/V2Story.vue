@@ -18,8 +18,11 @@
               allowfullscreen
               loading="lazy"
             ></iframe>
-            <img v-else-if="idx === active" :src="item.url" :alt="copy.image" />
+            <img v-else-if="idx === active" :src="item.url" :alt="copy.image" :class="{ 'is-zoomable': canZoom }" @click="openViewer(idx)" />
           </template>
+          <button v-if="canZoom && media[active]?.type === 'image'" type="button" class="v2-story-zoom" :aria-label="copy.zoom" @click="openViewer(active)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" /></svg>
+          </button>
           <span v-if="media.length > 1" class="v2-story-count">{{ active + 1 }} / {{ media.length }}</span>
           <div v-if="media.length > 1" class="v2-story-nav">
             <button type="button" :aria-label="copy.prev" @click="go(active - 1)">
@@ -46,6 +49,7 @@
         </div>
       </div>
     </div>
+    <V2Lightbox :items="media" :start="viewerStart" @change="active = $event" @close="viewerStart = null" />
   </V2Section>
 </template>
 
@@ -57,6 +61,7 @@ import { extractYoutubeId, normalizeYoutubeEmbedUrl } from "../../../utils/video
 import V2Section from "./V2Section.vue";
 import V2Head from "./V2Head.vue";
 import V2Button from "./V2Button.vue";
+import V2Lightbox from "./V2Lightbox.vue";
 import { useCta } from "./useCta";
 import { localize, text, useHeading } from "./useHeading";
 
@@ -73,7 +78,8 @@ const copy = {
   image: localize({ pt: "Foto da viagem", es: "Foto del viaje" }),
   prev: localize({ pt: "Foto anterior", es: "Foto anterior" }),
   next: localize({ pt: "Próxima foto", es: "Siguiente foto" }),
-  show: localize({ pt: "Mostrar mídia", es: "Mostrar medio" })
+  show: localize({ pt: "Mostrar mídia", es: "Mostrar medio" }),
+  zoom: localize({ pt: "Ver em tela cheia", es: "Ver en pantalla completa" })
 };
 const imageLeft = computed(() => props.section.imagePosition === "left");
 const media = computed(() => {
@@ -102,6 +108,12 @@ const go = (idx: number) => {
   active.value = ((idx % total) + total) % total;
 };
 watch(() => media.value.length, () => go(Math.min(active.value, Math.max(0, media.value.length - 1))));
+// Tocar na foto abre em tela cheia, passando por todas; na prévia do editor o clique é da edição.
+const canZoom = computed(() => !props.previewDevice);
+const viewerStart = ref<number | null>(null);
+const openViewer = (idx: number) => {
+  if (canZoom.value) viewerStart.value = idx;
+};
 const cta = useCta(section);
 const ctaLabel = computed(() => text(props.section.ctaLabel) || localize({ pt: "Saiba mais", es: "Saber más" }));
 </script>
@@ -149,6 +161,23 @@ const ctaLabel = computed(() => text(props.section.ctaLabel) || localize({ pt: "
   border: 0;
   object-fit: cover;
 }
+.v2-story-stage img.is-zoomable {
+  cursor: zoom-in;
+}
+.v2-story-zoom {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(8, 14, 11, 0.6);
+  color: #fff;
+  cursor: pointer;
+}
 .v2-story-count {
   position: absolute;
   top: 14px;
@@ -179,11 +208,14 @@ const ctaLabel = computed(() => text(props.section.ctaLabel) || localize({ pt: "
   color: #0f1713;
   cursor: pointer;
 }
+/* A faixa rola de lado e corta o que passa da borda: a folga em volta é a do contorno da
+   miniatura escolhida (4px), que antes saía cortado em cima e na primeira foto. */
 .v2-story-thumbs {
   display: flex;
   gap: 8px;
   overflow-x: auto;
-  padding: 2px 2px 6px;
+  margin: -5px -5px 0;
+  padding: 5px 5px 8px;
   scrollbar-width: thin;
 }
 .v2-story-thumbs button {
