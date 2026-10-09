@@ -6,7 +6,7 @@
         <img :src="image" :alt="title || copy.alt" class="v2-reveal" loading="lazy" />
       </picture>
       <div class="v2-art-veil" :style="{ '--veil': veil }" aria-hidden="true"></div>
-      <h2 v-if="title" class="v2-art-title v2-in">{{ title }}</h2>
+      <h2 v-if="title" class="v2-art-title v2-in" :style="titleScaleStyle(title)">{{ title }}</h2>
     </header>
     <div v-if="bodyHtml" class="v2-art-body">
       <div class="v2-art-text v2-in v2-d2" v-html="bodyHtml"></div>
@@ -21,6 +21,7 @@ import { resolveMediaUrl } from "../../../utils/media";
 import V2Section from "./V2Section.vue";
 import { plainTextToHtml, sanitizeHtml } from "../../../utils/sanitizeHtml";
 import { localize, text } from "./useHeading";
+import { titleScaleStyle } from "./useCopyFit";
 
 const props = defineProps<{ section: BiographySection; previewDevice?: "desktop" | "mobile" }>();
 const copy = { alt: localize({ pt: "Biografia", es: "Biografía" }) };
@@ -86,7 +87,7 @@ const veil = computed(() => {
   padding: 56px clamp(20px, 5cqi, 40px);
   font-family: "Bricolage Grotesque", Figtree, sans-serif;
   font-weight: 700;
-  font-size: clamp(32px, 5.4cqi, 68px);
+  font-size: max(26px, calc(clamp(32px, 5.4cqi, 68px) * var(--v2-title-scale, 1)));
   line-height: 1.02;
   letter-spacing: -0.03em;
   text-wrap: balance;

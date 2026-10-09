@@ -917,7 +917,7 @@ defineExpose({
 .cv-k { font-size: 12.5px; color: var(--muted-foreground); }
 .cv-v { font-family: var(--font-display); font-size: 20px; line-height: 26px; font-weight: 600; color: var(--foreground); font-variant-numeric: tabular-nums; }
 .cv-v small { margin-left: 6px; font-family: var(--font-sans); font-size: 12px; font-weight: 500; color: var(--muted-foreground); }
-.clients-filters-row .crm-input { border-color: transparent !important; border-radius: 999px !important; background: var(--card) !important; box-shadow: var(--shadow-card); }
+.clients-filters-row .crm-input { border-color: transparent !important; border-radius: 999px !important; background-color: var(--card) !important; box-shadow: var(--shadow-card); }
 .clients-table-shell { border: 0 !important; border-radius: 20px !important; background: var(--card) !important; box-shadow: var(--shadow-card) !important; overflow: hidden; }
 .clients-table-shell thead { background: var(--card) !important; border-bottom: 1px solid var(--border); font-size: 11px; letter-spacing: 0.06em; }
 .clients-table-shell .op-badge { border: 0; background: transparent; padding: 0; font-weight: 500; color: var(--foreground); }

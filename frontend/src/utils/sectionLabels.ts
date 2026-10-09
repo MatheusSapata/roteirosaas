@@ -15,7 +15,7 @@ export const sectionLabels: Partial<Record<SectionType, string>> = {
   cta: "Chamada para ação",
   story: "Descritivo",
   reasons: "Itens",
-  links: "Links",
+  links: "Links/roteiros",
   countdown: "Contador",
   agency_footer: "Rodapé da agência",
   flight_details: "Detalhes do voo",

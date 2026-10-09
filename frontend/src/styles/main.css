@@ -339,6 +339,7 @@ body.admin-shell {
   --admin-accent: #b45309;
   --admin-soft: #fde7c2;
   --admin-glow: #fbe6bf;
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 }
 
 html.dark body.admin-shell {
@@ -404,6 +405,7 @@ html.dark body.admin-shell {
   --admin-accent: #f5b04a;
   --admin-soft: #3d2c12;
   --admin-glow: #2b1f0c;
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239aa39e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 }
 
 html {
@@ -519,6 +521,19 @@ body.admin-shell.admin-master-active #app > div {
   body.admin-shell::after {
     transition: none;
   }
+}
+
+/* Seta dos selects do painel: a nativa fica colada na borda e some nos campos
+   arredondados. Desenhamos a mesma seta (a do Viaje On) com folga fixa.
+   Fica de fora a prévia das páginas públicas, que tem o visual dela. */
+body.admin-shell select:not([multiple]):not([size]):not(.public-tokens select) {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: var(--select-chevron);
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px 16px;
+  padding-right: 36px;
 }
 
 #app {
@@ -710,7 +725,7 @@ body.admin-shell.admin-master-active #app > div {
 .admin-master-surface textarea,
 .admin-master-surface select {
   border-color: var(--input) !important;
-  background: var(--background) !important;
+  background-color: var(--background) !important;
   color: var(--foreground) !important;
 }
 

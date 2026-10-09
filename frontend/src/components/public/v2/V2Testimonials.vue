@@ -1,6 +1,6 @@
 <template>
   <V2Section type="testimonials" :background="section.backgroundColor" fallback-background="#F2F4F1" :anchor-id="section.anchorId">
-    <V2Head :label="label" :title="title" :subtitle-html="subtitleHtml" />
+    <V2Head :label="label" :title="title" :subtitle-html="subtitleHtml" :align="align" />
     <div v-if="isHighlight && items.length" class="v2-tm-hl">
       <figure class="v2-tm-main v2-in">
         <svg width="44" height="44" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path :d="quotePath" /><path :d="quotePath2" /></svg>
@@ -14,7 +14,7 @@
         </figure>
       </div>
     </div>
-    <div v-else class="v2-tm-grid">
+    <div v-else class="v2-tm-grid v2-flow" :style="{ '--v2-cols': columns }">
       <figure v-for="(item, idx) in items" :key="idx" class="v2-card v2-tm-card v2-in" :class="`v2-d${Math.min(idx + 3, 7)}`">
         <div class="v2-tm-top">
           <span class="v2-tm-stars" aria-label="5 de 5 estrelas">★★★★★</span>
@@ -43,9 +43,10 @@ import V2Head from "./V2Head.vue";
 import V2Button from "./V2Button.vue";
 import { useCta } from "./useCta";
 import { localize, text, useHeading } from "./useHeading";
+import { balancedColumns } from "./balancedColumns";
 
 const props = defineProps<{ section: TestimonialsSection; previewDevice?: "desktop" | "mobile" }>();
-const { label, title, subtitleHtml } = useHeading(toRef(props, "section"), "testimonials", { pt: "Depoimentos", es: "Testimonios" });
+const { label, title, subtitleHtml, align } = useHeading(toRef(props, "section"), "testimonials", { pt: "Depoimentos", es: "Testimonios" });
 const isHighlight = computed(() => props.section.layout === "highlight");
 const quotePath = "M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z";
 const quotePath2 = "M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z";
@@ -61,16 +62,13 @@ const items = computed(() =>
     };
   })
 );
+// Depoimento tem bastante texto: no máximo 3 por linha (4 viram 2 + 2).
+const columns = computed(() => balancedColumns(items.value.length, 3));
 const cta = useCta(toRef(props, "section"));
 const ctaLabel = computed(() => text(props.section.ctaLabel) || localize({ pt: "Falar com especialista", es: "Hablar con un especialista" }));
 </script>
 
 <style scoped>
-.v2-tm-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
-  gap: 16px;
-}
 .v2-tm-card {
   margin: 0;
   display: flex;

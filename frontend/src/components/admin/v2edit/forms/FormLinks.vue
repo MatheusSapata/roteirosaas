@@ -2,13 +2,13 @@
   <V2EditShell>
     <template #content>
       <EdHeading :value="modelValue" type="links" title-placeholder="Outras viagens que você vai gostar" @patch="patch" />
-      <EdGroup title="Roteiros" :count="`${items.length} ${items.length === 1 ? 'roteiro' : 'roteiros'}`">
+      <EdGroup title="Links/roteiros" :count="`${items.length} ${items.length === 1 ? 'item' : 'itens'}`">
         <EdList
           :items="items"
           :item-title="item => readText(item.title)"
           :new-item="newItem"
-          add-label="Adicionar roteiro"
-          item-label="Roteiro"
+          add-label="Adicionar link/roteiro"
+          item-label="Link/roteiro"
           :max="maxItems"
           @update:items="patch({ items: $event })"
         >
@@ -167,7 +167,7 @@ const layoutError = ref("");
 const setLayout = (layout: string) => {
   layoutError.value = "";
   if (layout === "grid" && items.value.length > 8) {
-    layoutError.value = "A grade mostra até 8 roteiros. Remova alguns antes de trocar.";
+    layoutError.value = "A grade mostra até 8 links/roteiros. Remova alguns antes de trocar.";
     return;
   }
   patch({ carouselEnabled: layout !== "grid" });

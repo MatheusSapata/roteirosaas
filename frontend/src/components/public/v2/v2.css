@@ -33,7 +33,7 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
-  max-width: 720px;
+  max-width: calc(720px + var(--v2-head-grow, 0px));
   margin: 0 auto clamp(32px, 5cqi, 56px);
 }
 .v2-head--center {
@@ -42,7 +42,8 @@
 }
 .v2-head--start {
   align-items: flex-start;
-  margin-left: 0;
+  text-align: left;
+  margin-left: max(0px, calc((100% - var(--v2-head-frame, 100%)) / 2));
 }
 .v2-eyebrow {
   display: inline-flex;
@@ -67,7 +68,8 @@
   margin: 0;
   font-family: "Bricolage Grotesque", Figtree, sans-serif;
   font-weight: 650;
-  font-size: clamp(30px, 4.2cqi, 48px);
+  /* Título longo encolhe (--v2-title-scale, de titleScaleFor) em vez de virar 5 linhas. */
+  font-size: max(24px, calc(clamp(30px, 4.2cqi, 48px) * var(--v2-title-scale, 1)));
   line-height: 1.05;
   letter-spacing: -0.025em;
   text-wrap: balance;
@@ -102,6 +104,29 @@
 .v2-card {
   background: var(--v2-card);
   border-radius: 22px;
+}
+/* Grade equilibrada: N cards por linha e a última linha centralizada, como nas
+   seções antigas (o card que sobra não fica sozinho à esquerda). N vem de
+   balancedColumns() em --v2-cols; tablet usa até 2 e celular 1. */
+.v2-flow {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px;
+}
+.v2-flow > * {
+  flex: 0 0 calc((100% - (var(--v2-cols, 3) - 1) * 16px) / var(--v2-cols, 3));
+  min-width: 0;
+}
+@container (max-width: 900px) {
+  .v2-flow > * {
+    flex-basis: calc((100% - (min(var(--v2-cols, 3), 2) - 1) * 16px) / min(var(--v2-cols, 3), 2));
+  }
+}
+@container (max-width: 560px) {
+  .v2-flow > * {
+    flex-basis: 100%;
+  }
 }
 .v2-actions {
   display: flex;

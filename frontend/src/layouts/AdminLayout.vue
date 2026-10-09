@@ -3267,11 +3267,12 @@ body.admin-body-light #app {
   display: none;
 }
 
-/* O título da seção vira um traço curto. */
+/* O título da seção vira um traço na mesma altura do título: os itens ficam
+   na mesma posição com o menu aberto ou recolhido. */
 .admin-sidebar.is-collapsed .as-section-title {
   position: relative;
   justify-content: center;
-  height: 16px;
+  width: 40px;
   padding: 0;
   overflow: hidden;
   color: transparent;
@@ -3279,9 +3280,12 @@ body.admin-body-light #app {
 
 .admin-sidebar.is-collapsed .as-section-title::after {
   content: "";
-  width: 20px;
+  position: absolute;
+  top: 50%;
+  left: 8px;
+  right: 8px;
   height: 1px;
-  background: var(--sidebar-border);
+  background: color-mix(in srgb, var(--sidebar-foreground) 22%, transparent);
 }
 
 .admin-sidebar.is-collapsed .as-cta,
@@ -3336,9 +3340,12 @@ body.admin-body-light #app {
 }
 @media (max-height: 680px) {
   .as-item,
-  .as-cta,
-  .as-user-link {
+  .as-cta {
     min-height: 32px;
+  }
+  /* Nome e cargo ocupam 36px: o recolhido usa a mesma altura para não mexer o rodapé. */
+  .as-user-link {
+    min-height: 36px;
   }
   .as-cta {
     height: 32px;

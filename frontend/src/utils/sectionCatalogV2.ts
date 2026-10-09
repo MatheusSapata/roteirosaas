@@ -103,7 +103,7 @@ export const SECTION_CATALOG_V2: SectionCatalogItemV2[] = [
     desc: t({ pt: "Capta nome, WhatsApp e e-mail do interessado.", es: "Capta nombre, WhatsApp y correo del interesado." })
   },
   {
-    type: "links", cat: "navegacao", label: t({ pt: "Outros roteiros", es: "Otros itinerarios" }), keywords: "links paginas",
+    type: "links", cat: "navegacao", label: t({ pt: "Links/roteiros", es: "Links/itinerarios" }), keywords: "links roteiros outros paginas",
     desc: t({ pt: "Cards que levam para suas outras páginas.", es: "Tarjetas que llevan a tus otras páginas." })
   },
   {

@@ -1115,7 +1115,7 @@ onBeforeUnmount(() => {
 .as-col { flex-direction: column; align-items: stretch; gap: 6px; }
 .as-col > .as-input { flex: none; }
 .as-col > .as-short { align-self: flex-start; width: 180px; }
-.as-input { flex: 1; min-width: 0; height: 40px; border: 0 !important; border-radius: 12px; background: var(--muted) !important; padding: 0 12px; font-size: 13.5px; color: var(--foreground); outline: none; }
+.as-input { flex: 1; min-width: 0; height: 40px; border: 0 !important; border-radius: 12px; background-color: var(--muted) !important; padding: 0 12px; font-size: 13.5px; color: var(--foreground); outline: none; }
 .as-input:focus, .as-input:focus-within { box-shadow: 0 0 0 2px var(--ring); }
 .as-group { display: flex; align-items: center; padding: 0; overflow: hidden; }
 .as-group input { flex: 1; min-width: 0; height: 100%; border: 0; background: transparent; padding: 0 12px; font-size: 13.5px; color: var(--foreground); outline: none; }

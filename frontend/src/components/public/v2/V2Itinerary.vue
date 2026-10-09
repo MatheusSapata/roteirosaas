@@ -1,6 +1,6 @@
 <template>
   <V2Section type="itinerary" :background="section.backgroundColor" :anchor-id="section.anchorId">
-    <V2Head :label="label" :title="title" :subtitle-html="subtitleHtml" />
+    <V2Head :label="label" :title="title" :subtitle-html="subtitleHtml" :align="align" frame="860px" />
     <!-- Jornada: cada dia é um cartão inteiro que abre e fecha, com o calendário à esquerda,
          a linha passando por trás dos cartões e o texto antes da foto. -->
     <div v-if="isJourney" class="v2-jr">
@@ -94,7 +94,7 @@ import { html, localize, text, useHeading } from "./useHeading";
 import { addDays, formatDayMonth, formatMonthShort, formatWeekday, parseTripDate } from "../../../utils/tripDates";
 
 const props = defineProps<{ section: ItinerarySection; previewDevice?: "desktop" | "mobile"; tripStartDate?: string }>();
-const { label, title, subtitleHtml } = useHeading(toRef(props, "section"), "itinerary", { pt: "Roteiro dia a dia", es: "Itinerario día a día" });
+const { label, title, subtitleHtml, align } = useHeading(toRef(props, "section"), "itinerary", { pt: "Roteiro dia a dia", es: "Itinerario día a día" });
 const copy = {
   day: localize({ pt: "DIA", es: "DÍA" }),
   dayPrefix: localize({ pt: "Dia", es: "Día" }),

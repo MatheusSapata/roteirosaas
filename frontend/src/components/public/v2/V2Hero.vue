@@ -2,7 +2,7 @@
   <V2Section type="hero" :background="textBg" :anchor-id="section.anchorId" full>
     <!-- Imersivo (padrão): foto inteira atrás do texto; no celular a foto fica quase
          quadrada no topo e o texto assenta na cor de fundo, que sobe em degradê. -->
-    <div v-if="layout === 'immersive'" class="v2-hero v2-hero--imm" :class="{ 'has-logo': logo }" :style="logoVars">
+    <div v-if="layout === 'immersive'" class="v2-hero v2-hero--imm" :class="{ 'has-logo': logo }" :style="heroVars">
       <div class="v2-hero-media" aria-hidden="true">
         <iframe v-if="video" :src="video" title="" tabindex="-1" allow="autoplay; encrypted-media"></iframe>
         <picture v-else-if="image">
@@ -18,7 +18,7 @@
       <div v-if="logo" class="v2-hero-logo"><img :src="logo" :alt="agencyName" :style="logoStyle" /></div>
     </div>
 
-    <div v-else-if="layout === 'classic'" class="v2-hero v2-hero--classic" :class="{ 'has-logo': logo }" :style="logoVars">
+    <div v-else-if="layout === 'classic'" class="v2-hero v2-hero--classic" :class="{ 'has-logo': logo }" :style="heroVars">
       <div class="v2-hero-media" aria-hidden="true">
         <iframe v-if="video" :src="video" title="" tabindex="-1" allow="autoplay; encrypted-media"></iframe>
         <img v-else-if="image" :src="image" alt="" />
@@ -30,7 +30,7 @@
       <div v-if="logo" class="v2-hero-logo"><img :src="logo" :alt="agencyName" :style="logoStyle" /></div>
     </div>
 
-    <div v-else-if="layout === 'split'" class="v2-hero v2-hero--split" :class="{ 'has-logo': logo }" :style="logoVars">
+    <div v-else-if="layout === 'split'" class="v2-hero v2-hero--split" :class="{ 'has-logo': logo }" :style="heroVars">
       <div v-if="logo" class="v2-hero-split-top"><img :src="logo" :alt="agencyName" :style="logoStyle" class="v2-hero-logo-inline" /></div>
       <div class="v2-hero-split">
         <div class="v2-hero-split-copy">
@@ -42,7 +42,7 @@
       </div>
     </div>
 
-    <div v-else class="v2-hero v2-hero--card" :class="{ 'has-logo': logo }" :style="logoVars">
+    <div v-else class="v2-hero v2-hero--card" :class="{ 'has-logo': logo }" :style="heroVars">
       <div class="v2-hero-media" aria-hidden="true"><img v-if="image" :src="image" alt="" /></div>
       <div class="v2-hero-card-spacer" aria-hidden="true"></div>
       <div class="v2-hero-inner">
@@ -64,6 +64,7 @@ import V2Section from "./V2Section.vue";
 import { useCta } from "./useCta";
 import { html, localize, text } from "./useHeading";
 import { contrast, WHITE_TEXT_MIN_CONTRAST } from "./useSectionTone";
+import { useCopyFit } from "./useCopyFit";
 import TravelIcon from "../../shared/TravelIcon.vue";
 import { formatDayMonth, parseTripDate, tripLengthInDays } from "../../../utils/tripDates";
 
@@ -121,6 +122,8 @@ const logo = computed(() => (props.hideLogo ? "" : resolveMediaUrl(props.section
 const logoHeight = computed(() => Math.max(32, Math.min(props.section.logoSize ?? 56, 120)));
 // Altura do logo para as capas reservarem o espaço do "cabeçalho" no topo.
 const logoVars = computed(() => ({ "--v2-logo-h": `${logoHeight.value}px` }));
+const copyFit = useCopyFit(title, computed(() => localize(props.section.subtitle)));
+const heroVars = computed(() => ({ ...logoVars.value, ...copyFit.vars.value }));
 const logoStyle = computed(() => ({
   height: `${Math.max(32, Math.min(props.section.logoSize ?? 56, 120))}px`,
   borderRadius: `${props.section.logoBorderRadius ?? 0}px`
@@ -300,7 +303,7 @@ const HeroContent = defineComponent({
   display: flex;
   flex-direction: column;
   gap: 18px;
-  max-width: 820px;
+  max-width: calc(820px + var(--v2-card-grow, 0px) / 2);
   color: var(--v2-ink);
 }
 .v2-hero--imm .v2-hero-content,
@@ -363,14 +366,15 @@ const HeroContent = defineComponent({
   font-family: "Bricolage Grotesque", Figtree, sans-serif;
   font-weight: 700;
   /* Acompanha a largura e também a altura da tela, para caber em monitores largos e baixos. */
-  font-size: clamp(32px, min(5.2cqi, calc(7.5svh / var(--page-zoom, 1))), 68px);
+  /* Título longo encolhe (--v2-title-scale, de useCopyFit) em vez de esticar a capa. */
+  font-size: max(24px, calc(clamp(32px, min(5.2cqi, calc(7.5svh / var(--page-zoom, 1))), 68px) * var(--v2-title-scale, 1)));
   line-height: 0.98;
   letter-spacing: -0.035em;
   text-wrap: balance;
 }
 .v2-hero-sub {
-  max-width: 640px;
-  font-size: clamp(17px, 1.8cqi, 20px);
+  max-width: calc(640px + var(--v2-card-grow, 0px));
+  font-size: max(15px, calc(clamp(17px, 1.8cqi, 20px) * var(--v2-sub-scale, 1)));
   line-height: 1.5;
   opacity: 0.88;
 }
@@ -545,7 +549,7 @@ const HeroContent = defineComponent({
     padding-top: 0;
   }
   .v2-hero-title {
-    font-size: clamp(30px, 9cqi, 40px);
+    font-size: max(24px, calc(clamp(30px, 9cqi, 40px) * var(--v2-title-scale, 1)));
   }
 }
 .v2-hero-split-media img {
@@ -574,7 +578,8 @@ const HeroContent = defineComponent({
   display: flex;
   flex-direction: column;
   gap: 18px;
-  max-width: 520px;
+  /* Com texto longo o cartão alarga (--v2-card-grow) em vez de ficar comprido. */
+  max-width: calc(520px + var(--v2-card-grow, 0px));
   padding: clamp(24px, 4cqi, 40px);
   border-radius: 28px;
   background: rgba(255, 255, 255, 0.94);
@@ -582,6 +587,6 @@ const HeroContent = defineComponent({
 }
 .v2-hero--card .v2-hero-title,
 .v2-hero--split .v2-hero-title {
-  font-size: clamp(32px, 4.6cqi, 60px);
+  font-size: max(24px, calc(clamp(32px, 4.6cqi, 60px) * var(--v2-title-scale, 1)));
 }
 </style>

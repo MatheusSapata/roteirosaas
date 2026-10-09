@@ -1,6 +1,6 @@
 <template>
   <V2Section type="banner_card" :background="section.backgroundColor" :anchor-id="section.anchorId" :class="{ 'v2-bc-tight-top': prevIsBannerCard, 'v2-bc-tight-bottom': nextIsBannerCard }">
-    <div class="v2-bc v2-in" :class="isCard ? 'is-card' : 'is-shade'">
+    <div class="v2-bc v2-in" :class="isCard ? 'is-card' : 'is-shade'" :style="copyFit.vars.value">
       <img v-if="image" :src="image" alt="" class="v2-bc-img v2-reveal" loading="lazy" />
       <div v-if="!isCard" class="v2-bc-shade" aria-hidden="true"></div>
       <div class="v2-bc-card">
@@ -21,6 +21,7 @@ import V2Section from "./V2Section.vue";
 import V2Button from "./V2Button.vue";
 import { useCta } from "./useCta";
 import { html, localize, text } from "./useHeading";
+import { useCopyFit } from "./useCopyFit";
 
 const props = defineProps<{
   section: BannerCardSection;
@@ -34,6 +35,7 @@ const image = computed(() => resolveMediaUrl(props.section.backgroundImage || ""
 const label = computed(() => text(props.section.headingLabel));
 const title = computed(() => text(props.section.title));
 const subtitleHtml = computed(() => (text(props.section.subtitle) ? html(props.section.subtitle) : ""));
+const copyFit = useCopyFit(title, computed(() => localize(props.section.subtitle)));
 const cta = useCta(toRef(props, "section"));
 const ctaLabel = computed(() => text(props.section.ctaLabel) || localize({ pt: "Falar agora", es: "Hablar ahora" }));
 </script>
@@ -61,7 +63,8 @@ const ctaLabel = computed(() => text(props.section.ctaLabel) || localize({ pt: "
   flex-direction: column;
   align-items: flex-start;
   gap: 16px;
-  max-width: 520px;
+  /* Texto longo: o cartão alarga e a letra diminui (useCopyFit) em vez de o banner esticar. */
+  max-width: calc(520px + var(--v2-card-grow, 0px));
   margin: clamp(16px, 4cqi, 48px);
   padding: clamp(24px, 4cqi, 40px);
   border-radius: 24px;
@@ -73,11 +76,12 @@ const ctaLabel = computed(() => text(props.section.ctaLabel) || localize({ pt: "
   margin: 0;
   font-family: "Bricolage Grotesque", Figtree, sans-serif;
   font-weight: 700;
-  font-size: clamp(26px, 3.4cqi, 40px);
+  font-size: max(22px, calc(clamp(26px, 3.4cqi, 40px) * var(--v2-title-scale, 1)));
   line-height: 1.05;
   letter-spacing: -0.025em;
 }
 .v2-bc-sub {
+  font-size: max(15px, calc(16px * var(--v2-sub-scale, 1)));
   color: rgba(15, 23, 19, 0.74);
   line-height: 1.55;
 }
@@ -113,7 +117,7 @@ const ctaLabel = computed(() => text(props.section.ctaLabel) || localize({ pt: "
   background: linear-gradient(90deg, rgba(6, 12, 9, 0.82) 0%, rgba(6, 12, 9, 0.45) 45%, rgba(6, 12, 9, 0) 75%);
 }
 .is-shade .v2-bc-card {
-  max-width: 560px;
+  max-width: calc(560px + var(--v2-card-grow, 0px));
   margin: 0;
   padding: clamp(24px, 5cqi, 56px);
   border-radius: 0;
@@ -130,15 +134,17 @@ const ctaLabel = computed(() => text(props.section.ctaLabel) || localize({ pt: "
   color: #fff;
 }
 @container (max-width: 640px) {
+  /* A foto aparece limpa no topo e o texto fica sempre sobre a parte escura,
+     mesmo quando é longo e sobe pela foto. */
   .v2-bc.is-shade {
     min-height: 460px;
-    padding-top: 0;
+    padding-top: 150px;
   }
   .is-shade .v2-bc-img {
     height: 100%;
   }
   .v2-bc-shade {
-    background: linear-gradient(180deg, rgba(6, 12, 9, 0) 20%, rgba(6, 12, 9, 0.55) 55%, rgba(6, 12, 9, 0.88) 100%);
+    background: linear-gradient(180deg, rgba(6, 12, 9, 0) 40px, rgba(6, 12, 9, 0.62) 150px, rgba(6, 12, 9, 0.9) 260px, rgba(6, 12, 9, 0.92) 100%);
   }
   .is-shade .v2-bc-card {
     margin: 0;

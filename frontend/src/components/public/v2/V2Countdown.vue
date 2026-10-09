@@ -9,7 +9,7 @@
     <div v-else class="v2-cd">
       <div class="v2-cd-copy v2-in">
         <span class="v2-cd-pill"><span class="v2-cd-dot" aria-hidden="true"></span>{{ eyebrow }}</span>
-        <h2 class="v2-title">{{ label }}</h2>
+        <h2 class="v2-title" :style="titleScaleStyle(label)">{{ label }}</h2>
         <p v-if="endsAt" class="v2-cd-ends">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
           {{ endsAt }}
@@ -34,6 +34,7 @@ import type { CountdownSection } from "../../../types/page";
 import V2Section from "./V2Section.vue";
 import { usePageDesignContext } from "./designContext";
 import { localize, text } from "./useHeading";
+import { titleScaleStyle } from "./useCopyFit";
 import { getCurrentLanguage } from "../../../utils/i18n";
 import { getSectionHeadingDefaults, resolveHeadingLabel } from "../../../utils/sectionHeadings";
 
@@ -125,7 +126,7 @@ onBeforeUnmount(() => timer && window.clearInterval(timer));
   gap: 14px;
 }
 .v2-cd-copy .v2-title {
-  font-size: clamp(26px, 3.6cqi, 44px);
+  font-size: max(22px, calc(clamp(26px, 3.6cqi, 44px) * var(--v2-title-scale, 1)));
 }
 .v2-cd-pill {
   align-self: flex-start;
