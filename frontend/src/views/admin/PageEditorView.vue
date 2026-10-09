@@ -63,7 +63,7 @@
 
 
     <Teleport to="body" v-if="limitModal.open">
-      <div class="fixed inset-0 z-50 flex items-center justify-center px-4 page-editor-overlay">
+      <div class="fixed inset-0 z-[120] flex items-center justify-center px-4 page-editor-overlay">
         <div class="editor-dialog-shell w-full max-w-md p-6">
           <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">{{ viewCopy.limitModal.eyebrow }}</p>
           <h3 class="mt-2 text-xl font-bold text-slate-900">{{ viewCopy.limitModal.title }}</h3>
@@ -92,7 +92,7 @@
 
     <!-- Diálogo de confirmação ao sair sem salvar -->
     <Teleport to="body" v-if="unsavedNavigationModal.open">
-      <div class="fixed inset-0 z-50 flex items-center justify-center px-4 page-editor-overlay">
+      <div class="fixed inset-0 z-[120] flex items-center justify-center px-4 page-editor-overlay">
         <div class="editor-dialog-shell w-full max-w-lg p-6">
           <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">{{ viewCopy.unsavedModal.eyebrow }}</p>
           <h3 class="mt-2 text-xl font-bold text-slate-900">{{ viewCopy.unsavedModal.title }}</h3>
@@ -129,7 +129,7 @@
     </Teleport>
 
     <Teleport to="body" v-if="unsavedSectionModal.open">
-      <div class="fixed inset-0 z-50 flex items-center justify-center px-4 page-editor-overlay">
+      <div class="fixed inset-0 z-[120] flex items-center justify-center px-4 page-editor-overlay">
         <div class="editor-dialog-shell w-full max-w-lg p-6">
           <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">{{ viewCopy.unsavedModal.eyebrow }}</p>
           <h3 class="mt-2 text-xl font-bold text-slate-900">{{ viewCopy.sectionUnsavedModal.title }}</h3>
@@ -166,7 +166,7 @@
     </Teleport>
 
     <Teleport to="body" v-if="unsavedFlightSegmentModal.open">
-      <div class="fixed inset-0 z-50 flex items-center justify-center px-4 page-editor-overlay">
+      <div class="fixed inset-0 z-[120] flex items-center justify-center px-4 page-editor-overlay">
         <div class="editor-dialog-shell w-full max-w-lg p-6">
           <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">{{ viewCopy.unsavedModal.eyebrow }}</p>
           <h3 class="mt-2 text-xl font-bold text-slate-900">{{ viewCopy.flightUnsavedModal.title }}</h3>
@@ -196,7 +196,7 @@
 
     <!-- Dialog de sucesso ao publicar -->
     <Teleport to="body" v-if="successModal.open">
-      <div class="fixed inset-0 z-50 flex items-center justify-center px-4 page-editor-overlay">
+      <div class="fixed inset-0 z-[120] flex items-center justify-center px-4 page-editor-overlay">
         <div class="editor-dialog-shell w-full max-w-md p-6">
           <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">{{ viewCopy.successModal.eyebrow }}</p>
           <h3 class="mt-2 text-xl font-bold text-slate-900">{{ viewCopy.successModal.title }}</h3>
@@ -5342,6 +5342,9 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+/* Avisos do editor (alterações não salvas, limite, sucesso): acima do painel da seção,
+   que no celular ocupa a tela com z-index 80. Abaixo disso, o aviso abria escondido
+   atrás do painel e Voltar/Descartar pareciam travados. */
 .page-editor-overlay {
   background-color: #05070f80;
 }
@@ -7210,7 +7213,9 @@ onMounted(async () => {
 .editor-body.ai-assistant-open .ed-preview-head { grid-template-columns: auto; justify-content: center; }
 .editor-body.ai-assistant-open .ed-preview-eyebrow,
 .editor-body.ai-assistant-open .ed-preview-head .editor-preview-scale { display: none; }
-.ed-stage { margin-top: 12px; min-height: 0; flex: 1; }
+/* A prévia isola as camadas dela: o "+" e a faixa de ações das seções (z-index 70-80)
+   não passam por cima do painel da seção no celular nem dos avisos do editor. */
+.ed-stage { margin-top: 12px; min-height: 0; flex: 1; isolation: isolate; }
 .ed-stage.is-framed { display: flex; justify-content: center; }
 .ed-browser { display: flex; width: 100%; min-height: 0; flex-direction: column; overflow: hidden; border-radius: 14px; background: #fff; box-shadow: var(--shadow-elegant); }
 .ed-browser-bar { display: flex; height: 30px; flex-shrink: 0; align-items: center; gap: 6px; background: #e9eeea; padding: 0 12px; }
