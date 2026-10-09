@@ -1232,10 +1232,16 @@ onBeforeUnmount(() => {
 
 .chart-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 18px;
+}
+
+/* O título não quebra; se faltar espaço, legenda e seletor descem para a linha de baixo. */
+.chart-header .chart-title {
+  white-space: nowrap;
 }
 
 .card-eyebrow {
@@ -1258,13 +1264,20 @@ onBeforeUnmount(() => {
 
 .chart-controls {
   display: flex;
+  min-width: 0;
+  max-width: 100%;
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
 }
 
+/* A largura do select segue o maior nome de página; com nomes longos ele passava da borda.
+   Fica limitado e corta o nome com reticências. */
 .filter-select {
+  min-width: 0;
+  max-width: min(100%, 220px);
   height: 34px;
+  overflow: hidden;
   border-radius: 999px;
   border: 0;
   background: var(--muted);
@@ -1272,6 +1285,8 @@ onBeforeUnmount(() => {
   padding: 0 32px 0 14px;
   font-size: 12.5px;
   font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .chart-legend {
@@ -1641,6 +1656,16 @@ onBeforeUnmount(() => {
   .chart-header {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  /* Celular: legenda numa linha e o seletor de página ocupando a largura do card. */
+  .chart-controls {
+    width: 100%;
+  }
+
+  .filter-select {
+    width: 100%;
+    max-width: 100%;
   }
 
   .lead-info {
