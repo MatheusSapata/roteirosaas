@@ -1,0 +1,63 @@
+{
+  "id": "gerenciar-paginas",
+  "titulo": "Encontrar e gerenciar páginas",
+  "gerado": "2026-10-09",
+  "passos": [
+    {
+      "legenda": "Filtre por situação",
+      "detalhe": "Todas, publicadas ou rascunhos.",
+      "ponto": {
+        "x": 43.89,
+        "y": 25.14,
+        "w": 24.97,
+        "h": 5.33
+      }
+    },
+    {
+      "legenda": "Busque pelo nome da página",
+      "ponto": {
+        "x": 22.36,
+        "y": 26.01,
+        "w": 20.56,
+        "h": 3.58
+      }
+    },
+    {
+      "legenda": "Copie o link para divulgar",
+      "ponto": {
+        "x": 20.69,
+        "y": 48.25,
+        "w": 23.8,
+        "h": 5.56
+      }
+    },
+    {
+      "legenda": "Visitas, cliques e leads de cada página",
+      "ponto": {
+        "x": 20.69,
+        "y": 54.03,
+        "w": 23.8,
+        "h": 6.08
+      }
+    },
+    {
+      "legenda": "Abra o menu de ações",
+      "ponto": {
+        "x": 34.86,
+        "y": 61.78,
+        "w": 3.19,
+        "h": 5.11
+      }
+    },
+    {
+      "legenda": "Duplique, defina como principal, despublique ou exclua",
+      "detalhe": "A página principal abre no link da agência, sem o nome da página.",
+      "ponto": {
+        "x": 24.03,
+        "y": 44,
+        "w": 14.03,
+        "h": 18.44
+      }
+    }
+  ]
+}

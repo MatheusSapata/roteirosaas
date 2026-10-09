@@ -1,0 +1,36 @@
+{
+  "id": "conectar-viajeon",
+  "titulo": "Conectar o Viaje On",
+  "gerado": "2026-10-09",
+  "passos": [
+    {
+      "legenda": "Em Integrações > Viaje On, clique em Conectar Viaje On",
+      "ponto": {
+        "x": 35.97,
+        "y": 32.43,
+        "w": 10.97,
+        "h": 5.33
+      }
+    },
+    {
+      "legenda": "Cole o token e o secret do painel do Viaje On",
+      "detalhe": "O secret fica guardado de forma criptografada.",
+      "ponto": {
+        "x": 33.26,
+        "y": 42.39,
+        "w": 33.47,
+        "h": 6
+      }
+    },
+    {
+      "legenda": "Clique em Conectar e testar",
+      "detalhe": "Depois, a seção Compra Online (Viaje On) fica liberada no editor.",
+      "ponto": {
+        "x": 55.54,
+        "y": 66.72,
+        "w": 11.19,
+        "h": 5.56
+      }
+    }
+  ]
+}

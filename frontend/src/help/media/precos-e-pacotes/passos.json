@@ -1,0 +1,44 @@
+{
+  "id": "precos-e-pacotes",
+  "titulo": "Preços e pacotes",
+  "gerado": "2026-10-09",
+  "passos": [
+    {
+      "legenda": "Clique em Preços e pacotes",
+      "ponto": {
+        "x": 82.22,
+        "y": 56.17,
+        "w": 13.47,
+        "h": 5.67
+      }
+    },
+    {
+      "legenda": "Ofertas: nome, preço, parcelas e o que está incluso",
+      "detalhe": "Destaque a mais vendida com um selo.",
+      "ponto": {
+        "x": 24.31,
+        "y": 36.61,
+        "w": 26.11,
+        "h": 5.56
+      }
+    },
+    {
+      "legenda": "Botão da oferta: WhatsApp, link ou formulário",
+      "ponto": {
+        "x": 26.39,
+        "y": 53.1,
+        "w": 21.94,
+        "h": 5.56
+      }
+    },
+    {
+      "legenda": "Formas de pagamento aparecem embaixo dos preços",
+      "ponto": {
+        "x": 24.31,
+        "y": 82.43,
+        "w": 26.11,
+        "h": 5.56
+      }
+    }
+  ]
+}

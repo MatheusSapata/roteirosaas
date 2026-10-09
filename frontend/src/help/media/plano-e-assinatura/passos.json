@@ -1,0 +1,30 @@
+{
+  "id": "plano-e-assinatura",
+  "titulo": "Planos e assinatura",
+  "gerado": "2026-10-09",
+  "passos": [
+    {
+      "legenda": "No Perfil, veja o plano atual e a próxima renovação",
+      "ponto": {
+        "x": 21.11,
+        "y": 15.28,
+        "w": 75.56,
+        "h": 10.75
+      }
+    },
+    {
+      "legenda": "Clique em Ver planos",
+      "ponto": {
+        "x": 87.12,
+        "y": 17.76,
+        "w": 8.15,
+        "h": 5.78
+      }
+    },
+    {
+      "legenda": "Compare os planos e mude quando quiser",
+      "detalhe": "O plano atual aparece marcado.",
+      "ponto": null
+    }
+  ]
+}

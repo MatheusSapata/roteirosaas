@@ -1,0 +1,35 @@
+{
+  "id": "whatsapp-da-agencia",
+  "titulo": "Conectar o WhatsApp da agência",
+  "gerado": "2026-10-09",
+  "passos": [
+    {
+      "legenda": "Em Integrações > WhatsApp, veja a situação da conexão",
+      "ponto": {
+        "x": 20.97,
+        "y": 31.86,
+        "w": 49.72,
+        "h": 8.19
+      }
+    },
+    {
+      "legenda": "Clique em Conectar WhatsApp e leia o QR Code",
+      "detalhe": "No celular: WhatsApp > Aparelhos conectados > Conectar aparelho.",
+      "ponto": {
+        "x": 58.8,
+        "y": 41.15,
+        "w": 11.89,
+        "h": 5.33
+      }
+    },
+    {
+      "legenda": "Atualize o status para conferir se segue conectado",
+      "ponto": {
+        "x": 60.8,
+        "y": 49.01,
+        "w": 9.89,
+        "h": 5.33
+      }
+    }
+  ]
+}

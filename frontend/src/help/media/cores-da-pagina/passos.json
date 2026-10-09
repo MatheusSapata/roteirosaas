@@ -1,0 +1,55 @@
+{
+  "id": "cores-da-pagina",
+  "titulo": "Cores da página",
+  "gerado": "2026-10-09",
+  "passos": [
+    {
+      "legenda": "Clique em Cores",
+      "ponto": {
+        "x": 18.89,
+        "y": 20.22,
+        "w": 3.89,
+        "h": 6.22
+      }
+    },
+    {
+      "legenda": "Cor de destaque",
+      "detalhe": "Vale para botões, selos e ícones de todas as seções.",
+      "ponto": {
+        "x": 24.31,
+        "y": 18.06,
+        "w": 21.94,
+        "h": 5.56
+      }
+    },
+    {
+      "legenda": "Fundo das seções",
+      "detalhe": "As duas cores que as seções alternam no fundo.",
+      "ponto": {
+        "x": 24.31,
+        "y": 36.65,
+        "w": 21.94,
+        "h": 5.56
+      }
+    },
+    {
+      "legenda": "Visual das seções",
+      "detalhe": "Cantos, sombras e títulos de todas as seções de uma vez.",
+      "ponto": {
+        "x": 24.31,
+        "y": 63.63,
+        "w": 21.94,
+        "h": 5.56
+      }
+    },
+    {
+      "legenda": "Salve para aplicar na página publicada",
+      "ponto": {
+        "x": 93.4,
+        "y": 1.33,
+        "w": 6.19,
+        "h": 5.78
+      }
+    }
+  ]
+}

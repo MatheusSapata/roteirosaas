@@ -695,6 +695,10 @@
                 <p class="am-card-sub !mt-0">
                   {{ lesson.videoType === "file" ? "Arquivo ou link direto" : "YouTube" }}<template v-if="lesson.level"> · {{ lesson.level }}</template><template v-if="lesson.duration"> · {{ lesson.duration }}</template>
                 </p>
+                <p v-if="lessonReplacement(lesson)" class="am-card-sub !mt-0.5">
+                  <span class="am-badge am-tone-warning mr-1">Desatualizada</span>
+                  As agências veem o artigo “{{ lessonReplacement(lesson)!.titulo }}”, revisado em {{ formatHelpDate(lessonReplacement(lesson)!.atualizado) }}. Grave um vídeo novo para voltar a mostrar a aula.
+                </p>
               </div>
               <button type="button" class="am-btn am-btn-sm" @click="openLessonEdit(lesson)"><AmIcon name="edit" />Editar</button>
               <button type="button" class="am-icon-btn" :disabled="deletingLessonId === lesson.id" :aria-label="`Excluir ${lesson.title}`" @click="deleteLesson(lesson.id)">
@@ -738,6 +742,16 @@
               <label for="ls-level">Nível</label>
               <input id="ls-level" v-model="lessonForm.level" type="text" class="am-input" placeholder="Ex.: Iniciante" />
             </div>
+          </div>
+          <div class="am-field">
+            <label for="ls-help">Artigo da Central de Ajuda <span class="font-normal text-muted-foreground">(opcional)</span></label>
+            <select id="ls-help" v-model="lessonForm.helpArticle" class="am-input">
+              <option value="">Nenhum</option>
+              <optgroup v-for="group in helpArticleOptions" :key="group.label" :label="group.label">
+                <option v-for="article in group.articles" :key="article.id" :value="article.id">{{ article.titulo }}</option>
+              </optgroup>
+            </select>
+            <p class="am-card-sub">Quando o artigo for revisado depois do vídeo desta aula, a aula passa a mostrar o artigo atualizado no lugar.</p>
           </div>
           <div class="am-field">
             <label for="ls-video">Link ou iframe do vídeo</label>
@@ -1414,6 +1428,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { getPlanLabel, planLabels } from "../../utils/planLabels";
 import { normalizeVideoInput, useLessonsStore, type Lesson } from "../../store/useLessonsStore";
+import { HELP_MODULES, articleReplacingLesson, articlesOf, formatDate as formatHelpDate } from "../../help";
 import { slugify } from "../../utils/slugify";
 import PageTemplatePreview from "../../components/admin/PageTemplatePreview.vue";
 import FlightApiKeysPanel from "../../components/admin/FlightApiKeysPanel.vue";
@@ -2471,8 +2486,12 @@ const lessonForm = reactive({
   videoInput: "",
   thumbnailUrl: "",
   thumbnailData: "",
-  thumbnailUploadName: ""
+  thumbnailUploadName: "",
+  helpArticle: ""
 });
+const lessonReplacement = (lesson: Lesson) =>
+  articleReplacingLesson({ titulo: lesson.title, artigo: lesson.helpArticle, atualizadaEm: lesson.videoUpdatedAt });
+const helpArticleOptions = HELP_MODULES.map(module => ({ label: module.titulo, articles: articlesOf(module.id) })).filter(group => group.articles.length);
 const editingLessonId = ref<number | null>(null);
 const isEditingLesson = computed(() => editingLessonId.value !== null);
 const lessonPreview = computed(() => normalizeVideoInput(lessonForm.videoInput || ""));
@@ -2496,7 +2515,9 @@ const persistLessonGroupOrder = async (group: LessonGroup, lessonIds: number[]) 
     level: lesson.level || "",
     videoType: lesson.video_type,
     videoUrl: lesson.video_url,
-    thumbnail: lesson.thumbnail_url || undefined
+    thumbnail: lesson.thumbnail_url || undefined,
+    helpArticle: lesson.help_article || undefined,
+    videoUpdatedAt: lesson.video_updated_at || lesson.updated_at || lesson.created_at || undefined
   }));
   lessonsStore.loaded = true;
 };
@@ -2740,6 +2761,7 @@ const resetLessonForm = () => {
   lessonForm.thumbnailUrl = "";
   lessonForm.thumbnailData = "";
   lessonForm.thumbnailUploadName = "";
+  lessonForm.helpArticle = "";
 };
 
 const startLessonEdit = (lesson: Lesson) => {
@@ -2754,6 +2776,7 @@ const startLessonEdit = (lesson: Lesson) => {
   lessonForm.thumbnailUrl = isDataUrl ? "" : lesson.thumbnail || "";
   lessonForm.thumbnailData = isDataUrl ? lesson.thumbnail || "" : "";
   lessonForm.thumbnailUploadName = isDataUrl ? "Imagem enviada" : "";
+  lessonForm.helpArticle = lesson.helpArticle || "";
 };
 
 const saveLesson = async () => {
@@ -2775,7 +2798,8 @@ const saveLesson = async () => {
     videoType: parsed.videoType,
     videoUrl: parsed.videoUrl,
     thumbnailUrl: lessonForm.thumbnailUrl || undefined,
-    thumbnailBase64: lessonForm.thumbnailData || undefined
+    thumbnailBase64: lessonForm.thumbnailData || undefined,
+    helpArticle: lessonForm.helpArticle
   };
   lessonSaving.value = true;
   try {

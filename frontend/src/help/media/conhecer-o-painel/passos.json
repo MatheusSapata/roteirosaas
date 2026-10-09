@@ -1,0 +1,63 @@
+{
+  "id": "conhecer-o-painel",
+  "titulo": "Conhecer o painel",
+  "gerado": "2026-10-09",
+  "passos": [
+    {
+      "legenda": "O menu leva a todas as áreas",
+      "detalhe": "Principal, Configurar e Aprender. O alfinete fixa o menu aberto.",
+      "ponto": {
+        "x": 0,
+        "y": 0,
+        "w": 18.61,
+        "h": 101.33
+      }
+    },
+    {
+      "legenda": "Nova página, de qualquer tela",
+      "ponto": {
+        "x": 1.25,
+        "y": 8.67,
+        "w": 16.11,
+        "h": 5.78
+      }
+    },
+    {
+      "legenda": "Escolha o período do resumo",
+      "ponto": {
+        "x": 81.95,
+        "y": 5.13,
+        "w": 5.59,
+        "h": 4.75
+      }
+    },
+    {
+      "legenda": "Visitas, cliques, leads e páginas no ar",
+      "ponto": {
+        "x": 19.58,
+        "y": 11.28,
+        "w": 78.61,
+        "h": 20.36
+      }
+    },
+    {
+      "legenda": "Do clique ao lead: onde as visitas se perdem",
+      "ponto": {
+        "x": 69.4,
+        "y": 41.69,
+        "w": 27.27,
+        "h": 21.78
+      }
+    },
+    {
+      "legenda": "Os leads que acabaram de chegar",
+      "detalhe": "Chame no WhatsApp ou abra os detalhes direto daqui.",
+      "ponto": {
+        "x": 59.03,
+        "y": 47.03,
+        "w": 39.17,
+        "h": 53.61
+      }
+    }
+  ]
+}

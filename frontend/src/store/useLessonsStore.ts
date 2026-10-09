@@ -15,6 +15,10 @@ export interface Lesson {
   videoType: LessonVideoType;
   videoUrl: string;
   thumbnail?: string;
+  /** Artigo da Central de Ajuda que substitui a aula quando é mais novo que o vídeo. */
+  helpArticle?: string;
+  /** Quando o vídeo mudou pela última vez (AAAA-MM-DD…). */
+  videoUpdatedAt?: string;
 }
 
 export interface LessonPayload {
@@ -27,6 +31,8 @@ export interface LessonPayload {
   videoUrl: string;
   thumbnailUrl?: string;
   thumbnailBase64?: string;
+  /** "" tira a ligação com o artigo. */
+  helpArticle?: string;
 }
 
 interface ApiLesson {
@@ -40,6 +46,10 @@ interface ApiLesson {
   video_type: LessonVideoType;
   video_url: string;
   thumbnail_url?: string | null;
+  help_article?: string | null;
+  video_updated_at?: string | null;
+  updated_at?: string | null;
+  created_at?: string | null;
 }
 
 const mapLesson = (data: ApiLesson): Lesson => ({
@@ -52,7 +62,9 @@ const mapLesson = (data: ApiLesson): Lesson => ({
   level: data.level || "",
   videoType: data.video_type,
   videoUrl: data.video_url,
-  thumbnail: data.thumbnail_url || undefined
+  thumbnail: data.thumbnail_url || undefined,
+  helpArticle: data.help_article || undefined,
+  videoUpdatedAt: data.video_updated_at || data.updated_at || data.created_at || undefined
 });
 
 const toApiPayload = (payload: LessonPayload) => ({
@@ -64,7 +76,8 @@ const toApiPayload = (payload: LessonPayload) => ({
   video_type: payload.videoType,
   video_url: payload.videoUrl,
   thumbnail_url: payload.thumbnailUrl?.trim() || undefined,
-  thumbnail_base64: payload.thumbnailBase64 || undefined
+  thumbnail_base64: payload.thumbnailBase64 || undefined,
+  ...(payload.helpArticle !== undefined ? { help_article: payload.helpArticle.trim() || null } : {})
 });
 
 export const normalizeVideoInput = (input: string): { videoType: LessonVideoType; videoUrl: string } => {

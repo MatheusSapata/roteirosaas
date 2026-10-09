@@ -1,0 +1,36 @@
+{
+  "id": "links-roteiros",
+  "titulo": "Links/Roteiros",
+  "gerado": "2026-10-09",
+  "passos": [
+    {
+      "legenda": "Clique em Links/Roteiros",
+      "ponto": {
+        "x": 82.22,
+        "y": 32.61,
+        "w": 13.47,
+        "h": 5.67
+      }
+    },
+    {
+      "legenda": "Cada card leva para outra página ou link",
+      "detalhe": "Cole o link de uma página sua e o card puxa título, foto e datas.",
+      "ponto": {
+        "x": 24.31,
+        "y": 36.61,
+        "w": 26.11,
+        "h": 5.56
+      }
+    },
+    {
+      "legenda": "Na prévia, as setas passam os cards",
+      "detalhe": "Até 4 cards por vez no computador.",
+      "ponto": {
+        "x": 53.06,
+        "y": 53.12,
+        "w": 26.39,
+        "h": 30.46
+      }
+    }
+  ]
+}

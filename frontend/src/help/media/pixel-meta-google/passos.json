@@ -1,0 +1,71 @@
+{
+  "id": "pixel-meta-google",
+  "titulo": "Pixel do Meta e Google Analytics",
+  "gerado": "2026-10-09",
+  "passos": [
+    {
+      "legenda": "Em Integrações > Rastreamento, clique em Novo código",
+      "ponto": {
+        "x": 59.98,
+        "y": 22.53,
+        "w": 10.71,
+        "h": 5.78
+      }
+    },
+    {
+      "legenda": "Dê um nome para reconhecer depois",
+      "ponto": {
+        "x": 27.71,
+        "y": 43.94,
+        "w": 44.58,
+        "h": 6
+      }
+    },
+    {
+      "legenda": "Escolha Meta ou Google",
+      "ponto": {
+        "x": 27.71,
+        "y": 53.94,
+        "w": 22.15,
+        "h": 6
+      }
+    },
+    {
+      "legenda": "Cole o código do pixel ou o G- do Google",
+      "ponto": {
+        "x": 50.14,
+        "y": 53.94,
+        "w": 22.15,
+        "h": 6
+      }
+    },
+    {
+      "legenda": "Salve a integração",
+      "ponto": {
+        "x": 61,
+        "y": 62.28,
+        "w": 11.29,
+        "h": 5.33
+      }
+    },
+    {
+      "legenda": "Na página, abra Rastreamento",
+      "ponto": {
+        "x": 18.89,
+        "y": 25.56,
+        "w": 3.89,
+        "h": 6.22
+      }
+    },
+    {
+      "legenda": "Escolha o pixel e os eventos que quer enviar",
+      "detalhe": "Page view, cliques em CTAs e leads (envios de formulário).",
+      "ponto": {
+        "x": 24.58,
+        "y": 37.55,
+        "w": 21.94,
+        "h": 6.22
+      }
+    }
+  ]
+}

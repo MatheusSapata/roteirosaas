@@ -200,6 +200,8 @@ const platformRoutes: RouteRecordRaw[] = [
       { path: "pages", name: "pages", component: PagesListView, meta: { permission: "pages" } },
       { path: "pages/:id/edit", name: "page-edit", component: PageEditorView, props: true, meta: { permission: "pages" } },
       { path: "aulas", name: "lessons", component: () => import("../views/admin/AulasView.vue") },
+      { path: "ajuda", name: "help-center", component: () => import("../views/admin/HelpCenterView.vue") },
+      { path: "ajuda/:id", name: "help-article", component: () => import("../views/admin/HelpArticleView.vue"), props: true },
       { path: "leads", redirect: to => resolveLegacyLeadsRedirect(to) },
       { path: "leads/forms", name: "leads-forms", component: LeadsView, meta: { permission: "leads" } },
       { path: "leads/opportunities", name: "leads-opportunities", component: LeadsView, meta: { permission: "leads" } },

@@ -764,6 +764,7 @@ import {
   FileTextIcon,
   GlobeIcon,
   GraduationCapIcon,
+  LifeBuoyIcon,
   LayoutDashboardIcon,
   Link2Icon,
   LogOutIcon,
@@ -869,7 +870,7 @@ const navCopy = {
   clients: { pt: "Clientes", es: "Clientes" },
   integrations: { pt: "Integra\u00E7\u00F5es", es: "Integraciones" },
   tracking: { pt: "Rastreamento", es: "Rastreo" },
-  viajeon: { pt: "Viajeon", es: "Viajeon" },
+  viajeon: { pt: "Viaje On", es: "Viaje On" },
   connections: { pt: "Notificações", es: "Atención" },
   domains: { pt: "Dom\u00EDnios", es: "Dominios" },
   agency: { pt: "Minha Ag\u00EAncia", es: "Mi Agencia" },
@@ -1087,7 +1088,8 @@ const navIconComponents: Record<string, Component> = {
   "/admin/perfil": UserRoundIcon,
   "/admin/planos": BadgePercentIcon,
   "/admin/administracao": ShieldCheckIcon,
-  "/admin/aulas": GraduationCapIcon
+  "/admin/aulas": GraduationCapIcon,
+  "/admin/ajuda": LifeBuoyIcon
 };
 const navIconFor = (iconPath: string): Component => navIconComponents[iconPath] || CircleIcon;
 
@@ -1530,7 +1532,8 @@ const adminNavigation = computed<AdminNavItem[]>(() => {
         { label: "Equipe", path: "/admin/agency/team" }
       ]
     },
-    { id: "lessons", type: "link", label: navLabel("lessons"), to: "/admin/aulas", iconPath: "/admin/aulas" }
+    { id: "lessons", type: "link", label: navLabel("lessons"), to: "/admin/aulas", iconPath: "/admin/aulas" },
+    { id: "help", type: "link", label: t({ pt: "Central de Ajuda", es: "Centro de ayuda" }), to: "/admin/ajuda", iconPath: "/admin/ajuda", activeBase: "/admin/ajuda" }
   ];
   if (canAccessCustomDomains.value) {
     items.splice(5, 0, { id: "domains", type: "link", label: navLabel("domains"), to: "/admin/domains", iconPath: "/admin/domains" });
@@ -1614,7 +1617,7 @@ const sidebarSections = computed<SidebarSection[]>(() => {
     {
       id: "aprender",
       label: t({ pt: "Aprender", es: "Aprender" }),
-      itemIds: ["lessons"]
+      itemIds: ["help", "lessons"]
     },
     {
       id: "plataforma",

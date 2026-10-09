@@ -2913,8 +2913,8 @@ const sectionDescriptions: Partial<Record<SectionType, string>> = {
     es: "Carrusel de páginas y enlaces externos con imagen, título y descripción."
   }),
   viajeon_checkout: t({
-    pt: "Lista todos os pacotes ativos de um checkout Viajeon e envia a seleção para o pagamento externo.",
-    es: "Lista todos los paquetes activos de un checkout Viajeon y envía la selección al pago externo."
+    pt: "Lista todos os pacotes ativos de um checkout Viaje On e envia a seleção para o pagamento externo.",
+    es: "Lista todos los paquetes activos de un checkout Viaje On y envía la selección al pago externo."
   }),
   internal_form: t({
     pt: "Formulário incorporado à página, com fundo personalizável e confirmação após o envio.",
@@ -3472,7 +3472,7 @@ const validateSection = (section: PageSection | null): string | null => {
   }
   if ((section as any).type === "viajeon_checkout" && section.enabled !== false) {
     const viajeon = section as ViajeonCheckoutSection;
-    if (!viajeon.checkoutId) return "Selecione um checkout ativo do Viajeon antes de salvar a seção.";
+    if (!viajeon.checkoutId) return "Selecione um checkout ativo do Viaje On antes de salvar a seção.";
   }
   if ((section as any).type === "internal_form" && section.enabled !== false) {
     const internalForm = section as InternalFormSection;
@@ -3743,7 +3743,7 @@ const loadViajeonStatus = async () => {
     const response = await api.get("/integrations/viajeon");
     viajeonConnected.value = response.data?.connected === true;
   } catch (err) {
-    console.error("Erro ao consultar integração Viajeon", err);
+    console.error("Erro ao consultar integração Viaje On", err);
     viajeonConnected.value = false;
   }
 };
@@ -4745,7 +4745,9 @@ const addSection = (type: SectionType, insertIndex?: number) => {
   if (type === "header" && sections.value.some(isHeaderSection)) return;
   const next = clone(defaultSection(type));
   const current = sections.value.slice();
-  const footerIndex = current.findIndex(isFooterSection);
+  // Seção nova entra antes dos rodapés (o da agência e o do plano grátis).
+  const isFooterLike = (section: PageSection) => isFooterSection(section) || (type !== "agency_footer" && (section as any)?.type === "agency_footer");
+  const footerIndex = current.findIndex(isFooterLike);
   const maxInsertIndex = footerIndex >= 0 ? footerIndex : current.length;
   if (type === "header") {
     current.unshift(next);

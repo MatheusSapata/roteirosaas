@@ -1,0 +1,29 @@
+{
+  "id": "faturas",
+  "titulo": "Faturas do plano",
+  "gerado": "2026-10-09",
+  "passos": [
+    {
+      "legenda": "A vencer, vencidas e pagas",
+      "ponto": {
+        "x": 19.58,
+        "y": 19.42,
+        "w": 78.61,
+        "h": 9.42
+      }
+    },
+    {
+      "legenda": "Filtre a lista por situação",
+      "ponto": {
+        "x": 19.58,
+        "y": 29.28,
+        "w": 78.61,
+        "h": 5.33
+      }
+    },
+    {
+      "legenda": "Cada fatura mostra valor, vencimento e o link de pagamento",
+      "ponto": null
+    }
+  ]
+}

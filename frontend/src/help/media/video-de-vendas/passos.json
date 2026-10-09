@@ -1,0 +1,46 @@
+{
+  "id": "video-de-vendas",
+  "titulo": "Vídeo de Vendas (VSL)",
+  "gerado": "2026-10-09",
+  "passos": [
+    {
+      "legenda": "Clique em Vídeo de Vendas (VSL)",
+      "detalhe": "Ela fica sempre no topo da página.",
+      "ponto": {
+        "x": 82.22,
+        "y": 14.94,
+        "w": 13.47,
+        "h": 5.67
+      }
+    },
+    {
+      "legenda": "Cole o link do vídeo",
+      "detalhe": "YouTube, Vimeo ou Panda.",
+      "ponto": {
+        "x": 24.31,
+        "y": 36.61,
+        "w": 26.11,
+        "h": 5.56
+      }
+    },
+    {
+      "legenda": "Liberação do botão: escolha o momento do vídeo",
+      "detalhe": "O botão e o resto da página aparecem só a partir desse ponto.",
+      "ponto": {
+        "x": 24.31,
+        "y": 77.93,
+        "w": 26.11,
+        "h": 5.56
+      }
+    },
+    {
+      "legenda": "Salve a seção",
+      "ponto": {
+        "x": 43.08,
+        "y": 91.78,
+        "w": 8.72,
+        "h": 5.56
+      }
+    }
+  ]
+}

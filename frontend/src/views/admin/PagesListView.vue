@@ -469,7 +469,7 @@
               :placeholder="viewCopy.dialogs.duplicate.slugPlaceholder"
             />
             <p class="mt-1 text-xs text-slate-500">
-              {{ viewCopy.dialogs.duplicate.finalLink }}: /{{ currentAgencySlug }}/{{ duplicateSlug || "slug" }}
+              {{ viewCopy.dialogs.duplicate.finalLink }}: /{{ currentAgencySlug }}/{{ duplicateSlug || "link-da-pagina" }}
             </p>
           </div>
         </div>
@@ -680,27 +680,27 @@ const viewCopySource = {
       pt: "Escolha um modelo para visualizar o design.",
       es: "Elige un modelo para visualizar el diseño."
     },
-    formTitle: { pt: "Detalhes da nova pagina", es: "Detalles de la nueva pagina" },
-    nameLabel: { pt: "Titulo da pagina", es: "Titulo de la pagina" },
-    slugLabel: { pt: "Slug", es: "Slug" },
+    formTitle: { pt: "Detalhes da nova página", es: "Detalles de la nueva página" },
+    nameLabel: { pt: "Título da página", es: "Título de la página" },
+    slugLabel: { pt: "Link da página", es: "Enlace de la página" },
     slugHint: {
-      pt: "Este slug completa o link publico do roteiro.",
-      es: "Este slug completa el enlace publico del itinerario."
+      pt: "Completa o link público do roteiro.",
+      es: "Completa el enlace público del itinerario."
     },
     back: { pt: "Voltar", es: "Volver" },
     cancel: { pt: "Cancelar", es: "Cancelar" },
-    create: { pt: "Criar pagina", es: "Crear pagina" }
+    create: { pt: "Criar página", es: "Crear página" }
   },
   dialogs: {
     duplicate: {
       title: { pt: "Duplicar página", es: "Duplicar página" },
       description: {
-        pt: "Crie um rascunho copiando conteúdo e ajustando o slug.",
-        es: "Crea un borrador copiando el contenido y ajustando el slug."
+        pt: "Cria um rascunho com o mesmo conteúdo e um link novo.",
+        es: "Crea un borrador con el mismo contenido y un enlace nuevo."
       },
       titleLabel: { pt: "Título", es: "Título" },
       titlePlaceholder: { pt: "Novo título", es: "Nuevo título" },
-      slugLabel: { pt: "Slug", es: "Slug" },
+      slugLabel: { pt: "Link da página", es: "Enlace de la página" },
       slugPlaceholder: { pt: "novo-slug", es: "nuevo-slug" },
       finalLink: { pt: "Link final", es: "Link final" },
       cancel: { pt: "Cancelar", es: "Cancelar" },

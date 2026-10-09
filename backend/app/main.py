@@ -44,6 +44,12 @@ if engine.dialect.name == "postgresql":
             "viajechat_custom_field_mappings JSONB NOT NULL DEFAULT '[]'::jsonb"
         ))
         connection.execute(text("ALTER TABLE agencies ADD COLUMN IF NOT EXISTS description TEXT"))
+        connection.execute(text("ALTER TABLE lessons ADD COLUMN IF NOT EXISTS help_article VARCHAR(80)"))
+        connection.execute(text("ALTER TABLE lessons ADD COLUMN IF NOT EXISTS video_updated_at TIMESTAMP WITH TIME ZONE"))
+        connection.execute(text("ALTER TABLE lessons ALTER COLUMN video_updated_at SET DEFAULT now()"))
+        connection.execute(text(
+            "UPDATE lessons SET video_updated_at = COALESCE(updated_at, created_at, now()) WHERE video_updated_at IS NULL"
+        ))
 
 logging.basicConfig(level=logging.INFO)
 

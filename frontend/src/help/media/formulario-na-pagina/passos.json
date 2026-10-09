@@ -1,0 +1,48 @@
+{
+  "id": "formulario-na-pagina",
+  "titulo": "Captar leads na página",
+  "gerado": "2026-10-09",
+  "passos": [
+    {
+      "legenda": "No editor, clique em Captação de leads",
+      "ponto": {
+        "x": 18.89,
+        "y": 30.89,
+        "w": 3.89,
+        "h": 6.22
+      }
+    },
+    {
+      "legenda": "Escolha o formulário",
+      "detalhe": "Ele abre antes do visitante ver a página.",
+      "ponto": {
+        "x": 24.58,
+        "y": 32.09,
+        "w": 21.94,
+        "h": 6.22
+      }
+    },
+    {
+      "legenda": "Decida se o visitante pode fechar sem enviar",
+      "ponto": {
+        "x": 24.58,
+        "y": 43.31,
+        "w": 11.77,
+        "h": 3.5
+      }
+    },
+    {
+      "legenda": "Clique em Ver prévia para testar",
+      "ponto": {
+        "x": 24.58,
+        "y": 47.28,
+        "w": 21.94,
+        "h": 5.78
+      }
+    },
+    {
+      "legenda": "É assim que o visitante vê. Salve a página para valer.",
+      "ponto": null
+    }
+  ]
+}

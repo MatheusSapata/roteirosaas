@@ -1,0 +1,53 @@
+{
+  "id": "equipe",
+  "titulo": "Convidar pessoas para a equipe",
+  "gerado": "2026-10-09",
+  "passos": [
+    {
+      "legenda": "Em Minha Agência > Equipe, clique em Convidar pessoa",
+      "ponto": {
+        "x": 85.56,
+        "y": 6.83,
+        "w": 12.64,
+        "h": 5.78
+      }
+    },
+    {
+      "legenda": "Nome e e-mail de quem vai entrar",
+      "ponto": {
+        "x": 29.72,
+        "y": 35.91,
+        "w": 20.28,
+        "h": 5.78
+      }
+    },
+    {
+      "legenda": "O e-mail recebe o convite para criar a senha",
+      "ponto": {
+        "x": 50,
+        "y": 35.91,
+        "w": 20.28,
+        "h": 5.78
+      }
+    },
+    {
+      "legenda": "Escolha o nível de acesso",
+      "detalhe": "Admin, Editor, Visualizador ou Personalizado, área por área.",
+      "ponto": {
+        "x": 33.54,
+        "y": 56.72,
+        "w": 13.68,
+        "h": 3.67
+      }
+    },
+    {
+      "legenda": "Clique em Enviar convite",
+      "ponto": {
+        "x": 60.53,
+        "y": 68.59,
+        "w": 9.75,
+        "h": 5.78
+      }
+    }
+  ]
+}

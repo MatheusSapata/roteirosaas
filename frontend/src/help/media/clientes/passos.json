@@ -1,0 +1,35 @@
+{
+  "id": "clientes",
+  "titulo": "Base de clientes",
+  "gerado": "2026-10-09",
+  "passos": [
+    {
+      "legenda": "Busque por nome, CPF, telefone ou e-mail",
+      "ponto": {
+        "x": 19.58,
+        "y": 33.5,
+        "w": 37.96,
+        "h": 6.22
+      }
+    },
+    {
+      "legenda": "Abra o cliente",
+      "ponto": {
+        "x": 91.25,
+        "y": 46.92,
+        "w": 3.06,
+        "h": 4.89
+      }
+    },
+    {
+      "legenda": "Oportunidades, notas, documentos e histórico em um lugar",
+      "detalhe": "Daqui você chama no WhatsApp ou cria uma nova oportunidade.",
+      "ponto": {
+        "x": 84.61,
+        "y": 10.52,
+        "w": 12.2,
+        "h": 5.5
+      }
+    }
+  ]
+}

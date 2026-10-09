@@ -1,0 +1,45 @@
+{
+  "id": "organizar-secoes",
+  "titulo": "Mudar a ordem, esconder e duplicar seções",
+  "gerado": "2026-10-09",
+  "passos": [
+    {
+      "legenda": "Arraste a camada pela alça para mudar a ordem",
+      "ponto": {
+        "x": 80.56,
+        "y": 39.89,
+        "w": 2.08,
+        "h": 2.89
+      }
+    },
+    {
+      "legenda": "O interruptor esconde a seção sem apagar",
+      "detalhe": "Ela some da página publicada e volta quando você ligar de novo.",
+      "ponto": {
+        "x": 95.28,
+        "y": 27.78,
+        "w": 3.33,
+        "h": 3.56
+      }
+    },
+    {
+      "legenda": "Na prévia, passe o mouse sobre uma seção",
+      "ponto": {
+        "x": 23.89,
+        "y": 38.46,
+        "w": 55.56,
+        "h": 58.87
+      }
+    },
+    {
+      "legenda": "Suba, desça, duplique, esconda ou exclua por aqui",
+      "detalhe": "Excluir pede confirmação; esconder é reversível.",
+      "ponto": {
+        "x": 54.19,
+        "y": 39.8,
+        "w": 24.42,
+        "h": 6.22
+      }
+    }
+  ]
+}

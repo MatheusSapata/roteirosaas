@@ -89,7 +89,11 @@ def _apply_defaults(instance: Lesson, payload: LessonUpdate, db: Session) -> Les
     if payload.video_type is not None:
         instance.video_type = payload.video_type
     if payload.video_url is not None:
+        if payload.video_url != instance.video_url:
+            instance.video_updated_at = func.now()
         instance.video_url = payload.video_url
+    if "help_article" in payload.model_fields_set:
+        instance.help_article = (payload.help_article or "").strip() or None
     if payload.sort_order is not None:
         instance.sort_order = int(payload.sort_order)
     elif payload.module_name is not None and module_name != original_module:
@@ -124,6 +128,7 @@ def create_lesson(
         video_type=payload.video_type,
         video_url=payload.video_url,
         thumbnail_url=_resolve_thumbnail(payload.thumbnail_base64, payload.thumbnail_url),
+        help_article=(payload.help_article or "").strip() or None,
     )
     db.add(lesson)
     db.commit()

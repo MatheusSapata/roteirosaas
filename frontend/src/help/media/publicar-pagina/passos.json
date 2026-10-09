@@ -1,0 +1,35 @@
+{
+  "id": "publicar-pagina",
+  "titulo": "Publicar a página",
+  "gerado": "2026-10-09",
+  "passos": [
+    {
+      "legenda": "Rascunho: só você vê a página",
+      "ponto": {
+        "x": 32.86,
+        "y": 2.33,
+        "w": 7.06,
+        "h": 3.78
+      }
+    },
+    {
+      "legenda": "Clique em Publicar",
+      "ponto": {
+        "x": 86.62,
+        "y": 1.33,
+        "w": 7.05,
+        "h": 5.78
+      }
+    },
+    {
+      "legenda": "Pronto: a página está no ar",
+      "detalhe": "Visualize para copiar o link e divulgar.",
+      "ponto": {
+        "x": 53.95,
+        "y": 52.89,
+        "w": 11.14,
+        "h": 5.33
+      }
+    }
+  ]
+}

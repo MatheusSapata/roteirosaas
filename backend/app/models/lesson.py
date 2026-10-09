@@ -17,5 +17,10 @@ class Lesson(Base):
     video_type = Column(String(50), nullable=False, default="youtube")
     video_url = Column(String(1000), nullable=False)
     thumbnail_url = Column(String(1000), nullable=True)
+    # Artigo da Central de Ajuda (id em frontend/src/help/content.ts) que substitui a aula
+    # quando for revisado depois do vídeo.
+    help_article = Column(String(80), nullable=True)
+    # Quando o vídeo da aula mudou pela última vez (reordenar ou ligar artigo não conta).
+    video_updated_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
