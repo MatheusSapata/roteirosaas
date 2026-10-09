@@ -69,6 +69,7 @@
                 <span class="spk-card-text">
                   <b>{{ item.label }}</b>
                   <span>{{ item.desc }}</span>
+                  <em v-if="item.unavailable || item.locked" class="spk-note">{{ item.unavailable ? "Já está na página" : "Conecte o Viaje On para usar" }}</em>
                 </span>
               </button>
             </div>
@@ -434,6 +435,11 @@ onMounted(() => {
   line-height: 1.4;
   color: #5b6761;
 }
+.spk-note {
+  display: none;
+}
+/* Celular: lista de uma coluna, com a miniatura à esquerda e título e descrição à direita.
+   A miniatura é a própria seção reduzida, então fica pequena e inteira ao lado do texto. */
 @media (max-width: 640px) {
   .spk-overlay {
     padding: 0;
@@ -448,12 +454,78 @@ onMounted(() => {
   .spk-body {
     padding: 4px 16px 24px;
   }
+  .spk-group {
+    gap: 8px;
+    padding-top: 18px;
+  }
+  .spk-group-head {
+    flex-direction: column;
+    gap: 0;
+  }
   .spk-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+  .spk-card {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    min-height: 92px;
+    padding: 8px 12px 8px 8px;
+    border-radius: 16px;
+  }
+  .spk-card:hover:not(:disabled),
+  .spk-card:focus-visible {
+    transform: none;
+  }
+  .spk-card:active:not(:disabled) {
+    box-shadow: 0 0 0 2px var(--thumb-accent, #12b981);
+  }
+  .spk-thumb {
+    flex: none;
+    width: 120px;
+    aspect-ratio: 4 / 3;
+    border-bottom: 0;
+    border-radius: 10px;
+    box-shadow: inset 0 0 0 1px #e9ede8;
+  }
+  .spk-go,
+  .spk-lock span {
+    display: none;
+  }
+  .spk-card-text {
+    min-width: 0;
+    flex: 1;
+    gap: 2px;
+    padding: 0;
+  }
+  .spk-card-text b {
+    font-size: 15px;
+    line-height: 1.25;
   }
   .spk-card-text span {
-    display: none;
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    font-size: 13px;
+    line-height: 1.35;
+  }
+  .spk-note {
+    display: inline-flex;
+    align-self: flex-start;
+    margin-top: 4px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: #f1f4f0;
+    font-size: 11.5px;
+    font-style: normal;
+    font-weight: 700;
+    color: #3d4842;
+  }
+  .spk-card.is-locked .spk-note {
+    background: #fff4e5;
+    color: #8a4b08;
   }
 }
 @media (prefers-reduced-motion: reduce) {
