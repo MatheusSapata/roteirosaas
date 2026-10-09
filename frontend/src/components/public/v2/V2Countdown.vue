@@ -256,6 +256,38 @@ onBeforeUnmount(() => timer && window.clearInterval(timer));
   font-size: 20px;
   font-variant-numeric: tabular-nums;
 }
+/* Celular: o contador ocupa toda a largura, com os quatro blocos dividindo o espaço. */
+@container (max-width: 560px) {
+  .v2-cd-tiles {
+    width: 100%;
+  }
+  .v2-cd-unit {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .v2-cd-tile {
+    width: 100%;
+  }
+  .v2-cd-tile b {
+    font-size: clamp(30px, 9cqi, 46px);
+  }
+  /* Os dois-pontos acompanham a altura do bloco, descontando o rótulo embaixo. */
+  .v2-cd-sep {
+    align-self: stretch;
+    height: auto;
+    padding-bottom: 25px;
+  }
+  .v2-cd-mini {
+    width: 100%;
+  }
+  .v2-cd-mini span {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .v2-cd-mini b {
+    flex: 1;
+  }
+}
 @keyframes v2-cd-pulse {
   0% { box-shadow: 0 0 0 0 currentColor; }
   70%, 100% { box-shadow: 0 0 0 9px transparent; }
