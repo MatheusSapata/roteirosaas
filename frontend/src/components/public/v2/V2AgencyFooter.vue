@@ -2,7 +2,8 @@
   <V2Section type="agency_footer" :background="section.backgroundColor" fallback-background="#0E1A15" :anchor-id="section.anchorId" flush>
     <div class="v2-ft">
       <div class="v2-ft-cols">
-        <div v-if="description || socialLinks.length" class="v2-ft-col v2-ft-brand">
+        <div v-if="logo || description || socialLinks.length" class="v2-ft-col v2-ft-brand">
+          <img v-if="logo" :src="logo" :alt="companyName" class="v2-ft-logo" :style="{ borderRadius: `${Math.max(0, logoRadius || 0)}px` }" loading="lazy" />
           <p v-if="description" class="v2-ft-about">{{ description }}</p>
           <div v-if="socialLinks.length" class="v2-ft-social" :aria-label="copy.social">
             <a v-for="link in socialLinks" :key="link.network" :href="link.url" target="_blank" rel="noopener noreferrer" :aria-label="link.label" :title="link.label">
@@ -58,11 +59,19 @@ import type { AgencyFooterSection } from "../../../types/page";
 import cadasturLogo from "../../../assets/cadastur-logo.png";
 import { PUBLIC_BRANDING_KEY } from "../../../utils/brandingKeys";
 import { getCurrentLanguage } from "../../../utils/i18n";
+import { resolveMediaUrl } from "../../../utils/media";
 import { normalizeWhatsappDigits } from "../../../utils/whatsapp";
 import V2Section from "./V2Section.vue";
 import { localize } from "./useHeading";
 
-const props = defineProps<{ section: AgencyFooterSection; branding?: Record<string, any>; previewDevice?: "desktop" | "mobile" }>();
+const props = defineProps<{
+  section: AgencyFooterSection;
+  branding?: Record<string, any>;
+  previewDevice?: "desktop" | "mobile";
+  /** Logo da página (Banner Inicial › Logo) e cantos dele; sem ele, o logo da agência. */
+  logoUrl?: string;
+  logoRadius?: number;
+}>();
 const copy = {
   social: localize({ pt: "Redes sociais", es: "Redes sociales" }),
   contacts: localize({ pt: "Contatos", es: "Contactos" }),
@@ -76,6 +85,8 @@ const copy = {
 const year = new Date().getFullYear();
 const provided = inject(PUBLIC_BRANDING_KEY, null) as any;
 const branding = computed<Record<string, any>>(() => props.branding || (provided && "value" in provided ? provided.value : provided) || {});
+// O mesmo logo do topo da página: o do Banner Inicial (se a página trocou) ou o da agência.
+const logo = computed(() => resolveMediaUrl(props.logoUrl) || resolveMediaUrl(branding.value?.logo_url) || "");
 const profile = computed<Record<string, any>>(() => branding.value?.agency_profile || {});
 const companyName = computed(() => profile.value?.name || branding.value?.agency_name || "");
 const description = computed(() => String(profile.value?.description || "").trim());
@@ -197,6 +208,11 @@ const legalNote = computed(() => {
 }
 .v2-ft-col a:hover {
   text-decoration: underline;
+}
+.v2-ft-logo {
+  max-height: 56px;
+  max-width: 200px;
+  object-fit: contain;
 }
 .v2-ft-about {
   max-width: 340px;

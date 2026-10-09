@@ -3115,6 +3115,12 @@ const previewSectionExtraProps = (section: PageSection) => {
     const hero = sections.value.find(item => item.type === "hero") as HeroSection | undefined;
     extra.tripStartDate = hero?.departureDate || "";
   }
+  if (section.type === "agency_footer" && previewDesign.value === "v2") {
+    const editingHero = sectionPanelOpen.value && (livePreviewDraft.value as PageSection | null)?.type === "hero";
+    const hero = (editingHero ? livePreviewDraft.value : sections.value.find(item => item.type === "hero")) as HeroSection | undefined;
+    extra.logoUrl = hero?.logoUrl || branding.value.logo_url || "";
+    extra.logoRadius = hero?.logoBorderRadius ?? 0;
+  }
   if (section.type === "header") {
     // Com o Banner aberto no painel, o menu já mostra o logo (imagem e cantos) do rascunho.
     const editingHero = sectionPanelOpen.value && (livePreviewDraft.value as PageSection | null)?.type === "hero";

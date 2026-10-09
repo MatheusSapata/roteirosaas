@@ -298,6 +298,10 @@ const sectionExtraProps = (section: PageSection, index: number) => {
     extra.logoUrl = headerLogo.value;
     extra.replaceHeadingWithLogo = !vslNavigationActivated.value;
   }
+  if (section.type === "agency_footer" && hasV2("agency_footer")) {
+    extra.logoUrl = headerLogo.value;
+    extra.logoRadius = headerLogoRadius.value;
+  }
   if (section.type === "header") {
     extra.logoUrl = headerLogo.value;
     if (hasV2("header")) extra.logoRadius = headerLogoRadius.value;
