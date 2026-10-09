@@ -69,6 +69,7 @@
           ]"
           @update:model-value="setLayout"
         />
+        <EdAlign :value="modelValue" type="links" @patch="patch" />
         <p v-if="layoutError" class="ved-hint">{{ layoutError }}</p>
       </EdGroup>
       <EdGroup title="Fundo">
@@ -83,6 +84,7 @@ import { computed, onMounted, ref } from "vue";
 import api from "../../../../services/api";
 import type { LinkCardItem, LinksSection } from "../../../../types/page";
 import ImageUploadField from "../../inputs/ImageUploadField.vue";
+import EdAlign from "../EdAlign.vue";
 import EdBackground from "../EdBackground.vue";
 import EdGroup from "../EdGroup.vue";
 import EdHeading from "../EdHeading.vue";

@@ -8,6 +8,9 @@
       <EdButton :value="modelValue" placeholder="Falar com um especialista" @patch="patch" />
     </template>
     <template #look>
+      <EdGroup title="Layout">
+        <EdAlign :value="modelValue" type="featured_video" @patch="patch" />
+      </EdGroup>
       <EdGroup title="Fundo">
         <EdBackground :value="modelValue" auto @change="patch" />
       </EdGroup>
@@ -17,6 +20,7 @@
 
 <script setup lang="ts">
 import type { FeaturedVideoSection } from "../../../../types/page";
+import EdAlign from "../EdAlign.vue";
 import EdBackground from "../EdBackground.vue";
 import EdButton from "../EdButton.vue";
 import EdGroup from "../EdGroup.vue";

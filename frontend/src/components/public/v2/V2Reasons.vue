@@ -1,7 +1,7 @@
 <template>
   <V2Section type="reasons" :background="section.backgroundColor" fallback-background="#F2F4F1" :anchor-id="section.anchorId">
     <V2Head :label="label" :title="title" :subtitle-html="subtitleHtml" :align="align" />
-    <div class="v2-reasons v2-flow" :style="{ '--v2-cols': columns }">
+    <div class="v2-reasons v2-flow" :class="{ 'is-center': align === 'center' }" :style="{ '--v2-cols': columns }">
       <article v-for="(item, idx) in items" :key="idx" class="v2-card v2-reason v2-in" :class="`v2-d${Math.min(idx + 3, 7)}`">
         <span class="v2-reason-icon" aria-hidden="true"><TravelIcon v-if="item.isIcon" :name="item.icon" :size="24" stroke-width="1.8" /><template v-else>{{ item.icon || "★" }}</template></span>
         <h3>{{ item.title }}</h3>
@@ -40,6 +40,11 @@ const columns = computed(() => balancedColumns(items.value.length));
   flex-direction: column;
   gap: 12px;
   padding: 26px;
+}
+/* Os cards seguem o alinhamento da seção (um controle só, igual no computador e no celular). */
+.is-center .v2-reason {
+  align-items: center;
+  text-align: center;
 }
 .v2-reason-icon {
   display: grid;

@@ -923,11 +923,17 @@ defineExpose({
 .clients-table-shell .op-badge { border: 0; background: transparent; padding: 0; font-weight: 500; color: var(--foreground); }
 .clients-table-shell .menu-trigger { border-color: transparent !important; border-radius: 999px !important; background: var(--muted) !important; }
 @media (max-width: 1100px) { .cv-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 640px) { .cv-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } .cv-stat { padding: 12px; } .cv-icon { display: none; } }
 .cv-stat > div { min-width: 0; }
-/* Celular: textos como "Sem oportunidades" quebram dentro do card, e o complemento desce. */
+/* Celular: 2 x 2 no padrão dos cards da Dashboard — ícone e rótulo em cima, número embaixo.
+   Textos como "Nenhuma" quebram dentro do card, e o complemento desce. */
 @media (max-width: 640px) {
-  .cv-v { font-size: 17px; line-height: 22px; overflow-wrap: break-word; }
-  .cv-v small { display: block; margin-left: 0; }
+  .cv-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .cv-stat { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; align-content: start; gap: 10px 8px; padding: 14px; }
+  .cv-stat > div { display: contents; }
+  .cv-icon { width: 32px; height: 32px; }
+  .cv-icon svg { width: 15px; height: 15px; }
+  .cv-k { font-size: 12px; line-height: 1.25; }
+  .cv-v { grid-column: 1 / -1; font-size: 20px; line-height: 26px; overflow-wrap: anywhere; }
+  .cv-v small { display: block; margin: 2px 0 0; font-size: 11.5px; line-height: 16px; }
 }
 </style>

@@ -29,6 +29,8 @@ const props = defineProps<{
   placeholder?: string;
   /** "article": texto longo, com títulos, citações, links, imagens e vídeos. */
   variant?: "basic" | "article";
+  /** Sem o botão de alinhar: o alinhamento vem da seção, não do texto. */
+  noAlign?: boolean;
 }>();
 const emit = defineEmits<{ (e: "update:modelValue", value: string): void }>();
 
@@ -36,10 +38,11 @@ const editorHost = ref<HTMLElement | null>(null);
 let editor: Quill | null = null;
 let lastEmittedValue = "";
 
+const alignTools = [{ align: [] }];
 const basicToolbar = [
   ["bold", "italic", "underline"],
   [{ list: "ordered" }, { list: "bullet" }],
-  [{ align: [] }],
+  alignTools,
   ["clean"]
 ];
 const articleToolbar = [
@@ -52,6 +55,8 @@ const articleToolbar = [
   ["clean"]
 ];
 const basicFormats = ["bold", "italic", "underline", "list", "indent", "align"];
+const basicToolbarNoAlign = basicToolbar.filter(group => group !== alignTools);
+const basicFormatsNoAlign = basicFormats.filter(format => format !== "align");
 const articleFormats = [...basicFormats, "header", "strike", "link", "blockquote", "image", "video"];
 
 const agencyStore = useAgencyStore();
@@ -178,10 +183,12 @@ onMounted(() => {
       toolbar:
         props.variant === "article"
           ? { container: articleToolbar, handlers: { image: insertImage } }
-          : basicToolbar,
+          : props.noAlign
+            ? basicToolbarNoAlign
+            : basicToolbar,
       history: { userOnly: true }
     },
-    formats: props.variant === "article" ? articleFormats : basicFormats,
+    formats: props.variant === "article" ? articleFormats : props.noAlign ? basicFormatsNoAlign : basicFormats,
     // A caixa de link/vídeo fica dentro do campo, sem sair pela lateral do painel.
     bounds: editorHost.value.parentElement || editorHost.value
   });

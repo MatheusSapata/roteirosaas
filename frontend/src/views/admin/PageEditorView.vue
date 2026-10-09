@@ -1,5 +1,22 @@
 ﻿<template>
 <div class="page-editor-view w-full" :class="[newEditor ? 'is-v2 space-y-2 px-1 py-1' : 'space-y-6 px-4 py-6 md:px-8 md:py-4', { 'is-phone': phoneEditor }]">
+    <!-- Até a página carregar não dá para saber qual editor ela usa; sem isso aparecia por um
+         instante o editor antigo vazio ("Nenhuma seção adicionada ainda"). -->
+    <div v-if="!pageReady" class="ed-loading" aria-busy="true">
+      <div class="ed-loading-top">
+        <button type="button" class="ed-back" :aria-label="viewCopy.actions.goBack" @click="goBack">
+          <ChevronLeftIcon aria-hidden="true" />
+        </button>
+        <span class="ed-sk ed-sk-title"></span>
+        <span class="ed-sk ed-sk-btn"></span>
+      </div>
+      <div class="ed-loading-body">
+        <span class="ed-sk ed-sk-side"></span>
+        <span class="ed-sk ed-sk-stage"></span>
+      </div>
+      <p class="sr-only" role="status">Carregando a página…</p>
+    </div>
+    <template v-else>
     <div class="ed-topbar">
       <button type="button" class="ed-back" @click="goBack" :aria-label="viewCopy.actions.goBack">
         <ChevronLeftIcon aria-hidden="true" />
@@ -1477,6 +1494,7 @@
       </div>
     </transition>
     </div>
+    </template>
   </div>
 </template>
 
@@ -1945,6 +1963,8 @@ const snackbar = ref({ open: false, text: "" });
 const showAiAssistant = ref(false);
 const hasUnsavedChanges = ref(false);
 const initialLoadComplete = ref(false);
+// O editor só aparece com a página carregada (ou com o erro de carregamento).
+const pageReady = computed(() => !!page.value || !!errorMessage.value);
 const unsavedNavigationModal = ref({ open: false, saving: false });
 const pendingNavigationPath = ref<string | null>(null);
 const savedStateSnapshot = ref("");
@@ -2029,6 +2049,10 @@ onMounted(() => {
     syncAiAssistantSidebarWidth();
   }
   nextTick(syncSettingsPanelHeight);
+  // O editor só aparece depois de carregar a página: mede o painel de novo nessa hora.
+  watch(pageReady, ready => {
+    if (ready) nextTick(syncSettingsPanelHeight);
+  });
   if (typeof window !== "undefined") {
     window.addEventListener("resize", syncSettingsPanelHeight);
     window.addEventListener("resize", syncAiAssistantSidebarWidth);
@@ -7490,6 +7514,19 @@ onMounted(async () => {
   .ed-grid.is-phone > .ed-side.is-open, .ed-grid.is-phone > .ed-sections { left: var(--admin-sidebar-offset, 0px); }
   .editor-workspace.is-phone .editor-ai-sidebar { left: var(--admin-sidebar-offset, 0px) !important; }
 }
+
+/* Carregando: esqueleto do editor no lugar do editor antigo vazio. */
+.ed-loading { display: flex; min-height: calc(100dvh - 120px); flex-direction: column; gap: 12px; }
+.ed-loading-top { display: flex; align-items: center; gap: 12px; }
+.ed-loading-body { display: flex; flex: 1; gap: 12px; }
+.ed-sk { display: block; border-radius: 14px; background: linear-gradient(90deg, var(--muted) 25%, color-mix(in srgb, var(--muted) 45%, var(--card)) 50%, var(--muted) 75%); background-size: 200% 100%; animation: ed-sk 1.3s ease-in-out infinite; }
+.ed-sk-title { width: min(220px, 45vw); height: 24px; }
+.ed-sk-btn { width: 96px; height: 40px; margin-left: auto; border-radius: 999px; }
+.ed-sk-side { flex: 0 0 280px; border-radius: 20px; }
+.ed-sk-stage { flex: 1; min-height: 60vh; border-radius: 20px; }
+@media (max-width: 1023px) { .ed-sk-side { display: none; } }
+@keyframes ed-sk { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+@media (prefers-reduced-motion: reduce) { .ed-sk { animation: none; } }
 </style>
 
 

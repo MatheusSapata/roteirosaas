@@ -28,6 +28,7 @@
           ]"
           @update:model-value="patch({ layout: $event })"
         />
+        <EdAlign :value="modelValue" type="faq" @patch="patch" />
       </EdGroup>
       <EdGroup title="Fundo">
         <EdBackground :value="modelValue" auto @change="patch" />
@@ -39,6 +40,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import type { FaqSection } from "../../../../types/page";
+import EdAlign from "../EdAlign.vue";
 import EdBackground from "../EdBackground.vue";
 import EdGroup from "../EdGroup.vue";
 import EdHeading from "../EdHeading.vue";

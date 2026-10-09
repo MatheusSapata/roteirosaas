@@ -38,6 +38,9 @@
       <EdPayments :value="modelValue" @patch="patch" />
     </template>
     <template #look>
+      <EdGroup title="Layout">
+        <EdAlign :value="modelValue" type="prices" @patch="patch" />
+      </EdGroup>
       <EdGroup title="Fundo">
         <EdBackground :value="modelValue" auto @change="patch" fallback="#F2F4F1" />
       </EdGroup>
@@ -48,6 +51,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import type { PriceItem, PricesSection } from "../../../../types/page";
+import EdAlign from "../EdAlign.vue";
 import EdBackground from "../EdBackground.vue";
 import EdButton from "../EdButton.vue";
 import EdGroup from "../EdGroup.vue";

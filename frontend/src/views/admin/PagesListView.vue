@@ -31,7 +31,7 @@
       </article>
       <article class="pl-stat">
         <span class="pl-icon tone-warning"><MousePointer2Icon aria-hidden="true" /></span>
-        <div><p class="pl-stat-k">Cliques</p><p class="pl-stat-v">{{ totalPageClicks.toLocaleString("pt-BR") }}<small>{{ formatRate(totalPageClicks, totalPageVisits) }}</small></p></div>
+        <div><p class="pl-stat-k">Cliques</p><p class="pl-stat-v">{{ totalPageClicks.toLocaleString("pt-BR") }}<small>{{ formatRate(totalPageClicks, totalPageVisits) }} das visitas</small></p></div>
       </article>
       <article class="pl-stat">
         <span class="pl-icon tone-violet"><UserPlusIcon aria-hidden="true" /></span>
@@ -2386,13 +2386,15 @@ onMounted(async () => {
 @media (max-width: 1100px) { .pl-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 640px) {
   .pl-head { flex-direction: column; align-items: flex-start; }
-  /* Celular: números em 2 x 2, compactos, sem os ícones. */
+  /* Celular: 2 x 2 no padrão dos cards da Dashboard — ícone e rótulo em cima, número embaixo. */
   .pl-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-  .pl-stat { padding: 12px; }
-  .pl-stat > div { min-width: 0; }
-  .pl-icon { display: none; }
-  .pl-stat-v { font-size: 18px; line-height: 24px; }
-  .pl-stat-v small { display: block; margin-left: 0; }
+  .pl-stat { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; align-content: start; gap: 10px 8px; padding: 14px; }
+  .pl-stat > div { display: contents; }
+  .pl-icon { width: 32px; height: 32px; }
+  .pl-icon svg { width: 15px; height: 15px; }
+  .pl-stat-k { font-size: 12px; line-height: 1.25; }
+  .pl-stat-v { grid-column: 1 / -1; font-size: 22px; line-height: 28px; overflow-wrap: anywhere; }
+  .pl-stat-v small { display: block; margin: 2px 0 0; font-size: 11.5px; line-height: 16px; }
   .pl-search { flex-basis: 100%; }
 }
 

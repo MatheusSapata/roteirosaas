@@ -8616,11 +8616,19 @@ watch(visibleOpportunityIds, ids => {
 @media (max-width: 1100px) { .lv-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 640px) {
   .lv-head { flex-direction: column; align-items: flex-start; }
+  /* Celular: 2 x 2 no padrão dos cards da Dashboard — ícone e rótulo em cima, número embaixo. */
   .lv-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-  .lv-stat { padding: 12px; }
-  .lv-stat-icon { display: none; }
+  .lv-stat { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; align-content: start; gap: 10px 8px; padding: 14px; }
+  .lv-stat > div { display: contents; }
+  .lv-stat-icon { width: 32px; height: 32px; }
+  .lv-stat-icon svg { width: 15px; height: 15px; }
+  .lv-stat-k { font-size: 12px; line-height: 1.25; }
+  .lv-stat-v { grid-column: 1 / -1; font-size: 20px; line-height: 26px; white-space: nowrap; }
+  .lv-stat-v small { display: block; margin: 2px 0 0; font-size: 11.5px; line-height: 16px; }
   .lv-search { flex-basis: 100%; }
 }
+/* Telas bem estreitas: a data do último lead (dd/mm/aaaa) cabe numa linha só. */
+@media (max-width: 380px) { .lv-stat-v { font-size: 18px; } }
 </style>
 
 

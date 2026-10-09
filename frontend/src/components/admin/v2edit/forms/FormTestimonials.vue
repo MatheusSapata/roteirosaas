@@ -31,6 +31,7 @@
           ]"
           @update:model-value="patch({ layout: $event })"
         />
+        <EdAlign :value="modelValue" type="testimonials" @patch="patch" />
       </EdGroup>
       <EdGroup title="Fundo">
         <EdBackground :value="modelValue" auto @change="patch" fallback="#F2F4F1" />
@@ -43,6 +44,7 @@
 import { computed } from "vue";
 import type { TestimonialsSection } from "../../../../types/page";
 import ImageUploadField from "../../inputs/ImageUploadField.vue";
+import EdAlign from "../EdAlign.vue";
 import EdBackground from "../EdBackground.vue";
 import EdButton from "../EdButton.vue";
 import EdGroup from "../EdGroup.vue";

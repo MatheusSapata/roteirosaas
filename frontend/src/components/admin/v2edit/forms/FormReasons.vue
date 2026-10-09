@@ -33,6 +33,9 @@
       </EdGroup>
     </template>
     <template #look>
+      <EdGroup title="Layout">
+        <EdAlign :value="modelValue" type="reasons" @patch="patch" />
+      </EdGroup>
       <EdGroup title="Fundo">
         <EdBackground :value="modelValue" auto @change="patch" fallback="#F2F4F1" />
       </EdGroup>
@@ -45,6 +48,7 @@ import { computed } from "vue";
 import type { ReasonsSection } from "../../../../types/page";
 import IconEmojiPicker from "../../inputs/IconEmojiPicker.vue";
 import EdSeg from "../EdSeg.vue";
+import EdAlign from "../EdAlign.vue";
 import EdBackground from "../EdBackground.vue";
 import EdGroup from "../EdGroup.vue";
 import EdHeading from "../EdHeading.vue";
