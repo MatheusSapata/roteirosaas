@@ -39,15 +39,10 @@ import V2Payments from "./V2Payments.vue";
 import { localize, text, useHeading } from "./useHeading";
 
 const props = defineProps<{ section: PricesSection; previewDevice?: "desktop" | "mobile" }>();
-const heading = useHeading(toRef(props, "section"), "prices", { pt: "Planos e opções", es: "Planes y opciones" });
+const heading = useHeading(toRef(props, "section"), "prices");
 const label = heading.label;
 const title = heading.title;
-// Sem subtítulo salvo, mantém o texto padrão das seções antigas.
-const subtitleHtml = computed(() =>
-  props.section.subtitle === null || props.section.subtitle === undefined
-    ? localize({ pt: "Escolha o formato que combina com você.", es: "Elige el formato que va contigo." })
-    : heading.subtitleHtml.value
-);
+const subtitleHtml = heading.subtitleHtml;
 const description = computed(() => text(props.section.description));
 
 const locales: Partial<Record<CurrencyCode, string>> = {

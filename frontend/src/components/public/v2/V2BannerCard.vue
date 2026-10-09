@@ -22,6 +22,7 @@ import V2Button from "./V2Button.vue";
 import { useCta } from "./useCta";
 import { html, localize, text } from "./useHeading";
 import { useCopyFit } from "./useCopyFit";
+import { isNeverShownPlaceholder } from "../../../utils/legacyPlaceholders";
 
 const props = defineProps<{
   section: BannerCardSection;
@@ -34,8 +35,10 @@ const isCard = computed(() => props.section.layout === "card");
 const image = computed(() => resolveMediaUrl(props.section.backgroundImage || "") || props.section.backgroundImage || "");
 const label = computed(() => text(props.section.headingLabel));
 const title = computed(() => text(props.section.title));
-const subtitleHtml = computed(() => (text(props.section.subtitle) ? html(props.section.subtitle) : ""));
-const copyFit = useCopyFit(title, computed(() => localize(props.section.subtitle)));
+// O subtítulo de exemplo da seção antiga (que nunca aparecia) conta como vazio.
+const subtitle = computed(() => (isNeverShownPlaceholder("banner_card", "subtitle", props.section.subtitle) ? "" : props.section.subtitle));
+const subtitleHtml = computed(() => (text(subtitle.value) ? html(subtitle.value) : ""));
+const copyFit = useCopyFit(title, computed(() => localize(subtitle.value)));
 const cta = useCta(toRef(props, "section"));
 const ctaLabel = computed(() => text(props.section.ctaLabel) || localize({ pt: "Falar agora", es: "Hablar ahora" }));
 </script>

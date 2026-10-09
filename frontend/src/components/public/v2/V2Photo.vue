@@ -1,13 +1,13 @@
 <template>
   <V2Section v-if="!isFull" type="photo" :background="section.backgroundColor" :anchor-id="section.anchorId">
     <figure v-if="image" class="v2-photo">
-      <img :src="image" :alt="caption" class="v2-reveal" loading="lazy" />
+      <img :src="image" :alt="alt" class="v2-reveal" loading="lazy" />
       <figcaption v-if="caption">{{ caption }}</figcaption>
     </figure>
   </V2Section>
   <V2Section v-else type="photo" :background="section.backgroundColor" :anchor-id="section.anchorId" full>
     <figure v-if="image" class="v2-photo v2-photo--full">
-      <img :src="image" :alt="caption" class="v2-reveal" loading="lazy" />
+      <img :src="image" :alt="alt" class="v2-reveal" loading="lazy" />
       <figcaption v-if="caption">{{ caption }}</figcaption>
     </figure>
   </V2Section>
@@ -23,7 +23,9 @@ import { text } from "./useHeading";
 const props = defineProps<{ section: PhotoSection; previewDevice?: "desktop" | "mobile" }>();
 const isFull = computed(() => props.section.layout === "full");
 const image = computed(() => resolveMediaUrl(props.section.image) || "");
-const caption = computed(() => text(props.section.altText));
+// Legenda só a que foi escrita como legenda: o texto alternativo da seção antiga nunca aparecia.
+const caption = computed(() => text(props.section.caption));
+const alt = computed(() => caption.value || text(props.section.altText));
 </script>
 
 <style scoped>

@@ -54,7 +54,7 @@ import { localize, useHeading } from "./useHeading";
 import { balancedColumns } from "./balancedColumns";
 
 const props = defineProps<{ section: GallerySection; previewDevice?: "desktop" | "mobile" }>();
-const { label, title, align } = useHeading(toRef(props, "section") as never, "gallery", "");
+const { label, title, align } = useHeading(toRef(props, "section") as never, "gallery");
 const copy = {
   photo: localize({ pt: "Foto", es: "Foto" }),
   goTo: localize({ pt: "Ir para a foto", es: "Ir a la foto" }),

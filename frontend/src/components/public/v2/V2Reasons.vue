@@ -3,7 +3,7 @@
     <V2Head :label="label" :title="title" :subtitle-html="subtitleHtml" :align="align" />
     <div class="v2-reasons v2-flow" :class="{ 'is-center': align === 'center' }" :style="{ '--v2-cols': columns }">
       <article v-for="(item, idx) in items" :key="idx" class="v2-card v2-reason v2-in" :class="`v2-d${Math.min(idx + 3, 7)}`">
-        <span class="v2-reason-icon" aria-hidden="true"><TravelIcon v-if="item.isIcon" :name="item.icon" :size="24" stroke-width="1.8" /><template v-else>{{ item.icon || "★" }}</template></span>
+        <span v-if="item.icon" class="v2-reason-icon" aria-hidden="true"><TravelIcon v-if="item.isIcon" :name="item.icon" :size="24" stroke-width="1.8" /><template v-else>{{ item.icon }}</template></span>
         <h3>{{ item.title }}</h3>
         <div v-if="item.descriptionHtml" class="v2-rich" v-html="item.descriptionHtml"></div>
       </article>
@@ -22,7 +22,7 @@ import { html, text, useHeading } from "./useHeading";
 import { balancedColumns } from "./balancedColumns";
 
 const props = defineProps<{ section: ReasonsSection; previewDevice?: "desktop" | "mobile" }>();
-const { label, title, subtitleHtml, align } = useHeading(toRef(props, "section"), "reasons", { pt: "Motivos para escolher", es: "Motivos para elegir" });
+const { label, title, subtitleHtml, align } = useHeading(toRef(props, "section"), "reasons");
 const items = computed(() =>
   (props.section.items || []).map(item => ({
     icon: (item.icon || "").trim(),

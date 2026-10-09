@@ -94,7 +94,7 @@ import { html, localize, text, useHeading } from "./useHeading";
 import { addDays, formatDayMonth, formatMonthShort, formatWeekday, parseTripDate } from "../../../utils/tripDates";
 
 const props = defineProps<{ section: ItinerarySection; previewDevice?: "desktop" | "mobile"; tripStartDate?: string }>();
-const { label, title, subtitleHtml, align } = useHeading(toRef(props, "section"), "itinerary", { pt: "Roteiro dia a dia", es: "Itinerario día a día" });
+const { label, title, subtitleHtml, align } = useHeading(toRef(props, "section"), "itinerary");
 const copy = {
   day: localize({ pt: "DIA", es: "DÍA" }),
   dayPrefix: localize({ pt: "Dia", es: "Día" }),

@@ -1,7 +1,9 @@
 <template>
-  <V2Section type="links" :background="section.backgroundColor" :anchor-id="section.anchorId">
+  <!-- Como na seção antiga: sem cards, a seção não aparece na página; na prévia do editor, um aviso. -->
+  <V2Section v-if="items.length || previewDevice" type="links" :background="section.backgroundColor" :anchor-id="section.anchorId">
     <V2Head :label="label" :title="title" :subtitle-html="subtitleHtml" :align="headAlign" />
-    <div class="v2-links" :class="isCarousel ? 'is-carousel' : 'is-grid'" :style="layoutVars">
+    <p v-if="!items.length" class="v2-links-empty">Adicione cards em Links/Roteiros. Sem cards, a seção não aparece na página.</p>
+    <div v-else class="v2-links" :class="isCarousel ? 'is-carousel' : 'is-grid'" :style="layoutVars">
       <div ref="track" class="v2-links-track">
         <a
           v-for="(item, idx) in items"
@@ -64,7 +66,7 @@ import V2Head from "./V2Head.vue";
 import { localize, text, useHeading } from "./useHeading";
 
 const props = defineProps<{ section: LinksSection; previewDevice?: "desktop" | "mobile" }>();
-const { label, title, subtitleHtml, align: headAlign } = useHeading(toRef(props, "section"), "links", "");
+const { label, title, subtitleHtml, align: headAlign } = useHeading(toRef(props, "section"), "links");
 const copy = {
   departure: localize({ pt: "Ida", es: "Ida" }),
   return: localize({ pt: "Volta", es: "Vuelta" }),
@@ -173,6 +175,15 @@ const slide = (direction: number) => {
 .v2-links {
   position: relative;
   --v2-links-gap: 16px;
+}
+.v2-links-empty {
+  margin: 0 auto;
+  max-width: 520px;
+  padding: 18px 20px;
+  border: 1px dashed var(--v2-line);
+  border-radius: 16px;
+  color: var(--v2-muted);
+  text-align: center;
 }
 .v2-links-track {
   display: flex;

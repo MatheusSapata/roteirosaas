@@ -1585,6 +1585,7 @@ import type {
 } from "../../types/page";
 import LeadFormPreview from "../../components/admin/leads/LeadFormPreview.vue";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
+import { withoutNeverShownPlaceholders } from "../../utils/legacyPlaceholders";
 import { sectionsInjectionKey } from "../../components/admin/sectionsContext";
 import { sectionUploadGuardKey } from "../../components/admin/sectionUploadGuard";
 import { describeSection, sectionLabels as defaultSectionLabels } from "../../utils/sectionLabels";
@@ -4216,8 +4217,7 @@ if (type === "banner_card") {
     enabled: true,
     backgroundColor: colorA.value,
     title: "Conte com especialistas para transformar o seu roteiro.",
-    subtitle:
-      "Um banner compacto e elegante para reforçar a principal promessa ou próxima campanha.",
+    subtitle: "",
     backgroundImage:
       "https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=1600&q=80",
     gradientColor: "#05060f",
@@ -4407,7 +4407,7 @@ if (type === "countdown") {
   return ensureSectionAnchor({
     type: "countdown",
     enabled: true,
-    headingLabel: headingDefaults.label,
+    headingLabel: "Oferta por tempo limitado",
     headingLabelStyle: headingDefaults.style,
     label: "Garanta sua vaga agora mesmo!",
     countdownMode: "fixed",
@@ -4578,7 +4578,8 @@ const hydrateFromConfig = (config?: PageConfig | string | null) => {
     pageShortDescription.value = typeof general?.shortDescription === "string" ? general.shortDescription : "";
 
     if (parsed.sections && Array.isArray(parsed.sections) && parsed.sections.length) {
-      setSections(applySectionBackgrounds(parsed.sections as PageSection[]));
+      // Textos de exemplo que a seção antiga gravava e nunca mostrava chegam vazios ao editor.
+      setSections(applySectionBackgrounds((parsed.sections as PageSection[]).map(section => withoutNeverShownPlaceholders(section))));
       fillHeroLogoFromAgency();
     }
 

@@ -1,5 +1,6 @@
 import type { PageSection, SectionType } from "../types/page";
 import { createLocalizer, getCurrentLanguage } from "./i18n";
+import { getSectionHeadingDefaults } from "./sectionHeadings";
 
 const t = createLocalizer(getCurrentLanguage());
 
@@ -259,7 +260,15 @@ const SAMPLES: Partial<Record<SectionType, () => Record<string, any>>> = {
 
 export const hasSectionSampleV2 = (type: SectionType) => !!SAMPLES[type];
 
+// Selo com que a seção nasce (o editor grava esse selo nas seções novas): a miniatura mostra o mesmo.
+const SAMPLE_LABELS: Partial<Record<SectionType, Parameters<typeof t>[0]>> = {
+  countdown: { pt: "Oferta por tempo limitado", es: "Oferta por tiempo limitado" }
+};
+const LABELED: SectionType[] = ["prices", "itinerary", "faq", "testimonials", "featured_video", "story", "countdown", "reasons", "links"];
+
 export const buildSectionSampleV2 = (type: SectionType): PageSection | null => {
   const build = SAMPLES[type];
-  return build ? ({ type, enabled: true, anchorId: `amostra-${type}`, ...build() } as unknown as PageSection) : null;
+  if (!build) return null;
+  const headingLabel = LABELED.includes(type) ? t(SAMPLE_LABELS[type] || getSectionHeadingDefaults(type).label) : undefined;
+  return { type, enabled: true, anchorId: `amostra-${type}`, ...(headingLabel ? { headingLabel } : {}), ...build() } as unknown as PageSection;
 };

@@ -1,19 +1,15 @@
 <template>
   <V2Section type="countdown" :background="background" :anchor-id="section.anchorId" flush>
     <div v-if="isBar" role="timer" :aria-label="ariaLabel" class="v2-cd-bar">
-      <span class="v2-cd-text"><span class="v2-cd-dot" aria-hidden="true"></span>{{ label }}</span>
+      <span v-if="label" class="v2-cd-text"><span class="v2-cd-dot" aria-hidden="true"></span>{{ label }}</span>
       <span class="v2-cd-mini">
         <span v-for="part in parts" :key="part.short"><b>{{ part.value }}</b>{{ part.short }}</span>
       </span>
     </div>
     <div v-else class="v2-cd">
       <div class="v2-cd-copy v2-in">
-        <span class="v2-cd-pill"><span class="v2-cd-dot" aria-hidden="true"></span>{{ eyebrow }}</span>
-        <h2 class="v2-title" :style="titleScaleStyle(label)">{{ label }}</h2>
-        <p v-if="endsAt" class="v2-cd-ends">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
-          {{ endsAt }}
-        </p>
+        <span v-if="eyebrow" class="v2-cd-pill"><span class="v2-cd-dot" aria-hidden="true"></span>{{ eyebrow }}</span>
+        <h2 v-if="label" class="v2-title" :style="titleScaleStyle(label)">{{ label }}</h2>
       </div>
       <div role="timer" :aria-label="ariaLabel" class="v2-cd-tiles v2-in v2-d2">
         <template v-for="(part, idx) in parts" :key="part.short">
@@ -35,16 +31,11 @@ import V2Section from "./V2Section.vue";
 import { usePageDesignContext } from "./designContext";
 import { localize, text } from "./useHeading";
 import { titleScaleStyle } from "./useCopyFit";
-import { getCurrentLanguage } from "../../../utils/i18n";
-import { getSectionHeadingDefaults, resolveHeadingLabel } from "../../../utils/sectionHeadings";
+import { resolveHeadingLabel } from "../../../utils/sectionHeadings";
 
 const props = defineProps<{ section: CountdownSection; previewDevice?: "desktop" | "mobile" }>();
 const design = usePageDesignContext();
 const copy = {
-  eyebrow: { pt: "Oferta por tempo limitado", es: "Oferta por tiempo limitado" },
-  bar: { pt: "Garanta sua vaga agora mesmo!", es: "Asegura tu lugar ahora mismo" },
-  soon: { pt: "Em breve...", es: "Próximamente..." },
-  ends: { pt: "Termina em", es: "Termina el" },
   aria: { pt: "Tempo restante", es: "Tiempo restante" },
   days: { pt: "DIAS", es: "DÍAS" },
   hours: { pt: "HORAS", es: "HORAS" },
@@ -54,12 +45,9 @@ const copy = {
 
 const isBar = computed(() => props.section.layout === "bar");
 const background = computed(() => props.section.backgroundColor || design.value.accent);
-const headingDefaults = getSectionHeadingDefaults("countdown");
-const eyebrow = computed(() => {
-  const label = resolveHeadingLabel(props.section.headingLabel, "", localize);
-  return label && label !== headingDefaults.label ? label : localize(copy.eyebrow);
-});
-const label = computed(() => text(props.section.label) || localize(isBar.value ? copy.bar : copy.soon));
+// Só o que está salvo: selo e texto vazios ficam vazios, como na seção antiga.
+const eyebrow = computed(() => resolveHeadingLabel(props.section.headingLabel, "", localize));
+const label = computed(() => text(props.section.label));
 const ariaLabel = localize(copy.aria);
 
 // Mesma regra das seções antigas: data fixa, ou um prazo por visita; prazo vencido vira 3 dias.
@@ -93,12 +81,6 @@ const parts = computed(() => {
     { label: localize(copy.minutes), short: "m", value: pad(Math.floor((total % 3600) / 60)) },
     { label: localize(copy.seconds), short: "s", value: pad(total % 60) }
   ];
-});
-const endsAt = computed(() => {
-  if (props.section.countdownMode === "session" || !fixedTarget.value || fixedTarget.value <= now.value) return "";
-  const date = new Date(fixedTarget.value);
-  const day = date.toLocaleDateString(getCurrentLanguage() === "es" ? "es" : "pt-BR", { day: "numeric", month: "long" });
-  return `${localize(copy.ends)} ${day}, ${pad(date.getHours())}h${pad(date.getMinutes())}`;
 });
 
 let timer: number | undefined;
@@ -145,13 +127,6 @@ onBeforeUnmount(() => timer && window.clearInterval(timer));
   border-radius: 999px;
   background: currentColor;
   animation: v2-cd-pulse 1.8s ease-out infinite;
-}
-.v2-cd-ends {
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--v2-muted);
 }
 .v2-cd-tiles {
   display: flex;

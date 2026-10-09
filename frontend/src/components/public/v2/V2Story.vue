@@ -69,8 +69,7 @@ const props = defineProps<{ section: StorySection; previewDevice?: "desktop" | "
 const section = toRef(props, "section");
 const heading = useHeading(
   computed(() => ({ ...props.section, headingLabel: props.section.headingLabel ?? (text(props.section.badge) || undefined) })),
-  "story",
-  { pt: "Nossa história", es: "Nuestra historia" }
+  "story"
 );
 const { label, title, subtitleHtml } = heading;
 const copy = {
