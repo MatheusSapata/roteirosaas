@@ -14,34 +14,41 @@
         >
           <span class="v2-links-media"><img v-if="item.image" :src="item.image" alt="" loading="lazy" /></span>
           <span class="v2-links-body">
-            <b class="v2-links-title">{{ item.title }}</b>
-            <span v-if="item.description" class="v2-links-desc">{{ item.description }}</span>
-            <span v-if="item.dates" class="v2-links-meta">
-              <span class="v2-links-ico" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="3" /><path d="M16 2v4M8 2v4M3 10h18" /></svg></span>
-              <span v-if="item.departure" class="v2-links-dt"><small>{{ copy.departure }}</small><b>{{ item.departure }}</b></span>
-              <span v-if="item.return" class="v2-links-dt"><small>{{ copy.return }}</small><b>{{ item.return }}</b></span>
+            <!-- Título e texto ocupam a mesma altura em todos os cards (a do maior). -->
+            <span class="v2-links-text">
+              <span class="v2-links-text-in">
+                <b class="v2-links-title">{{ item.title }}</b>
+                <span v-if="item.description" class="v2-links-desc">{{ item.description }}</span>
+              </span>
             </span>
-            <span v-if="item.price" class="v2-links-price">
-              <span class="v2-links-ico" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4z" /><circle cx="7.5" cy="7.5" r=".5" fill="currentColor" /></svg></span>
-              <small v-if="item.pricePrefix">{{ item.pricePrefix }}</small>
-              <b>{{ item.price }}</b>
-              <small v-if="item.priceSuffix">{{ item.priceSuffix }}</small>
-            </span>
-            <span class="v2-btn v2-btn--block v2-links-btn">
-              <span>{{ item.buttonLabel }}</span>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+            <span class="v2-links-foot">
+              <span v-if="item.dates" class="v2-links-meta">
+                <span class="v2-links-ico" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="3" /><path d="M16 2v4M8 2v4M3 10h18" /></svg></span>
+                <span class="v2-links-dates">
+                  <span v-if="item.departure" class="v2-links-dt"><small>{{ copy.departure }}</small><b>{{ item.departure }}</b></span>
+                  <span v-if="item.return" class="v2-links-dt"><small>{{ copy.return }}</small><b>{{ item.return }}</b></span>
+                </span>
+              </span>
+              <span v-if="item.price" class="v2-links-price">
+                <span class="v2-links-ico" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4z" /><circle cx="7.5" cy="7.5" r=".5" fill="currentColor" /></svg></span>
+                <small v-if="item.pricePrefix">{{ item.pricePrefix }}</small>
+                <b>{{ item.price }}</b>
+                <small v-if="item.priceSuffix">{{ item.priceSuffix }}</small>
+              </span>
+              <span class="v2-btn v2-btn--block v2-links-btn">
+                <span>{{ item.buttonLabel }}</span>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+              </span>
             </span>
           </span>
         </a>
       </div>
-      <div v-if="overflowing" class="v2-links-ctrl">
-        <button type="button" class="v2-links-arrow" :aria-label="copy.prev" @click="slide(-1)">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
-        </button>
-        <button type="button" class="v2-links-arrow is-next" :aria-label="copy.next" @click="slide(1)">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
-        </button>
-      </div>
+      <button v-if="overflowing" type="button" class="v2-links-arrow is-prev" :aria-label="copy.prev" @click="slide(-1)">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
+      </button>
+      <button v-if="overflowing" type="button" class="v2-links-arrow is-next" :aria-label="copy.next" @click="slide(1)">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+      </button>
     </div>
   </V2Section>
 </template>
@@ -106,20 +113,43 @@ const layoutVars = computed(() => {
   return { "--v2-links-cols": String(columns) };
 });
 
-// As setas aparecem só quando os cards não cabem (computador com 5+, tablet com 3+, celular com 2+).
+// As setas aparecem só quando os cards não cabem (computador com 5+, tablet com 3+);
+// no celular o carrossel desliza com o dedo.
 const track = ref<HTMLElement | null>(null);
 const overflowing = ref(false);
+// Título + texto ficam com a altura do maior da mesma linha: datas, preço e
+// botão começam na mesma altura em todos os cards. No celular em grade (um card
+// por linha) cada card fica com a própria altura.
+const equalizeText = () => {
+  const el = track.value;
+  if (!el) return;
+  const boxes = Array.from(el.querySelectorAll<HTMLElement>(".v2-links-text"));
+  const rows = new Map<number, HTMLElement[]>();
+  boxes.forEach(box => {
+    const top = Math.round((box.closest(".v2-links-card") as HTMLElement | null)?.offsetTop ?? 0);
+    rows.set(top, [...(rows.get(top) || []), box]);
+  });
+  rows.forEach(row => {
+    const tallest = Math.max(...row.map(box => (box.firstElementChild as HTMLElement | null)?.offsetHeight || 0));
+    row.forEach(box => {
+      box.style.minHeight = row.length > 1 ? `${tallest}px` : "";
+    });
+  });
+};
 const measure = () => {
   const el = track.value;
   overflowing.value = isCarousel.value && !!el && el.scrollWidth > el.clientWidth + 4;
+  equalizeText();
 };
 let resizeObserver: ResizeObserver | null = null;
 onMounted(() => {
   measure();
+  // A largura dos cards e o carregamento da fonte mudam a altura do texto.
   if (typeof ResizeObserver !== "undefined" && track.value) {
     resizeObserver = new ResizeObserver(measure);
     resizeObserver.observe(track.value);
   }
+  if (typeof document !== "undefined") document.fonts?.ready.then(measure);
 });
 onBeforeUnmount(() => resizeObserver?.disconnect());
 watch([items, isCarousel], () => nextTick(measure));
@@ -182,36 +212,41 @@ const slide = (direction: number) => {
   flex-wrap: wrap;
   justify-content: center;
 }
-/* Setas no mesmo padrão do carrossel da galeria: embaixo, à direita. */
-.v2-links-ctrl {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  margin-top: 18px;
-}
+/* Setas nas laterais, fora dos cards (os cards não encolhem). Usam a folga ao
+   lado da lista, até 64px; em telas sem folga encostam na borda do card. */
 .v2-links-arrow {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
   display: grid;
   place-items: center;
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   padding: 0;
   border: 0;
   border-radius: 999px;
   background: var(--v2-card);
   color: var(--v2-ink);
+  box-shadow: 0 10px 28px -10px rgba(6, 12, 9, 0.4), 0 0 0 1px rgba(6, 12, 9, 0.06);
   cursor: pointer;
-  transition: transform 0.2s ease;
+  transform: translateY(-50%);
+  transition: transform 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+  --v2-links-arrow-out: min(64px, calc((100cqi - 100%) / 2 - 2px));
+}
+.v2-links-arrow.is-prev {
+  left: calc(-1 * var(--v2-links-arrow-out));
+}
+.v2-links-arrow.is-next {
+  right: calc(-1 * var(--v2-links-arrow-out));
 }
 .v2-links-arrow:hover {
-  transform: scale(1.06);
+  background: var(--v2-accent);
+  color: var(--v2-on-accent);
+  transform: translateY(-50%) scale(1.06);
 }
 .v2-links-arrow:focus-visible {
   outline: 2px solid var(--v2-accent);
   outline-offset: 2px;
-}
-.v2-links-arrow.is-next {
-  background: var(--v2-accent);
-  color: var(--v2-on-accent);
 }
 /* Tablet: 2 por vez. */
 @container (max-width: 1023px) {
@@ -219,8 +254,8 @@ const slide = (direction: number) => {
     flex-basis: calc((100% - var(--v2-links-gap)) / 2);
   }
 }
-/* Celular: no carrossel, um card e a ponta do próximo (desliza com o dedo);
-   na grade, um embaixo do outro. */
+/* Celular: no carrossel, um card e a ponta do próximo (desliza com o dedo, sem
+   setas); na grade, um embaixo do outro. */
 @container (max-width: 640px) {
   .is-carousel .v2-links-card {
     flex-basis: 84%;
@@ -230,6 +265,9 @@ const slide = (direction: number) => {
   }
   .is-grid .v2-links-card {
     flex-basis: 100%;
+  }
+  .v2-links-arrow {
+    display: none;
   }
 }
 .v2-links-media {
@@ -251,6 +289,21 @@ const slide = (direction: number) => {
   gap: 10px;
   padding: 20px 22px 22px;
 }
+.v2-links-text {
+  display: block;
+}
+.v2-links-text-in {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+/* Datas, preço e botão ficam juntos na base do card. */
+.v2-links-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: auto;
+}
 .v2-links-title {
   font-size: 19px;
   line-height: 1.25;
@@ -263,10 +316,16 @@ const slide = (direction: number) => {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-top: auto;
   padding: 10px 12px;
   border-radius: 14px;
   background: var(--v2-soft);
+}
+/* Card estreito: a data de volta desce para a linha de baixo em vez de ser cortada. */
+.v2-links-dates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  min-width: 0;
 }
 .v2-links-dt {
   display: flex;
@@ -301,7 +360,6 @@ const slide = (direction: number) => {
   font-size: 22px;
 }
 .v2-links-btn {
-  margin-top: auto;
   min-height: 48px;
 }
 .v2-links-meta + .v2-links-btn,
