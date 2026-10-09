@@ -1027,14 +1027,25 @@
           }}
         </span>
       </div>
-      <div class="ed-stage" :class="{ 'is-framed': !isMobileViewport, 'is-mobile-preview': previewDevice === 'mobile' }">
+      <div ref="previewStageRef" class="ed-stage" :class="{ 'is-framed': !isMobileViewport, 'is-mobile-preview': previewDevice === 'mobile' }">
         <div
           :class="phoneEditor
             ? 'ed-phone-screen'
             : isMobileViewport
             ? (previewDevice === 'mobile' ? '-mx-4 w-[calc(100%+2rem)] overflow-hidden' : '')
             : (previewDevice === 'mobile' ? 'ed-phone' : 'ed-browser')"
+          :style="showPhoneFrame ? phoneFrameStyle : undefined"
         >
+          <!-- Celular no computador: barra de status com a ilha, como num aparelho. -->
+          <div v-if="showPhoneFrame" class="ed-phone-status" aria-hidden="true">
+            <span class="ed-phone-time">9:41</span>
+            <span class="ed-phone-island"></span>
+            <span class="ed-phone-icons">
+              <svg width="18" height="12" viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1" /><rect x="5" y="5.5" width="3" height="6.5" rx="1" /><rect x="10" y="3" width="3" height="9" rx="1" /><rect x="15" y="0" width="3" height="12" rx="1" /></svg>
+              <svg width="16" height="12" viewBox="0 0 16 12"><path d="M8 2.2c2.4 0 4.6.9 6.3 2.5l1.2-1.3C13.5 1.5 10.9.4 8 .4S2.5 1.5.5 3.4l1.2 1.3C3.4 3.1 5.6 2.2 8 2.2Zm0 3.6c1.4 0 2.7.5 3.7 1.4l1.2-1.3C11.6 4.7 9.9 4 8 4s-3.6.7-4.9 1.9l1.2 1.3c1-.9 2.3-1.4 3.7-1.4Zm0 3.6c-.5 0-1 .2-1.4.5L8 11.6l1.4-1.7c-.4-.3-.9-.5-1.4-.5Z" /></svg>
+              <svg width="27" height="13" viewBox="0 0 27 13"><rect x="0.5" y="0.5" width="22" height="12" rx="3.5" fill="none" stroke="currentColor" opacity="0.4" /><rect x="2" y="2" width="19" height="9" rx="2" /><path d="M24.5 4.5v4c.8-.3 1.5-1.1 1.5-2s-.7-1.7-1.5-2Z" opacity="0.45" /></svg>
+            </span>
+          </div>
           <div v-if="!isMobileViewport && previewDevice === 'desktop'" class="ed-browser-bar">
             <i></i><i></i><i></i>
             <span>{{ previewAddressLabel }}</span>
@@ -1251,6 +1262,7 @@
             </div>
           </div>
           </div>
+          <span v-if="showPhoneFrame" class="ed-phone-home" aria-hidden="true"></span>
         </div>
       </div>
       </div>
@@ -2289,6 +2301,29 @@ watch(
   },
   { immediate: true }
 );
+// Celular no computador: aparelho com a proporção de um iPhone (tela de 390 × 844 e borda de
+// 12 px), reduzido por inteiro para caber na altura disponível em vez de virar um retângulo baixo.
+const PHONE_FRAME = { width: 414, height: 868 };
+const previewStageRef = ref<HTMLElement | null>(null);
+const previewStageSize = ref({ width: 0, height: 0 });
+let previewStageObserver: ResizeObserver | null = null;
+watch(previewStageRef, (el, prev) => {
+  if (typeof ResizeObserver === "undefined") return;
+  previewStageObserver ??= new ResizeObserver(entries => {
+    const rect = entries[0]?.contentRect;
+    previewStageSize.value = { width: Math.floor(rect?.width || 0), height: Math.floor(rect?.height || 0) };
+  });
+  if (prev) previewStageObserver.unobserve(prev);
+  if (el) previewStageObserver.observe(el);
+}, { flush: "post" });
+onBeforeUnmount(() => previewStageObserver?.disconnect());
+const showPhoneFrame = computed(() => previewDevice.value === "mobile" && !isMobileViewport.value && !phoneEditor.value);
+const phoneZoom = computed(() => {
+  const { width, height } = previewStageSize.value;
+  if (!width || !height) return 1;
+  return Math.max(0.5, Math.min(1, height / PHONE_FRAME.height, width / PHONE_FRAME.width));
+});
+const phoneFrameStyle = computed(() => ({ zoom: String(phoneZoom.value), "--ed-unzoom": String(1 / phoneZoom.value) }));
 // No computador, a prévia é desenhada em 1280 px e reduzida para caber, sem espremer as seções.
 const DESKTOP_PREVIEW_WIDTH = 1280;
 // O editor novo simula uma tela de até 1440 px, mostrando as margens laterais da página.
@@ -7229,8 +7264,18 @@ onMounted(async () => {
 :global(.dark .ed-browser-bar) { background: #1a2320; }
 :global(.dark .ed-browser-bar i) { background: #34403b; }
 :global(.dark .ed-browser-bar span) { background: #0f1513; color: #9aa7a1; }
-.ed-phone { display: flex; width: 410px; max-width: 100%; min-height: 0; flex-direction: column; border-radius: 40px; background: #0b100e; padding: 10px; box-shadow: var(--shadow-elegant); }
-.ed-phone .ed-screen { border-radius: 30px; background: #fff; scrollbar-width: none; }
+/* Aparelho: 414 × 868 (tela 390 × 844), cantos de iPhone, botões laterais e indicador de início;
+   o zoom (phoneFrameStyle) reduz tudo junto para caber na altura. */
+.ed-phone { position: relative; display: flex; flex: none; width: 414px; height: 868px; min-height: 0; flex-direction: column; border-radius: 60px; background: #0b100e; padding: 12px; box-shadow: inset 0 0 0 2px #2c3430, 0 30px 60px -28px rgba(6, 12, 9, 0.55); }
+.ed-phone::before, .ed-phone::after { content: ""; position: absolute; width: 4px; border-radius: 3px; background: #1d2421; }
+.ed-phone::before { left: -4px; top: 170px; height: 64px; box-shadow: 0 84px 0 #1d2421; }
+.ed-phone::after { right: -4px; top: 210px; height: 96px; }
+.ed-phone-status { position: relative; display: flex; flex: none; height: 50px; align-items: center; justify-content: space-between; border-radius: 48px 48px 0 0; background: #fff; padding: 4px 30px 0 40px; color: #0b100e; font: 600 16px/1 -apple-system, "SF Pro Text", Figtree, sans-serif; }
+.ed-phone-island { position: absolute; top: 11px; left: 50%; width: 122px; height: 35px; margin-left: -61px; border-radius: 999px; background: #0b100e; }
+.ed-phone-icons { display: flex; align-items: center; gap: 6px; }
+.ed-phone-icons svg { fill: currentColor; }
+.ed-phone .ed-screen { border-radius: 0 0 48px 48px; background: #fff; scrollbar-width: none; }
+.ed-phone-home { position: absolute; bottom: 20px; left: 50%; z-index: 2; width: 140px; height: 5px; margin-left: -70px; border-radius: 999px; background: rgba(11, 16, 14, 0.82); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.55); pointer-events: none; }
 .ed-phone .ed-screen::-webkit-scrollbar { display: none; }
 .ed-stage.is-framed .ed-screen { min-height: 0; flex: 1; overflow-x: hidden; overflow-y: auto; }
 
