@@ -21,6 +21,7 @@ class LessonBase(BaseModel):
     video_type: LessonVideoType = LessonVideoType.youtube
     video_url: str
     thumbnail_url: Optional[str] = None
+    help_article: Optional[str] = Field(default=None, max_length=80)
 
 
 class LessonCreate(LessonBase):
@@ -38,11 +39,13 @@ class LessonUpdate(BaseModel):
     video_url: Optional[str] = None
     thumbnail_url: Optional[str] = None
     thumbnail_base64: Optional[str] = None
+    help_article: Optional[str] = Field(default=None, max_length=80)
 
 
 class LessonOut(LessonBase):
     id: int
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+    video_updated_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)

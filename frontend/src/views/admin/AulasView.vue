@@ -19,9 +19,27 @@
       </div>
     </div>
 
+    <div v-if="replacedCount" class="lv-note">
+      <span class="lv-note-icon" aria-hidden="true"><LifeBuoyIcon /></span>
+      <p>
+        <b>{{ replacedCount === 1 ? "1 aula foi atualizada" : `${replacedCount} aulas foram atualizadas` }}</b>
+        com guias novos da Central de Ajuda, com demonstração interativa das telas de hoje.
+      </p>
+      <RouterLink to="/admin/ajuda" class="lv-btn-ghost">Abrir Central de Ajuda</RouterLink>
+    </div>
+
     <div class="lv-grid">
       <section class="lv-card lv-player-card">
-        <div class="lv-player">
+        <template v-if="activeArticle">
+          <HelpDemo v-if="activeTour" :tour-id="activeTour.id" />
+          <div v-else class="lv-guide">
+            <span class="lv-guide-icon" aria-hidden="true"><LifeBuoyIcon /></span>
+            <b>{{ activeArticle.titulo }}</b>
+            <p>{{ activeArticle.resumo }}</p>
+            <RouterLink :to="`/admin/ajuda/${activeArticle.id}`" class="lv-btn-primary">Abrir o guia</RouterLink>
+          </div>
+        </template>
+        <div v-else class="lv-player">
           <template v-if="activeLesson">
             <template v-if="playing">
               <iframe
@@ -74,11 +92,17 @@
           <div class="min-w-0 flex-1">
             <div class="lv-tags">
               <span class="lv-tag is-info">{{ activeModuleLabel }}</span>
-              <span v-if="activeLesson.level" class="lv-tag">{{ activeLesson.level }}</span>
-              <span v-if="activeLesson.duration" class="lv-tag">{{ activeLesson.duration }}</span>
+              <template v-if="activeArticle">
+                <span class="lv-tag is-success">Guia atualizado</span>
+                <span class="lv-tag">Revisado em {{ formatDate(activeArticle.atualizado) }}</span>
+              </template>
+              <template v-else>
+                <span v-if="activeLesson.level" class="lv-tag">{{ activeLesson.level }}</span>
+                <span v-if="activeLesson.duration" class="lv-tag">{{ activeLesson.duration }}</span>
+              </template>
             </div>
-            <h2 class="lv-lesson-title">{{ activeLesson.title }}</h2>
-            <p class="lv-lesson-text">{{ activeLesson.description }}</p>
+            <h2 class="lv-lesson-title">{{ activeArticle ? activeArticle.titulo : activeLesson.title }}</h2>
+            <p class="lv-lesson-text">{{ activeArticle ? activeArticle.resumo : activeLesson.description }}</p>
           </div>
           <div class="lv-actions">
             <button
@@ -90,6 +114,7 @@
               <CheckIcon aria-hidden="true" />
               {{ isCompleted(activeLesson.id) ? "Concluída" : "Marcar como concluída" }}
             </button>
+            <RouterLink v-if="activeArticle" :to="`/admin/ajuda/${activeArticle.id}`" class="lv-btn-ghost">Ver passo a passo</RouterLink>
             <button v-if="nextLesson" type="button" class="lv-btn-ghost" @click="selectLesson(nextLesson.id)">Próxima aula</button>
           </div>
         </div>
@@ -132,8 +157,9 @@
                   <CheckIcon v-else-if="isCompleted(lesson.id)" aria-hidden="true" />
                   <template v-else>{{ lessonNumber(lesson.id) }}</template>
                 </span>
-                <span class="lv-lesson-name">{{ lesson.title }}</span>
-                <span v-if="lesson.duration" class="lv-lesson-time">{{ lesson.duration }}</span>
+                <span class="lv-lesson-name">{{ replacementOf(lesson)?.titulo || lesson.title }}</span>
+                <span v-if="replacementOf(lesson)" class="lv-lesson-new">Atualizada</span>
+                <span v-else-if="lesson.duration" class="lv-lesson-time">{{ lesson.duration }}</span>
               </button>
             </li>
           </ul>
@@ -144,9 +170,12 @@
 </template>
 
 <script setup lang="ts">
-import { CheckIcon, ChevronDownIcon, PlayIcon } from "lucide-vue-next";
+import { CheckIcon, ChevronDownIcon, LifeBuoyIcon, PlayIcon } from "lucide-vue-next";
 import { computed, onMounted, ref, watch } from "vue";
-import { useLessonsStore } from "../../store/useLessonsStore";
+import HelpDemo from "../../components/help/HelpDemo.vue";
+import { articleReplacingLesson, formatDate } from "../../help";
+import { getTour } from "../../help/media";
+import { useLessonsStore, type Lesson } from "../../store/useLessonsStore";
 
 const lessonsStore = useLessonsStore();
 const lessons = computed(() => lessonsStore.sortedLessons);
@@ -226,6 +255,13 @@ watch(
 );
 
 const activeLesson = computed(() => lessons.value.find(lesson => lesson.id === activeLessonId.value) || null);
+// Aula com vídeo mais antigo que o artigo da Central de Ajuda sobre o mesmo assunto mostra o artigo
+// (ligado no Admin Master ou pelo título; veja help/index.ts).
+const replacementOf = (lesson: Lesson) =>
+  articleReplacingLesson({ titulo: lesson.title, artigo: lesson.helpArticle, atualizadaEm: lesson.videoUpdatedAt });
+const replacedCount = computed(() => lessons.value.filter(lesson => replacementOf(lesson)).length);
+const activeArticle = computed(() => (activeLesson.value ? replacementOf(activeLesson.value) : null));
+const activeTour = computed(() => (activeArticle.value ? getTour(activeArticle.value.demo || activeArticle.value.id) : null));
 
 const completedCount = computed(() => lessons.value.filter(lesson => completedLessons.value.includes(lesson.id)).length);
 const progressPercent = computed(() => {
@@ -400,5 +436,23 @@ onMounted(async () => {
   .lv-head, .lv-info { flex-direction: column; align-items: stretch; }
   .lv-bar { flex: 1; width: auto; }
   .lv-actions { align-items: stretch; }
+}
+
+/* Aula substituída por um guia da Central de Ajuda */
+.lv-note { display: flex; align-items: center; gap: 12px; border-radius: 20px; background: var(--card); padding: 12px 12px 12px 16px; box-shadow: var(--shadow-card); }
+.lv-note p { flex: 1; min-width: 0; font-size: 13.5px; color: var(--muted-foreground); }
+.lv-note p b { color: var(--foreground); font-weight: 600; }
+.lv-note-icon { display: grid; flex: none; place-items: center; width: 36px; height: 36px; border-radius: 12px; background: color-mix(in srgb, var(--primary) 12%, var(--card)); color: var(--primary); }
+.lv-note-icon svg { width: 18px; height: 18px; }
+.lv-tag.is-success { background: var(--status-success); color: var(--status-success-foreground); }
+.lv-guide { display: flex; aspect-ratio: 16 / 9; flex-direction: column; align-items: center; justify-content: center; gap: 8px; border-radius: 16px; background: var(--muted); padding: 24px; text-align: center; }
+.lv-guide-icon { display: grid; place-items: center; width: 52px; height: 52px; margin-bottom: 4px; border-radius: 16px; background: var(--card); color: var(--primary); }
+.lv-guide-icon svg { width: 24px; height: 24px; }
+.lv-guide b { font-family: var(--font-display); font-size: 20px; font-weight: 600; color: var(--foreground); }
+.lv-guide p { max-width: 420px; margin-bottom: 8px; font-size: 14px; color: var(--muted-foreground); }
+.lv-lesson-new { flex: none; border-radius: 999px; background: var(--status-success); padding: 1px 8px; font-size: 11px; font-weight: 600; color: var(--status-success-foreground); }
+@media (max-width: 640px) {
+  .lv-note { flex-wrap: wrap; }
+  .lv-note .lv-btn-ghost { width: 100%; justify-content: center; }
 }
 </style>

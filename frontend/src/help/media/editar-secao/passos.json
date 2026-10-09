@@ -1,0 +1,64 @@
+{
+  "id": "editar-secao",
+  "titulo": "Editar uma seção",
+  "gerado": "2026-10-09",
+  "passos": [
+    {
+      "legenda": "Clique na seção em Camadas",
+      "detalhe": "Ou passe o mouse nela na prévia e clique em Editar seção.",
+      "ponto": {
+        "x": 82.22,
+        "y": 14.94,
+        "w": 13.47,
+        "h": 5.67
+      }
+    },
+    {
+      "legenda": "Abra o grupo que quer mudar",
+      "detalhe": "Conteúdo tem textos, fotos e botões; Aparência tem layout e cores.",
+      "ponto": {
+        "x": 24.31,
+        "y": 28.17,
+        "w": 26.11,
+        "h": 5.56
+      }
+    },
+    {
+      "legenda": "Troque o texto: a prévia muda na hora",
+      "ponto": {
+        "x": 24.58,
+        "y": 36.78,
+        "w": 26.11,
+        "h": 6.22
+      }
+    },
+    {
+      "legenda": "Em Aparência, escolha o visual",
+      "ponto": {
+        "x": 37.36,
+        "y": 20.39,
+        "w": 14.17,
+        "h": 5.78
+      }
+    },
+    {
+      "legenda": "Teste outro layout",
+      "ponto": {
+        "x": 24.58,
+        "y": 33.94,
+        "w": 13.19,
+        "h": 8.56
+      }
+    },
+    {
+      "legenda": "Clique em Salvar seção",
+      "detalhe": "Descartar volta ao que estava antes.",
+      "ponto": {
+        "x": 43.08,
+        "y": 91.78,
+        "w": 8.72,
+        "h": 5.56
+      }
+    }
+  ]
+}

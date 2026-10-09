@@ -1676,7 +1676,10 @@ watch(
 .pf-foot .pf-msg { margin: 0 auto 0 0; }
 @media (max-width: 1000px) { .pf-row { grid-template-columns: 1fr; } }
 @media (max-width: 640px) {
-  .pf-plan { flex-wrap: wrap; }
+  .pf-plan { flex-wrap: wrap; row-gap: 12px; }
+  /* Ícone e nome do plano na primeira linha; situação e "Ver planos" embaixo. */
+  .pf-plan > .min-w-0 { flex: 1 1 calc(100% - 60px); }
+  .pf-plan-btn { margin-left: auto; }
   .pf-facts, .pf-two { grid-template-columns: 1fr; }
 }
 </style>

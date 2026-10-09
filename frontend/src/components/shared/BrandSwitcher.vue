@@ -38,7 +38,7 @@
           @click="selectViajeon"
         >
           <img :src="viajeonLogo" alt="" class="h-auto w-[80px] max-w-full object-contain object-left" />
-          <span class="sr-only">Ir para Viajeon</span>
+          <span class="sr-only">Ir para Viaje On</span>
         </button>
       </div>
     </Transition>

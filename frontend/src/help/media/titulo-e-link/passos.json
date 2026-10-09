@@ -1,0 +1,46 @@
+{
+  "id": "titulo-e-link",
+  "titulo": "Título, link e descrição da página",
+  "gerado": "2026-10-09",
+  "passos": [
+    {
+      "legenda": "Clique em Título e link",
+      "ponto": {
+        "x": 18.89,
+        "y": 14.89,
+        "w": 3.89,
+        "h": 6.22
+      }
+    },
+    {
+      "legenda": "Título da página",
+      "detalhe": "Aparece na aba do navegador, no Google e na sua lista de páginas.",
+      "ponto": {
+        "x": 24.58,
+        "y": 23.83,
+        "w": 21.94,
+        "h": 9.06
+      }
+    },
+    {
+      "legenda": "Link da página",
+      "detalhe": "É o endereço que você divulga. Só letras, números e hífens.",
+      "ponto": {
+        "x": 24.58,
+        "y": 33.11,
+        "w": 21.94,
+        "h": 15.81
+      }
+    },
+    {
+      "legenda": "Descrição curta",
+      "detalhe": "Aparece no Google e na prévia do link no WhatsApp.",
+      "ponto": {
+        "x": 24.58,
+        "y": 49.14,
+        "w": 21.94,
+        "h": 16.54
+      }
+    }
+  ]
+}

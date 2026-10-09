@@ -67,7 +67,7 @@
                   <div class="fm-row">
                     <label class="fm-lbl">Status inicial do lead</label>
                     <select v-model="state.defaultStatusId" class="fm-sel">
-                      <option value="">Sem status padrão</option>
+                      <option :value="null">Sem status padrão</option>
                       <option v-for="status in statuses" :key="status.id" :value="String(status.id)">{{ status.name }}</option>
                     </select>
                   </div>

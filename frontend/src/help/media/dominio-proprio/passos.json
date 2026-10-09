@@ -1,0 +1,46 @@
+{
+  "id": "dominio-proprio",
+  "titulo": "Usar um domínio próprio",
+  "gerado": "2026-10-09",
+  "passos": [
+    {
+      "legenda": "Em Domínios, digite o endereço",
+      "detalhe": "Só o endereço, sem https://. Ex.: viagens.suaagencia.com.br",
+      "ponto": {
+        "x": 69.72,
+        "y": 21.94,
+        "w": 26.94,
+        "h": 6
+      }
+    },
+    {
+      "legenda": "Marque se ele vira o principal",
+      "detalhe": "As páginas passam a abrir neste endereço quando ele for ativado.",
+      "ponto": {
+        "x": 69.72,
+        "y": 28.17,
+        "w": 26.94,
+        "h": 5.58
+      }
+    },
+    {
+      "legenda": "Clique em Adicionar domínio",
+      "detalhe": "Em seguida aparecem os registros de DNS para configurar no seu provedor.",
+      "ponto": {
+        "x": 69.72,
+        "y": 33.97,
+        "w": 26.94,
+        "h": 5.78
+      }
+    },
+    {
+      "legenda": "Com o domínio ativo, envie o ícone da aba",
+      "ponto": {
+        "x": 69.72,
+        "y": 51.53,
+        "w": 26.94,
+        "h": 9.11
+      }
+    }
+  ]
+}

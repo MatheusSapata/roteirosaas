@@ -1,0 +1,36 @@
+{
+  "id": "viajechat",
+  "titulo": "Enviar leads para o ViajeChat",
+  "gerado": "2026-10-09",
+  "passos": [
+    {
+      "legenda": "Em Integrações > ViajeChat, cole a chave da API",
+      "detalhe": "A chave é gerada nas configurações do ViajeChat.",
+      "ponto": {
+        "x": 35.97,
+        "y": 32.21,
+        "w": 27.92,
+        "h": 5.78
+      }
+    },
+    {
+      "legenda": "Clique em Conectar",
+      "ponto": {
+        "x": 63.61,
+        "y": 32.43,
+        "w": 7.08,
+        "h": 5.33
+      }
+    },
+    {
+      "legenda": "Depois, cada formulário escolhe o funil, a coluna e a etiqueta",
+      "detalhe": "Em Captação de leads > Formulários, aba Destino do Lead.",
+      "ponto": {
+        "x": 35.97,
+        "y": 43.09,
+        "w": 33.36,
+        "h": 5.64
+      }
+    }
+  ]
+}

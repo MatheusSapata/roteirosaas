@@ -1,0 +1,54 @@
+{
+  "id": "menu-do-topo",
+  "titulo": "Menu do topo",
+  "gerado": "2026-10-09",
+  "passos": [
+    {
+      "legenda": "Clique em Menu do topo",
+      "ponto": {
+        "x": 82.22,
+        "y": 14.94,
+        "w": 13.47,
+        "h": 5.67
+      }
+    },
+    {
+      "legenda": "Links: cada um leva a uma seção da página",
+      "detalhe": "Até 7 links. O botão da direita pode abrir o WhatsApp.",
+      "ponto": {
+        "x": 24.31,
+        "y": 36.61,
+        "w": 26.11,
+        "h": 5.56
+      }
+    },
+    {
+      "legenda": "Em Aparência, escolha o fundo do menu",
+      "ponto": {
+        "x": 37.36,
+        "y": 20.39,
+        "w": 14.17,
+        "h": 5.78
+      }
+    },
+    {
+      "legenda": "Transparente ou desfoque ficam sobre a foto da capa",
+      "detalhe": "Ganham fundo quando o visitante rola a página.",
+      "ponto": {
+        "x": 41.53,
+        "y": 37.22,
+        "w": 8.89,
+        "h": 5.33
+      }
+    },
+    {
+      "legenda": "Clique em Salvar seção",
+      "ponto": {
+        "x": 43.08,
+        "y": 91.78,
+        "w": 8.72,
+        "h": 5.56
+      }
+    }
+  ]
+}

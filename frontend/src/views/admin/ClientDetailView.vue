@@ -281,6 +281,12 @@
 
       <OpportunityDrawer v-model="isOpportunityModalOpen" :contact-id="selectedOpportunityId" :statuses="statuses" mode="modal" />
     </template>
+
+    <section v-else class="det-missing">
+      <p class="det-missing-title">Cliente não encontrado</p>
+      <p class="det-missing-text">Ele pode ter sido excluído ou pertencer a outra agência.</p>
+      <RouterLink to="/admin/leads/clients" class="det-missing-btn">Voltar para clientes</RouterLink>
+    </section>
   </div>
 </template>
 
@@ -1601,5 +1607,11 @@ function outcomeBadgeClass(outcome: "won" | "lost") {
 .opp-item { border: 0 !important; border-radius: 16px !important; background: var(--muted) !important; }
 @media (max-width: 1100px) { .det-stats-inner { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .det-stats-inner { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Link de cliente que não existe (ou de outra agência): avisa em vez de deixar a tela vazia. */
+.det-missing { display: flex; min-height: 50vh; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 24px; text-align: center; }
+.det-missing-title { font-family: var(--font-display); font-size: 20px; font-weight: 600; color: var(--foreground); }
+.det-missing-text { font-size: 14px; color: var(--muted-foreground); }
+.det-missing-btn { display: inline-flex; align-items: center; margin-top: 10px; height: 40px; padding: 0 18px; border-radius: 999px; background: var(--primary); font-size: 13.5px; font-weight: 600; color: var(--primary-foreground); }
 </style>
 

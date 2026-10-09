@@ -501,26 +501,15 @@
           <div class="mobile-card-origin">{{ truncatedPageLabel(contact) }}</div>
         </div>
             <div class="mobile-card-name">{{ contact.name || fallbackLabels.noName }}</div>
-            <div class="mobile-card-phone" @click.stop>
-              <button
-                v-if="contact.phone"
-                type="button"
-                class="phone-link inline-flex items-center gap-1 text-[10px] font-normal text-[#8A9E8A] transition hover:text-[#718771]"
-                :title="getWhatsappTitle(contact.phone)"
-                @click.stop="openWhatsapp(contact)"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 shrink-0 text-[#25D366]" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                  <path d="M16.75 13.96c-.25-.13-1.47-.72-1.7-.8-.23-.08-.4-.12-.57.12-.17.25-.65.8-.8.96-.14.17-.3.19-.55.06-.25-.13-1.06-.39-2.02-1.23-.74-.66-1.25-1.47-1.4-1.72-.15-.25-.02-.38.11-.5.11-.11.25-.3.37-.45.12-.14.17-.25.25-.42.08-.17.04-.31-.02-.45-.06-.14-.57-1.37-.78-1.87-.2-.49-.41-.42-.57-.43h-.48c-.17 0-.45.06-.68.31-.23.25-.88.86-.88 2.1s.9 2.43 1.02 2.6c.12.17 1.76 2.69 4.25 3.77.59.26 1.06.42 1.42.54.6.19 1.15.16 1.58.1.48-.07 1.47-.6 1.68-1.17.21-.57.21-1.06.15-1.17-.06-.11-.23-.17-.48-.3Z" />
-                  <path d="M12.04 2C6.77 2 2.5 6.26 2.5 11.52c0 1.85.53 3.65 1.52 5.2L2.4 21.5l4.9-1.57c1.43.78 3.04 1.2 4.7 1.2h.04c5.26 0 9.53-4.26 9.53-9.52C21.57 6.26 17.3 2 12.04 2Zm0 17.42h-.03c-1.5 0-2.97-.4-4.25-1.16l-.3-.18-2.9.93.95-2.82-.2-.29a7.83 7.83 0 0 1-1.2-4.18c0-4.3 3.5-7.8 7.82-7.8 2.08 0 4.03.8 5.5 2.28a7.75 7.75 0 0 1 2.29 5.5c0 4.3-3.5 7.8-7.8 7.8Z" />
-                </svg>
-                <span>{{ contact.phone }}</span>
-              </button>
-              <span v-else class="text-[12px] text-slate-400">-</span>
-            </div>
+            <!-- Só texto: colado no nome, um botão aqui "roubava" o toque no nome (o celular
+                 ajusta o toque para o botão mais próximo) e abria o WhatsApp sem querer. -->
+            <div class="mobile-card-phone">{{ contact.phone || "-" }}</div>
           </div>
           <div class="mobile-card-actions mobile-card-actions--row" @click.stop>
-            <button type="button" class="action-icon-btn action-muted" title="Ver oportunidade" @click.stop="openOpportunityDrawer(contact)">
-              <ExternalLinkIcon class="h-3 w-3" aria-hidden="true" />
+            <button v-if="contact.phone" type="button" class="action-icon-btn action-whatsapp" :title="getWhatsappTitle(contact.phone)" :aria-label="getWhatsappTitle(contact.phone)" @click.stop="openWhatsapp(contact)">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M12.04 2C6.77 2 2.5 6.26 2.5 11.52c0 1.85.53 3.65 1.52 5.2L2.4 21.5l4.9-1.57c1.43.78 3.04 1.2 4.7 1.2h.04c5.26 0 9.53-4.26 9.53-9.52C21.57 6.26 17.3 2 12.04 2Zm4.71 11.96c-.25-.13-1.47-.72-1.7-.8-.23-.08-.4-.12-.57.12-.17.25-.65.8-.8.96-.14.17-.3.19-.55.06-.25-.13-1.06-.39-2.02-1.23-.74-.66-1.25-1.47-1.4-1.72-.15-.25-.02-.38.11-.5.11-.11.25-.3.38-.44.13-.15.17-.25.25-.42.08-.17.04-.31-.02-.44-.06-.13-.57-1.37-.78-1.88-.2-.49-.41-.42-.57-.43h-.48c-.17 0-.44.06-.67.31-.23.25-.88.86-.88 2.1s.9 2.44 1.03 2.6c.13.17 1.77 2.7 4.29 3.79.6.26 1.07.41 1.43.53.6.19 1.15.16 1.58.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.08.15-1.18-.06-.1-.23-.17-.48-.29Z" />
+              </svg>
             </button>
             <button type="button" class="action-icon-btn action-like" :class="getOpportunityOutcome(contact) === 'won' ? 'is-selected' : ''" title="Ganho" @click.stop="markOpportunityOutcome(contact, 'won')">
               <ThumbsUpIcon class="h-3 w-3" aria-hidden="true" />
@@ -6973,9 +6962,26 @@ watch(visibleOpportunityIds, ids => {
 }
 
 .mobile-card-phone {
-  margin-top: 0;
+  margin-top: 1px;
   margin-bottom: 0;
-  font-size: 10px;
+  font-size: 11px;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+.action-icon-btn.action-whatsapp {
+  background: color-mix(in srgb, #25d366 14%, transparent);
+  color: #128c4b;
+}
+
+:global(.dark-theme) .action-icon-btn.action-whatsapp {
+  color: #3ddc84;
+}
+
+/* Celular: alvos de toque maiores nas ações do cartão. */
+.mobile-card-actions .action-icon-btn {
+  width: 30px;
+  height: 30px;
 }
 
 .mobile-card-actions {
@@ -7170,9 +7176,19 @@ watch(visibleOpportunityIds, ids => {
   background: rgba(255, 255, 255, 0.14);
 }
 
-@media (min-width: 1024px) {
+/* Começa depois do menu lateral (aberto ou recolhido) e rola de lado se os botões não couberem. */
+.opportunity-bulk-bar {
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.opportunity-bulk-bar > * {
+  flex-shrink: 0;
+}
+
+@media (min-width: 768px) {
   .opportunity-bulk-bar {
-    left: 210px;
+    left: var(--admin-sidebar-offset, 256px);
   }
 }
 

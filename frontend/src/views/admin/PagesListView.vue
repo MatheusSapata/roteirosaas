@@ -469,7 +469,7 @@
               :placeholder="viewCopy.dialogs.duplicate.slugPlaceholder"
             />
             <p class="mt-1 text-xs text-slate-500">
-              {{ viewCopy.dialogs.duplicate.finalLink }}: /{{ currentAgencySlug }}/{{ duplicateSlug || "slug" }}
+              {{ viewCopy.dialogs.duplicate.finalLink }}: /{{ currentAgencySlug }}/{{ duplicateSlug || "link-da-pagina" }}
             </p>
           </div>
         </div>
@@ -680,27 +680,27 @@ const viewCopySource = {
       pt: "Escolha um modelo para visualizar o design.",
       es: "Elige un modelo para visualizar el diseño."
     },
-    formTitle: { pt: "Detalhes da nova pagina", es: "Detalles de la nueva pagina" },
-    nameLabel: { pt: "Titulo da pagina", es: "Titulo de la pagina" },
-    slugLabel: { pt: "Slug", es: "Slug" },
+    formTitle: { pt: "Detalhes da nova página", es: "Detalles de la nueva página" },
+    nameLabel: { pt: "Título da página", es: "Título de la página" },
+    slugLabel: { pt: "Link da página", es: "Enlace de la página" },
     slugHint: {
-      pt: "Este slug completa o link publico do roteiro.",
-      es: "Este slug completa el enlace publico del itinerario."
+      pt: "Completa o link público do roteiro.",
+      es: "Completa el enlace público del itinerario."
     },
     back: { pt: "Voltar", es: "Volver" },
     cancel: { pt: "Cancelar", es: "Cancelar" },
-    create: { pt: "Criar pagina", es: "Crear pagina" }
+    create: { pt: "Criar página", es: "Crear página" }
   },
   dialogs: {
     duplicate: {
       title: { pt: "Duplicar página", es: "Duplicar página" },
       description: {
-        pt: "Crie um rascunho copiando conteúdo e ajustando o slug.",
-        es: "Crea un borrador copiando el contenido y ajustando el slug."
+        pt: "Cria um rascunho com o mesmo conteúdo e um link novo.",
+        es: "Crea un borrador con el mismo contenido y un enlace nuevo."
       },
       titleLabel: { pt: "Título", es: "Título" },
       titlePlaceholder: { pt: "Novo título", es: "Nuevo título" },
-      slugLabel: { pt: "Slug", es: "Slug" },
+      slugLabel: { pt: "Link da página", es: "Enlace de la página" },
       slugPlaceholder: { pt: "novo-slug", es: "nuevo-slug" },
       finalLink: { pt: "Link final", es: "Link final" },
       cancel: { pt: "Cancelar", es: "Cancelar" },
@@ -2342,6 +2342,7 @@ onMounted(async () => {
 .pl-filters { display: flex; gap: 4px; }
 .pl-filter { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--muted-foreground); }
 .pl-filter span { border-radius: 999px; background: var(--muted); padding: 0 7px; font-size: 11px; }
+@media (max-width: 400px) { .pl-filter { padding: 0 10px; } }
 .pl-filter.on { background: var(--card); color: var(--foreground); box-shadow: var(--shadow-card); }
 .pl-filter.on span { background: var(--accent); color: var(--accent-foreground); }
 .pl-grow { flex: 1; }
@@ -2385,7 +2386,13 @@ onMounted(async () => {
 @media (max-width: 1100px) { .pl-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 640px) {
   .pl-head { flex-direction: column; align-items: flex-start; }
-  .pl-stats { grid-template-columns: 1fr; }
+  /* Celular: números em 2 x 2, compactos, sem os ícones. */
+  .pl-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .pl-stat { padding: 12px; }
+  .pl-stat > div { min-width: 0; }
+  .pl-icon { display: none; }
+  .pl-stat-v { font-size: 18px; line-height: 24px; }
+  .pl-stat-v small { display: block; margin-left: 0; }
   .pl-search { flex-basis: 100%; }
 }
 

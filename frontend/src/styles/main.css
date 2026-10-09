@@ -420,7 +420,9 @@ html {
 body {
   background-image: var(--bg-gradient);
   font-family: var(--font-sans);
-  overflow-x: hidden;
+  /* clip (e não hidden) corta a rolagem lateral sem transformar o body numa área de
+     rolagem própria; com hidden, nada com position: sticky gruda no topo. */
+  overflow-x: clip;
 }
 
 /* Ícones (Lucide): mesma família e o mesmo traço em toda a plataforma.

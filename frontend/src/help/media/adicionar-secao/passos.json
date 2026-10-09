@@ -1,0 +1,55 @@
+{
+  "id": "adicionar-secao",
+  "titulo": "Adicionar uma seção",
+  "gerado": "2026-10-09",
+  "passos": [
+    {
+      "legenda": "Em Camadas, clique em + Seção",
+      "ponto": {
+        "x": 92.39,
+        "y": 9.14,
+        "w": 6.36,
+        "h": 4.89
+      }
+    },
+    {
+      "legenda": "Escolha uma categoria",
+      "detalhe": "Ou busque pelo nome da seção.",
+      "ponto": {
+        "x": 37.37,
+        "y": 20.33,
+        "w": 10.56,
+        "h": 5.33
+      }
+    },
+    {
+      "legenda": "Clique na seção que quer inserir",
+      "detalhe": "O cartão mostra a seção de verdade, com textos de exemplo.",
+      "ponto": {
+        "x": 68.23,
+        "y": 32.94,
+        "w": 18.02,
+        "h": 28.28
+      }
+    },
+    {
+      "legenda": "A seção entra no fim da página, antes do rodapé",
+      "detalhe": "Clique nela para trocar os textos de exemplo.",
+      "ponto": {
+        "x": 80.42,
+        "y": 26.06,
+        "w": 18.61,
+        "h": 7
+      }
+    },
+    {
+      "legenda": "Clique em Salvar para guardar",
+      "ponto": {
+        "x": 93.4,
+        "y": 1.33,
+        "w": 6.19,
+        "h": 5.78
+      }
+    }
+  ]
+}

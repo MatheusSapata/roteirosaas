@@ -1,0 +1,17 @@
+{
+  "name": "roteiro-help-media",
+  "private": true,
+  "type": "module",
+  "description": "Gera a mídia da Central de Ajuda (telas, demonstrações interativas e vídeos curtos) a partir do sistema rodando.",
+  "scripts": {
+    "seed": "node seed.mjs",
+    "gerar": "node gerar.mjs"
+  },
+  "devDependencies": {
+    "@fontsource-variable/bricolage-grotesque": "5.3.0",
+    "@fontsource/figtree": "5.3.0",
+    "@fontsource/inter": "5.3.0",
+    "@fontsource/sora": "5.3.0",
+    "playwright": "1.63.0"
+  }
+}

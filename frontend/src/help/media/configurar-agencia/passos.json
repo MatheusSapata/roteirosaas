@@ -1,0 +1,72 @@
+{
+  "id": "configurar-agencia",
+  "titulo": "Configurar os dados da agência",
+  "gerado": "2026-10-09",
+  "passos": [
+    {
+      "legenda": "Em Minha Agência, confira o nome",
+      "detalhe": "Aparece no topo e no rodapé das páginas.",
+      "ponto": {
+        "x": 37.78,
+        "y": 32.88,
+        "w": 58.89,
+        "h": 5.78
+      }
+    },
+    {
+      "legenda": "Escreva um resumo curto da agência",
+      "ponto": {
+        "x": 37.78,
+        "y": 41.61,
+        "w": 58.89,
+        "h": 10.67
+      }
+    },
+    {
+      "legenda": "O link da agência abre o endereço de todas as páginas",
+      "detalhe": "roteiroonline.com/link-da-agencia/nome-da-pagina",
+      "ponto": {
+        "x": 37.78,
+        "y": 56.83,
+        "w": 58.89,
+        "h": 8.44
+      }
+    },
+    {
+      "legenda": "Cor principal: a base dos botões",
+      "ponto": {
+        "x": 37.78,
+        "y": 68.24,
+        "w": 58.89,
+        "h": 5.78
+      }
+    },
+    {
+      "legenda": "WhatsApp que recebe os cliques das páginas",
+      "ponto": {
+        "x": 37.78,
+        "y": 94.89,
+        "w": 58.89,
+        "h": 5.78
+      }
+    },
+    {
+      "legenda": "Logo e redes sociais entram em todas as páginas",
+      "ponto": {
+        "x": 37.78,
+        "y": 54.79,
+        "w": 58.89,
+        "h": 8.44
+      }
+    },
+    {
+      "legenda": "Salve para aplicar",
+      "ponto": {
+        "x": 86.18,
+        "y": 92,
+        "w": 11.19,
+        "h": 5.78
+      }
+    }
+  ]
+}

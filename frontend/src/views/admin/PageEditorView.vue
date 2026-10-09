@@ -222,7 +222,7 @@
       @close="closeSectionPicker"
       @integrate="goViajeonIntegration"
     />
-    <nav v-if="phoneEditor && !sectionPanelOpen && !showAiAssistant" class="ed-phone-nav" aria-label="Editor">
+    <nav v-if="phoneEditor && !sectionPanelOpen && !showAiAssistant && !sectionPicker.open" class="ed-phone-nav" aria-label="Editor">
       <button type="button" :class="{ on: layersOpen }" @click="layersOpen ? closePhonePanels() : openPhonePanel('layers')">
         <LayersIcon aria-hidden="true" />
         <span>Seções</span>
@@ -943,7 +943,7 @@
         <p class="ed-sections-hint">{{ phoneEditor ? "Toque numa seção para editar. Para mudar a ordem, use as setas na prévia." : newEditor ? "Arraste para reordenar. O interruptor esconde a seção sem apagar." : "Clique numa seção (aqui ou na prévia) para editar. Arraste para mudar a ordem; o interruptor esconde a seção sem apagar." }}</p>
       </section>
       <aside v-if="newEditor && !phoneEditor && !layersOpen && !showAiAssistant" class="ed-layers-mini" aria-label="Camadas">
-        <button type="button" class="ed-rail-btn" aria-label="Abrir camadas" title="Abrir camadas" @click="layersOpen = true">
+        <button type="button" class="ed-rail-btn" aria-label="Abrir camadas" title="Abrir camadas" @click="openLayersPanel">
           <PanelRightOpenIcon aria-hidden="true" />
         </button>
         <span class="ed-layers-mini-sep" aria-hidden="true"></span>
@@ -1045,7 +1045,7 @@
                     <div v-if="section" class="space-y-0" :class="{ 'v2ed-slot': newEditor, 'is-overlay-header': idx === overlayHeader.header }">
                     <div v-if="newEditor && idx > 0 && canInsertBefore(idx) && idx !== overlayHeader.under" class="v2ed-ins">
                       <span class="v2ed-ins-line" aria-hidden="true"></span>
-                      <button type="button" class="v2ed-ins-btn" @click.stop="openSectionPicker(idx - 1)">
+                      <button type="button" class="v2ed-ins-btn" title="Adicionar seção aqui" @click.stop="openSectionPicker(idx - 1)">
                         <PlusIcon aria-hidden="true" />
                         <span>Adicionar seção</span>
                       </button>
@@ -1053,7 +1053,7 @@
                     <div
                       class="group relative"
                       :class="[
-                        (section as any).type === 'header' ? 'z-30 overflow-visible' : 'overflow-hidden',
+                        (section as any).type === 'header' ? 'z-30 overflow-visible' : 'overflow-clip',
                         {
                           'v2ed-sec': newEditor && (section as any).enabled,
                           'is-header': newEditor && (section as any).type === 'header',
@@ -1080,6 +1080,9 @@
                       </div>
                       <template v-if="newEditor && (section as any).enabled">
                         <span class="v2ed-ring" aria-hidden="true"></span>
+                        <!-- Selo e ações numa faixa que gruda no topo da prévia enquanto a seção está na tela. -->
+                        <div class="v2ed-chrome">
+                        <div class="v2ed-chrome-row">
                         <span class="v2ed-tag">{{ sectionLabelOf(section) }}</span>
                         <div
                           class="v2ed-bar"
@@ -1114,6 +1117,8 @@
                               <Trash2Icon aria-hidden="true" />
                             </button>
                           </template>
+                        </div>
+                        </div>
                         </div>
                       </template>
                         <div
@@ -2097,6 +2102,12 @@ const panelPrefs = typeof window !== "undefined" ? readPanelPrefs() : {};
 // Em telas menores a prévia precisa do espaço: o painel começa recolhido, só com os ícones.
 const leftPanelOpen = ref(panelPrefs.left ?? (typeof window === "undefined" || window.innerWidth >= 1600));
 const layersOpen = ref(panelPrefs.layers ?? true);
+// Camadas recolhidas sozinhas para dar espaço à prévia (não vale como escolha da pessoa).
+let layersAutoCollapsed = false;
+const openLayersPanel = () => {
+  layersAutoCollapsed = false;
+  layersOpen.value = true;
+};
 // Larguras ajustáveis arrastando a borda dos painéis; 0 = largura padrão da tela.
 const PANEL_LIMITS: Record<PanelWidthKey, { min: number; max: number; wide: number; narrow: number }> = {
   settings: { min: 280, max: 560, wide: 360, narrow: 320 },
@@ -2145,7 +2156,7 @@ const savePanelPrefs = () => {
   try {
     window.localStorage.setItem(
       EDITOR_PANELS_KEY,
-      JSON.stringify({ left: leftPanelOpen.value, layers: layersOpen.value, widths: { ...panelWidths } })
+      JSON.stringify({ left: leftPanelOpen.value, layers: layersOpen.value || layersAutoCollapsed, widths: { ...panelWidths } })
     );
   } catch {
     /* sem armazenamento local: os painéis só não ficam lembrados */
@@ -2340,13 +2351,18 @@ let removeViewportWatcher: (() => void) | null = null;
 
 const syncMobileViewport = () => {
   if (!hasWindow) return;
-  const matches = window.innerWidth < 768;
+  // Editor novo: abaixo de 1024px (tablet, celular deitado) a prévia, as camadas e o painel da
+  // seção não cabem lado a lado; usa o modo de celular, com os painéis abrindo por cima.
+  const matches = window.innerWidth < (newEditor.value ? 1024 : 768);
   isMobileViewport.value = matches;
   editorViewportWidth.value = window.innerWidth;
   if (matches && previewDevice.value !== "mobile") {
     previewDevice.value = "mobile";
   }
 };
+
+// O modo de celular do editor novo vale até 1024px; só dá para saber depois de carregar a página.
+watch(newEditor, () => syncMobileViewport());
 
 const setupViewportWatcher = () => {
   if (!hasWindow) return;
@@ -2913,8 +2929,8 @@ const sectionDescriptions: Partial<Record<SectionType, string>> = {
     es: "Carrusel de páginas y enlaces externos con imagen, título y descripción."
   }),
   viajeon_checkout: t({
-    pt: "Lista todos os pacotes ativos de um checkout Viajeon e envia a seleção para o pagamento externo.",
-    es: "Lista todos los paquetes activos de un checkout Viajeon y envía la selección al pago externo."
+    pt: "Lista todos os pacotes ativos de um checkout Viaje On e envia a seleção para o pagamento externo.",
+    es: "Lista todos los paquetes activos de un checkout Viaje On y envía la selección al pago externo."
   }),
   internal_form: t({
     pt: "Formulário incorporado à página, com fundo personalizável e confirmação após o envio.",
@@ -3215,6 +3231,23 @@ const sectionPanelOpen = computed(() => isSectionEditorOpen.value && usesV2Form.
 watch(sectionPanelOpen, isOpen => {
   if (isOpen && phoneEditor.value) layersOpen.value = false;
 });
+// Telas médias: se o painel da esquerda deixar a prévia estreita demais, as camadas se
+// recolhem (ficam só os ícones) e voltam quando o painel fecha.
+watch(leftContentKey, (key, prev) => {
+  if (phoneEditor.value || !newEditor.value || !hasWindow) return;
+  if (key && layersOpen.value && !showAiAssistant.value) {
+    const grid = editorGridRef.value;
+    const width = grid?.offsetWidth || window.innerWidth;
+    const preview = width - PANEL_RAIL - panelWidth(key) - panelWidth("layers") - 32;
+    if (preview < PREVIEW_MIN) {
+      layersAutoCollapsed = true;
+      layersOpen.value = false;
+    }
+  } else if (!key && prev && layersAutoCollapsed) {
+    layersAutoCollapsed = false;
+    layersOpen.value = true;
+  }
+});
 const sectionPanelMenuOpen = ref(false);
 const livePreviewDraft = computed(() => {
   const draft = editingSectionDraft.value;
@@ -3224,9 +3257,22 @@ const livePreviewDraft = computed(() => {
   // Mantém o fundo calculado da página até a pessoa escolher outro na própria seção.
   return base && !(draft as any).customBackground ? ({ ...draft, backgroundColor: (base as any).backgroundColor } as PageSection) : draft;
 });
+let lastPanelSectionIndex: number | null = null;
 watch(sectionPanelOpen, open => {
   sectionPanelMenuOpen.value = false;
-  if (!open) return;
+  if (!open) {
+    // Celular: o painel cobre a prévia; ao fechar, a prévia volta para a seção editada.
+    const index = lastPanelSectionIndex;
+    lastPanelSectionIndex = null;
+    if (phoneEditor.value && index !== null) {
+      nextTick(() => {
+        const el = previewCanvasRef.value?.querySelector(`[data-preview-index="${index}"]`);
+        el?.scrollIntoView({ block: "start" });
+      });
+    }
+    return;
+  }
+  lastPanelSectionIndex = editingSectionIndex.value;
   // Espera a prévia se ajustar à largura do painel antes de rolar até a seção.
   setTimeout(() => {
     const el = previewCanvasRef.value?.querySelector(`[data-preview-index="${editingSectionIndex.value}"]`);
@@ -3472,7 +3518,7 @@ const validateSection = (section: PageSection | null): string | null => {
   }
   if ((section as any).type === "viajeon_checkout" && section.enabled !== false) {
     const viajeon = section as ViajeonCheckoutSection;
-    if (!viajeon.checkoutId) return "Selecione um checkout ativo do Viajeon antes de salvar a seção.";
+    if (!viajeon.checkoutId) return "Selecione um checkout ativo do Viaje On antes de salvar a seção.";
   }
   if ((section as any).type === "internal_form" && section.enabled !== false) {
     const internalForm = section as InternalFormSection;
@@ -3743,7 +3789,7 @@ const loadViajeonStatus = async () => {
     const response = await api.get("/integrations/viajeon");
     viajeonConnected.value = response.data?.connected === true;
   } catch (err) {
-    console.error("Erro ao consultar integração Viajeon", err);
+    console.error("Erro ao consultar integração Viaje On", err);
     viajeonConnected.value = false;
   }
 };
@@ -4745,7 +4791,9 @@ const addSection = (type: SectionType, insertIndex?: number) => {
   if (type === "header" && sections.value.some(isHeaderSection)) return;
   const next = clone(defaultSection(type));
   const current = sections.value.slice();
-  const footerIndex = current.findIndex(isFooterSection);
+  // Seção nova entra antes dos rodapés (o da agência e o do plano grátis).
+  const isFooterLike = (section: PageSection) => isFooterSection(section) || (type !== "agency_footer" && (section as any)?.type === "agency_footer");
+  const footerIndex = current.findIndex(isFooterLike);
   const maxInsertIndex = footerIndex >= 0 ? footerIndex : current.length;
   if (type === "header") {
     current.unshift(next);
@@ -6170,6 +6218,12 @@ onMounted(async () => {
     overflow-x: hidden;
   }
 
+  /* clip corta igual, sem virar área de rolagem: o topo do editor e as ações das seções
+     conseguem grudar no topo da tela. */
+  .page-editor-view {
+    overflow-x: clip;
+  }
+
   .editor-topbar {
     align-items: flex-start;
     gap: 8px;
@@ -7240,7 +7294,6 @@ onMounted(async () => {
 .esv-link { align-self: flex-start; padding: 2px 0; font-size: 13px; font-weight: 700; color: var(--primary); text-decoration: underline; text-underline-offset: 3px; }
 .esv-btn { height: 40px; padding: 0 16px; border-radius: 999px; background: var(--muted); font-size: 13px; font-weight: 700; color: var(--foreground); }
 .esv-btn.is-primary { background: var(--primary); color: var(--primary-foreground); }
-.ed-stage.is-mobile-preview .v2ed-bar { top: 50px; }
 .ed-stage.is-mobile-preview .v2ed-edit span { display: none; }
 .ed-stage.is-mobile-preview .v2ed-edit { padding: 0 10px; }
 .editor-workspace.is-v2 .editor-ai-sidebar-header { display: flex; align-items: center; gap: 10px; }
@@ -7323,19 +7376,15 @@ onMounted(async () => {
 /* Seção embaixo do menu: selo e ações descem para logo abaixo dele (o menu tem 76px,
    em escala na prévia de computador). */
 .v2ed-sec.is-under-header { --ed-hd-h: calc(76px / var(--ed-unzoom, 1)); }
-.v2ed-sec.is-under-header .v2ed-tag, .v2ed-sec.is-under-header .v2ed-bar { top: calc(var(--ed-hd-h) + 12px); }
-.ed-stage.is-mobile-preview .v2ed-sec.is-under-header .v2ed-bar { top: calc(var(--ed-hd-h) + 50px); }
+.v2ed-sec.is-under-header .v2ed-chrome { top: var(--ed-hd-h); }
 /* Menu do topo: selo e ações centralizados na altura do menu e mais compactos, para
    caberem dentro dele. */
-.v2ed-sec.is-header .v2ed-tag, .v2ed-sec.is-header .v2ed-bar { top: 50%; transform: translateY(-50%); }
-.v2ed-sec.is-header:hover .v2ed-tag, .v2ed-sec.is-header:hover .v2ed-bar,
-.v2ed-sec.is-header:focus-within .v2ed-tag, .v2ed-sec.is-header:focus-within .v2ed-bar { transform: translateY(-50%); }
+.v2ed-sec.is-header .v2ed-chrome-row { position: absolute; inset: 0; flex-wrap: nowrap; align-items: center; padding-top: 0; padding-bottom: 0; }
 .v2ed-sec.is-header .v2ed-tag { padding: 4px 10px; font-size: 12px; }
 .v2ed-sec.is-header .v2ed-bar { padding: 3px; border-radius: 12px; }
 .v2ed-sec.is-header .v2ed-edit, .v2ed-sec.is-header .v2ed-btn { height: 30px; border-radius: 9px; }
 .v2ed-sec.is-header .v2ed-btn { width: 30px; }
 .ed-stage.is-mobile-preview .v2ed-sec.is-header .v2ed-tag { display: none; }
-.ed-stage.is-mobile-preview .v2ed-sec.is-header .v2ed-bar { top: 50%; }
 .v2ed-sec { transition: box-shadow 0.2s ease; }
 .v2ed-sec:hover, .v2ed-sec:focus-within { z-index: 5; box-shadow: 0 24px 60px -18px rgba(6, 12, 9, 0.55), 0 4px 14px -6px rgba(6, 12, 9, 0.3); }
 .v2ed-ring, .v2ed-tag, .v2ed-bar { opacity: 0; transition: opacity 0.18s ease, transform 0.24s cubic-bezier(0.22, 0.8, 0.24, 1); }
@@ -7410,6 +7459,36 @@ onMounted(async () => {
 .v2ed-sec.is-tapped .v2ed-ring, .v2ed-sec.is-tapped .v2ed-tag, .v2ed-sec.is-tapped .v2ed-bar { opacity: 1; transform: none; }
 @media (prefers-reduced-motion: reduce) {
   .ed-grid.is-phone > .ed-side.is-open, .ed-grid.is-phone > .ed-sections { animation: none; }
+}
+
+/* Selo e ações da seção: a faixa ocupa a altura da seção e a linha de dentro gruda no topo
+   da área visível enquanto a seção passa, então as ações acompanham a rolagem. */
+.v2ed-chrome { position: absolute; inset: 0; z-index: 71; pointer-events: none; }
+.v2ed-chrome-row { position: sticky; top: var(--ed-chrome-top, 0px); display: flex; flex-wrap: wrap; align-items: flex-start; gap: calc(8px * var(--ed-unzoom, 1)); padding: calc(12px * var(--ed-unzoom, 1)); }
+.v2ed-chrome .v2ed-tag, .v2ed-chrome .v2ed-bar { position: relative; top: auto; left: auto; right: auto; pointer-events: auto; }
+.v2ed-chrome .v2ed-bar { margin-left: auto; }
+/* "+" entre seções: sempre à vista, pequeno, no centro da divisa; com o mouse em cima
+   vira "Adicionar seção" com a linha verde. */
+.v2ed-ins { pointer-events: none; }
+.v2ed-ins-btn { pointer-events: auto; width: 32px; height: 32px; justify-content: center; padding: 0; gap: 0; border: 1px solid #d5ddd6; background: #fff; color: #0b8059; opacity: 1; transform: none; box-shadow: 0 2px 6px rgba(6, 12, 9, 0.18), 0 8px 20px -8px rgba(6, 12, 9, 0.35); transition: width 0.2s ease, padding 0.2s ease, background-color 0.15s ease, color 0.15s ease; }
+.v2ed-ins-btn span { display: none; }
+.v2ed-ins-btn:hover { background: #fff; }
+@media (hover: hover) {
+  .v2ed-ins:hover .v2ed-ins-btn, .v2ed-ins:focus-within .v2ed-ins-btn { width: auto; padding: 0 14px 0 10px; gap: 6px; border-color: transparent; background: #12b981; color: #fff; }
+  .v2ed-ins:hover .v2ed-ins-btn span, .v2ed-ins:focus-within .v2ed-ins-btn span { display: inline; }
+}
+.v2ed-ins:hover, .v2ed-ins:focus-within { pointer-events: auto; }
+/* Celular e tablet: o topo do editor fica preso, e as ações das seções grudam logo abaixo dele. */
+.page-editor-view.is-phone { --ed-chrome-top: 56px; }
+.page-editor-view.is-phone [data-preview-index] { scroll-margin-top: 64px; }
+.page-editor-view.is-phone .ed-topbar { position: sticky; top: 0; z-index: 60; margin: -8px -8px 8px; padding: 8px 10px; background: var(--background); box-shadow: 0 8px 12px -12px rgba(6, 12, 9, 0.35); }
+.ed-phone-screen, .ed-grid.is-phone > .editor-preview-shell { overflow: clip !important; }
+/* Tablet (768–1023px): o menu lateral do painel continua à vista; os painéis e a barra de
+   baixo começam depois dele. */
+@media (min-width: 768px) {
+  .ed-phone-nav { left: calc(var(--admin-sidebar-offset, 0px) + 12px); max-width: 560px; margin: 0 auto; }
+  .ed-grid.is-phone > .ed-side.is-open, .ed-grid.is-phone > .ed-sections { left: var(--admin-sidebar-offset, 0px); }
+  .editor-workspace.is-phone .editor-ai-sidebar { left: var(--admin-sidebar-offset, 0px) !important; }
 }
 </style>
 

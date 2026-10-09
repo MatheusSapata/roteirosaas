@@ -1,0 +1,63 @@
+{
+  "id": "oportunidades",
+  "titulo": "Acompanhar oportunidades",
+  "gerado": "2026-10-09",
+  "passos": [
+    {
+      "legenda": "Cada etapa do funil, com contatos e valor",
+      "ponto": {
+        "x": 19.58,
+        "y": 20.31,
+        "w": 78.61,
+        "h": 11.44
+      }
+    },
+    {
+      "legenda": "Filtre por etapa, página ou tempo sem interação",
+      "ponto": {
+        "x": 19.58,
+        "y": 31.75,
+        "w": 78.61,
+        "h": 5.11
+      }
+    },
+    {
+      "legenda": "Mude a etapa direto na lista",
+      "ponto": {
+        "x": 44.15,
+        "y": 53.31,
+        "w": 9.61,
+        "h": 4.22
+      }
+    },
+    {
+      "legenda": "Escolha a nova etapa",
+      "detalhe": "O lead muda de grupo e o histórico registra a mudança.",
+      "ponto": {
+        "x": 44.5,
+        "y": 65.41,
+        "w": 12.64,
+        "h": 4.57
+      }
+    },
+    {
+      "legenda": "Clique na oportunidade para abrir os detalhes",
+      "ponto": {
+        "x": 89.31,
+        "y": 53.42,
+        "w": 2.5,
+        "h": 4
+      }
+    },
+    {
+      "legenda": "Marque como ganha ou perdida, com valor e notas",
+      "detalhe": "Vincule a um cliente para juntar todo o histórico dele.",
+      "ponto": {
+        "x": 42.35,
+        "y": 101.33,
+        "w": 13.22,
+        "h": 5.33
+      }
+    }
+  ]
+}

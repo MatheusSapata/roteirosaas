@@ -25,7 +25,7 @@
       <div v-if="activePanel === 'content'" class="content-area">
         <div v-if="errorMessage" class="status-box error">{{ errorMessage }}</div>
         <div v-else-if="!loading && !checkouts.length" class="status-box">
-          Nenhum checkout ativo foi encontrado no Viajeon.
+          Nenhum checkout ativo foi encontrado no Viaje On.
         </div>
 
         <label class="field">
@@ -144,7 +144,7 @@ const loadCheckouts = async (force = false) => {
       }
     }
   } catch (error: any) {
-    errorMessage.value = error?.response?.data?.detail || "Não foi possível carregar os checkouts do Viajeon.";
+    errorMessage.value = error?.response?.data?.detail || "Não foi possível carregar os checkouts do Viaje On.";
   } finally {
     loading.value = false;
   }

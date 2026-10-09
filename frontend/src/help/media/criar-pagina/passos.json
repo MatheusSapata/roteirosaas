@@ -1,0 +1,36 @@
+{
+  "id": "criar-pagina",
+  "titulo": "Criar uma página",
+  "gerado": "2026-10-09",
+  "passos": [
+    {
+      "legenda": "Em Páginas, clique em Nova Página",
+      "ponto": {
+        "x": 87.53,
+        "y": 6.83,
+        "w": 10.66,
+        "h": 5.78
+      }
+    },
+    {
+      "legenda": "Escolha Criar página do zero",
+      "detalhe": "Ou comece por um modelo pronto e troque só o conteúdo.",
+      "ponto": {
+        "x": 50.07,
+        "y": 33.38,
+        "w": 25,
+        "h": 36.86
+      }
+    },
+    {
+      "legenda": "A página nasce como rascunho e abre no editor",
+      "detalhe": "Agora é só adicionar as seções.",
+      "ponto": {
+        "x": 46.22,
+        "y": 23.34,
+        "w": 10.9,
+        "h": 4.59
+      }
+    }
+  ]
+}

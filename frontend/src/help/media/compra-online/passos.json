@@ -1,0 +1,35 @@
+{
+  "id": "compra-online",
+  "titulo": "Compra Online (Viaje On)",
+  "gerado": "2026-10-09",
+  "passos": [
+    {
+      "legenda": "Clique em + Seção",
+      "ponto": {
+        "x": 92.39,
+        "y": 9.14,
+        "w": 6.36,
+        "h": 4.89
+      }
+    },
+    {
+      "legenda": "Abra a categoria Venda",
+      "ponto": {
+        "x": 57.79,
+        "y": 20.33,
+        "w": 7.13,
+        "h": 5.33
+      }
+    },
+    {
+      "legenda": "Compra Online (Viaje On): pacotes com compra direta",
+      "detalhe": "Sem a integração, o cartão fica travado e leva para conectar.",
+      "ponto": {
+        "x": 31.91,
+        "y": 32.94,
+        "w": 18.02,
+        "h": 30.31
+      }
+    }
+  ]
+}

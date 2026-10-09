@@ -1,0 +1,57 @@
+{
+  "id": "duplicar-pagina",
+  "titulo": "Duplicar uma página",
+  "gerado": "2026-10-09",
+  "passos": [
+    {
+      "legenda": "No card da página, abra o menu de ações",
+      "ponto": {
+        "x": 34.86,
+        "y": 95.53,
+        "w": 3.19,
+        "h": 5.11
+      }
+    },
+    {
+      "legenda": "Clique em Duplicar",
+      "ponto": {
+        "x": 24.44,
+        "y": 78.42,
+        "w": 13.19,
+        "h": 5.28
+      }
+    },
+    {
+      "legenda": "Dê um título à cópia",
+      "ponto": {
+        "x": 35.76,
+        "y": 44.44,
+        "w": 28.47,
+        "h": 5.67
+      }
+    },
+    {
+      "legenda": "Confira o link da nova página",
+      "ponto": {
+        "x": 35.76,
+        "y": 53.33,
+        "w": 28.47,
+        "h": 5.67
+      }
+    },
+    {
+      "legenda": "Clique em Duplicar",
+      "detalhe": "A cópia nasce como rascunho, com todas as seções.",
+      "ponto": {
+        "x": 57.25,
+        "y": 62.67,
+        "w": 6.99,
+        "h": 5.33
+      }
+    },
+    {
+      "legenda": "Pronto: edite a cópia e publique quando quiser",
+      "ponto": null
+    }
+  ]
+}

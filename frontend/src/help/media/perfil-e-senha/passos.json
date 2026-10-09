@@ -1,0 +1,35 @@
+{
+  "id": "perfil-e-senha",
+  "titulo": "Perfil e senha",
+  "gerado": "2026-10-09",
+  "passos": [
+    {
+      "legenda": "Seu plano, renovação e forma de pagamento",
+      "ponto": {
+        "x": 21.11,
+        "y": 15.28,
+        "w": 75.56,
+        "h": 10.75
+      }
+    },
+    {
+      "legenda": "Atualize nome, foto e telefone",
+      "ponto": {
+        "x": 19.58,
+        "y": 40.42,
+        "w": 45.55,
+        "h": 58.11
+      }
+    },
+    {
+      "legenda": "Troque a senha",
+      "detalhe": "Mínimo de 8 caracteres, com maiúsculas, minúsculas e número.",
+      "ponto": {
+        "x": 65.42,
+        "y": 40.42,
+        "w": 32.78,
+        "h": 53.08
+      }
+    }
+  ]
+}

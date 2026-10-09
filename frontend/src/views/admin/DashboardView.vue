@@ -1653,13 +1653,101 @@ onBeforeUnmount(() => {
   }
 }
 
-@media (max-width: 420px) {
-  .metrics-grid {
-    grid-template-columns: 1fr;
+@media (max-width: 768px) {
+  /* Ações do lead: a etapa numa linha e os botões juntos na de baixo, sem sair do card. */
+  .lead-actions {
+    display: grid;
+    grid-template-columns: auto auto;
+    justify-content: start;
+    gap: 6px;
   }
 
+  .lead-stage {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+}
+
+@media (max-width: 560px) {
+  /* Celular: números em 2 x 2, compactos, para caberem na primeira tela. */
+  .metrics-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin: 14px 0;
+  }
+
+  .metric-card {
+    gap: 10px;
+    padding: 14px;
+  }
+
+  .metric-header {
+    gap: 8px;
+  }
+
+  .metric-icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .metric-icon svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  .metric-label {
+    font-size: 12px;
+    line-height: 1.25;
+  }
+
+  .metric-value {
+    font-size: 22px;
+    line-height: 28px;
+  }
+
+  .metric-value small {
+    font-size: 13px;
+  }
+
+  .metric-footer {
+    flex-wrap: wrap;
+    gap: 4px 6px;
+  }
+
+  .metric-footer-text {
+    font-size: 11.5px;
+  }
+
+  .chart-card,
+  .list-card {
+    border-radius: 18px;
+  }
+
+  .topbar-actions {
+    width: 100%;
+  }
+
+  .topbar-actions .btn-primary {
+    margin-left: auto;
+  }
+}
+
+@media (max-width: 420px) {
   .page-actions {
     display: none;
+  }
+
+  /* Período e Nova página na mesma linha até 360px. */
+  .topbar-actions {
+    gap: 6px;
+  }
+
+  .period-btn {
+    padding: 6px 9px;
+  }
+
+  .topbar-actions .btn {
+    padding: 0 14px;
   }
 }
 </style>

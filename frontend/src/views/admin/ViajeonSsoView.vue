@@ -21,7 +21,7 @@ const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
 const loading = ref(true);
-const message = ref("Validando seu acesso enviado pelo Viajeon.");
+const message = ref("Validando seu acesso enviado pelo Viaje On.");
 
 onMounted(async () => {
   const ticket = String(route.query.ticket || "").trim();
@@ -39,8 +39,8 @@ onMounted(async () => {
     auth.setTokens(null, null);
     loading.value = false;
     message.value = error?.response?.data?.detail?.error === "invalid-or-expired-ticket"
-      ? "Este link já foi usado ou expirou. Gere um novo acesso no Viajeon."
-      : "Não foi possível validar este acesso. Tente novamente pelo Viajeon.";
+      ? "Este link já foi usado ou expirou. Gere um novo acesso no Viaje On."
+      : "Não foi possível validar este acesso. Tente novamente pelo Viaje On.";
   }
 });
 </script>

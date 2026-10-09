@@ -1,0 +1,46 @@
+{
+  "id": "assistente-ia",
+  "titulo": "Assistente IA",
+  "gerado": "2026-10-09",
+  "passos": [
+    {
+      "legenda": "Clique em Assistente IA",
+      "ponto": {
+        "x": 72.13,
+        "y": 1.22,
+        "w": 11.43,
+        "h": 6
+      }
+    },
+    {
+      "legenda": "Comece por um atalho",
+      "detalhe": "Montar a estrutura da página, melhorar a capa ou criar perguntas frequentes.",
+      "ponto": {
+        "x": 70.83,
+        "y": 47.98,
+        "w": 14.36,
+        "h": 5.06
+      }
+    },
+    {
+      "legenda": "Ou escreva o que precisa",
+      "detalhe": "Mande também PDF, prints ou fotos com as informações da viagem.",
+      "ponto": {
+        "x": 74.31,
+        "y": 90.35,
+        "w": 20.56,
+        "h": 6.1
+      }
+    },
+    {
+      "legenda": "Envie e revise a sugestão antes de aplicar",
+      "detalhe": "Você escolhe se insere as seções no fim ou substitui a estrutura.",
+      "ponto": {
+        "x": 94.58,
+        "y": 90.39,
+        "w": 3.75,
+        "h": 6
+      }
+    }
+  ]
+}

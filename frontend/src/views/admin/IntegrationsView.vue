@@ -329,8 +329,8 @@
           <div class="flex items-start justify-between gap-3">
             <div>
               <p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-500">Integração</p>
-              <h2 class="mt-2 text-2xl font-bold text-slate-900">Conectar Viajeon</h2>
-              <p class="mt-1 text-sm text-slate-500">Cole o token e o secret gerados no painel do Viajeon.</p>
+              <h2 class="mt-2 text-2xl font-bold text-slate-900">Conectar Viaje On</h2>
+              <p class="mt-1 text-sm text-slate-500">Cole o token e o secret gerados no painel do Viaje On.</p>
             </div>
             <button type="button" class="rounded-xl border border-slate-200 p-2 text-slate-500" @click="closeViajeonModal">
               <XIcon class="h-4 w-4" aria-hidden="true" />
@@ -698,15 +698,15 @@ const t = createAdminLocalizer(adminLanguage);
 const viewCopy = {
   header: {
     get title() {
-      return isExternalRoute.value ? "Integrações externas" : isViajeonRoute.value ? "Viajeon" : t({ pt: "Rastreamento", es: "Rastreo" });
+      return isExternalRoute.value ? "Integrações externas" : isViajeonRoute.value ? "Viaje On" : t({ pt: "Rastreamento", es: "Rastreo" });
     },
     get description() {
       return isExternalRoute.value
         ? "Aplicativos, módulos e serviços externos disponíveis para sua agência."
         : isViajeonRoute.value
         ? t({
-          pt: "Conecte o Viajeon para exibir pacotes ativos nas suas páginas.",
-          es: "Conecta Viajeon para mostrar paquetes activos en tus páginas."
+          pt: "Conecte o Viaje On para exibir pacotes ativos nas suas páginas.",
+          es: "Conecta Viaje On para mostrar paquetes activos en tus páginas."
         })
         : t({
           pt: "Cadastre códigos Meta ou Google para utilizar nas suas páginas.",
@@ -853,9 +853,9 @@ const saveViajeonEmail = async () => {
     const res = await api.patch("/integrations/viajeon/sso-email", { email });
     viajeonStatus.value = res.data;
     viajeonEmail.value = res.data?.sso_email || email;
-    showToast("Email de login do Viajeon salvo.");
+    showToast("Email de login do Viaje On salvo.");
   } catch (err: any) {
-    showToast(err?.response?.data?.detail || "Não foi possível salvar o email do Viajeon.", true);
+    showToast(err?.response?.data?.detail || "Não foi possível salvar o email do Viaje On.", true);
   } finally {
     viajeonEmailSaving.value = false;
   }
@@ -887,10 +887,10 @@ const connectViajeon = async () => {
     viajeonModalOpen.value = false;
     viajeonToken.value = "";
     viajeonSecret.value = "";
-    showToast("Viajeon conectado com sucesso.");
+    showToast("Viaje On conectado com sucesso.");
   } catch (err: any) {
     console.error(err);
-    showToast(err?.response?.data?.detail || "Não foi possível conectar ao Viajeon.", true);
+    showToast(err?.response?.data?.detail || "Não foi possível conectar ao Viaje On.", true);
   } finally {
     viajeonSaving.value = false;
   }
@@ -901,24 +901,24 @@ const testViajeon = async () => {
   try {
     await api.post("/integrations/viajeon/test");
     await fetchViajeonStatus();
-    showToast("Conexão com o Viajeon validada.");
+    showToast("Conexão com o Viaje On validada.");
   } catch (err: any) {
     await fetchViajeonStatus();
-    showToast(err?.response?.data?.detail || "A conexão com o Viajeon falhou.", true);
+    showToast(err?.response?.data?.detail || "A conexão com o Viaje On falhou.", true);
   } finally {
     viajeonTesting.value = false;
   }
 };
 
 const disconnectViajeon = async () => {
-  if (!window.confirm("Desconectar a integração Viajeon?")) return;
+  if (!window.confirm("Desconectar a integração Viaje On?")) return;
   viajeonSaving.value = true;
   try {
     await api.delete("/integrations/viajeon");
     await fetchViajeonStatus();
-    showToast("Viajeon desconectado.");
+    showToast("Viaje On desconectado.");
   } catch (err: any) {
-    showToast(err?.response?.data?.detail || "Não foi possível desconectar o Viajeon.", true);
+    showToast(err?.response?.data?.detail || "Não foi possível desconectar o Viaje On.", true);
   } finally {
     viajeonSaving.value = false;
   }

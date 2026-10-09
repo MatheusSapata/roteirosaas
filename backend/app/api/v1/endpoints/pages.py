@@ -592,6 +592,7 @@ def create_page(
     db.commit()
     db.refresh(page)
     setattr(page, "is_default", False)
+    setattr(page, "design_v2_enabled", design_v2_enabled_for_agency(page.agency))
     return page
 
 
@@ -628,6 +629,7 @@ def update_page(
     db.refresh(page)
     default_id = page.agency.default_page_id if page.agency else None
     setattr(page, "is_default", bool(default_id and page.id == default_id))
+    setattr(page, "design_v2_enabled", design_v2_enabled_for_agency(page.agency))
     return page
 
 
@@ -653,6 +655,7 @@ def update_page_config(
     db.refresh(page)
     default_id = page.agency.default_page_id if page.agency else None
     setattr(page, "is_default", bool(default_id and page.id == default_id))
+    setattr(page, "design_v2_enabled", design_v2_enabled_for_agency(page.agency))
     return page
 
 
@@ -686,6 +689,7 @@ def publish_page(
     db.refresh(page)
     default_id = page.agency.default_page_id if page.agency else None
     setattr(page, "is_default", bool(default_id and page.id == default_id))
+    setattr(page, "design_v2_enabled", design_v2_enabled_for_agency(page.agency))
     return page
 
 
@@ -732,6 +736,7 @@ def set_default_page(
     db.commit()
     db.refresh(page)
     setattr(page, "is_default", True)
+    setattr(page, "design_v2_enabled", design_v2_enabled_for_agency(page.agency))
     return page
 
 

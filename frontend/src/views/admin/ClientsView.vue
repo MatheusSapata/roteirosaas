@@ -232,7 +232,7 @@ const latestOpportunityDate = computed(() => {
     .map(client => client.lastOpportunityAt)
     .filter(Boolean)
     .sort((a, b) => new Date(String(b)).getTime() - new Date(String(a)).getTime());
-  if (!sorted.length) return "Sem oportunidades";
+  if (!sorted.length) return "Nenhuma";
   return formatDate(sorted[0]);
 });
 
@@ -924,4 +924,10 @@ defineExpose({
 .clients-table-shell .menu-trigger { border-color: transparent !important; border-radius: 999px !important; background: var(--muted) !important; }
 @media (max-width: 1100px) { .cv-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .cv-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } .cv-stat { padding: 12px; } .cv-icon { display: none; } }
+.cv-stat > div { min-width: 0; }
+/* Celular: textos como "Sem oportunidades" quebram dentro do card, e o complemento desce. */
+@media (max-width: 640px) {
+  .cv-v { font-size: 17px; line-height: 22px; overflow-wrap: break-word; }
+  .cv-v small { display: block; margin-left: 0; }
+}
 </style>
