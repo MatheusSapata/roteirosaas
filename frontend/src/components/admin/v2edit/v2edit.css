@@ -190,6 +190,31 @@ textarea.ved-input {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
+.ved-pair > * {
+  min-width: 0;
+}
+/* Celular bem estreito: a data por extenso do iPhone ("9 de out. de 2026") não cabe em meia coluna. */
+@media (max-width: 374px) {
+  .ved-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+/* iPhone: o campo de data nativo tem largura mínima própria e não encolhe na coluna, então
+   Saída passava por cima de Volta. Sem a aparência nativa ele aceita a largura da coluna. */
+@supports (-webkit-touch-callout: none) {
+  .ved-input[type="date"],
+  .ved-input[type="datetime-local"] {
+    display: block;
+    min-width: 0;
+    -webkit-appearance: none;
+    appearance: none;
+    line-height: 44px;
+  }
+}
+.ved-input::-webkit-date-and-time-value {
+  min-width: 0;
+  text-align: left;
+}
 .ved-info {
   margin: 0;
   padding: 10px 12px;
