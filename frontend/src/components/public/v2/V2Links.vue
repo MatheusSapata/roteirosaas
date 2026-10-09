@@ -397,10 +397,16 @@ const slide = (direction: number) => {
   gap: 0 6px;
   line-height: 1.15;
 }
+/* Valor e etiqueta na cor de destaque da página (na versão legível sobre o fundo do card). */
 .v2-links-price-line b {
   font-family: "Bricolage Grotesque", Figtree, sans-serif;
   font-size: 22px;
   white-space: nowrap;
+  color: var(--v2-accent-text);
+}
+.v2-links-ico--tag {
+  color: var(--v2-accent-text);
+  opacity: 1;
 }
 .v2-links-price-line small {
   font-size: 14px;
