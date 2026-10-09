@@ -3,6 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      // iPhone e iPad ampliam a tela ao tocar num campo com letra menor que 16px, e ela fica
+      // ampliada, cortando a lateral. maximum-scale=1 desliga só esse zoom automático: no iOS
+      // o zoom de pinça continua funcionando. Os outros aparelhos ficam como estão.
+      (function () {
+        var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+        var viewport = document.querySelector('meta[name="viewport"]');
+        if (isIOS && viewport) viewport.setAttribute("content", "width=device-width, initial-scale=1.0, maximum-scale=1.0");
+      })();
+    </script>
     <!--default-meta-->
     <title>Roteiro Online</title>
     <meta name="description" content="Crie e compartilhe roteiros profissionais com o Roteiro Online." />

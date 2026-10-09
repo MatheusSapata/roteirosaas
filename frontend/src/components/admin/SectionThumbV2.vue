@@ -1,6 +1,6 @@
 <template>
   <span ref="rootRef" class="stv" :class="`stv--${type}`" :style="{ paddingTop: `${offsetTop}px` }" aria-hidden="true">
-    <span v-if="visible && width" ref="stageRef" class="stv-stage" :style="{ width: `${BASE_WIDTH}px`, zoom: String(width / BASE_WIDTH), '--stv-video': `url(${videoPoster})` }" inert>
+    <span v-if="visible && width" ref="stageRef" class="stv-stage" :style="{ width: `${BASE_WIDTH}px`, transform: `scale(${width / BASE_WIDTH})`, '--stv-video': `url(${videoPoster})` }" inert>
       <span class="stv-page public-tokens preview-light">
         <component :is="component" v-if="component && sample" :section="sample" preview-device="desktop" v-bind="extraProps" />
         <component :is="heroComponent" v-if="type === 'header' && heroComponent && heroSample" :section="heroSample" preview-device="desktop" hide-logo />
@@ -101,9 +101,12 @@ onBeforeUnmount(() => {
   background: #f2f4f1;
   pointer-events: none;
 }
+/* Reduzida com transform, não com zoom: o Safari não deixa o zoom levar a letra abaixo de
+   ~9px, e na miniatura (1/8 do tamanho) o texto ficava gigante e empilhado. */
 .stv-stage {
   display: block;
   flex-shrink: 0;
+  transform-origin: 0 0;
 }
 .stv-page {
   display: block;
