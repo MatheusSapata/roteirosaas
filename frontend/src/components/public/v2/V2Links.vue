@@ -31,9 +31,13 @@
               </span>
               <span v-if="item.price" class="v2-links-price">
                 <span class="v2-links-ico" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4z" /><circle cx="7.5" cy="7.5" r=".5" fill="currentColor" /></svg></span>
-                <small v-if="item.pricePrefix">{{ item.pricePrefix }}</small>
-                <b>{{ item.price }}</b>
-                <small v-if="item.priceSuffix">{{ item.priceSuffix }}</small>
+                <span class="v2-links-price-copy">
+                  <small v-if="item.pricePrefix" class="v2-links-price-pre">{{ item.pricePrefix }}</small>
+                  <span class="v2-links-price-line">
+                    <b>{{ item.price }}</b>
+                    <small v-if="item.priceSuffix">{{ item.priceSuffix }}</small>
+                  </span>
+                </span>
               </span>
               <span class="v2-btn v2-btn--block v2-links-btn">
                 <span>{{ item.buttonLabel }}</span>
@@ -288,6 +292,8 @@ const slide = (direction: number) => {
   flex-direction: column;
   gap: 10px;
   padding: 20px 22px 22px;
+  /* O card vira referência de largura para o preço se ajustar em cards estreitos. */
+  container: v2-link-card / inline-size;
 }
 .v2-links-text {
   display: block;
@@ -315,7 +321,7 @@ const slide = (direction: number) => {
 .v2-links-meta {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   padding: 10px 12px;
   border-radius: 14px;
   background: var(--v2-soft);
@@ -324,8 +330,11 @@ const slide = (direction: number) => {
 .v2-links-dates {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 14px;
+  gap: 4px 12px;
   min-width: 0;
+}
+.v2-links-dt b {
+  font-size: 15px;
 }
 .v2-links-dt {
   display: flex;
@@ -345,19 +354,48 @@ const slide = (direction: number) => {
   background: var(--v2-accent-soft);
   color: var(--v2-accent-text);
 }
+/* Preço no mesmo desenho das datas: "a partir de" pequeno em cima e, embaixo, o
+   valor com "por pessoa" ao lado. "Por pessoa" desce inteiro quando não cabe,
+   nunca quebrado no meio. */
 .v2-links-price {
   display: flex;
   align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
+  gap: 10px;
 }
-.v2-links-price small {
+.v2-links-price-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.v2-links-price-pre {
+  font-size: 12.5px;
+  line-height: 1.2;
+  color: var(--v2-muted);
+}
+.v2-links-price-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 6px;
+  line-height: 1.15;
+}
+.v2-links-price-line b {
+  font-family: "Bricolage Grotesque", Figtree, sans-serif;
+  font-size: 22px;
+  white-space: nowrap;
+}
+.v2-links-price-line small {
   font-size: 14px;
   color: var(--v2-muted);
 }
-.v2-links-price b {
-  font-family: "Bricolage Grotesque", Figtree, sans-serif;
-  font-size: 22px;
+/* Card estreito (computador pequeno com 4 por linha): sem os ícones, sobra espaço
+   para as duas datas e para o valor com "por pessoa" na mesma linha. */
+@container v2-link-card (max-width: 220px) {
+  .v2-links-price > .v2-links-ico,
+  .v2-links-meta > .v2-links-ico {
+    display: none;
+  }
 }
 .v2-links-btn {
   min-height: 48px;
