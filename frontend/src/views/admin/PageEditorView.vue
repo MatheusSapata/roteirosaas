@@ -117,7 +117,7 @@
           <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">{{ viewCopy.unsavedModal.eyebrow }}</p>
           <h3 class="mt-2 text-xl font-bold text-slate-900">{{ viewCopy.sectionUnsavedModal.title }}</h3>
           <p class="mt-2 text-sm text-slate-600">
-            {{ viewCopy.sectionUnsavedModal.description }}
+            {{ unsavedSectionModal.switching ? viewCopy.sectionUnsavedModal.switchDescription : viewCopy.sectionUnsavedModal.description }}
           </p>
 
           <div class="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end">
@@ -133,7 +133,7 @@
               class="editor-dialog-action editor-dialog-action--danger"
               @click="discardUnsavedSectionChanges"
             >
-              {{ viewCopy.unsavedModal.discardAndExit }}
+              {{ unsavedSectionModal.switching ? viewCopy.sectionUnsavedModal.switchDiscard : viewCopy.unsavedModal.discardAndExit }}
             </button>
             <button
               type="button"
@@ -141,7 +141,7 @@
               :disabled="unsavedSectionModal.saving"
               @click="saveUnsavedSectionChanges"
             >
-              {{ unsavedSectionModal.saving ? viewCopy.unsavedModal.saving : viewCopy.sectionUnsavedModal.saveSection }}
+              {{ unsavedSectionModal.saving ? viewCopy.unsavedModal.saving : unsavedSectionModal.switching ? viewCopy.sectionUnsavedModal.switchSave : viewCopy.sectionUnsavedModal.saveSection }}
             </button>
           </div>
         </div>
@@ -1752,7 +1752,13 @@ const viewCopy = {
       pt: "Você fez alterações nesta seção e ainda não salvou. Deseja salvar antes de continuar?",
       es: "Hiciste cambios en esta sección y aún no guardaste. ¿Deseas guardar antes de continuar?"
     }),
-    saveSection: t({ pt: "Salvar seção", es: "Guardar sección" })
+    saveSection: t({ pt: "Salvar seção", es: "Guardar sección" }),
+    switchDescription: t({
+      pt: "Você fez alterações nesta seção e ainda não salvou. Deseja salvar antes de abrir a outra seção?",
+      es: "Hiciste cambios en esta sección y aún no guardaste. ¿Deseas guardar antes de abrir la otra sección?"
+    }),
+    switchDiscard: t({ pt: "Descartar e abrir a outra", es: "Descartar y abrir la otra" }),
+    switchSave: t({ pt: "Salvar e abrir a outra", es: "Guardar y abrir la otra" })
   },
   successModal: {
     eyebrow: t({ pt: "Publicação", es: "Publicación" }),
@@ -3144,7 +3150,8 @@ const sectionModalFooterRef = ref<HTMLElement | null>(null);
 const sectionModalObservedBodyMax = ref(0);
 let sectionModalResizeObserver: ResizeObserver | null = null;
 const unsavedFlightSegmentModal = ref({ open: false });
-const unsavedSectionModal = ref({ open: false, saving: false });
+// switching: a pessoa clicou em outra seção (os botões falam em abrir a outra, não em sair).
+const unsavedSectionModal = ref({ open: false, saving: false, switching: false });
 let pendingUnsavedSectionAction: null | (() => void | Promise<void>) = null;
 const sectionCatalog = ref<SectionCatalogItem[]>([]);
 const sectionPicker = ref<{ open: boolean; index: number | null }>({ open: false, index: null });
@@ -4877,13 +4884,27 @@ const closeTopbarMenu = (event: MouseEvent) => {
 onMounted(() => document.addEventListener("click", closeTopbarMenu));
 onBeforeUnmount(() => document.removeEventListener("click", closeTopbarMenu));
 
-const openSectionEditor = (index: number) => {
+const openSectionEditorNow = (index: number) => {
   const target = sections.value[index];
   if (!target) return;
   if (isLockedFooterSection(target)) return;
   editingSectionIndex.value = index;
   editingSectionDraft.value = clone(target);
   editingSectionOriginalSnapshot.value = sectionDraftSnapshot(editingSectionDraft.value);
+};
+
+// Trocar de seção com alterações pendentes pergunta antes: salvar e abrir a outra,
+// descartar e abrir a outra, ou continuar editando. Clicar na seção já aberta não
+// recarrega o rascunho.
+const openSectionEditor = (index: number) => {
+  const target = sections.value[index];
+  if (!target || isLockedFooterSection(target)) return;
+  if (isSectionEditorOpen.value && editingSectionIndex.value === index) return;
+  if (hasUnsavedSectionDraftChanges.value) {
+    requestUnsavedSectionConfirmation(() => openSectionEditorNow(index), true);
+    return;
+  }
+  openSectionEditorNow(index);
 };
 
 const forceCloseSectionEditor = () => {
@@ -4900,10 +4921,11 @@ const forceCloseSectionEditor = () => {
   pendingUnsavedSectionAction = null;
 };
 
-const requestUnsavedSectionConfirmation = (action: () => void | Promise<void>) => {
+const requestUnsavedSectionConfirmation = (action: () => void | Promise<void>, switching = false) => {
   pendingUnsavedSectionAction = action;
   unsavedSectionModal.value.open = true;
   unsavedSectionModal.value.saving = false;
+  unsavedSectionModal.value.switching = switching;
 };
 
 const closeSectionEditor = () => {
