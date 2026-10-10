@@ -1,5 +1,5 @@
 {
   "permissions": {
-    "allow": ["mcp__n8n"]
+    "allow": ["mcp__n8n", "mcp__github", "mcp__Lovable", "Bash", "Read", "Edit", "Write", "Glob", "Grep", "Monitor", "WebFetch", "WebSearch"]
   }
 }
