@@ -14,7 +14,7 @@
           class="v2-card v2-link-card v2-links-card v2-in"
           :class="`v2-d${Math.min(idx + 3, 7)}`"
         >
-          <span class="v2-links-media"><img v-if="item.image" :src="item.image" alt="" loading="lazy" /></span>
+          <span class="v2-links-media"><V2Img v-if="item.image" :src="item.image" alt="" sizes="(max-width: 640px) 100vw, 420px" /></span>
           <span class="v2-links-body">
             <!-- Título e texto ocupam a mesma altura em todos os cards (a do maior). -->
             <span class="v2-links-text">
@@ -62,6 +62,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, toRef, watch } fro
 import type { LinksSection } from "../../../types/page";
 import { resolveMediaUrl } from "../../../utils/media";
 import V2Section from "./V2Section.vue";
+import V2Img from "./V2Img.vue";
 import V2Head from "./V2Head.vue";
 import { localize, text, useHeading } from "./useHeading";
 

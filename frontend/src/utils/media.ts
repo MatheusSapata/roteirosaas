@@ -54,11 +54,15 @@ export const resolveMediaUrl = (value?: string | null): string | undefined => {
   return `${basePath}${normalized}`.replace(/\/{2,}/g, "/");
 };
 
-export const uploadImageFile = async (file: File, agencyId: number): Promise<MediaAsset> => {
+/**
+ * Envia uma imagem. O servidor guarda versões leves em WebP (640, 1280 e 2400 px de largura);
+ * `optimize: false` guarda o arquivo como veio (favicon, que precisa continuar PNG/ICO).
+ */
+export const uploadImageFile = async (file: File, agencyId: number, options: { optimize?: boolean } = {}): Promise<MediaAsset> => {
   const formData = new FormData();
   formData.append("file", file);
   const response = await api.post<MediaAsset>("/media/upload", formData, {
-    params: { agency_id: agencyId },
+    params: { agency_id: agencyId, optimize: options.optimize ?? true },
     headers: { "Content-Type": "multipart/form-data" }
   });
   return response.data;
@@ -184,4 +188,14 @@ export const removeImageBackground = async (source: string, agencyId: number): P
     responseType: "blob"
   });
   return blobToDataUrl(response.data);
+};
+
+// Imagens enviadas a partir de agora têm versões em 640, 1280 e 2400 px (<id>_2400.webp).
+const VARIANT_RE = /_2400\.webp(?=$|[?#])/;
+const VARIANT_WIDTHS = [640, 1280, 2400];
+
+/** srcset das versões leves de uma imagem, para o navegador baixar só o tamanho da tela. Vazio para imagens antigas. */
+export const responsiveSrcset = (url?: string | null): string => {
+  if (!url || !VARIANT_RE.test(url)) return "";
+  return VARIANT_WIDTHS.map(width => `${url.replace(VARIANT_RE, `_${width}.webp`)} ${width}w`).join(", ");
 };

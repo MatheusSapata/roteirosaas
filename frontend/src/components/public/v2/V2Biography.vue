@@ -2,8 +2,8 @@
   <V2Section type="biography" :background="section.backgroundColor" :anchor-id="section.anchorId" full>
     <header v-if="image || title" class="v2-art-cover">
       <picture v-if="image">
-        <source v-if="mobileImage" :srcset="mobileImage" media="(max-width: 640px)" />
-        <img :src="image" :alt="title || copy.alt" class="v2-reveal" loading="lazy" />
+        <source v-if="mobileImage" :srcset="responsiveSrcset(mobileImage) || mobileImage" sizes="100vw" media="(max-width: 640px)" />
+        <V2Img :src="image" :alt="title || copy.alt" class="v2-reveal" />
       </picture>
       <div class="v2-art-veil" :style="{ '--veil': veil }" aria-hidden="true"></div>
       <h2 v-if="title" class="v2-art-title v2-in" :style="titleScaleStyle(title)">{{ title }}</h2>
@@ -17,8 +17,9 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import type { BiographySection } from "../../../types/page";
-import { resolveMediaUrl } from "../../../utils/media";
+import { resolveMediaUrl, responsiveSrcset } from "../../../utils/media";
 import V2Section from "./V2Section.vue";
+import V2Img from "./V2Img.vue";
 import { plainTextToHtml, sanitizeHtml } from "../../../utils/sanitizeHtml";
 import { localize, text } from "./useHeading";
 import { titleScaleStyle } from "./useCopyFit";

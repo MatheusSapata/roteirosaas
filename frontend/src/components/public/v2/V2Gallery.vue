@@ -4,7 +4,7 @@
     <div v-if="isCarousel" class="v2-gal-car v2-in v2-d2">
       <div class="v2-gal-track" :style="{ transform: `translateX(calc(-1 * ${index} * (var(--slide) + 12px)))` }">
         <figure v-for="(src, idx) in images" :key="idx" class="v2-gal-slide" :class="{ 'is-zoomable': canZoom }" @click="openViewer(idx)">
-          <img :src="src" :alt="`${copy.photo} ${idx + 1}`" loading="lazy" />
+          <V2Img :src="src" :alt="`${copy.photo} ${idx + 1}`" sizes="(max-width: 640px) 100vw, 75vw" />
         </figure>
       </div>
       <div v-if="images.length > 1" class="v2-gal-ctrl">
@@ -31,12 +31,12 @@
     </div>
     <div v-else-if="isMosaic" class="v2-gal-mosaic">
       <figure v-for="(src, idx) in images" :key="idx" class="v2-gal-cell v2-in" :class="[`v2-d${Math.min(idx + 2, 7)}`, mosaicCell(idx), { 'is-zoomable': canZoom }]" @click="openViewer(idx)">
-        <img :src="src" :alt="`${copy.photo} ${idx + 1}`" loading="lazy" />
+        <V2Img :src="src" :alt="`${copy.photo} ${idx + 1}`" sizes="(max-width: 640px) 100vw, 50vw" />
       </figure>
     </div>
     <div v-else class="v2-gal-grid v2-flow" :style="{ '--v2-cols': columns }">
       <figure v-for="(src, idx) in images" :key="idx" class="v2-gal-cell v2-in" :class="[`v2-d${Math.min(idx + 2, 7)}`, { 'is-zoomable': canZoom }]" @click="openViewer(idx)">
-        <img :src="src" :alt="`${copy.photo} ${idx + 1}`" loading="lazy" />
+        <V2Img :src="src" :alt="`${copy.photo} ${idx + 1}`" sizes="(max-width: 640px) 100vw, 50vw" />
       </figure>
     </div>
     <V2Lightbox :items="viewerItems" :start="viewerStart" @close="viewerStart = null" />
@@ -48,6 +48,7 @@ import { computed, ref, toRef, watch } from "vue";
 import type { GallerySection } from "../../../types/page";
 import { resolveMediaUrl } from "../../../utils/media";
 import V2Section from "./V2Section.vue";
+import V2Img from "./V2Img.vue";
 import V2Head from "./V2Head.vue";
 import V2Lightbox from "./V2Lightbox.vue";
 import { localize, useHeading } from "./useHeading";

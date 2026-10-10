@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import html
 import io
+import json
 import hashlib
 import re
 from functools import lru_cache
@@ -209,6 +210,73 @@ def _build_meta_block(page: PublicPageOut, canonical_url: str, origin: str) -> s
     return meta_block
 
 
+# Mesmo padrão do front (utils/media.ts): imagens enviadas com versões leves em WebP.
+_VARIANT_RE = re.compile(r"_2400\.webp(?=$|[?#])")
+_VARIANT_WIDTHS = (640, 1280, 2400)
+# Larguras que o Banner Inicial v2 ocupa (V2Hero.vue): o pré-carregamento pede a mesma versão.
+_HERO_SIZES = {"split": "(max-width: 640px) 100vw, 50vw"}
+_HERO_MOBILE_MEDIA = "(max-width: 640px)"
+
+
+def _responsive_srcset(url: str) -> str:
+    if not _VARIANT_RE.search(url):
+        return ""
+    return ", ".join(f"{_VARIANT_RE.sub(f'_{width}.webp', url)} {width}w" for width in _VARIANT_WIDTHS)
+
+
+def _image_preload_tag(url: str, sizes: str, media: Optional[str] = None) -> str:
+    attrs = [f'rel="preload"', 'as="image"', f'href="{html.escape(url)}"', 'fetchpriority="high"']
+    srcset = _responsive_srcset(url)
+    if srcset:
+        attrs += [f'imagesrcset="{html.escape(srcset)}"', f'imagesizes="{html.escape(sizes)}"']
+    if media:
+        attrs.append(f'media="{html.escape(media)}"')
+    return f"<link {' '.join(attrs)} />"
+
+
+def _hero_preload_tags(page: PublicPageOut) -> list[str]:
+    """Pede a foto do Banner Inicial já no HTML, antes do JavaScript da página carregar.
+
+    Só no visual novo e quando o banner é a primeira seção visível (depois do Menu do topo).
+    Imagens com endereço relativo ficam de fora: o front pode resolvê-las em outro domínio.
+    """
+    config = page.config
+    if isinstance(config, str):
+        try:
+            config = json.loads(config)
+        except ValueError:
+            config = {}
+    if not isinstance(config, dict):
+        return []
+    if not page.design_v2_enabled or config.get("design") == "legacy":
+        return []
+    sections = [section for section in config.get("sections") or [] if isinstance(section, dict) and section.get("enabled")]
+    first = next((section for section in sections if section.get("type") != "header"), None)
+    if not first or first.get("type") != "hero":
+        return []
+
+    layout = first.get("layout") or "immersive"
+    # Imersivo e Clássico com vídeo mostram o vídeo no lugar da foto.
+    if layout in {"immersive", "classic"} and str(first.get("videoUrl") or "").strip():
+        return []
+
+    def absolute(value: object) -> Optional[str]:
+        url = str(value or "").strip()
+        return url if url.startswith(("https://", "http://")) else None
+
+    image = absolute(first.get("backgroundImage"))
+    mobile = absolute(first.get("mobileBackgroundImage")) if layout == "immersive" else None
+    sizes = _HERO_SIZES.get(layout, "100vw")
+    if image and mobile:
+        return [
+            _image_preload_tag(image, sizes, "(min-width: 641px)"),
+            _image_preload_tag(mobile, "100vw", _HERO_MOBILE_MEDIA),
+        ]
+    if image:
+        return [_image_preload_tag(image, sizes)]
+    return []
+
+
 def _fetch_page_payload(db: Session, agency_slug: str, page_slug: Optional[str]) -> PublicPageOut:
     try:
         if page_slug:
@@ -227,5 +295,8 @@ def render_public_page_html(
     page_data = _fetch_page_payload(db, agency_slug, page_slug)
     canonical_url, origin = _canonicalize_url(page_url)
     meta_block = _build_meta_block(page_data, canonical_url, origin)
+    preload_tags = _hero_preload_tags(page_data)
+    if preload_tags:
+        meta_block += "    " + "\n    ".join(preload_tags) + "\n"
     base_html = _load_frontend_template()
     return _replace_default_meta(base_html, meta_block)

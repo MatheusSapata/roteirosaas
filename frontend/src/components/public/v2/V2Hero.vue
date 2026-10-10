@@ -6,8 +6,8 @@
       <div class="v2-hero-media" aria-hidden="true">
         <iframe v-if="video" :src="video" title="" tabindex="-1" allow="autoplay; encrypted-media"></iframe>
         <picture v-else-if="image">
-          <source v-if="mobileImage" :srcset="mobileImage" media="(max-width: 640px)" />
-          <img :src="image" alt="" />
+          <source v-if="mobileImage" :srcset="responsiveSrcset(mobileImage) || mobileImage" sizes="100vw" media="(max-width: 640px)" />
+          <V2Img :src="image" alt="" priority />
         </picture>
       </div>
       <div class="v2-hero-fade" aria-hidden="true"></div>
@@ -21,7 +21,7 @@
     <div v-else-if="layout === 'classic'" class="v2-hero v2-hero--classic" :class="{ 'has-logo': topLogo }" :style="heroVars">
       <div class="v2-hero-media" aria-hidden="true">
         <iframe v-if="video" :src="video" title="" tabindex="-1" allow="autoplay; encrypted-media"></iframe>
-        <img v-else-if="image" :src="image" alt="" />
+        <V2Img v-else-if="image" :src="image" alt="" priority />
       </div>
       <div class="v2-hero-veil" aria-hidden="true"></div>
       <div class="v2-hero-inner is-center">
@@ -37,13 +37,13 @@
           <HeroContent v-bind="contentProps" light />
         </div>
         <div class="v2-hero-split-media">
-          <img v-if="image" :src="image" :alt="title" />
+          <V2Img v-if="image" :src="image" :alt="title" sizes="(max-width: 640px) 100vw, 50vw" priority />
         </div>
       </div>
     </div>
 
     <div v-else class="v2-hero v2-hero--card" :class="{ 'has-logo': topLogo }" :style="heroVars">
-      <div class="v2-hero-media" aria-hidden="true"><img v-if="image" :src="image" alt="" /></div>
+      <div class="v2-hero-media" aria-hidden="true"><V2Img v-if="image" :src="image" alt="" priority /></div>
       <div class="v2-hero-card-spacer" aria-hidden="true"></div>
       <div class="v2-hero-inner">
         <div class="v2-hero-card">
@@ -58,9 +58,10 @@
 <script setup lang="ts">
 import { computed, defineComponent, h, toRef } from "vue";
 import type { HeroSection } from "../../../types/page";
-import { resolveMediaUrl } from "../../../utils/media";
+import { resolveMediaUrl, responsiveSrcset } from "../../../utils/media";
 import { normalizeYoutubeEmbedUrl } from "../../../utils/video";
 import V2Section from "./V2Section.vue";
+import V2Img from "./V2Img.vue";
 import { useCta } from "./useCta";
 import { html, localize, text } from "./useHeading";
 import { contrast, WHITE_TEXT_MIN_CONTRAST } from "./useSectionTone";

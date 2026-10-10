@@ -1,7 +1,7 @@
 <template>
   <V2Section type="banner_card" :background="section.backgroundColor" :anchor-id="section.anchorId" :class="{ 'v2-bc-tight-top': prevIsBannerCard, 'v2-bc-tight-bottom': nextIsBannerCard }">
     <div class="v2-bc v2-in" :class="[isCard ? 'is-card' : 'is-shade', { 'has-sub': subtitleHtml }]" :style="copyFit.vars.value">
-      <img v-if="image" :src="image" alt="" class="v2-bc-img v2-reveal" loading="lazy" />
+      <V2Img v-if="image" :src="image" alt="" class="v2-bc-img v2-reveal" sizes="(max-width: 1240px) 100vw, 1240px" />
       <div v-if="!isCard" class="v2-bc-shade" aria-hidden="true"></div>
       <div class="v2-bc-card">
         <span v-if="label" class="v2-eyebrow"><span aria-hidden="true"></span>{{ label }}</span>
@@ -18,6 +18,7 @@ import { computed, toRef } from "vue";
 import type { BannerCardSection } from "../../../types/page";
 import { resolveMediaUrl } from "../../../utils/media";
 import V2Section from "./V2Section.vue";
+import V2Img from "./V2Img.vue";
 import V2Button from "./V2Button.vue";
 import { useCta } from "./useCta";
 import { html, localize, text } from "./useHeading";

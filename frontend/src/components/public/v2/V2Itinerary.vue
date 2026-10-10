@@ -21,7 +21,7 @@
                 <span class="v2-jr-label">{{ day.date ? day.date.weekday : day.label }}</span>
                 <span class="v2-jr-title">{{ day.title }}</span>
               </span>
-              <img v-if="day.image" :src="day.image" alt="" class="v2-jr-thumb" loading="lazy" />
+              <V2Img v-if="day.image" :src="day.image" alt="" class="v2-jr-thumb" sizes="160px" />
               <span class="v2-jr-chev" aria-hidden="true">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></svg>
               </span>
@@ -30,7 +30,7 @@
               <div>
                 <div class="v2-jr-inner">
                   <div v-if="day.descriptionHtml" class="v2-rich v2-jr-desc" v-html="day.descriptionHtml"></div>
-                  <img v-if="day.image" :src="day.image" :alt="day.title" class="v2-jr-photo" loading="lazy" />
+                  <V2Img v-if="day.image" :src="day.image" :alt="day.title" class="v2-jr-photo" sizes="(max-width: 640px) 100vw, 50vw" />
                 </div>
               </div>
             </div>
@@ -58,14 +58,14 @@
                 <span class="v2-it-label">{{ day.date ? `${day.label} · ${day.date.weekday}` : day.label }}</span>
                 <span class="v2-it-title">{{ day.title }}</span>
               </span>
-              <img v-if="day.image && !open[idx]" :src="day.image" alt="" class="v2-it-thumb" loading="lazy" />
+              <V2Img v-if="day.image && !open[idx]" :src="day.image" alt="" class="v2-it-thumb" sizes="160px" />
               <span class="v2-it-chev" aria-hidden="true">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></svg>
               </span>
             </button>
             <div v-show="open[idx]" class="v2-it-body">
               <div v-if="day.descriptionHtml" class="v2-rich" v-html="day.descriptionHtml"></div>
-              <img v-if="day.image" :src="day.image" :alt="day.title" class="v2-it-photo" loading="lazy" />
+              <V2Img v-if="day.image" :src="day.image" :alt="day.title" class="v2-it-photo" sizes="(max-width: 640px) 100vw, 50vw" />
             </div>
           </article>
         </li>
@@ -73,7 +73,7 @@
     </div>
     <div v-else class="v2-it-cards">
       <article v-for="(day, idx) in days" :key="idx" class="v2-card v2-it-tile v2-in" :class="`v2-d${Math.min(idx + 3, 7)}`">
-        <img v-if="day.image" :src="day.image" :alt="day.title" loading="lazy" />
+        <V2Img v-if="day.image" :src="day.image" :alt="day.title" sizes="(max-width: 640px) 100vw, 50vw" />
         <div class="v2-it-tile-body">
           <span class="v2-it-chip">{{ day.date ? `${day.label} · ${day.date.short}` : day.label }}</span>
           <h3>{{ day.title }}</h3>
@@ -89,6 +89,7 @@ import { computed, ref, toRef, watch } from "vue";
 import type { ItinerarySection } from "../../../types/page";
 import { resolveMediaUrl } from "../../../utils/media";
 import V2Section from "./V2Section.vue";
+import V2Img from "./V2Img.vue";
 import V2Head from "./V2Head.vue";
 import { html, localize, text, useHeading } from "./useHeading";
 import { addDays, formatDayMonth, formatMonthShort, formatWeekday, parseTripDate } from "../../../utils/tripDates";
