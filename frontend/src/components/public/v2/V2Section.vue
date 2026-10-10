@@ -7,8 +7,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, ref } from "vue";
 import { useSectionTone } from "./useSectionTone";
+import { useEntrance } from "./useEntrance";
 import "./v2.css";
 
 const props = withDefaults(
@@ -25,30 +26,7 @@ const props = withDefaults(
 
 const { tone, vars } = useSectionTone(computed(() => props.background), props.fallbackBackground);
 
-// Animação de entrada: arma a seção só com JS e IntersectionObserver disponíveis,
-// para o conteúdo nunca ficar invisível; dispara uma vez, com 15% visível.
+// Animação de entrada (useEntrance): também nas seções da primeira tela, como o Banner.
 const root = ref<HTMLElement | null>(null);
-const armed = ref(false);
-const shown = ref(false);
-let observer: IntersectionObserver | null = null;
-
-onMounted(() => {
-  if (typeof window === "undefined" || !("IntersectionObserver" in window) || !root.value) return;
-  if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
-  const rect = root.value.getBoundingClientRect();
-  if (rect.top < window.innerHeight && rect.bottom > 0) return;
-  armed.value = true;
-  observer = new IntersectionObserver(
-    entries => {
-      if (entries.some(entry => entry.isIntersecting)) {
-        shown.value = true;
-        observer?.disconnect();
-      }
-    },
-    { threshold: 0.15 }
-  );
-  observer.observe(root.value);
-});
-
-onBeforeUnmount(() => observer?.disconnect());
+const { armed, shown } = useEntrance(root);
 </script>

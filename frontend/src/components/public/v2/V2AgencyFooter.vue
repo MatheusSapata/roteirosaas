@@ -1,7 +1,7 @@
 <template>
   <V2Section type="agency_footer" :background="section.backgroundColor" fallback-background="#0E1A15" :anchor-id="section.anchorId" flush>
     <div class="v2-ft">
-      <div class="v2-ft-cols">
+      <div class="v2-ft-cols v2-in">
         <div v-if="logo || description || socialLinks.length" class="v2-ft-col v2-ft-brand">
           <img v-if="logo" :src="logo" :alt="companyName" class="v2-ft-logo" :style="{ borderRadius: `${Math.max(0, logoRadius || 0)}px` }" loading="lazy" />
           <p v-if="description" class="v2-ft-about">{{ description }}</p>
@@ -25,7 +25,7 @@
           <iframe :src="mapEmbedUrl" :title="copy.mapTitle" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
         </div>
       </div>
-      <div class="v2-ft-bottom">
+      <div class="v2-ft-bottom v2-in v2-d2">
         <a v-if="hasCadastur" :href="cadasturLink" target="_blank" rel="noopener" class="v2-ft-cadastur">
           <img :src="cadasturLogo" alt="Cadastur" />
           <span>{{ copy.cadastur }}</span>
