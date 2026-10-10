@@ -20,6 +20,15 @@ cd "$BACKEND_DIR"
 docker compose -f docker-compose.public.yml --env-file .env.public up -d --build
 
 echo "[public] health check"
-curl -fsS http://127.0.0.1:8002/health >/dev/null
+for attempt in $(seq 1 30); do
+  if curl -fsS http://127.0.0.1:8002/health >/dev/null 2>&1; then
+    break
+  fi
+  if [ "$attempt" -eq 30 ]; then
+    echo "[public] health check failed after 30 attempts" >&2
+    exit 1
+  fi
+  sleep 2
+done
 
 echo "[public] done"
