@@ -150,8 +150,8 @@ const ctaLabel = computed(() => text(props.section.ctaLabel) || localize({ pt: "
   color: #fff;
 }
 @container (max-width: 640px) {
-  /* A foto aparece limpa no topo e o texto fica sempre sobre a parte escura,
-     mesmo quando é longo e sobe pela foto. */
+  /* A sombra fica só atrás do conteúdo (do tamanho dele): começa num degradê suave logo
+     acima do texto e o resto da foto aparece limpo. Texto longo sobe e a sombra sobe junto. */
   .v2-bc.is-shade {
     align-items: stretch;
     min-height: 460px;
@@ -161,10 +161,12 @@ const ctaLabel = computed(() => text(props.section.ctaLabel) || localize({ pt: "
     height: 100%;
   }
   .v2-bc-shade {
-    background: linear-gradient(180deg, rgba(6, 12, 9, 0) 40px, rgba(6, 12, 9, 0.62) 150px, rgba(6, 12, 9, 0.9) 260px, rgba(6, 12, 9, 0.92) 100%);
+    display: none;
   }
   .is-shade .v2-bc-card {
     margin: 0;
+    padding-top: 88px;
+    background: linear-gradient(180deg, rgba(6, 12, 9, 0) 0, rgba(6, 12, 9, 0.5) 48px, rgba(6, 12, 9, 0.8) 104px, rgba(6, 12, 9, 0.88) 100%);
   }
 }
 .v2-bc-tight-top :deep(.v2-wrap) {
