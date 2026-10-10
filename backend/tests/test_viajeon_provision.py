@@ -160,6 +160,7 @@ def test_annual_subscription_uses_explicit_expiration_and_duplicate_keeps_it(cli
     duplicate_payload = dict(payload)
     duplicate_payload["subscription"] = {
         **payload["subscription"],
+        "starts_at": "2029-07-27T14:31:58.000Z",
         "expires_at": "2030-07-27T14:31:58.000Z",
     }
     duplicate = _post(client, duplicate_payload)

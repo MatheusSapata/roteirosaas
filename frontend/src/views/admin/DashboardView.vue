@@ -5,12 +5,16 @@
         {{ copyToast }}
       </div>
     </transition>
-    <div v-if="isBootstrappingDashboard" class="dashboard-loading">
-      <div class="spinner"></div>
+    <!-- Carregando: o esboço da tela no lugar de um círculo girando. -->
+    <div v-if="isBootstrappingDashboard" class="dashboard-skeleton" aria-busy="true" aria-label="Carregando a Dashboard">
+      <div class="sk-block sk-title"></div>
+      <div class="sk-metrics"><div v-for="n in 4" :key="n" class="sk-block sk-metric"></div></div>
+      <div class="sk-row"><div class="sk-block sk-chart"></div><div class="sk-block sk-side"></div></div>
+      <div class="sk-row"><div class="sk-block sk-list"></div><div class="sk-block sk-list"></div></div>
     </div>
 
     <template v-else>
-      <header class="topbar">
+      <header class="topbar dash-rise">
         <div class="min-w-0">
           <p class="page-date">{{ todayLabel }}</p>
           <h1 class="page-title">{{ greeting }}, <span class="page-title-name">{{ firstName }}</span></h1>
@@ -23,6 +27,7 @@
               type="button"
               class="period-btn"
               :class="{ active: selectedPeriod === period }"
+              :aria-pressed="selectedPeriod === period"
               @click="selectedPeriod = period"
             >
               {{ period }} dias
@@ -54,75 +59,39 @@
         @close="dismissEligibleBanner"
       />
 
+      <!-- Números do período, no padrão dos cards do Viaje On. -->
       <section class="metrics-grid">
-        <article class="metric-card metric-hero">
-          <div class="metric-header">
-            <span class="metric-icon" aria-hidden="true">
-              <EyeIcon aria-hidden="true" />
+        <article v-for="(card, index) in metricCards" :key="card.key" class="metric-card dash-rise" :style="{ '--d': `${80 + index * 60}ms` }">
+          <p class="metric-label">
+            <span class="metric-icon" :class="`tone-${card.tone}`" aria-hidden="true"><component :is="card.icon" /></span>
+            {{ card.label }}
+          </p>
+          <p class="metric-value">{{ card.value }}<small v-if="card.suffix">{{ card.suffix }}</small></p>
+          <p v-if="card.badge || card.compare" class="metric-footer">
+            <span v-if="card.badge" class="metric-badge" :class="card.badge.tone">
+              <TrendingUpIcon v-if="card.badge.tone === 'up'" aria-hidden="true" />
+              <TrendingDownIcon v-else-if="card.badge.tone === 'down'" aria-hidden="true" />
+              {{ card.badge.text }}
             </span>
-            <span class="metric-label">Visitas no período</span>
-          </div>
-          <p class="metric-value">{{ totalVisits.toLocaleString(numberLocale) }}</p>
-          <div class="metric-footer">
-            <span class="metric-badge" :class="visitsTrend >= 0 ? 'up' : 'down'">{{ visitsTrendText }}</span>
-            <span class="metric-footer-text">vs. {{ selectedPeriod }} dias anteriores</span>
-          </div>
-        </article>
-
-        <article class="metric-card">
-          <div class="metric-header">
-            <span class="metric-icon tone-warning" aria-hidden="true">
-              <MousePointerClickIcon aria-hidden="true" />
-            </span>
-            <span class="metric-label">Cliques nos botões</span>
-          </div>
-          <p class="metric-value">{{ clicksMetric.toLocaleString(numberLocale) }}</p>
-          <div class="metric-footer">
-            <span class="metric-badge up">{{ formatPercent(clickRate) }}</span>
-            <span class="metric-footer-text">das visitas clicaram</span>
-          </div>
-        </article>
-
-        <article class="metric-card">
-          <div class="metric-header">
-            <span class="metric-icon tone-violet" aria-hidden="true">
-              <UserPlusIcon aria-hidden="true" />
-            </span>
-            <span class="metric-label">Leads</span>
-          </div>
-          <p class="metric-value">{{ leadsMetric.toLocaleString(numberLocale) }}</p>
-          <div class="metric-footer">
-            <span class="metric-badge up">{{ leadsMonthText }}</span>
-            <span class="metric-footer-text">este mês</span>
-          </div>
-        </article>
-
-        <article class="metric-card">
-          <div class="metric-header">
-            <span class="metric-icon tone-info" aria-hidden="true">
-              <FileTextIcon aria-hidden="true" />
-            </span>
-            <span class="metric-label">Páginas no ar</span>
-          </div>
-          <p class="metric-value">{{ pagesCount }} <small>de {{ pages.length }}</small></p>
-          <div class="metric-footer">
-            <span class="metric-badge neutral">{{ draftsCount }} {{ draftsCount === 1 ? "rascunho" : "rascunhos" }}</span>
-          </div>
+            <span v-if="card.compare">{{ card.compare }}</span>
+          </p>
+          <p v-if="card.sub" class="metric-sub">{{ card.sub }}</p>
         </article>
       </section>
 
       <section class="mid-grid">
-        <article class="chart-card">
+        <article class="chart-card dash-rise" style="--d: 280ms">
           <header class="chart-header">
-            <div>
+            <div class="min-w-0">
               <p class="card-eyebrow">Desempenho</p>
               <h2 class="chart-title">Resumo das páginas</h2>
+              <p v-if="peakText" class="chart-peak">{{ peakText }}</p>
             </div>
             <div class="chart-controls">
               <div class="chart-legend">
-                <button type="button" class="legend-item legend-toggle" :class="{ off: !visibleSeries.visits }" @click="toggleSeries('visits')"><i class="legend-dot visits"></i>Visitas</button>
-                <button type="button" class="legend-item legend-toggle" :class="{ off: !visibleSeries.clicks }" @click="toggleSeries('clicks')"><i class="legend-dot clicks"></i>Cliques</button>
-                <button type="button" class="legend-item legend-toggle" :class="{ off: !visibleSeries.leads }" @click="toggleSeries('leads')"><i class="legend-dot leads"></i>Leads</button>
+                <button type="button" class="legend-item legend-toggle" :class="{ off: !visibleSeries.visits }" :aria-pressed="visibleSeries.visits" @click="toggleSeries('visits')"><i class="legend-dot visits"></i>Visitas</button>
+                <button type="button" class="legend-item legend-toggle" :class="{ off: !visibleSeries.clicks }" :aria-pressed="visibleSeries.clicks" @click="toggleSeries('clicks')"><i class="legend-dot clicks"></i>Cliques</button>
+                <button type="button" class="legend-item legend-toggle" :class="{ off: !visibleSeries.leads }" :aria-pressed="visibleSeries.leads" @click="toggleSeries('leads')"><i class="legend-dot leads"></i>Leads</button>
               </div>
               <select v-model="selectedPage" class="filter-select" aria-label="Página">
                 <option value="all">Todas as páginas</option>
@@ -131,40 +100,49 @@
             </div>
           </header>
 
-          <div ref="chartStageRef" class="chart-stage">
-            <svg id="areaChart" width="100%" :height="chartHeight" preserveAspectRatio="none">
+          <div ref="chartStageRef" class="chart-stage" @pointerleave="handleChartLeave">
+            <!-- Linhas de referência na escala de visitas e cliques. -->
+            <div v-for="line in chartGrid" :key="`grid-${line.fraction}`" class="chart-gridline" :class="{ base: line.fraction === 0 }" :style="{ top: `${line.y}px` }">
+              <span v-if="line.label">{{ line.label }}</span>
+            </div>
+            <!-- A cada período ou página novos, as linhas se desenham da esquerda para a direita. -->
+            <svg :key="chartAnimKey" class="chart-svg chart-draw" width="100%" :height="chartHeight" aria-hidden="true">
               <defs>
                 <linearGradient id="g-visits" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="var(--chart-1)" stop-opacity="0.22" />
-                  <stop offset="100%" stop-color="var(--chart-1)" stop-opacity="0.01" />
+                  <stop offset="0%" stop-color="var(--chart-1)" stop-opacity="0.24" />
+                  <stop offset="100%" stop-color="var(--chart-1)" stop-opacity="0" />
                 </linearGradient>
               </defs>
-
-              <path v-if="visibleSeries.visits && chartSeries.visits.area" :d="chartSeries.visits.area" fill="url(#g-visits)" />
-
-              <path v-if="visibleSeries.visits && chartSeries.visits.path" :d="chartSeries.visits.path" fill="none" stroke="var(--chart-1)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
-              <path v-if="visibleSeries.clicks && chartSeries.clicks.path" :d="chartSeries.clicks.path" fill="none" stroke="var(--chart-4)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
-              <path v-if="visibleSeries.leads && chartSeries.leads.path" :d="chartSeries.leads.path" fill="none" stroke="var(--chart-6)" stroke-width="2.5" stroke-dasharray="5 5" stroke-linecap="round" stroke-linejoin="round" />
-
-              <rect
+              <path v-if="visibleSeries.visits && chartSeries.visits.area" class="chart-area" :d="chartSeries.visits.area" fill="url(#g-visits)" />
+              <path v-if="visibleSeries.visits && chartSeries.visits.path" :d="chartSeries.visits.path" fill="none" stroke="var(--chart-1)" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" />
+              <path v-if="visibleSeries.clicks && chartSeries.clicks.path" :d="chartSeries.clicks.path" fill="none" stroke="var(--chart-4)" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" />
+              <path v-if="visibleSeries.leads && chartSeries.leads.path" :d="chartSeries.leads.path" fill="none" stroke="var(--chart-6)" stroke-width="2.75" stroke-dasharray="6 6" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            <!-- Dia sob o mouse ou o dedo: linha guia e o ponto de cada série. -->
+            <template v-if="chartTooltip.visible && hoverX !== null">
+              <span class="chart-guide" :style="{ left: `${hoverX}px` }" aria-hidden="true"></span>
+              <span v-for="point in hoverPoints" :key="point.key" class="chart-point" :style="{ left: `${hoverX}px`, top: `${point.y}px`, borderColor: point.color }" aria-hidden="true"></span>
+            </template>
+            <div class="chart-hits">
+              <span
                 v-for="hit in chartHitAreas"
                 :key="`hit-${hit.index}`"
-                :x="hit.x"
-                y="0"
-                :width="hit.width"
-                :height="chartHeight"
-                fill="transparent"
-                @mouseenter="showChartTooltip(hit.index, $event)"
-                @mousemove="moveChartTooltip(hit.index, $event)"
-                @mouseleave="hideChartTooltip"
-              />
-            </svg>
-            <div v-if="chartTooltip.visible" class="chart-tooltip" :style="chartTooltipStyle">
-              <p class="chart-tooltip-date">{{ chartTooltip.label }}</p>
-              <p>Visitas: {{ chartTooltip.visits }}</p>
-              <p>Cliques: {{ chartTooltip.clicks }}</p>
-              <p>Leads: {{ chartTooltip.leads }}</p>
+                class="chart-hit"
+                :style="{ left: `${hit.x}px`, width: `${hit.width}px` }"
+                @pointerenter="showChartTooltip(hit.index, $event)"
+                @pointermove="moveChartTooltip(hit.index, $event)"
+                @pointerdown="showChartTooltip(hit.index, $event)"
+              ></span>
             </div>
+            <p v-if="chartIsEmpty" class="chart-empty">Ainda não há visitas neste período. Compartilhe o link de uma página para começar a ver os números aqui.</p>
+            <Transition name="tip">
+              <div v-if="chartTooltip.visible" class="chart-tooltip" :style="chartTooltipStyle">
+                <p class="chart-tooltip-date">{{ chartTooltip.label }}</p>
+                <p><i class="legend-dot visits"></i><span>Visitas</span><b>{{ chartTooltip.visits.toLocaleString(numberLocale) }}</b></p>
+                <p><i class="legend-dot clicks"></i><span>Cliques</span><b>{{ chartTooltip.clicks.toLocaleString(numberLocale) }}</b></p>
+                <p><i class="legend-dot leads"></i><span>Leads</span><b>{{ chartTooltip.leads.toLocaleString(numberLocale) }}</b></p>
+              </div>
+            </Transition>
           </div>
 
           <div class="chart-dates">
@@ -174,17 +152,20 @@
           </div>
         </article>
 
-        <article class="chart-card funnel-card">
+        <article class="chart-card funnel-card dash-rise" style="--d: 340ms">
           <header class="chart-header">
             <div>
               <p class="card-eyebrow">Conversão</p>
-              <h2 class="chart-title">Do clique ao lead</h2>
+              <h2 class="chart-title">Da visita ao lead</h2>
             </div>
           </header>
           <div class="funnel">
-            <div v-for="step in funnelSteps" :key="step.key" class="funnel-step">
+            <div v-for="(step, index) in funnelSteps" :key="step.key" class="funnel-step">
               <div class="funnel-row"><span>{{ step.label }}</span><b>{{ step.value.toLocaleString(numberLocale) }}</b></div>
-              <div class="funnel-bar"><span :class="`fill-${step.key}`" :style="{ width: `${step.width}%` }"></span></div>
+              <div class="funnel-bar">
+                <span :class="`fill-${step.key}`" :style="{ width: barsReady ? `${step.width}%` : '0%', transitionDelay: `${index * 140}ms` }"></span>
+              </div>
+              <p v-if="step.note" class="funnel-note">{{ step.note }}</p>
             </div>
           </div>
           <div class="funnel-total">
@@ -193,30 +174,30 @@
             </span>
             <div>
               <b>{{ formatPercent(leadRate) }}</b>
-              <span>das visitas viraram lead</span>
+              <span>das visitas viraram lead neste período</span>
             </div>
           </div>
         </article>
       </section>
 
       <section class="bottom-grid">
-        <article class="list-card">
+        <article class="list-card dash-rise" style="--d: 400ms">
           <header class="list-header">
             <div>
               <p class="card-eyebrow">Páginas</p>
-              <h3 class="list-title">Mais visitadas</h3>
+              <h3 class="list-title">Mais visitadas no período</h3>
             </div>
             <button type="button" class="list-link" @click="goToPages">Ver todas →</button>
           </header>
           <div class="list-body">
-            <div v-for="item in topPages" :key="item.id" class="page-item">
+            <div v-for="(item, index) in topPages" :key="item.id" class="page-item">
               <div class="page-thumb" aria-hidden="true">
                 <FileTextIcon aria-hidden="true" />
               </div>
               <div class="page-info">
-                <p class="page-name">{{ truncateText(item.title, 30) }}</p>
-                <p class="page-dest">{{ truncateText(item.origin, 30) }}</p>
-                <div class="page-bar"><div class="page-bar-fill" :style="{ width: `${item.progress}%` }"></div></div>
+                <p class="page-name">{{ truncateText(item.title, 34) }}</p>
+                <p class="page-dest">{{ item.meta }}</p>
+                <div class="page-bar"><div class="page-bar-fill" :style="{ width: barsReady ? `${item.progress}%` : '0%', transitionDelay: `${index * 90}ms` }"></div></div>
               </div>
               <div class="page-side">
                 <span class="page-visits">{{ item.visits.toLocaleString(numberLocale) }}<small>visitas</small></span>
@@ -233,11 +214,11 @@
                 </div>
               </div>
             </div>
-            <p v-if="!topPages.length" class="empty-text">Sem páginas com dados ainda.</p>
+            <p v-if="!topPages.length" class="empty-text">Sem visitas nas páginas neste período.</p>
           </div>
         </article>
 
-        <article class="list-card">
+        <article class="list-card dash-rise" style="--d: 460ms">
           <header class="list-header">
             <div>
               <p class="card-eyebrow">Leads</p>
@@ -245,6 +226,10 @@
             </div>
             <button type="button" class="list-link" @click="goToOpportunities">Ver todos →</button>
           </header>
+          <!-- Leads em aberto parados há 1 dia ou mais (mesma régua de "Sem interação" em Leads). -->
+          <button v-if="idleLeadsCount" type="button" class="idle-chip" @click="goToOpportunities">
+            <i aria-hidden="true"></i>{{ idleLeadsCount }} {{ idleLeadsCount === 1 ? "lead sem interação" : "leads sem interação" }} há mais de 24 h
+          </button>
           <div class="list-body">
             <div v-for="(lead, index) in recentLeads" :key="String(lead.id)" class="lead-item">
               <div class="lead-avatar" :class="`tone-${avatarTones[index % avatarTones.length]}`">{{ initials(lead.name) }}</div>
@@ -293,6 +278,7 @@ import {
   MousePointerClickIcon,
   PencilIcon,
   PlusIcon,
+  TrendingDownIcon,
   TrendingUpIcon,
   UserPlusIcon
 } from "lucide-vue-next";
@@ -339,8 +325,11 @@ interface OverviewResponse {
   visits: number;
   whatsapp: number;
   cta: number;
+  leads?: number;
   trend?: {
     visits?: number | null;
+    clicks?: number | null;
+    leads?: number | null;
   } | null;
   timeseries?: OverviewTimeseriesPoint[];
 }
@@ -454,8 +443,16 @@ const selectedLeadId = ref<string | number | null>(null);
 const userName = computed(() => auth.user?.name || "Agente");
 const pagesCount = computed(() => pages.value.filter(page => String(page.status || "").toLowerCase() === "published").length);
 const totalVisits = computed(() => overview.value?.visits || 0);
-const visitsTrend = computed(() => Number(overview.value?.trend?.visits ?? 0));
-const visitsTrendText = computed(() => `${visitsTrend.value >= 0 ? "+" : ""}${visitsTrend.value}%`);
+// Variação contra o período anterior; sem dados antes, "—" em vez de um "+0%" enganoso.
+type TrendBadge = { tone: "up" | "down" | "neutral"; text: string };
+const trendBadge = (value?: number | null): TrendBadge => {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return { tone: "neutral", text: "—" };
+  const number = Number(value);
+  return {
+    tone: number > 0 ? "up" : number < 0 ? "down" : "neutral",
+    text: `${Math.abs(number).toLocaleString(numberLocale, { maximumFractionDigits: 1 })}%`
+  };
+};
 const clicksMetric = computed(() => {
   if (selectedPage.value !== "all") {
     const pageId = Number(selectedPage.value);
@@ -468,25 +465,12 @@ const clicksMetric = computed(() => {
   return Object.values(pageStatsMap.value).reduce((sum, item) => sum + (item.clicks_cta || 0) + (item.clicks_whatsapp || 0), 0);
 });
 
+// Leads do período (e da página escolhida), do mesmo lugar que as visitas: a taxa de conversão
+// compara números do mesmo intervalo. Antes contava todos os leads da agência desde sempre.
 const leadsMetric = computed(() => {
-  if (selectedPage.value !== "all") {
-    const pageId = Number(selectedPage.value);
-    if (!Number.isNaN(pageId)) return pageStatsMap.value[pageId]?.leads || 0;
-  }
-  if (contacts.value.length) return contacts.value.length;
-  return Object.values(pageStatsMap.value).reduce((sum, item) => sum + (item.leads || 0), 0);
+  if (typeof overview.value?.leads === "number") return overview.value.leads;
+  return (overview.value?.timeseries || []).reduce((sum, point) => sum + Number(point.leads || 0), 0);
 });
-
-const leadsThisMonth = computed(() => {
-  const now = new Date();
-  return contacts.value.filter(contact => {
-    if (!contact.created_at) return false;
-    const date = new Date(contact.created_at);
-    return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
-  }).length;
-});
-
-const leadsMonthText = computed(() => `+${leadsThisMonth.value}`);
 
 const firstName = computed(() => (userName.value || "").trim().split(/\s+/)[0] || userName.value);
 const greeting = computed(() => {
@@ -505,18 +489,135 @@ const leadRate = computed(() => (totalVisits.value > 0 ? leadsMetric.value / tot
 const formatPercent = (value: number) =>
   `${(value * 100).toLocaleString(numberLocale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
 
+// Funil em três degraus: WhatsApp e botão são caminhos paralelos do mesmo degrau (clique).
 const funnelSteps = computed(() => {
   const visits = totalVisits.value;
   const whatsapp = Number(overview.value?.whatsapp || 0);
   const cta = Number(overview.value?.cta || 0);
+  const clicks = whatsapp + cta;
   const leads = leadsMetric.value;
-  const base = Math.max(1, visits, whatsapp, cta, leads);
+  const base = Math.max(1, visits, clicks, leads);
+  const share = (part: number, whole: number) => (whole > 0 ? formatPercent(part / whole) : "");
   return [
-    { key: "visits", label: "Visitas", value: visits },
-    { key: "whatsapp", label: "Cliques no WhatsApp", value: whatsapp },
-    { key: "cta", label: "Cliques no botão", value: cta },
-    { key: "leads", label: "Leads", value: leads }
+    { key: "visits", label: "Visitas", value: visits, note: visits ? `${selectedPage.value === "all" ? "Todas as páginas" : "Página escolhida"}, ${selectedPeriod.value} dias` : "" },
+    {
+      key: "clicks",
+      label: "Cliques",
+      value: clicks,
+      note: clicks ? `WhatsApp ${whatsapp.toLocaleString(numberLocale)} · Botão ${cta.toLocaleString(numberLocale)} · ${share(clicks, visits)} das visitas` : ""
+    },
+    { key: "leads", label: "Leads", value: leads, note: leads && clicks ? `${share(leads, clicks)} dos cliques viraram lead` : "" }
   ].map(step => ({ ...step, width: Math.max(step.value > 0 ? 2 : 0, Math.round((step.value / base) * 100)) }));
+});
+
+// Entrada da tela: números contam do zero (e de um valor ao outro quando o período muda).
+const prefersReducedMotion = typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+const countUpFrames = new Set<number>();
+const useCountUp = (source: () => number, duration = 900, delay = 250) => {
+  const shown = ref(0);
+  let frame = 0;
+  watch(
+    source,
+    target => {
+      cancelAnimationFrame(frame);
+      countUpFrames.delete(frame);
+      const from = shown.value;
+      if (prefersReducedMotion || from === target) {
+        shown.value = target;
+        return;
+      }
+      const start = performance.now() + (from === 0 ? delay : 0);
+      const step = (now: number) => {
+        const t = Math.max(0, Math.min(1, (now - start) / duration));
+        shown.value = Math.round(from + (target - from) * (1 - Math.pow(1 - t, 3)));
+        countUpFrames.delete(frame);
+        if (t < 1) {
+          frame = requestAnimationFrame(step);
+          countUpFrames.add(frame);
+        }
+      };
+      frame = requestAnimationFrame(step);
+      countUpFrames.add(frame);
+    },
+    { immediate: true }
+  );
+  return shown;
+};
+// Durante o carregamento fica em zero; a contagem começa quando a tela aparece.
+const shownVisits = useCountUp(() => (isBootstrappingDashboard.value ? 0 : totalVisits.value));
+const shownClicks = useCountUp(() => (isBootstrappingDashboard.value ? 0 : clicksMetric.value));
+const shownLeads = useCountUp(() => (isBootstrappingDashboard.value ? 0 : leadsMetric.value));
+// Barras (funil e páginas) crescem do zero logo depois que a tela aparece.
+const barsReady = ref(false);
+
+// Páginas publicadas sem nenhuma visita no período (só com os números do período carregados).
+const pagesWithoutVisits = computed(
+  () => pages.value.filter(page => String(page.status || "").toLowerCase() === "published" && !(pageStatsMap.value[page.id]?.visits || 0)).length
+);
+
+// Leads em aberto parados há 1 dia ou mais: mesma régua de "Sem interação" na tela de Leads.
+const idleLeadsCount = computed(
+  () =>
+    contacts.value.filter(contact => {
+      if (contact.close_outcome) return false;
+      const days = Number(contact.sem_interacao_days);
+      if (Number.isFinite(days)) return days >= 1;
+      const base = new Date(contact.updated_at || contact.created_at || "").getTime();
+      return Number.isFinite(base) && Date.now() - base >= 86400000;
+    }).length
+);
+
+const metricCards = computed(() => {
+  const compare = `vs. ${selectedPeriod.value} dias anteriores`;
+  const peak = chartPeak.value;
+  const drafts = draftsCount.value;
+  const idlePages = pagesWithoutVisits.value;
+  return [
+    {
+      key: "visits",
+      label: "Visitas",
+      icon: EyeIcon,
+      tone: "success",
+      value: shownVisits.value.toLocaleString(numberLocale),
+      suffix: "",
+      badge: trendBadge(overview.value?.trend?.visits),
+      compare,
+      sub: peak ? `Pico em ${peak.label}: ${peak.visits.toLocaleString(numberLocale)} visitas` : ""
+    },
+    {
+      key: "clicks",
+      label: "Cliques",
+      icon: MousePointerClickIcon,
+      tone: "warning",
+      value: shownClicks.value.toLocaleString(numberLocale),
+      suffix: "",
+      badge: trendBadge(overview.value?.trend?.clicks),
+      compare,
+      sub: `${formatPercent(clickRate.value)} das visitas clicaram`
+    },
+    {
+      key: "leads",
+      label: "Leads",
+      icon: UserPlusIcon,
+      tone: "violet",
+      value: shownLeads.value.toLocaleString(numberLocale),
+      suffix: "",
+      badge: trendBadge(overview.value?.trend?.leads),
+      compare,
+      sub: `${formatPercent(leadRate.value)} das visitas viraram lead`
+    },
+    {
+      key: "pages",
+      label: "Páginas no ar",
+      icon: FileTextIcon,
+      tone: "info",
+      value: String(pagesCount.value),
+      suffix: ` de ${pages.value.length}`,
+      badge: null as TrendBadge | null,
+      compare: "",
+      sub: [`${drafts} ${drafts === 1 ? "rascunho" : "rascunhos"}`, idlePages ? `${idlePages} sem visita no período` : ""].filter(Boolean).join(" · ")
+    }
+  ];
 });
 
 const avatarTones = ["violet", "info", "warning", "success"];
@@ -606,7 +707,8 @@ const chartBase = computed(() => {
     const label = formatDateLabel(rawLabel);
     const visits = Number(point.visits || 0);
     const clicks = Number(point.clicks || ((point.whatsapp || 0) + (point.cta || 0)));
-    const leads = Number(point.leads || point.conversions || 0);
+    // Dia sem lead é 0: antes caía em `conversions` (cliques no botão) e mostrava leads que não existiam.
+    const leads = Number(point.leads ?? 0);
     return { label, visits, clicks, leads };
   });
 
@@ -621,63 +723,120 @@ const measureChartWidth = () => {
 
 type ChartPoint = [number, number];
 type DotPoint = { index: number; x: number; y: number };
-type RenderedSeries = { path: string; area: string; dots: DotPoint[] };
+type RenderedSeries = { path: string; area: string; dots: DotPoint[]; ys: number[] };
 const baselineY = chartHeight - chartPad;
 const clampY = (value: number) => Math.min(Math.max(value, chartPad), baselineY);
 
+// Curva monotônica (Fritsch–Carlson): suave nos picos e nunca passa do valor do dia.
+// A anterior cortava os pontos de controle no topo e na base, o que fazia bicos.
 const makePath = (data: number[], max: number, W: number, H: number, pad: number): { path: string; pts: ChartPoint[] } => {
   if (!data.length) return { path: "", pts: [] };
   const n = data.length;
+  const topPad = pad + 8;
   const pts: ChartPoint[] = data.map((value, index) => [
     pad + (index / Math.max(1, n - 1)) * (W - pad * 2),
-    clampY(H - pad - (value / max) * (H - pad * 2))
+    H - pad - (value / max) * (H - pad - topPad)
   ]);
-
-  let path = `M ${pts[0][0]} ${pts[0][1]}`;
-  for (let i = 0; i < pts.length - 1; i += 1) {
-    const x0 = i > 0 ? pts[i - 1][0] : pts[0][0];
-    const y0 = i > 0 ? pts[i - 1][1] : pts[0][1];
-    const x1 = pts[i][0];
-    const y1 = pts[i][1];
-    const x2 = pts[i + 1][0];
-    const y2 = pts[i + 1][1];
-    const x3 = i < pts.length - 2 ? pts[i + 2][0] : x2;
-    const y3 = i < pts.length - 2 ? pts[i + 2][1] : y2;
-    const t = 0.25;
-    const cy1 = clampY(y1 + (y2 - y0) * t);
-    const cy2 = clampY(y2 - (y3 - y1) * t);
-    path += ` C ${x1 + (x2 - x0) * t} ${cy1}, ${x2 - (x3 - x1) * t} ${cy2}, ${x2} ${clampY(y2)}`;
+  if (n === 1) return { path: `M ${pts[0][0]} ${pts[0][1]}`, pts };
+  const dx: number[] = [];
+  const slope: number[] = [];
+  for (let i = 0; i < n - 1; i += 1) {
+    dx.push(pts[i + 1][0] - pts[i][0]);
+    slope.push((pts[i + 1][1] - pts[i][1]) / dx[i]);
   }
-
+  const tangent: number[] = [slope[0]];
+  for (let i = 1; i < n - 1; i += 1) tangent.push(slope[i - 1] * slope[i] <= 0 ? 0 : (slope[i - 1] + slope[i]) / 2);
+  tangent.push(slope[n - 2]);
+  for (let i = 0; i < n - 1; i += 1) {
+    if (slope[i] === 0) {
+      tangent[i] = 0;
+      tangent[i + 1] = 0;
+      continue;
+    }
+    const a = tangent[i] / slope[i];
+    const b = tangent[i + 1] / slope[i];
+    const size = a * a + b * b;
+    if (size > 9) {
+      const k = 3 / Math.sqrt(size);
+      tangent[i] = k * a * slope[i];
+      tangent[i + 1] = k * b * slope[i];
+    }
+  }
+  let path = `M ${pts[0][0]} ${pts[0][1]}`;
+  for (let i = 0; i < n - 1; i += 1) {
+    const h = dx[i] / 3;
+    path += ` C ${pts[i][0] + h} ${pts[i][1] + tangent[i] * h}, ${pts[i + 1][0] - h} ${pts[i + 1][1] - tangent[i + 1] * h}, ${pts[i + 1][0]} ${pts[i + 1][1]}`;
+  }
   return { path, pts };
 };
 
 const buildSeries = (data: number[], max: number): RenderedSeries => {
   const { path, pts } = makePath(data, max, chartWidth.value, chartHeight, chartPad);
-  if (!path || !pts.length) return { path: "", area: "", dots: [] };
+  if (!path || !pts.length) return { path: "", area: "", dots: [], ys: [] };
   const area = `${path} L ${pts[pts.length - 1][0]} ${baselineY} L ${pts[0][0]} ${baselineY} Z`;
   const dots = pts
     .map((point, index) => ({ index, x: point[0], y: point[1], value: data[index] || 0 }))
     .filter(point => point.value > 0)
     .map(({ index, x, y }) => ({ index, x, y }));
-  return { path, area, dots };
+  return { path, area, dots, ys: pts.map(point => point[1]) };
 };
 
 const chartSeries = computed(() => {
   const visitsValues = chartBase.value.series.map(item => item.visits);
   const clicksValues = chartBase.value.series.map(item => item.clicks);
   const leadsValues = chartBase.value.series.map(item => item.leads);
-  const max = Math.max(1, ...visitsValues, ...clicksValues);
+  // Folga de 8% no topo para o pico não encostar na borda.
+  const max = Math.max(1, ...visitsValues, ...clicksValues) * 1.08;
   // Leads usam a própria escala (linha tracejada): na escala das visitas
   // ficariam achatados no chão.
   const leadsMax = Math.max(1, ...leadsValues) * 1.6;
 
   return {
+    max,
     visits: buildSeries(visitsValues, max),
     clicks: buildSeries(clicksValues, max),
     leads: buildSeries(leadsValues, leadsMax)
   };
 });
+
+const chartIsEmpty = computed(() => !chartBase.value.series.some(point => point.visits || point.clicks || point.leads));
+const chartPeak = computed(() => {
+  const series = chartBase.value.series;
+  if (!series.length || chartIsEmpty.value) return null;
+  return series.reduce((best, point) => (point.visits > best.visits ? point : best), series[0]);
+});
+const peakText = computed(() =>
+  chartPeak.value && chartPeak.value.visits ? `Melhor dia: ${chartPeak.value.label}, com ${chartPeak.value.visits.toLocaleString(numberLocale)} visitas` : ""
+);
+// Três linhas de referência (topo, meio e base) com o valor na escala de visitas e cliques.
+const chartGrid = computed(() => {
+  const max = chartSeries.value.max / 1.08;
+  const topPad = chartPad + 8;
+  return [1, 0.5, 0].map(fraction => ({
+    fraction,
+    y: chartHeight - chartPad - ((fraction * max) / chartSeries.value.max) * (chartHeight - chartPad - topPad),
+    label: chartIsEmpty.value || fraction === 0 ? "" : Math.round(max * fraction).toLocaleString(numberLocale)
+  }));
+});
+const hoverX = computed(() => {
+  const count = chartBase.value.series.length;
+  if (chartTooltip.index < 0 || !count) return null;
+  if (count === 1) return chartWidth.value / 2;
+  return chartPad + (chartTooltip.index / (count - 1)) * (chartWidth.value - chartPad * 2);
+});
+const hoverPoints = computed(() => {
+  const index = chartTooltip.index;
+  const series = [
+    { key: "visits", color: "var(--chart-1)" },
+    { key: "clicks", color: "var(--chart-4)" },
+    { key: "leads", color: "var(--chart-6)" }
+  ] as const;
+  return series
+    .filter(item => visibleSeries[item.key] && chartSeries.value[item.key].ys[index] !== undefined)
+    .map(item => ({ key: item.key, color: item.color, y: chartSeries.value[item.key].ys[index] }));
+});
+// Muda quando chegam dados novos: o desenho é recriado e as linhas se desenham de novo.
+const chartAnimKey = ref(0);
 
 const chartStartLabel = computed(() => chartBase.value.series[0]?.label || "--");
 const chartEndLabel = computed(() => chartBase.value.series[chartBase.value.series.length - 1]?.label || "--");
@@ -699,8 +858,8 @@ const updateTooltipFromEvent = (event: MouseEvent) => {
   const host = chartStageRef.value;
   if (!host) return;
   const rect = host.getBoundingClientRect();
-  const tooltipWidth = 144;
-  const tooltipHeight = 82;
+  const tooltipWidth = 168;
+  const tooltipHeight = 104;
   const rawX = event.clientX - rect.left + 10;
   const rawY = event.clientY - rect.top - tooltipHeight - 8;
   const maxX = Math.max(0, rect.width - tooltipWidth);
@@ -731,6 +890,11 @@ const moveChartTooltip = (index: number, event: MouseEvent) => {
 
 const hideChartTooltip = () => {
   chartTooltip.visible = false;
+  chartTooltip.index = -1;
+};
+// No toque, a dica fica até o próximo toque; com o mouse, some ao sair do gráfico.
+const handleChartLeave = (event: PointerEvent) => {
+  if (event.pointerType === "mouse") hideChartTooltip();
 };
 
 type SeriesKey = keyof typeof visibleSeries;
@@ -756,9 +920,15 @@ const topPages = computed(() => {
         slug: page.slug || "",
         origin: page.slug ? `/${page.slug}` : "Origem não informada",
         visits: stats.visits || 0,
+        meta: stats.leads
+          ? `${stats.leads} ${stats.leads === 1 ? "lead" : "leads"} · ${formatPercent(stats.visits ? stats.leads / stats.visits : 0)} das visitas`
+          : page.slug
+            ? `/${page.slug}`
+            : "Sem leads no período",
         progress: Math.round(((stats.visits || 0) / maxVisits) * 100)
       };
     })
+    .filter(item => item.visits > 0)
     .sort((a, b) => b.visits - a.visits)
     .slice(0, 5);
 });
@@ -797,7 +967,8 @@ const fetchPages = async (agencyId: number) => {
 };
 
 const fetchPageStats = async (agencyId: number) => {
-  const { data } = await api.get<PageStatsSummary[]>("/stats/pages", { params: { agency_id: agencyId } });
+  // Mesmo período dos números do topo.
+  const { data } = await api.get<PageStatsSummary[]>("/stats/pages", { params: { agency_id: agencyId, days: selectedPeriod.value } });
   const map: Record<number, PageStatsSummary> = {};
   data.forEach(item => {
     map[item.page_id] = item;
@@ -813,6 +984,7 @@ const fetchOverview = async (agencyId: number) => {
   }
   const { data } = await api.get<OverviewResponse>("/stats/overview", { params });
   overview.value = data;
+  chartAnimKey.value += 1;
 };
 
 const fetchLeads = async () => {
@@ -942,11 +1114,11 @@ const formatDateLabel = (raw: string) => {
   return value;
 };
 
-watch([selectedPeriod, selectedPage], async () => {
+watch([selectedPeriod, selectedPage], async ([period], [previousPeriod]) => {
   const agencyId = agencyStore.currentAgencyId || agencyStore.agencies[0]?.id;
   if (!agencyId) return;
   hideChartTooltip();
-  await fetchOverview(agencyId);
+  await Promise.all([fetchOverview(agencyId), period !== previousPeriod ? fetchPageStats(agencyId) : Promise.resolve()]);
 });
 
 watch(
@@ -960,6 +1132,10 @@ onMounted(async () => {
   await loadDashboard();
   await nextTick();
   measureChartWidth();
+  // As barras crescem junto com a entrada dos cards.
+  window.setTimeout(() => {
+    barsReady.value = true;
+  }, prefersReducedMotion ? 0 : 420);
   if (typeof ResizeObserver !== "undefined") {
     chartResizeObserver = new ResizeObserver(() => measureChartWidth());
     if (chartStageRef.value) chartResizeObserver.observe(chartStageRef.value);
@@ -972,6 +1148,7 @@ onBeforeUnmount(() => {
   chartResizeObserver = null;
   window.removeEventListener("resize", measureChartWidth);
   if (copyToastTimer) clearTimeout(copyToastTimer);
+  countUpFrames.forEach(frame => cancelAnimationFrame(frame));
 });
 </script>
 
@@ -996,26 +1173,40 @@ onBeforeUnmount(() => {
   font-weight: 600;
 }
 
-.dashboard-loading {
-  min-height: 60vh;
+/* Carregando: esboço da tela (blocos parados, sem brilho correndo). */
+.dashboard-skeleton {
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.spinner {
-  width: 44px;
-  height: 44px;
-  border-radius: 999px;
-  border: 4px solid var(--border);
-  border-top-color: var(--primary);
-  animation: spin 0.8s linear infinite;
+.sk-block {
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--card) 70%, var(--muted));
+  animation: sk-pulse 1.4s ease-in-out infinite;
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+.sk-title { width: min(360px, 70%); height: 64px; border-radius: 14px; }
+.sk-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.sk-metric { height: 168px; }
+.sk-row { display: grid; grid-template-columns: 1.6fr 1fr; gap: 16px; }
+.sk-chart, .sk-side { height: 360px; }
+.sk-row:last-child { grid-template-columns: 1fr 1fr; }
+.sk-list { height: 300px; }
+
+@keyframes sk-pulse {
+  50% { opacity: 0.6; }
+}
+
+/* Entrada: cada bloco sobe e aparece, em sequência (--d é o atraso de cada um). */
+.dash-rise {
+  animation: dash-rise 0.55s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: var(--d, 0ms);
+}
+
+@keyframes dash-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
 }
 
 /* Topo */
@@ -1112,7 +1303,7 @@ onBeforeUnmount(() => {
 /* Cartões e números */
 .metrics-grid {
   display: grid;
-  grid-template-columns: 1.25fr 1fr 1fr 1fr;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
   margin: 20px 0;
 }
@@ -1127,37 +1318,41 @@ onBeforeUnmount(() => {
   box-shadow: var(--shadow-card);
 }
 
+/* Cards de números no padrão do Viaje On: ícone num quadrado suave, rótulo em maiúsculas,
+   número grande e o selo da variação com seta. */
 .metric-card {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 22px;
+  gap: 10px;
+  padding: 26px 28px;
   overflow: hidden;
-}
-
-.metric-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+  border-radius: 22px;
 }
 
 .metric-label {
-  font-size: 12.5px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: var(--muted-foreground);
 }
 
 .metric-icon {
   display: inline-grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  width: 46px;
+  height: 46px;
   flex-shrink: 0;
-  border-radius: 999px;
+  border-radius: 12px;
 }
 
 .metric-icon svg {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
 }
 
 .tone-success { background: var(--status-success); color: var(--status-success-foreground); }
@@ -1166,10 +1361,12 @@ onBeforeUnmount(() => {
 .tone-violet { background: var(--status-violet); color: var(--status-violet-foreground); }
 
 .metric-value {
+  margin-top: 4px;
   font-family: var(--font-display);
-  font-size: 28px;
-  line-height: 34px;
+  font-size: 32px;
+  line-height: 38px;
   font-weight: 600;
+  letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
 
@@ -1177,45 +1374,43 @@ onBeforeUnmount(() => {
   font-family: var(--font-sans);
   font-size: 15px;
   font-weight: 500;
+  letter-spacing: 0;
   color: var(--muted-foreground);
 }
 
 .metric-footer {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  font-size: 12px;
+  gap: 6px 8px;
+  font-size: 13px;
   color: var(--muted-foreground);
 }
 
 .metric-badge {
   display: inline-flex;
   align-items: center;
+  gap: 4px;
   border-radius: 999px;
-  padding: 2px 9px;
-  font-size: 11.5px;
+  padding: 4px 12px;
+  font-size: 13px;
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.metric-badge svg {
+  width: 14px;
+  height: 14px;
 }
 
 .metric-badge.up { background: var(--status-success); color: var(--status-success-foreground); }
 .metric-badge.down { background: var(--status-danger); color: var(--status-danger-foreground); }
 .metric-badge.neutral { background: var(--status-neutral); color: var(--status-neutral-foreground); }
 
-.metric-footer-text {
-  font-size: 12px;
+.metric-sub {
+  font-size: 13px;
+  line-height: 18px;
   color: var(--muted-foreground);
-}
-
-/* Destaque: visitas em verde claro, como os cards de destaque do Viaje On */
-.metric-hero {
-  border-color: color-mix(in srgb, var(--primary) 22%, var(--border));
-  background: linear-gradient(135deg, var(--accent) 0%, var(--card) 100%);
-  box-shadow: inset 4px 0 0 var(--primary), var(--shadow-card);
-}
-
-.metric-hero .metric-icon {
-  background: var(--card);
-  color: var(--accent-foreground);
 }
 
 /* Gráfico e conversão */
@@ -1320,18 +1515,115 @@ onBeforeUnmount(() => {
 .legend-dot.clicks { background: var(--chart-4); }
 .legend-dot.leads { background: var(--chart-6); }
 
-.chart-stage {
-  position: relative;
+.chart-peak {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--muted-foreground);
 }
 
-.chart-stage svg {
+.chart-stage {
+  position: relative;
+  touch-action: pan-y;
+}
+
+.chart-svg {
+  position: relative;
+  z-index: 1;
   display: block;
   overflow: visible;
 }
 
-.chart-tooltip {
+/* As linhas se desenham da esquerda para a direita; a área aparece em seguida. */
+.chart-draw {
+  animation: chart-draw 1.2s cubic-bezier(0.65, 0, 0.35, 1) 0.35s both;
+}
+
+.chart-area {
+  animation: chart-fade 0.7s ease-out 0.9s both;
+}
+
+@keyframes chart-draw {
+  from { clip-path: inset(0 100% 0 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+
+@keyframes chart-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.chart-gridline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px dashed var(--border);
+}
+
+.chart-gridline.base {
+  border-top-style: solid;
+}
+
+.chart-gridline span {
+  position: absolute;
+  left: 0;
+  top: -17px;
+  font-size: 11px;
+  line-height: 14px;
+  color: color-mix(in srgb, var(--muted-foreground) 80%, transparent);
+  font-variant-numeric: tabular-nums;
+}
+
+.chart-guide {
   position: absolute;
   z-index: 2;
+  top: 12px;
+  bottom: 12px;
+  width: 1px;
+  background: var(--muted-foreground);
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.chart-point {
+  position: absolute;
+  z-index: 3;
+  width: 10px;
+  height: 10px;
+  margin: -7px 0 0 -7px;
+  border: 2px solid;
+  border-radius: 999px;
+  background: var(--card);
+  pointer-events: none;
+}
+
+.chart-hits {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+}
+
+.chart-hit {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+
+.chart-empty {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  padding: 0 24px;
+  font-size: 13px;
+  text-align: center;
+  color: var(--muted-foreground);
+  pointer-events: none;
+}
+
+.chart-tooltip {
+  position: absolute;
+  z-index: 6;
   pointer-events: none;
   min-width: 144px;
   border-radius: 12px;
@@ -1350,6 +1642,33 @@ onBeforeUnmount(() => {
 
 .chart-tooltip p + p {
   margin-top: 2px;
+}
+
+.chart-tooltip p:not(.chart-tooltip-date) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted-foreground);
+}
+
+.chart-tooltip p span {
+  flex: 1;
+}
+
+.chart-tooltip p b {
+  color: var(--popover-foreground);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.tip-enter-active,
+.tip-leave-active {
+  transition: opacity 0.14s ease-out;
+}
+
+.tip-enter-from,
+.tip-leave-to {
+  opacity: 0;
 }
 
 .chart-tooltip-date {
@@ -1400,12 +1719,19 @@ onBeforeUnmount(() => {
   display: block;
   height: 100%;
   border-radius: 999px;
+  transition: width 0.8s cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
 .fill-visits { background: var(--chart-1); }
-.fill-whatsapp { background: var(--status-success-foreground); }
-.fill-cta { background: var(--chart-4); }
+.fill-clicks { background: var(--chart-4); }
 .fill-leads { background: var(--chart-6); }
+
+.funnel-note {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--muted-foreground);
+}
 
 .funnel-total {
   display: flex;
@@ -1538,6 +1864,28 @@ onBeforeUnmount(() => {
   height: 100%;
   border-radius: 999px;
   background: var(--chart-1);
+  transition: width 0.8s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+/* Leads parados: chama atenção sem disputar com a lista. */
+.idle-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--status-warning);
+  color: var(--status-warning-foreground);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.idle-chip i {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: currentColor;
 }
 
 .page-side {
@@ -1702,32 +2050,46 @@ onBeforeUnmount(() => {
   }
 
   .metric-card {
-    gap: 10px;
-    padding: 14px;
-  }
-
-  .metric-header {
     gap: 8px;
+    padding: 16px;
+    border-radius: 18px;
   }
 
   .metric-icon {
-    width: 32px;
-    height: 32px;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
   }
 
   .metric-icon svg {
-    width: 15px;
-    height: 15px;
+    width: 16px;
+    height: 16px;
   }
 
   .metric-label {
-    font-size: 12px;
-    line-height: 1.25;
+    gap: 10px;
+    font-size: 11.5px;
+    line-height: 14px;
   }
 
   .metric-value {
-    font-size: 22px;
-    line-height: 28px;
+    margin-top: 2px;
+    font-size: 24px;
+    line-height: 30px;
+  }
+
+  .metric-badge {
+    padding: 3px 10px;
+    font-size: 12px;
+  }
+
+  .metric-footer > span:not(.metric-badge) {
+    display: none;
+  }
+
+  .metric-sub {
+    font-size: 12px;
+    line-height: 16px;
   }
 
   .metric-value small {
@@ -1739,9 +2101,6 @@ onBeforeUnmount(() => {
     gap: 4px 6px;
   }
 
-  .metric-footer-text {
-    font-size: 11.5px;
-  }
 
   .chart-card,
   .list-card {
@@ -1773,6 +2132,24 @@ onBeforeUnmount(() => {
 
   .topbar-actions .btn {
     padding: 0 14px;
+  }
+}
+@media (max-width: 1100px) {
+  .sk-metrics { grid-template-columns: 1fr 1fr; }
+  .sk-row, .sk-row:last-child { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dash-rise,
+  .chart-draw,
+  .chart-area,
+  .sk-block {
+    animation: none;
+  }
+
+  .funnel-bar span,
+  .page-bar-fill {
+    transition: none;
   }
 }
 </style>

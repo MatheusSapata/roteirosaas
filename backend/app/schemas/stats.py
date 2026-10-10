@@ -26,6 +26,7 @@ class StatsTrend(BaseModel):
     visits: float | None = None
     whatsapp: float | None = None
     clicks: float | None = None
+    leads: float | None = None
 
 
 class StatsSeriesItem(BaseModel):
@@ -40,6 +41,8 @@ class StatsOverviewOut(BaseModel):
     visits: int
     whatsapp: int
     cta: int
+    # Leads do período (mesmo filtro de página); antes a Dashboard contava todos os leads da agência.
+    leads: int = 0
     trend: StatsTrend | None = None
     timeseries: list[StatsSeriesItem]
 

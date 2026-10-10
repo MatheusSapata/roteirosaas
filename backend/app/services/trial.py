@@ -138,7 +138,11 @@ def sync_trial_status(user: User, db: Session) -> None:
     if not user.trial_ends_at:
         return
     now = datetime.now(timezone.utc)
-    if now > user.trial_ends_at:
+    trial_ends_at = user.trial_ends_at
+    # Banco que não guarda fuso (SQLite dos testes) devolve a data sem ele; o valor é UTC.
+    if trial_ends_at.tzinfo is None:
+        trial_ends_at = trial_ends_at.replace(tzinfo=timezone.utc)
+    if now > trial_ends_at:
         end_trial(user, db)
         db.add(user)
         db.commit()
