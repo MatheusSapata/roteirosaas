@@ -67,7 +67,7 @@ import { html, localize, text } from "./useHeading";
 import { contrast, WHITE_TEXT_MIN_CONTRAST } from "./useSectionTone";
 import { useCopyFit } from "./useCopyFit";
 import TravelIcon from "../../shared/TravelIcon.vue";
-import { formatDayMonth, parseTripDate, tripLengthInDays } from "../../../utils/tripDates";
+import { formatDayMonth, parseTripDate } from "../../../utils/tripDates";
 
 interface HeroChip {
   label: string;
@@ -100,12 +100,11 @@ const dates = computed<HeroDates | null>(() => {
   if (!start) return null;
   const end = parseTripDate(props.section.returnDate);
   const valid = end && end >= start ? end : null;
-  const days = valid ? tripLengthInDays(start, valid) : 0;
-  const daysLabel = days ? localize({ pt: `${days} ${days === 1 ? "dia" : "dias"}`, es: `${days} ${days === 1 ? "día" : "días"}` }) : "";
   return {
     departure: formatDayMonth(start),
     back: valid ? formatDayMonth(valid) : "",
-    tag: [daysLabel, String(start.getFullYear())].filter(Boolean).join(" · ")
+    // Só o ano: a contagem de dias saiu do cartão de datas.
+    tag: String(start.getFullYear())
   };
 });
 const image = computed(() => resolveMediaUrl(props.section.backgroundImage) || "");
