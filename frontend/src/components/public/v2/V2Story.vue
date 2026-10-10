@@ -18,7 +18,7 @@
               allowfullscreen
               loading="lazy"
             ></iframe>
-            <img v-else-if="idx === active" :src="item.url" :alt="copy.image" :class="{ 'is-zoomable': canZoom }" @click="openViewer(idx)" />
+            <V2Img v-else-if="idx === active" :src="item.url" :alt="copy.image" :class="{ 'is-zoomable': canZoom }" sizes="(max-width: 900px) 100vw, 60vw" @click="openViewer(idx)" />
           </template>
           <button v-if="canZoom && media[active]?.type === 'image'" type="button" class="v2-story-zoom" :aria-label="copy.zoom" @click="openViewer(active)">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" /></svg>
@@ -43,7 +43,7 @@
             :class="{ 'is-on': idx === active }"
             @click="go(idx)"
           >
-            <img v-if="item.thumb" :src="item.thumb" alt="" loading="lazy" />
+            <V2Img v-if="item.thumb" :src="item.thumb" alt="" sizes="120px" />
             <span v-else class="v2-story-vthumb" aria-hidden="true">▶</span>
           </button>
         </div>
@@ -59,6 +59,7 @@ import type { StorySection } from "../../../types/page";
 import { resolveMediaUrl } from "../../../utils/media";
 import { extractYoutubeId, normalizeYoutubeEmbedUrl } from "../../../utils/video";
 import V2Section from "./V2Section.vue";
+import V2Img from "./V2Img.vue";
 import V2Head from "./V2Head.vue";
 import V2Button from "./V2Button.vue";
 import V2Lightbox from "./V2Lightbox.vue";

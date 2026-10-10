@@ -278,6 +278,8 @@ const props = defineProps<{
   editLabel?: string;
   /** Miniatura inteira, sem cortar (logos). */
   contain?: boolean;
+  /** Guarda o arquivo como veio, sem gerar as versões leves em WebP (favicon). */
+  keepOriginal?: boolean;
 }>();
 const emit = defineEmits<{
   (e: "update:modelValue", value: string | null): void;
@@ -424,7 +426,7 @@ const uploadProcessedFile = async (file: File) => {
   uploading.value = true;
   error.value = "";
   try {
-    const asset = await uploadImageFile(file, agencyId);
+    const asset = await uploadImageFile(file, agencyId, { optimize: !props.keepOriginal });
     emit("update:modelValue", asset.url);
   } catch (err) {
     console.error(err);

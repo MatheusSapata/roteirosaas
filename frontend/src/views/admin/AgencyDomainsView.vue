@@ -177,6 +177,7 @@
               <div class="dm-favicon" :class="{ 'is-disabled': !hasActiveCustomDomain }">
                 <ImageUploadField
                   v-model="faviconUrl"
+                  keep-original
                   layout="row"
                   replace-label="Trocar"
                   hint="PNG quadrado, 64 × 64 px ou maior"

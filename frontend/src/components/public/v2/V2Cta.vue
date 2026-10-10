@@ -14,7 +14,7 @@
   </V2Section>
   <V2Section v-else type="cta" :background="section.backgroundColor" :anchor-id="section.anchorId">
     <div class="v2-cta-card v2-in">
-      <img v-if="image" :src="image" alt="" class="v2-cta-img v2-reveal" />
+      <V2Img v-if="image" :src="image" alt="" class="v2-cta-img v2-reveal" />
       <div class="v2-cta-card-copy">
         <span v-if="eyebrow" class="v2-eyebrow"><span aria-hidden="true"></span>{{ eyebrow }}</span>
         <h2 class="v2-title" :style="titleScaleStyle(title)">{{ title }}</h2>
@@ -31,6 +31,7 @@ import type { CtaSection } from "../../../types/page";
 import { resolveMediaUrl } from "../../../utils/media";
 import { getSectionHeadingDefaults, resolveHeadingLabel } from "../../../utils/sectionHeadings";
 import V2Section from "./V2Section.vue";
+import V2Img from "./V2Img.vue";
 import V2Button from "./V2Button.vue";
 import { useCta } from "./useCta";
 import { usePageDesignContext } from "./designContext";

@@ -12,7 +12,7 @@
         <div class="relative" :style="{ aspectRatio: videoAspectRatioCss }">
           <iframe ref="iframeRef" class="pointer-events-none absolute inset-0 h-full w-full" :src="playerUrl" :title="title" frameborder="0" tabindex="-1"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-          <img v-if="!hasStarted && thumbnailUrl" :src="thumbnailUrl" alt="" class="pointer-events-none absolute inset-0 z-[1] h-full w-full object-cover" />
+          <V2Img v-if="!hasStarted && thumbnailUrl" :src="thumbnailUrl" alt="" class="pointer-events-none absolute inset-0 z-[1] h-full w-full object-cover" sizes="(max-width: 1000px) 100vw, 1000px" />
           <button type="button" class="vsl-play-button" :class="{ 'is-visible': controlVisible }" :style="{ background: progressColor }" :aria-label="isPlaying ? 'Pausar vídeo' : 'Reproduzir vídeo'" @click.stop="togglePlayback">
             <svg v-if="isPlaying" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zm6 0h4v14h-4z" /></svg>
             <svg v-else viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 11 7-11 7z" /></svg>
@@ -48,6 +48,7 @@ import { extractYoutubeId, normalizeYoutubePlayerUrl } from "../../../utils/vide
 import { resolveMediaUrl } from "../../../utils/media";
 import { usePageDesignContext } from "./designContext";
 import { computeSectionTone, toneVars } from "./useSectionTone";
+import V2Img from "./V2Img.vue";
 import "./v2.css";
 
 const props = withDefaults(defineProps<{ section: VideoVslSection; previewDevice?: "desktop" | "mobile"; highlightColor?: string; logoUrl?: string; replaceHeadingWithLogo?: boolean }>(), { replaceHeadingWithLogo: true });

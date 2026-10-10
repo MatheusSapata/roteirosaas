@@ -22,7 +22,7 @@
         </div>
         <blockquote>“{{ item.text }}”</blockquote>
         <figcaption>
-          <img v-if="item.avatar" :src="item.avatar" alt="" class="v2-tm-avatar" />
+          <V2Img v-if="item.avatar" :src="item.avatar" alt="" class="v2-tm-avatar" sizes="96px" />
           <span v-else class="v2-tm-avatar v2-tm-initials" aria-hidden="true">{{ item.initials }}</span>
           <span class="v2-tm-who"><b>{{ item.name }}</b><span v-if="item.role">{{ item.role }}</span></span>
         </figcaption>
@@ -39,6 +39,7 @@ import { computed, toRef } from "vue";
 import type { TestimonialsSection } from "../../../types/page";
 import { resolveMediaUrl } from "../../../utils/media";
 import V2Section from "./V2Section.vue";
+import V2Img from "./V2Img.vue";
 import V2Head from "./V2Head.vue";
 import V2Button from "./V2Button.vue";
 import { useCta } from "./useCta";

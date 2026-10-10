@@ -252,6 +252,22 @@
 .v2-d6 { animation-delay: 0.48s !important; }
 .v2-d7 { animation-delay: 0.56s !important; }
 
+/* Imagem baixando (V2Img): escondida, mostrando o fundo da seção, e sem animação de
+   entrada; quando termina, surge esmaecendo. Com "v2-reveal", a própria entrada (que
+   esmaece e aproxima) só começa depois do download, então a foto nunca aparece em faixas. */
+.v2-img-wait {
+  opacity: 0 !important;
+  animation: none !important;
+  transition: none !important;
+}
+.v2-img-in {
+  animation: v2-img-in 0.6s ease both;
+}
+@keyframes v2-img-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 @keyframes v2-rise {
   from { opacity: 0; transform: translateY(18px); }
   to { opacity: 1; transform: none; }
@@ -273,6 +289,7 @@
   }
   .v2-armed.v2-on .v2-in,
   .v2-armed.v2-on .v2-reveal,
+  .v2-img-in,
   .v2-btn::after {
     animation: none !important;
   }

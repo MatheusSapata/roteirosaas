@@ -1,13 +1,13 @@
 <template>
   <V2Section v-if="!isFull" type="photo" :background="section.backgroundColor" :anchor-id="section.anchorId">
     <figure v-if="image" class="v2-photo">
-      <img :src="image" :alt="alt" class="v2-reveal" loading="lazy" />
+      <V2Img :src="image" :alt="alt" class="v2-reveal" sizes="(max-width: 1240px) 100vw, 1240px" />
       <figcaption v-if="caption">{{ caption }}</figcaption>
     </figure>
   </V2Section>
   <V2Section v-else type="photo" :background="section.backgroundColor" :anchor-id="section.anchorId" full>
     <figure v-if="image" class="v2-photo v2-photo--full">
-      <img :src="image" :alt="alt" class="v2-reveal" loading="lazy" />
+      <V2Img :src="image" :alt="alt" class="v2-reveal" sizes="(max-width: 1240px) 100vw, 1240px" />
       <figcaption v-if="caption">{{ caption }}</figcaption>
     </figure>
   </V2Section>
@@ -18,6 +18,7 @@ import { computed } from "vue";
 import type { PhotoSection } from "../../../types/page";
 import { resolveMediaUrl } from "../../../utils/media";
 import V2Section from "./V2Section.vue";
+import V2Img from "./V2Img.vue";
 import { text } from "./useHeading";
 
 const props = defineProps<{ section: PhotoSection; previewDevice?: "desktop" | "mobile" }>();

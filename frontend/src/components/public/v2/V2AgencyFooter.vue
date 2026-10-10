@@ -2,7 +2,8 @@
   <V2Section type="agency_footer" :background="section.backgroundColor" fallback-background="#0E1A15" :anchor-id="section.anchorId" flush>
     <div class="v2-ft">
       <div class="v2-ft-cols">
-        <div v-if="description || socialLinks.length" class="v2-ft-col v2-ft-brand">
+        <div v-if="logo || description || socialLinks.length" class="v2-ft-col v2-ft-brand">
+          <img v-if="logo" :src="logo" :alt="companyName" class="v2-ft-logo" :style="{ borderRadius: `${Math.max(0, logoRadius || 0)}px` }" loading="lazy" />
           <p v-if="description" class="v2-ft-about">{{ description }}</p>
           <div v-if="socialLinks.length" class="v2-ft-social" :aria-label="copy.social">
             <a v-for="link in socialLinks" :key="link.network" :href="link.url" target="_blank" rel="noopener noreferrer" :aria-label="link.label" :title="link.label">
@@ -29,36 +30,63 @@
           <img :src="cadasturLogo" alt="Cadastur" />
           <span>{{ copy.cadastur }}</span>
         </a>
-        <p class="v2-ft-legal">{{ legalText }}</p>
+        <!-- À vista só o © com o CNPJ; o aviso de responsabilidade abre no "?". -->
+        <div class="v2-ft-legal">
+          <p class="v2-ft-copy">
+            <span>{{ copyrightLine }}</span>
+            <button
+              type="button"
+              class="v2-ft-info"
+              :class="{ 'is-open': legalOpen }"
+              :aria-expanded="legalOpen"
+              :aria-controls="legalId"
+              :aria-label="copy.legalToggle"
+              :title="copy.legalToggle"
+              @click="legalOpen = !legalOpen"
+            >?</button>
+          </p>
+          <p v-show="legalOpen" :id="legalId" class="v2-ft-note">{{ legalNote }}</p>
+        </div>
       </div>
     </div>
   </V2Section>
 </template>
 
 <script setup lang="ts">
-import { computed, inject } from "vue";
+import { computed, inject, ref } from "vue";
 import { siFacebook, siInstagram, siTiktok, siYoutube } from "simple-icons";
 import type { AgencyFooterSection } from "../../../types/page";
 import cadasturLogo from "../../../assets/cadastur-logo.png";
 import { PUBLIC_BRANDING_KEY } from "../../../utils/brandingKeys";
 import { getCurrentLanguage } from "../../../utils/i18n";
+import { resolveMediaUrl } from "../../../utils/media";
 import { normalizeWhatsappDigits } from "../../../utils/whatsapp";
 import V2Section from "./V2Section.vue";
 import { localize } from "./useHeading";
 
-const props = defineProps<{ section: AgencyFooterSection; branding?: Record<string, any>; previewDevice?: "desktop" | "mobile" }>();
+const props = defineProps<{
+  section: AgencyFooterSection;
+  branding?: Record<string, any>;
+  previewDevice?: "desktop" | "mobile";
+  /** Logo da página (Banner Inicial › Logo) e cantos dele; sem ele, o logo da agência. */
+  logoUrl?: string;
+  logoRadius?: number;
+}>();
 const copy = {
   social: localize({ pt: "Redes sociais", es: "Redes sociales" }),
   contacts: localize({ pt: "Contatos", es: "Contactos" }),
   address: localize({ pt: "Endereço", es: "Dirección" }),
   map: localize({ pt: "Abrir no Maps", es: "Abrir en Maps" }),
   mapTitle: localize({ pt: "Localização da agência", es: "Ubicación de la agencia" }),
-  cadastur: localize({ pt: "Agência cadastrada no Cadastur", es: "Agencia registrada en Cadastur" })
+  cadastur: localize({ pt: "Agência cadastrada no Cadastur", es: "Agencia registrada en Cadastur" }),
+  legalToggle: localize({ pt: "Sobre o conteúdo desta página", es: "Sobre el contenido de esta página" })
 };
 
 const year = new Date().getFullYear();
 const provided = inject(PUBLIC_BRANDING_KEY, null) as any;
 const branding = computed<Record<string, any>>(() => props.branding || (provided && "value" in provided ? provided.value : provided) || {});
+// O mesmo logo do topo da página: o do Banner Inicial (se a página trocou) ou o da agência.
+const logo = computed(() => resolveMediaUrl(props.logoUrl) || resolveMediaUrl(branding.value?.logo_url) || "");
 const profile = computed<Record<string, any>>(() => branding.value?.agency_profile || {});
 const companyName = computed(() => profile.value?.name || branding.value?.agency_name || "");
 const description = computed(() => String(profile.value?.description || "").trim());
@@ -123,15 +151,20 @@ const cadasturLink = computed(() => {
 });
 const hasCadastur = computed(() => props.section.showCadastur !== false && !!cadasturLink.value);
 // Aviso de responsabilidade: quem publica a página (a agência) responde pelo conteúdo, inclusive
-// pelo direito de uso das imagens; a plataforma só fornece a ferramenta.
-const legalText = computed(() => {
-  const name = companyName.value;
+// pelo direito de uso das imagens; a plataforma só fornece a ferramenta. Fica escondido no "?".
+const legalOpen = ref(false);
+const legalId = computed(() => `v2-ft-legal-${props.section.anchorId || "rodape"}`);
+const copyrightLine = computed(() => {
   const doc = cnpjText.value ? ` · CNPJ ${cnpjText.value}` : "";
+  const fallback = getCurrentLanguage() === "es" ? "Agencia" : "Agência";
+  return `© ${year} ${companyName.value || fallback}${doc}`;
+});
+const legalNote = computed(() => {
+  const name = companyName.value;
   const hasContacts = !!(phoneText.value || email.value);
   if (getCurrentLanguage() === "es") {
     const who = name ? name : "la agencia";
     return [
-      `© ${year} ${name || "Agencia"}${doc}.`,
       `Los textos, imágenes, precios y ofertas de esta página son publicados por ${who}, que responde por ellos con exclusividad, incluso por el derecho de uso de las imágenes.`,
       `Las dudas o reclamos deben enviarse a la agencia${hasContacts ? " por los contactos indicados" : ""}.`,
       "Roteiro Online solo ofrece la herramienta de creación de la página y no responde por el contenido publicado."
@@ -139,7 +172,6 @@ const legalText = computed(() => {
   }
   const by = name ? `por ${name}` : "pela agência";
   return [
-    `© ${year} ${name || "Agência"}${doc}.`,
     `Textos, imagens, preços e ofertas desta página são publicados ${by}, que responde por eles com exclusividade, inclusive pelo direito de uso das imagens.`,
     `Dúvidas ou contestações devem ser enviadas à agência${hasContacts ? " pelos contatos acima" : ""}.`,
     "O Roteiro Online apenas fornece a ferramenta de criação da página e não responde pelo conteúdo publicado."
@@ -176,6 +208,11 @@ const legalText = computed(() => {
 }
 .v2-ft-col a:hover {
   text-decoration: underline;
+}
+.v2-ft-logo {
+  max-height: 56px;
+  max-width: 200px;
+  object-fit: contain;
 }
 .v2-ft-about {
   max-width: 340px;
@@ -237,7 +274,7 @@ const legalText = computed(() => {
 .v2-ft-bottom {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px 24px;
   padding-top: 20px;
@@ -261,11 +298,67 @@ const legalText = computed(() => {
   width: auto;
 }
 .v2-ft-legal {
-  flex: 1 1 320px;
-  max-width: 760px;
-  margin: 0;
+  flex: 1 1 260px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  min-width: 0;
   color: var(--v2-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+/* Na altura do selo do Cadastur (46px), para os dois ficarem na mesma linha com o aviso aberto. */
+.v2-ft-copy {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px 8px;
+  min-height: 46px;
+  margin: 0;
+}
+.v2-ft-info {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  flex: none;
+  padding: 0;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: 700 12px/1 inherit;
+  cursor: pointer;
+  opacity: 0.85;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.v2-ft-info:hover,
+.v2-ft-info.is-open {
+  border-color: var(--v2-ink);
+  background: var(--v2-ink);
+  color: var(--v2-bg);
+  opacity: 1;
+}
+.v2-ft-note {
+  max-width: 520px;
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--v2-card);
   font-size: 12px;
   line-height: 1.6;
+  text-align: left;
+}
+/* Celular: o © e o aviso ficam à esquerda, embaixo do selo do Cadastur. */
+@container (max-width: 560px) {
+  .v2-ft-legal {
+    align-items: flex-start;
+  }
+  .v2-ft-copy {
+    justify-content: flex-start;
+    min-height: 0;
+  }
 }
 </style>

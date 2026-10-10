@@ -16,6 +16,7 @@ from app.services.background_removal import (
     MAX_IMAGE_BYTES,
     remove_image_background,
 )
+from app.services.image_optimizer import optimize_image
 from app.services.media_storage import media_storage
 
 router = APIRouter()
@@ -31,12 +32,17 @@ def ensure_agency_member(db: Session, agency_id: int, user_id: int) -> None:
 async def upload_media(
     agency_id: int,
     file: UploadFile = File(...),
+    optimize: bool = Query(True, description="Gera as versões leves em WebP (falso para favicon)."),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> MediaAssetOut:
     ensure_agency_member(db, agency_id, current_user.id)
     file_bytes = await file.read()
-    url = media_storage.save(file_bytes, file.filename or "upload", getattr(file, "content_type", None))
+    variants = await run_in_threadpool(optimize_image, file_bytes) if optimize else None
+    if variants:
+        url = await run_in_threadpool(media_storage.save_image_variants, variants)
+    else:
+        url = media_storage.save(file_bytes, file.filename or "upload", getattr(file, "content_type", None))
     asset = MediaAsset(agency_id=agency_id, url=url, type="image", original_file_name=file.filename)
     db.add(asset)
     db.commit()

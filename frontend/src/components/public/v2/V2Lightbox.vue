@@ -25,7 +25,7 @@
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowfullscreen
           ></iframe>
-          <img v-else :key="current.url" class="v2-lb-img" :src="current.url" :alt="`${copy.photo} ${index + 1}`" />
+          <V2Img v-else :key="current.url" class="v2-lb-img" :src="current.url" :alt="`${copy.photo} ${index + 1}`" loading="eager" />
         </div>
         <template v-if="items.length > 1">
           <button type="button" class="v2-lb-nav is-prev" :aria-label="copy.prev" @click="go(index - 1)">
@@ -47,6 +47,7 @@
  */
 import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 import { localize } from "./useHeading";
+import V2Img from "./V2Img.vue";
 
 export interface V2LightboxItem {
   type: "image" | "video";

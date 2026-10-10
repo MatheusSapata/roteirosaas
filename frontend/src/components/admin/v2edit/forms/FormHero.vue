@@ -52,6 +52,17 @@
           :hint="logoHint"
           @update:model-value="patch({ logoUrl: $event || '' })"
         />
+        <EdSeg
+          v-if="!hasHeader"
+          :model-value="logoPosition"
+          label="Posição"
+          :options="[
+            { value: 'top', label: 'No topo' },
+            { value: 'content', label: 'Junto ao conteúdo' }
+          ]"
+          hint="Padrão: no topo quando há destaques; junto ao conteúdo quando não há."
+          @update:model-value="patch({ logoPosition: $event })"
+        />
         <EdRange v-if="!hasHeader" :model-value="modelValue.logoSize ?? 64" label="Tamanho" :min="32" :max="160" :step="4" unit="px" @update:model-value="patch({ logoSize: $event })" />
         <EdSeg
           :model-value="logoCorners"
@@ -158,4 +169,6 @@ const setChips = (next: { text: string; icon: string }[]) =>
     chips: next.map((chip, index) => writeText(props.modelValue.chips?.[index], chip.text)),
     chipIcons: next.map(chip => chip.icon)
   });
+// Sem escolha salva, mostra o padrão da capa: no topo com destaques, junto ao conteúdo sem eles.
+const logoPosition = computed(() => props.modelValue.logoPosition || (chips.value.some(chip => chip.text.trim()) ? "top" : "content"));
 </script>
