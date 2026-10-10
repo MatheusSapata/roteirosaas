@@ -11,7 +11,7 @@
         :aria-label="copy.logo"
         @click="handleLogoClick"
       >
-        <img v-if="logo" :src="logo" :alt="agencyName || copy.logo" :style="logoStyle" />
+        <img v-if="logo" :src="logo" :alt="agencyName || copy.logo" :style="logoStyle" :srcset="responsiveSrcset(logo) || undefined" :sizes="responsiveSrcset(logo) ? '320px' : undefined" fetchpriority="high" decoding="async" />
         <span v-else class="v2-hd-name">{{ agencyName || "Roteiro" }}</span>
       </a>
       <nav class="v2-hd-nav" :class="{ open: menuOpen }" :aria-label="copy.nav">
@@ -53,7 +53,7 @@
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { siFacebook, siInstagram, siLinkedin, siTiktok, siYoutube } from "simple-icons";
 import type { HeaderLinkItem, HeaderSection } from "../../../types/page";
-import { resolveMediaUrl } from "../../../utils/media";
+import { resolveMediaUrl, responsiveSrcset } from "../../../utils/media";
 import { usePageDesignContext } from "./designContext";
 import { computeSectionTone, toneVars } from "./useSectionTone";
 import { localize, text } from "./useHeading";

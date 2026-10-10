@@ -1,13 +1,16 @@
 import { defineAsyncComponent, type Component } from "vue";
 import type { SectionType } from "../../../types/page";
 import type { PageDesign } from "../../../utils/pageDesign";
+// Menu do topo e Banner Inicial abrem a página: vêm junto com ela, sem esperar outro download.
+import V2Header from "./V2Header.vue";
+import V2Hero from "./V2Hero.vue";
 
 /**
  * Seções que já têm visual novo. As que ainda não estão aqui continuam com o
  * componente antigo mesmo em páginas no visual novo.
  */
 export const v2Components: Partial<Record<SectionType, Component>> = {
-  hero: defineAsyncComponent(() => import("./V2Hero.vue")),
+  hero: V2Hero,
   countdown: defineAsyncComponent(() => import("./V2Countdown.vue")),
   story: defineAsyncComponent(() => import("./V2Story.vue")),
   reasons: defineAsyncComponent(() => import("./V2Reasons.vue")),
@@ -19,7 +22,7 @@ export const v2Components: Partial<Record<SectionType, Component>> = {
   faq: defineAsyncComponent(() => import("./V2Faq.vue")),
   links: defineAsyncComponent(() => import("./V2Links.vue")),
   cta: defineAsyncComponent(() => import("./V2Cta.vue")),
-  header: defineAsyncComponent(() => import("./V2Header.vue")),
+  header: V2Header,
   banner_card: defineAsyncComponent(() => import("./V2BannerCard.vue")),
   featured_video: defineAsyncComponent(() => import("./V2FeaturedVideo.vue")),
   video_vsl: defineAsyncComponent(() => import("./V2VideoVsl.vue")),

@@ -51,32 +51,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, provide, ref, watch } from "vue";
+import { computed, defineAsyncComponent, onMounted, onUnmounted, provide, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import api from "../../services/api";
 import platformApi from "../../services/platformApi";
-import PublicHeroSection from "../../components/public/PublicHeroSection.vue";
-import PublicHeaderSection from "../../components/public/PublicHeaderSection.vue";
-import PublicBannerCardSection from "../../components/public/PublicBannerCardSection.vue";
-import PublicPricesSection from "../../components/public/PublicPricesSection.vue";
-import PublicItinerarySection from "../../components/public/PublicItinerarySection.vue";
-import PublicFaqSection from "../../components/public/PublicFaqSection.vue";
-import PublicTestimonialsSection from "../../components/public/PublicTestimonialsSection.vue";
-import PublicFeaturedVideoSection from "../../components/public/PublicFeaturedVideoSection.vue";
-import PublicVideoVslSection from "../../components/public/PublicVideoVslSection.vue";
-import PublicCtaSection from "../../components/public/PublicCtaSection.vue";
-import PublicStorySection from "../../components/public/PublicStorySection.vue";
-import PublicReasonsSection from "../../components/public/PublicReasonsSection.vue";
-import PublicLinksSection from "../../components/public/PublicLinksSection.vue";
-import PublicCountdownSection from "../../components/public/PublicCountdownSection.vue";
 import PublicFreeFooterBrandSection from "../../components/public/PublicFreeFooterBrandSection.vue";
-import PublicAgencyFooterSection from "../../components/public/PublicAgencyFooterSection.vue";
-import PublicFlightDetailsSection from "../../components/public/PublicFlightDetailsSection.vue";
-import PublicLeadCaptureModal from "../../components/public/PublicLeadCaptureModal.vue";
-import PublicPhotoSection from "../../components/public/PublicPhotoSection.vue";
-import PublicBiographySection from "../../components/public/PublicBiographySection.vue";
-import PublicViajeonCheckoutSection from "../../components/public/PublicViajeonCheckoutSection.vue";
-import PublicInternalFormSection from "../../components/public/PublicInternalFormSection.vue";
 import type { HeroSection, PageConfig, PageSection, SectionType, ThemeConfig } from "../../types/page";
 import { resolvePageDesign } from "../../utils/pageDesign";
 import { pickSectionComponent, v2Components } from "../../components/public/v2/registry";
@@ -88,6 +67,30 @@ import BrandFavicon from "../../assets/Favicon.png";
 import { resolveMediaUrl } from "../../utils/media";
 import { fetchPublicLeadForm } from "../../services/leadCapture";
 import { createLocalizer, getCurrentLanguage, getLocalizedValue, type LocalizedString } from "../../utils/i18n";
+
+// Seções do visual antigo e o modal de captura: baixadas só quando a página usa. Assim o
+// visitante de uma página no visual novo não baixa as duas versões de cada seção.
+const PublicHeroSection = defineAsyncComponent(() => import("../../components/public/PublicHeroSection.vue"));
+const PublicHeaderSection = defineAsyncComponent(() => import("../../components/public/PublicHeaderSection.vue"));
+const PublicBannerCardSection = defineAsyncComponent(() => import("../../components/public/PublicBannerCardSection.vue"));
+const PublicPricesSection = defineAsyncComponent(() => import("../../components/public/PublicPricesSection.vue"));
+const PublicItinerarySection = defineAsyncComponent(() => import("../../components/public/PublicItinerarySection.vue"));
+const PublicFaqSection = defineAsyncComponent(() => import("../../components/public/PublicFaqSection.vue"));
+const PublicTestimonialsSection = defineAsyncComponent(() => import("../../components/public/PublicTestimonialsSection.vue"));
+const PublicFeaturedVideoSection = defineAsyncComponent(() => import("../../components/public/PublicFeaturedVideoSection.vue"));
+const PublicVideoVslSection = defineAsyncComponent(() => import("../../components/public/PublicVideoVslSection.vue"));
+const PublicCtaSection = defineAsyncComponent(() => import("../../components/public/PublicCtaSection.vue"));
+const PublicStorySection = defineAsyncComponent(() => import("../../components/public/PublicStorySection.vue"));
+const PublicReasonsSection = defineAsyncComponent(() => import("../../components/public/PublicReasonsSection.vue"));
+const PublicLinksSection = defineAsyncComponent(() => import("../../components/public/PublicLinksSection.vue"));
+const PublicCountdownSection = defineAsyncComponent(() => import("../../components/public/PublicCountdownSection.vue"));
+const PublicAgencyFooterSection = defineAsyncComponent(() => import("../../components/public/PublicAgencyFooterSection.vue"));
+const PublicFlightDetailsSection = defineAsyncComponent(() => import("../../components/public/PublicFlightDetailsSection.vue"));
+const PublicLeadCaptureModal = defineAsyncComponent(() => import("../../components/public/PublicLeadCaptureModal.vue"));
+const PublicPhotoSection = defineAsyncComponent(() => import("../../components/public/PublicPhotoSection.vue"));
+const PublicBiographySection = defineAsyncComponent(() => import("../../components/public/PublicBiographySection.vue"));
+const PublicViajeonCheckoutSection = defineAsyncComponent(() => import("../../components/public/PublicViajeonCheckoutSection.vue"));
+const PublicInternalFormSection = defineAsyncComponent(() => import("../../components/public/PublicInternalFormSection.vue"));
 
 interface PublicPageResponse {
   id: number;
@@ -447,6 +450,22 @@ const resolveParam = (value: string | string[] | undefined) => {
   return value;
 };
 
+// O servidor já manda no HTML a mesma resposta da API pública (com as regras do plano da
+// agência). Vale só uma vez e só para o endereço aberto; depois a página busca na API.
+const takeEmbeddedPageData = (): PublicPageResponse | null => {
+  if (typeof document === "undefined") return null;
+  const element = document.getElementById("ro-page-data");
+  if (!element) return null;
+  element.remove();
+  try {
+    const parsed = JSON.parse(element.textContent || "");
+    const normalize = (path: string) => decodeURIComponent(path).replace(/\/+$/, "").toLowerCase();
+    return parsed?.page && normalize(String(parsed.path || "")) === normalize(window.location.pathname) ? parsed.page : null;
+  } catch {
+    return null;
+  }
+};
+
 const loadPage = async () => {
   unlockedVslIndexes.value = new Set<number>();
   vslNavigationActivated.value = false;
@@ -476,10 +495,10 @@ const loadPage = async () => {
   })();
 
   try {
-    const res = await api.get<PublicPageResponse>(endpoint);
-    pageData.value = res.data;
-    pageId.value = res.data.id;
-    const configJson = typeof res.data.config === "string" ? res.data.config : JSON.stringify(res.data.config);
+    const data = takeEmbeddedPageData() ?? (await api.get<PublicPageResponse>(endpoint)).data;
+    pageData.value = data;
+    pageId.value = data.id;
+    const configJson = typeof data.config === "string" ? data.config : JSON.stringify(data.config);
     const parsed = JSON.parse(configJson) as PageConfig;
     theme.value = { ...theme.value, ...(parsed.theme || {}) };
     pageConfigDesign.value = parsed.design;
@@ -638,45 +657,59 @@ function applyBackgrounds(list: PageSection[]): PageSection[] {
   });
 }
 
+// Os scripts do Facebook e do Google (~90 KB, ~800 KB de código) baixam depois que a página
+// terminou de carregar, sem disputar com a foto do banner. A fila de eventos já existe desde
+// o início: PageView, clique no botão e lead entram nela e são enviados quando o script chega.
+const injectedTrackers = new Set<string>();
+const afterPageLoad = (run: () => void) => {
+  if (document.readyState === "complete") window.setTimeout(run, 0);
+  else window.addEventListener("load", () => window.setTimeout(run, 0), { once: true });
+};
+const loadScriptLater = (src: string) =>
+  afterPageLoad(() => {
+    const script = document.createElement("script");
+    script.async = true;
+    script.src = src;
+    document.head.appendChild(script);
+  });
+
 function injectMetaPixel(id: string, sendPageView = true) {
-  if (document.getElementById("meta-pixel-" + id)) return;
-  const script = document.createElement("script");
-  script.id = "meta-pixel-" + id;
-  script.innerHTML = `
-    !function(f,b,e,v,n,t,s)
-    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-    n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-    if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-    n.queue=[];t=b.createElement(e);t.async=!0;
-    t.src=v;s=b.getElementsByTagName(e)[0];
-    s.parentNode.insertBefore(t,s)}(window, document,'script',
-    'https://connect.facebook.net/en_US/fbevents.js');
-    fbq('init', '${id}');
-    ${sendPageView ? "fbq('track', 'PageView');" : ""}
-  `;
-  document.head.appendChild(script);
-  const noscript = document.createElement("noscript");
-  if (sendPageView) {
-    noscript.innerHTML = `<img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=${id}&ev=PageView&noscript=1"/>`;
+  if (injectedTrackers.has("meta-" + id)) return;
+  injectedTrackers.add("meta-" + id);
+  const w = window as any;
+  if (!w.fbq) {
+    // Mesmo papel do snippet oficial: fbq guarda as chamadas até o fbevents.js chegar.
+    const fbq: any = function (...args: unknown[]) {
+      if (fbq.callMethod) fbq.callMethod(...args);
+      else fbq.queue.push(args);
+    };
+    fbq.push = fbq;
+    fbq.loaded = true;
+    fbq.version = "2.0";
+    fbq.queue = [];
+    w.fbq = fbq;
+    if (!w._fbq) w._fbq = fbq;
+    loadScriptLater("https://connect.facebook.net/en_US/fbevents.js");
   }
-  document.head.appendChild(noscript);
+  w.fbq("init", id);
+  if (sendPageView) w.fbq("track", "PageView");
 }
 
 function injectGa(measurementId: string, sendPageView = true) {
-  if (document.getElementById("ga-measure-" + measurementId)) return;
-  const gtagScript = document.createElement("script");
-  gtagScript.async = true;
-  gtagScript.id = "ga-measure-" + measurementId;
-  gtagScript.src = `https://www.googletagmanager.com/gtag/js?id=${measurementId}`;
-  document.head.appendChild(gtagScript);
-  const script = document.createElement("script");
-  script.innerHTML = `
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', '${measurementId}', { send_page_view: ${sendPageView ? "true" : "false"} });
-  `;
-  document.head.appendChild(script);
+  if (injectedTrackers.has("ga-" + measurementId)) return;
+  injectedTrackers.add("ga-" + measurementId);
+  const w = window as any;
+  w.dataLayer = w.dataLayer || [];
+  if (!w.gtag) {
+    // O gtag.js exige o objeto `arguments` (não um array) em cada item da fila.
+    w.gtag = function () {
+      // eslint-disable-next-line prefer-rest-params
+      w.dataLayer.push(arguments);
+    };
+  }
+  w.gtag("js", new Date());
+  w.gtag("config", measurementId, { send_page_view: sendPageView });
+  loadScriptLater(`https://www.googletagmanager.com/gtag/js?id=${measurementId}`);
 }
 
 function setupCtaTracking(pixels: { type: string; value: string }[]) {

@@ -21,7 +21,10 @@
     <link rel="icon" type="image/png" href="/src/assets/Favicon.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@500;600;700;800&display=swap" rel="stylesheet" />
+    <!-- Fontes sem travar a primeira pintura: o CSS do Google chega em paralelo e as letras
+         trocam sozinhas (display=swap). As do visual novo das páginas entram pelo servidor. -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@500;600;700;800&display=swap" rel="stylesheet" /></noscript>
     <script>
       (function () {
         var hostname = window.location.hostname.toLowerCase();
