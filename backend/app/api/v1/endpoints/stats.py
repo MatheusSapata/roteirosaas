@@ -176,6 +176,15 @@ def stats_overview(
         leads_query = leads_query.filter(LeadFormSubmission.page_id == page_id)
 
     leads_rows = leads_query.group_by(func.date(LeadFormSubmission.created_at)).all()
+    total_leads = sum(int(row.leads or 0) for row in leads_rows)
+    prev_leads_query = db.query(func.count(LeadFormSubmission.id)).filter(
+        LeadFormSubmission.agency_id == agency_id,
+        LeadFormSubmission.created_at >= prev_since,
+        LeadFormSubmission.created_at < since,
+    )
+    if page_id is not None:
+        prev_leads_query = prev_leads_query.filter(LeadFormSubmission.page_id == page_id)
+    prev_leads = int(prev_leads_query.scalar() or 0)
     for row in leads_rows:
         day = row.day
         if day not in series_map:
@@ -199,12 +208,14 @@ def stats_overview(
         visits=percentage_change(totals["visits"], prev_totals["visits"]),
         whatsapp=percentage_change(totals["whatsapp"], prev_totals["whatsapp"]),
         clicks=percentage_change(total_clicks, prev_clicks),
+        leads=percentage_change(total_leads, prev_leads),
     )
 
     return StatsOverviewOut(
         visits=totals["visits"],
         whatsapp=totals["whatsapp"],
         cta=totals["cta"],
+        leads=total_leads,
         trend=trend,
         timeseries=timeseries,
     )
@@ -213,10 +224,12 @@ def stats_overview(
 @router.get("/pages", response_model=list[PageStatsSummaryOut])
 def stats_per_page(
     agency_id: int = Query(...),
+    days: int | None = Query(None, ge=1, le=90, description="Só os últimos N dias (sem ele, todo o histórico)."),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ) -> list[PageStatsSummaryOut]:
     ensure_agency_member(db, agency_id, current_user.id)
+    since = date.today() - timedelta(days=days - 1) if days else None
     page_rows = db.query(Page.id).filter(Page.agency_id == agency_id).all()
     page_ids = [row.id for row in page_rows]
     if not page_ids:
@@ -229,7 +242,7 @@ def stats_per_page(
             func.coalesce(func.sum(PageVisitStats.clicks_cta), 0).label("clicks_cta"),
             func.coalesce(func.sum(PageVisitStats.clicks_whatsapp), 0).label("clicks_whatsapp"),
         )
-        .filter(PageVisitStats.page_id.in_(page_ids))
+        .filter(PageVisitStats.page_id.in_(page_ids), *([PageVisitStats.date >= since] if since else []))
         .group_by(PageVisitStats.page_id)
         .all()
     )
@@ -243,6 +256,7 @@ def stats_per_page(
         .filter(
             LeadFormSubmission.agency_id == agency_id,
             LeadFormSubmission.page_id.isnot(None),
+            *([LeadFormSubmission.created_at >= since] if since else []),
         )
         .group_by(LeadFormSubmission.page_id)
         .all()
