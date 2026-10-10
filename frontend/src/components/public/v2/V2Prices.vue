@@ -14,7 +14,7 @@
         <div class="v2-price-side">
           <div class="v2-price-value">
             <span v-if="item.priceLabel" class="v2-price-from">{{ item.priceLabel }}</span>
-            <b>{{ item.price }}</b>
+            <b v-if="item.price">{{ item.price }}</b>
             <span v-if="item.description" class="v2-price-terms">{{ item.description }}</span>
           </div>
           <a v-if="item.href" class="v2-btn v2-price-btn" :title="item.ctaLabel" v-bind="item.attrs">
@@ -75,7 +75,8 @@ const items = computed(() =>
       priceLabel: text(item.priceLabel),
       badge: text(item.badge),
       highlight: !!item.highlight,
-      price: formatPrice(Number(item.price) || 0, (item.currency as CurrencyCode) || "BRL"),
+      // Plano sem valor ("Sob consulta"): mostra só as condições, nunca "R$ 0,00".
+      price: Number(item.price) > 0 ? formatPrice(Number(item.price), (item.currency as CurrencyCode) || "BRL") : "",
       ctaLabel: text(item.ctaLabel) || text(props.section.ctaLabel) || localize({ pt: "Reservar", es: "Reservar" }),
       href,
       attrs: {

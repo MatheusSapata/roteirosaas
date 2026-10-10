@@ -1,8 +1,11 @@
 <template>
-  <PublicViajeonCheckoutSection :section="themed" />
+  <V2Reveal>
+    <PublicViajeonCheckoutSection :section="themed" />
+  </V2Reveal>
 </template>
 
 <script setup lang="ts">
+import V2Reveal from "./V2Reveal.vue";
 // Raiz = componente atual: props extras (pageId, platformHost…) e eventos passam direto.
 import { computed } from "vue";
 import type { ViajeonCheckoutSection } from "../../../types/page";

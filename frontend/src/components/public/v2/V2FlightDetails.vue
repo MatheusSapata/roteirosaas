@@ -1,8 +1,11 @@
 <template>
-  <PublicFlightDetailsSection :section="themed" :preview-device="previewDevice" />
+  <V2Reveal>
+    <PublicFlightDetailsSection :section="themed" :preview-device="previewDevice" />
+  </V2Reveal>
 </template>
 
 <script setup lang="ts">
+import V2Reveal from "./V2Reveal.vue";
 // Raiz = componente atual: props extras (pageId, platformHost…) e eventos passam direto.
 import { computed } from "vue";
 import type { FlightDetailsSection } from "../../../types/page";

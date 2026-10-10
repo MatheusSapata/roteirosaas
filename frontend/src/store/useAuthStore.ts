@@ -226,8 +226,12 @@ export const useAuthStore = defineStore("auth", () => {
         }
 
         if (status === 401) {
+          // Só as telas do painel levam ao login. Num roteiro público (ou durante a abertura da
+          // página), uma sessão antiga recusada é apenas apagada e a página abre normalmente:
+          // antes, quem tinha uma sessão vencida no celular via o login no lugar do roteiro.
           const current = router.currentRoute.value;
-          if (current.name !== "login") {
+          const onPrivateRoute = current.path.startsWith("/admin") || current.matched.some(record => record.meta?.requiresAuth);
+          if (current.name !== "login" && onPrivateRoute) {
             router.push({ name: "login", query: { redirect: current.fullPath } }).catch(() => {});
           }
         }

@@ -1,14 +1,14 @@
 <template>
-  <section class="v2-sec v2-vsl w-full" :style="sectionStyle" :id="section.anchorId || undefined" data-video-vsl>
+  <section ref="entryRoot" class="v2-sec v2-vsl w-full" :class="{ 'v2-armed': entryArmed, 'v2-on': entryShown }" :style="sectionStyle" :id="section.anchorId || undefined" data-video-vsl>
     <div v-if="backgroundImage" class="vsl-background" :style="backgroundStyle"></div>
     <div class="relative z-[1] mx-auto w-full max-w-5xl px-6 text-center" :class="previewDevice ? 'py-16' : 'pb-16 pt-8'">
-      <div v-if="section.logoEnabled !== false && resolvedLogo" class="mb-4 flex justify-center">
+      <div v-if="section.logoEnabled !== false && resolvedLogo" class="v2-in mb-4 flex justify-center">
         <img :src="resolvedLogo" :alt="title" class="vsl-brand-logo" :style="logoStyle" />
       </div>
-      <h2 v-if="title" class="v2-title" :style="[{ color: primaryText }, titleScaleStyle(title)]">{{ title }}</h2>
-      <div v-if="subtitleHtml" class="v2-lead mt-3" :style="{ color: mutedText }" v-html="subtitleHtml"></div>
+      <h2 v-if="title" class="v2-title v2-in v2-d1" :style="[{ color: primaryText }, titleScaleStyle(title)]">{{ title }}</h2>
+      <div v-if="subtitleHtml" class="v2-lead v2-in v2-d2 mt-3" :style="{ color: mutedText }" v-html="subtitleHtml"></div>
 
-      <div v-if="playerUrl" class="group mx-auto mt-8 w-full overflow-hidden rounded-[24px] shadow-2xl" :class="[videoContainerClass, { 'control-auto-hidden': controlAutoHidden }]" @mouseenter="showPlayerControl" @mouseleave="hidePlayerControl" @click="handlePlayerAreaClick">
+      <div v-if="playerUrl" class="v2-in v2-d3 group mx-auto mt-8 w-full overflow-hidden rounded-[24px] shadow-2xl" :class="[videoContainerClass, { 'control-auto-hidden': controlAutoHidden }]" @mouseenter="showPlayerControl" @mouseleave="hidePlayerControl" @click="handlePlayerAreaClick">
         <div class="relative" :style="{ aspectRatio: videoAspectRatioCss }">
           <iframe ref="iframeRef" class="pointer-events-none absolute inset-0 h-full w-full" :src="playerUrl" :title="title" frameborder="0" tabindex="-1"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
@@ -47,6 +47,7 @@ import { normalizeExternalLink } from "../../../utils/links";
 import { extractYoutubeId, normalizeYoutubePlayerUrl } from "../../../utils/video";
 import { resolveMediaUrl } from "../../../utils/media";
 import { usePageDesignContext } from "./designContext";
+import { useEntrance } from "./useEntrance";
 import { computeSectionTone, toneVars } from "./useSectionTone";
 import V2Img from "./V2Img.vue";
 import "./v2.css";
@@ -74,6 +75,9 @@ const sectionStyle = computed(() => ({
   paddingTop: !props.previewDevice && !props.replaceHeadingWithLogo ? "var(--vsl-header-clearance)" : undefined
 }));
 const iframeRef = ref<HTMLIFrameElement | null>(null);
+// Entrada animada: título, texto e vídeo sobem em sequência quando a seção aparece.
+const entryRoot = ref<HTMLElement | null>(null);
+const { armed: entryArmed, shown: entryShown } = useEntrance(entryRoot);
 const unlocked = ref(false);
 const isPlaying = ref(false);
 const currentTime = ref(0);

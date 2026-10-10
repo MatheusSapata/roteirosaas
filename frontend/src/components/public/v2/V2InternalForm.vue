@@ -1,8 +1,11 @@
 <template>
-  <PublicInternalFormSection :section="themed" />
+  <V2Reveal>
+    <PublicInternalFormSection :section="themed" />
+  </V2Reveal>
 </template>
 
 <script setup lang="ts">
+import V2Reveal from "./V2Reveal.vue";
 // Raiz = componente atual: props extras (pageId, platformHost…) e eventos passam direto.
 import { computed } from "vue";
 import type { InternalFormSection } from "../../../types/page";

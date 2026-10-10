@@ -24,7 +24,10 @@ def test_campos_do_jordao_structure_preserves_fields_items_and_all_days():
     assert "Sugestão de imagem" not in story["subtitle"]
     assert reasons["title"] == "Seu pacote inclui"
     assert reasons["subtitle"] == "Aproveite cada momento com tranquilidade"
-    assert reasons["items"] == [
+    assert [item["icon"] for item in reasons["items"]] == [
+        "icon:bus", "icon:bed", "icon:utensils", "icon:camera", "icon:wine", "icon:user-check",
+    ]
+    assert [{key: item[key] for key in ("title", "description")} for item in reasons["items"]] == [
         {"title": "Transporte ida e volta", "description": "Ônibus confortável com paradas programadas"},
         {"title": "Hospedagem", "description": "Hotel selecionado em Campos do Jordão"},
         {"title": "Refeições", "description": "Café da manhã, almoços e jantares inclusos conforme roteiro"},
@@ -134,8 +137,8 @@ def test_unknown_section_does_not_discard_valid_sections_and_items_are_complete(
     reasons = config["sections"][2]
     assert reasons["headingLabel"] == "Incluso"
     assert reasons["items"] == [
-        {"title": "Hotel", "description": "Três noites", "icon": "🏨"},
-        {"title": "Transporte", "description": "Ida e volta"},
+        {"title": "Hotel", "description": "Três noites", "icon": "icon:hotel"},
+        {"title": "Transporte", "description": "Ida e volta", "icon": "icon:bus"},
     ]
 
 
@@ -177,7 +180,7 @@ def test_generated_structure_replaces_sections_preserves_config_and_fills_images
     assert story["images"] == [AI_IMAGE_PLACEHOLDER]
     assert photo["image"] == biography["image"] == AI_IMAGE_PLACEHOLDER
     assert itinerary["days"][0]["image"] == AI_IMAGE_PLACEHOLDER
-    assert testimonials["items"][0]["avatar"] == AI_IMAGE_PLACEHOLDER
+    assert "avatar" not in testimonials["items"][0]
     anchors = [s["anchorId"] for s in config["sections"]]
     assert len(set(anchors)) == len(anchors)
 
@@ -399,3 +402,176 @@ def test_banner_reads_trip_dates_only_with_year() -> None:
         "🟩 SEÇÃO: BANNER\nTítulo: Santiago\nData de saída: 31/10\n---"
     ))
     assert "departureDate" not in config["sections"][0]
+
+
+def test_prices_with_prompt_labels_split_plans_and_never_show_raw_labels() -> None:
+    # Resposta no formato do prompt do superadmin, que quebrava o card ("Nome do plano ou
+    # pacote: ..." e "Diferenciais ou observação do plano: ..." apareciam como texto).
+    config, _ = build_page_base_config_from_reply(reply_with(
+        "🟩 SEÇÃO: PREÇOS\n"
+        "- Função da seção: apresentar os valores.\n"
+        "- Conteúdo:\n"
+        "  - Título da seção: Escolha como embarcar\n"
+        "  - Etiqueta: Investimento\n"
+        "  - Nome do plano ou pacote: Adulto\n"
+        "  - Valor: R$ 299,00\n"
+        "  - Diferenciais ou observação do plano: Inclui todos os benefícios do Expresso Chocolate\n"
+        "  - Nome do plano ou pacote: Criança (6 a 12 anos)\n"
+        "  - Valor: R$ 199\n"
+        "  - Diferenciais ou observação do plano: Válido para crianças acompanhadas de adulto pagante\n"
+        "  - Nome do plano ou pacote: Criança até 5 anos (no colo)\n"
+        "  - Valor: R$ 25\n"
+        "  - Diferenciais ou observação do plano: Vaga no colo, sem assento reservado\n"
+        "  - Consulte disponibilidade, formas de pagamento e condições vigentes."
+    ))
+    prices = config["sections"][0]
+    assert prices["title"] == "Escolha como embarcar"
+    assert prices["headingLabel"] == "Investimento"
+    assert [(item["title"], item["price"], item["description"]) for item in prices["items"]] == [
+        ("Adulto", 299.0, "Inclui todos os benefícios do Expresso Chocolate"),
+        ("Criança (6 a 12 anos)", 199.0, "Válido para crianças acompanhadas de adulto pagante"),
+        ("Criança até 5 anos (no colo)", 25.0, "Vaga no colo, sem assento reservado"),
+    ]
+    assert prices["description"] == "Consulte disponibilidade, formas de pagamento e condições vigentes."
+    assert prices["layout"] == "cards"
+
+
+def test_prices_contract_fields_badge_highlight_and_label_before_value() -> None:
+    config, _ = build_page_base_config_from_reply(reply_with(
+        "🟩 SEÇÃO: PREÇOS\nTítulo: Pacotes\n"
+        "Plano: Quarto duplo\nSelo: Mais vendido\nDestaque: sim\nAntes do valor: A partir de\n"
+        "Valor: R$ 2.490,00 por pessoa\nParcelamento: em até 10x sem juros\n"
+        "Plano: Quarto individual\nValor: Sob consulta\n"
+        "Observação geral: Valores sujeitos à disponibilidade.\nFormas de pagamento: Pix e cartão"
+    ))
+    prices = config["sections"][0]
+    double, single = prices["items"]
+    assert double["badge"] == "Mais vendido" and double["highlight"] is True
+    assert double["priceLabel"] == "A partir de" and double["price"] == 2490.0
+    assert double["description"] == "por pessoa\nem até 10x sem juros"
+    assert single["price"] == 0 and single["description"] == "Sob consulta"
+    assert "badge" not in single and "highlight" not in single
+    assert prices["description"] == "Valores sujeitos à disponibilidade."
+    assert prices["paymentMethods"] == ["pix", "cartao"]
+
+
+def test_other_sections_read_prompt_labels() -> None:
+    config, _ = build_page_base_config_from_reply(reply_with(
+        "🟩 SEÇÃO: DEPOIMENTOS\nEtiqueta: Quem foi\nTítulo: O que dizem\n"
+        "Nome: Ana\nIdentificação complementar: Viajou em 2025\nAvaliação: 5\nDepoimento: \"Tudo perfeito.\"",
+        "🟩 SEÇÃO: CONTADOR\nEtiqueta: Lote promocional\nTítulo: Termina em\nData e horário: 20/12/2026 18:00",
+        "🟩 SEÇÃO: FOTO DESTACADA\nTítulo: Pôr do sol na Duna\nTipo de layout: largura total\nSugestão de imagem: duna",
+        "🟩 SEÇÃO: VÍDEO EM DESTAQUE\nTítulo: Veja\nLink ou referência do vídeo: inserir link do YouTube",
+        "🟩 SEÇÃO: DESCRITIVO\nEtiqueta: Experiência\nTítulo: Viva\nTexto descritivo: Um texto longo.",
+        "🟩 SEÇÃO: CHAMADA PARA AÇÃO\nEtiqueta: Vagas\nTítulo: Garanta\nDescrição: Fale com a gente.\nBotão: Quero ir",
+        "🟩 SEÇÃO: BANNER\nTítulo: Jalapão\nDestaques:\n- Hospedagem em pousada\n- Guia credenciado\n- Saída em julho\n- Grupo pequeno",
+    ))
+    testimonials, countdown, photo, video, story, cta, hero = config["sections"]
+    assert testimonials["items"] == [{"name": "Ana", "role": "Viajou em 2025", "text": "Tudo perfeito."}]
+    assert testimonials["title"] == "O que dizem" and testimonials["headingLabel"] == "Quem foi"
+    assert countdown["label"] == "Termina em" and countdown["headingLabel"] == "Lote promocional"
+    assert countdown["targetDate"] == "2026-12-20T21:00:00Z"
+    assert photo["caption"] == "Pôr do sol na Duna" and photo["layout"] == "full"
+    assert video["videoUrl"] == ""
+    assert story["subtitle"] == "Um texto longo." and story["badge"] == "Experiência"
+    assert cta["label"] == "Garanta" and cta["description"] == "Fale com a gente." and cta["headingLabel"] == "Vagas"
+    assert hero["chipIcons"] == ["icon:bed", "icon:user-check", "icon:calendar-days", "icon:users"]
+
+
+def test_full_reply_in_platform_contract_format() -> None:
+    from app.services.ai_assistant import PLATFORM_FORMAT_CONTRACT, load_system_prompt  # noqa: F401
+
+    text = """ESTRUTURA SUGERIDA PARA A PÁGINA
+Tipo de página: Excursão rodoviária
+Objetivo da página: Vender as vagas
+Público predominante: Famílias
+
+🟩 SEÇÃO: BANNER
+Função da seção: impacto
+Título: Natal Luz em Gramado
+Subtítulo: Quatro dias de luzes e chocolate na Serra Gaúcha.
+Destaques:
+- Ônibus leito
+- Hotel com café da manhã
+- Guia acompanhante
+Data de saída: 12/12/2026
+Data de volta: 15/12/2026
+Botão: Quero minha vaga
+Sugestão de imagem: Rua Coberta iluminada
+
+🟩 SEÇÃO: ITENS
+Função da seção: inclusos
+Etiqueta: Incluso
+Título: Tudo pensado para você
+Subtítulo: Só aproveitar
+Item: Ônibus leito
+Descrição: Ida e volta com conforto
+Ícone: bus
+Item: Café da manhã
+Descrição: Todos os dias no hotel
+Ícone: coffee
+Item: Ingressos
+Descrição: Para o Natal Luz
+Ícone: ticket
+
+🟩 SEÇÃO: ITINERÁRIO
+Função da seção: roteiro
+Etiqueta: Roteiro
+Título: Dia a dia
+Dia 1: Embarque e chegada
+Saída cedo e chegada à tarde.
+Dia 2: Centro de Gramado
+Passeio pelo centro e Lago Negro.
+
+🟩 SEÇÃO: PREÇOS
+Função da seção: valores
+Etiqueta: Investimento
+Título: Escolha seu pacote
+Plano: Adulto
+Selo: Mais vendido
+Destaque: sim
+Antes do valor: A partir de
+Valor: R$ 1.890,00 por pessoa
+Parcelamento: em até 10x sem juros
+Detalhes: Assento no ônibus e cama no quarto duplo
+Plano: Criança até 5 anos
+Valor: R$ 290,00
+Detalhes: No colo, dividindo a cama
+Formas de pagamento: Pix, boleto e cartão
+Observação geral: Consulte disponibilidade, formas de pagamento e condições vigentes.
+
+🟩 SEÇÃO: DETALHES DO VOO
+Função da seção: voo
+Título: Seu voo
+Ida: 12/07/2026, São Paulo (GRU) 08:00 → Recife (REC) 11:15, LATAM
+Bagagem: 1 mala de 23 kg
+"""
+    config, title = build_page_base_config_from_reply(text, strict=True)
+    hero, reasons, itinerary, prices, flight = config["sections"]
+    assert title == "Natal Luz em Gramado"
+    assert hero["chips"] == ["Ônibus leito", "Hotel com café da manhã", "Guia acompanhante"]
+    assert hero["chipIcons"] == ["icon:bus", "icon:hotel", "icon:user-check"]
+    assert (hero["departureDate"], hero["returnDate"]) == ("2026-12-12", "2026-12-15")
+    assert reasons["iconMode"] == "icon"
+    assert [(i["title"], i["icon"]) for i in reasons["items"]] == [
+        ("Ônibus leito", "icon:bus"), ("Café da manhã", "icon:coffee"), ("Ingressos", "icon:ticket"),
+    ]
+    assert itinerary["headingLabel"] == "Roteiro"
+    assert [(d["title"], d["description"]) for d in itinerary["days"]] == [
+        ("Embarque e chegada", "Saída cedo e chegada à tarde."),
+        ("Centro de Gramado", "Passeio pelo centro e Lago Negro."),
+    ]
+    adult, child = prices["items"]
+    assert (adult["title"], adult["badge"], adult["highlight"], adult["priceLabel"], adult["price"]) == (
+        "Adulto", "Mais vendido", True, "A partir de", 1890.0,
+    )
+    assert adult["description"] == "por pessoa\nem até 10x sem juros\nAssento no ônibus e cama no quarto duplo"
+    assert (child["title"], child["price"], child["description"]) == ("Criança até 5 anos", 290.0, "No colo, dividindo a cama")
+    assert prices["description"] == "Consulte disponibilidade, formas de pagamento e condições vigentes."
+    assert prices["paymentMethods"] == ["pix", "boleto", "cartao"]
+    assert flight["generalInfo"] == (
+        "<p>Ida: 12/07/2026, São Paulo (GRU) 08:00 → Recife (REC) 11:15, LATAM</p><p>Bagagem: 1 mala de 23 kg</p>"
+    )
+    for section in config["sections"]:
+        for value in section.values():
+            assert "Função da seção" not in str(value)

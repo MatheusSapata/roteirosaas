@@ -30,6 +30,8 @@
           @unlocked="handleVslUnlocked(idx)"
           @submitted="handleLeadSubmitted"
         />
+        <!-- Sem o Rodapé da agência ativo: rodapé fino com "© Empresa · CNPJ (i)" (antes da marca do plano grátis). -->
+        <V2MiniFooter v-if="idx === miniFooterAfterIndex" />
       </template>
     </div>
   </div>
@@ -56,6 +58,7 @@ import { useRoute } from "vue-router";
 import api from "../../services/api";
 import platformApi from "../../services/platformApi";
 import PublicFreeFooterBrandSection from "../../components/public/PublicFreeFooterBrandSection.vue";
+import V2MiniFooter from "../../components/public/v2/V2MiniFooter.vue";
 import type { HeroSection, PageConfig, PageSection, SectionType, ThemeConfig } from "../../types/page";
 import { resolvePageDesign } from "../../utils/pageDesign";
 import { pickSectionComponent, v2Components } from "../../components/public/v2/registry";
@@ -237,6 +240,16 @@ const isSectionVisible = (section: PageSection, index: number) => {
   );
   return blockingIndex === -1;
 };
+// Índice da seção depois da qual entra o rodapé fino (-1 = não mostra): só quando não há
+// Rodapé da agência ativo, depois da última seção visível que não é a marca do plano grátis.
+const miniFooterAfterIndex = computed(() => {
+  if (sections.value.some(section => section?.enabled && section.type === "agency_footer")) return -1;
+  for (let idx = sections.value.length - 1; idx >= 0; idx -= 1) {
+    const section = sections.value[idx];
+    if (section?.enabled && section.type !== "free_footer_brand" && isSectionVisible(section, idx)) return idx;
+  }
+  return -1;
+});
 const handleVslUnlocked = (index: number) => {
   const updated = new Set(unlockedVslIndexes.value);
   updated.add(index);
