@@ -82,7 +82,7 @@
           <EdText :model-value="modelValue.departureDate || ''" label="Saída" type="date" @update:model-value="patch({ departureDate: $event })" />
           <EdText :model-value="modelValue.returnDate || ''" label="Volta" type="date" :min="modelValue.departureDate || undefined" @update:model-value="patch({ returnDate: $event })" />
         </div>
-        <p class="ved-info">A duração é calculada. O roteiro dia a dia usa a mesma data de início.</p>
+        <p class="ved-info">O roteiro dia a dia usa a mesma data de início.</p>
       </EdGroup>
       <EdButton :value="modelValue" placeholder="Quero reservar" @patch="patch" />
     </template>

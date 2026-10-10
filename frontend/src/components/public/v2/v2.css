@@ -244,6 +244,13 @@
 .v2-armed.v2-on .v2-reveal {
   animation: v2-reveal 1.1s cubic-bezier(0.22, 0.8, 0.24, 1) both;
 }
+/* Banner Inicial: a foto se aproxima devagar enquanto o texto sobe (só movimento, sem
+   esconder a foto, que já tem o próprio esmaecer quando baixa). */
+.v2-armed.v2-on .v2-hero-media {
+  /* Presa pela base: a borda de baixo da foto não sai de trás do degradê durante a aproximação. */
+  transform-origin: 50% 100%;
+  animation: v2-hero-zoom 1.6s cubic-bezier(0.22, 0.8, 0.24, 1) both;
+}
 .v2-d1 { animation-delay: 0.08s !important; }
 .v2-d2 { animation-delay: 0.16s !important; }
 .v2-d3 { animation-delay: 0.24s !important; }
@@ -276,6 +283,10 @@
   from { opacity: 0; transform: scale(1.06); }
   to { opacity: 1; transform: none; }
 }
+@keyframes v2-hero-zoom {
+  from { transform: scale(1.06); }
+  to { transform: none; }
+}
 @keyframes v2-shine {
   0% { left: -60%; }
   38%, 100% { left: 130%; }
@@ -289,6 +300,7 @@
   }
   .v2-armed.v2-on .v2-in,
   .v2-armed.v2-on .v2-reveal,
+  .v2-armed.v2-on .v2-hero-media,
   .v2-img-in,
   .v2-btn::after {
     animation: none !important;

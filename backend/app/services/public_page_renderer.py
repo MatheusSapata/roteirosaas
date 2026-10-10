@@ -5,7 +5,6 @@ import io
 import json
 import hashlib
 import re
-from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 from urllib.parse import urlsplit, urlunsplit
@@ -40,13 +39,24 @@ class PublicPageNotAvailable(RuntimeError):
     """Levanta quando não existe página pública para o slug informado."""
 
 
-@lru_cache
+_template_cache: dict[str, object] = {"mtime": None, "html": ""}
+
+
 def _load_frontend_template() -> str:
+    """index.html do build, relido quando o arquivo muda.
+
+    Antes ficava guardado até o backend reiniciar: um deploy só do front deixava o HTML
+    antigo apontando para arquivos /assets que não existem mais (roteiros em branco).
+    """
     if not FRONTEND_INDEX_PATH.exists():
         raise FrontendTemplateNotReady(
             f"Arquivo {FRONTEND_INDEX_PATH} não encontrado. Execute o build do frontend."
         )
-    return FRONTEND_INDEX_PATH.read_text(encoding="utf-8")
+    mtime = FRONTEND_INDEX_PATH.stat().st_mtime
+    if _template_cache["mtime"] != mtime:
+        _template_cache["html"] = FRONTEND_INDEX_PATH.read_text(encoding="utf-8")
+        _template_cache["mtime"] = mtime
+    return str(_template_cache["html"])
 
 
 def load_frontend_index() -> str:
