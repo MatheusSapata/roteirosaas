@@ -50,6 +50,8 @@ export interface HeroSection extends SectionBase {
   logoUrl?: string;
   logoSize?: number;
   logoBorderRadius?: number;
+  /** Onde fica o logo quando a página não tem Menu do topo. Sem escolha: no topo com destaques, junto ao conteúdo sem eles. */
+  logoPosition?: "top" | "content";
   chips?: LocalizedString[];
   /** Ícone de cada destaque ("icon:plane"), na mesma ordem de `chips`. */
   chipIcons?: string[];

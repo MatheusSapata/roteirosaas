@@ -132,8 +132,9 @@ const cta = useCta(toRef(props, "section"));
 const ctaLabel = computed(() => text(props.section.ctaLabel) || localize({ pt: "Quero falar agora", es: "Quiero hablar ahora" }));
 const darkText = computed(() => contrast("#FFFFFF", textBg.value) < WHITE_TEXT_MIN_CONTRAST);
 
-// Com destaques, o logo fica no topo da capa; sem eles, entra no lugar dos destaques, logo acima do título.
-const topLogo = computed(() => !!logo.value && chips.value.length > 0);
+// Padrão: com destaques, o logo fica no topo da capa; sem eles, vem junto ao conteúdo, acima do título.
+// A posição escolhida no editor (logoPosition) vale com ou sem destaques.
+const topLogo = computed(() => !!logo.value && (props.section.logoPosition ? props.section.logoPosition === "top" : chips.value.length > 0));
 const contentProps = computed(() => ({
   logo: topLogo.value ? "" : logo.value,
   logoAlt: agencyName.value,
@@ -192,6 +193,7 @@ const HeroContent = defineComponent({
       ]);
     return () =>
       h("div", { class: ["v2-hero-content", { "is-center": p.centered, "on-light": p.light, "dark-text": p.darkText && !p.light }] }, [
+        p.logo ? h("img", { class: "v2-hero-logo-inline v2-hero-logo-lead v2-in", src: p.logo, alt: p.logoAlt, style: p.logoStyle }) : null,
         p.chips.length
           ? h(
               "ul",
@@ -200,9 +202,7 @@ const HeroContent = defineComponent({
                 h("li", [h("span", { class: "v2-hero-chip-ico" }, [chip.icon ? h(TravelIcon, { name: chip.icon, size: 14, strokeWidth: 2.2 }) : check()]), chip.label])
               )
             )
-          : p.logo
-            ? h("img", { class: "v2-hero-logo-inline v2-hero-logo-lead v2-in", src: p.logo, alt: p.logoAlt, style: p.logoStyle })
-            : null,
+          : null,
         p.title ? h("h1", { class: "v2-hero-title v2-in v2-d1" }, p.title) : null,
         p.subtitleHtml ? h("div", { class: "v2-hero-sub v2-in v2-d2", innerHTML: p.subtitleHtml }) : null,
         p.dates || p.ctaEnabled
@@ -310,7 +310,7 @@ const HeroContent = defineComponent({
 .v2-hero-logo img {
   filter: drop-shadow(0 1px 10px rgba(0, 0, 0, 0.35));
 }
-/* Sem destaques: o logo vem acima do título, no fluxo do texto (centralizado no Clássico). */
+/* Logo junto ao conteúdo: acima dos destaques e do título, no fluxo do texto (centralizado no Clássico). */
 .v2-hero-logo-lead {
   align-self: flex-start;
   margin-bottom: 2px;
