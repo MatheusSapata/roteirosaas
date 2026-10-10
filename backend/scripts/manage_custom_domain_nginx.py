@@ -91,6 +91,16 @@ server {{
 
     client_max_body_size 50M;
 
+    # Compressão: JS e CSS das páginas chegavam crus (1,75 MB). gzip_static usa os .gz que o
+    # build do front já gera; o resto é comprimido na hora.
+    gzip on;
+    gzip_static on;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_comp_level 6;
+    gzip_min_length 1024;
+    gzip_types text/css application/javascript application/json image/svg+xml text/plain;
+
     location = /favicon.ico {{
         access_log off;
         log_not_found off;

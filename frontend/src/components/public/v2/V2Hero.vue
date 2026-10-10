@@ -15,7 +15,7 @@
       <div class="v2-hero-inner">
         <HeroContent v-bind="contentProps" />
       </div>
-      <div v-if="topLogo" class="v2-hero-logo"><img :src="logo" :alt="agencyName" :style="logoStyle" /></div>
+      <div v-if="topLogo" class="v2-hero-logo"><img :src="logo" :alt="agencyName" :style="logoStyle" v-bind="logoAttrs" /></div>
     </div>
 
     <div v-else-if="layout === 'classic'" class="v2-hero v2-hero--classic" :class="{ 'has-logo': topLogo }" :style="heroVars">
@@ -27,11 +27,11 @@
       <div class="v2-hero-inner is-center">
         <HeroContent v-bind="contentProps" centered />
       </div>
-      <div v-if="topLogo" class="v2-hero-logo"><img :src="logo" :alt="agencyName" :style="logoStyle" /></div>
+      <div v-if="topLogo" class="v2-hero-logo"><img :src="logo" :alt="agencyName" :style="logoStyle" v-bind="logoAttrs" /></div>
     </div>
 
     <div v-else-if="layout === 'split'" class="v2-hero v2-hero--split" :class="{ 'has-logo': topLogo }" :style="heroVars">
-      <div v-if="topLogo" class="v2-hero-split-top"><img :src="logo" :alt="agencyName" :style="logoStyle" class="v2-hero-logo-inline" /></div>
+      <div v-if="topLogo" class="v2-hero-split-top"><img :src="logo" :alt="agencyName" :style="logoStyle" class="v2-hero-logo-inline" v-bind="logoAttrs" /></div>
       <div class="v2-hero-split">
         <div class="v2-hero-split-copy">
           <HeroContent v-bind="contentProps" light />
@@ -50,7 +50,7 @@
           <HeroContent v-bind="contentProps" light />
         </div>
       </div>
-      <div v-if="topLogo" class="v2-hero-logo"><img :src="logo" :alt="agencyName" :style="logoStyle" /></div>
+      <div v-if="topLogo" class="v2-hero-logo"><img :src="logo" :alt="agencyName" :style="logoStyle" v-bind="logoAttrs" /></div>
     </div>
   </V2Section>
 </template>
@@ -125,6 +125,12 @@ const logoHeight = computed(() => Math.max(32, Math.min(props.section.logoSize ?
 const logoVars = computed(() => ({ "--v2-logo-h": `${logoHeight.value}px` }));
 const copyFit = useCopyFit(title, computed(() => localize(props.section.subtitle)));
 const heroVars = computed(() => ({ ...logoVars.value, ...copyFit.vars.value }));
+// Logo é o selo de confiança da página: baixa junto com a foto, na versão leve (até 160 px de
+// altura cabe na de 640 px), e o servidor já o pede no HTML.
+const logoAttrs = computed(() => {
+  const srcset = responsiveSrcset(logo.value);
+  return { srcset: srcset || undefined, sizes: srcset ? "320px" : undefined, fetchpriority: "high" as const, decoding: "async" as const };
+});
 const logoStyle = computed(() => ({
   height: `${logoHeight.value}px`,
   borderRadius: `${props.section.logoBorderRadius ?? 0}px`
@@ -140,6 +146,7 @@ const contentProps = computed(() => ({
   logo: topLogo.value ? "" : logo.value,
   logoAlt: agencyName.value,
   logoStyle: logoStyle.value,
+  logoAttrs: logoAttrs.value,
   title: title.value,
   subtitleHtml: subtitleHtml.value,
   chips: chips.value,
@@ -156,6 +163,7 @@ const HeroContent = defineComponent({
     logo: { type: String, default: "" },
     logoAlt: { type: String, default: "" },
     logoStyle: { type: Object, default: () => ({}) },
+    logoAttrs: { type: Object, default: () => ({}) },
     title: { type: String, default: "" },
     subtitleHtml: { type: String, default: "" },
     chips: { type: Array as () => HeroChip[], default: () => [] },
@@ -194,7 +202,7 @@ const HeroContent = defineComponent({
       ]);
     return () =>
       h("div", { class: ["v2-hero-content", { "is-center": p.centered, "on-light": p.light, "dark-text": p.darkText && !p.light }] }, [
-        p.logo ? h("img", { class: "v2-hero-logo-inline v2-hero-logo-lead v2-in", src: p.logo, alt: p.logoAlt, style: p.logoStyle }) : null,
+        p.logo ? h("img", { class: "v2-hero-logo-inline v2-hero-logo-lead v2-in", src: p.logo, alt: p.logoAlt, style: p.logoStyle, ...p.logoAttrs }) : null,
         p.chips.length
           ? h(
               "ul",

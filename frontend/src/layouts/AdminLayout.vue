@@ -750,6 +750,8 @@
 </template>
 
 <script setup lang="ts">
+// Estilos das telas do Admin Master: só o painel baixa (a página pública não usa).
+import "../styles/admin-master.css";
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import { RouterLink, RouterView, useRoute, useRouter } from "vue-router";
 import type { Component } from "vue";

@@ -1,26 +1,29 @@
 import { createRouter, createWebHistory, RouteRecordRaw } from "vue-router";
-import LoginView from "../views/admin/LoginView.vue";
-import ForgotPasswordView from "../views/admin/ForgotPasswordView.vue";
-import ResetPasswordView from "../views/admin/ResetPasswordView.vue";
-import CreatePasswordView from "../views/admin/CreatePasswordView.vue";
-import ViajeonSsoView from "../views/admin/ViajeonSsoView.vue";
-import AcceptInviteView from "../views/public/AcceptInviteView.vue";
-import CheckoutProcessingView from "../views/public/CheckoutProcessingView.vue";
-import CustomCheckoutView from "../views/public/CustomCheckoutView.vue";
-import DashboardView from "../views/admin/DashboardView.vue";
-import PagesListView from "../views/admin/PagesListView.vue";
-import PageEditorView from "../views/admin/PageEditorView.vue";
-import AgencySettingsView from "../views/admin/AgencySettingsView.vue";
-import LeadsView from "../views/admin/LeadsView.vue";
-import ClientDetailView from "../views/admin/ClientDetailView.vue";
-import ConnectionsView from "../views/admin/ConnectionsView.vue";
-import InboxView from "../views/admin/InboxView.vue";
 import PublicPageView from "../views/public/PublicPageView.vue";
-import PlansView from "../views/public/PlansView.vue";
-import AdminLayout from "../layouts/AdminLayout.vue";
 import { useAuthStore } from "../store/useAuthStore";
 import { canAccessPermission, PermissionKey } from "../utils/permissions";
 import { resolveCurrentLanguage, setCurrentLanguage } from "../utils/i18n";
+
+// Só a página pública (o que o visitante abre) vai no arquivo principal; as telas do painel
+// e do login são baixadas quando alguém entra nelas.
+const LoginView = () => import("../views/admin/LoginView.vue");
+const ForgotPasswordView = () => import("../views/admin/ForgotPasswordView.vue");
+const ResetPasswordView = () => import("../views/admin/ResetPasswordView.vue");
+const CreatePasswordView = () => import("../views/admin/CreatePasswordView.vue");
+const ViajeonSsoView = () => import("../views/admin/ViajeonSsoView.vue");
+const AcceptInviteView = () => import("../views/public/AcceptInviteView.vue");
+const CheckoutProcessingView = () => import("../views/public/CheckoutProcessingView.vue");
+const CustomCheckoutView = () => import("../views/public/CustomCheckoutView.vue");
+const DashboardView = () => import("../views/admin/DashboardView.vue");
+const PagesListView = () => import("../views/admin/PagesListView.vue");
+const PageEditorView = () => import("../views/admin/PageEditorView.vue");
+const AgencySettingsView = () => import("../views/admin/AgencySettingsView.vue");
+const LeadsView = () => import("../views/admin/LeadsView.vue");
+const ClientDetailView = () => import("../views/admin/ClientDetailView.vue");
+const ConnectionsView = () => import("../views/admin/ConnectionsView.vue");
+const InboxView = () => import("../views/admin/InboxView.vue");
+const PlansView = () => import("../views/public/PlansView.vue");
+const AdminLayout = () => import("../layouts/AdminLayout.vue");
 
 const RedirectPlaceholder = {
   template: "<div>Redirecionando...</div>"

@@ -4,7 +4,7 @@ from PIL import Image
 
 from app.schemas.page import PublicPageOut
 from app.services.image_optimizer import VARIANT_WIDTHS, optimize_image
-from app.services.public_page_renderer import _hero_preload_tags
+from app.services.public_page_renderer import _hero_preload_tags, _page_data_script
 
 
 def _encode(image: Image.Image, fmt: str, **options) -> bytes:
@@ -43,16 +43,20 @@ def test_gif_and_unknown_files_are_kept_as_sent():
     assert optimize_image(b"not an image") is None
 
 
-def _page(sections, design_v2_enabled=True):
+def _page(sections, design_v2_enabled=True, branding=None):
     return PublicPageOut(
         id=1,
         title="Roteiro",
         slug="roteiro",
         agency_slug="agencia",
         config={"sections": sections},
-        branding={},
+        branding=branding or {},
         design_v2_enabled=design_v2_enabled,
     )
+
+
+def _images(tags):
+    return [tag for tag in tags if 'as="image"' in tag]
 
 
 def test_hero_photo_is_preloaded_with_the_same_srcset_as_the_page():
@@ -62,15 +66,40 @@ def test_hero_photo_is_preloaded_with_the_same_srcset_as_the_page():
         _page([{"type": "header", "enabled": True}, {"type": "hero", "enabled": True, "backgroundImage": image, "mobileBackgroundImage": mobile}])
     )
 
-    assert len(tags) == 2
-    assert 'imagesrcset="https://cdn.example.com/m/abc_640.webp 640w, https://cdn.example.com/m/abc_1280.webp 1280w, ' in tags[0]
-    assert 'media="(min-width: 641px)"' in tags[0]
-    assert 'href="https://cdn.example.com/m/mob_2400.webp"' in tags[1] and 'media="(max-width: 640px)"' in tags[1]
+    images = _images(tags)
+    assert len(images) == 2
+    assert 'imagesrcset="https://cdn.example.com/m/abc_640.webp 640w, https://cdn.example.com/m/abc_1280.webp 1280w, ' in images[0]
+    assert 'media="(min-width: 641px)"' in images[0]
+    assert 'href="https://cdn.example.com/m/mob_2400.webp"' in images[1] and 'media="(max-width: 640px)"' in images[1]
+    assert any("fonts.googleapis.com" in tag and "media=\"print\"" in tag for tag in tags)
 
 
-def test_no_preload_when_hero_is_not_first_or_page_uses_old_design():
+def test_agency_logo_is_preloaded_with_the_page_header():
+    logo = "https://cdn.example.com/m/logo_2400.webp"
+    tags = _hero_preload_tags(_page([{"type": "header", "enabled": True}, {"type": "prices", "enabled": True}], branding={"logo_url": logo}))
+    assert _images(tags) == [
+        f'<link rel="preload" as="image" href="{logo}" fetchpriority="high" '
+        'imagesrcset="https://cdn.example.com/m/logo_640.webp 640w, https://cdn.example.com/m/logo_1280.webp 1280w, '
+        f'{logo} 2400w" imagesizes="320px" />'
+    ]
+
+
+def test_no_image_preload_when_hero_is_not_first_or_page_uses_old_design():
     hero = {"type": "hero", "enabled": True, "backgroundImage": "https://cdn.example.com/m/a.jpg"}
-    assert _hero_preload_tags(_page([{"type": "prices", "enabled": True}, hero])) == []
+    assert _images(_hero_preload_tags(_page([{"type": "prices", "enabled": True}, hero]))) == []
     assert _hero_preload_tags(_page([hero], design_v2_enabled=False)) == []
-    assert _hero_preload_tags(_page([{**hero, "videoUrl": "https://youtu.be/abc"}])) == []
-    assert _hero_preload_tags(_page([{**hero, "backgroundImage": "/uploads/a.jpg"}])) == []
+    assert _images(_hero_preload_tags(_page([{**hero, "videoUrl": "https://youtu.be/abc"}]))) == []
+    assert _images(_hero_preload_tags(_page([{**hero, "backgroundImage": "/uploads/a.jpg"}]))) == []
+
+
+def test_page_data_goes_in_the_html_safely_for_the_open_address():
+    import json
+
+    page = _page([{"type": "hero", "enabled": True, "title": "</script><script>alert(1)</script>"}])
+    tag = _page_data_script(page, "/agencia/roteiro")
+
+    assert tag.count("</script>") == 1  # só o fechamento da própria tag
+    body = tag[len('<script id="ro-page-data" type="application/json">') : -len("</script>")]
+    data = json.loads(body)
+    assert data["path"] == "/agencia/roteiro"
+    assert data["page"]["config"]["sections"][0]["title"] == "</script><script>alert(1)</script>"
