@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 from app.models.agency import Agency
+from app.models.agency_user import AgencyUser
 from app.models.flight_section import FlightSectionJourney, FlightSectionSegment
 from app.models.page import Page
+from app.models.subscription import Subscription
+from app.models.user import User
 
 
 def test_public_page_renders_flight_details_without_provider_calls(client, db_session, monkeypatch):
@@ -17,6 +20,14 @@ def test_public_page_renders_flight_details_without_provider_calls(client, db_se
     db_session.add(agency)
     db_session.commit()
     db_session.refresh(agency)
+
+    # A página pública só fica no ar quando o dono da agência tem assinatura ativa.
+    owner = User(name="Dono", email="dono@agencia-teste.com", hashed_password="x", plan="infinity")
+    db_session.add(owner)
+    db_session.commit()
+    db_session.add(AgencyUser(agency_id=agency.id, user_id=owner.id, role="owner"))
+    owner.subscription = Subscription(user_id=owner.id, plan="infinity", status="active")
+    db_session.commit()
 
     page = Page(
         agency_id=agency.id,
@@ -62,6 +73,7 @@ def test_public_page_renders_flight_details_without_provider_calls(client, db_se
     db_session.add(segment)
     db_session.commit()
 
+    db_session.expire_all()  # a agência foi carregada antes de ganhar o dono
     response = client.get("/api/v1/public/pages/by-slug/agencia-teste/pacote-teste")
     assert response.status_code == 200
     payload = response.json()

@@ -69,7 +69,10 @@ def test_admin_subscription_push_endpoint(client, monkeypatch, scenario, expecte
 
     assert response.status_code == 200
     assert response.json() == {"success": True, "message": None}
-    assert captured["title"].startswith("Assinatura ")
+    if scenario == SubscriptionPushScenario.UPGRADED:
+        assert captured["title"].startswith("Upgrade realizado - ")
+    else:
+        assert captured["title"].startswith("Assinatura ")
     assert expected_phrase in captured["title"]
     assert captured["message"].count("\n") == 0
     if scenario == SubscriptionPushScenario.CANCELLED:

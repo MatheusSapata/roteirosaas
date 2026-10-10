@@ -39,10 +39,10 @@ def test_build_meta_block_falls_back_when_short_description_is_empty():
     )
 
 
-def test_build_meta_block_uses_hero_subtitle_and_roteiro_online_title():
+def test_build_meta_block_uses_hero_subtitle_and_page_title():
     page = _build_page(short_description="   ", hero_subtitle="Uma viagem inesquecível pelo Sul do Brasil")
 
     meta_block = _build_meta_block(page, "https://example.com/roteiro-teste", "https://example.com")
 
-    assert '<meta property="og:title" content="Roteiro Teste | Roteiro Online" />' in meta_block
+    assert '<meta property="og:title" content="Roteiro Teste" />' in meta_block
     assert '<meta property="og:description" content="Uma viagem inesquecível pelo Sul do Brasil" />' in meta_block

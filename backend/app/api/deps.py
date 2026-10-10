@@ -56,7 +56,11 @@ def get_current_user(request: Request, db: Session = Depends(get_db), token: str
     if (user.status or "").lower() != "pending_agency_setup":
         ensure_legacy_owner_context(db, user)
     now = datetime.now(timezone.utc)
-    if session.expires_at and session.expires_at < now:
+    expires_at = session.expires_at
+    # Banco que não guarda fuso (SQLite dos testes) devolve a data sem ele; o valor é UTC.
+    if expires_at and expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at and expires_at < now:
         raise credentials_exception
     session.last_seen_at = now
     session.ip_address = get_client_ip(request)
