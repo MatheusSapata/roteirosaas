@@ -103,8 +103,8 @@ const dates = computed<HeroDates | null>(() => {
   return {
     departure: formatDayMonth(start),
     back: valid ? formatDayMonth(valid) : "",
-    // Só o ano: a contagem de dias saiu do cartão de datas.
-    tag: String(start.getFullYear())
+    // Sem selo: contagem de dias e ano saíram do cartão de datas.
+    tag: ""
   };
 });
 const image = computed(() => resolveMediaUrl(props.section.backgroundImage) || "");
