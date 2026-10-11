@@ -48,6 +48,9 @@ if engine.dialect.name == "postgresql":
         connection.execute(text("ALTER TABLE lessons ADD COLUMN IF NOT EXISTS help_article VARCHAR(80)"))
         connection.execute(text("ALTER TABLE lessons ADD COLUMN IF NOT EXISTS video_updated_at TIMESTAMP WITH TIME ZONE"))
         connection.execute(text("ALTER TABLE lessons ALTER COLUMN video_updated_at SET DEFAULT now()"))
+        connection.execute(text("ALTER TABLE stock_images ADD COLUMN IF NOT EXISTS tags VARCHAR(500)"))
+        connection.execute(text("ALTER TABLE stock_images ADD COLUMN IF NOT EXISTS location VARCHAR(255)"))
+        connection.execute(text("ALTER TABLE stock_images ADD COLUMN IF NOT EXISTS published_at TIMESTAMP WITH TIME ZONE"))
         connection.execute(text(
             "UPDATE lessons SET video_updated_at = COALESCE(updated_at, created_at, now()) WHERE video_updated_at IS NULL"
         ))
