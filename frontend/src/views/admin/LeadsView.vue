@@ -6974,7 +6974,7 @@ watch(visibleOpportunityIds, ids => {
   color: #128c4b;
 }
 
-:global(.dark-theme) .action-icon-btn.action-whatsapp {
+:global(.dark-theme .action-icon-btn.action-whatsapp) {
   color: #3ddc84;
 }
 
@@ -7624,7 +7624,7 @@ watch(visibleOpportunityIds, ids => {
 
 }
 
-:global(.dark-theme) .status-dropdown {
+:global(.dark-theme .status-dropdown) {
   background: #111319;
   border-color: rgba(255, 255, 255, 0.12);
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
@@ -7712,7 +7712,7 @@ watch(visibleOpportunityIds, ids => {
 
 
 
-:global(.dark-theme) .kanban-scroll {
+:global(.dark-theme .kanban-scroll) {
 
 
 
@@ -7724,7 +7724,7 @@ watch(visibleOpportunityIds, ids => {
 
 
 
-:global(.dark-theme) .kanban-scroll::-webkit-scrollbar-track {
+:global(.dark-theme .kanban-scroll::-webkit-scrollbar-track) {
 
 
 
@@ -7736,7 +7736,7 @@ watch(visibleOpportunityIds, ids => {
 
 
 
-:global(.dark-theme) .kanban-scroll::-webkit-scrollbar-thumb {
+:global(.dark-theme .kanban-scroll::-webkit-scrollbar-thumb) {
 
 
 
@@ -8128,7 +8128,7 @@ watch(visibleOpportunityIds, ids => {
 
 
 
-:global(.dark-theme) .kanban-scroll {
+:global(.dark-theme .kanban-scroll) {
 
 
 
@@ -8144,7 +8144,7 @@ watch(visibleOpportunityIds, ids => {
 
 
 
-:global(.dark-theme) .kanban-scroll::-webkit-scrollbar-track {
+:global(.dark-theme .kanban-scroll::-webkit-scrollbar-track) {
 
 
 
@@ -8160,7 +8160,7 @@ watch(visibleOpportunityIds, ids => {
 
 
 
-:global(.dark-theme) .kanban-scroll::-webkit-scrollbar-thumb {
+:global(.dark-theme .kanban-scroll::-webkit-scrollbar-thumb) {
 
 
 
@@ -8176,7 +8176,7 @@ watch(visibleOpportunityIds, ids => {
 
 
 
-:global(.dark-theme) .kanban-column > .overflow-y-auto::-webkit-scrollbar-thumb {
+:global(.dark-theme .kanban-column > .overflow-y-auto::-webkit-scrollbar-thumb) {
 
 
 
@@ -8192,18 +8192,18 @@ watch(visibleOpportunityIds, ids => {
 
 
 
-:global(.dark-theme) .kanban-column {
+:global(.dark-theme .kanban-column) {
   background-color: #0f1524;
   border-color: rgba(255, 255, 255, 0.08);
 }
 
-:global(.dark-theme) .kanban-column__header {
+:global(.dark-theme .kanban-column__header) {
   background-color: #131b2f;
   border-color: rgba(255, 255, 255, 0.15);
   color: #f8fafc;
 }
 
-:global(.dark-theme) .filter-popover {
+:global(.dark-theme .filter-popover) {
 
 
 
@@ -8219,33 +8219,33 @@ watch(visibleOpportunityIds, ids => {
 
 
 
-:global(.dark-theme) .kanban-column {
+:global(.dark-theme .kanban-column) {
   background-color: #0f1524;
   border-color: rgba(255, 255, 255, 0.08);
 }
 
-:global(.dark-theme) .kanban-column__header {
+:global(.dark-theme .kanban-column__header) {
   background-color: #131b2f;
   border-color: rgba(255, 255, 255, 0.15);
   color: #f8fafc;
 }
 
-:global(.dark-theme) .filter-popover input,
+:global(.dark-theme .filter-popover input),
 
 
 
-:global(.dark-theme) .kanban-column {
+:global(.dark-theme .kanban-column) {
   background-color: #0f1524;
   border-color: rgba(255, 255, 255, 0.08);
 }
 
-:global(.dark-theme) .kanban-column__header {
+:global(.dark-theme .kanban-column__header) {
   background-color: #131b2f;
   border-color: rgba(255, 255, 255, 0.15);
   color: #f8fafc;
 }
 
-:global(.dark-theme) .filter-popover select {
+:global(.dark-theme .filter-popover select) {
 
 
 
@@ -8257,7 +8257,7 @@ watch(visibleOpportunityIds, ids => {
 
 
 
-:global(.dark-theme) .filter-option {
+:global(.dark-theme .filter-option) {
 
 
 
@@ -8269,7 +8269,7 @@ watch(visibleOpportunityIds, ids => {
 
 
 
-:global(.dark-theme) .filter-checkbox {
+:global(.dark-theme .filter-checkbox) {
 
 
 

@@ -666,3 +666,60 @@ def test_stream_reply_redoes_broken_structure_once(monkeypatch) -> None:
     ))
     assert ("fixing" in [event.get("step") for event in events]) and events[-2]["type"] == "replace"
     assert events[-1]["reply"].endswith("Título: Certo")
+
+
+def test_repeated_sections_and_menu_links_by_title_and_existing_page() -> None:
+    config, _ = build_page_base_config_from_reply(reply_with(
+        "🟩 SEÇÃO: MENU DO TOPO\nLinks do menu:\n- Nacionais\n- Internacionais\n- Sobre nós\nLado direito: redes sociais",
+        "🟩 SEÇÃO: VITRINE DE VIAGENS\nTítulo: Pacotes nacionais\nViagem: Gramado e Canela\nPágina: gramado-canela\nValor: R$ 200",
+        "🟩 SEÇÃO: VITRINE DE VIAGENS\nTítulo: Pacotes internacionais\nViagem: França\nAntes do valor: A partir de\nValor: R$ 4.500",
+        "🟩 SEÇÃO: BIOGRAFIA\nTítulo: Nossa história\nTexto: Desde 2019.",
+    ), strict=True)
+    header, nacionais, internacionais, bio = config["sections"]
+    assert header["actionType"] == "social"
+    assert [(link["label"], link["target"]) for link in header["links"]] == [
+        ("Nacionais", nacionais["anchorId"]), ("Internacionais", internacionais["anchorId"]), ("Sobre nós", bio["anchorId"]),
+    ]
+    assert nacionais["anchorId"] != internacionais["anchorId"]
+    assert nacionais["items"][0]["pageSlug"] == "gramado-canela"
+    assert "pageSlug" not in internacionais["items"][0]
+
+
+def test_agency_context_lists_registered_data_and_pages(monkeypatch) -> None:
+    from app.services import ai_assistant_context as ctx
+
+    agency = SimpleNamespace(id=1, name="Rota Sul", logo_url="/logo.png")
+    page = SimpleNamespace(id=10, agency=agency, title="Home", slug="home")
+    other = SimpleNamespace(
+        id=11, title="Gramado e Canela", slug="gramado-canela", status="published",
+        config_json={"sections": [
+            {"type": "hero", "subtitle": "<p>Inverno na serra</p>", "departureDate": "2026-12-10"},
+            {"type": "prices", "items": [{"price": 1290}, {"price": 990.5}]},
+        ]},
+    )
+
+    class Query:
+        def filter(self, *a):
+            return self
+
+        def order_by(self, *a):
+            return self
+
+        def limit(self, *a):
+            return self
+
+        def all(self):
+            return [other]
+
+    db = SimpleNamespace(query=lambda *a: Query())
+    import app.api.v1.endpoints.public_pages as public_pages
+
+    monkeypatch.setattr(public_pages, "build_agency_profile", lambda agency: {
+        "description": "Especialistas em Beto Carrero", "address": {"city": "Itajaí", "state": "SC"},
+        "phone": "5547999990000", "email": "oi@rotasul.com",
+        "social_links": [{"network": "instagram", "url": "https://instagram.com/rotasul"}],
+    })
+    text = ctx.build_agency_context(db, page)
+    assert "Agência: Rota Sul" in text and "Cidade: Itajaí, SC" in text
+    assert "Redes sociais cadastradas: Instagram" in text and "Logo: cadastrado" in text
+    assert '- gramado-canela: "Gramado e Canela" (publicada, saída 10/12/2026, a partir de R$ 990,50) · Inverno na serra' in text

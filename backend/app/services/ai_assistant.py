@@ -39,6 +39,7 @@ SECTION_COMPONENT_TYPES = {
     "DETALHES DO VOO": "flight_details",
     "MENU DO TOPO": "header",
     "VITRINE DE VIAGENS": "links",
+    "RODAPE DA AGENCIA": "agency_footer",
 }
 ALLOWED_SECTION_NAMES = frozenset(SECTION_COMPONENT_TYPES)
 FORBIDDEN_SECTION_NAMES = frozenset({"CHECKOUT VIAJEON"})
@@ -55,6 +56,8 @@ SECTION_NAME_ALIASES = {
     "LINKS": "VITRINE DE VIAGENS",
     "ROTEIROS": "VITRINE DE VIAGENS",
     "OUTRAS VIAGENS": "VITRINE DE VIAGENS",
+    "RODAPE": "RODAPE DA AGENCIA",
+    "LINKS/ROTEIROS": "VITRINE DE VIAGENS",
 }
 MODEL_PRICING_USD = {
     "gpt-4": {"input": 30.0, "cached_input": 0.0, "output": 60.0},
@@ -135,6 +138,10 @@ FIELD_ALIASES_EXACT_EXTRA = {
     "DEPOIS DO VALOR": "price_suffix",
     "TEXTO DEPOIS DO VALOR": "price_suffix",
     "LINKS DO MENU": "menu_links",
+    "PAGINA": "page_ref",
+    "PAGINA DA VIAGEM": "page_ref",
+    "LADO DIREITO": "header_action",
+    "LADO DIREITO DO MENU": "header_action",
     "ITENS DO MENU": "menu_links",
     "MENU": "menu_links",
 }
@@ -243,22 +250,42 @@ PLATFORM_FORMAT_CONTRACT = """FORMATO DE ENTREGA PARA A MONTAGEM AUTOMÁTICA (pr
 
 TIPOS DE RESPOSTA
 
-1. Perguntas antes de criar. Se faltar algo essencial para uma página boa, pergunte antes, numa mensagem curta, sem estrutura: no máximo 4 perguntas numeradas, objetivas, sobre o que muda a página (destino ou quais viagens, datas, valores e o que está incluso, contato ou objetivo da página). Diga que, se preferir, você já cria com o que tem. Não pergunte o que já foi enviado, não pergunte duas vezes seguidas e não pergunte quando o usuário mandou criar ("pode criar", "monta"): crie com o que tiver.
+1. Perguntas antes de criar. Só quando falta algo essencial que não está na mensagem nem nos DADOS JÁ CADASTRADOS (nome da agência, contatos, redes sociais, logo e páginas já existem lá: nunca pergunte isso). Na dúvida entre perguntar e criar, crie. Formato, para o usuário responder com um toque: uma frase curta de abertura e, em seguida, no máximo 3 perguntas, cada uma numa linha "1. Pergunta?" seguida de 2 a 4 opções, uma por linha começando com "- " (curtas, até 6 palavras; a primeira é a que você recomenda). Pergunta aberta (ex.: datas) fica sem opções. Não escreva nada depois das perguntas: o chat já mostra o botão "Criar agora". Não pergunte duas vezes seguidas nem quando o usuário mandou criar ("pode criar", "monta").
 2. Estrutura da página: quando já há informação suficiente, entregue a estrutura no formato abaixo, sem texto antes nem depois dela.
 3. Ajuste de uma parte: se o pedido é sobre uma ou poucas seções (ex.: "melhore o banner", "crie as perguntas frequentes"), entregue a estrutura só com essas seções, no mesmo formato.
 4. Conversa: dúvidas sobre o construtor ou pedidos que não geram seções, responda em poucas linhas, sem estrutura.
 
-Páginas que o construtor monta: página de uma viagem (excursão, pacote, cruzeiro, evento), página com várias viagens (vitrine da agência, calendário de saídas, destinos da temporada) e página institucional da agência. Página com várias viagens usa VITRINE DE VIAGENS (um card por viagem) e, se fizer sentido, PREÇOS ou DESCRITIVO para o que é comum a todas. Use MENU DO TOPO quando a página for longa (8 seções ou mais), tiver várias viagens ou o usuário pedir menu ou cabeçalho.
+Páginas que o construtor monta: página de uma viagem (excursão, pacote, cruzeiro, evento), página com várias viagens (vitrine da agência, calendário de saídas, destinos da temporada) e página institucional da agência. Página com várias viagens usa VITRINE DE VIAGENS (um card por viagem) e, se fizer sentido, PREÇOS ou DESCRITIVO para o que é comum a todas. Repita seções quando o conteúdo pedir: uma VITRINE DE VIAGENS para cada grupo (ex.: nacionais e internacionais), vários DESCRITIVO para assuntos diferentes, mais de um BANNER EM CARD ou FOTO DESTACADA para separar partes da página. Cada seção repetida tem seu próprio título. Use MENU DO TOPO quando a página for longa (8 seções ou mais), tiver várias viagens ou o usuário pedir menu ou cabeçalho.
+
+O QUE CADA SEÇÃO MOSTRA NA PÁGINA (nome na resposta = nome no editor). O usuário pode citar o nome do editor ou a categoria do catálogo (Menu e rodapé, Capa, Detalhamento, Fotos e vídeos, Venda, Confiança); use o nome da resposta.
+- MENU DO TOPO = "Menu do topo": barra fixa no topo com o logo da agência à esquerda, links que rolam até as seções da página e, à direita, uma de três opções: as redes sociais cadastradas, um botão de contato (WhatsApp) ou nada.
+- BANNER = "Banner Inicial": primeira tela, com foto grande de fundo, título, subtítulo, destaques com ícone, cartão com datas de saída e volta e botão. Mostra o logo quando não há Menu do topo.
+- BANNER EM CARD = "Banner em Card": faixa com foto e texto por cima (etiqueta, título, subtítulo, botão), para uma chamada no meio da página.
+- FOTO DESTACADA = "Foto em destaque": uma foto grande com legenda curta, como pausa visual.
+- DESCRITIVO = "Texto e Imagens" (Detalhamento): etiqueta, título e texto ao lado de um carrossel de até 10 fotos. Para contar a experiência, um destino, a hospedagem, o que está incluso, um diferencial ou uma história curta da agência.
+- ITENS = "Diferenciais" (Detalhamento): grade de cards com ícone, título e uma frase. Para motivos, inclusos e benefícios.
+- ITINERÁRIO = "Roteiro dia a dia": linha do tempo por dia, com título, descrição e foto; as datas de cada dia saem da data de saída do Banner.
+- PREÇOS = "Preços e pacotes": cards de planos com selo, valor, condições e botão de reserva, e faixa com formas de pagamento.
+- PERGUNTAS FREQUENTES = "Dúvidas frequentes": perguntas que abrem a resposta ao clicar.
+- DEPOIMENTOS = "Depoimentos": cards com nome, estrelas e a fala do cliente.
+- VÍDEO EM DESTAQUE = "Vídeo": vídeo do YouTube ou Vimeo com título.
+- BIOGRAFIA = "Artigo" (Detalhamento): imagem de capa com título e texto formatado, como um post. Para conteúdo longo, de vários parágrafos.
+- História da agência ("quem somos", "nossa história"): até uns 3 parágrafos curtos, use DESCRITIVO; texto longo, com várias partes, use BIOGRAFIA.
+- CHAMADA PARA AÇÃO = "Faixa de chamada": faixa colorida com título, frase e botão de WhatsApp.
+- CONTADOR = "Contagem regressiva": contador até uma data real.
+- DETALHES DO VOO = "Voos": trechos de ida e volta e informações do voo.
+- VITRINE DE VIAGENS = "Links/Roteiros": cards de viagens com foto, nome, frase, datas, preço e botão; o card leva para a página da viagem (quando ela já existe) ou para o WhatsApp da agência.
+- RODAPÉ DA AGÊNCIA = "Rodapé da agência": descrição da agência, contatos, redes sociais, endereço com mapa, CNPJ e Cadastur, tudo dos dados cadastrados. Não tem campos.
 
 FORMATO DA ESTRUTURA
 
 A resposta é lida por um programa que monta a página. Escreva cada campo numa linha própria, no formato "Campo: valor", usando exatamente os nomes de campo abaixo. Não invente campos. Campo sem informação real: omita a linha inteira (não escreva "não informado", "preencher" ou colchetes).
 
-A primeira linha é "ESTRUTURA SUGERIDA PARA A PÁGINA". Depois: "Tipo de página:", "Objetivo da página:", "Público predominante:". Cada seção começa com "🟩 SEÇÃO: NOME", com um destes nomes: MENU DO TOPO, BANNER, BANNER EM CARD, FOTO DESTACADA, DESCRITIVO, ITENS, ITINERÁRIO, PREÇOS, PERGUNTAS FREQUENTES, DEPOIMENTOS, VÍDEO EM DESTAQUE, BIOGRAFIA, CHAMADA PARA AÇÃO, CONTADOR, DETALHES DO VOO, VITRINE DE VIAGENS. Logo abaixo do cabeçalho, "Função da seção:" (não aparece na página) e depois os campos.
+A primeira linha é "ESTRUTURA SUGERIDA PARA A PÁGINA". Depois: "Tipo de página:", "Objetivo da página:", "Público predominante:". Cada seção começa com "🟩 SEÇÃO: NOME", com um destes nomes: MENU DO TOPO, BANNER, BANNER EM CARD, FOTO DESTACADA, DESCRITIVO, ITENS, ITINERÁRIO, PREÇOS, PERGUNTAS FREQUENTES, DEPOIMENTOS, VÍDEO EM DESTAQUE, BIOGRAFIA, CHAMADA PARA AÇÃO, CONTADOR, DETALHES DO VOO, VITRINE DE VIAGENS, RODAPÉ DA AGÊNCIA. Logo abaixo do cabeçalho, "Função da seção:" (não aparece na página) e depois os campos.
 
 Campos de cada seção (Etiqueta é um selo curto de 1 a 3 palavras acima do título):
 
-MENU DO TOPO (sempre a primeira seção, quando usada): Links do menu (3 a 5 itens, um por linha começando com "- ", cada um com o nome curto de uma seção desta página, ex.: Roteiro, Preços, Dúvidas, Viagens, Sobre nós), Botão (texto do botão de contato, ex.: "Falar no WhatsApp").
+MENU DO TOPO (sempre a primeira seção, quando usada; o logo da agência entra sozinho): Links do menu (3 a 5 itens, um por linha começando com "- ", cada um com o nome curto de uma seção desta página, igual ou parecido com o título dela, ex.: Nacionais, Internacionais, Sobre nós, Dúvidas), Lado direito ("redes sociais" para mostrar as redes cadastradas, "botão" para o botão de contato ou "nada"), Botão (texto do botão de contato, só com "botão", ex.: "Falar no WhatsApp").
 
 BANNER: Título (curto, até 8 palavras), Subtítulo (1 ou 2 frases), Destaques (3 a 5 itens curtos, um por linha começando com "- ", até 4 palavras cada; não repita as datas), Data de saída e Data de volta (DD/MM/AAAA, só se a viagem tiver datas), Botão, Sugestão de imagem.
 
@@ -303,6 +330,7 @@ CONTADOR (só com data real de encerramento): Etiqueta, Título (ex.: "O lote pr
 
 VITRINE DE VIAGENS (páginas com várias viagens): Etiqueta, Título, Subtítulo, e um bloco por viagem, cada um começando por "Viagem:":
 Viagem: nome curto da viagem (ex.: Gramado e Canela no inverno)
+Página: identificador da página da agência, quando a viagem já tem página (da lista em DADOS JÁ CADASTRADOS); o card leva para ela
 Descrição: uma frase que dá vontade de ir
 Data de saída e Data de volta (DD/MM/AAAA, só se informadas)
 Antes do valor: ex. "A partir de" (opcional)
@@ -312,7 +340,9 @@ Botão: ex. "Ver roteiro" ou "Quero saber mais"
 
 DETALHES DO VOO (só com dados aéreos enviados): Título, e as linhas confirmadas, como "Ida: 12/07/2026, São Paulo (GRU) 08:00 → Recife (REC) 11:15, LATAM, voo direto", "Volta: ...", "Bagagem: ...".
 
-O rodapé da agência é automático. Não use CHECKOUT VIAJEON. Não use tabelas, JSON, negrito em nomes de campo nem cabeçalhos com #."""
+RODAPÉ DA AGÊNCIA (última seção; sem campos): use em toda estrutura de página completa. Ele se preenche sozinho com os dados cadastrados.
+
+Não use CHECKOUT VIAJEON. Não use tabelas, JSON, negrito em nomes de campo nem cabeçalhos com #."""
 
 
 class ChatMessage(BaseModel):
@@ -439,9 +469,16 @@ def _chat_reply_problem(reply: str) -> str:
     return "" if is_valid else validation_error
 
 
-def _build_correction_instructions(validation_error: str) -> str:
+def _instructions(context: str = "") -> str:
+    """Prompt do superadmin + formato fixo + dados da conta (por último, para o começo do
+    texto continuar igual entre conversas e aproveitar o cache da OpenAI)."""
+    prompt = load_system_prompt()
+    return f"{prompt}\n\n{context.strip()}" if context and context.strip() else prompt
+
+
+def _build_correction_instructions(validation_error: str, context: str = "") -> str:
     return (
-        f"{load_system_prompt()}\n\n"
+        f"{_instructions(context)}\n\n"
         "Sua última resposta saiu fora do formato e precisa ser reescrita do zero.\n\n"
         f"Problema detectado: {validation_error}\n\n"
         "Regras obrigatórias:\n"
@@ -747,6 +784,16 @@ def _flight_info_text(block: str) -> str:
             continue
         lines.append(line)
     return "\n".join(lines).strip()
+
+
+def _header_action(value: str, has_button: bool) -> str:
+    """Lado direito do Menu do topo: redes sociais, botão de contato ou nada."""
+    text = _normalize_text(value or "")
+    if "REDE" in text or "SOCIA" in text:
+        return "social"
+    if text.startswith(("NADA", "NENHUM", "SEM", "VAZIO")):
+        return "none"
+    return "contact" if ("BOTAO" in text or "CONTATO" in text or has_button or not text) else "none"
 
 
 def _is_yes(value: str) -> bool:
@@ -1368,10 +1415,15 @@ def _parse_ai_section_block(section_name: str, block: str, index: int) -> dict[s
             "logoActionType": "top",
             "links": [],
             "_menuLabels": [label for label in labels if len(label) <= 40][:6],
-            "actionType": "contact",
+            # Redes sociais: o editor preenche com as redes cadastradas da agência.
+            "actionType": _header_action(fields.get("header_action", ""), bool(fields.get("button"))),
             "contactLabel": fields.get("button", "").strip() or "Falar no WhatsApp",
             "contactType": "whatsapp",
         }
+
+    if normalized_name == _normalize_text("RODAPE DA AGENCIA"):
+        # Preenchido pelos dados da agência; o editor completa com o padrão da seção.
+        return {"type": "agency_footer", "enabled": True, "anchorId": _generate_anchor("agency-footer", "rodape", index), "showCadastur": True}
 
     if normalized_name == _normalize_text("VITRINE DE VIAGENS"):
         intro_lines: list[str] = []
@@ -1404,6 +1456,10 @@ def _parse_ai_section_block(section_name: str, block: str, index: int) -> dict[s
                 "buttonLabel": trip.get("button", "").strip() or "Quero saber mais",
                 "openInNewTab": True,
             }
+            page_ref = re.sub(r"[^a-z0-9-]", "", trip.get("page_ref", "").strip().lower().split("/")[-1])
+            if page_ref:
+                # O editor liga o card à página da agência com esse endereço (link e foto dela).
+                card["pageSlug"] = page_ref
             if departure:
                 card.update({"showDates": True, "departureDate": departure})
                 if back and back >= departure:
@@ -1484,10 +1540,26 @@ def _link_header_menu(sections: list[dict[str, Any]]) -> list[dict[str, Any]]:
     header = headers[0]
     links = []
     used: set[str] = set()
+    def stems(text: str) -> set[str]:
+        return {word[:5] for word in re.sub(r"[^A-Z ]", " ", _normalize_text(text)).split() if len(word) >= 4}
+
+    def heading(section: dict[str, Any]) -> str:
+        return " ".join(str(section.get(key) or "") for key in ("title", "headingLabel", "badge", "label"))
+
     for number, label in enumerate(header.pop("_menuLabels", []), 1):
         words = f" {re.sub(r'[^A-Z ]', ' ', _normalize_text(label))} "
-        target = None
-        for keywords, types in MENU_TARGETS:
+        # Primeiro pelo título da seção ("Nacionais" → "Pacotes nacionais"), o que separa seções
+        # repetidas do mesmo tipo; depois pelas palavras de cada tipo.
+        label_stems = stems(label)
+        target = next(
+            (
+                s for s in others
+                if s.get("type") not in {"hero", "banner_card", "photo", "countdown", "agency_footer"}
+                and s.get("anchorId") not in used and label_stems and label_stems & stems(heading(s))
+            ),
+            None,
+        )
+        for keywords, types in MENU_TARGETS if target is None else ():
             if any(f" {word} " in words for word in keywords):
                 target = next(
                     (s for t in types for s in others if s.get("type") == t and s.get("anchorId") not in used),
@@ -1502,6 +1574,11 @@ def _link_header_menu(sections: list[dict[str, Any]]) -> list[dict[str, Any]]:
     for extra in headers[1:]:
         extra.pop("_menuLabels", None)
     return [header, *others]
+
+
+def _footer_last(sections: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    footers = [section for section in sections if section.get("type") == "agency_footer"][:1]
+    return [section for section in sections if section.get("type") != "agency_footer"] + footers
 
 
 def build_page_base_config_from_reply(
@@ -1544,7 +1621,7 @@ def build_page_base_config_from_reply(
 
     if not sections:
         raise HTTPException(status_code=400, detail="Não foi possível identificar seções válidas na resposta da IA.")
-    sections = _link_header_menu(sections)
+    sections = _footer_last(_link_header_menu(sections))
 
     base_config = deepcopy(current_config) if isinstance(current_config, dict) else {}
     base_config["sections"] = sections
@@ -1667,6 +1744,7 @@ def _run_ai_reply(
     *,
     validate_output: bool = True,
     model_override: str | None = None,
+    context: str = "",
 ) -> tuple[str, str, dict[str, int]]:
     if not conversation:
         raise HTTPException(status_code=400, detail="Conversa vazia.")
@@ -1676,7 +1754,7 @@ def _run_ai_reply(
     input_items = _build_ai_conversation_input(conversation, attachments)
 
     try:
-        response = _request_ai_reply_response(client, model, load_system_prompt(), input_items)
+        response = _request_ai_reply_response(client, model, _instructions(context), input_items)
         reply = _extract_response_text(response)
         if validate_output:
             problem = _chat_reply_problem(reply)
@@ -1684,7 +1762,7 @@ def _run_ai_reply(
                 response = _request_ai_reply_response(
                     client,
                     model,
-                    _build_correction_instructions(problem),
+                    _build_correction_instructions(problem, context),
                     input_items,
                 )
                 reply = _extract_response_text(response)
@@ -1708,6 +1786,7 @@ def stream_ai_assistant_reply(
     attachments: list[ChatAttachment] | None = None,
     *,
     model_override: str | None = None,
+    context: str = "",
 ) -> Iterator[dict[str, Any]]:
     """Resposta do assistente em eventos, para o chat mostrar o andamento enquanto a IA escreve:
     {"type": "status", "step": ...} nas etapas, {"type": "delta", "text": ...} a cada trecho,
@@ -1725,7 +1804,7 @@ def stream_ai_assistant_reply(
     try:
         stream = client.responses.create(
             model=model,
-            instructions=load_system_prompt(),
+            instructions=_instructions(context),
             input=input_items,
             stream=True,
             **_model_kwargs(model),
@@ -1753,7 +1832,7 @@ def stream_ai_assistant_reply(
         if problem:
             # Raro: a estrutura veio sem nenhuma seção válida. Refaz uma vez, sem streaming.
             yield {"type": "status", "step": "fixing"}
-            response = _request_ai_reply_response(client, model, _build_correction_instructions(problem), input_items)
+            response = _request_ai_reply_response(client, model, _build_correction_instructions(problem, context), input_items)
             reply = _extract_response_text(response)
             usage = _extract_usage_data(response)
             if _chat_reply_problem(reply):
@@ -1817,11 +1896,13 @@ def generate_ai_assistant_reply(
     *,
     validate_output: bool = True,
     model_override: str | None = None,
+    context: str = "",
 ) -> str:
     reply, _, _ = _run_ai_reply(
         conversation,
         attachments,
         validate_output=validate_output,
         model_override=model_override,
+        context=context,
     )
     return reply

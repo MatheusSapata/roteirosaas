@@ -1395,45 +1395,45 @@ input, select {
   overflow: visible !important;
 }
 
-:global(body.admin-body-dark) .hero-proto-body .rich-box,
-:global(body.admin-body-dark) .hero-proto-body .rich-box :deep(.ql-container.ql-snow),
-:global(body.admin-body-dark) .hero-proto-body .rich-box :deep(.ql-editor),
-:global(html.dark) .hero-proto-body .rich-box,
-:global(html.dark) .hero-proto-body .rich-box :deep(.ql-container.ql-snow),
-:global(html.dark) .hero-proto-body .rich-box :deep(.ql-editor) {
+:global(body.admin-body-dark .hero-proto-body .rich-box),
+:global(body.admin-body-dark .hero-proto-body .rich-box .ql-container.ql-snow),
+:global(body.admin-body-dark .hero-proto-body .rich-box .ql-editor),
+:global(html.dark .hero-proto-body .rich-box),
+:global(html.dark .hero-proto-body .rich-box .ql-container.ql-snow),
+:global(html.dark .hero-proto-body .rich-box .ql-editor) {
   border-color: var(--input) !important;
   background: var(--card) !important;
   color: var(--foreground) !important;
 }
 
-:global(body.admin-body-dark) .hero-proto-body .rich-box :deep(.ql-toolbar.ql-snow),
-:global(html.dark) .hero-proto-body .rich-box :deep(.ql-toolbar.ql-snow) {
+:global(body.admin-body-dark .hero-proto-body .rich-box .ql-toolbar.ql-snow),
+:global(html.dark .hero-proto-body .rich-box .ql-toolbar.ql-snow) {
   border-color: var(--input) !important;
   background: var(--muted) !important;
 }
 
-:global(body.admin-body-dark) .hero-proto-body .add-btn,
-:global(html.dark) .hero-proto-body .add-btn {
+:global(body.admin-body-dark .hero-proto-body .add-btn),
+:global(html.dark .hero-proto-body .add-btn) {
   border-color: var(--border) !important;
   background: var(--muted) !important;
   color: var(--foreground) !important;
 }
 
-:global(body.admin-body-dark) .hero-proto-body .add-btn:hover,
-:global(html.dark) .hero-proto-body .add-btn:hover {
+:global(body.admin-body-dark .hero-proto-body .add-btn:hover),
+:global(html.dark .hero-proto-body .add-btn:hover) {
   border-color: color-mix(in srgb, var(--primary) 42%, var(--border)) !important;
   background: var(--accent) !important;
   color: var(--accent-foreground) !important;
 }
 
-:global(body.admin-body-dark) .hero-proto-body .highlight-tags,
-:global(html.dark) .hero-proto-body .highlight-tags {
+:global(body.admin-body-dark .hero-proto-body .highlight-tags),
+:global(html.dark .hero-proto-body .highlight-tags) {
   border-color: var(--border) !important;
   background: var(--card) !important;
 }
 
-:global(body.admin-body-dark) .hero-proto-body .highlight-tag,
-:global(html.dark) .hero-proto-body .highlight-tag {
+:global(body.admin-body-dark .hero-proto-body .highlight-tag),
+:global(html.dark .hero-proto-body .highlight-tag) {
   border-color: var(--border) !important;
   background: var(--muted) !important;
   color: var(--foreground) !important;

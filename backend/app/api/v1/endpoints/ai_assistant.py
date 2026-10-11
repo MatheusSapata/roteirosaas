@@ -37,6 +37,7 @@ from app.services.ai_assistant import (
     stream_ai_assistant_reply,
     transcribe_audio,
 )
+from app.services.ai_assistant_context import build_agency_context
 from app.services.ai_assistant_usage import (
     check_ai_assistant_message_limit,
     get_ai_assistant_usage_record,
@@ -107,7 +108,7 @@ async def _prepare_chat(
     page_id: int,
     conversation: str,
     attachments: list[UploadFile] | None,
-) -> tuple[Page, list[AiAssistantConversationMessage], AiAssistantUsage, int | None, list[ChatAttachment]]:
+) -> tuple[Page, list[AiAssistantConversationMessage], AiAssistantUsage, int | None, list[ChatAttachment], str]:
     """Valida a conversa e a permissão, confere o limite do plano e grava as mensagens novas do usuário."""
     try:
         conversation_payload = json.loads(conversation or "[]")
@@ -150,7 +151,7 @@ async def _prepare_chat(
         attachment_payload.append(
             ChatAttachment(filename=upload.filename or "arquivo", content_type=upload.content_type, data=data)
         )
-    return page, parsed_conversation, usage_record, usage_limit, attachment_payload
+    return page, parsed_conversation, usage_record, usage_limit, attachment_payload, build_agency_context(db, page)
 
 
 def _usage_headers(usage_record: AiAssistantUsage, usage_limit: int | None) -> dict[str, str]:
@@ -183,7 +184,7 @@ async def chat_with_assistant(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> AiAssistantChatResponse:
-    page, parsed_conversation, usage_record, usage_limit, attachment_payload = await _prepare_chat(
+    page, parsed_conversation, usage_record, usage_limit, attachment_payload, context = await _prepare_chat(
         db, current_user, page_id, conversation, attachments
     )
     reply = await anyio.to_thread.run_sync(
@@ -192,6 +193,7 @@ async def chat_with_assistant(
             [ChatMessage(role=item.role, content=item.content) for item in parsed_conversation],
             attachment_payload,
             model_override=get_active_gpt_model(db, create_if_missing=True),
+            context=context,
         )
     )
     usage_record = increment_ai_assistant_message_usage(db, usage_record)
@@ -212,7 +214,7 @@ async def chat_with_assistant_stream(
 ) -> StreamingResponse:
     """Mesma conversa do /chat, em linhas JSON (NDJSON) enviadas enquanto a IA escreve:
     etapas, trechos do texto e, no fim, a resposta completa com o uso do mês."""
-    page, parsed_conversation, usage_record, usage_limit, attachment_payload = await _prepare_chat(
+    page, parsed_conversation, usage_record, usage_limit, attachment_payload, context = await _prepare_chat(
         db, current_user, page_id, conversation, attachments
     )
     model = get_active_gpt_model(db, create_if_missing=True)
@@ -225,7 +227,7 @@ async def chat_with_assistant_stream(
     def events():
         yield line({"type": "status", "step": "reading", "attachments": len(attachment_payload)})
         try:
-            for event in stream_ai_assistant_reply(messages, attachment_payload, model_override=model):
+            for event in stream_ai_assistant_reply(messages, attachment_payload, model_override=model, context=context):
                 if event["type"] != "done":
                     yield line(event)
                     continue
@@ -368,6 +370,14 @@ def preview_page_base(
     ensure_agency_member(db, page.agency_id, current_user)
     ensure_pages_editor_permission(db, page.agency_id, current_user)
     config, _ = build_page_base_config_from_reply(payload.reply, normalize_config(page.config_json), strict=True)
+    # Menu do topo com redes sociais: usa as redes cadastradas da agência.
+    networks = [link for link in (page.agency.social_links if page.agency else []) if (link.url or "").strip()]
+    for section in config["sections"]:
+        if section.get("type") == "header" and section.get("actionType") == "social":
+            if networks:
+                section["socialLinks"] = [{"platform": link.network, "url": link.url.strip()} for link in networks]
+            else:
+                section["actionType"] = "contact"
     plan = resolve_agency_plan(db, page.agency_id)
     config = enforce_page_limits(db, page, publish=False, config=config, plan=plan)
     return {"sections": config["sections"]}
