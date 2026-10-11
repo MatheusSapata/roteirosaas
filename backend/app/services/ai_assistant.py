@@ -10,7 +10,7 @@ import logging
 import re
 import unicodedata
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Iterator, Literal
 
 from fastapi import HTTPException
 from pydantic import BaseModel
@@ -37,6 +37,8 @@ SECTION_COMPONENT_TYPES = {
     "ITENS": "reasons",
     "CONTADOR": "countdown",
     "DETALHES DO VOO": "flight_details",
+    "MENU DO TOPO": "header",
+    "VITRINE DE VIAGENS": "links",
 }
 ALLOWED_SECTION_NAMES = frozenset(SECTION_COMPONENT_TYPES)
 FORBIDDEN_SECTION_NAMES = frozenset({"CHECKOUT VIAJEON"})
@@ -46,6 +48,13 @@ SECTION_NAME_ALIASES = {
     "SESSAO DESCRITIVA": "DESCRITIVO",
     "CONTAGEM REGRESSIVA": "CONTADOR",
     "VIDEO": "VIDEO EM DESTAQUE",
+    "CABECALHO": "MENU DO TOPO",
+    "MENU": "MENU DO TOPO",
+    "MENU SUPERIOR": "MENU DO TOPO",
+    "VITRINE": "VITRINE DE VIAGENS",
+    "LINKS": "VITRINE DE VIAGENS",
+    "ROTEIROS": "VITRINE DE VIAGENS",
+    "OUTRAS VIAGENS": "VITRINE DE VIAGENS",
 }
 MODEL_PRICING_USD = {
     "gpt-4": {"input": 30.0, "cached_input": 0.0, "output": 60.0},
@@ -121,6 +130,13 @@ FIELD_ALIASES_EXACT_EXTRA = {
     "DATA FINAL": "target_date",
     "DATA E HORARIO": "target_date",
     "DATA E HORA": "target_date",
+    "VIAGEM": "trip_name",
+    "NOME DA VIAGEM": "trip_name",
+    "DEPOIS DO VALOR": "price_suffix",
+    "TEXTO DEPOIS DO VALOR": "price_suffix",
+    "LINKS DO MENU": "menu_links",
+    "ITENS DO MENU": "menu_links",
+    "MENU": "menu_links",
 }
 FIELD_ALIAS_PREFIXES = (
     ("NOME DO PLANO", "plan_name"),
@@ -223,13 +239,26 @@ Regras finais de precisão:
 
 # Formato que a montagem automática da página entende. Vai sempre depois do prompt do
 # superadmin (que cuida do tom e da estratégia): editar o prompt não quebra a montagem.
-PLATFORM_FORMAT_CONTRACT = """FORMATO DE ENTREGA PARA A MONTAGEM AUTOMÁTICA (prevalece sobre qualquer instrução anterior sobre nomes de seções e campos)
+PLATFORM_FORMAT_CONTRACT = """FORMATO DE ENTREGA PARA A MONTAGEM AUTOMÁTICA (prevalece sobre qualquer instrução anterior sobre formato da resposta, quando perguntar, nomes de seções e campos)
+
+TIPOS DE RESPOSTA
+
+1. Perguntas antes de criar. Se faltar algo essencial para uma página boa, pergunte antes, numa mensagem curta, sem estrutura: no máximo 4 perguntas numeradas, objetivas, sobre o que muda a página (destino ou quais viagens, datas, valores e o que está incluso, contato ou objetivo da página). Diga que, se preferir, você já cria com o que tem. Não pergunte o que já foi enviado, não pergunte duas vezes seguidas e não pergunte quando o usuário mandou criar ("pode criar", "monta"): crie com o que tiver.
+2. Estrutura da página: quando já há informação suficiente, entregue a estrutura no formato abaixo, sem texto antes nem depois dela.
+3. Ajuste de uma parte: se o pedido é sobre uma ou poucas seções (ex.: "melhore o banner", "crie as perguntas frequentes"), entregue a estrutura só com essas seções, no mesmo formato.
+4. Conversa: dúvidas sobre o construtor ou pedidos que não geram seções, responda em poucas linhas, sem estrutura.
+
+Páginas que o construtor monta: página de uma viagem (excursão, pacote, cruzeiro, evento), página com várias viagens (vitrine da agência, calendário de saídas, destinos da temporada) e página institucional da agência. Página com várias viagens usa VITRINE DE VIAGENS (um card por viagem) e, se fizer sentido, PREÇOS ou DESCRITIVO para o que é comum a todas. Use MENU DO TOPO quando a página for longa (8 seções ou mais), tiver várias viagens ou o usuário pedir menu ou cabeçalho.
+
+FORMATO DA ESTRUTURA
 
 A resposta é lida por um programa que monta a página. Escreva cada campo numa linha própria, no formato "Campo: valor", usando exatamente os nomes de campo abaixo. Não invente campos. Campo sem informação real: omita a linha inteira (não escreva "não informado", "preencher" ou colchetes).
 
-A primeira linha é "ESTRUTURA SUGERIDA PARA A PÁGINA". Depois: "Tipo de página:", "Objetivo da página:", "Público predominante:". Cada seção começa com "🟩 SEÇÃO: NOME", com um destes nomes: BANNER, BANNER EM CARD, FOTO DESTACADA, DESCRITIVO, ITENS, ITINERÁRIO, PREÇOS, PERGUNTAS FREQUENTES, DEPOIMENTOS, VÍDEO EM DESTAQUE, BIOGRAFIA, CHAMADA PARA AÇÃO, CONTADOR, DETALHES DO VOO. Logo abaixo do cabeçalho, "Função da seção:" (não aparece na página) e depois os campos.
+A primeira linha é "ESTRUTURA SUGERIDA PARA A PÁGINA". Depois: "Tipo de página:", "Objetivo da página:", "Público predominante:". Cada seção começa com "🟩 SEÇÃO: NOME", com um destes nomes: MENU DO TOPO, BANNER, BANNER EM CARD, FOTO DESTACADA, DESCRITIVO, ITENS, ITINERÁRIO, PREÇOS, PERGUNTAS FREQUENTES, DEPOIMENTOS, VÍDEO EM DESTAQUE, BIOGRAFIA, CHAMADA PARA AÇÃO, CONTADOR, DETALHES DO VOO, VITRINE DE VIAGENS. Logo abaixo do cabeçalho, "Função da seção:" (não aparece na página) e depois os campos.
 
 Campos de cada seção (Etiqueta é um selo curto de 1 a 3 palavras acima do título):
+
+MENU DO TOPO (sempre a primeira seção, quando usada): Links do menu (3 a 5 itens, um por linha começando com "- ", cada um com o nome curto de uma seção desta página, ex.: Roteiro, Preços, Dúvidas, Viagens, Sobre nós), Botão (texto do botão de contato, ex.: "Falar no WhatsApp").
 
 BANNER: Título (curto, até 8 palavras), Subtítulo (1 ou 2 frases), Destaques (3 a 5 itens curtos, um por linha começando com "- ", até 4 palavras cada; não repita as datas), Data de saída e Data de volta (DD/MM/AAAA, só se a viagem tiver datas), Botão, Sugestão de imagem.
 
@@ -271,6 +300,15 @@ BIOGRAFIA: Título, Texto, Sugestão de imagem.
 CHAMADA PARA AÇÃO: Etiqueta, Título, Descrição (1 frase), Botão.
 
 CONTADOR (só com data real de encerramento): Etiqueta, Título (ex.: "O lote promocional termina em"), Data final (DD/MM/AAAA HH:MM).
+
+VITRINE DE VIAGENS (páginas com várias viagens): Etiqueta, Título, Subtítulo, e um bloco por viagem, cada um começando por "Viagem:":
+Viagem: nome curto da viagem (ex.: Gramado e Canela no inverno)
+Descrição: uma frase que dá vontade de ir
+Data de saída e Data de volta (DD/MM/AAAA, só se informadas)
+Antes do valor: ex. "A partir de" (opcional)
+Valor: só o valor informado, ex. "R$ 1.290"
+Depois do valor: ex. "por pessoa" (opcional)
+Botão: ex. "Ver roteiro" ou "Quero saber mais"
 
 DETALHES DO VOO (só com dados aéreos enviados): Título, e as linhas confirmadas, como "Ida: 12/07/2026, São Paulo (GRU) 08:00 → Recife (REC) 11:15, LATAM, voo direto", "Volta: ...", "Bagagem: ...".
 
@@ -383,10 +421,28 @@ def _validate_ai_reply_format(reply: str) -> tuple[bool, str]:
     return True, ""
 
 
+def _reply_has_structure(reply: str) -> bool:
+    text = reply or ""
+    return _normalize_text(REQUIRED_HEADER) in _normalize_text(text) or any(
+        SECTION_HEADER_RE.match(line) for line in text.splitlines()
+    )
+
+
+def _chat_reply_problem(reply: str) -> str:
+    """Motivo para pedir a resposta de novo, ou "" se está boa. Perguntas e conversa (sem
+    estrutura) são respostas válidas; uma estrutura precisa de ao menos uma seção válida."""
+    if not (reply or "").strip():
+        return "A resposta veio vazia."
+    if not _reply_has_structure(reply):
+        return ""
+    is_valid, validation_error = _validate_ai_reply_format(reply)
+    return "" if is_valid else validation_error
+
+
 def _build_correction_instructions(validation_error: str) -> str:
     return (
         f"{load_system_prompt()}\n\n"
-        "Sua última resposta está incorreta e precisa ser reescrita do zero.\n\n"
+        "Sua última resposta saiu fora do formato e precisa ser reescrita do zero.\n\n"
         f"Problema detectado: {validation_error}\n\n"
         "Regras obrigatórias:\n"
         f"- Comece exatamente com '{REQUIRED_HEADER}'.\n"
@@ -1300,6 +1356,80 @@ def _parse_ai_section_block(section_name: str, block: str, index: int) -> dict[s
             "journeys": [],
         }
 
+    if normalized_name == _normalize_text("MENU DO TOPO"):
+        labels = _split_bullets(fields.get("menu_links", ""))
+        # Os links viram âncoras das seções depois que a página toda é lida (_link_header_menu).
+        return {
+            "type": "header",
+            "enabled": True,
+            "anchorId": _generate_anchor("header", "menu", index),
+            "mode": "solid",
+            "stickyEnabled": True,
+            "logoActionType": "top",
+            "links": [],
+            "_menuLabels": [label for label in labels if len(label) <= 40][:6],
+            "actionType": "contact",
+            "contactLabel": fields.get("button", "").strip() or "Falar no WhatsApp",
+            "contactType": "whatsapp",
+        }
+
+    if normalized_name == _normalize_text("VITRINE DE VIAGENS"):
+        intro_lines: list[str] = []
+        trip_blocks: list[list[str]] = []
+        for raw_line in block.splitlines():
+            line = _structure_line(raw_line)
+            label = line.split(":", 1)[0]
+            if ":" in line and _field_alias(label) == "trip_name":
+                trip_blocks.append([line])
+            elif trip_blocks:
+                trip_blocks[-1].append(line)
+            else:
+                intro_lines.append(line)
+        intro = _parse_key_value_lines("\n".join(intro_lines))
+        cards = []
+        for number, lines in enumerate(trip_blocks, 1):
+            trip = _parse_key_value_lines("\n".join(lines))
+            raw_value = trip.get("value", "").strip()
+            split_label, terms = _split_price_text(raw_value)
+            value_match = re.search(r"R\$\s*\d+(?:\.\d{3})*(?:,\d{1,2})?|\d+(?:\.\d{3})*,\d{2}", raw_value)
+            departure = _parse_trip_date(trip.get("departure_date", ""))
+            back = _parse_trip_date(trip.get("return_date", ""))
+            card: dict[str, Any] = {
+                "id": f"ai-trip-{index + 1}-{number}",
+                "source": "external",
+                "url": "",
+                "image": AI_IMAGE_PLACEHOLDER,
+                "title": trip.get("trip_name", "").strip(),
+                "description": trip.get("description", "").strip() or trip.get("text", "").strip(),
+                "buttonLabel": trip.get("button", "").strip() or "Quero saber mais",
+                "openInNewTab": True,
+            }
+            if departure:
+                card.update({"showDates": True, "departureDate": departure})
+                if back and back >= departure:
+                    card["returnDate"] = back
+            if value_match:
+                card.update({
+                    "showPrice": True,
+                    "pricePrefix": trip.get("price_label", "").strip() or split_label,
+                    "priceValue": value_match.group(0).strip(),
+                    "priceSuffix": trip.get("price_suffix", "").strip() or terms,
+                })
+            if card["title"]:
+                cards.append(card)
+        links_section: dict[str, Any] = {
+            "type": "links",
+            "enabled": True,
+            "anchorId": _generate_anchor("links", "viagens", index),
+            "title": intro.get("title", "").strip() or "Nossas viagens",
+            "subtitle": intro.get("subtitle", "").strip(),
+            "items": cards,
+            "carouselEnabled": len(cards) > 3,
+        }
+        if intro.get("label"):
+            links_section["headingLabel"] = intro["label"].strip()
+        return links_section
+
     return None
 
 
@@ -1327,6 +1457,51 @@ def _fill_ai_image_placeholders(section: dict[str, Any]) -> None:
         for day in section["days"]:
             day["image"] = AI_IMAGE_PLACEHOLDER
     # Depoimentos ficam sem foto: a seção mostra as iniciais do nome até a agência enviar uma.
+
+
+# Palavras de cada link do menu e a seção para onde ele leva.
+MENU_TARGETS: tuple[tuple[tuple[str, ...], tuple[str, ...]], ...] = (
+    (("ROTEIRO", "ITINERARIO", "PROGRAMACAO", "DIA A DIA", "CRONOGRAMA"), ("itinerary",)),
+    (("PRECO", "PRECOS", "VALOR", "VALORES", "INVESTIMENTO", "PACOTE", "PACOTES", "TARIFA"), ("prices",)),
+    (("DUVIDA", "DUVIDAS", "PERGUNTA", "PERGUNTAS", "FAQ"), ("faq",)),
+    (("DEPOIMENTO", "DEPOIMENTOS", "AVALIACOES", "CLIENTES"), ("testimonials",)),
+    (("SOBRE", "QUEM SOMOS", "AGENCIA", "NOS"), ("biography",)),
+    (("VIAGENS", "VIAGEM", "DESTINOS", "ROTEIROS", "SAIDAS", "PACOTES"), ("links",)),
+    (("INCLUSO", "INCLUSOS", "INCLUI", "BENEFICIOS", "DIFERENCIAIS", "VANTAGENS"), ("reasons", "story")),
+    (("VOO", "VOOS", "AEREO"), ("flight_details",)),
+    (("VIDEO",), ("featured_video",)),
+    (("EXPERIENCIA", "DESTINO", "HOSPEDAGEM", "HOTEL"), ("story", "reasons")),
+    (("CONTATO", "RESERVA", "RESERVAR", "FALE"), ("cta",)),
+)
+
+
+def _link_header_menu(sections: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Liga os itens do Menu do topo às seções da página e deixa o menu em primeiro."""
+    headers = [section for section in sections if section.get("type") == "header"]
+    others = [section for section in sections if section.get("type") != "header"]
+    if not headers:
+        return sections
+    header = headers[0]
+    links = []
+    used: set[str] = set()
+    for number, label in enumerate(header.pop("_menuLabels", []), 1):
+        words = f" {re.sub(r'[^A-Z ]', ' ', _normalize_text(label))} "
+        target = None
+        for keywords, types in MENU_TARGETS:
+            if any(f" {word} " in words for word in keywords):
+                target = next(
+                    (s for t in types for s in others if s.get("type") == t and s.get("anchorId") not in used),
+                    None,
+                )
+                if target:
+                    break
+        if target:
+            used.add(target["anchorId"])
+            links.append({"id": f"ai-menu-{number}", "label": label, "targetType": "section", "target": target["anchorId"]})
+    header["links"] = links
+    for extra in headers[1:]:
+        extra.pop("_menuLabels", None)
+    return [header, *others]
 
 
 def build_page_base_config_from_reply(
@@ -1368,11 +1543,25 @@ def build_page_base_config_from_reply(
             hero_title = str(parsed_section.get("title") or "").strip() or None
 
     if not sections:
-        raise HTTPException(status_code=400, detail="N?o foi poss?vel identificar se??es v?lidas na resposta da IA.")
+        raise HTTPException(status_code=400, detail="Não foi possível identificar seções válidas na resposta da IA.")
+    sections = _link_header_menu(sections)
 
     base_config = deepcopy(current_config) if isinstance(current_config, dict) else {}
     base_config["sections"] = sections
-    return base_config, hero_title or (meta.get("Tipo de p?gina") or None)
+    return base_config, hero_title or (meta.get("Tipo de página") or None)
+
+def _is_reasoning_model(model: str) -> bool:
+    return (model or "").strip().lower().startswith(("gpt-5", "o1", "o3", "o4"))
+
+
+def _model_kwargs(model: str) -> dict[str, object]:
+    # Modelos que raciocinam antes de responder (gpt-5, o-series) não aceitam temperature;
+    # com esforço "low" a resposta começa bem mais cedo, e a estrutura da página não pede
+    # raciocínio longo.
+    if _is_reasoning_model(model):
+        return {"reasoning": {"effort": "low"}}
+    return {"temperature": 0.2}
+
 
 def _request_ai_reply(
     client: object,
@@ -1380,13 +1569,7 @@ def _request_ai_reply(
     instructions: str,
     input_items: list[dict[str, object]],
 ) -> str:
-    response = client.responses.create(
-        model=model,
-        instructions=instructions,
-        input=input_items,
-        temperature=0.2,
-    )
-    return _extract_response_text(response)
+    return _extract_response_text(_request_ai_reply_response(client, model, instructions, input_items))
 
 
 def _request_ai_reply_response(
@@ -1399,7 +1582,7 @@ def _request_ai_reply_response(
         model=model,
         instructions=instructions,
         input=input_items,
-        temperature=0.2,
+        **_model_kwargs(model),
     )
 
 
@@ -1496,18 +1679,18 @@ def _run_ai_reply(
         response = _request_ai_reply_response(client, model, load_system_prompt(), input_items)
         reply = _extract_response_text(response)
         if validate_output:
-            is_valid, validation_error = _validate_ai_reply_format(reply)
-            if not is_valid:
+            problem = _chat_reply_problem(reply)
+            if problem:
                 response = _request_ai_reply_response(
                     client,
                     model,
-                    _build_correction_instructions(validation_error),
+                    _build_correction_instructions(problem),
                     input_items,
                 )
                 reply = _extract_response_text(response)
-                is_valid, validation_error = _validate_ai_reply_format(reply)
-                if not is_valid:
-                    raise HTTPException(status_code=502, detail=f"A OpenAI retornou uma resposta fora do padrão: {validation_error}")
+                problem = _chat_reply_problem(reply)
+                if problem:
+                    raise HTTPException(status_code=502, detail=f"A OpenAI retornou uma resposta fora do padrão: {problem}")
     except HTTPException:
         raise
     except Exception as exc:  # pragma: no cover - network/runtime guard
@@ -1520,62 +1703,62 @@ def _run_ai_reply(
     return reply, model, usage
 
 
-def generate_ai_assistant_reply(
+def stream_ai_assistant_reply(
     conversation: list[ChatMessage],
     attachments: list[ChatAttachment] | None = None,
     *,
-    validate_output: bool = True,
-) -> str:
+    model_override: str | None = None,
+) -> Iterator[dict[str, Any]]:
+    """Resposta do assistente em eventos, para o chat mostrar o andamento enquanto a IA escreve:
+    {"type": "status", "step": ...} nas etapas, {"type": "delta", "text": ...} a cada trecho,
+    {"type": "replace", "text": ...} se a resposta precisou ser refeita e, no fim,
+    {"type": "done", "reply", "model", "usage"}. Erros saem como HTTPException."""
     if not conversation:
         raise HTTPException(status_code=400, detail="Conversa vazia.")
-
-    model = (settings.gpt_model or "gpt-5.4").strip() or "gpt-5.4"
+    model = (model_override or settings.gpt_model or "gpt-5.4").strip() or "gpt-5.4"
     client = _load_openai_client()
+    input_items = _build_ai_conversation_input(conversation, attachments)
 
-    input_items: list[dict[str, object]] = []
-    normalized_conversation = [item for item in conversation if (item.content or "").strip()]
-
-    for item in normalized_conversation[:-1]:
-        input_items.append({"role": item.role, "content": item.content.strip()})
-
-    last_message = normalized_conversation[-1] if normalized_conversation else None
-    if last_message is None:
-        raise HTTPException(status_code=400, detail="Mensagem do usuário ausente.")
-
-    last_content: list[dict[str, object]] = [
-        {
-            "type": "input_text",
-            "text": last_message.content.strip()
-            or "Analise os arquivos anexados e responda seguindo o formato do Construtor Roteiro Online.",
-        }
-    ]
-    for attachment in attachments or []:
-        encoded_file = base64.b64encode(attachment.data).decode("ascii")
-        mime_type = attachment.content_type or "application/octet-stream"
-        last_content.append(
-            {
-                "type": "input_file",
-                "filename": attachment.filename or "arquivo",
-                "file_data": f"data:{mime_type};base64,{encoded_file}",
-                "detail": "low",
-            }
-        )
-    input_items.append({"role": last_message.role, "content": last_content})
-
+    yield {"type": "status", "step": "thinking"}
+    parts: list[str] = []
+    usage: dict[str, int] = {}
     try:
-        reply = _request_ai_reply(client, model, load_system_prompt(), input_items)
-        if validate_output:
-            is_valid, validation_error = _validate_ai_reply_format(reply)
-            if not is_valid:
-                reply = _request_ai_reply(
-                    client,
-                    model,
-                    _build_correction_instructions(validation_error),
-                    input_items,
-                )
-                is_valid, validation_error = _validate_ai_reply_format(reply)
-                if not is_valid:
-                    raise HTTPException(status_code=502, detail=f"A OpenAI retornou uma resposta fora do padrão: {validation_error}")
+        stream = client.responses.create(
+            model=model,
+            instructions=load_system_prompt(),
+            input=input_items,
+            stream=True,
+            **_model_kwargs(model),
+        )
+        writing = False
+        for event in stream:
+            event_type = getattr(event, "type", "")
+            if event_type == "response.output_text.delta":
+                delta = getattr(event, "delta", "") or ""
+                if not delta:
+                    continue
+                if not writing:
+                    writing = True
+                    yield {"type": "status", "step": "writing"}
+                parts.append(delta)
+                yield {"type": "delta", "text": delta}
+            elif event_type == "response.completed":
+                usage = _extract_usage_data(getattr(event, "response", None))
+            elif event_type in {"response.failed", "error"}:
+                error = getattr(getattr(event, "response", None), "error", None) or getattr(event, "message", "")
+                raise RuntimeError(str(error) or "falha na geração")
+        reply = "".join(parts).strip()
+
+        problem = _chat_reply_problem(reply)
+        if problem:
+            # Raro: a estrutura veio sem nenhuma seção válida. Refaz uma vez, sem streaming.
+            yield {"type": "status", "step": "fixing"}
+            response = _request_ai_reply_response(client, model, _build_correction_instructions(problem), input_items)
+            reply = _extract_response_text(response)
+            usage = _extract_usage_data(response)
+            if _chat_reply_problem(reply):
+                raise HTTPException(status_code=502, detail="A IA respondeu fora do padrão. Tente reformular a mensagem.")
+            yield {"type": "replace", "text": reply}
     except HTTPException:
         raise
     except Exception as exc:  # pragma: no cover - network/runtime guard
@@ -1583,7 +1766,33 @@ def generate_ai_assistant_reply(
 
     if not reply:
         raise HTTPException(status_code=502, detail="A OpenAI não retornou uma resposta válida.")
-    return reply
+    yield {"type": "done", "reply": reply, "model": model, "usage": usage}
+
+
+TRANSCRIPTION_MODELS = ("gpt-4o-mini-transcribe", "whisper-1")
+
+
+def transcribe_audio(data: bytes, filename: str, content_type: str | None) -> str:
+    """Texto falado num áudio do chat (português), para a mensagem do assistente."""
+    if not data:
+        raise HTTPException(status_code=400, detail="Áudio vazio.")
+    client = _load_openai_client()
+    last_error: Exception | None = None
+    for model in TRANSCRIPTION_MODELS:
+        try:
+            result = client.audio.transcriptions.create(
+                model=model,
+                file=(filename or "audio.webm", data, content_type or "application/octet-stream"),
+                language="pt",
+            )
+            text = getattr(result, "text", None)
+            if text is None and isinstance(result, str):
+                text = result
+            return (text or "").strip()
+        except Exception as exc:  # pragma: no cover - depende do modelo disponível na conta
+            last_error = exc
+            logger.warning("ai_transcription_failed model=%s error=%s", model, exc)
+    raise HTTPException(status_code=502, detail=f"Não foi possível transcrever o áudio: {last_error}")
 
 
 def generate_ai_assistant_reply_with_usage(
