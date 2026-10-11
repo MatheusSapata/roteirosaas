@@ -120,6 +120,48 @@
       </div>
     </section>
 
+    <section class="am-card">
+      <div class="am-card-head">
+        <div>
+          <div class="am-card-title">Fotos cadastradas</div>
+          <div class="am-card-sub">
+            Fotos de qualquer site, com palavras-chave e crédito. Quando a busca da IA tem as palavras-chave, a foto entra antes do Unsplash e do Pexels.
+          </div>
+        </div>
+        <div class="flex shrink-0 flex-wrap gap-2">
+          <button type="button" class="am-btn" @click="openImport"><AmIcon name="upload" />Importar várias</button>
+          <button type="button" class="am-btn am-btn-primary" @click="openPhotoCreate"><AmIcon name="plus" />Adicionar foto</button>
+        </div>
+      </div>
+      <div class="mb-3 flex flex-wrap items-center gap-2">
+        <input v-model="photoQuery" class="am-input max-w-xs" placeholder="Buscar por palavra-chave ou autor" @keyup.enter="loadPhotos" />
+        <button type="button" class="am-btn" @click="loadPhotos"><AmIcon name="search" />Buscar</button>
+        <span class="am-card-sub ml-auto !mt-0">{{ formatInt(photos.length) }} foto{{ photos.length === 1 ? "" : "s" }}</span>
+      </div>
+      <div v-if="photos.length" class="ik-photos">
+        <article v-for="photo in photos" :key="photo.id" class="ik-photo">
+          <img :src="mediaUrl(photo.url)" :alt="photo.description || photo.keywords.join(', ')" loading="lazy" />
+          <div class="ik-photo-body">
+            <div class="flex flex-wrap gap-1">
+              <span v-for="keyword in photo.keywords" :key="keyword" class="am-badge am-tone-neutral">{{ keyword }}</span>
+            </div>
+            <small class="am-muted block text-xs">
+              {{ photoCredit(photo) || "Sem crédito (foto própria ou sem exigência)" }}
+            </small>
+            <small class="am-muted block text-xs">
+              {{ photo.width && photo.height ? `${photo.width}×${photo.height}` : "" }}{{ photo.width && photo.height && photo.height > photo.width ? " · em pé, fica cortada nas seções" : "" }}
+              · usada {{ photo.uses }}×
+            </small>
+            <div class="mt-1 flex gap-1">
+              <button type="button" class="am-icon-btn" :aria-label="`Editar foto ${photo.id}`" @click="openPhotoEdit(photo)"><AmIcon name="edit" /></button>
+              <button type="button" class="am-icon-btn" :aria-label="`Excluir foto ${photo.id}`" @click="removePhoto(photo)"><AmIcon name="trash" /></button>
+            </div>
+          </div>
+        </article>
+      </div>
+      <div v-else class="am-empty">{{ photosLoading ? "Carregando fotos..." : "Nenhuma foto cadastrada ainda." }}</div>
+    </section>
+
     <AdminMasterDrawer
       :open="drawerOpen"
       :title="editId ? 'Editar chave' : 'Nova chave de fotos'"
@@ -173,6 +215,142 @@
         <button type="button" class="am-btn am-btn-primary" :disabled="saving" @click="save(true)">Salvar e testar</button>
       </template>
     </AdminMasterDrawer>
+    <AdminMasterDrawer
+      :open="photoDrawerOpen"
+      :title="photoEditId ? 'Editar foto' : 'Adicionar foto'"
+      subtitle="A foto é baixada e guardada no nosso servidor, para a página não depender do site de origem."
+      icon="image"
+      tone="violet"
+      @close="photoDrawerOpen = false"
+    >
+      <div class="grid gap-3.5">
+        <div v-if="photoError" class="am-notice am-tone-danger"><AmIcon name="alert" /><span>{{ photoError }}</span></div>
+        <div class="am-field">
+          <label for="ph-url">Endereço da imagem</label>
+          <input id="ph-url" v-model="photoForm.url" class="am-input am-mono" :disabled="Boolean(photoEditId)" placeholder="https://.../foto.jpg" />
+          <small class="am-muted text-xs">Abra a foto no site, clique nela com o botão direito e escolha "Copiar endereço da imagem".</small>
+        </div>
+        <img v-if="photoPreview" :src="photoPreview" alt="" class="ik-preview" @error="photoPreviewFailed = true" @load="photoPreviewFailed = false" />
+        <small v-if="photoPreview && photoPreviewFailed" class="am-muted text-xs">Não deu para mostrar a prévia. Confira se o endereço é da imagem.</small>
+        <div class="am-field">
+          <label for="ph-keywords">Palavras-chave</label>
+          <input id="ph-keywords" v-model="photoForm.keywords" class="am-input" placeholder="Ex.: Beto Carrero, Penha, theme park, family amusement park" />
+          <small class="am-muted text-xs">Separe por vírgula. Inclua o lugar e termos em inglês, porque a IA busca em inglês (ex.: "Gramado, Gramado Brazil, wine, couple").</small>
+        </div>
+        <div class="am-field">
+          <label for="ph-desc">Descrição <span class="font-normal text-muted-foreground">(opcional)</span></label>
+          <input id="ph-desc" v-model="photoForm.description" class="am-input" placeholder="Ex.: Montanha-russa do parque ao entardecer" />
+        </div>
+        <div class="grid gap-3.5 sm:grid-cols-2">
+          <div class="am-field">
+            <label for="ph-author">Autor / fotógrafo</label>
+            <input id="ph-author" v-model="photoForm.author" class="am-input" />
+          </div>
+          <div class="am-field">
+            <label for="ph-author-url">Link do autor</label>
+            <input id="ph-author-url" v-model="photoForm.author_url" class="am-input" placeholder="https://" />
+          </div>
+          <div class="am-field">
+            <label for="ph-source">Fonte</label>
+            <input id="ph-source" v-model="photoForm.source_name" class="am-input" placeholder="Ex.: Wikimedia Commons, Santur" />
+          </div>
+          <div class="am-field">
+            <label for="ph-source-url">Link da fonte ou da licença</label>
+            <input id="ph-source-url" v-model="photoForm.source_url" class="am-input" placeholder="https://" />
+          </div>
+        </div>
+        <small class="am-muted text-xs">O crédito aparece no "©" da foto na página: "Foto: autor · fonte". Sem autor e sem fonte, a foto entra sem "©".</small>
+        <label v-if="!photoEditId" class="flex items-start gap-2 text-sm">
+          <input v-model="photoRights" type="checkbox" class="mt-1" />
+          <span>Tenho direito de usar esta foto em sites de clientes (licença livre, autorização do autor ou foto própria).</span>
+        </label>
+      </div>
+      <template #footer>
+        <button type="button" class="am-btn" @click="photoDrawerOpen = false">Cancelar</button>
+        <button type="button" class="am-btn am-btn-primary" :disabled="photoSaving || (!photoEditId && !photoRights)" @click="savePhoto">
+          {{ photoSaving ? "Baixando a foto..." : "Salvar foto" }}
+        </button>
+      </template>
+    </AdminMasterDrawer>
+    <AdminMasterDrawer
+      :open="importOpen"
+      title="Importar várias fotos"
+      subtitle="Todas recebem as mesmas palavras-chave e o mesmo crédito. O nome de cada arquivo e das pastas entra como contexto: com a palavra-chave Beto Carrero, o arquivo Nerf_02.jpg vira beto carrero nerf."
+      icon="upload"
+      tone="violet"
+      @close="closeImport"
+    >
+      <div class="grid gap-3.5">
+        <div v-if="importError" class="am-notice am-tone-danger"><AmIcon name="alert" /><span>{{ importError }}</span></div>
+        <div class="flex gap-2">
+          <button type="button" class="am-chip" :class="{ on: importMode === 'link' }" @click="importMode = 'link'">Link do Dropbox</button>
+          <button type="button" class="am-chip" :class="{ on: importMode === 'files' }" @click="importMode = 'files'">Arquivos do computador</button>
+        </div>
+        <div v-if="importMode === 'link'" class="am-field">
+          <label for="im-link">Link de compartilhamento</label>
+          <input id="im-link" v-model="importLink" class="am-input am-mono" placeholder="https://www.dropbox.com/scl/fo/..." />
+          <small class="am-muted text-xs">
+            Pasta ou foto do Dropbox com acesso "qualquer pessoa com o link". Também serve link direto de um .zip. Importa até 300 fotos JPG, PNG ou WebP.
+          </small>
+        </div>
+        <div v-else class="grid gap-2">
+          <div class="flex flex-wrap gap-2">
+            <label class="am-btn cursor-pointer">
+              <AmIcon name="image" />Escolher fotos
+              <input type="file" accept="image/jpeg,image/png,image/webp" multiple class="hidden" @change="pickFiles" />
+            </label>
+            <label class="am-btn cursor-pointer">
+              <AmIcon name="upload" />Escolher uma pasta
+              <input type="file" webkitdirectory multiple class="hidden" @change="pickFiles" />
+            </label>
+          </div>
+          <small class="am-muted text-xs">
+            {{ importFiles.length ? `${importFiles.length} foto${importFiles.length === 1 ? "" : "s"} selecionada${importFiles.length === 1 ? "" : "s"}` : "Nenhuma foto selecionada." }}
+            Com uma pasta, as subpastas também viram contexto (ex.: Atrações/Nerf).
+          </small>
+        </div>
+        <div class="am-field">
+          <label for="im-keywords">Palavras-chave do lote</label>
+          <input id="im-keywords" v-model="importForm.keywords" class="am-input" placeholder="Ex.: Beto Carrero, Penha, theme park" />
+          <small class="am-muted text-xs">A primeira é a principal: é ela que se junta ao nome de cada arquivo.</small>
+        </div>
+        <div class="grid gap-3.5 sm:grid-cols-2">
+          <div class="am-field">
+            <label for="im-author">Autor / fotógrafo</label>
+            <input id="im-author" v-model="importForm.author" class="am-input" />
+          </div>
+          <div class="am-field">
+            <label for="im-author-url">Link do autor</label>
+            <input id="im-author-url" v-model="importForm.author_url" class="am-input" placeholder="https://" />
+          </div>
+          <div class="am-field">
+            <label for="im-source">Fonte</label>
+            <input id="im-source" v-model="importForm.source_name" class="am-input" placeholder="Ex.: Divulgação Beto Carrero World" />
+          </div>
+          <div class="am-field">
+            <label for="im-source-url">Link da fonte ou da licença</label>
+            <input id="im-source-url" v-model="importForm.source_url" class="am-input" placeholder="https://" />
+          </div>
+        </div>
+        <label class="flex items-start gap-2 text-sm">
+          <input v-model="importRights" type="checkbox" class="mt-1" />
+          <span>Tenho direito de usar estas fotos em sites de clientes (licença livre, autorização do autor ou fotos próprias).</span>
+        </label>
+        <div v-if="importProgress" class="am-notice" :class="importProgress.status === 'error' ? 'am-tone-danger' : importProgress.status === 'done' ? 'am-tone-success' : 'am-tone-info'">
+          <AmIcon :name="importProgress.status === 'done' ? 'check' : importProgress.status === 'error' ? 'alert' : 'refresh'" />
+          <span>
+            {{ importProgressText }}
+            <template v-if="importProgress.skipped.length"><br />Não entraram: {{ importProgress.skipped.join("; ") }}</template>
+          </span>
+        </div>
+      </div>
+      <template #footer>
+        <button type="button" class="am-btn" @click="closeImport">{{ importRunning ? "Fechar (continua importando)" : "Fechar" }}</button>
+        <button type="button" class="am-btn am-btn-primary" :disabled="importRunning || !importRights" @click="startImport">
+          {{ importRunning ? "Importando..." : "Importar" }}
+        </button>
+      </template>
+    </AdminMasterDrawer>
   </section>
 </template>
 
@@ -189,8 +367,18 @@ import {
   updateImageApiKey,
   type ImageApiKey,
   type ImageApiKeysResponse,
-  type ImageProvider
+  type ImageProvider,
+  createStockPhoto,
+  deleteStockPhoto,
+  listStockPhotos,
+  updateStockPhoto,
+  type StockPhoto,
+  getStockPhotoImport,
+  importStockPhotosFromLink,
+  uploadStockPhoto,
+  type StockPhotoImportJob
 } from "../../services/imageApiKeys";
+import { resolveMediaUrl } from "../../utils/media";
 import AmIcon from "./master/AmIcon.vue";
 import AdminMasterHeader from "./master/AdminMasterHeader.vue";
 import AdminMasterKpi from "./master/AdminMasterKpi.vue";
@@ -215,6 +403,7 @@ const summary = reactive<ImageApiKeysResponse["summary"]>({
   photos: 0,
   photo_uses: 0,
   search_reuses: 0,
+  curated_photos: 0,
   unsplash: emptyProvider(),
   pexels: emptyProvider()
 });
@@ -385,9 +574,248 @@ const removeKey = async (id: number) => {
   await act(deleteImageApiKey, id, "Não foi possível excluir a chave.");
 };
 
+// Fotos cadastradas à mão
+const photos = ref<StockPhoto[]>([]);
+const photosLoading = ref(false);
+const photoQuery = ref("");
+const photoDrawerOpen = ref(false);
+const photoEditId = ref<number | null>(null);
+const photoSaving = ref(false);
+const photoRights = ref(false);
+const photoPreviewFailed = ref(false);
+const photoError = ref("");
+const emptyPhotoForm = () => ({ url: "", keywords: "", description: "", author: "", author_url: "", source_name: "", source_url: "" });
+const photoForm = reactive(emptyPhotoForm());
+const mediaUrl = (url: string) => resolveMediaUrl(url) || url;
+const photoPreview = computed(() => (/^https?:\/\/\S+$/.test(photoForm.url.trim()) ? photoForm.url.trim() : ""));
+const photoCredit = (photo: StockPhoto) => {
+  if (!photo.author && !photo.source_name) return "";
+  return `Foto: ${[photo.author, photo.source_name].filter(Boolean).join(" · ")}`;
+};
+
+const loadPhotos = async () => {
+  photosLoading.value = true;
+  try {
+    photos.value = await listStockPhotos(photoQuery.value.trim() || undefined);
+  } catch (error: any) {
+    errorMessage.value = errorText(error, "Não foi possível carregar as fotos.");
+  } finally {
+    photosLoading.value = false;
+  }
+};
+
+const openPhotoCreate = () => {
+  photoEditId.value = null;
+  photoError.value = "";
+  successMessage.value = "";
+  Object.assign(photoForm, emptyPhotoForm());
+  photoRights.value = false;
+  photoDrawerOpen.value = true;
+};
+
+const openPhotoEdit = (photo: StockPhoto) => {
+  photoEditId.value = photo.id;
+  photoError.value = "";
+  successMessage.value = "";
+  Object.assign(photoForm, {
+    url: photo.original_url,
+    keywords: photo.keywords.join(", "),
+    description: photo.description || "",
+    author: photo.author || "",
+    author_url: photo.author_url || "",
+    source_name: photo.source_name || "",
+    source_url: photo.source_url || ""
+  });
+  photoDrawerOpen.value = true;
+};
+
+const savePhoto = async () => {
+  if (!photoForm.keywords.trim() || (!photoEditId.value && !photoForm.url.trim())) {
+    photoError.value = "Informe o endereço da imagem e ao menos uma palavra-chave.";
+    return;
+  }
+  photoSaving.value = true;
+  photoError.value = "";
+  successMessage.value = "";
+  const { url, ...details } = photoForm;
+  try {
+    if (photoEditId.value) await updateStockPhoto(photoEditId.value, details);
+    else await createStockPhoto({ ...details, url: url.trim() });
+    photoDrawerOpen.value = false;
+    successMessage.value = photoEditId.value ? "Foto atualizada." : "Foto adicionada ao banco.";
+    await Promise.all([loadPhotos(), load()]);
+  } catch (error: any) {
+    photoError.value = errorText(error, "Não foi possível salvar a foto.");
+  } finally {
+    photoSaving.value = false;
+  }
+};
+
+const removePhoto = async (photo: StockPhoto) => {
+  if (!window.confirm("Tirar esta foto do banco? Páginas que já usam a foto continuam com ela.")) return;
+  try {
+    await deleteStockPhoto(photo.id);
+    await loadPhotos();
+  } catch (error: any) {
+    errorMessage.value = errorText(error, "Não foi possível excluir a foto.");
+  }
+};
+
+// Importação em lote (link do Dropbox ou arquivos/pasta do computador)
+const importOpen = ref(false);
+const importMode = ref<"link" | "files">("link");
+const importLink = ref("");
+const importFiles = ref<Array<{ file: File; path: string }>>([]);
+const importForm = reactive({ keywords: "", author: "", author_url: "", source_name: "", source_url: "" });
+const importRights = ref(false);
+const importError = ref("");
+const importRunning = ref(false);
+const importProgress = ref<StockPhotoImportJob | null>(null);
+let importTimer: ReturnType<typeof setTimeout> | null = null;
+
+const importProgressText = computed(() => {
+  const job = importProgress.value;
+  if (!job) return "";
+  if (job.status === "error") return job.error || "A importação parou.";
+  const done = job.added + job.duplicates + job.skipped.length;
+  const counts = `${job.added} nova${job.added === 1 ? "" : "s"}${job.duplicates ? `, ${job.duplicates} já estava${job.duplicates === 1 ? "" : "m"} no banco` : ""}`;
+  if (job.status === "done") return `Importação concluída: ${counts}.`;
+  return job.total ? `Importando ${done} de ${job.total} (${counts})...` : "Baixando o arquivo...";
+});
+
+// Tira as pastas que todas as fotos têm em comum (a pasta escolhida não diz nada da foto).
+const relativePaths = (files: File[]) => {
+  const parts = files.map(file => (file.webkitRelativePath || file.name).split("/"));
+  let common = 0;
+  while (parts.every(p => p.length > common + 1) && new Set(parts.map(p => p[common])).size === 1) common += 1;
+  return parts.map(p => p.slice(common).join("/"));
+};
+
+const pickFiles = (event: Event) => {
+  const input = event.target as HTMLInputElement;
+  const files = Array.from(input.files || []).filter(file => /\.(jpe?g|png|webp)$/i.test(file.name) && !file.name.startsWith("."));
+  const paths = relativePaths(files);
+  importFiles.value = files.map((file, index) => ({ file, path: paths[index] }));
+  input.value = "";
+};
+
+const openImport = () => {
+  if (!importRunning.value) {
+    importProgress.value = null;
+    importError.value = "";
+    importFiles.value = [];
+    importLink.value = "";
+  }
+  importOpen.value = true;
+};
+const closeImport = () => {
+  importOpen.value = false;
+};
+
+const pollImport = async (id: string) => {
+  try {
+    importProgress.value = await getStockPhotoImport(id);
+  } catch (error: any) {
+    importError.value = errorText(error, "Não foi possível acompanhar a importação.");
+    importRunning.value = false;
+    return;
+  }
+  if (importProgress.value.status === "running") {
+    importTimer = setTimeout(() => pollImport(id), 2000);
+    return;
+  }
+  importRunning.value = false;
+  await Promise.all([loadPhotos(), load()]);
+};
+
+const startImport = async () => {
+  importError.value = "";
+  const fields = { ...importForm };
+  if (!fields.keywords.trim()) {
+    importError.value = "Informe as palavras-chave do lote.";
+    return;
+  }
+  if (importMode.value === "link") {
+    if (!/^https?:\/\//.test(importLink.value.trim())) {
+      importError.value = "Cole o link de compartilhamento completo (https://...).";
+      return;
+    }
+    importRunning.value = true;
+    try {
+      const job = await importStockPhotosFromLink(importLink.value.trim(), fields);
+      importProgress.value = job;
+      void pollImport(job.id);
+    } catch (error: any) {
+      importError.value = errorText(error, "Não foi possível começar a importação.");
+      importRunning.value = false;
+    }
+    return;
+  }
+  if (!importFiles.value.length) {
+    importError.value = "Escolha as fotos ou uma pasta.";
+    return;
+  }
+  // Uma foto por vez: nada de envio gigante, e o andamento aparece foto a foto.
+  importRunning.value = true;
+  const job: StockPhotoImportJob = { id: "local", status: "running", total: importFiles.value.length, added: 0, duplicates: 0, skipped: [], error: null };
+  importProgress.value = job;
+  for (const { file, path } of importFiles.value) {
+    try {
+      await uploadStockPhoto(file, path, fields);
+      job.added += 1;
+    } catch (error: any) {
+      if (error?.response?.status === 409) job.duplicates += 1;
+      else job.skipped.push(`${file.name}: ${errorText(error, "falhou")}`);
+    }
+    importProgress.value = { ...job };
+  }
+  importProgress.value = { ...job, status: "done" };
+  importRunning.value = false;
+  importFiles.value = [];
+  await Promise.all([loadPhotos(), load()]);
+};
+
+onBeforeUnmount(() => {
+  if (importTimer) clearTimeout(importTimer);
+});
+
 onMounted(() => {
   load();
+  loadPhotos();
   document.addEventListener("click", closeMenuOnOutside);
 });
 onBeforeUnmount(() => document.removeEventListener("click", closeMenuOnOutside));
 </script>
+
+<style scoped>
+.ik-photos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+.ik-photo {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card);
+}
+.ik-photo img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  background: var(--muted);
+}
+.ik-photo-body {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px 12px;
+}
+.ik-preview {
+  width: 100%;
+  max-height: 220px;
+  object-fit: contain;
+  border-radius: 12px;
+  background: var(--muted);
+}
+</style>

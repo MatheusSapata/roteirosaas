@@ -712,6 +712,7 @@ def test_agency_context_lists_registered_data_and_pages(monkeypatch) -> None:
             return [other]
 
     db = SimpleNamespace(query=lambda *a: Query())
+    monkeypatch.setattr(ctx, "curated_catalog", lambda db: ["beto carrero nerf", "beto carrero castelo"])
     import app.api.v1.endpoints.public_pages as public_pages
 
     monkeypatch.setattr(public_pages, "build_agency_profile", lambda agency: {
@@ -722,6 +723,7 @@ def test_agency_context_lists_registered_data_and_pages(monkeypatch) -> None:
     text = ctx.build_agency_context(db, page)
     assert "Agência: Rota Sul" in text and "Cidade: Itajaí, SC" in text
     assert "Redes sociais cadastradas: Instagram" in text and "Logo: cadastrado" in text
+    assert "Fotos cadastradas no banco" in text and "beto carrero nerf; beto carrero castelo" in text
     assert '- gramado-canela: "Gramado e Canela" (publicada, saída 10/12/2026, a partir de R$ 990,50) · Inverno na serra' in text
     assert "SEÇÕES DESTA PÁGINA: nenhuma ainda." in text
     # Seções enviadas pelo editor (com o que ainda não foi salvo) entram com o nome do editor.

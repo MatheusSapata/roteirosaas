@@ -30,6 +30,9 @@ class StockImage(Base):
     tags = Column(String(500), nullable=True)
     location = Column(String(255), nullable=True)
     published_at = Column(DateTime(timezone=True), nullable=True)
+    # Fotos cadastradas à mão no Admin Master (provider "manual"): nome da fonte para o crédito
+    # (ex.: "Wikimedia Commons", "Embratur"); o link da fonte fica em page_url.
+    source_name = Column(String(120), nullable=True)
     uses = Column(Integer, nullable=False, default=0)
     # Unsplash pede o aviso de uso (download) quando a foto é usada; avisamos uma vez por foto.
     tracked_at = Column(DateTime(timezone=True), nullable=True)
