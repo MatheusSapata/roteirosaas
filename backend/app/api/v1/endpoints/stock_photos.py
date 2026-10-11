@@ -6,17 +6,12 @@ armazenamento, para a página não depender do site de origem.
 """
 from __future__ import annotations
 
-import hashlib
-import io
-import ipaddress
-import socket
 from datetime import datetime
 from typing import Optional
 from urllib.parse import urlparse
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Query
-from PIL import Image
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
@@ -24,20 +19,37 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_superuser, get_db
 from app.models.stock_image import StockImage
 from app.models.user import User
-from app.services.image_optimizer import optimize_image
-from app.services.media_storage import media_storage
+from app.db import session as db_session
+from app.services.curated_photos import (
+    MAX_IMAGE_BYTES,
+    Credits,
+    PhotoError,
+    direct_download_url,
+    download,
+    get_job,
+    new_job,
+    run_link_import,
+    save_curated_photo,
+)
 from app.services.stock_images import MANUAL_PROVIDER, keyword_list
 
 router = APIRouter(prefix="/master/stock-photos")
 
-MAX_BYTES = 15 * 1024 * 1024
-RAW_TYPES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
 
 
 class StockPhotoIn(BaseModel):
     url: str = Field(..., min_length=8, max_length=1000)
     keywords: str = Field(..., min_length=2, max_length=500)
     description: Optional[str] = Field(default=None, max_length=500)
+    author: Optional[str] = Field(default=None, max_length=255)
+    author_url: Optional[str] = Field(default=None, max_length=500)
+    source_name: Optional[str] = Field(default=None, max_length=120)
+    source_url: Optional[str] = Field(default=None, max_length=500)
+
+
+class ImportLinkIn(BaseModel):
+    url: str = Field(..., min_length=8, max_length=1000)
+    keywords: str = Field(..., min_length=2, max_length=500)
     author: Optional[str] = Field(default=None, max_length=255)
     author_url: Optional[str] = Field(default=None, max_length=500)
     source_name: Optional[str] = Field(default=None, max_length=120)
@@ -99,54 +111,30 @@ def _link(value: str | None) -> str | None:
     return value
 
 
-def _check_public_host(url: str) -> None:
-    """Só baixa de endereços públicos (nada da rede interna do servidor)."""
-    parsed = urlparse(url)
-    if parsed.scheme not in ("http", "https") or not parsed.hostname:
-        raise HTTPException(status_code=400, detail="Informe o endereço completo da imagem (http:// ou https://).")
+def download_photo(url: str) -> bytes:
+    """Baixa a imagem do endereço (só endereços públicos, até 30 MB)."""
     try:
-        addresses = {info[4][0] for info in socket.getaddrinfo(parsed.hostname, None)}
-    except socket.gaierror as exc:
-        raise HTTPException(status_code=400, detail="Não encontramos o site dessa imagem.") from exc
-    for address in addresses:
-        ip = ipaddress.ip_address(address)
-        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast:
-            raise HTTPException(status_code=400, detail="Endereço de imagem não permitido.")
-
-
-def download_photo(url: str) -> tuple[str, int | None, int | None]:
-    """Baixa a imagem, guarda a cópia otimizada e devolve (endereço, largura, altura)."""
-    _check_public_host(url)
-    headers = {"User-Agent": "RoteiroOnline/1.0 (+https://roteiroonline.com)"}
-    try:
-        with httpx.Client(timeout=20, follow_redirects=True, headers=headers) as client:
-            with client.stream("GET", url) as response:
-                response.raise_for_status()
-                content_type = (response.headers.get("content-type") or "").split(";")[0].strip().lower()
-                if not content_type.startswith("image/"):
-                    raise HTTPException(
-                        status_code=400,
-                        detail="Esse link não é de uma imagem. Abra a foto, clique com o botão direito e copie o endereço da imagem.",
-                    )
-                data = b""
-                for chunk in response.iter_bytes():
-                    data += chunk
-                    if len(data) > MAX_BYTES:
-                        raise HTTPException(status_code=400, detail="Imagem grande demais (máximo de 15 MB).")
+        data, content_type = download(direct_download_url(url), MAX_IMAGE_BYTES)
+    except PhotoError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except httpx.HTTPError as exc:
         raise HTTPException(status_code=400, detail=f"Não foi possível baixar a imagem: {exc}") from exc
-    try:
-        with Image.open(io.BytesIO(data)) as image:
-            width, height = image.size
-    except Exception as exc:  # noqa: BLE001
-        raise HTTPException(status_code=400, detail="Não conseguimos abrir essa imagem.") from exc
-    variants = optimize_image(data)
-    if variants:
-        return media_storage.save_image_variants(variants), width, height
-    extension = RAW_TYPES.get(content_type)
-    if not extension:
-        raise HTTPException(status_code=400, detail="Use uma imagem JPG, PNG ou WebP.")
-    return media_storage.save(data, f"foto{extension}", content_type), width, height
+    if content_type and not content_type.startswith("image/") and content_type != "application/octet-stream":
+        raise HTTPException(
+            status_code=400,
+            detail="Esse link não é de uma imagem. Abra a foto, clique com o botão direito e copie o endereço da imagem.",
+        )
+    return data
+
+
+def _credits(payload: "StockPhotoIn | ImportLinkIn") -> Credits:
+    return Credits(
+        description=_clean(getattr(payload, "description", None)),
+        author=_clean(payload.author),
+        author_url=_link(payload.author_url),
+        source_name=_clean(payload.source_name),
+        source_url=_link(payload.source_url),
+    )
 
 
 def _get(db: Session, photo_id: int) -> StockImage:
@@ -183,30 +171,69 @@ def create_stock_photo(
     _: User = Depends(get_current_superuser),
 ) -> StockPhotoOut:
     url = payload.url.strip()
-    provider_id = hashlib.sha1(url.encode()).hexdigest()[:40]
-    if db.query(StockImage.id).filter(StockImage.provider == MANUAL_PROVIDER, StockImage.provider_id == provider_id).first():
+    _keywords(payload.keywords)
+    credits = _credits(payload)
+    data = download_photo(url)
+    try:
+        image = save_curated_photo(db, data, keywords=payload.keywords, credits=credits, origin=url)
+    except PhotoError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if image is None:
         raise HTTPException(status_code=409, detail="Essa imagem já está cadastrada.")
-    keywords = _keywords(payload.keywords)
-    stored_url, width, height = download_photo(url)
-    image = StockImage(
-        provider=MANUAL_PROVIDER,
-        provider_id=provider_id,
-        download_url=url,
-        stored_url=stored_url,
-        tags=keywords,
-        alt=_clean(payload.description),
-        photographer=_clean(payload.author),
-        photographer_url=_link(payload.author_url),
-        source_name=_clean(payload.source_name),
-        page_url=_link(payload.source_url),
-        width=width,
-        height=height,
-        uses=0,
-    )
-    db.add(image)
-    db.commit()
-    db.refresh(image)
     return _out(image)
+
+
+@router.post("/upload", response_model=StockPhotoOut)
+async def upload_stock_photo(
+    file: UploadFile = File(...),
+    keywords: str = Form(..., min_length=2, max_length=500),
+    path: str = Form(default="", max_length=500),
+    author: str = Form(default="", max_length=255),
+    author_url: str = Form(default="", max_length=500),
+    source_name: str = Form(default="", max_length=120),
+    source_url: str = Form(default="", max_length=500),
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_superuser),
+) -> StockPhotoOut:
+    """Uma foto enviada do computador. O painel manda uma por vez (lotes e pastas), com o
+    caminho relativo para o nome do arquivo e as pastas virarem contexto."""
+    _keywords(keywords)
+    data = await file.read(MAX_IMAGE_BYTES + 1)
+    credits = Credits(
+        author=_clean(author), author_url=_link(author_url), source_name=_clean(source_name), source_url=_link(source_url)
+    )
+    name = path or file.filename or "foto.jpg"
+    try:
+        image = save_curated_photo(db, data, keywords=keywords, credits=credits, origin=f"upload:{name}", path=name)
+    except PhotoError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if image is None:
+        raise HTTPException(status_code=409, detail="Essa imagem já está cadastrada.")
+    return _out(image)
+
+
+@router.post("/import-link")
+def import_stock_photos_from_link(
+    payload: ImportLinkIn,
+    background: BackgroundTasks,
+    _: User = Depends(get_current_superuser),
+) -> dict:
+    """Link do Dropbox (pasta ou foto) ou de um .zip: baixa e cadastra em segundo plano."""
+    url = payload.url.strip()
+    if urlparse(url).scheme not in ("http", "https"):
+        raise HTTPException(status_code=400, detail="Cole o link completo (https://...).")
+    _keywords(payload.keywords)
+    job = new_job()
+    background.add_task(run_link_import, job, db_session.SessionLocal, url, payload.keywords, _credits(payload))
+    return job.as_dict()
+
+
+@router.get("/import-link/{job_id}")
+def stock_photo_import_status(job_id: str, _: User = Depends(get_current_superuser)) -> dict:
+    job = get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Importação não encontrada (o servidor pode ter reiniciado).")
+    return job.as_dict()
 
 
 @router.patch("/{photo_id}", response_model=StockPhotoOut)

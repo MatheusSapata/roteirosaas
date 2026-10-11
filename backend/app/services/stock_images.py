@@ -150,7 +150,23 @@ def rank_images(images: list[StockImage], query: str, *, prefer_brazil: bool = F
 
 
 def stock_search_enabled(db: Session) -> bool:
-    return has_any_image_key(db)
+    # Fotos cadastradas no Admin Master funcionam mesmo sem chave de Unsplash/Pexels.
+    return has_any_image_key(db) or db.query(StockImage.id).filter(StockImage.provider == MANUAL_PROVIDER).first() is not None
+
+
+def curated_catalog(db: Session, limit: int = 120) -> list[str]:
+    """Palavras-chave mais específicas das fotos cadastradas (ex.: "beto carrero nerf"), para a
+    IA usar o termo exato na "Busca de imagem" e acertar a foto."""
+    counts: dict[str, int] = {}
+    for (tags,) in db.query(StockImage.tags).filter(StockImage.provider == MANUAL_PROVIDER).all():
+        keywords = keyword_list(tags)
+        longest = max((len(keyword.split()) for keyword in keywords), default=0)
+        for keyword in keywords:
+            # Só as mais específicas de cada foto (a do lugar + contexto); as gerais repetem.
+            if len(keyword.split()) == longest:
+                counts[keyword] = counts.get(keyword, 0) + 1
+    ranked = sorted(counts, key=lambda keyword: (-counts[keyword], keyword))
+    return ranked[:limit]
 
 
 def _search_pexels(client: httpx.Client, key: str, query: str, record=None) -> list[dict[str, Any]]:

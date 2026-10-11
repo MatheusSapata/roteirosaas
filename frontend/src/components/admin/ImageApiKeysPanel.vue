@@ -128,7 +128,10 @@
             Fotos de qualquer site, com palavras-chave e crédito. Quando a busca da IA tem as palavras-chave, a foto entra antes do Unsplash e do Pexels.
           </div>
         </div>
-        <button type="button" class="am-btn am-btn-primary shrink-0" @click="openPhotoCreate"><AmIcon name="plus" />Adicionar foto</button>
+        <div class="flex shrink-0 flex-wrap gap-2">
+          <button type="button" class="am-btn" @click="openImport"><AmIcon name="upload" />Importar várias</button>
+          <button type="button" class="am-btn am-btn-primary" @click="openPhotoCreate"><AmIcon name="plus" />Adicionar foto</button>
+        </div>
       </div>
       <div class="mb-3 flex flex-wrap items-center gap-2">
         <input v-model="photoQuery" class="am-input max-w-xs" placeholder="Buscar por palavra-chave ou autor" @keyup.enter="loadPhotos" />
@@ -269,6 +272,85 @@
         </button>
       </template>
     </AdminMasterDrawer>
+    <AdminMasterDrawer
+      :open="importOpen"
+      title="Importar várias fotos"
+      subtitle="Todas recebem as mesmas palavras-chave e o mesmo crédito. O nome de cada arquivo e das pastas entra como contexto: com a palavra-chave Beto Carrero, o arquivo Nerf_02.jpg vira beto carrero nerf."
+      icon="upload"
+      tone="violet"
+      @close="closeImport"
+    >
+      <div class="grid gap-3.5">
+        <div v-if="importError" class="am-notice am-tone-danger"><AmIcon name="alert" /><span>{{ importError }}</span></div>
+        <div class="flex gap-2">
+          <button type="button" class="am-chip" :class="{ on: importMode === 'link' }" @click="importMode = 'link'">Link do Dropbox</button>
+          <button type="button" class="am-chip" :class="{ on: importMode === 'files' }" @click="importMode = 'files'">Arquivos do computador</button>
+        </div>
+        <div v-if="importMode === 'link'" class="am-field">
+          <label for="im-link">Link de compartilhamento</label>
+          <input id="im-link" v-model="importLink" class="am-input am-mono" placeholder="https://www.dropbox.com/scl/fo/..." />
+          <small class="am-muted text-xs">
+            Pasta ou foto do Dropbox com acesso "qualquer pessoa com o link". Também serve link direto de um .zip. Importa até 300 fotos JPG, PNG ou WebP.
+          </small>
+        </div>
+        <div v-else class="grid gap-2">
+          <div class="flex flex-wrap gap-2">
+            <label class="am-btn cursor-pointer">
+              <AmIcon name="image" />Escolher fotos
+              <input type="file" accept="image/jpeg,image/png,image/webp" multiple class="hidden" @change="pickFiles" />
+            </label>
+            <label class="am-btn cursor-pointer">
+              <AmIcon name="upload" />Escolher uma pasta
+              <input type="file" webkitdirectory multiple class="hidden" @change="pickFiles" />
+            </label>
+          </div>
+          <small class="am-muted text-xs">
+            {{ importFiles.length ? `${importFiles.length} foto${importFiles.length === 1 ? "" : "s"} selecionada${importFiles.length === 1 ? "" : "s"}` : "Nenhuma foto selecionada." }}
+            Com uma pasta, as subpastas também viram contexto (ex.: Atrações/Nerf).
+          </small>
+        </div>
+        <div class="am-field">
+          <label for="im-keywords">Palavras-chave do lote</label>
+          <input id="im-keywords" v-model="importForm.keywords" class="am-input" placeholder="Ex.: Beto Carrero, Penha, theme park" />
+          <small class="am-muted text-xs">A primeira é a principal: é ela que se junta ao nome de cada arquivo.</small>
+        </div>
+        <div class="grid gap-3.5 sm:grid-cols-2">
+          <div class="am-field">
+            <label for="im-author">Autor / fotógrafo</label>
+            <input id="im-author" v-model="importForm.author" class="am-input" />
+          </div>
+          <div class="am-field">
+            <label for="im-author-url">Link do autor</label>
+            <input id="im-author-url" v-model="importForm.author_url" class="am-input" placeholder="https://" />
+          </div>
+          <div class="am-field">
+            <label for="im-source">Fonte</label>
+            <input id="im-source" v-model="importForm.source_name" class="am-input" placeholder="Ex.: Divulgação Beto Carrero World" />
+          </div>
+          <div class="am-field">
+            <label for="im-source-url">Link da fonte ou da licença</label>
+            <input id="im-source-url" v-model="importForm.source_url" class="am-input" placeholder="https://" />
+          </div>
+        </div>
+        <label class="flex items-start gap-2 text-sm">
+          <input v-model="importRights" type="checkbox" class="mt-1" />
+          <span>Tenho direito de usar estas fotos em sites de clientes (licença livre, autorização do autor ou fotos próprias).</span>
+        </label>
+        <div v-if="importProgress" class="am-notice" :class="importProgress.status === 'error' ? 'am-tone-danger' : importProgress.status === 'done' ? 'am-tone-success' : 'am-tone-info'">
+          <AmIcon :name="importProgress.status === 'done' ? 'check' : importProgress.status === 'error' ? 'alert' : 'refresh'" />
+          <span>
+            {{ importProgressText }}
+            <template v-if="importProgress.skipped.length"><br />Não entraram: {{ importProgress.skipped.join("; ") }}</template>
+          </span>
+        </div>
+      </div>
+      <template #footer>
+        <button type="button" class="am-btn" @click="closeImport">{{ importRunning ? "Fechar (continua importando)" : "Fechar" }}</button>
+        <button type="button" class="am-btn am-btn-primary" :disabled="importRunning || !importRights" @click="startImport">
+          {{ importRunning ? "Importando..." : "Importar" }}
+        </button>
+      </template>
+    </AdminMasterDrawer>
   </section>
 </template>
 
@@ -290,7 +372,11 @@ import {
   deleteStockPhoto,
   listStockPhotos,
   updateStockPhoto,
-  type StockPhoto
+  type StockPhoto,
+  getStockPhotoImport,
+  importStockPhotosFromLink,
+  uploadStockPhoto,
+  type StockPhotoImportJob
 } from "../../services/imageApiKeys";
 import { resolveMediaUrl } from "../../utils/media";
 import AmIcon from "./master/AmIcon.vue";
@@ -574,6 +660,124 @@ const removePhoto = async (photo: StockPhoto) => {
     errorMessage.value = errorText(error, "Não foi possível excluir a foto.");
   }
 };
+
+// Importação em lote (link do Dropbox ou arquivos/pasta do computador)
+const importOpen = ref(false);
+const importMode = ref<"link" | "files">("link");
+const importLink = ref("");
+const importFiles = ref<Array<{ file: File; path: string }>>([]);
+const importForm = reactive({ keywords: "", author: "", author_url: "", source_name: "", source_url: "" });
+const importRights = ref(false);
+const importError = ref("");
+const importRunning = ref(false);
+const importProgress = ref<StockPhotoImportJob | null>(null);
+let importTimer: ReturnType<typeof setTimeout> | null = null;
+
+const importProgressText = computed(() => {
+  const job = importProgress.value;
+  if (!job) return "";
+  if (job.status === "error") return job.error || "A importação parou.";
+  const done = job.added + job.duplicates + job.skipped.length;
+  const counts = `${job.added} nova${job.added === 1 ? "" : "s"}${job.duplicates ? `, ${job.duplicates} já estava${job.duplicates === 1 ? "" : "m"} no banco` : ""}`;
+  if (job.status === "done") return `Importação concluída: ${counts}.`;
+  return job.total ? `Importando ${done} de ${job.total} (${counts})...` : "Baixando o arquivo...";
+});
+
+// Tira as pastas que todas as fotos têm em comum (a pasta escolhida não diz nada da foto).
+const relativePaths = (files: File[]) => {
+  const parts = files.map(file => (file.webkitRelativePath || file.name).split("/"));
+  let common = 0;
+  while (parts.every(p => p.length > common + 1) && new Set(parts.map(p => p[common])).size === 1) common += 1;
+  return parts.map(p => p.slice(common).join("/"));
+};
+
+const pickFiles = (event: Event) => {
+  const input = event.target as HTMLInputElement;
+  const files = Array.from(input.files || []).filter(file => /\.(jpe?g|png|webp)$/i.test(file.name) && !file.name.startsWith("."));
+  const paths = relativePaths(files);
+  importFiles.value = files.map((file, index) => ({ file, path: paths[index] }));
+  input.value = "";
+};
+
+const openImport = () => {
+  if (!importRunning.value) {
+    importProgress.value = null;
+    importError.value = "";
+    importFiles.value = [];
+    importLink.value = "";
+  }
+  importOpen.value = true;
+};
+const closeImport = () => {
+  importOpen.value = false;
+};
+
+const pollImport = async (id: string) => {
+  try {
+    importProgress.value = await getStockPhotoImport(id);
+  } catch (error: any) {
+    importError.value = errorText(error, "Não foi possível acompanhar a importação.");
+    importRunning.value = false;
+    return;
+  }
+  if (importProgress.value.status === "running") {
+    importTimer = setTimeout(() => pollImport(id), 2000);
+    return;
+  }
+  importRunning.value = false;
+  await Promise.all([loadPhotos(), load()]);
+};
+
+const startImport = async () => {
+  importError.value = "";
+  const fields = { ...importForm };
+  if (!fields.keywords.trim()) {
+    importError.value = "Informe as palavras-chave do lote.";
+    return;
+  }
+  if (importMode.value === "link") {
+    if (!/^https?:\/\//.test(importLink.value.trim())) {
+      importError.value = "Cole o link de compartilhamento completo (https://...).";
+      return;
+    }
+    importRunning.value = true;
+    try {
+      const job = await importStockPhotosFromLink(importLink.value.trim(), fields);
+      importProgress.value = job;
+      void pollImport(job.id);
+    } catch (error: any) {
+      importError.value = errorText(error, "Não foi possível começar a importação.");
+      importRunning.value = false;
+    }
+    return;
+  }
+  if (!importFiles.value.length) {
+    importError.value = "Escolha as fotos ou uma pasta.";
+    return;
+  }
+  // Uma foto por vez: nada de envio gigante, e o andamento aparece foto a foto.
+  importRunning.value = true;
+  const job: StockPhotoImportJob = { id: "local", status: "running", total: importFiles.value.length, added: 0, duplicates: 0, skipped: [], error: null };
+  importProgress.value = job;
+  for (const { file, path } of importFiles.value) {
+    try {
+      await uploadStockPhoto(file, path, fields);
+      job.added += 1;
+    } catch (error: any) {
+      if (error?.response?.status === 409) job.duplicates += 1;
+      else job.skipped.push(`${file.name}: ${errorText(error, "falhou")}`);
+    }
+    importProgress.value = { ...job };
+  }
+  importProgress.value = { ...job, status: "done" };
+  importRunning.value = false;
+  importFiles.value = [];
+  await Promise.all([loadPhotos(), load()]);
+};
+
+onBeforeUnmount(() => {
+  if (importTimer) clearTimeout(importTimer);
+});
 
 onMounted(() => {
   load();

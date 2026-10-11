@@ -10,6 +10,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app.models.page import Page
+from app.services.stock_images import curated_catalog
 
 MAX_PAGES = 40
 NETWORK_NAMES = {"instagram": "Instagram", "facebook": "Facebook", "youtube": "YouTube", "tiktok": "TikTok", "linkedin": "LinkedIn"}
@@ -125,6 +126,14 @@ def build_agency_context(db: Session, page: Page, page_sections: list[dict[str, 
         lines.extend(summary)
     else:
         lines.append("SEÇÕES DESTA PÁGINA: nenhuma ainda.")
+
+    catalog = curated_catalog(db)
+    if catalog:
+        lines.append(
+            "Fotos cadastradas no banco da plataforma (quando a seção falar de um destes lugares ou atrações, "
+            'comece a "Busca de imagem" com o termo exato, ex.: "beto carrero nerf | family theme park"): '
+            + "; ".join(catalog)
+        )
 
     others = (
         db.query(Page)

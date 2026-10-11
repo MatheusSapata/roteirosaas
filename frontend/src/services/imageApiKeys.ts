@@ -90,3 +90,35 @@ export const createStockPhoto = async (payload: StockPhotoPayload & { url: strin
 export const updateStockPhoto = async (id: number, payload: StockPhotoPayload) =>
   (await api.patch<StockPhoto>(`${photoBase}/${id}`, payload)).data;
 export const deleteStockPhoto = async (id: number) => (await api.delete<{ detail: string }>(`${photoBase}/${id}`)).data;
+
+export interface StockPhotoCredits {
+  keywords: string;
+  author?: string;
+  author_url?: string;
+  source_name?: string;
+  source_url?: string;
+}
+
+/** Uma foto do computador; `path` (pastas + nome) vira contexto nas palavras-chave. */
+export const uploadStockPhoto = async (file: File, path: string, fields: StockPhotoCredits) => {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("path", path);
+  Object.entries(fields).forEach(([key, value]) => form.append(key, value || ""));
+  return (await api.post<StockPhoto>(`${photoBase}/upload`, form)).data;
+};
+
+export interface StockPhotoImportJob {
+  id: string;
+  status: "running" | "done" | "error";
+  total: number;
+  added: number;
+  duplicates: number;
+  skipped: string[];
+  error: string | null;
+}
+
+export const importStockPhotosFromLink = async (url: string, fields: StockPhotoCredits) =>
+  (await api.post<StockPhotoImportJob>(`${photoBase}/import-link`, { url, ...fields })).data;
+export const getStockPhotoImport = async (id: string) =>
+  (await api.get<StockPhotoImportJob>(`${photoBase}/import-link/${id}`)).data;

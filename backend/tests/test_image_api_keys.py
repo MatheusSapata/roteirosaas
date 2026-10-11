@@ -43,7 +43,10 @@ def test_curated_stock_photos_crud_and_priority(client, db_session, monkeypatch)
     from app.services import stock_images
 
     app.dependency_overrides[get_current_superuser] = lambda: SimpleNamespace(is_superuser=True)
-    monkeypatch.setattr(stock_photos, "download_photo", lambda url: (f"/uploads/{url[-8:]}.webp", 1600, 1000))
+    from app.services import curated_photos
+
+    monkeypatch.setattr(stock_photos, "download_photo", lambda url: url.encode())
+    monkeypatch.setattr(curated_photos, "store_photo", lambda data, name="": (f"/uploads/{data.decode()[-8:]}.webp", 1600, 1000))
     base = "/api/v1/admin/master/stock-photos"
     try:
         created = client.post(base, json={
@@ -80,3 +83,49 @@ def test_curated_stock_photos_crud_and_priority(client, db_session, monkeypatch)
         assert client.get(base).json()[0]["keywords"] == ["gramado"]
     finally:
         app.dependency_overrides.pop(get_current_superuser, None)
+
+
+def test_curated_keywords_from_file_names_and_folders(db_session, monkeypatch):
+    import io
+    import zipfile
+
+    from app.services import curated_photos, stock_images
+    from app.services.curated_photos import Credits, context_words, photo_keywords, strip_common_folders
+
+    assert context_words("Atrações/Nerf/IMG_0123.jpg") == ["atracoes", "nerf"]
+    assert context_words("DSC0001-castelo_final-2.JPG") == ["castelo"]
+    assert photo_keywords("Beto Carrero, Penha", "Nerf_02.jpg") == "beto carrero nerf, beto carrero, penha"
+    assert photo_keywords("Beto Carrero", "beto-carrero-castelo.jpg") == "beto carrero castelo, beto carrero"
+    assert strip_common_folders(["Beto Carrero Imprensa/Nerf/a.jpg", "Beto Carrero Imprensa/Castelo/b.jpg"]) == ["Nerf/a.jpg", "Castelo/b.jpg"]
+    assert strip_common_folders(["Kit/a.jpg"]) == ["a.jpg"]
+    assert curated_photos.direct_download_url("https://www.dropbox.com/scl/fo/abc/xyz?rlkey=k&dl=0") == (
+        "https://www.dropbox.com/scl/fo/abc/xyz?rlkey=k&dl=1"
+    )
+
+    # Pasta do Dropbox (vem em .zip): cada foto ganha o contexto da pasta e do nome.
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr("Beto Carrero Imprensa/Nerf/IMG_1.jpg", b"nerf")
+        archive.writestr("Beto Carrero Imprensa/Castelo encantado.jpg", b"castelo")
+        archive.writestr("Beto Carrero Imprensa/leia-me.txt", b"x")
+        archive.writestr("__MACOSX/Beto Carrero Imprensa/._IMG_1.jpg", b"lixo")
+    monkeypatch.setattr(curated_photos, "download", lambda url, limit: (buffer.getvalue(), "application/zip"))
+    monkeypatch.setattr(curated_photos, "store_photo", lambda data, name="": (f"/uploads/{data.decode()}.webp", 1600, 1000))
+    job = curated_photos.new_job()
+    session_factory = lambda: db_session  # noqa: E731
+    db_session.close = lambda: None
+    curated_photos.run_link_import(job, session_factory, "https://www.dropbox.com/scl/fo/abc?dl=0", "Beto Carrero, Penha",
+                                   Credits(source_name="Divulgação Beto Carrero World"))
+    assert job.as_dict()["status"] == "done" and job.added == 2 and job.total == 2
+
+    nerf = stock_images.search_stock_images(db_session, None, "Nerf Beto Carrero World Brazil")
+    assert nerf[0].stored_url == "/uploads/nerf.webp" and nerf[0].alt == "nerf"
+    castle = stock_images.search_stock_images(db_session, None, "beto carrero castelo | castle")
+    assert castle[0].stored_url == "/uploads/castelo.webp"
+    assert stock_images._curated_matches(db_session, stock_images.query_terms("nerf blaster")) == []
+    assert stock_images.curated_catalog(db_session) == ["beto carrero castelo", "beto carrero encantado", "beto carrero nerf"]
+
+    # A mesma pasta de novo: nada duplica.
+    job2 = curated_photos.new_job()
+    curated_photos.run_link_import(job2, session_factory, "https://www.dropbox.com/scl/fo/abc?dl=0", "Beto Carrero", Credits())
+    assert job2.added == 0 and job2.duplicates == 2
