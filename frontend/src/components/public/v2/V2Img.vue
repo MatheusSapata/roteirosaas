@@ -9,10 +9,10 @@
     :fetchpriority="priority ? 'high' : undefined"
     decoding="async"
     :class="{ 'v2-img-wait': waiting, 'v2-img-in': revealed }"
-    @load="settle"
+    @load="settle(), placeCredit()"
     @error="settle"
   />
-  <V2PhotoCredit v-if="credit && !small" :src="src" />
+  <V2PhotoCredit v-if="showCredit" :src="src" :style="creditStyle" />
 </template>
 
 <script setup lang="ts">
@@ -22,9 +22,10 @@
  * aparece na hora. Imagens enviadas com versões leves ganham srcset: o navegador baixa só
  * a largura que a tela precisa (`sizes` diz quanto da tela a imagem ocupa).
  */
-import { computed, getCurrentInstance, nextTick, onMounted, ref, watch } from "vue";
+import { computed, getCurrentInstance, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { responsiveSrcset } from "../../../utils/media";
 import V2PhotoCredit from "./V2PhotoCredit.vue";
+import { usePhotoCredit } from "./photoCredits";
 
 // Duas raízes (foto + crédito): os atributos (class, alt, @click) vão para a foto.
 defineOptions({ inheritAttrs: false });
@@ -65,9 +66,48 @@ const settle = () => {
   waiting.value = false;
 };
 
-onMounted(check);
+// O "©" fica no canto de baixo da foto, qualquer que seja a seção: em vez de depender de
+// cada seção posicionar o contêiner da foto, mede onde a foto está (os dois têm o mesmo
+// elemento de referência, por serem irmãos) e se acomoda quando o tamanho muda.
+const photoCredit = usePhotoCredit(() => props.src);
+const showCredit = computed(() => props.credit && !small.value && Boolean(photoCredit.value));
+const creditStyle = ref<Record<string, string>>({});
+const placeCredit = () => {
+  const img = el.value;
+  if (!img || !showCredit.value) return;
+  const gap = 10;
+  creditStyle.value = {
+    left: `${img.offsetLeft + gap}px`,
+    top: `${img.offsetTop + img.offsetHeight - gap}px`,
+    bottom: "auto",
+    transform: "translateY(-100%)",
+    maxWidth: `${Math.max(0, img.offsetWidth - gap * 2)}px`
+  };
+};
+let observer: ResizeObserver | null = null;
+const watchSize = () => {
+  observer?.disconnect();
+  observer = null;
+  const img = el.value;
+  if (!img || !showCredit.value || typeof ResizeObserver === "undefined") return;
+  observer = new ResizeObserver(placeCredit);
+  observer.observe(img);
+  if (img.parentElement) observer.observe(img.parentElement);
+  placeCredit();
+};
+
+onMounted(() => {
+  check();
+  watchSize();
+  window.addEventListener("resize", placeCredit);
+});
+onBeforeUnmount(() => {
+  observer?.disconnect();
+  window.removeEventListener("resize", placeCredit);
+});
 watch(
   () => props.src,
   () => nextTick(check)
 );
+watch(showCredit, () => nextTick(watchSize));
 </script>
