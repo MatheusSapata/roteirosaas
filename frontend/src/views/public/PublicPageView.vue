@@ -56,6 +56,7 @@
 import { computed, defineAsyncComponent, onMounted, onUnmounted, provide, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import api from "../../services/api";
+import { rewriteAgencyLinks } from "../../utils/customDomainLinks";
 import platformApi from "../../services/platformApi";
 import PublicFreeFooterBrandSection from "../../components/public/PublicFreeFooterBrandSection.vue";
 import V2MiniFooter from "../../components/public/v2/V2MiniFooter.vue";
@@ -104,6 +105,7 @@ interface PublicPageResponse {
   cover_image_url?: string;
   seo_title?: string | null;
   design_v2_enabled?: boolean;
+  agency_slug?: string;
 }
 
 const route = useRoute();
@@ -515,7 +517,11 @@ const loadPage = async () => {
     const parsed = JSON.parse(configJson) as PageConfig;
     theme.value = { ...theme.value, ...(parsed.theme || {}) };
     pageConfigDesign.value = parsed.design;
-    sections.value = applyBackgrounds(parsed.sections || []);
+    const loadedSections = parsed.sections || [];
+    // Em domínio próprio, links internos usam só o slug da página, nunca o da agência.
+    sections.value = applyBackgrounds(
+      !platformHost && data.agency_slug ? rewriteAgencyLinks(loadedSections, data.agency_slug, platformHosts) : loadedSections
+    );
     await hydrateLeadCapture(parsed);
     if (typeof window !== "undefined") {
       pageUrl.value = window.location.href;
