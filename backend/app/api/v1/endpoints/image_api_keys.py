@@ -1,4 +1,4 @@
-"""Admin Master: chaves dos bancos de fotos gratuitos (Unsplash e Pexels) usadas pelo
+"""Admin Master: chaves dos bancos de fotos gratuitos (Pixabay, Unsplash e Pexels) usadas pelo
 assistente de IA. Várias chaves por banco; quando uma esgota o limite da hora, a próxima
 assume (ver app.services.image_api_keys)."""
 from __future__ import annotations
@@ -14,18 +14,18 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_superuser, get_db
 from app.api.v1.endpoints.flight_api_keys import FlightApiKeyOut, get_key_or_404, serialize_key
-from app.core.config import get_settings
 from app.models.external_api_key import ExternalApiKey
 from app.models.stock_image import StockImage, StockImageSearch
 from app.models.user import User
 from app.services.api_key_crypto import ApiKeyDecryptionError, decrypt_api_key, encrypt_api_key, extract_api_key_last4
-from app.services.image_api_keys import DEFAULT_HOURLY_LIMIT, IMAGE_PROVIDERS, ImageKey, record_image_call, roll_hour
+from app.services.image_api_keys import DEFAULT_HOURLY_LIMIT, IMAGE_PROVIDERS, env_image_key, ImageKey, record_image_call, roll_hour
 
 router = APIRouter(prefix="/master/image-api-keys")
 
 PROVIDERS = set(IMAGE_PROVIDERS)
 VALID_STATUSES = {"active", "paused", "exhausted", "error"}
 TEST_URLS = {
+    "pixabay": ("https://pixabay.com/api/", {"q": "beach", "per_page": 3}),
     "unsplash": ("https://api.unsplash.com/search/photos", {"query": "beach", "per_page": 1}),
     "pexels": ("https://api.pexels.com/v1/search", {"query": "beach", "per_page": 1}),
 }
@@ -58,7 +58,7 @@ class ImageApiKeyListResponse(BaseModel):
 def _provider(value: str | None) -> str:
     provider = (value or "").strip().lower()
     if provider not in PROVIDERS:
-        raise HTTPException(status_code=400, detail="Banco de fotos inválido. Use Unsplash ou Pexels.")
+        raise HTTPException(status_code=400, detail="Banco de fotos inválido. Use Pixabay, Unsplash ou Pexels.")
     return provider
 
 
@@ -87,7 +87,6 @@ def list_image_api_keys(
     # Mostra a hora atual: chave esgotada na hora anterior já aparece ativa e zerada.
     if any(roll_hour(record) for record in records):
         db.commit()
-    settings = get_settings()
     summary: dict[str, Any] = {
         "searches": db.query(func.count(StockImageSearch.id)).scalar() or 0,
         "photos": db.query(func.count(StockImage.id)).scalar() or 0,
@@ -103,7 +102,7 @@ def list_image_api_keys(
             "active_keys": len(active),
             "hour_usage": sum(int(record.monthly_usage_estimated or 0) for record in rows),
             "hour_limit": sum(int(record.monthly_limit or 0) for record in active),
-            "env_key": bool((settings.unsplash_access_key if provider == "unsplash" else settings.pexels_api_key) or ""),
+            "env_key": bool(env_image_key(provider).strip()),
         }
     return ImageApiKeyListResponse(items=[serialize_key(record) for record in records], summary=summary)
 
@@ -177,17 +176,20 @@ def test_image_api_key(
         db.commit()
         raise HTTPException(status_code=500, detail=str(exc)) from exc
     url, params = TEST_URLS[record.provider]
-    headers = (
-        {"Authorization": f"Client-ID {plain_key}", "Accept-Version": "v1"}
-        if record.provider == "unsplash"
-        else {"Authorization": plain_key}
-    )
+    headers: dict[str, str] = {}
+    if record.provider == "unsplash":
+        headers = {"Authorization": f"Client-ID {plain_key}", "Accept-Version": "v1"}
+    elif record.provider == "pexels":
+        headers = {"Authorization": plain_key}
+    else:  # Pixabay: a chave vai no endereço
+        params = {**params, "key": plain_key}
     paused = not record.is_active
     try:
         with httpx.Client(timeout=15) as client:
             response = client.get(url, params=params, headers=headers)
     except httpx.HTTPError as exc:
-        raise HTTPException(status_code=502, detail=f"Não foi possível falar com o banco de fotos: {exc}") from exc
+        # Sem o texto do erro: no Pixabay ele traria o endereço com a chave.
+        raise HTTPException(status_code=502, detail=f"Não foi possível falar com o banco de fotos ({type(exc).__name__}).") from exc
     record_image_call(db, ImageKey(provider=record.provider, plain_key=plain_key, record=record), response)
     if paused:
         record.status = "paused" if record.status == "active" else record.status

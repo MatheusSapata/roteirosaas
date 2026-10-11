@@ -1,13 +1,10 @@
-"""Fotos de bancos gratuitos (Pexels e Unsplash) para as seções criadas pelo assistente de IA.
-
-Cada busca e cada foto ficam guardadas (stock_image_searches / stock_images) e são
-reaproveitadas antes de qualquer chamada: a mesma busca, uma busca parecida ("Gramado Brazil
-street" ≈ "Gramado street winter") ou fotos guardadas cuja descrição tem as mesmas palavras.
-Só então o banco de fotos é consultado, com as chaves do Admin Master em ordem, dentro do
-limite por hora de cada uma (a chave inicial do Unsplash dá 50 chamadas por hora, contando
-buscas e avisos de uso); quando uma esgota, a próxima assume.
-Sem PEXELS_API_KEY nem UNSPLASH_ACCESS_KEY, nada é buscado e as seções ficam com a
-imagem provisória.
+"""Fotos para as seções criadas pelo assistente de IA, nesta ordem:
+1) fotos cadastradas no Admin Master (banco próprio), quando as palavras-chave estão na busca;
+2) buscas e fotos já guardadas (stock_image_searches / stock_images): a mesma busca, uma
+   parecida ("Gramado Brazil street" ≈ "Gramado street winter") ou descrição com as mesmas palavras;
+3) os bancos gratuitos Pixabay, Unsplash e Pexels, nessa ordem, com as chaves do Admin Master
+   dentro do limite por hora de cada uma (quando uma esgota, a próxima assume).
+Sem fotos cadastradas nem chaves, nada é buscado e as seções ficam com a imagem provisória.
 """
 from __future__ import annotations
 
@@ -198,6 +195,42 @@ def _search_pexels(client: httpx.Client, key: str, query: str, record=None) -> l
     return results
 
 
+def _search_pixabay(client: httpx.Client, key: str, query: str, record=None) -> list[dict[str, Any]]:
+    # O Pixabay não permite usar a foto direto do site deles: ela é baixada e guardada
+    # (materialize), como as do Pexels.
+    response = client.get(
+        "https://pixabay.com/api/",
+        params={
+            "key": key, "q": query[:100], "image_type": "photo", "orientation": "horizontal",
+            "safesearch": "true", "per_page": PER_PAGE, "order": "popular",
+        },
+    )
+    if record:
+        record(response)
+    if response.status_code >= 400:
+        # Sem repetir o endereço: a chave do Pixabay vai nele.
+        raise RuntimeError(f"Pixabay respondeu {response.status_code}")
+    results = []
+    for photo in response.json().get("hits") or []:
+        download = photo.get("largeImageURL") or photo.get("webformatURL")
+        if not download:
+            continue
+        user, user_id = photo.get("user") or "", photo.get("user_id")
+        results.append({
+            "provider": "pixabay",
+            "provider_id": str(photo.get("id")),
+            "download_url": download,
+            "page_url": photo.get("pageURL"),
+            "photographer": user or None,
+            "photographer_url": f"https://pixabay.com/users/{user}-{user_id}/" if user and user_id else None,
+            "alt": (photo.get("tags") or "")[:500],
+            "tags": (photo.get("tags") or "")[:500] or None,
+            "width": photo.get("imageWidth"),
+            "height": photo.get("imageHeight"),
+        })
+    return results
+
+
 def _search_unsplash(client: httpx.Client, key: str, query: str, record=None) -> list[dict[str, Any]]:
     response = client.get(
         "https://api.unsplash.com/search/photos",
@@ -376,9 +409,9 @@ def _search_bank(db: Session, client: httpx.Client, query: str, *, minimum: int 
 
     results: list[dict[str, Any]] = []
     provider = None
-    # Unsplash primeiro, depois Pexels; em cada banco, as chaves na ordem do Admin Master.
-    # Chave esgotada na hora (ou recusada) passa a vez para a próxima.
-    for name, search in (("unsplash", _search_unsplash), ("pexels", _search_pexels)):
+    # Pixabay primeiro, depois Unsplash e Pexels (as fotos cadastradas já vieram antes); em cada
+    # banco, as chaves na ordem do Admin Master. Chave esgotada na hora (ou recusada) passa a vez.
+    for name, search in (("pixabay", _search_pixabay), ("unsplash", _search_unsplash), ("pexels", _search_pexels)):
         for key in available_image_keys(db, name):
             try:
                 results = search(client, key.plain_key, query, record=lambda response, key=key: record_image_call(db, key, response))
@@ -459,7 +492,9 @@ def credit_for(image: StockImage, url: str) -> dict[str, str] | None:
             "providerLink": image.page_url or "",
         }
     provider = image.provider.title()
-    provider_home = {"unsplash": "https://unsplash.com/", "pexels": "https://www.pexels.com/"}.get(image.provider, "")
+    provider_home = {
+        "unsplash": "https://unsplash.com/", "pexels": "https://www.pexels.com/", "pixabay": "https://pixabay.com/",
+    }.get(image.provider, "")
     return {
         "url": url,
         "name": image.photographer or provider,

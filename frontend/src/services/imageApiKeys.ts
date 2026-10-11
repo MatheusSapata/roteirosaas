@@ -1,10 +1,10 @@
 import api from "./api";
 import type { FlightApiKey } from "./flightDetails";
 
-// Chaves dos bancos de fotos (Unsplash e Pexels). Mesmo formato das chaves de voo, mas
+// Chaves dos bancos de fotos (Pixabay, Unsplash e Pexels). Mesmo formato das chaves de voo, mas
 // "monthly_limit" é o limite POR HORA e "monthly_usage_estimated" o uso da hora atual.
 export type ImageApiKey = FlightApiKey;
-export type ImageProvider = "unsplash" | "pexels";
+export type ImageProvider = "pixabay" | "unsplash" | "pexels";
 
 export interface ImageProviderSummary {
   keys: number;
@@ -22,6 +22,7 @@ export interface ImageApiKeysResponse {
     photo_uses: number;
     search_reuses: number;
     curated_photos: number;
+    pixabay: ImageProviderSummary;
     unsplash: ImageProviderSummary;
     pexels: ImageProviderSummary;
   };

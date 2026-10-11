@@ -784,7 +784,7 @@ def test_contract_guides_conversation_and_photos() -> None:
     from app.services.ai_assistant import PLATFORM_FORMAT_CONTRACT
 
     assert "números são só para perguntas" in PLATFORM_FORMAT_CONTRACT
-    assert "busca fotos gratuitas (Pexels e Unsplash)" in PLATFORM_FORMAT_CONTRACT
+    assert "bancos gratuitos (Pixabay, Unsplash e Pexels)" in PLATFORM_FORMAT_CONTRACT
 
 
 def test_stock_photos_fill_sections_and_reuse_cache(monkeypatch) -> None:
@@ -944,3 +944,59 @@ def test_stock_search_prefers_brazil_recent_and_matching_photos(monkeypatch):
         [result] = stock_images._search_unsplash(client, "k", "Beto Carrero Brazil")
     assert result["alt"] == "Parque em Penha roller coaster" and result["tags"] == "brasil, parque"
     assert result["location"] == "Florianópolis, Brasil" and result["published_at"].year == 2024
+
+
+def test_pixabay_comes_first_after_curated_and_hides_key(monkeypatch):
+    import httpx
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    from app.models.stock_image import StockImage, StockImageSearch
+    from app.services import stock_images
+
+    engine = create_engine("sqlite://")
+    StockImage.__table__.create(engine)
+    StockImageSearch.__table__.create(engine)
+    db = sessionmaker(bind=engine)()
+
+    calls = []
+    keys = {name: [stock_images.ImageKey(provider=name, plain_key=f"chave-{name}")] for name in ("pixabay", "unsplash", "pexels")}
+    monkeypatch.setattr(stock_images, "available_image_keys", lambda db, provider: keys[provider])
+    monkeypatch.setattr(stock_images, "record_image_call", lambda *a: None)
+
+    def fake(name):
+        def search(client, key, query, record=None):
+            calls.append(name)
+            return [{"provider": name, "provider_id": f"{name}-1", "download_url": "https://x/1.jpg", "page_url": "p",
+                     "photographer": "Ana", "photographer_url": "u", "alt": "beach", "width": 10, "height": 6}]
+        return search
+
+    monkeypatch.setattr(stock_images, "_search_unsplash", fake("unsplash"))
+    monkeypatch.setattr(stock_images, "_search_pexels", fake("pexels"))
+
+    payload = {"hits": [{"id": 7, "pageURL": "https://pixabay.com/photos/7", "tags": "beach, sea, brazil",
+                         "largeImageURL": "https://pixabay.com/get/7_1280.jpg", "imageWidth": 1920, "imageHeight": 1280,
+                         "user": "ana", "user_id": 42}]}
+    seen_urls = []
+
+    def handler(request):
+        seen_urls.append(str(request.url))
+        return httpx.Response(200, json=payload)
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        found = stock_images.search_stock_images(db, client, "Copacabana beach Brazil")
+    assert calls == [] and found[0].provider == "pixabay" and found[0].tags == "beach, sea, brazil"
+    assert "key=chave-pixabay" in seen_urls[0] and "safesearch=true" in seen_urls[0]
+    assert stock_images.credit_for(found[0], "u") == {
+        "url": "u", "name": "ana", "link": "https://pixabay.com/users/ana-42/?utm_source=roteiro_online&utm_medium=referral",
+        "provider": "Pixabay", "providerLink": "https://pixabay.com/?utm_source=roteiro_online&utm_medium=referral",
+    }
+
+    # Erro do Pixabay: a mensagem não leva o endereço (que tem a chave) e o Unsplash assume.
+    with httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(429))) as client:
+        try:
+            stock_images._search_pixabay(client, "chave-secreta", "x")
+        except RuntimeError as exc:
+            assert "chave-secreta" not in str(exc)
+        found = stock_images.search_stock_images(db, client, "Gramado street winter")
+    assert found[0].provider == "unsplash" and calls == ["unsplash"]

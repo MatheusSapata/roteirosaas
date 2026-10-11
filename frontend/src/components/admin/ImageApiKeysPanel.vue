@@ -2,7 +2,7 @@
   <section class="am-page">
     <AdminMasterHeader
       title="Bancos de fotos"
-      subtitle="Chaves do Unsplash e do Pexels usadas pelo assistente de IA para buscar fotos. Quando uma chave esgota o limite da hora, a próxima assume sozinha."
+      subtitle="Ordem das fotos do assistente de IA: banco próprio (fotos cadastradas), depois Pixabay, Unsplash e Pexels. Quando uma chave esgota o limite da hora, a próxima assume sozinha."
     >
       <button type="button" class="am-btn" :disabled="loading" @click="refresh"><AmIcon name="refresh" :class="loading ? 'animate-spin' : ''" />Atualizar</button>
       <button type="button" class="am-btn am-btn-primary" @click="openCreate"><AmIcon name="plus" />Nova chave</button>
@@ -13,32 +13,20 @@
 
     <section class="am-grid-4">
       <AdminMasterKpi
-        icon="image"
-        tone="success"
-        label="Unsplash nesta hora"
-        :value="`${formatInt(summary.unsplash.hour_usage)} / ${formatInt(summary.unsplash.hour_limit)}`"
-        :hint="providerHint('unsplash')"
-      />
-      <AdminMasterKpi
-        icon="image"
-        tone="info"
-        label="Pexels nesta hora"
-        :value="`${formatInt(summary.pexels.hour_usage)} / ${formatInt(summary.pexels.hour_limit)}`"
-        :hint="providerHint('pexels')"
-      />
-      <AdminMasterKpi
-        icon="search"
-        tone="violet"
-        label="Buscas guardadas"
-        :value="formatInt(summary.searches)"
-        :hint="`${formatInt(summary.search_reuses)} reaproveitadas sem gastar chave`"
-      />
-      <AdminMasterKpi
         icon="eye"
         tone="warning"
-        label="Fotos no banco"
-        :value="formatInt(summary.photos)"
-        :hint="`${formatInt(summary.photo_uses)} usos em páginas`"
+        label="Banco próprio"
+        :value="formatInt(summary.curated_photos)"
+        :hint="`fotos cadastradas · usadas antes de tudo · ${formatInt(summary.search_reuses)} buscas reaproveitadas`"
+      />
+      <AdminMasterKpi
+        v-for="(provider, index) in PROVIDERS"
+        :key="provider"
+        icon="image"
+        :tone="(['success', 'info', 'violet'] as const)[index]"
+        :label="`${index + 1}º ${providerLabel(provider)} nesta hora`"
+        :value="`${formatInt(summary[provider].hour_usage)} / ${formatInt(summary[provider].hour_limit)}`"
+        :hint="providerHint(provider)"
       />
     </section>
 
@@ -54,7 +42,7 @@
         >
           {{ option.label }}
         </button>
-        <span class="am-card-sub ml-auto !mt-0">Usa o Unsplash primeiro; a ordem de uso define a chave da vez</span>
+        <span class="am-card-sub ml-auto !mt-0">Pixabay, Unsplash e Pexels, nessa ordem; dentro de cada banco, a ordem de uso define a chave da vez</span>
       </div>
       <div class="am-table-wrap">
         <table class="am-table">
@@ -111,7 +99,7 @@
               <td colspan="7">
                 <div class="am-empty">
                   Nenhuma chave cadastrada.
-                  <span v-if="summary.unsplash.env_key || summary.pexels.env_key"> O servidor ainda usa a chave do arquivo de configuração.</span>
+                  <span v-if="PROVIDERS.some(provider => summary[provider].env_key)"> O servidor ainda usa a chave do arquivo de configuração.</span>
                 </div>
               </td>
             </tr>
@@ -125,7 +113,7 @@
         <div>
           <div class="am-card-title">Fotos cadastradas</div>
           <div class="am-card-sub">
-            Fotos de qualquer site, com palavras-chave e crédito. Quando a busca da IA tem as palavras-chave, a foto entra antes do Unsplash e do Pexels.
+            Fotos de qualquer site, com palavras-chave e crédito. Quando a busca da IA tem as palavras-chave, a foto entra antes do Pixabay, do Unsplash e do Pexels.
           </div>
         </div>
         <div class="flex shrink-0 flex-wrap gap-2">
@@ -137,6 +125,10 @@
         <input v-model="photoQuery" class="am-input max-w-xs" placeholder="Buscar por palavra-chave ou autor" @keyup.enter="loadPhotos" />
         <button type="button" class="am-btn" @click="loadPhotos"><AmIcon name="search" />Buscar</button>
         <span class="am-card-sub ml-auto !mt-0">{{ formatInt(photos.length) }} foto{{ photos.length === 1 ? "" : "s" }}</span>
+      </div>
+      <div v-if="uploadState.running" class="am-notice am-tone-info mb-3">
+        <AmIcon name="refresh" class="animate-spin" />
+        <span>Enviando fotos em segundo plano: {{ uploadState.done }} de {{ uploadState.total }}. Pode continuar usando o admin; só não feche a aba.</span>
       </div>
       <div v-if="photos.length" class="ik-photos">
         <article v-for="photo in photos" :key="photo.id" class="ik-photo">
@@ -174,6 +166,7 @@
         <div class="am-field">
           <label for="ik-provider">Banco</label>
           <select id="ik-provider" v-model="form.provider" class="am-input" :disabled="Boolean(editId)" @change="onProviderChange">
+            <option value="pixabay">Pixabay</option>
             <option value="unsplash">Unsplash</option>
             <option value="pexels">Pexels</option>
           </select>
@@ -184,7 +177,7 @@
         </div>
         <div class="am-field sm:col-span-2">
           <label for="ik-key">
-            {{ form.provider === "unsplash" ? "Access Key" : "API Key" }}
+            {{ form.provider === "unsplash" ? "Access Key" : "Chave da API" }}
             <span v-if="editId" class="font-normal text-muted-foreground">(deixe em branco para manter)</span>
           </label>
           <input id="ik-key" v-model="form.api_key" class="am-input am-mono" autocomplete="off" />
@@ -375,18 +368,20 @@ import {
   type StockPhoto,
   getStockPhotoImport,
   importStockPhotosFromLink,
-  uploadStockPhoto,
   type StockPhotoImportJob
 } from "../../services/imageApiKeys";
+import { onUploadsFinished, startUploads, uploadState } from "../../services/stockPhotoUploads";
 import { resolveMediaUrl } from "../../utils/media";
 import AmIcon from "./master/AmIcon.vue";
 import AdminMasterHeader from "./master/AdminMasterHeader.vue";
 import AdminMasterKpi from "./master/AdminMasterKpi.vue";
 import AdminMasterDrawer from "./master/AdminMasterDrawer.vue";
 
-const DEFAULT_LIMIT: Record<ImageProvider, number> = { unsplash: 50, pexels: 200 };
+const PROVIDERS: ImageProvider[] = ["pixabay", "unsplash", "pexels"];
+const DEFAULT_LIMIT: Record<ImageProvider, number> = { pixabay: 1000, unsplash: 50, pexels: 200 };
 const providerFilters: Array<{ value: "all" | ImageProvider; label: string }> = [
   { value: "all", label: "Todas" },
+  { value: "pixabay", label: "Pixabay" },
   { value: "unsplash", label: "Unsplash" },
   { value: "pexels", label: "Pexels" }
 ];
@@ -404,6 +399,7 @@ const summary = reactive<ImageApiKeysResponse["summary"]>({
   photo_uses: 0,
   search_reuses: 0,
   curated_photos: 0,
+  pixabay: emptyProvider(),
   unsplash: emptyProvider(),
   pexels: emptyProvider()
 });
@@ -411,25 +407,28 @@ const summary = reactive<ImageApiKeysResponse["summary"]>({
 const drawerOpen = ref(false);
 const editId = ref<number | null>(null);
 const form = reactive({
-  provider: "unsplash" as ImageProvider,
+  provider: "pixabay" as ImageProvider,
   label: "",
   api_key: "",
-  hourly_limit: DEFAULT_LIMIT.unsplash,
+  hourly_limit: DEFAULT_LIMIT.pixabay,
   priority: 1,
   is_active: true,
   notes: ""
 });
 
 const keyHelp = computed(() =>
-  form.provider === "unsplash"
-    ? "No Unsplash: Your apps > sua aplicação > Keys > Access Key. Conta de demonstração tem 50 buscas por hora."
-    : "No Pexels: pexels.com/api > Your API Key. O limite padrão é 200 buscas por hora."
+  ({
+    pixabay: "No Pixabay: entre na conta e abra pixabay.com/api/docs; a sua chave aparece no item \"key\". O limite é de 100 buscas por minuto.",
+    unsplash: "No Unsplash: Your apps > sua aplicação > Keys > Access Key. Conta de demonstração tem 50 buscas por hora.",
+    pexels: "No Pexels: pexels.com/api > Your API Key. O limite padrão é 200 buscas por hora."
+  })[form.provider]
 );
 
 const filteredItems = computed(() =>
   providerFilter.value === "all" ? items.value : items.value.filter(item => item.provider === providerFilter.value)
 );
-const providerLabel = (provider?: string | null) => (provider === "pexels" ? "Pexels" : provider === "unsplash" ? "Unsplash" : provider || "-");
+const providerLabel = (provider?: string | null) =>
+  ({ pixabay: "Pixabay", unsplash: "Unsplash", pexels: "Pexels" } as Record<string, string>)[provider || ""] || provider || "-";
 const providerHint = (provider: ImageProvider) => {
   const data = summary[provider];
   const keys = `${data.active_keys} de ${data.keys} chave${data.keys === 1 ? "" : "s"} ativa${data.active_keys === 1 ? "" : "s"}`;
@@ -497,8 +496,8 @@ const onProviderChange = () => {
 
 const openCreate = () => {
   editId.value = null;
-  Object.assign(form, { provider: "unsplash", label: "", api_key: "", hourly_limit: DEFAULT_LIMIT.unsplash, is_active: true, notes: "" });
-  form.priority = nextPriority("unsplash");
+  Object.assign(form, { provider: "pixabay", label: "", api_key: "", hourly_limit: DEFAULT_LIMIT.pixabay, is_active: true, notes: "" });
+  form.priority = nextPriority("pixabay");
   drawerOpen.value = true;
 };
 
@@ -669,8 +668,25 @@ const importFiles = ref<Array<{ file: File; path: string }>>([]);
 const importForm = reactive({ keywords: "", author: "", author_url: "", source_name: "", source_url: "" });
 const importRights = ref(false);
 const importError = ref("");
-const importRunning = ref(false);
-const importProgress = ref<StockPhotoImportJob | null>(null);
+const linkRunning = ref(false);
+const linkJob = ref<StockPhotoImportJob | null>(null);
+// Envio do computador: a fila fica fora da tela (services/stockPhotoUploads) e continua mesmo
+// fechando a gaveta ou indo para outra página do admin.
+const fileJob = computed<StockPhotoImportJob | null>(() =>
+  uploadState.total
+    ? {
+        id: "local",
+        status: uploadState.running ? "running" : "done",
+        total: uploadState.total,
+        added: uploadState.added,
+        duplicates: uploadState.duplicates,
+        skipped: uploadState.skipped,
+        error: null
+      }
+    : null
+);
+const importProgress = computed(() => (importMode.value === "files" ? fileJob.value : linkJob.value));
+const importRunning = computed(() => linkRunning.value || uploadState.running);
 let importTimer: ReturnType<typeof setTimeout> | null = null;
 
 const importProgressText = computed(() => {
@@ -701,7 +717,7 @@ const pickFiles = (event: Event) => {
 
 const openImport = () => {
   if (!importRunning.value) {
-    importProgress.value = null;
+    linkJob.value = null;
     importError.value = "";
     importFiles.value = [];
     importLink.value = "";
@@ -714,17 +730,17 @@ const closeImport = () => {
 
 const pollImport = async (id: string) => {
   try {
-    importProgress.value = await getStockPhotoImport(id);
+    linkJob.value = await getStockPhotoImport(id);
   } catch (error: any) {
     importError.value = errorText(error, "Não foi possível acompanhar a importação.");
-    importRunning.value = false;
+    linkRunning.value = false;
     return;
   }
-  if (importProgress.value.status === "running") {
+  if (linkJob.value.status === "running") {
     importTimer = setTimeout(() => pollImport(id), 2000);
     return;
   }
-  importRunning.value = false;
+  linkRunning.value = false;
   await Promise.all([loadPhotos(), load()]);
 };
 
@@ -740,14 +756,14 @@ const startImport = async () => {
       importError.value = "Cole o link de compartilhamento completo (https://...).";
       return;
     }
-    importRunning.value = true;
+    linkRunning.value = true;
     try {
       const job = await importStockPhotosFromLink(importLink.value.trim(), fields);
-      importProgress.value = job;
+      linkJob.value = job;
       void pollImport(job.id);
     } catch (error: any) {
       importError.value = errorText(error, "Não foi possível começar a importação.");
-      importRunning.value = false;
+      linkRunning.value = false;
     }
     return;
   }
@@ -755,33 +771,26 @@ const startImport = async () => {
     importError.value = "Escolha as fotos ou uma pasta.";
     return;
   }
-  // Uma foto por vez: nada de envio gigante, e o andamento aparece foto a foto.
-  importRunning.value = true;
-  const job: StockPhotoImportJob = { id: "local", status: "running", total: importFiles.value.length, added: 0, duplicates: 0, skipped: [], error: null };
-  importProgress.value = job;
-  for (const { file, path } of importFiles.value) {
-    try {
-      await uploadStockPhoto(file, path, fields);
-      job.added += 1;
-    } catch (error: any) {
-      if (error?.response?.status === 409) job.duplicates += 1;
-      else job.skipped.push(`${file.name}: ${errorText(error, "falhou")}`);
-    }
-    importProgress.value = { ...job };
+  // Em segundo plano, algumas fotos de cada vez (ver services/stockPhotoUploads).
+  if (uploadState.running) {
+    importError.value = "Já existe um envio em andamento. Espere terminar.";
+    return;
   }
-  importProgress.value = { ...job, status: "done" };
-  importRunning.value = false;
+  const items = importFiles.value;
   importFiles.value = [];
-  await Promise.all([loadPhotos(), load()]);
+  void startUploads(items, fields);
 };
 
+let stopUploadListener: (() => void) | null = null;
 onBeforeUnmount(() => {
   if (importTimer) clearTimeout(importTimer);
+  stopUploadListener?.();
 });
 
 onMounted(() => {
   load();
   loadPhotos();
+  stopUploadListener = onUploadsFinished(() => void Promise.all([loadPhotos(), load()]));
   document.addEventListener("click", closeMenuOnOutside);
 });
 onBeforeUnmount(() => document.removeEventListener("click", closeMenuOnOutside));

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
+from typing import Iterator, Optional
 from uuid import uuid4
 
 from azure.core.exceptions import ResourceExistsError
@@ -14,6 +16,15 @@ from app.services.image_optimizer import variant_name
 logger = logging.getLogger(__name__)
 
 IMMUTABLE_CACHE = "public, max-age=31536000, immutable"
+
+
+@dataclass
+class StoredFile:
+    name: str
+    size: int
+    last_modified: datetime | None
+    tier: str  # Hot, Cool, Cold, Archive (local: Hot)
+    rehydrating: bool = False
 
 
 class MediaStorage:
@@ -77,6 +88,49 @@ class MediaStorage:
         with open(file_path, "wb") as buffer:
             buffer.write(data)
         return f"/uploads/{blob_name}"
+
+    # --- Ciclo de vida dos arquivos (arquivamento e limpeza) ---
+
+    def list_files(self) -> Iterator[StoredFile]:
+        """Todos os arquivos guardados, com tamanho, data e camada do Azure."""
+        if self.is_remote:
+            assert self._blob_service and self._container_name
+            container = self._blob_service.get_container_client(self._container_name)
+            for blob in container.list_blobs():
+                tier = getattr(blob, "blob_tier", None)
+                yield StoredFile(
+                    name=blob.name,
+                    size=int(blob.size or 0),
+                    last_modified=blob.last_modified,
+                    tier=str(getattr(tier, "value", tier) or "Hot"),
+                    rehydrating=bool(getattr(blob, "archive_status", None)),
+                )
+            return
+        if not self._local_dir.exists():
+            return
+        for path in self._local_dir.iterdir():
+            if path.is_file():
+                stat = path.stat()
+                yield StoredFile(
+                    name=path.name,
+                    size=stat.st_size,
+                    last_modified=datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc),
+                    tier="Hot",
+                )
+
+    def set_tier(self, name: str, tier: str) -> None:
+        """Muda a camada do arquivo no Azure (Hot, Cool, Archive). Sem Azure, não faz nada.
+        Sair do Archive leva algumas horas (o Azure "reidrata" o arquivo)."""
+        if self.is_remote:
+            self._build_blob_client(name).set_standard_blob_tier(tier)
+
+    def delete_file(self, name: str) -> None:
+        if self.is_remote:
+            self._build_blob_client(name).delete_blob(delete_snapshots="include")
+            return
+        path = self._local_dir / name
+        if path.is_file():
+            path.unlink()
 
 
 media_storage = MediaStorage()

@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.services.page_design import design_v2_enabled_for_agency
 from app.api.deps import get_db
 from app.api.v1.endpoints.pages import apply_free_footer, normalize_config, resolve_agency_plan
+from app.services.company_status import subscription_allows_public
 from app.models.agency import Agency
 from app.models.agency_user import AgencyUser
 from app.models.page import Page
@@ -137,9 +138,8 @@ def _is_owner_subscription_active(agency: Agency) -> bool:
     owner: User | None = owner_membership.user if owner_membership else None
     if owner is None or owner.subscription is None:
         return False
-    status = (owner.subscription.status or "").strip().lower()
-    failed_attempts = int(owner.subscription.failed_attempts or 0)
-    return status == "active" or failed_attempts < 3
+    # Encerrada (cancelada, inativa...) só fica no ar até o fim do período pago.
+    return subscription_allows_public(owner.subscription)
 
 
 def _ensure_page_is_publicly_available(page: Page) -> None:

@@ -21,6 +21,7 @@ export const adminMasterNav: AdminMasterNavGroup[] = [
   {
     label: "Clientes",
     items: [
+      { path: "/admin/administracao/empresas", label: "Empresas", icon: "building" },
       { path: "/admin/administracao/usuarios", label: "Usuários", icon: "users" },
       { path: "/admin/administracao/admin-global", label: "Admins globais", icon: "shield" }
     ]
