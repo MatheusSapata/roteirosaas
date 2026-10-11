@@ -47,6 +47,7 @@ export const adminMasterNav: AdminMasterNavGroup[] = [
     label: "Integrações",
     items: [
       { path: "/admin/administracao/apis-voo", label: "APIs de voo", icon: "plane" },
+      { path: "/admin/administracao/bancos-de-fotos", label: "Bancos de fotos", icon: "image" },
       { path: "/admin/administracao/whatsapp", label: "WhatsApp", icon: "wa", badge: "whatsapp" },
       { path: "/admin/administracao/webhooks", label: "Webhooks e push", icon: "bell" }
     ]

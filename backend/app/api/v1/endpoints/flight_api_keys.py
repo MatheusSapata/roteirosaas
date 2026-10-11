@@ -141,9 +141,9 @@ def serialize_key(record: ExternalApiKey) -> FlightApiKeyOut:
     )
 
 
-def get_key_or_404(db: Session, key_id: int) -> ExternalApiKey:
+def get_key_or_404(db: Session, key_id: int, providers: set[str] | None = VALID_PROVIDERS) -> ExternalApiKey:
     record = db.query(ExternalApiKey).filter(ExternalApiKey.id == key_id).first()
-    if not record:
+    if not record or (providers is not None and record.provider not in providers):
         raise HTTPException(status_code=404, detail="Chave de API nao encontrada.")
     return record
 
@@ -154,7 +154,8 @@ def list_flight_api_keys(
     db: Session = Depends(get_db),
     _: User = Depends(get_current_superuser),
 ) -> FlightApiKeyListResponse:
-    query = db.query(ExternalApiKey)
+    # A mesma tabela guarda as chaves dos bancos de fotos; aqui só as de voo.
+    query = db.query(ExternalApiKey).filter(ExternalApiKey.provider.in_(tuple(VALID_PROVIDERS)))
     normalized_provider = None
     if provider and provider.lower() != "all":
         normalized_provider = _normalize_provider(provider)

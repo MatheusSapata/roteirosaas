@@ -3,8 +3,9 @@
 Cada busca e cada foto ficam guardadas (stock_image_searches / stock_images) e são
 reaproveitadas antes de qualquer chamada: a mesma busca, uma busca parecida ("Gramado Brazil
 street" ≈ "Gramado street winter") ou fotos guardadas cuja descrição tem as mesmas palavras.
-Só então o banco de fotos é consultado, dentro do limite por hora (a chave inicial do
-Unsplash dá 50 chamadas por hora, contando buscas e avisos de uso).
+Só então o banco de fotos é consultado, com as chaves do Admin Master em ordem, dentro do
+limite por hora de cada uma (a chave inicial do Unsplash dá 50 chamadas por hora, contando
+buscas e avisos de uso); quando uma esgota, a próxima assume.
 Sem PEXELS_API_KEY nem UNSPLASH_ACCESS_KEY, nada é buscado e as seções ficam com a
 imagem provisória.
 """
@@ -20,9 +21,9 @@ from typing import Any, Iterable
 import httpx
 from sqlalchemy.orm import Session
 
-from app.core.config import get_settings
 from app.models.media import MediaAsset
 from app.models.stock_image import StockImage, StockImageSearch
+from app.services.image_api_keys import ImageKey, available_image_keys, has_any_image_key, record_image_call
 from app.services.image_optimizer import optimize_image
 from app.services.media_storage import media_storage
 
@@ -30,8 +31,6 @@ logger = logging.getLogger(__name__)
 
 SEARCH_TTL = timedelta(days=180)
 PER_PAGE = 30  # máximo por chamada: cada busca enche o banco com o máximo de fotos
-# Chamadas por hora que usamos de cada banco (com folga do limite real). Unsplash demo: 50/h.
-HOURLY_BUDGET = {"unsplash": 40, "pexels": 180}
 # Para reaproveitar uma busca parecida, ela precisa cobrir esta fração das palavras da nova.
 SIMILAR_SEARCH_MIN_SCORE = 0.6
 STOPWORDS = frozenset(
@@ -70,53 +69,23 @@ def query_terms(value: str) -> set[str]:
     return {word[:6] for word in normalize_query(value).split() if len(word) >= 3 and word not in STOPWORDS}
 
 
-class _RateLimiter:
-    """Conta as chamadas de cada banco na última hora e respeita o que o banco informa."""
-
-    def __init__(self) -> None:
-        self.calls: dict[str, list[float]] = {}
-        self.blocked_until: dict[str, float] = {}
-
-    def allow(self, provider: str) -> bool:
-        now = time.time()
-        if self.blocked_until.get(provider, 0) > now:
-            return False
-        recent = [moment for moment in self.calls.get(provider, []) if moment > now - 3600]
-        self.calls[provider] = recent
-        return len(recent) < HOURLY_BUDGET.get(provider, 40)
-
-    def record(self, provider: str, response: httpx.Response | None = None) -> None:
-        self.calls.setdefault(provider, []).append(time.time())
-        if response is None:
-            return
-        remaining = response.headers.get("X-Ratelimit-Remaining") or response.headers.get("X-RateLimit-Remaining")
-        if remaining is not None and remaining.isdigit() and int(remaining) <= 3:
-            # Quase no fim do limite do banco (vale para todos os processos): pausa até a hora virar.
-            self.blocked_until[provider] = time.time() + 3600
-        if response.status_code == 429:
-            self.blocked_until[provider] = time.time() + 3600
-
-
-rate_limiter = _RateLimiter()
-
-
 def split_queries(value: str) -> list[str]:
     """ "Gramado Brazil street | casal tomando vinho" → buscas em ordem de preferência."""
     return [part.strip() for part in re.split(r"\s*(?:\||;| ou | or )\s*", value or "") if part.strip()][:3]
 
 
-def stock_search_enabled() -> bool:
-    settings = get_settings()
-    return bool(settings.pexels_api_key or settings.unsplash_access_key)
+def stock_search_enabled(db: Session) -> bool:
+    return has_any_image_key(db)
 
 
-def _search_pexels(client: httpx.Client, key: str, query: str) -> list[dict[str, Any]]:
+def _search_pexels(client: httpx.Client, key: str, query: str, record=None) -> list[dict[str, Any]]:
     response = client.get(
         "https://api.pexels.com/v1/search",
         params={"query": query, "per_page": PER_PAGE, "orientation": "landscape"},
         headers={"Authorization": key},
     )
-    rate_limiter.record("pexels", response)
+    if record:
+        record(response)
     response.raise_for_status()
     results = []
     for photo in response.json().get("photos") or []:
@@ -138,13 +107,14 @@ def _search_pexels(client: httpx.Client, key: str, query: str) -> list[dict[str,
     return results
 
 
-def _search_unsplash(client: httpx.Client, key: str, query: str) -> list[dict[str, Any]]:
+def _search_unsplash(client: httpx.Client, key: str, query: str, record=None) -> list[dict[str, Any]]:
     response = client.get(
         "https://api.unsplash.com/search/photos",
         params={"query": query, "per_page": PER_PAGE, "orientation": "landscape", "content_filter": "high"},
         headers={"Authorization": f"Client-ID {key}", "Accept-Version": "v1"},
     )
-    rate_limiter.record("unsplash", response)
+    if record:
+        record(response)
     response.raise_for_status()
     results = []
     for photo in response.json().get("results") or []:
@@ -261,22 +231,20 @@ def search_stock_images(db: Session, client: httpx.Client, query: str, *, minimu
     if len(described) >= max(minimum, 3):
         return described
 
-    settings = get_settings()
     results: list[dict[str, Any]] = []
     provider = None
-    for name, key, search in (
-        ("unsplash", settings.unsplash_access_key, _search_unsplash),
-        ("pexels", settings.pexels_api_key, _search_pexels),
-    ):
-        if not key or not rate_limiter.allow(name):
-            continue
-        try:
-            results = search(client, key, query)
-        except Exception as exc:  # pragma: no cover - rede/limite do provedor
-            logger.warning("stock_search_failed provider=%s query=%r error=%s", name, query, exc)
-            continue
-        provider = name
-        if results:
+    # Unsplash primeiro, depois Pexels; em cada banco, as chaves na ordem do Admin Master.
+    # Chave esgotada na hora (ou recusada) passa a vez para a próxima.
+    for name, search in (("unsplash", _search_unsplash), ("pexels", _search_pexels)):
+        for key in available_image_keys(db, name):
+            try:
+                results = search(client, key.plain_key, query, record=lambda response, key=key: record_image_call(db, key, response))
+            except Exception as exc:  # pragma: no cover - rede/limite do provedor
+                logger.warning("stock_search_failed key=%s query=%r error=%s", key.ident, query, exc)
+                continue
+            provider = name
+            break
+        if provider and results:
             break
     if provider is None:
         # Sem chamadas na hora: o que o banco local tiver, mesmo pouco.
@@ -299,10 +267,11 @@ def materialize(db: Session, client: httpx.Client, image: StockImage) -> str | N
     """Endereço da foto para a página: baixa e guarda a cópia otimizada só na primeira vez."""
     if image.provider == "unsplash":
         # Aviso de uso pedido pelo Unsplash: uma vez por foto, e só se ainda houver chamadas na hora.
-        if image.tracked_at is None and rate_limiter.allow("unsplash"):
+        keys = available_image_keys(db, "unsplash") if image.tracked_at is None else []
+        if keys:
             try:
-                response = client.get(image.download_url, headers={"Authorization": f"Client-ID {get_settings().unsplash_access_key}"})
-                rate_limiter.record("unsplash", response)
+                response = client.get(image.download_url, headers={"Authorization": f"Client-ID {keys[0].plain_key}"})
+                record_image_call(db, keys[0], response)
                 image.tracked_at = datetime.now(timezone.utc)
             except Exception:  # pragma: no cover - o aviso de uso não pode travar a página
                 pass
@@ -395,7 +364,7 @@ def fill_section_photos(db: Session, sections: list[dict[str, Any]], agency_id: 
     Usa a "Busca de imagem" de cada seção (destino e, em seguida, a sensação), e por fim uma
     busca genérica do tipo. Devolve quantas fotos foram colocadas."""
     pending = [section for section in sections if section.get("aiImageQuery") is not None]
-    if not pending or not stock_search_enabled():
+    if not pending or not stock_search_enabled(db):
         for section in sections:
             section.pop("aiImageQuery", None)
             for item in section.get("items") or []:

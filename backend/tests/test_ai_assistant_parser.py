@@ -799,7 +799,7 @@ def test_stock_photos_fill_sections_and_reuse_cache(monkeypatch) -> None:
 
     calls = []
 
-    def fake_pexels(client, key, query):
+    def fake_pexels(client, key, query, record=None):
         calls.append(query)
         if "gramado" not in query.lower() and "wine" not in query.lower() and "travel" not in query.lower():
             return []
@@ -811,7 +811,9 @@ def test_stock_photos_fill_sections_and_reuse_cache(monkeypatch) -> None:
 
     monkeypatch.setattr(stock_images, "_search_pexels", fake_pexels)
     monkeypatch.setattr(stock_images, "materialize", lambda db, client, image: f"/uploads/{image.provider_id}.webp")
-    monkeypatch.setattr(stock_images, "get_settings", lambda: SimpleNamespace(pexels_api_key="k", unsplash_access_key=None))
+    pexels_key = stock_images.ImageKey(provider="pexels", plain_key="k")
+    monkeypatch.setattr(stock_images, "available_image_keys", lambda db, provider: [pexels_key] if provider == "pexels" else [])
+    monkeypatch.setattr(stock_images, "has_any_image_key", lambda db: True)
 
     config, _ = build_page_base_config_from_reply(reply_with(
         "🟩 SEÇÃO: BANNER INICIAL\nTítulo: Gramado\nBusca de imagem: Gramado Brazil street | couple drinking wine",
@@ -836,22 +838,32 @@ def test_stock_photos_fill_sections_and_reuse_cache(monkeypatch) -> None:
     assert len(calls) == before
 
 
-def test_stock_search_reuses_similar_searches_descriptions_and_respects_hourly_limit(monkeypatch) -> None:
+def test_stock_search_reuses_similar_searches_descriptions_and_rotates_keys(monkeypatch) -> None:
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
 
+    from app.models.external_api_key import ExternalApiKey
     from app.models.stock_image import StockImage, StockImageSearch
-    from app.services import stock_images
+    from app.services import image_api_keys, stock_images
 
     engine = create_engine("sqlite://")
-    StockImage.__table__.create(engine)
-    StockImageSearch.__table__.create(engine)
+    for table in (StockImage.__table__, StockImageSearch.__table__, ExternalApiKey.__table__):
+        table.create(engine)
     db = sessionmaker(bind=engine)()
+    monkeypatch.setattr(image_api_keys, "decrypt_api_key", lambda value: value)
+    monkeypatch.setattr(image_api_keys, "get_settings", lambda: SimpleNamespace(unsplash_access_key=None, pexels_api_key=None))
+    # Duas chaves do Unsplash: a primeira só tem 5 chamadas na hora (com a folga, 2).
+    db.add_all([
+        ExternalApiKey(provider="unsplash", label="A", api_key_encrypted="key-a", priority=1, monthly_limit=5, status="active", is_active=True),
+        ExternalApiKey(provider="unsplash", label="B", api_key_encrypted="key-b", priority=2, monthly_limit=50, status="active", is_active=True),
+    ])
+    db.commit()
     calls = []
 
-    def fake_unsplash(client, key, query):
-        calls.append(query)
-        stock_images.rate_limiter.record("unsplash")
+    def fake_unsplash(client, key, query, record=None):
+        calls.append((key, query))
+        if record:
+            record(SimpleNamespace(status_code=200, headers={}))
         alt = "couple drinking red wine at vineyard" if "wine" in query else f"{query} view"
         return [
             {"provider": "unsplash", "provider_id": f"{query}-{n}", "download_url": "d", "stored_url": f"https://u/{query}/{n}",
@@ -860,25 +872,27 @@ def test_stock_search_reuses_similar_searches_descriptions_and_respects_hourly_l
         ]
 
     monkeypatch.setattr(stock_images, "_search_unsplash", fake_unsplash)
-    monkeypatch.setattr(stock_images, "get_settings", lambda: SimpleNamespace(pexels_api_key=None, unsplash_access_key="k"))
-    monkeypatch.setattr(stock_images, "rate_limiter", stock_images._RateLimiter())
-
     assert len(stock_images.search_stock_images(db, None, "Gramado Brazil street")) == 4
     assert len(stock_images.search_stock_images(db, None, "red wine couple")) == 4
-    assert calls == ["Gramado Brazil street", "red wine couple"]
-    # Busca parecida (mesmo destino, outra palavra): reaproveita, sem chamar o Unsplash.
-    assert [i.provider_id for i in stock_images.search_stock_images(db, None, "Gramado street winter")][0] == "Gramado Brazil street-0"
-    # Palavras que estão na descrição das fotos guardadas: também reaproveita.
+    # Busca parecida e descrição das fotos guardadas: reaproveita, sem chamar o Unsplash.
+    assert stock_images.search_stock_images(db, None, "Gramado street winter")[0].provider_id == "Gramado Brazil street-0"
     assert len(stock_images.search_stock_images(db, None, "vineyard couple drinking")) >= 3
-    assert calls == ["Gramado Brazil street", "red wine couple"]
-    # Limite da hora esgotado: não chama o banco; devolve o que tiver (nada, para um assunto novo).
-    stock_images.HOURLY_BUDGET["unsplash"], budget = 2, stock_images.HOURLY_BUDGET["unsplash"]
-    try:
-        assert stock_images.search_stock_images(db, None, "Paris Eiffel tower") == []
-        assert calls == ["Gramado Brazil street", "red wine couple"]
-    finally:
-        stock_images.HOURLY_BUDGET["unsplash"] = budget
+    assert [key for key, _ in calls] == ["key-a", "key-a"]
+    # A chave A esgotou na hora: a busca nova vai para a B.
+    key_a = db.query(ExternalApiKey).filter_by(label="A").one()
+    assert key_a.monthly_usage_estimated == 2
+    stock_images.search_stock_images(db, None, "Paris Eiffel tower")
+    assert calls[-1][0] == "key-b"
+    # Chave recusada pelo banco fica "com erro"; esgotada volta na hora seguinte.
+    key_b = db.query(ExternalApiKey).filter_by(label="B").one()
+    image_api_keys.record_image_call(db, image_api_keys.ImageKey("unsplash", "key-b", key_b), SimpleNamespace(status_code=401, headers={}))
+    assert key_b.status == "error"
+    image_api_keys.record_image_call(db, image_api_keys.ImageKey("unsplash", "key-a", key_a), SimpleNamespace(status_code=429, headers={}))
+    assert key_a.status == "exhausted"
+    from datetime import datetime, timedelta, timezone
+
+    key_a.last_used_at = datetime.now(timezone.utc) - timedelta(hours=1, minutes=5)
+    assert image_api_keys.roll_hour(key_a) and key_a.status == "active" and key_a.monthly_usage_estimated == 0
     # Crédito com os links pedidos pelo Unsplash.
-    image = db.query(StockImage).first()
-    credit = stock_images.credit_for(image, "https://u/x")
+    credit = stock_images.credit_for(db.query(StockImage).first(), "https://u/x")
     assert credit["provider"] == "Unsplash" and credit["link"].endswith("utm_source=roteiro_online&utm_medium=referral")

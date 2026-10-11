@@ -968,6 +968,9 @@
     <template v-else-if="activeTab === 'flight_apis'">
       <FlightApiKeysPanel />
     </template>
+    <template v-else-if="activeTab === 'image_apis'">
+      <ImageApiKeysPanel />
+    </template>
     <template v-else-if="activeTab === 'revenue_forecast'">
       <AdminMasterHeader
         title="Previsão de receita"
@@ -1432,6 +1435,7 @@ import { HELP_MODULES, articleReplacingLesson, articlesOf, formatDate as formatH
 import { slugify } from "../../utils/slugify";
 import PageTemplatePreview from "../../components/admin/PageTemplatePreview.vue";
 import FlightApiKeysPanel from "../../components/admin/FlightApiKeysPanel.vue";
+import ImageApiKeysPanel from "../../components/admin/ImageApiKeysPanel.vue";
 import { listPageTemplates, createTemplateFromPage, deleteTemplate, updateTemplate } from "../../services/templates";
 import type { PageTemplate } from "../../types/templates";
 import { applyTemplateBranding, summarizeTemplate } from "../../utils/pageTemplates";
@@ -1579,7 +1583,7 @@ interface RevenueForecastOut {
   forecast_days: RevenueForecastDay[];
 }
 
-type AdminTab = "dashboard" | "monitor" | "users" | "lessons" | "templates" | "flight_apis" | "revenue_forecast";
+type AdminTab = "dashboard" | "monitor" | "users" | "lessons" | "templates" | "flight_apis" | "image_apis" | "revenue_forecast";
 type TemplateDialogMode = "create" | "edit";
 type SubscriptionActionKind = "plan" | "status" | "validity";
 
@@ -2001,6 +2005,10 @@ const syncActiveTabFromRoute = () => {
   }
   if (routeName === "admin-management-flight-apis") {
     activeTab.value = "flight_apis";
+    return;
+  }
+  if (routeName === "admin-management-image-apis") {
+    activeTab.value = "image_apis";
     return;
   }
   if (routeName === "admin-management-revenue-forecast") {
