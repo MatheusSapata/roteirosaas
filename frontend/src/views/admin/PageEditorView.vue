@@ -257,6 +257,13 @@
       </button>
     </nav>
     <Transition name="fade">
+      <div v-if="aiToast" class="v2ed-toast" role="status">
+        <span class="v2ed-toast-ico" aria-hidden="true"><CheckIcon /></span>
+        <span>{{ aiToast }}</span>
+        <button v-if="aiStructurePreviousSections" type="button" @click="undoAiStructure(); aiToast = ''">Desfazer</button>
+      </div>
+    </Transition>
+    <Transition name="fade">
       <div v-if="insertedToast" class="v2ed-toast" role="status">
         <span class="v2ed-toast-ico" aria-hidden="true"><CheckIcon /></span>
         <span><b>{{ insertedToast.label }}</b> entrou na página</span>
@@ -1326,13 +1333,15 @@
                           </li>
                         </ol>
                         <div class="ai-v2-actions">
-                          <button v-if="aiSwapTarget(message.content)" type="button" class="is-primary" :disabled="aiStructureApplying || aiAssistantLoading || isSectionEditorOpen" @click="applyAiStructure(message.content, 'swap')">Trocar a seção atual</button>
-                          <button type="button" :class="{ 'is-primary': !aiSwapTarget(message.content) }" :disabled="aiStructureApplying || aiAssistantLoading || isSectionEditorOpen" @click="applyAiStructure(message.content, 'insert')">Inserir no fim</button>
-                          <button v-if="!aiSwapTarget(message.content)" type="button" :disabled="aiStructureApplying || aiAssistantLoading || isSectionEditorOpen" @click="applyAiStructure(message.content, 'replace')">Substituir tudo</button>
+                          <button v-if="aiSwapped.has(message.content)" type="button" class="is-primary" disabled>Trocada ✓</button>
+                          <button v-else-if="aiSwapTarget(message.content)" type="button" class="is-primary" :disabled="aiStructureApplying || aiAssistantLoading || isSectionEditorOpen" :title="`Coloca a sugestão no lugar de ${aiSwapTarget(message.content)!.label}`" @click="applyAiStructure(message.content, 'swap')">Trocar {{ aiSwapTarget(message.content)!.label }}</button>
+                          <button type="button" :class="{ 'is-primary': !aiSwapTarget(message.content) && !aiSwapped.has(message.content) }" :disabled="aiStructureApplying || aiAssistantLoading || isSectionEditorOpen" @click="applyAiStructure(message.content, 'insert')">Inserir no fim</button>
+                          <button v-if="!aiSwapTarget(message.content) && !aiSwapped.has(message.content)" type="button" :disabled="aiStructureApplying || aiAssistantLoading || isSectionEditorOpen" @click="applyAiStructure(message.content, 'replace')">Substituir tudo</button>
                         </div>
                         <span class="ai-v2-hint">{{ isSectionEditorOpen ? "Feche a edição da seção para aplicar." : "Dá para desfazer depois de aplicar." }}</span>
                         <button type="button" class="ai-v2-details" @click="toggleAiDetails(index)">{{ aiDetails.has(index) ? "Esconder resposta completa" : "Ver resposta completa" }}</button>
                         <div v-if="aiDetails.has(index)" class="editor-ai-sidebar-response-text ai-v2-full">{{ message.content }}</div>
+                        <button v-if="aiDetails.has(index)" type="button" class="ai-v2-details" @click="toggleAiDetails(index)">Fechar resposta completa</button>
                       </div>
                     </template>
                     <template v-else-if="newEditor && message.role === 'assistant' && aiQuestionForm(message.content)">
@@ -1397,7 +1406,7 @@
                   <button v-for="suggestion in aiSuggestions" :key="suggestion.label" type="button" @click="useAiSuggestion(suggestion)">{{ suggestion.label }}</button>
                 </div>
                 <button v-if="aiStructurePreviousSections" type="button"
-                  class="my-2 text-sm font-semibold text-indigo-600 underline"
+                  :class="newEditor ? 'ai-v2-details ai-v2-undo' : 'my-2 text-sm font-semibold text-indigo-600 underline'"
                   :disabled="aiStructureApplying || isSectionEditorOpen" @click="undoAiStructure">
                   Desfazer estrutura aplicada
                 </button>
@@ -1662,6 +1671,7 @@ import {
   fetchAiAssistantUsage,
   sendAiAssistantConversation,
   streamAiAssistantConversation,
+  type AiPageSectionSummary,
   transcribeAiAssistantAudio,
   AiAssistantRequestError,
   type AiAssistantChatMessage,
@@ -2079,18 +2089,12 @@ const limitModal = ref({ open: false, message: "" });
 const successModal = ref({ open: false });
 const snackbar = ref({ open: false, text: "" });
 const showAiAssistant = ref(false);
-// Logo depois de fechar o assistente, as camadas (abertas ou recolhidas) entram já no tamanho
-// final, sem a animação de crescer/encolher que empurrava a prévia depois do fechamento.
+// Depois de fechar o assistente, as camadas (abertas ou recolhidas) aparecem já no tamanho final,
+// sem a animação de crescer/encolher. A marca fica até a próxima mudança das camadas ou do
+// assistente: tirá-la por tempo reiniciava a animação e a prévia "fechava duas vezes".
 const aiSidebarClosing = ref(false);
-let aiSidebarClosingTimer: number | null = null;
 watch(showAiAssistant, (open, wasOpen) => {
-  if (open || !wasOpen) return;
-  aiSidebarClosing.value = true;
-  if (aiSidebarClosingTimer !== null) window.clearTimeout(aiSidebarClosingTimer);
-  aiSidebarClosingTimer = window.setTimeout(() => {
-    aiSidebarClosing.value = false;
-    aiSidebarClosingTimer = null;
-  }, 400);
+  aiSidebarClosing.value = !open && !!wasOpen;
 });
 const hasUnsavedChanges = ref(false);
 const initialLoadComplete = ref(false);
@@ -2284,6 +2288,9 @@ const panelWidth = (key: PanelWidthKey) => {
   return panelWidths[key] || (editorViewportWidth.value < 1280 ? limits.narrow : limits.wide);
 };
 const leftContentKey = computed<PanelWidthKey | null>(() => (sectionPanelOpen.value ? "section" : leftPanelOpen.value ? "settings" : null));
+watch(layersOpen, () => {
+  aiSidebarClosing.value = false;
+});
 const layersPanelShown = computed(() => newEditor.value && layersOpen.value && !showAiAssistant.value);
 // Coluna da direita: camadas ou, com o assistente aberto, o assistente.
 const rightPanelKey = computed<PanelWidthKey | null>(() =>
@@ -2585,7 +2592,10 @@ const AI_SECTION_TYPES: Record<string, SectionType> = {
   "CHAMADA PARA ACAO": "cta", "CONTADOR": "countdown", "CONTAGEM REGRESSIVA": "countdown",
   "DETALHES DO VOO": "flight_details", "MENU DO TOPO": "header", "CABECALHO": "header", "MENU": "header",
   "MENU SUPERIOR": "header", "VITRINE DE VIAGENS": "links", "VITRINE": "links", "LINKS": "links",
-  "ROTEIROS": "links", "OUTRAS VIAGENS": "links"
+  "ROTEIROS": "links", "OUTRAS VIAGENS": "links", "LINKS/ROTEIROS": "links", "LINKS / ROTEIROS": "links",
+  "FOTO EM DESTAQUE": "photo", "TEXTO E IMAGENS": "story", "DIFERENCIAIS": "reasons", "ARTIGO": "biography",
+  "ROTEIRO DIA A DIA": "itinerary", "VOOS": "flight_details", "PRECOS E PACOTES": "prices",
+  "FAIXA DE CHAMADA": "cta", "DUVIDAS FREQUENTES": "faq", "RODAPE DA AGENCIA": "agency_footer", "RODAPE": "agency_footer"
 };
 const aiSectionType = (name: string): SectionType | null =>
   AI_SECTION_TYPES[name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim().toUpperCase()] || null;
@@ -2594,12 +2604,20 @@ const aiSectionLabel = (name: string) => {
   const type = aiSectionType(name);
   return (type && sectionNameV2(type)) || name;
 };
-// Resposta com uma seção só, de um tipo que a página já tem: dá para trocar a seção atual.
-const aiSwapTarget = (content: string): SectionType | null => {
+// Resposta com uma seção só que troca uma seção da página: a indicada em "Substitui:" (pode ser
+// de outro tipo, ex.: Artigo → Texto e Imagens) ou, sem ela, a primeira do mesmo tipo.
+const aiSwapTarget = (content: string): { index: number; label: string } | null => {
   const names = aiStructureNames(content);
   if (names.length !== 1) return null;
-  const type = aiSectionType(names[0]);
-  return type && sections.value.some(section => section.type === type) ? type : null;
+  const replaces = content.match(/^\s*[-*]?\s*Substitui(?: a seção)?\s*:\s*`?([\w-]+)/im)?.[1];
+  let index = replaces ? sections.value.findIndex(section => section.anchorId === replaces) : -1;
+  if (index < 0) {
+    const type = aiSectionType(names[0]);
+    index = type ? sections.value.findIndex(section => section.type === type) : -1;
+  }
+  if (index < 0) return null;
+  const current = sections.value[index];
+  return { index, label: (sectionNameV2(current.type) as string) || current.type };
 };
 const AI_IMAGE_PLACEHOLDER_PREFIX = "data:image/svg+xml;base64,";
 const isAiFiller = (value: unknown) =>
@@ -2610,7 +2628,25 @@ const AI_SWAP_TEXT_KEYS = [
   "caption", "ctaLabel", "ctaText", "departureDate", "returnDate", "generalInfo", "links", "contactLabel", "iconMode"
 ];
 const AI_SWAP_ITEM_KEEP_KEYS = ["ctaLink", "ctaMode", "ctaSectionId", "ctaOpenInNewTab", "avatar", "image", "url", "source", "pageId", "openInNewTab"];
+// Primeira foto de verdade de uma seção (Banner, Artigo, Texto e Imagens, Foto...).
+const aiSectionPhoto = (section: PageSection): string => {
+  const raw = section as Record<string, any>;
+  const candidates = [raw.backgroundImage, raw.image, ...(Array.isArray(raw.images) ? raw.images : [])];
+  return candidates.find(value => typeof value === "string" && value && !isAiFiller(value)) || "";
+};
 const mergeAiSwap = (current: PageSection, incoming: PageSection): PageSection => {
+  if (current.type !== incoming.type) {
+    // Troca de tipo: a seção nova entra no mesmo lugar, com a âncora e a foto da antiga.
+    const converted: Record<string, any> = { ...incoming, anchorId: current.anchorId, enabled: current.enabled };
+    delete converted.aiReplaces;
+    // A foto que a agência já tinha na seção vale mais que a provisória da sugestão.
+    const photo = aiSectionPhoto(current);
+    if (photo) {
+      if (Array.isArray(converted.images)) converted.images = [photo];
+      for (const key of ["backgroundImage", "image"]) if (key in converted) converted[key] = photo;
+    }
+    return converted as PageSection;
+  }
   const merged: Record<string, any> = { ...current };
   const next = incoming as Record<string, any>;
   for (const key of AI_SWAP_TEXT_KEYS) {
@@ -2717,6 +2753,8 @@ const createAiNow = () => {
   aiAssistantDraft.value = "Pode criar com o que você já tem.";
   void sendAiAssistantMessage();
 };
+// Respostas cuja troca já foi aplicada (o botão vira "Trocada ✓" até desfazer).
+const aiSwapped = reactive(new Set<string>());
 const aiExpanded = reactive(new Set<number>());
 const aiDetails = reactive(new Set<number>());
 const toggleAiExpanded = (index: number) => (aiExpanded.has(index) ? aiExpanded.delete(index) : aiExpanded.add(index));
@@ -2740,7 +2778,10 @@ const applyAiStructure = async (reply: string, mode: "insert" | "replace" | "swa
       section.type === "hero" && !section.logoUrl && agencyLogo
         ? { ...section, logoUrl: agencyLogo }
         : section
-    ).map(prepareAiSection));
+    ).map(prepareAiSection).map(section => {
+      const { aiReplaces: _replaced, ...clean } = section as PageSection & { aiReplaces?: string };
+      return clean as PageSection;
+    }));
     let nextSections = additions;
     if (mode === "replace" && !additions.some(section => section.type === "agency_footer")) {
       // A página não perde o rodapé da agência ao trocar a estrutura.
@@ -2752,12 +2793,13 @@ const applyAiStructure = async (reply: string, mode: "insert" | "replace" | "swa
     }
     if (mode === "swap") {
       const incoming = additions.find(section => section.type !== "free_footer_brand");
-      const index = incoming ? sections.value.findIndex(section => section.type === incoming.type) : -1;
+      const index = aiSwapTarget(reply)?.index ?? -1;
       if (!incoming || index < 0) {
         aiStructureError.value = "Não encontrei essa seção na página para trocar. Use Inserir no fim.";
         return;
       }
       nextSections = sections.value.map((section, position) => (position === index ? mergeAiSwap(section, incoming) : section));
+      aiSwapped.add(reply);
     } else if (mode === "insert") {
       const existing = sections.value;
       const usedIds = new Set(existing.flatMap(section => [section.anchorId, (section as any).sectionId]).filter(Boolean));
@@ -2803,11 +2845,11 @@ const applyAiStructure = async (reply: string, mode: "insert" | "replace" | "swa
     aiStructurePreviousSections.value = JSON.parse(JSON.stringify(sections.value));
     setSections(nextSections);
     refreshPreview(true);
-    showSnackbar(mode === "swap"
-      ? "Seção trocada pela sugestão. Revise e salve quando terminar."
+    showAiToast(mode === "swap"
+      ? "Seção trocada pela sugestão. Revise e salve."
       : mode === "insert"
-        ? "Seções adicionadas ao final. Revise e salve quando terminar."
-        : "Estrutura substituída. Revise e salve quando terminar.");
+        ? "Seções adicionadas no fim. Revise e salve."
+        : "Estrutura aplicada. Revise e salve.");
   } catch (err: any) {
     const detail = err?.response?.data?.detail;
     aiStructureError.value = typeof detail === "string" ? detail : "Não foi possível aplicar a estrutura. Tente novamente.";
@@ -2815,14 +2857,30 @@ const applyAiStructure = async (reply: string, mode: "insert" | "replace" | "swa
     aiStructureApplying.value = false;
   }
 };
+// Aviso do assistente no mesmo estilo do editor novo, com "Desfazer" ao lado.
+const aiToast = ref("");
+let aiToastTimer: number | null = null;
+const showAiToast = (text: string) => {
+  if (!newEditor.value) {
+    showSnackbar(text);
+    return;
+  }
+  aiToast.value = text;
+  if (aiToastTimer !== null) window.clearTimeout(aiToastTimer);
+  aiToastTimer = window.setTimeout(() => {
+    aiToast.value = "";
+    aiToastTimer = null;
+  }, 4500);
+};
 const undoAiStructure = () => {
   if (!aiStructurePreviousSections.value || aiStructureApplying.value || isSectionEditorOpen.value) return;
   flushPendingSectionUpdates();
   setSections(aiStructurePreviousSections.value);
+  aiSwapped.clear();
   refreshPreview(true);
   aiStructurePreviousSections.value = null;
   aiStructureError.value = "";
-  showSnackbar("Seções anteriores restauradas no editor.");
+  showAiToast("Seções anteriores restauradas.");
 };
 const aiAssistantLoading = ref(false);
 const aiAssistantChatLogRef = ref<HTMLElement | null>(null);
@@ -3095,6 +3153,20 @@ const sendAiAssistantMessage = async () => {
   stopAiAssistantTimers();
 
   const attachmentsSnapshot = [...aiAssistantAttachments.value];
+  // Seções como estão no editor agora (com o que ainda não foi salvo), para a IA saber o que trocar.
+  const pageSectionsSnapshot = sections.value.map(section => {
+    const raw = section as Record<string, any>;
+    return {
+      type: section.type,
+      anchorId: section.anchorId,
+      enabled: section.enabled,
+      title: raw.title,
+      label: raw.label,
+      caption: raw.caption,
+      headingLabel: raw.headingLabel,
+      badge: raw.badge
+    };
+  });
   const userText = trimmedMessage || "Mensagem com arquivos";
   const conversationSnapshot: AiAssistantChatMessage[] = [
     ...aiAssistantMessages.value.map(message => ({ role: message.role, content: message.content })),
@@ -3135,7 +3207,7 @@ const sendAiAssistantMessage = async () => {
         if (event.type === "status") aiLive.step = event.step;
         else if (event.type === "delta") setContent(aiLive.content + event.text);
         else if (event.type === "replace") setContent(event.text);
-      });
+      }, pageSectionsSnapshot);
     } catch (error) {
       // Sem a resposta em tempo real (sessão para renovar, proxy, servidor antigo): usa a
       // conversa normal, que renova o login. Erros de limite e de permissão não repetem.
@@ -3143,7 +3215,7 @@ const sendAiAssistantMessage = async () => {
       if (reqError && (reqError.started || [400, 403, 413, 429].includes(reqError.status))) throw error;
       aiLive.step = "thinking";
       setContent("");
-      result = await sendAiAssistantConversation(pageId, conversationSnapshot, attachmentsSnapshot);
+      result = await sendAiAssistantConversation(pageId, conversationSnapshot, attachmentsSnapshot, pageSectionsSnapshot);
     }
     if (result.usage) {
       aiAssistantUsage.value = result.usage;
@@ -3257,6 +3329,13 @@ watch(showAiAssistant, isOpen => {
   }
   if (isOpen) {
     void refreshAiAssistantUsage();
+    // Reabrir o assistente mostra o fim da conversa, sem animar a rolagem desde o começo.
+    nextTick(() => {
+      requestAnimationFrame(() => {
+        const log = aiAssistantChatLogRef.value;
+        if (log) log.scrollTop = log.scrollHeight;
+      });
+    });
   }
 });
 
@@ -7835,6 +7914,7 @@ onMounted(async () => {
 .ai-q-input:focus { outline: none; box-shadow: inset 0 0 0 1.5px #12b981; }
 .ai-q-outro { margin-top: 10px; }
 .ai-q-actions { margin-top: 12px; }
+.ai-v2-undo { display: block; margin: 4px 0 8px; }
 .ai-v2-time { margin-left: 6px; white-space: nowrap; font-size: 11px; font-weight: 600; color: var(--muted-foreground); }
 /* Andamento da resposta: etapas com ícone (feita, em andamento, a seguir). */
 .ai-live { align-self: flex-start; max-width: 100%; margin: 4px 0 8px; padding: 12px 14px; border-radius: 14px; background: var(--card); box-shadow: inset 0 0 0 1px var(--border); animation: ai-live-in 0.25s ease-out both; }

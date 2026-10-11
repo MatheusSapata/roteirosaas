@@ -14,6 +14,16 @@ from app.models.page import Page
 MAX_PAGES = 40
 NETWORK_NAMES = {"instagram": "Instagram", "facebook": "Facebook", "youtube": "YouTube", "tiktok": "TikTok", "linkedin": "LinkedIn"}
 STATUS_NAMES = {"published": "publicada", "draft": "rascunho"}
+# Nome de cada seção no editor (o mesmo que o usuário vê e que a IA usa na resposta).
+SECTION_EDITOR_NAMES = {
+    "header": "Menu do topo", "hero": "Banner Inicial", "banner_card": "Banner em Card", "video_vsl": "Vídeo de Vendas (VSL)",
+    "story": "Texto e Imagens", "reasons": "Diferenciais", "biography": "Artigo", "itinerary": "Roteiro dia a dia",
+    "gallery": "Galeria de fotos", "flight_details": "Voos", "links": "Links/Roteiros", "photo": "Foto em destaque",
+    "featured_video": "Vídeo", "prices": "Preços e pacotes", "viajeon_checkout": "Compra Online (Viaje On)",
+    "countdown": "Contagem regressiva", "cta": "Faixa de chamada", "testimonials": "Depoimentos",
+    "faq": "Dúvidas frequentes", "internal_form": "Formulário de contato", "agency_footer": "Rodapé da agência",
+}
+SECTION_TITLE_KEYS = ("title", "label", "caption", "headingLabel", "badge")
 
 
 def _plain(value: Any) -> str:
@@ -61,7 +71,21 @@ def _page_summary(page: Page) -> str:
     return f"{line} · {subtitle}" if subtitle else line
 
 
-def build_agency_context(db: Session, page: Page) -> str:
+def _sections_summary(sections: list[dict[str, Any]]) -> list[str]:
+    lines = []
+    for number, section in enumerate(sections, 1):
+        kind = str(section.get("type") or "")
+        if kind == "free_footer_brand" or not kind:
+            continue
+        name = SECTION_EDITOR_NAMES.get(kind, kind)
+        title = next((_plain(section.get(key)) for key in SECTION_TITLE_KEYS if _plain(section.get(key))), "")
+        anchor = str(section.get("anchorId") or f"secao-{number}")
+        hidden = "" if section.get("enabled", True) else " (oculta)"
+        lines.append(f'{number}. {anchor}: {name}{hidden}' + (f' · "{_short(title, 70)}"' if title else ""))
+    return lines
+
+
+def build_agency_context(db: Session, page: Page, page_sections: list[dict[str, Any]] | None = None) -> str:
     """Bloco de texto com o que já está cadastrado, para ir junto das instruções da IA."""
     from app.api.v1.endpoints.public_pages import build_agency_profile  # evita import circular
 
@@ -87,6 +111,16 @@ def build_agency_context(db: Session, page: Page) -> str:
     lines.append("Redes sociais cadastradas: " + (", ".join(networks) if networks else "nenhuma"))
     lines.append(f"Logo: {'cadastrado' if agency.logo_url else 'não cadastrado'}")
     lines.append(f'Página que está sendo editada: "{_plain(page.title)}"')
+    # Seções como estão no editor agora (inclui o que ainda não foi salvo); sem elas, as salvas.
+    if page_sections is None:
+        config = page.config_json if isinstance(page.config_json, dict) else {}
+        page_sections = [section for section in config.get("sections") or [] if isinstance(section, dict)]
+    summary = _sections_summary(page_sections)
+    if summary:
+        lines.append('SEÇÕES DESTA PÁGINA (na ordem; para trocar uma, use "Substitui: identificador" com o que vem antes dos dois-pontos):')
+        lines.extend(summary)
+    else:
+        lines.append("SEÇÕES DESTA PÁGINA: nenhuma ainda.")
 
     others = (
         db.query(Page)

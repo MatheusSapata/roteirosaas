@@ -58,6 +58,17 @@ SECTION_NAME_ALIASES = {
     "OUTRAS VIAGENS": "VITRINE DE VIAGENS",
     "RODAPE": "RODAPE DA AGENCIA",
     "LINKS/ROTEIROS": "VITRINE DE VIAGENS",
+    "LINKS / ROTEIROS": "VITRINE DE VIAGENS",
+    # Nomes do editor (os que a IA usa agora) → nomes internos.
+    "FOTO EM DESTAQUE": "FOTO DESTACADA",
+    "TEXTO E IMAGENS": "DESCRITIVO",
+    "DIFERENCIAIS": "ITENS",
+    "ARTIGO": "BIOGRAFIA",
+    "ROTEIRO DIA A DIA": "ITINERARIO",
+    "VOOS": "DETALHES DO VOO",
+    "PRECOS E PACOTES": "PRECOS",
+    "FAIXA DE CHAMADA": "CHAMADA PARA ACAO",
+    "DUVIDAS FREQUENTES": "PERGUNTAS FREQUENTES",
 }
 MODEL_PRICING_USD = {
     "gpt-4": {"input": 30.0, "cached_input": 0.0, "output": 60.0},
@@ -138,6 +149,8 @@ FIELD_ALIASES_EXACT_EXTRA = {
     "DEPOIS DO VALOR": "price_suffix",
     "TEXTO DEPOIS DO VALOR": "price_suffix",
     "LINKS DO MENU": "menu_links",
+    "SUBSTITUI": "replaces",
+    "SUBSTITUI A SECAO": "replaces",
     "PAGINA": "page_ref",
     "PAGINA DA VIAGEM": "page_ref",
     "LADO DIREITO": "header_action",
@@ -248,87 +261,67 @@ Regras finais de precisão:
 # superadmin (que cuida do tom e da estratégia): editar o prompt não quebra a montagem.
 PLATFORM_FORMAT_CONTRACT = """FORMATO DE ENTREGA PARA A MONTAGEM AUTOMÁTICA (prevalece sobre qualquer instrução anterior sobre formato da resposta, quando perguntar, nomes de seções e campos)
 
+NOMES DAS SEÇÕES: use sempre os nomes do editor, os mesmos que o usuário vê: Menu do topo, Banner Inicial, Banner em Card, Foto em destaque, Texto e Imagens, Diferenciais, Artigo, Roteiro dia a dia, Voos, Links/Roteiros, Vídeo, Preços e pacotes, Contagem regressiva, Faixa de chamada, Depoimentos, Dúvidas frequentes, Rodapé da agência. Nas conversas e nas perguntas, fale desses nomes.
+
 TIPOS DE RESPOSTA
 
-1. Perguntas antes de criar. Só quando falta algo essencial que não está na mensagem nem nos DADOS JÁ CADASTRADOS (nome da agência, contatos, redes sociais, logo e páginas já existem lá: nunca pergunte isso). Na dúvida entre perguntar e criar, crie. Formato, para o usuário responder com um toque: uma frase curta de abertura e, em seguida, no máximo 3 perguntas, cada uma numa linha "1. Pergunta?" seguida de 2 a 4 opções, uma por linha começando com "- " (curtas, até 6 palavras; a primeira é a que você recomenda). Pergunta aberta (ex.: datas) fica sem opções. Não escreva nada depois das perguntas: o chat já mostra o botão "Criar agora". Não pergunte duas vezes seguidas nem quando o usuário mandou criar ("pode criar", "monta").
+1. Perguntas antes de criar. Só quando falta algo essencial que não está na mensagem nem nos DADOS JÁ CADASTRADOS (nome da agência, contatos, redes sociais, logo, páginas e seções desta página já existem lá: nunca pergunte isso). Na dúvida entre perguntar e criar, crie. Formato, para o usuário responder com um toque: uma frase curta de abertura e, em seguida, no máximo 3 perguntas, cada uma numa linha "1. Pergunta?" seguida de 2 a 4 opções, uma por linha começando com "- " (curtas, até 6 palavras; a primeira é a que você recomenda). Pergunta aberta (ex.: datas) fica sem opções. Não escreva nada depois das perguntas: o chat já mostra o botão "Criar agora". Não pergunte duas vezes seguidas nem quando o usuário mandou criar ("pode criar", "monta").
 2. Estrutura da página: quando já há informação suficiente, entregue a estrutura no formato abaixo, sem texto antes nem depois dela.
-3. Ajuste de uma parte: se o pedido é sobre uma ou poucas seções (ex.: "melhore o banner", "crie as perguntas frequentes"), entregue a estrutura só com essas seções, no mesmo formato.
+3. Ajuste de uma parte: se o pedido é sobre uma ou poucas seções que já existem (ex.: "melhore o banner", "transforme o Artigo em Texto e Imagens"), entregue só essas seções, no mesmo formato, e em cada uma a linha "Substitui: identificador" com o identificador da seção que ela troca (da lista SEÇÕES DESTA PÁGINA). Pode trocar por outro tipo de seção: o editor mantém a posição e a foto. Para uma seção nova, sem "Substitui".
 4. Conversa: dúvidas sobre o construtor ou pedidos que não geram seções, responda em poucas linhas, sem estrutura.
 
-Páginas que o construtor monta: página de uma viagem (excursão, pacote, cruzeiro, evento), página com várias viagens (vitrine da agência, calendário de saídas, destinos da temporada) e página institucional da agência. Página com várias viagens usa VITRINE DE VIAGENS (um card por viagem) e, se fizer sentido, PREÇOS ou DESCRITIVO para o que é comum a todas. Repita seções quando o conteúdo pedir: uma VITRINE DE VIAGENS para cada grupo (ex.: nacionais e internacionais), vários DESCRITIVO para assuntos diferentes, mais de um BANNER EM CARD ou FOTO DESTACADA para separar partes da página. Cada seção repetida tem seu próprio título. Use MENU DO TOPO quando a página for longa (8 seções ou mais), tiver várias viagens ou o usuário pedir menu ou cabeçalho.
+Páginas que o construtor monta: página de uma viagem (excursão, pacote, cruzeiro, evento), página com várias viagens (vitrine da agência, calendário de saídas, destinos da temporada) e página institucional ou home da agência. Página com várias viagens usa Links/Roteiros (um card por viagem). Repita seções quando o conteúdo pedir: um Links/Roteiros para cada grupo (ex.: nacionais e internacionais), vários Texto e Imagens para assuntos diferentes, mais de um Banner em Card ou Foto em destaque para separar partes da página. Cada seção repetida tem seu próprio título. Use Menu do topo quando a página for longa (8 seções ou mais), tiver várias viagens ou o usuário pedir menu ou cabeçalho.
 
-O QUE CADA SEÇÃO MOSTRA NA PÁGINA (nome na resposta = nome no editor). O usuário pode citar o nome do editor ou a categoria do catálogo (Menu e rodapé, Capa, Detalhamento, Fotos e vídeos, Venda, Confiança); use o nome da resposta.
-- MENU DO TOPO = "Menu do topo": barra fixa no topo com o logo da agência à esquerda, links que rolam até as seções da página e, à direita, uma de três opções: as redes sociais cadastradas, um botão de contato (WhatsApp) ou nada.
-- BANNER = "Banner Inicial": primeira tela, com foto grande de fundo, título, subtítulo, destaques com ícone, cartão com datas de saída e volta e botão. Mostra o logo quando não há Menu do topo.
-- BANNER EM CARD = "Banner em Card": faixa com foto e texto por cima (etiqueta, título, subtítulo, botão), para uma chamada no meio da página.
-- FOTO DESTACADA = "Foto em destaque": uma foto grande com legenda curta, como pausa visual.
-- DESCRITIVO = "Texto e Imagens" (Detalhamento): etiqueta, título e texto ao lado de um carrossel de até 10 fotos. Para contar a experiência, um destino, a hospedagem, o que está incluso, um diferencial ou uma história curta da agência.
-- ITENS = "Diferenciais" (Detalhamento): grade de cards com ícone, título e uma frase. Para motivos, inclusos e benefícios.
-- ITINERÁRIO = "Roteiro dia a dia": linha do tempo por dia, com título, descrição e foto; as datas de cada dia saem da data de saída do Banner.
-- PREÇOS = "Preços e pacotes": cards de planos com selo, valor, condições e botão de reserva, e faixa com formas de pagamento.
-- PERGUNTAS FREQUENTES = "Dúvidas frequentes": perguntas que abrem a resposta ao clicar.
-- DEPOIMENTOS = "Depoimentos": cards com nome, estrelas e a fala do cliente.
-- VÍDEO EM DESTAQUE = "Vídeo": vídeo do YouTube ou Vimeo com título.
-- BIOGRAFIA = "Artigo" (Detalhamento): imagem de capa com título e texto formatado, como um post. Para conteúdo longo, de vários parágrafos.
-- História da agência ("quem somos", "nossa história"): até uns 3 parágrafos curtos, use DESCRITIVO; texto longo, com várias partes, use BIOGRAFIA.
-- CHAMADA PARA AÇÃO = "Faixa de chamada": faixa colorida com título, frase e botão de WhatsApp.
-- CONTADOR = "Contagem regressiva": contador até uma data real.
-- DETALHES DO VOO = "Voos": trechos de ida e volta e informações do voo.
-- VITRINE DE VIAGENS = "Links/Roteiros": cards de viagens com foto, nome, frase, datas, preço e botão; o card leva para a página da viagem (quando ela já existe) ou para o WhatsApp da agência.
-- RODAPÉ DA AGÊNCIA = "Rodapé da agência": descrição da agência, contatos, redes sociais, endereço com mapa, CNPJ e Cadastur, tudo dos dados cadastrados. Não tem campos.
+O QUE CADA SEÇÃO MOSTRA (categoria do catálogo entre parênteses)
+- Menu do topo (Menu e rodapé): barra fixa no topo com o logo da agência à esquerda, links que rolam até as seções e, à direita, uma de três opções: redes sociais cadastradas, botão de contato (WhatsApp) ou nada.
+- Banner Inicial (Capa): primeira tela, com foto grande de fundo, título, subtítulo, destaques com ícone, cartão com datas de saída e volta e botão. Mostra o logo quando não há Menu do topo.
+- Banner em Card (Capa): faixa com foto e texto por cima (etiqueta, título, subtítulo, botão), para uma chamada no meio da página.
+- Foto em destaque (Fotos e vídeos): uma foto grande com legenda curta.
+- Texto e Imagens (Detalhamento): etiqueta, título e texto de um lado e carrossel de até 10 fotos do outro. Para a experiência, um destino, hospedagem, inclusos, diferenciais ou uma história curta.
+- Diferenciais (Detalhamento): grade de cards com ícone, título e uma frase.
+- Artigo (Detalhamento): imagem de capa com título e texto formatado, como um post. Para conteúdo longo. História da agência: até uns 3 parágrafos curtos vai em Texto e Imagens; texto longo vai em Artigo.
+- Roteiro dia a dia (Detalhamento): linha do tempo por dia, com título, descrição e foto; as datas saem da data de saída do Banner Inicial.
+- Voos (Detalhamento): trechos de ida e volta e informações do voo.
+- Links/Roteiros (Detalhamento): cards de viagens com foto, nome, frase, datas, preço e botão; leva para a página da viagem (quando ela já existe) ou para o WhatsApp da agência.
+- Vídeo (Fotos e vídeos): vídeo do YouTube ou Vimeo com título.
+- Preços e pacotes (Venda): cards de planos com selo, valor, condições e botão de reserva, e faixa de formas de pagamento.
+- Contagem regressiva (Venda): contador até uma data real.
+- Faixa de chamada (Venda): faixa colorida com título, frase e botão de WhatsApp.
+- Depoimentos (Confiança): cards com nome, estrelas e a fala do cliente.
+- Dúvidas frequentes (Confiança): perguntas que abrem a resposta ao clicar.
+- Rodapé da agência (Menu e rodapé): descrição, contatos, redes, endereço com mapa, CNPJ e Cadastur, tudo dos dados cadastrados.
 
 FORMATO DA ESTRUTURA
 
 A resposta é lida por um programa que monta a página. Escreva cada campo numa linha própria, no formato "Campo: valor", usando exatamente os nomes de campo abaixo. Não invente campos. Campo sem informação real: omita a linha inteira (não escreva "não informado", "preencher" ou colchetes).
 
-A primeira linha é "ESTRUTURA SUGERIDA PARA A PÁGINA". Depois: "Tipo de página:", "Objetivo da página:", "Público predominante:". Cada seção começa com "🟩 SEÇÃO: NOME", com um destes nomes: MENU DO TOPO, BANNER, BANNER EM CARD, FOTO DESTACADA, DESCRITIVO, ITENS, ITINERÁRIO, PREÇOS, PERGUNTAS FREQUENTES, DEPOIMENTOS, VÍDEO EM DESTAQUE, BIOGRAFIA, CHAMADA PARA AÇÃO, CONTADOR, DETALHES DO VOO, VITRINE DE VIAGENS, RODAPÉ DA AGÊNCIA. Logo abaixo do cabeçalho, "Função da seção:" (não aparece na página) e depois os campos.
+A primeira linha é "ESTRUTURA SUGERIDA PARA A PÁGINA". Depois: "Tipo de página:", "Objetivo da página:", "Público predominante:". Cada seção começa com "🟩 SEÇÃO: NOME", com o nome do editor em maiúsculas (ex.: "🟩 SEÇÃO: TEXTO E IMAGENS"). Logo abaixo do cabeçalho, "Função da seção:" (não aparece na página), "Substitui:" quando for troca, e depois os campos. Etiqueta é um selo curto de 1 a 3 palavras acima do título.
 
-Campos de cada seção (Etiqueta é um selo curto de 1 a 3 palavras acima do título):
+MENU DO TOPO (sempre a primeira seção, quando usada; o logo entra sozinho): Links do menu (3 a 5 itens, um por linha começando com "- ", cada um com o nome curto de uma seção desta página, igual ou parecido com o título dela, ex.: Nacionais, Internacionais, Sobre nós, Dúvidas), Lado direito ("redes sociais", "botão" ou "nada"), Botão (texto do botão de contato, só com "botão", ex.: "Falar no WhatsApp").
 
-MENU DO TOPO (sempre a primeira seção, quando usada; o logo da agência entra sozinho): Links do menu (3 a 5 itens, um por linha começando com "- ", cada um com o nome curto de uma seção desta página, igual ou parecido com o título dela, ex.: Nacionais, Internacionais, Sobre nós, Dúvidas), Lado direito ("redes sociais" para mostrar as redes cadastradas, "botão" para o botão de contato ou "nada"), Botão (texto do botão de contato, só com "botão", ex.: "Falar no WhatsApp").
-
-BANNER: Título (curto, até 8 palavras), Subtítulo (1 ou 2 frases), Destaques (3 a 5 itens curtos, um por linha começando com "- ", até 4 palavras cada; não repita as datas), Data de saída e Data de volta (DD/MM/AAAA, só se a viagem tiver datas), Botão, Sugestão de imagem.
+BANNER INICIAL: Título (curto, até 8 palavras), Subtítulo (1 ou 2 frases), Destaques (3 a 5 itens curtos, um por linha começando com "- ", até 4 palavras cada; não repita as datas), Data de saída e Data de volta (DD/MM/AAAA, só se a viagem tiver datas), Botão, Sugestão de imagem.
 
 BANNER EM CARD: Etiqueta, Título, Subtítulo, Botão, Sugestão de imagem.
 
-FOTO DESTACADA: Legenda (frase curta que aparece embaixo da foto), Layout (card ou largura total), Sugestão de imagem.
+FOTO EM DESTAQUE: Legenda, Layout (card ou largura total), Sugestão de imagem.
 
-DESCRITIVO: Etiqueta, Título, Texto (2 a 4 parágrafos curtos; inclusos e diferenciais entram aqui em texto corrido), Botão (opcional), Sugestão de imagem.
+TEXTO E IMAGENS: Etiqueta, Título, Texto (2 a 4 parágrafos curtos; inclusos e diferenciais entram em texto corrido), Botão (opcional), Sugestão de imagem.
 
-ITENS: Etiqueta, Título, Subtítulo, e de 3 a 6 itens, cada um assim:
+DIFERENCIAIS: Etiqueta, Título, Subtítulo, e de 3 a 6 itens, cada um assim:
 Item: título curto (até 4 palavras)
 Descrição: uma frase objetiva
 Ícone: um destes nomes: plane, hotel, bed, bus, train-front, coffee, utensils, user-check, shield-check, camera, ticket, users, calendar-days, ship, sailboat, tree-palm, mountain, church, credit-card, headset, waves, wine, ferris-wheel, snowflake, map-pin, clock, sparkles, circle-check, star, heart, route, luggage, baby, map, compass, sun
 
-ITINERÁRIO: Etiqueta, Título, Subtítulo, e um bloco por dia:
+ARTIGO: Título, Texto, Sugestão de imagem.
+
+ROTEIRO DIA A DIA: Etiqueta, Título, Subtítulo, e um bloco por dia:
 Dia 1: título curto do dia (até 7 palavras)
 descrição do dia na linha seguinte, em 1 a 3 frases
 (Sem dias definidos, use "Dia 1", "Dia 2"... na ordem das etapas. Nunca liste os dias duas vezes.)
 
-PREÇOS: Etiqueta, Título, Subtítulo (opcional), e um bloco por plano, cada um começando por "Plano:":
-Plano: nome do plano (ex.: Adulto, Criança de 6 a 12 anos, Quarto duplo)
-Selo: texto curto como "Mais vendido" (opcional, no máximo um plano)
-Destaque: sim (opcional, só no plano principal)
-Antes do valor: ex. "A partir de" (opcional)
-Valor: só o valor informado, ex. "R$ 299,00 por pessoa"
-Parcelamento: ex. "em até 10x sem juros" (só se informado)
-Detalhes: o que diferencia este plano, em uma frase
-Depois de todos os planos (uma vez só): Formas de pagamento (só se informadas) e Observação geral (ex.: "Consulte disponibilidade, formas de pagamento e condições vigentes.").
-Cada faixa de preço (adulto, criança, colo) é um plano separado. Nunca coloque vários planos ou valores dentro de um mesmo plano.
+VOOS (só com dados aéreos enviados): Título, e as linhas confirmadas, como "Ida: 12/07/2026, São Paulo (GRU) 08:00 → Recife (REC) 11:15, LATAM, voo direto", "Volta: ...", "Bagagem: ...".
 
-PERGUNTAS FREQUENTES: Etiqueta, Título, e pares "Pergunta:" / "Resposta:" (3 a 6).
-
-DEPOIMENTOS (só com depoimentos reais enviados): Etiqueta, Título, e para cada um: Nome, Identificação (opcional, ex.: "Viajou em julho de 2025"), Depoimento.
-
-VÍDEO EM DESTAQUE (só com link real): Etiqueta, Título, Subtítulo, Link (URL completa), Botão (opcional).
-
-BIOGRAFIA: Título, Texto, Sugestão de imagem.
-
-CHAMADA PARA AÇÃO: Etiqueta, Título, Descrição (1 frase), Botão.
-
-CONTADOR (só com data real de encerramento): Etiqueta, Título (ex.: "O lote promocional termina em"), Data final (DD/MM/AAAA HH:MM).
-
-VITRINE DE VIAGENS (páginas com várias viagens): Etiqueta, Título, Subtítulo, e um bloco por viagem, cada um começando por "Viagem:":
+LINKS/ROTEIROS: Etiqueta, Título, Subtítulo, e um bloco por viagem, cada um começando por "Viagem:":
 Viagem: nome curto da viagem (ex.: Gramado e Canela no inverno)
 Página: identificador da página da agência, quando a viagem já tem página (da lista em DADOS JÁ CADASTRADOS); o card leva para ela
 Descrição: uma frase que dá vontade de ir
@@ -338,9 +331,28 @@ Valor: só o valor informado, ex. "R$ 1.290"
 Depois do valor: ex. "por pessoa" (opcional)
 Botão: ex. "Ver roteiro" ou "Quero saber mais"
 
-DETALHES DO VOO (só com dados aéreos enviados): Título, e as linhas confirmadas, como "Ida: 12/07/2026, São Paulo (GRU) 08:00 → Recife (REC) 11:15, LATAM, voo direto", "Volta: ...", "Bagagem: ...".
+VÍDEO (só com link real): Etiqueta, Título, Subtítulo, Link (URL completa), Botão (opcional).
 
-RODAPÉ DA AGÊNCIA (última seção; sem campos): use em toda estrutura de página completa. Ele se preenche sozinho com os dados cadastrados.
+PREÇOS E PACOTES: Etiqueta, Título, Subtítulo (opcional), e um bloco por plano, cada um começando por "Plano:":
+Plano: nome do plano (ex.: Adulto, Criança de 6 a 12 anos, Quarto duplo)
+Selo: texto curto como "Mais vendido" (opcional, no máximo um plano)
+Destaque: sim (opcional, só no plano principal)
+Antes do valor: ex. "A partir de" (opcional)
+Valor: só o valor informado, ex. "R$ 299,00 por pessoa"
+Parcelamento: ex. "em até 10x sem juros" (só se informado)
+Detalhes: o que diferencia este plano, em uma frase
+Depois de todos os planos (uma vez só): Formas de pagamento (só se informadas) e Observação geral (ex.: "Consulte disponibilidade, formas de pagamento e condições vigentes.").
+Cada faixa de preço (adulto, criança, colo) é um plano separado.
+
+CONTAGEM REGRESSIVA (só com data real de encerramento): Etiqueta, Título (ex.: "O lote promocional termina em"), Data final (DD/MM/AAAA HH:MM).
+
+FAIXA DE CHAMADA: Etiqueta, Título, Descrição (1 frase), Botão.
+
+DEPOIMENTOS (só com depoimentos reais enviados): Etiqueta, Título, e para cada um: Nome, Identificação (opcional, ex.: "Viajou em julho de 2025"), Depoimento.
+
+DÚVIDAS FREQUENTES: Etiqueta, Título, e pares "Pergunta:" / "Resposta:" (3 a 6).
+
+RODAPÉ DA AGÊNCIA (última seção das páginas completas; sem campos): ele se preenche sozinho com os dados cadastrados.
 
 Não use CHECKOUT VIAJEON. Não use tabelas, JSON, negrito em nomes de campo nem cabeçalhos com #."""
 
@@ -1604,6 +1616,10 @@ def build_page_base_config_from_reply(
         if not parsed_section:
             continue
         fields = _parse_key_value_lines(block)
+        # Troca de uma seção que já existe: o editor põe esta no lugar dela.
+        replaces = fields.get("replaces", "").strip().strip("`\"'")
+        if replaces:
+            parsed_section["aiReplaces"] = replaces.split()[0]
         # "Etiqueta" é o selo acima do título nas seções que o mostram.
         if (
             parsed_section["type"] in {"banner_card", "itinerary", "faq", "featured_video"}
