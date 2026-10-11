@@ -31,6 +31,8 @@ from app.services.media_storage import media_storage
 logger = logging.getLogger(__name__)
 
 SEARCH_TTL = timedelta(days=180)
+# Fotos cadastradas à mão no Admin Master (qualquer site, com palavras-chave e crédito).
+MANUAL_PROVIDER = "manual"
 PER_PAGE = 30  # máximo por chamada: cada busca enche o banco com o máximo de fotos
 # Para reaproveitar uma busca parecida, ela precisa cobrir esta fração das palavras da nova.
 SIMILAR_SEARCH_MIN_SCORE = 0.6
@@ -126,6 +128,8 @@ def rank_images(images: list[StockImage], query: str, *, prefer_brazil: bool = F
         position, image = item
         text = " ".join(part for part in (image.alt, image.tags, image.location) if part)
         value = -0.03 * position  # a ordem do banco ainda conta, como desempate
+        if image.provider == MANUAL_PROVIDER:
+            value += 4.0  # escolhida a dedo no Admin Master
         if terms:
             value += 3.0 * len(terms & query_terms(text)) / len(terms)
         if prefer_brazil and mentions_brazil(text):
@@ -289,9 +293,47 @@ def _photos_by_description(db: Session, terms: set[str], limit: int = PER_PAGE) 
     return [image for _, _, image in scored[:limit]]
 
 
+def keyword_list(value: str | None) -> list[str]:
+    """ "Beto Carrero, parque; theme park" → ["beto carrero", "parque", "theme park"]."""
+    seen: dict[str, None] = {}
+    for part in re.split(r"[,;\n]+", value or ""):
+        normalized = normalize_query(part)
+        if normalized:
+            seen.setdefault(normalized, None)
+    return list(seen)
+
+
+def _curated_matches(db: Session, terms: set[str]) -> list[StockImage]:
+    """Fotos cadastradas à mão cujas palavras-chave estão na busca: uma palavra-chave conta
+    quando todas as palavras dela aparecem (ex.: "beto carrero" em "Beto Carrero World Brazil")."""
+    if not terms:
+        return []
+    scored = []
+    for image in db.query(StockImage).filter(StockImage.provider == MANUAL_PROVIDER).all():
+        hits = 0
+        for keyword in keyword_list(image.tags):
+            words = query_terms(keyword)
+            if words and words <= terms:
+                hits += len(words)
+        if hits:
+            scored.append((hits, -(image.uses or 0), image))
+    # Mais palavras em comum primeiro; empate: a menos usada, para variar entre páginas.
+    scored.sort(key=lambda item: (item[0], item[1]), reverse=True)
+    return [image for _, _, image in scored]
+
+
 def search_stock_images(db: Session, client: httpx.Client, query: str, *, minimum: int = 1) -> list[StockImage]:
-    """Fotos para os termos, reaproveitando o banco antes de chamar Unsplash ou Pexels:
-    1) a mesma busca; 2) uma busca parecida; 3) fotos guardadas com descrição parecida;
+    """Fotos para os termos. As cadastradas à mão no Admin Master vêm primeiro; se bastarem,
+    nem consulta o resto. Depois, reaproveita o banco antes de chamar Unsplash ou Pexels."""
+    curated = _curated_matches(db, query_terms(normalize_query(query)))
+    if len(curated) >= minimum:
+        return curated
+    found = _search_bank(db, client, query, minimum=minimum - len(curated))
+    return curated + [image for image in found if image not in curated]
+
+
+def _search_bank(db: Session, client: httpx.Client, query: str, *, minimum: int = 1) -> list[StockImage]:
+    """1) a mesma busca; 2) uma busca parecida; 3) fotos guardadas com descrição parecida;
     4) o banco de fotos, se ainda houver chamadas na hora."""
     normalized = normalize_query(query)
     if not normalized:
@@ -350,6 +392,8 @@ def search_stock_images(db: Session, client: httpx.Client, query: str, *, minimu
 
 def materialize(db: Session, client: httpx.Client, image: StockImage) -> str | None:
     """Endereço da foto para a página: baixa e guarda a cópia otimizada só na primeira vez."""
+    if image.provider == MANUAL_PROVIDER:
+        return image.stored_url or image.download_url
     if image.provider == "unsplash":
         # Aviso de uso pedido pelo Unsplash: uma vez por foto, e só se ainda houver chamadas na hora.
         keys = available_image_keys(db, "unsplash") if image.tracked_at is None else []
@@ -385,8 +429,19 @@ def _with_utm(link: str | None) -> str:
     return f"{link}{'&' if '?' in link else '?'}{UTM}"
 
 
-def credit_for(image: StockImage, url: str) -> dict[str, str]:
-    """Crédito mostrado na página: "Foto: Nome (Unsplash)", com links pedidos pelo banco."""
+def credit_for(image: StockImage, url: str) -> dict[str, str] | None:
+    """Crédito mostrado na página: "Foto: Nome (Unsplash)", com links pedidos pelo banco.
+    Foto cadastrada à mão sem autor nem fonte não leva crédito."""
+    if image.provider == MANUAL_PROVIDER:
+        if not (image.photographer or image.source_name):
+            return None
+        return {
+            "url": url,
+            "name": image.photographer or image.source_name or "",
+            "link": image.photographer_url or "",
+            "provider": image.source_name or "",
+            "providerLink": image.page_url or "",
+        }
     provider = image.provider.title()
     provider_home = {"unsplash": "https://unsplash.com/", "pexels": "https://www.pexels.com/"}.get(image.provider, "")
     return {
@@ -408,6 +463,9 @@ class _Picker:
         self.saved_urls: set[str] = set()
         # Crédito de cada foto escolhida (url → crédito), para a seção guardar.
         self.credits: dict[str, dict[str, str]] = {}
+
+    def credits_for(self, urls: list[str]) -> list[dict[str, str]]:
+        return [self.credits[url] for url in urls if url in self.credits]
 
     def out_of_time(self) -> bool:
         return time.monotonic() - self.started > TIME_BUDGET_SECONDS
@@ -433,7 +491,9 @@ class _Picker:
                 self.used.add(image.id)
                 image.uses = (image.uses or 0) + 1
                 urls.append(url)
-                self.credits[url] = credit_for(image, url)
+                credit = credit_for(image, url)
+                if credit:
+                    self.credits[url] = credit
                 self._add_to_library(url, image)
         return urls
 
@@ -474,14 +534,14 @@ def fill_section_photos(db: Session, sections: list[dict[str, Any]], agency_id: 
                     for field in PHOTO_FIELDS[kind]:
                         section[field] = urls[0]
                     section["aiStockPhoto"] = True
-                    section["photoCredits"] = [picker.credits[url] for url in urls[:1]]
+                    section["photoCredits"] = picker.credits_for(urls[:1])
                     filled += 1
             elif kind == "story" and raw_query is not None:
                 urls = picker.pick(queries)
                 if urls:
                     section["images"] = urls
                     section["aiStockPhoto"] = True
-                    section["photoCredits"] = [picker.credits[url] for url in urls]
+                    section["photoCredits"] = picker.credits_for(urls)
                     filled += 1
             elif kind == "itinerary" and raw_query is not None:
                 days = [day for day in section.get("days") or [] if isinstance(day, dict)]
@@ -490,7 +550,7 @@ def fill_section_photos(db: Session, sections: list[dict[str, Any]], agency_id: 
                     day["image"] = url
                 if urls:
                     section["aiStockPhoto"] = True
-                    section["photoCredits"] = [picker.credits[url] for url in urls]
+                    section["photoCredits"] = picker.credits_for(urls)
                     filled += len(urls)
             if kind == "links":
                 for item in section.get("items") or []:
@@ -503,7 +563,7 @@ def fill_section_photos(db: Session, sections: list[dict[str, Any]], agency_id: 
                     urls = picker.pick(item_queries + [FALLBACK_QUERIES["links"]])
                     if urls:
                         item["image"] = urls[0]
-                        section.setdefault("photoCredits", []).append(picker.credits[urls[0]])
+                        section.setdefault("photoCredits", []).extend(picker.credits_for(urls[:1]))
                         filled += 1
             if picker.out_of_time():
                 logger.info("stock_photos_time_budget_reached filled=%s", filled)

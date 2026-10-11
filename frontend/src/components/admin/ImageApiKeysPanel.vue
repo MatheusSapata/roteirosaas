@@ -120,6 +120,45 @@
       </div>
     </section>
 
+    <section class="am-card">
+      <div class="am-card-head">
+        <div>
+          <div class="am-card-title">Fotos cadastradas</div>
+          <div class="am-card-sub">
+            Fotos de qualquer site, com palavras-chave e crédito. Quando a busca da IA tem as palavras-chave, a foto entra antes do Unsplash e do Pexels.
+          </div>
+        </div>
+        <button type="button" class="am-btn am-btn-primary shrink-0" @click="openPhotoCreate"><AmIcon name="plus" />Adicionar foto</button>
+      </div>
+      <div class="mb-3 flex flex-wrap items-center gap-2">
+        <input v-model="photoQuery" class="am-input max-w-xs" placeholder="Buscar por palavra-chave ou autor" @keyup.enter="loadPhotos" />
+        <button type="button" class="am-btn" @click="loadPhotos"><AmIcon name="search" />Buscar</button>
+        <span class="am-card-sub ml-auto !mt-0">{{ formatInt(photos.length) }} foto{{ photos.length === 1 ? "" : "s" }}</span>
+      </div>
+      <div v-if="photos.length" class="ik-photos">
+        <article v-for="photo in photos" :key="photo.id" class="ik-photo">
+          <img :src="mediaUrl(photo.url)" :alt="photo.description || photo.keywords.join(', ')" loading="lazy" />
+          <div class="ik-photo-body">
+            <div class="flex flex-wrap gap-1">
+              <span v-for="keyword in photo.keywords" :key="keyword" class="am-badge am-tone-neutral">{{ keyword }}</span>
+            </div>
+            <small class="am-muted block text-xs">
+              {{ photoCredit(photo) || "Sem crédito (foto própria ou sem exigência)" }}
+            </small>
+            <small class="am-muted block text-xs">
+              {{ photo.width && photo.height ? `${photo.width}×${photo.height}` : "" }}{{ photo.width && photo.height && photo.height > photo.width ? " · em pé, fica cortada nas seções" : "" }}
+              · usada {{ photo.uses }}×
+            </small>
+            <div class="mt-1 flex gap-1">
+              <button type="button" class="am-icon-btn" :aria-label="`Editar foto ${photo.id}`" @click="openPhotoEdit(photo)"><AmIcon name="edit" /></button>
+              <button type="button" class="am-icon-btn" :aria-label="`Excluir foto ${photo.id}`" @click="removePhoto(photo)"><AmIcon name="trash" /></button>
+            </div>
+          </div>
+        </article>
+      </div>
+      <div v-else class="am-empty">{{ photosLoading ? "Carregando fotos..." : "Nenhuma foto cadastrada ainda." }}</div>
+    </section>
+
     <AdminMasterDrawer
       :open="drawerOpen"
       :title="editId ? 'Editar chave' : 'Nova chave de fotos'"
@@ -173,6 +212,63 @@
         <button type="button" class="am-btn am-btn-primary" :disabled="saving" @click="save(true)">Salvar e testar</button>
       </template>
     </AdminMasterDrawer>
+    <AdminMasterDrawer
+      :open="photoDrawerOpen"
+      :title="photoEditId ? 'Editar foto' : 'Adicionar foto'"
+      subtitle="A foto é baixada e guardada no nosso servidor, para a página não depender do site de origem."
+      icon="image"
+      tone="violet"
+      @close="photoDrawerOpen = false"
+    >
+      <div class="grid gap-3.5">
+        <div v-if="photoError" class="am-notice am-tone-danger"><AmIcon name="alert" /><span>{{ photoError }}</span></div>
+        <div class="am-field">
+          <label for="ph-url">Endereço da imagem</label>
+          <input id="ph-url" v-model="photoForm.url" class="am-input am-mono" :disabled="Boolean(photoEditId)" placeholder="https://.../foto.jpg" />
+          <small class="am-muted text-xs">Abra a foto no site, clique nela com o botão direito e escolha "Copiar endereço da imagem".</small>
+        </div>
+        <img v-if="photoPreview" :src="photoPreview" alt="" class="ik-preview" @error="photoPreviewFailed = true" @load="photoPreviewFailed = false" />
+        <small v-if="photoPreview && photoPreviewFailed" class="am-muted text-xs">Não deu para mostrar a prévia. Confira se o endereço é da imagem.</small>
+        <div class="am-field">
+          <label for="ph-keywords">Palavras-chave</label>
+          <input id="ph-keywords" v-model="photoForm.keywords" class="am-input" placeholder="Ex.: Beto Carrero, Penha, theme park, family amusement park" />
+          <small class="am-muted text-xs">Separe por vírgula. Inclua o lugar e termos em inglês, porque a IA busca em inglês (ex.: "Gramado, Gramado Brazil, wine, couple").</small>
+        </div>
+        <div class="am-field">
+          <label for="ph-desc">Descrição <span class="font-normal text-muted-foreground">(opcional)</span></label>
+          <input id="ph-desc" v-model="photoForm.description" class="am-input" placeholder="Ex.: Montanha-russa do parque ao entardecer" />
+        </div>
+        <div class="grid gap-3.5 sm:grid-cols-2">
+          <div class="am-field">
+            <label for="ph-author">Autor / fotógrafo</label>
+            <input id="ph-author" v-model="photoForm.author" class="am-input" />
+          </div>
+          <div class="am-field">
+            <label for="ph-author-url">Link do autor</label>
+            <input id="ph-author-url" v-model="photoForm.author_url" class="am-input" placeholder="https://" />
+          </div>
+          <div class="am-field">
+            <label for="ph-source">Fonte</label>
+            <input id="ph-source" v-model="photoForm.source_name" class="am-input" placeholder="Ex.: Wikimedia Commons, Santur" />
+          </div>
+          <div class="am-field">
+            <label for="ph-source-url">Link da fonte ou da licença</label>
+            <input id="ph-source-url" v-model="photoForm.source_url" class="am-input" placeholder="https://" />
+          </div>
+        </div>
+        <small class="am-muted text-xs">O crédito aparece no "©" da foto na página: "Foto: autor · fonte". Sem autor e sem fonte, a foto entra sem "©".</small>
+        <label v-if="!photoEditId" class="flex items-start gap-2 text-sm">
+          <input v-model="photoRights" type="checkbox" class="mt-1" />
+          <span>Tenho direito de usar esta foto em sites de clientes (licença livre, autorização do autor ou foto própria).</span>
+        </label>
+      </div>
+      <template #footer>
+        <button type="button" class="am-btn" @click="photoDrawerOpen = false">Cancelar</button>
+        <button type="button" class="am-btn am-btn-primary" :disabled="photoSaving || (!photoEditId && !photoRights)" @click="savePhoto">
+          {{ photoSaving ? "Baixando a foto..." : "Salvar foto" }}
+        </button>
+      </template>
+    </AdminMasterDrawer>
   </section>
 </template>
 
@@ -189,8 +285,14 @@ import {
   updateImageApiKey,
   type ImageApiKey,
   type ImageApiKeysResponse,
-  type ImageProvider
+  type ImageProvider,
+  createStockPhoto,
+  deleteStockPhoto,
+  listStockPhotos,
+  updateStockPhoto,
+  type StockPhoto
 } from "../../services/imageApiKeys";
+import { resolveMediaUrl } from "../../utils/media";
 import AmIcon from "./master/AmIcon.vue";
 import AdminMasterHeader from "./master/AdminMasterHeader.vue";
 import AdminMasterKpi from "./master/AdminMasterKpi.vue";
@@ -215,6 +317,7 @@ const summary = reactive<ImageApiKeysResponse["summary"]>({
   photos: 0,
   photo_uses: 0,
   search_reuses: 0,
+  curated_photos: 0,
   unsplash: emptyProvider(),
   pexels: emptyProvider()
 });
@@ -385,9 +488,130 @@ const removeKey = async (id: number) => {
   await act(deleteImageApiKey, id, "Não foi possível excluir a chave.");
 };
 
+// Fotos cadastradas à mão
+const photos = ref<StockPhoto[]>([]);
+const photosLoading = ref(false);
+const photoQuery = ref("");
+const photoDrawerOpen = ref(false);
+const photoEditId = ref<number | null>(null);
+const photoSaving = ref(false);
+const photoRights = ref(false);
+const photoPreviewFailed = ref(false);
+const photoError = ref("");
+const emptyPhotoForm = () => ({ url: "", keywords: "", description: "", author: "", author_url: "", source_name: "", source_url: "" });
+const photoForm = reactive(emptyPhotoForm());
+const mediaUrl = (url: string) => resolveMediaUrl(url) || url;
+const photoPreview = computed(() => (/^https?:\/\/\S+$/.test(photoForm.url.trim()) ? photoForm.url.trim() : ""));
+const photoCredit = (photo: StockPhoto) => {
+  if (!photo.author && !photo.source_name) return "";
+  return `Foto: ${[photo.author, photo.source_name].filter(Boolean).join(" · ")}`;
+};
+
+const loadPhotos = async () => {
+  photosLoading.value = true;
+  try {
+    photos.value = await listStockPhotos(photoQuery.value.trim() || undefined);
+  } catch (error: any) {
+    errorMessage.value = errorText(error, "Não foi possível carregar as fotos.");
+  } finally {
+    photosLoading.value = false;
+  }
+};
+
+const openPhotoCreate = () => {
+  photoEditId.value = null;
+  photoError.value = "";
+  successMessage.value = "";
+  Object.assign(photoForm, emptyPhotoForm());
+  photoRights.value = false;
+  photoDrawerOpen.value = true;
+};
+
+const openPhotoEdit = (photo: StockPhoto) => {
+  photoEditId.value = photo.id;
+  photoError.value = "";
+  successMessage.value = "";
+  Object.assign(photoForm, {
+    url: photo.original_url,
+    keywords: photo.keywords.join(", "),
+    description: photo.description || "",
+    author: photo.author || "",
+    author_url: photo.author_url || "",
+    source_name: photo.source_name || "",
+    source_url: photo.source_url || ""
+  });
+  photoDrawerOpen.value = true;
+};
+
+const savePhoto = async () => {
+  if (!photoForm.keywords.trim() || (!photoEditId.value && !photoForm.url.trim())) {
+    photoError.value = "Informe o endereço da imagem e ao menos uma palavra-chave.";
+    return;
+  }
+  photoSaving.value = true;
+  photoError.value = "";
+  successMessage.value = "";
+  const { url, ...details } = photoForm;
+  try {
+    if (photoEditId.value) await updateStockPhoto(photoEditId.value, details);
+    else await createStockPhoto({ ...details, url: url.trim() });
+    photoDrawerOpen.value = false;
+    successMessage.value = photoEditId.value ? "Foto atualizada." : "Foto adicionada ao banco.";
+    await Promise.all([loadPhotos(), load()]);
+  } catch (error: any) {
+    photoError.value = errorText(error, "Não foi possível salvar a foto.");
+  } finally {
+    photoSaving.value = false;
+  }
+};
+
+const removePhoto = async (photo: StockPhoto) => {
+  if (!window.confirm("Tirar esta foto do banco? Páginas que já usam a foto continuam com ela.")) return;
+  try {
+    await deleteStockPhoto(photo.id);
+    await loadPhotos();
+  } catch (error: any) {
+    errorMessage.value = errorText(error, "Não foi possível excluir a foto.");
+  }
+};
+
 onMounted(() => {
   load();
+  loadPhotos();
   document.addEventListener("click", closeMenuOnOutside);
 });
 onBeforeUnmount(() => document.removeEventListener("click", closeMenuOnOutside));
 </script>
+
+<style scoped>
+.ik-photos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+.ik-photo {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card);
+}
+.ik-photo img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  background: var(--muted);
+}
+.ik-photo-body {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px 12px;
+}
+.ik-preview {
+  width: 100%;
+  max-height: 220px;
+  object-fit: contain;
+  border-radius: 12px;
+  background: var(--muted);
+}
+</style>

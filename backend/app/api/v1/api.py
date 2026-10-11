@@ -17,6 +17,7 @@ from app.api.v1.endpoints import (
     flight_api_keys,
     flight_sections,
     image_api_keys,
+    stock_photos,
     lead_forms,
     lead_crm,
     lessons,
@@ -75,6 +76,7 @@ api_router.include_router(webhook_notifications.admin_router, tags=["admin-maste
 api_router.include_router(webhook_notifications.router, tags=["webhook-notifications"])
 api_router.include_router(flight_api_keys.router, prefix="/admin", tags=["flight-api-keys"])
 api_router.include_router(image_api_keys.router, prefix="/admin", tags=["image-api-keys"])
+api_router.include_router(stock_photos.router, prefix="/admin", tags=["stock-photos"])
 api_router.include_router(flight_sections.router, tags=["flight-sections"])
 api_router.include_router(lessons.router, prefix="/lessons", tags=["lessons"])
 api_router.include_router(lead_forms.router, prefix="/lead-forms", tags=["lead-forms"])

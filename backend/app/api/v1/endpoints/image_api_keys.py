@@ -93,6 +93,7 @@ def list_image_api_keys(
         "photos": db.query(func.count(StockImage.id)).scalar() or 0,
         "photo_uses": int(db.query(func.coalesce(func.sum(StockImage.uses), 0)).scalar() or 0),
         "search_reuses": int(db.query(func.coalesce(func.sum(StockImageSearch.uses), 0)).scalar() or 0),
+        "curated_photos": db.query(func.count(StockImage.id)).filter(StockImage.provider == "manual").scalar() or 0,
     }
     for provider in IMAGE_PROVIDERS:
         rows = [record for record in records if record.provider == provider]

@@ -36,3 +36,47 @@ def test_image_api_keys_crud_and_separation_from_flight_keys(client):
         assert client.delete(f"{BASE}/{body['id']}").status_code == 200
     finally:
         app.dependency_overrides.pop(get_current_superuser, None)
+
+
+def test_curated_stock_photos_crud_and_priority(client, db_session, monkeypatch):
+    from app.api.v1.endpoints import stock_photos
+    from app.services import stock_images
+
+    app.dependency_overrides[get_current_superuser] = lambda: SimpleNamespace(is_superuser=True)
+    monkeypatch.setattr(stock_photos, "download_photo", lambda url: (f"/uploads/{url[-8:]}.webp", 1600, 1000))
+    base = "/api/v1/admin/master/stock-photos"
+    try:
+        created = client.post(base, json={
+            "url": "https://turismo.sc.gov.br/fotos/beto-carrero.jpg",
+            "keywords": "Beto Carrero, parque de diversões; theme park",
+            "author": "Ana Souza", "source_name": "Santur", "source_url": "https://turismo.sc.gov.br",
+        })
+        assert created.status_code == 200, created.text
+        photo = created.json()
+        assert photo["keywords"] == ["beto carrero", "parque de diversoes", "theme park"] and photo["url"].startswith("/uploads/")
+        assert client.post(base, json={"url": "https://turismo.sc.gov.br/fotos/beto-carrero.jpg", "keywords": "x y"}).status_code == 409
+        assert client.post(base, json={"url": "https://a.com/b.jpg", "keywords": "parque", "author_url": "javascript:alert(1)"}).status_code == 400
+        client.post(base, json={"url": "https://a.com/sem-credito.jpg", "keywords": "gramado"})
+        assert len(client.get(base, params={"q": "beto"}).json()) == 1
+
+        # A foto cadastrada vem antes de qualquer banco, sem chamar API, quando a palavra-chave está na busca.
+        monkeypatch.setattr(stock_images, "available_image_keys", lambda db, provider: (_ for _ in ()).throw(AssertionError("não devia chamar")))
+        found = stock_images.search_stock_images(db_session, None, "Beto Carrero World Santa Catarina Brazil")
+        assert [image.id for image in found] == [photo["id"]]
+        image = found[0]
+        assert stock_images.credit_for(image, "u") == {
+            "url": "u", "name": "Ana Souza", "link": "", "provider": "Santur", "providerLink": "https://turismo.sc.gov.br",
+        }
+        assert stock_images.materialize(db_session, None, image) == photo["url"]
+        # Sem autor nem fonte: a foto entra, mas sem "©".
+        [plain] = stock_images.search_stock_images(db_session, None, "Gramado street")
+        assert stock_images.credit_for(plain, "u") is None
+        # "parque" sozinho não casa com "parque de diversões" (precisa de todas as palavras).
+        assert stock_images._curated_matches(db_session, stock_images.query_terms("parque aquatico")) == []
+
+        edited = client.patch(f"{base}/{photo['id']}", json={"keywords": "Penha, Beto Carrero", "author": ""}).json()
+        assert edited["keywords"] == ["penha", "beto carrero"] and edited["author"] is None
+        assert client.delete(f"{base}/{photo['id']}").status_code == 200
+        assert client.get(base).json()[0]["keywords"] == ["gramado"]
+    finally:
+        app.dependency_overrides.pop(get_current_superuser, None)

@@ -21,6 +21,7 @@ export interface ImageApiKeysResponse {
     photos: number;
     photo_uses: number;
     search_reuses: number;
+    curated_photos: number;
     unsplash: ImageProviderSummary;
     pexels: ImageProviderSummary;
   };
@@ -52,3 +53,40 @@ export const pauseImageApiKey = async (id: number) => (await api.post<ImageApiKe
 export const activateImageApiKey = async (id: number) => (await api.post<ImageApiKey>(`${base}/${id}/activate`)).data;
 export const resetImageApiKeyUsage = async (id: number) => (await api.post<ImageApiKey>(`${base}/${id}/reset-usage`)).data;
 export const deleteImageApiKey = async (id: number) => (await api.delete<{ detail: string }>(`${base}/${id}`)).data;
+
+// Fotos cadastradas à mão (qualquer site), com palavras-chave e crédito: a IA usa antes dos bancos.
+export interface StockPhoto {
+  id: number;
+  url: string;
+  original_url: string;
+  keywords: string[];
+  description: string | null;
+  author: string | null;
+  author_url: string | null;
+  source_name: string | null;
+  source_url: string | null;
+  width: number | null;
+  height: number | null;
+  uses: number;
+  created_at: string | null;
+}
+
+export interface StockPhotoPayload {
+  url?: string;
+  keywords: string;
+  description?: string;
+  author?: string;
+  author_url?: string;
+  source_name?: string;
+  source_url?: string;
+}
+
+const photoBase = "/admin/master/stock-photos";
+
+export const listStockPhotos = async (q?: string) =>
+  (await api.get<StockPhoto[]>(photoBase, { params: q ? { q } : undefined })).data;
+export const createStockPhoto = async (payload: StockPhotoPayload & { url: string }) =>
+  (await api.post<StockPhoto>(photoBase, payload)).data;
+export const updateStockPhoto = async (id: number, payload: StockPhotoPayload) =>
+  (await api.patch<StockPhoto>(`${photoBase}/${id}`, payload)).data;
+export const deleteStockPhoto = async (id: number) => (await api.delete<{ detail: string }>(`${photoBase}/${id}`)).data;
