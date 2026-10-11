@@ -150,6 +150,9 @@ FIELD_ALIASES_EXACT_EXTRA = {
     "TEXTO DEPOIS DO VALOR": "price_suffix",
     "LINKS DO MENU": "menu_links",
     "SUBSTITUI": "replaces",
+    "ESTILO DOS ICONES": "icon_style",
+    "ESTILO DOS ITENS": "icon_style",
+    "ESTILO": "icon_style",
     "SUBSTITUI A SECAO": "replaces",
     "PAGINA": "page_ref",
     "PAGINA DA VIAGEM": "page_ref",
@@ -278,7 +281,7 @@ O QUE CADA SEÇÃO MOSTRA (categoria do catálogo entre parênteses)
 - Banner em Card (Capa): faixa com foto e texto por cima (etiqueta, título, subtítulo, botão), para uma chamada no meio da página.
 - Foto em destaque (Fotos e vídeos): uma foto grande com legenda curta.
 - Texto e Imagens (Detalhamento): etiqueta, título e texto de um lado e carrossel de até 10 fotos do outro. Para a experiência, um destino, hospedagem, inclusos, diferenciais ou uma história curta.
-- Diferenciais (Detalhamento): grade de cards com ícone, título e uma frase.
+- Diferenciais (Detalhamento): grade de cards com ícone, título e uma frase. Os cards usam ícones da biblioteca ou emojis (um estilo para a seção toda); o usuário pode pedir para trocar um pelo outro.
 - Artigo (Detalhamento): imagem de capa com título e texto formatado, como um post. Para conteúdo longo. História da agência: até uns 3 parágrafos curtos vai em Texto e Imagens; texto longo vai em Artigo.
 - Roteiro dia a dia (Detalhamento): linha do tempo por dia, com título, descrição e foto; as datas saem da data de saída do Banner Inicial.
 - Voos (Detalhamento): trechos de ida e volta e informações do voo.
@@ -307,10 +310,10 @@ FOTO EM DESTAQUE: Legenda, Layout (card ou largura total), Sugestão de imagem.
 
 TEXTO E IMAGENS: Etiqueta, Título, Texto (2 a 4 parágrafos curtos; inclusos e diferenciais entram em texto corrido), Botão (opcional), Sugestão de imagem.
 
-DIFERENCIAIS: Etiqueta, Título, Subtítulo, e de 3 a 6 itens, cada um assim:
+DIFERENCIAIS: Etiqueta, Título, Subtítulo, Estilo dos ícones ("ícones" é o padrão; use "emojis" quando o usuário pedir ou quando a página tiver tom leve e infantil, como Disney, parques temáticos, Beto Carrero ou viagens com crianças; todos os cards seguem o mesmo estilo; numa troca, mantenha o estilo atual da seção, a não ser que o usuário peça para mudar), e de 3 a 6 itens, cada um assim:
 Item: título curto (até 4 palavras)
 Descrição: uma frase objetiva
-Ícone: um destes nomes: plane, hotel, bed, bus, train-front, coffee, utensils, user-check, shield-check, camera, ticket, users, calendar-days, ship, sailboat, tree-palm, mountain, church, credit-card, headset, waves, wine, ferris-wheel, snowflake, map-pin, clock, sparkles, circle-check, star, heart, route, luggage, baby, map, compass, sun
+Ícone: com "emojis", um emoji (ex.: ✈️ 🏨 🍽️ 🧳); com "ícones", um destes nomes: plane, hotel, bed, bus, train-front, coffee, utensils, user-check, shield-check, camera, ticket, users, calendar-days, ship, sailboat, tree-palm, mountain, church, credit-card, headset, waves, wine, ferris-wheel, snowflake, map-pin, clock, sparkles, circle-check, star, heart, route, luggage, baby, map, compass, sun
 
 ARTIGO: Título, Texto, Sugestão de imagem.
 
@@ -842,7 +845,20 @@ AI_ICON_KEYWORDS: dict[str, tuple[str, ...]] = {
     "clock": ("HORARIO", "HORARIOS", "PONTUALIDADE"),
     "sparkles": ("EXPERIENCIA", "EXPERIENCIAS", "EXCLUSIVO", "EXCLUSIVA", "INESQUECIVEL"),
 }
+# Emoji equivalente de cada ícone, para os Diferenciais no estilo "emojis".
+AI_ICON_EMOJIS = {
+    "plane": "✈️", "hotel": "🏨", "bed": "🛏️", "bus": "🚌", "train-front": "🚆", "coffee": "☕", "utensils": "🍽️",
+    "user-check": "🧑‍✈️", "shield-check": "🛡️", "camera": "📸", "ticket": "🎟️", "users": "👨‍👩‍👧", "calendar-days": "📅",
+    "ship": "🚢", "sailboat": "⛵", "tree-palm": "🌴", "mountain": "⛰️", "church": "⛪", "credit-card": "💳",
+    "headset": "🎧", "waves": "🌊", "wine": "🍷", "ferris-wheel": "🎡", "snowflake": "❄️", "map-pin": "📍",
+    "clock": "⏰", "sparkles": "✨", "circle-check": "✅", "star": "⭐", "heart": "❤️", "route": "🗺️",
+    "luggage": "🧳", "baby": "👶", "map": "🗺️", "compass": "🧭", "sun": "☀️",
+}
 AI_ICON_NAMES = frozenset(AI_ICON_KEYWORDS) | frozenset({"circle-check", "star", "heart", "route", "luggage", "baby", "map", "compass", "sun"})
+
+
+def _is_emoji(value: str) -> bool:
+    return bool(value) and len(value) <= 12 and not re.search(r"[A-Za-z0-9À-ÿ]", value)
 
 
 def _ai_icon_value(raw: str, *texts: str) -> str:
@@ -851,8 +867,8 @@ def _ai_icon_value(raw: str, *texts: str) -> str:
     name = value[5:] if value.lower().startswith("icon:") else value
     if name.lower() in AI_ICON_NAMES:
         return f"icon:{name.lower()}"
-    # Emoji curto (sem letras), como "✈️": continua emoji.
-    if value and len(value) <= 4 and not re.search(r"[A-Za-z0-9À-ÿ]", value):
+    # Emoji (sem letras), como "✈️" ou "👨‍👩‍👧": continua emoji.
+    if _is_emoji(value):
         return value
     # O título decide antes da descrição ("Refeições: café da manhã e jantares" → talheres).
     for text in texts:
@@ -1339,25 +1355,24 @@ def _parse_ai_section_block(section_name: str, block: str, index: int) -> dict[s
         title = fields.get("title", "").strip()
         subtitle = fields.get("subtitle", "").strip()
         items = _parse_reason_items(block)
-        # Ícone de cada card: o da biblioteca escolhido pela IA ou deduzido do título. Emoji só
-        # fica quando todos os cards são emoji sem equivalente; numa grade mista, o card sem
-        # ícone ganha o "incluso", para nenhum card ficar sem ícone.
-        for item in items:
-            chosen = _ai_icon_value(item.get("icon", ""))
+        # Estilo dos cards: ícones da biblioteca (padrão) ou emojis. Sem estilo indicado, emojis
+        # só quando a IA mandou emoji em todos os cards. Todos os cards seguem o mesmo estilo.
+        style = _normalize_text(fields.get("icon_style", ""))
+        given = [str(item.get("icon", "")).strip().strip("`\"'") for item in items]
+        use_emoji = "EMOJI" in style or (not style and items and all(_is_emoji(icon) for icon in given))
+        for item, raw_icon in zip(items, given):
+            if use_emoji:
+                if _is_emoji(raw_icon):
+                    item["icon"] = raw_icon
+                    continue
+                key = _ai_icon_value(raw_icon, item.get("title", ""), item.get("description", ""))
+                item["icon"] = AI_ICON_EMOJIS.get(key.removeprefix("icon:"), "✅")
+                continue
+            chosen = _ai_icon_value(raw_icon)
             if not chosen.startswith("icon:"):
-                chosen = _ai_icon_value("", item.get("title", ""), item.get("description", "")) or chosen
-            if chosen:
-                item["icon"] = chosen
-            else:
-                item.pop("icon", None)
-        icon_mode = "icon"
-        if any(item.get("icon") for item in items):
-            if all(item.get("icon") and not item["icon"].startswith("icon:") for item in items):
-                icon_mode = "emoji"
-            else:
-                for item in items:
-                    if not str(item.get("icon", "")).startswith("icon:"):
-                        item["icon"] = "icon:circle-check"
+                chosen = _ai_icon_value("", item.get("title", ""), item.get("description", ""))
+            item["icon"] = chosen or "icon:circle-check"
+        icon_mode = "emoji" if use_emoji else "icon"
         return {
             "type": "reasons",
             "iconMode": icon_mode,

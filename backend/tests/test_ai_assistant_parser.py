@@ -750,3 +750,29 @@ def test_editor_section_names_and_replaces() -> None:
     assert types == ["story", "links", "reasons", "biography", "faq", "cta", "prices", "itinerary", "photo"]
     assert config["sections"][0]["aiReplaces"] == "nossa-historia"
     assert "aiReplaces" not in config["sections"][1]
+
+
+def test_diferenciais_icon_or_emoji_style() -> None:
+    icons, emojis, auto_emojis, converted = (
+        build_page_base_config_from_reply(reply_with(block))[0]["sections"][0]
+        for block in (
+            "🟩 SEÇÃO: DIFERENCIAIS\nTítulo: A\nItem: Hotel\nDescrição: Bom\nÍcone: hotel\nItem: Guia\nDescrição: Junto",
+            "🟩 SEÇÃO: DIFERENCIAIS\nTítulo: B\nEstilo dos ícones: emojis\nItem: Parque\nDescrição: Diversão\nÍcone: 🎢\n"
+            "Item: Hotel\nDescrição: Perto\nÍcone: hotel\nItem: Cuidado\nDescrição: Sempre",
+            "🟩 SEÇÃO: DIFERENCIAIS\nTítulo: C\nItem: Família\nDescrição: Todos\nÍcone: 👨‍👩‍👧\nItem: Ônibus\nDescrição: Ida\nÍcone: 🚌",
+            "🟩 SEÇÃO: DIFERENCIAIS\nTítulo: D\nEstilo dos ícones: ícones\nItem: Ônibus\nDescrição: Ida\nÍcone: 🚌",
+        )
+    )
+    assert icons["iconMode"] == "icon" and [i["icon"] for i in icons["items"]] == ["icon:hotel", "icon:user-check"]
+    assert emojis["iconMode"] == "emoji" and [i["icon"] for i in emojis["items"]] == ["🎢", "🏨", "✅"]
+    assert auto_emojis["iconMode"] == "emoji" and [i["icon"] for i in auto_emojis["items"]] == ["👨‍👩‍👧", "🚌"]
+    assert converted["iconMode"] == "icon" and converted["items"][0]["icon"] == "icon:bus"
+
+
+def test_context_shows_diferenciais_style() -> None:
+    from app.services.ai_assistant_context import _sections_summary
+
+    assert _sections_summary([{"type": "reasons", "anchorId": "por-que", "iconMode": "emoji", "title": "Por que nós"}]) == [
+        '1. por-que: Diferenciais (com emojis) · "Por que nós"'
+    ]
+    assert "(com ícones)" in _sections_summary([{"type": "reasons", "anchorId": "x"}])[0]

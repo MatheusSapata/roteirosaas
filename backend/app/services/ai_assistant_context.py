@@ -81,7 +81,11 @@ def _sections_summary(sections: list[dict[str, Any]]) -> list[str]:
         title = next((_plain(section.get(key)) for key in SECTION_TITLE_KEYS if _plain(section.get(key))), "")
         anchor = str(section.get("anchorId") or f"secao-{number}")
         hidden = "" if section.get("enabled", True) else " (oculta)"
-        lines.append(f'{number}. {anchor}: {name}{hidden}' + (f' · "{_short(title, 70)}"' if title else ""))
+        style = ""
+        if kind == "reasons":
+            # Estilo atual dos cards, para a IA manter (ou trocar, se pedirem).
+            style = " (com emojis)" if section.get("iconMode") == "emoji" else " (com ícones)"
+        lines.append(f'{number}. {anchor}: {name}{style}{hidden}' + (f' · "{_short(title, 70)}"' if title else ""))
     return lines
 
 

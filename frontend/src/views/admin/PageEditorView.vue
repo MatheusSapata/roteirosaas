@@ -3164,7 +3164,8 @@ const sendAiAssistantMessage = async () => {
       label: raw.label,
       caption: raw.caption,
       headingLabel: raw.headingLabel,
-      badge: raw.badge
+      badge: raw.badge,
+      iconMode: raw.iconMode
     };
   });
   const userText = trimmedMessage || "Mensagem com arquivos";

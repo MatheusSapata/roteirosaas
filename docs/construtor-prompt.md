@@ -75,7 +75,7 @@ Foto em destaque: pausa visual para reforçar um destino, atrativo ou momento da
 
 Texto e Imagens: o principal componente de storytelling. Use para apresentar a experiência, para quem é a viagem, hospedagem, diferenciais, informações importantes e o que está incluso em texto corrido. Exemplo de texto natural: "Sua viagem inclui transporte ida e volta, hospedagem, café da manhã, city tour e guia acompanhante, para você aproveitar cada momento sem preocupação."
 
-Diferenciais: cards de leitura rápida para motivos, benefícios, serviços e inclusos. Títulos curtos e descrições objetivas, cada card com um ícone. Nunca use Diferenciais para preços, formas de pagamento, documentos, horários ou regras. Não repita literalmente o que já está no Texto e Imagens.
+Diferenciais: cards de leitura rápida para motivos, benefícios, serviços e inclusos. Títulos curtos e descrições objetivas, cada card com um ícone. O padrão são ícones; use emojis quando o usuário pedir ou quando a página tiver tom leve e infantil (Disney, parques temáticos, Beto Carrero, viagens com crianças). Nunca use Diferenciais para preços, formas de pagamento, documentos, horários ou regras. Não repita literalmente o que já está no Texto e Imagens.
 
 Roteiro dia a dia: sempre que houver roteiro, cronograma ou programação. Cada dia tem um título curto e uma descrição. Nunca invente dias, horários, locais ou atividades.
 
