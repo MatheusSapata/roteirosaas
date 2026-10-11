@@ -385,7 +385,8 @@
           'left-closed': newEditor && !leftPanelOpen,
           'right-closed': newEditor && (!layersOpen || showAiAssistant),
           'is-resizing': resizingPanel,
-          'is-phone': phoneEditor
+          'is-phone': phoneEditor,
+          'ai-closing': aiSidebarClosing
         }"
         :style="editorGridStyle"
       >
@@ -1334,6 +1335,43 @@
                         <div v-if="aiDetails.has(index)" class="editor-ai-sidebar-response-text ai-v2-full">{{ message.content }}</div>
                       </div>
                     </template>
+                    <template v-else-if="newEditor && message.role === 'assistant' && aiQuestionForm(message.content)">
+                      <div v-if="aiQuestionForm(message.content)!.intro" class="editor-ai-sidebar-response-text">{{ aiQuestionForm(message.content)!.intro }}</div>
+                      <ol class="ai-q-list">
+                        <li v-for="(question, questionIndex) in aiQuestionForm(message.content)!.questions" :key="questionIndex" class="ai-q">
+                          <p class="ai-q-text">{{ question.text }}</p>
+                          <div v-if="question.options.length" class="ai-q-options" role="radiogroup" :aria-label="question.text">
+                            <button
+                              v-for="(option, optionIndex) in question.options"
+                              :key="optionIndex"
+                              type="button"
+                              role="radio"
+                              :aria-checked="aiQuestionsActive(message) && aiAnswers[aiAnswerKey(questionIndex)] === option"
+                              :class="{ 'is-picked': aiQuestionsActive(message) && aiAnswers[aiAnswerKey(questionIndex)] === option }"
+                              :disabled="!aiQuestionsActive(message)"
+                              @click="pickAiAnswer(questionIndex, option)"
+                            >{{ option }}<small v-if="optionIndex === 0">sugerido</small></button>
+                          </div>
+                          <input
+                            v-else-if="aiQuestionsActive(message)"
+                            v-model="aiAnswers[aiAnswerKey(questionIndex)]"
+                            class="ai-q-input"
+                            type="text"
+                            placeholder="Sua resposta"
+                          />
+                        </li>
+                      </ol>
+                      <div v-if="aiQuestionForm(message.content)!.outro" class="editor-ai-sidebar-response-text ai-q-outro">{{ aiQuestionForm(message.content)!.outro }}</div>
+                      <div v-if="aiQuestionsActive(message)" class="ai-v2-actions ai-q-actions">
+                        <button
+                          type="button"
+                          class="is-primary"
+                          :disabled="aiAssistantLimitReached || !aiAnsweredCount(aiQuestionForm(message.content)!.questions)"
+                          @click="sendAiAnswers(aiQuestionForm(message.content)!.questions)"
+                        >Enviar respostas</button>
+                        <button type="button" :disabled="aiAssistantLimitReached" @click="createAiNow">Criar agora</button>
+                      </div>
+                    </template>
                     <div v-else class="editor-ai-sidebar-response-text">{{ message.content }}</div>
                     <div v-if="!newEditor && message.role === 'assistant' && hasAiStructure(message.content)" class="mt-3 flex items-center gap-1">
                         <button type="button" class="min-h-11 min-w-0 flex-1 rounded-lg border border-indigo-200 bg-white px-3 py-2.5 text-sm font-semibold text-indigo-700 hover:bg-indigo-50 focus-visible:outline-indigo-600 disabled:opacity-50"
@@ -1650,6 +1688,7 @@ import type {
   TestimonialsSection,
   StorySection,
   ReasonsSection,
+  LinkCardItem,
   LinksSection,
   CountdownSection,
   AgencyFooterSection,
@@ -1669,6 +1708,7 @@ import { describeSection, sectionLabels as defaultSectionLabels } from "../../ut
 import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
 import { resolvePageDesign } from "../../utils/pageDesign";
 import { sectionNameV2 } from "../../utils/sectionCatalogV2";
+import { useAgencyPages, type AgencyPage } from "../../components/admin/v2edit/useAgencyPages";
 import { getLocalizedValue } from "../../utils/i18n";
 import SectionPickerV2 from "../../components/admin/SectionPickerV2.vue";
 import EdGroup from "../../components/admin/v2edit/EdGroup.vue";
@@ -2039,6 +2079,19 @@ const limitModal = ref({ open: false, message: "" });
 const successModal = ref({ open: false });
 const snackbar = ref({ open: false, text: "" });
 const showAiAssistant = ref(false);
+// Logo depois de fechar o assistente, as camadas (abertas ou recolhidas) entram já no tamanho
+// final, sem a animação de crescer/encolher que empurrava a prévia depois do fechamento.
+const aiSidebarClosing = ref(false);
+let aiSidebarClosingTimer: number | null = null;
+watch(showAiAssistant, (open, wasOpen) => {
+  if (open || !wasOpen) return;
+  aiSidebarClosing.value = true;
+  if (aiSidebarClosingTimer !== null) window.clearTimeout(aiSidebarClosingTimer);
+  aiSidebarClosingTimer = window.setTimeout(() => {
+    aiSidebarClosing.value = false;
+    aiSidebarClosingTimer = null;
+  }, 400);
+});
 const hasUnsavedChanges = ref(false);
 const initialLoadComplete = ref(false);
 // O editor só aparece com a página carregada (ou com o erro de carregamento).
@@ -2575,24 +2628,94 @@ const mergeAiSwap = (current: PageSection, incoming: PageSection): PageSection =
   }
   return merged as PageSection;
 };
-// Menu do topo e Vitrine com o padrão do editor (cores do tema, WhatsApp da agência). Card de
-// viagem sem link abre o WhatsApp da agência até ela ligar o card à página da viagem.
+// Páginas da agência, para ligar os cards da vitrine que a IA indicou ("Página: gramado-canela").
+const aiAgencyPages = useAgencyPages();
+const aiPageImage = (page: AgencyPage) => {
+  let config: Record<string, any> = {};
+  try {
+    config = typeof page.config_json === "string" ? JSON.parse(page.config_json) : page.config_json || {};
+  } catch {
+    config = {};
+  }
+  const hero = Array.isArray(config.sections) ? config.sections.find((item: any) => item?.type === "hero") : null;
+  return hero?.backgroundImage || page.cover_image_url || "";
+};
+// Menu do topo, Vitrine e Rodapé com o padrão do editor (cores do tema, WhatsApp da agência).
+// Card ligado a uma página existente leva para ela e usa a foto dela; sem página, abre o
+// WhatsApp da agência até ela ligar o card à página da viagem.
 const prepareAiSection = (section: PageSection): PageSection => {
-  if (section.type === "header") return { ...defaultSection("header"), ...section } as PageSection;
+  if (section.type === "header" || section.type === "agency_footer") return { ...defaultSection(section.type), ...section } as PageSection;
   if (section.type === "links") {
     const digits = whatsappDigits.value;
     const links = section as LinksSection;
     return {
       ...defaultSection("links"),
+      // Sem etiqueta da IA, a vitrine fica sem selo (o padrão "Links" não diz nada ao cliente).
+      headingLabel: links.headingLabel || "",
       ...links,
-      items: (links.items || []).map(item =>
-        item.url || !digits
+      items: (links.items || []).map(raw => {
+        const { pageSlug, ...item } = raw as LinkCardItem & { pageSlug?: string };
+        const page = pageSlug ? aiAgencyPages.pages.value.find(candidate => candidate.slug === pageSlug) : undefined;
+        if (page) {
+          const image = isAiFiller(item.image) ? aiPageImage(page) || item.image : item.image;
+          return { ...item, source: "page", pageId: page.id, url: aiAgencyPages.pageUrl(page), image, openInNewTab: false };
+        }
+        return item.url || !digits
           ? item
-          : { ...item, url: `https://wa.me/${digits}?text=${encodeURIComponent(`Olá! Quero saber mais sobre ${getLocalizedValue(item.title)}.`)}` }
-      )
+          : { ...item, url: `https://wa.me/${digits}?text=${encodeURIComponent(`Olá! Quero saber mais sobre ${getLocalizedValue(item.title)}.`)}` };
+      })
     } as PageSection;
   }
   return section;
+};
+// Perguntas da IA como escolhas: "1. Pergunta?" seguida de opções "- ...". A primeira opção é
+// a sugerida. Pergunta sem opções vira um campo de texto curto.
+type AiQuestion = { text: string; options: string[] };
+const aiQuestionForm = (content: string): { intro: string; questions: AiQuestion[]; outro: string } | null => {
+  if (!content || hasAiStructure(content)) return null;
+  const intro: string[] = [];
+  const outro: string[] = [];
+  const questions: AiQuestion[] = [];
+  for (const raw of content.split("\n")) {
+    const line = raw.trim();
+    const question = line.match(/^\*{0,2}(\d{1,2})[.)]\s+(.+?)\*{0,2}$/);
+    const option = line.match(/^[-•*]\s+(.+)$/);
+    if (question) {
+      questions.push({ text: question[2].replace(/\*\*/g, "").trim(), options: [] });
+    } else if (option && questions.length && !outro.length) {
+      questions[questions.length - 1].options.push(option[1].replace(/\s*\((?:recomendad[oa]|sugerid[oa])\)\s*$/i, "").trim());
+    } else if (!questions.length) {
+      intro.push(raw);
+    } else if (line) {
+      outro.push(raw);
+    }
+  }
+  if (!questions.length || !questions.some(question => question.options.length)) return null;
+  return { intro: intro.join("\n").trim(), questions, outro: outro.join("\n").trim() };
+};
+const aiAnswers = reactive<Record<string, string>>({});
+// Só a última resposta da IA recebe escolhas; as anteriores ficam como texto.
+const aiLastAssistant = computed(() => [...aiAssistantMessages.value].reverse().find(message => message.role === "assistant"));
+const aiQuestionsActive = (message: AiChatMessage) => !aiAssistantLoading.value && message === aiLastAssistant.value;
+const aiAnswerKey = (questionIndex: number) => `${aiAssistantMessages.value.length}-${questionIndex}`;
+const pickAiAnswer = (questionIndex: number, option: string) => {
+  const key = aiAnswerKey(questionIndex);
+  aiAnswers[key] = aiAnswers[key] === option ? "" : option;
+};
+const aiAnsweredCount = (questions: AiQuestion[]) => questions.filter((_, index) => (aiAnswers[aiAnswerKey(index)] || "").trim()).length;
+const sendAiAnswers = (questions: AiQuestion[]) => {
+  const lines = questions
+    .map((question, index) => ({ question, answer: (aiAnswers[aiAnswerKey(index)] || "").trim() }))
+    .filter(item => item.answer)
+    .map(item => `- ${item.question.text} ${item.answer}`);
+  if (!lines.length) return;
+  const missing = lines.length < questions.length ? "\nO que não respondi, decida você." : "";
+  aiAssistantDraft.value = [aiAssistantDraft.value.trim(), `Minhas respostas:\n${lines.join("\n")}${missing}\nPode criar.`].filter(Boolean).join("\n\n");
+  void sendAiAssistantMessage();
+};
+const createAiNow = () => {
+  aiAssistantDraft.value = "Pode criar com o que você já tem.";
+  void sendAiAssistantMessage();
 };
 const aiExpanded = reactive(new Set<number>());
 const aiDetails = reactive(new Set<number>());
@@ -2604,6 +2727,9 @@ const applyAiStructure = async (reply: string, mode: "insert" | "replace" | "swa
   aiStructureError.value = "";
   try {
     const generated = await previewAiAssistantPageBase(pageId, reply);
+    if (generated.some(section => section.type === "links" && (section as LinksSection).items?.some(item => (item as any).pageSlug))) {
+      if (!aiAgencyPages.pages.value.length) await aiAgencyPages.load();
+    }
     if (isSectionEditorOpen.value) {
       aiStructureError.value = "Feche a edição da seção e tente inserir ou substituir a estrutura novamente.";
       return;
@@ -2616,6 +2742,14 @@ const applyAiStructure = async (reply: string, mode: "insert" | "replace" | "swa
         : section
     ).map(prepareAiSection));
     let nextSections = additions;
+    if (mode === "replace" && !additions.some(section => section.type === "agency_footer")) {
+      // A página não perde o rodapé da agência ao trocar a estrutura.
+      const footer = sections.value.find(section => section.type === "agency_footer");
+      if (footer) {
+        const brandIndex = additions.findIndex(section => section.type === "free_footer_brand");
+        nextSections = brandIndex >= 0 ? [...additions.slice(0, brandIndex), footer, ...additions.slice(brandIndex)] : [...additions, footer];
+      }
+    }
     if (mode === "swap") {
       const incoming = additions.find(section => section.type !== "free_footer_brand");
       const index = incoming ? sections.value.findIndex(section => section.type === incoming.type) : -1;
@@ -2655,10 +2789,14 @@ const applyAiStructure = async (reply: string, mode: "insert" | "replace" | "swa
       const footer = existing.filter(section => section.type === "free_footer_brand");
       // Menu do topo novo vai para o topo (no lugar do atual, se houver).
       const newHeader = additions.find(section => section.type === "header");
+      // Rodapé da agência: um só, no fim (o da sugestão, se ela trouxe; senão o atual).
+      const newAgencyFooter = additions.find(section => section.type === "agency_footer");
+      const agencyFooter = newAgencyFooter || content.find(section => section.type === "agency_footer");
       nextSections = [
         ...(newHeader ? [newHeader] : []),
-        ...content.filter(section => !newHeader || section.type !== "header"),
-        ...additions.filter(section => section.type !== "free_footer_brand" && section !== newHeader),
+        ...content.filter(section => (!newHeader || section.type !== "header") && section.type !== "agency_footer"),
+        ...additions.filter(section => !["free_footer_brand", "agency_footer"].includes(section.type) && section !== newHeader),
+        ...(agencyFooter ? [agencyFooter] : []),
         ...(footer.length ? footer : additions.filter(section => section.type === "free_footer_brand"))
       ];
     }
@@ -6244,8 +6382,8 @@ onMounted(async () => {
   color: #065f46;
   background-color: rgba(16, 185, 129, 0.12);
 }
-:global(.dark-theme) .badge-success,
-:global(.dark) .badge-success {
+:global(.dark-theme .badge-success),
+:global(.dark .badge-success) {
   color: #d1fae5;
   background-color: rgba(16, 185, 129, 0.3);
 }
@@ -6388,14 +6526,14 @@ onMounted(async () => {
 .preview-pill:hover {
   background-color: #e2e8f0;
 }
-:global(.dark-theme) .preview-pill,
-:global(.dark) .preview-pill {
+:global(.dark-theme .preview-pill),
+:global(.dark .preview-pill) {
   background-color: rgba(255, 255, 255, 0.08);
   color: #f8fafc;
   border-color: rgba(255, 255, 255, 0.2);
 }
-:global(.dark-theme) .preview-pill:hover,
-:global(.dark) .preview-pill:hover {
+:global(.dark-theme .preview-pill:hover),
+:global(.dark .preview-pill:hover) {
   background-color: rgba(255, 255, 255, 0.15);
 }
 :global(.dark-theme .preview-light .bg-white),
@@ -7389,12 +7527,12 @@ onMounted(async () => {
   color: var(--muted-foreground) !important;
 }
 
-:global(body.admin-body-dark) .editor-ai-fab,
-:global(body.admin-body-dark) .editor-ai-fab-icon,
-:global(body.admin-body-dark) .editor-ai-fab-label,
-:global(html.dark) .editor-ai-fab,
-:global(html.dark) .editor-ai-fab-icon,
-:global(html.dark) .editor-ai-fab-label {
+:global(body.admin-body-dark .editor-ai-fab),
+:global(body.admin-body-dark .editor-ai-fab-icon),
+:global(body.admin-body-dark .editor-ai-fab-label),
+:global(html.dark .editor-ai-fab),
+:global(html.dark .editor-ai-fab-icon),
+:global(html.dark .editor-ai-fab-label) {
   color: #000000 !important;
 }
 
@@ -7598,6 +7736,11 @@ onMounted(async () => {
 /* No editor novo o assistente é a coluna da direita: altura toda, cartão padrão, largura ajustável. */
 .ed-grid.is-v2:not(.is-phone) > .editor-ai-sidebar { position: relative; inset: auto; z-index: auto; grid-column: 3; grid-row: 1; width: var(--ed-ai-w, 420px); max-width: none; height: auto; min-height: 0; border: 0; border-radius: 18px; background: var(--card); box-shadow: var(--shadow-card); backdrop-filter: none; animation: ed-layers-in 0.32s var(--ed-ease); }
 .ed-grid.is-v2:not(.is-phone) > .editor-ai-sidebar .editor-ai-sidebar-resize-handle { display: none; }
+/* Ao fechar, o assistente sai do fluxo da grade e desliza para a direita por cima: a prévia e
+   as camadas (abertas ou recolhidas, como estavam) já vão direto para a posição final, sem
+   esperar a animação terminar para andar. */
+.ed-grid.is-v2:not(.is-phone) > .editor-ai-sidebar.ai-sidebar-slide-leave-active { position: absolute; top: 0; right: 0; bottom: 0; z-index: 6; pointer-events: none; transition: transform 0.28s var(--ed-ease), opacity 0.22s ease; }
+.ed-grid.is-v2:not(.is-phone) > .editor-ai-sidebar.ai-sidebar-slide-leave-to { opacity: 0; transform: translateX(32px); }
 .v2ed-toast { position: fixed; bottom: 24px; left: 50%; z-index: 90; display: flex; align-items: center; gap: 12px; transform: translateX(-50%); padding: 10px 10px 10px 12px; border-radius: 16px; background: #0f1713; color: #fff; font-size: 14px; box-shadow: 0 20px 50px -20px rgba(6, 12, 9, 0.7); }
 .v2ed-toast-ico { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 999px; background: #12b981; }
 .v2ed-toast-ico svg { width: 15px; height: 15px; }
@@ -7662,6 +7805,7 @@ onMounted(async () => {
 .editor-workspace.is-v2 .editor-ai-sidebar-header-copy { flex: 1; min-width: 0; }
 .ai-v2-usage { display: block; font-size: 12px; color: var(--muted-foreground); }
 .editor-workspace.is-v2 .editor-ai-sidebar-bubble.is-user { background: var(--foreground); color: var(--background); }
+.editor-workspace.is-v2 .editor-ai-sidebar-bubble.is-user .editor-ai-sidebar-response-text { color: inherit; }
 .editor-workspace.is-v2 .editor-ai-sidebar-bubble.is-assistant { background: var(--muted); color: var(--foreground); border-color: transparent; }
 .ai-v2-structure { display: flex; flex-direction: column; gap: 10px; min-width: min(300px, 100%); margin-top: 10px; }
 .ai-v2-structure-title { margin: 0; font-size: 13px; font-weight: 700; }
@@ -7679,6 +7823,18 @@ onMounted(async () => {
 .ai-v2-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
 .ai-v2-chips button { padding: 7px 12px; border-radius: 999px; background: var(--card); box-shadow: inset 0 0 0 1px var(--border); font-size: 13px; font-weight: 600; color: var(--foreground); }
 .ai-v2-chips button:hover { box-shadow: inset 0 0 0 1.5px #12b981; }
+.ai-q-list { display: flex; flex-direction: column; gap: 12px; margin: 10px 0 0; padding: 0; list-style: none; }
+.ai-q-text { margin: 0 0 6px; font-size: 13.5px; font-weight: 700; line-height: 1.35; }
+.ai-q-options { display: flex; flex-wrap: wrap; gap: 6px; }
+.ai-q-options button { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px; background: var(--card); box-shadow: inset 0 0 0 1px var(--border); font-size: 13px; font-weight: 600; color: var(--foreground); text-align: left; transition: box-shadow 0.15s ease, background-color 0.15s ease; }
+.ai-q-options button small { font-size: 10.5px; font-weight: 700; color: #0e9f6e; }
+.ai-q-options button:not(:disabled):hover { box-shadow: inset 0 0 0 1.5px #12b981; }
+.ai-q-options button.is-picked { background: rgba(18, 185, 129, 0.12); box-shadow: inset 0 0 0 1.5px #12b981; }
+.ai-q-options button:disabled { cursor: default; opacity: 0.7; }
+.ai-q-input { width: 100%; height: 36px; padding: 0 12px; border-radius: 10px; background: var(--card); box-shadow: inset 0 0 0 1px var(--border); font-size: 13px; }
+.ai-q-input:focus { outline: none; box-shadow: inset 0 0 0 1.5px #12b981; }
+.ai-q-outro { margin-top: 10px; }
+.ai-q-actions { margin-top: 12px; }
 .ai-v2-time { margin-left: 6px; white-space: nowrap; font-size: 11px; font-weight: 600; color: var(--muted-foreground); }
 /* Andamento da resposta: etapas com ícone (feita, em andamento, a seguir). */
 .ai-live { align-self: flex-start; max-width: 100%; margin: 4px 0 8px; padding: 12px 14px; border-radius: 14px; background: var(--card); box-shadow: inset 0 0 0 1px var(--border); animation: ai-live-in 0.25s ease-out both; }
@@ -7733,6 +7889,7 @@ onMounted(async () => {
 .ed-grid.is-v2 > .ed-side { width: var(--ed-left-total); transition: width 0.32s var(--ed-ease); }
 .ed-grid.is-v2 > .ed-sections { animation: ed-layers-in 0.32s var(--ed-ease); }
 .ed-grid.is-v2 > .ed-layers-mini { animation: ed-layers-mini-in 0.32s var(--ed-ease); }
+.ed-grid.is-v2.ai-closing > .ed-sections, .ed-grid.is-v2.ai-closing > .ed-layers-mini { animation: none; }
 .ed-grid.is-v2 .ed-section-panel, .ed-grid.is-v2 .ed-settings-v2 { animation: ed-panel-fade 0.24s ease; }
 @keyframes ed-layers-in { from { width: 64px; opacity: 0.4; } }
 @keyframes ed-layers-mini-in { from { width: var(--ed-layers-w, 272px); opacity: 0.4; } }
