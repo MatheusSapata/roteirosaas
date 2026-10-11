@@ -150,6 +150,10 @@ FIELD_ALIASES_EXACT_EXTRA = {
     "TEXTO DEPOIS DO VALOR": "price_suffix",
     "LINKS DO MENU": "menu_links",
     "SUBSTITUI": "replaces",
+    "BUSCA DE IMAGEM": "image_query",
+    "BUSCA DA IMAGEM": "image_query",
+    "BUSCA DE FOTO": "image_query",
+    "BUSCA DA FOTO": "image_query",
     "ESTILO DOS ICONES": "icon_style",
     "ESTILO DOS ITENS": "icon_style",
     "ESTILO": "icon_style",
@@ -271,7 +275,9 @@ TIPOS DE RESPOSTA
 1. Perguntas antes de criar. Só quando falta algo essencial que não está na mensagem nem nos DADOS JÁ CADASTRADOS (nome da agência, contatos, redes sociais, logo, páginas e seções desta página já existem lá: nunca pergunte isso). Na dúvida entre perguntar e criar, crie. Formato, para o usuário responder com um toque: uma frase curta de abertura e, em seguida, no máximo 3 perguntas, cada uma numa linha "1. Pergunta?" seguida de 2 a 4 opções, uma por linha começando com "- " (curtas, até 6 palavras; a primeira é a que você recomenda). Pergunta aberta (ex.: datas) fica sem opções. Não escreva nada depois das perguntas: o chat já mostra o botão "Criar agora". Não pergunte duas vezes seguidas nem quando o usuário mandou criar ("pode criar", "monta").
 2. Estrutura da página: quando já há informação suficiente, entregue a estrutura no formato abaixo, sem texto antes nem depois dela.
 3. Ajuste de uma parte: se o pedido é sobre uma ou poucas seções que já existem (ex.: "melhore o banner", "transforme o Artigo em Texto e Imagens"), entregue só essas seções, no mesmo formato, e em cada uma a linha "Substitui: identificador" com o identificador da seção que ela troca (da lista SEÇÕES DESTA PÁGINA). Pode trocar por outro tipo de seção: o editor mantém a posição e a foto. Para uma seção nova, sem "Substitui".
-4. Conversa: dúvidas sobre o construtor ou pedidos que não geram seções, responda em poucas linhas, sem estrutura.
+4. Conversa: dúvidas sobre o construtor ou pedidos que não geram seções. Responda curto (até umas 8 linhas), sem estrutura, com tópicos em linhas começando com "- " quando ajudar. Não use lista numerada para explicar: números são só para perguntas. Se no fim você oferecer opções ao usuário, feche com uma pergunta no formato de escolhas do item 1 ("1. Pergunta?" e as opções em "- "), para ele responder com um toque; não deixe a escolha perdida no meio do texto.
+
+FOTOS: o construtor busca fotos gratuitas (Pexels e Unsplash) e coloca nas seções quando a estrutura é aplicada; o usuário pode trocar depois no editor. Para isso, em toda seção com foto (Banner Inicial, Banner em Card, Foto em destaque, Texto e Imagens, Artigo, Roteiro dia a dia) e em cada viagem do Links/Roteiros, escreva a linha "Busca de imagem:" com até duas buscas em inglês separadas por "|": primeiro o destino ou atrativo (2 a 4 palavras, ex.: "Gramado Brazil street"), depois a sensação da experiência, para quando não houver foto do lugar (ex.: "couple drinking wine", "kids smiling theme park", "happy family vacation"). Fotos diferentes em cada seção: varie as buscas. Numa troca de seção, só escreva "Busca de imagem" se o usuário pedir outra foto. Se pedirem uma foto, entregue a seção com a "Busca de imagem" pedida e "Substitui", em vez de explicar.
 
 Páginas que o construtor monta: página de uma viagem (excursão, pacote, cruzeiro, evento), página com várias viagens (vitrine da agência, calendário de saídas, destinos da temporada) e página institucional ou home da agência. Página com várias viagens usa Links/Roteiros (um card por viagem). Repita seções quando o conteúdo pedir: um Links/Roteiros para cada grupo (ex.: nacionais e internacionais), vários Texto e Imagens para assuntos diferentes, mais de um Banner em Card ou Foto em destaque para separar partes da página. Cada seção repetida tem seu próprio título. Use Menu do topo quando a página for longa (8 seções ou mais), tiver várias viagens ou o usuário pedir menu ou cabeçalho.
 
@@ -1483,6 +1489,8 @@ def _parse_ai_section_block(section_name: str, block: str, index: int) -> dict[s
                 "buttonLabel": trip.get("button", "").strip() or "Quero saber mais",
                 "openInNewTab": True,
             }
+            if trip.get("image_query"):
+                card["aiImageQuery"] = trip["image_query"].strip()
             page_ref = re.sub(r"[^a-z0-9-]", "", trip.get("page_ref", "").strip().lower().split("/")[-1])
             if page_ref:
                 # O editor liga o card à página da agência com esse endereço (link e foto dela).
@@ -1556,6 +1564,9 @@ MENU_TARGETS: tuple[tuple[tuple[str, ...], tuple[str, ...]], ...] = (
     (("EXPERIENCIA", "DESTINO", "HOSPEDAGEM", "HOTEL"), ("story", "reasons")),
     (("CONTATO", "RESERVA", "RESERVAR", "FALE"), ("cta",)),
 )
+
+
+PHOTO_SECTION_TYPES = frozenset({"hero", "banner_card", "photo", "biography", "story", "itinerary"})
 
 
 def _link_header_menu(sections: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -1635,6 +1646,12 @@ def build_page_base_config_from_reply(
         replaces = fields.get("replaces", "").strip().strip("`\"'")
         if replaces:
             parsed_section["aiReplaces"] = replaces.split()[0]
+        # Termos para o banco de fotos. Numa troca, só com "Busca de imagem" (foto nova pedida);
+        # numa estrutura nova, sempre (sem termos, entra uma foto genérica do tipo da seção).
+        if parsed_section["type"] in PHOTO_SECTION_TYPES:
+            image_query = fields.get("image_query", "").strip()
+            if image_query or not replaces:
+                parsed_section["aiImageQuery"] = image_query or fields.get("image_suggestion", "").strip()
         # "Etiqueta" é o selo acima do título nas seções que o mostram.
         if (
             parsed_section["type"] in {"banner_card", "itinerary", "faq", "featured_video"}

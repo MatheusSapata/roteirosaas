@@ -776,3 +776,61 @@ def test_context_shows_diferenciais_style() -> None:
         '1. por-que: Diferenciais (com emojis) · "Por que nós"'
     ]
     assert "(com ícones)" in _sections_summary([{"type": "reasons", "anchorId": "x"}])[0]
+
+
+def test_contract_guides_conversation_and_photos() -> None:
+    from app.services.ai_assistant import PLATFORM_FORMAT_CONTRACT
+
+    assert "números são só para perguntas" in PLATFORM_FORMAT_CONTRACT
+    assert "busca fotos gratuitas (Pexels e Unsplash)" in PLATFORM_FORMAT_CONTRACT
+
+
+def test_stock_photos_fill_sections_and_reuse_cache(monkeypatch) -> None:
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    from app.models.stock_image import StockImage, StockImageSearch
+    from app.services import stock_images
+
+    engine = create_engine("sqlite://")
+    StockImage.__table__.create(engine)
+    StockImageSearch.__table__.create(engine)
+    db = sessionmaker(bind=engine)()
+
+    calls = []
+
+    def fake_pexels(client, key, query):
+        calls.append(query)
+        if "gramado" not in query.lower() and "wine" not in query.lower() and "travel" not in query.lower():
+            return []
+        return [
+            {"provider": "pexels", "provider_id": f"{query}-{n}", "download_url": f"https://img/{query}/{n}.jpg",
+             "page_url": "p", "photographer": "Ana", "photographer_url": "u", "alt": "", "width": 10, "height": 5}
+            for n in range(3)
+        ]
+
+    monkeypatch.setattr(stock_images, "_search_pexels", fake_pexels)
+    monkeypatch.setattr(stock_images, "materialize", lambda db, client, image: f"/uploads/{image.provider_id}.webp")
+    monkeypatch.setattr(stock_images, "get_settings", lambda: SimpleNamespace(pexels_api_key="k", unsplash_access_key=None))
+
+    config, _ = build_page_base_config_from_reply(reply_with(
+        "🟩 SEÇÃO: BANNER INICIAL\nTítulo: Gramado\nBusca de imagem: Gramado Brazil street | couple drinking wine",
+        "🟩 SEÇÃO: TEXTO E IMAGENS\nTítulo: Vinícolas\nBusca de imagem: Vale dos Vinhedos | couple drinking wine",
+        "🟩 SEÇÃO: TEXTO E IMAGENS\nSubstitui: outra\nTítulo: Só texto",
+        "🟩 SEÇÃO: LINKS/ROTEIROS\nTítulo: Viagens\nViagem: Gramado\nBusca de imagem: Gramado Brazil street",
+    ))
+    sections = config["sections"]
+    assert sections[0]["aiImageQuery"].startswith("Gramado") and "aiImageQuery" not in sections[2]
+    filled = stock_images.fill_section_photos(db, sections, agency_id=None)
+    hero, story, swap, links = sections
+    assert filled == 3
+    assert hero["backgroundImage"] == hero["mobileBackgroundImage"] == "/uploads/Gramado Brazil street-0.webp"
+    # Sem foto do lugar, a sensação ("couple drinking wine") entra; nada se repete na página.
+    assert story["images"] == ["/uploads/couple drinking wine-0.webp"] and story["aiStockPhoto"] is True
+    assert "aiStockPhoto" not in swap
+    assert links["items"][0]["image"] == "/uploads/Gramado Brazil street-1.webp"
+    assert all("aiImageQuery" not in section for section in sections)
+    # A mesma busca de novo vem do banco de buscas, sem consultar o Pexels.
+    before = len(calls)
+    assert len(stock_images.search_stock_images(db, None, "Gramado  brazil STREET")) == 3
+    assert len(calls) == before

@@ -12,6 +12,7 @@ from app.models import (
     page_template,
     page,
     media,
+    stock_image,
     stats,
     agency_user,
     subscription,

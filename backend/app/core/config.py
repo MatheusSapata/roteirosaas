@@ -103,6 +103,9 @@ class Settings(BaseSettings):
     viajeon_provision_secret: str | None = Field(None, alias="VIAJEON_PROVISION_SECRET")
     gpt_key: str | None = Field(None, alias="GPT_KEY")
     gpt_model: str = Field("gpt-5.4", alias="GPT_MODEL")
+    # Bancos de fotos gratuitos usados pelo assistente de IA (sem chave, a busca fica desligada).
+    pexels_api_key: str | None = Field(None, alias="PEXELS_API_KEY")
+    unsplash_access_key: str | None = Field(None, alias="UNSPLASH_ACCESS_KEY")
     airlabs_base_url: str = Field("https://airlabs.co/api/v9", alias="AIRLABS_BASE_URL")
     airlabs_api_key: str | None = Field(None, alias="AIRLABS_API_KEY")
     airlabs_timeout_seconds: int = Field(20, alias="AIRLABS_TIMEOUT_SECONDS")
