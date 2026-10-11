@@ -1,7 +1,7 @@
 <template>
   <img
     ref="el"
-    v-bind="$attrs"
+    v-bind="{ ...$attrs, ...scopeAttrs }"
     :src="src"
     :srcset="srcset || undefined"
     :sizes="srcset ? sizes : undefined"
@@ -22,12 +22,16 @@
  * aparece na hora. Imagens enviadas com versões leves ganham srcset: o navegador baixa só
  * a largura que a tela precisa (`sizes` diz quanto da tela a imagem ocupa).
  */
-import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { computed, getCurrentInstance, nextTick, onMounted, ref, watch } from "vue";
 import { responsiveSrcset } from "../../../utils/media";
 import V2PhotoCredit from "./V2PhotoCredit.vue";
 
 // Duas raízes (foto + crédito): os atributos (class, alt, @click) vão para a foto.
 defineOptions({ inheritAttrs: false });
+// Com duas raízes o Vue não passa o escopo do CSS da seção para a foto, e regras como
+// `.v2-story-stage img { object-fit: cover; height: 100% }` deixariam de valer. Passa à mão.
+const scopeId = getCurrentInstance()?.vnode.scopeId;
+const scopeAttrs = scopeId ? { [scopeId]: "" } : {};
 
 const props = withDefaults(
   defineProps<{
