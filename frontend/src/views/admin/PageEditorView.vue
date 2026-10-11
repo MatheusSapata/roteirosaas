@@ -1312,18 +1312,22 @@
                     <template v-if="newEditor && message.role === 'assistant' && hasAiStructure(message.content)">
                       <div v-if="aiIntroText(message.content)" class="editor-ai-sidebar-response-text">{{ aiIntroText(message.content) }}</div>
                       <div class="ai-v2-structure">
-                        <p class="ai-v2-structure-title">Sugiro esta estrutura, com {{ aiStructureNames(message.content).length }} {{ aiStructureNames(message.content).length === 1 ? "seção" : "seções" }}:</p>
+                        <p class="ai-v2-structure-title">
+                          {{ aiStructureNames(message.content).length === 1 ? "Sugiro esta seção:" : `Sugiro esta estrutura, com ${aiStructureNames(message.content).length} seções:` }}
+                          <span v-if="message.seconds" class="ai-v2-time">pronto em {{ message.seconds }} s</span>
+                        </p>
                         <ol>
                           <li v-for="(name, nameIndex) in aiStructureNames(message.content).slice(0, aiExpanded.has(index) ? undefined : 5)" :key="nameIndex">
-                            <b>{{ nameIndex + 1 }}</b><span>{{ name }}</span>
+                            <b>{{ nameIndex + 1 }}</b><span>{{ aiSectionLabel(name) }}</span>
                           </li>
                           <li v-if="!aiExpanded.has(index) && aiStructureNames(message.content).length > 5" class="is-more">
                             <button type="button" @click="toggleAiExpanded(index)">+{{ aiStructureNames(message.content).length - 5 }} seções</button>
                           </li>
                         </ol>
                         <div class="ai-v2-actions">
-                          <button type="button" class="is-primary" :disabled="aiStructureApplying || aiAssistantLoading || isSectionEditorOpen" @click="applyAiStructure(message.content, 'insert')">Inserir no fim</button>
-                          <button type="button" :disabled="aiStructureApplying || aiAssistantLoading || isSectionEditorOpen" @click="applyAiStructure(message.content, 'replace')">Substituir tudo</button>
+                          <button v-if="aiSwapTarget(message.content)" type="button" class="is-primary" :disabled="aiStructureApplying || aiAssistantLoading || isSectionEditorOpen" @click="applyAiStructure(message.content, 'swap')">Trocar a seção atual</button>
+                          <button type="button" :class="{ 'is-primary': !aiSwapTarget(message.content) }" :disabled="aiStructureApplying || aiAssistantLoading || isSectionEditorOpen" @click="applyAiStructure(message.content, 'insert')">Inserir no fim</button>
+                          <button v-if="!aiSwapTarget(message.content)" type="button" :disabled="aiStructureApplying || aiAssistantLoading || isSectionEditorOpen" @click="applyAiStructure(message.content, 'replace')">Substituir tudo</button>
                         </div>
                         <span class="ai-v2-hint">{{ isSectionEditorOpen ? "Feche a edição da seção para aplicar." : "Dá para desfazer depois de aplicar." }}</span>
                         <button type="button" class="ai-v2-details" @click="toggleAiDetails(index)">{{ aiDetails.has(index) ? "Esconder resposta completa" : "Ver resposta completa" }}</button>
@@ -1360,10 +1364,35 @@
                   Desfazer estrutura aplicada
                 </button>
                 <p v-if="aiStructureError" role="alert" class="my-2 text-sm text-red-600">{{ aiStructureError }}</p>
-                <div v-if="aiAssistantLoading" class="editor-ai-sidebar-typing" aria-label="Carregando resposta">
-                  <span></span>
-                  <span></span>
-                  <span></span>
+                <!-- Andamento da resposta: cada etapa real do pedido, com as seções aparecendo enquanto a IA escreve. -->
+                <div v-if="showAiLivePanel" class="ai-live" role="status" aria-live="polite">
+                  <ol class="ai-live-steps">
+                    <li :class="aiLiveStepState('reading')">
+                      <i aria-hidden="true"></i>
+                      <span>Lendo sua mensagem{{ aiLive.attachments ? ` e ${aiLive.attachments} ${aiLive.attachments === 1 ? "anexo" : "anexos"}` : "" }}</span>
+                    </li>
+                    <li :class="aiLiveStepState('thinking')">
+                      <i aria-hidden="true"></i>
+                      <span>Pensando no que a página precisa<small v-if="aiLive.step === 'thinking' && aiLive.seconds > 1"> · {{ aiLive.seconds }} s</small></span>
+                    </li>
+                    <li :class="aiLiveStepState('writing')">
+                      <i aria-hidden="true"></i>
+                      <span>{{ aiLiveIsStructure ? "Montando as seções" : "Escrevendo a resposta" }}</span>
+                    </li>
+                    <li v-if="aiLiveIsStructure && aiLiveSections.length" class="ai-live-sections">
+                      <ul>
+                        <li
+                          v-for="(name, nameIndex) in aiLiveSections"
+                          :key="nameIndex"
+                          :class="{ 'is-current': aiLive.step === 'writing' && nameIndex === aiLiveSections.length - 1 }"
+                        >{{ aiSectionLabel(name) }}</li>
+                      </ul>
+                    </li>
+                    <li v-if="aiLive.step === 'fixing'" class="is-current">
+                      <i aria-hidden="true"></i>
+                      <span>Conferindo o formato</span>
+                    </li>
+                  </ol>
                 </div>
               </div>
 
@@ -1391,24 +1420,54 @@
                   {{ aiAssistantAttachments.length }}
                 </span>
 
+                <div v-if="aiRecording || aiTranscribing" class="ai-rec" role="status" aria-live="polite">
+                  <template v-if="aiRecording">
+                    <span class="ai-rec-dot" aria-hidden="true"></span>
+                    <span class="ai-rec-label">Gravando {{ aiRecordClock }}</span>
+                    <button type="button" class="ai-rec-cancel" aria-label="Descartar áudio" title="Descartar" @click="stopAiRecording(true)">
+                      <Trash2Icon class="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  </template>
+                  <template v-else>
+                    <LoaderCircleIcon class="ai-rec-spin h-4 w-4" aria-hidden="true" />
+                    <span class="ai-rec-label">Transcrevendo o áudio...</span>
+                  </template>
+                </div>
                 <textarea
+                  v-else
                   v-model="aiAssistantDraft"
                   class="editor-ai-sidebar-input"
                   rows="1"
-                  placeholder="Digite sua mensagem..."
+                  placeholder="Digite ou grave um áudio..."
                   :disabled="aiAssistantLoading || aiAssistantLimitReached"
                 ></textarea>
 
+                <!-- Microfone quando não há texto para enviar; durante a gravação, o mesmo lugar envia o áudio. -->
                 <button
+                  v-if="aiAudioSupported && (aiRecording || (!aiAssistantDraft.trim() && aiAssistantAttachments.length === 0))"
                   type="button"
                   class="editor-ai-sidebar-icon-button editor-ai-sidebar-send"
-                  :disabled="aiAssistantLoading || aiAssistantLimitReached || (!aiAssistantDraft.trim() && aiAssistantAttachments.length === 0)"
+                  :class="{ 'is-recording': aiRecording }"
+                  :disabled="aiAssistantLoading || aiAssistantLimitReached || aiTranscribing"
+                  :aria-label="aiRecording ? 'Enviar áudio' : 'Gravar áudio'"
+                  :title="aiRecording ? 'Enviar áudio' : 'Gravar áudio'"
+                  @click="aiRecording ? stopAiRecording(false) : startAiRecording()"
+                >
+                  <SendIcon v-if="aiRecording" class="h-4 w-4" aria-hidden="true" />
+                  <MicIcon v-else class="h-4 w-4" aria-hidden="true" />
+                </button>
+                <button
+                  v-else
+                  type="button"
+                  class="editor-ai-sidebar-icon-button editor-ai-sidebar-send"
+                  :disabled="aiAssistantLoading || aiAssistantLimitReached || aiTranscribing || (!aiAssistantDraft.trim() && aiAssistantAttachments.length === 0)"
                   @click="sendAiAssistantMessage"
                   :aria-label="aiAssistantSendButtonLabel"
                 >
                   <SendIcon class="h-4 w-4" aria-hidden="true" />
                 </button>
               </div>
+              <p v-if="aiAudioNotice" role="alert" class="ai-rec-notice">{{ aiAudioNotice }}</p>
             </div>
           </div>
         </aside>
@@ -1539,6 +1598,8 @@ import {
   PanelsTopLeftIcon,
   PaperclipIcon,
   LayersIcon,
+  LoaderCircleIcon,
+  MicIcon,
   Settings2Icon,
   PencilIcon,
   PlaneIcon,
@@ -1562,7 +1623,11 @@ import {
   fetchAiAssistantHistory,
   fetchAiAssistantUsage,
   sendAiAssistantConversation,
+  streamAiAssistantConversation,
+  transcribeAiAssistantAudio,
+  AiAssistantRequestError,
   type AiAssistantChatMessage,
+  type AiAssistantStreamStep,
   type AiAssistantUsageResponse
 } from "../../services/aiAssistant";
 import { useAuthStore } from "../../store/useAuthStore";
@@ -2435,9 +2500,15 @@ const setupViewportWatcher = () => {
 };
 
 const aiAssistantUrl = "https://chatgpt.com/g/g-6a0f578cbca48191b3073e3aa3556c5d-construtor-roteiro-online";
-const aiAssistantMessages = ref<Array<{ role: "user" | "assistant"; content: string }>>([]);
+// "live": resposta chegando agora; "seconds": quanto tempo a IA levou (só nesta sessão).
+type AiChatMessage = { role: "user" | "assistant"; content: string; live?: boolean; seconds?: number };
+const aiAssistantMessages = ref<AiChatMessage[]>([]);
+// Estrutura sendo escrita não aparece como texto cru: o andamento mostra as seções chegando.
+const aiLooksLikeStructure = (content: string) => /ESTRUTURA SUGERIDA|SE[CÇ][AÃ]O\s*:/i.test(content);
 const aiAssistantVisibleMessages = computed(() =>
-  aiAssistantMessages.value.filter(message => message.role === "user" || message.content.trim().length > 0)
+  aiAssistantMessages.value.filter(message =>
+    message.role === "user" || (message.content.trim().length > 0 && !(message.live && aiLooksLikeStructure(message.content)))
+  )
 );
 const aiStructureApplying = ref(false);
 const aiStructureError = ref("");
@@ -2449,13 +2520,85 @@ const aiStructureNames = (content: string) =>
   [...content.matchAll(AI_SECTION_LINE)].map(match => match[1].replace(/[*_`#]/g, "").trim()).filter(Boolean);
 const aiIntroText = (content: string) => {
   const first = content.search(/^\s*(?:🟩\s*)?(?:SECAO|SEÇÃO)\s*:/im);
-  return (first > 0 ? content.slice(0, first) : "").trim();
+  // Sem a linha "ESTRUTURA SUGERIDA PARA A PÁGINA": o cartão logo abaixo já diz isso.
+  return (first > 0 ? content.slice(0, first) : "").replace(/^\s*ESTRUTURA SUGERIDA PARA A P[AÁ]GINA\s*$/im, "").trim();
+};
+// Nome da seção na resposta da IA → tipo no editor (mesmos nomes e apelidos do backend).
+const AI_SECTION_TYPES: Record<string, SectionType> = {
+  "BANNER": "hero", "BANNER INICIAL": "hero", "BANNER EM CARD": "banner_card", "BANNER DESTACADO": "banner_card",
+  "FOTO DESTACADA": "photo", "DESCRITIVO": "story", "SESSAO DESCRITIVA": "story", "ITENS": "reasons",
+  "ITINERARIO": "itinerary", "PRECOS": "prices", "PERGUNTAS FREQUENTES": "faq", "DEPOIMENTOS": "testimonials",
+  "VIDEO EM DESTAQUE": "featured_video", "VIDEO": "featured_video", "BIOGRAFIA": "biography",
+  "CHAMADA PARA ACAO": "cta", "CONTADOR": "countdown", "CONTAGEM REGRESSIVA": "countdown",
+  "DETALHES DO VOO": "flight_details", "MENU DO TOPO": "header", "CABECALHO": "header", "MENU": "header",
+  "MENU SUPERIOR": "header", "VITRINE DE VIAGENS": "links", "VITRINE": "links", "LINKS": "links",
+  "ROTEIROS": "links", "OUTRAS VIAGENS": "links"
+};
+const aiSectionType = (name: string): SectionType | null =>
+  AI_SECTION_TYPES[name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim().toUpperCase()] || null;
+// Na conversa, as seções aparecem com o mesmo nome do editor ("Preços e pacotes", "Roteiro dia a dia").
+const aiSectionLabel = (name: string) => {
+  const type = aiSectionType(name);
+  return (type && sectionNameV2(type)) || name;
+};
+// Resposta com uma seção só, de um tipo que a página já tem: dá para trocar a seção atual.
+const aiSwapTarget = (content: string): SectionType | null => {
+  const names = aiStructureNames(content);
+  if (names.length !== 1) return null;
+  const type = aiSectionType(names[0]);
+  return type && sections.value.some(section => section.type === type) ? type : null;
+};
+const AI_IMAGE_PLACEHOLDER_PREFIX = "data:image/svg+xml;base64,";
+const isAiFiller = (value: unknown) =>
+  value === undefined || value === null || value === "" || (typeof value === "string" && value.startsWith(AI_IMAGE_PLACEHOLDER_PREFIX));
+// Na troca, só os textos vêm da sugestão: fotos, links e ajustes da seção atual continuam.
+const AI_SWAP_TEXT_KEYS = [
+  "title", "subtitle", "chips", "chipIcons", "headingLabel", "badge", "label", "description", "items", "days", "text",
+  "caption", "ctaLabel", "ctaText", "departureDate", "returnDate", "generalInfo", "links", "contactLabel", "iconMode"
+];
+const AI_SWAP_ITEM_KEEP_KEYS = ["ctaLink", "ctaMode", "ctaSectionId", "ctaOpenInNewTab", "avatar", "image", "url", "source", "pageId", "openInNewTab"];
+const mergeAiSwap = (current: PageSection, incoming: PageSection): PageSection => {
+  const merged: Record<string, any> = { ...current };
+  const next = incoming as Record<string, any>;
+  for (const key of AI_SWAP_TEXT_KEYS) {
+    if (!(key in next) || isAiFiller(next[key])) continue;
+    if (key === "items" && Array.isArray(next.items)) {
+      const currentItems: Record<string, any>[] = Array.isArray((current as any).items) ? (current as any).items : [];
+      merged.items = next.items.map((item: Record<string, any>, index: number) => {
+        const kept = Object.fromEntries(AI_SWAP_ITEM_KEEP_KEYS.filter(k => currentItems[index]?.[k] !== undefined).map(k => [k, currentItems[index][k]]));
+        const fresh = Object.fromEntries(Object.entries(item).filter(([, value]) => !isAiFiller(value)));
+        return { ...kept, ...fresh };
+      });
+      continue;
+    }
+    merged[key] = next[key];
+  }
+  return merged as PageSection;
+};
+// Menu do topo e Vitrine com o padrão do editor (cores do tema, WhatsApp da agência). Card de
+// viagem sem link abre o WhatsApp da agência até ela ligar o card à página da viagem.
+const prepareAiSection = (section: PageSection): PageSection => {
+  if (section.type === "header") return { ...defaultSection("header"), ...section } as PageSection;
+  if (section.type === "links") {
+    const digits = whatsappDigits.value;
+    const links = section as LinksSection;
+    return {
+      ...defaultSection("links"),
+      ...links,
+      items: (links.items || []).map(item =>
+        item.url || !digits
+          ? item
+          : { ...item, url: `https://wa.me/${digits}?text=${encodeURIComponent(`Olá! Quero saber mais sobre ${getLocalizedValue(item.title)}.`)}` }
+      )
+    } as PageSection;
+  }
+  return section;
 };
 const aiExpanded = reactive(new Set<number>());
 const aiDetails = reactive(new Set<number>());
 const toggleAiExpanded = (index: number) => (aiExpanded.has(index) ? aiExpanded.delete(index) : aiExpanded.add(index));
 const toggleAiDetails = (index: number) => (aiDetails.has(index) ? aiDetails.delete(index) : aiDetails.add(index));
-const applyAiStructure = async (reply: string, mode: "insert" | "replace") => {
+const applyAiStructure = async (reply: string, mode: "insert" | "replace" | "swap") => {
   if (aiStructureApplying.value || aiAssistantLoading.value || isSectionEditorOpen.value) return;
   aiStructureApplying.value = true;
   aiStructureError.value = "";
@@ -2471,9 +2614,17 @@ const applyAiStructure = async (reply: string, mode: "insert" | "replace") => {
       section.type === "hero" && !section.logoUrl && agencyLogo
         ? { ...section, logoUrl: agencyLogo }
         : section
-    ));
+    ).map(prepareAiSection));
     let nextSections = additions;
-    if (mode === "insert") {
+    if (mode === "swap") {
+      const incoming = additions.find(section => section.type !== "free_footer_brand");
+      const index = incoming ? sections.value.findIndex(section => section.type === incoming.type) : -1;
+      if (!incoming || index < 0) {
+        aiStructureError.value = "Não encontrei essa seção na página para trocar. Use Inserir no fim.";
+        return;
+      }
+      nextSections = sections.value.map((section, position) => (position === index ? mergeAiSwap(section, incoming) : section));
+    } else if (mode === "insert") {
       const existing = sections.value;
       const usedIds = new Set(existing.flatMap(section => [section.anchorId, (section as any).sectionId]).filter(Boolean));
       const renamedIds = new Map<string, string>();
@@ -2502,18 +2653,23 @@ const applyAiStructure = async (reply: string, mode: "insert" | "replace") => {
       // Keep a single copy at the bottom when appending content.
       const content = existing.filter(section => section.type !== "free_footer_brand");
       const footer = existing.filter(section => section.type === "free_footer_brand");
+      // Menu do topo novo vai para o topo (no lugar do atual, se houver).
+      const newHeader = additions.find(section => section.type === "header");
       nextSections = [
-        ...content,
-        ...additions.filter(section => section.type !== "free_footer_brand"),
+        ...(newHeader ? [newHeader] : []),
+        ...content.filter(section => !newHeader || section.type !== "header"),
+        ...additions.filter(section => section.type !== "free_footer_brand" && section !== newHeader),
         ...(footer.length ? footer : additions.filter(section => section.type === "free_footer_brand"))
       ];
     }
     aiStructurePreviousSections.value = JSON.parse(JSON.stringify(sections.value));
     setSections(nextSections);
     refreshPreview(true);
-    showSnackbar(mode === "insert"
-      ? "Seções adicionadas ao final. Revise e salve quando terminar."
-      : "Estrutura substituída. Revise e salve quando terminar.");
+    showSnackbar(mode === "swap"
+      ? "Seção trocada pela sugestão. Revise e salve quando terminar."
+      : mode === "insert"
+        ? "Seções adicionadas ao final. Revise e salve quando terminar."
+        : "Estrutura substituída. Revise e salve quando terminar.");
   } catch (err: any) {
     const detail = err?.response?.data?.detail;
     aiStructureError.value = typeof detail === "string" ? detail : "Não foi possível aplicar a estrutura. Tente novamente.";
@@ -2549,11 +2705,9 @@ const aiAssistantSidebarResizeState = reactive({
 let removeAiAssistantSidebarResizeListeners: (() => void) | null = null;
 let aiAssistantLoadingTimer: number | null = null;
 let aiAssistantTypingTimer: number | null = null;
-const aiAssistantPromptTemplate = `👋 Bem-vindo(a) ao Assistente de Construção de Páginas da Roteiro Online!
+const aiAssistantPromptTemplate = `👋 Oi! Eu monto páginas com você: de uma viagem, de várias viagens da agência ou institucional.
 
-Sou um assistente que ajuda a planejar o conteúdo da sua página de viagem.
-
-Você pode me enviar as informações da viagem em texto, PDF, prints, fotos ou até mesmo informações soltas. Com base nelas, vou sugerir uma página organizada e pronta para utilizar no Construtor Roteiro Online.`;
+Mande as informações do jeito que tiver: texto, áudio (no microfone), PDF, prints ou fotos. Se faltar algo importante, eu pergunto antes de criar.`;
 const scrollAiAssistantToEnd = () => {
   nextTick(() => {
     aiAssistantChatLogRef.value?.scrollTo({ top: aiAssistantChatLogRef.value.scrollHeight, behavior: "smooth" });
@@ -2768,33 +2922,51 @@ const handleAiAssistantFileChange = (event: Event) => {
   const input = event.target as HTMLInputElement | null;
   aiAssistantAttachments.value = input?.files ? Array.from(input.files) : [];
 };
+// Andamento da resposta que está chegando: etapa atual, segundos e o texto até aqui.
+const AI_LIVE_STEPS: AiAssistantStreamStep[] = ["reading", "thinking", "writing", "fixing"];
+const aiLive = reactive({ step: "reading" as AiAssistantStreamStep, attachments: 0, seconds: 0, content: "" });
+let aiLiveTimer: number | null = null;
+const aiLiveStepState = (step: AiAssistantStreamStep) => {
+  const current = AI_LIVE_STEPS.indexOf(aiLive.step);
+  const index = AI_LIVE_STEPS.indexOf(step);
+  return index < current ? "is-done" : index === current ? "is-current" : "is-pending";
+};
+const aiLiveIsStructure = computed(() => aiLooksLikeStructure(aiLive.content));
+const aiLiveSections = computed(() => aiStructureNames(aiLive.content));
+// Resposta em texto (pergunta, conversa): o próprio texto aparecendo já mostra o andamento.
+const showAiLivePanel = computed(() => aiAssistantLoading.value && !(aiLive.step === "writing" && aiLive.content && !aiLiveIsStructure.value));
+const aiAssistantErrorText = (error: unknown) => {
+  const status = error instanceof AiAssistantRequestError ? error.status : (error as any)?.response?.status;
+  const detail = error instanceof AiAssistantRequestError ? error.message : (error as any)?.response?.data?.detail;
+  if (status === 503 && detail === "GPT_KEY não configurada no backend.") {
+    return "A IA não está configurada neste ambiente. Configure GPT_KEY no backend e reinicie o serviço para usar o assistente.";
+  }
+  if (status === 503 && detail === "Dependência openai não instalada.") {
+    return "O serviço de IA está sem uma dependência necessária. Instale as dependências do backend e reinicie o serviço.";
+  }
+  if (status === 401) return "Sua sessão expirou. Entre novamente para consultar a IA.";
+  if ([403, 413, 422, 429].includes(status) && typeof detail === "string" && detail) return detail;
+  return "Não consegui consultar a IA agora. Tente novamente em alguns instantes.";
+};
 const sendAiAssistantMessage = async () => {
   const trimmedMessage = aiAssistantDraft.value.trim();
-  if (!trimmedMessage && aiAssistantAttachments.value.length === 0) {
+  if ((!trimmedMessage && aiAssistantAttachments.value.length === 0) || aiAssistantLoading.value) {
     return;
   }
 
   stopAiAssistantTimers();
 
   const attachmentsSnapshot = [...aiAssistantAttachments.value];
+  const userText = trimmedMessage || "Mensagem com arquivos";
   const conversationSnapshot: AiAssistantChatMessage[] = [
-    ...aiAssistantMessages.value.map(message => ({
-      role: message.role,
-      content: message.content
-    })),
-    {
-      role: "user",
-      content: trimmedMessage || "Mensagem com arquivos"
-    }
+    ...aiAssistantMessages.value.map(message => ({ role: message.role, content: message.content })),
+    { role: "user", content: userText }
   ];
 
   aiAssistantMessages.value = [
     ...aiAssistantMessages.value,
-    {
-      role: "user",
-      content: trimmedMessage || "Mensagem com arquivos"
-    },
-    { role: "assistant", content: "" }
+    { role: "user", content: userText },
+    { role: "assistant", content: "", live: true }
   ];
   const assistantIndex = aiAssistantMessages.value.length - 1;
   aiAssistantDraft.value = "";
@@ -2803,35 +2975,139 @@ const sendAiAssistantMessage = async () => {
     aiAssistantFileInputRef.value.value = "";
   }
 
+  Object.assign(aiLive, { step: "reading", attachments: attachmentsSnapshot.length, seconds: 0, content: "" });
+  const startedAt = Date.now();
+  aiLiveTimer = window.setInterval(() => {
+    aiLive.seconds = Math.round((Date.now() - startedAt) / 1000);
+  }, 1000);
+  const setContent = (text: string) => {
+    aiLive.content = text;
+    aiAssistantMessages.value[assistantIndex].content = text;
+    scrollAiAssistantToEnd();
+  };
+
   aiAssistantLoading.value = true;
   scrollAiAssistantToEnd();
 
+  let succeeded = false;
   try {
-    const result = await sendAiAssistantConversation(pageId, conversationSnapshot, attachmentsSnapshot);
+    let result: { reply: string; usage?: AiAssistantUsageResponse };
+    try {
+      result = await streamAiAssistantConversation(pageId, conversationSnapshot, attachmentsSnapshot, event => {
+        if (event.type === "status") aiLive.step = event.step;
+        else if (event.type === "delta") setContent(aiLive.content + event.text);
+        else if (event.type === "replace") setContent(event.text);
+      });
+    } catch (error) {
+      // Sem a resposta em tempo real (sessão para renovar, proxy, servidor antigo): usa a
+      // conversa normal, que renova o login. Erros de limite e de permissão não repetem.
+      const reqError = error instanceof AiAssistantRequestError ? error : null;
+      if (reqError && (reqError.started || [400, 403, 413, 429].includes(reqError.status))) throw error;
+      aiLive.step = "thinking";
+      setContent("");
+      result = await sendAiAssistantConversation(pageId, conversationSnapshot, attachmentsSnapshot);
+    }
     if (result.usage) {
       aiAssistantUsage.value = result.usage;
     }
-    await animateAiAssistantMessage(assistantIndex, result.reply);
+    setContent(result.reply);
+    succeeded = true;
   } catch (error) {
     console.error("Erro ao consultar a ajuda IA", error);
-    const status = (error as any)?.response?.status;
-    const detail = (error as any)?.response?.data?.detail;
-    let errorText = "Não consegui consultar a IA agora. Tente novamente em alguns instantes.";
-    if (status === 503 && detail === "GPT_KEY não configurada no backend.") {
-      errorText = "A IA não está configurada neste ambiente. Configure GPT_KEY no backend e reinicie o serviço para usar o assistente.";
-    } else if (status === 503 && detail === "Dependência openai não instalada.") {
-      errorText = "O serviço de IA está sem uma dependência necessária. Instale as dependências do backend e reinicie o serviço.";
-    } else if (status === 401) {
-      errorText = "Sua sessão expirou. Entre novamente para consultar a IA.";
-    } else if ([403, 429].includes(status) && typeof detail === "string") {
-      errorText = detail;
-    }
-    aiAssistantMessages.value[assistantIndex].content = errorText;
+    setContent(aiAssistantErrorText(error));
   } finally {
+    if (aiLiveTimer !== null) window.clearInterval(aiLiveTimer);
+    aiLiveTimer = null;
+    const message = aiAssistantMessages.value[assistantIndex];
+    if (message) {
+      message.live = false;
+      if (succeeded) message.seconds = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
+    }
     aiAssistantLoading.value = false;
     scrollAiAssistantToEnd();
   }
 };
+
+// Mensagem por áudio: grava no navegador, transcreve no servidor e envia o texto.
+const AI_AUDIO_MAX_SECONDS = 300;
+const aiAudioSupported =
+  hasWindow && typeof navigator !== "undefined" && !!navigator.mediaDevices?.getUserMedia && typeof window.MediaRecorder !== "undefined";
+const aiRecording = ref(false);
+const aiRecordSeconds = ref(0);
+const aiTranscribing = ref(false);
+const aiAudioNotice = ref("");
+let aiRecorder: MediaRecorder | null = null;
+let aiRecordStream: MediaStream | null = null;
+let aiRecordChunks: Blob[] = [];
+let aiRecordTimer: number | null = null;
+let aiRecordDiscard = false;
+const aiRecordClock = computed(() => `${Math.floor(aiRecordSeconds.value / 60)}:${String(aiRecordSeconds.value % 60).padStart(2, "0")}`);
+const releaseAiRecorder = () => {
+  if (aiRecordTimer !== null) window.clearInterval(aiRecordTimer);
+  aiRecordTimer = null;
+  aiRecordStream?.getTracks().forEach(track => track.stop());
+  aiRecordStream = null;
+  aiRecording.value = false;
+};
+const stopAiRecording = (discard: boolean) => {
+  aiRecordDiscard = discard;
+  if (aiRecorder && aiRecorder.state !== "inactive") aiRecorder.stop();
+  else releaseAiRecorder();
+};
+const finishAiRecording = async () => {
+  const type = aiRecorder?.mimeType || aiRecordChunks[0]?.type || "audio/webm";
+  aiRecorder = null;
+  releaseAiRecorder();
+  if (aiRecordDiscard || !aiRecordChunks.length) return;
+  const blob = new Blob(aiRecordChunks, { type });
+  aiRecordChunks = [];
+  const extension = type.includes("mp4") ? "m4a" : type.includes("ogg") ? "ogg" : "webm";
+  aiTranscribing.value = true;
+  let text = "";
+  try {
+    text = await transcribeAiAssistantAudio(pageId, blob, `audio.${extension}`);
+  } catch (error) {
+    console.error("Erro ao transcrever o áudio", error);
+    const detail = (error as any)?.response?.data?.detail;
+    aiAudioNotice.value = typeof detail === "string" && detail ? detail : "Não consegui transcrever o áudio. Tente de novo.";
+  } finally {
+    aiTranscribing.value = false;
+  }
+  if (!text) return;
+  aiAssistantDraft.value = [aiAssistantDraft.value.trim(), text].filter(Boolean).join("\n");
+  await sendAiAssistantMessage();
+};
+const startAiRecording = async () => {
+  if (!aiAudioSupported || aiRecording.value || aiTranscribing.value || aiAssistantLoading.value) return;
+  aiAudioNotice.value = "";
+  try {
+    aiRecordStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch {
+    aiAudioNotice.value = "Não consegui usar o microfone. Libere a permissão no navegador e tente de novo.";
+    return;
+  }
+  const mimeType = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"].find(candidate =>
+    typeof MediaRecorder.isTypeSupported === "function" ? MediaRecorder.isTypeSupported(candidate) : false
+  );
+  aiRecorder = new MediaRecorder(aiRecordStream, mimeType ? { mimeType } : undefined);
+  aiRecordChunks = [];
+  aiRecordDiscard = false;
+  aiRecorder.ondataavailable = event => {
+    if (event.data.size) aiRecordChunks.push(event.data);
+  };
+  aiRecorder.onstop = () => void finishAiRecording();
+  aiRecorder.start();
+  aiRecording.value = true;
+  aiRecordSeconds.value = 0;
+  aiRecordTimer = window.setInterval(() => {
+    aiRecordSeconds.value += 1;
+    if (aiRecordSeconds.value >= AI_AUDIO_MAX_SECONDS) stopAiRecording(false);
+  }, 1000);
+};
+onBeforeUnmount(() => {
+  if (aiLiveTimer !== null) window.clearInterval(aiLiveTimer);
+  stopAiRecording(true);
+});
 const toggleAiAssistant = () => {
   if (!canUseAiAssistant.value) return;
   showAiAssistant.value = !showAiAssistant.value;
@@ -7387,14 +7663,14 @@ onMounted(async () => {
 .ai-v2-usage { display: block; font-size: 12px; color: var(--muted-foreground); }
 .editor-workspace.is-v2 .editor-ai-sidebar-bubble.is-user { background: var(--foreground); color: var(--background); }
 .editor-workspace.is-v2 .editor-ai-sidebar-bubble.is-assistant { background: var(--muted); color: var(--foreground); border-color: transparent; }
-.ai-v2-structure { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.ai-v2-structure { display: flex; flex-direction: column; gap: 10px; min-width: min(300px, 100%); margin-top: 10px; }
 .ai-v2-structure-title { margin: 0; font-size: 13px; font-weight: 700; }
 .ai-v2-structure ol { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 6px; list-style: none; border-radius: 12px; background: var(--card); box-shadow: inset 0 0 0 1px var(--border); }
 .ai-v2-structure li { display: flex; align-items: center; gap: 10px; padding: 6px 8px; font-size: 13px; }
 .ai-v2-structure li b { width: 16px; flex-shrink: 0; text-align: right; color: var(--muted-foreground); font-size: 12px; }
 .ai-v2-structure li.is-more button { padding-left: 26px; font-size: 13px; font-weight: 700; color: var(--primary); }
 .ai-v2-actions { display: flex; gap: 8px; }
-.ai-v2-actions button { flex: 1; height: 38px; border-radius: 999px; background: var(--card); box-shadow: inset 0 0 0 1px var(--border); font-size: 13px; font-weight: 700; color: var(--foreground); }
+.ai-v2-actions button { flex: 1; padding: 0 12px; white-space: nowrap; height: 38px; border-radius: 999px; background: var(--card); box-shadow: inset 0 0 0 1px var(--border); font-size: 13px; font-weight: 700; color: var(--foreground); }
 .ai-v2-actions button.is-primary { background: #12b981; box-shadow: none; color: #fff; }
 .ai-v2-actions button:disabled { opacity: 0.5; }
 .ai-v2-hint { font-size: 12px; color: var(--muted-foreground); }
@@ -7403,6 +7679,41 @@ onMounted(async () => {
 .ai-v2-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
 .ai-v2-chips button { padding: 7px 12px; border-radius: 999px; background: var(--card); box-shadow: inset 0 0 0 1px var(--border); font-size: 13px; font-weight: 600; color: var(--foreground); }
 .ai-v2-chips button:hover { box-shadow: inset 0 0 0 1.5px #12b981; }
+.ai-v2-time { margin-left: 6px; white-space: nowrap; font-size: 11px; font-weight: 600; color: var(--muted-foreground); }
+/* Andamento da resposta: etapas com ícone (feita, em andamento, a seguir). */
+.ai-live { align-self: flex-start; max-width: 100%; margin: 4px 0 8px; padding: 12px 14px; border-radius: 14px; background: var(--card); box-shadow: inset 0 0 0 1px var(--border); animation: ai-live-in 0.25s ease-out both; }
+.ai-live-steps { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; font-size: 13px; }
+.ai-live-steps > li { display: flex; align-items: flex-start; gap: 9px; line-height: 1.35; }
+.ai-live-steps > li > i { position: relative; flex: none; width: 16px; height: 16px; margin-top: 1px; border-radius: 999px; }
+.ai-live-steps > li.is-pending { color: var(--muted-foreground); opacity: 0.55; }
+.ai-live-steps > li.is-pending > i { box-shadow: inset 0 0 0 1.5px currentColor; transform: scale(0.6); }
+.ai-live-steps > li.is-current { font-weight: 600; color: var(--foreground); }
+.ai-live-steps > li.is-current > i { box-shadow: inset 0 0 0 2px rgba(18, 185, 129, 0.25); }
+.ai-live-steps > li.is-current > i::after { content: ""; position: absolute; inset: 0; border-radius: inherit; border: 2px solid transparent; border-top-color: #12b981; animation: ai-live-spin 0.8s linear infinite; }
+.ai-live-steps > li.is-done { color: var(--muted-foreground); }
+.ai-live-steps > li.is-done > i { background: #12b981; }
+.ai-live-steps > li.is-done > i::after { content: ""; position: absolute; left: 5px; top: 3px; width: 4px; height: 7px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+.ai-live-steps small { font-weight: 500; color: var(--muted-foreground); }
+.ai-live-sections ul { display: flex; flex-direction: column; gap: 4px; margin: -2px 0 0 25px; padding: 0; list-style: none; }
+.ai-live-sections ul li { position: relative; padding-left: 14px; font-size: 12.5px; color: var(--muted-foreground); animation: ai-live-in 0.3s ease-out both; }
+.ai-live-sections ul li::before { content: ""; position: absolute; left: 0; top: 7px; width: 6px; height: 6px; border-radius: 999px; background: #12b981; }
+.ai-live-sections ul li.is-current { color: var(--foreground); font-weight: 600; }
+.ai-live-sections ul li.is-current::before { animation: ai-live-pulse 1s ease-in-out infinite; }
+@keyframes ai-live-spin { to { transform: rotate(360deg); } }
+@keyframes ai-live-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@keyframes ai-live-pulse { 50% { opacity: 0.3; } }
+/* Gravação de áudio no lugar do campo de texto. */
+.ai-rec { display: flex; flex: 1; align-items: center; gap: 10px; min-width: 0; min-height: 40px; padding: 0 6px 0 12px; border-radius: 12px; background: var(--card); box-shadow: inset 0 0 0 1px var(--border); font-size: 13px; font-weight: 600; }
+.ai-rec-dot { width: 10px; height: 10px; flex: none; border-radius: 999px; background: #ef4444; animation: ai-live-pulse 1.2s ease-in-out infinite; }
+.ai-rec-label { flex: 1; min-width: 0; font-variant-numeric: tabular-nums; }
+.ai-rec-cancel { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 999px; color: var(--muted-foreground); }
+.ai-rec-cancel:hover { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
+.ai-rec-spin { animation: ai-live-spin 0.8s linear infinite; color: #12b981; }
+.ai-rec-notice { margin: 6px 2px 0; font-size: 12px; color: #dc2626; }
+.editor-ai-sidebar-send.is-recording { background: #ef4444; color: #fff; }
+@media (prefers-reduced-motion: reduce) {
+  .ai-live, .ai-live-sections ul li, .ai-live-steps > li.is-current > i::after, .ai-rec-dot, .ai-rec-spin { animation: none; }
+}
 .editor-workspace.is-v2 .editor-ai-sidebar-send:not(:disabled) { background: var(--foreground); color: var(--background); }
 .ed-panel-eyebrow { margin: 0 0 2px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted-foreground); }
 .ed-panel-title { margin: 0 0 16px; font-size: 18px; font-weight: 700; color: var(--foreground); }

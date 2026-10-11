@@ -575,3 +575,94 @@ Bagagem: 1 mala de 23 kg
     for section in config["sections"]:
         for value in section.values():
             assert "Função da seção" not in str(value)
+
+
+def test_multi_trip_page_with_header_links_to_sections() -> None:
+    config, _ = build_page_base_config_from_reply(reply_with(
+        "🟩 SEÇÃO: BANNER\nTítulo: Viagens de inverno 2026",
+        "🟩 SEÇÃO: VITRINE DE VIAGENS\nEtiqueta: Saídas confirmadas\nTítulo: Escolha sua próxima viagem\n"
+        "Viagem: Gramado e Canela\nDescrição: Serra gaúcha no auge do frio.\nData de saída: 10/07/2026\n"
+        "Data de volta: 14/07/2026\nAntes do valor: A partir de\nValor: R$ 1.290\nDepois do valor: por pessoa\n"
+        "Botão: Ver roteiro\n"
+        "Viagem: Campos do Jordão\nDescrição: Fondue e montanhas.\n",
+        "🟩 SEÇÃO: PERGUNTAS FREQUENTES\nPergunta: Tem parcelamento?\nResposta: Consulte.",
+        "🟩 SEÇÃO: MENU DO TOPO\nLinks do menu:\n- Viagens\n- Dúvidas\n- Blog\nBotão: Chamar no WhatsApp",
+    ), strict=True)
+    header, hero, links, faq = config["sections"]
+    assert header["type"] == "header" and "_menuLabels" not in header
+    assert [(link["label"], link["target"]) for link in header["links"]] == [
+        ("Viagens", links["anchorId"]), ("Dúvidas", faq["anchorId"]),
+    ]
+    assert header["contactLabel"] == "Chamar no WhatsApp"
+    assert links["headingLabel"] == "Saídas confirmadas" and links["title"] == "Escolha sua próxima viagem"
+    gramado, campos = links["items"]
+    assert (gramado["title"], gramado["departureDate"], gramado["returnDate"]) == ("Gramado e Canela", "2026-07-10", "2026-07-14")
+    assert (gramado["pricePrefix"], gramado["priceValue"], gramado["priceSuffix"]) == ("A partir de", "R$ 1.290", "por pessoa")
+    assert gramado["buttonLabel"] == "Ver roteiro" and gramado["source"] == "external"
+    assert campos["description"] == "Fondue e montanhas." and "showPrice" not in campos
+
+
+def test_chat_reply_problem_accepts_questions_and_rejects_broken_structure() -> None:
+    from app.services.ai_assistant import _chat_reply_problem
+
+    assert _chat_reply_problem("Antes de criar, me conta:\n1. Qual o destino?\n2. Quais as datas?") == ""
+    assert _chat_reply_problem(reply_with("🟩 SEÇÃO: BANNER\nTítulo: Ok")) == ""
+    assert _chat_reply_problem("") != ""
+    assert _chat_reply_problem("ESTRUTURA SUGERIDA PARA A PÁGINA\nTipo de página: excursão") != ""
+    assert _chat_reply_problem(reply_with("🟩 SEÇÃO: INVENTADA\nTítulo: X")) != ""
+
+
+class _FakeStream:
+    def __init__(self, chunks):
+        self.chunks = chunks
+
+    def __iter__(self):
+        for chunk in self.chunks:
+            yield SimpleNamespace(type="response.output_text.delta", delta=chunk)
+        yield SimpleNamespace(
+            type="response.completed",
+            response=SimpleNamespace(usage=SimpleNamespace(input_tokens=10, output_tokens=5, total_tokens=15)),
+        )
+
+
+def test_stream_reply_emits_steps_deltas_and_done(monkeypatch) -> None:
+    from app.services import ai_assistant
+
+    calls = []
+
+    def create(**kwargs):
+        calls.append(kwargs)
+        return _FakeStream(["ESTRUTURA SUGERIDA PARA A PÁGINA\n", "🟩 SEÇÃO: BANNER\n", "Título: Oi"])
+
+    client = SimpleNamespace(responses=SimpleNamespace(create=create))
+    monkeypatch.setattr(ai_assistant, "_load_openai_client", lambda: client)
+    monkeypatch.setattr(ai_assistant, "load_system_prompt", lambda: "prompt")
+    events = list(ai_assistant.stream_ai_assistant_reply(
+        [ai_assistant.ChatMessage(role="user", content="Monte a página")], model_override="gpt-5.4",
+    ))
+    assert [event["type"] for event in events] == ["status", "status", "delta", "delta", "delta", "done"]
+    assert [event.get("step") for event in events[:2]] == ["thinking", "writing"]
+    assert events[-1]["reply"].endswith("Título: Oi")
+    assert events[-1]["usage"]["total_tokens"] == 15
+    # Modelos que raciocinam: esforço curto e sem temperature.
+    assert calls[0]["reasoning"] == {"effort": "low"} and "temperature" not in calls[0] and calls[0]["stream"] is True
+
+
+def test_stream_reply_redoes_broken_structure_once(monkeypatch) -> None:
+    from app.services import ai_assistant
+
+    fixed = SimpleNamespace(output_text=reply_with("🟩 SEÇÃO: BANNER\nTítulo: Certo"), usage=None)
+
+    def create(**kwargs):
+        if kwargs.get("stream"):
+            return _FakeStream(["ESTRUTURA SUGERIDA PARA A PÁGINA\nsem seções"])
+        return fixed
+
+    client = SimpleNamespace(responses=SimpleNamespace(create=create))
+    monkeypatch.setattr(ai_assistant, "_load_openai_client", lambda: client)
+    monkeypatch.setattr(ai_assistant, "load_system_prompt", lambda: "prompt")
+    events = list(ai_assistant.stream_ai_assistant_reply(
+        [ai_assistant.ChatMessage(role="user", content="Monte")], model_override="gpt-4.1",
+    ))
+    assert ("fixing" in [event.get("step") for event in events]) and events[-2]["type"] == "replace"
+    assert events[-1]["reply"].endswith("Título: Certo")
