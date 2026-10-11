@@ -834,3 +834,51 @@ def test_stock_photos_fill_sections_and_reuse_cache(monkeypatch) -> None:
     before = len(calls)
     assert len(stock_images.search_stock_images(db, None, "Gramado  brazil STREET")) == 3
     assert len(calls) == before
+
+
+def test_stock_search_reuses_similar_searches_descriptions_and_respects_hourly_limit(monkeypatch) -> None:
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    from app.models.stock_image import StockImage, StockImageSearch
+    from app.services import stock_images
+
+    engine = create_engine("sqlite://")
+    StockImage.__table__.create(engine)
+    StockImageSearch.__table__.create(engine)
+    db = sessionmaker(bind=engine)()
+    calls = []
+
+    def fake_unsplash(client, key, query):
+        calls.append(query)
+        stock_images.rate_limiter.record("unsplash")
+        alt = "couple drinking red wine at vineyard" if "wine" in query else f"{query} view"
+        return [
+            {"provider": "unsplash", "provider_id": f"{query}-{n}", "download_url": "d", "stored_url": f"https://u/{query}/{n}",
+             "page_url": "p", "photographer": "Ana", "photographer_url": "https://unsplash.com/@ana", "alt": alt, "width": 1, "height": 1}
+            for n in range(4)
+        ]
+
+    monkeypatch.setattr(stock_images, "_search_unsplash", fake_unsplash)
+    monkeypatch.setattr(stock_images, "get_settings", lambda: SimpleNamespace(pexels_api_key=None, unsplash_access_key="k"))
+    monkeypatch.setattr(stock_images, "rate_limiter", stock_images._RateLimiter())
+
+    assert len(stock_images.search_stock_images(db, None, "Gramado Brazil street")) == 4
+    assert len(stock_images.search_stock_images(db, None, "red wine couple")) == 4
+    assert calls == ["Gramado Brazil street", "red wine couple"]
+    # Busca parecida (mesmo destino, outra palavra): reaproveita, sem chamar o Unsplash.
+    assert [i.provider_id for i in stock_images.search_stock_images(db, None, "Gramado street winter")][0] == "Gramado Brazil street-0"
+    # Palavras que estão na descrição das fotos guardadas: também reaproveita.
+    assert len(stock_images.search_stock_images(db, None, "vineyard couple drinking")) >= 3
+    assert calls == ["Gramado Brazil street", "red wine couple"]
+    # Limite da hora esgotado: não chama o banco; devolve o que tiver (nada, para um assunto novo).
+    stock_images.HOURLY_BUDGET["unsplash"], budget = 2, stock_images.HOURLY_BUDGET["unsplash"]
+    try:
+        assert stock_images.search_stock_images(db, None, "Paris Eiffel tower") == []
+        assert calls == ["Gramado Brazil street", "red wine couple"]
+    finally:
+        stock_images.HOURLY_BUDGET["unsplash"] = budget
+    # Crédito com os links pedidos pelo Unsplash.
+    image = db.query(StockImage).first()
+    credit = stock_images.credit_for(image, "https://u/x")
+    assert credit["provider"] == "Unsplash" and credit["link"].endswith("utm_source=roteiro_online&utm_medium=referral")

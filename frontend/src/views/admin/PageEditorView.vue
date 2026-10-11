@@ -1720,6 +1720,7 @@ import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
 import { resolvePageDesign } from "../../utils/pageDesign";
 import { sectionNameV2 } from "../../utils/sectionCatalogV2";
 import { useAgencyPages, type AgencyPage } from "../../components/admin/v2edit/useAgencyPages";
+import { PHOTO_CREDITS_KEY, buildPhotoCredits } from "../../components/public/v2/photoCredits";
 import { getLocalizedValue } from "../../utils/i18n";
 import SectionPickerV2 from "../../components/admin/SectionPickerV2.vue";
 import EdGroup from "../../components/admin/v2edit/EdGroup.vue";
@@ -2645,6 +2646,7 @@ const mergeAiSwap = (current: PageSection, incoming: PageSection): PageSection =
     // que a sugestão traga uma foto nova do banco, pedida pelo usuário).
     const photo = (incoming as any).aiStockPhoto ? "" : aiSectionPhoto(current);
     if (photo) {
+      converted.photoCredits = (current as any).photoCredits;
       if (Array.isArray(converted.images)) converted.images = [photo];
       for (const key of ["backgroundImage", "image"]) if (key in converted) converted[key] = photo;
     }
@@ -2654,6 +2656,7 @@ const mergeAiSwap = (current: PageSection, incoming: PageSection): PageSection =
   const next = incoming as Record<string, any>;
   // Foto nova do banco de fotos (o usuário pediu outra foto): entra no lugar da atual.
   if (next.aiStockPhoto) {
+    merged.photoCredits = next.photoCredits;
     for (const key of ["backgroundImage", "mobileBackgroundImage", "image", "mobileImage", "images"]) {
       if (key in next && !isAiFiller(next[key])) merged[key] = next[key];
     }
@@ -2679,6 +2682,8 @@ const mergeAiSwap = (current: PageSection, incoming: PageSection): PageSection =
   return merged as PageSection;
 };
 // Páginas da agência, para ligar os cards da vitrine que a IA indicou ("Página: gramado-canela").
+// Crédito das fotos de bancos gratuitos na prévia ("©" no canto de cada foto).
+provide(PHOTO_CREDITS_KEY, computed(() => buildPhotoCredits(sections.value)));
 const aiAgencyPages = useAgencyPages();
 const aiPageImage = (page: AgencyPage) => {
   let config: Record<string, any> = {};

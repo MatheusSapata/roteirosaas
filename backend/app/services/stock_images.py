@@ -1,7 +1,10 @@
 """Fotos de bancos gratuitos (Pexels e Unsplash) para as seções criadas pelo assistente de IA.
 
-Cada busca e cada foto ficam guardadas (stock_image_searches / stock_images): os mesmos
-termos não consultam o banco de novo e uma foto já usada não é baixada outra vez.
+Cada busca e cada foto ficam guardadas (stock_image_searches / stock_images) e são
+reaproveitadas antes de qualquer chamada: a mesma busca, uma busca parecida ("Gramado Brazil
+street" ≈ "Gramado street winter") ou fotos guardadas cuja descrição tem as mesmas palavras.
+Só então o banco de fotos é consultado, dentro do limite por hora (a chave inicial do
+Unsplash dá 50 chamadas por hora, contando buscas e avisos de uso).
 Sem PEXELS_API_KEY nem UNSPLASH_ACCESS_KEY, nada é buscado e as seções ficam com a
 imagem provisória.
 """
@@ -25,8 +28,15 @@ from app.services.media_storage import media_storage
 
 logger = logging.getLogger(__name__)
 
-SEARCH_TTL = timedelta(days=30)
-PER_PAGE = 12
+SEARCH_TTL = timedelta(days=180)
+PER_PAGE = 30  # máximo por chamada: cada busca enche o banco com o máximo de fotos
+# Chamadas por hora que usamos de cada banco (com folga do limite real). Unsplash demo: 50/h.
+HOURLY_BUDGET = {"unsplash": 40, "pexels": 180}
+# Para reaproveitar uma busca parecida, ela precisa cobrir esta fração das palavras da nova.
+SIMILAR_SEARCH_MIN_SCORE = 0.6
+STOPWORDS = frozenset(
+    "a an and at by de da das do dos e em for in na nas no nos of on or para por the to with com um uma".split()
+)
 REQUEST_TIMEOUT = 8.0
 # Tempo máximo buscando fotos ao aplicar uma estrutura; o que faltar fica com a imagem provisória.
 TIME_BUDGET_SECONDS = 25.0
@@ -55,6 +65,41 @@ def normalize_query(value: str) -> str:
     return re.sub(r"\s+", " ", text).strip()[:120]
 
 
+def query_terms(value: str) -> set[str]:
+    """Palavras que importam numa busca, reduzidas ao começo (street/streets, vinho/vinhos)."""
+    return {word[:6] for word in normalize_query(value).split() if len(word) >= 3 and word not in STOPWORDS}
+
+
+class _RateLimiter:
+    """Conta as chamadas de cada banco na última hora e respeita o que o banco informa."""
+
+    def __init__(self) -> None:
+        self.calls: dict[str, list[float]] = {}
+        self.blocked_until: dict[str, float] = {}
+
+    def allow(self, provider: str) -> bool:
+        now = time.time()
+        if self.blocked_until.get(provider, 0) > now:
+            return False
+        recent = [moment for moment in self.calls.get(provider, []) if moment > now - 3600]
+        self.calls[provider] = recent
+        return len(recent) < HOURLY_BUDGET.get(provider, 40)
+
+    def record(self, provider: str, response: httpx.Response | None = None) -> None:
+        self.calls.setdefault(provider, []).append(time.time())
+        if response is None:
+            return
+        remaining = response.headers.get("X-Ratelimit-Remaining") or response.headers.get("X-RateLimit-Remaining")
+        if remaining is not None and remaining.isdigit() and int(remaining) <= 3:
+            # Quase no fim do limite do banco (vale para todos os processos): pausa até a hora virar.
+            self.blocked_until[provider] = time.time() + 3600
+        if response.status_code == 429:
+            self.blocked_until[provider] = time.time() + 3600
+
+
+rate_limiter = _RateLimiter()
+
+
 def split_queries(value: str) -> list[str]:
     """ "Gramado Brazil street | casal tomando vinho" → buscas em ordem de preferência."""
     return [part.strip() for part in re.split(r"\s*(?:\||;| ou | or )\s*", value or "") if part.strip()][:3]
@@ -71,6 +116,7 @@ def _search_pexels(client: httpx.Client, key: str, query: str) -> list[dict[str,
         params={"query": query, "per_page": PER_PAGE, "orientation": "landscape"},
         headers={"Authorization": key},
     )
+    rate_limiter.record("pexels", response)
     response.raise_for_status()
     results = []
     for photo in response.json().get("photos") or []:
@@ -98,6 +144,7 @@ def _search_unsplash(client: httpx.Client, key: str, query: str) -> list[dict[st
         params={"query": query, "per_page": PER_PAGE, "orientation": "landscape", "content_filter": "high"},
         headers={"Authorization": f"Client-ID {key}", "Accept-Version": "v1"},
     )
+    rate_limiter.record("unsplash", response)
     response.raise_for_status()
     results = []
     for photo in response.json().get("results") or []:
@@ -139,37 +186,101 @@ def _upsert_images(db: Session, results: Iterable[dict[str, Any]]) -> list[Stock
     return images
 
 
-def search_stock_images(db: Session, client: httpx.Client, query: str) -> list[StockImage]:
-    """Fotos para os termos, do banco de buscas quando já feita há menos de 30 dias."""
+def _images_by_ids(db: Session, ids: list[int]) -> list[StockImage]:
+    if not ids:
+        return []
+    by_id = {image.id: image for image in db.query(StockImage).filter(StockImage.id.in_(ids)).all()}
+    return [by_id[image_id] for image_id in ids if image_id in by_id]
+
+
+def _fresh(search: StockImageSearch, now: datetime) -> bool:
+    created = search.created_at
+    if created is None:
+        return False
+    if created.tzinfo is None:
+        created = created.replace(tzinfo=timezone.utc)
+    return created > now - SEARCH_TTL
+
+
+def _similar_search(db: Session, terms: set[str], now: datetime) -> StockImageSearch | None:
+    """Busca guardada que cobre a maior parte das palavras da nova (ex.: mesmo destino)."""
+    if not terms:
+        return None
+    best, best_score = None, 0.0
+    for search in db.query(StockImageSearch).filter(StockImageSearch.provider.isnot(None)).all():
+        other = query_terms(search.query)
+        if not other or not _fresh(search, now):
+            continue
+        score = len(terms & other) / len(terms)
+        if score > best_score or (score == best_score and best is not None and (search.uses or 0) > (best.uses or 0)):
+            best, best_score = search, score
+    return best if best_score >= SIMILAR_SEARCH_MIN_SCORE else None
+
+
+def _photos_by_description(db: Session, terms: set[str], limit: int = PER_PAGE) -> list[StockImage]:
+    """Fotos guardadas cuja descrição tem as palavras da busca (as mais usadas primeiro)."""
+    if not terms:
+        return []
+    needed = max(1, round(len(terms) * SIMILAR_SEARCH_MIN_SCORE))
+    first = sorted(terms, key=len, reverse=True)[0]
+    candidates = db.query(StockImage).filter(StockImage.alt.ilike(f"%{first}%")).limit(400).all()
+    scored = []
+    for image in candidates:
+        alt_terms = query_terms(image.alt or "")
+        hits = len(terms & alt_terms)
+        if hits >= needed:
+            scored.append((hits, image.uses or 0, image))
+    scored.sort(key=lambda item: (item[0], item[1]), reverse=True)
+    return [image for _, _, image in scored[:limit]]
+
+
+def search_stock_images(db: Session, client: httpx.Client, query: str, *, minimum: int = 1) -> list[StockImage]:
+    """Fotos para os termos, reaproveitando o banco antes de chamar Unsplash ou Pexels:
+    1) a mesma busca; 2) uma busca parecida; 3) fotos guardadas com descrição parecida;
+    4) o banco de fotos, se ainda houver chamadas na hora."""
     normalized = normalize_query(query)
     if not normalized:
         return []
     now = datetime.now(timezone.utc)
+    terms = query_terms(normalized)
+
     cached = db.query(StockImageSearch).filter(StockImageSearch.query == normalized).first()
-    if cached and cached.created_at and cached.created_at.replace(tzinfo=cached.created_at.tzinfo or timezone.utc) > now - SEARCH_TTL:
+    if cached and _fresh(cached, now) and (cached.image_ids or cached.provider is None):
         cached.uses = (cached.uses or 0) + 1
         cached.last_used_at = now
-        ids = list(cached.image_ids or [])
-        by_id = {image.id: image for image in db.query(StockImage).filter(StockImage.id.in_(ids)).all()} if ids else {}
-        return [by_id[image_id] for image_id in ids if image_id in by_id]
+        return _images_by_ids(db, list(cached.image_ids or []))
+
+    similar = _similar_search(db, terms, now)
+    reused = _images_by_ids(db, list(similar.image_ids or [])) if similar else []
+    if len(reused) >= minimum:
+        similar.uses = (similar.uses or 0) + 1
+        similar.last_used_at = now
+        return reused
+
+    described = _photos_by_description(db, terms)
+    if len(described) >= max(minimum, 3):
+        return described
 
     settings = get_settings()
     results: list[dict[str, Any]] = []
     provider = None
     for name, key, search in (
-        ("pexels", settings.pexels_api_key, _search_pexels),
         ("unsplash", settings.unsplash_access_key, _search_unsplash),
+        ("pexels", settings.pexels_api_key, _search_pexels),
     ):
-        if not key:
+        if not key or not rate_limiter.allow(name):
             continue
         try:
             results = search(client, key, query)
         except Exception as exc:  # pragma: no cover - rede/limite do provedor
             logger.warning("stock_search_failed provider=%s query=%r error=%s", name, query, exc)
             continue
+        provider = name
         if results:
-            provider = name
             break
+    if provider is None:
+        # Sem chamadas na hora: o que o banco local tiver, mesmo pouco.
+        return reused or described
 
     images = _upsert_images(db, results)
     if cached is None:
@@ -181,16 +292,20 @@ def search_stock_images(db: Session, client: httpx.Client, query: str) -> list[S
     cached.last_used_at = now
     cached.uses = (cached.uses or 0) + 1
     db.flush()
-    return images
+    return images or reused or described
 
 
 def materialize(db: Session, client: httpx.Client, image: StockImage) -> str | None:
     """Endereço da foto para a página: baixa e guarda a cópia otimizada só na primeira vez."""
     if image.provider == "unsplash":
-        try:
-            client.get(image.download_url, headers={"Authorization": f"Client-ID {get_settings().unsplash_access_key}"})
-        except Exception:  # pragma: no cover - o aviso de uso não pode travar a página
-            pass
+        # Aviso de uso pedido pelo Unsplash: uma vez por foto, e só se ainda houver chamadas na hora.
+        if image.tracked_at is None and rate_limiter.allow("unsplash"):
+            try:
+                response = client.get(image.download_url, headers={"Authorization": f"Client-ID {get_settings().unsplash_access_key}"})
+                rate_limiter.record("unsplash", response)
+                image.tracked_at = datetime.now(timezone.utc)
+            except Exception:  # pragma: no cover - o aviso de uso não pode travar a página
+                pass
         return image.stored_url
     if image.stored_url:
         return image.stored_url
@@ -207,6 +322,28 @@ def materialize(db: Session, client: httpx.Client, image: StockImage) -> str | N
     return url
 
 
+UTM = "utm_source=roteiro_online&utm_medium=referral"
+
+
+def _with_utm(link: str | None) -> str:
+    if not link:
+        return ""
+    return f"{link}{'&' if '?' in link else '?'}{UTM}"
+
+
+def credit_for(image: StockImage, url: str) -> dict[str, str]:
+    """Crédito mostrado na página: "Foto: Nome (Unsplash)", com links pedidos pelo banco."""
+    provider = image.provider.title()
+    provider_home = {"unsplash": "https://unsplash.com/", "pexels": "https://www.pexels.com/"}.get(image.provider, "")
+    return {
+        "url": url,
+        "name": image.photographer or provider,
+        "link": _with_utm(image.photographer_url),
+        "provider": provider,
+        "providerLink": _with_utm(provider_home),
+    }
+
+
 class _Picker:
     """Escolhe fotos sem repetir na mesma página, dentro do tempo máximo."""
 
@@ -215,6 +352,8 @@ class _Picker:
         self.used: set[int] = set()
         self.started = time.monotonic()
         self.saved_urls: set[str] = set()
+        # Crédito de cada foto escolhida (url → crédito), para a seção guardar.
+        self.credits: dict[str, dict[str, str]] = {}
 
     def out_of_time(self) -> bool:
         return time.monotonic() - self.started > TIME_BUDGET_SECONDS
@@ -224,7 +363,7 @@ class _Picker:
         for query in queries:
             if len(urls) >= count or self.out_of_time():
                 break
-            for image in search_stock_images(self.db, self.client, query):
+            for image in search_stock_images(self.db, self.client, query, minimum=count + len(self.used)):
                 if len(urls) >= count or self.out_of_time():
                     break
                 if image.id in self.used:
@@ -235,6 +374,7 @@ class _Picker:
                 self.used.add(image.id)
                 image.uses = (image.uses or 0) + 1
                 urls.append(url)
+                self.credits[url] = credit_for(image, url)
                 self._add_to_library(url, image)
         return urls
 
@@ -275,12 +415,14 @@ def fill_section_photos(db: Session, sections: list[dict[str, Any]], agency_id: 
                     for field in PHOTO_FIELDS[kind]:
                         section[field] = urls[0]
                     section["aiStockPhoto"] = True
+                    section["photoCredits"] = [picker.credits[url] for url in urls[:1]]
                     filled += 1
             elif kind == "story" and raw_query is not None:
                 urls = picker.pick(queries)
                 if urls:
                     section["images"] = urls
                     section["aiStockPhoto"] = True
+                    section["photoCredits"] = [picker.credits[url] for url in urls]
                     filled += 1
             elif kind == "itinerary" and raw_query is not None:
                 days = [day for day in section.get("days") or [] if isinstance(day, dict)]
@@ -289,6 +431,7 @@ def fill_section_photos(db: Session, sections: list[dict[str, Any]], agency_id: 
                     day["image"] = url
                 if urls:
                     section["aiStockPhoto"] = True
+                    section["photoCredits"] = [picker.credits[url] for url in urls]
                     filled += len(urls)
             if kind == "links":
                 for item in section.get("items") or []:
@@ -301,6 +444,7 @@ def fill_section_photos(db: Session, sections: list[dict[str, Any]], agency_id: 
                     urls = picker.pick(item_queries + [FALLBACK_QUERIES["links"]])
                     if urls:
                         item["image"] = urls[0]
+                        section.setdefault("photoCredits", []).append(picker.credits[urls[0]])
                         filled += 1
             if picker.out_of_time():
                 logger.info("stock_photos_time_budget_reached filled=%s", filled)

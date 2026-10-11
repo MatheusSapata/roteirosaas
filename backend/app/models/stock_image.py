@@ -27,6 +27,8 @@ class StockImage(Base):
     width = Column(Integer, nullable=True)
     height = Column(Integer, nullable=True)
     uses = Column(Integer, nullable=False, default=0)
+    # Unsplash pede o aviso de uso (download) quando a foto é usada; avisamos uma vez por foto.
+    tracked_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
