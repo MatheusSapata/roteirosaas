@@ -108,6 +108,7 @@ async def _prepare_chat(
     page_id: int,
     conversation: str,
     attachments: list[UploadFile] | None,
+    page_sections: str = "",
 ) -> tuple[Page, list[AiAssistantConversationMessage], AiAssistantUsage, int | None, list[ChatAttachment], str]:
     """Valida a conversa e a permissão, confere o limite do plano e grava as mensagens novas do usuário."""
     try:
@@ -151,7 +152,15 @@ async def _prepare_chat(
         attachment_payload.append(
             ChatAttachment(filename=upload.filename or "arquivo", content_type=upload.content_type, data=data)
         )
-    return page, parsed_conversation, usage_record, usage_limit, attachment_payload, build_agency_context(db, page)
+    try:
+        sections_payload = json.loads(page_sections) if page_sections else None
+    except json.JSONDecodeError:
+        sections_payload = None
+    if not isinstance(sections_payload, list):
+        sections_payload = None
+    else:
+        sections_payload = [item for item in sections_payload if isinstance(item, dict)][:80]
+    return page, parsed_conversation, usage_record, usage_limit, attachment_payload, build_agency_context(db, page, sections_payload)
 
 
 def _usage_headers(usage_record: AiAssistantUsage, usage_limit: int | None) -> dict[str, str]:
@@ -180,12 +189,13 @@ async def chat_with_assistant(
     page_id: int = Form(...),
     conversation: str = Form("[]"),
     attachments: list[UploadFile] | None = File(default=None),
+    page_sections: str = Form(""),
     response: Response = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> AiAssistantChatResponse:
     page, parsed_conversation, usage_record, usage_limit, attachment_payload, context = await _prepare_chat(
-        db, current_user, page_id, conversation, attachments
+        db, current_user, page_id, conversation, attachments, page_sections
     )
     reply = await anyio.to_thread.run_sync(
         partial(
@@ -209,13 +219,14 @@ async def chat_with_assistant_stream(
     page_id: int = Form(...),
     conversation: str = Form("[]"),
     attachments: list[UploadFile] | None = File(default=None),
+    page_sections: str = Form(""),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> StreamingResponse:
     """Mesma conversa do /chat, em linhas JSON (NDJSON) enviadas enquanto a IA escreve:
     etapas, trechos do texto e, no fim, a resposta completa com o uso do mês."""
     page, parsed_conversation, usage_record, usage_limit, attachment_payload, context = await _prepare_chat(
-        db, current_user, page_id, conversation, attachments
+        db, current_user, page_id, conversation, attachments, page_sections
     )
     model = get_active_gpt_model(db, create_if_missing=True)
     page_id_value, user_id, period_key = page.id, current_user.id, usage_record.period_key

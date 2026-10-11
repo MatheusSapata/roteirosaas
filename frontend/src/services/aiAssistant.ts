@@ -12,6 +12,18 @@ export interface AiAssistantHistoryMessage extends AiAssistantChatMessage {
   created_at: string;
 }
 
+/** Seção da página como está no editor agora, para a IA saber o que já existe e o que trocar. */
+export interface AiPageSectionSummary {
+  type: string;
+  anchorId?: string;
+  enabled?: boolean;
+  title?: unknown;
+  label?: unknown;
+  caption?: unknown;
+  headingLabel?: unknown;
+  badge?: unknown;
+}
+
 interface AiAssistantChatResponse {
   reply: string;
 }
@@ -32,11 +44,13 @@ interface AiAssistantCreatePageBaseResponse {
 export const sendAiAssistantConversation = async (
   pageId: number,
   conversation: AiAssistantChatMessage[],
-  attachments: File[] = []
+  attachments: File[] = [],
+  pageSections: AiPageSectionSummary[] = []
 ): Promise<{ reply: string; usage?: AiAssistantUsageResponse }> => {
   const form = new FormData();
   form.append("page_id", String(pageId));
   form.append("conversation", JSON.stringify(conversation));
+  form.append("page_sections", JSON.stringify(pageSections));
 
   for (const file of attachments) {
     form.append("attachments", file, file.name);
@@ -133,11 +147,13 @@ export const streamAiAssistantConversation = async (
   pageId: number,
   conversation: AiAssistantChatMessage[],
   attachments: File[],
-  onEvent: (event: AiAssistantStreamEvent) => void
+  onEvent: (event: AiAssistantStreamEvent) => void,
+  pageSections: AiPageSectionSummary[] = []
 ): Promise<{ reply: string; usage?: AiAssistantUsageResponse }> => {
   const form = new FormData();
   form.append("page_id", String(pageId));
   form.append("conversation", JSON.stringify(conversation));
+  form.append("page_sections", JSON.stringify(pageSections));
   for (const file of attachments) form.append("attachments", file, file.name);
 
   const authorization = api.defaults.headers.common?.Authorization;

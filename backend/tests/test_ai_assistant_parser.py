@@ -689,7 +689,7 @@ def test_agency_context_lists_registered_data_and_pages(monkeypatch) -> None:
     from app.services import ai_assistant_context as ctx
 
     agency = SimpleNamespace(id=1, name="Rota Sul", logo_url="/logo.png")
-    page = SimpleNamespace(id=10, agency=agency, title="Home", slug="home")
+    page = SimpleNamespace(id=10, agency=agency, title="Home", slug="home", config_json={"sections": []})
     other = SimpleNamespace(
         id=11, title="Gramado e Canela", slug="gramado-canela", status="published",
         config_json={"sections": [
@@ -723,3 +723,30 @@ def test_agency_context_lists_registered_data_and_pages(monkeypatch) -> None:
     assert "Agência: Rota Sul" in text and "Cidade: Itajaí, SC" in text
     assert "Redes sociais cadastradas: Instagram" in text and "Logo: cadastrado" in text
     assert '- gramado-canela: "Gramado e Canela" (publicada, saída 10/12/2026, a partir de R$ 990,50) · Inverno na serra' in text
+    assert "SEÇÕES DESTA PÁGINA: nenhuma ainda." in text
+    # Seções enviadas pelo editor (com o que ainda não foi salvo) entram com o nome do editor.
+    text = ctx.build_agency_context(db, page, [
+        {"type": "biography", "anchorId": "nossa-historia", "title": "Nossa história"},
+        {"type": "free_footer_brand"},
+        {"type": "links", "anchorId": "viagens-2", "title": {"pt": "Nacionais"}, "enabled": False},
+    ])
+    assert '1. nossa-historia: Artigo · "Nossa história"' in text
+    assert "3. viagens-2: Links/Roteiros (oculta)" in text
+
+
+def test_editor_section_names_and_replaces() -> None:
+    config, _ = build_page_base_config_from_reply(reply_with(
+        "🟩 SEÇÃO: TEXTO E IMAGENS\nFunção da seção: troca\nSubstitui: nossa-historia\nTítulo: Nossa história\nTexto: Desde 2019.",
+        "🟩 SEÇÃO: LINKS/ROTEIROS\nTítulo: Nacionais\nViagem: Gramado",
+        "🟩 SEÇÃO: DIFERENCIAIS\nTítulo: Por que nós\nItem: Guia\nDescrição: Sempre junto",
+        "🟩 SEÇÃO: ARTIGO\nTítulo: Blog\nTexto: Longo.",
+        "🟩 SEÇÃO: DÚVIDAS FREQUENTES\nPergunta: Tem?\nResposta: Sim.",
+        "🟩 SEÇÃO: FAIXA DE CHAMADA\nTítulo: Vamos?\nBotão: Quero",
+        "🟩 SEÇÃO: PREÇOS E PACOTES\nPlano: Adulto\nValor: R$ 10",
+        "🟩 SEÇÃO: ROTEIRO DIA A DIA\nDia 1: Chegada\nHotel.",
+        "🟩 SEÇÃO: FOTO EM DESTAQUE\nLegenda: Mar",
+    ), strict=True)
+    types = [section["type"] for section in config["sections"]]
+    assert types == ["story", "links", "reasons", "biography", "faq", "cta", "prices", "itinerary", "photo"]
+    assert config["sections"][0]["aiReplaces"] == "nossa-historia"
+    assert "aiReplaces" not in config["sections"][1]
