@@ -896,3 +896,49 @@ def test_stock_search_reuses_similar_searches_descriptions_and_rotates_keys(monk
     # Crédito com os links pedidos pelo Unsplash.
     credit = stock_images.credit_for(db.query(StockImage).first(), "https://u/x")
     assert credit["provider"] == "Unsplash" and credit["link"].endswith("utm_source=roteiro_online&utm_medium=referral")
+
+
+def test_stock_search_prefers_brazil_recent_and_matching_photos(monkeypatch):
+    from datetime import datetime, timedelta, timezone
+
+    import httpx
+
+    from app.models.stock_image import StockImage
+    from app.services import stock_images
+
+    # Destino brasileiro sem o país ganha "Brazil"; fora do Brasil, nada muda.
+    assert stock_images.with_country("Beto Carrero World Penha") == "Beto Carrero World Penha Brazil"
+    assert stock_images.with_country("Gramado Brazil street") == "Gramado Brazil street"
+    assert stock_images.with_country("Lisbon Alfama") == "Lisbon Alfama"
+    assert stock_images.mentions_brazil("Praia em Santa Catarina") and not stock_images.mentions_brazil("Paris")
+
+    now = datetime(2026, 10, 1, tzinfo=timezone.utc)
+
+    def photo(pid, alt="", tags=None, location=None, years=None, width=10, height=6):
+        published = now - timedelta(days=365 * years) if years is not None else None
+        return StockImage(provider="unsplash", provider_id=pid, download_url="d", alt=alt, tags=tags,
+                          location=location, published_at=published, width=width, height=height)
+
+    images = [
+        photo("velho", "roller coaster amusement park", years=11),
+        photo("outro-pais", "roller coaster", location="Orlando, USA", years=1),
+        photo("deitada-nao", "Beto Carrero World park", tags="brazil, theme park", years=1, width=6, height=10),
+        photo("brasil", "theme park ride", tags="beto carrero, santa catarina", location="Penha, Brazil", years=2),
+    ]
+    ranked = stock_images.rank_images(images, "Beto Carrero World Brazil", prefer_brazil=True, now=now)
+    assert [image.provider_id for image in ranked][:2] == ["brasil", "deitada-nao"]
+    assert ranked[-1].provider_id == "velho"
+
+    # Do Unsplash vêm descrição, tags, local do fotógrafo e data, que vão para o banco de fotos.
+    payload = {"results": [{
+        "id": "x1", "urls": {"raw": "https://images.unsplash.com/x1?ixid=1"},
+        "links": {"download_location": "dl", "html": "h"}, "description": "Parque em Penha",
+        "alt_description": "roller coaster", "tags": [{"title": "brasil"}, {"title": "parque"}],
+        "created_at": "2024-05-02T10:00:00Z", "user": {"name": "Ana", "location": "Florianópolis, Brasil", "links": {}},
+        "width": 3000, "height": 2000,
+    }]}
+    transport = httpx.MockTransport(lambda request: httpx.Response(200, json=payload))
+    with httpx.Client(transport=transport) as client:
+        [result] = stock_images._search_unsplash(client, "k", "Beto Carrero Brazil")
+    assert result["alt"] == "Parque em Penha roller coaster" and result["tags"] == "brasil, parque"
+    assert result["location"] == "Florianópolis, Brasil" and result["published_at"].year == 2024

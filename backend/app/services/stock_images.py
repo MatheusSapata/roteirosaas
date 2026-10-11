@@ -19,6 +19,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Iterable
 
 import httpx
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.models.media import MediaAsset
@@ -72,6 +73,76 @@ def query_terms(value: str) -> set[str]:
 def split_queries(value: str) -> list[str]:
     """ "Gramado Brazil street | casal tomando vinho" → buscas em ordem de preferência."""
     return [part.strip() for part in re.split(r"\s*(?:\||;| ou | or )\s*", value or "") if part.strip()][:3]
+
+
+# Estados e destinos brasileiros: com eles, a busca leva "Brazil" e prefere fotos daqui.
+BRAZIL_HINTS = frozenset(
+    """brazil brasil brazilian brasileiro brasileira acre alagoas amapa amazonas bahia ceara
+    goias maranhao paraiba parana pernambuco piaui rondonia roraima sergipe tocantins pantanal
+    gramado canela jericoacoara maragogi trancoso recife olinda maceio fortaleza florianopolis
+    floripa buzios paraty ilhabela brotas holambra blumenau pomerode curitiba brasilia manaus
+    ipanema copacabana pelourinho capitolio tiradentes ubatuba bombinhas penha garopaba""".split()
+) | frozenset(
+    {
+        "distrito federal", "espirito santo", "mato grosso", "minas gerais", "rio de janeiro",
+        "rio grande do norte", "rio grande do sul", "santa catarina", "sao paulo", "foz do iguacu",
+        "fernando de noronha", "porto de galinhas", "lencois maranhenses", "chapada diamantina",
+        "chapada dos veadeiros", "beto carrero", "balneario camboriu", "arraial do cabo",
+        "angra dos reis", "joao pessoa", "porto seguro", "morro de sao paulo", "campos do jordao",
+        "monte verde", "alter do chao", "sao miguel dos milagres", "bento goncalves",
+        "vale dos vinhedos", "ouro preto", "belo horizonte", "christ the redeemer", "cristo redentor",
+        "sugarloaf", "praia do forte", "salvador bahia", "pipa beach", "praia da pipa",
+    }
+)
+BRAZIL_WORDS = frozenset({"brazil", "brasil", "brazilian", "brasileiro", "brasileira"})
+
+
+def mentions_brazil(text: str) -> bool:
+    padded = f" {normalize_query(text)} "
+    return any(f" {hint} " in padded for hint in BRAZIL_HINTS)
+
+
+def with_country(query: str) -> str:
+    """Destino brasileiro sem o país na busca ganha "Brazil" (o banco acerta mais o lugar)."""
+    if mentions_brazil(query) and not BRAZIL_WORDS & set(normalize_query(query).split()):
+        return f"{query} Brazil"
+    return query
+
+
+def _published(value: Any) -> datetime | None:
+    try:
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00")) if value else None
+    except ValueError:
+        return None
+
+
+def rank_images(images: list[StockImage], query: str, *, prefer_brazil: bool = False, now: datetime | None = None) -> list[StockImage]:
+    """Reordena as fotos de uma busca: descrição e tags com as palavras do destino, foto do
+    Brasil quando o destino é daqui, fotos recentes e a ordem de relevância do banco."""
+    now = now or datetime.now(timezone.utc)
+    terms = query_terms(query) - {word[:6] for word in BRAZIL_WORDS}
+
+    def score(item: tuple[int, StockImage]) -> float:
+        position, image = item
+        text = " ".join(part for part in (image.alt, image.tags, image.location) if part)
+        value = -0.03 * position  # a ordem do banco ainda conta, como desempate
+        if terms:
+            value += 3.0 * len(terms & query_terms(text)) / len(terms)
+        if prefer_brazil and mentions_brazil(text):
+            value += 2.0
+        published = image.published_at
+        if published is not None:
+            if published.tzinfo is None:
+                published = published.replace(tzinfo=timezone.utc)
+            age = (now - published).days / 365
+            # Até uns 6 anos ganha ponto (mais recente, mais ponto); muito antiga perde.
+            value += max(0.0, 1.5 - 0.25 * age) - (1.0 if age > 9 else 0.0)
+        if image.width and image.height and image.height > image.width:
+            value -= 2.5  # as seções usam fotos deitadas: em pé, o corte perde quase tudo
+        return value
+
+    ranked = sorted(enumerate(images), key=score, reverse=True)
+    return [image for _, image in ranked]
 
 
 def stock_search_enabled(db: Session) -> bool:
@@ -131,7 +202,13 @@ def _search_unsplash(client: httpx.Client, key: str, query: str, record=None) ->
             "page_url": (photo.get("links") or {}).get("html"),
             "photographer": user.get("name"),
             "photographer_url": (user.get("links") or {}).get("html"),
-            "alt": (photo.get("alt_description") or "")[:500],
+            "alt": " ".join(dict.fromkeys(part for part in (photo.get("description"), photo.get("alt_description")) if part))[:500],
+            "tags": ", ".join(
+                tag.get("title") for tag in photo.get("tags") or [] if isinstance(tag, dict) and tag.get("title")
+            )[:500] or None,
+            # O local da foto quase nunca vem na busca; o do fotógrafo ajuda a achar fotos daqui.
+            "location": ((photo.get("location") or {}).get("name") or user.get("location") or "")[:255] or None,
+            "published_at": _published(photo.get("created_at")),
             "width": photo.get("width"),
             "height": photo.get("height"),
         })
@@ -150,6 +227,9 @@ def _upsert_images(db: Session, results: Iterable[dict[str, Any]]) -> list[Stock
             image = StockImage(**{key: value for key, value in data.items() if key != "stored_url"})
             db.add(image)
             db.flush()
+        for field in ("tags", "location", "published_at"):
+            if data.get(field) and not getattr(image, field):
+                setattr(image, field, data[field])
         if data["provider"] == "unsplash" and not image.stored_url:
             image.stored_url = data.get("stored_url")
         images.append(image)
@@ -193,10 +273,15 @@ def _photos_by_description(db: Session, terms: set[str], limit: int = PER_PAGE) 
         return []
     needed = max(1, round(len(terms) * SIMILAR_SEARCH_MIN_SCORE))
     first = sorted(terms, key=len, reverse=True)[0]
-    candidates = db.query(StockImage).filter(StockImage.alt.ilike(f"%{first}%")).limit(400).all()
+    candidates = (
+        db.query(StockImage)
+        .filter(or_(StockImage.alt.ilike(f"%{first}%"), StockImage.tags.ilike(f"%{first}%")))
+        .limit(400)
+        .all()
+    )
     scored = []
     for image in candidates:
-        alt_terms = query_terms(image.alt or "")
+        alt_terms = query_terms(" ".join(part for part in (image.alt, image.tags, image.location) if part))
         hits = len(terms & alt_terms)
         if hits >= needed:
             scored.append((hits, image.uses or 0, image))
@@ -329,10 +414,15 @@ class _Picker:
 
     def pick(self, queries: list[str], count: int = 1) -> list[str]:
         urls: list[str] = []
+        # Destino no Brasil: a busca do lugar leva "Brazil" e todas preferem fotos daqui.
+        prefer_brazil = bool(queries) and mentions_brazil(queries[0])
+        if prefer_brazil:
+            queries = [with_country(queries[0]), *queries[1:]]
         for query in queries:
             if len(urls) >= count or self.out_of_time():
                 break
-            for image in search_stock_images(self.db, self.client, query, minimum=count + len(self.used)):
+            found = search_stock_images(self.db, self.client, query, minimum=count + len(self.used))
+            for image in rank_images(found, query, prefer_brazil=prefer_brazil):
                 if len(urls) >= count or self.out_of_time():
                     break
                 if image.id in self.used:

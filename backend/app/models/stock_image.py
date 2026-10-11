@@ -26,6 +26,10 @@ class StockImage(Base):
     alt = Column(String(500), nullable=True)
     width = Column(Integer, nullable=True)
     height = Column(Integer, nullable=True)
+    # Para escolher melhor: tags e local da foto (ou do fotógrafo) e quando foi publicada.
+    tags = Column(String(500), nullable=True)
+    location = Column(String(255), nullable=True)
+    published_at = Column(DateTime(timezone=True), nullable=True)
     uses = Column(Integer, nullable=False, default=0)
     # Unsplash pede o aviso de uso (download) quando a foto é usada; avisamos uma vez por foto.
     tracked_at = Column(DateTime(timezone=True), nullable=True)
