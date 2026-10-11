@@ -7,7 +7,7 @@
         <iframe v-if="video" :src="video" title="" tabindex="-1" allow="autoplay; encrypted-media"></iframe>
         <picture v-else-if="image">
           <source v-if="mobileImage" :srcset="responsiveSrcset(mobileImage) || mobileImage" sizes="100vw" media="(max-width: 640px)" />
-          <V2Img :src="image" alt="" priority />
+          <V2Img :src="image" alt="" priority :credit="false" />
         </picture>
       </div>
       <div class="v2-hero-fade" aria-hidden="true"></div>
@@ -16,18 +16,20 @@
         <HeroContent v-bind="contentProps" />
       </div>
       <div v-if="topLogo" class="v2-hero-logo"><img :src="logo" :alt="agencyName" :style="logoStyle" v-bind="logoAttrs" /></div>
+      <V2PhotoCredit v-if="!video" :src="image" class="v2-hero-credit" />
     </div>
 
     <div v-else-if="layout === 'classic'" class="v2-hero v2-hero--classic" :class="{ 'has-logo': topLogo }" :style="heroVars">
       <div class="v2-hero-media" aria-hidden="true">
         <iframe v-if="video" :src="video" title="" tabindex="-1" allow="autoplay; encrypted-media"></iframe>
-        <V2Img v-else-if="image" :src="image" alt="" priority />
+        <V2Img v-else-if="image" :src="image" alt="" priority :credit="false" />
       </div>
       <div class="v2-hero-veil" aria-hidden="true"></div>
       <div class="v2-hero-inner is-center">
         <HeroContent v-bind="contentProps" centered />
       </div>
       <div v-if="topLogo" class="v2-hero-logo"><img :src="logo" :alt="agencyName" :style="logoStyle" v-bind="logoAttrs" /></div>
+      <V2PhotoCredit v-if="!video" :src="image" class="v2-hero-credit" />
     </div>
 
     <div v-else-if="layout === 'split'" class="v2-hero v2-hero--split" :class="{ 'has-logo': topLogo }" :style="heroVars">
@@ -43,7 +45,7 @@
     </div>
 
     <div v-else class="v2-hero v2-hero--card" :class="{ 'has-logo': topLogo }" :style="heroVars">
-      <div class="v2-hero-media" aria-hidden="true"><V2Img v-if="image" :src="image" alt="" priority /></div>
+      <div class="v2-hero-media" aria-hidden="true"><V2Img v-if="image" :src="image" alt="" priority :credit="false" /></div>
       <div class="v2-hero-card-spacer" aria-hidden="true"></div>
       <div class="v2-hero-inner">
         <div class="v2-hero-card">
@@ -51,12 +53,14 @@
         </div>
       </div>
       <div v-if="topLogo" class="v2-hero-logo"><img :src="logo" :alt="agencyName" :style="logoStyle" v-bind="logoAttrs" /></div>
+      <V2PhotoCredit v-if="!video" :src="image" class="v2-hero-credit" />
     </div>
   </V2Section>
 </template>
 
 <script setup lang="ts">
 import { computed, defineComponent, h, toRef } from "vue";
+import V2PhotoCredit from "./V2PhotoCredit.vue";
 import type { HeroSection } from "../../../types/page";
 import { resolveMediaUrl, responsiveSrcset } from "../../../utils/media";
 import { normalizeYoutubeEmbedUrl } from "../../../utils/video";
@@ -229,6 +233,15 @@ const HeroContent = defineComponent({
   position: relative;
   overflow: hidden;
   color: #fff;
+}
+/* "©" do crédito da foto no canto de baixo da capa (o topo fica sob o Menu do topo), por cima
+   do degradê e do texto. */
+.v2-hero > .v2-hero-credit {
+  left: auto;
+  right: 14px;
+  bottom: 14px;
+  z-index: 8;
+  flex-direction: row-reverse;
 }
 .v2-hero-media {
   position: absolute;

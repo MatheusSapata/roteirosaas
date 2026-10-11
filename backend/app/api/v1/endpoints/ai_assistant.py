@@ -38,6 +38,7 @@ from app.services.ai_assistant import (
     transcribe_audio,
 )
 from app.services.ai_assistant_context import build_agency_context
+from app.services.stock_images import fill_section_photos
 from app.services.ai_assistant_usage import (
     check_ai_assistant_message_limit,
     get_ai_assistant_usage_record,
@@ -355,6 +356,14 @@ def create_page_base(
 
     current_config = normalize_config(page.config_json)
     new_config, suggested_title = build_page_base_config_from_reply(payload.reply, current_config)
+    try:
+        fill_section_photos(db, new_config["sections"], page.agency_id)
+    except Exception:  # pragma: no cover - sem foto, a seção fica com a imagem provisória
+        logger.exception("ai_assistant_stock_photos_failed")
+        db.rollback()
+    for section in new_config["sections"]:
+        section.pop("aiReplaces", None)
+        section.pop("aiStockPhoto", None)
     plan = resolve_agency_plan(db, page.agency_id)
     page.config_json = enforce_page_limits(db, page, publish=False, config=new_config, plan=plan)
     page.cover_image_url = derive_cover_image_from_config(page.config_json)
@@ -381,6 +390,12 @@ def preview_page_base(
     ensure_agency_member(db, page.agency_id, current_user)
     ensure_pages_editor_permission(db, page.agency_id, current_user)
     config, _ = build_page_base_config_from_reply(payload.reply, normalize_config(page.config_json), strict=True)
+    # Fotos dos bancos gratuitos no lugar das imagens provisórias (com o banco de buscas).
+    try:
+        fill_section_photos(db, config["sections"], page.agency_id)
+    except Exception:  # pragma: no cover - sem foto, a seção fica com a imagem provisória
+        logger.exception("ai_assistant_stock_photos_failed")
+        db.rollback()
     # Menu do topo com redes sociais: usa as redes cadastradas da agência.
     networks = [link for link in (page.agency.social_links if page.agency else []) if (link.url or "").strip()]
     for section in config["sections"]:

@@ -737,3 +737,26 @@ body.admin-shell select:not([multiple]):not([size]):not(.public-tokens select) {
   border-color: var(--ring) !important;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 15%, transparent) !important;
 }
+
+/* Tema escuro do painel: os fundos e textos claros de hover das classes utilitárias (bg-slate-100,
+   text-slate-900...) não acompanhavam o tema e deixavam texto claro em fundo claro, inclusive em
+   janelas abertas fora do painel (modal de "Página publicada"). Vale para todo o painel. */
+html.dark body.admin-shell .hover\:bg-white:hover,
+html.dark body.admin-shell .hover\:bg-slate-50:hover,
+html.dark body.admin-shell .hover\:bg-slate-50\/70:hover,
+html.dark body.admin-shell .hover\:bg-slate-100:hover,
+html.dark body.admin-shell .hover\:bg-slate-200:hover,
+html.dark body.admin-shell .hover\:bg-slate-300:hover,
+html.dark body.admin-shell .hover\:bg-gray-50:hover,
+html.dark body.admin-shell .hover\:bg-gray-100:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+html.dark body.admin-shell .hover\:text-slate-600:hover,
+html.dark body.admin-shell .hover\:text-slate-700:hover,
+html.dark body.admin-shell .hover\:text-slate-800:hover,
+html.dark body.admin-shell .hover\:text-slate-900:hover {
+  color: var(--foreground);
+}
+html.dark body.admin-shell .hover\:border-slate-300:hover {
+  border-color: rgba(148, 163, 184, 0.6);
+}

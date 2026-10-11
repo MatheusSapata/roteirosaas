@@ -1,6 +1,7 @@
 <template>
   <img
     ref="el"
+    v-bind="$attrs"
     :src="src"
     :srcset="srcset || undefined"
     :sizes="srcset ? sizes : undefined"
@@ -11,6 +12,7 @@
     @load="settle"
     @error="settle"
   />
+  <V2PhotoCredit v-if="credit && !small" :src="src" />
 </template>
 
 <script setup lang="ts">
@@ -22,6 +24,10 @@
  */
 import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { responsiveSrcset } from "../../../utils/media";
+import V2PhotoCredit from "./V2PhotoCredit.vue";
+
+// Duas raízes (foto + crédito): os atributos (class, alt, @click) vão para a foto.
+defineOptions({ inheritAttrs: false });
 
 const props = withDefaults(
   defineProps<{
@@ -30,9 +36,13 @@ const props = withDefaults(
     /** Primeira dobra (Banner Inicial): baixa antes das outras imagens. */
     priority?: boolean;
     loading?: "lazy" | "eager";
+    /** Mostra o "©" com o crédito, se a foto for de um banco gratuito. */
+    credit?: boolean;
   }>(),
-  { sizes: "100vw", priority: false, loading: "lazy" }
+  { sizes: "100vw", priority: false, loading: "lazy", credit: true }
 );
+// Miniaturas e avatares (até 200px) não levam o "©".
+const small = computed(() => /^\d+px$/.test(props.sizes.trim()) && parseInt(props.sizes, 10) <= 200);
 
 const el = ref<HTMLImageElement | null>(null);
 const waiting = ref(false);

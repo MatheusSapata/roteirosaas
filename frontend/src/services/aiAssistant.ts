@@ -22,6 +22,8 @@ export interface AiPageSectionSummary {
   caption?: unknown;
   headingLabel?: unknown;
   badge?: unknown;
+  /** Diferenciais: cards com ícones da biblioteca ("icon") ou emojis ("emoji"). */
+  iconMode?: string;
 }
 
 interface AiAssistantChatResponse {

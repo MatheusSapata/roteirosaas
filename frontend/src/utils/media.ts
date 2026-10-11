@@ -196,6 +196,12 @@ const VARIANT_WIDTHS = [640, 1280, 2400];
 
 /** srcset das versões leves de uma imagem, para o navegador baixar só o tamanho da tela. Vazio para imagens antigas. */
 export const responsiveSrcset = (url?: string | null): string => {
+  // Fotos do Unsplash: o próprio Unsplash entrega a largura pedida em "w".
+  if (url && /^https:\/\/images\.unsplash\.com\//.test(url)) {
+    const base = url.replace(/([?&])w=\d+&?/, "$1").replace(/[?&]$/, "");
+    const sep = base.includes("?") ? "&" : "?";
+    return VARIANT_WIDTHS.map(width => `${base}${sep}w=${width} ${width}w`).join(", ");
+  }
   if (!url || !VARIANT_RE.test(url)) return "";
   return VARIANT_WIDTHS.map(width => `${url.replace(VARIANT_RE, `_${width}.webp`)} ${width}w`).join(", ");
 };

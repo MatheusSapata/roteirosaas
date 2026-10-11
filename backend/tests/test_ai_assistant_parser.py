@@ -750,3 +750,135 @@ def test_editor_section_names_and_replaces() -> None:
     assert types == ["story", "links", "reasons", "biography", "faq", "cta", "prices", "itinerary", "photo"]
     assert config["sections"][0]["aiReplaces"] == "nossa-historia"
     assert "aiReplaces" not in config["sections"][1]
+
+
+def test_diferenciais_icon_or_emoji_style() -> None:
+    icons, emojis, auto_emojis, converted = (
+        build_page_base_config_from_reply(reply_with(block))[0]["sections"][0]
+        for block in (
+            "🟩 SEÇÃO: DIFERENCIAIS\nTítulo: A\nItem: Hotel\nDescrição: Bom\nÍcone: hotel\nItem: Guia\nDescrição: Junto",
+            "🟩 SEÇÃO: DIFERENCIAIS\nTítulo: B\nEstilo dos ícones: emojis\nItem: Parque\nDescrição: Diversão\nÍcone: 🎢\n"
+            "Item: Hotel\nDescrição: Perto\nÍcone: hotel\nItem: Cuidado\nDescrição: Sempre",
+            "🟩 SEÇÃO: DIFERENCIAIS\nTítulo: C\nItem: Família\nDescrição: Todos\nÍcone: 👨‍👩‍👧\nItem: Ônibus\nDescrição: Ida\nÍcone: 🚌",
+            "🟩 SEÇÃO: DIFERENCIAIS\nTítulo: D\nEstilo dos ícones: ícones\nItem: Ônibus\nDescrição: Ida\nÍcone: 🚌",
+        )
+    )
+    assert icons["iconMode"] == "icon" and [i["icon"] for i in icons["items"]] == ["icon:hotel", "icon:user-check"]
+    assert emojis["iconMode"] == "emoji" and [i["icon"] for i in emojis["items"]] == ["🎢", "🏨", "✅"]
+    assert auto_emojis["iconMode"] == "emoji" and [i["icon"] for i in auto_emojis["items"]] == ["👨‍👩‍👧", "🚌"]
+    assert converted["iconMode"] == "icon" and converted["items"][0]["icon"] == "icon:bus"
+
+
+def test_context_shows_diferenciais_style() -> None:
+    from app.services.ai_assistant_context import _sections_summary
+
+    assert _sections_summary([{"type": "reasons", "anchorId": "por-que", "iconMode": "emoji", "title": "Por que nós"}]) == [
+        '1. por-que: Diferenciais (com emojis) · "Por que nós"'
+    ]
+    assert "(com ícones)" in _sections_summary([{"type": "reasons", "anchorId": "x"}])[0]
+
+
+def test_contract_guides_conversation_and_photos() -> None:
+    from app.services.ai_assistant import PLATFORM_FORMAT_CONTRACT
+
+    assert "números são só para perguntas" in PLATFORM_FORMAT_CONTRACT
+    assert "busca fotos gratuitas (Pexels e Unsplash)" in PLATFORM_FORMAT_CONTRACT
+
+
+def test_stock_photos_fill_sections_and_reuse_cache(monkeypatch) -> None:
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    from app.models.stock_image import StockImage, StockImageSearch
+    from app.services import stock_images
+
+    engine = create_engine("sqlite://")
+    StockImage.__table__.create(engine)
+    StockImageSearch.__table__.create(engine)
+    db = sessionmaker(bind=engine)()
+
+    calls = []
+
+    def fake_pexels(client, key, query):
+        calls.append(query)
+        if "gramado" not in query.lower() and "wine" not in query.lower() and "travel" not in query.lower():
+            return []
+        return [
+            {"provider": "pexels", "provider_id": f"{query}-{n}", "download_url": f"https://img/{query}/{n}.jpg",
+             "page_url": "p", "photographer": "Ana", "photographer_url": "u", "alt": "", "width": 10, "height": 5}
+            for n in range(3)
+        ]
+
+    monkeypatch.setattr(stock_images, "_search_pexels", fake_pexels)
+    monkeypatch.setattr(stock_images, "materialize", lambda db, client, image: f"/uploads/{image.provider_id}.webp")
+    monkeypatch.setattr(stock_images, "get_settings", lambda: SimpleNamespace(pexels_api_key="k", unsplash_access_key=None))
+
+    config, _ = build_page_base_config_from_reply(reply_with(
+        "🟩 SEÇÃO: BANNER INICIAL\nTítulo: Gramado\nBusca de imagem: Gramado Brazil street | couple drinking wine",
+        "🟩 SEÇÃO: TEXTO E IMAGENS\nTítulo: Vinícolas\nBusca de imagem: Vale dos Vinhedos | couple drinking wine",
+        "🟩 SEÇÃO: TEXTO E IMAGENS\nSubstitui: outra\nTítulo: Só texto",
+        "🟩 SEÇÃO: LINKS/ROTEIROS\nTítulo: Viagens\nViagem: Gramado\nBusca de imagem: Gramado Brazil street",
+    ))
+    sections = config["sections"]
+    assert sections[0]["aiImageQuery"].startswith("Gramado") and "aiImageQuery" not in sections[2]
+    filled = stock_images.fill_section_photos(db, sections, agency_id=None)
+    hero, story, swap, links = sections
+    assert filled == 3
+    assert hero["backgroundImage"] == hero["mobileBackgroundImage"] == "/uploads/Gramado Brazil street-0.webp"
+    # Sem foto do lugar, a sensação ("couple drinking wine") entra; nada se repete na página.
+    assert story["images"] == ["/uploads/couple drinking wine-0.webp"] and story["aiStockPhoto"] is True
+    assert "aiStockPhoto" not in swap
+    assert links["items"][0]["image"] == "/uploads/Gramado Brazil street-1.webp"
+    assert all("aiImageQuery" not in section for section in sections)
+    # A mesma busca de novo vem do banco de buscas, sem consultar o Pexels.
+    before = len(calls)
+    assert len(stock_images.search_stock_images(db, None, "Gramado  brazil STREET")) == 3
+    assert len(calls) == before
+
+
+def test_stock_search_reuses_similar_searches_descriptions_and_respects_hourly_limit(monkeypatch) -> None:
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    from app.models.stock_image import StockImage, StockImageSearch
+    from app.services import stock_images
+
+    engine = create_engine("sqlite://")
+    StockImage.__table__.create(engine)
+    StockImageSearch.__table__.create(engine)
+    db = sessionmaker(bind=engine)()
+    calls = []
+
+    def fake_unsplash(client, key, query):
+        calls.append(query)
+        stock_images.rate_limiter.record("unsplash")
+        alt = "couple drinking red wine at vineyard" if "wine" in query else f"{query} view"
+        return [
+            {"provider": "unsplash", "provider_id": f"{query}-{n}", "download_url": "d", "stored_url": f"https://u/{query}/{n}",
+             "page_url": "p", "photographer": "Ana", "photographer_url": "https://unsplash.com/@ana", "alt": alt, "width": 1, "height": 1}
+            for n in range(4)
+        ]
+
+    monkeypatch.setattr(stock_images, "_search_unsplash", fake_unsplash)
+    monkeypatch.setattr(stock_images, "get_settings", lambda: SimpleNamespace(pexels_api_key=None, unsplash_access_key="k"))
+    monkeypatch.setattr(stock_images, "rate_limiter", stock_images._RateLimiter())
+
+    assert len(stock_images.search_stock_images(db, None, "Gramado Brazil street")) == 4
+    assert len(stock_images.search_stock_images(db, None, "red wine couple")) == 4
+    assert calls == ["Gramado Brazil street", "red wine couple"]
+    # Busca parecida (mesmo destino, outra palavra): reaproveita, sem chamar o Unsplash.
+    assert [i.provider_id for i in stock_images.search_stock_images(db, None, "Gramado street winter")][0] == "Gramado Brazil street-0"
+    # Palavras que estão na descrição das fotos guardadas: também reaproveita.
+    assert len(stock_images.search_stock_images(db, None, "vineyard couple drinking")) >= 3
+    assert calls == ["Gramado Brazil street", "red wine couple"]
+    # Limite da hora esgotado: não chama o banco; devolve o que tiver (nada, para um assunto novo).
+    stock_images.HOURLY_BUDGET["unsplash"], budget = 2, stock_images.HOURLY_BUDGET["unsplash"]
+    try:
+        assert stock_images.search_stock_images(db, None, "Paris Eiffel tower") == []
+        assert calls == ["Gramado Brazil street", "red wine couple"]
+    finally:
+        stock_images.HOURLY_BUDGET["unsplash"] = budget
+    # Crédito com os links pedidos pelo Unsplash.
+    image = db.query(StockImage).first()
+    credit = stock_images.credit_for(image, "https://u/x")
+    assert credit["provider"] == "Unsplash" and credit["link"].endswith("utm_source=roteiro_online&utm_medium=referral")

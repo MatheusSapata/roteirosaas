@@ -1345,7 +1345,7 @@
                       </div>
                     </template>
                     <template v-else-if="newEditor && message.role === 'assistant' && aiQuestionForm(message.content)">
-                      <div v-if="aiQuestionForm(message.content)!.intro" class="editor-ai-sidebar-response-text">{{ aiQuestionForm(message.content)!.intro }}</div>
+                      <div v-if="aiQuestionForm(message.content)!.intro" class="editor-ai-sidebar-response-text ai-rich" v-html="aiRichText(aiQuestionForm(message.content)!.intro)"></div>
                       <ol class="ai-q-list">
                         <li v-for="(question, questionIndex) in aiQuestionForm(message.content)!.questions" :key="questionIndex" class="ai-q">
                           <p class="ai-q-text">{{ question.text }}</p>
@@ -1370,7 +1370,7 @@
                           />
                         </li>
                       </ol>
-                      <div v-if="aiQuestionForm(message.content)!.outro" class="editor-ai-sidebar-response-text ai-q-outro">{{ aiQuestionForm(message.content)!.outro }}</div>
+                      <div v-if="aiQuestionForm(message.content)!.outro" class="editor-ai-sidebar-response-text ai-rich ai-q-outro" v-html="aiRichText(aiQuestionForm(message.content)!.outro)"></div>
                       <div v-if="aiQuestionsActive(message)" class="ai-v2-actions ai-q-actions">
                         <button
                           type="button"
@@ -1381,6 +1381,7 @@
                         <button type="button" :disabled="aiAssistantLimitReached" @click="createAiNow">Criar agora</button>
                       </div>
                     </template>
+                    <div v-else-if="newEditor && message.role === 'assistant'" class="editor-ai-sidebar-response-text ai-rich" v-html="aiRichText(message.content)"></div>
                     <div v-else class="editor-ai-sidebar-response-text">{{ message.content }}</div>
                     <div v-if="!newEditor && message.role === 'assistant' && hasAiStructure(message.content)" class="mt-3 flex items-center gap-1">
                         <button type="button" class="min-h-11 min-w-0 flex-1 rounded-lg border border-indigo-200 bg-white px-3 py-2.5 text-sm font-semibold text-indigo-700 hover:bg-indigo-50 focus-visible:outline-indigo-600 disabled:opacity-50"
@@ -1398,7 +1399,7 @@
                           Substituir estrutura
                         </button>
                     </div>
-                    <p v-if="aiStructureApplying && message.role === 'assistant' && hasAiStructure(message.content)" role="status" class="mt-1 text-xs text-slate-500">Aplicando estrutura...</p>
+                    <p v-if="aiStructureApplying && message.role === 'assistant' && hasAiStructure(message.content)" role="status" class="mt-1 text-xs text-slate-500">Aplicando a estrutura e buscando fotos...</p>
                   </div>
                 </template>
 
@@ -1719,6 +1720,7 @@ import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
 import { resolvePageDesign } from "../../utils/pageDesign";
 import { sectionNameV2 } from "../../utils/sectionCatalogV2";
 import { useAgencyPages, type AgencyPage } from "../../components/admin/v2edit/useAgencyPages";
+import { PHOTO_CREDITS_KEY, buildPhotoCredits } from "../../components/public/v2/photoCredits";
 import { getLocalizedValue } from "../../utils/i18n";
 import SectionPickerV2 from "../../components/admin/SectionPickerV2.vue";
 import EdGroup from "../../components/admin/v2edit/EdGroup.vue";
@@ -2639,9 +2641,12 @@ const mergeAiSwap = (current: PageSection, incoming: PageSection): PageSection =
     // Troca de tipo: a seção nova entra no mesmo lugar, com a âncora e a foto da antiga.
     const converted: Record<string, any> = { ...incoming, anchorId: current.anchorId, enabled: current.enabled };
     delete converted.aiReplaces;
-    // A foto que a agência já tinha na seção vale mais que a provisória da sugestão.
-    const photo = aiSectionPhoto(current);
+    delete converted.aiStockPhoto;
+    // A foto que a agência já tinha na seção vale mais que a provisória da sugestão (a não ser
+    // que a sugestão traga uma foto nova do banco, pedida pelo usuário).
+    const photo = (incoming as any).aiStockPhoto ? "" : aiSectionPhoto(current);
     if (photo) {
+      converted.photoCredits = (current as any).photoCredits;
       if (Array.isArray(converted.images)) converted.images = [photo];
       for (const key of ["backgroundImage", "image"]) if (key in converted) converted[key] = photo;
     }
@@ -2649,6 +2654,18 @@ const mergeAiSwap = (current: PageSection, incoming: PageSection): PageSection =
   }
   const merged: Record<string, any> = { ...current };
   const next = incoming as Record<string, any>;
+  // Foto nova do banco de fotos (o usuário pediu outra foto): entra no lugar da atual.
+  if (next.aiStockPhoto) {
+    merged.photoCredits = next.photoCredits;
+    for (const key of ["backgroundImage", "mobileBackgroundImage", "image", "mobileImage", "images"]) {
+      if (key in next && !isAiFiller(next[key])) merged[key] = next[key];
+    }
+    if (Array.isArray(next.days)) {
+      merged.days = (merged.days || []).map((day: Record<string, any>, index: number) =>
+        next.days[index] && !isAiFiller(next.days[index].image) ? { ...day, image: next.days[index].image } : day
+      );
+    }
+  }
   for (const key of AI_SWAP_TEXT_KEYS) {
     if (!(key in next) || isAiFiller(next[key])) continue;
     if (key === "items" && Array.isArray(next.items)) {
@@ -2665,6 +2682,8 @@ const mergeAiSwap = (current: PageSection, incoming: PageSection): PageSection =
   return merged as PageSection;
 };
 // Páginas da agência, para ligar os cards da vitrine que a IA indicou ("Página: gramado-canela").
+// Crédito das fotos de bancos gratuitos na prévia ("©" no canto de cada foto).
+provide(PHOTO_CREDITS_KEY, computed(() => buildPhotoCredits(sections.value)));
 const aiAgencyPages = useAgencyPages();
 const aiPageImage = (page: AgencyPage) => {
   let config: Record<string, any> = {};
@@ -2714,12 +2733,18 @@ const aiQuestionForm = (content: string): { intro: string; questions: AiQuestion
   const questions: AiQuestion[] = [];
   for (const raw of content.split("\n")) {
     const line = raw.trim();
-    const question = line.match(/^\*{0,2}(\d{1,2})[.)]\s+(.+?)\*{0,2}$/);
+    const numbered = line.match(/^\*{0,2}(\d{1,2})[.)]\s+(.+?)\*{0,2}$/);
     const option = line.match(/^[-•*]\s+(.+)$/);
-    if (question) {
-      questions.push({ text: question[2].replace(/\*\*/g, "").trim(), options: [] });
+    if (numbered) {
+      // Só pergunta de verdade (termina com "?") vira escolha; lista numerada de explicação
+      // ("1. Onde buscar") deixa a mensagem inteira como texto.
+      const text = numbered[2].replace(/\*\*/g, "").trim();
+      if (!text.endsWith("?")) return null;
+      questions.push({ text, options: [] });
     } else if (option && questions.length && !outro.length) {
-      questions[questions.length - 1].options.push(option[1].replace(/\s*\((?:recomendad[oa]|sugerid[oa])\)\s*$/i, "").trim());
+      const choice = option[1].replace(/\*\*/g, "").replace(/\s*\((?:recomendad[oa]|sugerid[oa])\)\s*$/i, "").trim();
+      if (choice.length > 60) return null;
+      questions[questions.length - 1].options.push(choice);
     } else if (!questions.length) {
       intro.push(raw);
     } else if (line) {
@@ -2728,6 +2753,42 @@ const aiQuestionForm = (content: string): { intro: string; questions: AiQuestion
   }
   if (!questions.length || !questions.some(question => question.options.length)) return null;
   return { intro: intro.join("\n").trim(), questions, outro: outro.join("\n").trim() };
+};
+// Texto das respostas com formatação leve: negrito, código, tópicos e listas numeradas.
+const aiEscape = (value: string) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const aiInline = (value: string) =>
+  aiEscape(value)
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/`([^`]+)`/g, "<code>$1</code>");
+const aiRichText = (text: string): string => {
+  const out: string[] = [];
+  let list: "ul" | "ol" | null = null;
+  const close = () => {
+    if (list) out.push(`</${list}>`);
+    list = null;
+  };
+  for (const raw of (text || "").split("\n")) {
+    const line = raw.trim();
+    const bullet = line.match(/^[-•*]\s+(.+)$/);
+    const numbered = line.match(/^(\d{1,2})[.)]\s+(.+)$/);
+    if (bullet || numbered) {
+      const kind = bullet ? "ul" : "ol";
+      if (list !== kind) {
+        close();
+        // Lista numerada mantém o número escrito ("2. ...") mesmo depois de tópicos no meio.
+        out.push(kind === "ol" && numbered && numbered[1] !== "1" ? `<ol start="${Number(numbered[1])}">` : `<${kind}>`);
+        list = kind;
+      }
+      out.push(`<li>${aiInline(bullet ? bullet[1] : numbered![2])}</li>`);
+    } else if (!line) {
+      close();
+    } else {
+      close();
+      out.push(`<p>${aiInline(line)}</p>`);
+    }
+  }
+  close();
+  return out.join("");
 };
 const aiAnswers = reactive<Record<string, string>>({});
 // Só a última resposta da IA recebe escolhas; as anteriores ficam como texto.
@@ -2779,7 +2840,7 @@ const applyAiStructure = async (reply: string, mode: "insert" | "replace" | "swa
         ? { ...section, logoUrl: agencyLogo }
         : section
     ).map(prepareAiSection).map(section => {
-      const { aiReplaces: _replaced, ...clean } = section as PageSection & { aiReplaces?: string };
+      const { aiReplaces: _replaced, aiStockPhoto: _stock, ...clean } = section as PageSection & { aiReplaces?: string; aiStockPhoto?: boolean };
       return clean as PageSection;
     }));
     let nextSections = additions;
@@ -2798,7 +2859,9 @@ const applyAiStructure = async (reply: string, mode: "insert" | "replace" | "swa
         aiStructureError.value = "Não encontrei essa seção na página para trocar. Use Inserir no fim.";
         return;
       }
-      nextSections = sections.value.map((section, position) => (position === index ? mergeAiSwap(section, incoming) : section));
+      const incomingRaw = generated.find(section => section.type === incoming.type) as PageSection | undefined;
+      const withPhotoFlag = incomingRaw && (incomingRaw as any).aiStockPhoto ? ({ ...incoming, aiStockPhoto: true } as PageSection) : incoming;
+      nextSections = sections.value.map((section, position) => (position === index ? mergeAiSwap(section, withPhotoFlag) : section));
       aiSwapped.add(reply);
     } else if (mode === "insert") {
       const existing = sections.value;
@@ -3164,7 +3227,8 @@ const sendAiAssistantMessage = async () => {
       label: raw.label,
       caption: raw.caption,
       headingLabel: raw.headingLabel,
-      badge: raw.badge
+      badge: raw.badge,
+      iconMode: raw.iconMode
     };
   });
   const userText = trimmedMessage || "Mensagem com arquivos";
@@ -7902,6 +7966,17 @@ onMounted(async () => {
 .ai-v2-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
 .ai-v2-chips button { padding: 7px 12px; border-radius: 999px; background: var(--card); box-shadow: inset 0 0 0 1px var(--border); font-size: 13px; font-weight: 600; color: var(--foreground); }
 .ai-v2-chips button:hover { box-shadow: inset 0 0 0 1.5px #12b981; }
+.ai-rich { white-space: normal; }
+/* O texto vem de v-html: os estilos com escopo precisam de :deep() para alcançá-lo. */
+.ai-rich :deep(p) { margin: 0 0 8px; }
+.ai-rich :deep(p:last-child), .ai-rich :deep(ul:last-child), .ai-rich :deep(ol:last-child) { margin-bottom: 0; }
+.ai-rich :deep(ul), .ai-rich :deep(ol) { margin: 0 0 8px; padding-left: 20px; }
+.ai-rich :deep(ul) { list-style: disc; }
+.ai-rich :deep(ol) { list-style: decimal; }
+.ai-rich :deep(li) { margin: 2px 0; }
+.ai-rich :deep(li::marker) { color: #12b981; }
+.ai-rich :deep(strong) { font-weight: 700; }
+.ai-rich :deep(code) { padding: 1px 5px; border-radius: 6px; background: rgba(127, 127, 127, 0.16); font-family: inherit; font-size: 0.95em; }
 .ai-q-list { display: flex; flex-direction: column; gap: 12px; margin: 10px 0 0; padding: 0; list-style: none; }
 .ai-q-text { margin: 0 0 6px; font-size: 13.5px; font-weight: 700; line-height: 1.35; }
 .ai-q-options { display: flex; flex-wrap: wrap; gap: 6px; }

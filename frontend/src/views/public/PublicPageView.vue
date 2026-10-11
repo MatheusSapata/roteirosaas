@@ -66,6 +66,7 @@ import { pickSectionComponent, v2Components } from "../../components/public/v2/r
 import { DEFAULT_ACCENT, PAGE_DESIGN_KEY } from "../../components/public/v2/designContext";
 import type { LeadForm } from "../../types/leads";
 import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
+import { PHOTO_CREDITS_KEY, buildPhotoCredits } from "../../components/public/v2/photoCredits";
 import BrandLogo from "../../assets/Logo Branco - Roteiro Online.png";
 import BrandFavicon from "../../assets/Favicon.png";
 import { resolveMediaUrl } from "../../utils/media";
@@ -170,6 +171,8 @@ const isPlatformHost = computed(() => {
 const brandingInfo = computed(() => pageData.value?.branding || {});
 const statsApi = computed(() => (isPlatformHost.value ? api : platformApi));
 provide(PUBLIC_BRANDING_KEY, brandingInfo);
+// Crédito das fotos de bancos gratuitos ("©" no canto de cada foto).
+provide(PHOTO_CREDITS_KEY, computed(() => buildPhotoCredits(sections.value)));
 const pageConfigDesign = ref<PageConfig["design"]>(undefined);
 const pageDesign = computed(() => resolvePageDesign(pageData.value?.design_v2_enabled, { design: pageConfigDesign.value }));
 const hasV2 = (type: SectionType) => pageDesign.value === "v2" && Boolean(v2Components[type]);
