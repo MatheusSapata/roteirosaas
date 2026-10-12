@@ -12,6 +12,8 @@ export interface CreativeData {
   priceSuffix: string;
   installments: string;
   benefits: string[];
+  /** Único elemento com cara de botão na arte: aparece só se ativado. */
+  ctaEnabled: boolean;
   cta: string;
   contact: string;
   agencyName: string;
@@ -19,7 +21,13 @@ export interface CreativeData {
   images: string[];
   primary: string;
   secondary: string;
+  itinerary: { day: string; title: string; description: string }[];
+  prices: { title: string; prefix: string; value: string; note: string }[];
+  flights: { label: string; date: string; route: string; times: string; details: string }[];
 }
+
+/** A arte não é clicável: o botão é opcional e serve de chamada de anúncio. */
+export const CTA_SUGGESTIONS = ["Saiba mais", "Garanta agora", "Reserve já", "Quero ir"];
 
 export type CreativeFormat = "feed" | "square" | "story";
 export const FORMAT_SIZES: Record<CreativeFormat, { width: number; height: number; label: string }> = {
@@ -73,7 +81,8 @@ export const extractCreativeData = (
   const itinerary = sections.find(section => section.type === "itinerary") as any;
 
   const priceItems = (prices?.items || []).filter((item: any) => Number(item?.price) > 0);
-  const cheapest = priceItems.sort((a: any, b: any) => Number(a.price) - Number(b.price))[0];
+  const sortedPrices = [...priceItems].sort((a: any, b: any) => Number(a.price) - Number(b.price));
+  const cheapest = sortedPrices[0];
   const priceDescription = text(cheapest?.description);
   // "por pessoa" às vezes vem no rótulo do preço; ele vai depois do valor, não antes.
   const priceLabel = text(cheapest?.priceLabel);
@@ -82,7 +91,7 @@ export const extractCreativeData = (
 
   const chips = (hero?.chips || []).map(text).filter(Boolean);
   const reasonTitles = (reasons?.items || []).map((item: any) => text(item?.title)).filter(Boolean);
-  const benefits = [...chips, ...reasonTitles].filter((item, index, all) => all.indexOf(item) === index).slice(0, 6);
+  const benefits = [...chips, ...reasonTitles].filter((item, index, all) => all.indexOf(item) === index).slice(0, 8);
 
   const departure = formatDate(hero?.departureDate);
   const back = formatDate(hero?.returnDate);
@@ -101,14 +110,59 @@ export const extractCreativeData = (
     priceSuffix: cheapest && perPerson.test(`${priceLabel} ${priceDescription}`) ? "por pessoa" : "",
     installments,
     benefits,
-    cta: phone ? "Chame no WhatsApp" : "Fale com a gente",
+    ctaEnabled: false,
+    cta: "Saiba mais",
     contact,
     agencyName: agency?.name || "",
     logoUrl: resolveMediaUrl(hero?.logoUrl || agency?.logo_url || "") || "",
     images: collectImages(sections),
     primary: config?.theme?.color1 || "#0f7a4f",
-    secondary: config?.theme?.color2 || "#f59e0b"
+    secondary: config?.theme?.color2 || "#f59e0b",
+    itinerary: (itinerary?.days || [])
+      .map((day: any, index: number) => ({
+        day: text(day?.day) || `Dia ${index + 1}`,
+        title: text(day?.title),
+        description: shorten(text(day?.description), 110)
+      }))
+      .filter((day: { title: string; description: string }) => day.title || day.description),
+    prices: priceItems.slice(0, 6).map((item: any) => {
+      const label = text(item.priceLabel);
+      return {
+        title: text(item.title),
+        prefix: label && !perPerson.test(label) ? label : "",
+        value: formatMoney(Number(item.price)),
+        note: shorten(text(item.description), 90)
+      };
+    }),
+    flights: extractFlights(sections)
   };
+};
+
+const shorten = (value: string, max: number) => (value.length > max ? `${value.slice(0, max - 1).replace(/\s+\S*$/, "")}…` : value);
+
+const hour = (iso?: string) => (iso && iso.length >= 16 ? iso.slice(11, 16) : "");
+
+/** Ida e volta da seção Voos, em uma linha cada (origem → destino, horários, companhia). */
+const extractFlights = (sections: PageSection[]) => {
+  const flight = sections.find(section => section.type === "flight_details") as any;
+  return ((flight?.journeys || []) as any[])
+    .filter(journey => journey?.is_enabled !== false && journey?.segments?.length)
+    .map(journey => {
+      const segments = journey.segments as any[];
+      const first = segments[0];
+      const last = segments[segments.length - 1];
+      const place = (city?: string, iata?: string) => [city, iata ? `(${iata})` : ""].filter(Boolean).join(" ");
+      const airlines = [...new Set(segments.map(segment => segment.airline_name).filter(Boolean))].join(" + ");
+      const stops = segments.length > 1 ? `${segments.length - 1} conexão${segments.length > 2 ? "ões" : ""}` : "Voo direto";
+      const times = [hour(first.departure_datetime), hour(last.arrival_datetime)].filter(Boolean).join(" → ");
+      return {
+        label: journey.title || (journey.direction === "inbound" ? "Volta" : "Ida"),
+        date: formatDate(first.flight_date || first.departure_datetime),
+        route: `${place(first.departure_city, first.departure_airport_iata)} → ${place(last.arrival_city, last.arrival_airport_iata)}`,
+        times,
+        details: [airlines, stops].filter(Boolean).join(" · ")
+      };
+    });
 };
 
 /** Texto escuro ou claro para ler bem sobre uma cor. */

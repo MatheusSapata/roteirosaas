@@ -4,11 +4,11 @@
       <div>
         <router-link :to="{ name: 'page-edit', params: { id } }" class="cv-back"><ArrowLeftIcon aria-hidden="true" /> Voltar para a página</router-link>
         <h1 class="cv-title">Criativos</h1>
-        <p class="cv-sub">Artes prontas para divulgar <b>{{ page?.title || "esta viagem" }}</b> no Instagram, WhatsApp e Facebook. Tudo sai com as cores, a foto e o logo da página.</p>
+        <p class="cv-sub">Artes prontas para divulgar <b>{{ page?.title || "esta viagem" }}</b>: stories, post no feed ou carrossel com todas as informações. Tudo sai com as cores, as fotos e o logo da página.</p>
       </div>
       <div class="cv-actions">
         <button type="button" class="cv-btn cv-btn-primary" :disabled="downloading || loading" @click="download">
-          <DownloadIcon aria-hidden="true" /> {{ downloading ? "Gerando…" : "Baixar PNG" }}
+          <DownloadIcon aria-hidden="true" /> {{ downloading ? "Gerando…" : mode === "carousel" ? `Baixar carrossel (${activeSlides.length} imagens)` : "Baixar PNG" }}
         </button>
       </div>
     </div>
@@ -17,51 +17,85 @@
     <p v-if="loading" class="cv-muted">Carregando a página…</p>
 
     <template v-else-if="data">
-      <div class="cv-formats" role="tablist" aria-label="Formato">
-        <button
-          v-for="(info, key) in FORMAT_SIZES"
-          :key="key"
-          type="button"
-          role="tab"
-          :aria-selected="format === key"
-          :class="{ on: format === key }"
-          @click="format = key"
-        >
-          {{ info.label }} <small>{{ info.width }}×{{ info.height }}</small>
-        </button>
-      </div>
-
-      <section v-for="(label, category) in CATEGORY_LABELS" :key="category" class="cv-group">
-        <h2>{{ label }}</h2>
-        <div class="cv-gallery">
+      <div class="cv-bar">
+        <div class="cv-formats" role="tablist" aria-label="Tipo">
+          <button type="button" role="tab" :aria-selected="mode === 'single'" :class="{ on: mode === 'single' }" @click="mode = 'single'">Arte única</button>
+          <button type="button" role="tab" :aria-selected="mode === 'carousel'" :class="{ on: mode === 'carousel' }" @click="mode = 'carousel'">Carrossel</button>
+        </div>
+        <div class="cv-formats" role="tablist" aria-label="Formato">
           <button
-            v-for="item in templatesBy(category)"
-            :key="item.id"
+            v-for="key in formats"
+            :key="key"
             type="button"
-            class="cv-thumb"
-            :class="{ on: template === item.id }"
-            :title="item.description"
-            @click="template = item.id"
+            role="tab"
+            :aria-selected="format === key"
+            :class="{ on: format === key }"
+            @click="format = key"
           >
-            <span class="cv-thumb-stage" :style="stageStyle(thumbWidth)">
-              <CreativeArtboard :template="item.id" :format="format" :data="data" :photos="previewPhotos" :show-logo="showLogo" :style="scaleStyle(thumbWidth)" />
-            </span>
-            <span class="cv-thumb-name">{{ item.name }}</span>
-            <small>{{ item.photos > 1 ? `${item.photos} fotos` : "1 foto" }}</small>
+            {{ FORMAT_SIZES[key].label }} <small>{{ FORMAT_SIZES[key].width }}×{{ FORMAT_SIZES[key].height }}</small>
           </button>
         </div>
-      </section>
+      </div>
 
-      <div class="cv-work">
-        <div class="cv-preview">
+      <template v-if="mode === 'single'">
+        <section v-for="(label, category) in CATEGORY_LABELS" :key="category" class="cv-group">
+          <h2>{{ label }}</h2>
+          <div class="cv-gallery">
+            <button
+              v-for="item in templatesBy(category)"
+              :key="item.id"
+              type="button"
+              class="cv-thumb"
+              :class="{ on: template === item.id }"
+              :title="item.description"
+              @click="template = item.id"
+            >
+              <span class="cv-thumb-stage" :style="stageStyle(thumbWidth)">
+                <CreativeArtboard :template="item.id" :format="format" :data="data" :photos="previewPhotos" :show-logo="showLogo" :style="scaleStyle(thumbWidth)" />
+              </span>
+              <span class="cv-thumb-name">{{ item.name }}</span>
+              <small>{{ item.photos > 1 ? `${item.photos} fotos` : "1 foto" }}</small>
+            </button>
+          </div>
+        </section>
+      </template>
+
+      <div class="cv-work" :class="{ 'is-carousel': mode === 'carousel' }">
+        <div v-if="mode === 'single'" class="cv-preview">
           <div ref="previewBox" class="cv-preview-stage" :style="stageStyle(previewWidth)">
             <CreativeArtboard :template="template" :format="format" :data="data" :photos="previewPhotos" :show-logo="showLogo" :style="scaleStyle(previewWidth)" />
           </div>
           <p class="cv-muted">{{ currentTemplate?.description }}</p>
         </div>
 
+        <div v-else class="cv-slides">
+          <p class="cv-muted">
+            {{ activeSlides.length }} slides montados com as informações da página. Desmarque o que não quiser postar; cada slide usa a próxima foto escolhida.
+          </p>
+          <div class="cv-slide-grid">
+            <div v-for="(item, index) in slides" :key="item.key" class="cv-slide" :class="{ off: excluded.includes(item.key) }">
+              <span class="cv-thumb-stage" :style="stageStyle(slideWidth)">
+                <CreativeCarouselSlide
+                  :slide="item.slide"
+                  :format="format"
+                  :data="data"
+                  :photo="photoFor(activeIndex(index), previewPhotos)"
+                  :index="activeIndex(index)"
+                  :total="activeSlides.length"
+                  :show-logo="showLogo"
+                  :style="scaleStyle(slideWidth)"
+                />
+              </span>
+              <label class="cv-check">
+                <input type="checkbox" :checked="!excluded.includes(item.key)" :disabled="item.slide.kind === 'cover'" @change="toggleSlide(item.key)" />
+                <span>{{ slideLabel(item.slide) }}</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
         <div class="cv-panel">
-          <h3>Fotos <small>{{ currentTemplate && currentTemplate.photos > 1 ? `este modelo usa ${currentTemplate.photos}` : "este modelo usa 1" }}</small></h3>
+          <h3>Fotos <small>{{ photoHint }}</small></h3>
           <p class="cv-muted">Clique para escolher a ordem. A primeira é a principal.</p>
           <div class="cv-photos">
             <button
@@ -98,18 +132,61 @@
             <label class="cv-field"><span>Parcelas</span><input v-model="data.installments" placeholder="em até 10x sem juros" /></label>
           </div>
 
-          <h3>Benefícios <small>até 6</small></h3>
-          <div v-for="(_, index) in data.benefits" :key="index" class="cv-benefit">
+          <h3>Botão <small>a arte não é clicável; use como chamada</small></h3>
+          <label class="cv-switch">
+            <input v-model="data.ctaEnabled" type="checkbox" />
+            <span>{{ data.ctaEnabled ? "Mostrar botão na arte" : "Sem botão" }}</span>
+          </label>
+          <template v-if="data.ctaEnabled">
+            <label class="cv-field"><span>Texto do botão</span><input v-model="data.cta" maxlength="28" placeholder="Saiba mais" /></label>
+            <div class="cv-chips">
+              <button v-for="option in CTA_SUGGESTIONS" :key="option" type="button" :class="{ on: data.cta === option }" @click="data.cta = option">{{ option }}</button>
+            </div>
+          </template>
+          <label class="cv-field"><span>WhatsApp (aparece como texto)</span><input v-model="data.contact" placeholder="(11) 99999-0000" /></label>
+
+          <h3>Benefícios <small>até 8</small></h3>
+          <div v-for="(_, index) in data.benefits" :key="`b${index}`" class="cv-benefit">
             <input v-model="data.benefits[index]" maxlength="60" />
             <button type="button" class="cv-icon" aria-label="Remover" @click="data.benefits.splice(index, 1)"><XIcon aria-hidden="true" /></button>
           </div>
-          <button v-if="data.benefits.length < 6" type="button" class="cv-btn cv-btn-ghost" @click="data.benefits.push('')"><PlusIcon aria-hidden="true" /> Adicionar benefício</button>
+          <button v-if="data.benefits.length < 8" type="button" class="cv-btn cv-btn-ghost" @click="data.benefits.push('')"><PlusIcon aria-hidden="true" /> Adicionar benefício</button>
 
-          <h3>Chamada</h3>
-          <div class="cv-row">
-            <label class="cv-field"><span>Botão</span><input v-model="data.cta" maxlength="40" /></label>
-            <label class="cv-field"><span>Contato</span><input v-model="data.contact" placeholder="(11) 99999-0000" /></label>
-          </div>
+          <template v-if="mode === 'carousel'">
+            <h3>Roteiro <small>{{ data.itinerary.length }} dias</small></h3>
+            <div v-for="(day, index) in data.itinerary" :key="`d${index}`" class="cv-item">
+              <div class="cv-item-head">
+                <b>{{ index + 1 }}</b>
+                <input v-model="day.title" maxlength="70" placeholder="Título do dia" />
+                <button type="button" class="cv-icon" aria-label="Remover dia" @click="data.itinerary.splice(index, 1)"><XIcon aria-hidden="true" /></button>
+              </div>
+              <textarea v-model="day.description" rows="2" maxlength="140" placeholder="Resumo do dia"></textarea>
+            </div>
+            <button type="button" class="cv-btn cv-btn-ghost" @click="data.itinerary.push({ day: '', title: '', description: '' })"><PlusIcon aria-hidden="true" /> Adicionar dia</button>
+
+            <h3>Valores</h3>
+            <div v-for="(item, index) in data.prices" :key="`p${index}`" class="cv-item">
+              <div class="cv-item-head">
+                <input v-model="item.title" maxlength="50" placeholder="Ex.: Quarto duplo" />
+                <input v-model="item.value" class="cv-short" maxlength="20" placeholder="R$ 2.990" />
+                <button type="button" class="cv-icon" aria-label="Remover valor" @click="data.prices.splice(index, 1)"><XIcon aria-hidden="true" /></button>
+              </div>
+              <input v-model="item.note" maxlength="90" placeholder="Observação (opcional)" />
+            </div>
+            <button type="button" class="cv-btn cv-btn-ghost" @click="data.prices.push({ title: '', prefix: '', value: '', note: '' })"><PlusIcon aria-hidden="true" /> Adicionar valor</button>
+
+            <h3>Voos</h3>
+            <div v-for="(flight, index) in data.flights" :key="`f${index}`" class="cv-item">
+              <div class="cv-item-head">
+                <input v-model="flight.label" class="cv-short" maxlength="20" placeholder="Ida" />
+                <input v-model="flight.date" class="cv-short" maxlength="12" placeholder="12/07" />
+                <button type="button" class="cv-icon" aria-label="Remover voo" @click="data.flights.splice(index, 1)"><XIcon aria-hidden="true" /></button>
+              </div>
+              <input v-model="flight.route" maxlength="80" placeholder="São Paulo (GRU) → Recife (REC)" />
+              <input v-model="flight.details" maxlength="80" placeholder="LATAM · Voo direto" />
+            </div>
+            <button type="button" class="cv-btn cv-btn-ghost" @click="data.flights.push({ label: 'Ida', date: '', route: '', times: '', details: '' })"><PlusIcon aria-hidden="true" /> Adicionar voo</button>
+          </template>
 
           <h3>Cores e logo</h3>
           <div class="cv-row">
@@ -127,7 +204,20 @@
       <!-- Cópia em tamanho real, fora da tela, usada só para gerar o PNG. -->
       <div class="cv-offscreen" aria-hidden="true">
         <div ref="exportRef">
-          <CreativeArtboard :template="template" :format="format" :data="exportData" :photos="exportPhotos" :show-logo="showLogo" />
+          <CreativeArtboard v-if="mode === 'single'" :template="template" :format="format" :data="exportData" :photos="exportPhotos" :show-logo="showLogo" />
+          <template v-else>
+            <CreativeCarouselSlide
+              v-for="(item, index) in activeSlides"
+              :key="item.key"
+              :slide="item.slide"
+              :format="format"
+              :data="exportData"
+              :photo="photoFor(index, exportPhotos)"
+              :index="index"
+              :total="activeSlides.length"
+              :show-logo="showLogo"
+            />
+          </template>
         </div>
       </div>
     </template>
@@ -142,7 +232,9 @@ import api from "../../services/api";
 import { useAgencyStore } from "../../store/useAgencyStore";
 import type { PageConfig } from "../../types/page";
 import CreativeArtboard from "../../components/creatives/CreativeArtboard.vue";
-import { FORMAT_SIZES, extractCreativeData, type CreativeData, type CreativeFormat } from "../../components/creatives/creativeData";
+import CreativeCarouselSlide from "../../components/creatives/CreativeCarouselSlide.vue";
+import { CTA_SUGGESTIONS, FORMAT_SIZES, extractCreativeData, type CreativeData, type CreativeFormat } from "../../components/creatives/creativeData";
+import { SLIDE_LABELS, buildCarousel, type CarouselSlide } from "../../components/creatives/carousel";
 import { CATEGORY_LABELS, CREATIVE_TEMPLATES, type CreativeCategory } from "../../components/creatives/creativeTemplates";
 
 const props = defineProps<{ id: string }>();
@@ -166,7 +258,9 @@ const data = ref<CreativeData | null>(null);
 const loading = ref(true);
 const error = ref("");
 const downloading = ref(false);
+const mode = ref<"single" | "carousel">("single");
 const format = ref<CreativeFormat>("feed");
+const excluded = ref<string[]>([]);
 const template = ref(CREATIVE_TEMPLATES[0].id);
 const showLogo = ref(true);
 const photos = ref<Photo[]>([]);
@@ -176,14 +270,50 @@ const exportRef = ref<HTMLElement | null>(null);
 const previewBox = ref<HTMLElement | null>(null);
 const previewWidth = ref(420);
 const thumbWidth = 150;
+const slideWidth = 220;
 const objectUrls: string[] = [];
+
+// Carrossel: só Stories e Feed (o Instagram corta o carrossel quadrado do mesmo jeito que o 4:5).
+const formats = computed<CreativeFormat[]>(() => (mode.value === "carousel" ? ["story", "feed"] : ["story", "feed", "square"]));
+watch(mode, value => {
+  if (value === "carousel" && format.value === "square") format.value = "feed";
+});
+
+const slides = computed(() => {
+  if (!data.value) return [];
+  const counts: Record<string, number> = {};
+  return buildCarousel(data.value, format.value).map(slide => {
+    counts[slide.kind] = (counts[slide.kind] || 0) + 1;
+    return { slide, key: `${slide.kind}-${counts[slide.kind]}` };
+  });
+});
+const activeSlides = computed(() => slides.value.filter(item => !excluded.value.includes(item.key)));
+const activeIndex = (index: number) => {
+  const key = slides.value[index]?.key;
+  const position = activeSlides.value.findIndex(item => item.key === key);
+  return position >= 0 ? position : index;
+};
+const toggleSlide = (key: string) => {
+  excluded.value = excluded.value.includes(key) ? excluded.value.filter(item => item !== key) : [...excluded.value, key];
+};
+const slideLabel = (slide: CarouselSlide) =>
+  slide.kind === "itinerary" && slide.parts > 1 ? `${SLIDE_LABELS.itinerary} ${slide.part}/${slide.parts}` : SLIDE_LABELS[slide.kind];
+/** Cada slide usa a próxima foto escolhida (e recomeça quando acabam). */
+const photoFor = (index: number, list: string[]) => (list.length ? list[index % list.length] : "");
+const photoHint = computed(() => {
+  if (mode.value === "carousel") return "uma por slide, na ordem";
+  const count = currentTemplate.value?.photos || 1;
+  return count > 1 ? `este modelo usa ${count}` : "este modelo usa 1";
+});
 
 const currentTemplate = computed(() => CREATIVE_TEMPLATES.find(item => item.id === template.value));
 const templatesBy = (category: string) => CREATIVE_TEMPLATES.filter(item => item.category === (category as CreativeCategory));
 
 const ordered = computed(() => {
   const picked = chosen.value.map(src => photos.value.find(photo => photo.src === src)).filter(Boolean) as Photo[];
-  return picked.length ? picked : photos.value.slice(0, 1);
+  if (picked.length) return picked;
+  // Sem escolha: arte única usa a capa; o carrossel passa por todas as fotos da página.
+  return mode.value === "carousel" ? photos.value.filter(photo => photo.status !== "failed") : photos.value.slice(0, 1);
 });
 const previewPhotos = computed(() => ordered.value.map(photo => photo.ready || photo.src));
 const exportPhotos = computed(() => ordered.value.map(photo => photo.ready).filter(Boolean));
@@ -264,10 +394,23 @@ const load = async () => {
   }
 };
 
+const toPngOf = async (node: HTMLElement) => {
+  const { toPng } = await import("html-to-image");
+  const size = FORMAT_SIZES[format.value];
+  return toPng(node, { width: size.width, height: size.height, pixelRatio: 1, cacheBust: false });
+};
+
+const save = (href: string, name: string) => {
+  const link = document.createElement("a");
+  link.download = name;
+  link.href = href;
+  link.click();
+};
+
 const download = async () => {
   if (!exportRef.value || !data.value) return;
   error.value = "";
-  const needed = Math.max(1, currentTemplate.value?.photos || 1);
+  const needed = mode.value === "carousel" ? Math.min(activeSlides.value.length, ordered.value.length) : Math.max(1, currentTemplate.value?.photos || 1);
   const missing = ordered.value.slice(0, needed).some(photo => !photo.ready);
   if (missing) {
     error.value = ordered.value.some(photo => photo.status === "loading")
@@ -276,19 +419,26 @@ const download = async () => {
     return;
   }
   downloading.value = true;
+  const slug = page.value?.slug || "criativo";
   try {
-    const { toPng } = await import("html-to-image");
-    const size = FORMAT_SIZES[format.value];
-    const node = exportRef.value.firstElementChild as HTMLElement;
     await document.fonts?.ready;
-    const png = await toPng(node, { width: size.width, height: size.height, pixelRatio: 1, cacheBust: false });
-    const link = document.createElement("a");
-    const slug = page.value?.slug || "criativo";
-    link.download = `${slug}-${template.value}-${format.value}.png`;
-    link.href = png;
-    link.click();
+    const nodes = Array.from(exportRef.value.children) as HTMLElement[];
+    if (mode.value === "single") {
+      save(await toPngOf(nodes[0]), `${slug}-${template.value}-${format.value}.png`);
+      return;
+    }
+    const { default: JSZip } = await import("jszip");
+    const zip = new JSZip();
+    for (const [index, node] of nodes.entries()) {
+      const png = await toPngOf(node);
+      zip.file(`${String(index + 1).padStart(2, "0")}-${slug}.png`, png.split(",")[1], { base64: true });
+    }
+    const blob = await zip.generateAsync({ type: "blob" });
+    const url = URL.createObjectURL(blob);
+    save(url, `${slug}-carrossel-${format.value}.zip`);
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
   } catch {
-    error.value = "Não foi possível gerar a imagem. Tente de novo.";
+    error.value = "Não foi possível gerar as imagens. Tente de novo.";
   } finally {
     downloading.value = false;
   }
@@ -305,7 +455,7 @@ const measure = () => {
   const byHeight = (680 * size.width) / size.height;
   previewWidth.value = Math.round(Math.max(200, Math.min(520, inner, byHeight)));
 };
-watch(format, measure);
+watch([format, mode], () => setTimeout(measure));
 watch(previewBox, element => {
   observer?.disconnect();
   if (element?.parentElement) {
@@ -338,6 +488,7 @@ onBeforeUnmount(() => {
 .cv-btn-primary { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
 .cv-btn-ghost { background: transparent; border-color: hsl(var(--border)); color: hsl(var(--foreground)); align-self: flex-start; }
 
+.cv-bar { display: flex; flex-wrap: wrap; gap: 12px; }
 .cv-formats { display: inline-flex; gap: 4px; padding: 4px; border-radius: 12px; background: hsl(var(--muted)); align-self: flex-start; flex-wrap: wrap; }
 .cv-formats button { border: 0; background: transparent; padding: 8px 14px; border-radius: 9px; font-size: 14px; font-weight: 600; color: hsl(var(--muted-foreground)); cursor: pointer; }
 .cv-formats button small { font-weight: 500; opacity: 0.7; margin-left: 4px; }
@@ -380,10 +531,27 @@ onBeforeUnmount(() => {
 .cv-color input { width: 40px; height: 34px; border: 1px solid hsl(var(--border)); border-radius: 8px; padding: 2px; background: transparent; }
 .cv-check { display: flex; align-items: center; gap: 8px; font-size: 14px; }
 .cv-check.disabled { color: hsl(var(--muted-foreground)); }
+.cv-work.is-carousel { grid-template-columns: minmax(0, 1fr) minmax(0, 400px); }
+.cv-slides { display: flex; flex-direction: column; gap: 12px; }
+.cv-slide-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; justify-items: start; }
+.cv-slide { display: flex; flex-direction: column; gap: 8px; }
+.cv-slide .cv-thumb-stage { box-shadow: 0 6px 20px rgb(0 0 0 / 0.12); }
+.cv-slide.off .cv-thumb-stage { opacity: 0.35; }
+.cv-switch { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600; }
+.cv-switch input { width: 18px; height: 18px; accent-color: hsl(var(--primary)); }
+.cv-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.cv-chips button { border: 1px solid hsl(var(--border)); background: hsl(var(--background)); border-radius: 999px; padding: 6px 12px; font-size: 13px; cursor: pointer; color: hsl(var(--foreground)); }
+.cv-chips button.on { border-color: hsl(var(--primary)); background: hsl(var(--primary) / 0.1); }
+.cv-item { display: flex; flex-direction: column; gap: 6px; padding: 10px; border: 1px solid hsl(var(--border)); border-radius: 12px; }
+.cv-item-head { display: flex; align-items: center; gap: 6px; }
+.cv-item-head b { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; background: hsl(var(--muted)); }
+.cv-item input, .cv-item textarea { width: 100%; min-width: 0; border: 1px solid hsl(var(--border)); border-radius: 9px; padding: 7px 10px; font: inherit; font-size: 14px; background: hsl(var(--background)); color: hsl(var(--foreground)); }
+.cv-item .cv-short { flex: 0 0 34%; }
 .cv-offscreen { position: fixed; left: -20000px; top: 0; pointer-events: none; }
 
 @media (max-width: 900px) {
-  .cv-work { grid-template-columns: minmax(0, 1fr); }
+  .cv-work, .cv-work.is-carousel { grid-template-columns: minmax(0, 1fr); }
+  .cv-slide-grid { grid-template-columns: minmax(0, 1fr); justify-items: center; }
   .cv-preview { position: static; padding: 12px; }
   .cv-photos { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .cv-row { flex-direction: column; }

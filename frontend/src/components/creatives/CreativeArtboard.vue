@@ -14,6 +14,7 @@
           <b>{{ data.priceValue }}</b>
           <small>{{ data.priceSuffix }}</small>
         </div>
+        <span v-if="cta" class="cr-cta cr-cta-gap">{{ cta }}</span>
       </div>
     </template>
 
@@ -30,6 +31,7 @@
           <span>{{ data.priceSuffix }}</span>
         </div>
         <p v-if="data.installments" class="cr-small">{{ data.installments }}</p>
+        <span v-if="cta" class="cr-cta cr-cta-gap">{{ cta }}</span>
       </div>
     </template>
 
@@ -41,6 +43,7 @@
         <h1 class="cr-title cr-center" :style="titleStyle">{{ data.title }}</h1>
         <p v-if="data.dates" class="cr-center cr-dates">{{ data.dates }}</p>
         <div v-if="data.priceValue" class="cr-price-chip">{{ data.pricePrefix }} <b>{{ data.priceValue }}</b> {{ data.priceSuffix }}</div>
+        <span v-if="cta" class="cr-cta cr-cta-gap">{{ cta }}</span>
       </div>
     </template>
 
@@ -57,6 +60,7 @@
         </template>
         <h1 v-else class="cr-title" :style="titleStyle">{{ data.title }}</h1>
         <span v-if="data.dates" class="cr-pill cr-pill-dark">{{ data.dates }}</span>
+        <span v-if="cta" class="cr-cta cr-cta-gap">{{ cta }}</span>
       </div>
     </template>
 
@@ -77,7 +81,7 @@
             <b>{{ data.priceValue }}</b>
             <small>{{ [data.priceSuffix, data.installments].filter(Boolean).join(" · ") }}</small>
           </div>
-          <div class="cr-cta">{{ data.cta }}<small v-if="data.contact">{{ data.contact }}</small></div>
+          <div v-if="cta || data.contact" class="cr-side"><span v-if="cta" class="cr-cta">{{ cta }}</span><span v-if="data.contact" class="cr-contact">WhatsApp {{ data.contact }}</span></div>
         </div>
       </div>
     </template>
@@ -102,7 +106,7 @@
             <b class="cr-brand-text">{{ data.priceValue }}</b>
             <small>{{ [data.priceSuffix, data.installments].filter(Boolean).join(" · ") }}</small>
           </div>
-          <div class="cr-cta">{{ data.cta }}<small v-if="data.contact">{{ data.contact }}</small></div>
+          <div v-if="cta || data.contact" class="cr-side"><span v-if="cta" class="cr-cta">{{ cta }}</span><span v-if="data.contact" class="cr-contact">WhatsApp {{ data.contact }}</span></div>
         </div>
       </div>
     </template>
@@ -165,6 +169,7 @@ const props = defineProps<{
 }>();
 
 const size = computed(() => FORMAT_SIZES[props.format]);
+const cta = computed(() => (props.data.ctaEnabled ? props.data.cta.trim() : ""));
 const logo = computed(() => (props.showLogo === false ? "" : props.data.logoUrl));
 // Quantos benefícios cabem sem empurrar o preço para fora da arte.
 const benefits = computed(() => props.data.benefits.filter(Boolean).slice(0, { square: 3, feed: 4, story: 6 }[props.format]));
@@ -253,22 +258,18 @@ const bg = (index: number) => {
   text-transform: uppercase;
   opacity: 0.85;
 }
+/* Datas: etiqueta com filete na cor de destaque (nada com cara de botão além da CTA). */
 .cr-pill {
   display: inline-block;
-  padding: 12px 26px;
-  border-radius: 999px;
-  background: var(--c2);
-  color: var(--on2);
+  padding: 4px 0 4px 20px;
+  border-left: 8px solid var(--c2);
   font-size: 30px;
   font-weight: 700;
-}
-.cr-pill-dark {
-  background: rgba(0, 0, 0, 0.22);
-  color: inherit;
+  letter-spacing: 0.02em;
 }
 .cr-pill-brand {
-  background: var(--c1);
-  color: var(--on1);
+  border-left-color: var(--c1);
+  color: #111827;
 }
 .cr-logo {
   position: relative;
@@ -318,18 +319,17 @@ const bg = (index: number) => {
   margin-bottom: 26px;
 }
 .cr-price-badge {
-  display: inline-flex;
+  display: flex;
   align-items: baseline;
+  flex-wrap: wrap;
   gap: 14px;
-  margin-top: 36px;
-  padding: 22px 34px;
-  border-radius: 28px;
-  background: var(--c2);
-  color: var(--on2);
+  margin-top: 30px;
+  color: #fff;
 }
 .cr-price-badge b {
+  color: var(--c2);
   font-family: Sora, sans-serif;
-  font-size: 72px;
+  font-size: 80px;
   font-weight: 800;
 }
 .cr-price-badge small {
@@ -397,15 +397,12 @@ const bg = (index: number) => {
   opacity: 0.9;
 }
 .cr-price-chip {
-  margin-top: 30px;
-  padding: 18px 40px;
-  border-radius: 999px;
-  background: var(--c2);
-  color: var(--on2);
+  margin-top: 24px;
   font-size: 32px;
   font-weight: 600;
 }
 .cr-price-chip b {
+  color: var(--c2);
   font-family: Sora, sans-serif;
   font-size: 54px;
   font-weight: 800;
@@ -538,21 +535,39 @@ const bg = (index: number) => {
 .cr-brand-text {
   color: var(--c1);
 }
+/* O único "botão" da arte: só com Saiba mais / Garanta agora. */
 .cr-cta {
-  display: flex;
-  flex-direction: column;
+  display: inline-flex;
   align-items: center;
-  padding: 24px 34px;
+  justify-content: center;
+  align-self: flex-start;
+  padding: 24px 44px;
   border-radius: 999px;
   background: var(--c2);
   color: var(--on2);
-  font-size: 32px;
+  font-size: 34px;
   font-weight: 800;
-  text-align: center;
+  white-space: nowrap;
 }
-.cr-cta small {
-  font-size: 24px;
-  font-weight: 600;
+.cr-cta-gap {
+  margin-top: 30px;
+}
+.cr-frame-wrap .cr-cta {
+  align-self: center;
+}
+.cr-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 14px;
+}
+.cr-side .cr-cta {
+  align-self: flex-end;
+}
+.cr-contact {
+  font-size: 28px;
+  font-weight: 700;
+  opacity: 0.9;
 }
 
 /* 6. Cartão */
@@ -578,6 +593,9 @@ const bg = (index: number) => {
 }
 .cr-card .cr-sub {
   font-size: 30px;
+}
+.cr-card .cr-contact {
+  color: #374151;
 }
 .cr-card-foot {
   margin-top: 30px;
@@ -651,12 +669,11 @@ const bg = (index: number) => {
 }
 .cr-price-box {
   flex: none;
-  padding: 24px 30px;
-  border-radius: 28px;
-  background: var(--c2);
-  color: var(--on2);
+  padding-left: 26px;
+  border-left: 8px solid var(--c2);
 }
 .cr-price-box b {
+  color: var(--c2);
   font-size: 64px;
 }
 </style>
