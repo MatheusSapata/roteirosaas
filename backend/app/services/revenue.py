@@ -11,7 +11,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta, timezone
 from decimal import ROUND_HALF_UP, Decimal
-from typing import Any
+from typing import Any, Iterable
 
 from sqlalchemy.orm import Session
 
@@ -87,6 +87,8 @@ class Payment:
     method: str
     email: str | None = None
     description: str = ""
+    # Quem pagou: id do cliente na Asaas ou e-mail na Cakto (para achar o primeiro pagamento).
+    customer: str | None = None
 
 
 def _asaas_payment(row: AsaasEventLog) -> tuple[str, dict[str, Any]] | None:
@@ -109,8 +111,8 @@ def _asaas_date(payment: dict[str, Any], *keys: str) -> datetime | None:
     return None
 
 
-def collect_payments(db: Session, start: datetime, end: datetime) -> tuple[list[Payment], list[Payment]]:
-    """Pagamentos confirmados e estornos no período, cada pagamento contado uma vez só."""
+def all_payments(db: Session) -> tuple[list[Payment], list[Payment]]:
+    """Todos os pagamentos confirmados e estornos já recebidos, cada pagamento contado uma vez só."""
     from app.api.v1.endpoints.admin import _extract_cakto_amount, _extract_customer_email  # evita import circular
 
     paid: dict[str, Payment] = {}
@@ -131,6 +133,7 @@ def collect_payments(db: Session, start: datetime, end: datetime) -> tuple[list[
                     key=key, source="Asaas", paid_at=moment, gross=_decimal(payment.get("value")),
                     net=_decimal(payment.get("netValue") or payment.get("value")),
                     method=str(payment.get("billingType") or "").lower(), description=str(payment.get("description") or ""),
+                    customer=str(payment.get("customer") or "") or None,
                 )
         elif event in ASAAS_REFUND_EVENTS:
             moment = _asaas_date(payment, "refundedDate") or _aware(row.created_at)
@@ -146,11 +149,18 @@ def collect_payments(db: Session, start: datetime, end: datetime) -> tuple[list[
         moment = _aware(row.processed_at or row.created_at)
         amount = _extract_cakto_amount(payload)
         key = f"cakto:{row.event_id or row.id}"
-        item = Payment(key=key, source="Cakto", paid_at=moment, gross=amount, net=amount, method="", email=_extract_customer_email(payload))
+        email = _extract_customer_email(payload)
+        item = Payment(key=key, source="Cakto", paid_at=moment, gross=amount, net=amount, method="", email=email, customer=email)
         (paid if event in CAKTO_PAID_EVENTS else refunds)[key] = item
+    return list(paid.values()), list(refunds.values())
 
-    def in_range(items: dict[str, Payment]) -> list[Payment]:
-        return [item for item in items.values() if item.paid_at and start <= item.paid_at < end]
+
+def collect_payments(db: Session, start: datetime, end: datetime) -> tuple[list[Payment], list[Payment]]:
+    """Pagamentos confirmados e estornos no período, cada pagamento contado uma vez só."""
+    paid, refunds = all_payments(db)
+
+    def in_range(items: list[Payment]) -> list[Payment]:
+        return [item for item in items if item.paid_at and start <= item.paid_at < end]
 
     return in_range(paid), in_range(refunds)
 
@@ -195,6 +205,40 @@ def _renewal(subscription: Subscription, user: User) -> Renewal | None:
     )
 
 
+@dataclass
+class MrrBreakdown:
+    mrr: Decimal = ZERO
+    at_risk: Decimal = ZERO
+    customers: int = 0
+    by_plan: dict[str, Decimal] = field(default_factory=lambda: defaultdict(lambda: ZERO))
+    customers_by_plan: dict[str, int] = field(default_factory=lambda: defaultdict(int))
+    by_cycle: dict[str, Decimal] = field(default_factory=lambda: defaultdict(lambda: ZERO))
+    by_method: dict[str, Decimal] = field(default_factory=lambda: defaultdict(lambda: ZERO))
+
+
+def mrr_breakdown(subscriptions: Iterable[Subscription]) -> MrrBreakdown:
+    """MRR das assinaturas que vão renovar; "em risco" = cancelamento agendado ou falha de
+    cobrança. Recebe só assinaturas de receita (is_revenue_subscription)."""
+    result = MrrBreakdown()
+    for subscription in subscriptions:
+        status = (subscription.status or "").lower()
+        if status not in {"active", "past_due", "cancel_at_period_end"}:
+            continue
+        monthly = _decimal(subscription.mrr_amount)
+        if status == "cancel_at_period_end" or int(subscription.failed_attempts or 0) > 0:
+            result.at_risk += monthly
+        if status == "cancel_at_period_end":
+            continue
+        plan = (subscription.plan or "—").title()
+        result.customers += 1
+        result.mrr += monthly
+        result.by_plan[plan] += monthly
+        result.customers_by_plan[plan] += 1
+        result.by_cycle[CYCLE_LABELS.get((subscription.billing_cycle or "monthly").lower(), "Mensal")] += monthly
+        result.by_method[METHOD_LABELS.get((subscription.payment_method_type or "").lower(), "Outro")] += monthly
+    return result
+
+
 def revenue_overview(db: Session, month: date | None = None, horizon_days: int = 60, now: datetime | None = None) -> dict[str, Any]:
     now = now or datetime.now(timezone.utc)
     today = now.date()
@@ -204,27 +248,9 @@ def revenue_overview(db: Session, month: date | None = None, horizon_days: int =
     end = datetime.combine(next_month, time.min, tzinfo=timezone.utc)
     rows = db.query(Subscription, User).join(User, User.id == Subscription.user_id).all()
     paying = [(s, u) for s, u in rows if is_revenue_subscription(s)]
-
-    # MRR: assinaturas que vão renovar; "em risco" = cancelamento agendado ou falha de cobrança.
-    mrr = at_risk = ZERO
-    by_plan: dict[str, Decimal] = defaultdict(lambda: ZERO)
-    by_cycle: dict[str, Decimal] = defaultdict(lambda: ZERO)
-    by_method: dict[str, Decimal] = defaultdict(lambda: ZERO)
-    customers = 0
-    for subscription, user in paying:
-        status = (subscription.status or "").lower()
-        if status not in {"active", "past_due", "cancel_at_period_end"}:
-            continue
-        monthly = _decimal(subscription.mrr_amount)
-        if status == "cancel_at_period_end" or int(subscription.failed_attempts or 0) > 0:
-            at_risk += monthly
-        if status == "cancel_at_period_end":
-            continue
-        customers += 1
-        mrr += monthly
-        by_plan[(subscription.plan or "—").title()] += monthly
-        by_cycle[CYCLE_LABELS.get((subscription.billing_cycle or "monthly").lower(), "Mensal")] += monthly
-        by_method[METHOD_LABELS.get((subscription.payment_method_type or "").lower(), "Outro")] += monthly
+    breakdown = mrr_breakdown(subscription for subscription, _user in paying)
+    mrr, at_risk, customers = breakdown.mrr, breakdown.at_risk, breakdown.customers
+    by_plan, by_cycle, by_method = breakdown.by_plan, breakdown.by_cycle, breakdown.by_method
 
     # Mês: recebido (eventos), a receber (renovações até o fim do mês) e em atraso.
     paid, refunded = collect_payments(db, start, end)
