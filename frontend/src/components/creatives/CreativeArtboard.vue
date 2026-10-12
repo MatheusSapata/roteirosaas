@@ -75,7 +75,7 @@
         <FitText class="ds-title" :max="210" :min="56" :lines="3" :line-height="0.92">{{ headline }}</FitText>
       </div>
       <div class="ds-panel">
-        <div class="ds-row">
+        <div v-if="tagLine || data.priceSuffix" class="ds-row">
           <span v-if="tagLine" class="ds-chip">{{ tagLine }}</span>
           <span v-if="data.priceSuffix" class="ds-note">*valor {{ data.priceSuffix }}</span>
         </div>
@@ -969,16 +969,17 @@ const bg = (index: number) => {
 }
 
 /* ================= 4. Destino em destaque ================= */
+/* Painel de baixo com a altura do conteúdo; a foto ocupa todo o resto e entra por baixo da
+   ponta recortada do painel. */
+.cr-t-destino {
+  display: flex;
+  flex-direction: column;
+}
 .ds-photo {
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: calc(56% + var(--ph-shift) + 90px);
-}
-.cr-story .ds-photo {
-  height: calc(54% + var(--ph-shift) + 90px);
-}
-.cr-square .ds-photo {
-  height: calc(50% + var(--ph-shift) + 90px);
+  position: relative;
+  min-height: 40%;
+  flex: 1 1 auto;
+  margin-bottom: -100px;
 }
 .ds-box {
   position: absolute;
@@ -1010,26 +1011,18 @@ const bg = (index: number) => {
   text-transform: uppercase;
 }
 .ds-panel {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
+  position: relative;
   z-index: 2;
   display: flex;
-  height: calc(44% - var(--ph-shift));
+  flex: none;
   flex-direction: column;
-  justify-content: flex-end;
   gap: 28px;
   padding: 120px var(--pad) var(--bot);
   background: linear-gradient(180deg, color-mix(in srgb, var(--c1) 82%, #fff) 0%, var(--c1) 42%, color-mix(in srgb, var(--c1) 80%, #000) 100%);
   clip-path: polygon(0 80px, 50% 0, 100% 80px, 100% 100%, 0 100%);
   color: var(--on1);
 }
-.cr-story .ds-panel {
-  height: calc(46% - var(--ph-shift));
-}
 .cr-square .ds-panel {
-  height: calc(50% - var(--ph-shift));
   gap: 18px;
   padding-top: 100px;
 }
