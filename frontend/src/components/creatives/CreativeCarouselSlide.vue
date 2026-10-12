@@ -25,9 +25,10 @@
       </div>
     </template>
 
-    <!-- Slides de conteúdo: foto no alto e a informação na cor da página -->
+    <!-- Slides de conteúdo: foto no slide todo e o texto acomodado embaixo; a sombra fica só
+         atrás do texto e cresce junto com ele (pouco conteúdo = mais foto). -->
     <template v-else>
-      <div class="cs-photo cs-top" :style="bg"></div>
+      <div class="cs-photo cs-fill" :style="bg"></div>
       <div class="cs-body">
         <span class="cs-eyebrow">{{ eyebrow }}</span>
         <h2 class="cs-heading">{{ heading }}</h2>
@@ -70,13 +71,18 @@
       </div>
     </template>
 
+    <!-- Base do carrossel: logo, um ponto por slide (o atual alongado) e a seta para o próximo. -->
     <div class="cs-foot">
       <img v-if="logo && slide.kind !== 'cover' && slide.kind !== 'final'" :src="logo" class="cs-logo cs-logo-foot" alt="" />
-      <span v-else-if="slide.kind !== 'cover' && slide.kind !== 'final'" class="cs-agency">{{ data.agencyName }}</span>
-      <span class="cs-count">
-        {{ index + 1 }}/{{ total }}
-        <template v-if="index + 1 < total">· {{ index === 0 ? "Arraste para o lado" : "Continue" }} →</template>
-      </span>
+      <span v-else-if="slide.kind !== 'cover' && slide.kind !== 'final' && data.agencyName" class="cs-agency">{{ data.agencyName }}</span>
+      <div class="cs-pager">
+        <span class="cs-dots" aria-hidden="true">
+          <i v-for="dot in total" :key="dot" :class="{ on: dot === index + 1 }"></i>
+        </span>
+        <span v-if="index + 1 < total" class="cs-next" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+        </span>
+      </div>
     </div>
   </div>
 </template>
@@ -186,6 +192,9 @@ const heading = computed(() => {
   align-items: flex-start;
   color: #fff;
 }
+.cs-story .cs-over {
+  bottom: 200px;
+}
 .cs-tag {
   margin-bottom: 26px;
   padding: 4px 0 4px 20px;
@@ -248,29 +257,26 @@ const heading = computed(() => {
   font-weight: 700;
 }
 
-.cs-top {
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 30%;
-}
-.cs-story .cs-top {
-  height: 24%;
-}
-.cs-top::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 55%, var(--c1) 100%);
-}
+/* Bloco de texto preso embaixo: só tem a altura do conteúdo, e a sombra (degradê para a cor
+   de fundo) nasce um pouco acima dele. Com muito texto ele sobe até perto do topo. */
 .cs-body {
   position: absolute;
-  inset: 30% 0 120px 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   display: flex;
   flex-direction: column;
-  padding: 40px 72px 0;
+  max-height: calc(100% - 90px);
+  padding: 220px 72px 170px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--c1) 0%, transparent) 0,
+    color-mix(in srgb, var(--c1) 72%, transparent) 130px,
+    var(--c1) 230px
+  );
 }
 .cs-story .cs-body {
-  inset: 24% 0 150px 0;
+  padding-bottom: 210px;
 }
 .cs-heading {
   margin: 0 0 34px;
@@ -413,21 +419,21 @@ const heading = computed(() => {
 .cs-foot {
   position: absolute;
   right: 64px;
-  bottom: 48px;
+  bottom: 52px;
   left: 64px;
   z-index: 3;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  min-height: 64px;
+  min-height: 72px;
 }
 .cs-cover .cs-foot,
 .cs-final .cs-foot {
   color: #fff;
 }
 .cs-story .cs-foot {
-  bottom: 72px;
+  bottom: 84px;
 }
 .cs-logo-foot {
   max-width: 220px;
@@ -437,10 +443,42 @@ const heading = computed(() => {
   font-size: 28px;
   font-weight: 700;
 }
-.cs-count {
+.cs-pager {
+  display: flex;
+  align-items: center;
+  gap: 28px;
   margin-left: auto;
-  font-size: 28px;
-  font-weight: 700;
-  opacity: 0.85;
+}
+.cs-dots {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.cs-dots i {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.35;
+}
+.cs-dots i.on {
+  width: 48px;
+  background: var(--c2);
+  opacity: 1;
+}
+.cs-next {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--c2);
+  color: var(--on2);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+.cs-next svg {
+  width: 36px;
+  height: 36px;
 }
 </style>

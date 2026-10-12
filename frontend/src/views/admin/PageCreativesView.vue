@@ -87,14 +87,43 @@
                 </div>
               </template>
               <template v-else>
-                <p class="ved-hint">Montamos os slides com o que a página tem. Desmarque o que não quiser postar.</p>
+                <p class="ved-hint">Montamos os slides com o que a página tem. Desmarque o que não quiser postar e clique na miniatura para escolher a foto de cada slide.</p>
                 <ul class="ved-list">
-                  <li v-for="item in slides" :key="item.key" class="ved-item">
-                    <label class="cv-slide-row">
-                      <input type="checkbox" :checked="!excluded.includes(item.key)" :disabled="item.slide.kind === 'cover' || item.slide.kind === 'final'" @change="toggleSlide(item.key)" />
+                  <li v-for="item in slides" :key="item.key" class="ved-item" :class="{ open: pickerFor === item.key }">
+                    <div class="cv-slide-row">
+                      <input
+                        type="checkbox"
+                        :checked="!excluded.includes(item.key)"
+                        :disabled="item.slide.kind === 'cover' || item.slide.kind === 'final'"
+                        :aria-label="`Incluir ${slideLabel(item.slide)}`"
+                        @change="toggleSlide(item.key)"
+                      />
                       <span>{{ slideLabel(item.slide) }}</span>
                       <small v-if="item.slide.kind === 'cover' || item.slide.kind === 'final'">sempre</small>
-                    </label>
+                      <button
+                        type="button"
+                        class="cv-slide-photo"
+                        :title="`Trocar a foto de ${slideLabel(item.slide)}`"
+                        :disabled="excluded.includes(item.key)"
+                        @click="pickerFor = pickerFor === item.key ? '' : item.key"
+                      >
+                        <img v-if="slidePhoto(item.key, 'preview')" :src="slidePhoto(item.key, 'preview')" alt="" />
+                        <ImageIcon v-else aria-hidden="true" />
+                      </button>
+                    </div>
+                    <div v-if="pickerFor === item.key" class="cv-picker">
+                      <button type="button" class="cv-picker-auto" :class="{ on: !slidePhotos[item.key] }" @click="setSlidePhoto(item.key, '')">Automática</button>
+                      <button
+                        v-for="photo in photos"
+                        :key="photo.src"
+                        type="button"
+                        class="cv-picker-photo"
+                        :class="{ on: slidePhotos[item.key] === photo.src, failed: photo.status === 'failed' }"
+                        @click="setSlidePhoto(item.key, photo.src)"
+                      >
+                        <img :src="photo.ready || photo.src" alt="" loading="lazy" />
+                      </button>
+                    </div>
                   </li>
                 </ul>
               </template>
@@ -263,7 +292,7 @@
                   :slide="item.slide"
                   :format="format"
                   :data="data"
-                  :photo="photoFor(index, previewPhotos)"
+                  :photo="slidePhoto(item.key, 'preview', index)"
                   :index="index"
                   :total="activeSlides.length"
                   :show-logo="showLogo"
@@ -282,7 +311,7 @@
                 :slide="currentSlide.slide"
                 :format="format"
                 :data="data"
-                :photo="photoFor(current, previewPhotos)"
+                :photo="slidePhoto(currentSlide.key, 'preview', current)"
                 :index="current"
                 :total="activeSlides.length"
                 :show-logo="showLogo"
@@ -304,6 +333,20 @@
           ></button>
           <span>{{ current + 1 }} de {{ activeSlides.length }} · {{ currentSlide ? slideLabel(currentSlide.slide) : "" }}</span>
         </div>
+        <div v-if="kind === 'carousel' && view === 'one' && currentSlide && photos.length" class="cv-strip">
+          <span>Foto deste slide</span>
+          <button type="button" class="cv-picker-auto" :class="{ on: !slidePhotos[currentSlide.key] }" @click="setSlidePhoto(currentSlide.key, '')">Automática</button>
+          <button
+            v-for="photo in photos"
+            :key="photo.src"
+            type="button"
+            class="cv-picker-photo"
+            :class="{ on: slidePhotos[currentSlide.key] === photo.src, failed: photo.status === 'failed' }"
+            @click="setSlidePhoto(currentSlide.key, photo.src)"
+          >
+            <img :src="photo.ready || photo.src" alt="" loading="lazy" />
+          </button>
+        </div>
       </section>
 
       <!-- Cópia em tamanho real, fora da tela, usada só para gerar os PNGs. -->
@@ -317,7 +360,7 @@
               :slide="item.slide"
               :format="format"
               :data="exportData"
-              :photo="photoFor(index, exportPhotos)"
+              :photo="slidePhoto(item.key, 'export', index)"
               :index="index"
               :total="activeSlides.length"
               :show-logo="showLogo"
@@ -342,6 +385,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   DownloadIcon,
+  ImageIcon,
   LayoutGridIcon,
   MinusIcon,
   PlusIcon,
@@ -442,6 +486,22 @@ const slideLabel = (slide: CarouselSlide) =>
   slide.kind === "itinerary" && slide.parts > 1 ? `${SLIDE_LABELS.itinerary} ${slide.part}/${slide.parts}` : SLIDE_LABELS[slide.kind];
 /** Cada slide usa a próxima foto escolhida (e recomeça quando acabam). */
 const photoFor = (index: number, list: string[]) => (list.length ? list[index % list.length] : "");
+// Foto escolhida para cada slide (chave do slide → foto); sem escolha, segue a ordem das fotos.
+const slidePhotos = ref<Record<string, string>>({});
+const pickerFor = ref("");
+const setSlidePhoto = (key: string, src: string) => {
+  const next = { ...slidePhotos.value };
+  if (src) next[key] = src;
+  else delete next[key];
+  slidePhotos.value = next;
+};
+const slidePhoto = (key: string, use: "preview" | "export", fallbackIndex?: number) => {
+  const chosenSrc = slidePhotos.value[key];
+  const photo = chosenSrc ? photos.value.find(item => item.src === chosenSrc) : undefined;
+  if (photo) return use === "export" ? photo.ready : photo.ready || photo.src;
+  const index = fallbackIndex ?? Math.max(0, activeSlides.value.findIndex(item => item.key === key));
+  return photoFor(index, use === "export" ? exportPhotos.value : previewPhotos.value);
+};
 const openOne = (index: number) => {
   current.value = index;
   view.value = "one";
@@ -595,7 +655,10 @@ const download = async () => {
   if (!exportRef.value || !data.value) return;
   error.value = "";
   const needed = kind.value === "carousel" ? Math.min(activeSlides.value.length, ordered.value.length) : Math.max(1, currentTemplate.value?.photos || 1);
-  const missing = ordered.value.slice(0, needed).some(photo => !photo.ready);
+  const overrides = kind.value === "carousel" ? activeSlides.value.map(item => slidePhotos.value[item.key]).filter(Boolean) : [];
+  const missing =
+    ordered.value.slice(0, needed).some(photo => !photo.ready) ||
+    overrides.some(src => !photos.value.find(photo => photo.src === src)?.ready);
   if (missing) {
     error.value = ordered.value.some(photo => photo.status === "loading")
       ? "As fotos ainda estão sendo preparadas. Tente de novo em alguns segundos."
@@ -735,7 +798,20 @@ onBeforeUnmount(() => {
 .cv-mini > :deep(*),
 .cv-frame > :deep(*) { position: absolute; top: 0; left: 0; }
 
-.cv-slide-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; font-size: 14px; font-weight: 600; }
+.cv-slide-row { display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 12px; font-size: 14px; font-weight: 600; }
+.cv-slide-photo { display: grid; place-items: center; flex: none; width: 40px; height: 40px; overflow: hidden; margin-left: auto; border-radius: 10px; background: var(--muted); color: var(--muted-foreground); box-shadow: inset 0 0 0 1px var(--border); }
+.cv-slide-row small + .cv-slide-photo { margin-left: 8px; }
+.cv-slide-photo:disabled { opacity: 0.4; }
+.cv-slide-photo img { width: 100%; height: 100%; object-fit: cover; }
+.cv-slide-photo svg { width: 16px; height: 16px; }
+.cv-picker, .cv-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 0 10px 10px; }
+.cv-strip { justify-content: center; padding: 0 16px 14px; }
+.cv-strip > span { margin-right: 4px; color: var(--muted-foreground); font-size: 12.5px; font-weight: 600; }
+.cv-picker-auto { height: 40px; padding: 0 12px; border-radius: 10px; box-shadow: inset 0 0 0 1px var(--border); background: var(--card); font-size: 12.5px; font-weight: 600; }
+.cv-picker-photo { width: 40px; height: 40px; overflow: hidden; padding: 0; border-radius: 10px; box-shadow: inset 0 0 0 1px var(--border); }
+.cv-picker-photo img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.cv-picker-photo.failed img { opacity: 0.4; }
+.cv-picker-auto.on, .cv-picker-photo.on { box-shadow: 0 0 0 2.5px var(--primary); }
 .cv-slide-row input { width: 16px; height: 16px; accent-color: var(--primary); }
 .cv-slide-row small { margin-left: auto; color: var(--muted-foreground); font-weight: 500; }
 
