@@ -1,6 +1,6 @@
 import api from "./api";
 
-export type CompanyStatusKey = "active" | "trial" | "cancelling" | "past_due" | "inactive" | "internal" | "no_owner";
+export type CompanyStatusKey = "active" | "trial" | "free" | "trial_ended" | "cancelling" | "past_due" | "inactive" | "internal" | "no_owner";
 export type MediaStage = "hot" | "cool" | "archive" | "restoring" | "deleted";
 
 export interface Company {

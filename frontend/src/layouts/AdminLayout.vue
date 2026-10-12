@@ -1143,6 +1143,7 @@ const routeTitleMap: Record<string, string> = {
   "admin-management-flight-apis": t({ pt: "APIs de voo", es: "APIs de vuelo" }),
   "admin-management-image-apis": t({ pt: "Bancos de fotos", es: "Bancos de fotos" }),
   "admin-management-companies": t({ pt: "Empresas", es: "Empresas" }),
+  "admin-management-storage": t({ pt: "Armazenamento", es: "Almacenamiento" }),
   "admin-management-banners": t({ pt: "Banners", es: "Banners" }),
   "admin-management-whatsapp": t({ pt: "Gestão WhatsApp", es: "Gestion WhatsApp" }),
   "admin-management-offers": t({ pt: "Ofertas", es: "Ofertas" }),
