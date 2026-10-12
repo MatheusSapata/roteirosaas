@@ -1,77 +1,79 @@
 <template>
-  <div class="cs" :class="[`cs-${slide.kind}`, `cs-${format}`]" :style="rootStyle">
+  <div class="cs" :class="[`cs-${slide.kind}`, `cs-${format}`, { 'cs-cover-like': coverLike }]" :style="rootStyle">
     <!-- Capa e chamada final: foto inteira com o texto por cima -->
-    <template v-if="slide.kind === 'cover' || slide.kind === 'final'">
+    <template v-if="coverLike">
       <div class="cs-photo cs-fill" :style="bg"></div>
       <div class="cs-shade"></div>
       <img v-if="logo" :src="logo" class="cs-logo cs-logo-top" alt="" />
       <div class="cs-over">
         <template v-if="slide.kind === 'cover'">
-          <span v-if="data.dates" class="cs-tag">{{ data.dates }}</span>
-          <h1 class="cs-title" :style="titleStyle">{{ data.title }}</h1>
-          <p v-if="data.subtitle" class="cs-sub">{{ data.subtitle }}</p>
+          <FitText v-if="data.dates" class="cs-tag" :max="34" :min="20" line>{{ data.dates }}</FitText>
+          <FitText class="cs-title" :max="150" :min="56" :lines="3" :line-height="0.98">{{ headline }}</FitText>
+          <FitText v-if="subline" class="cs-sub" :max="38" :min="22" :lines="3" :line-height="1.3">{{ subline }}</FitText>
         </template>
         <template v-else>
-          <span v-if="data.agencyName" class="cs-eyebrow">{{ data.agencyName }}</span>
-          <h1 class="cs-title" :style="titleStyle">{{ data.title }}</h1>
-          <CreativePrice class="cs-price" :data="data" />
+          <FitText v-if="data.agencyName" class="cs-eyebrow" :max="30" :min="18" line>{{ data.agencyName }}</FitText>
+          <FitText class="cs-title" :max="130" :min="52" :lines="2" :line-height="0.98">{{ headline }}</FitText>
+          <FitText v-if="price.has" class="cs-price" :max="118" :min="56"><CreativePrice :data="data" variant="side" /></FitText>
           <span v-if="cta" class="cs-cta">{{ cta }}</span>
-          <p v-if="data.contact" class="cs-contact">WhatsApp {{ data.contact }}</p>
+          <FitText v-if="data.contact" class="cs-contact" :max="34" :min="20" line>WhatsApp {{ data.contact }}</FitText>
         </template>
       </div>
     </template>
 
-    <!-- Slides de conteúdo: foto no slide todo e o texto acomodado embaixo; a sombra fica só
-         atrás do texto e cresce junto com ele (pouco conteúdo = mais foto). -->
+    <!-- Slides de conteúdo: a foto ocupa o espaço que o texto não usa; o texto fica embaixo, com
+         a sombra só atrás dele. Muito texto = a fonte diminui até caber (nada some ou corta). -->
     <template v-else>
-      <div class="cs-photo cs-fill" :style="bg"></div>
+      <div class="cs-photo cs-top-photo" :style="bg"></div>
       <div class="cs-body">
         <span class="cs-eyebrow">{{ eyebrow }}</span>
-        <h2 class="cs-heading">{{ heading }}</h2>
+        <FitText class="cs-heading" :max="80" :min="44" :lines="2" :line-height="1.02">{{ heading }}</FitText>
 
-        <ol v-if="slide.kind === 'itinerary'" class="cs-days">
-          <li v-for="(day, index) in days" :key="index">
-            <i>{{ slide.from + index + 1 }}</i>
-            <div>
-              <b>{{ day.title || day.day }}</b>
-              <p v-if="day.description">{{ day.description }}</p>
-            </div>
-          </li>
-        </ol>
+        <FitText class="cs-list" :max="format === 'story' ? 56 : 46" :min="20" fill>
+          <ol v-if="slide.kind === 'itinerary'" class="cs-days">
+            <li v-for="(day, index) in days" :key="index">
+              <i>{{ slide.from + index + 1 }}</i>
+              <div>
+                <b>{{ day.title || day.day }}</b>
+                <p v-if="day.description">{{ day.description }}</p>
+              </div>
+            </li>
+          </ol>
 
-        <ul v-else-if="slide.kind === 'included'" class="cs-checks">
-          <li v-for="item in included" :key="item"><i>✓</i>{{ item }}</li>
-        </ul>
+          <ul v-else-if="slide.kind === 'included'" class="cs-checks">
+            <li v-for="item in included" :key="item.label"><i><component :is="item.icon" /></i>{{ item.label }}</li>
+          </ul>
 
-        <div v-else-if="slide.kind === 'flights'" class="cs-flights">
-          <div v-for="(flight, index) in data.flights" :key="index" class="cs-flight">
-            <span class="cs-flight-label">{{ [flight.label, flight.date].filter(Boolean).join(" · ") }}</span>
-            <b>{{ flight.route }}</b>
-            <p>{{ [flight.times, flight.details].filter(Boolean).join(" · ") }}</p>
-          </div>
-        </div>
-
-        <div v-else-if="slide.kind === 'prices'" class="cs-prices">
-          <div v-for="(item, index) in prices" :key="index" class="cs-price-row">
-            <div>
-              <b>{{ item.title || "Valor" }}</b>
-              <p v-if="item.note">{{ item.note }}</p>
-            </div>
-            <div class="cs-price-value">
-              <small v-if="item.prefix">{{ item.prefix }}</small>
-              <strong>{{ item.value }}</strong>
+          <div v-else-if="slide.kind === 'flights'" class="cs-flights">
+            <div v-for="(flight, index) in data.flights" :key="index" class="cs-flight">
+              <span class="cs-flight-label">{{ [flight.label, flight.date].filter(Boolean).join(" · ") }}</span>
+              <b>{{ flight.route }}</b>
+              <p>{{ [flight.times, flight.details].filter(Boolean).join(" · ") }}</p>
             </div>
           </div>
-          <p v-if="installmentText" class="cs-note">{{ installmentText }}</p>
-        </div>
+
+          <div v-else-if="slide.kind === 'prices'" class="cs-prices">
+            <div v-for="(item, index) in prices" :key="index" class="cs-price-row">
+              <div>
+                <b>{{ item.title || "Valor" }}</b>
+                <p v-if="item.note">{{ item.note }}</p>
+              </div>
+              <div class="cs-price-value">
+                <small v-if="item.prefix">{{ item.prefix }}</small>
+                <strong>{{ item.value }}</strong>
+              </div>
+            </div>
+            <p v-if="installmentText" class="cs-note">{{ installmentText }}</p>
+          </div>
+        </FitText>
       </div>
     </template>
 
     <!-- Base do carrossel: logo, um ponto por slide (o atual alongado) e a seta para o próximo. -->
     <CreativeTapes v-if="data.tapes && slide.kind === 'cover'" :text="tapeLabel" />
     <div class="cs-foot">
-      <img v-if="logo && slide.kind !== 'cover' && slide.kind !== 'final'" :src="logo" class="cs-logo cs-logo-foot" alt="" />
-      <span v-else-if="slide.kind !== 'cover' && slide.kind !== 'final' && data.agencyName" class="cs-agency">{{ data.agencyName }}</span>
+      <img v-if="logo && !coverLike" :src="logo" class="cs-logo cs-logo-foot" alt="" />
+      <span v-else-if="!coverLike && data.agencyName" class="cs-agency">{{ data.agencyName }}</span>
       <div class="cs-pager">
         <span class="cs-dots" aria-hidden="true">
           <i v-for="dot in total" :key="dot" :class="{ on: dot === index + 1 }"></i>
@@ -87,9 +89,12 @@
 <script setup lang="ts">
 /** Um slide do carrossel em tamanho real; o PNG é gerado deste mesmo elemento. */
 import { computed } from "vue";
+import "./creativeFonts";
 import { FORMAT_SIZES, effectiveColors, priceParts, readableOn, tapeText, type CreativeData, type CreativeFormat } from "./creativeData";
+import { inclusionIcon } from "./creativeIcons";
 import CreativePrice from "./CreativePrice.vue";
 import CreativeTapes from "./CreativeTapes.vue";
+import FitText from "./FitText.vue";
 import { pricesPerSlide, type CarouselSlide } from "./carousel";
 
 const props = defineProps<{
@@ -104,29 +109,50 @@ const props = defineProps<{
   showLogo?: boolean;
 }>();
 
+// Áreas livres de cada formato (no Stories, a interface do Instagram cobre topo e base).
+const SAFE: Record<CreativeFormat, { pad: number; top: number; foot: number }> = {
+  feed: { pad: 64, top: 64, foot: 52 },
+  square: { pad: 56, top: 52, foot: 44 },
+  story: { pad: 72, top: 210, foot: 220 }
+};
+
 const size = computed(() => FORMAT_SIZES[props.format]);
+const coverLike = computed(() => props.slide.kind === "cover" || props.slide.kind === "final");
 const cta = computed(() => (props.data.ctaEnabled ? props.data.cta.trim() : ""));
 const logo = computed(() => (props.showLogo === false ? "" : props.data.logoUrl));
 const colors = computed(() => effectiveColors(props.data));
-const rootStyle = computed(() => ({
-  width: `${size.value.width}px`,
-  height: `${size.value.height}px`,
-  "--c1": colors.value.primary,
-  "--c2": colors.value.secondary,
-  "--on1": readableOn(colors.value.primary),
-  "--on2": readableOn(colors.value.secondary)
-}));
-const installmentText = computed(() => priceParts(props.data).installmentText);
+const rootStyle = computed(() => {
+  const safe = SAFE[props.format];
+  return {
+    width: `${size.value.width}px`,
+    height: `${size.value.height}px`,
+    "--c1": colors.value.primary,
+    "--c2": colors.value.secondary,
+    "--on1": readableOn(colors.value.primary),
+    "--on2": readableOn(colors.value.secondary),
+    "--pad": `${safe.pad}px`,
+    "--top": `${safe.top}px`,
+    "--foot": `${safe.foot}px`
+  };
+});
+const price = computed(() => priceParts(props.data));
+const installmentText = computed(() => price.value.installmentText);
 const tapeLabel = computed(() => tapeText(props.data));
 const bg = computed(() => (props.photo ? { backgroundImage: `url("${props.photo}")` } : {}));
-const titleStyle = computed(() => {
-  const length = props.data.title.length;
-  const px = length > 60 ? 70 : length > 42 ? 84 : length > 26 ? 100 : 116;
-  return { fontSize: `${Math.round(px * (props.format === "square" ? 0.86 : 1))}px` };
+// Capa: o nome curto em destaque; o resto do título (depois de ":") vira a linha de apoio.
+const headline = computed(() => (props.data.destination || props.data.title).trim());
+const subline = computed(() => {
+  const rest = props.data.title.trim().slice(headline.value.length).replace(/^[\s:|–—-]+/, "");
+  return rest || props.data.subtitle;
 });
 
 const days = computed(() => (props.slide.kind === "itinerary" ? props.data.itinerary.slice(props.slide.from, props.slide.to) : []));
-const included = computed(() => props.data.benefits.filter(Boolean).slice(0, props.format === "story" ? 8 : 6));
+const included = computed(() =>
+  props.data.benefits
+    .filter(Boolean)
+    .slice(0, props.format === "story" ? 8 : 6)
+    .map(label => ({ label, icon: inclusionIcon(label) }))
+);
 const prices = computed(() => props.data.prices.slice(0, pricesPerSlide(props.format)));
 
 const eyebrow = computed(() => {
@@ -150,13 +176,19 @@ const heading = computed(() => {
 <style scoped>
 .cs {
   position: relative;
+  display: flex;
   overflow: hidden;
+  flex-direction: column;
   background: var(--c1);
   color: var(--on1);
-  font-family: Inter, system-ui, sans-serif;
+  font-family: "Montserrat", sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 .cs * {
   box-sizing: border-box;
+}
+.cs :deep(svg) {
+  flex: none;
 }
 .cs-photo {
   background-color: color-mix(in srgb, var(--c1) 70%, #000);
@@ -178,50 +210,50 @@ const heading = computed(() => {
 }
 .cs-logo-top {
   position: absolute;
-  top: 56px;
-  left: 64px;
+  top: var(--top);
+  left: var(--pad);
   z-index: 2;
-  max-width: 300px;
+  max-width: 320px;
   max-height: 120px;
-  filter: drop-shadow(0 4px 16px rgba(0, 0, 0, 0.35));
+  padding: 14px 20px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
 }
+
+/* ---------- Capa e final ---------- */
 .cs-over {
   position: absolute;
-  right: 64px;
-  bottom: 150px;
-  left: 64px;
+  right: var(--pad);
+  bottom: calc(var(--foot) + 120px);
+  left: var(--pad);
   z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  gap: 22px;
   color: #fff;
-}
-.cs-story .cs-over {
-  bottom: 200px;
+  --pz-accent: var(--c2);
 }
 .cs-tag {
-  margin-bottom: 26px;
-  padding: 4px 0 4px 20px;
-  border-left: 8px solid var(--c2);
-  font-size: 32px;
+  padding: 0.12em 0 0.12em 0.6em;
+  border-left: 0.24em solid var(--c2);
   font-weight: 700;
 }
 .cs-title {
-  margin: 0;
-  font-family: Sora, Inter, sans-serif;
-  font-weight: 800;
-  line-height: 1.02;
+  width: 100%;
+  font-weight: 900;
   letter-spacing: -0.02em;
+  text-wrap-style: balance;
+  text-shadow: 0 6px 30px rgba(0, 0, 0, 0.3);
 }
 .cs-sub {
-  margin: 22px 0 0;
-  font-size: 36px;
-  line-height: 1.3;
+  width: 100%;
+  font-weight: 500;
   opacity: 0.92;
 }
 .cs-eyebrow {
   display: block;
-  margin-bottom: 16px;
   font-size: 28px;
   font-weight: 700;
   letter-spacing: 0.1em;
@@ -229,37 +261,37 @@ const heading = computed(() => {
   opacity: 0.85;
 }
 .cs-price {
-  margin-top: 34px;
-  --pz-size: 130px;
-  --pz-accent: var(--c2);
+  margin-top: 6px;
 }
 /* O único "botão" do carrossel: só com Saiba mais / Garanta agora. */
 .cs-cta {
-  margin-top: 36px;
   padding: 26px 52px;
   border-radius: 999px;
   background: var(--c2);
   color: var(--on2);
   font-size: 38px;
   font-weight: 800;
+  white-space: nowrap;
 }
 .cs-contact {
-  margin: 26px 0 0;
-  font-size: 32px;
   font-weight: 700;
 }
 
-/* Bloco de texto preso embaixo: só tem a altura do conteúdo, e a sombra (degradê para a cor
-   de fundo) nasce um pouco acima dele. Com muito texto ele sobe até perto do topo. */
+/* ---------- Slides de conteúdo ---------- */
+/* A foto ocupa o que sobra em cima e entra um pouco por baixo da sombra do texto. */
+.cs-top-photo {
+  min-height: 24%;
+  flex: 1 1 auto;
+  margin-bottom: -200px;
+}
 .cs-body {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
+  position: relative;
+  z-index: 1;
   display: flex;
+  max-height: calc(100% - var(--top) - 40px);
+  flex: none;
   flex-direction: column;
-  max-height: calc(100% - 90px);
-  padding: 220px 72px 170px;
+  padding: 220px var(--pad) calc(var(--foot) + 110px);
   background: linear-gradient(
     180deg,
     color-mix(in srgb, var(--c1) 0%, transparent) 0,
@@ -267,91 +299,86 @@ const heading = computed(() => {
     var(--c1) 230px
   );
 }
-.cs-story .cs-body {
-  padding-bottom: 210px;
+.cs-body > .cs-eyebrow {
+  margin-bottom: 12px;
 }
 .cs-heading {
-  margin: 0 0 34px;
-  font-family: Sora, Inter, sans-serif;
-  font-size: 68px;
-  font-weight: 800;
-  line-height: 1.05;
+  margin-bottom: 0.45em;
+  font-weight: 900;
   letter-spacing: -0.02em;
 }
-.cs-square .cs-heading {
-  margin-bottom: 24px;
-  font-size: 56px;
-}
-
-/* Itens que não cabem inteiros vão para uma "coluna" fora da arte (nunca aparecem cortados). */
-.cs-days,
-.cs-checks,
-.cs-flights,
-.cs-prices {
-  display: flex;
+/* Lista: altura do próprio conteúdo; se o bloco bater no limite, a fonte diminui até caber. */
+.cs-list {
+  height: auto;
   flex: 0 1 auto;
+}
+.cs-days,
+.cs-checks {
+  display: flex;
   flex-direction: column;
-  flex-wrap: wrap;
-  column-gap: 2000px;
-  min-height: 0;
-  overflow: hidden;
   margin: 0;
   padding: 0;
   list-style: none;
 }
+.cs-days {
+  gap: 0.75em;
+}
 .cs-days li {
   display: flex;
-  gap: 26px;
-  width: 100%;
-  margin-bottom: 30px;
+  gap: 0.65em;
 }
 .cs-days i,
 .cs-checks i {
   display: grid;
   flex: none;
   place-items: center;
-  width: 60px;
-  height: 60px;
+  width: 1.5em;
+  height: 1.5em;
   border-radius: 50%;
   background: var(--c2);
   color: var(--on2);
-  font-size: 30px;
+  font-size: 0.85em;
   font-style: normal;
   font-weight: 800;
 }
 .cs-days b {
   display: block;
-  font-size: 36px;
+  font-weight: 800;
   line-height: 1.2;
 }
 .cs-days p {
-  margin: 8px 0 0;
-  font-size: 27px;
+  margin: 0.2em 0 0;
+  font-size: 0.72em;
+  font-weight: 500;
   line-height: 1.35;
   opacity: 0.85;
+}
+.cs-checks {
+  gap: 0.6em;
 }
 .cs-checks li {
   display: flex;
   align-items: center;
-  gap: 24px;
-  margin-bottom: 26px;
-  font-size: 38px;
-  font-weight: 600;
+  gap: 0.6em;
+  font-weight: 700;
+  line-height: 1.2;
 }
-.cs-checks i {
-  width: 54px;
-  height: 54px;
-  font-size: 28px;
+.cs-checks i :deep(svg) {
+  width: 0.62em;
+  height: 0.62em;
+}
+.cs-flights {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8em;
 }
 .cs-flight {
-  width: 100%;
-  margin-bottom: 34px;
-  padding-left: 26px;
-  border-left: 8px solid var(--c2);
+  padding-left: 0.6em;
+  border-left: 0.2em solid var(--c2);
 }
 .cs-flight-label {
   display: block;
-  font-size: 28px;
+  font-size: 0.7em;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -359,30 +386,33 @@ const heading = computed(() => {
 }
 .cs-flight b {
   display: block;
-  margin-top: 8px;
-  font-size: 40px;
+  margin-top: 0.15em;
+  font-weight: 800;
   line-height: 1.2;
 }
 .cs-flight p {
-  margin: 8px 0 0;
-  font-size: 30px;
+  margin: 0.15em 0 0;
+  font-size: 0.75em;
   opacity: 0.9;
+}
+.cs-prices {
+  display: flex;
+  flex-direction: column;
 }
 .cs-price-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 30px;
-  width: 100%;
-  padding: 24px 0;
+  gap: 0.8em;
+  padding: 0.55em 0;
   border-bottom: 2px solid color-mix(in srgb, var(--on1) 22%, transparent);
 }
 .cs-price-row b {
-  font-size: 36px;
+  font-weight: 800;
 }
 .cs-price-row p {
-  margin: 6px 0 0;
-  font-size: 26px;
+  margin: 0.15em 0 0;
+  font-size: 0.7em;
   opacity: 0.85;
 }
 .cs-price-value {
@@ -392,27 +422,27 @@ const heading = computed(() => {
   align-items: flex-end;
 }
 .cs-price-value small {
-  font-size: 24px;
+  font-size: 0.62em;
   opacity: 0.85;
 }
 .cs-price-value strong {
   color: var(--c2);
-  font-family: Sora, sans-serif;
-  font-size: 58px;
-  font-weight: 800;
+  font-size: 1.5em;
+  font-weight: 900;
+  letter-spacing: -0.02em;
 }
 .cs-note {
-  width: 100%;
-  margin: 24px 0 0;
-  font-size: 30px;
+  margin: 0.6em 0 0;
+  font-size: 0.8em;
   font-weight: 600;
 }
 
+/* ---------- Base ---------- */
 .cs-foot {
   position: absolute;
-  right: 64px;
-  bottom: 52px;
-  left: 64px;
+  right: var(--pad);
+  bottom: var(--foot);
+  left: var(--pad);
   z-index: 3;
   display: flex;
   align-items: center;
@@ -420,16 +450,12 @@ const heading = computed(() => {
   gap: 24px;
   min-height: 72px;
 }
-.cs-cover .cs-foot,
-.cs-final .cs-foot {
+.cs-cover-like .cs-foot {
   color: #fff;
 }
-.cs-story .cs-foot {
-  bottom: 84px;
-}
 .cs-logo-foot {
-  max-width: 220px;
-  max-height: 64px;
+  max-width: 240px;
+  max-height: 72px;
 }
 .cs-agency {
   font-size: 28px;

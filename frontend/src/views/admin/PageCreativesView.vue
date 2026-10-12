@@ -259,10 +259,18 @@
                 <p v-if="data.campaign" class="ved-hint">Preto e amarelo enquanto a campanha estiver ligada; suas cores voltam ao desligar.</p>
               </div>
               <EdToggle v-model="data.tapes" label="Faixas cruzadas no topo" hint="Fitas com o texto da campanha ou da tag." />
+              <div v-if="hasPhotoSplit" class="ved-field">
+                <span class="ved-label">Tamanho da foto</span>
+                <div class="ved-seg">
+                  <button v-for="option in PHOTO_SIZES" :key="option.id" type="button" :class="{ on: data.photoSize === option.id }" @click="data.photoSize = option.id">{{ option.label }}</button>
+                </div>
+                <p class="ved-hint">Os textos e o preço se ajustam ao espaço que sobra.</p>
+              </div>
               <EdText v-model="data.badge" label="Tag" placeholder="Oferta" hint="Selo, fita ou etiqueta da arte. Vazio = sem tag." :maxlength="28" />
               <div class="cv-chips">
                 <button v-for="option in BADGE_SUGGESTIONS" :key="option" type="button" :class="{ on: data.badge === option }" @click="data.badge = option">{{ option }}</button>
               </div>
+              <EdToggle v-if="hasRibbon && data.badge" v-model="data.ribbon" label="Faixa diagonal no canto" hint="A tag numa faixa a 45° cortando o canto da arte." />
               <p v-if="isBlackTemplate" class="ved-hint">Os modelos de Black Friday usam sempre preto e amarelo.</p>
               <div class="ved-pair">
                 <label class="cv-color"><input v-model="data.primary" type="color" /><span><b>Fundo</b><small>{{ data.primary }}</small></span></label>
@@ -451,13 +459,14 @@ import {
   CAMPAIGNS,
   CTA_SUGGESTIONS,
   FORMAT_SIZES,
+  PHOTO_SIZES,
   extractCreativeData,
   type CreativeCampaign,
   type CreativeData,
   type CreativeFormat
 } from "../../components/creatives/creativeData";
 import { CAROUSEL_STYLES, SLIDE_LABELS, buildCarousel, type CarouselSlide, type CarouselStyle } from "../../components/creatives/carousel";
-import { BLACK_TEMPLATES, CATEGORY_LABELS, CREATIVE_TEMPLATES, type CreativeCategory } from "../../components/creatives/creativeTemplates";
+import { BLACK_TEMPLATES, CATEGORY_LABELS, CREATIVE_TEMPLATES, PHOTO_SPLIT_TEMPLATES, RIBBON_TEMPLATES, type CreativeCategory } from "../../components/creatives/creativeTemplates";
 
 const props = defineProps<{ id: string }>();
 
@@ -520,6 +529,8 @@ const chooseKind = (value: Kind) => {
 
 const size = computed(() => FORMAT_SIZES[format.value]);
 const isBlackTemplate = computed(() => kind.value !== "carousel" && BLACK_TEMPLATES.has(template.value));
+const hasRibbon = computed(() => kind.value !== "carousel" && RIBBON_TEMPLATES.has(template.value));
+const hasPhotoSplit = computed(() => kind.value !== "carousel" && PHOTO_SPLIT_TEMPLATES.has(template.value));
 // Campanha: liga as fitas e a tag dela; ao desligar, volta ao normal.
 const setCampaign = (value: CreativeCampaign) => {
   if (!data.value) return;

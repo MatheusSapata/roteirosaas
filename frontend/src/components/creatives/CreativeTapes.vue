@@ -1,10 +1,9 @@
 <template>
-  <!-- Duas fitas cruzadas no topo, no estilo de campanha (Black Friday, Oferta...). -->
-  <div class="tp" :class="[`tp-${variant || 'dark'}`, `tp-at-${position || 'top'}`]" aria-hidden="true">
+  <!-- Duas fitas cruzadas de campanha ("BLACK FRIDAY •"), como fita de isolamento. -->
+  <div class="tp" :class="[`tp-${variant}`, `tp-at-${position}`]" aria-hidden="true">
     <div v-for="band in 2" :key="band" class="tp-band" :class="`tp-${band}`">
-      <span v-for="item in 8" :key="item" class="tp-item">
-        <b>{{ first }}</b><em v-if="rest">{{ rest }}</em>
-        <svg viewBox="0 0 24 24"><path d="M12 2c1 3.5-1.5 5-1.5 7.5 0 1.4 1 2.5 2.3 2.5 1.6 0 2.4-1.4 2.2-3 2 1.6 3 4 3 6 0 3.9-2.9 7-7 7s-7-3.1-7-7c0-4.6 4.6-7.2 8-13z" /></svg>
+      <span v-for="item in 9" :key="item" class="tp-item">
+        <b>{{ first }}</b><em v-if="rest">&nbsp;{{ rest }}</em><i>•</i>
       </span>
     </div>
   </div>
@@ -13,8 +12,11 @@
 <script setup lang="ts">
 import { computed } from "vue";
 
-const props = defineProps<{ text: string; variant?: "dark" | "yellow"; position?: "top" | "bottom" }>();
-// "BLACK FRIDAY" → "BLACK" numa cor e "FRIDAY" na de destaque.
+const props = withDefaults(defineProps<{ text: string; variant?: "dark" | "yellow"; position?: "top" | "bottom" | "corner" }>(), {
+  variant: "dark",
+  position: "top"
+});
+// "BLACK FRIDAY" → "BLACK" numa cor e "FRIDAY" na outra (na fita escura).
 const first = computed(() => props.text.split(" ")[0] || props.text);
 const rest = computed(() => props.text.split(" ").slice(1).join(" "));
 </script>
@@ -22,79 +24,86 @@ const rest = computed(() => props.text.split(" ").slice(1).join(" "));
 <style scoped>
 .tp {
   position: absolute;
-  inset: 0 0 auto 0;
+  inset: 0;
   z-index: 6;
-  height: 260px;
+  overflow: hidden;
   pointer-events: none;
 }
 .tp-band {
   position: absolute;
-  left: -120px;
+  left: -15%;
   display: flex;
-  width: calc(100% + 240px);
-  overflow: hidden;
-  padding: 14px 0;
-  background: #0b0b0b;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  width: 130%;
+  padding: 0.32em 0;
+  font-family: "Montserrat", sans-serif;
+  font-size: 42px;
+  font-weight: 900;
+  letter-spacing: 0.01em;
   white-space: nowrap;
-}
-.tp-1 {
-  top: 54px;
-  transform: rotate(-7deg);
-}
-.tp-2 {
-  top: 96px;
-  transform: rotate(6deg);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
 }
 .tp-item {
   display: inline-flex;
   flex: none;
   align-items: center;
-  gap: 12px;
-  padding: 0 18px;
-  font-family: Sora, Inter, sans-serif;
-  font-size: 44px;
-  font-weight: 800;
-  letter-spacing: 0.02em;
+  padding-left: 0.5em;
+  text-transform: uppercase;
 }
-.tp-item b {
-  color: #fff;
-  font-weight: 800;
-}
-.tp-item em {
-  color: var(--c2);
+.tp-item i {
+  padding-left: 0.5em;
   font-style: normal;
 }
-/* Fita amarela com texto preto (como as fitas de "cuidado"). */
+.tp-item em {
+  font-style: normal;
+}
+
+/* Fita escura: "BLACK" branco e "FRIDAY" na cor de destaque. */
+.tp-dark .tp-band {
+  background: #0b0b0b;
+  color: #fff;
+}
+.tp-dark .tp-item em,
+.tp-dark .tp-item i {
+  color: var(--c2);
+}
+/* Fita amarela com texto preto; a segunda, mais clara (como as fitas da referência). */
 .tp-yellow .tp-band {
   background: var(--c2);
-}
-.tp-yellow .tp-item b,
-.tp-yellow .tp-item em {
   color: #0b0b0b;
 }
-.tp-yellow .tp-item svg {
-  fill: #0b0b0b;
-  width: 22px;
-  height: 22px;
+.tp-yellow .tp-2 {
+  background: #fff4cf;
 }
-.tp-at-bottom {
-  top: auto;
-  bottom: 0;
+
+/* Topo: cruzam um pouco abaixo da borda. */
+.tp-at-top .tp-1 {
+  top: 3%;
+  transform: rotate(-6deg);
 }
+.tp-at-top .tp-2 {
+  top: 6.5%;
+  transform: rotate(5deg);
+}
+/* Base. */
 .tp-at-bottom .tp-1 {
-  top: auto;
-  bottom: 40px;
-  transform: rotate(6deg);
+  bottom: 3%;
+  transform: rotate(5deg);
 }
 .tp-at-bottom .tp-2 {
-  top: auto;
-  bottom: 96px;
-  transform: rotate(-5deg);
+  bottom: 7%;
+  transform: rotate(-4deg);
 }
-.tp-item svg {
-  width: 38px;
-  height: 38px;
-  fill: #f97316;
+/* Canto superior esquerdo: fitas em diagonal, uma sobre a outra. */
+.tp-at-corner .tp-1 {
+  top: 7%;
+  left: -40%;
+  width: 110%;
+  transform: rotate(-28deg);
+}
+.tp-at-corner .tp-2 {
+  top: 2%;
+  left: -14%;
+  width: 110%;
+  transform: rotate(-8deg);
 }
 </style>

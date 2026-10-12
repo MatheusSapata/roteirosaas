@@ -9,6 +9,8 @@
     "lint": "echo \"add lint tooling\""
   },
   "dependencies": {
+    "@fontsource/anton": "5.2.7",
+    "@fontsource/montserrat": "5.2.8",
     "axios": "^1.6.0",
     "cropperjs": "^1.6.1",
     "dompurify": "^3.3.1",

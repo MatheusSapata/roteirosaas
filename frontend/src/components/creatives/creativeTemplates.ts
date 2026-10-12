@@ -16,6 +16,13 @@ export const CATEGORY_LABELS: Record<CreativeCategory, string> = {
   photos: "Com mais fotos"
 };
 
+/** Modelos em que a foto divide a arte com o conteúdo (aceitam "Tamanho da foto"). */
+// (Destino, lista, colagem e mosaico ficam de fora: neles a foto já ocupa tudo o que o conteúdo não usa.)
+export const PHOTO_SPLIT_TEMPLATES = new Set(["oferta", "dividido", "campanha", "price-hero", "black-economia", "black-faixa", "card"]);
+
+/** Modelos com a faixa diagonal da tag no canto (opcional). */
+export const RIBBON_TEMPLATES = new Set(["dividido", "benefits", "card", "collage-2", "mosaic-3"]);
+
 /** Modelos da campanha de Black Friday: sempre preto e amarelo. */
 export const BLACK_TEMPLATES = new Set(["black-economia", "black-faixa"]);
 
