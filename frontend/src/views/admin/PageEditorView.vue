@@ -38,6 +38,10 @@
           <SparkleIcon aria-hidden="true" />
           Assistente IA
         </button>
+        <button v-if="!phoneEditor && page" type="button" class="ed-btn ed-btn-ghost" title="Artes prontas para divulgar esta viagem" @click="openCreatives">
+          <ImagesIcon aria-hidden="true" />
+          Criativos
+        </button>
         <button v-if="isPublished && !phoneEditor" type="button" class="ed-btn ed-btn-ghost" :disabled="!publicUrl" @click="viewPublicPage">
           <ExternalLinkIcon aria-hidden="true" />
           {{ viewCopy.actions.viewPage }}
@@ -49,6 +53,7 @@
           <div v-if="topbarMenuOpen" class="ed-menu" @click="topbarMenuOpen = false">
             <button v-if="phoneEditor && isPublished" type="button" :disabled="!publicUrl" @click="viewPublicPage">{{ viewCopy.actions.viewPage }}</button>
             <button v-if="phoneEditor && !isPublished" type="button" @click="publishPage">{{ viewCopy.toolbar.publish }}</button>
+            <button v-if="phoneEditor && page" type="button" @click="openCreatives">Criativos</button>
             <button type="button" @click="saveTemplate">{{ viewCopy.toolbar.saveTemplate }}</button>
             <button v-if="isPublished" type="button" class="danger" @click="unpublishPage">{{ viewCopy.toolbar.unpublish }}</button>
           </div>
@@ -1629,6 +1634,7 @@ import {
   CopyIcon,
   EllipsisVerticalIcon,
   ExternalLinkIcon,
+  ImagesIcon,
   GripVerticalIcon,
   ImageIcon,
   LinkIcon,
@@ -5972,6 +5978,11 @@ const goIntegrations = () => {
 const goViajeonIntegration = () => {
   closeSectionPicker();
   router.push({ name: "integrations-viajeon" });
+};
+
+// Os criativos usam a versão salva da página; a saída com alterações pendentes passa pelo aviso de sempre.
+const openCreatives = () => {
+  if (page.value) router.push({ name: "page-creatives", params: { id: String(page.value.id) } });
 };
 
 const viewPublicPage = () => {
