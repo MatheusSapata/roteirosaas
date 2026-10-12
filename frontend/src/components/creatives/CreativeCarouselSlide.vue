@@ -14,11 +14,7 @@
         <template v-else>
           <span v-if="data.agencyName" class="cs-eyebrow">{{ data.agencyName }}</span>
           <h1 class="cs-title" :style="titleStyle">{{ data.title }}</h1>
-          <div v-if="data.priceValue" class="cs-price">
-            <small>{{ data.pricePrefix }}</small>
-            <b>{{ data.priceValue }}</b>
-            <small>{{ [data.priceSuffix, data.installments].filter(Boolean).join(" · ") }}</small>
-          </div>
+          <CreativePrice class="cs-price" :data="data" />
           <span v-if="cta" class="cs-cta">{{ cta }}</span>
           <p v-if="data.contact" class="cs-contact">WhatsApp {{ data.contact }}</p>
         </template>
@@ -66,12 +62,13 @@
               <strong>{{ item.value }}</strong>
             </div>
           </div>
-          <p v-if="data.installments" class="cs-note">{{ data.installments }}</p>
+          <p v-if="installmentText" class="cs-note">{{ installmentText }}</p>
         </div>
       </div>
     </template>
 
     <!-- Base do carrossel: logo, um ponto por slide (o atual alongado) e a seta para o próximo. -->
+    <CreativeTapes v-if="data.tapes && slide.kind === 'cover'" :text="tapeLabel" />
     <div class="cs-foot">
       <img v-if="logo && slide.kind !== 'cover' && slide.kind !== 'final'" :src="logo" class="cs-logo cs-logo-foot" alt="" />
       <span v-else-if="slide.kind !== 'cover' && slide.kind !== 'final' && data.agencyName" class="cs-agency">{{ data.agencyName }}</span>
@@ -90,7 +87,9 @@
 <script setup lang="ts">
 /** Um slide do carrossel em tamanho real; o PNG é gerado deste mesmo elemento. */
 import { computed } from "vue";
-import { FORMAT_SIZES, readableOn, type CreativeData, type CreativeFormat } from "./creativeData";
+import { FORMAT_SIZES, effectiveColors, priceParts, readableOn, tapeText, type CreativeData, type CreativeFormat } from "./creativeData";
+import CreativePrice from "./CreativePrice.vue";
+import CreativeTapes from "./CreativeTapes.vue";
 import { pricesPerSlide, type CarouselSlide } from "./carousel";
 
 const props = defineProps<{
@@ -98,6 +97,8 @@ const props = defineProps<{
   format: CreativeFormat;
   data: CreativeData;
   photo: string;
+  /** Usado só pelo estilo em páginas; aqui fica ignorado. */
+  photos?: string[];
   index: number;
   total: number;
   showLogo?: boolean;
@@ -106,14 +107,17 @@ const props = defineProps<{
 const size = computed(() => FORMAT_SIZES[props.format]);
 const cta = computed(() => (props.data.ctaEnabled ? props.data.cta.trim() : ""));
 const logo = computed(() => (props.showLogo === false ? "" : props.data.logoUrl));
+const colors = computed(() => effectiveColors(props.data));
 const rootStyle = computed(() => ({
   width: `${size.value.width}px`,
   height: `${size.value.height}px`,
-  "--c1": props.data.primary,
-  "--c2": props.data.secondary,
-  "--on1": readableOn(props.data.primary),
-  "--on2": readableOn(props.data.secondary)
+  "--c1": colors.value.primary,
+  "--c2": colors.value.secondary,
+  "--on1": readableOn(colors.value.primary),
+  "--on2": readableOn(colors.value.secondary)
 }));
+const installmentText = computed(() => priceParts(props.data).installmentText);
+const tapeLabel = computed(() => tapeText(props.data));
 const bg = computed(() => (props.photo ? { backgroundImage: `url("${props.photo}")` } : {}));
 const titleStyle = computed(() => {
   const length = props.data.title.length;
@@ -225,21 +229,9 @@ const heading = computed(() => {
   opacity: 0.85;
 }
 .cs-price {
-  display: flex;
-  flex-direction: column;
   margin-top: 34px;
-}
-.cs-price small {
-  font-size: 30px;
-  font-weight: 600;
-  opacity: 0.9;
-}
-.cs-price b {
-  color: var(--c2);
-  font-family: Sora, sans-serif;
-  font-size: 104px;
-  font-weight: 800;
-  line-height: 1.05;
+  --pz-size: 130px;
+  --pz-accent: var(--c2);
 }
 /* O único "botão" do carrossel: só com Saiba mais / Garanta agora. */
 .cs-cta {

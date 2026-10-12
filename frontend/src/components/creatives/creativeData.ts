@@ -5,12 +5,27 @@ import { resolveMediaUrl } from "../../utils/media";
 /** Dados da viagem usados nos criativos (tudo editável na tela antes de baixar). */
 export interface CreativeData {
   title: string;
+  /** Destino curto para os modelos de manchete ("Porto Seguro", "Jalapão 6 dias"). */
+  destination: string;
   subtitle: string;
   dates: string;
   pricePrefix: string;
+  /** Valor total (o "à vista"); as parcelas são calculadas a partir dele. */
   priceValue: string;
   priceSuffix: string;
-  installments: string;
+  /** Número de parcelas ("12"); vazio ou 1 = mostra só o valor total. */
+  installmentCount: string;
+  /** Preço antigo, riscado ("De: R$ 2.240"). */
+  oldPrice: string;
+  duration: string;
+  departure: string;
+  /** Letras miúdas das condições. */
+  disclaimer: string;
+  /** Tag/selo da arte ("Oferta", "Últimos lugares"); vazio = sem tag. */
+  badge: string;
+  /** Faixas cruzadas no topo (fita de campanha). */
+  tapes: boolean;
+  campaign: CreativeCampaign;
   benefits: string[];
   /** Único elemento com cara de botão na arte: aparece só se ativado. */
   ctaEnabled: boolean;
@@ -25,6 +40,44 @@ export interface CreativeData {
   prices: { title: string; prefix: string; value: string; note: string }[];
   flights: { label: string; date: string; route: string; times: string; details: string }[];
 }
+
+export type CreativeCampaign = "" | "black_friday";
+/** Campanhas temporárias: trocam as cores e o texto das faixas sem mexer nas cores escolhidas. */
+export const CAMPAIGNS: Record<Exclude<CreativeCampaign, "">, { label: string; primary: string; secondary: string; tape: string; badge: string }> = {
+  black_friday: { label: "Black Friday", primary: "#0b0b0b", secondary: "#facc15", tape: "BLACK FRIDAY", badge: "Black Friday" }
+};
+export const BADGE_SUGGESTIONS = ["Oferta", "Últimos lugares", "Promoção", "Imperdível", "Saída confirmada"];
+
+export const effectiveColors = (data: CreativeData) => {
+  const campaign = data.campaign ? CAMPAIGNS[data.campaign] : null;
+  return campaign ? { primary: campaign.primary, secondary: campaign.secondary } : { primary: data.primary, secondary: data.secondary };
+};
+export const tapeText = (data: CreativeData) => (data.campaign ? CAMPAIGNS[data.campaign].tape : (data.badge || "Oferta").toUpperCase());
+
+/** "R$ 4.590,00" → 4590. */
+export const parseMoney = (value: string) => {
+  const clean = (value || "").replace(/[^\d,.]/g, "");
+  if (!clean) return 0;
+  const normalized = clean.includes(",") ? clean.replace(/\./g, "").replace(",", ".") : clean.replace(/\.(?=\d{3}(\D|$))/g, "");
+  return Number(normalized) || 0;
+};
+
+/** Preço pronto para a arte: "12x R$ 155,00" (parcelado) ou "R$ 4.590" (à vista), mais o total. */
+export const priceParts = (data: CreativeData) => {
+  const total = parseMoney(data.priceValue);
+  const count = parseInt(data.installmentCount, 10) || 0;
+  const value = count > 1 && total ? total / count : total;
+  const [whole, cents = "00"] = value.toFixed(2).split(".");
+  const wholeText = new Intl.NumberFormat("pt-BR").format(Number(whole));
+  return {
+    has: Boolean(total),
+    count: count > 1 && total ? `${count}x` : "",
+    whole: wholeText,
+    cents: cents === "00" && !(count > 1) ? "" : `,${cents}`,
+    total: total ? formatMoney(total) : "",
+    installmentText: count > 1 ? `em até ${count}x` : ""
+  };
+};
 
 /** A arte não é clicável: o botão é opcional e serve de chamada de anúncio. */
 export const CTA_SUGGESTIONS = ["Saiba mais", "Garanta agora", "Reserve já", "Quero ir"];
@@ -87,7 +140,11 @@ export const extractCreativeData = (
   // "por pessoa" às vezes vem no rótulo do preço; ele vai depois do valor, não antes.
   const priceLabel = text(cheapest?.priceLabel);
   const perPerson = /por pessoa|p\/ pessoa|por pax/i;
-  const installments = priceDescription.match(/(em at[ée] \d+x[^\n.]*)/i)?.[1] || "";
+  const installmentCount = priceDescription.match(/(\d{1,2})\s*x/i)?.[1] || "";
+  const flights = extractFlights(sections);
+  const allText = [text(hero?.title), text(hero?.subtitle), ...((hero?.chips || []) as unknown[]).map(text), priceDescription].join(" · ");
+  const leaving = allText.match(/sa[ií](?:da|ndo) (?:de|do|da) ([A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÀ-ÿ]+(?: [A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÀ-ÿ]+)*)/)?.[1];
+  const flightCity = flights[0]?.route.split("→")[0].replace(/\(.*?\)/g, "").trim();
 
   const chips = (hero?.chips || []).map(text).filter(Boolean);
   const reasonTitles = (reasons?.items || []).map((item: any) => text(item?.title)).filter(Boolean);
@@ -101,14 +158,23 @@ export const extractCreativeData = (
   const phone = (agency?.cta_whatsapp || "").replace(/\D/g, "");
   const contact = phone.length >= 10 ? `(${phone.slice(-11, -9) || phone.slice(-10, -8)}) ${phone.slice(-9, -4)}-${phone.slice(-4)}` : "";
 
+  const fullTitle = text(hero?.title) || page?.title || "Sua próxima viagem";
   return {
-    title: text(hero?.title) || page?.title || "Sua próxima viagem",
+    title: fullTitle,
+    destination: shortDestination(fullTitle),
     subtitle: text(hero?.subtitle).slice(0, 140),
     dates,
     pricePrefix: cheapest ? (priceLabel && !perPerson.test(priceLabel) ? priceLabel : "A partir de") : "",
     priceValue: cheapest ? formatMoney(Number(cheapest.price)) : "",
     priceSuffix: cheapest && perPerson.test(`${priceLabel} ${priceDescription}`) ? "por pessoa" : "",
-    installments,
+    installmentCount,
+    oldPrice: "",
+    duration: days,
+    departure: leaving || flightCity ? `Saída de ${leaving || flightCity}` : "",
+    disclaimer: cheapest ? "Valor por pessoa, sujeito a alteração e disponibilidade." : "",
+    badge: "Oferta",
+    tapes: false,
+    campaign: "",
     benefits,
     ctaEnabled: false,
     cta: "Saiba mais",
@@ -133,8 +199,14 @@ export const extractCreativeData = (
         note: shorten(text(item.description), 90)
       };
     }),
-    flights: extractFlights(sections)
+    flights
   };
+};
+
+/** "Jalapão 6 dias: fervedouros, dunas e cachoeiras" → "Jalapão 6 dias". */
+export const shortDestination = (title: string) => {
+  const head = title.split(/\s*[:|–—]\s*|\s+-\s+/)[0].trim();
+  return head.length > 28 ? head.split(/\s+/).slice(0, 3).join(" ") : head;
 };
 
 const shorten = (value: string, max: number) => (value.length > max ? `${value.slice(0, max - 1).replace(/\s+\S*$/, "")}…` : value);

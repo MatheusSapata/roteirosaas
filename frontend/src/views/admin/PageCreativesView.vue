@@ -48,6 +48,13 @@
                 </button>
               </div>
               <div v-if="kind === 'carousel'" class="ved-field">
+                <span class="ved-label">Estilo do carrossel</span>
+                <div class="ved-seg">
+                  <button v-for="(item, key) in CAROUSEL_STYLES" :key="key" type="button" :class="{ on: carouselStyle === key }" :title="item.hint" @click="carouselStyle = key">{{ item.label }}</button>
+                </div>
+                <p class="ved-hint">{{ CAROUSEL_STYLES[carouselStyle].hint }}</p>
+              </div>
+              <div v-if="kind === 'carousel'" class="ved-field">
                 <span class="ved-label">Formato dos slides</span>
                 <div class="ved-seg">
                   <button type="button" :class="{ on: format === 'feed' }" @click="format = 'feed'">Feed 4:5</button>
@@ -101,6 +108,7 @@
                       <span>{{ slideLabel(item.slide) }}</span>
                       <small v-if="item.slide.kind === 'cover' || item.slide.kind === 'final'">sempre</small>
                       <button
+                        v-if="item.slide.kind !== 'section'"
                         type="button"
                         class="cv-slide-photo"
                         :title="`Trocar a foto de ${slideLabel(item.slide)}`"
@@ -158,18 +166,25 @@
             <!-- 4. Conteúdo -->
             <template v-else-if="step.id === 'content'">
               <EdText v-model="data.title" label="Título" :maxlength="90" />
+              <EdText v-model="data.destination" label="Destino (curto)" hint="Usado em letras grandes nos modelos de oferta." :maxlength="32" />
               <EdText v-model="data.subtitle" label="Subtítulo" multiline :maxlength="160" />
               <EdText v-model="data.dates" label="Datas" placeholder="Ex.: 12/07 a 19/07/2026" />
               <div class="ved-pair">
-                <EdText v-model="data.pricePrefix" label="Antes do preço" placeholder="A partir de" />
-                <EdText v-model="data.priceValue" label="Preço" placeholder="R$ 2.990" />
+                <EdText v-model="data.duration" label="Duração" placeholder="8 dias" />
+                <EdText v-model="data.departure" label="Saída" placeholder="Saída de Campinas" />
               </div>
               <div class="ved-pair">
-                <EdText v-model="data.priceSuffix" label="Depois do preço" placeholder="por pessoa" />
-                <EdText v-model="data.installments" label="Parcelas" placeholder="em até 10x" />
+                <EdText v-model="data.priceValue" label="Preço total" placeholder="R$ 1.860" />
+                <EdText v-model="data.installmentCount" label="Parcelas" placeholder="12" hint="Vazio = mostra o total" />
               </div>
+              <div class="ved-pair">
+                <EdText v-model="data.oldPrice" label="De (preço antigo)" placeholder="R$ 2.240" />
+                <EdText v-model="data.pricePrefix" label="Antes do preço" placeholder="A partir de" />
+              </div>
+              <EdText v-model="data.priceSuffix" label="Depois do preço" placeholder="por pessoa" />
+              <EdText v-model="data.disclaimer" label="Condições (letras miúdas)" multiline :maxlength="180" />
 
-              <span class="ved-label">Benefícios <small class="cv-muted">até 8</small></span>
+              <span class="ved-label">O que inclui <small class="cv-muted">até 8 · o ícone vem do texto</small></span>
               <ul class="ved-list">
                 <li v-for="(_, index) in data.benefits" :key="`b${index}`" class="cv-row-input">
                   <input v-model="data.benefits[index]" class="ved-input" maxlength="60" />
@@ -233,8 +248,22 @@
               <EdText v-model="data.contact" label="WhatsApp" hint="Aparece como texto, não como botão." placeholder="(11) 99999-0000" />
             </template>
 
-            <!-- 6. Cores e logo -->
+            <!-- 6. Campanha, cores e logo -->
             <template v-else-if="step.id === 'style'">
+              <div class="ved-field">
+                <span class="ved-label">Campanha temporária</span>
+                <div class="ved-seg">
+                  <button type="button" :class="{ on: !data.campaign }" @click="setCampaign('')">Nenhuma</button>
+                  <button v-for="(item, key) in CAMPAIGNS" :key="key" type="button" :class="{ on: data.campaign === key }" @click="setCampaign(key)">{{ item.label }}</button>
+                </div>
+                <p v-if="data.campaign" class="ved-hint">Preto e amarelo enquanto a campanha estiver ligada; suas cores voltam ao desligar.</p>
+              </div>
+              <EdToggle v-model="data.tapes" label="Faixas cruzadas no topo" hint="Fitas com o texto da campanha ou da tag." />
+              <EdText v-model="data.badge" label="Tag" placeholder="Oferta" hint="Selo, fita ou etiqueta da arte. Vazio = sem tag." :maxlength="28" />
+              <div class="cv-chips">
+                <button v-for="option in BADGE_SUGGESTIONS" :key="option" type="button" :class="{ on: data.badge === option }" @click="data.badge = option">{{ option }}</button>
+              </div>
+              <p v-if="isBlackTemplate" class="ved-hint">Os modelos de Black Friday usam sempre preto e amarelo.</p>
               <div class="ved-pair">
                 <label class="cv-color"><input v-model="data.primary" type="color" /><span><b>Fundo</b><small>{{ data.primary }}</small></span></label>
                 <label class="cv-color"><input v-model="data.secondary" type="color" /><span><b>Destaque</b><small>{{ data.secondary }}</small></span></label>
@@ -288,11 +317,14 @@
               @click="openOne(index)"
             >
               <span class="cv-frame" :style="boxStyle(size.width * scale)">
-                <CreativeCarouselSlide
+                <component
+                  :is="slideComponent"
+                  v-bind="sectionBindings(item.slide, 'preview')"
                   :slide="item.slide"
                   :format="format"
                   :data="data"
                   :photo="slidePhoto(item.key, 'preview', index)"
+                  :photos="slideGallery(item.key, 'preview', index)"
                   :index="index"
                   :total="activeSlides.length"
                   :show-logo="showLogo"
@@ -307,11 +339,14 @@
           <div v-else class="cv-one">
             <button type="button" class="ed-icon-btn cv-nav" aria-label="Slide anterior" :disabled="current === 0" @click="current -= 1"><ChevronLeftIcon aria-hidden="true" /></button>
             <div v-if="currentSlide" class="cv-frame" :style="boxStyle(size.width * scale)">
-              <CreativeCarouselSlide
+              <component
+                  :is="slideComponent"
+                  v-bind="sectionBindings(currentSlide.slide, 'preview')"
                 :slide="currentSlide.slide"
                 :format="format"
                 :data="data"
                 :photo="slidePhoto(currentSlide.key, 'preview', current)"
+                  :photos="slideGallery(currentSlide.key, 'preview', current)"
                 :index="current"
                 :total="activeSlides.length"
                 :show-logo="showLogo"
@@ -333,7 +368,7 @@
           ></button>
           <span>{{ current + 1 }} de {{ activeSlides.length }} · {{ currentSlide ? slideLabel(currentSlide.slide) : "" }}</span>
         </div>
-        <div v-if="kind === 'carousel' && view === 'one' && currentSlide && photos.length" class="cv-strip">
+        <div v-if="kind === 'carousel' && view === 'one' && currentSlide && photos.length && currentSlide.slide.kind !== 'section'" class="cv-strip">
           <span>Foto deste slide</span>
           <button type="button" class="cv-picker-auto" :class="{ on: !slidePhotos[currentSlide.key] }" @click="setSlidePhoto(currentSlide.key, '')">Automática</button>
           <button
@@ -354,13 +389,16 @@
         <div ref="exportRef">
           <CreativeArtboard v-if="kind !== 'carousel'" :template="template" :format="format" :data="exportData" :photos="exportPhotos" :show-logo="showLogo" />
           <template v-else>
-            <CreativeCarouselSlide
+            <component
+                  :is="slideComponent"
+                  v-bind="sectionBindings(item.slide, 'export')"
               v-for="(item, index) in activeSlides"
               :key="item.key"
               :slide="item.slide"
               :format="format"
               :data="exportData"
               :photo="slidePhoto(item.key, 'export', index)"
+                  :photos="slideGallery(item.key, 'export', index)"
               :index="index"
               :total="activeSlides.length"
               :show-logo="showLogo"
@@ -402,9 +440,24 @@ import EdToggle from "../../components/admin/v2edit/EdToggle.vue";
 import "../../components/admin/v2edit/v2edit.css";
 import CreativeArtboard from "../../components/creatives/CreativeArtboard.vue";
 import CreativeCarouselSlide from "../../components/creatives/CreativeCarouselSlide.vue";
-import { CTA_SUGGESTIONS, FORMAT_SIZES, extractCreativeData, type CreativeData, type CreativeFormat } from "../../components/creatives/creativeData";
-import { SLIDE_LABELS, buildCarousel, type CarouselSlide } from "../../components/creatives/carousel";
-import { CATEGORY_LABELS, CREATIVE_TEMPLATES, type CreativeCategory } from "../../components/creatives/creativeTemplates";
+import CreativeRoteiroSlide from "../../components/creatives/CreativeRoteiroSlide.vue";
+import CreativeSectionSlide from "../../components/creatives/CreativeSectionSlide.vue";
+import { v2Components } from "../../components/public/v2/registry";
+import { sectionNameV2 } from "../../utils/sectionCatalogV2";
+import { resolveMediaUrl } from "../../utils/media";
+import type { PageSection } from "../../types/page";
+import {
+  BADGE_SUGGESTIONS,
+  CAMPAIGNS,
+  CTA_SUGGESTIONS,
+  FORMAT_SIZES,
+  extractCreativeData,
+  type CreativeCampaign,
+  type CreativeData,
+  type CreativeFormat
+} from "../../components/creatives/creativeData";
+import { CAROUSEL_STYLES, SLIDE_LABELS, buildCarousel, type CarouselSlide, type CarouselStyle } from "../../components/creatives/carousel";
+import { BLACK_TEMPLATES, CATEGORY_LABELS, CREATIVE_TEMPLATES, type CreativeCategory } from "../../components/creatives/creativeTemplates";
 
 const props = defineProps<{ id: string }>();
 
@@ -441,6 +494,10 @@ const showLogo = ref(true);
 const photos = ref<Photo[]>([]);
 const chosen = ref<string[]>([]);
 const excluded = ref<string[]>([]);
+const carouselStyle = ref<CarouselStyle>("photo");
+const slideComponent = computed(() =>
+  carouselStyle.value === "sections" ? CreativeSectionSlide : carouselStyle.value === "pages" ? CreativeRoteiroSlide : CreativeCarouselSlide
+);
 const logoReady = ref("");
 const exportRef = ref<HTMLElement | null>(null);
 const canvasRef = ref<HTMLElement | null>(null);
@@ -462,6 +519,16 @@ const chooseKind = (value: Kind) => {
 };
 
 const size = computed(() => FORMAT_SIZES[format.value]);
+const isBlackTemplate = computed(() => kind.value !== "carousel" && BLACK_TEMPLATES.has(template.value));
+// Campanha: liga as fitas e a tag dela; ao desligar, volta ao normal.
+const setCampaign = (value: CreativeCampaign) => {
+  if (!data.value) return;
+  const previous = data.value.campaign ? CAMPAIGNS[data.value.campaign].badge : "";
+  data.value.campaign = value;
+  data.value.tapes = Boolean(value);
+  if (value && (!data.value.badge || data.value.badge === "Oferta")) data.value.badge = CAMPAIGNS[value].badge;
+  else if (!value && data.value.badge === previous) data.value.badge = "Oferta";
+};
 const currentTemplate = computed(() => CREATIVE_TEMPLATES.find(item => item.id === template.value));
 const templatesBy = (category: string) => CREATIVE_TEMPLATES.filter(item => item.category === (category as CreativeCategory));
 
@@ -469,7 +536,8 @@ const templatesBy = (category: string) => CREATIVE_TEMPLATES.filter(item => item
 const slides = computed(() => {
   if (!data.value) return [];
   const counts: Record<string, number> = {};
-  return buildCarousel(data.value, format.value).map(slide => {
+  if (carouselStyle.value === "sections") return sectionSlides.value;
+  return buildCarousel(data.value, format.value, carouselStyle.value).map(slide => {
     counts[slide.kind] = (counts[slide.kind] || 0) + 1;
     return { slide, key: `${slide.kind}-${counts[slide.kind]}` };
   });
@@ -482,8 +550,10 @@ watch(activeSlides, list => {
 const toggleSlide = (key: string) => {
   excluded.value = excluded.value.includes(key) ? excluded.value.filter(item => item !== key) : [...excluded.value, key];
 };
-const slideLabel = (slide: CarouselSlide) =>
-  slide.kind === "itinerary" && slide.parts > 1 ? `${SLIDE_LABELS.itinerary} ${slide.part}/${slide.parts}` : SLIDE_LABELS[slide.kind];
+const slideLabel = (slide: CarouselSlide) => {
+  if (slide.kind === "section") return slide.label;
+  return slide.kind === "itinerary" && slide.parts > 1 ? `${SLIDE_LABELS.itinerary} ${slide.part}/${slide.parts}` : SLIDE_LABELS[slide.kind];
+};
 /** Cada slide usa a próxima foto escolhida (e recomeça quando acabam). */
 const photoFor = (index: number, list: string[]) => (list.length ? list[index % list.length] : "");
 // Foto escolhida para cada slide (chave do slide → foto); sem escolha, segue a ordem das fotos.
@@ -502,10 +572,66 @@ const slidePhoto = (key: string, use: "preview" | "export", fallbackIndex?: numb
   const index = fallbackIndex ?? Math.max(0, activeSlides.value.findIndex(item => item.key === key));
   return photoFor(index, use === "export" ? exportPhotos.value : previewPhotos.value);
 };
+/** Foto do slide e as seguintes (o estilo em páginas usa mais de uma: fileira, polaroides). */
+const slideGallery = (key: string, use: "preview" | "export", index: number) => {
+  const list = use === "export" ? exportPhotos.value : previewPhotos.value;
+  const main = slidePhoto(key, use, index);
+  const rest = list.length ? Array.from({ length: Math.min(3, list.length) }, (_, step) => list[(index + step + 1) % list.length]) : [];
+  return [main, ...rest.filter(url => url && url !== main)];
+};
 const openOne = (index: number) => {
   current.value = index;
   view.value = "one";
   zoom.value = "fit";
+};
+
+// --- Carrossel "Seções da página": cada seção ativa vira um slide, com o componente do site ---
+// Seções que não fazem sentido numa imagem (menu, formulários, vídeos, checkout) ficam de fora.
+// A contagem regressiva parada e o rodapé também não funcionam como imagem de post.
+const SECTION_SKIP = new Set(["header", "internal_form", "viajeon_checkout", "video_vsl", "featured_video", "free_footer_brand", "countdown", "agency_footer"]);
+const pageSections = computed(() => ((page.value?.config_json?.sections || []) as PageSection[]).filter(section => section.enabled !== false));
+const sectionSlides = computed(() =>
+  pageSections.value
+    .map((section, sectionIndex) => ({ section, sectionIndex }))
+    .filter(({ section }) => !SECTION_SKIP.has(section.type) && v2Components[section.type])
+    .map(({ section, sectionIndex }) => ({
+      slide: { kind: "section", sectionIndex, label: sectionNameV2(section.type) || section.type } as CarouselSlide,
+      key: `section-${sectionIndex}`
+    }))
+);
+const sectionBranding = computed(() => {
+  const agency = agencyStore.agencies.find(item => item.id === page.value?.agency_id);
+  return {
+    agency_name: agency?.name || "",
+    logo_url: agency?.logo_url || "",
+    primary_color: data.value?.secondary || "",
+    secondary_color: agency?.secondary_color || data.value?.secondary || "",
+    agency_profile: {},
+    theme: page.value?.config_json?.theme
+  };
+});
+// Na exportação, as fotos da seção viram as cópias locais (sem bloqueio de CORS no PNG).
+const swapPhotos = (value: unknown): unknown => {
+  if (typeof value === "string") {
+    const resolved = resolveMediaUrl(value) || value;
+    const photo = photos.value.find(item => item.src === resolved || item.src === value);
+    return photo?.ready || value;
+  }
+  if (Array.isArray(value)) return value.map(swapPhotos);
+  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, swapPhotos(item)]));
+  return value;
+};
+const sectionBindings = (slide: CarouselSlide, use: "preview" | "export") => {
+  if (slide.kind !== "section") return {};
+  const section = pageSections.value[slide.sectionIndex];
+  const hero = pageSections.value.find(item => item.type === "hero") as any;
+  return {
+    section: use === "export" ? swapPhotos(section) : section,
+    allSections: pageSections.value,
+    branding: sectionBranding.value,
+    accent: page.value?.config_json?.theme?.ctaDefaultColor || data.value?.secondary || "#12B981",
+    tripStartDate: hero?.departureDate || ""
+  };
 };
 
 // --- Passos ---
@@ -522,7 +648,11 @@ const steps = computed(() => {
     { id: "photos", title: "Fotos", summary: chosen.value.length ? `${chosen.value.length} escolhida(s)` : "Fotos da página" },
     { id: "content", title: "Textos e informações", summary: d?.title || "" },
     { id: "cta", title: "Botão e contato", summary: d?.ctaEnabled ? `Botão: ${d.cta}` : "Sem botão" },
-    { id: "style", title: "Cores e logo", summary: showLogo.value && d?.logoUrl ? "Com logo" : "Sem logo" }
+    {
+      id: "style",
+      title: "Campanha, tag e cores",
+      summary: [d?.campaign ? CAMPAIGNS[d.campaign].label : "", d?.badge ? `Tag: ${d.badge}` : "Sem tag", showLogo.value && d?.logoUrl ? "com logo" : ""].filter(Boolean).join(" · ")
+    }
   ];
 });
 const stepIndex = computed(() => Math.max(0, steps.value.findIndex(step => step.id === openStep.value)));
@@ -639,9 +769,11 @@ const downloadLabel = computed(() => {
   return kind.value === "carousel" ? `Baixar ${activeSlides.value.length} slides (.zip)` : "Baixar PNG";
 });
 
+const BLANK_PIXEL = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
 const toPngOf = async (node: HTMLElement) => {
   const { toPng } = await import("html-to-image");
-  return toPng(node, { width: size.value.width, height: size.value.height, pixelRatio: 1, cacheBust: false });
+  // Foto que não carrega (link quebrado na página) vira transparente em vez de travar o download.
+  return toPng(node, { width: size.value.width, height: size.value.height, pixelRatio: 1, cacheBust: false, imagePlaceholder: BLANK_PIXEL });
 };
 
 const save = (href: string, name: string) => {

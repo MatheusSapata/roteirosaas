@@ -2,19 +2,20 @@
   <V2Section type="faq" :background="section.backgroundColor" :anchor-id="section.anchorId">
     <V2Head :label="label" :title="title" :subtitle-html="subtitleHtml" :align="align" :frame="isSplit ? '' : '820px'" />
     <div class="v2-faq" :class="{ 'v2-faq--split': isSplit }">
-      <div v-for="(item, idx) in items" :key="idx" class="v2-faq-item v2-card v2-in" :class="[`v2-d${Math.min(idx + 3, 7)}`, { 'is-open': openIndex === idx }]">
+      <div v-for="(item, idx) in items" :key="idx" class="v2-faq-item v2-card v2-in" :class="[`v2-d${Math.min(idx + 3, 7)}`, { 'is-open': isOpen(idx) }]">
         <button type="button" class="v2-faq-q" :aria-expanded="openIndex === idx" @click="toggle(idx)">
           <span>{{ item.question }}</span>
-          <span class="v2-faq-sign" aria-hidden="true">{{ openIndex === idx ? "−" : "+" }}</span>
+          <span v-if="!isStatic" class="v2-faq-sign" aria-hidden="true">{{ isOpen(idx) ? "−" : "+" }}</span>
         </button>
-        <div v-show="openIndex === idx" class="v2-faq-a v2-rich" v-html="item.answerHtml"></div>
+        <div v-show="isOpen(idx)" class="v2-faq-a v2-rich" v-html="item.answerHtml"></div>
       </div>
     </div>
   </V2Section>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, toRef } from "vue";
+import { computed, inject, ref, toRef } from "vue";
+import { STATIC_RENDER_KEY } from "./useEntrance";
 import type { FaqSection } from "../../../types/page";
 import V2Section from "./V2Section.vue";
 import V2Head from "./V2Head.vue";
@@ -25,6 +26,9 @@ const { label, title, subtitleHtml, align } = useHeading(toRef(props, "section")
 const isSplit = computed(() => props.section.layout === "split");
 const items = computed(() => (props.section.items || []).map(item => ({ question: text(item.question), answerHtml: html(item.answer) })));
 const openIndex = ref<number | null>(0);
+// Imagem estática (criativos): todas as respostas abertas.
+const isStatic = inject(STATIC_RENDER_KEY, false);
+const isOpen = (idx: number) => isStatic || openIndex.value === idx;
 const toggle = (idx: number) => {
   openIndex.value = openIndex.value === idx ? null : idx;
 };

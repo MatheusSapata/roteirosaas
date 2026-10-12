@@ -44,7 +44,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, toRef, watch } from "vue";
+import { computed, inject, ref, toRef, watch } from "vue";
+import { STATIC_RENDER_KEY } from "./useEntrance";
 import type { GallerySection } from "../../../types/page";
 import { resolveMediaUrl } from "../../../utils/media";
 import V2Section from "./V2Section.vue";
@@ -63,7 +64,9 @@ const copy = {
   next: localize({ pt: "Próximas fotos", es: "Siguientes fotos" })
 };
 // "strip" (faixa) vira o carrossel; mosaico e grade continuam.
-const isCarousel = computed(() => !props.section.layout || props.section.layout === "strip");
+// Imagem estática (criativos): sem carrossel, todas as fotos em grade.
+const isStatic = inject(STATIC_RENDER_KEY, false);
+const isCarousel = computed(() => !isStatic && (!props.section.layout || props.section.layout === "strip"));
 const isMosaic = computed(() => props.section.layout === "mosaic");
 const images = computed(() => (props.section.images || []).map(img => resolveMediaUrl(img) || img).filter(Boolean));
 const columns = computed(() => balancedColumns(images.value.length));

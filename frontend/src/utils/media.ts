@@ -24,7 +24,7 @@ const ensureLeadingSlash = (value: string) => (value.startsWith("/") ? value : `
 
 export const resolveMediaUrl = (value?: string | null): string | undefined => {
   if (!value) return undefined;
-  if (/^(https?:)?\/\//i.test(value) || value.startsWith("data:")) {
+  if (/^(https?:)?\/\//i.test(value) || value.startsWith("data:") || value.startsWith("blob:")) {
     return value;
   }
   if (value.startsWith("/assets/") || value.startsWith("assets/") || value.startsWith("/src/assets/")) {
