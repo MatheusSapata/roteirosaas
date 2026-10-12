@@ -7,7 +7,11 @@
           <V2Button :attrs="cta.attrs.value">{{ ctaLabel }}</V2Button>
         </div>
       </div>
-      <div v-if="media.length" class="v2-story-media v2-in v2-d2">
+      <!-- Imagem estática (criativos): todas as fotos em grade, sem setas nem miniaturas. -->
+      <div v-if="isStatic && media.length > 1" class="v2-story-grid" :class="`is-${Math.min(media.length, 4)}`">
+        <V2Img v-for="item in media.slice(0, 4)" :key="`g-${item.url}`" :src="item.type === 'video' ? item.thumb || '' : item.url" :alt="copy.image" sizes="50vw" />
+      </div>
+      <div v-else-if="media.length" class="v2-story-media v2-in v2-d2">
         <div class="v2-story-stage">
           <template v-for="(item, idx) in media" :key="item.url">
             <iframe
@@ -54,7 +58,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, toRef, watch } from "vue";
+import { computed, inject, ref, toRef, watch } from "vue";
+import { STATIC_RENDER_KEY } from "./useEntrance";
 import type { StorySection } from "../../../types/page";
 import { resolveMediaUrl } from "../../../utils/media";
 import { extractYoutubeId, normalizeYoutubeEmbedUrl } from "../../../utils/video";
@@ -102,6 +107,7 @@ const media = computed(() => {
   return [...videoItems, ...images];
 });
 const active = ref(0);
+const isStatic = inject(STATIC_RENDER_KEY, false);
 const go = (idx: number) => {
   const total = media.value.length;
   if (!total) return;
@@ -244,5 +250,25 @@ const ctaLabel = computed(() => text(props.section.ctaLabel) || localize({ pt: "
   place-items: center;
   height: 100%;
   color: var(--v2-ink);
+}
+.v2-story-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.v2-story-grid :deep(img) {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 14px;
+  object-fit: cover;
+}
+/* 3 fotos: a primeira ocupa a linha toda. */
+.v2-story-grid.is-3 > :first-child {
+  grid-column: span 2;
+}
+.v2-story-grid.is-3 > :first-child :deep(img),
+.v2-story-grid.is-3 > :first-child:is(img) {
+  aspect-ratio: 16 / 9;
 }
 </style>

@@ -58,7 +58,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, toRef, watch } from "vue";
+import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, toRef, watch } from "vue";
+import { STATIC_RENDER_KEY } from "./useEntrance";
 import type { LinksSection } from "../../../types/page";
 import { resolveMediaUrl } from "../../../utils/media";
 import V2Section from "./V2Section.vue";
@@ -110,7 +111,9 @@ const items = computed(() =>
 // Como na seção antiga: até 4 cards lado a lado; a partir do 5º, o carrossel
 // desliza com setas. Com o carrossel desligado, os cards quebram em linhas
 // centralizadas (3 ou 4 por linha). Com 1 ou 2 cards, eles não esticam.
-const isCarousel = computed(() => props.section.carouselEnabled !== false);
+// Imagem estática (criativos): sem carrossel, os cartões em grade.
+const isStatic = inject(STATIC_RENDER_KEY, false);
+const isCarousel = computed(() => !isStatic && props.section.carouselEnabled !== false);
 const layoutVars = computed(() => {
   const count = items.value.length;
   let columns = count <= 3 ? 3 : 4;

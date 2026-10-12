@@ -3,7 +3,22 @@
     <V2Head :label="label" :title="title" :subtitle-html="subtitleHtml" :align="align" frame="860px" />
     <!-- Jornada: cada dia é um cartão inteiro que abre e fecha, com o calendário à esquerda,
          a linha passando por trás dos cartões e o texto antes da foto. -->
-    <div v-if="isJourney" class="v2-jr">
+    <!-- Imagem estática (criativos): versão simplificada, todos os dias abertos, sem botões. -->
+    <ol v-if="isStatic" class="v2-it-static">
+      <li v-for="(day, idx) in days" :key="idx">
+        <span class="v2-it-static-cal">
+          <small>{{ copy.day }} {{ day.number }}</small>
+          <b>{{ day.date ? day.date.day : day.number }}</b>
+          <small v-if="day.date">{{ day.date.month }}</small>
+        </span>
+        <div>
+          <span v-if="day.date" class="v2-it-static-week">{{ day.date.weekday }}</span>
+          <h3>{{ day.title }}</h3>
+          <div v-if="day.descriptionHtml" class="v2-rich" v-html="day.descriptionHtml"></div>
+        </div>
+      </li>
+    </ol>
+    <div v-else-if="isJourney" class="v2-jr">
       <div v-if="days.length > 1" class="v2-it-tools">
         <button type="button" class="v2-it-all" @click="toggleAll">{{ allOpen ? copy.closeAll : copy.openAll }}</button>
       </div>
@@ -85,7 +100,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, toRef, watch } from "vue";
+import { computed, inject, ref, toRef, watch } from "vue";
+import { STATIC_RENDER_KEY } from "./useEntrance";
 import type { ItinerarySection } from "../../../types/page";
 import { resolveMediaUrl } from "../../../utils/media";
 import V2Section from "./V2Section.vue";
@@ -102,6 +118,7 @@ const copy = {
   openAll: localize({ pt: "Abrir todos os dias", es: "Abrir todos los días" }),
   closeAll: localize({ pt: "Fechar todos os dias", es: "Cerrar todos los días" })
 };
+const isStatic = inject(STATIC_RENDER_KEY, false);
 // "minimal" e "steps" entram na linha do tempo e nos cartões, respectivamente.
 const isCards = computed(() => props.section.layout === "cards" || props.section.layout === "steps");
 const isJourney = computed(() => props.section.layout === "journey");
@@ -599,5 +616,60 @@ watch(
   .v2-jr-chev {
     transition: none;
   }
+}
+.v2-it-static {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 0;
+  list-style: none;
+}
+.v2-it-static li {
+  display: flex;
+  gap: 14px;
+  padding: 14px;
+  border-radius: 16px;
+  background: var(--v2-card, #fff);
+  box-shadow: 0 1px 3px rgba(15, 23, 19, 0.08);
+}
+.v2-it-static-cal {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  padding: 6px 0;
+  border-radius: 12px;
+  background: var(--v2-accent);
+  color: var(--v2-on-accent, #fff);
+  line-height: 1.1;
+}
+.v2-it-static-cal small {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.v2-it-static-cal b {
+  font-size: 20px;
+}
+.v2-it-static-week {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+.v2-it-static h3 {
+  margin: 2px 0 4px;
+  font-size: 16px;
+  font-weight: 700;
+}
+.v2-it-static .v2-rich {
+  font-size: 13.5px;
+  line-height: 1.45;
 }
 </style>

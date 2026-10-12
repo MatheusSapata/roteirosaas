@@ -8,7 +8,6 @@
     </div>
     <div class="sx-pager" aria-hidden="true">
       <span class="sx-dots"><i v-for="dot in total" :key="dot" :class="{ on: dot === index + 1 }"></i></span>
-      <span v-if="index + 1 < total" class="sx-next"><ArrowRightIcon /></span>
     </div>
   </div>
 </template>
@@ -19,7 +18,6 @@
  * da seção) e depois ampliada até ocupar o post; seção alta encolhe para caber inteira.
  */
 import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } from "vue";
-import { ArrowRightIcon } from "lucide-vue-next";
 import type { PageSection } from "../../types/page";
 import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
 import { PAGE_DESIGN_KEY } from "../public/v2/designContext";
@@ -77,6 +75,12 @@ const measure = () => {
   background.value = color && color !== "rgba(0, 0, 0, 0)" && color !== "transparent" ? color : "#ffffff";
 };
 
+const pagerInk = computed(() => {
+  const match = background.value.match(/\d+(\.\d+)?/g);
+  if (!match) return "#111827";
+  const [r, g, b] = match.slice(0, 3).map(Number);
+  return (r * 299 + g * 587 + b * 114) / 1000 > 150 ? "#111827" : "#ffffff";
+});
 const scale = computed(() => Math.min(size.value.width / virtualWidth.value, size.value.height / contentHeight.value));
 const stageStyle = computed(() => {
   const width = virtualWidth.value * scale.value;
@@ -94,6 +98,8 @@ const rootStyle = computed(() => {
     width: `${size.value.width}px`,
     height: `${size.value.height}px`,
     background: background.value,
+    // Pontinhos na cor que aparece sobre o fundo da seção (sem cápsula atrás).
+    "--ink": pagerInk.value,
     "--c2": colors.secondary,
     "--on2": readableOn(colors.secondary)
   };
@@ -131,45 +137,32 @@ onBeforeUnmount(() => observer?.disconnect());
 .sx-no-cta :deep(.v2-btn) {
   display: none !important;
 }
+/* Base discreta: só os pontinhos, centralizados, sem cápsula de fundo nem seta. */
 .sx-pager {
   position: absolute;
-  right: 40px;
-  bottom: 36px;
+  right: 0;
+  bottom: 34px;
+  left: 0;
   z-index: 3;
   display: flex;
   align-items: center;
-  gap: 22px;
-  padding: 14px 18px 14px 26px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.45);
+  justify-content: center;
+  gap: 14px;
+  color: var(--ink);
 }
 .sx-dots {
   display: flex;
-  gap: 12px;
+  gap: 10px;
 }
 .sx-dots i {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   border-radius: 999px;
-  background: #fff;
-  opacity: 0.45;
+  background: currentColor;
+  opacity: 0.3;
 }
 .sx-dots i.on {
-  width: 44px;
-  background: var(--c2);
-  opacity: 1;
-}
-.sx-next {
-  display: grid;
-  place-items: center;
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  background: var(--c2);
-  color: var(--on2);
-}
-.sx-next :deep(svg) {
-  width: 30px;
-  height: 30px;
+  width: 34px;
+  opacity: 0.85;
 }
 </style>
