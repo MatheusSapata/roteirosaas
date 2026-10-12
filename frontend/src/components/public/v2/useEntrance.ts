@@ -1,4 +1,7 @@
-import { onBeforeUnmount, onMounted, ref, type Ref } from "vue";
+import { inject, onBeforeUnmount, onMounted, ref, type InjectionKey, type Ref } from "vue";
+
+/** Renderização estática (criativos para baixar): sem animação de entrada, tudo já visível. */
+export const STATIC_RENDER_KEY: InjectionKey<boolean> = Symbol("static-render");
 
 /**
  * Animação de entrada das seções do visual novo. A seção só é "armada" (conteúdo escondido
@@ -9,6 +12,10 @@ import { onBeforeUnmount, onMounted, ref, type Ref } from "vue";
 export const useEntrance = (root: Ref<HTMLElement | null>) => {
   const armed = ref(false);
   const shown = ref(false);
+  if (inject(STATIC_RENDER_KEY, false)) {
+    shown.value = true;
+    return { armed, shown };
+  }
   let observer: IntersectionObserver | null = null;
 
   onMounted(() => {
