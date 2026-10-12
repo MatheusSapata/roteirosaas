@@ -403,7 +403,7 @@
                 <EllipsisVerticalIcon aria-hidden="true" />
               </button>
               <div v-if="openMenuId === page.id" class="pl-menu" @click.stop>
-                <button type="button" @click="runMenu(() => router.push(`/admin/pages/${page.id}/criativos`))">Criar criativos</button>
+                <button type="button" @click="runMenu(() => router.push(`/admin/pages/${page.id}/criativos`))">Criar criativos (Beta)</button>
                 <button type="button" :disabled="!canEditPages" @click="runMenu(() => openDuplicateDialog(page))">{{ viewCopy.actions.rowMenu.duplicate }}</button>
                 <button
                   type="button"

@@ -72,7 +72,7 @@ export const collectImages = (sections: PageSection[]): string[] => {
 export const extractCreativeData = (
   config: PageConfig | null,
   page: { title?: string } | null,
-  agency: { name?: string; logo_url?: string | null; cta_whatsapp?: string | null } | null
+  agency: { name?: string; logo_url?: string | null; cta_whatsapp?: string | null; primary_color?: string | null } | null
 ): CreativeData => {
   const sections = (config?.sections || []).filter(section => (section as any).enabled !== false) as PageSection[];
   const hero = sections.find(section => section.type === "hero") as any;
@@ -116,8 +116,7 @@ export const extractCreativeData = (
     agencyName: agency?.name || "",
     logoUrl: resolveMediaUrl(hero?.logoUrl || agency?.logo_url || "") || "",
     images: collectImages(sections),
-    primary: config?.theme?.color1 || "#0f7a4f",
-    secondary: config?.theme?.color2 || "#f59e0b",
+    ...brandColors(config, agency?.primary_color),
     itinerary: (itinerary?.days || [])
       .map((day: any, index: number) => ({
         day: text(day?.day) || `Dia ${index + 1}`,
@@ -163,6 +162,29 @@ const extractFlights = (sections: PageSection[]) => {
         details: [airlines, stops].filter(Boolean).join(" · ")
       };
     });
+};
+
+const HEX = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
+const toRgb = (hex: string) => {
+  const clean = hex.replace("#", "");
+  const full = clean.length === 3 ? clean.split("").map(c => c + c).join("") : clean;
+  return [0, 2, 4].map(i => parseInt(full.slice(i, i + 2), 16) || 0);
+};
+/** Mistura a cor com preto (amount 0–1), para um fundo escuro na mesma família da cor. */
+export const darken = (hex: string, amount: number) =>
+  `#${toRgb(hex).map(value => Math.round(value * (1 - amount)).toString(16).padStart(2, "0")).join("")}`;
+
+/**
+ * Cores da arte. color1/color2 do tema são os fundos da página (quase sempre claros); a cor de
+ * marca é a dos botões (ctaDefaultColor). Destaque = cor de marca; principal = fundo escuro do
+ * tema, ou a cor de marca escurecida quando o fundo é claro (texto branco sempre legível).
+ */
+const brandColors = (config: PageConfig | null, agencyColor?: string | null) => {
+  const theme = config?.theme;
+  const accent = [theme?.ctaDefaultColor, agencyColor, "#12B981"].find(color => color && HEX.test(color)) as string;
+  const background = theme?.color1 && HEX.test(theme.color1) ? theme.color1 : "";
+  const primary = background && readableOn(background) === "#ffffff" ? background : darken(accent, 0.62);
+  return { primary, secondary: accent };
 };
 
 /** Texto escuro ou claro para ler bem sobre uma cor. */
