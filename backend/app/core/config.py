@@ -105,6 +105,7 @@ class Settings(BaseSettings):
     gpt_model: str = Field("gpt-5.4", alias="GPT_MODEL")
     # Bancos de fotos gratuitos usados pelo assistente de IA (sem chave, a busca fica desligada).
     pexels_api_key: str | None = Field(None, alias="PEXELS_API_KEY")
+    pixabay_api_key: str | None = Field(None, alias="PIXABAY_API_KEY")
     unsplash_access_key: str | None = Field(None, alias="UNSPLASH_ACCESS_KEY")
     airlabs_base_url: str = Field("https://airlabs.co/api/v9", alias="AIRLABS_BASE_URL")
     airlabs_api_key: str | None = Field(None, alias="AIRLABS_API_KEY")

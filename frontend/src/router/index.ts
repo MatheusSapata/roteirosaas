@@ -324,6 +324,12 @@ const platformRoutes: RouteRecordRaw[] = [
         meta: { requiresSuperuser: true }
       },
       {
+        path: "administracao/empresas",
+        name: "admin-management-companies",
+        component: () => import("../views/admin/AdminManagementView.vue"),
+        meta: { requiresSuperuser: true }
+      },
+      {
         path: "administracao/bancos-de-fotos",
         name: "admin-management-image-apis",
         component: () => import("../views/admin/AdminManagementView.vue"),

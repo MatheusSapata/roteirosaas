@@ -746,6 +746,7 @@
       </svg>
       <span class="ml-0 max-w-0 overflow-hidden whitespace-nowrap text-sm font-semibold opacity-0 transition-all duration-200 group-hover:ml-3 group-hover:max-w-[140px] group-hover:opacity-100">{{ viewCopy.support.prompt }}</span>
     </a>
+    <StockUploadIndicator />
   </div>
 </template>
 
@@ -783,6 +784,7 @@ import {
 } from "lucide-vue-next";
 import BrandMark from "../assets/Favicon.png";
 import AdminMasterNav from "../components/admin/master/AdminMasterNav.vue";
+import StockUploadIndicator from "../components/admin/StockUploadIndicator.vue";
 import SidebarLogo from "../assets/Logo Branco - Roteiro Online.png";
 import ColoredLogo from "../assets/Logo Cor - Roteiro Online.png";
 import BrandSwitcher from "../components/shared/BrandSwitcher.vue";
@@ -1140,6 +1142,7 @@ const routeTitleMap: Record<string, string> = {
   "admin-management-templates": t({ pt: "Templates", es: "Templates" }),
   "admin-management-flight-apis": t({ pt: "APIs de voo", es: "APIs de vuelo" }),
   "admin-management-image-apis": t({ pt: "Bancos de fotos", es: "Bancos de fotos" }),
+  "admin-management-companies": t({ pt: "Empresas", es: "Empresas" }),
   "admin-management-banners": t({ pt: "Banners", es: "Banners" }),
   "admin-management-whatsapp": t({ pt: "Gestão WhatsApp", es: "Gestion WhatsApp" }),
   "admin-management-offers": t({ pt: "Ofertas", es: "Ofertas" }),

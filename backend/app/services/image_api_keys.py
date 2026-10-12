@@ -20,8 +20,10 @@ from app.core.config import get_settings
 from app.models.external_api_key import ExternalApiKey
 from app.services.api_key_crypto import decrypt_api_key
 
-IMAGE_PROVIDERS = ("unsplash", "pexels")
-DEFAULT_HOURLY_LIMIT = {"unsplash": 50, "pexels": 200}
+# Na ordem de uso (depois das fotos cadastradas no Admin Master, que vêm sempre antes).
+IMAGE_PROVIDERS = ("pixabay", "unsplash", "pexels")
+# Pixabay: 100 por minuto por chave; aqui fica um teto por hora folgado.
+DEFAULT_HOURLY_LIMIT = {"pixabay": 1000, "unsplash": 50, "pexels": 200}
 # Folga para não bater no limite real do banco (a contagem do banco inclui chamadas de teste).
 SAFETY_MARGIN = 3
 
@@ -98,16 +100,21 @@ def available_image_keys(db: Session, provider: str) -> list[ImageKey]:
             row.status = "error"
             row.last_error = f"Falha ao ler a chave: {exc}"[:1000]
             db.add(row)
-    settings = get_settings()
-    env_key = (settings.unsplash_access_key if provider == "unsplash" else settings.pexels_api_key) or ""
+    env_key = env_image_key(provider)
     if env_key.strip() and _env_has_room(provider):
         keys.append(ImageKey(provider=provider, plain_key=env_key.strip()))
     return keys
 
 
-def has_any_image_key(db: Session) -> bool:
+def env_image_key(provider: str) -> str:
+    """Chave de reserva do arquivo de configuração do servidor."""
     settings = get_settings()
-    if (settings.unsplash_access_key or "").strip() or (settings.pexels_api_key or "").strip():
+    field = {"pixabay": "pixabay_api_key", "unsplash": "unsplash_access_key", "pexels": "pexels_api_key"}.get(provider, "")
+    return getattr(settings, field, None) or ""
+
+
+def has_any_image_key(db: Session) -> bool:
+    if any(env_image_key(provider).strip() for provider in IMAGE_PROVIDERS):
         return True
     return (
         db.query(ExternalApiKey.id)
@@ -130,6 +137,8 @@ def record_image_call(db: Session, key: ImageKey, response: httpx.Response | Non
     record.last_used_at = now
     status = response.status_code if response is not None else 0
     remaining = (response.headers.get("X-Ratelimit-Remaining") if response is not None else None) or ""
+    if key.provider == "pixabay":
+        remaining = ""  # o limite do Pixabay é por minuto: só o 429 conta como esgotada
     limit = int(record.monthly_limit or DEFAULT_HOURLY_LIMIT.get(key.provider, 50))
     next_hour = (_hour_start(now).hour + 1) % 24
     if status in (401, 403):

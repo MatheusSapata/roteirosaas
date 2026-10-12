@@ -30,7 +30,7 @@ from sqlalchemy.orm import Session
 from app.models.stock_image import StockImage
 from app.services.image_optimizer import optimize_image
 from app.services.media_storage import media_storage
-from app.services.stock_images import MANUAL_PROVIDER, keyword_list, normalize_query
+from app.services.stock_images import MANUAL_PROVIDER, STOPWORDS, keyword_list, normalize_query
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +59,7 @@ def context_words(path: str) -> list[str]:
         if index == len(parts) - 1:
             part = PurePosixPath(part).stem
         for word in normalize_query(re.sub(r"[_\-.]+", " ", part)).split():
-            if len(word) < 3 or word in NOISE_WORDS or any(char.isdigit() for char in word):
+            if len(word) < 3 or word in NOISE_WORDS or word in STOPWORDS or any(char.isdigit() for char in word):
                 continue
             if word not in words:
                 words.append(word)

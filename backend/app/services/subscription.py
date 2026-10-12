@@ -291,6 +291,13 @@ def schedule_expiration_job(interval_minutes: int = 60) -> None:
                 expire_subscriptions()
             except Exception:
                 logger.exception("Erro no job de expiracao de assinaturas")
+            try:
+                # Depois de expirar: registra quem saiu do ar (e o ciclo dos arquivos, se ligado).
+                from app.services.media_lifecycle import hourly_tick
+
+                hourly_tick(SessionLocal)
+            except Exception:
+                logger.exception("Erro no ciclo de arquivos das empresas")
             await asyncio.sleep(interval_minutes * 60)
 
     try:

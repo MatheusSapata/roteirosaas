@@ -17,10 +17,13 @@ def test_image_api_keys_crud_and_separation_from_flight_keys(client):
         assert body["monthly_limit"] == 50 and body["status"] == "active" and body["key_masked"].endswith("lash")
         assert client.post(BASE, json={"provider": "pexels", "label": "Pexels", "api_key": "pexels-key-0001", "hourly_limit": 180}).json()["monthly_limit"] == 180
         assert client.post(BASE, json={"provider": "airlabs", "label": "Outra", "api_key": "abcdef"}).status_code == 400
+        pixabay = client.post(BASE, json={"provider": "pixabay", "label": "Pixabay 1", "api_key": "pixabay-key-123"}).json()
+        assert pixabay["monthly_limit"] == 1000 and pixabay["provider"] == "pixabay"
         client.post("/api/v1/admin/master/flight-api-keys", json={"provider": "airlabs", "label": "Voo", "api_key": "airlabs-key-1"})
 
         listed = client.get(BASE).json()
-        assert {item["provider"] for item in listed["items"]} == {"unsplash", "pexels"}
+        assert {item["provider"] for item in listed["items"]} == {"pixabay", "unsplash", "pexels"}
+        assert listed["summary"]["pixabay"]["active_keys"] == 1
         assert listed["summary"]["unsplash"]["active_keys"] == 1 and listed["summary"]["photos"] == 0
         flights = client.get("/api/v1/admin/master/flight-api-keys").json()
         assert {item["provider"] for item in flights["items"]} == {"airlabs"}
@@ -94,6 +97,7 @@ def test_curated_keywords_from_file_names_and_folders(db_session, monkeypatch):
 
     assert context_words("Atrações/Nerf/IMG_0123.jpg") == ["atracoes", "nerf"]
     assert context_words("DSC0001-castelo_final-2.JPG") == ["castelo"]
+    assert context_words("Por do sol 4.jpg") == ["sol"]
     assert photo_keywords("Beto Carrero, Penha", "Nerf_02.jpg") == "beto carrero nerf, beto carrero, penha"
     assert photo_keywords("Beto Carrero", "beto-carrero-castelo.jpg") == "beto carrero castelo, beto carrero"
     assert strip_common_folders(["Beto Carrero Imprensa/Nerf/a.jpg", "Beto Carrero Imprensa/Castelo/b.jpg"]) == ["Nerf/a.jpg", "Castelo/b.jpg"]

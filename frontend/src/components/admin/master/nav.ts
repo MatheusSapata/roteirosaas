@@ -21,6 +21,7 @@ export const adminMasterNav: AdminMasterNavGroup[] = [
   {
     label: "Clientes",
     items: [
+      { path: "/admin/administracao/empresas", label: "Empresas", icon: "building" },
       { path: "/admin/administracao/usuarios", label: "Usuários", icon: "users" },
       { path: "/admin/administracao/admin-global", label: "Admins globais", icon: "shield" }
     ]
@@ -28,7 +29,7 @@ export const adminMasterNav: AdminMasterNavGroup[] = [
   {
     label: "Receita",
     items: [
-      { path: "/admin/administracao/receita-previsao", label: "Previsão de receita", icon: "cal" },
+      { path: "/admin/administracao/receita-previsao", label: "Receita e MRR", icon: "cal" },
       { path: "/admin/administracao/conciliacao", label: "Conciliação", icon: "scale" },
       { path: "/admin/administracao/ltv-clientes", label: "LTV por cliente", icon: "trend" },
       { path: "/admin/administracao/ofertas", label: "Ofertas e checkout", icon: "tag" }

@@ -968,91 +968,14 @@
     <template v-else-if="activeTab === 'flight_apis'">
       <FlightApiKeysPanel />
     </template>
+    <template v-else-if="activeTab === 'companies'">
+      <CompaniesPanel />
+    </template>
     <template v-else-if="activeTab === 'image_apis'">
       <ImageApiKeysPanel />
     </template>
     <template v-else-if="activeTab === 'revenue_forecast'">
-      <AdminMasterHeader
-        title="Previsão de receita"
-        subtitle="Assinaturas ativas no Asaas e na Cakto nos próximos 30 dias. A entrada prevista é no dia seguinte à validade."
-      >
-        <button type="button" class="am-btn" :disabled="revenueForecastLoading" @click="loadRevenueForecast">
-          <AmIcon name="refresh" :class="revenueForecastLoading ? 'animate-spin' : ''" />
-          {{ revenueForecastLoading ? "Atualizando..." : "Atualizar" }}
-        </button>
-      </AdminMasterHeader>
-
-      <section class="am-grid-4">
-        <AdminMasterKpi icon="wallet" tone="success" label="Previsto em 30 dias" :value="formatCurrencyBRL(forecastTotalMrr)" :hint="forecastMonthLabel ? `A partir de ${forecastMonthLabel}` : ''" />
-        <AdminMasterKpi icon="cal" tone="info" label="Cobranças previstas" :value="formatInt(forecastTotalCount)" :hint="`${formatInt(forecastBusyDays)} dias com entrada`" />
-        <AdminMasterKpi icon="card" tone="violet" label="Ticket médio" :value="formatCurrencyBRL(forecastTotalCount ? forecastTotalMrr / forecastTotalCount : 0)" hint="Por cobrança" />
-        <AdminMasterKpi icon="trend" tone="neutral" label="Por forma de cobrança" :value="forecastProviderSplit.label" :hint="forecastProviderSplit.hint" />
-      </section>
-
-      <div v-if="revenueForecastError" class="am-notice am-tone-danger">
-        <AmIcon name="alert" />
-        <span>{{ revenueForecastError }}</span>
-      </div>
-      <div v-else-if="revenueForecastLoading && !revenueForecastDays.length" class="am-card am-empty">
-        <div class="am-spinner"></div>
-        Carregando previsão...
-      </div>
-      <section v-else class="grid gap-3.5 xl:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
-        <div class="am-card">
-          <div class="am-card-head">
-            <div>
-              <h2 class="am-card-title">Calendário</h2>
-              <p class="am-card-sub">Quanto mais forte o verde, mais entra no dia. Clique num dia para ver as cobranças.</p>
-            </div>
-          </div>
-          <div class="grid grid-cols-7 gap-1.5">
-            <span v-for="weekday in ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']" :key="weekday" class="pb-0.5 text-center text-[11px] font-semibold uppercase text-muted-foreground">
-              {{ weekday }}
-            </span>
-            <button
-              v-for="cell in forecastCalendarCells"
-              :key="cell.key"
-              type="button"
-              class="am-cal-day"
-              :class="[
-                cell.iso ? forecastHeatClass(cell.day?.total_mrr || 0) : 'is-off',
-                cell.iso && cell.iso === selectedForecastDate ? 'is-selected' : ''
-              ]"
-              :disabled="!cell.iso"
-              @click="cell.iso && (selectedForecastDate = cell.iso)"
-            >
-              <template v-if="cell.date">
-                <span class="text-[11.5px]">{{ cell.date.getDate() }}</span>
-                <b v-if="cell.day?.total_mrr" class="am-num">{{ formatCompactMoney(cell.day.total_mrr) }}</b>
-              </template>
-            </button>
-          </div>
-        </div>
-
-        <div class="am-card">
-          <p class="am-eyebrow">{{ selectedForecastDay ? formatForecastWeekday(selectedForecastDay.date) : "Escolha um dia" }}</p>
-          <p class="am-kpi-value">{{ formatCurrencyBRL(selectedForecastDay?.total_mrr || 0) }}</p>
-          <p class="am-card-sub">
-            {{ formatInt(selectedForecastDay?.subscriptions_count || 0) }}
-            {{ (selectedForecastDay?.subscriptions_count || 0) === 1 ? "cobrança" : "cobranças" }}
-          </p>
-          <div class="am-list mt-3 max-h-[440px] overflow-auto pr-1">
-            <div
-              v-for="entry in selectedForecastEntries"
-              :key="`${entry.subscription_id}-${entry.user_id}`"
-              class="flex items-center gap-3 py-2.5"
-            >
-              <span class="am-avatar">{{ initials(entry.user_name) }}</span>
-              <div class="min-w-0 flex-1">
-                <b class="block truncate font-semibold">{{ entry.user_name }}</b>
-                <p class="am-card-sub !mt-0 truncate">{{ planLabel(entry.plan) }} · {{ gatewayLabel(entry.provider) }} · validade {{ formatDate(entry.valid_until) }}</p>
-              </div>
-              <b class="am-num">{{ formatCurrencyBRL(entry.mrr_amount) }}</b>
-            </div>
-            <p v-if="!selectedForecastEntries.length" class="am-empty">Sem cobrança prevista neste dia.</p>
-          </div>
-        </div>
-      </section>
+      <RevenuePanel />
     </template>
   </div>
 
@@ -1393,6 +1316,10 @@
           <p class="text-xs text-slate-500 dark:text-white/60">
             Essa alteração será refletida no usuário e na assinatura.
           </p>
+          <p class="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-200">
+            Ajuste só no Roteiro Online: não gera, não altera e não cancela cobrança na Asaas nem na Cakto.
+            Para parar uma cobrança, use as ações de cancelamento da Asaas.
+          </p>
         </div>
         <p
           v-if="subscriptionActionDialog.error"
@@ -1436,6 +1363,8 @@ import { slugify } from "../../utils/slugify";
 import PageTemplatePreview from "../../components/admin/PageTemplatePreview.vue";
 import FlightApiKeysPanel from "../../components/admin/FlightApiKeysPanel.vue";
 import ImageApiKeysPanel from "../../components/admin/ImageApiKeysPanel.vue";
+import CompaniesPanel from "../../components/admin/CompaniesPanel.vue";
+import RevenuePanel from "../../components/admin/RevenuePanel.vue";
 import { listPageTemplates, createTemplateFromPage, deleteTemplate, updateTemplate } from "../../services/templates";
 import type { PageTemplate } from "../../types/templates";
 import { applyTemplateBranding, summarizeTemplate } from "../../utils/pageTemplates";
@@ -1583,7 +1512,7 @@ interface RevenueForecastOut {
   forecast_days: RevenueForecastDay[];
 }
 
-type AdminTab = "dashboard" | "monitor" | "users" | "lessons" | "templates" | "flight_apis" | "image_apis" | "revenue_forecast";
+type AdminTab = "dashboard" | "monitor" | "users" | "lessons" | "templates" | "flight_apis" | "image_apis" | "companies" | "revenue_forecast";
 type TemplateDialogMode = "create" | "edit";
 type SubscriptionActionKind = "plan" | "status" | "validity";
 
@@ -2005,6 +1934,10 @@ const syncActiveTabFromRoute = () => {
   }
   if (routeName === "admin-management-flight-apis") {
     activeTab.value = "flight_apis";
+    return;
+  }
+  if (routeName === "admin-management-companies") {
+    activeTab.value = "companies";
     return;
   }
   if (routeName === "admin-management-image-apis") {
@@ -4198,9 +4131,6 @@ onMounted(async () => {
     await lessonsStore.ensureLessons();
     await loadMetrics();
     await loadOnlineSessions();
-    if (activeTab.value === "revenue_forecast") {
-      await loadRevenueForecast();
-    }
     startOnlineSessionsPolling();
   } finally {
     isBootstrappingAdminManagement.value = false;
@@ -4243,9 +4173,6 @@ watch(activeTab, (tab) => {
     if (templateAgencyId.value) {
       loadTemplatePages();
     }
-  }
-  if (tab === "revenue_forecast" && !revenueForecast.value && !revenueForecastLoading.value) {
-    loadRevenueForecast();
   }
 
 });

@@ -184,7 +184,7 @@ def create_stock_photo(
 
 
 @router.post("/upload", response_model=StockPhotoOut)
-async def upload_stock_photo(
+def upload_stock_photo(
     file: UploadFile = File(...),
     keywords: str = Form(..., min_length=2, max_length=500),
     path: str = Form(default="", max_length=500),
@@ -195,10 +195,11 @@ async def upload_stock_photo(
     db: Session = Depends(get_db),
     _: User = Depends(get_current_superuser),
 ) -> StockPhotoOut:
-    """Uma foto enviada do computador. O painel manda uma por vez (lotes e pastas), com o
-    caminho relativo para o nome do arquivo e as pastas virarem contexto."""
+    """Uma foto enviada do computador. O painel manda algumas por vez (lotes e pastas), com o
+    caminho relativo para o nome do arquivo e as pastas virarem contexto. Função comum (não
+    async): otimizar a imagem é pesado e roda numa thread, sem travar as outras requisições."""
     _keywords(keywords)
-    data = await file.read(MAX_IMAGE_BYTES + 1)
+    data = file.file.read(MAX_IMAGE_BYTES + 1)
     credits = Credits(
         author=_clean(author), author_url=_link(author_url), source_name=_clean(source_name), source_url=_link(source_url)
     )

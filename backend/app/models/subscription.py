@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, Numeric, String
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, Numeric, String
 from sqlalchemy.orm import relationship
 
 from app.db.base import Base
@@ -34,5 +34,9 @@ class Subscription(Base):
     mrr_amount = Column(Numeric(12, 2), nullable=False, default=0)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    # Quando a conta deixou de estar no ar (página pública indisponível). Registrado pelo job
+    # horário; para quem já estava inativo antes, é estimado (deactivation_estimated).
+    deactivated_at = Column(DateTime(timezone=True), nullable=True)
+    deactivation_estimated = Column(Boolean, nullable=False, default=False, server_default="false")
 
     user = relationship("User", foreign_keys=[user_id])
