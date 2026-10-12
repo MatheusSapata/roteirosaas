@@ -41,6 +41,7 @@
         <button v-if="!phoneEditor && page" type="button" class="ed-btn ed-btn-ghost" title="Artes prontas para divulgar esta viagem" @click="openCreatives">
           <ImagesIcon aria-hidden="true" />
           Criativos
+          <span class="ed-beta">Beta</span>
         </button>
         <button v-if="isPublished && !phoneEditor" type="button" class="ed-btn ed-btn-ghost" :disabled="!publicUrl" @click="viewPublicPage">
           <ExternalLinkIcon aria-hidden="true" />
@@ -53,7 +54,7 @@
           <div v-if="topbarMenuOpen" class="ed-menu" @click="topbarMenuOpen = false">
             <button v-if="phoneEditor && isPublished" type="button" :disabled="!publicUrl" @click="viewPublicPage">{{ viewCopy.actions.viewPage }}</button>
             <button v-if="phoneEditor && !isPublished" type="button" @click="publishPage">{{ viewCopy.toolbar.publish }}</button>
-            <button v-if="phoneEditor && page" type="button" @click="openCreatives">Criativos</button>
+            <button v-if="phoneEditor && page" type="button" @click="openCreatives">Criativos (Beta)</button>
             <button type="button" @click="saveTemplate">{{ viewCopy.toolbar.saveTemplate }}</button>
             <button v-if="isPublished" type="button" class="danger" @click="unpublishPage">{{ viewCopy.toolbar.unpublish }}</button>
           </div>
@@ -7854,6 +7855,7 @@ onMounted(async () => {
 @keyframes ed-ai-spark { 0%, 100% { transform: scale(1) rotate(0); } 50% { transform: scale(1.15) rotate(12deg); } }
 @keyframes ed-ai-shine { 0% { left: -60%; } 38%, 100% { left: 130%; } }
 @media (prefers-reduced-motion: reduce) { .ed-btn-ai svg, .ed-btn-ai::after { animation: none; } .ed-btn-ai { transition: none; } }
+.ed-beta { margin-left: 2px; padding: 2px 7px; border-radius: 999px; background: var(--accent); color: var(--accent-foreground); font-size: 10.5px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
 .ed-btn-ghost { background: var(--card); color: var(--foreground); box-shadow: var(--shadow-card); }
 .ed-btn-ghost:hover:not(:disabled) { background: var(--accent); }
 .ed-btn-primary { background: var(--primary); color: var(--primary-foreground); }

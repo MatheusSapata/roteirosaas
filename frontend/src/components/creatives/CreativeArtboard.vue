@@ -409,18 +409,25 @@ const bg = (index: number) => {
 }
 
 /* 4. Preço em destaque */
+/* Foto em círculo grande, saindo pelo canto, para o preço respirar embaixo. */
 .cr-ph-photo {
   position: absolute;
-  top: -12%;
-  right: -22%;
-  width: 78%;
+  top: -10%;
+  right: -18%;
+  width: 96%;
   aspect-ratio: 1;
-  border: 18px solid var(--c2);
+  border: 22px solid var(--c2);
   border-radius: 50%;
 }
+.cr-story .cr-ph-photo {
+  top: -6%;
+  right: -24%;
+  width: 118%;
+}
 .cr-square .cr-ph-photo {
-  top: -16%;
-  width: 62%;
+  top: -18%;
+  right: -16%;
+  width: 72%;
 }
 .cr-ph-body {
   position: absolute;
