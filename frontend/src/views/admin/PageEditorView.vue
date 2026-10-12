@@ -1666,6 +1666,7 @@ import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, p
 import type { Component } from "vue";
 import { onBeforeRouteLeave, useRoute, useRouter } from "vue-router";
 import api from "../../services/api";
+import { importFlightJourneys } from "../../services/flightDetails";
 import {
   previewAiAssistantPageBase,
   fetchAiAssistantHistory,
@@ -2747,10 +2748,29 @@ const resolveAiMenuLinks = (pageSections: PageSection[]): PageSection[] => {
 };
 const stripAiMarkers = (pageSections: PageSection[]) =>
   pageSections.map(section => {
-    if (!("aiSetKeys" in section)) return section;
-    const { aiSetKeys: _keys, ...clean } = section as PageSection & { aiSetKeys?: string[] };
+    if (!("aiSetKeys" in section) && !("aiFlights" in section)) return section;
+    const { aiSetKeys: _keys, aiFlights: _flights, ...clean } = section as PageSection & { aiSetKeys?: string[]; aiFlights?: unknown[] };
     return clean as PageSection;
   });
+// Trechos de voo da sugestão: o servidor grava na seção (com código, dados da API; sem, manuais)
+// e a prévia já mostra os cartões.
+const importAiFlights = async (targets: Array<{ sectionId: string; flights: unknown[] }>) => {
+  for (const { sectionId, flights } of targets) {
+    try {
+      const response = await importFlightJourneys(pageId, sectionId, flights);
+      setSections(
+        sections.value.map(section =>
+          section.type === "flight_details" && (section as FlightDetailsSection).sectionId === sectionId
+            ? ({ ...section, journeys: response.journeys } as PageSection)
+            : section
+        )
+      );
+    } catch {
+      showAiToast("Não consegui montar os voos automaticamente. Abra a seção Voos para conferir.");
+    }
+  }
+  refreshPreview(true);
+};
 // Menu do topo, Vitrine e Rodapé com o padrão do editor (cores do tema, WhatsApp da agência).
 // Card ligado a uma página existente leva para ela e usa a foto dela; sem página, abre o
 // WhatsApp da agência até ela ligar o card à página da viagem.
@@ -2965,10 +2985,27 @@ const applyAiStructure = async (reply: string, mode: "insert" | "replace" | "swa
         ...(footer.length ? footer : additions.filter(section => section.type === "free_footer_brand"))
       ];
     }
+    // Voos: na troca, os trechos vão para a seção que ficou na página; nas outras, para as novas.
+    const flightTargets: Array<{ sectionId: string; flights: unknown[] }> = [];
+    if (mode === "swap") {
+      const raw = generated.find(section => section.type === "flight_details") as any;
+      const index = aiSwapTarget(reply)?.index ?? -1;
+      const target = nextSections[index] as FlightDetailsSection | undefined;
+      if (raw?.aiFlights?.length && target?.type === "flight_details" && target.sectionId) {
+        flightTargets.push({ sectionId: target.sectionId, flights: raw.aiFlights });
+      }
+    } else {
+      for (const section of nextSections) {
+        const flights = (section as any).aiFlights as unknown[] | undefined;
+        const sectionId = (section as FlightDetailsSection).sectionId;
+        if (section.type === "flight_details" && flights?.length && sectionId) flightTargets.push({ sectionId, flights });
+      }
+    }
     nextSections = stripAiMarkers(resolveAiMenuLinks(nextSections));
     aiStructurePreviousSections.value = JSON.parse(JSON.stringify(sections.value));
     setSections(nextSections);
     refreshPreview(true);
+    if (flightTargets.length) void importAiFlights(flightTargets);
     showAiToast(mode === "swap"
       ? "Seção trocada pela sugestão. Revise e salve."
       : mode === "insert"

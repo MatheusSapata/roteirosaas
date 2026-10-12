@@ -499,6 +499,45 @@ def reorder_flight_segments(
     return _build_response(db, page_id, section_id)
 
 
+def _lookup_segment_fields(result: Any, fallback_date: str | None) -> dict[str, Any]:
+    """Campos do trecho a partir do voo encontrado na API (AeroDataBox/AirLabs)."""
+    flight = result.flight or {}
+    return {
+        "source_mode": result.provider,
+        "flight_number": flight.get("flight_number"),
+        "flight_iata": flight.get("flight_iata"),
+        "flight_icao": flight.get("flight_icao"),
+        "flight_date": flight.get("flight_date") or fallback_date,
+        "airline_name": flight.get("airline_name"),
+        "airline_iata": flight.get("airline_iata"),
+        "airline_icao": flight.get("airline_icao"),
+        "airline_logo_url": flight.get("airline_logo_url"),
+        "departure_airport_iata": flight.get("departure_airport_iata")
+        or (flight.get("departure") or {}).get("iata"),
+        "departure_airport_name": flight.get("departure_airport_name")
+        or (flight.get("departure") or {}).get("airport"),
+        "departure_city": flight.get("departure_city") or (flight.get("departure") or {}).get("city"),
+        "departure_country": flight.get("departure_country")
+        or (flight.get("departure") or {}).get("country"),
+        "departure_terminal": flight.get("departure_terminal")
+        or (flight.get("departure") or {}).get("terminal"),
+        "departure_gate": flight.get("departure_gate") or (flight.get("departure") or {}).get("gate"),
+        "departure_datetime": flight.get("departure_datetime")
+        or (flight.get("departure") or {}).get("datetime"),
+        "arrival_airport_iata": flight.get("arrival_airport_iata") or (flight.get("arrival") or {}).get("iata"),
+        "arrival_airport_name": flight.get("arrival_airport_name")
+        or (flight.get("arrival") or {}).get("airport"),
+        "arrival_city": flight.get("arrival_city") or (flight.get("arrival") or {}).get("city"),
+        "arrival_country": flight.get("arrival_country") or (flight.get("arrival") or {}).get("country"),
+        "arrival_terminal": flight.get("arrival_terminal") or (flight.get("arrival") or {}).get("terminal"),
+        "arrival_gate": flight.get("arrival_gate") or (flight.get("arrival") or {}).get("gate"),
+        "arrival_datetime": flight.get("arrival_datetime") or (flight.get("arrival") or {}).get("datetime"),
+        "duration_minutes": flight.get("duration_minutes"),
+        "status": flight.get("status"),
+        "raw_provider_response": result.raw_response or flight.get("raw_provider_response"),
+    }
+
+
 @router.post("/flight-lookup")
 def lookup_flight(
     page_id: int,
@@ -537,44 +576,7 @@ def lookup_flight(
             db.flush()
 
     if target_segment:
-        flight = result.flight or {}
-        _apply_segment_updates(
-            target_segment,
-            {
-                "source_mode": result.provider,
-                "flight_number": flight.get("flight_number"),
-                "flight_iata": flight.get("flight_iata"),
-                "flight_icao": flight.get("flight_icao"),
-                "flight_date": flight.get("flight_date") or payload.flight_date,
-                "airline_name": flight.get("airline_name"),
-                "airline_iata": flight.get("airline_iata"),
-                "airline_icao": flight.get("airline_icao"),
-                "airline_logo_url": flight.get("airline_logo_url"),
-                "departure_airport_iata": flight.get("departure_airport_iata")
-                or (flight.get("departure") or {}).get("iata"),
-                "departure_airport_name": flight.get("departure_airport_name")
-                or (flight.get("departure") or {}).get("airport"),
-                "departure_city": flight.get("departure_city") or (flight.get("departure") or {}).get("city"),
-                "departure_country": flight.get("departure_country")
-                or (flight.get("departure") or {}).get("country"),
-                "departure_terminal": flight.get("departure_terminal")
-                or (flight.get("departure") or {}).get("terminal"),
-                "departure_gate": flight.get("departure_gate") or (flight.get("departure") or {}).get("gate"),
-                "departure_datetime": flight.get("departure_datetime")
-                or (flight.get("departure") or {}).get("datetime"),
-                "arrival_airport_iata": flight.get("arrival_airport_iata") or (flight.get("arrival") or {}).get("iata"),
-                "arrival_airport_name": flight.get("arrival_airport_name")
-                or (flight.get("arrival") or {}).get("airport"),
-                "arrival_city": flight.get("arrival_city") or (flight.get("arrival") or {}).get("city"),
-                "arrival_country": flight.get("arrival_country") or (flight.get("arrival") or {}).get("country"),
-                "arrival_terminal": flight.get("arrival_terminal") or (flight.get("arrival") or {}).get("terminal"),
-                "arrival_gate": flight.get("arrival_gate") or (flight.get("arrival") or {}).get("gate"),
-                "arrival_datetime": flight.get("arrival_datetime") or (flight.get("arrival") or {}).get("datetime"),
-                "duration_minutes": flight.get("duration_minutes"),
-                "status": flight.get("status"),
-                "raw_provider_response": result.raw_response or flight.get("raw_provider_response"),
-            },
-        )
+        _apply_segment_updates(target_segment, _lookup_segment_fields(result, payload.flight_date))
         db.add(target_segment)
         db.commit()
 
@@ -605,3 +607,93 @@ def lookup_flight(
         "data": result.flight,
         "flight": result.flight,
     }
+
+
+class FlightImportSegment(BaseModel):
+    flight_number: Optional[str] = Field(default=None, max_length=30)
+    flight_iata: Optional[str] = Field(default=None, max_length=30)
+    flight_date: Optional[str] = None
+    airline_name: Optional[str] = Field(default=None, max_length=255)
+    airline_iata: Optional[str] = Field(default=None, max_length=20)
+    departure_airport_iata: Optional[str] = Field(default=None, max_length=20)
+    departure_city: Optional[str] = Field(default=None, max_length=255)
+    departure_datetime: Optional[str] = None
+    arrival_airport_iata: Optional[str] = Field(default=None, max_length=20)
+    arrival_city: Optional[str] = Field(default=None, max_length=255)
+    arrival_datetime: Optional[str] = None
+    included_checked_bag: Optional[bool] = None
+    notes: Optional[str] = Field(default=None, max_length=500)
+
+
+class FlightImportJourney(BaseModel):
+    direction: str = Field(..., pattern="^(outbound|inbound)$")
+    title: Optional[str] = Field(default=None, max_length=255)
+    segments: list[FlightImportSegment] = Field(default_factory=list, max_length=6)
+
+
+class FlightImportPayload(BaseModel):
+    journeys: list[FlightImportJourney] = Field(default_factory=list, max_length=4)
+
+
+def import_flight_journeys(db: Session, page_id: int, section_id: str, journeys: list[dict[str, Any]]) -> dict[str, int]:
+    """Troca os trechos da seção pelos enviados (ex.: escritos pelo assistente de IA).
+
+    Trecho com código e data é buscado na API de voos (horários, aeroportos, companhia e logo de
+    verdade); sem código, ou se a API não achar, fica com os dados enviados (manual)."""
+    # 1) Busca na API antes de gravar: a busca guarda cache e pode falhar sem afetar os trechos.
+    service: FlightLookupService | None = None
+    prepared: list[list[tuple[str, dict[str, Any]]]] = []
+    counts = {"from_api": 0, "manual": 0}
+    for journey_data in journeys:
+        rows: list[tuple[str, dict[str, Any]]] = []
+        for raw in journey_data.get("segments") or []:
+            data = {key: value for key, value in raw.items() if value not in (None, "")}
+            source = "manual"
+            if data.get("flight_number") and data.get("flight_date"):
+                try:
+                    service = service or FlightLookupService(db)
+                    result = service.lookup(data["flight_number"], data["flight_date"])
+                    found = {key: value for key, value in _lookup_segment_fields(result, data["flight_date"]).items() if value not in (None, "")}
+                    if found.get("departure_airport_iata") or found.get("departure_datetime"):
+                        # A API vale mais que o texto; o que ela não trouxe, fica o da mensagem.
+                        data.update(found)
+                        source = str(found.get("source_mode") or "manual")
+                except Exception:  # noqa: BLE001 - sem chave, voo não encontrado, data fora do alcance da API
+                    db.rollback()
+            data["source_mode"] = source
+            rows.append((source, data))
+            counts["from_api" if source != "manual" else "manual"] += 1
+        prepared.append(rows)
+
+    # 2) Troca os trechos da seção.
+    for journey in _load_journeys(db, page_id, section_id):
+        db.query(FlightSectionSegment).filter(FlightSectionSegment.journey_id == journey.id).delete(synchronize_session=False)
+        db.delete(journey)
+    db.flush()
+    for order, (journey_data, rows) in enumerate(zip(journeys, prepared)):
+        journey = FlightSectionJourney(
+            page_id=page_id, section_id=section_id, direction=journey_data["direction"],
+            title=journey_data.get("title") or ("Ida" if journey_data["direction"] == "outbound" else "Volta"),
+            sort_order=order, is_enabled=True,
+        )
+        db.add(journey)
+        db.flush()
+        for position, (source, data) in enumerate(rows):
+            segment = FlightSectionSegment(journey_id=journey.id, sort_order=position, source_mode=source)
+            _apply_segment_updates(segment, data)
+            db.add(segment)
+    db.commit()
+    return counts
+
+
+@router.post("/flight-journeys/import", response_model=FlightJourneysResponse)
+def import_flight_journeys_route(
+    page_id: int,
+    section_id: str,
+    payload: FlightImportPayload,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> FlightJourneysResponse:
+    _ensure_page_access(db, page_id, current_user)
+    import_flight_journeys(db, page_id, section_id, [journey.model_dump() for journey in payload.journeys])
+    return _build_response(db, page_id, section_id)

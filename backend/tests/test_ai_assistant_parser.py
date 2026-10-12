@@ -569,9 +569,11 @@ Bagagem: 1 mala de 23 kg
     assert (child["title"], child["price"], child["description"]) == ("Criança até 5 anos", 290.0, "No colo, dividindo a cama")
     assert prices["description"] == "Consulte disponibilidade, formas de pagamento e condições vigentes."
     assert prices["paymentMethods"] == ["pix", "boleto", "cartao"]
-    assert flight["generalInfo"] == (
-        "<p>Ida: 12/07/2026, São Paulo (GRU) 08:00 → Recife (REC) 11:15, LATAM</p><p>Bagagem: 1 mala de 23 kg</p>"
-    )
+    # O trecho vira cartão de voo (aiFlights); no texto fica só a bagagem.
+    assert flight["generalInfo"] == "<p>Bagagem: 1 mala de 23 kg</p>"
+    [ida] = flight["aiFlights"]
+    assert ida["direction"] == "outbound" and ida["segments"][0]["departure_airport_iata"] == "GRU"
+    assert ida["segments"][0]["arrival_datetime"] == "2026-07-12T11:15:00" and ida["segments"][0]["airline_name"] == "LATAM"
     for section in config["sections"]:
         for value in section.values():
             assert "Função da seção" not in str(value)
@@ -1048,3 +1050,52 @@ def test_new_page_menu_still_links_by_title():
     faq = next(s for s in config["sections"] if s["type"] == "faq")
     assert [l["target"] for l in header["links"]] == [itinerary["anchorId"], faq["anchorId"]]
     assert header["contactLabel"] == "Falar com a gente" and header["actionType"] == "contact"
+
+
+def test_flight_import_uses_api_for_codes_and_manual_otherwise(db_session, monkeypatch):
+    from types import SimpleNamespace
+
+    from app.api.v1.endpoints import flight_sections
+    from app.models.flight_section import FlightSectionJourney, FlightSectionSegment
+    from app.services.ai_flights import parse_flight_legs
+
+    legs, _ = parse_flight_legs(
+        "Ida: 12/07/2026, voo LA3456, São Paulo (GRU) 08:00 → Recife (REC) 11:15\n"
+        "Volta: 19/07/2026, Recife (REC) 22:40 → São Paulo (GRU) 02:05 +1, GOL\n"
+        "Volta 2: 20/07/2026, voo XX999, São Paulo (GRU) 06:30 → Curitiba (CWB) 07:45\n"
+        "Bagagem: 1 mala de 23 kg"
+    )
+
+    class FakeLookup:
+        def __init__(self, db):
+            pass
+
+        def lookup(self, number, day):
+            if number != "LA3456":
+                raise RuntimeError("voo não encontrado")
+            return SimpleNamespace(provider="aerodatabox", raw_response=None, flight={
+                "flight_number": "LA3456", "airline_name": "LATAM Airlines", "airline_logo_url": "https://logo/la.png",
+                "departure": {"iata": "GRU", "airport": "Guarulhos", "city": "São Paulo", "datetime": "2026-07-12T08:05:00-03:00"},
+                "arrival": {"iata": "REC", "airport": "Guararapes", "city": "Recife", "datetime": "2026-07-12T11:20:00-03:00"},
+                "duration_minutes": 195,
+            })
+
+    monkeypatch.setattr(flight_sections, "FlightLookupService", FakeLookup)
+    counts = flight_sections.import_flight_journeys(db_session, 1, "flight-1", legs)
+    assert counts == {"from_api": 1, "manual": 2}
+    journeys = db_session.query(FlightSectionJourney).filter_by(section_id="flight-1").order_by(FlightSectionJourney.sort_order).all()
+    assert [j.direction for j in journeys] == ["outbound", "inbound"]
+    ida = db_session.query(FlightSectionSegment).filter_by(journey_id=journeys[0].id).one()
+    # Com código: dados da API (logo, aeroporto, horário certo).
+    assert ida.source_mode == "aerodatabox" and ida.airline_logo_url == "https://logo/la.png" and ida.departure_airport_name == "Guarulhos"
+    assert ida.included_checked_bag is True
+    volta = db_session.query(FlightSectionSegment).filter_by(journey_id=journeys[1].id).order_by(FlightSectionSegment.sort_order).all()
+    # Sem código, ou código que a API não achou: manual, com o que a mensagem trouxe.
+    assert [(s.source_mode, s.departure_airport_iata, s.arrival_airport_iata) for s in volta] == [
+        ("manual", "REC", "GRU"), ("manual", "GRU", "CWB"),
+    ]
+    assert volta[0].arrival_datetime.day == 20 and volta[1].flight_number == "XX999"
+
+    # De novo (troca da seção pelo assistente): substitui, não duplica.
+    flight_sections.import_flight_journeys(db_session, 1, "flight-1", legs[:1])
+    assert db_session.query(FlightSectionJourney).filter_by(section_id="flight-1").count() == 1

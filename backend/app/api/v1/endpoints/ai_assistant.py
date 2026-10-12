@@ -29,6 +29,7 @@ from app.models.ai_assistant_message import AiAssistantMessage
 from app.models.ai_assistant_usage import AiAssistantUsage
 from app.models.user import User
 from app.schemas.page import PageOut
+from app.api.v1.endpoints.flight_sections import import_flight_journeys
 from app.services.ai_assistant import (
     ChatAttachment,
     ChatMessage,
@@ -365,6 +366,14 @@ def create_page_base(
         section.pop("aiReplaces", None)
         section.pop("aiStockPhoto", None)
         section.pop("aiSetKeys", None)
+        flights = section.pop("aiFlights", None)
+        if flights and section.get("type") == "flight_details" and section.get("sectionId"):
+            # Trechos do voo (com código, buscados na API; sem, manuais).
+            try:
+                import_flight_journeys(db, page.id, section["sectionId"], flights)
+            except Exception:  # pragma: no cover - o voo pode ser montado depois no editor
+                logger.exception("ai_assistant_flight_import_failed")
+                db.rollback()
         if section.get("type") == "header":
             section.setdefault("links", [])
         if section.get("type") == "header" and isinstance(section.get("links"), list):

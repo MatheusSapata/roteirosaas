@@ -16,6 +16,7 @@ from fastapi import HTTPException
 from pydantic import BaseModel
 
 from app.core.config import get_settings
+from app.services.ai_flights import parse_flight_legs
 from app.services.construtor_prompt import get_active_prompt_text
 
 settings = get_settings()
@@ -340,7 +341,7 @@ Dia 1: título curto do dia (até 7 palavras)
 descrição do dia na linha seguinte, em 1 a 3 frases
 (Sem dias definidos, use "Dia 1", "Dia 2"... na ordem das etapas. Nunca liste os dias duas vezes.)
 
-VOOS (só com dados aéreos enviados): Título, e as linhas confirmadas, como "Ida: 12/07/2026, São Paulo (GRU) 08:00 → Recife (REC) 11:15, LATAM, voo direto", "Volta: ...", "Bagagem: ...".
+VOOS (só com dados aéreos enviados): Título, e um trecho por linha, sempre neste formato: "Ida: 12/07/2026, voo LA3456, São Paulo (GRU) 08:00 → Recife (REC) 11:15, LATAM, voo direto". Escreva o código do voo ("voo LA3456") sempre que o usuário informar: com ele, o editor busca os dados oficiais do voo; sem código, monta com o que foi escrito (cidade, código do aeroporto entre parênteses e horários). Conexão é outra linha: "Ida 2: ..." ou "Volta 2: ...". Chegada no dia seguinte leva "+1" depois do horário. Por último, "Bagagem: ..." e observações.
 
 LINKS/ROTEIROS: Etiqueta, Título, Subtítulo, e um bloco por viagem, cada um começando por "Viagem:":
 Viagem: nome curto da viagem (ex.: Gramado e Canela no inverno)
@@ -1512,6 +1513,7 @@ def _parse_ai_section_block(section_name: str, block: str, index: int) -> dict[s
         return countdown
 
     if normalized_name == _normalize_text("DETALHES DO VOO"):
+        legs, other_lines = parse_flight_legs(block)
         title = fields.get("title", "").strip()
         subtitle = fields.get("subtitle", "").strip()
         return {
@@ -1521,16 +1523,21 @@ def _parse_ai_section_block(section_name: str, block: str, index: int) -> dict[s
             "sectionId": _generate_anchor("flight", title or "detalhes-do-voo", index),
             "title": title or "Informações do voo",
             "subtitle": subtitle,
-            # O texto do voo é rico (HTML): uma linha por parágrafo.
+            # O texto do voo é rico (HTML): uma linha por parágrafo. Os trechos ("Ida: ...") viram
+            # os cartões de voo (aiFlights); aqui ficam só bagagem e observações.
             "generalInfo": "".join(
                 f"<p>{html.escape(line)}</p>"
-                for line in (fields.get("general_info", "").strip() or _flight_info_text(block)).splitlines()
+                for line in (
+                    fields.get("general_info", "").strip() or _flight_info_text("\n".join(other_lines) if legs else block)
+                ).splitlines()
                 if line.strip()
             ),
             "visualStyle": "decolar",
             "showOutbound": True,
             "showInbound": True,
             "journeys": [],
+            # Trechos para o editor gravar na seção: com código, buscados na API; sem, manuais.
+            **({"aiFlights": legs} if legs else {}),
         }
 
     if normalized_name == _normalize_text("MENU DO TOPO"):
