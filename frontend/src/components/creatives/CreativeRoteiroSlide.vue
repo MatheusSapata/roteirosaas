@@ -1,23 +1,24 @@
 <template>
-  <!-- Carrossel "Roteiro em páginas": páginas na cor da marca e brancas, como um roteiro impresso. -->
+  <!-- Carrossel "Roteiro em páginas": páginas na cor da marca e brancas, como um roteiro impresso.
+       Títulos e listas se ajustam à área (FitText): pouco texto fica grande, muito texto encolhe. -->
   <div class="rt" :class="[`rt-${slide.kind}`, `rt-${format}`, { 'rt-light': light }]" :style="rootStyle">
     <!-- Capa: foto em cima, bloco da marca com data, destino e logo -->
     <template v-if="slide.kind === 'cover'">
       <div class="rt-photo rt-cover-photo" :style="bgOf(0)"></div>
-      <span class="rt-ribbon">{{ data.badge && !data.campaign ? data.badge : "Seu roteiro chegou," }} <em>confira agora!</em></span>
+      <FitText class="rt-ribbon" :max="38" :min="20" line>{{ data.badge && !data.campaign ? data.badge : "Seu roteiro chegou," }} <em>confira agora!</em></FitText>
       <div class="rt-cover-body">
-        <p v-if="data.dates" class="rt-date"><CalendarDaysIcon />{{ data.dates }}</p>
-        <h1 class="rt-huge" :style="hugeStyle">{{ headline }}</h1>
-        <p v-if="tagline" class="rt-tagline">{{ tagline }}</p>
-        <img v-if="logo" :src="logo" class="rt-logo" alt="" />
+        <FitText v-if="data.dates" class="rt-date" :max="46" :min="24" line><CalendarDaysIcon />{{ data.dates }}</FitText>
+        <FitText class="rt-huge" :max="190" :min="64" :lines="2" :line-height="0.92">{{ headline }}</FitText>
+        <FitText v-if="tagline" class="rt-tagline" :max="46" :min="24" :lines="2" :line-height="1.25">{{ tagline }}</FitText>
+        <img v-if="logo" :src="logo" class="rt-logo rt-logo-chip" alt="" />
       </div>
     </template>
 
     <!-- Apresentação: texto na cor da marca, foto embaixo e uma polaroide inclinada -->
     <template v-else-if="slide.kind === 'intro'">
       <div class="rt-intro-top">
-        <h2 class="rt-head">você vai se encantar...</h2>
-        <p class="rt-text">{{ data.subtitle }}</p>
+        <FitText class="rt-head" :max="120" :min="60" :lines="2" :line-height="0.95">você vai se encantar...</FitText>
+        <FitText class="rt-text" :max="58" :min="22" fill>{{ data.subtitle }}</FitText>
       </div>
       <div class="rt-photo rt-intro-photo" :style="bgOf(0)"></div>
       <div class="rt-polaroid rt-polaroid-intro"><div class="rt-photo" :style="bgOf(1)"></div></div>
@@ -25,15 +26,17 @@
 
     <!-- Cronograma: página branca com linha do tempo e faixa de foto embaixo -->
     <template v-else-if="slide.kind === 'itinerary'">
-      <div class="rt-page">
+      <div class="rt-page rt-page-timeline">
         <span class="rt-spaced">{{ slide.part > 1 ? "Ainda não acabou..." : "Cronograma completo" }}</span>
-        <h2 class="rt-head rt-head-brand">{{ slide.part > 1 ? "tem mais!" : "nosso roteiro será assim..." }}</h2>
-        <ol class="rt-timeline">
-          <li v-for="(day, index) in days" :key="index">
-            <b>{{ day.title || day.day }}</b><span> /// {{ day.day || `Dia ${slide.from + index + 1}` }}</span>
-            <p v-if="day.description">{{ day.description }}</p>
-          </li>
-        </ol>
+        <FitText class="rt-head rt-head-brand" :max="110" :min="56" :lines="2" :line-height="0.95">{{ slide.part > 1 ? "tem mais!" : "nosso roteiro será assim..." }}</FitText>
+        <FitText class="rt-timeline-fit" :max="60" :min="20" fill>
+          <ol class="rt-timeline">
+            <li v-for="(day, index) in days" :key="index">
+              <b>{{ day.title || day.day }}</b><span> /// {{ day.day || `Dia ${slide.from + index + 1}` }}</span>
+              <p v-if="day.description">{{ day.description }}</p>
+            </li>
+          </ol>
+        </FitText>
       </div>
       <div class="rt-photo rt-strip" :style="bgOf(0)"></div>
     </template>
@@ -41,11 +44,11 @@
     <!-- Detalhes: fotos em fileira, o que inclui e voos -->
     <template v-else-if="slide.kind === 'details'">
       <div class="rt-page">
-        <h2 class="rt-head">detalhes da viagem</h2>
+        <FitText class="rt-head" :max="110" :min="56" :lines="2" :line-height="0.95">detalhes da viagem</FitText>
         <div class="rt-row">
           <div v-for="n in 3" :key="n" class="rt-photo" :style="bgOf(n - 1)"></div>
         </div>
-        <div class="rt-boxes">
+        <FitText class="rt-boxes" :max="46" :min="16" fill>
           <div v-if="included.length" class="rt-box">
             <h3>o que inclui</h3>
             <ul>
@@ -61,41 +64,43 @@
               </li>
             </ul>
           </div>
-        </div>
+        </FitText>
       </div>
     </template>
 
     <!-- Vamos nessa?: resumo, o que inclui, pacotes e observações -->
     <template v-else>
       <div class="rt-page rt-final">
-        <h2 class="rt-head">vamos nessa?</h2>
-        <p class="rt-text rt-text-sm">Confira o resumo e garanta o seu lugar nessa experiência.</p>
-        <p v-if="data.dates" class="rt-date rt-date-sm"><CalendarDaysIcon />{{ data.dates }}</p>
-        <h1 class="rt-huge rt-huge-sm" :style="hugeSmallStyle">{{ headline }}</h1>
-        <template v-if="included.length && format === 'story'">
-          <i class="rt-bar"></i>
-          <h3 class="rt-sub">o que inclui?</h3>
-          <ul class="rt-bullets">
-            <li v-for="item in included.slice(0, format === 'story' ? 6 : 4)" :key="item">{{ item }}</li>
-          </ul>
-        </template>
-        <template v-if="packages.length">
-          <i class="rt-bar"></i>
-          <h3 class="rt-sub">{{ packages.length > 1 ? "pacotes" : "investimento" }}</h3>
-          <div class="rt-packages">
-            <div v-for="(item, index) in packages" :key="index" class="rt-package">
-              <span class="rt-package-title">{{ item.title || "Pacote" }}</span>
-              <span v-if="index === 0 && data.oldPrice" class="rt-package-old"><s>de {{ data.oldPrice }}</s> por</span>
-              <b>{{ item.value }}</b>
-              <small v-if="item.installment">{{ item.installment }}</small>
-            </div>
-          </div>
-        </template>
-        <p v-if="data.disclaimer" class="rt-fine">• {{ data.disclaimer }}</p>
-        <div class="rt-final-foot">
-          <img v-if="logo" :src="logo" class="rt-logo" alt="" />
+        <FitText class="rt-final-fit" :max="54" :min="16" fill>
+          <span class="rt-f-head">vamos nessa?</span>
+          <span class="rt-f-text">Confira o resumo e garanta o seu lugar nessa experiência.</span>
+          <span v-if="data.dates" class="rt-f-date"><CalendarDaysIcon />{{ data.dates }}</span>
+          <span class="rt-f-huge">{{ headline }}</span>
+          <template v-if="included.length && format === 'story'">
+            <i class="rt-bar"></i>
+            <span class="rt-f-sub">o que inclui?</span>
+            <ul class="rt-bullets">
+              <li v-for="item in included.slice(0, 6)" :key="item">{{ item }}</li>
+            </ul>
+          </template>
+          <template v-if="packages.length">
+            <i class="rt-bar"></i>
+            <span class="rt-f-sub">{{ packages.length > 1 ? "pacotes" : "investimento" }}</span>
+            <span class="rt-packages">
+              <span v-for="(item, index) in packages" :key="index" class="rt-package">
+                <span class="rt-package-title">{{ item.title || "Pacote" }}</span>
+                <span v-if="index === 0 && data.oldPrice" class="rt-package-old"><s>de {{ data.oldPrice }}</s> por</span>
+                <b>{{ item.value }}</b>
+                <small v-if="item.installment">{{ item.installment }}</small>
+              </span>
+            </span>
+          </template>
+          <span v-if="data.disclaimer" class="rt-fine">• {{ data.disclaimer }}</span>
+        </FitText>
+        <div v-if="logo || cta || data.contact" class="rt-final-foot">
+          <img v-if="logo" :src="logo" class="rt-logo rt-logo-chip" alt="" />
           <span v-if="cta" class="rt-cta">{{ cta }}</span>
-          <p v-if="data.contact" class="rt-contact">WhatsApp {{ data.contact }}</p>
+          <FitText v-if="data.contact" class="rt-contact" :max="32" :min="18" line>WhatsApp {{ data.contact }}</FitText>
         </div>
       </div>
       <template v-if="format === 'story'">
@@ -116,9 +121,11 @@
 /** Um slide do carrossel "Roteiro em páginas" em tamanho real (o PNG sai deste elemento). */
 import { computed } from "vue";
 import { ArrowRightIcon, CalendarDaysIcon, PlaneIcon } from "lucide-vue-next";
+import "./creativeFonts";
 import { FORMAT_SIZES, effectiveColors, formatMoney, parseMoney, readableOn, tapeText, type CreativeData, type CreativeFormat } from "./creativeData";
 import { inclusionIcon } from "./creativeIcons";
 import CreativeTapes from "./CreativeTapes.vue";
+import FitText from "./FitText.vue";
 import type { CarouselSlide } from "./carousel";
 
 const props = defineProps<{
@@ -174,13 +181,6 @@ const rootStyle = computed(() => {
     "--on2": readableOn(colors.secondary)
   };
 });
-const hugeStyle = computed(() => {
-  const length = headline.value.length;
-  const base = props.format === "square" ? 0.8 : 1;
-  const px = length > 22 ? 110 : length > 14 ? 140 : 170;
-  return { fontSize: `${Math.round(px * base)}px` };
-});
-const hugeSmallStyle = computed(() => ({ fontSize: `${Math.round(parseInt(hugeStyle.value.fontSize, 10) * 0.7)}px` }));
 const bgOf = (offset: number) => {
   const list = props.photos.filter(Boolean);
   const url = list.length ? list[offset % list.length] : "";
@@ -194,7 +194,22 @@ const bgOf = (offset: number) => {
   overflow: hidden;
   background: var(--c1);
   color: var(--on1);
-  font-family: Inter, system-ui, sans-serif;
+  font-family: "Montserrat", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  /* Áreas livres: no Stories a interface do Instagram cobre o topo e a base. */
+  --pad: 90px;
+  --top: 70px;
+  --foot: 48px;
+}
+.rt-story {
+  --pad: 100px;
+  --top: 220px;
+  --foot: 220px;
+}
+.rt-square {
+  --pad: 72px;
+  --top: 52px;
+  --foot: 40px;
 }
 .rt * {
   box-sizing: border-box;
@@ -212,90 +227,61 @@ const bgOf = (offset: number) => {
   background-size: cover;
 }
 .rt-head {
-  margin: 0;
-  font-family: Sora, Inter, sans-serif;
-  font-size: 110px;
-  font-weight: 800;
-  line-height: 0.95;
+  font-weight: 900;
   letter-spacing: -0.04em;
-}
-.rt-square .rt-head {
-  font-size: 84px;
 }
 .rt-head-brand {
   color: var(--c1);
 }
 .rt-huge {
-  margin: 0;
-  font-family: Sora, Inter, sans-serif;
-  font-weight: 800;
-  line-height: 0.92;
+  font-weight: 900;
   letter-spacing: -0.04em;
-}
-.rt-text {
-  margin: 34px 0 0;
-  max-width: 640px;
-  font-size: 40px;
-  line-height: 1.4;
-}
-.rt-text-sm {
-  max-width: 620px;
-  margin-top: 20px;
-  font-size: 32px;
+  text-wrap-style: balance;
 }
 .rt-date {
   display: flex;
   align-items: center;
-  gap: 18px;
-  margin: 0 0 18px;
-  font-size: 46px;
+  gap: 0.4em;
+  margin-bottom: 0.3em;
+  font-weight: 600;
 }
 .rt-date :deep(svg) {
-  width: 56px;
-  height: 56px;
-}
-.rt-date-sm {
-  margin-top: 30px;
-  font-size: 34px;
-}
-.rt-date-sm :deep(svg) {
-  width: 42px;
-  height: 42px;
+  width: 1.2em;
+  height: 1.2em;
 }
 .rt-logo {
   display: block;
-  max-width: 280px;
-  max-height: 110px;
+  max-width: 300px;
+  max-height: 120px;
   object-fit: contain;
 }
+.rt-logo-chip {
+  padding: 14px 20px;
+  border-radius: 20px;
+  background: #fff;
+}
 
-/* Capa */
+/* ---------- Capa ---------- */
 .rt-cover-photo {
   position: absolute;
   inset: 0 0 auto 0;
-  height: 62%;
-}
-.rt-square .rt-cover-photo,
-.rt-feed .rt-cover-photo {
   height: 50%;
+}
+.rt-story .rt-cover-photo {
+  height: 58%;
 }
 .rt-ribbon {
   position: absolute;
-  top: 120px;
-  right: 90px;
-  left: 90px;
+  top: var(--top);
+  right: var(--pad);
+  left: var(--pad);
   z-index: 2;
-  padding: 18px 30px;
+  padding: 0.45em 0.8em;
   border-radius: 999px;
   background: var(--c1);
   color: var(--on1);
-  font-size: 38px;
   font-weight: 800;
   text-align: center;
-}
-.rt-square .rt-ribbon,
-.rt-feed .rt-ribbon {
-  top: 60px;
 }
 .rt-ribbon em {
   font-style: normal;
@@ -303,51 +289,50 @@ const bgOf = (offset: number) => {
 }
 .rt-cover-body {
   position: absolute;
-  inset: 62% 0 0 0;
+  top: 50%;
+  right: 0;
+  bottom: 0;
+  left: 0;
   display: flex;
   flex-direction: column;
-  padding: 70px 120px 90px;
+  padding: 56px var(--pad) calc(var(--foot) + 110px);
 }
-.rt-square .rt-cover-body,
-.rt-feed .rt-cover-body {
-  inset: 50% 0 0 0;
-  padding: 50px 90px 140px;
+.rt-story .rt-cover-body {
+  top: 58%;
 }
 .rt-tagline {
-  margin: 12px 0 0;
-  font-size: 46px;
-}
-.rt-square .rt-tagline,
-.rt-feed .rt-tagline {
-  font-size: 36px;
+  margin-top: 0.35em;
+  font-weight: 500;
 }
 .rt-cover-body .rt-logo {
   align-self: center;
   margin-top: auto;
 }
 
-/* Apresentação */
+/* ---------- Apresentação ---------- */
 .rt-intro-top {
   position: absolute;
   inset: 0 0 auto 0;
-  height: 58%;
-  padding: 150px 140px 0;
-}
-.rt-feed .rt-intro-top,
-.rt-square .rt-intro-top {
+  display: flex;
   height: 56%;
-  padding: 90px 100px 0;
+  flex-direction: column;
+  gap: 30px;
+  padding: calc(var(--top) + 30px) var(--pad) 50px;
 }
-.rt-square .rt-text {
-  font-size: 32px;
+.rt-story .rt-intro-top {
+  height: 58%;
+}
+.rt-text {
+  max-width: 600px;
+  font-weight: 500;
+  line-height: 1.4;
 }
 .rt-intro-photo {
   position: absolute;
-  inset: 58% 0 0 0;
-}
-.rt-feed .rt-intro-photo,
-.rt-square .rt-intro-photo {
   inset: 56% 0 0 0;
+}
+.rt-story .rt-intro-photo {
+  inset: 58% 0 0 0;
 }
 .rt-polaroid {
   position: absolute;
@@ -373,110 +358,116 @@ const bgOf = (offset: number) => {
   height: 360px;
 }
 .rt-polaroid-a {
-  top: 110px;
+  top: calc(var(--top) + 10px);
   right: -80px;
-  width: 420px;
-  height: 460px;
+  width: 400px;
+  height: 440px;
   transform: rotate(4deg);
 }
 .rt-polaroid-b {
-  top: 540px;
+  top: calc(var(--top) + 430px);
   right: -60px;
-  width: 420px;
-  height: 460px;
+  width: 400px;
+  height: 440px;
   transform: rotate(-9deg);
 }
 
-/* Páginas de conteúdo */
+/* ---------- Páginas de conteúdo ---------- */
 .rt-page {
   position: absolute;
   inset: 0;
   display: flex;
   flex-direction: column;
-  padding: 120px 100px 130px;
-}
-.rt-feed .rt-page,
-.rt-square .rt-page {
-  padding: 80px 80px 120px;
+  padding: calc(var(--top) + 20px) var(--pad) calc(var(--foot) + 110px);
 }
 .rt-spaced {
   margin-bottom: 14px;
-  font-size: 34px;
+  font-size: 32px;
   letter-spacing: 0.28em;
   text-transform: uppercase;
+}
+/* Cronograma: a página termina onde começa a faixa de foto. */
+.rt-page-timeline {
+  bottom: 22%;
+  padding-bottom: 40px;
+}
+.rt-story .rt-page-timeline {
+  bottom: 24%;
+}
+.rt-timeline-fit {
+  margin-top: 0.9em;
 }
 .rt-timeline {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 50px;
-  margin: 60px 0 0;
-  padding: 0 0 0 70px;
+  gap: 1em;
+  margin: 0;
+  padding: 0 0 0 1.7em;
   list-style: none;
 }
-.rt-feed .rt-timeline,
-.rt-square .rt-timeline {
-  gap: 34px;
-  margin-top: 44px;
-}
+/* A linha do tempo continua por baixo da foto. */
 .rt-timeline::before {
   content: "";
   position: absolute;
-  top: 10px;
-  bottom: -400px;
-  left: 14px;
-  width: 6px;
+  top: 0.25em;
+  bottom: -40em;
+  left: 0.35em;
+  width: 0.14em;
   background: #4b5563;
 }
 .rt-timeline li {
   position: relative;
-  font-size: 40px;
   line-height: 1.2;
 }
 .rt-timeline li::before {
   content: "";
   position: absolute;
-  top: 8px;
-  left: -70px;
-  width: 34px;
-  height: 34px;
+  top: 0.2em;
+  left: -1.7em;
+  width: 0.84em;
+  height: 0.84em;
   border-radius: 50%;
   background: var(--c1);
 }
 .rt-timeline b {
   color: var(--c1);
+  font-weight: 800;
   letter-spacing: -0.02em;
 }
 .rt-timeline span {
   color: var(--c1);
+  font-weight: 500;
 }
 .rt-timeline p {
-  margin: 14px 0 0;
+  margin: 0.3em 0 0;
   color: #1f2937;
-  font-size: 30px;
+  font-size: 0.75em;
+  font-weight: 500;
   line-height: 1.4;
 }
 .rt-strip {
   position: absolute;
   inset: auto 0 0 0;
   z-index: 1;
-  height: 26%;
-}
-.rt-square .rt-strip,
-.rt-feed .rt-strip {
   height: 22%;
+}
+.rt-story .rt-strip {
+  height: 24%;
 }
 .rt-row {
   display: grid;
+  flex: none;
   grid-template-columns: repeat(3, 1fr);
   gap: 18px;
-  height: 330px;
-  margin: 56px -100px 0;
-}
-.rt-feed .rt-row,
-.rt-square .rt-row {
   height: 240px;
-  margin: 40px -80px 0;
+  margin: 36px calc(-1 * var(--pad)) 0;
+}
+.rt-story .rt-row {
+  height: 330px;
+}
+.rt-square .rt-row {
+  height: 190px;
 }
 .rt-row .rt-photo {
   border-radius: 24px;
@@ -484,141 +475,156 @@ const bgOf = (offset: number) => {
 .rt-boxes {
   display: flex;
   flex-direction: column;
-  gap: 30px;
-  margin-top: 56px;
+  gap: 0.9em;
+  margin-top: 36px;
 }
 .rt-feed .rt-boxes,
 .rt-square .rt-boxes {
   flex-direction: row;
-  gap: 24px;
-  margin-top: 40px;
 }
 .rt-box {
   flex: 1;
   min-width: 0;
-  padding: 36px 40px;
+  padding: 1em 1.15em;
   background: color-mix(in srgb, var(--c1) 82%, #fff);
 }
 .rt-box h3 {
-  margin: 0 0 18px;
-  font-family: Sora, Inter, sans-serif;
-  font-size: 54px;
-  font-weight: 800;
+  margin: 0 0 0.5em;
+  font-size: 1.6em;
+  font-weight: 900;
   letter-spacing: -0.03em;
 }
 .rt-box ul {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 0.45em;
   margin: 0;
   padding: 0;
   list-style: none;
-  font-size: 32px;
-}
-.rt-feed .rt-box ul,
-.rt-square .rt-box ul {
-  font-size: 26px;
+  font-weight: 600;
 }
 .rt-box li {
   display: flex;
   align-items: flex-start;
-  gap: 16px;
+  gap: 0.5em;
+  line-height: 1.25;
 }
 .rt-box li :deep(svg) {
-  width: 38px;
-  height: 38px;
+  width: 1.2em;
+  height: 1.2em;
   color: var(--c2);
 }
 .rt-box small {
   opacity: 0.85;
 }
 
-/* Vamos nessa? */
-.rt-final .rt-head {
-  max-width: 640px;
+/* ---------- Vamos nessa? ---------- */
+.rt-final-fit {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 }
-.rt-story .rt-final .rt-head,
-.rt-story .rt-final .rt-huge,
-.rt-story .rt-final .rt-text {
-  max-width: 560px;
+.rt-f-head,
+.rt-f-huge {
+  font-weight: 900;
+  line-height: 0.95;
+  letter-spacing: -0.04em;
 }
-.rt-huge-sm {
-  margin-top: 6px;
+.rt-f-head {
+  font-size: 2.6em;
+}
+.rt-f-text {
+  margin-top: 0.5em;
+  font-size: 0.8em;
+  font-weight: 500;
+  line-height: 1.35;
+}
+.rt-f-date {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  margin-top: 0.9em;
+  font-size: 0.85em;
+  font-weight: 600;
+}
+.rt-f-date :deep(svg) {
+  width: 1.2em;
+  height: 1.2em;
+}
+.rt-f-huge {
+  margin-top: 0.12em;
+  font-size: 2.2em;
+  text-wrap-style: balance;
+}
+/* No Stories as polaroides ficam à direita: o texto de cima ocupa a parte esquerda. */
+.rt-story .rt-f-head,
+.rt-story .rt-f-text,
+.rt-story .rt-f-huge {
+  max-width: 62%;
 }
 .rt-bar {
   display: block;
-  width: 90px;
-  height: 14px;
-  margin-top: 40px;
+  width: 2.2em;
+  height: 0.34em;
+  margin-top: 1em;
   border-radius: 999px;
   background: #fff;
 }
-.rt-feed .rt-bar,
-.rt-square .rt-bar {
-  margin-top: 26px;
-}
-.rt-sub {
-  margin: 14px 0 0;
-  font-family: Sora, Inter, sans-serif;
-  font-size: 64px;
-  font-weight: 800;
+.rt-f-sub {
+  margin-top: 0.35em;
+  font-size: 1.5em;
+  font-weight: 900;
   letter-spacing: -0.03em;
 }
-.rt-feed .rt-sub,
-.rt-square .rt-sub {
-  font-size: 48px;
-}
 .rt-bullets {
-  margin: 14px 0 0;
-  padding-left: 36px;
-  font-size: 30px;
+  margin: 0.35em 0 0;
+  padding-left: 0.9em;
+  font-size: 0.75em;
+  font-weight: 500;
   line-height: 1.45;
 }
 .rt-packages {
   display: grid;
+  width: 100%;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 26px;
-  margin-top: 26px;
+  gap: 0.65em;
+  margin-top: 0.65em;
 }
 .rt-package {
   display: flex;
   flex-direction: column;
-  padding: 32px 36px;
-  border-radius: 40px;
+  padding: 0.8em 0.9em;
+  border-radius: 1em;
   background: color-mix(in srgb, var(--c1) 82%, #fff);
 }
 .rt-package-title {
-  font-size: 30px;
+  font-size: 0.75em;
   font-weight: 700;
 }
 .rt-package-old {
-  margin-top: 10px;
-  font-size: 30px;
+  margin-top: 0.25em;
+  font-size: 0.75em;
 }
 .rt-package b {
-  font-family: Sora, Inter, sans-serif;
-  font-size: 68px;
-  font-weight: 800;
+  font-size: 1.6em;
+  font-weight: 900;
   letter-spacing: -0.03em;
 }
-.rt-feed .rt-package b,
-.rt-square .rt-package b {
-  font-size: 54px;
-}
 .rt-package small {
-  font-size: 26px;
+  font-size: 0.65em;
 }
 .rt-fine {
-  margin: 30px 0 0;
-  font-size: 26px;
+  margin-top: 0.8em;
+  font-size: 0.62em;
   opacity: 0.9;
 }
 .rt-final-foot {
   display: flex;
+  flex: none;
   flex-direction: column;
   align-items: center;
   gap: 18px;
-  margin-top: auto;
+  margin-top: 28px;
 }
 .rt-cta {
   padding: 24px 52px;
@@ -629,23 +635,18 @@ const bgOf = (offset: number) => {
   font-weight: 800;
 }
 .rt-contact {
-  margin: 0;
-  font-size: 32px;
   font-weight: 700;
 }
 
-/* Base: pontinhos e seta */
+/* ---------- Base: pontinhos e seta ---------- */
 .rt-pager {
   position: absolute;
   right: 64px;
-  bottom: 48px;
+  bottom: var(--foot);
   z-index: 3;
   display: flex;
   align-items: center;
   gap: 26px;
-}
-.rt-story .rt-pager {
-  bottom: 80px;
 }
 .rt-dots {
   display: flex;
@@ -683,7 +684,7 @@ const bgOf = (offset: number) => {
   width: 36px;
   height: 36px;
 }
-/* Na capa e na apresentação a base fica sobre a foto: pontinhos brancos. */
+/* Na apresentação e no cronograma a base fica sobre a foto: pontinhos brancos. */
 .rt-intro .rt-pager,
 .rt-itinerary .rt-pager {
   color: #fff;

@@ -25,6 +25,10 @@ export interface CreativeData {
   badge: string;
   /** Faixas cruzadas no topo (fita de campanha). */
   tapes: boolean;
+  /** Faixa diagonal com a tag no canto (modelos que têm a faixa). */
+  ribbon: boolean;
+  /** Quanto da arte a foto ocupa nos modelos com foto e bloco de conteúdo. */
+  photoSize: CreativePhotoSize;
   campaign: CreativeCampaign;
   benefits: string[];
   /** Único elemento com cara de botão na arte: aparece só se ativado. */
@@ -46,6 +50,19 @@ export type CreativeCampaign = "" | "black_friday";
 export const CAMPAIGNS: Record<Exclude<CreativeCampaign, "">, { label: string; primary: string; secondary: string; tape: string; badge: string }> = {
   black_friday: { label: "Black Friday", primary: "#0b0b0b", secondary: "#facc15", tape: "BLACK FRIDAY", badge: "Black Friday" }
 };
+export type CreativePhotoSize = "sm" | "md" | "lg";
+export const PHOTO_SIZES: { id: CreativePhotoSize; label: string }[] = [
+  { id: "sm", label: "Menor" },
+  { id: "md", label: "Padrão" },
+  { id: "lg", label: "Maior" }
+];
+/** Quanto a divisão foto/conteúdo anda (shift) e quanto a foto em círculo cresce (k). */
+export const PHOTO_SIZE_VARS: Record<CreativePhotoSize, { shift: string; k: number }> = {
+  sm: { shift: "-8%", k: 0.78 },
+  md: { shift: "0%", k: 1 },
+  lg: { shift: "8%", k: 1.25 }
+};
+
 export const BADGE_SUGGESTIONS = ["Oferta", "Últimos lugares", "Promoção", "Imperdível", "Saída confirmada"];
 
 export const effectiveColors = (data: CreativeData) => {
@@ -174,6 +191,8 @@ export const extractCreativeData = (
     disclaimer: cheapest ? "Valor por pessoa, sujeito a alteração e disponibilidade." : "",
     badge: "Oferta",
     tapes: false,
+    photoSize: "md",
+    ribbon: true,
     campaign: "",
     benefits,
     ctaEnabled: false,
@@ -204,9 +223,25 @@ export const extractCreativeData = (
 };
 
 /** "Jalapão 6 dias: fervedouros, dunas e cachoeiras" → "Jalapão 6 dias". */
+// Palavras que não podem ficar soltas no fim de um título cortado ("Réveillon em").
+const DANGLING = /^(a|à|as|ao|aos|o|os|de|da|das|do|dos|e|em|na|nas|no|nos|para|pra|com|por)$/i;
+
+/** Nome curto para o título da arte: a parte antes de ":" ou " - ", sem complementos; se ainda
+ *  for longo, corta em palavra inteira (até ~34 letras) sem deixar preposição solta no fim. */
 export const shortDestination = (title: string) => {
-  const head = title.split(/\s*[:|–—]\s*|\s+-\s+/)[0].trim();
-  return head.length > 28 ? head.split(/\s+/).slice(0, 3).join(" ") : head;
+  let head = title.split(/\s*[:|–—]\s*|\s+-\s+/)[0].trim();
+  // "... com voos e hotel" e "Pacote completo para ..." saem antes de cortar palavras.
+  if (head.length > 34) head = head.replace(/\s+com\s+.*$/i, "");
+  if (head.length > 34) head = head.replace(/^(pacotes?|viagem|excurs[aã]o|roteiro|tour)\b.*?\b(para|pra|ao|à|a|em)\s+/i, "");
+  if (head.length <= 34) return head;
+  const words = head.split(/\s+/);
+  const kept: string[] = [];
+  for (const word of words) {
+    if ([...kept, word].join(" ").length > 34) break;
+    kept.push(word);
+  }
+  while (kept.length > 1 && DANGLING.test(kept[kept.length - 1])) kept.pop();
+  return kept.join(" ") || head;
 };
 
 const shorten = (value: string, max: number) => (value.length > max ? `${value.slice(0, max - 1).replace(/\s+\S*$/, "")}…` : value);
