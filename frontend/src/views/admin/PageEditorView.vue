@@ -1707,6 +1707,7 @@ import type {
   ViajeonCheckoutSection,
   InternalFormSection,
   HeaderSection,
+  HeaderLinkItem,
   SectionType,
   ThemeConfig
 } from "../../types/page";
@@ -2637,6 +2638,14 @@ const aiSectionPhoto = (section: PageSection): string => {
   return candidates.find(value => typeof value === "string" && value && !isAiFiller(value)) || "";
 };
 const mergeAiSwap = (current: PageSection, incoming: PageSection): PageSection => {
+  // Ajuste pedido (ex.: "deixa o menu transparente"): muda só os campos que a IA trouxe; o
+  // resto da seção (itens do menu, cores, botão...) fica como está.
+  const setKeys = (incoming as any).aiSetKeys as string[] | undefined;
+  if (current.type === incoming.type && Array.isArray(setKeys)) {
+    const adjusted: Record<string, any> = { ...current };
+    for (const key of setKeys) if (key in incoming) adjusted[key] = (incoming as Record<string, any>)[key];
+    return adjusted as PageSection;
+  }
   if (current.type !== incoming.type) {
     // Troca de tipo: a seção nova entra no mesmo lugar, com a âncora e a foto da antiga.
     const converted: Record<string, any> = { ...incoming, anchorId: current.anchorId, enabled: current.enabled };
@@ -2695,11 +2704,62 @@ const aiPageImage = (page: AgencyPage) => {
   const hero = Array.isArray(config.sections) ? config.sections.find((item: any) => item?.type === "hero") : null;
   return hero?.backgroundImage || page.cover_image_url || "";
 };
+// Itens do Menu do topo que a IA mandou sem o identificador da seção ("Roteiro"): liga pelo
+// título das seções da página; item que não acha seção (nem link externo) sai do menu.
+const aiMenuStems = (text: string) =>
+  new Set(
+    text
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toUpperCase()
+      .replace(/[^A-Z ]/g, " ")
+      .split(/\s+/)
+      .filter(word => word.length >= 4)
+      .map(word => word.slice(0, 5))
+  );
+const resolveAiMenuLinks = (pageSections: PageSection[]): PageSection[] => {
+  const anchors = new Set(pageSections.map(section => section.anchorId).filter(Boolean));
+  const titleOf = (section: PageSection) =>
+    ["title", "headingLabel", "badge", "label"].map(key => getLocalizedValue((section as any)[key]) || "").join(" ");
+  const names = (section: PageSection) => `${titleOf(section)} ${sectionNameV2(section.type) || ""}`;
+  return pageSections.map(section => {
+    if (section.type !== "header" || !Array.isArray((section as HeaderSection).links)) return section;
+    const used = new Set<string>();
+    const links = (section as HeaderSection).links
+      .map(raw => {
+        const { aiTargetLabel, ...link } = raw as HeaderLinkItem & { aiTargetLabel?: string };
+        if (link.targetType !== "section" || (link.target && anchors.has(link.target))) return link;
+        const wanted = aiMenuStems(aiTargetLabel || getLocalizedValue(link.label) || "");
+        const match = pageSections.find(
+          candidate =>
+            candidate.type !== "header" &&
+            candidate.anchorId &&
+            !used.has(candidate.anchorId) &&
+            [...aiMenuStems(names(candidate))].some(stem => wanted.has(stem))
+        );
+        if (!match?.anchorId) return null;
+        used.add(match.anchorId);
+        return { ...link, target: match.anchorId };
+      })
+      .filter((link): link is HeaderLinkItem => Boolean(link));
+    return { ...section, links } as PageSection;
+  });
+};
+const stripAiMarkers = (pageSections: PageSection[]) =>
+  pageSections.map(section => {
+    if (!("aiSetKeys" in section)) return section;
+    const { aiSetKeys: _keys, ...clean } = section as PageSection & { aiSetKeys?: string[] };
+    return clean as PageSection;
+  });
 // Menu do topo, Vitrine e Rodapé com o padrão do editor (cores do tema, WhatsApp da agência).
 // Card ligado a uma página existente leva para ela e usa a foto dela; sem página, abre o
 // WhatsApp da agência até ela ligar o card à página da viagem.
 const prepareAiSection = (section: PageSection): PageSection => {
-  if (section.type === "header" || section.type === "agency_footer") return { ...defaultSection(section.type), ...section } as PageSection;
+  if (section.type === "header") {
+    // Menu novo sem itens na resposta fica sem itens (e não com os links de exemplo do editor).
+    return { ...defaultSection("header"), links: [], ...section } as PageSection;
+  }
+  if (section.type === "agency_footer") return { ...defaultSection(section.type), ...section } as PageSection;
   if (section.type === "links") {
     const digits = whatsappDigits.value;
     const links = section as LinksSection;
@@ -2905,6 +2965,7 @@ const applyAiStructure = async (reply: string, mode: "insert" | "replace" | "swa
         ...(footer.length ? footer : additions.filter(section => section.type === "free_footer_brand"))
       ];
     }
+    nextSections = stripAiMarkers(resolveAiMenuLinks(nextSections));
     aiStructurePreviousSections.value = JSON.parse(JSON.stringify(sections.value));
     setSections(nextSections);
     refreshPreview(true);

@@ -160,6 +160,18 @@ FIELD_ALIASES_EXACT_EXTRA = {
     "SUBSTITUI A SECAO": "replaces",
     "PAGINA": "page_ref",
     "PAGINA DA VIAGEM": "page_ref",
+    "APARENCIA": "header_mode",
+    "APARENCIA DO MENU": "header_mode",
+    "FUNDO DO MENU": "header_mode",
+    "TIPO DE FUNDO": "header_mode",
+    "FIXO AO ROLAR": "header_sticky",
+    "MENU FIXO": "header_sticky",
+    "FIXO NO TOPO": "header_sticky",
+    "COR DE FUNDO": "background_color",
+    "COR DO FUNDO": "background_color",
+    "COR DO TEXTO": "text_color",
+    "COR DOS LINKS": "text_color",
+    "COR DO BOTAO": "button_color",
     "LADO DIREITO": "header_action",
     "LADO DIREITO DO MENU": "header_action",
     "ITENS DO MENU": "menu_links",
@@ -274,7 +286,7 @@ TIPOS DE RESPOSTA
 
 1. Perguntas antes de criar. Só quando falta algo essencial que não está na mensagem nem nos DADOS JÁ CADASTRADOS (nome da agência, contatos, redes sociais, logo, páginas e seções desta página já existem lá: nunca pergunte isso). Na dúvida entre perguntar e criar, crie. Formato, para o usuário responder com um toque: uma frase curta de abertura e, em seguida, no máximo 3 perguntas, cada uma numa linha "1. Pergunta?" seguida de 2 a 4 opções, uma por linha começando com "- " (curtas, até 6 palavras; a primeira é a que você recomenda). Pergunta aberta (ex.: datas) fica sem opções. Não escreva nada depois das perguntas: o chat já mostra o botão "Criar agora". Não pergunte duas vezes seguidas nem quando o usuário mandou criar ("pode criar", "monta").
 2. Estrutura da página: quando já há informação suficiente, entregue a estrutura no formato abaixo, sem texto antes nem depois dela.
-3. Ajuste de uma parte: se o pedido é sobre uma ou poucas seções que já existem (ex.: "melhore o banner", "transforme o Artigo em Texto e Imagens"), entregue só essas seções, no mesmo formato, e em cada uma a linha "Substitui: identificador" com o identificador da seção que ela troca (da lista SEÇÕES DESTA PÁGINA). Pode trocar por outro tipo de seção: o editor mantém a posição e a foto. Para uma seção nova, sem "Substitui".
+3. Ajuste de uma parte: se o pedido é sobre uma ou poucas seções que já existem (ex.: "melhore o banner", "transforme o Artigo em Texto e Imagens"), entregue só essas seções, no mesmo formato, e em cada uma a linha "Substitui: identificador" com o identificador da seção que ela troca (da lista SEÇÕES DESTA PÁGINA). Pode trocar por outro tipo de seção: o editor mantém a posição e a foto. Para uma seção nova, sem "Substitui". Pedido só de aparência ou de itens do Menu do topo (ex.: "deixa o menu transparente", "põe Roteiro e Preços no menu", "menu fixo"): entregue o MENU DO TOPO com "Substitui" e SÓ os campos que mudam; o resto do menu fica como está.
 4. Conversa: dúvidas sobre o construtor ou pedidos que não geram seções. Responda curto (até umas 8 linhas), sem estrutura, com tópicos em linhas começando com "- " quando ajudar. Não use lista numerada para explicar: números são só para perguntas. Se no fim você oferecer opções ao usuário, feche com uma pergunta no formato de escolhas do item 1 ("1. Pergunta?" e as opções em "- "), para ele responder com um toque; não deixe a escolha perdida no meio do texto.
 
 FOTOS: o construtor busca fotos no banco da plataforma e em bancos gratuitos (Pixabay, Unsplash e Pexels) e coloca nas seções quando a estrutura é aplicada; o usuário pode trocar depois no editor. Para isso, em toda seção com foto (Banner Inicial, Banner em Card, Foto em destaque, Texto e Imagens, Artigo, Roteiro dia a dia) e em cada viagem do Links/Roteiros, escreva a linha "Busca de imagem:" com até duas buscas em inglês separadas por "|": primeiro o destino ou atrativo com o nome exato do lugar e o país (2 a 6 palavras; no Brasil, sempre com "Brazil" e, se ajudar, o estado: "Beto Carrero World Santa Catarina Brazil", "Gramado Rio Grande do Sul Brazil", "Lisbon Alfama Portugal"), depois a sensação da experiência, para quando não houver foto do lugar (ex.: "couple drinking wine", "kids smiling theme park", "happy family vacation"; no Brasil, pode usar "Brazilian family beach"). Prefira o que mostra o lugar como ele é hoje (prédios, atrações e paisagem atuais), nada de datas na busca. Fotos diferentes em cada seção: varie as buscas. Numa troca de seção, só escreva "Busca de imagem" se o usuário pedir outra foto. Se pedirem uma foto, entregue a seção com a "Busca de imagem" pedida e "Substitui", em vez de explicar.
@@ -306,7 +318,7 @@ A resposta é lida por um programa que monta a página. Escreva cada campo numa 
 
 A primeira linha é "ESTRUTURA SUGERIDA PARA A PÁGINA". Depois: "Tipo de página:", "Objetivo da página:", "Público predominante:". Cada seção começa com "🟩 SEÇÃO: NOME", com o nome do editor em maiúsculas (ex.: "🟩 SEÇÃO: TEXTO E IMAGENS"). Logo abaixo do cabeçalho, "Função da seção:" (não aparece na página), "Substitui:" quando for troca, e depois os campos. Etiqueta é um selo curto de 1 a 3 palavras acima do título.
 
-MENU DO TOPO (sempre a primeira seção, quando usada; o logo entra sozinho): Links do menu (3 a 5 itens, um por linha começando com "- ", cada um com o nome curto de uma seção desta página, igual ou parecido com o título dela, ex.: Nacionais, Internacionais, Sobre nós, Dúvidas), Lado direito ("redes sociais", "botão" ou "nada"), Botão (texto do botão de contato, só com "botão", ex.: "Falar no WhatsApp").
+MENU DO TOPO (sempre a primeira seção, quando usada; o logo entra sozinho): Links do menu (3 a 6 itens, um por linha começando com "- ", no formato "- Nome → identificador", em que o identificador é o da seção na lista SEÇÕES DESTA PÁGINA e o clique leva até ela, ex.: "- Roteiro → roteiro-dia-a-dia"; numa página nova, que ainda não tem identificadores, só o nome curto igual ao título da seção, ex.: Nacionais, Sobre nós, Dúvidas; para um site de fora, "- Nome → https://..."), Aparência ("sólido", "transparente" (sem fundo, por cima do banner) ou "desfocado" (vidro fosco)), Fixo ao rolar ("sim" ou "não"), Cor de fundo, Cor do texto e Cor do botão (só se pedirem, em #hex), Lado direito ("redes sociais", "botão" ou "nada"), Botão (texto do botão de contato, só com "botão", ex.: "Falar no WhatsApp").
 
 BANNER INICIAL: Título (curto, até 8 palavras), Subtítulo (1 ou 2 frases), Destaques (3 a 5 itens curtos, um por linha começando com "- ", até 4 palavras cada; não repita as datas), Data de saída e Data de volta (DD/MM/AAAA, só se a viagem tiver datas), Botão, Sugestão de imagem.
 
@@ -805,6 +817,91 @@ def _flight_info_text(block: str) -> str:
             continue
         lines.append(line)
     return "\n".join(lines).strip()
+
+
+HEX_COLOR_RE = re.compile(r"#(?:[0-9a-fA-F]{3}){1,2}\b")
+MENU_TARGET_SPLIT_RE = re.compile(r"\s*(?:→|->|=>|\|)\s*")
+
+
+def _header_mode(value: str) -> str | None:
+    text = _normalize_text(value or "")
+    if not text:
+        return None
+    if "TRANSPAR" in text or "SEM FUNDO" in text or "SOBRE O BANNER" in text:
+        return "transparent"
+    if "DESFOC" in text or "VIDRO" in text or "BLUR" in text or "FOSCO" in text:
+        return "blurred"
+    if "SOLID" in text or "COR" in text or "BRANCO" in text or "NORMAL" in text or "PADRAO" in text:
+        return "solid"
+    return None
+
+
+def _menu_item(raw: str, number: int) -> dict[str, Any] | None:
+    """ "Roteiro → roteiro-dia-a-dia" (identificador da seção), "Instagram → https://..." ou só
+    "Roteiro" (ligado depois pelo título da seção)."""
+    parts = MENU_TARGET_SPLIT_RE.split(raw.strip(), maxsplit=1)
+    label = parts[0].strip()
+    target = (parts[1] if len(parts) > 1 else "").strip().strip("()").lstrip("#").strip()
+    # "Roteiro (#roteiro-dia)" também vale.
+    match = re.match(r"^(.*?)\s*\(#?([a-z0-9][a-z0-9-]*)\)\s*$", label)
+    if match and not target:
+        label, target = match.group(1).strip(), match.group(2)
+    if not label or len(label) > 40:
+        return None
+    item: dict[str, Any] = {"id": f"ai-menu-{number}", "label": label, "targetType": "section", "target": ""}
+    if target.lower().startswith(("http://", "https://", "www.")):
+        item.update(targetType="external", target=target if "://" in target else f"https://{target}", openInNewTab=True)
+    elif re.fullmatch(r"[a-z0-9][a-z0-9-]*", target or ""):
+        item["target"] = target
+    return item
+
+
+def _header_section(fields: dict[str, str], index: int) -> dict[str, Any]:
+    """Menu do topo. Só leva os campos que a resposta trouxe além do básico, e marca em
+    aiSetKeys o que foi pedido: numa troca ("Substitui"), o editor muda só isso (ex.: deixar o
+    menu transparente não apaga os itens)."""
+    section: dict[str, Any] = {
+        "type": "header",
+        "enabled": True,
+        "anchorId": _generate_anchor("header", "menu", index),
+        "mode": "solid",
+        "stickyEnabled": True,
+        "logoActionType": "top",
+        "links": [],
+        "actionType": "contact",
+        "contactLabel": "Falar no WhatsApp",
+        "contactType": "whatsapp",
+    }
+    set_keys: list[str] = []
+    if fields.get("menu_links", "").strip():
+        items = [_menu_item(label, number) for number, label in enumerate(_split_bullets(fields["menu_links"]), 1)]
+        # Itens sem identificador são ligados depois pelo título (_link_header_menu e editor).
+        section["_menuItems"] = [item for item in items if item][:7]
+        set_keys.append("links")
+    mode = _header_mode(fields.get("header_mode", "")) or _header_mode(fields.get("icon_style", ""))
+    if mode:
+        section["mode"] = mode
+        set_keys.append("mode")
+    if fields.get("header_sticky", "").strip():
+        section["stickyEnabled"] = not _normalize_text(fields["header_sticky"]).startswith(("NAO", "N", "SEM"))
+        set_keys.append("stickyEnabled")
+    for field, key in (("background_color", "backgroundColor"), ("text_color", "textColor"), ("button_color", "buttonColor")):
+        color = HEX_COLOR_RE.search(fields.get(field, "") or "")
+        if color:
+            section[key] = color.group(0)
+            set_keys.append(key)
+            if key == "textColor":
+                section["linkTextColor"] = color.group(0)
+                set_keys.append("linkTextColor")
+    if fields.get("header_action", "").strip() or fields.get("button", "").strip():
+        section["actionType"] = _header_action(fields.get("header_action", ""), bool(fields.get("button")))
+        set_keys.append("actionType")
+    if fields.get("button", "").strip():
+        section["contactLabel"] = fields["button"].strip()
+        set_keys.append("contactLabel")
+    # Redes sociais: o editor preenche com as redes cadastradas da agência.
+    section["aiSetKeys"] = set_keys
+    return section
 
 
 def _header_action(value: str, has_button: bool) -> str:
@@ -1437,22 +1534,7 @@ def _parse_ai_section_block(section_name: str, block: str, index: int) -> dict[s
         }
 
     if normalized_name == _normalize_text("MENU DO TOPO"):
-        labels = _split_bullets(fields.get("menu_links", ""))
-        # Os links viram âncoras das seções depois que a página toda é lida (_link_header_menu).
-        return {
-            "type": "header",
-            "enabled": True,
-            "anchorId": _generate_anchor("header", "menu", index),
-            "mode": "solid",
-            "stickyEnabled": True,
-            "logoActionType": "top",
-            "links": [],
-            "_menuLabels": [label for label in labels if len(label) <= 40][:6],
-            # Redes sociais: o editor preenche com as redes cadastradas da agência.
-            "actionType": _header_action(fields.get("header_action", ""), bool(fields.get("button"))),
-            "contactLabel": fields.get("button", "").strip() or "Falar no WhatsApp",
-            "contactType": "whatsapp",
-        }
+        return _header_section(fields, index)
 
     if normalized_name == _normalize_text("RODAPE DA AGENCIA"):
         # Preenchido pelos dados da agência; o editor completa com o padrão da seção.
@@ -1584,7 +1666,19 @@ def _link_header_menu(sections: list[dict[str, Any]]) -> list[dict[str, Any]]:
     def heading(section: dict[str, Any]) -> str:
         return " ".join(str(section.get(key) or "") for key in ("title", "headingLabel", "badge", "label"))
 
-    for number, label in enumerate(header.pop("_menuLabels", []), 1):
+    if "_menuItems" not in header:
+        # Sem itens na resposta (ex.: só deixar o menu transparente): os atuais ficam.
+        header.pop("links", None)
+        for extra in headers[1:]:
+            extra.pop("_menuItems", None)
+        return [header, *others]
+    for item in header.pop("_menuItems", []):
+        if item["targetType"] != "section" or item["target"]:
+            # Já veio com o identificador da seção (ou é link externo).
+            used.add(item["target"])
+            links.append(item)
+            continue
+        label = item["label"]
         words = f" {re.sub(r'[^A-Z ]', ' ', _normalize_text(label))} "
         # Primeiro pelo título da seção ("Nacionais" → "Pacotes nacionais"), o que separa seções
         # repetidas do mesmo tipo; depois pelas palavras de cada tipo.
@@ -1607,10 +1701,14 @@ def _link_header_menu(sections: list[dict[str, Any]]) -> list[dict[str, Any]]:
                     break
         if target:
             used.add(target["anchorId"])
-            links.append({"id": f"ai-menu-{number}", "label": label, "targetType": "section", "target": target["anchorId"]})
+            links.append({**item, "target": target["anchorId"]})
+        else:
+            # Seção que não veio nesta resposta (ex.: só o menu foi trocado): o editor liga pelo
+            # título das seções que já estão na página.
+            links.append({**item, "aiTargetLabel": label})
     header["links"] = links
     for extra in headers[1:]:
-        extra.pop("_menuLabels", None)
+        extra.pop("_menuItems", None)
     return [header, *others]
 
 

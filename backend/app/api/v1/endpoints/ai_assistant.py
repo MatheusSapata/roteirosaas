@@ -364,6 +364,16 @@ def create_page_base(
     for section in new_config["sections"]:
         section.pop("aiReplaces", None)
         section.pop("aiStockPhoto", None)
+        section.pop("aiSetKeys", None)
+        if section.get("type") == "header":
+            section.setdefault("links", [])
+        if section.get("type") == "header" and isinstance(section.get("links"), list):
+            # Aplicado direto (sem o editor): item de menu sem seção de destino não entra.
+            section["links"] = [
+                {key: value for key, value in link.items() if key != "aiTargetLabel"}
+                for link in section["links"]
+                if isinstance(link, dict) and (link.get("target") or link.get("targetType") != "section")
+            ]
     plan = resolve_agency_plan(db, page.agency_id)
     page.config_json = enforce_page_limits(db, page, publish=False, config=new_config, plan=plan)
     page.cover_image_url = derive_cover_image_from_config(page.config_json)

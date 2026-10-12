@@ -589,10 +589,12 @@ def test_multi_trip_page_with_header_links_to_sections() -> None:
         "🟩 SEÇÃO: MENU DO TOPO\nLinks do menu:\n- Viagens\n- Dúvidas\n- Blog\nBotão: Chamar no WhatsApp",
     ), strict=True)
     header, hero, links, faq = config["sections"]
-    assert header["type"] == "header" and "_menuLabels" not in header
+    assert header["type"] == "header" and "_menuItems" not in header
+    # "Blog" não tem seção: vai sem destino para o editor ligar a uma seção existente (ou tirar).
     assert [(link["label"], link["target"]) for link in header["links"]] == [
-        ("Viagens", links["anchorId"]), ("Dúvidas", faq["anchorId"]),
+        ("Viagens", links["anchorId"]), ("Dúvidas", faq["anchorId"]), ("Blog", ""),
     ]
+    assert header["links"][2]["aiTargetLabel"] == "Blog"
     assert header["contactLabel"] == "Chamar no WhatsApp"
     assert links["headingLabel"] == "Saídas confirmadas" and links["title"] == "Escolha sua próxima viagem"
     gramado, campos = links["items"]
@@ -1000,3 +1002,49 @@ def test_pixabay_comes_first_after_curated_and_hides_key(monkeypatch):
             assert "chave-secreta" not in str(exc)
         found = stock_images.search_stock_images(db, client, "Gramado street winter")
     assert found[0].provider == "unsplash" and calls == ["unsplash"]
+
+
+def test_header_adjustment_changes_only_what_was_asked():
+    # "Deixa o menu transparente e fixo": só aparência, nada de itens (os atuais ficam).
+    config, _ = build_page_base_config_from_reply(reply_with(
+        "🟩 SEÇÃO: MENU DO TOPO\nSubstitui: header-menu-0\nAparência: transparente (por cima do banner)\nFixo ao rolar: não\nCor do texto: #FFFFFF",
+    ))
+    [header] = [s for s in config["sections"] if s["type"] == "header"]
+    assert header["mode"] == "transparent" and header["stickyEnabled"] is False
+    assert header["textColor"] == header["linkTextColor"] == "#FFFFFF"
+    assert set(header["aiSetKeys"]) == {"mode", "stickyEnabled", "textColor", "linkTextColor"}
+    assert "links" not in header and header["aiReplaces"] == "header-menu-0"
+
+    config, _ = build_page_base_config_from_reply(reply_with(
+        "🟩 SEÇÃO: MENU DO TOPO\nSubstitui: header-menu-0\nAparência: vidro fosco",
+    ))
+    assert config["sections"][0]["mode"] == "blurred"
+
+
+def test_header_menu_items_link_to_existing_sections_by_identifier():
+    config, _ = build_page_base_config_from_reply(reply_with(
+        "🟩 SEÇÃO: MENU DO TOPO\nSubstitui: header-menu-0\nLinks do menu:\n"
+        "- Roteiro → roteiro-dia-a-dia\n- Preços (#precos-1)\n- Dúvidas\n- Instagram → https://instagram.com/agencia",
+    ))
+    links = config["sections"][0]["links"]
+    assert [(l["label"], l["targetType"], l["target"]) for l in links] == [
+        ("Roteiro", "section", "roteiro-dia-a-dia"),
+        ("Preços", "section", "precos-1"),
+        ("Dúvidas", "section", ""),
+        ("Instagram", "external", "https://instagram.com/agencia"),
+    ]
+    # "Dúvidas" não veio com identificador nem tem seção na resposta: o editor liga pelo título.
+    assert links[2]["aiTargetLabel"] == "Dúvidas" and config["sections"][0]["aiSetKeys"] == ["links"]
+
+
+def test_new_page_menu_still_links_by_title():
+    config, _ = build_page_base_config_from_reply(reply_with(
+        "🟩 SEÇÃO: MENU DO TOPO\nLinks do menu:\n- Roteiro\n- Dúvidas\nLado direito: botão\nBotão: Falar com a gente",
+        "🟩 SEÇÃO: ROTEIRO DIA A DIA\nTítulo: Seu roteiro\nDia 1: Chegada",
+        "🟩 SEÇÃO: DÚVIDAS FREQUENTES\nTítulo: Dúvidas\nPergunta: Tem seguro?\nResposta: Sim.",
+    ))
+    header = config["sections"][0]
+    itinerary = next(s for s in config["sections"] if s["type"] == "itinerary")
+    faq = next(s for s in config["sections"] if s["type"] == "faq")
+    assert [l["target"] for l in header["links"]] == [itinerary["anchorId"], faq["anchorId"]]
+    assert header["contactLabel"] == "Falar com a gente" and header["actionType"] == "contact"
