@@ -71,6 +71,7 @@
                   </div>
                   <span v-if="person.is_superuser" class="am-badge am-tone-violet">Superusuário</span>
                   <span v-else-if="person.global_admin" class="am-badge am-tone-violet">Admin global</span>
+                  <span v-if="person.temporary_password" class="am-badge am-tone-warning" title="Ainda não criou uma senha própria">Senha temporária</span>
                 </div>
               </td>
               <td>
@@ -114,6 +115,9 @@
                     </a>
                     <button type="button" :disabled="!person.active_sessions" @click="run(() => ask('logout', person))">
                       <AmIcon name="logout" />{{ person.active_sessions ? "Deslogar de todos os aparelhos" : "Sem sessão aberta" }}
+                    </button>
+                    <button type="button" :disabled="person.id === auth.user?.id" @click="run(() => openPassword(person))">
+                      <AmIcon name="key" />{{ person.id === auth.user?.id ? "Sua senha: troque no Perfil" : "Definir senha temporária" }}
                     </button>
                     <button v-if="!person.is_superuser" type="button" class="is-danger" @click="run(() => ask('delete', person))">
                       <AmIcon name="trash" />Excluir usuário
@@ -168,13 +172,57 @@
         <p v-else>Apaga a conta de {{ pending.person.name }} e tira a pessoa das equipes em que está. Não dá para desfazer.</p>
       </template>
     </AdminMasterConfirm>
+
+    <AdminMasterConfirm
+      :open="passwordDialog.open"
+      :title="passwordDialog.done ? 'Senha temporária definida' : `Senha temporária para ${passwordDialog.person?.name || ''}`"
+      :confirm-label="passwordDialog.done ? 'Concluir' : 'Definir senha'"
+      busy-label="Salvando..."
+      :busy="passwordDialog.busy"
+      :error="passwordDialog.error"
+      :icon="passwordDialog.done ? 'check' : 'key'"
+      :tone="passwordDialog.done ? 'success' : 'info'"
+      :hide-cancel="passwordDialog.done"
+      :disabled="!passwordDialog.done && !passwordOk"
+      @close="closePassword"
+      @confirm="passwordDialog.done ? closePassword() : savePassword()"
+    >
+      <template v-if="!passwordDialog.done">
+        <p>
+          {{ passwordDialog.person?.name }} entra com esta senha e, no primeiro acesso, precisa criar uma senha própria.
+          As sessões abertas são encerradas.
+        </p>
+        <div class="am-field mt-3">
+          <label for="up-temp-pass">Senha temporária</label>
+          <div class="flex gap-2">
+            <input id="up-temp-pass" v-model="passwordDialog.password" type="text" class="am-input am-mono" autocomplete="off" spellcheck="false" />
+            <button type="button" class="am-btn am-btn-sm !h-[38px] shrink-0" @click="passwordDialog.password = generatePassword()">
+              <AmIcon name="refresh" />Gerar outra
+            </button>
+          </div>
+          <p class="am-card-sub" :class="{ 'text-status-danger-foreground': passwordDialog.password && !passwordOk }">
+            Mínimo de 8 caracteres, com letra maiúscula, minúscula e número.
+          </p>
+        </div>
+      </template>
+      <template v-else>
+        <p>Envie para {{ passwordDialog.person?.name }} junto com o e-mail de acesso. Ela vale até a pessoa criar a senha dela.</p>
+        <p class="up-password am-mono mt-3 select-all">{{ passwordDialog.password }}</p>
+        <div class="mt-3 flex flex-wrap gap-2">
+          <button type="button" class="am-btn am-btn-sm" @click="copyText(passwordDialog.password, 'Senha copiada.')"><AmIcon name="copy" />Copiar senha</button>
+          <button type="button" class="am-btn am-btn-sm" @click="copyText(passwordMessage, 'Mensagem copiada.')"><AmIcon name="wa" />Copiar mensagem pronta</button>
+        </div>
+        <p v-if="passwordDialog.copied" class="am-card-sub mt-2">{{ passwordDialog.copied }}</p>
+      </template>
+    </AdminMasterConfirm>
   </section>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import { useRoute } from "vue-router";
-import { deleteUser, listMasterUsers, revokeUserSessions, type MasterUser, type MasterUserCompany } from "../../services/adminMaster";
+import { deleteUser, listMasterUsers, revokeUserSessions, setTemporaryPassword, type MasterUser, type MasterUserCompany } from "../../services/adminMaster";
+import { useAuthStore } from "../../store/useAuthStore";
 import AmIcon from "./master/AmIcon.vue";
 import AdminMasterHeader from "./master/AdminMasterHeader.vue";
 import AdminMasterKpi from "./master/AdminMasterKpi.vue";
@@ -356,6 +404,71 @@ const runAction = async () => {
   }
 };
 
+// ---------- Senha temporária ----------
+const auth = useAuthStore();
+const PASSWORD_WORDS = ["Viagem", "Roteiro", "Destino", "Passeio", "Embarque", "Bagagem", "Mapa", "Rota"];
+const LOWER = "abcdefghjkmnpqrstuvwxyz";
+const randomInt = (max: number) => crypto.getRandomValues(new Uint32Array(1))[0] % max;
+/** Fácil de ditar e de digitar: palavra + 4 números + 2 letras (ex.: Embarque5307tx). */
+const generatePassword = () =>
+  `${PASSWORD_WORDS[randomInt(PASSWORD_WORDS.length)]}${1000 + randomInt(9000)}${LOWER[randomInt(LOWER.length)]}${LOWER[randomInt(LOWER.length)]}`;
+const passwordDialog = reactive({
+  open: false,
+  person: null as MasterUser | null,
+  password: "",
+  done: false,
+  busy: false,
+  error: "",
+  copied: ""
+});
+const passwordOk = computed(() => {
+  const value = passwordDialog.password;
+  return value.length >= 8 && /[A-Z]/.test(value) && /[a-z]/.test(value) && /\d/.test(value);
+});
+const passwordMessage = computed(() => {
+  const person = passwordDialog.person;
+  if (!person) return "";
+  const first = person.name.trim().split(/\s+/)[0] || person.name;
+  return (
+    `Olá, ${first}! Sua senha do Roteiro Online foi redefinida.\n` +
+    `Entre em ${window.location.origin}/login com o e-mail ${person.email} e a senha temporária ${passwordDialog.password}\n` +
+    "No primeiro acesso você vai criar uma senha nova, só sua."
+  );
+});
+const openPassword = (person: MasterUser) => {
+  Object.assign(passwordDialog, { open: true, person, password: generatePassword(), done: false, busy: false, error: "", copied: "" });
+};
+const closePassword = () => {
+  if (passwordDialog.busy) return;
+  passwordDialog.open = false;
+  // A senha não fica guardada na tela depois de fechar.
+  passwordDialog.password = "";
+};
+const savePassword = async () => {
+  const person = passwordDialog.person;
+  if (!person || !passwordOk.value) return;
+  passwordDialog.busy = true;
+  passwordDialog.error = "";
+  try {
+    const result = await setTemporaryPassword(person.id, passwordDialog.password);
+    passwordDialog.done = true;
+    successMessage.value = `Senha temporária definida para ${person.name}${result.sessions_closed ? ` · ${plural(result.sessions_closed, "sessão encerrada", "sessões encerradas")}` : ""}.`;
+    void load(true);
+  } catch (error: any) {
+    passwordDialog.error = error?.response?.data?.detail || "Não foi possível definir a senha agora.";
+  } finally {
+    passwordDialog.busy = false;
+  }
+};
+const copyText = async (text: string, message: string) => {
+  try {
+    await navigator.clipboard.writeText(text);
+    passwordDialog.copied = message;
+  } catch {
+    window.prompt("Copie:", text);
+  }
+};
+
 const load = async (keepMessage = false) => {
   loading.value = true;
   errorMessage.value = "";
@@ -398,6 +511,16 @@ onBeforeUnmount(() => window.removeEventListener("click", closeMenuOutside));
 }
 .up-company:hover {
   text-decoration: underline;
+}
+.up-password {
+  padding: 10px 14px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  background: var(--muted);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--foreground);
 }
 .up-sort {
   display: inline-flex;

@@ -1,5 +1,5 @@
-"""Admin Master: painel da plataforma e controle das pessoas (usuários). Somente leitura; as
-ações sobre usuários (deslogar, excluir) usam as rotas já existentes em admin.py."""
+"""Admin Master: painel da plataforma e controle das pessoas (usuários). As ações sobre
+usuários (deslogar, excluir) usam as rotas já existentes em admin.py; a senha temporária fica aqui."""
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import get_current_superuser, get_db
 from app.models.agency_user import AgencyUser
+from app.services import auth as auth_service
 from app.models.user import User
 from app.models.user_session import UserSession
 from app.services.admin_dashboard import build_dashboard, period_days
@@ -64,6 +65,7 @@ class MasterUserOut(BaseModel):
     last_access_at: Optional[datetime] = None
     active_sessions: int = 0
     online: bool = False
+    temporary_password: bool = False
     companies: list[UserCompanyOut] = []
 
 
@@ -127,6 +129,7 @@ def list_users(db: Session = Depends(get_db), _: User = Depends(get_current_supe
             last_access_at=last_seen,
             active_sessions=active,
             online=user.id in online_users,
+            temporary_password=bool(user.temporary_password),
             companies=links,
         ))
     # Cadastrados por último primeiro.
@@ -139,3 +142,36 @@ def _aware(value: datetime | None) -> datetime | None:
     if value is None:
         return None
     return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+
+
+class TemporaryPasswordIn(BaseModel):
+    password: str
+
+
+@router.post("/users/{user_id}/temporary-password")
+def set_temporary_password(
+    user_id: int,
+    payload: TemporaryPasswordIn,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_superuser),
+) -> dict[str, Any]:
+    """Define uma senha temporária: a pessoa entra com ela e precisa criar uma senha própria na
+    hora. As sessões abertas são encerradas para ninguém continuar logado com a senha antiga."""
+    if admin.id == user_id:
+        raise HTTPException(status_code=400, detail="Para trocar a sua própria senha, use o Perfil.")
+    user = db.query(User).filter(User.id == user_id).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado.")
+    try:
+        auth_service.validate_password_strength(payload.password)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    now = datetime.now(timezone.utc)
+    user.hashed_password = auth_service.get_password_hash(payload.password)
+    user.temporary_password = True
+    sessions = db.query(UserSession).filter(UserSession.user_id == user_id, UserSession.revoked_at.is_(None)).all()
+    for session in sessions:
+        session.revoked_at = now
+        session.revoked_by_user_id = admin.id
+    db.commit()
+    return {"detail": "Senha temporária definida.", "sessions_closed": len(sessions)}

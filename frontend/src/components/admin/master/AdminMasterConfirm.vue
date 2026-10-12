@@ -13,7 +13,7 @@
           </div>
           <div v-if="error" class="am-notice am-tone-danger mt-4"><AmIcon name="alert" /><span>{{ error }}</span></div>
           <div class="mt-5 flex flex-wrap justify-end gap-2">
-            <button type="button" class="am-btn" :disabled="busy" @click="$emit('close')">Cancelar</button>
+            <button v-if="!hideCancel" type="button" class="am-btn" :disabled="busy" @click="$emit('close')">Cancelar</button>
             <button
               type="button"
               class="am-btn"
@@ -44,8 +44,9 @@ withDefaults(
     error?: string;
     icon?: string;
     tone?: "danger" | "warning" | "info" | "success" | "neutral";
+    hideCancel?: boolean;
   }>(),
-  { confirmLabel: "Confirmar", busyLabel: "Salvando...", busy: false, disabled: false, error: "", icon: "alert", tone: "warning" }
+  { confirmLabel: "Confirmar", busyLabel: "Salvando...", busy: false, disabled: false, error: "", icon: "alert", tone: "warning", hideCancel: false }
 );
 defineEmits<{ (e: "close"): void; (e: "confirm"): void }>();
 </script>

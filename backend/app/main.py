@@ -45,6 +45,9 @@ if engine.dialect.name == "postgresql":
             "viajechat_custom_field_mappings JSONB NOT NULL DEFAULT '[]'::jsonb"
         ))
         connection.execute(text("ALTER TABLE agencies ADD COLUMN IF NOT EXISTS description TEXT"))
+        connection.execute(text(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS temporary_password BOOLEAN NOT NULL DEFAULT FALSE"
+        ))
         connection.execute(text("ALTER TABLE lessons ADD COLUMN IF NOT EXISTS help_article VARCHAR(80)"))
         connection.execute(text("ALTER TABLE lessons ADD COLUMN IF NOT EXISTS video_updated_at TIMESTAMP WITH TIME ZONE"))
         connection.execute(text("ALTER TABLE lessons ALTER COLUMN video_updated_at SET DEFAULT now()"))

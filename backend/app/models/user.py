@@ -45,6 +45,8 @@ class User(Base):
     status = Column(String(50), nullable=True, default=None)
     source = Column(String(50), nullable=True)
     must_change_password = Column(Boolean, nullable=False, default=False)
+    # Senha definida pelo admin master: a pessoa precisa criar uma senha própria ao entrar.
+    temporary_password = Column(Boolean, nullable=False, default=False, server_default="false")
     permissions = Column(JSONB, nullable=True)
     crm_view_preferences = Column(JSONB, nullable=True)
 

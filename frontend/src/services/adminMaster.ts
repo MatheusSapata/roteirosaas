@@ -65,6 +65,7 @@ export interface MasterUser {
   last_access_at: string | null;
   active_sessions: number;
   online: boolean;
+  temporary_password: boolean;
   companies: MasterUserCompany[];
 }
 
@@ -72,3 +73,5 @@ export const listMasterUsers = async () => (await api.get<MasterUser[]>("/admin/
 export const revokeUserSessions = async (userId: number) =>
   (await api.post<{ detail: string }>(`/admin/online-sessions/user/${userId}/revoke`)).data;
 export const deleteUser = async (userId: number) => (await api.delete<{ detail: string }>(`/admin/users/${userId}`)).data;
+export const setTemporaryPassword = async (userId: number, password: string) =>
+  (await api.post<{ detail: string; sessions_closed: number }>(`/admin/master/users/${userId}/temporary-password`, { password })).data;

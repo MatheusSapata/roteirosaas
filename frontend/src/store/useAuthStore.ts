@@ -40,6 +40,7 @@ interface User {
   subscription_status?: string | null;
   subscription_valid_until?: string | null;
   subscription_blocked?: boolean;
+  temporary_password?: boolean;
   primary_agency_id?: number | null;
   is_owner?: boolean | null;
   role?: string | null;

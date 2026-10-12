@@ -148,3 +148,36 @@ def test_companies_newest_first_and_detail(client, data):
     assert [(p["slug"], p["visits"], p["clicks"]) for p in body["pages"]] == [("roteiro", 10, 3)]
     assert body["members"][0]["is_owner"]
     assert storage.status_code == 200
+
+
+def test_temporary_password_forces_a_new_one(client, data):
+    from app.services.auth import get_password_hash
+
+    person = data.query(User).filter(User.email == "b@x.com").one()
+    person.hashed_password = get_password_hash("Antiga123")
+    data.add(UserSession(user_id=person.id, last_seen_at=datetime.now(timezone.utc), expires_at=datetime.now(timezone.utc) + timedelta(days=1)))
+    data.commit()
+    _as_admin(client)
+    try:
+        weak = client.post(f"/api/v1/admin/master/users/{person.id}/temporary-password", json={"password": "fraca"})
+        own = client.post("/api/v1/admin/master/users/999/temporary-password", json={"password": "Temporaria1"})
+        done = client.post(f"/api/v1/admin/master/users/{person.id}/temporary-password", json={"password": "Temporaria1"})
+    finally:
+        client.app.dependency_overrides.pop(get_current_superuser, None)
+    assert weak.status_code == 400 and own.status_code == 400
+    assert done.status_code == 200, done.text
+    assert done.json()["sessions_closed"] == 1
+    data.expire_all()
+    assert data.query(UserSession).filter(UserSession.user_id == person.id, UserSession.revoked_at.is_(None)).count() == 0
+
+    # A senha antiga deixa de valer; com a temporária a pessoa entra e vê que precisa trocar.
+    assert client.post("/api/v1/auth/login", data={"username": "b@x.com", "password": "Antiga123"}).status_code == 401
+    login = client.post("/api/v1/auth/login", data={"username": "b@x.com", "password": "Temporaria1"})
+    assert login.status_code == 200, login.text
+    headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
+    assert client.get("/api/v1/auth/me", headers=headers).json()["temporary_password"] is True
+
+    # Criou a própria senha: some o aviso.
+    changed = client.post("/api/v1/auth/me/password", headers=headers, json={"current_password": "Temporaria1", "new_password": "MinhaSenha9"})
+    assert changed.status_code == 200, changed.text
+    assert client.get("/api/v1/auth/me", headers=headers).json()["temporary_password"] is False
