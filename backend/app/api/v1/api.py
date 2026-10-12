@@ -7,6 +7,7 @@ from app.api.v1.endpoints import (
     ai_assistant,
     admin_prompt_construtor,
     admin_companies,
+    admin_master,
     admin_revenue,
     agencies,
     agency_domains,
@@ -81,6 +82,7 @@ api_router.include_router(image_api_keys.router, prefix="/admin", tags=["image-a
 api_router.include_router(stock_photos.router, prefix="/admin", tags=["stock-photos"])
 api_router.include_router(admin_companies.router, prefix="/admin", tags=["admin-companies"])
 api_router.include_router(admin_revenue.router, prefix="/admin", tags=["admin-revenue"])
+api_router.include_router(admin_master.router, prefix="/admin", tags=["admin-master"])
 api_router.include_router(flight_sections.router, tags=["flight-sections"])
 api_router.include_router(lessons.router, prefix="/lessons", tags=["lessons"])
 api_router.include_router(lead_forms.router, prefix="/lead-forms", tags=["lead-forms"])

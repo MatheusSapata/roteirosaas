@@ -13,14 +13,16 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_superuser, get_db
 from app.db import session as db_session
+from app.models.agency import Agency
 from app.models.agency_user import AgencyUser
 from app.models.media_archive import AgencyMediaArchive, MediaOrphan
-from app.models.page import Page
+from app.models.page import Page, PageStatus
 from app.models.stats import PageVisitStats
 from app.models.user import User
 from app.models.user_session import UserSession
+from app.models.user_tracking import UserTracking
 from app.services import media_lifecycle as lifecycle
-from app.services.company_status import agencies_with_owner, company_status
+from app.services.company_status import FREE_ACCESS_DAYS, agency_owner, agencies_with_owner, company_status
 
 router = APIRouter(prefix="/master/companies")
 
@@ -29,8 +31,11 @@ class CompanyOut(BaseModel):
     id: int
     name: str
     slug: str
+    owner_id: Optional[int] = None
     owner_name: Optional[str] = None
     owner_email: Optional[str] = None
+    owner_whatsapp: Optional[str] = None
+    owner_is_superuser: bool = False
     plan: Optional[str] = None
     status: str
     status_label: str
@@ -38,7 +43,21 @@ class CompanyOut(BaseModel):
     status_since: Optional[datetime] = None
     status_days: Optional[int] = None
     since_estimated: bool = False
+    # Até quando vale o acesso atual (fim do teste, prazo do gratuito ou fim do período pago).
+    access_until: Optional[datetime] = None
     valid_until: Optional[datetime] = None
+    trial_plan: Optional[str] = None
+    trial_ends_at: Optional[datetime] = None
+    subscription_provider: Optional[str] = None
+    subscription_status: Optional[str] = None
+    subscription_asaas_subscription_id: Optional[str] = None
+    subscription_cakto_order_id: Optional[str] = None
+    subscription_cakto_subscription_code: Optional[str] = None
+    billing_cycle: Optional[str] = None
+    payment_method: Optional[str] = None
+    mrr_amount: float = 0
+    failed_attempts: int = 0
+    members_count: int = 0
     created_at: Optional[datetime] = None
     last_access_at: Optional[datetime] = None
     pages_total: int = 0
@@ -105,8 +124,11 @@ def list_companies(db: Session = Depends(get_db), _: User = Depends(get_current_
             id=agency.id,
             name=agency.name,
             slug=agency.slug,
+            owner_id=owner.id if owner else None,
             owner_name=owner.name if owner else None,
             owner_email=owner.email if owner else None,
+            owner_whatsapp=owner.whatsapp if owner else None,
+            owner_is_superuser=bool(owner and owner.is_superuser),
             plan=(owner.plan if owner else None),
             status=status.key,
             status_label=status.label,
@@ -114,7 +136,20 @@ def list_companies(db: Session = Depends(get_db), _: User = Depends(get_current_
             status_since=status.since,
             status_days=status.days,
             since_estimated=status.estimated,
+            access_until=status.ends,
             valid_until=subscription.valid_until if subscription else None,
+            trial_plan=owner.trial_plan if owner else None,
+            trial_ends_at=owner.trial_ends_at if owner else None,
+            subscription_provider=subscription.provider if subscription else None,
+            subscription_status=subscription.status if subscription else None,
+            subscription_asaas_subscription_id=subscription.asaas_subscription_id if subscription else None,
+            subscription_cakto_order_id=subscription.cakto_order_id if subscription else None,
+            subscription_cakto_subscription_code=subscription.cakto_subscription_code if subscription else None,
+            billing_cycle=subscription.billing_cycle if subscription else None,
+            payment_method=subscription.payment_method_type if subscription else None,
+            mrr_amount=float(subscription.mrr_amount or 0) if subscription else 0,
+            failed_attempts=int(subscription.failed_attempts or 0) if subscription else 0,
+            members_count=sum(1 for rel in agency.users or [] if rel.user and not rel.hidden_from_team),
             created_at=agency.created_at,
             last_access_at=last_access.get(agency.id),
             pages_total=total,
@@ -143,10 +178,19 @@ def list_companies(db: Session = Depends(get_db), _: User = Depends(get_current_
             "cool_after_days": lifecycle.COOL_AFTER_DAYS,
             "archive_after_days": lifecycle.ARCHIVE_AFTER_DAYS,
             "orphan_grace_days": lifecycle.ORPHAN_GRACE_DAYS,
+            "free_access_days": FREE_ACCESS_DAYS,
         },
     }
-    items.sort(key=lambda item: (item.status != "inactive", -(item.status_days or 0), item.name.lower()))
+    # Cadastradas por último primeiro.
+    oldest = datetime.min.replace(tzinfo=timezone.utc)
+    items.sort(key=lambda item: (_aware(item.created_at) or oldest, item.id), reverse=True)
     return CompaniesResponse(items=items, summary=summary)
+
+
+def _aware(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
 
 
 @router.get("/storage")
@@ -233,3 +277,107 @@ def orphans_delete_ready(
     if lifecycle.analysis.status == "running":
         raise HTTPException(status_code=409, detail="Espere a análise terminar.")
     return lifecycle.delete_ready_orphans(db)
+
+
+class CompanyMemberOut(BaseModel):
+    user_id: int
+    name: str
+    email: str
+    role: str
+    is_owner: bool
+    last_access_at: Optional[datetime] = None
+
+
+class CompanyPageOut(BaseModel):
+    id: int
+    title: str
+    slug: str
+    status: str
+    published_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    visits: int = 0
+    clicks: int = 0
+
+
+class CompanyTrackingOut(BaseModel):
+    id: int
+    utm_source: Optional[str] = None
+    utm_medium: Optional[str] = None
+    utm_campaign: Optional[str] = None
+    utm_term: Optional[str] = None
+    utm_content: Optional[str] = None
+    referrer: Optional[str] = None
+    created_at: Optional[datetime] = None
+
+
+class CompanyDetailOut(BaseModel):
+    id: int
+    slug: str
+    members: list[CompanyMemberOut]
+    pages: list[CompanyPageOut]
+    tracking: list[CompanyTrackingOut]
+
+
+@router.get("/{agency_id}", response_model=CompanyDetailOut)
+def company_detail(agency_id: int, db: Session = Depends(get_db), _: User = Depends(get_current_superuser)) -> CompanyDetailOut:
+    """Equipe, páginas (com visitas e cliques) e origem do cadastro do dono de uma empresa."""
+    agency = db.query(Agency).filter(Agency.id == agency_id).first()
+    if agency is None:
+        raise HTTPException(status_code=404, detail="Empresa não encontrada.")
+    owner = agency_owner(agency)
+    # Admins globais entram escondidos em todas as empresas: não são da equipe.
+    memberships = [rel for rel in agency.users or [] if rel.user and not rel.hidden_from_team]
+    last_seen = dict(
+        db.query(UserSession.user_id, func.max(UserSession.last_seen_at))
+        .filter(UserSession.user_id.in_([rel.user_id for rel in memberships] or [0]))
+        .group_by(UserSession.user_id)
+        .all()
+    )
+    members = sorted(
+        (
+            CompanyMemberOut(
+                user_id=rel.user.id,
+                name=rel.user.name,
+                email=rel.user.email,
+                role=(rel.role or "").lower(),
+                is_owner=bool(owner and owner.id == rel.user.id),
+                last_access_at=last_seen.get(rel.user.id),
+            )
+            for rel in memberships
+        ),
+        key=lambda member: (not member.is_owner, member.name.lower()),
+    )
+    stats = {
+        page_id: (int(visits or 0), int(cta or 0) + int(whatsapp or 0))
+        for page_id, visits, cta, whatsapp in db.query(
+            PageVisitStats.page_id,
+            func.sum(PageVisitStats.visits),
+            func.sum(PageVisitStats.clicks_cta),
+            func.sum(PageVisitStats.clicks_whatsapp),
+        )
+        .join(Page, Page.id == PageVisitStats.page_id)
+        .filter(Page.agency_id == agency_id)
+        .group_by(PageVisitStats.page_id)
+    }
+    pages = [
+        CompanyPageOut(
+            id=page.id,
+            title=page.title,
+            slug=page.slug,
+            status=page.status.value if isinstance(page.status, PageStatus) else str(page.status or ""),
+            published_at=page.published_at,
+            updated_at=page.updated_at,
+            visits=stats.get(page.id, (0, 0))[0],
+            clicks=stats.get(page.id, (0, 0))[1],
+        )
+        for page in db.query(Page).filter(Page.agency_id == agency_id).order_by(Page.updated_at.desc().nullslast(), Page.id.desc())
+    ]
+    tracking = (
+        [
+            CompanyTrackingOut.model_validate(entry, from_attributes=True)
+            for entry in db.query(UserTracking).filter(UserTracking.user_id == owner.id).order_by(UserTracking.created_at.desc())
+        ]
+        if owner
+        else []
+    )
+    return CompanyDetailOut(id=agency.id, slug=agency.slug, members=members, pages=pages, tracking=tracking)

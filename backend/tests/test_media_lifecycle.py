@@ -163,8 +163,8 @@ def test_stamp_after_first_run_uses_real_time(db_session):
     assert nova.deactivated_at.replace(tzinfo=timezone.utc) == NOW + timedelta(hours=1)
 
 
-def _owner(plan, status="active", **extra):
-    subscription = SimpleNamespace(plan=plan, status=status, valid_until=None, failed_attempts=0, created_at=NOW - timedelta(days=200), deactivated_at=None, deactivation_estimated=False)
+def _owner(plan, status="active", created_days_ago=200, valid_until=None, **extra):
+    subscription = SimpleNamespace(plan=plan, status=status, valid_until=valid_until, failed_attempts=0, created_at=NOW - timedelta(days=created_days_ago), deactivated_at=None, deactivation_estimated=False)
     defaults = dict(is_superuser=False, trial_plan=None, trial_ends_at=None, trial_started_at=None, trial_blocked=False)
     defaults.update(extra)
     return SimpleNamespace(subscription=subscription, **defaults)
@@ -172,9 +172,17 @@ def _owner(plan, status="active", **extra):
 
 def test_unpaid_plans_are_not_counted_as_active():
     status = status_service.company_status
-    # Plano gratuito com assinatura "active": Gratuita, e continua no ar (mesma regra da página pública).
-    free = status(_owner("free"), NOW)
+    # Plano gratuito com assinatura "active": Gratuita nos 7 dias do cadastro e continua no ar
+    # (mesma regra da página pública).
+    free = status(_owner("free", created_days_ago=3), NOW)
     assert (free.key, free.online) == ("free", True)
+    assert free.ends == NOW + timedelta(days=4)
+    # Passado o prazo: Gratuita vencida (a página pública não muda por isso).
+    expired = status(_owner("free"), NOW)
+    assert (expired.key, expired.online, expired.since) == ("free_expired", True, NOW - timedelta(days=193))
+    # Validade definida pelo admin vale no lugar do prazo padrão.
+    extended = status(_owner("free", valid_until=NOW + timedelta(days=10)), NOW)
+    assert (extended.key, extended.ends) == ("free", NOW + timedelta(days=10))
     # Teste que acabou sem pagamento: Teste encerrado (não "Ativa").
     ended = status(_owner("free", trial_plan="growth", trial_blocked=True, trial_started_at=NOW - timedelta(days=220), trial_ends_at=NOW - timedelta(days=213)), NOW)
     assert ended.key == "trial_ended"
