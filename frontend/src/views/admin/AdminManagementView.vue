@@ -968,6 +968,9 @@
     <template v-else-if="activeTab === 'flight_apis'">
       <FlightApiKeysPanel />
     </template>
+    <template v-else-if="activeTab === 'storage'">
+      <StoragePanel />
+    </template>
     <template v-else-if="activeTab === 'companies'">
       <CompaniesPanel />
     </template>
@@ -1364,6 +1367,7 @@ import PageTemplatePreview from "../../components/admin/PageTemplatePreview.vue"
 import FlightApiKeysPanel from "../../components/admin/FlightApiKeysPanel.vue";
 import ImageApiKeysPanel from "../../components/admin/ImageApiKeysPanel.vue";
 import CompaniesPanel from "../../components/admin/CompaniesPanel.vue";
+import StoragePanel from "../../components/admin/StoragePanel.vue";
 import RevenuePanel from "../../components/admin/RevenuePanel.vue";
 import { listPageTemplates, createTemplateFromPage, deleteTemplate, updateTemplate } from "../../services/templates";
 import type { PageTemplate } from "../../types/templates";
@@ -1512,7 +1516,7 @@ interface RevenueForecastOut {
   forecast_days: RevenueForecastDay[];
 }
 
-type AdminTab = "dashboard" | "monitor" | "users" | "lessons" | "templates" | "flight_apis" | "image_apis" | "companies" | "revenue_forecast";
+type AdminTab = "dashboard" | "monitor" | "users" | "lessons" | "templates" | "flight_apis" | "image_apis" | "companies" | "storage" | "revenue_forecast";
 type TemplateDialogMode = "create" | "edit";
 type SubscriptionActionKind = "plan" | "status" | "validity";
 
@@ -1938,6 +1942,10 @@ const syncActiveTabFromRoute = () => {
   }
   if (routeName === "admin-management-companies") {
     activeTab.value = "companies";
+    return;
+  }
+  if (routeName === "admin-management-storage") {
+    activeTab.value = "storage";
     return;
   }
   if (routeName === "admin-management-image-apis") {

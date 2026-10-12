@@ -22,9 +22,16 @@ from app.models.user import User
 ENDED_STATUSES = frozenset({"cancelled", "canceled", "cancelled_admin", "inactive", "expired", "refunded"})
 CAKTO_CANCEL_EVENTS = frozenset({"subscription_canceled", "subscription_cancelled", "subscription_renewal_refused"})
 
+# Planos que não são assinatura paga: contam como "Gratuita" ou "Teste encerrado", não "Ativa".
+UNPAID_PLANS = frozenset({"", "free", "gratuito", "trial"})
+# Contas de teste interno (como "infinity"): fora das contagens de clientes.
+INTERNAL_PLANS = frozenset({"infinity", "teste", "test"})
+
 STATUS_LABELS = {
     "active": "Ativa",
     "trial": "Em teste",
+    "free": "Gratuita",
+    "trial_ended": "Teste encerrado",
     "cancelling": "Cancelando",
     "past_due": "Inadimplente",
     "inactive": "Desativada",
@@ -79,7 +86,7 @@ def company_status(owner: User | None, now: datetime | None = None) -> CompanySt
     if owner is None:
         return CompanyStatus("no_owner", STATUS_LABELS["no_owner"], online=False)
     subscription = owner.subscription
-    if owner.is_superuser or (subscription and (subscription.plan or "") == "infinity"):
+    if owner.is_superuser or (subscription and (subscription.plan or "").strip().lower() in INTERNAL_PLANS):
         return CompanyStatus("internal", STATUS_LABELS["internal"], online=True)
     online = subscription_allows_public(subscription, now)
     trial_ends = _aware(owner.trial_ends_at)
@@ -93,6 +100,13 @@ def company_status(owner: User | None, now: datetime | None = None) -> CompanySt
             since=_aware(subscription.deactivated_at) if subscription else None,
             estimated=bool(subscription and subscription.deactivation_estimated),
         )
+    # "online" fica igual ao da página pública (o arquivamento depende dele); aqui só muda o nome:
+    # assinatura "ativa" num plano sem pagamento não é cliente ativo.
+    plan = (subscription.plan or "").strip().lower() if subscription else ""
+    if plan in UNPAID_PLANS:
+        if owner.trial_blocked or owner.trial_started_at or plan == "trial":
+            return CompanyStatus("trial_ended", STATUS_LABELS["trial_ended"], online=online, since=trial_ends)
+        return CompanyStatus("free", STATUS_LABELS["free"], online=online, since=_aware(subscription.created_at) if subscription else None)
     status = (subscription.status or "").strip().lower() if subscription else ""
     if status == "cancel_at_period_end" or status in ENDED_STATUSES:
         return CompanyStatus("cancelling", STATUS_LABELS["cancelling"], online=True, since=_aware(subscription.valid_until))

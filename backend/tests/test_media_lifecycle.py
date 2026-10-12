@@ -161,3 +161,27 @@ def test_stamp_after_first_run_uses_real_time(db_session):
     # Depois da primeira vez, vale a hora em que o job viu (nada de data antiga estimada).
     assert not nova.deactivation_estimated
     assert nova.deactivated_at.replace(tzinfo=timezone.utc) == NOW + timedelta(hours=1)
+
+
+def _owner(plan, status="active", **extra):
+    subscription = SimpleNamespace(plan=plan, status=status, valid_until=None, failed_attempts=0, created_at=NOW - timedelta(days=200), deactivated_at=None, deactivation_estimated=False)
+    defaults = dict(is_superuser=False, trial_plan=None, trial_ends_at=None, trial_started_at=None, trial_blocked=False)
+    defaults.update(extra)
+    return SimpleNamespace(subscription=subscription, **defaults)
+
+
+def test_unpaid_plans_are_not_counted_as_active():
+    status = status_service.company_status
+    # Plano gratuito com assinatura "active": Gratuita, e continua no ar (mesma regra da página pública).
+    free = status(_owner("free"), NOW)
+    assert (free.key, free.online) == ("free", True)
+    # Teste que acabou sem pagamento: Teste encerrado (não "Ativa").
+    ended = status(_owner("free", trial_plan="growth", trial_blocked=True, trial_started_at=NOW - timedelta(days=220), trial_ends_at=NOW - timedelta(days=213)), NOW)
+    assert ended.key == "trial_ended"
+    assert status(_owner("trial"), NOW).key == "trial_ended"
+    # Teste ainda valendo continua "Em teste"; plano pago continua "Ativa"; planos internos à parte.
+    assert status(_owner("free", trial_plan="growth", trial_started_at=NOW - timedelta(days=2), trial_ends_at=NOW + timedelta(days=5)), NOW).key == "trial"
+    assert status(_owner("growth"), NOW).key == "active"
+    assert status(_owner("teste"), NOW).key == "internal"
+    # Plano gratuito com assinatura encerrada e sem período pago: Desativada.
+    assert status(_owner("free", status="cancelled"), NOW).key == "inactive"
