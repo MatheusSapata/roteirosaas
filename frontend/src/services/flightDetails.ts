@@ -121,6 +121,13 @@ export const getFlightJourneys = async (pageId: number | string, sectionId: stri
   return response.data;
 };
 
+/** Troca os trechos da seção pelos enviados (ex.: escritos pelo assistente de IA). Com código e
+ * data, o servidor busca o voo na API; sem código, monta com os dados enviados. */
+export const importFlightJourneys = async (pageId: number | string, sectionId: string, journeys: unknown[]) => {
+  const response = await api.post<FlightJourneysResponse>(`${flightSectionBase(pageId, sectionId)}/flight-journeys/import`, { journeys });
+  return response.data;
+};
+
 export const bootstrapFlightJourneys = async (pageId: number | string, sectionId: string) => {
   const response = await api.post<FlightJourneysResponse>(`${flightSectionBase(pageId, sectionId)}/flight-journeys/bootstrap`);
   return response.data;

@@ -29,6 +29,7 @@ from app.models.ai_assistant_message import AiAssistantMessage
 from app.models.ai_assistant_usage import AiAssistantUsage
 from app.models.user import User
 from app.schemas.page import PageOut
+from app.api.v1.endpoints.flight_sections import import_flight_journeys
 from app.services.ai_assistant import (
     ChatAttachment,
     ChatMessage,
@@ -364,6 +365,24 @@ def create_page_base(
     for section in new_config["sections"]:
         section.pop("aiReplaces", None)
         section.pop("aiStockPhoto", None)
+        section.pop("aiSetKeys", None)
+        flights = section.pop("aiFlights", None)
+        if flights and section.get("type") == "flight_details" and section.get("sectionId"):
+            # Trechos do voo (com código, buscados na API; sem, manuais).
+            try:
+                import_flight_journeys(db, page.id, section["sectionId"], flights)
+            except Exception:  # pragma: no cover - o voo pode ser montado depois no editor
+                logger.exception("ai_assistant_flight_import_failed")
+                db.rollback()
+        if section.get("type") == "header":
+            section.setdefault("links", [])
+        if section.get("type") == "header" and isinstance(section.get("links"), list):
+            # Aplicado direto (sem o editor): item de menu sem seção de destino não entra.
+            section["links"] = [
+                {key: value for key, value in link.items() if key != "aiTargetLabel"}
+                for link in section["links"]
+                if isinstance(link, dict) and (link.get("target") or link.get("targetType") != "section")
+            ]
     plan = resolve_agency_plan(db, page.agency_id)
     page.config_json = enforce_page_limits(db, page, publish=False, config=new_config, plan=plan)
     page.cover_image_url = derive_cover_image_from_config(page.config_json)

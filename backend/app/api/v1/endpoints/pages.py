@@ -11,7 +11,7 @@ from typing import Any, Optional, Tuple
 from urllib.parse import quote, urljoin, urlparse
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, HttpUrl
 from sqlalchemy.orm import Session
@@ -549,6 +549,60 @@ def get_page(
     setattr(page, "is_default", bool(default_id and page.id == default_id))
     setattr(page, "design_v2_enabled", design_v2_enabled_for_agency(page.agency))
     return page
+
+
+CREATIVE_IMAGE_MAX_BYTES = 20 * 1024 * 1024
+
+
+@router.get("/{page_id}/creative-image")
+def creative_image(
+    page_id: int,
+    url: str = Query(..., min_length=1, max_length=2000),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> Response:
+    """Foto da própria página (ou o logo da agência) para montar o criativo no navegador.
+
+    Muitos bancos de imagem não liberam CORS, e sem isso o PNG do criativo sai sem a foto. Só
+    entrega endereços que já estão na página ou no cadastro da agência (não é um proxy aberto).
+    """
+    from app.services.curated_photos import PhotoError, http_client
+
+    page = db.query(Page).filter(Page.id == page_id).first()
+    if not page:
+        raise HTTPException(status_code=404, detail="Página não encontrada.")
+    ensure_agency_member(db, page.agency_id, current_user)
+
+    raw = url.strip()
+    path = urlparse(raw).path
+    known = json.dumps(page.config_json or {}, ensure_ascii=False) + " " + str(getattr(page.agency, "logo_url", "") or "")
+    if raw not in known and not (len(path) > 8 and path in known):
+        raise HTTPException(status_code=404, detail="Essa imagem não faz parte da página.")
+
+    if path.startswith("/uploads/"):
+        base = os.path.realpath("uploads")
+        local = os.path.realpath(os.path.join(base, path[len("/uploads/"):]))
+        if not local.startswith(base + os.sep) or not os.path.isfile(local):
+            raise HTTPException(status_code=404, detail="Imagem não encontrada.")
+        with open(local, "rb") as handle:
+            content = handle.read(CREATIVE_IMAGE_MAX_BYTES + 1)
+        media_type = "image/" + (os.path.splitext(local)[1].lstrip(".").lower().replace("jpg", "jpeg") or "jpeg")
+    else:
+        if urlparse(raw).scheme not in ("http", "https"):
+            raise HTTPException(status_code=400, detail="Endereço de imagem inválido.")
+        try:
+            with http_client(timeout=20) as client:
+                remote = client.get(raw)
+                remote.raise_for_status()
+        except (httpx.HTTPError, PhotoError) as exc:
+            raise HTTPException(status_code=502, detail="Não foi possível carregar a imagem.") from exc
+        content = remote.content
+        media_type = remote.headers.get("content-type", "").split(";")[0].strip()
+        if not media_type.startswith("image/"):
+            raise HTTPException(status_code=415, detail="O endereço não é uma imagem.")
+    if len(content) > CREATIVE_IMAGE_MAX_BYTES:
+        raise HTTPException(status_code=413, detail="Imagem grande demais.")
+    return Response(content=content, media_type=media_type, headers={"Cache-Control": "private, max-age=600"})
 
 
 @router.post("", response_model=PageOut)

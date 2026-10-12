@@ -202,6 +202,7 @@ const platformRoutes: RouteRecordRaw[] = [
       { path: "dashboard", name: "dashboard", component: DashboardView, meta: { permission: "dashboard" } },
       { path: "pages", name: "pages", component: PagesListView, meta: { permission: "pages" } },
       { path: "pages/:id/edit", name: "page-edit", component: PageEditorView, props: true, meta: { permission: "pages" } },
+      { path: "pages/:id/criativos", name: "page-creatives", component: () => import("../views/admin/PageCreativesView.vue"), props: true, meta: { permission: "pages" } },
       // Aulas desativadas para as agências: quem não é superadmin vai para a Central de Ajuda.
       {
         path: "aulas",

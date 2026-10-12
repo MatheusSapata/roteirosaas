@@ -38,6 +38,10 @@
           <SparkleIcon aria-hidden="true" />
           Assistente IA
         </button>
+        <button v-if="!phoneEditor && page" type="button" class="ed-btn ed-btn-ghost" title="Artes prontas para divulgar esta viagem" @click="openCreatives">
+          <ImagesIcon aria-hidden="true" />
+          Criativos
+        </button>
         <button v-if="isPublished && !phoneEditor" type="button" class="ed-btn ed-btn-ghost" :disabled="!publicUrl" @click="viewPublicPage">
           <ExternalLinkIcon aria-hidden="true" />
           {{ viewCopy.actions.viewPage }}
@@ -49,6 +53,7 @@
           <div v-if="topbarMenuOpen" class="ed-menu" @click="topbarMenuOpen = false">
             <button v-if="phoneEditor && isPublished" type="button" :disabled="!publicUrl" @click="viewPublicPage">{{ viewCopy.actions.viewPage }}</button>
             <button v-if="phoneEditor && !isPublished" type="button" @click="publishPage">{{ viewCopy.toolbar.publish }}</button>
+            <button v-if="phoneEditor && page" type="button" @click="openCreatives">Criativos</button>
             <button type="button" @click="saveTemplate">{{ viewCopy.toolbar.saveTemplate }}</button>
             <button v-if="isPublished" type="button" class="danger" @click="unpublishPage">{{ viewCopy.toolbar.unpublish }}</button>
           </div>
@@ -1629,6 +1634,7 @@ import {
   CopyIcon,
   EllipsisVerticalIcon,
   ExternalLinkIcon,
+  ImagesIcon,
   GripVerticalIcon,
   ImageIcon,
   LinkIcon,
@@ -1666,6 +1672,7 @@ import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, p
 import type { Component } from "vue";
 import { onBeforeRouteLeave, useRoute, useRouter } from "vue-router";
 import api from "../../services/api";
+import { importFlightJourneys } from "../../services/flightDetails";
 import {
   previewAiAssistantPageBase,
   fetchAiAssistantHistory,
@@ -1707,6 +1714,7 @@ import type {
   ViajeonCheckoutSection,
   InternalFormSection,
   HeaderSection,
+  HeaderLinkItem,
   SectionType,
   ThemeConfig
 } from "../../types/page";
@@ -2637,6 +2645,14 @@ const aiSectionPhoto = (section: PageSection): string => {
   return candidates.find(value => typeof value === "string" && value && !isAiFiller(value)) || "";
 };
 const mergeAiSwap = (current: PageSection, incoming: PageSection): PageSection => {
+  // Ajuste pedido (ex.: "deixa o menu transparente"): muda só os campos que a IA trouxe; o
+  // resto da seção (itens do menu, cores, botão...) fica como está.
+  const setKeys = (incoming as any).aiSetKeys as string[] | undefined;
+  if (current.type === incoming.type && Array.isArray(setKeys)) {
+    const adjusted: Record<string, any> = { ...current };
+    for (const key of setKeys) if (key in incoming) adjusted[key] = (incoming as Record<string, any>)[key];
+    return adjusted as PageSection;
+  }
   if (current.type !== incoming.type) {
     // Troca de tipo: a seção nova entra no mesmo lugar, com a âncora e a foto da antiga.
     const converted: Record<string, any> = { ...incoming, anchorId: current.anchorId, enabled: current.enabled };
@@ -2695,11 +2711,81 @@ const aiPageImage = (page: AgencyPage) => {
   const hero = Array.isArray(config.sections) ? config.sections.find((item: any) => item?.type === "hero") : null;
   return hero?.backgroundImage || page.cover_image_url || "";
 };
+// Itens do Menu do topo que a IA mandou sem o identificador da seção ("Roteiro"): liga pelo
+// título das seções da página; item que não acha seção (nem link externo) sai do menu.
+const aiMenuStems = (text: string) =>
+  new Set(
+    text
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toUpperCase()
+      .replace(/[^A-Z ]/g, " ")
+      .split(/\s+/)
+      .filter(word => word.length >= 4)
+      .map(word => word.slice(0, 5))
+  );
+const resolveAiMenuLinks = (pageSections: PageSection[]): PageSection[] => {
+  const anchors = new Set(pageSections.map(section => section.anchorId).filter(Boolean));
+  const titleOf = (section: PageSection) =>
+    ["title", "headingLabel", "badge", "label"].map(key => getLocalizedValue((section as any)[key]) || "").join(" ");
+  const names = (section: PageSection) => `${titleOf(section)} ${sectionNameV2(section.type) || ""}`;
+  return pageSections.map(section => {
+    if (section.type !== "header" || !Array.isArray((section as HeaderSection).links)) return section;
+    const used = new Set<string>();
+    const links = (section as HeaderSection).links
+      .map(raw => {
+        const { aiTargetLabel, ...link } = raw as HeaderLinkItem & { aiTargetLabel?: string };
+        if (link.targetType !== "section" || (link.target && anchors.has(link.target))) return link;
+        const wanted = aiMenuStems(aiTargetLabel || getLocalizedValue(link.label) || "");
+        const match = pageSections.find(
+          candidate =>
+            candidate.type !== "header" &&
+            candidate.anchorId &&
+            !used.has(candidate.anchorId) &&
+            [...aiMenuStems(names(candidate))].some(stem => wanted.has(stem))
+        );
+        if (!match?.anchorId) return null;
+        used.add(match.anchorId);
+        return { ...link, target: match.anchorId };
+      })
+      .filter((link): link is HeaderLinkItem => Boolean(link));
+    return { ...section, links } as PageSection;
+  });
+};
+const stripAiMarkers = (pageSections: PageSection[]) =>
+  pageSections.map(section => {
+    if (!("aiSetKeys" in section) && !("aiFlights" in section)) return section;
+    const { aiSetKeys: _keys, aiFlights: _flights, ...clean } = section as PageSection & { aiSetKeys?: string[]; aiFlights?: unknown[] };
+    return clean as PageSection;
+  });
+// Trechos de voo da sugestão: o servidor grava na seção (com código, dados da API; sem, manuais)
+// e a prévia já mostra os cartões.
+const importAiFlights = async (targets: Array<{ sectionId: string; flights: unknown[] }>) => {
+  for (const { sectionId, flights } of targets) {
+    try {
+      const response = await importFlightJourneys(pageId, sectionId, flights);
+      setSections(
+        sections.value.map(section =>
+          section.type === "flight_details" && (section as FlightDetailsSection).sectionId === sectionId
+            ? ({ ...section, journeys: response.journeys } as PageSection)
+            : section
+        )
+      );
+    } catch {
+      showAiToast("Não consegui montar os voos automaticamente. Abra a seção Voos para conferir.");
+    }
+  }
+  refreshPreview(true);
+};
 // Menu do topo, Vitrine e Rodapé com o padrão do editor (cores do tema, WhatsApp da agência).
 // Card ligado a uma página existente leva para ela e usa a foto dela; sem página, abre o
 // WhatsApp da agência até ela ligar o card à página da viagem.
 const prepareAiSection = (section: PageSection): PageSection => {
-  if (section.type === "header" || section.type === "agency_footer") return { ...defaultSection(section.type), ...section } as PageSection;
+  if (section.type === "header") {
+    // Menu novo sem itens na resposta fica sem itens (e não com os links de exemplo do editor).
+    return { ...defaultSection("header"), links: [], ...section } as PageSection;
+  }
+  if (section.type === "agency_footer") return { ...defaultSection(section.type), ...section } as PageSection;
   if (section.type === "links") {
     const digits = whatsappDigits.value;
     const links = section as LinksSection;
@@ -2905,9 +2991,27 @@ const applyAiStructure = async (reply: string, mode: "insert" | "replace" | "swa
         ...(footer.length ? footer : additions.filter(section => section.type === "free_footer_brand"))
       ];
     }
+    // Voos: na troca, os trechos vão para a seção que ficou na página; nas outras, para as novas.
+    const flightTargets: Array<{ sectionId: string; flights: unknown[] }> = [];
+    if (mode === "swap") {
+      const raw = generated.find(section => section.type === "flight_details") as any;
+      const index = aiSwapTarget(reply)?.index ?? -1;
+      const target = nextSections[index] as FlightDetailsSection | undefined;
+      if (raw?.aiFlights?.length && target?.type === "flight_details" && target.sectionId) {
+        flightTargets.push({ sectionId: target.sectionId, flights: raw.aiFlights });
+      }
+    } else {
+      for (const section of nextSections) {
+        const flights = (section as any).aiFlights as unknown[] | undefined;
+        const sectionId = (section as FlightDetailsSection).sectionId;
+        if (section.type === "flight_details" && flights?.length && sectionId) flightTargets.push({ sectionId, flights });
+      }
+    }
+    nextSections = stripAiMarkers(resolveAiMenuLinks(nextSections));
     aiStructurePreviousSections.value = JSON.parse(JSON.stringify(sections.value));
     setSections(nextSections);
     refreshPreview(true);
+    if (flightTargets.length) void importAiFlights(flightTargets);
     showAiToast(mode === "swap"
       ? "Seção trocada pela sugestão. Revise e salve."
       : mode === "insert"
@@ -5874,6 +5978,11 @@ const goIntegrations = () => {
 const goViajeonIntegration = () => {
   closeSectionPicker();
   router.push({ name: "integrations-viajeon" });
+};
+
+// Os criativos usam a versão salva da página; a saída com alterações pendentes passa pelo aviso de sempre.
+const openCreatives = () => {
+  if (page.value) router.push({ name: "page-creatives", params: { id: String(page.value.id) } });
 };
 
 const viewPublicPage = () => {
