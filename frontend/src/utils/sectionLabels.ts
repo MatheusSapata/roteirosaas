@@ -21,6 +21,7 @@ export const sectionLabels: Partial<Record<SectionType, string>> = {
   flight_details: "Detalhes do voo",
   viajeon_checkout: "Checkout ViajeOn",
   internal_form: "Formulário interno",
+  redirect: "Redirecionamento",
   free_footer_brand: "Rodapé obrigatório",
   gallery: "Galeria"
 };
@@ -67,6 +68,8 @@ export const describeSection = (section: PageSection): string => {
       return section.title || section.checkoutName || "Checkout ViajeOn";
     case "internal_form":
       return section.title || "Formulário interno";
+    case "redirect":
+      return (typeof section.title === "string" ? section.title : "") || "Redirecionamento";
     case "free_footer_brand":
       return "Rodapé obrigatório";
     default:

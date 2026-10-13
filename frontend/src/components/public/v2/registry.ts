@@ -30,6 +30,7 @@ export const v2Components: Partial<Record<SectionType, Component>> = {
   flight_details: defineAsyncComponent(() => import("./V2FlightDetails.vue")),
   viajeon_checkout: defineAsyncComponent(() => import("./V2ViajeonCheckout.vue")),
   internal_form: defineAsyncComponent(() => import("./V2InternalForm.vue")),
+  redirect: defineAsyncComponent(() => import("./V2Redirect.vue")),
   agency_footer: defineAsyncComponent(() => import("./V2AgencyFooter.vue"))
 };
 
