@@ -1354,25 +1354,35 @@
                       <div v-if="aiQuestionForm(message.content)!.intro" class="editor-ai-sidebar-response-text ai-rich" v-html="aiRichText(aiQuestionForm(message.content)!.intro)"></div>
                       <ol class="ai-q-list">
                         <li v-for="(question, questionIndex) in aiQuestionForm(message.content)!.questions" :key="questionIndex" class="ai-q">
-                          <p class="ai-q-text">{{ question.text }}</p>
-                          <div v-if="question.options.length" class="ai-q-options" role="radiogroup" :aria-label="question.text">
+                          <p class="ai-q-text">{{ question.text }}<small v-if="question.multiple && question.options.length" class="ai-q-hint">Marque quantas quiser</small></p>
+                          <div v-if="question.options.length" class="ai-q-options" :role="question.multiple ? 'group' : 'radiogroup'" :aria-label="question.text">
                             <button
                               v-for="(option, optionIndex) in question.options"
                               :key="optionIndex"
                               type="button"
-                              role="radio"
-                              :aria-checked="aiQuestionsActive(message) && aiAnswers[aiAnswerKey(questionIndex)] === option"
-                              :class="{ 'is-picked': aiQuestionsActive(message) && aiAnswers[aiAnswerKey(questionIndex)] === option }"
+                              :role="question.multiple ? 'checkbox' : 'radio'"
+                              :aria-checked="aiQuestionsActive(message) && aiIsPicked(questionIndex, option)"
+                              :class="{ 'is-picked': aiQuestionsActive(message) && aiIsPicked(questionIndex, option) }"
                               :disabled="!aiQuestionsActive(message)"
-                              @click="pickAiAnswer(questionIndex, option)"
-                            >{{ option }}<small v-if="optionIndex === 0">sugerido</small></button>
+                              @click="pickAiAnswer(question, questionIndex, option)"
+                            ><span v-if="question.multiple" class="ai-q-box" aria-hidden="true"><svg viewBox="0 0 12 12"><path d="M2.5 6.2 5 8.5l4.5-5" /></svg></span>{{ option }}<small v-if="optionIndex === 0">sugerido</small></button>
+                            <button
+                              type="button"
+                              class="ai-q-other"
+                              :role="question.multiple ? 'checkbox' : 'radio'"
+                              :aria-checked="aiQuestionsActive(message) && aiOtherOpen(questionIndex)"
+                              :class="{ 'is-picked': aiQuestionsActive(message) && aiOtherOpen(questionIndex) }"
+                              :disabled="!aiQuestionsActive(message)"
+                              @click="toggleAiOther(question, questionIndex)"
+                            ><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10.5 2.5l3 3L6 13H3v-3z" /></svg>{{ question.multiple ? "Outro" : "Outra resposta" }}</button>
                           </div>
                           <input
-                            v-else-if="aiQuestionsActive(message)"
-                            v-model="aiAnswers[aiAnswerKey(questionIndex)]"
+                            v-if="aiQuestionsActive(message) && (!question.options.length || aiOtherOpen(questionIndex))"
+                            v-model="aiOther[aiAnswerKey(questionIndex)]"
                             class="ai-q-input"
+                            :data-ai-other="aiAnswerKey(questionIndex)"
                             type="text"
-                            placeholder="Sua resposta"
+                            :placeholder="!question.options.length ? 'Sua resposta' : question.multiple ? 'Digite o que mais entra' : 'Digite sua resposta'"
                           />
                         </li>
                       </ol>
@@ -2924,8 +2934,14 @@ const prepareAiSection = (section: PageSection): PageSection => {
   return section;
 };
 // Perguntas da IA como escolhas: "1. Pergunta?" seguida de opções "- ...". A primeira opção é
-// a sugerida. Pergunta sem opções vira um campo de texto curto.
-type AiQuestion = { text: string; options: string[] };
+// a sugerida. Pergunta sem opções vira um campo de texto curto; com opções, "Outra resposta"
+// abre o campo. Pergunta de várias respostas vem marcada com "(marque quantas quiser)"; sem a
+// marca, "Quais ...?" e "O que está incluso?" também aceitam várias.
+type AiQuestion = { text: string; options: string[]; multiple: boolean };
+const AI_MULTI_MARK = /\s*\([^)]*(?:quantas quiser|mais de uma|v[aá]rias|m[uú]ltipla)[^)]*\)/i;
+const AI_MULTI_GUESS = /^quais\b|\bo que (?:j[aá] )?(?:est[aá] )?inclu/i;
+// "Outro"/"Outra resposta" escrito pela IA sai da lista: o chat já tem o botão para digitar.
+const AI_OTHER_OPTION = /^outr[oa](?:\s+(?:resposta|op[cç][aã]o))?\s*(?:\([^)]*\))?[.:…]*$/i;
 const aiQuestionForm = (content: string): { intro: string; questions: AiQuestion[]; outro: string } | null => {
   if (!content || hasAiStructure(content)) return null;
   const intro: string[] = [];
@@ -2938,13 +2954,14 @@ const aiQuestionForm = (content: string): { intro: string; questions: AiQuestion
     if (numbered) {
       // Só pergunta de verdade (termina com "?") vira escolha; lista numerada de explicação
       // ("1. Onde buscar") deixa a mensagem inteira como texto.
-      const text = numbered[2].replace(/\*\*/g, "").trim();
+      const written = numbered[2].replace(/\*\*/g, "").trim();
+      const text = written.replace(AI_MULTI_MARK, "").trim();
       if (!text.endsWith("?")) return null;
-      questions.push({ text, options: [] });
+      questions.push({ text, options: [], multiple: AI_MULTI_MARK.test(written) || AI_MULTI_GUESS.test(text) });
     } else if (option && questions.length && !outro.length) {
       const choice = option[1].replace(/\*\*/g, "").replace(/\s*\((?:recomendad[oa]|sugerid[oa])\)\s*$/i, "").trim();
       if (choice.length > 60) return null;
-      questions[questions.length - 1].options.push(choice);
+      if (!AI_OTHER_OPTION.test(choice)) questions[questions.length - 1].options.push(choice);
     } else if (!questions.length) {
       intro.push(raw);
     } else if (line) {
@@ -2990,19 +3007,51 @@ const aiRichText = (text: string): string => {
   close();
   return out.join("");
 };
-const aiAnswers = reactive<Record<string, string>>({});
+// Opções marcadas e o texto digitado ("Outra resposta" ou pergunta sem opções), por pergunta.
+const aiPicks = reactive<Record<string, string[]>>({});
+const aiOther = reactive<Record<string, string>>({});
+const aiOtherOn = reactive(new Set<string>());
+// Numa pergunta de várias respostas, "Ainda vamos definir" ou "Nenhum" desmarca as outras.
+const AI_EXCLUSIVE_OPTION = /^(?:ainda\b|nenhum|nada\b|n[aã]o\s+(?:sei|tem|inclui)|a definir\b)/i;
 // Só a última resposta da IA recebe escolhas; as anteriores ficam como texto.
 const aiLastAssistant = computed(() => [...aiAssistantMessages.value].reverse().find(message => message.role === "assistant"));
 const aiQuestionsActive = (message: AiChatMessage) => !aiAssistantLoading.value && message === aiLastAssistant.value;
 const aiAnswerKey = (questionIndex: number) => `${aiAssistantMessages.value.length}-${questionIndex}`;
-const pickAiAnswer = (questionIndex: number, option: string) => {
-  const key = aiAnswerKey(questionIndex);
-  aiAnswers[key] = aiAnswers[key] === option ? "" : option;
+const aiIsPicked = (questionIndex: number, option: string) => (aiPicks[aiAnswerKey(questionIndex)] || []).includes(option);
+const aiOtherOpen = (questionIndex: number) => aiOtherOn.has(aiAnswerKey(questionIndex));
+const closeAiOther = (key: string) => {
+  aiOtherOn.delete(key);
+  aiOther[key] = "";
 };
-const aiAnsweredCount = (questions: AiQuestion[]) => questions.filter((_, index) => (aiAnswers[aiAnswerKey(index)] || "").trim()).length;
+const pickAiAnswer = (question: AiQuestion, questionIndex: number, option: string) => {
+  const key = aiAnswerKey(questionIndex);
+  const picked = aiPicks[key] || [];
+  if (picked.includes(option)) {
+    aiPicks[key] = picked.filter(item => item !== option);
+  } else if (!question.multiple || AI_EXCLUSIVE_OPTION.test(option)) {
+    aiPicks[key] = [option];
+    closeAiOther(key);
+  } else {
+    // Na ordem da lista, não na dos cliques.
+    aiPicks[key] = question.options.filter(item => item === option || (picked.includes(item) && !AI_EXCLUSIVE_OPTION.test(item)));
+  }
+};
+const toggleAiOther = async (question: AiQuestion, questionIndex: number) => {
+  const key = aiAnswerKey(questionIndex);
+  if (aiOtherOn.has(key)) return closeAiOther(key);
+  aiOtherOn.add(key);
+  aiPicks[key] = question.multiple ? (aiPicks[key] || []).filter(item => !AI_EXCLUSIVE_OPTION.test(item)) : [];
+  await nextTick();
+  document.querySelector<HTMLInputElement>(`[data-ai-other="${key}"]`)?.focus();
+};
+const aiAnswerText = (questionIndex: number) => {
+  const key = aiAnswerKey(questionIndex);
+  return [...(aiPicks[key] || []), (aiOther[key] || "").trim()].filter(Boolean).join(", ");
+};
+const aiAnsweredCount = (questions: AiQuestion[]) => questions.filter((_, index) => aiAnswerText(index)).length;
 const sendAiAnswers = (questions: AiQuestion[]) => {
   const lines = questions
-    .map((question, index) => ({ question, answer: (aiAnswers[aiAnswerKey(index)] || "").trim() }))
+    .map((question, index) => ({ question, answer: aiAnswerText(index) }))
     .filter(item => item.answer)
     .map(item => `- ${item.question.text} ${item.answer}`);
   if (!lines.length) return;
@@ -8351,6 +8400,19 @@ onMounted(async () => {
 .ai-q-options button:not(:disabled):hover { box-shadow: inset 0 0 0 1.5px #12b981; }
 .ai-q-options button.is-picked { background: rgba(18, 185, 129, 0.12); box-shadow: inset 0 0 0 1.5px #12b981; }
 .ai-q-options button:disabled { cursor: default; opacity: 0.7; }
+.ai-q-hint { display: block; margin-top: 2px; font-size: 11.5px; font-weight: 600; color: var(--muted-foreground); }
+/* Caixinha de marcar, nas perguntas de várias respostas. */
+.ai-q-box { display: grid; flex: none; width: 14px; height: 14px; place-items: center; border-radius: 4px; box-shadow: inset 0 0 0 1.5px var(--border); transition: background-color 0.15s ease; }
+.ai-q-box svg { width: 10px; height: 10px; fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; opacity: 0; }
+.ai-q-options button.is-picked .ai-q-box { background: #12b981; box-shadow: none; }
+.ai-q-options button.is-picked .ai-q-box svg { opacity: 1; }
+/* "Outra resposta": tracejado, para não parecer uma das sugestões da IA. */
+.ai-q-options button.ai-q-other { padding: 6px 11px; border: 1px dashed var(--border); box-shadow: none; color: var(--muted-foreground); }
+.ai-q-options button.ai-q-other svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; }
+.ai-q-options button.ai-q-other:not(:disabled):hover,
+.ai-q-options button.ai-q-other.is-picked { border-color: #12b981; box-shadow: none; color: var(--foreground); }
+.ai-q-options button.ai-q-other.is-picked { border-style: solid; background: rgba(18, 185, 129, 0.12); }
+.ai-q-options + .ai-q-input { margin-top: 8px; }
 .ai-q-input { width: 100%; height: 36px; padding: 0 12px; border-radius: 10px; background: var(--card); box-shadow: inset 0 0 0 1px var(--border); font-size: 13px; }
 .ai-q-input:focus { outline: none; box-shadow: inset 0 0 0 1.5px #12b981; }
 .ai-q-outro { margin-top: 10px; }
