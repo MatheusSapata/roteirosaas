@@ -250,6 +250,7 @@ const STATUS_ROWS: Array<{ key: CompanyStatusKey; label: string; filtro: string 
   { key: "free", label: "Gratuitas no prazo", filtro: "gratuitas" },
   { key: "free_expired", label: "Gratuitas vencidas", filtro: "vencidas" },
   { key: "trial_ended", label: "Teste encerrado", filtro: "teste-encerrado" },
+  { key: "combo", label: "Combo Viaje On (fora do MRR)", filtro: "combo" },
   { key: "inactive", label: "Desativadas", filtro: "desativadas" }
 ];
 const companiesTotal = computed(() => STATUS_ROWS.reduce((sum, row) => sum + (data.value?.companies[row.key] || 0), 0));

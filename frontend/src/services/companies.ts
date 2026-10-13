@@ -10,6 +10,7 @@ export type CompanyStatusKey =
   | "past_due"
   | "inactive"
   | "internal"
+  | "combo"
   | "no_owner";
 export type MediaStage = "hot" | "cool" | "archive" | "restoring" | "deleted";
 

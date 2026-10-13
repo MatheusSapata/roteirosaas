@@ -305,7 +305,9 @@ async def provision_viajeon_account(
     )
     subscription.status = "active"
     subscription.external_reference = payload.order.id
-    subscription.mrr_amount = payload.order.amount
+    # Combo: o cliente paga na Viaje On, então não há MRR do Roteiro Online. Antes o valor do pedido
+    # ia para cá como se fosse mensal (no anual, o ano inteiro virava "por mês").
+    subscription.mrr_amount = 0
     subscription.updated_at = datetime.now(timezone.utc)
     event.status = "processed"
     event.user_id = user.id

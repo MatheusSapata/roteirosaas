@@ -164,7 +164,7 @@ def test_stamp_after_first_run_uses_real_time(db_session):
 
 
 def _owner(plan, status="active", created_days_ago=200, valid_until=None, **extra):
-    subscription = SimpleNamespace(plan=plan, status=status, valid_until=valid_until, failed_attempts=0, created_at=NOW - timedelta(days=created_days_ago), deactivated_at=None, deactivation_estimated=False)
+    subscription = SimpleNamespace(plan=plan, provider="asaas", status=status, valid_until=valid_until, failed_attempts=0, created_at=NOW - timedelta(days=created_days_ago), deactivated_at=None, deactivation_estimated=False)
     defaults = dict(is_superuser=False, trial_plan=None, trial_ends_at=None, trial_started_at=None, trial_blocked=False)
     defaults.update(extra)
     return SimpleNamespace(subscription=subscription, **defaults)
@@ -193,3 +193,17 @@ def test_unpaid_plans_are_not_counted_as_active():
     assert status(_owner("teste"), NOW).key == "internal"
     # Plano gratuito com assinatura encerrada e sem período pago: Desativada.
     assert status(_owner("free", status="cancelled"), NOW).key == "inactive"
+
+
+def test_viajeon_access_is_combo():
+    status = status_service.company_status
+    combo_escala = _owner("infinity")
+    combo_escala.subscription.provider = "viajeon"
+    combo_essencial = _owner("essencial")
+    combo_essencial.subscription.provider = "viajeon"
+    # Quem paga na Viaje On é cliente do combo, inclusive no plano Escala (antes "Interna").
+    assert status(combo_escala, NOW).key == "combo" and status(combo_essencial, NOW).key == "combo"
+    # Combo que venceu sai do ar como qualquer outro.
+    expired = _owner("growth", status="inactive")
+    expired.subscription.provider = "viajeon"
+    assert status(expired, NOW).key == "inactive"

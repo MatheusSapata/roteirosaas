@@ -128,7 +128,7 @@
               </td>
               <td>
                 <span class="block whitespace-nowrap">{{ planLabel(item.plan) }}</span>
-                <small class="am-muted block whitespace-nowrap">{{ gatewayLabel(billingProvider(item)) }}<template v-if="item.mrr_amount"> · {{ formatMoney(item.mrr_amount) }}/mês</template></small>
+                <small class="am-muted block whitespace-nowrap">{{ gatewayLabel(billingProvider(item)) }}<template v-if="item.mrr_amount && !isCombo(item)"> · {{ formatMoney(item.mrr_amount) }}/mês</template></small>
               </td>
               <td class="am-num">
                 {{ formatDate(item.created_at) }}
@@ -179,7 +179,7 @@ import { useSelection, useTableSort } from "./master/useTableSort";
 import { daysSince, daysUntil, formatDate, formatInt, formatMoney, gatewayLabel, planLabel, plural, relativeDay, statusTone } from "./master/format";
 import CompanyDrawer from "./companies/CompanyDrawer.vue";
 import CreateCompanyDrawer from "./companies/CreateCompanyDrawer.vue";
-import { billingProvider, statusDetail } from "./companies/companyStatus";
+import { billingProvider, isCombo, statusDetail } from "./companies/companyStatus";
 
 type Filter = "all" | CompanyStatusKey | "paying" | "trial_ending" | "no_use_60";
 // "extra": só aparece quando chega selecionado por um link (ex.: do Painel).
@@ -196,11 +196,13 @@ const filters: Array<{ value: Filter; label: string; hint?: string; extra?: bool
   { value: "trial_ended", label: "Teste encerrado" },
   { value: "inactive", label: "Desativadas" },
   { value: "no_use_60", label: "Sem acesso +60 dias" },
+  { value: "combo", label: "Combo Viaje On", hint: "Acesso pago na Viaje On: fora do MRR do Roteiro Online" },
   { value: "internal", label: "Internas" }
 ];
 const visibleFilters = computed(() => filters.filter(option => !option.extra || filter.value === option.value));
 const queryFilters: Record<string, Filter> = {
   pagantes: "paying",
+  combo: "combo",
   ativas: "active",
   inadimplentes: "past_due",
   cancelando: "cancelling",
@@ -212,7 +214,7 @@ const queryFilters: Record<string, Filter> = {
   desativadas: "inactive"
 };
 // Ordem de gravidade usada ao ordenar pela coluna Situação.
-const STATUS_ORDER: CompanyStatusKey[] = ["inactive", "past_due", "cancelling", "free_expired", "trial_ended", "free", "trial", "active", "internal", "no_owner"];
+const STATUS_ORDER: CompanyStatusKey[] = ["inactive", "past_due", "cancelling", "free_expired", "trial_ended", "free", "trial", "active", "combo", "internal", "no_owner"];
 
 const columns = [
   { key: "name", label: "Empresa" },
@@ -373,7 +375,7 @@ const exportCsv = () => {
     item.owner_whatsapp,
     planLabel(item.plan),
     gatewayLabel(billingProvider(item)),
-    item.mrr_amount ? item.mrr_amount.toFixed(2).replace(".", ",") : "",
+    item.mrr_amount && !isCombo(item) ? item.mrr_amount.toFixed(2).replace(".", ",") : "",
     item.status_label,
     statusDetail(item),
     formatDate(item.created_at),

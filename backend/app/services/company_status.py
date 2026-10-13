@@ -26,6 +26,9 @@ CAKTO_CANCEL_EVENTS = frozenset({"subscription_canceled", "subscription_cancelle
 UNPAID_PLANS = frozenset({"", "free", "gratuito", "trial"})
 # Contas de teste interno (como "infinity"): fora das contagens de clientes.
 INTERNAL_PLANS = frozenset({"infinity", "teste", "test"})
+# Acesso que vem de um combo pago em outro sistema (hoje, a Viaje On): o cliente paga lá, então
+# não é receita do Roteiro Online. Aparece como "Combo" e fica fora do MRR.
+COMBO_PROVIDERS = frozenset({"viajeon"})
 # Conta gratuita (sem teste e sem pagamento) tem o mesmo prazo do teste, contado do cadastro.
 # Passado o prazo ela aparece como "Gratuita vencida". A regra da página pública não muda aqui.
 FREE_ACCESS_DAYS = 7
@@ -40,6 +43,7 @@ STATUS_LABELS = {
     "past_due": "Inadimplente",
     "inactive": "Desativada",
     "internal": "Interna",
+    "combo": "Combo",
     "no_owner": "Sem dono",
 }
 
@@ -98,12 +102,18 @@ def free_access_ends(owner: User) -> datetime | None:
     return start + timedelta(days=FREE_ACCESS_DAYS) if start else None
 
 
+def is_combo(subscription: Subscription | None) -> bool:
+    return bool(subscription and (subscription.provider or "").strip().lower() in COMBO_PROVIDERS)
+
+
 def company_status(owner: User | None, now: datetime | None = None) -> CompanyStatus:
     now = now or datetime.now(timezone.utc)
     if owner is None:
         return CompanyStatus("no_owner", STATUS_LABELS["no_owner"], online=False)
     subscription = owner.subscription
-    if owner.is_superuser or (subscription and (subscription.plan or "").strip().lower() in INTERNAL_PLANS):
+    combo = is_combo(subscription) and not owner.is_superuser
+    # O plano Escala do combo é cliente, não conta interna.
+    if not combo and (owner.is_superuser or (subscription and (subscription.plan or "").strip().lower() in INTERNAL_PLANS)):
         return CompanyStatus("internal", STATUS_LABELS["internal"], online=True)
     online = subscription_allows_public(subscription, now)
     trial_ends = _aware(owner.trial_ends_at)
@@ -116,6 +126,10 @@ def company_status(owner: User | None, now: datetime | None = None) -> CompanySt
             online=False,
             since=_aware(subscription.deactivated_at) if subscription else None,
             estimated=bool(subscription and subscription.deactivation_estimated),
+        )
+    if combo:
+        return CompanyStatus(
+            "combo", STATUS_LABELS["combo"], online=True, since=_aware(subscription.created_at), ends=_aware(subscription.valid_until)
         )
     # "online" fica igual ao da página pública (o arquivamento depende dele); aqui só muda o nome:
     # assinatura "ativa" num plano sem pagamento não é cliente ativo.
