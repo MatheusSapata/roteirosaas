@@ -314,20 +314,24 @@ def derive_cover_image_from_config(raw: Any) -> Optional[str]:
     sections = config.get("sections")
     if not isinstance(sections, list):
         return None
-    for section in sections:
-        if not isinstance(section, dict):
-            continue
-        if section.get("enabled") is False:
-            continue
-        if section.get("type") != "hero":
-            continue
-        image = section.get("backgroundImage") or section.get("background_image")
-        if isinstance(image, str):
-            trimmed = image.strip()
-            # Inline editor placeholders belong in config_json, not in the
-            # VARCHAR(500) cover URL column (or public sharing metadata).
-            if trimmed and len(trimmed) <= 500 and not trimmed.lower().startswith(("data:", "blob:")):
-                return trimmed
+    # Banner Inicial primeiro; sem ele, a imagem do Redirecionamento (página de grupo, por
+    # exemplo). O destino do Redirecionamento nunca entra na capa nem nas informações de
+    # compartilhamento: a prévia do link mostra a própria página.
+    for kind, keys in (("hero", ("backgroundImage", "background_image")), ("redirect", ("image",))):
+        for section in sections:
+            if not isinstance(section, dict):
+                continue
+            if section.get("enabled") is False:
+                continue
+            if section.get("type") != kind:
+                continue
+            image = next((section.get(key) for key in keys if section.get(key)), None)
+            if isinstance(image, str):
+                trimmed = image.strip()
+                # Inline editor placeholders belong in config_json, not in the
+                # VARCHAR(500) cover URL column (or public sharing metadata).
+                if trimmed and len(trimmed) <= 500 and not trimmed.lower().startswith(("data:", "blob:")):
+                    return trimmed
     return None
 
 

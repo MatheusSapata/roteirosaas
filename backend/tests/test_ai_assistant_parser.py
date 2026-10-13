@@ -1115,3 +1115,53 @@ def test_flight_import_uses_api_for_codes_and_manual_otherwise(db_session, monke
     # De novo (troca da seção pelo assistente): substitui, não duplica.
     flight_sections.import_flight_journeys(db_session, 1, "flight-1", legs[:1])
     assert db_session.query(FlightSectionJourney).filter_by(section_id="flight-1").count() == 1
+
+
+def test_resumo_do_pacote_reads_included_and_excluded_lists():
+    config, _ = build_page_base_config_from_reply(reply_with(
+        "🟩 SEÇÃO: RESUMO DO PACOTE\nEtiqueta: Seu pacote\nTítulo: O que está incluso\nSubtítulo: Confira antes de reservar.\n"
+        "Inclui:\n- Hospedagem — 3 noites em Gramado\n- Café da manhã\n- Guia local\n"
+        "Não inclui:\n- Passagem aérea\n- Seguro viagem"
+    ), strict=True)
+    (section,) = config["sections"]
+    assert section["type"] == "inclusions"
+    assert section["title"] == "O que está incluso"
+    assert section["subtitle"] == "Confira antes de reservar."
+    assert section["headingLabel"] == "Seu pacote"
+    assert section["included"] == [
+        {"title": "Hospedagem", "details": "3 noites em Gramado"},
+        {"title": "Café da manhã", "details": ""},
+        {"title": "Guia local", "details": ""},
+    ]
+    assert [item["title"] for item in section["excluded"]] == ["Passagem aérea", "Seguro viagem"]
+
+
+def test_sent_photo_replaces_banner_photo_without_stock_search():
+    url = "https://cdn.exemplo.com/uploads/foto_2400.webp"
+    config, _ = build_page_base_config_from_reply(reply_with(
+        f"🟩 SEÇÃO: BANNER INICIAL\nSubstitui: banner-inicial\nImagem: {url}"
+    ), strict=True)
+    (hero,) = config["sections"]
+    assert hero["backgroundImage"] == url
+    assert hero["mobileBackgroundImage"] == url
+    assert hero["aiStockPhoto"] is True
+    assert hero["photoCredits"] == []
+    assert "aiImageQuery" not in hero
+    # Só a foto foi pedida: título e textos da seção atual ficam como estão.
+    assert hero["aiSetKeys"] == []
+
+
+def test_sent_photos_fill_story_carousel_and_ignore_invalid_addresses():
+    config, _ = build_page_base_config_from_reply(reply_with(
+        "🟩 SEÇÃO: TEXTO E IMAGENS\nTítulo: Hospedagem\nTexto: Hotel no centro.\n"
+        "Imagem: /uploads/a_2400.webp | https://cdn.exemplo.com/b.jpg | javascript:alert(1)"
+    ), strict=True)
+    (story,) = config["sections"]
+    assert story["images"] == ["/uploads/a_2400.webp", "https://cdn.exemplo.com/b.jpg"]
+    assert "aiImageQuery" not in story
+    no_url, _ = build_page_base_config_from_reply(reply_with(
+        "🟩 SEÇÃO: FOTO EM DESTAQUE\nLegenda: Pôr do sol\nImagem: foto do pôr do sol na praia"
+    ), strict=True)
+    # Sem endereço válido, segue a busca no banco de fotos.
+    assert no_url["sections"][0].get("aiStockPhoto") is None
+    assert "aiImageQuery" in no_url["sections"][0]

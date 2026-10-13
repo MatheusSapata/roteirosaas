@@ -23,3 +23,20 @@ def test_cover_skips_inline_images_and_uses_real_banner_url():
 def test_cover_accepts_url_at_column_limit():
     url = "https://example.com/" + "x" * (500 - len("https://example.com/"))
     assert derive_cover_image_from_config({"sections": [{"type": "hero", "backgroundImage": url}]}) == url
+
+
+def test_redirect_image_is_cover_when_page_has_no_banner():
+    config = {"sections": [{"type": "redirect", "enabled": True, "url": "https://chat.whatsapp.com/abc", "image": "/uploads/grupo.jpg"}]}
+    assert derive_cover_image_from_config(config) == "/uploads/grupo.jpg"
+
+
+def test_banner_wins_over_redirect_and_destination_never_becomes_cover():
+    config = {
+        "sections": [
+            {"type": "redirect", "enabled": True, "url": "https://chat.whatsapp.com/abc", "image": "/uploads/grupo.jpg"},
+            {"type": "hero", "enabled": True, "backgroundImage": "/uploads/banner.jpg"},
+        ]
+    }
+    assert derive_cover_image_from_config(config) == "/uploads/banner.jpg"
+    only_destination = {"sections": [{"type": "redirect", "enabled": True, "url": "https://chat.whatsapp.com/abc"}]}
+    assert derive_cover_image_from_config(only_destination) is None

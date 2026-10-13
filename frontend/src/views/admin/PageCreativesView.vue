@@ -599,7 +599,7 @@ const openOne = (index: number) => {
 // --- Carrossel "Seções da página": cada seção ativa vira um slide, com o componente do site ---
 // Seções que não fazem sentido numa imagem (menu, formulários, vídeos, checkout) ficam de fora.
 // A contagem regressiva parada e o rodapé também não funcionam como imagem de post.
-const SECTION_SKIP = new Set(["header", "internal_form", "viajeon_checkout", "video_vsl", "featured_video", "free_footer_brand", "countdown", "agency_footer"]);
+const SECTION_SKIP = new Set(["header", "internal_form", "redirect", "viajeon_checkout", "video_vsl", "featured_video", "free_footer_brand", "countdown", "agency_footer"]);
 const pageSections = computed(() => ((page.value?.config_json?.sections || []) as PageSection[]).filter(section => section.enabled !== false));
 const sectionSlides = computed(() =>
   pageSections.value

@@ -11,7 +11,8 @@ export const SECTION_CATEGORIES_V2 = [
   { id: "midia", label: t({ pt: "Fotos e vídeos", es: "Fotos y videos" }), hint: t({ pt: "Mostre o destino", es: "Muestra el destino" }) },
   { id: "venda", label: t({ pt: "Venda", es: "Venta" }), hint: t({ pt: "Preço, compra e prazo da oferta", es: "Precio, compra y plazo de la oferta" }) },
   { id: "confianca", label: t({ pt: "Confiança", es: "Confianza" }), hint: t({ pt: "Depoimentos e respostas", es: "Testimonios y respuestas" }) },
-  { id: "contato", label: t({ pt: "Contato", es: "Contacto" }), hint: t({ pt: "Capte quem tem interesse", es: "Capta a quien tiene interés" }) }
+  { id: "contato", label: t({ pt: "Contato", es: "Contacto" }), hint: t({ pt: "Capte quem tem interesse", es: "Capta a quien tiene interés" }) },
+  { id: "utilidades", label: t({ pt: "Utilidades", es: "Utilidades" }), hint: t({ pt: "Recursos para usos específicos", es: "Recursos para usos específicos" }) }
 ] as const;
 
 export type SectionCategoryV2 = (typeof SECTION_CATEGORIES_V2)[number]["id"];
@@ -115,6 +116,13 @@ export const SECTION_CATALOG_V2: SectionCatalogItemV2[] = [
   {
     type: "links", cat: "viagem", label: t({ pt: "Links/Roteiros", es: "Links/Itinerarios" }), keywords: "links roteiros outros roteiros paginas",
     desc: t({ pt: "Cards que levam para suas outras páginas.", es: "Tarjetas que llevan a tus otras páginas." })
+  },
+  {
+    type: "redirect", cat: "utilidades", label: t({ pt: "Redirecionamento", es: "Redirección" }), keywords: "redirecionar redirecionamento grupo whatsapp telegram link contagem",
+    desc: t({
+      pt: "Contagem que leva o visitante para outro endereço, como um grupo do WhatsApp, com botão para ir na hora.",
+      es: "Cuenta regresiva que lleva al visitante a otra dirección, como un grupo de WhatsApp, con botón para ir al instante."
+    })
   },
   {
     type: "agency_footer", cat: "navegacao", label: t({ pt: "Rodapé da agência", es: "Pie de la agencia" }), keywords: "rodape contatos cadastur",

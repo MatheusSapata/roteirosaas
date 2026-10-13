@@ -64,6 +64,7 @@ import type { HeroSection, PageConfig, PageSection, SectionType, ThemeConfig } f
 import { resolvePageDesign } from "../../utils/pageDesign";
 import { pickSectionComponent, v2Components } from "../../components/public/v2/registry";
 import { DEFAULT_ACCENT, PAGE_DESIGN_KEY } from "../../components/public/v2/designContext";
+import { LIVE_PAGE_KEY } from "../../components/public/v2/livePage";
 import type { LeadForm } from "../../types/leads";
 import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
 import { PHOTO_CREDITS_KEY, buildPhotoCredits } from "../../components/public/v2/photoCredits";
@@ -171,6 +172,8 @@ const isPlatformHost = computed(() => {
 const brandingInfo = computed(() => pageData.value?.branding || {});
 const statsApi = computed(() => (isPlatformHost.value ? api : platformApi));
 provide(PUBLIC_BRANDING_KEY, brandingInfo);
+// Página publicada de verdade: só aqui o Redirecionamento conta e leva ao destino.
+provide(LIVE_PAGE_KEY, true);
 // Crédito das fotos de bancos gratuitos ("©" no canto de cada foto).
 provide(PHOTO_CREDITS_KEY, computed(() => buildPhotoCredits(sections.value)));
 const pageConfigDesign = ref<PageConfig["design"]>(undefined);
@@ -227,6 +230,8 @@ const publicComponents: Record<SectionType, any> = {
   flight_details: PublicFlightDetailsSection,
   viajeon_checkout: PublicViajeonCheckoutSection,
   internal_form: PublicInternalFormSection,
+  // Sem versão antiga: o Redirecionamento usa o mesmo componente nos dois visuais.
+  redirect: v2Components.redirect,
   free_footer_brand: PublicFreeFooterBrandSection,
   agency_footer: PublicAgencyFooterSection
 };

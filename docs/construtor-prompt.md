@@ -77,6 +77,8 @@ Texto e Imagens: o principal componente de storytelling. Use para apresentar a e
 
 Diferenciais: cards de leitura rápida para motivos, benefícios, serviços e inclusos. Títulos curtos e descrições objetivas, cada card com um ícone. O padrão são ícones; use emojis quando o usuário pedir ou quando a página tiver tom leve e infantil (Disney, parques temáticos, Beto Carrero, viagens com crianças). Nunca use Diferenciais para preços, formas de pagamento, documentos, horários ou regras. Não repita literalmente o que já está no Texto e Imagens.
 
+Resumo do pacote: quando houver a lista do que está incluso e do que não está (hospedagem, refeições, passeios, aéreo, seguro). Duas listas lado a lado, "Inclui" e "Não inclui", com itens curtos e um detalhe opcional (ex.: noites por cidade). Não repita a mesma lista em Diferenciais.
+
 Roteiro dia a dia: sempre que houver roteiro, cronograma ou programação. Cada dia tem um título curto e uma descrição. Nunca invente dias, horários, locais ou atividades.
 
 Preços e pacotes: quando houver valores. Cada faixa de preço é um plano separado (por exemplo Adulto, Criança de 6 a 12 anos, Criança de colo, Quarto duplo, Quarto individual). Nunca coloque vários planos ou valores dentro de um mesmo plano. Se não houver condições informadas, use a observação geral "Consulte disponibilidade, formas de pagamento e condições vigentes."

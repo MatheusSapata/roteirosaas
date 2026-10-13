@@ -20,7 +20,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, provide } from "vue";
+import { computed, defineAsyncComponent, provide } from "vue";
 import PublicHeroSection from "../public/PublicHeroSection.vue";
 import PublicBannerCardSection from "../public/PublicBannerCardSection.vue";
 import PublicPricesSection from "../public/PublicPricesSection.vue";
@@ -66,7 +66,9 @@ const publicComponents: Record<string, unknown> = {
   photo: PublicPhotoSection,
   biography: PublicBiographySection,
   viajeon_checkout: PublicViajeonCheckoutSection,
-  internal_form: PublicInternalFormSection
+  internal_form: PublicInternalFormSection,
+  // Miniatura: mesmo componente da página, sem contar nem sair da tela (não há LIVE_PAGE_KEY aqui).
+  redirect: defineAsyncComponent(() => import("../public/v2/V2Redirect.vue"))
 };
 
 const sectionRequiresBranding = (type?: SectionType) => type === "hero" || type === "agency_footer";

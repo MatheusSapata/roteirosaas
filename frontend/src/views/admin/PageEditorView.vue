@@ -1720,6 +1720,7 @@ import { useAgencyStore } from "../../store/useAgencyStore";
 import { useLeadCaptureStore } from "../../store/useLeadCaptureStore";
 import type {
   BannerCardSection,
+  RedirectSection,
   BiographySection,
   CtaSection,
   EditorPreferences,
@@ -2633,7 +2634,7 @@ const AI_SECTION_TYPES: Record<string, SectionType> = {
   "DETALHES DO VOO": "flight_details", "MENU DO TOPO": "header", "CABECALHO": "header", "MENU": "header",
   "MENU SUPERIOR": "header", "VITRINE DE VIAGENS": "links", "VITRINE": "links", "LINKS": "links",
   "ROTEIROS": "links", "OUTRAS VIAGENS": "links", "LINKS/ROTEIROS": "links", "LINKS / ROTEIROS": "links",
-  "FOTO EM DESTAQUE": "photo", "TEXTO E IMAGENS": "story", "DIFERENCIAIS": "reasons", "RESUMO DO PACOTE": "inclusions", "ARTIGO": "biography",
+  "FOTO EM DESTAQUE": "photo", "TEXTO E IMAGENS": "story", "DIFERENCIAIS": "reasons", "RESUMO DO PACOTE": "inclusions", "O QUE INCLUI": "inclusions", "INCLUSOS": "inclusions", "INCLUI E NAO INCLUI": "inclusions", "ARTIGO": "biography",
   "ROTEIRO DIA A DIA": "itinerary", "VOOS": "flight_details", "PRECOS E PACOTES": "prices",
   "FAIXA DE CHAMADA": "cta", "DUVIDAS FREQUENTES": "faq", "RODAPE DA AGENCIA": "agency_footer", "RODAPE": "agency_footer"
 };
@@ -2658,7 +2659,8 @@ const aiReplyBlocks = (content: string) => {
     const plain = line.replace(/[*_`"'“”]/g, "");
     const replaces = plain.match(/^\s*[-•]?\s*Substitui(?:\s+a\s+se[cç][aã]o)?\s*:\s*(\S+)/i);
     if (replaces && !current.replaces) current.replaces = replaces[1];
-    if (/^\s*[-•]?\s*Busca de (?:imagem|foto)/i.test(plain)) current.photo = true;
+    // Foto pedida: busca no banco ("Busca de imagem") ou foto enviada no chat ("Imagem: endereço").
+    if (/^\s*[-•]?\s*(?:Busca de (?:imagem|foto)|Imagens?\s*:)/i.test(plain)) current.photo = true;
   }
   return blocks.filter(block => block.name);
 };
@@ -3753,6 +3755,7 @@ const sectionTypes: SectionType[] = [
   "flight_details",
   "viajeon_checkout",
   "internal_form",
+  "redirect",
   "agency_footer"
 ];
 const sectionLabels = defaultSectionLabels;
@@ -3831,6 +3834,10 @@ const sectionDescriptions: Partial<Record<SectionType, string>> = {
   viajeon_checkout: t({
     pt: "Lista todos os pacotes ativos de um checkout Viaje On e envia a seleção para o pagamento externo.",
     es: "Lista todos los paquetes activos de un checkout Viaje On y envía la selección al pago externo."
+  }),
+  redirect: t({
+    pt: "Contagem que leva o visitante para outro endereço, como um grupo do WhatsApp.",
+    es: "Cuenta regresiva que lleva al visitante a otra dirección, como un grupo de WhatsApp."
   }),
   internal_form: t({
     pt: "Formulário incorporado à página, com fundo personalizável e confirmação após o envio.",
@@ -3934,6 +3941,8 @@ const publicComponents: Partial<Record<SectionType, any>> = {
   flight_details: PublicFlightDetailsSection,
   viajeon_checkout: PublicViajeonCheckoutSection,
   internal_form: PublicInternalFormSection,
+  // Mesmo componente nos dois visuais (não existe versão antiga).
+  redirect: defineAsyncComponent(() => import("../../components/public/v2/V2Redirect.vue")),
   free_footer_brand: PublicFreeFooterBrandSection,
   agency_footer: PublicAgencyFooterSection
 };
@@ -4126,7 +4135,8 @@ const v2FormComponents: Partial<Record<SectionType, any>> = {
   links: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormLinks.vue")),
   flight_details: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormFlightDetails.vue")),
   viajeon_checkout: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormViajeonCheckout.vue")),
-  internal_form: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormInternalForm.vue"))
+  internal_form: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormInternalForm.vue")),
+  redirect: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormRedirect.vue"))
 };
 const usesV2Form = computed(() => newEditor.value && !!editingSectionType.value && !!v2FormComponents[editingSectionType.value]);
 const editingSectionComponent = computed(() => {
@@ -5048,6 +5058,21 @@ function defaultSection(type: SectionType): PageSection {
       buttonColor: theme.value.ctaDefaultColor || "#22c55e"
     } as HeaderSection);
   }
+  if (type === "redirect") {
+    return ensureSectionAnchor({
+      type: "redirect",
+      enabled: true,
+      url: "",
+      seconds: 5,
+      title: "Você está entrando no nosso grupo",
+      subtitle: "Ofertas, saídas confirmadas e novidades em primeira mão.",
+      showLogo: true,
+      logoUrl: "",
+      image: "",
+      buttonText: "Entrar agora",
+      fallbackText: ""
+    } as RedirectSection);
+  }
   if (type === "internal_form") {
     return ensureSectionAnchor({
       type: "internal_form",
@@ -5872,7 +5897,7 @@ const sectionIconByType: Record<string, keyof typeof sectionIconComponents> = {
   faq: "question", testimonials: "chat", internal_form: "chat",
   featured_video: "video", video_vsl: "video",
   biography: "user", agency_footer: "user", links: "link", cta: "link",
-  countdown: "clock", flight_details: "plane"
+  countdown: "clock", flight_details: "plane", redirect: "link"
 };
 const sectionIcon = (section: PageSection): Component => sectionIconComponents[sectionIconByType[String((section as any)?.type)] || "layout"];
 const previewAddressLabel = computed(() => {
@@ -6242,9 +6267,10 @@ onMounted(async () => {
 
   await fetchPage();
   await loadAiAssistantHistory();
-  // "Resumo do pacote" só existe no visual novo (sem formulário nem componente no editor antigo).
+  // "Resumo do pacote" e "Redirecionamento" só existem no visual novo (sem formulário nem
+  // componente no editor antigo).
   sectionCatalog.value = sectionTypes
-    .filter(type => type !== "inclusions")
+    .filter(type => type !== "inclusions" && type !== "redirect")
     .map(type => ({
     type,
     label: sectionLabels[type] || type,

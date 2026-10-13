@@ -24,6 +24,7 @@ export type SectionType =
   | "flight_details"
   | "viajeon_checkout"
   | "internal_form"
+  | "redirect"
   | "free_footer_brand";
 
 export interface SectionBase {
@@ -572,6 +573,28 @@ export interface CtaSection extends SectionBase {
   highlightColor?: string;
 }
 
+/**
+ * Redirecionamento (Utilidades): mostra a marca e uma contagem e, na página publicada, leva o
+ * visitante para outro endereço (ex.: grupo do WhatsApp). O botão leva na hora e serve de
+ * plano B se o navegador não abrir o destino sozinho.
+ */
+export interface RedirectSection extends SectionBase {
+  type: "redirect";
+  /** Destino. Só endereços http(s) são usados. */
+  url: string;
+  /** Segundos da contagem (1 a 30). */
+  seconds?: number;
+  title?: LocalizedString;
+  subtitle?: LocalizedString;
+  /** Logo próprio da seção; vazio = logo da agência. */
+  logoUrl?: string;
+  showLogo?: boolean;
+  image?: string;
+  buttonText?: LocalizedString;
+  /** Aviso que aparece quando a contagem termina (caso o destino não abra sozinho). */
+  fallbackText?: LocalizedString;
+}
+
 export type PageSection =
   | HeaderSection
   | HeroSection
@@ -595,6 +618,7 @@ export type PageSection =
   | FlightDetailsSection
   | ViajeonCheckoutSection
   | InternalFormSection
+  | RedirectSection
   | FreeFooterBrandSection;
 
 export interface ThemeConfig {

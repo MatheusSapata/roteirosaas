@@ -31,6 +31,7 @@ from app.models.user import User
 from app.schemas.page import PageOut
 from app.api.v1.endpoints.flight_sections import import_flight_journeys
 from app.services.ai_assistant import (
+    CHAT_IMAGE_TYPES,
     ChatAttachment,
     ChatMessage,
     build_page_base_config_from_reply,
@@ -38,7 +39,10 @@ from app.services.ai_assistant import (
     stream_ai_assistant_reply,
     transcribe_audio,
 )
+from app.models.media import MediaAsset
 from app.services.ai_assistant_context import build_agency_context
+from app.services.image_optimizer import optimize_image
+from app.services.media_storage import media_storage
 from app.services.stock_images import clear_photo_queries, fill_section_photos
 from app.services.ai_assistant_usage import (
     check_ai_assistant_message_limit,
@@ -159,6 +163,7 @@ async def _prepare_chat(
         attachment_payload.append(
             ChatAttachment(filename=upload.filename or "arquivo", content_type=upload.content_type, data=data)
         )
+    sent_photos = await _save_chat_photos(db, page.agency_id, attachment_payload)
     try:
         sections_payload = json.loads(page_sections) if page_sections else None
     except json.JSONDecodeError:
@@ -168,7 +173,45 @@ async def _prepare_chat(
     else:
         sections_payload = [item for item in sections_payload if isinstance(item, dict)][:80]
     context = build_agency_context(db, page, sections_payload, include_images=include_images)
+    if sent_photos:
+        # A resposta é aplicada depois (sem os anexos): a IA escreve o endereço da foto na seção.
+        lines = [
+            "IMAGENS ENVIADAS NESTA MENSAGEM (já estão na biblioteca de mídia da agência). Para usar uma numa seção, "
+            'escreva "Imagem: endereço" com o endereço abaixo (sem "Busca de imagem"):'
+        ]
+        lines.extend(f"- {name}: {url}" for name, url in sent_photos)
+        context = f"{context}\n" + "\n".join(lines)
     return page, parsed_conversation, usage_record, usage_limit, attachment_payload, context
+
+
+MAX_CHAT_PHOTO_BYTES = 15 * 1024 * 1024
+
+
+async def _save_chat_photos(db: Session, agency_id: int, attachments: list[ChatAttachment]) -> list[tuple[str, str]]:
+    """Fotos enviadas no chat vão para a biblioteca da agência (versões leves em WebP, como no
+    envio do editor). Devolve (nome, endereço) de cada uma, na ordem em que foram enviadas."""
+    saved: list[tuple[str, str]] = []
+    for attachment in attachments:
+        if (attachment.content_type or "").lower() not in CHAT_IMAGE_TYPES or not attachment.data:
+            continue
+        if len(attachment.data) > MAX_CHAT_PHOTO_BYTES:
+            continue
+        try:
+            variants = await anyio.to_thread.run_sync(optimize_image, attachment.data)
+            if variants:
+                url = await anyio.to_thread.run_sync(media_storage.save_image_variants, variants)
+            else:
+                url = await anyio.to_thread.run_sync(
+                    partial(media_storage.save, attachment.data, attachment.filename or "imagem", attachment.content_type)
+                )
+        except Exception:  # pragma: no cover - sem a cópia, a foto só serve de referência para a IA
+            logger.exception("ai_assistant_chat_photo_save_failed")
+            continue
+        db.add(MediaAsset(agency_id=agency_id, url=url, type="image", original_file_name=attachment.filename))
+        saved.append((attachment.filename or f"imagem {len(saved) + 1}", url))
+    if saved:
+        db.commit()
+    return saved
 
 
 def _usage_headers(usage_record: AiAssistantUsage, usage_limit: int | None) -> dict[str, str]:

@@ -108,9 +108,15 @@ def _resolve_page_share_description(page: PublicPageOut, fallback_title: str, ag
 
     sections = config.get("sections") if isinstance(config, dict) else None
     if isinstance(sections, list):
-        hero = next((item for item in sections if isinstance(item, dict) and item.get("type") == "hero"), None)
-        if hero:
-            subtitle = hero.get("subtitle")
+        # Subtítulo do Banner Inicial; sem banner, o do Redirecionamento (nunca o destino).
+        for kind in ("hero", "redirect"):
+            section = next(
+                (item for item in sections if isinstance(item, dict) and item.get("type") == kind and item.get("enabled") is not False),
+                None,
+            )
+            if not section:
+                continue
+            subtitle = section.get("subtitle")
             if isinstance(subtitle, dict):
                 subtitle = subtitle.get("pt") or subtitle.get("es") or next(iter(subtitle.values()), "")
             if isinstance(subtitle, str):

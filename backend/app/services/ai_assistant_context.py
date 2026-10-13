@@ -23,6 +23,7 @@ SECTION_EDITOR_NAMES = {
     "featured_video": "Vídeo", "prices": "Preços e pacotes", "viajeon_checkout": "Compra Online (Viaje On)",
     "countdown": "Contagem regressiva", "cta": "Faixa de chamada", "testimonials": "Depoimentos",
     "faq": "Dúvidas frequentes", "internal_form": "Formulário de contato", "agency_footer": "Rodapé da agência",
+    "inclusions": "Resumo do pacote", "redirect": "Redirecionamento",
 }
 SECTION_TITLE_KEYS = ("title", "label", "caption", "headingLabel", "badge")
 

@@ -272,7 +272,16 @@ const SAMPLES: Partial<Record<SectionType, () => Record<string, any>>> = {
       { id: "c", source: "external", url: "#", image: SAMPLE_PHOTOS.baloes, title: t({ pt: "Destino internacional", es: "Destino internacional" }), description: "", buttonLabel: t({ pt: "Ver roteiro", es: "Ver itinerario" }) }
     ]
   }),
-  agency_footer: () => ({ showCadastur: true })
+  agency_footer: () => ({ showCadastur: true }),
+  redirect: () => ({
+    url: "https://chat.whatsapp.com/exemplo",
+    seconds: 5,
+    title: t({ pt: "Você está entrando no nosso grupo", es: "Estás entrando a nuestro grupo" }),
+    subtitle: t({ pt: "Ofertas e saídas confirmadas em primeira mão.", es: "Ofertas y salidas confirmadas en primera mano." }),
+    image: SAMPLE_PHOTOS.praia,
+    showLogo: true,
+    buttonText: t({ pt: "Entrar agora", es: "Entrar ahora" })
+  })
 };
 
 export const hasSectionSampleV2 = (type: SectionType) => !!SAMPLES[type];
