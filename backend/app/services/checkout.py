@@ -29,6 +29,7 @@ from app.schemas.checkout import (
 )
 from app.services import auth as auth_service
 from app.services.asaas import AsaasAPIError, AsaasClient, build_default_split_payload
+from app.services.company_status import mark_subscription_overdue
 from app.services.ntfy import SubscriptionPushScenario, publish_subscription_notification
 from app.services.trial import end_trial
 from app.services.trial import republish_all_user_pages
@@ -2105,6 +2106,20 @@ def refresh_session_status(db: Session, session: CheckoutSession) -> CheckoutSes
     db.refresh(session)
     return session
 
+def _mark_checkout_subscription_overdue(session: CheckoutSession, payment: dict[str, Any]) -> None:
+    user = session.user
+    subscription = user.subscription if user else None
+    if subscription is None or (subscription.provider or "").strip().lower() != "asaas":
+        return
+    remote_id = str(payment.get("subscription") or "").strip()
+    same_contract = subscription.external_reference == f"checkout:{session.token}" or (
+        remote_id and remote_id == (subscription.asaas_subscription_id or "")
+    )
+    if not same_contract or (subscription.status or "").strip().lower() not in {"active", "past_due"}:
+        return
+    mark_subscription_overdue(subscription, payment.get("dueDate"))
+
+
 def handle_asaas_checkout_webhook(db: Session, payload: dict[str, Any]) -> bool:
     payment = payload.get("payment") or {}
     authorization = payload.get("pixAutomaticAuthorization") or payload.get("authorization") or {}
@@ -2244,6 +2259,9 @@ def handle_asaas_checkout_webhook(db: Session, payload: dict[str, Any]) -> bool:
         )
     elif event in {"PAYMENT_OVERDUE", "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_EXPIRED", "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_REFUSED"}:
         session.status = "expired"
+        if event == "PAYMENT_OVERDUE" and session.paid_at:
+            # Renovação de quem já pagava: inadimplente (no ar por 3 dias, cobrança segue por 30).
+            _mark_checkout_subscription_overdue(session, payment)
     elif event in {"PAYMENT_REPROVED_BY_RISK_ANALYSIS", "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_CANCELLED"}:
         session.status = "failed"
     session.updated_at = _utcnow()

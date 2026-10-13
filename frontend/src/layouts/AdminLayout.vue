@@ -653,15 +653,15 @@
         class="app-modal-overlay fixed inset-0 z-[55] flex items-center justify-center px-4"
       >
         <div class="w-full max-w-lg rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-elegant sm:p-8">
-          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-rose-500">{{ viewCopy.subscription.blocked.eyebrow }}</p>
-          <h2 class="mt-3 text-2xl font-bold text-slate-900">{{ viewCopy.subscription.blocked.title }}</h2>
-          <p class="mt-2 text-sm text-slate-600">{{ viewCopy.subscription.blocked.description }}</p>
+          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-rose-500">{{ subscriptionBlockCopy.eyebrow }}</p>
+          <h2 class="mt-3 text-2xl font-bold text-slate-900">{{ subscriptionBlockCopy.title }}</h2>
+          <p class="mt-2 text-sm text-slate-600">{{ subscriptionBlockCopy.description }}</p>
           <div class="mt-6 flex flex-wrap justify-end">
             <button
               class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
               @click="goToPlansFromSubscriptionBlock"
             >
-              {{ viewCopy.trial.blocked.goPlans }}
+              {{ subscriptionOverdue ? viewCopy.subscription.overdue.action : viewCopy.trial.blocked.goPlans }}
             </button>
           </div>
         </div>
@@ -965,6 +965,15 @@ const viewCopy = {
         es: "Tu período contratado terminó. Para volver a editar y publicar itinerarios, renueva tu plan."
       }),
       close: t({ pt: "Fechar", es: "Cerrar" })
+    },
+    overdue: {
+      eyebrow: t({ pt: "Pagamento pendente", es: "Pago pendiente" }),
+      title: t({ pt: "Regularize o pagamento para voltar a editar", es: "Regulariza el pago para volver a editar" }),
+      description: t({
+        pt: "Não conseguimos confirmar o pagamento da sua assinatura. Pague a fatura em aberto (em Faturas ou pelo link que chegou por e-mail) e o acesso volta sozinho.",
+        es: "No pudimos confirmar el pago de tu suscripción. Paga la factura pendiente (en Facturas o por el enlace que llegó por correo) y el acceso vuelve solo."
+      }),
+      action: t({ pt: "Ver faturas", es: "Ver facturas" })
     }
   },
   cookies: {
@@ -2018,6 +2027,9 @@ const trialActive = computed(() => {
 });
 const trialBlocked = computed(() => Boolean(auth.user?.trial_blocked));
 const subscriptionBlocked = computed(() => Boolean(auth.user?.subscription_blocked));
+// Cobrança em atraso (cartão recusado, boleto/Pix não pago): o caminho é pagar a fatura, não assinar de novo.
+const subscriptionOverdue = computed(() => String(auth.user?.subscription_status || "").toLowerCase() === "past_due");
+const subscriptionBlockCopy = computed(() => (subscriptionOverdue.value ? viewCopy.subscription.overdue : viewCopy.subscription.blocked));
 const blockedTrialEndDateLabel = computed(() => {
   if (!trialEndDate.value || Number.isNaN(trialEndDate.value.getTime())) {
     return "data indisponível";
@@ -2072,7 +2084,10 @@ watch(
 watch(
   () => [subscriptionBlocked.value, route.path, auth.user?.id],
   () => {
-    showSubscriptionBlockedDialog.value = Boolean(subscriptionBlocked.value && route.path !== "/admin/planos");
+    // Planos e Faturas ficam livres: é por elas que a pessoa regulariza.
+    showSubscriptionBlockedDialog.value = Boolean(
+      subscriptionBlocked.value && route.path !== "/admin/planos" && route.path !== "/admin/agency/invoices"
+    );
   },
   { immediate: true }
 );
@@ -2104,6 +2119,10 @@ const goToPlans = () => {
 };
 
 const goToPlansFromSubscriptionBlock = () => {
+  if (subscriptionOverdue.value) {
+    router.push({ name: "agency-invoices" });
+    return;
+  }
   goToPlans();
 };
 

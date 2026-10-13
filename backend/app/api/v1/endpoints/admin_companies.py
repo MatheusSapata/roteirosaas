@@ -150,7 +150,8 @@ def list_companies(db: Session = Depends(get_db), _: User = Depends(get_current_
             mrr_amount=float(subscription.mrr_amount or 0) if subscription else 0,
             failed_attempts=int(subscription.failed_attempts or 0) if subscription else 0,
             members_count=sum(1 for rel in agency.users or [] if rel.user and not rel.hidden_from_team),
-            created_at=agency.created_at,
+            # Cadastro = criação da conta do dono (a agência pode nascer só no pagamento).
+            created_at=(owner.created_at if owner and owner.created_at else agency.created_at),
             last_access_at=last_access.get(agency.id),
             pages_total=total,
             pages_published=published,
@@ -181,7 +182,7 @@ def list_companies(db: Session = Depends(get_db), _: User = Depends(get_current_
             "free_access_days": FREE_ACCESS_DAYS,
         },
     }
-    # Cadastradas por último primeiro.
+    # Contas criadas por último primeiro.
     oldest = datetime.min.replace(tzinfo=timezone.utc)
     items.sort(key=lambda item: (_aware(item.created_at) or oldest, item.id), reverse=True)
     return CompaniesResponse(items=items, summary=summary)

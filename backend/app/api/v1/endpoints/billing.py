@@ -19,6 +19,7 @@ from app.models.asaas import AsaasEventLog
 from app.services.asaas import AsaasAPIError, AsaasClient, build_default_split_payload
 from app.services.cakto import CaktoAPIError, CaktoIntegrationService
 from app.services.checkout import find_pix_automatic_authorization_id, handle_asaas_checkout_webhook
+from app.services.company_status import mark_subscription_overdue
 from app.services.ntfy import SubscriptionPushScenario, publish_subscription_notification
 from app.services.plans import effective_plan
 from app.services.trial import end_trial
@@ -591,11 +592,8 @@ async def webhook(request: Request, db: Session = Depends(get_db)) -> Dict[str, 
                             offer_name=f"{plan_key}/{cycle}",
                         )
                     elif event == "PAYMENT_OVERDUE":
-                        subscription.failed_attempts = (subscription.failed_attempts or 0) + 1
-                        if subscription.failed_attempts >= 3:
-                            set_subscription_cancelled(subscription)
-                        else:
-                            subscription.status = "past_due"
+                        # Inadimplente: no ar por 3 dias e cobrando por 30 (o job horário encerra depois).
+                        mark_subscription_overdue(subscription, payment.get("dueDate"))
                     elif event in {"PAYMENT_REFUNDED", "PAYMENT_DELETED"}:
                         subscription.status = "inactive"
                         mark_viajechat_cancelled(

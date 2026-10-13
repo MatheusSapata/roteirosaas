@@ -188,7 +188,7 @@ const filters: Array<{ value: Filter; label: string; hint?: string; extra?: bool
   { value: "paying", label: "Ativas com pagamento", hint: "Pagamento em dia, incluindo quem cancelou e fica até o fim do período pago" },
   { value: "active", label: "Em dia", extra: true },
   { value: "trial_ending", label: "Teste termina em 3 dias", extra: true },
-  { value: "past_due", label: "Inadimplentes", hint: "Cobrança com falha ou atrasada" },
+  { value: "past_due", label: "Inadimplentes", hint: "Cobrança falhou: fica no ar por 3 dias depois do vencimento e a cobrança segue por 30" },
   { value: "cancelling", label: "Cancelando" },
   { value: "trial", label: "Em teste" },
   { value: "free", label: "Gratuitas no prazo" },
