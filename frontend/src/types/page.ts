@@ -17,6 +17,7 @@ export type SectionType =
   | "cta"
   | "story"
   | "reasons"
+  | "inclusions"
   | "links"
   | "countdown"
   | "agency_footer"
@@ -505,6 +506,24 @@ export interface ReasonsSection extends SectionBase {
   cardAnimationStagger?: number;
 }
 
+export interface InclusionItem {
+  title: LocalizedString;
+  /** Subitens, um por linha (ex.: noites por cidade). */
+  details?: LocalizedString;
+}
+
+/** Resumo do pacote: o que está incluso e o que não está. */
+export interface InclusionsSection extends SectionBase {
+  type: "inclusions";
+  title: LocalizedString;
+  subtitle?: LocalizedString;
+  includedTitle?: LocalizedString;
+  excludedTitle?: LocalizedString;
+  included: InclusionItem[];
+  excluded: InclusionItem[];
+  backgroundColor?: string;
+}
+
 export interface LinkCardItem {
   id?: string;
   source: "page" | "external";
@@ -569,6 +588,7 @@ export type PageSection =
   | CtaSection
   | StorySection
   | ReasonsSection
+  | InclusionsSection
   | LinksSection
   | CountdownSection
   | AgencyFooterSection

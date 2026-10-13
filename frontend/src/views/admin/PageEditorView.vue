@@ -1735,6 +1735,7 @@ import type {
   TestimonialsSection,
   StorySection,
   ReasonsSection,
+  InclusionsSection,
   LinkCardItem,
   LinksSection,
   CountdownSection,
@@ -2632,7 +2633,7 @@ const AI_SECTION_TYPES: Record<string, SectionType> = {
   "DETALHES DO VOO": "flight_details", "MENU DO TOPO": "header", "CABECALHO": "header", "MENU": "header",
   "MENU SUPERIOR": "header", "VITRINE DE VIAGENS": "links", "VITRINE": "links", "LINKS": "links",
   "ROTEIROS": "links", "OUTRAS VIAGENS": "links", "LINKS/ROTEIROS": "links", "LINKS / ROTEIROS": "links",
-  "FOTO EM DESTAQUE": "photo", "TEXTO E IMAGENS": "story", "DIFERENCIAIS": "reasons", "ARTIGO": "biography",
+  "FOTO EM DESTAQUE": "photo", "TEXTO E IMAGENS": "story", "DIFERENCIAIS": "reasons", "RESUMO DO PACOTE": "inclusions", "ARTIGO": "biography",
   "ROTEIRO DIA A DIA": "itinerary", "VOOS": "flight_details", "PRECOS E PACOTES": "prices",
   "FAIXA DE CHAMADA": "cta", "DUVIDAS FREQUENTES": "faq", "RODAPE DA AGENCIA": "agency_footer", "RODAPE": "agency_footer"
 };
@@ -3746,6 +3747,7 @@ const sectionTypes: SectionType[] = [
   "cta",
   "story",
   "reasons",
+  "inclusions",
   "links",
   "countdown",
   "flight_details",
@@ -4109,6 +4111,7 @@ const v2FormComponents: Partial<Record<SectionType, any>> = {
   video_vsl: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormVideoVsl.vue")),
   story: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormStory.vue")),
   reasons: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormReasons.vue")),
+  inclusions: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormInclusions.vue")),
   photo: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormPhoto.vue")),
   featured_video: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormFeaturedVideo.vue")),
   biography: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormBiography.vue")),
@@ -5320,6 +5323,30 @@ if (type === "reasons") {
   } as ReasonsSection);
 }
 
+if (type === "inclusions") {
+  const headingDefaults = getSectionHeadingDefaults("inclusions");
+  return ensureSectionAnchor({
+    type: "inclusions",
+    enabled: true,
+    headingLabel: headingDefaults.label,
+    headingLabelStyle: headingDefaults.style,
+    title: "O que está incluso na sua viagem",
+    subtitle: "Confira o que já está no pacote e o que fica por sua conta.",
+    includedTitle: "Seu pacote inclui",
+    excludedTitle: "Não inclui",
+    included: [
+      { title: "Hospedagem com café da manhã", details: "" },
+      { title: "Passeios citados no roteiro", details: "" },
+      { title: "Guia local", details: "" }
+    ],
+    excluded: [
+      { title: "Bilhete aéreo", details: "" },
+      { title: "Seguro viagem", details: "" },
+      { title: "Gastos pessoais", details: "" }
+    ]
+  } as InclusionsSection);
+}
+
 if (type === "flight_details") {
   return ensureSectionAnchor({
     type: "flight_details",
@@ -5809,6 +5836,8 @@ const sectionSummary = (section: PageSection) => {
       return countLabel(data.items?.length || 0, "pergunta", "perguntas");
     case "testimonials":
       return countLabel(data.items?.length || 0, "depoimento", "depoimentos");
+    case "inclusions":
+      return `${data.included?.length || 0} incluem · ${data.excluded?.length || 0} não`;
     case "reasons":
     case "links":
       return countLabel(data.items?.length || 0, "item", "itens");
@@ -5839,7 +5868,7 @@ const sectionIconComponents: Record<string, Component> = {
 const sectionIconByType: Record<string, keyof typeof sectionIconComponents> = {
   hero: "image", banner_card: "image", photo: "image", gallery: "image",
   prices: "money", viajeon_checkout: "money",
-  itinerary: "list", reasons: "list", story: "list",
+  itinerary: "list", reasons: "list", inclusions: "list", story: "list",
   faq: "question", testimonials: "chat", internal_form: "chat",
   featured_video: "video", video_vsl: "video",
   biography: "user", agency_footer: "user", links: "link", cta: "link",
@@ -6213,7 +6242,9 @@ onMounted(async () => {
 
   await fetchPage();
   await loadAiAssistantHistory();
+  // "Resumo do pacote" só existe no visual novo (sem formulário nem componente no editor antigo).
   sectionCatalog.value = sectionTypes
+    .filter(type => type !== "inclusions")
     .map(type => ({
     type,
     label: sectionLabels[type] || type,

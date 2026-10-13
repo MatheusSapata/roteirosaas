@@ -54,6 +54,10 @@ export const SECTION_CATALOG_V2: SectionCatalogItemV2[] = [
     desc: t({ pt: "Cards com ícone, título e texto curto.", es: "Tarjetas con ícono, título y texto corto." })
   },
   {
+    type: "inclusions", cat: "viagem", label: t({ pt: "Resumo do pacote", es: "Resumen del paquete" }), keywords: "incluso inclui nao inclui incluido inclusoes pacote",
+    desc: t({ pt: "Duas listas: o que o pacote inclui e o que não inclui.", es: "Dos listas: lo que incluye el paquete y lo que no incluye." })
+  },
+  {
     type: "photo", cat: "midia", label: t({ pt: "Foto em destaque", es: "Foto destacada" }), keywords: "foto destacada imagem",
     desc: t({ pt: "Uma imagem grande com legenda.", es: "Una imagen grande con leyenda." })
   },
