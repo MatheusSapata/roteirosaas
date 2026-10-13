@@ -330,6 +330,7 @@ def change_my_password(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     current_user.hashed_password = auth_service.get_password_hash(payload.new_password)
+    current_user.temporary_password = False
     db.add(current_user)
     db.commit()
     return {"detail": "Senha atualizada com sucesso."}
@@ -406,6 +407,7 @@ def reset_password(payload: PasswordResetConfirm, db: Session = Depends(get_db))
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     user.hashed_password = auth_service.get_password_hash(payload.password)
+    user.temporary_password = False
     db.add(user)
     db.commit()
     return {"detail": "Senha atualizada com sucesso."}
@@ -428,6 +430,7 @@ def reset_password_by_profile(payload: PasswordResetByProfile, db: Session = Dep
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     user.hashed_password = auth_service.get_password_hash(payload.password)
+    user.temporary_password = False
     db.add(user)
     db.commit()
     return {"detail": "Senha atualizada com sucesso."}

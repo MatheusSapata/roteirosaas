@@ -423,23 +423,14 @@ class CaktoIntegrationService:
         effective_status = status.lower()
         should_downgrade = downgrade_plan
         if effective_status == "past_due":
-            grace_days = 5
-            now_utc = datetime.now(timezone.utc)
-            valid_until = subscription.valid_until
-            if not valid_until:
+            # Renovação recusada não é cancelamento: fica inadimplente, no ar por 3 dias depois do
+            # vencimento, e a Cakto segue tentando cobrar. O job horário encerra depois de 30 dias
+            # (ver company_status.PAYMENT_GRACE_DAYS / PAYMENT_RETRY_DAYS). O plano não muda.
+            should_downgrade = False
+            if not subscription.valid_until:
                 next_due_date = self._extract_next_due_date(payload, order)
-                valid_until = self._calculate_valid_until(subscription.billing_cycle, next_due_date)
-                subscription.valid_until = valid_until
-            if valid_until.tzinfo is None:
-                valid_until = valid_until.replace(tzinfo=timezone.utc)
-                subscription.valid_until = valid_until
-            grace_deadline = valid_until + timedelta(days=grace_days)
-            if now_utc < grace_deadline:
-                # Ainda dentro da janela de tentativa de cobranca apos vencimento.
-                effective_status = "cancelled"
-                should_downgrade = False
-            else:
-                should_downgrade = True
+                subscription.valid_until = self._calculate_valid_until(subscription.billing_cycle, next_due_date)
+            subscription.failed_attempts = int(subscription.failed_attempts or 0) + 1
 
         subscription.status = effective_status
         subscription.updated_at = datetime.utcnow()
@@ -472,7 +463,9 @@ class CaktoIntegrationService:
             if subscription_code:
                 subscription.cakto_subscription_code = subscription_code
         else:
-            subscription.mrr_amount = ZERO_DECIMAL
+            if effective_status != "past_due":
+                # Em atraso continua sendo MRR (em risco) até a cobrança dar certo ou ser encerrada.
+                subscription.mrr_amount = ZERO_DECIMAL
             if not subscription.valid_until:
                 next_due_date = self._extract_next_due_date(payload, order)
                 subscription.valid_until = self._calculate_valid_until(subscription.billing_cycle, next_due_date)
@@ -503,11 +496,8 @@ class CaktoIntegrationService:
                 offer_name=offer_name or offer_id or subscription.cakto_offer_id,
                 cancelled_item=cancelled_item,
             )
-        if status.lower() == "past_due" and effective_status == "cancelled":
-            return (
-                f"Assinatura {subscription_code or order_id} em tentativa de cobranca "
-                f"(graca de 5 dias apos vencimento)."
-            )
+        if effective_status == "past_due":
+            return f"Assinatura {subscription_code or order_id} com cobrança recusada: inadimplente, segue cobrando."
         return f"Assinatura {subscription_code or order_id} marcada como {effective_status}."
 
     # ------------------------------------------------------------------ #

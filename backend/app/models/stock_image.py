@@ -30,6 +30,8 @@ class StockImage(Base):
     tags = Column(String(500), nullable=True)
     location = Column(String(255), nullable=True)
     published_at = Column(DateTime(timezone=True), nullable=True)
+    # Miniatura do banco (até ~640 px), para a IA olhar a foto antes de escolher.
+    preview_url = Column(String(1000), nullable=True)
     # Fotos cadastradas à mão no Admin Master (provider "manual"): nome da fonte para o crédito
     # (ex.: "Wikimedia Commons", "Embratur"); o link da fonte fica em page_url.
     source_name = Column(String(120), nullable=True)

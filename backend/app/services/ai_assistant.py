@@ -287,10 +287,10 @@ TIPOS DE RESPOSTA
 
 1. Perguntas antes de criar. Só quando falta algo essencial que não está na mensagem nem nos DADOS JÁ CADASTRADOS (nome da agência, contatos, redes sociais, logo, páginas e seções desta página já existem lá: nunca pergunte isso). Na dúvida entre perguntar e criar, crie. Formato, para o usuário responder com um toque: uma frase curta de abertura e, em seguida, no máximo 3 perguntas, cada uma numa linha "1. Pergunta?" seguida de 2 a 4 opções, uma por linha começando com "- " (curtas, até 6 palavras; a primeira é a que você recomenda). Pergunta aberta (ex.: datas) fica sem opções. Não escreva nada depois das perguntas: o chat já mostra o botão "Criar agora". Não pergunte duas vezes seguidas nem quando o usuário mandou criar ("pode criar", "monta").
 2. Estrutura da página: quando já há informação suficiente, entregue a estrutura no formato abaixo, sem texto antes nem depois dela.
-3. Ajuste de uma parte: se o pedido é sobre uma ou poucas seções que já existem (ex.: "melhore o banner", "transforme o Artigo em Texto e Imagens"), entregue só essas seções, no mesmo formato, e em cada uma a linha "Substitui: identificador" com o identificador da seção que ela troca (da lista SEÇÕES DESTA PÁGINA). Pode trocar por outro tipo de seção: o editor mantém a posição e a foto. Para uma seção nova, sem "Substitui". Pedido só de aparência ou de itens do Menu do topo (ex.: "deixa o menu transparente", "põe Roteiro e Preços no menu", "menu fixo"): entregue o MENU DO TOPO com "Substitui" e SÓ os campos que mudam; o resto do menu fica como está.
+3. Ajuste de uma parte: se o pedido é sobre uma ou poucas seções que já existem (ex.: "melhore o banner", "transforme o Artigo em Texto e Imagens"), entregue só essas seções, no mesmo formato, e em cada uma a linha "Substitui: identificador" com o identificador da seção que ela troca (da lista SEÇÕES DESTA PÁGINA). Pode trocar por outro tipo de seção: o editor mantém a posição e a foto. Para uma seção nova, sem "Substitui". O identificador é exatamente o que vem antes dos dois-pontos na lista, sem negrito, crase ou o nome da seção. Numa troca, escreva SÓ os campos que mudam: o que você não escrever fica como está na página (ex.: para trocar só a foto do banner, entregue o BANNER INICIAL com "Substitui" e "Busca de imagem", sem título nem texto). Pedido que mexe em várias seções: um bloco por seção, cada um com o seu "Substitui". Pedido só de aparência ou de itens do Menu do topo (ex.: "deixa o menu transparente", "põe Roteiro e Preços no menu", "menu fixo"): entregue o MENU DO TOPO com "Substitui" e SÓ os campos que mudam; o resto do menu fica como está.
 4. Conversa: dúvidas sobre o construtor ou pedidos que não geram seções. Responda curto (até umas 8 linhas), sem estrutura, com tópicos em linhas começando com "- " quando ajudar. Não use lista numerada para explicar: números são só para perguntas. Se no fim você oferecer opções ao usuário, feche com uma pergunta no formato de escolhas do item 1 ("1. Pergunta?" e as opções em "- "), para ele responder com um toque; não deixe a escolha perdida no meio do texto.
 
-FOTOS: o construtor busca fotos no banco da plataforma e em bancos gratuitos (Pixabay, Unsplash e Pexels) e coloca nas seções quando a estrutura é aplicada; o usuário pode trocar depois no editor. Para isso, em toda seção com foto (Banner Inicial, Banner em Card, Foto em destaque, Texto e Imagens, Artigo, Roteiro dia a dia) e em cada viagem do Links/Roteiros, escreva a linha "Busca de imagem:" com até duas buscas em inglês separadas por "|": primeiro o destino ou atrativo com o nome exato do lugar e o país (2 a 6 palavras; no Brasil, sempre com "Brazil" e, se ajudar, o estado: "Beto Carrero World Santa Catarina Brazil", "Gramado Rio Grande do Sul Brazil", "Lisbon Alfama Portugal"), depois a sensação da experiência, para quando não houver foto do lugar (ex.: "couple drinking wine", "kids smiling theme park", "happy family vacation"; no Brasil, pode usar "Brazilian family beach"). Prefira o que mostra o lugar como ele é hoje (prédios, atrações e paisagem atuais), nada de datas na busca. Fotos diferentes em cada seção: varie as buscas. Numa troca de seção, só escreva "Busca de imagem" se o usuário pedir outra foto. Se pedirem uma foto, entregue a seção com a "Busca de imagem" pedida e "Substitui", em vez de explicar.
+FOTOS: o construtor busca fotos no banco da plataforma e em bancos gratuitos (Pixabay, Unsplash e Pexels) e coloca nas seções quando a estrutura é aplicada; o usuário pode trocar depois no editor. Para isso, em toda seção com foto (Banner Inicial, Banner em Card, Foto em destaque, Texto e Imagens, Artigo, Roteiro dia a dia) e em cada viagem do Links/Roteiros, escreva a linha "Busca de imagem:" com até duas buscas em inglês separadas por "|": primeiro o destino ou atrativo com o nome exato do lugar e o país (2 a 6 palavras; no Brasil, sempre com "Brazil" e, se ajudar, o estado: "Beto Carrero World Santa Catarina Brazil", "Gramado Rio Grande do Sul Brazil", "Lisbon Alfama Portugal"), depois a sensação da experiência, para quando não houver foto do lugar (ex.: "couple drinking wine", "kids smiling theme park", "happy family vacation"; no Brasil, pode usar "Brazilian family beach"). Seja específico: o nome do lugar mais o que aparece na foto ("Gramado Rua Coberta Brazil", "Gramado Lago Negro Brazil", "Maragogi natural pools Alagoas Brazil"), e não só o nome da cidade; cada seção mostra uma parte diferente da viagem (o banner, o hotel, o passeio do dia). Prefira o que mostra o lugar como ele é hoje (prédios, atrações e paisagem atuais), nada de datas na busca. As fotos encontradas passam por uma IA que olha cada uma e fica com a que mostra o que a busca pede; busca vaga traz foto errada. Numa troca de seção, só escreva "Busca de imagem" se o usuário pedir outra foto. Se pedirem uma foto, entregue a seção com a "Busca de imagem" pedida e "Substitui", sem os outros campos, em vez de explicar. Se os DADOS JÁ CADASTRADOS disserem que as imagens estão desligadas, não escreva "Busca de imagem" e não prometa fotos: as seções ficam com a imagem provisória para o usuário enviar as dele.
 
 Páginas que o construtor monta: página de uma viagem (excursão, pacote, cruzeiro, evento), página com várias viagens (vitrine da agência, calendário de saídas, destinos da temporada) e página institucional ou home da agência. Página com várias viagens usa Links/Roteiros (um card por viagem). Repita seções quando o conteúdo pedir: um Links/Roteiros para cada grupo (ex.: nacionais e internacionais), vários Texto e Imagens para assuntos diferentes, mais de um Banner em Card ou Foto em destaque para separar partes da página. Cada seção repetida tem seu próprio título. Use Menu do topo quando a página for longa (8 seções ou mais), tiver várias viagens ou o usuário pedir menu ou cabeçalho.
 
@@ -319,7 +319,7 @@ A resposta é lida por um programa que monta a página. Escreva cada campo numa 
 
 A primeira linha é "ESTRUTURA SUGERIDA PARA A PÁGINA". Depois: "Tipo de página:", "Objetivo da página:", "Público predominante:". Cada seção começa com "🟩 SEÇÃO: NOME", com o nome do editor em maiúsculas (ex.: "🟩 SEÇÃO: TEXTO E IMAGENS"). Logo abaixo do cabeçalho, "Função da seção:" (não aparece na página), "Substitui:" quando for troca, e depois os campos. Etiqueta é um selo curto de 1 a 3 palavras acima do título.
 
-MENU DO TOPO (sempre a primeira seção, quando usada; o logo entra sozinho): Links do menu (3 a 6 itens, um por linha começando com "- ", no formato "- Nome → identificador", em que o identificador é o da seção na lista SEÇÕES DESTA PÁGINA e o clique leva até ela, ex.: "- Roteiro → roteiro-dia-a-dia"; numa página nova, que ainda não tem identificadores, só o nome curto igual ao título da seção, ex.: Nacionais, Sobre nós, Dúvidas; para um site de fora, "- Nome → https://..."), Aparência ("sólido", "transparente" (sem fundo, por cima do banner) ou "desfocado" (vidro fosco)), Fixo ao rolar ("sim" ou "não"), Cor de fundo, Cor do texto e Cor do botão (só se pedirem, em #hex), Lado direito ("redes sociais", "botão" ou "nada"), Botão (texto do botão de contato, só com "botão", ex.: "Falar no WhatsApp").
+MENU DO TOPO (sempre a primeira seção, quando usada; o logo entra sozinho): Links do menu (3 a 6 itens, um por linha começando com "- ", no formato "- Nome → identificador", em que o identificador é o da seção na lista SEÇÕES DESTA PÁGINA e o clique leva até ela, ex.: "- Roteiro → roteiro-dia-a-dia"; numa página nova, que ainda não tem identificadores, só o nome curto igual ao título da seção, ex.: Nacionais, Sobre nós, Dúvidas; para um site de fora, "- Nome → https://..."), Aparência ("sólido", "transparente" (sem fundo, por cima do banner) ou "desfocado" (vidro fosco)), Fixo ao rolar ("sim" ou "não"), Cor de fundo, Cor do texto e Cor do botão (só se pedirem, em #hex), Lado direito ("redes sociais", "botão" ou "nada"), Botão (texto do botão de contato, só com "botão", ex.: "Falar no WhatsApp"). Para pôr, tirar ou renomear itens de um menu que já existe, entregue "Links do menu" com a lista inteira (os itens atuais estão na linha do Menu do topo em SEÇÕES DESTA PÁGINA) já com a mudança: item que você não repetir sai do menu. Cada item aponta para o identificador de uma seção da lista. "Transparente" e "desfocado" ficam por cima do Banner Inicial: só use quando a página tem Banner Inicial logo abaixo do menu; sem ele, o menu fica "sólido".
 
 BANNER INICIAL: Título (curto, até 8 palavras), Subtítulo (1 ou 2 frases), Destaques (3 a 5 itens curtos, um por linha começando com "- ", até 4 palavras cada; não repita as datas), Data de saída e Data de volta (DD/MM/AAAA, só se a viagem tiver datas), Botão, Sugestão de imagem.
 
@@ -874,8 +874,10 @@ def _header_section(fields: dict[str, str], index: int) -> dict[str, Any]:
         "contactType": "whatsapp",
     }
     set_keys: list[str] = []
-    if fields.get("menu_links", "").strip():
-        items = [_menu_item(label, number) for number, label in enumerate(_split_bullets(fields["menu_links"]), 1)]
+    # "Links:" dentro do Menu do topo também são os itens do menu.
+    menu_links = fields.get("menu_links", "").strip() or fields.get("link", "").strip()
+    if menu_links:
+        items = [_menu_item(label, number) for number, label in enumerate(_split_bullets(menu_links), 1)]
         # Itens sem identificador são ligados depois pelo título (_link_header_menu e editor).
         section["_menuItems"] = [item for item in items if item][:7]
         set_keys.append("links")
@@ -884,7 +886,9 @@ def _header_section(fields: dict[str, str], index: int) -> dict[str, Any]:
         section["mode"] = mode
         set_keys.append("mode")
     if fields.get("header_sticky", "").strip():
-        section["stickyEnabled"] = not _normalize_text(fields["header_sticky"]).startswith(("NAO", "N", "SEM"))
+        # "não", "sem fixar", "desligado": solto. Qualquer outra resposta ("sim", "normal"): fixo.
+        sticky = _normalize_text(fields["header_sticky"])
+        section["stickyEnabled"] = not re.match(r"^(NAO|NO|SEM|DESLIG|DESATIV|FALSE|OFF)\b", sticky)
         set_keys.append("stickyEnabled")
     for field, key in (("background_color", "backgroundColor"), ("text_color", "textColor"), ("button_color", "buttonColor")):
         color = HEX_COLOR_RE.search(fields.get(field, "") or "")
@@ -1656,6 +1660,27 @@ MENU_TARGETS: tuple[tuple[tuple[str, ...], tuple[str, ...]], ...] = (
 
 
 PHOTO_SECTION_TYPES = frozenset({"hero", "banner_card", "photo", "biography", "story", "itinerary"})
+# Numa troca, estes campos não contam como "pedidos": foto vem do banco (aiStockPhoto) e
+# âncora/identificador ficam os da seção que já está na página.
+SWAP_FIXED_KEYS = frozenset({
+    "type", "enabled", "anchorId", "sectionId", "id",
+    "backgroundImage", "mobileBackgroundImage", "image", "mobileImage", "images",
+})
+
+
+def _answered_keys(section_name: str, section: dict[str, Any], index: int) -> list[str] | None:
+    """Campos que a resposta trouxe numa troca: os que diferem da mesma seção sem nenhum campo.
+    Com isso "troca só a foto do banner" não apaga título, roteiro ou cards da seção atual."""
+    try:
+        empty = _parse_ai_section_block(section_name, "", index)
+    except Exception:  # noqa: BLE001 - sem a referência, a troca segue a regra antiga
+        return None
+    if not empty:
+        return None
+    return [
+        key for key, value in section.items()
+        if key not in SWAP_FIXED_KEYS and not key.startswith(("ai", "_")) and value != empty.get(key)
+    ]
 
 
 def _link_header_menu(sections: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -1767,6 +1792,11 @@ def build_page_base_config_from_reply(
         if parsed_section["type"] in {"story", "banner_card", "featured_video"} and fields.get("button"):
             parsed_section["ctaEnabled"] = True
             parsed_section["ctaLabel"] = fields["button"].strip()
+        if replaces and parsed_section["type"] != "header":
+            # O Menu do topo já marca o que mudou (_header_section).
+            answered = _answered_keys(section_name, parsed_section, index)
+            if answered is not None:
+                parsed_section["aiSetKeys"] = answered
         _fill_ai_image_placeholders(parsed_section)
         sections.append(parsed_section)
         if not hero_title and parsed_section.get("type") == "hero":

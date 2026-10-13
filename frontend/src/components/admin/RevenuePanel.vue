@@ -14,7 +14,7 @@
       <section class="am-grid-4">
         <AdminMasterKpi icon="trend" tone="success" label="MRR" :value="money(data.mrr)" :hint="`${data.paying_customers} clientes pagantes · ticket médio ${money(data.arpa)}`" />
         <AdminMasterKpi icon="cal" tone="info" label="ARR" :value="money(data.arr)" hint="MRR × 12" />
-        <AdminMasterKpi icon="alert" tone="warning" label="MRR em risco" :value="money(data.mrr_at_risk)" hint="Cancelamento agendado ou falha de cobrança" />
+        <AdminMasterKpi icon="alert" tone="warning" label="MRR em risco" :value="money(data.mrr_at_risk)" hint="Cancelamento agendado ou cobrança em atraso" />
         <AdminMasterKpi icon="wallet" tone="violet" label="Previsto no mês" :value="money(data.month_expected)" :hint="isCurrentMonth ? 'Recebido + a receber, menos estornos' : 'Recebido menos estornos'" />
       </section>
 
@@ -22,7 +22,7 @@
         <div class="am-card-head">
           <div>
             <div class="am-card-title">{{ monthLabel }}</div>
-            <div class="am-card-sub">Pagamentos confirmados pela Asaas e pela Cakto (cada um contado uma vez) e renovações previstas até o fim do mês.</div>
+            <div class="am-card-sub">Pagamentos do Roteiro Online confirmados pela Asaas e pela Cakto (cada um contado uma vez) e renovações previstas até o fim do mês. Combo da Viaje On e outros produtos ficam fora.</div>
           </div>
         </div>
         <div class="rv-tiles">
@@ -30,6 +30,9 @@
             <span class="am-muted text-xs">Recebido</span>
             <b>{{ money(data.month_received_gross) }}</b>
             <small class="am-muted">{{ data.month_payments }} pagamentos · líquido {{ money(data.month_received_net) }}</small>
+            <small v-if="data.month_other_payments" class="am-muted" title="Pagamentos de outros produtos na mesma conta (ex.: combo da Viaje On)">
+              Fora da conta: {{ money(data.month_other_received) }} de outros produtos ({{ data.month_other_payments }})
+            </small>
           </div>
           <div v-if="data.month_to_receive !== null">
             <span class="am-muted text-xs">A receber até o fim do mês</span>

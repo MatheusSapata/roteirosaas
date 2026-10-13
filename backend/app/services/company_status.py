@@ -7,7 +7,7 @@ e é a partir dela que contam os prazos do arquivamento dos arquivos.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Iterable
 
 from sqlalchemy.orm import Session, selectinload
@@ -26,16 +26,32 @@ CAKTO_CANCEL_EVENTS = frozenset({"subscription_canceled", "subscription_cancelle
 UNPAID_PLANS = frozenset({"", "free", "gratuito", "trial"})
 # Contas de teste interno (como "infinity"): fora das contagens de clientes.
 INTERNAL_PLANS = frozenset({"infinity", "teste", "test"})
+# Acesso que vem de um combo pago em outro sistema (hoje, a Viaje On): o cliente paga lá, então
+# não é receita do Roteiro Online. Aparece como "Combo" e fica fora do MRR.
+COMBO_PROVIDERS = frozenset({"viajeon"})
+# Conta gratuita (sem teste e sem pagamento) tem o mesmo prazo do teste, contado do cadastro.
+# Passado o prazo ela aparece como "Gratuita vencida". A regra da página pública não muda aqui.
+FREE_ACCESS_DAYS = 7
+
+# Cobrança que falhou (cartão recusado, boleto/Pix não pago): não é cancelamento. A conta segue
+# no ar por PAYMENT_GRACE_DAYS depois do vencimento (valid_until) e a cobrança continua até
+# PAYMENT_RETRY_DAYS; se o cliente pagar nesse prazo, volta sozinho. Depois disso a assinatura é
+# encerrada no gateway (job horário em services/subscription).
+PAYMENT_GRACE_DAYS = 3
+PAYMENT_RETRY_DAYS = 30
+BILLING_PROVIDERS = frozenset({"asaas", "cakto"})
 
 STATUS_LABELS = {
     "active": "Ativa",
     "trial": "Em teste",
     "free": "Gratuita",
+    "free_expired": "Gratuita vencida",
     "trial_ended": "Teste encerrado",
     "cancelling": "Cancelando",
     "past_due": "Inadimplente",
     "inactive": "Desativada",
     "internal": "Interna",
+    "combo": "Combo",
     "no_owner": "Sem dono",
 }
 
@@ -46,9 +62,38 @@ def _aware(value: datetime | None) -> datetime | None:
     return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
 
 
+def payment_deadlines(subscription: Subscription) -> tuple[datetime, datetime] | None:
+    """Para cobrança em atraso: até quando fica no ar e até quando segue cobrando."""
+    due = _aware(subscription.valid_until)
+    if due is None:
+        return None
+    return due + timedelta(days=PAYMENT_GRACE_DAYS), due + timedelta(days=PAYMENT_RETRY_DAYS)
+
+
+def charging_overdue(subscription: Subscription | None, now: datetime | None = None) -> bool:
+    """Cobrança em atraso ainda dentro dos 30 dias de tentativa."""
+    if subscription is None or (subscription.status or "").strip().lower() != "past_due":
+        return False
+    deadlines = payment_deadlines(subscription)
+    return bool(deadlines and (now or datetime.now(timezone.utc)) < deadlines[1])
+
+
+def mark_subscription_overdue(subscription: Subscription, due_date: str | None = None) -> None:
+    """Cobrança não paga no vencimento. Não cancela: a conta fica inadimplente, no ar por 3 dias
+    depois do vencimento, e a cobrança segue por 30 dias. Pagou nesse prazo, volta a ficar ativa."""
+    subscription.failed_attempts = int(subscription.failed_attempts or 0) + 1
+    subscription.status = "past_due"
+    if subscription.valid_until is None and due_date:
+        try:
+            due = datetime.fromisoformat(str(due_date)[:10])
+        except ValueError:
+            return
+        subscription.valid_until = due.replace(hour=23, minute=59, second=59, tzinfo=timezone.utc)
+
+
 def subscription_allows_public(subscription: Subscription | None, now: datetime | None = None) -> bool:
-    """A página pública fica no ar? Ativa ou com menos de 3 falhas de cobrança; encerrada, só
-    até o fim do período pago."""
+    """A página pública fica no ar? Ativa; com cobrança em atraso, até 3 dias depois do vencimento;
+    encerrada, só até o fim do período pago."""
     if subscription is None:
         return False
     now = now or datetime.now(timezone.utc)
@@ -56,6 +101,10 @@ def subscription_allows_public(subscription: Subscription | None, now: datetime 
     if status in ENDED_STATUSES:
         valid_until = _aware(subscription.valid_until)
         return bool(valid_until and valid_until > now)
+    if status == "past_due":
+        deadlines = payment_deadlines(subscription)
+        if deadlines:
+            return now < deadlines[0]
     return status == "active" or int(subscription.failed_attempts or 0) < 3
 
 
@@ -73,6 +122,8 @@ class CompanyStatus:
     online: bool
     since: datetime | None = None
     estimated: bool = False
+    # Até quando vale o acesso atual: fim do teste, prazo do gratuito ou fim do período pago.
+    ends: datetime | None = None
 
     @property
     def days(self) -> int | None:
@@ -81,17 +132,38 @@ class CompanyStatus:
         return max(0, (datetime.now(timezone.utc) - self.since).days)
 
 
+def free_access_ends(owner: User) -> datetime | None:
+    """Fim do acesso gratuito: a validade da assinatura, se o admin definiu uma; senão o
+    cadastro da conta mais FREE_ACCESS_DAYS."""
+    subscription = owner.subscription
+    valid_until = _aware(subscription.valid_until) if subscription else None
+    if valid_until:
+        return valid_until
+    start = _aware(getattr(owner, "created_at", None)) or (_aware(subscription.created_at) if subscription else None)
+    return start + timedelta(days=FREE_ACCESS_DAYS) if start else None
+
+
+def is_combo(subscription: Subscription | None) -> bool:
+    return bool(subscription and (subscription.provider or "").strip().lower() in COMBO_PROVIDERS)
+
+
 def company_status(owner: User | None, now: datetime | None = None) -> CompanyStatus:
     now = now or datetime.now(timezone.utc)
     if owner is None:
         return CompanyStatus("no_owner", STATUS_LABELS["no_owner"], online=False)
     subscription = owner.subscription
-    if owner.is_superuser or (subscription and (subscription.plan or "").strip().lower() in INTERNAL_PLANS):
+    combo = is_combo(subscription) and not owner.is_superuser
+    # O plano Escala do combo é cliente, não conta interna.
+    if not combo and (owner.is_superuser or (subscription and (subscription.plan or "").strip().lower() in INTERNAL_PLANS)):
         return CompanyStatus("internal", STATUS_LABELS["internal"], online=True)
     online = subscription_allows_public(subscription, now)
     trial_ends = _aware(owner.trial_ends_at)
     if owner.trial_plan and trial_ends and trial_ends > now:
-        return CompanyStatus("trial", STATUS_LABELS["trial"], online=online or True, since=_aware(owner.trial_started_at))
+        return CompanyStatus("trial", STATUS_LABELS["trial"], online=online or True, since=_aware(owner.trial_started_at), ends=trial_ends)
+    # Cobrança falhou: é inadimplência (no ar por 3 dias, cobrando por 30), não cancelamento.
+    if not combo and charging_overdue(subscription, now):
+        grace_ends, _retry_ends = payment_deadlines(subscription)
+        return CompanyStatus("past_due", STATUS_LABELS["past_due"], online=online, since=_aware(subscription.valid_until), ends=grace_ends)
     if not online:
         return CompanyStatus(
             "inactive",
@@ -100,19 +172,29 @@ def company_status(owner: User | None, now: datetime | None = None) -> CompanySt
             since=_aware(subscription.deactivated_at) if subscription else None,
             estimated=bool(subscription and subscription.deactivation_estimated),
         )
+    if combo:
+        return CompanyStatus(
+            "combo", STATUS_LABELS["combo"], online=True, since=_aware(subscription.created_at), ends=_aware(subscription.valid_until)
+        )
     # "online" fica igual ao da página pública (o arquivamento depende dele); aqui só muda o nome:
     # assinatura "ativa" num plano sem pagamento não é cliente ativo.
     plan = (subscription.plan or "").strip().lower() if subscription else ""
     if plan in UNPAID_PLANS:
         if owner.trial_blocked or owner.trial_started_at or plan == "trial":
-            return CompanyStatus("trial_ended", STATUS_LABELS["trial_ended"], online=online, since=trial_ends)
-        return CompanyStatus("free", STATUS_LABELS["free"], online=online, since=_aware(subscription.created_at) if subscription else None)
+            return CompanyStatus("trial_ended", STATUS_LABELS["trial_ended"], online=online, since=trial_ends, ends=trial_ends)
+        free_ends = free_access_ends(owner)
+        if free_ends and free_ends <= now:
+            return CompanyStatus("free_expired", STATUS_LABELS["free_expired"], online=online, since=free_ends, ends=free_ends)
+        return CompanyStatus(
+            "free", STATUS_LABELS["free"], online=online, since=_aware(subscription.created_at) if subscription else None, ends=free_ends
+        )
     status = (subscription.status or "").strip().lower() if subscription else ""
+    valid_until = _aware(subscription.valid_until)
     if status == "cancel_at_period_end" or status in ENDED_STATUSES:
-        return CompanyStatus("cancelling", STATUS_LABELS["cancelling"], online=True, since=_aware(subscription.valid_until))
+        return CompanyStatus("cancelling", STATUS_LABELS["cancelling"], online=True, since=valid_until, ends=valid_until)
     if status == "past_due" or int(subscription.failed_attempts or 0) > 0:
-        return CompanyStatus("past_due", STATUS_LABELS["past_due"], online=True)
-    return CompanyStatus("active", STATUS_LABELS["active"], online=True, since=_aware(subscription.created_at))
+        return CompanyStatus("past_due", STATUS_LABELS["past_due"], online=True, ends=valid_until)
+    return CompanyStatus("active", STATUS_LABELS["active"], online=True, since=_aware(subscription.created_at), ends=valid_until)
 
 
 def _cakto_cancellations(db: Session, emails: Iterable[str]) -> dict[str, datetime]:

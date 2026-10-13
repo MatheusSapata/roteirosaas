@@ -10,6 +10,7 @@ const LoginView = () => import("../views/admin/LoginView.vue");
 const ForgotPasswordView = () => import("../views/admin/ForgotPasswordView.vue");
 const ResetPasswordView = () => import("../views/admin/ResetPasswordView.vue");
 const CreatePasswordView = () => import("../views/admin/CreatePasswordView.vue");
+const TemporaryPasswordView = () => import("../views/admin/TemporaryPasswordView.vue");
 const ViajeonSsoView = () => import("../views/admin/ViajeonSsoView.vue");
 const AcceptInviteView = () => import("../views/public/AcceptInviteView.vue");
 const CheckoutProcessingView = () => import("../views/public/CheckoutProcessingView.vue");
@@ -188,6 +189,7 @@ const platformRoutes: RouteRecordRaw[] = [
   { path: "/forgot-password", name: "forgot-password", component: ForgotPasswordView, meta: { guestOnly: true } },
   { path: "/reset-password", name: "reset-password", component: ResetPasswordView, meta: { guestOnly: true } },
   { path: "/create-password", name: "create-password", component: CreatePasswordView, meta: { guestOnly: true } },
+  { path: "/nova-senha", name: "temporary-password", component: TemporaryPasswordView, meta: { requiresAuth: true } },
   { path: "/sso/viajeon", name: "viajeon-sso", component: ViajeonSsoView },
   { path: "/accept-invite", name: "accept-invite", component: AcceptInviteView, meta: { guestOnly: true } },
   { path: "/pedido", name: "checkout-processing", component: CheckoutProcessingView, meta: { guestOnly: true } },
@@ -484,6 +486,12 @@ router.beforeEach(async (to, _from, next) => {
         next({ name: "login", query: { redirect: to.fullPath } });
         return;
       }
+    }
+
+    // Senha temporária definida pelo admin master: antes de tudo, a pessoa cria uma senha própria.
+    if (auth.user?.temporary_password && to.name !== "temporary-password") {
+      next({ name: "temporary-password", query: { redirect: to.fullPath } });
+      return;
     }
 
     if (auth.user?.trial_blocked && !targetIsPlans && !targetIsDashboard) {

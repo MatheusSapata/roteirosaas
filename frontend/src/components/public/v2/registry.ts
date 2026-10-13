@@ -14,6 +14,7 @@ export const v2Components: Partial<Record<SectionType, Component>> = {
   countdown: defineAsyncComponent(() => import("./V2Countdown.vue")),
   story: defineAsyncComponent(() => import("./V2Story.vue")),
   reasons: defineAsyncComponent(() => import("./V2Reasons.vue")),
+  inclusions: defineAsyncComponent(() => import("./V2Inclusions.vue")),
   itinerary: defineAsyncComponent(() => import("./V2Itinerary.vue")),
   gallery: defineAsyncComponent(() => import("./V2Gallery.vue")),
   photo: defineAsyncComponent(() => import("./V2Photo.vue")),

@@ -124,6 +124,23 @@ const SAMPLES: Partial<Record<SectionType, () => Record<string, any>>> = {
       { icon: "icon:shield", title: t({ pt: "Suporte", es: "Soporte" }), description: t({ pt: "Atendimento antes e durante a viagem.", es: "Atención antes y durante el viaje." }) }
     ]
   }),
+  inclusions: () => ({
+    title: t({ pt: "O que está incluso na sua viagem", es: "Lo que está incluido en tu viaje" }),
+    subtitle: t({ pt: "Confira o que já está no pacote e o que fica por sua conta.", es: "Revisa lo que ya está en el paquete y lo que queda por tu cuenta." }),
+    includedTitle: t({ pt: "Seu pacote inclui", es: "Tu paquete incluye" }),
+    excludedTitle: t({ pt: "Não inclui", es: "No incluye" }),
+    included: [
+      { title: t({ pt: "Ônibus leito", es: "Autobús cama" }) },
+      { title: t({ pt: "7 pernoites em hotéis com café da manhã", es: "7 noches en hoteles con desayuno" }), details: t({ pt: "2 noites na cidade A\n5 noites na cidade B", es: "2 noches en la ciudad A\n5 noches en la ciudad B" }) },
+      { title: t({ pt: "Passeios citados no roteiro", es: "Paseos citados en el itinerario" }) },
+      { title: t({ pt: "Guia local", es: "Guía local" }) }
+    ],
+    excluded: [
+      { title: t({ pt: "Bilhete aéreo", es: "Boleto aéreo" }) },
+      { title: t({ pt: "Seguro viagem", es: "Seguro de viaje" }) },
+      { title: t({ pt: "Gastos pessoais", es: "Gastos personales" }) }
+    ]
+  }),
   biography: () => ({
     title: t({ pt: "Título do artigo", es: "Título del artículo" }),
     text: t({
@@ -273,7 +290,7 @@ export const hasSectionSampleV2 = (type: SectionType) => !!SAMPLES[type];
 const SAMPLE_LABELS: Partial<Record<SectionType, Parameters<typeof t>[0]>> = {
   countdown: { pt: "Oferta por tempo limitado", es: "Oferta por tiempo limitado" }
 };
-const LABELED: SectionType[] = ["prices", "itinerary", "faq", "testimonials", "featured_video", "story", "countdown", "reasons", "links"];
+const LABELED: SectionType[] = ["prices", "itinerary", "faq", "testimonials", "featured_video", "story", "countdown", "reasons", "inclusions", "links"];
 
 export const buildSectionSampleV2 = (type: SectionType): PageSection | null => {
   const build = SAMPLES[type];

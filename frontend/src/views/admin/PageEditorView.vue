@@ -1459,6 +1459,33 @@
                 @change="handleAiAssistantFileChange"
               />
 
+              <!-- Fotos de banco nas seções que a IA cria ou troca: dá para desligar. -->
+              <div class="ai-img-opt">
+                <label class="ai-img-switch">
+                  <input v-model="aiIncludeImages" type="checkbox" role="switch" :aria-checked="aiIncludeImages" />
+                  <span class="ai-img-track" aria-hidden="true"></span>
+                  <span>Inserir imagens</span>
+                </label>
+                <span class="ai-img-info">
+                  <button
+                    type="button"
+                    class="ai-img-info-btn"
+                    aria-label="Sobre as imagens inseridas pela IA"
+                    aria-describedby="ai-img-tip"
+                    :aria-expanded="aiImagesInfoOpen"
+                    @click="aiImagesInfoOpen = !aiImagesInfoOpen"
+                    @blur="aiImagesInfoOpen = false"
+                  >
+                    <InfoIcon class="h-3.5 w-3.5" aria-hidden="true" />
+                  </button>
+                  <span id="ai-img-tip" role="tooltip" class="ai-img-tip" :class="{ 'is-open': aiImagesInfoOpen }">
+                    As imagens vêm de bancos de imagens (Pixabay, Unsplash, Pexels e o banco da plataforma) e são
+                    apenas representativas: podem não mostrar exatamente o destino, o hotel ou o passeio, e podem
+                    ocorrer erros. Confira e troque pelas suas fotos antes de publicar. Desligado, as seções novas
+                    ficam com o espaço para a sua foto e as atuais mantêm as fotos.
+                  </span>
+                </span>
+              </div>
               <div class="editor-ai-sidebar-composer-row">
                 <button
                   type="button"
@@ -1638,6 +1665,7 @@ import {
   ImagesIcon,
   GripVerticalIcon,
   ImageIcon,
+  InfoIcon,
   LinkIcon,
   ListIcon,
   MessageCircleIcon,
@@ -1708,6 +1736,7 @@ import type {
   TestimonialsSection,
   StorySection,
   ReasonsSection,
+  InclusionsSection,
   LinkCardItem,
   LinksSection,
   CountdownSection,
@@ -2605,7 +2634,7 @@ const AI_SECTION_TYPES: Record<string, SectionType> = {
   "DETALHES DO VOO": "flight_details", "MENU DO TOPO": "header", "CABECALHO": "header", "MENU": "header",
   "MENU SUPERIOR": "header", "VITRINE DE VIAGENS": "links", "VITRINE": "links", "LINKS": "links",
   "ROTEIROS": "links", "OUTRAS VIAGENS": "links", "LINKS/ROTEIROS": "links", "LINKS / ROTEIROS": "links",
-  "FOTO EM DESTAQUE": "photo", "TEXTO E IMAGENS": "story", "DIFERENCIAIS": "reasons", "ARTIGO": "biography",
+  "FOTO EM DESTAQUE": "photo", "TEXTO E IMAGENS": "story", "DIFERENCIAIS": "reasons", "RESUMO DO PACOTE": "inclusions", "ARTIGO": "biography",
   "ROTEIRO DIA A DIA": "itinerary", "VOOS": "flight_details", "PRECOS E PACOTES": "prices",
   "FAIXA DE CHAMADA": "cta", "DUVIDAS FREQUENTES": "faq", "RODAPE DA AGENCIA": "agency_footer", "RODAPE": "agency_footer"
 };
@@ -2616,21 +2645,86 @@ const aiSectionLabel = (name: string) => {
   const type = aiSectionType(name);
   return (type && sectionNameV2(type)) || name;
 };
-// Resposta com uma seção só que troca uma seção da página: a indicada em "Substitui:" (pode ser
-// de outro tipo, ex.: Artigo → Texto e Imagens) ou, sem ela, a primeira do mesmo tipo.
-const aiSwapTarget = (content: string): { index: number; label: string } | null => {
-  const names = aiStructureNames(content);
-  if (names.length !== 1) return null;
-  const replaces = content.match(/^\s*[-*]?\s*Substitui(?: a seção)?\s*:\s*`?([\w-]+)/im)?.[1];
-  let index = replaces ? sections.value.findIndex(section => section.anchorId === replaces) : -1;
-  if (index < 0) {
-    const type = aiSectionType(names[0]);
-    index = type ? sections.value.findIndex(section => section.type === type) : -1;
+// Cada seção da resposta e o "Substitui" dela (sem negrito, crase ou aspas em volta).
+const aiReplyBlocks = (content: string) => {
+  const blocks: { name: string; replaces: string; photo: boolean }[] = [];
+  for (const line of content.split("\n")) {
+    const header = line.match(/^\s*(?:🟩\s*)?(?:SECAO|SEÇÃO)\s*:\s*(.+)$/i);
+    if (header) {
+      blocks.push({ name: header[1].replace(/[*_`#]/g, "").trim(), replaces: "", photo: false });
+      continue;
+    }
+    const current = blocks[blocks.length - 1];
+    if (!current) continue;
+    const plain = line.replace(/[*_`"'“”]/g, "");
+    const replaces = plain.match(/^\s*[-•]?\s*Substitui(?:\s+a\s+se[cç][aã]o)?\s*:\s*(\S+)/i);
+    if (replaces && !current.replaces) current.replaces = replaces[1];
+    if (/^\s*[-•]?\s*Busca de (?:imagem|foto)/i.test(plain)) current.photo = true;
   }
-  if (index < 0) return null;
-  const current = sections.value[index];
-  return { index, label: (sectionNameV2(current.type) as string) || current.type };
+  return blocks.filter(block => block.name);
 };
+// Seção da página que uma seção da resposta troca: a do identificador em "Substitui" (o mesmo da
+// lista enviada à IA, inclusive "secao-N" para seção sem identificador) ou, quando a resposta tem
+// uma seção só, a primeira do mesmo tipo. Cada seção da página só é trocada uma vez.
+const aiResolveTarget = (replaces: string, type: SectionType | null, taken: Set<number>, single: boolean): number => {
+  const pageSections = sections.value;
+  const wanted = replaces.trim().toLowerCase();
+  if (wanted) {
+    let index = pageSections.findIndex(section => (section.anchorId || "").toLowerCase() === wanted);
+    const numbered = wanted.match(/^secao-(\d+)$/);
+    if (index < 0 && numbered) index = Number(numbered[1]) - 1;
+    if (index >= 0 && index < pageSections.length && !taken.has(index)) return index;
+  }
+  if (!single || !type) return -1;
+  return pageSections.findIndex((section, index) => section.type === type && !taken.has(index));
+};
+// Resposta que troca seções da página: uma (a do "Substitui" ou a primeira do mesmo tipo) ou
+// várias (cada uma com o seu "Substitui"). Sem alvo para todas, não é troca.
+const aiSwapTarget = (content: string): { indices: number[]; label: string } | null => {
+  const blocks = aiReplyBlocks(content).filter(block => aiSectionType(block.name) !== "free_footer_brand");
+  if (!blocks.length) return null;
+  const taken = new Set<number>();
+  for (const block of blocks) {
+    const index = aiResolveTarget(block.replaces, aiSectionType(block.name), taken, blocks.length === 1);
+    if (index < 0) return null;
+    taken.add(index);
+  }
+  const indices = [...taken];
+  if (indices.length > 1) return { indices, label: `${indices.length} seções` };
+  const current = sections.value[indices[0]];
+  return { indices, label: (sectionNameV2(current.type) as string) || current.type };
+};
+// Fotos que já estão na página: a troca de foto não devolve a mesma.
+const aiPagePhotos = (pageSections: PageSection[]) => {
+  const urls = new Set<string>();
+  const add = (value: unknown) => {
+    if (typeof value === "string" && value && !isAiFiller(value)) urls.add(value);
+  };
+  for (const section of pageSections) {
+    const raw = section as Record<string, any>;
+    ["backgroundImage", "mobileBackgroundImage", "image", "mobileImage"].forEach(key => add(raw[key]));
+    (Array.isArray(raw.images) ? raw.images : []).forEach(add);
+    for (const list of [raw.days, raw.items]) if (Array.isArray(list)) list.forEach((entry: any) => add(entry?.image));
+  }
+  return [...urls];
+};
+// Opção "Inserir imagens" do assistente (lembrada neste navegador). Desligada, a IA não busca
+// fotos de banco: as seções novas ficam com o espaço para a foto e as atuais mantêm as delas.
+const AI_IMAGES_KEY = "ai-assistant-insert-images";
+const aiIncludeImages = ref(true);
+try {
+  aiIncludeImages.value = localStorage.getItem(AI_IMAGES_KEY) !== "0";
+} catch {
+  aiIncludeImages.value = true;
+}
+watch(aiIncludeImages, value => {
+  try {
+    localStorage.setItem(AI_IMAGES_KEY, value ? "1" : "0");
+  } catch {
+    /* sem armazenamento: vale só nesta tela */
+  }
+});
+const aiImagesInfoOpen = ref(false);
 const AI_IMAGE_PLACEHOLDER_PREFIX = "data:image/svg+xml;base64,";
 const isAiFiller = (value: unknown) =>
   value === undefined || value === null || value === "" || (typeof value === "string" && value.startsWith(AI_IMAGE_PLACEHOLDER_PREFIX));
@@ -2646,32 +2740,37 @@ const aiSectionPhoto = (section: PageSection): string => {
   const candidates = [raw.backgroundImage, raw.image, ...(Array.isArray(raw.images) ? raw.images : [])];
   return candidates.find(value => typeof value === "string" && value && !isAiFiller(value)) || "";
 };
+// Menu do topo: igual ao editor, a cor dos links acompanha o fundo (transparente e desfocado ficam
+// por cima do banner, com links brancos), a não ser que a IA tenha dado a cor.
+const aiHeaderColors = (header: Record<string, any>, setKeys: string[] | null) => {
+  if ((setKeys && !setKeys.includes("mode")) || setKeys?.includes("linkTextColor")) return header;
+  return header.mode === "solid" || !header.mode
+    ? { ...header, linkTextColor: getReadableTextColor(header.backgroundColor || "#ffffff") || "#0f172a" }
+    : { ...header, linkTextColor: "#ffffff" };
+};
 const mergeAiSwap = (current: PageSection, incoming: PageSection): PageSection => {
-  // Ajuste pedido (ex.: "deixa o menu transparente"): muda só os campos que a IA trouxe; o
-  // resto da seção (itens do menu, cores, botão...) fica como está.
-  const setKeys = (incoming as any).aiSetKeys as string[] | undefined;
-  if (current.type === incoming.type && Array.isArray(setKeys)) {
-    const adjusted: Record<string, any> = { ...current };
-    for (const key of setKeys) if (key in incoming) adjusted[key] = (incoming as Record<string, any>)[key];
-    return adjusted as PageSection;
-  }
+  const next = incoming as Record<string, any>;
+  // Campos que a IA escreveu (o servidor marca em aiSetKeys). O que ela não escreveu fica como
+  // está: "troca a foto do roteiro" não apaga os dias, "põe o menu transparente" não apaga os itens.
+  const setKeys = Array.isArray(next.aiSetKeys) ? (next.aiSetKeys as string[]) : null;
   if (current.type !== incoming.type) {
     // Troca de tipo: a seção nova entra no mesmo lugar, com a âncora e a foto da antiga.
     const converted: Record<string, any> = { ...incoming, anchorId: current.anchorId, enabled: current.enabled };
     delete converted.aiReplaces;
     delete converted.aiStockPhoto;
+    delete converted.aiSetKeys;
     // A foto que a agência já tinha na seção vale mais que a provisória da sugestão (a não ser
     // que a sugestão traga uma foto nova do banco, pedida pelo usuário).
-    const photo = (incoming as any).aiStockPhoto ? "" : aiSectionPhoto(current);
+    const photo = next.aiStockPhoto ? "" : aiSectionPhoto(current);
     if (photo) {
       converted.photoCredits = (current as any).photoCredits;
       if (Array.isArray(converted.images)) converted.images = [photo];
-      for (const key of ["backgroundImage", "image"]) if (key in converted) converted[key] = photo;
+      // Inclui as versões de celular, para não ficar a imagem provisória no telefone.
+      for (const key of ["backgroundImage", "mobileBackgroundImage", "image", "mobileImage"]) if (key in converted) converted[key] = photo;
     }
     return converted as PageSection;
   }
   const merged: Record<string, any> = { ...current };
-  const next = incoming as Record<string, any>;
   // Foto nova do banco de fotos (o usuário pediu outra foto): entra no lugar da atual.
   if (next.aiStockPhoto) {
     merged.photoCredits = next.photoCredits;
@@ -2684,8 +2783,9 @@ const mergeAiSwap = (current: PageSection, incoming: PageSection): PageSection =
       );
     }
   }
-  for (const key of AI_SWAP_TEXT_KEYS) {
-    if (!(key in next) || isAiFiller(next[key])) continue;
+  const keys = setKeys ?? AI_SWAP_TEXT_KEYS.filter(key => key in next && !isAiFiller(next[key]));
+  for (const key of keys) {
+    if (!(key in next)) continue;
     if (key === "items" && Array.isArray(next.items)) {
       const currentItems: Record<string, any>[] = Array.isArray((current as any).items) ? (current as any).items : [];
       merged.items = next.items.map((item: Record<string, any>, index: number) => {
@@ -2695,9 +2795,19 @@ const mergeAiSwap = (current: PageSection, incoming: PageSection): PageSection =
       });
       continue;
     }
+    if (key === "days" && Array.isArray(next.days)) {
+      // Dias reescritos: a foto de cada dia continua, a não ser que venha foto nova.
+      const currentDays: Record<string, any>[] = Array.isArray(merged.days) ? merged.days : [];
+      merged.days = next.days.map((day: Record<string, any>, index: number) => {
+        const image = !isAiFiller(day.image) ? day.image : currentDays[index]?.image;
+        return image ? { ...day, image } : day;
+      });
+      continue;
+    }
+    if (isAiFiller(next[key]) && !setKeys) continue;
     merged[key] = next[key];
   }
-  return merged as PageSection;
+  return (current.type === "header" ? aiHeaderColors(merged, setKeys) : merged) as PageSection;
 };
 // Páginas da agência, para ligar os cards da vitrine que a IA indicou ("Página: gramado-canela").
 // Crédito das fotos de bancos gratuitos na prévia ("©" no canto de cada foto).
@@ -2785,7 +2895,8 @@ const importAiFlights = async (targets: Array<{ sectionId: string; flights: unkn
 const prepareAiSection = (section: PageSection): PageSection => {
   if (section.type === "header") {
     // Menu novo sem itens na resposta fica sem itens (e não com os links de exemplo do editor).
-    return { ...defaultSection("header"), links: [], ...section } as PageSection;
+    const header = { ...defaultSection("header"), links: [], ...section } as Record<string, any>;
+    return aiHeaderColors(header, Array.isArray(header.aiSetKeys) ? header.aiSetKeys : null) as PageSection;
   }
   if (section.type === "agency_footer") return { ...defaultSection(section.type), ...section } as PageSection;
   if (section.type === "links") {
@@ -2913,7 +3024,10 @@ const applyAiStructure = async (reply: string, mode: "insert" | "replace" | "swa
   aiStructureApplying.value = true;
   aiStructureError.value = "";
   try {
-    const generated = await previewAiAssistantPageBase(pageId, reply);
+    const generated = await previewAiAssistantPageBase(pageId, reply, {
+      includeImages: aiIncludeImages.value,
+      currentPhotos: aiPagePhotos(sections.value)
+    });
     if (generated.some(section => section.type === "links" && (section as LinksSection).items?.some(item => (item as any).pageSlug))) {
       if (!aiAgencyPages.pages.value.length) await aiAgencyPages.load();
     }
@@ -2940,16 +3054,37 @@ const applyAiStructure = async (reply: string, mode: "insert" | "replace" | "swa
         nextSections = brandIndex >= 0 ? [...additions.slice(0, brandIndex), footer, ...additions.slice(brandIndex)] : [...additions, footer];
       }
     }
+    // Menus do topo mexidos agora (para conferir a aparência no fim) e fotos pedidas que não vieram.
+    const touchedHeaders = new Set<PageSection>();
+    const photoMisses: string[] = [];
+    // Seção trocada → posição na página (os voos da troca vão para a seção que ficou).
+    const swapTargets = new Map<PageSection, number>();
     if (mode === "swap") {
-      const incoming = additions.find(section => section.type !== "free_footer_brand");
-      const index = aiSwapTarget(reply)?.index ?? -1;
-      if (!incoming || index < 0) {
+      // Cada seção da resposta (o servidor já leu o "Substitui") vai para o lugar da sua.
+      const pairs = generated
+        .map((raw, position) => ({ raw: raw as Record<string, any>, section: additions[position] }))
+        .filter(pair => pair.raw.type !== "free_footer_brand" && pair.section);
+      const taken = new Set<number>();
+      const targets = pairs.map(({ raw }) => {
+        const index = aiResolveTarget(String(raw.aiReplaces || ""), raw.type as SectionType, taken, pairs.length === 1);
+        if (index >= 0) taken.add(index);
+        return index;
+      });
+      if (!pairs.length || targets.some(index => index < 0)) {
         aiStructureError.value = "Não encontrei essa seção na página para trocar. Use Inserir no fim.";
         return;
       }
-      const incomingRaw = generated.find(section => section.type === incoming.type) as PageSection | undefined;
-      const withPhotoFlag = incomingRaw && (incomingRaw as any).aiStockPhoto ? ({ ...incoming, aiStockPhoto: true } as PageSection) : incoming;
-      nextSections = sections.value.map((section, position) => (position === index ? mergeAiSwap(section, withPhotoFlag) : section));
+      const askedPhoto = new Set(aiReplyBlocks(reply).filter(block => block.photo).map(block => aiSectionType(block.name)));
+      nextSections = [...sections.value];
+      pairs.forEach(({ raw, section }, position) => {
+        const index = targets[position];
+        const flagged = raw.aiStockPhoto ? ({ ...section, aiStockPhoto: true } as unknown as PageSection) : section;
+        const merged = mergeAiSwap(nextSections[index], flagged);
+        nextSections[index] = merged;
+        swapTargets.set(raw as PageSection, index);
+        if (merged.type === "header") touchedHeaders.add(merged);
+        if (askedPhoto.has(raw.type as SectionType) && !raw.aiStockPhoto) photoMisses.push(sectionNameV2(raw.type as SectionType) || raw.type);
+      });
       aiSwapped.add(reply);
     } else if (mode === "insert") {
       const existing = sections.value;
@@ -2975,29 +3110,48 @@ const applyAiStructure = async (reply: string, mode: "insert" | "replace" | "swa
         };
         remapTarget(section);
         if ("items" in section) section.items.forEach(remapTarget);
+        // Itens do menu que apontam para seções novas que ganharam outro identificador.
+        if (section.type === "header") {
+          for (const link of (section as HeaderSection).links || []) {
+            if (link.targetType === "section" && renamedIds.has(link.target)) link.target = renamedIds.get(link.target)!;
+          }
+        }
       }
       // The mandatory plan footer is returned by the backend as well.
       // Keep a single copy at the bottom when appending content.
       const content = existing.filter(section => section.type !== "free_footer_brand");
       const footer = existing.filter(section => section.type === "free_footer_brand");
-      // Menu do topo novo vai para o topo (no lugar do atual, se houver).
-      const newHeader = additions.find(section => section.type === "header");
+      // Menu do topo novo vai para o topo. Se a página já tem menu, a sugestão entra nele: muda só
+      // o que a IA escreveu (itens, aparência...) e o resto do menu atual fica.
+      const suggestedHeader = additions.find(section => section.type === "header");
+      const currentHeader = content.find(section => section.type === "header");
+      const newHeader = suggestedHeader && currentHeader ? mergeAiSwap(currentHeader, suggestedHeader) : suggestedHeader;
+      if (newHeader) touchedHeaders.add(newHeader);
       // Rodapé da agência: um só, no fim (o da sugestão, se ela trouxe; senão o atual).
       const newAgencyFooter = additions.find(section => section.type === "agency_footer");
       const agencyFooter = newAgencyFooter || content.find(section => section.type === "agency_footer");
       nextSections = [
         ...(newHeader ? [newHeader] : []),
         ...content.filter(section => (!newHeader || section.type !== "header") && section.type !== "agency_footer"),
-        ...additions.filter(section => !["free_footer_brand", "agency_footer"].includes(section.type) && section !== newHeader),
+        ...additions.filter(section => !["free_footer_brand", "agency_footer"].includes(section.type) && section !== suggestedHeader),
         ...(agencyFooter ? [agencyFooter] : []),
         ...(footer.length ? footer : additions.filter(section => section.type === "free_footer_brand"))
       ];
     }
+    if (mode === "replace") nextSections.filter(section => section.type === "header").forEach(section => touchedHeaders.add(section));
+    // Menu transparente ou desfocado fica por cima do Banner Inicial; sem ele, como no editor, só sólido.
+    const hasHero = nextSections.some(section => section.type === "hero" && section.enabled !== false);
+    let headerMadeSolid = false;
+    nextSections = nextSections.map(section => {
+      if (!touchedHeaders.has(section) || hasHero || (section as HeaderSection).mode === "solid") return section;
+      headerMadeSolid = true;
+      return aiHeaderColors({ ...section, mode: "solid" }, null) as PageSection;
+    });
     // Voos: na troca, os trechos vão para a seção que ficou na página; nas outras, para as novas.
     const flightTargets: Array<{ sectionId: string; flights: unknown[] }> = [];
     if (mode === "swap") {
       const raw = generated.find(section => section.type === "flight_details") as any;
-      const index = aiSwapTarget(reply)?.index ?? -1;
+      const index = raw ? swapTargets.get(raw) ?? -1 : -1;
       const target = nextSections[index] as FlightDetailsSection | undefined;
       if (raw?.aiFlights?.length && target?.type === "flight_details" && target.sectionId) {
         flightTargets.push({ sectionId: target.sectionId, flights: raw.aiFlights });
@@ -3014,11 +3168,20 @@ const applyAiStructure = async (reply: string, mode: "insert" | "replace" | "swa
     setSections(nextSections);
     refreshPreview(true);
     if (flightTargets.length) void importAiFlights(flightTargets);
-    showAiToast(mode === "swap"
-      ? "Seção trocada pela sugestão. Revise e salve."
-      : mode === "insert"
-        ? "Seções adicionadas no fim. Revise e salve."
-        : "Estrutura aplicada. Revise e salve.");
+    const notes = [
+      mode === "swap"
+        ? swapTargets.size > 1 ? `${swapTargets.size} seções trocadas pela sugestão. Revise e salve.` : "Seção trocada pela sugestão. Revise e salve."
+        : mode === "insert"
+          ? "Seções adicionadas no fim. Revise e salve."
+          : "Estrutura aplicada. Revise e salve."
+    ];
+    if (photoMisses.length) {
+      notes.push(aiIncludeImages.value
+        ? `Não achei uma foto nova que combine com ${photoMisses.join(", ")}: ficou a atual.`
+        : `"Inserir imagens" está desligado: ${photoMisses.join(", ")} ficou com a foto atual.`);
+    }
+    if (headerMadeSolid) notes.push("O menu ficou sólido: transparente e desfocado precisam de Banner Inicial.");
+    showAiToast(notes.join(" "));
   } catch (err: any) {
     const detail = err?.response?.data?.detail;
     aiStructureError.value = typeof detail === "string" ? detail : "Não foi possível aplicar a estrutura. Tente novamente.";
@@ -3334,7 +3497,21 @@ const sendAiAssistantMessage = async () => {
       caption: raw.caption,
       headingLabel: raw.headingLabel,
       badge: raw.badge,
-      iconMode: raw.iconMode
+      iconMode: raw.iconMode,
+      // Menu do topo como está: a IA repete os itens atuais e muda só o pedido.
+      ...(section.type === "header"
+        ? {
+            mode: raw.mode,
+            stickyEnabled: raw.stickyEnabled,
+            actionType: raw.actionType,
+            contactLabel: raw.contactLabel,
+            links: (Array.isArray(raw.links) ? raw.links : []).map((link: Record<string, any>) => ({
+              label: link.label,
+              target: link.target,
+              targetType: link.targetType
+            }))
+          }
+        : {})
     };
   });
   const userText = trimmedMessage || "Mensagem com arquivos";
@@ -3377,7 +3554,7 @@ const sendAiAssistantMessage = async () => {
         if (event.type === "status") aiLive.step = event.step;
         else if (event.type === "delta") setContent(aiLive.content + event.text);
         else if (event.type === "replace") setContent(event.text);
-      }, pageSectionsSnapshot);
+      }, pageSectionsSnapshot, aiIncludeImages.value);
     } catch (error) {
       // Sem a resposta em tempo real (sessão para renovar, proxy, servidor antigo): usa a
       // conversa normal, que renova o login. Erros de limite e de permissão não repetem.
@@ -3385,7 +3562,7 @@ const sendAiAssistantMessage = async () => {
       if (reqError && (reqError.started || [400, 403, 413, 429].includes(reqError.status))) throw error;
       aiLive.step = "thinking";
       setContent("");
-      result = await sendAiAssistantConversation(pageId, conversationSnapshot, attachmentsSnapshot, pageSectionsSnapshot);
+      result = await sendAiAssistantConversation(pageId, conversationSnapshot, attachmentsSnapshot, pageSectionsSnapshot, aiIncludeImages.value);
     }
     if (result.usage) {
       aiAssistantUsage.value = result.usage;
@@ -3571,6 +3748,7 @@ const sectionTypes: SectionType[] = [
   "cta",
   "story",
   "reasons",
+  "inclusions",
   "links",
   "countdown",
   "flight_details",
@@ -3941,6 +4119,7 @@ const v2FormComponents: Partial<Record<SectionType, any>> = {
   video_vsl: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormVideoVsl.vue")),
   story: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormStory.vue")),
   reasons: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormReasons.vue")),
+  inclusions: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormInclusions.vue")),
   photo: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormPhoto.vue")),
   featured_video: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormFeaturedVideo.vue")),
   biography: defineAsyncComponent(() => import("../../components/admin/v2edit/forms/FormBiography.vue")),
@@ -5168,6 +5347,30 @@ if (type === "reasons") {
   } as ReasonsSection);
 }
 
+if (type === "inclusions") {
+  const headingDefaults = getSectionHeadingDefaults("inclusions");
+  return ensureSectionAnchor({
+    type: "inclusions",
+    enabled: true,
+    headingLabel: headingDefaults.label,
+    headingLabelStyle: headingDefaults.style,
+    title: "O que está incluso na sua viagem",
+    subtitle: "Confira o que já está no pacote e o que fica por sua conta.",
+    includedTitle: "Seu pacote inclui",
+    excludedTitle: "Não inclui",
+    included: [
+      { title: "Hospedagem com café da manhã", details: "" },
+      { title: "Passeios citados no roteiro", details: "" },
+      { title: "Guia local", details: "" }
+    ],
+    excluded: [
+      { title: "Bilhete aéreo", details: "" },
+      { title: "Seguro viagem", details: "" },
+      { title: "Gastos pessoais", details: "" }
+    ]
+  } as InclusionsSection);
+}
+
 if (type === "flight_details") {
   return ensureSectionAnchor({
     type: "flight_details",
@@ -5657,6 +5860,8 @@ const sectionSummary = (section: PageSection) => {
       return countLabel(data.items?.length || 0, "pergunta", "perguntas");
     case "testimonials":
       return countLabel(data.items?.length || 0, "depoimento", "depoimentos");
+    case "inclusions":
+      return `${data.included?.length || 0} incluem · ${data.excluded?.length || 0} não`;
     case "reasons":
     case "links":
       return countLabel(data.items?.length || 0, "item", "itens");
@@ -5687,7 +5892,7 @@ const sectionIconComponents: Record<string, Component> = {
 const sectionIconByType: Record<string, keyof typeof sectionIconComponents> = {
   hero: "image", banner_card: "image", photo: "image", gallery: "image",
   prices: "money", viajeon_checkout: "money",
-  itinerary: "list", reasons: "list", story: "list",
+  itinerary: "list", reasons: "list", inclusions: "list", story: "list",
   faq: "question", testimonials: "chat", internal_form: "chat",
   featured_video: "video", video_vsl: "video",
   biography: "user", agency_footer: "user", links: "link", cta: "link",
@@ -6061,8 +6266,10 @@ onMounted(async () => {
 
   await fetchPage();
   await loadAiAssistantHistory();
+  // "Resumo do pacote" e "Redirecionamento" só existem no visual novo (sem formulário nem
+  // componente no editor antigo).
   sectionCatalog.value = sectionTypes
-    .filter(type => type !== "redirect")
+    .filter(type => type !== "inclusions" && type !== "redirect")
     .map(type => ({
     type,
     label: sectionLabels[type] || type,
@@ -8097,6 +8304,19 @@ onMounted(async () => {
 .ai-v2-actions button.is-primary { background: #12b981; box-shadow: none; color: #fff; }
 .ai-v2-actions button:disabled { opacity: 0.5; }
 .ai-v2-hint { font-size: 12px; color: var(--muted-foreground); }
+.ai-img-opt { display: flex; align-items: center; gap: 6px; margin: 0 2px 8px; font-size: 12px; font-weight: 600; color: var(--muted-foreground); }
+.ai-img-switch { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+.ai-img-switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.ai-img-track { position: relative; width: 30px; height: 18px; border-radius: 999px; background: var(--border); transition: background 0.15s; }
+.ai-img-track::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 999px; background: #fff; box-shadow: 0 1px 2px rgb(0 0 0 / 0.25); transition: transform 0.15s; }
+.ai-img-switch input:checked + .ai-img-track { background: #12b981; }
+.ai-img-switch input:checked + .ai-img-track::after { transform: translateX(12px); }
+.ai-img-switch input:focus-visible + .ai-img-track { outline: 2px solid #12b981; outline-offset: 2px; }
+.ai-img-info { position: relative; display: inline-flex; }
+.ai-img-info-btn { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 999px; color: var(--muted-foreground); }
+.ai-img-info-btn:hover, .ai-img-info-btn:focus-visible { color: var(--foreground); background: var(--muted); }
+.ai-img-tip { position: absolute; bottom: calc(100% + 8px); left: 50%; z-index: 5; width: min(280px, 70vw); padding: 10px 12px; border-radius: 10px; background: var(--foreground); color: var(--background); font-size: 12px; font-weight: 500; line-height: 1.45; box-shadow: 0 8px 24px rgb(0 0 0 / 0.18); transform: translateX(-50%); opacity: 0; visibility: hidden; transition: opacity 0.12s; pointer-events: none; }
+.ai-img-info:hover .ai-img-tip, .ai-img-info-btn:focus-visible + .ai-img-tip, .ai-img-tip.is-open { opacity: 1; visibility: visible; }
 .ai-v2-details { align-self: flex-start; font-size: 12px; font-weight: 700; color: var(--muted-foreground); text-decoration: underline; text-underline-offset: 3px; }
 .ai-v2-full { padding: 10px; border-radius: 10px; background: var(--card); font-size: 12px; }
 .ai-v2-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }

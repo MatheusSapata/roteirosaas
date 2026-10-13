@@ -10,7 +10,7 @@ import logging
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_active_user
@@ -39,7 +39,7 @@ from app.services.ai_assistant import (
     transcribe_audio,
 )
 from app.services.ai_assistant_context import build_agency_context
-from app.services.stock_images import fill_section_photos
+from app.services.stock_images import clear_photo_queries, fill_section_photos
 from app.services.ai_assistant_usage import (
     check_ai_assistant_message_limit,
     get_ai_assistant_usage_record,
@@ -75,6 +75,10 @@ class AiAssistantHistoryMessage(BaseModel):
 class AiAssistantCreatePageBaseRequest(BaseModel):
     page_id: int
     reply: str
+    # Opção "Inserir imagens" do assistente: desligada, nenhuma foto de banco entra.
+    include_images: bool = True
+    # Fotos que já estão na página: a troca de foto não devolve a mesma.
+    current_photos: list[str] = Field(default_factory=list, max_length=400)
 
 
 class AiAssistantCreatePageBaseResponse(BaseModel):
@@ -111,6 +115,7 @@ async def _prepare_chat(
     conversation: str,
     attachments: list[UploadFile] | None,
     page_sections: str = "",
+    include_images: bool = True,
 ) -> tuple[Page, list[AiAssistantConversationMessage], AiAssistantUsage, int | None, list[ChatAttachment], str]:
     """Valida a conversa e a permissão, confere o limite do plano e grava as mensagens novas do usuário."""
     try:
@@ -162,7 +167,8 @@ async def _prepare_chat(
         sections_payload = None
     else:
         sections_payload = [item for item in sections_payload if isinstance(item, dict)][:80]
-    return page, parsed_conversation, usage_record, usage_limit, attachment_payload, build_agency_context(db, page, sections_payload)
+    context = build_agency_context(db, page, sections_payload, include_images=include_images)
+    return page, parsed_conversation, usage_record, usage_limit, attachment_payload, context
 
 
 def _usage_headers(usage_record: AiAssistantUsage, usage_limit: int | None) -> dict[str, str]:
@@ -192,12 +198,13 @@ async def chat_with_assistant(
     conversation: str = Form("[]"),
     attachments: list[UploadFile] | None = File(default=None),
     page_sections: str = Form(""),
+    include_images: bool = Form(True),
     response: Response = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> AiAssistantChatResponse:
     page, parsed_conversation, usage_record, usage_limit, attachment_payload, context = await _prepare_chat(
-        db, current_user, page_id, conversation, attachments, page_sections
+        db, current_user, page_id, conversation, attachments, page_sections, include_images
     )
     reply = await anyio.to_thread.run_sync(
         partial(
@@ -222,13 +229,14 @@ async def chat_with_assistant_stream(
     conversation: str = Form("[]"),
     attachments: list[UploadFile] | None = File(default=None),
     page_sections: str = Form(""),
+    include_images: bool = Form(True),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> StreamingResponse:
     """Mesma conversa do /chat, em linhas JSON (NDJSON) enviadas enquanto a IA escreve:
     etapas, trechos do texto e, no fim, a resposta completa com o uso do mês."""
     page, parsed_conversation, usage_record, usage_limit, attachment_payload, context = await _prepare_chat(
-        db, current_user, page_id, conversation, attachments, page_sections
+        db, current_user, page_id, conversation, attachments, page_sections, include_images
     )
     model = get_active_gpt_model(db, create_if_missing=True)
     page_id_value, user_id, period_key = page.id, current_user.id, usage_record.period_key
@@ -409,12 +417,17 @@ def preview_page_base(
     ensure_agency_member(db, page.agency_id, current_user)
     ensure_pages_editor_permission(db, page.agency_id, current_user)
     config, _ = build_page_base_config_from_reply(payload.reply, normalize_config(page.config_json), strict=True)
-    # Fotos dos bancos gratuitos no lugar das imagens provisórias (com o banco de buscas).
-    try:
-        fill_section_photos(db, config["sections"], page.agency_id)
-    except Exception:  # pragma: no cover - sem foto, a seção fica com a imagem provisória
-        logger.exception("ai_assistant_stock_photos_failed")
-        db.rollback()
+    # Fotos dos bancos no lugar das imagens provisórias (a IA escolhe entre as candidatas), a não
+    # ser que o usuário tenha desligado "Inserir imagens".
+    if payload.include_images:
+        try:
+            fill_section_photos(db, config["sections"], page.agency_id, exclude_urls=payload.current_photos)
+        except Exception:  # pragma: no cover - sem foto, a seção fica com a imagem provisória
+            logger.exception("ai_assistant_stock_photos_failed")
+            db.rollback()
+            clear_photo_queries(config["sections"])
+    else:
+        clear_photo_queries(config["sections"])
     # Menu do topo com redes sociais: usa as redes cadastradas da agência.
     networks = [link for link in (page.agency.social_links if page.agency else []) if (link.url or "").strip()]
     for section in config["sections"]:

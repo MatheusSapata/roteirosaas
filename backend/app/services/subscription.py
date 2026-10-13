@@ -1,6 +1,7 @@
 import asyncio
 import logging
 from datetime import date, datetime, timedelta
+from decimal import Decimal
 from typing import Optional
 
 from app.core.config import get_settings
@@ -10,6 +11,7 @@ from app.models.subscription import Subscription
 from app.models.user import User
 from app.services.asaas import AsaasAPIError, AsaasClient, build_default_split_payload
 from app.services.checkout import find_pix_automatic_authorization_id
+from app.services.company_status import BILLING_PROVIDERS, PAYMENT_RETRY_DAYS
 from app.services.viajechat_checkout_flow import tag_abandoned_checkout_sessions
 
 logger = logging.getLogger(__name__)
@@ -241,9 +243,16 @@ def _apply_scheduled_cancellations(now: datetime) -> int:
     return processed
 
 
+def _charged_by_gateway(sub: Subscription) -> bool:
+    """Assinatura paga com cobrança recorrente na Asaas ou na Cakto (que pode ser tentada de novo)."""
+    return (sub.provider or "").strip().lower() in BILLING_PROVIDERS and Decimal(str(sub.mrr_amount or 0)) > 0
+
+
 def expire_subscriptions(now: Optional[datetime] = None) -> int:
     """
     Marca assinaturas vencidas como inativas sem despublicar páginas.
+    Assinatura ativa cobrada pela Asaas/Cakto que venceu sem renovação confirmada não é encerrada:
+    vira inadimplente (no ar por 3 dias, cobrança segue por 30; ver end_unpaid_subscriptions).
     Retorna quantidade processada.
     """
     now = now or datetime.utcnow()
@@ -261,6 +270,10 @@ def expire_subscriptions(now: Optional[datetime] = None) -> int:
             .all()
         )
         for sub, user in expired:
+            if (sub.status or "").lower() == "active" and _charged_by_gateway(sub):
+                sub.status = "past_due"
+                processed += 1
+                continue
             sub.status = "inactive"
             sub.valid_until = None
             sub.failed_attempts = 3
@@ -276,6 +289,91 @@ def expire_subscriptions(now: Optional[datetime] = None) -> int:
     return processed
 
 
+def _asaas_paid_after(client: AsaasClient, sub: Subscription, due: date) -> bool:
+    """Confere na Asaas (só consulta) se entrou pagamento depois do vencimento que o webhook não trouxe."""
+    if not sub.asaas_subscription_id:
+        return False
+    for status in ("RECEIVED", "CONFIRMED"):
+        data = client.list_payments(subscription=sub.asaas_subscription_id, status=status, limit=20) or {}
+        for item in data.get("data") or []:
+            raw = item.get("paymentDate") or item.get("confirmedDate") or item.get("clientPaymentDate")
+            if raw and str(raw)[:10] >= due.isoformat():
+                return True
+    return False
+
+
+def end_unpaid_subscriptions(now: Optional[datetime] = None) -> int:
+    """Encerra a cobrança de quem ficou 30 dias sem pagar depois do vencimento (cancela na Asaas ou
+    na Cakto e marca a assinatura como inativa). Se pagar antes disso, o webhook reativa."""
+    now = now or datetime.utcnow()
+    cutoff = now - timedelta(days=PAYMENT_RETRY_DAYS)
+    db = SessionLocal()
+    ended = 0
+    try:
+        subs = (
+            db.query(Subscription)
+            .filter(
+                Subscription.status == "past_due",
+                Subscription.valid_until.isnot(None),
+                Subscription.valid_until < cutoff,
+            )
+            .all()
+        )
+        asaas_client = AsaasClient(settings.asaas_api_key, settings.asaas_base_url) if settings.asaas_api_key else None
+        for sub in subs:
+            provider = (sub.provider or "").strip().lower()
+            if provider not in BILLING_PROVIDERS:
+                continue
+            try:
+                if provider == "asaas":
+                    if asaas_client is None:
+                        continue
+                    due = sub.valid_until.date()
+                    if _asaas_paid_after(asaas_client, sub, due):
+                        logger.warning("Assinatura %s tem pagamento na Asaas depois do vencimento; não encerrada.", sub.id)
+                        continue
+                    checkout_token = None
+                    reference = str(sub.external_reference or "").strip()
+                    if reference.startswith("checkout:"):
+                        checkout_token = reference.split("checkout:", 1)[1].strip() or None
+                    authorization_id = None
+                    if str(sub.payment_method_type or "").strip().lower() == "pix":
+                        authorization_id = find_pix_automatic_authorization_id(db, user_id=sub.user_id, checkout_token=checkout_token)
+                    if authorization_id:
+                        asaas_client.cancel_pix_automatic_authorization(authorization_id, reason="Pagamento não realizado em 30 dias")
+                    elif sub.asaas_subscription_id:
+                        asaas_client.cancel_subscription(sub.asaas_subscription_id)
+                    # Sem os ids, o webhook de assinatura removida não reabre o período.
+                    sub.asaas_subscription_id = None
+                    sub.asaas_payment_link_id = None
+                    sub.external_reference = None
+                    sub.valid_until = None
+                else:
+                    from app.services.cakto import CaktoIntegrationService
+
+                    CaktoIntegrationService(db).cancel_remote_subscription(
+                        subscription_code=sub.cakto_subscription_code, order_id=sub.cakto_order_id
+                    )
+                    # A data de vencimento (já passada) fica: o webhook de cancelamento da Cakto só
+                    # recalcula a validade quando ela está vazia.
+            except Exception:
+                logger.exception("Erro ao encerrar assinatura inadimplente subscription_id=%s", sub.id)
+                continue
+            sub.status = "inactive"
+            sub.failed_attempts = max(int(sub.failed_attempts or 0), 3)
+            sub.mrr_amount = 0
+            db.add(sub)
+            ended += 1
+        if ended:
+            db.commit()
+    except Exception:
+        db.rollback()
+        logger.exception("Erro ao encerrar assinaturas inadimplentes")
+    finally:
+        db.close()
+    return ended
+
+
 def schedule_expiration_job(interval_minutes: int = 60) -> None:
     """
     Inicia uma tarefa assincrona que roda a cada interval_minutes.
@@ -289,6 +387,7 @@ def schedule_expiration_job(interval_minutes: int = 60) -> None:
                 tag_abandoned_checkout_sessions(cutoff_minutes=30)
                 create_due_pix_automatic_instructions()
                 expire_subscriptions()
+                end_unpaid_subscriptions()
             except Exception:
                 logger.exception("Erro no job de expiracao de assinaturas")
             try:

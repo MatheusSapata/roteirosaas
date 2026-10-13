@@ -2,10 +2,10 @@
   <V2Section type="agency_footer" :background="section.backgroundColor" fallback-background="#0E1A15" :anchor-id="section.anchorId" flush>
     <div class="v2-ft">
       <div class="v2-ft-cols v2-in">
-        <div v-if="logo || description || socialLinks.length" class="v2-ft-col v2-ft-brand">
+        <div v-if="logo || description || (socialLinks.length && !socialOwnColumn)" class="v2-ft-col v2-ft-brand">
           <img v-if="logo" :src="logo" :alt="companyName" class="v2-ft-logo" :style="{ borderRadius: `${Math.max(0, logoRadius || 0)}px` }" loading="lazy" />
           <p v-if="description" class="v2-ft-about">{{ description }}</p>
-          <div v-if="socialLinks.length" class="v2-ft-social" :aria-label="copy.social">
+          <div v-if="socialLinks.length && !socialOwnColumn" class="v2-ft-social" :aria-label="copy.social">
             <a v-for="link in socialLinks" :key="link.network" :href="link.url" target="_blank" rel="noopener noreferrer" :aria-label="link.label" :title="link.label">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path :d="link.iconPath" /></svg>
             </a>
@@ -20,6 +20,15 @@
           <span class="v2-ft-h">{{ copy.address }}</span>
           <span class="v2-ft-muted">{{ addressText }}</span>
           <a v-if="mapLink" :href="mapLink" target="_blank" rel="noopener" class="v2-ft-map-btn">{{ copy.map }}</a>
+        </div>
+        <!-- Sem mapa, as redes ganham a terceira coluna, com título como as outras. -->
+        <div v-if="socialOwnColumn" class="v2-ft-col">
+          <span class="v2-ft-h">{{ phoneText || email ? copy.social : copy.contacts }}</span>
+          <div class="v2-ft-social" :aria-label="copy.social">
+            <a v-for="link in socialLinks" :key="link.network" :href="link.url" target="_blank" rel="noopener noreferrer" :aria-label="link.label" :title="link.label">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path :d="link.iconPath" /></svg>
+            </a>
+          </div>
         </div>
         <div v-if="mapEmbedUrl" class="v2-ft-col v2-ft-mapcol">
           <iframe :src="mapEmbedUrl" :title="copy.mapTitle" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
@@ -124,6 +133,7 @@ const socialLinks = computed(() =>
     .filter((link: any) => typeof link?.url === "string" && link.url.trim() && icons[link.network])
     .map((link: any) => ({ network: link.network, url: link.url.trim(), iconPath: icons[link.network].path, label: icons[link.network].label }))
 );
+const socialOwnColumn = computed(() => !mapEmbedUrl.value && socialLinks.value.length > 0);
 // Usa o documento escolhido em "Documento do Cadastur" quando a agência tem esse documento;
 // senão, o que existir. A URL salva tem prioridade; sem ela, monta a do QR code público.
 const cadasturLink = computed(() => {

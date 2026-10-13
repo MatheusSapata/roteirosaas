@@ -29,6 +29,20 @@
         </h1>
         </div>
       </div>
+      <!-- Sem imagem: o título não some; vai numa faixa na cor da página. Sem imagem e sem título,
+           fica só o texto. -->
+      <div
+        v-else-if="displayTitle"
+        class="flex w-full items-center justify-center px-6 py-10 text-center md:py-14"
+        :style="{ backgroundColor: titleBandColor }"
+      >
+        <h1
+          class="text-center text-4xl font-black uppercase tracking-[0.2em] leading-none md:text-6xl"
+          :style="{ color: titleBandTextColor, fontSize: titleSize }"
+        >
+          {{ displayTitle }}
+        </h1>
+      </div>
 
       <div
         v-if="hasBodyText"
@@ -41,12 +55,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import { computed, inject, isRef, onMounted, onUnmounted, ref } from "vue";
 import { resolveMediaUrl } from "../../utils/media";
 import { sanitizeHtml } from "../../utils/sanitizeHtml";
 import { getReadableTextColor, getRelativeLuminance, normalizeHexColor } from "../../utils/colorContrast";
 import type { BiographySection } from "../../types/page";
 import { createLocalizer, getCurrentLanguage } from "../../utils/i18n";
+import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
 
 const props = defineProps<{ section: BiographySection; previewDevice?: "desktop" | "mobile" }>();
 const isMobileViewport = ref(false);
@@ -115,6 +130,14 @@ const overlayColor = computed(() => {
 });
 const displayTitle = computed(() => localize(props.section.title).trim());
 const titleColor = computed(() => props.section.titleColor || "#ffffff");
+const branding = inject(PUBLIC_BRANDING_KEY, null);
+// Faixa do título sem imagem: cor principal da agência, com letra legível em cima dela.
+const titleBandColor = computed(() => {
+  const data = (isRef(branding) ? (branding as any).value : branding) as Record<string, any> | null;
+  const color = data && typeof data === "object" ? data.primary_color : "";
+  return normalizeHexColor(typeof color === "string" ? color.trim() : "") || "#0f172a";
+});
+const titleBandTextColor = computed(() => getReadableTextColor(titleBandColor.value));
 const DEFAULT_BODY_TEXT_COLOR = "#0f172a";
 const sectionStyle = computed(() => {
   if (!props.section.backgroundColor) return undefined;
@@ -164,6 +187,8 @@ const textHtml = computed(() => sanitizeHtml(localize(props.section.text), { emb
 const hasBodyText = computed(() => {
   const raw = localize(props.section.text);
   if (!raw) return false;
+  // Imagem ou vídeo no meio do texto também é conteúdo.
+  if (/<(img|iframe)\b/i.test(raw)) return true;
   const plain = raw
     .replace(/<[^>]*>/g, " ")
     .replace(/&nbsp;/gi, " ")

@@ -7,11 +7,12 @@ com a Asaas usa ReadOnlyAsaas, que só aceita consultas (GET) e recusa qualquer 
 """
 from __future__ import annotations
 
+import re
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta, timezone
 from decimal import ROUND_HALF_UP, Decimal
-from typing import Any
+from typing import Any, Iterable
 
 from sqlalchemy.orm import Session
 
@@ -20,6 +21,7 @@ from app.models.cakto import CaktoEventLog
 from app.models.subscription import Subscription
 from app.models.user import User
 from app.services.asaas import AsaasClient
+from app.services.company_status import COMBO_PROVIDERS, charging_overdue
 
 ZERO = Decimal("0")
 CENT = Decimal("0.01")
@@ -61,6 +63,10 @@ def _decimal(value: Any) -> Decimal:
 
 
 def is_revenue_subscription(subscription: Subscription) -> bool:
+    """Assinatura paga ao Roteiro Online. Combo (pago na Viaje On) fica de fora, qualquer que seja o
+    valor gravado nela."""
+    if (subscription.provider or "").strip().lower() in COMBO_PROVIDERS:
+        return False
     return (subscription.plan or "").strip().lower() not in NON_REVENUE_PLANS and _decimal(subscription.mrr_amount) > 0
 
 
@@ -73,8 +79,15 @@ def charge_amount(subscription: Subscription) -> Decimal:
 
 
 def renews(subscription: Subscription) -> bool:
-    """Vai ter nova cobrança? Ativa (mesmo com falha recente) e sem cancelamento agendado."""
-    return (subscription.status or "").lower() in {"active", "past_due"} and int(subscription.failed_attempts or 0) < 3
+    """Vai ter nova cobrança? Ativa, ou inadimplente ainda dentro dos 30 dias de tentativa."""
+    status = (subscription.status or "").lower()
+    if status == "active":
+        return True
+    if status == "past_due":
+        if subscription.valid_until is not None:
+            return charging_overdue(subscription)
+        return int(subscription.failed_attempts or 0) < 3
+    return False
 
 
 @dataclass
@@ -87,6 +100,11 @@ class Payment:
     method: str
     email: str | None = None
     description: str = ""
+    # Quem pagou: id do cliente na Asaas ou e-mail na Cakto (para achar o primeiro pagamento).
+    customer: str | None = None
+    # É do Roteiro Online? A conta da Asaas/Cakto pode receber pagamentos de outros produtos
+    # (ex.: o combo vendido pela Viaje On); esses ficam fora da receita.
+    ours: bool = True
 
 
 def _asaas_payment(row: AsaasEventLog) -> tuple[str, dict[str, Any]] | None:
@@ -109,10 +127,58 @@ def _asaas_date(payment: dict[str, Any], *keys: str) -> datetime | None:
     return None
 
 
-def collect_payments(db: Session, start: datetime, end: datetime) -> tuple[list[Payment], list[Payment]]:
-    """Pagamentos confirmados e estornos no período, cada pagamento contado uma vez só."""
-    from app.api.v1.endpoints.admin import _extract_cakto_amount, _extract_customer_email  # evita import circular
+# Referências que o Roteiro Online grava nas cobranças da Asaas (checkout novo e o formato antigo
+# "usuário:plano:ciclo").
+OUR_ASAAS_REFERENCE_PREFIXES = ("checkout:", "checkout_upgrade:", "co:", "scheduled_downgrade:")
+LEGACY_ASAAS_REFERENCE = re.compile(r"^\d+:[a-z_]+:(monthly|annual)$")
 
+
+@dataclass
+class _OurCharges:
+    asaas_subscriptions: set[str]
+    asaas_customers: set[str]
+    asaas_payments: set[str]
+    asaas_links: set[str]
+
+
+def _our_charges(db: Session) -> _OurCharges:
+    from app.models.checkout import CheckoutSession  # evita import circular
+
+    subscriptions = db.query(
+        Subscription.asaas_subscription_id, Subscription.asaas_customer_id, Subscription.asaas_payment_link_id, Subscription.provider
+    ).all()
+    sessions = db.query(CheckoutSession.asaas_payment_id, CheckoutSession.asaas_customer_id).all()
+    return _OurCharges(
+        asaas_subscriptions={row[0] for row in subscriptions if row[0]},
+        asaas_customers={row[1] for row in subscriptions if row[1] and (row[3] or "").lower() not in COMBO_PROVIDERS}
+        | {row[1] for row in sessions if row[1]},
+        asaas_payments={row[0] for row in sessions if row[0]},
+        asaas_links={row[2] for row in subscriptions if row[2]},
+    )
+
+
+def _is_our_asaas_payment(payment: dict[str, Any], ours: _OurCharges) -> bool:
+    reference = str(payment.get("externalReference") or "").strip()
+    if reference.startswith(OUR_ASAAS_REFERENCE_PREFIXES) or LEGACY_ASAAS_REFERENCE.match(reference):
+        return True
+    if (
+        str(payment.get("subscription") or "") in ours.asaas_subscriptions
+        or str(payment.get("id") or "") in ours.asaas_payments
+        or str(payment.get("paymentLink") or "") in ours.asaas_links
+    ):
+        return True
+    # Mesmo cliente, mas com referência de outro sistema, é outro produto (ex.: combo da Viaje On).
+    return not reference and str(payment.get("customer") or "") in ours.asaas_customers
+
+
+def all_payments(db: Session) -> tuple[list[Payment], list[Payment]]:
+    """Todos os pagamentos confirmados e estornos já recebidos, cada pagamento contado uma vez só.
+    Cada um vem marcado em `ours`: só os do Roteiro Online entram na receita."""
+    from app.api.v1.endpoints.admin import _extract_cakto_amount, _extract_customer_email  # evita import circular
+    from app.services.cakto import CaktoIntegrationService
+
+    ours = _our_charges(db)
+    cakto = CaktoIntegrationService(db)
     paid: dict[str, Payment] = {}
     refunds: dict[str, Payment] = {}
     for row in db.query(AsaasEventLog).all():
@@ -120,6 +186,7 @@ def collect_payments(db: Session, start: datetime, end: datetime) -> tuple[list[
         if not parsed:
             continue
         event, payment = parsed
+        is_ours = _is_our_asaas_payment(payment, ours)
         key = f"asaas:{payment['id']}"
         if event in ASAAS_PAID_EVENTS:
             # Cartão: CONFIRMED (aprovado) e depois RECEIVED (dinheiro na conta) — conta uma vez,
@@ -131,12 +198,14 @@ def collect_payments(db: Session, start: datetime, end: datetime) -> tuple[list[
                     key=key, source="Asaas", paid_at=moment, gross=_decimal(payment.get("value")),
                     net=_decimal(payment.get("netValue") or payment.get("value")),
                     method=str(payment.get("billingType") or "").lower(), description=str(payment.get("description") or ""),
+                    customer=str(payment.get("customer") or "") or None, ours=is_ours,
                 )
         elif event in ASAAS_REFUND_EVENTS:
             moment = _asaas_date(payment, "refundedDate") or _aware(row.created_at)
             refunds[key] = Payment(
                 key=key, source="Asaas", paid_at=moment, gross=_decimal(payment.get("value")),
                 net=_decimal(payment.get("netValue") or payment.get("value")), method=str(payment.get("billingType") or "").lower(),
+                ours=is_ours,
             )
     for row in db.query(CaktoEventLog).filter(CaktoEventLog.event_type.isnot(None)).all():
         event = (row.event_type or "").strip().lower()
@@ -146,11 +215,38 @@ def collect_payments(db: Session, start: datetime, end: datetime) -> tuple[list[
         moment = _aware(row.processed_at or row.created_at)
         amount = _extract_cakto_amount(payload)
         key = f"cakto:{row.event_id or row.id}"
-        item = Payment(key=key, source="Cakto", paid_at=moment, gross=amount, net=amount, method="", email=_extract_customer_email(payload))
+        email = _extract_customer_email(payload)
+        item = Payment(key=key, source="Cakto", paid_at=moment, gross=amount, net=amount, method="", email=email, customer=email,
+                       ours=_is_our_cakto_payment(cakto, payload))
         (paid if event in CAKTO_PAID_EVENTS else refunds)[key] = item
+    return list(paid.values()), list(refunds.values())
 
-    def in_range(items: dict[str, Payment]) -> list[Payment]:
-        return [item for item in items.values() if item.paid_at and start <= item.paid_at < end]
+
+def _is_our_cakto_payment(cakto: Any, payload: dict[str, Any]) -> bool:
+    """Pedido da Cakto de uma oferta do Roteiro Online. Sem o mapa de ofertas configurado (ou sem
+    oferta no evento) não dá para separar, então conta."""
+    if not cakto.plan_mappings:
+        return True
+    order = cakto._extract_order(payload)
+    offer_id = cakto._extract_offer_id(order, payload)
+    product_id = cakto._extract_product_id(order, payload)
+    if not offer_id and not product_id:
+        return True
+    return cakto._resolve_plan(offer_id, product_id) is not None
+
+
+def collect_payments(
+    db: Session, start: datetime, end: datetime, include_others: bool = False
+) -> tuple[list[Payment], list[Payment]]:
+    """Pagamentos confirmados e estornos do Roteiro Online no período, cada pagamento contado uma vez
+    só. Com include_others, vêm também os de outros produtos (marcados com ours=False)."""
+    paid, refunds = all_payments(db)
+
+    def in_range(items: list[Payment]) -> list[Payment]:
+        return [
+            item for item in items
+            if item.paid_at and start <= item.paid_at < end and (include_others or item.ours)
+        ]
 
     return in_range(paid), in_range(refunds)
 
@@ -195,6 +291,40 @@ def _renewal(subscription: Subscription, user: User) -> Renewal | None:
     )
 
 
+@dataclass
+class MrrBreakdown:
+    mrr: Decimal = ZERO
+    at_risk: Decimal = ZERO
+    customers: int = 0
+    by_plan: dict[str, Decimal] = field(default_factory=lambda: defaultdict(lambda: ZERO))
+    customers_by_plan: dict[str, int] = field(default_factory=lambda: defaultdict(int))
+    by_cycle: dict[str, Decimal] = field(default_factory=lambda: defaultdict(lambda: ZERO))
+    by_method: dict[str, Decimal] = field(default_factory=lambda: defaultdict(lambda: ZERO))
+
+
+def mrr_breakdown(subscriptions: Iterable[Subscription]) -> MrrBreakdown:
+    """MRR das assinaturas que vão renovar; "em risco" = cancelamento agendado ou falha de
+    cobrança. Recebe só assinaturas de receita (is_revenue_subscription)."""
+    result = MrrBreakdown()
+    for subscription in subscriptions:
+        status = (subscription.status or "").lower()
+        if status not in {"active", "past_due", "cancel_at_period_end"}:
+            continue
+        monthly = _decimal(subscription.mrr_amount)
+        if status in {"cancel_at_period_end", "past_due"} or int(subscription.failed_attempts or 0) > 0:
+            result.at_risk += monthly
+        if status == "cancel_at_period_end":
+            continue
+        plan = (subscription.plan or "—").title()
+        result.customers += 1
+        result.mrr += monthly
+        result.by_plan[plan] += monthly
+        result.customers_by_plan[plan] += 1
+        result.by_cycle[CYCLE_LABELS.get((subscription.billing_cycle or "monthly").lower(), "Mensal")] += monthly
+        result.by_method[METHOD_LABELS.get((subscription.payment_method_type or "").lower(), "Outro")] += monthly
+    return result
+
+
 def revenue_overview(db: Session, month: date | None = None, horizon_days: int = 60, now: datetime | None = None) -> dict[str, Any]:
     now = now or datetime.now(timezone.utc)
     today = now.date()
@@ -204,30 +334,15 @@ def revenue_overview(db: Session, month: date | None = None, horizon_days: int =
     end = datetime.combine(next_month, time.min, tzinfo=timezone.utc)
     rows = db.query(Subscription, User).join(User, User.id == Subscription.user_id).all()
     paying = [(s, u) for s, u in rows if is_revenue_subscription(s)]
-
-    # MRR: assinaturas que vão renovar; "em risco" = cancelamento agendado ou falha de cobrança.
-    mrr = at_risk = ZERO
-    by_plan: dict[str, Decimal] = defaultdict(lambda: ZERO)
-    by_cycle: dict[str, Decimal] = defaultdict(lambda: ZERO)
-    by_method: dict[str, Decimal] = defaultdict(lambda: ZERO)
-    customers = 0
-    for subscription, user in paying:
-        status = (subscription.status or "").lower()
-        if status not in {"active", "past_due", "cancel_at_period_end"}:
-            continue
-        monthly = _decimal(subscription.mrr_amount)
-        if status == "cancel_at_period_end" or int(subscription.failed_attempts or 0) > 0:
-            at_risk += monthly
-        if status == "cancel_at_period_end":
-            continue
-        customers += 1
-        mrr += monthly
-        by_plan[(subscription.plan or "—").title()] += monthly
-        by_cycle[CYCLE_LABELS.get((subscription.billing_cycle or "monthly").lower(), "Mensal")] += monthly
-        by_method[METHOD_LABELS.get((subscription.payment_method_type or "").lower(), "Outro")] += monthly
+    breakdown = mrr_breakdown(subscription for subscription, _user in paying)
+    mrr, at_risk, customers = breakdown.mrr, breakdown.at_risk, breakdown.customers
+    by_plan, by_cycle, by_method = breakdown.by_plan, breakdown.by_cycle, breakdown.by_method
 
     # Mês: recebido (eventos), a receber (renovações até o fim do mês) e em atraso.
-    paid, refunded = collect_payments(db, start, end)
+    all_paid, all_refunded = collect_payments(db, start, end, include_others=True)
+    paid = [item for item in all_paid if item.ours]
+    refunded = [item for item in all_refunded if item.ours]
+    others = [item for item in all_paid if not item.ours]
     received_gross = sum((item.gross for item in paid), ZERO)
     received_net = sum((item.net for item in paid), ZERO)
     refunded_total = sum((item.gross for item in refunded), ZERO)
@@ -259,6 +374,8 @@ def revenue_overview(db: Session, month: date | None = None, horizon_days: int =
         "month_received_net": _money(received_net),
         "month_refunded": _money(refunded_total),
         "month_payments": len(paid),
+        "month_other_received": _money(sum((item.gross for item in others), ZERO)),
+        "month_other_payments": len(others),
         "month_to_receive": _money(total(to_receive)) if is_current_month else None,
         "month_to_receive_count": len(to_receive) if is_current_month else None,
         "month_expected": _money(received_gross - refunded_total + (total(to_receive) if is_current_month else ZERO)),

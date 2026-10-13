@@ -45,6 +45,8 @@ class User(Base):
     status = Column(String(50), nullable=True, default=None)
     source = Column(String(50), nullable=True)
     must_change_password = Column(Boolean, nullable=False, default=False)
+    # Senha definida pelo admin master: a pessoa precisa criar uma senha própria ao entrar.
+    temporary_password = Column(Boolean, nullable=False, default=False, server_default="false")
     permissions = Column(JSONB, nullable=True)
     crm_view_preferences = Column(JSONB, nullable=True)
 
@@ -68,5 +70,11 @@ class User(Base):
         if not self.subscription:
             return False
         status = (self.subscription.status or "").lower()
+        if status == "past_due":
+            # Cobrança em atraso: bloqueia depois dos 3 dias de carência (mesma regra da página pública).
+            from app.services.company_status import subscription_allows_public
+
+            if self.subscription.valid_until is not None:
+                return not subscription_allows_public(self.subscription)
         failed_attempts = int(self.subscription.failed_attempts or 0)
         return status != "active" and failed_attempts >= 3

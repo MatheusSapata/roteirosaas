@@ -8,6 +8,9 @@ export const localize = createLocalizer(getCurrentLanguage());
 
 export const text = (value: LocalizedString) => localize(value).trim();
 export const html = (value: LocalizedString) => sanitizeHtml(plainTextToHtml(localize(value))) || "";
+/** Tem texto de verdade? O editor grava "<p></p>" ou "<p><br></p>" quando o campo fica vazio. */
+export const hasText = (value: LocalizedString) =>
+  !!localize(value).replace(/<[^>]*>/g, " ").replace(/&nbsp;/gi, " ").trim();
 
 interface HeadingFields {
   headingLabel?: LocalizedString;

@@ -170,6 +170,7 @@ class UserOut(UserBase):
     subscription_status: Optional[str] = None
     subscription_valid_until: Optional[datetime] = None
     subscription_blocked: Optional[bool] = None
+    temporary_password: Optional[bool] = None
     primary_agency_id: Optional[int] = None
     is_owner: Optional[bool] = None
     role: Optional[str] = None

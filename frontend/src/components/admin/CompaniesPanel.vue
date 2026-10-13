@@ -2,10 +2,11 @@
   <section class="am-page">
     <AdminMasterHeader
       title="Empresas"
-      subtitle="Situação de cada agência: quem paga, quem está em teste, quem ficou no gratuito ou com o teste encerrado e quem saiu do ar. O espaço dos arquivos fica em Armazenamento."
+      subtitle="Cada agência cliente: dono, plano, cobrança, prazo e uso. Clique numa empresa para ver tudo e mudar plano, validade ou assinatura."
     >
       <router-link to="/admin/administracao/armazenamento" class="am-btn"><AmIcon name="database" />Armazenamento</router-link>
-      <button type="button" class="am-btn" :disabled="loading" @click="load"><AmIcon name="refresh" :class="loading ? 'animate-spin' : ''" />Atualizar</button>
+      <button type="button" class="am-btn" :disabled="loading" @click="load()"><AmIcon name="refresh" :class="loading ? 'animate-spin' : ''" />Atualizar</button>
+      <button type="button" class="am-btn am-btn-primary" @click="createOpen = true"><AmIcon name="plus" />Nova empresa</button>
     </AdminMasterHeader>
 
     <div v-if="errorMessage" class="am-notice am-tone-danger"><AmIcon name="alert" /><span>{{ errorMessage }}</span></div>
@@ -15,21 +16,27 @@
       <AdminMasterKpi
         icon="check"
         tone="success"
-        label="Clientes pagantes"
-        :value="formatInt(paying)"
-        :hint="`${formatInt(count('active'))} ativas · ${formatInt(count('past_due'))} inadimplentes · ${formatInt(count('cancelling'))} cancelando`"
+        label="Ativas com pagamento"
+        :value="formatInt(filterCount('paying'))"
+        :hint="`${formatInt(count('active'))} em dia · ${formatInt(count('cancelling'))} cancelando no fim do período · fora ${plural(count('past_due'), 'inadimplente', 'inadimplentes')}`"
       />
-      <AdminMasterKpi icon="history" tone="info" label="Em teste" :value="formatInt(count('trial'))" hint="Teste grátis ainda valendo" />
       <AdminMasterKpi
-        icon="user"
-        tone="neutral"
-        label="Sem assinatura paga"
-        :value="formatInt(count('free') + count('trial_ended'))"
-        :hint="`${formatInt(count('free'))} gratuitas · ${formatInt(count('trial_ended'))} com teste encerrado`"
+        icon="history"
+        tone="info"
+        label="Em teste"
+        :value="formatInt(count('trial'))"
+        :hint="`${formatInt(filterCount('trial_ending'))} terminam em até 3 dias`"
+      />
+      <AdminMasterKpi
+        icon="alert"
+        tone="warning"
+        label="Acesso grátis vencido"
+        :value="formatInt(count('free_expired') + count('trial_ended'))"
+        :hint="`${formatInt(count('free_expired'))} gratuitas vencidas · ${formatInt(count('trial_ended'))} testes encerrados · ${formatInt(count('free'))} gratuitas no prazo`"
       />
       <AdminMasterKpi
         icon="pause"
-        tone="warning"
+        tone="danger"
         label="Desativadas"
         :value="formatInt(count('inactive'))"
         :hint="`${formatInt(summary.inactive_over_30)} há mais de 30 dias${count('internal') ? ` · ${count('internal')} internas fora da conta` : ''}`"
@@ -37,18 +44,40 @@
     </section>
 
     <section class="am-card am-card-flush">
-      <div class="am-toolbar flex-wrap">
+      <div class="am-toolbar">
         <button
-          v-for="option in filters"
+          v-for="option in visibleFilters"
           :key="option.value"
           type="button"
           class="am-chip"
           :class="{ on: filter === option.value }"
+          :title="option.hint"
           @click="filter = option.value"
         >
-          {{ option.label }} <span class="am-muted">{{ filterCount(option.value) }}</span>
+          {{ option.label }} <span class="am-count am-num">{{ formatInt(filterCount(option.value)) }}</span>
         </button>
-        <input v-model="query" class="am-input ml-auto max-w-[260px]" placeholder="Buscar empresa ou e-mail" />
+      </div>
+      <div class="am-toolbar">
+        <label class="am-search">
+          <AmIcon name="search" />
+          <input v-model="query" type="search" placeholder="Buscar por empresa, dono, e-mail ou WhatsApp" aria-label="Buscar empresa" />
+        </label>
+        <select v-model="planFilter" class="am-select" aria-label="Filtrar por plano">
+          <option value="">Plano: todos</option>
+          <option v-for="plan in planChoices" :key="plan" :value="plan">{{ planLabel(plan) }}</option>
+        </select>
+        <select v-model="gatewayFilter" class="am-select" aria-label="Filtrar por cobrança">
+          <option value="">Cobrança: todas</option>
+          <option v-for="gateway in gatewayChoices" :key="gateway" :value="gateway">{{ gatewayLabel(gateway === "__none" ? "" : gateway) }}</option>
+        </select>
+        <select v-model.number="createdWithin" class="am-select" aria-label="Filtrar por data de cadastro">
+          <option :value="0">Cadastro: qualquer data</option>
+          <option :value="1">Cadastradas hoje</option>
+          <option :value="7">Nos últimos 7 dias</option>
+          <option :value="30">Nos últimos 30 dias</option>
+          <option :value="90">Nos últimos 90 dias</option>
+        </select>
+        <button v-if="hasExtraFilters" type="button" class="am-chip" @click="clearFilters"><AmIcon name="x" class="h-3.5 w-3.5" />Limpar</button>
       </div>
 
       <div v-if="selection.selected.value.length" class="cp-bulk">
@@ -66,7 +95,7 @@
           <thead>
             <tr>
               <th class="cp-check-col">
-                <input type="checkbox" class="cp-check" :checked="selection.allVisibleSelected.value" aria-label="Selecionar todas desta lista" @change="selection.toggleAll()" />
+                <input type="checkbox" class="cp-check" :checked="selection.allVisibleSelected.value" aria-label="Selecionar todas desta página" @change="selection.toggleAll()" />
               </th>
               <th v-for="column in columns" :key="column.key" :class="column.right ? 'am-right' : ''" :aria-sort="sort.ariaSort(column.key)">
                 <button type="button" class="cp-sort" :class="{ on: sort.sortKey.value === column.key }" @click="sort.setSort(column.key)">
@@ -79,72 +108,137 @@
             <tr v-if="loading && !items.length">
               <td :colspan="columns.length + 1"><div class="am-empty"><div class="am-spinner"></div>Carregando empresas...</div></td>
             </tr>
-            <tr v-for="item in visibleItems" :key="item.id" :class="{ 'cp-row-on': selection.isSelected(item) }">
-              <td class="cp-check-col">
+            <tr
+              v-for="item in pageItems"
+              :key="item.id"
+              class="cursor-pointer"
+              :class="{ 'cp-row-on': selection.isSelected(item) || selectedId === item.id }"
+              @click="openCompany(item)"
+            >
+              <td class="cp-check-col" @click.stop>
                 <input type="checkbox" class="cp-check" :checked="selection.isSelected(item)" :aria-label="`Selecionar ${item.name}`" @change="selection.toggle(item)" />
               </td>
               <td>
-                <b class="font-semibold">{{ item.name }}</b>
-                <small class="am-muted block">{{ item.owner_email || "sem dono" }} · {{ planLabel(item.plan) }}</small>
+                <button type="button" class="cp-name" @click.stop="openCompany(item)">{{ item.name }}</button>
+                <small class="am-muted block max-w-[280px] truncate">{{ item.owner_name || "Sem dono" }}<template v-if="item.owner_email"> · {{ item.owner_email }}</template></small>
               </td>
-              <td><span class="am-badge am-dot" :class="statusTone(item.status)">{{ item.status_label }}</span></td>
-              <td class="am-num">{{ statusDetail(item) }}</td>
-              <td class="am-num">{{ item.last_access_at ? relative(item.last_access_at) : "Nunca" }}</td>
-              <td class="am-num am-right">{{ item.pages_published }}/{{ item.pages_total }}</td>
-              <td class="am-num am-right">{{ formatInt(item.visits_30d) }}</td>
+              <td>
+                <span class="am-badge am-dot" :class="statusTone(item.status)">{{ item.status_label }}</span>
+                <small class="am-muted mt-1 block whitespace-nowrap">{{ statusDetail(item) }}</small>
+              </td>
+              <td>
+                <span class="block whitespace-nowrap">{{ planLabel(item.plan) }}</span>
+                <small class="am-muted block whitespace-nowrap">{{ gatewayLabel(billingProvider(item)) }}<template v-if="item.mrr_amount && !isCombo(item)"> · {{ formatMoney(item.mrr_amount) }}/mês</template></small>
+              </td>
+              <td class="am-num">
+                {{ formatDate(item.created_at) }}
+                <small class="am-muted block">{{ relativeDay(item.created_at) }}</small>
+              </td>
+              <td class="am-num">{{ item.last_access_at ? relativeDay(item.last_access_at) : "Nunca" }}</td>
+              <td class="am-num am-right">
+                {{ item.pages_published }}/{{ item.pages_total }} {{ item.pages_total === 1 ? "página" : "páginas" }}
+                <small class="am-muted block">{{ formatInt(item.visits_30d) }} visitas em 30 dias</small>
+              </td>
             </tr>
-            <tr v-if="!loading && !visibleItems.length">
-              <td :colspan="columns.length + 1"><div class="am-empty">Nenhuma empresa neste filtro.</div></td>
+            <tr v-if="!loading && !pageItems.length">
+              <td :colspan="columns.length + 1"><div class="am-empty">Nenhuma empresa com esses filtros.</div></td>
             </tr>
           </tbody>
         </table>
       </div>
+
+      <div class="am-foot">
+        <span>Mostrando {{ formatInt(range.start) }}–{{ formatInt(range.end) }} de {{ formatInt(sorted.length) }}</span>
+        <div class="flex flex-wrap items-center gap-2">
+          <label class="flex items-center gap-2">
+            Linhas
+            <select v-model.number="pageSize" class="am-select">
+              <option v-for="size in [25, 50, 100]" :key="size" :value="size">{{ size }}</option>
+            </select>
+          </label>
+          <button type="button" class="am-chip" :disabled="page <= 1" @click="page -= 1">Anterior</button>
+          <span>Página {{ page }} de {{ totalPages }}</span>
+          <button type="button" class="am-chip" :disabled="page >= totalPages" @click="page += 1">Próxima</button>
+        </div>
+      </div>
     </section>
+
+    <CompanyDrawer :company="selectedCompany" :free-days="summary.rules.free_access_days || 7" @close="closeCompany" @changed="handleChanged" />
+    <CreateCompanyDrawer :open="createOpen" @close="createOpen = false" @created="handleChanged" />
   </section>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { listCompanies, type CompaniesResponse, type Company, type CompanyStatusKey } from "../../services/companies";
 import AmIcon from "./master/AmIcon.vue";
 import AdminMasterHeader from "./master/AdminMasterHeader.vue";
 import AdminMasterKpi from "./master/AdminMasterKpi.vue";
 import { useSelection, useTableSort } from "./master/useTableSort";
+import { daysSince, daysUntil, formatDate, formatInt, formatMoney, gatewayLabel, planLabel, plural, relativeDay, statusTone } from "./master/format";
+import CompanyDrawer from "./companies/CompanyDrawer.vue";
+import CreateCompanyDrawer from "./companies/CreateCompanyDrawer.vue";
+import { billingProvider, isCombo, statusDetail } from "./companies/companyStatus";
 
-type Filter = "all" | CompanyStatusKey | "paying" | "inactive_30" | "no_use_60";
-const filters: Array<{ value: Filter; label: string }> = [
+type Filter = "all" | CompanyStatusKey | "paying" | "trial_ending" | "no_use_60";
+// "extra": só aparece quando chega selecionado por um link (ex.: do Painel).
+const filters: Array<{ value: Filter; label: string; hint?: string; extra?: boolean }> = [
   { value: "all", label: "Todas" },
-  { value: "paying", label: "Pagantes" },
-  { value: "active", label: "Ativas" },
-  { value: "past_due", label: "Inadimplentes" },
+  { value: "paying", label: "Ativas com pagamento", hint: "Pagamento em dia, incluindo quem cancelou e fica até o fim do período pago" },
+  { value: "active", label: "Em dia", extra: true },
+  { value: "trial_ending", label: "Teste termina em 3 dias", extra: true },
+  { value: "past_due", label: "Inadimplentes", hint: "Cobrança falhou: fica no ar por 3 dias depois do vencimento e a cobrança segue por 30" },
   { value: "cancelling", label: "Cancelando" },
   { value: "trial", label: "Em teste" },
+  { value: "free", label: "Gratuitas no prazo" },
+  { value: "free_expired", label: "Gratuitas vencidas" },
   { value: "trial_ended", label: "Teste encerrado" },
-  { value: "free", label: "Gratuitas" },
   { value: "inactive", label: "Desativadas" },
-  { value: "inactive_30", label: "Desativadas +30 dias" },
   { value: "no_use_60", label: "Sem acesso +60 dias" },
+  { value: "combo", label: "Combo Viaje On", hint: "Acesso pago na Viaje On: fora do MRR do Roteiro Online" },
   { value: "internal", label: "Internas" }
 ];
-const PAYING: CompanyStatusKey[] = ["active", "past_due", "cancelling"];
+const visibleFilters = computed(() => filters.filter(option => !option.extra || filter.value === option.value));
+const queryFilters: Record<string, Filter> = {
+  pagantes: "paying",
+  combo: "combo",
+  ativas: "active",
+  inadimplentes: "past_due",
+  cancelando: "cancelling",
+  teste: "trial",
+  "teste-acabando": "trial_ending",
+  gratuitas: "free",
+  vencidas: "free_expired",
+  "teste-encerrado": "trial_ended",
+  desativadas: "inactive"
+};
 // Ordem de gravidade usada ao ordenar pela coluna Situação.
-const STATUS_ORDER: CompanyStatusKey[] = ["inactive", "past_due", "cancelling", "trial_ended", "free", "trial", "active", "internal", "no_owner"];
+const STATUS_ORDER: CompanyStatusKey[] = ["inactive", "past_due", "cancelling", "free_expired", "trial_ended", "free", "trial", "active", "combo", "internal", "no_owner"];
 
 const columns = [
   { key: "name", label: "Empresa" },
   { key: "status", label: "Situação" },
-  { key: "status_days", label: "Há quanto tempo" },
+  { key: "plan", label: "Plano" },
+  { key: "created", label: "Cadastro" },
   { key: "last_access", label: "Último acesso" },
-  { key: "pages", label: "Páginas", right: true },
-  { key: "visits", label: "Visitas 30d", right: true }
+  { key: "visits", label: "Uso", right: true }
 ];
+
+const route = useRoute();
+const router = useRouter();
+const firstQuery = (value: unknown) => String(Array.isArray(value) ? value[0] ?? "" : value ?? "");
 
 const loading = ref(false);
 const errorMessage = ref("");
 const successMessage = ref("");
 const items = ref<Company[]>([]);
-const filter = ref<Filter>("all");
-const query = ref("");
+const filter = ref<Filter>(queryFilters[firstQuery(route.query.filtro)] || "all");
+const query = ref(firstQuery(route.query.busca));
+const planFilter = ref("");
+const gatewayFilter = ref("");
+const createdWithin = ref(0);
+const createOpen = ref(false);
 const summary = reactive<CompaniesResponse["summary"]>({
   counts: {},
   total: 0,
@@ -152,79 +246,114 @@ const summary = reactive<CompaniesResponse["summary"]>({
   inactive_bytes: 0,
   archived_bytes: 0,
   automation: false,
-  rules: { cool_after_days: 7, archive_after_days: 30, orphan_grace_days: 30 }
+  rules: { cool_after_days: 7, archive_after_days: 30, orphan_grace_days: 30, free_access_days: 7 }
 });
 
 const count = (key: CompanyStatusKey) => summary.counts[key] || 0;
-const paying = computed(() => PAYING.reduce((total, key) => total + count(key), 0));
-const daysSince = (value: string | null) => (value ? Math.floor((Date.now() - new Date(value).getTime()) / 86400000) : null);
+const normalized = (value?: string | null) => String(value || "").trim().toLowerCase();
 const matches = (item: Company, value: Filter) => {
   if (value === "all") return true;
-  if (value === "paying") return PAYING.includes(item.status);
-  if (value === "inactive_30") return item.status === "inactive" && (item.status_days || 0) >= 30;
-  if (value === "no_use_60") return (daysSince(item.last_access_at) ?? Infinity) >= 60;
+  if (value === "paying") return item.status === "active" || item.status === "cancelling";
+  if (value === "trial_ending") return item.status === "trial" && (daysUntil(item.access_until) ?? Infinity) <= 3;
+  if (value === "no_use_60") return item.status !== "internal" && (daysSince(item.last_access_at) ?? Infinity) >= 60;
   return item.status === value;
 };
 const filterCount = (value: Filter) => items.value.filter(item => matches(item, value)).length;
+
+const planChoices = computed(() => [...new Set(items.value.map(item => normalized(item.plan)).filter(Boolean))].sort());
+const gatewayChoices = computed(() => {
+  const set = new Set(items.value.map(item => billingProvider(item) || "__none"));
+  return [...set].sort();
+});
+const hasExtraFilters = computed(() => Boolean(query.value.trim() || planFilter.value || gatewayFilter.value || createdWithin.value));
+const clearFilters = () => {
+  query.value = "";
+  planFilter.value = "";
+  gatewayFilter.value = "";
+  createdWithin.value = 0;
+};
+
 const filtered = computed(() => {
-  const text = query.value.trim().toLowerCase();
-  return items.value.filter(
-    item => matches(item, filter.value) && (!text || `${item.name} ${item.slug} ${item.owner_email || ""}`.toLowerCase().includes(text))
-  );
+  const text = normalized(query.value);
+  const digits = text.replace(/\D/g, "");
+  return items.value.filter(item => {
+    if (!matches(item, filter.value)) return false;
+    if (planFilter.value && normalized(item.plan) !== planFilter.value) return false;
+    if (gatewayFilter.value && (billingProvider(item) || "__none") !== gatewayFilter.value) return false;
+    if (createdWithin.value) {
+      const age = daysSince(item.created_at);
+      if (age === null || age >= createdWithin.value) return false;
+    }
+    if (!text) return true;
+    const haystack = `${item.name} ${item.slug} ${item.owner_name || ""} ${item.owner_email || ""}`.toLowerCase();
+    if (haystack.includes(text)) return true;
+    return digits.length >= 4 && String(item.owner_whatsapp || "").replace(/\D/g, "").includes(digits);
+  });
 });
 
+const time = (value?: string | null) => (value ? new Date(value).getTime() : null);
 const sort = useTableSort(
   filtered,
   {
     name: item => item.name,
     status: item => STATUS_ORDER.indexOf(item.status),
-    status_days: item => item.status_days,
+    plan: item => planLabel(item.plan),
+    created: item => time(item.created_at),
     // Nunca acessou conta como o acesso mais antigo de todos.
-    last_access: item => (item.last_access_at ? new Date(item.last_access_at).getTime() : 0),
-    pages: item => item.pages_published,
+    last_access: item => time(item.last_access_at) ?? 0,
     visits: item => item.visits_30d
   },
-  { key: "status_days", dir: "desc" },
-  { status_days: "desc", last_access: "asc", pages: "desc", visits: "desc" }
+  { key: "created", dir: "desc" },
+  { created: "desc", last_access: "desc", visits: "desc" }
 );
-const visibleItems = sort.sorted;
-const selection = useSelection(visibleItems);
+const sorted = sort.sorted;
+
+const page = ref(1);
+const pageSize = ref(25);
+const totalPages = computed(() => Math.max(1, Math.ceil(sorted.value.length / pageSize.value)));
+const pageItems = computed(() => sorted.value.slice((page.value - 1) * pageSize.value, page.value * pageSize.value));
+const range = computed(() => {
+  if (!sorted.value.length) return { start: 0, end: 0 };
+  const start = (page.value - 1) * pageSize.value + 1;
+  return { start, end: Math.min(sorted.value.length, start + pageSize.value - 1) };
+});
+watch([filter, query, planFilter, gatewayFilter, createdWithin, pageSize, () => sort.sortKey.value, () => sort.sortDir.value], () => {
+  page.value = 1;
+});
+watch(totalPages, total => {
+  if (page.value > total) page.value = total;
+});
+
+const selection = useSelection(pageItems);
 const selectedItems = computed(() => items.value.filter(item => selection.selected.value.includes(item.id)));
 
-const formatInt = (value?: number | null) => new Intl.NumberFormat("pt-BR").format(Number(value || 0));
-const relative = (value: string) => {
-  const days = daysSince(value) ?? 0;
-  if (days <= 0) return "Hoje";
-  if (days === 1) return "Ontem";
-  if (days < 60) return `Há ${days} dias`;
-  return `Há ${Math.round(days / 30)} meses`;
+// ---------- Empresa aberta (fica no endereço para dar para compartilhar) ----------
+const selectedId = ref<number | null>(Number(firstQuery(route.query.empresa)) || null);
+const selectedCompany = computed(() => items.value.find(item => item.id === selectedId.value) || null);
+const openCompany = (item: Company) => {
+  selectedId.value = item.id;
+  void router.replace({ query: { ...route.query, empresa: String(item.id) } });
 };
-const planLabel = (plan: string | null) => (plan ? plan.charAt(0).toUpperCase() + plan.slice(1) : "sem plano");
-const statusTone = (status: CompanyStatusKey) =>
-  ({
-    active: "am-tone-success",
-    internal: "am-tone-violet",
-    trial: "am-tone-info",
-    free: "am-tone-neutral",
-    trial_ended: "am-tone-neutral",
-    cancelling: "am-tone-warning",
-    past_due: "am-tone-warning",
-    inactive: "am-tone-danger",
-    no_owner: "am-tone-neutral"
-  })[status] || "am-tone-neutral";
-const plural = (days: number) => `${days} dia${days === 1 ? "" : "s"}`;
-const statusDetail = (item: Company) => {
-  const days = item.status_days;
-  if (item.status === "inactive") return days === null ? "Sem registro" : `Fora do ar há ${item.since_estimated ? "≈ " : ""}${plural(days)}`;
-  if (item.status === "cancelling" && item.valid_until) return `No ar até ${new Date(item.valid_until).toLocaleDateString("pt-BR")}`;
-  if (days === null) return "—";
-  if (item.status === "trial") return `Teste há ${plural(days)}`;
-  if (item.status === "trial_ended") return `Teste acabou há ${plural(days)}`;
-  if (item.status === "free") return `Gratuita há ${plural(days)}`;
-  if (item.status === "active") return `Cliente há ${plural(days)}`;
-  return `${plural(days)}`;
+const closeCompany = () => {
+  selectedId.value = null;
+  const next = { ...route.query };
+  delete next.empresa;
+  void router.replace({ query: next });
 };
-const errorText = (error: any, fallback: string) => error?.response?.data?.detail || fallback;
+watch(
+  () => route.query.filtro,
+  value => {
+    if (value !== undefined) filter.value = queryFilters[firstQuery(value)] || "all";
+  }
+);
+
+const handleChanged = async (message: string) => {
+  if (message) {
+    successMessage.value = message;
+    errorMessage.value = "";
+  }
+  await load(true);
+};
 
 const copyEmails = async () => {
   const emails = [...new Set(selectedItems.value.map(item => item.owner_email).filter(Boolean))].join(", ");
@@ -238,14 +367,19 @@ const copyEmails = async () => {
 
 const exportCsv = () => {
   const quote = (value: unknown) => `"${String(value ?? "").replace(/"/g, '""')}"`;
-  const header = ["Empresa", "E-mail", "Plano", "Situação", "Há quanto tempo", "Último acesso", "Páginas publicadas", "Páginas", "Visitas 30d"];
+  const header = ["Empresa", "Dono", "E-mail", "WhatsApp", "Plano", "Cobrança", "Valor mensal", "Situação", "Detalhe", "Cadastro", "Último acesso", "Páginas publicadas", "Páginas", "Visitas 30d"];
   const rows = selectedItems.value.map(item => [
     item.name,
+    item.owner_name,
     item.owner_email,
+    item.owner_whatsapp,
     planLabel(item.plan),
+    gatewayLabel(billingProvider(item)),
+    item.mrr_amount && !isCombo(item) ? item.mrr_amount.toFixed(2).replace(".", ",") : "",
     item.status_label,
     statusDetail(item),
-    item.last_access_at ? new Date(item.last_access_at).toLocaleDateString("pt-BR") : "Nunca",
+    formatDate(item.created_at),
+    item.last_access_at ? formatDate(item.last_access_at) : "Nunca",
     item.pages_published,
     item.pages_total,
     item.visits_30d
@@ -259,21 +393,22 @@ const exportCsv = () => {
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 };
 
-const load = async () => {
+const load = async (keepMessage = false) => {
   loading.value = true;
   errorMessage.value = "";
+  if (!keepMessage) successMessage.value = "";
   try {
     const response = await listCompanies();
     items.value = response.items;
     Object.assign(summary, response.summary);
   } catch (error: any) {
-    errorMessage.value = errorText(error, "Não foi possível carregar as empresas.");
+    errorMessage.value = error?.response?.data?.detail || "Não foi possível carregar as empresas.";
   } finally {
     loading.value = false;
   }
 };
 
-onMounted(load);
+onMounted(() => load());
 </script>
 
 <style scoped>
@@ -285,6 +420,19 @@ onMounted(load);
   height: 16px;
   accent-color: var(--primary);
   cursor: pointer;
+}
+.cp-name {
+  display: block;
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+  font-weight: 600;
+  color: var(--foreground);
+}
+.cp-name:hover {
+  text-decoration: underline;
 }
 .cp-sort {
   display: inline-flex;
