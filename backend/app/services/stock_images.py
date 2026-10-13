@@ -1,10 +1,17 @@
-"""Fotos para as seções criadas pelo assistente de IA, nesta ordem:
+"""Fotos para as seções criadas pelo assistente de IA.
+
+Busca, nesta ordem:
 1) fotos cadastradas no Admin Master (banco próprio), quando as palavras-chave estão na busca;
-2) buscas e fotos já guardadas (stock_image_searches / stock_images): a mesma busca, uma
-   parecida ("Gramado Brazil street" ≈ "Gramado street winter") ou descrição com as mesmas palavras;
+2) a mesma busca já feita (stock_image_searches), se o banco dela continua ligado;
 3) os bancos gratuitos Pixabay, Unsplash e Pexels, nessa ordem, com as chaves do Admin Master
-   dentro do limite por hora de cada uma (quando uma esgota, a próxima assume).
-Sem fotos cadastradas nem chaves, nada é buscado e as seções ficam com a imagem provisória.
+   dentro do limite por hora de cada uma (quando uma esgota, a próxima assume);
+4) só quando nenhum banco responde agora: buscas parecidas e fotos guardadas com descrição
+   parecida. Busca guardada não passa na frente de uma busca nova e mais precisa.
+Banco pausado no Admin Master fica de fora de tudo, inclusive das fotos já guardadas dele.
+
+Depois a IA olha as candidatas de cada seção (photo_choice) e escolhe as que mostram o que a
+seção pede. Sem fotos cadastradas nem chaves, nada é buscado e as seções ficam com a imagem
+provisória.
 """
 from __future__ import annotations
 
@@ -13,7 +20,8 @@ import re
 import time
 import unicodedata
 from datetime import datetime, timedelta, timezone
-from typing import Any, Iterable
+from dataclasses import dataclass, field
+from typing import Any, Callable, Iterable
 
 import httpx
 from sqlalchemy import or_
@@ -21,9 +29,18 @@ from sqlalchemy.orm import Session
 
 from app.models.media import MediaAsset
 from app.models.stock_image import StockImage, StockImageSearch
-from app.services.image_api_keys import ImageKey, available_image_keys, has_any_image_key, record_image_call
+from app.models.external_api_key import ExternalApiKey
+from app.services.image_api_keys import (
+    IMAGE_PROVIDERS,
+    ImageKey,
+    available_image_keys,
+    env_image_key,
+    has_any_image_key,
+    record_image_call,
+)
 from app.services.image_optimizer import optimize_image
 from app.services.media_storage import media_storage
+from app.services.photo_choice import PhotoSlot, choose_photos
 
 logger = logging.getLogger(__name__)
 
@@ -37,8 +54,16 @@ STOPWORDS = frozenset(
     "a an and at by de da das do dos e em for in na nas no nos of on or para por the to with com um uma".split()
 )
 REQUEST_TIMEOUT = 8.0
-# Tempo máximo buscando fotos ao aplicar uma estrutura; o que faltar fica com a imagem provisória.
-TIME_BUDGET_SECONDS = 25.0
+# Tempo máximo ao aplicar uma estrutura (busca, escolha da IA e download); o que faltar fica com
+# a imagem provisória. A busca para em SEARCH_SECONDS e a escolha da IA em CHOICE_SECONDS.
+TIME_BUDGET_SECONDS = 40.0
+SEARCH_SECONDS = 16.0
+CHOICE_SECONDS = 14.0
+# Texto e Imagens é um carrossel: leva mais de uma foto.
+STORY_PHOTOS = 3
+# Candidatas por vaga mostradas à IA, além das fotos que a vaga leva.
+EXTRA_CANDIDATES = 4
+MAX_CANDIDATES = 10
 # Sem resultado para o destino nem para a "sensação" indicada pela IA: uma foto genérica por tipo.
 FALLBACK_QUERIES = {
     "hero": "travel landscape scenic",
@@ -185,6 +210,7 @@ def _search_pexels(client: httpx.Client, key: str, query: str, record=None) -> l
             "provider": "pexels",
             "provider_id": str(photo.get("id")),
             "download_url": download,
+            "preview_url": src.get("medium") or src.get("small"),
             "page_url": photo.get("url"),
             "photographer": photo.get("photographer"),
             "photographer_url": photo.get("photographer_url"),
@@ -220,6 +246,7 @@ def _search_pixabay(client: httpx.Client, key: str, query: str, record=None) -> 
             "provider": "pixabay",
             "provider_id": str(photo.get("id")),
             "download_url": download,
+            "preview_url": photo.get("webformatURL") or photo.get("previewURL"),
             "page_url": photo.get("pageURL"),
             "photographer": user or None,
             "photographer_url": f"https://pixabay.com/users/{user}-{user_id}/" if user and user_id else None,
@@ -252,6 +279,7 @@ def _search_unsplash(client: httpx.Client, key: str, query: str, record=None) ->
             # Unsplash pede link direto (hotlink) e um aviso de uso no download_location.
             "download_url": (photo.get("links") or {}).get("download_location") or raw,
             "stored_url": f"{raw}&w=2000&q=80&fm=jpg&fit=max",
+            "preview_url": (photo.get("urls") or {}).get("small"),
             "page_url": (photo.get("links") or {}).get("html"),
             "photographer": user.get("name"),
             "photographer_url": (user.get("links") or {}).get("html"),
@@ -283,6 +311,8 @@ def _upsert_images(db: Session, results: Iterable[dict[str, Any]]) -> list[Stock
         for field in ("tags", "location", "published_at"):
             if data.get(field) and not getattr(image, field):
                 setattr(image, field, data[field])
+        if data.get("preview_url"):
+            image.preview_url = data["preview_url"]  # a do Pixabay expira: fica a mais nova
         if data["provider"] == "unsplash" and not image.stored_url:
             image.stored_url = data.get("stored_url")
         images.append(image)
@@ -305,12 +335,12 @@ def _fresh(search: StockImageSearch, now: datetime) -> bool:
     return created > now - SEARCH_TTL
 
 
-def _similar_search(db: Session, terms: set[str], now: datetime) -> StockImageSearch | None:
+def _similar_search(db: Session, terms: set[str], now: datetime, allowed: set[str]) -> StockImageSearch | None:
     """Busca guardada que cobre a maior parte das palavras da nova (ex.: mesmo destino)."""
     if not terms:
         return None
     best, best_score = None, 0.0
-    for search in db.query(StockImageSearch).filter(StockImageSearch.provider.isnot(None)).all():
+    for search in db.query(StockImageSearch).filter(StockImageSearch.provider.in_(allowed)).all():
         other = query_terms(search.query)
         if not other or not _fresh(search, now):
             continue
@@ -373,7 +403,7 @@ def _curated_matches(db: Session, terms: set[str]) -> list[StockImage]:
 
 def search_stock_images(db: Session, client: httpx.Client, query: str, *, minimum: int = 1) -> list[StockImage]:
     """Fotos para os termos. As cadastradas à mão no Admin Master vêm primeiro; se bastarem,
-    nem consulta o resto. Depois, reaproveita o banco antes de chamar Unsplash ou Pexels."""
+    nem consulta o resto. Depois, a mesma busca já feita ou os bancos ao vivo (_search_bank)."""
     curated = _curated_matches(db, query_terms(normalize_query(query)))
     if len(curated) >= minimum:
         return curated
@@ -381,37 +411,50 @@ def search_stock_images(db: Session, client: httpx.Client, query: str, *, minimu
     return curated + [image for image in found if image not in curated]
 
 
+def active_providers(db: Session) -> set[str]:
+    """Bancos ligados no Admin Master (ou com chave de reserva no servidor), mais as fotos
+    cadastradas à mão. Chave esgotada na hora continua ligada; chave pausada, não."""
+    active = {MANUAL_PROVIDER} | {provider for provider in IMAGE_PROVIDERS if env_image_key(provider).strip()}
+    try:
+        rows = (
+            db.query(ExternalApiKey.provider)
+            .filter(ExternalApiKey.provider.in_(IMAGE_PROVIDERS), ExternalApiKey.is_active.is_(True))
+            .distinct()
+            .all()
+        )
+    except Exception:  # noqa: BLE001 - sem a tabela de chaves (testes), nenhum banco é cortado
+        return active | set(IMAGE_PROVIDERS)
+    return active | {provider for (provider,) in rows}
+
+
 def _search_bank(db: Session, client: httpx.Client, query: str, *, minimum: int = 1) -> list[StockImage]:
-    """1) a mesma busca; 2) uma busca parecida; 3) fotos guardadas com descrição parecida;
-    4) o banco de fotos, se ainda houver chamadas na hora."""
+    """1) a mesma busca, se o banco dela continua ligado; 2) os bancos ao vivo, se ainda houver
+    chamadas na hora; 3) só sem banco ao vivo: busca parecida e fotos com descrição parecida."""
     normalized = normalize_query(query)
     if not normalized:
         return []
     now = datetime.now(timezone.utc)
     terms = query_terms(normalized)
+    allowed = active_providers(db)
+
+    def usable(images: list[StockImage]) -> list[StockImage]:
+        return [image for image in images if image.provider in allowed]
 
     cached = db.query(StockImageSearch).filter(StockImageSearch.query == normalized).first()
-    if cached and _fresh(cached, now) and (cached.image_ids or cached.provider is None):
-        cached.uses = (cached.uses or 0) + 1
-        cached.last_used_at = now
-        return _images_by_ids(db, list(cached.image_ids or []))
-
-    similar = _similar_search(db, terms, now)
-    reused = _images_by_ids(db, list(similar.image_ids or [])) if similar else []
-    if len(reused) >= minimum:
-        similar.uses = (similar.uses or 0) + 1
-        similar.last_used_at = now
-        return reused
-
-    described = _photos_by_description(db, terms)
-    if len(described) >= max(minimum, 3):
-        return described
+    if cached and _fresh(cached, now) and cached.provider in allowed:
+        images = usable(_images_by_ids(db, list(cached.image_ids or [])))
+        if images:
+            cached.uses = (cached.uses or 0) + 1
+            cached.last_used_at = now
+            return images
 
     results: list[dict[str, Any]] = []
     provider = None
     # Pixabay primeiro, depois Unsplash e Pexels (as fotos cadastradas já vieram antes); em cada
     # banco, as chaves na ordem do Admin Master. Chave esgotada na hora (ou recusada) passa a vez.
     for name, search in (("pixabay", _search_pixabay), ("unsplash", _search_unsplash), ("pexels", _search_pexels)):
+        if name not in allowed:
+            continue
         for key in available_image_keys(db, name):
             try:
                 results = search(client, key.plain_key, query, record=lambda response, key=key: record_image_call(db, key, response))
@@ -422,21 +465,30 @@ def _search_bank(db: Session, client: httpx.Client, query: str, *, minimum: int 
             break
         if provider and results:
             break
-    if provider is None:
-        # Sem chamadas na hora: o que o banco local tiver, mesmo pouco.
-        return reused or described
 
-    images = _upsert_images(db, results)
-    if cached is None:
-        cached = StockImageSearch(query=normalized)
-        db.add(cached)
-    cached.provider = provider
-    cached.image_ids = [image.id for image in images]
-    cached.created_at = now
-    cached.last_used_at = now
-    cached.uses = (cached.uses or 0) + 1
-    db.flush()
-    return images or reused or described
+    images = _upsert_images(db, results) if provider else []
+    if provider:
+        if cached is None:
+            cached = StockImageSearch(query=normalized)
+            db.add(cached)
+        cached.provider = provider
+        cached.image_ids = [image.id for image in images]
+        cached.created_at = now
+        cached.last_used_at = now
+        cached.uses = (cached.uses or 0) + 1
+        db.flush()
+    if images:
+        return images
+
+    # Nenhum banco respondeu agora (sem chave, limite da hora ou sem resultado): o que já está
+    # guardado de bancos ligados, de uma busca parecida ou com descrição parecida.
+    similar = _similar_search(db, terms, now, allowed)
+    reused = usable(_images_by_ids(db, list(similar.image_ids or []))) if similar else []
+    if len(reused) >= minimum:
+        similar.uses = (similar.uses or 0) + 1
+        similar.last_used_at = now
+        return reused
+    return usable(_photos_by_description(db, terms)) or reused
 
 
 def materialize(db: Session, client: httpx.Client, image: StockImage) -> str | None:
@@ -504,49 +556,105 @@ def credit_for(image: StockImage, url: str) -> dict[str, str] | None:
     }
 
 
-class _Picker:
-    """Escolhe fotos sem repetir na mesma página, dentro do tempo máximo."""
+SECTION_LABELS = {
+    "hero": "Banner Inicial (foto de fundo larga, com o título por cima)",
+    "banner_card": "Banner em Card (foto de fundo larga)",
+    "photo": "Foto em destaque (foto larga sozinha)",
+    "biography": "Artigo (capa larga com o título por cima)",
+    "story": "Texto e Imagens (carrossel de fotos ao lado do texto)",
+    "itinerary": "Roteiro dia a dia (uma foto para cada dia, na ordem dos dias)",
+    "links": "Card de viagem na vitrine",
+}
 
-    def __init__(self, db: Session, client: httpx.Client, agency_id: int | None) -> None:
+
+def _plain_text(value: Any, limit: int) -> str:
+    if isinstance(value, dict):
+        value = value.get("pt") or value.get("es") or ""
+    text = re.sub(r"<[^>]+>", " ", str(value or ""))
+    text = re.sub(r"\s+", " ", text).strip()
+    return text if len(text) <= limit else text[: limit - 1].rsplit(" ", 1)[0] + "…"
+
+
+@dataclass
+class _Slot(PhotoSlot):
+    queries: list[str] = field(default_factory=list)
+    assign: Callable[[list[str], list[dict[str, str]]], None] | None = None
+
+
+class _Picker:
+    """Junta as candidatas de cada vaga, deixa a IA escolher e coloca as fotos, sem repetir na
+    mesma página nem repetir a foto que a seção já tem."""
+
+    def __init__(self, db: Session, client: httpx.Client, agency_id: int | None, exclude_urls: Iterable[str] = ()) -> None:
         self.db, self.client, self.agency_id = db, client, agency_id
         self.used: set[int] = set()
         self.started = time.monotonic()
         self.saved_urls: set[str] = set()
         # Crédito de cada foto escolhida (url → crédito), para a seção guardar.
         self.credits: dict[str, dict[str, str]] = {}
+        urls = [url for url in dict.fromkeys(exclude_urls) if isinstance(url, str) and url.startswith(("http", "/"))][:200]
+        # Fotos que já estão na página: "troca a foto" não devolve a mesma.
+        self.excluded: set[int] = set()
+        if urls:
+            rows = db.query(StockImage.id).filter(or_(StockImage.stored_url.in_(urls), StockImage.download_url.in_(urls))).all()
+            self.excluded = {image_id for (image_id,) in rows}
 
     def credits_for(self, urls: list[str]) -> list[dict[str, str]]:
         return [self.credits[url] for url in urls if url in self.credits]
 
-    def out_of_time(self) -> bool:
-        return time.monotonic() - self.started > TIME_BUDGET_SECONDS
+    def elapsed(self) -> float:
+        return time.monotonic() - self.started
 
-    def pick(self, queries: list[str], count: int = 1) -> list[str]:
-        urls: list[str] = []
-        # Destino no Brasil: a busca do lugar leva "Brazil" e todas preferem fotos daqui.
+    def out_of_time(self) -> bool:
+        return self.elapsed() > TIME_BUDGET_SECONDS
+
+    def gather(self, slot: _Slot) -> None:
+        """Candidatas da vaga: as melhores da primeira busca, algumas da segunda (outra
+        sensação) e, se faltar, da busca genérica do tipo da seção."""
+        queries = slot.queries
         prefer_brazil = bool(queries) and mentions_brazil(queries[0])
         if prefer_brazil:
             queries = [with_country(queries[0]), *queries[1:]]
-        for query in queries:
-            if len(urls) >= count or self.out_of_time():
+        budget = min(MAX_CANDIDATES, slot.count + EXTRA_CANDIDATES)
+        generic = len(queries) - 1  # a última é sempre a busca genérica do tipo
+        seen: set[int] = set()
+        for position, query in enumerate(queries):
+            if len(slot.candidates) >= budget or self.elapsed() > SEARCH_SECONDS:
                 break
-            found = search_stock_images(self.db, self.client, query, minimum=count + len(self.used))
+            if position == generic and position > 0 and len(slot.candidates) > slot.count:
+                break
+            # Da primeira busca, deixa espaço para a segunda trazer outra opção.
+            room = budget - len(slot.candidates) - (2 if position == 0 and generic > 1 else 0)
+            found = search_stock_images(self.db, self.client, query, minimum=slot.count)
             for image in rank_images(found, query, prefer_brazil=prefer_brazil):
-                if len(urls) >= count or self.out_of_time():
+                if room <= 0:
                     break
-                if image.id in self.used:
+                if image.id in seen or image.id in self.excluded or image.id in self.used:
                     continue
-                url = materialize(self.db, self.client, image)
-                if not url:
-                    continue
-                self.used.add(image.id)
-                image.uses = (image.uses or 0) + 1
-                urls.append(url)
-                credit = credit_for(image, url)
-                if credit:
-                    self.credits[url] = credit
-                self._add_to_library(url, image)
-        return urls
+                seen.add(image.id)
+                slot.candidates.append(image)
+                room -= 1
+
+    def place(self, slot: _Slot, ordered: list[StockImage]) -> int:
+        urls: list[str] = []
+        for image in ordered:
+            if len(urls) >= slot.count or self.out_of_time():
+                break
+            if image.id in self.used:
+                continue
+            url = materialize(self.db, self.client, image)
+            if not url:
+                continue
+            self.used.add(image.id)
+            image.uses = (image.uses or 0) + 1
+            urls.append(url)
+            credit = credit_for(image, url)
+            if credit:
+                self.credits[url] = credit
+            self._add_to_library(url, image)
+        if urls and slot.assign:
+            slot.assign(urls, self.credits_for(urls))
+        return len(urls)
 
     def _add_to_library(self, url: str, image: StockImage) -> None:
         # A foto entra na biblioteca de mídia da agência, para ela reaproveitar no editor.
@@ -559,70 +667,125 @@ class _Picker:
             self.db.add(MediaAsset(agency_id=self.agency_id, url=url, type="image", original_file_name=credit[:255]))
 
 
-def fill_section_photos(db: Session, sections: list[dict[str, Any]], agency_id: int | None = None) -> int:
-    """Troca as imagens provisórias das seções da IA por fotos dos bancos gratuitos.
+def _section_context(section: dict[str, Any]) -> str:
+    kind = section.get("type")
+    parts = [SECTION_LABELS.get(kind, kind or "Seção")]
+    title = _plain_text(section.get("title"), 90)
+    if title:
+        parts.append(f'título "{title}"')
+    detail = _plain_text(section.get("subtitle") or section.get("text") or section.get("description"), 160)
+    if detail:
+        parts.append(f'texto "{detail}"')
+    return " · ".join(parts)
 
-    Usa a "Busca de imagem" de cada seção (destino e, em seguida, a sensação), e por fim uma
-    busca genérica do tipo. Devolve quantas fotos foram colocadas."""
-    pending = [section for section in sections if section.get("aiImageQuery") is not None]
-    if not pending or not stock_search_enabled(db):
-        for section in sections:
-            section.pop("aiImageQuery", None)
+
+def _photo_slots(sections: list[dict[str, Any]]) -> list[_Slot]:
+    """Uma vaga por seção com foto pedida (e uma por card da vitrine)."""
+    slots: list[_Slot] = []
+
+    def add(context: str, raw_query: str, fallback: str, count: int, assign) -> None:
+        queries = split_queries(raw_query or "") + [fallback]
+        slots.append(_Slot(key=f"V{len(slots) + 1}", context=f"{context} · busca: {raw_query or fallback}",
+                           count=count, queries=queries, assign=assign))
+
+    for section in sections:
+        kind = section.get("type")
+        swap = bool(section.get("aiReplaces"))
+        raw_query = section.pop("aiImageQuery", None)
+        context = _section_context(section)
+        if kind in PHOTO_FIELDS and raw_query is not None:
+            def assign(urls, credits, section=section, kind=kind):
+                for field_name in PHOTO_FIELDS[kind]:
+                    section[field_name] = urls[0]
+                section["aiStockPhoto"] = True
+                section["photoCredits"] = credits[:1]
+            add(context, raw_query, FALLBACK_QUERIES.get(kind, "travel"), 1, assign)
+        elif kind == "story" and raw_query is not None:
+            def assign(urls, credits, section=section):
+                section["images"] = urls
+                section["aiStockPhoto"] = True
+                section["photoCredits"] = credits
+            add(context, raw_query, FALLBACK_QUERIES["story"], STORY_PHOTOS, assign)
+        elif kind == "itinerary" and raw_query is not None:
+            days = [day for day in section.get("days") or [] if isinstance(day, dict)]
+            if days:
+                def assign(urls, credits, section=section, days=days):
+                    for day, url in zip(days, urls):
+                        day["image"] = url
+                    section["aiStockPhoto"] = True
+                    section["photoCredits"] = credits
+                day_names = "; ".join(_plain_text(day.get("title"), 50) for day in days if day.get("title"))
+                add(f"{context} · dias: {day_names}" if day_names else context, raw_query, FALLBACK_QUERIES["itinerary"], len(days), assign)
+        if kind == "links":
             for item in section.get("items") or []:
-                if isinstance(item, dict):
-                    item.pop("aiImageQuery", None)
+                if not isinstance(item, dict):
+                    continue
+                item_query = item.pop("aiImageQuery", None)
+                # Card ligado a uma página usa a foto dela; numa troca, só o card com foto pedida.
+                if item.get("pageSlug") or (swap and item_query is None):
+                    continue
+                title = _plain_text(item.get("title"), 80)
+
+                def assign(urls, credits, section=section, item=item):
+                    item["image"] = urls[0]
+                    section.setdefault("photoCredits", []).extend(credits[:1])
+                    section["aiStockPhoto"] = True
+                add(f'{SECTION_LABELS["links"]} · viagem "{title}"', item_query or title, FALLBACK_QUERIES["links"], 1, assign)
+    return slots
+
+
+def clear_photo_queries(sections: list[dict[str, Any]]) -> None:
+    for section in sections:
+        section.pop("aiImageQuery", None)
+        for item in section.get("items") or []:
+            if isinstance(item, dict):
+                item.pop("aiImageQuery", None)
+
+
+def fill_section_photos(
+    db: Session,
+    sections: list[dict[str, Any]],
+    agency_id: int | None = None,
+    *,
+    exclude_urls: Iterable[str] = (),
+    ai_choice: bool = True,
+) -> int:
+    """Troca as imagens provisórias das seções da IA por fotos dos bancos.
+
+    Para cada vaga junta candidatas da "Busca de imagem" (o lugar e, em seguida, a sensação) e de
+    uma busca genérica do tipo; a IA olha as candidatas e escolhe; sem a IA, vale o ranking.
+    exclude_urls: fotos que já estão na página (a troca não devolve a mesma). Devolve quantas
+    fotos foram colocadas."""
+    has_queries = any(
+        section.get("aiImageQuery") is not None
+        or any(isinstance(item, dict) and item.get("aiImageQuery") is not None for item in section.get("items") or [])
+        or (section.get("type") == "links" and not section.get("aiReplaces"))
+        for section in sections
+    )
+    if not has_queries or not stock_search_enabled(db):
+        clear_photo_queries(sections)
         return 0
     filled = 0
     with httpx.Client(timeout=REQUEST_TIMEOUT, follow_redirects=True) as client:
-        picker = _Picker(db, client, agency_id)
-        for section in sections:
-            kind = section.get("type")
-            raw_query = section.pop("aiImageQuery", None)
-            queries = split_queries(raw_query or "") + [FALLBACK_QUERIES.get(kind, "travel")]
-            if kind in PHOTO_FIELDS and raw_query is not None:
-                urls = picker.pick(queries)
-                if urls:
-                    for field in PHOTO_FIELDS[kind]:
-                        section[field] = urls[0]
-                    section["aiStockPhoto"] = True
-                    section["photoCredits"] = picker.credits_for(urls[:1])
-                    filled += 1
-            elif kind == "story" and raw_query is not None:
-                urls = picker.pick(queries)
-                if urls:
-                    section["images"] = urls
-                    section["aiStockPhoto"] = True
-                    section["photoCredits"] = picker.credits_for(urls)
-                    filled += 1
-            elif kind == "itinerary" and raw_query is not None:
-                days = [day for day in section.get("days") or [] if isinstance(day, dict)]
-                urls = picker.pick(queries, count=len(days))
-                for day, url in zip(days, urls):
-                    day["image"] = url
-                if urls:
-                    section["aiStockPhoto"] = True
-                    section["photoCredits"] = picker.credits_for(urls)
-                    filled += len(urls)
-            if kind == "links":
-                for item in section.get("items") or []:
-                    if not isinstance(item, dict):
-                        continue
-                    item_query = item.pop("aiImageQuery", None)
-                    if item.get("pageSlug"):
-                        continue  # o card ligado a uma página usa a foto dela
-                    item_queries = split_queries(item_query or "") or [str(item.get("title") or "")]
-                    urls = picker.pick(item_queries + [FALLBACK_QUERIES["links"]])
-                    if urls:
-                        item["image"] = urls[0]
-                        section.setdefault("photoCredits", []).extend(picker.credits_for(urls[:1]))
-                        filled += 1
+        picker = _Picker(db, client, agency_id, exclude_urls)
+        slots = _photo_slots(sections)
+        for slot in slots:
+            picker.gather(slot)
+        choice = None
+        if ai_choice:
+            choice = choose_photos(db, client, slots, timeout=min(CHOICE_SECONDS, TIME_BUDGET_SECONDS - picker.elapsed() - 6))
+        for slot in slots:
             if picker.out_of_time():
                 logger.info("stock_photos_time_budget_reached filled=%s", filled)
                 break
-        for section in sections:
-            section.pop("aiImageQuery", None)
-            for item in section.get("items") or []:
-                if isinstance(item, dict):
-                    item.pop("aiImageQuery", None)
+            if choice is not None and slot.key in choice:
+                picked = choice[slot.key]
+                # A IA escolheu menos fotos que o carrossel ou o roteiro pedem: completa com o ranking.
+                rest = [image for image in slot.candidates if image not in picked] if picked and slot.count > 1 else []
+                ordered = picked + rest
+            else:
+                ordered = slot.candidates
+            filled += picker.place(slot, ordered)
+        clear_photo_queries(sections)
     db.commit()
     return filled
