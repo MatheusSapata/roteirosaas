@@ -339,13 +339,13 @@ A primeira linha é "ESTRUTURA SUGERIDA PARA A PÁGINA". Depois: "Tipo de págin
 
 MENU DO TOPO (sempre a primeira seção, quando usada; o logo entra sozinho): Links do menu (3 a 6 itens, um por linha começando com "- ", no formato "- Nome → identificador", em que o identificador é o da seção na lista SEÇÕES DESTA PÁGINA e o clique leva até ela, ex.: "- Roteiro → roteiro-dia-a-dia"; numa página nova, que ainda não tem identificadores, só o nome curto igual ao título da seção, ex.: Nacionais, Sobre nós, Dúvidas; para um site de fora, "- Nome → https://..."), Aparência ("sólido", "transparente" (sem fundo, por cima do banner) ou "desfocado" (vidro fosco)), Fixo ao rolar ("sim" ou "não"), Cor de fundo, Cor do texto e Cor do botão (só se pedirem, em #hex), Lado direito ("redes sociais", "botão" ou "nada"), Botão (texto do botão de contato, só com "botão", ex.: "Falar no WhatsApp"). Para pôr, tirar ou renomear itens de um menu que já existe, entregue "Links do menu" com a lista inteira (os itens atuais estão na linha do Menu do topo em SEÇÕES DESTA PÁGINA) já com a mudança: item que você não repetir sai do menu. Cada item aponta para o identificador de uma seção da lista. "Transparente" e "desfocado" ficam por cima do Banner Inicial: só use quando a página tem Banner Inicial logo abaixo do menu; sem ele, o menu fica "sólido".
 
-BANNER INICIAL: Título (curto, até 8 palavras), Subtítulo (1 ou 2 frases), Destaques (3 a 5 itens curtos, um por linha começando com "- ", até 4 palavras cada; não repita as datas), Data de saída e Data de volta (DD/MM/AAAA, só se a viagem tiver datas), Botão, Sugestão de imagem.
+BANNER INICIAL: Título (curto, até 8 palavras), Subtítulo (1 ou 2 frases), Destaques (3 a 5 itens curtos, um por linha começando com "- ", até 4 palavras cada; não repita as datas), Data de saída e Data de volta (DD/MM/AAAA, só se a viagem tiver datas), Botão, Busca de imagem.
 
-BANNER EM CARD: Etiqueta, Título, Subtítulo, Botão, Sugestão de imagem.
+BANNER EM CARD: Etiqueta, Título, Subtítulo, Botão, Busca de imagem.
 
-FOTO EM DESTAQUE: Legenda, Layout (card ou largura total), Sugestão de imagem.
+FOTO EM DESTAQUE: Legenda, Layout (card ou largura total), Busca de imagem.
 
-TEXTO E IMAGENS: Etiqueta, Título, Texto (2 a 4 parágrafos curtos; inclusos e diferenciais entram em texto corrido), Botão (opcional), Sugestão de imagem.
+TEXTO E IMAGENS: Etiqueta, Título, Texto (2 a 4 parágrafos curtos; inclusos e diferenciais entram em texto corrido), Botão (opcional), Busca de imagem.
 
 DIFERENCIAIS: Etiqueta, Título, Subtítulo, Estilo dos ícones ("ícones" é o padrão; use "emojis" quando o usuário pedir ou quando a página tiver tom leve e infantil, como Disney, parques temáticos, Beto Carrero ou viagens com crianças; todos os cards seguem o mesmo estilo; numa troca, mantenha o estilo atual da seção, a não ser que o usuário peça para mudar), e de 3 a 6 itens, cada um assim:
 Item: título curto (até 4 palavras)
@@ -354,7 +354,7 @@ Descrição: uma frase objetiva
 
 RESUMO DO PACOTE: Etiqueta, Título, Subtítulo (opcional), depois a linha "Inclui:" e os itens, um por linha começando com "- ", e a linha "Não inclui:" com os itens da mesma forma (3 a 8 itens em cada). Detalhe opcional do item depois de " — " (ex.: "- Hospedagem — 3 noites em Gramado e 2 em Canela").
 
-ARTIGO: Título, Texto, Sugestão de imagem.
+ARTIGO: Título, Texto, Busca de imagem.
 
 ROTEIRO DIA A DIA: Etiqueta, Título, Subtítulo, e um bloco por dia:
 Dia 1: título curto do dia (até 7 palavras)
@@ -1894,9 +1894,11 @@ def build_page_base_config_from_reply(
         # Termos para o banco de fotos. Numa troca, só com "Busca de imagem" (foto nova pedida);
         # numa estrutura nova, sempre (sem termos, entra uma foto genérica do tipo da seção).
         if parsed_section["type"] in PHOTO_SECTION_TYPES and not sent_photos:
-            image_query = fields.get("image_query", "").strip()
+            # "Sugestão de imagem" (nome antigo do campo) vale como "Busca de imagem", inclusive numa
+            # troca: linha de foto numa troca é foto nova pedida.
+            image_query = fields.get("image_query", "").strip() or fields.get("image_suggestion", "").strip()
             if image_query or not replaces:
-                parsed_section["aiImageQuery"] = image_query or fields.get("image_suggestion", "").strip()
+                parsed_section["aiImageQuery"] = image_query
         # "Etiqueta" é o selo acima do título nas seções que o mostram.
         if (
             parsed_section["type"] in {"banner_card", "itinerary", "faq", "featured_video"}

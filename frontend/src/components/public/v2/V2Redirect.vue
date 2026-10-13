@@ -14,8 +14,8 @@
               <circle class="v2-rd-track" cx="50" cy="50" r="44" />
               <circle class="v2-rd-bar" cx="50" cy="50" r="44" :style="{ strokeDashoffset: `${ringOffset}` }" />
             </svg>
-            <b>{{ phase === "counting" ? remaining : "" }}</b>
-            <svg v-if="phase !== 'counting'" class="v2-rd-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+            <b v-if="phase === 'counting'">{{ remaining }}</b>
+            <svg v-else class="v2-rd-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
           </span>
           <span class="v2-rd-status">{{ statusText }}</span>
         </div>
@@ -195,8 +195,14 @@ onBeforeUnmount(() => {
   stroke-linecap: round;
   transition: stroke-dashoffset 1s linear;
 }
+/* Número e seta ocupam a mesma célula, no centro do anel. */
+.v2-rd-ring > b,
+.v2-rd-arrow {
+  grid-area: 1 / 1;
+}
 .v2-rd-ring b {
   position: relative;
+  line-height: 1;
   font-family: var(--v2-display, inherit);
   font-size: 34px;
   font-weight: 800;
@@ -204,6 +210,7 @@ onBeforeUnmount(() => {
 }
 .v2-rd-arrow {
   position: relative;
+  display: block;
   width: 34px;
   height: 34px;
   color: var(--v2-accent);

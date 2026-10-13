@@ -83,6 +83,9 @@ class AiAssistantCreatePageBaseRequest(BaseModel):
     include_images: bool = True
     # Fotos que já estão na página: a troca de foto não devolve a mesma.
     current_photos: list[str] = Field(default_factory=list, max_length=400)
+    # Dias de cada Roteiro dia a dia da página ({identificador: dias}): a troca só da foto do
+    # roteiro não traz os dias, e cada dia recebe uma foto.
+    itinerary_days: dict[str, int] = Field(default_factory=dict)
 
 
 class AiAssistantCreatePageBaseResponse(BaseModel):
@@ -182,6 +185,18 @@ async def _prepare_chat(
         lines.extend(f"- {name}: {url}" for name, url in sent_photos)
         context = f"{context}\n" + "\n".join(lines)
     return page, parsed_conversation, usage_record, usage_limit, attachment_payload, context
+
+
+def _photo_days_for_itinerary_swaps(sections: list[dict], itinerary_days: dict[str, int]) -> None:
+    """Troca só da foto do Roteiro dia a dia: a resposta não traz os dias; aqui o roteiro ganha um
+    dia vazio por dia da página, para cada um receber uma foto (o editor junta pela ordem)."""
+    for section in sections:
+        if section.get("type") != "itinerary" or section.get("days") or section.get("aiImageQuery") is None:
+            continue
+        target = str(section.get("aiReplaces") or "")
+        count = itinerary_days.get(target) or (next(iter(itinerary_days.values())) if len(itinerary_days) == 1 else 0)
+        if count:
+            section["days"] = [{} for _ in range(min(int(count), 30))]
 
 
 MAX_CHAT_PHOTO_BYTES = 15 * 1024 * 1024
@@ -460,6 +475,7 @@ def preview_page_base(
     ensure_agency_member(db, page.agency_id, current_user)
     ensure_pages_editor_permission(db, page.agency_id, current_user)
     config, _ = build_page_base_config_from_reply(payload.reply, normalize_config(page.config_json), strict=True)
+    _photo_days_for_itinerary_swaps(config["sections"], payload.itinerary_days)
     # Fotos dos bancos no lugar das imagens provisórias (a IA escolhe entre as candidatas), a não
     # ser que o usuário tenha desligado "Inserir imagens".
     if payload.include_images:

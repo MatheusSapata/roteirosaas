@@ -2660,7 +2660,7 @@ const aiReplyBlocks = (content: string) => {
     const replaces = plain.match(/^\s*[-•]?\s*Substitui(?:\s+a\s+se[cç][aã]o)?\s*:\s*(\S+)/i);
     if (replaces && !current.replaces) current.replaces = replaces[1];
     // Foto pedida: busca no banco ("Busca de imagem") ou foto enviada no chat ("Imagem: endereço").
-    if (/^\s*[-•]?\s*(?:Busca de (?:imagem|foto)|Imagens?\s*:)/i.test(plain)) current.photo = true;
+    if (/^\s*[-•]?\s*(?:(?:Busca|Sugest[aã]o) de (?:imagem|foto)|Imagens?\s*:)/i.test(plain)) current.photo = true;
   }
   return blocks.filter(block => block.name);
 };
@@ -3025,9 +3025,18 @@ const applyAiStructure = async (reply: string, mode: "insert" | "replace" | "swa
   aiStructureApplying.value = true;
   aiStructureError.value = "";
   try {
+    // Dias de cada roteiro, pelo identificador que a IA usa em "Substitui" (ou "secao-N").
+    const itineraryDays: Record<string, number> = {};
+    sections.value.forEach((section, index) => {
+      if (section.type !== "itinerary") return;
+      const days = ((section as ItinerarySection).days || []).length;
+      if (section.anchorId) itineraryDays[section.anchorId] = days;
+      itineraryDays[`secao-${index + 1}`] = days;
+    });
     const generated = await previewAiAssistantPageBase(pageId, reply, {
       includeImages: aiIncludeImages.value,
-      currentPhotos: aiPagePhotos(sections.value)
+      currentPhotos: aiPagePhotos(sections.value),
+      itineraryDays
     });
     if (generated.some(section => section.type === "links" && (section as LinksSection).items?.some(item => (item as any).pageSlug))) {
       if (!aiAgencyPages.pages.value.length) await aiAgencyPages.load();
