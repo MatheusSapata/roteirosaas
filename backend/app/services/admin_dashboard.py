@@ -3,6 +3,7 @@
 Cada número sai da mesma fonte e da mesma regra da tela que o detalha, para o painel nunca
 discordar delas:
 - MRR, clientes pagantes, ticket médio e MRR em risco: services/revenue (tela Receita e MRR).
+  Combo da Viaje On fica fora: o cliente paga lá.
 - Recebido e estornado: pagamentos confirmados da Asaas e da Cakto, cada um contado uma vez.
 - Novos clientes pagantes: quem fez o primeiro pagamento no período.
 - Situação das empresas, cadastros e saídas: services/company_status (tela Empresas).
@@ -22,7 +23,7 @@ from sqlalchemy.orm import Session
 from app.models.page import Page, PageStatus
 from app.models.subscription import Subscription
 from app.models.user import User
-from app.services.company_status import INTERNAL_PLANS, UNPAID_PLANS, agencies_with_owner, company_status
+from app.services.company_status import INTERNAL_PLANS, UNPAID_PLANS, agencies_with_owner, company_status, is_combo
 from app.services.revenue import ZERO, Payment, _money, all_payments, is_revenue_subscription, mrr_breakdown
 
 BRT = timezone(timedelta(hours=-3))
@@ -179,6 +180,7 @@ def build_dashboard(db: Session, first: date, last: date, now: datetime | None =
             status.key == "inactive"
             and plan not in UNPAID_PLANS
             and plan not in INTERNAL_PLANS
+            and not is_combo(subscription)
             and _in(local_day(subscription.deactivated_at), first, last)
         ):
             left += 1

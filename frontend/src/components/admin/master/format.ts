@@ -65,6 +65,7 @@ export const gatewayLabel = (value?: string | null) => {
   if (provider === "asaas") return "Asaas";
   if (provider === "cakto") return "Cakto";
   if (provider === "manual") return "Manual (admin)";
+  if (provider === "viajeon") return "Viaje On (combo)";
   return provider.charAt(0).toUpperCase() + provider.slice(1);
 };
 
@@ -80,6 +81,7 @@ export const statusTone = (status: CompanyStatusKey | string) =>
   ({
     active: "am-tone-success",
     internal: "am-tone-violet",
+    combo: "am-tone-violet",
     trial: "am-tone-info",
     free: "am-tone-neutral",
     free_expired: "am-tone-warning",

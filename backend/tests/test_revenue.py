@@ -69,6 +69,19 @@ def test_mrr_month_and_renewals(data):
     assert upcoming["anual@x.com"]["amount"] == 999.0 and upcoming["anual@x.com"]["cycle"] == "Anual"
 
 
+def test_viajeon_combo_is_not_revenue(data):
+    # Combo da Viaje On com o valor anual gravado como se fosse mensal: não entra no MRR.
+    user = User(name="Combo", email="combo@x.com", hashed_password="x", is_active=True, plan="growth")
+    data.add(user)
+    data.flush()
+    data.add(Subscription(user_id=user.id, plan="growth", provider="viajeon", status="active", billing_cycle="annual",
+                          mrr_amount=Decimal("1997"), valid_until=datetime(2026, 10, 30, tzinfo=timezone.utc)))
+    data.commit()
+    result = revenue.revenue_overview(data, None, 60, now=NOW)
+    assert result["mrr"] == 431.25 and result["paying_customers"] == 3
+    assert "combo@x.com" not in {item["email"] for item in result["upcoming"]}
+
+
 def test_past_month_has_no_to_receive(data):
     result = revenue.revenue_overview(data, date(2026, 9, 1), 60, now=NOW)
     assert result["month_received_gross"] == 99.0 and result["month_to_receive"] is None

@@ -20,6 +20,7 @@ from app.models.cakto import CaktoEventLog
 from app.models.subscription import Subscription
 from app.models.user import User
 from app.services.asaas import AsaasClient
+from app.services.company_status import COMBO_PROVIDERS
 
 ZERO = Decimal("0")
 CENT = Decimal("0.01")
@@ -61,6 +62,10 @@ def _decimal(value: Any) -> Decimal:
 
 
 def is_revenue_subscription(subscription: Subscription) -> bool:
+    """Assinatura paga ao Roteiro Online. Combo (pago na Viaje On) fica de fora, qualquer que seja o
+    valor gravado nela."""
+    if (subscription.provider or "").strip().lower() in COMBO_PROVIDERS:
+        return False
     return (subscription.plan or "").strip().lower() not in NON_REVENUE_PLANS and _decimal(subscription.mrr_amount) > 0
 
 

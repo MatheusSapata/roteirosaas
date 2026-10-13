@@ -43,7 +43,7 @@
           <div><dt>Plano</dt><dd>{{ planLabel(company.plan) }}</dd></div>
           <div><dt>Situação da cobrança</dt><dd>{{ subscriptionStatusLabel(company) }}</dd></div>
           <div><dt>Cobrança</dt><dd>{{ gatewayLabel(billingProvider(company)) }}<span v-if="methodLabel && billingProvider(company)" class="am-muted"> · {{ methodLabel }}</span></dd></div>
-          <div><dt>Valor</dt><dd>{{ company.mrr_amount ? `${formatMoney(chargeAmount)} ${cycleLabel}` : "—" }}</dd></div>
+          <div><dt>Valor</dt><dd>{{ isCombo(company) ? "Pago na Viaje On (fora do MRR)" : company.mrr_amount ? `${formatMoney(chargeAmount)} ${cycleLabel}` : "—" }}</dd></div>
           <div><dt>{{ accessLabel }}</dt><dd>{{ formatDate(company.access_until) }}<span v-if="accessLeft" class="am-muted"> · {{ accessLeft }}</span></dd></div>
           <div><dt>ID na cobrança</dt><dd class="am-mono select-text">{{ providerId }}</dd></div>
           <div v-if="company.failed_attempts"><dt>Falhas de cobrança</dt><dd class="text-status-danger-foreground">{{ company.failed_attempts }}</dd></div>
@@ -262,7 +262,7 @@ import {
   relativeDay,
   statusTone
 } from "../master/format";
-import { billingProvider, statusDetail } from "./companyStatus";
+import { billingProvider, isCombo, statusDetail } from "./companyStatus";
 
 const props = defineProps<{ company: Company | null; freeDays: number }>();
 const emit = defineEmits<{ (e: "close"): void; (e: "changed", message: string): void }>();

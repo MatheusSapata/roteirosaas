@@ -108,6 +108,8 @@ def test_creates_account_agency_subscription_and_idempotency_event(client, db_se
     assert agency.name == "Agência Exemplo Viagens"
     assert subscription.plan == "essencial"
     assert subscription.provider == "viajeon"
+    # Combo: pago na Viaje On, fora do MRR do Roteiro Online.
+    assert subscription.mrr_amount == 0
     assert subscription.valid_until.replace(tzinfo=timezone.utc) == datetime(
         2026, 8, 26, 14, 31, 58, tzinfo=timezone.utc
     )

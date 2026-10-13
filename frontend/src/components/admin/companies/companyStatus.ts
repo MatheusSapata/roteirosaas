@@ -30,13 +30,21 @@ export const statusDetail = (item: Company) => {
       return since === null ? "Cliente" : `Cliente há ${days(since)}`;
     case "internal":
       return "Conta da casa, fora das contas de clientes";
+    case "combo":
+      if (left !== null && left >= 0 && left <= 7) return `Pago na Viaje On · renova em ${days(left)}`;
+      return item.access_until ? `Pago na Viaje On · até ${formatDate(item.access_until)}` : "Pago na Viaje On";
     default:
       return "Sem dono vinculado";
   }
 };
 
+/** Acesso pago na Viaje On (combo): não é receita do Roteiro Online, então não mostra valor mensal. */
+export const isCombo = (item: Company) => (item.subscription_provider || "").toLowerCase() === "viajeon";
+
 /** Quem cobra de fato: só conta se há valor ou id de cobrança (o banco grava "asaas" como padrão até em conta gratuita). */
 export const billingProvider = (item: Company) =>
-  item.mrr_amount > 0 || item.subscription_asaas_subscription_id || item.subscription_cakto_order_id || item.subscription_cakto_subscription_code
+  isCombo(item)
+    ? "viajeon"
+    : item.mrr_amount > 0 || item.subscription_asaas_subscription_id || item.subscription_cakto_order_id || item.subscription_cakto_subscription_code
     ? (item.subscription_provider || "").toLowerCase()
     : "";
