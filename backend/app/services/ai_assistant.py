@@ -41,6 +41,7 @@ SECTION_COMPONENT_TYPES = {
     "MENU DO TOPO": "header",
     "VITRINE DE VIAGENS": "links",
     "RODAPE DA AGENCIA": "agency_footer",
+    "RESUMO DO PACOTE": "inclusions",
 }
 ALLOWED_SECTION_NAMES = frozenset(SECTION_COMPONENT_TYPES)
 FORBIDDEN_SECTION_NAMES = frozenset({"CHECKOUT VIAJEON"})
@@ -70,6 +71,9 @@ SECTION_NAME_ALIASES = {
     "PRECOS E PACOTES": "PRECOS",
     "FAIXA DE CHAMADA": "CHAMADA PARA ACAO",
     "DUVIDAS FREQUENTES": "PERGUNTAS FREQUENTES",
+    "O QUE INCLUI": "RESUMO DO PACOTE",
+    "INCLUI E NAO INCLUI": "RESUMO DO PACOTE",
+    "INCLUSOS": "RESUMO DO PACOTE",
 }
 MODEL_PRICING_USD = {
     "gpt-4": {"input": 30.0, "cached_input": 0.0, "output": 60.0},
@@ -151,6 +155,11 @@ FIELD_ALIASES_EXACT_EXTRA = {
     "TEXTO DEPOIS DO VALOR": "price_suffix",
     "LINKS DO MENU": "menu_links",
     "SUBSTITUI": "replaces",
+    "IMAGEM": "image_url",
+    "IMAGENS": "image_url",
+    "IMAGEM ENVIADA": "image_url",
+    "IMAGENS ENVIADAS": "image_url",
+    "FOTO ENVIADA": "image_url",
     "BUSCA DE IMAGEM": "image_query",
     "BUSCA DA IMAGEM": "image_query",
     "BUSCA DE FOTO": "image_query",
@@ -281,7 +290,9 @@ Regras finais de precisão:
 # superadmin (que cuida do tom e da estratégia): editar o prompt não quebra a montagem.
 PLATFORM_FORMAT_CONTRACT = """FORMATO DE ENTREGA PARA A MONTAGEM AUTOMÁTICA (prevalece sobre qualquer instrução anterior sobre formato da resposta, quando perguntar, nomes de seções e campos)
 
-NOMES DAS SEÇÕES: use sempre os nomes do editor, os mesmos que o usuário vê: Menu do topo, Banner Inicial, Banner em Card, Foto em destaque, Texto e Imagens, Diferenciais, Artigo, Roteiro dia a dia, Voos, Links/Roteiros, Vídeo, Preços e pacotes, Contagem regressiva, Faixa de chamada, Depoimentos, Dúvidas frequentes, Rodapé da agência. Nas conversas e nas perguntas, fale desses nomes.
+NOMES DAS SEÇÕES: use sempre os nomes do editor, os mesmos que o usuário vê: Menu do topo, Banner Inicial, Banner em Card, Foto em destaque, Texto e Imagens, Diferenciais, Resumo do pacote, Artigo, Roteiro dia a dia, Voos, Links/Roteiros, Vídeo, Preços e pacotes, Contagem regressiva, Faixa de chamada, Depoimentos, Dúvidas frequentes, Rodapé da agência. Nas conversas e nas perguntas, fale desses nomes.
+
+VOCÊ NÃO ALTERA A PÁGINA SOZINHO: a sugestão só entra quando o usuário toca no botão que aparece embaixo da sua resposta (Inserir ou Trocar). Nunca escreva que já trocou, mudou, colocou ou aplicou algo. Se o pedido não pode ser feito pelo assistente, diga isso e onde fazer no editor; não finja que fez.
 
 TIPOS DE RESPOSTA
 
@@ -291,6 +302,10 @@ TIPOS DE RESPOSTA
 4. Conversa: dúvidas sobre o construtor ou pedidos que não geram seções. Responda curto (até umas 8 linhas), sem estrutura, com tópicos em linhas começando com "- " quando ajudar. Não use lista numerada para explicar: números são só para perguntas. Se no fim você oferecer opções ao usuário, feche com uma pergunta no formato de escolhas do item 1 ("1. Pergunta?" e as opções em "- "), para ele responder com um toque; não deixe a escolha perdida no meio do texto.
 
 FOTOS: o construtor busca fotos no banco da plataforma e em bancos gratuitos (Pixabay, Unsplash e Pexels) e coloca nas seções quando a estrutura é aplicada; o usuário pode trocar depois no editor. Para isso, em toda seção com foto (Banner Inicial, Banner em Card, Foto em destaque, Texto e Imagens, Artigo, Roteiro dia a dia) e em cada viagem do Links/Roteiros, escreva a linha "Busca de imagem:" com até duas buscas em inglês separadas por "|": primeiro o destino ou atrativo com o nome exato do lugar e o país (2 a 6 palavras; no Brasil, sempre com "Brazil" e, se ajudar, o estado: "Beto Carrero World Santa Catarina Brazil", "Gramado Rio Grande do Sul Brazil", "Lisbon Alfama Portugal"), depois a sensação da experiência, para quando não houver foto do lugar (ex.: "couple drinking wine", "kids smiling theme park", "happy family vacation"; no Brasil, pode usar "Brazilian family beach"). Seja específico: o nome do lugar mais o que aparece na foto ("Gramado Rua Coberta Brazil", "Gramado Lago Negro Brazil", "Maragogi natural pools Alagoas Brazil"), e não só o nome da cidade; cada seção mostra uma parte diferente da viagem (o banner, o hotel, o passeio do dia). Prefira o que mostra o lugar como ele é hoje (prédios, atrações e paisagem atuais), nada de datas na busca. As fotos encontradas passam por uma IA que olha cada uma e fica com a que mostra o que a busca pede; busca vaga traz foto errada. Numa troca de seção, só escreva "Busca de imagem" se o usuário pedir outra foto. Se pedirem uma foto, entregue a seção com a "Busca de imagem" pedida e "Substitui", sem os outros campos, em vez de explicar. Se os DADOS JÁ CADASTRADOS disserem que as imagens estão desligadas, não escreva "Busca de imagem" e não prometa fotos: as seções ficam com a imagem provisória para o usuário enviar as dele.
+
+FOTO ENVIADA PELO USUÁRIO: quando o usuário manda uma foto no chat e pede para usá-la, ela aparece em IMAGENS ENVIADAS com o endereço. Entregue a seção com "Imagem: endereço" (o endereço exato da lista; nunca invente um) e, numa troca, "Substitui", sem "Busca de imagem" e sem os outros campos. Texto e Imagens aceita várias, separadas por "|"; no Roteiro dia a dia elas vão na ordem dos dias. Foto mandada só como referência ("faz parecido com isso") não vai na página.
+
+QUAIS FOTOS O ASSISTENTE TROCA: só as do Banner Inicial, Banner em Card, Foto em destaque, Texto e Imagens, Artigo, Roteiro dia a dia e dos cards do Links/Roteiros. O logo (vem de Minha Agência ou do Banner Inicial), a Galeria de fotos, a foto da Faixa de chamada, as fotos dos Depoimentos e as imagens das outras seções não mudam por aqui: responda em conversa, curto, dizendo para clicar na seção e em "Editar seção" para trocar a imagem, sem entregar estrutura e sem dizer que trocou.
 
 Páginas que o construtor monta: página de uma viagem (excursão, pacote, cruzeiro, evento), página com várias viagens (vitrine da agência, calendário de saídas, destinos da temporada) e página institucional ou home da agência. Página com várias viagens usa Links/Roteiros (um card por viagem). Repita seções quando o conteúdo pedir: um Links/Roteiros para cada grupo (ex.: nacionais e internacionais), vários Texto e Imagens para assuntos diferentes, mais de um Banner em Card ou Foto em destaque para separar partes da página. Cada seção repetida tem seu próprio título. Use Menu do topo quando a página for longa (8 seções ou mais), tiver várias viagens ou o usuário pedir menu ou cabeçalho.
 
@@ -302,6 +317,7 @@ O QUE CADA SEÇÃO MOSTRA (categoria do catálogo entre parênteses)
 - Texto e Imagens (Detalhamento): etiqueta, título e texto de um lado e carrossel de até 10 fotos do outro. Para a experiência, um destino, hospedagem, inclusos, diferenciais ou uma história curta.
 - Diferenciais (Detalhamento): grade de cards com ícone, título e uma frase. Os cards usam ícones da biblioteca ou emojis (um estilo para a seção toda); o usuário pode pedir para trocar um pelo outro.
 - Artigo (Detalhamento): imagem de capa com título e texto formatado, como um post. Para conteúdo longo. História da agência: até uns 3 parágrafos curtos vai em Texto e Imagens; texto longo vai em Artigo.
+- Resumo do pacote (Detalhamento): duas listas lado a lado, o que o pacote inclui e o que não inclui, cada item com um detalhe opcional. Use quando houver o que está e o que não está incluso; inclusos em texto corrido continuam podendo ir em Texto e Imagens.
 - Roteiro dia a dia (Detalhamento): linha do tempo por dia, com título, descrição e foto; as datas saem da data de saída do Banner Inicial.
 - Voos (Detalhamento): trechos de ida e volta e informações do voo.
 - Links/Roteiros (Detalhamento): cards de viagens com foto, nome, frase, datas, preço e botão; leva para a página da viagem (quando ela já existe) ou para o WhatsApp da agência.
@@ -312,6 +328,8 @@ O QUE CADA SEÇÃO MOSTRA (categoria do catálogo entre parênteses)
 - Depoimentos (Confiança): cards com nome, estrelas e a fala do cliente.
 - Dúvidas frequentes (Confiança): perguntas que abrem a resposta ao clicar.
 - Rodapé da agência (Menu e rodapé): descrição, contatos, redes, endereço com mapa, CNPJ e Cadastur, tudo dos dados cadastrados.
+
+Seções que o assistente não cria nem altera (o usuário adiciona pelo catálogo, em "+ Seção", e edita no editor): Galeria de fotos, Vídeo de Vendas (VSL), Formulário de contato, Compra Online (Viaje On) e Redirecionamento (categoria Utilidades: uma contagem que leva o visitante para outro endereço, como um grupo do WhatsApp, com botão para ir na hora). Se pedirem, explique em conversa onde encontrar.
 
 FORMATO DA ESTRUTURA
 
@@ -333,6 +351,8 @@ DIFERENCIAIS: Etiqueta, Título, Subtítulo, Estilo dos ícones ("ícones" é o 
 Item: título curto (até 4 palavras)
 Descrição: uma frase objetiva
 Ícone: com "emojis", um emoji (ex.: ✈️ 🏨 🍽️ 🧳); com "ícones", um destes nomes: plane, hotel, bed, bus, train-front, coffee, utensils, user-check, shield-check, camera, ticket, users, calendar-days, ship, sailboat, tree-palm, mountain, church, credit-card, headset, waves, wine, ferris-wheel, snowflake, map-pin, clock, sparkles, circle-check, star, heart, route, luggage, baby, map, compass, sun
+
+RESUMO DO PACOTE: Etiqueta, Título, Subtítulo (opcional), depois a linha "Inclui:" e os itens, um por linha começando com "- ", e a linha "Não inclui:" com os itens da mesma forma (3 a 8 itens em cada). Detalhe opcional do item depois de " — " (ex.: "- Hospedagem — 3 noites em Gramado e 2 em Canela").
 
 ARTIGO: Título, Texto, Sugestão de imagem.
 
@@ -382,6 +402,10 @@ Não use CHECKOUT VIAJEON. Não use tabelas, JSON, negrito em nomes de campo nem
 class ChatMessage(BaseModel):
     role: Literal["user", "assistant"]
     content: str
+
+
+# Fotos enviadas no chat: vão para a IA como imagem e para a biblioteca da agência.
+CHAT_IMAGE_TYPES = frozenset({"image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"})
 
 
 @dataclass(slots=True)
@@ -1065,6 +1089,17 @@ def _parse_reason_items(block: str) -> list[dict[str, str]]:
     return items
 
 
+# Resumo do pacote: "Inclui:", "O que inclui:", "Não inclui:", "O que não inclui:".
+INCLUSION_LIST_RE = re.compile(r"^((?:o\s+que\s+)?n[ãa]o\s+inclui|(?:o\s+que\s+)?inclui|n[ãa]o\s+incluso|incluso)\s*:\s*(.*)$", re.I)
+
+
+def _inclusion_item(text: str) -> dict[str, str]:
+    parts = re.split(r"\s+[—–]\s+", text.strip(), maxsplit=1)
+    title = parts[0].strip()
+    details = parts[1].strip() if len(parts) > 1 else ""
+    return {"title": title, "details": details}
+
+
 def _parse_ai_section_block(section_name: str, block: str, index: int) -> dict[str, Any] | None:
     normalized_name = _normalize_text(section_name)
     header_lines = []
@@ -1076,6 +1111,8 @@ def _parse_ai_section_block(section_name: str, block: str, index: int) -> dict[s
             _normalize_text(line).rstrip(":") in {"LISTA DE ITENS", "ITENS"}
             or re.match(r"^ITEM(?:\s+\d+)?\s*:", line, re.I)
         ):
+            break
+        if normalized_name == "RESUMO DO PACOTE" and INCLUSION_LIST_RE.match(line):
             break
         header_lines.append(raw_line)
     fields = _parse_key_value_lines("\n".join(header_lines))
@@ -1547,6 +1584,43 @@ def _parse_ai_section_block(section_name: str, block: str, index: int) -> dict[s
     if normalized_name == _normalize_text("MENU DO TOPO"):
         return _header_section(fields, index)
 
+    if normalized_name == _normalize_text("RESUMO DO PACOTE"):
+        # "Inclui:" e "Não inclui:" abrem as listas; cada linha com "- " é um item. Detalhe do
+        # item (ex.: noites por cidade) depois de " — " ou ": ".
+        lists: dict[str, list[dict[str, str]]] = {"included": [], "excluded": []}
+        bucket: str | None = None
+        for raw_line in block.splitlines():
+            line = _structure_line(raw_line)
+            head = INCLUSION_LIST_RE.match(line)
+            if head:
+                bucket = "excluded" if _normalize_text(head.group(1)).startswith(("NAO", "O QUE NAO")) else "included"
+                rest = head.group(2).strip()
+                for part in [item for item in re.split(r"\s*;\s*", rest) if item]:
+                    lists[bucket].append(_inclusion_item(part))
+                continue
+            if bucket is None or not line:
+                continue
+            if not re.match(r"^\s*(?:[-*+•‣]|\d+[.)])\s+", raw_line):
+                # Outro campo depois da lista encerra a lista.
+                if re.match(r"^[^:]+:\s*", line) and _field_alias(line.split(":", 1)[0]):
+                    bucket = None
+                continue
+            lists[bucket].append(_inclusion_item(line))
+        heading = fields.get("label", "").strip()
+        return {
+            "type": "inclusions",
+            "enabled": True,
+            "anchorId": _generate_anchor("inclusions", fields.get("title", "") or "resumo-do-pacote", index),
+            "headingLabel": heading or "Resumo do pacote",
+            "headingLabelStyle": "outline",
+            "title": fields.get("title", "").strip() or "O que está incluso na sua viagem",
+            "subtitle": fields.get("subtitle", "").strip(),
+            "includedTitle": "Seu pacote inclui",
+            "excludedTitle": "Não inclui",
+            "included": lists["included"][:12],
+            "excluded": lists["excluded"][:12],
+        }
+
     if normalized_name == _normalize_text("RODAPE DA AGENCIA"):
         # Preenchido pelos dados da agência; o editor completa com o padrão da seção.
         return {"type": "agency_footer", "enabled": True, "anchorId": _generate_anchor("agency-footer", "rodape", index), "showCadastur": True}
@@ -1660,6 +1734,44 @@ MENU_TARGETS: tuple[tuple[tuple[str, ...], tuple[str, ...]], ...] = (
 
 
 PHOTO_SECTION_TYPES = frozenset({"hero", "banner_card", "photo", "biography", "story", "itinerary"})
+# Endereço de uma imagem enviada no chat (biblioteca da agência): http(s) ou /uploads/.
+SENT_PHOTO_RE = re.compile(r"^(?:https?://|/uploads/)\S+$", re.I)
+SENT_PHOTO_FIELDS = {
+    "hero": ("backgroundImage", "mobileBackgroundImage"),
+    "banner_card": ("backgroundImage",),
+    "photo": ("image",),
+    "biography": ("image", "mobileImage"),
+}
+
+
+def _sent_photo_urls(value: str) -> list[str]:
+    """Endereços em "Imagem:" (um ou vários, separados por "|", vírgula ou linha)."""
+    urls = []
+    for part in re.split(r"[|,\n]", value or ""):
+        url = part.strip().strip("<>()[]`\"'")
+        if SENT_PHOTO_RE.match(url) and url not in urls:
+            urls.append(url)
+    return urls[:10]
+
+
+def _apply_sent_photos(section: dict[str, Any], urls: list[str]) -> None:
+    """Coloca a(s) foto(s) enviada(s) na seção. aiStockPhoto avisa o editor que é foto nova (numa
+    troca, ela entra no lugar da atual); sem crédito de banco de fotos."""
+    kind = section.get("type")
+    if kind in SENT_PHOTO_FIELDS:
+        for field_name in SENT_PHOTO_FIELDS[kind]:
+            section[field_name] = urls[0]
+    elif kind == "story":
+        section["images"] = urls
+    elif kind == "itinerary":
+        days = [day for day in section.get("days") or [] if isinstance(day, dict)]
+        for day, url in zip(days, urls):
+            day["image"] = url
+    else:
+        return
+    section.pop("aiImageQuery", None)
+    section["aiStockPhoto"] = True
+    section["photoCredits"] = []
 # Numa troca, estes campos não contam como "pedidos": foto vem do banco (aiStockPhoto) e
 # âncora/identificador ficam os da seção que já está na página.
 SWAP_FIXED_KEYS = frozenset({
@@ -1776,9 +1888,12 @@ def build_page_base_config_from_reply(
         replaces = fields.get("replaces", "").strip().strip("`\"'")
         if replaces:
             parsed_section["aiReplaces"] = replaces.split()[0]
+        # Foto enviada pelo usuário no chat ("Imagem: endereço"): entra no lugar da atual e o banco
+        # de fotos não é consultado para esta seção.
+        sent_photos = _sent_photo_urls(fields.get("image_url", "")) if parsed_section["type"] in PHOTO_SECTION_TYPES else []
         # Termos para o banco de fotos. Numa troca, só com "Busca de imagem" (foto nova pedida);
         # numa estrutura nova, sempre (sem termos, entra uma foto genérica do tipo da seção).
-        if parsed_section["type"] in PHOTO_SECTION_TYPES:
+        if parsed_section["type"] in PHOTO_SECTION_TYPES and not sent_photos:
             image_query = fields.get("image_query", "").strip()
             if image_query or not replaces:
                 parsed_section["aiImageQuery"] = image_query or fields.get("image_suggestion", "").strip()
@@ -1798,6 +1913,8 @@ def build_page_base_config_from_reply(
             if answered is not None:
                 parsed_section["aiSetKeys"] = answered
         _fill_ai_image_placeholders(parsed_section)
+        if sent_photos:
+            _apply_sent_photos(parsed_section, sent_photos)
         sections.append(parsed_section)
         if not hero_title and parsed_section.get("type") == "hero":
             hero_title = str(parsed_section.get("title") or "").strip() or None
@@ -1909,6 +2026,10 @@ def _build_ai_conversation_input(
     for attachment in attachments or []:
         encoded_file = base64.b64encode(attachment.data).decode("ascii")
         mime_type = attachment.content_type or "application/octet-stream"
+        if mime_type.lower() in CHAT_IMAGE_TYPES:
+            # Foto vai como imagem (a IA vê a foto); arquivo (PDF, texto) vai como arquivo.
+            last_content.append({"type": "input_image", "image_url": f"data:{mime_type};base64,{encoded_file}", "detail": "low"})
+            continue
         last_content.append(
             {
                 "type": "input_file",

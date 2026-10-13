@@ -2634,7 +2634,7 @@ const AI_SECTION_TYPES: Record<string, SectionType> = {
   "DETALHES DO VOO": "flight_details", "MENU DO TOPO": "header", "CABECALHO": "header", "MENU": "header",
   "MENU SUPERIOR": "header", "VITRINE DE VIAGENS": "links", "VITRINE": "links", "LINKS": "links",
   "ROTEIROS": "links", "OUTRAS VIAGENS": "links", "LINKS/ROTEIROS": "links", "LINKS / ROTEIROS": "links",
-  "FOTO EM DESTAQUE": "photo", "TEXTO E IMAGENS": "story", "DIFERENCIAIS": "reasons", "RESUMO DO PACOTE": "inclusions", "ARTIGO": "biography",
+  "FOTO EM DESTAQUE": "photo", "TEXTO E IMAGENS": "story", "DIFERENCIAIS": "reasons", "RESUMO DO PACOTE": "inclusions", "O QUE INCLUI": "inclusions", "INCLUSOS": "inclusions", "INCLUI E NAO INCLUI": "inclusions", "ARTIGO": "biography",
   "ROTEIRO DIA A DIA": "itinerary", "VOOS": "flight_details", "PRECOS E PACOTES": "prices",
   "FAIXA DE CHAMADA": "cta", "DUVIDAS FREQUENTES": "faq", "RODAPE DA AGENCIA": "agency_footer", "RODAPE": "agency_footer"
 };
@@ -2659,7 +2659,8 @@ const aiReplyBlocks = (content: string) => {
     const plain = line.replace(/[*_`"'“”]/g, "");
     const replaces = plain.match(/^\s*[-•]?\s*Substitui(?:\s+a\s+se[cç][aã]o)?\s*:\s*(\S+)/i);
     if (replaces && !current.replaces) current.replaces = replaces[1];
-    if (/^\s*[-•]?\s*Busca de (?:imagem|foto)/i.test(plain)) current.photo = true;
+    // Foto pedida: busca no banco ("Busca de imagem") ou foto enviada no chat ("Imagem: endereço").
+    if (/^\s*[-•]?\s*(?:Busca de (?:imagem|foto)|Imagens?\s*:)/i.test(plain)) current.photo = true;
   }
   return blocks.filter(block => block.name);
 };
