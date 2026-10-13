@@ -579,6 +579,8 @@ def _plain_text(value: Any, limit: int) -> str:
 class _Slot(PhotoSlot):
     queries: list[str] = field(default_factory=list)
     assign: Callable[[list[str], list[dict[str, str]]], None] | None = None
+    # Troca pedida pelo usuário ("troca a foto do banner"): sempre sai uma foto nova.
+    swap: bool = False
 
 
 class _Picker:
@@ -683,10 +685,12 @@ def _photo_slots(sections: list[dict[str, Any]]) -> list[_Slot]:
     """Uma vaga por seção com foto pedida (e uma por card da vitrine)."""
     slots: list[_Slot] = []
 
+    swap = False
+
     def add(context: str, raw_query: str, fallback: str, count: int, assign) -> None:
         queries = split_queries(raw_query or "") + [fallback]
         slots.append(_Slot(key=f"V{len(slots) + 1}", context=f"{context} · busca: {raw_query or fallback}",
-                           count=count, queries=queries, assign=assign))
+                           count=count, queries=queries, assign=assign, swap=swap))
 
     for section in sections:
         kind = section.get("type")
@@ -778,12 +782,14 @@ def fill_section_photos(
             if picker.out_of_time():
                 logger.info("stock_photos_time_budget_reached filled=%s", filled)
                 break
-            if choice is not None and slot.key in choice:
+            if choice is not None and slot.key in choice and (choice[slot.key] or not slot.swap):
                 picked = choice[slot.key]
                 # A IA escolheu menos fotos que o carrossel ou o roteiro pedem: completa com o ranking.
                 rest = [image for image in slot.candidates if image not in picked] if picked and slot.count > 1 else []
                 ordered = picked + rest
             else:
+                # Sem a escolha da IA, ou troca pedida em que a IA recusou todas: vale o ranking (o
+                # usuário pediu outra foto; ficar com a mesma parece que nada aconteceu).
                 ordered = slot.candidates
             filled += picker.place(slot, ordered)
         clear_photo_queries(sections)

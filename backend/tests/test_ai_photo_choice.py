@@ -169,3 +169,44 @@ def test_photo_choice_sends_thumbnails_and_reads_the_answer(monkeypatch):
     # Sem chave da IA: não pergunta (vale o ranking).
     monkeypatch.setattr(photo_choice, "get_settings", lambda: SimpleNamespace(gpt_key=None))
     assert photo_choice.choose_photos(None, None, [slot], timeout=10) is None
+
+
+def test_swap_with_old_photo_field_name_still_asks_for_a_new_photo():
+    # O formato antigo chamava o campo de "Sugestão de imagem": numa troca ele também pede foto nova.
+    config, _ = build_page_base_config_from_reply(reply_with(
+        "🟩 SEÇÃO: BANNER INICIAL\nSubstitui: banner\nSugestão de imagem: Jalapão dunas Tocantins Brazil"
+    ))
+    hero = config["sections"][0]
+    assert hero["aiImageQuery"] == "Jalapão dunas Tocantins Brazil"
+    assert hero["aiSetKeys"] == []
+
+
+def test_swap_gets_a_new_photo_even_when_the_ai_refuses_every_candidate(monkeypatch):
+    db = _photo_db(monkeypatch)
+    monkeypatch.setattr(stock_images, "choose_photos", lambda db, client, slots, *, timeout: {slot.key: [] for slot in slots})
+    swap, _ = build_page_base_config_from_reply(reply_with(
+        "🟩 SEÇÃO: BANNER INICIAL\nSubstitui: banner\nBusca de imagem: Gramado Brazil"
+    ))
+    stock_images.fill_section_photos(db, swap["sections"], exclude_urls=["/uploads/antiga.webp"])
+    hero = swap["sections"][0]
+    # O usuário pediu outra foto: sai a melhor do ranking em vez de ficar tudo igual.
+    assert hero["aiStockPhoto"] is True
+    assert hero["backgroundImage"].startswith("/uploads/Gramado Brazil-")
+
+
+def test_itinerary_photo_swap_puts_one_new_photo_per_day(monkeypatch):
+    from app.api.v1.endpoints.ai_assistant import _photo_days_for_itinerary_swaps
+
+    db = _photo_db(monkeypatch)
+    monkeypatch.setattr(stock_images, "choose_photos", lambda *args, **kwargs: None)
+    swap, _ = build_page_base_config_from_reply(reply_with(
+        "🟩 SEÇÃO: ROTEIRO DIA A DIA\nSubstitui: roteiro-3\nBusca de imagem: Gramado Brazil"
+    ))
+    _photo_days_for_itinerary_swaps(swap["sections"], {"roteiro-3": 3, "outro": 5})
+    stock_images.fill_section_photos(db, swap["sections"])
+    itinerary = swap["sections"][0]
+    assert itinerary["aiStockPhoto"] is True
+    assert len(itinerary["days"]) == 3
+    assert all(day["image"].startswith("/uploads/") for day in itinerary["days"])
+    assert len({day["image"] for day in itinerary["days"]}) == 3
+    assert itinerary["aiSetKeys"] == []

@@ -122,14 +122,16 @@ export const createAiAssistantPageBase = async (
 export const previewAiAssistantPageBase = async (
   pageId: number,
   reply: string,
-  options: { includeImages?: boolean; currentPhotos?: string[] } = {}
+  options: { includeImages?: boolean; currentPhotos?: string[]; itineraryDays?: Record<string, number> } = {}
 ): Promise<PageSection[]> => {
   const { data } = await api.post<{ sections: PageSection[] }>("/ai-assistant/preview-page-base", {
     page_id: pageId,
     reply,
     // Opção "Inserir imagens" do assistente; e as fotos que já estão na página (a troca não repete).
     include_images: options.includeImages ?? true,
-    current_photos: (options.currentPhotos || []).slice(0, 400)
+    current_photos: (options.currentPhotos || []).slice(0, 400),
+    // Dias de cada Roteiro dia a dia: a troca só da foto do roteiro põe uma foto nova por dia.
+    itinerary_days: options.itineraryDays || {}
   });
   if (!Array.isArray(data.sections) || !data.sections.length) {
     throw new Error("A sugestão não contém seções válidas.");
