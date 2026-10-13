@@ -1,6 +1,9 @@
 import type { Company, CompanyStatusKey } from "../../../services/companies";
 import { daysUntil, formatDate } from "../master/format";
 
+/** Mesma regra do backend (company_status.PAYMENT_RETRY_DAYS). */
+export const PAYMENT_RETRY_DAYS = 30;
+
 const days = (count: number) => `${count} ${count === 1 ? "dia" : "dias"}`;
 
 /** Situações de quem paga: em dia, com cobrança atrasada ou cancelando no fim do período. */
@@ -23,8 +26,13 @@ export const statusDetail = (item: Company) => {
       return left === null ? "Gratuita sem prazo" : left <= 0 ? "Acesso gratuito vence hoje" : `Acesso gratuito vence em ${days(left)}`;
     case "free_expired":
       return since === null ? "Acesso gratuito vencido" : `Acesso gratuito venceu há ${days(since)}`;
-    case "past_due":
-      return item.failed_attempts ? `${item.failed_attempts} ${item.failed_attempts === 1 ? "falha" : "falhas"} de cobrança` : "Cobrança atrasada";
+    case "past_due": {
+      // Cobrança falhou: no ar por 3 dias depois do vencimento e cobrando por 30.
+      if (!item.valid_until) return "Cobrança em atraso";
+      const retryEnds = new Date(new Date(item.valid_until).getTime() + PAYMENT_RETRY_DAYS * 86_400_000).toISOString();
+      if (item.online) return `Cobrança falhou · no ar até ${formatDate(item.access_until)}`;
+      return `Fora do ar · cobrando até ${formatDate(retryEnds)}`;
+    }
     case "active":
       if (left !== null && left >= 0 && left <= 7) return `Renova em ${days(left)}`;
       return since === null ? "Cliente" : `Cliente há ${days(since)}`;

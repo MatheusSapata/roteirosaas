@@ -60,7 +60,9 @@ def data(db_session):
     asaas("e1", "PAYMENT_CONFIRMED", {"id": "pay_1", "customer": "cus_a", "value": 199, "confirmedDate": "2026-08-01"})
     asaas("e2", "PAYMENT_CONFIRMED", {"id": "pay_2", "customer": "cus_a", "value": 199, "confirmedDate": "2026-10-01"})
     asaas("e3", "PAYMENT_RECEIVED", {"id": "pay_2", "customer": "cus_a", "value": 199, "paymentDate": "2026-10-02"})
-    asaas("e4", "PAYMENT_REFUNDED", {"id": "pay_3", "customer": "cus_x", "value": 50, "refundedDate": "2026-10-07"})
+    asaas("e4", "PAYMENT_REFUNDED", {"id": "pay_3", "customer": "cus_a", "value": 50, "refundedDate": "2026-10-07"})
+    # Outro produto na mesma conta da Asaas: não é receita do Roteiro Online.
+    asaas("e5", "PAYMENT_CONFIRMED", {"id": "pay_4", "customer": "cus_a", "value": 1997, "externalReference": "viajeon:9", "confirmedDate": "2026-10-03"})
     # B pagou pela primeira vez no período (Cakto, pelo e-mail).
     db.add(CaktoEventLog(event_id="c1", event_type="purchase_approved", status="processed",
                          payload={"data": {"order": {"amount": 99}, "customer": {"email": "B@x.com"}}},
@@ -75,6 +77,7 @@ def test_dashboard_numbers_match_their_sources(data):
     assert (result["mrr"], result["paying_customers"], result["arpa"]) == (298.0, 2, 149.0)
     # Recebido no período: 199 (Asaas, contado uma vez) + 99 (Cakto); estorno à parte.
     assert (result["received"], result["payments"], result["refunded"]) == (298.0, 2, 50.0)
+    assert result["received_others"] == 1997.0
     assert (result["new_paying"], result["new_paying_previous"]) == (1, 0)
     # Cadastros do período (sem a conta interna): A, B, C e D; destes, A e B pagam.
     assert (result["signups"], result["signups_paying"]) == (4, 2)
@@ -181,3 +184,17 @@ def test_temporary_password_forces_a_new_one(client, data):
     changed = client.post("/api/v1/auth/me/password", headers=headers, json={"current_password": "Temporaria1", "new_password": "MinhaSenha9"})
     assert changed.status_code == 200, changed.text
     assert client.get("/api/v1/auth/me", headers=headers).json()["temporary_password"] is False
+
+
+def test_companies_ordered_by_account_creation_not_payment(client, data):
+    # Conta antiga cuja agência só foi criada agora (no pagamento): continua na posição da conta.
+    agency = data.query(Agency).filter(Agency.slug == "c").one()
+    agency.created_at = datetime(2026, 10, 12, tzinfo=timezone.utc)
+    data.commit()
+    _as_admin(client)
+    try:
+        items = client.get("/api/v1/admin/master/companies").json()["items"]
+    finally:
+        client.app.dependency_overrides.pop(get_current_superuser, None)
+    assert [item["slug"] for item in items] == ["d", "b", "f", "a", "c", "e"]
+    assert next(item for item in items if item["slug"] == "c")["created_at"].startswith("2026-09-20")

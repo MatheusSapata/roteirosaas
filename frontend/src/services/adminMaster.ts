@@ -23,6 +23,8 @@ export interface DashboardData {
   received: number;
   received_previous: number;
   refunded: number;
+  /** Pagamentos de outros produtos na mesma conta da Asaas/Cakto (fora da receita). */
+  received_others: number;
   payments: number;
   new_paying: number;
   new_paying_previous: number;

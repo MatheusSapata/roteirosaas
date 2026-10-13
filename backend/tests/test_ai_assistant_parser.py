@@ -820,6 +820,8 @@ def test_stock_photos_fill_sections_and_reuse_cache(monkeypatch) -> None:
     pexels_key = stock_images.ImageKey(provider="pexels", plain_key="k")
     monkeypatch.setattr(stock_images, "available_image_keys", lambda db, provider: [pexels_key] if provider == "pexels" else [])
     monkeypatch.setattr(stock_images, "has_any_image_key", lambda db: True)
+    # Sem a IA escolhendo (testada à parte): vale a ordem do ranking.
+    monkeypatch.setattr(stock_images, "choose_photos", lambda *args, **kwargs: None)
 
     config, _ = build_page_base_config_from_reply(reply_with(
         "🟩 SEÇÃO: BANNER INICIAL\nTítulo: Gramado\nBusca de imagem: Gramado Brazil street | couple drinking wine",
@@ -831,10 +833,11 @@ def test_stock_photos_fill_sections_and_reuse_cache(monkeypatch) -> None:
     assert sections[0]["aiImageQuery"].startswith("Gramado") and "aiImageQuery" not in sections[2]
     filled = stock_images.fill_section_photos(db, sections, agency_id=None)
     hero, story, swap, links = sections
-    assert filled == 3
+    assert filled == 5
     assert hero["backgroundImage"] == hero["mobileBackgroundImage"] == "/uploads/Gramado Brazil street-0.webp"
-    # Sem foto do lugar, a sensação ("couple drinking wine") entra; nada se repete na página.
-    assert story["images"] == ["/uploads/couple drinking wine-0.webp"] and story["aiStockPhoto"] is True
+    # Sem foto do lugar, a sensação ("couple drinking wine") entra; o carrossel leva 3 fotos e
+    # nada se repete na página.
+    assert story["images"] == [f"/uploads/couple drinking wine-{n}.webp" for n in range(3)] and story["aiStockPhoto"] is True
     assert "aiStockPhoto" not in swap
     assert links["items"][0]["image"] == "/uploads/Gramado Brazil street-1.webp"
     assert all("aiImageQuery" not in section for section in sections)
@@ -878,19 +881,32 @@ def test_stock_search_reuses_similar_searches_descriptions_and_rotates_keys(monk
         ]
 
     monkeypatch.setattr(stock_images, "_search_unsplash", fake_unsplash)
-    assert len(stock_images.search_stock_images(db, None, "Gramado Brazil street")) == 4
-    assert len(stock_images.search_stock_images(db, None, "red wine couple")) == 4
-    # Busca parecida e descrição das fotos guardadas: reaproveita, sem chamar o Unsplash.
-    assert stock_images.search_stock_images(db, None, "Gramado street winter")[0].provider_id == "Gramado Brazil street-0"
-    assert len(stock_images.search_stock_images(db, None, "vineyard couple drinking")) >= 3
-    assert [key for key, _ in calls] == ["key-a", "key-a"]
-    # A chave A esgotou na hora: a busca nova vai para a B.
+    from datetime import datetime, timezone
+
+    def search(query):
+        return stock_images.search_stock_images(db, None, query)
+
+    assert len(search("Gramado Brazil street")) == 4
+    assert len(search("red wine couple")) == 4
+    # A mesma busca vem do banco de buscas, sem chamar o Unsplash.
+    assert len(search("gramado  brazil STREET")) == 4 and len(calls) == 2
+    # A chave A esgotou na hora: a busca nova vai para a B. Uma busca parecida já guardada
+    # ("Gramado Brazil street") não passa na frente da nova, que é mais precisa.
     key_a = db.query(ExternalApiKey).filter_by(label="A").one()
-    assert key_a.monthly_usage_estimated == 2
-    stock_images.search_stock_images(db, None, "Paris Eiffel tower")
-    assert calls[-1][0] == "key-b"
-    # Chave recusada pelo banco fica "com erro"; esgotada volta na hora seguinte.
     key_b = db.query(ExternalApiKey).filter_by(label="B").one()
+    assert key_a.monthly_usage_estimated == 2
+    assert search("Gramado street winter")[0].provider_id == "Gramado street winter-0"
+    assert [key for key, _ in calls] == ["key-a", "key-a", "key-b"]
+    # Sem chamada sobrando na hora: aí sim reaproveita o que está guardado (descrição parecida).
+    key_b.monthly_usage_estimated, key_b.last_used_at = 50, datetime.now(timezone.utc)
+    db.flush()
+    assert len(search("vineyard couple drinking")) >= 3 and len(calls) == 3
+    # Unsplash pausado no Admin Master: nem busca nova, nem busca guardada, nem foto guardada dele.
+    key_a.is_active = key_b.is_active = False
+    db.flush()
+    assert search("vineyard couple drinking") == [] and search("Gramado Brazil street") == [] and len(calls) == 3
+    key_a.is_active = key_b.is_active = True
+    # Chave recusada pelo banco fica "com erro"; esgotada volta na hora seguinte.
     image_api_keys.record_image_call(db, image_api_keys.ImageKey("unsplash", "key-b", key_b), SimpleNamespace(status_code=401, headers={}))
     assert key_b.status == "error"
     image_api_keys.record_image_call(db, image_api_keys.ImageKey("unsplash", "key-a", key_a), SimpleNamespace(status_code=429, headers={}))

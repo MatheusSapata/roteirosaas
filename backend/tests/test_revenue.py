@@ -26,6 +26,8 @@ def _sub(db, email, *, mrr, status="active", cycle="monthly", valid_until=None, 
 
 
 def _asaas(db, event_id, event, payment):
+    # Cobranças do Roteiro Online levam a referência do checkout (ou "usuário:plano:ciclo").
+    payment = {"externalReference": "checkout:tok", **payment}
     db.add(AsaasEventLog(event_id=event_id, event_type=event, payload={"event": event, "payment": payment}, status="processed"))
 
 
@@ -44,6 +46,8 @@ def data(db_session):
     _asaas(db, "e3", "PAYMENT_RECEIVED", {"id": "pay_2", "value": 99, "netValue": 97, "billingType": "PIX", "paymentDate": "2026-09-28"})
     _asaas(db, "e4", "PAYMENT_REFUNDED", {"id": "pay_3", "value": 50, "netValue": 48, "billingType": "PIX", "refundedDate": "2026-10-07"})
     _asaas(db, "e5", "PAYMENT_OVERDUE", {"id": "pay_4", "value": 149, "billingType": "BOLETO", "dueDate": "2026-10-05"})
+    # Pagamento de outro produto na mesma conta da Asaas (ex.: combo vendido pela Viaje On): fora da receita.
+    _asaas(db, "e6", "PAYMENT_CONFIRMED", {"id": "pay_9", "value": 1997, "externalReference": "viajeon:pedido-9", "confirmedDate": "2026-10-04"})
     db.add(CaktoEventLog(event_id="c1", event_type="subscription_renewed", status="processed",
                          payload={"data": {"order": {"amount": 297}, "customer": {"email": "cakto@x.com"}}},
                          processed_at=datetime(2026, 10, 9, tzinfo=timezone.utc)))
@@ -59,6 +63,7 @@ def test_mrr_month_and_renewals(data):
     assert result["mrr_by_cycle"] == {"Mensal": 348.0, "Anual": 83.25}
     # Recebido em outubro: 199 (Asaas, contado 1 vez) + 297 (Cakto); estorno de 50.
     assert result["month_received_gross"] == 496.0 and result["month_payments"] == 2 and result["month_refunded"] == 50.0
+    assert result["month_other_received"] == 1997.0 and result["month_other_payments"] == 1
     # A receber até o fim do mês: só a renovação do mensal no dia 20 (o anual é em novembro).
     assert result["month_to_receive"] == 199.0 and result["month_to_receive_count"] == 1
     assert result["month_expected"] == 645.0

@@ -16,7 +16,7 @@
           v-for="(item, idx) in limitedItems"
           :key="'mobile-' + idx"
           :class="[
-            'mx-auto flex w-full max-w-[340px] flex-col rounded-2xl p-4 text-center',
+            'reason-equal mx-auto flex w-full max-w-[340px] flex-col rounded-2xl p-4 text-center',
             ...cardClasses(idx)
           ]"
           :style="cardStyle(idx)"
@@ -37,7 +37,7 @@
             v-for="(item, idx) in row"
             :key="'card-' + rowIndex + '-' + idx"
             :class="[
-              'flex w-full max-w-[260px] flex-col rounded-2xl p-4 text-center',
+              'reason-equal flex w-full max-w-[260px] flex-col rounded-2xl p-4 text-center',
               ...cardClasses(desktopRowOffsets[rowIndex] + idx)
             ]"
             :style="cardStyle(desktopRowOffsets[rowIndex] + idx)"
@@ -61,6 +61,7 @@ import { deriveTextPalette, getRelativeLuminance, normalizeHexColor } from "../.
 import { createLocalizer, getCurrentLanguage } from "../../utils/i18n";
 import TravelIcon from "../shared/TravelIcon.vue";
 import { iconValueName } from "../../utils/travelIcons";
+import { useEqualHeights } from "../../composables/useEqualHeights";
 
 const props = defineProps<{ section: ReasonsSection; previewDevice?: "desktop" | "mobile" }>();
 const localize = createLocalizer(getCurrentLanguage());
@@ -120,6 +121,8 @@ const darkCardBorder = computed(() => `1px solid ${toRgba(accentColor.value, 0.4
 const limitedItems = computed(() => (props.section.items || []).slice(0, MAX_ITEMS));
 const cardsInView = ref(false);
 const cardsWrapperRef = ref<HTMLElement | null>(null);
+// Todos os cards do mesmo tamanho, tenham ou não descrição, em todas as linhas e no celular.
+useEqualHeights(cardsWrapperRef, "article", limitedItems);
 const revealedMobileCards = ref<boolean[]>([]);
 const mobileCardRefs = ref<(HTMLElement | null)[]>([]);
 let cardsObserver: IntersectionObserver | null = null;
@@ -159,10 +162,11 @@ const desktopRowOffsets = computed(() => {
   return offsets;
 });
 
+const hasDescription = (text?: any) => Boolean(sanitizeHtml(localize(text)).replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim());
 const descriptionHtml = (text?: any) => {
   const localized = localize(text);
   const sanitized = sanitizeHtml(localized);
-  if (sanitized && sanitized.trim().length) {
+  if (hasDescription(text)) {
     return sanitized;
   }
   return sanitizeHtml(localize(reasonsCopy.itemDescription));
@@ -200,13 +204,16 @@ const ReasonCard = defineComponent({
             color: sectionBackgroundIsLight.value ? "#0f172a" : "#f8fafc"
           }
         }, componentProps.item.title),
-        h("div", {
-          class: "mt-2 w-full text-sm leading-relaxed",
-          style: {
-            color: sectionBackgroundIsLight.value ? "#475569" : "rgba(241,245,249,0.82)"
-          },
-          innerHTML: descriptionHtml(componentProps.item.description)
-        })
+        // Na página publicada, item sem descrição não mostra o texto de exemplo (só no editor).
+        hasDescription(componentProps.item.description) || props.previewDevice
+          ? h("div", {
+              class: "mt-2 w-full text-sm leading-relaxed",
+              style: {
+                color: sectionBackgroundIsLight.value ? "#475569" : "rgba(241,245,249,0.82)"
+              },
+              innerHTML: descriptionHtml(componentProps.item.description)
+            })
+          : null
       ]);
   }
 });
@@ -370,6 +377,10 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.reason-equal {
+  min-height: var(--equal-h, 0px);
+}
+
 .reason-card {
   opacity: 0;
   transform: translateY(20px);

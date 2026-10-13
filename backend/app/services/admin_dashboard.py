@@ -130,7 +130,12 @@ def build_dashboard(db: Session, first: date, last: date, now: datetime | None =
     first_payment: dict[str, date] = {}
     received = prev_received = refunded = ZERO
     payments_count = 0
+    others_received = ZERO
     for payment in paid:
+        if not payment.ours:
+            if _in(local_day(payment.paid_at), first, last):
+                others_received += payment.gross
+            continue
         day = local_day(payment.paid_at)
         if day is None:
             continue
@@ -146,7 +151,7 @@ def build_dashboard(db: Session, first: date, last: date, now: datetime | None =
         elif _in(day, prev_first, prev_last):
             prev_received += payment.gross
     for payment in refunds:
-        if _in(local_day(payment.paid_at), first, last):
+        if payment.ours and _in(local_day(payment.paid_at), first, last):
             refunded += payment.gross
     new_paying = prev_new_paying = 0
     for day in first_payment.values():
@@ -164,7 +169,8 @@ def build_dashboard(db: Session, first: date, last: date, now: datetime | None =
         counts[status.key] += 1
         if status.key in ("internal", "no_owner"):
             continue
-        created = local_day(agency.created_at)
+        # Cadastro = criação da conta do dono (a agência pode nascer só no pagamento).
+        created = local_day(owner.created_at if owner and owner.created_at else agency.created_at)
         if _in(created, first, last):
             signups += 1
             bucket = buckets.get(created)
@@ -203,6 +209,7 @@ def build_dashboard(db: Session, first: date, last: date, now: datetime | None =
         "received": _money(received),
         "received_previous": _money(prev_received),
         "refunded": _money(refunded),
+        "received_others": _money(others_received),
         "payments": payments_count,
         "new_paying": new_paying,
         "new_paying_previous": prev_new_paying,

@@ -11,7 +11,14 @@
       <div v-if="isStatic && media.length > 1" class="v2-story-grid" :class="`is-${Math.min(media.length, 4)}`">
         <V2Img v-for="item in media.slice(0, 4)" :key="`g-${item.url}`" :src="item.type === 'video' ? item.thumb || '' : item.url" :alt="copy.image" sizes="50vw" />
       </div>
-      <div v-else-if="media.length" class="v2-story-media v2-in v2-d2">
+      <div
+        v-else-if="media.length"
+        class="v2-story-media v2-in v2-d2"
+        @mouseenter="hovering = true"
+        @mouseleave="hovering = false"
+        @focusin="hovering = true"
+        @focusout="hovering = false"
+      >
         <div class="v2-story-stage">
           <template v-for="(item, idx) in media" :key="item.url">
             <iframe
@@ -29,10 +36,10 @@
           </button>
           <span v-if="media.length > 1" class="v2-story-count">{{ active + 1 }} / {{ media.length }}</span>
           <div v-if="media.length > 1" class="v2-story-nav">
-            <button type="button" :aria-label="copy.prev" @click="go(active - 1)">
+            <button type="button" :aria-label="copy.prev" @click="choose(active - 1)">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
             </button>
-            <button type="button" :aria-label="copy.next" @click="go(active + 1)">
+            <button type="button" :aria-label="copy.next" @click="choose(active + 1)">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
             </button>
           </div>
@@ -45,7 +52,7 @@
             :aria-label="`${copy.show} ${idx + 1}`"
             :aria-current="idx === active"
             :class="{ 'is-on': idx === active }"
-            @click="go(idx)"
+            @click="choose(idx)"
           >
             <V2Img v-if="item.thumb" :src="item.thumb" alt="" sizes="120px" />
             <span v-else class="v2-story-vthumb" aria-hidden="true">▶</span>
@@ -53,12 +60,12 @@
         </div>
       </div>
     </div>
-    <V2Lightbox :items="media" :start="viewerStart" @change="active = $event" @close="viewerStart = null" />
+    <V2Lightbox :items="media" :start="viewerStart" @change="choose($event)" @close="viewerStart = null" />
   </V2Section>
 </template>
 
 <script setup lang="ts">
-import { computed, inject, ref, toRef, watch } from "vue";
+import { computed, inject, onBeforeUnmount, onMounted, ref, toRef, watch } from "vue";
 import { STATIC_RENDER_KEY } from "./useEntrance";
 import type { StorySection } from "../../../types/page";
 import { resolveMediaUrl } from "../../../utils/media";
@@ -118,8 +125,33 @@ watch(() => media.value.length, () => go(Math.min(active.value, Math.max(0, medi
 const canZoom = computed(() => !props.previewDevice);
 const viewerStart = ref<number | null>(null);
 const openViewer = (idx: number) => {
-  if (canZoom.value) viewerStart.value = idx;
+  if (!canZoom.value) return;
+  manual.value = true;
+  viewerStart.value = idx;
 };
+
+// Fotos trocam sozinhas a cada 3 s até a pessoa trocar na mão (setas, miniaturas ou tela cheia).
+// Pausa com o mouse em cima, com a tela cheia aberta e com a aba em segundo plano; não pula
+// um vídeo que está na tela.
+const AUTOPLAY_MS = 3000;
+const manual = ref(false);
+const hovering = ref(false);
+const choose = (idx: number) => {
+  manual.value = true;
+  go(idx);
+};
+let autoplayTimer: number | null = null;
+const tick = () => {
+  if (manual.value || hovering.value || viewerStart.value !== null || document.hidden) return;
+  if (media.value.length < 2 || media.value[active.value]?.type === "video") return;
+  go(active.value + 1);
+};
+onMounted(() => {
+  if (!isStatic) autoplayTimer = window.setInterval(tick, AUTOPLAY_MS);
+});
+onBeforeUnmount(() => {
+  if (autoplayTimer !== null) window.clearInterval(autoplayTimer);
+});
 const cta = useCta(section);
 const ctaLabel = computed(() => text(props.section.ctaLabel) || localize({ pt: "Saiba mais", es: "Saber más" }));
 </script>

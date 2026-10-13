@@ -368,6 +368,7 @@ const accessLabel = computed(() => {
   const status = props.company?.status;
   if (status === "trial" || status === "trial_ended") return "Fim do teste";
   if (status === "free" || status === "free_expired") return "Prazo do gratuito";
+  if (status === "past_due") return "No ar até";
   return "Validade";
 });
 const accessLeft = computed(() => {

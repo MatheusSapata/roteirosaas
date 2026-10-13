@@ -39,6 +39,9 @@ export interface RevenueOverview {
   month_received_net: number;
   month_refunded: number;
   month_payments: number;
+  /** Pagamentos de outros produtos na mesma conta da Asaas/Cakto (ex.: combo da Viaje On), fora da receita. */
+  month_other_received: number;
+  month_other_payments: number;
   month_to_receive: number | null;
   month_to_receive_count: number | null;
   month_expected: number;

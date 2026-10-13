@@ -70,5 +70,11 @@ class User(Base):
         if not self.subscription:
             return False
         status = (self.subscription.status or "").lower()
+        if status == "past_due":
+            # Cobrança em atraso: bloqueia depois dos 3 dias de carência (mesma regra da página pública).
+            from app.services.company_status import subscription_allows_public
+
+            if self.subscription.valid_until is not None:
+                return not subscription_allows_public(self.subscription)
         failed_attempts = int(self.subscription.failed_attempts or 0)
         return status != "active" and failed_attempts >= 3

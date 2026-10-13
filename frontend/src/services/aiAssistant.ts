@@ -24,6 +24,12 @@ export interface AiPageSectionSummary {
   badge?: unknown;
   /** Diferenciais: cards com ícones da biblioteca ("icon") ou emojis ("emoji"). */
   iconMode?: string;
+  /** Menu do topo como está (a IA mexe só no que pedirem, sem apagar os itens atuais). */
+  mode?: string;
+  stickyEnabled?: boolean;
+  actionType?: string;
+  contactLabel?: unknown;
+  links?: Array<{ label: unknown; target?: string; targetType?: string }>;
 }
 
 interface AiAssistantChatResponse {
@@ -47,12 +53,14 @@ export const sendAiAssistantConversation = async (
   pageId: number,
   conversation: AiAssistantChatMessage[],
   attachments: File[] = [],
-  pageSections: AiPageSectionSummary[] = []
+  pageSections: AiPageSectionSummary[] = [],
+  includeImages = true
 ): Promise<{ reply: string; usage?: AiAssistantUsageResponse }> => {
   const form = new FormData();
   form.append("page_id", String(pageId));
   form.append("conversation", JSON.stringify(conversation));
   form.append("page_sections", JSON.stringify(pageSections));
+  form.append("include_images", includeImages ? "true" : "false");
 
   for (const file of attachments) {
     form.append("attachments", file, file.name);
@@ -113,11 +121,15 @@ export const createAiAssistantPageBase = async (
 
 export const previewAiAssistantPageBase = async (
   pageId: number,
-  reply: string
+  reply: string,
+  options: { includeImages?: boolean; currentPhotos?: string[] } = {}
 ): Promise<PageSection[]> => {
   const { data } = await api.post<{ sections: PageSection[] }>("/ai-assistant/preview-page-base", {
     page_id: pageId,
-    reply
+    reply,
+    // Opção "Inserir imagens" do assistente; e as fotos que já estão na página (a troca não repete).
+    include_images: options.includeImages ?? true,
+    current_photos: (options.currentPhotos || []).slice(0, 400)
   });
   if (!Array.isArray(data.sections) || !data.sections.length) {
     throw new Error("A sugestão não contém seções válidas.");
@@ -150,12 +162,14 @@ export const streamAiAssistantConversation = async (
   conversation: AiAssistantChatMessage[],
   attachments: File[],
   onEvent: (event: AiAssistantStreamEvent) => void,
-  pageSections: AiPageSectionSummary[] = []
+  pageSections: AiPageSectionSummary[] = [],
+  includeImages = true
 ): Promise<{ reply: string; usage?: AiAssistantUsageResponse }> => {
   const form = new FormData();
   form.append("page_id", String(pageId));
   form.append("conversation", JSON.stringify(conversation));
   form.append("page_sections", JSON.stringify(pageSections));
+  form.append("include_images", includeImages ? "true" : "false");
   for (const file of attachments) form.append("attachments", file, file.name);
 
   const authorization = api.defaults.headers.common?.Authorization;

@@ -1,6 +1,8 @@
 <template>
   <V2Section type="biography" :background="section.backgroundColor" :anchor-id="section.anchorId" full>
-    <header v-if="image || title" class="v2-art-cover">
+    <!-- Com imagem: capa com o título por cima. Sem imagem: faixa na cor da página com o título.
+         Sem imagem e sem título: só o texto. Sem texto: só a capa. -->
+    <header v-if="image || title" class="v2-art-cover" :class="{ 'is-plain': !image }">
       <picture v-if="image">
         <source v-if="mobileImage" :srcset="responsiveSrcset(mobileImage) || mobileImage" sizes="100vw" media="(max-width: 640px)" />
         <V2Img :src="image" :alt="title || copy.alt" class="v2-reveal" />
@@ -21,7 +23,7 @@ import { resolveMediaUrl, responsiveSrcset } from "../../../utils/media";
 import V2Section from "./V2Section.vue";
 import V2Img from "./V2Img.vue";
 import { plainTextToHtml, sanitizeHtml } from "../../../utils/sanitizeHtml";
-import { localize, text } from "./useHeading";
+import { hasText, localize, text } from "./useHeading";
 import { titleScaleStyle } from "./useCopyFit";
 
 const props = defineProps<{ section: BiographySection; previewDevice?: "desktop" | "mobile" }>();
@@ -32,7 +34,8 @@ const title = computed(() => text(props.section.title));
 // O artigo aceita imagens e vídeos (YouTube/Vimeo) no meio do texto.
 const bodyHtml = computed(() => {
   const raw = text(props.section.text);
-  if (!raw) return "";
+  // "<p></p>" do editor não conta como texto; imagem ou vídeo no meio do texto contam.
+  if (!hasText(raw) && !/<(img|iframe)\b/i.test(raw)) return "";
   const safe = sanitizeHtml(plainTextToHtml(raw), { embeds: true });
   if (typeof document === "undefined") return safe;
   const box = document.createElement("div");
@@ -78,8 +81,17 @@ const veil = computed(() => {
   inset: 0;
   background: linear-gradient(180deg, rgba(6, 12, 9, calc(var(--veil) - 0.3)) 0%, rgba(6, 12, 9, var(--veil)) 100%);
 }
-.v2-art-cover:not(:has(img)) {
-  background: #0b1410;
+/* Sem imagem: faixa mais baixa na cor de destaque da página, em vez de um bloco escuro vazio. */
+.v2-art-cover.is-plain {
+  min-height: 0;
+  background: var(--v2-accent);
+  color: var(--v2-on-accent);
+}
+.v2-art-cover.is-plain .v2-art-veil {
+  display: none;
+}
+.v2-art-cover.is-plain .v2-art-title {
+  padding-block: clamp(40px, 6cqi, 72px);
 }
 .v2-art-title {
   position: relative;

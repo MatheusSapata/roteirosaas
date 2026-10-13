@@ -72,6 +72,28 @@ def _page_summary(page: Page) -> str:
     return f"{line} · {subtitle}" if subtitle else line
 
 
+HEADER_MODES = {"solid": "sólido", "transparent": "transparente", "blurred": "desfocado"}
+HEADER_ACTIONS = {"social": "redes sociais", "contact": "botão", "none": "nada"}
+
+
+def _header_summary(section: dict[str, Any]) -> str:
+    parts = [f"aparência {HEADER_MODES.get(str(section.get('mode') or 'solid'), 'sólido')}"]
+    parts.append("fixo ao rolar" if section.get("stickyEnabled", True) else "solto (não fixa ao rolar)")
+    action = HEADER_ACTIONS.get(str(section.get("actionType") or "none"), "nada")
+    label = _plain(section.get("contactLabel"))
+    parts.append(f'lado direito: {action}' + (f' "{_short(label, 40)}"' if action == "botão" and label else ""))
+    items = []
+    for link in section.get("links") or []:
+        if not isinstance(link, dict):
+            continue
+        name = _short(_plain(link.get("label")), 30)
+        target = str(link.get("target") or "").strip()
+        if name:
+            items.append(f"{name} → {target}" if target else name)
+    parts.append("itens: " + ("; ".join(items[:8]) if items else "nenhum"))
+    return " · " + " · ".join(parts)
+
+
 def _sections_summary(sections: list[dict[str, Any]]) -> list[str]:
     lines = []
     for number, section in enumerate(sections, 1):
@@ -86,11 +108,16 @@ def _sections_summary(sections: list[dict[str, Any]]) -> list[str]:
         if kind == "reasons":
             # Estilo atual dos cards, para a IA manter (ou trocar, se pedirem).
             style = " (com emojis)" if section.get("iconMode") == "emoji" else " (com ícones)"
+        if kind == "header":
+            # O menu não tem título: vai como está, para a IA mexer só no que pedirem.
+            style = _header_summary(section)
         lines.append(f'{number}. {anchor}: {name}{style}{hidden}' + (f' · "{_short(title, 70)}"' if title else ""))
     return lines
 
 
-def build_agency_context(db: Session, page: Page, page_sections: list[dict[str, Any]] | None = None) -> str:
+def build_agency_context(
+    db: Session, page: Page, page_sections: list[dict[str, Any]] | None = None, *, include_images: bool = True
+) -> str:
     """Bloco de texto com o que já está cadastrado, para ir junto das instruções da IA."""
     from app.api.v1.endpoints.public_pages import build_agency_profile  # evita import circular
 
@@ -127,7 +154,12 @@ def build_agency_context(db: Session, page: Page, page_sections: list[dict[str, 
     else:
         lines.append("SEÇÕES DESTA PÁGINA: nenhuma ainda.")
 
-    catalog = curated_catalog(db)
+    if not include_images:
+        lines.append(
+            'Imagens: DESLIGADAS pelo usuário (opção "Inserir imagens" do assistente). Não escreva "Busca de imagem" '
+            "e não prometa fotos; as seções novas ficam com a imagem provisória e as atuais mantêm as fotos."
+        )
+    catalog = curated_catalog(db) if include_images else []
     if catalog:
         lines.append(
             "Fotos cadastradas no banco da plataforma (quando a seção falar de um destes lugares ou atrações, "

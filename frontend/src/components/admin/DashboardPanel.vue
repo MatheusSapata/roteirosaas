@@ -28,6 +28,7 @@
           <template #hint>
             <DeltaText :now="data.received" :before="data.received_previous" :label="previousLabel" />
             · {{ plural(data.payments, "pagamento", "pagamentos") }}<template v-if="data.refunded"> · {{ formatMoney(data.refunded) }} estornado</template>
+            <template v-if="data.received_others"> · fora da conta: {{ formatMoney(data.received_others) }} de outros produtos</template>
           </template>
         </AdminMasterKpi>
         <AdminMasterKpi icon="trend" tone="violet" label="Novos clientes pagantes" :value="formatInt(data.new_paying)">
@@ -283,7 +284,7 @@ const attentionItems = computed(() => {
   const whatsapp = adminMasterCounts.whatsappIssues ?? 0;
   const companies = (filtro: string) => ({ path: "/admin/administracao/empresas", query: { filtro } });
   return [
-    { id: "past_due", count: pastDue, icon: "alert", tone: "danger", title: plural(pastDue, "empresa inadimplente", "empresas inadimplentes"), description: "Cobrança com falha ou atrasada", target: "Empresas", to: companies("inadimplentes") },
+    { id: "past_due", count: pastDue, icon: "alert", tone: "danger", title: plural(pastDue, "empresa inadimplente", "empresas inadimplentes"), description: "Cobrança falhou: no ar por 3 dias, cobrando por 30", target: "Empresas", to: companies("inadimplentes") },
     { id: "cancelling", count: cancelling, icon: "cal", tone: "warning", title: plural(cancelling, "empresa cancelando", "empresas cancelando"), description: "Saem no fim do período pago", target: "Empresas", to: companies("cancelando") },
     { id: "trials", count: trials, icon: "history", tone: "info", title: plural(trials, "teste termina", "testes terminam"), description: "Em até 3 dias", target: "Empresas", to: companies("teste-acabando") },
     { id: "free_expired", count: expired, icon: "user", tone: "warning", title: plural(expired, "gratuita vencida", "gratuitas vencidas"), description: "Prazo do acesso gratuito já passou", target: "Empresas", to: companies("vencidas") },

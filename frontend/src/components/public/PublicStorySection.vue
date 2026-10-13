@@ -459,7 +459,8 @@ const lightboxIndex = ref<number | null>(null);
 const hasWindow = typeof window !== "undefined";
 const userInteracted = ref(false);
 let autoCycleTimer: number | null = null;
-const AUTO_CYCLE_INTERVAL = 5000;
+// Troca de foto sozinha a cada 3 s até a pessoa trocar na mão.
+const AUTO_CYCLE_INTERVAL = 3000;
 const stopAutoCycle = () => {
   if (autoCycleTimer && hasWindow) {
     window.clearInterval(autoCycleTimer);

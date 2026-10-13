@@ -33,6 +33,14 @@ COMBO_PROVIDERS = frozenset({"viajeon"})
 # Passado o prazo ela aparece como "Gratuita vencida". A regra da página pública não muda aqui.
 FREE_ACCESS_DAYS = 7
 
+# Cobrança que falhou (cartão recusado, boleto/Pix não pago): não é cancelamento. A conta segue
+# no ar por PAYMENT_GRACE_DAYS depois do vencimento (valid_until) e a cobrança continua até
+# PAYMENT_RETRY_DAYS; se o cliente pagar nesse prazo, volta sozinho. Depois disso a assinatura é
+# encerrada no gateway (job horário em services/subscription).
+PAYMENT_GRACE_DAYS = 3
+PAYMENT_RETRY_DAYS = 30
+BILLING_PROVIDERS = frozenset({"asaas", "cakto"})
+
 STATUS_LABELS = {
     "active": "Ativa",
     "trial": "Em teste",
@@ -54,9 +62,38 @@ def _aware(value: datetime | None) -> datetime | None:
     return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
 
 
+def payment_deadlines(subscription: Subscription) -> tuple[datetime, datetime] | None:
+    """Para cobrança em atraso: até quando fica no ar e até quando segue cobrando."""
+    due = _aware(subscription.valid_until)
+    if due is None:
+        return None
+    return due + timedelta(days=PAYMENT_GRACE_DAYS), due + timedelta(days=PAYMENT_RETRY_DAYS)
+
+
+def charging_overdue(subscription: Subscription | None, now: datetime | None = None) -> bool:
+    """Cobrança em atraso ainda dentro dos 30 dias de tentativa."""
+    if subscription is None or (subscription.status or "").strip().lower() != "past_due":
+        return False
+    deadlines = payment_deadlines(subscription)
+    return bool(deadlines and (now or datetime.now(timezone.utc)) < deadlines[1])
+
+
+def mark_subscription_overdue(subscription: Subscription, due_date: str | None = None) -> None:
+    """Cobrança não paga no vencimento. Não cancela: a conta fica inadimplente, no ar por 3 dias
+    depois do vencimento, e a cobrança segue por 30 dias. Pagou nesse prazo, volta a ficar ativa."""
+    subscription.failed_attempts = int(subscription.failed_attempts or 0) + 1
+    subscription.status = "past_due"
+    if subscription.valid_until is None and due_date:
+        try:
+            due = datetime.fromisoformat(str(due_date)[:10])
+        except ValueError:
+            return
+        subscription.valid_until = due.replace(hour=23, minute=59, second=59, tzinfo=timezone.utc)
+
+
 def subscription_allows_public(subscription: Subscription | None, now: datetime | None = None) -> bool:
-    """A página pública fica no ar? Ativa ou com menos de 3 falhas de cobrança; encerrada, só
-    até o fim do período pago."""
+    """A página pública fica no ar? Ativa; com cobrança em atraso, até 3 dias depois do vencimento;
+    encerrada, só até o fim do período pago."""
     if subscription is None:
         return False
     now = now or datetime.now(timezone.utc)
@@ -64,6 +101,10 @@ def subscription_allows_public(subscription: Subscription | None, now: datetime 
     if status in ENDED_STATUSES:
         valid_until = _aware(subscription.valid_until)
         return bool(valid_until and valid_until > now)
+    if status == "past_due":
+        deadlines = payment_deadlines(subscription)
+        if deadlines:
+            return now < deadlines[0]
     return status == "active" or int(subscription.failed_attempts or 0) < 3
 
 
@@ -119,6 +160,10 @@ def company_status(owner: User | None, now: datetime | None = None) -> CompanySt
     trial_ends = _aware(owner.trial_ends_at)
     if owner.trial_plan and trial_ends and trial_ends > now:
         return CompanyStatus("trial", STATUS_LABELS["trial"], online=online or True, since=_aware(owner.trial_started_at), ends=trial_ends)
+    # Cobrança falhou: é inadimplência (no ar por 3 dias, cobrando por 30), não cancelamento.
+    if not combo and charging_overdue(subscription, now):
+        grace_ends, _retry_ends = payment_deadlines(subscription)
+        return CompanyStatus("past_due", STATUS_LABELS["past_due"], online=online, since=_aware(subscription.valid_until), ends=grace_ends)
     if not online:
         return CompanyStatus(
             "inactive",
