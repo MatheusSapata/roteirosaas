@@ -10,6 +10,7 @@ const HEADING_DEFAULTS: Partial<Record<SectionType, { label: string; style: Head
   faq: { label: "FAQ", style: "outline" },
   story: { label: "Sobre nós", style: "outline" },
   reasons: { label: "Por que escolher", style: "outline" },
+  inclusions: { label: "Resumo do pacote", style: "outline" },
   links: { label: "Links", style: "outline" },
   testimonials: { label: "Depoimentos", style: "outline" },
   featured_video: { label: "Video em destaque", style: "outline" },
@@ -31,6 +32,7 @@ const HEADING_ALIGN_DEFAULTS: Partial<Record<SectionType, HeadingAlign>> = {
   links: "left",
   prices: "center",
   reasons: "center",
+  inclusions: "center",
   testimonials: "center"
 };
 

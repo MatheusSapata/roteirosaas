@@ -15,6 +15,7 @@ export const sectionLabels: Partial<Record<SectionType, string>> = {
   cta: "Chamada para ação",
   story: "Descritivo",
   reasons: "Itens",
+  inclusions: "Resumo do pacote",
   links: "Links/Roteiros",
   countdown: "Contador",
   agency_footer: "Rodapé da agência",
@@ -43,6 +44,8 @@ export const describeSection = (section: PageSection): string => {
       return section.days?.[0]?.title || "Roteiro personalizado";
     case "reasons":
       return section.title || "Motivos para escolher";
+    case "inclusions":
+      return section.title || "O que está incluso";
     case "links":
       return section.title || "Links recomendados";
     case "faq":
