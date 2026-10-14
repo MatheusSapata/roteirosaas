@@ -392,7 +392,7 @@
                 equivale a <b>{{ formatBRL(salesMath.perMonth, { cents: "always" }) }} por mês</b>
               </p>
               <p v-else-if="monthlyPromo" class="lp-price-eq">Depois, <b>{{ formatBRL(currentOffer.amount) }}/mês</b>. Sem fidelidade.</p>
-              <p v-else class="lp-price-eq">Renova todo mês. <b>Sem fidelidade.</b></p>
+              <p v-else class="lp-price-eq">Renova todo mês, sem fidelidade.</p>
               <p v-if="cycle === 'annual' && salesMath && salesMath.savings > 0" class="lp-price-save">
                 Economize {{ formatBRL(salesMath.savings) }}<span class="lp-hide-sm">: 1 ano por menos de {{ salesMath.lessThanMonths }} meses do mensal</span>
               </p>
@@ -757,7 +757,6 @@ const INCLUDED = [
 // Selos no pé do cartão do que vem na assinatura (só no computador).
 const TRUST = [
   { icon: ShieldCheck, label: "7 dias de garantia" },
-  { icon: CalendarDays, label: "Mensal sem fidelidade" },
   { icon: CircleCheck, label: "Cancelamento simples" }
 ];
 // A faixa corre em laço: a lista vai duas vezes (a cópia fica escondida do leitor de tela).
@@ -2576,7 +2575,7 @@ onBeforeUnmount(() => {
 }
 .lp-offer-trust {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
   margin-top: auto;
   padding-top: 18px;
