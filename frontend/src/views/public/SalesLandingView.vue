@@ -123,9 +123,20 @@
     <section class="lp-sec is-soft">
       <div class="lp-wrap">
         <h2 class="lp-h2">Mais fácil que <span class="is-brand">editar no Canva!</span></h2>
+        <p class="lp-sub lp-canva-sub">Veja o editor em 40 segundos: escolher uma seção, editar, conferir no celular e publicar.</p>
         <div class="lp-canva">
           <div class="lp-canva-visual">
-            <video :poster="editorPoster" autoplay muted loop playsinline preload="metadata" aria-label="Editor do Roteiro Online">
+            <!-- Gravado do editor de verdade por tools/help-media/lp-editor.mjs. -->
+            <video
+              ref="editorVideo"
+              :poster="editorPoster"
+              autoplay
+              muted
+              loop
+              playsinline
+              preload="metadata"
+              aria-label="Animação do editor: escolher uma seção pronta, editar o texto, trocar o visual, ver no celular, pedir ao Assistente IA e publicar"
+            >
               <source :src="editorWebm" type="video/webm" />
               <source :src="editorMp4" type="video/mp4" />
             </video>
@@ -519,6 +530,8 @@ const FAQ: FaqItem[] = [
 
 // No celular a lista começa com 6 perguntas, para a seção caber na tela.
 const faqAll = ref(false);
+// Quem pede menos movimento no sistema vê a animação parada, com os controles para tocar.
+const editorVideo = ref<HTMLVideoElement | null>(null);
 
 const goToPlans = () => {
   document.getElementById("planos")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -569,6 +582,11 @@ onMounted(() => {
   previousTitle = document.title;
   document.title = PAGE_TITLE;
   restoreDescription = setMeta("description", PAGE_DESCRIPTION);
+  if (editorVideo.value && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    editorVideo.value.autoplay = false;
+    editorVideo.value.pause();
+    editorVideo.value.controls = true;
+  }
   trackPageView();
 });
 
@@ -1089,10 +1107,10 @@ onBeforeUnmount(() => {
 /* 07 Mais fácil que o Canva */
 .lp-canva {
   display: grid;
-  grid-template-columns: 1.15fr 0.85fr;
+  grid-template-columns: 1.35fr 0.65fr;
   align-items: center;
-  gap: 32px;
-  margin-top: 24px;
+  gap: 28px;
+  margin-top: 22px;
 }
 .lp-canva-visual {
   overflow: hidden;
@@ -1105,9 +1123,7 @@ onBeforeUnmount(() => {
   display: block;
   width: 100%;
   height: auto;
-  max-height: calc(100svh - 220px);
-  aspect-ratio: 1166 / 640;
-  object-fit: cover;
+  aspect-ratio: 16 / 10;
 }
 .lp-checks {
   display: flex;
@@ -1561,8 +1577,9 @@ onBeforeUnmount(() => {
     gap: 16px;
     margin-top: 18px;
   }
-  .lp-canva-visual video {
-    max-height: none;
+  /* No celular a própria animação explica; a linha de apoio fica só no computador. */
+  .lp-canva-sub {
+    display: none;
   }
   .lp-faq {
     grid-template-columns: 1fr;
@@ -1602,10 +1619,14 @@ onBeforeUnmount(() => {
     height: max(96px, 15svh);
   }
   .lp-checks {
-    gap: 8px;
+    gap: 6px;
   }
   .lp-checks li {
-    padding: 8px 12px;
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+  .lp-checks li:nth-child(n + 5) {
+    display: none;
   }
   .lp-plan {
     gap: 8px;

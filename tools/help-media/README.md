@@ -52,6 +52,21 @@ node gerar.mjs --sem-video       # pula os vídeos
 Os roteiros que mudam dados (publicar, adicionar seção, duplicar) devolvem a demonstração
 ao estado do `seed.mjs` antes e depois de gravar (`antesDeTudo` / `depoisDeTudo`).
 
+## Página de vendas (/lp)
+
+A mesma ferramenta gera a mídia da página de vendas (`frontend/src/assets/lp/`):
+
+```bash
+node lp-editor.mjs     # animação do editor ("Mais fácil que editar no Canva"): editor.mp4/.webm e capa
+node lp-exemplos.mjs   # miniaturas dos "Exemplos reais", do topo das páginas publicadas
+```
+
+- `lp-editor.mjs` grava o editor de verdade na página "Bonito em família" da demonstração
+  (1280×800, legendas grandes para ler no tamanho da LP) e devolve a página ao estado do
+  `seed.mjs` antes e depois.
+- `lp-exemplos.mjs` precisa de acesso a `roteiroonline.com`; os links são os mesmos dos
+  cartões em `SalesLandingView.vue`.
+
 ## Estrutura
 
 - `seed.mjs`: cria a conta, a agência, as páginas, os formulários, os leads e os pixels.
