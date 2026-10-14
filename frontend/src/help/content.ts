@@ -732,7 +732,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     blocos: [
       {
         tipo: "texto",
-        texto: "A assinatura inclui tudo: roteiros ilimitados, Módulo Leads, domínio próprio, caixa de entrada do WhatsApp, pixels, Assistente IA e equipe com até 5 usuários."
+        texto: "A assinatura inclui tudo: roteiros ilimitados, Módulo Leads, domínio próprio, notificações inteligentes, pixels, Assistente IA e equipe com até 5 usuários."
       },
       {
         tipo: "texto",

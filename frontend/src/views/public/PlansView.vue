@@ -45,7 +45,7 @@
           <ul>
             <li v-for="item in included" :key="item"><Check :size="15" aria-hidden="true" />{{ item }}</li>
           </ul>
-          <p class="pv-incl-foot"><Sparkles :size="15" aria-hidden="true" />{{ t(copy.sameSubscription) }}</p>
+          <p class="pv-incl-foot">{{ t(copy.sameSubscription) }}</p>
         </div>
 
         <div class="pv-price-box" :class="{ 'is-current': isCurrentCycle }">
@@ -108,7 +108,7 @@
 </template>
 
 <script setup lang="ts">
-import { ArrowRight, Check, ShieldCheck, Sparkles } from "lucide-vue-next";
+import { ArrowRight, Check, ShieldCheck } from "lucide-vue-next";
 import { computed, onMounted, ref } from "vue";
 import api from "../../services/api";
 import { getPublicSalesPlan, type SalesPlan } from "../../services/checkout";
@@ -142,8 +142,8 @@ const copy = {
   until: L("até", "hasta"),
   legacyTitle: L("Seu plano atual:", "Tu plan actual:"),
   legacyText: L(
-    "Ele continua valendo do jeito que está. Assinando, você passa a ter roteiros ilimitados, Módulo Leads, domínio próprio e caixa de entrada do WhatsApp.",
-    "Sigue vigente tal como está. Al suscribirte, tienes itinerarios ilimitados, Módulo Leads, dominio propio y bandeja de entrada de WhatsApp."
+    "Ele continua valendo do jeito que está. Assinando, você passa a ter roteiros ilimitados, Módulo Leads, domínio próprio e notificações inteligentes.",
+    "Sigue vigente tal como está. Al suscribirte, tienes itinerarios ilimitados, Módulo Leads, dominio propio y notificaciones inteligentes."
   ),
   includedTitle: L("O que vem na assinatura", "Qué incluye la suscripción"),
   sameSubscription: L("Mensal ou anual, é a mesma assinatura: muda só a forma de pagar.", "Mensual o anual, es la misma suscripción: cambia solo la forma de pago."),
@@ -185,7 +185,7 @@ const included = [
   L("Assistente de IA para montar páginas", "Asistente de IA para armar páginas"),
   L("Criativos para anúncios e stories", "Creativos para anuncios y stories"),
   L("Módulo Leads e funil de vendas", "Módulo Leads y embudo de ventas"),
-  L("Caixa de entrada do WhatsApp", "Bandeja de entrada de WhatsApp"),
+  L("Notificações inteligentes", "Notificaciones inteligentes"),
   L("Domínio próprio da agência", "Dominio propio de la agencia"),
   L("Pixels Meta e Google", "Píxeles de Meta y Google"),
   L("Equipe com até 5 usuários", "Equipo con hasta 5 usuarios"),
@@ -424,9 +424,6 @@ onMounted(async () => {
   border-top: 1px solid var(--border);
   color: var(--muted-foreground);
   font-size: 13px;
-}
-.pv-incl-foot svg {
-  color: var(--primary);
 }
 .pv-price-box {
   display: flex;
