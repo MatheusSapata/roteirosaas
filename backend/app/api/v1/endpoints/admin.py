@@ -58,7 +58,7 @@ from app.services.ntfy import (
     SubscriptionPushScenario,
     build_subscription_push_message,
 )
-from app.services.trial import start_trial, unpublish_all_user_pages
+from app.services.trial import republish_all_user_pages, start_trial, unpublish_all_user_pages
 from app.services.viajechat_checkout_flow import mark_cancelled as mark_viajechat_cancelled
 
 router = APIRouter()
@@ -1189,7 +1189,12 @@ def grant_trial(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    # Conta bloqueada pelo fim de um teste teve todas as páginas despublicadas: voltam ao ar,
+    # como na reativação por pagamento.
+    was_trial_blocked = bool(user.trial_blocked)
     start_trial(user, payload.plan, payload.days)
+    if was_trial_blocked:
+        republish_all_user_pages(user, db)
     db.add(user)
     db.commit()
     db.refresh(user)

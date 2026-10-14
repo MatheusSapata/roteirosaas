@@ -1916,7 +1916,7 @@ const viewCopy = {
     goBack: t({ pt: "Voltar", es: "Volver" }),
     viewPage: t({ pt: "Visualizar página", es: "Ver página" }),
     close: t({ pt: "Fechar", es: "Cerrar" }),
-    viewPlans: t({ pt: "Ver planos", es: "Ver planes" })
+    viewPlans: t({ pt: "Ver assinatura", es: "Ver suscripción" })
   },
   limitModal: {
     eyebrow: t({ pt: "Limite do plano", es: "Límite del plan" }),
@@ -2052,8 +2052,8 @@ const viewCopy = {
     requiredActive: t({ pt: "Formulário obrigatório ativo para esta página.", es: "Formulario obligatorio activo para esta página." }),
     blockedTitle: t({ pt: "Captação de leads bloqueada", es: "Captación de leads bloqueada" }),
     blockedDescription: t({
-      pt: "Este recurso está disponível apenas nos planos Agência e Escala. Atualize seu plano para ativar o formulário obrigatório de leads.",
-      es: "Este recurso está disponible solo en los planes Agencia y Escala. Actualiza tu plan para activar el formulario obligatorio de leads."
+      pt: "Este recurso não está incluído no seu plano atual. Assine o Roteiro Online para ativar o formulário obrigatório de leads.",
+      es: "Este recurso no está incluido en tu plan actual. Suscríbete a Roteiro Online para activar el formulario obligatorio de leads."
     })
   },
   preview: {

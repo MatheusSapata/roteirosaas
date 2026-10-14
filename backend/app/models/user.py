@@ -67,7 +67,10 @@ class User(Base):
 
     @property
     def subscription_blocked(self) -> bool:
-        if not self.subscription:
+        from app.services.trial import trial_is_active
+
+        # Durante um teste liberado o painel não fica bloqueado pela assinatura.
+        if not self.subscription or trial_is_active(self):
             return False
         status = (self.subscription.status or "").lower()
         if status == "past_due":

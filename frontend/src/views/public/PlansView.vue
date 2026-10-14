@@ -1,591 +1,239 @@
 ﻿<template>
-  <div class="plans-view bg-background text-foreground">
-    <div class="plans-content-scale relative px-4 pb-0 lg:px-8 2xl:px-10">
-      <header class="relative mx-auto max-w-[96rem] pt-4 pb-3 text-center">
-        <h1 class="text-4xl font-black tracking-tight text-slate-900 md:text-5xl">
-          {{ heroTitle }}
-        </h1>
-
-        <p class="mx-auto mt-4 max-w-none text-sm text-slate-600 md:text-base md:whitespace-nowrap">
-          {{ heroDescription }}
-        </p>
+  <div class="plans-view">
+    <div class="pv-wrap">
+      <header class="pv-head">
+        <h1 class="pv-title">{{ t(copy.title) }}</h1>
+        <p class="pv-sub">{{ t(copy.subtitle) }}</p>
       </header>
 
-      <div
-        v-if="trialBlocked"
-        class="mx-auto mb-4 max-w-4xl rounded-3xl border border-rose-200 bg-rose-50 p-5 text-rose-900 shadow-sm"
-      >
-        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-rose-500">{{ trialBlockedTitle }}</p>
-        <p class="mt-2 text-sm">{{ trialBlockedDescription }}</p>
+      <div v-if="trialBlocked" class="pv-alert is-danger">
+        <p class="pv-alert-title">{{ t(copy.trialBlockedTitle) }}</p>
+        <p>{{ t(copy.trialBlockedText) }}</p>
       </div>
-      <div
-        v-else-if="trialPlanActive"
-        class="mx-auto mb-4 max-w-4xl rounded-3xl border border-emerald-200 bg-emerald-50 p-5 text-emerald-900 shadow-sm"
-      >
-        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-500">{{ trialActiveTitle }}</p>
-        <p class="mt-2 text-sm">
-          {{ trialActiveDescription }}
-          <span v-if="trialEndsAtText">{{ trialActiveUntilLabel }} {{ trialEndsAtText }}.</span>
+      <div v-else-if="trialPlanActive" class="pv-alert is-success">
+        <p class="pv-alert-title">{{ t(copy.trialActiveTitle) }}</p>
+        <p>
+          {{ t(copy.trialActiveText) }}
+          <span v-if="trialEndsAtText">{{ t(copy.until) }} {{ trialEndsAtText }}.</span>
         </p>
       </div>
 
-      <section id="planos" class="relative mx-auto max-w-[98rem] pb-5">
-        <div
-          v-if="billingInfo?.scheduled_downgrade_plan"
-          class="mx-auto mb-10 flex max-w-4xl items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3"
+      <!-- Downgrade agendado antes do plano único (clientes dos planos antigos). -->
+      <div v-if="billingInfo?.scheduled_downgrade_plan" class="pv-alert is-warning pv-alert-row">
+        <p>
+          Downgrade para <strong>{{ getPlanLabel(billingInfo.scheduled_downgrade_plan) }}</strong> agendado para o fim do ciclo.
+        </p>
+        <button
+          type="button"
+          class="pv-btn-ghost"
+          :disabled="loadingKey === 'cancel-scheduled-downgrade'"
+          @click="cancelScheduledDowngrade"
         >
-          <p class="text-sm font-medium text-amber-900">
-            Downgrade para <strong>{{ planNames[billingInfo.scheduled_downgrade_plan] || billingInfo.scheduled_downgrade_plan }}</strong>
-            agendado para o fim do ciclo.
-          </p>
-          <button
-            type="button"
-            class="rounded-full bg-white px-4 py-2 text-xs font-semibold text-amber-800 ring-1 ring-amber-300 hover:bg-amber-100 disabled:opacity-60"
-            :disabled="loadingPlan === 'cancel-scheduled-downgrade'"
-            @click="cancelScheduledDowngrade"
-          >
-            {{ loadingPlan === "cancel-scheduled-downgrade" ? "Cancelando..." : "Cancelar downgrade" }}
-          </button>
+          {{ loadingKey === "cancel-scheduled-downgrade" ? "Cancelando..." : "Cancelar downgrade" }}
+        </button>
+      </div>
+
+      <!-- Plano antigo (Profissional ou Agência): continua valendo; aqui ele vê o que ganha assinando. -->
+      <div v-if="isLegacyPlan" class="pv-alert is-info">
+        <p class="pv-alert-title">{{ t(copy.legacyTitle) }} {{ getPlanLabel(activePlan) }}</p>
+        <p>{{ t(copy.legacyText) }}</p>
+      </div>
+
+      <section id="planos" class="pv-offer">
+        <div class="pv-incl">
+          <p class="pv-incl-title">{{ t(copy.includedTitle) }}</p>
+          <ul>
+            <li v-for="item in included" :key="item"><Check :size="15" aria-hidden="true" />{{ item }}</li>
+          </ul>
+          <p class="pv-incl-foot"><Sparkles :size="15" aria-hidden="true" />{{ t(copy.sameSubscription) }}</p>
         </div>
 
-        <div class="mx-auto grid max-w-[92rem] gap-8 md:grid-cols-2 xl:grid-cols-3 justify-items-center">
-          <article
-            v-for="plan in plans"
-            :key="plan.key"
-            class="group relative flex h-full w-full flex-col gap-6 overflow-visible rounded-3xl border bg-white p-7 pt-9 shadow-[0_16px_50px_-30px_rgba(15,23,42,0.35)] transition duration-200 hover:-translate-y-1 hover:shadow-[0_26px_80px_-40px_rgba(15,23,42,0.45)]"
-            :class="plan.isCurrent ? 'border-emerald-400 bg-gradient-to-b from-emerald-50 to-white ring-1 ring-emerald-200' : 'border-slate-100'"
-          >
-            <div
-              v-if="plan.badge || plan.isCurrent"
-              class="pointer-events-none absolute -top-5 left-0 right-0 flex justify-center gap-2"
-            >
-              <span
-                v-if="plan.isCurrent"
-                class="inline-flex items-center gap-2 whitespace-nowrap rounded-full bg-emerald-100 px-3 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-emerald-800 shadow-sm ring-1 ring-emerald-200"
-              >
-                <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
-                {{ currentPlanBadgeLabel }}
-              </span>
-
-              <span
-                v-if="!plan.isCurrent && plan.badge"
-                class="inline-flex items-center gap-2 whitespace-nowrap rounded-full bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-amber-700 shadow-sm ring-1 ring-amber-200"
-                :class="plan.badgeTone"
-              >
-                <span>★</span>
-                <span>{{ plan.badge }}</span>
-              </span>
-            </div>
-
-            <div class="relative space-y-2">
-              <h3 class="text-[2rem] font-extrabold leading-tight text-slate-900">{{ plan.name }}</h3>
-              <p class="text-sm text-slate-600">{{ plan.subtitle }}</p>
-
-              <div v-if="plan.oldPrice" class="text-sm text-slate-500 line-through">
-                {{ plan.oldPrice }}
-              </div>
-
-              <div class="flex items-baseline gap-2">
-                <p class="text-3xl font-black text-slate-900 md:text-4xl">{{ plan.price }}</p>
-                <span class="text-sm font-semibold text-amber-600">{{ plan.period }}</span>
-              </div>
-              <p v-if="plan.detail" class="text-xs font-semibold text-indigo-600">{{ plan.detail }}</p>
-              <p class="text-base font-bold text-emerald-700">{{ plan.priceHint }}</p>
-            </div>
-
-            <ul class="relative space-y-3 text-sm text-slate-700">
-              <li v-for="feature in plan.features" :key="feature" class="flex items-start gap-3">
-                <span
-                  class="mt-0.5 flex h-6 w-6 flex-none items-center justify-center rounded-full bg-emerald-100 text-emerald-600 shadow-inner"
-                >
-                  <CheckIcon class="h-4 w-4" aria-hidden="true" />
-                </span>
-                <span>{{ feature }}</span>
-              </li>
-            </ul>
-
-            <div v-if="plan.spotlightBoxes.length" class="space-y-3">
-              <div
-                v-for="box in plan.spotlightBoxes"
-                :key="box.title"
-                class="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4"
-              >
-                <p class="text-[0.92rem] font-extrabold uppercase tracking-[0.11em] text-emerald-700">{{ box.title }}</p>
-                <p class="mt-1 text-[0.92rem] text-slate-700">{{ box.description }}</p>
-              </div>
-            </div>
-
-            <div class="relative mt-auto flex flex-col gap-3">
-              <button
-                type="button"
-                class="inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl disabled:opacity-60"
-                :class="plan.isCurrent ? 'bg-emerald-600 hover:bg-emerald-500' : (plan.isLowerThanCurrent ? 'bg-amber-500 hover:bg-amber-400' : plan.ctaClass)"
-                :disabled="!plan.isActionable || loadingPlan === plan.key"
-                @click="handlePlanClick(plan.key)"
-              >
-                <span v-if="plan.isCurrent">{{ planButtonLabels.current }}</span>
-                <span v-else-if="loadingPlan === plan.key">{{ planButtonLabels.redirecting }}</span>
-                <span v-else>{{ planCtaLabel(plan) }}</span>
-                <span v-if="plan.isActionable && loadingPlan !== plan.key" aria-hidden="true">→</span>
-              </button>
-
-              <p class="text-xs text-slate-500">{{ plan.note }}</p>
-
-              <p v-if="errorMessage && loadingPlan === null" class="text-xs font-semibold text-rose-600">
-                {{ errorMessage }}
-              </p>
-              <p v-if="successMessage && loadingPlan === null" class="text-xs font-semibold text-emerald-700">
-                {{ successMessage }}
-              </p>
-            </div>
-          </article>
-        </div>
-
-        <!-- <div class="mt-10 rounded-3xl border border-emerald-100 bg-emerald-50/50 p-6 shadow-sm">
-          <div class="space-y-4">
-            <div>
-              <p class="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-600">Plano teste</p>
-              <h3 class="text-2xl font-bold text-slate-900">Checkout rápido para validações</h3>
-              <p class="text-sm text-slate-600">
-                Use os botões abaixo para disparar o checkout com o plano de teste. Ele replica todos os benefícios do plano
-                Escala, mas com valores reduzidos só para homologação.
-              </p>
-            </div>
-
-            <ul class="grid gap-2 text-sm text-slate-700 sm:grid-cols-2">
-              <li v-for="feature in testPlanFeatures" :key="feature" class="flex items-start gap-2">
-                <span class="mt-1 text-emerald-600">✓</span>
-                <span>{{ feature }}</span>
-              </li>
-            </ul>
-
-            <div class="flex flex-wrap gap-3">
-              <button
-                type="button"
-                class="inline-flex items-center justify-center gap-2 rounded-full bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow transition hover:bg-emerald-500 disabled:opacity-60"
-                :disabled="loadingPlan === 'teste-monthly'"
-                @click="startTestCheckout('monthly')"
-              >
-                <span v-if="loadingPlan === 'teste-monthly'">Redirecionando...</span>
-                <span v-else>Testar mensal (R$ 5,00)</span>
-              </button>
-              <button
-                type="button"
-                class="inline-flex items-center justify-center gap-2 rounded-full bg-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow transition hover:bg-indigo-500 disabled:opacity-60"
-                :disabled="loadingPlan === 'teste-annual'"
-                @click="startTestCheckout('annual')"
-              >
-                <span v-if="loadingPlan === 'teste-annual'">Redirecionando...</span>
-                <span v-else>Testar anual (R$ 6,00)</span>
-              </button>
-            </div>
-
-            <p v-if="errorMessage && loadingPlan === null" class="text-xs font-semibold text-rose-600">
-              {{ errorMessage }}
-            </p>
+        <div class="pv-price-box" :class="{ 'is-current': isCurrentCycle }">
+          <span v-if="isScaleActive" class="pv-current">
+            <span class="pv-dot" aria-hidden="true"></span>{{ t(copy.yourSubscription) }} · {{ cycleLabel(currentCycle) }}
+          </span>
+          <div v-if="salesPlan.monthly && salesPlan.annual" class="pv-cycle" role="tablist" :aria-label="t(copy.howToPay)">
+            <button type="button" role="tab" :aria-selected="cycle === 'monthly'" :class="{ on: cycle === 'monthly' }" @click="cycle = 'monthly'">
+              {{ cycleLabel("monthly") }}
+            </button>
+            <button type="button" role="tab" :aria-selected="cycle === 'annual'" :class="{ on: cycle === 'annual' }" @click="cycle = 'annual'">
+              {{ cycleLabel("annual") }}<span v-if="math && math.savingsPercent > 0" class="pv-off">-{{ math.savingsPercent }}%</span>
+            </button>
           </div>
-        </div>
-      -->
 
+          <template v-if="currentOffer">
+            <p v-if="cycle === 'annual' && math && math.savings > 0" class="pv-anchor">
+              {{ t(copy.from) }} <s>{{ formatBRL(math.twelveMonths) }}</s> {{ t(copy.for) }}
+            </p>
+            <div class="pv-price">
+              <span class="cur">R$</span><span class="val">{{ priceNumber(currentOffer.amount) }}</span>
+              <span class="per">{{ cycle === "annual" ? t(copy.perYear) : t(copy.perMonth) }}</span>
+            </div>
+            <p v-if="cycle === 'annual' && math" class="pv-eq">
+              {{ t(copy.equals) }} <b>{{ formatBRL(math.perMonth, { cents: "always" }) }} {{ t(copy.aMonth) }}</b>
+            </p>
+            <p v-else class="pv-eq">{{ t(copy.monthlyNote) }}</p>
+            <p v-if="cycle === 'annual' && math && math.savings > 0" class="pv-save">
+              {{ t(copy.save) }} {{ formatBRL(math.savings) }} · {{ t(copy.lessThan) }} {{ math.lessThanMonths }} {{ t(copy.monthsOfMonthly) }}
+            </p>
+
+            <button type="button" class="pv-btn" :disabled="ctaDisabled || loadingKey === cycle" @click="goToCheckout">
+              <span>{{ loadingKey === cycle ? t(copy.redirecting) : ctaLabel }}</span>
+              <ArrowRight v-if="!ctaDisabled && loadingKey !== cycle" :size="18" aria-hidden="true" />
+            </button>
+            <p v-if="ctaHint" class="pv-hint">{{ ctaHint }}</p>
+          </template>
+          <p v-else-if="!salesPlanLoading" class="pv-eq">{{ t(copy.unavailable) }}</p>
+
+          <p class="pv-guarantee"><ShieldCheck :size="15" aria-hidden="true" />{{ t(copy.guarantee) }}</p>
+          <p v-if="errorMessage" class="pv-msg is-error">{{ errorMessage }}</p>
+          <p v-if="successMessage" class="pv-msg is-success">{{ successMessage }}</p>
+        </div>
       </section>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { CheckIcon } from "lucide-vue-next";
-import { computed, ref, onMounted } from "vue";
+import { ArrowRight, Check, ShieldCheck, Sparkles } from "lucide-vue-next";
+import { computed, onMounted, ref } from "vue";
 import api from "../../services/api";
+import { getPublicSalesPlan, type SalesPlan } from "../../services/checkout";
 import { useAuthStore } from "../../store/useAuthStore";
-import { planLabels } from "../../utils/planLabels";
+import { getPlanLabel } from "../../utils/planLabels";
+import { formatBRL, salesPlanMath } from "../../utils/salesPlan";
 import { createLocalizer, getCurrentLanguage } from "../../utils/i18n";
 import type { LocalizedString, SupportedLanguage } from "../../utils/i18n";
 
+/**
+ * Assinatura do Roteiro Online dentro do painel: plano único (interno: Escala), pago por mês
+ * ou por ano. Os valores e as ofertas vêm de Admin Master › Ofertas e checkout (as mesmas da
+ * página de vendas). Clientes dos planos antigos continuam neles até assinarem.
+ */
 const currentLanguage = getCurrentLanguage();
-const localize = createLocalizer(currentLanguage);
-const localeByLanguage: Record<SupportedLanguage, string> = {
-  pt: "pt-BR",
-  es: "es-ES"
-};
+const t = createLocalizer(currentLanguage);
+const localeByLanguage: Record<SupportedLanguage, string> = { pt: "pt-BR", es: "es-ES" };
 const dateLocale = localeByLanguage[currentLanguage] || "pt-BR";
 
-const viewCopy = {
-  hero: {
-    chipLabel: { pt: "Planos", es: "Planes" },
-    chipDetail: { pt: "Escolha o melhor para você", es: "Elige el mejor para ti" },
-    title: { pt: "Evolua seu plano e acelere seus resultados", es: "Sube de plan y acelera tus resultados" },
-    description: {
-      pt: "Desbloqueie mais recursos, aumente sua operação e transforme visitas em vendas com mais consistência.",
-      es: "Desbloquea más recursos, amplía tu operación y convierte visitas en ventas con más consistencia."
-    },
-    highlights: {
-      upgrade: { pt: "Ativação imediata", es: "Activación inmediata" },
-      setup: { pt: "Sem burocracia", es: "Sin burocracia" },
-      downgrade: { pt: "Mais conversão por lead", es: "Más conversión por lead" }
-    }
-  },
-  trial: {
-    blockedTitle: { pt: "Trial encerrado", es: "Trial finalizado" },
-    blockedDescription: {
-      pt: "Seu período trial terminou e o painel foi bloqueado. Ative um plano para liberar novamente suas páginas e retomar as publicações.",
-      es: "Tu período de prueba terminó y el panel fue bloqueado. Activa un plan para liberar tus páginas otra vez y retomar las publicaciones."
-    },
-    activeTitle: { pt: "Trial ativo", es: "Trial activo" },
-    activeDescription: {
-      pt: "Você está aproveitando o plano Trial com até 3 páginas, seções e pixels ilimitados",
-      es: "Estás aprovechando el plan Trial con hasta 3 páginas, secciones y píxeles ilimitados"
-    },
-    activeUntil: { pt: "até", es: "hasta" }
-  },
-  billing: {
-    monthlyLabel: { pt: "Mensal", es: "Mensual" },
-    annualLabel: { pt: "Anual", es: "Anual" },
-    monthlyDescription: { pt: "Pague mês a mês", es: "Paga mes a mes" },
-    annualDescription: { pt: "Economize escolhendo o plano anual", es: "Ahorra eligiendo el plan anual" }
-  },
-  badges: {
-    currentPlan: { pt: "Seu plano atual", es: "Tu plan actual" }
-  },
-  buttons: {
-    currentPlan: { pt: "Plano atual", es: "Plan actual" },
-    redirecting: { pt: "Redirecionando...", es: "Redirigiendo..." },
-    reactivate: { pt: "Reativar plano", es: "Reactivar plan" }
-  },
-  checkoutError: {
-    pt: "Não foi possível iniciar o checkout. Tente novamente.",
-    es: "No fue posible iniciar el checkout. Intenta nuevamente."
-  }
-} as const;
-
-const heroTitle = localize(viewCopy.hero.title);
-const heroDescription = localize(viewCopy.hero.description);
-const heroHighlights = {
-  upgrade: localize(viewCopy.hero.highlights.upgrade),
-  setup: localize(viewCopy.hero.highlights.setup),
-  downgrade: localize(viewCopy.hero.highlights.downgrade)
+const L = (pt: string, es: string): LocalizedString => ({ pt, es });
+const copy = {
+  title: L("Sua assinatura do Roteiro Online", "Tu suscripción de Roteiro Online"),
+  subtitle: L("Um plano único com tudo incluso. Escolha pagar por mês ou por ano.", "Un plan único con todo incluido. Elige pagar por mes o por año."),
+  trialBlockedTitle: L("Trial encerrado", "Trial finalizado"),
+  trialBlockedText: L(
+    "Seu período de teste terminou e o painel foi bloqueado. Assine para liberar suas páginas e voltar a publicar.",
+    "Tu período de prueba terminó y el panel fue bloqueado. Suscríbete para liberar tus páginas y volver a publicar."
+  ),
+  trialActiveTitle: L("Trial ativo", "Trial activo"),
+  trialActiveText: L("Você está no período de teste com até 3 páginas, seções e pixels ilimitados", "Estás en el período de prueba con hasta 3 páginas, secciones y píxeles ilimitados"),
+  until: L("até", "hasta"),
+  legacyTitle: L("Seu plano atual:", "Tu plan actual:"),
+  legacyText: L(
+    "Ele continua valendo do jeito que está. Assinando, você passa a ter roteiros ilimitados, Módulo Leads, domínio próprio e caixa de entrada do WhatsApp.",
+    "Sigue vigente tal como está. Al suscribirte, tienes itinerarios ilimitados, Módulo Leads, dominio propio y bandeja de entrada de WhatsApp."
+  ),
+  includedTitle: L("O que vem na assinatura", "Qué incluye la suscripción"),
+  sameSubscription: L("Mensal ou anual, é a mesma assinatura: muda só a forma de pagar.", "Mensual o anual, es la misma suscripción: cambia solo la forma de pago."),
+  yourSubscription: L("Sua assinatura", "Tu suscripción"),
+  howToPay: L("Forma de pagamento", "Forma de pago"),
+  monthly: L("Mensal", "Mensual"),
+  annual: L("Anual", "Anual"),
+  from: L("de", "de"),
+  for: L("por", "por"),
+  perYear: L("/ano", "/año"),
+  perMonth: L("/mês", "/mes"),
+  equals: L("equivale a", "equivale a"),
+  aMonth: L("por mês", "por mes"),
+  monthlyNote: L("Renova todo mês. Sem fidelidade.", "Se renueva cada mes. Sin permanencia."),
+  save: L("Economize", "Ahorra"),
+  lessThan: L("1 ano por menos de", "1 año por menos de"),
+  monthsOfMonthly: L("meses do mensal", "meses del mensual"),
+  subscribe: L("Assinar agora", "Suscribirme ahora"),
+  renew: L("Renovar assinatura", "Renovar suscripción"),
+  reactivate: L("Reativar assinatura", "Reactivar suscripción"),
+  switchToAnnual: L("Mudar para o anual", "Cambiar al anual"),
+  alreadyAnnual: L("Você já está no anual", "Ya estás en el anual"),
+  alreadyAnnualHint: L("A assinatura anual já inclui tudo. Ela renova no fim do ciclo.", "La suscripción anual ya incluye todo. Se renueva al final del ciclo."),
+  redirecting: L("Redirecionando...", "Redirigiendo..."),
+  unavailable: L("A assinatura não está disponível no momento. Fale com o suporte.", "La suscripción no está disponible por el momento. Habla con soporte."),
+  guarantee: L("7 dias de garantia: não gostou, devolvemos 100%.", "7 días de garantía: si no te gusta, devolvemos el 100%."),
+  checkoutError: L("Não foi possível iniciar o checkout. Tente novamente.", "No fue posible iniciar el checkout. Intenta nuevamente.")
 };
-const trialBlockedTitle = localize(viewCopy.trial.blockedTitle);
-const trialBlockedDescription = localize(viewCopy.trial.blockedDescription);
-const trialActiveTitle = localize(viewCopy.trial.activeTitle);
-const trialActiveDescription = localize(viewCopy.trial.activeDescription);
-const trialActiveUntilLabel = localize(viewCopy.trial.activeUntil);
-const currentPlanBadgeLabel = localize(viewCopy.badges.currentPlan);
-const planButtonLabels = {
-  current: currentLanguage === "es" ? "Renovar plan" : "Renovar plano",
-  redirecting: localize(viewCopy.buttons.redirecting),
-  reactivate: localize(viewCopy.buttons.reactivate)
-};
-const checkoutErrorMessage = localize(viewCopy.checkoutError);
 
-interface PlanCard {
-  key: string;
-  tier: string;
-  name: string;
-  subtitle: string;
-  price: string;
-  oldPrice?: string;
-  period: string;
-  detail?: string;
-  priceHint?: string;
-  highlight: string;
-  features: string[];
-  spotlightBoxes: { title: string; description: string }[];
-  badge?: string;
-  badgeTone?: string;
-  cta: string;
-  note: string;
-  ctaClass: string;
-  isCurrent?: boolean;
-  isHigherThanCurrent?: boolean;
-  isLowerThanCurrent?: boolean;
-  isActionable?: boolean;
-}
-
-interface PlanDefinition {
-  key: string;
-  tier: LocalizedString;
-  name: LocalizedString;
-  subtitle: LocalizedString;
-  priceHint: LocalizedString;
-  highlight: LocalizedString;
-  features: LocalizedString[];
-  spotlightBoxes?: { title: LocalizedString; description: LocalizedString }[];
-  badge?: LocalizedString;
-  badgeTone?: string;
-  cta: LocalizedString;
-  note: LocalizedString;
-  ctaClass: string;
-  prices: Record<BillingCycle, { value: number; period: LocalizedString; detail?: LocalizedString }>;
-}
+// O que vem na assinatura (o mesmo da página de vendas).
+const included = [
+  L("Roteiros ilimitados no ar", "Itinerarios ilimitados publicados"),
+  L("Editor visual com seções prontas", "Editor visual con secciones listas"),
+  L("Assistente de IA para montar páginas", "Asistente de IA para armar páginas"),
+  L("Criativos para anúncios e stories", "Creativos para anuncios y stories"),
+  L("Módulo Leads e funil de vendas", "Módulo Leads y embudo de ventas"),
+  L("Caixa de entrada do WhatsApp", "Bandeja de entrada de WhatsApp"),
+  L("Domínio próprio da agência", "Dominio propio de la agencia"),
+  L("Pixels Meta e Google", "Píxeles de Meta y Google"),
+  L("Equipe com até 5 usuários", "Equipo con hasta 5 usuarios"),
+  L("Duplicar páginas em um clique", "Duplicar páginas con un clic")
+].map(item => t(item));
 
 type BillingCycle = "monthly" | "annual";
-
 interface BillingInfo {
   plan: string;
   status: string;
   valid_until?: string;
-  failed_attempts: number;
-  preapproval_id?: string;
-  provider?: string;
   billing_cycle?: string;
   scheduled_downgrade_plan?: string | null;
   scheduled_downgrade_at?: string | null;
 }
-
-const billingCycleLabels: Record<BillingCycle, string> = {
-  monthly: localize(viewCopy.billing.monthlyLabel),
-  annual: localize(viewCopy.billing.annualLabel)
-};
-
-const billingCycleDescriptions: Record<BillingCycle, string> = {
-  monthly: localize(viewCopy.billing.monthlyDescription),
-  annual: localize(viewCopy.billing.annualDescription)
-};
 
 const authStore = useAuthStore();
 const trialBlocked = computed(() => Boolean(authStore.user?.trial_blocked));
 const trialPlanActive = computed(() => authStore.user?.trial_plan === "trial");
 const trialEndsAtText = computed(() => {
   const endsAt = authStore.user?.trial_ends_at;
-  if (!endsAt) return null;
-  return new Date(endsAt).toLocaleDateString(dateLocale);
+  return endsAt ? new Date(endsAt).toLocaleDateString(dateLocale) : null;
 });
 
-const billingCycle = ref<BillingCycle>("monthly");
-
-const loadingPlan = ref<string | null>(null);
+const billingInfo = ref<BillingInfo | null>(null);
+const salesPlan = ref<SalesPlan>({ monthly: null, annual: null });
+const salesPlanLoading = ref(true);
+const cycle = ref<BillingCycle>("annual");
+const loadingKey = ref<string | null>(null);
 const errorMessage = ref<string | null>(null);
 const successMessage = ref<string | null>(null);
 
-const billingInfo = ref<BillingInfo | null>(null);
 const normalizedPlanKey = (value?: string | null) => {
-  const raw = String(value || "")
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
+  const raw = String(value || "").trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
   if (!raw) return "free";
-  if (["growth", "agencia", "agência", "agency"].includes(raw)) return "growth";
+  if (["growth", "agencia", "agency"].includes(raw)) return "growth";
   if (["essencial", "profissional", "professional", "starter"].includes(raw)) return "essencial";
   if (["infinity", "escala", "scale"].includes(raw)) return "infinity";
   if (["free", "gratuito", "trial", "teste"].includes(raw)) return "free";
   return raw;
 };
-
 const activePlan = computed(() => normalizedPlanKey(billingInfo.value?.plan || authStore.user?.plan || "free"));
-const isSubscriptionInactive = computed(() => {
-  const status = String(billingInfo.value?.status || "").trim().toLowerCase();
-  return new Set(["inactive", "cancelled", "cancelled_admin", "past_due"]).has(status);
-});
-
-const planNames: Record<string, string> = {
-  free: `Plano ${planLabels.free}`,
-  essencial: `Plano ${planLabels.essencial}`,
-  growth: `Plano ${planLabels.growth}`,
-  infinity: `Plano ${planLabels.infinity}`,
-  teste: `Plano ${planLabels.teste}`
-};
-
-const pricePeriods: Record<BillingCycle, LocalizedString> = {
-  monthly: { pt: "/mês", es: "/mes" },
-  annual: { pt: "/ano", es: "/año" }
-};
-
-const planDefinitions: PlanDefinition[] = [
-  {
-    key: "essencial",
-    tier: { pt: "Para começar", es: "Para comenzar" },
-    name: { pt: "Profissional", es: "Profesional" },
-    subtitle: {
-      pt: "Para quem quer parar de mandar textão no WhatsApp para o cliente.",
-      es: "Para quien quiere dejar de enviar textos largos por WhatsApp."
-    },
-    priceHint: { pt: "≈ R$16,66 por roteiro", es: "≈ R$16,66 por itinerario" },
-    highlight: { pt: "Plano base para vender com organização", es: "Plan base para vender con organización" },
-    features: [
-      { pt: "Até 3 roteiros online ativos", es: "Hasta 3 itinerarios online activos" },
-      { pt: "Seções ilimitadas por roteiro", es: "Secciones ilimitadas por itinerario" },
-      { pt: "Modelo padrão para reutilizar", es: "Modelo base para reutilizar" },
-      { pt: "1 pixel conectado (Meta ou Google)", es: "1 píxel conectado (Meta o Google)" },
-      { pt: "Botão de WhatsApp em cada seção", es: "Botón de WhatsApp en cada sección" },
-      { pt: "Galeria de fotos com carrossel", es: "Galería de fotos con carrusel" }
-    ],
-    badge: { pt: "Para começar", es: "Para comenzar" },
-    badgeTone: "bg-emerald-50 text-emerald-700 ring-emerald-100",
-    cta: { pt: "Começar com o Profissional", es: "Empezar con Profesional" },
-    note: { pt: "Perfeito para quem já tem grupos rodando.", es: "Perfecto para quienes ya tienen grupos en marcha." },
-    ctaClass: "bg-emerald-600 hover:bg-emerald-500",
-    prices: {
-      monthly: { value: 49.99, period: pricePeriods.monthly },
-      annual: { value: 479.88, period: pricePeriods.annual }
-    }
-  },
-  {
-    key: "growth",
-    tier: { pt: "Mais escolhido", es: "Más elegido" },
-    name: { pt: "Agência", es: "Agencia" },
-    subtitle: {
-      pt: "Para agências que usam o roteiro online como ferramenta recorrente de vendas.",
-      es: "Para agencias que usan la plataforma como herramienta recurrente de ventas."
-    },
-    priceHint: { pt: "≈ R$8,99 por roteiro", es: "≈ R$8,99 por itinerario" },
-    highlight: { pt: "Mais usado pelas agências", es: "El más usado por las agencias" },
-    features: [
-      { pt: "Até 10 roteiros online ativos", es: "Hasta 10 itinerarios online activos" },
-      { pt: "Duplicação rápida de páginas", es: "Duplicación rápida de páginas" },
-      { pt: "Até 3 pixels conectados", es: "Hasta 3 píxeles conectados" },
-      { pt: "Todos os recursos do Profissional", es: "Todos los recursos del Profesional" }
-    ],
-    spotlightBoxes: [
-      {
-        title: { pt: "Módulo Leads", es: "Módulo Leads" },
-        description: {
-          pt: "Formulário de captação dentro do roteiro. Cada passageiro pode virar oportunidade futura.",
-          es: "Formulario de captación dentro del itinerario. Cada pasajero puede convertirse en oportunidad."
-        }
-      }
-    ],
-    badge: { pt: "Mais escolhido", es: "Más elegido" },
-    badgeTone: "bg-emerald-100 text-emerald-800 ring-emerald-200",
-    cta: { pt: "Assinar o plano Agência", es: "Suscribir plan Agencia" },
-    note: { pt: "Mantenha vários destinos ativos o ano todo.", es: "Mantén varios destinos activos todo el año." },
-    ctaClass: "bg-emerald-600 hover:bg-emerald-500",
-    prices: {
-      monthly: { value: 89.99, period: pricePeriods.monthly },
-      annual: { value: 839.88, period: pricePeriods.annual }
-    }
-  },
-  {
-    key: "infinity",
-    tier: { pt: "Operação avançada", es: "Operación avanzada" },
-    name: { pt: "Escala", es: "Escala" },
-    subtitle: {
-      pt: "Para agências com vários grupos, campanhas e múltiplos destinos em andamento.",
-      es: "Para agencias con múltiples grupos, campañas y destinos en paralelo."
-    },
-    priceHint: { pt: "Roteiros ilimitados", es: "Itinerarios ilimitados" },
-    highlight: { pt: "Operação completa e ilimitada", es: "Operación completa e ilimitada" },
-    features: [
-      { pt: "Roteiros ilimitados", es: "Itinerarios ilimitados" },
-      { pt: "Múltiplos destinos simultâneos", es: "Múltiples destinos simultáneos" },
-      { pt: "Todos os recursos anteriores", es: "Todos los recursos anteriores" }
-    ],
-    spotlightBoxes: [
-      {
-        title: { pt: "Módulo Leads", es: "Módulo Leads" },
-        description: {
-          pt: "Formulário de captação com gestão de oportunidades integrada.",
-          es: "Formulario de captación con gestión de oportunidades integrada."
-        }
-      },
-      {
-        title: { pt: "Domínio personalizado", es: "Dominio personalizado" },
-        description: {
-          pt: "Publique no endereço da sua própria agência. Exclusivo deste plano.",
-          es: "Publica con el dominio de tu agencia. Exclusivo de este plan."
-        }
-      }
-    ],
-    badge: { pt: "Para operação avançada", es: "Para operación avanzada" },
-    badgeTone: "bg-emerald-50 text-emerald-700 ring-emerald-100",
-    cta: { pt: "Começar com o Escala", es: "Empezar con Escala" },
-    note: { pt: "Pensado para agências com vários grupos ativos.", es: "Pensado para agencias con varios grupos activos." },
-    ctaClass: "bg-emerald-600 hover:bg-emerald-500",
-    prices: {
-      monthly: { value: 129.99, period: pricePeriods.monthly },
-      annual: { value: 1199.88, period: pricePeriods.annual }
-    }
-  }
-];
-
-const testPlanFeatures =
-  planDefinitions.find(plan => plan.key === "infinity")?.features.map(feature => localize(feature)) ?? [];
-
-const formatPrice = (value: number) =>
-  value.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 });
-
-const formatAnnualSavingsDetail = (formattedValue: string) =>
-  currentLanguage === "es" ? `Ahorra ${formattedValue} por año` : `Economize ${formattedValue} por ano`;
-
-const formatAnnualTotalDetail = (formattedValue: string) =>
-  currentLanguage === "es" ? `Total anual de ${formattedValue}` : `Total anual de ${formattedValue}`;
-
-const plans = computed<PlanCard[]>(() =>
-  planDefinitions.map(def => {
-    const cycle = billingCycle.value;
-    const priceInfo = def.prices[cycle] || def.prices.monthly;
-    const isAnnual = cycle === "annual";
-    const monthlyPrice = def.prices.monthly.value;
-
-    let displayValue = priceInfo.value;
-    let period = localize(priceInfo.period);
-    let detail = localize(priceInfo.detail).trim();
-    detail = detail.length ? detail : undefined;
-    const annualSavings = monthlyPrice * 12 - priceInfo.value;
-
-    if (isAnnual) {
-      displayValue = priceInfo.value > 0 ? priceInfo.value / 12 : 0;
-      period = localize(def.prices.monthly.period);
-      if (annualSavings > 0) {
-        detail = formatAnnualSavingsDetail(formatPrice(annualSavings));
-      } else if (!detail) {
-        detail = formatAnnualTotalDetail(formatPrice(priceInfo.value));
-      }
-    }
-
-    const oldAnnualValue = isAnnual && monthlyPrice > 0 ? monthlyPrice * 12 : undefined;
-    const badge = localize(def.badge).trim();
-
-    const planOrder: Record<string, number> = { free: 0, essencial: 1, growth: 2, infinity: 3 };
-    const currentOrder = planOrder[activePlan.value] ?? 0;
-    const thisOrder = planOrder[def.key] ?? 0;
-    const isCurrent = !isSubscriptionInactive.value && def.key === activePlan.value;
-    const isHigherThanCurrent = thisOrder > currentOrder;
-    const isLowerThanCurrent = thisOrder < currentOrder;
-
-    return {
-      key: def.key,
-      tier: localize(def.tier),
-      name: localize(def.name),
-      subtitle: localize(def.subtitle),
-      highlight: localize(def.highlight),
-      features: def.features.map(feature => localize(feature)),
-      badge: badge.length ? badge : undefined,
-      badgeTone: def.badgeTone,
-      cta: localize(def.cta),
-      note: localize(def.note),
-      ctaClass: def.ctaClass,
-      price: formatPrice(displayValue),
-      period,
-      detail,
-      priceHint: localize(def.priceHint),
-      oldPrice: oldAnnualValue ? formatPrice(oldAnnualValue) : undefined,
-      spotlightBoxes: (def.spotlightBoxes || []).map(item => ({
-        title: localize(item.title),
-        description: localize(item.description)
-      })),
-      isCurrent,
-      isHigherThanCurrent,
-      isLowerThanCurrent,
-      isActionable: true
-    };
-  })
+const isSubscriptionInactive = computed(() =>
+  new Set(["inactive", "cancelled", "cancelled_admin", "past_due"]).has(String(billingInfo.value?.status || "").trim().toLowerCase())
 );
+const isLegacyPlan = computed(() => ["essencial", "growth"].includes(activePlan.value) && !isSubscriptionInactive.value);
+const isScale = computed(() => activePlan.value === "infinity");
+const isScaleActive = computed(() => isScale.value && !isSubscriptionInactive.value);
+const currentCycle = computed<BillingCycle>(() => (billingInfo.value?.billing_cycle === "annual" ? "annual" : "monthly"));
+const isCurrentCycle = computed(() => isScaleActive.value && cycle.value === currentCycle.value);
 
-const planCtaLabel = (plan: PlanCard) => {
-  if (isSubscriptionInactive.value && plan.key === activePlan.value) return planButtonLabels.reactivate;
-  if (plan.isCurrent) return planButtonLabels.current;
-  if (plan.isLowerThanCurrent) {
-    return currentLanguage === "es" ? `Hacer downgrade a ${plan.name}` : `Fazer downgrade para ${plan.name}`;
-  }
-  return currentLanguage === "es" ? `Hacer upgrade a ${plan.name}` : `Fazer upgrade para ${plan.name}`;
-};
+const math = computed(() => salesPlanMath(salesPlan.value.monthly?.amount, salesPlan.value.annual?.amount));
+const currentOffer = computed(() => salesPlan.value[cycle.value] || salesPlan.value.monthly || salesPlan.value.annual);
+const cycleLabel = (value: BillingCycle) => (value === "annual" ? t(copy.annual) : t(copy.monthly));
+const priceNumber = (amount: string) => formatBRL(amount).replace(/^R\$\s*/, "");
 
-const internalCheckoutPaths: Record<string, string> = {
-  essencial: "/checkout/profissional",
-  growth: "/checkout/agencia",
-  infinity: "/checkout/escala"
-};
+// Quem já assina o anual não troca para o mensal no meio do ciclo.
+const ctaDisabled = computed(() => isScaleActive.value && currentCycle.value === "annual" && cycle.value === "monthly");
+const ctaLabel = computed(() => {
+  if (isScale.value && isSubscriptionInactive.value) return t(copy.reactivate);
+  if (ctaDisabled.value) return t(copy.alreadyAnnual);
+  if (isCurrentCycle.value) return t(copy.renew);
+  if (isScaleActive.value && cycle.value === "annual") return t(copy.switchToAnnual);
+  return t(copy.subscribe);
+});
+const ctaHint = computed(() => (ctaDisabled.value ? t(copy.alreadyAnnualHint) : ""));
 
 // O checkout de upgrade/renovação exige login (Bearer token no localStorage).
 // O localStorage é por domínio, então precisa abrir no mesmo domínio do app,
@@ -595,81 +243,22 @@ const checkoutBaseOrigin = computed(() => {
   return window.location.origin;
 });
 
-const goToCheckout = async (
-  planKey: string,
-  cycleOverride?: BillingCycle,
-  force = false,
-  loadingKey?: string
-) => {
-  if (!force && !isSubscriptionInactive.value && planKey === activePlan.value) return;
-
-  loadingPlan.value = loadingKey ?? planKey;
+const goToCheckout = () => {
+  const offer = currentOffer.value;
+  if (!offer || ctaDisabled.value) return;
+  loadingKey.value = cycle.value;
   errorMessage.value = null;
-
   try {
-    const cycle = cycleOverride ?? billingCycle.value;
-    const keyToOffer: Record<string, string> = {
-      essencial: "profissional",
-      growth: "agencia",
-      infinity: "escala",
-    };
-    const offerKey = keyToOffer[planKey];
-    if (!offerKey && planKey !== "teste") throw new Error("Plano inválido para checkout.");
-
-    const internalPath = internalCheckoutPaths[planKey];
-    const checkoutUrl = internalPath
-      ? `${checkoutBaseOrigin.value}${internalPath}?upgrade=1`
-      : `${checkoutBaseOrigin.value}/checkout/${encodeURIComponent(offerKey)}?upgrade=1`;
-    window.location.href = checkoutUrl;
+    window.location.href = `${checkoutBaseOrigin.value}/checkout/${encodeURIComponent(offer.key)}?upgrade=1`;
   } catch (err) {
     console.error(err);
-    errorMessage.value = checkoutErrorMessage;
-  } finally {
-    loadingPlan.value = null;
+    errorMessage.value = t(copy.checkoutError);
+    loadingKey.value = null;
   }
-};
-
-const handlePlanClick = async (planKey: string) => {
-  const planOrder: Record<string, number> = { free: 0, essencial: 1, growth: 2, infinity: 3 };
-  const currentOrder = planOrder[activePlan.value] ?? 0;
-  const targetOrder = planOrder[planKey] ?? 0;
-
-  if (targetOrder === currentOrder) {
-    await goToCheckout(planKey, undefined, true, planKey);
-    return;
-  }
-
-  if (targetOrder < currentOrder) {
-    loadingPlan.value = planKey;
-    errorMessage.value = null;
-    successMessage.value = null;
-    api
-      .post<BillingInfo>("/billing/schedule-downgrade", { plan: planKey })
-      .then(({ data }) => {
-        billingInfo.value = data;
-        const until = data.valid_until ? new Date(data.valid_until).toLocaleDateString(dateLocale) : "";
-        successMessage.value = until
-          ? (currentLanguage === "es"
-              ? `Downgrade programado para ${until}.`
-              : `Downgrade programado para ${until}.`)
-          : (currentLanguage === "es"
-              ? "Downgrade programado para el fin del ciclo actual."
-              : "Downgrade programado para o fim do ciclo atual.");
-      })
-      .catch(() => {
-        errorMessage.value = checkoutErrorMessage;
-      })
-      .finally(() => {
-        loadingPlan.value = null;
-      });
-    return;
-  }
-
-  await goToCheckout(planKey);
 };
 
 const cancelScheduledDowngrade = async () => {
-  loadingPlan.value = "cancel-scheduled-downgrade";
+  loadingKey.value = "cancel-scheduled-downgrade";
   errorMessage.value = null;
   successMessage.value = null;
   try {
@@ -677,54 +266,289 @@ const cancelScheduledDowngrade = async () => {
     billingInfo.value = data;
     successMessage.value = "Downgrade agendado cancelado com sucesso.";
   } catch {
-    errorMessage.value = checkoutErrorMessage;
+    errorMessage.value = t(copy.checkoutError);
   } finally {
-    loadingPlan.value = null;
+    loadingKey.value = null;
   }
 };
 
-const startTestCheckout = (cycle: BillingCycle) => {
-  goToCheckout("teste", cycle, true, `teste-${cycle}`);
-};
-
-const loadBilling = async () => {
-  try {
-    const res = await api.get<BillingInfo>("/billing/me");
-    billingInfo.value = res.data;
-    if (res.data.billing_cycle === "annual" || res.data.billing_cycle === "monthly") {
-      billingCycle.value = res.data.billing_cycle;
-    }
-  } catch (err) {
-    console.error(err);
-  }
-};
-
-onMounted(() => {
-  loadBilling();
+onMounted(async () => {
+  const [billing, plan] = await Promise.allSettled([api.get<BillingInfo>("/billing/me"), getPublicSalesPlan()]);
+  if (billing.status === "fulfilled") billingInfo.value = billing.value.data;
+  if (plan.status === "fulfilled") salesPlan.value = plan.value;
+  salesPlanLoading.value = false;
+  // Abre no ciclo de quem já assina; senão no anual (melhor valor), se houver.
+  if (isScaleActive.value) cycle.value = currentCycle.value;
+  else if (!salesPlan.value.annual) cycle.value = "monthly";
 });
 </script>
 
 <style scoped>
-.plans-view { min-height: 100%; background: var(--background); color: var(--foreground); }
-.plans-view :deep(.bg-white) { background: var(--card) !important; }
-.plans-view :deep(.bg-slate-50),
-.plans-view :deep(.bg-slate-100) { background: var(--muted) !important; }
-.plans-view :deep(.border-slate-200),
-.plans-view :deep(.border-slate-300) { border-color: var(--border) !important; }
-.plans-view :deep(.text-slate-900),
-.plans-view :deep(.text-slate-800),
-.plans-view :deep(.text-slate-700) { color: var(--foreground) !important; }
-.plans-view :deep(.text-slate-600),
-.plans-view :deep(.text-slate-500) { color: var(--muted-foreground) !important; }
-@media (min-width: 1024px) and (max-width: 1919px) {
-  .plans-content-scale {
-    zoom: 0.85;
+.plans-view {
+  min-height: 100%;
+  background: var(--background);
+  color: var(--foreground);
+}
+.pv-wrap {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 20px 16px 32px;
+}
+.pv-head {
+  margin-bottom: 18px;
+  text-align: center;
+}
+.pv-title {
+  font-family: var(--font-display);
+  font-size: clamp(24px, 3vw, 32px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.pv-sub {
+  margin-top: 6px;
+  color: var(--muted-foreground);
+  font-size: 15px;
+}
+.pv-alert {
+  margin: 0 auto 12px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.pv-alert-title {
+  font-weight: 700;
+}
+.pv-alert-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.pv-alert.is-danger {
+  background: var(--status-danger);
+  color: var(--status-danger-foreground);
+}
+.pv-alert.is-success {
+  background: var(--status-success);
+  color: var(--status-success-foreground);
+}
+.pv-alert.is-warning {
+  background: var(--status-warning);
+  color: var(--status-warning-foreground);
+}
+.pv-alert.is-info {
+  background: var(--status-info);
+  color: var(--status-info-foreground);
+}
+.pv-offer {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: 16px;
+}
+.pv-incl {
+  display: flex;
+  flex-direction: column;
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: var(--shadow-card);
+}
+.pv-incl-title {
+  margin-bottom: 12px;
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 700;
+}
+.pv-incl ul {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pv-incl li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.pv-incl li svg {
+  margin-top: 2px;
+  padding: 2px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+.pv-incl-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+.pv-incl-foot svg {
+  color: var(--primary);
+}
+.pv-price-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 20px 22px;
+  border: 2px solid var(--primary);
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: var(--shadow-elegant);
+  text-align: center;
+}
+.pv-current {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--status-success);
+  color: var(--status-success-foreground);
+  font-size: 12px;
+  font-weight: 700;
+}
+.pv-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.pv-cycle {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+.pv-cycle button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  color: var(--muted-foreground);
+  font-size: 14px;
+  font-weight: 700;
+}
+.pv-cycle button.on {
+  background: var(--foreground);
+  color: var(--background);
+}
+.pv-off {
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-size: 11px;
+}
+.pv-anchor,
+.pv-eq {
+  color: var(--muted-foreground);
+  font-size: 14px;
+}
+.pv-eq b {
+  color: var(--foreground);
+}
+.pv-price {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+.pv-price .cur {
+  font-size: 17px;
+  font-weight: 700;
+}
+.pv-price .val {
+  font-family: var(--font-display);
+  font-size: 44px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+.pv-price .per {
+  color: var(--muted-foreground);
+  font-size: 14px;
+  font-weight: 600;
+}
+.pv-save {
+  color: var(--status-success-foreground);
+  font-size: 13px;
+  font-weight: 700;
+}
+.pv-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 46px;
+  margin-top: 4px;
+  border-radius: 12px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-size: 15px;
+  font-weight: 700;
+  transition: opacity 0.2s ease;
+}
+.pv-btn:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+.pv-btn-ghost {
+  padding: 6px 12px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.pv-hint {
+  color: var(--muted-foreground);
+  font-size: 12.5px;
+}
+.pv-guarantee {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.pv-guarantee svg {
+  color: var(--primary);
+}
+.pv-msg {
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.pv-msg.is-error {
+  color: var(--destructive);
+}
+.pv-msg.is-success {
+  color: var(--status-success-foreground);
+}
+@media (max-width: 860px) {
+  .pv-offer {
+    grid-template-columns: 1fr;
+  }
+  .pv-price-box {
+    order: -1;
   }
 }
-
-@media (min-width: 1920px) {
-  .plans-content-scale {
-    zoom: 1;
+@media (max-width: 520px) {
+  .pv-incl ul {
+    grid-template-columns: 1fr;
   }
 }
 </style>

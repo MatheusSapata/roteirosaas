@@ -1583,12 +1583,12 @@ const viewCopySource = {
   },
   settings: {
     planGate: {
-      title: { pt: "Disponível nos planos Agência e Escala", es: "Disponible en los planes Agencia y Escala" },
+      title: { pt: "Não incluído no seu plano atual", es: "No incluido en tu plan actual" },
       description: {
-        pt: "A captação de leads está disponível apenas nos planos Agência e Escala. Atualize seu plano para desbloquear essa funcionalidade.",
-        es: "La captación de leads está disponible solo en los planes Agencia y Escala. Actualiza tu plan para desbloquear esta funcionalidad."
+        pt: "A captação de leads vem na assinatura do Roteiro Online. Assine para desbloquear essa funcionalidade.",
+        es: "La captación de leads viene en la suscripción de Roteiro Online. Suscríbete para desbloquear esta funcionalidad."
       },
-      cta: { pt: "Conhecer planos", es: "Conocer planes" }
+      cta: { pt: "Ver assinatura", es: "Ver suscripción" }
     }
   },
   dialogs: {

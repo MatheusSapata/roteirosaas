@@ -406,12 +406,12 @@ const viewCopy = {
   },
   overlay: {
     eyebrow: t({ pt: "Recurso premium", es: "Función premium" }),
-    title: t({ pt: "Disponível no plano Escala", es: "Disponible en el plan Escala" }),
+    title: t({ pt: "Não incluído no seu plano atual", es: "No incluido en tu plan actual" }),
     description: t({
-      pt: "Domínios personalizados ficam liberados apenas no plano Escala. Faça upgrade para configurar seu host.",
-      es: "Los dominios personalizados se habilitan solo en el plan Escala. Haz upgrade para configurar tu host."
+      pt: "O domínio próprio vem na assinatura do Roteiro Online. Assine para configurar seu host.",
+      es: "El dominio propio viene en la suscripción de Roteiro Online. Suscríbete para configurar tu host."
     }),
-    cta: t({ pt: "Conhecer planos", es: "Conocer planes" })
+    cta: t({ pt: "Ver assinatura", es: "Ver suscripción" })
   },
   messages: {
     fetchError: t({
